@@ -1,3 +1,4 @@
+use std::assert_matches;
 use std::cell::{Ref, RefCell};
 use std::collections::{BTreeMap, VecDeque};
 use std::rc::{Rc, Weak};
@@ -109,16 +110,12 @@ impl ReadinessInterest {
     }
 }
 
-type ReadinessWatcherId = usize;
-
 /// A struct which stores [`ReadinessInterest`]s for a set of file descriptions
 /// together with which interests are currently satisfied, and a list of
 /// threads which should be unblocked once a [`ReadinessInterest`] of the
 /// watcher is fulfilled.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct ReadinessWatcher {
-    /// Globally unique identifier of the watcher.
-    id: ReadinessWatcherId,
     /// A map of [`ReadinessInterest`]s registered for this watcher. Each entry is
     /// identified using a [`FdId`] [`FdNum`] tuple.
     interests: RefCell<BTreeMap<ReadinessInterestKey, ReadinessInterest>>,
@@ -358,41 +355,18 @@ impl VisitProvenance for ReadinessWatcher {
 /// This tracks, for each file description, which watchers have an interest in events
 /// for this file description.
 pub struct ReadinessInterestTable {
-    /// The id of the next [`ReadinessWatcher`] created through
-    /// [`ReadinessInterestTable::new_watcher`].
-    next_watcher_id: ReadinessWatcherId,
     /// Maps each file description (identified by its [`FdId`]) to the list of watchers that are
-    /// interested in that FD. We also store the [`ReadinessWatcher`]s ID
-    /// separately so we can access it without calling `upgrade`. The list
-    /// is sorted by that id. We use an ID so that we can identify the watcher even after it has
-    /// been dropped.
+    /// interested in that FD.
     /// We also store a weak reference to the watched file description, so we can clean them up
     /// when they get freed.
     /// FIXME: a better place to store this would probably be the relevant FD itself. Experiment
     /// with delegation to easily do that for all FD types, once that is ready.
-    interests: BTreeMap<
-        FdId,
-        (WeakDynFileDescriptionRef, Vec<(ReadinessWatcherId, Weak<ReadinessWatcher>)>),
-    >,
+    interests: BTreeMap<FdId, (WeakDynFileDescriptionRef, Vec<Weak<ReadinessWatcher>>)>,
 }
 
 impl ReadinessInterestTable {
     pub(crate) fn new() -> Self {
-        ReadinessInterestTable { interests: BTreeMap::new(), next_watcher_id: 0 }
-    }
-
-    /// Create a new [`ReadinessWatcher`] with a globally unique id.
-    /// Every watcher gets a sequentially increasing id such that no two
-    /// watchers ever get the same id.
-    pub fn new_watcher(&mut self) -> ReadinessWatcher {
-        let id = self.next_watcher_id;
-        self.next_watcher_id = id.strict_add(1);
-        ReadinessWatcher {
-            id,
-            interests: RefCell::new(BTreeMap::new()),
-            ready: RefCell::new(VecDeque::new()),
-            queue: RefCell::new(VecDeque::new()),
-        }
+        ReadinessInterestTable { interests: BTreeMap::new() }
     }
 
     /// Add an interest for `watcher` for the `watched_fd` file description.
@@ -401,20 +375,29 @@ impl ReadinessInterestTable {
             .interests
             .entry(watched_fd.id())
             .or_insert_with(|| (FileDescriptionRef::downgrade(watched_fd), Vec::new()));
-        let idx = watchers
-            .binary_search_by_key(&watcher.id, |&(id, _)| id)
-            .expect_err("watcher already has a registered interest in the provided watched fd");
-        watchers.insert(idx, (watcher.id, Rc::downgrade(watcher)));
+        if cfg!(debug_assertions) {
+            // Ensure uniqueness.
+            assert_matches!(
+                watchers.iter().find(|elem| elem.as_ptr() == Rc::as_ptr(watcher)),
+                None,
+                "watcher has already been added to this watched fd",
+            );
+        }
+        watchers.push(Rc::downgrade(watcher));
     }
 
     /// Remove the interest of `watcher` for the file description with id `fd_id`.
-    fn remove(&mut self, watched_fd: FdId, watcher: &ReadinessWatcher) {
+    fn remove(&mut self, watched_fd: FdId, watcher: &Rc<ReadinessWatcher>) {
         let (_watched, watchers) = self
             .interests
             .get_mut(&watched_fd)
             .expect("watcher has no registered interest in the provided watched fd");
+        // We need to do a linear scan to find the watcher to remove. That's not ideal, but removing
+        // a watched FD from an epoll is rare so it's not worth the non-trivial effort it would take
+        // to make this more efficient.
         let idx = watchers
-            .binary_search_by_key(&watcher.id, |&(id, _)| id)
+            .iter()
+            .position(|elem| elem.as_ptr() == Rc::as_ptr(watcher))
             .expect("watcher has no registered interest in the provided watched fd");
         watchers.remove(idx);
     }
@@ -427,7 +410,7 @@ impl ReadinessInterestTable {
         let (_watched, watchers) = self.interests.get(&fd_id)?;
         // Ignore weak refs that cannot be upgraded -- those correspond to closed
         // file descriptions and will be cleaned up by the GC eventually.
-        Some(watchers.iter().filter_map(|(_id, watcher)| watcher.upgrade()))
+        Some(watchers.iter().filter_map(|watcher| watcher.upgrade()))
     }
 
     /// Run garbage collector to remove all dropped watchers and dropped watched FDs.
@@ -435,7 +418,7 @@ impl ReadinessInterestTable {
         self.interests.retain(|&fd_id, (watched, watchers)| {
             if watched.is_closed() {
                 // An FD we were watching got closed. Remove it from the watcher as well.
-                for watcher in watchers.iter().filter_map(|(_id, watcher)| Weak::upgrade(watcher)) {
+                for watcher in watchers.iter().filter_map(Weak::upgrade) {
                     // This is a still-live watcher with interest in this FD. Remove all
                     // relevant interests (including from the ready set).
                     watcher
@@ -450,7 +433,7 @@ impl ReadinessInterestTable {
                 return false; // delete this one
             }
             // Keep this one, but clean up the watchers.
-            watchers.retain(|(_id, watcher)| watcher.strong_count() > 0);
+            watchers.retain(|watcher| watcher.strong_count() > 0);
             true
         });
     }

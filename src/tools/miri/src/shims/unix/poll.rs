@@ -45,7 +45,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // a positive file descriptor that doesn't exist.
         let mut invalid_interests = 0u32;
 
-        let watcher = Rc::new(this.machine.readiness_interests.new_watcher());
+        let watcher = Rc::new(ReadinessWatcher::default());
 
         // We iterate over the fds array of the `poll` syscall. For each fd, we check its
         // output field, the relevant events, and whether they are currently fulfilled.
