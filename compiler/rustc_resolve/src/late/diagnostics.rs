@@ -542,33 +542,30 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 (mod_prefix, format!("`{}`", Segment::names_to_string(mod_path)), module_did, None)
             };
 
-            let (fallback_label, suggestion) = if path_str == "async"
-                && expected.starts_with("struct")
-            {
-                ("`async` blocks are only allowed in Rust 2018 or later".to_string(), suggestion)
-            } else {
-                // check if we are in situation of typo like `True` instead of `true`.
-                let override_suggestion =
-                    if ["true", "false"].contains(&item_str.to_string().to_lowercase().as_str()) {
-                        let item_typo = item_str.to_string().to_lowercase();
-                        Some((item_span, "you may want to use a bool value instead", item_typo))
-                    // FIXME(vincenzopalazzo): make the check smarter,
-                    // and maybe expand with levenshtein distance checks
-                    } else if item_str.as_str() == "printf" {
-                        Some((
-                            item_span,
-                            "you may have meant to use the `print` macro",
-                            "print!".to_owned(),
-                        ))
-                    } else {
-                        suggestion
-                    };
-                (format!("not found in {mod_str}"), override_suggestion)
-            };
+            let suggestion =
+                if ["true", "false"].contains(&item_str.to_string().to_lowercase().as_str()) {
+                    // check if we are in situation of typo like `True` instead of `true`.
+                    let item_typo = item_str.to_string().to_lowercase();
+                    Some((item_span, "you may want to use a bool value instead", item_typo))
+                // FIXME(vincenzopalazzo): make the check smarter,
+                // and maybe expand with levenshtein distance checks
+                } else if item_str.as_str() == "printf" {
+                    Some((
+                        item_span,
+                        "you may have meant to use the `print` macro",
+                        "print!".to_owned(),
+                    ))
+                } else {
+                    suggestion
+                };
 
             BaseError {
                 msg: format!("cannot find {expected} `{item_str}` in {mod_prefix}{mod_str}"),
-                fallback_label,
+                fallback_label: if path_str == "async" && expected.starts_with("struct") {
+                    "`async` blocks are only allowed in Rust 2018 or later".to_string()
+                } else {
+                    format!("not found in {mod_str}")
+                },
                 span: item_span,
                 span_label,
                 could_be_expr: false,
