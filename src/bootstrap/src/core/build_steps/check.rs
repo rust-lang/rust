@@ -877,6 +877,13 @@ tool_check_step!(Compiletest {
     default: false,
 });
 
+tool_check_step!(CompiletestLintDriver {
+    path: "src/tools/compiletest-lint-driver",
+    mode: Mode::ToolRustcPrivate,
+    allow_features: "rustc_private",
+    default: false,
+});
+
 // As with compiletest, rustdoc-gui-test is automatically built when running
 // relevant tests. So being able to check it is mainly useful for people
 // working on on rustdoc-gui-test itself, or on its compiletest dependency.

@@ -326,6 +326,15 @@ pub(crate) struct Config {
     /// bootstrap option `build.compiletest-allow-stage0=true` and specifying `--stage=0`.
     pub(crate) rustc_path: Utf8PathBuf,
 
+    /// Path to the `compiletest-lint-driver` binary.
+    pub(crate) rustc_lint_driver_path: Option<Utf8PathBuf>,
+
+    /// Path to the libdir for the `compiletest-lint-driver` binary.
+    pub(crate) rustc_lint_driver_lib_path: Option<Utf8PathBuf>,
+
+    /// Path to the sysroot for the `compiletest-lint-driver` binary.
+    pub(crate) rustc_lint_driver_sysroot: Option<Utf8PathBuf>,
+
     /// Path to a *staged* **host** platform cargo executable (unless stage 0 is forced). This
     /// staged `cargo` is only used within `run-make` test recipes during recipe run time (and is
     /// *not* used to compile the test recipes), and so must be staged as there may be differences
