@@ -216,9 +216,14 @@ pub trait FileDescription: std::fmt::Debug + FileDescriptionExt {
         throw_unsup_format!("fcntl: {} is not supported for F_SETFL", self.name());
     }
 
+    /// Get the `ReadinessWatched` of the file description.
+    fn readiness_watched(&self) -> Option<&ReadinessWatched> {
+        None
+    }
+
     /// Get the current I/O readiness of the file description.
-    fn readiness<'tcx>(&self) -> InterpResult<'tcx, Readiness> {
-        throw_unsup_format!("{}: this file description doesn't support I/O readiness", self.name());
+    fn readiness(&self) -> Readiness {
+        panic!("FD type {} implements `readiness_watched` but not `readiness`", self.name());
     }
 }
 
@@ -480,6 +485,7 @@ impl FdTable {
         self.insert(fd_ref)
     }
 
+    /// Insert an alias to an existing file description to the FdTable.
     pub fn insert(&mut self, fd_ref: DynFileDescriptionRef) -> FdNum {
         self.insert_with_min_num(fd_ref, 0)
     }

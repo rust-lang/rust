@@ -334,10 +334,13 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
     /// Returns whether there exists any thread that is blocked on host I/O.
     fn any_thread_blocked_on_host(&self) -> bool {
         let this = self.eval_context_ref();
-        this.machine.blocking_io.sources.iter().any(|(&fd_id, source)| {
+        this.machine.blocking_io.sources.values().any(|source| {
             // There's two ways something could be blocked on this: directly,
             // or indirectly via a readiness watcher.
-            source.blocked_threads.len() > 0 || this.has_watcher_with_blocked_thread(fd_id)
+            source.blocked_threads.len() > 0
+                || source.fd.upgrade().is_some_and(|fd| {
+                    fd.readiness_watched().is_some_and(|w| w.has_watcher_with_blocked_thread())
+                })
         })
     }
 }

@@ -60,6 +60,8 @@ struct VirtualSocket {
     /// We need to update the peer_fd readiness when we get dropped, so we keep a reference
     /// to the readiness update queue
     delayed_readiness_updates: Rc<DelayedReadinessUpdates>,
+    /// State for being watched by epoll.
+    watched: ReadinessWatched,
 }
 
 #[derive(Debug)]
@@ -203,7 +205,11 @@ impl FileDescription for VirtualSocket {
         interp_ok(Scalar::from_i32(0))
     }
 
-    fn readiness<'tcx>(&self) -> InterpResult<'tcx, Readiness> {
+    fn readiness_watched(&self) -> Option<&ReadinessWatched> {
+        Some(&self.watched)
+    }
+
+    fn readiness(&self) -> Readiness {
         // We only check the "readable", "writable", "read closed" and "write closed" readiness.
         // If other event flags need to be supported in the future, the check should be added here.
 
@@ -246,7 +252,7 @@ impl FileDescription for VirtualSocket {
                 readiness.error = true;
             }
         }
-        interp_ok(readiness)
+        readiness
     }
 }
 
@@ -609,6 +615,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             is_nonblock: Cell::new(is_sock_nonblock),
             fd_type: VirtualSocketType::Socketpair,
             delayed_readiness_updates: Rc::clone(&this.machine.delayed_readiness_updates),
+            watched: ReadinessWatched::default(),
         });
         let fd1 = fds.new_ref(VirtualSocket {
             readbuf: Some(RefCell::new(Buffer::new())),
@@ -619,6 +626,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             is_nonblock: Cell::new(is_sock_nonblock),
             fd_type: VirtualSocketType::Socketpair,
             delayed_readiness_updates: Rc::clone(&this.machine.delayed_readiness_updates),
+            watched: ReadinessWatched::default(),
         });
 
         // Make the file descriptions point to each other.
@@ -681,6 +689,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             is_nonblock: Cell::new(is_nonblock),
             fd_type: VirtualSocketType::PipeRead,
             delayed_readiness_updates: Rc::clone(&this.machine.delayed_readiness_updates),
+            watched: ReadinessWatched::default(),
         });
         let fd1 = fds.new_ref(VirtualSocket {
             readbuf: None,
@@ -691,6 +700,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             is_nonblock: Cell::new(is_nonblock),
             fd_type: VirtualSocketType::PipeWrite,
             delayed_readiness_updates: Rc::clone(&this.machine.delayed_readiness_updates),
+            watched: ReadinessWatched::default(),
         });
 
         // Make the file descriptions point to each other.

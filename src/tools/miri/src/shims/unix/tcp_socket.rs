@@ -70,6 +70,8 @@ pub(super) struct TcpSocket {
     /// for relative timeouts).
     /// This is ignored when the socket is non-blocking.
     write_timeout: Cell<Option<Duration>>,
+    /// State for being watched by epoll.
+    watched: ReadinessWatched,
 }
 
 impl TcpSocket {
@@ -82,6 +84,7 @@ impl TcpSocket {
             error: RefCell::new(None),
             read_timeout: Cell::new(None),
             write_timeout: Cell::new(None),
+            watched: ReadinessWatched::default(),
         }
     }
 }
@@ -169,8 +172,12 @@ impl FileDescription for TcpSocket {
         interp_ok(Scalar::from_i32(0))
     }
 
-    fn readiness<'tcx>(&self) -> InterpResult<'tcx, Readiness> {
-        interp_ok(self.io_readiness.borrow().clone())
+    fn readiness_watched(&self) -> Option<&ReadinessWatched> {
+        Some(&self.watched)
+    }
+
+    fn readiness(&self) -> Readiness {
+        self.io_readiness.borrow().clone()
     }
 }
 
@@ -1050,6 +1057,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             error: RefCell::new(None),
             read_timeout: Cell::new(None),
             write_timeout: Cell::new(None),
+            watched: ReadinessWatched::default(),
         });
         // Register the socket to the blocking I/O manager because
         // there is an associated host socket.

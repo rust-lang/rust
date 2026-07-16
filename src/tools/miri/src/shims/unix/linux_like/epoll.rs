@@ -187,7 +187,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
             }
         } else if op == epoll_ctl_del {
-            if epfd.watcher.remove_interest(interest_key, this).is_none() {
+            if epfd.watcher.remove_interest(interest_key).is_none() {
                 // We did not have interest in this.
                 return this.set_errno_and_return_neg1_i32(LibcError("ENOENT"));
             };

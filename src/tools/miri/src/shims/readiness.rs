@@ -129,6 +129,26 @@ pub struct ReadinessWatcher {
     queue: RefCell<VecDeque<ThreadId>>,
 }
 
+impl Drop for ReadinessWatcher {
+    fn drop(&mut self) {
+        // Remove ourselves from the FDs we were interested in, at most once per description.
+        let mut last_id = None;
+        for ((id, _fd_num), interest) in self.interests.borrow().iter() {
+            // We'll see interested sorted by ID. Only do something once for each ID.
+            if Some(id) == last_id {
+                continue;
+            }
+            last_id = Some(id);
+            // If the FD still exists, remove ourselves from it.
+            if let Some(fd) = interest.watched_fd.upgrade() {
+                // We can't easily figure out who in that list is us, but we can just remove
+                // everything that has no more strong refs.
+                fd.readiness_watched().unwrap().run_gc();
+            }
+        }
+    }
+}
+
 impl ReadinessWatcher {
     /// Get a reference to the map of registered interests of the watcher
     /// together with their keys.
@@ -168,9 +188,11 @@ impl ReadinessWatcher {
         let mut interests = self.interests.borrow_mut();
         if interests.range(range_for_id(fd_id)).next().is_none() {
             // This is the first time this FD got added to the watcher.
-            // We need to remember that in the global list such that we
-            // get notified about FD events.
-            ecx.machine.readiness_interests.insert(&fd_ref, self);
+            // Let's make sure it can be watched, and add ourselves to its list.
+            let watched = fd_ref.readiness_watched().ok_or_else(|| {
+                err_unsup_format!("I/O readiness watching not supported for {}", fd_ref.name())
+            })?;
+            watched.insert(self);
         }
         if interests.try_insert(key, interest).is_err() {
             return interp_ok(Err(()));
@@ -181,7 +203,7 @@ impl ReadinessWatcher {
 
         ecx.update_readiness(
             self,
-            fd_ref.readiness()?,
+            fd_ref.readiness(),
             /* force_edge */ true,
             move |callback| {
                 // Need to release the RefCell when this closure returns, so we have to move
@@ -215,7 +237,7 @@ impl ReadinessWatcher {
         let fd_ref = ecx.machine.fds.get(key.1).expect("File description should exist");
         ecx.update_readiness(
             self,
-            fd_ref.readiness()?,
+            fd_ref.readiness(),
             /* force_edge */ true,
             move |callback| {
                 // Need to release the RefCell when this closure returns, so we have to move
@@ -231,18 +253,17 @@ impl ReadinessWatcher {
     ///
     /// This function returns [`None`] when no interest is registered
     /// for the specified `key`.
-    pub fn remove_interest<'tcx>(
-        self: &Rc<ReadinessWatcher>,
-        key: ReadinessInterestKey,
-        ecx: &mut MiriInterpCx<'tcx>,
-    ) -> Option<()> {
+    pub fn remove_interest(self: &Rc<ReadinessWatcher>, key: ReadinessInterestKey) -> Option<()> {
         let mut interests = self.interests.borrow_mut();
 
-        #[allow(clippy::question_mark)] // avoid hidden control flow
-        if interests.remove(&key).is_none() {
+        let Some(interest) = interests.remove(&key) else {
             // We did not have interest in this.
             return None;
-        }
+        };
+        let Some(fd_ref) = interest.watched_fd.upgrade() else {
+            // The FD is already gone, nothing to do.
+            return None;
+        };
 
         // Remove the ready event for this key, should one exist.
         let mut ready_events = self.ready.borrow_mut();
@@ -252,7 +273,7 @@ impl ReadinessWatcher {
         // If this was the last interest in this FD, remove us from the global list
         // of who is interested in this FD.
         if interests.range(range_for_id(key.0)).next().is_none() {
-            ecx.machine.readiness_interests.remove(key.0, self);
+            fd_ref.readiness_watched()?.remove(self);
         }
 
         Some(())
@@ -309,7 +330,7 @@ impl ReadinessWatcher {
             for interest in interests.values() {
                 // Ensure this matches the latest readiness of this FD, if the FD is still open.
                 let Some(fd) = interest.watched_fd.upgrade() else { continue };
-                let current_active = fd.readiness()?;
+                let current_active = fd.readiness();
                 assert_eq!(interest.active(), &(current_active & interest.relevant.clone()));
             }
         }
@@ -351,30 +372,17 @@ impl VisitProvenance for ReadinessWatcher {
     fn visit_provenance(&self, _visit: &mut VisitWith<'_>) {}
 }
 
-/// The table with all [`ReadinessWatcher`]s.
-/// This tracks, for each file description, which watchers have an interest in events
-/// for this file description.
-pub struct ReadinessInterestTable {
-    /// Maps each file description (identified by its [`FdId`]) to the list of watchers that are
-    /// interested in that FD.
-    /// We also store a weak reference to the watched file description, so we can clean them up
-    /// when they get freed.
-    /// FIXME: a better place to store this would probably be the relevant FD itself. Experiment
-    /// with delegation to easily do that for all FD types, once that is ready.
-    interests: BTreeMap<FdId, (WeakDynFileDescriptionRef, Vec<Weak<ReadinessWatcher>>)>,
+/// Data about a file descriptiobn that can be watched for readiness
+/// (meant to be stored inside said file description).
+#[derive(Debug, Default)]
+pub struct ReadinessWatched {
+    /// List of readiness watchers that are interested in us.
+    watchers: RefCell<Vec<Weak<ReadinessWatcher>>>,
 }
 
-impl ReadinessInterestTable {
-    pub(crate) fn new() -> Self {
-        ReadinessInterestTable { interests: BTreeMap::new() }
-    }
-
-    /// Add an interest for `watcher` for the `watched_fd` file description.
-    fn insert(&mut self, watched_fd: &DynFileDescriptionRef, watcher: &Rc<ReadinessWatcher>) {
-        let (_watched, watchers) = self
-            .interests
-            .entry(watched_fd.id())
-            .or_insert_with(|| (FileDescriptionRef::downgrade(watched_fd), Vec::new()));
+impl ReadinessWatched {
+    fn insert(&self, watcher: &Rc<ReadinessWatcher>) {
+        let mut watchers = self.watchers.borrow_mut();
         if cfg!(debug_assertions) {
             // Ensure uniqueness.
             assert_matches!(
@@ -386,12 +394,8 @@ impl ReadinessInterestTable {
         watchers.push(Rc::downgrade(watcher));
     }
 
-    /// Remove the interest of `watcher` for the file description with id `fd_id`.
-    fn remove(&mut self, watched_fd: FdId, watcher: &Rc<ReadinessWatcher>) {
-        let (_watched, watchers) = self
-            .interests
-            .get_mut(&watched_fd)
-            .expect("watcher has no registered interest in the provided watched fd");
+    fn remove(&self, watcher: &Rc<ReadinessWatcher>) {
+        let mut watchers = self.watchers.borrow_mut();
         // We need to do a linear scan to find the watcher to remove. That's not ideal, but removing
         // a watched FD from an epoll is rare so it's not worth the non-trivial effort it would take
         // to make this more efficient.
@@ -402,40 +406,17 @@ impl ReadinessInterestTable {
         watchers.remove(idx);
     }
 
-    /// Get all watchers which have a registered interest in the file description with id `fd_id`.
-    fn get_watchers_for_fd(
-        &self,
-        fd_id: FdId,
-    ) -> Option<impl Iterator<Item = Rc<ReadinessWatcher>>> {
-        let (_watched, watchers) = self.interests.get(&fd_id)?;
-        // Ignore weak refs that cannot be upgraded -- those correspond to closed
-        // file descriptions and will be cleaned up by the GC eventually.
-        Some(watchers.iter().filter_map(|watcher| watcher.upgrade()))
+    /// Returns whether the watched FD has any readiness watcher with a blocked thread watching it.
+    pub fn has_watcher_with_blocked_thread(&self) -> bool {
+        let watchers = self.watchers.borrow();
+        // See if any of those watchers has a blocked thread.
+        watchers.iter().any(|w| w.upgrade().expect("dead watcher?").queue.borrow().len() > 0)
     }
 
-    /// Run garbage collector to remove all dropped watchers and dropped watched FDs.
-    pub fn run_gc(&mut self) {
-        self.interests.retain(|&fd_id, (watched, watchers)| {
-            if watched.is_closed() {
-                // An FD we were watching got closed. Remove it from the watcher as well.
-                for watcher in watchers.iter().filter_map(Weak::upgrade) {
-                    // This is a still-live watcher with interest in this FD. Remove all
-                    // relevant interests (including from the ready set).
-                    watcher
-                        .interests
-                        .borrow_mut()
-                        .extract_if(range_for_id(fd_id), |_, _| true)
-                        // Consume the iterator.
-                        .for_each(drop);
-                    // Remove the ready interests for this file description.
-                    watcher.ready.borrow_mut().retain(|(id, _)| id != &fd_id);
-                }
-                return false; // delete this one
-            }
-            // Keep this one, but clean up the watchers.
-            watchers.retain(|watcher| watcher.strong_count() > 0);
-            true
-        });
+    /// Cleans up references to dead watchers.
+    pub fn run_gc(&self) {
+        let mut watchers = self.watchers.borrow_mut();
+        watchers.retain(|w| w.strong_count() > 0);
     }
 }
 
@@ -467,16 +448,6 @@ impl DelayedReadinessUpdates {
 
 impl<'tcx> EvalContextExt<'tcx> for MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
-    /// Returns whether the given FD has any readiness watcher with a blocked thread watching it.
-    fn has_watcher_with_blocked_thread(&self, fd_id: FdId) -> bool {
-        let this = self.eval_context_ref();
-        let Some(mut watchers) = this.machine.readiness_interests.get_watchers_for_fd(fd_id) else {
-            return false;
-        };
-        // See if any of those watchers has a blocked thread.
-        watchers.any(|w| w.queue.borrow().len() > 0)
-    }
-
     /// For a specific file description, get its current readiness and send it to everyone who
     /// registered interest in this FD. This function must be called whenever the result of
     /// `FileDescription::readiness` might change.
@@ -491,11 +462,16 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
         let fd_id = fd.id();
 
-        let Some(watchers) = this.machine.readiness_interests.get_watchers_for_fd(fd_id) else {
+        let watchers_ref = fd.readiness_watched().unwrap().watchers.borrow();
+        // Need to make a copy so below we can unblock threads which may need the same `RefCell`.
+        let watchers =
+            watchers_ref.iter().map(|w| w.upgrade().expect("dead watcher?")).collect::<Vec<_>>();
+        if watchers.is_empty() {
             return interp_ok(());
         };
-        let watchers = watchers.collect::<Vec<_>>(); // need to make a copy so below we can unblock threads
-        let active_readiness = fd.readiness()?;
+        drop(watchers_ref);
+
+        let active_readiness = fd.readiness();
         for watcher in watchers {
             this.update_readiness(&watcher, active_readiness.clone(), force_edge, |callback| {
                 for (&key, interest) in
