@@ -1,0 +1,81 @@
+error[E0277]: the trait bound `NonClone: Clone` is not satisfied
+  --> $DIR/imperfect-derive-advanced.rs:34:21
+   |
+LL |     require_clone::<AssocStruct<NonClone>>();
+   |                     ^^^^^^^^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `NonClone`
+   |
+note: required for `AssocStruct<NonClone>` to implement `Clone`
+  --> $DIR/imperfect-derive-advanced.rs:11:8
+   |
+LL | #[derive(Clone)]
+   |          ----- in this derive macro expansion
+LL | struct AssocStruct<T: Trait> {
+   |        ^^^^^^^^^^^ - type parameter would need to implement `Clone`
+   = help: consider manually implementing `Clone` to avoid undesired bounds caused by "imperfect derives"
+   = note: to learn more, visit <https://github.com/rust-lang/rust/issues/26925>
+note: required by a bound in `require_clone`
+  --> $DIR/imperfect-derive-advanced.rs:31:21
+   |
+LL | fn require_clone<T: Clone>() {}
+   |                     ^^^^^ required by this bound in `require_clone`
+help: consider annotating `NonClone` with `#[derive(Clone)]`
+   |
+LL + #[derive(Clone)]
+LL | struct NonClone;
+   |
+
+error[E0277]: the trait bound `NonClone: Clone` is not satisfied
+  --> $DIR/imperfect-derive-advanced.rs:37:21
+   |
+LL |     require_clone::<RcStruct<NonClone>>();
+   |                     ^^^^^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `NonClone`
+   |
+note: required for `RcStruct<NonClone>` to implement `Clone`
+  --> $DIR/imperfect-derive-advanced.rs:21:8
+   |
+LL | #[derive(Clone)]
+   |          ----- in this derive macro expansion
+LL | struct RcStruct<T> {
+   |        ^^^^^^^^ - type parameter would need to implement `Clone`
+   = help: consider manually implementing `Clone` to avoid undesired bounds caused by "imperfect derives"
+   = note: to learn more, visit <https://github.com/rust-lang/rust/issues/26925>
+note: required by a bound in `require_clone`
+  --> $DIR/imperfect-derive-advanced.rs:31:21
+   |
+LL | fn require_clone<T: Clone>() {}
+   |                     ^^^^^ required by this bound in `require_clone`
+help: consider annotating `NonClone` with `#[derive(Clone)]`
+   |
+LL + #[derive(Clone)]
+LL | struct NonClone;
+   |
+
+error[E0277]: the trait bound `NonClone: Clone` is not satisfied
+  --> $DIR/imperfect-derive-advanced.rs:40:21
+   |
+LL |     require_clone::<List<NonClone>>();
+   |                     ^^^^^^^^^^^^^^ the trait `Clone` is not implemented for `NonClone`
+   |
+note: required for `List<NonClone>` to implement `Clone`
+  --> $DIR/imperfect-derive-advanced.rs:26:8
+   |
+LL | #[derive(Clone)]
+   |          ----- in this derive macro expansion
+LL | struct List<T> {
+   |        ^^^^ - type parameter would need to implement `Clone`
+   = help: consider manually implementing `Clone` to avoid undesired bounds caused by "imperfect derives"
+   = note: to learn more, visit <https://github.com/rust-lang/rust/issues/26925>
+note: required by a bound in `require_clone`
+  --> $DIR/imperfect-derive-advanced.rs:31:21
+   |
+LL | fn require_clone<T: Clone>() {}
+   |                     ^^^^^ required by this bound in `require_clone`
+help: consider annotating `NonClone` with `#[derive(Clone)]`
+   |
+LL + #[derive(Clone)]
+LL | struct NonClone;
+   |
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
