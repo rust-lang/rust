@@ -47,6 +47,7 @@ where
         IndexMap<ty::PlaceholderType<I>, ty::BoundTy<I>>,
         IndexMap<ty::PlaceholderConst<I>, ty::BoundConst<I>>,
     ) {
+        let old_universes = universe_indices.clone();
         let mut replacer = BoundVarReplacer {
             infcx,
             mapped_regions: Default::default(),
@@ -57,8 +58,29 @@ where
         };
 
         let value = value.fold_with(&mut replacer);
+        let BoundVarReplacer {
+            mapped_regions,
+            mapped_types,
+            mapped_consts,
+            universe_indices,
+            infcx: _,
+            current_index: _,
+        } = replacer;
 
-        (value, replacer.mapped_regions, replacer.mapped_types, replacer.mapped_consts)
+        if infcx.cx().assumptions_on_binders() {
+            for (old, new) in old_universes.into_iter().zip(universe_indices.iter()) {
+                if let (None, Some(new)) = (old, new) {
+                    // FIXME(-Zassumptions-on-binders): `replace_bound_vars` does not have enough
+                    // context to compute placeholder assumptions for the binders it enters.
+                    infcx.insert_placeholder_assumptions(
+                        *new,
+                        Some(rustc_type_ir::region_constraint::Assumptions::empty()),
+                    );
+                }
+            }
+        }
+
+        (value, mapped_regions, mapped_types, mapped_consts)
     }
 
     fn universe_for(&mut self, debruijn: ty::DebruijnIndex) -> ty::UniverseIndex {
