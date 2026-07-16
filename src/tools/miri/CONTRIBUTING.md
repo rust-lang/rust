@@ -3,15 +3,27 @@
 If you want to hack on Miri yourself, great!  Here are some resources you might
 find useful.
 
+## AI policy
+
+Before opening a PR or issue, please note our AI policy:
+
+* Using LLMs privately (any use where the output is not part of what you submit to Miri) is allowed.
+* Using LLMs to generate code, documentation, or text that you post in a PR or issue is disallowed, except:
+  - Machine translation is okay, but we recommend tools like https://www.deepl.com/ instead of general-purpose LLMs to reduce the chance of the meaning of the text being altered by the translation.
+  - For issues, it's okay to have a clearly separated LLM-generated section, but the rest of the issue without that section must be written and verified by you personally and must stand on its own.
+  - For PRs, if a Miri maintainer has previously agreed to mentor you, it's okay to submit LLM-generated code and have it reviewed by that maintainer. The PR needs to clearly indicate that it contains LLM-generated code and who the mentor is, and the PR description needs to be written and verified by you personally.
+
+If you have any doubts or questions, please come talk to us on [Zulip].
+
+[Zulip]: https://rust-lang.zulipchat.com/#narrow/channel/269128-miri
+
 ## Getting started
 
 Check out the issues on this GitHub repository for some ideas. In particular,
 look for the green `E-*` labels which mark issues that should be rather
 well-suited for onboarding. For more ideas or help with hacking on Miri, you can
-contact us on the [Rust Zulip]. See the [Rust website](https://www.rust-lang.org/governance/teams/compiler#team-miri)
+contact us on the [Rust Zulip][Zulip]. See the [Rust website](https://www.rust-lang.org/governance/teams/compiler#team-miri)
 for a list of Miri maintainers.
-
-[Rust Zulip]: https://rust-lang.zulipchat.com
 
 ### PR review process
 
