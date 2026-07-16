@@ -9,7 +9,7 @@ guide for more information.
 
 ## Design
 
-The rustc_public will follow a similar approach to proc-macro2. Its
+The `rustc_public` crate will follow a similar approach to [`proc-macro2`](https://crates.io/crates/proc-macro2). Its
 implementation is split between two main crates:
 
 - `rustc_public`: Public crate, to be published on crates.io, which will contain

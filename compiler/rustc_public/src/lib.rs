@@ -1,4 +1,4 @@
-//! # `rustc_public` — A Public Interface to the Rust Compiler
+//! # `rustc_public` — A Public Interface to `rustc`
 //!
 //! This crate provides a public API for querying and analyzing Rust programs through the
 //! compiler's internal representations. It is designed for third-party tools such as
@@ -20,8 +20,13 @@
 //! use std::ops::ControlFlow;
 //!
 //! let result = run!(args, || -> ControlFlow<()> {
-//!     let items = all_local_items();
-//!     // ... analyze items ...
+//!     // Find all crates with the same name (potential duplicates).
+//!     for krate in external_crates() {
+//!         let dupes = find_crates(&krate.name);
+//!         if dupes.len() > 1 {
+//!             println!("Warning: multiple versions of `{}`", krate.name);
+//!         }
+//!     }
 //!     ControlFlow::Continue(())
 //! });
 //! ```
@@ -83,6 +88,7 @@ mod tests;
 pub mod ty;
 pub mod visitor;
 
+// FIXME: Consider replacing with an opaque or interned type.
 /// A symbol name (e.g., function name, crate name), currently represented as a `String`.
 pub type Symbol = String;
 
@@ -234,9 +240,8 @@ impl CrateItem {
 
     /// Check whether this item is generic and requires monomorphization.
     ///
-    /// Returns `true` if this item, or any of its parent definitions, has type
-    /// or const generic parameters. This applies to functions, constants, statics,
-    /// and any item nested inside a generic context.
+    /// Returns `true` if this item, or any enclosing definition (e.g., the impl
+    /// block it belongs to), has type or const generic parameters.
     pub fn requires_monomorphization(&self) -> bool {
         with(|cx| cx.requires_monomorphization(self.0))
     }
