@@ -133,6 +133,7 @@ unsafe impl Send for Repr {}
 unsafe impl Sync for Repr {}
 
 impl Repr {
+    #[inline]
     pub(super) fn new_custom(b: CustomOwner) -> Self {
         let p = b.into_raw().as_ptr().cast::<u8>();
         // Should only be possible if an allocator handed out a pointer with
