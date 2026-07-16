@@ -136,9 +136,11 @@ impl<I: Interner> TypeVisitor<I> for OutlivesCollector<'_, I> {
 
             // OutlivesTypeParameterEnv -- the actual checking that `X:'a`
             // is implied by the environment is done in regionck.
-            ty::Param(p) | ty::Erased(p, _) => {
+            ty::Param(p) => {
                 self.out.push(Component::Param(p));
             }
+
+            ty::Erased(..) => {}
 
             ty::Placeholder(p) => {
                 self.out.push(Component::Placeholder(p));

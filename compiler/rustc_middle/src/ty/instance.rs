@@ -1022,7 +1022,7 @@ impl<'tcx> Instance<'tcx> {
                             let layout_result = tcx
                                 .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ty));
                             let param_layout = ty::ParamLayout(layout_result.unwrap().layout);
-                            let erased_ty = tcx.mk_ty_from_kind(ty::Erased(param_ty, param_layout));
+                            let erased_ty = tcx.mk_ty_from_kind(ty::Erased(param_layout));
                             erased_ty.into()
                         } else {
                             arg

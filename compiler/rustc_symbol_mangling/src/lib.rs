@@ -124,6 +124,8 @@ pub fn provide(providers: &mut Providers) {
 // instance from the local crate. In particular, it will also look up the
 // correct symbol name of instances from upstream crates.
 fn symbol_name_provider<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> ty::SymbolName<'tcx> {
+    // TODO: not the right place for this probably
+    let instance = instance.polymorphize(tcx);
     let symbol_name = compute_symbol_name(tcx, instance, || {
         // This closure determines the instantiating crate for instances that
         // need an instantiating-crate-suffix for their symbol name, in order
@@ -238,8 +240,6 @@ fn compute_symbol_name<'tcx>(
     instance: Instance<'tcx>,
     compute_instantiating_crate: impl FnOnce() -> CrateNum,
 ) -> String {
-    // TODO: not the right place for this probably
-    let instance = instance.polymorphize(tcx);
     let def_id = instance.def_id();
     let args = instance.args;
 

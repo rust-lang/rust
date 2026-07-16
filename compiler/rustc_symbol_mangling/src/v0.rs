@@ -549,10 +549,8 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
             ty::Tuple(_) if ty.is_unit() => unreachable!(),
             ty::Param(_) => unreachable!(),
             // TODO: this needs more thought and design work
-            ty::Erased(param_ty, param_layout) => {
+            ty::Erased(param_layout) => {
                 self.push("C5EP");
-                self.push_integer_62(param_ty.index.into());
-                self.push("L");
                 self.print_param_layout(param_layout)?;
             }
 

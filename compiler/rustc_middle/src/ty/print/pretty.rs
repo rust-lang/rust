@@ -825,9 +825,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             }
             ty::Error(_) => write!(self, "{{type error}}")?,
             ty::Param(ref param_ty) => param_ty.print(self)?,
-            ty::Erased(param_ty, layout) => {
-                param_ty.print(self)?;
-                write!(self, "@")?;
+            ty::Erased(layout) => {
                 layout.print(self)?;
             }
             ty::Bound(debruijn, bound_ty) => match bound_ty.kind {

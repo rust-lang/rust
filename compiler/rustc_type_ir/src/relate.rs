@@ -537,11 +537,7 @@ pub fn structurally_relate_tys<I: Interner, R: TypeRelation<I>>(
         }
 
         // TOOD: is this right? should we be using relate instead of ==?
-        (ty::Erased(a_param, a_layout), ty::Erased(b_param, b_layout))
-            if a_param == b_param && a_layout == b_layout =>
-        {
-            Ok(a)
-        }
+        (ty::Erased(a_layout), ty::Erased(b_layout)) if a_layout == b_layout => Ok(a),
 
         _ => Err(TypeError::Sorts(ExpectedFound::new(a, b))),
     }
