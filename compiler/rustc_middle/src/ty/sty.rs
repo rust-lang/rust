@@ -1631,6 +1631,11 @@ impl<'tcx> Ty<'tcx> {
         self.kind().fn_sig(tcx)
     }
 
+    #[tracing::instrument(level = "trace", skip(tcx))]
+    pub fn unnormalized_fn_sig(self, tcx: TyCtxt<'tcx>) -> ty::Unnormalized<'tcx, PolyFnSig<'tcx>> {
+        self.kind().unnormalized_fn_sig(tcx)
+    }
+
     #[inline]
     pub fn is_fn(self) -> bool {
         matches!(self.kind(), FnDef(..) | FnPtr(..))
