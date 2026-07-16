@@ -23,19 +23,18 @@ fn to_profiler_name(type_name: &'static str) -> &'static str {
     PASS_TO_PROFILER_NAMES.with(|names| match names.borrow_mut().entry(type_name) {
         Entry::Occupied(e) => *e.get(),
         Entry::Vacant(e) => {
-            let snake_case: String = type_name
-                .chars()
-                .flat_map(|c| {
-                    if c.is_ascii_uppercase() {
-                        vec!['_', c.to_ascii_lowercase()]
-                    } else if c == '-' {
-                        vec!['_']
-                    } else {
-                        vec![c]
-                    }
-                })
-                .collect();
-            let result = &*String::leak(format!("mir_pass{}", snake_case));
+            let mut profiler_name = String::from("mir_pass");
+            for c in type_name.chars() {
+                if c.is_ascii_uppercase() {
+                    profiler_name.push('_');
+                    profiler_name.push(c.to_ascii_lowercase());
+                } else if c == '-' {
+                    profiler_name.push('_');
+                } else {
+                    profiler_name.push(c);
+                }
+            }
+            let result = &*String::leak(profiler_name);
             e.insert(result);
             result
         }
