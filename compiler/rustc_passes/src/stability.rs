@@ -1147,9 +1147,6 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
             .1;
         tcx.dcx().emit_err(diagnostics::ImpliedFeatureNotExist { span, feature, implied_by });
     }
-
-    // FIXME(#44232): the `used_features` table no longer exists, so we
-    // don't lint about unused features. We should re-enable this one day!
 }
 
 fn unnecessary_partially_stable_feature_lint(
