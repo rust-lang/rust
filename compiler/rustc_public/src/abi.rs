@@ -19,9 +19,11 @@ pub struct FnAbi {
     /// The expected return type.
     pub ret: ArgAbi,
 
-    /// The count of non-variadic arguments.
+    /// The count of declared arguments (excluding variadic and implicit arguments).
     ///
-    /// Should only be different from `args.len()` when a function is a C variadic function.
+    /// This may be less than `args.len()` for C variadic functions (which have
+    /// additional variadic arguments) or `#[track_caller]` functions (which have
+    /// an implicit caller location argument).
     pub fixed_count: u32,
 
     /// The ABI convention.
@@ -44,6 +46,10 @@ pub struct ArgAbi {
 /// The pass mode is determined by the platform's calling convention and the
 /// argument's type layout. The same Rust type may use different pass modes
 /// on different targets or when register availability changes.
+///
+/// Note: for the Rust ABI, pass modes may not correspond to any valid C
+/// calling convention (e.g., using more return registers than the platform
+/// C ABI allows). Further processing may be needed depending on the target.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
 pub enum PassMode {
     /// Ignore the argument.
@@ -205,7 +211,7 @@ pub struct TyAndLayout {
     pub layout: Layout,
 }
 
-/// The layout of a type in memory.
+/// The layout of a type, including its size, alignment, field offsets, and backend representation.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
 pub struct LayoutShape {
     /// The fields location within the layout
@@ -219,8 +225,8 @@ pub struct LayoutShape {
     /// must be taken into account.
     pub variants: VariantsShape,
 
-    /// The `abi` defines how this data is passed between functions.
-    pub abi: ValueAbi,
+    /// A hint for how backends should represent this type: as a scalar, vector, or aggregate.
+    pub value_repr: ValueRepr,
 
     /// The ABI mandated alignment in bytes.
     pub abi_align: Align,
@@ -233,12 +239,12 @@ impl LayoutShape {
     /// Returns `true` if the layout corresponds to an unsized type.
     #[inline]
     pub fn is_unsized(&self) -> bool {
-        self.abi.is_unsized()
+        self.value_repr.is_unsized()
     }
 
     #[inline]
     pub fn is_sized(&self) -> bool {
-        !self.abi.is_unsized()
+        !self.value_repr.is_unsized()
     }
 
     /// Returns `true` if the type is sized and a 1-ZST (meaning it has size 0 and alignment 1).
@@ -257,7 +263,7 @@ impl Layout {
     }
 }
 
-/// Describes how the fields of a type are shaped in memory.
+/// Describes the number and position of fields within a type's layout.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
 pub enum FieldsShape {
     /// Scalar primitives and `!`, which never have fields.
@@ -370,49 +376,54 @@ pub enum TagEncoding {
     },
 }
 
-/// How many scalable vectors are in a `ValueAbi::ScalableVector`?
+/// The number of scalable vectors in a [`ValueRepr::ScalableVector`].
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
 pub struct NumScalableVectors(pub(crate) u8);
 
-/// Describes how values of the type are passed by target ABIs,
-/// in terms of categories of C types there are ABI rules for.
+/// A hint for how backends should represent values of this type.
+///
+/// Distinguishes between types representable as scalars, pairs of scalars,
+/// SIMD vectors, or aggregates.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
-pub enum ValueAbi {
+pub enum ValueRepr {
     Scalar(Scalar),
     ScalarPair {
         a: Scalar,
         b: Scalar,
         b_offset: Size,
     },
+    /// A fixed-length SIMD vector.
     Vector {
         element: Scalar,
         count: u64,
     },
+    /// A scalable SIMD vector (e.g., ARM SVE).
     ScalableVector {
         element: Scalar,
         count: u64,
         number_of_vectors: NumScalableVectors,
     },
+    /// The type is not representable as a scalar or vector (e.g., aggregates, unsized types).
     Aggregate {
         /// If true, the size is exact, otherwise it's only a lower bound.
         sized: bool,
     },
 }
 
-impl ValueAbi {
+impl ValueRepr {
     /// Returns `true` if the layout corresponds to an unsized type.
     pub fn is_unsized(&self) -> bool {
         match *self {
-            ValueAbi::Scalar(_)
-            | ValueAbi::ScalarPair { .. }
-            | ValueAbi::Vector { .. }
+            ValueRepr::Scalar(_)
+            | ValueRepr::ScalarPair { .. }
+            | ValueRepr::Vector { .. }
             // FIXME(rustc_scalable_vector): Scalable vectors are `Sized` while the
             // `sized_hierarchy` feature is not yet fully implemented. After `sized_hierarchy` is
             // fully implemented, scalable vectors will remain `Sized`, they just won't be
             // `const Sized` - whether `is_unsized` continues to return `false` at that point will
             // need to be revisited and will depend on what `is_unsized` is used for.
-            | ValueAbi::ScalableVector { .. } => false,
-            ValueAbi::Aggregate { sized } => !sized,
+            | ValueRepr::ScalableVector { .. } => false,
+            ValueRepr::Aggregate { sized } => !sized,
         }
     }
 }
@@ -429,9 +440,8 @@ pub enum Scalar {
     },
     Union {
         /// Unions never have niches, so there is no `valid_range`.
-        /// Even for unions, we need to use the correct registers for the kind of
-        /// values inside the union, so we keep the `Primitive` type around.
-        /// It is also used to compute the size of the scalar.
+        /// The `Primitive` type is kept to inform the backend representation
+        /// and to compute the size of the scalar.
         value: Primitive,
     },
 }
@@ -447,23 +457,18 @@ impl Scalar {
     }
 }
 
-/// Fundamental unit of memory access and layout.
+/// A primitive scalar type: integer, float, or pointer.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Serialize)]
 pub enum Primitive {
-    /// The `bool` is the signedness of the `Integer` type.
+    /// An integer type with a given length and signedness.
     ///
-    /// One would think we would not care about such details this low down,
-    /// but some ABIs are described in terms of C types and ISAs where the
-    /// integer arithmetic is done on {sign,zero}-extended registers, e.g.
-    /// a negative integer passed by zero-extension will appear positive in
-    /// the callee, and most operations on it will produce the wrong values.
-    Int {
-        length: IntegerLength,
-        signed: bool,
-    },
-    Float {
-        length: FloatLength,
-    },
+    /// Signedness matters because some calling conventions require small integers
+    /// to be sign-extended or zero-extended when passed, and using the wrong
+    /// extension produces incorrect values in the callee.
+    Int { length: IntegerLength, signed: bool },
+    /// A floating-point type with a given length.
+    Float { length: FloatLength },
+    /// A pointer in the given address space.
     Pointer(AddressSpace),
 }
 

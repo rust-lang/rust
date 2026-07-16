@@ -13,7 +13,7 @@ use crate::abi::{
     AddressSpace, ArgAbi, ArgAttributes, ArgExtension, CallConvention, CastTarget, FieldsShape,
     FloatLength, FnAbi, IntegerLength, IntegerType, Layout, LayoutShape, NumScalableVectors,
     PassMode, Primitive, Reg, RegKind, ReprFlags, ReprOptions, Scalar, TagEncoding, TyAndLayout,
-    Uniform, ValueAbi, VariantFields, VariantsShape, WrappingRange,
+    Uniform, ValueRepr, VariantFields, VariantsShape, WrappingRange,
 };
 use crate::compiler_interface::BridgeTys;
 use crate::target::MachineSize as Size;
@@ -73,7 +73,7 @@ impl<'tcx> Stable<'tcx> for rustc_abi::LayoutData<rustc_abi::FieldIdx, rustc_abi
         LayoutShape {
             fields: self.fields.stable(tables, cx),
             variants: self.variants.stable(tables, cx),
-            abi: self.backend_repr.stable(tables, cx),
+            value_repr: self.backend_repr.stable(tables, cx),
             abi_align: self.align.abi.stable(tables, cx),
             size: self.size.stable(tables, cx),
         }
@@ -337,7 +337,7 @@ impl<'tcx> Stable<'tcx> for rustc_abi::NumScalableVectors {
 }
 
 impl<'tcx> Stable<'tcx> for rustc_abi::BackendRepr {
-    type T = ValueAbi;
+    type T = ValueRepr;
 
     fn stable<'cx>(
         &self,
@@ -345,25 +345,25 @@ impl<'tcx> Stable<'tcx> for rustc_abi::BackendRepr {
         cx: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         match *self {
-            rustc_abi::BackendRepr::Scalar(scalar) => ValueAbi::Scalar(scalar.stable(tables, cx)),
+            rustc_abi::BackendRepr::Scalar(scalar) => ValueRepr::Scalar(scalar.stable(tables, cx)),
             rustc_abi::BackendRepr::ScalarPair { a: first, b: second, b_offset: second_offset } => {
-                ValueAbi::ScalarPair {
+                ValueRepr::ScalarPair {
                     a: first.stable(tables, cx),
                     b: second.stable(tables, cx),
                     b_offset: second_offset.stable(tables, cx),
                 }
             }
             rustc_abi::BackendRepr::SimdVector { element, count } => {
-                ValueAbi::Vector { element: element.stable(tables, cx), count }
+                ValueRepr::Vector { element: element.stable(tables, cx), count }
             }
             rustc_abi::BackendRepr::SimdScalableVector { element, count, number_of_vectors } => {
-                ValueAbi::ScalableVector {
+                ValueRepr::ScalableVector {
                     element: element.stable(tables, cx),
                     count,
                     number_of_vectors: number_of_vectors.stable(tables, cx),
                 }
             }
-            rustc_abi::BackendRepr::Memory { sized } => ValueAbi::Aggregate { sized },
+            rustc_abi::BackendRepr::Memory { sized } => ValueRepr::Aggregate { sized },
         }
     }
 }
