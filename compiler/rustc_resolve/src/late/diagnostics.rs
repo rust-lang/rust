@@ -389,7 +389,6 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         // Make the base error.
         let mut expected = source.descr_expected();
         let path_str = Segment::names_to_string(path);
-        let item_str = path.last().unwrap().ident;
 
         if let Some(res) = res {
             BaseError {
@@ -443,7 +442,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     && let Some(item) = items.iter().find(|i| {
                         i.kind.ident().is_some_and(|ident| {
                             // Don't suggest if the item is in Fn signature arguments (#112590).
-                            ident.name == item_str.name && !sig.span.contains(item_span)
+                            ident.name == item_ident.name && !sig.span.contains(item_span)
                         })
                     }) {
                     let sp = item_span.shrink_to_lo();
@@ -553,13 +552,13 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             };
 
             let suggestion =
-                if ["true", "false"].contains(&item_str.to_string().to_lowercase().as_str()) {
+                if ["true", "false"].contains(&item_ident.to_string().to_lowercase().as_str()) {
                     // check if we are in situation of typo like `True` instead of `true`.
-                    let item_typo = item_str.to_string().to_lowercase();
+                    let item_typo = item_ident.to_string().to_lowercase();
                     Some((item_span, "you may want to use a bool value instead", item_typo))
                 // FIXME(vincenzopalazzo): make the check smarter,
                 // and maybe expand with levenshtein distance checks
-                } else if item_str.as_str() == "printf" {
+                } else if item_ident.as_str() == "printf" {
                     Some((
                         item_span,
                         "you may have meant to use the `print` macro",
@@ -568,8 +567,9 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 } else {
                     suggestion
                 };
-            let mut msg =
-                format!("cannot find {expected} `{item_str}` in {mod_prefix}{tick}{mod_str}{tick}");
+            let mut msg = format!(
+                "cannot find {expected} `{item_ident}` in {mod_prefix}{tick}{mod_str}{tick}"
+            );
             let mut fallback_label = if path_str == "async" && expected.starts_with("struct") {
                 "`async` blocks are only allowed in Rust 2018 or later".to_string()
             } else {
@@ -579,7 +579,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             if let Some(module_def_id) = module
                 && let Some(directive) = self.r.on_unknown_data(module_def_id)
             {
-                let args = FormatArgs { unresolved: item_str.to_string(), this: mod_str, .. };
+                let args = FormatArgs { unresolved: item_ident.to_string(), this: mod_str, .. };
                 let CustomDiagnostic {
                     message,
                     label,
