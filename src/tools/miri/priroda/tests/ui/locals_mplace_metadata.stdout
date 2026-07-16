@@ -4,22 +4,40 @@
 (priroda) Hit breakpoint
 {MANIFEST_DIR}/tests/ui/locals_mplace_metadata.rs:8
 (priroda) Name: <none>, Id: _0, Ty: (), Value: <uninit>
-Name: slice, Id: _1, Ty: [u8], Value: <indirect>
+Name: slice, Id: _1, Ty: [u8], Value: alloc273 (stack variable, size: 3, align: 1) {
+    01 02 03                                        │ ...
+}
+
 Name: <none>, Id: _2, Ty: &[u8], Value: <dead>
 Name: <none>, Id: _3, Ty: &[u8], Value: <dead>
-(priroda) Id: _1, Ty: [u8], Value: <indirect>
+(priroda) Id: _1, Ty: [u8], Value: alloc273 (stack variable, size: 3, align: 1) {
+    01 02 03                                        │ ...
+}
+
 (priroda) Hit breakpoint
 {MANIFEST_DIR}/tests/ui/locals_mplace_metadata.rs:12
 (priroda) Name: <none>, Id: _0, Ty: (), Value: <uninit>
-Name: text, Id: _1, Ty: str, Value: <indirect>
+Name: text, Id: _1, Ty: str, Value: alloc478 (stack variable, size: 3, align: 1) {
+    __ __ __                                        │ ░░░
+}
+
 Name: <none>, Id: _2, Ty: &str, Value: <dead>
 Name: <none>, Id: _3, Ty: &str, Value: <dead>
-(priroda) Id: _1, Ty: str, Value: <indirect>
+(priroda) Id: _1, Ty: str, Value: alloc478 (stack variable, size: 3, align: 1) {
+    __ __ __                                        │ ░░░
+}
+
 (priroda) Hit breakpoint
 {MANIFEST_DIR}/tests/ui/locals_mplace_metadata.rs:16
 (priroda) Name: <none>, Id: _0, Ty: (), Value: <uninit>
-Name: value, Id: _1, Ty: dyn Marker, Value: <indirect>
+Name: value, Id: _1, Ty: dyn Marker, Value: alloc555 (stack variable, size: 8, align: 4) {
+    01 00 00 00 02 00 00 00                         │ ........
+}
+
 Name: <none>, Id: _2, Ty: &dyn Marker, Value: <dead>
 Name: <none>, Id: _3, Ty: &dyn Marker, Value: <dead>
-(priroda) Id: _1, Ty: dyn Marker, Value: <indirect>
+(priroda) Id: _1, Ty: dyn Marker, Value: alloc555 (stack variable, size: 8, align: 4) {
+    01 00 00 00 02 00 00 00                         │ ........
+}
+
 (priroda) quitting

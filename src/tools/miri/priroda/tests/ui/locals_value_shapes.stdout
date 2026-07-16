@@ -2,21 +2,41 @@
 (priroda) Hit breakpoint
 {MANIFEST_DIR}/tests/ui/locals_value_shapes.rs:29
 (priroda) Name: <none>, Id: _0, Ty: (), Value: <uninit>
-Name: dead_box, Id: _1, Ty: std::boxed::Box<u8>, Value: <indirect>
-Name: consumed, Id: _2, Ty: std::boxed::Box<u8>, Value: <indirect>
+Name: dead_box, Id: _1, Ty: std::boxed::Box<u8>, Value: alloc266 (stack variable, size: 8, align: 8) {
+    ╾─0x20b95[a236]<374>──╼                         │ ╾──────╼
+}
+alloc236 (deallocated)
+
+Name: consumed, Id: _2, Ty: std::boxed::Box<u8>, Value: alloc267 (stack variable, size: 8, align: 8) {
+    ╾─0x20b95[a236]<376>──╼                         │ ╾──────╼
+}
+alloc236 (deallocated)
+
 Name: <none>, Id: _3, Ty: (), Value: <dead>
 Name: <none>, Id: _4, Ty: std::boxed::Box<u8>, Value: <dead>
-Name: pointed_box, Id: _5, Ty: std::boxed::Box<u8>, Value: <indirect>
+Name: pointed_box, Id: _5, Ty: std::boxed::Box<u8>, Value: alloc319 (stack variable, size: 8, align: 8) {
+    ╾─0x21030[a289]<468>──╼                         │ ╾──────╼
+}
+alloc289 (Rust heap, size: 1, align: 1) {
+    11                                              │ .
+}
+
 Name: pointer_box, Id: _6, Ty: &std::boxed::Box<u8>, Value: {&_: &std::boxed::Box<u8>}
 Name: scalar, Id: _7, Ty: u8, Value: 42_u8
-Name: pointed, Id: _8, Ty: u8, Value: <indirect>
+Name: pointed, Id: _8, Ty: u8, Value: alloc320 (stack variable, size: 1, align: 1) {
+    33                                              │ 3
+}
+
 Name: scalar_pointer, Id: _9, Ty: &u8, Value: {&_: &u8}
 Name: scalar_pair, Id: _10, Ty: &[u8], Value: (pointer to 0x212fa[alloc2]<489>, 0x0000000000000002): &[u8]
 Name: <none>, Id: _11, Ty: &[u8], Value: (pointer to 0x212fa[alloc2]<488>, 0x0000000000000002): &[u8]
 Name: <none>, Id: _12, Ty: &[u8; 2], Value: <dead>
 Name: <none>, Id: _13, Ty: [u8; 2], Value: <uninit>
 Name: <none>, Id: _14, Ty: std::ops::RangeFull, Value: <dead>
-Name: mplace, Id: _15, Ty: Aggregate, Value: <indirect>
+Name: mplace, Id: _15, Ty: Aggregate, Value: alloc321 (stack variable, size: 4, align: 2) {
+    34 12 2a __                                     │ 4.*░
+}
+
 Name: <none>, Id: _16, Ty: u8, Value: <dead>
 Name: uninit_scalar, Id: _17, Ty: u32, Value: <uninit>
 Name: <none>, Id: _18, Ty: (u8, &u8, usize, &Aggregate), Value: <dead>
@@ -29,10 +49,22 @@ Name: <none>, Id: _24, Ty: &Aggregate, Value: <dead>
 Name: <none>, Id: _25, Ty: &[u8; 2], Value: {&_: &[u8; 2]}
 (priroda) Id: _0, Ty: (), Value: <uninit>
 (priroda) Id: _4, Ty: std::boxed::Box<u8>, Value: <dead>
-(priroda) Id: _5, Ty: std::boxed::Box<u8>, Value: <indirect>
+(priroda) Id: _5, Ty: std::boxed::Box<u8>, Value: alloc319 (stack variable, size: 8, align: 8) {
+    ╾─0x21030[a289]<468>──╼                         │ ╾──────╼
+}
+alloc289 (Rust heap, size: 1, align: 1) {
+    11                                              │ .
+}
+
 (priroda) Id: _7, Ty: u8, Value: 42_u8
-(priroda) Id: _8, Ty: u8, Value: <indirect>
+(priroda) Id: _8, Ty: u8, Value: alloc320 (stack variable, size: 1, align: 1) {
+    33                                              │ 3
+}
+
 (priroda) Id: _13, Ty: [u8; 2], Value: <uninit>
-(priroda) Id: _15, Ty: Aggregate, Value: <indirect>
+(priroda) Id: _15, Ty: Aggregate, Value: alloc321 (stack variable, size: 4, align: 2) {
+    34 12 2a __                                     │ 4.*░
+}
+
 (priroda) no local for this id
 (priroda) quitting

@@ -18,12 +18,21 @@ Name: x, Id: _1.0, Ty: f32, Value: <unsupported-projection>
 (priroda) Hit breakpoint
 {MANIFEST_DIR}/tests/ui/locals_corpus_async.rs:55
 (priroda) Name: <none>, Id: _0, Ty: (), Value: <uninit>
-Name: <none>, Id: _1, Ty: std::option::Option<i32>, Value: <indirect>
+Name: <none>, Id: _1, Ty: std::option::Option<i32>, Value: alloc155 (stack variable, size: 8, align: 4) {
+    01 00 00 00 05 00 00 00                         │ ........
+}
+
 Name: inner, Id: _1 as variant#1.0, Ty: i32, Value: <unsupported-projection>
 (priroda) Hit breakpoint
 {MANIFEST_DIR}/tests/ui/locals_corpus_async.rs:66
 (priroda) Name: <none>, Id: _0, Ty: (), Value: <uninit>
-Name: <none>, Id: _1, Ty: std::option::Option<&i32>, Value: <indirect>
+Name: <none>, Id: _1, Ty: std::option::Option<&i32>, Value: alloc157 (stack variable, size: 8, align: 8) {
+    ╾0x20b3c[alloc2]<332>─╼                         │ ╾──────╼
+}
+alloc2 (global (static or const), size: 4, align: 4) {
+    05 00 00 00                                     │ ....
+}
+
 Name: pointer, Id: _1 as variant#1.0, Ty: &i32, Value: <unsupported-projection>
 Name: deref, Id: _1 as variant#1.0.*, Ty: i32, Value: <unsupported-projection>
 (priroda) Hit breakpoint

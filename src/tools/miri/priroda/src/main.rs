@@ -493,7 +493,14 @@ impl<'tcx> PrirodaContext<'tcx> {
                     Ok(op) => {
                         local_desc.value = match op.as_mplace_or_imm() {
                             Either::Right(imm) => format!("{imm}"),
-                            Either::Left(_) => "<indirect>".to_string(),
+
+                            Either::Left(mplace_ty) => {
+                                match mplace_ty.ptr().provenance.and_then(|p| p.get_alloc_id()) {
+                                    Some(alloc_id) =>
+                                        format!("{:#?}", self.ecx.dump_alloc(alloc_id)),
+                                    None => "<indirect>".to_string(),
+                                }
+                            }
                         };
                     }
                     Err(err) => {
