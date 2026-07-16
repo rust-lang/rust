@@ -15,13 +15,13 @@ LL | #[rustc_force_inline(bar, baz)]
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[rustc_force_inline(bar, baz)]
+LL + #[rustc_force_inline]
+   |
+LL - #[rustc_force_inline(bar, baz)]
 LL + #[rustc_force_inline = "reason"]
    |
 LL - #[rustc_force_inline(bar, baz)]
 LL + #[rustc_force_inline(reason)]
-   |
-LL - #[rustc_force_inline(bar, baz)]
-LL + #[rustc_force_inline]
    |
 
 error[E0539]: malformed `rustc_force_inline` attribute input
@@ -35,13 +35,13 @@ LL | #[rustc_force_inline(2)]
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[rustc_force_inline(2)]
+LL + #[rustc_force_inline]
+   |
+LL - #[rustc_force_inline(2)]
 LL + #[rustc_force_inline = "reason"]
    |
 LL - #[rustc_force_inline(2)]
 LL + #[rustc_force_inline(reason)]
-   |
-LL - #[rustc_force_inline(2)]
-LL + #[rustc_force_inline]
    |
 
 error[E0539]: malformed `rustc_force_inline` attribute input
@@ -55,13 +55,13 @@ LL | #[rustc_force_inline = 2]
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[rustc_force_inline = 2]
+LL + #[rustc_force_inline]
+   |
+LL - #[rustc_force_inline = 2]
 LL + #[rustc_force_inline = "reason"]
    |
 LL - #[rustc_force_inline = 2]
 LL + #[rustc_force_inline(reason)]
-   |
-LL - #[rustc_force_inline = 2]
-LL + #[rustc_force_inline]
    |
 
 error: `#[rustc_force_inline]` attribute cannot be used on extern crates

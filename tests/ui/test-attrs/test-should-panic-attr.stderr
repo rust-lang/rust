@@ -10,13 +10,13 @@ LL | #[should_panic(expected)]
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[should_panic(expected)]
+LL + #[should_panic]
+   |
+LL - #[should_panic(expected)]
 LL + #[should_panic = "reason"]
    |
 LL | #[should_panic(expected = "reason")]
    |                         ++++++++++
-LL - #[should_panic(expected)]
-LL + #[should_panic]
-   |
 
 error[E0539]: malformed `should_panic` attribute input
   --> $DIR/test-should-panic-attr.rs:20:1
@@ -30,13 +30,13 @@ LL | #[should_panic(expect)]
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[should_panic(expect)]
+LL + #[should_panic]
+   |
+LL - #[should_panic(expect)]
 LL + #[should_panic = "reason"]
    |
 LL | #[should_panic(expected = "reason")]
    |                      +++++++++++++
-LL - #[should_panic(expect)]
-LL + #[should_panic]
-   |
 
 error[E0539]: malformed `should_panic` attribute input
   --> $DIR/test-should-panic-attr.rs:29:1
@@ -50,13 +50,13 @@ LL | #[should_panic(expected(foo, bar))]
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[should_panic(expected(foo, bar))]
+LL + #[should_panic]
+   |
+LL - #[should_panic(expected(foo, bar))]
 LL + #[should_panic = "reason"]
    |
 LL - #[should_panic(expected(foo, bar))]
 LL + #[should_panic(expected = "reason")]
-   |
-LL - #[should_panic(expected(foo, bar))]
-LL + #[should_panic]
    |
 
 error[E0805]: malformed `should_panic` attribute input
@@ -71,13 +71,13 @@ LL | #[should_panic(expected = "foo", bar)]
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[should_panic(expected = "foo", bar)]
+LL + #[should_panic]
+   |
+LL - #[should_panic(expected = "foo", bar)]
 LL + #[should_panic = "reason"]
    |
 LL - #[should_panic(expected = "foo", bar)]
 LL + #[should_panic(expected = "reason")]
-   |
-LL - #[should_panic(expected = "foo", bar)]
-LL + #[should_panic]
    |
 
 error: aborting due to 4 previous errors

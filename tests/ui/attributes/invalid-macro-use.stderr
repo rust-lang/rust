@@ -22,10 +22,10 @@ LL | #[macro_use = 5]
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[macro_use = 5]
-LL + #[macro_use(name1, name2, ...)]
+LL + #[macro_use]
    |
 LL - #[macro_use = 5]
-LL + #[macro_use]
+LL + #[macro_use(name1, name2, ...)]
    |
 
 error[E0565]: malformed `macro_use` attribute input
@@ -40,10 +40,10 @@ LL | #[macro_use(5)]
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[macro_use(5)]
-LL + #[macro_use(name1, name2, ...)]
+LL + #[macro_use]
    |
 LL - #[macro_use(5)]
-LL + #[macro_use]
+LL + #[macro_use(name1, name2, ...)]
    |
 
 error[E0565]: malformed `macro_use` attribute input
@@ -58,10 +58,10 @@ LL | #[macro_use(a = "b")]
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[macro_use(a = "b")]
-LL + #[macro_use(name1, name2, ...)]
+LL + #[macro_use]
    |
 LL - #[macro_use(a = "b")]
-LL + #[macro_use]
+LL + #[macro_use(name1, name2, ...)]
    |
 
 error[E0565]: malformed `macro_use` attribute input
@@ -76,10 +76,10 @@ LL | #[macro_use(a(b))]
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[macro_use(a(b))]
-LL + #[macro_use(name1, name2, ...)]
+LL + #[macro_use]
    |
 LL - #[macro_use(a(b))]
-LL + #[macro_use]
+LL + #[macro_use(name1, name2, ...)]
    |
 
 error[E0565]: malformed `macro_use` attribute input
@@ -94,10 +94,10 @@ LL | #[macro_use(a::b)]
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[macro_use(a::b)]
-LL + #[macro_use(name1, name2, ...)]
+LL + #[macro_use]
    |
 LL - #[macro_use(a::b)]
-LL + #[macro_use]
+LL + #[macro_use(name1, name2, ...)]
    |
 
 error: unused attribute

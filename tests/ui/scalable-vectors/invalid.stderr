@@ -279,10 +279,10 @@ LL | #[rustc_scalable_vector("4")]
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[rustc_scalable_vector("4")]
-LL + #[rustc_scalable_vector(count)]
+LL + #[rustc_scalable_vector]
    |
 LL - #[rustc_scalable_vector("4")]
-LL + #[rustc_scalable_vector]
+LL + #[rustc_scalable_vector(count)]
    |
 
 error[E0805]: malformed `rustc_scalable_vector` attribute input
@@ -296,10 +296,10 @@ LL | #[rustc_scalable_vector(4, 2)]
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[rustc_scalable_vector(4, 2)]
-LL + #[rustc_scalable_vector(count)]
+LL + #[rustc_scalable_vector]
    |
 LL - #[rustc_scalable_vector(4, 2)]
-LL + #[rustc_scalable_vector]
+LL + #[rustc_scalable_vector(count)]
    |
 
 error[E0539]: malformed `rustc_scalable_vector` attribute input
@@ -313,10 +313,10 @@ LL | #[rustc_scalable_vector(count = "4")]
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[rustc_scalable_vector(count = "4")]
-LL + #[rustc_scalable_vector(count)]
+LL + #[rustc_scalable_vector]
    |
 LL - #[rustc_scalable_vector(count = "4")]
-LL + #[rustc_scalable_vector]
+LL + #[rustc_scalable_vector(count)]
    |
 
 error: element count in `rustc_scalable_vector` is too large: `65536`

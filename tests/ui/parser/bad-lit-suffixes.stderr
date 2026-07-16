@@ -148,10 +148,10 @@ LL | #[must_use = "string"suffix]
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[must_use = "string"suffix]
-LL + #[must_use = "reason"]
+LL + #[must_use]
    |
 LL - #[must_use = "string"suffix]
-LL + #[must_use]
+LL + #[must_use = "reason"]
    |
 
 error: suffixes on string literals are invalid

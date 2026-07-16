@@ -359,13 +359,14 @@ pub fn parse_cfg_attr(
             sess.dcx().emit_err(AttributeParseError {
                 span,
                 attr_span: cfg_attr.span,
+                inner_span: cfg_attr.get_normal_item().span,
                 template: CFG_ATTR_TEMPLATE,
                 path: AttrPath::from_ast(&cfg_attr.get_normal_item().path, identity),
                 description: ParsedDescription::Attribute,
                 reason,
                 suggestions: session_diagnostics::AttributeParseErrorSuggestions::CreatedByTemplate(
                     CFG_ATTR_TEMPLATE.suggestions(
-                        AttrSuggestionStyle::Attribute(cfg_attr.style),
+                        AttrSuggestionStyle::EmbeddedAttribute,
                         cfg_attr.get_normal_item().unsafety,
                         sym::cfg_attr,
                     ),
