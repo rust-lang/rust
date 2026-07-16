@@ -7,7 +7,9 @@ use rustc_public_bridge::{Tables, bridge};
 
 use crate::compiler_interface::BridgeTys;
 use crate::mir::alloc::GlobalAlloc;
-use crate::mir::{ConstOperand, Statement, UserTypeProjection, VarDebugInfoFragment};
+use crate::mir::{
+    ConstOperand, SourceScopeInfo, Statement, UserTypeProjection, VarDebugInfoFragment,
+};
 use crate::ty::{Allocation, ConstantKind, MirConst};
 use crate::unstable::Stable;
 use crate::{Error, alloc, opaque};
@@ -20,8 +22,9 @@ impl<'tcx> Stable<'tcx> for mir::Body<'tcx> {
         tables: &mut Tables<'cx, BridgeTys>,
         cx: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T {
-        crate::mir::Body::new(
-            self.basic_blocks
+        crate::mir::Body {
+            blocks: self
+                .basic_blocks
                 .iter()
                 .map(|block| crate::mir::BasicBlock {
                     terminator: block.terminator().stable(tables, cx),
@@ -32,7 +35,8 @@ impl<'tcx> Stable<'tcx> for mir::Body<'tcx> {
                         .collect(),
                 })
                 .collect(),
-            self.local_decls
+            locals: self
+                .local_decls
                 .iter()
                 .map(|decl| crate::mir::LocalDecl {
                     ty: decl.ty.stable(tables, cx),
@@ -40,11 +44,25 @@ impl<'tcx> Stable<'tcx> for mir::Body<'tcx> {
                     mutability: decl.mutability.stable(tables, cx),
                 })
                 .collect(),
-            self.arg_count,
-            self.var_debug_info.iter().map(|info| info.stable(tables, cx)).collect(),
-            self.spread_arg.stable(tables, cx),
-            self.span.stable(tables, cx),
-        )
+            arg_count: self.arg_count,
+            var_debug_info: self
+                .var_debug_info
+                .iter()
+                .map(|info| info.stable(tables, cx))
+                .collect(),
+            spread_arg: self.spread_arg.stable(tables, cx),
+            span: self.span.stable(tables, cx),
+            source_scopes: self
+                .source_scopes
+                .iter()
+                .map(|scope_data| SourceScopeInfo {
+                    inlined: scope_data.inlined.map(|(instance, span)| {
+                        (instance.def.requires_caller_location(cx.tcx), span.stable(tables, cx))
+                    }),
+                    inlined_parent_scope: scope_data.inlined_parent_scope.map(|s| s.as_u32()),
+                })
+                .collect(),
+        }
     }
 }
 

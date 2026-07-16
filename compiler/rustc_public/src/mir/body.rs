@@ -20,10 +20,10 @@ pub struct Body {
     /// The first local is the return value pointer, followed by `arg_count`
     /// locals for the function arguments, followed by any user-declared
     /// variables and temporaries.
-    pub(super) locals: LocalDecls,
+    pub(crate) locals: LocalDecls,
 
     /// The number of arguments this function takes.
-    pub(super) arg_count: usize,
+    pub(crate) arg_count: usize,
 
     /// Debug information pertaining to user variables, including captures.
     pub var_debug_info: Vec<VarDebugInfo>,
@@ -31,19 +31,29 @@ pub struct Body {
     /// Mark an argument (which must be a tuple) as getting passed as its individual components.
     ///
     /// This is used for the "rust-call" ABI such as closures.
-    pub(super) spread_arg: Option<Local>,
+    pub(crate) spread_arg: Option<Local>,
 
     /// The span that covers the entire function body.
     pub span: Span,
+
+    /// Source scope information, used by [`Body::caller_location`] for inline-aware resolution.
+    ///
+    /// Invariants:
+    /// - All scope indices referenced by terminators and statements must be within bounds.
+    /// - `inlined_parent_scope` links must not form cycles.
+    pub(crate) source_scopes: Vec<SourceScopeInfo>,
 }
 
 pub type BasicBlockIdx = usize;
 
 impl Body {
-    /// Constructs a `Body`.
+    /// Constructs a `Body` without inlining information.
     ///
-    /// A constructor is required to build a `Body` from outside the crate
-    /// because the `arg_count` and `locals` fields are private.
+    /// # Warning
+    ///
+    /// This constructor does not accept source scope data today.
+    /// [`Body::caller_location`] will fall back to the terminator's span,
+    /// which may be incorrect when MIR inlining is involved.
     pub fn new(
         blocks: Vec<BasicBlock>,
         locals: LocalDecls,
@@ -52,13 +62,15 @@ impl Body {
         spread_arg: Option<Local>,
         span: Span,
     ) -> Self {
-        // If locals doesn't contain enough entries, it can lead to panics in
-        // `ret_local`, `arg_locals`, and `inner_locals`.
         assert!(
             locals.len() > arg_count,
             "A Body must contain at least a local for the return value and each of the function's arguments"
         );
-        Self { blocks, locals, arg_count, var_debug_info, spread_arg, span }
+        let source_scopes = vec![
+            SourceScopeInfo { inlined: None, inlined_parent_scope: None };
+            max_scope(&blocks) as usize + 1
+        ];
+        Self { blocks, locals, arg_count, var_debug_info, spread_arg, span, source_scopes }
     }
 
     /// Return local that holds this function's return value.
@@ -118,6 +130,44 @@ impl Body {
 
     pub fn spread_arg(&self) -> Option<Local> {
         self.spread_arg
+    }
+
+    /// Resolve the caller location for a call to a `#[track_caller]` function.
+    ///
+    /// Use this when generating the implicit `&'static Location<'static>` argument
+    /// for a call where [`Instance::requires_caller_location`] is true.
+    ///
+    /// Pass `inherited_location` if this body belongs to a `#[track_caller]` function
+    /// (the implicit parameter it received). Pass `None` otherwise.
+    ///
+    /// This method accounts for MIR inlining: when inlined `#[track_caller]` functions
+    /// are present, the terminator's span may not be the correct location. The method
+    /// walks the inlined scopes to resolve the right one.
+    ///
+    /// [`Instance::requires_caller_location`]: crate::mir::mono::Instance::requires_caller_location
+    pub fn caller_location(
+        &self,
+        terminator: &Terminator,
+        inherited_location: Option<MirConst>,
+    ) -> MirConst {
+        let mut span = terminator.source_info.span;
+        let mut scope = terminator.source_info.scope;
+
+        while let Some(scope_data) = self.source_scopes.get(scope as usize) {
+            if let Some((track_caller, callsite_span)) = &scope_data.inlined {
+                if !track_caller {
+                    return span.as_caller_location();
+                }
+                span = *callsite_span;
+            }
+
+            match scope_data.inlined_parent_scope {
+                Some(parent) => scope = parent,
+                None => break,
+            }
+        }
+
+        inherited_location.unwrap_or_else(|| span.as_caller_location())
     }
 }
 
@@ -748,6 +798,22 @@ impl VarDebugInfo {
 
 pub type SourceScope = u32;
 
+/// Data about a source scope, used for caller location resolution.
+///
+/// Each entry corresponds to a source scope in the MIR body. Most scopes have no
+/// inlined data. For scopes introduced by MIR inlining, `inlined` records whether
+/// the inlined callee is `#[track_caller]` and the span of the call site.
+#[derive(Clone, Debug, Default, Eq, PartialEq, Serialize)]
+pub(crate) struct SourceScopeInfo {
+    /// Present when this scope was introduced by inlining a function.
+    /// The `bool` is `true` if the inlined callee is `#[track_caller]`.
+    /// The `Span` is the call site where inlining occurred.
+    pub inlined: Option<(bool, Span)>,
+    /// Nearest (transitive) parent scope that was itself inlined.
+    /// Skips over intermediate scopes within the same inlined function body.
+    pub inlined_parent_scope: Option<SourceScope>,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct SourceInfo {
     pub span: Span,
@@ -1102,4 +1168,16 @@ impl ProjectionElem {
             .ok_or_else(|| error!("Cannot dereference type: {ty:?}"))?;
         Ok(deref_ty.ty)
     }
+}
+
+/// Return the maximum scope index referenced by any terminator or statement in `blocks`.
+fn max_scope(blocks: &[BasicBlock]) -> u32 {
+    blocks
+        .iter()
+        .flat_map(|bb| {
+            std::iter::once(bb.terminator.source_info.scope)
+                .chain(bb.statements.iter().map(|s| s.source_info.scope))
+        })
+        .max()
+        .unwrap_or(0)
 }
