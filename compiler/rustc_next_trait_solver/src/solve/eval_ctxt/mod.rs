@@ -237,11 +237,10 @@ where
             });
         }
 
-        if
         // No need to try the fast path if stalled_on is `None`, since we already try the fast path
         // immediately when adding new goals. If we didn't check `stalled_on` here we'd be trying
         // the fast path twice for some goals.
-        stalled_on.is_some()
+        if stalled_on.is_some()
             && let Some(res) = compute_goal_fast_path_cold(self, goal, span)
         {
             return Ok(res);
@@ -510,11 +509,10 @@ where
             });
         }
 
-        if
         // No need to try the fast path if stalled_on is `None`, since we already try the fast path
         // immediately when adding new goals. If we didn't check `stalled_on` here we'd be trying
         // the fast path twice for some goals.
-        stalled_on.is_some()
+        if stalled_on.is_some()
             && let Some(res) = compute_goal_fast_path_cold(self.delegate, goal, self.origin_span)
         {
             return Ok(res);
@@ -1611,19 +1609,20 @@ enum RerunDecision {
     EagerlyPropagateToParent,
 }
 
+#[tracing::instrument(ret)]
 fn should_rerun_after_erased_canonicalization<I: Interner>(
     AccessedOpaques { reason: _, rerun }: AccessedOpaques<I>,
     original_typing_mode: TypingMode<I>,
     parent_opaque_types: &[(OpaqueTypeKey<I>, I::Ty)],
 ) -> RerunDecision {
-    let parent_opaque_defids = parent_opaque_types.iter().map(|(key, _)| key.def_id.into());
-    let opaque_in_storage = |opaques: I::LocalDefIds, defids: SmallCopyList<_>| {
-        if defids.as_ref().is_empty() {
+    let parent_opaque_def_ids = parent_opaque_types.iter().map(|(key, _)| key.def_id.into());
+    let opaque_in_storage = |opaques: I::LocalDefIds, def_ids: SmallCopyList<_>| {
+        if def_ids.as_ref().is_empty() {
             RerunDecision::No
         } else if opaques
             .iter()
-            .chain(parent_opaque_defids)
-            .any(|opaque| defids.as_ref().contains(&opaque))
+            .chain(parent_opaque_def_ids)
+            .any(|opaque| def_ids.as_ref().contains(&opaque))
         {
             RerunDecision::Yes
         } else {
@@ -1638,7 +1637,7 @@ fn should_rerun_after_erased_canonicalization<I: Interner>(
         }
     };
 
-    let res = match (rerun, original_typing_mode) {
+    match (rerun, original_typing_mode) {
         // =============================
         (RerunCondition::Never, _) => RerunDecision::No,
         // =============================
@@ -1692,13 +1691,7 @@ fn should_rerun_after_erased_canonicalization<I: Interner>(
             TypingMode::PostBorrowck { defined_opaque_types: opaques }
             | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: opaques },
         ) => opaque_in_storage(opaques, defids),
-    };
-
-    debug!(
-        "checking whether to rerun {rerun:?} in outer typing mode {original_typing_mode:?} and opaques {parent_opaque_types:?}: {res:?}"
-    );
-
-    res
+    }
 }
 
 /// Do not call this directly, use the `tcx` query instead.

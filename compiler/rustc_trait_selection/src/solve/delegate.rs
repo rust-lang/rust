@@ -50,7 +50,7 @@ impl<'tcx> SolverDelegate<'tcx> {
     }
 }
 
-/// Create a [`ComputeGoalFastPathOutcome`] signalling the  goal is stalled
+/// Create a [`ComputeGoalFastPathOutcome`] signalling the goal is stalled
 /// on a list of [`ty::GenericArg`]
 fn goal_stalled_on_args<'tcx>(
     stalled_vars: Vec<ty::GenericArg<'tcx>>,

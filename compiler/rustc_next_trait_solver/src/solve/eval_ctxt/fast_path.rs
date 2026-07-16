@@ -108,6 +108,13 @@ where
     WontMakeProgress(stalled_certainty)
 }
 
+/// `compute_goal_fast_path` is complicated enough that outling helps, so it gets optimized
+/// separately from the caller. `compute_goal_fast_path` is the inlined version,
+/// and most call sites (when adding goals) use it. However, when entering the root
+/// we also want to check the fast path, and there the outlining matters.
+///
+/// FIXME(perf) cold might not be worth it here, given that we shuffled some things around since it
+/// mattered.
 #[cold]
 #[inline(never)]
 pub(super) fn compute_goal_fast_path_cold<D, I>(
