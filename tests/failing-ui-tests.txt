@@ -71,11 +71,6 @@ tests/ui/linking/no-gc-encapsulation-symbols.rs
 tests/ui/panics/unwind-force-no-unwind-tables.rs
 tests/ui/attributes/fn-align-dyn.rs
 tests/ui/linkage-attr/raw-dylib/elf/glibc-x86_64.rs
-tests/ui/explicit-tail-calls/recursion-etc.rs
-tests/ui/explicit-tail-calls/indexer.rs
-tests/ui/explicit-tail-calls/drop-order.rs
-tests/ui/explicit-tail-calls/become-cast-return.rs
-tests/ui/explicit-tail-calls/become-indirect-return.rs
 tests/ui/panics/panic-abort-backtrace-without-debuginfo.rs
 tests/ui/sanitizer/kcfi-c-variadic.rs
 tests/ui/sanitizer/kcfi/fn-trait-objects.rs
@@ -97,7 +92,6 @@ tests/ui/eii/linking/track_caller_cross_crate.rs
 tests/ui/asm/x86_64/global_asm_escape.rs
 tests/ui/lto/all-crates.rs
 tests/ui/eii/default/call_default_panics.rs
-tests/ui/explicit-tail-calls/indirect.rs
 tests/ui/traits/inheritance/self-in-supertype.rs
 tests/ui/fmt/fmt_debug/shallow.rs
 tests/ui/eii/eii_impl_with_contract.rs
@@ -109,5 +103,4 @@ tests/ui/eii/static/default.rs
 tests/ui/eii/static/default_cross_crate.rs
 tests/ui/eii/static/default_explicit.rs
 tests/ui/eii/static/default_cross_crate_explicit.rs
-tests/ui/explicit-tail-calls/default-trait-method.rs
 tests/ui/explicit-tail-calls/tailcc-no-signature-restriction.rs
