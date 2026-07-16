@@ -1,3 +1,4 @@
+use core::assert_matches;
 use core::bstr::ByteStr;
 
 #[test]

@@ -1,4 +1,5 @@
 use alloc::bstr::ByteString;
+use core::assert_matches;
 
 #[test]
 fn test_debug() {
