@@ -95,7 +95,6 @@ fn get_simple_intrinsic<'gcc, 'tcx>(
         sym::floorf64 => "floor",
         sym::ceilf32 => "ceilf",
         sym::ceilf64 => "ceil",
-        sym::powf128 => return float_intrinsic(cx, cx.type_f128(), "powf128"),
         sym::truncf32 => "truncf",
         sym::truncf64 => "trunc",
         // We match the LLVM backend and lower this to `rint`.
@@ -118,12 +117,7 @@ fn get_simple_function_f128<'gcc, 'tcx>(
     let func_name = match name {
         sym::ceilf128 => "ceilf128",
         sym::fabs => "fabsf128",
-        sym::expf128 => "expf128",
-        sym::exp2f128 => "exp2f128",
         sym::floorf128 => "floorf128",
-        sym::logf128 => "logf128",
-        sym::log2f128 => "log2f128",
-        sym::log10f128 => "log10f128",
         sym::truncf128 => "truncf128",
         sym::roundf128 => "roundf128",
         sym::round_ties_even_f128 => "roundevenf128",
@@ -167,14 +161,8 @@ fn f16_builtin<'gcc, 'tcx>(
     let builtin_name = match name {
         sym::ceilf16 => "__builtin_ceilf",
         sym::copysignf16 => "__builtin_copysignf",
-        sym::expf16 => "expf",
-        sym::exp2f16 => "exp2f",
         sym::floorf16 => "__builtin_floorf",
         sym::fmaf16 => "fmaf",
-        sym::logf16 => "logf",
-        sym::log2f16 => "log2f",
-        sym::log10f16 => "log10f",
-        sym::powf16 => "__builtin_powf",
         sym::roundf16 => "__builtin_roundf",
         sym::round_ties_even_f16 => "__builtin_rintf",
         sym::sqrtf16 => "__builtin_sqrtf",
@@ -209,14 +197,11 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
         let simple = get_simple_intrinsic(self, name);
 
         let value = match name {
-            _ if simple.is_some() => {
-                let func = simple.expect("simple intrinsic function");
-                self.cx.context.new_call(
-                    self.location,
-                    func,
-                    &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
-                )
-            }
+            _ if let Some(func) = simple => self.cx.context.new_call(
+                self.location,
+                func,
+                &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
+            ),
             // FIXME(antoyo): We can probably remove these and use the fallback intrinsic implementation.
             sym::minimumf32 | sym::minimumf64 | sym::maximumf32 | sym::maximumf64 => {
                 let (ty, func_name) = match name {
@@ -245,14 +230,8 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
             }
             sym::ceilf16
             | sym::copysignf16
-            | sym::expf16
-            | sym::exp2f16
             | sym::floorf16
             | sym::fmaf16
-            | sym::logf16
-            | sym::log2f16
-            | sym::log10f16
-            | sym::powf16
             | sym::roundf16
             | sym::round_ties_even_f16
             | sym::sqrtf16
@@ -263,11 +242,6 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
             | sym::roundf128
             | sym::round_ties_even_f128
             | sym::sqrtf128
-            | sym::expf128
-            | sym::exp2f128
-            | sym::logf128
-            | sym::log2f128
-            | sym::log10f128
                 if self.cx.supports_f128_type =>
             {
                 let func = get_simple_function_f128(span, self, name);
