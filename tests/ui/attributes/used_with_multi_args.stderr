@@ -9,13 +9,13 @@ LL | #[used(compiler, linker)]
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[used(compiler, linker)]
+LL + #[used]
+   |
+LL - #[used(compiler, linker)]
 LL + #[used(compiler)]
    |
 LL - #[used(compiler, linker)]
 LL + #[used(linker)]
-   |
-LL - #[used(compiler, linker)]
-LL + #[used]
    |
 
 error: aborting due to 1 previous error

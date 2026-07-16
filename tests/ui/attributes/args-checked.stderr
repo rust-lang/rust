@@ -38,13 +38,13 @@ LL | #[inline(always = 5)]
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[inline(always = 5)]
+LL + #[inline]
+   |
+LL - #[inline(always = 5)]
 LL + #[inline(always)]
    |
 LL - #[inline(always = 5)]
 LL + #[inline(never)]
-   |
-LL - #[inline(always = 5)]
-LL + #[inline]
    |
 
 error[E0539]: malformed `inline` attribute input
@@ -59,13 +59,13 @@ LL | #[inline(always(x, y, z))]
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[inline(always(x, y, z))]
+LL + #[inline]
+   |
+LL - #[inline(always(x, y, z))]
 LL + #[inline(always)]
    |
 LL - #[inline(always(x, y, z))]
 LL + #[inline(never)]
-   |
-LL - #[inline(always(x, y, z))]
-LL + #[inline]
    |
 
 error[E0539]: malformed `instruction_set` attribute input
@@ -241,13 +241,13 @@ LL | #[used(always = 5)]
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[used(always = 5)]
+LL + #[used]
+   |
+LL - #[used(always = 5)]
 LL + #[used(compiler)]
    |
 LL - #[used(always = 5)]
 LL + #[used(linker)]
-   |
-LL - #[used(always = 5)]
-LL + #[used]
    |
 
 error[E0539]: malformed `used` attribute input
@@ -261,13 +261,13 @@ LL | #[used(always(x, y, z))]
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[used(always(x, y, z))]
+LL + #[used]
+   |
+LL - #[used(always(x, y, z))]
 LL + #[used(compiler)]
    |
 LL - #[used(always(x, y, z))]
 LL + #[used(linker)]
-   |
-LL - #[used(always(x, y, z))]
-LL + #[used]
    |
 
 error[E0565]: malformed `rustc_must_implement_one_of` attribute input

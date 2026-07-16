@@ -327,10 +327,10 @@ LL | #[must_use()]
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[must_use()]
-LL + #[must_use = "reason"]
+LL + #[must_use]
    |
 LL - #[must_use()]
-LL + #[must_use]
+LL + #[must_use = "reason"]
    |
 
 error[E0565]: malformed `no_mangle` attribute input
@@ -397,13 +397,13 @@ LL | #[used()]
    |
 help: try changing it to one of the following valid forms of the attribute
    |
+LL - #[used()]
+LL + #[used]
+   |
 LL | #[used(compiler)]
    |        ++++++++
 LL | #[used(linker)]
    |        ++++++
-LL - #[used()]
-LL + #[used]
-   |
 
 error: the `used` attribute cannot be used on functions
   --> $DIR/malformed-attrs.rs:73:3
@@ -591,10 +591,10 @@ LL | #[must_use = 1]
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[must_use = 1]
-LL + #[must_use = "reason"]
+LL + #[must_use]
    |
 LL - #[must_use = 1]
-LL + #[must_use]
+LL + #[must_use = "reason"]
    |
 
 error[E0539]: malformed `proc_macro_derive` attribute input
@@ -621,11 +621,11 @@ LL | #[must_not_suspend()]
    |
 help: try changing it to one of the following valid forms of the attribute
    |
-LL | #[must_not_suspend(count)]
-   |                    +++++
 LL - #[must_not_suspend()]
 LL + #[must_not_suspend]
    |
+LL | #[must_not_suspend(count)]
+   |                    +++++
 
 error[E0539]: malformed `cfi_encoding` attribute input
   --> $DIR/malformed-attrs.rs:137:3
@@ -794,10 +794,10 @@ LL | #[macro_use = 1]
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[macro_use = 1]
-LL + #[macro_use(name1, name2, ...)]
+LL + #[macro_use]
    |
 LL - #[macro_use = 1]
-LL + #[macro_use]
+LL + #[macro_use(name1, name2, ...)]
    |
 
 error[E0539]: malformed `macro_export` attribute input
@@ -811,10 +811,10 @@ LL | #[macro_export = 18]
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[macro_export = 18]
-LL + #[macro_export(local_inner_macros)]
+LL + #[macro_export]
    |
 LL - #[macro_export = 18]
-LL + #[macro_export]
+LL + #[macro_export(local_inner_macros)]
    |
 
 error[E0658]: the `allow_internal_unsafe` attribute side-steps the `unsafe_code` lint
