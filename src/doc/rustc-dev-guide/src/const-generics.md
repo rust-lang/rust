@@ -1,4 +1,4 @@
-# Const Generics
+# Const generics
 
 ## Kinds of const arguments
 
@@ -15,9 +15,9 @@ Inference Variables are quite boring and treated equivalently to type inference 
 Const Parameters are also similarly boring and equivalent to uses of type parameters almost everywhere.
 However, there are some interesting subtleties with how they are handled during parsing, name resolution, and AST lowering: [ambig-unambig-ty-and-consts].
 
-## Anon Consts
+## Anon consts
 
-Anon Consts (short for anonymous const items) are how arbitrary expression are represented in const generics, for example an array length of `1 + 1` or `foo()` or even just `0`.
+Anon consts (short for anonymous const items) are how arbitrary expression are represented in const generics, for example an array length of `1 + 1` or `foo()` or even just `0`.
 These are unique to const generics and have no real type equivalent.
 
 ### Desugaring
@@ -85,7 +85,7 @@ After all of this desugaring has taken place the final representation in the typ
 
 This allows the representation for const "aliases" to be the same as the representation of `TyKind::Alias`. Having a proper HIR body also allows for a *lot* of code re-use, e.g. we can reuse HIR typechecking and all of the lowering steps to MIR where we can then reuse const eval.
 
-### Enforcing lack of Generic Parameters
+### Enforcing lack of generic parameters
 
 There are three ways that we enforce anon consts can't use generic parameters:
 1. Name Resolution will not resolve paths to generic parameters when inside of an anon const
@@ -182,7 +182,7 @@ It is currently unclear what the right way to make `generic_const_parameter_type
 
 `min_generic_const_args` will allow for some expressions (for example array construction) to be representable without an anon const and therefore without running into these issues, though whether this is *enough* has yet to be determined.
 
-## Checking types of Const Arguments
+## Checking types of const arguments
 
 In order for a const argument to be well formed it must have the same type as the const parameter it is an argument to.
 For example, a const argument of type `bool` for an array length is not well formed, as an array's length parameter has type `usize`.
