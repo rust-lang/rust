@@ -1,34 +1,38 @@
-error[E0531]: it works
-  --> $DIR/late_res.rs:9:16
+error[E0531]: it works `empty` `blah`
+  --> $DIR/late_res.rs:13:16
    |
 LL |         empty::blah => {}
-   |                ^^^^ not found in `empty`
+   |                ^^^^ label it works
    |
    = note: cannot find unit struct, unit variant or constant `blah` in module `empty`
+   = note: note it works
 
-error[E0425]: it works
-  --> $DIR/late_res.rs:14:27
+error[E0425]: it works `empty` `blah`
+  --> $DIR/late_res.rs:18:27
    |
 LL |     println!("{}", empty::blah);
-   |                           ^^^^ not found in `empty`
+   |                           ^^^^ label it works
    |
    = note: cannot find value `blah` in module `empty`
+   = note: note it works
 
-error[E0425]: it works
-  --> $DIR/late_res.rs:18:16
+error[E0425]: it works `empty` `blah`
+  --> $DIR/late_res.rs:22:16
    |
 LL |         empty::blah,
-   |                ^^^^ not found in `empty`
+   |                ^^^^ label it works
    |
    = note: cannot find value `blah` in module `empty`
+   = note: note it works
 
-error[E0425]: it works
-  --> $DIR/late_res.rs:21:16
+error[E0425]: it works `empty` `blah2`
+  --> $DIR/late_res.rs:24:16
    |
 LL |         empty::blah2,
-   |                ^^^^^ not found in `empty`
+   |                ^^^^^ label it works
    |
    = note: cannot find value `blah2` in module `empty`
+   = note: note it works
 
 error: aborting due to 4 previous errors
 
