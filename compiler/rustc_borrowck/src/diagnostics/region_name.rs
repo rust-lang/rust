@@ -147,7 +147,7 @@ impl RegionName {
             )) => {
                 diag.span_label(
                     *span,
-                    format!("lifetime `{self}` appears in the type {type_name}"),
+                    format!("lifetime `{self}` appears in the type `{type_name}`"),
                 );
             }
             RegionNameSource::AnonRegionFromOutput(

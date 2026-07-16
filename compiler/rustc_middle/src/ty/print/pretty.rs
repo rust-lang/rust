@@ -190,6 +190,10 @@ pub struct RegionHighlightMode<'tcx> {
     /// instead of the ordinary behavior.
     highlight_regions: [Option<(ty::Region<'tcx>, usize)>; 3],
 
+    /// If set to `true`, types that include regions will always be included in the output, while
+    /// other types will be free to be trimmed.
+    pub keep_regions: bool,
+
     /// If enabled, when printing a "free region" that originated from
     /// the given `ty::BoundRegionKind`, print it as "`'1`". Free regions that would ordinarily
     /// have names print as normal.
@@ -208,6 +212,7 @@ impl<'tcx> RegionHighlightMode<'tcx> {
         region: Option<ty::Region<'tcx>>,
         number: Option<usize>,
     ) {
+        self.keep_regions = true;
         if let Some(k) = region
             && let Some(n) = number
         {
@@ -223,6 +228,7 @@ impl<'tcx> RegionHighlightMode<'tcx> {
                 bug!("can only highlight {} placeholders at a time", num_slots,)
             });
         *first_avail_slot = Some((region, number));
+        self.keep_regions = true;
     }
 
     /// Convenience wrapper for `highlighting_region`.
@@ -2328,12 +2334,70 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
     }
 
     fn print_type(&mut self, ty: Ty<'tcx>) -> Result<(), PrintError> {
+        let has_regions = self.region_highlight_mode.keep_regions
+            && ty.has_type_flags(ty::TypeFlags::HAS_REGIONS);
         match ty.kind() {
-            ty::Tuple(tys) if tys.len() == 0 && self.should_truncate() => {
+            ty::Tuple(tys) if tys.len() == 0 => {
                 // Don't truncate `()`.
+                self.pretty_print_type(ty)
+            }
+
+            ty::Adt(def, args)
+                if self.should_truncate()
+                    && args.consts().count() < 2
+                    && args.types().count() < 2
+                    && {
+                        // We ensure that if there's at most a single type parameter and that type
+                        // *doesn't* have any parameters, to avoid printing all the names in cases
+                        // like `Foo<Foo<Foo<Foo<...>>>`, instead truncating those always to
+                        // `Foo<...>`.
+                        if let Some(arg) = args.types().next() {
+                            if let ty::Adt(_, arg_args) = arg.kind() {
+                                if arg_args.consts().next().is_none()
+                                    && arg_args.types().next().is_none()
+                                {
+                                    // Single param type with no type or const parameters:
+                                    // `Foo<Bar<'a>>`.
+                                    true
+                                } else {
+                                    // Single param type with multiple type or const parameters:
+                                    // `Foo<Bar<Baz, Qux>>`. We don't want to recurse into those,
+                                    // we'll replace the whole thing with `...`.
+                                    false
+                                }
+                            } else {
+                                // Single type param that *isn't* a type with parameters, like a
+                                // primitive: `Foo<i32>`.
+                                true
+                            }
+                        } else {
+                            // No type param: `Foo`.
+                            true
+                        }
+                    }
+                    && self.tcx.item_name(def.did()).as_str().len() < 7 =>
+            {
+                // Don't fully truncate types that have "short names" and at most one type or const
+                // param. We do use the short path for them (only item name instead of full path).
+                with_forced_trimmed_paths!(self.pretty_print_type(ty))
+            }
+
+            ty::Alias(_, alias)
+                if self.should_truncate()
+                    && let ty::AliasTyKind::Opaque { def_id } = alias.kind
+                    && self.region_highlight_mode.keep_regions
+                    && self
+                        .tcx
+                        .explicit_item_bounds(def_id)
+                        .iter_instantiated_copied(self.tcx, alias.args)
+                        .map(Unnormalized::skip_norm_wip)
+                        .any(|(value, _)| value.has_bound_vars()) =>
+            {
+                // `<impl for<'a> Trait as Trait>`
                 self.printed_type_count += 1;
                 self.pretty_print_type(ty)
             }
+
             ty::Adt(..)
             | ty::Foreign(_)
             | ty::Pat(..)
@@ -2343,23 +2407,23 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
             | ty::FnPtr(..)
             | ty::UnsafeBinder(..)
             | ty::Dynamic(..)
-            | ty::Closure(..)
             | ty::CoroutineClosure(..)
             | ty::Coroutine(..)
             | ty::CoroutineWitness(..)
             | ty::Tuple(_)
             | ty::Alias(..)
-            | ty::Param(_)
             | ty::Bound(..)
             | ty::Placeholder(_)
             | ty::Error(_)
-                if self.should_truncate() =>
+                if self.should_truncate() && !has_regions =>
             {
                 // We only truncate types that we know are likely to be much longer than 3 chars.
                 // There's no point in replacing `i32` or `!`.
                 write!(self, "_")?;
                 Ok(())
             }
+            ty::Ref(..) if self.should_truncate() && has_regions => self.pretty_print_type(ty),
+            ty::Closure(..) => self.pretty_print_type(ty),
             _ => {
                 self.printed_type_count += 1;
                 self.pretty_print_type(ty)
