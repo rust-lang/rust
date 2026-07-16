@@ -398,8 +398,6 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 &slot,
             )?;
             num_of_events = num_of_events.strict_add(1);
-            // Synchronize receiving thread with the event of interest.
-            this.acquire_clock(interest.clock())?;
         }
         this.write_int(num_of_events, dest)?;
         interp_ok(num_of_events)

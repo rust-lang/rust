@@ -96,17 +96,11 @@ pub struct ReadinessInterest {
     pub data: u64,
     /// The currently active readiness for this file descriptor.
     active: Readiness,
-    /// The vector clock for wakeups.
-    clock: VClock,
 }
 
 impl ReadinessInterest {
     pub fn active(&self) -> &Readiness {
         &self.active
-    }
-
-    pub fn clock(&self) -> &VClock {
-        &self.clock
     }
 }
 
@@ -180,7 +174,6 @@ impl ReadinessWatcher {
         let interest = ReadinessInterest {
             watched_fd: FileDescriptionRef::downgrade(&fd_ref),
             active: Readiness::EMPTY,
-            clock: VClock::default(),
             relevant,
             is_edge_triggered,
             data,
@@ -343,14 +336,14 @@ impl ReadinessWatcher {
             && let Some(key) = ready.pop_front()
         {
             let interest = interests.get(&key).expect("non-existing interest in ready set");
-            if interest.watched_fd.is_closed() {
+            let Some(fd) = interest.watched_fd.upgrade() else {
                 // "A file descriptor is removed from an interest list only after all the file
                 // descriptors referring to the underlying open file description have been closed."
                 // So, we should have removed this FD from the interest list, we just didn't get
                 // around to that yet. Pretend it does not exist. It will not be re-added to the
                 // ready list, and it will eventually be cleaned up by the GC.
                 continue;
-            }
+            };
 
             if !interest.is_edge_triggered {
                 // This is a level-triggered interest, so we need to re-add the event:
@@ -360,6 +353,8 @@ impl ReadinessWatcher {
             }
 
             ready_interests.push(interest.clone());
+            // We now "see" the readiness of this FD, so make the data race system aware of that.
+            ecx.acquire_clock(&fd.readiness_watched().unwrap().ready_clock.borrow())?;
         }
         // Add back the level-triggered ones.
         ready.extend(re_add_interests);
@@ -378,6 +373,9 @@ impl VisitProvenance for ReadinessWatcher {
 pub struct ReadinessWatched {
     /// List of readiness watchers that are interested in us.
     watchers: RefCell<Vec<Weak<ReadinessWatcher>>>,
+    /// Vector clock for the most recent change to our readiness.
+    /// (Ideally this would be one clock per readiness flag, but we're not bothering with that.)
+    ready_clock: RefCell<VClock>,
 }
 
 impl ReadinessWatched {
@@ -461,8 +459,16 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let fd_id = fd.id();
+        let watched = fd.readiness_watched().unwrap();
 
-        let watchers_ref = fd.readiness_watched().unwrap().watchers.borrow();
+        // We always capture a vector clock, since someone might get interested in the future
+        // and then synchronize with this event.
+        // FIXME: currently we do this even if the readiness did not change!
+        this.release_clock(|clock| {
+            watched.ready_clock.borrow_mut().join(clock);
+        })?;
+
+        let watchers_ref = watched.watchers.borrow();
         // Need to make a copy so below we can unblock threads which may need the same `RefCell`.
         let watchers =
             watchers_ref.iter().map(|w| w.upgrade().expect("dead watcher?")).collect::<Vec<_>>();
@@ -524,12 +530,6 @@ pub trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
                 if !ready.contains(&key) {
                     ready.push_back(key);
                 }
-
-                // No matter whether this is newly ready or just re-triggered,
-                // the waiter fetching this event should sync with the current thread.
-                this.release_clock(|clock| {
-                    interest.clock.join(clock);
-                })?;
             }
             interp_ok(())
         })?;
