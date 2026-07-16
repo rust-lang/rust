@@ -733,6 +733,26 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 )?;
             }
 
+            sym::field_representing_type_offset => {
+                let frt_ty = ecx.read_type_id(&args[0])?;
+
+                let (ty, variant, field) = if let ty::Adt(def, args) = frt_ty.kind()
+                    && let Some(FieldInfo { base, variant_idx, field_idx, .. }) =
+                        def.field_representing_type_info(ecx.tcx.tcx, args)
+                {
+                    (base, variant_idx, field_idx)
+                } else {
+                    span_bug!(ecx.cur_span(), "expected field representing type, got {frt_ty}")
+                };
+                let layout = ecx.layout_of(ty)?;
+                let cx = ty::layout::LayoutCx::new(ecx.tcx.tcx, ecx.typing_env());
+
+                let layout = layout.for_variant(&cx, variant);
+                let offset = layout.fields.offset(field.index()).bytes();
+
+                ecx.write_scalar(Scalar::from_target_usize(offset, ecx), dest)?;
+            }
+
             sym::field_representing_type_actual_type_id => {
                 let frt_ty = ecx.read_type_id(&args[0])?;
 
