@@ -2482,6 +2482,7 @@ macro_rules! bitop_impls {
 
             $(#[$attr])*
             const impl $BitOpAssign<&'_ $ty> for $ty {
+                #[inline]
                 fn $bitop_assign(&mut self, rhs: &'_ $ty) {
                     self.$bitop_assign(*rhs);
                 }

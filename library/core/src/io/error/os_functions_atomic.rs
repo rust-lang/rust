@@ -15,6 +15,7 @@ use crate::sync::atomic;
 static OS_FUNCTIONS: atomic::AtomicPtr<OsFunctions> =
     atomic::AtomicPtr::new(OsFunctions::DEFAULT as *const _ as *mut _);
 
+#[inline]
 fn get_os_functions() -> &'static OsFunctions {
     // SAFETY:
     //  * `OS_FUNCTIONS` is initially a pointer to `OsFunctions::DEFAULT`, which is valid for a static lifetime.
