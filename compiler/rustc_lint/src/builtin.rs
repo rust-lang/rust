@@ -3258,10 +3258,19 @@ impl<'tcx> LateLintPass<'tcx> for RestPatternMatchOnStructWithAllPrivateFields {
             };
 
             if all_private {
+                let def_did = adt_def.did();
+                let decorator = if let Some(def_span) = tcx.hir_span_if_local(def_did) {
+                    RestPatternUsedOnStructWithAllPrivateFields::Local(def_span)
+                } else {
+                    RestPatternUsedOnStructWithAllPrivateFields::Foreign(
+                        tcx.crate_name(def_did.krate),
+                    )
+                };
+
                 cx.emit_span_lint(
                     REST_PATTERN_MATCH_ON_STRUCT_WITH_ALL_PRIVATE_FIELDS,
                     pat.span,
-                    RestPatternUsedOnStructWithAllPrivateFields,
+                    decorator,
                 );
             }
         }
