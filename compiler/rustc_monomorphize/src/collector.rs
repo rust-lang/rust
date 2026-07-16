@@ -1806,6 +1806,13 @@ fn create_mono_items_for_default_impls<'tcx>(
         let args = trait_ref.args.extend_to(tcx, method.def_id, only_region_params);
         let instance = ty::Instance::expect_resolve(tcx, typing_env, method.def_id, args, DUMMY_SP);
 
+        // A provided method of an `impl Trait for dyn Trait` (written via a type alias or
+        // projection that normalizes to the trait object) resolves to a virtual dispatch, which
+        // has no MIR body. Skip it rather than ICE in `instance_mir`. See #158411.
+        if matches!(instance.def, ty::InstanceKind::Virtual(..)) {
+            continue;
+        }
+
         let mono_item = create_fn_mono_item(tcx, instance, DUMMY_SP);
         if mono_item.node.is_instantiable(tcx) && tcx.should_codegen_locally(instance) {
             output.push(mono_item);
