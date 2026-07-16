@@ -834,8 +834,8 @@ fn simplify_conditions(body: &Body<'_>, entry_states: &mut IndexVec<BasicBlock, 
         targets.dedup();
         trace!(?targets);
 
-        // We may modify the set of successors by applying edges, so track them here.
-        let mut successors = basic_blocks[bb].terminator().successors().collect::<Vec<_>>();
+        // Applying a `Goto` replaces the original successors with a single successor.
+        let mut replacement_successor = None;
 
         targets.reverse();
         while let Some(target) = targets.pop() {
@@ -844,18 +844,29 @@ fn simplify_conditions(body: &Body<'_>, entry_states: &mut IndexVec<BasicBlock, 
                     // We update the count of predecessors. If target or any successor has not been
                     // processed yet, this increases the likelihood we find something relevant.
                     predecessors[target] += 1;
-                    for &s in successors.iter() {
-                        predecessors[s] -= 1;
+                    if let Some(successor) = replacement_successor {
+                        predecessors[successor] -= 1;
+                    } else {
+                        for successor in basic_blocks[bb].terminator().successors() {
+                            predecessors[successor] -= 1;
+                        }
                     }
                     // Only process edges that still exist.
                     targets.retain(|t| t.block() == target);
-                    successors.clear();
-                    successors.push(target);
+                    replacement_successor = Some(target);
                 }
                 EdgeEffect::Chain { succ_block, succ_condition } => {
                     // `predecessors` is the number of incoming *edges* in each block.
                     // Count the number of edges that apply `succ_condition` into `succ_block`.
-                    let count = successors.iter().filter(|&&s| s == succ_block).count();
+                    let count = if let Some(successor) = replacement_successor {
+                        usize::from(successor == succ_block)
+                    } else {
+                        basic_blocks[bb]
+                            .terminator()
+                            .successors()
+                            .filter(|&successor| successor == succ_block)
+                            .count()
+                    };
                     fulfill_in_pred_count[succ_block][succ_condition] += count;
                 }
             }
