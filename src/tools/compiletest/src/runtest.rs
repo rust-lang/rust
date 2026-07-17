@@ -122,15 +122,7 @@ pub(crate) fn run(
                 panic!("android device not available");
             }
         }
-
-        _ => {
-            // FIXME: this logic seems strange as well.
-
-            // android has its own gdb handling
-            if config.debugger == Some(Debugger::Gdb) && config.gdb.is_none() {
-                panic!("gdb not available but debuginfo gdb debuginfo test requested");
-            }
-        }
+        _ => {}
     }
 
     if config.verbose {
