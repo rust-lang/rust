@@ -27,7 +27,7 @@ fn main() {
     assert_eq!(buffer.data[0], 1);
     assert_eq!(node.value, 1);
     let layout = std::alloc::Layout::new::<Buffer>();
-    let ptr = std::alloc::System.allocate_with_token(layout, AllocToken(0)).unwrap();
+    let ptr = std::alloc::System.allocate_with_token(layout, AllocToken::infer::<Buffer>()).unwrap();
     unsafe { std::alloc::System.deallocate(ptr.cast(), layout) };
 
     std::hint::black_box((buffer, node));

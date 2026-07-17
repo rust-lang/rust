@@ -52,6 +52,20 @@ impl fmt::Display for AllocError {
 #[derive(Copy, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct AllocToken(pub usize);
 
+impl AllocToken {
+    /// Returns the token identifier for `T` (i.e., the Rust equivalent of the Clang
+    /// `__builtin_infer_alloc_token` builtin, lowered to the `llvm.alloc.token.id` intrinsic), for
+    /// LLVM AllocToken and heap partitioning support.
+    ///
+    /// This allows allocator and arena implementers to query the token identifier for a given type
+    /// at compile time, so it can be passed to a token-enabled allocator interface directly.
+    #[unstable(feature = "alloc_with_token", issue = "159111")]
+    #[inline]
+    pub fn infer<T>() -> Self {
+        AllocToken(crate::intrinsics::alloc_token_infer::<T>())
+    }
+}
+
 #[unstable(feature = "alloc_with_token", issue = "159111")]
 impl fmt::Display for AllocToken {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
