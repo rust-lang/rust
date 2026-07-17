@@ -1,6 +1,5 @@
 //@ aux-build:tango.rs
 //@ build-aux-docs
-//@ doc-flags:--merge=shared
 //@ doc-flags:--enable-index-page
 //@ doc-flags:-Zunstable-options
 
@@ -19,7 +18,7 @@
 //@ hasraw search.index/name/*.js 'Quebec'
 
 // We can use read-write to emulate the default behavior of rustdoc, when
-// --merge is left out.
+// --read-doc-meta-dir is left out.
 extern crate tango;
 pub struct Sierra;
 impl tango::Tango for Sierra {}

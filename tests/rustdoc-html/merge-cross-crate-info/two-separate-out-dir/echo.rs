@@ -1,6 +1,6 @@
 //@ aux-build:foxtrot.rs
 //@ build-aux-docs
-//@ doc-flags:--include-parts-dir=info/doc.parts/foxtrot
+//@ doc-flags:--read-doc-meta-dir=info/doc.parts/foxtrot
 //@ doc-flags:-Zunstable-options
 
 //@ has echo/enum.Echo.html

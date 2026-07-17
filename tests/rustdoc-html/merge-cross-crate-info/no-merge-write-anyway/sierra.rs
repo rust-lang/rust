@@ -1,7 +1,6 @@
 //@ aux-build:tango.rs
 //@ build-aux-docs
-//@ doc-flags:--merge=none
-//@ doc-flags:--parts-out-dir=info/doc.parts/sierra
+//@ doc-flags:--write-doc-meta-dir=info/doc.parts/sierra
 //@ doc-flags:--enable-index-page
 //@ doc-flags:-Zunstable-options
 
@@ -12,7 +11,7 @@
 //@ !has trait.impl/tango/trait.Tango.js
 //@ !has search.index/name/*.js
 
-// we --merge=none, so --parts-out-dir doesn't do anything
+// we don't use --read-doc-meta-dir, so no metadata is loaded
 extern crate tango;
 pub struct Sierra;
 impl tango::Tango for Sierra {}
