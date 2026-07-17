@@ -17,8 +17,7 @@ unsafe impl Allocator for BadAlloc {
     }
 }
 
-#[expect(dead_code)]
-fn issue_159445_unsize_custom_alloc_box() {
+fn main() {
     // no requirements for the allocator, we are just pinning a `Box<impl Unpin>`
     let base: Pin<Box<i32, BadAlloc>> = Pin::new(Box::new_in(1i32, BadAlloc));
 
@@ -26,5 +25,3 @@ fn issue_159445_unsize_custom_alloc_box() {
     let _: Pin<Box<dyn Any, BadAlloc>> = base;
     //~^ ERROR: the trait bound `BadAlloc: StaticAllocator` is not satisfied [E0277]
 }
-
-fn main() {}

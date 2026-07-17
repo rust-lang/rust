@@ -1,0 +1,19 @@
+error[E0277]: the trait bound `dyn MyAlloc: AllocatorClone` is not satisfied
+  --> $DIR/156920-allocator-clone.rs:21:14
+   |
+LL |     let _ = <Arc<_, _> as Clone>::clone(&evil_arc);
+   |              ^^^^^^^^^ the nightly-only, unstable trait `AllocatorClone` is not implemented for `dyn MyAlloc`
+   |
+   = help: the following other types implement trait `AllocatorClone`:
+             &A
+             Arc<T, A>
+             Box<T, A>
+             Rc<T, A>
+             System
+             std::alloc::Global
+   = note: required for `Box<dyn MyAlloc>` to implement `AllocatorClone`
+   = note: required for `Arc<i32, Box<dyn MyAlloc>>` to implement `Clone`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

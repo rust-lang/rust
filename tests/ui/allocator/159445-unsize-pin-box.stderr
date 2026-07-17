@@ -1,11 +1,11 @@
 error[E0277]: the trait bound `BadAlloc: StaticAllocator` is not satisfied
-  --> $DIR/pin-correctness.rs:26:42
+  --> $DIR/159445-unsize-pin-box.rs:25:42
    |
 LL |     let _: Pin<Box<dyn Any, BadAlloc>> = base;
    |                                          ^^^^ unsatisfied trait bound
    |
 help: the nightly-only, unstable trait `StaticAllocator` is not implemented for `BadAlloc`
-  --> $DIR/pin-correctness.rs:10:1
+  --> $DIR/159445-unsize-pin-box.rs:10:1
    |
 LL | struct BadAlloc;
    | ^^^^^^^^^^^^^^^
