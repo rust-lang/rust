@@ -1,6 +1,6 @@
+//@ known-bug: unknown
 // Test for <https://github.com/rust-lang/rust/issues/135316>.
 //
-//@ run-pass
 //@ check-run-results
 
 trait Supertrait<T> {

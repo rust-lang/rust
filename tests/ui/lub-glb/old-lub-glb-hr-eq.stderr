@@ -1,5 +1,5 @@
 error[E0308]: `match` arms have incompatible types
-  --> $DIR/old-lub-glb-hr-eq.rs:13:14
+  --> $DIR/old-lub-glb-hr-eq.rs:14:14
    |
 LL |       let z = match 22 {
    |  _____________-
@@ -7,13 +7,19 @@ LL | |         0 => x,
    | |              - this is found to be of type `for<'a, 'b> fn(&'a u8, &'b u8)`
 LL | |         _ => y,
    | |              ^ one type is more general than the other
-LL | |
 LL | |     };
    | |_____- `match` arms have incompatible types
    |
    = note: expected fn pointer `for<'a, 'b> fn(&'a _, &'b _)`
               found fn pointer `for<'a> fn(&'a _, &'a _)`
 
-error: aborting due to 1 previous error
+error[E0605]: non-primitive cast: `for<'a, 'b> fn(&'a u8, &'b u8)` as `for<'a> fn(&'a u8, &'a u8)`
+  --> $DIR/old-lub-glb-hr-eq.rs:21:14
+   |
+LL |         0 => x as for<'a> fn(&'a u8, &'a u8),
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid cast
 
-For more information about this error, try `rustc --explain E0308`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0308, E0605.
+For more information about an error, try `rustc --explain E0308`.

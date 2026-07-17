@@ -218,13 +218,22 @@ where
 
     #[instrument(skip(self), level = "trace")]
     fn regions(&mut self, a: Region<I>, b: Region<I>) -> RelateResult<I, Region<I>> {
-        match self.ambient_variance {
+        match (self.ambient_variance, a.kind(), b.kind()) {
+            (ty::Invariant, _, _)
+            | (_, ty::RegionKind::RePlaceholder(ty::PlaceholderRegion { hr: true, .. }), _)
+            | (_, _, ty::RegionKind::RePlaceholder(ty::PlaceholderRegion { hr: true, .. })) => {
+                self.infcx.equate_regions(a, b, VisibleForLeakCheck::Yes, self.span)
+            }
+
             // Subtype(&'a u8, &'b u8) => Outlives('a: 'b) => SubRegion('b, 'a)
-            ty::Covariant => self.infcx.sub_regions(b, a, VisibleForLeakCheck::Yes, self.span),
+            (ty::Covariant, _, _) => {
+                self.infcx.sub_regions(b, a, VisibleForLeakCheck::Yes, self.span)
+            }
             // Suptype(&'a u8, &'b u8) => Outlives('b: 'a) => SubRegion('a, 'b)
-            ty::Contravariant => self.infcx.sub_regions(a, b, VisibleForLeakCheck::Yes, self.span),
-            ty::Invariant => self.infcx.equate_regions(a, b, VisibleForLeakCheck::Yes, self.span),
-            ty::Bivariant => {
+            (ty::Contravariant, _, _) => {
+                self.infcx.sub_regions(a, b, VisibleForLeakCheck::Yes, self.span)
+            }
+            (ty::Bivariant, _, _) => {
                 unreachable!("Expected bivariance to be handled in relate_with_variance")
             }
         }
@@ -259,52 +268,19 @@ where
         }
 
         match self.ambient_variance {
-            // Checks whether `for<..> sub <: for<..> sup` holds.
-            //
-            // For this to hold, **all** instantiations of the super type
-            // have to be a super type of **at least one** instantiation of
-            // the subtype.
-            //
-            // This is implemented by first entering a new universe.
-            // We then replace all bound variables in `sup` with placeholders,
-            // and all bound variables in `sub` with inference vars.
-            // We can then just relate the two resulting types as normal.
-            //
-            // Note: this is a subtle algorithm. For a full explanation, please see
-            // the [rustc dev guide][rd]
-            //
-            // [rd]: https://rustc-dev-guide.rust-lang.org/borrow_check/region_inference/placeholders_and_universes.html
-            ty::Covariant => {
-                self.infcx.enter_forall_with_empty_assumptions(b, |b| {
-                    let a = self.infcx.instantiate_binder_with_infer(a);
-                    self.relate(a, b)
-                })?;
-            }
-            ty::Contravariant => {
-                self.infcx.enter_forall_with_empty_assumptions(a, |a| {
-                    let b = self.infcx.instantiate_binder_with_infer(b);
-                    self.relate(a, b)
-                })?;
-            }
+            ty::Covariant | ty::Contravariant | ty::Invariant => {
+                // The bound variables of the two binders must relate by equality
+                // (alpha-equivalence), regardless of the ambient variance.
+                // See `TypeRelating::binders` for the rationale.
 
-            // When **equating** binders, we check that there is a 1-to-1
-            // correspondence between the bound vars in both types.
-            //
-            // We do so by separately instantiating one of the binders with
-            // placeholders and the other with inference variables and then
-            // equating the instantiated types.
-            //
-            // We want `for<..> A == for<..> B` -- therefore we want
-            // `exists<..> A == for<..> B` and `exists<..> B == for<..> A`.
-            // Check if `exists<..> A == for<..> B`
-            ty::Invariant => {
-                self.infcx.enter_forall_with_empty_assumptions(b, |b| {
+                // Check if `exists<..> A == for<..> B`
+                self.infcx.enter_forall_hr_with_empty_assumptions(b, |b| {
                     let a = self.infcx.instantiate_binder_with_infer(a);
                     self.relate(a, b)
                 })?;
 
                 // Check if `exists<..> B == for<..> A`.
-                self.infcx.enter_forall_with_empty_assumptions(a, |a| {
+                self.infcx.enter_forall_hr_with_empty_assumptions(a, |a| {
                     let b = self.infcx.instantiate_binder_with_infer(b);
                     self.relate(a, b)
                 })?;
@@ -313,6 +289,7 @@ where
                 unreachable!("Expected bivariance to be handled in relate_with_variance")
             }
         }
+
         Ok(a)
     }
 }

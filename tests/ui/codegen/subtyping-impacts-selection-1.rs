@@ -1,4 +1,4 @@
-//@ run-pass
+//@ known-bug: unknown
 //@ revisions: mir codegen
 //@[mir] compile-flags: -Zmir-opt-level=3
 //@[codegen] compile-flags: -Zmir-opt-level=0

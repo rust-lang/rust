@@ -1,0 +1,12 @@
+error[E0599]: no method named `method` found for struct `A` in the current scope
+  --> $DIR/self-type-is-sup-no-eq.rs:23:7
+   |
+LL | struct A;
+   | -------- method `method` not found for this struct
+...
+LL |     A.method();
+   |       ^^^^^^ method not found in `A`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0599`.

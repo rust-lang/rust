@@ -1,0 +1,136 @@
+error[E0308]: mismatched types
+  --> $DIR/field-projection-invariant.rs:10:9
+   |
+LL |         Supertype::Bar => {}
+   |         ^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected enum `Foo<for<'a> fn(Inv<'a>, Inv<'a>)>`
+              found enum `Foo<for<'a, 'b> fn(Inv<'a>, Inv<'b>)>`
+
+error[E0308]: mismatched types
+  --> $DIR/field-projection-invariant.rs:10:9
+   |
+LL |         Supertype::Bar => {}
+   |         ^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected enum `Foo<for<'a> fn(Inv<'a>, Inv<'a>)>`
+              found enum `Foo<for<'a, 'b> fn(Inv<'a>, Inv<'b>)>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0308]: mismatched types
+  --> $DIR/field-projection-invariant.rs:13:9
+   |
+LL |         Supertype::Var(x) => {}
+   |         ^^^^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected enum `Foo<for<'a> fn(Inv<'a>, Inv<'a>)>`
+              found enum `Foo<for<'a, 'b> fn(Inv<'a>, Inv<'b>)>`
+
+error[E0308]: mismatched types
+  --> $DIR/field-projection-invariant.rs:13:9
+   |
+LL |         Supertype::Var(x) => {}
+   |         ^^^^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected enum `Foo<for<'a> fn(Inv<'a>, Inv<'a>)>`
+              found enum `Foo<for<'a, 'b> fn(Inv<'a>, Inv<'b>)>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0308]: mismatched types
+  --> $DIR/field-projection-invariant.rs:13:24
+   |
+LL |         Supertype::Var(x) => {}
+   |                        ^ one type is more general than the other
+   |
+   = note: expected fn pointer `for<'a, 'b> fn(Inv<'a>, Inv<'b>)`
+              found fn pointer `for<'a> fn(Inv<'a>, Inv<'a>)`
+
+error[E0308]: mismatched types
+  --> $DIR/field-projection-invariant.rs:13:24
+   |
+LL |         Supertype::Var(x) => {}
+   |                        ^ one type is more general than the other
+   |
+   = note: expected fn pointer `for<'a, 'b> fn(Inv<'a>, Inv<'b>)`
+              found fn pointer `for<'a> fn(Inv<'a>, Inv<'a>)`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0308]: mismatched types
+  --> $DIR/field-projection-invariant.rs:22:11
+   |
+LL |     match x {
+   |           ^ one type is more general than the other
+   |
+   = note: expected enum `Foo<for<'a, 'b> fn(Inv<'a>, Inv<'b>)>`
+              found enum `Foo<for<'a> fn(Inv<'a>, Inv<'a>)>`
+
+error[E0308]: mismatched types
+  --> $DIR/field-projection-invariant.rs:22:11
+   |
+LL |     match x {
+   |           ^ one type is more general than the other
+   |
+   = note: expected enum `Foo<for<'a, 'b> fn(Inv<'a>, Inv<'b>)>`
+              found enum `Foo<for<'a> fn(Inv<'a>, Inv<'a>)>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0308]: mismatched types
+  --> $DIR/field-projection-invariant.rs:26:18
+   |
+LL |         Foo::Var(Supertype::Bar) => {}
+   |                  ^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected enum `Foo<for<'a, 'b> fn(Inv<'a>, Inv<'b>)>`
+              found enum `Foo<for<'a> fn(Inv<'a>, Inv<'a>)>`
+
+error[E0308]: mismatched types
+  --> $DIR/field-projection-invariant.rs:26:18
+   |
+LL |         Foo::Var(Supertype::Bar) => {}
+   |                  ^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected enum `Foo<for<'a, 'b> fn(Inv<'a>, Inv<'b>)>`
+              found enum `Foo<for<'a> fn(Inv<'a>, Inv<'a>)>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0308]: mismatched types
+  --> $DIR/field-projection-invariant.rs:29:18
+   |
+LL |         Foo::Var(Supertype::Var(x)) => {}
+   |                  ^^^^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected enum `Foo<for<'a, 'b> fn(Inv<'a>, Inv<'b>)>`
+              found enum `Foo<for<'a> fn(Inv<'a>, Inv<'a>)>`
+
+error[E0308]: mismatched types
+  --> $DIR/field-projection-invariant.rs:29:18
+   |
+LL |         Foo::Var(Supertype::Var(x)) => {}
+   |                  ^^^^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected enum `Foo<for<'a, 'b> fn(Inv<'a>, Inv<'b>)>`
+              found enum `Foo<for<'a> fn(Inv<'a>, Inv<'a>)>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0308]: mismatched types
+  --> $DIR/field-projection-invariant.rs:29:33
+   |
+LL |         Foo::Var(Supertype::Var(x)) => {}
+   |                                 ^ one type is more general than the other
+   |
+   = note: expected enum `Foo<for<'a, 'b> fn(Inv<'a>, Inv<'b>)>`
+              found enum `Foo<for<'a> fn(Inv<'a>, Inv<'a>)>`
+
+error[E0308]: mismatched types
+  --> $DIR/field-projection-invariant.rs:29:33
+   |
+LL |         Foo::Var(Supertype::Var(x)) => {}
+   |                                 ^ one type is more general than the other
+   |
+   = note: expected enum `Foo<for<'a, 'b> fn(Inv<'a>, Inv<'b>)>`
+              found enum `Foo<for<'a> fn(Inv<'a>, Inv<'a>)>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 14 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

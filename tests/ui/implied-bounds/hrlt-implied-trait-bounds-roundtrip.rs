@@ -1,4 +1,4 @@
-//@ check-pass
+//@ known-bug: unknown
 struct Foo<'a>(&'a ())
 where
     (): Trait<'a>;

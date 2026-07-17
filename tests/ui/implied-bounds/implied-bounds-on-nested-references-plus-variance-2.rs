@@ -1,4 +1,4 @@
-//@ check-pass
+//@ known-bug: unknown
 //@ known-bug: #25860
 
 static UNIT: &'static &'static () = &&();

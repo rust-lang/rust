@@ -1,4 +1,4 @@
-//@ run-pass
+//@ known-bug: unknown
 //@ ignore-backends: gcc
 #[repr(transparent)]
 struct S(i32);

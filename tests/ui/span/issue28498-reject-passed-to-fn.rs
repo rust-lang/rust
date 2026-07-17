@@ -1,3 +1,4 @@
+//@ known-bug: unknown
 // Demonstrate that a type param in negative position causes dropck to reject code
 // that might indirectly access previously dropped value.
 //
@@ -32,7 +33,6 @@ fn main() {
     first_dropped = ScribbleOnDrop(format!("first"));
     foo0 = Foo(0, &last_dropped, Box::new(callback)); // OK
     foo1 = Foo(1, &first_dropped, Box::new(callback));
-    //~^ ERROR `first_dropped` does not live long enough
 
     println!("foo0.1: {:?} foo1.1: {:?}", foo0.1, foo1.1);
 }

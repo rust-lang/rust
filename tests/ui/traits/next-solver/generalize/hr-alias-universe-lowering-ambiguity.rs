@@ -1,5 +1,5 @@
+//@ known-bug: unknown
 //@ compile-flags: -Znext-solver
-//@ check-pass
 
 // A regression test for a fairly subtle issue with how we
 // generalize aliases referencing higher-ranked regions

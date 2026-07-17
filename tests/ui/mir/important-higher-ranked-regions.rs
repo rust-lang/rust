@@ -1,4 +1,3 @@
-//@ check-pass
 //@ compile-flags: -Zvalidate-mir
 
 // This test checks that bivariant parameters are handled correctly
@@ -21,6 +20,7 @@ impl Trait for fn(&'static ()) {
 
 fn foo(x: Foo<for<'a> fn(&'a ()), u32>) -> Foo<fn(&'static ()), String> {
     x
+    //~^ ERROR mismatched types
 }
 
 fn main() {}

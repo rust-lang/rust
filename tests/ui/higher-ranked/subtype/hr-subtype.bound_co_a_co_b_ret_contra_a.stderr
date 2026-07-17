@@ -1,0 +1,61 @@
+error[E0308]: mismatched types
+  --> $DIR/hr-subtype.rs:44:13
+   |
+LL |               gimme::<$t2>(None::<$t1>);
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
+...
+LL | / check! { bound_co_a_co_b_ret_contra_a: (for<'a,'b> fn(Co<'a>, Co<'b>) -> Contra<'a>,
+LL | | for<'a>    fn(Co<'a>, Co<'a>) -> Contra<'a>) }
+   | |______________________________________________- in this macro invocation
+   |
+   = note: expected enum `Option<for<'a> fn(Co<'a>, Co<'a>) -> Contra<'a>>`
+              found enum `Option<for<'a, 'b> fn(Co<'a>, Co<'b>) -> Contra<'a>>`
+   = note: this error originates in the macro `check` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0308]: mismatched types
+  --> $DIR/hr-subtype.rs:44:13
+   |
+LL |               gimme::<$t2>(None::<$t1>);
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
+...
+LL | / check! { bound_co_a_co_b_ret_contra_a: (for<'a,'b> fn(Co<'a>, Co<'b>) -> Contra<'a>,
+LL | | for<'a>    fn(Co<'a>, Co<'a>) -> Contra<'a>) }
+   | |______________________________________________- in this macro invocation
+   |
+   = note: expected enum `Option<for<'a> fn(Co<'a>, Co<'a>) -> Contra<'a>>`
+              found enum `Option<for<'a, 'b> fn(Co<'a>, Co<'b>) -> Contra<'a>>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+   = note: this error originates in the macro `check` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0308]: mismatched types
+  --> $DIR/hr-subtype.rs:64:13
+   |
+LL |               gimme::<$t1>(None::<$t2>);
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
+...
+LL | / check! { bound_co_a_co_b_ret_contra_a: (for<'a,'b> fn(Co<'a>, Co<'b>) -> Contra<'a>,
+LL | | for<'a>    fn(Co<'a>, Co<'a>) -> Contra<'a>) }
+   | |______________________________________________- in this macro invocation
+   |
+   = note: expected enum `Option<for<'a, 'b> fn(Co<'a>, Co<'b>) -> Contra<'a>>`
+              found enum `Option<for<'a> fn(Co<'a>, Co<'a>) -> Contra<'a>>`
+   = note: this error originates in the macro `check` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0308]: mismatched types
+  --> $DIR/hr-subtype.rs:64:13
+   |
+LL |               gimme::<$t1>(None::<$t2>);
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
+...
+LL | / check! { bound_co_a_co_b_ret_contra_a: (for<'a,'b> fn(Co<'a>, Co<'b>) -> Contra<'a>,
+LL | | for<'a>    fn(Co<'a>, Co<'a>) -> Contra<'a>) }
+   | |______________________________________________- in this macro invocation
+   |
+   = note: expected enum `Option<for<'a, 'b> fn(Co<'a>, Co<'b>) -> Contra<'a>>`
+              found enum `Option<for<'a> fn(Co<'a>, Co<'a>) -> Contra<'a>>`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+   = note: this error originates in the macro `check` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

@@ -1,0 +1,13 @@
+error[E0308]: mismatched types
+  --> $DIR/multiple-supertraits-modulo-binder.rs:21:5
+   |
+LL | /     (&() as &'static dyn for<'a> Trait<&'static (), &'a ()>
+LL | |         as &'static dyn Trait<&'static (), &'static ()>)
+   | |________________________________________________________^ one type is more general than the other
+   |
+   = note: expected trait object `dyn Trait<&(), &()>`
+              found trait object `dyn for<'a> Trait<&(), &'a ()>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

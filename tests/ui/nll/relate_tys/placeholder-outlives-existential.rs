@@ -11,7 +11,14 @@ struct Contra<'a>(fn(&'a ()));
 fn p_outlives_e(
     x: for<'e> fn(for<'p> fn(fn(fn(Contra<'e>, Co<'p>)))),
 ) -> fn(fn(fn(for<'unify> fn(Contra<'unify>, Co<'unify>)))) {
-    x //~ ERROR mismatched types [E0308]
+    x
+    //~^ ERROR mismatched types
+    //~| ERROR mismatched types
+    //~| ERROR mismatched types
+    //~| ERROR mismatched types
+    //~| ERROR mismatched types
+    //~| ERROR mismatched types
+    //~| ERROR mismatched types
 }
 
 // `exists<'e> forall<'p> 'e: 'p` -> Ok, 'e: 'static
@@ -19,13 +26,28 @@ fn e_outlives_p_static(
     x: for<'e> fn(Inv<'e>, for<'p> fn(fn(fn(Contra<'p>, Co<'e>)))),
 ) -> fn(Inv<'static>, fn(fn(for<'unify> fn(Contra<'unify>, Co<'unify>)))) {
     x
+    //~^ ERROR mismatched types
+    //~| ERROR mismatched types
+    //~| ERROR mismatched types
+    //~| ERROR mismatched types
+    //~| ERROR mismatched types
+    //~| ERROR mismatched types
+    //~| ERROR mismatched types
 }
 
 // `exists<'e> forall<'p> 'e: 'p` -> Ok, 'e: 'static -> ERROR
 fn e_outlives_p_static_err<'not_static>(
     x: for<'e> fn(Inv<'e>, for<'p> fn(fn(fn(Contra<'p>, Co<'e>)))),
 ) -> fn(Inv<'not_static>, fn(fn(for<'unify> fn(Contra<'unify>, Co<'unify>)))) {
-    x //~ ERROR lifetime may not live long enough
+    x
+    //~^ ERROR lifetime may not live long enough
+    //~| ERROR mismatched types
+    //~| ERROR mismatched types
+    //~| ERROR mismatched types
+    //~| ERROR mismatched types
+    //~| ERROR mismatched types
+    //~| ERROR mismatched types
+    //~| ERROR mismatched types
 }
 
 fn main() {}

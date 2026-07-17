@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/hr-subtype.rs:48:13
+  --> $DIR/hr-subtype.rs:44:13
    |
 LL |           fn subtype<'x, 'y: 'x, 'z: 'y>() {
    |                      --  -- lifetime `'y` defined here
@@ -19,7 +19,7 @@ LL | | fn(Inv<'y>)) }
    = note: this error originates in the macro `check` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: lifetime may not live long enough
-  --> $DIR/hr-subtype.rs:54:13
+  --> $DIR/hr-subtype.rs:64:13
    |
 LL |           fn supertype<'x, 'y: 'x, 'z: 'y>() {
    |                        --  -- lifetime `'y` defined here

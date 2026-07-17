@@ -1,5 +1,5 @@
 error[E0623]: lifetime mismatch
-  --> $DIR/hrlt-implied-trait-bounds-guard.rs:29:29
+  --> $DIR/hrlt-implied-trait-bounds-guard.rs:30:29
    |
 LL | fn badboi<'in_, 'out, T>(x: Foo<'in_, 'out, T>, sadness: &'in_ T) -> &'out T {
    |                             ^^^^^^^^^^^^^^^^^^                       -------
@@ -8,7 +8,7 @@ LL | fn badboi<'in_, 'out, T>(x: Foo<'in_, 'out, T>, sadness: &'in_ T) -> &'out 
    |                             ...but data from `x` is returned here
 
 error[E0623]: lifetime mismatch
-  --> $DIR/hrlt-implied-trait-bounds-guard.rs:35:30
+  --> $DIR/hrlt-implied-trait-bounds-guard.rs:34:30
    |
 LL | fn badboi2<'in_, 'out, T>(x: Foo<'in_, 'out, T>, sadness: &'in_ T) {
    |                              ^^^^^^^^^^^^^^^^^^
@@ -17,13 +17,35 @@ LL | fn badboi2<'in_, 'out, T>(x: Foo<'in_, 'out, T>, sadness: &'in_ T) {
    |                              ...but data with one lifetime flows into the other here
 
 error[E0623]: lifetime mismatch
-  --> $DIR/hrlt-implied-trait-bounds-guard.rs:41:30
+  --> $DIR/hrlt-implied-trait-bounds-guard.rs:38:30
    |
 LL | fn badboi3<'in_, 'out, T>(a: Foo<'in_, 'out, (&'in_ T, &'out T)>, sadness: &'in_ T) {
    |                              ^^^^^^^^^^^^^^^^^-------^^-------^^
    |                              |                |
    |                              |                these two types are declared with different lifetimes...
    |                              ...but data from `a` flows into `a` here
+
+error[E0308]: mismatched types
+  --> $DIR/hrlt-implied-trait-bounds-guard.rs:44:71
+   |
+LL |     let x: for<'out> fn(Foo<'short, 'out, T>, &'short T) -> &'out T = x;
+   |            --------------------------------------------------------   ^ one type is more general than the other
+   |            |
+   |            expected due to this
+   |
+   = note: expected fn pointer `for<'out> fn(Foo<'short, 'out, _>, &'short _) -> &'out _`
+              found fn pointer `for<'in_, 'out> fn(Foo<'in_, 'out, _>, &'in_ _) -> &'out _`
+
+error[E0308]: mismatched types
+  --> $DIR/hrlt-implied-trait-bounds-guard.rs:46:68
+   |
+LL |     let x: fn(Foo<'static, 'static, T>, &'short T) -> &'static T = x;
+   |            -----------------------------------------------------   ^ one type is more general than the other
+   |            |
+   |            expected due to this
+   |
+   = note: expected fn pointer `fn(Foo<'_, 'static, _>, &'short _) -> &'static _`
+              found fn pointer `for<'out> fn(Foo<'_, 'out, _>, &'short _) -> &'out _`
 
 error: lifetime may not live long enough
   --> $DIR/hrlt-implied-trait-bounds-guard.rs:31:5
@@ -32,38 +54,36 @@ LL | fn badboi<'in_, 'out, T>(x: Foo<'in_, 'out, T>, sadness: &'in_ T) -> &'out 
    |           ----  ---- lifetime `'out` defined here
    |           |
    |           lifetime `'in_` defined here
-LL |
 LL |     sadness.cast()
    |     ^^^^^^^^^^^^^^ function was supposed to return data with lifetime `'out` but it is returning data with lifetime `'in_`
    |
    = help: consider adding the following bound: `'in_: 'out`
 
 error: lifetime may not live long enough
-  --> $DIR/hrlt-implied-trait-bounds-guard.rs:37:12
+  --> $DIR/hrlt-implied-trait-bounds-guard.rs:35:12
    |
 LL | fn badboi2<'in_, 'out, T>(x: Foo<'in_, 'out, T>, sadness: &'in_ T) {
    |            ----  ---- lifetime `'out` defined here
    |            |
    |            lifetime `'in_` defined here
-LL |
 LL |     let _: &'out T = sadness.cast();
    |            ^^^^^^^ type annotation requires that `'in_` must outlive `'out`
    |
    = help: consider adding the following bound: `'in_: 'out`
 
 error: lifetime may not live long enough
-  --> $DIR/hrlt-implied-trait-bounds-guard.rs:43:12
+  --> $DIR/hrlt-implied-trait-bounds-guard.rs:39:12
    |
 LL | fn badboi3<'in_, 'out, T>(a: Foo<'in_, 'out, (&'in_ T, &'out T)>, sadness: &'in_ T) {
    |            ----  ---- lifetime `'out` defined here
    |            |
    |            lifetime `'in_` defined here
-LL |
 LL |     let _: &'out T = sadness.cast();
    |            ^^^^^^^ type annotation requires that `'in_` must outlive `'out`
    |
    = help: consider adding the following bound: `'in_: 'out`
 
-error: aborting due to 6 previous errors
+error: aborting due to 8 previous errors
 
-For more information about this error, try `rustc --explain E0623`.
+Some errors have detailed explanations: E0308, E0623.
+For more information about an error, try `rustc --explain E0308`.

@@ -1,0 +1,15 @@
+error[E0605]: non-primitive cast: `for<'a> unsafe extern "C" fn(&'a Struct, ...) -> i32 {<Struct as Trait>::trait_method_ref}` as `unsafe extern "C" fn(&Struct, ...) -> i32`
+  --> $DIR/trait-method.rs:69:20
+   |
+LL |         assert_eq!((Struct::trait_method_ref as Method<_>)(&Struct(100), 32), 132);
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid cast
+
+error[E0605]: non-primitive cast: `for<'a> unsafe extern "C" fn(&'a mut Struct, ...) -> i32 {<Struct as Trait>::trait_method_mut}` as `unsafe extern "C" fn(&mut Struct, ...) -> i32`
+  --> $DIR/trait-method.rs:70:20
+   |
+LL |         assert_eq!((Struct::trait_method_mut as Method<_>)(&mut Struct(100), 32), 132);
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid cast
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0605`.

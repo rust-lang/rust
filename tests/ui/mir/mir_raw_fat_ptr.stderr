@@ -1,12 +1,39 @@
-warning: method `foo` is never used
-  --> $DIR/mir_raw_fat_ptr.rs:100:16
+error[E0308]: mismatched types
+  --> $DIR/mir_raw_fat_ptr.rs:143:25
    |
-LL | trait Foo { fn foo(&self) -> usize; }
-   |       ---      ^^^
-   |       |
-   |       method in this trait
+LL |     assert_inorder(buf, compare_foo);
+   |     --------------      ^^^^^^^^^^^ one type is more general than the other
+   |     |
+   |     arguments to this function are incorrect
    |
-   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+   = note: expected fn pointer `fn(*const dyn Foo, *const dyn Foo) -> ComparisonResults`
+                 found fn item `for<'a> fn(*const (dyn Foo + 'a), *const (dyn Foo + 'a)) -> ComparisonResults {compare_foo}`
+note: function defined here
+  --> $DIR/mir_raw_fat_ptr.rs:84:4
+   |
+LL | fn assert_inorder<T: Copy>(a: &[T],
+   |    ^^^^^^^^^^^^^^
+LL |                            compare: fn(T, T) -> ComparisonResults) {
+   |                            --------------------------------------
 
-warning: 1 warning emitted
+error[E0308]: mismatched types
+  --> $DIR/mir_raw_fat_ptr.rs:197:25
+   |
+LL |     assert_inorder(buf, compare_foo);
+   |     --------------      ^^^^^^^^^^^ one type is more general than the other
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected fn pointer `fn(*const dyn Foo, *const dyn Foo) -> ComparisonResults`
+                 found fn item `for<'a> fn(*const (dyn Foo + 'a), *const (dyn Foo + 'a)) -> ComparisonResults {compare_foo}`
+note: function defined here
+  --> $DIR/mir_raw_fat_ptr.rs:84:4
+   |
+LL | fn assert_inorder<T: Copy>(a: &[T],
+   |    ^^^^^^^^^^^^^^
+LL |                            compare: fn(T, T) -> ComparisonResults) {
+   |                            --------------------------------------
 
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

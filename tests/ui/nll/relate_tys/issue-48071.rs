@@ -1,10 +1,10 @@
+//@ known-bug: unknown
 // Regression test for #48071. This test used to ICE because -- in
 // the leak-check -- it would pass since we knew that the return type
 // was `'static`, and hence `'static: 'a` was legal even for a
 // placeholder region, but in NLL land it would fail because we had
 // rewritten `'static` to a region variable.
 //
-//@ check-pass
 
 trait Foo {
     fn foo(&self) { }

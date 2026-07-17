@@ -1,0 +1,9 @@
+error[E0605]: non-primitive cast: `for<'a> fn(&'a [()]) -> impl Iterator<Item = &'a ()> {iter_slice::<()>}` as `fn(_) -> _`
+  --> $DIR/issue-75419-validation-impl-trait.rs:12:5
+   |
+LL |     iter_slice::<()> as fn(_) -> _;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid cast
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0605`.

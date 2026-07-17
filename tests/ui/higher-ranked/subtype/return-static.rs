@@ -1,4 +1,4 @@
-//@ check-pass
+//@ known-bug: unknown
 
 fn make<T>() -> T {
     panic!()

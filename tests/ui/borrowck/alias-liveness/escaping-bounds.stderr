@@ -1,0 +1,26 @@
+error[E0308]: mismatched types
+  --> $DIR/escaping-bounds.rs:19:38
+   |
+LL |         MentionsLifetimeAndType(&(), foo);
+   |         -----------------------      ^^^ one type is more general than the other
+   |         |
+   |         arguments to this struct are incorrect
+   |
+   = note: expected fn pointer `for<'a> fn(<T as Foo>::Assoc<'a, 'b>)`
+                 found fn item `for<'a, 'b> fn(<_ as Foo>::Assoc<'a, 'b>) {foo::<_>}`
+help: the type constructed contains `for<'a, 'b> fn(<_ as Foo>::Assoc<'a, 'b>) {foo::<_>}` due to the type of the argument passed
+  --> $DIR/escaping-bounds.rs:19:9
+   |
+LL |         MentionsLifetimeAndType(&(), foo);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---^
+   |                                      |
+   |                                      this argument influences the type of `MentionsLifetimeAndType`
+note: tuple struct defined here
+  --> $DIR/escaping-bounds.rs:13:8
+   |
+LL | struct MentionsLifetimeAndType<'a, T>(&'a (), T);
+   |        ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

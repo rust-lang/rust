@@ -1,0 +1,15 @@
+error[E0605]: non-primitive cast: `for<'a> unsafe extern "C" fn(&'a S, ...) -> i32 {S::method_ref}` as `unsafe extern "C" fn(&S, ...) -> i32`
+  --> $DIR/inherent-method.rs:40:20
+   |
+LL |         assert_eq!((S::method_ref as Method<_>)(&S(100), 32), 132);
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid cast
+
+error[E0605]: non-primitive cast: `for<'a> unsafe extern "C" fn(&'a mut S, ...) -> i32 {S::method_mut}` as `unsafe extern "C" fn(&mut S, ...) -> i32`
+  --> $DIR/inherent-method.rs:41:20
+   |
+LL |         assert_eq!((S::method_mut as Method<_>)(&mut S(100), 32), 132);
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid cast
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0605`.

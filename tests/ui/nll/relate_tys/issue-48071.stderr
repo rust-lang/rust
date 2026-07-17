@@ -1,0 +1,9 @@
+error[E0605]: non-primitive cast: `for<'a> fn(&'a u8) -> Box<(dyn Foo + 'static)> {make_foo}` as `for<'a> fn(&'a u8) -> Box<(dyn Foo + 'a)>`
+  --> $DIR/issue-48071.rs:23:24
+   |
+LL |     let x: MakeFooFn = make_foo as MakeFooFn;
+   |                        ^^^^^^^^^^^^^^^^^^^^^ invalid cast
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0605`.

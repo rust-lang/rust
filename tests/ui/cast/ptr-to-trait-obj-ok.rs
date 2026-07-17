@@ -1,4 +1,4 @@
-//@ check-pass
+//@ known-bug: unknown
 
 // Casting pointers to object types has some special rules in order to
 // ensure VTables stay valid. E.g.

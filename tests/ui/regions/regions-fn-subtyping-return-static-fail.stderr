@@ -1,5 +1,37 @@
 error[E0308]: mismatched types
-  --> $DIR/regions-fn-subtyping-return-static-fail.rs:48:12
+  --> $DIR/regions-fn-subtyping-return-static-fail.rs:39:12
+   |
+LL |     want_F(foo);
+   |     ------ ^^^ one type is more general than the other
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected fn pointer `for<'cx> fn(&'cx S) -> &'cx S`
+                 found fn item `for<'a> fn(&'a S) -> &'static S {foo}`
+note: function defined here
+  --> $DIR/regions-fn-subtyping-return-static-fail.rs:17:4
+   |
+LL | fn want_F(f: F) {}
+   |    ^^^^^^ ----
+
+error[E0308]: mismatched types
+  --> $DIR/regions-fn-subtyping-return-static-fail.rs:41:12
+   |
+LL |     want_F(bar);
+   |     ------ ^^^ one type is more general than the other
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected fn pointer `for<'cx> fn(&'cx S) -> &'cx S`
+                 found fn item `for<'a> fn(&'a S) -> &S {bar::<'_>}`
+note: function defined here
+  --> $DIR/regions-fn-subtyping-return-static-fail.rs:17:4
+   |
+LL | fn want_F(f: F) {}
+   |    ^^^^^^ ----
+
+error[E0308]: mismatched types
+  --> $DIR/regions-fn-subtyping-return-static-fail.rs:49:12
    |
 LL |     want_G(baz);
    |     ------ ^^^ one type is more general than the other
@@ -9,11 +41,11 @@ LL |     want_G(baz);
    = note: expected fn pointer `for<'cx> fn(&'cx S) -> &'static S`
                  found fn item `for<'a> fn(&'a S) -> &'a S {baz}`
 note: function defined here
-  --> $DIR/regions-fn-subtyping-return-static-fail.rs:20:4
+  --> $DIR/regions-fn-subtyping-return-static-fail.rs:21:4
    |
 LL | fn want_G(f: G) {}
    |    ^^^^^^ ----
 
-error: aborting due to 1 previous error
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0308`.

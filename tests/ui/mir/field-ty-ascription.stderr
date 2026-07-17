@@ -1,0 +1,185 @@
+error: lifetime may not live long enough
+  --> $DIR/field-ty-ascription.rs:8:15
+   |
+LL | fn bar<'b>(x: Bar<for<'a> fn(&'a ())>) {
+   |        -- lifetime `'b` defined here
+LL |     let Bar { x }: Bar<fn(&'b ())> = x;
+   |               ^ assignment requires that `'b` must outlive `'static`
+
+error[E0308]: mismatched types
+  --> $DIR/field-ty-ascription.rs:8:15
+   |
+LL |     let Bar { x }: Bar<fn(&'b ())> = x;
+   |               ^ one type is more general than the other
+   |
+   = note: expected fn pointer `for<'a> fn(&'a ())`
+              found fn pointer `fn(&())`
+
+error[E0308]: mismatched types
+  --> $DIR/field-ty-ascription.rs:8:20
+   |
+LL |     let Bar { x }: Bar<fn(&'b ())> = x;
+   |                    ^^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected struct `Bar<fn(&())>`
+              found struct `Bar<for<'a> fn(&'a ())>`
+
+error: lifetime may not live long enough
+  --> $DIR/field-ty-ascription.rs:15:24
+   |
+LL | fn bar_nested<'b>(x: Bar<Bar<for<'a> fn(&'a ())>>) {
+   |               -- lifetime `'b` defined here
+LL |     let Bar { x: Bar { x } }: Bar<Bar<fn(&'b ())>> = x;
+   |                        ^ assignment requires that `'b` must outlive `'static`
+
+error[E0308]: mismatched types
+  --> $DIR/field-ty-ascription.rs:15:24
+   |
+LL |     let Bar { x: Bar { x } }: Bar<Bar<fn(&'b ())>> = x;
+   |                        ^ one type is more general than the other
+   |
+   = note: expected struct `Bar<for<'a> fn(&'a ())>`
+              found struct `Bar<fn(&())>`
+
+error[E0308]: mismatched types
+  --> $DIR/field-ty-ascription.rs:15:31
+   |
+LL |     let Bar { x: Bar { x } }: Bar<Bar<fn(&'b ())>> = x;
+   |                               ^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected struct `Bar<Bar<fn(&())>>`
+              found struct `Bar<Bar<for<'a> fn(&'a ())>>`
+
+error: lifetime may not live long enough
+  --> $DIR/field-ty-ascription.rs:22:22
+   |
+LL | fn bar_foo_nested<'b>(x: Bar<Foo<for<'a> fn(&'a ())>>) {
+   |                   -- lifetime `'b` defined here
+LL |     let Bar { x: Foo(x) }: Bar<Foo<fn(&'b ())>> = x;
+   |                      ^ assignment requires that `'b` must outlive `'static`
+
+error[E0308]: mismatched types
+  --> $DIR/field-ty-ascription.rs:22:22
+   |
+LL |     let Bar { x: Foo(x) }: Bar<Foo<fn(&'b ())>> = x;
+   |                      ^ one type is more general than the other
+   |
+   = note: expected struct `Foo<for<'a> fn(&'a ())>`
+              found struct `Foo<fn(&())>`
+
+error[E0308]: mismatched types
+  --> $DIR/field-ty-ascription.rs:22:28
+   |
+LL |     let Bar { x: Foo(x) }: Bar<Foo<fn(&'b ())>> = x;
+   |                            ^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected struct `Bar<Foo<fn(&())>>`
+              found struct `Bar<Foo<for<'a> fn(&'a ())>>`
+
+error: lifetime may not live long enough
+  --> $DIR/field-ty-ascription.rs:29:13
+   |
+LL | fn foo<'b>(x: Foo<for<'a> fn(&'a ())>) {
+   |        -- lifetime `'b` defined here
+LL |     let Foo(y): Foo<fn(&'b ())> = x;
+   |             ^ assignment requires that `'b` must outlive `'static`
+
+error[E0308]: mismatched types
+  --> $DIR/field-ty-ascription.rs:29:13
+   |
+LL |     let Foo(y): Foo<fn(&'b ())> = x;
+   |             ^ one type is more general than the other
+   |
+   = note: expected fn pointer `for<'a> fn(&'a ())`
+              found fn pointer `fn(&())`
+
+error[E0308]: mismatched types
+  --> $DIR/field-ty-ascription.rs:29:17
+   |
+LL |     let Foo(y): Foo<fn(&'b ())> = x;
+   |                 ^^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected struct `Foo<fn(&())>`
+              found struct `Foo<for<'a> fn(&'a ())>`
+
+error: lifetime may not live long enough
+  --> $DIR/field-ty-ascription.rs:36:17
+   |
+LL | fn foo_nested<'b>(x: Foo<Foo<for<'a> fn(&'a ())>>) {
+   |               -- lifetime `'b` defined here
+LL |     let Foo(Foo(y)): Foo<Foo<fn(&'b ())>> = x;
+   |                 ^ assignment requires that `'b` must outlive `'static`
+
+error[E0308]: mismatched types
+  --> $DIR/field-ty-ascription.rs:36:17
+   |
+LL |     let Foo(Foo(y)): Foo<Foo<fn(&'b ())>> = x;
+   |                 ^ one type is more general than the other
+   |
+   = note: expected struct `Foo<for<'a> fn(&'a ())>`
+              found struct `Foo<fn(&())>`
+
+error[E0308]: mismatched types
+  --> $DIR/field-ty-ascription.rs:36:22
+   |
+LL |     let Foo(Foo(y)): Foo<Foo<fn(&'b ())>> = x;
+   |                      ^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected struct `Foo<Foo<fn(&())>>`
+              found struct `Foo<Foo<for<'a> fn(&'a ())>>`
+
+error: lifetime may not live long enough
+  --> $DIR/field-ty-ascription.rs:43:13
+   |
+LL | fn tuple<'b>(x: (u32, for<'a> fn(&'a ()))) {
+   |          -- lifetime `'b` defined here
+LL |     let (_, y): (u32, fn(&'b ())) = x;
+   |             ^ assignment requires that `'b` must outlive `'static`
+
+error[E0308]: mismatched types
+  --> $DIR/field-ty-ascription.rs:43:13
+   |
+LL |     let (_, y): (u32, fn(&'b ())) = x;
+   |             ^ one type is more general than the other
+   |
+   = note: expected fn pointer `for<'a> fn(&'a ())`
+              found fn pointer `fn(&())`
+
+error[E0308]: mismatched types
+  --> $DIR/field-ty-ascription.rs:43:17
+   |
+LL |     let (_, y): (u32, fn(&'b ())) = x;
+   |                 ^^^^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected tuple `(_, fn(&()))`
+              found tuple `(_, for<'a> fn(&'a ()))`
+
+error: lifetime may not live long enough
+  --> $DIR/field-ty-ascription.rs:50:17
+   |
+LL | fn tuple_nested<'b>(x: (u32, (u32, for<'a> fn(&'a ())))) {
+   |                 -- lifetime `'b` defined here
+LL |     let (_, (_, y)): (u32, (u32, fn(&'b ()))) = x;
+   |                 ^ assignment requires that `'b` must outlive `'static`
+
+error[E0308]: mismatched types
+  --> $DIR/field-ty-ascription.rs:50:17
+   |
+LL |     let (_, (_, y)): (u32, (u32, fn(&'b ()))) = x;
+   |                 ^ one type is more general than the other
+   |
+   = note: expected tuple `(_, for<'a> fn(&'a ()))`
+              found tuple `(_, fn(&()))`
+
+error[E0308]: mismatched types
+  --> $DIR/field-ty-ascription.rs:50:22
+   |
+LL |     let (_, (_, y)): (u32, (u32, fn(&'b ()))) = x;
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected tuple `(_, (_, fn(&())))`
+              found tuple `(_, (_, for<'a> fn(&'a ())))`
+
+error: aborting due to 21 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

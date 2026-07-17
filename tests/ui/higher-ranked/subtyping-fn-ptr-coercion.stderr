@@ -1,0 +1,12 @@
+error[E0308]: mismatched types
+  --> $DIR/subtyping-fn-ptr-coercion.rs:9:13
+   |
+LL |     let x = c as fn(&'static str);
+   |             ^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected fn pointer `fn(&_)`
+              found fn pointer `for<'a> fn(&'a _)`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

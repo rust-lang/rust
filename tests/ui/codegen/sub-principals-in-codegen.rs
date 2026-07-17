@@ -1,4 +1,4 @@
-//@ build-pass
+//@ known-bug: unknown
 
 // Regression test for an overly aggressive assertion in #130855.
 

@@ -1,0 +1,25 @@
+error[E0308]: mismatched types
+  --> $DIR/normalize-supertrait.rs:38:20
+   |
+LL |     let x: fn(_) = f::<()>;
+   |            -----   ^^^^^^^ one type is more general than the other
+   |            |
+   |            expected due to this
+   |
+   = note: expected fn pointer `fn(_)`
+                 found fn item `for<'a> fn(&'a (dyn Derived<()> + 'a)) {f::<()>}`
+
+error[E0308]: mismatched types
+  --> $DIR/normalize-supertrait.rs:39:20
+   |
+LL |     let x: fn(_) = f::<i32>;
+   |            -----   ^^^^^^^^ one type is more general than the other
+   |            |
+   |            expected due to this
+   |
+   = note: expected fn pointer `fn(_)`
+                 found fn item `for<'a> fn(&'a (dyn Derived<i32> + 'a)) {f::<i32>}`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

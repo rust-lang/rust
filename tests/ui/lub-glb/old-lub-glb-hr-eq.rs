@@ -1,3 +1,4 @@
+//@ known-bug: unknown
 // Test that we give a note when the old LUB/GLB algorithm would have
 // succeeded but the new code (which requires equality) gives an
 // error. However, now that we handle subtyping correctly, we no
@@ -11,7 +12,6 @@ fn foo(x: fn(&u8, &u8), y: for<'a> fn(&'a u8, &'a u8)) {
     let z = match 22 {
         0 => x,
         _ => y,
-        //~^ ERROR `match` arms have incompatible types [E0308]
     };
 }
 

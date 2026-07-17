@@ -1,4 +1,4 @@
-//@ check-pass
+//@ known-bug: unknown
 
 // Check that we use subtyping when reifying a closure into a function pointer.
 

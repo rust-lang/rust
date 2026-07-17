@@ -1,0 +1,15 @@
+error[E0605]: non-primitive cast: `for<'a> fn(&'a [u8]) -> Option<u8> {baz}` as `fn(&[u8]) -> Option<u8>`
+  --> $DIR/rfc1623.rs:54:28
+   |
+LL | static STATIC_BAZ: &Baz = &(baz as Baz);
+   |                            ^^^^^^^^^^^^ invalid cast
+
+error[E0605]: non-primitive cast: `for<'a> fn(&'a [u8]) -> Option<u8> {baz}` as `fn(&[u8]) -> Option<u8>`
+  --> $DIR/rfc1623.rs:55:26
+   |
+LL | const CONST_BAZ: &Baz = &(baz as Baz);
+   |                          ^^^^^^^^^^^^ invalid cast
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0605`.

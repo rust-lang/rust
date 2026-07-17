@@ -1,0 +1,15 @@
+error[E0605]: non-primitive cast: `for<'a> fn(&'a dyn Test) {<dyn Test as Test>::foo}` as `fn(_)`
+  --> $DIR/fn-align-dyn.rs:18:17
+   |
+LL |     assert_eq!((<dyn Test>::foo as fn(_) as usize & !1) % 4096, 0);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^ invalid cast
+
+error[E0605]: non-primitive cast: `for<'a> fn(&'a dyn Test) {<dyn Test as Test>::foo1}` as `fn(_)`
+  --> $DIR/fn-align-dyn.rs:19:17
+   |
+LL |     assert_eq!((<dyn Test>::foo1 as fn(_) as usize & !1) % 4096, 0);
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^ invalid cast
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0605`.

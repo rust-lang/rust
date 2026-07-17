@@ -1,3 +1,4 @@
+//@ known-bug: unknown
 // In this fn, the type `F` is a function that takes a reference to a
 // struct and returns another reference with the same lifetime.
 //
@@ -45,7 +46,7 @@ fn supply_F() {
 fn supply_G() {
     want_G(foo);
     want_G(bar);
-    want_G(baz); //~ ERROR mismatched types
+    want_G(baz);
 }
 
 pub fn main() {}

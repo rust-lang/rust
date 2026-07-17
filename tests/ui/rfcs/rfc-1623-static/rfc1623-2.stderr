@@ -1,5 +1,11 @@
+error[E0605]: non-primitive cast: `for<'a, 'b> fn(&'a u8, &'b u8) -> &'a u8 {non_elidable}` as `for<'a> fn(&'a u8, &'a u8) -> &'a u8`
+  --> $DIR/rfc1623-2.rs:10:6
+   |
+LL |     &(non_elidable as for<'a> fn(&'a u8, &'a u8) -> &'a u8);
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid cast
+
 error: implementation of `Fn` is not general enough
-  --> $DIR/rfc1623-2.rs:28:8
+  --> $DIR/rfc1623-2.rs:29:8
    |
 LL |     f: &id,
    |        ^^^ implementation of `Fn` is not general enough
@@ -8,7 +14,7 @@ LL |     f: &id,
    = note: ...but it actually implements `Fn<(&'2 Foo<'_>,)>`, for some specific lifetime `'2`
 
 error: implementation of `Fn` is not general enough
-  --> $DIR/rfc1623-2.rs:28:8
+  --> $DIR/rfc1623-2.rs:29:8
    |
 LL |     f: &id,
    |        ^^^ implementation of `Fn` is not general enough
@@ -17,7 +23,7 @@ LL |     f: &id,
    = note: ...but it actually implements `Fn<(&Foo<'2>,)>`, for some specific lifetime `'2`
 
 error: implementation of `FnOnce` is not general enough
-  --> $DIR/rfc1623-2.rs:28:8
+  --> $DIR/rfc1623-2.rs:29:8
    |
 LL |     f: &id,
    |        ^^^ implementation of `FnOnce` is not general enough
@@ -26,7 +32,7 @@ LL |     f: &id,
    = note: ...but it actually implements `FnOnce<(&'2 Foo<'_>,)>`, for some specific lifetime `'2`
 
 error: implementation of `FnOnce` is not general enough
-  --> $DIR/rfc1623-2.rs:28:8
+  --> $DIR/rfc1623-2.rs:29:8
    |
 LL |     f: &id,
    |        ^^^ implementation of `FnOnce` is not general enough
@@ -34,5 +40,18 @@ LL |     f: &id,
    = note: `fn(&Foo<'2>) -> &Foo<'2> {id::<&Foo<'2>>}` must implement `FnOnce<(&'a Foo<'1>,)>`, for any lifetime `'1`...
    = note: ...but it actually implements `FnOnce<(&Foo<'2>,)>`, for some specific lifetime `'2`
 
-error: aborting due to 4 previous errors
+error[E0605]: non-primitive cast: `for<'a> fn(&'a [u8]) -> Option<u8> {baz}` as `fn(&[u8]) -> Option<u8>`
+  --> $DIR/rfc1623-2.rs:79:45
+   |
+LL | static STATIC_BAZ: &'static Baz<'static> = &(baz as Baz);
+   |                                             ^^^^^^^^^^^^ invalid cast
 
+error[E0605]: non-primitive cast: `for<'a> fn(&'a [u8]) -> Option<u8> {baz}` as `fn(&[u8]) -> Option<u8>`
+  --> $DIR/rfc1623-2.rs:80:43
+   |
+LL | const CONST_BAZ: &'static Baz<'static> = &(baz as Baz);
+   |                                           ^^^^^^^^^^^^ invalid cast
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0605`.

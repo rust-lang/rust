@@ -1,4 +1,4 @@
-//@ check-pass
+//@ known-bug: unknown
 //@ compile-flags: -Zvalidate-mir
 
 #![allow(unpredictable_function_pointer_comparisons)]

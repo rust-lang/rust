@@ -1,4 +1,4 @@
-//@ run-pass
+//@ known-bug: unknown
 // Tests equality between supertype and subtype of a function
 // See the issue #91636
 

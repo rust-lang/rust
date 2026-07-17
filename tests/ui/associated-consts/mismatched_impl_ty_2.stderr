@@ -1,0 +1,12 @@
+error[E0308]: const not compatible with trait
+  --> $DIR/mismatched_impl_ty_2.rs:5:5
+   |
+LL |     const ASSOC: for<'a> fn(&'a u32) = |_| ();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected fn pointer `fn(&'static _)`
+              found fn pointer `for<'a> fn(&'a _)`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

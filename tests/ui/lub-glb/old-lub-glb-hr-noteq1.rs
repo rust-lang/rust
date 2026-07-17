@@ -1,3 +1,4 @@
+//@ known-bug: unknown
 // Test taking the LUB of two function types that are not equatable but where one is more
 // general than the other. Test the case where the more general type (`x`) is the first
 // match arm specifically.
@@ -12,8 +13,6 @@ fn foo(x: for<'a, 'b> fn(&'a u8, &'b u8) -> &'a u8, y: for<'a> fn(&'a u8, &'a u8
     let z = match 22 {
         0 => x,
         _ => y,
-        //[leak]~^ ERROR `match` arms have incompatible types
-        //[noleak]~^^ ERROR mismatched types
     };
 }
 

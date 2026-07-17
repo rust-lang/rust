@@ -1,20 +1,29 @@
-error[E0597]: `first_dropped` does not live long enough
-  --> $DIR/issue28498-reject-passed-to-fn.rs:34:19
+error[E0308]: mismatched types
+  --> $DIR/issue28498-reject-passed-to-fn.rs:34:43
    |
-LL |     let (foo1, first_dropped);
-   |                ------------- binding `first_dropped` declared here
-...
+LL |     foo0 = Foo(0, &last_dropped, Box::new(callback)); // OK
+   |                                  -------- ^^^^^^^^ one type is more general than the other
+   |                                  |
+   |                                  arguments to this function are incorrect
+   |
+   = note: expected fn pointer `for<'r> fn(&'r &ScribbleOnDrop) -> String`
+                 found fn item `for<'a, 'b> fn(&'a &'b ScribbleOnDrop) -> String {callback}`
+note: associated function defined here
+  --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
+
+error[E0308]: mismatched types
+  --> $DIR/issue28498-reject-passed-to-fn.rs:35:44
+   |
 LL |     foo1 = Foo(1, &first_dropped, Box::new(callback));
-   |                   ^^^^^^^^^^^^^^ borrowed value does not live long enough
-...
-LL | }
-   | -
-   | |
-   | `first_dropped` dropped here while still borrowed
-   | borrow might be used here, when `foo1` is dropped and runs the `Drop` code for type `Foo`
+   |                                   -------- ^^^^^^^^ one type is more general than the other
+   |                                   |
+   |                                   arguments to this function are incorrect
    |
-   = note: values in a scope are dropped in the opposite order they are defined
+   = note: expected fn pointer `for<'r> fn(&'r &ScribbleOnDrop) -> String`
+                 found fn item `for<'a, 'b> fn(&'a &'b ScribbleOnDrop) -> String {callback}`
+note: associated function defined here
+  --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
 
-error: aborting due to 1 previous error
+error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0597`.
+For more information about this error, try `rustc --explain E0308`.

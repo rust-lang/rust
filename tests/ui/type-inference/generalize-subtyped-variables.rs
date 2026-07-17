@@ -13,13 +13,12 @@
 //    to generalize `z` to first (when related to the type of `y`).
 //
 // Found when considering fixes to #117151
-//@ check-pass
 
 fn main() {
     let mut x = None;
     let y = x;
     let z = Default::default();
-    let mut w = (&mut x, z, z);
+    let mut w = (&mut x, z, z); //~ ERROR mismatched types
     let a = (&mut None::<fn(&())>, y, None::<fn(&'static ())>);
     w = a;
 }

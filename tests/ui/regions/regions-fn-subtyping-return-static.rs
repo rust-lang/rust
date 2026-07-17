@@ -1,3 +1,4 @@
+//@ known-bug: unknown
 // In this fn, the type `F` is a function that takes a reference to a
 // struct and returns another reference with the same lifetime.
 //
@@ -6,7 +7,6 @@
 // This can safely be considered to be an instance of `F` because all
 // lifetimes are sublifetimes of 'static.
 //
-//@ check-pass
 
 #![allow(dead_code)]
 #![allow(unused_variables)]

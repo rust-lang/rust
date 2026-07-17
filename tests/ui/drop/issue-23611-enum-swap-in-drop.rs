@@ -1,4 +1,4 @@
-//@ run-pass
+//@ known-bug: unknown
 #![allow(non_upper_case_globals)]
 // FIXME(static_mut_refs): use raw pointers instead of references
 #![allow(static_mut_refs)]

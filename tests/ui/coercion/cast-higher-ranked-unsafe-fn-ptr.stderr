@@ -1,0 +1,35 @@
+error[E0308]: mismatched types
+  --> $DIR/cast-higher-ranked-unsafe-fn-ptr.rs:10:15
+   |
+LL |     as_unsafe(higher_ranked_fndef);
+   |     --------- ^^^^^^^^^^^^^^^^^^^ one type is more general than the other
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected fn pointer `unsafe fn(_)`
+                 found fn item `for<'a> fn(&'a mut ()) {higher_ranked_fndef}`
+note: function defined here
+  --> $DIR/cast-higher-ranked-unsafe-fn-ptr.rs:6:8
+   |
+LL |     fn as_unsafe<T>(_: unsafe fn(T)) {}
+   |        ^^^^^^^^^    ---------------
+
+error[E0308]: mismatched types
+  --> $DIR/cast-higher-ranked-unsafe-fn-ptr.rs:11:15
+   |
+LL |     as_unsafe(higher_ranked_fnptr);
+   |     --------- ^^^^^^^^^^^^^^^^^^^ one type is more general than the other
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected fn pointer `unsafe fn(_)`
+              found fn pointer `for<'a> fn(&'a mut ())`
+note: function defined here
+  --> $DIR/cast-higher-ranked-unsafe-fn-ptr.rs:6:8
+   |
+LL |     fn as_unsafe<T>(_: unsafe fn(T)) {}
+   |        ^^^^^^^^^    ---------------
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

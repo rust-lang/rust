@@ -1,0 +1,29 @@
+error[E0308]: arguments to this function are incorrect
+  --> $DIR/variance.rs:14:13
+   |
+LL |     let _ = lotsa_lifetimes(take_any, identify, give_back);
+   |             ^^^^^^^^^^^^^^^
+   |
+note: one type is more general than the other
+  --> $DIR/variance.rs:14:29
+   |
+LL |     let _ = lotsa_lifetimes(take_any, identify, give_back);
+   |                             ^^^^^^^^
+   = note: expected fn pointer `fn(&_)`
+                 found fn item `for<'a> fn(&'a _) {take_any}`
+note: one type is more general than the other
+  --> $DIR/variance.rs:14:39
+   |
+LL |     let _ = lotsa_lifetimes(take_any, identify, give_back);
+   |                                       ^^^^^^^^
+   = note: expected fn pointer `fn(&_) -> &_`
+                 found fn item `for<'a> fn(&'a _) -> &'a _ {identify}`
+note: function defined here
+  --> $DIR/variance.rs:7:10
+   |
+LL | async fn lotsa_lifetimes<'a, 'b, 'c>(_: fn(&'a u8), _: fn(&'b u8) -> &'b u8, _: fn() -> &'c u8) { }
+   |          ^^^^^^^^^^^^^^^             -------------  -----------------------
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

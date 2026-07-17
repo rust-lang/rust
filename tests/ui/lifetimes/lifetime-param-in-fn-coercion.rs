@@ -2,7 +2,6 @@
 //! This tests for an ICE (and, if ignored, subsequent LLVM abort) when
 //! a lifetime-parametric fn is passed into a context whose expected
 //! type has a differing lifetime parameterization.
-//@ run-pass
 
 struct A<'a> {
     _a: &'a i32,
@@ -20,5 +19,5 @@ fn main() {
     let a = A { _a: &10 };
 
     let vec: Vec<for <'u,'v> fn(&'u A<'v>)> = vec![f];
-    call(a, &vec);
+    call(a, &vec); //~ ERROR mismatched types
 }

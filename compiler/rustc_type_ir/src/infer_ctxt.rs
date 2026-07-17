@@ -451,6 +451,18 @@ pub trait InferCtxtLike: Sized {
         f: impl FnOnce(T) -> U,
     ) -> U;
 
+    fn enter_forall_hr<T: TypeFoldable<Self::Interner>, U>(
+        &self,
+        value: ty::Binder<Self::Interner, T>,
+        f: impl FnOnce(T) -> U,
+    ) -> U;
+
+    fn enter_forall_hr_with_empty_assumptions<T: TypeFoldable<Self::Interner>, U>(
+        &self,
+        value: ty::Binder<Self::Interner, T>,
+        f: impl FnOnce(T) -> U,
+    ) -> U;
+
     fn equate_ty_vids_raw(&self, a: ty::TyVid, b: ty::TyVid);
     fn sub_unify_ty_vids_raw(&self, a: ty::TyVid, b: ty::TyVid);
     fn equate_int_vids_raw(&self, a: ty::IntVid, b: ty::IntVid);
