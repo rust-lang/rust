@@ -2451,6 +2451,114 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             );
             return true;
         }
+        self.suggest_semicolon_removal_in_closure_arg(obligation, err, trait_pred)
+    }
+
+    /// Detect when a closure argument returns `()` because of a trailing semicolon and that makes
+    /// a trait bound on the function's generic param fail, and suggest removing the semicolon:
+    ///
+    /// ```text
+    /// fn bar<R: Bar>(_: impl Fn() -> R) {}
+    /// bar(|| { 5u8; })
+    /// //          - help: remove this semicolon
+    /// ```
+    fn suggest_semicolon_removal_in_closure_arg(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        err: &mut Diag<'_>,
+        trait_pred: ty::PolyTraitPredicate<'tcx>,
+    ) -> bool {
+        if !trait_pred.self_ty().skip_binder().is_unit() {
+            return false;
+        }
+        let &ObligationCauseCode::WhereClauseInExpr(_, _, hir_id, _) =
+            obligation.cause.code().peel_derives()
+        else {
+            return false;
+        };
+        let hir::Node::Expr(expr) = self.tcx.hir_node(hir_id) else {
+            return false;
+        };
+        let Some(typeck_results) = &self.typeck_results else {
+            return false;
+        };
+        let args: Vec<&hir::Expr<'_>> =
+            match expr.kind {
+                hir::ExprKind::MethodCall(_, receiver, args, _) => {
+                    iter::once(receiver).chain(args).collect()
+                }
+                // For a call like `bar(..)` the obligation is attached to the callee path expression,
+                // so the arguments live in its parent.
+                _ => match self.tcx.parent_hir_node(expr.hir_id) {
+                    hir::Node::Expr(hir::Expr {
+                        kind: hir::ExprKind::Call(callee, args), ..
+                    }) if callee.hir_id == expr.hir_id => args.iter().collect(),
+                    _ => return false,
+                },
+            };
+        let mut candidates = args.into_iter().filter_map(|arg| {
+            // The error can be reported while the closure argument is still being checked, before
+            // its own type is recorded, so identify closures syntactically and only fall back to
+            // the argument's type (e.g. for a closure bound to a variable and passed by path).
+            let closure_def_id = match arg.kind {
+                hir::ExprKind::Closure(closure) => closure.def_id,
+                _ => match typeck_results.expr_ty_adjusted_opt(arg).map(|ty| {
+                    *self.resolve_vars_if_possible(ty).peel_refs().kind()
+                }) {
+                    Some(ty::Closure(def_id, _)) => def_id.as_local()?,
+                    _ => return None,
+                },
+            };
+            let hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Closure(closure), .. }) =
+                self.tcx.hir_node_by_def_id(closure_def_id)
+            else {
+                return None;
+            };
+            let body_value = self.tcx.hir_body(closure.body).value;
+            if let hir::ExprKind::Block(block @ hir::Block { expr: None, .. }, None) =
+                body_value.kind
+                && let [.., stmt] = block.stmts
+                && !stmt.span.from_expansion()
+                && let hir::StmtKind::Semi(tail_expr) = stmt.kind
+                && !matches!(tail_expr.kind, hir::ExprKind::Err(_))
+                // Tie the failing `(): Trait` predicate to this closure through its return type.
+                // The already-checked body is in the typeck results even when the closure isn't.
+                && let Some(ret_ty) = typeck_results.expr_ty_opt(body_value)
+                && self.resolve_vars_if_possible(ret_ty).is_unit()
+                // Only suggest this if the expression behind the semicolon implements the predicate
+                && let Some(ty) =
+                    typeck_results.expr_ty_opt(tail_expr).map(|ty| self.resolve_vars_if_possible(ty))
+                && self.predicate_may_hold(&self.mk_trait_obligation_with_new_self_ty(
+                    obligation.param_env,
+                    trait_pred.map_bound(|trait_pred| (trait_pred, ty)),
+                ))
+            {
+                Some((stmt, tail_expr, ty))
+            } else {
+                None
+            }
+        });
+        // Only emit the suggestion when a single closure argument matches, to avoid pointing at
+        // an unrelated closure.
+        if let Some((stmt, tail_expr, ty)) = candidates.next()
+            && candidates.next().is_none()
+        {
+            err.span_label(
+                tail_expr.span,
+                format!(
+                    "this expression has type `{}`, which implements `{}`",
+                    ty,
+                    trait_pred.print_modifiers_and_trait_path()
+                ),
+            );
+            err.span_suggestion(
+                self.tcx.sess.source_map().end_point(stmt.span),
+                "remove this semicolon",
+                "",
+                Applicability::MachineApplicable,
+            );
+            return true;
+        }
         false
     }
 
