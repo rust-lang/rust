@@ -123,6 +123,8 @@ struct WideU8 {
     a: u8,
 }
 
+// `extern "C"` does not clear the padding.
+//
 // CHECK-LABEL: c_ret_with_wide_u8:
 // CHECK: mov r7, sp
 // CHECK-NEXT: orr.w r0, r0, r1, lsl #16
@@ -131,6 +133,8 @@ extern "C" fn c_ret_with_wide_u8(a: u8, b: u8) -> [WideU8; 2] {
     [WideU8 { a }, WideU8 { a: b }]
 }
 
+// Upper bits are cleared by uxtb.
+//
 // CHECK-LABEL: cmse_ret_with_wide_u8:
 // CHECK: mov r7, sp
 // CHECK-NEXT: uxtb r1, r1
@@ -139,6 +143,36 @@ extern "C" fn c_ret_with_wide_u8(a: u8, b: u8) -> [WideU8; 2] {
 #[no_mangle]
 extern "cmse-nonsecure-entry" fn cmse_ret_with_wide_u8(a: u8, b: u8) -> [WideU8; 2] {
     [WideU8 { a }, WideU8 { a: b }]
+}
+
+// Same idea, the padding is recognized even through the MaybeUninit.
+//
+// CHECK-LABEL: cmse_ret_with_wide_u8_uninit:
+// CHECK: mov r7, sp
+// CHECK-NEXT: uxtb r0, r0
+// CHECK-NEXT: orr.w r0, r0, r1, lsl #16
+// CHECK-NEXT: bic r0, r0, #-16711936
+#[no_mangle]
+extern "cmse-nonsecure-entry" fn cmse_ret_with_wide_u8_uninit(
+    a: u16,
+    b: u16,
+) -> [MaybeUninit<WideU8>; 2] {
+    unsafe { [mem::transmute(a), mem::transmute(b)] }
+}
+
+// Same idea, the padding is recognized even through the MaybeUninit.
+//
+// CHECK-LABEL: cmse_ret_with_wide_u8_uninit_tuple:
+// CHECK: mov r7, sp
+// CHECK-NEXT: uxtb r0, r0
+// CHECK-NEXT: orr.w r0, r0, r1, lsl #16
+// CHECK-NEXT: bic r0, r0, #-16711936
+#[no_mangle]
+extern "cmse-nonsecure-entry" fn cmse_ret_with_wide_u8_uninit_tuple(
+    a: u16,
+    b: u16,
+) -> (MaybeUninit<WideU8>, MaybeUninit<WideU8>) {
+    unsafe { (mem::transmute(a), mem::transmute(b)) }
 }
 
 // CHECK-LABEL: c_call_with_inner_wide_u8:
@@ -177,28 +211,115 @@ extern "C" fn cmse_call_with_inner_wide_u8(
     unsafe { f(x) }
 }
 
-// CHECK-LABEL: cmse_ret_with_wide_u8_uninit:
+/// No variant-dependent padding.
+#[repr(C)]
+enum VariantsSameSize {
+    A(u16),
+    B(u16),
+}
+impl Copy for VariantsSameSize {}
+
+// CHECK-LABEL: variants_same_size:
 // CHECK: mov r7, sp
-// CHECK-NEXT: uxtb r0, r0
+// CHECK-NEXT: ldrh r1, [r0, #2]
+// CHECK-NEXT: ldrb r0, [r0]
 // CHECK-NEXT: orr.w r0, r0, r1, lsl #16
-// CHECK-NEXT: bic r0, r0, #-16711936
 #[no_mangle]
-extern "cmse-nonsecure-entry" fn cmse_ret_with_wide_u8_uninit(
-    a: u16,
-    b: u16,
-) -> [MaybeUninit<WideU8>; 2] {
-    unsafe { [mem::transmute(a), mem::transmute(b)] }
+extern "cmse-nonsecure-entry" fn variants_same_size(v: &VariantsSameSize) -> VariantsSameSize {
+    *v
 }
 
-// CHECK-LABEL: cmse_ret_with_wide_u8_uninit_tuple:
-// CHECK: mov r7, sp
-// CHECK-NEXT: uxtb r0, r0
-// CHECK-NEXT: orr.w r0, r0, r1, lsl #16
-// CHECK-NEXT: bic r0, r0, #-16711936
+/// One byte of variant-dependent padding.
+#[repr(C)]
+enum VariantsDifferentSize {
+    A(u8),
+    B(u16),
+}
+impl Copy for VariantsDifferentSize {}
+
 #[no_mangle]
-extern "cmse-nonsecure-entry" fn cmse_ret_with_wide_u8_uninit_tuple(
-    a: u16,
-    b: u16,
-) -> (MaybeUninit<WideU8>, MaybeUninit<WideU8>) {
-    unsafe { (mem::transmute(a), mem::transmute(b)) }
+extern "cmse-nonsecure-entry" fn variants_different_size(
+    v: &VariantsDifferentSize,
+) -> VariantsDifferentSize {
+    *v
+}
+
+enum Void {}
+impl Copy for Void {}
+
+#[repr(C)]
+enum UninhabitedVariant {
+    A(Void),
+    B(u16),
+}
+impl Copy for UninhabitedVariant {}
+
+#[no_mangle]
+extern "cmse-nonsecure-entry" fn uninhabited_variant(v: &UninhabitedVariant) -> UninhabitedVariant {
+    *v
+}
+
+#[no_mangle]
+#[expect(improper_ctypes_definitions)]
+extern "cmse-nonsecure-entry" fn variants_same_size_array(
+    v: &[VariantsSameSize; 1],
+) -> [VariantsSameSize; 1] {
+    *v
+}
+
+#[no_mangle]
+#[expect(improper_ctypes_definitions)]
+extern "cmse-nonsecure-entry" fn variants_different_size_array(
+    v: &[VariantsDifferentSize; 1],
+) -> [VariantsDifferentSize; 1] {
+    *v
+}
+
+#[no_mangle]
+#[expect(improper_ctypes_definitions)]
+extern "cmse-nonsecure-entry" fn variants_same_size_tuple(
+    v: &(VariantsSameSize,),
+) -> (VariantsSameSize,) {
+    *v
+}
+
+#[no_mangle]
+#[expect(improper_ctypes_definitions)]
+extern "cmse-nonsecure-entry" fn variants_different_size_tuple(
+    v: &(VariantsDifferentSize,),
+) -> (VariantsDifferentSize,) {
+    *v
+}
+
+/// Three variants of different sizes.
+#[repr(C)]
+enum ThreeVariants {
+    A(u8),
+    B(u16),
+    C(u32),
+}
+
+#[no_mangle]
+#[expect(improper_ctypes_definitions)]
+extern "C" fn cmse_call_three_variants(
+    f: unsafe extern "cmse-nonsecure-call" fn(ThreeVariants),
+    x: ThreeVariants,
+) {
+    unsafe { f(x) }
+}
+
+/// The tag is stored in the niche of the `bool`.
+#[repr(C)]
+struct BoolU32 {
+    flag: bool,
+    val: u32,
+}
+
+#[no_mangle]
+#[expect(improper_ctypes_definitions)]
+extern "C" fn cmse_call_niche(
+    f: unsafe extern "cmse-nonsecure-call" fn(Option<BoolU32>),
+    x: Option<BoolU32>,
+) {
+    unsafe { f(x) }
 }
