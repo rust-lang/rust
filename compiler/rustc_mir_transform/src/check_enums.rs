@@ -279,7 +279,7 @@ fn insert_discr_cast_to_u128<'tcx>(
         }
     };
 
-    let (cast_kind, discr_ty_bits) = if discr.size.bytes() < op_size.bytes() {
+    let discr_in_discr_ty = if discr.size.bytes() < op_size.bytes() {
         // The discriminant is less wide than the operand, cast the operand into
         // [MaybeUninit; N] and then index into it.
         let mu = Ty::new_maybe_uninit(tcx, tcx.types.u8);
@@ -304,7 +304,16 @@ fn insert_discr_cast_to_u128<'tcx>(
             tcx,
         );
 
-        (CastKind::Transmute, Operand::Copy(smaller_mu_array))
+        // Cast the resulting value to the actual discriminant integer type.
+        let rvalue = Rvalue::Cast(CastKind::Transmute, Operand::Copy(smaller_mu_array), discr.ty);
+        let discr_in_discr_ty =
+            local_decls.push(LocalDecl::with_source_info(discr.ty, source_info)).into();
+        block_data.statements.push(Statement::new(
+            source_info,
+            StatementKind::Assign(Box::new((discr_in_discr_ty, rvalue))),
+        ));
+
+        discr_in_discr_ty
     } else {
         let operand_int_ty = get_ty_for_size(tcx, op_size);
 
@@ -316,17 +325,8 @@ fn insert_discr_cast_to_u128<'tcx>(
             StatementKind::Assign(Box::new((op_as_int, rvalue))),
         ));
 
-        (CastKind::IntToInt, Operand::Copy(op_as_int))
+        op_as_int
     };
-
-    // Cast the resulting value to the actual discriminant integer type.
-    let rvalue = Rvalue::Cast(cast_kind, discr_ty_bits, discr.ty);
-    let discr_in_discr_ty =
-        local_decls.push(LocalDecl::with_source_info(discr.ty, source_info)).into();
-    block_data.statements.push(Statement::new(
-        source_info,
-        StatementKind::Assign(Box::new((discr_in_discr_ty, rvalue))),
-    ));
 
     // Cast the discriminant to a u128 (base for comparisons of enum discriminants).
     let const_u128 = Ty::new_uint(tcx, ty::UintTy::U128);
