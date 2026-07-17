@@ -221,8 +221,9 @@ impl Copy for VariantsSameSize {}
 
 // CHECK-LABEL: variants_same_size:
 // CHECK: mov r7, sp
-// CHECK-NEXT: ldrh r0, [r0, #2]
-// CHECK-NEXT: lsls r0, r0, #16
+// CHECK-NEXT: ldrh r1, [r0, #2]
+// CHECK-NEXT: ldrb r0, [r0]
+// CHECK-NEXT: orr.w r0, r0, r1, lsl #16
 #[no_mangle]
 extern "cmse-nonsecure-entry" fn variants_same_size(v: &VariantsSameSize) -> VariantsSameSize {
     *v
@@ -238,8 +239,8 @@ impl Copy for VariantsDifferentSize {}
 
 // CHECK-LABEL: variants_different_size:
 // CHECK: mov r7, sp
-// CHECK-NEXT: ldrh r0, [r0, #2]
-// CHECK-NEXT: lsls r0, r0, #16
+// CHECK-NEXT: ldr r0, [r0]
+// CHECK-NEXT: bic r0, r0, #65280
 #[no_mangle]
 extern "cmse-nonsecure-entry" fn variants_different_size(
     v: &VariantsDifferentSize,
@@ -259,8 +260,9 @@ impl Copy for UninhabitedVariant {}
 
 // CHECK-LABEL: uninhabited_variant:
 // CHECK: mov r7, sp
-// CHECK-NEXT: ldrh r0, [r0, #2]
-// CHECK-NEXT: lsls r0, r0, #16
+// CHECK-NEXT: ldrh r1, [r0, #2]
+// CHECK-NEXT: ldrb r0, [r0]
+// CHECK-NEXT: orr.w r0, r0, r1, lsl #16
 #[no_mangle]
 extern "cmse-nonsecure-entry" fn uninhabited_variant(v: &UninhabitedVariant) -> UninhabitedVariant {
     *v
@@ -268,8 +270,8 @@ extern "cmse-nonsecure-entry" fn uninhabited_variant(v: &UninhabitedVariant) -> 
 
 // CHECK-LABEL: variants_same_size_array:
 // CHECK: mov r7, sp
-// CHECK-NEXT: ldrh r0, [r0, #2]
-// CHECK-NEXT: lsls r0, r0, #16
+// CHECK-NEXT: ldr r0, [r0]
+// CHECK-NEXT: bic r0, r0, #65280
 #[no_mangle]
 #[expect(improper_ctypes_definitions)]
 extern "cmse-nonsecure-entry" fn variants_same_size_array(
@@ -280,8 +282,8 @@ extern "cmse-nonsecure-entry" fn variants_same_size_array(
 
 // CHECK-LABEL: variants_different_size_array:
 // CHECK: mov r7, sp
-// CHECK-NEXT: ldrh r0, [r0, #2]
-// CHECK-NEXT: lsls r0, r0, #16
+// CHECK-NEXT: ldr r0, [r0]
+// CHECK-NEXT: bic r0, r0, #65280
 #[no_mangle]
 #[expect(improper_ctypes_definitions)]
 extern "cmse-nonsecure-entry" fn variants_different_size_array(
@@ -292,8 +294,9 @@ extern "cmse-nonsecure-entry" fn variants_different_size_array(
 
 // CHECK-LABEL: variants_same_size_tuple:
 // CHECK: mov r7, sp
-// CHECK-NEXT: ldrh r0, [r0, #2]
-// CHECK-NEXT: lsls r0, r0, #16
+// CHECK-NEXT: ldrh r1, [r0, #2]
+// CHECK-NEXT: ldrb r0, [r0]
+// CHECK-NEXT: orr.w r0, r0, r1, lsl #16
 #[no_mangle]
 #[expect(improper_ctypes_definitions)]
 extern "cmse-nonsecure-entry" fn variants_same_size_tuple(
@@ -304,8 +307,8 @@ extern "cmse-nonsecure-entry" fn variants_same_size_tuple(
 
 // CHECK-LABEL: variants_different_size_tuple:
 // CHECK: mov r7, sp
-// CHECK-NEXT: ldrh r0, [r0, #2]
-// CHECK-NEXT: lsls r0, r0, #16
+// CHECK-NEXT: ldr r0, [r0]
+// CHECK-NEXT: bic r0, r0, #65280
 #[no_mangle]
 #[expect(improper_ctypes_definitions)]
 extern "cmse-nonsecure-entry" fn variants_different_size_tuple(
@@ -324,9 +327,9 @@ enum ThreeVariants {
 
 // CHECK-LABEL: cmse_call_three_variants:
 // CHECK: mov r7, sp
+// CHECK-NEXT: mov r3, r0
+// CHECK-NEXT: uxtb r0, r1
 // CHECK-NEXT: mov r1, r2
-// CHECK-NEXT: mov r2, r0
-// CHECK-NEXT: movs r0, #0
 #[no_mangle]
 #[expect(improper_ctypes_definitions)]
 extern "C" fn cmse_call_three_variants(

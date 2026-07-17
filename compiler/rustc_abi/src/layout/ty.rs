@@ -361,6 +361,17 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
                 }
             },
             Variants::Multiple { variants, .. } => {
+                // The variants do not contain e.g. the discriminant or coroutine upvars.
+                let FieldsShape::Arbitrary { offsets, in_memory_order: _ } = &self.fields else {
+                    unreachable!("a multi-variant layout should have `Arbitrary` fields")
+                };
+
+                // So add them explicitly.
+                for (field, &offset) in offsets.iter_enumerated() {
+                    let field = self.field(cx, field.as_usize());
+                    field.add_data_ranges(cx, base_offset + offset, out);
+                }
+
                 for variant in variants.indices() {
                     let variant = self.for_variant(cx, variant);
                     variant.add_data_ranges(cx, base_offset, out);
