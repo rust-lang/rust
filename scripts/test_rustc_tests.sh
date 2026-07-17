@@ -158,6 +158,7 @@ rm -r tests/run-make/missing-unstable-trait-bound # This disables support for un
 rm -r tests/run-make/const-trait-stable-toolchain # same
 rm -r tests/run-make/print-request-help-stable-unstable # same
 rm -r tests/run-make/issue-149402-suggest-unresolve # same
+rm -r tests/run-make/const-destruct-stable-toolchain # same
 rm -r tests/run-make/incr-add-rust-src-component
 rm tests/ui/errors/remap-path-prefix-sysroot.rs # different sysroot source path
 rm -r tests/run-make/export # something about rustc version mismatches
