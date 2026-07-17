@@ -677,7 +677,7 @@ pub struct PatternArgInExternFn {
 pub struct UnimplementedTrait<'db> {
     pub span: SpanSyntax,
     pub trait_predicate: crate::TraitPredicate<'db>,
-    pub root_trait_predicate: Option<crate::TraitPredicate<'db>>,
+    pub parent_trait_predicates: Vec<crate::TraitPredicate<'db>>,
 }
 
 #[derive(Debug)]
@@ -1152,19 +1152,22 @@ impl<'db> AnyDiagnostic<'db> {
     ) -> Option<AnyDiagnostic<'db>> {
         let interner = DbInterner::new_no_crate(db);
         Some(match d {
-            SolverDiagnosticKind::TraitUnimplemented { trait_predicate, root_trait_predicate } => {
+            SolverDiagnosticKind::TraitUnimplemented {
+                trait_predicate,
+                parent_trait_predicates,
+            } => {
                 let trait_predicate = crate::TraitPredicate {
                     inner: trait_predicate.get(interner),
                     owner: type_owner,
                 };
-                let root_trait_predicate =
-                    root_trait_predicate.as_ref().map(|root_trait_predicate| {
-                        crate::TraitPredicate {
-                            inner: root_trait_predicate.get(interner),
-                            owner: type_owner,
-                        }
-                    });
-                UnimplementedTrait { span, trait_predicate, root_trait_predicate }.into()
+                let parent_trait_predicates = parent_trait_predicates
+                    .iter()
+                    .map(|trait_predicate| crate::TraitPredicate {
+                        inner: trait_predicate.get(interner),
+                        owner: type_owner,
+                    })
+                    .collect();
+                UnimplementedTrait { span, trait_predicate, parent_trait_predicates }.into()
             }
         })
     }
