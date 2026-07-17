@@ -177,7 +177,7 @@ impl FileDescription for TcpSocket {
     }
 
     fn readiness(&self) -> Readiness {
-        self.io_readiness.borrow().clone()
+        *self.io_readiness.borrow()
     }
 }
 
@@ -703,7 +703,7 @@ impl UnixSocketFileDescription for TcpSocket {
                 // We know there is no longer an async error and thus we need to update the
                 // I/O and fd readiness of the socket.
                 self.io_readiness.borrow_mut().error = false;
-                ecx.update_fd_readiness(self, /* force_edge */ false)?;
+                ecx.update_fd_readiness(self, ReadinessUpdateFlags::DEFAULT)?;
 
                 // Allocate new buffer on the stack with the `i32` layout.
                 let value_buffer = ecx.allocate(ecx.machine.layouts.i32, MemoryKind::Stack)?;
@@ -934,7 +934,7 @@ impl UnixSocketFileDescription for TcpSocket {
         drop(readiness);
 
         // Update the readiness for the socket.
-        ecx.update_fd_readiness(self, /* force_edge */ false)?;
+        ecx.update_fd_readiness(self, ReadinessUpdateFlags::DEFAULT)?;
 
         interp_ok(Ok(()))
     }
@@ -1037,7 +1037,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             Err(e) if e.kind() == io::ErrorKind::WouldBlock => {
                 // We know that the source is not readable so we need to update its readiness.
                 socket.io_readiness.borrow_mut().readable = false;
-                this.update_fd_readiness(socket.clone(), /* force_edge */ false)?;
+                this.update_fd_readiness(socket.clone(), ReadinessUpdateFlags::DEFAULT)?;
 
                 return interp_ok(Err(IoError::HostError(e)));
             }
@@ -1149,7 +1149,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             {
                 // We know that the source is not writable so we need to update its readiness.
                 socket.io_readiness.borrow_mut().writable = false;
-                this.update_fd_readiness(socket.clone(), /* force_edge */ false)?;
+                this.update_fd_readiness(socket.clone(), ReadinessUpdateFlags::DEFAULT)?;
 
                 // On Windows hosts, `send` can return WSAENOTCONN where EAGAIN or EWOULDBLOCK
                 // would be returned on UNIX-like systems. We thus remap this error to an EWOULDBLOCK.
@@ -1179,7 +1179,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     target_os = "watchos",
                 )) {
                     socket.io_readiness.borrow_mut().writable = false;
-                    this.update_fd_readiness(socket.clone(), /* force_edge */ false)?;
+                    this.update_fd_readiness(socket.clone(), ReadinessUpdateFlags::DEFAULT)?;
                 } else {
                     // On hosts which don't use the `epoll` or `kqueue` backends, a short write
                     // doesn't imply a full write buffer. However, the target we are emulating might
@@ -1190,7 +1190,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     // This results in an unrealistic execution but we don't have another way of
                     // finding out whether the write buffer is full. The "default case" of linux
                     // host and linux target isn't affected by this.
-                    this.update_fd_readiness(socket.clone(), /* force_edge */ true)?;
+                    this.update_fd_readiness(socket.clone(), ReadinessUpdateFlags::FORCE_EDGE)?;
                 }
                 interp_ok(result)
             }
@@ -1285,7 +1285,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             {
                 // We know that the source is not readable so we need to update its readiness.
                 socket.io_readiness.borrow_mut().readable = false;
-                this.update_fd_readiness(socket.clone(), /* force_edge */ false)?;
+                this.update_fd_readiness(socket.clone(), ReadinessUpdateFlags::DEFAULT)?;
 
                 // On Windows hosts, `recv` can return WSAENOTCONN where EAGAIN or EWOULDBLOCK
                 // would be returned on UNIX-like systems. We thus remap this error to an EWOULDBLOCK.
@@ -1324,7 +1324,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     target_os = "watchos",
                 )) {
                     socket.io_readiness.borrow_mut().readable = false;
-                    this.update_fd_readiness(socket.clone(), /* force_edge */ false)?;
+                    this.update_fd_readiness(socket.clone(), ReadinessUpdateFlags::DEFAULT)?;
                 } else {
                     // On hosts which don't use the `epoll` or `kqueue` backends, a short read
                     // doesn't imply an empty read buffer. However, the target we are emulating
@@ -1335,7 +1335,7 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     // This results in an unrealistic execution but we don't have another way of
                     // finding out whether the read buffer is empty. The "default case" of linux
                     // host and linux target isn't affected by this.
-                    this.update_fd_readiness(socket.clone(), /* force_edge */ true)?;
+                    this.update_fd_readiness(socket.clone(), ReadinessUpdateFlags::FORCE_EDGE)?;
                 }
                 interp_ok(result)
             }

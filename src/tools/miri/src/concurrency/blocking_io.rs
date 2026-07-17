@@ -161,8 +161,9 @@ impl BlockingIoManager {
         // Update the readiness for all source file descriptions which received an event. Also,
         // unblock the threads which are blocked on such a source and whose interests are now fulfilled.
         for fd in event_fds.into_iter() {
-            // Update readiness for the `fd` source.
-            ecx.update_fd_readiness(fd.clone(), /* force_edge */ false)?;
+            // Update readiness for the `fd` source. This is no a "release" event since it was
+            // not triggered by the current thread, it was triggered by the outside world.
+            ecx.update_fd_readiness(fd.clone(), ReadinessUpdateFlags::NO_RELEASE_CLOCK)?;
 
             // The `update_fd_readiness` can't cause the source to be deregistered since we still
             // hold a strong reference to the file description with `fd`.

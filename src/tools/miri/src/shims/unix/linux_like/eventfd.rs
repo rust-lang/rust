@@ -228,7 +228,7 @@ fn eventfd_write<'tcx>(
             // Linux seems to cause spurious wakeups here, and Tokio seems to rely on that
             // (see <https://github.com/rust-lang/miri/pull/4676#discussion_r2510528994>
             // and also <https://www.illumos.org/issues/16700>).
-            ecx.update_fd_readiness(eventfd, /* force_edge */ true)?;
+            ecx.update_fd_readiness(eventfd, ReadinessUpdateFlags::FORCE_EDGE)?;
 
             // Return how many bytes we consumed from the user-provided buffer.
             return finish.call(ecx, Ok(buf_place.layout.size.bytes_usize()));
@@ -316,7 +316,7 @@ fn eventfd_read<'tcx>(
         // The state changed; we check and update the status of all supported event
         // types for current file description.
         // Linux seems to always emit do notifications here, even if we were already writable.
-        ecx.update_fd_readiness(eventfd, /* force_edge */ true)?;
+        ecx.update_fd_readiness(eventfd, ReadinessUpdateFlags::FORCE_EDGE)?;
 
         // Tell userspace how many bytes we put into the buffer.
         return finish.call(ecx, Ok(buf_place.layout.size.bytes_usize()));

@@ -9,7 +9,7 @@ use crate::shims::*;
 use crate::*;
 
 /// Struct reflecting the readiness of a file description.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Readiness {
     /// Boolean whether the file description is readable.
     pub readable: bool,
@@ -73,7 +73,20 @@ impl Readiness {
     };
 }
 
-pub type ReadinessInterestKey = (FdId, FdNum);
+bitflags::bitflags! {
+    #[derive(Debug, Copy, Clone, PartialEq)]
+    pub struct ReadinessUpdateFlags: u32 {
+        const DEFAULT = 0;
+        /// Trigger edge-triggered even if the set of ready events did not change. This can lead to
+        /// spurious wakeups. Use with caution!
+        const FORCE_EDGE = 1 << 0;
+        /// Do not treat this as a release event from the current thread. This can lead to incorrect
+        /// data race reports. Use with caution!
+        const NO_RELEASE_CLOCK = 1 << 1;
+    }
+}
+
+type ReadinessInterestKey = (FdId, FdNum);
 
 /// Returns the range of all [`ReadinessInterestKey`] for the given FD ID.
 fn range_for_id(id: FdId) -> std::ops::RangeInclusive<ReadinessInterestKey> {
@@ -316,7 +329,7 @@ impl ReadinessWatcher {
                 // Ensure this matches the latest readiness of this FD.
                 let fd = interest.watched_fd.upgrade().expect("dead watched");
                 let current_active = fd.readiness();
-                assert_eq!(interest.active(), &(current_active & interest.relevant.clone()));
+                assert_eq!(interest.active(), &(current_active & interest.relevant));
             }
         }
 
@@ -457,7 +470,7 @@ impl DelayedReadinessUpdates {
             else {
                 return interp_ok(());
             };
-            ecx.update_fd_readiness(fd, /* force_edge */ false)?;
+            ecx.update_fd_readiness(fd, ReadinessUpdateFlags::DEFAULT)?;
         }
     }
 }
@@ -467,24 +480,23 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
     /// For a specific file description, get its current readiness and send it to everyone who
     /// registered interest in this FD. This function must be called whenever the result of
     /// `FileDescription::readiness` might change.
-    ///
-    /// If `force_edge` is set, edge-triggered interests will be triggered even if the set of
-    /// ready events did not change. This can lead to spurious wakeups. Use with caution!
     fn update_fd_readiness(
         &mut self,
         fd: DynFileDescriptionRef,
-        force_edge: bool,
+        flags: ReadinessUpdateFlags,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let fd_id = fd.id();
         let watched = fd.readiness_watched().unwrap();
 
-        // We always capture a vector clock, since someone might get interested in the future
-        // and then synchronize with this event.
-        // FIXME: currently we do this even if the readiness did not change!
-        this.release_clock(|clock| {
-            watched.ready_clock.borrow_mut().join(clock);
-        })?;
+        if !flags.contains(ReadinessUpdateFlags::NO_RELEASE_CLOCK) {
+            // We capture a vector clock even if there is nobody watching, since someone might get
+            // interested in the future and then synchronize with this event.
+            // FIXME: currently we do this even if the readiness did not change!
+            this.release_clock(|clock| {
+                watched.ready_clock.borrow_mut().join(clock);
+            })?;
+        }
 
         let watchers_ref = watched.watchers.borrow();
         // Need to make a copy so below we can unblock threads which may need the same `RefCell`.
@@ -497,14 +509,19 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
 
         let active_readiness = fd.readiness();
         for watcher in watchers {
-            this.update_readiness(&watcher, active_readiness.clone(), force_edge, |callback| {
-                for (&key, interest) in
-                    watcher.interests.borrow_mut().range_mut(range_for_id(fd_id))
-                {
-                    callback(key, interest)?;
-                }
-                interp_ok(())
-            })?;
+            this.update_readiness(
+                &watcher,
+                active_readiness,
+                flags.contains(ReadinessUpdateFlags::FORCE_EDGE),
+                |callback| {
+                    for (&key, interest) in
+                        watcher.interests.borrow_mut().range_mut(range_for_id(fd_id))
+                    {
+                        callback(key, interest)?;
+                    }
+                    interp_ok(())
+                },
+            )?;
         }
 
         interp_ok(())
@@ -531,14 +548,14 @@ pub trait EvalContextPrivExt<'tcx>: MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
         let mut ready = watcher.ready.borrow_mut();
         for_each_interest(&mut |key, interest| {
-            let new_readiness = interest.relevant.clone() & active.clone();
-            let prev_readiness = std::mem::replace(&mut interest.active, new_readiness.clone());
+            let new_readiness = interest.relevant & active;
+            let prev_readiness = std::mem::replace(&mut interest.active, new_readiness);
             if new_readiness == Readiness::EMPTY {
                 // Un-trigger this, there's nothing left to report here.
                 if let Some(idx) = ready.iter().position(|k| k == &key) {
                     ready.remove(idx);
                 }
-            } else if force_edge || new_readiness != prev_readiness & new_readiness.clone() {
+            } else if force_edge || new_readiness != prev_readiness & new_readiness {
                 // Either we force an "edge" to be detected or there's a bit set in `new_readiness`
                 // that was not set in `prev_readiness`. In both cases, this is ready now.
 

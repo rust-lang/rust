@@ -431,8 +431,8 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Notify readiness watchers: we might be no longer writable, peer might now be readable.
             // The notification to the peer seems to be always sent on Linux, even if the
             // FD was readable before.
-            this.update_fd_readiness(socket, /* force_edge */ false)?;
-            this.update_fd_readiness(peer_fd, /* force_edge */ true)?;
+            this.update_fd_readiness(socket, ReadinessUpdateFlags::DEFAULT)?;
+            this.update_fd_readiness(peer_fd, ReadinessUpdateFlags::FORCE_EDGE)?;
 
             return finish.call(this, Ok(write_size));
         }
@@ -531,10 +531,17 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Linux seems to always notify the peer if the read buffer is now empty.
                 // (Linux also does that if this was a "big" read, but to avoid some arbitrary
                 // threshold, we do not match that.)
-                this.update_fd_readiness(peer_fd, /* force_edge */ readbuf_now_empty)?;
+                this.update_fd_readiness(
+                    peer_fd,
+                    if readbuf_now_empty {
+                        ReadinessUpdateFlags::FORCE_EDGE
+                    } else {
+                        ReadinessUpdateFlags::DEFAULT
+                    },
+                )?;
             };
             // Notify readiness watchers: we might be no longer readable.
-            this.update_fd_readiness(socket, /* force_edge */ false)?;
+            this.update_fd_readiness(socket, ReadinessUpdateFlags::DEFAULT)?;
 
             return finish.call(this, Ok(read_size));
         }
