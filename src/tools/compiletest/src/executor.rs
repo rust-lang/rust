@@ -14,7 +14,7 @@ use std::{env, hint, mem, panic, thread};
 
 use camino::Utf8PathBuf;
 
-use crate::common::{Config, TestPaths};
+use crate::common::{Config, Debugger, TestPaths};
 use crate::output_capture::{self, ConsoleOut};
 use crate::panic_hook;
 
@@ -322,6 +322,7 @@ fn get_concurrency() -> usize {
 #[derive(Clone, Debug)]
 pub(crate) struct TestVariant {
     pub(crate) revision: Option<String>,
+    pub(crate) debugger: Option<Debugger>,
 }
 
 impl TestVariant {

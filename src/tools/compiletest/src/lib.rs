@@ -446,52 +446,62 @@ fn make_test(cx: &TestCollectorCx, collector: &mut TestCollector, testpaths: &Te
         early_props.revisions.iter().map(|r| Some(r.as_str())).collect()
     };
 
-    // For each revision (or the sole dummy revision), create and append a
+    // For debuginfo tests, we have to run them once for each debugger.
+    // We thus create a cartesian product of each revision and each supported debugger here.
+    let debuggers = if cx.config.mode == TestMode::DebugInfo {
+        vec![Some(Debugger::Cdb), Some(Debugger::Gdb), Some(Debugger::Lldb)]
+    } else {
+        vec![None]
+    };
+
+    // For each revision (or the sole dummy revision) and each debugger, create and append a
     // `CollectedTest` that can be handed over to the test executor.
-    collector.tests.extend(revisions.into_iter().map(|revision| {
-        // Create a test name and description to hand over to the executor.
-        let (test_name, filterable_path) =
-            make_test_name_and_filterable_path(&cx.config, testpaths, revision);
+    for debugger in debuggers {
+        collector.tests.extend(revisions.iter().map(|&revision| {
+            // Create a test name and description to hand over to the executor.
+            let (test_name, filterable_path) =
+                make_test_name_and_filterable_path(&cx.config, testpaths, revision);
 
-        // While scanning for ignore/only/needs directives, also collect aux
-        // paths for up-to-date checking.
-        let mut aux_props = AuxProps::default();
+            // While scanning for ignore/only/needs directives, also collect aux
+            // paths for up-to-date checking.
+            let mut aux_props = AuxProps::default();
 
-        // Create a description struct for the test/revision.
-        // This is where `ignore-*`/`only-*`/`needs-*` directives are handled,
-        // because they historically needed to set the libtest ignored flag.
-        let mut desc = make_test_description(
-            &cx.config,
-            &cx.cache,
-            test_name,
-            &test_path,
-            &filterable_path,
-            &file_directives,
-            revision,
-            &mut collector.poisoned,
-            &mut aux_props,
-        );
+            let revision = revision.map(str::to_owned);
+            let variant = TestVariant { revision, debugger };
 
-        let revision = revision.map(str::to_owned);
-        let variant = TestVariant { revision };
+            // Create a description struct for the test/revision.
+            // This is where `ignore-*`/`only-*`/`needs-*` directives are handled,
+            // because they historically needed to set the libtest ignored flag.
+            let mut desc = make_test_description(
+                &cx.config,
+                &cx.cache,
+                test_name,
+                &test_path,
+                &filterable_path,
+                &file_directives,
+                &variant,
+                &mut collector.poisoned,
+                &mut aux_props,
+            );
 
-        // If a test's inputs haven't changed since the last time it ran,
-        // mark it as ignored so that the executor will skip it.
-        if !desc.is_ignored()
-            && !cx.config.force_rerun
-            && is_up_to_date(cx, testpaths, &aux_props, &variant)
-        {
-            // Keep this in sync with the "up-to-date" message detected by bootstrap.
-            // FIXME(Zalathar): Now that we are no longer tied to libtest, we could
-            // find a less fragile way to communicate this status to bootstrap.
-            desc.ignore_message = Some("up-to-date".into());
-        }
+            // If a test's inputs haven't changed since the last time it ran,
+            // mark it as ignored so that the executor will skip it.
+            if !desc.is_ignored()
+                && !cx.config.force_rerun
+                && is_up_to_date(cx, testpaths, &aux_props, &variant)
+            {
+                // Keep this in sync with the "up-to-date" message detected by bootstrap.
+                // FIXME(Zalathar): Now that we are no longer tied to libtest, we could
+                // find a less fragile way to communicate this status to bootstrap.
+                desc.ignore_message = Some("up-to-date".into());
+            }
 
-        let config = Arc::clone(&cx.config);
-        let testpaths = testpaths.clone();
+            let config = Arc::clone(&cx.config);
+            let testpaths = testpaths.clone();
 
-        CollectedTest { desc, config, testpaths, variant }
-    }));
+            CollectedTest { desc, config, testpaths, variant }
+        }));
+    }
 }
 
 /// The path of the `stamp` file that gets created or updated whenever a

@@ -2067,7 +2067,7 @@ impl<'test> TestCx<'test> {
     /// the same directory.
     fn variant_with_safe_revision(&self) -> TestVariant {
         if self.config.mode == TestMode::Incremental {
-            TestVariant { revision: None }
+            TestVariant { revision: None, debugger: self.variant.debugger.clone() }
         } else {
             self.variant.clone()
         }

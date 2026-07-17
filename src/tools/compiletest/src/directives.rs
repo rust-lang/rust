@@ -20,7 +20,7 @@ use crate::directives::line::DirectiveLine;
 use crate::directives::needs::PreparedNeedsConditions;
 use crate::edition::{Edition, parse_edition};
 use crate::errors::ErrorKind;
-use crate::executor::{CollectedTestDesc, ShouldFail};
+use crate::executor::{CollectedTestDesc, ShouldFail, TestVariant};
 use crate::util::static_regex;
 use crate::{fatal, help};
 
@@ -892,7 +892,7 @@ pub(crate) fn make_test_description(
     path: &Utf8Path,
     filterable_path: &Utf8Path,
     file_directives: &FileDirectives<'_>,
-    test_revision: Option<&str>,
+    variant: &TestVariant,
     poisoned: &mut bool,
     aux_props: &mut AuxProps,
 ) -> CollectedTestDesc {
@@ -901,25 +901,25 @@ pub(crate) fn make_test_description(
 
     // Perform a per-file (rather than per-line) ignore decision to skip running debuginfo tests
     // if we don't have a debugger for them available.
-    // This is needed because we duplicate the Config once for each debugger.
-    if config.mode == TestMode::DebugInfo {
-        match &config.debugger {
-            Some(Debugger::Cdb) => {
+    // We do this to materialize debuginfo tests for each debugger and explicitly ignore
+    // the variants that are not supported in our environment.
+    if let Some(debugger) = variant.debugger.as_ref() {
+        match debugger {
+            Debugger::Cdb => {
                 if let Some(msg) = check_cdb_support(config) {
                     ignore_message = Some(Cow::Owned(msg));
                 }
             }
-            Some(Debugger::Gdb) => {
+            Debugger::Gdb => {
                 if let Some(msg) = check_gdb_support(config) {
                     ignore_message = Some(Cow::Owned(msg));
                 }
             }
-            Some(Debugger::Lldb) => {
+            Debugger::Lldb => {
                 if let Some(msg) = check_lldb_support(config) {
                     ignore_message = Some(Cow::Owned(msg));
                 }
             }
-            None => {}
         }
     }
 
@@ -929,7 +929,7 @@ pub(crate) fn make_test_description(
             config,
             file_directives,
             &mut |ln @ &DirectiveLine { line_number, .. }| {
-                if !ln.applies_to_test_revision(test_revision) {
+                if !ln.applies_to_test_revision(variant.revision()) {
                     return;
                 }
 
