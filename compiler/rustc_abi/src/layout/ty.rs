@@ -291,7 +291,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
     /// This is the "guaranteed" padding. There may be more bytes that are padding for some
     /// but not all variants of this type; those are not included.
     /// (E.g. `Option<i8>` has no guaranteed padding so the empty range set is returned, but its `None` value still has padding).
-    pub fn padding_ranges<C>(&self, cx: &C) -> Vec<Range<Size>>
+    pub fn variant_independent_padding_ranges<C>(&self, cx: &C) -> Vec<Range<Size>>
     where
         Ty: TyAbiInterface<'a, C> + Copy,
     {
