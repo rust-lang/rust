@@ -26,6 +26,7 @@ fn dyn_super(x: &dyn Super<Assoc = u8>) { x } //~ERROR mismatched types
 fn dyn_any(x: &dyn Any<Assoc = u8>) { x } //~ERROR mismatched types
 fn dyn_fixed(x: &dyn Fixed) { x } //~ERROR mismatched types
 fn dyn_fixed_multi(x: &dyn Fixed<Assoc = u16>) { x } //~ERROR mismatched types
+//~^ ERROR type mismatch resolving
 fn dyn_fixed_sub(x: &dyn FixedSub) { x } //~ERROR mismatched types
 fn dyn_fixed_static(x: &dyn FixedStatic) { x } //~ERROR mismatched types
 
