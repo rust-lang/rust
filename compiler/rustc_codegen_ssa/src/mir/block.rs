@@ -11,7 +11,7 @@ use rustc_hir::attrs::AttributeKind;
 use rustc_hir::lang_items::LangItem;
 use rustc_lint_defs::builtin::TAIL_CALL_TRACK_CALLER;
 use rustc_middle::mir::{self, AssertKind, InlineAsmMacro, SwitchTargets, UnwindTerminateReason};
-use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, ValidityRequirement};
+use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout, ValidityRequirement};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::{self, Instance, Ty, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
@@ -610,8 +610,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     //
                     // Returning a value with value-dependent padding will instead trigger a lint.
                     let ret_layout = self.fn_abi.ret.layout;
-                    let uninit_ranges = ret_layout.padding_ranges(bx.cx());
-                    self.zero_byte_ranges(bx, llslot, ret_layout.size, &uninit_ranges);
+                    self.clear_cmse_padding(bx, llslot, ret_layout.size, ret_layout);
                 }
 
                 load_cast(bx, cast_ty, llslot, self.fn_abi.ret.layout.align.abi)
@@ -1730,6 +1729,18 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
     }
 
+    fn clear_cmse_padding(
+        &mut self,
+        bx: &mut Bx,
+        base_ptr: Bx::Value,
+        limit: Size,
+        layout: TyAndLayout<'tcx>,
+    ) {
+        // First clear variant-independent padding, a series of memsets.
+        let variant_independent = layout.variant_independent_padding_ranges(self.cx);
+        self.zero_byte_ranges(bx, base_ptr, limit, &variant_independent);
+    }
+
     fn zero_byte_ranges(
         &mut self,
         bx: &mut Bx,
@@ -1887,11 +1898,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 //
                 // Passing an argument with value-dependent padding will instead trigger a lint.
                 if conv == CanonAbi::Arm(ArmCall::CCmseNonSecureCall) {
-                    self.zero_byte_ranges(
+                    self.clear_cmse_padding(
                         bx,
                         llscratch,
                         Size::from_bytes(copy_bytes),
-                        &arg.layout.padding_ranges(bx.cx()),
+                        arg.layout,
                     );
                 }
 
