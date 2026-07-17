@@ -1029,7 +1029,13 @@ impl<'tcx> Instance<'tcx> {
                             // FIXME: track metadata layout in ParamLayout to relax this
                             && layout.is_sized()
                         {
-                            let param_layout = ty::ParamLayout(layout);
+                            // TODO: this and (to a lesser extent) making randomization_seed an Option is hacky
+                            let seedless_layout_data = rustc_abi::LayoutData {
+                                randomization_seed: None,
+                                ..(*layout).clone()
+                            };
+                            let seedless_layout = tcx.mk_layout(seedless_layout_data);
+                            let param_layout = ty::ParamLayout(seedless_layout);
                             let erased_ty = tcx.mk_ty_from_kind(ty::Erased(param_layout));
                             erased_ty.into()
                         } else {

@@ -197,7 +197,9 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             size,
             max_repr_align: None,
             unadjusted_abi_align: element.align.abi,
-            randomization_seed: element.randomization_seed.wrapping_add(Hash64::new(count)),
+            randomization_seed: element
+                .randomization_seed
+                .map(|s| s.wrapping_add(Hash64::new(count))),
         })
     }
 
@@ -503,7 +505,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         let combined_seed = only_variant
             .iter()
             .map(|v| v.randomization_seed)
-            .fold(repr.field_shuffle_seed, |acc, seed| acc.wrapping_add(seed));
+            .try_fold(repr.field_shuffle_seed, |acc, seed| seed.map(|s| acc.wrapping_add(s)));
 
         Ok(LayoutData {
             variants: Variants::Single { index: only_variant_idx },
@@ -607,7 +609,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             let mut align = dl.aggregate_align;
             let mut max_repr_align = repr.align;
             let mut unadjusted_abi_align = align;
-            let mut combined_seed = repr.field_shuffle_seed;
+            let mut combined_seed = Some(repr.field_shuffle_seed);
 
             let mut variants_info = IndexVec::<VariantIdx, _>::with_capacity(variants.len());
             let mut variant_layouts = variants
@@ -620,7 +622,9 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                     align = align.max(st.align.abi);
                     max_repr_align = max_repr_align.max(st.max_repr_align);
                     unadjusted_abi_align = unadjusted_abi_align.max(st.unadjusted_abi_align);
-                    combined_seed = combined_seed.wrapping_add(st.randomization_seed);
+                    combined_seed = combined_seed
+                        .zip(st.randomization_seed)
+                        .map(|(combined, variant)| combined.wrapping_add(variant));
 
                     Some(VariantLayout::from_layout(st))
                 })
@@ -816,7 +820,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         let mut align = dl.aggregate_align;
         let mut max_repr_align = repr.align;
         let mut unadjusted_abi_align = align;
-        let mut combined_seed = repr.field_shuffle_seed;
+        let mut combined_seed = Some(repr.field_shuffle_seed);
 
         let mut size = Size::ZERO;
 
@@ -860,7 +864,9 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 align = align.max(st.align.abi);
                 max_repr_align = max_repr_align.max(st.max_repr_align);
                 unadjusted_abi_align = unadjusted_abi_align.max(st.unadjusted_abi_align);
-                combined_seed = combined_seed.wrapping_add(st.randomization_seed);
+                combined_seed = combined_seed
+                    .zip(st.randomization_seed)
+                    .map(|(combined, variant)| combined.wrapping_add(variant));
                 Ok(VariantLayout::from_layout(st))
             })
             .collect::<Result<IndexVec<VariantIdx, _>, _>>()?;
@@ -1124,9 +1130,9 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         let optimizing = &mut in_memory_order.raw[..end];
         let fields_excluding_tail = &fields.raw[..end];
         // unsizable tail fields are excluded so that we use the same seed for the sized and unsized layouts.
-        let field_seed = fields_excluding_tail
-            .iter()
-            .fold(Hash64::ZERO, |acc, f| acc.wrapping_add(f.randomization_seed));
+        let field_seed = fields_excluding_tail.iter().fold(Some(Hash64::ZERO), |acc, f| {
+            acc.zip(f.randomization_seed).map(|(acc, seed)| acc.wrapping_add(seed))
+        });
 
         if optimize_field_order && fields.len() > 1 {
             // If `-Z randomize-layout` was enabled for the type definition we can shuffle
@@ -1144,9 +1150,11 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                     use rand::seq::SliceRandom;
                     // `ReprOptions.field_shuffle_seed` is a deterministic seed we can use to randomize field
                     // ordering.
-                    let mut rng = rand_xoshiro::Xoshiro128StarStar::seed_from_u64(
-                        field_seed.wrapping_add(repr.field_shuffle_seed).as_u64(),
-                    );
+                    let rng_seed = field_seed
+                        .expect("-Zrandomize-layout is incompatible with -Zpolymorphize")
+                        .wrapping_add(repr.field_shuffle_seed)
+                        .as_u64();
+                    let mut rng = rand_xoshiro::Xoshiro128StarStar::seed_from_u64(rng_seed);
 
                     // Shuffle the ordering of the fields.
                     optimizing.shuffle(&mut rng);
@@ -1432,7 +1440,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             unadjusted_abi_align
         };
 
-        let seed = field_seed.wrapping_add(repr.field_shuffle_seed);
+        let seed = field_seed.map(|field| field.wrapping_add(repr.field_shuffle_seed));
 
         Ok(LayoutData {
             variants: Variants::Single { index: VariantIdx::new(0) },
@@ -1546,6 +1554,6 @@ where
         align: AbiAlign::new(align),
         max_repr_align: None,
         unadjusted_abi_align: elt.align.abi,
-        randomization_seed: elt.randomization_seed.wrapping_add(Hash64::new(count)),
+        randomization_seed: elt.randomization_seed.map(|s| s.wrapping_add(Hash64::new(count))),
     })
 }

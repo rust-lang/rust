@@ -527,7 +527,7 @@ fn layout_of_uncached<'tcx>(
             let element = cx.layout_of(element)?;
             map_layout(cx.calc.array_like(&element, None).map(|mut layout| {
                 // a randomly chosen value to distinguish slices
-                layout.randomization_seed = Hash64::new(0x2dcba99c39784102);
+                layout.randomization_seed = Some(Hash64::new(0x2dcba99c39784102));
                 layout
             }))?
         }
@@ -535,7 +535,7 @@ fn layout_of_uncached<'tcx>(
             let element = scalar(Int(I8, false));
             map_layout(cx.calc.array_like(&element, None).map(|mut layout| {
                 // another random value
-                layout.randomization_seed = Hash64::new(0xc1325f37d127be22);
+                layout.randomization_seed = Some(Hash64::new(0xc1325f37d127be22));
                 layout
             }))?
         }
@@ -596,7 +596,7 @@ fn layout_of_uncached<'tcx>(
                 )
                 .map(|mut layout| {
                     // this is similar to how ReprOptions populates its field_shuffle_seed
-                    layout.randomization_seed = tcx.def_path_hash(def_id).0.to_smaller_hash();
+                    layout.randomization_seed = Some(tcx.def_path_hash(def_id).0.to_smaller_hash());
                     debug!("coroutine layout ({:?}): {:#?}", ty, layout);
                     layout
                 });
