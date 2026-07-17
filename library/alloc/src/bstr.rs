@@ -71,7 +71,6 @@ impl ByteString {
     /// `Result` and allowing for the possibility of the content not being UTF-8.
     #[unstable(feature = "bstr", issue = "134915")]
     #[rustc_allow_incoherent_impl]
-    #[expect(clippy::inherent_to_string_shadow_display)]
     pub fn to_string(&self) -> Result<String, FromUtf8Error> {
         String::from_utf8(self.0.clone())
     }
@@ -702,7 +701,6 @@ impl ByteStr {
     /// `Result` and allowing for the possibility of the content not being UTF-8.
     #[unstable(feature = "bstr", issue = "134915")]
     #[rustc_allow_incoherent_impl]
-    #[expect(clippy::inherent_to_string_shadow_display)]
     pub fn to_string(&self) -> Result<String, FromUtf8Error> {
         String::from_utf8(self.0.to_vec())
     }
