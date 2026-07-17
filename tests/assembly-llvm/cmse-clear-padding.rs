@@ -237,10 +237,16 @@ enum VariantsDifferentSize {
 }
 impl Copy for VariantsDifferentSize {}
 
+// A uxtbeq conditionally clears the padding only for variant A.
+//
 // CHECK-LABEL: variants_different_size:
 // CHECK: mov r7, sp
-// CHECK-NEXT: ldr r0, [r0]
-// CHECK-NEXT: bic r0, r0, #65280
+// CHECK-NEXT: ldrh r1, [r0, #2]
+// CHECK-NEXT: ldrb r0, [r0]
+// CHECK-NEXT: lsls r2, r0, #31
+// CHECK-NEXT: it eq
+// CHECK-NEXT: uxtbeq r1, r1
+// CHECK-NEXT: orr.w r0, r0, r1, lsl #16
 #[no_mangle]
 extern "cmse-nonsecure-entry" fn variants_different_size(
     v: &VariantsDifferentSize,
@@ -258,6 +264,8 @@ enum UninhabitedVariant {
 }
 impl Copy for UninhabitedVariant {}
 
+// Only `B` is inhabited, so reading the tag is not needed.
+//
 // CHECK-LABEL: uninhabited_variant:
 // CHECK: mov r7, sp
 // CHECK-NEXT: ldrh r1, [r0, #2]
@@ -268,6 +276,7 @@ extern "cmse-nonsecure-entry" fn uninhabited_variant(v: &UninhabitedVariant) -> 
     *v
 }
 
+// The single guaranteed-padding byte is cleared with a `bic` mask over the whole loaded word.
 // CHECK-LABEL: variants_same_size_array:
 // CHECK: mov r7, sp
 // CHECK-NEXT: ldr r0, [r0]
@@ -282,8 +291,12 @@ extern "cmse-nonsecure-entry" fn variants_same_size_array(
 
 // CHECK-LABEL: variants_different_size_array:
 // CHECK: mov r7, sp
-// CHECK-NEXT: ldr r0, [r0]
-// CHECK-NEXT: bic r0, r0, #65280
+// CHECK-NEXT: ldrh r1, [r0, #2]
+// CHECK-NEXT: ldrb r0, [r0]
+// CHECK-NEXT: lsls r2, r0, #31
+// CHECK-NEXT: it eq
+// CHECK-NEXT: uxtbeq r1, r1
+// CHECK-NEXT: orr.w r0, r0, r1, lsl #16
 #[no_mangle]
 #[expect(improper_ctypes_definitions)]
 extern "cmse-nonsecure-entry" fn variants_different_size_array(
@@ -307,8 +320,12 @@ extern "cmse-nonsecure-entry" fn variants_same_size_tuple(
 
 // CHECK-LABEL: variants_different_size_tuple:
 // CHECK: mov r7, sp
-// CHECK-NEXT: ldr r0, [r0]
-// CHECK-NEXT: bic r0, r0, #65280
+// CHECK-NEXT: ldrh r1, [r0, #2]
+// CHECK-NEXT: ldrb r0, [r0]
+// CHECK-NEXT: lsls r2, r0, #31
+// CHECK-NEXT: it eq
+// CHECK-NEXT: uxtbeq r1, r1
+// CHECK-NEXT: orr.w r0, r0, r1, lsl #16
 #[no_mangle]
 #[expect(improper_ctypes_definitions)]
 extern "cmse-nonsecure-entry" fn variants_different_size_tuple(
@@ -326,15 +343,71 @@ enum ThreeVariants {
 }
 
 // CHECK-LABEL: cmse_call_three_variants:
-// CHECK: mov r7, sp
-// CHECK-NEXT: mov r3, r0
+// CHECK: mov r3, r0
+//
+// Clears padding in the extend the discriminant.
 // CHECK-NEXT: uxtb r0, r1
-// CHECK-NEXT: mov r1, r2
+//
+// Uses uxtb for the A variant, uxtheq for the B variant,
+// and nothing for the C variant.
+//
+// CHECK-NEXT: cbz r0, .LBB{{[0-9_]+}}
+// CHECK-NEXT: cmp r0, #1
+// CHECK-NEXT: it eq
+// CHECK-NEXT: uxtheq r2, r2
+// CHECK-NEXT: b .LBB{{[0-9_]+}}
+// CHECK-NEXT: .LBB{{[0-9_]+}}:
+// CHECK-NEXT: uxtb r2, r2
 #[no_mangle]
 #[expect(improper_ctypes_definitions)]
 extern "C" fn cmse_call_three_variants(
     f: unsafe extern "cmse-nonsecure-call" fn(ThreeVariants),
     x: ThreeVariants,
+) {
+    unsafe { f(x) }
+}
+
+/// Three variants of different sizes, with a nested enum.
+#[repr(C)]
+enum ThreeVariantsNested {
+    A(u8),
+    B(Option<u8>),
+    C(u32),
+}
+
+// CHECK-LABEL: cmse_call_three_variants_nested:
+// CHECK: mov r3, r0
+//
+// Clears padding in the extend the discriminant.
+// CHECK-NEXT: uxtb r0, r1
+//
+// Match on the discriminant, jump to A block
+//
+// CHECK-NEXT: cbz r0, .LBB{{[0-9_]+}}
+//
+// Match on the discriminant, do nothing for C.
+//
+// CHECK-NEXT: cmp r0, #1
+// CHECK-NEXT: bne .LBB{{[0-9_]+}}
+//
+// The B variant conditionally clears the Option payload.
+//
+// CHECK-NEXT: lsls r1, r2, #31
+// CHECK-NEXT: movw r1, #65535
+// CHECK-NEXT: it eq
+// CHECK-NEXT: moveq r1, #254
+// CHECK-NEXT: ands r2, r1
+// CHECK-NEXT: b .LBB{{[0-9_]+}}
+//
+// The A variant uses uxtb.
+//
+// CHECK-NEXT: .LBB{{[0-9_]+}}:
+// CHECK-NEXT: uxtb r2, r2
+#[no_mangle]
+#[expect(improper_ctypes_definitions)]
+extern "C" fn cmse_call_three_variants_nested(
+    f: unsafe extern "cmse-nonsecure-call" fn(ThreeVariantsNested),
+    x: ThreeVariantsNested,
 ) {
     unsafe { f(x) }
 }
@@ -346,11 +419,17 @@ struct BoolU32 {
     val: u32,
 }
 
+// Bit 0b0010 is used to encode the tag, so `r0 - 2 == 0` checks the tag value.
+// Zero-extension clears padding in the tag 32-bit word, the `val` is either 0
+// (stored in r1) when None or the actual value r2 when Some.
+//
 // CHECK-LABEL: cmse_call_niche:
 // CHECK: mov r7, sp
 // CHECK-NEXT: mov r3, r0
 // CHECK-NEXT: uxtb r0, r1
-// CHECK-NEXT: mov r1, r2
+// CHECK-NEXT: subs r1, r0, #2
+// CHECK-NEXT: it ne
+// CHECK-NEXT: movne r1, r2
 #[no_mangle]
 #[expect(improper_ctypes_definitions)]
 extern "C" fn cmse_call_niche(
