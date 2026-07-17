@@ -79,6 +79,7 @@ mod handlers {
     pub(crate) mod remove_trailing_return;
     pub(crate) mod remove_unnecessary_else;
     pub(crate) mod replace_filter_map_next_with_find_map;
+    pub(crate) mod return_outside_function;
     pub(crate) mod trait_impl_incorrect_safety;
     pub(crate) mod trait_impl_missing_assoc_item;
     pub(crate) mod trait_impl_orphan;
@@ -560,6 +561,7 @@ pub fn semantic_diagnostics(
             AnyDiagnostic::FruInDestructuringAssignment(d) => handlers::fru_in_destructuring_assignment::fru_in_destructuring_assignment(&ctx, &d),
             AnyDiagnostic::ExplicitDropMethodUse(d) => handlers::explicit_drop_method_use::explicit_drop_method_use(&ctx, &d),
             AnyDiagnostic::YieldOutsideCoroutine(d) => handlers::yield_outside_coroutine::yield_outside_coroutine(&ctx, &d),
+            AnyDiagnostic::ReturnOutsideFunction(d) => handlers::return_outside_function::return_outside_function(&ctx, &d),
         };
         res.push(d)
     }

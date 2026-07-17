@@ -106,7 +106,7 @@ pub use autoderef::autoderef;
 pub use infer::{
     Adjust, Adjustment, AutoBorrow, BindingMode, ByRef, ExplicitDropMethodUseKind,
     InferenceDiagnostic, InferenceResult, InferenceTyDiagnosticSource, OverloadedDeref,
-    PointerCast, cast::CastError, could_coerce, could_unify, could_unify_deeply,
+    PointerCast, ReturnKind, cast::CastError, could_coerce, could_unify, could_unify_deeply,
     infer_query_with_inspect,
 };
 pub use lower::{

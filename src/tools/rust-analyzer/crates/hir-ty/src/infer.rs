@@ -524,6 +524,18 @@ pub enum InferenceDiagnostic {
         #[type_visitable(ignore)]
         expr: ExprId,
     },
+    ReturnOutsideFunction {
+        #[type_visitable(ignore)]
+        expr: ExprId,
+        #[type_visitable(ignore)]
+        kind: ReturnKind,
+    },
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum ReturnKind {
+    ReturnExpr,
+    BecomeExpr,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
