@@ -406,7 +406,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 obligation.param_env,
                 obligation.cause.clone(),
                 obligation.recursion_depth + 1,
-                obligation.predicate,
+                ty::Unnormalized::new_wip(obligation.predicate),
                 &mut obligations,
             );
             if predicate != obligation.predicate {

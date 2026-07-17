@@ -1059,7 +1059,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             if upcast_trait_ref.def_id() == target_trait_did
                                 && let Ok(nested) = self.match_upcast_principal(
                                     obligation,
-                                    upcast_trait_ref,
+                                    ty::Unnormalized::new_wip(upcast_trait_ref),
                                     a_data,
                                     b_data,
                                     a_region,

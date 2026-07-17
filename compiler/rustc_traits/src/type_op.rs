@@ -38,42 +38,44 @@ fn type_op_ascribe_user_type<'tcx>(
 
 fn type_op_normalize<'tcx, T>(
     ocx: &ObligationCtxt<'_, 'tcx>,
-    key: ParamEnvAnd<'tcx, Normalize<T>>,
+    key: ParamEnvAnd<'tcx, Normalize<'tcx, T>>,
 ) -> Result<T, NoSolution>
 where
     T: fmt::Debug + TypeFoldable<TyCtxt<'tcx>>,
 {
     let ParamEnvAnd { param_env, value: Normalize { value } } = key;
-    let Normalized { value, obligations } =
-        ocx.infcx.at(&ObligationCause::dummy(), param_env).query_normalize(value)?;
+    let Normalized { value, obligations } = ocx
+        .infcx
+        .at(&ObligationCause::dummy(), param_env)
+        .query_normalize(value.skip_normalization())?;
     ocx.register_obligations(obligations);
     Ok(value)
 }
 
 fn type_op_normalize_ty<'tcx>(
     tcx: TyCtxt<'tcx>,
-    canonicalized: CanonicalQueryInput<'tcx, ParamEnvAnd<'tcx, Normalize<Ty<'tcx>>>>,
+    canonicalized: CanonicalQueryInput<'tcx, ParamEnvAnd<'tcx, Normalize<'tcx, Ty<'tcx>>>>,
 ) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, Ty<'tcx>>>, NoSolution> {
     tcx.infer_ctxt().enter_canonical_trait_query(&canonicalized, type_op_normalize)
 }
 
 fn type_op_normalize_clause<'tcx>(
     tcx: TyCtxt<'tcx>,
-    canonicalized: CanonicalQueryInput<'tcx, ParamEnvAnd<'tcx, Normalize<Clause<'tcx>>>>,
+    canonicalized: CanonicalQueryInput<'tcx, ParamEnvAnd<'tcx, Normalize<'tcx, Clause<'tcx>>>>,
 ) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, Clause<'tcx>>>, NoSolution> {
     tcx.infer_ctxt().enter_canonical_trait_query(&canonicalized, type_op_normalize)
 }
 
 fn type_op_normalize_fn_sig<'tcx>(
     tcx: TyCtxt<'tcx>,
-    canonicalized: CanonicalQueryInput<'tcx, ParamEnvAnd<'tcx, Normalize<FnSig<'tcx>>>>,
+    canonicalized: CanonicalQueryInput<'tcx, ParamEnvAnd<'tcx, Normalize<'tcx, FnSig<'tcx>>>>,
 ) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, FnSig<'tcx>>>, NoSolution> {
     tcx.infer_ctxt().enter_canonical_trait_query(&canonicalized, type_op_normalize)
 }
 
 fn type_op_normalize_poly_fn_sig<'tcx>(
     tcx: TyCtxt<'tcx>,
-    canonicalized: CanonicalQueryInput<'tcx, ParamEnvAnd<'tcx, Normalize<PolyFnSig<'tcx>>>>,
+    canonicalized: CanonicalQueryInput<'tcx, ParamEnvAnd<'tcx, Normalize<'tcx, PolyFnSig<'tcx>>>>,
 ) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, PolyFnSig<'tcx>>>, NoSolution> {
     tcx.infer_ctxt().enter_canonical_trait_query(&canonicalized, type_op_normalize)
 }
