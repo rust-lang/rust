@@ -1,6 +1,7 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/4875>.
+//! Test struct patterns as fn arguments don't ICE.
 //@ run-pass
 #![allow(dead_code)]
-// regression test for issue 4875
 
 
 pub struct Foo<T> {

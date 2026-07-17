@@ -1,10 +1,13 @@
-//@ run-pass
+//! Regression test for <https://github.com/rust-lang/rust/issues/45731>.
+//! This used to `SIGBUS` on darwin when DWARF binary was corrupted.
+
 #![allow(unused_variables)]
 //@ compile-flags:--test -g
 //@ ignore-ios needs the `.dSYM` files to be moved to the device
 //@ ignore-tvos needs the `.dSYM` files to be moved to the device
 //@ ignore-watchos needs the `.dSYM` files to be moved to the device
 //@ ignore-visionos needs the `.dSYM` files to be moved to the device
+//@ run-pass
 
 #[cfg(target_vendor = "apple")]
 #[test]

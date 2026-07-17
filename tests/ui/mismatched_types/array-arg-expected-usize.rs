@@ -1,3 +1,5 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/4517>.
+//! Test error message use correct array syntax.
 //@ dont-require-annotations: NOTE
 
 fn bar(int_param: usize) {}

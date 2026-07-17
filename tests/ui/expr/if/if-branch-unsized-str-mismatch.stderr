@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-46302.rs:3:27
+  --> $DIR/if-branch-unsized-str-mismatch.rs:6:27
    |
 LL |   let u: &str = if true { s[..2] } else { s };
    |                           ^^^^^^ expected `&str`, found `str`

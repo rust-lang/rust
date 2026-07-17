@@ -1,3 +1,5 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/4542>.
+//! Test matching cloned `String` doesn't segfault.
 //@ run-pass
 
 use std::env;
