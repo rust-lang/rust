@@ -1,3 +1,5 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/48131>.
+
 // This note is annotated because the purpose of the test
 // is to ensure that certain other notes are not generated.
 #![deny(unused_unsafe)]

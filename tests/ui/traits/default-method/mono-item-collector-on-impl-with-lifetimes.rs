@@ -1,6 +1,6 @@
-// Make sure that the mono-item collector does not crash when trying to
-// instantiate a default impl of a method with lifetime parameters.
-// See https://github.com/rust-lang/rust/issues/47309
+//! Regression test for <https://github.com/rust-lang/rust/issues/47309>.
+//! Make sure that the mono-item collector does not crash when trying to
+//! instantiate a default impl of a method with lifetime parameters.
 
 //@ compile-flags:-Clink-dead-code
 //@ build-pass

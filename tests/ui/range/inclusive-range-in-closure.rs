@@ -1,4 +1,7 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/50415>.
+//! Test inclusive ranges in closures don't ICE.
 //@ run-pass
+
 fn main() {
     // Simplified test case
     let _ = || 0..=1;
