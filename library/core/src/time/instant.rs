@@ -68,6 +68,7 @@ use crate::time::Duration;
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[rustc_has_incoherent_inherent_impls]
 #[repr(transparent)]
+#[rustc_pub_transparent]
 #[stable(feature = "time2", since = "1.8.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "Instant")]
 pub struct Instant(Duration);
