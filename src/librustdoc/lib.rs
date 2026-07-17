@@ -77,7 +77,7 @@ use rustc_errors::DiagCtxtHandle;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_interface::interface;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::{ErrorOutputType, RustcOptGroup, make_crate_type_option};
+use rustc_session::config::{ErrorOutputType, Input, RustcOptGroup, make_crate_type_option};
 use rustc_session::{EarlyDiagCtxt, getopts};
 use rustc_span::{BytePos, Span, SyntaxContext};
 use tracing::info;
@@ -772,7 +772,10 @@ fn run_renderer<
 /// Renders and writes cross-crate info files, like the search index. This function exists so that
 /// we can run rustdoc without a crate root in the `--merge=finalize` mode. Cross-crate info files
 /// discovered via `--read-doc-meta-dir` are combined and written to the doc root.
-fn run_merge_finalize(opt: config::RenderOptions) -> Result<(), error::Error> {
+fn run_merge_finalize(
+    opt: config::RenderOptions,
+    compiler: &interface::Compiler,
+) -> Result<(), error::Error> {
     assert!(
         opt.should_merge.write_rendered_cci,
         "config.rs only allows us to return InputMode::NoInputMergeFinalize if --merge=finalize"
@@ -783,16 +786,37 @@ fn run_merge_finalize(opt: config::RenderOptions) -> Result<(), error::Error> {
     );
     let crates = html::render::CrateInfo::read_many(&opt.include_parts_dir)?;
     let include_sources = !opt.html_no_source;
-    html::render::write_not_crate_specific(
-        &crates,
-        &opt.output,
-        &opt,
-        &opt.themes,
-        opt.extension_css.as_deref(),
-        &opt.resource_suffix,
-        include_sources,
-    )?;
-    Ok(())
+
+    let krate = ast::Crate {
+        attrs: Default::default(),
+        items: Default::default(),
+        spans: Default::default(),
+        id: ast::DUMMY_NODE_ID,
+        is_placeholder: false,
+    };
+    rustc_interface::create_and_enter_global_ctxt(compiler, krate, |tcx| {
+        html::render::write_not_crate_specific(
+            &crates,
+            &opt.output,
+            &opt,
+            &opt.themes,
+            opt.extension_css.as_deref(),
+            &opt.resource_suffix,
+            include_sources,
+            &crate::html::layout::Layout {
+                logo: String::new(),
+                favicon: String::new(),
+                external_html: opt.external_html.clone(),
+                default_settings: opt.default_settings.clone(),
+                krate: String::new(),
+                krate_version: String::new(),
+                css_file_extension: opt.extension_css.clone(),
+                scrape_examples_extension: false,
+            },
+            tcx,
+        )?;
+        Ok(())
+    })
 }
 
 fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
@@ -834,10 +858,18 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
     let input = match input {
         config::InputMode::HasFile(input) => input,
         config::InputMode::NoInputMergeFinalize => {
+            let config = core::create_config(
+                Input::Str {
+                    name: rustc_span::FileName::Custom(String::new()),
+                    input: String::new(),
+                },
+                options,
+                &render_options,
+            );
             return wrap_return(
                 dcx,
-                rustc_span::create_session_globals_then(options.edition, &[], None, || {
-                    run_merge_finalize(render_options)
+                interface::run_compiler(config, |compiler| {
+                    run_merge_finalize(render_options, compiler)
                         .map_err(|e| format!("could not write merged cross-crate info: {e}"))
                 }),
             );
