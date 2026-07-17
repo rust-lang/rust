@@ -1,4 +1,4 @@
-//@ doc-flags:--parts-out-dir=info/doc.parts/quebec
+//@ doc-flags:--read-doc-meta-dir=.
 //@ doc-flags:--enable-index-page
 //@ doc-flags:-Zunstable-options
 
@@ -8,6 +8,6 @@
 //@ has quebec/struct.Quebec.html
 //@ hasraw search.index/name/*.js 'Quebec'
 
-// we can --parts-out-dir, but that doesn't do anything other than create
+// we can --write-doc-meta-dir, but that doesn't do anything other than create
 // the file
 pub struct Quebec;
