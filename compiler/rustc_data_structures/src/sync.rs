@@ -25,11 +25,6 @@
 use std::collections::HashMap;
 use std::hash::{BuildHasher, Hash};
 
-pub use parking_lot::{
-    MappedRwLockReadGuard as MappedReadGuard, MappedRwLockWriteGuard as MappedWriteGuard,
-    RwLockReadGuard as ReadGuard, RwLockWriteGuard as WriteGuard,
-};
-
 pub use self::atomic::AtomicU64;
 pub use self::freeze::{FreezeLock, FreezeReadGuard, FreezeWriteGuard};
 #[doc(no_inline)]
@@ -41,6 +36,7 @@ pub use self::parallel::{
     broadcast, par_fns, par_for_each_in, par_for_each_slice, par_join, par_map, parallel_guard,
     spawn, try_par_for_each_in,
 };
+pub use self::rw_lock::{MappedReadGuard, MappedWriteGuard, ReadGuard, RwLock, WriteGuard};
 pub use self::vec::{AppendOnlyIndexVec, AppendOnlyVec};
 pub use self::worker_local::{Registry, WorkerLocal};
 pub use crate::marker::*;
@@ -48,6 +44,7 @@ pub use crate::marker::*;
 mod freeze;
 mod lock;
 mod parallel;
+mod rw_lock;
 mod vec;
 mod worker_local;
 
@@ -149,10 +146,6 @@ mod mode {
     }
 }
 
-/// This makes locks panic if they are already held.
-/// It is only useful when you are running in a single thread
-const ERROR_CHECKING: bool = false;
-
 #[derive(Default)]
 #[repr(align(64))]
 pub struct CacheAligned<T>(pub T);
@@ -166,60 +159,5 @@ pub trait HashMapExt<K, V> {
 impl<K: Eq + Hash, V: Eq, S: BuildHasher> HashMapExt<K, V> for HashMap<K, V, S> {
     fn insert_same(&mut self, key: K, value: V) {
         self.entry(key).and_modify(|old| assert!(*old == value)).or_insert(value);
-    }
-}
-
-#[derive(Debug, Default)]
-pub struct RwLock<T>(parking_lot::RwLock<T>);
-
-impl<T> RwLock<T> {
-    #[inline(always)]
-    pub fn new(inner: T) -> Self {
-        RwLock(parking_lot::RwLock::new(inner))
-    }
-
-    #[inline(always)]
-    pub fn into_inner(self) -> T {
-        self.0.into_inner()
-    }
-
-    #[inline(always)]
-    pub fn get_mut(&mut self) -> &mut T {
-        self.0.get_mut()
-    }
-
-    #[inline(always)]
-    pub fn read(&self) -> ReadGuard<'_, T> {
-        if ERROR_CHECKING {
-            self.0.try_read().expect("lock was already held")
-        } else {
-            self.0.read()
-        }
-    }
-
-    #[inline(always)]
-    pub fn try_write(&self) -> Result<WriteGuard<'_, T>, ()> {
-        self.0.try_write().ok_or(())
-    }
-
-    #[inline(always)]
-    pub fn write(&self) -> WriteGuard<'_, T> {
-        if ERROR_CHECKING {
-            self.0.try_write().expect("lock was already held")
-        } else {
-            self.0.write()
-        }
-    }
-
-    #[inline(always)]
-    #[track_caller]
-    pub fn borrow(&self) -> ReadGuard<'_, T> {
-        self.read()
-    }
-
-    #[inline(always)]
-    #[track_caller]
-    pub fn borrow_mut(&self) -> WriteGuard<'_, T> {
-        self.write()
     }
 }
