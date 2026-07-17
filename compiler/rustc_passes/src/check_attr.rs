@@ -303,6 +303,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::RustcAllowConstFnUnstable(..) => (),
             AttributeKind::RustcAllowIncoherentImpl(..) => (),
             AttributeKind::RustcAllowLifetimeDependentSpecialization => (),
+            AttributeKind::RustcAntiFundamental => (),
             AttributeKind::RustcAutodiff(..) => (),
             AttributeKind::RustcBodyStability { .. } => (),
             AttributeKind::RustcBuiltinMacro { .. } => (),
