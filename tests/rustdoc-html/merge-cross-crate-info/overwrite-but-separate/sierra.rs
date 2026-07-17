@@ -1,8 +1,7 @@
 //@ aux-build:tango.rs
 //@ build-aux-docs
-//@ doc-flags:--merge=finalize
-//@ doc-flags:--include-parts-dir=info/doc.parts/tango
-//@ doc-flags:--include-parts-dir=info/doc.parts/quebec
+//@ doc-flags:--read-doc-meta-dir=info/doc.parts/tango
+//@ doc-flags:--read-doc-meta-dir=info/doc.parts/quebec
 //@ doc-flags:--enable-index-page
 //@ doc-flags:-Zunstable-options
 

@@ -1,6 +1,6 @@
 //@ aux-build:quebec.rs
 //@ build-aux-docs
-//@ doc-flags:--merge=finalize
+//@ doc-flags:--read-doc-meta-dir=info/doc.parts
 //@ doc-flags:--enable-index-page
 //@ doc-flags:-Zunstable-options
 

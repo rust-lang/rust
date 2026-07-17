@@ -1,4 +1,4 @@
-// Running --merge=finalize without an input crate root should not trigger ICE.
+// Running --read-doc-meta without an input crate root should not trigger ICE.
 // Issue: https://github.com/rust-lang/rust/issues/146646
 
 //@ needs-target-std
@@ -14,8 +14,7 @@ fn main() {
         .input("dep1.rs")
         .out_dir(&out_dir)
         .arg("-Zunstable-options")
-        .arg(format!("--parts-out-dir={}", parts_out_dir.display()))
-        .arg("--merge=none")
+        .arg(format!("--write-doc-meta-dir={}", parts_out_dir.display()))
         .run();
     assert!(parts_out_dir.join("dep1.json").exists());
 
@@ -23,20 +22,18 @@ fn main() {
         .input("dep2.rs")
         .out_dir(&out_dir)
         .arg("-Zunstable-options")
-        .arg(format!("--parts-out-dir={}", parts_out_dir.display()))
-        .arg("--merge=none")
+        .arg(format!("--write-doc-meta-dir={}", parts_out_dir.display()))
         .run();
     assert!(parts_out_dir.join("dep2.json").exists());
 
-    // dep_missing is different, because --parts-out-dir is not supplied
+    // dep_missing is different, because --write-doc-meta-dir is not supplied
     rustdoc().input("dep_missing.rs").out_dir(&out_dir).run();
     assert!(parts_out_dir.join("dep2.json").exists());
 
     let output = rustdoc()
         .arg("-Zunstable-options")
         .out_dir(&out_dir)
-        .arg(format!("--include-parts-dir={}", parts_out_dir.display()))
-        .arg("--merge=finalize")
+        .arg(format!("--read-doc-meta-dir={}", parts_out_dir.display()))
         .run();
     output.assert_stderr_not_contains("error: the compiler unexpectedly panicked. this is a bug.");
 

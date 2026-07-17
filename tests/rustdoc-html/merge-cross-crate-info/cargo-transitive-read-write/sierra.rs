@@ -1,6 +1,5 @@
 //@ aux-build:tango.rs
 //@ build-aux-docs
-//@ doc-flags:--merge=shared
 //@ doc-flags:--enable-index-page
 //@ doc-flags:-Zunstable-options
 
@@ -18,7 +17,7 @@
 //@ hasraw search.index/name/*.js 'Sierra'
 //@ hasraw search.index/name/*.js 'Quebec'
 
-// similar to cargo-workflow-transitive, but we use --merge=read-write,
+// similar to cargo-workflow-transitive, but we use shared mode,
 // which is the default.
 extern crate tango;
 pub struct Sierra;
