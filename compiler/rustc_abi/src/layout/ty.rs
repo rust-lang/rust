@@ -284,6 +284,27 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         found
     }
 
+    /// Whether this type/layout has any padding that is dependent on a variant, i.e. has bytes that
+    /// are padding for some, but not all, valid values of this type.
+    pub fn has_variant_dependent_padding<C>(&self, cx: &C) -> bool
+    where
+        Ty: TyAbiInterface<'a, C> + Copy,
+    {
+        match self.variants {
+            Variants::Multiple { .. } => true,
+            Variants::Empty => false,
+            Variants::Single { .. } => match &self.fields {
+                FieldsShape::Primitive | FieldsShape::Union(_) => false,
+                FieldsShape::Array { count, .. } => {
+                    *count > 0 && self.field(cx, 0).has_variant_dependent_padding(cx)
+                }
+                FieldsShape::Arbitrary { offsets, .. } => {
+                    (0..offsets.len()).any(|i| self.field(cx, i).has_variant_dependent_padding(cx))
+                }
+            },
+        }
+    }
+
     /// The ranges of bytes that are always ignored by the representation relation of this type.
     ///
     /// In other words, for any sequence of bytes, if we reset the these padding bytes to uninit,
@@ -316,6 +337,45 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         uninit_ranges
     }
 
+    /// The ranges of bytes that are ignored by the representation relation of this variant.
+    ///
+    /// The result does not include variant-independent padding.
+    pub fn variant_dependent_padding_ranges<C>(
+        &self,
+        cx: &C,
+        variant_index: VariantIdx,
+    ) -> Vec<Range<Size>>
+    where
+        Ty: TyAbiInterface<'a, C> + Copy,
+    {
+        let Variants::Multiple { .. } = self.variants else {
+            return Vec::new();
+        };
+
+        // Bytes that are data in some variant.
+        let mut any = RangeSet::new();
+        self.add_data_ranges(cx, Size::ZERO, &mut any);
+
+        // Bytes that are data in this variant.
+        let mut this = RangeSet::new();
+
+        // The variants do not contain e.g. the discriminant or coroutine upvars.
+        let FieldsShape::Arbitrary { offsets, in_memory_order: _ } = &self.fields else {
+            unreachable!("a multi-variant layout should have `Arbitrary` fields")
+        };
+
+        // So add them explicitly.
+        for (field, &offset) in offsets.iter_enumerated() {
+            let field = self.field(cx, field.as_usize());
+            field.add_data_ranges(cx, offset, &mut this);
+        }
+
+        self.for_variant(cx, variant_index).add_data_ranges(cx, Size::ZERO, &mut this);
+
+        // Padding specific to this variant: data in some variant, but not in this one.
+        any.difference(&this).0.iter().map(|&(offset, size)| offset..offset + size).collect()
+    }
+
     /// Extend `out` with all ranges of bytes that *may* carry relevant data for values of this type.
     /// For enums and unions there are offsets that are initialized for some
     /// variants but not for others; those offset *will* get added to `out`.
@@ -327,51 +387,43 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
             return;
         }
 
-        match &self.variants {
-            Variants::Empty => { /* done */ }
-            Variants::Single { index: _ } => match &self.fields {
-                FieldsShape::Primitive => {
-                    out.add_range(base_offset, self.size);
+        // Visit the fields of this value. For enum values the fields include the discriminant.
+        match &self.fields {
+            FieldsShape::Primitive => {
+                out.add_range(base_offset, self.size);
+            }
+            &FieldsShape::Union(field_count) => {
+                for field in 0..field_count.get() {
+                    let field = self.field(cx, field);
+                    field.add_data_ranges(cx, base_offset, out);
                 }
-                &FieldsShape::Union(field_count) => {
-                    for field in 0..field_count.get() {
-                        let field = self.field(cx, field);
-                        field.add_data_ranges(cx, base_offset, out);
-                    }
-                }
-                &FieldsShape::Array { stride, count } => {
-                    let elem = self.field(cx, 0);
+            }
+            &FieldsShape::Array { stride, count } => {
+                let elem = self.field(cx, 0);
 
-                    // For scalars we know there is no padding between the elements,
-                    // so the entire array is a single big data range.
-                    if elem.backend_repr.is_scalar() {
-                        out.add_range(base_offset, elem.size * count);
-                    } else {
-                        // FIXME: this is really inefficient for large arrays.
-                        for idx in 0..count {
-                            elem.add_data_ranges(cx, base_offset + idx * stride, out);
-                        }
+                // For scalars we know there is no padding between the elements,
+                // so the entire array is a single big data range.
+                if elem.backend_repr.is_scalar() {
+                    out.add_range(base_offset, elem.size * count);
+                } else {
+                    // FIXME: this is really inefficient for large arrays.
+                    for idx in 0..count {
+                        elem.add_data_ranges(cx, base_offset + idx * stride, out);
                     }
                 }
-                FieldsShape::Arbitrary { offsets, in_memory_order: _ } => {
-                    for (field, &offset) in offsets.iter_enumerated() {
-                        let field = self.field(cx, field.as_usize());
-                        field.add_data_ranges(cx, base_offset + offset, out);
-                    }
-                }
-            },
-            Variants::Multiple { variants, .. } => {
-                // The variants do not contain e.g. the discriminant or coroutine upvars.
-                let FieldsShape::Arbitrary { offsets, in_memory_order: _ } = &self.fields else {
-                    unreachable!("a multi-variant layout should have `Arbitrary` fields")
-                };
-
-                // So add them explicitly.
+            }
+            FieldsShape::Arbitrary { offsets, in_memory_order: _ } => {
                 for (field, &offset) in offsets.iter_enumerated() {
                     let field = self.field(cx, field.as_usize());
                     field.add_data_ranges(cx, base_offset + offset, out);
                 }
+            }
+        }
 
+        // Visit the fields of each variant.
+        match &self.variants {
+            Variants::Empty | Variants::Single { index: _ } => { /* done */ }
+            Variants::Multiple { variants, .. } => {
                 for variant in variants.indices() {
                     let variant = self.for_variant(cx, variant);
                     variant.add_data_ranges(cx, base_offset, out);

@@ -2,7 +2,8 @@ use std::cmp;
 use std::ops::Range;
 
 use rustc_abi::{
-    Align, ArmCall, BackendRepr, CanonAbi, ExternAbi, HasDataLayout, Reg, Size, WrappingRange,
+    Align, ArmCall, BackendRepr, CanonAbi, ExternAbi, FieldsShape, HasDataLayout, Reg, Size,
+    VariantIdx, Variants, WrappingRange,
 };
 use rustc_ast as ast;
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
@@ -603,14 +604,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                 if self.fn_abi.conv == CanonAbi::Arm(ArmCall::CCmseNonSecureEntry) {
                     // The return value of an `extern "cmse-nonsecure-entry"` function crosses the
-                    // secure boundary. Zero padding bytes so information does not leak.
-                    //
-                    // This only zeroes "guaranteed" padding. There may be more bytes that are
-                    // padding for some but not all variants of this type; those are not zeroed.
-                    //
-                    // Returning a value with value-dependent padding will instead trigger a lint.
+                    // secure boundary. Clear any padding bytes so information does not leak.
                     let ret_layout = self.fn_abi.ret.layout;
-                    self.clear_cmse_padding(bx, llslot, ret_layout.size, ret_layout);
+                    self.clear_padding_cmse(bx, llslot, ret_layout.size, ret_layout);
                 }
 
                 load_cast(bx, cast_ty, llslot, self.fn_abi.ret.layout.align.abi)
@@ -1729,7 +1725,21 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
     }
 
-    fn clear_cmse_padding(
+    /// When using CMSE, values that cross the secure boundary from secure to non-secure mode can
+    /// contain stale secure data in their padding bytes. This function clears that data. This is
+    /// required when a value is:
+    ///
+    /// - passed to an `extern "cmse-nonsecure-call"` function
+    /// - returned from an `extern "cmse-nonsecure-entry"` function
+    ///
+    /// This function clears both:
+    ///
+    /// - variant-independent padding, bytes that are padding for all valid values of the type
+    /// - variant-dependent padding, bytes that are padding for some but not all values of the type
+    ///
+    /// Clearing variant-dependent padding requires looking at the data at runtime to determine what
+    /// bytes to clear.
+    fn clear_padding_cmse(
         &mut self,
         bx: &mut Bx,
         base_ptr: Bx::Value,
@@ -1738,25 +1748,143 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ) {
         // First clear variant-independent padding, a series of memsets.
         let variant_independent = layout.variant_independent_padding_ranges(self.cx);
-        self.zero_byte_ranges(bx, base_ptr, limit, &variant_independent);
+        self.zero_byte_ranges(bx, base_ptr, Size::ZERO, limit, &variant_independent);
+
+        // Then clear the extra padding of the active variant of any (nested) enum.
+        self.clear_variant_dependent_padding(bx, base_ptr, Size::ZERO, limit, layout);
+    }
+
+    fn clear_variant_dependent_padding(
+        &mut self,
+        bx: &mut Bx,
+        base_ptr: Bx::Value,
+        base_offset: Size,
+        limit: Size,
+        layout: TyAndLayout<'tcx>,
+    ) {
+        let cx = self.cx;
+
+        if !layout.has_variant_dependent_padding(cx) {
+            return;
+        }
+
+        // Recurse into aggregate fields/elements to reach any nested enums.
+        match layout.fields {
+            FieldsShape::Array { stride, count } => {
+                let elem = layout.field(cx, 0);
+                if elem.has_variant_dependent_padding(cx) {
+                    for idx in 0..count {
+                        let off = base_offset + idx * stride;
+                        self.clear_variant_dependent_padding(bx, base_ptr, off, limit, elem);
+                    }
+                }
+            }
+            FieldsShape::Arbitrary { .. } => {
+                for i in 0..layout.fields.count() {
+                    let field = layout.field(cx, i);
+                    if field.has_variant_dependent_padding(cx) {
+                        let off = base_offset + layout.fields.offset(i);
+                        self.clear_variant_dependent_padding(bx, base_ptr, off, limit, field);
+                    }
+                }
+            }
+            FieldsShape::Primitive | FieldsShape::Union(_) => { /* nothing to visit */ }
+        }
+
+        // If this is not a multi-variant enum, we're done.
+        let Variants::Multiple { ref variants, .. } = layout.variants else {
+            return;
+        };
+
+        // Collect variants that will need padding cleared.
+        let mut work = Vec::with_capacity(variants.len());
+        for i in 0..variants.len() {
+            let idx = VariantIdx::from_usize(i);
+            let variant = layout.for_variant(cx, idx);
+
+            // Don't consider uninhabited variants.
+            if variant.is_uninhabited() {
+                continue;
+            }
+
+            let variant_dependent = layout.variant_dependent_padding_ranges(cx, idx);
+            let has_nested_variant_dependent = (0..variant.fields.count())
+                .any(|i| variant.field(cx, i).has_variant_dependent_padding(cx));
+
+            if !variant_dependent.is_empty() || has_nested_variant_dependent {
+                work.push((idx, variant, variant_dependent));
+            }
+        }
+
+        if work.is_empty() {
+            return;
+        }
+
+        // Build the switch and clear the appropriate padding for each variant.
+        let root_block = bx.llbb();
+        let join_block = bx.append_sibling_block("cmse_pad_join");
+        let mut cases = Vec::with_capacity(work.len());
+
+        for (idx, variant, variant_dependent) in work.into_iter() {
+            let Some(discr) = layout.ty.discriminant_for_variant(bx.tcx(), idx) else {
+                bug!("multi-variant layout on a type without discriminants");
+            };
+
+            let variant_block = bx.append_sibling_block("cmse_pad_variant");
+            bx.switch_to_block(variant_block);
+
+            // Clear the padding of this variant.
+            self.zero_byte_ranges(bx, base_ptr, base_offset, limit, &variant_dependent);
+
+            // Recurse into the fields.
+            for i in 0..variant.fields.count() {
+                let field = variant.field(cx, i);
+                let off = base_offset + variant.fields.offset(i);
+                self.clear_variant_dependent_padding(bx, base_ptr, off, limit, field);
+            }
+
+            bx.br(join_block);
+            cases.push((discr.val, variant_block));
+        }
+
+        // Construct the dispatch.
+        bx.switch_to_block(root_block);
+
+        let discr_ty = layout.ty.discriminant_ty(bx.tcx());
+        let enum_ptr = bx.inbounds_ptradd(base_ptr, bx.const_usize(base_offset.bytes()));
+        let operand = OperandRef {
+            val: OperandValue::Ref(PlaceValue::new_sized(enum_ptr, layout.align.abi)),
+            layout,
+            move_annotation: None,
+        };
+        let discr = operand.codegen_get_discr(self, bx, discr_ty);
+
+        // Default to the join block (for variants without variant-dependent padding).
+        bx.switch(discr, join_block, cases.into_iter());
+
+        bx.switch_to_block(join_block);
     }
 
     fn zero_byte_ranges(
         &mut self,
         bx: &mut Bx,
         ptr: Bx::Value,
+        offset: Size,
         limit: Size,
         ranges: &[Range<Size>],
     ) {
         let zero = bx.const_u8(0);
 
         for range in ranges {
-            let end = cmp::min(range.end, limit);
+            let start = range.start + offset;
+            let end = range.end + offset;
+
+            let end = cmp::min(end, limit);
             if range.start >= end {
                 continue;
             }
-            let offset = bx.const_usize(range.start.bytes());
-            let len = bx.const_usize((end - range.start).bytes());
+            let offset = bx.const_usize(start.bytes());
+            let len = bx.const_usize((end - start).bytes());
             let ptr = bx.inbounds_ptradd(ptr, offset);
             bx.memset(ptr, zero, len, Align::ONE, MemFlags::empty());
         }
@@ -1891,14 +2019,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 );
 
                 // The arguments of an `extern "cmse-nonsecure-call"` function cross the secure
-                // boundary. Zero padding bytes so information does not leak.
-                //
-                // This only zeroes "guaranteed" padding. There may be more bytes that are
-                // padding for some but not all variants of this type; those are not zeroed.
-                //
-                // Passing an argument with value-dependent padding will instead trigger a lint.
+                // boundary. Clear any padding bytes so information does not leak.
                 if conv == CanonAbi::Arm(ArmCall::CCmseNonSecureCall) {
-                    self.clear_cmse_padding(
+                    self.clear_padding_cmse(
                         bx,
                         llscratch,
                         Size::from_bytes(copy_bytes),
