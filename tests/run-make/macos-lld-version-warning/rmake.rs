@@ -21,8 +21,5 @@ fn main() {
         .stderr_utf8();
 
     // The lld version warning should appear under linker_info, not linker_messages.
-    diff()
-        .expected_file("warnings.txt")
-        .actual_text("(lld version warning)", &warnings)
-        .run();
+    diff().expected_file("warnings.txt").actual_text("(lld version warning)", &warnings).run();
 }
