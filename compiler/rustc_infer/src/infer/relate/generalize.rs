@@ -297,6 +297,12 @@ impl<'tcx> InferCtxt<'tcx> {
                 if let Some(r) = r.ty_vid() {
                     self.inner.borrow_mut().type_variables().equate(l, r)
                 } else {
+                    // Ideally, we put this assert into `type_variables().instantiate()`.
+                    // But we can't pass the infcx into it as the infcx is already
+                    // mutably borrowed.
+                    debug_assert!(
+                        self.try_resolve_ty_var(l).unwrap_err().can_name(ty::max_universe(self, r))
+                    );
                     self.inner.borrow_mut().type_variables().instantiate(l, r)
                 }
             }
@@ -304,6 +310,11 @@ impl<'tcx> InferCtxt<'tcx> {
                 if let Some(r) = r.ct_vid() {
                     self.inner.borrow_mut().const_unification_table().union(l, r)
                 } else {
+                    debug_assert!(
+                        self.try_resolve_const_var(l)
+                            .unwrap_err()
+                            .can_name(ty::max_universe(self, r))
+                    );
                     self.inner
                         .borrow_mut()
                         .const_unification_table()

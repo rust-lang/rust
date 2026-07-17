@@ -255,21 +255,13 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
     }
 
     fn instantiate_ty_var_raw(&self, vid: ty::TyVid, ty: Ty<'tcx>) {
-        let ty = ty.fold_with(&mut LowerUniverseFolder {
-            infcx: self,
-            for_universe: self.try_resolve_ty_var(vid).unwrap_err(),
-            cache: Default::default(),
-        });
+        let ty = lower_universe(self, self.try_resolve_ty_var(vid).unwrap_err(), ty);
 
         self.inner.borrow_mut().type_variables().instantiate(vid, ty);
     }
 
     fn instantiate_const_var_raw(&self, vid: ty::ConstVid, ct: ty::Const<'tcx>) {
-        let ct = ct.fold_with(&mut LowerUniverseFolder {
-            infcx: self,
-            for_universe: self.try_resolve_const_var(vid).unwrap_err(),
-            cache: Default::default(),
-        });
+        let ct = lower_universe(self, self.try_resolve_const_var(vid).unwrap_err(), ct);
 
         self.inner
             .borrow_mut()
@@ -438,6 +430,33 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
     }
 }
 
+fn lower_universe<'tcx, T: TypeFoldable<TyCtxt<'tcx>> + Copy>(
+    infcx: &InferCtxt<'tcx>,
+    for_universe: ty::UniverseIndex,
+    value: T,
+) -> T {
+    let value = value.fold_with(&mut LowerUniverseFolder {
+        infcx,
+        for_universe,
+        cache: Default::default(),
+    });
+
+    // This assertion is needed because we don't lower the universes of placeholders
+    // in the folder.
+    #[cfg(debug_assertions)]
+    {
+        let value_universe = ty::max_universe(infcx, value);
+        assert!(
+            for_universe.can_name(value_universe),
+            "variable in universe {:?} can't name value in universe {:?}",
+            for_universe,
+            value_universe,
+        );
+    }
+
+    value
+}
+
 /// Canonicalizing inputs puts all inference variables and placeholders
 /// into the root universe.
 ///
@@ -487,15 +506,6 @@ impl<'a, 'tcx> ty::TypeFolder<TyCtxt<'tcx>> for LowerUniverseFolder<'a, 'tcx> {
                     }
                 }
             }
-            ty::Placeholder(p) => {
-                debug_assert!(
-                    self.for_universe.can_name(p.universe),
-                    "variable in universe {:?} can't name type in universe {:?}",
-                    self.for_universe,
-                    p.universe
-                );
-                t
-            }
             _ => t.super_fold_with(self),
         };
 
@@ -531,15 +541,6 @@ impl<'a, 'tcx> ty::TypeFolder<TyCtxt<'tcx>> for LowerUniverseFolder<'a, 'tcx> {
 
                     ty::Const::new_var(self.cx(), new_var_id)
                 }
-            }
-            ty::ConstKind::Placeholder(p) => {
-                debug_assert!(
-                    self.for_universe.can_name(p.universe),
-                    "variable in universe {:?} can't name const in universe {:?}",
-                    self.for_universe,
-                    p.universe
-                );
-                c
             }
             _ => c.super_fold_with(self),
         }
