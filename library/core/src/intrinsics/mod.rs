@@ -3064,6 +3064,17 @@ pub const unsafe fn size_of_val<T: ?Sized>(ptr: *const T) -> usize;
 #[rustc_intrinsic_const_stable_indirect]
 pub const unsafe fn align_of_val<T: ?Sized>(ptr: *const T) -> usize;
 
+/// Returns the token identifier for `T` (i.e., the Rust equivalent of the Clang
+/// `__builtin_infer_alloc_token` builtin, lowered to the `llvm.alloc.token.id` intrinsic), for
+/// LLVM AllocToken and heap partitioning support.
+///
+/// This allows allocator and arena implementers to query the token identifier for a given type at
+/// compile time, so it can be passed to a token-enabled allocator interface directly.
+#[rustc_nounwind]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_intrinsic]
+pub fn alloc_token_infer<T>() -> usize;
+
 #[rustc_intrinsic]
 #[rustc_comptime]
 #[unstable(feature = "core_intrinsics", issue = "none")]
