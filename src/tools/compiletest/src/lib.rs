@@ -43,7 +43,7 @@ use crate::common::{
     output_base_dir, output_relative_path,
 };
 use crate::directives::{AuxProps, DirectivesCache, FileDirectives};
-use crate::executor::CollectedTest;
+use crate::executor::{CollectedTest, TestVariant};
 
 /// Called by `main` after the config has been parsed.
 fn run_tests(config: Arc<Config>) {
@@ -472,11 +472,14 @@ fn make_test(cx: &TestCollectorCx, collector: &mut TestCollector, testpaths: &Te
             &mut aux_props,
         );
 
+        let revision = revision.map(str::to_owned);
+        let variant = TestVariant { revision };
+
         // If a test's inputs haven't changed since the last time it ran,
         // mark it as ignored so that the executor will skip it.
         if !desc.is_ignored()
             && !cx.config.force_rerun
-            && is_up_to_date(cx, testpaths, &aux_props, revision)
+            && is_up_to_date(cx, testpaths, &aux_props, &variant)
         {
             // Keep this in sync with the "up-to-date" message detected by bootstrap.
             // FIXME(Zalathar): Now that we are no longer tied to libtest, we could
@@ -486,16 +489,15 @@ fn make_test(cx: &TestCollectorCx, collector: &mut TestCollector, testpaths: &Te
 
         let config = Arc::clone(&cx.config);
         let testpaths = testpaths.clone();
-        let revision = revision.map(str::to_owned);
 
-        CollectedTest { desc, config, testpaths, revision }
+        CollectedTest { desc, config, testpaths, variant }
     }));
 }
 
 /// The path of the `stamp` file that gets created or updated whenever a
 /// particular test completes successfully.
-fn stamp_file_path(config: &Config, testpaths: &TestPaths, revision: Option<&str>) -> Utf8PathBuf {
-    output_base_dir(config, testpaths, revision).join("stamp")
+fn stamp_file_path(config: &Config, testpaths: &TestPaths, variant: &TestVariant) -> Utf8PathBuf {
+    output_base_dir(config, testpaths, variant).join("stamp")
 }
 
 /// Returns a list of files that, if modified, would cause this test to no
@@ -552,9 +554,9 @@ fn is_up_to_date(
     cx: &TestCollectorCx,
     testpaths: &TestPaths,
     aux_props: &AuxProps,
-    revision: Option<&str>,
+    variant: &TestVariant,
 ) -> bool {
-    let stamp_file_path = stamp_file_path(&cx.config, testpaths, revision);
+    let stamp_file_path = stamp_file_path(&cx.config, testpaths, variant);
     // Check the config hash inside the stamp file.
     let contents = match fs::read_to_string(&stamp_file_path) {
         Ok(f) => f,
@@ -572,7 +574,7 @@ fn is_up_to_date(
     // Check the timestamp of the stamp file against the last modified time
     // of all files known to be relevant to the test.
     let mut inputs_stamp = cx.common_inputs_stamp.clone();
-    for path in files_related_to_test(&cx.config, testpaths, aux_props, revision) {
+    for path in files_related_to_test(&cx.config, testpaths, aux_props, variant.revision()) {
         inputs_stamp.add_path(&path);
     }
 

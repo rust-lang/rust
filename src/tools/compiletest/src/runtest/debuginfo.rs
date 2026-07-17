@@ -46,8 +46,9 @@ impl TestCx<'_> {
         }
 
         // Parse debugger commands etc from test files
-        let dbg_cmds = DebuggerCommands::parse_from(&self.testpaths.file, "cdb", self.revision)
-            .unwrap_or_else(|e| self.fatal(&e));
+        let dbg_cmds =
+            DebuggerCommands::parse_from(&self.testpaths.file, "cdb", self.variant.revision())
+                .unwrap_or_else(|e| self.fatal(&e));
 
         // https://docs.microsoft.com/en-us/windows-hardware/drivers/debugger/debugger-commands
         let mut script_str = String::with_capacity(2048);
@@ -105,8 +106,9 @@ impl TestCx<'_> {
     }
 
     fn run_debuginfo_gdb_test(&self) {
-        let dbg_cmds = DebuggerCommands::parse_from(&self.testpaths.file, "gdb", self.revision)
-            .unwrap_or_else(|e| self.fatal(&e));
+        let dbg_cmds =
+            DebuggerCommands::parse_from(&self.testpaths.file, "gdb", self.variant.revision())
+                .unwrap_or_else(|e| self.fatal(&e));
         let mut cmds = dbg_cmds.commands.join("\n");
 
         // compile test file (it should have 'compile-flags:-g' in the directive)
@@ -374,8 +376,9 @@ impl TestCx<'_> {
         }
 
         // Parse debugger commands etc from test files
-        let dbg_cmds = DebuggerCommands::parse_from(&self.testpaths.file, "lldb", self.revision)
-            .unwrap_or_else(|e| self.fatal(&e));
+        let dbg_cmds =
+            DebuggerCommands::parse_from(&self.testpaths.file, "lldb", self.variant.revision())
+                .unwrap_or_else(|e| self.fatal(&e));
 
         // Write debugger script:
         // We don't want to hang when calling `quit` while the process is still running

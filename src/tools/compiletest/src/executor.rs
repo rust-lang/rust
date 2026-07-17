@@ -111,7 +111,7 @@ fn spawn_test_thread(
         id,
         config: Arc::clone(&test.config),
         testpaths: test.testpaths.clone(),
-        revision: test.revision.clone(),
+        variant: test.variant.clone(),
         should_fail: test.desc.should_fail,
         completion_sender,
     };
@@ -126,7 +126,7 @@ struct TestThreadArgs {
 
     config: Arc<Config>,
     testpaths: TestPaths,
-    revision: Option<String>,
+    variant: TestVariant,
     should_fail: ShouldFail,
 
     completion_sender: mpsc::Sender<TestCompletion>,
@@ -152,13 +152,7 @@ fn test_thread_main(args: TestThreadArgs) {
     // require a major overhaul of error handling in the test runners.
     let panic_payload = panic::catch_unwind(|| {
         __rust_begin_short_backtrace(|| {
-            crate::runtest::run(
-                &args.config,
-                stdout,
-                stderr,
-                &args.testpaths,
-                args.revision.as_deref(),
-            );
+            crate::runtest::run(&args.config, stdout, stderr, &args.testpaths, &args.variant);
         });
     })
     .err();
@@ -324,12 +318,24 @@ fn get_concurrency() -> usize {
     }
 }
 
+/// Data related to a specific variant of a test.
+#[derive(Clone, Debug)]
+pub(crate) struct TestVariant {
+    pub(crate) revision: Option<String>,
+}
+
+impl TestVariant {
+    pub(crate) fn revision(&self) -> Option<&str> {
+        self.revision.as_deref()
+    }
+}
+
 /// Information that was historically needed to create a libtest `TestDescAndFn`.
 pub(crate) struct CollectedTest {
     pub(crate) desc: CollectedTestDesc,
     pub(crate) config: Arc<Config>,
     pub(crate) testpaths: TestPaths,
-    pub(crate) revision: Option<String>,
+    pub(crate) variant: TestVariant,
 }
 
 /// Information that was historically needed to create a libtest `TestDesc`.
