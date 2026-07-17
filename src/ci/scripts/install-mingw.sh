@@ -14,7 +14,7 @@ LLVM_MINGW_ARCHIVE_X86_64="llvm-mingw-20251104-ucrt-x86_64.zip"
 if isWindows && isKnownToBeMingwBuild; then
     toolchains=
     if [[ "${CI_JOB_NAME}" == *i686-mingw* ]]; then
-        toolchains=("x86_64-mingw" "${CI_JOB_NAME}")
+        toolchains=("${CI_JOB_NAME}" "x86_64-mingw")
     else
         toolchains=("${CI_JOB_NAME}")
     fi
