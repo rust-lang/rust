@@ -286,7 +286,6 @@ symbols! {
         PartialEq,
         PartialOrd,
         Pending,
-        PinDerefMutHelper,
         PinMacroHelper,
         Pointer,
         PointerCoercion,
