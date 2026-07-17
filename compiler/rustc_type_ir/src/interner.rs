@@ -468,6 +468,8 @@ pub trait Interner:
 
     fn trait_is_fundamental(self, def_id: Self::TraitId) -> bool;
 
+    fn trait_is_anti_fundamental(self, def_id: Self::TraitId) -> bool;
+
     /// Returns `true` if this is an `unsafe trait`.
     fn trait_is_unsafe(self, trait_def_id: Self::TraitId) -> bool;
 

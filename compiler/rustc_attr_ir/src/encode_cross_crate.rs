@@ -107,6 +107,7 @@ impl AttributeKind {
             RustcAllowConstFnUnstable(..) => No,
             RustcAllowIncoherentImpl(..) => No,
             RustcAllowLifetimeDependentSpecialization => No,
+            RustcAntiFundamental => No,
             RustcAsPtr => Yes,
             RustcAutodiff(..) => Yes,
             RustcBodyStability { .. } => No,

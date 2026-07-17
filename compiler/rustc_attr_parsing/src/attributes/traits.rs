@@ -123,6 +123,14 @@ impl NoArgsAttributeParser for RustcCoinductiveParser {
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcCoinductive;
 }
 
+pub(crate) struct RustcAntiFundamentalParser;
+impl NoArgsAttributeParser for RustcAntiFundamentalParser {
+    const PATH: &[Symbol] = &[sym::rustc_anti_fundamental];
+    const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Trait)]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcAntiFundamental;
+}
+
 pub(crate) struct RustcAllowIncoherentImplParser;
 impl NoArgsAttributeParser for RustcAllowIncoherentImplParser {
     const PATH: &[Symbol] = &[sym::rustc_allow_incoherent_impl];

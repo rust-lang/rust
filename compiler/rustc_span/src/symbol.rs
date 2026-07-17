@@ -1782,6 +1782,7 @@ symbols! {
         rustc_allow_incoherent_impl,
         rustc_allow_lifetime_dependent_specialization,
         rustc_allowed_through_unstable_modules,
+        rustc_anti_fundamental,
         rustc_as_ptr,
         rustc_attrs,
         rustc_autodiff,

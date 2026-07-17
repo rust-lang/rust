@@ -1,0 +1,50 @@
+error[E0210]: type parameter `T` must be covered by another type when it appears before the first local type (`LocalGeneric<_>`)
+  --> $DIR/anti-fundamental-generic-projection.rs:25:6
+   |
+LL | impl<T> AntiFundamentalWithParam<LocalGeneric<T>>
+   |      ^ uncovered type parameter
+   |
+   = note: implementing a foreign trait is only possible if at least one of the types for which it is implemented is local,
+           and no uncovered type parameters appear before that first local type
+   = note: in this case, 'before' refers to the following order: `impl<..> ForeignTrait<T1, ..., Tn> for T0`,
+           where `T0` is the first and `Tn` is the last
+
+error[E0210]: type parameter `T` must be covered by another type when it appears before the first local type (`LocalGeneric2<_>`)
+  --> $DIR/anti-fundamental-generic-projection.rs:40:6
+   |
+LL | impl<T: Clone> AntiFundamentalWithParam<LocalGeneric2<T>>
+   |      ^ uncovered type parameter
+   |
+   = note: implementing a foreign trait is only possible if at least one of the types for which it is implemented is local,
+           and no uncovered type parameters appear before that first local type
+   = note: in this case, 'before' refers to the following order: `impl<..> ForeignTrait<T1, ..., Tn> for T0`,
+           where `T0` is the first and `Tn` is the last
+
+error[E0210]: type parameter `T` must be used as an argument to some local type (e.g., `MyStruct<T>`)
+  --> $DIR/anti-fundamental-generic-projection.rs:53:6
+   |
+LL | impl<T: Helper2> AntiFundamentalWithParam<T> for <T as Helper2>::T {
+   |      ^ uncovered type parameter
+   |
+   = note: implementing a foreign trait is only possible if at least one of the types for which it is implemented is local
+   = note: only traits defined in the current crate can be implemented for a type parameter
+
+error[E0210]: type parameter `T` must be used as an argument to some local type (e.g., `MyStruct<T>`)
+  --> $DIR/anti-fundamental-generic-projection.rs:68:6
+   |
+LL | impl<T: Helper3> AntiFundamentalTrait for <T as Helper3>::T {
+   |      ^ uncovered type parameter
+   |
+   = note: implementing a foreign trait is only possible if at least one of the types for which it is implemented is local
+   = note: only traits defined in the current crate can be implemented for a type parameter
+
+error[E0207]: the type parameter `T` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/anti-fundamental-generic-projection.rs:68:6
+   |
+LL | impl<T: Helper3> AntiFundamentalTrait for <T as Helper3>::T {
+   |      ^ unconstrained type parameter
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0207, E0210.
+For more information about an error, try `rustc --explain E0207`.
