@@ -2546,7 +2546,7 @@ rustc_queries! {
         &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, Ty<'tcx>>>,
         NoSolution,
     > {
-        desc { "normalizing `{}`", goal.canonical.value.value.value }
+        desc { "normalizing `{}`", goal.canonical.value.value.value.skip_normalization() }
     }
 
     /// Do not call this query directly: part of the `Normalize` type-op
@@ -2556,7 +2556,7 @@ rustc_queries! {
         &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, ty::Clause<'tcx>>>,
         NoSolution,
     > {
-        desc { "normalizing `{:?}`", goal.canonical.value.value.value }
+        desc { "normalizing `{:?}`", goal.canonical.value.value.value.skip_normalization() }
     }
 
     /// Do not call this query directly: part of the `Normalize` type-op
@@ -2566,7 +2566,7 @@ rustc_queries! {
         &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, ty::PolyFnSig<'tcx>>>,
         NoSolution,
     > {
-        desc { "normalizing `{:?}`", goal.canonical.value.value.value }
+        desc { "normalizing `{:?}`", goal.canonical.value.value.value.skip_normalization() }
     }
 
     /// Do not call this query directly: part of the `Normalize` type-op
@@ -2576,7 +2576,7 @@ rustc_queries! {
         &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, ty::FnSig<'tcx>>>,
         NoSolution,
     > {
-        desc { "normalizing `{:?}`", goal.canonical.value.value.value }
+        desc { "normalizing `{:?}`", goal.canonical.value.value.value.skip_normalization() }
     }
 
     query instantiate_and_check_impossible_predicates(key: (DefId, GenericArgsRef<'tcx>)) -> bool {

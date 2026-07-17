@@ -21,14 +21,62 @@ error[E0164]: expected tuple struct or tuple variant, found struct variant `Enum
 LL |         Enum::Foo(a, b) => {}
    |         ^^^^^^^^^^^^^^^ not a tuple struct or tuple variant
    |
-help: the struct variant's fields are being ignored
+help: add the names to match a struct variant's fields
    |
 LL -         Enum::Foo(a, b) => {}
-LL +         Enum::Foo { a: _, b: _ } => {}
+LL +         Enum::Foo { a, b } => {}
+   |
+
+error[E0164]: expected tuple struct or tuple variant, found struct variant `Enum::Foo`
+  --> $DIR/recover-from-bad-variant.rs:12:9
+   |
+LL |         Enum::Foo(x, y) => {}
+   |         ^^^^^^^^^^^^^^^ not a tuple struct or tuple variant
+   |
+help: add the names to match a struct variant's fields
+   |
+LL -         Enum::Foo(x, y) => {}
+LL +         Enum::Foo { a: x, b: y } => {}
+   |
+
+error[E0164]: expected tuple struct or tuple variant, found struct variant `Enum::Foo`
+  --> $DIR/recover-from-bad-variant.rs:14:9
+   |
+LL |         Enum::Foo(1 | 2, b @ 3) => {}
+   |         ^^^^^^^^^^^^^^^^^^^^^^^ not a tuple struct or tuple variant
+   |
+help: add the names to match a struct variant's fields
+   |
+LL -         Enum::Foo(1 | 2, b @ 3) => {}
+LL +         Enum::Foo { a: 1 | 2, b: b @ 3 } => {}
+   |
+
+error[E0164]: expected tuple struct or tuple variant, found struct variant `Enum::Foo`
+  --> $DIR/recover-from-bad-variant.rs:16:9
+   |
+LL |         Enum::Foo(a) => {}
+   |         ^^^^^^^^^^^^ not a tuple struct or tuple variant
+   |
+help: add the names to match a struct variant's fields
+   |
+LL -         Enum::Foo(a) => {}
+LL +         Enum::Foo { a, b: _ } => {}
+   |
+
+error[E0164]: expected tuple struct or tuple variant, found struct variant `Enum::Foo`
+  --> $DIR/recover-from-bad-variant.rs:18:9
+   |
+LL |         Enum::Foo(a, b, c) => {}
+   |         ^^^^^^^^^^^^^^^^^^ not a tuple struct or tuple variant
+   |
+help: add the names to match a struct variant's fields
+   |
+LL -         Enum::Foo(a, b, c) => {}
+LL +         Enum::Foo { a, b } => {}
    |
 
 error[E0769]: tuple variant `Enum::Bar` written as struct variant
-  --> $DIR/recover-from-bad-variant.rs:12:9
+  --> $DIR/recover-from-bad-variant.rs:20:9
    |
 LL |         Enum::Bar { a, b } => {}
    |         ^^^^^^^^^^^^^^^^^^
@@ -39,7 +87,7 @@ LL -         Enum::Bar { a, b } => {}
 LL +         Enum::Bar(a, b) => {}
    |
 
-error: aborting due to 3 previous errors
+error: aborting due to 7 previous errors
 
 Some errors have detailed explanations: E0164, E0769.
 For more information about an error, try `rustc --explain E0164`.

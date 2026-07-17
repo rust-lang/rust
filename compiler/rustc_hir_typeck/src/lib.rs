@@ -43,7 +43,7 @@ pub use coercion::can_coerce;
 use fn_ctxt::FnCtxt;
 use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
-use rustc_errors::{Applicability, Diag, ErrorGuaranteed, pluralize, struct_span_code_err};
+use rustc_errors::{Applicability, Diag, ErrorGuaranteed, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{HirId, HirIdMap, Node};
@@ -483,6 +483,7 @@ fn report_unexpected_variant_res(
     tcx: TyCtxt<'_>,
     res: Res,
     expr: Option<&hir::Expr<'_>>,
+    sub_pats: &[hir::Pat<'_>],
     qpath: &hir::QPath<'_>,
     span: Span,
     err_code: ErrCode,
@@ -562,19 +563,35 @@ fn report_unexpected_variant_res(
             let fields = &tcx.expect_variant_res(res).fields.raw;
             let span = qpath.span().shrink_to_hi().to(span.shrink_to_hi());
             let (msg, sugg) = if fields.is_empty() {
-                ("use the struct variant pattern syntax".to_string(), " {}".to_string())
+                ("use the struct variant pattern syntax", " {}".to_string())
             } else {
-                let msg = format!(
-                    "the struct variant's field{s} {are} being ignored",
-                    s = pluralize!(fields.len()),
-                    are = pluralize!("is", fields.len())
-                );
-                let fields = fields
+                let msg = if fields.is_empty() {
+                    "use struct variant pattern syntax"
+                } else {
+                    "add the names to match a struct variant's fields"
+                };
+                let fields_sugg = fields
                     .iter()
-                    .map(|field| format!("{}: _", field.ident(tcx)))
+                    .enumerate()
+                    .map(|(i, field)| {
+                        let field_name = field.ident(tcx).to_string();
+
+                        let pat_snippet = sub_pats
+                            .get(i)
+                            .and_then(|sub_pat| {
+                                tcx.sess.source_map().span_to_snippet(sub_pat.span).ok()
+                            })
+                            .unwrap_or_else(|| "_".to_string());
+
+                        if field_name == pat_snippet {
+                            field_name
+                        } else {
+                            format!("{field_name}: {pat_snippet}")
+                        }
+                    })
                     .collect::<Vec<_>>()
                     .join(", ");
-                let sugg = format!(" {{ {} }}", fields);
+                let sugg = format!(" {{ {} }}", fields_sugg);
                 (msg, sugg)
             };
 

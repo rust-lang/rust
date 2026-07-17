@@ -1182,10 +1182,10 @@ new or modified directive in `src/doc/rustc-dev-guide/`.
 
 [mentions."src/tools/miri"]
 message = """
-`miri` is developed in its own repository. If possible, consider \
-making this change to \
-[rust-lang/miri](https://github.com/rust-lang/miri) \
-instead.
+`miri` is developed in its own repository. If the Miri part of this change \
+can be broken out, consider making this change to \
+[rust-lang/miri](https://github.com/rust-lang/miri) instead. \
+However, if Miri needs adjusting for rustc changes, just ignore this message.
 """
 cc = ["@rust-lang/miri"]
 
