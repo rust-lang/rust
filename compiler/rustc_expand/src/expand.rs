@@ -7,10 +7,10 @@ use rustc_ast::mut_visit::*;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{AssocCtxt, Visitor, VisitorResult, try_visit, walk_list};
 use rustc_ast::{
-    self as ast, AssocItemKind, AstNodeWrapper, AttrArgs, AttrItemKind, AttrStyle, AttrVec,
-    DUMMY_NODE_ID, DelegationSource, DelegationSuffixes, EarlyParsedAttribute, ExprKind,
-    ForeignItemKind, HasAttrs, HasNodeId, Inline, ItemKind, MacStmtStyle, MetaItemInner,
-    MetaItemKind, ModKind, NodeId, PatKind, StmtKind, TyKind, token,
+    self as ast, AssocItemKind, AstNodeWrapper, AttrArgs, AttrKind, AttrStyle, AttrVec,
+    DUMMY_NODE_ID, DelegationSource, DelegationSuffixes, ExprKind, ForeignItemKind, HasAttrs,
+    HasNodeId, Inline, ItemKind, MacStmtStyle, MetaItemInner, MetaItemKind, ModKind, NodeId,
+    PatKind, StmtKind, SyntheticAttr, TyKind, token,
 };
 use rustc_ast_pretty::pprust;
 use rustc_attr_parsing::parser::AllowExprMetavar;
@@ -36,7 +36,7 @@ use rustc_span::{ErrorGuaranteed, FileName, Ident, LocalExpnId, Span, Symbol, sy
 use smallvec::SmallVec;
 
 use crate::base::*;
-use crate::config::{StripUnconfigured, attr_into_trace};
+use crate::config::StripUnconfigured;
 use crate::diagnostics::{
     EmptyDelegationMac, GlobDelegationOutsideImpls, GlobDelegationTraitlessQpath, IncompleteParse,
     RecursionLimitReached, RemoveExprNotSupported, RemoveNodeNotSupported, UnsupportedKeyValue,
@@ -818,10 +818,10 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     };
                     let attr_item = attr.get_normal_item();
                     let safety = attr_item.unsafety;
-                    if let AttrArgs::Eq { .. } = attr_item.args.unparsed_ref().unwrap() {
+                    if let AttrArgs::Eq { .. } = attr_item.args {
                         self.cx.dcx().emit_err(UnsupportedKeyValue { span });
                     }
-                    let inner_tokens = attr_item.args.unparsed_ref().unwrap().inner_tokens();
+                    let inner_tokens = attr_item.args.inner_tokens();
                     match expander.expand_with_safety(self.cx, safety, span, inner_tokens, tokens) {
                         Ok(tok_result) => {
                             let fragment = self.parse_ast_fragment(
@@ -2163,7 +2163,9 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         let mut cfg_pos = None;
         let mut attr_pos = None;
         for (pos, attr) in item.attrs().iter().enumerate() {
-            if !attr.is_doc_comment() && !self.cx.expanded_inert_attrs.is_marked(attr) {
+            if let AttrKind::Normal(..) = attr.kind
+                && !self.cx.expanded_inert_attrs.is_marked(attr)
+            {
                 let name = attr.name();
                 if name == Some(sym::cfg) || name == Some(sym::cfg_attr) {
                     cfg_pos = Some(pos); // a cfg attr found, no need to search anymore
@@ -2207,6 +2209,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     // Detect use of feature-gated or invalid attributes on macro invocations
     // since they will not be detected after macro expansion.
     fn check_attributes(&self, attrs: &[ast::Attribute], call: &ast::MacCall) {
+        use SyntheticAttr::*;
         let features = self.cx.ecfg.features;
         let mut attrs = attrs.iter().peekable();
         let mut span: Option<Span> = None;
@@ -2239,21 +2242,30 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                     self.cx.current_expansion.lint_node_id,
                     crate::diagnostics::MacroCallUnusedDocComment { span: attr.span },
                 );
-            } else if rustc_attr_parsing::is_builtin_attr(attr)
-                && !AttributeParser::is_parsed_attribute(&attr.path())
-            {
-                let attr_name = attr.name().unwrap();
-                self.cx.sess.psess.buffer_lint(
-                    UNUSED_ATTRIBUTES,
-                    attr.span,
-                    self.cx.current_expansion.lint_node_id,
-                    crate::diagnostics::UnusedBuiltinAttribute {
-                        attr_name,
-                        macro_name: pprust::path_to_string(&call.path),
-                        invoc_span: call.path.span,
-                        attr_span: attr.span,
-                    },
-                );
+                continue;
+            }
+
+            match &attr.kind {
+                AttrKind::Normal(normal)
+                    if rustc_attr_parsing::is_builtin_attr(&normal.item)
+                        && !AttributeParser::is_parsed_attribute(&attr.path()) =>
+                {
+                    let attr_name = attr.name().unwrap();
+                    self.cx.sess.psess.buffer_lint(
+                        UNUSED_ATTRIBUTES,
+                        attr.span,
+                        self.cx.current_expansion.lint_node_id,
+                        crate::diagnostics::UnusedBuiltinAttribute {
+                            attr_name,
+                            macro_name: pprust::path_to_string(&call.path),
+                            invoc_span: call.path.span,
+                            attr_span: attr.span,
+                        },
+                    );
+                }
+                AttrKind::Normal(_) => {}
+                AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace) => {}
+                AttrKind::DocComment(..) => unreachable!(), // handled above
             }
         }
     }
@@ -2283,10 +2295,9 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
 
         let res = eval_config_entry(self.cfg().sess, &cfg);
         if res.as_bool() {
-            // A trace attribute left in AST in place of the original `cfg` attribute.
+            // A synthetic trace attribute left in AST in place of the original `cfg` attribute.
             // It can later be used by lints or other diagnostics.
-            let mut trace_attr = attr_into_trace(attr, sym::cfg_trace);
-            trace_attr.replace_args(AttrItemKind::Parsed(EarlyParsedAttribute::CfgTrace(cfg)));
+            let trace_attr = attr.convert_normal_to_synthetic(SyntheticAttr::CfgTrace(cfg));
             node.visit_attrs(|attrs| attrs.insert(pos, trace_attr));
         }
 

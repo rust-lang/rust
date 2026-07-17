@@ -557,11 +557,18 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
     }
 
     fn visit_attribute(&mut self, attr: &'a Attribute) {
+        use SyntheticAttr::*;
         let orig_in_attr = mem::replace(&mut self.invocation_parent.in_attr, true);
-        if !attr.is_doc_comment() && attr::is_builtin_attr(attr) {
-            self.r
-                .builtin_attrs
-                .push((attr.get_normal_item().path.segments[0].ident, self.parent_scope));
+        match &attr.kind {
+            AttrKind::Normal(normal) => {
+                if attr::is_builtin_attr(&normal.item) {
+                    self.r
+                        .builtin_attrs
+                        .push((normal.item.path.segments[0].ident, self.parent_scope));
+                }
+            }
+            AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace) => {}
+            AttrKind::DocComment(..) => {}
         }
         visit::walk_attribute(self, attr);
         self.invocation_parent.in_attr = orig_in_attr;

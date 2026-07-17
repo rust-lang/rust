@@ -57,6 +57,7 @@ impl<'a> Parser<'a> {
         for attr in attrs.take_for_recovery(self.psess) {
             match attr.kind {
                 AttrKind::Normal(..) => spans.attrs.push(attr.span),
+                AttrKind::Synthetic(..) => unreachable!(),
                 // `parse_outer_attributes` already emitted E0753 for inner doc comments before
                 // recovering them as outer doc-comment attributes.
                 AttrKind::DocComment(comment_kind, _)
