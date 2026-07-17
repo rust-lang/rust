@@ -49,7 +49,6 @@ pub type CanonicalState<I, T> = Canonical<I, State<I, T>>;
 pub struct GoalEvaluation<I: Interner> {
     pub uncanonicalized_goal: Goal<I, I::Predicate>,
     pub orig_values: Vec<I::GenericArg>,
-    pub max_input_universe: crate::UniverseIndex,
     pub final_revision: I::Probe,
     pub result: QueryResult<I>,
 }
