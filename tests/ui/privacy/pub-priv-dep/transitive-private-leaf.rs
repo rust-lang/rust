@@ -1,5 +1,6 @@
 //@ aux-crate:transitive_private_leaf_b=transitive_private_leaf_b.rs
 //@ compile-flags: -Zunstable-options
+//@ check-pass
 
 // A public dependency chain with a private leaf:
 //
@@ -21,6 +22,5 @@ pub fn exposes_c() -> transitive_private_leaf_b::CType {
 }
 
 pub fn exposes_d() -> transitive_private_leaf_b::DType {
-    //~^ ERROR type `DType` from private dependency 'transitive_private_leaf_d' in public interface
     transitive_private_leaf_b::DType
 }

@@ -15,5 +15,10 @@ fn main() {
         .run_fail();
 
     output
-        .assert_stderr_contains("type `Leaf` from private dependency 'leaf' in public interface");
+        .assert_stderr_contains("type `Leaf` from private dependency 'leaf' in public interface")
+        .assert_stderr_contains(
+            "`leaf` is an indirect dependency reached through the private direct dependency `left`",
+        )
+        .assert_stderr_contains("consider marking `left` public if exposing this item is intended");
+    assert!(!output.stderr_utf8().contains("private direct dependency `right`"));
 }

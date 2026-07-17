@@ -15,6 +15,9 @@ error: type `Shared` from private dependency 'shared' in public interface
    |
 LL | pub fn leaks_priv_reexport() -> reexport::Shared {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `shared` is an indirect dependency reached through the private direct dependency `reexport`
+   = help: consider marking `reexport` public if exposing this item is intended
 
 error: aborting due to 2 previous errors
 

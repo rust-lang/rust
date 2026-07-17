@@ -1,9 +1,9 @@
 #![crate_type = "rlib"]
 #![deny(exported_private_dependencies)]
 
-// Resolve in reverse lexical order to verify that the diagnostic sorts the roots.
-extern crate right;
+// Load both private roots, but select only `left` in the public interface.
 extern crate left;
+extern crate right;
 
 pub fn leaks_leaf() -> left::Leaf {
     left::Leaf

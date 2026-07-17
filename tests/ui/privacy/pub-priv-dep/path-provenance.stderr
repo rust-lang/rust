@@ -1,8 +1,8 @@
-error: type `private_facade::Nominal` from private dependency 'path_provenance_private_facade' in public interface
-  --> $DIR/path-provenance.rs:68:1
+error: type `T` from private dependency 'path_provenance_leaf' in public interface
+  --> $DIR/path-provenance.rs:24:1
    |
-LL | pub fn private_nominal_default() -> private_facade::Nominal {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | pub fn direct() -> private_leaf::T {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: the lint level is defined here
   --> $DIR/path-provenance.rs:7:9
@@ -10,10 +10,217 @@ note: the lint level is defined here
 LL | #![deny(exported_private_dependencies)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: trait `private_facade::TraitAlias` from private dependency 'path_provenance_private_facade' in public interface
-  --> $DIR/path-provenance.rs:127:1
+error: type `T` from private dependency 'path_provenance_leaf' in public interface
+  --> $DIR/path-provenance.rs:33:1
+   |
+LL | pub fn private_reexport() -> private_facade::T {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `path_provenance_leaf` is an indirect dependency reached through the private direct dependency `path_provenance_private_facade`
+   = help: consider marking `path_provenance_private_facade` public if exposing this item is intended
+
+error: type `T` from private dependency 'path_provenance_leaf' in public interface
+  --> $DIR/path-provenance.rs:38:1
+   |
+LL | pub fn imported_module() -> nested::T {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `path_provenance_leaf` is an indirect dependency reached through the private direct dependency `path_provenance_private_facade`
+   = help: consider marking `path_provenance_private_facade` public if exposing this item is intended
+
+error: type `T` from private dependency 'path_provenance_leaf' in public interface
+  --> $DIR/path-provenance.rs:43:1
+   |
+LL | pub fn renamed_and_continued() -> Continued {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `path_provenance_leaf` is an indirect dependency reached through the private direct dependency `path_provenance_private_facade`
+   = help: consider marking `path_provenance_private_facade` public if exposing this item is intended
+
+error: type `U` from private dependency 'path_provenance_leaf' in public interface
+  --> $DIR/path-provenance.rs:48:1
+   |
+LL | pub fn local_forwarding() -> Forwarded {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `path_provenance_leaf` is an indirect dependency reached through the private direct dependency `path_provenance_private_facade`
+   = help: consider marking `path_provenance_private_facade` public if exposing this item is intended
+
+error: type `T` from private dependency 'path_provenance_leaf' in public interface
+  --> $DIR/path-provenance.rs:57:1
+   |
+LL | pub fn private_alias() -> private_facade::Alias {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `path_provenance_leaf` is an indirect dependency reached through the private direct dependency `path_provenance_private_facade`
+   = help: consider marking `path_provenance_private_facade` public if exposing this item is intended
+
+error: type `U` from private dependency 'path_provenance_leaf' in public interface
+  --> $DIR/path-provenance.rs:62:1
+   |
+LL | pub fn explicit_arg() -> public_facade::Generic<private_leaf::U> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: type `T` from private dependency 'path_provenance_leaf' in public interface
+  --> $DIR/path-provenance.rs:71:1
+   |
+LL | pub fn private_default() -> private_facade::Defaulted {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `path_provenance_leaf` is an indirect dependency reached through the private direct dependency `path_provenance_private_facade`
+   = help: consider marking `path_provenance_private_facade` public if exposing this item is intended
+
+error: type `private_facade::Nominal<X>` from private dependency 'path_provenance_private_facade' in public interface
+  --> $DIR/path-provenance.rs:76:1
+   |
+LL | pub fn private_nominal_default() -> private_facade::Nominal {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: type `T` from private dependency 'path_provenance_leaf' in public interface
+  --> $DIR/path-provenance.rs:76:1
+   |
+LL | pub fn private_nominal_default() -> private_facade::Nominal {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `path_provenance_leaf` is an indirect dependency reached through the private direct dependency `path_provenance_private_facade`
+   = help: consider marking `path_provenance_private_facade` public if exposing this item is intended
+
+error: type `T` from private dependency 'path_provenance_leaf' in public interface
+  --> $DIR/path-provenance.rs:86:1
+   |
+LL | pub fn local_private_alias() -> LocalPrivate {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: type `U` from private dependency 'path_provenance_leaf' in public interface
+  --> $DIR/path-provenance.rs:95:1
+   |
+LL | pub fn local_omitted_default() -> LocalDefault {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: type `U` from private dependency 'path_provenance_leaf' in public interface
+  --> $DIR/path-provenance.rs:107:1
+   |
+LL | pub fn local_nominal_default() -> LocalNominal {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: trait `Tr` from private dependency 'path_provenance_leaf' in public interface
+  --> $DIR/path-provenance.rs:116:1
+   |
+LL | pub fn direct_bound<X: private_leaf::Tr>() {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: trait `Tr` from private dependency 'path_provenance_leaf' in public interface
+  --> $DIR/path-provenance.rs:121:1
+   |
+LL | pub fn private_bound<X: private_facade::Tr>() {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `path_provenance_leaf` is an indirect dependency reached through the private direct dependency `path_provenance_private_facade`
+   = help: consider marking `path_provenance_private_facade` public if exposing this item is intended
+
+error: trait `Tr` from private dependency 'path_provenance_leaf' in public interface
+  --> $DIR/path-provenance.rs:124:1
+   |
+LL | / pub fn associated_constraint<
+LL | |
+LL | |
+LL | |     X: private_facade::Tr<Assoc = private_leaf::U>,
+LL | | >() {
+   | |___^
+   |
+   = note: `path_provenance_leaf` is an indirect dependency reached through the private direct dependency `path_provenance_private_facade`
+   = help: consider marking `path_provenance_private_facade` public if exposing this item is intended
+
+error: type `U` from private dependency 'path_provenance_leaf' in public interface
+  --> $DIR/path-provenance.rs:124:1
+   |
+LL | / pub fn associated_constraint<
+LL | |
+LL | |
+LL | |     X: private_facade::Tr<Assoc = private_leaf::U>,
+LL | | >() {
+   | |___^
+
+error: trait `Tr` from private dependency 'path_provenance_leaf' in public interface
+  --> $DIR/path-provenance.rs:131:1
+   |
+LL | pub fn dyn_bound() -> Box<dyn private_facade::Tr<Assoc = ()>> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `path_provenance_leaf` is an indirect dependency reached through the private direct dependency `path_provenance_private_facade`
+   = help: consider marking `path_provenance_private_facade` public if exposing this item is intended
+
+error: trait `Tr` from private dependency 'path_provenance_leaf' in public interface
+  --> $DIR/path-provenance.rs:136:1
+   |
+LL | pub fn impl_bound() -> impl private_facade::Tr {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `path_provenance_leaf` is an indirect dependency reached through the private direct dependency `path_provenance_private_facade`
+   = help: consider marking `path_provenance_private_facade` public if exposing this item is intended
+
+error: type `T` from private dependency 'path_provenance_leaf' in public interface
+  --> $DIR/path-provenance.rs:141:1
+   |
+LL | pub type Projection = <private_facade::T as private_facade::Tr>::Assoc;
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `path_provenance_leaf` is an indirect dependency reached through the private direct dependency `path_provenance_private_facade`
+   = help: consider marking `path_provenance_private_facade` public if exposing this item is intended
+
+error: associated type `Assoc` from private dependency 'path_provenance_leaf' in public interface
+  --> $DIR/path-provenance.rs:141:1
+   |
+LL | pub type Projection = <private_facade::T as private_facade::Tr>::Assoc;
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `path_provenance_leaf` is an indirect dependency reached through the private direct dependency `path_provenance_private_facade`
+   = help: consider marking `path_provenance_private_facade` public if exposing this item is intended
+
+error: trait `Tr` from private dependency 'path_provenance_leaf' in public interface
+  --> $DIR/path-provenance.rs:141:1
+   |
+LL | pub type Projection = <private_facade::T as private_facade::Tr>::Assoc;
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `path_provenance_leaf` is an indirect dependency reached through the private direct dependency `path_provenance_private_facade`
+   = help: consider marking `path_provenance_private_facade` public if exposing this item is intended
+
+error: trait `Tr` from private dependency 'path_provenance_leaf' in public interface
+  --> $DIR/path-provenance.rs:148:1
    |
 LL | pub fn private_trait_alias<X: private_facade::TraitAlias>() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `path_provenance_leaf` is an indirect dependency reached through the private direct dependency `path_provenance_private_facade`
+   = help: consider marking `path_provenance_private_facade` public if exposing this item is intended
 
-error: aborting due to 2 previous errors
+error: trait `Tr` from private dependency 'path_provenance_leaf' in public interface
+  --> $DIR/path-provenance.rs:154:1
+   |
+LL | pub fn local_trait_alias<X: LocalTraitAlias>() {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: type `public_facade::Const<N>` from private dependency 'path_provenance_leaf' in public interface
+  --> $DIR/path-provenance.rs:161:1
+   |
+LL | pub fn private_const_default() -> private_facade::ConstDefault {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `path_provenance_leaf` is an indirect dependency reached through the private direct dependency `path_provenance_private_facade`
+   = help: consider marking `path_provenance_private_facade` public if exposing this item is intended
+
+error: constant `N` from private dependency 'path_provenance_leaf' in public interface
+  --> $DIR/path-provenance.rs:166:1
+   |
+LL | pub fn explicit_const_arg() -> public_facade::ConstDefault<{ private_leaf::N }> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: constant `N` from private dependency 'path_provenance_leaf' in public interface
+  --> $DIR/path-provenance.rs:173:1
+   |
+LL | pub fn local_const_default() -> LocalConstDefault {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 27 previous errors
+

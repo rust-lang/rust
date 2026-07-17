@@ -29,8 +29,8 @@
 extern crate diamond_priv_dep;
 extern crate diamond_pub_dep;
 
-// FIXME: This should trigger.
 pub fn leaks_priv() -> diamond_priv_dep::Shared {
+    //~^ ERROR type `Shared` from private dependency 'shared' in public interface
     diamond_priv_dep::Shared
 }
 

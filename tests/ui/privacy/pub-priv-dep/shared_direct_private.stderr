@@ -1,11 +1,11 @@
 error: type `Shared` from private dependency 'shared' in public interface
-  --> $DIR/unresolved-public-path.rs:13:1
+  --> $DIR/shared_direct_private.rs:25:1
    |
-LL | pub fn leaks_private() -> shared::Shared {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | pub fn leaks_priv() -> shared::Shared {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: the lint level is defined here
-  --> $DIR/unresolved-public-path.rs:9:9
+  --> $DIR/shared_direct_private.rs:20:9
    |
 LL | #![deny(exported_private_dependencies)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

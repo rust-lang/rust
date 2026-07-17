@@ -4,6 +4,8 @@ error: struct `ReexportedShared` from private dependency 'shared' is re-exported
 LL | pub use reexport::Shared as ReexportedShared;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
+   = note: `shared` is an indirect dependency reached through the private direct dependency `reexport`
+   = help: consider marking `reexport` public if exposing this item is intended
 note: the lint level is defined here
   --> $DIR/reexport_from_priv.rs:7:9
    |
@@ -15,6 +17,9 @@ error: type `Shared` from private dependency 'shared' in public interface
    |
 LL | pub fn leaks_priv() -> reexport::Shared {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `shared` is an indirect dependency reached through the private direct dependency `reexport`
+   = help: consider marking `reexport` public if exposing this item is intended
 
 error: aborting due to 2 previous errors
 
