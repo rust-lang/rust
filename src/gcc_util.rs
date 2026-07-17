@@ -7,7 +7,7 @@ use gccjit::Version;
 use rustc_codegen_ssa::target_features;
 use rustc_data_structures::smallvec::{SmallVec, smallvec};
 use rustc_session::Session;
-use rustc_target::spec::{Arch, RelocModel, StackProtector};
+use rustc_target::spec::{Arch, RelocModel, StackProbeType, StackProtector};
 
 fn gcc_features_by_flags(sess: &Session, features: &mut Vec<String>) {
     target_features::retpoline_features_by_flags(sess, features);
@@ -210,6 +210,15 @@ pub fn new_context<'gcc>(sess: &Session) -> Context<'gcc> {
         StackProtector::Basic => context.add_command_line_option("-fstack-protector"),
         StackProtector::None => (),
     }
+
+    match sess.target.stack_probes {
+        StackProbeType::None => (),
+        StackProbeType::Inline | StackProbeType::InlineOrCall { .. } => {
+            context.add_command_line_option("-fstack-clash-protection")
+        }
+        // FIXME(antoyo): We should define the stack probe symbol to be __rust_probestack, but it seems GCC cannot do that.
+        StackProbeType::Call => (),
+    };
 
     add_pic_option(&context, sess.relocation_model());
 
