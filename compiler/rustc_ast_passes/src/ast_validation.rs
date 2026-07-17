@@ -576,9 +576,6 @@ impl<'a> AstValidator<'a> {
 
                         // An `extern "custom"` function cannot be `async` and/or `gen`.
                         self.reject_coroutine(abi, sig);
-
-                        // An `extern "custom"` function must have type `fn()`.
-                        self.reject_params_or_return(abi, ident, sig);
                     }
 
                     CanonAbi::Interrupt(interrupt_kind) => {
