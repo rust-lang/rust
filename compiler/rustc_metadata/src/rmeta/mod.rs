@@ -385,7 +385,7 @@ define_tables! {
 - defaulted:
     intrinsic: Table<DefIndex, Option<LazyValue<ty::IntrinsicDef>>>,
     is_macro_rules: Table<DefIndex, bool>,
-    type_alias_is_lazy: Table<DefIndex, bool>,
+    type_alias_is_checked: Table<DefIndex, bool>,
     attr_flags: Table<DefIndex, AttrFlags>,
     // The u64 is the crate-local part of the DefPathHash. All hashes in this crate have the same
     // StableCrateId, so we omit encoding those into the table.

@@ -1,6 +1,7 @@
 use std::assert_matches;
 
 use rustc_abi::{BackendRepr, FieldsShape, Scalar, Size, TagEncoding, Variants};
+use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutCx, TyAndLayout};
 use rustc_middle::{bug, ty};
 
@@ -31,6 +32,15 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
         assert!(
             layout.is_uninhabited(),
             "{:?} is type-level uninhabited but not ABI-uninhabited?",
+            layout.ty
+        );
+    }
+    // ABI uninhabitedness should imply opsem uninhabitedness. However, we can only check that if
+    // the type is really monomorphic (while we can compute a layout for some generic types).
+    if layout.is_uninhabited() && !layout.ty.has_param() {
+        assert!(
+            !layout.ty.is_opsem_inhabited(tcx, cx.typing_env),
+            "{:?} is ABI-uninhabited but not opsem-uninhabited?",
             layout.ty
         );
     }

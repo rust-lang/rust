@@ -1317,8 +1317,8 @@ impl<'tcx> LateLintPass<'tcx> for TypeAliasBounds {
             return;
         }
 
-        // Bounds of lazy type aliases and TAITs are respected.
-        if cx.tcx.type_alias_is_lazy(item.owner_id) {
+        // Bounds of checked type aliases and TAITs are respected.
+        if cx.tcx.type_alias_is_checked(item.owner_id) {
             return;
         }
 

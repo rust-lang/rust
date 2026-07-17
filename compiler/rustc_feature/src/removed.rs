@@ -179,6 +179,8 @@ declare_features! (
     (removed, issue_5723_bootstrap, "1.95.0", None, None),
     /// Lazily evaluate constants. This allows constants to depend on type parameters.
     (removed, lazy_normalization_consts, "1.56.0", Some(72219), Some("superseded by `generic_const_exprs`"), 88369),
+    /// Allow to have type alias types for inter-crate use.
+    (removed, lazy_type_alias, "1.72.0", Some(112792), Some("renamed to `checked_type_aliases`"), 158758),
     /// Changes `impl Trait` to capture all lifetimes in scope.
     (removed, lifetime_capture_rules_2024, "1.87.0", None, Some("unnecessary -- use edition 2024 instead"), 136787),
     /// Allows using the `#[link_args]` attribute.

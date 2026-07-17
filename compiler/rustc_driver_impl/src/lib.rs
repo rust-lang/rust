@@ -1423,7 +1423,7 @@ fn ice_path_with_config(config: Option<&UnstableOptions>) -> &'static Option<Pat
                     return None;
                 }
                 if let Some(unstable_opts) = config && unstable_opts.metrics_dir.is_some() {
-                    tracing::warn!("ignoring -Zerror-metrics in favor of RUSTC_ICE for destination of ICE report files");
+                    tracing::warn!("ignoring -Zmetrics-dir in favor of RUSTC_ICE for destination of ICE report files");
                 }
                 PathBuf::from(s)
             }
