@@ -28,6 +28,7 @@ fn get_runners() -> Runners {
         ("Run failing ui pattern tests", test_failing_ui_pattern_tests),
     );
     runners.insert("--test-failing-rustc", ("Run failing rustc tests", test_failing_rustc));
+    runners.insert("--run-ui-tests", ("Run specified rustc UI tests", run_ui_tests));
     runners.insert("--projects", ("Run the tests of popular crates", test_projects));
     runners.insert("--test-libcore", ("Run libcore tests", test_libcore));
     runners.insert("--alloc-tests", ("Run alloc tests", test_alloc));
@@ -1216,6 +1217,45 @@ fn test_failing_ui_pattern_tests(env: &Env, args: &TestArg) -> Result<(), String
         "ui",
         false,
     )
+}
+
+fn run_ui_tests(env: &Env, args: &TestArg) -> Result<(), String> {
+    let mut env = env.clone();
+    let rust_path = setup_rustc(&mut env, args)?;
+
+    let extra =
+        if args.is_using_gcc_master_branch() { "" } else { " -Csymbol-mangling-version=v0" };
+
+    let rustc_args = format!(
+        "{test_flags} -Zcodegen-backend={backend} --sysroot {sysroot}{extra}",
+        test_flags = env.get("TEST_FLAGS").unwrap_or(&String::new()),
+        backend = args.config_info.cg_backend_path,
+        sysroot = args.config_info.sysroot_path,
+        extra = extra,
+    );
+
+    env.get_mut("RUSTFLAGS").unwrap().clear();
+
+    let mut command: Vec<&dyn AsRef<OsStr>> = vec![
+        &"./x.py",
+        &"test",
+        &"--run",
+        &"always",
+        &"--stage",
+        &"0",
+        &"--set",
+        &"build.compiletest-allow-stage0=true",
+        &"--compiletest-rustc-args",
+        &rustc_args,
+        &"--bypass-ignore-backends",
+    ];
+
+    for test_name in &args.test_args {
+        command.push(test_name);
+    }
+
+    run_command_with_output_and_env(&command, Some(&rust_path), Some(&env))?;
+    Ok(())
 }
 
 fn retain_files_callback<'a>(

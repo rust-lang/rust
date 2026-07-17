@@ -106,6 +106,5 @@ tests/ui/eii/static/default_cross_crate_explicit.rs
 tests/ui/explicit-tail-calls/tailcc-no-signature-restriction.rs
 tests/ui/abi/rust-tail-cc.rs
 tests/ui/abi/rust-preserve-none-cc.rs
-tests/ui/abi/stack-protector.rs
 tests/ui/extern/extern-types-field-offset.rs
 tests/ui/abi/stack-probes-lto.rs

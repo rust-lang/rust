@@ -7,7 +7,7 @@ use gccjit::Version;
 use rustc_codegen_ssa::target_features;
 use rustc_data_structures::smallvec::{SmallVec, smallvec};
 use rustc_session::Session;
-use rustc_target::spec::{Arch, RelocModel};
+use rustc_target::spec::{Arch, RelocModel, StackProtector};
 
 fn gcc_features_by_flags(sess: &Session, features: &mut Vec<String>) {
     target_features::retpoline_features_by_flags(sess, features);
@@ -202,6 +202,13 @@ pub fn new_context<'gcc>(sess: &Session) -> Context<'gcc> {
             CodeModel::Medium => "-mcmodel=medium",
             CodeModel::Large => "-mcmodel=large",
         });
+    }
+
+    match sess.stack_protector() {
+        StackProtector::All => context.add_command_line_option("-fstack-protector-all"),
+        StackProtector::Strong => context.add_command_line_option("-fstack-protector-strong"),
+        StackProtector::Basic => context.add_command_line_option("-fstack-protector"),
+        StackProtector::None => (),
     }
 
     add_pic_option(&context, sess.relocation_model());
