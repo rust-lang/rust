@@ -20,6 +20,7 @@ use rustc_session::lint::{Lint, LintId};
 use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol};
 
 // Glob imports to avoid big, bitrotty import lists
+use crate::attributes::alloc_token_hint::*;
 use crate::attributes::allow_unstable::*;
 use crate::attributes::autodiff::*;
 use crate::attributes::body::*;
@@ -201,6 +202,7 @@ attribute_parsers!(
         // tidy-alphabetical-end
 
         // tidy-alphabetical-start
+        Single<AllocTokenHintParser>,
         Single<CfiEncodingParser>,
         Single<CollapseDebugInfoParser>,
         Single<CoverageParser>,
@@ -292,6 +294,7 @@ attribute_parsers!(
         Single<WithoutArgs<ProcMacroAttributeParser>>,
         Single<WithoutArgs<ProcMacroParser>>,
         Single<WithoutArgs<ProfilerRuntimeParser>>,
+        Single<WithoutArgs<RustcAllocTokenHintParser>>,
         Single<WithoutArgs<RustcAllocatorParser>>,
         Single<WithoutArgs<RustcAllocatorZeroedParser>>,
         Single<WithoutArgs<RustcAllowIncoherentImplParser>>,

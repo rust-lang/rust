@@ -1,0 +1,71 @@
+error[E0539]: malformed `alloc_token_hint` attribute input
+  --> $DIR/invalid-attr-alloc-token-hint.rs:11:3
+   |
+LL | #[alloc_token_hint]
+   |   ^^^^^^^^^^^^^^^^ expected this to be a list
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL | #[alloc_token_hint(contains_pointers = <bool>)]
+   |                   ++++++++++++++++++++++++++++
+LL | #[alloc_token_hint(contains_pointers = <bool>, type_name = "...")]
+   |                   +++++++++++++++++++++++++++++++++++++++++++++++
+LL | #[alloc_token_hint(type_name = "...")]
+   |                   +++++++++++++++++++
+
+error: `#[alloc_token_hint]` requires at least one of `contains_pointers` or `type_name`
+  --> $DIR/invalid-attr-alloc-token-hint.rs:14:1
+   |
+LL | #[alloc_token_hint()]
+   | ^^^^^^^^^^^^^^^^^^^^^
+
+error: expected a boolean literal
+  --> $DIR/invalid-attr-alloc-token-hint.rs:17:40
+   |
+LL | #[alloc_token_hint(contains_pointers = "false")]
+   |                                        ^^^^^^^
+
+error[E0539]: malformed `alloc_token_hint` attribute input
+  --> $DIR/invalid-attr-alloc-token-hint.rs:20:3
+   |
+LL | #[alloc_token_hint(foo = true)]
+   |   ^^^^^^^^^^^^^^^^^----------^
+   |                    |
+   |                    valid arguments are `contains_pointers` or `type_name`
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[alloc_token_hint(foo = true)]
+LL + #[alloc_token_hint(contains_pointers = <bool>)]
+   |
+LL - #[alloc_token_hint(foo = true)]
+LL + #[alloc_token_hint(contains_pointers = <bool>, type_name = "...")]
+   |
+LL - #[alloc_token_hint(foo = true)]
+LL + #[alloc_token_hint(type_name = "...")]
+   |
+
+error[E0538]: malformed `alloc_token_hint` attribute input
+  --> $DIR/invalid-attr-alloc-token-hint.rs:23:3
+   |
+LL | #[alloc_token_hint(contains_pointers = true, contains_pointers = false)]
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-------------------------^
+   |                                              |
+   |                                              found `contains_pointers` used as a key more than once
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[alloc_token_hint(contains_pointers = true, contains_pointers = false)]
+LL + #[alloc_token_hint(contains_pointers = <bool>)]
+   |
+LL - #[alloc_token_hint(contains_pointers = true, contains_pointers = false)]
+LL + #[alloc_token_hint(contains_pointers = <bool>, type_name = "...")]
+   |
+LL - #[alloc_token_hint(contains_pointers = true, contains_pointers = false)]
+LL + #[alloc_token_hint(type_name = "...")]
+   |
+
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0538, E0539.
+For more information about an error, try `rustc --explain E0538`.

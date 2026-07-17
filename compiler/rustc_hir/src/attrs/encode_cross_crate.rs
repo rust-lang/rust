@@ -18,6 +18,7 @@ impl AttributeKind {
 
         match self {
             // tidy-alphabetical-start
+            AllocTokenHint { .. } => Yes,
             AllowInternalUnsafe(..) => Yes,
             AllowInternalUnstable(..) => Yes,
             AutomaticallyDerived => Yes,
@@ -101,6 +102,7 @@ impl AttributeKind {
             Repr { .. } => No,
             RustcAbi { .. } => No,
             RustcAlign { .. } => No,
+            RustcAllocTokenHint => No,
             RustcAllocator => No,
             RustcAllocatorZeroed => No,
             RustcAllocatorZeroedVariant { .. } => Yes,
