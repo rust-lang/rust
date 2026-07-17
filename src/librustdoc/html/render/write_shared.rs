@@ -111,28 +111,9 @@ pub(crate) fn write_shared(
             cx.shared.layout.css_file_extension.as_deref(),
             &cx.shared.resource_suffix,
             cx.info.include_sources,
+            &cx.shared.layout,
+            cx.shared.tcx,
         )?;
-        match &opt.index_page {
-            Some(index_page) if opt.enable_index_page => {
-                let mut md_opts = opt.clone();
-                md_opts.output = cx.dst.clone();
-                md_opts.external_html = cx.shared.layout.external_html.clone();
-                let file = try_err!(cx.sess().source_map().load_file(&index_page), &index_page);
-                try_err!(
-                    crate::markdown::render_and_write(file, md_opts, cx.shared.edition()),
-                    &index_page
-                );
-            }
-            None if opt.enable_index_page => {
-                write_rendered_cci::<CratesIndexPart, _>(
-                    || CratesIndexPart::blank(cx),
-                    &cx.dst,
-                    &crates,
-                    &opt.should_merge,
-                )?;
-            }
-            _ => {} // they don't want an index page
-        }
     }
 
     cx.shared.fs.set_sync_only(false);
@@ -150,9 +131,32 @@ pub(crate) fn write_not_crate_specific(
     css_file_extension: Option<&Path>,
     resource_suffix: &str,
     include_sources: bool,
+    layout: &layout::Layout,
+    tcx: TyCtxt<'_>,
 ) -> Result<(), Error> {
     write_rendered_cross_crate_info(crates, dst, opt, include_sources, resource_suffix)?;
     write_resources(dst, opt, style_files, css_file_extension, resource_suffix)?;
+    match &opt.index_page {
+        Some(index_page) if opt.enable_index_page => {
+            let mut md_opts = opt.clone();
+            md_opts.output = dst.to_path_buf();
+            md_opts.external_html = layout.external_html.clone();
+            let file = try_err!(tcx.sess.source_map().load_file(&index_page), &index_page);
+            try_err!(
+                crate::markdown::render_and_write(file, md_opts, tcx.sess.edition()),
+                &index_page
+            );
+        }
+        None if opt.enable_index_page => {
+            write_rendered_cci::<CratesIndexPart, _>(
+                || CratesIndexPart::blank(layout, opt, style_files),
+                &dst,
+                &crates,
+                &opt.should_merge,
+            )?;
+        }
+        _ => {} // they don't want an index page
+    }
     Ok(())
 }
 
@@ -399,19 +403,21 @@ impl CciPart for CratesIndexPart {
 }
 
 impl CratesIndexPart {
-    fn blank(cx: &Context<'_>) -> SortedTemplate<<Self as CciPart>::FileFormat> {
+    fn blank(
+        layout: &layout::Layout,
+        opt: &RenderOptions,
+        style_files: &[StylePath],
+    ) -> SortedTemplate<<Self as CciPart>::FileFormat> {
         let page = layout::Page {
             title: "Index of crates",
             short_title: "Crates",
             css_class: "mod sys",
             root_path: "./",
-            static_root_path: cx.shared.static_root_path.as_deref(),
+            static_root_path: opt.static_root_path.as_deref(),
             description: "List of crates",
-            resource_suffix: &cx.shared.resource_suffix,
+            resource_suffix: &opt.resource_suffix,
             rust_logo: true,
         };
-        let layout = &cx.shared.layout;
-        let style_files = &cx.shared.style_files;
         const DELIMITER: &str = "\u{FFFC}"; // users are being naughty if they have this
         let content = format_args!(
             "<div class=\"main-heading\">\
