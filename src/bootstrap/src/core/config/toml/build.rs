@@ -33,7 +33,7 @@ define_config! {
         library_docs_private_items: Option<bool> = "library-docs-private-items",
         docs_minification: Option<bool> = "docs-minification",
         submodules: Option<bool> = "submodules",
-        gdb: Option<String> = "gdb",
+        gdb: Option<DebuggerPath> = "gdb",
         lldb: Option<DebuggerPath> = "lldb",
         nodejs: Option<String> = "nodejs",
         npm: Option<String> = "npm", // unused, present for compatibility

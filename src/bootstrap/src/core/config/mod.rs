@@ -508,7 +508,7 @@ pub enum GccCiMode {
     DownloadFromCi,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum DebuggerPath {
     /// Use a debugger at this path
     Path(PathBuf),

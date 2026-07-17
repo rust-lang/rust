@@ -16,7 +16,7 @@ use std::{env, fs};
 
 use crate::builder::{Builder, Kind};
 use crate::core::build_steps::tool;
-use crate::core::config::{CompilerBuiltins, Target};
+use crate::core::config::{CompilerBuiltins, DebuggerPath, Target};
 use crate::utils::exec::command;
 use crate::{Build, Subcommand, t};
 
@@ -187,12 +187,10 @@ than building it.
         .map(|p| cmd_finder.must_have(p))
         .or_else(|| cmd_finder.maybe_have("yarn"));
 
-    build.config.gdb = build
-        .config
-        .gdb
-        .take()
-        .map(|p| cmd_finder.must_have(p))
-        .or_else(|| cmd_finder.maybe_have("gdb"));
+    build.config.gdb = build.config.gdb.take().map(|p| match p {
+        DebuggerPath::Discover => DebuggerPath::Discover,
+        DebuggerPath::Path(path) => DebuggerPath::Path(cmd_finder.must_have(path)),
+    });
 
     build.config.reuse = build
         .config
