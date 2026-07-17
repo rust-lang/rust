@@ -747,6 +747,7 @@ auto:
         --host=i686-pc-windows-gnu
         --target=i686-pc-windows-gnu
         --enable-full-tools
+        --set target.i686-pc-windows-gnu.linker=i686-w64-mingw32-gcc
       SCRIPT: python x.py dist bootstrap --include-default-paths
       DIST_REQUIRE_ALL_TOOLS: 1
       CODEGEN_BACKENDS: llvm,cranelift
