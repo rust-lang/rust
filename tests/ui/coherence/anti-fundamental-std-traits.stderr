@@ -1,0 +1,87 @@
+error: cannot implement `Deref` for the fundamental type `Box<LocalBoxType>`
+  --> $DIR/anti-fundamental-std-traits.rs:50:16
+   |
+LL | impl Deref for Box<LocalBoxType> {
+   |                ^^^^^^^^^^^^^^^^^ impl of `Deref` not allowed for `Box<LocalBoxType>`
+   |
+   = note: `Deref` is `#[rustc_anti_fundamental]` and cannot be implemented for `#[fundamental]` types from another crate
+
+error: cannot implement `Deref` for the fundamental type `Pin<LocalType>`
+  --> $DIR/anti-fundamental-std-traits.rs:67:16
+   |
+LL | impl Deref for &Pin<LocalType> {
+   |                ^^^^^^^^^^^^^^^ impl of `Deref` not allowed for `&Pin<LocalType>`
+   |
+   = note: `Deref` is `#[rustc_anti_fundamental]` and cannot be implemented for `#[fundamental]` types from another crate
+
+error: cannot implement `Deref` for the fundamental type `Pin<LocalType>`
+  --> $DIR/anti-fundamental-std-traits.rs:16:16
+   |
+LL | impl Deref for Pin<LocalType> {
+   |                ^^^^^^^^^^^^^^ impl of `Deref` not allowed for `Pin<LocalType>`
+   |
+   = note: `Deref` is `#[rustc_anti_fundamental]` and cannot be implemented for `#[fundamental]` types from another crate
+
+error: cannot implement `DerefMut` for the fundamental type `Box<LocalBoxType>`
+  --> $DIR/anti-fundamental-std-traits.rs:59:19
+   |
+LL | impl DerefMut for Box<LocalBoxType> {
+   |                   ^^^^^^^^^^^^^^^^^ impl of `DerefMut` not allowed for `Box<LocalBoxType>`
+   |
+   = note: `DerefMut` is `#[rustc_anti_fundamental]` and cannot be implemented for `#[fundamental]` types from another crate
+
+error: cannot implement `DerefMut` for the fundamental type `Pin<LocalType>`
+  --> $DIR/anti-fundamental-std-traits.rs:25:19
+   |
+LL | impl DerefMut for Pin<LocalType> {
+   |                   ^^^^^^^^^^^^^^ impl of `DerefMut` not allowed for `Pin<LocalType>`
+   |
+   = note: `DerefMut` is `#[rustc_anti_fundamental]` and cannot be implemented for `#[fundamental]` types from another crate
+
+error: cannot implement `std::ops::Receiver` for the fundamental type `Pin<LocalType>`
+  --> $DIR/anti-fundamental-std-traits.rs:33:19
+   |
+LL | impl Receiver for Pin<LocalType> {
+   |                   ^^^^^^^^^^^^^^ impl of `std::ops::Receiver` not allowed for `Pin<LocalType>`
+   |
+   = note: `std::ops::Receiver` is `#[rustc_anti_fundamental]` and cannot be implemented for `#[fundamental]` types from another crate
+
+error: cannot implement `std::ops::Receiver` for the fundamental type `Box<LocalBoxType>`
+  --> $DIR/anti-fundamental-std-traits.rs:76:19
+   |
+LL | impl Receiver for Box<LocalBoxType> {
+   |                   ^^^^^^^^^^^^^^^^^ impl of `std::ops::Receiver` not allowed for `Box<LocalBoxType>`
+   |
+   = note: `std::ops::Receiver` is `#[rustc_anti_fundamental]` and cannot be implemented for `#[fundamental]` types from another crate
+
+error: cannot implement `CoerceUnsized` for the fundamental type `Pin<LocalType>`
+  --> $DIR/anti-fundamental-std-traits.rs:39:41
+   |
+LL | impl CoerceUnsized<Pin<LocalType2>> for Pin<LocalType> {}
+   |                                         ^^^^^^^^^^^^^^ impl of `CoerceUnsized` not allowed for `Pin<LocalType>`
+   |
+   = note: `CoerceUnsized` is `#[rustc_anti_fundamental]` and cannot be implemented for `#[fundamental]` types from another crate
+
+error[E0277]: the trait bound `LocalType: CoerceUnsized<LocalType2>` is not satisfied
+  --> $DIR/anti-fundamental-std-traits.rs:39:1
+   |
+LL | impl CoerceUnsized<Pin<LocalType2>> for Pin<LocalType> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the nightly-only, unstable trait `CoerceUnsized<LocalType2>` is not implemented for `LocalType`
+  --> $DIR/anti-fundamental-std-traits.rs:12:1
+   |
+LL | struct LocalType;
+   | ^^^^^^^^^^^^^^^^
+
+error: cannot implement `DispatchFromDyn` for the fundamental type `Pin<LocalType>`
+  --> $DIR/anti-fundamental-std-traits.rs:44:43
+   |
+LL | impl DispatchFromDyn<Pin<LocalType2>> for Pin<LocalType> {}
+   |                                           ^^^^^^^^^^^^^^ impl of `DispatchFromDyn` not allowed for `Pin<LocalType>`
+   |
+   = note: `DispatchFromDyn` is `#[rustc_anti_fundamental]` and cannot be implemented for `#[fundamental]` types from another crate
+
+error: aborting due to 10 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
