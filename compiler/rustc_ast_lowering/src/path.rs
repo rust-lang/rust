@@ -93,6 +93,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let proj_start = p.segments.len() - unresolved_segments;
         let path = self.arena.alloc(hir::Path {
             res,
+            via_crate: partial_res.via_crate(),
             segments: self.arena.alloc_from_iter(p.segments[..proj_start].iter().enumerate().map(
                 |(i, segment)| {
                     let param_mode = match (qself_position, param_mode) {
@@ -235,6 +236,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         assert!(!res.is_empty());
         self.arena.alloc(hir::UsePath {
             res,
+            via_crate: None,
             segments: self.arena.alloc_from_iter(p.segments.iter().map(|segment| {
                 self.lower_path_segment(
                     p.span,

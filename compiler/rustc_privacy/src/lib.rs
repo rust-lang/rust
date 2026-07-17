@@ -12,17 +12,17 @@ use std::{debug_assert_matches, fmt};
 
 use diagnostics::{
     FieldIsPrivate, FieldIsPrivateLabel, FromPrivateDependencyInPublicInterface, InPublicInterface,
-    ItemIsPrivate, PrivateInterfacesOrBoundsLint, ReportEffectiveVisibility, UnnameableTypesLint,
-    UnnamedItemIsPrivate,
+    IndirectPrivateDependency, ItemIsPrivate, PrivateInterfacesOrBoundsLint,
+    ReportEffectiveVisibility, UnnameableTypesLint, UnnamedItemIsPrivate,
 };
 use rustc_ast::visit::{VisitorResult, try_visit};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::indexmap::IndexSet;
 use rustc_data_structures::intern::Interned;
 use rustc_errors::{MultiSpan, listify};
-use rustc_hir::def::{CtorOf, DefKind, Res};
+use rustc_hir::def::{CtorOf, DefKind, Res, ViaCrate};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModId};
-use rustc_hir::intravisit::{self, InferKind, Visitor};
+use rustc_hir::intravisit::{self, InferKind, Visitor, VisitorExt};
 use rustc_hir::{self as hir, AmbigArg, ForeignItemId, ItemId, OwnerId, PatKind, find_attr};
 use rustc_middle::middle::privacy::{EffectiveVisibilities, EffectiveVisibility, Level};
 use rustc_middle::query::Providers;
@@ -34,7 +34,6 @@ use rustc_middle::ty::{
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
 use rustc_span::{Ident, Span, Symbol, sym};
-use tracing::debug;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Generic infrastructure used to implement specific visitors below.
@@ -1346,6 +1345,324 @@ impl<'tcx> DefIdVisitor<'tcx> for TypePrivacyVisitor<'tcx> {
     }
 }
 
+/// Visits the semantic contents introduced by one resolved path while keeping
+/// the first-hop direct dependency selected for that path.
+struct InheritedPrivateDependencyVisitor<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    item_def_id: LocalDefId,
+    via_crate: ViaCrate,
+}
+
+impl<'tcx> DefIdVisitor<'tcx> for InheritedPrivateDependencyVisitor<'tcx> {
+    type Result = ControlFlow<()>;
+
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn visit_def_id(
+        &mut self,
+        def_id: DefId,
+        kind: &str,
+        descr: &dyn fmt::Display,
+    ) -> Self::Result {
+        if def_id.is_local() || !self.via_crate.is_private || self.tcx.is_sizedness_trait(def_id) {
+            return ControlFlow::Continue(());
+        }
+
+        let krate = self.tcx.crate_name(def_id.krate);
+        let span = self.tcx.def_span(self.item_def_id.to_def_id()).source_callsite();
+        self.tcx.emit_node_span_lint(
+            lint::builtin::EXPORTED_PRIVATE_DEPENDENCIES,
+            self.tcx.local_def_id_to_hir_id(self.item_def_id),
+            span,
+            FromPrivateDependencyInPublicInterface {
+                kind,
+                descr: descr.into(),
+                krate,
+                indirect: (def_id.krate != self.via_crate.krate).then_some(
+                    IndirectPrivateDependency::Indirect { krate, via: self.via_crate.extern_name },
+                ),
+            },
+        );
+        ControlFlow::Continue(())
+    }
+}
+
+/// Walks only the HIR that forms a public interface. Each explicit path keeps
+/// its own provenance; semantic types introduced by an external alias are
+/// visited separately under the provenance of the alias path.
+struct ExportedPrivateDependencyVisitor<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    item_def_id: LocalDefId,
+    alias_stack: Vec<LocalDefId>,
+}
+
+impl<'tcx> ExportedPrivateDependencyVisitor<'tcx> {
+    fn new(tcx: TyCtxt<'tcx>, item_def_id: LocalDefId) -> Self {
+        Self { tcx, item_def_id, alias_stack: Vec::new() }
+    }
+
+    fn visit_external_path(&mut self, res: Res, def_id: DefId, via_crate: ViaCrate) {
+        if !via_crate.is_private {
+            return;
+        }
+
+        let mut visitor = InheritedPrivateDependencyVisitor {
+            tcx: self.tcx,
+            item_def_id: self.item_def_id,
+            via_crate,
+        };
+        match res {
+            Res::Def(
+                DefKind::TyAlias
+                | DefKind::Struct
+                | DefKind::Union
+                | DefKind::Enum
+                | DefKind::ForeignTy,
+                _,
+            ) => {
+                let ty = self.tcx.type_of(def_id).instantiate_identity().skip_norm_wip();
+                let _ = visitor.visit(ty);
+            }
+            Res::Def(DefKind::AssocTy, _) => {
+                let descr = self.tcx.item_name(def_id);
+                let _ = visitor.visit_def_id(def_id, "associated type", &descr);
+                let parent = self.tcx.parent(def_id);
+                if self.tcx.def_kind(parent) == DefKind::Trait {
+                    let descr = self.tcx.item_name(parent);
+                    let _ = visitor.visit_def_id(parent, "trait", &descr);
+                }
+            }
+            Res::Def(DefKind::TraitAlias, _) => {
+                let clauses = self.tcx.explicit_implied_predicates_of(def_id).skip_binder();
+                let _ = visitor.visit_clauses(clauses);
+            }
+            _ => {
+                let kind = res.descr();
+                let descr = self.tcx.item_name(def_id);
+                let _ = visitor.visit_def_id(def_id, kind, &descr);
+            }
+        }
+    }
+
+    fn visit_external_defaults(
+        &mut self,
+        def_id: DefId,
+        segment: &hir::PathSegment<'tcx>,
+        via_crate: ViaCrate,
+    ) {
+        if !via_crate.is_private || segment.infer_args {
+            return;
+        }
+
+        let explicit = segment.args().args.iter().filter(|arg| arg.is_ty_or_const()).count();
+        let mut own_ty_or_const = self
+            .tcx
+            .generics_of(def_id)
+            .own_params
+            .iter()
+            .filter(|param| param.kind.is_ty_or_const());
+        for _ in 0..explicit {
+            own_ty_or_const.next();
+        }
+
+        let mut visitor = InheritedPrivateDependencyVisitor {
+            tcx: self.tcx,
+            item_def_id: self.item_def_id,
+            via_crate,
+        };
+        for param in own_ty_or_const {
+            if let Some(default) = param.default_value(self.tcx) {
+                let _ = visitor.visit(default.instantiate_identity().skip_norm_wip());
+            }
+        }
+    }
+
+    fn visit_local_defaults(
+        &mut self,
+        generics: &'tcx hir::Generics<'tcx>,
+        segment: &hir::PathSegment<'tcx>,
+    ) {
+        if segment.infer_args {
+            return;
+        }
+
+        let explicit = segment.args().args.iter().filter(|arg| arg.is_ty_or_const()).count();
+        for param in generics
+            .params
+            .iter()
+            .filter(|param| !matches!(param.kind, hir::GenericParamKind::Lifetime { .. }))
+            .skip(explicit)
+        {
+            match param.kind {
+                hir::GenericParamKind::Type { default: Some(default), .. } => {
+                    self.visit_ty_unambig(default);
+                }
+                hir::GenericParamKind::Const { default: Some(default), .. } => {
+                    self.visit_const_arg_unambig(default);
+                }
+                _ => {}
+            }
+        }
+    }
+
+    fn visit_local_alias(&mut self, def_id: LocalDefId) {
+        if self.alias_stack.contains(&def_id) {
+            return;
+        }
+        self.alias_stack.push(def_id);
+        match self.tcx.hir_node_by_def_id(def_id) {
+            hir::Node::Item(item) => match item.kind {
+                hir::ItemKind::TyAlias(_, _, ty) => self.visit_ty_unambig(ty),
+                hir::ItemKind::TraitAlias(_, _, _, bounds) => {
+                    for bound in bounds {
+                        self.visit_param_bound(bound);
+                    }
+                }
+                _ => {}
+            },
+            hir::Node::TraitItem(item) => {
+                if let hir::TraitItemKind::Type(bounds, Some(ty)) = item.kind {
+                    for bound in bounds {
+                        self.visit_param_bound(bound);
+                    }
+                    self.visit_ty_unambig(ty);
+                }
+            }
+            hir::Node::ImplItem(item) => {
+                if let hir::ImplItemKind::Type(ty) = item.kind {
+                    self.visit_ty_unambig(ty);
+                }
+            }
+            _ => {}
+        }
+        self.alias_stack.pop();
+    }
+
+    fn visit_generics_for_def(&mut self, def_id: LocalDefId) {
+        match self.tcx.hir_node_by_def_id(def_id) {
+            hir::Node::Item(item) => {
+                if let Some(generics) = item.kind.generics() {
+                    self.visit_generics(generics);
+                }
+                match item.kind {
+                    hir::ItemKind::Trait { bounds, .. }
+                    | hir::ItemKind::TraitAlias(_, _, _, bounds) => {
+                        for bound in bounds {
+                            self.visit_param_bound(bound);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            hir::Node::TraitItem(item) => self.visit_generics(item.generics),
+            hir::Node::ImplItem(item) => self.visit_generics(item.generics),
+            hir::Node::ForeignItem(item) => {
+                if let hir::ForeignItemKind::Fn(_, _, generics) = item.kind {
+                    self.visit_generics(generics);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn visit_primary_type_for_def(&mut self, def_id: LocalDefId) {
+        match self.tcx.hir_node_by_def_id(def_id) {
+            hir::Node::Item(item) => match item.kind {
+                hir::ItemKind::Static(_, _, ty, _)
+                | hir::ItemKind::Const(_, _, ty, _)
+                | hir::ItemKind::TyAlias(_, _, ty) => self.visit_ty_unambig(ty),
+                hir::ItemKind::Fn { sig, .. } => self.visit_fn_decl(sig.decl),
+                hir::ItemKind::Impl(impl_) => self.visit_ty_unambig(impl_.self_ty),
+                _ => {}
+            },
+            hir::Node::Field(field) => self.visit_ty_unambig(field.ty),
+            hir::Node::TraitItem(item) => match item.kind {
+                hir::TraitItemKind::Const(ty, _) => self.visit_ty_unambig(ty),
+                hir::TraitItemKind::Fn(sig, _) => self.visit_fn_decl(sig.decl),
+                hir::TraitItemKind::Type(_, Some(ty)) => self.visit_ty_unambig(ty),
+                hir::TraitItemKind::Type(_, None) => {}
+            },
+            hir::Node::ImplItem(item) => match item.kind {
+                hir::ImplItemKind::Const(ty, _) | hir::ImplItemKind::Type(ty) => {
+                    self.visit_ty_unambig(ty)
+                }
+                hir::ImplItemKind::Fn(sig, _) => self.visit_fn_decl(sig.decl),
+            },
+            hir::Node::ForeignItem(item) => match item.kind {
+                hir::ForeignItemKind::Fn(sig, _, _) => self.visit_fn_decl(sig.decl),
+                hir::ForeignItemKind::Static(ty, ..) => self.visit_ty_unambig(ty),
+                hir::ForeignItemKind::Type => {}
+            },
+            _ => {}
+        }
+    }
+
+    fn visit_bounds_for_def(&mut self, def_id: LocalDefId) {
+        match self.tcx.hir_node_by_def_id(def_id) {
+            hir::Node::OpaqueTy(opaque) => {
+                for bound in opaque.bounds {
+                    self.visit_param_bound(bound);
+                }
+            }
+            hir::Node::TraitItem(item) => {
+                if let hir::TraitItemKind::Type(bounds, _) = item.kind {
+                    for bound in bounds {
+                        self.visit_param_bound(bound);
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn visit_trait_ref_for_def(&mut self, def_id: LocalDefId) {
+        if let hir::Node::Item(item) = self.tcx.hir_node_by_def_id(def_id)
+            && let hir::ItemKind::Impl(impl_) = item.kind
+            && let Some(of_trait) = impl_.of_trait
+        {
+            self.visit_trait_ref(&of_trait.trait_ref);
+        }
+    }
+}
+
+impl<'tcx> Visitor<'tcx> for ExportedPrivateDependencyVisitor<'tcx> {
+    fn visit_path(&mut self, path: &hir::Path<'tcx>, _id: hir::HirId) {
+        if let Res::Def(_, def_id) = path.res {
+            let segment =
+                path.segments.iter().rev().find(|segment| segment.res.opt_def_id() == Some(def_id));
+            match (path.via_crate, def_id.as_local()) {
+                (Some(via_crate), None) => {
+                    self.visit_external_path(path.res, def_id, via_crate);
+                    if let Some(segment) = segment {
+                        self.visit_external_defaults(def_id, segment, via_crate);
+                    }
+                }
+                (_, Some(local_def_id)) => {
+                    if let Some(segment) = segment {
+                        if let Some(generics) = self.tcx.hir_get_generics(local_def_id) {
+                            self.visit_local_defaults(generics, segment);
+                        }
+                    }
+                    if matches!(
+                        path.res,
+                        Res::Def(DefKind::TyAlias | DefKind::TraitAlias | DefKind::AssocTy, _)
+                    ) {
+                        self.visit_local_alias(local_def_id);
+                    }
+                }
+                _ => {}
+            }
+        }
+        intravisit::walk_path(self, path);
+    }
+
+    fn visit_anon_const(&mut self, c: &'tcx hir::AnonConst) {
+        self.visit_expr(self.tcx.hir_body(c.body).value);
+    }
+}
+
 /// SearchInterfaceForPrivateItemsVisitor traverses an item's interface and
 /// finds any private components in it.
 ///
@@ -1364,6 +1681,10 @@ struct SearchInterfaceForPrivateItemsVisitor<'tcx> {
 
 impl SearchInterfaceForPrivateItemsVisitor<'_> {
     fn generics(&mut self) -> &mut Self {
+        if self.required_visibility.is_public() {
+            ExportedPrivateDependencyVisitor::new(self.tcx, self.item_def_id)
+                .visit_generics_for_def(self.item_def_id);
+        }
         self.in_primary_interface = true;
         for param in &self.tcx.generics_of(self.item_def_id).own_params {
             if let GenericParamDefKind::Const { .. } = param.kind {
@@ -1390,12 +1711,20 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
     }
 
     fn bounds(&mut self) -> &mut Self {
+        if self.required_visibility.is_public() {
+            ExportedPrivateDependencyVisitor::new(self.tcx, self.item_def_id)
+                .visit_bounds_for_def(self.item_def_id);
+        }
         self.in_primary_interface = false;
         let _ = self.visit_clauses(self.tcx.explicit_item_bounds(self.item_def_id).skip_binder());
         self
     }
 
     fn ty(&mut self) -> &mut Self {
+        if self.required_visibility.is_public() {
+            ExportedPrivateDependencyVisitor::new(self.tcx, self.item_def_id)
+                .visit_primary_type_for_def(self.item_def_id);
+        }
         self.in_primary_interface = true;
         let _ =
             self.visit(self.tcx.type_of(self.item_def_id).instantiate_identity().skip_norm_wip());
@@ -1403,6 +1732,10 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
     }
 
     fn trait_ref(&mut self) -> &mut Self {
+        if self.required_visibility.is_public() {
+            ExportedPrivateDependencyVisitor::new(self.tcx, self.item_def_id)
+                .visit_trait_ref_for_def(self.item_def_id);
+        }
         self.in_primary_interface = true;
         let _ = self.visit_trait(
             self.tcx.impl_trait_ref(self.item_def_id).instantiate_identity().skip_norm_wip(),
@@ -1411,19 +1744,6 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
     }
 
     fn check_def_id(&self, def_id: DefId, kind: &str, descr: &dyn fmt::Display) -> bool {
-        if self.leaks_private_dep(def_id) {
-            self.tcx.emit_node_span_lint(
-                lint::builtin::EXPORTED_PRIVATE_DEPENDENCIES,
-                self.tcx.local_def_id_to_hir_id(self.item_def_id),
-                self.tcx.def_span(self.item_def_id.to_def_id()),
-                FromPrivateDependencyInPublicInterface {
-                    kind,
-                    descr: descr.into(),
-                    krate: self.tcx.crate_name(def_id.krate),
-                },
-            );
-        }
-
         let Some(local_def_id) = def_id.as_local() else {
             return false;
         };
@@ -1491,17 +1811,6 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
         }
 
         false
-    }
-
-    /// An item is 'leaked' from a private dependency if all
-    /// of the following are true:
-    /// 1. It's contained within a public type
-    /// 2. It comes from a private crate
-    fn leaks_private_dep(&self, item_id: DefId) -> bool {
-        let ret = self.required_visibility.is_public() && self.tcx.is_private_dep(item_id.krate);
-
-        debug!("leaks_private_dep(item_id={:?})={}", item_id, ret);
-        ret
     }
 }
 
@@ -1687,6 +1996,11 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'_, 'tcx> {
                 // for private components (#90586).
                 if !of_trait {
                     check.generics().predicates();
+                } else if impl_vis.is_public() {
+                    // Keep the existing semantic privacy exception above, but the dependency
+                    // lint still needs the explicitly written generic paths in the impl header.
+                    ExportedPrivateDependencyVisitor::new(tcx, def_id)
+                        .visit_generics_for_def(def_id);
                 }
 
                 // Skip checking private components in associated types, due to lack of full

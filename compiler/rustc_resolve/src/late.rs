@@ -4805,7 +4805,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
                     std_path.push(Segment::from_ident(Ident::with_dummy_span(sym::std)));
                     std_path.extend(path);
-                    if let PathResult::Module(_) | PathResult::NonModule(_) =
+                    if let PathResult::Module(..) | PathResult::NonModule(_) =
                         self.resolve_path(&std_path, Some(ns), None, source)
                     {
                         // Check if we wrote `str::from_utf8` instead of `std::str::from_utf8`
@@ -4975,16 +4975,21 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             // The remaining segments (the `C` in our example) will
             // have to be resolved by type-check, since that requires doing
             // trait resolution.
-            return Ok(Some(PartialRes::with_unresolved_segments(
-                partial_res.base_res(),
-                partial_res.unresolved_segments() + path.len() - qself.position - 1,
-            )));
+            return Ok(Some(
+                PartialRes::with_unresolved_segments(
+                    partial_res.base_res(),
+                    partial_res.unresolved_segments() + path.len() - qself.position - 1,
+                )
+                .with_via_crate(partial_res.via_crate()),
+            ));
         }
 
         let result = match self.resolve_path(path, Some(ns), Some(finalize), source) {
             PathResult::NonModule(path_res) => path_res,
-            PathResult::Module(ModuleOrUniformRoot::Module(module)) if !module.is_normal() => {
-                PartialRes::new(module.res().unwrap())
+            PathResult::Module(ModuleOrUniformRoot::Module(module), via_crate)
+                if !module.is_normal() =>
+            {
+                PartialRes::new(module.res().unwrap()).with_via_crate(via_crate)
             }
             // A part of this path references a `mod` that had a parse error. To avoid resolution
             // errors for each reference to that module, we don't emit an error for them until the
@@ -5004,7 +5009,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             //
             // Such behavior is required for backward compatibility.
             // The same fallback is used when `a` resolves to nothing.
-            PathResult::Module(ModuleOrUniformRoot::Module(_)) | PathResult::Failed { .. }
+            PathResult::Module(ModuleOrUniformRoot::Module(_), _) | PathResult::Failed { .. }
                 if (ns == TypeNS || path.len() > 1)
                     && PrimTy::from_name(path[0].ident.name).is_some() =>
             {
@@ -5035,8 +5040,8 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
                 PartialRes::with_unresolved_segments(Res::PrimTy(prim), path.len() - 1)
             }
-            PathResult::Module(ModuleOrUniformRoot::Module(module)) => {
-                PartialRes::new(module.res().unwrap())
+            PathResult::Module(ModuleOrUniformRoot::Module(module), via_crate) => {
+                PartialRes::new(module.res().unwrap()).with_via_crate(via_crate)
             }
             PathResult::Failed {
                 is_error_from_last_segment: false,

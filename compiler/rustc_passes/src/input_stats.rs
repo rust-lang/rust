@@ -456,7 +456,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         // `p.res`, by building temporary `Path`s that are not part of the real
         // HIR, which causes `p` to be double- or triple-counted. Instead just
         // walk the path internals (i.e. the segments) directly.
-        let hir::Path { span: _, res: _, segments } = *p;
+        let hir::Path { span: _, res: _, via_crate: _, segments } = *p;
         ast_visit::walk_list!(self, visit_path_segment, segments);
     }
 

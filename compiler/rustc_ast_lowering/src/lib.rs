@@ -1031,6 +1031,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.arena.alloc(hir::Path {
             span,
             res,
+            via_crate: None,
             segments: self.arena.alloc_from_iter([hir::PathSegment {
                 ident: Ident::new(lang_item.name(), span),
                 hir_id: self.next_id(),
@@ -1611,6 +1612,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     None,
                     self.arena.alloc(hir::Path {
                         res,
+                        via_crate: None,
                         segments: arena_vec![self; hir::PathSegment::new(
                             Ident::with_dummy_span(kw::SelfUpper),
                             hir_id,
@@ -2562,6 +2564,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             self.arena.alloc(hir::Path {
                 span,
                 res,
+                via_crate: None,
                 segments:
                     arena_vec![self; hir::PathSegment::new(self.lower_ident(ident), hir_id, res)],
             }),

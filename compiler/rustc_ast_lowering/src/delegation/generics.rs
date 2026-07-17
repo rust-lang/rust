@@ -674,6 +674,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         hir::QPath::Resolved(
             None,
             self.arena.alloc(hir::Path {
+                via_crate: None,
                 segments: self.arena.alloc_slice(&[hir::PathSegment {
                     args: None,
                     hir_id: self.next_id(),

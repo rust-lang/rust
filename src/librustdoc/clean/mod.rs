@@ -122,8 +122,8 @@ pub(crate) fn clean_doc_module<'tcx>(
             let import = cx.tcx.hir_expect_item(*import_id);
             match import.kind {
                 hir::ItemKind::Use(path, kind) => {
-                    let hir::UsePath { segments, span, .. } = *path;
-                    let path = hir::Path { segments, res: *res, span };
+                    let hir::UsePath { segments, span, via_crate, .. } = *path;
+                    let path = hir::Path { segments, res: *res, span, via_crate };
                     clean_use_statement_inner(
                         import,
                         Some(name),
@@ -1607,8 +1607,12 @@ fn first_non_private_clean_path<'tcx>(
     new_path_segments: &'tcx [hir::PathSegment<'tcx>],
     new_path_span: rustc_span::Span,
 ) -> Path {
-    let new_hir_path =
-        hir::Path { segments: new_path_segments, res: path.res, span: new_path_span };
+    let new_hir_path = hir::Path {
+        segments: new_path_segments,
+        res: path.res,
+        span: new_path_span,
+        via_crate: path.via_crate,
+    };
     let mut new_clean_path = clean_path(&new_hir_path, cx);
     // In here we need to play with the path data one last time to provide it the
     // missing `args` and `res` of the final `Path` we get, which, since it comes
@@ -1782,7 +1786,8 @@ fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type 
             let (trait_, should_fully_qualify) = match ty.kind() {
                 ty::Alias(_, proj @ ty::AliasTy { kind: ty::Projection { .. }, .. }) => {
                     let res = Res::Def(DefKind::Trait, proj.trait_ref(cx.tcx).def_id);
-                    let trait_ = clean_path(&hir::Path { span, res, segments: &[] }, cx);
+                    let trait_ =
+                        clean_path(&hir::Path { span, res, segments: &[], via_crate: None }, cx);
                     register_res(cx, trait_.res);
                     let self_def_id = res.opt_def_id();
                     let should_fully_qualify =
@@ -3148,9 +3153,9 @@ fn clean_use_statement<'tcx>(
     inlined_names: &mut FxHashSet<(ItemType, Symbol)>,
 ) -> Vec<Item> {
     let mut items = Vec::new();
-    let hir::UsePath { segments, ref res, span } = *path;
+    let hir::UsePath { segments, ref res, span, via_crate } = *path;
     for res in res.present_items() {
-        let path = hir::Path { segments, res, span };
+        let path = hir::Path { segments, res, span, via_crate };
         items.append(&mut clean_use_statement_inner(import, name, &path, kind, cx, inlined_names));
     }
     items

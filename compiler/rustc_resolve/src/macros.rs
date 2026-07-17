@@ -17,7 +17,7 @@ use rustc_expand::expand::{
     AstFragment, AstFragmentKind, Invocation, InvocationKind, SupportsMacroExpansion,
 };
 use rustc_hir::attrs::{AttributeKind, CfgEntry, StrippedCfgItem};
-use rustc_hir::def::{DefKind, MacroKinds, Namespace, NonMacroAttrKind};
+use rustc_hir::def::{DefKind, MacroKinds, Namespace, NonMacroAttrKind, ViaCrate};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_hir::{Attribute, StabilityLevel};
 use rustc_middle::middle::stability;
@@ -314,7 +314,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
             }
             _ => None,
         };
-        let (ext, res) = self.smart_resolve_macro_path(
+        let (ext, res, via_crate) = self.smart_resolve_macro_path(
             path,
             kind,
             supports_macro_expansion,
@@ -326,6 +326,12 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
             looks_like_invoc_in_mod_inert_attr,
             sugg_span,
         )?;
+        if let Some(via_crate) = via_crate {
+            // Expansion has committed to this resolution. A later retry can reach the same
+            // macro through a different binding, but `$crate` paths produced by this expansion
+            // must keep the first-hop provenance that was selected when it was expanded.
+            self.macro_invocation_provenance.entry(invoc_id).or_insert(via_crate);
+        }
 
         let span = invoc.span();
         let def_id = if deleg_impl.is_some() { None } else { res.opt_def_id() };
@@ -593,8 +599,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         deleg_impl: Option<(LocalDefId, Span)>,
         invoc_in_mod_inert_attr: Option<LocalDefId>,
         suggestion_span: Option<Span>,
-    ) -> Result<(&'ra Arc<SyntaxExtension>, Res), Indeterminate> {
-        let (ext, res) = match self.cm().resolve_macro_or_delegation_path(
+    ) -> Result<(&'ra Arc<SyntaxExtension>, Res, Option<ViaCrate>), Indeterminate> {
+        let (ext, res, via_crate) = match self.cm().resolve_macro_or_delegation_path(
             path,
             kind,
             parent_scope,
@@ -604,9 +610,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             None,
             suggestion_span,
         ) {
-            Ok((Some(ext), res)) => (ext, res),
-            Ok((None, res)) => (self.dummy_ext(kind), res),
-            Err(Determinacy::Determined) => (self.dummy_ext(kind), Res::Err),
+            Ok((Some(ext), res, via_crate)) => (ext, res, via_crate),
+            Ok((None, res, via_crate)) => (self.dummy_ext(kind), res, via_crate),
+            Err(Determinacy::Determined) => (self.dummy_ext(kind), Res::Err, None),
             Err(Determinacy::Undetermined) => return Err(Indeterminate),
         };
 
@@ -622,10 +628,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     remove_surrounding_derive: None,
                     add_as_non_derive: None,
                 });
-                return Ok((self.dummy_ext(kind), Res::Err));
+                return Ok((self.dummy_ext(kind), Res::Err, via_crate));
             }
 
-            return Ok((ext, res));
+            return Ok((ext, res, via_crate));
         }
 
         // Report errors for the resolved macro.
@@ -705,7 +711,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
             self.dcx().emit_err(err);
 
-            return Ok((self.dummy_ext(kind), Res::Err));
+            return Ok((self.dummy_ext(kind), Res::Err, via_crate));
         }
 
         // We are trying to avoid reporting this error if other related errors were reported.
@@ -777,7 +783,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             );
         }
 
-        Ok((ext, res))
+        Ok((ext, res, via_crate))
     }
 
     pub(crate) fn resolve_derive_macro_path<'r>(
@@ -787,7 +793,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         force: bool,
         ignore_import: Option<Import<'ra>>,
     ) -> Result<(Option<&'r Arc<SyntaxExtension>>, Res), Determinacy> {
-        self.resolve_macro_or_delegation_path(
+        let (ext, res, _) = self.resolve_macro_or_delegation_path(
             path,
             MacroKind::Derive,
             parent_scope,
@@ -796,7 +802,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             None,
             ignore_import,
             None,
-        )
+        )?;
+        Ok((ext, res))
     }
 
     fn resolve_macro_or_delegation_path<'r>(
@@ -809,7 +816,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         invoc_in_mod_inert_attr: Option<(LocalDefId, NodeId)>,
         ignore_import: Option<Import<'ra>>,
         suggestion_span: Option<Span>,
-    ) -> Result<(Option<&'ra Arc<SyntaxExtension>>, Res), Determinacy> {
+    ) -> Result<(Option<&'ra Arc<SyntaxExtension>>, Res, Option<ViaCrate>), Determinacy> {
         let path_span = ast_path.span;
         let mut path = Segment::from_path(ast_path);
 
@@ -823,7 +830,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             path.insert(0, Segment::from_ident(root));
         }
 
-        let res = if deleg_impl.is_some() || path.len() > 1 {
+        let inherited_via =
+            path.first().and_then(|segment| self.dollar_crate_provenance(segment.ident));
+        let (res, selected_via) = if deleg_impl.is_some() || path.len() > 1 {
             let ns = if deleg_impl.is_some() { TypeNS } else { MacroNS };
             let res = match self.reborrow().maybe_resolve_path(
                 &path,
@@ -831,13 +840,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 parent_scope,
                 ignore_import,
             ) {
-                PathResult::NonModule(path_res) if let Some(res) = path_res.full_res() => Ok(res),
+                PathResult::NonModule(path_res) if let Some(res) = path_res.full_res() => {
+                    Ok((res, path_res.via_crate()))
+                }
                 PathResult::Indeterminate if !force => return Err(Determinacy::Undetermined),
                 PathResult::NonModule(..)
                 | PathResult::Indeterminate
                 | PathResult::Failed { .. } => Err(Determinacy::Determined),
-                PathResult::Module(ModuleOrUniformRoot::Module(module)) => {
-                    Ok(module.res().unwrap())
+                PathResult::Module(ModuleOrUniformRoot::Module(module), via_crate) => {
+                    Ok((module.res().unwrap(), via_crate))
                 }
                 PathResult::Module(..) => unreachable!(),
             };
@@ -847,12 +858,19 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 path_span,
                 kind,
                 *parent_scope,
-                res.ok(),
+                res.as_ref().ok().map(|(res, _)| *res),
                 ns,
             ));
 
-            self.prohibit_imported_non_macro_attrs(None, res.ok(), path_span);
-            res
+            self.prohibit_imported_non_macro_attrs(
+                None,
+                res.as_ref().ok().map(|(res, _)| *res),
+                path_span,
+            );
+            match res {
+                Ok((res, via_crate)) => (Ok(res), via_crate),
+                Err(determinacy) => (Err(determinacy), None),
+            }
         } else {
             let binding = self.reborrow().resolve_ident_in_scope_set(
                 path[0].ident,
@@ -877,6 +895,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 suggestion_span,
             ));
 
+            let selected_via = binding.ok().and_then(|binding| binding.via_crate);
             let res = binding.map(|binding| binding.res());
             self.prohibit_imported_non_macro_attrs(binding.ok(), res.ok(), path_span);
             self.reborrow().report_out_of_scope_macro_calls(
@@ -885,10 +904,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 invoc_in_mod_inert_attr,
                 binding.ok(),
             );
-            res
+            (res, selected_via)
         };
 
         let res = res?;
+        let via_crate = inherited_via.or(selected_via);
         let ext = match deleg_impl {
             Some((impl_def_id, star_span)) => match res {
                 Res::Def(DefKind::Trait, def_id) => {
@@ -904,7 +924,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             },
             None => self.get_macro(res),
         };
-        Ok((ext, res))
+        Ok((ext, res, via_crate))
     }
 
     pub(crate) fn finalize_macro_resolutions(&mut self, krate: &Crate) {
@@ -959,7 +979,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     check_consistency(self, &path, path_span, kind, initial_res, res)
                 }
                 // This may be a trait for glob delegation expansions.
-                PathResult::Module(ModuleOrUniformRoot::Module(module)) => check_consistency(
+                PathResult::Module(ModuleOrUniformRoot::Module(module), _) => check_consistency(
                     self,
                     &path,
                     path_span,
@@ -1288,7 +1308,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let mut indeterminate = false;
         for ns in namespaces {
             match self.cm().maybe_resolve_path(path, Some(*ns), &parent_scope, None) {
-                PathResult::Module(ModuleOrUniformRoot::Module(_)) => return Ok(true),
+                PathResult::Module(ModuleOrUniformRoot::Module(_), _) => return Ok(true),
                 PathResult::NonModule(partial_res) if partial_res.unresolved_segments() == 0 => {
                     return Ok(true);
                 }
@@ -1305,7 +1325,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 // We can only be sure that a path doesn't exist after having tested all the
                 // possibilities, only at that time we can return false.
                 PathResult::Failed { .. } => {}
-                PathResult::Module(_) => panic!("unexpected path resolution"),
+                PathResult::Module(..) => panic!("unexpected path resolution"),
             }
         }
 

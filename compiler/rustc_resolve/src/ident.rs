@@ -25,8 +25,8 @@ use crate::{
     AmbiguityError, AmbiguityKind, AmbiguityWarning, BindingKey, CmResolver, Decl, DeclKind,
     Determinacy, ExternModule, Finalize, IdentKey, ImportKind, ImportSummary, LateDecl,
     LocalModule, Module, ModuleKind, ModuleOrUniformRoot, ParentScope, PathResult, PrivacyError,
-    Res, ResolutionError, Resolver, Scope, ScopeSet, Segment, Stage, Symbol, Used, diagnostics,
-    module_to_string,
+    Res, ResolutionError, Resolver, Scope, ScopeSet, Segment, Stage, Symbol, Used, ViaCrate,
+    diagnostics, module_to_string,
 };
 
 #[derive(Copy, Clone)]
@@ -1830,6 +1830,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         diag_metadata: Option<&DiagMetadata<'_>>,
     ) -> PathResult<'ra> {
         let mut module = None;
+        let mut via_crate =
+            path.first().and_then(|segment| self.dollar_crate_provenance(segment.ident));
         let mut module_had_parse_errors = !self.mods_with_parse_errors.is_empty()
             && self
                 .mods_with_parse_errors
@@ -1844,13 +1846,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             finalize: Option<Finalize>,
             res: Res,
             id: Option<NodeId>,
+            via_crate: Option<ViaCrate>,
         ) {
             if finalize.is_some()
                 && let Some(id) = id
                 && !this.partial_res_map.contains_key(&id)
             {
                 assert!(id != ast::DUMMY_NODE_ID, "Trying to resolve dummy id");
-                this.get_mut().record_partial_res(id, PartialRes::new(res));
+                this.get_mut()
+                    .record_partial_res(id, PartialRes::new(res).with_via_crate(via_crate));
             }
         }
 
@@ -1903,7 +1907,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         let mut ctxt = ident.span.ctxt().normalize_to_macros_2_0();
                         let self_mod = self.resolve_self(&mut ctxt, parent_scope.module);
                         if let Some(res) = self_mod.res() {
-                            record_segment_res(self.reborrow(), finalize, res, id);
+                            record_segment_res(self.reborrow(), finalize, res, id, via_crate);
                         }
                         module = Some(ModuleOrUniformRoot::Module(self_mod));
                         continue;
@@ -1925,7 +1929,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         // `::a::b`, `crate::a::b` or `$crate::a::b`
                         let crate_root = self.resolve_crate_root(ident);
                         if let Some(res) = crate_root.res() {
-                            record_segment_res(self.reborrow(), finalize, res, id);
+                            record_segment_res(self.reborrow(), finalize, res, id, via_crate);
                         }
                         module = Some(ModuleOrUniformRoot::Module(crate_root));
                         continue;
@@ -2002,11 +2006,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     Some(LateDecl::Decl(binding)) => Ok(binding),
                     // we found a local variable or type param
                     Some(LateDecl::RibDef(res)) => {
-                        record_segment_res(self.reborrow(), finalize, res, id);
-                        return PathResult::NonModule(PartialRes::with_unresolved_segments(
-                            res,
-                            path.len() - 1,
-                        ));
+                        record_segment_res(self.reborrow(), finalize, res, id, via_crate);
+                        return PathResult::NonModule(
+                            PartialRes::with_unresolved_segments(res, path.len() - 1)
+                                .with_via_crate(via_crate),
+                        );
                     }
                     _ => Err(Determinacy::determined(finalize.is_some())),
                 }
@@ -2023,6 +2027,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
             match binding {
                 Ok(binding) => {
+                    via_crate = via_crate.or(binding.via_crate);
                     if segment_idx == 1 {
                         second_binding = Some(binding);
                     }
@@ -2045,13 +2050,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     let maybe_assoc = opt_ns != Some(MacroNS) && PathSource::Type.is_expected(res);
                     if let Res::OpenMod(sym) = binding.res() {
                         module = Some(ModuleOrUniformRoot::OpenModule(sym));
-                        record_segment_res(self.reborrow(), finalize, res, id);
+                        record_segment_res(self.reborrow(), finalize, res, id, via_crate);
                     } else if let Some(def_id) = binding.res().module_like_def_id() {
                         if self.mods_with_parse_errors.contains(&def_id) {
                             module_had_parse_errors = true;
                         }
                         module = Some(ModuleOrUniformRoot::Module(self.expect_module(def_id)));
-                        record_segment_res(self.reborrow(), finalize, res, id);
+                        record_segment_res(self.reborrow(), finalize, res, id, via_crate);
                     } else if res == Res::ToolMod && !is_last && opt_ns.is_some() {
                         if binding.is_import() {
                             self.dcx().emit_err(diagnostics::ToolModuleImported {
@@ -2060,9 +2065,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             });
                         }
                         let res = Res::NonMacroAttr(NonMacroAttrKind::Tool);
-                        return PathResult::NonModule(PartialRes::new(res));
+                        return PathResult::NonModule(
+                            PartialRes::new(res).with_via_crate(via_crate),
+                        );
                     } else if res == Res::Err {
-                        return PathResult::NonModule(PartialRes::new(Res::Err));
+                        return PathResult::NonModule(
+                            PartialRes::new(Res::Err).with_via_crate(via_crate),
+                        );
                     } else if opt_ns.is_some() && (is_last || maybe_assoc) {
                         if let Some(finalize) = finalize {
                             self.get_mut().lint_if_path_starts_with_module(
@@ -2071,11 +2080,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 second_binding,
                             );
                         }
-                        record_segment_res(self.reborrow(), finalize, res, id);
-                        return PathResult::NonModule(PartialRes::with_unresolved_segments(
-                            res,
-                            path.len() - segment_idx - 1,
-                        ));
+                        record_segment_res(self.reborrow(), finalize, res, id, via_crate);
+                        return PathResult::NonModule(
+                            PartialRes::with_unresolved_segments(res, path.len() - segment_idx - 1)
+                                .with_via_crate(via_crate),
+                        );
                     } else {
                         return PathResult::failed(
                             ident,
@@ -2138,10 +2147,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         && opt_ns.is_some()
                         && !module.is_normal()
                     {
-                        return PathResult::NonModule(PartialRes::with_unresolved_segments(
-                            module.res().unwrap(),
-                            path.len() - segment_idx,
-                        ));
+                        return PathResult::NonModule(
+                            PartialRes::with_unresolved_segments(
+                                module.res().unwrap(),
+                                path.len() - segment_idx,
+                            )
+                            .with_via_crate(via_crate),
+                        );
                     }
 
                     let mut this = self.reborrow();
@@ -2176,10 +2188,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             self.get_mut().lint_if_path_starts_with_module(finalize, path, second_binding);
         }
 
-        PathResult::Module(match module {
-            Some(module) => module,
-            None if path.is_empty() => ModuleOrUniformRoot::CurrentScope,
-            _ => bug!("resolve_path: non-empty path `{:?}` has no module", path),
-        })
+        PathResult::Module(
+            match module {
+                Some(module) => module,
+                None if path.is_empty() => ModuleOrUniformRoot::CurrentScope,
+                _ => bug!("resolve_path: non-empty path `{:?}` has no module", path),
+            },
+            via_crate,
+        )
     }
 }

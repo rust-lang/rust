@@ -757,13 +757,13 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
         {
             // Only visit the value namespace path when we've detected a duplicate,
             // not the type namespace path.
-            let UsePath { segments, res: _, span } = *path;
-            self.visit_path(&Path { segments, res: value_ns_res, span }, hir_id);
+            let UsePath { segments, res: _, span, via_crate } = *path;
+            self.visit_path(&Path { segments, res: value_ns_res, span, via_crate }, hir_id);
 
             // Though, visit the macro namespace if it exists,
             // regardless of the checks above relating to constructors.
             if let Some(res) = res.macro_ns {
-                self.visit_path(&Path { segments, res, span }, hir_id);
+                self.visit_path(&Path { segments, res, span, via_crate }, hir_id);
             }
         } else {
             // if there's no duplicate, just walk as normal

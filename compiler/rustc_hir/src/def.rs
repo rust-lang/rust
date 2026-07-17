@@ -8,11 +8,23 @@ use rustc_data_structures::unord::UnordMap;
 use rustc_error_messages::{DiagArgValue, IntoDiagArg};
 use rustc_macros::{Decodable, Encodable, StableHash};
 use rustc_span::Symbol;
-use rustc_span::def_id::{DefId, LocalDefId};
+use rustc_span::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_span::hygiene::MacroKind;
 
 use crate::definitions::DefPathData;
 use crate::hir;
+
+/// The direct dependency edge through which a path was resolved.
+///
+/// This is deliberately an attribute of a path occurrence rather than of a
+/// [`Res`]: the same definition can be reached through different direct
+/// dependencies with different public/private attributes.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, StableHash)]
+pub struct ViaCrate {
+    pub krate: CrateNum,
+    pub extern_name: Symbol,
+    pub is_private: bool,
+}
 
 /// Encodes if a `DefKind::Ctor` is the constructor of an enum variant or a struct.
 #[derive(Clone, Copy, PartialEq, Eq, Encodable, Decodable, Hash, Debug, StableHash)]
@@ -599,12 +611,13 @@ impl<Id> IntoDiagArg for Res<Id> {
 pub struct PartialRes {
     base_res: Res<NodeId>,
     unresolved_segments: usize,
+    via_crate: Option<ViaCrate>,
 }
 
 impl PartialRes {
     #[inline]
     pub fn new(base_res: Res<NodeId>) -> Self {
-        PartialRes { base_res, unresolved_segments: 0 }
+        PartialRes { base_res, unresolved_segments: 0, via_crate: None }
     }
 
     #[inline]
@@ -612,7 +625,13 @@ impl PartialRes {
         if base_res == Res::Err {
             unresolved_segments = 0
         }
-        PartialRes { base_res, unresolved_segments }
+        PartialRes { base_res, unresolved_segments, via_crate: None }
+    }
+
+    #[inline]
+    pub fn with_via_crate(mut self, via_crate: Option<ViaCrate>) -> Self {
+        self.via_crate = via_crate;
+        self
     }
 
     #[inline]
@@ -623,6 +642,11 @@ impl PartialRes {
     #[inline]
     pub fn unresolved_segments(&self) -> usize {
         self.unresolved_segments
+    }
+
+    #[inline]
+    pub fn via_crate(&self) -> Option<ViaCrate> {
+        self.via_crate
     }
 
     #[inline]

@@ -291,6 +291,7 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
                         span: segment.ident.span,
                         res: typeck_results.qpath_res(qpath, id),
                         segments: std::slice::from_ref(segment),
+                        via_crate: None,
                     };
                     self.handle_path(&path, false);
                 }

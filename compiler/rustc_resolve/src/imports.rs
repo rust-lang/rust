@@ -36,8 +36,8 @@ use crate::ref_mut::{CmCell, CmRefCell};
 use crate::{
     AmbiguityError, BindingKey, CmResolver, Decl, DeclData, DeclKind, Determinacy, Finalize,
     IdentKey, ImportSuggestion, ImportSummary, LocalModule, ModuleOrUniformRoot, ParentScope,
-    PathResult, PerNS, Res, ResolutionError, Resolver, ScopeSet, Segment, Used, module_to_string,
-    names_to_string,
+    PathResult, PerNS, Res, ResolutionError, Resolver, ScopeSet, Segment, Used, ViaCrate,
+    module_to_string, names_to_string,
 };
 
 /// A potential import declaration in the process of being planted into a module.
@@ -57,6 +57,7 @@ enum ImportResolutionKind<'ra> {
 struct ImportResolution<'ra> {
     kind: ImportResolutionKind<'ra>,
     imported_module: ModuleOrUniformRoot<'ra>,
+    via_crate: Option<ViaCrate>,
 }
 
 impl<'ra> PendingDecl<'ra> {
@@ -197,6 +198,8 @@ pub(crate) struct ImportData<'ra> {
     /// |`use ::foo`      | `ModuleOrUniformRoot::ModuleAndExternPrelude` | a special case in 2015 edition |
     /// |`use foo`        | `ModuleOrUniformRoot::CurrentScope`           | - |
     pub imported_module: CmCell<Option<ModuleOrUniformRoot<'ra>>>,
+    /// The first-hop direct dependency used to resolve `module_path`.
+    pub imported_via_crate: CmCell<Option<ViaCrate>>,
     pub vis: Visibility,
 
     /// Span of the visibility.
@@ -458,7 +461,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     /// Given an import and the declaration that it points to,
     /// create the corresponding import declaration.
-    pub(crate) fn new_import_decl(&self, decl: Decl<'ra>, import: Import<'ra>) -> Decl<'ra> {
+    pub(crate) fn new_import_decl(
+        &self,
+        decl: Decl<'ra>,
+        import: Import<'ra>,
+        module_via_crate: Option<ViaCrate>,
+    ) -> Decl<'ra> {
         let vis = self.import_decl_vis(decl, import.summary());
 
         if let ImportKind::Glob { ref max_vis, .. } = import.kind
@@ -471,6 +479,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         self.arenas.alloc_decl(DeclData {
             kind: DeclKind::Import { source_decl: decl, import },
+            via_crate: module_via_crate.or(decl.via_crate),
             ambiguity: CmCell::new(None),
             span: import.span,
             initial_vis: vis.to_mod_id(),
@@ -715,7 +724,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 None => continue,
             };
             if self.is_accessible_from(binding.vis(), scope) {
-                let import_decl = self.new_import_decl(binding, *import);
+                let import_decl =
+                    self.new_import_decl(binding, *import, import.imported_via_crate.get());
                 self.try_plant_decl_into_local_module(ident, orig_ident_span, key.ns, import_decl)
                     .expect("planting a glob cannot fail");
             }
@@ -732,7 +742,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 return; // Has resolution, do not create the dummy binding
             }
             let dummy_decl = self.dummy_decl;
-            let dummy_decl = self.new_import_decl(dummy_decl, import);
+            let dummy_decl =
+                self.new_import_decl(dummy_decl, import, import.imported_via_crate.get());
             self.per_ns(|this, ns| {
                 let ident = IdentKey::new(target);
                 // This can fail, dummies are inserted only in non-occupied slots.
@@ -799,8 +810,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         import_resolutions: Vec<(Import<'ra>, ImportResolution<'ra>)>,
     ) {
         for (import, resolution) in &import_resolutions {
-            let ImportResolution { imported_module, .. } = resolution;
+            let ImportResolution { imported_module, via_crate, .. } = resolution;
             import.imported_module.set(Some(*imported_module), self);
+            import.imported_via_crate.set(*via_crate, self);
 
             if import.is_glob()
                 && let ModuleOrUniformRoot::Module(module) = imported_module
@@ -812,7 +824,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         for (import, resolution) in import_resolutions {
-            let ImportResolution { imported_module, kind: resolution_kind } = resolution;
+            let ImportResolution { imported_module, via_crate, kind: resolution_kind } = resolution;
 
             match (&import.kind, resolution_kind) {
                 (
@@ -823,7 +835,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         match import_decls[ns] {
                             PendingDecl::Ready(Some(decl)) => {
                                 // We need the `target`, `source` can be extracted.
-                                let import_decl = this.new_import_decl(decl, import);
+                                let import_decl = this.new_import_decl(decl, import, via_crate);
                                 if import_decl.is_assoc_item()
                                     && !this.features.import_trait_associated_functions()
                                 {
@@ -879,7 +891,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     }
 
                     for (binding, key, orig_ident_span) in imported_decls {
-                        let import_decl = self.new_import_decl(binding, import);
+                        let import_decl = self.new_import_decl(binding, import, via_crate);
                         let _ = self
                             .try_plant_decl_into_local_module(
                                 key.ident,
@@ -890,7 +902,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                             .expect("planting a glob cannot fail");
                     }
 
-                    self.record_partial_res(*id, PartialRes::new(module.res().unwrap()));
+                    self.record_partial_res(
+                        *id,
+                        PartialRes::new(module.res().unwrap()).with_via_crate(via_crate),
+                    );
                 }
 
                 // Something weird happened, which shouldn't have happened.
@@ -1075,19 +1090,27 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     && let Some(binding_id) = import.id()
                     && let import_def_id = import.def_id().unwrap()
                     && self.effective_visibilities.is_exported(import_def_id)
+                    && let Some(via_crate) = binding.via_crate
+                    && via_crate.is_private
                     && let Res::Def(reexported_kind, reexported_def_id) = binding.res()
                     && !matches!(reexported_kind, DefKind::Ctor(..))
                     && !reexported_def_id.is_local()
-                    && self.tcx.is_private_dep(reexported_def_id.krate)
                 {
+                    let krate = self.tcx.crate_name(reexported_def_id.krate);
                     self.lint_buffer.buffer_lint(
                         EXPORTED_PRIVATE_DEPENDENCIES,
                         binding_id,
-                        binding.span,
+                        binding.span.source_callsite(),
                         crate::diagnostics::ReexportPrivateDependency {
                             name: key.ident.name,
                             kind: binding.res().descr(),
-                            krate: self.tcx.crate_name(reexported_def_id.krate),
+                            krate,
+                            indirect: (reexported_def_id.krate != via_crate.krate).then_some(
+                                crate::diagnostics::IndirectPrivateDependency::Indirect {
+                                    krate,
+                                    via: via_crate.extern_name,
+                                },
+                            ),
                         },
                     );
                 }
@@ -1110,8 +1133,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             import_kind_to_string(&import.kind),
             module_to_string(import.parent_scope.module).unwrap_or_else(|| "???".to_string()),
         );
-        let module = if let Some(module) = import.imported_module.get() {
-            module
+        let (module, via_crate) = if let Some(module) = import.imported_module.get() {
+            (module, import.imported_via_crate.get())
         } else {
             let path_res = self.reborrow().maybe_resolve_path(
                 &import.module_path,
@@ -1121,7 +1144,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             );
 
             match path_res {
-                PathResult::Module(module) => module,
+                PathResult::Module(module, via_crate) => (module, via_crate),
                 PathResult::Indeterminate => return (None, 3),
                 PathResult::NonModule(..) | PathResult::Failed { .. } => return (None, 0),
             }
@@ -1132,6 +1155,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ImportKind::Glob { .. } => {
                 let import_resolution = ImportResolution {
                     imported_module: module,
+                    via_crate,
                     kind: self.resolve_glob_import(import, module),
                 };
                 return (Some(import_resolution), 0);
@@ -1164,6 +1188,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         });
         let import_resolution = ImportResolution {
             imported_module: module,
+            via_crate,
             kind: ImportResolutionKind::Single(import_decls),
         };
 
@@ -1201,11 +1226,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ambiguity_errors_len(&self.ambiguity_errors) == prev_ambiguity_errors_len;
 
         let module = match path_res {
-            PathResult::Module(module) => {
+            PathResult::Module(module, via_crate) => {
                 // Consistency checks, analogous to `finalize_macro_resolutions`.
                 if let Some(initial_module) = import.imported_module.get() {
                     if module != initial_module && no_ambiguity && !self.issue_145575_hack_applied {
                         span_bug!(import.span, "inconsistent resolution for an import");
+                    }
+                    if via_crate != import.imported_via_crate.get()
+                        && no_ambiguity
+                        && !self.issue_145575_hack_applied
+                    {
+                        span_bug!(import.span, "inconsistent dependency provenance for an import");
                     }
                 } else if self.privacy_errors.is_empty() {
                     self.dcx()
@@ -1356,14 +1387,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             // importing it if available.
             let mut path = import.module_path.clone();
             path.push(Segment::from_ident(ident));
-            if let PathResult::Module(ModuleOrUniformRoot::Module(module)) = self.cm().resolve_path(
-                &path,
-                None,
-                &import.parent_scope,
-                Some(finalize),
-                ignore_decl,
-                None,
-            ) {
+            if let PathResult::Module(ModuleOrUniformRoot::Module(module), _) = self
+                .cm()
+                .resolve_path(&path, None, &import.parent_scope, Some(finalize), ignore_decl, None)
+            {
                 let res = module.res().map(|r| (r, ident));
                 for error in &mut self.privacy_errors[privacy_errors_len..] {
                     error.outermost_res = res;
@@ -1529,7 +1556,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 // If importing of trait asscoiated items is enabled, an also find an
                 // `Enum`, then note that inherent associated items cannot be imported.
                 let note = if self.features.import_trait_associated_functions()
-                    && let PathResult::Module(ModuleOrUniformRoot::Module(m)) = path_res
+                    && let PathResult::Module(ModuleOrUniformRoot::Module(m), _) = path_res
                     && let Some(Res::Def(DefKind::Enum, _)) = m.res()
                 {
                     note.or(Some(

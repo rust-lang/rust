@@ -353,6 +353,8 @@ pub struct Path<'hir, R = Res> {
     pub span: Span,
     /// The resolution for the path.
     pub res: R,
+    /// The direct dependency edge through which this path was resolved.
+    pub via_crate: Option<crate::def::ViaCrate>,
     /// The segments in the path: the things separated by `::`.
     pub segments: &'hir [PathSegment<'hir>],
 }
@@ -5523,7 +5525,7 @@ mod size_asserts {
     static_assert_size!(Param<'_>, 32);
     static_assert_size!(Pat<'_>, 80);
     static_assert_size!(PatKind<'_>, 56);
-    static_assert_size!(Path<'_>, 40);
+    static_assert_size!(Path<'_>, 48);
     static_assert_size!(PathSegment<'_>, 48);
     static_assert_size!(QPath<'_>, 24);
     static_assert_size!(Res, 12);

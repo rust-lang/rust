@@ -1443,6 +1443,17 @@ pub(crate) struct ReexportPrivateDependency {
     pub name: Symbol,
     pub kind: &'static str,
     pub krate: Symbol,
+    #[subdiagnostic]
+    pub indirect: Option<IndirectPrivateDependency>,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum IndirectPrivateDependency {
+    #[note(
+        "`{$krate}` is an indirect dependency reached through the private direct dependency `{$via}`"
+    )]
+    #[help("consider marking `{$via}` public if exposing this item is intended")]
+    Indirect { krate: Symbol, via: Symbol },
 }
 
 #[derive(Diagnostic)]

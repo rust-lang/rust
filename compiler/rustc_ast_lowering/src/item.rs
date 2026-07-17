@@ -712,7 +712,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     // For non-empty lists we can just drop all the data, the prefix is already
                     // present in HIR as a part of nested imports.
                     let span = self.lower_span(span);
-                    self.arena.alloc(hir::UsePath { res: PerNS::default(), segments: &[], span })
+                    self.arena.alloc(hir::UsePath {
+                        res: PerNS::default(),
+                        via_crate: None,
+                        segments: &[],
+                        span,
+                    })
                 };
                 hir::ItemKind::Use(path, hir::UseKind::ListStem)
             }
@@ -1802,6 +1807,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 if let Some(did) = res.and_then(|res| res.expect_full_res().opt_def_id()) {
                     hir::RestrictionKind::Restricted(self.arena.alloc(hir::Path {
                         res: did,
+                        via_crate: None,
                         segments: self.arena.alloc_from_iter(path.segments.iter().map(|segment| {
                             self.lower_path_segment(
                                 path.span,
@@ -1980,6 +1986,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let ty_path = self.arena.alloc(hir::Path {
                     span: self.lower_span(param_span),
                     res,
+                    via_crate: None,
                     segments: self
                         .arena
                         .alloc_from_iter([hir::PathSegment::new(ident, hir_id, res)]),

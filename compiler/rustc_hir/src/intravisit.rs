@@ -1252,9 +1252,9 @@ pub fn walk_use<'v, V: Visitor<'v>>(
     path: &'v UsePath<'v>,
     hir_id: HirId,
 ) -> V::Result {
-    let UsePath { segments, ref res, span } = *path;
+    let UsePath { segments, ref res, span, via_crate } = *path;
     for res in res.present_items() {
-        try_visit!(visitor.visit_path(&Path { segments, res, span }, hir_id));
+        try_visit!(visitor.visit_path(&Path { segments, res, span, via_crate }, hir_id));
     }
     V::Result::output()
 }
@@ -1478,7 +1478,7 @@ pub fn walk_qpath<'v, V: Visitor<'v>>(
 }
 
 pub fn walk_path<'v, V: Visitor<'v>>(visitor: &mut V, path: &Path<'v>) -> V::Result {
-    let Path { segments, span: _, res: _ } = path;
+    let Path { segments, span: _, res: _, via_crate: _ } = path;
     walk_list!(visitor, visit_path_segment, *segments);
     V::Result::output()
 }

@@ -236,7 +236,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
             delegation_child_segment: false,
         }));
 
-        let path = self.arena.alloc(hir::Path { span, res: Res::Local(param_id), segments });
+        let path = self.arena.alloc(hir::Path {
+            span,
+            res: Res::Local(param_id),
+            via_crate: None,
+            segments,
+        });
         self.mk_expr(hir::ExprKind::Path(hir::QPath::Resolved(None, path)), span)
     }
 

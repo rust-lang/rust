@@ -531,7 +531,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 let mod_path = &path[..path.len() - 1];
                 let mod_res = self.resolve_path(mod_path, Some(TypeNS), None, source);
                 let mod_prefix = match mod_res {
-                    PathResult::Module(ModuleOrUniformRoot::Module(module)) => module.res(),
+                    PathResult::Module(ModuleOrUniformRoot::Module(module), _) => module.res(),
                     _ => None,
                 };
 
@@ -1694,7 +1694,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         if let Some((trait_ref, self_ty)) =
             self.diag_metadata.currently_processing_impl_trait.clone()
             && let TyKind::Path(_, self_ty_path) = &self_ty.kind
-            && let PathResult::Module(ModuleOrUniformRoot::Module(module)) =
+            && let PathResult::Module(ModuleOrUniformRoot::Module(module), _) =
                 self.resolve_path(&Segment::from_path(self_ty_path), Some(TypeNS), None, source)
             && module.def_kind() == Some(DefKind::Trait)
             && trait_ref.path.span == span
@@ -1840,7 +1840,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     ) -> Option<TypoSuggestion> {
         if let crate::PathSource::TraitItem(_, _) = source {
             let mod_path = &path[..path.len() - 1];
-            if let PathResult::Module(ModuleOrUniformRoot::Module(module)) =
+            if let PathResult::Module(ModuleOrUniformRoot::Module(module), _) =
                 self.resolve_path(mod_path, None, None, *source)
             {
                 let targets: Vec<_> = self
@@ -2371,7 +2371,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 let is_accessible = self.r.is_accessible_from(ctor.vis, self.parent_scope.module);
                 if is_accessible
                     && let mod_path = &path[..path.len() - 1]
-                    && let PathResult::Module(ModuleOrUniformRoot::Module(import_mod)) =
+                    && let PathResult::Module(ModuleOrUniformRoot::Module(import_mod), _) =
                         self.resolve_path(mod_path, Some(TypeNS), None, PathSource::Module)
                     && ctor.has_private_fields(import_mod, self.r)
                     && let Ok(import_decl) = self.r.cm().maybe_resolve_ident_in_module(
@@ -2894,7 +2894,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         } else {
             // Search in module.
             let mod_path = &path[..path.len() - 1];
-            if let PathResult::Module(ModuleOrUniformRoot::Module(module)) =
+            if let PathResult::Module(ModuleOrUniformRoot::Module(module), _) =
                 self.resolve_path(mod_path, Some(TypeNS), None, PathSource::Type)
             {
                 self.r.add_module_candidates(module, &mut names, &filter_fn, None);
@@ -4354,7 +4354,10 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                                         None,
                                         PathSource::Type,
                                     ) {
-                                        PathResult::Module(ModuleOrUniformRoot::Module(module)) => {
+                                        PathResult::Module(
+                                            ModuleOrUniformRoot::Module(module),
+                                            _,
+                                        ) => {
                                             match module.res() {
                                                 Some(Res::PrimTy(PrimTy::Str)) => {
                                                     // Don't suggest `-> str`, suggest `-> String`.

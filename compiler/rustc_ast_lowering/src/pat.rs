@@ -327,6 +327,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         self.arena.alloc(hir::Path {
                             span,
                             res,
+                            via_crate: None,
                             segments: arena_vec![self; hir::PathSegment::new(self.lower_ident(ident), self.next_id(), res)],
                         }),
                     )),

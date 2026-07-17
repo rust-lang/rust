@@ -264,7 +264,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     None,
                     None,
                 ) {
-                    PathResult::Module(ModuleOrUniformRoot::Module(module)) => {
+                    PathResult::Module(ModuleOrUniformRoot::Module(module), _) => {
                         let res = module.res().expect("visibility resolved to unnamed block");
                         if module.is_normal() {
                             match res {
@@ -375,6 +375,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             let orig_ident_span = orig_ident.span;
             let decl = self.arenas.alloc_decl(DeclData {
                 kind: DeclKind::Def(res),
+                via_crate: None,
                 ambiguity: CmCell::new(ambig),
                 initial_vis: vis,
                 ambiguity_vis_max: CmCell::new(None),
@@ -526,6 +527,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
             parent_scope: self.parent_scope,
             module_path,
             imported_module: CmCell::new(None),
+            imported_via_crate: CmCell::new(None),
             span,
             use_span: item.span,
             use_span_with_attributes: item.span_with_attributes(),
@@ -719,7 +721,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                     // Resolve the prelude import early.
                     let path_res =
                         self.r.cm().maybe_resolve_path(&prefix, None, &self.parent_scope, None);
-                    if let PathResult::Module(ModuleOrUniformRoot::Module(module)) = path_res {
+                    if let PathResult::Module(ModuleOrUniformRoot::Module(module), _) = path_res {
                         self.r.prelude = Some(module);
                     } else {
                         self.r.dcx().span_err(use_tree.span(), "cannot resolve a prelude import");
@@ -984,30 +986,46 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         let parent = parent_scope.module;
         let expansion = parent_scope.expansion;
 
-        let (used, module, decl) = if orig_name.is_none() && orig_ident.name == kw::SelfLower {
-            self.r.dcx().emit_err(diagnostics::ExternCrateSelfRequiresRenaming { span: sp });
-            return;
-        } else if orig_name == Some(kw::SelfLower) {
-            Some(self.r.graph_root.to_module())
-        } else {
-            let tcx = self.r.tcx;
-            let crate_id = self.r.cstore_mut().process_extern_crate(
-                self.r.tcx,
-                item,
-                local_def_id,
-                &tcx.definitions_untracked(),
-            );
-            crate_id.map(|crate_id| {
-                self.r.extern_crate_map.insert(local_def_id, crate_id);
-                self.r.expect_module(crate_id.as_def_id())
+        let (used, module, decl, via_crate) =
+            if orig_name.is_none() && orig_ident.name == kw::SelfLower {
+                self.r.dcx().emit_err(diagnostics::ExternCrateSelfRequiresRenaming { span: sp });
+                return;
+            } else if orig_name == Some(kw::SelfLower) {
+                Some(self.r.graph_root.to_module())
+            } else {
+                let tcx = self.r.tcx;
+                let crate_id = self.r.cstore_mut().process_extern_crate(
+                    self.r.tcx,
+                    item,
+                    local_def_id,
+                    &tcx.definitions_untracked(),
+                );
+                crate_id.map(|crate_id| {
+                    self.r.extern_crate_map.insert(local_def_id, crate_id);
+                    self.r.expect_module(crate_id.as_def_id())
+                })
+            }
+            .map(|module| {
+                let via_crate = module.opt_def_id().and_then(|def_id| {
+                    (!def_id.is_local()).then(|| {
+                        self.r.direct_dependency_provenance(
+                            def_id.krate,
+                            orig_name.unwrap_or(orig_ident.name),
+                        )
+                    })
+                });
+                let used = self.process_macro_use_imports(item, module, via_crate);
+                let decl = self.r.arenas.new_def_decl_with_via(
+                    module.res().unwrap(),
+                    Visibility::Public,
+                    sp,
+                    expansion,
+                    None,
+                    via_crate,
+                );
+                (used, Some(ModuleOrUniformRoot::Module(module)), decl, via_crate)
             })
-        }
-        .map(|module| {
-            let used = self.process_macro_use_imports(item, module);
-            let decl = self.r.arenas.new_pub_def_decl(module.res().unwrap(), sp, expansion);
-            (used, Some(ModuleOrUniformRoot::Module(module)), decl)
-        })
-        .unwrap_or((true, None, self.r.dummy_decl));
+            .unwrap_or((true, None, self.r.dummy_decl, None));
         let import = self.r.arenas.alloc_import(ImportData {
             kind: ImportKind::ExternCrate {
                 source: orig_name,
@@ -1018,6 +1036,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
             root_id: item.id,
             parent_scope,
             imported_module: CmCell::new(module),
+            imported_via_crate: CmCell::new(via_crate),
             has_attributes: !item.attrs.is_empty(),
             use_span_with_attributes: item.span_with_attributes(),
             use_span: item.span,
@@ -1032,7 +1051,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
             self.r.import_use_map.insert(import, Used::Other);
         }
         self.r.potentially_unused_imports.push(import);
-        let import_decl = self.r.new_import_decl(decl, import);
+        let import_decl = self.r.new_import_decl(decl, import, via_crate);
         let ident = IdentKey::new(orig_ident);
         if ident.name != kw::Underscore && parent == self.r.graph_root.to_module() {
             // FIXME: this error is technically unnecessary now when extern prelude is split into
@@ -1121,7 +1140,12 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
     }
 
     /// Returns `true` if we should consider the underlying `extern crate` to be used.
-    fn process_macro_use_imports(&mut self, item: &Item, module: Module<'ra>) -> bool {
+    fn process_macro_use_imports(
+        &mut self,
+        item: &Item,
+        module: Module<'ra>,
+        via_crate: Option<ViaCrate>,
+    ) -> bool {
         let mut import_all = None;
         let mut single_imports = ThinVec::new();
         if let Some(Attribute::Parsed(AttributeKind::MacroUse { span, arguments })) =
@@ -1150,6 +1174,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                 root_id: item.id,
                 parent_scope: this.parent_scope,
                 imported_module: CmCell::new(Some(ModuleOrUniformRoot::Module(module))),
+                imported_via_crate: CmCell::new(via_crate),
                 use_span_with_attributes: item.span_with_attributes(),
                 has_attributes: !item.attrs.is_empty(),
                 use_span: item.span,
@@ -1180,7 +1205,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                             }
                             macro_use_import(this, span, true)
                         };
-                    let import_decl = this.r.new_import_decl(binding, import);
+                    let import_decl = this.r.new_import_decl(binding, import, via_crate);
                     this.add_macro_use_decl(ident.name, import_decl, span, allow_shadowing);
                 }
             });
@@ -1196,7 +1221,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                 if let Ok(binding) = result {
                     let import = macro_use_import(self, ident.span, false);
                     self.r.potentially_unused_imports.push(import);
-                    let import_decl = self.r.new_import_decl(binding, import);
+                    let import_decl = self.r.new_import_decl(binding, import, via_crate);
                     self.add_macro_use_decl(ident.name, import_decl, ident.span, allow_shadowing);
                 } else {
                     self.r.dcx().emit_err(diagnostics::ImportedMacroNotFound { span: ident.span });
@@ -1331,6 +1356,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                         ..parent_scope
                     },
                     imported_module: CmCell::new(None),
+                    imported_via_crate: CmCell::new(None),
                     has_attributes: false,
                     use_span_with_attributes: span,
                     use_span: span,
@@ -1342,7 +1368,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                     on_unknown_attr: OnUnknownData::from_attrs(self.r, &item.attrs),
                 });
                 self.r.import_use_map.insert(import, Used::Other);
-                let import_decl = self.r.new_import_decl(decl, import);
+                let import_decl = self.r.new_import_decl(decl, import, None);
                 self.r.plant_decl_into_local_module(ident, orig_ident.span, MacroNS, import_decl);
             } else {
                 self.r.check_reserved_macro_name(ident.name, orig_ident.span, res);

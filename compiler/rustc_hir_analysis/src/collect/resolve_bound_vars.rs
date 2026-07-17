@@ -2611,7 +2611,9 @@ fn is_late_bound_map(
 
                 hir::TyKind::Path(hir::QPath::Resolved(
                     None,
-                    hir::Path { res: Res::Def(DefKind::TyAlias, alias_def), segments, span },
+                    hir::Path {
+                        res: Res::Def(DefKind::TyAlias, alias_def), segments, span, ..
+                    },
                 )) => {
                     // See comments on `ConstrainedCollectorPostHirTyLowering` for why this arm does not
                     // just consider args to be unconstrained.
