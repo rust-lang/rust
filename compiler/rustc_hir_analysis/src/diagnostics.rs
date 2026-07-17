@@ -2045,3 +2045,17 @@ pub(crate) struct OnlyStructsCanBeViewedAdt<'tcx> {
     pub article: &'static str,
     pub kind: &'static str,
 }
+
+#[derive(Diagnostic)]
+#[diag("cannot implement `{$trait_name}` on the fundamental type `{$fundamental_ty}`")]
+#[note(
+    "`{$trait_name}` is marked `#[rustc_anti_fundamental]`, which means it \
+     cannot be implemented on `#[fundamental]` types from another crate"
+)]
+pub(crate) struct AntiFundamentalForeignImpl<'tcx> {
+    #[primary_span]
+    #[label("impl of `{$trait_name}` not allowed on `{$fundamental_ty}`")]
+    pub(crate) span: Span,
+    pub(crate) trait_name: String,
+    pub(crate) fundamental_ty: Ty<'tcx>,
+}

@@ -1350,6 +1350,12 @@ pub enum AttributeKind {
     /// Represents `#[rustc_allow_incoherent_impl]`.
     RustcAllowIncoherentImpl(Span),
 
+    /// Represents `#[rustc_anti_fundamental]`. This marks a trait such that
+    /// `#[fundamental]` types (that are not local to the current crate) cannot
+    /// receive implementations of it. Used to reserve control over `Deref`,
+    /// `DispatchFromDyn`, etc. on fundamental wrappers like `Box` and `Pin`.
+    RustcAntiFundamental,
+
     /// Represents `#[rustc_as_ptr]` (used by the `dangling_pointers_from_temporaries` lint).
     RustcAsPtr,
 

@@ -1762,6 +1762,7 @@ symbols! {
         rustc_allow_const_fn_unstable,
         rustc_allow_incoherent_impl,
         rustc_allowed_through_unstable_modules,
+        rustc_anti_fundamental,
         rustc_as_ptr,
         rustc_attrs,
         rustc_autodiff,

@@ -50,6 +50,10 @@ pub(crate) fn orphan_check_impl(
                 OrphanCheckErr::NonLocalInputType(_) => {
                     bug!("orphanck: shouldn't've gotten non-local input tys in compat mode")
                 }
+                OrphanCheckErr::AntiFundamentalForeignType(_) => {
+                    // Anti-fundamental violations are always hard errors.
+                    return Err(emit_orphan_check_error(tcx, trait_ref, impl_def_id, err));
+                }
             },
             Err(err) => return Err(emit_orphan_check_error(tcx, trait_ref, impl_def_id, err)),
         },
@@ -378,6 +382,9 @@ fn orphan_check<'tcx>(
             });
             OrphanCheckErr::NonLocalInputType(tys)
         }
+        OrphanCheckErr::AntiFundamentalForeignType(ty) => {
+            OrphanCheckErr::AntiFundamentalForeignType(infcx.resolve_vars_if_possible(ty))
+        }
     })
 }
 
@@ -487,6 +494,14 @@ fn emit_orphan_check_error<'tcx>(
                 }));
             }
             guar.unwrap()
+        }
+        traits::OrphanCheckErr::AntiFundamentalForeignType(ty) => {
+            let span = tcx.def_span(impl_def_id);
+            tcx.dcx().emit_err(diagnostics::AntiFundamentalForeignImpl {
+                span,
+                trait_name: tcx.def_path_str(trait_ref.def_id),
+                fundamental_ty: ty,
+            })
         }
     }
 }

@@ -106,6 +106,7 @@ impl AttributeKind {
             RustcAllocatorZeroedVariant { .. } => Yes,
             RustcAllowConstFnUnstable(..) => No,
             RustcAllowIncoherentImpl(..) => No,
+            RustcAntiFundamental => Yes,
             RustcAsPtr => Yes,
             RustcAutodiff(..) => Yes,
             RustcBodyStability { .. } => No,
