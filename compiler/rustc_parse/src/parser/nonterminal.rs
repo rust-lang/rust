@@ -125,34 +125,32 @@ impl<'a> Parser<'a> {
         match kind {
             // Note that TT is treated differently to all the others.
             NonterminalKind::TT => Ok(ParseNtResult::Tt(self.parse_token_tree())),
-            NonterminalKind::Item => match self
-                .parse_item(ForceCollect::Yes, AllowConstBlockItems::Yes)?
-            {
-                Some(item) => Ok(ParseNtResult::Item(item.span, TokenStream::from_ast(&item))),
-                None => Err(self.dcx().create_err(UnexpectedNonterminal::Item(self.token.span))),
-            },
+            NonterminalKind::Item => {
+                let item =
+                    self.parse_item(ForceCollect::Yes, AllowConstBlockItems::Yes)?.ok_or_else(
+                        || self.dcx().create_err(UnexpectedNonterminal::Item(self.token.span)),
+                    )?;
+                Ok(ParseNtResult::Item(item.span, TokenStream::from_ast(&item)))
+            }
             NonterminalKind::Block => {
                 // While a block *expression* may have attributes (e.g. `#[my_attr] { ... }`),
                 // the ':block' matcher does not support them
-                let block = self.collect_tokens_no_attrs(|this| {
-                    this.parse_block().map(|block| WithTokens::new(block))
-                })?;
+                let block =
+                    self.collect_tokens_no_attrs(|this| this.parse_block().map(WithTokens::new))?;
                 Ok(ParseNtResult::Block(block.node.span, TokenStream::from_ast(&block)))
             }
-            NonterminalKind::Stmt => match self.parse_stmt(ForceCollect::Yes)? {
-                Some(stmt) => {
-                    let stream = if let StmtKind::Empty = stmt.kind {
-                        // FIXME: Properly collect tokens for empty statements.
-                        TokenStream::token_alone(token::Semi, stmt.span)
-                    } else {
-                        TokenStream::from_ast(&stmt)
-                    };
-                    Ok(ParseNtResult::Stmt(stmt.span, stream))
-                }
-                None => {
-                    Err(self.dcx().create_err(UnexpectedNonterminal::Statement(self.token.span)))
-                }
-            },
+            NonterminalKind::Stmt => {
+                let stmt = self.parse_stmt(ForceCollect::Yes)?.ok_or_else(|| {
+                    self.dcx().create_err(UnexpectedNonterminal::Statement(self.token.span))
+                })?;
+                let stream = if let StmtKind::Empty = stmt.kind {
+                    // FIXME: Properly collect tokens for empty statements.
+                    TokenStream::token_alone(token::Semi, stmt.span)
+                } else {
+                    TokenStream::from_ast(&stmt)
+                };
+                Ok(ParseNtResult::Stmt(stmt.span, stream))
+            }
             NonterminalKind::Pat(pat_kind) => {
                 let pat = self.collect_tokens_no_attrs(|this| {
                     match pat_kind {
@@ -193,7 +191,7 @@ impl<'a> Parser<'a> {
             }
             NonterminalKind::Ty => {
                 let ty = self.collect_tokens_no_attrs(|this| {
-                    this.parse_ty_no_question_mark_recover().map(|ty| WithTokens::new(ty))
+                    this.parse_ty_no_question_mark_recover().map(WithTokens::new)
                 })?;
                 let is_path = matches!(&ty.node.kind, TyKind::Path(None, _path));
                 Ok(ParseNtResult::Ty {
@@ -216,12 +214,12 @@ impl<'a> Parser<'a> {
             }
             NonterminalKind::Path => {
                 let path = self.collect_tokens_no_attrs(|this| {
-                    this.parse_path(PathStyle::Type).map(|path| WithTokens::new(Box::new(path)))
+                    this.parse_path(PathStyle::Type).map(WithTokens::new)
                 })?;
                 Ok(ParseNtResult::Path(path.node.span, TokenStream::from_ast(&path)))
             }
             NonterminalKind::Meta => {
-                let attr_item = self.parse_attr_item(ForceCollect::Yes)?.map(|item| Box::new(item));
+                let attr_item = self.parse_attr_item(ForceCollect::Yes)?;
                 let has_meta_form = attr_item.node.meta_kind().is_some();
                 Ok(ParseNtResult::Meta {
                     span: attr_item.node.span(),
@@ -231,8 +229,7 @@ impl<'a> Parser<'a> {
             }
             NonterminalKind::Vis => {
                 let vis = self.collect_tokens_no_attrs(|this| {
-                    this.parse_visibility(FollowedByType::Yes)
-                        .map(|vis| WithTokens::new(Box::new(vis)))
+                    this.parse_visibility(FollowedByType::Yes).map(|vis| WithTokens::new(vis))
                 })?;
                 Ok(ParseNtResult::Vis(vis.node.span, TokenStream::from_ast(&vis)))
             }
