@@ -130,6 +130,28 @@ mod target_modifier_consistency_check {
         }
         true
     }
+    pub(super) fn target_cpu(
+        sess: &Session,
+        l: &TargetModifier,
+        r: Option<&TargetModifier>,
+    ) -> bool {
+        if !sess.target.requires_consistent_cpu {
+            return true;
+        }
+        let l_tech_value = l.extend().tech_value;
+        let r_tech_value = match r {
+            Some(r) => r.extend().tech_value,
+            // If only one of the two compared crates specifies the CPU
+            // explicitly we compare against the target's default CPU.
+            None => {
+                // We reuse the same parsing logic.
+                CodegenOptionsTargetModifiers::TargetCpu
+                    .reparse(sess.target.cpu.as_ref())
+                    .tech_value
+            }
+        };
+        l_tech_value == r_tech_value
+    }
 }
 
 impl TargetModifier {
@@ -152,7 +174,11 @@ impl TargetModifier {
                 }
                 _ => {}
             },
-            _ => {}
+            OptionsTargetModifiers::CodegenOptions(codegen) => match codegen {
+                CodegenOptionsTargetModifiers::TargetCpu => {
+                    return target_modifier_consistency_check::target_cpu(sess, self, other);
+                }
+            },
         };
         match other {
             Some(other) => self.extend().tech_value == other.extend().tech_value,
@@ -2273,7 +2299,7 @@ options! {
     symbol_mangling_version: Option<SymbolManglingVersion> = (None,
         parse_symbol_mangling_version, [TRACKED],
         "which mangling version to use for symbol names ('legacy', 'v0' (default), or 'hashed')"),
-    target_cpu: Option<String> = (None, parse_opt_string, [TRACKED],
+    target_cpu: Option<String> = (None, parse_opt_string, [TRACKED] { TARGET_MODIFIER: TargetCpu },
         "select target processor (`rustc --print target-cpus` for details)"),
     target_feature: String = (String::new(), parse_target_feature, [TRACKED],
         "target specific attributes. (`rustc --print target-features` for details). \

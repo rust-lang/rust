@@ -14,7 +14,7 @@ use rustc_data_structures::small_c_str::SmallCStr;
 use rustc_fs_util::path_to_c_string;
 use rustc_middle::bug;
 use rustc_session::Session;
-use rustc_session::config::{PrintKind, PrintRequest};
+use rustc_session::config::{NATIVE_CPU, PrintKind, PrintRequest};
 use rustc_target::spec::{
     Arch, CfgAbi, Env, MergeFunctions, Os, PanicStrategy, SmallDataThresholdSupport,
 };
@@ -514,10 +514,12 @@ fn print_target_cpus(sess: &Session, tm: &llvm::TargetMachine, out: &mut String)
 
     // Only print the "native" entry when host and target are the same arch,
     // since otherwise it could be wrong or misleading.
-    if sess.host.arch == sess.target.arch {
+    // Also do not print it if `requires_consistent_cpu` is set, because in this case
+    // "native" would be rejected.
+    if sess.host.arch == sess.target.arch && !sess.target.requires_consistent_cpu {
         let host = get_host_cpu_name();
         cpus.push_front(Cpu {
-            cpu_name: "native",
+            cpu_name: NATIVE_CPU,
             remark: format!(" - Select the CPU of the current host (currently {host})."),
         });
     }
@@ -612,7 +614,7 @@ fn get_host_cpu_name() -> &'static str {
 /// LLVM. Otherwise, the string is returned as-is.
 fn handle_native(cpu_name: &str) -> &str {
     match cpu_name {
-        "native" => get_host_cpu_name(),
+        NATIVE_CPU => get_host_cpu_name(),
         _ => cpu_name,
     }
 }
@@ -666,7 +668,7 @@ pub(crate) fn global_llvm_features(sess: &Session, only_base_features: bool) -> 
 
     // -Ctarget-cpu=native
     match sess.opts.cg.target_cpu {
-        Some(ref s) if s == "native" => {
+        Some(ref s) if s == NATIVE_CPU => {
             // We have already figured out the actual CPU name with `LLVMRustGetHostCPUName` and set
             // that for LLVM, so the features implied by that CPU name will be available everywhere.
             // However, that is not sufficient: e.g. `skylake` alone is not sufficient to tell if

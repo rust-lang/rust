@@ -42,7 +42,7 @@ use rustc_codegen_ssa::{CompiledModules, CrateInfo, TargetConfig, back};
 use rustc_log::tracing::info;
 use rustc_middle::dep_graph::WorkProductMap;
 use rustc_session::Session;
-use rustc_session::config::OutputFilenames;
+use rustc_session::config::{NATIVE_CPU, OutputFilenames};
 use rustc_span::{Symbol, sym};
 use rustc_target::spec::{Arch, CfgAbi, Env, Os};
 
@@ -341,7 +341,7 @@ fn build_isa(sess: &Session, jit: bool) -> Arc<dyn TargetIsa + 'static> {
     let flags = settings::Flags::new(flags_builder);
 
     let isa_builder = match sess.opts.cg.target_cpu.as_deref() {
-        Some("native") => cranelift_native::builder_with_options(true).unwrap(),
+        Some(NATIVE_CPU) => cranelift_native::builder_with_options(true).unwrap(),
         Some(value) => {
             let mut builder =
                 cranelift_codegen::isa::lookup(target_triple.clone()).unwrap_or_else(|err| {

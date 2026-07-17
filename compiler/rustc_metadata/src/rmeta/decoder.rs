@@ -750,6 +750,7 @@ impl MetadataBlob {
             "lang_items".to_owned(),
             "features".to_owned(),
             "items".to_owned(),
+            "target_modifiers".to_owned(),
         ];
         let ls_kinds = if ls_kinds.contains(&"all".to_owned()) { &all_ls_kinds } else { ls_kinds };
 
@@ -919,11 +920,28 @@ impl MetadataBlob {
 
                     write!(out, "\n")?;
                 }
+                "target_modifiers" => {
+                    writeln!(out, "=Target modifiers=")?;
+
+                    for modifier in root.decode_target_modifiers(self) {
+                        let extended = modifier.extend();
+
+                        writeln!(
+                            out,
+                            "-{}{}={} [{}]",
+                            extended.prefix,
+                            extended.name,
+                            modifier.value_name,
+                            extended.tech_value,
+                        )?;
+                    }
+                }
 
                 _ => {
                     writeln!(
                         out,
-                        "unknown -Zls kind. allowed values are: all, root, lang_items, features, items"
+                        "unknown -Zls kind. allowed values are: all, root, lang_items, features, items, \
+                            target_modifiers"
                     )?;
                 }
             }
