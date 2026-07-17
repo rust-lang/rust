@@ -269,7 +269,6 @@ symbols! {
         PartialEq,
         PartialOrd,
         Pending,
-        PinDerefMutHelper,
         PinMacroHelper,
         Pointer,
         Poll,
