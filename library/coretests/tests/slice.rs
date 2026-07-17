@@ -618,6 +618,135 @@ fn test_chunks_exact_mut_zip() {
     assert_eq!(v1, [13, 14, 19, 20, 4]);
 }
 
+const CHUNK_BY_CASES: [&[u8]; 16] = [
+    &[],
+    &[1],
+    &[1, 0],
+    &[1, 1],
+    &[1, 0, 0],
+    &[1, 0, 1],
+    &[1, 1, 0],
+    &[1, 1, 1],
+    &[1, 0, 0, 0],
+    &[1, 0, 0, 1],
+    &[1, 0, 1, 0],
+    &[1, 0, 1, 1],
+    &[1, 1, 0, 0],
+    &[1, 1, 0, 1],
+    &[1, 1, 1, 0],
+    &[1, 1, 1, 1],
+];
+
+fn chunk_by_fn(_: &u8, b: &u8) -> bool {
+    *b == 0
+}
+
+#[test]
+fn test_chunk_by_count() {
+    for case in CHUNK_BY_CASES {
+        let mut count_manual = 0;
+        for _ in case.chunk_by(chunk_by_fn) {
+            count_manual += 1;
+        }
+        assert_eq!(
+            count_manual,
+            case.chunk_by(chunk_by_fn).count(),
+            "counts not equal for {case:?}"
+        );
+    }
+}
+
+#[test]
+fn test_chunk_by_nth() {
+    let v: &[i32] = &[0, 1, 2, 2, 3, 3, 3];
+    let mut c = v.chunk_by(|a, b| a == b);
+    assert_eq!(c.nth(2).unwrap(), &[2, 2]);
+    assert_eq!(c.next().unwrap(), &[3, 3, 3]);
+
+    let mut c = v.chunk_by(|a, b| a < b);
+    assert_eq!(c.nth(1).unwrap(), &[2, 3]);
+    assert_eq!(c.next().unwrap(), &[3]);
+}
+
+#[test]
+fn test_chunk_by_next() {
+    let v: &[i32] = &[0, 1, 2, 2, 3, 3, 3];
+    let mut c = v.chunk_by(|a, b| a == b);
+    assert_eq!(c.next().unwrap(), &[0]);
+    assert_eq!(c.next().unwrap(), &[1]);
+    assert_eq!(c.next().unwrap(), &[2, 2]);
+    assert_eq!(c.next().unwrap(), &[3, 3, 3]);
+    assert_eq!(c.next(), None);
+
+    let v: &[i32] = &[0, 1, 2, 2, 3, 3, 3];
+    let mut c = v.chunk_by(|a, b| a < b);
+    assert_eq!(c.next().unwrap(), &[0, 1, 2]);
+    assert_eq!(c.next().unwrap(), &[2, 3]);
+    assert_eq!(c.next().unwrap(), &[3]);
+    assert_eq!(c.next().unwrap(), &[3]);
+    assert_eq!(c.next(), None);
+}
+
+#[test]
+fn test_chunk_by_next_back() {
+    let v: &[i32] = &[0, 1, 2, 2, 3, 3, 3];
+    let mut c = v.chunk_by(|a, b| a == b);
+    assert_eq!(c.next_back().unwrap(), &[3, 3, 3]);
+    assert_eq!(c.next_back().unwrap(), &[2, 2]);
+    assert_eq!(c.next_back().unwrap(), &[1]);
+    assert_eq!(c.next_back().unwrap(), &[0]);
+    assert_eq!(c.next_back(), None);
+
+    let v: &[i32] = &[0, 1, 2, 2, 3, 3, 3];
+    let mut c = v.chunk_by(|a, b| a < b);
+    assert_eq!(c.next_back().unwrap(), &[3]);
+    assert_eq!(c.next_back().unwrap(), &[3]);
+    assert_eq!(c.next_back().unwrap(), &[2, 3]);
+    assert_eq!(c.next_back().unwrap(), &[0, 1, 2]);
+    assert_eq!(c.next_back(), None);
+}
+
+#[test]
+fn test_chunk_by_nth_back() {
+    let v: &[i32] = &[0, 1, 2, 2, 3, 3, 3];
+    let mut c = v.chunk_by(|a, b| a == b);
+    assert_eq!(c.nth_back(1).unwrap(), &[2, 2]);
+    assert_eq!(c.next().unwrap(), &[0]);
+    assert_eq!(c.next().unwrap(), &[1]);
+    assert_eq!(c.next(), None);
+    assert_eq!(c.next_back(), None);
+
+    let v: &[i32] = &[0, 1, 2, 2, 3, 3, 3];
+    let mut c = v.chunk_by(|a, b| a < b);
+    assert_eq!(c.nth_back(1).unwrap(), &[3]);
+    assert_eq!(c.next().unwrap(), &[0, 1, 2]);
+    assert_eq!(c.next().unwrap(), &[2, 3]);
+    assert_eq!(c.next_back(), None);
+    assert_eq!(c.next(), None);
+}
+
+#[test]
+fn test_chunk_by_last() {
+    let v: &[i32] = &[0, 1, 2, 2, 3, 3, 3];
+    let c = v.chunk_by(|a, b| a == b);
+    assert_eq!(c.last().unwrap(), &[3, 3, 3]);
+
+    let v: &[i32] = &[0, 1, 2, 2, 3, 3, 3];
+    let c = v.chunk_by(|a, b| a < b);
+    assert_eq!(c.last().unwrap(), &[3]);
+}
+
+#[test]
+fn test_chunk_by_zip() {
+    let v1: &[i32] = &[0, 1, 2, 2, 3, 3, 3];
+    let v2: &[i32] = &[9, 9, 9, 8, 7, 7, 6];
+    let c1 = v1.chunk_by(|a, b| a == b);
+    let c2 = v2.chunk_by(|a, b| a > b);
+    let res: Vec<Vec<i32>> =
+        c1.zip(c2).map(|(a, b)| a.into_iter().chain(b).copied().collect()).collect();
+    assert_eq!(res, [vec![0, 9], vec![1, 9], vec![2, 2, 9, 8, 7], vec![3, 3, 3, 7, 6]]);
+}
+
 #[test]
 fn test_array_windows_infer() {
     let v: &[i32] = &[0, 1, 0, 1];
