@@ -319,7 +319,10 @@ impl Registry {
         Ok(registry)
     }
 
-    pub fn current() -> Arc<Registry> {
+    pub fn with_current<F, R>(f: F) -> R
+    where
+        F: FnOnce(&Arc<Registry>) -> R,
+    {
         unsafe {
             let worker_thread = WorkerThread::current();
             let registry = if worker_thread.is_null() {
@@ -327,8 +330,12 @@ impl Registry {
             } else {
                 &(*worker_thread).registry
             };
-            Arc::clone(registry)
+            f(registry)
         }
+    }
+
+    pub fn current() -> Arc<Registry> {
+        Registry::with_current(Arc::clone)
     }
 
     /// Returns the number of threads in the current registry. This
@@ -614,16 +621,12 @@ impl Registry {
     }
 }
 
-/// Mark a Rayon worker thread as blocked. This triggers the deadlock handler
-/// if no other worker thread is active
+/// Mark a Rayon worker thread as blocked.
+///
+/// Returns the deadlock handler if no other worker thread is active.
 #[inline]
-pub fn mark_blocked() {
-    let worker_thread = WorkerThread::current();
-    assert!(!worker_thread.is_null());
-    unsafe {
-        let registry = &(*worker_thread).registry;
-        registry.sleep.mark_blocked(&registry.deadlock_handler)
-    }
+pub fn mark_blocked(registry: &Registry) -> Option<&DeadlockHandler> {
+    registry.sleep.mark_blocked().then(|| registry.deadlock_handler.as_deref().unwrap())
 }
 
 /// Mark a previously blocked Rayon worker thread as unblocked
