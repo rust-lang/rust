@@ -11,25 +11,14 @@ impl Instant {
         Instant(itron::time::get_tim())
     }
 
-    pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {
-        self.0.checked_sub(other.0).map(|ticks| {
-            // `SYSTIM` is measured in microseconds
-            Duration::from_micros(ticks)
-        })
+    pub fn from_duration(duration: Duration) -> Instant {
+        // `SYSTIM` is measured in microseconds
+        Instant(duration.as_micros().try_into().unwrap())
     }
 
-    pub fn checked_add_duration(&self, other: &Duration) -> Option<Instant> {
+    pub fn into_duration(self) -> Duration {
         // `SYSTIM` is measured in microseconds
-        let ticks = other.as_micros();
-
-        Some(Instant(self.0.checked_add(ticks.try_into().ok()?)?))
-    }
-
-    pub fn checked_sub_duration(&self, other: &Duration) -> Option<Instant> {
-        // `SYSTIM` is measured in microseconds
-        let ticks = other.as_micros();
-
-        Some(Instant(self.0.checked_sub(ticks.try_into().ok()?)?))
+        Duration::from_micros(self.0)
     }
 }
 

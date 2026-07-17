@@ -74,18 +74,6 @@ impl Instant {
         Instant { t: Timespec::now(Self::CLOCK_ID) }
     }
 
-    pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {
-        self.t.sub_timespec(&other.t).ok()
-    }
-
-    pub fn checked_add_duration(&self, other: &Duration) -> Option<Instant> {
-        Some(Instant { t: self.t.checked_add_duration(other)? })
-    }
-
-    pub fn checked_sub_duration(&self, other: &Duration) -> Option<Instant> {
-        Some(Instant { t: self.t.checked_sub_duration(other)? })
-    }
-
     #[cfg_attr(
         not(target_os = "linux"),
         allow(unused, reason = "needed by the `sleep_until` on some unix platforms")
@@ -122,6 +110,15 @@ impl Instant {
         // number by a 32-bit number yields a number that needs at most
         // 126 bits.
         Some((nanos * u128::from(timebase.denom)).div_ceil(u128::from(timebase.numer)))
+    }
+
+    pub fn from_duration(duration: Duration) -> Instant {
+        let spec = Timespec::MIN.checked_add_duration(&duration).unwrap();
+        Instant { t: spec }
+    }
+
+    pub fn into_duration(self) -> Duration {
+        self.t.sub_timespec(&Timespec::MIN).unwrap()
     }
 }
 

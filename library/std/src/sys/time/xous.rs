@@ -21,16 +21,12 @@ impl Instant {
         Instant { 0: Duration::from_millis(lower as u64 | (upper as u64) << 32) }
     }
 
-    pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {
-        self.0.checked_sub(other.0)
+    pub fn from_duration(duration: Duration) -> Instant {
+        Instant(duration)
     }
 
-    pub fn checked_add_duration(&self, other: &Duration) -> Option<Instant> {
-        self.0.checked_add(*other).map(Instant)
-    }
-
-    pub fn checked_sub_duration(&self, other: &Duration) -> Option<Instant> {
-        self.0.checked_sub(*other).map(Instant)
+    pub fn into_duration(self) -> Duration {
+        self.0
     }
 }
 

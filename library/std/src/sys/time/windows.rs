@@ -43,27 +43,20 @@ impl Instant {
         // see <https://github.com/rust-lang/rust/issues/156142>.
         let instant_nsec = instant_nsec + (u64::MAX / 4);
 
-        Self { t: Duration::from_nanos(instant_nsec) }
-    }
-
-    pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {
         // On windows there's a threshold below which we consider two timestamps
         // equivalent due to measurement error. For more details + doc link,
         // check the docs on epsilon.
-        let epsilon = perf_counter::epsilon();
-        if other.t > self.t && other.t - self.t <= epsilon {
-            Some(Duration::new(0, 0))
-        } else {
-            self.t.checked_sub(other.t)
-        }
+        let instant_nsec = instant_nsec.next_multiple_of(perf_counter::epsilon().as_nanos() as u64);
+
+        Self { t: Duration::from_nanos(instant_nsec) }
     }
 
-    pub fn checked_add_duration(&self, other: &Duration) -> Option<Instant> {
-        Some(Instant { t: self.t.checked_add(*other)? })
+    pub fn from_duration(duration: Duration) -> Instant {
+        Instant { t: duration }
     }
 
-    pub fn checked_sub_duration(&self, other: &Duration) -> Option<Instant> {
-        Some(Instant { t: self.t.checked_sub(*other)? })
+    pub fn into_duration(self) -> Duration {
+        self.t
     }
 }
 

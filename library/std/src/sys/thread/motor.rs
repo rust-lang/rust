@@ -64,5 +64,5 @@ pub fn sleep(dur: Duration) {
 }
 
 pub fn sleep_until(deadline: Instant) {
-    moto_rt::thread::sleep_until(deadline.into_inner())
+    moto_rt::thread::sleep_until(crate::time::instant_into_inner(deadline))
 }

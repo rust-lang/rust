@@ -19,6 +19,11 @@
 //! assert_eq!(total, Duration::new(10, 7));
 //! ```
 
+mod instant;
+
+#[unstable(feature = "core_time_instant", issue = "none")]
+pub use instant::Instant;
+
 use crate::fmt;
 use crate::iter::Sum;
 use crate::num::niche_types::Nanoseconds;
