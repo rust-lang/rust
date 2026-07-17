@@ -28,10 +28,3 @@ pub(crate) fn unlikely(b: bool) -> bool {
         false
     }
 }
-
-// FIXME: use strict provenance functions once they are stable.
-// Implement it with a transmute for now.
-#[inline(always)]
-pub(crate) fn invalid_mut<T>(addr: usize) -> *mut T {
-    unsafe { core::mem::transmute(addr) }
-}
