@@ -11,7 +11,7 @@ use base_db::target::TargetData;
 use base_db::{
     Crate, CrateDisplayName, CrateGraphBuilder, CrateName, CrateOrigin, CrateWorkspaceData,
     DependencyBuilder, Env, FileChange, FileSet, FxIndexMap, LangCrateOrigin, SourceDatabase,
-    SourceRoot, Version, VfsPath, all_crates,
+    SourceRoot, TargetKind, Version, VfsPath, all_crates,
 };
 use cfg::CfgOptions;
 use hir_expand::{
@@ -348,7 +348,7 @@ impl ChangeFixture {
                     meta.env,
                     origin,
                     meta.crate_attrs,
-                    false,
+                    TargetKind::Lib { is_proc_macro: false },
                     proc_macro_cwd.clone(),
                     crate_ws_data.clone(),
                 );
@@ -402,7 +402,7 @@ impl ChangeFixture {
                 )]),
                 CrateOrigin::Lang(LangCrateOrigin::Core),
                 Vec::new(),
-                false,
+                TargetKind::Lib { is_proc_macro: false },
                 proc_macro_cwd.clone(),
                 crate_ws_data.clone(),
             );
@@ -433,7 +433,7 @@ impl ChangeFixture {
                 default_env,
                 CrateOrigin::Local { repo: None, name: None },
                 Vec::new(),
-                false,
+                TargetKind::Lib { is_proc_macro: false },
                 proc_macro_cwd.clone(),
                 crate_ws_data.clone(),
             );
@@ -497,7 +497,7 @@ impl ChangeFixture {
                 )]),
                 CrateOrigin::Local { repo: None, name: None },
                 Vec::new(),
-                true,
+                TargetKind::Lib { is_proc_macro: true },
                 proc_macro_cwd,
                 crate_ws_data,
             );
