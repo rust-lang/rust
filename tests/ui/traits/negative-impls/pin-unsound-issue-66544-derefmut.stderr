@@ -6,6 +6,14 @@ LL | impl<'a> DerefMut for &'a MyType<'a> {
    |
    = note: negative implementation in crate `core`
 
-error: aborting due to 1 previous error
+error: cannot implement `DerefMut` for the fundamental type `&MyType<'_>`
+  --> $DIR/pin-unsound-issue-66544-derefmut.rs:12:23
+   |
+LL | impl<'a> DerefMut for &'a MyType<'a> {
+   |                       ^^^^^^^^^^^^^^ impl of `DerefMut` not allowed for `&MyType<'_>`
+   |
+   = note: `DerefMut` is `#[rustc_anti_fundamental]` and cannot be implemented for `#[fundamental]` types from another crate
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0751`.

@@ -1,0 +1,62 @@
+error[E0119]: conflicting implementations of trait `OverlapDerefMut` for type `Pin<&'static mut LocalType>`
+  --> $DIR/anti-fundamental-knowable-overlap.rs:17:1
+   |
+LL | impl<T: DerefMut> OverlapDerefMut for T {}
+   | --------------------------------------- first implementation here
+LL | impl OverlapDerefMut for Pin<&'static mut LocalType> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `Pin<&'static mut LocalType>`
+
+error[E0119]: conflicting implementations of trait `OverlapDeref` for type `Pin<Box<LocalType>>`
+  --> $DIR/anti-fundamental-knowable-overlap.rs:22:1
+   |
+LL | impl<T: Deref> OverlapDeref for T {}
+   | --------------------------------- first implementation here
+LL | impl OverlapDeref for Pin<Box<LocalType>> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `Pin<Box<LocalType>>`
+
+error[E0119]: conflicting implementations of trait `OverlapDeref` for type `Box<(dyn LocalTrait + 'static)>`
+  --> $DIR/anti-fundamental-knowable-overlap.rs:24:1
+   |
+LL | impl<T: Deref> OverlapDeref for T {}
+   | --------------------------------- first implementation here
+...
+LL | impl OverlapDeref for Box<dyn LocalTrait> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `Box<(dyn LocalTrait + 'static)>`
+
+error[E0119]: conflicting implementations of trait `OverlapDeref` for type `&'static Pin<&'static LocalType>`
+  --> $DIR/anti-fundamental-knowable-overlap.rs:26:1
+   |
+LL | impl<T: Deref> OverlapDeref for T {}
+   | --------------------------------- first implementation here
+...
+LL | impl OverlapDeref for &'static Pin<&'static LocalType> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `&'static Pin<&'static LocalType>`
+
+error[E0119]: conflicting implementations of trait `OverlapDeref` for type `Box<Pin<LocalType>>`
+  --> $DIR/anti-fundamental-knowable-overlap.rs:28:1
+   |
+LL | impl<T: Deref> OverlapDeref for T {}
+   | --------------------------------- first implementation here
+...
+LL | impl OverlapDeref for Box<Pin<LocalType>> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `Box<Pin<LocalType>>`
+
+error[E0119]: conflicting implementations of trait `OverlapDerefMutBox` for type `Box<Pin<LocalType>>`
+  --> $DIR/anti-fundamental-knowable-overlap.rs:33:1
+   |
+LL | impl<T: DerefMut> OverlapDerefMutBox for T {}
+   | ------------------------------------------ first implementation here
+LL | impl OverlapDerefMutBox for Box<Pin<LocalType>> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `Box<Pin<LocalType>>`
+
+error[E0119]: conflicting implementations of trait `NotKnowable` for type `Pin<&'static mut _>`
+  --> $DIR/anti-fundamental-knowable-overlap.rs:39:1
+   |
+LL | impl<T: DerefMut> NotKnowable for T {}
+   | ----------------------------------- first implementation here
+LL | impl<U: 'static> NotKnowable for Pin<&'static mut U> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `Pin<&'static mut _>`
+
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0119`.
