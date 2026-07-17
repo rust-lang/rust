@@ -1022,21 +1022,6 @@ where
                 true,
             )?;
         } else {
-            walk_dir(
-                rust_path.join("tests/ui"),
-                &mut |dir| {
-                    let dir_name = dir.file_name().and_then(|name| name.to_str()).unwrap_or("");
-                    if ["abi", "extern", "proc-macro", "threads-sendsync"].contains(&dir_name) {
-                        remove_dir_all(dir).map_err(|error| {
-                            format!("Failed to remove folder `{}`: {:?}", dir.display(), error)
-                        })?;
-                    }
-                    Ok(())
-                },
-                &mut |_| Ok(()),
-                false,
-            )?;
-
             // These two functions are used to remove files that are known to not be working currently
             // with the GCC backend to reduce noise.
             fn dir_handling(keep_lto_tests: bool) -> impl Fn(&Path) -> Result<(), String> {
