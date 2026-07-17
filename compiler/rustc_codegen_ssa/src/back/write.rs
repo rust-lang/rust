@@ -1011,12 +1011,17 @@ fn do_thin_lto<B: WriteBackendMethods>(
     // After we've requested tokens then we'll, when we can,
     // get tokens on `coordinator_receive` which will
     // get managed in the main loop below.
-    let coordinator_send2 = coordinator_send.clone();
-    let helper = jobserver::client()
-        .into_helper_thread(move |token| {
-            drop(coordinator_send2.send(ThinLtoMessage::Token(token)));
-        })
-        .expect("failed to spawn helper thread");
+    // Note that using `jobserver::Proxy` is not necessary here, the code below always acquires
+    // tokens before releasing them, so we can never accidentally release the last token
+    // permanently held by rustc process.
+    let jobserver_helper = cgcx.parallel.then(|| {
+        let coordinator_send2 = coordinator_send.clone();
+        jobserver::client()
+            .into_helper_thread(move |token| {
+                drop(coordinator_send2.send(ThinLtoMessage::Token(token)));
+            })
+            .expect("failed to spawn helper thread")
+    });
 
     let mut work_items = vec![];
 
@@ -1036,7 +1041,7 @@ fn do_thin_lto<B: WriteBackendMethods>(
         let insertion_index =
             work_items.binary_search_by_key(&cost, |&(_, cost)| cost).unwrap_or_else(|e| e);
         work_items.insert(insertion_index, (work, cost));
-        if cgcx.parallel {
+        if let Some(helper) = &jobserver_helper {
             helper.request_token();
         }
     }
@@ -1240,12 +1245,18 @@ fn start_executing_work<B: WriteBackendMethods>(
     // After we've requested tokens then we'll, when we can,
     // get tokens on `coordinator_receive` which will
     // get managed in the main loop below.
-    let coordinator_send2 = coordinator_send.clone();
-    let helper = jobserver::client()
-        .into_helper_thread(move |token| {
-            drop(coordinator_send2.send(Message::Token::<B>(token)));
-        })
-        .expect("failed to spawn helper thread");
+    // Note that using `jobserver::Proxy` is not necessary here, the code below always acquires
+    // tokens before releasing them, so we can never accidentally release the last token
+    // permanently held by rustc process.
+    let parallel = !sess.opts.unstable_opts.no_parallel_backend && backend.supports_parallel();
+    let jobserver_helper = parallel.then(|| {
+        let coordinator_send2 = coordinator_send.clone();
+        jobserver::client()
+            .into_helper_thread(move |token| {
+                drop(coordinator_send2.send(Message::Token::<B>(token)));
+            })
+            .expect("failed to spawn helper thread")
+    });
 
     let opt_level = tcx.backend_optimization_level(());
     let backend_features = tcx.global_backend_features(()).clone();
@@ -1286,7 +1297,7 @@ fn start_executing_work<B: WriteBackendMethods>(
         target_is_like_gpu: tcx.sess.target.is_like_gpu,
         split_debuginfo: tcx.sess.split_debuginfo(),
         split_dwarf_kind: tcx.sess.opts.unstable_opts.split_dwarf_kind,
-        parallel: backend.supports_parallel() && !sess.opts.unstable_opts.no_parallel_backend,
+        parallel,
         pointer_size: tcx.data_layout.pointer_size(),
     };
 
@@ -1633,7 +1644,7 @@ fn start_executing_work<B: WriteBackendMethods>(
                     };
                     work_items.insert(insertion_index, (llvm_work_item, cost));
 
-                    if cgcx.parallel {
+                    if let Some(helper) = &jobserver_helper {
                         helper.request_token();
                     }
                     assert_eq!(main_thread_state, MainThreadState::Codegenning);
@@ -1716,7 +1727,7 @@ fn start_executing_work<B: WriteBackendMethods>(
 
         drop(codegen_state);
         drop(tokens);
-        drop(helper);
+        drop(jobserver_helper);
         assert!(work_items.is_empty());
 
         if !needs_fat_lto.is_empty() {
