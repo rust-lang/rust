@@ -336,9 +336,6 @@ impl FromStr for EmitType {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            // old nightly-only choices that are going away soon
-            "toolchain-shared-resources" => Ok(Self::HtmlStaticFiles),
-            "invocation-specific" => Ok(Self::HtmlNonStaticFiles),
             // modern choices
             "html-static-files" => Ok(Self::HtmlStaticFiles),
             "html-non-static-files" => Ok(Self::HtmlNonStaticFiles),
