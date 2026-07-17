@@ -365,7 +365,7 @@ impl VisitProvenance for ReadinessWatcher {
     fn visit_provenance(&self, _visit: &mut VisitWith<'_>) {}
 }
 
-/// Data about a file descriptiobn that can be watched for readiness
+/// Data about a file description that can be watched for readiness
 /// (meant to be stored inside said file description).
 #[derive(Debug, Default)]
 pub struct ReadinessWatched {
