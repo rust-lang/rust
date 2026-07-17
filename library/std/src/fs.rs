@@ -68,9 +68,9 @@ use crate::{error, fmt};
 ///
 /// ```no_run
 /// use std::fs::File;
-/// use std::io::prelude::*;
+/// use std::io::{self, prelude::*};
 ///
-/// fn main() -> std::io::Result<()> {
+/// fn main() -> io::Result<()> {
 ///     let mut file = File::create("foo.txt")?;
 ///     file.write_all(b"Hello, world!")?;
 ///     Ok(())
@@ -81,9 +81,9 @@ use crate::{error, fmt};
 ///
 /// ```no_run
 /// use std::fs::File;
-/// use std::io::prelude::*;
+/// use std::io::{self, prelude::*};
 ///
-/// fn main() -> std::io::Result<()> {
+/// fn main() -> io::Result<()> {
 ///     let mut file = File::open("foo.txt")?;
 ///     let mut contents = String::new();
 ///     file.read_to_string(&mut contents)?;
@@ -98,8 +98,9 @@ use crate::{error, fmt};
 /// use std::fs::File;
 /// use std::io::BufReader;
 /// use std::io::prelude::*;
+/// use std::io;
 ///
-/// fn main() -> std::io::Result<()> {
+/// fn main() -> io::Result<()> {
 ///     let file = File::open("foo.txt")?;
 ///     let mut buf_reader = BufReader::new(file);
 ///     let mut contents = String::new();
@@ -171,9 +172,10 @@ pub enum TryLockError {
 ///
 /// ```no_run
 /// #![feature(dirfd)]
-/// use std::{fs::Dir, io};
+/// use std::fs::Dir;
+/// use std::io;
 ///
-/// fn main() -> std::io::Result<()> {
+/// fn main() -> io::Result<()> {
 ///     let dir = Dir::open("foo")?;
 ///     let mut file = dir.open_file("bar.txt")?;
 ///     let contents = io::read_to_string(file)?;
@@ -329,8 +331,9 @@ pub struct DirBuilder {
 ///
 /// ```no_run
 /// use std::fs;
+/// use std::io;
 ///
-/// fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
+/// fn main() -> io::Result<()> {
 ///     let data: Vec<u8> = fs::read("image.jpg")?;
 ///     assert_eq!(data[0..3], [0xFF, 0xD8, 0xFF]);
 ///     Ok(())
@@ -370,9 +373,9 @@ pub fn read<P: AsRef<Path>>(path: P) -> io::Result<Vec<u8>> {
 ///
 /// ```no_run
 /// use std::fs;
-/// use std::error::Error;
+/// use std::io;
 ///
-/// fn main() -> Result<(), Box<dyn Error>> {
+/// fn main() -> io::Result<()> {
 ///     let message: String = fs::read_to_string("message.txt")?;
 ///     println!("{}", message);
 ///     Ok(())
@@ -408,8 +411,9 @@ pub fn read_to_string<P: AsRef<Path>>(path: P) -> io::Result<String> {
 ///
 /// ```no_run
 /// use std::fs;
+/// use std::io;
 ///
-/// fn main() -> std::io::Result<()> {
+/// fn main() -> io::Result<()> {
 ///     fs::write("foo.txt", b"Lorem ipsum")?;
 ///     fs::write("bar.txt", "dolor sit")?;
 ///     Ok(())
@@ -445,8 +449,9 @@ pub fn write<P: AsRef<Path>, C: AsRef<[u8]>>(path: P, contents: C) -> io::Result
 /// #![feature(fs_set_times)]
 /// use std::fs::{self, FileTimes};
 /// use std::time::SystemTime;
+/// use std::io;
 ///
-/// fn main() -> std::io::Result<()> {
+/// fn main() -> io::Result<()> {
 ///     let now = SystemTime::now();
 ///     let times = FileTimes::new()
 ///         .set_accessed(now)
@@ -486,8 +491,9 @@ pub fn set_times<P: AsRef<Path>>(path: P, times: FileTimes) -> io::Result<()> {
 /// #![feature(fs_set_times)]
 /// use std::fs::{self, FileTimes};
 /// use std::time::SystemTime;
+/// use std::io;
 ///
-/// fn main() -> std::io::Result<()> {
+/// fn main() -> io::Result<()> {
 ///     let now = SystemTime::now();
 ///     let times = FileTimes::new()
 ///         .set_accessed(now)
@@ -556,9 +562,9 @@ impl File {
     ///
     /// ```no_run
     /// use std::fs::File;
-    /// use std::io::Read;
+    /// use std::io::{self, Read};
     ///
-    /// fn main() -> std::io::Result<()> {
+    /// fn main() -> io::Result<()> {
     ///     let mut f = File::open("foo.txt")?;
     ///     let mut data = vec![];
     ///     f.read_to_end(&mut data)?;
@@ -590,9 +596,9 @@ impl File {
     /// ```no_run
     /// #![feature(file_buffered)]
     /// use std::fs::File;
-    /// use std::io::BufRead;
+    /// use std::io::{self, BufRead};
     ///
-    /// fn main() -> std::io::Result<()> {
+    /// fn main() -> io::Result<()> {
     ///     let mut f = File::open_buffered("foo.txt")?;
     ///     assert!(f.capacity() > 0);
     ///     for (line, i) in f.lines().zip(1..) {
@@ -625,9 +631,9 @@ impl File {
     ///
     /// ```no_run
     /// use std::fs::File;
-    /// use std::io::Write;
+    /// use std::io::{self, Write};
     ///
-    /// fn main() -> std::io::Result<()> {
+    /// fn main() -> io::Result<()> {
     ///     let mut f = File::create("foo.txt")?;
     ///     f.write_all(&1234_u32.to_be_bytes())?;
     ///     Ok(())
@@ -657,9 +663,9 @@ impl File {
     /// ```no_run
     /// #![feature(file_buffered)]
     /// use std::fs::File;
-    /// use std::io::Write;
+    /// use std::io::{self, Write};
     ///
-    /// fn main() -> std::io::Result<()> {
+    /// fn main() -> io::Result<()> {
     ///     let mut f = File::create_buffered("foo.txt")?;
     ///     assert!(f.capacity() > 0);
     ///     for i in 0..100 {
@@ -699,9 +705,9 @@ impl File {
     ///
     /// ```no_run
     /// use std::fs::File;
-    /// use std::io::Write;
+    /// use std::io::{self, Write};
     ///
-    /// fn main() -> std::io::Result<()> {
+    /// fn main() -> io::Result<()> {
     ///     let mut f = File::create_new("foo.txt")?;
     ///     f.write_all("Hello, world!".as_bytes())?;
     ///     Ok(())
@@ -730,9 +736,9 @@ impl File {
     ///
     /// ```no_run
     /// use std::fs::File;
-    /// use std::io::Write;
+    /// use std::io::{self, Write};
     ///
-    /// fn main() -> std::io::Result<()> {
+    /// fn main() -> io::Result<()> {
     ///     let mut f = File::options().append(true).open("example.log")?;
     ///     writeln!(&mut f, "new line")?;
     ///     Ok(())
@@ -764,9 +770,9 @@ impl File {
     ///
     /// ```no_run
     /// use std::fs::File;
-    /// use std::io::prelude::*;
+    /// use std::io::{self, prelude::*};
     ///
-    /// fn main() -> std::io::Result<()> {
+    /// fn main() -> io::Result<()> {
     ///     let mut f = File::create("foo.txt")?;
     ///     f.write_all(b"Hello, world!")?;
     ///
@@ -796,9 +802,9 @@ impl File {
     ///
     /// ```no_run
     /// use std::fs::File;
-    /// use std::io::prelude::*;
+    /// use std::io::{self, prelude::*};
     ///
-    /// fn main() -> std::io::Result<()> {
+    /// fn main() -> io::Result<()> {
     ///     let mut f = File::create("foo.txt")?;
     ///     f.write_all(b"Hello, world!")?;
     ///
@@ -853,8 +859,8 @@ impl File {
     ///
     /// ```no_run
     /// use std::fs::File;
-    ///
-    /// fn main() -> std::io::Result<()> {
+    /// use std::io;
+    /// fn main() -> io::Result<()> {
     ///     let f = File::create("foo.txt")?;
     ///     f.lock()?;
     ///     Ok(())
@@ -905,8 +911,8 @@ impl File {
     ///
     /// ```no_run
     /// use std::fs::File;
-    ///
-    /// fn main() -> std::io::Result<()> {
+    /// use std::io;
+    /// fn main() -> io::Result<()> {
     ///     let f = File::open("foo.txt")?;
     ///     f.lock_shared()?;
     ///     Ok(())
@@ -963,8 +969,9 @@ impl File {
     ///
     /// ```no_run
     /// use std::fs::{File, TryLockError};
+    /// use std::io;
     ///
-    /// fn main() -> std::io::Result<()> {
+    /// fn main() -> io::Result<()> {
     ///     let f = File::create("foo.txt")?;
     ///     // Explicit handling of the WouldBlock error
     ///     match f.try_lock() {
@@ -1026,8 +1033,9 @@ impl File {
     ///
     /// ```no_run
     /// use std::fs::{File, TryLockError};
+    /// use std::io;
     ///
-    /// fn main() -> std::io::Result<()> {
+    /// fn main() -> io::Result<()> {
     ///     let f = File::open("foo.txt")?;
     ///     // Explicit handling of the WouldBlock error
     ///     match f.try_lock_shared() {
@@ -1070,8 +1078,9 @@ impl File {
     ///
     /// ```no_run
     /// use std::fs::File;
+    /// use std::io;
     ///
-    /// fn main() -> std::io::Result<()> {
+    /// fn main() -> io::Result<()> {
     ///     let f = File::open("foo.txt")?;
     ///     f.lock()?;
     ///     f.unlock()?;
@@ -1106,8 +1115,9 @@ impl File {
     ///
     /// ```no_run
     /// use std::fs::File;
+    /// use std::io;
     ///
-    /// fn main() -> std::io::Result<()> {
+    /// fn main() -> io::Result<()> {
     ///     let mut f = File::create("foo.txt")?;
     ///     f.set_len(10)?;
     ///     Ok(())
@@ -1127,8 +1137,9 @@ impl File {
     ///
     /// ```no_run
     /// use std::fs::File;
+    /// use std::io;
     ///
-    /// fn main() -> std::io::Result<()> {
+    /// fn main() -> io::Result<()> {
     ///     let mut f = File::open("foo.txt")?;
     ///     let metadata = f.metadata()?;
     ///     Ok(())
@@ -1149,8 +1160,9 @@ impl File {
     ///
     /// ```no_run
     /// use std::fs::File;
+    /// use std::io;
     ///
-    /// fn main() -> std::io::Result<()> {
+    /// fn main() -> io::Result<()> {
     ///     let mut file = File::open("foo.txt")?;
     ///     let file_copy = file.try_clone()?;
     ///     Ok(())
@@ -1165,8 +1177,9 @@ impl File {
     /// use std::fs::File;
     /// use std::io::SeekFrom;
     /// use std::io::prelude::*;
+    /// use std::io;
     ///
-    /// fn main() -> std::io::Result<()> {
+    /// fn main() -> io::Result<()> {
     ///     let mut file = File::open("foo.txt")?;
     ///     let mut file_copy = file.try_clone()?;
     ///
@@ -1202,9 +1215,10 @@ impl File {
     /// # Examples
     ///
     /// ```no_run
-    /// fn main() -> std::io::Result<()> {
-    ///     use std::fs::File;
+    /// use std::fs::File;
+    /// use std::io;
     ///
+    /// fn main() -> io::Result<()> {
     ///     let file = File::open("foo.txt")?;
     ///     let mut perms = file.metadata()?.permissions();
     ///     perms.set_readonly(true);
@@ -1247,9 +1261,10 @@ impl File {
     /// # Examples
     ///
     /// ```no_run
-    /// fn main() -> std::io::Result<()> {
-    ///     use std::fs::{self, File, FileTimes};
+    /// use std::fs::{self, File, FileTimes};
+    /// use std::io;
     ///
+    /// fn main() -> io::Result<()> {
     ///     let src = fs::metadata("src")?;
     ///     let dest = File::open("dest")?;
     ///     let times = FileTimes::new()
@@ -1558,9 +1573,10 @@ impl Dir {
     ///
     /// ```no_run
     /// #![feature(dirfd)]
-    /// use std::{fs::Dir, io};
+    /// use std::fs::Dir;
+    /// use std::io;
     ///
-    /// fn main() -> std::io::Result<()> {
+    /// fn main() -> io::Result<()> {
     ///     let dir = Dir::open("foo")?;
     ///     let mut f = dir.open_file("bar.txt")?;
     ///     let contents = io::read_to_string(f)?;
@@ -1581,8 +1597,9 @@ impl Dir {
     /// ```no_run
     /// #![feature(dirfd)]
     /// use std::fs::Dir;
+    /// use std::io;
     ///
-    /// fn main() -> std::io::Result<()> {
+    /// fn main() -> io::Result<()> {
     ///     let dir = Dir::open("foo")?;
     ///     let metadata = dir.metadata()?;
     ///     Ok(())
@@ -1607,9 +1624,10 @@ impl Dir {
     ///
     /// ```no_run
     /// #![feature(dirfd)]
-    /// use std::{fs::Dir, io};
+    /// use std::fs::Dir;
+    /// use std::io;
     ///
-    /// fn main() -> std::io::Result<()> {
+    /// fn main() -> io::Result<()> {
     ///     let dir = Dir::open("foo")?;
     ///     let mut f = dir.open_file("bar.txt")?;
     ///     let contents = io::read_to_string(f)?;
@@ -1638,7 +1656,8 @@ impl Dir {
     ///
     /// ```no_run
     /// #![feature(dirfd)]
-    /// use std::{fs::{Dir, OpenOptions}, io::{self, Write}};
+    /// use std::fs::{Dir, OpenOptions};
+    /// use std::io::{self, Write};
     ///
     /// fn main() -> io::Result<()> {
     ///     let dir = Dir::open("foo")?;
@@ -1671,8 +1690,9 @@ impl Dir {
     /// ```no_run
     /// #![feature(dirfd)]
     /// use std::fs::Dir;
+    /// use std::io;
     ///
-    /// fn main() -> std::io::Result<()> {
+    /// fn main() -> io::Result<()> {
     ///     let dir = Dir::open("foo")?;
     ///     dir.remove_file("bar.txt")?;
     ///     Ok(())
@@ -1699,8 +1719,9 @@ impl Dir {
     /// ```no_run
     /// #![feature(dirfd)]
     /// use std::fs::Dir;
+    /// use std::io;
     ///
-    /// fn main() -> std::io::Result<()> {
+    /// fn main() -> io::Result<()> {
     ///     let dir = Dir::open("foo")?;
     ///     dir.rename("bar.txt", &dir, "quux.txt")?;
     ///     Ok(())
@@ -2009,11 +2030,10 @@ impl Metadata {
     /// # Examples
     ///
     /// ```no_run
-    /// fn main() -> std::io::Result<()> {
-    ///     use std::fs;
-    ///
+    /// use std::fs;
+    /// use std::io;
+    /// fn main() -> io::Result<()> {
     ///     let metadata = fs::metadata("foo.txt")?;
-    ///
     ///     println!("{:?}", metadata.file_type());
     ///     Ok(())
     /// }
@@ -2032,11 +2052,11 @@ impl Metadata {
     /// # Examples
     ///
     /// ```no_run
-    /// fn main() -> std::io::Result<()> {
-    ///     use std::fs;
+    /// use std::fs;
+    /// use std::io;
     ///
+    /// fn main() -> io::Result<()> {
     ///     let metadata = fs::metadata("foo.txt")?;
-    ///
     ///     assert!(!metadata.is_dir());
     ///     Ok(())
     /// }
@@ -2062,10 +2082,10 @@ impl Metadata {
     ///
     /// ```no_run
     /// use std::fs;
+    /// use std::io;
     ///
-    /// fn main() -> std::io::Result<()> {
+    /// fn main() -> io::Result<()> {
     ///     let metadata = fs::metadata("foo.txt")?;
-    ///
     ///     assert!(metadata.is_file());
     ///     Ok(())
     /// }
@@ -2083,10 +2103,11 @@ impl Metadata {
     #[cfg_attr(unix, doc = "```no_run")]
     #[cfg_attr(not(unix), doc = "```ignore")]
     /// use std::fs;
+    /// use std::io;
     /// use std::path::Path;
     /// use std::os::unix::fs::symlink;
     ///
-    /// fn main() -> std::io::Result<()> {
+    /// fn main() -> io::Result<()> {
     ///     let link_path = Path::new("link");
     ///     symlink("/origin_does_not_exist/", link_path)?;
     ///
@@ -2108,10 +2129,10 @@ impl Metadata {
     ///
     /// ```no_run
     /// use std::fs;
+    /// use std::io;
     ///
-    /// fn main() -> std::io::Result<()> {
+    /// fn main() -> io::Result<()> {
     ///     let metadata = fs::metadata("foo.txt")?;
-    ///
     ///     assert_eq!(0, metadata.len());
     ///     Ok(())
     /// }
@@ -2128,10 +2149,10 @@ impl Metadata {
     ///
     /// ```no_run
     /// use std::fs;
+    /// use std::io;
     ///
-    /// fn main() -> std::io::Result<()> {
+    /// fn main() -> io::Result<()> {
     ///     let metadata = fs::metadata("foo.txt")?;
-    ///
     ///     assert!(!metadata.permissions().readonly());
     ///     Ok(())
     /// }
@@ -2156,10 +2177,10 @@ impl Metadata {
     ///
     /// ```no_run
     /// use std::fs;
+    /// use std::io;
     ///
-    /// fn main() -> std::io::Result<()> {
+    /// fn main() -> io::Result<()> {
     ///     let metadata = fs::metadata("foo.txt")?;
-    ///
     ///     if let Ok(time) = metadata.modified() {
     ///         println!("{time:?}");
     ///     } else {
@@ -2192,10 +2213,10 @@ impl Metadata {
     ///
     /// ```no_run
     /// use std::fs;
+    /// use std::io;
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let metadata = fs::metadata("foo.txt")?;
-    ///
     ///     if let Ok(time) = metadata.accessed() {
     ///         println!("{time:?}");
     ///     } else {
@@ -2225,10 +2246,10 @@ impl Metadata {
     ///
     /// ```no_run
     /// use std::fs;
+    /// use std::io;
     ///
-    /// fn main() -> std::io::Result<()> {
+    /// fn main() -> io::Result<()> {
     ///     let metadata = fs::metadata("foo.txt")?;
-    ///
     ///     if let Ok(time) = metadata.created() {
     ///         println!("{time:?}");
     ///     } else {
@@ -2352,8 +2373,9 @@ impl Permissions {
     ///
     /// ```no_run
     /// use std::fs::File;
+    /// use std::io;
     ///
-    /// fn main() -> std::io::Result<()> {
+    /// fn main() -> io::Result<()> {
     ///     let mut f = File::create("foo.txt")?;
     ///     let metadata = f.metadata()?;
     ///
@@ -2412,8 +2434,9 @@ impl Permissions {
     ///
     /// ```no_run
     /// use std::fs::File;
+    /// use std::io;
     ///
-    /// fn main() -> std::io::Result<()> {
+    /// fn main() -> io::Result<()> {
     ///     let f = File::create("foo.txt")?;
     ///     let metadata = f.metadata()?;
     ///     let mut permissions = metadata.permissions();
@@ -2447,12 +2470,12 @@ impl FileType {
     /// # Examples
     ///
     /// ```no_run
+    /// use std::fs;
+    /// use std::io;
+    ///   
     /// fn main() -> std::io::Result<()> {
-    ///     use std::fs;
-    ///
     ///     let metadata = fs::metadata("foo.txt")?;
     ///     let file_type = metadata.file_type();
-    ///
     ///     assert_eq!(file_type.is_dir(), false);
     ///     Ok(())
     /// }
@@ -2480,12 +2503,12 @@ impl FileType {
     /// # Examples
     ///
     /// ```no_run
-    /// fn main() -> std::io::Result<()> {
-    ///     use std::fs;
+    /// use std::fs;
+    /// use: std::io;
     ///
+    /// fn main() -> std::io::Result<()> {
     ///     let metadata = fs::metadata("foo.txt")?;
     ///     let file_type = metadata.file_type();
-    ///
     ///     assert_eq!(file_type.is_file(), true);
     ///     Ok(())
     /// }
@@ -2517,11 +2540,11 @@ impl FileType {
     ///
     /// ```no_run
     /// use std::fs;
+    /// use std::io;
     ///
-    /// fn main() -> std::io::Result<()> {
+    /// fn main() -> io::Result<()> {
     ///     let metadata = fs::symlink_metadata("foo.txt")?;
     ///     let file_type = metadata.file_type();
-    ///
     ///     assert_eq!(file_type.is_symlink(), false);
     ///     Ok(())
     /// }
@@ -2583,8 +2606,8 @@ impl DirEntry {
     ///
     /// ```no_run
     /// use std::fs;
-    ///
-    /// fn main() -> std::io::Result<()> {
+    /// use std::io;
+    /// fn main() -> io::Result<()> {
     ///     for entry in fs::read_dir(".")? {
     ///         let dir = entry?;
     ///         println!("{:?}", dir.path());
@@ -2795,8 +2818,9 @@ pub fn remove_file<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///
 /// ```rust,no_run
 /// use std::fs;
+/// use std::io;
 ///
-/// fn main() -> std::io::Result<()> {
+/// fn main() -> io::Result<()> {
 ///     let attr = fs::metadata("/some/file/path.txt")?;
 ///     // inspect attr ...
 ///     Ok(())
@@ -2830,8 +2854,9 @@ pub fn metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
 ///
 /// ```rust,no_run
 /// use std::fs;
+/// use std::io;
 ///
-/// fn main() -> std::io::Result<()> {
+/// fn main() -> io::Result<()> {
 ///     let attr = fs::symlink_metadata("/some/file/path.txt")?;
 ///     // inspect attr ...
 ///     Ok(())
@@ -2879,8 +2904,9 @@ pub fn symlink_metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
 ///
 /// ```no_run
 /// use std::fs;
+/// use std::io;
 ///
-/// fn main() -> std::io::Result<()> {
+/// fn main() -> io::Result<()> {
 ///     fs::rename("a.txt", "b.txt")?; // Rename a.txt to b.txt
 ///     Ok(())
 /// }
@@ -2940,8 +2966,9 @@ pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> 
 ///
 /// ```no_run
 /// use std::fs;
+/// use std::io;
 ///
-/// fn main() -> std::io::Result<()> {
+/// fn main() -> io::Result<()> {
 ///     fs::copy("foo.txt", "bar.txt")?;  // Copy foo.txt to bar.txt
 ///     Ok(())
 /// }
@@ -2988,8 +3015,9 @@ pub fn copy<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<u64> {
 ///
 /// ```no_run
 /// use std::fs;
+/// use std::io;
 ///
-/// fn main() -> std::io::Result<()> {
+/// fn main() -> io::Result<()> {
 ///     fs::hard_link("a.txt", "b.txt")?; // Hard link a.txt to b.txt
 ///     Ok(())
 /// }
@@ -3016,8 +3044,9 @@ pub fn hard_link<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::Re
 ///
 /// ```no_run
 /// use std::fs;
+/// use std::io;
 ///
-/// fn main() -> std::io::Result<()> {
+/// fn main() -> io::Result<()> {
 ///     fs::soft_link("a.txt", "b.txt")?;
 ///     Ok(())
 /// }
@@ -3055,8 +3084,9 @@ pub fn soft_link<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::Re
 ///
 /// ```no_run
 /// use std::fs;
+/// use std::io;
 ///
-/// fn main() -> std::io::Result<()> {
+/// fn main() -> io::Result<()> {
 ///     let path = fs::read_link("a.txt")?;
 ///     Ok(())
 /// }
@@ -3096,8 +3126,9 @@ pub fn read_link<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
 ///
 /// ```no_run
 /// use std::fs;
+/// use std::io;
 ///
-/// fn main() -> std::io::Result<()> {
+/// fn main() -> io::Result<()> {
 ///     let path = fs::canonicalize("../a/../foo.txt")?;
 ///     Ok(())
 /// }
@@ -3138,8 +3169,9 @@ pub fn canonicalize<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
 ///
 /// ```no_run
 /// use std::fs;
+/// use std::io;
 ///
-/// fn main() -> std::io::Result<()> {
+/// fn main() -> io::Result<()> {
 ///     fs::create_dir("/some/dir")?;
 ///     Ok(())
 /// }
@@ -3186,8 +3218,9 @@ pub fn create_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///
 /// ```no_run
 /// use std::fs;
+/// use std::io;
 ///
-/// fn main() -> std::io::Result<()> {
+/// fn main() -> io::Result<()> {
 ///     fs::create_dir_all("/some/dir")?;
 ///     Ok(())
 /// }
@@ -3230,8 +3263,9 @@ pub fn create_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///
 /// ```no_run
 /// use std::fs;
+/// use std::io;
 ///
-/// fn main() -> std::io::Result<()> {
+/// fn main() -> io::Result<()> {
 ///     fs::remove_dir("/some/dir")?;
 ///     Ok(())
 /// }
@@ -3295,8 +3329,9 @@ pub fn remove_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///
 /// ```no_run
 /// use std::fs;
+/// use std::io;
 ///
-/// fn main() -> std::io::Result<()> {
+/// fn main() -> io::Result<()> {
 ///     fs::remove_dir_all("/some/dir")?;
 ///     Ok(())
 /// }
@@ -3362,7 +3397,8 @@ pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// ```
 ///
 /// ```rust,no_run
-/// use std::{fs, io};
+/// use std::fs;
+/// use std::io;
 ///
 /// fn main() -> io::Result<()> {
 ///     let mut entries = fs::read_dir(".")?
@@ -3422,8 +3458,9 @@ pub fn read_dir<P: AsRef<Path>>(path: P) -> io::Result<ReadDir> {
 ///
 /// ```no_run
 /// use std::fs;
+/// use std::io;
 ///
-/// fn main() -> std::io::Result<()> {
+/// fn main() -> io::Result<()> {
 ///     let mut perms = fs::metadata("foo.txt")?.permissions();
 ///     perms.set_readonly(true);
 ///     fs::set_permissions("foo.txt", perms)?;
