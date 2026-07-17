@@ -1,0 +1,95 @@
+error[E0117]: only traits defined in the current crate can be implemented for types defined outside of the crate
+  --> $DIR/anti-fundamental-foreign-type.rs:23:1
+   |
+LL | impl AntiFundamentalTrait for NonFundamentalWrapper<LocalType> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^--------------------------------
+   |                               |
+   |                               `NonFundamentalWrapper` is not defined in the current crate
+   |
+   = note: impl doesn't have any local type before any uncovered type parameters
+   = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
+   = note: define and implement a trait or new type instead
+
+error: cannot implement `AntiFundamentalTrait` for the fundamental type `FundamentalWrapper<LocalType>`
+  --> $DIR/anti-fundamental-foreign-type.rs:27:31
+   |
+LL | impl AntiFundamentalTrait for FundamentalWrapper<LocalType> {}
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl of `AntiFundamentalTrait` not allowed for `FundamentalWrapper<LocalType>`
+   |
+   = note: `AntiFundamentalTrait` is `#[rustc_anti_fundamental]` and cannot be implemented for `#[fundamental]` types from another crate
+
+error: cannot implement `AntiFundamentalTrait` for the fundamental type `FundamentalWrapper<LocalType>`
+  --> $DIR/anti-fundamental-foreign-type.rs:31:31
+   |
+LL | impl AntiFundamentalTrait for &FundamentalWrapper<LocalType> {}
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl of `AntiFundamentalTrait` not allowed for `&FundamentalWrapper<LocalType>`
+   |
+   = note: `AntiFundamentalTrait` is `#[rustc_anti_fundamental]` and cannot be implemented for `#[fundamental]` types from another crate
+
+error: cannot implement `AntiFundamentalTrait` for the fundamental type `FundamentalWrapper<LocalType>`
+  --> $DIR/anti-fundamental-foreign-type.rs:35:31
+   |
+LL | impl AntiFundamentalTrait for &mut &FundamentalWrapper<LocalType> {}
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl of `AntiFundamentalTrait` not allowed for `&mut &FundamentalWrapper<LocalType>`
+   |
+   = note: `AntiFundamentalTrait` is `#[rustc_anti_fundamental]` and cannot be implemented for `#[fundamental]` types from another crate
+
+error: cannot implement `AntiFundamentalTrait` for the fundamental type `FundamentalWrapper<LocalFundamental<LocalType>>`
+  --> $DIR/anti-fundamental-foreign-type.rs:42:31
+   |
+LL | impl AntiFundamentalTrait for FundamentalWrapper<LocalFundamental<LocalType>> {}
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl of `AntiFundamentalTrait` not allowed for `FundamentalWrapper<LocalFundamental<LocalType>>`
+   |
+   = note: `AntiFundamentalTrait` is `#[rustc_anti_fundamental]` and cannot be implemented for `#[fundamental]` types from another crate
+
+error: cannot implement `AntiFundamentalTrait` for the fundamental type `FundamentalWrapper<LocalType2>`
+  --> $DIR/anti-fundamental-foreign-type.rs:62:31
+   |
+LL | impl AntiFundamentalTrait for <LocalType2 as AssocHelper>::Assoc {}
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl of `AntiFundamentalTrait` not allowed for `<LocalType2 as AssocHelper>::Assoc`
+   |
+   = note: `AntiFundamentalTrait` is `#[rustc_anti_fundamental]` and cannot be implemented for `#[fundamental]` types from another crate
+
+error: cannot implement `AntiFundamentalTrait` for the fundamental type `FundamentalWrapper<LocalGeneric<T>>`
+  --> $DIR/anti-fundamental-foreign-type.rs:68:34
+   |
+LL | impl<T> AntiFundamentalTrait for FundamentalWrapper<LocalGeneric<T>> {}
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl of `AntiFundamentalTrait` not allowed for `FundamentalWrapper<LocalGeneric<T>>`
+   |
+   = note: `AntiFundamentalTrait` is `#[rustc_anti_fundamental]` and cannot be implemented for `#[fundamental]` types from another crate
+
+error: cannot implement `AntiFundamentalTrait` for the fundamental type `FundamentalWrapper<LocalGeneric<T>>`
+  --> $DIR/anti-fundamental-foreign-type.rs:72:34
+   |
+LL | impl<T> AntiFundamentalTrait for &FundamentalWrapper<LocalGeneric<T>> {}
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl of `AntiFundamentalTrait` not allowed for `&FundamentalWrapper<LocalGeneric<T>>`
+   |
+   = note: `AntiFundamentalTrait` is `#[rustc_anti_fundamental]` and cannot be implemented for `#[fundamental]` types from another crate
+
+error: cannot implement `AntiFundamentalTrait` for the fundamental type `FundamentalWrapper<LocalType>`
+  --> $DIR/anti-fundamental-foreign-type.rs:76:31
+   |
+LL | impl AntiFundamentalTrait for &mut FundamentalWrapper<LocalType> {}
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl of `AntiFundamentalTrait` not allowed for `&mut FundamentalWrapper<LocalType>`
+   |
+   = note: `AntiFundamentalTrait` is `#[rustc_anti_fundamental]` and cannot be implemented for `#[fundamental]` types from another crate
+
+error: cannot implement `AntiFundamentalTrait` for the fundamental type `FundamentalWrapper<LocalType3>`
+  --> $DIR/anti-fundamental-foreign-type.rs:82:31
+   |
+LL | impl AntiFundamentalTrait for LocalAlias {}
+   |                               ^^^^^^^^^^ impl of `AntiFundamentalTrait` not allowed for `FundamentalWrapper<LocalType3>`
+   |
+   = note: `AntiFundamentalTrait` is `#[rustc_anti_fundamental]` and cannot be implemented for `#[fundamental]` types from another crate
+
+error: cannot implement `AntiFundamentalWithParam` for the fundamental type `FundamentalWrapper<LocalType>`
+  --> $DIR/anti-fundamental-foreign-type.rs:49:46
+   |
+LL | impl AntiFundamentalWithParam<LocalType> for FundamentalWrapper<LocalType> {}
+   |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl of `AntiFundamentalWithParam` not allowed for `FundamentalWrapper<LocalType>`
+   |
+   = note: `AntiFundamentalWithParam` is `#[rustc_anti_fundamental]` and cannot be implemented for `#[fundamental]` types from another crate
+
+error: aborting due to 11 previous errors
+
+For more information about this error, try `rustc --explain E0117`.
