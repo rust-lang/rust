@@ -302,17 +302,9 @@ pub impl(self) trait CommandExt {
     /// By default, stdin, stdout, and stderr are inherited from the parent
     /// process.
     ///
-    /// # Safety
-    ///
-    /// This requires all the attributes given to `ProcThreadAttributeListBuilder` are valid.
-    /// Pointers must not only point to live allocations, but they must point to appropriate data
-    /// as defined by each attribute, which may need to be valid at a specific type.
-    ///
-    /// Each attribute may have arbitrary additional requirements imposed by the OS.
-    ///
-    /// Read the [Windows documentation][1] carefully before calling this function.
-    ///
-    /// [1]: <https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-updateprocthreadattribute>
+    /// Note that this operation is itself safe, but relies on the correctness of invocations of
+    /// `attribute` and `raw_attribute` in order to be so. This includes but is not limited to
+    /// liveness of allocations, as attributes may have arbitrary requirements imposed by the OS.
     ///
     /// # Example
     ///
@@ -345,7 +337,7 @@ pub impl(self) trait CommandExt {
     /// # Ok::<(), std::io::Error>(())
     /// ```
     #[unstable(feature = "windows_process_extensions_raw_attribute", issue = "114854")]
-    unsafe fn spawn_with_attributes(
+    fn spawn_with_attributes(
         &mut self,
         attribute_list: &ProcThreadAttributeList<'_>,
     ) -> io::Result<process::Child>;
@@ -417,7 +409,7 @@ impl CommandExt for process::Command {
         self
     }
 
-    unsafe fn spawn_with_attributes(
+    fn spawn_with_attributes(
         &mut self,
         attribute_list: &ProcThreadAttributeList<'_>,
     ) -> io::Result<process::Child> {
@@ -550,14 +542,14 @@ impl<'a> ProcThreadAttributeListBuilder<'a> {
     ///
     /// # Safety
     ///
-    /// This function guarantees the use of a correct length value based on `T`, compared
-    /// to passing it as an explicit argument to `raw_attribute`.
-    /// It does not enforce any other validity constraints the Windows API may impose on
-    /// the value used for an attribute.
+    /// This function guarantees the use of a correct length value based on `T`, compared to
+    /// passing it as an explicit argument to `raw_attribute`.
+    /// The lifetime of the reference will also enforce that the value can outlive the list.
     ///
-    /// Remember that improper use of attributes can lead to undefined behavior
-    /// or security vulnerabilities. Always consult the documentation and ensure
-    /// proper attribute values are used.
+    /// Using `attribute` otherwise has the same requirements as `raw_attribute`, especially
+    /// including the arbitrary additional constraints Windows may impose on any attribute.
+    /// These requirements must be satisfied upon initially calling `attribute`,
+    /// even if `spawn_with_attributes` is never called on this list.
     ///
     /// [1]: <https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-updateprocthreadattribute#parameters>
     pub unsafe fn attribute<T>(self, attribute: usize, value: &'a T) -> Self {
@@ -577,6 +569,16 @@ impl<'a> ProcThreadAttributeListBuilder<'a> {
     /// and sizes. It is the responsibility of the caller to ensure the value
     /// lives longer than the resulting [`ProcThreadAttributeList`] as well as
     /// the validity of the size parameter.
+    ///
+    /// Using `raw_attribute` does not enforce any requirements the Windows API may impose
+    /// on the value used for an attribute. These may include arbitrary additional constraints.
+    /// These requirements must be satisfied upon initially calling `raw_attribute`,
+    /// even if `spawn_with_attributes` is never called on this list.
+    ///
+    /// Improper use of attributes can lead to undefined behavior or security vulnerabilities.
+    /// Always consult the [Windows documentation][1] and ensure proper attribute values are used.
+    ///
+    /// [1]: <https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-updateprocthreadattribute#parameters>
     ///
     /// # Example
     ///
