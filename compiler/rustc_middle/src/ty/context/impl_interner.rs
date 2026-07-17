@@ -603,6 +603,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.trait_def(def_id).is_fundamental
     }
 
+    fn trait_is_anti_fundamental(self, def_id: DefId) -> bool {
+        self.trait_def(def_id).is_anti_fundamental
+    }
+
     fn trait_is_unsafe(self, trait_def_id: Self::DefId) -> bool {
         self.trait_def(trait_def_id).safety.is_unsafe()
     }

@@ -80,6 +80,11 @@ pub struct TraitDef {
     /// This only applies to built-in traits, and is marked via
     /// `#[rustc_deny_explicit_impl]`.
     pub deny_explicit_impl: bool,
+
+    /// If `true`, then this trait has the `#[rustc_anti_fundamental]` attribute
+    /// and cannot be implemented for `#[fundamental]` types from another crate.
+    /// Used for `Deref`, `DerefMut`, `DispatchFromDyn`, `CoerceUnsized`, etc.
+    pub is_anti_fundamental: bool,
 }
 
 /// Whether this trait is treated specially by the standard library
