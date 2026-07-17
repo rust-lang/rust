@@ -2343,16 +2343,52 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 // Use the terminal width as the basis to determine when to compress the printed
                 // out type, but give ourselves some leeway to avoid ending up creating a file for
                 // a type that is somewhat shorter than the path we'd write to.
-                let len = self.tcx.sess.diagnostic_width() + 40;
+                let len = self.tcx.sess.diagnostic_width();
                 let exp_s = exp.content();
                 let fnd_s = fnd.content();
-                if exp_s.len() > len && !self.tcx.sess.opts.verbose {
-                    let exp_s = self.tcx.short_string(expected, long_ty_path);
-                    exp = DiagStyledString::highlighted(exp_s);
-                }
-                if fnd_s.len() > len && !self.tcx.sess.opts.verbose {
-                    let fnd_s = self.tcx.short_string(found, long_ty_path);
-                    fnd = DiagStyledString::highlighted(fnd_s);
+                if !self.tcx.sess.opts.verbose
+                    && self.tcx.sess.opts.unstable_opts.write_long_types_to_disk
+                {
+                    // We aren't explicitly asking for `--verbose` output, and we are storing long
+                    // types to disk, so we try to shorten the output.
+                    if exp_s.len() > len && fnd_s.len() > len {
+                        let exp_short = self.tcx.short_string(expected, long_ty_path);
+                        let fnd_short = self.tcx.short_string(found, long_ty_path);
+                        // We use a crude shortening on the highlighted strings themselves. This
+                        // doesn't ensure that the two strings will look different, or that the
+                        // output is very readable, but at least keeps the highlighting around.
+                        exp.shorten();
+                        fnd.shorten();
+                        if exp_short != fnd_short {
+                            // The short strings aren't the same visually, so it might make sense
+                            // to use them instead.
+                            if exp.0.len() <= 1 {
+                                // The entire type is highlighted, let's use the short string
+                                // instead, which is slightly better.
+                                exp = DiagStyledString::highlighted(exp_short);
+                            }
+                            if fnd.0.len() <= 1 {
+                                // The entire type is highlighted, let's use the short string
+                                // instead, which is slightly better.
+                                fnd = DiagStyledString::highlighted(fnd_short);
+                            }
+                        }
+                    } else {
+                        if exp_s.len() > len {
+                            exp.shorten();
+                            let exp_short = self.tcx.short_string(expected, long_ty_path);
+                            if exp.0.len() <= 1 {
+                                exp = DiagStyledString::highlighted(exp_short);
+                            }
+                        }
+                        if fnd_s.len() > len {
+                            fnd.shorten();
+                            let fnd_short = self.tcx.short_string(found, long_ty_path);
+                            if fnd.0.len() <= 1 {
+                                fnd = DiagStyledString::highlighted(fnd_short);
+                            }
+                        }
+                    }
                 }
                 (exp, fnd)
             }
