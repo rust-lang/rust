@@ -9,7 +9,7 @@ fn main() {
 
     scrape::scrape(
         &["--scrape-tests", "--emit=dep-info"],
-        &["--emit=dep-info,invocation-specific"],
+        &["--emit=dep-info,html-non-static-files"],
     );
 
     let content = rfs::read_to_string("rustdoc/foobar.d").replace(r"\", "/");

@@ -369,16 +369,6 @@ pub struct Config {
     pub using_internal_features: &'static std::sync::atomic::AtomicBool,
 }
 
-/// Initialize jobserver before getting `jobserver::client` and `build_session`.
-pub(crate) fn initialize_checked_jobserver(early_dcx: &EarlyDiagCtxt) {
-    jobserver::initialize_checked(|err| {
-        early_dcx
-            .early_struct_warn(err)
-            .with_note("the build environment is likely misconfigured")
-            .emit()
-    });
-}
-
 // JUSTIFICATION: before session exists, only config
 #[allow(rustc::bad_opt_access)]
 pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Send) -> R {
@@ -389,9 +379,14 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
         config.opts.unstable_opts.threads.is_some(),
     );
 
-    // Check jobserver before run_in_thread_pool_with_globals, which call jobserver::acquire_thread
+    // Initialize jobserver as early as possible.
     let early_dcx = EarlyDiagCtxt::new(config.opts.error_format);
-    initialize_checked_jobserver(&early_dcx);
+    jobserver::initialize_checked(|err| {
+        early_dcx
+            .early_struct_warn(err)
+            .with_note("the build environment is likely misconfigured")
+            .emit()
+    });
 
     crate::callbacks::setup_callbacks();
 

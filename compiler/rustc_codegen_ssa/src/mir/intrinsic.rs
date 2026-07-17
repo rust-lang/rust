@@ -10,7 +10,7 @@ use super::operand::{OperandRef, OperandValue};
 use super::place::PlaceValue;
 use super::{FunctionCx, IntrinsicResult};
 use crate::common::{AtomicRmwBinOp, SynchronizationScope};
-use crate::errors::InvalidMonomorphization;
+use crate::diagnostics::InvalidMonomorphization;
 use crate::mir::operand::OperandRefBuilder;
 use crate::traits::*;
 use crate::{MemFlags, meth, size_of_val};

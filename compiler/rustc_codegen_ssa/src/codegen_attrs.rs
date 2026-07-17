@@ -19,7 +19,7 @@ use rustc_session::lint;
 use rustc_span::{Span, sym};
 use rustc_target::spec::Os;
 
-use crate::errors;
+use crate::diagnostics;
 use crate::target_features::{
     check_target_feature_trait_unsafe, check_tied_features, from_target_feature_attr,
 };
@@ -517,10 +517,10 @@ fn check_result(
             .unwrap_or_else(|| tcx.def_span(did));
 
         tcx.dcx()
-            .create_err(errors::TargetFeatureDisableOrEnable {
+            .create_err(diagnostics::TargetFeatureDisableOrEnable {
                 features,
                 span: Some(span),
-                missing_features: Some(errors::MissingFeatures),
+                missing_features: Some(diagnostics::MissingFeatures),
             })
             .emit();
     }

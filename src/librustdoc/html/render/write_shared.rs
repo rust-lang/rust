@@ -11,7 +11,7 @@
 //!    contents, so they do not include a hash in their filename and are not safe to
 //!    cache with `Cache-Control: immutable`. They include the contents of the
 //!    --resource-suffix flag and are emitted when --emit-type is empty (default)
-//!    or contains "invocation-specific".
+//!    or contains "html-non-static-files".
 
 use std::cell::RefCell;
 use std::ffi::{OsStr, OsString};
