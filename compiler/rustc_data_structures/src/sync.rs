@@ -28,9 +28,9 @@ use std::hash::{BuildHasher, Hash};
 pub use self::atomic::AtomicU64;
 pub use self::freeze::{FreezeLock, FreezeReadGuard, FreezeWriteGuard};
 #[doc(no_inline)]
-pub use self::lock::{Lock, LockGuard, Mode};
+pub use self::lock::{Lock, LockGuard};
 pub use self::mode::{
-    FromDyn, check_dyn_thread_safe, is_dyn_thread_safe, set_dyn_thread_safe_mode,
+    FromDyn, Mode, check_dyn_thread_safe, is_dyn_thread_safe, set_dyn_thread_safe_mode,
 };
 pub use self::parallel::{
     broadcast, par_fns, par_for_each_in, par_for_each_slice, par_join, par_map, parallel_guard,
@@ -64,6 +64,12 @@ mod mode {
     use std::sync::atomic::{AtomicU8, Ordering};
 
     use crate::sync::{DynSend, DynSync};
+
+    #[derive(Clone, Copy, PartialEq)]
+    pub enum Mode {
+        NoSync,
+        Sync,
+    }
 
     const UNINITIALIZED: u8 = 0;
     const DYN_NOT_THREAD_SAFE: u8 = 1;
