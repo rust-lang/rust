@@ -16,6 +16,7 @@ use regex::Regex;
 use rustc_arena::TypedArena;
 use rustc_attr_parsing::eval_config_entry;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
+use rustc_data_structures::jobserver;
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_errors::DiagCtxtHandle;
@@ -36,8 +37,8 @@ use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
 use rustc_session::config::{
-    self, CFGuard, CrateType, DebugInfo, InstrumentMcount, LinkerFeaturesCli, OutFileName,
-    OutputFilenames, OutputType, PrintKind, SplitDwarfKind, Strip,
+    self, CFGuard, CrateType, DebugInfo, InstrumentMcount, LinkerFeaturesCli, LinkerJobs,
+    OutFileName, OutputFilenames, OutputType, PrintKind, SplitDwarfKind, Strip,
 };
 use rustc_session::lint::builtin::LINKER_MESSAGES;
 use rustc_session::output::{check_file_is_writeable, invalid_output_for_target, out_filename};
@@ -1085,7 +1086,7 @@ fn link_natively(
         should_archive.then(|| tmpdir.join(out_filename.file_name().unwrap()).with_extension("so"));
     let temp_filename = archive_member.as_deref().unwrap_or(out_filename);
 
-    let mut cmd = linker_with_args(
+    let (mut cmd, jobserver_tokens) = linker_with_args(
         &linker_path,
         flavor,
         sess,
@@ -1241,6 +1242,9 @@ fn link_natively(
 
         break;
     }
+
+    // Finished running linker, release the tokens.
+    drop(jobserver_tokens);
 
     match prog {
         Ok(prog) => {
@@ -2736,7 +2740,7 @@ fn linker_with_args(
     metadata: &EncodedMetadata,
     self_contained_components: LinkSelfContainedComponents,
     codegen_backend: &'static str,
-) -> Command {
+) -> (Command, Vec<jobserver::Acquired>) {
     let self_contained_crt_objects = self_contained_components.is_crt_objects_enabled();
     let cmd = &mut *super::linker::get_linker(
         sess,
@@ -3012,7 +3016,38 @@ fn linker_with_args(
     // to it and remove the option. Currently the last holdout is wasm32-unknown-emscripten.
     add_post_link_args(cmd, sess, flavor);
 
-    cmd.take_cmd()
+    // Only LLD supports controlling parallelism at the moment.
+    let mut tokens = Vec::new();
+    if let LinkerJobs::Explicit(limit) = sess.opts.jobs.linker
+        && flavor.uses_lld()
+    {
+        // Try obtaining as many jobserver tokens as possible (within the limit) to run parallel
+        // linking. One token is available implicitly since we are running on the main thread.
+        let client = jobserver::client();
+
+        let mut unsupported = false;
+        for _ in 0..limit.get() - 1 {
+            match client.try_acquire() {
+                Ok(Some(token)) => tokens.push(token),
+                Ok(None) => {}
+                Err(e) if e.kind() == io::ErrorKind::Unsupported => {
+                    assert!(tokens.is_empty());
+                    unsupported = true;
+                    break;
+                }
+                Err(e) => bug!("IO error when acquiring jobserver token: {e}"),
+            }
+        }
+
+        let prefix = if sess.target.is_like_windows { "/threads:" } else { "--threads=" };
+        // Error on the side of oversubscription if non-blocking token acquiring is unsupported.
+        // Linking is typically the last step in a multi-crate project build,
+        // so the resources should usually be free.
+        let threads = if unsupported { limit.get() } else { 1 + tokens.len() };
+        cmd.link_arg(format!("{prefix}{threads}"));
+    }
+
+    (cmd.take_cmd(), tokens)
 }
 
 fn add_order_independent_options(
