@@ -29,6 +29,11 @@ impl<'tcx> crate::MirPass<'tcx> for CopyProp {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         debug!(def_id = ?body.source.def_id());
 
+        if body.local_decls.len() < 3 {
+            // there's nothing to propagate
+            return;
+        }
+
         let typing_env = body.typing_env(tcx);
         let ssa = SsaLocals::new(tcx, body, typing_env);
 
