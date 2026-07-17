@@ -2144,7 +2144,6 @@ pub(crate) struct OnlyStructsCanBeViewedAdt<'tcx> {
     pub article: &'static str,
     pub kind: &'static str,
 }
-
 #[derive(Diagnostic)]
 #[diag("the type of const parameters must not depend on other generic parameters", code = E0770)]
 pub(crate) struct ParamInTyOfConstParam<'tcx> {
@@ -2152,4 +2151,19 @@ pub(crate) struct ParamInTyOfConstParam<'tcx> {
     #[label("the type `{$ty}` must not depend on other generic parameter")]
     pub(crate) span: Span,
     pub(crate) ty: Ty<'tcx>,
+}
+
+#[derive(Diagnostic)]
+#[diag("cannot implement `{$trait_name}` for the fundamental type `{$fundamental_ty}`")]
+#[note(
+    "`{$trait_name}` is `#[rustc_anti_fundamental]` and \
+     cannot be implemented for `#[fundamental]` types from another crate"
+)]
+pub(crate) struct AntiFundamentalForeignImpl<'tcx> {
+    #[primary_span]
+    #[label("impl of `{$trait_name}` not allowed for `{$self_ty}`")]
+    pub(crate) span: Span,
+    pub(crate) trait_name: String,
+    pub(crate) self_ty: Ty<'tcx>,
+    pub(crate) fundamental_ty: Ty<'tcx>,
 }

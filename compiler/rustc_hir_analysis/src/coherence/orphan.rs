@@ -28,31 +28,41 @@ pub(crate) fn orphan_check_impl(
 
     match orphan_check(tcx, impl_def_id, OrphanCheckMode::Proper) {
         Ok(()) => {}
-        Err(err) => match orphan_check(tcx, impl_def_id, OrphanCheckMode::Compat) {
-            Ok(()) => match err {
-                OrphanCheckErr::UncoveredTyParams(uncovered_ty_params) => {
-                    let hir_id = tcx.local_def_id_to_hir_id(impl_def_id);
+        Err(err) => {
+            if tcx.trait_def(trait_ref.def_id).is_anti_fundamental {
+                return Err(emit_orphan_check_error(tcx, trait_ref, impl_def_id, err));
+            }
 
-                    for param_def_id in uncovered_ty_params.uncovered {
-                        let ident = tcx.item_ident(param_def_id);
+            match orphan_check(tcx, impl_def_id, OrphanCheckMode::Compat) {
+                Ok(()) => match err {
+                    OrphanCheckErr::UncoveredTyParams(uncovered_ty_params) => {
+                        let hir_id = tcx.local_def_id_to_hir_id(impl_def_id);
 
-                        tcx.emit_node_span_lint(
-                            UNCOVERED_PARAM_IN_PROJECTION,
-                            hir_id,
-                            ident.span,
-                            diagnostics::UncoveredTyParam {
-                                param: ident,
-                                local_ty: uncovered_ty_params.local_ty,
-                            },
-                        );
+                        for param_def_id in uncovered_ty_params.uncovered {
+                            let ident = tcx.item_ident(param_def_id);
+
+                            tcx.emit_node_span_lint(
+                                UNCOVERED_PARAM_IN_PROJECTION,
+                                hir_id,
+                                ident.span,
+                                diagnostics::UncoveredTyParam {
+                                    param: ident,
+                                    local_ty: uncovered_ty_params.local_ty,
+                                },
+                            );
+                        }
                     }
-                }
-                OrphanCheckErr::NonLocalInputType(_) => {
-                    bug!("orphanck: shouldn't've gotten non-local input tys in compat mode")
-                }
-            },
-            Err(err) => return Err(emit_orphan_check_error(tcx, trait_ref, impl_def_id, err)),
-        },
+                    OrphanCheckErr::NonLocalInputType(_) => {
+                        bug!("orphanck: shouldn't've gotten non-local input tys in compat mode")
+                    }
+                    OrphanCheckErr::AntiFundamentalForeignType { .. } => {
+                        // An anti-fundamental trait should return early above and never enter compat mode.
+                        bug!("anti-fundamental traits never enter compat mode")
+                    }
+                },
+                Err(err) => return Err(emit_orphan_check_error(tcx, trait_ref, impl_def_id, err)),
+            }
+        }
     }
 
     let trait_def_id = trait_ref.def_id;
@@ -381,6 +391,24 @@ fn orphan_check<'tcx>(
             });
             OrphanCheckErr::NonLocalInputType(tys)
         }
+        OrphanCheckErr::AntiFundamentalForeignType { self_ty, fundamental_ty } => {
+            let (self_ty, fundamental_ty) = infcx.probe(|_| {
+                for (arg, id_arg) in
+                    std::iter::zip(args, ty::GenericArgs::identity_for_item(tcx, impl_def_id))
+                {
+                    let _ = infcx.at(&cause, ty::ParamEnv::empty()).eq(
+                        DefineOpaqueTypes::No,
+                        arg,
+                        id_arg,
+                    );
+                }
+                (
+                    infcx.resolve_vars_if_possible(self_ty),
+                    infcx.resolve_vars_if_possible(fundamental_ty),
+                )
+            });
+            OrphanCheckErr::AntiFundamentalForeignType { self_ty, fundamental_ty }
+        }
     })
 }
 
@@ -498,6 +526,16 @@ fn emit_orphan_check_error<'tcx>(
                 }));
             }
             guar.unwrap()
+        }
+        traits::OrphanCheckErr::AntiFundamentalForeignType { self_ty, fundamental_ty } => {
+            let item = tcx.hir_expect_item(impl_def_id);
+            let impl_ = item.expect_impl();
+            tcx.dcx().emit_err(diagnostics::AntiFundamentalForeignImpl {
+                span: impl_.self_ty.span,
+                trait_name: tcx.def_path_str(trait_ref.def_id),
+                self_ty,
+                fundamental_ty,
+            })
         }
     }
 }

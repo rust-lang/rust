@@ -1,0 +1,13 @@
+error[E0119]: conflicting implementations of trait `Trait1` for type `FundamentalWrapper<_>`
+  --> $DIR/anti-fundamental-overlap.rs:14:1
+   |
+LL | impl<T: AntiFundamentalTrait> Trait1 for T {}
+   | ------------------------------------------ first implementation here
+LL | impl<T> Trait1 for FundamentalWrapper<T> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `FundamentalWrapper<_>`
+   |
+   = note: upstream crates may add a new impl of trait `anti_fundamental_trait_lib::AntiFundamentalTrait` for type `anti_fundamental_trait_lib::FundamentalWrapper<_>` in future versions
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0119`.
