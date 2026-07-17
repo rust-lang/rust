@@ -1,7 +1,7 @@
 use crate::TryReserveError;
 use crate::control::{BitMaskIter, Group, Tag, TagSliceExt};
 use crate::scopeguard::{ScopeGuard, guard};
-use crate::util::{invalid_mut, likely, unlikely};
+use crate::util::{likely, unlikely};
 use core::alloc::Layout;
 use core::array;
 use core::iter::FusedIterator;
@@ -324,7 +324,7 @@ impl<T> Bucket<T> {
             // won't overflow because index must be less than length (bucket_mask)
             // and bucket_mask is guaranteed to be less than `isize::MAX`
             // (see TableLayout::calculate_layout_for method)
-            invalid_mut(index + 1)
+            ptr::without_provenance_mut(index + 1)
         } else {
             unsafe { base.as_ptr().sub(index) }
         };
@@ -413,7 +413,7 @@ impl<T> Bucket<T> {
         if T::IS_ZERO_SIZED {
             // Just return an arbitrary ZST pointer which is properly aligned
             // invalid pointer is good enough for ZST
-            invalid_mut(mem::align_of::<T>())
+            ptr::without_provenance_mut(mem::align_of::<T>())
         } else {
             unsafe { self.ptr.as_ptr().sub(1) }
         }
@@ -461,7 +461,7 @@ impl<T> Bucket<T> {
     unsafe fn next_n(&self, offset: usize) -> Self {
         let ptr = if T::IS_ZERO_SIZED {
             // invalid pointer is good enough for ZST
-            invalid_mut(self.ptr.as_ptr().addr() + offset)
+            ptr::without_provenance_mut(self.ptr.as_ptr().addr() + offset)
         } else {
             unsafe { self.ptr.as_ptr().sub(offset) }
         };
