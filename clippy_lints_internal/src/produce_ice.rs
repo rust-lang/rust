@@ -1,6 +1,6 @@
 use rustc_ast::ast::NodeId;
 use rustc_ast::visit::FnKind;
-use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
+use rustc_lint::{EarlyContext, EarlyLintPass, LintContext as _};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::Span;
 

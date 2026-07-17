@@ -6,13 +6,13 @@ use crate::types::{
     SourceItemOrderingTraitAssocItemKinds, SourceItemOrderingWithinModuleItemGroupings, TraitImplItemOrder,
 };
 use clippy_utils::msrvs::Msrv;
-use itertools::Itertools;
+use itertools::Itertools as _;
 use rustc_errors::Applicability;
 use rustc_session::Session;
 use rustc_span::edit_distance::edit_distance;
-use rustc_span::{BytePos, Pos, SourceFile, Span, SyntaxContext};
-use serde::de::{IgnoredAny, IntoDeserializer, MapAccess, Visitor};
-use serde::{Deserialize, Deserializer, Serialize};
+use rustc_span::{BytePos, Pos as _, SourceFile, Span, SyntaxContext};
+use serde::de::{IgnoredAny, IntoDeserializer as _, MapAccess, Visitor};
+use serde::{Deserialize, Deserializer as _, Serialize as _};
 use std::collections::HashMap;
 use std::fmt::{Debug, Display, Formatter};
 use std::ops::Range;
@@ -1178,7 +1178,7 @@ impl serde::de::Error for FieldError {
     fn unknown_field(field: &str, expected: &'static [&'static str]) -> Self {
         // List the available fields sorted and at least one per line, more if `CLIPPY_TERMINAL_WIDTH` is
         // set and allows it.
-        use fmt::Write;
+        use fmt::Write as _;
 
         let metadata = get_configuration_metadata();
         let deprecated = metadata

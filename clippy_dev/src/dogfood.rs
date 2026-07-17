@@ -1,5 +1,5 @@
 use crate::utils::{cargo_cmd, run_exit_on_err};
-use itertools::Itertools;
+use itertools::Itertools as _;
 
 /// # Panics
 ///

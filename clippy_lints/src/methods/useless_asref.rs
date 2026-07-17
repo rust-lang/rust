@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::res::{MaybeDef, MaybeResPath};
+use clippy_utils::res::{MaybeDef as _, MaybeResPath as _};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::{implements_trait, peel_and_count_ty_refs, should_call_clone_as_function};
 use clippy_utils::{get_parent_expr, peel_blocks, strip_pat_refs};
@@ -8,7 +8,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{self as hir, LangItem, Node};
 use rustc_lint::LateContext;
 use rustc_middle::ty::adjustment::{Adjust, DerefAdjustKind};
-use rustc_middle::ty::{Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor};
+use rustc_middle::ty::{Ty, TyCtxt, TypeSuperVisitable as _, TypeVisitable as _, TypeVisitor};
 use rustc_span::{Span, Symbol, sym};
 
 use core::ops::ControlFlow;

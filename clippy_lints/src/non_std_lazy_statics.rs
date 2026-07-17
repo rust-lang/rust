@@ -2,7 +2,7 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint, span_lint_hir_and_then};
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::paths::{self, PathNS, find_crates, lookup_path_str};
-use clippy_utils::res::MaybeResPath;
+use clippy_utils::res::MaybeResPath as _;
 use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{fn_def_id, is_no_std_crate, sym};
 use rustc_data_structures::fx::FxIndexMap;
@@ -10,7 +10,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::{self as hir, BodyId, Expr, ExprKind, HirId, Item, ItemKind};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lint::{LateContext, LateLintPass, LintContext as _};
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 

@@ -1,9 +1,9 @@
 use clippy_utils::macros::FormatArgsStorage;
-use clippy_utils::source::{SpanExt, walk_span_to_context};
+use clippy_utils::source::{SpanExt as _, walk_span_to_context};
 use rustc_ast::{Crate, Expr, ExprKind, FormatArgs};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_lexer::{FrontmatterAllowed, TokenKind, tokenize};
-use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
+use rustc_lint::{EarlyContext, EarlyLintPass, LintContext as _};
 use rustc_session::impl_lint_pass;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{Span, SpanData};

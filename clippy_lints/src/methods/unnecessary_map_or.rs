@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::eager_or_lazy::switch_to_eager_eval;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::{MaybeDef, MaybeResPath};
+use clippy_utils::res::{MaybeDef as _, MaybeResPath as _};
 use clippy_utils::sugg::{Sugg, make_binop};
 use clippy_utils::ty::{implements_trait, is_copy};
 use clippy_utils::visitors::is_local_used;

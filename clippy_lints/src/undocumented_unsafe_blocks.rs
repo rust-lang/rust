@@ -11,9 +11,9 @@ use hir::HirId;
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, Block, BlockCheckMode, FnSig, Impl, ItemKind, Node, UnsafeSource};
 use rustc_lexer::{FrontmatterAllowed, TokenKind, tokenize};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lint::{LateContext, LateLintPass, LintContext as _};
 use rustc_session::impl_lint_pass;
-use rustc_span::{BytePos, Pos, RelativeBytePos, Span, SyntaxContext};
+use rustc_span::{BytePos, Pos as _, RelativeBytePos, Span, SyntaxContext};
 
 declare_clippy_lint! {
     /// ### What it does

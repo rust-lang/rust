@@ -5,8 +5,8 @@
 
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
-use itertools::Itertools;
-use std::io::{self, IsTerminal};
+use itertools::Itertools as _;
+use std::io::{self, IsTerminal as _};
 use std::path::PathBuf;
 use std::process::Command;
 use test_utils::IS_RUSTC_TEST_SUITE;
@@ -82,7 +82,16 @@ fn run_clippy_for_package(project: &str) -> bool {
 
     command.arg("--");
     command.arg("-Cdebuginfo=0"); // disable debuginfo to generate less data in the target dir
-    command.args(["-D", "clippy::all", "-D", "clippy::pedantic", "-D", "clippy::dbg_macro"]);
+    command.args([
+        "-D",
+        "clippy::all",
+        "-D",
+        "clippy::pedantic",
+        "-D",
+        "clippy::dbg_macro",
+        "-D",
+        "clippy::unused_trait_names",
+    ]);
     if !cfg!(feature = "internal") {
         // running a clippy built without internal lints on the clippy source
         // that contains e.g. `allow(clippy::symbol_as_str)`

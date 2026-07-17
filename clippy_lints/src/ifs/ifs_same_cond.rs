@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint;
-use clippy_utils::res::MaybeResPath;
+use clippy_utils::res::MaybeResPath as _;
 use clippy_utils::ty::InteriorMut;
 use clippy_utils::{SpanlessEq, eq_expr_value, find_binding_init, hash_expr, search_same};
 use rustc_hir::{Expr, ExprKind};

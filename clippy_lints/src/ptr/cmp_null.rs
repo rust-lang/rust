@@ -1,6 +1,6 @@
 use super::CMP_NULL;
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::res::{MaybeDef, MaybeResPath};
+use clippy_utils::res::{MaybeDef as _, MaybeResPath as _};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{is_lint_allowed, sym};
 use rustc_errors::Applicability;
