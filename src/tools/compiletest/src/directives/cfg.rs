@@ -9,9 +9,20 @@ const EXTRA_ARCHS: &[&str] = &["spirv"];
 const EXTERNAL_IGNORES_LIST: &[&str] = &[
     // tidy-alphabetical-start
     "ignore-backends",
+    "ignore-cdb",
+    "ignore-gdb",
     "ignore-gdb-version",
+    "ignore-lldb",
     "ignore-llvm-version",
     "ignore-parallel-frontend",
+    // tidy-alphabetical-end
+];
+
+const EXTERNAL_ONLY_LIST: &[&str] = &[
+    // tidy-alphabetical-start
+    "only-cdb",
+    "only-gdb",
+    "only-lldb",
     // tidy-alphabetical-end
 ];
 
@@ -19,6 +30,11 @@ const EXTERNAL_IGNORES_LIST: &[&str] = &[
 /// module because they are handled elsewhere.
 pub(crate) static EXTERNAL_IGNORES_SET: LazyLock<HashSet<&str>> =
     LazyLock::new(|| EXTERNAL_IGNORES_LIST.iter().copied().collect());
+
+/// Directive names that begin with `only-`, but are disregarded by this
+/// module because they are handled elsewhere.
+pub(crate) static EXTERNAL_ONLY_SET: LazyLock<HashSet<&str>> =
+    LazyLock::new(|| EXTERNAL_ONLY_LIST.iter().copied().collect());
 
 pub(super) fn handle_ignore(
     conditions: &PreparedConditions,
@@ -74,6 +90,8 @@ fn parse_cfg_name_directive<'a>(
     };
 
     if prefix == "ignore-" && EXTERNAL_IGNORES_SET.contains(line.name) {
+        return ParsedNameDirective::not_handled_here();
+    } else if prefix == "only-" && EXTERNAL_ONLY_SET.contains(line.name) {
         return ParsedNameDirective::not_handled_here();
     }
 
@@ -208,14 +226,6 @@ pub(crate) fn prepare_conditions(config: &Config) -> PreparedConditions {
         config.with_std_remap_debuginfo,
         "when std is built with remapping of debuginfo",
     );
-
-    // for &debugger in Debugger::STR_VARIANTS {
-    //     builder.cond(
-    //         debugger,
-    //         Some(debugger) == config.debugger.as_ref().map(Debugger::to_str),
-    //         &format!("when the debugger is {debugger}"),
-    //     );
-    // }
 
     for &compare_mode in CompareMode::STR_VARIANTS {
         builder.cond(

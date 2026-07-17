@@ -1021,7 +1021,15 @@ fn check_lldb_support(config: &Config) -> Option<String> {
 
 fn ignore_cdb(config: &Config, variant: &TestVariant, line: &DirectiveLine<'_>) -> IgnoreDecision {
     if variant.debugger != Some(Debugger::Cdb) {
-        return IgnoreDecision::Continue;
+        return if line.name == "only-cdb" {
+            IgnoreDecision::Ignore { reason: "debugger is not cdb".to_string() }
+        } else {
+            IgnoreDecision::Continue
+        };
+    }
+
+    if line.name == "ignore-cdb" {
+        return IgnoreDecision::Ignore { reason: "debugger is cdb".to_string() };
     }
 
     if let Some(actual_version) = config.cdb_version {
@@ -1046,7 +1054,15 @@ fn ignore_cdb(config: &Config, variant: &TestVariant, line: &DirectiveLine<'_>) 
 
 fn ignore_gdb(config: &Config, variant: &TestVariant, line: &DirectiveLine<'_>) -> IgnoreDecision {
     if variant.debugger != Some(Debugger::Gdb) {
-        return IgnoreDecision::Continue;
+        return if line.name == "only-gdb" {
+            IgnoreDecision::Ignore { reason: "debugger is not gdb".to_string() }
+        } else {
+            IgnoreDecision::Continue
+        };
+    }
+
+    if line.name == "ignore-gdb" {
+        return IgnoreDecision::Ignore { reason: "debugger is gdb".to_string() };
     }
 
     if let Some(actual_version) = config.gdb_version {
@@ -1098,7 +1114,15 @@ fn ignore_gdb(config: &Config, variant: &TestVariant, line: &DirectiveLine<'_>) 
 
 fn ignore_lldb(config: &Config, variant: &TestVariant, line: &DirectiveLine<'_>) -> IgnoreDecision {
     if variant.debugger != Some(Debugger::Lldb) {
-        return IgnoreDecision::Continue;
+        return if line.name == "only-lldb" {
+            IgnoreDecision::Ignore { reason: "debugger is not lldb".to_string() }
+        } else {
+            IgnoreDecision::Continue
+        };
+    }
+
+    if line.name == "ignore-lldb" {
+        return IgnoreDecision::Ignore { reason: "debugger is lldb".to_string() };
     }
 
     if let Some(actual_version) = config.lldb_version {

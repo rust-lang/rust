@@ -165,7 +165,7 @@ pub(crate) fn run(
                 testpaths,
                 variant: &TestVariant {
                     revision: Some(revision.clone()),
-                    debugger: variant.debugger.clone(),
+                    debugger: variant.debugger,
                 },
             };
             rev_cx.run_revision();
@@ -2067,7 +2067,7 @@ impl<'test> TestCx<'test> {
     /// the same directory.
     fn variant_with_safe_revision(&self) -> TestVariant {
         if self.config.mode == TestMode::Incremental {
-            TestVariant { revision: None, debugger: self.variant.debugger.clone() }
+            TestVariant { revision: None, debugger: self.variant.debugger }
         } else {
             self.variant.clone()
         }
