@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use gccjit::{Block, CType, Context, Function, FunctionType, LValue, Location, RValue, Type};
 use rustc_abi::{Align, HasDataLayout, PointeeInfo, Size, TargetDataLayout, VariantIdx};
 use rustc_codegen_ssa::base::wants_msvc_seh;
-use rustc_codegen_ssa::errors as ssa_errors;
+use rustc_codegen_ssa::diagnostics as ssa_errors;
 use rustc_codegen_ssa::traits::{BackendTypes, BaseTypeCodegenMethods, MiscCodegenMethods};
 use rustc_data_structures::base_n::{ALPHANUMERIC_ONLY, ToBaseN};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
