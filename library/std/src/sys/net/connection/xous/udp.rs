@@ -151,8 +151,6 @@ impl UdpSocket {
                     return Err(io::const_error!(io::ErrorKind::TimedOut, "recv timed out"));
                 } else if receive_request.raw[4] == NetError::WouldBlock as u8 {
                     return Err(io::const_error!(io::ErrorKind::WouldBlock, "recv would block"));
-                } else if receive_request.raw[4] == NetError::LibraryError as u8 {
-                    return Err(io::const_error!(io::ErrorKind::Other, "library error"));
                 } else {
                     return Err(io::const_error!(io::ErrorKind::Other, "library error"));
                 }
