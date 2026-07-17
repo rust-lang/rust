@@ -887,7 +887,7 @@ impl<'item> DocVisitor<'item> for TypeImplCollector<'_, '_, 'item> {
             // Only include this impl if it actually unifies with this alias.
             // Synthetic impls are not included; those are also included in the HTML.
             //
-            // FIXME(lazy_type_alias): Once the feature is complete or stable, rewrite this
+            // FIXME(checked_type_alias): Once the feature is complete or stable, rewrite this
             // to use type unification.
             // Be aware of `tests/rustdoc-html/type-alias/deeply-nested-112515.rs` which might
             // regress.

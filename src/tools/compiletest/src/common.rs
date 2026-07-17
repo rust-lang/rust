@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::iter;
 use std::process::Command;
+use std::str::FromStr;
 use std::sync::OnceLock;
 
 use build_helper::git::GitConfig;
@@ -227,15 +228,15 @@ pub(crate) enum CodegenBackend {
     Llvm,
 }
 
-impl<'a> TryFrom<&'a str> for CodegenBackend {
-    type Error = &'static str;
+impl FromStr for CodegenBackend {
+    type Err = &'static str;
 
-    fn try_from(value: &'a str) -> Result<Self, Self::Error> {
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
         match value.to_lowercase().as_str() {
             "cranelift" => Ok(Self::Cranelift),
             "gcc" => Ok(Self::Gcc),
             "llvm" => Ok(Self::Llvm),
-            _ => Err("unknown backend"),
+            _ => Err("unknown codegen backend"),
         }
     }
 }

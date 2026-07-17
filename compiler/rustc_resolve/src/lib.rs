@@ -58,7 +58,7 @@ use rustc_hir::def::{
 };
 use rustc_hir::def_id::{CRATE_DEF_ID, CrateNum, DefId, LOCAL_CRATE, LocalDefId, LocalDefIdMap};
 use rustc_hir::definitions::{PerParentDisambiguatorState, PerParentDisambiguatorsMap};
-use rustc_hir::{MissingLifetimeKind, PrimTy, TraitCandidate, find_attr};
+use rustc_hir::{PrimTy, TraitCandidate, find_attr};
 use rustc_index::bit_set::DenseBitSet;
 use rustc_metadata::creader::CStore;
 use rustc_middle::metadata::{AmbigModChild, ModChild, Reexport};
@@ -1336,8 +1336,6 @@ pub struct Resolver<'ra, 'tcx> {
     partial_res_map: NodeMap<PartialRes> = Default::default(),
     /// An import will be inserted into this map if it has been used.
     import_use_map: FxHashMap<Import<'ra>, Used> = default::fx_hash_map(),
-    /// Lifetime parameters that lowering will have to introduce.
-    extra_lifetime_params_map: NodeMap<Vec<(Ident, NodeId, MissingLifetimeKind)>> = Default::default(),
 
     /// `CrateNum` resolutions of `extern crate` items.
     extern_crate_map: UnordMap<LocalDefId, CrateNum> = Default::default(),
@@ -1382,8 +1380,6 @@ pub struct Resolver<'ra, 'tcx> {
     /// Ambiguity errors are delayed for deduplication.
     ambiguity_errors: Vec<AmbiguityError<'ra>> = Vec::new(),
     issue_145575_hack_applied: bool = false,
-    /// `use` injections are delayed for better placement and deduplication.
-    use_injections: Vec<UseError<'tcx>> = Vec::new(),
     /// Visibility path resolution failures are delayed until all modules are collected.
     delayed_vis_resolution_errors: Vec<DelayedVisResolutionError<'ra>> = Vec::new(),
     /// Crate-local macro expanded `macro_export` referred to by a module-relative path.
@@ -1975,7 +1971,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         };
         let ast_lowering = ty::ResolverAstLowering {
             partial_res_map: self.partial_res_map,
-            extra_lifetime_params_map: self.extra_lifetime_params_map,
             next_node_id: self.next_node_id,
             owners: self.owners,
             lint_buffer: Steal::new(self.lint_buffer),
@@ -2052,11 +2047,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             self.tcx
                 .sess
                 .time("finalize_macro_resolutions", || self.finalize_macro_resolutions(krate));
-            let use_items =
+            let (use_items, use_injections) =
                 self.tcx.sess.time("late_resolve_crate", || self.late_resolve_crate(krate));
             self.tcx.sess.time("resolve_main", || self.resolve_main());
             self.tcx.sess.time("resolve_check_unused", || self.check_unused(use_items));
-            self.tcx.sess.time("resolve_report_errors", || self.report_errors(krate));
+            self.tcx
+                .sess
+                .time("resolve_report_errors", || self.report_errors(krate, use_injections));
             self.tcx
                 .sess
                 .time("resolve_postprocess", || self.cstore_mut().postprocess(self.tcx, krate));

@@ -1215,10 +1215,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let args = self.lower_generic_args_of_path_segment(span, def_id, item_segment);
 
         if let DefKind::TyAlias = tcx.def_kind(def_id)
-            && tcx.type_alias_is_lazy(def_id)
+            && tcx.type_alias_is_checked(def_id)
         {
             // Type aliases defined in crates that have the
-            // feature `lazy_type_alias` enabled get encoded as a type alias that normalization will
+            // feature `checked_type_alias` enabled get encoded as a type alias that normalization will
             // then actually instantiate the where bounds of.
             let alias_ty = ty::AliasTy::new_from_args(tcx, ty::Free { def_id }, args);
             Ty::new_alias(tcx, ty::IsRigid::No, alias_ty)

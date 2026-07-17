@@ -63,7 +63,7 @@ pub(crate) fn provide(providers: &mut Providers) {
         type_of: type_of::type_of,
         type_of_opaque: type_of::type_of_opaque,
         type_of_opaque_hir_typeck: type_of::type_of_opaque_hir_typeck,
-        type_alias_is_lazy: type_of::type_alias_is_lazy,
+        type_alias_is_checked: type_of::type_alias_is_checked,
         item_bounds: item_bounds::item_bounds,
         explicit_item_bounds: item_bounds::explicit_item_bounds,
         item_self_bounds: item_bounds::item_self_bounds,

@@ -332,12 +332,12 @@ rustc_queries! {
         }
     }
 
-    /// Returns whether the type alias given by `DefId` is lazy.
+    /// Returns whether the type alias given by `DefId` is checked.
     ///
     /// I.e., if the type alias expands / ought to expand to a [free] [alias type]
     /// instead of the underlying aliased type.
     ///
-    /// Relevant for features `lazy_type_alias` and `type_alias_impl_trait`.
+    /// Relevant for features `checked_type_aliases` and `type_alias_impl_trait`.
     ///
     /// # Panics
     ///
@@ -345,9 +345,9 @@ rustc_queries! {
     ///
     /// [free]: rustc_middle::ty::Free
     /// [alias type]: rustc_middle::ty::AliasTy
-    query type_alias_is_lazy(key: DefId) -> bool {
+    query type_alias_is_checked(key: DefId) -> bool {
         desc {
-            "computing whether the type alias `{path}` is lazy",
+            "computing whether the type alias `{path}` is checked",
             path = tcx.def_path_str(key),
         }
         separate_provide_extern
@@ -2177,6 +2177,11 @@ rustc_queries! {
     /// Do not call this query directly: invoke `Ty::inhabited_predicate` instead.
     query inhabited_predicate_type(key: Ty<'tcx>) -> ty::inhabitedness::InhabitedPredicate<'tcx> {
         desc { "computing the uninhabited predicate of `{}`", key }
+    }
+
+    /// Do not call this query directly: invoke `Ty::is_opsem_inhabited` instead.
+    query is_opsem_inhabited_raw(env: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>) -> bool {
+        desc { "computing whether `{}` is inhabited on the opsem level", env.value }
     }
 
     query crate_dep_kind(_: CrateNum) -> CrateDepKind {
