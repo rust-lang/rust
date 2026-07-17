@@ -301,6 +301,48 @@ impl CrateDisplayName {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TargetKind {
+    Bin,
+    /// Any kind of Cargo lib crate-type (dylib, rlib, proc-macro, ...).
+    Lib {
+        /// Is this target a proc-macro
+        is_proc_macro: bool,
+    },
+    Example,
+    Test,
+    Bench,
+    /// Cargo calls this kind `custom-build`
+    BuildScript,
+    Other,
+}
+
+impl TargetKind {
+    pub fn is_executable(self) -> bool {
+        matches!(self, TargetKind::Bin | TargetKind::Example)
+    }
+
+    pub fn is_proc_macro(self) -> bool {
+        matches!(self, TargetKind::Lib { is_proc_macro: true })
+    }
+
+    /// If this is a valid cargo target, returns the name cargo uses in command line arguments
+    /// and output, otherwise None.
+    /// <https://docs.rs/cargo_metadata/latest/cargo_metadata/enum.TargetKind.html>
+    pub fn as_cargo_target(self) -> Option<&'static str> {
+        match self {
+            TargetKind::Bin => Some("bin"),
+            TargetKind::Lib { is_proc_macro: true } => Some("proc-macro"),
+            TargetKind::Lib { is_proc_macro: false } => Some("lib"),
+            TargetKind::Example => Some("example"),
+            TargetKind::Test => Some("test"),
+            TargetKind::Bench => Some("bench"),
+            TargetKind::BuildScript => Some("custom-build"),
+            TargetKind::Other => None,
+        }
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ReleaseChannel {
     Stable,
