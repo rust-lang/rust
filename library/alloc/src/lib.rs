@@ -122,6 +122,7 @@
 #![feature(core_io_internals)]
 #![feature(deprecated_suggestion)]
 #![feature(deref_pure_trait)]
+#![feature(derive_const)]
 #![feature(diagnostic_on_move)]
 #![feature(dispatch_from_dyn)]
 #![feature(ergonomic_clones)]
