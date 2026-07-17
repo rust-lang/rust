@@ -453,18 +453,6 @@ pub(crate) struct Config {
     /// [`TestMode::CoverageMap`].
     pub(crate) suite: TestSuite,
 
-    /// When specified, **only** the specified [`Debugger`] will be used to run against the
-    /// `tests/debuginfo` test suite. When unspecified, `compiletest` will attempt to find all three
-    /// of {`lldb`, `cdb`, `gdb`} implicitly, and then try to run the `debuginfo` test suite against
-    /// all three debuggers.
-    ///
-    /// FIXME: this implicit behavior is really nasty, in that it makes it hard for the user to
-    /// control *which* debugger(s) are available and used to run the debuginfo test suite. We
-    /// should have `bootstrap` allow the user to *explicitly* configure the debuggers, and *not*
-    /// try to implicitly discover some random debugger from the user environment. This makes the
-    /// debuginfo test suite particularly hard to work with.
-    pub(crate) debugger: Option<Debugger>,
-
     /// Run ignored tests *unconditionally*, overriding their ignore reason.
     ///
     /// FIXME: this is wired up through the test execution logic, but **not** accessible from
@@ -1310,7 +1298,7 @@ pub(crate) fn output_testname_unique(
     variant: &TestVariant,
 ) -> Utf8PathBuf {
     let mode = config.compare_mode.as_ref().map_or("", |m| m.to_str());
-    let debugger = config.debugger.as_ref().map_or("", |m| m.to_str());
+    let debugger = variant.debugger.as_ref().map_or("", |m| m.to_str());
     Utf8PathBuf::from(&testpaths.file.file_stem().unwrap())
         .with_extra_extension(config.mode.output_dir_disambiguator())
         .with_extra_extension(variant.revision().unwrap_or(""))

@@ -12,7 +12,7 @@ use crate::util::ArgFileCommand;
 
 impl TestCx<'_> {
     pub(super) fn run_debuginfo_test(&self) {
-        match self.config.debugger.unwrap() {
+        match self.variant.debugger.as_ref().unwrap() {
             Debugger::Cdb => self.run_debuginfo_cdb_test(),
             Debugger::Gdb => self.run_debuginfo_gdb_test(),
             Debugger::Lldb => self.run_debuginfo_lldb_test(),

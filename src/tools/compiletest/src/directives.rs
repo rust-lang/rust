@@ -958,9 +958,9 @@ pub(crate) fn make_test_description(
                 decision!(ignore_llvm(config, ln));
                 decision!(ignore_backends(config, ln));
                 decision!(needs_backends(config, ln));
-                decision!(ignore_cdb(config, ln));
-                decision!(ignore_gdb(config, ln));
-                decision!(ignore_lldb(config, ln));
+                decision!(ignore_cdb(config, variant, ln));
+                decision!(ignore_gdb(config, variant, ln));
+                decision!(ignore_lldb(config, variant, ln));
                 decision!(ignore_parallel_frontend(config, ln));
 
                 if config.target == "wasm32-unknown-unknown"
@@ -1019,8 +1019,8 @@ fn check_lldb_support(config: &Config) -> Option<String> {
     if config.lldb.is_none() { Some("lldb is not available".to_string()) } else { None }
 }
 
-fn ignore_cdb(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
-    if config.debugger != Some(Debugger::Cdb) {
+fn ignore_cdb(config: &Config, variant: &TestVariant, line: &DirectiveLine<'_>) -> IgnoreDecision {
+    if variant.debugger != Some(Debugger::Cdb) {
         return IgnoreDecision::Continue;
     }
 
@@ -1044,8 +1044,8 @@ fn ignore_cdb(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
     IgnoreDecision::Continue
 }
 
-fn ignore_gdb(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
-    if config.debugger != Some(Debugger::Gdb) {
+fn ignore_gdb(config: &Config, variant: &TestVariant, line: &DirectiveLine<'_>) -> IgnoreDecision {
+    if variant.debugger != Some(Debugger::Gdb) {
         return IgnoreDecision::Continue;
     }
 
@@ -1096,8 +1096,8 @@ fn ignore_gdb(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
     IgnoreDecision::Continue
 }
 
-fn ignore_lldb(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
-    if config.debugger != Some(Debugger::Lldb) {
+fn ignore_lldb(config: &Config, variant: &TestVariant, line: &DirectiveLine<'_>) -> IgnoreDecision {
+    if variant.debugger != Some(Debugger::Lldb) {
         return IgnoreDecision::Continue;
     }
 

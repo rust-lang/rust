@@ -177,13 +177,13 @@ pub(crate) fn run(
     cx.create_stamp();
 }
 
-pub(crate) fn compute_stamp_hash(config: &Config) -> String {
+pub(crate) fn compute_stamp_hash(config: &Config, variant: &TestVariant) -> String {
     let mut hash = DefaultHasher::new();
     config.stage_id.hash(&mut hash);
     config.run.hash(&mut hash);
     config.edition.hash(&mut hash);
 
-    match config.debugger {
+    match variant.debugger {
         Some(Debugger::Cdb) => {
             config.cdb.hash(&mut hash);
         }
@@ -2978,7 +2978,7 @@ impl<'test> TestCx<'test> {
 
     fn create_stamp(&self) {
         let stamp_file_path = stamp_file_path(&self.config, self.testpaths, self.variant);
-        fs::write(&stamp_file_path, compute_stamp_hash(&self.config)).unwrap();
+        fs::write(&stamp_file_path, compute_stamp_hash(&self.config, self.variant)).unwrap();
     }
 
     fn init_incremental_test(&self) {

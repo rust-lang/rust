@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, LazyLock};
 
-use crate::common::{CompareMode, Config, Debugger};
+use crate::common::{CompareMode, Config};
 use crate::directives::{DirectiveLine, IgnoreDecision};
 
 const EXTRA_ARCHS: &[&str] = &["spirv"];
@@ -209,13 +209,13 @@ pub(crate) fn prepare_conditions(config: &Config) -> PreparedConditions {
         "when std is built with remapping of debuginfo",
     );
 
-    for &debugger in Debugger::STR_VARIANTS {
-        builder.cond(
-            debugger,
-            Some(debugger) == config.debugger.as_ref().map(Debugger::to_str),
-            &format!("when the debugger is {debugger}"),
-        );
-    }
+    // for &debugger in Debugger::STR_VARIANTS {
+    //     builder.cond(
+    //         debugger,
+    //         Some(debugger) == config.debugger.as_ref().map(Debugger::to_str),
+    //         &format!("when the debugger is {debugger}"),
+    //     );
+    // }
 
     for &compare_mode in CompareMode::STR_VARIANTS {
         builder.cond(

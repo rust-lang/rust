@@ -76,43 +76,31 @@ fn run_tests(config: Arc<Config>) {
     // SAFETY: at this point we're still single-threaded.
     unsafe { env::set_var("__COMPAT_LAYER", "RunAsInvoker") };
 
-    let mut configs = Vec::new();
+    // Debugging emscripten code doesn't make sense today
+    let ignore_tests = config.mode == TestMode::DebugInfo && config.target.contains("emscripten");
+
     if let TestMode::DebugInfo = config.mode {
-        // Debugging emscripten code doesn't make sense today
-        if !config.target.contains("emscripten") {
-            // FIXME: ideally, we would just have one config, and then have some mechanism of
-            // generating multiple variants of a test, one for each debugger (something like
-            // debuginfo revisions). But for now, we just create three configs.
-            configs.extend([
-                Arc::new(Config { debugger: Some(Debugger::Cdb), ..config.as_ref().clone() }),
-                Arc::new(Config { debugger: Some(Debugger::Gdb), ..config.as_ref().clone() }),
-                Arc::new(Config { debugger: Some(Debugger::Lldb), ..config.as_ref().clone() }),
-            ]);
+        // FIXME: this should ideally happen somewhere else..
+        if config.target.contains("android") {
+            println!("{} debug-info test uses tcp 5039 port. please reserve it", config.target);
 
-            // FIXME: this should ideally happen somewhere else..
-            if config.target.contains("android") {
-                println!("{} debug-info test uses tcp 5039 port. please reserve it", config.target);
-
-                // android debug-info test uses remote debugger so, we test 1 thread
-                // at once as they're all sharing the same TCP port to communicate
-                // over.
-                //
-                // we should figure out how to lift this restriction! (run them all
-                // on different ports allocated dynamically).
-                //
-                // SAFETY: at this point we are still single-threaded.
-                unsafe { env::set_var("RUST_TEST_THREADS", "1") };
-            }
+            // android debug-info test uses remote debugger so, we test 1 thread
+            // at once as they're all sharing the same TCP port to communicate
+            // over.
+            //
+            // we should figure out how to lift this restriction! (run them all
+            // on different ports allocated dynamically).
+            //
+            // SAFETY: at this point we are still single-threaded.
+            unsafe { env::set_var("RUST_TEST_THREADS", "1") };
         }
-    } else {
-        configs.push(config.clone());
     };
 
     // Discover all of the tests in the test suite directory, and build a `CollectedTest`
     // structure for each test (or each revision of a multi-revision test).
     let mut tests = Vec::new();
-    for c in configs {
-        tests.extend(collect_and_make_tests(c));
+    if !ignore_tests {
+        tests.extend(collect_and_make_tests(config.clone()));
     }
 
     tests.sort_by(|a, b| Ord::cmp(&a.desc.name, &b.desc.name));
@@ -458,16 +446,16 @@ fn make_test(cx: &TestCollectorCx, collector: &mut TestCollector, testpaths: &Te
     // `CollectedTest` that can be handed over to the test executor.
     for debugger in debuggers {
         collector.tests.extend(revisions.iter().map(|&revision| {
+            let revision = revision.map(str::to_owned);
+            let variant = TestVariant { revision, debugger };
+
             // Create a test name and description to hand over to the executor.
             let (test_name, filterable_path) =
-                make_test_name_and_filterable_path(&cx.config, testpaths, revision);
+                make_test_name_and_filterable_path(&cx.config, testpaths, &variant);
 
             // While scanning for ignore/only/needs directives, also collect aux
             // paths for up-to-date checking.
             let mut aux_props = AuxProps::default();
-
-            let revision = revision.map(str::to_owned);
-            let variant = TestVariant { revision, debugger };
 
             // Create a description struct for the test/revision.
             // This is where `ignore-*`/`only-*`/`needs-*` directives are handled,
@@ -574,7 +562,7 @@ fn is_up_to_date(
         // The test hasn't succeeded yet, so it is not up-to-date.
         Err(_) => return false,
     };
-    let expected_hash = runtest::compute_stamp_hash(&cx.config);
+    let expected_hash = runtest::compute_stamp_hash(&cx.config, variant);
     if contents != expected_hash {
         // Some part of compiletest configuration has changed since the test
         // last succeeded, so it is not up-to-date.
@@ -639,12 +627,12 @@ impl Stamp {
 fn make_test_name_and_filterable_path(
     config: &Config,
     testpaths: &TestPaths,
-    revision: Option<&str>,
+    variant: &TestVariant,
 ) -> (String, Utf8PathBuf) {
     // Print the name of the file, relative to the sources root.
     let path = testpaths.file.strip_prefix(&config.src_root).unwrap();
-    let debugger = match config.debugger {
-        Some(d) => format!("-{}", d),
+    let debugger = match variant.debugger.as_ref() {
+        Some(d) => format!("-{d}"),
         None => String::new(),
     };
     let mode_suffix = match config.compare_mode {
@@ -658,7 +646,7 @@ fn make_test_name_and_filterable_path(
         debugger,
         mode_suffix,
         path,
-        revision.map_or("".to_string(), |rev| format!("#{}", rev))
+        variant.revision().map_or("".to_string(), |rev| format!("#{}", rev))
     );
 
     // `path` is the full path from the repo root like, `tests/ui/foo/bar.rs`.
