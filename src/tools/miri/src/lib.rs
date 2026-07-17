@@ -170,8 +170,8 @@ pub use crate::shims::io_error::{EvalContextExt as _, IoError, LibcError};
 pub use crate::shims::os_str::EvalContextExt as _;
 pub use crate::shims::panic::EvalContextExt as _;
 pub use crate::shims::readiness::{
-    EvalContextExt as _, Readiness, ReadinessInterest, ReadinessInterestKey,
-    ReadinessInterestTable, ReadinessWatcher,
+    EvalContextExt as _, Readiness, ReadinessInterest, ReadinessUpdateFlags, ReadinessWatched,
+    ReadinessWatcher,
 };
 pub use crate::shims::sig::EvalContextExt as _;
 pub use crate::shims::time::EvalContextExt as _;

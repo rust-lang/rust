@@ -339,8 +339,13 @@ fn test_not_fully_closed_fd() {
     // Close the original fd that being used to register with epoll.
     errno_check(unsafe { libc::close(fd) });
 
-    // Notification should still be provided because the file description is not closed.
-    check_epoll_wait_noblock(epfd, &[Ev { events: EPOLLOUT, data: fd }]);
+    // Notification should still be provided because the file description is not closed -- except on
+    // Illumos which tracks file descriptors, not file descriptions.
+    if cfg!(target_os = "illumos") {
+        check_epoll_wait_noblock(epfd, &[]);
+    } else {
+        check_epoll_wait_noblock(epfd, &[Ev { events: EPOLLOUT, data: fd }]);
+    }
 
     // Write to the eventfd instance to produce notification.
     eventfd::write_val(newfd, 1).unwrap();

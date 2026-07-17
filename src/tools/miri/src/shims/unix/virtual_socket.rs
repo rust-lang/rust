@@ -60,6 +60,8 @@ struct VirtualSocket {
     /// We need to update the peer_fd readiness when we get dropped, so we keep a reference
     /// to the readiness update queue
     delayed_readiness_updates: Rc<DelayedReadinessUpdates>,
+    /// State for being watched by epoll.
+    watched: ReadinessWatched,
 }
 
 #[derive(Debug)]
@@ -203,7 +205,11 @@ impl FileDescription for VirtualSocket {
         interp_ok(Scalar::from_i32(0))
     }
 
-    fn readiness<'tcx>(&self) -> InterpResult<'tcx, Readiness> {
+    fn readiness_watched(&self) -> Option<&ReadinessWatched> {
+        Some(&self.watched)
+    }
+
+    fn readiness(&self) -> Readiness {
         // We only check the "readable", "writable", "read closed" and "write closed" readiness.
         // If other event flags need to be supported in the future, the check should be added here.
 
@@ -246,7 +252,7 @@ impl FileDescription for VirtualSocket {
                 readiness.error = true;
             }
         }
-        interp_ok(readiness)
+        readiness
     }
 }
 
@@ -425,8 +431,8 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Notify readiness watchers: we might be no longer writable, peer might now be readable.
             // The notification to the peer seems to be always sent on Linux, even if the
             // FD was readable before.
-            this.update_fd_readiness(socket, /* force_edge */ false)?;
-            this.update_fd_readiness(peer_fd, /* force_edge */ true)?;
+            this.update_fd_readiness(socket, ReadinessUpdateFlags::DEFAULT)?;
+            this.update_fd_readiness(peer_fd, ReadinessUpdateFlags::FORCE_EDGE)?;
 
             return finish.call(this, Ok(write_size));
         }
@@ -525,10 +531,17 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Linux seems to always notify the peer if the read buffer is now empty.
                 // (Linux also does that if this was a "big" read, but to avoid some arbitrary
                 // threshold, we do not match that.)
-                this.update_fd_readiness(peer_fd, /* force_edge */ readbuf_now_empty)?;
+                this.update_fd_readiness(
+                    peer_fd,
+                    if readbuf_now_empty {
+                        ReadinessUpdateFlags::FORCE_EDGE
+                    } else {
+                        ReadinessUpdateFlags::DEFAULT
+                    },
+                )?;
             };
             // Notify readiness watchers: we might be no longer readable.
-            this.update_fd_readiness(socket, /* force_edge */ false)?;
+            this.update_fd_readiness(socket, ReadinessUpdateFlags::DEFAULT)?;
 
             return finish.call(this, Ok(read_size));
         }
@@ -609,6 +622,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             is_nonblock: Cell::new(is_sock_nonblock),
             fd_type: VirtualSocketType::Socketpair,
             delayed_readiness_updates: Rc::clone(&this.machine.delayed_readiness_updates),
+            watched: ReadinessWatched::default(),
         });
         let fd1 = fds.new_ref(VirtualSocket {
             readbuf: Some(RefCell::new(Buffer::new())),
@@ -619,6 +633,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             is_nonblock: Cell::new(is_sock_nonblock),
             fd_type: VirtualSocketType::Socketpair,
             delayed_readiness_updates: Rc::clone(&this.machine.delayed_readiness_updates),
+            watched: ReadinessWatched::default(),
         });
 
         // Make the file descriptions point to each other.
@@ -681,6 +696,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             is_nonblock: Cell::new(is_nonblock),
             fd_type: VirtualSocketType::PipeRead,
             delayed_readiness_updates: Rc::clone(&this.machine.delayed_readiness_updates),
+            watched: ReadinessWatched::default(),
         });
         let fd1 = fds.new_ref(VirtualSocket {
             readbuf: None,
@@ -691,6 +707,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             is_nonblock: Cell::new(is_nonblock),
             fd_type: VirtualSocketType::PipeWrite,
             delayed_readiness_updates: Rc::clone(&this.machine.delayed_readiness_updates),
+            watched: ReadinessWatched::default(),
         });
 
         // Make the file descriptions point to each other.

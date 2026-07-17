@@ -161,8 +161,9 @@ impl BlockingIoManager {
         // Update the readiness for all source file descriptions which received an event. Also,
         // unblock the threads which are blocked on such a source and whose interests are now fulfilled.
         for fd in event_fds.into_iter() {
-            // Update readiness for the `fd` source.
-            ecx.update_fd_readiness(fd.clone(), false)?;
+            // Update readiness for the `fd` source. This is no a "release" event since it was
+            // not triggered by the current thread, it was triggered by the outside world.
+            ecx.update_fd_readiness(fd.clone(), ReadinessUpdateFlags::NO_RELEASE_CLOCK)?;
 
             // The `update_fd_readiness` can't cause the source to be deregistered since we still
             // hold a strong reference to the file description with `fd`.
@@ -334,10 +335,13 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
     /// Returns whether there exists any thread that is blocked on host I/O.
     fn any_thread_blocked_on_host(&self) -> bool {
         let this = self.eval_context_ref();
-        this.machine.blocking_io.sources.iter().any(|(&fd_id, source)| {
+        this.machine.blocking_io.sources.values().any(|source| {
             // There's two ways something could be blocked on this: directly,
             // or indirectly via a readiness watcher.
-            source.blocked_threads.len() > 0 || this.has_watcher_with_blocked_thread(fd_id)
+            source.blocked_threads.len() > 0
+                || source.fd.upgrade().is_some_and(|fd| {
+                    fd.readiness_watched().is_some_and(|w| w.has_watcher_with_blocked_thread())
+                })
         })
     }
 }

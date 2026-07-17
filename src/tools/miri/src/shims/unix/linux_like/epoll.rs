@@ -187,7 +187,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
             }
         } else if op == epoll_ctl_del {
-            if epfd.watcher.remove_interest(interest_key, this).is_none() {
+            if epfd.watcher.remove_interest(interest_key).is_none() {
                 // We did not have interest in this.
                 return this.set_errno_and_return_neg1_i32(LibcError("ENOENT"));
             };
@@ -398,8 +398,6 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 &slot,
             )?;
             num_of_events = num_of_events.strict_add(1);
-            // Synchronize receiving thread with the event of interest.
-            this.acquire_clock(interest.clock())?;
         }
         this.write_int(num_of_events, dest)?;
         interp_ok(num_of_events)

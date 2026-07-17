@@ -216,9 +216,14 @@ pub trait FileDescription: std::fmt::Debug + FileDescriptionExt {
         throw_unsup_format!("fcntl: {} is not supported for F_SETFL", self.name());
     }
 
+    /// Get the `ReadinessWatched` of the file description.
+    fn readiness_watched(&self) -> Option<&ReadinessWatched> {
+        None
+    }
+
     /// Get the current I/O readiness of the file description.
-    fn readiness<'tcx>(&self) -> InterpResult<'tcx, Readiness> {
-        throw_unsup_format!("{}: this file description doesn't support I/O readiness", self.name());
+    fn readiness(&self) -> Readiness {
+        panic!("FD type {} implements `readiness_watched` but not `readiness`", self.name());
     }
 }
 
@@ -439,7 +444,7 @@ pub type FdNum = i32;
 /// The file descriptor table
 #[derive(Debug)]
 pub struct FdTable {
-    pub fds: BTreeMap<FdNum, DynFileDescriptionRef>,
+    fds: BTreeMap<FdNum, DynFileDescriptionRef>,
     /// Unique identifier for file description, used to differentiate between various file description.
     next_file_description_id: FdId,
 }
@@ -480,6 +485,7 @@ impl FdTable {
         self.insert(fd_ref)
     }
 
+    /// Insert an alias to an existing file description to the FdTable.
     pub fn insert(&mut self, fd_ref: DynFileDescriptionRef) -> FdNum {
         self.insert_with_min_num(fd_ref, 0)
     }
@@ -490,29 +496,21 @@ impl FdTable {
         file_handle: DynFileDescriptionRef,
         min_fd_num: FdNum,
     ) -> FdNum {
-        // Find the lowest unused FD, starting from min_fd. If the first such unused FD is in
-        // between used FDs, the find_map combinator will return it. If the first such unused FD
-        // is after all other used FDs, the find_map combinator will return None, and we will use
-        // the FD following the greatest FD thus far.
-        let candidate_new_fd =
-            self.fds.range(min_fd_num..).zip(min_fd_num..).find_map(|((fd_num, _fd), counter)| {
-                if *fd_num != counter {
-                    // There was a gap in the fds stored, return the first unused one
-                    // (note that this relies on BTreeMap iterating in key order)
-                    Some(counter)
-                } else {
-                    // This fd is used, keep going
-                    None
-                }
-            });
-        let new_fd_num = candidate_new_fd.unwrap_or_else(|| {
-            // find_map ran out of BTreeMap entries before finding a free fd, use one plus the
-            // maximum fd in the map
-            self.fds.last_key_value().map(|(fd_num, _)| fd_num.strict_add(1)).unwrap_or(min_fd_num)
-        });
+        let mut candidate = min_fd_num;
+        for (&fd_num, _) in self.fds.range(min_fd_num..) {
+            if fd_num == candidate {
+                // This one is taken. Try the next one.
+                candidate = candidate.strict_add(1);
+            } else {
+                // We found a gap! Use this candidate.
+                break;
+            }
+        }
+        // If we exhaust the loop, the table is a solid block starting at `min_fd_num` until the
+        // end, and `candidate` is now the first number after that block -- exactly what we need.
 
-        self.fds.try_insert(new_fd_num, file_handle).unwrap();
-        new_fd_num
+        self.fds.try_insert(candidate, file_handle).unwrap();
+        candidate
     }
 
     pub fn get(&self, fd_num: FdNum) -> Option<DynFileDescriptionRef> {

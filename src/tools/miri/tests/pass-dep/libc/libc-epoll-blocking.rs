@@ -141,31 +141,47 @@ fn test_notification_after_timeout() {
     check_epoll_wait(epfd, &[Ev { events: EPOLLIN | EPOLLOUT, data: fds[0] }], 10);
 }
 
-// This test shows that there is no data race when synchronizing through an epoll wakeup.
 fn test_epoll_race() {
-    // Create an epoll instance.
-    let epfd = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
+    for variant in 0..=1 {
+        // Create an epoll instance.
+        let epfd = errno_result(unsafe { libc::epoll_create1(0) }).unwrap();
 
-    // Create an eventfd instance.
-    let flags = libc::EFD_NONBLOCK | libc::EFD_CLOEXEC;
-    let fd = errno_result(unsafe { libc::eventfd(0, flags) }).unwrap();
+        // Create an eventfd instance.
+        let flags = libc::EFD_NONBLOCK | libc::EFD_CLOEXEC;
+        let fd = errno_result(unsafe { libc::eventfd(0, flags) }).unwrap();
 
-    // Register eventfd with the epoll instance.
-    epoll_ctl_add(epfd, fd, EPOLLIN | EPOLLET_OR_ZERO).unwrap();
+        // Memory we will mutate non-atomically, synchronizing via epoll.
+        static mut VAL: u8 = 0;
+        unsafe { VAL = 0 }; // remember to reset for each variant
 
-    static mut VAL: u8 = 0;
-    let thread1 = thread::spawn(move || {
-        // Write to the static mut variable.
-        unsafe { VAL = 1 };
-        // Write to the eventfd instance.
-        eventfd::write_val(fd, 1).unwrap();
-    });
-    thread::sleep(Duration::from_millis(10));
-    // epoll_wait for EPOLLIN.
-    check_epoll_wait(epfd, &[Ev { events: EPOLLIN, data: fd }], -1);
-    // Read from the static mut variable.
-    assert_eq!(unsafe { VAL }, 1);
-    thread1.join().unwrap();
+        thread::scope(|s| {
+            if variant == 0 {
+                // Register eventfd with the epoll instance.
+                // Variant A: do this before the thread spawns.
+                epoll_ctl_add(epfd, fd, EPOLLIN | EPOLLET_OR_ZERO).unwrap();
+            }
+
+            s.spawn(move || {
+                // Write to the static mut variable.
+                unsafe { VAL = 1 };
+                // Write to the eventfd instance.
+                eventfd::write_val(fd, 1).unwrap();
+            });
+            // Let the thread go first.
+            thread::sleep(Duration::from_millis(10));
+
+            if variant == 1 {
+                // Register eventfd with the epoll instance.
+                // Variant B: do this after the thread spawns.
+                epoll_ctl_add(epfd, fd, EPOLLIN | EPOLLET_OR_ZERO).unwrap();
+            }
+
+            // epoll_wait for EPOLLIN.
+            check_epoll_wait(epfd, &[Ev { events: EPOLLIN, data: fd }], -1);
+            // Read from the static mut variable.
+            assert_eq!(unsafe { VAL }, 1);
+        });
+    }
 }
 
 /// Ensure that a blocked thread gets woken up when new interested are registered with the

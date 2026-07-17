@@ -533,8 +533,7 @@ pub struct MiriMachine<'tcx> {
     /// The table of directory descriptors.
     pub(crate) dirs: shims::DirTable,
 
-    /// The table of all active [`ReadinessWatcher`]s.
-    pub(crate) readiness_interests: ReadinessInterestTable,
+    /// Managing file descriptors whose readiness needs to be updated.
     pub(crate) delayed_readiness_updates: Rc<DelayedReadinessUpdates>,
 
     /// This machine's monotone clock.
@@ -768,7 +767,6 @@ impl<'tcx> MiriMachine<'tcx> {
             isolated_op: config.isolated_op,
             validation: config.validation,
             fds: shims::FdTable::init(config.mute_stdout_stderr),
-            readiness_interests: ReadinessInterestTable::new(),
             delayed_readiness_updates: Rc::new(DelayedReadinessUpdates::default()),
             dirs: Default::default(),
             layouts,
@@ -1029,7 +1027,6 @@ impl VisitProvenance for MiriMachine<'_> {
             alloc_addresses,
             fds,
             blocking_io:_,
-            readiness_interests: _,
             delayed_readiness_updates: _,
             tcx: _,
             isolated_op: _,
@@ -1813,7 +1810,6 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         if ecx.machine.gc_interval > 0 && ecx.machine.since_gc >= ecx.machine.gc_interval {
             ecx.machine.since_gc = 0;
             ecx.run_provenance_gc();
-            ecx.machine.readiness_interests.run_gc();
             ecx.machine.blocking_io.run_gc();
         }
 
