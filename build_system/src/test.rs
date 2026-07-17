@@ -946,7 +946,6 @@ fn contains_ui_error_patterns(file_path: &Path, keep_lto_tests: bool) -> Result<
             "//@ known-bug",
             "-Cllvm-args",
             "//~",
-            "thread",
         ]
         .iter()
         .any(|check| line.contains(check))
