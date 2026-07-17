@@ -508,6 +508,27 @@ pub enum GccCiMode {
     DownloadFromCi,
 }
 
+#[derive(Clone)]
+pub enum DebuggerPath {
+    /// Use a debugger at this path
+    Path(PathBuf),
+    /// Try to automatically discover a version of a debugger from the environment
+    Discover,
+}
+
+impl<'d> Deserialize<'d> for DebuggerPath {
+    fn deserialize<D>(deserializer: D) -> Result<Self, <D as serde::Deserializer<'d>>::Error>
+    where
+        D: serde::Deserializer<'d>,
+    {
+        let value = String::deserialize(deserializer)?;
+        match value.as_str() {
+            "discover" => Ok(Self::Discover),
+            path => Ok(Self::Path(PathBuf::from(path))),
+        }
+    }
+}
+
 pub fn threads_from_config(v: u32) -> u32 {
     match v {
         0 => std::thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get) as u32,
