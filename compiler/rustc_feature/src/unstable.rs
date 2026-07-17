@@ -390,6 +390,9 @@ declare_features! (
     (unstable, adt_const_params, "1.56.0", Some(95174)),
     /// Allows defining an `#[alloc_error_handler]`.
     (unstable, alloc_error_handler, "1.29.0", Some(51540)),
+    /// Allows defining the allocation token hint (i.e., contains-pointer classification and
+    /// type name encoding) for user-defined types.
+    (unstable, alloc_token_hint, "CURRENT_RUSTC_VERSION", Some(159111)),
     /// The `apxf` target feature on x86
     (unstable, apx_target_feature, "1.88.0", Some(139284)),
     /// Allows inherent and trait methods with arbitrary self types.

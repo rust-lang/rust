@@ -2,6 +2,16 @@ use rustc_feature::AttributeStability;
 
 use super::prelude::*;
 
+pub(crate) struct RustcAllocTokenHintParser;
+
+impl NoArgsAttributeParser for RustcAllocTokenHintParser {
+    const PATH: &[Symbol] = &[sym::rustc_alloc_token_hint];
+    const ALLOWED_TARGETS: AllowedTargets<'_> =
+        AllowedTargets::AllowList(&[Allow(Target::Fn), Allow(Target::ForeignFn)]);
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcAllocTokenHint;
+}
+
 pub(crate) struct RustcAllocatorParser;
 
 impl NoArgsAttributeParser for RustcAllocatorParser {

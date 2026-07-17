@@ -280,6 +280,9 @@ fn process_builtin_attrs(
             AttributeKind::InstructionSet(instruction_set) => {
                 codegen_fn_attrs.instruction_set = Some(*instruction_set)
             }
+            AttributeKind::RustcAllocTokenHint => {
+                codegen_fn_attrs.flags |= CodegenFnAttrFlags::ALLOC_TOKEN_HINT
+            }
             AttributeKind::RustcAllocator => {
                 codegen_fn_attrs.flags |= CodegenFnAttrFlags::ALLOCATOR
             }
