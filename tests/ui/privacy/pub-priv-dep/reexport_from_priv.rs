@@ -8,6 +8,9 @@
 
 extern crate reexport;
 
+pub use reexport::Shared as ReexportedShared;
+//~^ ERROR struct `ReexportedShared` from private dependency 'shared' is re-exported
+
 pub fn leaks_priv() -> reexport::Shared {
     //~^ ERROR type `Shared` from private dependency 'shared' in public interface
     reexport::Shared
