@@ -65,6 +65,8 @@ fn tag_base_type_opt<'tcx>(
     });
 
     match enum_type_and_layout.layout.variants() {
+        Variants::Opaque => None,
+
         // A single-variant or no-variant enum has no discriminant.
         Variants::Single { .. } | Variants::Empty => None,
 

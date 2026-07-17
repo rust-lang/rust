@@ -390,7 +390,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
 
         // Visit the fields of this value. For enum values the fields include the discriminant.
         match &self.fields {
-            FieldsShape::Primitive => {
+            FieldsShape::Opaque | FieldsShape::Primitive => {
                 out.add_range(base_offset, self.size);
             }
             &FieldsShape::Union(field_count) => {
@@ -423,7 +423,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
 
         // Visit the fields of each variant.
         match &self.variants {
-            Variants::Empty | Variants::Single { index: _ } => { /* done */ }
+            Variants::Opaque | Variants::Empty | Variants::Single { index: _ } => { /* done */ }
             Variants::Multiple { variants, .. } => {
                 for variant in variants.indices() {
                     let variant = self.for_variant(cx, variant);

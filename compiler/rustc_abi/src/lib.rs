@@ -1762,6 +1762,9 @@ impl Scalar {
 #[derive(PartialEq, Eq, Hash, Clone, Debug, Encodable_NoContext, Decodable_NoContext)]
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub enum FieldsShape<FieldIdx: Idx> {
+    /// There may or may not be fields, and we know nothing about them. Used for `ty::Erased`.
+    Opaque,
+
     /// Scalar primitives and `!`, which never have fields.
     Primitive,
 
@@ -1800,6 +1803,7 @@ impl<FieldIdx: Idx> FieldsShape<FieldIdx> {
     #[inline]
     pub fn count(&self) -> usize {
         match *self {
+            FieldsShape::Opaque => 0,
             FieldsShape::Primitive => 0,
             FieldsShape::Union(count) => count.get(),
             FieldsShape::Array { count, .. } => count.try_into().unwrap(),
@@ -1810,6 +1814,9 @@ impl<FieldIdx: Idx> FieldsShape<FieldIdx> {
     #[inline]
     pub fn offset(&self, i: usize) -> Size {
         match *self {
+            FieldsShape::Opaque => {
+                unreachable!("FieldsShape::offset: `Opaque`s have no fields")
+            }
             FieldsShape::Primitive => {
                 unreachable!("FieldsShape::offset: `Primitive`s have no fields")
             }
@@ -1832,10 +1839,14 @@ impl<FieldIdx: Idx> FieldsShape<FieldIdx> {
         // Primitives don't really have fields in the way that structs do,
         // but having this return an empty iterator for them is unhelpful
         // since that makes them look kinda like ZSTs, which they're not.
-        let pseudofield_count = if let FieldsShape::Primitive = self { 1 } else { self.count() };
+        let pseudofield_count =
+            if let FieldsShape::Primitive | FieldsShape::Opaque = self { 1 } else { self.count() };
 
         (0..pseudofield_count).map(move |i| match self {
-            FieldsShape::Primitive | FieldsShape::Union(_) | FieldsShape::Array { .. } => i,
+            FieldsShape::Primitive
+            | FieldsShape::Opaque
+            | FieldsShape::Union(_)
+            | FieldsShape::Array { .. } => i,
             FieldsShape::Arbitrary { in_memory_order, .. } => in_memory_order[i as u32].index(),
         })
     }
@@ -2099,6 +2110,9 @@ impl BackendRepr {
 #[derive(PartialEq, Eq, Hash, Clone, Debug, Encodable_NoContext, Decodable_NoContext)]
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub enum Variants<FieldIdx: Idx, VariantIdx: Idx> {
+    /// We don't know how many variants there are, nor anything about them.
+    Opaque,
+
     /// A type with no valid variants. Must be uninhabited.
     Empty,
 
@@ -2333,6 +2347,18 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
     /// Returns `true` if this is an uninhabited type
     pub fn is_uninhabited(&self) -> bool {
         self.uninhabited
+    }
+
+    // TODO: get rid of this, and instead put the needed fields in ParamLayout
+    // and convert to<->from that type where needed
+    pub fn make_opaque(&self) -> Self {
+        Self {
+            fields: FieldsShape::Opaque,
+            variants: Variants::Opaque,
+            // TODO: making randomization_seed an Option is hacky
+            randomization_seed: None,
+            ..self.clone()
+        }
     }
 }
 

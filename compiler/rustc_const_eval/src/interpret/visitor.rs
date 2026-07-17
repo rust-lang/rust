@@ -162,7 +162,7 @@ pub trait ValueVisitor<'tcx, M: Machine<'tcx>>: Sized {
 
         // Visit the fields of this value.
         match &v.layout().fields {
-            FieldsShape::Primitive => {}
+            FieldsShape::Opaque | FieldsShape::Primitive => {}
             &FieldsShape::Union(fields) => {
                 self.visit_union(v, fields)?;
             }
@@ -181,6 +181,7 @@ pub trait ValueVisitor<'tcx, M: Machine<'tcx>>: Sized {
         }
 
         match v.layout().variants {
+            Variants::Opaque => {}
             // If this is a multi-variant layout, find the right variant and proceed
             // with *its* fields.
             Variants::Multiple { .. } => {

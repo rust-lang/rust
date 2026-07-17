@@ -292,17 +292,16 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
     check_layout_abi(cx, layout);
 
     match &layout.variants {
+        Variants::Opaque => assert!(layout.ty.is_erased()),
         Variants::Empty => {
             assert!(layout.is_uninhabited());
         }
         Variants::Single { index } => {
-            if !layout.ty.is_erased() {
-                if let Some(variants) = layout.ty.variant_range(tcx) {
-                    assert!(variants.contains(index));
-                } else {
-                    // Types without variants use `0` as dummy variant index.
-                    assert!(index.as_u32() == 0);
-                }
+            if let Some(variants) = layout.ty.variant_range(tcx) {
+                assert!(variants.contains(index));
+            } else {
+                // Types without variants use `0` as dummy variant index.
+                assert!(index.as_u32() == 0);
             }
         }
         Variants::Multiple { variants, tag, tag_encoding, .. } => {
@@ -317,18 +316,16 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                         assert!(idx == *untagged_variant || niche_variants.contains(&idx));
                     }
 
-                    if !layout.ty.is_erased() {
-                        // Ensure that for niche encoded tags the discriminant coincides with the variant index.
-                        let val = layout.ty.discriminant_for_variant(tcx, idx).unwrap().val;
-                        if val != u128::from(idx.as_u32()) {
-                            let adt_def = layout.ty.ty_adt_def().unwrap();
-                            cx.tcx().dcx().span_delayed_bug(
-                                cx.tcx().def_span(adt_def.did()),
-                                format!(
-                                    "variant {idx:?} has discriminant {val:?} in niche-encoded type"
-                                ),
-                            );
-                        }
+                    // Ensure that for niche encoded tags the discriminant coincides with the variant index.
+                    let val = layout.ty.discriminant_for_variant(tcx, idx).unwrap().val;
+                    if val != u128::from(idx.as_u32()) {
+                        let adt_def = layout.ty.ty_adt_def().unwrap();
+                        cx.tcx().dcx().span_delayed_bug(
+                            cx.tcx().def_span(adt_def.did()),
+                            format!(
+                                "variant {idx:?} has discriminant {val:?} in niche-encoded type"
+                            ),
+                        );
                     }
                 }
             }

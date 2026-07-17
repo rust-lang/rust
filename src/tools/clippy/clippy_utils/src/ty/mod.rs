@@ -536,7 +536,10 @@ fn is_uninit_value_valid_for_layout<'tcx>(cx: &LateContext<'tcx>, layout: TyAndL
         BackendRepr::SimdScalableVector { element, .. } => element.is_uninit_valid(),
         // Here validity is determined by the structural fields instead.
         BackendRepr::Memory { .. } => match &layout.layout.variants {
+            // FIXME: is this actually unreachable?
+            Variants::Opaque => unreachable!("opaque layouts should only appear post-clippy"),
             Variants::Single { .. } => match &layout.layout.fields {
+                FieldsShape::Opaque => unreachable!("FieldsShape::Opaque should only be for Variants::Opaque"),
                 FieldsShape::Primitive => {
                     debug_assert!(false, "Both Scalar primitives and ! should be handled above.");
                     false

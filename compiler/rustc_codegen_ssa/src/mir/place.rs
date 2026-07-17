@@ -482,6 +482,7 @@ pub(super) fn codegen_tag_value<'tcx, V>(
     }
 
     Ok(match layout.variants {
+        Variants::Opaque => unreachable!(),
         Variants::Empty => unreachable!("we already handled uninhabited types"),
         Variants::Single { index } => {
             assert_eq!(index, variant_index);

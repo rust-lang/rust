@@ -126,7 +126,7 @@ fn uncached_gcc_type<'gcc, 'tcx>(
     };
 
     match layout.fields {
-        FieldsShape::Primitive | FieldsShape::Union(_) => {
+        FieldsShape::Opaque | FieldsShape::Primitive | FieldsShape::Union(_) => {
             let fill = cx.type_padding_filler(layout.size, layout.align.abi);
             let packed = false;
             match name {

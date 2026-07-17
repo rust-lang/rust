@@ -185,6 +185,7 @@ impl EnumSizeOpt {
         };
         let layout = tcx.layout_of(typing_env.as_query_input(ty)).ok()?;
         let variants = match &layout.variants {
+            Variants::Opaque => unreachable!(),
             Variants::Single { .. } | Variants::Empty => return None,
             Variants::Multiple { tag_encoding: TagEncoding::Niche { .. }, .. } => return None,
 

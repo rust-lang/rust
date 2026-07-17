@@ -90,6 +90,7 @@ where
         }
         BackendRepr::SimdScalableVector { .. } => panic!("scalable vectors are unsupported"),
         BackendRepr::ScalarPair { .. } | BackendRepr::Memory { .. } => match arg_layout.fields {
+            FieldsShape::Opaque => return Err(CannotUseFpConv),
             FieldsShape::Primitive => {
                 unreachable!("aggregates can't have `FieldsShape::Primitive`")
             }
@@ -126,6 +127,7 @@ where
             }
             FieldsShape::Arbitrary { .. } => {
                 match arg_layout.variants {
+                    Variants::Opaque => return Err(CannotUseFpConv),
                     Variants::Multiple { .. } => return Err(CannotUseFpConv),
                     Variants::Single { .. } | Variants::Empty => (),
                 }

@@ -97,6 +97,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
                      start: Size|
                      -> Result<(HomogeneousAggregate, Size), Heterogeneous> {
                         let is_union = match layout.fields {
+                            FieldsShape::Opaque => return Err(Heterogeneous),
                             FieldsShape::Primitive => {
                                 unreachable!("aggregates can't have `FieldsShape::Primitive`")
                             }
@@ -147,6 +148,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
                 let (mut result, mut total) = from_fields_at(*self, Size::ZERO)?;
 
                 match &self.variants {
+                    Variants::Opaque => return Err(Heterogeneous),
                     Variants::Single { .. } | Variants::Empty => {}
                     Variants::Multiple { variants, .. } => {
                         // Treat enum variants like union members.

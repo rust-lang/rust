@@ -95,6 +95,7 @@ impl<'a, 'tcx, V> RetagPlan<V> {
         }
 
         match &layout.variants {
+            Variants::Opaque => {}
             Variants::Single { .. } | Variants::Empty => {}
             Variants::Multiple { variants, .. } => {
                 for ix in variants.indices() {

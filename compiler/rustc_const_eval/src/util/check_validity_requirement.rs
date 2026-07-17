@@ -93,13 +93,6 @@ fn check_validity_requirement_lax<'tcx>(
     cx: &LayoutCx<'tcx>,
     init_kind: ValidityRequirement,
 ) -> Result<bool, &'tcx LayoutError<'tcx>> {
-    // TODO: we shouldn't lie here but should instead either figure out a way to check
-    // validity for erased types' fields properly, or should avoid calling this function
-    // in the first place.
-    if this.ty.is_erased() {
-        return Ok(true);
-    }
-
     let scalar_allows_raw_init = move |s: Scalar| -> bool {
         match init_kind {
             ValidityRequirement::Inhabited => {
@@ -157,7 +150,7 @@ fn check_validity_requirement_lax<'tcx>(
 
     // If we have not found an error yet, we need to recursively descend into fields.
     match &this.fields {
-        FieldsShape::Primitive | FieldsShape::Union { .. } => {}
+        FieldsShape::Opaque | FieldsShape::Primitive | FieldsShape::Union { .. } => {}
         FieldsShape::Array { .. } => {
             // Arrays never have scalar layout in LLVM, so if the array is not actually
             // accessed, there is no LLVM UB -- therefore we can skip this.
@@ -173,6 +166,7 @@ fn check_validity_requirement_lax<'tcx>(
     }
 
     match &this.variants {
+        Variants::Opaque => {}
         Variants::Empty => return Ok(false),
         Variants::Single { .. } => {
             // All fields of this single variant have already been checked above, there is nothing

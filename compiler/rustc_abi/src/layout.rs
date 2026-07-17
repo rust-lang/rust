@@ -1404,6 +1404,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                                     offsets
                                 }
                                 FieldsShape::Primitive
+                                | FieldsShape::Opaque
                                 | FieldsShape::Array { .. }
                                 | FieldsShape::Union(..) => {
                                     panic!("encountered a non-arbitrary layout during enum layout")

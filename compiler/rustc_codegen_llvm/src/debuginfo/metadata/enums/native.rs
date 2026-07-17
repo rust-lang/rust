@@ -355,6 +355,7 @@ fn build_discr_member_di_node<'ll, 'tcx>(
     let containing_scope = enum_or_coroutine_type_di_node;
 
     match enum_or_coroutine_type_and_layout.layout.variants() {
+        &Variants::Opaque => unreachable!(),
         // A single-variant or no-variant enum has no discriminant.
         &Variants::Single { .. } | &Variants::Empty => None,
 

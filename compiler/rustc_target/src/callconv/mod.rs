@@ -904,6 +904,7 @@ where
                 return false;
             }
             match layout.fields {
+                FieldsShape::Opaque => false,
                 FieldsShape::Primitive | FieldsShape::Union(_) => false,
                 // Array elements are at stride offsets with no inter-element gaps.
                 FieldsShape::Array { stride: _, count } => {

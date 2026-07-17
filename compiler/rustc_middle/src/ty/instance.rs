@@ -985,6 +985,7 @@ impl<'tcx> Instance<'tcx> {
 
     // TODO: this and/or is_ty_param_polymorphizable should probably be queries,
     // used less ad hoc, and located somewhere else
+    #[instrument(level = "debug", skip(tcx), ret)]
     pub fn polymorphize(&self, tcx: TyCtxt<'tcx>) -> Self {
         if !tcx.sess.opts.unstable_opts.polymorphize {
             return *self;
@@ -1029,11 +1030,7 @@ impl<'tcx> Instance<'tcx> {
                             // FIXME: track metadata layout in ParamLayout to relax this
                             && layout.is_sized()
                         {
-                            // TODO: this and (to a lesser extent) making randomization_seed an Option is hacky
-                            let seedless_layout_data = rustc_abi::LayoutData {
-                                randomization_seed: None,
-                                ..(*layout).clone()
-                            };
+                            let seedless_layout_data = layout.make_opaque();
                             let seedless_layout = tcx.mk_layout(seedless_layout_data);
                             let param_layout = ty::ParamLayout(seedless_layout);
                             let erased_ty = tcx.mk_ty_from_kind(ty::Erased(param_layout));

@@ -931,6 +931,7 @@ fn variant_info_for_adt<'tcx>(
     };
 
     match layout.variants {
+        Variants::Opaque => unreachable!(),
         Variants::Empty => (vec![], None),
 
         Variants::Single { index } => {

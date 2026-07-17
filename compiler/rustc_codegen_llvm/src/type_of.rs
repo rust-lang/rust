@@ -102,23 +102,12 @@ fn uncached_llvm_type<'a, 'tcx>(
         _ => None,
     };
 
-    if layout.ty.is_erased() {
+    match layout.fields {
+        // TODO: this used to special-case on ty.is_erased(). now it doesn't do that (good!)
+        // but we should check elsewhere in the codebase for similar
         // Erased types are represented opaquely since we don't know the types
         // and exact layouts of their fields.
-        let fill = cx.type_padding_filler(layout.size, layout.align.abi);
-        let packed = false;
-        return match name {
-            None => cx.type_struct(&[fill], packed),
-            Some(ref name) => {
-                let llty = cx.type_named_struct(name);
-                cx.set_struct_body(llty, &[fill], packed);
-                llty
-            }
-        };
-    }
-
-    match layout.fields {
-        FieldsShape::Primitive | FieldsShape::Union(_) => {
+        FieldsShape::Opaque | FieldsShape::Primitive | FieldsShape::Union(_) => {
             let fill = cx.type_padding_filler(layout.size, layout.align.abi);
             let packed = false;
             match name {

@@ -482,6 +482,7 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
         }
 
         let (tag_scalar, tag_encoding, tag_field) = match self.layout.variants {
+            Variants::Opaque => unreachable!(),
             Variants::Empty => unreachable!("we already handled uninhabited types"),
             Variants::Single { index } => {
                 let discr_val =

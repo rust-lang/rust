@@ -65,6 +65,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // We use "tag" to refer to how the discriminant is encoded in memory, which can be either
         // straight-forward (`TagEncoding::Direct`) or with a niche (`TagEncoding::Niche`).
         let (tag_scalar_layout, tag_encoding, tag_field) = match op.layout().variants {
+            Variants::Opaque => unreachable!(),
             Variants::Empty => {
                 throw_ub!(UninhabitedEnumVariantRead(None));
             }
@@ -257,6 +258,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         }
 
         match layout.variants {
+            abi::Variants::Opaque => unreachable!(),
             abi::Variants::Empty => unreachable!("we already handled uninhabited types"),
             abi::Variants::Single { .. } => {
                 // The tag of a `Single` enum is like the tag of the niched

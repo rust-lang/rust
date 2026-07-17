@@ -213,6 +213,7 @@ pub(super) fn build_enum_type_di_node<'ll, 'tcx>(
         ),
         |cx, enum_type_di_node| {
             match enum_type_and_layout.variants {
+                Variants::Opaque => return smallvec![],
                 Variants::Empty => {
                     // We don't generate any members for uninhabited types.
                     return smallvec![];
@@ -301,6 +302,7 @@ pub(super) fn build_coroutine_di_node<'ll, 'tcx>(
             }
             Variants::Single { .. }
             | Variants::Empty
+            | Variants::Opaque
             | Variants::Multiple { tag_encoding: TagEncoding::Niche { .. }, .. } => {
                 bug!(
                     "Encountered coroutine with non-direct-tag layout: {:?}",

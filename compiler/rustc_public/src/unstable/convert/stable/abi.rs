@@ -186,6 +186,7 @@ impl<'tcx> Stable<'tcx> for rustc_abi::FieldsShape<rustc_abi::FieldIdx> {
         cx: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         match self {
+            rustc_abi::FieldsShape::Opaque => FieldsShape::Opaque,
             rustc_abi::FieldsShape::Primitive => FieldsShape::Primitive,
             rustc_abi::FieldsShape::Union(count) => FieldsShape::Union(*count),
             rustc_abi::FieldsShape::Array { stride, count } => {
@@ -207,6 +208,7 @@ impl<'tcx> Stable<'tcx> for rustc_abi::Variants<rustc_abi::FieldIdx, rustc_abi::
         cx: &CompilerCtxt<'cx, BridgeTys>,
     ) -> Self::T {
         match self {
+            rustc_abi::Variants::Opaque => VariantsShape::Opaque,
             rustc_abi::Variants::Single { index } => {
                 VariantsShape::Single { index: index.stable(tables, cx) }
             }
