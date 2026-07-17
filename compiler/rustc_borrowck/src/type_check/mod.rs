@@ -2370,13 +2370,15 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // example).
         if let Some(polonius_facts) = polonius_facts {
             let _prof_timer = self.infcx.tcx.prof.generic_activity("polonius_fact_generation");
-            if let Some(borrow_index) = borrow_set.get_index_of(&location) {
+            if let Some(idxs) = borrow_set.borrows_at_location(&location) {
                 let region_vid = borrow_region.as_var();
-                polonius_facts.loan_issued_at.push((
-                    region_vid.into(),
-                    borrow_index,
-                    location_table.mid_index(location),
-                ));
+                for borrow_index in idxs {
+                    polonius_facts.loan_issued_at.push((
+                        region_vid.into(),
+                        *borrow_index,
+                        location_table.mid_index(location),
+                    ));
+                }
             }
         }
 
@@ -2513,13 +2515,15 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // linking the loan to the region.
         if let Some(polonius_facts) = polonius_facts {
             let _prof_timer = infcx.tcx.prof.generic_activity("polonius_fact_generation");
-            if let Some(borrow_index) = borrow_set.get_index_of(&location) {
+            if let Some(borrows) = borrow_set.borrows_at_location(&location) {
                 let region_vid = dest_region.as_var();
-                polonius_facts.loan_issued_at.push((
-                    region_vid.into(),
-                    borrow_index,
-                    location_table.mid_index(location),
-                ));
+                for borrow_index in borrows {
+                    polonius_facts.loan_issued_at.push((
+                        region_vid.into(),
+                        *borrow_index,
+                        location_table.mid_index(location),
+                    ));
+                }
             }
         }
 
