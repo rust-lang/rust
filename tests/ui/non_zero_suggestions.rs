@@ -1,5 +1,5 @@
 #![warn(clippy::non_zero_suggestions)]
-use std::num::{NonZeroI8, NonZeroI16, NonZeroU8, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroUsize};
+use std::num::{NonZeroI8, NonZeroI16, NonZeroI32, NonZeroU8, NonZeroU16, NonZeroU32, NonZeroU64, NonZeroUsize};
 
 fn main() {
     /// Positive test cases (lint should trigger)
@@ -45,6 +45,12 @@ fn main() {
     let k: u64 = 300;
     let l = NonZeroU32::new(15).unwrap();
     let r9 = k / NonZeroU64::from(l);
+
+    // Signed integers in div/rem: must NOT trigger because i64 / NonZeroI64 is not in std
+    let s: i64 = 10;
+    let t = NonZeroI32::new(3).unwrap();
+    let r10 = s / i64::from(t.get());
+    let r11 = s % i64::from(t.get());
 }
 
 // Additional function to test the lint in a different context
