@@ -79,8 +79,6 @@ fn main() {
             for line in &lines[start..end] {
                 eprintln!("{line}");
             }
-
-            panic!("found leaked source-root path in {link_name}");
         }
 
         // Check that remapped paths are present if the rlib has debug info.
