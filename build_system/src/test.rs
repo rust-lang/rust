@@ -1247,6 +1247,7 @@ fn run_ui_tests(env: &Env, args: &TestArg) -> Result<(), String> {
         &"--compiletest-rustc-args",
         &rustc_args,
         &"--bypass-ignore-backends",
+        &"--force-rerun",
     ];
 
     for test_name in &args.test_args {
