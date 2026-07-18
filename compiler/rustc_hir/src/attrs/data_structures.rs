@@ -1374,7 +1374,7 @@ pub enum AttributeKind {
     },
 
     /// Represents `#[rustc_canonical_symbol]`
-    RustcCanonicalSymbol(Symbol),
+    RustcCanonicalSymbol,
 
     /// Represents `#[rustc_capture_analysis]`
     RustcCaptureAnalysis,

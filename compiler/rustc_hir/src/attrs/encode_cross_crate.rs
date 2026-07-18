@@ -110,7 +110,7 @@ impl AttributeKind {
             RustcAutodiff(..) => Yes,
             RustcBodyStability { .. } => No,
             RustcBuiltinMacro { .. } => Yes,
-            RustcCanonicalSymbol(..) => No,
+            RustcCanonicalSymbol => No,
             RustcCaptureAnalysis => No,
             RustcCguTestAttr { .. } => No,
             RustcClean { .. } => No,

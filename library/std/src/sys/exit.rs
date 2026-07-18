@@ -79,7 +79,7 @@ cfg_select! {
         // See the `invalid_runtime_symbols_definitions` lint.
         mod runtime_symbols {
             unsafe extern "C" {
-                #[rustc_canonical_symbol = "exit"]
+                #[rustc_canonical_symbol]
                 fn exit(status: core::ffi::c_int) -> !;
             }
         }

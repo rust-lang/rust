@@ -1148,21 +1148,15 @@ impl NoArgsAttributeParser for RustcExhaustiveParser {
 
 pub(crate) struct RustcCanonicalSymbolParser;
 
-impl SingleAttributeParser for RustcCanonicalSymbolParser {
+impl NoArgsAttributeParser for RustcCanonicalSymbolParser {
     const PATH: &[Symbol] = &[sym::rustc_canonical_symbol];
     const ALLOWED_TARGETS: AllowedTargets<'_> =
         AllowedTargets::AllowList(&[Allow(Target::ForeignFn)]);
-    const TEMPLATE: AttributeTemplate = template!(NameValueStr: "symbol_name");
     const STABILITY: AttributeStability = unstable!(
         rustc_attrs,
         "the `#[rustc_canonical_symbol]` attribute registers a function's symbol to be linted against \
         by the `invalid_runtime_symbol_definitions` and `suspicious_runtime_symbol_definitions` \
         lints"
     );
-
-    fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
-        let nv = cx.expect_name_value(args, cx.attr_span, None)?;
-        let value = cx.expect_string_literal(nv)?;
-        Some(AttributeKind::RustcCanonicalSymbol(value))
-    }
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcCanonicalSymbol;
 }

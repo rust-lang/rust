@@ -5,13 +5,17 @@
 extern crate symbols;
 
 extern "C" {
-    #[rustc_canonical_symbol = "foo"]
+    #[rustc_canonical_symbol]
     fn foo();
+}
 
-    #[rustc_canonical_symbol = "foo"]
-    fn foo2();
-    //~^ ERROR duplicate canonical symbol
-    //~^^ ERROR duplicate canonical symbol
+mod bar {
+    extern "C" {
+        #[rustc_canonical_symbol]
+        fn foo();
+        //~^ ERROR duplicate canonical symbol
+        //~^^ ERROR duplicate canonical symbol
+    }
 }
 
 fn main() {}

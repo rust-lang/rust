@@ -1,8 +1,8 @@
 error: duplicate canonical symbol in crate `duplicate_canonical_symbols`: `foo`
-  --> $DIR/duplicate-canonical-symbols.rs:12:5
+  --> $DIR/duplicate-canonical-symbols.rs:15:9
    |
-LL |     fn foo2();
-   |     ^^^^^^^^^^
+LL |         fn foo();
+   |         ^^^^^^^^^
    |
 note: the canonical symbol is first defined here
   --> $DIR/duplicate-canonical-symbols.rs:9:5
@@ -11,10 +11,10 @@ LL |     fn foo();
    |     ^^^^^^^^^
 
 error: duplicate canonical symbol in crate `duplicate_canonical_symbols`: `foo`
-  --> $DIR/duplicate-canonical-symbols.rs:12:5
+  --> $DIR/duplicate-canonical-symbols.rs:15:9
    |
-LL |     fn foo2();
-   |     ^^^^^^^^^^
+LL |         fn foo();
+   |         ^^^^^^^^^
    |
    = note: the canonical symbol is first defined in crate `symbols`
 

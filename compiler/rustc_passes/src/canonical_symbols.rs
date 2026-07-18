@@ -1,6 +1,6 @@
 use rustc_hir::{CanonicalSymbols, ForeignItemId, find_attr};
 use rustc_middle::query::{LocalCrate, Providers};
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{Instance, List, TyCtxt};
 use rustc_span::Symbol;
 use rustc_span::def_id::{DefId, LOCAL_CRATE};
 
@@ -12,9 +12,14 @@ fn observe_item<'tcx>(
     fid: ForeignItemId,
 ) {
     let attrs = tcx.hir_attrs(fid.owner_id.into());
-    if let Some(name) = find_attr!(attrs, RustcCanonicalSymbol(symbol) => symbol) {
+    if find_attr!(attrs, RustcCanonicalSymbol) {
+        let did = fid.owner_id.def_id;
+        let instance = Instance::new_raw(did.to_def_id(), List::identity_for_item(tcx, did));
+        let symbol_name = tcx.symbol_name(instance);
+        let symbol_name = Symbol::intern(symbol_name.name);
+
         // insert into our table
-        collect_item(tcx, canonical_symbols, *name, fid.owner_id.to_def_id());
+        collect_item(tcx, canonical_symbols, symbol_name, fid.owner_id.to_def_id());
     }
 }
 

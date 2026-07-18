@@ -110,16 +110,16 @@ mod runtime_symbols {
     use core::ffi::{c_char, c_int, c_size_t, c_ssize_t, c_void};
 
     unsafe extern "C" {
-        #[rustc_canonical_symbol = "open"]
+        #[rustc_canonical_symbol]
         fn open(pathname: *const c_char, flags: c_int, ...) -> c_int;
 
-        #[rustc_canonical_symbol = "read"]
+        #[rustc_canonical_symbol]
         fn read(fd: c_int, buf: *mut c_void, count: c_size_t) -> c_ssize_t;
 
-        #[rustc_canonical_symbol = "write"]
+        #[rustc_canonical_symbol]
         fn write(fd: c_int, buf: *const c_void, count: c_size_t) -> c_ssize_t;
 
-        #[rustc_canonical_symbol = "close"]
+        #[rustc_canonical_symbol]
         fn close(fd: c_int) -> c_int;
     }
 }

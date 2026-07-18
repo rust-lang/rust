@@ -320,7 +320,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::RustcAutodiff(..) => (),
             AttributeKind::RustcBodyStability { .. } => (),
             AttributeKind::RustcBuiltinMacro { .. } => (),
-            AttributeKind::RustcCanonicalSymbol(..) => (),
+            AttributeKind::RustcCanonicalSymbol => (),
             AttributeKind::RustcCaptureAnalysis => (),
             AttributeKind::RustcCguTestAttr(..) => (),
             AttributeKind::RustcClean(..) => (),
