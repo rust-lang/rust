@@ -602,6 +602,13 @@ where
 /// `Pin::clone`. Namely, an impl of `StaticAllocator for MyAllocator + 'long` guarantees that an
 /// impl of `StaticAllocator for MyAllocator + 'short` would be sound to write.
 ///
+/// The following must thus be guaranteed:
+/// - the `Drop` impl of the allocator does not invalidate any allocations;
+/// - the allocator does not expose a safe API surface that allows invalidating
+///   its allocations;
+/// - the allocator's lifetime expiring does not invalidate any allocations;
+/// - the above also hold for all equivalent allocators (see [`Allocator`] docs).
+///
 /// [`Pin`]: ../../core/pin/struct.Pin.html
 /// [unsound]: https://github.com/rust-lang/rust/issues/157089
 #[unstable(feature = "allocator_api", issue = "32838")]
