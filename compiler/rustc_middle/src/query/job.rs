@@ -7,7 +7,6 @@ use parking_lot::{Condvar, Mutex};
 use rustc_span::Span;
 
 use crate::query::Cycle;
-use crate::ty::TyCtxt;
 
 /// A value uniquely identifying an active query job.
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
@@ -71,12 +70,7 @@ impl<'tcx> QueryLatch<'tcx> {
     }
 
     /// Awaits for the query job to complete.
-    pub fn wait_on(
-        &self,
-        tcx: TyCtxt<'tcx>,
-        query: Option<QueryJobId>,
-        span: Span,
-    ) -> Result<(), Cycle<'tcx>> {
+    pub fn wait_on(&self, query: Option<QueryJobId>, span: Span) -> Result<(), Cycle<'tcx>> {
         let mut waiters_guard = self.waiters.lock();
         let Some(waiters) = &mut *waiters_guard else {
             return Ok(()); // already complete
@@ -99,12 +93,11 @@ impl<'tcx> QueryLatch<'tcx> {
         // If this detects a deadlock and the deadlock handler wants to resume this thread
         // we have to be in the `wait` call. This is ensured by the deadlock handler
         // getting the self.info lock.
-        rustc_thread_pool::mark_blocked();
-        tcx.jobserver_proxy.release_thread();
-        waiter.condvar.wait(&mut waiters_guard);
-        // Release the lock before we potentially block in `acquire_thread`
-        drop(waiters_guard);
-        tcx.jobserver_proxy.acquire_thread();
+        rustc_thread_pool::mark_blocked_and_wait(|| {
+            waiter.condvar.wait(&mut waiters_guard);
+            // Release the lock before we potentially block when acquiring jobserver token.
+            drop(waiters_guard);
+        });
 
         // FIXME: Get rid of this lock. We have ownership of the QueryWaiter
         // although another thread may still have a Arc reference so we cannot
