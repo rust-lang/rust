@@ -1,3 +1,4 @@
+use expect_test::expect;
 use rustc_hash::FxHashMap;
 use span::Span;
 use syntax::{AstNode, ast};
@@ -7,7 +8,7 @@ use tt::{Leaf, Punct, Spacing, buffer::Cursor};
 use crate::{
     DocCommentDesugarMode,
     dummy_test_span_utils::{DUMMY, DummyTestSpanMap},
-    syntax_node_to_token_tree,
+    parse_to_token_tree_static_span, syntax_node_to_token_tree, token_tree_to_syntax_node,
 };
 
 fn check_punct_spacing(fixture: &str) {
@@ -96,4 +97,52 @@ fn main() {
 }
         "#,
     );
+}
+
+#[test]
+fn scientific_notation_field_access_recovers() {
+    let tt = parse_to_token_tree_static_span(
+        span::Edition::CURRENT,
+        DUMMY,
+        r#"
+fn main() {
+    s.00E+10;
+}
+"#,
+    )
+    .unwrap();
+
+    let (parse, _) = token_tree_to_syntax_node(&tt, parser::TopEntryPoint::SourceFile, &mut |_| {
+        span::Edition::CURRENT
+    });
+    let parse = parse.cast::<ast::SourceFile>().unwrap();
+
+    expect![[r#"
+        SOURCE_FILE@0..19
+          FN@0..19
+            FN_KW@0..2 "fn"
+            NAME@2..6
+              IDENT@2..6 "main"
+            PARAM_LIST@6..8
+              L_PAREN@6..7 "("
+              R_PAREN@7..8 ")"
+            BLOCK_EXPR@8..19
+              STMT_LIST@8..19
+                L_CURLY@8..9 "{"
+                EXPR_STMT@9..18
+                  FIELD_EXPR@9..17
+                    FIELD_EXPR@9..17
+                      PATH_EXPR@9..10
+                        PATH@9..10
+                          PATH_SEGMENT@9..10
+                            NAME_REF@9..10
+                              IDENT@9..10 "s"
+                      DOT@10..11 "."
+                      ERROR@11..17
+                        FLOAT_NUMBER@11..17 "00E+10"
+                  SEMICOLON@17..18 ";"
+                R_CURLY@18..19 "}"
+        error 11..11: illegal float literal
+    "#]]
+    .assert_eq(&parse.debug_dump());
 }
