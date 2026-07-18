@@ -489,7 +489,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             items
                 .in_definition_order()
                 .filter(|item| {
-                    (item.is_type() || item.is_type_const())
+                    item.can_have_equality_constraint(self.tcx)
                         && !item.is_impl_trait_in_trait()
                         && !self
                             .gen_args
