@@ -718,7 +718,7 @@ fn layout_of_uncached<'tcx>(
 
             let discriminants_iter = || {
                 def.is_enum()
-                    .then(|| def.discriminants(tcx).map(|(v, d)| (v, d.val as i128)))
+                    .then(|| def.discriminants(tcx).map(|(v, d)| (v, d.val)))
                     .into_flat_iter()
             };
 

@@ -350,7 +350,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         is_enum: bool,
         is_special_no_niche: bool,
         discr_range_of_repr: impl Fn(i128, i128) -> (Integer, bool),
-        discriminants: impl Iterator<Item = (VariantIdx, i128)>,
+        discriminants: impl Iterator<Item = (VariantIdx, u128)>,
         always_sized: bool,
     ) -> LayoutCalculatorResult<FieldIdx, VariantIdx, F> {
         let (present_first, present_second) = {
@@ -583,7 +583,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         repr: &ReprOptions,
         variants: &IndexSlice<VariantIdx, IndexVec<FieldIdx, F>>,
         discr_range_of_repr: impl Fn(i128, i128) -> (Integer, bool),
-        discriminants: impl Iterator<Item = (VariantIdx, i128)>,
+        discriminants: impl Iterator<Item = (VariantIdx, u128)>,
     ) -> LayoutCalculatorResult<FieldIdx, VariantIdx, F> {
         let dl = self.cx.data_layout();
         // bail if the enum has an incoherent repr that cannot be computed
@@ -767,9 +767,9 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 if discr_type.is_signed() {
                     // sign extend the raw representation to be an i128
                     // FIXME: do this at the discriminant iterator creation sites
-                    discr_int.size().sign_extend(val as u128)
+                    discr_int.size().sign_extend(val)
                 } else {
-                    val
+                    val as i128
                 }
             })
             .collect();
