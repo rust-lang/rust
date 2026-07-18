@@ -119,11 +119,20 @@
 //! fully contiguous (i.e., has no "holes"), there is no guarantee that this
 //! will not change in the future.
 //!
+//! An allocation can be either mutable (the common case) or *read-only*.
+//! Read-only allocations are implicitly introduced by the compiler for `static` items without
+//! interior mutability and for `const` items. Writing or creating a mutable reference to a
+//! read-only allocation is undefined behavior, and most atomic operations are not supported
+//! for read-only allocations either (see [here][atomic-ro] for exceptions).
+//!
+//! [atomic-ro]: crate::sync::atomic#atomic-accesses-to-read-only-memory
+//!
 //! Allocations must behave like "normal" memory: in particular, reads must not have
 //! side-effects, and writes must become visible to other threads using the usual synchronization
 //! primitives.
 //! Allocations must support all atomic operations that are available for the target (as
 //! determined by the `target_has_atomic*` set of cfg flags).
+//! Read-only allocations only have to support the operations [permitted there][atomic-ro].
 //! The precise instructions used for atomic operations are generally not guaranteed, so portable
 //! software should place all Rust allocations in memory regions that support all atomic
 //! instructions.
