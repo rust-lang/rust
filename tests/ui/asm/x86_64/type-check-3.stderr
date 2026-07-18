@@ -28,7 +28,7 @@ error: type `u8` cannot be used with this register class
 LL |         asm!("{}", in(xmm_reg) 0u8);
    |                                ^^^
    |
-   = note: register class `xmm_reg` supports these types: i32, i64, f16, f32, f64, f128, i8x16, i16x8, i32x4, i64x2, f16x8, f32x4, f64x2
+   = note: register class `xmm_reg` supports these types: i32, i64, i128, f16, f32, f64, f128, i8x16, i16x8, i32x4, i64x2, f16x8, f32x4, f64x2
 
 error: `avx512bw` target feature is not enabled
   --> $DIR/type-check-3.rs:27:29
