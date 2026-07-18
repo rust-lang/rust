@@ -4,19 +4,8 @@ error: layout_of(MissingPayloadField) = Layout {
                abi: Align(1 bytes),
            },
            backend_repr: ScalarPair {
-               a: Initialized {
-                   value: Int(
-                       I8,
-                       false,
-                   ),
-                   valid_range: 0..=1,
-               },
-               b: Union {
-                   value: Int(
-                       I8,
-                       false,
-                   ),
-               },
+               a: u8 is 0..=1,
+               b: union u8,
                b_offset: Size(1 bytes),
            },
            fields: Arbitrary {
@@ -30,41 +19,21 @@ error: layout_of(MissingPayloadField) = Layout {
            largest_niche: Some(
                Niche {
                    offset: Size(0 bytes),
-                   value: Int(
-                       I8,
-                       false,
-                   ),
+                   value: u8,
                    valid_range: 0..=1,
                },
            ),
            uninhabited: false,
            variants: Multiple {
-               tag: Initialized {
-                   value: Int(
-                       I8,
-                       false,
-                   ),
-                   valid_range: 0..=1,
-               },
+               tag: u8 is 0..=1,
                tag_encoding: Direct,
                tag_field: 0,
                variants: [
                    VariantLayout {
                        size: Size(2 bytes),
                        backend_repr: ScalarPair {
-                           a: Initialized {
-                               value: Int(
-                                   I8,
-                                   false,
-                               ),
-                               valid_range: 0..=1,
-                           },
-                           b: Union {
-                               value: Int(
-                                   I8,
-                                   false,
-                               ),
-                           },
+                           a: u8 is 0..=1,
+                           b: union u8,
                            b_offset: Size(1 bytes),
                        },
                        field_offsets: [
@@ -103,20 +72,8 @@ error: layout_of(CommonPayloadField) = Layout {
                abi: Align(1 bytes),
            },
            backend_repr: ScalarPair {
-               a: Initialized {
-                   value: Int(
-                       I8,
-                       false,
-                   ),
-                   valid_range: 0..=1,
-               },
-               b: Initialized {
-                   value: Int(
-                       I8,
-                       false,
-                   ),
-                   valid_range: 0..=255,
-               },
+               a: u8 is 0..=1,
+               b: u8 is ..,
                b_offset: Size(1 bytes),
            },
            fields: Arbitrary {
@@ -130,42 +87,21 @@ error: layout_of(CommonPayloadField) = Layout {
            largest_niche: Some(
                Niche {
                    offset: Size(0 bytes),
-                   value: Int(
-                       I8,
-                       false,
-                   ),
+                   value: u8,
                    valid_range: 0..=1,
                },
            ),
            uninhabited: false,
            variants: Multiple {
-               tag: Initialized {
-                   value: Int(
-                       I8,
-                       false,
-                   ),
-                   valid_range: 0..=1,
-               },
+               tag: u8 is 0..=1,
                tag_encoding: Direct,
                tag_field: 0,
                variants: [
                    VariantLayout {
                        size: Size(2 bytes),
                        backend_repr: ScalarPair {
-                           a: Initialized {
-                               value: Int(
-                                   I8,
-                                   false,
-                               ),
-                               valid_range: 0..=1,
-                           },
-                           b: Initialized {
-                               value: Int(
-                                   I8,
-                                   false,
-                               ),
-                               valid_range: 0..=255,
-                           },
+                           a: u8 is 0..=1,
+                           b: u8 is ..,
                            b_offset: Size(1 bytes),
                        },
                        field_offsets: [
@@ -180,20 +116,8 @@ error: layout_of(CommonPayloadField) = Layout {
                    VariantLayout {
                        size: Size(2 bytes),
                        backend_repr: ScalarPair {
-                           a: Initialized {
-                               value: Int(
-                                   I8,
-                                   false,
-                               ),
-                               valid_range: 0..=1,
-                           },
-                           b: Initialized {
-                               value: Int(
-                                   I8,
-                                   false,
-                               ),
-                               valid_range: 0..=255,
-                           },
+                           a: u8 is 0..=1,
+                           b: u8 is ..,
                            b_offset: Size(1 bytes),
                        },
                        field_offsets: [
@@ -222,19 +146,8 @@ error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
                abi: Align(1 bytes),
            },
            backend_repr: ScalarPair {
-               a: Initialized {
-                   value: Int(
-                       I8,
-                       false,
-                   ),
-                   valid_range: 0..=1,
-               },
-               b: Union {
-                   value: Int(
-                       I8,
-                       false,
-                   ),
-               },
+               a: u8 is 0..=1,
+               b: union u8,
                b_offset: Size(1 bytes),
            },
            fields: Arbitrary {
@@ -248,41 +161,21 @@ error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
            largest_niche: Some(
                Niche {
                    offset: Size(0 bytes),
-                   value: Int(
-                       I8,
-                       false,
-                   ),
+                   value: u8,
                    valid_range: 0..=1,
                },
            ),
            uninhabited: false,
            variants: Multiple {
-               tag: Initialized {
-                   value: Int(
-                       I8,
-                       false,
-                   ),
-                   valid_range: 0..=1,
-               },
+               tag: u8 is 0..=1,
                tag_encoding: Direct,
                tag_field: 0,
                variants: [
                    VariantLayout {
                        size: Size(2 bytes),
                        backend_repr: ScalarPair {
-                           a: Initialized {
-                               value: Int(
-                                   I8,
-                                   false,
-                               ),
-                               valid_range: 0..=1,
-                           },
-                           b: Union {
-                               value: Int(
-                                   I8,
-                                   false,
-                               ),
-                           },
+                           a: u8 is 0..=1,
+                           b: union u8,
                            b_offset: Size(1 bytes),
                        },
                        field_offsets: [
@@ -297,19 +190,8 @@ error: layout_of(CommonPayloadFieldIsMaybeUninit) = Layout {
                    VariantLayout {
                        size: Size(2 bytes),
                        backend_repr: ScalarPair {
-                           a: Initialized {
-                               value: Int(
-                                   I8,
-                                   false,
-                               ),
-                               valid_range: 0..=1,
-                           },
-                           b: Union {
-                               value: Int(
-                                   I8,
-                                   false,
-                               ),
-                           },
+                           a: u8 is 0..=1,
+                           b: union u8,
                            b_offset: Size(1 bytes),
                        },
                        field_offsets: [
@@ -338,19 +220,8 @@ error: layout_of(NicheFirst) = Layout {
                abi: Align(1 bytes),
            },
            backend_repr: ScalarPair {
-               a: Initialized {
-                   value: Int(
-                       I8,
-                       false,
-                   ),
-                   valid_range: 0..=4,
-               },
-               b: Union {
-                   value: Int(
-                       I8,
-                       false,
-                   ),
-               },
+               a: u8 is 0..=4,
+               b: union u8,
                b_offset: Size(1 bytes),
            },
            fields: Arbitrary {
@@ -364,22 +235,13 @@ error: layout_of(NicheFirst) = Layout {
            largest_niche: Some(
                Niche {
                    offset: Size(0 bytes),
-                   value: Int(
-                       I8,
-                       false,
-                   ),
+                   value: u8,
                    valid_range: 0..=4,
                },
            ),
            uninhabited: false,
            variants: Multiple {
-               tag: Initialized {
-                   value: Int(
-                       I8,
-                       false,
-                   ),
-                   valid_range: 0..=4,
-               },
+               tag: u8 is 0..=4,
                tag_encoding: Niche {
                    untagged_variant: 0,
                    niche_variants: 1..=2,
@@ -390,20 +252,8 @@ error: layout_of(NicheFirst) = Layout {
                    VariantLayout {
                        size: Size(2 bytes),
                        backend_repr: ScalarPair {
-                           a: Initialized {
-                               value: Int(
-                                   I8,
-                                   false,
-                               ),
-                               valid_range: 0..=2,
-                           },
-                           b: Initialized {
-                               value: Int(
-                                   I8,
-                                   false,
-                               ),
-                               valid_range: 0..=255,
-                           },
+                           a: u8 is 0..=2,
+                           b: u8 is ..,
                            b_offset: Size(1 bytes),
                        },
                        field_offsets: [
@@ -417,10 +267,7 @@ error: layout_of(NicheFirst) = Layout {
                        largest_niche: Some(
                            Niche {
                                offset: Size(0 bytes),
-                               value: Int(
-                                   I8,
-                                   false,
-                               ),
+                               value: u8,
                                valid_range: 0..=2,
                            },
                        ),
@@ -463,19 +310,8 @@ error: layout_of(NicheSecond) = Layout {
                abi: Align(1 bytes),
            },
            backend_repr: ScalarPair {
-               a: Initialized {
-                   value: Int(
-                       I8,
-                       false,
-                   ),
-                   valid_range: 0..=4,
-               },
-               b: Union {
-                   value: Int(
-                       I8,
-                       false,
-                   ),
-               },
+               a: u8 is 0..=4,
+               b: union u8,
                b_offset: Size(1 bytes),
            },
            fields: Arbitrary {
@@ -489,22 +325,13 @@ error: layout_of(NicheSecond) = Layout {
            largest_niche: Some(
                Niche {
                    offset: Size(0 bytes),
-                   value: Int(
-                       I8,
-                       false,
-                   ),
+                   value: u8,
                    valid_range: 0..=4,
                },
            ),
            uninhabited: false,
            variants: Multiple {
-               tag: Initialized {
-                   value: Int(
-                       I8,
-                       false,
-                   ),
-                   valid_range: 0..=4,
-               },
+               tag: u8 is 0..=4,
                tag_encoding: Niche {
                    untagged_variant: 0,
                    niche_variants: 1..=2,
@@ -515,20 +342,8 @@ error: layout_of(NicheSecond) = Layout {
                    VariantLayout {
                        size: Size(2 bytes),
                        backend_repr: ScalarPair {
-                           a: Initialized {
-                               value: Int(
-                                   I8,
-                                   false,
-                               ),
-                               valid_range: 0..=2,
-                           },
-                           b: Initialized {
-                               value: Int(
-                                   I8,
-                                   false,
-                               ),
-                               valid_range: 0..=255,
-                           },
+                           a: u8 is 0..=2,
+                           b: u8 is ..,
                            b_offset: Size(1 bytes),
                        },
                        field_offsets: [
@@ -542,10 +357,7 @@ error: layout_of(NicheSecond) = Layout {
                        largest_niche: Some(
                            Niche {
                                offset: Size(0 bytes),
-                               value: Int(
-                                   I8,
-                                   false,
-                               ),
+                               value: u8,
                                valid_range: 0..=2,
                            },
                        ),

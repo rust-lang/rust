@@ -1391,10 +1391,21 @@ impl Float {
             F128 => dl.f128_align,
         })
     }
+
+    pub fn ty_str(self) -> &'static str {
+        use Float::*;
+
+        match self {
+            F16 => "f16",
+            F32 => "f32",
+            F64 => "f64",
+            F128 => "f128",
+        }
+    }
 }
 
 /// Fundamental unit of memory access and layout.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub enum Primitive {
     /// The `bool` is the signedness of the `Integer` type.
@@ -1407,6 +1418,29 @@ pub enum Primitive {
     Int(Integer, bool),
     Float(Float),
     Pointer(AddressSpace),
+}
+
+impl fmt::Debug for Primitive {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let name = match *self {
+            Primitive::Int(integer, is_signed) => {
+                if is_signed {
+                    integer.int_ty_str()
+                } else {
+                    integer.uint_ty_str()
+                }
+            }
+            Primitive::Float(float) => float.ty_str(),
+            Primitive::Pointer(addr_space) => {
+                if addr_space == AddressSpace::ZERO {
+                    "pointer"
+                } else {
+                    return write!(f, "pointer({addr_space:?})");
+                }
+            }
+        };
+        f.write_str(name)
+    }
 }
 
 impl Primitive {
@@ -1454,6 +1488,32 @@ pub struct WrappingRange {
 }
 
 impl WrappingRange {
+    fn debug_as(&self, size: Size, is_signed: bool) -> impl fmt::Debug {
+        let range = *self;
+        fmt::from_fn(move |f| {
+            if range == WrappingRange::full(size) {
+                // This is intentionally not using `is_full_for` so that we ensure
+                // different values always debug-print differently.
+                // We don't need the full details when it's the canonical full range,
+                // but if one is looking at the debug output it might be that seeing
+                // `u8 is (..=0) | (1..)` instead of `u8 is ..` is the information
+                // you needed because the problem is that despite being *a* full
+                // range it's not *the* canonical one you expected it was.
+                f.write_str("..")
+            } else if is_signed {
+                let start = size.sign_extend(range.start);
+                let end = size.sign_extend(range.end);
+                if start > end {
+                    write!(f, "(..={}) | ({}..)", end, start)
+                } else {
+                    write!(f, "{}..={}", start, end)
+                }
+            } else {
+                write!(f, "{:?}", range)
+            }
+        })
+    }
+
     pub fn full(size: Size) -> Self {
         Self { start: 0, end: size.unsigned_int_max() }
     }
@@ -1558,7 +1618,7 @@ impl fmt::Debug for WrappingRange {
 }
 
 /// Information about one scalar component of a Rust type.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "nightly", derive(StableHash))]
 pub enum Scalar {
     Initialized {
@@ -1577,6 +1637,24 @@ pub enum Scalar {
         /// so there is no `valid_range`.
         value: Primitive,
     },
+}
+
+impl fmt::Debug for Scalar {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Scalar::Initialized { value, valid_range } => {
+                let (size, is_signed) = match *value {
+                    Primitive::Int(integer, is_signed) => (integer.size(), is_signed),
+                    Primitive::Float(float) => (float.size(), false),
+                    Primitive::Pointer(_) => (Size::from_bits(128), false),
+                };
+                write!(f, "{value:?} is {:?}", valid_range.debug_as(size, is_signed))
+            }
+            Scalar::Union { value } => {
+                write!(f, "union {value:?}")
+            }
+        }
+    }
 }
 
 impl Scalar {
