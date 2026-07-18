@@ -10,6 +10,11 @@ note: the lint level is defined here
    |
 LL | #![deny(rustdoc::broken_intra_doc_links)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: there's a similarly named item `ExistentStruct`
+   |
+LL - /// This [test][NonExistentStruct<i32>] thing!
+LL + /// This [test][ExistentStruct<i32>] thing!
+   |
 
 error: unresolved link to `NonExistentStruct2`
   --> $DIR/html-as-generics-intra-doc.rs:17:11
@@ -18,6 +23,11 @@ LL | /// This [NonExistentStruct2<i32>] thing!
    |           ^^^^^^^^^^^^^^^^^^^^^^^ no item named `NonExistentStruct2` in scope
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+help: there's a similarly named item `ExistentStruct`
+   |
+LL - /// This [NonExistentStruct2<i32>] thing!
+LL + /// This [ExistentStruct<i32>] thing!
+   |
 
 error: unresolved link to `NonExistentStruct3`
   --> $DIR/html-as-generics-intra-doc.rs:22:11
@@ -26,6 +36,11 @@ LL | /// This [NonExistentStruct3<i32>][] thing!
    |           ^^^^^^^^^^^^^^^^^^^^^^^ no item named `NonExistentStruct3` in scope
    |
    = help: to escape `[` and `]` characters, add '\' before them like `\[` or `\]`
+help: there's a similarly named item `ExistentStruct`
+   |
+LL - /// This [NonExistentStruct3<i32>][] thing!
+LL + /// This [ExistentStruct<i32>][] thing!
+   |
 
 error: unclosed HTML tag `i32`
   --> $DIR/html-as-generics-intra-doc.rs:9:25
