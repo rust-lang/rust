@@ -765,6 +765,24 @@ fn simd_swizzle() {
     assert_eq!(simd_swizzle!(b, a, [3, 4]), f32x2::from_array([-4.0, 10.0]));
 }
 
+fn simd_swizzle_dyn() {
+    fn check_swizzle_dyn<const N: usize>() {
+        assert_eq!(
+            Simd::<u8, N>::default().swizzle_dyn(Simd::<u8, N>::default()),
+            Simd::<u8, N>::default()
+        );
+    }
+
+    // This only covers the cases that are enabled by default, without `-Zbuild-std`.
+    // But that's what our users are most likely to run anyway.
+    check_swizzle_dyn::<8>();
+    check_swizzle_dyn::<16>();
+    check_swizzle_dyn::<24>();
+    check_swizzle_dyn::<32>();
+    check_swizzle_dyn::<48>();
+    check_swizzle_dyn::<64>();
+}
+
 fn simd_gather_scatter() {
     let mut vec: Vec<i16> = vec![10, 11, 12, 13, 14, 15, 16, 17, 18];
     let idxs = Simd::from_array([9, 3, 0, 17]);
@@ -1130,6 +1148,7 @@ fn main() {
     simd_ops_non_pow2();
     simd_cast();
     simd_swizzle();
+    simd_swizzle_dyn();
     simd_gather_scatter();
     simd_round();
     simd_intrinsics();
