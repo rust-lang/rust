@@ -2410,6 +2410,12 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                     Some(sym::cfg) => {
                         let span = attr.span;
                         if self.expand_cfg_true(node, attr, pos).as_bool() {
+                            if matches!(
+                                Node::KIND,
+                                AstFragmentKind::Expr | AstFragmentKind::MethodReceiverExpr
+                            ) {
+                                self.cx.dcx().emit_err(RemoveExprNotSupported { span });
+                            }
                             continue;
                         }
 
