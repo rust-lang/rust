@@ -1,13 +1,43 @@
-error[E0658]: type `u128` cannot be used with this register class in stable
-  --> $DIR/feature-gate-asm_experimental_reg.rs:14:30
+error[E0658]: register class `vreg` can only be used as a clobber in stable
+  --> $DIR/feature-gate-asm_experimental_reg.rs:21:41
    |
-LL |     asm!("{:x}", in(xmm_reg) 0u128);
-   |                              ^^^^^
+LL |     asm!("xvadd.h {1:u}, {0:u}, {0:u}", out(vreg) y, in(vreg) x);
+   |                                         ^^^^^^^^^^^
    |
    = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
    = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: aborting due to 1 previous error
+error[E0658]: register class `vreg` can only be used as a clobber in stable
+  --> $DIR/feature-gate-asm_experimental_reg.rs:21:54
+   |
+LL |     asm!("xvadd.h {1:u}, {0:u}, {0:u}", out(vreg) y, in(vreg) x);
+   |                                                      ^^^^^^^^^^
+   |
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
+   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: type `i8x16` cannot be used with this register class in stable
+  --> $DIR/feature-gate-asm_experimental_reg.rs:21:51
+   |
+LL |     asm!("xvadd.h {1:u}, {0:u}, {0:u}", out(vreg) y, in(vreg) x);
+   |                                                   ^
+   |
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
+   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: type `i8x16` cannot be used with this register class in stable
+  --> $DIR/feature-gate-asm_experimental_reg.rs:21:63
+   |
+LL |     asm!("xvadd.h {1:u}, {0:u}, {0:u}", out(vreg) y, in(vreg) x);
+   |                                                               ^
+   |
+   = note: see issue #133416 <https://github.com/rust-lang/rust/issues/133416> for more information
+   = help: add `#![feature(asm_experimental_reg)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0658`.
