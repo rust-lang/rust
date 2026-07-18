@@ -35,6 +35,9 @@ cfg_select! {
 
 use netc as c;
 
+const MAX_SEND_LEN: usize =
+    if cfg!(target_vendor = "apple") { c_int::MAX as usize } else { <wrlen_t>::MAX as usize };
+
 cfg_select! {
     any(
         target_os = "dragonfly",
@@ -430,7 +433,7 @@ impl TcpStream {
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
-        let len = cmp::min(buf.len(), <wrlen_t>::MAX as usize) as wrlen_t;
+        let len = cmp::min(buf.len(), MAX_SEND_LEN) as wrlen_t;
         let ret = cvt(unsafe {
             c::send(self.inner.as_raw(), buf.as_ptr() as *const c_void, len, MSG_NOSIGNAL)
         })?;
@@ -707,7 +710,7 @@ impl UdpSocket {
     }
 
     pub fn send_to(&self, buf: &[u8], dst: &SocketAddr) -> io::Result<usize> {
-        let len = cmp::min(buf.len(), <wrlen_t>::MAX as usize) as wrlen_t;
+        let len = cmp::min(buf.len(), MAX_SEND_LEN) as wrlen_t;
         let (dst, dstlen) = socket_addr_to_c(dst);
         let ret = cvt(unsafe {
             c::sendto(
@@ -860,7 +863,7 @@ impl UdpSocket {
     }
 
     pub fn send(&self, buf: &[u8]) -> io::Result<usize> {
-        let len = cmp::min(buf.len(), <wrlen_t>::MAX as usize) as wrlen_t;
+        let len = cmp::min(buf.len(), MAX_SEND_LEN) as wrlen_t;
         let ret = cvt(unsafe {
             c::send(self.inner.as_raw(), buf.as_ptr() as *const c_void, len, MSG_NOSIGNAL)
         })?;
