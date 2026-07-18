@@ -10,8 +10,8 @@ use hir_def::{
     AdtId, LocalFieldId, VariantId,
     expr_store::path::Path,
     hir::{
-        BindingAnnotation, BindingId, Expr, ExprId, ExprOrPatIdPacked, Literal, Pat, PatId,
-        RecordFieldPat,
+        BindingAnnotation, BindingId, Expr, ExprId, ExprOrPatId, ExprOrPatIdPacked, Literal, Pat,
+        PatId, RecordFieldPat,
     },
     resolver::ValueNs,
     signatures::VariantFields,
@@ -1248,7 +1248,11 @@ impl<'db> InferenceContext<'db> {
                 self.push_diagnostic(InferenceDiagnostic::UnionPatHasRest { pat });
             }
         } else if !unmentioned_fields.is_empty() && !has_rest_pat {
-            // FIXME: Emit an error.
+            self.push_diagnostic(InferenceDiagnostic::RecordMissingFields {
+                record: ExprOrPatId::PatId(pat),
+                variant,
+                missed_fields: unmentioned_fields.into_iter().map(|f| f.0).collect(),
+            })
         }
     }
 

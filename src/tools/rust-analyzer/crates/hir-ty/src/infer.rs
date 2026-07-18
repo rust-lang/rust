@@ -538,6 +538,14 @@ pub enum InferenceDiagnostic {
         #[type_visitable(ignore)]
         kind: ReturnKind,
     },
+    RecordMissingFields {
+        #[type_visitable(ignore)]
+        record: ExprOrPatId,
+        #[type_visitable(ignore)]
+        variant: VariantId,
+        #[type_visitable(ignore)]
+        missed_fields: Vec<LocalFieldId>,
+    },
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]

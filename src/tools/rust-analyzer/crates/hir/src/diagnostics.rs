@@ -1141,6 +1141,52 @@ impl<'db> AnyDiagnostic<'db> {
             &InferenceDiagnostic::ReturnOutsideFunction { expr, kind } => {
                 ReturnOutsideFunction { expr: expr_syntax(expr)?, kind }.into()
             }
+            &InferenceDiagnostic::RecordMissingFields { record, variant, ref missed_fields } => {
+                let record = expr_or_pat_syntax(record)?;
+                let file = record.file_id;
+                let root = record.file_syntax(db);
+                let variant_data = variant.fields(db);
+                let missed_fields = missed_fields
+                    .iter()
+                    .map(|&idx| {
+                        (
+                            variant_data.fields()[idx].name.clone(),
+                            Field { parent: variant.into(), id: idx },
+                        )
+                    })
+                    .collect();
+                match record.value.to_node(&root) {
+                    Either::Left(ast::Expr::RecordExpr(record_expr))
+                        if record_expr.record_expr_field_list().is_some() =>
+                    {
+                        let field_list_parent_path =
+                            record_expr.path().map(|path| AstPtr::new(&path));
+                        return Some(
+                            MissingFields {
+                                file,
+                                field_list_parent: AstPtr::new(&Either::Left(record_expr)),
+                                field_list_parent_path,
+                                missed_fields,
+                            }
+                            .into(),
+                        );
+                    }
+                    Either::Right(ast::Pat::RecordPat(record_pat))
+                        if record_pat.record_pat_field_list().is_some() =>
+                    {
+                        let field_list_parent_path =
+                            record_pat.path().map(|path| AstPtr::new(&path));
+                        MissingFields {
+                            file,
+                            field_list_parent: AstPtr::new(&Either::Right(record_pat)),
+                            field_list_parent_path,
+                            missed_fields,
+                        }
+                        .into()
+                    }
+                    _ => return None,
+                }
+            }
         })
     }
 
