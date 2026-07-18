@@ -584,16 +584,26 @@ where
 {
 }
 
-/// Marks that an allocator will never invalidate currently allocated memory, even
-/// if its lifetime expires or a mutable reference to it is acquired. This trivially
-/// applies to allocators that always maintain global state, e.g. `System` or `Global`.
-/// Notably, this means that the only way for memory obtained from such an allocator
-/// to be invalidated is an explicit call to a de/reallocating method.
+/// Marks that an allocator and its subtypes will never invalidate currently allocated
+/// memory unless explicitly deallocated via a call to a deallocating method, even if
+/// dropped or if the allocator's lifetime expires.
 ///
-/// This is a necessity in conjunction with [`Pin`], as only `'static` allocators may
-/// be used to back a pinned pointer.
+/// This is a necessity in conjunction with [`Pin`], as only allocators that promise
+/// memory is never reused without a destructor running may be used to back a pinned pointer.
+///
+/// # Safety
+///
+/// Implementors must ensure that memory cannot be freed except via a call to
+/// `Allocator::deallocate`, and that subtype coercion preserves this invariant.
+///
+/// This trivially applies to allocators that always maintain global state, such as
+/// `System` or `Global`. However, due to subtype coercion, it is *not* sound to implement
+/// for an arbitrary `Allocator + 'static` due to [edge-case interactions][unsound] with
+/// `Pin::clone`. Namely, an impl of `StaticAllocator for MyAllocator + 'long` guarantees that an
+/// impl of `StaticAllocator for MyAllocator + 'short` would be sound to write.
 ///
 /// [`Pin`]: ../../core/pin/struct.Pin.html
+/// [unsound]: https://github.com/rust-lang/rust/issues/157089
 #[unstable(feature = "allocator_api", issue = "32838")]
 pub unsafe trait StaticAllocator: Allocator {}
 
@@ -711,5 +721,7 @@ where
 #[unstable(feature = "allocator_api", issue = "32838")]
 unsafe impl<A: Allocator + ?Sized> AllocatorClone for &A {}
 
-#[unstable(feature = "allocator_api", issue = "32838")]
-unsafe impl<A: StaticAllocator + ?Sized> StaticAllocator for &A {}
+// FIXME: is this impl sound? It would be insta-stable behaviour once `Box::pin_in` is stable.
+// see https://rust.tf/157089
+//#[unstable(feature = "allocator_api", issue = "32838")]
+//unsafe impl<A: StaticAllocator + ?Sized> StaticAllocator for &A {}
