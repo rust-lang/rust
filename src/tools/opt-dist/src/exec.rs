@@ -124,6 +124,11 @@ impl Bootstrap {
         self
     }
 
+    pub fn with_cargo(mut self) -> Self {
+        self.cmd = self.cmd.arg("cargo");
+        self
+    }
+
     pub fn dist(env: &Environment, dist_args: &[String]) -> Self {
         let metrics_path = env.build_root().join("metrics.json");
         let args = dist_args.iter().map(|arg| arg.as_str()).collect::<Vec<_>>();
@@ -155,22 +160,6 @@ impl Bootstrap {
         self
     }
 
-    pub fn rustc_pgo_instrument(mut self, profile_dir: &Utf8Path) -> Self {
-        self.cmd = self
-            .cmd
-            .arg("--set")
-            .arg(format!(r#"pgo.rustc.generate="{}""#, normalize_path(profile_dir).as_str()));
-        self
-    }
-
-    pub fn rustdoc_pgo_instrument(mut self, profile_dir: &Utf8Path) -> Self {
-        self.cmd = self
-            .cmd
-            .arg("--set")
-            .arg(format!(r#"pgo.rustdoc.generate="{}""#, normalize_path(profile_dir).as_str()));
-        self
-    }
-
     pub fn without_llvm_lto(mut self) -> Self {
         self.cmd = self
             .cmd
@@ -178,6 +167,14 @@ impl Bootstrap {
             .arg("llvm.thin-lto=false")
             .arg("--set")
             .arg("llvm.link-shared=true");
+        self
+    }
+
+    pub fn rustc_pgo_instrument(mut self, profile_dir: &Utf8Path) -> Self {
+        self.cmd = self
+            .cmd
+            .arg("--set")
+            .arg(format!(r#"pgo.rustc.generate="{}""#, normalize_path(profile_dir).as_str()));
         self
     }
 
@@ -189,11 +186,35 @@ impl Bootstrap {
         self
     }
 
+    pub fn rustdoc_pgo_instrument(mut self, profile_dir: &Utf8Path) -> Self {
+        self.cmd = self
+            .cmd
+            .arg("--set")
+            .arg(format!(r#"pgo.rustdoc.generate="{}""#, normalize_path(profile_dir).as_str()));
+        self
+    }
+
     pub fn rustdoc_pgo_optimize(mut self, profile: &RustdocPGOProfile) -> Self {
         self.cmd = self
             .cmd
             .arg("--set")
             .arg(format!(r#"pgo.rustdoc.use="{}""#, normalize_path(&profile.0).as_str()));
+        self
+    }
+
+    pub fn cargo_pgo_instrument(mut self, profile_dir: &Utf8Path) -> Self {
+        self.cmd = self
+            .cmd
+            .arg("--set")
+            .arg(format!(r#"pgo.cargo.generate="{}""#, normalize_path(profile_dir).as_str()));
+        self
+    }
+
+    pub fn cargo_pgo_optimize(mut self, profile: &RustcPGOProfile) -> Self {
+        self.cmd = self
+            .cmd
+            .arg("--set")
+            .arg(format!(r#"pgo.cargo.use="{}""#, normalize_path(&profile.0).as_str()));
         self
     }
 
