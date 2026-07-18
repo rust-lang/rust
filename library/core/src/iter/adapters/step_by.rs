@@ -2,7 +2,7 @@ use crate::intrinsics;
 use crate::iter::{TrustedLen, TrustedRandomAccess, from_fn};
 use crate::num::NonZero;
 use crate::ops::{Range, Try};
-use crate::range::iter::RangeIter;
+use crate::range::RangeIter;
 
 /// An iterator for stepping iterators by a custom amount.
 ///
