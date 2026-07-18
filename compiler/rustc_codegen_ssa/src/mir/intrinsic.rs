@@ -85,7 +85,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         if let sym::typed_swap_nonoverlapping = name {
             let pointee_ty = fn_args.type_at(0);
             let pointee_layout = bx.layout_of(pointee_ty);
-            if !bx.is_backend_ref(pointee_layout)
+            if pointee_layout.is_ssa_standalone()
                 // But if we're not going to optimize, trying to use the fallback
                 // body just makes things worse, so don't bother.
                 || bx.sess().opts.optimize == OptLevel::No
@@ -609,7 +609,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         };
 
         debug_assert!(
-            op_val.is_expected_variant_for_type(bx.cx(), result_layout),
+            op_val.is_expected_variant_for_type(result_layout),
             "[{name:?}] Value {op_val:?} is wrong for type {result_layout:?}",
         );
 
