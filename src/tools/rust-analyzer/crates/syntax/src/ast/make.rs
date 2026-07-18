@@ -565,7 +565,17 @@ pub fn async_move_block_expr(
 }
 
 pub fn tail_only_block_expr(tail_expr: ast::Expr) -> ast::BlockExpr {
-    ast_from_text(&format!("fn f() {{ {tail_expr} }}"))
+    quote! {
+        BlockExpr {
+            StmtList {
+                ['{']
+                " "
+                #tail_expr
+                " "
+                ['}']
+            }
+        }
+    }
 }
 
 /// Ideally this function wouldn't exist since it involves manual indenting.
@@ -1043,7 +1053,14 @@ pub fn untyped_param(pat: ast::Pat) -> ast::Param {
 }
 
 pub fn param(pat: ast::Pat, ty: ast::Type) -> ast::Param {
-    ast_from_text(&format!("fn f({pat}: {ty}) {{ }}"))
+    quote! {
+        Param {
+            #pat
+            [:]
+            " "
+            #ty
+        }
+    }
 }
 
 pub fn self_param() -> ast::SelfParam {
