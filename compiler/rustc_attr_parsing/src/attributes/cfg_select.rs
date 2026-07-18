@@ -211,8 +211,8 @@ fn lint_unreachable(
                 break;
             }
             CfgEntry::Bool(false, _) => continue,
-            CfgEntry::NameValue { name, value, .. } => {
-                if value.is_none() {
+            CfgEntry::NameValue { name, value, .. } => match value {
+                None => {
                     // `name` will be false in all subsequent branches.
                     let current = known.insert(*name, false);
 
@@ -228,9 +228,12 @@ fn lint_unreachable(
                         }
                     }
                 }
-            }
-            CfgEntry::Not(inner, _) => {
-                if let CfgEntry::NameValue { name, value: None, .. } = &**inner {
+                Some(_) => {
+                    // FIXME(https://github.com/rust-lang/rust/pull/149960#issuecomment-3780301699): expand capabilities.
+                }
+            },
+            CfgEntry::Not(inner, _) => match &**inner {
+                CfgEntry::NameValue { name, value: None, .. } => {
                     // `name` will be true in all subsequent branches.
                     let current = known.insert(*name, true);
 
@@ -246,7 +249,10 @@ fn lint_unreachable(
                         }
                     }
                 }
-            }
+                _ => {
+                    // FIXME(https://github.com/rust-lang/rust/pull/149960#issuecomment-3780301699): expand capabilities.
+                }
+            },
             CfgEntry::All(_, _) | CfgEntry::Any(_, _) => {
                 /* for now we don't bother solving these */
             }
