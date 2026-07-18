@@ -610,8 +610,8 @@ impl<'a> AttributeParseError<'a> {
                 for Suggestion { msg, sp, code } in suggestions {
                     diag.span_suggestion_verbose(
                         *sp,
-                        msg.to_string(),
-                        code.to_string(),
+                        msg.clone(),
+                        code.clone(),
                         Applicability::MaybeIncorrect,
                     );
                 }
@@ -659,9 +659,8 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
                     // Avoid emitting an "attribute must be of the form" suggestion, as the
                     // attribute is likely to be well-formed already.
                     return diag;
-                } else {
-                    diag.span_label(self.span, "expected a string literal here");
                 }
+                diag.span_label(self.span, "expected a string literal here");
             }
             AttributeParseErrorReason::ExpectedFilenameLiteral => {
                 diag.span_label(self.span, "expected a filename string literal here");
@@ -723,7 +722,7 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
                 if self.span != self.attr_span {
                     diag.span_label(
                         self.span,
-                        format!("expected this to be of the form `... = \"...\"`"),
+                        "expected this to be of the form `... = \"...\"`".to_string(),
                     );
                 }
             }
@@ -741,14 +740,14 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
                 strings,
                 list: false,
             } => {
-                self.render_expected_specific_argument(&mut diag, *possibilities, *strings);
+                self.render_expected_specific_argument(&mut diag, possibilities, *strings);
             }
             AttributeParseErrorReason::ExpectedSpecificArgument {
                 possibilities,
                 strings,
                 list: true,
             } => {
-                self.render_expected_specific_argument_list(&mut diag, *possibilities, *strings);
+                self.render_expected_specific_argument_list(&mut diag, possibilities, *strings);
             }
             AttributeParseErrorReason::ExpectedIdentifier => {
                 diag.span_label(self.span, "expected a valid identifier here");
