@@ -635,6 +635,32 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     &system_info,
                 )?;
             }
+            "GetActiveProcessorCount" => {
+                // FIXME: This does not have a direct test (#3179).
+                let [_group_number] = this.check_shim_sig(
+                    shim_sig!(extern "system" fn(u16) -> u32),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+                // Miri does not model processor groups, so report every CPU.
+                this.write_scalar(Scalar::from_u32(this.machine.num_cpus), dest)?;
+            }
+            "GetProcessGroupAffinity" => {
+                // FIXME: This does not have a direct test (#3179).
+                let [_handle, group_count, _group_array] = this.check_shim_sig(
+                    shim_sig!(extern "system" fn(winapi::HANDLE, *mut _, *mut _) -> winapi::BOOL),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+                // Report more than one group so `available_parallelism` takes the
+                // `GetActiveProcessorCount(ALL_PROCESSOR_GROUPS)` path; a single-group
+                // affinity mask cannot hold the up-to-1024 CPUs the num-cpus test uses.
+                let group_count = this.deref_pointer_as(group_count, this.machine.layouts.u16)?;
+                this.write_scalar(Scalar::from_u16(2), &group_count)?;
+                this.write_scalar(Scalar::from_i32(1), dest)?; // TRUE
+            }
 
             // Thread-local storage
             "TlsAlloc" => {

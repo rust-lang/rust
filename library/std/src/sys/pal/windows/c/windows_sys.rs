@@ -60,6 +60,7 @@ windows_link::link!("kernel32.dll" "system" fn GetModuleHandleExW(dwflags : u32,
 windows_link::link!("kernel32.dll" "system" fn GetModuleHandleW(lpmodulename : PCWSTR) -> HMODULE);
 windows_link::link!("kernel32.dll" "system" fn GetOverlappedResult(hfile : HANDLE, lpoverlapped : *const OVERLAPPED, lpnumberofbytestransferred : *mut u32, bwait : BOOL) -> BOOL);
 windows_link::link!("kernel32.dll" "system" fn GetProcAddress(hmodule : HMODULE, lpprocname : PCSTR) -> FARPROC);
+windows_link::link!("kernel32.dll" "system" fn GetProcessGroupAffinity(hprocess : HANDLE, groupcount : *mut u16, grouparray : *mut u16) -> BOOL);
 windows_link::link!("kernel32.dll" "system" fn GetProcessId(process : HANDLE) -> u32);
 windows_link::link!("kernel32.dll" "system" fn GetStdHandle(nstdhandle : STD_HANDLE) -> HANDLE);
 windows_link::link!("kernel32.dll" "system" fn GetSystemDirectoryW(lpbuffer : PWSTR, usize : u32) -> u32);
