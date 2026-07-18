@@ -971,18 +971,164 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         values
     }
 
+    fn lifetime_display(&self, lifetime: Region<'_>) -> String {
+        let s = lifetime.to_string();
+        if s.is_empty() { "'_".to_string() } else { s }
+    }
+
+    fn compare_generics(
+        &self,
+        mut values: &mut (DiagStyledString, DiagStyledString),
+        sub1: &[ty::GenericArg<'tcx>],
+        sub2: &[ty::GenericArg<'tcx>],
+    ) {
+        let len = sub1.len();
+        // Only draw `<...>` if there are lifetime/type arguments.
+        if sub1.len() > 0 {
+            values.0.push_normal("<");
+        }
+        if sub2.len() > 0 {
+            values.1.push_normal("<");
+        }
+
+        if sub1.len() == sub2.len() {
+            for (i, (arg1, arg2)) in sub1.iter().zip(sub2).enumerate().take(len) {
+                self.push_comma(&mut values.0, &mut values.1, i);
+                match (arg1.kind(), arg2.kind()) {
+                    // At one point we'd like to elide all lifetimes here, they are
+                    // irrelevant for all diagnostics that use this output.
+                    //
+                    //     Foo<'x, '_, Bar>
+                    //     Foo<'y, '_, Qux>
+                    //         ^^  ^^  --- type arguments are not elided
+                    //         |   |
+                    //         |   elided as they were the same
+                    //         not elided, they were different, but irrelevant
+                    //
+                    // For bound lifetimes, keep the names of the lifetimes,
+                    // even if they are the same so that it's clear what's happening
+                    // if we have something like
+                    //
+                    // for<'r, 's> fn(Inv<'r>, Inv<'s>)
+                    // for<'r> fn(Inv<'r>, Inv<'r>)
+                    (ty::GenericArgKind::Lifetime(l1), ty::GenericArgKind::Lifetime(l2)) => {
+                        let l1_str = self.lifetime_display(l1);
+                        let l2_str = self.lifetime_display(l2);
+                        if l1 != l2 {
+                            values.0.push_highlighted(l1_str);
+                            values.1.push_highlighted(l2_str);
+                        } else if l1.is_bound() || self.tcx.sess.opts.verbose {
+                            values.0.push_normal(l1_str);
+                            values.1.push_normal(l2_str);
+                        } else {
+                            values.0.push_normal("'_");
+                            values.1.push_normal("'_");
+                        }
+                    }
+                    (ty::GenericArgKind::Type(ta1), ty::GenericArgKind::Type(ta2)) => {
+                        if ta1 == ta2 && !self.tcx.sess.opts.verbose {
+                            values.0.push_normal("_");
+                            values.1.push_normal("_");
+                        } else {
+                            self.recurse(ta1, ta2, &mut values);
+                        }
+                    }
+                    // We're comparing two types with the same path, so we compare the type
+                    // arguments for both. If they are the same, do not highlight and elide
+                    // from the output.
+                    //     Foo<_, Bar>
+                    //     Foo<_, Qux>
+                    //         ^ elided type as this type argument was the same in both sides
+
+                    // Do the same for const arguments, if they are equal, do not highlight and
+                    // elide them from the output.
+                    (ty::GenericArgKind::Const(ca1), ty::GenericArgKind::Const(ca2)) => {
+                        self.maybe_highlight(ca1, ca2, &mut values, self.tcx);
+                    }
+                    // The two params are of different kinds. We don't highlight because the problem
+                    // is not with these arguments, but rather with the type containing them.
+                    _ => {
+                        values.0.push_normal(&format!("{arg1}"));
+                        values.1.push_normal(&format!("{arg2}"));
+                    }
+                }
+            }
+        } else {
+            // The argument count is different on both sides, highlight both sides
+            for (value, args) in [(&mut values.0, sub1), (&mut values.1, sub2)] {
+                for (i, arg) in args.iter().enumerate() {
+                    if i > 0 {
+                        value.push_normal(", ");
+                    }
+                    match arg.kind() {
+                        ty::GenericArgKind::Lifetime(l) => {
+                            let l_str = self.lifetime_display(l);
+                            if l.is_bound() || self.tcx.sess.opts.verbose {
+                                value.push_normal(l_str);
+                            } else {
+                                value.push_normal("'_");
+                            }
+                        }
+                        ty::GenericArgKind::Type(ty) => {
+                            if !self.tcx.sess.opts.verbose {
+                                value.push_normal("_");
+                            } else {
+                                value.push_normal(format!("{ty}"));
+                            }
+                        }
+                        ty::GenericArgKind::Const(ca) => {
+                            value.push_normal(format!("{ca}"));
+                        }
+                    }
+                }
+            }
+        }
+
+        // Close the type argument bracket.
+        // Only draw `<...>` if there are arguments.
+        if sub1.len() > 0 {
+            values.0.push_normal(">");
+        }
+        if sub2.len() > 0 {
+            values.1.push_normal(">");
+        }
+    }
+
+    fn recurse(
+        &self,
+        t1: Ty<'tcx>,
+        t2: Ty<'tcx>,
+        values: &mut (DiagStyledString, DiagStyledString),
+    ) {
+        let (x1, x2) = self.cmp(t1, t2);
+        (values.0).0.extend(x1.0);
+        (values.1).0.extend(x2.0);
+    }
+
+    fn maybe_highlight<T: Eq + ToString>(
+        &self,
+        t1: T,
+        t2: T,
+        (buf1, buf2): &mut (DiagStyledString, DiagStyledString),
+        tcx: TyCtxt<'_>,
+    ) {
+        let highlight = t1 != t2;
+        let (t1, t2) = if highlight || tcx.sess.opts.verbose {
+            (t1.to_string(), t2.to_string())
+        } else {
+            // The two types are the same, elide and don't highlight.
+            ("_".into(), "_".into())
+        };
+        buf1.push(t1, highlight);
+        buf2.push(t2, highlight);
+    }
+
     /// Compares two given types, eliding parts that are the same between them and highlighting
     /// relevant differences, and return two representation of those types for highlighted printing.
     pub fn cmp(&self, t1: Ty<'tcx>, t2: Ty<'tcx>) -> (DiagStyledString, DiagStyledString) {
         debug!("cmp(t1={}, t1.kind={:?}, t2={}, t2.kind={:?})", t1, t1.kind(), t2, t2.kind());
 
         // helper functions
-        let recurse = |t1, t2, values: &mut (DiagStyledString, DiagStyledString)| {
-            let (x1, x2) = self.cmp(t1, t2);
-            (values.0).0.extend(x1.0);
-            (values.1).0.extend(x2.0);
-        };
-
         fn fmt_region<'tcx>(region: ty::Region<'tcx>) -> String {
             let mut r = region.to_string();
             if r == "'_" {
@@ -1000,23 +1146,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         ) {
             s.push_highlighted(fmt_region(region));
             s.push_highlighted(mutbl.prefix_str());
-        }
-
-        fn maybe_highlight<T: Eq + ToString>(
-            t1: T,
-            t2: T,
-            (buf1, buf2): &mut (DiagStyledString, DiagStyledString),
-            tcx: TyCtxt<'_>,
-        ) {
-            let highlight = t1 != t2;
-            let (t1, t2) = if highlight || tcx.sess.opts.verbose {
-                (t1.to_string(), t2.to_string())
-            } else {
-                // The two types are the same, elide and don't highlight.
-                ("_".into(), "_".into())
-            };
-            buf1.push(t1, highlight);
-            buf2.push(t2, highlight);
         }
 
         fn cmp_ty_refs<'tcx>(
@@ -1093,83 +1222,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             .filter(|(a, b)| a == b)
                             .count();
                     let len = sub1.len() - common_default_params;
-
-                    // Only draw `<...>` if there are lifetime/type arguments.
-                    if len > 0 {
-                        values.0.push_normal("<");
-                        values.1.push_normal("<");
-                    }
-
-                    fn lifetime_display(lifetime: Region<'_>) -> String {
-                        let s = lifetime.to_string();
-                        if s.is_empty() { "'_".to_string() } else { s }
-                    }
-
-                    for (i, (arg1, arg2)) in sub1.iter().zip(sub2).enumerate().take(len) {
-                        self.push_comma(&mut values.0, &mut values.1, i);
-                        match arg1.kind() {
-                            // At one point we'd like to elide all lifetimes here, they are
-                            // irrelevant for all diagnostics that use this output.
-                            //
-                            //     Foo<'x, '_, Bar>
-                            //     Foo<'y, '_, Qux>
-                            //         ^^  ^^  --- type arguments are not elided
-                            //         |   |
-                            //         |   elided as they were the same
-                            //         not elided, they were different, but irrelevant
-                            //
-                            // For bound lifetimes, keep the names of the lifetimes,
-                            // even if they are the same so that it's clear what's happening
-                            // if we have something like
-                            //
-                            // for<'r, 's> fn(Inv<'r>, Inv<'s>)
-                            // for<'r> fn(Inv<'r>, Inv<'r>)
-                            ty::GenericArgKind::Lifetime(l1) => {
-                                let l1_str = lifetime_display(l1);
-                                let l2 = arg2.expect_region();
-                                let l2_str = lifetime_display(l2);
-                                if l1 != l2 {
-                                    values.0.push_highlighted(l1_str);
-                                    values.1.push_highlighted(l2_str);
-                                } else if l1.is_bound() || self.tcx.sess.opts.verbose {
-                                    values.0.push_normal(l1_str);
-                                    values.1.push_normal(l2_str);
-                                } else {
-                                    values.0.push_normal("'_");
-                                    values.1.push_normal("'_");
-                                }
-                            }
-                            ty::GenericArgKind::Type(ta1) => {
-                                let ta2 = arg2.expect_ty();
-                                if ta1 == ta2 && !self.tcx.sess.opts.verbose {
-                                    values.0.push_normal("_");
-                                    values.1.push_normal("_");
-                                } else {
-                                    recurse(ta1, ta2, &mut values);
-                                }
-                            }
-                            // We're comparing two types with the same path, so we compare the type
-                            // arguments for both. If they are the same, do not highlight and elide
-                            // from the output.
-                            //     Foo<_, Bar>
-                            //     Foo<_, Qux>
-                            //         ^ elided type as this type argument was the same in both sides
-
-                            // Do the same for const arguments, if they are equal, do not highlight and
-                            // elide them from the output.
-                            ty::GenericArgKind::Const(ca1) => {
-                                let ca2 = arg2.expect_const();
-                                maybe_highlight(ca1, ca2, &mut values, self.tcx);
-                            }
-                        }
-                    }
-
-                    // Close the type argument bracket.
-                    // Only draw `<...>` if there are arguments.
-                    if len > 0 {
-                        values.0.push_normal(">");
-                        values.1.push_normal(">");
-                    }
+                    self.compare_generics(&mut values, &sub1[..len], &sub2[..len]);
                     values
                 } else {
                     // Check for case:
@@ -1248,20 +1301,20 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             (&ty::Ref(r1, ref_ty1, mutbl1), &ty::Ref(r2, ref_ty2, mutbl2)) => {
                 let mut values = (DiagStyledString::new(), DiagStyledString::new());
                 cmp_ty_refs(r1, mutbl1, r2, mutbl2, &mut values);
-                recurse(ref_ty1, ref_ty2, &mut values);
+                self.recurse(ref_ty1, ref_ty2, &mut values);
                 values
             }
             // When finding T != &T, highlight the borrow
             (&ty::Ref(r1, ref_ty1, mutbl1), _) => {
                 let mut values = (DiagStyledString::new(), DiagStyledString::new());
                 push_ref(r1, mutbl1, &mut values.0);
-                recurse(ref_ty1, t2, &mut values);
+                self.recurse(ref_ty1, t2, &mut values);
                 values
             }
             (_, &ty::Ref(r2, ref_ty2, mutbl2)) => {
                 let mut values = (DiagStyledString::new(), DiagStyledString::new());
                 push_ref(r2, mutbl2, &mut values.1);
-                recurse(t1, ref_ty2, &mut values);
+                self.recurse(t1, ref_ty2, &mut values);
                 values
             }
 
@@ -1271,7 +1324,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 let len = args1.len();
                 for (i, (left, right)) in args1.iter().zip(args2).enumerate() {
                     self.push_comma(&mut values.0, &mut values.1, i);
-                    recurse(left, right, &mut values);
+                    self.recurse(left, right, &mut values);
                 }
                 if len == 1 {
                     // Keep the output for single element tuples as `(ty,)`.
@@ -1309,9 +1362,83 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 self.cmp_fn_sig(sig_tys1.with(*hdr1), None, sig_tys2.with(*hdr2), None)
             }
 
+            (ty::Alias(kind1, alias1), ty::Alias(kind2, alias2))
+                if kind1 == kind2 && alias1 == alias2 && !self.tcx.sess.opts.verbose =>
+            {
+                let mut strs = (DiagStyledString::new(), DiagStyledString::new());
+                strs.0.push_normal(format!("_"));
+                strs.1.push_normal(format!("_"));
+                strs
+            }
+
+            (ty::Alias(kind1, alias1), ty::Alias(kind2, alias2)) if kind1 == kind2 => {
+                let mut values = (DiagStyledString::new(), DiagStyledString::new());
+                match (alias1.kind, alias2.kind) {
+                    (ty::Projection { def_id: def_id1 }, ty::Projection { def_id: def_id2 }) => {
+                        // `<Type as Trait>::Name<args>`
+                        values.0.push_normal(format!("<"));
+                        values.1.push_normal(format!("<"));
+                        let (trait_ref1, args1) = alias1.trait_ref_and_own_args(self.tcx);
+                        let (trait_ref2, args2) = alias2.trait_ref_and_own_args(self.tcx);
+                        self.recurse(trait_ref1.self_ty(), trait_ref2.self_ty(), &mut values);
+
+                        values.0.push_normal(format!(" as "));
+                        values.1.push_normal(format!(" as "));
+                        if trait_ref1.def_id == trait_ref2.def_id {
+                            if self.tcx.sess.opts.verbose {
+                                values
+                                    .0
+                                    .push_normal(format!("{}", trait_ref1.print_only_trait_name()));
+                                values
+                                    .1
+                                    .push_normal(format!("{}", trait_ref2.print_only_trait_name()));
+                            } else {
+                                with_forced_trimmed_paths! {{
+                                    values
+                                        .0
+                                        .push_normal(format!("{}", trait_ref1.print_only_trait_name()));
+                                    values
+                                        .1
+                                        .push_normal(format!("{}", trait_ref2.print_only_trait_name()));
+                                }}
+                            }
+                            // We skip the type of `Self`:
+                            let args1 = &trait_ref1.args[1..];
+                            let args2 = &trait_ref2.args[1..];
+                            self.compare_generics(&mut values, args1, args2);
+                        } else {
+                            values
+                                .0
+                                .push_highlighted(format!("{}", trait_ref1.print_trait_sugared()));
+                            values
+                                .1
+                                .push_highlighted(format!("{}", trait_ref2.print_trait_sugared()));
+                        }
+                        values.0.push_normal(format!(">::"));
+                        values.1.push_normal(format!(">::"));
+                        let name1 = self.tcx.item_name(def_id1);
+                        let name2 = self.tcx.item_name(def_id2);
+                        if def_id1 == def_id2 {
+                            values.0.push_normal(format!("{name1}"));
+                            values.1.push_normal(format!("{name2}"));
+                        } else {
+                            // The two types are already different, so the arguments are not
+                            // illuminating anything by highlighting them in any way.
+                            values.0.push_highlighted(format!("{name1}"));
+                            values.1.push_highlighted(format!("{name2}"));
+                        }
+                        self.compare_generics(&mut values, args1, args2);
+                    }
+                    _ => {
+                        self.maybe_highlight(t1, t2, &mut values, self.tcx);
+                    }
+                }
+                values
+            }
+
             _ => {
                 let mut strs = (DiagStyledString::new(), DiagStyledString::new());
-                maybe_highlight(t1, t2, &mut strs, self.tcx);
+                self.maybe_highlight(t1, t2, &mut strs, self.tcx);
                 strs
             }
         }
@@ -2216,16 +2343,52 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 // Use the terminal width as the basis to determine when to compress the printed
                 // out type, but give ourselves some leeway to avoid ending up creating a file for
                 // a type that is somewhat shorter than the path we'd write to.
-                let len = self.tcx.sess.diagnostic_width() + 40;
+                let len = self.tcx.sess.diagnostic_width();
                 let exp_s = exp.content();
                 let fnd_s = fnd.content();
-                if exp_s.len() > len {
-                    let exp_s = self.tcx.short_string(expected, long_ty_path);
-                    exp = DiagStyledString::highlighted(exp_s);
-                }
-                if fnd_s.len() > len {
-                    let fnd_s = self.tcx.short_string(found, long_ty_path);
-                    fnd = DiagStyledString::highlighted(fnd_s);
+                if !self.tcx.sess.opts.verbose
+                    && self.tcx.sess.opts.unstable_opts.write_long_types_to_disk
+                {
+                    // We aren't explicitly asking for `--verbose` output, and we are storing long
+                    // types to disk, so we try to shorten the output.
+                    if exp_s.len() > len && fnd_s.len() > len {
+                        let exp_short = self.tcx.short_string(expected, long_ty_path);
+                        let fnd_short = self.tcx.short_string(found, long_ty_path);
+                        // We use a crude shortening on the highlighted strings themselves. This
+                        // doesn't ensure that the two strings will look different, or that the
+                        // output is very readable, but at least keeps the highlighting around.
+                        exp.shorten();
+                        fnd.shorten();
+                        if exp_short != fnd_short {
+                            // The short strings aren't the same visually, so it might make sense
+                            // to use them instead.
+                            if exp.0.len() <= 1 {
+                                // The entire type is highlighted, let's use the short string
+                                // instead, which is slightly better.
+                                exp = DiagStyledString::highlighted(exp_short);
+                            }
+                            if fnd.0.len() <= 1 {
+                                // The entire type is highlighted, let's use the short string
+                                // instead, which is slightly better.
+                                fnd = DiagStyledString::highlighted(fnd_short);
+                            }
+                        }
+                    } else {
+                        if exp_s.len() > len {
+                            exp.shorten();
+                            let exp_short = self.tcx.short_string(expected, long_ty_path);
+                            if exp.0.len() <= 1 {
+                                exp = DiagStyledString::highlighted(exp_short);
+                            }
+                        }
+                        if fnd_s.len() > len {
+                            fnd.shorten();
+                            let fnd_short = self.tcx.short_string(found, long_ty_path);
+                            if fnd.0.len() <= 1 {
+                                fnd = DiagStyledString::highlighted(fnd_short);
+                            }
+                        }
+                    }
                 }
                 (exp, fnd)
             }
