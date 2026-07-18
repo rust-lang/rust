@@ -63,7 +63,10 @@ Due to its proprietary nature, it is very difficult to find information about PD
 of the sources were made at vastly different times and contain incomplete or somewhat contradictory
 information. As such this page will aim to collect as many sources as possible.
 
-* [CodeView 1.0 specification](./CodeView.pdf)
+* [TIS PE specification](https://web.archive.org/web/20260315080740/http://x-ways.net/winhex/kb/ff/PE_EXE.pdf)
+which includes a lengthy section titled "Microsoft Symbol and Type Information", detailing much of
+the CodeView format. The document was created in 1993, but the information is still detailed,
+accurate, and has useful diagrams.
 * LLVM
     * [CodeView Overview](https://llvm.org/docs/SourceLevelDebugging.html#codeview-debug-info-format)
     * [PDB Overview and technical details](https://llvm.org/docs/PDB/index.html)
@@ -78,6 +81,8 @@ information. As such this page will aim to collect as many sources as possible.
     * [Debug Interface Access SDK](https://learn.microsoft.com/en-us/visualstudio/debugger/debug-interface-access/getting-started-debug-interface-access-sdk).
     While it does not document the PDB format directly, details can be gleaned from the interface
     itself.
+    * [PDB-Documentation](https://github.com/PascalBeyer/PDB-Documentation) - a resource compiling
+    much of the publicly available information about PDB and CodeView.
 
 # Debuggers
 
