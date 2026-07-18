@@ -1016,8 +1016,9 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             // that would result in invalid syntax (fixes #116464)
             if !self.is_in_trait_impl() {
                 let unused_generics = &self.gen_args.args[self.num_expected_type_or_const_args()..];
-                let mut unbound_assoc_consts =
-                    unbound_assoc_items.iter().filter(|item| item.is_type_const());
+                let mut unbound_assoc_consts = unbound_assoc_items
+                    .iter()
+                    .filter(|item| matches!(item.kind, ty::AssocKind::Const { .. }));
                 let mut unbound_assoc_types =
                     unbound_assoc_items.iter().filter(|item| item.is_type());
                 let suggestions = unused_generics
