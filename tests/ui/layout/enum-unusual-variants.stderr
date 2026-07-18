@@ -4,7 +4,7 @@ error: largest_niche: Some(Niche { offset: Size(0 bytes), value: u8, valid_range
 LL | enum With128Variants {
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: largest_niche: Some(Niche { offset: Size(0 bytes), value: i8, valid_range: (..=2) | (125..) })
+error: largest_niche: Some(Niche { offset: Size(0 bytes), value: i8, valid_range: 0..=127 })
   --> $DIR/enum-unusual-variants.rs:22:1
    |
 LL | enum With128VariantsI8 {
@@ -22,20 +22,20 @@ error: largest_niche: Some(Niche { offset: Size(0 bytes), value: u8, valid_range
 LL | enum Symmetric {
    | ^^^^^^^^^^^^^^
 
-error: largest_niche: Some(Niche { offset: Size(0 bytes), value: u8, valid_range: (..=1) | (129..) })
+error: largest_niche: Some(Niche { offset: Size(0 bytes), value: u8, valid_range: 1..=129 })
   --> $DIR/enum-unusual-variants.rs:59:1
    |
 LL | enum SymmetricU8 {
    | ^^^^^^^^^^^^^^^^
 
-error: largest_niche: Some(Niche { offset: Size(0 bytes), value: i8, valid_range: (..=1) | (129..) })
-  --> $DIR/enum-unusual-variants.rs:66:1
+error: largest_niche: Some(Niche { offset: Size(0 bytes), value: i8, valid_range: 1..=129 })
+  --> $DIR/enum-unusual-variants.rs:69:1
    |
 LL | enum SymmetricSigned {
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: largest_niche: Some(Niche { offset: Size(0 bytes), value: i8, valid_range: (..=1) | (129..) })
-  --> $DIR/enum-unusual-variants.rs:74:1
+error: largest_niche: Some(Niche { offset: Size(0 bytes), value: i8, valid_range: 1..=129 })
+  --> $DIR/enum-unusual-variants.rs:77:1
    |
 LL | enum SymmetricSignedI8 {
    | ^^^^^^^^^^^^^^^^^^^^^^

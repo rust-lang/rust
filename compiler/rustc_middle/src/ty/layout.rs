@@ -68,9 +68,11 @@ impl abi::Integer {
     }
 
     /// Finds the appropriate Integer type and signedness for the given
-    /// signed discriminant range and `#[repr]` attribute.
-    /// N.B.: `u128` values above `i128::MAX` will be treated as signed, but
-    /// that shouldn't affect anything, other than maybe debuginfo.
+    /// discriminant range and `#[repr]` attribute.
+    ///
+    /// To represent the way the values were written in the rust source, min and max
+    /// are in different types. It's thus possible to pass in an unrepresentable range,
+    /// and the method will panic in those cases.
     ///
     /// This is the basis for computing the type of the *tag* of an enum (which can be smaller than
     /// the type of the *discriminant*, which is determined by [`ReprOptions::discr_type`]).
@@ -78,15 +80,24 @@ impl abi::Integer {
         tcx: TyCtxt<'tcx>,
         ty: Ty<'tcx>,
         repr: &ReprOptions,
-        min: i128,
-        max: i128,
+        min_negative: i128,
+        max_positive: u128,
     ) -> (abi::Integer, bool) {
+        assert!(
+            min_negative >= 0 || max_positive <= i128::MAX.cast_unsigned(),
+            "No type can represent the full range of {min_negative}..={max_positive}",
+        );
+
         // Theoretically, negative values could be larger in unsigned representation
         // than the unsigned representation of the signed minimum. However, if there
         // are any negative values, the only valid unsigned representation is u128
         // which can fit all i128 values, so the result remains unaffected.
-        let unsigned_fit = abi::Integer::fit_unsigned(cmp::max(min as u128, max as u128));
-        let signed_fit = cmp::max(abi::Integer::fit_signed(min), abi::Integer::fit_signed(max));
+        let unsigned_fit =
+            abi::Integer::fit_unsigned(cmp::max(min_negative.cast_unsigned(), max_positive));
+        let signed_fit = cmp::max(
+            abi::Integer::fit_signed(min_negative),
+            abi::Integer::fit_signed(max_positive.cast_signed()),
+        );
 
         if let Some(ity) = repr.int {
             let discr = abi::Integer::from_attr(&tcx, ity);

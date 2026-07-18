@@ -67,13 +67,13 @@ error: largest_niche: Some(Niche { offset: Size(0 bytes), value: u32, valid_rang
 LL | enum PositiveByteC {
    | ^^^^^^^^^^^^^^^^^^
 
-error: largest_niche: Some(Niche { offset: Size(0 bytes), value: i32, valid_range: (..=0) | (2147483648..) })
+error: largest_niche: Some(Niche { offset: Size(0 bytes), value: i32, valid_range: 0..=2147483648 })
   --> $DIR/enum-signedness.rs:46:1
    |
 LL | enum Negative32BitRust {
    | ^^^^^^^^^^^^^^^^^^^^^^
 
-error: largest_niche: Some(Niche { offset: Size(0 bytes), value: i32, valid_range: (..=0) | (2147483648..) })
+error: largest_niche: Some(Niche { offset: Size(0 bytes), value: i32, valid_range: 0..=2147483648 })
   --> $DIR/enum-signedness.rs:54:1
    |
 LL | enum Negative32BitC {

@@ -20,7 +20,7 @@ enum With128Variants {
 #[rustc_dump_layout(largest_niche)]
 #[repr(i8)]
 enum With128VariantsI8 {
-    //~^ ERROR: value: i8, valid_range: (..=2) | (125..)
+    //~^ ERROR: value: i8, valid_range: 0..=127
     _0 = 0,
     _1 = 1,
     _2 = 2,
@@ -57,14 +57,17 @@ enum Symmetric {
 #[rustc_dump_layout(largest_niche)]
 #[repr(u8)]
 enum SymmetricU8 {
-    //~^ ERROR: value: u8, valid_range: (..=1) | (129..)
+    //~^ ERROR: value: u8, valid_range: 1..=129
     A = 1,
     B = 129,
 }
 
+// Note that to get this one to work it's essential that the `valid_range` is
+// calculated on the *tag* values, because if calculated on the *discriminants*
+// the best range is different because of the wider range of `isize`.
 #[rustc_dump_layout(largest_niche)]
 enum SymmetricSigned {
-    //~^ ERROR: value: i8, valid_range: (..=1) | (129..)
+    //~^ ERROR: value: i8, valid_range: 1..=129
     A = -127,
     B = 1,
 }
@@ -72,7 +75,7 @@ enum SymmetricSigned {
 #[rustc_dump_layout(largest_niche)]
 #[repr(i8)]
 enum SymmetricSignedI8 {
-    //~^ ERROR: value: i8, valid_range: (..=1) | (129..)
+    //~^ ERROR: value: i8, valid_range: 1..=129
     A = -127,
     B = 1,
 }

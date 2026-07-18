@@ -44,7 +44,7 @@ enum PositiveByteC {
 #[rustc_dump_layout(largest_niche)]
 #[repr(Rust)]
 enum Negative32BitRust {
-    //~^ ERROR: value: i32, valid_range: (..=0) | (2147483648..)
+    //~^ ERROR: value: i32, valid_range: 0..=2147483648
     A = 0,
     B = i32::MIN as isize,
 }
@@ -52,7 +52,7 @@ enum Negative32BitRust {
 #[rustc_dump_layout(largest_niche)]
 #[repr(C)]
 enum Negative32BitC {
-    //~^ ERROR: value: i32, valid_range: (..=0) | (2147483648..)
+    //~^ ERROR: value: i32, valid_range: 0..=2147483648
     A = 0,
     B = i32::MIN as isize,
 }

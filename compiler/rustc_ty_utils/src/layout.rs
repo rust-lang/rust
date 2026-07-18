@@ -1,3 +1,5 @@
+use std::range::{RangeFrom, RangeToInclusive};
+
 use hir::def_id::DefId;
 use rustc_abi as abi;
 use rustc_abi::Integer::{I8, I32};
@@ -713,8 +715,9 @@ fn layout_of_uncached<'tcx>(
             // UnsafeCell and UnsafePinned both disable niche optimizations
             let is_special_no_niche = def.is_unsafe_cell() || def.is_unsafe_pinned();
 
-            let discr_range_of_repr =
-                |min, max| abi::Integer::discr_range_of_repr(tcx, ty, &def.repr(), min, max);
+            let discr_range_of_repr = |min: RangeFrom<i128>, max: RangeToInclusive<u128>| {
+                abi::Integer::discr_range_of_repr(tcx, ty, &def.repr(), min.start, max.last)
+            };
 
             let discriminants_iter = || {
                 def.is_enum()
