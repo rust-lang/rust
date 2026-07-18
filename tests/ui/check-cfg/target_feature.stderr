@@ -225,6 +225,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `mutable-globals`
 `mve`
 `mve.fp`
+`nan2008`
 `neon`
 `nnp-assist`
 `nontrapping-fptoint`
