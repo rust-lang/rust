@@ -93,7 +93,7 @@ pub(super) struct GroupTypeInnerAccept {
 }
 
 pub(crate) type AcceptFn =
-    Box<dyn for<'sess, 'a> Fn(&mut AcceptContext<'_, 'sess>, &ArgParser) + Send + Sync>;
+    Box<dyn for<'sess> Fn(&mut AcceptContext<'_, 'sess>, &ArgParser) + Send + Sync>;
 pub(crate) type FinalizeFn = fn(&mut FinalizeContext<'_, '_>) -> Option<AttributeKind>;
 
 macro_rules! attribute_parsers {
@@ -463,7 +463,7 @@ impl<'f, 'sess: 'f> AcceptContext<'f, 'sess> {
         AttributeDiagnosticContext { ctx: self, custom_suggestions: Vec::new() }
     }
 
-    /// Asserts that this MetaItem is a list that contains a single element. Emits an error and
+    /// Asserts that this `MetaItem` is a list that contains a single element. Emits an error and
     /// returns `None` if it is not the case.
     ///
     /// Some examples:
@@ -668,11 +668,7 @@ impl ExpectNameValue for MetaItemParser {
             cx.adcx().expected_name_value(self.span(), name);
         }
 
-        let Some((word, arg)) = word.zip(arg) else {
-            return None;
-        };
-
-        Some((word, arg))
+        word.zip(arg)
     }
 }
 
@@ -740,7 +736,7 @@ impl<'f, 'sess> Deref for AcceptContext<'f, 'sess> {
     }
 }
 
-impl<'f, 'sess> DerefMut for AcceptContext<'f, 'sess> {
+impl DerefMut for AcceptContext<'_, '_> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.shared
     }
@@ -841,7 +837,7 @@ pub enum ShouldEmit {
 }
 
 impl ShouldEmit {
-    pub(crate) fn emit_err(&self, diag: Diag<'_>) -> ErrorGuaranteed {
+    pub(crate) fn emit_err(self, diag: Diag<'_>) -> ErrorGuaranteed {
         match self {
             ShouldEmit::EarlyFatal { .. } if diag.level() == Level::DelayedBug => diag.emit(),
             ShouldEmit::EarlyFatal { .. } => diag.upgrade_to_fatal().emit(),
@@ -865,16 +861,16 @@ impl<'a, 'f, 'sess: 'f> AttributeDiagnosticContext<'a, 'f, 'sess> {
         span: Span,
         reason: AttributeParseErrorReason<'_>,
     ) -> ErrorGuaranteed {
-        let suggestions = if !self.custom_suggestions.is_empty() {
-            AttributeParseErrorSuggestions::CreatedByParser(mem::take(&mut self.custom_suggestions))
-        } else {
+        let suggestions = if self.custom_suggestions.is_empty() {
             AttributeParseErrorSuggestions::CreatedByTemplate(self.template_suggestions())
+        } else {
+            AttributeParseErrorSuggestions::CreatedByParser(mem::take(&mut self.custom_suggestions))
         };
 
         self.emit_err(AttributeParseError {
             span,
             attr_span: self.attr_span,
-            template: self.template.clone(),
+            template: *self.template,
             path: self.attr_path.clone(),
             description: self.parsed_description,
             reason,
@@ -1125,7 +1121,7 @@ impl<'a, 'f, 'sess: 'f> AttributeDiagnosticContext<'a, 'f, 'sess> {
     }
 }
 
-impl<'a, 'f, 'sess: 'f> Deref for AttributeDiagnosticContext<'a, 'f, 'sess> {
+impl<'f, 'sess: 'f> Deref for AttributeDiagnosticContext<'_, 'f, 'sess> {
     type Target = AcceptContext<'f, 'sess>;
 
     fn deref(&self) -> &Self::Target {
@@ -1133,7 +1129,7 @@ impl<'a, 'f, 'sess: 'f> Deref for AttributeDiagnosticContext<'a, 'f, 'sess> {
     }
 }
 
-impl<'a, 'f, 'sess: 'f> DerefMut for AttributeDiagnosticContext<'a, 'f, 'sess> {
+impl<'f, 'sess: 'f> DerefMut for AttributeDiagnosticContext<'_, 'f, 'sess> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         self.ctx
     }
