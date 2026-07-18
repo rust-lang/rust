@@ -30,6 +30,10 @@ pub fn is_dyn_sym(name: &str, target_os: &Os) -> bool {
         // `futimens` is set up as a weak symbol in `init_extern_statics` (on Android), so we
         // allow it here too (it exists on all our Unix targets).
         "futimens" => true,
+        // `preadv`/`pwritev` are set up as weak symbols in `init_extern_statics` (on Android,
+        // where std uses them via `weak!` since bionic only gained them in API level 24), so
+        // we allow them here too. They do not exist on Solaris.
+        "preadv" | "pwritev" if !matches!(*target_os, Os::Solaris) => true,
         // Give specific OSes a chance to allow their symbols.
         _ =>
             match *target_os {
