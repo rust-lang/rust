@@ -96,10 +96,11 @@ The following test suites are available, with links for more information:
 | [`rustdoc-json`][rustdoc-json-tests] | Check JSON output of `rustdoc`                                           |
 | `rustdoc-ui`                         | Check terminal output of `rustdoc` ([see also](ui.md))                   |
 
-Some rustdoc-specific tests can also be found in `ui/rustdoc/`.
+`ui/rustdoc/` also contains some rustdoc-specific tests.
 These tests ensure that certain lints that are emitted as part of executing rustdoc
 are also run when executing rustc.
-Run-make tests pertaining to rustdoc are typically named `run-make/rustdoc-*/`.
+
+`run-make/rustdoc/` contains run-make tests pertaining to rustdoc.
 
 [rustdoc-html-tests]: ../rustdoc-internals/rustdoc-html-test-suite.md
 [rustdoc-gui-tests]: ../rustdoc-internals/rustdoc-gui-test-suite.md
