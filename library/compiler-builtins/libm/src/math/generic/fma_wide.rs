@@ -1,3 +1,6 @@
+/* SPDX-License-Identifier: MIT */
+/* origin: musl src/math/fmaf.c Ported to generic Rust algorithm in 2025, TG. */
+
 use crate::support::{
     CastFrom, CastInto, Float, FpResult, IntTy, MinInt, NarrowFloat, Round, Status, WideFloat,
 };

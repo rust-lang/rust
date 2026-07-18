@@ -1,6 +1,3 @@
-/* SPDX-License-Identifier: MIT */
-/* origin: musl src/math/fma.c, fmaf.c Ported to generic Rust algorithm in 2025, TG. */
-
 use super::generic;
 use crate::support::Round;
 
