@@ -584,7 +584,7 @@ where
 {
 }
 
-/// Marks that an allocator and its subtypes will never invalidate currently allocated
+/// Marks that an allocator and its supertypes will never invalidate currently allocated
 /// memory unless explicitly deallocated via a call to a deallocating method, even if
 /// dropped or if the allocator's lifetime expires.
 ///
