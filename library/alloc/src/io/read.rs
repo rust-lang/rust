@@ -1,4 +1,3 @@
-use core::cmp;
 use core::mem::{DropGuard, MaybeUninit};
 
 use crate::io::{
@@ -840,6 +839,9 @@ pub fn default_read_to_end<R: Read + ?Sized>(
         .and_then(|s| s.checked_add(1024)?.checked_next_multiple_of(DEFAULT_BUF_SIZE))
         .unwrap_or(DEFAULT_BUF_SIZE);
 
+    // Tracks how many bytes are initialized in the buffer
+    let mut init_until = buf.len();
+
     const PROBE_SIZE: usize = 32;
 
     fn small_probe_read<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>) -> Result<usize> {
@@ -887,30 +889,38 @@ pub fn default_read_to_end<R: Read + ?Sized>(
     }
 
     loop {
-        if buf.len() == buf.capacity() && buf.capacity() == start_cap {
+        if buf.len() == buf.capacity() {
             // The buffer might be an exact fit. Let's read into a probe buffer
             // and see if it returns `Ok(0)`. If so, we've avoided an
             // unnecessary doubling of the capacity. But if not, append the
             // probe buffer to the primary buffer and let its capacity grow.
-            let read = small_probe_read(r, buf)?;
-
-            if read == 0 {
-                return Ok(buf.len() - start_len);
+            if buf.len() == start_cap {
+                let read = small_probe_read(r, buf)?;
+                if read == 0 {
+                    return Ok(buf.len() - start_len);
+                }
+            } else {
+                // buf is full, need more space
+                buf.try_reserve(PROBE_SIZE)?;
             }
+            init_until = buf.len();
         }
 
-        if buf.len() == buf.capacity() {
-            // buf is full, need more space
-            buf.try_reserve(PROBE_SIZE)?;
-        }
+        let (was_init, buf_len) = if init_until > buf.len() {
+            (true, init_until - buf.len())
+        } else {
+            (false, usize::min(max_read_size, buf.capacity() - buf.len()))
+        };
 
         let mut spare = buf.spare_capacity_mut();
-        let buf_len = cmp::min(spare.len(), max_read_size);
         spare = &mut spare[..buf_len];
         let mut read_buf: BorrowedBuf<'_, u8> = spare.into();
 
-        // Note that we don't track already initialized bytes here, but this is fine
-        // because we explicitly limit the read size
+        if was_init {
+            // SAFETY: These bytes were initialized but not filled in the previous loop
+            unsafe { read_buf.set_init() };
+        }
+
         let mut cursor = read_buf.unfilled();
         let result = loop {
             match r.read_buf(cursor.reborrow()) {
@@ -923,6 +933,10 @@ pub fn default_read_to_end<R: Read + ?Sized>(
 
         let bytes_read = cursor.written();
         let is_init = read_buf.is_init();
+
+        if is_init {
+            init_until = buf.len() + buf_len;
+        }
 
         // SAFETY: BorrowedBuf's invariants mean this much memory is initialized.
         unsafe {
@@ -948,9 +962,11 @@ pub fn default_read_to_end<R: Read + ?Sized>(
             if !is_init {
                 max_read_size = usize::MAX;
             }
-            // we have passed a larger buffer than previously and the
-            // reader still hasn't returned a short read
-            else if buf_len >= max_read_size && bytes_read == buf_len {
+            // the spare buffer has initialized and read in `max_read_size` bytes.
+            // it's possible that we have more than `max_read_size` bytes to read
+            // left, so a larger buffer may be necessary to minimize the number of
+            // iterations of reading in bytes to the buffer
+            else if bytes_read == max_read_size {
                 max_read_size = max_read_size.saturating_mul(2);
             }
         }
