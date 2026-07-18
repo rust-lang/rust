@@ -876,12 +876,12 @@ where
         return Some((parse(min)?, parse(max)?));
     }
 
-    // Single version (possibly with a non-numeric suffix like `1.2.3-rc1`).
     // Reject dangling dashes that look like incomplete ranges.
     if line.is_empty() || line.starts_with('-') || line.ends_with('-') {
         return None;
     }
 
+    // Single version (possibly with a non-numeric suffix like `1.2.3-rc1`).
     let ver = parse(line)?;
     Some((ver.clone(), ver))
 }
