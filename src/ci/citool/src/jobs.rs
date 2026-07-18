@@ -2,6 +2,7 @@
 mod tests;
 
 use std::collections::{BTreeMap, HashSet};
+use std::fmt;
 
 use anyhow::{Context as _, anyhow};
 use serde_yaml::Value;
@@ -16,7 +17,8 @@ pub struct Job {
     /// Name of the job, e.g. pr-check-1
     pub name: String,
     /// GitHub runner on which the job should be executed
-    pub os: String,
+    #[serde(deserialize_with = "string_or_list")]
+    pub os: Vec<String>,
     pub env: BTreeMap<String, Value>,
     /// Should the job be only executed on a specific channel?
     #[serde(default)]
@@ -44,8 +46,44 @@ impl Job {
     }
 
     fn is_linux(&self) -> bool {
-        self.os.contains("ubuntu")
+        self.os.iter().any(|os| os.contains("ubuntu"))
     }
+}
+
+fn string_or_list<'de, D>(deserializer: D) -> Result<Vec<String>, D::Error>
+where
+    D: serde::de::Deserializer<'de>,
+{
+    // This is a Visitor that forwards string types to T's `FromStr` impl and
+    // forwards map types to T's `Deserialize` impl. The `PhantomData` is to
+    // keep the compiler from complaining about T being an unused generic type
+    // parameter. We need T in order to know the Value type for the Visitor
+    // impl.
+    struct StringOrList;
+
+    impl<'de> serde::de::Visitor<'de> for StringOrList {
+        type Value = Vec<String>;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("string or list of strings")
+        }
+
+        fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
+        where
+            E: serde::de::Error,
+        {
+            Ok(vec![String::from(value)])
+        }
+
+        fn visit_seq<S>(self, seq: S) -> Result<Self::Value, S::Error>
+        where
+            S: serde::de::SeqAccess<'de>,
+        {
+            serde::Deserialize::deserialize(serde::de::value::SeqAccessDeserializer::new(seq))
+        }
+    }
+
+    deserializer.deserialize_any(StringOrList)
 }
 
 #[derive(serde::Deserialize, Debug)]
@@ -223,7 +261,7 @@ struct GithubActionsJob {
     /// Helper label displayed in GitHub Actions interface, containing the job name and a run type
     /// prefix (PR/try/auto).
     full_name: String,
-    os: String,
+    os: Vec<String>,
     env: BTreeMap<String, serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     continue_on_error: Option<bool>,
@@ -247,8 +285,12 @@ fn substitute_github_vars(jobs: Vec<Job>) -> anyhow::Result<Vec<Job>> {
         .map(|mut job| {
             job.os = job
                 .os
-                .replace("$github.run_id", &run_id)
-                .replace("$github.run_attempt", &run_attempt);
+                .into_iter()
+                .map(|j| {
+                    j.replace("$github.run_id", &run_id)
+                        .replace("$github.run_attempt", &run_attempt)
+                })
+                .collect();
             job
         })
         .collect();
