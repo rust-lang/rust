@@ -51,6 +51,14 @@ fn suspicious() {
 
         pub fn exit(code: f32) -> !;
         //~^ WARN suspicious definition of the runtime `exit` symbol
+
+        #[link_name = "exit"]
+        pub static exit2: Option<unsafe extern "C" fn(f32) -> !>;
+        //~^ WARN suspicious definition of the runtime `exit` symbol
+
+        #[link_name = "exit"]
+        pub static exit3: unsafe extern "C" fn(f32) -> !;
+        //~^ WARN suspicious definition of the runtime `exit` symbol
     }
 }
 

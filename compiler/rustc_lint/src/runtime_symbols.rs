@@ -1,7 +1,7 @@
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{self as hir, CanonicalSymbol, FnSig, ForeignItemKind};
 use rustc_infer::infer::DefineOpaqueTypes;
-use rustc_middle::ty::{self, Instance, Ty};
+use rustc_middle::ty::{self, Instance, PolyFnSig, Ty};
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::{Span, Symbol};
 use rustc_trait_selection::infer::TyCtxtInferExt;
@@ -154,44 +154,7 @@ fn check_fn(cx: &LateContext<'_>, symbol_name: &str, sig: FnSig<'_>, did: LocalD
         .tcx
         .normalize_erasing_regions(cx.typing_env(), cx.tcx.fn_sig(did).instantiate_identity());
 
-    // Compare the two signatures with an inference context
-    let infcx = cx.tcx.infer_ctxt().build(cx.typing_mode());
-    let cause = rustc_middle::traits::ObligationCause::misc(sig.span, did);
-    let result = infcx.at(&cause, cx.param_env).eq(DefineOpaqueTypes::No, lang_sig, user_sig);
-
-    // If they don't match, emit our own mismatch signatures
-    if let Err(_terr) = result {
-        // Create fn pointers for diagnostics purpose
-        let expected = Ty::new_fn_ptr(cx.tcx, lang_sig);
-        let actual = Ty::new_fn_ptr(cx.tcx, user_sig);
-
-        if lang_sig.abi() != user_sig.abi()
-            || lang_sig.c_variadic() != user_sig.c_variadic()
-            || lang_sig.inputs().skip_binder().len() != user_sig.inputs().skip_binder().len()
-            || (!lang_sig.output().skip_binder().is_unit()
-                && user_sig.output().skip_binder().is_unit())
-        {
-            cx.emit_span_lint(
-                INVALID_RUNTIME_SYMBOL_DEFINITIONS,
-                sig.span,
-                RedefiningRuntimeSymbolsDiag::Invalid {
-                    symbol_name: symbol_name.to_string(),
-                    found_fn_sig: actual,
-                    expected_fn_sig: expected,
-                },
-            );
-        } else {
-            cx.emit_span_lint(
-                SUSPICIOUS_RUNTIME_SYMBOL_DEFINITIONS,
-                sig.span,
-                RedefiningRuntimeSymbolsDiag::Suspicious {
-                    symbol_name: symbol_name.to_string(),
-                    found_fn_sig: actual,
-                    expected_fn_sig: expected,
-                },
-            );
-        };
-    }
+    check(cx, symbol_name, did, sig.span, lang_sig, user_sig);
 }
 
 fn check_static<'tcx>(cx: &LateContext<'tcx>, symbol_name: &str, did: LocalDefId, sp: Span) {
@@ -238,24 +201,54 @@ fn check_static<'tcx>(cx: &LateContext<'tcx>, symbol_name: &str, did: LocalDefId
         return;
     };
 
+    // Compare the signatures and report a warning/error depending on the mismatch
+    check(cx, symbol_name, did, sp, lang_sig, user_sig);
+}
+
+fn check<'tcx>(
+    cx: &LateContext<'tcx>,
+    symbol_name: &str,
+    did: LocalDefId,
+    sp: Span,
+    lang_sig: PolyFnSig<'tcx>,
+    user_sig: PolyFnSig<'tcx>,
+) {
     // Compare the two signatures with an inference context
     let infcx = cx.tcx.infer_ctxt().build(cx.typing_mode());
     let cause = rustc_middle::traits::ObligationCause::misc(sp, did);
     let result = infcx.at(&cause, cx.param_env).eq(DefineOpaqueTypes::No, lang_sig, user_sig);
 
-    // Compare the expected function signature with the static type, report an error if they don't match
+    // If they don't match, emit our own mismatch signatures
     if result.is_err() {
-        let user_sig = Ty::new_fn_ptr(cx.tcx, user_sig);
-        let lang_sig = Ty::new_fn_ptr(cx.tcx, lang_sig);
+        // Create fn pointers for diagnostics purpose
+        let expected = Ty::new_fn_ptr(cx.tcx, lang_sig);
+        let actual = Ty::new_fn_ptr(cx.tcx, user_sig);
 
-        cx.emit_span_lint(
-            INVALID_RUNTIME_SYMBOL_DEFINITIONS,
-            sp,
-            RedefiningRuntimeSymbolsDiag::Invalid {
-                symbol_name: symbol_name.to_string(),
-                found_fn_sig: user_sig,
-                expected_fn_sig: lang_sig,
-            },
-        );
+        if lang_sig.abi() != user_sig.abi()
+            || lang_sig.c_variadic() != user_sig.c_variadic()
+            || lang_sig.inputs().skip_binder().len() != user_sig.inputs().skip_binder().len()
+            || (!lang_sig.output().skip_binder().is_unit()
+                && user_sig.output().skip_binder().is_unit())
+        {
+            cx.emit_span_lint(
+                INVALID_RUNTIME_SYMBOL_DEFINITIONS,
+                sp,
+                RedefiningRuntimeSymbolsDiag::Invalid {
+                    symbol_name: symbol_name.to_string(),
+                    found_fn_sig: actual,
+                    expected_fn_sig: expected,
+                },
+            );
+        } else {
+            cx.emit_span_lint(
+                SUSPICIOUS_RUNTIME_SYMBOL_DEFINITIONS,
+                sp,
+                RedefiningRuntimeSymbolsDiag::Suspicious {
+                    symbol_name: symbol_name.to_string(),
+                    found_fn_sig: actual,
+                    expected_fn_sig: expected,
+                },
+            );
+        };
     }
 }

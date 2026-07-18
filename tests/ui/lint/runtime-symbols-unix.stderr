@@ -113,5 +113,27 @@ LL |         pub fn exit(code: f32) -> !;
    = help: either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = "exit")]`, or `#[link_name = "exit"]`
    = help: allow this lint if the signature is compatible
 
-error: aborting due to 8 previous errors; 3 warnings emitted
+warning: suspicious definition of the runtime `exit` symbol used by the standard library
+  --> $DIR/runtime-symbols-unix.rs:56:9
+   |
+LL |         pub static exit2: Option<unsafe extern "C" fn(f32) -> !>;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected `unsafe extern "C" fn(i32) -> !`
+           found    `unsafe extern "C" fn(f32) -> !`
+   = help: either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = "exit")]`, or `#[link_name = "exit"]`
+   = help: allow this lint if the signature is compatible
+
+warning: suspicious definition of the runtime `exit` symbol used by the standard library
+  --> $DIR/runtime-symbols-unix.rs:60:9
+   |
+LL |         pub static exit3: unsafe extern "C" fn(f32) -> !;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected `unsafe extern "C" fn(i32) -> !`
+           found    `unsafe extern "C" fn(f32) -> !`
+   = help: either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = "exit")]`, or `#[link_name = "exit"]`
+   = help: allow this lint if the signature is compatible
+
+error: aborting due to 8 previous errors; 5 warnings emitted
 
