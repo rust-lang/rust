@@ -154,8 +154,6 @@ fn uncached_gcc_type<'gcc, 'tcx>(
 }
 
 pub trait LayoutGccExt<'tcx> {
-    fn is_gcc_immediate(&self) -> bool;
-    fn is_gcc_scalar_pair(&self) -> bool;
     fn gcc_type<'gcc>(&self, cx: &CodegenCx<'gcc, 'tcx>) -> Type<'gcc>;
     fn immediate_gcc_type<'gcc>(&self, cx: &CodegenCx<'gcc, 'tcx>) -> Type<'gcc>;
     fn scalar_gcc_type_at<'gcc>(
@@ -177,25 +175,6 @@ pub trait LayoutGccExt<'tcx> {
 }
 
 impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
-    fn is_gcc_immediate(&self) -> bool {
-        match self.backend_repr {
-            BackendRepr::Scalar(_) | BackendRepr::SimdVector { .. } => true,
-            // FIXME(rustc_scalable_vector): Not yet implemented in rustc_codegen_gcc.
-            BackendRepr::SimdScalableVector { .. } => todo!(),
-            BackendRepr::ScalarPair { .. } | BackendRepr::Memory { .. } => false,
-        }
-    }
-
-    fn is_gcc_scalar_pair(&self) -> bool {
-        match self.backend_repr {
-            BackendRepr::ScalarPair { .. } => true,
-            BackendRepr::Scalar(_)
-            | BackendRepr::SimdVector { .. }
-            | BackendRepr::SimdScalableVector { .. }
-            | BackendRepr::Memory { .. } => false,
-        }
-    }
-
     /// Gets the GCC type corresponding to a Rust type, i.e., `rustc_middle::ty::Ty`.
     /// The pointee type of the pointer in `PlaceRef` is always this type.
     /// For sized types, it is also the right LLVM type for an `alloca`
@@ -348,14 +327,6 @@ impl<'gcc, 'tcx> LayoutTypeCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
 
     fn immediate_backend_type(&self, layout: TyAndLayout<'tcx>) -> Type<'gcc> {
         layout.immediate_gcc_type(self)
-    }
-
-    fn is_backend_immediate(&self, layout: TyAndLayout<'tcx>) -> bool {
-        layout.is_gcc_immediate()
-    }
-
-    fn is_backend_scalar_pair(&self, layout: TyAndLayout<'tcx>) -> bool {
-        layout.is_gcc_scalar_pair()
     }
 
     fn scalar_pair_element_backend_type(

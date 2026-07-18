@@ -209,8 +209,6 @@ impl<'a, 'tcx> CodegenCx<'a, 'tcx> {
 }
 
 pub(crate) trait LayoutLlvmExt<'tcx> {
-    fn is_llvm_immediate(&self) -> bool;
-    fn is_llvm_scalar_pair(&self) -> bool;
     fn llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> &'a Type;
     fn immediate_llvm_type<'a>(&self, cx: &CodegenCx<'a, 'tcx>) -> &'a Type;
     fn scalar_llvm_type_at<'a>(&self, cx: &CodegenCx<'a, 'tcx>, scalar: Scalar) -> &'a Type;
@@ -223,25 +221,6 @@ pub(crate) trait LayoutLlvmExt<'tcx> {
 }
 
 impl<'tcx> LayoutLlvmExt<'tcx> for TyAndLayout<'tcx> {
-    fn is_llvm_immediate(&self) -> bool {
-        match self.backend_repr {
-            BackendRepr::Scalar(_)
-            | BackendRepr::SimdVector { .. }
-            | BackendRepr::SimdScalableVector { .. } => true,
-            BackendRepr::ScalarPair { .. } | BackendRepr::Memory { .. } => false,
-        }
-    }
-
-    fn is_llvm_scalar_pair(&self) -> bool {
-        match self.backend_repr {
-            BackendRepr::ScalarPair { .. } => true,
-            BackendRepr::Scalar(_)
-            | BackendRepr::SimdVector { .. }
-            | BackendRepr::SimdScalableVector { .. }
-            | BackendRepr::Memory { .. } => false,
-        }
-    }
-
     /// Gets the LLVM type corresponding to a Rust type, i.e., `rustc_middle::ty::Ty`.
     /// The pointee type of the pointer in `PlaceRef` is always this type.
     /// For sized types, it is also the right LLVM type for an `alloca`

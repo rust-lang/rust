@@ -296,12 +296,6 @@ impl<'ll, 'tcx> LayoutTypeCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn immediate_backend_type(&self, layout: TyAndLayout<'tcx>) -> &'ll Type {
         layout.immediate_llvm_type(self)
     }
-    fn is_backend_immediate(&self, layout: TyAndLayout<'tcx>) -> bool {
-        layout.is_llvm_immediate()
-    }
-    fn is_backend_scalar_pair(&self, layout: TyAndLayout<'tcx>) -> bool {
-        layout.is_llvm_scalar_pair()
-    }
     fn scalar_pair_element_backend_type(
         &self,
         layout: TyAndLayout<'tcx>,

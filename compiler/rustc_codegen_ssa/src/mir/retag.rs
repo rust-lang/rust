@@ -14,9 +14,7 @@ use rustc_middle::ty::layout::TyAndLayout;
 use crate::mir::FunctionCx;
 use crate::mir::operand::{OperandRef, OperandRefBuilder, OperandValue};
 use crate::mir::place::PlaceRef;
-use crate::traits::{
-    BaseTypeCodegenMethods, BuilderMethods, ConstCodegenMethods, LayoutTypeCodegenMethods,
-};
+use crate::traits::{BaseTypeCodegenMethods, BuilderMethods, ConstCodegenMethods};
 use crate::{RetagFlags, RetagInfo};
 
 pub(crate) fn rvalue_needs_retag(rvalue: &Rvalue<'_>) -> bool {
@@ -255,8 +253,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                     let field_layout = curr_operand.layout.field(bx, ix.index());
                     // Part of https://github.com/rust-lang/compiler-team/issues/838
-                    if !bx.is_backend_ref(curr_operand.layout) && bx.is_backend_ref(field_layout) {
+                    if curr_operand.layout.is_ssa_standalone() && !field_layout.is_ssa_standalone()
+                    {
                         // FIXME: support vector types, requires insert_element as part of cg-ssa
+                        // FIXME: Nothing should be looking at the *array* inside a `repr(simd)` type,
+                        // as that array doesn't really exist. Perhaps this should be a `bug!`,
+                        // with simd types handled before getting here?
                     } else {
                         let field_operand = curr_operand.extract_field(self, bx, ix.as_usize());
                         self.retag_operand(bx, &plan, field_operand, builder, field_offset);
