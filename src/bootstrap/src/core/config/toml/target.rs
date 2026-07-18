@@ -49,6 +49,7 @@ define_config! {
         runner: Option<String> = "runner",
         optimized_compiler_builtins: Option<CompilerBuiltins> = "optimized-compiler-builtins",
         override_allocator: Option<OverrideAllocator> = "override-allocator",
+        jemalloc: Option<bool> = "jemalloc",
     }
 }
 

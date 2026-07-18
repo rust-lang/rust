@@ -60,6 +60,8 @@ define_config! {
         thin_lto_import_instr_limit: Option<u32> = "thin-lto-import-instr-limit",
         remap_debuginfo: Option<bool> = "remap-debuginfo",
         override_allocator: Option<OverrideAllocator> = "override-allocator",
+        // FIXME: Remove this option in Q1 2027
+        jemalloc: Option<bool> = "jemalloc",
         test_compare_mode: Option<bool> = "test-compare-mode",
         llvm_libunwind: Option<String> = "llvm-libunwind",
         control_flow_guard: Option<bool> = "control-flow-guard",
@@ -332,6 +334,7 @@ pub fn check_incompatible_options_for_ci_rustc(
         llvm_bitcode_linker,
         stack_protector,
         strip,
+        jemalloc,
         override_allocator,
         rpath,
         channel,
@@ -402,6 +405,7 @@ pub fn check_incompatible_options_for_ci_rustc(
     err!(current_rust_config.strip, strip, "rust");
     err!(current_rust_config.llvm_tools, llvm_tools, "rust");
     err!(current_rust_config.llvm_bitcode_linker, llvm_bitcode_linker, "rust");
+    err!(current_rust_config.jemalloc, jemalloc, "rust");
     err!(current_rust_config.override_allocator, override_allocator, "rust");
     err!(current_rust_config.default_linker, default_linker, "rust");
     err!(current_rust_config.stack_protector, stack_protector, "rust");
