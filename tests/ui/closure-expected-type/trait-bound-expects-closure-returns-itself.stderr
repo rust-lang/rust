@@ -1,0 +1,22 @@
+error[E0271]: expected `{closure@trait-bound-expects-closure-returns-itself.rs:8:25}` to return `{closure@trait-bound-expects-closure-returns-itself.rs:8:25}`, but it returns `{integer}`
+  --> $DIR/trait-bound-expects-closure-returns-itself.rs:8:28
+   |
+LL |     closure_ret_closure(|| 4);
+   |                         -- ^ expected closure, found integer
+   |                         |
+   |                         the expected closure
+   |
+note: a bound in `closure_ret_closure` requires that a closure return itself, which is not possible
+  --> $DIR/trait-bound-expects-closure-returns-itself.rs:1:39
+   |
+LL | fn closure_ret_closure<T: FnOnce() -> T>(f: T) -> T {
+   |                                       ^ this requires the closure to return itself
+...
+LL |     closure_ret_closure(|| 4);
+   |                         ---- this closure would have to return itself
+   = note: expected closure `{closure@$DIR/trait-bound-expects-closure-returns-itself.rs:8:25: 8:27}`
+                 found type `{integer}`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0271`.
