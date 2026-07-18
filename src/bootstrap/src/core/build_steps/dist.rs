@@ -1445,7 +1445,7 @@ impl Step for Cargo {
 
         let cargo = builder.ensure(tool::Cargo::from_build_compiler(build_compiler, target));
         let src = builder.src.join("src/tools/cargo");
-        let etc = src.join("src/etc");
+        let etc = src.join("etc");
 
         // Prepare the image directory
         let mut tarball = Tarball::new(builder, "cargo", &target.triple);
