@@ -333,10 +333,6 @@ unsafe extern "unadjusted" {
     fn __lsx_vfrstp_b(a: __v16i8, b: __v16i8, c: __v16i8) -> __v16i8;
     #[link_name = "llvm.loongarch.lsx.vfrstp.h"]
     fn __lsx_vfrstp_h(a: __v8i16, b: __v8i16, c: __v8i16) -> __v8i16;
-    #[link_name = "llvm.loongarch.lsx.vbsrl.v"]
-    fn __lsx_vbsrl_v(a: __v16i8, b: u32) -> __v16i8;
-    #[link_name = "llvm.loongarch.lsx.vbsll.v"]
-    fn __lsx_vbsll_v(a: __v16i8, b: u32) -> __v16i8;
     #[link_name = "llvm.loongarch.lsx.vextrins.b"]
     fn __lsx_vextrins_b(a: __v16i8, b: __v16i8, c: u32) -> __v16i8;
     #[link_name = "llvm.loongarch.lsx.vextrins.h"]
@@ -749,8 +745,6 @@ unsafe extern "unadjusted" {
     fn __lsx_vssrln_h_w(a: __v4i32, b: __v4i32) -> __v8i16;
     #[link_name = "llvm.loongarch.lsx.vssrln.w.d"]
     fn __lsx_vssrln_w_d(a: __v2i64, b: __v2i64) -> __v4i32;
-    #[link_name = "llvm.loongarch.lsx.vldi"]
-    fn __lsx_vldi(a: i32) -> __v2i64;
     #[link_name = "llvm.loongarch.lsx.vshuf.b"]
     fn __lsx_vshuf_b(a: __v16i8, b: __v16i8, c: __v16i8) -> __v16i8;
     #[link_name = "llvm.loongarch.lsx.vextl.qu.du"]
@@ -2080,24 +2074,6 @@ pub fn lsx_vfrstp_b(a: m128i, b: m128i, c: m128i) -> m128i {
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lsx_vfrstp_h(a: m128i, b: m128i, c: m128i) -> m128i {
     unsafe { transmute(__lsx_vfrstp_h(transmute(a), transmute(b), transmute(c))) }
-}
-
-#[inline]
-#[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lsx_vbsrl_v<const IMM5: u32>(a: m128i) -> m128i {
-    static_assert_uimm_bits!(IMM5, 5);
-    unsafe { transmute(__lsx_vbsrl_v(transmute(a), IMM5)) }
-}
-
-#[inline]
-#[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(1)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lsx_vbsll_v<const IMM5: u32>(a: m128i) -> m128i {
-    static_assert_uimm_bits!(IMM5, 5);
-    unsafe { transmute(__lsx_vbsll_v(transmute(a), IMM5)) }
 }
 
 #[inline]
@@ -3666,15 +3642,6 @@ pub fn lsx_vssrln_h_w(a: m128i, b: m128i) -> m128i {
 #[unstable(feature = "stdarch_loongarch", issue = "117427")]
 pub fn lsx_vssrln_w_d(a: m128i, b: m128i) -> m128i {
     unsafe { transmute(__lsx_vssrln_w_d(transmute(a), transmute(b))) }
-}
-
-#[inline]
-#[target_feature(enable = "lsx")]
-#[rustc_legacy_const_generics(0)]
-#[unstable(feature = "stdarch_loongarch", issue = "117427")]
-pub fn lsx_vldi<const IMM_S13: i32>() -> m128i {
-    static_assert_simm_bits!(IMM_S13, 13);
-    unsafe { transmute(__lsx_vldi(IMM_S13)) }
 }
 
 #[inline]

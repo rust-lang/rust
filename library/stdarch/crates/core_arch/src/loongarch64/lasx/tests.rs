@@ -1,4 +1,4 @@
-// This code is automatically generated. DO NOT MODIFY.
+// Auto-generated tests. DO NOT MODIFY.
 // See crates/stdarch-gen-loongarch/README.md
 
 use crate::{
