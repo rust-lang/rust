@@ -709,14 +709,18 @@ impl UdpSocket {
         self.inner.peek_from(buf)
     }
 
+    // `MAX_SEND_LEN` is `usize::MAX` off Apple/Windows, where the guard is a no-op.
+    #[allow(clippy::absurd_extreme_comparisons)]
     pub fn send_to(&self, buf: &[u8], dst: &SocketAddr) -> io::Result<usize> {
-        let len = cmp::min(buf.len(), MAX_SEND_LEN) as wrlen_t;
+        if buf.len() > MAX_SEND_LEN {
+            return Err(io::Error::from_raw_os_error(c::EMSGSIZE));
+        }
         let (dst, dstlen) = socket_addr_to_c(dst);
         let ret = cvt(unsafe {
             c::sendto(
                 self.inner.as_raw(),
                 buf.as_ptr() as *const c_void,
-                len,
+                buf.len() as wrlen_t,
                 MSG_NOSIGNAL,
                 dst.as_ptr(),
                 dstlen,
@@ -862,10 +866,19 @@ impl UdpSocket {
         self.inner.peek(buf)
     }
 
+    // `MAX_SEND_LEN` is `usize::MAX` off Apple/Windows, where the guard is a no-op.
+    #[allow(clippy::absurd_extreme_comparisons)]
     pub fn send(&self, buf: &[u8]) -> io::Result<usize> {
-        let len = cmp::min(buf.len(), MAX_SEND_LEN) as wrlen_t;
+        if buf.len() > MAX_SEND_LEN {
+            return Err(io::Error::from_raw_os_error(c::EMSGSIZE));
+        }
         let ret = cvt(unsafe {
-            c::send(self.inner.as_raw(), buf.as_ptr() as *const c_void, len, MSG_NOSIGNAL)
+            c::send(
+                self.inner.as_raw(),
+                buf.as_ptr() as *const c_void,
+                buf.len() as wrlen_t,
+                MSG_NOSIGNAL,
+            )
         })?;
         Ok(ret as usize)
     }
