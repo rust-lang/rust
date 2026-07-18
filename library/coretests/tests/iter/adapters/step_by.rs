@@ -299,3 +299,41 @@ fn test_step_by_fold_range_specialization() {
         assert_eq!(r.sum::<usize>(), usize::MAX - 1);
     });
 }
+
+#[test]
+fn test_step_by_new_range_iter() {
+    use core::range::Range as NewRange;
+
+    // forward iteration
+    let v: Vec<u32> = NewRange::from(0_u32..10).into_iter().step_by(3).collect();
+    assert_eq!(v, [0, 3, 6, 9]);
+
+    // size_hint
+    assert_eq!(NewRange::from(0_u32..10).into_iter().step_by(3).size_hint(), (4, Some(4)));
+    assert_eq!(NewRange::from(0_u32..9).into_iter().step_by(3).size_hint(), (3, Some(3)));
+
+    // nth
+    assert_eq!(NewRange::from(0_u32..20).into_iter().step_by(5).nth(2), Some(10));
+
+    // empty range
+    assert_eq!(NewRange::from(5_u32..5).into_iter().step_by(1).next(), None);
+
+    // step larger than range
+    assert_eq!(NewRange::from(0_u32..3).into_iter().step_by(10).collect::<Vec<_>>(), [0]);
+
+    // backward iteration (usize has ExactSizeIterator)
+    let mut it = NewRange::from(0_usize..11).into_iter().step_by(3);
+    assert_eq!(it.next_back(), Some(9));
+    assert_eq!(it.next_back(), Some(6));
+    assert_eq!(it.next_back(), Some(3));
+    assert_eq!(it.next_back(), Some(0));
+    assert_eq!(it.next_back(), None);
+
+    // interleaved forward and backward
+    let mut it = NewRange::from(0_usize..16).into_iter().step_by(5);
+    assert_eq!(it.next(), Some(0));
+    assert_eq!(it.next_back(), Some(15));
+    assert_eq!(it.next(), Some(5));
+    assert_eq!(it.next_back(), Some(10));
+    assert_eq!(it.next(), None);
+}
