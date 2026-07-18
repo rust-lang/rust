@@ -98,6 +98,11 @@ impl WrappingRange {
         self
     }
 
+    /// The wrapping distance from `self.start` to `self.end`.
+    fn width(&self, size: Size) -> u128 {
+        size.truncate(u128::wrapping_sub(self.end, self.start))
+    }
+
     /// Returns `true` if `size` completely fills the range.
     ///
     /// Note that this is *not* the same as `self == WrappingRange::full(size)`.
@@ -137,6 +142,58 @@ impl WrappingRange {
             let end: i128 = size.sign_extend(self.end);
             Ok(start <= end)
         }
+    }
+
+    /// Returns a `WrappingRange` that contains all of the values from the iterator,
+    /// when they're treated as values `size` wide.
+    ///
+    /// # Examples
+    ///
+    ///
+    /// ```
+    /// use rustc_abi::{Size, WrappingRange};
+    ///
+    /// let range = WrappingRange::smallest_range_containing([2, 6, 12, 4], Size::from_bytes(2));
+    /// assert_eq!(range.unwrap(), WrappingRange { start: 2, end: 12 });
+    ///
+    /// let range = WrappingRange::smallest_range_containing(0..=127, Size::from_bytes(1));
+    /// assert_eq!(range.unwrap(), WrappingRange { start: 0, end: 127 });
+    /// let range = WrappingRange::smallest_range_containing([129, 128, 127], Size::from_bytes(1));
+    /// assert_eq!(range.unwrap(), WrappingRange { start: 127, end: 129 });
+    ///
+    /// // The size matters because it changes where the wrapping can happen:
+    /// let range = WrappingRange::smallest_range_containing([1, 254], Size::from_bytes(1));
+    /// assert_eq!(range.unwrap(), WrappingRange { start: 254, end: 1 });
+    /// let range = WrappingRange::smallest_range_containing([1, 254], Size::from_bytes(4));
+    /// assert_eq!(range.unwrap(), WrappingRange { start: 1, end: 254 });
+    ///
+    /// // Both `100..=228` and `..=228 | 100..` are the same size, but we pick the one without zero.
+    /// let range = WrappingRange::smallest_range_containing([100, 228], Size::from_bytes(1));
+    /// assert_eq!(range.unwrap(), WrappingRange { start: 100, end: 228 });
+    /// // These 4 values are evenly spaced so all 4 candidate ranges have length 193:
+    /// // `(..=32) | (96..)`, `(..=96) | (160..)`, `(..=160) | (224..)`, and `32..=224`.
+    /// // We pick the last one as the only one that doesn't contain zero.
+    /// let range = WrappingRange::smallest_range_containing([0xA0, 0xE0, 0x20, 0x60], Size::from_bytes(1));
+    /// assert_eq!(range.unwrap(), WrappingRange { start: 0x20, end: 0xE0 });
+    /// ```
+    pub fn smallest_range_containing(
+        values: impl IntoIterator<Item = u128>,
+        size: Size,
+    ) -> Option<Self> {
+        let mut values: Vec<_> = values.into_iter().collect();
+        let umax = size.unsigned_int_max();
+        for value in &values {
+            debug_assert!(*value <= umax, "Value {value:?} is too big for {size:?}");
+        }
+        values.sort_unstable();
+
+        // Having sorted all the values, every element is a possible start point for the
+        // range of values, up to the previous element (wrapping around the end of the vec).
+        // Look at all those candidates and pick the one that's as narrow as possible.
+        let pairs = std::iter::zip(values.iter().copied(), values.iter().copied().cycle().skip(1));
+        let ranges = pairs.map(|(end, start)| WrappingRange { start, end });
+        let smallest_range = ranges.min_by_key(|r| (r.width(size), r.start));
+        smallest_range
     }
 }
 
