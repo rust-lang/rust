@@ -1651,9 +1651,9 @@ impl<T> SizedTypeProperties for T {}
 )]
 #[doc(alias = "memoffset")]
 #[allow_internal_unstable(builtin_syntax, core_intrinsics)]
+#[diagnostic::opaque]
 pub macro offset_of($Container:ty, $($fields:expr)+ $(,)?) {
-    // The `{}` is for better error messages
-    const {builtin # offset_of($Container, $($fields)+)}
+    const { builtin # offset_of($Container, $($fields)+) }
 }
 
 /// Create a fresh instance of the inhabited ZST type `T`.
