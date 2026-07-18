@@ -211,8 +211,8 @@ fn lint_unreachable(
                 break;
             }
             CfgEntry::Bool(false, _) => continue,
-            CfgEntry::NameValue { name, value, .. } => match value {
-                None => {
+            CfgEntry::NameValue { name, value, .. } => {
+                if value.is_none() {
                     // `name` will be false in all subsequent branches.
                     let current = known.insert(*name, false);
 
@@ -228,10 +228,9 @@ fn lint_unreachable(
                         }
                     }
                 }
-                Some(_) => { /* for now we don't bother solving these */ }
-            },
-            CfgEntry::Not(inner, _) => match &**inner {
-                CfgEntry::NameValue { name, value: None, .. } => {
+            }
+            CfgEntry::Not(inner, _) => {
+                if let CfgEntry::NameValue { name, value: None, .. } = &**inner {
                     // `name` will be true in all subsequent branches.
                     let current = known.insert(*name, true);
 
@@ -247,8 +246,7 @@ fn lint_unreachable(
                         }
                     }
                 }
-                _ => { /* for now we don't bother solving these */ }
-            },
+            }
             CfgEntry::All(_, _) | CfgEntry::Any(_, _) => {
                 /* for now we don't bother solving these */
             }
