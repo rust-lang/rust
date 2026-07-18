@@ -82,7 +82,7 @@ accurate, and has useful diagrams.
     While it does not document the PDB format directly, details can be gleaned from the interface
     itself.
     * [PDB-Documentation](https://github.com/PascalBeyer/PDB-Documentation) - a resource compiling
-    much of the plubicly available information about PDB and CodeView.
+    much of the publicly available information about PDB and CodeView.
 
 # Debuggers
 
