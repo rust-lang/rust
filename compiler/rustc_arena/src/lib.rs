@@ -665,16 +665,17 @@ impl<const ALIGN: usize> AlignedDroplessArena<ALIGN> {
     }
 
     #[inline]
-    pub fn alloc_raw(&self, layout: Layout) -> *mut u8 {
-        assert!(layout.size() != 0);
+    fn alloc_raw_aligned(&self, layout: Layout) -> *mut u8 {
         assert!(layout.align() == ALIGN);
+        assert!(layout.size() != 0);
+        debug_assert!(layout.size().is_multiple_of(ALIGN));
+
+        let bytes = layout.size();
 
         loop {
             let start = self.start.get().addr();
             let old_end = self.end.get();
             let end = old_end.addr();
-
-            let bytes = layout.size();
 
             if let Some(sub) = end.checked_sub(bytes) {
                 let new_end = sub;
@@ -690,11 +691,16 @@ impl<const ALIGN: usize> AlignedDroplessArena<ALIGN> {
     }
 
     #[inline]
+    pub fn alloc_raw(&self, layout: Layout) -> *mut u8 {
+        self.alloc_raw_aligned(layout.pad_to_align())
+    }
+
+    #[inline]
     pub fn alloc<T>(&self, object: T) -> &mut T {
         assert!(!mem::needs_drop::<T>());
         assert!(size_of::<T>() != 0);
 
-        let mem = self.alloc_raw(Layout::new::<T>()) as *mut T;
+        let mem = self.alloc_raw_aligned(Layout::new::<T>()) as *mut T;
 
         unsafe {
             ptr::write(mem, object);
@@ -711,7 +717,7 @@ impl<const ALIGN: usize> AlignedDroplessArena<ALIGN> {
         assert!(size_of::<T>() != 0);
         assert!(!slice.is_empty());
 
-        let mem = self.alloc_raw(Layout::for_value::<[T]>(slice)) as *mut T;
+        let mem = self.alloc_raw_aligned(Layout::for_value::<[T]>(slice)) as *mut T;
 
         unsafe {
             mem.copy_from_nonoverlapping(slice.as_ptr(), slice.len());
@@ -742,7 +748,7 @@ impl<const ALIGN: usize> AlignedDroplessArena<ALIGN> {
                     return &mut [];
                 }
 
-                let mem = self.alloc_raw(Layout::array::<T>(len).unwrap()) as *mut T;
+                let mem = self.alloc_raw_aligned(Layout::array::<T>(len).unwrap()) as *mut T;
                 unsafe { self.write_from_iter(iter, len, mem) }
             }
             (_, _) => outline(move || self.try_alloc_from_iter(iter.map(Ok::<T, !>)).into_ok()),
@@ -764,7 +770,8 @@ impl<const ALIGN: usize> AlignedDroplessArena<ALIGN> {
         }
         let len = vec.len();
         Ok(unsafe {
-            let start_ptr = self.alloc_raw(Layout::for_value::<[T]>(vec.as_slice())) as *mut T;
+            let start_ptr =
+                self.alloc_raw_aligned(Layout::for_value::<[T]>(vec.as_slice())) as *mut T;
             vec.as_ptr().copy_to_nonoverlapping(start_ptr, len);
             vec.set_len(0);
             slice::from_raw_parts_mut(start_ptr, len)
