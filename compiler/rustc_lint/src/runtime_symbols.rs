@@ -174,7 +174,7 @@ fn check_fn(cx: &LateContext<'_>, symbol_name: &str, sig: FnSig<'_>, did: LocalD
             cx.emit_span_lint(
                 INVALID_RUNTIME_SYMBOL_DEFINITIONS,
                 sig.span,
-                RedefiningRuntimeSymbolsDiag::FnDefInvalid {
+                RedefiningRuntimeSymbolsDiag::Invalid {
                     symbol_name: symbol_name.to_string(),
                     found_fn_sig: actual,
                     expected_fn_sig: expected,
@@ -184,7 +184,7 @@ fn check_fn(cx: &LateContext<'_>, symbol_name: &str, sig: FnSig<'_>, did: LocalD
             cx.emit_span_lint(
                 SUSPICIOUS_RUNTIME_SYMBOL_DEFINITIONS,
                 sig.span,
-                RedefiningRuntimeSymbolsDiag::FnDefSuspicious {
+                RedefiningRuntimeSymbolsDiag::Suspicious {
                     symbol_name: symbol_name.to_string(),
                     found_fn_sig: actual,
                     expected_fn_sig: expected,
@@ -229,9 +229,9 @@ fn check_static<'tcx>(cx: &LateContext<'tcx>, symbol_name: &str, did: LocalDefId
         cx.emit_span_lint(
             INVALID_RUNTIME_SYMBOL_DEFINITIONS,
             sp,
-            RedefiningRuntimeSymbolsDiag::Static {
-                static_ty: user_sig,
+            RedefiningRuntimeSymbolsDiag::Invalid {
                 symbol_name: symbol_name.to_string(),
+                found_fn_sig: user_sig,
                 expected_fn_sig: lang_sig,
             },
         );
@@ -251,9 +251,9 @@ fn check_static<'tcx>(cx: &LateContext<'tcx>, symbol_name: &str, did: LocalDefId
         cx.emit_span_lint(
             INVALID_RUNTIME_SYMBOL_DEFINITIONS,
             sp,
-            RedefiningRuntimeSymbolsDiag::Static {
-                static_ty: user_sig,
+            RedefiningRuntimeSymbolsDiag::Invalid {
                 symbol_name: symbol_name.to_string(),
+                found_fn_sig: user_sig,
                 expected_fn_sig: lang_sig,
             },
         );

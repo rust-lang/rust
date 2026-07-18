@@ -37,7 +37,7 @@ LL |     pub static strlen: () = ();
    |
    = note: expected `unsafe extern "C" fn(*const U8) -> usize`
            found    `()`
-   = help: either fix the signature or remove any attributes `#[unsafe(no_mangle)]` or `#[unsafe(export_name = "strlen")]`
+   = help: either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = "strlen")]`, or `#[link_name = "strlen"]`
 
 error: invalid definition of the runtime `strlen` symbol used by the standard library
   --> $DIR/runtime-symbols.rs:30:9
@@ -47,7 +47,7 @@ LL |         static strlen2: Option<unsafe extern "C" fn(s: *const c_char)>;
    |
    = note: expected `unsafe extern "C" fn(*const U8) -> usize`
            found    `unsafe extern "C" fn(*const U8)`
-   = help: either fix the signature or remove any attributes `#[unsafe(no_mangle)]` or `#[unsafe(export_name = "strlen")]`
+   = help: either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = "strlen")]`, or `#[link_name = "strlen"]`
 
 error: invalid definition of the runtime `memcpy` symbol used by the standard library
   --> $DIR/runtime-symbols.rs:36:5
