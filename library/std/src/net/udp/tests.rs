@@ -374,3 +374,17 @@ fn set_nonblocking() {
         }
     })
 }
+
+// #115325: a datagram larger than `c_int::MAX` bytes can't be sent atomically
+// and must be rejected rather than truncated.
+#[test]
+#[cfg(target_pointer_width = "64")]
+#[ignore = "requires ~2 GiB of memory"]
+fn send_datagram_larger_than_c_int_max() {
+    let socket = t!(UdpSocket::bind("127.0.0.1:0"));
+    let addr = t!(socket.local_addr());
+    let data = vec![0u8; crate::ffi::c_int::MAX as usize + 1];
+    assert!(socket.send_to(&data, addr).is_err());
+    t!(socket.connect(addr));
+    assert!(socket.send(&data).is_err());
+}
