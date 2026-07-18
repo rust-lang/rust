@@ -1,0 +1,28 @@
+error[E0573]: cannot find type `ADD1` in this scope
+  --> $DIR/type_const-tuple-call-expr-missing-field.rs:14:27
+   |
+LL | type const AliasFnUnused: ADD1 = ADD1::<{ Wrap(Some::<usize> {}) }>;
+   |                           ^^^^ not found in this scope
+   |
+   = note: a constant named `ADD1` exists in another namespace
+
+error: unconstrained generic constant
+  --> $DIR/type_const-tuple-call-expr-missing-field.rs:12:1
+   |
+LL | type const ADD1<const N: usize>: usize = const { N + 1 };
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try adding a `where` bound
+   |
+LL | type const ADD1<const N: usize>: usize where [(); const { N + 1 }]: = const { N + 1 };
+   |                                        ++++++++++++++++++++++++++++
+
+error: struct expression with missing field initialiser for `0`
+  --> $DIR/type_const-tuple-call-expr-missing-field.rs:14:48
+   |
+LL | type const AliasFnUnused: ADD1 = ADD1::<{ Wrap(Some::<usize> {}) }>;
+   |                                                ^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0573`.
