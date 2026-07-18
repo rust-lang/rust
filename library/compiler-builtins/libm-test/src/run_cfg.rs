@@ -239,8 +239,9 @@ fn slow_platform() -> bool {
     slow_on_ci && crate::ci()
 }
 
-/// The number of iterations to run for a given test.
-pub fn iteration_count(ctx: &CheckCtx, argnum: usize) -> u64 {
+/// The maximum number of iterations to run for a given argument in a given test. This may be
+/// greater than the number of representable values.
+pub fn arg_max_iterations(ctx: &CheckCtx, argnum: usize) -> u64 {
     let t_env = TestEnv::from_env(ctx);
 
     // Ideally run 5M tests
@@ -271,7 +272,7 @@ pub fn iteration_count(ctx: &CheckCtx, argnum: usize) -> u64 {
         GeneratorKind::Spaced => domain_iter_count,
         GeneratorKind::Random => random_iter_count,
         GeneratorKind::EdgeCases | GeneratorKind::List => {
-            unimplemented!("shoudn't need `iteration_count` for {:?}", ctx.gen_kind)
+            unimplemented!("shoudn't need `arg_max_iterations` for {:?}", ctx.gen_kind)
         }
     };
 
