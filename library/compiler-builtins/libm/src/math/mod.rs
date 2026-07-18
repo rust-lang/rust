@@ -107,7 +107,9 @@ use self::rem_pio2::rem_pio2;
 use self::rem_pio2_large::rem_pio2_large;
 use self::rem_pio2f::rem_pio2f;
 #[allow(unused_imports)]
-use self::support::{CastFrom, CastInto, DFloat, DInt, Float, HFloat, HInt, Int, IntTy, MinInt};
+use self::support::{
+    CastFrom, CastInto, DInt, Float, HInt, Int, IntTy, MinInt, NarrowFloat, WideFloat,
+};
 
 // Public modules
 mod acos;

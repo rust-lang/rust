@@ -1,5 +1,5 @@
 use crate::support::{
-    CastFrom, CastInto, DFloat, Float, FpResult, HFloat, IntTy, MinInt, Round, Status,
+    CastFrom, CastInto, Float, FpResult, IntTy, MinInt, NarrowFloat, Round, Status, WideFloat,
 };
 
 /// Fma implementation when a hardware-backed larger float type is available. For `f32` and `f64`,
@@ -7,8 +7,8 @@ use crate::support::{
 #[inline]
 pub fn fma_wide_round<F, B>(x: F, y: F, z: F, round: Round) -> FpResult<F>
 where
-    F: Float + HFloat<D = B>,
-    B: Float + DFloat<H = F>,
+    F: Float + NarrowFloat<D = B>,
+    B: Float + WideFloat<H = F>,
     B::Int: CastInto<i32>,
     i32: CastFrom<i32>,
 {
