@@ -2537,7 +2537,6 @@ where
     T: AllocatorClone,
     // Otherwise, the clone impl *here* may unwind.
     A: AllocatorClone,
-    Box<T, A>: Clone,
 {
 }
 

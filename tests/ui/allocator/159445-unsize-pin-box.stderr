@@ -10,9 +10,6 @@ help: the nightly-only, unstable trait `StaticAllocator` is not implemented for 
 LL | struct BadAlloc;
    | ^^^^^^^^^^^^^^^
 help: the following other types implement trait `StaticAllocator`
-  --> $SRC_DIR/core/src/alloc/mod.rs:LL:COL
-   |
-   = note: `&A`
   --> $SRC_DIR/std/src/alloc.rs:LL:COL
    |
    = note: `System`
