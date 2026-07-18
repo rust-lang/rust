@@ -203,34 +203,58 @@ fn check_static<'tcx>(cx: &LateContext<'tcx>, symbol_name: &str, did: LocalDefId
         return;
     };
 
-    // Get the static type
-    let static_ty = cx.tcx.type_of(did).instantiate_identity().skip_norm_wip();
-
-    // Peel Option<...> and get the inner type (see std weak! macro with #[linkage = "extern_weak"])
-    let inner_static_ty: Ty<'_> = match static_ty.kind() {
-        ty::Adt(def, args) if Some(def.did()) == cx.tcx.lang_items().option_type() => {
-            args.type_at(0)
-        }
-        _ => static_ty,
-    };
-
     // Get the expected symbol function signature
     let lang_sig = cx.tcx.normalize_erasing_regions(
         cx.typing_env(),
         cx.tcx.fn_sig(expected_def_id).instantiate_identity(),
     );
 
-    let expected = Ty::new_fn_ptr(cx.tcx, lang_sig);
+    // Get the static type
+    let outer_user_sig = cx.tcx.type_of(did).instantiate_identity().skip_norm_wip();
 
-    // Compare the expected function signature with the static type, report an error if they don't match
-    if expected != inner_static_ty {
+    // Peel Option<...> and get the inner type (see std weak! macro with #[linkage = "extern_weak"])
+    let user_sig: Ty<'_> = match outer_user_sig.kind() {
+        ty::Adt(def, args) if Some(def.did()) == cx.tcx.lang_items().option_type() => {
+            args.type_at(0)
+        }
+        _ => outer_user_sig,
+    };
+
+    let user_sig = if let ty::FnPtr(sig_tys, hdr) = user_sig.kind() {
+        sig_tys.with(*hdr)
+    } else {
+        // not a function pointer, report an error
+
+        let lang_sig = Ty::new_fn_ptr(cx.tcx, lang_sig);
         cx.emit_span_lint(
             INVALID_RUNTIME_SYMBOL_DEFINITIONS,
             sp,
             RedefiningRuntimeSymbolsDiag::Static {
-                static_ty,
+                static_ty: user_sig,
                 symbol_name: symbol_name.to_string(),
-                expected_fn_sig: expected,
+                expected_fn_sig: lang_sig,
+            },
+        );
+        return;
+    };
+
+    // Compare the two signatures with an inference context
+    let infcx = cx.tcx.infer_ctxt().build(cx.typing_mode());
+    let cause = rustc_middle::traits::ObligationCause::misc(sp, did);
+    let result = infcx.at(&cause, cx.param_env).eq(DefineOpaqueTypes::No, lang_sig, user_sig);
+
+    // Compare the expected function signature with the static type, report an error if they don't match
+    if result.is_err() {
+        let user_sig = Ty::new_fn_ptr(cx.tcx, user_sig);
+        let lang_sig = Ty::new_fn_ptr(cx.tcx, lang_sig);
+
+        cx.emit_span_lint(
+            INVALID_RUNTIME_SYMBOL_DEFINITIONS,
+            sp,
+            RedefiningRuntimeSymbolsDiag::Static {
+                static_ty: user_sig,
+                symbol_name: symbol_name.to_string(),
+                expected_fn_sig: lang_sig,
             },
         );
     }

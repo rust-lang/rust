@@ -864,7 +864,7 @@ pub(crate) enum RedefiningRuntimeSymbolsDiag<'tcx> {
     )]
     #[note(
         "expected `{$expected_fn_sig}`
-    found    `static {$symbol_name}: {$static_ty}`"
+    found    `{$static_ty}`"
     )]
     #[help(
         "either fix the signature or remove any attributes `#[unsafe(no_mangle)]` or `#[unsafe(export_name = \"{$symbol_name}\")]`"

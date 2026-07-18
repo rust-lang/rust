@@ -25,6 +25,12 @@ fn invalid() {
     pub static strlen: () = ();
     //~^ ERROR invalid definition of the runtime `strlen` symbol
 
+    extern "C" {
+        #[link_name = "strlen"]
+        static strlen2: Option<unsafe extern "C" fn(s: *const c_char)>;
+        //~^ ERROR invalid definition of the runtime `strlen` symbol
+    }
+
     // ABI mismatch: Rust ABI instead of C ABI
     #[no_mangle]
     pub fn memcpy(dest: *mut c_void, src: *const c_void, n: usize) -> *mut c_void {

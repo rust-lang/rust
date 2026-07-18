@@ -36,7 +36,7 @@ LL |     pub static close: () = ();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: expected `unsafe extern "C" fn(i32) -> i32`
-           found    `static close: ()`
+           found    `()`
    = help: either fix the signature or remove any attributes `#[unsafe(no_mangle)]` or `#[unsafe(export_name = "close")]`
 
 error: invalid definition of the runtime `malloc` symbol used by the standard library
