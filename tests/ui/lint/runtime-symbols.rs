@@ -3,6 +3,7 @@
 //@ edition: 2021
 //@ normalize-stderr: "\*const [iu]8" -> "*const U8"
 
+#![feature(linkage)]
 #![feature(c_variadic)]
 #![allow(clashing_extern_declarations)] // we are voluntarily testing different definitions
 
@@ -27,6 +28,7 @@ fn invalid() {
 
     extern "C" {
         #[link_name = "strlen"]
+        #[linkage = "weak"]
         static strlen2: Option<unsafe extern "C" fn(s: *const c_char)>;
         //~^ ERROR invalid definition of the runtime `strlen` symbol
     }
@@ -94,6 +96,7 @@ fn valid() {
 
         fn bcmp(s1: *const c_void, s2: *const c_void, n: usize) -> c_int;
 
+        #[linkage = "linkonce"]
         static strlen: Option<unsafe extern "C" fn(s: *const c_char) -> usize>;
     }
 }

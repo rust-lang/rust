@@ -4,6 +4,7 @@
 //@ edition: 2021
 //@ normalize-stderr: "\*const [iu]8" -> "*const U8"
 
+#![feature(linkage)]
 #![feature(c_variadic)]
 #![allow(clashing_extern_declarations)] // we are voluntarily testing different definitions
 
@@ -53,11 +54,8 @@ fn suspicious() {
         //~^ WARN suspicious definition of the runtime `exit` symbol
 
         #[link_name = "exit"]
+        #[linkage = "weak"]
         pub static exit2: Option<unsafe extern "C" fn(f32) -> !>;
-        //~^ WARN suspicious definition of the runtime `exit` symbol
-
-        #[link_name = "exit"]
-        pub static exit3: unsafe extern "C" fn(f32) -> !;
         //~^ WARN suspicious definition of the runtime `exit` symbol
     }
 }

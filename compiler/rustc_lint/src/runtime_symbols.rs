@@ -125,7 +125,10 @@ impl<'tcx> LateLintPass<'tcx> for RuntimeSymbols {
                             check_fn(cx, &symbol_name.name, fn_sig, did);
                         }
                         ForeignItemKind::Static(..) => {
-                            check_static(cx, &symbol_name.name, did, item.span);
+                            // We only check static with #[linkage = "..."] attribute (see std weak! macro)
+                            if cx.tcx.codegen_fn_attrs(did).import_linkage.is_some() {
+                                check_static(cx, &symbol_name.name, did, item.span);
+                            }
                         }
                         ForeignItemKind::Type => return,
                     }
