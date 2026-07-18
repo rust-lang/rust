@@ -68,8 +68,7 @@ impl AllowedTargets<'_> {
         .iter()
         .filter_map(|target| match target {
             Policy::Allow(target) => Some(*target),
-            Policy::AllowSilent(_) // Not listed in possible targets
-            | Policy::Warn(_) | Policy::Error(_) => None,
+            Policy::AllowSilent(_) | Policy::Warn(_) | Policy::Error(_) => None,
         })
         .collect()
     }

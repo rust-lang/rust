@@ -24,12 +24,11 @@ impl<'sess> AttributeParser<'sess> {
 
         // Check if expected & actual safety match
         match (expected_safety, attr_safety) {
-            // - Unsafe builtin attribute
-            // - User wrote `#[unsafe(..)]`, which is permitted on any edition
-            (AttributeSafety::Unsafe { .. }, Safety::Unsafe(..)) |
-            // - Normal builtin attribute
-            // - No explicit `#[unsafe(..)]` written.
-            (AttributeSafety::Normal, Safety::Default) => {
+            // - An unsafe builtin attribute, where the user wrote `#[unsafe(..)]`,
+            // which is permitted on any edition
+            // - A normal builtin attribute, where no explicit `#[unsafe(..)]` was written.
+            (AttributeSafety::Unsafe { .. }, Safety::Unsafe(..))
+            | (AttributeSafety::Normal, Safety::Default) => {
                 // OK
             }
 
