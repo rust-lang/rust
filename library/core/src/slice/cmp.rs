@@ -391,10 +391,16 @@ where
     }
 }
 
-impl SliceContains for u8 {
+impl<T: UnsignedBytewiseOrd> SliceContains for T {
     #[inline]
     fn slice_contains(&self, x: &[Self]) -> bool {
-        memchr::memchr(*self, x).is_some()
+        // SAFETY: `UnsignedBytewiseOrd` guarantees that `Self` has the same
+        // layout as `u8` and is initialized, so both the value and slice can
+        // be read as bytes.
+        let (byte, bytes) = unsafe {
+            (*(self as *const Self).cast::<u8>(), from_raw_parts(x.as_ptr().cast::<u8>(), x.len()))
+        };
+        memchr::memchr(byte, bytes).is_some()
     }
 }
 
