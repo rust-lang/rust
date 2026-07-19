@@ -29,6 +29,7 @@ pub use core::io::{
     stream_len_default, take,
 };
 
+use self::read::{append_to_string, default_read_buf_exact, default_read_exact};
 use self::util::{bytes, lines, split, uninlined_slow_read_byte};
 #[unstable(feature = "alloc_io", issue = "154046")]
 pub use self::{
@@ -41,8 +42,8 @@ pub use self::{
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
 pub use self::{
     read::{
-        DEFAULT_BUF_SIZE, append_to_string, default_read_buf, default_read_buf_exact,
-        default_read_exact, default_read_to_end, default_read_to_string, default_read_vectored,
+        DEFAULT_BUF_SIZE, default_read_buf, default_read_to_end, default_read_to_string,
+        default_read_vectored,
     },
     util::SpecReadByte,
 };
