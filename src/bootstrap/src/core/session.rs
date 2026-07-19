@@ -1512,8 +1512,20 @@ impl Session {
     /// Links a file from `src` to `dst`.
     /// Unlike, [`Build::copy_link`], this makes an actual copy, which is usually not required,
     /// so `copy_link` should be used instead if possible.
-    pub fn copy(&self, src: &Path, dst: &Path) {
+    #[track_caller]
+    pub fn copy(&self, src: &Path, dst: &Path, file_type: FileType) {
         self.copy_internal(src, dst, false, false);
+
+        if file_type.could_have_split_debuginfo()
+            && let Some(dbg_file) = split_debuginfo(src)
+        {
+            self.copy_internal(
+                &dbg_file,
+                &dst.with_extension(dbg_file.extension().unwrap()),
+                false,
+                true,
+            );
+        }
     }
 
     #[track_caller]
@@ -1603,6 +1615,7 @@ impl Session {
     /// when this function is called.
     /// Unlike, [`Build::cp_link_r`], this makes an actual copy, which is usually not required,
     /// so `cp_link_r` should be used instead if possible.
+    #[track_caller]
     pub fn cp_r(&self, src: &Path, dst: &Path) {
         if self.config.dry_run() {
             return;
@@ -1616,7 +1629,7 @@ impl Session {
                 self.cp_r(&path, &dst);
             } else {
                 let _ = fs::remove_file(&dst);
-                self.copy(&path, &dst);
+                self.copy(&path, &dst, FileType::Regular);
             }
         }
     }

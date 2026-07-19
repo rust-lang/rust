@@ -1,6 +1,8 @@
 ---
 pattern: "*-apple-tvos"
-maintainers: ["@thomcc"]
+maintainers:
+  - "@thomcc"
+  - "@madsmtm"
 ---
 
 ## Overview

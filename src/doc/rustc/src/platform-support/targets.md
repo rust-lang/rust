@@ -1,7 +1,7 @@
-# List of all targets
+# List of all Targets
 
 An alphabetical list of all targets.
 
-<!-- TARGET SECTION START -->
+<!-- TARGET_LIST SECTION START -->
 <!-- See `src/tools/target-docs` -->
-<!-- TARGET SECTION END -->
+<!-- TARGET_LIST SECTION END -->

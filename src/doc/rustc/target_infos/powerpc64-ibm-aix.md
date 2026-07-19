@@ -1,9 +1,9 @@
 ---
 pattern: "powerpc64-ibm-aix"
-maintainers: [
-    "QIU Chaofan `qiucofan@cn.ibm.com`, https://github.com/ecnelises",
-    "Kai LUO, `lkail@cn.ibm.com`, https://github.com/bzEq",
-]
+maintainers:
+  - "@daltenty"
+  - "@gilamn5tr"
+  - "@amy-kwan"
 ---
 
 ## Requirements
