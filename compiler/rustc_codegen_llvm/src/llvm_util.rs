@@ -639,6 +639,13 @@ fn llvm_features_by_flags(sess: &Session, features: &mut Vec<String>) {
             features.push("+reserve-x18".into());
         }
     }
+
+    // -Zllvm-target-feature
+    for feature in sess.opts.unstable_opts.llvm_target_feature.split(',') {
+        if !feature.is_empty() {
+            features.push(feature.into());
+        }
+    }
 }
 
 /// The list of LLVM features computed from CLI flags (`-Ctarget-cpu`, `-Ctarget-feature`,
