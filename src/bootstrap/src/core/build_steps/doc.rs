@@ -24,7 +24,7 @@ use crate::core::builder::{
 use crate::core::compiler::Compiler;
 use crate::core::config::TargetSelection;
 use crate::core::session::{FileType, Mode};
-use crate::utils::helpers::{exit_process, submodule_path_of, symlink_dir, t, up_to_date};
+use crate::utils::helpers::{exit_process, fail, submodule_path_of, symlink_dir, t, up_to_date};
 
 macro_rules! book {
     ($($name:ident, $path:expr, $book_name:expr, $lang:expr ;)+) => {
@@ -1672,19 +1672,20 @@ impl CommandLineStep for RustcBook {
         // (by requiring that the targets match and also that nightly flags can be used)
         // Using the bootstrap compiler for this doesn't work.
         if builder.top_stage < 1 {
-            crate::fail("building the rustc book with stage 0 is not supported, use --stage 1");
+            fail("building the rustc book with stage 0 is not supported, use --stage 1");
         }
 
-        let out_base = builder.md_doc_out(self.target).join("rustc");
+        let out_base = builder.out.join(self.target).join("md-doc").join("rustc");
         t!(fs::create_dir_all(&out_base));
         let out_lints_listing = out_base.join("src/lints");
         let out_src_listing = out_base.join("src");
+        let rustc = builder.rustc(self.build_compiler);
 
         // target-docs will be modifying the files in-place, so we need an actual copy.
         builder.cp_r(&builder.src.join("src/doc/rustc"), &out_base);
+
         builder.info(&format!("Generating lint docs ({})", self.target));
 
-        let rustc = builder.rustc(self.build_compiler);
         // The tool runs `rustc` for extracting output examples, so it needs a
         // functional sysroot.
         builder.std(self.build_compiler, self.target);
@@ -1721,7 +1722,8 @@ impl CommandLineStep for RustcBook {
         cmd.run(builder);
         drop(doc_generator_guard);
 
-        // Run target-docs generator
+        builder.info(&format!("Generating target docs ({})", self.target));
+
         let mut cmd = builder.tool_cmd(Tool::TargetDocs);
         cmd.arg(builder.src.join("src/doc/rustc/target_infos"));
         cmd.arg(&out_src_listing);
@@ -1729,16 +1731,11 @@ impl CommandLineStep for RustcBook {
         // For now, we just check that the files are correct but do not generate output.
         // Let the user override it to TARGET_CHECK_ONLY=0 for testing, but use 1 by default.
         // See https://github.com/rust-lang/rust/issues/120745 for more info.
-        cmd.env("TARGET_CHECK_ONLY", std::env::var("TARGET_CHECK_ONLY").unwrap_or("1".to_owned()));
+        cmd.env("TARGET_CHECK_ONLY", std::env::var("TARGET_CHECK_ONLY").as_deref().unwrap_or("1"));
 
-        let doc_generator_guard = builder.msg(
-            Kind::Run,
-            self.compiler.stage,
-            "target-docs",
-            self.compiler.host,
-            self.target,
-        );
-        builder.run(&mut cmd);
+        let doc_generator_guard =
+            builder.msg(Kind::Run, "target-docs", None, self.build_compiler, self.target);
+        cmd.run(builder);
         drop(doc_generator_guard);
 
         // Run rustbook/mdbook to generate the HTML pages.

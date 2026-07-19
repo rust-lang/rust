@@ -4,7 +4,7 @@ This tool generates target documentation for all targets in the rustc book.
 
 To achieve this, it uses a list of input markdown files provided in `src/doc/rustc/target_infos`. These files follow a strict format.
 Every file covers a glob pattern of targets. The glob is specified in the `pattern` field in the front matter.
-The file name must be this same glob, expect with the `*` replaced with `_` (because of Windows file name support).
+The file name must be this same glob, except with the `*` replaced with `_` (because of Windows file name support).
 
 For every rustc target, we iterate through all the target infos and find matching globs.
 When a glob matches, it extracts the h2 markdown sections and saves them for the target.

@@ -1,13 +1,11 @@
 mod parse;
 mod render;
 
-use std::{
-    collections::HashMap,
-    path::{Path, PathBuf},
-    process::Command,
-};
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
+use std::process::Command;
 
-use eyre::{bail, Context, OptionExt, Result};
+use eyre::{Context, OptionExt, Result, bail};
 use parse::ParsedTargetInfoFile;
 use serde::Deserialize;
 
@@ -44,8 +42,8 @@ fn main() -> Result<()> {
         "second argument must be path to `src` output directory (build/$target/md-doc/rustc/src)",
     )?;
 
-    println!("Loading target info docs from {input_dir}");
-    println!("Writing output to {output_src}");
+    eprintln!("Loading target info docs from {input_dir}");
+    eprintln!("Writing output to {output_src}");
 
     let targets_to_skip = std::env::var("TARGET_DOCS_SKIP_TARGETS");
     let targets_to_skip =
@@ -53,7 +51,7 @@ fn main() -> Result<()> {
 
     let rustc =
         PathBuf::from(std::env::var("RUSTC").expect("must pass RUSTC env var pointing to rustc"));
-    let check_only = std::env::var("TARGET_CHECK_ONLY") == Ok("1".to_owned());
+    let check_only = std::env::var("TARGET_CHECK_ONLY").as_deref() == Ok("1");
 
     let targets = rustc_stdout(&rustc, &["--print", "target-list"]);
     let targets =
@@ -87,7 +85,7 @@ fn main() -> Result<()> {
         })
         .collect::<Vec<_>>();
 
-    eprintln!("Rendering targets check_only={check_only}");
+    eprintln!("Rendering targets, check_only={check_only}");
     let targets_dir = Path::new(output_src).join("platform-support").join("targets");
     if !check_only {
         std::fs::create_dir_all(&targets_dir).wrap_err("creating platform-support/targets dir")?;

@@ -1,12 +1,11 @@
 //! Suboptimal half-markdown parser that's just good-enough for this.
 
-use eyre::{bail, OptionExt, Result, WrapErr};
+use std::collections::HashMap;
+use std::fs::DirEntry;
+use std::path::{Path, PathBuf};
+
+use eyre::{OptionExt, Result, WrapErr, bail};
 use serde::Deserialize;
-use std::{
-    collections::HashMap,
-    fs::DirEntry,
-    path::{Path, PathBuf},
-};
 
 #[derive(Debug)]
 pub(crate) struct ParsedTargetInfoFile {
