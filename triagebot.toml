@@ -669,6 +669,27 @@ trigger_files = [
     "src/tools/rustfmt",
 ]
 
+# Language documentation labels
+
+[autolabel."T-lang-docs"]
+trigger_files = [
+    "library/core/src/primitive_docs.rs",
+    "library/std/src/attribute_docs.rs",
+    "library/std/src/keyword_docs.rs",
+    "src/doc/nomicon",
+    "src/doc/reference.md",
+    "src/doc/reference",
+]
+
+# Edition labels
+
+[autolabel."T-edition"]
+trigger_files = [
+    "compiler/rustc_span/src/edition.rs",
+    "src/doc/edition-guide",
+    "tests/ui/editions",
+]
+
 # ------------------------------------------------------------------------------
 # Prioritization and team nominations
 # ------------------------------------------------------------------------------
@@ -1464,6 +1485,46 @@ message = """
 """
 cc = ["@jieyouxu"]
 
+# Language documentation mentions
+
+[mentions."library/core/src/primitive_docs.rs"]
+message = "Some changes occurred in language documentation."
+cc = ["@rust-lang/lang-docs", "@rust-lang/fls"]
+
+[mentions."library/std/src/attribute_docs.rs"]
+message = "Some changes occurred in language documentation."
+cc = ["@rust-lang/lang-docs", "@rust-lang/fls"]
+
+[mentions."library/std/src/keyword_docs.rs"]
+message = "Some changes occurred in language documentation."
+cc = ["@rust-lang/lang-docs", "@rust-lang/fls"]
+
+[mentions."src/doc/nomicon"]
+message = "A language documentation submodule was updated."
+cc = ["@rust-lang/lang-docs"]
+
+[mentions."src/doc/reference.md"]
+message = "Some changes occurred in language documentation."
+cc = ["@rust-lang/lang-docs"]
+
+[mentions."src/doc/reference"]
+message = "A language documentation submodule was updated."
+cc = ["@rust-lang/lang-docs"]
+
+# Edition mentions
+
+[mentions."compiler/rustc_span/src/edition.rs"]
+message = "Edition-relevant code was updated."
+cc = ["@rust-lang/edition"]
+
+[mentions."src/doc/edition-guide"]
+message = "The Edition Guide submodule was updated."
+cc = ["@rust-lang/edition"]
+
+[mentions."tests/ui/editions"]
+message = "Edition-relevant tests were updated."
+cc = ["@rust-lang/edition"]
+
 # Content-based mentions
 
 [mentions."miri"]
@@ -1659,11 +1720,14 @@ dep-bumps = [
 "/library/alloc" =                                       ["libs"]
 "/library/alloctests" =                                  ["libs"]
 "/library/core" =                                        ["libs"]
+"/library/core/src/primitive_docs.rs" =                  ["lang-docs"]
 "/library/coretests" =                                   ["libs"]
 "/library/panic_abort" =                                 ["libs"]
 "/library/panic_unwind" =                                ["libs"]
 "/library/proc_macro" =                                  ["@petrochenkov"]
 "/library/std" =                                         ["libs", "@ChrisDenton"]
+"/library/std/src/attribute_docs.rs" =                   ["lang-docs", "@GuillaumeGomez"]
+"/library/std/src/keyword_docs.rs" =                     ["lang-docs"]
 "/library/std/src/sys/pal/windows" =                     ["@ChrisDenton"]
 "/library/stdarch" =                                     ["libs"]
 "/library/std_detect" =                                  ["libs"]
