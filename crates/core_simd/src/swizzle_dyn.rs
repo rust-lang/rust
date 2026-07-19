@@ -52,6 +52,12 @@ impl<const N: usize> Simd<u8, N> {
                 16 => transize(armv7_neon_swizzle_u8x16, self, idxs),
                 #[cfg(all(target_arch = "loongarch64", target_feature = "lsx"))]
                 16 => transize(loong64_lsx_swizzle, self, idxs),
+                #[cfg(all(
+                    target_arch = "loongarch64",
+                    target_feature = "lsx",
+                    not(target_feature = "lasx")
+                ))]
+                32 => transize(swizzle_dyn_split::<32, 16>, self, idxs),
                 #[cfg(all(target_feature = "avx2", not(target_feature = "avx512vbmi")))]
                 32 => transize(avx2_pshufb, self, idxs),
                 #[cfg(all(target_feature = "avx512vl", target_feature = "avx512vbmi"))]
@@ -76,6 +82,8 @@ impl<const N: usize> Simd<u8, N> {
                 32 => transize(loong64_lasx_swizzle, self, idxs),
                 // Notable absence: avx512bw pshufb shuffle
                 #[cfg(all(target_feature = "avx2", not(target_feature = "avx512vbmi")))]
+                64 => transize(swizzle_dyn_split::<64, 32>, self, idxs),
+                #[cfg(all(target_arch = "loongarch64", target_feature = "lasx"))]
                 64 => transize(swizzle_dyn_split::<64, 32>, self, idxs),
                 #[cfg(all(target_feature = "avx512vl", target_feature = "avx512vbmi"))]
                 64 => {
@@ -110,7 +118,13 @@ impl<const N: usize> Simd<u8, N> {
         not(target_feature = "avx2"),
         not(target_feature = "avx512vbmi")
     ),
-    all(target_feature = "avx2", not(target_feature = "avx512vbmi"))
+    all(target_feature = "avx2", not(target_feature = "avx512vbmi")),
+    all(
+        target_arch = "loongarch64",
+        target_feature = "lsx",
+        not(target_feature = "lasx")
+    ),
+    all(target_arch = "loongarch64", target_feature = "lasx")
 ))]
 /// Implements an arbitrary shuffle over double the native vector width
 /// using 4 native-width shuffles
