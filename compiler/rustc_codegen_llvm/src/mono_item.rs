@@ -198,13 +198,21 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
                 args.push(llvm::get_param(alias_lldecl, index));
             }
 
+            // For an indirect return, the alias's own first parameter is the
+            // caller-provided return slot: forward it to the aliasee as such.
+            let (return_slot, args) = if fn_abi.ret.is_indirect() {
+                let (sret_ptr, rest) = args.split_first().unwrap();
+                (ReturnSlot::Indirect(*sret_ptr), rest)
+            } else {
+                (ReturnSlot::Direct, &args[..])
+            };
             let call = start_bx.call(
                 fn_ty,
                 Some(attrs),
                 Some(fn_abi),
                 aliasee,
-                None,
-                &args,
+                return_slot,
+                args,
                 None,
                 Some(aliasee_instance),
             );

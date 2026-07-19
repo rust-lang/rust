@@ -1354,16 +1354,7 @@ fn catch_unwind_intrinsic<'ll, 'tcx>(
 ) -> &'ll Value {
     if !bx.sess().panic_strategy().unwinds() {
         let try_func_ty = bx.type_func(&[bx.type_ptr()], bx.type_void());
-        bx.call(
-            try_func_ty,
-            None,
-            None,
-            try_func,
-            None, /* this function can't return indirectly */
-            &[data],
-            None,
-            None,
-        );
+        bx.call(try_func_ty, None, None, try_func, ReturnSlot::Direct, &[data], None, None);
         // Return 0 unconditionally from the intrinsic call;
         // we can never unwind.
         bx.const_bool(false)
@@ -1466,7 +1457,7 @@ fn codegen_msvc_try<'ll, 'tcx>(
             None,
             None,
             try_func,
-            None, /* this function can't return indirectly */
+            ReturnSlot::Direct,
             &[data],
             normal,
             catchswitch,
@@ -1525,7 +1516,7 @@ fn codegen_msvc_try<'ll, 'tcx>(
             None,
             None,
             catch_func,
-            None, /* this function can't return indirectly */
+            ReturnSlot::Direct,
             &[data, ptr],
             Some(&funclet),
             None,
@@ -1542,7 +1533,7 @@ fn codegen_msvc_try<'ll, 'tcx>(
             None,
             None,
             catch_func,
-            None, /* this function can't return indirectly */
+            ReturnSlot::Direct,
             &[data, null],
             Some(&funclet),
             None,
@@ -1560,7 +1551,7 @@ fn codegen_msvc_try<'ll, 'tcx>(
         None,
         None,
         llfn,
-        None, /* this function can't return indirectly */
+        ReturnSlot::Direct,
         &[try_func, data, catch_func],
         None,
         None,
@@ -1616,7 +1607,7 @@ fn codegen_wasm_try<'ll, 'tcx>(
             None,
             None,
             try_func,
-            None, /* this function can't return indirectly */
+            ReturnSlot::Direct,
             &[data],
             normal,
             catchswitch,
@@ -1643,7 +1634,7 @@ fn codegen_wasm_try<'ll, 'tcx>(
             None,
             None,
             catch_func,
-            None, /* this function can't return indirectly */
+            ReturnSlot::Direct,
             &[data, ptr],
             Some(&funclet),
             None,
@@ -1661,7 +1652,7 @@ fn codegen_wasm_try<'ll, 'tcx>(
         None,
         None,
         llfn,
-        None, /* this function can't return indirectly */
+        ReturnSlot::Direct,
         &[try_func, data, catch_func],
         None,
         None,
@@ -1711,7 +1702,7 @@ fn codegen_gnu_try<'ll, 'tcx>(
             None,
             None,
             try_func,
-            None, /* this function can't return indirectly */
+            ReturnSlot::Direct,
             &[data],
             then,
             catch,
@@ -1735,7 +1726,7 @@ fn codegen_gnu_try<'ll, 'tcx>(
         bx.add_clause(vals, tydesc);
         let ptr = bx.extract_value(vals, 0);
         let catch_ty = bx.type_func(&[bx.type_ptr(), bx.type_ptr()], bx.type_void());
-        bx.call(catch_ty, None, None, catch_func, None, &[data, ptr], None, None);
+        bx.call(catch_ty, None, None, catch_func, ReturnSlot::Direct, &[data, ptr], None, None);
         bx.ret(bx.const_bool(true));
     });
 
@@ -1746,7 +1737,7 @@ fn codegen_gnu_try<'ll, 'tcx>(
         None,
         None,
         llfn,
-        None, /* this function can't return indirectly */
+        ReturnSlot::Direct,
         &[try_func, data, catch_func],
         None,
         None,
