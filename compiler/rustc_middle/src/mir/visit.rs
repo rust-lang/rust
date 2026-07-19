@@ -1178,6 +1178,7 @@ macro_rules! visit_place_fns {
                     if ty != new_ty { Some(PlaceElem::UnwrapUnsafeBinder(new_ty)) } else { None }
                 }
                 PlaceElem::Deref
+                | PlaceElem::PhantomDeref
                 | PlaceElem::ConstantIndex { .. }
                 | PlaceElem::Subslice { .. }
                 | PlaceElem::Downcast(..) => None,
@@ -1262,6 +1263,7 @@ macro_rules! visit_place_fns {
                     );
                 }
                 ProjectionElem::Deref
+                | ProjectionElem::PhantomDeref
                 | ProjectionElem::Subslice { from: _, to: _, from_end: _ }
                 | ProjectionElem::ConstantIndex { offset: _, min_length: _, from_end: _ }
                 | ProjectionElem::Downcast(_, _) => {}

@@ -7,7 +7,7 @@ struct CustomMarker<'a>(PhantomData<&'a ()>);
 impl<'a> Reborrow for CustomMarker<'a> {}
 
 fn method<'a>(a: CustomMarker<'a>) -> CustomMarker<'a> { //~ERROR cannot return reference to temporary value
-    //~^ ERROR cannot return value referencing function parameter `a`
+    //~^ ERROR cannot return value referencing local data `a`
     a
 }
 

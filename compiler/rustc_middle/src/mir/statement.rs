@@ -222,6 +222,7 @@ impl<'tcx> PlaceTy<'tcx> {
                 });
                 PlaceTy::from_ty(ty)
             }
+            ProjectionElem::PhantomDeref => PlaceTy::from_ty(structurally_normalize(self.ty)),
             ProjectionElem::Index(_) | ProjectionElem::ConstantIndex { .. } => {
                 PlaceTy::from_ty(self.ty.builtin_index().unwrap())
             }
@@ -260,7 +261,7 @@ impl<V, T> ProjectionElem<V, T> {
     /// than the base.
     pub fn is_indirect(&self) -> bool {
         match self {
-            Self::Deref => true,
+            Self::Deref | Self::PhantomDeref => true,
 
             Self::Field(_, _)
             | Self::Index(_)
@@ -282,7 +283,8 @@ impl<V, T> ProjectionElem<V, T> {
             | Self::ConstantIndex { .. }
             | Self::Subslice { .. }
             | Self::Downcast(_, _)
-            | Self::UnwrapUnsafeBinder(..) => true,
+            | Self::UnwrapUnsafeBinder(..)
+            | Self::PhantomDeref => true,
         }
     }
 
@@ -306,7 +308,8 @@ impl<V, T> ProjectionElem<V, T> {
             Self::ConstantIndex { from_end: true, .. }
             | Self::Index(_)
             | Self::OpaqueCast(_)
-            | Self::Subslice { .. } => false,
+            | Self::Subslice { .. }
+            | Self::PhantomDeref => false,
 
             // FIXME(unsafe_binders): Figure this out.
             Self::UnwrapUnsafeBinder(..) => false,
@@ -326,6 +329,7 @@ impl<V, T> ProjectionElem<V, T> {
     ) -> Option<ProjectionElem<V2, T2>> {
         Some(match self {
             ProjectionElem::Deref => ProjectionElem::Deref,
+            ProjectionElem::PhantomDeref => bug!("PhantomDeref shouldn't hopefully come here"),
             ProjectionElem::Downcast(name, read_variant) => {
                 ProjectionElem::Downcast(name, read_variant)
             }
@@ -560,6 +564,7 @@ impl<'tcx> PlaceRef<'tcx> {
         std::iter::once(self.local).chain(self.projection.iter().filter_map(|proj| match proj {
             ProjectionElem::Index(local) => Some(*local),
             ProjectionElem::Deref
+            | ProjectionElem::PhantomDeref
             | ProjectionElem::Field(_, _)
             | ProjectionElem::ConstantIndex { .. }
             | ProjectionElem::Subslice { .. }

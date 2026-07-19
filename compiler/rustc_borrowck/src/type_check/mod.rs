@@ -1897,6 +1897,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
             // All these projections don't add any constraints, so there's nothing to
             // do here. We check their invariants in the MIR validator after all.
             ProjectionElem::Deref
+            | ProjectionElem::PhantomDeref
             | ProjectionElem::Index(_)
             | ProjectionElem::ConstantIndex { .. }
             | ProjectionElem::Subslice { .. }
@@ -2468,6 +2469,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
                 }
                 ProjectionElem::Field(..)
+                | ProjectionElem::PhantomDeref
                 | ProjectionElem::Downcast(..)
                 | ProjectionElem::OpaqueCast(..)
                 | ProjectionElem::Index(..)

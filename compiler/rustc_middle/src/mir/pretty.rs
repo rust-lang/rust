@@ -1352,7 +1352,8 @@ fn pre_fmt_projection(projection: &[PlaceElem<'_>], fmt: &mut Formatter<'_>) -> 
         match elem {
             ProjectionElem::OpaqueCast(_)
             | ProjectionElem::Downcast(_, _)
-            | ProjectionElem::Field(_, _) => {
+            | ProjectionElem::Field(_, _)
+            | ProjectionElem::PhantomDeref => {
                 write!(fmt, "(")?;
             }
             ProjectionElem::Deref => {
@@ -1382,7 +1383,7 @@ fn post_fmt_projection(projection: &[PlaceElem<'_>], fmt: &mut Formatter<'_>) ->
             ProjectionElem::Downcast(None, index) => {
                 write!(fmt, " as variant#{index:?})")?;
             }
-            ProjectionElem::Deref => {
+            ProjectionElem::Deref | ProjectionElem::PhantomDeref => {
                 write!(fmt, ")")?;
             }
             ProjectionElem::Field(field, ty) => {
