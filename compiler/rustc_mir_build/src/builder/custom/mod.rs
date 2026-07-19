@@ -61,6 +61,7 @@ pub(super) fn build_custom_mir<'tcx>(
         pass_count: 0,
         coverage_early_info: None,
         coverage_mir_info: None,
+        tail_call_shim_source: None,
     };
 
     body.local_decls.push(LocalDecl::new(return_ty, return_ty_span));

@@ -319,6 +319,8 @@ pub mod random;
 pub mod range;
 pub mod result;
 pub mod sync;
+#[unstable(feature = "tail_call_fallback", issue = "none")]
+pub mod tail_call;
 #[unstable(feature = "unsafe_binders", issue = "130516")]
 pub mod unsafe_binder;
 

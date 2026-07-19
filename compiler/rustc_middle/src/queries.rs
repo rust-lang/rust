@@ -1177,6 +1177,12 @@ rustc_queries! {
         desc { "tail-call-checking `{}`", tcx.def_path_str(key) }
     }
 
+    /// Whether this function uses a guaranteed tail call (`become f()`).
+    query contains_tail_call(key: DefId) -> bool {
+        desc { "checking if `{}` contains tail calls", tcx.def_path_str(key) }
+        separate_provide_extern
+    }
+
     /// Returns the types assumed to be well formed while "inside" of the given item.
     ///
     /// Note that we've liberated the late bound regions of function signatures, so

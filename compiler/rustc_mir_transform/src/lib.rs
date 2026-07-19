@@ -207,6 +207,7 @@ declare_passes! {
     mod sroa : ScalarReplacementOfAggregates;
     mod strip_debuginfo : StripDebugInfo;
     mod ssa_range_prop: SsaRangePropagation;
+    mod tail_call : LowerTailCall;
     mod tail_copy_to_move : TailCopyToMove;
     mod unreachable_enum_branching : UnreachableEnumBranching;
     mod unreachable_prop : UnreachablePropagation;
@@ -216,6 +217,7 @@ declare_passes! {
 pub fn provide(providers: &mut Providers) {
     coverage::query::provide(providers);
     ffi_unwind_calls::provide(&mut providers.queries);
+    tail_call::provide(&mut providers.queries);
     shim::provide(&mut providers.queries);
     cross_crate_inline::provide(&mut providers.queries);
     providers.hooks.find_noop_landing_pads_for_instance =
@@ -467,6 +469,11 @@ fn mir_promoted(
     // the `trivial_const` query uses mir_built, so make sure it is run.
     tcx.ensure_done().trivial_const(def);
 
+    // The `contains_tail_call` query uses mir_built, so make sure it is run.
+    if tcx.sess.use_tail_call_fallback() {
+        tcx.ensure_done().contains_tail_call(def);
+    }
+
     let mut body = tcx.mir_built(def).steal();
     if let Some(error_reported) = const_qualifs.tainted_by_errors {
         body.tainted_by_errors = Some(error_reported);
@@ -707,6 +714,8 @@ pub(crate) fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
             &check_alignment::CheckAlignment,
             &check_null::CheckNull,
             &check_enums::CheckEnums,
+            // Desugar tail calls.
+            &tail_call::LowerTailCall,
             // Before inlining: trim down MIR with passes to reduce inlining work.
 
             // Has to be done before inlining, otherwise actual call will be almost always inlined.
@@ -809,6 +818,14 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
     debug!("about to call mir_drops_elaborated...");
     let body = tcx.mir_drops_elaborated_and_const_checked(did).steal();
     let mut body = remap_mir_for_const_eval_select(tcx, body, hir::Constness::NotConst);
+
+    // Store a copy of this body when it contains explicit tail calls and we use the portable
+    // fallback mechanism. The LowerTailCall pass will change the original body before the
+    // ShimKind::TailCall shim is constructed, so the shim construction needs this copy.
+    if tcx.sess.use_tail_call_fallback() && tcx.contains_tail_call(did.to_def_id()) {
+        let source = body.clone();
+        body.tail_call_shim_source = Some(Box::new(source));
+    }
 
     if body.tainted_by_errors.is_some() {
         return body;

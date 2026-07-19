@@ -89,6 +89,20 @@ fn resolve_instance_raw<'tcx>(
         } else if tcx.is_async_drop_in_place_coroutine(def_id) {
             let ty = args.type_at(0);
             ty::InstanceKind::Shim(ty::ShimKind::AsyncDropGlue(def_id, ty))
+        } else if tcx.is_lang_item(def_id, LangItem::TailShim) {
+            // Retrieve the first generic argument of tail_shim, which should be a function item
+            // whose shim we should be calling here.
+            let ty::FnDef(callee, callee_args) = *args.type_at(0).kind() else {
+                bug!(
+                    "`tail_shim` handle must be applied to a `fn` item, found {:?}",
+                    args.type_at(0)
+                )
+            };
+
+            // Forward to the shim, using the callee's generic arguments.
+            let callee_args = callee_args.no_bound_vars().unwrap();
+            let def = ty::InstanceKind::Shim(ty::ShimKind::TailCall(callee));
+            return Ok(Some(Instance { def, args: callee_args }));
         } else if tcx.def_kind(def_id) == DefKind::Fn
             && let Some(name) = tcx.codegen_fn_attrs(def_id).symbol_name
             && name.as_str().starts_with("llvm.")
