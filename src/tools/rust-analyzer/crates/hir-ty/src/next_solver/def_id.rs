@@ -165,6 +165,17 @@ impl From<GeneralConstId> for SolverDefId {
     }
 }
 
+impl From<CallableDefId> for SolverDefId {
+    #[inline]
+    fn from(value: CallableDefId) -> Self {
+        match value {
+            CallableDefId::FunctionId(id) => id.into(),
+            CallableDefId::StructId(id) => id.into(),
+            CallableDefId::EnumVariantId(id) => id.into(),
+        }
+    }
+}
+
 impl From<DefWithBodyId> for SolverDefId {
     #[inline]
     fn from(value: DefWithBodyId) -> Self {

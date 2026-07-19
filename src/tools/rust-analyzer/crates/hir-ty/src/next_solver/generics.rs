@@ -7,9 +7,7 @@ use hir_def::{
 
 use crate::db::HirDatabase;
 
-use super::SolverDefId;
-
-use super::DbInterner;
+use super::{Ctor, DbInterner, SolverDefId};
 
 pub(crate) fn generics(interner: DbInterner<'_>, def: SolverDefId) -> Generics<'_> {
     let db = interner.db;
@@ -24,6 +22,10 @@ pub(crate) fn generics(interner: DbInterner<'_>, def: SolverDefId) -> Generics<'
         (_, SolverDefId::BuiltinDeriveImplId(id)) => {
             return crate::builtin_derive::generics_of(interner, id);
         }
+        (_, SolverDefId::EnumVariantId(id) | SolverDefId::Ctor(Ctor::Enum(id))) => {
+            (id.loc(db).parent.into(), false)
+        }
+        (_, SolverDefId::Ctor(Ctor::Struct(id))) => (id.into(), false),
         (_, SolverDefId::AnonConstId(id)) => {
             let loc = id.loc(db);
             let generic_def = loc.owner.generic_def(db);
