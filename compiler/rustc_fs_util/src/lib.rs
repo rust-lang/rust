@@ -80,8 +80,32 @@ pub fn link_or_copy<P: AsRef<Path>, Q: AsRef<Path>>(p: P, q: Q) -> io::Result<Li
         }
     }
 
-    // Hard linking failed, fall back to copying.
-    fs::copy(p, q).map(|_| LinkOrCopy::Copy)
+    // Hard linking failed, fall back to copying. Go via a temporary file in
+    // `q`'s own directory followed by an atomic rename, rather than copying
+    // straight into `q`: on platforms where hard-linking always fails (e.g.
+    // Haiku's BFS, which unconditionally rejects `link()`), this fallback is
+    // taken for every single incremental-compilation artifact, so copying
+    // directly into `q` leaves a window, for as long as the copy takes,
+    // during which a concurrent reader can observe a partially-written file.
+    // For large files that window is easily hit under a normal parallel
+    // build, silently producing corrupt incremental/metadata state instead
+    // of a clean error.
+    copy_via_tempfile_and_rename(p, q).map(|()| LinkOrCopy::Copy)
+}
+
+fn copy_via_tempfile_and_rename(src: &Path, dst: &Path) -> io::Result<()> {
+    let dst_dir = dst.parent().ok_or_else(|| {
+        io::Error::new(
+            io::ErrorKind::InvalidInput,
+            format!("destination `{}` has no parent directory", dst.display()),
+        )
+    })?;
+    let mut tmp = tempfile::Builder::new()
+        .prefix(dst.file_name().unwrap_or_default())
+        .tempfile_in(dst_dir)?;
+    io::copy(&mut fs::File::open(src)?, tmp.as_file_mut())?;
+    tmp.persist(dst).map_err(|e| e.error)?;
+    Ok(())
 }
 
 #[cfg(any(unix, all(target_os = "wasi", target_env = "p1")))]
