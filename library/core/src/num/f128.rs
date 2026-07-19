@@ -1836,6 +1836,38 @@ impl f128 {
         intrinsics::fmaf128(self, a, b)
     }
 
+    /// Computes `(self * a) + b` with nondeterministic rounding.
+    ///
+    /// This is similar to [`mul_add`](Self::mul_add), but the intermediate
+    /// result may be rounded differently depending on the implementation.
+    /// The operation is either executed as a single fused multiply-add
+    /// instruction, or as separate multiply and add instructions.
+    ///
+    /// The choice of which one is used is unspecified and non-deterministic:
+    /// it may vary by target, optimization level, and surrounding code, and
+    /// two evaluations of the same operation may even produce different
+    /// results.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(f128)]
+    /// #![feature(float_mul_add_relaxed)]
+    /// # #[cfg(any(miri, target_has_reliable_f128_math))] { // Miri uses softfloats, always works
+    ///
+    /// let result = 1.0f128.mul_add_relaxed(2.0, 3.0);
+    /// assert_eq!(result, 5.0);
+    /// # }
+    /// ```
+    #[inline]
+    #[rustc_allow_incoherent_impl]
+    #[doc(alias = "fmuladd")]
+    #[unstable(feature = "float_mul_add_relaxed", issue = "151770")]
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    pub const fn mul_add_relaxed(self, a: f128, b: f128) -> f128 {
+        intrinsics::fmuladdf128(self, a, b)
+    }
+
     /// Calculates Euclidean division, the matching method for `rem_euclid`.
     ///
     /// This computes the integer `n` such that
