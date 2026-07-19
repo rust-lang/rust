@@ -1255,6 +1255,8 @@ pub enum ProjectionElem<V, T> {
     /// A transmute from an unsafe binder to the type that it wraps. This is a projection
     /// of a place, so it doesn't necessarily constitute a move out of the binder.
     UnwrapUnsafeBinder(T),
+
+    PhantomDeref,
 }
 
 /// Alias for projections as they appear in places, where the base is a place

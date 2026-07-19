@@ -8,7 +8,7 @@ LL | |     a
 LL | | }
    | |_^ returns a reference to data owned by the current function
 
-error[E0515]: cannot return value referencing function parameter `a`
+error[E0515]: cannot return value referencing local data `a`
   --> $DIR/custom_marker_identity.rs:9:56
    |
 LL |   fn method<'a>(a: CustomMarker<'a>) -> CustomMarker<'a> {

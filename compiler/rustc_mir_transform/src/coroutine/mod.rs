@@ -454,7 +454,8 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
             | PlaceElem::Deref
             | PlaceElem::ConstantIndex { .. }
             | PlaceElem::Subslice { .. }
-            | PlaceElem::Downcast(..) => None,
+            | PlaceElem::Downcast(..)
+            | PlaceElem::PhantomDeref => None,
         }
     }
 

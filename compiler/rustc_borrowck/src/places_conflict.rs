@@ -244,6 +244,7 @@ fn place_components_conflict<'tcx>(
 
                 (ProjectionElem::Deref, _, Deep)
                 | (ProjectionElem::Deref, _, AccessDepth::Drop)
+                | (ProjectionElem::PhantomDeref, _, _)
                 | (ProjectionElem::Field { .. }, _, _)
                 | (ProjectionElem::Index { .. }, _, _)
                 | (ProjectionElem::ConstantIndex { .. }, _, _)
@@ -299,6 +300,11 @@ fn place_projection_conflict<'tcx>(
         (ProjectionElem::Deref, ProjectionElem::Deref) => {
             // derefs (e.g., `*x` vs. `*x`) - recur.
             debug!("place_element_conflict: DISJOINT-OR-EQ-DEREF");
+            Overlap::EqualOrDisjoint
+        }
+        (ProjectionElem::PhantomDeref, ProjectionElem::PhantomDeref) => {
+            // phantom derefs (e.g., `x` vs. `x`) - recur.
+            debug!("place_element_conflict: DISJOINT-OR-EQ-PHANTOM-DEREF");
             Overlap::EqualOrDisjoint
         }
         (ProjectionElem::OpaqueCast(_), ProjectionElem::OpaqueCast(_)) => {
@@ -504,8 +510,15 @@ fn place_projection_conflict<'tcx>(
             debug!("place_element_conflict: DISJOINT-OR-EQ-SLICE-SUBSLICES");
             Overlap::EqualOrDisjoint
         }
+        (ProjectionElem::PhantomDeref, ProjectionElem::Field(idx, _))
+        | (ProjectionElem::Field(idx, _), ProjectionElem::PhantomDeref) => {
+            eprintln!("idx: {idx:?}");
+            debug!("place_element_conflict: DISJOINT-OR-EQ-PHANTOM-DEREF-FIELD");
+            Overlap::EqualOrDisjoint
+        }
         (
             ProjectionElem::Deref
+            | ProjectionElem::PhantomDeref
             | ProjectionElem::Field(..)
             | ProjectionElem::Index(..)
             | ProjectionElem::ConstantIndex { .. }
