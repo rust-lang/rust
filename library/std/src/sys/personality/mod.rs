@@ -14,9 +14,6 @@ mod dwarf;
 
 #[cfg(not(any(test, doctest)))]
 cfg_select! {
-    target_os = "emscripten" => {
-        mod emcc;
-    }
     any(target_env = "msvc", target_family = "wasm", target_os = "motor") => {
         // This is required by the compiler to exist (e.g., it's a lang item),
         // but it's never actually called by the compiler because
