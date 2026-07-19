@@ -19,7 +19,7 @@ pub fn run_tests(env: &Environment) -> anyhow::Result<()> {
     std::fs::create_dir_all(&unpacked_dist_dir)?;
 
     let extract_dist_dir = |name: &str| -> anyhow::Result<Utf8PathBuf> {
-        unpack_archive(&dist_dir.join(format!("{name}.tar.xz")), &unpacked_dist_dir)?;
+        unpack_archive(&dist_dir.join(format!("{name}.tar.zstd")), &unpacked_dist_dir)?;
         let extracted_path = unpacked_dist_dir.join(name);
         assert!(extracted_path.is_dir());
         Ok(extracted_path)
@@ -37,7 +37,7 @@ pub fn run_tests(env: &Environment) -> anyhow::Result<()> {
     let extracted_src_dir = extract_dist_dir(&format!("rust-src-{version}"))?.join("rust-src");
 
     // If we have a Cranelift archive, copy it to the rustc sysroot
-    if let Ok(_) = find_file_in_dir(&dist_dir, "rustc-codegen-cranelift-", ".tar.xz") {
+    if let Ok(_) = find_file_in_dir(&dist_dir, "rustc-codegen-cranelift-", ".tar.zstd") {
         let extracted_codegen_dir =
             extract_dist_dir(&format!("rustc-codegen-cranelift-{version}-{host_triple}"))?
                 .join("rustc-codegen-cranelift-preview");
@@ -160,7 +160,7 @@ where
 /// Tries to find the version of the dist artifacts (either nightly, beta, or 1.XY.Z).
 fn find_dist_version(directory: &Utf8Path) -> anyhow::Result<String> {
     // Lookup a known file with a unique prefix and extract the version from its filename
-    let archive = find_file_in_dir(directory, "reproducible-artifacts-", ".tar.xz")?
+    let archive = find_file_in_dir(directory, "reproducible-artifacts-", ".tar.zstd")?
         .file_name()
         .unwrap()
         .to_string();

@@ -47,9 +47,9 @@ pub fn delete_directory(path: &Utf8Path) -> anyhow::Result<()> {
 pub fn unpack_archive(path: &Utf8Path, dest_dir: &Utf8Path) -> anyhow::Result<()> {
     log::info!("Unpacking directory `{path}` into `{dest_dir}`");
 
-    assert!(path.as_str().ends_with(".tar.xz"));
+    assert!(path.as_str().ends_with(".tar.zstd"));
     let file = File::open(path.as_std_path())?;
-    let file = xz::read::XzDecoder::new(file);
+    let file = zstd::Decoder::new(file)?;
     let mut archive = tar::Archive::new(file);
     archive.unpack(dest_dir.as_std_path())?;
     Ok(())

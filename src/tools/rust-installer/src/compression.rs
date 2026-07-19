@@ -48,6 +48,7 @@ impl fmt::Display for CompressionProfile {
 pub enum CompressionFormat {
     Gz,
     Xz,
+    Zstd,
 }
 
 impl CompressionFormat {
@@ -55,6 +56,7 @@ impl CompressionFormat {
         match path.as_ref().extension().and_then(|e| e.to_str()) {
             Some("gz") => Some(CompressionFormat::Gz),
             Some("xz") => Some(CompressionFormat::Xz),
+            Some("zstd") => Some(CompressionFormat::Zstd),
             _ => None,
         }
     }
@@ -63,6 +65,9 @@ impl CompressionFormat {
         match self {
             CompressionFormat::Gz => "gz",
             CompressionFormat::Xz => "xz",
+            // FIXME: This is canonically supposed to be `zst` but bootstrap assumes the compression
+            // format's string is the extension, so we need to be consistent with that here.
+            CompressionFormat::Zstd => "zstd",
         }
     }
 
@@ -92,6 +97,21 @@ impl CompressionFormat {
                     ),
                 },
             )),
+            CompressionFormat::Zstd => {
+                let mut encoder = zstd::Encoder::new(
+                    file,
+                    match profile {
+                        CompressionProfile::Fast => 3,
+                        CompressionProfile::Balanced => 5,
+                        CompressionProfile::Best => 9,
+                        CompressionProfile::NoOp => panic!(
+                            "compression profile 'no-op' should not call `CompressionFormat::encode`."
+                        ),
+                    },
+                )?;
+                encoder.multithread(std::thread::available_parallelism()?.get() as u32)?;
+                Box::new(encoder)
+            }
             CompressionFormat::Xz => {
                 let encoder = match profile {
                     CompressionProfile::NoOp => panic!(
@@ -123,6 +143,7 @@ impl CompressionFormat {
         Ok(match self {
             CompressionFormat::Gz => Box::new(GzDecoder::new(file)),
             CompressionFormat::Xz => Box::new(XzDecoder::new(file)),
+            CompressionFormat::Zstd => Box::new(zstd::Decoder::new(file)?),
         })
     }
 }
@@ -140,6 +161,7 @@ impl TryFrom<&'_ str> for CompressionFormats {
             match format.trim() {
                 "gz" => parsed.push(CompressionFormat::Gz),
                 "xz" => parsed.push(CompressionFormat::Xz),
+                "zstd" => parsed.push(CompressionFormat::Zstd),
                 other => anyhow::bail!("unknown compression format: {}", other),
             }
         }
@@ -165,6 +187,7 @@ impl fmt::Display for CompressionFormats {
                 match format {
                     CompressionFormat::Xz => "xz",
                     CompressionFormat::Gz => "gz",
+                    CompressionFormat::Zstd => "zstd",
                 },
                 f,
             )?;
@@ -199,6 +222,13 @@ impl<W: Send + Write> Encoder for GzEncoder<W> {
 impl<W: Send + Write> Encoder for XzEncoder<W> {
     fn finish(self: Box<Self>) -> Result<(), Error> {
         XzEncoder::finish(*self).context("failed to finish .xz file")?;
+        Ok(())
+    }
+}
+
+impl<W: Send + Write> Encoder for zstd::Encoder<'_, W> {
+    fn finish(mut self: Box<Self>) -> Result<(), Error> {
+        self.do_finish()?;
         Ok(())
     }
 }
