@@ -2523,7 +2523,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                     let span = cx.tcx.def_span(adt_def.did());
                     let mut potential_variants = adt_def.variants().iter().filter_map(|variant| {
                         let definitely_inhabited = match variant
-                            .inhabited_predicate(cx.tcx, *adt_def)
+                            .inhabited_predicate(cx.tcx)
                             .instantiate(cx.tcx, args)
                             .apply_any_module(cx.tcx, cx.typing_env())
                         {

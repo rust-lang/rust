@@ -734,7 +734,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
         {
             let variant_inhabited = adt
                 .variant(*variant_index)
-                .inhabited_predicate(self.tcx, *adt)
+                .inhabited_predicate(self.tcx)
                 .instantiate(self.tcx, args);
             variant_inhabited.apply(self.tcx, cx.typing_env, cx.module)
                 && !variant_inhabited.apply_ignore_module(self.tcx, cx.typing_env)
