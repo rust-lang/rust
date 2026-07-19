@@ -5210,8 +5210,8 @@ impl CaptureUsages<'_> {
         let mut result = Vec::with_capacity(self.sources.len());
         for source in self.sources {
             let source = source.final_source();
-            let is_ref = Self::is_ref(store, source);
-            match source {
+            let is_ref = Self::is_ref(store, source.unpack());
+            match source.unpack() {
                 ExprOrPatId::ExprId(expr) => {
                     if let Ok(expr) = source_map.expr_syntax(expr) {
                         result.push(CaptureUsageSource { is_ref, source: expr })

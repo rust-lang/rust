@@ -35,7 +35,7 @@ use std::{iter, mem};
 use hir_def::{
     expr_store::ExpressionStore,
     hir::{
-        BindingAnnotation, BindingId, CaptureBy, CoroutineSource, Expr, ExprId, ExprOrPatId, Pat,
+        BindingAnnotation, BindingId, CaptureBy, CoroutineSource, Expr, ExprId, ExprOrPatIdPacked, Pat,
         PatId, Statement,
     },
     resolver::ValueNs,
@@ -1461,7 +1461,7 @@ fn determine_capture_info(capture_info_a: &mut CaptureInfo, capture_info_b: &mut
 fn determine_capture_sources(
     capture_info_a: &mut CaptureInfo,
     capture_info_b: &mut CaptureInfo,
-    dedup_sources_scratch: &mut FxHashMap<ExprOrPatId, CaptureSourceStack>,
+    dedup_sources_scratch: &mut FxHashMap<ExprOrPatIdPacked, CaptureSourceStack>,
 ) -> SmallVec<[CaptureSourceStack; 2]> {
     dedup_sources_scratch.clear();
     dedup_sources_scratch.extend(

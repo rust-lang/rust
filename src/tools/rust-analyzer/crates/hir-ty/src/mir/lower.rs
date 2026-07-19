@@ -1253,7 +1253,7 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
 
                 let span = |sources: &[CaptureSourceStack]| match sources
                     .first()
-                    .map(|it| it.final_source())
+                    .map(|it| it.final_source().unpack())
                 {
                     Some(ExprOrPatId::ExprId(it)) => it.into(),
                     Some(ExprOrPatId::PatId(it)) => it.into(),

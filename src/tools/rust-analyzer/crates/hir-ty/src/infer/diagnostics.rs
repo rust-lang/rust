@@ -9,8 +9,11 @@ use either::Either;
 use hir_def::expr_store::path::Path;
 use hir_def::{ExpressionStoreOwnerId, GenericDefId};
 use hir_def::{expr_store::ExpressionStore, type_ref::TypeRefId};
-use hir_def::{hir::ExprOrPatId, resolver::Resolver};
-use la_arena::{Idx, RawIdx};
+use hir_def::{
+    hir::{ExprId, ExprOrPatIdPacked},
+    resolver::Resolver,
+};
+use la_arena::RawIdx;
 use rustc_hash::FxHashMap;
 use thin_vec::ThinVec;
 
@@ -55,7 +58,7 @@ impl Diagnostics {
 }
 
 pub(crate) struct PathDiagnosticCallbackData<'a> {
-    node: ExprOrPatId,
+    node: ExprOrPatIdPacked,
     diagnostics: &'a Diagnostics,
 }
 
@@ -131,7 +134,7 @@ impl<'db, 'a> InferenceTyLoweringContext<'db, 'a> {
     pub(super) fn at_path<'b>(
         &'b mut self,
         path: &'b Path,
-        node: ExprOrPatId,
+        node: ExprOrPatIdPacked,
     ) -> PathLoweringContext<'b, 'a, 'db> {
         let on_diagnostic = PathDiagnosticCallback {
             data: Either::Right(PathDiagnosticCallbackData { diagnostics: self.diagnostics, node }),
@@ -152,7 +155,7 @@ impl<'db, 'a> InferenceTyLoweringContext<'db, 'a> {
         let on_diagnostic = PathDiagnosticCallback {
             data: Either::Right(PathDiagnosticCallbackData {
                 diagnostics: self.diagnostics,
-                node: ExprOrPatId::ExprId(Idx::from_raw(RawIdx::from_u32(0))),
+                node: ExprOrPatIdPacked::from(ExprId::from_raw(RawIdx::from_u32(0))),
             }),
             callback: |_data, _, _diag| {},
         };

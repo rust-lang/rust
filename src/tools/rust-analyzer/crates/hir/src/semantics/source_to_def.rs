@@ -354,8 +354,10 @@ impl SourceToDefCtx<'_, '_> {
         let src = src.cloned().map(ast::Pat::from);
         let pat_id = source_map.node_pat(src.as_ref())?;
         // the pattern could resolve to a constant, verify that this is not the case
-        if let crate::Pat::Bind { id, .. } = store[pat_id.as_pat()?] {
-            let parent_infer = semantics.infer_body_for_expr_or_pat(container, store, pat_id)?;
+        let pat_id = pat_id.as_pat()?;
+        if let crate::Pat::Bind { id, .. } = store[pat_id] {
+            let parent_infer =
+                semantics.infer_body_for_expr_or_pat(container, store, pat_id.into())?;
             Some(crate::Local { parent: container, parent_infer, binding_id: id })
         } else {
             None

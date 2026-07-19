@@ -204,7 +204,7 @@ fn check_impl(
                     _ => None,
                 });
             for (expr_or_pat, expected, actual) in type_mismatches {
-                let Some(node) = (match expr_or_pat {
+                let Some(node) = (match expr_or_pat.unpack() {
                     hir_def::hir::ExprOrPatId::ExprId(expr) => {
                         expr_node(body_source_map, expr, &db)
                     }

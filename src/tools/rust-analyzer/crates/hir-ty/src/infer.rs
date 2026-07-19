@@ -47,7 +47,7 @@ use hir_def::{
     TupleFieldId, TupleId, VariantId,
     attrs::AttrFlags,
     expr_store::{Body, ExpressionStore, HygieneId, body::Param, path::Path},
-    hir::{BindingId, ExprId, ExprOrPatId, LabelId, PatId},
+    hir::{BindingId, ExprId, ExprOrPatId, ExprOrPatIdPacked, LabelId, PatId},
     lang_item::LangItems,
     layout::Integer,
     resolver::{HasResolver, ResolveValueResult, Resolver, TypeNs, ValueNs},
@@ -289,7 +289,7 @@ pub enum InferenceTyDiagnosticSource {
 pub enum InferenceDiagnostic {
     NoSuchField {
         #[type_visitable(ignore)]
-        field: ExprOrPatId,
+        field: ExprOrPatIdPacked,
         #[type_visitable(ignore)]
         private: Option<LocalFieldId>,
         #[type_visitable(ignore)]
@@ -320,7 +320,7 @@ pub enum InferenceDiagnostic {
     },
     DuplicateField {
         #[type_visitable(ignore)]
-        field: ExprOrPatId,
+        field: ExprOrPatIdPacked,
         #[type_visitable(ignore)]
         variant: VariantId,
     },
@@ -332,7 +332,7 @@ pub enum InferenceDiagnostic {
     },
     PrivateAssocItem {
         #[type_visitable(ignore)]
-        id: ExprOrPatId,
+        id: ExprOrPatIdPacked,
         #[type_visitable(ignore)]
         item: AssocItemId,
     },
@@ -358,11 +358,11 @@ pub enum InferenceDiagnostic {
     },
     UnresolvedAssocItem {
         #[type_visitable(ignore)]
-        id: ExprOrPatId,
+        id: ExprOrPatIdPacked,
     },
     UnresolvedIdent {
         #[type_visitable(ignore)]
-        id: ExprOrPatId,
+        id: ExprOrPatIdPacked,
     },
     // FIXME: This should be emitted in body lowering
     BreakOutsideOfLoop {
@@ -461,7 +461,7 @@ pub enum InferenceDiagnostic {
     },
     PathDiagnostic {
         #[type_visitable(ignore)]
-        node: ExprOrPatId,
+        node: ExprOrPatIdPacked,
         #[type_visitable(ignore)]
         diag: PathLoweringDiagnostic,
     },
@@ -507,7 +507,7 @@ pub enum InferenceDiagnostic {
     },
     TypeMismatch {
         #[type_visitable(ignore)]
-        node: ExprOrPatId,
+        node: ExprOrPatIdPacked,
         expected: StoredTy,
         found: StoredTy,
     },
@@ -541,7 +541,7 @@ pub enum ReturnKind {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ExplicitDropMethodUseKind {
     MethodCall(ExprId),
-    Path(ExprOrPatId),
+    Path(ExprOrPatIdPacked),
 }
 
 /// Represents coercing a value to a different type of value.
@@ -743,9 +743,9 @@ pub struct InferenceResult {
     /// For each field access expr, records the field it resolves to.
     field_resolutions: FxHashMap<ExprId, Either<FieldId, TupleFieldId>>,
     /// For each struct literal or pattern, records the variant it resolves to.
-    variant_resolutions: FxHashMap<ExprOrPatId, VariantId>,
+    variant_resolutions: FxHashMap<ExprOrPatIdPacked, VariantId>,
     /// For each associated item record what it resolves to
-    assoc_resolutions: FxHashMap<ExprOrPatId, (CandidateId, StoredGenericArgs)>,
+    assoc_resolutions: FxHashMap<ExprOrPatIdPacked, (CandidateId, StoredGenericArgs)>,
     /// Whenever a tuple field expression access a tuple field, we allocate a tuple id in
     /// [`InferenceContext`] and store the tuples substitution there. This map is the reverse of
     /// that which allows us to resolve a [`TupleFieldId`]s type.
@@ -769,7 +769,7 @@ pub struct InferenceResult {
     /// During inference this field is empty and [`InferenceContext::diagnostics`] is filled instead.
     diagnostics: ThinVec<InferenceDiagnostic>,
     // FIXME: Remove this, change it to be in `InferenceContext`:
-    nodes_with_type_mismatches: Option<Box<FxHashSet<ExprOrPatId>>>,
+    nodes_with_type_mismatches: Option<Box<FxHashSet<ExprOrPatIdPacked>>>,
 
     /// Interned `Error` type to return references to.
     // FIXME: Remove this.
@@ -897,9 +897,9 @@ pub struct CaptureSourceStack(CaptureSourceStackRepr);
 
 #[derive(Clone)]
 enum CaptureSourceStackRepr {
-    One(ExprOrPatId),
-    Two([ExprOrPatId; 2]),
-    Many(ThinVec<ExprOrPatId>),
+    One(ExprOrPatIdPacked),
+    Two([ExprOrPatIdPacked; 2]),
+    Many(ThinVec<ExprOrPatIdPacked>),
 }
 
 impl PartialEq for CaptureSourceStack {
@@ -916,10 +916,11 @@ impl std::hash::Hash for CaptureSourceStack {
     }
 }
 
+#[cfg(target_pointer_width = "64")]
 const _: () = assert!(size_of::<CaptureSourceStack>() == 16);
 
 impl Deref for CaptureSourceStack {
-    type Target = [ExprOrPatId];
+    type Target = [ExprOrPatIdPacked];
 
     #[inline]
     fn deref(&self) -> &Self::Target {
@@ -948,16 +949,16 @@ impl CaptureSourceStack {
     }
 
     #[inline]
-    pub(crate) fn from_single(id: ExprOrPatId) -> Self {
+    pub(crate) fn from_single(id: ExprOrPatIdPacked) -> Self {
         Self(CaptureSourceStackRepr::One(id))
     }
 
     #[inline]
-    pub fn final_source(&self) -> ExprOrPatId {
+    pub fn final_source(&self) -> ExprOrPatIdPacked {
         *self.last().expect("should always have a final source")
     }
 
-    pub fn push(&mut self, new_id: ExprOrPatId) {
+    pub fn push(&mut self, new_id: ExprOrPatIdPacked) {
         match &mut self.0 {
             CaptureSourceStackRepr::One(old_id) => {
                 self.0 = CaptureSourceStackRepr::Two([*old_id, new_id])
@@ -1113,7 +1114,7 @@ impl InferenceResult {
             ExprOrPatId::PatId(id) => self.assoc_resolutions_for_pat(id),
         }
     }
-    pub fn expr_or_pat_has_type_mismatch(&self, node: ExprOrPatId) -> bool {
+    pub fn expr_or_pat_has_type_mismatch(&self, node: ExprOrPatIdPacked) -> bool {
         self.nodes_with_type_mismatches.as_ref().is_some_and(|it| it.contains(&node))
     }
     pub fn expr_has_type_mismatch(&self, expr: ExprId) -> bool {
@@ -1878,13 +1879,13 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
         self.result.method_resolutions.insert(expr, (func, subst.store()));
     }
 
-    fn write_variant_resolution(&mut self, id: ExprOrPatId, variant: VariantId) {
+    fn write_variant_resolution(&mut self, id: ExprOrPatIdPacked, variant: VariantId) {
         self.result.variant_resolutions.insert(id, variant);
     }
 
     fn write_assoc_resolution(
         &mut self,
-        id: ExprOrPatId,
+        id: ExprOrPatIdPacked,
         item: CandidateId,
         subs: GenericArgs<'db>,
     ) {
@@ -2140,14 +2141,18 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
         self.table.resolve_vars_if_possible(t)
     }
 
-    pub(crate) fn structurally_resolve_type(&mut self, node: ExprOrPatId, ty: Ty<'db>) -> Ty<'db> {
+    pub(crate) fn structurally_resolve_type(
+        &mut self,
+        node: ExprOrPatIdPacked,
+        ty: Ty<'db>,
+    ) -> Ty<'db> {
         let result = self.table.try_structurally_resolve_type(node.into(), ty);
         if result.is_ty_var() { self.type_must_be_known_at_this_point(node, ty) } else { result }
     }
 
     pub(crate) fn emit_type_mismatch(
         &mut self,
-        node: ExprOrPatId,
+        node: ExprOrPatIdPacked,
         expected: Ty<'db>,
         found: Ty<'db>,
     ) {
@@ -2162,7 +2167,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
 
     fn demand_eqtype(
         &mut self,
-        id: ExprOrPatId,
+        id: ExprOrPatIdPacked,
         expected: Ty<'db>,
         actual: Ty<'db>,
     ) -> Result<(), ()> {
@@ -2192,7 +2197,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
 
     fn demand_suptype(
         &mut self,
-        id: ExprOrPatId,
+        id: ExprOrPatIdPacked,
         expected: Ty<'db>,
         actual: Ty<'db>,
     ) -> Result<(), ()> {
@@ -2224,7 +2229,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
 
     pub(crate) fn type_must_be_known_at_this_point(
         &mut self,
-        node: ExprOrPatId,
+        node: ExprOrPatIdPacked,
         ty: Ty<'db>,
     ) -> Ty<'db> {
         if self.vars_emitted_type_must_be_known_for.insert(ty.into()) {
@@ -2260,7 +2265,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
 
     fn resolve_variant(
         &mut self,
-        node: ExprOrPatId,
+        node: ExprOrPatIdPacked,
         path: &Path,
         value_ns: bool,
     ) -> (Ty<'db>, Option<VariantId>) {
@@ -2570,7 +2575,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
 
     fn resolve_variant_on_alias(
         &mut self,
-        node: ExprOrPatId,
+        node: ExprOrPatIdPacked,
         ty: Ty<'db>,
         unresolved: Option<usize>,
         path: &ModPath,
