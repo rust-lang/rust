@@ -95,6 +95,27 @@ const fn stderr_raw() -> StderrRaw {
     StderrRaw(stdio::Stderr::new())
 }
 
+impl StdoutRaw {
+    /// Starts a new lock session: stream state that platforms cache per lock
+    /// session (on Windows, the handle and its console mode) is re-queried at
+    /// the next write, so that changing the process stdio handles (e.g. with
+    /// `SetStdHandle`) between lock sessions keeps working.
+    #[inline]
+    fn refresh(&mut self) {
+        #[cfg(windows)]
+        self.0.refresh();
+    }
+}
+
+impl StderrRaw {
+    /// See `StdoutRaw::refresh`.
+    #[inline]
+    fn refresh(&mut self) {
+        #[cfg(windows)]
+        self.0.refresh();
+    }
+}
+
 impl Read for StdinRaw {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         handle_ebadf(self.0.read(buf), || Ok(0))
@@ -769,7 +790,15 @@ impl Stdout {
         // Locks this handle with 'static lifetime. This depends on the
         // implementation detail that the underlying `ReentrantMutex` is
         // static.
-        StdoutLock { inner: self.inner.lock() }
+        let lock = StdoutLock { inner: self.inner.lock() };
+        // A new lock session begins, so let the platform re-query cached
+        // stream state at the next write. Skipped if the cell is already
+        // borrowed (a nested lock during an ongoing write); such a lock is
+        // part of the outer session anyway.
+        if let Ok(mut w) = lock.inner.try_borrow_mut() {
+            w.get_mut().refresh();
+        }
+        lock
     }
 }
 
@@ -1001,7 +1030,12 @@ impl Stderr {
         // Locks this handle with 'static lifetime. This depends on the
         // implementation detail that the underlying `ReentrantMutex` is
         // static.
-        StderrLock { inner: self.inner.lock() }
+        let lock = StderrLock { inner: self.inner.lock() };
+        // See `Stdout::lock`: a new lock session begins.
+        if let Ok(mut w) = lock.inner.try_borrow_mut() {
+            w.refresh();
+        }
+        lock
     }
 }
 
