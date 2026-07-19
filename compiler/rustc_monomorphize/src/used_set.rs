@@ -91,7 +91,9 @@ impl UsedSet {
 /// collector, which filters to local `DefId`s and so never lists non-generic extern fns.
 pub(crate) fn emit_used_sets(tcx: TyCtxt<'_>, dir: &Path) {
     if let Err(e) = std::fs::create_dir_all(dir) {
-        tcx.sess.dcx().warn(format!("-Z dead-fn-emit-used-set: cannot create {}: {e}", dir.display()));
+        tcx.sess
+            .dcx()
+            .warn(format!("-Z dead-fn-emit-used-set: cannot create {}: {e}", dir.display()));
         return;
     }
 
@@ -102,8 +104,7 @@ pub(crate) fn emit_used_sets(tcx: TyCtxt<'_>, dir: &Path) {
         if !tcx.is_mir_available(def_id) {
             continue;
         }
-        let Ok(body) =
-            panic::catch_unwind(panic::AssertUnwindSafe(|| tcx.optimized_mir(def_id)))
+        let Ok(body) = panic::catch_unwind(panic::AssertUnwindSafe(|| tcx.optimized_mir(def_id)))
         else {
             continue;
         };
