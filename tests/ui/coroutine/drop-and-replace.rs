@@ -4,7 +4,7 @@
 // #60187, this produced incorrect code for coroutines when a saved local was
 // re-assigned.
 
-#![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
+#![feature(coroutines, coroutine_trait)]
 
 use std::ops::{Coroutine, CoroutineState};
 use std::pin::Pin;

@@ -1,4 +1,4 @@
-#![feature(coroutines, stmt_expr_attributes)]
+#![feature(coroutines)]
 #![allow(dropping_copy_types)]
 
 //@ run-pass

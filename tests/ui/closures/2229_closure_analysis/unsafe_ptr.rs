@@ -23,9 +23,6 @@ fn unsafe_imm() {
     let t = T(p);
 
     let c = #[rustc_capture_analysis]
-    //~^ ERROR: attributes on expressions are experimental
-    //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
-    //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
      || unsafe {
     //~^ ERROR: First Pass analysis includes:
     //~| ERROR: Min Capture analysis includes:
@@ -44,9 +41,6 @@ fn unsafe_mut() {
     let p : *mut S = &mut *my_speed;
 
     let c = #[rustc_capture_analysis]
-    //~^ ERROR: attributes on expressions are experimental
-    //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
-    //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
     || {
     //~^ ERROR: First Pass analysis includes:
     //~| ERROR: Min Capture analysis includes:

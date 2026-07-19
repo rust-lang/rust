@@ -47,5 +47,4 @@ fn instrument_closure() {
     let _x = #[instrument_fn = "on"]
     || {};
     //~^^ ERROR attribute cannot be used on
-    //~^^^ ERROR attributes on expressions are experimental
 }

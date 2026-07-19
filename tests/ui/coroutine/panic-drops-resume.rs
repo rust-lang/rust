@@ -4,7 +4,7 @@
 //@ needs-unwind
 //@ ignore-backends: gcc
 
-#![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
+#![feature(coroutines, coroutine_trait)]
 
 use std::ops::Coroutine;
 use std::panic::{catch_unwind, AssertUnwindSafe};

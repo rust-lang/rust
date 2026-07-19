@@ -1,7 +1,7 @@
 //@ edition:2018
 //@ check-pass
 
-#![feature(coroutines, stmt_expr_attributes)]
+#![feature(coroutines)]
 #![warn(unused)]
 #![allow(unreachable_code)]
 

@@ -8,4 +8,6 @@ fn main() {
     //~^ ERROR removing an expression is not supported in this position
     let _ = [1, 2, 3][#[cfg(false)] 1];
     //~^ ERROR removing an expression is not supported in this position
+    let _ = #[cfg(false)] String::new().len();
+    //~^ ERROR removing an expression is not supported in this position
 }

@@ -3,7 +3,7 @@
 //@ needs-unwind
 //@ ignore-backends: gcc
 
-#![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
+#![feature(coroutines, coroutine_trait)]
 
 #![allow(unused_assignments)]
 #![allow(unused_variables)]

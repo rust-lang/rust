@@ -2,7 +2,7 @@
 
 //@ run-pass
 
-#![feature(coroutines, stmt_expr_attributes)]
+#![feature(coroutines)]
 
 use std::mem::size_of_val;
 
