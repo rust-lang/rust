@@ -209,6 +209,17 @@ declare_rustdoc_lint! {
     "detects unused footnote definitions"
 }
 
+declare_rustdoc_lint! {
+    /// This lint is **warn-by-default**. It detects unescaped pipes in table rows which
+    /// lead to some row cells being ignored. This is a `rustdoc` only lint, see the
+    /// documentation in the [rustdoc book].
+    ///
+    /// [rustdoc book]: ../../../rustdoc/lints.html#unescaped_pipe_in_table_cell
+    UNESCAPED_PIPE_IN_TABLE_CELL,
+    Warn,
+    "detects unescaped pipe in table rows in doc comments"
+}
+
 pub(crate) static RUSTDOC_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
     vec![
         BROKEN_INTRA_DOC_LINKS,
@@ -224,6 +235,7 @@ pub(crate) static RUSTDOC_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
         REDUNDANT_EXPLICIT_LINKS,
         BROKEN_FOOTNOTE,
         UNUSED_FOOTNOTE_DEFINITION,
+        UNESCAPED_PIPE_IN_TABLE_CELL,
     ]
 });
 
