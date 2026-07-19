@@ -79,7 +79,7 @@ fn handle_trait_unimplemented<'db>(
     };
 
     let mut parent_trait_predicates = error
-        .trait_obligation_chain
+        .parent_trait_obligations
         .iter()
         .filter_map(|predicate| predicate.as_trait_clause())
         .map(|trait_predicate| {
@@ -90,9 +90,6 @@ fn handle_trait_unimplemented<'db>(
             }
         })
         .collect::<Vec<_>>();
-    if parent_trait_predicates.last() == Some(&trait_predicate) {
-        parent_trait_predicates.pop();
-    }
     parent_trait_predicates.reverse();
 
     Some(SolverDiagnosticKind::TraitUnimplemented { trait_predicate, parent_trait_predicates })

@@ -32,19 +32,10 @@ use crate::{
 pub struct FulfillmentError<'db> {
     pub obligation: PredicateObligation<'db>,
     pub code: FulfillmentErrorCode<'db>,
-    pub trait_obligation_chain: Vec<Predicate<'db>>,
+    pub parent_trait_obligations: Vec<Predicate<'db>>,
 }
 
-impl<'db> FulfillmentError<'db> {
-    pub fn new(
-        obligation: PredicateObligation<'db>,
-        code: FulfillmentErrorCode<'db>,
-        root_obligation: PredicateObligation<'db>,
-    ) -> FulfillmentError<'db> {
-        let trait_obligation_chain = trait_obligation_chain(&root_obligation, &obligation);
-        FulfillmentError { obligation, code, trait_obligation_chain }
-    }
-
+impl FulfillmentError<'_> {
     pub fn is_true_error(&self) -> bool {
         match self.code {
             FulfillmentErrorCode::Select(_)
@@ -128,7 +119,7 @@ fn fulfillment_error_for_no_solution<'db>(
 ) -> FulfillmentError<'db> {
     let interner = infcx.interner;
     let db = interner.db;
-    let (obligation, trait_obligation_chain) =
+    let (obligation, parent_trait_obligations) =
         find_best_leaf_obligation(infcx, &root_obligation, false);
 
     let code = match obligation.predicate.kind().skip_binder() {
@@ -188,7 +179,7 @@ fn fulfillment_error_for_no_solution<'db>(
         }
     };
 
-    FulfillmentError { obligation, code, trait_obligation_chain }
+    FulfillmentError { obligation, code, parent_trait_obligations }
 }
 
 fn fulfillment_error_for_stalled<'db>(
@@ -238,27 +229,25 @@ fn fulfillment_error_for_stalled<'db>(
         }
     });
 
-    let (obligation, trait_obligation_chain) = if refine_obligation {
+    let (obligation, parent_trait_obligations) = if refine_obligation {
         find_best_leaf_obligation(infcx, &root_obligation, true)
     } else {
-        let obligation = root_obligation.clone();
-        let trait_obligation_chain = trait_obligation_chain(&root_obligation, &obligation);
-        (obligation, trait_obligation_chain)
+        (root_obligation, Vec::new())
     };
 
-    FulfillmentError { obligation, code, trait_obligation_chain }
+    FulfillmentError { obligation, code, parent_trait_obligations }
 }
 
 fn fulfillment_error_for_overflow<'db>(
     infcx: &InferCtxt<'db>,
     root_obligation: PredicateObligation<'db>,
 ) -> FulfillmentError<'db> {
-    let (obligation, trait_obligation_chain) =
+    let (obligation, parent_trait_obligations) =
         find_best_leaf_obligation(infcx, &root_obligation, true);
     FulfillmentError {
         obligation,
         code: FulfillmentErrorCode::Ambiguity { overflow: Some(true) },
-        trait_obligation_chain,
+        parent_trait_obligations,
     }
 }
 
@@ -274,12 +263,12 @@ fn find_best_leaf_obligation<'db>(
     //
     // We should probably fix the visitor to not do so instead, as this also
     // means the leaf obligation may be incorrect.
-    let (obligation, trait_obligation_chain) = infcx
+    let (obligation, parent_trait_obligations) = infcx
         .fudge_inference_if_ok(|| {
             let mut visitor = BestObligation {
                 obligation: obligation.clone(),
                 consider_ambiguities,
-                trait_obligation_chain: trait_obligation_chain(&obligation, &obligation),
+                parent_trait_obligations: Vec::new(),
             };
             infcx
                 .visit_proof_tree(obligation.as_goal(), &mut visitor)
@@ -287,42 +276,24 @@ fn find_best_leaf_obligation<'db>(
                 .ok_or(())
                 // walk around the fact that the cause in `Obligation` is ignored by folders so that
                 // we can properly fudge the infer vars in cause code.
-                .map(|(obligation, trait_obligation_chain)| {
-                    (obligation.cause, obligation, trait_obligation_chain)
+                .map(|(obligation, parent_trait_obligations)| {
+                    (obligation.cause, obligation, parent_trait_obligations)
                 })
         })
-        .map(|(cause, obligation, trait_obligation_chain)| {
-            (PredicateObligation { cause, ..obligation }, trait_obligation_chain)
+        .map(|(cause, obligation, parent_trait_obligations)| {
+            (PredicateObligation { cause, ..obligation }, parent_trait_obligations)
         })
-        .unwrap_or_else(|()| {
-            let trait_obligation_chain = trait_obligation_chain(&obligation, &obligation);
-            (obligation, trait_obligation_chain)
-        });
-    let trait_obligation_chain =
-        deeply_normalize_for_diagnostics(infcx, obligation.param_env, trait_obligation_chain);
+        .unwrap_or((obligation, Vec::new()));
+    let parent_trait_obligations =
+        deeply_normalize_for_diagnostics(infcx, obligation.param_env, parent_trait_obligations);
     let obligation = deeply_normalize_for_diagnostics(infcx, obligation.param_env, obligation);
-    (obligation, trait_obligation_chain)
-}
-
-fn trait_obligation_chain<'db>(
-    root_obligation: &PredicateObligation<'db>,
-    obligation: &PredicateObligation<'db>,
-) -> Vec<Predicate<'db>> {
-    let mut chain = Vec::new();
-    if root_obligation.predicate.as_trait_clause().is_none() {
-        return chain;
-    }
-    chain.push(root_obligation.predicate);
-    if chain.last() != Some(&obligation.predicate) {
-        chain.push(obligation.predicate);
-    }
-    chain
+    (obligation, parent_trait_obligations)
 }
 
 struct BestObligation<'db> {
     obligation: PredicateObligation<'db>,
     consider_ambiguities: bool,
-    trait_obligation_chain: Vec<Predicate<'db>>,
+    parent_trait_obligations: Vec<Predicate<'db>>,
 }
 
 impl<'db> BestObligation<'db> {
@@ -331,16 +302,17 @@ impl<'db> BestObligation<'db> {
         derived_obligation: PredicateObligation<'db>,
         and_then: impl FnOnce(&mut Self) -> <Self as ProofTreeVisitor<'db>>::Result,
     ) -> <Self as ProofTreeVisitor<'db>>::Result {
-        let should_push = derived_obligation.predicate.as_trait_clause().is_some()
-            && self.trait_obligation_chain.last() != Some(&derived_obligation.predicate);
+        let parent_predicate = self.obligation.predicate;
+        let should_push = parent_predicate.as_trait_clause().is_some()
+            && self.parent_trait_obligations.last() != Some(&parent_predicate);
         if should_push {
-            self.trait_obligation_chain.push(derived_obligation.predicate);
+            self.parent_trait_obligations.push(parent_predicate);
         }
         let old_obligation = std::mem::replace(&mut self.obligation, derived_obligation);
         let result = and_then(self);
         self.obligation = old_obligation;
         if should_push {
-            self.trait_obligation_chain.pop();
+            self.parent_trait_obligations.pop();
         }
         result
     }
@@ -348,7 +320,7 @@ impl<'db> BestObligation<'db> {
     fn break_with_current_obligation(&mut self) -> <Self as ProofTreeVisitor<'db>>::Result {
         ControlFlow::Break((
             self.obligation.clone(),
-            std::mem::take(&mut self.trait_obligation_chain),
+            std::mem::take(&mut self.parent_trait_obligations),
         ))
     }
 
