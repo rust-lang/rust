@@ -14,7 +14,6 @@ LL |     let _: i32 = wrap_binder!(&());
    |                  ^^^^^^^^^^^^^^^^^
    |
    = note: unsafe binders are the only valid output of wrap
-   = note: this error originates in the macro `wrap_binder` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: expected unsafe binder, found integer as input of `unwrap_binder!()`
   --> $DIR/mismatch.rs:17:20

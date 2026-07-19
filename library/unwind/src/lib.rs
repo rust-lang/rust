@@ -33,13 +33,10 @@ cfg_select! {
         target_os = "solid_asp3",
         all(target_vendor = "fortanix", target_env = "sgx"),
         all(target_os = "wasi", panic = "unwind"),
+        target_os = "xous",
     ) => {
         mod libunwind;
         pub use libunwind::*;
-    }
-    target_os = "xous" => {
-        mod unwinding;
-        pub use unwinding::*;
     }
     target_family = "wasm" => {
         mod wasm;

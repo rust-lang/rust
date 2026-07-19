@@ -6,6 +6,11 @@
 //@ only-x86_64
 //@ ignore-sgx
 
+// No longer optimizes as desired, tracked at:
+// https://github.com/rust-lang/rust/issues/154141
+// https://github.com/llvm/llvm-project/issues/209216
+//@ max-llvm-major-version: 22
+
 #![feature(str_internals)]
 
 // CHECK-LABEL: is_ascii_simple_demo:

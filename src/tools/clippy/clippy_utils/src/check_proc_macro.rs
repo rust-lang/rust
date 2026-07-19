@@ -369,6 +369,7 @@ fn attr_search_pat(attr: &Attribute) -> (Pat, Pat) {
                 (Pat::Str("#"), Pat::Str("]"))
             }
         },
+        AttrKind::Synthetic(..) => unreachable!(),
         AttrKind::DocComment(_kind @ CommentKind::Line, ..) => {
             if attr.style == AttrStyle::Outer {
                 (Pat::Str("///"), Pat::Str(""))

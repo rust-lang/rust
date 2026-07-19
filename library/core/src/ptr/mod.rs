@@ -122,6 +122,11 @@
 //! Allocations must behave like "normal" memory: in particular, reads must not have
 //! side-effects, and writes must become visible to other threads using the usual synchronization
 //! primitives.
+//! Allocations must support all atomic operations that are available for the target (as
+//! determined by the `target_has_atomic*` set of cfg flags).
+//! The precise instructions used for atomic operations are generally not guaranteed, so portable
+//! software should place all Rust allocations in memory regions that support all atomic
+//! instructions.
 //!
 //! For any allocation with `base` address, `size`, and a set of
 //! `addresses`, the following are guaranteed:

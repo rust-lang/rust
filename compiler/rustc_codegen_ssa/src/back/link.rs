@@ -66,7 +66,7 @@ use super::{apple, rmeta_link, versioned_llvm_target};
 use crate::base::needs_allocator_shim_for_linking;
 use crate::{
     CodegenLintLevelSpecs, CompiledModule, CompiledModules, CrateInfo, NativeLib, SymbolExport,
-    errors,
+    diagnostics,
 };
 
 pub fn ensure_removed(dcx: DiagCtxtHandle<'_>, path: &Path) {
@@ -187,7 +187,9 @@ pub fn link_binary(
             let tmpdir = TempDirBuilder::new()
                 .prefix("rustc")
                 .tempdir_in(output.parent().unwrap_or_else(|| Path::new(".")))
-                .unwrap_or_else(|error| sess.dcx().emit_fatal(errors::CreateTempDir { error }));
+                .unwrap_or_else(|error| {
+                    sess.dcx().emit_fatal(diagnostics::CreateTempDir { error })
+                });
             let path = MaybeTempDir::new(tmpdir, sess.opts.cg.save_temps);
 
             let crate_name = format!("{}", crate_info.local_crate_name);
@@ -259,11 +261,15 @@ pub fn link_binary(
 
             if output.is_stdout() {
                 if output.is_tty() {
-                    sess.dcx().emit_err(errors::BinaryOutputToTty {
+                    sess.dcx().emit_err(diagnostics::BinaryOutputToTty {
                         shorthand: OutputType::Exe.shorthand(),
                     });
                 } else if let Err(e) = copy_to_stdout(&out_filename) {
-                    sess.dcx().emit_err(errors::CopyPath::new(&out_filename, output.as_path(), e));
+                    sess.dcx().emit_err(diagnostics::CopyPath::new(
+                        &out_filename,
+                        output.as_path(),
+                        e,
+                    ));
                 }
                 tempfiles_for_stdout_output.push(out_filename);
             }
@@ -327,18 +333,18 @@ pub fn each_linked_rlib(
     info: &CrateInfo,
     crate_type: Option<CrateType>,
     f: &mut dyn FnMut(CrateNum, &Path),
-) -> Result<(), errors::LinkRlibError> {
+) -> Result<(), diagnostics::LinkRlibError> {
     let fmts = if let Some(crate_type) = crate_type {
         let Some(fmts) = info.dependency_formats.get(&crate_type) else {
-            return Err(errors::LinkRlibError::MissingFormat);
+            return Err(diagnostics::LinkRlibError::MissingFormat);
         };
 
         fmts
     } else {
         let mut dep_formats = info.dependency_formats.iter();
-        let (ty1, list1) = dep_formats.next().ok_or(errors::LinkRlibError::MissingFormat)?;
+        let (ty1, list1) = dep_formats.next().ok_or(diagnostics::LinkRlibError::MissingFormat)?;
         if let Some((ty2, list2)) = dep_formats.find(|(_, list2)| list1 != *list2) {
-            return Err(errors::LinkRlibError::IncompatibleDependencyFormats {
+            return Err(diagnostics::LinkRlibError::IncompatibleDependencyFormats {
                 ty1: format!("{ty1:?}"),
                 ty2: format!("{ty2:?}"),
                 list1: format!("{list1:?}"),
@@ -353,16 +359,16 @@ pub fn each_linked_rlib(
         match fmts.get(cnum) {
             Some(&Linkage::NotLinked | &Linkage::Dynamic | &Linkage::IncludedFromDylib) => continue,
             Some(_) => {}
-            None => return Err(errors::LinkRlibError::MissingFormat),
+            None => return Err(diagnostics::LinkRlibError::MissingFormat),
         }
         let crate_name = info.crate_name[&cnum];
         let used_crate_source = &info.used_crate_source[&cnum];
         if let Some(path) = &used_crate_source.rlib {
             f(cnum, path);
         } else if used_crate_source.rmeta.is_some() {
-            return Err(errors::LinkRlibError::OnlyRmetaFound { crate_name });
+            return Err(diagnostics::LinkRlibError::OnlyRmetaFound { crate_name });
         } else {
-            return Err(errors::LinkRlibError::NotFound { crate_name });
+            return Err(diagnostics::LinkRlibError::NotFound { crate_name });
         }
     }
     Ok(())
@@ -505,15 +511,16 @@ fn link_rlib<'a>(
             && let Some(filename) = native_lib_filenames[i]
         {
             let path = find_native_static_library(filename.as_str(), true, sess);
-            let src = read(path)
-                .unwrap_or_else(|e| sess.dcx().emit_fatal(errors::ReadFileError { message: e }));
+            let src = read(path).unwrap_or_else(|e| {
+                sess.dcx().emit_fatal(diagnostics::ReadFileError { message: e })
+            });
             let (data, _) = create_wrapper_file(sess, ".bundled_lib".to_string(), &src);
             let wrapper_file = emit_wrapper_file(sess, &data, tmpdir.as_ref(), filename.as_str());
             packed_bundled_libs.push(wrapper_file);
         } else {
             let path = find_native_static_library(lib.name.as_str(), lib.verbatim, sess);
             ab.add_archive(&path, AddArchiveKind::Other).unwrap_or_else(|error| {
-                sess.dcx().emit_fatal(errors::AddNativeLibrary { library_path: path, error })
+                sess.dcx().emit_fatal(diagnostics::AddNativeLibrary { library_path: path, error })
             });
         }
     }
@@ -531,7 +538,7 @@ fn link_rlib<'a>(
         ) {
             ab.add_archive(&output_path, AddArchiveKind::Other).unwrap_or_else(|error| {
                 sess.dcx()
-                    .emit_fatal(errors::AddNativeLibrary { library_path: output_path, error });
+                    .emit_fatal(diagnostics::AddNativeLibrary { library_path: output_path, error });
             });
         }
     }
@@ -676,12 +683,12 @@ fn link_staticlib(
     let exported_symbols = if hide || rename {
         if !matches!(sess.target.binary_format, BinaryFormat::Elf | BinaryFormat::MachO) {
             if hide {
-                sess.dcx().emit_warn(errors::StaticlibHideInternalSymbolsUnsupported {
+                sess.dcx().emit_warn(diagnostics::StaticlibHideInternalSymbolsUnsupported {
                     binary_format: sess.target.archive_format.to_string(),
                 });
             }
             if rename {
-                sess.dcx().emit_warn(errors::StaticlibRenameInternalSymbolsUnsupported {
+                sess.dcx().emit_warn(diagnostics::StaticlibRenameInternalSymbolsUnsupported {
                     binary_format: sess.target.archive_format.to_string(),
                 });
             }
@@ -721,9 +728,9 @@ fn link_staticlib(
         if let Some(path) = &used_crate_source.dylib {
             all_rust_dylibs.push(&**path);
         } else if used_crate_source.rmeta.is_some() {
-            sess.dcx().emit_fatal(errors::LinkRlibError::OnlyRmetaFound { crate_name });
+            sess.dcx().emit_fatal(diagnostics::LinkRlibError::OnlyRmetaFound { crate_name });
         } else {
-            sess.dcx().emit_fatal(errors::LinkRlibError::NotFound { crate_name });
+            sess.dcx().emit_fatal(diagnostics::LinkRlibError::NotFound { crate_name });
         }
     }
 
@@ -844,7 +851,7 @@ fn link_dwarf_object(
         Ok(())
     }) {
         Ok(()) => {}
-        Err(e) => sess.dcx().emit_fatal(errors::ThorinErrorWrapper(e)),
+        Err(e) => sess.dcx().emit_fatal(diagnostics::ThorinErrorWrapper(e)),
     }
 }
 
@@ -1226,7 +1233,7 @@ fn link_natively(
                 let mut output = prog.stderr.clone();
                 output.extend_from_slice(&prog.stdout);
                 let escaped_output = escape_linker_output(&output, flavor);
-                let err = errors::LinkingFailed {
+                let err = diagnostics::LinkingFailed {
                     linker_path: &linker_path,
                     exit_status: prog.status,
                     command: cmd,
@@ -1247,25 +1254,25 @@ fn link_natively(
                             find_msvc_tools::find_tool(sess.target.arch.desc(), "link.exe")
                                 .is_some();
 
-                        sess.dcx().emit_note(errors::LinkExeUnexpectedError);
+                        sess.dcx().emit_note(diagnostics::LinkExeUnexpectedError);
 
                         // STATUS_STACK_BUFFER_OVERRUN is also used for fast abnormal program termination, e.g. abort().
                         // Emit a special diagnostic to let people know that this most likely doesn't indicate a stack buffer overrun.
                         const STATUS_STACK_BUFFER_OVERRUN: i32 = 0xc0000409u32 as _;
                         if code == STATUS_STACK_BUFFER_OVERRUN {
-                            sess.dcx().emit_note(errors::LinkExeStatusStackBufferOverrun);
+                            sess.dcx().emit_note(diagnostics::LinkExeStatusStackBufferOverrun);
                         }
 
                         if is_vs_installed && has_linker {
                             // the linker is broken
-                            sess.dcx().emit_note(errors::RepairVSBuildTools);
-                            sess.dcx().emit_note(errors::MissingCppBuildToolComponent);
+                            sess.dcx().emit_note(diagnostics::RepairVSBuildTools);
+                            sess.dcx().emit_note(diagnostics::MissingCppBuildToolComponent);
                         } else if is_vs_installed {
                             // the linker is not installed
-                            sess.dcx().emit_note(errors::SelectCppBuildToolWorkload);
+                            sess.dcx().emit_note(diagnostics::SelectCppBuildToolWorkload);
                         } else {
                             // visual studio is not installed
-                            sess.dcx().emit_note(errors::VisualStudioNotInstalled);
+                            sess.dcx().emit_note(diagnostics::VisualStudioNotInstalled);
                         }
                     }
                 }
@@ -1280,9 +1287,9 @@ fn link_natively(
             let linker_not_found = e.kind() == io::ErrorKind::NotFound;
 
             let err = if linker_not_found {
-                sess.dcx().emit_err(errors::LinkerNotFound { linker_path, error: e })
+                sess.dcx().emit_err(diagnostics::LinkerNotFound { linker_path, error: e })
             } else {
-                sess.dcx().emit_err(errors::UnableToExeLinker {
+                sess.dcx().emit_err(diagnostics::UnableToExeLinker {
                     linker_path,
                     error: e,
                     command_formatted: format!("{cmd:?}"),
@@ -1290,9 +1297,9 @@ fn link_natively(
             };
 
             if sess.target.is_like_msvc && linker_not_found {
-                sess.dcx().emit_note(errors::MsvcMissingLinker);
-                sess.dcx().emit_note(errors::CheckInstalledVisualStudio);
-                sess.dcx().emit_note(errors::InsufficientVSCodeProduct);
+                sess.dcx().emit_note(diagnostics::MsvcMissingLinker);
+                sess.dcx().emit_note(diagnostics::CheckInstalledVisualStudio);
+                sess.dcx().emit_note(diagnostics::InsufficientVSCodeProduct);
             }
             err.raise_fatal();
         }
@@ -1317,13 +1324,13 @@ fn link_natively(
                     if !prog.status.success() {
                         let mut output = prog.stderr.clone();
                         output.extend_from_slice(&prog.stdout);
-                        sess.dcx().emit_warn(errors::ProcessingDymutilFailed {
+                        sess.dcx().emit_warn(diagnostics::ProcessingDymutilFailed {
                             status: prog.status,
                             output: escape_string(&output),
                         });
                     }
                 }
-                Err(error) => sess.dcx().emit_fatal(errors::UnableToRunDsymutil { error }),
+                Err(error) => sess.dcx().emit_fatal(diagnostics::UnableToRunDsymutil { error }),
             }
         }
 
@@ -1382,7 +1389,7 @@ fn link_natively(
     if sess.target.is_like_aix {
         // `llvm-strip` doesn't work for AIX - their strip must be used.
         if !sess.host.is_like_aix {
-            sess.dcx().emit_warn(errors::AixStripNotUsed);
+            sess.dcx().emit_warn(diagnostics::AixStripNotUsed);
         }
         let stripcmd = "/usr/bin/strip";
         match strip {
@@ -1421,14 +1428,14 @@ fn strip_with_external_utility(sess: &Session, util: &str, out_filename: &Path, 
             if !prog.status.success() {
                 let mut output = prog.stderr.clone();
                 output.extend_from_slice(&prog.stdout);
-                sess.dcx().emit_warn(errors::StrippingDebugInfoFailed {
+                sess.dcx().emit_warn(diagnostics::StrippingDebugInfoFailed {
                     util,
                     status: prog.status,
                     output: escape_string(&output),
                 });
             }
         }
-        Err(error) => sess.dcx().emit_fatal(errors::UnableToRun { util, error }),
+        Err(error) => sess.dcx().emit_fatal(diagnostics::UnableToRun { util, error }),
     }
 }
 
@@ -1692,7 +1699,7 @@ pub fn linker_and_flavor(sess: &Session) -> (PathBuf, LinkerFlavor) {
             )),
             (Some(linker), None) => {
                 let stem = linker.file_stem().and_then(|stem| stem.to_str()).unwrap_or_else(|| {
-                    sess.dcx().emit_fatal(errors::LinkerFileStem);
+                    sess.dcx().emit_fatal(diagnostics::LinkerFileStem);
                 });
                 let flavor = sess.target.linker_flavor.with_linker_hints(stem);
                 let flavor = adjust_flavor_to_features(flavor, features);
@@ -1863,10 +1870,10 @@ fn print_native_static_libs(
     match out {
         OutFileName::Real(path) => {
             out.overwrite(&lib_args.join(" "), sess);
-            sess.dcx().emit_note(errors::StaticLibraryNativeArtifactsToFile { path });
+            sess.dcx().emit_note(diagnostics::StaticLibraryNativeArtifactsToFile { path });
         }
         OutFileName::Stdout => {
-            sess.dcx().emit_note(errors::StaticLibraryNativeArtifacts);
+            sess.dcx().emit_note(diagnostics::StaticLibraryNativeArtifacts);
             // Prefix for greppability
             // Note: This must not be translated as tools are allowed to depend on this exact string.
             sess.dcx().note(format!("native-static-libs: {}", lib_args.join(" ")));
@@ -2114,7 +2121,7 @@ fn self_contained_components(
             // Emit an error if the user requested self-contained mode on the CLI but the target
             // explicitly refuses it.
             if sess.target.link_self_contained.is_disabled() {
-                sess.dcx().emit_err(errors::UnsupportedLinkSelfContained);
+                sess.dcx().emit_err(diagnostics::UnsupportedLinkSelfContained);
             }
             self_contained
         } else {
@@ -2202,14 +2209,14 @@ fn add_link_script(cmd: &mut dyn Linker, sess: &Session, tmpdir: &Path, crate_ty
     match (crate_type, &sess.target.link_script) {
         (CrateType::Cdylib | CrateType::Executable, Some(script)) => {
             if !sess.target.linker_flavor.is_gnu() {
-                sess.dcx().emit_fatal(errors::LinkScriptUnavailable);
+                sess.dcx().emit_fatal(diagnostics::LinkScriptUnavailable);
             }
 
             let file_name = ["rustc", &sess.target.llvm_target, "linkfile.ld"].join("-");
 
             let path = tmpdir.join(file_name);
             if let Err(error) = fs::write(&path, script.as_ref()) {
-                sess.dcx().emit_fatal(errors::LinkScriptWriteFailure { path, error });
+                sess.dcx().emit_fatal(diagnostics::LinkScriptWriteFailure { path, error });
             }
 
             cmd.link_arg("--script").link_arg(path);
@@ -2428,7 +2435,7 @@ fn add_linked_symbol_object(
     let path = tmpdir.join("symbols.o");
     let result = std::fs::write(&path, file.write().unwrap());
     if let Err(error) = result {
-        sess.dcx().emit_fatal(errors::FailedToWrite { path, error });
+        sess.dcx().emit_fatal(diagnostics::FailedToWrite { path, error });
     }
     cmd.add_object(&path);
 }
@@ -2868,7 +2875,7 @@ fn linker_with_args(
         // the directory of the stub to the linker search path.
         // We make an extra directory for this to avoid polluting the search path.
         if let Err(error) = fs::create_dir(&raw_dylib_dir) {
-            sess.dcx().emit_fatal(errors::CreateTempDir { error })
+            sess.dcx().emit_fatal(diagnostics::CreateTempDir { error })
         }
         cmd.include_path(&raw_dylib_dir);
     }
@@ -3140,7 +3147,7 @@ fn collect_natvis_visualizers(
                 visualizer_paths.push(visualizer_out_file);
             }
             Err(error) => {
-                sess.dcx().emit_warn(errors::UnableToWriteDebuggerVisualizer {
+                sess.dcx().emit_warn(diagnostics::UnableToWriteDebuggerVisualizer {
                     path: visualizer_out_file,
                     error,
                 });
@@ -3562,8 +3569,10 @@ fn add_static_crate(
                 false
             }),
         ) {
-            sess.dcx()
-                .emit_fatal(errors::RlibArchiveBuildFailure { path: cratepath.clone(), error });
+            sess.dcx().emit_fatal(diagnostics::RlibArchiveBuildFailure {
+                path: cratepath.clone(),
+                error,
+            });
         }
         if archive.build(&dst, None) {
             link_upstream(&dst);
@@ -3910,7 +3919,7 @@ fn add_lld_args(
         if !linker_path_exists {
             // As a sanity check, we emit an error if none of these paths exist: we want
             // self-contained linking and have no linker.
-            sess.dcx().emit_fatal(errors::SelfContainedLinkerMissing);
+            sess.dcx().emit_fatal(diagnostics::SelfContainedLinkerMissing);
         }
     }
 

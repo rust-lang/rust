@@ -5,7 +5,7 @@ use rustc_infer::infer::canonical::{QueryRegionConstraint, QueryRegionConstraint
 use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_infer::infer::outlives::obligations::{TypeOutlives, TypeOutlivesDelegate};
 use rustc_infer::infer::region_constraints::{GenericKind, VerifyBound};
-use rustc_infer::traits::query::type_op::DeeplyNormalize;
+use rustc_infer::traits::query::type_op::Normalize;
 use rustc_middle::bug;
 use rustc_middle::ty::{
     self, GenericArgKind, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, elaborate, fold_regions,
@@ -183,7 +183,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
                         // in the new trait solver.
                         if infcx.next_trait_solver() {
                             t1 = self.normalize_and_add_type_outlives_constraints(
-                                t1,
+                                ty::Unnormalized::new_wip(t1),
                                 &mut next_outlives_predicates,
                             );
                         }
@@ -279,15 +279,17 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         self.constraints.type_tests.push(type_test);
     }
 
+    // FIXME(trait-refactor-initiative#260): This function should be
+    // removed.
     fn normalize_and_add_type_outlives_constraints(
         &self,
-        ty: Ty<'tcx>,
+        ty: ty::Unnormalized<'tcx, Ty<'tcx>>,
         next_outlives_predicates: &mut Vec<(
             ty::ArgOutlivesPredicate<'tcx>,
             ConstraintCategory<'tcx>,
         )>,
     ) -> Ty<'tcx> {
-        match self.infcx.fully_perform(DeeplyNormalize { value: ty }, self.span) {
+        match self.infcx.fully_perform(Normalize { value: ty }, self.span) {
             Ok(TypeOpOutput { output: ty, constraints, .. }) => {
                 // FIXME(higher_ranked_auto): What should we do with the assumptions here?
                 if let Some(QueryRegionConstraints { constraints, assumptions: _ }) = constraints {
@@ -299,7 +301,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
                 }
                 ty
             }
-            Err(_) => ty,
+            Err(_) => ty.skip_norm_wip(),
         }
     }
 }

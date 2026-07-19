@@ -173,13 +173,6 @@ impl<'tcx> ty::CoroutineArgs<TyCtxt<'tcx>> {
             })
         })
     }
-
-    /// This is the types of the fields of a coroutine which are not stored in a
-    /// variant.
-    #[inline]
-    fn prefix_tys(self) -> &'tcx List<Ty<'tcx>> {
-        self.upvar_tys()
-    }
 }
 
 #[derive(Debug, Copy, Clone, StableHash, TypeFoldable, TypeVisitable)]
@@ -1629,6 +1622,11 @@ impl<'tcx> Ty<'tcx> {
     #[tracing::instrument(level = "trace", skip(tcx))]
     pub fn fn_sig(self, tcx: TyCtxt<'tcx>) -> PolyFnSig<'tcx> {
         self.kind().fn_sig(tcx)
+    }
+
+    #[tracing::instrument(level = "trace", skip(tcx))]
+    pub fn unnormalized_fn_sig(self, tcx: TyCtxt<'tcx>) -> ty::Unnormalized<'tcx, PolyFnSig<'tcx>> {
+        self.kind().unnormalized_fn_sig(tcx)
     }
 
     #[inline]

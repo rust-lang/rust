@@ -26,7 +26,7 @@ use super::place::{PlaceRef, PlaceValue};
 use super::{CachedLlbb, FunctionCx, LocalRef};
 use crate::base::{self, is_call_from_compiler_builtins_to_upstream_monomorphization};
 use crate::common::{self, IntPredicate};
-use crate::errors::CompilerBuiltinsCannotCall;
+use crate::diagnostics::CompilerBuiltinsCannotCall;
 use crate::mir::IntrinsicResult;
 use crate::traits::*;
 use crate::{MemFlags, meth};

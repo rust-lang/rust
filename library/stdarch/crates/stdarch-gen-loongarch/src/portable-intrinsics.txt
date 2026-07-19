@@ -293,6 +293,9 @@ lsx_vmuh_bu
 lsx_vmuh_hu
 lsx_vmuh_wu
 lsx_vmuh_du
+lsx_vldi
+lsx_vbsll_v
+lsx_vbsrl_v
 
 # LASX intrinsics
 lasx_xvsll_b
@@ -587,3 +590,6 @@ lasx_xvmuh_bu
 lasx_xvmuh_hu
 lasx_xvmuh_wu
 lasx_xvmuh_du
+lasx_xvldi
+lasx_xvbsll_v
+lasx_xvbsrl_v

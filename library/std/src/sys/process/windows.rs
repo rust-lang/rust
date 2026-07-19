@@ -640,7 +640,24 @@ impl Stdio {
                 opts.read(stdio_id == c::STD_INPUT_HANDLE);
                 opts.write(stdio_id != c::STD_INPUT_HANDLE);
                 opts.inherit_handle(true);
-                File::open(Path::new(r"\\.\NUL"), &opts).map(|file| file.into_inner())
+                File::open(Path::new(r"\\.\NUL"), &opts).map(|file| file.into_inner()).map_err(
+                    |e| {
+                        // A raw `NotFound` here is easily mistaken for the program
+                        // being missing, so say what actually failed to open.
+                        // `spawn` only passes the three standard ids, but print
+                        // anything else as a number rather than mislabeling it.
+                        let stream = match stdio_id {
+                            c::STD_INPUT_HANDLE => "stdin".to_string(),
+                            c::STD_OUTPUT_HANDLE => "stdout".to_string(),
+                            c::STD_ERROR_HANDLE => "stderr".to_string(),
+                            id => format!("stdio handle {id}"),
+                        };
+                        Error::new(
+                            e.kind(),
+                            format!("failed to open NUL device for child {stream}: {e}"),
+                        )
+                    },
+                )
             }
         }
     }

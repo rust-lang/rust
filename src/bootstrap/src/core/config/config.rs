@@ -235,6 +235,7 @@ pub struct Config {
     pub rust_parallel_frontend_threads: Option<u32>,
     pub rust_rustflags: Vec<String>,
     pub rust_pgo: PgoConfig,
+    pub rustdoc_pgo: PgoConfig,
 
     pub llvm_libunwind_default: Option<LlvmLibunwind>,
     pub enable_bolt_settings: bool,
@@ -656,7 +657,8 @@ impl Config {
             libgccjit_libs_dir: gcc_libgccjit_libs_dir,
         } = toml_gcc.unwrap_or_default();
 
-        let Pgo { rustc: pgo_rustc, llvm: pgo_llvm } = toml_pgo.unwrap_or_default();
+        let Pgo { rustc: pgo_rustc, llvm: pgo_llvm, rustdoc: pgo_rustdoc } =
+            toml_pgo.unwrap_or_default();
 
         // Backcompat: flags have priority over config
         if flags_rust_profile_use.is_some() || flags_rust_profile_generate.is_some() {
@@ -699,6 +701,11 @@ impl Config {
         };
         if pgo_llvm.use_profile.is_some() && pgo_llvm.generate_profile.is_some() {
             panic!("Cannot use and generate LLVM PGO profiles at the same time");
+        }
+
+        let pgo_rustdoc = pgo_rustdoc.unwrap_or_default();
+        if pgo_rustdoc.use_profile.is_some() && pgo_rustdoc.generate_profile.is_some() {
+            panic!("Cannot use and generate rustdoc PGO profiles at the same time");
         }
 
         if rust_bootstrap_override_lld.is_some() && rust_bootstrap_override_lld_legacy.is_some() {
@@ -1567,6 +1574,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             rustc_debug_assertions: rust_rustc_debug_assertions.unwrap_or(rust_debug == Some(true)),
             rustc_default_linker: rust_default_linker,
             rustc_error_format: flags_rustc_error_format,
+            rustdoc_pgo: pgo_rustdoc,
             rustfmt_info,
             sanitizers: build_sanitizers.unwrap_or(false),
             save_toolstates: rust_save_toolstates.map(PathBuf::from),

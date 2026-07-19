@@ -1683,27 +1683,61 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 });
             let mut diag = struct_span_code_err!(self.dcx(), span, E0271, "{msg}");
             *diag.long_ty_path() = file;
+            let mut mention_bounds = true;
             if let Some(span) = closure_span {
-                // Mark the closure decl so that it is seen even if we are pointing at the return
-                // type or expression.
-                //
-                // error[E0271]: expected `{closure@foo.rs:41:16}` to be a closure that returns
-                //               `Unit3`, but it returns `Unit4`
-                //   --> $DIR/foo.rs:43:17
-                //    |
-                // LL |     let v = Unit2.m(
-                //    |                   - required by a bound introduced by this call
-                // ...
-                // LL |             f: |x| {
-                //    |                --- /* this span */
-                // LL |                 drop(x);
-                // LL |                 Unit4
-                //    |                 ^^^^^ expected `Unit3`, found `Unit4`
-                //    |
-                diag.span_label(span, "this closure");
-                if !span.overlaps(obligation.cause.span) {
-                    // Point at the binding corresponding to the closure where it is used.
-                    diag.span_label(obligation.cause.span, "closure used here");
+                if let Some((_, _, expected_ty)) = values
+                    && let Some(expected_ty) = expected_ty.as_type()
+                    && let ty::Closure(def_id, _) = expected_ty.kind()
+                    && self.tcx.def_span(*def_id).overlaps(span)
+                    && let ObligationCauseCode::FunctionArg { parent_code, arg_hir_id, .. } =
+                        obligation.cause.code()
+                    && let ObligationCauseCode::WhereClauseInExpr(def_id, span, _, _)
+                    | ObligationCauseCode::WhereClause(def_id, span) = &**parent_code
+                {
+                    // We have a trait bound for a closure to return itself, like
+                    // `T: FnOnce() -> T`. This is nonsensical, but as far as the type system is
+                    // concerned, valid. This is quite an edge case, but lets produce a reasonable
+                    // diagnostic even in the face of an unreasonable user :)
+                    let mut multispan: MultiSpan = (*span).into();
+                    multispan.push_span_label(*span, "this requires the closure to return itself");
+                    if let Node::Expr(arg) = self.tcx.hir_node(*arg_hir_id) {
+                        multispan
+                            .push_span_label(arg.span, "this closure would have to return itself");
+                    }
+                    let in_the_item = match self.tcx.opt_item_name(*def_id) {
+                        Some(name) => format!("in `{name}`"),
+                        None => String::new(),
+                    };
+                    diag.span_note(
+                        multispan,
+                        format!(
+                            "a bound {in_the_item} requires that a closure return itself, which is \
+                             not possible",
+                        ),
+                    );
+                    mention_bounds = false;
+                } else {
+                    // Mark the closure decl so that it is seen even if we are pointing at the
+                    // return type or expression.
+                    //
+                    // error[E0271]: expected `{closure@foo.rs:41:16}` to be a closure that returns
+                    //               `Unit3`, but it returns `Unit4`
+                    //   --> $DIR/foo.rs:43:17
+                    //    |
+                    // LL |     let v = Unit2.m(
+                    //    |                   - required by a bound introduced by this call
+                    // ...
+                    // LL |             f: |x| {
+                    //    |                --- /* this span */
+                    // LL |                 drop(x);
+                    // LL |                 Unit4
+                    //    |                 ^^^^^ expected `Unit3`, found `Unit4`
+                    //    |
+                    diag.span_label(span, "this closure");
+                    if !span.overlaps(obligation.cause.span) {
+                        // Point at the binding corresponding to the closure where it is used.
+                        diag.span_label(obligation.cause.span, "closure used here");
+                    }
                 }
             }
 
@@ -1775,7 +1809,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 false,
                 Some(span),
             );
-            self.note_obligation_cause(&mut diag, obligation);
+            if mention_bounds {
+                self.note_obligation_cause(&mut diag, obligation);
+            }
             diag.emit()
         })
     }

@@ -501,7 +501,7 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                     PassMode::Direct(_) => {
                         let llarg = bx.get_param(llarg_idx);
                         llarg_idx += 1;
-                        debug_assert!(bx.is_backend_immediate(arg.layout));
+                        debug_assert!(arg.layout.backend_repr.is_scalar_or_simd());
                         return local(OperandRef {
                             val: OperandValue::Immediate(llarg),
                             layout: arg.layout,

@@ -18,7 +18,7 @@ pub(crate) struct DropCheckOverflow<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag("failed to write file {$path}: {$error}\"")]
+#[diag("failed to write file {$path}: {$error}")]
 pub(crate) struct FailedWritingFile<'a> {
     pub path: &'a Path,
     pub error: io::Error,

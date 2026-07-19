@@ -182,7 +182,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             obligation.param_env,
             obligation.cause.clone(),
             obligation.recursion_depth + 1,
-            candidate,
+            ty::Unnormalized::new_wip(candidate),
             &mut obligations,
         );
 
@@ -416,7 +416,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         obligation.param_env,
                         cause.clone(),
                         obligation.recursion_depth + 1,
-                        assumption,
+                        Unnormalized::new_wip(assumption),
                         &mut obligations,
                     );
                     self.infcx.register_region_assumption(assumption);
@@ -522,7 +522,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             obligation.param_env,
             obligation.cause.clone(),
             obligation.recursion_depth + 1,
-            upcast_trait_ref,
+            ty::Unnormalized::new_wip(upcast_trait_ref),
             &mut nested,
         );
 
@@ -536,10 +536,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         // Check supertraits hold. This is so that their associated type bounds
         // will be checked in the code below.
-        for (supertrait, _) in tcx
+        for supertrait in tcx
             .explicit_super_predicates_of(trait_predicate.def_id())
             .iter_instantiated_copied(tcx, trait_predicate.trait_ref.args)
-            .map(Unnormalized::skip_norm_wip)
+            .map(|pred| pred.unzip().0)
         {
             let normalized_supertrait = normalize_with_depth_to(
                 self,
@@ -581,7 +581,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     obligation.param_env,
                     obligation.cause.clone(),
                     obligation.recursion_depth + 1,
-                    bound.instantiate(tcx, trait_predicate.trait_ref.args).skip_norm_wip(),
+                    bound.instantiate(tcx, trait_predicate.trait_ref.args),
                     &mut nested,
                 );
                 nested.push(obligation.with(tcx, normalized_bound));
@@ -602,7 +602,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let self_ty = self.infcx.shallow_resolve(placeholder_predicate.self_ty());
 
         let tcx = self.tcx();
-        let sig = self_ty.fn_sig(tcx);
+        let sig = self_ty.unnormalized_fn_sig(tcx);
+        let output_ty = sig.map(|sig| self.infcx.enter_forall_and_leak_universe(sig.output()));
+        let sig = sig.skip_norm_wip();
         let trait_ref = closure_trait_ref_and_return_type(
             tcx,
             obligation.predicate.def_id(),
@@ -617,7 +619,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let cause = obligation.derived_cause(ObligationCauseCode::BuiltinDerived);
 
         // Confirm the `type Output: Sized;` bound that is present on `FnOnce`
-        let output_ty = self.infcx.enter_forall_and_leak_universe(sig.output());
         let output_ty = normalize_with_depth_to(
             self,
             obligation.param_env,
@@ -975,7 +976,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     obligation.param_env,
                     obligation.cause.clone(),
                     obligation.recursion_depth + 1,
-                    (obligation.predicate.trait_ref, found_trait_ref),
+                    Unnormalized::new_wip((obligation.predicate.trait_ref, found_trait_ref)),
                 )
             });
 
@@ -1018,7 +1019,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let source_principal = a_data.principal().unwrap().with_self_ty(tcx, a_ty);
         let unnormalized_upcast_principal =
-            util::supertraits(tcx, source_principal).nth(idx).unwrap();
+            ty::Unnormalized::new_wip(util::supertraits(tcx, source_principal).nth(idx).unwrap());
 
         let nested = self
             .match_upcast_principal(
@@ -1182,7 +1183,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     obligation.param_env,
                     obligation.cause.clone(),
                     obligation.recursion_depth + 1,
-                    tail_field_ty.instantiate(tcx, args_a).skip_norm_wip(),
+                    tail_field_ty.instantiate(tcx, args_a),
                     &mut nested,
                 );
                 let target_tail = normalize_with_depth_to(
@@ -1190,7 +1191,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     obligation.param_env,
                     obligation.cause.clone(),
                     obligation.recursion_depth + 1,
-                    tail_field_ty.instantiate(tcx, args_b).skip_norm_wip(),
+                    tail_field_ty.instantiate(tcx, args_b),
                     &mut nested,
                 );
 

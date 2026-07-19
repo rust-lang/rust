@@ -83,12 +83,11 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> LocalAnalyzer<'a, 'b, 'tcx, Bx>
             LocalKind::Unused => {
                 let ty = fx.monomorphize(decl.ty);
                 let layout = fx.cx.spanned_layout_of(ty, decl.source_info.span);
-                *kind =
-                    if fx.cx.is_backend_immediate(layout) || fx.cx.is_backend_scalar_pair(layout) {
-                        LocalKind::SSA(location)
-                    } else {
-                        LocalKind::Memory
-                    };
+                *kind = if let abi::BackendRepr::Memory { .. } = layout.backend_repr {
+                    LocalKind::Memory
+                } else {
+                    LocalKind::SSA(location)
+                };
             }
             LocalKind::SSA(_) => *kind = LocalKind::Memory,
         }
@@ -157,7 +156,7 @@ impl<'a, 'b, 'tcx, Bx: BuilderMethods<'b, 'tcx>> LocalAnalyzer<'a, 'b, 'tcx, Bx>
                 }
             }
             debug_assert!(
-                !self.fx.cx.is_backend_ref(layout),
+                layout.is_ssa_standalone(),
                 "Post-projection {place_ref:?} layout should be non-Ref, but it's {layout:?}",
             );
         }

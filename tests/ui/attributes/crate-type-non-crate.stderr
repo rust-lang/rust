@@ -40,7 +40,12 @@ error: attribute value must be a literal
   --> $DIR/crate-type-non-crate.rs:9:16
    |
 LL | #[crate_type = lib]
-   |                ^^^ help: try adding quotation marks: `"lib"`
+   |                ^^^
+   |
+help: you might have meant to write a string literal
+   |
+LL | #[crate_type = "lib"]
+   |                +   +
 
 error[E0539]: malformed `crate_type` attribute input
   --> $DIR/crate-type-non-crate.rs:12:1
@@ -72,7 +77,12 @@ error: attribute value must be a literal
   --> $DIR/crate-type-non-crate.rs:14:16
    |
 LL | #[crate_type = foo]
-   |                ^^^ help: try adding quotation marks: `"foo"`
+   |                ^^^
+   |
+help: you might have meant to write a string literal
+   |
+LL | #[crate_type = "foo"]
+   |                +   +
 
 error[E0539]: malformed `crate_type` attribute input
   --> $DIR/crate-type-non-crate.rs:17:1

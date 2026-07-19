@@ -12,14 +12,10 @@ fn compile_for_device(ecx: &mut ExtCtxt<'_>) -> bool {
     ecx.sess.opts.unstable_opts.offload.contains(&Offload::Device)
 }
 
-fn outer_normal_attr(
-    kind: &Box<rustc_ast::NormalAttr>,
-    id: rustc_ast::AttrId,
-    span: Span,
-) -> rustc_ast::Attribute {
-    let style = rustc_ast::AttrStyle::Outer;
-    let kind = rustc_ast::AttrKind::Normal(kind.clone());
-    rustc_ast::Attribute { kind, id, style, span }
+fn outer_normal_attr(normal: &Box<ast::NormalAttr>, id: ast::AttrId, span: Span) -> ast::Attribute {
+    let style = ast::AttrStyle::Outer;
+    let kind = ast::AttrKind::Normal(normal.clone());
+    ast::Attribute { kind, id, style, span }
 }
 
 fn extract_fn(
@@ -118,7 +114,7 @@ pub(crate) fn expand_kernel(
     let unsafe_item = AttrItem {
         unsafety: ast::Safety::Unsafe(span),
         path: ast::Path::from_ident(Ident::new(sym::no_mangle, span)),
-        args: ast::AttrItemKind::Unparsed(ast::AttrArgs::Empty),
+        args: ast::AttrArgs::Empty,
     };
 
     let no_mangle_attr = Box::new(ast::NormalAttr { item: unsafe_item, tokens: None });
@@ -182,7 +178,7 @@ pub(crate) fn expand_kernel(
     let inline_item = ast::AttrItem {
         unsafety: ast::Safety::Default,
         path: ast::Path::from_ident(Ident::with_dummy_span(sym::inline)),
-        args: rustc_ast::ast::AttrItemKind::Unparsed(ast::AttrArgs::Delimited(never_arg)),
+        args: ast::AttrArgs::Delimited(never_arg),
     };
     let inline_never_attr = Box::new(ast::NormalAttr { item: inline_item, tokens: None });
 

@@ -197,15 +197,26 @@ themselves marked as unstable. To use any of these options, pass `-Z unstable-op
 the flag in question to Rustdoc on the command-line. To do this from Cargo, you can either use the
 `RUSTDOCFLAGS` environment variable or the `cargo rustdoc` command.
 
-### `--merge`, `--parts-out-dir`, and `--include-parts-dir`
+### `--write-doc-meta-dir`, and `--read-doc-meta-dir`
 
 These options control how rustdoc handles files that combine data from multiple crates.
 
-By default, they act like `--merge=shared` is set, and `--parts-out-dir` and `--include-parts-dir`
-are turned off. The `--merge=shared` mode causes rustdoc to load the existing data in the out-dir,
-combine the new crate data into it, and write the result. This is very easy to use in scripts that
-manually invoke rustdoc, but it's also slow, because it performs O(crates) work on
-every crate, meaning it performs O(crates<sup>2</sup>) work.
+By default, rustdoc will read the doc meta from the doc output dir itself and merge them together.
+This is very easy to use in scripts that manually invoke rustdoc, but it's also slow, because it
+performs O(crates) work on every crate, meaning it performs O(crates<sup>2</sup>) work. When
+`--write-doc-meta-dir` and/or `--read-doc-meta-dir` are supplied, this is turned off.
+
+When `--write-doc-meta-dir` is supplied, rustdoc will write the crate's metadata to that directory.
+If this parameter is supplied but `--read-doc-meta-dir` isn't, it runs in *intermediate mode*:
+some pages may be written to the output dir, but there is a lot of functionality that won't work
+until rustdoc is run in *finalize mode*.
+
+When `--read-doc-meta-dir` is supplied, rustdoc runs in *finalize mode*. It will read the data from
+the supplied directory, and will write it to the doc output directory in the form that the web
+frontend will use.
+
+If both `--write-doc-meta-dir` and `--read-doc-meta-dir` are specified, the crate metadata will be
+written to both the HTML `--out-dir` and to the supplied `--write-doc-meta-dir`.
 
 ```console
 $ rustdoc crate1.rs --out-dir=doc
@@ -217,13 +228,13 @@ rd_("fcrate1fcrate2")
 ```
 
 To delay shared-data merging until the end of a build, so that you only have to perform O(crates)
-work, use `--merge=none` on every crate except the last one, which will use `--merge=finalize`.
+work, use `--write-doc-meta-dir` on every crate, and the last will use `--read-doc-meta-dir`.
 
 ```console
-$ rustdoc +nightly crate1.rs --merge=none --parts-out-dir=crate1.d -Zunstable-options
+$ rustdoc +nightly crate1.rs --write-doc-meta=crate1.d -Zunstable-options
 $ cat doc/search.index/crateNames/*
 cat: 'doc/search.index/crateNames/*': No such file or directory
-$ rustdoc +nightly crate2.rs --merge=finalize --include-parts-dir=crate1.d -Zunstable-options
+$ rustdoc +nightly crate2.rs --read-doc-meta=crate1.d -Zunstable-options
 $ cat doc/search.index/crateNames/*
 rd_("fcrate1fcrate2")
 ```

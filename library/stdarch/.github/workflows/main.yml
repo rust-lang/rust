@@ -285,13 +285,12 @@ jobs:
         include:
           - target: aarch64_be-unknown-linux-gnu
             build_std: true
-          # getting the icx compiler hits network failures.
-          # - target: x86_64-unknown-linux-gnu
-          #   cc: icx
-          #   profile: dev
-          # - target: x86_64-unknown-linux-gnu
-          #   cc: icx
-          #   profile: release
+          - target: x86_64-unknown-linux-gnu
+            cc: icx
+            profile: dev
+          - target: x86_64-unknown-linux-gnu
+            cc: icx
+            profile: release
         exclude:
           - target: armv7-unknown-linux-gnueabihf
             cc: gcc
@@ -329,13 +328,17 @@ jobs:
       run: |
         cargo run --bin=stdarch-gen-arm --release -- crates/stdarch-gen-arm/spec
         git diff --exit-code
-    - name: Check lsx.spec
+    - name: Check loongarch lsx
+      env:
+        STDARCH_GEN_MODE: check
       run: |
-        cargo run --bin=stdarch-gen-loongarch --release -- crates/stdarch-gen-loongarch/lsx.spec
+        cargo run -p stdarch-gen-loongarch --release -- lsx
         git diff --exit-code
-    - name: Check lasx.spec
+    - name: Check loongarch lasx
+      env:
+        STDARCH_GEN_MODE: check
       run: |
-        cargo run --bin=stdarch-gen-loongarch --release -- crates/stdarch-gen-loongarch/lasx.spec
+        cargo run -p stdarch-gen-loongarch --release -- lasx
         git diff --exit-code
     - name: Check hexagon
       env:

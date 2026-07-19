@@ -1,6 +1,6 @@
 //@ aux-build:tango.rs
 //@ build-aux-docs
-//@ doc-flags:--merge=none
+//@ doc-flags:--write-doc-meta-dir=info/doc.parts/sierra
 //@ doc-flags:--enable-index-page
 //@ doc-flags:-Zunstable-options
 
@@ -11,7 +11,8 @@
 //@ !has trait.impl/tango/trait.Tango.js
 //@ !has search.index/name/*.js
 
-// --merge=none on all crates does not generate any cross-crate info
+// --write-doc-meta-dir on all crates does not write the search index
+// in the actual output folder
 extern crate tango;
 pub struct Sierra;
 impl tango::Tango for Sierra {}
