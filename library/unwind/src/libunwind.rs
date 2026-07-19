@@ -37,7 +37,6 @@ unsafe extern "C-unwind" {
     pub fn _Unwind_Resume(exception: *mut _Unwind_Exception) -> !;
 }
 unsafe extern "C" {
-    pub fn _Unwind_DeleteException(exception: *mut _Unwind_Exception);
     pub fn _Unwind_GetLanguageSpecificData(ctx: *mut _Unwind_Context) -> *mut c_void;
     pub fn _Unwind_GetRegionStart(ctx: *mut _Unwind_Context) -> _Unwind_Ptr;
     pub fn _Unwind_GetTextRelBase(ctx: *mut _Unwind_Context) -> _Unwind_Ptr;

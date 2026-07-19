@@ -28,12 +28,6 @@ core::arch::global_asm!(
 
 pub use crate::types::*;
 
-pub unsafe fn _Unwind_DeleteException(exception: *mut _Unwind_Exception) {
-    if let Some(exception_cleanup) = unsafe { (*exception).exception_cleanup } {
-        exception_cleanup(_URC_FOREIGN_EXCEPTION_CAUGHT, exception);
-    }
-}
-
 pub unsafe fn _Unwind_RaiseException(exception: *mut _Unwind_Exception) -> _Unwind_Reason_Code {
     // This implementation is only used for `wasm*-unknown-unknown` targets. Such targets are not
     // guaranteed to support exceptions, and they default to `-C panic=abort`. Because an unknown

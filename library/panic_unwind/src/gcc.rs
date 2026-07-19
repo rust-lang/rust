@@ -86,7 +86,9 @@ pub(crate) unsafe fn cleanup(ptr: *mut u8) -> Box<dyn Any + Send> {
     unsafe {
         let exception = ptr as *mut uw::_Unwind_Exception;
         if (*exception).exception_class != RUST_EXCEPTION_CLASS {
-            uw::_Unwind_DeleteException(exception);
+            if let Some(exception_cleanup) = (*exception).exception_cleanup {
+                exception_cleanup(uw::_URC_FOREIGN_EXCEPTION_CAUGHT, exception);
+            }
             super::__rust_foreign_exception();
         }
 
