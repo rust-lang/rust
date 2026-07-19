@@ -203,7 +203,7 @@ pub trait BufRead: Read {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn read_until(&mut self, byte: u8, buf: &mut Vec<u8>) -> Result<usize> {
-        read_until(self, byte, buf)
+        default_read_until(self, byte, buf)
     }
 
     /// Skips all bytes until the delimiter `byte` or EOF is reached.
@@ -270,7 +270,7 @@ pub trait BufRead: Read {
     /// ```
     #[stable(feature = "bufread_skip_until", since = "1.83.0")]
     fn skip_until(&mut self, byte: u8) -> Result<usize> {
-        skip_until(self, byte)
+        default_skip_until(self, byte)
     }
 
     /// Reads all bytes until a newline (the `0xA` byte) is reached, and append
@@ -343,7 +343,7 @@ pub trait BufRead: Read {
         // Note that we are not calling the `.read_until` method here, but
         // rather our hardcoded implementation. For more details as to why, see
         // the comments in `default_read_to_string`.
-        unsafe { append_to_string(buf, |b| read_until(self, b'\n', b)) }
+        unsafe { append_to_string(buf, |b| default_read_until(self, b'\n', b)) }
     }
 
     /// Returns an iterator over the contents of this reader split on the byte
@@ -426,7 +426,11 @@ pub trait BufRead: Read {
     }
 }
 
-fn read_until<R: BufRead + ?Sized>(r: &mut R, delim: u8, buf: &mut Vec<u8>) -> Result<usize> {
+fn default_read_until<R: BufRead + ?Sized>(
+    r: &mut R,
+    delim: u8,
+    buf: &mut Vec<u8>,
+) -> Result<usize> {
     let mut read = 0;
     loop {
         let (done, used) = {
@@ -473,7 +477,7 @@ fn read_until<R: BufRead + ?Sized>(r: &mut R, delim: u8, buf: &mut Vec<u8>) -> R
     }
 }
 
-fn skip_until<R: BufRead + ?Sized>(r: &mut R, delim: u8) -> Result<usize> {
+fn default_skip_until<R: BufRead + ?Sized>(r: &mut R, delim: u8) -> Result<usize> {
     let mut read = 0;
     loop {
         let (done, used) = {
