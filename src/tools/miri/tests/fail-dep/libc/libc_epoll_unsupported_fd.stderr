@@ -1,4 +1,4 @@
-error: unsupported operation: epoll: this file description doesn't support I/O readiness
+error: unsupported operation: I/O readiness watching not supported for epoll
   --> tests/fail-dep/libc/libc_epoll_unsupported_fd.rs:LL:CC
    |
 LL |     let res = unsafe { libc::epoll_ctl(epfd0, libc::EPOLL_CTL_ADD, epfd1, &mut ev) };

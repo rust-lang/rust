@@ -4,7 +4,7 @@ use std::io;
 use std::io::ErrorKind;
 
 use crate::concurrency::VClock;
-use crate::shims::files::{FdId, FileDescription, FileDescriptionRef, WeakFileDescriptionRef};
+use crate::shims::files::{FileDescription, FileDescriptionRef};
 use crate::shims::unix::UnixFileDescription;
 use crate::*;
 
@@ -29,6 +29,8 @@ struct EventFd {
     blocked_read_tid: RefCell<Vec<ThreadId>>,
     /// A list of thread ids blocked on eventfd::write.
     blocked_write_tid: RefCell<Vec<ThreadId>>,
+    /// State for being watched by epoll.
+    watched: ReadinessWatched,
 }
 
 impl FileDescription for EventFd {
@@ -41,15 +43,6 @@ impl FileDescription for EventFd {
     ) -> InterpResult<'tcx, Either<io::Result<std::fs::Metadata>, &'static str>> {
         // On Linux, eventfd is an "anonymous inode" reported as S_IFREG.
         interp_ok(Either::Right("S_IFREG"))
-    }
-
-    fn destroy<'tcx>(
-        self,
-        _self_id: FdId,
-        _communicate_allowed: bool,
-        _ecx: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx, io::Result<()>> {
-        interp_ok(Ok(()))
     }
 
     /// Read the counter in the buffer and return the counter if succeeded.
@@ -108,15 +101,19 @@ impl FileDescription for EventFd {
         eventfd_write(buf_place, self, ecx, finish)
     }
 
-    fn readiness<'tcx>(&self) -> InterpResult<'tcx, Readiness> {
+    fn readiness_watched(&self) -> Option<&ReadinessWatched> {
+        Some(&self.watched)
+    }
+
+    fn readiness(&self) -> Readiness {
         // We only check the "readable" and "writable" readiness for eventfd. If other event flags
         // need to be supported in the future, the check should be added here.
 
-        interp_ok(Readiness {
+        Readiness {
             readable: self.counter.get() != 0,
             writable: self.counter.get() != MAX_COUNTER,
             ..Readiness::EMPTY
-        })
+        }
     }
 
     fn as_unix<'tcx>(
@@ -184,6 +181,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             clock: RefCell::new(VClock::default()),
             blocked_read_tid: RefCell::new(Vec::new()),
             blocked_write_tid: RefCell::new(Vec::new()),
+            watched: ReadinessWatched::default(),
         });
 
         interp_ok(Scalar::from_i32(fd_value))
@@ -230,7 +228,7 @@ fn eventfd_write<'tcx>(
             // Linux seems to cause spurious wakeups here, and Tokio seems to rely on that
             // (see <https://github.com/rust-lang/miri/pull/4676#discussion_r2510528994>
             // and also <https://www.illumos.org/issues/16700>).
-            ecx.update_fd_readiness(eventfd, /* force_edge */ true)?;
+            ecx.update_fd_readiness(eventfd, ReadinessUpdateFlags::FORCE_EDGE)?;
 
             // Return how many bytes we consumed from the user-provided buffer.
             return finish.call(ecx, Ok(buf_place.layout.size.bytes_usize()));
@@ -243,7 +241,6 @@ fn eventfd_write<'tcx>(
 
             eventfd.blocked_write_tid.borrow_mut().push(ecx.active_thread());
 
-            let weak_eventfd = FileDescriptionRef::downgrade(&eventfd);
             ecx.block_thread(
                 BlockReason::Eventfd,
                 None,
@@ -252,14 +249,11 @@ fn eventfd_write<'tcx>(
                         num: u64,
                         buf_place: MPlaceTy<'tcx>,
                         finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
-                        weak_eventfd: WeakFileDescriptionRef<EventFd>,
+                        eventfd: FileDescriptionRef<EventFd>,
                     }
                     |this, unblock: UnblockKind| {
                         assert_eq!(unblock, UnblockKind::Ready);
-                        // When we get unblocked, try again. We know the ref is still valid,
-                        // otherwise there couldn't be a `write` that unblocks us.
-                        let eventfd_ref = weak_eventfd.upgrade().unwrap();
-                        eventfd_write(buf_place, eventfd_ref, this, finish)
+                        eventfd_write(buf_place, eventfd, this, finish)
                     }
                 ),
             );
@@ -287,7 +281,6 @@ fn eventfd_read<'tcx>(
 
         eventfd.blocked_read_tid.borrow_mut().push(ecx.active_thread());
 
-        let weak_eventfd = FileDescriptionRef::downgrade(&eventfd);
         ecx.block_thread(
             BlockReason::Eventfd,
             None,
@@ -295,14 +288,11 @@ fn eventfd_read<'tcx>(
                 @capture<'tcx> {
                     buf_place: MPlaceTy<'tcx>,
                     finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
-                    weak_eventfd: WeakFileDescriptionRef<EventFd>,
+                    eventfd: FileDescriptionRef<EventFd>,
                 }
                 |this, unblock: UnblockKind| {
                     assert_eq!(unblock, UnblockKind::Ready);
-                    // When we get unblocked, try again. We know the ref is still valid,
-                    // otherwise there couldn't be a `write` that unblocks us.
-                    let eventfd_ref = weak_eventfd.upgrade().unwrap();
-                    eventfd_read(buf_place, eventfd_ref, this, finish)
+                    eventfd_read(buf_place, eventfd, this, finish)
                 }
             ),
         );
@@ -326,7 +316,7 @@ fn eventfd_read<'tcx>(
         // The state changed; we check and update the status of all supported event
         // types for current file description.
         // Linux seems to always emit do notifications here, even if we were already writable.
-        ecx.update_fd_readiness(eventfd, /* force_edge */ true)?;
+        ecx.update_fd_readiness(eventfd, ReadinessUpdateFlags::FORCE_EDGE)?;
 
         // Tell userspace how many bytes we put into the buffer.
         return finish.call(ecx, Ok(buf_place.layout.size.bytes_usize()));

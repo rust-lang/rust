@@ -3,7 +3,7 @@ use std::assert_matches;
 use rustc_middle::mir::BinOp;
 use rustc_span::Symbol;
 
-use crate::shims::math::compute_crc32;
+use crate::intrinsics::math::compute_crc32;
 use crate::*;
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
@@ -13,7 +13,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         link_name: Symbol,
         args: &[OpTy<'tcx>],
         dest: &MPlaceTy<'tcx>,
-    ) -> InterpResult<'tcx, bool> {
+    ) -> InterpResult<'tcx, EmulateItemResult> {
         let this = self.eval_context_mut();
         // Prefix should have already been checked.
         let unprefixed_name = link_name.as_str().strip_prefix("llvm.aarch64.").unwrap();
@@ -273,8 +273,8 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write_scalar(Scalar::from_u128(result), &dest)?;
             }
 
-            _ => return interp_ok(false),
+            _ => return interp_ok(EmulateItemResult::NotSupported),
         }
-        interp_ok(true)
+        interp_ok(EmulateItemResult::NeedsReturn)
     }
 }
