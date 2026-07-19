@@ -53,7 +53,7 @@ const MARKDOWN_OPTIONS: Options =
 pub(crate) fn rewrite_links(
     db: &RootDatabase,
     markdown: &str,
-    definition: Definition,
+    definition: Definition<'_>,
     range_map: Option<&hir::Docs>,
 ) -> String {
     let mut cb = broken_link_clone_cb;
@@ -207,13 +207,13 @@ pub(crate) fn extract_definitions_from_docs(
     .collect()
 }
 
-pub(crate) fn resolve_doc_path_for_def(
+pub(crate) fn resolve_doc_path_for_def<'db>(
     db: &dyn HirDatabase,
-    def: Definition,
+    def: Definition<'db>,
     link: &str,
     ns: Option<hir::Namespace>,
     is_inner_doc: hir::IsInnerDoc,
-) -> Option<Definition> {
+) -> Option<Definition<'db>> {
     match def {
         Definition::Module(it) => it.resolve_doc_path(db, link, ns, is_inner_doc),
         Definition::Crate(it) => it.resolve_doc_path(db, link, ns, is_inner_doc),
@@ -243,10 +243,10 @@ pub(crate) fn resolve_doc_path_for_def(
     .map(Definition::from)
 }
 
-pub(crate) fn doc_attributes(
-    sema: &Semantics<'_, RootDatabase>,
+pub(crate) fn doc_attributes<'db>(
+    sema: &Semantics<'db, RootDatabase>,
     node: &SyntaxNode,
-) -> Option<(hir::AttrsWithOwner, Definition)> {
+) -> Option<(hir::AttrsWithOwner, Definition<'db>)> {
     match_ast! {
         match node {
             ast::SourceFile(it)  => sema.to_def(&it).map(|def| (def.attrs(sema.db), Definition::from(def))),
@@ -293,12 +293,12 @@ pub(crate) fn token_as_doc_comment(doc_token: &SyntaxToken) -> Option<DocComment
 }
 
 impl DocCommentToken {
-    pub(crate) fn get_definition_with_descend_at<T>(
+    pub(crate) fn get_definition_with_descend_at<'db, T>(
         self,
-        sema: &Semantics<'_, RootDatabase>,
+        sema: &Semantics<'db, RootDatabase>,
         offset: TextSize,
         // Definition, CommentOwner, range of intra doc link in original file
-        mut cb: impl FnMut(Definition, SyntaxNode, TextRange) -> Option<T>,
+        mut cb: impl FnMut(Definition<'db>, SyntaxNode, TextRange) -> Option<T>,
     ) -> Option<T> {
         let DocCommentToken { prefix_len, doc_token } = self;
         // offset relative to the comments contents
@@ -346,11 +346,11 @@ impl DocCommentToken {
     ///    //! [`S$0`]
     /// }
     /// ```
-    fn doc_attributes(
-        sema: &Semantics<'_, RootDatabase>,
+    fn doc_attributes<'db>(
+        sema: &Semantics<'db, RootDatabase>,
         node: &SyntaxNode,
         is_inner_doc: bool,
-    ) -> Option<(AttrsWithOwner, Definition)> {
+    ) -> Option<(AttrsWithOwner, Definition<'db>)> {
         if is_inner_doc && node.kind() != SOURCE_FILE {
             let parent = node.parent()?;
             doc_attributes(sema, &parent).or(doc_attributes(sema, &parent.parent()?))
@@ -373,7 +373,7 @@ fn broken_link_clone_cb(link: BrokenLink<'_>) -> Option<(CowStr<'_>, CowStr<'_>)
 // https://github.com/rust-lang/rfcs/pull/2988
 fn get_doc_links(
     db: &RootDatabase,
-    def: Definition,
+    def: Definition<'_>,
     target_dir: Option<&str>,
     sysroot: Option<&str>,
 ) -> DocumentationLinks {
@@ -411,7 +411,7 @@ fn get_doc_links(
 
 fn rewrite_intra_doc_link(
     db: &RootDatabase,
-    def: Definition,
+    def: Definition<'_>,
     target: &str,
     title: &str,
     is_inner_doc: hir::IsInnerDoc,
@@ -455,7 +455,7 @@ fn rewrite_intra_doc_link(
 }
 
 /// Try to resolve path to local documentation via path-based links (i.e. `../gateway/struct.Shard.html`).
-fn rewrite_url_link(db: &RootDatabase, def: Definition, target: &str) -> Option<String> {
+fn rewrite_url_link(db: &RootDatabase, def: Definition<'_>, target: &str) -> Option<String> {
     if !(target.contains('#') || target.contains(".html")) {
         return None;
     }
@@ -472,7 +472,7 @@ fn rewrite_url_link(db: &RootDatabase, def: Definition, target: &str) -> Option<
     url.join(target).ok().map(Into::into)
 }
 
-fn mod_path_of_def(db: &RootDatabase, def: Definition) -> Option<String> {
+fn mod_path_of_def(db: &RootDatabase, def: Definition<'_>) -> Option<String> {
     def.canonical_module_path(db).map(|it| {
         let mut path = String::new();
         it.flat_map(|it| it.name(db)).for_each(|name| format_to!(path, "{}/", name.as_str()));
@@ -540,7 +540,7 @@ fn map_links<'e>(
 /// ```
 fn get_doc_base_urls(
     db: &RootDatabase,
-    def: Definition,
+    def: Definition<'_>,
     target_dir: Option<&str>,
     sysroot: Option<&str>,
 ) -> (Option<Url>, Option<Url>) {
@@ -632,10 +632,10 @@ fn get_doc_base_urls(
 /// https://doc.rust-lang.org/std/iter/trait.Iterator.html#tymethod.next
 ///                                    ^^^^^^^^^^^^^^^^^^^
 /// ```
-fn filename_and_frag_for_def(
+fn filename_and_frag_for_def<'db>(
     db: &dyn HirDatabase,
-    def: Definition,
-) -> Option<(Definition, String, Option<String>)> {
+    def: Definition<'db>,
+) -> Option<(Definition<'db>, String, Option<String>)> {
     if let Some(assoc_item) = def.as_assoc_item(db) {
         let def = match assoc_item.container(db) {
             AssocItemContainer::Trait(t) => t.into(),

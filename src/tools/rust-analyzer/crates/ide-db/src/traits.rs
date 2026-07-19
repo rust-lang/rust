@@ -86,7 +86,10 @@ pub fn get_missing_assoc_items(
 }
 
 /// Converts associated trait impl items to their trait definition counterpart
-pub(crate) fn convert_to_def_in_trait(db: &dyn HirDatabase, def: Definition) -> Definition {
+pub(crate) fn convert_to_def_in_trait<'db>(
+    db: &'db dyn HirDatabase,
+    def: Definition<'db>,
+) -> Definition<'db> {
     (|| {
         let assoc = def.as_assoc_item(db)?;
         let trait_ = assoc.implemented_trait(db)?;
@@ -96,7 +99,10 @@ pub(crate) fn convert_to_def_in_trait(db: &dyn HirDatabase, def: Definition) -> 
 }
 
 /// If this is an trait (impl) assoc item, returns the assoc item of the corresponding trait definition.
-pub(crate) fn as_trait_assoc_def(db: &dyn HirDatabase, def: Definition) -> Option<Definition> {
+pub(crate) fn as_trait_assoc_def<'db>(
+    db: &dyn HirDatabase,
+    def: Definition<'db>,
+) -> Option<Definition<'db>> {
     let assoc = def.as_assoc_item(db)?;
     let trait_ = match assoc.container(db) {
         hir::AssocItemContainer::Trait(_) => return Some(def),
@@ -105,11 +111,11 @@ pub(crate) fn as_trait_assoc_def(db: &dyn HirDatabase, def: Definition) -> Optio
     assoc_item_of_trait(db, assoc, trait_)
 }
 
-fn assoc_item_of_trait(
+fn assoc_item_of_trait<'db>(
     db: &dyn HirDatabase,
     assoc: hir::AssocItem,
     trait_: hir::Trait,
-) -> Option<Definition> {
+) -> Option<Definition<'db>> {
     use hir::AssocItem::*;
     let name = match assoc {
         Function(it) => it.name(db),

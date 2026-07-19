@@ -22,8 +22,8 @@ use crate::{
 
 pub(crate) fn opaque_types_defined_by(
     db: &dyn HirDatabase,
-    def_id: InferBodyId,
-    result: &mut Vec<SolverDefId>,
+    def_id: InferBodyId<'_>,
+    result: &mut Vec<SolverDefId<'_>>,
 ) {
     if let Some(func) = def_id.as_function() {
         // A function may define its own RPITs.
@@ -83,7 +83,7 @@ pub(crate) fn opaque_types_defined_by(
         db: &dyn HirDatabase,
         opaques: &Option<Box<StoredEarlyBinder<ImplTraits>>>,
         mut make_impl_trait: impl FnMut(ImplTraitIdx) -> ImplTraitId,
-        result: &mut Vec<SolverDefId>,
+        result: &mut Vec<SolverDefId<'_>>,
     ) {
         if let Some(opaques) = opaques {
             for (opaque_idx, _) in (**opaques).as_ref().skip_binder().impl_traits.iter() {

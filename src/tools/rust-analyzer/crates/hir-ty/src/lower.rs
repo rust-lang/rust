@@ -10,6 +10,7 @@ pub(crate) mod path;
 
 use std::{cell::OnceCell, iter, mem, sync::OnceLock};
 
+use base_db::salsa::update_fallback_db;
 use either::Either;
 use hir_def::{
     AdtId, AssocItemId, CallableDefId, ConstId, ConstParamId, EnumId, EnumVariantId,
@@ -50,6 +51,7 @@ use rustc_type_ir::{
     TypeVisitableExt, Upcast, UpcastFrom, elaborate,
     inherent::{Clause as _, GenericArgs as _, IntoKind as _, Region as _, Ty as _},
 };
+use salsa::Update;
 use smallvec::SmallVec;
 use stdx::{impl_from, never};
 use thin_vec::ThinVec;
@@ -210,7 +212,7 @@ pub struct TyLoweringContext<'db, 'a> {
     types: &'db crate::next_solver::DefaultAny<'db>,
     lang_items: &'db LangItems,
     resolver: &'a Resolver<'db>,
-    store: &'a ExpressionStore,
+    store: &'db ExpressionStore,
     def: ExpressionStoreOwnerId,
     generic_def: GenericDefId,
     generics: &'a OnceCell<Generics<'db>>,
@@ -223,7 +225,7 @@ pub struct TyLoweringContext<'db, 'a> {
     lifetime_elision: LifetimeElisionKind<'db>,
     forbid_params_after: Option<u32>,
     forbid_params_after_reason: ForbidParamsAfterReason,
-    pub(crate) defined_anon_consts: ThinVec<AnonConstId>,
+    pub(crate) defined_anon_consts: ThinVec<AnonConstId<'db>>,
     infer_vars: Option<&'a mut dyn TyLoweringInferVarsCtx<'db>>,
     is_lowering_impl_trait_bounds: bool,
     bound_vars: Vec<BoundVarKinds<'db>>, // FIXME: HRTB and other for lifetime doesn't change it now
@@ -234,7 +236,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
     pub fn new(
         db: &'db dyn HirDatabase,
         resolver: &'a Resolver<'db>,
-        store: &'a ExpressionStore,
+        store: &'db ExpressionStore,
         def: ExpressionStoreOwnerId,
         generic_def: GenericDefId,
         generics: &'a OnceCell<Generics<'db>>,
@@ -1295,13 +1297,21 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
     }
 }
 
-#[derive(Clone, PartialEq, Eq)]
-pub struct TyLoweringResult<T> {
+#[derive(Clone, PartialEq, Eq, Update)]
+pub struct TyLoweringResult<'db, T> {
+    #[update(fallback)]
     pub value: T,
-    info: Option<Box<(ThinVec<TyLoweringDiagnostic>, ThinVec<AnonConstId>)>>,
+    #[update(bounds(TyLoweringResultInfo<'db>: Update), unsafe(with(update_fallback_db::<'db, _>)))]
+    info: Option<Box<TyLoweringResultInfo<'db>>>,
 }
 
-impl<T: std::fmt::Debug> std::fmt::Debug for TyLoweringResult<T> {
+#[derive(Clone, PartialEq, Eq, Update)]
+struct TyLoweringResultInfo<'db> {
+    diagnostics: ThinVec<TyLoweringDiagnostic>,
+    anon_consts: ThinVec<AnonConstId<'db>>,
+}
+
+impl<T: std::fmt::Debug> std::fmt::Debug for TyLoweringResult<'_, T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut debug = f.debug_struct("TyLoweringResult");
         debug.field("value", &self.value);
@@ -1317,23 +1327,23 @@ impl<T: std::fmt::Debug> std::fmt::Debug for TyLoweringResult<T> {
     }
 }
 
-impl<T> TyLoweringResult<T> {
+impl<'db, T> TyLoweringResult<'db, T> {
     fn new(
         value: T,
         mut diagnostics: ThinVec<TyLoweringDiagnostic>,
-        mut defined_anon_consts: ThinVec<AnonConstId>,
+        mut defined_anon_consts: ThinVec<AnonConstId<'db>>,
     ) -> Self {
         let info = if diagnostics.is_empty() && defined_anon_consts.is_empty() {
             None
         } else {
             diagnostics.shrink_to_fit();
             defined_anon_consts.shrink_to_fit();
-            Some(Box::new((diagnostics, defined_anon_consts)))
+            Some(Box::new(TyLoweringResultInfo { diagnostics, anon_consts: defined_anon_consts }))
         };
         Self { value, info }
     }
 
-    fn from_ctx(value: T, ctx: TyLoweringContext<'_, '_>) -> Self {
+    fn from_ctx(value: T, ctx: TyLoweringContext<'db, '_>) -> Self {
         Self::new(value, ctx.diagnostics, ctx.defined_anon_consts)
     }
 
@@ -1344,15 +1354,15 @@ impl<T> TyLoweringResult<T> {
     #[inline]
     pub fn diagnostics(&self) -> &[TyLoweringDiagnostic] {
         match &self.info {
-            Some(info) => &info.0,
+            Some(info) => &info.diagnostics,
             None => &[],
         }
     }
 
     #[inline]
-    pub fn defined_anon_consts(&self) -> &[AnonConstId] {
+    pub fn defined_anon_consts(&self) -> &[AnonConstId<'db>] {
         match &self.info {
-            Some(info) => &info.1,
+            Some(info) => &info.anon_consts,
             None => &[],
         }
     }
@@ -1390,10 +1400,10 @@ pub(crate) fn impl_trait_query<'db>(
 }
 
 #[salsa::tracked(returns(ref))]
-pub(crate) fn impl_trait_with_diagnostics(
-    db: &dyn HirDatabase,
+pub(crate) fn impl_trait_with_diagnostics<'db>(
+    db: &'db dyn HirDatabase,
     impl_id: ImplId,
-) -> Option<TyLoweringResult<StoredEarlyBinder<StoredTraitRef>>> {
+) -> Option<TyLoweringResult<'db, StoredEarlyBinder<StoredTraitRef>>> {
     let impl_data = ImplSignature::of(db, impl_id);
     let resolver = impl_id.resolver(db);
     let generics = OnceCell::new();
@@ -1608,10 +1618,10 @@ pub(crate) fn type_for_const<'db>(
 
 /// Build the declared type of a const.
 #[salsa_macros::tracked(returns(ref))]
-pub(crate) fn type_for_const_with_diagnostics(
-    db: &dyn HirDatabase,
+pub(crate) fn type_for_const_with_diagnostics<'db>(
+    db: &'db dyn HirDatabase,
     def: ConstId,
-) -> TyLoweringResult<StoredEarlyBinder<StoredTy>> {
+) -> TyLoweringResult<'db, StoredEarlyBinder<StoredTy>> {
     let resolver = def.resolver(db);
     let data = ConstSignature::of(db, def);
     let parent = def.loc(db).container;
@@ -1640,10 +1650,10 @@ pub(crate) fn type_for_static<'db>(
 
 /// Build the declared type of a static.
 #[salsa_macros::tracked(returns(ref))]
-pub(crate) fn type_for_static_with_diagnostics(
-    db: &dyn HirDatabase,
+pub(crate) fn type_for_static_with_diagnostics<'db>(
+    db: &'db dyn HirDatabase,
     def: StaticId,
-) -> TyLoweringResult<StoredEarlyBinder<StoredTy>> {
+) -> TyLoweringResult<'db, StoredEarlyBinder<StoredTy>> {
     let resolver = def.resolver(db);
     let data = StaticSignature::of(db, def);
     let generics = OnceCell::new();
@@ -1719,10 +1729,10 @@ pub(crate) fn value_ty<'db>(
 }
 
 #[salsa::tracked(returns(ref), cycle_result = type_for_type_alias_with_diagnostics_cycle_result)]
-pub(crate) fn type_for_type_alias_with_diagnostics(
-    db: &dyn HirDatabase,
+pub(crate) fn type_for_type_alias_with_diagnostics<'db>(
+    db: &'db dyn HirDatabase,
     t: TypeAliasId,
-) -> TyLoweringResult<StoredEarlyBinder<StoredTy>> {
+) -> TyLoweringResult<'db, StoredEarlyBinder<StoredTy>> {
     let type_alias_data = TypeAliasSignature::of(db, t);
     let interner = DbInterner::new_no_crate(db);
     if type_alias_data.flags.contains(TypeAliasFlags::IS_EXTERN) {
@@ -1754,11 +1764,11 @@ pub(crate) fn type_for_type_alias_with_diagnostics(
     }
 }
 
-pub(crate) fn type_for_type_alias_with_diagnostics_cycle_result(
-    db: &dyn HirDatabase,
+pub(crate) fn type_for_type_alias_with_diagnostics_cycle_result<'db>(
+    db: &'db dyn HirDatabase,
     _: salsa::Id,
     _adt: TypeAliasId,
-) -> TyLoweringResult<StoredEarlyBinder<StoredTy>> {
+) -> TyLoweringResult<'db, StoredEarlyBinder<StoredTy>> {
     TyLoweringResult::empty(StoredEarlyBinder::bind(
         Ty::new_error(DbInterner::new_no_crate(db), ErrorGuaranteed).store(),
     ))
@@ -1772,10 +1782,10 @@ pub(crate) fn impl_self_ty_query<'db>(
 }
 
 #[salsa::tracked(returns(ref), cycle_result = impl_self_ty_with_diagnostics_cycle_result)]
-pub(crate) fn impl_self_ty_with_diagnostics(
-    db: &dyn HirDatabase,
+pub(crate) fn impl_self_ty_with_diagnostics<'db>(
+    db: &'db dyn HirDatabase,
     impl_id: ImplId,
-) -> TyLoweringResult<StoredEarlyBinder<StoredTy>> {
+) -> TyLoweringResult<'db, StoredEarlyBinder<StoredTy>> {
     let resolver = impl_id.resolver(db);
     let generics = OnceCell::new();
     let impl_data = ImplSignature::of(db, impl_id);
@@ -1794,11 +1804,11 @@ pub(crate) fn impl_self_ty_with_diagnostics(
     TyLoweringResult::from_ctx(StoredEarlyBinder::bind(ty.store()), ctx)
 }
 
-pub(crate) fn impl_self_ty_with_diagnostics_cycle_result(
-    db: &dyn HirDatabase,
+pub(crate) fn impl_self_ty_with_diagnostics_cycle_result<'db>(
+    db: &'db dyn HirDatabase,
     _: salsa::Id,
     _impl_id: ImplId,
-) -> TyLoweringResult<StoredEarlyBinder<StoredTy>> {
+) -> TyLoweringResult<'db, StoredEarlyBinder<StoredTy>> {
     TyLoweringResult::empty(StoredEarlyBinder::bind(
         Ty::new_error(DbInterner::new_no_crate(db), ErrorGuaranteed).store(),
     ))
@@ -1820,10 +1830,10 @@ pub(crate) fn const_param_types(
 }
 
 #[salsa::tracked(returns(ref), cycle_result = const_param_types_with_diagnostics_cycle_result)]
-pub(crate) fn const_param_types_with_diagnostics(
-    db: &dyn HirDatabase,
+pub(crate) fn const_param_types_with_diagnostics<'db>(
+    db: &'db dyn HirDatabase,
     def: GenericDefId,
-) -> TyLoweringResult<ArenaMap<LocalTypeOrConstParamId, StoredTy>> {
+) -> TyLoweringResult<'db, ArenaMap<LocalTypeOrConstParamId, StoredTy>> {
     let mut result = ArenaMap::new();
     let (data, store) = GenericParams::with_store(db, def);
     let resolver = def.resolver(db);
@@ -1848,11 +1858,11 @@ pub(crate) fn const_param_types_with_diagnostics(
     TyLoweringResult::from_ctx(result, ctx)
 }
 
-fn const_param_types_with_diagnostics_cycle_result(
-    _db: &dyn HirDatabase,
+fn const_param_types_with_diagnostics_cycle_result<'db>(
+    _db: &'db dyn HirDatabase,
     _: salsa::Id,
     _def: GenericDefId,
-) -> TyLoweringResult<ArenaMap<LocalTypeOrConstParamId, StoredTy>> {
+) -> TyLoweringResult<'db, ArenaMap<LocalTypeOrConstParamId, StoredTy>> {
     TyLoweringResult::empty(ArenaMap::default())
 }
 
@@ -1883,10 +1893,10 @@ impl FieldType {
 
 /// Build the type of all specific fields of a struct or enum variant.
 #[salsa::tracked(returns(ref))]
-pub(crate) fn field_types_with_diagnostics(
-    db: &dyn HirDatabase,
+pub(crate) fn field_types_with_diagnostics<'db>(
+    db: &'db dyn HirDatabase,
     variant_id: VariantId,
-) -> TyLoweringResult<ArenaMap<LocalFieldId, FieldType>> {
+) -> TyLoweringResult<'db, ArenaMap<LocalFieldId, FieldType>> {
     let var_data = variant_id.fields(db);
     let fields = var_data.fields();
     if fields.is_empty() {
@@ -2215,10 +2225,10 @@ pub struct TypeAliasBounds<T> {
 }
 
 #[salsa::tracked(returns(ref))]
-pub(crate) fn type_alias_bounds_with_diagnostics(
-    db: &dyn HirDatabase,
+pub(crate) fn type_alias_bounds_with_diagnostics<'db>(
+    db: &'db dyn HirDatabase,
     type_alias: TypeAliasId,
-) -> TyLoweringResult<TypeAliasBounds<StoredEarlyBinder<StoredClauses>>> {
+) -> TyLoweringResult<'db, TypeAliasBounds<StoredEarlyBinder<StoredClauses>>> {
     let type_alias_data = TypeAliasSignature::of(db, type_alias);
     let resolver = type_alias.resolver(db);
     let generics = OnceCell::new();
@@ -2302,17 +2312,17 @@ impl<'db> GenericPredicates {
     pub fn query_with_diagnostics(
         db: &'db dyn HirDatabase,
         def: GenericDefId,
-    ) -> TyLoweringResult<GenericPredicates> {
+    ) -> TyLoweringResult<'db, GenericPredicates> {
         generic_predicates(db, def)
     }
 }
 
 /// A cycle can occur from malformed code.
-fn generic_predicates_cycle_result(
-    db: &dyn HirDatabase,
+fn generic_predicates_cycle_result<'db>(
+    db: &'db dyn HirDatabase,
     _: salsa::Id,
     _def: GenericDefId,
-) -> TyLoweringResult<GenericPredicates> {
+) -> TyLoweringResult<'db, GenericPredicates> {
     TyLoweringResult::empty(GenericPredicates::from_explicit_own_predicates(
         StoredEarlyBinder::bind(Clauses::empty(DbInterner::new_no_crate(db)).store()),
     ))
@@ -2452,10 +2462,10 @@ pub(crate) fn trait_environment<'db>(db: &'db dyn HirDatabase, def: GenericDefId
 /// Resolve the where clause(s) of an item with generics,
 /// with a given filter
 #[tracing::instrument(skip(db), ret)]
-fn generic_predicates(
-    db: &dyn HirDatabase,
+fn generic_predicates<'db>(
+    db: &'db dyn HirDatabase,
     def: GenericDefId,
-) -> TyLoweringResult<GenericPredicates> {
+) -> TyLoweringResult<'db, GenericPredicates> {
     let generics = generics(db, def);
     let store = generics.store();
     let generics = &OnceCell::from(generics);
@@ -2667,10 +2677,10 @@ pub(crate) fn generic_defaults(db: &dyn HirDatabase, def: GenericDefId) -> Gener
 ///
 /// Diagnostics are only returned for this `GenericDefId` (returned defaults include parents).
 #[salsa_macros::tracked(returns(ref), cycle_result = generic_defaults_with_diagnostics_cycle_result)]
-pub(crate) fn generic_defaults_with_diagnostics(
-    db: &dyn HirDatabase,
+pub(crate) fn generic_defaults_with_diagnostics<'db>(
+    db: &'db dyn HirDatabase,
     def: GenericDefId,
-) -> TyLoweringResult<GenericDefaults> {
+) -> TyLoweringResult<'db, GenericDefaults> {
     let generics = generics(db, def);
     if generics.has_no_params() {
         return TyLoweringResult::empty(GenericDefaults(ThinVec::new()));
@@ -2731,11 +2741,11 @@ pub(crate) fn generic_defaults_with_diagnostics(
     }
 }
 
-fn generic_defaults_with_diagnostics_cycle_result(
-    _db: &dyn HirDatabase,
+fn generic_defaults_with_diagnostics_cycle_result<'db>(
+    _db: &'db dyn HirDatabase,
     _: salsa::Id,
     _def: GenericDefId,
-) -> TyLoweringResult<GenericDefaults> {
+) -> TyLoweringResult<'db, GenericDefaults> {
     TyLoweringResult::empty(GenericDefaults(ThinVec::new()))
 }
 
@@ -2748,10 +2758,10 @@ pub(crate) fn callable_item_signature<'db>(
 }
 
 #[salsa::tracked(returns(ref))]
-pub(crate) fn callable_item_signature_with_diagnostics(
-    db: &dyn HirDatabase,
+pub(crate) fn callable_item_signature_with_diagnostics<'db>(
+    db: &'db dyn HirDatabase,
     def: CallableDefId,
-) -> TyLoweringResult<StoredEarlyBinder<StoredPolyFnSig>> {
+) -> TyLoweringResult<'db, StoredEarlyBinder<StoredPolyFnSig>> {
     match def {
         CallableDefId::FunctionId(f) => fn_sig_for_fn(db, f),
         CallableDefId::StructId(s) => TyLoweringResult::empty(fn_sig_for_struct_constructor(db, s)),
@@ -2761,10 +2771,10 @@ pub(crate) fn callable_item_signature_with_diagnostics(
     }
 }
 
-fn fn_sig_for_fn(
-    db: &dyn HirDatabase,
+fn fn_sig_for_fn<'db>(
+    db: &'db dyn HirDatabase,
     def: FunctionId,
-) -> TyLoweringResult<StoredEarlyBinder<StoredPolyFnSig>> {
+) -> TyLoweringResult<'db, StoredEarlyBinder<StoredPolyFnSig>> {
     let data = FunctionSignature::of(db, def);
     let resolver = def.resolver(db);
     let interner = DbInterner::new_no_crate(db);

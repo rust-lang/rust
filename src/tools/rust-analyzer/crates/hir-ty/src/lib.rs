@@ -81,6 +81,7 @@ use rustc_type_ir::{
     BoundVarIndexKind, TypeSuperVisitable, TypeVisitableExt,
     inherent::{IntoKind, Ty as _},
 };
+use salsa::Update;
 use stdx::impl_from;
 use syntax::ast::{ConstArg, make};
 use traits::FnTrait;
@@ -165,7 +166,7 @@ impl ComplexMemoryMap<'_> {
 }
 
 impl<'db> MemoryMap<'db> {
-    pub fn vtable_ty(&self, id: usize) -> Result<Ty<'db>, MirEvalError> {
+    pub fn vtable_ty(&self, id: usize) -> Result<Ty<'db>, MirEvalError<'db>> {
         match self {
             MemoryMap::Empty | MemoryMap::Simple(_) => Err(MirEvalError::InvalidVTableId(id)),
             MemoryMap::Complex(cm) => cm.vtable.ty(id),
@@ -181,8 +182,8 @@ impl<'db> MemoryMap<'db> {
     /// allocator function as `f` and it will return a mapping of old addresses to new addresses.
     fn transform_addresses(
         &self,
-        mut f: impl FnMut(&[u8], usize) -> Result<usize, MirEvalError>,
-    ) -> Result<FxHashMap<usize, usize>, MirEvalError> {
+        mut f: impl FnMut(&[u8], usize) -> Result<usize, MirEvalError<'db>>,
+    ) -> Result<FxHashMap<usize, usize>, MirEvalError<'db>> {
         let mut transform = |(addr, val): (&usize, &[u8])| {
             let addr = *addr;
             let align = if addr == 0 { 64 } else { (addr - (addr & (addr - 1))).min(64) };
@@ -553,19 +554,24 @@ impl Span {
 }
 
 /// A [`DefWithBodyId`], or an anon const.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, salsa::Supertype)]
-pub enum InferBodyId {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, salsa::Supertype, Update)]
+pub enum InferBodyId<'db> {
     DefWithBodyId(DefWithBodyId),
-    AnonConstId(AnonConstId),
+    AnonConstId(AnonConstId<'db>),
 }
-impl_from!(DefWithBodyId(FunctionId, ConstId, StaticId), AnonConstId for InferBodyId);
-impl From<EnumVariantId> for InferBodyId {
+impl_from!(
+    impl<'db>
+    DefWithBodyId(FunctionId, ConstId, StaticId),
+    AnonConstId<'db>
+    for InferBodyId<'db>
+);
+impl<'db> From<EnumVariantId> for InferBodyId<'db> {
     fn from(id: EnumVariantId) -> Self {
         InferBodyId::DefWithBodyId(DefWithBodyId::VariantId(id))
     }
 }
 
-impl HasModule for InferBodyId {
+impl HasModule for InferBodyId<'_> {
     fn module(&self, db: &dyn SourceDatabase) -> ModuleId {
         match self {
             InferBodyId::DefWithBodyId(id) => id.module(db),
@@ -574,7 +580,7 @@ impl HasModule for InferBodyId {
     }
 }
 
-impl HasResolver for InferBodyId {
+impl HasResolver for InferBodyId<'_> {
     fn resolver(self, db: &dyn SourceDatabase) -> Resolver<'_> {
         match self {
             InferBodyId::DefWithBodyId(id) => id.resolver(db),
@@ -583,7 +589,7 @@ impl HasResolver for InferBodyId {
     }
 }
 
-impl InferBodyId {
+impl InferBodyId<'_> {
     pub fn expression_store_owner(self, db: &dyn HirDatabase) -> ExpressionStoreOwnerId {
         match self {
             InferBodyId::DefWithBodyId(id) => id.into(),

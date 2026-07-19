@@ -296,7 +296,7 @@ impl<'db> TryToNav for FileSymbol<'db> {
     }
 }
 
-impl TryToNav for Definition {
+impl TryToNav for Definition<'_> {
     fn try_to_nav(
         &self,
         sema: &Semantics<'_, RootDatabase>,
@@ -640,7 +640,7 @@ impl TryToNav for hir::GenericParam {
     }
 }
 
-impl ToNav for LocalSource {
+impl ToNav for LocalSource<'_> {
     fn to_nav(&self, db: &RootDatabase) -> UpmappingResult<NavigationTarget> {
         let InFile { file_id, value } = &self.source;
         let file_id = *file_id;
@@ -675,7 +675,7 @@ impl ToNav for LocalSource {
     }
 }
 
-impl ToNav for hir::Local {
+impl ToNav for hir::Local<'_> {
     fn to_nav(&self, db: &RootDatabase) -> UpmappingResult<NavigationTarget> {
         self.primary_source(db).to_nav(db)
     }

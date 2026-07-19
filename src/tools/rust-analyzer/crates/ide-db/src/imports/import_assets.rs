@@ -461,7 +461,7 @@ impl<'db> ImportAssets<'db> {
         .into_iter()
     }
 
-    fn scope_definitions(&self, sema: &Semantics<'_, RootDatabase>) -> FxHashSet<ScopeDef> {
+    fn scope_definitions<'a>(&self, sema: &Semantics<'a, RootDatabase>) -> FxHashSet<ScopeDef<'a>> {
         let _p = tracing::info_span!("ImportAssets::scope_definitions").entered();
         let mut scope_definitions = FxHashSet::default();
         if let Some(scope) = sema.scope(&self.candidate_node) {

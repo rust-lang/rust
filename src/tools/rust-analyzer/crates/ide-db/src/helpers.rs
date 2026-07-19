@@ -83,10 +83,10 @@ pub fn mod_path_to_ast_with_factory(
 }
 
 /// Iterates all `ModuleDef`s and `Impl` blocks of the given file.
-pub fn visit_file_defs(
-    sema: &Semantics<'_, RootDatabase>,
+pub fn visit_file_defs<'db>(
+    sema: &Semantics<'db, RootDatabase>,
     file_id: FileId,
-    cb: &mut dyn FnMut(Definition),
+    cb: &mut dyn FnMut(Definition<'db>),
 ) {
     let db = sema.db;
     let module = match sema.file_to_module_def(file_id) {
@@ -139,10 +139,10 @@ pub fn is_editable_crate(krate: Crate, db: &RootDatabase) -> bool {
 }
 
 // FIXME: This is a weird function
-pub fn get_definition(
-    sema: &Semantics<'_, RootDatabase>,
+pub fn get_definition<'db>(
+    sema: &Semantics<'db, RootDatabase>,
     token: SyntaxToken,
-) -> Option<Definition> {
+) -> Option<Definition<'db>> {
     for token in sema.descend_into_macros_exact(token) {
         let def = IdentClass::classify_token(sema, &token).map(IdentClass::definitions_no_ops);
         if let Some(&[x]) = def.as_deref() {

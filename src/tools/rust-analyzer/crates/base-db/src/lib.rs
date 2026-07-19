@@ -1,15 +1,48 @@
 //! base_db defines basic database traits. The concrete DB is defined by ide.
+// FIXME: Rename this crate, base db is non descriptive
 
 #![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
 
 #[cfg(feature = "in-rust-tree")]
 extern crate rustc_driver as _;
 
-pub use salsa;
+pub mod salsa {
+    pub use salsa::*;
+
+    // Adjusted from `salsa::update_fallback` to work with database owned T
+    /// "Fallback" for maybe-update that is suitable for database owned T
+    /// that implement `Eq`. In this version, we update only if the new value
+    /// is not `Eq` to the old one. Note that given `Eq` impls that are not just
+    /// structurally comparing fields, this may cause us not to update even if
+    /// the value has changed (presumably because this change is not semantically
+    /// significant).
+    ///
+    /// # Safety
+    ///
+    /// See `Update::maybe_update`, additionally, `'db` is required to be `'static` or the lifetime
+    /// of the database `T` belongs to.
+    pub unsafe fn update_fallback_db<'db, T>(old_pointer: *mut T, new_value: T) -> bool
+    where
+        T: 'db + PartialEq,
+    {
+        // SAFETY: Because everything is owned, this ref is simply a valid `&mut`
+        let old_ref: &mut T = unsafe { &mut *old_pointer };
+
+        if *old_ref != new_value {
+            *old_ref = new_value;
+            true
+        } else {
+            // Subtle but important: Eq impls can be buggy or define equality
+            // in surprising ways. If it says that the value has not changed,
+            // we do not modify the existing value, and thus do not have to
+            // update the revision, as downstream code will not see the new value.
+            false
+        }
+    }
+}
 pub use salsa_macros;
 use span::TextSize;
 
-// FIXME: Rename this crate, base db is non descriptive
 mod change;
 mod editioned_file_id;
 mod input;
@@ -63,28 +96,6 @@ macro_rules! impl_intern_key {
             }
         }
     };
-}
-
-/// # SAFETY
-///
-/// `old_pointer` must be valid for unique writes
-pub unsafe fn unsafe_update_eq<T>(old_pointer: *mut T, new_value: T) -> bool
-where
-    T: PartialEq,
-{
-    // SAFETY: Caller obligation
-    let old_ref: &mut T = unsafe { &mut *old_pointer };
-
-    if *old_ref != new_value {
-        *old_ref = new_value;
-        true
-    } else {
-        // Subtle but important: Eq impls can be buggy or define equality
-        // in surprising ways. If it says that the value has not changed,
-        // we do not modify the existing value, and thus do not have to
-        // update the revision, as downstream code will not see the new value.
-        false
-    }
 }
 
 pub const DEFAULT_FILE_TEXT_LRU_CAP: u16 = 16;

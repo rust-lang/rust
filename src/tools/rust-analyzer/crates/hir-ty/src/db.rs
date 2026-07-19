@@ -16,6 +16,7 @@ use hir_def::{
     signatures::{ConstSignature, StaticSignature},
 };
 use la_arena::ArenaMap;
+use salsa::Update;
 use span::Edition;
 use stdx::impl_from;
 use triomphe::Arc;
@@ -43,32 +44,38 @@ pub trait HirDatabase: SourceDatabase + std::fmt::Debug {
     // FIXME: Collapse `mir_body_for_closure` into `mir_body`
     // and `monomorphized_mir_body_for_closure` into `monomorphized_mir_body`
     #[salsa::transparent]
-    fn mir_body(&self, def: InferBodyId) -> Result<&MirBody, MirLowerError> {
+    fn mir_body<'db>(
+        &'db self,
+        def: InferBodyId<'db>,
+    ) -> Result<&'db MirBody<'db>, MirLowerError<'db>> {
         crate::mir::mir_body_query(self, def).map_err(|err| err.clone())
     }
 
     #[salsa::transparent]
-    fn mir_body_for_closure(&self, def: InternedClosureId) -> Result<&MirBody, MirLowerError> {
+    fn mir_body_for_closure<'db>(
+        &'db self,
+        def: InternedClosureId<'db>,
+    ) -> Result<&'db MirBody<'db>, MirLowerError<'db>> {
         crate::mir::mir_body_for_closure_query(self, def).map_err(|err| err.clone())
     }
 
     #[salsa::transparent]
-    fn monomorphized_mir_body(
-        &self,
-        def: InferBodyId,
+    fn monomorphized_mir_body<'db>(
+        &'db self,
+        def: InferBodyId<'db>,
         subst: StoredGenericArgs,
         env: StoredParamEnvAndCrate,
-    ) -> Result<&MirBody, MirLowerError> {
+    ) -> Result<&'db MirBody<'db>, MirLowerError<'db>> {
         crate::mir::monomorphized_mir_body_query(self, def, subst, env).map_err(|err| err.clone())
     }
 
     #[salsa::transparent]
-    fn monomorphized_mir_body_for_closure(
-        &self,
-        def: InternedClosureId,
+    fn monomorphized_mir_body_for_closure<'db>(
+        &'db self,
+        def: InternedClosureId<'db>,
         subst: StoredGenericArgs,
         env: StoredParamEnvAndCrate,
-    ) -> Result<&MirBody, MirLowerError> {
+    ) -> Result<&'db MirBody<'db>, MirLowerError<'db>> {
         crate::mir::monomorphized_mir_body_for_closure_query(self, def, subst, env)
             .map_err(|err| err.clone())
     }
@@ -80,24 +87,30 @@ pub trait HirDatabase: SourceDatabase + std::fmt::Debug {
         def: ConstId,
         subst: GenericArgs<'db>,
         trait_env: Option<ParamEnvAndCrate<'db>>,
-    ) -> Result<Allocation<'db>, ConstEvalError>;
+    ) -> Result<Allocation<'db>, ConstEvalError<'db>>;
 
     #[salsa::invoke(crate::consteval::anon_const_eval)]
     #[salsa::transparent]
     fn anon_const_eval<'db>(
         &'db self,
-        def: AnonConstId,
+        def: AnonConstId<'db>,
         subst: GenericArgs<'db>,
         trait_env: Option<ParamEnvAndCrate<'db>>,
-    ) -> Result<Allocation<'db>, ConstEvalError>;
+    ) -> Result<Allocation<'db>, ConstEvalError<'db>>;
 
     #[salsa::invoke(crate::consteval::const_eval_static)]
     #[salsa::transparent]
-    fn const_eval_static<'db>(&'db self, def: StaticId) -> Result<Allocation<'db>, ConstEvalError>;
+    fn const_eval_static<'db>(
+        &'db self,
+        def: StaticId,
+    ) -> Result<Allocation<'db>, ConstEvalError<'db>>;
 
     #[salsa::invoke(crate::consteval::const_eval_discriminant_variant)]
     #[salsa::transparent]
-    fn const_eval_discriminant(&self, def: EnumVariantId) -> Result<i128, ConstEvalError>;
+    fn const_eval_discriminant<'db>(
+        &'db self,
+        def: EnumVariantId,
+    ) -> Result<i128, ConstEvalError<'db>>;
 
     #[salsa::invoke(crate::method_resolution::lookup_impl_method_query)]
     #[salsa::transparent]
@@ -141,10 +154,10 @@ pub trait HirDatabase: SourceDatabase + std::fmt::Debug {
 
     #[salsa::invoke(crate::lower::type_for_type_alias_with_diagnostics)]
     #[salsa::transparent]
-    fn type_for_type_alias_with_diagnostics(
-        &self,
+    fn type_for_type_alias_with_diagnostics<'db>(
+        &'db self,
         def: TypeAliasId,
-    ) -> &TyLoweringResult<StoredEarlyBinder<StoredTy>>;
+    ) -> &'db TyLoweringResult<'db, StoredEarlyBinder<StoredTy>>;
 
     /// Returns the type of the value of the given constant, or `None` if the `ValueTyDefId` is
     /// a `StructId` or `EnumVariantId` with a record constructor.
@@ -158,10 +171,10 @@ pub trait HirDatabase: SourceDatabase + std::fmt::Debug {
 
     #[salsa::invoke(crate::lower::type_for_const_with_diagnostics)]
     #[salsa::transparent]
-    fn type_for_const_with_diagnostics(
-        &self,
+    fn type_for_const_with_diagnostics<'db>(
+        &'db self,
         def: ConstId,
-    ) -> &TyLoweringResult<StoredEarlyBinder<StoredTy>>;
+    ) -> &'db TyLoweringResult<'db, StoredEarlyBinder<StoredTy>>;
 
     #[salsa::invoke(crate::lower::type_for_static)]
     #[salsa::transparent]
@@ -169,17 +182,17 @@ pub trait HirDatabase: SourceDatabase + std::fmt::Debug {
 
     #[salsa::invoke(crate::lower::type_for_static_with_diagnostics)]
     #[salsa::transparent]
-    fn type_for_static_with_diagnostics(
-        &self,
+    fn type_for_static_with_diagnostics<'db>(
+        &'db self,
         def: StaticId,
-    ) -> &TyLoweringResult<StoredEarlyBinder<StoredTy>>;
+    ) -> &'db TyLoweringResult<'db, StoredEarlyBinder<StoredTy>>;
 
     #[salsa::invoke(crate::lower::impl_self_ty_with_diagnostics)]
     #[salsa::transparent]
-    fn impl_self_ty_with_diagnostics(
-        &self,
+    fn impl_self_ty_with_diagnostics<'db>(
+        &'db self,
         def: ImplId,
-    ) -> &TyLoweringResult<StoredEarlyBinder<StoredTy>>;
+    ) -> &'db TyLoweringResult<'db, StoredEarlyBinder<StoredTy>>;
 
     #[salsa::invoke(crate::lower::impl_self_ty_query)]
     #[salsa::transparent]
@@ -187,10 +200,10 @@ pub trait HirDatabase: SourceDatabase + std::fmt::Debug {
 
     #[salsa::invoke(crate::lower::const_param_types_with_diagnostics)]
     #[salsa::transparent]
-    fn const_param_types_with_diagnostics(
-        &self,
+    fn const_param_types_with_diagnostics<'db>(
+        &'db self,
         def: GenericDefId,
-    ) -> &TyLoweringResult<ArenaMap<LocalTypeOrConstParamId, StoredTy>>;
+    ) -> &'db TyLoweringResult<'db, ArenaMap<LocalTypeOrConstParamId, StoredTy>>;
 
     #[salsa::invoke(crate::lower::const_param_types)]
     #[salsa::transparent]
@@ -202,10 +215,10 @@ pub trait HirDatabase: SourceDatabase + std::fmt::Debug {
 
     #[salsa::invoke(crate::lower::impl_trait_with_diagnostics)]
     #[salsa::transparent]
-    fn impl_trait_with_diagnostics(
-        &self,
+    fn impl_trait_with_diagnostics<'db>(
+        &'db self,
         def: ImplId,
-    ) -> &Option<TyLoweringResult<StoredEarlyBinder<StoredTraitRef>>>;
+    ) -> &'db Option<TyLoweringResult<'db, StoredEarlyBinder<StoredTraitRef>>>;
 
     #[salsa::invoke(crate::lower::impl_trait_query)]
     #[salsa::transparent]
@@ -213,10 +226,10 @@ pub trait HirDatabase: SourceDatabase + std::fmt::Debug {
 
     #[salsa::invoke(crate::lower::field_types_with_diagnostics)]
     #[salsa::transparent]
-    fn field_types_with_diagnostics(
-        &self,
+    fn field_types_with_diagnostics<'db>(
+        &'db self,
         var: VariantId,
-    ) -> &TyLoweringResult<ArenaMap<LocalFieldId, FieldType>>;
+    ) -> &'db TyLoweringResult<'db, ArenaMap<LocalFieldId, FieldType>>;
 
     #[salsa::invoke(crate::lower::field_types_query)]
     #[salsa::transparent]
@@ -231,10 +244,10 @@ pub trait HirDatabase: SourceDatabase + std::fmt::Debug {
 
     #[salsa::invoke(crate::lower::callable_item_signature_with_diagnostics)]
     #[salsa::transparent]
-    fn callable_item_signature_with_diagnostics(
-        &self,
+    fn callable_item_signature_with_diagnostics<'db>(
+        &'db self,
         def: CallableDefId,
-    ) -> &TyLoweringResult<StoredEarlyBinder<StoredPolyFnSig>>;
+    ) -> &'db TyLoweringResult<'db, StoredEarlyBinder<StoredPolyFnSig>>;
 
     #[salsa::invoke(crate::lower::trait_environment)]
     #[salsa::transparent]
@@ -242,10 +255,10 @@ pub trait HirDatabase: SourceDatabase + std::fmt::Debug {
 
     #[salsa::invoke(crate::lower::generic_defaults_with_diagnostics)]
     #[salsa::transparent]
-    fn generic_defaults_with_diagnostics(
-        &self,
+    fn generic_defaults_with_diagnostics<'db>(
+        &'db self,
         def: GenericDefId,
-    ) -> &TyLoweringResult<GenericDefaults>;
+    ) -> &'db TyLoweringResult<'db, GenericDefaults>;
 
     /// This returns an empty list if no parameter has default.
     ///
@@ -256,10 +269,10 @@ pub trait HirDatabase: SourceDatabase + std::fmt::Debug {
 
     #[salsa::invoke(crate::lower::type_alias_bounds_with_diagnostics)]
     #[salsa::transparent]
-    fn type_alias_bounds_with_diagnostics(
-        &self,
+    fn type_alias_bounds_with_diagnostics<'db>(
+        &'db self,
         type_alias: TypeAliasId,
-    ) -> &TyLoweringResult<TypeAliasBounds<StoredEarlyBinder<StoredClauses>>>;
+    ) -> &'db TyLoweringResult<'db, TypeAliasBounds<StoredEarlyBinder<StoredClauses>>>;
 
     #[salsa::invoke(crate::lower::type_alias_bounds)]
     #[salsa::transparent]
@@ -291,22 +304,22 @@ pub struct InternedOpaqueTyId {
     pub loc: ImplTraitId,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct InternedClosure {
-    pub owner: InferBodyId,
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Update)]
+pub struct InternedClosure<'db> {
+    pub owner: InferBodyId<'db>,
     pub expr: ExprId,
     pub kind: ClosureKind,
 }
 
-#[salsa_macros::interned(constructor = new_impl, no_lifetime, debug, revisions = usize::MAX)]
+#[salsa_macros::interned(constructor = new_impl, debug, revisions = usize::MAX)]
 #[derive(PartialOrd, Ord)]
-pub struct InternedClosureId {
-    pub loc: InternedClosure,
+pub struct InternedClosureId<'db> {
+    pub loc: InternedClosure<'db>,
 }
 
-impl InternedClosureId {
+impl<'db> InternedClosureId<'db> {
     #[inline]
-    pub fn new(db: &dyn HirDatabase, loc: InternedClosure) -> Self {
+    pub fn new(db: &'db dyn HirDatabase, loc: InternedClosure<'db>) -> Self {
         if cfg!(debug_assertions) {
             let store = ExpressionStore::of(db, loc.owner.expression_store_owner(db));
             let expr = &store[loc.expr];
@@ -326,15 +339,15 @@ impl InternedClosureId {
     }
 }
 
-#[salsa_macros::interned(constructor = new_impl, no_lifetime, debug, revisions = usize::MAX)]
+#[salsa_macros::interned(constructor = new_impl, debug, revisions = usize::MAX)]
 #[derive(PartialOrd, Ord)]
-pub struct InternedCoroutineId {
-    pub loc: InternedClosure,
+pub struct InternedCoroutineId<'db> {
+    pub loc: InternedClosure<'db>,
 }
 
-impl InternedCoroutineId {
+impl<'db> InternedCoroutineId<'db> {
     #[inline]
-    pub fn new(db: &dyn HirDatabase, loc: InternedClosure) -> Self {
+    pub fn new(db: &'db dyn HirDatabase, loc: InternedClosure<'db>) -> Self {
         if cfg!(debug_assertions) {
             let store = ExpressionStore::of(db, loc.owner.expression_store_owner(db));
             let expr = &store[loc.expr];
@@ -355,15 +368,15 @@ impl InternedCoroutineId {
     }
 }
 
-#[salsa_macros::interned(constructor = new_impl, no_lifetime, debug, revisions = usize::MAX)]
+#[salsa_macros::interned(constructor = new_impl, debug, revisions = usize::MAX)]
 #[derive(PartialOrd, Ord)]
-pub struct InternedCoroutineClosureId {
-    pub loc: InternedClosure,
+pub struct InternedCoroutineClosureId<'db> {
+    pub loc: InternedClosure<'db>,
 }
 
-impl InternedCoroutineClosureId {
+impl<'db> InternedCoroutineClosureId<'db> {
     #[inline]
-    pub fn new(db: &dyn HirDatabase, loc: InternedClosure) -> Self {
+    pub fn new(db: &'db dyn HirDatabase, loc: InternedClosure<'db>) -> Self {
         if cfg!(debug_assertions) {
             let store = ExpressionStore::of(db, loc.owner.expression_store_owner(db));
             let expr = &store[loc.expr];
@@ -399,16 +412,16 @@ pub struct AnonConstLoc {
     pub(crate) allow_using_generic_params: bool,
 }
 
-#[salsa_macros::interned(debug, no_lifetime, revisions = usize::MAX, constructor = new_)]
+#[salsa_macros::interned(debug, revisions = usize::MAX, constructor = new_)]
 #[derive(PartialOrd, Ord)]
 pub struct AnonConstId {
     #[returns(ref)]
     pub loc: AnonConstLoc,
 }
 
-impl AnonConstId {
+impl<'db> AnonConstId<'db> {
     pub(crate) fn new(
-        db: &dyn SourceDatabase,
+        db: &'db dyn SourceDatabase,
         loc: AnonConstLoc,
         token: TrackedStructToken,
     ) -> Self {
@@ -417,23 +430,23 @@ impl AnonConstId {
     }
 }
 
-impl HasModule for AnonConstId {
+impl HasModule for AnonConstId<'_> {
     fn module(&self, db: &dyn SourceDatabase) -> ModuleId {
         self.loc(db).owner.module(db)
     }
 }
 
-impl HasResolver for AnonConstId {
+impl HasResolver for AnonConstId<'_> {
     fn resolver(self, db: &dyn SourceDatabase) -> Resolver<'_> {
         self.loc(db).owner.resolver(db)
     }
 }
 
-impl AnonConstId {
+impl<'db> AnonConstId<'db> {
     pub fn all_from_signature(
-        db: &dyn HirDatabase,
+        db: &'db dyn HirDatabase,
         def: GenericDefId,
-    ) -> ArrayVec<&[AnonConstId], 5> {
+    ) -> ArrayVec<&'db [Self], 5> {
         let mut result = ArrayVec::new();
 
         // Queries common to all generic defs:
@@ -470,16 +483,16 @@ impl AnonConstId {
 /// A constant, which might appears as a const item, an anonymous const block in expressions
 /// or patterns, or as a constant in types with const generics.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa_macros::Supertype)]
-pub enum GeneralConstId {
+pub enum GeneralConstId<'db> {
     ConstId(ConstId),
     StaticId(StaticId),
-    AnonConstId(AnonConstId),
+    AnonConstId(AnonConstId<'db>),
 }
 
-impl_from!(ConstId, StaticId, AnonConstId for GeneralConstId);
+impl_from!(impl<'db> ConstId, StaticId, AnonConstId<'db> for GeneralConstId<'db>);
 
-impl GeneralConstId {
-    pub fn generic_def(self, db: &dyn HirDatabase) -> Option<GenericDefId> {
+impl<'db> GeneralConstId<'db> {
+    pub fn generic_def(self, db: &'db dyn HirDatabase) -> Option<GenericDefId> {
         match self {
             GeneralConstId::ConstId(it) => Some(it.into()),
             GeneralConstId::StaticId(it) => Some(it.into()),
@@ -487,7 +500,7 @@ impl GeneralConstId {
         }
     }
 
-    pub fn name(self, db: &dyn SourceDatabase) -> String {
+    pub fn name(self, db: &'db dyn SourceDatabase) -> String {
         match self {
             GeneralConstId::StaticId(it) => {
                 StaticSignature::of(db, it).name.display(db, Edition::CURRENT).to_string()

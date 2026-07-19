@@ -324,7 +324,7 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
     crate::attach_db(&db, || {
         let mut buf = String::new();
 
-        let mut infer_def = |inference_result: &InferenceResult,
+        let mut infer_def = |inference_result: &InferenceResult<'_>,
                              store: &ExpressionStore,
                              source_map: &ExpressionStoreSourceMap,
                              self_param: Option<(

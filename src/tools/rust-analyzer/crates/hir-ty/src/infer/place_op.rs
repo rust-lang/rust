@@ -25,7 +25,7 @@ pub(super) enum PlaceOp {
     Index,
 }
 
-impl<'a, 'db> InferenceContext<'a, 'db> {
+impl<'db> InferenceContext<'db> {
     pub(super) fn try_overloaded_deref(
         &self,
         expr: ExprId,
@@ -107,7 +107,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
         expr: ExprId,
         base_expr: ExprId,
         index_expr: ExprId,
-        autoderef: &mut InferenceContextAutoderef<'_, 'a, 'db>,
+        autoderef: &mut InferenceContextAutoderef<'_, 'db>,
         index_ty: Ty<'db>,
     ) -> Option<(/*index type*/ Ty<'db>, /*element type*/ Ty<'db>)> {
         let ty = autoderef.final_ty();

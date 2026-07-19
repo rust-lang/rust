@@ -551,11 +551,11 @@ pub(crate) struct Builder {
 }
 
 impl Builder {
-    pub(crate) fn from_resolution(
-        ctx: &CompletionContext<'_, '_>,
+    pub(crate) fn from_resolution<'db>(
+        ctx: &CompletionContext<'_, 'db>,
         path_ctx: &PathCompletionCtx<'_>,
         local_name: hir::Name,
-        resolution: hir::ScopeDef,
+        resolution: hir::ScopeDef<'db>,
     ) -> Self {
         let doc_aliases = ctx.doc_aliases_in_scope(resolution);
         render_path_resolution(

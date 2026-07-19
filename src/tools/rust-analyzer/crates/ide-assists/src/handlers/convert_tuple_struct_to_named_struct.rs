@@ -169,7 +169,7 @@ fn process_struct_name_reference(
     r: FileReference,
     editor: &SyntaxEditor,
     source: &ast::SourceFile,
-    strukt_def: &Definition,
+    strukt_def: &Definition<'_>,
     names: &[ast::Name],
 ) -> Option<()> {
     let make = editor.make();

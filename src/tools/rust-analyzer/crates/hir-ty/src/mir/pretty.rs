@@ -43,7 +43,7 @@ macro_rules! wln {
     };
 }
 
-impl MirBody {
+impl MirBody<'_> {
     pub fn pretty_print(&self, db: &dyn HirDatabase, display_target: DisplayTarget) -> String {
         let hir_body = ExpressionStore::of(db, self.owner.expression_store_owner(db));
         let mut ctx = MirPrettyCtx::new(self, hir_body, db, display_target);
@@ -100,7 +100,7 @@ impl MirBody {
 }
 
 struct MirPrettyCtx<'a, 'db> {
-    body: &'a MirBody,
+    body: &'a MirBody<'db>,
     hir_body: &'a ExpressionStore,
     db: &'db dyn HirDatabase,
     result: String,
@@ -153,7 +153,7 @@ impl<'a, 'db> MirPrettyCtx<'a, 'db> {
         }
     }
 
-    fn for_closure(&mut self, closure: InternedClosureId) {
+    fn for_closure(&mut self, closure: InternedClosureId<'db>) {
         let body = match self.db.mir_body_for_closure(closure) {
             Ok(it) => it,
             Err(e) => {
@@ -187,7 +187,7 @@ impl<'a, 'db> MirPrettyCtx<'a, 'db> {
     }
 
     fn new(
-        body: &'a MirBody,
+        body: &'a MirBody<'db>,
         hir_body: &'a ExpressionStore,
         db: &'db dyn HirDatabase,
         display_target: DisplayTarget,

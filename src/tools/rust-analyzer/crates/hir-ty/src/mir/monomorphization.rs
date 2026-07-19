@@ -39,7 +39,7 @@ struct Filler<'db> {
 }
 
 impl<'db> FallibleTypeFolder<DbInterner<'db>> for Filler<'db> {
-    type Error = MirLowerError;
+    type Error = MirLowerError<'db>;
 
     fn cx(&self) -> DbInterner<'db> {
         self.infcx.interner
@@ -106,7 +106,7 @@ impl<'db> Filler<'db> {
         Self { infcx, trait_env: env, subst }
     }
 
-    fn fill_ty(&mut self, t: &mut StoredTy) -> Result<(), MirLowerError> {
+    fn fill_ty(&mut self, t: &mut StoredTy) -> Result<(), MirLowerError<'db>> {
         // Can't deep normalized as that'll try to normalize consts and fail.
         *t = t.as_ref().try_fold_with(self)?.store();
         if references_non_lt_error(&t.as_ref()) {
@@ -116,7 +116,7 @@ impl<'db> Filler<'db> {
         }
     }
 
-    fn fill_const(&mut self, t: &mut StoredConst) -> Result<(), MirLowerError> {
+    fn fill_const(&mut self, t: &mut StoredConst) -> Result<(), MirLowerError<'db>> {
         // Can't deep normalized as that'll try to normalize consts and fail.
         *t = t.as_ref().try_fold_with(self)?.store();
         if references_non_lt_error(&t.as_ref()) {
@@ -126,7 +126,7 @@ impl<'db> Filler<'db> {
         }
     }
 
-    fn fill_args(&mut self, t: &mut StoredGenericArgs) -> Result<(), MirLowerError> {
+    fn fill_args(&mut self, t: &mut StoredGenericArgs) -> Result<(), MirLowerError<'db>> {
         // Can't deep normalized as that'll try to normalize consts and fail.
         *t = t.as_ref().try_fold_with(self)?.store();
         if references_non_lt_error(&t.as_ref()) {
@@ -136,7 +136,7 @@ impl<'db> Filler<'db> {
         }
     }
 
-    fn fill_operand(&mut self, op: &mut Operand) -> Result<(), MirLowerError> {
+    fn fill_operand(&mut self, op: &mut Operand) -> Result<(), MirLowerError<'db>> {
         match &mut op.kind {
             OperandKind::Constant { konst, ty } => {
                 self.fill_const(konst)?;
@@ -159,7 +159,7 @@ impl<'db> Filler<'db> {
         Ok(())
     }
 
-    fn fill_body(&mut self, body: &mut MirBody) -> Result<(), MirLowerError> {
+    fn fill_body(&mut self, body: &mut MirBody<'db>) -> Result<(), MirLowerError<'db>> {
         for (_, l) in body.locals.iter_mut() {
             self.fill_ty(&mut l.ty)?;
         }
@@ -239,49 +239,49 @@ impl<'db> Filler<'db> {
 }
 
 #[salsa_macros::tracked(returns(as_ref), cycle_result = monomorphized_mir_body_cycle_result)]
-pub fn monomorphized_mir_body_query(
-    db: &dyn HirDatabase,
-    owner: InferBodyId,
+pub fn monomorphized_mir_body_query<'db>(
+    db: &'db dyn HirDatabase,
+    owner: InferBodyId<'db>,
     subst: StoredGenericArgs,
     trait_env: StoredParamEnvAndCrate,
-) -> Result<MirBody, MirLowerError> {
-    let mut filler = Filler::new(db, trait_env.as_ref(), subst.as_ref());
+) -> Result<MirBody<'db>, MirLowerError<'db>> {
+    let mut filler = Filler::new(db, trait_env.as_ref(db), subst.as_ref());
     let body = db.mir_body(owner)?;
     let mut body = (*body).clone();
     filler.fill_body(&mut body)?;
     Ok(body)
 }
 
-fn monomorphized_mir_body_cycle_result(
-    _db: &dyn HirDatabase,
+fn monomorphized_mir_body_cycle_result<'db>(
+    _db: &'db dyn HirDatabase,
     _: salsa::Id,
-    _: InferBodyId,
+    _: InferBodyId<'db>,
     _: StoredGenericArgs,
     _: StoredParamEnvAndCrate,
-) -> Result<MirBody, MirLowerError> {
+) -> Result<MirBody<'db>, MirLowerError<'db>> {
     Err(MirLowerError::Loop)
 }
 
 #[salsa_macros::tracked(returns(as_ref), cycle_result = monomorphized_mir_body_for_closure_cycle_result)]
-pub fn monomorphized_mir_body_for_closure_query(
-    db: &dyn HirDatabase,
-    closure: InternedClosureId,
+pub fn monomorphized_mir_body_for_closure_query<'db>(
+    db: &'db dyn HirDatabase,
+    closure: InternedClosureId<'db>,
     subst: StoredGenericArgs,
     trait_env: StoredParamEnvAndCrate,
-) -> Result<MirBody, MirLowerError> {
-    let mut filler = Filler::new(db, trait_env.as_ref(), subst.as_ref());
+) -> Result<MirBody<'db>, MirLowerError<'db>> {
+    let mut filler = Filler::new(db, trait_env.as_ref(db), subst.as_ref());
     let body = db.mir_body_for_closure(closure)?;
     let mut body = (*body).clone();
     filler.fill_body(&mut body)?;
     Ok(body)
 }
 
-fn monomorphized_mir_body_for_closure_cycle_result(
-    _db: &dyn HirDatabase,
+fn monomorphized_mir_body_for_closure_cycle_result<'db>(
+    _db: &'db dyn HirDatabase,
     _: salsa::Id,
-    _: InternedClosureId,
+    _: InternedClosureId<'db>,
     _: StoredGenericArgs,
     _: StoredParamEnvAndCrate,
-) -> Result<MirBody, MirLowerError> {
+) -> Result<MirBody<'db>, MirLowerError<'db>> {
     Err(MirLowerError::Loop)
 }

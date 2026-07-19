@@ -237,7 +237,7 @@ impl<'db> ResolvedPat<'db> {
     }
 }
 
-impl<'a, 'db> InferenceContext<'a, 'db> {
+impl<'db> InferenceContext<'db> {
     /// Experimental pattern feature: after matching against a shared reference, do we limit the
     /// default binding mode in subpatterns to be `ref` when it would otherwise be `ref mut`?
     /// This corresponds to Rule 3 of RFC 3627.

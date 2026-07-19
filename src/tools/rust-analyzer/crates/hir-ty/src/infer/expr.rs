@@ -53,7 +53,7 @@ pub(crate) enum ExprIsRead {
     No,
 }
 
-impl<'db> InferenceContext<'_, 'db> {
+impl<'db> InferenceContext<'db> {
     pub(crate) fn infer_expr(
         &mut self,
         tgt_expr: ExprId,
@@ -2097,7 +2097,7 @@ impl<'db> InferenceContext<'_, 'db> {
         // We introduce a helper function to demand that a given argument satisfy a given input
         // This is more complicated than just checking type equality, as arguments could be coerced
         // This version writes those types back so further type checking uses the narrowed types
-        let demand_compatible = |this: &mut InferenceContext<'_, 'db>, idx| {
+        let demand_compatible = |this: &mut InferenceContext<'db>, idx| {
             let formal_input_ty: Ty<'db> = formal_input_tys[idx];
             let expected_input_ty: Ty<'db> = expected_input_tys[idx];
             let provided_arg = provided_args[idx];

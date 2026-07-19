@@ -82,10 +82,10 @@ pub enum RenameDefinition {
     No,
 }
 
-impl Definition {
+impl<'db> Definition<'db> {
     pub fn rename(
         &self,
-        sema: &Semantics<'_, RootDatabase>,
+        sema: &Semantics<'db, RootDatabase>,
         new_name: &str,
         rename_definition: RenameDefinition,
         config: &RenameConfig,
@@ -345,9 +345,9 @@ fn rename_mod(
     Ok(source_change)
 }
 
-fn rename_reference(
-    sema: &Semantics<'_, RootDatabase>,
-    def: Definition,
+fn rename_reference<'db>(
+    sema: &Semantics<'db, RootDatabase>,
+    def: Definition<'db>,
     new_name: &str,
     rename_definition: RenameDefinition,
     edition: Edition,
@@ -523,7 +523,7 @@ fn rename_field_constructors(
 pub fn source_edit_from_references(
     db: &RootDatabase,
     references: &[FileReference],
-    def: Definition,
+    def: Definition<'_>,
     new_name: &Name,
     edition: Edition,
 ) -> TextEdit {
@@ -579,7 +579,7 @@ fn source_edit_from_name_ref(
     edit: &mut TextEditBuilder,
     name_ref: &ast::NameRef,
     new_name: &dyn Display,
-    def: Definition,
+    def: Definition<'_>,
 ) -> bool {
     if name_ref.super_token().is_some() {
         return true;
@@ -670,10 +670,10 @@ fn source_edit_from_name_ref(
     false
 }
 
-fn source_edit_from_def(
-    sema: &Semantics<'_, RootDatabase>,
+fn source_edit_from_def<'db>(
+    sema: &Semantics<'db, RootDatabase>,
     config: &RenameConfig,
-    def: Definition,
+    def: Definition<'db>,
     new_name: &Name,
     source_change: &mut SourceChange,
 ) -> Result<(FileId, TextEdit)> {

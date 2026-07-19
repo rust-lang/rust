@@ -26,7 +26,7 @@ use crate::{
 
 use super::{InferenceContext, InferenceTyDiagnosticSource};
 
-impl<'db> InferenceContext<'_, 'db> {
+impl<'db> InferenceContext<'db> {
     pub(super) fn infer_path(
         &mut self,
         path: &Path,

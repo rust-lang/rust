@@ -896,15 +896,14 @@ pub enum AssocItemId {
 // casting them, and somehow making the constructors private, which would be annoying.
 impl_from!(FunctionId, ConstId, TypeAliasId for AssocItemId);
 
-impl From<AssocItemId> for ModuleDefId {
-    fn from(item: AssocItemId) -> Self {
-        match item {
-            AssocItemId::FunctionId(f) => f.into(),
-            AssocItemId::ConstId(c) => c.into(),
-            AssocItemId::TypeAliasId(t) => t.into(),
-        }
+impl_from!(
+    AssocItemId {
+        FunctionId => FunctionId,
+        ConstId => ConstId,
+        TypeAliasId => TypeAliasId,
     }
-}
+    for ModuleDefId
+);
 
 #[derive(Debug, PartialOrd, Ord, Clone, Copy, PartialEq, Eq, Hash, salsa_macros::Supertype)]
 pub enum GenericDefId {
@@ -1044,15 +1043,14 @@ impl GenericDefId {
     }
 }
 
-impl From<AssocItemId> for GenericDefId {
-    fn from(item: AssocItemId) -> Self {
-        match item {
-            AssocItemId::FunctionId(f) => f.into(),
-            AssocItemId::ConstId(c) => c.into(),
-            AssocItemId::TypeAliasId(t) => t.into(),
-        }
+impl_from!(
+    AssocItemId {
+        FunctionId => FunctionId,
+        ConstId => ConstId,
+        TypeAliasId => TypeAliasId,
     }
-}
+    for GenericDefId
+);
 
 #[derive(Debug, PartialOrd, Ord, Clone, Copy, PartialEq, Eq, Hash, salsa_macros::Supertype)]
 pub enum CallableDefId {
@@ -1062,15 +1060,14 @@ pub enum CallableDefId {
 }
 
 impl_from!(FunctionId, StructId, EnumVariantId for CallableDefId);
-impl From<CallableDefId> for ModuleDefId {
-    fn from(def: CallableDefId) -> ModuleDefId {
-        match def {
-            CallableDefId::FunctionId(f) => ModuleDefId::FunctionId(f),
-            CallableDefId::StructId(s) => ModuleDefId::AdtId(AdtId::StructId(s)),
-            CallableDefId::EnumVariantId(e) => ModuleDefId::EnumVariantId(e),
-        }
+impl_from!(
+    CallableDefId {
+        FunctionId => FunctionId,
+        StructId => AdtId,
+        EnumVariantId => EnumVariantId,
     }
-}
+    for ModuleDefId
+);
 
 impl CallableDefId {
     pub fn krate(self, db: &dyn SourceDatabase) -> Crate {
@@ -1114,24 +1111,11 @@ impl_from!(
     for AttrDefId
 );
 
-impl From<AssocItemId> for AttrDefId {
-    fn from(assoc: AssocItemId) -> Self {
-        match assoc {
-            AssocItemId::FunctionId(it) => AttrDefId::FunctionId(it),
-            AssocItemId::ConstId(it) => AttrDefId::ConstId(it),
-            AssocItemId::TypeAliasId(it) => AttrDefId::TypeAliasId(it),
-        }
-    }
-}
-impl From<VariantId> for AttrDefId {
-    fn from(vid: VariantId) -> Self {
-        match vid {
-            VariantId::EnumVariantId(id) => id.into(),
-            VariantId::StructId(id) => id.into(),
-            VariantId::UnionId(id) => id.into(),
-        }
-    }
-}
+impl_from!(AssocItemId { FunctionId, ConstId, TypeAliasId } for AttrDefId);
+impl_from!(
+    VariantId { EnumVariantId => EnumVariantId, StructId => AdtId, UnionId => AdtId }
+    for AttrDefId
+);
 
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, salsa_macros::Supertype, salsa::Update,

@@ -194,7 +194,7 @@ enum PlaceAncestryRelation {
 /// analysis pass.
 type InferredCaptureInformation = Vec<(Place, CaptureInfo)>;
 
-impl<'a, 'db> InferenceContext<'a, 'db> {
+impl<'db> InferenceContext<'db> {
     pub(crate) fn closure_analyze(&mut self) {
         let upvars = crate::upvars::upvars_mentioned(self.db, self.store_owner)
             .unwrap_or(const { &FxHashMap::with_hasher(FxBuildHasher) });
@@ -1202,7 +1202,7 @@ impl<'db> euv::Delegate<'db> for InferBorrowKind {
         &mut self,
         place_with_id: PlaceWithOrigin,
         cause: FakeReadCause,
-        ctx: &mut InferenceContext<'_, 'db>,
+        ctx: &mut InferenceContext<'db>,
     ) {
         let PlaceBase::Upvar { .. } = place_with_id.place.base else { return };
 
@@ -1222,7 +1222,7 @@ impl<'db> euv::Delegate<'db> for InferBorrowKind {
     }
 
     #[instrument(skip(self), level = "debug")]
-    fn consume(&mut self, place_with_id: PlaceWithOrigin, ctx: &mut InferenceContext<'_, 'db>) {
+    fn consume(&mut self, place_with_id: PlaceWithOrigin, ctx: &mut InferenceContext<'db>) {
         let PlaceBase::Upvar { closure: upvar_closure, .. } = place_with_id.place.base else {
             return;
         };
@@ -1237,7 +1237,7 @@ impl<'db> euv::Delegate<'db> for InferBorrowKind {
     }
 
     #[instrument(skip(self), level = "debug")]
-    fn use_cloned(&mut self, place_with_id: PlaceWithOrigin, ctx: &mut InferenceContext<'_, 'db>) {
+    fn use_cloned(&mut self, place_with_id: PlaceWithOrigin, ctx: &mut InferenceContext<'db>) {
         let PlaceBase::Upvar { closure: upvar_closure, .. } = place_with_id.place.base else {
             return;
         };
@@ -1256,7 +1256,7 @@ impl<'db> euv::Delegate<'db> for InferBorrowKind {
         &mut self,
         place_with_id: PlaceWithOrigin,
         bk: BorrowKind,
-        ctx: &mut InferenceContext<'_, 'db>,
+        ctx: &mut InferenceContext<'db>,
     ) {
         let PlaceBase::Upvar { closure: upvar_closure, .. } = place_with_id.place.base else {
             return;
@@ -1284,15 +1284,15 @@ impl<'db> euv::Delegate<'db> for InferBorrowKind {
     }
 
     #[instrument(skip(self), level = "debug")]
-    fn mutate(&mut self, assignee_place: PlaceWithOrigin, ctx: &mut InferenceContext<'_, 'db>) {
+    fn mutate(&mut self, assignee_place: PlaceWithOrigin, ctx: &mut InferenceContext<'db>) {
         self.borrow(assignee_place, BorrowKind::Mutable, ctx);
     }
 }
 
 /// Rust doesn't permit moving fields out of a type that implements drop
 #[instrument(skip(fcx), ret, level = "debug")]
-fn restrict_precision_for_drop_types<'a, 'db>(
-    fcx: &mut InferenceContext<'a, 'db>,
+fn restrict_precision_for_drop_types<'db>(
+    fcx: &mut InferenceContext<'db>,
     mut place: Place,
     capture_info: &mut CaptureInfo,
 ) -> Place {
