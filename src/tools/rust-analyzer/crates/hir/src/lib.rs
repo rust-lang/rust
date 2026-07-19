@@ -416,15 +416,10 @@ impl_from!(
     for ModuleDef
 );
 
-impl From<Variant> for ModuleDef {
-    fn from(var: Variant) -> Self {
-        match var {
-            Variant::Struct(t) => Adt::from(t).into(),
-            Variant::Union(t) => Adt::from(t).into(),
-            Variant::EnumVariant(t) => t.into(),
-        }
-    }
-}
+impl_from!(
+    Variant { Struct => Adt, Union => Adt, EnumVariant => EnumVariant }
+    for ModuleDef
+);
 
 impl ModuleDef {
     pub fn module(self, db: &dyn HirDatabase) -> Option<Module> {
@@ -1923,19 +1918,14 @@ impl From<DefWithBody> for ExpressionStoreOwner {
     }
 }
 
-impl From<ExpressionStoreOwnerId> for ExpressionStoreOwner {
-    fn from(v: ExpressionStoreOwnerId) -> Self {
-        match v {
-            ExpressionStoreOwnerId::Signature(generic_def_id) => {
-                Self::Signature(generic_def_id.into())
-            }
-            ExpressionStoreOwnerId::Body(def_with_body_id) => Self::Body(def_with_body_id.into()),
-            ExpressionStoreOwnerId::VariantFields(variant_id) => {
-                Self::VariantFields(variant_id.into())
-            }
-        }
+impl_from!(
+    ExpressionStoreOwnerId {
+        Signature => Signature,
+        Body => Body,
+        VariantFields => VariantFields,
     }
-}
+    for ExpressionStoreOwner
+);
 
 impl ExpressionStoreOwner {
     pub fn module(self, db: &dyn HirDatabase) -> Module {
@@ -3478,17 +3468,21 @@ impl From<Macro> for ItemInNs {
     }
 }
 
-impl From<ModuleDef> for ItemInNs {
-    fn from(module_def: ModuleDef) -> Self {
-        match module_def {
-            ModuleDef::Static(_) | ModuleDef::Const(_) | ModuleDef::Function(_) => {
-                ItemInNs::Values(module_def)
-            }
-            ModuleDef::Macro(it) => ItemInNs::Macros(it),
-            _ => ItemInNs::Types(module_def),
-        }
+impl_from!(
+    ModuleDef {
+        Module => Types,
+        Function => Values,
+        Adt => Types,
+        EnumVariant => Types,
+        Const => Values,
+        Static => Values,
+        Trait => Types,
+        TypeAlias => Types,
+        BuiltinType => Types,
+        Macro => Macros,
     }
-}
+    for ItemInNs
+);
 
 impl ItemInNs {
     pub fn into_module_def(self) -> ModuleDef {
@@ -3831,15 +3825,7 @@ impl HasVisibility for AssocItem {
     }
 }
 
-impl From<AssocItem> for ModuleDef {
-    fn from(assoc: AssocItem) -> Self {
-        match assoc {
-            AssocItem::Function(it) => ModuleDef::Function(it),
-            AssocItem::Const(it) => ModuleDef::Const(it),
-            AssocItem::TypeAlias(it) => ModuleDef::TypeAlias(it),
-        }
-    }
-}
+impl_from!(AssocItem { Function, Const, TypeAlias } for ModuleDef);
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub enum GenericDef {
@@ -5264,23 +5250,13 @@ enum TypeOwnerId<'db> {
     NoParams(base_db::Crate),
 }
 
-impl<'db> From<GenericDefId> for TypeOwnerId<'db> {
-    fn from(it: GenericDefId) -> TypeOwnerId<'db> {
-        TypeOwnerId::GenericDefId(it)
-    }
-}
-
-impl<'db> From<BuiltinDeriveImplId> for TypeOwnerId<'db> {
-    fn from(it: BuiltinDeriveImplId) -> TypeOwnerId<'db> {
-        TypeOwnerId::BuiltinDeriveImplId(it)
-    }
-}
-
-impl<'db> From<AnonConstId<'db>> for TypeOwnerId<'db> {
-    fn from(it: AnonConstId<'db>) -> TypeOwnerId<'db> {
-        TypeOwnerId::AnonConstId(it)
-    }
-}
+impl_from!(
+    impl<'db>
+    GenericDefId,
+    BuiltinDeriveImplId,
+    AnonConstId<'db>
+    for TypeOwnerId<'db>
+);
 
 impl TypeOwnerId<'_> {
     fn unify(self, other: Self) -> Option<Self> {
@@ -7009,15 +6985,11 @@ impl ScopeDef<'_> {
     }
 }
 
-impl From<ItemInNs> for ScopeDef<'_> {
-    fn from(item: ItemInNs) -> Self {
-        match item {
-            ItemInNs::Types(id) => ScopeDef::ModuleDef(id),
-            ItemInNs::Values(id) => ScopeDef::ModuleDef(id),
-            ItemInNs::Macros(id) => ScopeDef::ModuleDef(ModuleDef::Macro(id)),
-        }
-    }
-}
+impl_from!(
+    impl<'db>
+    ItemInNs { Types => ModuleDef, Values => ModuleDef, Macros => ModuleDef }
+    for ScopeDef<'db>
+);
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Adjustment<'db> {

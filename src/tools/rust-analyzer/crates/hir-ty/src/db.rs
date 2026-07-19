@@ -18,6 +18,7 @@ use hir_def::{
 use la_arena::ArenaMap;
 use salsa::Update;
 use span::Edition;
+use stdx::impl_from;
 use triomphe::Arc;
 
 use crate::{
@@ -488,21 +489,7 @@ pub enum GeneralConstId<'db> {
     AnonConstId(AnonConstId<'db>),
 }
 
-impl<'db> From<ConstId> for GeneralConstId<'db> {
-    fn from(it: ConstId) -> GeneralConstId<'db> {
-        GeneralConstId::ConstId(it)
-    }
-}
-impl<'db> From<StaticId> for GeneralConstId<'db> {
-    fn from(it: StaticId) -> GeneralConstId<'db> {
-        GeneralConstId::StaticId(it)
-    }
-}
-impl<'db> From<AnonConstId<'db>> for GeneralConstId<'db> {
-    fn from(it: AnonConstId<'db>) -> GeneralConstId<'db> {
-        GeneralConstId::AnonConstId(it)
-    }
-}
+impl_from!(impl<'db> ConstId, StaticId, AnonConstId<'db> for GeneralConstId<'db>);
 
 impl<'db> GeneralConstId<'db> {
     pub fn generic_def(self, db: &'db dyn HirDatabase) -> Option<GenericDefId> {

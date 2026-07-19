@@ -30,15 +30,93 @@ macro_rules! format_to_acc {
     };
 }
 
-/// Generates `From` impls for `Enum E { Foo(Foo), Bar(Bar) }` enums
+/// Generates `From` impls that wrap values in, or map variants between, enums.
 ///
-/// # Example
+/// Enum mappings with `Source => Target` rename the variant and convert its payload with `.into()`.
+///
+/// # Examples
 ///
 /// ```ignore
 /// impl_from!(Struct, Union, Enum for Adt);
+/// impl_from!(impl<'db> Item, InternedItem<'db> for ItemId<'db>);
+/// impl_from!(AssocItem { Function, Const, TypeAlias } for Item);
+/// impl_from!(AdtId { StructId => Struct, EnumId => Enum } for Adt);
 /// ```
 #[macro_export]
 macro_rules! impl_from {
+    (
+        impl<$lifetime:lifetime>
+        $source:ident $(<$source_lifetime:lifetime>)?
+        { $($source_variant:ident $(=> $target_variant:ident)?),* $(,)? }
+        for $target:ident<$target_lifetime:lifetime>
+    ) => {
+        impl<$lifetime> From<$source$(<$source_lifetime>)?> for $target<$target_lifetime> {
+            fn from(value: $source$(<$source_lifetime>)?) -> Self {
+                match value {
+                    $(
+                        $source::$source_variant(value) => $crate::impl_from!(
+                            @map_enum_variant $target, value, $source_variant
+                            $(=> $target_variant)?
+                        ),
+                    )*
+                }
+            }
+        }
+    };
+    (
+        $source:ident
+        { $($source_variant:ident $(=> $target_variant:ident)?),* $(,)? }
+        for $target:ident
+    ) => {
+        impl From<$source> for $target {
+            fn from(value: $source) -> Self {
+                match value {
+                    $(
+                        $source::$source_variant(value) => $crate::impl_from!(
+                            @map_enum_variant $target, value, $source_variant
+                            $(=> $target_variant)?
+                        ),
+                    )*
+                }
+            }
+        }
+    };
+    (@map_enum_variant $target:ident, $value:ident, $variant:ident) => {
+        $target::$variant($value)
+    };
+    (
+        @map_enum_variant $target:ident, $value:ident,
+        $source_variant:ident => $target_variant:ident
+    ) => {
+        $target::$target_variant($value.into())
+    };
+    (
+        impl<$lifetime:lifetime>
+        $(
+            $variant:ident $(<$variant_lifetime:lifetime>)?
+            $(($($sub_variant:ident $(<$sub_variant_lifetime:lifetime>)?),*))?
+        ),*
+        for $enum:ident<$enum_lifetime:lifetime>
+    ) => {
+        $(
+            impl<$lifetime> From<$variant$(<$variant_lifetime>)?> for $enum<$enum_lifetime> {
+                fn from(it: $variant$(<$variant_lifetime>)?) -> $enum<$enum_lifetime> {
+                    $enum::$variant(it)
+                }
+            }
+            $($(
+                impl<$lifetime> From<$sub_variant$(<$sub_variant_lifetime>)?>
+                    for $enum<$enum_lifetime>
+                {
+                    fn from(
+                        it: $sub_variant$(<$sub_variant_lifetime>)?,
+                    ) -> $enum<$enum_lifetime> {
+                        $enum::$variant($variant::$sub_variant(it))
+                    }
+                }
+            )*)?
+        )*
+    };
     ($($variant:ident $(($($sub_variant:ident),*))?),* for $enum:ident) => {
         $(
             impl From<$variant> for $enum {

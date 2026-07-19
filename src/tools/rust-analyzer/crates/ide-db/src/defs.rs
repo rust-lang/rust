@@ -22,7 +22,7 @@ use hir::{
     Visibility,
 };
 use span::Edition;
-use stdx::format_to;
+use stdx::{format_to, impl_from};
 use syntax::{
     SyntaxKind, SyntaxNode, SyntaxToken,
     ast::{self, AstNode},
@@ -891,44 +891,31 @@ impl<'db> NameRefClass<'db> {
     }
 }
 
-macro_rules! impl_from_definition {
-    ($($variant:ident: $ty:ty),* $(,)?) => {$(
-        impl<'db> From<$ty> for Definition<'db> {
-            fn from(it: $ty) -> Self {
-                Definition::$variant(it)
-            }
-        }
-    )*};
-}
-
-impl_from_definition!(
-    Field: Field,
-    TupleField: TupleField<'db>,
-    Module: Module,
-    Function: Function,
-    Adt: Adt,
-    EnumVariant: EnumVariant,
-    Const: Const,
-    Static: Static,
-    Trait: Trait,
-    TypeAlias: TypeAlias,
-    BuiltinType: BuiltinType,
-    Local: Local<'db>,
-    GenericParam: GenericParam,
-    Label: Label,
-    Macro: Macro,
-    ExternCrateDecl: ExternCrateDecl,
+impl_from!(
+    impl<'db>
+    Field,
+    TupleField<'db>,
+    Module,
+    Function,
+    Adt,
+    EnumVariant,
+    Const,
+    Static,
+    Trait,
+    TypeAlias,
+    BuiltinType,
+    Local<'db>,
+    GenericParam,
+    Label,
+    Macro,
+    ExternCrateDecl,
+    InlineAsmOperand
+    for Definition<'db>
 );
 
 impl<'db> From<Impl> for Definition<'db> {
     fn from(impl_: Impl) -> Self {
         Definition::SelfType(impl_)
-    }
-}
-
-impl<'db> From<InlineAsmOperand> for Definition<'db> {
-    fn from(value: InlineAsmOperand) -> Self {
-        Definition::InlineAsmOperand(value)
     }
 }
 

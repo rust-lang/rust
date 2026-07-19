@@ -122,110 +122,31 @@ impl std::fmt::Debug for SolverDefId<'_> {
     }
 }
 
-impl<'db> From<AdtId> for SolverDefId<'db> {
-    fn from(it: AdtId) -> SolverDefId<'db> {
-        SolverDefId::AdtId(it)
-    }
-}
-impl<'db> From<StructId> for SolverDefId<'db> {
-    fn from(it: StructId) -> SolverDefId<'db> {
-        SolverDefId::AdtId(AdtId::StructId(it))
-    }
-}
-impl<'db> From<EnumId> for SolverDefId<'db> {
-    fn from(it: EnumId) -> SolverDefId<'db> {
-        SolverDefId::AdtId(AdtId::EnumId(it))
-    }
-}
-impl<'db> From<UnionId> for SolverDefId<'db> {
-    fn from(it: UnionId) -> SolverDefId<'db> {
-        SolverDefId::AdtId(AdtId::UnionId(it))
-    }
-}
-impl<'db> From<ConstId> for SolverDefId<'db> {
-    fn from(it: ConstId) -> SolverDefId<'db> {
-        SolverDefId::ConstId(it)
-    }
-}
-impl<'db> From<FunctionId> for SolverDefId<'db> {
-    fn from(it: FunctionId) -> SolverDefId<'db> {
-        SolverDefId::FunctionId(it)
-    }
-}
-impl<'db> From<ImplId> for SolverDefId<'db> {
-    fn from(it: ImplId) -> SolverDefId<'db> {
-        SolverDefId::ImplId(it)
-    }
-}
-impl<'db> From<BuiltinDeriveImplId> for SolverDefId<'db> {
-    fn from(it: BuiltinDeriveImplId) -> SolverDefId<'db> {
-        SolverDefId::BuiltinDeriveImplId(it)
-    }
-}
-impl<'db> From<StaticId> for SolverDefId<'db> {
-    fn from(it: StaticId) -> SolverDefId<'db> {
-        SolverDefId::StaticId(it)
-    }
-}
-impl<'db> From<AnonConstId<'db>> for SolverDefId<'db> {
-    fn from(it: AnonConstId<'db>) -> SolverDefId<'db> {
-        SolverDefId::AnonConstId(it)
-    }
-}
-impl<'db> From<TraitId> for SolverDefId<'db> {
-    fn from(it: TraitId) -> SolverDefId<'db> {
-        SolverDefId::TraitId(it)
-    }
-}
-impl<'db> From<TypeAliasId> for SolverDefId<'db> {
-    fn from(it: TypeAliasId) -> SolverDefId<'db> {
-        SolverDefId::TypeAliasId(it)
-    }
-}
-impl<'db> From<InternedClosureId<'db>> for SolverDefId<'db> {
-    fn from(it: InternedClosureId<'db>) -> SolverDefId<'db> {
-        SolverDefId::InternedClosureId(it)
-    }
-}
-impl<'db> From<InternedCoroutineId<'db>> for SolverDefId<'db> {
-    fn from(it: InternedCoroutineId<'db>) -> SolverDefId<'db> {
-        SolverDefId::InternedCoroutineId(it)
-    }
-}
-impl<'db> From<InternedCoroutineClosureId<'db>> for SolverDefId<'db> {
-    fn from(it: InternedCoroutineClosureId<'db>) -> SolverDefId<'db> {
-        SolverDefId::InternedCoroutineClosureId(it)
-    }
-}
-impl<'db> From<InternedOpaqueTyId> for SolverDefId<'db> {
-    fn from(it: InternedOpaqueTyId) -> SolverDefId<'db> {
-        SolverDefId::InternedOpaqueTyId(it)
-    }
-}
-impl<'db> From<EnumVariantId> for SolverDefId<'db> {
-    fn from(it: EnumVariantId) -> SolverDefId<'db> {
-        SolverDefId::EnumVariantId(it)
-    }
-}
-impl<'db> From<Ctor> for SolverDefId<'db> {
-    fn from(it: Ctor) -> SolverDefId<'db> {
-        SolverDefId::Ctor(it)
-    }
-}
+impl_from!(
+    impl<'db>
+    AdtId(StructId, EnumId, UnionId),
+    ConstId,
+    FunctionId,
+    ImplId,
+    BuiltinDeriveImplId,
+    StaticId,
+    AnonConstId<'db>,
+    TraitId,
+    TypeAliasId,
+    InternedClosureId<'db>,
+    InternedCoroutineId<'db>,
+    InternedCoroutineClosureId<'db>,
+    InternedOpaqueTyId,
+    EnumVariantId,
+    Ctor
+    for SolverDefId<'db>
+);
 
-impl<'db> From<GenericDefId> for SolverDefId<'db> {
-    fn from(value: GenericDefId) -> Self {
-        match value {
-            GenericDefId::AdtId(adt_id) => SolverDefId::AdtId(adt_id),
-            GenericDefId::ConstId(const_id) => SolverDefId::ConstId(const_id),
-            GenericDefId::FunctionId(function_id) => SolverDefId::FunctionId(function_id),
-            GenericDefId::ImplId(impl_id) => SolverDefId::ImplId(impl_id),
-            GenericDefId::StaticId(static_id) => SolverDefId::StaticId(static_id),
-            GenericDefId::TraitId(trait_id) => SolverDefId::TraitId(trait_id),
-            GenericDefId::TypeAliasId(type_alias_id) => SolverDefId::TypeAliasId(type_alias_id),
-        }
-    }
-}
+impl_from!(
+    impl<'db>
+    GenericDefId { AdtId, ConstId, FunctionId, ImplId, StaticId, TraitId, TypeAliasId }
+    for SolverDefId<'db>
+);
 
 impl<'db> From<GeneralConstId<'db>> for SolverDefId<'db> {
     #[inline]

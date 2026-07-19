@@ -559,31 +559,12 @@ pub enum InferBodyId<'db> {
     DefWithBodyId(DefWithBodyId),
     AnonConstId(AnonConstId<'db>),
 }
-impl<'db> From<DefWithBodyId> for InferBodyId<'db> {
-    fn from(it: DefWithBodyId) -> InferBodyId<'db> {
-        InferBodyId::DefWithBodyId(it)
-    }
-}
-impl<'db> From<FunctionId> for InferBodyId<'db> {
-    fn from(it: FunctionId) -> InferBodyId<'db> {
-        InferBodyId::DefWithBodyId(it.into())
-    }
-}
-impl<'db> From<ConstId> for InferBodyId<'db> {
-    fn from(it: ConstId) -> InferBodyId<'db> {
-        InferBodyId::DefWithBodyId(it.into())
-    }
-}
-impl<'db> From<StaticId> for InferBodyId<'db> {
-    fn from(it: StaticId) -> InferBodyId<'db> {
-        InferBodyId::DefWithBodyId(it.into())
-    }
-}
-impl<'db> From<AnonConstId<'db>> for InferBodyId<'db> {
-    fn from(it: AnonConstId<'db>) -> InferBodyId<'db> {
-        InferBodyId::AnonConstId(it)
-    }
-}
+impl_from!(
+    impl<'db>
+    DefWithBodyId(FunctionId, ConstId, StaticId),
+    AnonConstId<'db>
+    for InferBodyId<'db>
+);
 impl<'db> From<EnumVariantId> for InferBodyId<'db> {
     fn from(id: EnumVariantId) -> Self {
         InferBodyId::DefWithBodyId(DefWithBodyId::VariantId(id))
