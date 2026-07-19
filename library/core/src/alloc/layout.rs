@@ -230,24 +230,28 @@ impl Layout {
     ///
     /// - If `T` is `Sized`, this function is always safe to call.
     /// - If the unsized tail of `T` is:
-    ///     - a [slice], then the length of the slice tail must be an initialized
-    ///       integer, and the size of the *entire value*
+    ///     - a [slice] `[U]`, `str`, or a [trait object] `dyn Trait`, then the size of the *entire value*
     ///       (dynamic tail length + statically sized prefix) must fit in `isize`.
     ///       For the special case where the dynamic tail length is 0, this function
     ///       is safe to call.
-    ///     - a [trait object], then the vtable part of the pointer must point
-    ///       to a valid vtable for the type `T` acquired by an unsizing coercion,
-    ///       and the size of the *entire value*
-    ///       (dynamic tail length + statically sized prefix) must fit in `isize`.
-    ///     - an (unstable) [extern type], then this function is always safe to
-    ///       call, but may panic or otherwise return the wrong value, as the
-    ///       extern type's layout is not known. This is the same behavior as
-    ///       [`Layout::for_value`] on a reference to an extern type tail.
-    ///     - otherwise, it is conservatively not allowed to call this function.
+    //        NOTE: the reason this is safe is that if an overflow were to occur already with size 0,
+    //        then we would stop compilation as even the "statically known" part of the type would
+    //        already be too big (or the call may be in dead code and optimized away, but then it
+    //        doesn't matter).
+    ///     - No other kind of unsized tail currently exists that satisfies the trait bounds for this
+    ///       function. If more kinds of unsized tails get introduced in the future, the documentation
+    ///       of this function will have to be extended before it can be used for such types.
+    ///
+    /// Here, *unsized tail* refers to the type obtained by recursively descending through the last
+    /// field of a tuple or struct until we arrived at a built-in unsized type.
+    ///
+    /// As a consequence of these rules, it is the case that whenever it is allowed to convert `val`
+    /// into a shared reference, then it is also allowed to invoke this function.
     ///
     /// [trait object]: ../../book/ch17-02-trait-objects.html
     /// [extern type]: ../../unstable-book/language-features/extern-types.html
-    #[unstable(feature = "layout_for_ptr", issue = "69835")]
+    #[stable(feature = "layout_for_ptr", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "layout_for_ptr", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
     #[inline]
     pub const unsafe fn for_value_raw<T: ?Sized>(t: *const T) -> Self {
