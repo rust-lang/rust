@@ -1,8 +1,8 @@
 use core::cmp;
 
 use crate::io::{
-    self, BorrowedBuf, BorrowedCursor, Chain, Empty, IoSliceMut, Read, Repeat, Result, SizeHint,
-    Take,
+    self, BorrowedBuf, BorrowedCursor, BufRead, Chain, Empty, IoSliceMut, Read, Repeat, Result,
+    SizeHint, Take,
 };
 use crate::slice;
 use crate::string::String;
@@ -49,6 +49,37 @@ impl Read for Empty {
 
     #[inline]
     fn read_to_string(&mut self, _buf: &mut String) -> io::Result<usize> {
+        Ok(0)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl BufRead for Empty {
+    #[inline]
+    fn fill_buf(&mut self) -> io::Result<&[u8]> {
+        Ok(&[])
+    }
+
+    #[inline]
+    fn consume(&mut self, _n: usize) {}
+
+    #[inline]
+    fn has_data_left(&mut self) -> io::Result<bool> {
+        Ok(false)
+    }
+
+    #[inline]
+    fn read_until(&mut self, _byte: u8, _buf: &mut Vec<u8>) -> io::Result<usize> {
+        Ok(0)
+    }
+
+    #[inline]
+    fn skip_until(&mut self, _byte: u8) -> io::Result<usize> {
+        Ok(0)
+    }
+
+    #[inline]
+    fn read_line(&mut self, _buf: &mut String) -> io::Result<usize> {
         Ok(0)
     }
 }
@@ -165,6 +196,41 @@ impl<T: Read, U: Read> Read for Chain<T, U> {
     }
 }
 
+#[stable(feature = "chain_bufread", since = "1.9.0")]
+impl<T: BufRead, U: BufRead> BufRead for Chain<T, U> {
+    fn fill_buf(&mut self) -> Result<&[u8]> {
+        if !self.done_first {
+            match self.first.fill_buf()? {
+                buf if buf.is_empty() => self.done_first = true,
+                buf => return Ok(buf),
+            }
+        }
+        self.second.fill_buf()
+    }
+
+    fn consume(&mut self, amt: usize) {
+        if !self.done_first { self.first.consume(amt) } else { self.second.consume(amt) }
+    }
+
+    fn read_until(&mut self, byte: u8, buf: &mut Vec<u8>) -> Result<usize> {
+        let mut read = 0;
+        if !self.done_first {
+            let n = self.first.read_until(byte, buf)?;
+            read += n;
+
+            match buf.last() {
+                Some(b) if *b == byte && n != 0 => return Ok(read),
+                _ => self.done_first = true,
+            }
+        }
+        read += self.second.read_until(byte, buf)?;
+        Ok(read)
+    }
+
+    // We don't override `read_line` here because an UTF-8 sequence could be
+    // split between the two parts of the chain
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Read> Read for Take<T> {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
@@ -235,6 +301,27 @@ impl<T: Read> Read for Take<T> {
             self.limit -= (buf.written() - written) as u64;
             result
         }
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: BufRead> BufRead for Take<T> {
+    fn fill_buf(&mut self) -> Result<&[u8]> {
+        // Don't call into inner reader at all at EOF because it may still block
+        if self.limit == 0 {
+            return Ok(&[]);
+        }
+
+        let buf = self.inner.fill_buf()?;
+        let cap = cmp::min(buf.len() as u64, self.limit) as usize;
+        Ok(&buf[..cap])
+    }
+
+    fn consume(&mut self, amt: usize) {
+        // Don't let callers reset the limit by passing an overlarge value
+        let amt = cmp::min(amt as u64, self.limit) as usize;
+        self.limit -= amt as u64;
+        self.inner.consume(amt);
     }
 }
 
@@ -311,4 +398,85 @@ pub fn uninlined_slow_read_byte<R: Read>(reader: &mut R) -> Option<Result<u8>> {
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
 pub const fn bytes<R>(inner: R) -> Bytes<R> {
     Bytes { inner }
+}
+
+/// An iterator over the contents of an instance of `BufRead` split on a
+/// particular byte.
+///
+/// This struct is generally created by calling [`split`] on a `BufRead`.
+/// Please see the documentation of [`split`] for more details.
+///
+/// [`split`]: BufRead::split
+#[stable(feature = "rust1", since = "1.0.0")]
+#[derive(Debug)]
+#[cfg_attr(not(test), rustc_diagnostic_item = "IoSplit")]
+pub struct Split<B> {
+    buf: B,
+    delim: u8,
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<B: BufRead> Iterator for Split<B> {
+    type Item = Result<Vec<u8>>;
+
+    fn next(&mut self) -> Option<Result<Vec<u8>>> {
+        let mut buf = Vec::new();
+        match self.buf.read_until(self.delim, &mut buf) {
+            Ok(0) => None,
+            Ok(_n) => {
+                if buf[buf.len() - 1] == self.delim {
+                    buf.pop();
+                }
+                Some(Ok(buf))
+            }
+            Err(e) => Some(Err(e)),
+        }
+    }
+}
+
+#[doc(hidden)]
+#[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+pub const fn split<B>(buf: B, delim: u8) -> Split<B> {
+    Split { buf, delim }
+}
+
+/// An iterator over the lines of an instance of [`BufRead`].
+///
+/// This struct is generally created by calling [`lines`] on a [`BufRead`].
+/// Please see the documentation of [`lines`] for more details.
+///
+/// [`lines`]: BufRead::lines
+#[stable(feature = "rust1", since = "1.0.0")]
+#[derive(Debug)]
+#[cfg_attr(not(test), rustc_diagnostic_item = "IoLines")]
+pub struct Lines<B> {
+    buf: B,
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<B: BufRead> Iterator for Lines<B> {
+    type Item = Result<String>;
+
+    fn next(&mut self) -> Option<Result<String>> {
+        let mut buf = String::new();
+        match self.buf.read_line(&mut buf) {
+            Ok(0) => None,
+            Ok(_n) => {
+                if buf.ends_with('\n') {
+                    buf.pop();
+                    if buf.ends_with('\r') {
+                        buf.pop();
+                    }
+                }
+                Some(Ok(buf))
+            }
+            Err(e) => Some(Err(e)),
+        }
+    }
+}
+
+#[doc(hidden)]
+#[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+pub const fn lines<B>(buf: B) -> Lines<B> {
+    Lines { buf }
 }

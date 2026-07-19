@@ -4,13 +4,7 @@ error: layout_of(Univariant) = Layout {
                abi: Align(4 bytes),
            },
            backend_repr: Scalar(
-               Initialized {
-                   value: Int(
-                       I32,
-                       false,
-                   ),
-                   valid_range: 0..=0,
-               },
+               u32 is 0..=0,
            ),
            fields: Arbitrary {
                offsets: [
@@ -23,35 +17,20 @@ error: layout_of(Univariant) = Layout {
            largest_niche: Some(
                Niche {
                    offset: Size(0 bytes),
-                   value: Int(
-                       I32,
-                       false,
-                   ),
+                   value: u32,
                    valid_range: 0..=0,
                },
            ),
            uninhabited: true,
            variants: Multiple {
-               tag: Initialized {
-                   value: Int(
-                       I32,
-                       false,
-                   ),
-                   valid_range: 0..=0,
-               },
+               tag: u32 is 0..=0,
                tag_encoding: Direct,
                tag_field: 0,
                variants: [
                    VariantLayout {
                        size: Size(4 bytes),
                        backend_repr: Scalar(
-                           Initialized {
-                               value: Int(
-                                   I32,
-                                   false,
-                               ),
-                               valid_range: 0..=0,
-                           },
+                           u32 is 0..=0,
                        ),
                        field_offsets: [
                            Size(4 bytes),
@@ -79,19 +58,8 @@ error: layout_of(TwoVariants) = Layout {
                abi: Align(4 bytes),
            },
            backend_repr: ScalarPair {
-               a: Initialized {
-                   value: Int(
-                       I32,
-                       false,
-                   ),
-                   valid_range: 0..=1,
-               },
-               b: Union {
-                   value: Int(
-                       I8,
-                       false,
-                   ),
-               },
+               a: u32 is 0..=1,
+               b: union u8,
                b_offset: Size(4 bytes),
            },
            fields: Arbitrary {
@@ -105,41 +73,21 @@ error: layout_of(TwoVariants) = Layout {
            largest_niche: Some(
                Niche {
                    offset: Size(0 bytes),
-                   value: Int(
-                       I32,
-                       false,
-                   ),
+                   value: u32,
                    valid_range: 0..=1,
                },
            ),
            uninhabited: false,
            variants: Multiple {
-               tag: Initialized {
-                   value: Int(
-                       I32,
-                       false,
-                   ),
-                   valid_range: 0..=1,
-               },
+               tag: u32 is 0..=1,
                tag_encoding: Direct,
                tag_field: 0,
                variants: [
                    VariantLayout {
                        size: Size(8 bytes),
                        backend_repr: ScalarPair {
-                           a: Initialized {
-                               value: Int(
-                                   I32,
-                                   false,
-                               ),
-                               valid_range: 0..=1,
-                           },
-                           b: Union {
-                               value: Int(
-                                   I8,
-                                   false,
-                               ),
-                           },
+                           a: u32 is 0..=1,
+                           b: union u8,
                            b_offset: Size(4 bytes),
                        },
                        field_offsets: [
@@ -154,19 +102,8 @@ error: layout_of(TwoVariants) = Layout {
                    VariantLayout {
                        size: Size(8 bytes),
                        backend_repr: ScalarPair {
-                           a: Initialized {
-                               value: Int(
-                                   I32,
-                                   false,
-                               ),
-                               valid_range: 0..=1,
-                           },
-                           b: Union {
-                               value: Int(
-                                   I8,
-                                   false,
-                               ),
-                           },
+                           a: u32 is 0..=1,
+                           b: union u8,
                            b_offset: Size(4 bytes),
                        },
                        field_offsets: [
@@ -208,22 +145,13 @@ error: layout_of(DeadBranchHasOtherField) = Layout {
            largest_niche: Some(
                Niche {
                    offset: Size(0 bytes),
-                   value: Int(
-                       I32,
-                       false,
-                   ),
+                   value: u32,
                    valid_range: 0..=1,
                },
            ),
            uninhabited: false,
            variants: Multiple {
-               tag: Initialized {
-                   value: Int(
-                       I32,
-                       false,
-                   ),
-                   valid_range: 0..=1,
-               },
+               tag: u32 is 0..=1,
                tag_encoding: Direct,
                tag_field: 0,
                variants: [

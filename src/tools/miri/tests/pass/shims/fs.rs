@@ -57,7 +57,7 @@ fn main() {
         test_readv_writev();
         #[cfg(unix)]
         test_pread_pwrite();
-        #[cfg(all(unix, not(any(target_os = "solaris", target_os = "android"))))]
+        #[cfg(all(unix, not(target_os = "solaris")))]
         test_preadv_pwritev();
     }
 }
@@ -513,11 +513,9 @@ fn test_readv_writev() {
 
 /// Test vectored reads and vectored writes with byte offsets.
 ///
-/// **Note**: We skip this test on Solaris and Android targets. This is
-/// because Solaris doesn't have `preadv`/`pwritev`, and on Android the
-/// standard library uses `syscall(...)` for vectored reads/writes with
-/// offsets because older Android versions also didn't have `preadv`/`pwritev`.
-#[cfg(all(unix, not(any(target_os = "solaris", target_os = "android"))))]
+/// **Note**: We skip this test on Solaris targets because Solaris doesn't
+/// have `preadv`/`pwritev`.
+#[cfg(all(unix, not(target_os = "solaris")))]
 fn test_preadv_pwritev() {
     use std::os::unix::fs::FileExt;
 

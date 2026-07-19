@@ -5,13 +5,15 @@
 use std::cell::{Cell, OnceCell, RefCell};
 use std::collections::VecDeque;
 use std::io::{self, ErrorKind, Read};
+use std::rc::Rc;
 
 use rustc_target::spec::Os;
 
 use crate::concurrency::VClock;
 use crate::shims::files::{
-    EvalContextExt as _, FdId, FileDescription, FileDescriptionRef, WeakFileDescriptionRef,
+    EvalContextExt as _, FileDescription, FileDescriptionRef, WeakFileDescriptionRef,
 };
+use crate::shims::readiness::DelayedReadinessUpdates;
 use crate::shims::unix::UnixFileDescription;
 use crate::shims::unix::socket::UnixSocketFileDescription;
 use crate::*;
@@ -53,8 +55,13 @@ struct VirtualSocket {
     blocked_write_tid: RefCell<Vec<ThreadId>>,
     /// Whether this fd is non-blocking or not.
     is_nonblock: Cell<bool>,
-    // Differentiate between different virtual socket fd types.
+    /// Differentiate between different virtual socket fd types.
     fd_type: VirtualSocketType,
+    /// We need to update the peer_fd readiness when we get dropped, so we keep a reference
+    /// to the readiness update queue
+    delayed_readiness_updates: Rc<DelayedReadinessUpdates>,
+    /// State for being watched by epoll.
+    watched: ReadinessWatched,
 }
 
 #[derive(Debug)]
@@ -75,6 +82,22 @@ impl VirtualSocket {
     }
 }
 
+impl Drop for VirtualSocket {
+    fn drop(&mut self) {
+        if let Some(peer_fd) = self.peer_fd().upgrade() {
+            // If the current readbuf is non-empty when the file description is closed,
+            // notify the peer that data lost has happened in current file description.
+            if let Some(readbuf) = &self.readbuf {
+                if !readbuf.borrow().buf.is_empty() {
+                    peer_fd.peer_lost_data.set(true);
+                }
+            }
+            // Notify peer fd that close has happened, since that can unblock reads and writes.
+            self.delayed_readiness_updates.add(peer_fd);
+        }
+    }
+}
+
 impl FileDescription for VirtualSocket {
     fn name(&self) -> &'static str {
         match self.fd_type {
@@ -91,26 +114,6 @@ impl FileDescription for VirtualSocket {
             VirtualSocketType::PipeRead | VirtualSocketType::PipeWrite => "S_IFIFO",
         };
         interp_ok(Either::Right(mode_name))
-    }
-
-    fn destroy<'tcx>(
-        self,
-        _self_id: FdId,
-        _communicate_allowed: bool,
-        ecx: &mut MiriInterpCx<'tcx>,
-    ) -> InterpResult<'tcx, io::Result<()>> {
-        if let Some(peer_fd) = self.peer_fd().upgrade() {
-            // If the current readbuf is non-empty when the file description is closed,
-            // notify the peer that data lost has happened in current file description.
-            if let Some(readbuf) = &self.readbuf {
-                if !readbuf.borrow().buf.is_empty() {
-                    peer_fd.peer_lost_data.set(true);
-                }
-            }
-            // Notify peer fd that close has happened, since that can unblock reads and writes.
-            ecx.update_fd_readiness(peer_fd, /* force_edge */ false)?;
-        }
-        interp_ok(Ok(()))
     }
 
     fn read<'tcx>(
@@ -202,7 +205,11 @@ impl FileDescription for VirtualSocket {
         interp_ok(Scalar::from_i32(0))
     }
 
-    fn readiness<'tcx>(&self) -> InterpResult<'tcx, Readiness> {
+    fn readiness_watched(&self) -> Option<&ReadinessWatched> {
+        Some(&self.watched)
+    }
+
+    fn readiness(&self) -> Readiness {
         // We only check the "readable", "writable", "read closed" and "write closed" readiness.
         // If other event flags need to be supported in the future, the check should be added here.
 
@@ -245,7 +252,7 @@ impl FileDescription for VirtualSocket {
                 readiness.error = true;
             }
         }
-        interp_ok(readiness)
+        readiness
     }
 }
 
@@ -381,15 +388,12 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 return finish.call(this, Err(ErrorKind::WouldBlock.into()));
             } else {
                 socket.blocked_write_tid.borrow_mut().push(this.active_thread());
-                // Blocking socketpair with a full buffer.
-                // Block the current thread; only keep a weak ref for this.
-                let weak_socket = FileDescriptionRef::downgrade(&socket);
                 this.block_thread(
                     BlockReason::VirtualSocket,
                     None,
                     callback!(
                         @capture<'tcx> {
-                            weak_socket: WeakFileDescriptionRef<VirtualSocket>,
+                            socket: FileDescriptionRef<VirtualSocket>,
                             ptr: Pointer,
                             len: usize,
                             is_non_block: bool,
@@ -397,9 +401,6 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         }
                         |this, unblock: UnblockKind| {
                             assert_eq!(unblock, UnblockKind::Ready);
-                            // If we got unblocked, then our peer successfully upgraded its weak
-                            // ref to us. That means we can also upgrade our weak ref.
-                            let socket = weak_socket.upgrade().unwrap();
                             this.virtual_socket_write(socket, ptr, len, is_non_block, finish)
                         }
                     ),
@@ -430,8 +431,8 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Notify readiness watchers: we might be no longer writable, peer might now be readable.
             // The notification to the peer seems to be always sent on Linux, even if the
             // FD was readable before.
-            this.update_fd_readiness(socket, /* force_edge */ false)?;
-            this.update_fd_readiness(peer_fd, /* force_edge */ true)?;
+            this.update_fd_readiness(socket, ReadinessUpdateFlags::DEFAULT)?;
+            this.update_fd_readiness(peer_fd, ReadinessUpdateFlags::FORCE_EDGE)?;
 
             return finish.call(this, Ok(write_size));
         }
@@ -478,15 +479,12 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 return finish.call(this, Err(ErrorKind::WouldBlock.into()));
             } else {
                 socket.blocked_read_tid.borrow_mut().push(this.active_thread());
-                // Blocking socketpair with writer and empty buffer.
-                // Block the current thread; only keep a weak ref for this.
-                let weak_socket = FileDescriptionRef::downgrade(&socket);
                 this.block_thread(
                     BlockReason::VirtualSocket,
                     None,
                     callback!(
                         @capture<'tcx> {
-                            weak_socket: WeakFileDescriptionRef<VirtualSocket>,
+                            socket: FileDescriptionRef<VirtualSocket>,
                             ptr: Pointer,
                             len: usize,
                             is_non_block: bool,
@@ -494,9 +492,6 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         }
                         |this, unblock: UnblockKind| {
                             assert_eq!(unblock, UnblockKind::Ready);
-                            // If we got unblocked, then our peer successfully upgraded its weak
-                            // ref to us. That means we can also upgrade our weak ref.
-                            let socket = weak_socket.upgrade().unwrap();
                             this.virtual_socket_read(socket, ptr, len, is_non_block, finish)
                         }
                     ),
@@ -536,10 +531,17 @@ trait EvalContextPrivExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Linux seems to always notify the peer if the read buffer is now empty.
                 // (Linux also does that if this was a "big" read, but to avoid some arbitrary
                 // threshold, we do not match that.)
-                this.update_fd_readiness(peer_fd, /* force_edge */ readbuf_now_empty)?;
+                this.update_fd_readiness(
+                    peer_fd,
+                    if readbuf_now_empty {
+                        ReadinessUpdateFlags::FORCE_EDGE
+                    } else {
+                        ReadinessUpdateFlags::DEFAULT
+                    },
+                )?;
             };
             // Notify readiness watchers: we might be no longer readable.
-            this.update_fd_readiness(socket, /* force_edge */ false)?;
+            this.update_fd_readiness(socket, ReadinessUpdateFlags::DEFAULT)?;
 
             return finish.call(this, Ok(read_size));
         }
@@ -619,6 +621,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             blocked_write_tid: RefCell::new(Vec::new()),
             is_nonblock: Cell::new(is_sock_nonblock),
             fd_type: VirtualSocketType::Socketpair,
+            delayed_readiness_updates: Rc::clone(&this.machine.delayed_readiness_updates),
+            watched: ReadinessWatched::default(),
         });
         let fd1 = fds.new_ref(VirtualSocket {
             readbuf: Some(RefCell::new(Buffer::new())),
@@ -628,6 +632,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             blocked_write_tid: RefCell::new(Vec::new()),
             is_nonblock: Cell::new(is_sock_nonblock),
             fd_type: VirtualSocketType::Socketpair,
+            delayed_readiness_updates: Rc::clone(&this.machine.delayed_readiness_updates),
+            watched: ReadinessWatched::default(),
         });
 
         // Make the file descriptions point to each other.
@@ -689,6 +695,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             blocked_write_tid: RefCell::new(Vec::new()),
             is_nonblock: Cell::new(is_nonblock),
             fd_type: VirtualSocketType::PipeRead,
+            delayed_readiness_updates: Rc::clone(&this.machine.delayed_readiness_updates),
+            watched: ReadinessWatched::default(),
         });
         let fd1 = fds.new_ref(VirtualSocket {
             readbuf: None,
@@ -698,6 +706,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             blocked_write_tid: RefCell::new(Vec::new()),
             is_nonblock: Cell::new(is_nonblock),
             fd_type: VirtualSocketType::PipeWrite,
+            delayed_readiness_updates: Rc::clone(&this.machine.delayed_readiness_updates),
+            watched: ReadinessWatched::default(),
         });
 
         // Make the file descriptions point to each other.

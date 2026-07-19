@@ -1,4 +1,4 @@
-error: backend_repr: ScalarPair { a: Initialized { value: Int(I?, false), valid_range: $VALID_RANGE }, b: Initialized { value: Pointer(AddressSpace(0)), valid_range: $VALID_RANGE }, b_offset: Size(? bytes) }
+error: backend_repr: ScalarPair { a: u?? is 0..=1, b: pointer is $VALID_RANGE, b_offset: Size(? bytes) }
   --> $DIR/enum-scalar-pair-int-ptr.rs:13:1
    |
 LL | enum ScalarPairPointerWithInt {

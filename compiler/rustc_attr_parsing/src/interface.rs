@@ -64,7 +64,7 @@ impl<'sess> AttributeParser<'sess> {
     /// errors will be emitted as a delayed bugs. in other words, we *expect* attributes parsed
     /// with `parse_limited` to be reparsed later during ast lowering where we *do* emit the errors
     ///
-    /// Due to this function not taking in RegisteredTools, *do not* use this for parsing any lint attributes
+    /// Due to this function not taking in `RegisteredTools`, *do not* use this for parsing any lint attributes
     pub fn parse_limited(
         sess: &'sess Session,
         attrs: &[ast::Attribute],
@@ -86,7 +86,7 @@ impl<'sess> AttributeParser<'sess> {
     /// This does the same as `parse_limited`, except it has a `should_emit` parameter which allows it to emit errors.
     /// Usually you want `parse_limited`, which emits no errors.
     ///
-    /// Due to this function not taking in RegisteredTools, *do not* use this for parsing any lint attributes
+    /// Due to this function not taking in `RegisteredTools`, *do not* use this for parsing any lint attributes
     pub fn parse_limited_should_emit(
         sess: &'sess Session,
         attrs: &[ast::Attribute],
@@ -256,7 +256,7 @@ impl<'sess> AttributeParser<'sess> {
     }
 
     pub(crate) fn sess(&self) -> &'sess Session {
-        &self.sess
+        self.sess
     }
 
     pub(crate) fn features(&self) -> &'sess Features {
@@ -328,7 +328,6 @@ impl<'sess> AttributeParser<'sess> {
                 }
                 ast::AttrKind::Synthetic(synthetic) => {
                     synthetic_attr_state.accept_synthetic_attr(attr_span, lower_span, synthetic);
-                    continue;
                 }
                 ast::AttrKind::Normal(n) => {
                     attr_paths.push(PathParser(&n.item.path));
@@ -347,7 +346,7 @@ impl<'sess> AttributeParser<'sess> {
                         );
                         self.check_attribute_stability(&attr_path, attr_span, accept.stability);
                         if let [part] = parts.as_slice() {
-                            debug_assert!(BUILTIN_ATTRIBUTE_MAP.contains(&part));
+                            debug_assert!(BUILTIN_ATTRIBUTE_MAP.contains(part));
                         }
 
                         let Some(args) = ArgParser::from_attr_args(
@@ -417,7 +416,7 @@ impl<'sess> AttributeParser<'sess> {
                         Self::check_target(&accept.allowed_targets, "", &mut cx);
                         #[cfg(debug_assertions)]
                         if !cx.shared.has_lint_been_emitted.load(Ordering::Relaxed) {
-                            cx.shared.cx.check_args_used(&attr, &args)
+                            cx.shared.cx.check_args_used(attr, &args)
                         }
                     } else {
                         let attr = AttrItem {

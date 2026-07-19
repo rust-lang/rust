@@ -94,7 +94,7 @@ impl IllFormedAttributeInput {
         Self {
             num_suggestions: suggestions.len(),
             suggestions: DiagArgValue::StrListSepByAnd(
-                suggestions.into_iter().map(|s| format!("`{s}`").into()).collect(),
+                suggestions.iter().map(|s| format!("`{s}`").into()).collect(),
             ),
             has_docs: docs.is_some(),
             docs: docs.unwrap_or(""),

@@ -24,9 +24,11 @@ impl<'sess> AttributeParser<'sess> {
 
         // Check if expected & actual safety match
         match (expected_safety, attr_safety) {
-            // - Unsafe builtin attribute
-            // - User wrote `#[unsafe(..)]`, which is permitted on any edition
-            (AttributeSafety::Unsafe { .. }, Safety::Unsafe(..)) => {
+            // - An unsafe builtin attribute, where the user wrote `#[unsafe(..)]`,
+            // which is permitted on any edition
+            // - A normal builtin attribute, where no explicit `#[unsafe(..)]` was written.
+            (AttributeSafety::Unsafe { .. }, Safety::Unsafe(..))
+            | (AttributeSafety::Normal, Safety::Default) => {
                 // OK
             }
 
@@ -57,7 +59,7 @@ impl<'sess> AttributeParser<'sess> {
                     && let Ok(mut snippet) = self.sess.source_map().span_to_snippet(diag_span)
                 {
                     snippet.retain(|c| !c.is_whitespace());
-                    if snippet.contains("!(") || snippet.starts_with("#[") && snippet.ends_with("]")
+                    if snippet.contains("!(") || snippet.starts_with("#[") && snippet.ends_with(']')
                     {
                         not_from_proc_macro = false;
                     }
@@ -99,12 +101,6 @@ impl<'sess> AttributeParser<'sess> {
                     span: unsafe_span,
                     name: attr_path.clone(),
                 });
-            }
-
-            // - Normal builtin attribute
-            // - No explicit `#[unsafe(..)]` written.
-            (AttributeSafety::Normal, Safety::Default) => {
-                // OK
             }
 
             (_, Safety::Safe(..)) => {
