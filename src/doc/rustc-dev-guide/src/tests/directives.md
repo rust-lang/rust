@@ -45,9 +45,13 @@ Directives can generally be found by browsing the
 
 <!-- date-check: Oct 2024 -->
 
-| Directive         | Explanation                   | Supported test suites | Possible values                        |
-|-------------------|-------------------------------|-----------------------|----------------------------------------|
-| `assembly-output` | Assembly output kind to check | `assembly`            | `emit-asm`, `bpf-linker`, `ptx-linker` |
+| Directive         | Explanation                   | Supported test suites | Possible values                             |
+|-------------------|-------------------------------|-----------------------|---------------------------------------------|
+| `assembly-output` | Assembly output kind to check | `assembly`            | `emit-asm`, `bpf-linker`, `linker-asm`[^la] |
+
+[^la]: For targets where the linker produces the final assembly artifact, either 
+by default or when explicitly instructed to do so. This allows assembly tests to 
+inspect linked code, rather than only rustc's pre-link assembly output.
 
 ### Auxiliary builds
 
@@ -123,6 +127,23 @@ means the test won't be compiled or run.
 
 * `ignore-X` where `X` is a target detail or other criteria on which to ignore the test (see below)
 * `only-X` is like `ignore-X`, but will *only* run the test on that target or stage
+
+<div class="warning">
+
+Using an `only-X` directive can cause a test to not be run in CI at all.
+
+For example, a UI test containing `//@ only-SomeTarget` will only be run in CI if
+the UI test suite is actually run for *SomeTarget*. Otherwise, the test will be
+skipped in every CI job.
+
+The same can happen when combining multiple `only-X` directives. A test is only
+run if *all* of its `only-X` requirements match the same CI job.
+
+For target-specific tests, consider whether the test should be cross-built to
+the target instead; see the corresponding
+[best practices for target-specific tests](./best-practices.md#target-specific-tests).
+</div>
+
 * `ignore-auxiliary` is intended for files that *participate* in one or more other
   main test files but that `compiletest` should not try to build the file itself.
   Please backlink to which main test is actually using the auxiliary file.

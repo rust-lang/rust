@@ -195,8 +195,30 @@ See [LLVM FileCheck guide][FileCheck] for details.
 >
 > Pending concrete advice.
 
+## Target-specific tests
+
+When adding a test for target-specific behavior, prefer writing the test so that
+it is run by an existing CI test-suite invocation.
+
+In particular, for targets that are not used as hosts in CI, prefer
+cross-building the test to that target instead of making the whole test
+`only-X` for that target. For example, a UI test can use a target-specific
+revision with `compile-flags: --target ...`:
+
+```rust
+//@ revisions: some-target
+//@[some-target] compile-flags: --target SomeTarget
+//@[some-target] needs-llvm-components: some_backend
+```
+
+This keeps the test covered by the regular test-suite invocation while still
+checking the target-specific behavior. If the target requires a specific LLVM
+backend, add the appropriate `needs-llvm-components` directive. See the
+[compiletest directives] for more information about these directives.
+
 [compiletest]: ./compiletest.md
 [compiletest directives]: ./directives.md
 [`run-make`]: ./compiletest.md#run-make-tests
 [FileCheck]: https://llvm.org/docs/CommandGuide/FileCheck.html
 [crash tests]: ./compiletest.md#crash-tests
+

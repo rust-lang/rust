@@ -1,11 +1,8 @@
 //@ assembly-output: emit-asm
-//@ compile-flags: --crate-type cdylib -C target-cpu=sm_87
-//@ only-nvptx64
-
-#![no_std]
-
-//@ aux-build: breakpoint-panic-handler.rs
-extern crate breakpoint_panic_handler;
+//@ compile-flags: --target nvptx64-nvidia-cuda --crate-type cdylib -C target-cpu=sm_87
+//@ needs-llvm-components: nvptx
+#![feature(no_core)]
+#![no_core]
 
 // Verify target arch override via `target-cpu`.
 // CHECK: .target sm_87
