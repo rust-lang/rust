@@ -409,6 +409,7 @@ impl MoveSubPath {
         let subpath = match elem {
             // correspond to a MoveSubPath
             ProjectionKind::Deref => MoveSubPath::Deref,
+            ProjectionKind::PhantomDeref => return MoveSubPathResult::Skip,
             ProjectionKind::Field(idx, _) => MoveSubPath::Field(idx),
             ProjectionKind::ConstantIndex { offset, min_length: _, from_end: false } => {
                 MoveSubPath::ConstantIndex(offset)

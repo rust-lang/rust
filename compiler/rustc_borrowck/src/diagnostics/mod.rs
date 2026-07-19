@@ -397,6 +397,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                         }
                     }
                 }
+                ProjectionElem::PhantomDeref => (),
                 ProjectionElem::Downcast(..) if opt.including_downcast => return None,
                 ProjectionElem::Downcast(..) => (),
                 ProjectionElem::OpaqueCast(..) => (),
@@ -485,6 +486,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                     PlaceTy::from_ty(*ty)
                 }
                 ProjectionElem::Field(_, field_type) => PlaceTy::from_ty(*field_type),
+                ProjectionElem::PhantomDeref => unreachable!("not a field"),
             },
         };
         self.describe_field_from_ty(

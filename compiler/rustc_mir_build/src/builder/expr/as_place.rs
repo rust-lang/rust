@@ -88,6 +88,7 @@ fn convert_to_hir_projections_and_truncate_for_capture(
     for mir_projection in mir_projections {
         let hir_projection = match mir_projection {
             ProjectionElem::Deref => HirProjectionKind::Deref,
+            ProjectionElem::PhantomDeref => continue,
             ProjectionElem::Field(field, _) => {
                 let variant = variant.unwrap_or(FIRST_VARIANT);
                 HirProjectionKind::Field(*field, variant)
@@ -802,6 +803,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         }
                     }
                     ProjectionElem::Field(..)
+                    | ProjectionElem::PhantomDeref
                     | ProjectionElem::Downcast(..)
                     | ProjectionElem::OpaqueCast(..)
                     | ProjectionElem::ConstantIndex { .. }

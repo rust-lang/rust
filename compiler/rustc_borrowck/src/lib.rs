@@ -2021,7 +2021,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 // So it's safe to skip these.
                 ProjectionElem::OpaqueCast(_)
                 | ProjectionElem::Downcast(_, _)
-                | ProjectionElem::UnwrapUnsafeBinder(_) => (),
+                | ProjectionElem::UnwrapUnsafeBinder(_)
+                | ProjectionElem::PhantomDeref => (),
             }
 
             place_ty = place_ty.projection_ty(tcx, elem);
@@ -2245,6 +2246,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         for (place_base, elem) in place.iter_projections().rev() {
             match elem {
                 ProjectionElem::Index(_/*operand*/)
+                | ProjectionElem::PhantomDeref
                 | ProjectionElem::OpaqueCast(_)
                 // assigning to P[i] requires P to be valid.
                 | ProjectionElem::ConstantIndex { .. }
@@ -2635,6 +2637,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                             // Deref should only be for reference, pointers or boxes
                             _ => bug!("Deref of unexpected type: {:?}", base_ty),
                         }
+                    }
+                    ProjectionElem::PhantomDeref => {
+                        bug!("encountered PhantomDeref in is_mutable")
                     }
                     // Check as the inner reference type if it is a field projection
                     // from the `&pin` pattern

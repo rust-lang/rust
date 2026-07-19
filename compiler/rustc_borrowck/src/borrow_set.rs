@@ -390,7 +390,9 @@ impl<'a, 'tcx> GatherBorrows<'a, 'tcx> {
             }
         }
         if !did_reborrow {
-            // If source contained no reference, borrow it directly.
+            // If source contained no reference, perform a phantom dereference.
+            let source_phantom_deref_place =
+                source_place.project_deeper(&[PlaceElem::PhantomDeref], self.tcx);
             if target_args.regions().count() != 1 {
                 bug!(
                     "ADT containing no '&mut T' or 'T: Reborrow' fields must only have one lifetime to implement Reborrow"
@@ -402,7 +404,7 @@ impl<'a, 'tcx> GatherBorrows<'a, 'tcx> {
                 region: target_region.as_var(),
                 reserve_location: location,
                 activation_location: TwoPhaseActivation::NotTwoPhase,
-                borrowed_place: source_place,
+                borrowed_place: source_phantom_deref_place,
                 assigned_place: target_place,
             });
         }
