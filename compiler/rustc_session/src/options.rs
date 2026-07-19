@@ -2549,7 +2549,10 @@ options! {
         `shallow` prints only type names, `none` prints nothing and disables `{:?}`. (default: `full`)"),
     force_intrinsic_fallback: bool = (false, parse_bool, [TRACKED],
         "always use the fallback body of an intrinsic, if it has one, instead of lowering \
-        the intrinsic in the codegen backend (default: no)."),
+        the intrinsic in the codegen backend (default: no)"),
+    force_tail_call_fallback: bool = (false, parse_bool, [TRACKED],
+        "always lower `become` to use the portable trampoline fallback instead of a backend \
+        `musttail` call (default: no)"),
     force_unstable_if_unmarked: bool = (false, parse_bool, [TRACKED],
         "force all crates to be `rustc_private` unstable (default: no)"),
     function_return: FunctionReturn = (FunctionReturn::default(), parse_function_return, [TRACKED],

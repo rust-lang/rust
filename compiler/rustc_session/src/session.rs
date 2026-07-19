@@ -1253,6 +1253,12 @@ impl Session {
         CodegenUnits::Default(16)
     }
 
+    /// Whether to use the fallback mechanism for guaranteed tail calls.
+    pub fn use_tail_call_fallback(&self) -> bool {
+        self.opts.unstable_opts.force_tail_call_fallback
+            || !self.target.supports_guaranteed_tail_calls(&self.internal_target_features)
+    }
+
     pub fn teach(&self, code: ErrCode) -> bool {
         self.opts.unstable_opts.teach && self.dcx().must_teach(code)
     }

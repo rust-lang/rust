@@ -2116,6 +2116,7 @@ symbols! {
         sync,
         synthetic,
         t32,
+        tail_call: "tail-call",
         target,
         target_abi,
         target_arch,
