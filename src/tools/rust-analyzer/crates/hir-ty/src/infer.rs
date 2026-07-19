@@ -1994,7 +1994,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
 
     fn identity_args(&self) -> GenericArgs<'db> {
         *self.identity_args.get_or_init(|| {
-            GenericArgs::identity_for_item(self.interner(), self.store_owner.into())
+            GenericArgs::identity_for_item(self.interner(), self.generic_def.into())
         })
     }
 
