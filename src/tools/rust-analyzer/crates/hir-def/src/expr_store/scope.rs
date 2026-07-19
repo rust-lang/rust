@@ -5,12 +5,13 @@ use la_arena::{Arena, ArenaMap, Idx, IdxRange, RawIdx};
 
 use crate::{
     BlockId, DefWithBodyId, ExpressionStoreOwnerId, GenericDefId, VariantId,
-    expr_store::{Body, ExpressionStore, HygieneId, body::Param},
+    expr_store::{Body, ExpressionStore, HygieneId, StoreVisitor, body::Param},
     hir::{
         Array, Binding, BindingId, Expr, ExprId, Item, LabelId, Pat, PatId, Statement,
         generics::GenericParams,
     },
     signatures::VariantFields,
+    type_ref::TypeRefId,
 };
 
 pub type ScopeId = Idx<ScopeData>;
@@ -274,6 +275,42 @@ impl ExprScopes {
     }
 }
 
+struct ExprScopeVisitor<'a> {
+    store: &'a ExpressionStore,
+    scopes: &'a mut ExprScopes,
+    scope: &'a mut ScopeId,
+    const_scope: &'a mut ScopeId,
+}
+
+impl StoreVisitor for ExprScopeVisitor<'_> {
+    fn on_expr(&mut self, expr: ExprId) {
+        compute_expr_scopes(expr, self.store, self.scopes, self.scope, self.const_scope);
+    }
+
+    fn on_anon_const_expr(&mut self, expr: ExprId) {
+        let mut scope = *self.const_scope;
+        compute_expr_scopes(expr, self.store, self.scopes, &mut scope, self.const_scope);
+    }
+
+    fn on_pat(&mut self, pat: PatId) {
+        self.store.visit_pat_children(pat, &mut *self);
+    }
+
+    fn on_type(&mut self, ty: TypeRefId) {
+        self.store.visit_type_ref_children(ty, &mut *self);
+    }
+}
+
+fn compute_type_scopes(
+    ty: TypeRefId,
+    store: &ExpressionStore,
+    scopes: &mut ExprScopes,
+    const_scope: &mut ScopeId,
+) {
+    let mut scope = *const_scope;
+    ExprScopeVisitor { store, scopes, scope: &mut scope, const_scope }.on_type(ty);
+}
+
 fn compute_block_scopes(
     statements: &[Statement],
     tail: Option<ExprId>,
@@ -284,7 +321,10 @@ fn compute_block_scopes(
 ) {
     for stmt in statements {
         match stmt {
-            Statement::Let { pat, initializer, else_branch, .. } => {
+            Statement::Let { pat, initializer, else_branch, type_ref } => {
+                if let Some(type_ref) = type_ref {
+                    compute_type_scopes(*type_ref, store, scopes, const_scope);
+                }
                 if let Some(expr) = initializer {
                     compute_expr_scopes(*expr, store, scopes, scope, const_scope);
                 }
@@ -362,7 +402,21 @@ fn compute_expr_scopes(
             let mut scope = scopes.new_labeled_scope(*scope, *label);
             compute_expr_scopes(scopes, *body_expr, &mut scope, const_scope);
         }
-        Expr::Closure { args, body: body_expr, .. } => {
+        Expr::Closure {
+            args,
+            arg_types,
+            ret_type,
+            body: body_expr,
+            capture_by: _,
+            closure_kind: _,
+        } => {
+            arg_types
+                .iter()
+                .flatten()
+                .for_each(|type_ref| compute_type_scopes(*type_ref, store, scopes, const_scope));
+            if let Some(type_ref) = ret_type {
+                compute_type_scopes(*type_ref, store, scopes, const_scope);
+            }
             let mut scope = scopes.new_scope(*scope);
             args.iter().for_each(|arg| scopes.add_pat_bindings(store, scope, *arg));
             compute_expr_scopes(scopes, *body_expr, &mut scope, const_scope);
@@ -392,7 +446,9 @@ fn compute_expr_scopes(
             *scope = scopes.new_scope(*scope);
             scopes.add_pat_bindings(store, *scope, pat);
         }
-        _ => store.walk_child_exprs(expr, |e| compute_expr_scopes(scopes, e, scope, const_scope)),
+        _ => {
+            store.visit_expr_children(expr, ExprScopeVisitor { store, scopes, scope, const_scope })
+        }
     };
 }
 
@@ -462,6 +518,19 @@ mod tests {
             .join("\n");
         let expected = expected.join("\n");
         assert_eq_text!(&expected, &actual);
+    }
+
+    #[test]
+    fn type_anon_const_scope() {
+        do_check(
+            r#"
+fn f(param: usize) {
+    let local = 0;
+    let _: [(); $0] = [];
+}
+"#,
+            &["param"],
+        );
     }
 
     #[test]
