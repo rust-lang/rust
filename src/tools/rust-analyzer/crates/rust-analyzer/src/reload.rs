@@ -659,7 +659,9 @@ impl GlobalState {
             Config::user_config_dir_path().as_deref(),
         );
 
-        if (self.proc_macro_clients.is_empty() || !same_workspaces) && self.config.expand_proc_macros() {
+        if (self.proc_macro_clients.is_empty() || !same_workspaces)
+            && self.config.expand_proc_macros()
+        {
             info!("Spawning proc-macro servers");
 
             // Workspaces referring to the same proc-macro server executable (i.e. the same
