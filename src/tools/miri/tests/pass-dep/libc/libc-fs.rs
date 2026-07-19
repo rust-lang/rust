@@ -43,6 +43,10 @@ fn main() {
     #[cfg(target_os = "linux")]
     test_posix_fallocate::<libc::off64_t>(libc::posix_fallocate64);
     #[cfg(target_os = "linux")]
+    test_fallocate::<libc::off_t>(libc::fallocate);
+    #[cfg(target_os = "linux")]
+    test_fallocate::<libc::off64_t>(libc::fallocate64);
+    #[cfg(target_os = "linux")]
     test_sync_file_range();
     test_fstat();
     test_stat();
@@ -265,6 +269,7 @@ fn test_dup_stdout_stderr() {
     }
 }
 
+/// This test assumes that there are no gaps in the FD table and the next free slot is less than 50.
 fn test_dup() {
     let bytes = b"dup and dup2";
     let path = utils::prepare_with_content("miri_test_libc_dup.txt", bytes);
@@ -272,8 +277,16 @@ fn test_dup() {
 
     unsafe {
         let fd = errno_result(libc::open(name.as_ptr(), libc::O_RDONLY)).unwrap();
+        assert!(fd < 50);
         let new_fd = libc::dup(fd);
-        let new_fd2 = libc::dup2(fd, 8);
+        assert_eq!(new_fd, fd + 1);
+        let new_fd = libc::dup2(fd, new_fd); // overwrite the one we just dup'd
+        assert_eq!(new_fd, fd + 1);
+        let new_fd2 = libc::dup2(fd, 99);
+        assert_eq!(new_fd2, 99);
+        let new_fd3 = libc::fcntl(new_fd2, libc::F_DUPFD, 999);
+        assert_eq!(new_fd3, 999);
+        errno_check(libc::close(new_fd2));
 
         let mut first_buf = [0u8; 4];
         let first_len = libc::read(fd, first_buf.as_mut_ptr() as *mut libc::c_void, 4);
@@ -290,7 +303,7 @@ fn test_dup() {
         let remaining_bytes = &remaining_bytes[second_len..];
 
         let mut third_buf = [0u8; 4];
-        let third_len = libc::read(new_fd2, third_buf.as_mut_ptr() as *mut libc::c_void, 4);
+        let third_len = libc::read(new_fd3, third_buf.as_mut_ptr() as *mut libc::c_void, 4);
         assert!(third_len > 0);
         let third_len = third_len as usize;
         assert_eq!(third_buf[..third_len], remaining_bytes[..third_len]);
@@ -602,6 +615,75 @@ fn test_posix_fallocate<T: From<i32>>(
 
     test_errors();
     test();
+}
+
+#[cfg(target_os = "linux")]
+fn test_fallocate<T: From<i32>>(
+    fallocate: unsafe extern "C" fn(
+        fd: libc::c_int,
+        mode: libc::c_int,
+        offset: T,
+        len: T,
+    ) -> libc::c_int,
+) {
+    use libc_utils::{errno_check, errno_result};
+
+    // -- Test errors ---
+    // libc::off_t is i32 in target i686-unknown-linux-gnu
+    // https://docs.rs/libc/latest/i686-unknown-linux-gnu/libc/type.off_t.html
+
+    // invalid fd
+    let err = errno_result(unsafe { fallocate(42, 0, T::from(0), T::from(10)) }).unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::EBADF);
+
+    let path = utils::prepare("miri_test_libc_fallocate_errors.txt");
+    let file = File::create(&path).unwrap();
+
+    // invalid offset
+    let err = errno_result(unsafe { fallocate(file.as_raw_fd(), 0, T::from(-10), T::from(10)) })
+        .unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::EINVAL);
+
+    // invalid len
+    let err = errno_result(unsafe { fallocate(file.as_raw_fd(), 0, T::from(0), T::from(-10)) })
+        .unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::EINVAL);
+
+    // fd not writable
+    let c_path = CString::new(path.as_os_str().as_bytes()).expect("CString::new failed");
+    let fd = errno_result(unsafe { libc::open(c_path.as_ptr(), libc::O_RDONLY) }).unwrap();
+    let err = errno_result(unsafe { fallocate(fd, 0, T::from(0), T::from(10)) }).unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::EBADF);
+
+    // --- Test correct behaviour ---
+    let bytes = b"hello";
+    let path = utils::prepare("miri_test_libc_fallocate.txt");
+    let mut file = File::create(&path).unwrap();
+    file.write_all(bytes).unwrap();
+    file.sync_all().unwrap();
+    assert_eq!(file.metadata().unwrap().len(), 5);
+
+    let c_path = CString::new(path.as_os_str().as_bytes()).expect("CString::new failed");
+    let fd = errno_result(unsafe { libc::open(c_path.as_ptr(), libc::O_RDWR) }).unwrap();
+
+    // Allocate to a bigger size from offset 0
+    errno_check(unsafe { fallocate(fd, 0, T::from(0), T::from(10)) });
+    assert_eq!(file.metadata().unwrap().len(), 10);
+
+    // Write after allocation
+    file.write(b"dup").unwrap();
+    file.sync_all().unwrap();
+    assert_eq!(file.metadata().unwrap().len(), 10);
+
+    // Can't truncate to a smaller size with fallocate
+    errno_check(unsafe { fallocate(fd, 0, T::from(0), T::from(3)) });
+    assert_eq!(file.metadata().unwrap().len(), 10);
+
+    // Allocate from offset
+    errno_check(unsafe { fallocate(fd, 0, T::from(7), T::from(7)) });
+    assert_eq!(file.metadata().unwrap().len(), 14);
+
+    remove_file(&path).unwrap();
 }
 
 #[cfg(target_os = "linux")]

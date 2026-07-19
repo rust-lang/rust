@@ -1319,7 +1319,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             Some(Err(e)) => {
                 // return positive error number on error (do *not* set last error)
-                this.io_error_to_errnum(e)?
+                this.host_error_to_errnum(e)?
             }
         })
     }
@@ -1390,44 +1390,88 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             return interp_ok(this.eval_libc("EBADF"));
         }
 
-        // EINVAL is returned when: "offset was less than 0, or len was less than or equal to 0".
-        if offset < 0 || len <= 0 {
-            return interp_ok(this.eval_libc("EINVAL"));
+        match this.fallocate_impl(fd_num, offset, len)? {
+            Ok(()) => interp_ok(Scalar::from_i32(0)),
+            Err(e) => this.io_error_to_errnum(e),
+        }
+    }
+
+    fn linux_fallocate(
+        &mut self,
+        fd: i32,
+        mode: i32,
+        offset: i64,
+        size: i64,
+    ) -> InterpResult<'tcx, Scalar> {
+        // This is mostly a copy of `posix_fallocate` except that errors are returned via errno.
+        let this = self.eval_context_mut();
+
+        // Reject if isolation is enabled.
+        if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
+            this.reject_in_isolation("`fallocate`", reject_with)?;
+            // Set error code "EBADF" (bad fd).
+            return this.set_errno_and_return_neg1_i32(LibcError("EBADF"));
         }
 
-        // Get the file handle.
+        // We only support `fallocate` as a replacement for `posix_fallocate` on linux,
+        // so a non-default `mode` is not supported.
+        if mode != 0 {
+            throw_unsup_format!("unsupported flags for `fallocate` in `mode` argument: {mode}")
+        }
+
+        match this.fallocate_impl(fd, offset, size)? {
+            Ok(()) => interp_ok(Scalar::from_i32(0)),
+            Err(e) => this.set_errno_and_return_neg1_i32(e),
+        }
+    }
+
+    /// Shared logic between `posix_fallocate` and `linux_fallocate`.
+    fn fallocate_impl(
+        &mut self,
+        fd_num: i32,
+        offset: i64,
+        len: i64,
+    ) -> InterpResult<'tcx, Result<(), IoError>> {
+        let this = self.eval_context_mut();
+
+        // EINVAL is returned/set when: "offset was less than 0, or len was less than or equal to 0".
+        if offset < 0 || len <= 0 {
+            return interp_ok(Err(LibcError("EINVAL")));
+        }
+
         let Some(fd) = this.machine.fds.get(fd_num) else {
-            return interp_ok(this.eval_libc("EBADF"));
+            return interp_ok(Err(LibcError("EBADF")));
         };
         let Some(file) = fd.downcast::<FileHandle>() else {
             // Man page specifies to return ENODEV if `fd` is not a regular file.
-            return interp_ok(this.eval_libc("ENODEV"));
+            return interp_ok(Err(LibcError("ENODEV")));
         };
 
         if !file.writable {
-            // The file is not writable.
-            return interp_ok(this.eval_libc("EBADF"));
+            return interp_ok(Err(LibcError("EBADF")));
         }
 
         let current_size = match file.file.metadata() {
             Ok(metadata) => metadata.len(),
-            Err(err) => return this.io_error_to_errnum(err),
+            Err(err) => return interp_ok(Err(err.into())),
         };
+
         // Checked i64 addition, to ensure the result does not exceed the max file size.
         let new_size = match offset.checked_add(len) {
             // `new_size` is definitely non-negative, so we can cast to `u64`.
             Some(new_size) => u64::try_from(new_size).unwrap(),
-            None => return interp_ok(this.eval_libc("EFBIG")), // new size too big
+            None => return interp_ok(Err(LibcError("EFBIG"))), // new size too big
         };
-        // If the size of the file is less than offset+size, then the file is increased to this size;
-        // otherwise the file size is left unchanged.
+
+        // If the size of the file is less than offset+size, then the file is increased to this
+        // size; otherwise the file size is left unchanged.
         if current_size < new_size {
-            interp_ok(match file.file.set_len(new_size) {
-                Ok(()) => Scalar::from_i32(0),
-                Err(e) => this.io_error_to_errnum(e)?,
-            })
+            match file.file.set_len(new_size) {
+                Ok(()) => interp_ok(Ok(())),
+                Err(err) => interp_ok(Err(err.into())),
+            }
         } else {
-            interp_ok(Scalar::from_i32(0))
+            interp_ok(Ok(()))
         }
     }
 

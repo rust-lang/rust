@@ -42,8 +42,9 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
             // File related shims
             "close$NOCANCEL" => {
-                let [result] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
-                let result = this.close(result)?;
+                let [fd] = this.check_shim_sig_lenient(abi, CanonAbi::C, link_name, args)?;
+                let fd = this.read_scalar(fd)?.to_i32()?;
+                let result = this.close(fd)?;
                 this.write_scalar(result, dest)?;
             }
             "stat$INODE64" => {

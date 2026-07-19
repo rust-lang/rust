@@ -14,7 +14,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         link_name: Symbol,
         args: &[OpTy<'tcx>],
         dest: &MPlaceTy<'tcx>,
-    ) -> InterpResult<'tcx, bool> {
+    ) -> InterpResult<'tcx, EmulateItemResult> {
         let this = self.eval_context_mut();
         this.expect_target_feature_for_intrinsic(link_name, "sse2")?;
         // Prefix should have already been checked.
@@ -272,8 +272,8 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 pmaddwd(this, left, right, dest)?;
             }
-            _ => return interp_ok(false),
+            _ => return interp_ok(EmulateItemResult::NotSupported),
         }
-        interp_ok(true)
+        interp_ok(EmulateItemResult::NeedsReturn)
     }
 }

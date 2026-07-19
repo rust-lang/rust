@@ -7,6 +7,7 @@
 #![allow(static_mut_refs)]
 
 use std::thread;
+use std::time::Duration;
 
 #[path = "../../utils/libc.rs"]
 mod libc_utils;
@@ -18,6 +19,7 @@ fn main() {
     test_race();
     test_blocking_read();
     test_blocking_write();
+    test_unblock_after_socket_close();
 }
 
 fn test_socketpair() {
@@ -177,4 +179,37 @@ fn test_blocking_write() {
     });
     thread1.join().unwrap();
     thread2.join().unwrap();
+}
+
+/// Test that a thread which is blocked on a socket gets unblocked once
+/// the operation is finished, even when the socket file _descriptor_ gets
+/// closed in the mean time.
+fn test_unblock_after_socket_close() {
+    // MacOS behaves different (`read` errors with EBADFD when the file description is closed)
+    // so we skip the test when we are run on a native macOS target.
+    if cfg!(not(miri)) && cfg!(target_os = "macos") {
+        return;
+    }
+
+    let mut fds = [-1, -1];
+    errno_check(unsafe { libc::socketpair(libc::AF_UNIX, libc::SOCK_STREAM, 0, fds.as_mut_ptr()) });
+    let [client_fd, server_fd] = fds;
+
+    // Spawn server thread.
+    let server_thread = thread::spawn(move || {
+        if !cfg!(miri) {
+            // Ensure main thread is blocked on reading from the client socket.
+            thread::sleep(Duration::from_millis(10));
+        }
+
+        unsafe { errno_check(libc::close(client_fd)) };
+
+        // Writing data into the peer socket should unblock the main thread.
+        write_all(server_fd, b"1234").unwrap();
+    });
+
+    let data = read_exact_array::<4>(client_fd).unwrap();
+    assert_eq!(&data, b"1234");
+
+    server_thread.join().unwrap();
 }
