@@ -85,7 +85,9 @@ impl ExprOrPatIdPacked {
     pub fn unpack(self) -> ExprOrPatId {
         match self.is_expr() {
             true => ExprOrPatId::ExprId(ExprId::from_raw(RawIdx::from_u32(self.0))),
-            false => ExprOrPatId::PatId(PatId::from_raw(RawIdx::from_u32(self.0))),
+            false => {
+                ExprOrPatId::PatId(PatId::from_raw(RawIdx::from_u32(self.0 & Self::INDEX_MASK)))
+            }
         }
     }
 

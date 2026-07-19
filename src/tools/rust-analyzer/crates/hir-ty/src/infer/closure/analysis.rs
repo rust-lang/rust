@@ -35,8 +35,8 @@ use std::{iter, mem};
 use hir_def::{
     expr_store::ExpressionStore,
     hir::{
-        BindingAnnotation, BindingId, CaptureBy, CoroutineSource, Expr, ExprId, ExprOrPatIdPacked, Pat,
-        PatId, Statement,
+        BindingAnnotation, BindingId, CaptureBy, CoroutineSource, Expr, ExprId, ExprOrPatIdPacked,
+        Pat, PatId, Statement,
     },
     resolver::ValueNs,
 };
