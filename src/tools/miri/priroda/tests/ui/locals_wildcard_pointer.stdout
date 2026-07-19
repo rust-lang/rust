@@ -1,0 +1,11 @@
+(priroda) breakpoint added: {MANIFEST_DIR}/tests/ui/locals_wildcard_pointer.rs:15
+(priroda) Hit breakpoint
+{MANIFEST_DIR}/tests/ui/locals_wildcard_pointer.rs:15
+(priroda) Name: <none>, Id: _0, Ty: (), Value: <uninit>
+Name: ptr, Id: _1, Ty: *const u8, Value: {&_: *const u8}
+Name: wildcard, Id: _2, Ty: WildcardPointer, Value: [0x1234[wildcard]]
+Name: <none>, Id: _3, Ty: *const u8, Value: <dead>
+Name: <none>, Id: _4, Ty: &WildcardPointer, Value: <dead>
+Name: <none>, Id: _5, Ty: &WildcardPointer, Value: <dead>
+(priroda) Id: _2, Ty: WildcardPointer, Value: [0x1234[wildcard]]
+(priroda) quitting

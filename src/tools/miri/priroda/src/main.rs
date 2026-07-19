@@ -1,6 +1,7 @@
 #![feature(rustc_private)]
 
 extern crate miri;
+extern crate rustc_abi;
 extern crate rustc_codegen_ssa;
 extern crate rustc_data_structures;
 extern crate rustc_driver;
@@ -16,10 +17,12 @@ extern crate rustc_type_ir;
 
 use std::collections::{HashMap, HashSet};
 use std::io::{self, Write};
+use std::ops::Range;
 use std::path::PathBuf;
 
 use miri::Immediate::Uninit;
 use miri::{interpret, *};
+use rustc_abi::Size;
 use rustc_driver::Compilation;
 use rustc_hir::attrs::CrateType;
 use rustc_interface::interface;
@@ -399,6 +402,10 @@ impl<'tcx> PrirodaContext<'tcx> {
         self.build_local_descs(frame)
     }
 
+    /// Renders the current byte range of an indirect MIR value.
+    ///
+    /// Initialized bytes are shown in hexadecimal, uninitialized bytes as `??`,
+    /// and complete pointer-sized provenance as pointer markers.
     fn render_mplace_bytes(&self, mplace: &MPlaceTy<'tcx>) -> InterpResult<'tcx, String> {
         let size = match self.ecx.size_and_align_of_val(mplace)? {
             Some((size, _)) => size,
@@ -419,21 +426,60 @@ impl<'tcx> PrirodaContext<'tcx> {
             self.ecx.ptr_get_alloc_id(mplace.ptr(), size.try_into().unwrap())?;
         let offset = offset.bytes_usize();
         let range = offset..offset.strict_add(size);
+
+        self.render_alloc_bytes(alloc_id, range)
+    }
+
+    /// Render a raw allocation range without requiring a typed memory place.
+    ///
+    /// This is also used by the future-facing `follow` command, where we have a
+    /// pointer target but do not yet know the target's type or size.
+    fn render_alloc_bytes(
+        &self,
+        alloc_id: AllocId,
+        range: Range<usize>,
+    ) -> InterpResult<'tcx, String> {
         let alloc = self.ecx.get_alloc_raw(alloc_id)?;
 
-        let mut rendered = Vec::with_capacity(size);
+        let mut rendered = Vec::with_capacity(range.len());
+
+        let ptr_size = self.ecx.tcx.data_layout.pointer_size();
 
         for chunk in alloc.init_mask().range_as_init_chunks(range.into()) {
             let chunk_range = chunk.range();
             let chunk_range = chunk_range.start.bytes_usize()..chunk_range.end.bytes_usize();
 
             if chunk.is_init() {
-                rendered.extend(
-                    alloc
-                        .inspect_with_uninit_and_ptr_outside_interpreter(chunk_range)
-                        .iter()
-                        .map(|byte| format!("{byte:02x}")),
-                );
+                let ptr_size = ptr_size.bytes_usize();
+                let mut cursor = chunk_range.start;
+
+                while cursor < chunk_range.end {
+                    // Full pointer provenance is rendered as a pointer marker. Bytewise
+                    // provenance fragments are intentionally left as raw bytes here: they do
+                    // not represent a complete pointer-sized value.
+                    if let Some(prov) = alloc.provenance().get_ptr(Size::from_bytes(cursor))
+                        && cursor + ptr_size <= chunk_range.end
+                    {
+                        let bytes = alloc.inspect_with_uninit_and_ptr_outside_interpreter(
+                            cursor..cursor + ptr_size,
+                        );
+                        let offset = read_target_uint(self.ecx.tcx.data_layout.endian, bytes)
+                            .map_err(|err| {
+                                miri::err_unsup_format!("invalid pointer representation: {err}")
+                            })?;
+
+                        let offset = Size::from_bytes(offset);
+                        rendered.push(format!("{:?}", Pointer::new(Some(prov), offset)));
+
+                        cursor += ptr_size;
+                    } else {
+                        let byte = alloc
+                            .inspect_with_uninit_and_ptr_outside_interpreter(cursor..cursor + 1)[0];
+
+                        rendered.push(format!("{byte:02x}"));
+                        cursor += 1;
+                    }
+                }
             } else {
                 rendered.extend(std::iter::repeat_n("__".to_string(), chunk_range.len()));
             }
