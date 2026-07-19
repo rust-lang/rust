@@ -11,8 +11,6 @@ pub use unwinding::custom_eh_frame_finder::{
 pub use crate::types::*;
 
 pub type _Unwind_Ptr = *const u8;
-pub type _Unwind_Trace_Fn =
-    extern "C" fn(ctx: *mut _Unwind_Context, arg: *mut c_void) -> _Unwind_Reason_Code;
 
 pub enum _Unwind_Context {}
 
@@ -55,10 +53,10 @@ cfg_select! {
         pub type _Unwind_Action = c_int;
 
         pub const _UA_SEARCH_PHASE: c_int = 1;
-        pub const _UA_CLEANUP_PHASE: c_int = 2;
-        pub const _UA_HANDLER_FRAME: c_int = 4;
+        //pub const _UA_CLEANUP_PHASE: c_int = 2;
+        //pub const _UA_HANDLER_FRAME: c_int = 4;
         pub const _UA_FORCE_UNWIND: c_int = 8;
-        pub const _UA_END_OF_STACK: c_int = 16;
+        //pub const _UA_END_OF_STACK: c_int = 16;
 
         #[cfg_attr(
             all(feature = "llvm-libunwind", any(target_os = "fuchsia", target_os = "linux")),
@@ -67,11 +65,9 @@ cfg_select! {
         unsafe extern "C" {
             pub fn _Unwind_GetGR(ctx: *mut _Unwind_Context, reg_index: c_int) -> _Unwind_Word;
             pub fn _Unwind_SetGR(ctx: *mut _Unwind_Context, reg_index: c_int, value: _Unwind_Word);
-            pub fn _Unwind_GetIP(ctx: *mut _Unwind_Context) -> _Unwind_Word;
             pub fn _Unwind_SetIP(ctx: *mut _Unwind_Context, value: _Unwind_Word);
             pub fn _Unwind_GetIPInfo(ctx: *mut _Unwind_Context, ip_before_insn: *mut c_int)
                                      -> _Unwind_Word;
-            pub fn _Unwind_FindEnclosingFunction(pc: *mut c_void) -> *mut c_void;
         }
 
     }
@@ -158,12 +154,6 @@ cfg_select! {
                             (&raw mut value) as *mut c_void); }
         }
 
-        pub unsafe fn _Unwind_GetIP(ctx: *mut _Unwind_Context)
-                                    -> _Unwind_Word {
-            let val = unsafe { _Unwind_GetGR(ctx, UNWIND_IP_REG) };
-            val.map_addr(|v| v & !1)
-        }
-
         pub unsafe fn _Unwind_SetIP(ctx: *mut _Unwind_Context,
                                     value: _Unwind_Word) {
             // Propagate thumb bit to instruction pointer
@@ -177,13 +167,9 @@ cfg_select! {
                                         -> _Unwind_Word {
             unsafe {
                 *ip_before_insn = 0;
-                _Unwind_GetIP(ctx)
+                let val = unsafe { _Unwind_GetGR(ctx, UNWIND_IP_REG) };
+                val.map_addr(|v| v & !1)
             }
-        }
-
-        // This function also doesn't exist on Android or ARM/Linux, so make it a no-op
-        pub unsafe fn _Unwind_FindEnclosingFunction(pc: *mut c_void) -> *mut c_void {
-            pc
         }
     }
 }
@@ -199,19 +185,6 @@ unsafe extern "C-unwind" {
         link_name = "_Unwind_SjLj_RaiseException"
     )]
     pub fn _Unwind_RaiseException(exception: *mut _Unwind_Exception) -> _Unwind_Reason_Code;
-}
-#[cfg_attr(
-    all(feature = "llvm-libunwind", any(target_os = "fuchsia", target_os = "linux")),
-    link(name = "unwind", kind = "static", modifiers = "-bundle")
-)]
-unsafe extern "C" {
-    // 32-bit ARM Apple (except for watchOS armv7k specifically) does not
-    // provide _Unwind_Backtrace()
-    #[cfg(not(all(target_vendor = "apple", not(target_os = "watchos"), target_arch = "arm")))]
-    pub fn _Unwind_Backtrace(
-        trace: _Unwind_Trace_Fn,
-        trace_argument: *mut c_void,
-    ) -> _Unwind_Reason_Code;
 }
 
 cfg_select! {
