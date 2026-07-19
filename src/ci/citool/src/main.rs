@@ -97,6 +97,7 @@ fn run_workflow_locally(db: JobDatabase, job_type: JobType, name: String) -> any
     let jobs = match job_type {
         JobType::Auto => &db.auto_jobs,
         JobType::PR => &db.pr_jobs,
+        JobType::Try => &db.try_jobs,
     };
     let job =
         jobs::find_linux_job(jobs, &name).with_context(|| format!("Cannot find job {name}"))?;
@@ -110,6 +111,9 @@ fn run_workflow_locally(db: JobDatabase, job_type: JobType, name: String) -> any
         } else {
             custom_env.insert("DEPLOY".to_string(), "1".to_string());
         }
+    }
+    if name == "dist-x86_64-linux-quick" {
+        custom_env.insert("DIST_TRY_BUILD".to_string(), "1".to_owned());
     }
     custom_env.extend(job.env.iter().map(|(key, value)| {
         let value = match value {
@@ -269,6 +273,8 @@ pub enum JobType {
     Auto,
     /// Pull request job
     PR,
+    /// Try jobs.
+    Try,
 }
 
 fn main() -> anyhow::Result<()> {
