@@ -74,7 +74,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             NeedsTemporary::No
                         )
                     );
-                    this.record_operand_moved(&value_operand);
+                    this.record_operands_moved([&value_operand]);
                     block.and(Rvalue::Repeat(value_operand, count))
                 }
             }
@@ -220,9 +220,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     })
                     .collect();
 
-                for operand in fields.iter() {
-                    this.record_operand_moved(operand);
-                }
+                this.record_operands_moved(&fields);
                 block.and(Rvalue::Aggregate(Box::new(AggregateKind::Array(el_ty)), fields))
             }
             ExprKind::Tuple { ref fields } => {
@@ -244,9 +242,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     })
                     .collect();
 
-                for operand in fields.iter() {
-                    this.record_operand_moved(operand);
-                }
+                this.record_operands_moved(&fields);
                 block.and(Rvalue::Aggregate(Box::new(AggregateKind::Tuple), fields))
             }
             ExprKind::Closure(ClosureExpr {
@@ -349,9 +345,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         Box::new(AggregateKind::CoroutineClosure(closure_id.to_def_id(), args))
                     }
                 };
-                for operand in operands.iter() {
-                    this.record_operand_moved(operand);
-                }
+                this.record_operands_moved(&operands);
                 block.and(Rvalue::Aggregate(result, operands))
             }
             ExprKind::Assign { .. } | ExprKind::AssignOp { .. } => {
@@ -434,7 +428,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         NeedsTemporary::No,
                     )
                 );
-                this.record_operand_moved(&operand);
+                this.record_operands_moved([&operand]);
                 block.and(Rvalue::Use(operand, WithRetag::Yes))
             }
 
@@ -658,7 +652,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.diverge_from(block);
                 block = success;
             }
-            this.record_operand_moved(&value_operand);
+            this.record_operands_moved([&value_operand]);
         }
         block.and(Rvalue::Aggregate(Box::new(AggregateKind::Array(elem_ty)), IndexVec::new()))
     }

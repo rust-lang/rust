@@ -14,7 +14,7 @@ fn main() -> () {
         StorageLive(_4);
         _4 = const "";
         _3 = &(*_4);
-        _2 = <str as ToString>::to_string(move _3) -> [return: bb1, unwind: bb4];
+        _2 = <str as ToString>::to_string(move _3) -> [return: bb1, unwind: bb3];
     }
 
     bb1: {
@@ -31,10 +31,6 @@ fn main() -> () {
     }
 
     bb3 (cleanup): {
-        drop(_2) -> [return: bb4, unwind terminate(cleanup)];
-    }
-
-    bb4 (cleanup): {
         resume;
     }
 }

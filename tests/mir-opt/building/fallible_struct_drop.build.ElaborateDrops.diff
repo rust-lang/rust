@@ -129,11 +129,11 @@
   
       bb1: {
           StorageDead(_6);
-          _4 = <Result<String, ()> as Try>::branch(move _5) -> [return: bb2, unwind: bb80];
++         _56 = const true;
+          _4 = <Result<String, ()> as Try>::branch(move _5) -> [return: bb2, unwind continue];
       }
   
       bb2: {
-+         _56 = const true;
           StorageDead(_5);
           PlaceMention(_4);
           _8 = discriminant(_4);
@@ -148,7 +148,7 @@
           StorageLive(_12);
           _12 = move ((_4 as Continue).0: std::string::String);
           _3 = move _12;
--         drop(_12) -> [return: bb7, unwind: bb79];
+-         drop(_12) -> [return: bb7, unwind: bb75];
 +         goto -> bb7;
       }
   
@@ -157,7 +157,7 @@
           _9 = copy ((_4 as Break).0: std::result::Result<std::convert::Infallible, ()>);
           StorageLive(_11);
           _11 = copy _9;
-          _0 = <Result<Big, ()> as FromResidual<Result<Infallible, ()>>>::from_residual(move _11) -> [return: bb6, unwind: bb79];
+          _0 = <Result<Big, ()> as FromResidual<Result<Infallible, ()>>>::from_residual(move _11) -> [return: bb6, unwind: bb75];
       }
   
       bb6: {
@@ -178,12 +178,12 @@
           _17 = copy _1;
           _16 = BitXor(move _17, const 1_u64);
           StorageDead(_17);
-          _15 = make_one(move _16) -> [return: bb8, unwind: bb78];
+          _15 = make_one(move _16) -> [return: bb8, unwind: bb74];
       }
   
       bb8: {
           StorageDead(_16);
-          _14 = <Result<String, ()> as Try>::branch(move _15) -> [return: bb9, unwind: bb77];
+          _14 = <Result<String, ()> as Try>::branch(move _15) -> [return: bb9, unwind: bb74];
       }
   
       bb9: {
@@ -198,7 +198,7 @@
           StorageLive(_22);
           _22 = move ((_14 as Continue).0: std::string::String);
           _13 = move _22;
--         drop(_22) -> [return: bb13, unwind: bb75];
+-         drop(_22) -> [return: bb13, unwind: bb72];
 +         goto -> bb13;
       }
   
@@ -207,14 +207,14 @@
           _19 = copy ((_14 as Break).0: std::result::Result<std::convert::Infallible, ()>);
           StorageLive(_21);
           _21 = copy _19;
-          _0 = <Result<Big, ()> as FromResidual<Result<Infallible, ()>>>::from_residual(move _21) -> [return: bb12, unwind: bb75];
+          _0 = <Result<Big, ()> as FromResidual<Result<Infallible, ()>>>::from_residual(move _21) -> [return: bb12, unwind: bb72];
       }
   
       bb12: {
           StorageDead(_21);
           StorageDead(_19);
           StorageDead(_13);
-          drop(_3) -> [return: bb51, unwind: bb76];
+          drop(_3) -> [return: bb51, unwind: bb73];
       }
   
       bb13: {
@@ -227,12 +227,12 @@
           _27 = copy _1;
           _26 = BitXor(move _27, const 2_u64);
           StorageDead(_27);
-          _25 = make_one(move _26) -> [return: bb14, unwind: bb74];
+          _25 = make_one(move _26) -> [return: bb14, unwind: bb71];
       }
   
       bb14: {
           StorageDead(_26);
-          _24 = <Result<String, ()> as Try>::branch(move _25) -> [return: bb15, unwind: bb73];
+          _24 = <Result<String, ()> as Try>::branch(move _25) -> [return: bb15, unwind: bb71];
       }
   
       bb15: {
@@ -247,7 +247,7 @@
           StorageLive(_32);
           _32 = move ((_24 as Continue).0: std::string::String);
           _23 = move _32;
--         drop(_32) -> [return: bb19, unwind: bb70];
+-         drop(_32) -> [return: bb19, unwind: bb68];
 +         goto -> bb19;
       }
   
@@ -256,14 +256,14 @@
           _29 = copy ((_24 as Break).0: std::result::Result<std::convert::Infallible, ()>);
           StorageLive(_31);
           _31 = copy _29;
-          _0 = <Result<Big, ()> as FromResidual<Result<Infallible, ()>>>::from_residual(move _31) -> [return: bb18, unwind: bb70];
+          _0 = <Result<Big, ()> as FromResidual<Result<Infallible, ()>>>::from_residual(move _31) -> [return: bb18, unwind: bb68];
       }
   
       bb18: {
           StorageDead(_31);
           StorageDead(_29);
           StorageDead(_23);
-          drop(_13) -> [return: bb47, unwind: bb71];
+          drop(_13) -> [return: bb47, unwind: bb69];
       }
   
       bb19: {
@@ -276,12 +276,12 @@
           _37 = copy _1;
           _36 = BitXor(move _37, const 3_u64);
           StorageDead(_37);
-          _35 = make_one(move _36) -> [return: bb20, unwind: bb69];
+          _35 = make_one(move _36) -> [return: bb20, unwind: bb67];
       }
   
       bb20: {
           StorageDead(_36);
-          _34 = <Result<String, ()> as Try>::branch(move _35) -> [return: bb21, unwind: bb68];
+          _34 = <Result<String, ()> as Try>::branch(move _35) -> [return: bb21, unwind: bb67];
       }
   
       bb21: {
@@ -296,7 +296,7 @@
           StorageLive(_42);
           _42 = move ((_34 as Continue).0: std::string::String);
           _33 = move _42;
--         drop(_42) -> [return: bb25, unwind: bb64];
+-         drop(_42) -> [return: bb25, unwind: bb63];
 +         goto -> bb25;
       }
   
@@ -305,14 +305,14 @@
           _39 = copy ((_34 as Break).0: std::result::Result<std::convert::Infallible, ()>);
           StorageLive(_41);
           _41 = copy _39;
-          _0 = <Result<Big, ()> as FromResidual<Result<Infallible, ()>>>::from_residual(move _41) -> [return: bb24, unwind: bb64];
+          _0 = <Result<Big, ()> as FromResidual<Result<Infallible, ()>>>::from_residual(move _41) -> [return: bb24, unwind: bb63];
       }
   
       bb24: {
           StorageDead(_41);
           StorageDead(_39);
           StorageDead(_33);
-          drop(_23) -> [return: bb42, unwind: bb65];
+          drop(_23) -> [return: bb42, unwind: bb64];
       }
   
       bb25: {
@@ -325,7 +325,7 @@
           _47 = copy _1;
           _46 = BitXor(move _47, const 4_u64);
           StorageDead(_47);
-          _45 = make_one(move _46) -> [return: bb26, unwind: bb63];
+          _45 = make_one(move _46) -> [return: bb26, unwind: bb62];
       }
   
       bb26: {
@@ -373,35 +373,35 @@
           StorageDead(_3);
           _0 = Result::<Big, ()>::Ok(move _2);
           StorageDead(_2);
--         drop(_44) -> [return: bb32, unwind: bb67];
-+         goto -> bb82;
+-         drop(_44) -> [return: bb32, unwind: bb66];
++         goto -> bb77;
       }
   
       bb32: {
           StorageDead(_44);
--         drop(_34) -> [return: bb33, unwind: bb72];
-+         goto -> bb83;
+-         drop(_34) -> [return: bb33, unwind: bb70];
++         goto -> bb78;
       }
   
       bb33: {
 +         _53 = const false;
           StorageDead(_34);
--         drop(_24) -> [return: bb34, unwind: bb76];
-+         goto -> bb84;
+-         drop(_24) -> [return: bb34, unwind: bb73];
++         goto -> bb79;
       }
   
       bb34: {
 +         _54 = const false;
           StorageDead(_24);
--         drop(_14) -> [return: bb35, unwind: bb79];
-+         goto -> bb85;
+-         drop(_14) -> [return: bb35, unwind: bb75];
++         goto -> bb80;
       }
   
       bb35: {
 +         _55 = const false;
           StorageDead(_14);
 -         drop(_4) -> [return: bb36, unwind continue];
-+         goto -> bb86;
++         goto -> bb81;
       }
   
       bb36: {
@@ -428,8 +428,8 @@
       bb40: {
           StorageDead(_3);
           StorageDead(_2);
--         drop(_44) -> [return: bb41, unwind: bb67];
-+         goto -> bb87;
+-         drop(_44) -> [return: bb41, unwind: bb66];
++         goto -> bb82;
       }
   
       bb41: {
@@ -439,12 +439,12 @@
   
       bb42: {
           StorageDead(_23);
-          drop(_13) -> [return: bb43, unwind: bb66];
+          drop(_13) -> [return: bb43, unwind: bb65];
       }
   
       bb43: {
           StorageDead(_13);
-          drop(_3) -> [return: bb44, unwind: bb67];
+          drop(_3) -> [return: bb44, unwind: bb66];
       }
   
       bb44: {
@@ -454,8 +454,8 @@
       }
   
       bb45: {
--         drop(_34) -> [return: bb46, unwind: bb72];
-+         goto -> bb88;
+-         drop(_34) -> [return: bb46, unwind: bb70];
++         goto -> bb83;
       }
   
       bb46: {
@@ -466,7 +466,7 @@
   
       bb47: {
           StorageDead(_13);
-          drop(_3) -> [return: bb48, unwind: bb72];
+          drop(_3) -> [return: bb48, unwind: bb70];
       }
   
       bb48: {
@@ -476,8 +476,8 @@
       }
   
       bb49: {
--         drop(_24) -> [return: bb50, unwind: bb76];
-+         goto -> bb89;
+-         drop(_24) -> [return: bb50, unwind: bb73];
++         goto -> bb84;
       }
   
       bb50: {
@@ -493,8 +493,8 @@
       }
   
       bb52: {
--         drop(_14) -> [return: bb53, unwind: bb79];
-+         goto -> bb90;
+-         drop(_14) -> [return: bb53, unwind: bb75];
++         goto -> bb85;
       }
   
       bb53: {
@@ -505,7 +505,7 @@
   
       bb54: {
 -         drop(_4) -> [return: bb55, unwind continue];
-+         goto -> bb91;
++         goto -> bb86;
       }
   
       bb55: {
@@ -535,136 +535,111 @@
       }
   
       bb61 (cleanup): {
--         drop(_44) -> [return: bb67, unwind terminate(cleanup)];
-+         goto -> bb67;
+-         drop(_44) -> [return: bb66, unwind terminate(cleanup)];
++         goto -> bb66;
       }
   
       bb62 (cleanup): {
--         drop(_45) -> [return: bb63, unwind terminate(cleanup)];
-+         goto -> bb63;
+          drop(_33) -> [return: bb63, unwind terminate(cleanup)];
       }
   
       bb63 (cleanup): {
-          drop(_33) -> [return: bb64, unwind terminate(cleanup)];
+          drop(_23) -> [return: bb64, unwind terminate(cleanup)];
       }
   
       bb64 (cleanup): {
-          drop(_23) -> [return: bb65, unwind terminate(cleanup)];
+          drop(_13) -> [return: bb65, unwind terminate(cleanup)];
       }
   
       bb65 (cleanup): {
-          drop(_13) -> [return: bb66, unwind terminate(cleanup)];
+          drop(_3) -> [return: bb66, unwind terminate(cleanup)];
       }
   
       bb66 (cleanup): {
-          drop(_3) -> [return: bb67, unwind terminate(cleanup)];
+-         drop(_34) -> [return: bb70, unwind terminate(cleanup)];
++         goto -> bb70;
       }
   
       bb67 (cleanup): {
--         drop(_34) -> [return: bb72, unwind terminate(cleanup)];
-+         goto -> bb72;
+          drop(_23) -> [return: bb68, unwind terminate(cleanup)];
       }
   
       bb68 (cleanup): {
--         drop(_35) -> [return: bb69, unwind terminate(cleanup)];
-+         goto -> bb69;
+          drop(_13) -> [return: bb69, unwind terminate(cleanup)];
       }
   
       bb69 (cleanup): {
-          drop(_23) -> [return: bb70, unwind terminate(cleanup)];
+          drop(_3) -> [return: bb70, unwind terminate(cleanup)];
       }
   
       bb70 (cleanup): {
-          drop(_13) -> [return: bb71, unwind terminate(cleanup)];
+-         drop(_24) -> [return: bb73, unwind terminate(cleanup)];
++         goto -> bb73;
       }
   
       bb71 (cleanup): {
-          drop(_3) -> [return: bb72, unwind terminate(cleanup)];
+          drop(_13) -> [return: bb72, unwind terminate(cleanup)];
       }
   
       bb72 (cleanup): {
--         drop(_24) -> [return: bb76, unwind terminate(cleanup)];
-+         goto -> bb76;
+          drop(_3) -> [return: bb73, unwind terminate(cleanup)];
       }
   
       bb73 (cleanup): {
--         drop(_25) -> [return: bb74, unwind terminate(cleanup)];
-+         goto -> bb74;
+-         drop(_14) -> [return: bb75, unwind terminate(cleanup)];
++         goto -> bb75;
       }
   
       bb74 (cleanup): {
-          drop(_13) -> [return: bb75, unwind terminate(cleanup)];
+          drop(_3) -> [return: bb75, unwind terminate(cleanup)];
       }
   
       bb75 (cleanup): {
-          drop(_3) -> [return: bb76, unwind terminate(cleanup)];
+-         drop(_4) -> [return: bb76, unwind terminate(cleanup)];
++         goto -> bb76;
       }
   
       bb76 (cleanup): {
--         drop(_14) -> [return: bb79, unwind terminate(cleanup)];
-+         goto -> bb79;
-      }
-  
-      bb77 (cleanup): {
--         drop(_15) -> [return: bb78, unwind terminate(cleanup)];
-+         goto -> bb78;
-      }
-  
-      bb78 (cleanup): {
-          drop(_3) -> [return: bb79, unwind terminate(cleanup)];
-      }
-  
-      bb79 (cleanup): {
--         drop(_4) -> [return: bb81, unwind terminate(cleanup)];
-+         goto -> bb81;
-      }
-  
-      bb80 (cleanup): {
--         drop(_5) -> [return: bb81, unwind terminate(cleanup)];
-+         goto -> bb81;
-      }
-  
-      bb81 (cleanup): {
           resume;
 +     }
 + 
-+     bb82: {
++     bb77: {
 +         goto -> bb32;
 +     }
 + 
-+     bb83: {
++     bb78: {
 +         goto -> bb33;
 +     }
 + 
-+     bb84: {
++     bb79: {
 +         goto -> bb34;
 +     }
 + 
-+     bb85: {
++     bb80: {
 +         goto -> bb35;
 +     }
 + 
-+     bb86: {
++     bb81: {
 +         goto -> bb36;
 +     }
 + 
-+     bb87: {
++     bb82: {
 +         goto -> bb41;
 +     }
 + 
-+     bb88: {
++     bb83: {
 +         goto -> bb46;
 +     }
 + 
-+     bb89: {
++     bb84: {
 +         goto -> bb50;
 +     }
 + 
-+     bb90: {
++     bb85: {
 +         goto -> bb53;
 +     }
 + 
-+     bb91: {
++     bb86: {
 +         goto -> bb55;
       }
   }

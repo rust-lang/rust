@@ -84,9 +84,8 @@ that contains only loops and breakable blocks. It tracks where a `break`,
 use std::mem;
 
 use interpret::ErrorHandled;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::HirId;
-use rustc_index::bit_set::GrowableBitSet;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::middle::region;
 use rustc_middle::mir::{self, *};
@@ -137,8 +136,6 @@ struct Scope {
     /// building process. This is a stack, so we always drop from the
     /// end of the vector (top of the stack) first.
     drops: Vec<DropData>,
-
-    moved_locals: GrowableBitSet<Local>,
 
     /// The drop index that will drop everything in and below this scope on an
     /// unwind path.
@@ -495,7 +492,6 @@ impl<'tcx> Scopes<'tcx> {
             source_scope: vis_scope,
             region_scope,
             drops: vec![],
-            moved_locals: GrowableBitSet::new_empty(),
             cached_unwind_block: None,
             cached_coroutine_drop_block: None,
         });
@@ -1559,25 +1555,34 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// spurious borrow-check errors -- the problem, ironically, is
     /// not the `DROP(_X)` itself, but the (spurious) unwind pathways
     /// that it creates. See #64391 for an example.
-    #[instrument(level = "debug", skip(self))]
-    pub(crate) fn record_operand_moved(&mut self, operand: &Operand<'tcx>) {
-        let local_scope = self.local_scope();
-        let scope = self.scopes.scopes.last_mut().unwrap();
-        assert_eq!(scope.region_scope, local_scope, "local scope is not the topmost scope!");
-
+    #[instrument(level = "debug", skip(self, operands))]
+    pub(crate) fn record_operands_moved<'o>(
+        &mut self,
+        operands: impl IntoIterator<Item = &'o Operand<'tcx>>,
+    ) where
+        'tcx: 'o,
+    {
         // look for moves of a local variable, like `MOVE(_X)`
-        let local_moved = match operand {
-            Operand::Copy(_) | Operand::Constant(_) | Operand::RuntimeChecks(_) => None,
-            Operand::Move(place) => place.as_local(),
-        };
+        let moved_locals: FxHashSet<Local> = operands
+            .into_iter()
+            .filter_map(|operand| match operand {
+                Operand::Copy(_) | Operand::Constant(_) | Operand::RuntimeChecks(_) => None,
+                Operand::Move(place) => place.as_local(),
+            })
+            .collect();
 
-        if let Some(local) = local_moved {
-            // check if we have a Drop for this operand and -- if so
-            // -- add it to the list of moved operands. Note that this
-            // local might not have been an operand created for this
-            // call, it could come from other places too.
-            scope.moved_locals.insert(local);
+        if moved_locals.is_empty() {
+            return;
         }
+
+        // We only remove drops from the innermost scope. Outer scopes may have branches
+        // or other funny control flow that we cannot know from here.
+        let scope = self.scopes.scopes.last_mut().unwrap();
+        scope.drops.retain(|drop| match drop.kind {
+            DropKind::Storage => true,
+            DropKind::ForLint | DropKind::Value => !moved_locals.contains(&drop.local),
+        });
+        scope.invalidate_cache();
     }
 
     // Other
@@ -1873,14 +1878,6 @@ where
                     dropline_to = Some(coroutine_drops.drop_nodes[idx].next);
                 }
 
-                // If the operand has been moved, and we are not on an unwind
-                // path, then don't generate the drop. (We only take this into
-                // account for non-unwind paths so as not to disturb the
-                // caching mechanism.)
-                if scope.moved_locals.contains(local) {
-                    continue;
-                }
-
                 unwind_drops.add_entry_point(block, unwind_to);
                 if let Some(to) = dropline_to
                     && is_async_drop(local)
@@ -1915,14 +1912,6 @@ where
                     );
                     debug_assert_eq!(unwind_drops.drop_nodes[unwind_to].data.kind, drop_data.kind);
                     unwind_to = unwind_drops.drop_nodes[unwind_to].next;
-                }
-
-                // If the operand has been moved, and we are not on an unwind
-                // path, then don't generate the drop. (We only take this into
-                // account for non-unwind paths so as not to disturb the
-                // caching mechanism.)
-                if scope.moved_locals.contains(local) {
-                    continue;
                 }
 
                 cfg.push(

@@ -51,7 +51,7 @@
 -         _5 = yield(move _6) -> [resume: bb1, drop: bb6];
 +         _13 = copy (_1.0: &mut {coroutine@$DIR/coroutine_storage_dead_unwind.rs:24:5: 24:7});
 +         _12 = discriminant((*_13));
-+         switchInt(move _12) -> [0: bb18, 1: bb16, 2: bb15, 3: bb14, otherwise: bb17];
++         switchInt(move _12) -> [0: bb17, 1: bb15, 2: bb14, 3: bb13, otherwise: bb16];
       }
   
       bb1: {
@@ -88,9 +88,9 @@
   
       bb4: {
 -         StorageDead(_3);
--         drop(_1) -> [return: bb5, unwind: bb14];
+-         drop(_1) -> [return: bb5, unwind: bb13];
 +         nop;
-+         goto -> bb12;
++         goto -> bb11;
       }
   
       bb5: {
@@ -103,87 +103,83 @@
 -         StorageDead(_6);
 -         StorageDead(_5);
 -         StorageDead(_4);
--         drop(_3) -> [return: bb7, unwind: bb15];
+-         drop(_3) -> [return: bb7, unwind: bb14];
 +     bb6 (cleanup): {
 +         StorageDead(_10);
 +         StorageDead(_9);
-+         goto -> bb9;
++         goto -> bb8;
       }
   
 -     bb7: {
 -         StorageDead(_3);
--         drop(_1) -> [return: bb8, unwind: bb14];
+-         drop(_1) -> [return: bb8, unwind: bb13];
 +     bb7 (cleanup): {
++         StorageDead(_8);
++         StorageDead(_7);
 +         goto -> bb8;
       }
   
 -     bb8: {
 -         coroutine_drop;
 +     bb8 (cleanup): {
-+         StorageDead(_8);
-+         StorageDead(_7);
++         nop;
 +         goto -> bb9;
       }
   
       bb9 (cleanup): {
 -         StorageDead(_10);
 -         StorageDead(_9);
--         goto -> bb12;
+-         goto -> bb11;
 +         nop;
 +         goto -> bb10;
       }
   
       bb10 (cleanup): {
-+         nop;
-          goto -> bb11;
-      }
-  
-      bb11 (cleanup): {
 -         StorageDead(_8);
 -         StorageDead(_7);
--         goto -> bb12;
-+         goto -> bb13;
+-         goto -> bb11;
++         goto -> bb12;
       }
   
--     bb12 (cleanup): {
+-     bb11 (cleanup): {
 -         StorageDead(_4);
--         goto -> bb13;
-+     bb12: {
+-         goto -> bb12;
++     bb11: {
 +         goto -> bb5;
       }
   
-      bb13 (cleanup): {
+      bb12 (cleanup): {
 -         StorageDead(_3);
--         drop(_1) -> [return: bb14, unwind terminate(cleanup)];
+-         drop(_1) -> [return: bb13, unwind terminate(cleanup)];
 +         discriminant((*_13)) = 2;
 +         resume;
       }
   
--     bb14 (cleanup): {
+-     bb13 (cleanup): {
 -         resume;
-+     bb14: {
++     bb13: {
 +         StorageLive(_5);
 +         StorageLive(_6);
 +         _5 = move _2;
 +         goto -> bb1;
       }
   
--     bb15 (cleanup): {
+-     bb14 (cleanup): {
 -         StorageDead(_3);
--         drop(_1) -> [return: bb14, unwind terminate(cleanup)];
+-         drop(_1) -> [return: bb13, unwind terminate(cleanup)];
++     bb14: {
++         assert(const false, "coroutine resumed after panicking") -> [success: bb14, unwind continue];
++     }
++ 
 +     bb15: {
-+         assert(const false, "coroutine resumed after panicking") -> [success: bb15, unwind continue];
++         assert(const false, "coroutine resumed after completion") -> [success: bb15, unwind continue];
 +     }
 + 
 +     bb16: {
-+         assert(const false, "coroutine resumed after completion") -> [success: bb16, unwind continue];
-+     }
-+ 
-+     bb17: {
 +         unreachable;
 +     }
 + 
-+     bb18: {
++     bb17: {
 +         nop;
 +         (((*_13) as variant#3).0: Foo) = Foo(const 5_i32);
 +         nop;

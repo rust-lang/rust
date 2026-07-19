@@ -491,10 +491,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     .collect();
 
                 let success = this.cfg.start_new_block();
-
-                for operand in args.iter() {
-                    this.record_operand_moved(&operand.node);
-                }
+                this.record_operands_moved(args.iter().map(|operand| &operand.node));
 
                 debug!("expr_into_dest: fn_span={:?}", fn_span);
 
@@ -704,9 +701,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     user_ty,
                     active_field_index,
                 ));
-                for operand in fields.iter() {
-                    this.record_operand_moved(operand);
-                }
+                this.record_operands_moved(&fields);
                 this.cfg.push_assign(
                     block,
                     source_info,
@@ -856,7 +851,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 let place = unpack!(block = this.as_place(block, expr_id));
                 let operand = this.consume_by_copy_or_move(place);
-                this.record_operand_moved(&operand);
+                this.record_operands_moved([&operand]);
                 let rvalue = Rvalue::Use(operand, WithRetag::Yes);
                 this.cfg.push_assign(block, source_info, destination, rvalue);
                 block.unit()
@@ -883,7 +878,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     block =
                         this.as_operand(block, scope, value, LocalInfo::Boring, NeedsTemporary::No)
                 );
-                this.record_operand_moved(&value);
+                this.record_operands_moved([&value]);
                 let resume = this.cfg.start_new_block();
                 this.cfg.terminate(
                     block,
