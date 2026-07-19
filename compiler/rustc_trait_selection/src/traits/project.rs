@@ -1016,7 +1016,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                     // Always project `ErrorGuaranteed`, since this will just help
                     // us propagate `TyKind::Error` around which suppresses ICEs
                     // and spurious, unrelated inference errors.
-                    Err(ErrorGuaranteed { .. }) => true,
+                    Err(_) => true,
                 }
             }
             ImplSource::Builtin(BuiltinImplSource::Misc | BuiltinImplSource::Trivial, _) => {
