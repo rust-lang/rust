@@ -35,7 +35,6 @@ use super::{
     format_interp_error,
 };
 use crate::enter_trace_span;
-use crate::interpret::ensure_monomorphic_enough;
 
 // for the validation errors
 #[rustfmt::skip]
@@ -1584,9 +1583,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         start_in_may_dangle: bool,
     ) -> InterpResult<'tcx> {
         trace!("validate_operand_internal: {:?}, {:?}", *val, val.layout.ty);
-
-        // We can't check validity if there are any generics left.
-        ensure_monomorphic_enough(val.layout.ty)?;
 
         // Run the visitor.
         self.run_for_validation_mut(|ecx| {
