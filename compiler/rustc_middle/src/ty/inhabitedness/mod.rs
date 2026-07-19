@@ -339,8 +339,12 @@ fn is_opsem_inhabited_recursor<'tcx, SEEN>(
             })
         }
 
-        ty::Error(_)
-        | ty::Infer(..)
+        ty::Error(_error_guaranteed) => {
+            // We have a token proving there was an error, so we can return a dummy value.
+            true
+        }
+
+        ty::Infer(..)
         | ty::Placeholder(..)
         | ty::Bound(..)
         | ty::Param(..)
