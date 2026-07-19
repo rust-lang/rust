@@ -68,6 +68,7 @@ RUSTC_BLESS=1 cargo test
 | `b <path>:<line>`, `break <path>:<line>` | Add a source-location breakpoint. |
 | `l`, `locals` | List source-level locals in the current frame by name. |
 | `p <local>`, `print <local>` | Print one MIR local by numeric id. |
+| `f <alloc> <offset>`, `follow <alloc> <offset>` | Render allocation bytes from an offset, including the full allocation size. |
 | `q`, `quit` | Exit Priroda. |
 
 ## Value Output

@@ -26,6 +26,7 @@ Name: inner, Id: _1 as variant#1.0, Ty: i32, Value: <unsupported-projection>
 Name: <none>, Id: _1, Ty: std::option::Option<&i32>, Value: [{ALLOC_PTR}]
 Name: pointer, Id: _1 as variant#1.0, Ty: &i32, Value: <unsupported-projection>
 Name: deref, Id: _1 as variant#1.0.*, Ty: i32, Value: <unsupported-projection>
+(priroda) Allocation alloc2+0: [05 00 00 00]
 (priroda) Hit breakpoint
 {MANIFEST_DIR}/tests/ui/locals_corpus_async.rs:20
 (priroda) Name: <none>, Id: _0, Ty: (), Value: <uninit>
