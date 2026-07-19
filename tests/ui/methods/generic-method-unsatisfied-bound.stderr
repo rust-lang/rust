@@ -1,12 +1,12 @@
 error[E0277]: the trait bound `Params: Plugin<i32>` is not satisfied
-  --> $DIR/issue-45801.rs:21:9
+  --> $DIR/generic-method-unsatisfied-bound.rs:24:9
    |
 LL |     req.get_ref::<Params>();
    |         ^^^^^^^ unsatisfied trait bound
    |
 help: the trait `Plugin<i32>` is not implemented for `Params`
       but trait `Plugin<Foo>` is implemented for it
-  --> $DIR/issue-45801.rs:14:1
+  --> $DIR/generic-method-unsatisfied-bound.rs:17:1
    |
 LL | impl Plugin<Foo> for Params {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^

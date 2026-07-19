@@ -1,3 +1,6 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/45801>.
+//! This used to ICE.
+
 struct Params;
 
 pub trait Plugin<E: ?Sized> {
