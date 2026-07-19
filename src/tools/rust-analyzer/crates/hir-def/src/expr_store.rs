@@ -154,9 +154,6 @@ struct ExpressionOnlyStore {
     /// and it does not bother us because we use this list for two things: constructing `ExprScopes`, which
     /// works fine with nested exprs, and retrieving inference results, and we copy the inner const's inference
     /// into the outer const.
-    // FIXME: Array repeat is not problematic indeed, but this could still break with exprs in types,
-    // which we do not visit for `ExprScopes` (they're fine for inference though). We either need to visit them,
-    // or use a more complicated search.
     expr_roots: SmallVec<[ExprRoot; 1]>,
 }
 
