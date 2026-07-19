@@ -1724,6 +1724,50 @@ impl f64 {
     pub const fn algebraic_rem(self, rhs: f64) -> f64 {
         intrinsics::frem_algebraic(self, rhs)
     }
+
+    /// Computes `(self * a) + b` with nondeterministic rounding.
+    ///
+    /// This is similar to [`mul_add`], but the intermediate result may be
+    /// rounded differently depending on the implementation. The operation is
+    /// either executed as a single fused multiply-add instruction, or as
+    /// separate multiply and add instructions.
+    ///
+    /// The choice of which one is used is unspecified and non-deterministic:
+    /// it may vary by target, optimization level, and surrounding code, and
+    /// two evaluations of the same operation may even produce different
+    /// results.
+    ///
+    /// # Precision
+    ///
+    /// The result of this operation is not guaranteed: it is either the result
+    /// of [`mul_add`] (one rounding of the infinite-precision result) or of
+    /// `self * a + b` (two roundings, with an intermediate rounding of the
+    /// product).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(float_mul_add_relaxed)]
+    ///
+    /// let result = 1.0f64.mul_add_relaxed(2.0, 3.0);
+    /// assert_eq!(result, 5.0);
+    ///
+    /// // When the fused and unfused operations round differently, either
+    /// // result may be returned:
+    /// // - 9.020562075079397e-19 is the fused result (one rounding)
+    /// // - 1.734723475976807e-18 is the unfused result (two roundings)
+    /// let r = 0.1_f64.mul_add_relaxed(0.1_f64, -0.01_f64);
+    /// assert!(r == 9.020562075079397e-19 || r == 1.734723475976807e-18);
+    /// ```
+    ///
+    /// [`mul_add`]: ../std/primitive.f64.html#method.mul_add
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[doc(alias = "fmuladd")]
+    #[unstable(feature = "float_mul_add_relaxed", issue = "151770")]
+    #[inline]
+    pub const fn mul_add_relaxed(self, a: f64, b: f64) -> f64 {
+        intrinsics::fmuladdf64(self, a, b)
+    }
 }
 
 #[unstable(feature = "core_float_math", issue = "137578")]
