@@ -10,7 +10,7 @@ error: size: Size(16 bytes)
 LL | enum UninhabitedVariantSpace {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: backend_repr: ScalarPair { a: Initialized { value: Int(I8, false), valid_range: 0..=1 }, b: Initialized { value: Int(I8, false), valid_range: 0..=255 }, b_offset: Size(1 bytes) }
+error: backend_repr: ScalarPair { a: u8 is 0..=1, b: u8 is .., b_offset: Size(1 bytes) }
   --> $DIR/enum.rs:21:1
    |
 LL | enum ScalarPairDifferingSign {

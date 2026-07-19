@@ -4,14 +4,7 @@ error: layout_of((*const T) is !null) = Layout {
                abi: Align(8 bytes),
            },
            backend_repr: Scalar(
-               Initialized {
-                   value: Pointer(
-                       AddressSpace(
-                           0,
-                       ),
-                   ),
-                   valid_range: 1..=18446744073709551615,
-               },
+               pointer is 1..=18446744073709551615,
            ),
            fields: Arbitrary {
                offsets: [
@@ -24,11 +17,7 @@ error: layout_of((*const T) is !null) = Layout {
            largest_niche: Some(
                Niche {
                    offset: Size(0 bytes),
-                   value: Pointer(
-                       AddressSpace(
-                           0,
-                       ),
-                   ),
+                   value: pointer,
                    valid_range: 1..=18446744073709551615,
                },
            ),
@@ -51,14 +40,7 @@ error: layout_of(Option<(*const ()) is !null>) = Layout {
                abi: Align(8 bytes),
            },
            backend_repr: Scalar(
-               Initialized {
-                   value: Pointer(
-                       AddressSpace(
-                           0,
-                       ),
-                   ),
-                   valid_range: 0..=18446744073709551615,
-               },
+               pointer is 0..=18446744073709551615,
            ),
            fields: Arbitrary {
                offsets: [
@@ -71,14 +53,7 @@ error: layout_of(Option<(*const ()) is !null>) = Layout {
            largest_niche: None,
            uninhabited: false,
            variants: Multiple {
-               tag: Initialized {
-                   value: Pointer(
-                       AddressSpace(
-                           0,
-                       ),
-                   ),
-                   valid_range: 0..=18446744073709551615,
-               },
+               tag: pointer is 0..=18446744073709551615,
                tag_encoding: Niche {
                    untagged_variant: 1,
                    niche_variants: 0..=0,
@@ -99,14 +74,7 @@ error: layout_of(Option<(*const ()) is !null>) = Layout {
                    VariantLayout {
                        size: Size(8 bytes),
                        backend_repr: Scalar(
-                           Initialized {
-                               value: Pointer(
-                                   AddressSpace(
-                                       0,
-                                   ),
-                               ),
-                               valid_range: 1..=18446744073709551615,
-                           },
+                           pointer is 1..=18446744073709551615,
                        ),
                        field_offsets: [
                            Size(0 bytes),
@@ -117,11 +85,7 @@ error: layout_of(Option<(*const ()) is !null>) = Layout {
                        largest_niche: Some(
                            Niche {
                                offset: Size(0 bytes),
-                               value: Pointer(
-                                   AddressSpace(
-                                       0,
-                                   ),
-                               ),
+                               value: pointer,
                                valid_range: 1..=18446744073709551615,
                            },
                        ),
@@ -144,21 +108,8 @@ error: layout_of((*const [u8]) is !null) = Layout {
                abi: Align(8 bytes),
            },
            backend_repr: ScalarPair {
-               a: Initialized {
-                   value: Pointer(
-                       AddressSpace(
-                           0,
-                       ),
-                   ),
-                   valid_range: 1..=18446744073709551615,
-               },
-               b: Initialized {
-                   value: Int(
-                       I64,
-                       false,
-                   ),
-                   valid_range: 0..=18446744073709551615,
-               },
+               a: pointer is 1..=18446744073709551615,
+               b: u64 is ..,
                b_offset: Size(8 bytes),
            },
            fields: Arbitrary {
@@ -172,11 +123,7 @@ error: layout_of((*const [u8]) is !null) = Layout {
            largest_niche: Some(
                Niche {
                    offset: Size(0 bytes),
-                   value: Pointer(
-                       AddressSpace(
-                           0,
-                       ),
-                   ),
+                   value: pointer,
                    valid_range: 1..=18446744073709551615,
                },
            ),
