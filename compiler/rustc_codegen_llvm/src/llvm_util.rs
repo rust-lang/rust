@@ -639,6 +639,19 @@ fn llvm_features_by_flags(sess: &Session, features: &mut Vec<String>) {
             features.push("+reserve-x18".into());
         }
     }
+
+    // -Zmips-nan2008
+    if sess.opts.unstable_opts.mips_nan2008 {
+        match sess.target.arch {
+            Arch::Mips | Arch::Mips32r6 | Arch::Mips64 | Arch::Mips64r6 => {
+                features.push("+nan2008".into());
+            }
+            _ => {
+                sess.dcx()
+                    .emit_fatal(errors::MipsNan2008InvalidArch { arch: sess.target.arch.desc() });
+            }
+        }
+    }
 }
 
 /// The list of LLVM features computed from CLI flags (`-Ctarget-cpu`, `-Ctarget-feature`,

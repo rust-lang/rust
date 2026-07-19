@@ -211,6 +211,12 @@ pub(crate) struct FixedX18InvalidArch<'a> {
 }
 
 #[derive(Diagnostic)]
+#[diag("the `-Zmips-nan2008` flag is not supported on the `{$arch}` architecture")]
+pub(crate) struct MipsNan2008InvalidArch<'a> {
+    pub arch: &'a str,
+}
+
+#[derive(Diagnostic)]
 #[diag("`-Zpacked-stack` is incompatible with `backchain` target feature")]
 #[note(
     "enabling both `-Zpacked-stack` and the `backchain` target feature is incompatible with the default s390x ABI. Switch to s390x-unknown-none-softfloat if you need both attributes"
