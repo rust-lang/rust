@@ -7,6 +7,16 @@ use crate::tests::check;
 use super::{check_infer, check_no_mismatches, check_types};
 
 #[test]
+fn closure_in_enum_discriminant_does_not_panic() {
+    check(
+        r#"
+        enum Enum { X = || {} }
+                     // ^^^^^ expected isize, got impl Fn()
+        "#,
+    );
+}
+
+#[test]
 fn bug_484() {
     check_infer(
         r#"
