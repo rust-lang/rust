@@ -1586,7 +1586,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         trace!("validate_operand_internal: {:?}, {:?}", *val, val.layout.ty);
 
         // We can't check validity if there are any generics left.
-        ensure_monomorphic_enough(*self.tcx, val.layout.ty)?;
+        ensure_monomorphic_enough(val.layout.ty)?;
 
         // Run the visitor.
         self.run_for_validation_mut(|ecx| {
