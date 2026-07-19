@@ -23,6 +23,7 @@ use intern::Symbol;
 use la_arena::{Idx, RawIdx};
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use syntax::ast;
+use thin_vec::ThinVec;
 use type_ref::TypeRefId;
 
 use crate::{
@@ -335,7 +336,7 @@ pub enum Expr {
     },
     RecordLit {
         path: Path,
-        fields: Box<[RecordLitField]>,
+        fields: ThinVec<RecordLitField>,
         spread: RecordSpread,
     },
     Field {
@@ -399,6 +400,9 @@ pub enum Expr {
     InlineAsm(InlineAsm),
     IncludeBytes,
 }
+
+#[cfg(target_pointer_width = "64")]
+const _: () = assert!(std::mem::size_of::<Expr>() == 48);
 
 impl Expr {
     pub fn precedence(&self) -> ast::prec::ExprPrecedence {
