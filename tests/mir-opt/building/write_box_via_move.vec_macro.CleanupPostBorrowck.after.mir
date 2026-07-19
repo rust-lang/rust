@@ -19,7 +19,7 @@ fn vec_macro() -> Vec<i32> {
 
     bb2: {
         StorageDead(_2);
-        _0 = std::boxed::box_assume_init_into_vec_unsafe::<i32, 8>(move _1) -> [return: bb3, unwind: bb4];
+        _0 = std::boxed::box_assume_init_into_vec_unsafe::<i32, 8>(move _1) -> [return: bb3, unwind: bb5];
     }
 
     bb3: {

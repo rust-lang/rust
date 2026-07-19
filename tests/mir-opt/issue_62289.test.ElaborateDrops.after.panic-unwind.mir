@@ -78,7 +78,7 @@ fn test() -> Option<Vec<u32>> {
 
     bb7: {
         StorageDead(_3);
-        _1 = std::boxed::box_assume_init_into_vec_unsafe::<u32, 1>(move _2) -> [return: bb8, unwind: bb11];
+        _1 = std::boxed::box_assume_init_into_vec_unsafe::<u32, 1>(move _2) -> [return: bb8, unwind continue];
     }
 
     bb8: {
