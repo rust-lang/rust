@@ -77,7 +77,7 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 /* fn_attrs */ None,
                 Some(fn_abi),
                 llfn,
-                None, // we know the ABI here
+                ReturnSlot::Direct, // we know the ABI here
                 &[msg.0, msg.1],
                 None,
                 None,
