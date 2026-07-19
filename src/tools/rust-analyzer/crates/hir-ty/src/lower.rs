@@ -1673,9 +1673,10 @@ fn type_for_struct_constructor<'db>(
         FieldsShape::Unit => Some(type_for_adt(db, def.into())),
         FieldsShape::Tuple => {
             let interner = DbInterner::new_no_crate(db);
+            let def = CallableDefId::StructId(def);
             Some(EarlyBinder::bind(Ty::new_fn_def(
                 interner,
-                CallableDefId::StructId(def).into(),
+                def.into(),
                 GenericArgs::identity_for_item(interner, def.into()),
             )))
         }
@@ -1693,10 +1694,11 @@ fn type_for_enum_variant_constructor<'db>(
         FieldsShape::Unit => Some(type_for_adt(db, def.loc(db).parent.into())),
         FieldsShape::Tuple => {
             let interner = DbInterner::new_no_crate(db);
+            let def = CallableDefId::EnumVariantId(def);
             Some(EarlyBinder::bind(Ty::new_fn_def(
                 interner,
-                CallableDefId::EnumVariantId(def).into(),
-                GenericArgs::identity_for_item(interner, def.loc(db).parent.into()),
+                def.into(),
+                GenericArgs::identity_for_item(interner, def.into()),
             )))
         }
     }
