@@ -34,6 +34,7 @@
     - [Codegen backend testing](./tests/codegen-backend-tests/intro.md)
         - [Cranelift codegen backend](./tests/codegen-backend-tests/cg_clif.md)
         - [GCC codegen backend](./tests/codegen-backend-tests/cg_gcc.md)
+    - [Autodiff CI job](./tests/autodiff-ci-job.md)
     - [Performance testing](./tests/perf.md)
     - [Pre-stabilization CI job for the next solver and polonius alpha](./tests/x86_64-gnu-next-trait-solver-polonius-ci-job.md)
     - [Misc info](./tests/misc.md)
