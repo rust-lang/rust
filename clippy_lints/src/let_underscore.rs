@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::ty::{implements_trait, is_must_use_ty};
+use clippy_utils::ty::{describe_must_use_type, implements_trait, opt_must_use_path};
 use clippy_utils::{is_from_proc_macro, is_must_use_func_call, paths};
 use rustc_hir::{LetStmt, LocalSource, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
@@ -176,8 +176,7 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                         diag.help("consider awaiting the future or dropping explicitly with `std::mem::drop`");
                     },
                 );
-            } else if is_must_use_ty(cx, cx.typeck_results().expr_ty(init)) {
-                #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
+            } else if let Some(must_use_path) = opt_must_use_path(cx, cx.typeck_results().expr_ty(init)) {
                 span_lint_and_then(
                     cx,
                     LET_UNDERSCORE_MUST_USE,
@@ -185,6 +184,11 @@ impl<'tcx> LateLintPass<'tcx> for LetUnderscore {
                     "non-binding `let` on an expression with `#[must_use]` type",
                     |diag| {
                         diag.help("consider explicitly using expression value");
+                        let ty_span = local.ty.map_or(init.span, |ty| ty.span);
+                        diag.span_note(
+                            ty_span,
+                            format!("type is {}", describe_must_use_type(cx, &must_use_path)),
+                        );
                     },
                 );
             } else if is_must_use_func_call(cx, init) {

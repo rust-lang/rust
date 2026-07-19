@@ -3,16 +3,19 @@
 #![allow(clippy::module_name_repetitions)]
 
 use core::ops::ControlFlow;
+use itertools::Itertools as _;
 use rustc_abi::{BackendRepr, FieldsShape, VariantIdx, Variants};
 use rustc_ast::ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_errors::pluralize;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{Expr, FnDecl, LangItem, find_attr};
+use rustc_hir::{Expr, ExprKind, FnDecl, LangItem};
 use rustc_hir_analysis::lower_ty;
 use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_lint::LateContext;
+use rustc_lint::unused::must_use::{IsTyMustUse, MustUsePath, is_ty_must_use};
 use rustc_middle::mir::ConstValue;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::traits::EvaluationResult;
@@ -319,54 +322,112 @@ pub fn has_drop<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
     }
 }
 
-// Returns whether the `ty` has `#[must_use]` attribute. If `ty` is a `Result`/`ControlFlow`
-// whose `Err`/`Break` payload is an uninhabited type, the `Ok`/`Continue` payload type
-// will be used instead. See <https://github.com/rust-lang/rust/pull/148214>.
-pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
-    match ty.kind() {
-        ty::Adt(adt, args) => match cx.tcx.get_diagnostic_name(adt.did()) {
-            Some(sym::Result) if args.type_at(1).is_privately_uninhabited(cx.tcx, cx.typing_env()) => {
-                is_must_use_ty(cx, args.type_at(0))
-            },
-            Some(sym::ControlFlow) if args.type_at(0).is_privately_uninhabited(cx.tcx, cx.typing_env()) => {
-                is_must_use_ty(cx, args.type_at(1))
-            },
-            _ => find_attr!(cx.tcx, adt.did(), MustUse { .. }),
+/// Returns whether the `ty` has `#[must_use]` attribute, or acts like it does according to the
+/// compiler determination. For example, if `ty` is a `Result`/`ControlFlow` whose `Err`/`Break`
+/// payload is an uninhabited type, the `Ok`/`Continue` payload type will be used instead.
+///
+/// The [`MustUsePath`] can be used to describe the type through [`describe_must_use_type`].
+pub fn opt_must_use_path<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<MustUsePath> {
+    // `is_ty_must_use` requires an expression, whose `hir_id` will be used to determine whether
+    // certain types are visibly uninhabited from the module containing the expression.
+    // `cx.last_node_with_lint_attrs` is initialized to the crate/module `hir_id` when linting
+    // a new crate/module. If it is overriden, it is with an `hir_id` pertaining to the same
+    // create/module. We can use this in a dummy expression instead of asking all callers
+    // to provide a local `hir_id` which would not add more information.
+    let dummy_expr = Expr {
+        hir_id: cx.last_node_with_lint_attrs,
+        span: DUMMY_SP,
+        kind: ExprKind::Ret(None),
+    };
+    match is_ty_must_use(cx, ty, &dummy_expr) {
+        IsTyMustUse::Yes(path) => Some(path),
+        _ => None,
+    }
+}
+
+/// Describe a [`MustUsePath`] returned by [`is_must_use_ty`].
+pub fn describe_must_use_type(cx: &LateContext<'_>, path: &MustUsePath) -> String {
+    describe_must_use_type_inner(cx, path, "", "", 1)
+}
+
+// This is a rip-off from the compiler's `rustc_lint/src/unused/must_use.rs`
+fn describe_must_use_type_inner(
+    cx: &LateContext<'_>,
+    path: &MustUsePath,
+    descr_pre: &str,
+    descr_post: &str,
+    plural_len: usize,
+) -> String {
+    let plural_suffix = pluralize!(plural_len);
+
+    match path {
+        MustUsePath::Boxed(path) => {
+            let descr_pre = &format!("{descr_pre}boxed ");
+            describe_must_use_type_inner(cx, path, descr_pre, descr_post, plural_len)
         },
-        ty::Foreign(did) => find_attr!(cx.tcx, *did, MustUse { .. }),
-        ty::Slice(ty) | ty::Array(ty, _) | ty::RawPtr(ty, _) | ty::Ref(_, ty, _) => {
-            // for the Array case we don't need to care for the len == 0 case
-            // because we don't want to lint functions returning empty arrays
-            is_must_use_ty(cx, *ty)
+        MustUsePath::Pinned(path) => {
+            let descr_pre = &format!("{descr_pre}pinned ");
+            describe_must_use_type_inner(cx, path, descr_pre, descr_post, plural_len)
         },
-        ty::Tuple(args) => args.iter().any(|ty| is_must_use_ty(cx, ty)),
-        ty::Alias(
-            _,
-            AliasTy {
-                kind: ty::Opaque { def_id },
-                ..
-            },
-        ) => {
-            for (predicate, _) in cx.tcx.explicit_item_self_bounds(*def_id).skip_binder() {
-                if let ty::ClauseKind::Trait(trait_predicate) = predicate.kind().skip_binder()
-                    && find_attr!(cx.tcx, trait_predicate.trait_ref.def_id, MustUse { .. })
-                {
-                    return true;
+        MustUsePath::Opaque(path) => {
+            let descr_pre = &format!("{descr_pre}implementer{plural_suffix} of ");
+            describe_must_use_type_inner(cx, path, descr_pre, descr_post, plural_len)
+        },
+        MustUsePath::TraitObject(path) => {
+            let descr_post = &format!(" trait object{plural_suffix}{descr_post}");
+            describe_must_use_type_inner(cx, path, descr_pre, descr_post, plural_len)
+        },
+        MustUsePath::TupleElement(elems) => elems
+            .iter()
+            .map(|(index, path)| {
+                let descr_post = &format!(" in tuple element {index}");
+                describe_must_use_type_inner(cx, path, descr_pre, descr_post, plural_len)
+            })
+            .join(", "),
+        MustUsePath::Result(path) => {
+            let descr_post = &format!(" in a `Result` with an uninhabited error{descr_post}");
+            describe_must_use_type_inner(cx, path, descr_pre, descr_post, plural_len)
+        },
+        MustUsePath::ControlFlow(path) => {
+            let descr_post = &format!(" in a `ControlFlow` with an uninhabited break{descr_post}");
+            describe_must_use_type_inner(cx, path, descr_pre, descr_post, plural_len)
+        },
+        MustUsePath::Array(path, len) => {
+            let descr_pre = &format!("{descr_pre}array{plural_suffix} of ");
+            describe_must_use_type_inner(
+                cx,
+                path,
+                descr_pre,
+                descr_post,
+                plural_len.saturating_add(usize::try_from(*len).unwrap_or(usize::MAX)),
+            )
+        },
+        MustUsePath::Closure(_) => {
+            format!(
+                "{descr_pre}{} closure{plural_suffix}{descr_post}",
+                if plural_len == 1 {
+                    "one".to_string()
+                } else {
+                    plural_len.to_string()
                 }
-            }
-            false
+            )
         },
-        ty::Dynamic(binder, _) => {
-            for predicate in *binder {
-                if let ty::ExistentialPredicate::Trait(ref trait_ref) = predicate.skip_binder()
-                    && find_attr!(cx.tcx, trait_ref.def_id, MustUse { .. })
-                {
-                    return true;
+        MustUsePath::Coroutine(_) => {
+            format!(
+                "{descr_pre}{} coroutine{plural_suffix}{descr_post}",
+                if plural_len == 1 {
+                    "one".to_string()
+                } else {
+                    plural_len.to_string()
                 }
-            }
-            false
+            )
         },
-        _ => false,
+        MustUsePath::Def(_, def_id, _) => {
+            format!(
+                "{descr_pre}`{}`{plural_suffix}{descr_post}",
+                cx.tcx.def_path_str(*def_id)
+            )
+        },
     }
 }
 
