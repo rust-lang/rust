@@ -95,7 +95,7 @@ use crate::sys::fd::FileDesc;
 pub use crate::sys::fs::common::exists;
 use crate::sys::helpers::run_path_with_cstr;
 use crate::sys::time::SystemTime;
-#[cfg(target_os = "linux")]
+#[cfg(all(target_os = "linux", not(target_env = "musl")))]
 use crate::sys::weak::syscall;
 #[cfg(target_os = "android")]
 use crate::sys::weak::weak;
@@ -174,66 +174,80 @@ cfg_has_statx! {{
     // We prefer `statx` on Linux if available, which contains file creation time,
     // as well as 64-bit timestamps of all kinds.
     // Default `stat64` contains no creation time and may have 32-bit `time_t`.
+    //
+    // We can unconditionally assume that musl targets have `statx` because musl
+    // takes care of falling back to fstatat and our musl version baseline is
+    // 1.2.5, which is the first release with statx support.
     unsafe fn try_statx(
         fd: c_int,
         path: *const c_char,
         flags: i32,
         mask: u32,
     ) -> Option<io::Result<FileAttr>> {
-        use crate::sync::atomic::{Atomic, AtomicU8, Ordering};
-
-        // Linux kernel prior to 4.11 or glibc prior to glibc 2.28 don't support `statx`.
-        // We check for it on first failure and remember availability to avoid having to
-        // do it again.
-        #[repr(u8)]
-        enum STATX_STATE{ Unknown = 0, Present, Unavailable }
-        static STATX_SAVED_STATE: Atomic<u8> = AtomicU8::new(STATX_STATE::Unknown as u8);
-
-        syscall!(
-            fn statx(
-                fd: c_int,
-                pathname: *const c_char,
-                flags: c_int,
-                mask: libc::c_uint,
-                statxbuf: *mut libc::statx,
-            ) -> c_int;
-        );
-
-        let statx_availability = STATX_SAVED_STATE.load(Ordering::Relaxed);
-        if statx_availability == STATX_STATE::Unavailable as u8 {
-            return None;
-        }
-
         let mut buf: libc::statx = mem::zeroed();
-        if let Err(err) = cvt(statx(fd, path, flags, mask, &mut buf)) {
-            if STATX_SAVED_STATE.load(Ordering::Relaxed) == STATX_STATE::Present as u8 {
+
+        #[cfg(target_env = "musl")]
+        {
+            if let Err(err) = cvt(libc::statx(fd, path, flags, mask, &mut buf)) {
                 return Some(Err(err));
             }
+        }
+        #[cfg(not(target_env = "musl"))]
+        {
+            use crate::sync::atomic::{Atomic, AtomicU8, Ordering};
 
-            // We're not yet entirely sure whether `statx` is usable on this kernel
-            // or not. Syscalls can return errors from things other than the kernel
-            // per se, e.g. `EPERM` can be returned if seccomp is used to block the
-            // syscall, or `ENOSYS` might be returned from a faulty FUSE driver.
-            //
-            // Availability is checked by performing a call which expects `EFAULT`
-            // if the syscall is usable.
-            //
-            // See: https://github.com/rust-lang/rust/issues/65662
-            //
-            // FIXME what about transient conditions like `ENOMEM`?
-            let err2 = cvt(statx(0, ptr::null(), 0, libc::STATX_BASIC_STATS | libc::STATX_BTIME, ptr::null_mut()))
-                .err()
-                .and_then(|e| e.raw_os_error());
-            if err2 == Some(libc::EFAULT) {
-                STATX_SAVED_STATE.store(STATX_STATE::Present as u8, Ordering::Relaxed);
-                return Some(Err(err));
-            } else {
-                STATX_SAVED_STATE.store(STATX_STATE::Unavailable as u8, Ordering::Relaxed);
+            // Linux kernel prior to 4.11 or glibc prior to glibc 2.28 don't support `statx`.
+            // We check for it on first failure and remember availability to avoid having to
+            // do it again.
+            #[repr(u8)]
+            enum STATX_STATE{ Unknown = 0, Present, Unavailable }
+            static STATX_SAVED_STATE: Atomic<u8> = AtomicU8::new(STATX_STATE::Unknown as u8);
+
+            syscall!(
+                fn statx(
+                    fd: c_int,
+                    pathname: *const c_char,
+                    flags: c_int,
+                    mask: libc::c_uint,
+                    statxbuf: *mut libc::statx,
+                ) -> c_int;
+            );
+
+            let statx_availability = STATX_SAVED_STATE.load(Ordering::Relaxed);
+            if statx_availability == STATX_STATE::Unavailable as u8 {
                 return None;
             }
-        }
-        if statx_availability == STATX_STATE::Unknown as u8 {
-            STATX_SAVED_STATE.store(STATX_STATE::Present as u8, Ordering::Relaxed);
+
+            if let Err(err) = cvt(statx(fd, path, flags, mask, &mut buf)) {
+                if STATX_SAVED_STATE.load(Ordering::Relaxed) == STATX_STATE::Present as u8 {
+                    return Some(Err(err));
+                }
+
+                // We're not yet entirely sure whether `statx` is usable on this kernel
+                // or not. Syscalls can return errors from things other than the kernel
+                // per se, e.g. `EPERM` can be returned if seccomp is used to block the
+                // syscall, or `ENOSYS` might be returned from a faulty FUSE driver.
+                //
+                // Availability is checked by performing a call which expects `EFAULT`
+                // if the syscall is usable.
+                //
+                // See: https://github.com/rust-lang/rust/issues/65662
+                //
+                // FIXME what about transient conditions like `ENOMEM`?
+                let err2 = cvt(statx(0, ptr::null(), 0, libc::STATX_BASIC_STATS | libc::STATX_BTIME, ptr::null_mut()))
+                    .err()
+                    .and_then(|e| e.raw_os_error());
+                if err2 == Some(libc::EFAULT) {
+                    STATX_SAVED_STATE.store(STATX_STATE::Present as u8, Ordering::Relaxed);
+                    return Some(Err(err));
+                } else {
+                    STATX_SAVED_STATE.store(STATX_STATE::Unavailable as u8, Ordering::Relaxed);
+                    return None;
+                }
+            }
+            if statx_availability == STATX_STATE::Unknown as u8 {
+                STATX_SAVED_STATE.store(STATX_STATE::Present as u8, Ordering::Relaxed);
+            }
         }
 
         // We cannot fill `stat64` exhaustively because of private padding fields.
