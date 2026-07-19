@@ -5,6 +5,7 @@ use hir_expand::name::Name;
 use intern::{Symbol, sym};
 use span::SyntaxContext;
 use syntax::{AstPtr, AstToken as _, ast};
+use thin_vec::ThinVec;
 
 use crate::{
     builtin_type::BuiltinUint,
@@ -875,7 +876,11 @@ impl<'db> ExprCollector<'db> {
             match self.lang_path(lang_items.FormatPlaceholder) {
                 Some(path) => self.alloc_expr_desugared(Expr::RecordLit {
                     path,
-                    fields: Box::new([position, flags, precision, width]),
+                    fields: {
+                        let mut fields = ThinVec::with_capacity(4);
+                        fields.extend([position, flags, precision, width]);
+                        fields
+                    },
                     spread: RecordSpread::None,
                 }),
                 None => self.missing_expr(),

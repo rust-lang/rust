@@ -1310,10 +1310,10 @@ impl<'db> ExprCollector<'db> {
 
     /// Returns `None` if and only if the expression is `#[cfg]`d out.
     fn maybe_collect_expr(&mut self, expr: ast::Expr) -> Option<ExprId> {
-        let syntax_ptr = AstPtr::new(&expr);
         if !self.check_cfg(&expr) {
             return None;
         }
+        let syntax_ptr = AstPtr::new(&expr);
 
         // FIXME: Move some of these arms out into separate methods for clarity
         Some(match expr {
@@ -1589,7 +1589,7 @@ impl<'db> ExprCollector<'db> {
                     };
                     Expr::RecordLit { path, fields, spread }
                 } else {
-                    Expr::RecordLit { path, fields: Box::default(), spread: RecordSpread::None }
+                    Expr::RecordLit { path, fields: ThinVec::default(), spread: RecordSpread::None }
                 };
 
                 self.alloc_expr(record_lit, syntax_ptr)
