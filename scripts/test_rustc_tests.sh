@@ -144,7 +144,7 @@ rm tests/ui/consts/const-mut-refs-crate.rs # same
 rm tests/ui/abi/large-byval-align.rs # exceeds implementation limit of Cranelift
 rm -r tests/run-make/short-ice # ICE backtrace begin/end marker mismatch
 rm tests/ui/codegen/huge-stacks.rs # Cranelift doesn't allow stack frames to exceed 4GB
-rm -r tests/run-make/doctests-test_harness # different thread names likely caused by -Zpanic-abort-tests
+rm -r tests/run-make/rustdoc/doctest/test_harness # different thread names likely caused by -Zpanic-abort-tests
 
 # doesn't work due to the way the rustc test suite is invoked.
 # should work when using ./x.py test the way it is intended
