@@ -1013,7 +1013,7 @@ impl<'a> Parser<'a> {
                             .span_label(self.prev_token.span, "item list ends here");
                     }
                     if is_unnecessary_semicolon {
-                        err.span_suggestion(
+                        err.span_suggestion_verbose(
                             semicolon_span,
                             "consider removing this semicolon",
                             "",
