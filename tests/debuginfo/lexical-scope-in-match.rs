@@ -1,7 +1,8 @@
 //@ compile-flags:-g
 //@ disable-gdb-pretty-printers
 //@ ignore-backends: gcc
-//@ min-lldb-version: 2100
+//@ min-apple-lldb-version: 2100
+//@ min-llvm-lldb-version: 21.0.0
 
 // === GDB TESTS ===================================================================================
 

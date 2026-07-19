@@ -1,3 +1,5 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/4541>.
+//! This used to segfault caused by double-free.
 //@ run-pass
 
 fn parse_args() -> String {

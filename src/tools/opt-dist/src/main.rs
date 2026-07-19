@@ -327,7 +327,7 @@ fn execute_pipeline(
         // therefore the LLVM artifacts on disk are not "tainted" with BOLT instrumentation and they can be reused.
         let libdir = env.build_artifacts().join("stage2").join("lib");
         timer.section("Stage 3 (BOLT)", |stage| {
-            let llvm_profile = if env.build_llvm() {
+            let llvm_data = if env.build_llvm() {
                 stage.section("Build PGO optimized LLVM", |stage| {
                     Bootstrap::build(env)
                         .with_llvm_bolt_ldflags()
@@ -356,17 +356,7 @@ fn execute_pipeline(
                     })
                 })?;
                 print_free_disk_space()?;
-
-                // Now optimize the library with BOLT. The `libLLVM-XXX.so` library is actually hard-linked
-                // from several places, and this specific path (`llvm_lib`) will *not* be packaged into
-                // the final dist build. However, when BOLT optimizes an artifact, it does so *in-place*,
-                // therefore it will actually optimize all the hard links, which means that the final
-                // packaged `libLLVM.so` file *will* be BOLT optimized.
-                stage.section("Optimize", |_| {
-                    bolt_optimize(&llvm_lib, &llvm_profile, env)
-                        .context("Could not optimize LLVM with BOLT")
-                })?;
-                Some(llvm_profile)
+                Some((llvm_lib, llvm_profile))
             } else {
                 None
             };
@@ -385,14 +375,40 @@ fn execute_pipeline(
             })?;
             print_free_disk_space()?;
 
-            // Now optimize the library with BOLT.
-            stage.section("Optimize", |_| {
-                bolt_optimize(&rustc_lib, &rustc_profile, env)
-                    .context("Could not optimize rustc with BOLT")
+            stage.section("Optimize LLVM and rustc with BOLT", |_| {
+                std::thread::scope(|scope| {
+                    let mut handles = vec![];
+                    // Now optimize the libLLVM library with BOLT. The `libLLVM-XXX.so` library is actually hard-linked
+                    // from several places, and this specific path (`llvm_lib`) will *not* be packaged into
+                    // the final dist build. However, when BOLT optimizes an artifact, it does so *in-place*,
+                    // therefore it will actually optimize all the hard links, which means that the final
+                    // packaged `libLLVM.so` file *will* be BOLT optimized.
+                    if let Some((llvm_lib, llvm_profile)) = &llvm_data {
+                        handles.push(scope.spawn(move || {
+                            bolt_optimize(&llvm_lib, &llvm_profile, env)
+                                .context("Could not optimize LLVM with BOLT")?;
+                            anyhow::Ok(())
+                        }));
+                    }
+
+                    handles.push(scope.spawn(|| {
+                        // Now optimize the librustc_driver library with BOLT.
+                        bolt_optimize(&rustc_lib, &rustc_profile, env)
+                            .context("Could not optimize rustc with BOLT")?;
+                        Ok(())
+                    }));
+
+                    for handle in handles {
+                        handle.join().unwrap()?;
+                    }
+
+                    anyhow::Ok(())
+                })?;
+                Ok(())
             })?;
             // LLVM is not being cleared here. Either we built it and we want to use the BOLT-optimized LLVM, or we
             // didn't build it, so we don't want to remove it.
-            Ok(vec![llvm_profile, Some(rustc_profile)])
+            Ok(vec![llvm_data.map(|(_, profile)| profile), Some(rustc_profile)])
         })?
     } else {
         vec![]

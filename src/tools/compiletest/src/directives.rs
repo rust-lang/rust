@@ -8,7 +8,7 @@ use semver::Version;
 use tracing::*;
 
 use crate::common::{Config, Debugger, PassFailMode, TestMode};
-use crate::debuggers::{extract_cdb_version, extract_gdb_version};
+use crate::debuggers::{LldbVersion, extract_cdb_version, extract_gdb_version};
 use crate::directives::auxiliary::parse_and_update_aux;
 pub(crate) use crate::directives::auxiliary::{AuxCrate, AuxProps};
 use crate::directives::directive_names::{
@@ -1101,21 +1101,46 @@ fn ignore_lldb(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
         return IgnoreDecision::Continue;
     }
 
-    if let Some(actual_version) = config.lldb_version {
-        if line.name == "min-lldb-version"
-            && let Some(rest) = line.value_after_colon().map(str::trim)
-        {
-            let min_version = rest.parse().unwrap_or_else(|e| {
-                panic!("Unexpected format of LLDB version string: {}\n{:?}", rest, e);
-            });
-            // Ignore if actual version is smaller the minimum required
-            // version
-            if actual_version < min_version {
-                return IgnoreDecision::Ignore {
-                    reason: format!("ignored when the LLDB version is {rest}"),
+    if let Some(actual_version) = &config.lldb_version {
+        match (line.name, actual_version) {
+            ("min-apple-lldb-version", LldbVersion::Apple(vers)) => {
+                let Some(rest) = line.value_after_colon().map(str::trim) else {
+                    return IgnoreDecision::Continue;
                 };
+
+                let LldbVersion::Apple(min_vers) = LldbVersion::apple_from_str(rest) else {
+                    unreachable!()
+                };
+
+                if vers < &min_vers {
+                    return IgnoreDecision::Ignore {
+                        reason: format!(
+                            "ignored when the Apple LLDB version is {}.{}.{}.{}",
+                            vers[0], vers[1], vers[2], vers[3]
+                        ),
+                    };
+                }
             }
-        }
+            ("min-llvm-lldb-version", LldbVersion::Llvm(vers)) => {
+                let Some(rest) = line.value_after_colon().map(str::trim) else {
+                    return IgnoreDecision::Continue;
+                };
+
+                let LldbVersion::Llvm(min_vers) = LldbVersion::llvm_from_str(rest) else {
+                    unreachable!()
+                };
+
+                if vers < &min_vers {
+                    return IgnoreDecision::Ignore {
+                        reason: format!(
+                            "ignored when the LLDB version is {}.{}.{}",
+                            vers.major, vers.minor, vers.patch
+                        ),
+                    };
+                }
+            }
+            _ => {}
+        };
     }
     IgnoreDecision::Continue
 }
