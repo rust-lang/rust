@@ -126,6 +126,7 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, shim: ty::ShimKind<'tcx>) -> Body<'tcx> {
         }
         ty::ShimKind::ThreadLocal(..) => build_thread_local_shim(tcx, shim),
         ty::ShimKind::Clone(def_id, ty) => build_clone_shim(tcx, def_id, ty),
+        ty::ShimKind::TailCall(_def_id) => todo!(),
         ty::ShimKind::FnPtrAsPtr(def_id, ty) => build_fn_ptr_as_ptr_shim(tcx, def_id, ty),
         ty::ShimKind::FnPtrFromPtr(def_id, ty) => build_fn_ptr_from_ptr_shim(tcx, def_id, ty),
         ty::ShimKind::FutureDropPoll(def_id, proxy_ty, impl_ty) => {
