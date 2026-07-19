@@ -9,8 +9,8 @@ use hir_def::{
     AdtId, HasModule, VariantId,
     attrs::AttrFlags,
     hir::{
-        Array, AsmOperand, BindingId, Expr, ExprId, ExprOrPatId, MatchArm, Pat, PatId,
-        RecordLitField, RecordSpread, Statement,
+        Array, AsmOperand, BindingId, Expr, ExprId, ExprOrPatId, ExprOrPatIdPacked, MatchArm, Pat,
+        PatId, RecordLitField, RecordSpread, Statement,
     },
     resolver::ValueNs,
 };
@@ -144,7 +144,7 @@ pub(crate) struct PlaceWithOrigin {
 
 impl PlaceWithOrigin {
     fn new_no_projections<'db>(
-        origin: impl Into<ExprOrPatId>,
+        origin: impl Into<ExprOrPatIdPacked>,
         base_ty: Ty<'db>,
         base: PlaceBase,
     ) -> PlaceWithOrigin {
@@ -166,7 +166,7 @@ impl PlaceWithOrigin {
         PlaceWithOrigin { origins, place: Place { base_ty: base_ty.store(), base, projections } }
     }
 
-    fn push_projection(&mut self, projection: Projection, origin: ExprOrPatId) {
+    fn push_projection(&mut self, projection: Projection, origin: ExprOrPatIdPacked) {
         self.place.projections.push(projection);
         for origin_stack in &mut self.origins {
             origin_stack.push(origin);
@@ -1392,7 +1392,7 @@ impl<'db, D: Delegate<'db>> ExprUseVisitor<'_, '_, 'db, D> {
 
     fn cat_local(
         &mut self,
-        id: ExprOrPatId,
+        id: ExprOrPatIdPacked,
         expr_ty: Ty<'db>,
         var_id: BindingId,
     ) -> Result<PlaceWithOrigin> {
@@ -1408,7 +1408,11 @@ impl<'db, D: Delegate<'db>> ExprUseVisitor<'_, '_, 'db, D> {
     /// Note: the actual upvar access contains invisible derefs of closure
     /// environment and upvar reference as appropriate. Only regionck cares
     /// about these dereferences, so we let it compute them as needed.
-    fn cat_upvar(&mut self, hir_id: ExprOrPatId, var_id: BindingId) -> Result<PlaceWithOrigin> {
+    fn cat_upvar(
+        &mut self,
+        hir_id: ExprOrPatIdPacked,
+        var_id: BindingId,
+    ) -> Result<PlaceWithOrigin> {
         let var_ty = self.expect_and_resolve_type(
             self.cx.result.type_of_binding.get(var_id).map(|it| it.as_ref()),
         )?;
@@ -1420,13 +1424,13 @@ impl<'db, D: Delegate<'db>> ExprUseVisitor<'_, '_, 'db, D> {
         ))
     }
 
-    fn cat_rvalue(&self, hir_id: ExprOrPatId, expr_ty: Ty<'db>) -> PlaceWithOrigin {
+    fn cat_rvalue(&self, hir_id: ExprOrPatIdPacked, expr_ty: Ty<'db>) -> PlaceWithOrigin {
         PlaceWithOrigin::new_no_projections(hir_id, expr_ty, PlaceBase::Rvalue)
     }
 
     fn cat_projection(
         &self,
-        node: ExprOrPatId,
+        node: ExprOrPatIdPacked,
         mut base_place: PlaceWithOrigin,
         ty: Ty<'db>,
         kind: ProjectionKind,
@@ -1455,7 +1459,7 @@ impl<'db, D: Delegate<'db>> ExprUseVisitor<'_, '_, 'db, D> {
 
     fn cat_deref(
         &mut self,
-        node: ExprOrPatId,
+        node: ExprOrPatIdPacked,
         mut base_place: PlaceWithOrigin,
     ) -> Result<PlaceWithOrigin> {
         let base_curr_ty = base_place.place.ty();
@@ -1712,7 +1716,7 @@ impl<'db, D: Delegate<'db>> ExprUseVisitor<'_, '_, 'db, D> {
     /// Represents the place matched on by a deref pattern's interior.
     fn pat_deref_place(
         &mut self,
-        node: ExprOrPatId,
+        node: ExprOrPatIdPacked,
         base_place: PlaceWithOrigin,
         inner: PatId,
         target_ty: Ty<'db>,
@@ -1746,7 +1750,7 @@ impl<'db, D: Delegate<'db>> ExprUseVisitor<'_, '_, 'db, D> {
     /// FIXME(never_patterns): update this comment once the aforementioned MIR builder
     /// code is changed to be insensitive to inhhabitedness.
     #[instrument(skip(self), level = "debug")]
-    fn is_multivariant_adt(&mut self, node: ExprOrPatId, ty: Ty<'db>) -> bool {
+    fn is_multivariant_adt(&mut self, node: ExprOrPatIdPacked, ty: Ty<'db>) -> bool {
         if let TyKind::Adt(def, _) = self.cx.structurally_resolve_type(node, ty).kind() {
             // Note that if a non-exhaustive SingleVariant is defined in another crate, we need
             // to assume that more cases will be added to the variant in the future. This mean

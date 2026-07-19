@@ -10,7 +10,7 @@ use hir_def::{
     AdtId, LocalFieldId, VariantId,
     expr_store::path::Path,
     hir::{
-        BindingAnnotation, BindingId, Expr, ExprId, ExprOrPatId, Literal, Pat, PatId,
+        BindingAnnotation, BindingId, Expr, ExprId, ExprOrPatIdPacked, Literal, Pat, PatId,
         RecordFieldPat,
     },
     resolver::ValueNs,
@@ -853,7 +853,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
         // Subtyping doesn't matter here, as the value is some kind of scalar.
         let mut demand_eqtype = |x: &mut _| {
             if let Some((_, x_ty, x_expr)) = *x {
-                _ = self.demand_eqtype(ExprOrPatId::from(x_expr), expected, x_ty);
+                _ = self.demand_eqtype(ExprOrPatIdPacked::from(x_expr), expected, x_ty);
             }
         };
         demand_eqtype(&mut lhs);
@@ -868,7 +868,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
         // We require types to be resolved here so that we emit inference failure
         // rather than "_ is not a char or numeric".
         let ty = self.structurally_resolve_type(
-            lhs_expr.or(rhs_expr).map(ExprOrPatId::ExprId).unwrap_or(pat.into()),
+            lhs_expr.or(rhs_expr).map(ExprOrPatIdPacked::from).unwrap_or(pat.into()),
             expected,
         );
         if !(ty.is_numeric() || ty.is_char() || ty.references_error()) {

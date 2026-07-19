@@ -125,7 +125,7 @@ fn check_closure_captures(#[rust_analyzer::rust_fixture] ra_fixture: &str, expec
                         .info
                         .sources
                         .iter()
-                        .flat_map(|span| match span.final_source() {
+                        .flat_map(|span| match span.final_source().unpack() {
                             ExprOrPatId::ExprId(expr) => {
                                 vec![text_range(db, source_map.expr_syntax(expr).unwrap())]
                             }

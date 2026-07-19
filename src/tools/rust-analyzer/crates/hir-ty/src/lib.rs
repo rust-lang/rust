@@ -67,7 +67,7 @@ use hir_def::{
     GenericDefId, HasModule, LifetimeParamId, ModuleId, StaticId, TypeAliasId, TypeOrConstParamId,
     TypeParamId,
     expr_store::{Body, ExpressionStore},
-    hir::{BindingId, ExprId, ExprOrPatId, PatId},
+    hir::{BindingId, ExprId, ExprOrPatId, ExprOrPatIdPacked, PatId},
     resolver::{HasResolver, Resolver, TypeNs},
     type_ref::{Rawness, TypeRefId},
 };
@@ -531,9 +531,9 @@ pub enum Span {
 }
 impl_from!(ExprId, PatId, BindingId, TypeRefId for Span);
 
-impl From<ExprOrPatId> for Span {
-    fn from(value: ExprOrPatId) -> Self {
-        match value {
+impl From<ExprOrPatIdPacked> for Span {
+    fn from(value: ExprOrPatIdPacked) -> Self {
+        match value.unpack() {
             ExprOrPatId::ExprId(idx) => idx.into(),
             ExprOrPatId::PatId(idx) => idx.into(),
         }

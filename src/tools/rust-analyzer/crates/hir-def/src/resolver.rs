@@ -22,7 +22,7 @@ use crate::{
     TypeOrConstParamId, TypeParamId, UseId, VariantId,
     builtin_type::BuiltinType,
     expr_store::{
-        HygieneId,
+        ExpressionStore, HygieneId,
         path::Path,
         scope::{ExprScopes, ScopeId},
     },
@@ -1071,8 +1071,11 @@ impl<'db> Scope<'db> {
                 }
             }
             Scope::ExprScope(scope) => {
-                if let Some((label, name)) = scope.expr_scopes.label(scope.scope_id) {
-                    acc.add(&name, ScopeDef::Label(label))
+                if let Some(label) = scope.expr_scopes.label(scope.scope_id) {
+                    acc.add(
+                        &ExpressionStore::of(db, scope.owner)[label].name,
+                        ScopeDef::Label(label),
+                    )
                 }
                 scope.expr_scopes.entries(scope.scope_id).iter().for_each(|e| {
                     acc.add_local(e.name(), e.binding());
