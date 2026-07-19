@@ -18,7 +18,7 @@ use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::PlaceRef;
 use rustc_codegen_ssa::traits::{
     BackendTypes, BaseTypeCodegenMethods, BuilderMethods, ConstCodegenMethods,
-    LayoutTypeCodegenMethods, OverflowOp, StaticBuilderMethods,
+    LayoutTypeCodegenMethods, OverflowOp, ReturnSlot, StaticBuilderMethods,
 };
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::bug;
@@ -608,7 +608,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         fn_attrs: Option<&CodegenFnAttrs>,
         fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
         func: RValue<'gcc>,
-        indirect_return_pointer: Option<RValue<'gcc>>,
+        return_slot: ReturnSlot<RValue<'gcc>>,
         args: &[RValue<'gcc>],
         then: Block<'gcc>,
         catch: Block<'gcc>,
@@ -619,8 +619,8 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
         let current_block = self.block;
         self.block = try_block;
-        let call =
-            self.call(typ, fn_attrs, fn_abi, func, indirect_return_pointer, args, None, instance); // FIXME(antoyo): use funclet here?
+        // FIXME(antoyo): use funclet here?
+        let call = self.call(typ, fn_attrs, fn_abi, func, return_slot, args, None, instance);
         self.block = current_block;
 
         let return_value =
@@ -648,15 +648,14 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         fn_attrs: Option<&CodegenFnAttrs>,
         fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
         func: RValue<'gcc>,
-        indirect_return_pointer: Option<RValue<'gcc>>,
+        return_slot: ReturnSlot<RValue<'gcc>>,
         args: &[RValue<'gcc>],
         then: Block<'gcc>,
         catch: Block<'gcc>,
         _funclet: Option<&Funclet>,
         instance: Option<Instance<'tcx>>,
     ) -> RValue<'gcc> {
-        let call_site =
-            self.call(typ, fn_attrs, fn_abi, func, indirect_return_pointer, args, None, instance);
+        let call_site = self.call(typ, fn_attrs, fn_abi, func, return_slot, args, None, instance);
         let condition = self.context.new_rvalue_from_int(self.bool_type, 1);
         self.llbb().end_with_conditional(self.location, condition, then, catch);
         if let Some(_fn_abi) = fn_abi {
@@ -1783,15 +1782,15 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         _fn_attrs: Option<&CodegenFnAttrs>,
         fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
         func: RValue<'gcc>,
-        indirect_return_pointer: Option<RValue<'gcc>>,
+        return_slot: ReturnSlot<RValue<'gcc>>,
         args: &[RValue<'gcc>],
         funclet: Option<&Funclet>,
         _instance: Option<Instance<'tcx>>,
     ) -> RValue<'gcc> {
         // FIXME: change this in the `rustc_codegen_gcc` repo after the sync, to use the `libgccjit` indirect return suppport.
-        let args = match indirect_return_pointer {
-            None => args.to_vec(),
-            Some(sret_ptr) => {
+        let args = match return_slot {
+            ReturnSlot::Direct => args.to_vec(),
+            ReturnSlot::Indirect(sret_ptr) => {
                 let mut args = args.to_vec();
                 // Prepend the indirect return pointer
                 args.insert(0, sret_ptr);
@@ -1820,6 +1819,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         _fn_attrs: Option<&CodegenFnAttrs>,
         _fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
         _llfn: Self::Value,
+        _return_slot: ReturnSlot<Self::Value>,
         _args: &[Self::Value],
         _funclet: Option<&Self::Funclet>,
         _instance: Option<Instance<'tcx>>,

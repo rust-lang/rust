@@ -165,8 +165,8 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
 
     /// Call `fn_ptr` of `fn_abi` with the arguments `llargs`, the optional
     /// return destination `destination` and the unwind action `unwind`.
-    /// The `indirect_return_pointer` is specified for functions returning
-    /// via `PassMode::indirect`, and points to a buffer, where the return value
+    /// The `return_slot` is [`ReturnSlot::Indirect`] for functions returning
+    /// via `PassMode::Indirect`, and points to a buffer where the return value
     /// shall be stored.
     fn do_call<Bx: BuilderMethods<'a, 'tcx>>(
         &self,
@@ -174,7 +174,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         bx: &mut Bx,
         fn_abi: &'tcx FnAbi<'tcx, Ty<'tcx>>,
         fn_ptr: Bx::Value,
-        indirect_return_pointer: Option<Bx::Value>,
+        return_slot: ReturnSlot<Bx::Value>,
         llargs: &[Bx::Value],
         destination: Option<(ReturnDest<'tcx, Bx::Value>, mir::BasicBlock)>,
         mut unwind: mir::UnwindAction,
@@ -248,8 +248,23 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
             }
         };
 
+        debug_assert_eq!(
+            return_slot.is_indirect(),
+            fn_abi.ret.is_indirect(),
+            "a return slot must be provided if and only if the return is `PassMode::Indirect`",
+        );
+
         if kind == CallKind::Tail {
-            bx.tail_call(fn_ty, caller_attrs, fn_abi, fn_ptr, llargs, self.funclet(fx), instance);
+            bx.tail_call(
+                fn_ty,
+                caller_attrs,
+                fn_abi,
+                fn_ptr,
+                return_slot,
+                llargs,
+                self.funclet(fx),
+                instance,
+            );
             return MergingSucc::False;
         }
 
@@ -264,7 +279,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
                 caller_attrs,
                 Some(fn_abi),
                 fn_ptr,
-                indirect_return_pointer,
+                return_slot,
                 llargs,
                 ret_llbb,
                 unwind_block,
@@ -296,7 +311,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
                 caller_attrs,
                 Some(fn_abi),
                 fn_ptr,
-                indirect_return_pointer,
+                return_slot,
                 llargs,
                 self.funclet(fx),
                 instance,
@@ -724,7 +739,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             bx,
             fn_abi,
             drop_fn,
-            None, /*Drops always return nothing, so they can't have an indirect return.*/
+            ReturnSlot::Direct,
             args,
             Some((ReturnDest::Nothing, target)),
             unwind,
@@ -829,7 +844,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             bx,
             fn_abi,
             llfn,
-            None, /*The assert functions don't return anything, so they can't return indirectly*/
+            ReturnSlot::Direct,
             &args,
             None,
             unwind,
@@ -861,7 +876,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             bx,
             fn_abi,
             llfn,
-            None /*The codegen terminator does not return anything - so it can't have indirect reutns*/,
+            ReturnSlot::Direct,
             &[],
             None,
             mir::UnwindAction::Unreachable,
@@ -931,7 +946,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             bx,
             fn_abi,
             llfn,
-            None, /*Panics return nothing, so they can't have an indirect return.*/
+            ReturnSlot::Direct,
             &[msg.0, msg.1],
             target.as_ref().map(|bb| (ReturnDest::Nothing, *bb)),
             unwind,
@@ -1212,22 +1227,24 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // We still need to call `make_return_dest` even if there's no `target`, since
         // `fn_abi.ret` could be `PassMode::Indirect`, even if it is uninhabited,
         // and `make_return_dest` adds the return-place indirect pointer to `llargs`.
-        let (destination, indirect_return) = match kind {
+        let (destination, return_slot) = match kind {
             CallKind::Normal => {
-                let (return_dest, indirect_return) =
+                let (return_dest, return_slot) =
                     self.make_return_dest(bx, destination, &fn_abi.ret);
-                (target.map(|target| (return_dest, target)), indirect_return)
+                (target.map(|target| (return_dest, target)), return_slot)
             }
             CallKind::Tail => {
-                if fn_abi.ret.is_indirect() {
+                let return_slot = if fn_abi.ret.is_indirect() {
                     match self.make_return_dest(bx, destination, &fn_abi.ret) {
-                        (ReturnDest::Nothing, _) => {}
+                        (ReturnDest::Nothing, return_slot) => return_slot,
                         _ => bug!(
                             "tail calls to functions with indirect returns cannot store into a destination"
                         ),
                     }
-                }
-                (None, None)
+                } else {
+                    ReturnSlot::Direct
+                };
+                (None, return_slot)
             }
         };
 
@@ -1452,7 +1469,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             bx,
             fn_abi,
             fn_ptr,
-            indirect_return,
+            return_slot,
             &llargs,
             destination,
             unwind,
@@ -2376,7 +2393,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 None,
                 Some(fn_abi),
                 fn_ptr,
-                None, /*This function does not return indirectly.*/
+                ReturnSlot::Direct,
                 &[],
                 funclet.as_ref(),
                 None,
@@ -2416,10 +2433,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         bx: &mut Bx,
         dest: mir::Place<'tcx>,
         fn_ret: &ArgAbi<'tcx, Ty<'tcx>>,
-    ) -> (ReturnDest<'tcx, Bx::Value>, Option<Bx::Value>) {
+    ) -> (ReturnDest<'tcx, Bx::Value>, ReturnSlot<Bx::Value>) {
         // If the return is ignored, we can just return a do-nothing `ReturnDest`.
         if fn_ret.is_ignore() {
-            return (ReturnDest::Nothing, None);
+            return (ReturnDest::Nothing, ReturnSlot::Direct);
         }
         let dest = if let Some(index) = dest.as_local() {
             match self.locals[index] {
@@ -2433,9 +2450,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // but the calling convention has an indirect return.
                         let tmp = PlaceRef::alloca(bx, fn_ret.layout);
                         tmp.storage_live(bx);
-                        (ReturnDest::IndirectOperand(tmp, index), Some(tmp.val.llval))
+                        (
+                            ReturnDest::IndirectOperand(tmp, index),
+                            ReturnSlot::Indirect(tmp.val.llval),
+                        )
                     } else {
-                        (ReturnDest::DirectOperand(index), None)
+                        (ReturnDest::DirectOperand(index), ReturnSlot::Direct)
                     };
                 }
                 LocalRef::Operand(_) => {
@@ -2455,9 +2475,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // to create a temporary.
                 span_bug!(self.mir.span, "can't directly store to unaligned value");
             }
-            (ReturnDest::Nothing, Some(dest.val.llval))
+            (ReturnDest::Nothing, ReturnSlot::Indirect(dest.val.llval))
         } else {
-            (ReturnDest::Store(dest), None)
+            (ReturnDest::Store(dest), ReturnSlot::Direct)
         }
     }
 
