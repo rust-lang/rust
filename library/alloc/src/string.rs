@@ -1105,6 +1105,19 @@ impl String {
         self.vec.extend_from_slice(string.as_bytes())
     }
 
+    /// Appends a given string slice onto the end of this `String`, returning
+    /// [`TryReserveError`] otherwise.
+    #[cfg_attr(
+        not(no_global_oom_handling),
+        expect(
+            dead_code,
+            reason = "currently only used in IO module when global OOM handling is disabled"
+        )
+    )]
+    pub(crate) fn try_push_str(&mut self, string: &str) -> Result<(), TryReserveError> {
+        self.vec.try_extend_from_slice_of_bytes(string.as_bytes())
+    }
+
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     fn push_str_slice(&mut self, slice: &[&str]) {

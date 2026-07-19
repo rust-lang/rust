@@ -51,7 +51,7 @@ use crate::mir::place::PlaceRef;
 use crate::traits::*;
 use crate::{
     CachedModuleCodegen, CodegenLintLevelSpecs, CrateInfo, EiiLinkageImplInfo, EiiLinkageInfo,
-    ModuleCodegen, errors, meth, mir,
+    ModuleCodegen, diagnostics, meth, mir,
 };
 
 pub(crate) fn bin_op_to_icmp_predicate(op: BinOp, signed: bool) -> IntPredicate {
@@ -529,7 +529,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         let Some(llfn) = cx.declare_c_main(llfty) else {
             // FIXME: We should be smart and show a better diagnostic here.
             let span = cx.tcx().def_span(rust_main_def_id);
-            cx.tcx().dcx().emit_fatal(errors::MultipleMainFunctions { span });
+            cx.tcx().dcx().emit_fatal(diagnostics::MultipleMainFunctions { span });
         };
 
         // `main` should respect same config for frame pointer elimination as rest of code
@@ -698,14 +698,14 @@ pub fn codegen_crate<
 ) -> OngoingCodegen<B> {
     if tcx.sess.target.need_explicit_cpu && tcx.sess.opts.cg.target_cpu.is_none() {
         // The target has no default cpu, but none is set explicitly
-        tcx.dcx().emit_fatal(errors::CpuRequired);
+        tcx.dcx().emit_fatal(diagnostics::CpuRequired);
     }
 
     if let Some(target_cpu) = &tcx.sess.opts.cg.target_cpu
         && tcx.sess.target.unsupported_cpus.contains(&target_cpu.into())
     {
         // The target cpu is explicitly listed as an unsupported cpu
-        tcx.dcx().emit_fatal(errors::CpuUnsupported { target_cpu: target_cpu.clone() });
+        tcx.dcx().emit_fatal(diagnostics::CpuUnsupported { target_cpu: target_cpu.clone() });
     }
 
     let cgu_name_builder = &mut CodegenUnitNameBuilder::new(tcx);

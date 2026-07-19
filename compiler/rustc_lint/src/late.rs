@@ -198,7 +198,6 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
     }
 
     fn visit_variant_data(&mut self, s: &'tcx hir::VariantData<'tcx>) {
-        lint_callback!(self, check_struct_def, s);
         hir_visit::walk_struct_def(self, s);
     }
 

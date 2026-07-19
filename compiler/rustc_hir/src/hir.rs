@@ -1380,13 +1380,6 @@ impl Attribute {
         }
     }
 
-    pub fn unwrap_normal_item(self) -> AttrItem {
-        match self {
-            Attribute::Unparsed(normal) => *normal,
-            _ => panic!("unexpected parsed attribute"),
-        }
-    }
-
     pub fn value_lit(&self) -> Option<&MetaItemLit> {
         match &self {
             Attribute::Unparsed(n) => match n.as_ref() {

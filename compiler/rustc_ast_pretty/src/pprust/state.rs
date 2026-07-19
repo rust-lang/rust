@@ -15,9 +15,9 @@ use rustc_ast::tokenstream::{Spacing, TokenStream, TokenTree};
 use rustc_ast::util::classify;
 use rustc_ast::util::comments::{Comment, CommentStyle};
 use rustc_ast::{
-    self as ast, AttrArgs, BindingMode, BlockCheckMode, ByRef, DelimArgs, GenericArg, GenericBound,
-    InlineAsmOperand, InlineAsmOptions, InlineAsmRegOrRegClass, InlineAsmTemplatePiece, PatKind,
-    RangeEnd, RangeSyntax, Safety, SelfKind, Term, attr,
+    self as ast, AttrArgs, AttrKind, BindingMode, BlockCheckMode, ByRef, DelimArgs, GenericArg,
+    GenericBound, InlineAsmOperand, InlineAsmOptions, InlineAsmRegOrRegClass,
+    InlineAsmTemplatePiece, PatKind, RangeEnd, RangeSyntax, Safety, SelfKind, Term, attr,
 };
 use rustc_span::edition::Edition;
 use rustc_span::source_map::SourceMap;
@@ -670,10 +670,14 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     }
 
     fn print_attribute_inline(&mut self, attr: &ast::Attribute, is_inline: bool) -> bool {
-        if attr.has_name(sym::cfg_trace) || attr.has_name(sym::cfg_attr_trace) {
-            // It's not a valid identifier, so avoid printing it
-            // to keep the printed code reasonably parse-able.
-            return false;
+        use ast::SyntheticAttr::*;
+        match attr.kind {
+            AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace) => {
+                // These are internal synthetic attributes with no syntax, so avoid printing them
+                // to keep the printed code reasonably parse-able.
+                return false;
+            }
+            AttrKind::Normal(_) | AttrKind::DocComment(..) => {}
         }
         if !is_inline {
             self.hardbreak_if_not_bol();
@@ -688,6 +692,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                 self.print_attr_item(&normal.item, attr.span);
                 self.word("]");
             }
+            ast::AttrKind::Synthetic(..) => unreachable!(), // due to early return above
             ast::AttrKind::DocComment(comment_kind, data) => {
                 self.word(doc_comment_to_string(
                     DocFragmentKind::Sugared(*comment_kind),
@@ -709,7 +714,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             }
             ast::Safety::Default | ast::Safety::Safe(_) => {}
         }
-        match &item.args.unparsed_ref().expect("Parsed attributes are never printed") {
+        match &item.args {
             AttrArgs::Delimited(DelimArgs { dspan: _, delim, tokens }) => self.print_mac_common(
                 Some(MacHeader::Path(&item.path)),
                 false,

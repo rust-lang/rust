@@ -985,6 +985,11 @@
 # Instrument the Rust compiler, so that when executed, it will gather profiles
 # to this path.
 #pgo.rustc.generate = "/tmp/profiles/foo.profraw"
+# Use the following profile to PGO optimize rustdoc.
+#pgo.rustdoc.use = "/tmp/profiles/foo.profraw"
+# Instrument rustdoc, so that when executed, it will gather profiles
+# to this path.
+#pgo.rustdoc.generate = "/tmp/profiles/foo.profraw"
 # Use the following profile to PGO optimize LLVM.
 #pgo.llvm.use = "/tmp/profiles/foo.profraw"
 # Instrument LLVM, so that when executed, it will gather profiles

@@ -1786,6 +1786,21 @@ fn test_utf16_size_hint() {
 }
 
 #[test]
+fn test_utf16_count() {
+    assert_eq!("".encode_utf16().count(), 0);
+    assert_eq!("a".encode_utf16().count(), 1);
+    assert_eq!("é".encode_utf16().count(), 1);
+    assert_eq!("字".encode_utf16().count(), 1);
+    assert_eq!("\u{1F4A9}".encode_utf16().count(), 2);
+    let mut iter = "\u{1F4A9}字éa".encode_utf16();
+    assert_eq!(iter.clone().count(), 5);
+    iter.next();
+    assert_eq!(iter.clone().count(), 4); // counting half of the surrogate pair
+    iter.next();
+    assert_eq!(iter.count(), 3);
+}
+
+#[test]
 fn starts_with_in_unicode() {
     assert!(!"├── Cargo.toml".starts_with("# "));
 }

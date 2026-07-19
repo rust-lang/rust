@@ -13,7 +13,7 @@ use clap::ValueEnum;
 #[cfg(feature = "tracing")]
 use tracing::instrument;
 
-pub use self::cargo::{Cargo, cargo_profile_var};
+pub use self::cargo::{Cargo, apply_pgo, cargo_profile_var};
 pub use crate::Compiler;
 use crate::core::build_steps::compile::{Std, StdLink};
 use crate::core::build_steps::tool::RustcPrivateCompilers;

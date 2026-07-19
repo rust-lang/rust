@@ -1,8 +1,11 @@
 use std::marker::PhantomData;
 
 use derive_where::derive_where;
+#[cfg(feature = "nightly")]
+use rustc_macros::StableHash_NoContext;
 use rustc_type_ir_macros::TypeVisitable_Generic;
 
+use crate::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder};
 use crate::inherent::*;
 use crate::upcast::Upcast;
 use crate::{
@@ -25,7 +28,8 @@ use crate::{
 /// e.g., `Unnormalized<I, I::Clause>`.
 ///
 /// [here]: https://rust-lang.zulipchat.com/#narrow/channel/364551-t-types.2Ftrait-system-refactor/topic/Eager.20normalization.2C.20ahoy.21/with/582996293
-#[derive_where(Clone, Copy, PartialOrd, PartialEq, Debug; T)]
+#[derive_where(Clone, Copy, PartialOrd, PartialEq, Eq, Hash, Debug; T)]
+#[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
 #[derive(TypeVisitable_Generic)]
 pub struct Unnormalized<I: Interner, T> {
     value: T,
@@ -84,6 +88,16 @@ impl<I: Interner, T> Unnormalized<I, T> {
         F: FnOnce(&T) -> U,
     {
         Unnormalized { value: f(&self.value), _tcx: PhantomData }
+    }
+}
+
+impl<I: Interner, T: TypeFoldable<I>> TypeFoldable<I> for Unnormalized<I, T> {
+    fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
+        Ok(Unnormalized::new(self.value.try_fold_with(folder)?))
+    }
+
+    fn fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self {
+        Unnormalized::new(self.value.fold_with(folder))
     }
 }
 

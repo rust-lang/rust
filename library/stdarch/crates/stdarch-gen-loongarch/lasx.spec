@@ -2324,11 +2324,13 @@ asm-fmts = xd, xj, ui8
 data-types = V4DI, V4DI, V4DI, USI
 
 /// lasx_xvbsrl_v
+impl = portable
 name = lasx_xvbsrl_v
 asm-fmts = xd, xj, ui5
 data-types = V32QI, V32QI, UQI
 
 /// lasx_xvbsll_v
+impl = portable
 name = lasx_xvbsll_v
 asm-fmts = xd, xj, ui5
 data-types = V32QI, V32QI, UQI
@@ -2696,6 +2698,7 @@ asm-fmts = xd, xj, xk
 data-types = UV32QI, UV32QI, UV32QI
 
 /// lasx_xvldi
+impl = portable
 name = lasx_xvldi
 asm-fmts = xd, i13
 data-types = V4DI, HI

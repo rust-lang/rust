@@ -365,7 +365,6 @@ macro_rules! common_visitor_and_walkers {
             crate::token::LitKind,
             crate::tokenstream::LazyAttrTokenStream,
             crate::tokenstream::TokenStream,
-            EarlyParsedAttribute,
             Movability,
             Mutability,
             Pinnedness,
@@ -374,6 +373,7 @@ macro_rules! common_visitor_and_walkers {
             rustc_span::ErrorGuaranteed,
             std::borrow::Cow<'_, str>,
             Symbol,
+            SyntheticAttr,
             u8,
             usize,
         );
@@ -461,7 +461,6 @@ macro_rules! common_visitor_and_walkers {
             ModSpans,
             MutTy,
             NormalAttr,
-            AttrItemKind,
             Parens,
             ParenthesizedArgs,
             PatFieldsRest,

@@ -48,7 +48,7 @@ pub mod base;
 pub mod codegen_attrs;
 pub mod common;
 pub mod debuginfo;
-pub mod errors;
+pub mod diagnostics;
 pub mod meth;
 pub mod mir;
 pub mod mono_item;

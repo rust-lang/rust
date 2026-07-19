@@ -1287,9 +1287,20 @@ impl<'a, T: Idx> Iterator for MixedBitIter<'a, T> {
 ///
 /// All operations that involve an element will panic if the element is equal
 /// to or greater than the domain size.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct GrowableBitSet<T: Idx> {
     bit_set: DenseBitSet<T>,
+}
+
+// Manually implemented to forward `clone_from`, and to avoid the `T: Clone` bound.
+impl<T: Idx> Clone for GrowableBitSet<T> {
+    fn clone(&self) -> Self {
+        Self { bit_set: self.bit_set.clone() }
+    }
+
+    fn clone_from(&mut self, source: &Self) {
+        self.bit_set.clone_from(&source.bit_set);
+    }
 }
 
 impl<T: Idx> Default for GrowableBitSet<T> {

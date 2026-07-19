@@ -320,7 +320,7 @@ pub fn parse_cfg_attr(
     features: Option<&Features>,
     lint_node_id: ast::NodeId,
 ) -> Option<(CfgEntry, Vec<(WithTokens<AttrItem>, Span)>)> {
-    match cfg_attr.get_normal_item().args.unparsed_ref().unwrap() {
+    match &cfg_attr.get_normal_item().args {
         ast::AttrArgs::Delimited(ast::DelimArgs { dspan, delim, tokens }) if !tokens.is_empty() => {
             check_cfg_attr_bad_delim(&sess.psess, *dspan, *delim);
             match parse_in(&sess.psess, tokens.clone(), "`cfg_attr` input", |p| {
@@ -349,7 +349,7 @@ pub fn parse_cfg_attr(
         }
         _ => {
             let (span, reason) = if let ast::AttrArgs::Delimited(ast::DelimArgs { dspan, .. }) =
-                cfg_attr.get_normal_item().args.unparsed_ref()?
+                cfg_attr.get_normal_item().args
             {
                 (dspan.entire(), AttributeParseErrorReason::ExpectedAtLeastOneArgument)
             } else {

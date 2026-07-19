@@ -38,7 +38,8 @@ impl IncrRevKind {
 impl TestCx<'_> {
     /// Runs a single revision of an incremental test.
     pub(super) fn run_incremental_test(&self) {
-        let revision = self.revision.expect("incremental tests require a list of revisions");
+        let revision =
+            self.variant.revision().expect("incremental tests require a list of revisions");
 
         // Incremental workproduct directory should have already been created.
         let incremental_dir = self.props.incremental_dir.as_ref().unwrap();

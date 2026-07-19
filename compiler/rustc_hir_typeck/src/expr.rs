@@ -593,6 +593,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     tcx,
                     res,
                     Some(expr),
+                    &[],
                     qpath,
                     expr.span,
                     E0533,

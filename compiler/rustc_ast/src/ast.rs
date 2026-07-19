@@ -3421,6 +3421,9 @@ pub enum AttrKind {
     /// A normal attribute.
     Normal(Box<NormalAttr>),
 
+    /// A synthetic attribute inserted by the compiler.
+    Synthetic(Box<SyntheticAttr>),
+
     /// A doc comment (e.g. `/// ...`, `//! ...`, `/** ... */`, `/*! ... */`).
     /// Doc attributes (e.g. `#[doc="..."]`) are represented with the `Normal`
     /// variant (which is much less compact and thus more expensive).
@@ -3430,7 +3433,8 @@ pub enum AttrKind {
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct NormalAttr {
     pub item: AttrItem,
-    // Tokens for the full attribute, e.g. `#[foo]`, `#![bar]`.
+    // Tokens for the full attribute, e.g. `#[foo]`, `#![bar]`. (Compare this with
+    // `ParseNtResult::Meta`; `expand_cfg_attr_item` is where the two cases interact.)
     pub tokens: Option<LazyAttrTokenStream>,
 }
 
@@ -3440,7 +3444,7 @@ impl NormalAttr {
             item: AttrItem {
                 unsafety: Safety::Default,
                 path: Path::from_ident(ident),
-                args: AttrItemKind::Unparsed(AttrArgs::Empty),
+                args: AttrArgs::Empty,
             },
             tokens: None,
         }
@@ -3451,48 +3455,32 @@ impl NormalAttr {
 pub struct AttrItem {
     pub unsafety: Safety,
     pub path: Path,
-    pub args: AttrItemKind,
+    pub args: AttrArgs,
 }
 
-/// Some attributes are stored in a parsed form, for performance reasons.
-/// Their arguments don't have to be reparsed everytime they're used
-#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
-pub enum AttrItemKind {
-    Parsed(EarlyParsedAttribute),
-    Unparsed(AttrArgs),
-}
-
-impl AttrItemKind {
-    pub fn unparsed(self) -> Option<AttrArgs> {
-        match self {
-            AttrItemKind::Unparsed(args) => Some(args),
-            AttrItemKind::Parsed(_) => None,
-        }
-    }
-
-    pub fn unparsed_ref(&self) -> Option<&AttrArgs> {
-        match self {
-            AttrItemKind::Unparsed(args) => Some(args),
-            AttrItemKind::Parsed(_) => None,
-        }
-    }
-
-    pub fn span(&self) -> Option<Span> {
-        match self {
-            AttrItemKind::Unparsed(args) => args.span(),
-            AttrItemKind::Parsed(_) => None,
-        }
-    }
-}
-
-/// Some attributes are stored in parsed form in the AST.
-/// This is done for performance reasons, so the attributes don't need to be reparsed on every use.
-///
-/// Currently all early parsed attributes are excluded from pretty printing at rustc_ast_pretty::pprust::state::print_attribute_inline.
-/// When adding new early parsed attributes, consider whether they should be pretty printed.
+/// Synthetic attributes are inserted by the compiler. They cannot be written in source code, and
+/// so cannot be pretty-printed by the AST pretty printer (because its output should be valid Rust
+/// code). They receive special treatment because they must not affect observable language
+/// behaviour: they are invisible to proc macros and are unable to re-enter the parser.
 #[derive(Clone, Encodable, Decodable, Debug, StableHash)]
-pub enum EarlyParsedAttribute {
+pub enum SyntheticAttr {
+    /// This synthetic attribute is added by the compiler when a `cfg` attribute is expanded so that
+    /// subsequent code can tell that conditional compilation occurred. A `#[cfg(pred)]` with a
+    /// true predicate is replaced by a synthetic `CfgTrace` attribute that records the parsed
+    /// predicate. A `#[cfg(pred)]` with a false predicate leaves no trace because there is no node
+    /// left to annotate.
+    ///
+    /// The attribute is used for some diagnostics, by rustdoc (for detecting feature usage), and
+    /// by some clippy lints.
     CfgTrace(CfgEntry),
+
+    /// This synthetic attribute is added by the compiler when a `cfg_attr` attribute is expanded so
+    /// that subsequent code can tell that conditional compilation occurred. A `#[cfg_attr(pred,
+    /// attrs)]` is replaced by a synthetic `CfgAttrTrace` attribute whether the predicate
+    /// evaluated true or not (or even failed to parse). The `pred` and `attrs` are not recorded
+    /// because they are not needed.
+    ///
+    /// The attribute is used by some clippy lints.
     CfgAttrTrace,
 }
 
