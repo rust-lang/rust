@@ -143,29 +143,22 @@ impl<'db> InferenceContext<'_, 'db> {
         expr: ExprId,
         is_read: ExprIsRead,
     ) -> bool {
-        // rustc does the place expr check first, but since we are feeding
-        // readness of the `expr` as a given value, we just can short-circuit
-        // the place expr check if it's true(see codes and comments below)
-        if is_read == ExprIsRead::Yes {
-            return true;
-        }
-
-        // We only care about place exprs. Anything else returns an immediate
-        // which would constitute a read. We don't care about distinguishing
-        // "syntactic" place exprs since if the base of a field projection is
-        // not a place then it would've been UB to read from it anyways since
-        // that constitutes a read.
-        if !self.is_syntactic_place_expr(expr) {
-            return true;
-        }
-
         // rustc queries parent hir node of `expr` here and determine whether
         // the current `expr` is read of value per its parent.
         // But since we don't have hir node, we cannot follow such "bottom-up"
         // method.
         // So, we pass down such readness from the parent expression through the
         // recursive `infer_expr*` calls in a "top-down" manner.
+        // rustc does the place expr check first, but since we are feeding
+        // readness of the `expr` as a given value, we just can short-circuit
+        // the place expr check if it's true(see codes and comments below)
         is_read == ExprIsRead::Yes
+            // We only care about place exprs. Anything else returns an immediate
+            // which would constitute a read. We don't care about distinguishing
+            // "syntactic" place exprs since if the base of a field projection is
+            // not a place then it would've been UB to read from it anyways since
+            // that constitutes a read.
+            || !self.is_syntactic_place_expr(expr)
     }
 
     /// Whether this pattern constitutes a read of value of the scrutinee that
@@ -904,7 +897,7 @@ impl<'db> InferenceContext<'_, 'db> {
         };
         let ty = self.insert_type_vars_shallow(ty);
         self.write_expr_ty(tgt_expr, ty);
-        if self.shallow_resolve(ty).is_never()
+        if self.table.resolve_vars_with_obligations(ty).is_never()
             && self.expr_guaranteed_to_constitute_read_for_never(tgt_expr, is_read)
         {
             // Any expression that produces a value of type `!` must have diverged
@@ -969,8 +962,10 @@ impl<'db> InferenceContext<'_, 'db> {
             return self.types.types.error;
         };
         self.table.register_bound(awaitee_ty, into_future, ObligationCause::new(expr));
-        // Do not eagerly normalize.
-        Ty::new_projection(self.interner(), into_future_output.into(), [awaitee_ty])
+        self.table.try_structurally_resolve_type(
+            expr.into(),
+            Ty::new_projection(self.interner(), into_future_output.into(), [awaitee_ty]),
+        )
     }
 
     fn infer_record_expr(
