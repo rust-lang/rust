@@ -29,6 +29,7 @@ pub use core::io::{
     stream_len_default, take,
 };
 
+use self::util::{bytes, lines, split, uninlined_slow_read_byte};
 #[unstable(feature = "alloc_io", issue = "154046")]
 pub use self::{
     buf_read::BufRead,
@@ -43,5 +44,5 @@ pub use self::{
         DEFAULT_BUF_SIZE, append_to_string, default_read_buf, default_read_buf_exact,
         default_read_exact, default_read_to_end, default_read_to_string, default_read_vectored,
     },
-    util::{SpecReadByte, bytes, lines, split, uninlined_slow_read_byte},
+    util::SpecReadByte,
 };
