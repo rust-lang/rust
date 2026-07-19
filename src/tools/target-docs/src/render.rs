@@ -1,5 +1,7 @@
+use std::fs;
+use std::path::Path;
+
 use eyre::{Context, OptionExt, Result};
-use std::{fs, path::Path};
 
 use crate::TargetInfo;
 
@@ -113,8 +115,8 @@ pub fn render_static(check_only: bool, src_output: &Path, targets: &[TargetInfo]
         .collect::<Vec<_>>()
         .join("\n");
 
-    let new_targets =
-        replace_section(&old_targets, "TARGET", &target_list).wrap_err("replacing targets.md")?;
+    let new_targets = replace_section(&old_targets, "TARGET_LIST", &target_list)
+        .wrap_err("replacing targets.md")?;
 
     if !check_only {
         fs::write(targets_file, new_targets).wrap_err("writing targets.md")?;
@@ -136,9 +138,9 @@ pub fn render_static(check_only: bool, src_output: &Path, targets: &[TargetInfo]
     // indent the list
     let summary_new =
         replace_section(&summary_old, "TARGET_LIST", &target_list.replace("- ", "      - "))
-            .wrap_err("replacig SUMMARY.md")?;
+            .wrap_err("replacing SUMMARY.md")?;
     if !check_only {
-        fs::write(summary, summary_new).wrap_err("writing SUMAMRY.md")?;
+        fs::write(summary, summary_new).wrap_err("writing SUMMARY.md")?;
     }
 
     Ok(())
@@ -153,7 +155,7 @@ impl TargetInfo {
 fn render_platform_support_tables(content: &str, targets: &[TargetInfo]) -> Result<String> {
     let replace_table = |content, name, tier_table| -> Result<String> {
         let section_string = render_table(targets, tier_table)?;
-        replace_section(content, name, &section_string).wrap_err("replacing platform support.md")
+        replace_section(content, name, &section_string).wrap_err("replacing platform-support.md")
     };
 
     let content = replace_table(
@@ -199,7 +201,7 @@ fn render_platform_support_tables(content: &str, targets: &[TargetInfo]) -> Resu
 fn render_table_option_bool(bool: Option<bool>) -> &'static str {
     match bool {
         Some(true) => "✓",
-        Some(false) => " ",
+        Some(false) => "*",
         None => "?",
     }
 }

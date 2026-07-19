@@ -15,7 +15,7 @@ the compiler what kind of output should be produced.
 
 Component availability is tracked [here](https://rust-lang.github.io/rustup-components-history/).
 
-Support for targets can vary during their lifespan (a target con be promoted because the support
+Support for targets can vary during their lifespan (a target can be promoted because the support
 improves or can be demoted because lack of resources). Procedures for promoting and demoting targets
 are documented at our [Forge documentation site][forge].
 
