@@ -1846,7 +1846,7 @@ mod prim_ref {}
 ///   - It has size 0.
 ///   - It has alignment 1.
 ///   - One of the following apply:
-///     - It is a `repr(Rust)` (implicitly or explicitly, possibly with additional flags such as `packed`) `struct`, `enum`, `union` (regardless of its fields).
+///     - It is a `repr(Rust)` (implicitly or explicitly, possibly with additional modifiers such as `packed`) `struct`, `enum`, `union` (regardless of its fields).
 ///     - It is a [tuple][prim_tuple] (regardless of its fields, and including [`()`][prim_unit]).
 ///     - It is a `repr(transparent)` `struct`, `enum`, or `union`, and all fields have trivial ABI.
 ///     - It is an array, and its element type has trivial ABI. (This requirement applies even to arrays of length 0.)
