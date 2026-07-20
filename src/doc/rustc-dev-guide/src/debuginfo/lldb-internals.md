@@ -1,4 +1,4 @@
-# LLDB Internals
+# LLDB internals
 
 LLDB's debug info processing relies on a set of extensible interfaces largely defined in
 [lldb/src/Plugins][lldb_plugins]. These are meant to allow third-party compiler developers to add
@@ -19,7 +19,7 @@ Here are some existing implementations of LLDB's plugin API:
 This was written before the `TypeSystem` API was created. Due to the freeform nature of expression parsing, the
 underlyng lexing, parsing, function calling, etc. should still offer valuable insights.
 
-## Rust Support and TypeSystemClang
+## Rust support and TypeSystemClang
 
 As mentioned in the debug info overview, LLDB has partial Rust support. To further clarify, Rust
 uses the plugin-pipeline that was built for C/C++ (though it contains some helpers for Rust enum
@@ -63,7 +63,7 @@ from scratch using publicly available information about the PDB format.
 [dia_discourse]: https://discourse.llvm.org/t/rfc-removing-the-dia-pdb-plugin-from-lldb/87827
 [dia_tracking]: https://github.com/llvm/llvm-project/issues/114906
 
-## Debug Node Parsing
+## Debug node parsing
 
 The first step is to process the raw debug nodes into something usable. This primarily occurs in
 the [`DWARFASTParser`][dwarf_ast] and [`PdbAstBuilder`][pdb_ast] classes. These classes are fed a
@@ -135,7 +135,7 @@ impl TypeSystem for TypeSystemLang {
 }
 ```
 
-## Type Systems
+## Type systems
 
 The [`TypeSystem` interface][ts_interface] has 3 major purposes:
 
@@ -172,7 +172,7 @@ alterations as possible. LLDB's synthetics and frontend can handle making the ty
 piece of information is useless, the Rust compiler should be altered to not output that debug info
 in the first place.
 
-## Expression Parsing
+## Expression parsing
 
 The `TypeSystem` is typically written to have a counterpart that can handle expression parsing. It
 requires implementing a few extra functions in the `TypeSystem` interface. The bulk of the

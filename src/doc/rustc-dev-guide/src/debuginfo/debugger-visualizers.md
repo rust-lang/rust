@@ -1,4 +1,4 @@
-# Debugger Visualizers
+# Debugger visualizers
 
 These are typically the last step before the debugger displays the information, but the results may
 be piped through a debug adapter such as an IDE's debugger API.

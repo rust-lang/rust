@@ -1,4 +1,4 @@
-# Debugger Internals
+# Debugger internals
 
 It is the debugger's job to convert the debug info into an in-memory representation. Both the
 interpretation of the debug info and the in-memory representation are arbitrary; anything will do
