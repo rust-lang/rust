@@ -2,7 +2,7 @@ use std::fmt::Write;
 use std::fs;
 use std::path::Path;
 
-use eyre::{Context, OptionExt, Result};
+use eyre::{Context, Result, eyre};
 
 use crate::TargetInfo;
 
@@ -95,54 +95,62 @@ fn replace_section(prev_content: &str, section_name: &str, replacement: &str) ->
 
     let (pre_target, target_and_after) = prev_content
         .split_once(&magic_summary_start)
-        .ok_or_eyre("<!-- TARGET SECTION START --> not found")?;
+        .ok_or_else(|| eyre!("{magic_summary_start} not found"))?;
 
     let (_, post_target) = target_and_after
         .split_once(&magic_summary_end)
-        .ok_or_eyre("<!-- TARGET SECTION START --> not found")?;
+        .ok_or_else(|| eyre!("{magic_summary_end} not found"))?;
 
+    //let new = format!("{pre_target}{magic_summary_start}\n<!-- See `src/tools/target-docs` -->\n{replacement}\n{magic_summary_end}{post_target}");
     let new = format!("{pre_target}{replacement}{post_target}");
     Ok(new)
 }
 
+fn replace_file<P: AsRef<Path>, F: FnOnce(&str) -> Result<String>>(
+    check_only: bool,
+    src_output: &Path,
+    file: P,
+    replace_fn: F,
+) -> Result<()> {
+    let rel_path = file.as_ref();
+    let filepath = src_output.join(rel_path);
+
+    let old_content =
+        fs::read_to_string(&filepath).wrap_err_with(|| eyre!("reading {:?}", rel_path))?;
+    let new_content =
+        replace_fn(&old_content).wrap_err_with(|| eyre!("replacing {:?}", rel_path))?;
+
+    /*if new_content != old_content {
+        eprintln!("{}: out of sync");
+    }*/
+
+    if !check_only {
+        fs::write(filepath, new_content).wrap_err_with(|| eyre!("writing {:?}", rel_path))?;
+    }
+
+    Ok(())
+}
+
 /// Renders the non-target files like `SUMMARY.md` that depend on the target.
 pub fn render_static(check_only: bool, src_output: &Path, targets: &[TargetInfo]) -> Result<()> {
-    let targets_file = src_output.join("platform-support").join("targets.md");
-    let old_targets = fs::read_to_string(&targets_file).wrap_err("reading summary file")?;
-
     let target_list = targets
         .iter()
         .map(|target| format!("- [{0}](platform-support/targets/{0}.md)", target.name))
         .collect::<Vec<_>>()
         .join("\n");
 
-    let new_targets = replace_section(&old_targets, "TARGET_LIST", &target_list)
-        .wrap_err("replacing targets.md")?;
+    replace_file(check_only, src_output, "platform-support/targets.md", |content| {
+        replace_section(content, "TARGET_LIST", &target_list)
+    })?;
 
-    if !check_only {
-        fs::write(targets_file, new_targets).wrap_err("writing targets.md")?;
-    }
+    replace_file(check_only, src_output, "platform-support.md", |content| {
+        render_platform_support_tables(content, targets)
+    })?;
 
-    let platform_support_main = src_output.join("platform-support.md");
-    let platform_support_main_old =
-        fs::read_to_string(&platform_support_main).wrap_err("reading platform-support.md")?;
-    let platform_support_main_new =
-        render_platform_support_tables(&platform_support_main_old, targets)?;
-
-    if !check_only {
-        fs::write(platform_support_main, platform_support_main_new)
-            .wrap_err("writing platform-support.md")?;
-    }
-
-    let summary = src_output.join("SUMMARY.md");
-    let summary_old = fs::read_to_string(&summary).wrap_err("reading SUMMARY.md")?;
-    // indent the list
-    let summary_new =
-        replace_section(&summary_old, "TARGET_LIST", &target_list.replace("- ", "      - "))
-            .wrap_err("replacing SUMMARY.md")?;
-    if !check_only {
-        fs::write(summary, summary_new).wrap_err("writing SUMMARY.md")?;
-    }
+    replace_file(check_only, src_output, "SUMMARY.md", |content| {
+        // indent the list
+        replace_section(content, "TARGET_LIST", &target_list.replace("- ", "      - "))
+    })?;
 
     Ok(())
 }
