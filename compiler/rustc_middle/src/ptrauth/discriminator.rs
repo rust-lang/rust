@@ -48,8 +48,8 @@ The computation is structured into three conceptual stages:
 
 - High-level API
   - `FnPtrDiscriminatorSource`
-  - `compute_fn_ptr_type_discriminator_for`
-  - `clone_discriminated_ptrauth_schema_for`
+  - `ptrauth_compute_fn_ptr_type_discriminator_for`
+  - `ptrauth_clone_discriminated_schema_for`
 
 - Low-level API
   - `FnPtrTypeDiscriminatorInput`
@@ -163,7 +163,10 @@ impl<'tcx> FnPtrDiscriminatorSource<'tcx> for ty::FnSig<'tcx> {
 ///
 /// Returns `None` if the supplied source does not represent a function pointer
 /// type (for example, a non-function `Ty`).
-pub fn compute_fn_ptr_type_discriminator_for<'tcx, S>(tcx: TyCtxt<'tcx>, source: S) -> Option<u16>
+pub fn ptrauth_compute_fn_ptr_type_discriminator_for<'tcx, S>(
+    tcx: TyCtxt<'tcx>,
+    source: S,
+) -> Option<u16>
 where
     S: FnPtrDiscriminatorSource<'tcx>,
 {
@@ -184,7 +187,7 @@ where
 /// This is intended as a convenience helper for code generation sites that need
 /// to attach function pointer type discrimination to a generic schema before
 /// calling `get_fn_addr`.
-pub fn clone_discriminated_ptrauth_schema_for<'tcx, S>(
+pub fn ptrauth_clone_discriminated_schema_for<'tcx, S>(
     tcx: TyCtxt<'tcx>,
     mut schema: Option<PointerAuthSchema>,
     source: S,
@@ -193,7 +196,7 @@ where
     S: FnPtrDiscriminatorSource<'tcx>,
 {
     if let Some(ref mut s) = schema {
-        if let Some(disc) = compute_fn_ptr_type_discriminator_for(tcx, source) {
+        if let Some(disc) = ptrauth_compute_fn_ptr_type_discriminator_for(tcx, source) {
             s.constant_discriminator = disc;
         }
     }
