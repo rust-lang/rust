@@ -742,9 +742,11 @@ auto:
 
   - name: dist-i686-mingw
     env:
+      # Disable RISCV target because building it OOMs.
       RUST_CONFIGURE_ARGS: >-
         --build=i686-pc-windows-gnu
         --enable-full-tools
+        --set llvm.targets=AArch64;AMDGPU;ARM;BPF;Hexagon;LoongArch;MSP430;Mips;NVPTX;PowerPC;Sparc;SystemZ;WebAssembly;X86
       SCRIPT: python x.py dist bootstrap --include-default-paths
       DIST_REQUIRE_ALL_TOOLS: 1
       CODEGEN_BACKENDS: llvm,cranelift
