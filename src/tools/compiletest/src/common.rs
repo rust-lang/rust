@@ -774,6 +774,8 @@ pub(crate) struct Config {
     pub(crate) parallel_frontend_threads: u32,
     /// Number of times to execute each test.
     pub(crate) iteration_count: u32,
+
+    pub(crate) wasm_proc_macro: bool,
 }
 
 impl Config {

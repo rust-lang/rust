@@ -923,6 +923,15 @@
 #
 #rust.parallel-frontend-threads = 1
 
+# Enables building a wasm proc macro compatible toolchain.
+#
+# This requires building an additional standard library for a different target and adding it
+# to the sysroot before running tests, and so needs special handling in bootstrap. Currently
+# off by default.
+#
+# This currently opts compiletest into running/building proc-macro tests via wasm.
+#rust.wasm-proc-macro = false
+
 # =============================================================================
 # Distribution options
 #

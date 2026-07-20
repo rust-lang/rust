@@ -1,4 +1,7 @@
-//@ force-host
+//@ revisions: wasm native
+//@[wasm] compile-flags: --target=wasm32-wasip2 --crate-type=rlib
+//@[wasm] needs-llvm-components: webassembly
+//@[native] force-host
 
 #[macro_export]
 macro_rules! make_it {

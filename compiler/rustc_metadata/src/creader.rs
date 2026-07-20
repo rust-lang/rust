@@ -13,6 +13,7 @@ use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{self, FreezeReadGuard, FreezeWriteGuard};
 use rustc_data_structures::unord::UnordMap;
 use rustc_expand::base::SyntaxExtension;
+use rustc_expand::wasm_proc_macro::{RustcProcMacro, WasmLoadError};
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE, LocalDefId, StableCrateId};
 use rustc_hir::definitions::Definitions;
@@ -20,7 +21,6 @@ use rustc_index::IndexVec;
 use rustc_middle::bug;
 use rustc_middle::ty::data_structures::IndexSet;
 use rustc_middle::ty::{TyCtxt, TyCtxtFeed};
-use rustc_proc_macro::bridge::client::Client as ProcMacroClient;
 use rustc_session::config::mitigation_coverage::DeniedPartialMitigationLevel;
 use rustc_session::config::{
     CrateType, ExtendedTargetModifierInfo, ExternLocation, Externs, OptionsTargetModifiers,
@@ -119,9 +119,12 @@ impl<'a> std::fmt::Debug for CrateDump<'a> {
             writeln!(fmt, "  hash: {}", data.hash())?;
             writeln!(fmt, "  reqd: {:?}", data.dep_kind())?;
             writeln!(fmt, "  priv: {:?}", data.is_private_dep())?;
-            let CrateSource { dylib, rlib, rmeta, sdylib_interface } = data.source();
+            let CrateSource { dylib, rlib, wasm, rmeta, sdylib_interface } = data.source();
             if let Some(dylib) = dylib {
                 writeln!(fmt, "  dylib: {}", dylib.display())?;
+            }
+            if let Some(wasm) = wasm {
+                writeln!(fmt, "   wasm: {}", wasm.display())?;
             }
             if let Some(rlib) = rlib {
                 writeln!(fmt, "   rlib: {}", rlib.display())?;
@@ -651,8 +654,15 @@ impl CStore {
                 }),
                 None => (&source, &crate_root),
             };
-            let dlsym_dylib = dlsym_source.dylib.as_ref().expect("no dylib for a proc-macro crate");
-            Some(self.dlsym_proc_macros(dlsym_dylib, dlsym_root.stable_crate_id())?)
+            if tcx.sess.opts.unstable_opts.wasm_proc_macros && dlsym_source.wasm.is_some() {
+                let wasm_source =
+                    dlsym_source.wasm.as_ref().expect("no wasm for a proc-macro crate");
+                Some(self.load_wasm_macro(tcx.sess, wasm_source)?)
+            } else {
+                let dlsym_dylib =
+                    dlsym_source.dylib.as_ref().expect("no dylib for a proc-macro crate");
+                Some(self.dlsym_proc_macros(dlsym_dylib, dlsym_root.stable_crate_id())?)
+            }
         } else {
             None
         };
@@ -732,13 +742,21 @@ impl CStore {
             // Load the proc macro crate for the host
             proc_macro_locator.for_proc_macro(sess, path_kind);
 
-            let Some(host_result) =
+            if let Some(host_result) =
                 self.load(&mut proc_macro_locator, &mut CrateRejections::default())?
-            else {
-                return Ok(None);
-            };
+            {
+                return Ok(Some((host_result, None)));
+            }
 
-            Ok(Some((host_result, None)))
+            proc_macro_locator.for_wasm_proc_macro(sess, path_kind);
+
+            if let Some(wasm_result) =
+                self.load(&mut proc_macro_locator, &mut CrateRejections::default())?
+            {
+                return Ok(Some((wasm_result, None)));
+            }
+
+            Ok(None)
         }
     }
 
@@ -819,7 +837,7 @@ impl CStore {
             match self.load(&mut locator, &mut crate_rejections)? {
                 Some(res) => (res, None),
                 None => {
-                    info!("falling back to loading proc_macro");
+                    info!("falling back to loading proc_macro for {}", name);
                     dep_kind = CrateDepKind::MacrosOnly;
                     match self.load_proc_macro(
                         tcx.sess,
@@ -949,8 +967,30 @@ impl CStore {
         &self,
         path: &Path,
         stable_crate_id: StableCrateId,
-    ) -> Result<&'static [ProcMacroClient], CrateError> {
+    ) -> Result<Vec<RustcProcMacro>, CrateError> {
         Ok(crate::host_dylib::dlsym_proc_macros(path, stable_crate_id)?)
+    }
+
+    fn load_wasm_macro(
+        &self,
+        sess: &Session,
+        path: &Path,
+    ) -> Result<Vec<RustcProcMacro>, CrateError> {
+        match rustc_expand::wasm_proc_macro::load_wasm_macro(sess, path) {
+            Ok(p) => return Ok(p),
+            Err(WasmLoadError::FileRead(err)) => {
+                return Err(CrateError::DlOpen(path.to_string_lossy().into(), err.to_string()));
+            }
+            Err(WasmLoadError::Parse(err)) => {
+                return Err(CrateError::DlOpen(
+                    path.to_string_lossy().into(),
+                    format!("wasm parse failed: {}", err),
+                ));
+            }
+            Err(WasmLoadError::RuntimeFailed(err)) => {
+                bug!("failed to load wasm macro, wasm runtime error: {:?}", err)
+            }
+        }
     }
 
     fn inject_panic_runtime(&mut self, tcx: TyCtxt<'_>, krate: &ast::Crate) {

@@ -399,6 +399,7 @@ pub struct Session {
 
     target_filesearch: FileSearch,
     host_filesearch: FileSearch,
+    wasm_filesearch: FileSearch,
 
     /// The names of intrinsics that the current codegen backend replaces
     /// with its own implementations.
@@ -667,6 +668,9 @@ impl Session {
     }
     pub fn host_filesearch(&self) -> &filesearch::FileSearch {
         &self.host_filesearch
+    }
+    pub fn wasm_filesearch(&self) -> &filesearch::FileSearch {
+        &self.wasm_filesearch
     }
 
     /// Returns a list of directories where target-specific tool binaries are located. Some fallback
@@ -1326,6 +1330,18 @@ pub fn build_session(
         None
     };
 
+    let wasm_triple = TargetTuple::from_tuple("wasm32-wasip2");
+    let wasm_tlib_path =
+        Arc::new(SearchPath::from_sysroot_and_triple(sopts.sysroot.path(), wasm_triple.tuple()));
+    let (wasm_target, target_warnings) =
+        Target::search(&wasm_triple, sopts.sysroot.path(), sopts.unstable_opts.unstable_options)
+            .unwrap_or_else(|e| {
+                dcx.handle().fatal(format!("Error loading host specification: {e}"))
+            });
+    for warning in target_warnings.warning_messages() {
+        dcx.handle().warn(warning)
+    }
+
     let psess = ParseSess::with_dcx(dcx, source_map);
 
     let host_triple = config::host_tuple();
@@ -1356,6 +1372,8 @@ pub fn build_session(
     let target_filesearch =
         filesearch::FileSearch::new(&sopts.search_paths, &target_tlib_path, &target);
     let host_filesearch = filesearch::FileSearch::new(&sopts.search_paths, &host_tlib_path, &host);
+    let wasm_filesearch =
+        filesearch::FileSearch::new(&sopts.search_paths, &wasm_tlib_path, &wasm_target);
 
     let timings = TimingSectionHandler::new(sopts.json_timings);
 
@@ -1390,6 +1408,7 @@ pub fn build_session(
         file_depinfo: Default::default(),
         target_filesearch,
         host_filesearch,
+        wasm_filesearch,
         replaced_intrinsics: FxHashSet::default(), // filled by `run_compiler`
         fallback_intrinsics: FxHashSet::default(), // filled by `run_compiler`
         thin_lto_supported: true,                  // filled by `run_compiler`

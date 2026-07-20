@@ -71,7 +71,7 @@ fn new_cc_build(build: &Build, target: TargetSelection) -> cc::Build {
 /// by combining the primary build target, host targets, and any additional targets. For
 /// each target, it calls [`fill_target_compiler`] to configure the necessary compiler tools.
 pub fn fill_compilers(build: &mut Build) {
-    let targets: HashSet<_> = match build.config.cmd {
+    let mut targets: HashSet<_> = match build.config.cmd {
         // We don't need to check cross targets for these commands.
         crate::Subcommand::Clean { .. }
         | crate::Subcommand::Check { .. }
@@ -93,7 +93,14 @@ pub fn fill_compilers(build: &mut Build) {
         }
     };
 
-    for target in targets.into_iter() {
+    // When we intend to build wasm proc macros, we'll need to detect a toolchain for linking those
+    // as well. In the future it would be good to make this a no-op given that we shouldn't need to
+    // build any C/C++ code for wasm...
+    if build.config.wasm_proc_macro {
+        targets.insert(TargetSelection::from_user("wasm32-wasip2"));
+    }
+
+    for target in targets {
         fill_target_compiler(build, target);
     }
 }

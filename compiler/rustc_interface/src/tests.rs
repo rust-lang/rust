@@ -909,6 +909,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(verify_llvm_ir, true);
     tracked!(virtual_function_elimination, true);
     tracked!(wasi_exec_model, Some(WasiExecModel::Reactor));
+    tracked!(wasm_proc_macros, true);
     // tidy-alphabetical-end
 
     macro_rules! tracked_no_crate_hash {

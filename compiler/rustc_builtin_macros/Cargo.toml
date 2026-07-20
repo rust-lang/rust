@@ -31,6 +31,8 @@ rustc_target = { path = "../rustc_target" }
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
 thin-vec = "0.2.18"
 tracing = "0.1"
+wit-bindgen-core = "0.58"
+wit-bindgen-rust = "0.58"
 # tidy-alphabetical-end
 
 [features]
