@@ -649,7 +649,6 @@ impl SingleAttributeParser for LinkageParser {
         Allow(Target::Static),
         Allow(Target::ForeignStatic), // extern static mut denied in check_attr
         Allow(Target::ForeignFn),
-        Warn(Target::Method(MethodKind::Trait { body: false })), // Not inherited
     ]);
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: [
         "available_externally",
