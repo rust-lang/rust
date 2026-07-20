@@ -1,9 +1,19 @@
 error[E0432]: unresolved import `rustfmt`
   --> $DIR/prelude-fail.rs:4:5
    |
-LL | use rustfmt::skip as imported_rustfmt_skip;
-   |     ^^^^^^^ `rustfmt` is a tool module, not a module
+LL | use rustfmt as imported_rustfmt;
+   |     -------^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     no external crate `rustfmt`
 
-error: aborting due to 1 previous error
+error[E0432]: unresolved import `rustfmt`
+  --> $DIR/prelude-fail.rs:7:5
+   |
+LL | use rustfmt::skip as imported_rustfmt_skip;
+   |     ^^^^^^^ use of unresolved module or unlinked crate `rustfmt`
+   |
+   = help: you might be missing a crate named `rustfmt`
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0432`.

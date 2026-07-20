@@ -148,7 +148,11 @@ enum Scope<'ra> {
 #[derive(Clone, Copy, Debug)]
 enum ScopeSet<'ra> {
     /// All scopes with the given namespace.
+    ///
+    /// Registered attribute tools are not included; they're available with `AttrParent` only.
     All(Namespace),
+    /// Scopes when resolving for parent scopes for attributes. This is `All` plus registered attribute tools.
+    AttrParent,
     /// Two scopes inside a module, for non-glob and glob bindings.
     Module(Namespace, Module<'ra>),
     /// A module, then extern prelude (used for mixed 2015-2018 mode in macros).
@@ -1052,6 +1056,7 @@ struct DelayedVisResolutionError<'ra> {
 #[derive(Clone, Copy, PartialEq, Debug)]
 enum AmbiguityKind {
     BuiltinAttr,
+    ToolAttr,
     DeriveHelper,
     MacroRulesVsModularized,
     GlobVsOuter,
@@ -1064,6 +1069,7 @@ impl AmbiguityKind {
     fn descr(self) -> &'static str {
         match self {
             AmbiguityKind::BuiltinAttr => "a name conflict with a builtin attribute",
+            AmbiguityKind::ToolAttr => "a name conflict with a tool attribute",
             AmbiguityKind::DeriveHelper => "a name conflict with a derive helper attribute",
             AmbiguityKind::MacroRulesVsModularized => {
                 "a conflict between a `macro_rules` name and a non-`macro_rules` name from another module"
@@ -1389,7 +1395,7 @@ pub struct Resolver<'ra, 'tcx> {
     dummy_decl: Decl<'ra>,
     builtin_type_decls: FxHashMap<Symbol, Decl<'ra>>,
     builtin_attr_decls: FxHashMap<Symbol, Decl<'ra>>,
-    registered_tool_decls: FxHashMap<IdentKey, Decl<'ra>>,
+    registered_tool_decls: FxHashMap<Symbol, Decl<'ra>>,
     macro_names: FxHashSet<IdentKey> = default::fx_hash_set(),
     builtin_macros: FxHashMap<Symbol, SyntaxExtensionKind> = default::fx_hash_map(),
     registered_tools: &'tcx RegisteredTools,
@@ -1815,7 +1821,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 .map(|&ident| {
                     let res = Res::ToolMod;
                     let decl = arenas.new_pub_def_decl(res, ident.span, LocalExpnId::ROOT);
-                    (IdentKey::new(ident), decl)
+                    (ident.name, decl)
                 })
                 .collect(),
             registered_tools,
