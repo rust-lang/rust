@@ -1,3 +1,4 @@
+use std::fmt::Write;
 use std::fs;
 use std::path::Path;
 
@@ -162,9 +163,22 @@ fn render_platform_support_tables(content: &str, targets: &[TargetInfo]) -> Resu
         content,
         "TIER1HOST",
         TierTable {
-            filter: |target| target.metadata.tier == Some(1),
+            filter: |target| target.metadata.tier == Some(1) && target.has_host_tools(),
             include_host: false,
             include_std: false,
+            empty_msg: None,
+        },
+    )?;
+    let content = replace_table(
+        &content,
+        "TIER1",
+        TierTable {
+            filter: |target| target.metadata.tier == Some(1) && !target.has_host_tools(),
+            include_host: false,
+            include_std: true,
+            empty_msg: Some(
+                "At this time, all Tier 1 targets are [Tier 1 with Host Tools](#tier-1-with-host-tools).",
+            ),
         },
     )?;
     let content = replace_table(
@@ -174,6 +188,7 @@ fn render_platform_support_tables(content: &str, targets: &[TargetInfo]) -> Resu
             filter: |target| target.metadata.tier == Some(2) && target.has_host_tools(),
             include_host: false,
             include_std: false,
+            empty_msg: None,
         },
     )?;
     let content = replace_table(
@@ -183,6 +198,7 @@ fn render_platform_support_tables(content: &str, targets: &[TargetInfo]) -> Resu
             filter: |target| target.metadata.tier == Some(2) && !target.has_host_tools(),
             include_host: false,
             include_std: true,
+            empty_msg: None,
         },
     )?;
     let content = replace_table(
@@ -192,6 +208,7 @@ fn render_platform_support_tables(content: &str, targets: &[TargetInfo]) -> Resu
             filter: |target| target.metadata.tier == Some(3),
             include_host: true,
             include_std: true,
+            empty_msg: None,
         },
     )?;
 
@@ -210,50 +227,60 @@ struct TierTable {
     filter: fn(&TargetInfo) -> bool,
     include_std: bool,
     include_host: bool,
+    empty_msg: Option<&'static str>,
 }
 
 fn render_table(targets: &[TargetInfo], table: TierTable) -> Result<String> {
-    let mut rows = Vec::new();
+    let mut count = 0;
+    let mut out = String::with_capacity(1024);
 
-    let targets = targets.iter().filter(|target| (table.filter)(target));
+    let mut row2 = String::with_capacity(32);
 
-    for target in targets {
-        let meta = &target.metadata;
+    out.push_str("target");
+    row2.push_str("-------");
 
-        let mut notes = meta.description.as_deref().unwrap_or("unknown").to_owned();
-
-        if !target.footnotes.is_empty() {
-            let footnotes_str = target
-                .footnotes
-                .iter()
-                .map(|footnote| format!("[^{}]", footnote))
-                .collect::<Vec<_>>()
-                .join(" ");
-
-            notes = format!("{notes} {footnotes_str}");
-        }
-
-        let std = if table.include_std {
-            let std = render_table_option_bool(meta.std);
-            format!(" | {std}")
-        } else {
-            String::new()
-        };
-
-        let host = if table.include_host {
-            let host = render_table_option_bool(meta.host_tools);
-            format!(" | {host}")
-        } else {
-            String::new()
-        };
-
-        rows.push(format!(
-            "[`{0}`](platform-support/targets/{0}.md){std}{host} | {notes}",
-            target.name
-        ));
+    if table.include_std {
+        out.push_str(" | std");
+        row2.push_str("|:---:");
     }
 
-    let result = rows.join("\n");
+    if table.include_host {
+        out.push_str(" | host");
+        row2.push_str("|:----:");
+    }
 
-    Ok(result)
+    out.push_str(" | notes\n");
+    row2.push_str("|-------");
+    out.push_str(&row2);
+    drop(row2);
+
+    for target in targets.iter().filter(|target| (table.filter)(target)) {
+        count += 1;
+        let meta = &target.metadata;
+
+        write!(out, "\n[`{0}`](platform-support/targets/{0}.md)", target.name)?;
+
+        if table.include_std {
+            write!(out, " | {}", render_table_option_bool(meta.std))?;
+        }
+
+        if table.include_host {
+            write!(out, " | {}", render_table_option_bool(meta.host_tools))?;
+        }
+
+        write!(out, " | {}", meta.description.as_deref().unwrap_or_default())?;
+
+        for footnote in &target.footnotes {
+            write!(out, " [^{}]", footnote)?;
+        }
+    }
+
+    if count == 0
+        && let Some(msg) = table.empty_msg
+    {
+        out.clear();
+        out.push_str(msg);
+    }
+
+    Ok(out)
 }
