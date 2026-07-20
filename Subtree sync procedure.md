@@ -121,28 +121,19 @@ chore: bump rustfmt toolchain to nightly-$LATEST_NIGHTLY_DATE
 
 Bumping the toolchain version as part of a git subtree push.
 
-current toolchain (nightly-$CURRENT_NIGHTLY_DATE):
-   - $CURRENT_NIGHTLY_VERSION-nightly ($CURRENT_NIGHTLY_HASH $CURRENT_NIGHTLY_DATE)
+Before:
 
-latest toolchain (nightly-$LATEST_NIGHTLY_DATE):
-   - $LATEST_NIGHTLY_VERSION-nightly ($LATEST_NIGHTLY_HASH $LATEST_NIGHTLY_DATE)
+```
+$CURRENT_NIGHTLY_VERSION-nightly ($CURRENT_NIGHTLY_HASH $CURRENT_NIGHTLY_DATE)
+```
+
+After:
+
+```
+$LATEST_NIGHTLY_VERSION-nightly ($LATEST_NIGHTLY_HASH $LATEST_NIGHTLY_DATE)
 ```
 
 Substituting the placeholders with the right information.
-
-> [!TIP]
->
-> Example bump commit message:
->
-> ```text
-> chore: bump rustfmt toolchain to nightly-2025-10-07
->
-> Bumping the toolchain version as part of a git subtree push.
->
-> current toolchain (nightly-2025-04-02): - 1.88.0-nightly (e2014e876 2025-04-01)
->
-> latest toolchain (nightly-2025-10-07): - 1.92.0-nightly (f6aa851db 2025-10-07)
-> ```
 
 ### 5. Open a PR against `rustfmt`
 
