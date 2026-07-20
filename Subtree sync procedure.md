@@ -138,8 +138,12 @@ Substituting the placeholders with the right information.
 ### 5. Open a PR against `rustfmt`
 
 And wait for the sync PR to be merged. The `rustfmt` maintainers will run Diff Check against the PR
-to catch any unexpected formatting changes. Once Diff Check failures are investigated and are
-resolved, the PR can then be merged.
+to catch any unexpected formatting changes.
+
+- Maintainers should trigger Diff-Check for the combinations of Edition {2021, 2024} x Style
+  Edition {2021, 2024}.
+
+Once Diff Check failures are investigated and are resolved, the PR can then be merged.
 
 For the PR:
 
