@@ -1202,3 +1202,11 @@ pub(crate) struct StaticMutLinkage {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag("`const fn` are incompatible with `#[linkage]`")]
+#[note("`const fn` may be called at compile time, which happens before linking")]
+pub(crate) struct ConstFnLinkage {
+    #[primary_span]
+    pub span: Span,
+}
