@@ -63,10 +63,6 @@ impl<I: Interner, T: TypeFoldable<I>> TypeFoldable<I> for Binder<I, T> {
     fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
         folder.try_fold_binder(self)
     }
-
-    fn fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self {
-        folder.fold_binder(self)
-    }
 }
 
 impl<I: Interner, T: TypeVisitable<I>> TypeVisitable<I> for Binder<I, T> {
@@ -81,10 +77,6 @@ impl<I: Interner, T: TypeFoldable<I>> TypeSuperFoldable<I> for Binder<I, T> {
         folder: &mut F,
     ) -> Result<Self, F::Error> {
         self.try_map_bound(|t| t.try_fold_with(folder))
-    }
-
-    fn super_fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self {
-        self.map_bound(|t| t.fold_with(folder))
     }
 }
 

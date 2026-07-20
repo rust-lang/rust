@@ -5,7 +5,7 @@ use derive_where::derive_where;
 use rustc_macros::StableHash_NoContext;
 use rustc_type_ir_macros::TypeVisitable_Generic;
 
-use crate::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder};
+use crate::fold::{FallibleTypeFolder, TypeFoldable};
 use crate::inherent::*;
 use crate::upcast::Upcast;
 use crate::{
@@ -94,10 +94,6 @@ impl<I: Interner, T> Unnormalized<I, T> {
 impl<I: Interner, T: TypeFoldable<I>> TypeFoldable<I> for Unnormalized<I, T> {
     fn try_fold_with<F: FallibleTypeFolder<I>>(self, folder: &mut F) -> Result<Self, F::Error> {
         Ok(Unnormalized::new(self.value.try_fold_with(folder)?))
-    }
-
-    fn fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self {
-        Unnormalized::new(self.value.fold_with(folder))
     }
 }
 

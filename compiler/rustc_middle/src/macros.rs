@@ -66,14 +66,6 @@ macro_rules! TrivialTypeTraversalImpls {
                 ) -> ::std::result::Result<Self, F::Error> {
                     Ok(self)
                 }
-
-                #[inline]
-                fn fold_with<F: $crate::ty::TypeFolder<$crate::ty::TyCtxt<'tcx>>>(
-                    self,
-                    _: &mut F,
-                ) -> Self {
-                    self
-                }
             }
 
             impl<'tcx> $crate::ty::TypeVisitable<$crate::ty::TyCtxt<'tcx>> for $ty {
