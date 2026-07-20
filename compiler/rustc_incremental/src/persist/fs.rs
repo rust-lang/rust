@@ -294,9 +294,10 @@ pub(crate) fn prepare_session_directory(
 
 /// This function finalizes and thus 'publishes' the session directory by
 /// renaming it to `s-{timestamp}-{svh}` and releasing the file lock.
-/// If there have been compilation errors, however, this function will just
-/// delete the presumably invalid session directory.
+/// This must not be called if there have been any compilation errors.
 pub fn finalize_session_directory(sess: &Session, svh: Option<Svh>) {
+    assert!(sess.dcx().has_errors_or_delayed_bugs().is_none());
+
     if sess.opts.incremental.is_none() {
         return;
     }
@@ -306,26 +307,6 @@ pub fn finalize_session_directory(sess: &Session, svh: Option<Svh>) {
     let _timer = sess.timer("incr_comp_finalize_session_directory");
 
     let incr_comp_session_dir: PathBuf = sess.incr_comp_session_dir().clone();
-
-    if sess.dcx().has_errors_or_delayed_bugs().is_some() {
-        // If there have been any errors during compilation, we don't want to
-        // publish this session directory. Rather, we'll just delete it.
-
-        debug!(
-            "finalize_session_directory() - invalidating session directory: {}",
-            incr_comp_session_dir.display()
-        );
-
-        if let Err(err) = std_fs::remove_dir_all(&*incr_comp_session_dir) {
-            sess.dcx().emit_warn(diagnostics::DeleteFull { path: &incr_comp_session_dir, err });
-        }
-
-        let lock_file_path = lock_file_path(&*incr_comp_session_dir);
-        delete_session_dir_lock_file(sess, &lock_file_path);
-        sess.finalize_incr_comp_session();
-        let _ = garbage_collect_session_directories(sess, &incr_comp_session_dir);
-        return;
-    }
 
     debug!("finalize_session_directory() - session directory: {}", incr_comp_session_dir.display());
 
