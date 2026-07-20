@@ -1,6 +1,7 @@
 //@ known-bug: unknown
-// Ensure that we print unsatisfied always-const trait bounds as `const Trait` in diagnostics.
-//@ compile-flags: -Znext-solver=coherence
+// This used to ensure that the next solver prints unsatisfied always-const trait bounds as
+// `const Trait`, but no longer does because GCE is incompatible with the next solver.
+//@ compile-flags: -Znext-solver
 
 #![feature(const_trait_impl, generic_const_exprs)]
 #![allow(incomplete_features)]
