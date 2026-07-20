@@ -1,5 +1,5 @@
 error: the `linkage` attribute cannot be used on type aliases
-  --> $DIR/linkage.rs:6:3
+  --> $DIR/linkage.rs:7:3
    |
 LL | #[linkage = "weak"]
    |   ^^^^^^^
@@ -7,7 +7,7 @@ LL | #[linkage = "weak"]
    = help: the `linkage` attribute can be applied to foreign statics, functions, and statics
 
 error: the `linkage` attribute cannot be used on modules
-  --> $DIR/linkage.rs:9:3
+  --> $DIR/linkage.rs:10:3
    |
 LL | #[linkage = "weak"]
    |   ^^^^^^^
@@ -15,7 +15,7 @@ LL | #[linkage = "weak"]
    = help: the `linkage` attribute can be applied to foreign statics, functions, and statics
 
 error: the `linkage` attribute cannot be used on structs
-  --> $DIR/linkage.rs:12:3
+  --> $DIR/linkage.rs:13:3
    |
 LL | #[linkage = "weak"]
    |   ^^^^^^^
@@ -23,7 +23,7 @@ LL | #[linkage = "weak"]
    = help: the `linkage` attribute can be applied to foreign statics, functions, and statics
 
 error: the `linkage` attribute cannot be used on inherent impl blocks
-  --> $DIR/linkage.rs:15:3
+  --> $DIR/linkage.rs:16:3
    |
 LL | #[linkage = "weak"]
    |   ^^^^^^^
@@ -31,7 +31,7 @@ LL | #[linkage = "weak"]
    = help: the `linkage` attribute can be applied to foreign statics, functions, and statics
 
 error: the `linkage` attribute cannot be used on expressions
-  --> $DIR/linkage.rs:23:7
+  --> $DIR/linkage.rs:24:7
    |
 LL |     #[linkage = "weak"]
    |       ^^^^^^^
@@ -39,7 +39,7 @@ LL |     #[linkage = "weak"]
    = help: the `linkage` attribute can be applied to foreign statics, functions, and statics
 
 error: the `linkage` attribute cannot be used on closures
-  --> $DIR/linkage.rs:39:15
+  --> $DIR/linkage.rs:40:15
    |
 LL |     let _ = #[linkage = "weak"]
    |               ^^^^^^^
