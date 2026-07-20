@@ -105,14 +105,14 @@ impl<'a, T: 'a> Deref for MappedReadGuard<'a, T> {
 }
 
 impl<'a, T: 'a> ReadGuard<'a, T> {
-    pub fn map<U, F>(self, f: F) -> MappedReadGuard<'a, U>
+    pub fn map<U, F>(s: Self, f: F) -> MappedReadGuard<'a, U>
     where
         F: FnOnce(&T) -> &U,
     {
-        let mode = self.mode;
-        let mode_union = &self.rw_lock.mode_union;
-        let data = f(unsafe { &*self.rw_lock.data.get() });
-        mem::forget(self);
+        let mode = s.mode;
+        let mode_union = &s.rw_lock.mode_union;
+        let data = f(unsafe { &*s.rw_lock.data.get() });
+        mem::forget(s);
         MappedReadGuard { mode_union, data, marker: PhantomData, mode }
     }
 }
@@ -216,16 +216,16 @@ impl<'a, T: 'a> DerefMut for MappedWriteGuard<'a, T> {
 }
 
 impl<'a, T: 'a> WriteGuard<'a, T> {
-    pub fn map<U, F>(self, f: F) -> MappedWriteGuard<'a, U>
+    pub fn map<U, F>(s: Self, f: F) -> MappedWriteGuard<'a, U>
     where
         F: FnOnce(&mut T) -> &mut U,
     {
-        let mode = self.mode;
-        let mode_union = &self.rw_lock.mode_union;
+        let mode = s.mode;
+        let mode_union = &s.rw_lock.mode_union;
         // SAFETY: We have owned access to the exclusive access of this type,
         // so we can give out a exclusive reference.
-        let data = f(unsafe { &mut *self.rw_lock.data.get() });
-        mem::forget(self);
+        let data = f(unsafe { &mut *s.rw_lock.data.get() });
+        mem::forget(s);
         MappedWriteGuard { mode_union, data, marker: PhantomData, mode }
     }
 }
@@ -295,6 +295,7 @@ impl<T> RwLock<T> {
         }
     }
 
+    #[inline(always)]
     pub fn try_read(&self) -> Result<ReadGuard<'_, T>, ()> {
         let mode = self.mode;
 
