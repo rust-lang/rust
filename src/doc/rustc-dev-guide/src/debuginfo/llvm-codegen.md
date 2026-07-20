@@ -1,4 +1,4 @@
-# (WIP) LLVM Codegen
+# LLVM codegen
 
 When Rust calls an LLVM `DIBuilder` function, LLVM translates the given information to a
 ["debug record"][dbg_record] that is format-agnostic. These records can be inspected in the LLVM-IR.
