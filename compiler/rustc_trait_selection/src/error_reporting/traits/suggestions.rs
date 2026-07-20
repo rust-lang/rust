@@ -4574,41 +4574,17 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     ) {
         let future_trait = self.tcx.require_lang_item(LangItem::Future, span);
 
-        let self_ty = self.resolve_vars_if_possible(trait_pred.self_ty());
-        let impls_future = self.type_implements_trait(
-            future_trait,
-            [self.tcx.instantiate_bound_regions_with_erased(self_ty)],
-            obligation.param_env,
-        );
-        if !impls_future.must_apply_modulo_regions() {
+        // Don't suggest `.await` if the `trait_pred.self_ty()` doesn't implement `Future`.
+        if !self.check_self_ty(obligation, trait_pred, future_trait) {
             return;
         }
 
-        let item_def_id = self.tcx.associated_item_def_ids(future_trait)[0];
-        // `<T as Future>::Output`
-        let projection_ty = trait_pred.map_bound(|trait_pred| {
-            Ty::new_projection(
-                self.tcx,
-                ty::IsRigid::No,
-                item_def_id,
-                // Future::Output has no args
-                [trait_pred.self_ty()],
-            )
-        });
-        let InferOk { value: projection_ty, .. } = self
-            .at(&obligation.cause, obligation.param_env)
-            .normalize(Unnormalized::new_wip(projection_ty));
+        // Don't suggest `.await` if `<T as Future>::Output` doesn't implement the target trait (`Try`).
+        if !self.check_future_output(obligation, trait_pred, future_trait) {
+            return;
+        }
 
-        debug!(
-            normalized_projection_type = ?self.resolve_vars_if_possible(projection_ty)
-        );
-        let try_obligation = self.mk_trait_obligation_with_new_self_ty(
-            obligation.param_env,
-            trait_pred.map_bound(|trait_pred| (trait_pred, projection_ty.skip_binder())),
-        );
-        debug!(try_trait_obligation = ?try_obligation);
-        if self.predicate_may_hold(&try_obligation)
-            && let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span)
+        if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span)
             && snippet.ends_with('?')
         {
             match self.tcx.coroutine_kind(obligation.cause.body_def_id) {
@@ -4634,6 +4610,161 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }
             }
         }
+    }
+
+    /// When a future is used where a non-`Future` trait is expected (e.g. `Display`,
+    /// `Copy`), suggest `.await` if it would satisfy the trait bound.
+    pub(super) fn suggest_await_on_future(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        err: &mut Diag<'_>,
+        trait_pred: ty::PolyTraitPredicate<'tcx>,
+        span: Span,
+    ) {
+        let Some(future_trait) = self.tcx.lang_items().get(LangItem::Future) else {
+            return;
+        };
+
+        // Don't suggest `.await` if the target trait is `Future` (that's a different error).
+        if trait_pred.def_id() == future_trait {
+            return;
+        }
+
+        // Don't suggest `.await` if the target trait is `Try` - `suggest_await_before_try` handles this.
+        if self.tcx.is_lang_item(trait_pred.def_id(), LangItem::Try) {
+            return;
+        }
+
+        // Non-lifetime binders (e.g. `for<T>`) produce bound types that
+        // `instantiate_bound_regions_with_erased` in `self.check_self_ty` cannot handle.
+        if trait_pred.bound_vars().len() > 0 {
+            return;
+        }
+
+        // Don't suggest `.await` if the `trait_pred.self_ty()` doesn't implement `Future`.
+        if !self.check_self_ty(obligation, trait_pred, future_trait) {
+            return;
+        }
+
+        // Don't suggest `.await` if `<T as Future>::Output` doesn't implement the target trait.
+        if !self.check_future_output(obligation, trait_pred, future_trait) {
+            return;
+        }
+
+        let Some(hir::CoroutineKind::Desugared(hir::CoroutineDesugaring::Async, _)) =
+            self.tcx.coroutine_kind(obligation.cause.body_def_id)
+        else {
+            return;
+        };
+
+        let body = self.tcx.hir_body_owned_by(obligation.cause.body_def_id);
+
+        // Don't suggest `.await` if the span is outside the function body
+        // (e.g. in a parameter type like `f: dyn Future`).
+        if !body.value.span.contains(span) {
+            return;
+        }
+
+        let sm = self.tcx.sess.source_map();
+
+        // Check if span is inside a format macro (e.g. `{n}` in `println!("{n}")`).
+        if let Ok(snippet) = sm.span_to_snippet(span)
+            && snippet.starts_with('{')
+            && snippet.ends_with('}')
+            && let Some(var_name) =
+                snippet.trim_start_matches('{').trim_end_matches('}').split(':').next()
+            && !var_name.is_empty()
+            && let Some(let_stmt) = self.find_let_binding_by_name(&body.value, var_name)
+            && let hir::PatKind::Binding(_, _, ident, _) = let_stmt.pat.kind
+        {
+            // Format macro - add explicit let binding with `.await`.
+            let ident_name = ident.name;
+            let padding = sm.indentation_before(let_stmt.span).unwrap_or_default();
+            err.multipart_suggestion(
+                "consider `await`ing on the `Future`",
+                vec![(
+                    let_stmt.span.shrink_to_hi(),
+                    format!("\n{padding}let {ident_name} = {ident_name}.await;"),
+                )],
+                Applicability::MaybeIncorrect,
+            );
+        } else {
+            // Other - add `.await` at the usage site.
+            err.span_suggestion_verbose(
+                span.shrink_to_hi(),
+                "consider `await`ing on the `Future`",
+                ".await",
+                Applicability::MaybeIncorrect,
+            );
+        }
+    }
+
+    /// Check if `trait_pred.self_ty()` implements `Future`.
+    fn check_self_ty(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        trait_pred: ty::PolyTraitPredicate<'tcx>,
+        future_trait: DefId,
+    ) -> bool {
+        let self_ty = self.resolve_vars_if_possible(trait_pred.self_ty());
+        let impls_future = self.type_implements_trait(
+            future_trait,
+            [self.tcx.instantiate_bound_regions_with_erased(self_ty)],
+            obligation.param_env,
+        );
+        impls_future.must_apply_modulo_regions()
+    }
+
+    /// Check if `<T as Future>::Output` implements a given trait.
+    fn check_future_output(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        trait_pred: ty::PolyTraitPredicate<'tcx>,
+        future_trait: DefId,
+    ) -> bool {
+        let item_def_id = self.tcx.associated_item_def_ids(future_trait)[0];
+        let projection_ty = trait_pred.map_bound(|trait_pred| {
+            Ty::new_projection(self.tcx, ty::IsRigid::No, item_def_id, [trait_pred.self_ty()])
+        });
+        let InferOk { value: projection_ty, .. } = self
+            .at(&obligation.cause, obligation.param_env)
+            .normalize(Unnormalized::new_wip(projection_ty));
+        let output_obligation = self.mk_trait_obligation_with_new_self_ty(
+            obligation.param_env,
+            trait_pred.map_bound(|trait_pred| (trait_pred, projection_ty.skip_binder())),
+        );
+        self.predicate_may_hold(&output_obligation)
+    }
+
+    /// Find a `let` binding in the body by variable name.
+    fn find_let_binding_by_name<'hir>(
+        &self,
+        body_expr: &'hir hir::Expr<'hir>,
+        name: &str,
+    ) -> Option<&'hir hir::LetStmt<'hir>> {
+        use hir::intravisit::Visitor;
+
+        struct FindLetVisitor<'a, 'hir> {
+            name: &'a str,
+            found: Option<&'hir hir::LetStmt<'hir>>,
+        }
+
+        impl<'a, 'hir> Visitor<'hir> for FindLetVisitor<'a, 'hir> {
+            fn visit_stmt(&mut self, stmt: &'hir hir::Stmt<'hir>) {
+                if let hir::StmtKind::Let(let_stmt) = &stmt.kind
+                    && let hir::PatKind::Binding(_, _, ident, _) = let_stmt.pat.kind
+                    && ident.name.as_str() == self.name
+                {
+                    self.found = Some(let_stmt);
+                    return;
+                }
+                hir::intravisit::walk_stmt(self, stmt);
+            }
+        }
+
+        let mut visitor = FindLetVisitor { name, found: None };
+        visitor.visit_expr(body_expr);
+        visitor.found
     }
 
     pub(super) fn suggest_floating_point_literal(
