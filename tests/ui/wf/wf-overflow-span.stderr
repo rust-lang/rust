@@ -1,0 +1,9 @@
+error[E0275]: overflow evaluating whether `&_` is well-formed
+  --> $DIR/wf-overflow-span.rs:4:50
+   |
+LL |     samples.extend(packet_buf.iter().map(|x| [x, x]));
+   |                                                  ^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0275`.

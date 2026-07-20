@@ -113,6 +113,7 @@ pub struct FloatVariableOrigin {
 #[derive(Clone)]
 pub(crate) struct TypeVariableData {
     origin: TypeVariableOrigin,
+    instantiate_span: Option<Span>,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -191,7 +192,7 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
     /// Instantiates `vid` with the type `ty`.
     ///
     /// Precondition: `vid` must not have been previously instantiated.
-    pub(crate) fn instantiate(&mut self, vid: ty::TyVid, ty: Ty<'tcx>) {
+    pub(crate) fn instantiate(&mut self, vid: ty::TyVid, ty: Ty<'tcx>, instantiate_span: Span) {
         let vid = self.root_var(vid);
         debug_assert!(!ty.is_ty_var(), "instantiating ty var with var: {vid:?} {ty:?}");
         debug_assert!(self.probe(vid).is_unknown());
@@ -201,6 +202,7 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
             self.eq_relations().probe_value(vid)
         );
         self.eq_relations().union_value(vid, TypeVariableValue::Known { value: ty });
+        self.storage.values[vid].instantiate_span = Some(instantiate_span);
     }
 
     /// Creates a new type variable.
@@ -223,7 +225,7 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
         let sub_key = self.sub_unification_table().new_key(());
         debug_assert_eq!(eq_key.vid, sub_key.vid);
 
-        let index = self.storage.values.push(TypeVariableData { origin });
+        let index = self.storage.values.push(TypeVariableData { origin, instantiate_span: None });
         debug_assert_eq!(eq_key.vid, index);
 
         debug!("new_var(index={:?}, universe={:?}, origin={:?})", eq_key.vid, universe, origin);
@@ -234,6 +236,15 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
     /// Returns the number of type variables created thus far.
     pub(crate) fn num_vars(&self) -> usize {
         self.storage.values.len()
+    }
+
+    /// Returns the instantiation span of `vid`, if any.
+    pub(crate) fn instantiate_span(&mut self, vid: ty::TyVid) -> Option<Span> {
+        let vid = self.root_var(vid);
+        match self.probe(vid) {
+            TypeVariableValue::Known { .. } => self.storage.values[vid].instantiate_span,
+            TypeVariableValue::Unknown { .. } => None,
+        }
     }
 
     /// Returns the "root" variable of `vid` in the `eq_relations`

@@ -151,7 +151,7 @@ impl<'tcx> InferCtxt<'tcx> {
         )?;
 
         // Constrain `b_vid` to the generalized type `generalized_term`.
-        self.union_var_term(target_vid, generalized_term);
+        self.union_var_term(target_vid, generalized_term, relation.span());
 
         // Finally, relate `generalized_term` to `source_term`, as described in previous comment.
         //
@@ -298,13 +298,13 @@ impl<'tcx> InferCtxt<'tcx> {
 
     /// This is a thin wrapper around inserting into the var tables. You probably want
     /// [`Self::instantiate_var`] instead, which calls this method.
-    fn union_var_term(&self, l: TermVid, r: ty::Term<'tcx>) {
+    fn union_var_term(&self, l: TermVid, r: ty::Term<'tcx>, span: Span) {
         match (l, r.kind()) {
             (TermVid::Ty(l), ty::TermKind::Ty(r)) => {
                 if let Some(r) = r.ty_vid() {
                     self.inner.borrow_mut().type_variables().equate(l, r)
                 } else {
-                    self.inner.borrow_mut().type_variables().instantiate(l, r)
+                    self.inner.borrow_mut().type_variables().instantiate(l, r, span)
                 }
             }
             (TermVid::Const(l), ty::TermKind::Const(r)) => {
