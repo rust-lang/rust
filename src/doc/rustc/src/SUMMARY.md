@@ -169,3 +169,4 @@
 <!--    - [List of Targets](platform-support/targets.md) (see #120745) -->
 <!-- TARGET_LIST SECTION START -->
 <!-- TARGET_LIST SECTION END -->
+<!--    - [Currently Unmaintained Targets](platform-support/unmaintained-targets.md) -->
