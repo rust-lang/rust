@@ -28,6 +28,17 @@ fn main() {
     //~^ ERROR return type notation is experimental
     let x: S::new(()); //~ ERROR expected type, found associated function call
 
+    // Macros — suggestion must point at user code, not the macro definition (#158834)
+    let x: vec![]; //~ ERROR expected type, found associated function call
+
+    // When the `let` is inside a macro, no suggestion should be emitted at the call site
+    macro_rules! make {
+        ($pat:pat) => {
+            let $pat: Vec::new(); //~ ERROR expected type, found associated function call
+        };
+    }
+    make!(_);
+
     // Literals
     let x: 42; //~ ERROR expected type, found `42`
     let x: ""; //~ ERROR expected type, found `""`

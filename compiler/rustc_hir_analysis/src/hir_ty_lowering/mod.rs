@@ -3307,18 +3307,18 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         .next()
                 {
                     // `let x: S::new(valid_in_ty_ctxt);` -> `let x = S::new(valid_in_ty_ctxt);`
-                    let err = tcx
-                        .dcx()
-                        .struct_span_err(
-                            hir_ty.span,
-                            "expected type, found associated function call",
-                        )
-                        .with_span_suggestion_verbose(
-                            stmt.pat.span.between(hir_ty.span),
+                    let mut err = tcx.dcx().struct_span_err(
+                        hir_ty.span,
+                        "expected type, found associated function call",
+                    );
+                    if let Some(between) = eq_ctxt_suggestion_span(stmt.pat.span, hir_ty.span) {
+                        err.span_suggestion_verbose(
+                            between,
                             "use `=` if you meant to assign",
-                            " = ".to_string(),
+                            " = ",
                             Applicability::MaybeIncorrect,
                         );
+                    }
                     self.dcx().try_steal_replace_and_emit_err(
                         hir_ty.span,
                         StashKey::ReturnTypeNotation,
@@ -3333,18 +3333,18 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 {
                     // `let x: i32::something(valid_in_ty_ctxt);` -> `let x = i32::something(valid_in_ty_ctxt);`
                     // FIXME: Check that `something` is a valid function in `i32`.
-                    let err = tcx
-                        .dcx()
-                        .struct_span_err(
-                            hir_ty.span,
-                            "expected type, found associated function call",
-                        )
-                        .with_span_suggestion_verbose(
-                            stmt.pat.span.between(hir_ty.span),
+                    let mut err = tcx.dcx().struct_span_err(
+                        hir_ty.span,
+                        "expected type, found associated function call",
+                    );
+                    if let Some(between) = eq_ctxt_suggestion_span(stmt.pat.span, hir_ty.span) {
+                        err.span_suggestion_verbose(
+                            between,
                             "use `=` if you meant to assign",
-                            " = ".to_string(),
+                            " = ",
                             Applicability::MaybeIncorrect,
                         );
+                    }
                     self.dcx().try_steal_replace_and_emit_err(
                         hir_ty.span,
                         StashKey::ReturnTypeNotation,
@@ -3902,4 +3902,22 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         // FIXME(scrabsha): actually lower view types.
         inner_ty
     }
+}
+
+/// Computes the `pat.between(ty)` span for the "use `=`" suggestion on `let pat: ty`.
+/// Returns `None` if `pat` and `ty` are in incompatible macro contexts (e.g. `pat` is a
+/// metavariable from the call site while `ty` lives in the macro body), in which case no
+/// suggestion is emitted.
+fn eq_ctxt_suggestion_span(pat: Span, ty: Span) -> Option<Span> {
+    if let Some(ty2) = ty.find_ancestor_in_same_ctxt(pat)
+        && pat.hi() <= ty2.lo()
+    {
+        return Some(pat.between(ty2));
+    }
+    if let Some(pat2) = pat.find_ancestor_in_same_ctxt(ty)
+        && pat2.hi() <= ty.lo()
+    {
+        return Some(pat2.between(ty));
+    }
+    None
 }
