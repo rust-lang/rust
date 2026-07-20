@@ -1,4 +1,5 @@
 mod buffered;
+mod copy;
 mod cursor;
 mod util;
 
