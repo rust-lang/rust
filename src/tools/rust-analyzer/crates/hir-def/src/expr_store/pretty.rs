@@ -338,7 +338,17 @@ fn print_where_clauses(
                     w!(p, ",\n");
                 }
                 match pred {
-                    WherePredicate::TypeBound { target, bound } => {
+                    WherePredicate::TypeBound { lifetimes, target, bound } => {
+                        if let Some(lifetimes) = lifetimes {
+                            w!(p, "for<");
+                            for (i, lifetime) in lifetimes.iter().enumerate() {
+                                if i != 0 {
+                                    w!(p, ", ");
+                                }
+                                w!(p, "{}", lifetime.display(db, p.edition));
+                            }
+                            w!(p, "> ");
+                        }
                         p.print_type_ref(*target);
                         w!(p, ": ");
                         p.print_type_bounds(std::slice::from_ref(bound));
@@ -347,19 +357,6 @@ fn print_where_clauses(
                         p.print_lifetime_ref(*target);
                         w!(p, ": ");
                         p.print_lifetime_ref(*bound);
-                    }
-                    WherePredicate::ForLifetime { lifetimes, target, bound } => {
-                        w!(p, "for<");
-                        for (i, lifetime) in lifetimes.iter().enumerate() {
-                            if i != 0 {
-                                w!(p, ", ");
-                            }
-                            w!(p, "{}", lifetime.display(db, p.edition));
-                        }
-                        w!(p, "> ");
-                        p.print_type_ref(*target);
-                        w!(p, ": ");
-                        p.print_type_bounds(std::slice::from_ref(bound));
                     }
                 }
             }

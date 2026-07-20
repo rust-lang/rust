@@ -185,9 +185,8 @@ impl ops::Index<LocalLifetimeParamId> for GenericParams {
 /// associated type bindings like `Iterator<Item = u32>`.
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub enum WherePredicate {
-    TypeBound { target: TypeRefId, bound: TypeBound },
+    TypeBound { lifetimes: Option<ThinVec<Name>>, target: TypeRefId, bound: TypeBound },
     Lifetime { target: LifetimeRefId, bound: LifetimeRefId },
-    ForLifetime { lifetimes: ThinVec<Name>, target: TypeRefId, bound: TypeBound },
 }
 
 static EMPTY: LazyLock<GenericParams> = LazyLock::new(|| GenericParams {

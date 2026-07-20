@@ -896,10 +896,12 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
         };
 
         match where_predicate {
-            WherePredicate::ForLifetime { target, bound, lifetimes } => {
-                self.with_shifted_in(lifetimes, |ctx| lower_type_outlives(ctx, target, bound)).0
-            }
-            WherePredicate::TypeBound { target, bound } => lower_type_outlives(self, target, bound),
+            WherePredicate::TypeBound { lifetimes, target, bound } => match lifetimes {
+                Some(lifetimes) => {
+                    self.with_shifted_in(lifetimes, |ctx| lower_type_outlives(ctx, target, bound)).0
+                }
+                None => lower_type_outlives(self, target, bound),
+            },
             &WherePredicate::Lifetime { bound, target } => Either::Right(iter::once((
                 Clause(Predicate::new(
                     self.interner,
@@ -2022,9 +2024,7 @@ impl SupertraitsInfo {
             let resolver = trait_.resolver(db);
             let signature = TraitSignature::of(db, trait_);
             for pred in signature.generic_params.where_predicates() {
-                let (WherePredicate::TypeBound { target, bound }
-                | WherePredicate::ForLifetime { lifetimes: _, target, bound }) = pred
-                else {
+                let WherePredicate::TypeBound { lifetimes: _, target, bound } = pred else {
                     continue;
                 };
                 let (TypeBound::Path(bounded_trait, TraitBoundModifier::None)
@@ -2140,9 +2140,7 @@ fn resolve_type_param_assoc_type_shorthand(
     for maybe_parent_generics in generics.iter_owners().rev() {
         ctx.set_owner(maybe_parent_generics);
         for pred in maybe_parent_generics.where_predicates() {
-            let (WherePredicate::TypeBound { target, bound }
-            | WherePredicate::ForLifetime { lifetimes: _, target, bound }) = pred
-            else {
+            let WherePredicate::TypeBound { lifetimes: _, target, bound } = pred else {
                 continue;
             };
             let (TypeBound::Path(bounded_trait_path, TraitBoundModifier::None)
