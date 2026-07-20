@@ -23,7 +23,7 @@ use rustc_middle::ty::{
     TypeVisitableExt, Unnormalized,
 };
 use rustc_session::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
-use rustc_span::{DUMMY_SP, Symbol, sym};
+use rustc_span::{Symbol, sym};
 use tracing::{debug, instrument};
 
 use crate::diagnostics::NonPrimitiveSimdType;
@@ -684,15 +684,24 @@ fn layout_of_uncached<'tcx>(
             map_layout(cx.calc.simd_type(e_ly, e_len, def.repr().packed()))?
         }
 
-        ty::Adt(def, args) if tcx.is_lang_item(def.did(), hir::LangItem::MaybeUninit) => {
+        // Use this path only when all skipped wrappers are lang items.
+        ty::Adt(def, args)
+            if tcx.is_lang_item(def.did(), hir::LangItem::MaybeUninit)
+                // Some no-core crates define a smaller `MaybeUninit` without `MaybeDangling`.
+                && tcx.lang_items().maybe_dangling().is_some()
+                && tcx.lang_items().manually_drop().is_some()
+                // Keep scalable vectors on the normal ADT path so transparent wrappers
+                // make them memory-backed.
+                && !args.type_at(0).is_scalable_vector() =>
+        {
             // `MaybeUninit<T>` is a lang item. Coroutines use it for saved locals.
             // Compute the union from `T` so nested coroutines do not eagerly walk
             // `MaybeUninit<T> -> ManuallyDrop<T> -> MaybeDangling<T> -> T`.
             // Field projection still uses the real ADT fields through `TyAndLayout::field`.
             let field = cx.layout_of(args.type_at(0))?;
             let unit = cx.layout_of(tcx.types.unit)?;
-            let maybe_dangling = tcx.require_lang_item(hir::LangItem::MaybeDangling, DUMMY_SP);
-            let manually_drop = tcx.require_lang_item(hir::LangItem::ManuallyDrop, DUMMY_SP);
+            let maybe_dangling = tcx.lang_items().maybe_dangling().unwrap();
+            let manually_drop = tcx.lang_items().manually_drop().unwrap();
             let mut value_layout = LayoutData::clone(&field.layout.0);
             // Keep the seed equal to the skipped transparent wrappers.
             value_layout.randomization_seed = field
