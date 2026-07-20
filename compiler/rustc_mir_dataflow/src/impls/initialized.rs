@@ -658,10 +658,9 @@ impl<'tcx> Analysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
         terminator: &'mir mir::Terminator<'tcx>,
         location: Location,
     ) -> TerminatorEdges<'mir, 'tcx> {
-        let (body, move_data) = (self.body, self.move_data());
-        let term = body[location.block].terminator();
+        let move_data = self.move_data();
         let init_loc_map = &move_data.init_loc_map;
-        debug!(?term);
+        debug!(?terminator);
         debug!("initializes move_indexes {:?}", init_loc_map[location]);
         state.gen_all(
             init_loc_map[location]
