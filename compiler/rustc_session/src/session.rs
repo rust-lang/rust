@@ -701,7 +701,7 @@ impl Session {
             IncrCompSession::Active { session_directory: session_dir, _lock_file: lock_file };
     }
 
-    pub fn finalize_incr_comp_session(&self, new_directory_path: PathBuf) {
+    pub fn finalize_incr_comp_session(&self) {
         let mut incr_comp_session = self.incr_comp_session.borrow_mut();
 
         if let IncrCompSession::Active { .. } = *incr_comp_session {
@@ -710,34 +710,17 @@ impl Session {
         }
 
         // Note: this will also drop the lock file, thus unlocking the directory.
-        *incr_comp_session = IncrCompSession::Finalized { session_directory: new_directory_path };
-    }
-
-    pub fn mark_incr_comp_session_as_invalid(&self) {
-        let mut incr_comp_session = self.incr_comp_session.borrow_mut();
-
-        let session_directory = match *incr_comp_session {
-            IncrCompSession::Active { ref session_directory, .. } => session_directory.clone(),
-            IncrCompSession::InvalidBecauseOfErrors { .. } => return,
-            _ => panic!("trying to invalidate `IncrCompSession` `{:?}`", *incr_comp_session),
-        };
-
-        // Note: this will also drop the lock file, thus unlocking the directory.
-        *incr_comp_session = IncrCompSession::InvalidBecauseOfErrors { session_directory };
+        *incr_comp_session = IncrCompSession::FinalizedOrRemoved;
     }
 
     pub fn incr_comp_session_dir(&self) -> MappedReadGuard<'_, PathBuf> {
         let incr_comp_session = self.incr_comp_session.borrow();
-        ReadGuard::map(incr_comp_session, |incr_comp_session| match *incr_comp_session {
-            IncrCompSession::NotInitialized => panic!(
+        ReadGuard::map(incr_comp_session, |incr_comp_session| match incr_comp_session {
+            IncrCompSession::NotInitialized | IncrCompSession::FinalizedOrRemoved => panic!(
                 "trying to get session directory from `IncrCompSession`: {:?}",
-                *incr_comp_session,
+                incr_comp_session,
             ),
-            IncrCompSession::Active { ref session_directory, .. }
-            | IncrCompSession::Finalized { ref session_directory }
-            | IncrCompSession::InvalidBecauseOfErrors { ref session_directory } => {
-                session_directory
-            }
+            IncrCompSession::Active { session_directory, .. } => session_directory,
         })
     }
 
@@ -1717,13 +1700,10 @@ enum IncrCompSession {
     /// alone has an effect, because the file will unlock when the session is
     /// dropped.
     Active { session_directory: PathBuf, _lock_file: flock::Lock },
-    /// This is the state after the session directory has been finalized. In this
-    /// state, the contents of the directory must not be modified any more.
-    Finalized { session_directory: PathBuf },
-    /// This is an error state that is reached when some compilation error has
-    /// occurred. It indicates that the contents of the session directory must
-    /// not be used, since they might be invalid.
-    InvalidBecauseOfErrors { session_directory: PathBuf },
+    /// This is the state after the session directory has been finalized or
+    /// removed after errors. In this state, the contents of the directory must
+    /// not be modified any more.
+    FinalizedOrRemoved,
 }
 
 /// A wrapper around an [`DiagCtxt`] that is used for early error emissions.
