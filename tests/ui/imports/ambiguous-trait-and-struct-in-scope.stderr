@@ -1,0 +1,16 @@
+warning: Use of ambiguously glob imported trait `Foo`
+  --> $DIR/ambiguous-trait-and-struct-in-scope.rs:31:19
+   |
+LL |         use crate::module_2::*;
+   |             --------------- `Foo` imported ambiguously here
+LL |         fn weird() {
+LL |             1_i32.method();
+   |                   ^^^^^^
+   |
+   = help: Import `Foo` explicitly
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #152822 <https://github.com/rust-lang/rust/issues/152822>
+   = note: `#[warn(ambiguous_glob_imported_traits)]` (part of `#[warn(future_incompatible)]`) on by default
+
+warning: 1 warning emitted
+
