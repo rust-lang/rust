@@ -806,10 +806,6 @@ fn write_where_predicates<'db>(
     let check_same_target = |pred1: &WherePredicate, pred2: &WherePredicate| match (pred1, pred2) {
         (TypeBound { target: t1, .. }, TypeBound { target: t2, .. }) => t1 == t2,
         (Lifetime { target: t1, .. }, Lifetime { target: t2, .. }) => t1 == t2,
-        (
-            ForLifetime { lifetimes: l1, target: t1, .. },
-            ForLifetime { lifetimes: l2, target: t2, .. },
-        ) => l1 == l2 && t1 == t2,
         _ => false,
     };
 
@@ -821,7 +817,12 @@ fn write_where_predicates<'db>(
 
         f.write_str("\n    ")?;
         match pred {
-            TypeBound { target, bound } => {
+            TypeBound { lifetimes, target, bound } => {
+                if let Some(lifetimes) = lifetimes {
+                    let lifetimes =
+                        lifetimes.iter().map(|it| it.display(f.db, f.edition())).join(", ");
+                    write!(f, "for<{lifetimes}> ")?;
+                }
                 target.hir_fmt(f, owner, store)?;
                 f.write_str(": ")?;
                 bound.hir_fmt(f, owner, store)?;
@@ -831,21 +832,12 @@ fn write_where_predicates<'db>(
                 write!(f, ": ")?;
                 bound.hir_fmt(f, owner, store)?;
             }
-            ForLifetime { lifetimes, target, bound } => {
-                let lifetimes = lifetimes.iter().map(|it| it.display(f.db, f.edition())).join(", ");
-                write!(f, "for<{lifetimes}> ")?;
-                target.hir_fmt(f, owner, store)?;
-                f.write_str(": ")?;
-                bound.hir_fmt(f, owner, store)?;
-            }
         }
 
         while let Some(nxt) = iter.next_if(|nxt| check_same_target(pred, nxt)) {
             f.write_str(" + ")?;
             match nxt {
-                TypeBound { bound, .. } | ForLifetime { bound, .. } => {
-                    bound.hir_fmt(f, owner, store)?
-                }
+                TypeBound { bound, .. } => bound.hir_fmt(f, owner, store)?,
                 Lifetime { bound, .. } => bound.hir_fmt(f, owner, store)?,
             }
         }

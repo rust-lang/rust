@@ -2461,8 +2461,7 @@ impl<'db> HirDisplayWithExpressionStore<'db> for TypeRefId {
                                 .where_predicates()
                                 .iter()
                                 .filter_map(|it| match it {
-                                    WherePredicate::TypeBound { target, bound }
-                                    | WherePredicate::ForLifetime { lifetimes: _, target, bound }
+                                    WherePredicate::TypeBound { lifetimes: _, target, bound }
                                         if matches!(
                                             store[*target],
                                             TypeRef::TypeParam(t) if t == *param
