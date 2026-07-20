@@ -1,81 +1,79 @@
-/*!
-Function pointer type discrimination for pointer authentication.
+//! Function pointer type discrimination for pointer authentication.
 
-This module implements Rust's equivalent of Clang's function pointer type
-discriminator computation used in pointer authentication.
-
-Compatibility with Clang is a primary goal. The discriminator produced for a
-given external "C" function type must match the value computed by Clang so that
-function pointers can be exchanged safely between Rust and C code while
-preserving pointer authentication semantics.
-
-The implementation mirrors Clang's behavior in
-`ASTContext::encodeTypeForFunctionPointerAuth`, ensuring that identical
-C-compatible function types produce identical discriminators. See:
-<https://clang.llvm.org/doxygen/ASTContext_8cpp.html#abb1375e068e807917527842d05cadea3>.
-
-## Overview
-
-The computation is structured into three conceptual stages:
-
-### 1. Type normalization and lowering
-   Rust types are converted into a language-independent representation
-   (`ClangDiscTy`) that mirrors the type categories used by Clang when computing
-   function pointer discriminators. This includes canonicalization such as
-   treating all pointer-like types uniformly and mapping Rust constructs onto
-   their closest C equivalents.
-   One notable exception is C `_Complex`. Rust has no corresponding native type,
-   so there is no canonical Rust representation to map onto Clang's `_Complex`
-   type category. Rather than infer one (for example, by treating `(f32, f32)`
-   or `(f64, f64)` as complex numbers), this implementation leaves such
-   representation choices to users and does not provide dedicated `_Complex`
-   encoding.
-
-### 2. Type encoding
-   The lowered representation is serialized into a byte stream using rules
-   intended to match Clang's implementation in:
-   `encodeTypeForFunctionPointerAuth`. The resulting encoding describes the
-   function signature in a target-independent form suitable for hashing.
-
-### 3. Discriminator hashing
-   The encoded byte stream is hashed using LLVM's stable SipHash-2-4 based
-   discriminator algorithm. The implementation here is a direct translation
-   of LLVM/Clang's logic and must remain bit-for-bit compatible. See:
-   <https://github.com/llvm/llvm-project/blob/main/third-party/siphash/include/siphash/SipHash.h>.
-   Defined in `llvm_siphash.rs`.
-
-## Module structure
-
-- High-level API
-  - `FnPtrDiscriminatorSource`
-  - `compute_fn_ptr_type_discriminator_for`
-  - `clone_discriminated_ptrauth_schema_for`
-
-- Low-level API
-  - `FnPtrTypeDiscriminatorInput`
-  - `compute_fn_ptr_type_discriminator`
-
-- Signature extraction
-  - `extract_fn_ptr_type`
-
-- Clang-compatible type model
-  - `ClangDiscTy`
-  - `canonicalize_c_type`
-  - `to_clang_disc_ty`
-
-- Encoding
-  - `PtrauthEncoder`
-  - `encode_ty`
-
-## Compatibility requirements
-
-Any changes to the encoding or hashing logic should be validated against Clang's
-discriminator computation. Divergence from Clang will result in incompatible
-pointer authentication values across language boundaries.
-
-This implementation intentionally approximates Clang's behavior for extern "C"
-function types only. It does NOT attempt to model full type system rules.
-*/
+//! This module implements Rust's equivalent of Clang's function pointer type
+//! discriminator computation used in pointer authentication.
+//!
+//! Compatibility with Clang is a primary goal. The discriminator produced for a
+//! given external "C" function type must match the value computed by Clang so that
+//! function pointers can be exchanged safely between Rust and C code while
+//! preserving pointer authentication semantics.
+//!
+//! The implementation mirrors Clang's behavior in
+//! `ASTContext::encodeTypeForFunctionPointerAuth`, ensuring that identical
+//! C-compatible function types produce identical discriminators. See:
+//! <https://clang.llvm.org/doxygen/ASTContext_8cpp.html#abb1375e068e807917527842d05cadea3>.
+//!
+//! ## Overview
+//!
+//! The computation is structured into three conceptual stages:
+//!
+//! ### 1. Type normalization and lowering
+//!    Rust types are converted into a language-independent representation
+//!    (`ClangDiscTy`) that mirrors the type categories used by Clang when computing
+//!    function pointer discriminators. This includes canonicalization such as
+//!    treating all pointer-like types uniformly and mapping Rust constructs onto
+//!    their closest C equivalents.
+//!    One notable exception is C `_Complex`. Rust has no corresponding native type,
+//!    so there is no canonical Rust representation to map onto Clang's `_Complex`
+//!    type category. Rather than infer one (for example, by treating `(f32, f32)`
+//!    or `(f64, f64)` as complex numbers), this implementation leaves such
+//!    representation choices to users and does not provide dedicated `_Complex`
+//!    encoding.
+//!
+//! ### 2. Type encoding
+//!    The lowered representation is serialized into a byte stream using rules
+//!    intended to match Clang's implementation in:
+//!    `encodeTypeForFunctionPointerAuth`. The resulting encoding describes the
+//!    function signature in a target-independent form suitable for hashing.
+//!
+//! ### 3. Discriminator hashing
+//!    The encoded byte stream is hashed using LLVM's stable SipHash-2-4 based
+//!    discriminator algorithm. The implementation here is a direct translation
+//!    of LLVM/Clang's logic and must remain bit-for-bit compatible. See:
+//!    <https://github.com/llvm/llvm-project/blob/main/third-party/siphash/include/siphash/SipHash.h>.
+//!    Defined in `llvm_siphash.rs`.
+//!
+//! ## Module structure
+//!
+//! - High-level API
+//!   - `FnPtrDiscriminatorSource`
+//!   - `ptrauth_compute_fn_ptr_type_discriminator_for`
+//!   - `ptrauth_clone_discriminated_schema_for`
+//!
+//! - Low-level API
+//!   - `FnPtrTypeDiscriminatorInput`
+//!   - `compute_fn_ptr_type_discriminator`
+//!
+//! - Signature extraction
+//!   - `extract_fn_ptr_type`
+//!
+//! - Clang-compatible type model
+//!   - `ClangDiscTy`
+//!   - `canonicalize_c_type`
+//!   - `to_clang_disc_ty`
+//!
+//! - Encoding
+//!   - `PtrauthEncoder`
+//!   - `encode_ty`
+//!
+//! ## Compatibility requirements
+//!
+//! Any changes to the encoding or hashing logic should be validated against Clang's
+//! discriminator computation. Divergence from Clang will result in incompatible
+//! pointer authentication values across language boundaries.
+//!
+//! This implementation intentionally approximates Clang's behavior for extern "C"
+//! function types only. It does NOT attempt to model full type system rules.
 
 use rustc_abi::ExternAbi;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt, Unnormalized};
@@ -163,7 +161,10 @@ impl<'tcx> FnPtrDiscriminatorSource<'tcx> for ty::FnSig<'tcx> {
 ///
 /// Returns `None` if the supplied source does not represent a function pointer
 /// type (for example, a non-function `Ty`).
-pub fn compute_fn_ptr_type_discriminator_for<'tcx, S>(tcx: TyCtxt<'tcx>, source: S) -> Option<u16>
+pub fn ptrauth_compute_fn_ptr_type_discriminator_for<'tcx, S>(
+    tcx: TyCtxt<'tcx>,
+    source: S,
+) -> Option<u16>
 where
     S: FnPtrDiscriminatorSource<'tcx>,
 {
@@ -184,7 +185,7 @@ where
 /// This is intended as a convenience helper for code generation sites that need
 /// to attach function pointer type discrimination to a generic schema before
 /// calling `get_fn_addr`.
-pub fn clone_discriminated_ptrauth_schema_for<'tcx, S>(
+pub fn ptrauth_clone_discriminated_schema_for<'tcx, S>(
     tcx: TyCtxt<'tcx>,
     mut schema: Option<PointerAuthSchema>,
     source: S,
@@ -193,7 +194,7 @@ where
     S: FnPtrDiscriminatorSource<'tcx>,
 {
     if let Some(ref mut s) = schema {
-        if let Some(disc) = compute_fn_ptr_type_discriminator_for(tcx, source) {
+        if let Some(disc) = ptrauth_compute_fn_ptr_type_discriminator_for(tcx, source) {
             s.constant_discriminator = disc;
         }
     }
@@ -240,7 +241,7 @@ fn extract_fn_ptr_type<'tcx>(tcx: TyCtxt<'tcx>, mut ty: Ty<'tcx>) -> Option<Ty<'
 
     loop {
         match ty.kind() {
-            ty::Adt(def, args) if tcx.is_diagnostic_item(sym::Option, def.did()) => {
+            ty::Adt(def, args) if tcx.lang_items().option_type() == Some(def.did()) => {
                 ty = args.type_at(0);
                 continue;
             }
@@ -351,9 +352,6 @@ fn canonicalize_c_type<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
 ///
 /// This is not a full semantic translation of Rust types. It is a lossy mapping
 /// that intentionally matches Clang's function pointer authentication encoding
-/// rules.
-/// This is not a full semantic translation of Rust types. It is a lossy mapping
-/// that intentionally matches Clang's function pointer authentication encoding
 /// rules where Rust has a direct language-level equivalent.
 ///
 /// In particular C `_Complex`, without a canonical Rust equivalent, is not
@@ -373,7 +371,7 @@ fn to_clang_disc_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ClangDiscTy<'tcx> 
     let ty = canonicalize_c_type(tcx, ty);
     match ty.kind() {
         // C void / Rust ()
-        ty::Tuple(list) if list.is_empty() => ClangDiscTy::Void,
+        _ if ty.is_unit() => ClangDiscTy::Void,
 
         // scalars
         ty::Bool => ClangDiscTy::Bool,
