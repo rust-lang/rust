@@ -25,8 +25,8 @@ fn foo(x: Foo, y: self::Foo) { ... }
 //        ^^^     ^^^^^^^^^
 ```
 
-Those two parameters `x` and `y` each have the same type: but they will have
-distinct `hir::Ty` nodes.
+Those two parameters `x` and `y` each have the same type,
+but they will have distinct `hir::Ty` nodes.
 Those nodes will have different spans, and of course they encode the path somewhat differently.
 But once they are "collected" into
 `Ty<'tcx>` nodes, they will be represented by the exact same internal type.
