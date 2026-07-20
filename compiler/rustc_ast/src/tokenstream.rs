@@ -662,13 +662,12 @@ impl TokenStream {
 
     // If `vec` is not empty, try to glue `tt` onto its last token. The return
     // value indicates if gluing took place.
-    fn try_glue_to_last(vec: &mut Vec<TokenTree>, tt: &TokenTree) -> bool {
+    fn try_glue_to_last(vec: &mut [TokenTree], tt: &TokenTree) -> bool {
         if let Some(TokenTree::Token(last_tok, Spacing::Joint | Spacing::JointHidden)) = vec.last()
             && let TokenTree::Token(tok, spacing) = tt
             && let Some(glued_tok) = last_tok.glue(tok)
         {
-            // ...then overwrite the last token tree in `vec` with the
-            // glued token, and skip the first token tree from `stream`.
+            // ...then overwrite the last token tree in `vec` with the glued token.
             *vec.last_mut().unwrap() = TokenTree::Token(glued_tok, *spacing);
             true
         } else {
@@ -705,10 +704,6 @@ impl TokenStream {
             // Append all of `stream`.
             vec_mut.extend(stream_iter);
         }
-    }
-
-    pub fn chunks(&self, chunk_size: usize) -> core::slice::Chunks<'_, TokenTree> {
-        self.0.chunks(chunk_size)
     }
 
     /// Desugar doc comments like `/// foo` in the stream into `#[doc =
@@ -845,9 +840,7 @@ impl FromIterator<TokenTree> for TokenStream {
 
 impl StableHash for TokenStream {
     fn stable_hash<Hcx: StableHashCtxt>(&self, hcx: &mut Hcx, hasher: &mut StableHasher) {
-        for sub_tt in self.iter() {
-            sub_tt.stable_hash(hcx, hasher);
-        }
+        self.0.as_slice().stable_hash(hcx, hasher);
     }
 }
 
