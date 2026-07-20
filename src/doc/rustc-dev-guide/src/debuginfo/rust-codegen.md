@@ -1,8 +1,10 @@
 # Rust Codegen
 
 The first phase in debug info generation requires Rust to inspect the MIR of the program and
-communicate it to LLVM. This is primarily done in [`rustc_codegen_llvm/debuginfo`][llvm_di], though
-some type-name processing exists in [`rustc_codegen_ssa/debuginfo`][ssa_di]. Rust communicates to
+communicate it to LLVM.
+This is primarily done in [`rustc_codegen_llvm/debuginfo`][llvm_di], though
+some type-name processing exists in [`rustc_codegen_ssa/debuginfo`][ssa_di].
+Rust communicates to
 LLVM via the `DIBuilder` API - a thin wrapper around LLVM's internals that exists in
 [rustc_llvm][rustc_llvm].
 
@@ -13,31 +15,33 @@ LLVM via the `DIBuilder` API - a thin wrapper around LLVM's internals that exist
 # Type Information
 
 Type information typically consists of the type name, size, alignment, as well as things like
-fields, generic parameters, and storage modifiers if they are relevant. Much of this work happens in
-[rustc_codegen_llvm/src/debuginfo/metadata][di_metadata].
+fields, generic parameters, and storage modifiers if they are relevant.
+Much of this work happens in [rustc_codegen_llvm/src/debuginfo/metadata][di_metadata].
 
 [di_metadata]: https://github.com/rust-lang/rust/blob/main/compiler/rustc_codegen_llvm/src/debuginfo/metadata.rs
 
 It is important to keep in mind that the goal is not necessarily "represent types exactly how they
 appear in Rust", rather it is to represent them in a way that allows debuggers to most accurately
-reconstruct the data during debugging. This distinction is vital to understanding the core work that
+reconstruct the data during debugging.
+This distinction is vital to understanding the core work that
 occurs on this layer; many changes made here will be for the purpose of working around debugger
 limitations when no other option will work.
 
 ## Quirks
 
-Rust's generated DI nodes "pretend" to be C/C++ for both CDB and LLDB's sake. This can result in
-some unintuitive and non-idiomatic debug info.
+Rust's generated DI nodes "pretend" to be C/C++ for both CDB and LLDB's sake.
+This can result in some unintuitive and non-idiomatic debug info.
 
 ### Pointers and Reference
 
 Wide pointers/references/`Box` are treated as a struct with 2 fields: `data_ptr` and `length`.
 
 All non-wide pointers, references, and `Box` pointers are output as pointer nodes, and no
-distinction is made between `mut` and non-`mut`. Several attempts have been made to rectify this,
-but unfortunately there is not a straightforward solution. Using the `reference` DI nodes of the
-respective formats has pitfalls. There is a semantic difference between C++ references and Rust
-references that is unreconcilable.
+distinction is made between `mut` and non-`mut`.
+Several attempts have been made to rectify this,
+but unfortunately there is not a straightforward solution.
+Using the `reference` DI nodes of the respective formats has pitfalls.
+There is a semantic difference between C++ references and Rust references that is unreconcilable.
 
 >From [cppreference](https://en.cppreference.com/w/cpp/language/reference.html):
 >
@@ -54,16 +58,19 @@ The current proposed solution is to simply [typedef the pointer nodes][issue_144
 
 Using the `const` qualifier to denote non-`mut` poses potential issues due to LLDB's internal
 optimizations. In short, LLDB attempts to cache the child-values of variables (e.g. struct fields,
-array elements) when stepping through code. A heuristic is used to determine which values are safely
-cache-able, and `const` is part of that heuristic. Research has not been done into how this would
+array elements) when stepping through code.
+A heuristic is used to determine which values are safely
+cache-able, and `const` is part of that heuristic.
+Research has not been done into how this would
 interact with things like Rust's interior mutability constructs.
 
 ### DWARF vs PDB
 
 While most of the type information is fairly straight forward, one notable issue is the debug info
-format of the target. Each format has different semantics and limitations, as such they require
-slightly different debug info in some cases. This is gated by calls to
-[`cpp_like_debuginfo`][cpp_like].
+format of the target.
+Each format has different semantics and limitations, as such they require
+slightly different debug info in some cases.
+This is gated by calls to [`cpp_like_debuginfo`][cpp_like].
 
 [cpp_like]: https://github.com/rust-lang/rust/blob/main/compiler/rustc_codegen_ssa/src/debuginfo/type_names.rs#L813
 
@@ -97,7 +104,8 @@ consecutive `>`'s with a space (`> >`) in type names.
 
 [^2]: While these type names are generated as part of the debug info node (which is then wrapped in
 a typedef node with the Rust name), once the LLVM-IR node is converted to a CodeView node, the type
-name information is lost. This is because CodeView has special shorthand nodes for primitive types,
+name information is lost.
+This is because CodeView has special shorthand nodes for primitive types,
 and those shorthand nodes to not have a "name" field.
 
 ### Generics
@@ -106,8 +114,10 @@ Rust outputs generic *type* information (`T` in `ArrayVec<T, N: usize>`), but no
 information (`N` in `ArrayVec<T, N: usize>`).
 
 CodeView does not have a leaf node for generics/C++ templates, so all generic information is lost
-when generating PDB debug info. There are workarounds that allow the debugger to retrieve the
-generic arguments via the type name, but it is fragile solution at best. Efforts are being made to
+when generating PDB debug info.
+There are workarounds that allow the debugger to retrieve the
+generic arguments via the type name, but it is fragile solution at best.
+Efforts are being made to
 contact Microsoft to correct this deficiency, and/or to use one of the unused CodeView node types as
 a suitable equivalent.
 
@@ -126,9 +136,10 @@ Enum DI nodes are generated in [rustc_codegen_llvm/src/debuginfo/metadata/enums]
 
 #### DWARF
 
-DWARF has a dedicated node for discriminated unions: `DW_TAG_variant`. It is a container that
-references `DW_TAG_variant_part` nodes that may or may not contain a discriminant value. The
-hierarchy looks as follows:
+DWARF has a dedicated node for discriminated unions: `DW_TAG_variant`.
+It is a container that
+references `DW_TAG_variant_part` nodes that may or may not contain a discriminant value.
+The hierarchy looks as follows:
 
 ```txt
 DW_TAG_structure_type      (top-level type for the coroutine)
@@ -175,7 +186,8 @@ union enum2$<RUST_ENUM_NAME> {
 ```
 
 An important note is that due to limitations in LLDB, the `DISCR_*` value generated is always a
-`u64` even if the value is not `#[repr(u64)]`. This is largely a non-issue for LLDB because the
+`u64` even if the value is not `#[repr(u64)]`.
+This is largely a non-issue for LLDB because the
 `DISCR_*` value and the `tag` are read into `uint64_t` values regardless of their type.
 
 # Source Information
