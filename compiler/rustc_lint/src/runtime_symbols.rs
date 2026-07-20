@@ -1,9 +1,9 @@
-use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{self as hir, FnSig, ForeignItemKind, LanguageItems};
+use rustc_hir::def_id::LocalDefId;
+use rustc_hir::{self as hir, CanonicalSymbol, FnSig, ForeignItemKind};
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_session::{declare_lint, declare_lint_pass};
-use rustc_span::Span;
+use rustc_span::{Span, Symbol};
 use rustc_trait_selection::infer::TyCtxtInferExt;
 
 use crate::lints::RedefiningRuntimeSymbolsDiag;
@@ -73,31 +73,6 @@ declare_lint! {
 
 declare_lint_pass!(RuntimeSymbols => [INVALID_RUNTIME_SYMBOL_DEFINITIONS, SUSPICIOUS_RUNTIME_SYMBOL_DEFINITIONS]);
 
-static EXPECTED_SYMBOLS: &[ExpectedSymbol] = &[
-    // `core` symbols
-    ExpectedSymbol { symbol: "memcpy", lang: LanguageItems::memcpy_fn },
-    ExpectedSymbol { symbol: "memmove", lang: LanguageItems::memmove_fn },
-    ExpectedSymbol { symbol: "memset", lang: LanguageItems::memset_fn },
-    ExpectedSymbol { symbol: "memcmp", lang: LanguageItems::memcmp_fn },
-    ExpectedSymbol { symbol: "bcmp", lang: LanguageItems::bcmp_fn },
-    ExpectedSymbol { symbol: "strlen", lang: LanguageItems::strlen_fn },
-    // POSIX symbols
-    ExpectedSymbol { symbol: "open", lang: LanguageItems::open_fn },
-    ExpectedSymbol { symbol: "read", lang: LanguageItems::read_fn },
-    ExpectedSymbol { symbol: "write", lang: LanguageItems::write_fn },
-    ExpectedSymbol { symbol: "close", lang: LanguageItems::close_fn },
-    ExpectedSymbol { symbol: "malloc", lang: LanguageItems::malloc_fn },
-    ExpectedSymbol { symbol: "realloc", lang: LanguageItems::realloc_fn },
-    ExpectedSymbol { symbol: "free", lang: LanguageItems::free_fn },
-    ExpectedSymbol { symbol: "exit", lang: LanguageItems::exit_fn },
-];
-
-#[derive(Copy, Clone, Debug)]
-struct ExpectedSymbol {
-    symbol: &'static str,
-    lang: fn(&LanguageItems) -> Option<DefId>,
-}
-
 impl<'tcx> LateLintPass<'tcx> for RuntimeSymbols {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
         // Bail-out if the item is not a function/method or static.
@@ -162,13 +137,11 @@ impl<'tcx> LateLintPass<'tcx> for RuntimeSymbols {
 }
 
 fn check_fn(cx: &LateContext<'_>, symbol_name: &str, sig: FnSig<'_>, did: LocalDefId) {
-    let Some(expected_symbol) = EXPECTED_SYMBOLS.iter().find(|es| es.symbol == symbol_name) else {
+    let s = Symbol::intern(symbol_name);
+    let Some(CanonicalSymbol { symbol: _, def_id: expected_def_id }) =
+        cx.tcx.all_canonical_symbols(()).iter().find(|cs| cs.symbol == s)
+    else {
         // The symbol name does not correspond to a runtime symbols, bail out
-        return;
-    };
-
-    let Some(expected_def_id) = (expected_symbol.lang)(&cx.tcx.lang_items()) else {
-        // Can't find the corresponding language item, bail out
         return;
     };
 
@@ -222,13 +195,11 @@ fn check_fn(cx: &LateContext<'_>, symbol_name: &str, sig: FnSig<'_>, did: LocalD
 }
 
 fn check_static<'tcx>(cx: &LateContext<'tcx>, symbol_name: &str, did: LocalDefId, sp: Span) {
-    let Some(expected_symbol) = EXPECTED_SYMBOLS.iter().find(|es| es.symbol == symbol_name) else {
+    let s = Symbol::intern(symbol_name);
+    let Some(CanonicalSymbol { symbol: _, def_id: expected_def_id }) =
+        cx.tcx.all_canonical_symbols(()).iter().find(|cs| cs.symbol == s)
+    else {
         // The symbol name does not correspond to a runtime symbols, bail out
-        return;
-    };
-
-    let Some(expected_def_id) = (expected_symbol.lang)(&cx.tcx.lang_items()) else {
-        // Can't find the corresponding language item, bail out
         return;
     };
 

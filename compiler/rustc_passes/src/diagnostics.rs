@@ -377,6 +377,20 @@ pub(crate) struct DuplicateDiagnosticItemInCrate {
 }
 
 #[derive(Diagnostic)]
+#[diag("duplicate canonical symbol in crate `{$crate_name}`: `{$name}`")]
+pub(crate) struct DuplicateCanonicalSymbolInCrate {
+    #[primary_span]
+    pub duplicate_span: Option<Span>,
+    #[note("the canonical symbol is first defined here")]
+    pub orig_span: Option<Span>,
+    #[note("the canonical symbol is first defined in crate `{$orig_crate_name}`")]
+    pub different_crates: bool,
+    pub crate_name: Symbol,
+    pub orig_crate_name: Symbol,
+    pub name: Symbol,
+}
+
+#[derive(Diagnostic)]
 #[diag("fn_abi_of({$fn_name}) = {$fn_abi}")]
 pub(crate) struct AbiOf {
     #[primary_span]

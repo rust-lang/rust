@@ -1372,6 +1372,10 @@ pub enum AttributeKind {
         builtin_name: Option<Symbol>,
         helper_attrs: ThinVec<Symbol>,
     },
+
+    /// Represents `#[rustc_canonical_symbol]`
+    RustcCanonicalSymbol,
+
     /// Represents `#[rustc_capture_analysis]`
     RustcCaptureAnalysis,
 

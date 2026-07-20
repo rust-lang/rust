@@ -1244,6 +1244,11 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) {
         // diagnostic item. If the crate compiles without checking any diagnostic items,
         // we will fail to emit overlap diagnostics. Thus we invoke it here unconditionally.
         let _ = tcx.all_diagnostic_items(());
+
+        // This query is only invoked normally if a diagnostic is emitted that needs any
+        // canonical symbol. If the crate compiles without checking any runtime symbols,
+        // we will fail to emit overlap diagnostics. Thus we invoke it here unconditionally.
+        let _ = tcx.all_canonical_symbols(());
     });
 
     // If `-Zvalidate-mir` is set, we also want to compute the final MIR for each item
