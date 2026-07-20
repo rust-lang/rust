@@ -162,9 +162,19 @@ impl fmt::Display for AllocError {
 ///
 /// Users of this trait must not rely on side effects of allocating or deallocating method calls
 /// on `Allocator` implementors being observable (i.e. it is sound for an allocation followed
-/// immediately by a deallocation to be optimised away). While it is possible to make
-/// such calls *unlikely* to be elided (e.g. for benchmarking), this cannot be relied upon
+/// by a deallocation to be moved to the stack, or for the compiler to spuriously introduce
+/// an allocation-deallocation pair where one was not specified manually). While it is possible
+/// to make such calls *unlikely* to be elided (e.g. for benchmarking), this cannot be relied upon
 /// for soundness.
+///
+/// More concretely, the following code example is unsound, irrespective of whether your custom
+/// allocator allows counting how many allocations have happened:
+///
+/// ```rust,ignore (unsound and has placeholders)
+/// drop(Box::new_in(42, MyCustomAllocator));
+/// let number_of_heap_allocs = /* call private allocator API */;
+/// unsafe { std::hint::assert_unchecked(number_of_heap_allocs > 0); }
+/// ```
 ///
 /// Additionally, any memory block returned by the allocator must
 /// satisfy the allocation invariants described in `core::ptr`.
@@ -489,40 +499,10 @@ pub const unsafe trait Allocator {
 ///
 /// # Safety
 ///
-/// In addition to the safety requirements of `Allocator`, global allocators are
-/// subject to some additional constraints:
-///
-/// * It's undefined behavior if global allocators unwind. This restriction may
-///   be lifted in the future, but currently an unwind from any of these
-///   functions may lead to memory unsafety.
-///
-/// * You must not rely on allocations actually happening, even if there are explicit
-///   heap allocations in the source. The optimizer may detect unused allocations that it can either
-///   eliminate entirely or move to the stack and thus never invoke the allocator. The
-///   optimizer may further assume that allocation is infallible, so code that used to fail due
-///   to allocator failures may now suddenly work because the optimizer worked around the
-///   need for an allocation. More concretely, the following code example is unsound, irrespective
-///   of whether your custom allocator allows counting how many allocations have happened.
-///
-///   ```rust,ignore (unsound and has placeholders)
-///   drop(Box::new(42));
-///   let number_of_heap_allocs = /* call private allocator API */;
-///   unsafe { std::hint::assert_unchecked(number_of_heap_allocs > 0); }
-///   ```
-///
-///   Note that the optimizations mentioned above are not the only
-///   optimization that can be applied. You may generally not rely on heap allocations
-///   happening if they can be removed without changing program behavior.
-///   Whether allocations happen or not is not part of the program behavior, even if it
-///   could be detected via an allocator that tracks allocations by printing or otherwise
-///   having side effects.
-///
-/// # Re-entrance
-///
-/// When implementing a global allocator, one has to be careful not to create an infinitely recursive
-/// implementation by accident, as many constructs in the Rust standard library may allocate in
-/// their implementation. For example, on some platforms, [`std::sync::Mutex`] may allocate, so using
-/// it is highly problematic in a global allocator.
+/// When implementing a global allocator, one has to be careful not to create an infinitely
+/// recursive implementation by accident, as many constructs in the Rust standard library may
+/// allocate in their implementation. For example, on some platforms, [`std::sync::Mutex`] may
+/// allocate, so using it is highly problematic in a global allocator.
 ///
 /// For this reason, one should generally stick to library features available through
 /// [`core`], and avoid using [`std`] in a global allocator. A few features from [`std`] are
@@ -542,23 +522,7 @@ pub const unsafe trait Allocator {
 /// [`unpark`]: ../../std/thread/struct.Thread.html#method.unpark
 #[unstable(feature = "allocator_api", issue = "32838")]
 #[expect(multiple_supertrait_upcastable)]
-pub unsafe trait GlobalAllocator: Allocator + Sync + 'static {}
-
-/// Guarantees that we can emit `noalias` attributes for a certain allocator. To enable this,
-/// the pointer passed back in via de/reallocating methods must only be used to access
-/// memory inside of that allocation. Furthermore, this pointer should be considered
-/// "mutably borrowed" from the pointer returned by (re)allocating methods and the usual
-/// aliasing rules for mutable borrows apply: when their lifetime ends (e.g. because a
-/// pointer they were derived from gets used again), they must not be used anymore.
-///
-/// This is *highly unlikely* to be possible to implement for most allocators. LLVM
-/// maintains special-case code for the global allocator in order to enable this trait
-/// to always be implemented for `Global`, but an allocator simply being suitable
-/// for use as the global allocator *does not* mean it can implement this trait when
-/// it is *not* the global allocator.
-#[lang = "noalias_allocator"]
-#[unstable(feature = "allocator_api", issue = "32838")]
-pub unsafe trait NoaliasAllocator: Allocator {}
+pub unsafe trait GlobalAllocator: StaticAllocator + Sync + 'static {}
 
 /// Marks a type's [`Clone`] implementation as sound with regard to [`Allocator`] equivalence.
 /// Implementors must ensure that, upon cloning, the two allocators are interchangeable
