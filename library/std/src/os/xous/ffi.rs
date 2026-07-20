@@ -24,7 +24,7 @@ fn lend_mut_impl(
     let mut a1: usize = connection.try_into().unwrap();
     let mut a2 = InvokeType::LendMut as usize;
     let a3 = opcode;
-    let a4 = data.as_mut_ptr().expose_provenance();
+    let a4 = data.as_mut_ptr();
     let a5 = data.len();
     let a6 = arg1;
     let a7 = arg2;
@@ -86,7 +86,7 @@ fn lend_impl(
     let a1: usize = connection.try_into().unwrap();
     let a2 = InvokeType::Lend as usize;
     let a3 = opcode;
-    let a4 = data.as_ptr().expose_provenance();
+    let a4 = data.as_ptr();
     let a5 = data.len();
     let a6 = arg1;
     let a7 = arg2;
@@ -366,8 +366,10 @@ pub(crate) unsafe fn map_memory<T>(
     flags: MemoryFlags,
 ) -> Result<&'static mut [T], Error> {
     let mut a0 = Syscall::MapMemory as usize;
-    let mut a1 = phys.map_or(0, |p| p.get());
-    let mut a2 = virt.map_or(0, |p| p.as_ptr().expose_provenance());
+    let a1 = phys.map_or(0, |p| p.get());
+    let a1_out: *mut T;
+    let a2 = virt.map_or(core::ptr::null(), |p| p.as_ptr());
+    let a2_out: usize;
     let a3 = count * size_of::<T>();
     let a4 = flags.bits();
     let a5 = 0;
@@ -378,8 +380,8 @@ pub(crate) unsafe fn map_memory<T>(
         core::arch::asm!(
             "ecall",
             inlateout("a0") a0,
-            inlateout("a1") a1,
-            inlateout("a2") a2,
+            inlateout("a1") a1 => a1_out,
+            inlateout("a2") a2 => a2_out,
             inlateout("a3") a3 => _,
             inlateout("a4") a4 => _,
             inlateout("a5") a5 => _,
@@ -391,12 +393,12 @@ pub(crate) unsafe fn map_memory<T>(
     let result = a0;
 
     if result == SyscallResult::MemoryRange as usize {
-        let start = core::ptr::with_exposed_provenance_mut::<T>(a1);
-        let len = a2 / size_of::<T>();
+        let start = a1_out;
+        let len = a2_out / size_of::<T>();
         let end = unsafe { start.add(len) };
         Ok(unsafe { core::slice::from_raw_parts_mut(start, len) })
     } else if result == SyscallResult::Error as usize {
-        Err(a1.into())
+        Err(a1_out.addr().into())
     } else {
         Err(Error::InternalError)
     }
@@ -408,7 +410,7 @@ pub(crate) unsafe fn map_memory<T>(
 /// function returns, even if this function returns Err().
 pub(crate) unsafe fn unmap_memory<T>(range: *mut [T]) -> Result<(), Error> {
     let mut a0 = Syscall::UnmapMemory as usize;
-    let mut a1 = range.as_mut_ptr().expose_provenance();
+    let mut a1 = range.as_mut_ptr();
     let a2 = range.len() * size_of::<T>();
     let a3 = 0;
     let a4 = 0;
@@ -435,7 +437,7 @@ pub(crate) unsafe fn unmap_memory<T>(range: *mut [T]) -> Result<(), Error> {
     if result == SyscallResult::Ok as usize {
         Ok(())
     } else if result == SyscallResult::Error as usize {
-        Err(a1.into())
+        Err(a1.addr().into())
     } else {
         Err(Error::InternalError)
     }
@@ -454,7 +456,8 @@ pub(crate) unsafe fn update_memory_flags<T>(
     new_flags: MemoryFlags,
 ) -> Result<(), Error> {
     let mut a0 = Syscall::UpdateMemoryFlags as usize;
-    let mut a1 = range.as_mut_ptr().expose_provenance();
+    let a1 = range.as_mut_ptr();
+    let a1_out: usize;
     let a2 = range.len() * size_of::<T>();
     let a3 = new_flags.bits();
     let a4 = 0; // Process ID is currently None
@@ -466,7 +469,7 @@ pub(crate) unsafe fn update_memory_flags<T>(
         core::arch::asm!(
             "ecall",
             inlateout("a0") a0,
-            inlateout("a1") a1,
+            inlateout("a1") a1 => a1_out,
             inlateout("a2") a2 => _,
             inlateout("a3") a3 => _,
             inlateout("a4") a4 => _,
@@ -481,24 +484,25 @@ pub(crate) unsafe fn update_memory_flags<T>(
     if result == SyscallResult::Ok as usize {
         Ok(())
     } else if result == SyscallResult::Error as usize {
-        Err(a1.into())
+        Err(a1_out.into())
     } else {
         Err(Error::InternalError)
     }
 }
 
 /// Creates a thread with a given stack and up to four arguments.
-pub(crate) fn create_thread(
-    start: *mut usize,
+pub(crate) fn create_thread<T>(
+    start: extern "C" fn(*mut usize, usize, usize) -> !,
     stack: *mut [u8],
-    arg0: usize,
-    arg1: usize,
+    arg0: *mut T,
+    arg1: *const u8,
     arg2: usize,
     arg3: usize,
 ) -> Result<ThreadId, Error> {
     let mut a0 = Syscall::CreateThread as usize;
-    let mut a1 = start.expose_provenance();
-    let a2 = stack.as_mut_ptr().expose_provenance();
+    let a1 = start;
+    let a1_out: usize;
+    let a2 = stack.as_mut_ptr();
     let a3 = stack.len();
     let a4 = arg0;
     let a5 = arg1;
@@ -509,7 +513,7 @@ pub(crate) fn create_thread(
         core::arch::asm!(
             "ecall",
             inlateout("a0") a0,
-            inlateout("a1") a1,
+            inlateout("a1") a1 => a1_out,
             inlateout("a2") a2 => _,
             inlateout("a3") a3 => _,
             inlateout("a4") a4 => _,
@@ -522,9 +526,9 @@ pub(crate) fn create_thread(
     let result = a0;
 
     if result == SyscallResult::ThreadId as usize {
-        Ok(a1.into())
+        Ok(a1_out.into())
     } else if result == SyscallResult::Error as usize {
-        Err(a1.into())
+        Err(a1_out.into())
     } else {
         Err(Error::InternalError)
     }
