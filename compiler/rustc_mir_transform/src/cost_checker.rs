@@ -107,11 +107,14 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
                     }
                 }
             }
-            TerminatorKind::Call { func, unwind, .. } => {
+            TerminatorKind::Call { func, unwind, target, .. } => {
                 self.penalty += if let Some((def_id, ..)) = func.const_fn_def()
                     && self.tcx.intrinsic(def_id).is_some()
                 {
                     // Don't give intrinsics the extra penalty for calls
+                    INSTR_COST
+                } else if target.is_none() {
+                    // Diverging calls (like panics) are likely cold/error paths.
                     INSTR_COST
                 } else {
                     CALL_PENALTY
@@ -135,20 +138,10 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
                     self.penalty += INSTR_COST;
                 }
             }
-            TerminatorKind::Assert { unwind, msg, .. } => {
-                self.penalty += if msg.is_optional_overflow_check()
-                    && !self
-                        .tcx
-                        .sess
-                        .opts
-                        .unstable_opts
-                        .inline_mir_preserve_debug
-                        .unwrap_or(self.tcx.sess.overflow_checks())
-                {
-                    INSTR_COST
-                } else {
-                    CALL_PENALTY
-                };
+            TerminatorKind::Assert { unwind, .. } => {
+                // Asserts are safety checks (bounds, overflow). Discount them
+                // because inlining is required to prove them unreachable.
+                self.penalty += INSTR_COST;
                 if let UnwindAction::Cleanup(_) = unwind {
                     self.penalty += LANDINGPAD_PENALTY;
                 }
