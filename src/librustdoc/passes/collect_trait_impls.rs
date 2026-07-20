@@ -210,19 +210,6 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
         }
     }
 
-    // Filter out external items that are not needed
-    new_items_external.retain(|it| {
-        if let ImplItem(Impl { ref for_, ref trait_, ref kind, .. }) = it.kind {
-            cleaner.keep_impl(
-                for_,
-                trait_.as_ref().map(|t| t.def_id()) == tcx.lang_items().deref_trait(),
-            ) || trait_.as_ref().is_some_and(|t| cleaner.keep_impl_with_def_id(t.def_id().into()))
-                || kind.is_blanket()
-        } else {
-            true
-        }
-    });
-
     if let ModuleItem(Module { items, .. }) = &mut krate.module.inner.kind {
         items.extend(synth_impls);
         items.extend(new_items_external);
