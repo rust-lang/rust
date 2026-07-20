@@ -64,8 +64,8 @@ use rustc_middle::traits::PatternOriginExpr;
 use rustc_middle::ty::error::{ExpectedFound, TypeError, TypeErrorToStringExt};
 use rustc_middle::ty::print::{PrintTraitRefExt as _, WrapBinderMode, with_forced_trimmed_paths};
 use rustc_middle::ty::{
-    self, List, ParamEnv, Region, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable, TypeVisitable,
-    TypeVisitableExt, Unnormalized,
+    self, List, Mutability, ParamEnv, Region, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,
+    TypeVisitable, TypeVisitableExt, Unnormalized,
 };
 use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Pos, Span, sym};
 use thin_vec::ThinVec;
@@ -2213,7 +2213,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
     pub fn report_and_explain_type_error(
         &self,
-        trace: TypeTrace<'tcx>,
+        mut trace: TypeTrace<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         terr: TypeError<'tcx>,
     ) -> Diag<'a> {
@@ -2221,6 +2221,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         let span = trace.cause.span;
         let mut path = None;
+
+        self.simplify_pin_macro_arg_ty_mismatch(&mut trace);
 
         // Check for on_type_error attribute
         let on_type_error_notes = if let Some((expected_ty, found_ty)) = trace.values.ty() {
@@ -2252,6 +2254,39 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             None,
         );
         diag
+    }
+
+    /// If the `pin!()` macro gets a wrong argument type, don't show its internals
+    /// in user-facing diagnostics.
+    /// See the `ui/pin/dont-deref-coerce-pinned-value` test.
+    fn simplify_pin_macro_arg_ty_mismatch(&self, trace: &mut TypeTrace<'tcx>) {
+        // Check whether `expected_ty` and `found_ty` are both `&mut PinMacroHelper<....>`,
+        // in which case we peel off the wrapping.
+        if let Some((expected_ty, found_ty)) = trace.values.ty()
+            && let ty::Ref(_, expected_ty_kind_inside_mut, Mutability::Mut) = expected_ty.kind()
+            && let ty::Adt(expected_adt, expected_generics) = expected_ty_kind_inside_mut.kind()
+            && self.tcx.is_diagnostic_item(sym::PinMacroHelper, expected_adt.did())
+            && let ty::Ref(_, found_ty_kind_inside_mut, Mutability::Mut) = found_ty.kind()
+            && let ty::Adt(found_adt, found_generics) = found_ty_kind_inside_mut.kind()
+            && self.tcx.is_diagnostic_item(sym::PinMacroHelper, found_adt.did())
+        {
+            let [expected_generic] = expected_generics
+                .as_slice()
+                .try_into()
+                .expect("PinMacroHelper should only have one generic");
+            let [found_generic] = found_generics
+                .as_slice()
+                .try_into()
+                .expect("PinMacroHelper should only have one generic");
+            let expected_ty_inner =
+                expected_generic.as_type().expect("PinMacroHelper should have a generic type");
+            let found_ty_inner =
+                found_generic.as_type().expect("PinMacroHelper should have a generic type");
+            trace.values = ValuePairs::Terms(ExpectedFound::new(
+                expected_ty_inner.into(),
+                found_ty_inner.into(),
+            ));
+        }
     }
 
     fn suggest_wrap_to_build_a_tuple(
