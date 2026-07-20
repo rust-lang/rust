@@ -29,6 +29,7 @@ error[E0284]: type annotations needed for `([(); _], [(); 10])`
 LL |     let (mut arr, mut arr_with_weird_len) = proj();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   ------ type must be known at this point
    |
+   = note: cannot satisfy `<S as Trait>::PROJ<_> == 10`
 note: required by a const generic parameter in `proj`
   --> $DIR/ambiguous-on-failed-eval-with-vars-fail.rs:41:9
    |

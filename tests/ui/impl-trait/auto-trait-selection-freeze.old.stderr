@@ -13,6 +13,7 @@ LL | impl<T: Freeze> Trait<u32> for T {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 LL | impl<T> Trait<i32> for T {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: the type must also implement `Default`
 note: required by a bound in `is_trait`
   --> $DIR/auto-trait-selection-freeze.rs:11:16
    |

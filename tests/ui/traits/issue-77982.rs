@@ -9,7 +9,6 @@ fn what() {
     let opt = String::new();
 
     opts.get(opt.as_ref()); //~ ERROR type annotations needed
-    //~^ ERROR type annotations needed
 }
 
 fn main() {

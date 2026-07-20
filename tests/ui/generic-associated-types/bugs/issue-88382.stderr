@@ -10,6 +10,8 @@ help: the trait `Iterable` is implemented for `SomeImplementation`
    |
 LL | impl Iterable for SomeImplementation {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: the type must also implement `Iterable`
+   = note: cannot satisfy `<_ as Iterable>::Iterator<'_> == std::iter::Empty<usize>`
 note: required by a bound in `test`
   --> $DIR/issue-88382.rs:29:16
    |

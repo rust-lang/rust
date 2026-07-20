@@ -1,0 +1,60 @@
+error[E0283]: type annotations needed
+  --> $DIR/ambiguity-errors-single-diagnostic.rs:16:5
+   |
+LL |     as_input(Default::default());
+   |     ^^^^^^^^ ------------------ type must be known at this point
+   |     |
+   |     cannot infer type of the type parameter `T` declared on the function `as_input`
+   |
+   = note: the type must implement `Trait`
+help: the following types implement trait `Trait`
+  --> $DIR/ambiguity-errors-single-diagnostic.rs:8:1
+   |
+LL | impl Trait for String {}
+   | ^^^^^^^^^^^^^^^^^^^^^ `String`
+LL | struct NotDefault;
+LL | impl Trait for NotDefault {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^ `NotDefault`
+   = note: the type must also implement `Default`
+note: required by a bound in `as_input`
+  --> $DIR/ambiguity-errors-single-diagnostic.rs:12:16
+   |
+LL | fn as_input<T: Trait>(_: T) {}
+   |                ^^^^^ required by this bound in `as_input`
+help: consider specifying a concrete type for the type parameter `T`
+   |
+LL |     as_input::</* Type */>(Default::default());
+   |             ++++++++++++++
+
+error[E0283]: type annotations needed
+  --> $DIR/ambiguity-errors-single-diagnostic.rs:21:5
+   |
+LL |     constrained(Default::default());
+   |     ^^^^^^^^^^^ ------------------ type must be known at this point
+   |     |
+   |     cannot infer type of the type parameter `T` declared on the function `constrained`
+   |
+   = note: the type must implement `Trait`
+help: the following types implement trait `Trait`
+  --> $DIR/ambiguity-errors-single-diagnostic.rs:8:1
+   |
+LL | impl Trait for String {}
+   | ^^^^^^^^^^^^^^^^^^^^^ `String`
+LL | struct NotDefault;
+LL | impl Trait for NotDefault {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^ `NotDefault`
+   = note: the type must also implement `Clone`
+   = note: the type must also implement `Default`
+note: required by a bound in `constrained`
+  --> $DIR/ambiguity-errors-single-diagnostic.rs:13:19
+   |
+LL | fn constrained<T: Trait + Clone>(_: T) {}
+   |                   ^^^^^ required by this bound in `constrained`
+help: consider specifying a concrete type for the type parameter `T`
+   |
+LL |     constrained::</* Type */>(Default::default());
+   |                ++++++++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0283`.

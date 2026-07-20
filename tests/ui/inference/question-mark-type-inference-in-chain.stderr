@@ -22,6 +22,9 @@ LL |     let mut tags: Vec<Version> = lines.iter().map(|e| parse(e)).collect()?;
    |                                                                 ^^^^^^^ cannot infer type of the type parameter `B` declared on the method `collect`
    |
    = note: the type must implement `FromIterator<std::result::Result<Version, Error>>`
+   = note: cannot satisfy `<_ as Try>::Residual == _`
+   = note: the type must also implement `Try`
+   = note: cannot satisfy `<_ as Try>::Output == Vec<Version>`
 note: required by a bound in `collect`
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
 help: consider specifying the generic argument
@@ -30,7 +33,7 @@ LL |     let mut tags: Vec<Version> = lines.iter().map(|e| parse(e)).collect::<R
    |                                                                        ++++++++++++++++
 
 error[E0277]: the `?` operator can only be applied to values that implement `Try`
-  --> $DIR/question-mark-type-inference-in-chain.rs:60:20
+  --> $DIR/question-mark-type-inference-in-chain.rs:63:20
    |
 LL |     let mut tags = lines.iter().map(|e| parse(e)).collect::<Vec<_>>()?;
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the `?` operator cannot be applied to type `Vec<std::result::Result<Version, Error>>`
@@ -38,7 +41,7 @@ LL |     let mut tags = lines.iter().map(|e| parse(e)).collect::<Vec<_>>()?;
    = help: the nightly-only, unstable trait `Try` is not implemented for `Vec<std::result::Result<Version, Error>>`
 
 warning: method call on a diverging inference variable
-  --> $DIR/question-mark-type-inference-in-chain.rs:66:10
+  --> $DIR/question-mark-type-inference-in-chain.rs:69:10
    |
 LL |     tags.sort();
    |          ^^^^
@@ -48,13 +51,13 @@ LL |     tags.sort();
    = note: for more information, see issue #156047 <https://github.com/rust-lang/rust/issues/156047>
 
 error[E0599]: no method named `sort` found for type `!` in the current scope
-  --> $DIR/question-mark-type-inference-in-chain.rs:66:10
+  --> $DIR/question-mark-type-inference-in-chain.rs:69:10
    |
 LL |     tags.sort();
    |          ^^^^ method not found in `!`
 
 error[E0277]: a value of type `std::result::Result<Vec<Version>, AnotherError>` cannot be built from an iterator over elements of type `std::result::Result<Version, Error>`
-  --> $DIR/question-mark-type-inference-in-chain.rs:85:20
+  --> $DIR/question-mark-type-inference-in-chain.rs:88:20
    |
 LL |         .collect::<Result<Vec<Version>>>()?;
    |          -------   ^^^^^^^^^^^^^^^^^^^^ value of type `std::result::Result<Vec<Version>, AnotherError>` cannot be built from `std::iter::Iterator<Item=std::result::Result<Version, Error>>`
@@ -66,7 +69,7 @@ help: the trait `FromIterator<Result<_, Error>>` is not implemented for `std::re
   --> $SRC_DIR/core/src/result.rs:LL:COL
    = help: for that trait implementation, expected `AnotherError`, found `Error`
 note: the method call chain might not have had the expected associated types
-  --> $DIR/question-mark-type-inference-in-chain.rs:82:10
+  --> $DIR/question-mark-type-inference-in-chain.rs:85:10
    |
 LL |     let mut tags = lines
    |                    ----- this expression has type `&[&str]`
@@ -97,7 +100,7 @@ LL |     tags.sort();
 
 Future breakage diagnostic:
 warning: method call on a diverging inference variable
-  --> $DIR/question-mark-type-inference-in-chain.rs:66:10
+  --> $DIR/question-mark-type-inference-in-chain.rs:69:10
    |
 LL |     tags.sort();
    |          ^^^^

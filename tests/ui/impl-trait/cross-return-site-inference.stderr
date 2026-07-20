@@ -4,6 +4,8 @@ error[E0282]: type annotations needed
 LL |     Ok(())
    |     ^^ cannot infer type of the type parameter `E` declared on the enum `Result`
    |
+   = note: the type must also implement `Debug`
+   = note: the type must also implement `From<&str>`
 help: consider specifying the generic arguments
    |
 LL |     Ok::<(), E>(())
@@ -15,6 +17,7 @@ error[E0790]: cannot call associated function on trait without specifying the co
 LL |     return Err(From::from("foo"));
    |                ^^^^^^^^^^^^^^^^^ cannot call associated function of trait
    |
+   = note: the type must also implement `Debug`
 help: use a fully-qualified path to a specific available implementation
    |
 LL |     return Err(</* self type */ as From>::from("foo"));
@@ -26,6 +29,7 @@ error[E0790]: cannot call associated function on trait without specifying the co
 LL |     Err(From::from("foo"))
    |         ^^^^^^^^^^^^^^^^^ cannot call associated function of trait
    |
+   = note: the type must also implement `Debug`
 help: use a fully-qualified path to a specific available implementation
    |
 LL |     Err(</* self type */ as From>::from("foo"))

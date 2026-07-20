@@ -13,6 +13,8 @@ LL |         if String::from("a") == "a".try_into().unwrap() {}
            - impl PartialEq<Path> for String;
            - impl PartialEq<PathBuf> for String;
            - impl PartialEq<str> for String;
+   = note: the type must also implement `TryFrom<&str>`
+   = note: cannot satisfy `<_ as TryFrom<&str>>::Error == _`
 help: try using a fully qualified path to specify the expected types
    |
 LL -         if String::from("a") == "a".try_into().unwrap() {}

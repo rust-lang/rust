@@ -4,6 +4,7 @@ error[E0282]: type annotations needed
 LL |         tx.send(Foo{ foo: PhantomData });
    |                           ^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the struct `PhantomData`
    |
+   = note: the type must also implement `Send`
 help: consider specifying a concrete type for the type parameter `T`
    |
 LL |         tx.send(Foo{ foo: PhantomData::</* Type */> });
