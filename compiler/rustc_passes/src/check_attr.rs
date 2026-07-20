@@ -207,9 +207,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::RustcDumpObjectLifetimeDefaults => {
                 self.check_dump_object_lifetime_defaults(hir_id);
             }
-            &AttributeKind::RustcPubTransparent(attr_span) => {
-                self.check_rustc_pub_transparent(attr_span, span, attrs)
-            }
             AttributeKind::Naked(..) => self.check_naked(hir_id, target),
             AttributeKind::TrackCaller(attr_span) => {
                 self.check_track_caller(hir_id, *attr_span, attrs, target)
@@ -387,6 +384,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::RustcPassIndirectlyInNonRusticAbis(..) => (),
             AttributeKind::RustcPreserveUbChecks => (),
             AttributeKind::RustcProcMacroDecls => (),
+            AttributeKind::RustcPubTransparent(..) => (),
             AttributeKind::RustcReallocator => (),
             AttributeKind::RustcRegions => (),
             AttributeKind::RustcReservationImpl(..) => (),
@@ -1590,14 +1588,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         if !errors.is_empty() {
             infcx.err_ctxt().report_fulfillment_errors(errors);
             self.abort.set(true);
-        }
-    }
-
-    fn check_rustc_pub_transparent(&self, attr_span: Span, span: Span, attrs: &[Attribute]) {
-        if !find_attr!(attrs, Repr { reprs, .. } => reprs.iter().any(|(r, _)| r == &ReprAttr::ReprTransparent))
-            .unwrap_or(false)
-        {
-            self.dcx().emit_err(diagnostics::RustcPubTransparent { span, attr_span });
         }
     }
 
