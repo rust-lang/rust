@@ -1663,6 +1663,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         target: Target,
         item: Option<&'tcx Item<'tcx>>,
     ) {
+        // FIXME(eii) Once eii is no longer so experimental, suggest doing
+        // linkage stuff with externally implementable items instead
         match target {
             Target::ForeignStatic
                 if self.tcx.is_mutable_static(hir_id.expect_owner().def_id.into()) =>
