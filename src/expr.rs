@@ -422,7 +422,8 @@ pub(crate) fn format_expr(
         | ast::ExprKind::Type(..)
         | ast::ExprKind::IncludedBytes(..)
         | ast::ExprKind::OffsetOf(..)
-        | ast::ExprKind::UnsafeBinderCast(..) => {
+        | ast::ExprKind::UnsafeBinderCast(..)
+        | ast::ExprKind::DirectConstArg(..) => {
             // These don't normally occur in the AST because macros aren't expanded. However,
             // rustfmt tries to parse macro arguments when formatting macros, so it's not totally
             // impossible for rustfmt to come across one of these nodes when formatting a file.
@@ -714,14 +715,8 @@ fn to_control_flow(expr: &ast::Expr, expr_type: ExprType) -> Option<ControlFlow<
                 expr.span,
             ))
         }
-        ast::ExprKind::ForLoop {
-            ref pat,
-            ref iter,
-            ref body,
-            label,
-            kind,
-        } => Some(ControlFlow::new_for(
-            pat, iter, body, label, expr.span, kind,
+        ast::ExprKind::ForLoop(ref f) => Some(ControlFlow::new_for(
+            &f.pat, &f.iter, &f.body, f.label, expr.span, f.kind,
         )),
         ast::ExprKind::Loop(ref block, label, _) => {
             Some(ControlFlow::new_loop(block, label, expr.span))

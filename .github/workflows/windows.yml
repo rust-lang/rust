@@ -61,6 +61,7 @@ jobs:
       shell: bash
 
     - name: Build and Test
+      shell: cmd
       env:
         RUSTFLAGS: -D warnings
         CARGO_UNSTABLE_BUILD_DIR_NEW_LAYOUT: true
