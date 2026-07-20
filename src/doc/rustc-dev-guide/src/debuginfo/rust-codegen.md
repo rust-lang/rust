@@ -4,9 +4,8 @@ The first phase in debug info generation requires Rust to inspect the MIR of the
 communicate it to LLVM.
 This is primarily done in [`rustc_codegen_llvm/debuginfo`][llvm_di], though
 some type-name processing exists in [`rustc_codegen_ssa/debuginfo`][ssa_di].
-Rust communicates to
-LLVM via the `DIBuilder` API - a thin wrapper around LLVM's internals that exists in
-[rustc_llvm][rustc_llvm].
+Rust communicates to LLVM via the `DIBuilder` API,
+a thin wrapper around LLVM's internals that exists in [rustc_llvm][rustc_llvm].
 
 [llvm_di]: https://github.com/rust-lang/rust/tree/main/compiler/rustc_codegen_llvm/src/debuginfo
 [ssa_di]: https://github.com/rust-lang/rust/tree/main/compiler/rustc_codegen_ssa/src/debuginfo
@@ -117,9 +116,8 @@ CodeView does not have a leaf node for generics/C++ templates, so all generic in
 when generating PDB debug info.
 There are workarounds that allow the debugger to retrieve the
 generic arguments via the type name, but it is fragile solution at best.
-Efforts are being made to
-contact Microsoft to correct this deficiency, and/or to use one of the unused CodeView node types as
-a suitable equivalent.
+Efforts are being made to contact Microsoft to correct this deficiency,
+and/or to use one of the unused CodeView node types as a suitable equivalent.
 
 ### Type aliases
 
@@ -137,8 +135,8 @@ Enum DI nodes are generated in [rustc_codegen_llvm/src/debuginfo/metadata/enums]
 #### DWARF
 
 DWARF has a dedicated node for discriminated unions: `DW_TAG_variant`.
-It is a container that
-references `DW_TAG_variant_part` nodes that may or may not contain a discriminant value.
+It is a container that references `DW_TAG_variant_part` nodes
+that may or may not contain a discriminant value.
 The hierarchy looks as follows:
 
 ```txt
