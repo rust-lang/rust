@@ -1,6 +1,6 @@
 // This test causes ERROR: mismatched types [E0308]
 // and makes rustc to print array from const arguments
-#![feature(min_generic_const_args, adt_const_params)]
+#![feature(min_generic_const_args, macroless_generic_const_args, adt_const_params)]
 #![allow(incomplete_features)]
 
 struct TakesArr<const N: [u8; 1]>;
