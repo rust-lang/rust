@@ -1660,7 +1660,6 @@ ui/mir/issue-77002.rs
 ui/mir/issue-77359-simplify-arm-identity.rs
 ui/mir/issue-77911.rs
 ui/mir/issue-78496.rs
-ui/mir/issue-80949.rs
 ui/mir/issue-83499-input-output-iteration-ice.rs
 ui/mir/issue-89485.rs
 ui/mir/issue-91745.rs

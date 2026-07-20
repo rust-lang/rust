@@ -24,5 +24,6 @@ rustc_span = { path = "../rustc_span" }
 rustc_trait_selection = { path = "../rustc_trait_selection" }
 rustc_traits = { path = "../rustc_traits" }
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
+thin-vec = "0.2.18"
 tracing = "0.1"
 # tidy-alphabetical-end
