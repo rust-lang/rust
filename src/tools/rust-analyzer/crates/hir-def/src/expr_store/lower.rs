@@ -26,8 +26,8 @@ use stdx::never;
 use syntax::{
     AstNode, AstPtr, SyntaxNodePtr,
     ast::{
-        self, ArrayExprKind, AstChildren, BlockExpr, HasArgList, HasAttrs, HasGenericArgs,
-        HasGenericParams, HasLoopBody, HasName, HasTypeBounds, IsString, RangeItem,
+        self, ArrayExprKind, AstChildren, BlockExpr, ForBinder, HasArgList, HasAttrs,
+        HasGenericArgs, HasGenericParams, HasLoopBody, HasName, HasTypeBounds, IsString, RangeItem,
         SlicePatComponents,
     },
 };
@@ -465,6 +465,8 @@ pub struct ExprCollector<'db> {
 
     is_lowering_coroutine: bool,
 
+    for_type_binder: Option<ThinVec<Name>>,
+
     /// Legacy (`macro_rules!`) macros can have multiple definitions and shadow each other,
     /// and we need to find the current definition. So we track the number of definitions we saw.
     current_block_legacy_macro_defs_count: FxHashMap<Name, usize>,
@@ -636,6 +638,7 @@ impl<'db> ExprCollector<'db> {
             krate,
             name_generator_index: 0,
             named_lifetime_store: NamedLifetimeStore::default(),
+            for_type_binder: None,
         };
         result.store.inference_roots = Some(SmallVec::new());
         result
@@ -758,16 +761,23 @@ impl<'db> ExprCollector<'db> {
 
                 let abi = inner.abi().map(lower_abi).unwrap_or(ExternAbi::Rust);
                 params.push((None, ret_ty));
+
+                let binder = self.for_type_binder.take().map(|b| b.into());
                 TypeRef::Fn(Box::new(FnType {
                     is_varargs,
                     is_unsafe: inner.unsafe_token().is_some(),
                     abi,
                     params: params.into_boxed_slice(),
+                    binder,
                 }))
             }
             // for types are close enough for our purposes to the inner type for now...
             ast::Type::ForType(inner) => {
-                return self.lower_type_ref_opt(inner.ty(), impl_trait_lower_fn);
+                let binder = self.lower_for_binder_opt(inner.for_binder());
+                let old_for_binder = self.for_type_binder.replace(binder);
+                let ty = self.lower_type_ref_opt(inner.ty(), impl_trait_lower_fn);
+                self.for_type_binder = old_for_binder;
+                return ty;
             }
             ast::Type::ImplTraitType(inner) => {
                 if self.outer_impl_trait {
@@ -1245,13 +1255,7 @@ impl<'db> ExprCollector<'db> {
         let Some(kind) = node.kind() else { return TypeBound::Error };
         match kind {
             ast::TypeBoundKind::PathType(binder, path_type) => {
-                let binder = match binder.and_then(|it| it.generic_param_list()) {
-                    Some(gpl) => gpl
-                        .lifetime_params()
-                        .flat_map(|lp| lp.lifetime().map(|lt| Name::new_lifetime(&lt.text())))
-                        .collect(),
-                    None => ThinVec::default(),
-                };
+                let binder = self.lower_for_binder_opt(binder);
                 let m = match node.question_mark_token() {
                     Some(_) => TraitBoundModifier::Maybe,
                     None => TraitBoundModifier::None,
@@ -1280,6 +1284,20 @@ impl<'db> ExprCollector<'db> {
             ast::TypeBoundKind::Lifetime(lifetime) => {
                 TypeBound::Lifetime(self.lower_lifetime_ref(lifetime))
             }
+        }
+    }
+
+    fn lower_for_binder_opt(&mut self, binder: Option<ForBinder>) -> ThinVec<Name> {
+        binder.map(|b| self.lower_for_binder(b)).unwrap_or_default()
+    }
+
+    fn lower_for_binder(&mut self, binder: ForBinder) -> ThinVec<Name> {
+        match binder.generic_param_list() {
+            Some(gpl) => gpl
+                .lifetime_params()
+                .flat_map(|lp| lp.lifetime().map(|lt| Name::new_lifetime(&lt.text())))
+                .collect(),
+            None => ThinVec::default(),
         }
     }
 

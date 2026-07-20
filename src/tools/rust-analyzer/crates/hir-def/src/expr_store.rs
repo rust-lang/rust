@@ -871,7 +871,7 @@ impl ExpressionStore {
                 visitor.on_anon_const_expr(*len);
             }
             TypeRef::Fn(fn_type) => {
-                let FnType { params, is_varargs: _, is_unsafe: _, abi: _ } = &**fn_type;
+                let FnType { params, is_varargs: _, is_unsafe: _, abi: _, binder: _ } = &**fn_type;
                 params.iter().for_each(|(_, param_ty)| visitor.on_type(*param_ty));
             }
             TypeRef::ImplTrait(bounds) | TypeRef::DynTrait(bounds) => {

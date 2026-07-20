@@ -5339,3 +5339,41 @@ fn foo() {
 "#,
     );
 }
+
+#[test]
+fn hrtb_impl_trait() {
+    check_infer(
+        r#"
+trait Trait<'a> {}
+
+struct Foo;
+
+impl<'a> Trait<'a> for Bot {}
+
+fn impl_fn(val: impl for<'a> Trait<'a>) {}
+"#,
+        expect![[r#"
+            75..78 'val': impl Trait<'?0.0> + ?Sized
+            104..106 '{}': ()
+        "#]],
+    );
+}
+
+#[test]
+fn hrtb_dyn_trait() {
+    check_infer(
+        r#"
+trait Trait<'a, 'b> {}
+
+struct Foo;
+
+impl<'a, 'b> Trait<'a, 'b> for Foo {}
+
+fn run_dyn<'b>(val: &dyn for<'a> Trait<'a, 'b>) {}
+"#,
+        expect![[r#"
+            91..94 'val': &'? (dyn Trait<'_, '_> + 'static)
+            124..126 '{}': ()
+        "#]],
+    );
+}
