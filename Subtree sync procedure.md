@@ -155,6 +155,12 @@ For the PR:
 **Make sure to minimize the time between the subtree-push direction and the subtree-pull direction
 to avoid unnecessary complications.**
 
+### 5. (Where applicable) Update changelog and bump rustfmt version number
+
+Where applicable, we may need to update the CHANGELOG entries with merged PRs (both in `rustfmt`
+repository and also in the `rust-lang/rust` `rustfmt` subtree that was included in the subtree-push
+merge), and then bump rustfmt version number.
+
 ## Subtree pull direction: syncing from `rustfmt` to `rust-lang/rust`
 
 > [!WARNING]
