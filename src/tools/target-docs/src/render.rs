@@ -149,6 +149,16 @@ pub fn render_static(check_only: bool, src_output: &Path, targets: &[TargetInfo]
         replace_section(content, "TARGET_LIST", &target_list)
     })?;
 
+    replace_file(check_only, src_output, "platform-support/unmaintained-targets.md", |content| {
+        let target_list = targets
+            .iter()
+            .filter(|target| target.maintainers.is_empty())
+            .map(|target| format!("- [`{0}`](targets/{0}.md)", target.name))
+            .collect::<Vec<_>>()
+            .join("\n");
+        replace_section(content, "TARGET_LIST", &target_list)
+    })?;
+
     replace_file(check_only, src_output, "platform-support.md", |content| {
         render_platform_support_tables(content, targets)
     })?;
@@ -162,6 +172,9 @@ pub fn render_static(check_only: bool, src_output: &Path, targets: &[TargetInfo]
             .collect::<Vec<_>>()
             .join("\n");
         target_list.insert_str(0, "    - [List of Targets](platform-support/targets.md)\n");
+        target_list.push_str(
+            "\n    - [Currently Unmaintained Targets](platform-support/unmaintained-targets.md)",
+        );
         replace_section(content, "TARGET_LIST", &target_list)
     })?;
 
