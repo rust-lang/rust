@@ -297,7 +297,7 @@ fn do_normalize_predicates<'tcx>(
     let elaborated_env = if tcx.next_trait_solver_globally()
         && !tcx.disable_param_env_normalization_hack()
     {
-        let elaborated_env = ty::set_aliases_to_rigid(tcx, elaborated_env);
+        let elaborated_env = ty::set_type_aliases_to_rigid(tcx, elaborated_env);
         let elaborated_env = set_projection_term_to_non_rigid(tcx, elaborated_env.caller_bounds());
         ty::ParamEnv::new(tcx.mk_clauses_from_iter(elaborated_env))
     } else {

@@ -12,7 +12,6 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::query::LocalCrate;
 use rustc_middle::ty::{self, List, Ty, TyCtxt};
 use rustc_session::Session;
-use rustc_session::config::CrateType;
 use rustc_session::cstore::{
     DllCallingConvention, DllImport, DllImportSymbolType, ForeignModule, NativeLib,
 };
@@ -166,27 +165,6 @@ pub fn find_native_static_library(name: &str, verbatim: bool, sess: &Session) ->
     try_find_native_static_library(sess, name, verbatim).unwrap_or_else(|| {
         sess.dcx().emit_fatal(diagnostics::MissingNativeLibrary::new(name, verbatim))
     })
-}
-
-pub fn find_bundled_library(
-    name: Symbol,
-    verbatim: Option<bool>,
-    kind: NativeLibKind,
-    has_cfg: bool,
-    sess: &Session,
-    crate_types: &[CrateType],
-) -> Option<Symbol> {
-    if let NativeLibKind::Static { bundle: Some(true) | None, whole_archive, .. } = kind
-        && crate_types.iter().any(|t| matches!(t, &CrateType::Rlib | CrateType::StaticLib))
-        && (sess.opts.unstable_opts.packed_bundled_libs || has_cfg || whole_archive == Some(true))
-    {
-        let verbatim = verbatim.unwrap_or(false);
-        return find_native_static_library(name.as_str(), verbatim, sess)
-            .file_name()
-            .and_then(|s| s.to_str())
-            .map(Symbol::intern);
-    }
-    None
 }
 
 pub(crate) fn collect(tcx: TyCtxt<'_>, LocalCrate: LocalCrate) -> Vec<NativeLib> {

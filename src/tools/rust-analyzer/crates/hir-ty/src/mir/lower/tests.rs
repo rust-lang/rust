@@ -1,7 +1,7 @@
 use hir_def::DefWithBodyId;
 use test_fixture::WithFixture;
 
-use crate::{db::HirDatabase, setup_tracing, test_db::TestDB};
+use crate::{InferBodyId, db::HirDatabase, setup_tracing, test_db::TestDB};
 
 fn lower_mir(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
     let _tracing = setup_tracing();
@@ -78,7 +78,7 @@ fn check_borrowck(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         }
 
         for body in bodies {
-            let _ = db.borrowck(body.into());
+            let _ = InferBodyId::from(body).borrowck(&db);
         }
     })
 }
@@ -130,6 +130,22 @@ fn borrowck_alias_projection_recovery_does_not_panic() {
 trait Tr { type A; }
 fn alias<T: Tr>(x: T::A) {
     let (a, b) = x;
+}
+    "#,
+    );
+}
+
+#[test]
+fn borrowck_opaque_downcast_recovery_does_not_panic() {
+    check_borrowck(
+        r#"
+//- minicore: option, sized
+struct PathBuf;
+fn opaque<T>(path: T) -> impl Sized {
+    Some(path)
+}
+fn caller(path: &PathBuf) {
+    let Some(value) = opaque(path) else { return };
 }
     "#,
     );

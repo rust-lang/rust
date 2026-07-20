@@ -36,7 +36,7 @@ use crate::{AssocItem, Field, Function, GenericDef, Local, Trait, Type, TypeOwne
 
 pub use hir_def::VariantId;
 pub use hir_ty::{
-    GenericArgsProhibitedReason, IncorrectGenericsLenKind,
+    GenericArgsProhibitedReason, IncorrectGenericsLenKind, ReturnKind,
     diagnostics::{CaseType, IncorrectCase},
 };
 
@@ -181,6 +181,7 @@ diagnostics![AnyDiagnostic<'db> ->
     UnionPatHasRest,
     UnimplementedTrait<'db>,
     YieldOutsideCoroutine,
+    ReturnOutsideFunction,
 ];
 
 #[derive(Debug)]
@@ -689,6 +690,12 @@ pub struct YieldOutsideCoroutine {
     pub expr: InFile<ExprOrPatPtr>,
 }
 
+#[derive(Debug)]
+pub struct ReturnOutsideFunction {
+    pub expr: InFile<ExprOrPatPtr>,
+    pub kind: ReturnKind,
+}
+
 impl<'db> AnyDiagnostic<'db> {
     pub(crate) fn body_validation_diagnostic(
         db: &'db dyn HirDatabase,
@@ -1130,6 +1137,9 @@ impl<'db> AnyDiagnostic<'db> {
             }
             &InferenceDiagnostic::YieldOutsideCoroutine { expr } => {
                 YieldOutsideCoroutine { expr: expr_syntax(expr)? }.into()
+            }
+            &InferenceDiagnostic::ReturnOutsideFunction { expr, kind } => {
+                ReturnOutsideFunction { expr: expr_syntax(expr)?, kind }.into()
             }
         })
     }

@@ -882,6 +882,10 @@ mod err {
         run_and_expect_errors("test_data/parser/inline/err/let_else_right_curly_brace.rs");
     }
     #[test]
+    fn macro_as_type_bound() {
+        run_and_expect_errors("test_data/parser/inline/err/macro_as_type_bound.rs");
+    }
+    #[test]
     fn macro_rules_as_macro_name() {
         run_and_expect_errors("test_data/parser/inline/err/macro_rules_as_macro_name.rs");
     }

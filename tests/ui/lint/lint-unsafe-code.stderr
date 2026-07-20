@@ -190,34 +190,34 @@ LL |     unsafe_in_macro!()
    = note: this error originates in the macro `unsafe_in_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: usage of the unsafe `#[naked]` attribute
-  --> $DIR/lint-unsafe-code.rs:139:10
+  --> $DIR/lint-unsafe-code.rs:139:3
    |
 LL | #[unsafe(naked)] fn naked1() { naked_asm!("halt") }
-   |          ^^^^^
+   |   ^^^^^^^^^^^^^
    |
    = note: the `#[naked]` attribute adds the safety obligation that the function's body must respect the function’s calling convention, uphold its signature, and either return or diverge (i.e., not fall through past the end of the assembly code).
 
 error: usage of the unsafe `#[force_target_feature]` attribute
-  --> $DIR/lint-unsafe-code.rs:168:10
+  --> $DIR/lint-unsafe-code.rs:168:3
    |
 LL | #[unsafe(force_target_feature(enable = "avx2"))] fn force_target_feature() { }
-   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: a function with the signature of the function the attribute is applied to must only be callable if the force-enabled features are guaranteed to be present
 
 error: usage of the unsafe `#[naked]` attribute
-  --> $DIR/lint-unsafe-code.rs:149:14
+  --> $DIR/lint-unsafe-code.rs:149:7
    |
 LL |     #[unsafe(naked)] fn naked3() { naked_asm!("halt") }
-   |              ^^^^^
+   |       ^^^^^^^^^^^^^
    |
    = note: the `#[naked]` attribute adds the safety obligation that the function's body must respect the function’s calling convention, uphold its signature, and either return or diverge (i.e., not fall through past the end of the assembly code).
 
 error: usage of the unsafe `#[force_target_feature]` attribute
-  --> $DIR/lint-unsafe-code.rs:178:14
+  --> $DIR/lint-unsafe-code.rs:178:7
    |
 LL |     #[unsafe(force_target_feature(enable = "avx2"))] fn force_target_feature() { }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: a function with the signature of the function the attribute is applied to must only be callable if the force-enabled features are guaranteed to be present
 
@@ -254,50 +254,50 @@ LL |     #[export_name = "bar"] fn foo() {}
    = note: the linker's behavior with multiple libraries exporting duplicate symbol names is undefined and Rust cannot provide guarantees when you manually override them
 
 error: usage of the unsafe `#[naked]` attribute
-  --> $DIR/lint-unsafe-code.rs:144:14
+  --> $DIR/lint-unsafe-code.rs:144:7
    |
 LL |     #[unsafe(naked)] fn naked2() { naked_asm!("halt") }
-   |              ^^^^^
+   |       ^^^^^^^^^^^^^
    |
    = note: the `#[naked]` attribute adds the safety obligation that the function's body must respect the function’s calling convention, uphold its signature, and either return or diverge (i.e., not fall through past the end of the assembly code).
 
 error: usage of the unsafe `#[naked]` attribute
-  --> $DIR/lint-unsafe-code.rs:154:14
+  --> $DIR/lint-unsafe-code.rs:154:7
    |
 LL |     #[unsafe(naked)] fn naked4() { naked_asm!("halt") }
-   |              ^^^^^
+   |       ^^^^^^^^^^^^^
    |
    = note: the `#[naked]` attribute adds the safety obligation that the function's body must respect the function’s calling convention, uphold its signature, and either return or diverge (i.e., not fall through past the end of the assembly code).
 
 error: usage of the unsafe `#[force_target_feature]` attribute
-  --> $DIR/lint-unsafe-code.rs:173:14
+  --> $DIR/lint-unsafe-code.rs:173:7
    |
 LL |     #[unsafe(force_target_feature(enable = "avx2"))] fn force_target_feature() { }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: a function with the signature of the function the attribute is applied to must only be callable if the force-enabled features are guaranteed to be present
 
 error: usage of the unsafe `#[force_target_feature]` attribute
-  --> $DIR/lint-unsafe-code.rs:182:14
+  --> $DIR/lint-unsafe-code.rs:182:7
    |
 LL |     #[unsafe(force_target_feature(enable = "avx2"))] fn force_target_feature() { }
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: a function with the signature of the function the attribute is applied to must only be callable if the force-enabled features are guaranteed to be present
 
 error: usage of the unsafe `#[ffi_pure]` attribute
-  --> $DIR/lint-unsafe-code.rs:159:14
+  --> $DIR/lint-unsafe-code.rs:159:7
    |
 LL |     #[unsafe(ffi_pure)]
-   |              ^^^^^^^^
+   |       ^^^^^^^^^^^^^^^^
    |
    = note: `#[ffi_pure]` functions shall have no effects except for its return value, which shall not change across two consecutive function calls with the same parameters.
 
 error: usage of the unsafe `#[ffi_const]` attribute
-  --> $DIR/lint-unsafe-code.rs:163:14
+  --> $DIR/lint-unsafe-code.rs:163:7
    |
 LL |     #[unsafe(ffi_const)]
-   |              ^^^^^^^^^
+   |       ^^^^^^^^^^^^^^^^^
    |
    = note: `#[ffi_const]` functions shall have no effects except for its return value, which can only depend on the values of the function parameters, and is not affected by changes to the observable state of the program.
 

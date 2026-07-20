@@ -806,17 +806,32 @@ impl<'ra> Module<'ra> {
         let mut traits = self.traits.borrow_mut(resolver.as_ref());
         if traits.is_none() {
             let mut collected_traits = Vec::new();
-            self.for_each_child(resolver, |r, ident, _, ns, binding| {
+            self.for_each_child(resolver, |r, ident, _, ns, mut decl| {
                 if ns != TypeNS {
                     return;
                 }
-                if let Res::Def(DefKind::Trait | DefKind::TraitAlias, def_id) = binding.res() {
-                    collected_traits.push((
-                        ident.name,
-                        binding,
-                        r.as_ref().get_module(def_id),
-                        binding.is_ambiguity_recursive(),
-                    ));
+
+                let ambiguous = decl.is_ambiguity_recursive();
+                let mut try_record_trait = |decl: Decl<'ra>| {
+                    if let Res::Def(DefKind::Trait | DefKind::TraitAlias, def_id) = decl.res() {
+                        collected_traits.push((
+                            ident.name,
+                            decl,
+                            r.as_ref().get_module(def_id),
+                            ambiguous,
+                        ));
+                        true
+                    } else {
+                        false
+                    }
+                };
+                // Try to record at least one trait if the decl is ambiguous, such that we can
+                // report the `ambiguous_glob_imported_traits` lint. Otherwise we would report an
+                // error that the trait is not found.
+                while !try_record_trait(decl)
+                    && let Some((_, ambig_decl)) = decl.descent_to_ambiguity()
+                {
+                    decl = ambig_decl;
                 }
             });
             *traits = Some(collected_traits.into_boxed_slice());

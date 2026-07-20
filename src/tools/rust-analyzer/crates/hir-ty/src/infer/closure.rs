@@ -304,7 +304,7 @@ impl<'db> InferenceContext<'_, 'db> {
         };
 
         // Now go through the argument patterns
-        for (arg_pat, arg_ty) in args.iter().zip(bound_sig.skip_binder().inputs()) {
+        for (arg_pat, arg_ty) in args.iter().zip(liberated_sig.inputs()) {
             self.infer_top_pat(*arg_pat, *arg_ty, PatOrigin::Param);
         }
 
@@ -1148,8 +1148,9 @@ impl<'db> InferenceContext<'_, 'db> {
     }
 
     fn closure_sigs(&self, bound_sig: PolyFnSig<'db>) -> ClosureSignatures<'db> {
-        let liberated_sig = bound_sig.skip_binder();
-        // FIXME: When we lower HRTB we'll need to actually liberate regions here.
+        // TODO: def id needs to be changed?
+        let liberated_sig =
+            self.interner().liberate_late_bound_regions(self.owner.into(), bound_sig);
         ClosureSignatures { bound_sig, liberated_sig }
     }
 }

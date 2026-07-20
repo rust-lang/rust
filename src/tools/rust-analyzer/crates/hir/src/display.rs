@@ -14,6 +14,7 @@ use hir_def::{
         TraitSignature, TypeAliasSignature,
     },
     type_ref::{TypeBound, TypeRef, TypeRefId},
+    visibility::Visibility,
 };
 use hir_expand::name::Name;
 use hir_ty::{
@@ -363,19 +364,21 @@ impl<'db> HirDisplay<'db> for Struct {
         let def_id = GenericDefId::AdtId(AdtId::StructId(self.id));
         write_generic_params(def_id, f)?;
 
-        let variant_data = self.variant_fields(f.db);
         match self.kind(f.db) {
             StructKind::Tuple => {
                 f.write_char('(')?;
-                let mut it = variant_data.fields().iter().peekable();
+                let (fields, hidden_fields) = visible_fields(self.fields(f.db), f);
+                let mut it = fields.iter().peekable();
 
-                while let Some((id, _)) = it.next() {
-                    let field = Field { parent: (*self).into(), id };
+                while let Some(field) = it.next() {
                     write_visibility(module_id, field.visibility(f.db), f)?;
                     field.ty(f.db).hir_fmt(f)?;
-                    if it.peek().is_some() {
+                    if it.peek().is_some() || hidden_fields {
                         f.write_str(", ")?;
                     }
+                }
+                if hidden_fields {
+                    f.write_str("/* … */")?;
                 }
 
                 f.write_char(')')?;
@@ -384,7 +387,8 @@ impl<'db> HirDisplay<'db> for Struct {
             StructKind::Record => {
                 let has_where_clause = write_where_clause(def_id, f)?;
                 if let Some(limit) = f.entity_limit {
-                    write_fields(&self.fields(f.db), has_where_clause, limit, false, f)?;
+                    let (fields, hidden_fields) = visible_fields(self.fields(f.db), f);
+                    write_fields(&fields, hidden_fields, has_where_clause, limit, false, f)?;
                 }
             }
             StructKind::Unit => _ = write_where_clause(def_id, f)?,
@@ -421,14 +425,33 @@ impl<'db> HirDisplay<'db> for Union {
 
         let has_where_clause = write_where_clause(def_id, f)?;
         if let Some(limit) = f.entity_limit {
-            write_fields(&self.fields(f.db), has_where_clause, limit, false, f)?;
+            let (fields, hidden_fields) = visible_fields(self.fields(f.db), f);
+            write_fields(&fields, hidden_fields, has_where_clause, limit, false, f)?;
         }
         Ok(())
     }
 }
 
+fn visible_fields<'db>(fields: Vec<Field>, f: &mut HirFormatter<'_, 'db>) -> (Vec<Field>, bool) {
+    if f.render_private_fields() {
+        return (fields, false);
+    }
+
+    let mut hidden_fields = false;
+    let fields = fields
+        .into_iter()
+        .filter(|field| {
+            let is_public = field.visibility(f.db) == Visibility::Public;
+            hidden_fields |= !is_public;
+            is_public
+        })
+        .collect();
+    (fields, hidden_fields)
+}
+
 fn write_fields<'db>(
     fields: &[Field],
+    hidden_fields: bool,
     has_where_clause: bool,
     limit: usize,
     in_line: bool,
@@ -438,7 +461,7 @@ fn write_fields<'db>(
     let (indent, separator) = if in_line { ("", ' ') } else { ("    ", '\n') };
     f.write_char(if !has_where_clause { ' ' } else { separator })?;
     if count == 0 {
-        f.write_str(if fields.is_empty() { "{}" } else { "{ /* … */ }" })?;
+        f.write_str(if fields.is_empty() && !hidden_fields { "{}" } else { "{ /* … */ }" })?;
     } else {
         f.write_char('{')?;
 
@@ -450,7 +473,7 @@ fn write_fields<'db>(
                 write!(f, ",{separator}")?;
             }
 
-            if fields.len() > count {
+            if fields.len() > count || hidden_fields {
                 write!(f, "{indent}/* … */{separator}")?;
             }
         }
@@ -542,7 +565,8 @@ impl<'db> HirDisplay<'db> for EnumVariant {
             }
             FieldsShape::Record => {
                 if let Some(limit) = f.entity_limit {
-                    write_fields(&self.fields(f.db), false, limit, true, f)?;
+                    let (fields, hidden_fields) = visible_fields(self.fields(f.db), f);
+                    write_fields(&fields, hidden_fields, false, limit, true, f)?;
                 }
             }
         }

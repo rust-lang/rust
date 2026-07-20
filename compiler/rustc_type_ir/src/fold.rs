@@ -584,6 +584,13 @@ where
     set_aliases_rigidness_with_mode(cx, value, RigidnessFoldMode::AllToRigid)
 }
 
+pub fn set_type_aliases_to_rigid<I: Interner, T>(cx: I, value: T) -> T
+where
+    T: TypeFoldable<I>,
+{
+    set_aliases_rigidness_with_mode(cx, value, RigidnessFoldMode::TypeToRigid)
+}
+
 fn set_aliases_rigidness_with_mode<I: Interner, T>(cx: I, value: T, mode: RigidnessFoldMode) -> T
 where
     T: TypeFoldable<I>,
@@ -597,8 +604,9 @@ where
 }
 
 enum RigidnessFoldMode {
-    AllToNonRigid,
     AllToRigid,
+    AllToNonRigid,
+    TypeToRigid,
     OpaqueToNonRigid,
 }
 
@@ -607,6 +615,10 @@ impl RigidnessFoldMode {
         match self {
             RigidnessFoldMode::AllToRigid => v.has_non_rigid_aliases(),
             RigidnessFoldMode::AllToNonRigid => v.has_rigid_aliases(),
+            RigidnessFoldMode::TypeToRigid => {
+                v.has_non_rigid_aliases()
+                    && v.has_type_flags(ty::TypeFlags::HAS_ALIAS - ty::TypeFlags::HAS_CONST_ALIAS)
+            }
             RigidnessFoldMode::OpaqueToNonRigid => v.has_rigid_aliases() && v.has_opaque_types(),
         }
     }
@@ -637,7 +649,7 @@ impl<I: Interner> TypeFolder<I> for RigidnessFolder<I> {
             ty::Alias(is_rigid, alias_ty) => {
                 let alias_ty = alias_ty.fold_with(self);
                 match self.mode {
-                    RigidnessFoldMode::AllToRigid => {
+                    RigidnessFoldMode::AllToRigid | RigidnessFoldMode::TypeToRigid => {
                         I::Ty::new_alias(self.cx(), ty::IsRigid::Yes, alias_ty)
                     }
                     RigidnessFoldMode::AllToNonRigid => {
@@ -671,7 +683,7 @@ impl<I: Interner> TypeFolder<I> for RigidnessFolder<I> {
                     RigidnessFoldMode::AllToNonRigid => {
                         I::Const::new_alias(self.cx(), ty::IsRigid::No, alias_const)
                     }
-                    RigidnessFoldMode::OpaqueToNonRigid => {
+                    RigidnessFoldMode::OpaqueToNonRigid | RigidnessFoldMode::TypeToRigid => {
                         I::Const::new_alias(self.cx(), is_rigid, alias_const)
                     }
                 }

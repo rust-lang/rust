@@ -212,7 +212,7 @@ impl<'db> Resolver<'db> {
         let first_name = path.segments().first()?;
         let skip_to_mod = path.kind != PathKind::Plain;
         if skip_to_mod {
-            return self.module_scope.resolve_path_in_type_ns(db, path);
+            return self.skip_to_mod(|scope| scope.resolve_path_in_type_ns(db, path));
         }
 
         let remaining_idx = || {
@@ -326,6 +326,18 @@ impl<'db> Resolver<'db> {
         self.resolve_path_in_value_ns_with_prefix_info(db, path, hygiene_id).map(|(it, _)| it)
     }
 
+    fn skip_to_mod<'this, T>(
+        &'this self,
+        mut f: impl FnMut(&'this ModuleItemMap<'db>) -> Option<T>,
+    ) -> Option<T> {
+        self.scopes()
+            .find_map(|scope| match scope {
+                Scope::BlockScope(it) => f(it),
+                _ => None,
+            })
+            .or_else(|| f(&self.module_scope))
+    }
+
     pub fn resolve_path_in_value_ns_with_prefix_info(
         &self,
         db: &dyn SourceDatabase,
@@ -379,7 +391,7 @@ impl<'db> Resolver<'db> {
         let first_name = if path.is_self() { &tmp } else { path.segments().first()? };
         let skip_to_mod = path.kind != PathKind::Plain && !path.is_self();
         if skip_to_mod {
-            return self.module_scope.resolve_path_in_value_ns(db, path);
+            return self.skip_to_mod(|scope| scope.resolve_path_in_value_ns(db, path));
         }
 
         if n_segments <= 1 {
@@ -889,7 +901,7 @@ impl<'db> Resolver<'db> {
             resolver.scopes.push(Scope::ExprScope(ExprScope { owner, expr_scopes, scope_id }));
             if let Some(block) = expr_scopes.block(scope_id) {
                 let def_map = block_def_map(db, block);
-                let local_def_map = block.lookup(db).module.only_local_def_map(db);
+                let local_def_map = block.module(db).only_local_def_map(db);
                 resolver.scopes.push(Scope::BlockScope(ModuleItemMap {
                     def_map,
                     local_def_map,
@@ -1095,7 +1107,7 @@ fn resolver_for_scope_<'db>(
     for scope in scope_chain.into_iter().rev() {
         if let Some(block) = scopes.block(scope) {
             let def_map = block_def_map(db, block);
-            let local_def_map = block.lookup(db).module.only_local_def_map(db);
+            let local_def_map = block.module(db).only_local_def_map(db);
             // Using `DefMap::ROOT` is okay here since inside modules other than the root,
             // there can't directly be expressions.
             r = r.push_block_scope(def_map, local_def_map, def_map.root);

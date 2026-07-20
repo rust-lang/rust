@@ -50,7 +50,10 @@ mod macro_expansion_tests;
 #[cfg(test)]
 mod test_db;
 
-use std::hash::{Hash, Hasher};
+use std::{
+    fmt,
+    hash::{Hash, Hasher},
+};
 
 use base_db::{Crate, SourceDatabase, impl_intern_key};
 use hir_expand::{
@@ -462,13 +465,74 @@ pub struct ProcMacroLoc {
 impl_intern!(ProcMacroId, ProcMacroLoc);
 impl_loc!(ProcMacroLoc, id: Fn, container: ModuleId);
 
-#[derive(Debug, Hash, PartialEq, Eq, Clone)]
-pub struct BlockLoc {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
+pub enum LoweringMode {
+    Analysis,
+    Ide,
+}
+
+pub use self::tracked_struct_token::TrackedStructToken;
+mod tracked_struct_token {
+    use super::LoweringMode;
+
+    /// A token that is required to construct tracked structs.
+    /// This exists to prevent one from accidentally creating a tracked struct outside of a query which may happen for some codepaths.
+    pub struct TrackedStructToken {
+        // #[non_exhaustive] doesn't work for us here, we want it module focused.
+        _private: (),
+    }
+
+    impl LoweringMode {
+        pub fn allow_tracked_structs(self) -> Option<TrackedStructToken> {
+            match self {
+                LoweringMode::Analysis => Some(TrackedStructToken { _private: () }),
+                LoweringMode::Ide => None,
+            }
+        }
+    }
+}
+
+#[salsa_macros::tracked(constructor = new_)]
+#[derive(PartialOrd, Ord)]
+pub struct BlockIdLt<'db> {
     pub ast_id: AstId<ast::BlockExpr>,
     /// The containing module.
-    pub module: ModuleId,
+    pub module: ModuleIdLt<'db>,
 }
-impl_intern!(BlockId, BlockLoc);
+pub type BlockId = BlockIdLt<'static>;
+
+impl<'db> fmt::Debug for BlockIdLt<'db> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_tuple("BlockId").field(&self.0).finish()
+    }
+}
+
+impl<'db> BlockIdLt<'db> {
+    pub fn new(
+        db: &'db dyn SourceDatabase,
+        ast_id: AstId<ast::BlockExpr>,
+        module: ModuleIdLt<'db>,
+        token: TrackedStructToken,
+    ) -> Self {
+        _ = token;
+        BlockIdLt::new_(db, ast_id, module)
+    }
+
+    /// # Safety
+    ///
+    /// The caller must ensure that the `ModuleId` is not leaked outside of query computations.
+    pub unsafe fn to_static(self) -> BlockId {
+        unsafe { std::mem::transmute(self) }
+    }
+}
+impl BlockId {
+    /// # Safety
+    ///
+    /// The caller must ensure that the `BlockId` comes from the given database.
+    pub unsafe fn to_db<'db>(self, _db: &'db dyn SourceDatabase) -> BlockIdLt<'db> {
+        unsafe { std::mem::transmute(self) }
+    }
+}
 
 #[salsa_macros::tracked(debug)]
 #[derive(PartialOrd, Ord)]
@@ -478,7 +542,7 @@ pub struct ModuleIdLt<'db> {
     /// If this `ModuleId` was derived from a `DefMap` for a block expression, this stores the
     /// `BlockId` of that block expression. If `None`, this module is part of the crate-level
     /// `DefMap` of `krate`.
-    pub block: Option<BlockId>,
+    pub block: Option<BlockIdLt<'db>>,
     /// The parent module of this module, or `None` if this is the root module inside the def
     /// map (including for block def maps).
     pub containing_module_inside_def_map: Option<ModuleIdLt<'db>>,
@@ -487,30 +551,25 @@ pub struct ModuleIdLt<'db> {
 }
 pub type ModuleId = ModuleIdLt<'static>;
 
-impl ModuleIdLt<'_> {
+impl<'db> ModuleIdLt<'db> {
     /// # Safety
     ///
     /// The caller must ensure that the `ModuleId` is not leaked outside of query computations.
     pub unsafe fn to_static(self) -> ModuleId {
         unsafe { std::mem::transmute(self) }
     }
-}
-impl ModuleId {
-    /// # Safety
-    ///
-    /// The caller must ensure that the `ModuleId` comes from the given database.
-    pub unsafe fn to_db<'db>(self, _db: &'db dyn SourceDatabase) -> ModuleIdLt<'db> {
-        unsafe { std::mem::transmute(self) }
-    }
 
-    pub fn def_map(self, db: &dyn SourceDatabase) -> &DefMap {
+    pub fn def_map(self, db: &'db dyn SourceDatabase) -> &'db DefMap {
         match self.block(db) {
             Some(block) => block_def_map(db, block),
             None => crate_def_map(db, self.krate(db)),
         }
     }
 
-    pub(crate) fn local_def_map(self, db: &dyn SourceDatabase) -> (&DefMap, &LocalDefMap) {
+    pub(crate) fn local_def_map(
+        self,
+        db: &'db dyn SourceDatabase,
+    ) -> (&'db DefMap, &'db LocalDefMap) {
         match self.block(db) {
             Some(block) => (block_def_map(db, block), self.only_local_def_map(db)),
             None => {
@@ -520,11 +579,11 @@ impl ModuleId {
         }
     }
 
-    pub(crate) fn only_local_def_map(self, db: &dyn SourceDatabase) -> &LocalDefMap {
+    pub(crate) fn only_local_def_map(self, db: &'db dyn SourceDatabase) -> &'db LocalDefMap {
         crate_local_def_map(db, self.krate(db)).local(db)
     }
 
-    pub fn crate_def_map(self, db: &dyn SourceDatabase) -> &DefMap {
+    pub fn crate_def_map(self, db: &'db dyn SourceDatabase) -> &'db DefMap {
         crate_def_map(db, self.krate(db))
     }
 
@@ -535,17 +594,22 @@ impl ModuleId {
 
     /// Returns the module containing `self`, either the parent `mod`, or the module (or block) containing
     /// the block, if `self` corresponds to a block expression.
-    pub fn containing_module(self, db: &dyn SourceDatabase) -> Option<ModuleId> {
+    pub fn containing_module(self, db: &'db dyn SourceDatabase) -> Option<ModuleIdLt<'db>> {
         self.containing_module_inside_def_map(db)
-            .or_else(|| self.block(db).map(|block| block.loc(db).module))
-            .map(|module| {
-                // SAFETY: Not sure.
-                unsafe { module.to_static() }
-            })
+            .or_else(|| self.block(db).map(|block| block.module(db)))
     }
 
     pub fn is_block_module(self, db: &dyn SourceDatabase) -> bool {
         self.block(db).is_some() && self.containing_module_inside_def_map(db).is_none()
+    }
+}
+
+impl ModuleId {
+    /// # Safety
+    ///
+    /// The caller must ensure that the `ModuleId` comes from the given database.
+    pub unsafe fn to_db<'db>(self, _db: &'db dyn SourceDatabase) -> ModuleIdLt<'db> {
+        unsafe { std::mem::transmute(self) }
     }
 }
 

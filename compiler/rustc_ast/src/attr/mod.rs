@@ -315,7 +315,7 @@ impl Attribute {
 
                 // #[deprecated = "..."]
                 if let Some(s) = meta.value_str() {
-                    return Some(Ident { name: s, span: meta.span() });
+                    return Some(Ident { name: s, span: meta.span });
                 }
 
                 // #[deprecated(note = "...")]
@@ -340,10 +340,6 @@ impl Attribute {
 impl AttrItem {
     pub fn name(&self) -> Option<Symbol> {
         if let [seg] = &*self.path.segments { Some(seg.ident.name) } else { None }
-    }
-
-    pub fn span(&self) -> Span {
-        self.args.span().map_or(self.path.span, |args_span| self.path.span.to(args_span))
     }
 
     pub fn meta_item_list(&self) -> Option<ThinVec<MetaItemInner>> {
@@ -794,6 +790,8 @@ fn mk_attr_tokens(
     LazyAttrTokenStream::new_direct(AttrTokenStream::new(tokens))
 }
 
+// `span` is used for the `Attribute` and everything within it (except for any span within
+// `unsafety`).
 pub fn mk_attr_word(
     g: &AttrIdGenerator,
     style: AttrStyle,
@@ -814,9 +812,11 @@ pub fn mk_attr_word(
         span,
     ));
 
-    mk_attr_from_item(g, AttrItem { unsafety, path, args }, tokens, style, span)
+    mk_attr_from_item(g, AttrItem { unsafety, path, args, span }, tokens, style, span)
 }
 
+// `span` is used for the `Attribute` and everything within it (except for any span within
+// `unsafety`).
 pub fn mk_attr_nested_word(
     g: &AttrIdGenerator,
     style: AttrStyle,
@@ -855,9 +855,11 @@ pub fn mk_attr_nested_word(
         span,
     ));
 
-    mk_attr_from_item(g, AttrItem { unsafety, path, args: attr_args }, tokens, style, span)
+    mk_attr_from_item(g, AttrItem { unsafety, path, args: attr_args, span }, tokens, style, span)
 }
 
+// `span` is used for the `Attribute` and everything within it (except for any span within
+// `unsafety`).
 pub fn mk_attr_name_value_str(
     g: &AttrIdGenerator,
     style: AttrStyle,
@@ -891,7 +893,7 @@ pub fn mk_attr_name_value_str(
         span,
     ));
 
-    mk_attr_from_item(g, AttrItem { unsafety, path, args }, tokens, style, span)
+    mk_attr_from_item(g, AttrItem { unsafety, path, args, span }, tokens, style, span)
 }
 
 pub fn filter_by_name(attrs: &[Attribute], name: Symbol) -> impl Iterator<Item = &Attribute> {

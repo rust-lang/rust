@@ -395,7 +395,7 @@ where
 }
 
 fn receiver_is_dispatchable<'db>(
-    db: &dyn HirDatabase,
+    db: &'db dyn HirDatabase,
     trait_: TraitId,
     func: FunctionId,
     sig: &EarlyBinder<'db, Binder<'db, rustc_type_ir::FnSig<DbInterner<'db>>>>,
@@ -417,9 +417,7 @@ fn receiver_is_dispatchable<'db>(
         return true;
     }
 
-    let Some(&receiver_ty) = sig.inputs().skip_binder().first() else {
-        return false;
-    };
+    let receiver_ty = interner.liberate_late_bound_regions(func.into(), sig.input(0));
 
     let lang_items = interner.lang_items();
     let traits = (lang_items.Unsize, lang_items.DispatchFromDyn);
@@ -451,7 +449,7 @@ fn receiver_is_dispatchable<'db>(
             TraitRef::new(interner, unsize_did.into(), [self_param_ty, unsized_self_ty]);
 
         // U: Trait<Arg1, ..., ArgN>
-        let args = GenericArgs::for_item(interner, trait_.into(), |index, kind, _| {
+        let args = GenericArgs::for_item(interner, trait_.into(), |index, kind, _, _| {
             if index == 0 { unsized_self_ty.into() } else { mk_param(interner, index, kind) }
         });
         let trait_predicate = TraitRef::new_from_args(interner, trait_.into(), args);
@@ -487,9 +485,10 @@ fn receiver_for_self_ty<'db>(
     receiver_ty: Ty<'db>,
     self_ty: Ty<'db>,
 ) -> Ty<'db> {
-    let args = GenericArgs::for_item(interner, SolverDefId::FunctionId(func), |index, kind, _| {
-        if index == 0 { self_ty.into() } else { mk_param(interner, index, kind) }
-    });
+    let args =
+        GenericArgs::for_item(interner, SolverDefId::FunctionId(func), |index, kind, _, _| {
+            if index == 0 { self_ty.into() } else { mk_param(interner, index, kind) }
+        });
 
     EarlyBinder::bind(receiver_ty).instantiate(interner, args).skip_norm_wip()
 }

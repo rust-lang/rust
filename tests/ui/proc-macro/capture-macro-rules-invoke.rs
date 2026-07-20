@@ -28,6 +28,12 @@ macro_rules! use_pat {
     }
 }
 
+macro_rules! use_meta {
+    ($meta:meta) => {
+        print_bang_consume!($meta)
+    }
+}
+
 #[allow(dead_code)]
 struct Foo;
 impl Foo {
@@ -47,6 +53,7 @@ impl Foo {
             [ a b c ],
             -30
         );
+        use_meta!(unsafe(no_mangle));
     }
 
     fn with_pat(use_pat!((a, b)): (u32, u32)) {
