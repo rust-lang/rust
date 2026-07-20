@@ -4,10 +4,10 @@ error[E0597]: `s` does not live long enough
 LL |         let s = String::from("abcdef");
    |             - binding `s` declared here
 LL |         z = f::<dyn X<Y = &str>>(&s);
-   |             ---------------------^^-
-   |             |                    |
-   |             |                    borrowed value does not live long enough
-   |             argument requires that `s` is borrowed for `'static`
+   |                                  ^^
+   |                                  |
+   |                                  borrowed value does not live long enough
+   |                                  argument requires that `s` is borrowed for `'static`
 LL |
 LL |     }
    |     - `s` dropped here while still borrowed

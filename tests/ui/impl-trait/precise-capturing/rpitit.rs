@@ -11,9 +11,9 @@ trait TraitLt<'a: 'a> {
 }
 fn trait_lt<'a, 'b, T: for<'r> TraitLt<'r>> () {
     eq_types(
-        //~^ ERROR lifetime may not live long enough
-        //~| ERROR lifetime may not live long enough
+        //~v ERROR lifetime may not live long enough
         <T as TraitLt<'a>>::hello(),
+        //~v ERROR lifetime may not live long enough
         <T as TraitLt<'b>>::hello(),
     );
 }

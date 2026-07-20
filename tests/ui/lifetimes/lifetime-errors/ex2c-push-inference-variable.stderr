@@ -7,7 +7,7 @@ LL | fn foo<'a, 'b, 'c>(x: &'a mut Vec<Ref<'b, i32>>, y: Ref<'c, i32>) {
    |            lifetime `'b` defined here
 LL |     let z = Ref { data: y.data };
 LL |     x.push(z);
-   |     ^^^^^^^^^ argument requires that `'c` must outlive `'b`
+   |     ^ receiver requires that `'c` must outlive `'b`
    |
    = help: consider adding the following bound: `'c: 'b`
    = note: requirement occurs because of a mutable reference to `Vec<Ref<'_, i32>>`

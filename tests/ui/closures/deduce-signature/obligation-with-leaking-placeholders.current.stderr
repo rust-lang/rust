@@ -1,12 +1,13 @@
 error: implementation of `Foo` is not general enough
-  --> $DIR/obligation-with-leaking-placeholders.rs:18:5
+  --> $DIR/obligation-with-leaking-placeholders.rs:18:15
    |
-LL | /     needs_foo(|x| {
+LL |       needs_foo(|x| {
+   |  _______________^
 LL | |
 LL | |
 LL | |         x.to_string();
 LL | |     });
-   | |______^ implementation of `Foo` is not general enough
+   | |_____^ implementation of `Foo` is not general enough
    |
    = note: `Wrap<{closure@...}>` must implement `Foo<'0>`, for any lifetime `'0`...
    = note: ...but it actually implements `Foo<'1>`, for some specific lifetime `'1`

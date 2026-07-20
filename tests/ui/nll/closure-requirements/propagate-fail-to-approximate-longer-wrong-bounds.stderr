@@ -19,7 +19,7 @@ LL |     establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y
    = note: late-bound region is '?4
 
 error: lifetime may not live long enough
-  --> $DIR/propagate-fail-to-approximate-longer-wrong-bounds.rs:41:9
+  --> $DIR/propagate-fail-to-approximate-longer-wrong-bounds.rs:41:21
    |
 LL |     establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
    |                                                ----------  ---------- has type `&'?7 Cell<&'2 &'?2 u32>`
@@ -27,7 +27,7 @@ LL |     establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y
    |                                                has type `&'?5 Cell<&'1 &'?1 u32>`
 LL |         // Only works if 'x: 'y:
 LL |         demand_y(x, y, x.get())
-   |         ^^^^^^^^^^^^^^^^^^^^^^^ argument requires that `'1` must outlive `'2`
+   |                     ^ argument requires that `'1` must outlive `'2`
    |
    = note: requirement occurs because of the type `Cell<&'?43 u32>`, which makes the generic argument `&'?43 u32` invariant
    = note: the struct `Cell<T>` is invariant over the parameter `T`

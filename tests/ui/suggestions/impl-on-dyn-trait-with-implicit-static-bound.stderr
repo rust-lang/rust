@@ -6,10 +6,10 @@ LL |     fn use_it<'a, T>(val: &'a dyn ObjectTrait<T>) -> impl OtherTrait<'a> + 
    |               |
    |               lifetime `'a` defined here
 LL |         val.use_self::<T>()
-   |         ^^^^^^^^^^^^^^^^^^^
+   |         ^^^
    |         |
    |         `val` escapes the function body here
-   |         argument requires that `'a` must outlive `'static`
+   |         receiver requires that `'a` must outlive `'static`
    |
 note: the used `impl` has a `'static` requirement
   --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:15:32
@@ -31,10 +31,10 @@ LL |     fn use_it<'a>(val: &'a dyn ObjectTrait) -> impl OtherTrait<'a> + 'a {
    |               |
    |               lifetime `'a` defined here
 LL |         val.use_self()
-   |         ^^^^^^^^^^^^^^
+   |         ^^^
    |         |
    |         `val` escapes the function body here
-   |         argument requires that `'a` must outlive `'static`
+   |         receiver requires that `'a` must outlive `'static`
    |
 note: the used `impl` has a `'static` requirement
   --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:67:14
@@ -56,10 +56,10 @@ LL |     fn use_it<'a>(val: &'a dyn ObjectTrait) -> impl OtherTrait<'a> {
    |               |
    |               lifetime `'a` defined here
 LL |         val.use_self()
-   |         ^^^^^^^^^^^^^^
+   |         ^^^
    |         |
    |         `val` escapes the function body here
-   |         argument requires that `'a` must outlive `'static`
+   |         receiver requires that `'a` must outlive `'static`
    |
 note: the used `impl` has a `'static` requirement
   --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:89:26
@@ -75,17 +75,17 @@ LL |     impl MyTrait for dyn ObjectTrait + '_ {}
    |                                      ++++
 
 error[E0521]: borrowed data escapes outside of function
-  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:112:9
+  --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:112:27
    |
 LL |     fn use_it<'a>(val: &'a dyn ObjectTrait) -> impl OtherTrait<'a> + 'a {
    |               --  --- `val` is a reference that is only valid in the function body
    |               |
    |               lifetime `'a` defined here
 LL |         MyTrait::use_self(val)
-   |         ^^^^^^^^^^^^^^^^^^^^^^
-   |         |
-   |         `val` escapes the function body here
-   |         argument requires that `'a` must outlive `'static`
+   |                           ^^^
+   |                           |
+   |                           `val` escapes the function body here
+   |                           argument requires that `'a` must outlive `'static`
    |
 note: the used `impl` has a `'static` requirement
   --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:108:26
@@ -108,10 +108,10 @@ LL |     fn use_it<'a>(val: &'a dyn ObjectTrait) -> &'a () {
    |               |
    |               lifetime `'a` defined here
 LL |         val.use_self()
-   |         ^^^^^^^^^^^^^^
+   |         ^^^
    |         |
    |         `val` escapes the function body here
-   |         argument requires that `'a` must outlive `'static`
+   |         receiver requires that `'a` must outlive `'static`
    |
 note: the used `impl` has a `'static` requirement
   --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:32:26
@@ -133,10 +133,10 @@ LL |     fn use_it<'a>(val: &'a Box<dyn ObjectTrait + 'a>) -> &'a () {
    |               |
    |               lifetime `'a` defined here
 LL |         val.use_self()
-   |         ^^^^^^^^^^^^^^
+   |         ^^^
    |         |
    |         `val` escapes the function body here
-   |         argument requires that `'a` must outlive `'static`
+   |         receiver requires that `'a` must outlive `'static`
    |
 note: the used `impl` has a `'static` requirement
   --> $DIR/impl-on-dyn-trait-with-implicit-static-bound.rs:50:30

@@ -12,7 +12,7 @@ note: function requires argument type to outlive `'a`
   --> $DIR/does-not-live-long-enough.rs:6:9
    |
 LL |         self.data.iter().filter(|s| s.starts_with(prefix)).map(|s| s.as_ref())
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: to force the closure to take ownership of `prefix` (and any other referenced variables), use the `move` keyword
    |
 LL |         self.data.iter().filter(move |s| s.starts_with(prefix)).map(|s| s.as_ref())

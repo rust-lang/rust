@@ -33,15 +33,13 @@ LL |             BarImpl(ctx);
 error: lifetime may not live long enough
   --> $DIR/lifetime-not-long-enough-suggestion-regression-test-124563.rs:22:9
    |
-LL |   impl<'a, 'b, T> Foo for FooImpl<'a, 'b, T>
-   |        --  -- lifetime `'b` defined here
-   |        |
-   |        lifetime `'a` defined here
+LL | impl<'a, 'b, T> Foo for FooImpl<'a, 'b, T>
+   |      --  -- lifetime `'b` defined here
+   |      |
+   |      lifetime `'a` defined here
 ...
-LL | /         self.enter_scope(|ctx| {
-LL | |             BarImpl(ctx);
-LL | |         });
-   | |__________^ argument requires that `'a` must outlive `'b`
+LL |         self.enter_scope(|ctx| {
+   |         ^^^^ receiver requires that `'a` must outlive `'b`
    |
    = help: consider adding the following bound: `'a: 'b`
    = note: requirement occurs because of a mutable reference to `FooImpl<'_, '_, T>`

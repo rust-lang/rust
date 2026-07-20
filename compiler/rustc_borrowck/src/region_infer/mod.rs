@@ -1754,7 +1754,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     | AnnotationSource::OpaqueCast,
                 )
                 | ConstraintCategory::Cast { .. }
-                | ConstraintCategory::CallArgument(_)
+                | ConstraintCategory::CallArgument(_, _)
                 | ConstraintCategory::CopyBound
                 | ConstraintCategory::SizedBound
                 | ConstraintCategory::Assignment

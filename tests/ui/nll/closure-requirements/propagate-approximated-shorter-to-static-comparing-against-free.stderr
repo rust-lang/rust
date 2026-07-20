@@ -19,7 +19,7 @@ LL |     foo(cell, |cell_a, cell_x| {
    |                |
    |                `cell_a` declared here, outside of the closure body
 LL |         cell_a.set(cell_x.get()); // forces 'x: 'a, error in closure
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^ `cell_x` escapes the closure body here
+   |         ^^^^^^ `cell_x` escapes the closure body here
    |
    = note: requirement occurs because of the type `Cell<&'?9 u32>`, which makes the generic argument `&'?9 u32` invariant
    = note: the struct `Cell<T>` is invariant over the parameter `T`
@@ -65,7 +65,7 @@ LL |     let cell = Cell::new(&a);
    |                          ^^ borrowed value does not live long enough
 ...
 LL |         cell_x.set(cell_a.get()); // forces 'a: 'x, implies 'a = 'static -> borrow error
-   |         ------------------------ argument requires that `a` is borrowed for `'static`
+   |         ------ receiver requires that `a` is borrowed for `'static`
 LL |     })
 LL | }
    | - `a` dropped here while still borrowed

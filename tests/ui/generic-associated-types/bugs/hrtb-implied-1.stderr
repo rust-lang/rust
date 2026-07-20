@@ -5,7 +5,7 @@ LL |     let slice = &mut ();
    |                      ^^ creates a temporary value which is freed while still in use
 LL |     let windows = WindowsMut { slice };
 LL |     print_items::<WindowsMut<'_>>(windows);
-   |     -------------------------------------- argument requires that borrow lasts for `'static`
+   |                                   ------- argument requires that borrow lasts for `'static`
 LL | }
    | - temporary value is freed at the end of this statement
    |

@@ -7,7 +7,7 @@ LL |     fn a(&'a self) -> &'a bool;
 LL |     fn b(&self) {
    |          - let's call the lifetime of this reference `'1`
 LL |         self.a();
-   |         ^^^^^^^^ argument requires that `'1` must outlive `'a`
+   |         ^^^^ receiver requires that `'1` must outlive `'a`
 
 error: aborting due to 1 previous error
 
