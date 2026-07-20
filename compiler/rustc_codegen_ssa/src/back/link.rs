@@ -26,7 +26,7 @@ use rustc_lint_defs::builtin::LINKER_INFO;
 use rustc_macros::Diagnostic;
 use rustc_metadata::fs::{METADATA_FILENAME, copy_to_stdout, emit_wrapper_file};
 use rustc_metadata::{
-    EncodedMetadata, NativeLibSearchFallback, find_bundled_library, find_native_static_library,
+    EncodedMetadata, NativeLibSearchFallback, find_native_static_library,
     walk_native_lib_search_dirs,
 };
 use rustc_middle::bug;
@@ -374,6 +374,28 @@ pub fn each_linked_rlib(
     Ok(())
 }
 
+/// If `lib` is a static library that is bundled into the rlib as a packed archive, returns the
+/// file name of that archive. Returns `None` for libraries that are instead unpacked into loose
+/// object files, or not bundled at all.
+fn find_bundled_library(
+    lib: &NativeLib,
+    sess: &Session,
+    crate_types: &[CrateType],
+) -> Option<Symbol> {
+    if let NativeLibKind::Static { bundle: Some(true) | None, whole_archive, .. } = lib.kind
+        && crate_types.iter().any(|t| matches!(t, &CrateType::Rlib | CrateType::StaticLib))
+        && (sess.opts.unstable_opts.packed_bundled_libs
+            || lib.cfg.is_some()
+            || whole_archive == Some(true))
+    {
+        return find_native_static_library(lib.name.as_str(), lib.verbatim, sess)
+            .file_name()
+            .and_then(|s| s.to_str())
+            .map(Symbol::intern);
+    }
+    None
+}
+
 /// Create an 'rlib'.
 ///
 /// An rlib in its current incarnation is essentially a renamed .a file (with "dummy" object files).
@@ -405,16 +427,7 @@ fn link_rlib<'a>(
     let native_lib_filenames: Vec<Option<Symbol>> = crate_info
         .used_libraries
         .iter()
-        .map(|lib| {
-            find_bundled_library(
-                lib.name,
-                Some(lib.verbatim),
-                lib.kind,
-                lib.cfg.is_some(),
-                sess,
-                &crate_info.crate_types,
-            )
-        })
+        .map(|lib| find_bundled_library(lib, sess, &crate_info.crate_types))
         .collect();
 
     let metadata_link_file = if matches!(flavor, RlibFlavor::Normal) {
@@ -3186,23 +3199,9 @@ fn add_native_libs_from_crate(
     }
 
     let (native_libs, bundled_filenames): (&Vec<NativeLib>, Vec<Option<Symbol>>) = match cnum {
-        LOCAL_CRATE => {
-            let libs = &crate_info.used_libraries;
-            let filenames = libs
-                .iter()
-                .map(|lib| {
-                    find_bundled_library(
-                        lib.name,
-                        Some(lib.verbatim),
-                        lib.kind,
-                        lib.cfg.is_some(),
-                        sess,
-                        &crate_info.crate_types,
-                    )
-                })
-                .collect();
-            (libs, filenames)
-        }
+        // Bundled libraries are only linked by path for upstream crates, so the local crate
+        // never needs their filenames.
+        LOCAL_CRATE => (&crate_info.used_libraries, Vec::new()),
         _ => {
             let native_libs = &crate_info.native_libraries[&cnum];
             let filenames =
