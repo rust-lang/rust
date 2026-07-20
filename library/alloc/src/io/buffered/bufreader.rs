@@ -481,25 +481,10 @@ impl<R: ?Sized + Read> Read for BufReader<R> {
 
             cfg_select! {
                 no_global_oom_handling => {
-                    // SAFETY:
-                    // * string and buf are non-overlapping
-                    // * buf[..len] is already initialized
-                    // * buf[len..len + count] is initialized by copy_nonoverlapping
-                    // * len + count is within the capacity of buf based on the reservation completed above
-                    // * buf is appended with valid UTF-8 data and is initially valid UTF-8, therefore
-                    //   it is valid UTF-8 at all times.
-                    unsafe {
-                        let buf = buf.as_mut_vec();
-                        let count = string.len();
-                        let len = buf.len();
-                        let src = string.as_ptr();
-                        let dst = buf.as_mut_ptr().add(len);
-                        core::ptr::copy_nonoverlapping(src, dst, count);
-                        buf.set_len(len + count);
-                    }
+                    buf.try_push_str(string)?;
                 }
                 _ => {
-                    *buf += string;
+                    buf.push_str(string);
                 }
             }
 
