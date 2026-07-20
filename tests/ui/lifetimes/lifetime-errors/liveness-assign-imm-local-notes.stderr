@@ -1,8 +1,9 @@
 error[E0384]: cannot assign twice to immutable variable `x`
   --> $DIR/liveness-assign-imm-local-notes.rs:10:9
    |
-LL |         x = 2;
+LL |         x = 1;
    |         ----- first assignment to `x`
+...
 LL |         x = 3;
    |         ^^^^^ cannot assign twice to immutable variable
    |
@@ -14,8 +15,9 @@ LL |     let mut x;
 error[E0384]: cannot assign twice to immutable variable `x`
   --> $DIR/liveness-assign-imm-local-notes.rs:21:13
    |
-LL |             x = 2;
+LL |             x = 1;
    |             ----- first assignment to `x`
+...
 LL |             x = 3;
    |             ^^^^^ cannot assign twice to immutable variable
    |

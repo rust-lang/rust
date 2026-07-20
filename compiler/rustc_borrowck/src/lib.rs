@@ -2516,10 +2516,13 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         }
     }
 
+    /// If the local is in the `EverInits` set, returns the first init in gather order.
+    /// FIXME(nnethercote): this choice is sub-optimal for certain error messages.
     fn is_local_ever_initialized(&self, local: Local, state: &BorrowckDomain) -> Option<InitIndex> {
-        let mpi = self.move_data.rev_lookup.find_local(local)?;
-        let ii = &self.move_data.init_path_map[mpi];
-        ii.into_iter().find(|&&index| state.ever_inits.contains(index)).copied()
+        state.ever_inits.contains(local).then(|| {
+            let mpi = self.move_data.rev_lookup.find_local(local).unwrap();
+            self.move_data.init_path_map[mpi][0]
+        })
     }
 
     /// Adds the place into the used mutable variables set
