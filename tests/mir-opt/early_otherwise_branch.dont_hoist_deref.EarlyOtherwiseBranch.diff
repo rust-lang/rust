@@ -1,0 +1,49 @@
+- // MIR for `dont_hoist_deref` before EarlyOtherwiseBranch
++ // MIR for `dont_hoist_deref` after EarlyOtherwiseBranch
+  
+  fn dont_hoist_deref(_1: u64, _2: *const u64) -> u64 {
+      let mut _0: u64;
++     let mut _3: bool;
+  
+      bb0: {
+-         switchInt(copy _1) -> [1: bb1, 2: bb2, otherwise: bb5];
++         _3 = Ne(copy _1, copy (*_2));
++         switchInt(move _3) -> [0: bb5, otherwise: bb3];
+      }
+  
+      bb1: {
+-         switchInt(copy (*_2)) -> [1: bb3, otherwise: bb5];
++         _0 = const 100_u64;
++         goto -> bb4;
+      }
+  
+      bb2: {
+-         switchInt(copy (*_2)) -> [2: bb4, otherwise: bb5];
++         _0 = const 200_u64;
++         goto -> bb4;
+      }
+  
+      bb3: {
+-         _0 = const 100_u64;
+-         goto -> bb6;
++         _0 = const 999_u64;
++         goto -> bb4;
+      }
+  
+      bb4: {
+-         _0 = const 200_u64;
+-         goto -> bb6;
++         return;
+      }
+  
+      bb5: {
+-         _0 = const 999_u64;
+-         goto -> bb6;
+-     }
+- 
+-     bb6: {
+-         return;
++         switchInt(copy _1) -> [1: bb1, 2: bb2, otherwise: bb3];
+      }
+  }
+  

@@ -156,6 +156,47 @@ fn target_self(val: i32) {
     }
 }
 
+// EMIT_MIR early_otherwise_branch.dont_hoist_deref.EarlyOtherwiseBranch.diff
+#[custom_mir(dialect = "runtime")]
+fn dont_hoist_deref(q: u64, p: *const u64) -> u64 {
+    mir! {
+        {
+            match q {
+                1 => bb1,
+                2 => bb2,
+                _ => bb5,
+            }
+        }
+        bb1 = {
+            match *p {
+                1 => bb3,
+                _ => bb5,
+            }
+        }
+        bb2 = {
+            match *p {
+                2 => bb4,
+                _ => bb5,
+            }
+        }
+        bb3 = {
+            RET = 100;
+            Goto(bb6)
+        }
+        bb4 = {
+            RET = 200;
+            Goto(bb6)
+        }
+        bb5 = {
+            RET = 999;
+            Goto(bb6)
+        }
+        bb6 = {
+            Return()
+        }
+    }
+}
+
 fn main() {
     opt1(None, Some(0));
     opt2(None, Some(0));
@@ -164,4 +205,5 @@ fn main() {
     opt5(0, 0);
     opt5_failed(0, 0);
     target_self(1);
+    dont_hoist_deref(3, std::ptr::null());
 }
