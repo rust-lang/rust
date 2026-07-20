@@ -20,8 +20,8 @@ use tracing::{debug, instrument};
 use crate::error_reporting::TypeErrCtxt;
 use crate::error_reporting::infer::need_type_info::TypeAnnotationNeeded;
 use crate::error_reporting::traits::{FindExprBySpan, to_pretty_impl_header};
-use crate::traits::ObligationCtxt;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
+use crate::traits::{FulfillmentError, ObligationCtxt};
 
 #[derive(Debug)]
 pub enum CandidateSource {
@@ -174,10 +174,43 @@ pub fn compute_applicable_impls_for_diagnostics<'tcx>(
 }
 
 impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
+    /// The term of an ambiguous obligation's predicate that gets blamed for the
+    /// missing type annotation: the first one still containing inference variables.
+    ///
+    /// Besides `maybe_report_ambiguity` pointing its diagnostics at this term,
+    /// `report_fulfillment_errors` merges the ambiguity errors whose blamed terms
+    /// share an inference variable into a single diagnostic.
+    pub(super) fn ambiguity_term(&self, predicate: ty::Predicate<'tcx>) -> Option<ty::Term<'tcx>> {
+        match predicate.kind().skip_binder() {
+            ty::PredicateKind::Clause(ty::ClauseKind::Trait(data)) => data
+                .trait_ref
+                .args
+                .iter()
+                .filter_map(ty::GenericArg::as_term)
+                .find(|term| term.has_non_region_infer()),
+            ty::PredicateKind::Clause(ty::ClauseKind::Projection(data)) => data
+                .projection_term
+                .args
+                .iter()
+                .filter_map(ty::GenericArg::as_term)
+                .chain([data.term])
+                .find(|term| term.has_non_region_infer()),
+            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(term)) => Some(term),
+            ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(data)) => {
+                data.walk().filter_map(ty::GenericArg::as_term).find(|term| term.is_infer())
+            }
+            ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, _)) => Some(ct.into()),
+            ty::PredicateKind::Subtype(data) => Some(data.a.into()),
+            ty::PredicateKind::NormalizesTo(data) if data.term.is_infer() => Some(data.term),
+            _ => None,
+        }
+    }
+
     #[instrument(skip(self), level = "debug")]
     pub(super) fn maybe_report_ambiguity(
         &self,
         obligation: &PredicateObligation<'tcx>,
+        related: &[&FulfillmentError<'tcx>],
     ) -> ErrorGuaranteed {
         // Unable to successfully determine, probably means
         // insufficient type information, but could mean
@@ -255,12 +288,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 // Pick the first generic parameter that still contains inference variables as the one
                 // we're going to emit an error for. If there are none (see above), fall back to
                 // a more general error.
-                let term = data
-                    .trait_ref
-                    .args
-                    .iter()
-                    .filter_map(ty::GenericArg::as_term)
-                    .find(|s| s.has_non_region_infer());
+                let term = self.ambiguity_term(predicate);
 
                 let mut err = if let Some(term) = term {
                     let candidates: Vec<_> = self
@@ -590,13 +618,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     // other `Foo` impls are incoherent.
                     return guar;
                 }
-                let term = data
-                    .projection_term
-                    .args
-                    .iter()
-                    .filter_map(ty::GenericArg::as_term)
-                    .chain([data.term])
-                    .find(|g| g.has_non_region_infer());
+                let term = self.ambiguity_term(predicate);
                 let predicate = self.tcx.short_string(predicate, &mut long_ty_path);
                 if let Some(term) = term {
                     self.emit_inference_failure_err(
@@ -621,16 +643,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }
             }
 
-            ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(data)) => {
+            ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(_)) => {
                 if let Err(e) = predicate.error_reported() {
                     return e;
                 }
                 if let Some(e) = self.tainted_by_errors() {
                     return e;
                 }
-                let term =
-                    data.walk().filter_map(ty::GenericArg::as_term).find(|term| term.is_infer());
-                if let Some(term) = term {
+                if let Some(term) = self.ambiguity_term(predicate) {
                     self.emit_inference_failure_err(
                         obligation.cause.body_def_id,
                         span,
@@ -713,6 +733,55 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 .with_long_ty_path(long_ty_path)
             }
         };
+
+        // The related obligations are ambiguous because of the same inference variable,
+        // so they belong to this diagnostic: annotating the variable has to satisfy all
+        // of them at once. Mention their requirements, except for bookkeeping predicates
+        // (`WellFormed`, sizedness, ...) whose mention wouldn't be actionable.
+        let mut mentioned = vec![predicate];
+        let mut mentioned_strs: Vec<String> = vec![];
+        for &error in related {
+            let related_pred = self.resolve_vars_if_possible(error.obligation.predicate);
+            if mentioned.contains(&related_pred) {
+                continue;
+            }
+            let note = match related_pred.kind().skip_binder() {
+                ty::PredicateKind::Clause(ty::ClauseKind::Trait(data))
+                    if !matches!(
+                        self.tcx.as_lang_item(data.def_id()),
+                        Some(LangItem::Sized | LangItem::MetaSized | LangItem::PointeeSized)
+                    ) =>
+                {
+                    let clause = related_pred.kind().rebind(data);
+                    if let ty::Infer(_) = clause.self_ty().skip_binder().kind() {
+                        let tr = self.tcx.short_string(
+                            clause.print_modifiers_and_trait_path(),
+                            &mut err.long_ty_path(),
+                        );
+                        format!("the type must also implement `{tr}`")
+                    } else {
+                        let pred = self.tcx.short_string(related_pred, &mut err.long_ty_path());
+                        format!("cannot satisfy `{pred}`")
+                    }
+                }
+                ty::PredicateKind::Clause(ty::ClauseKind::Projection(_)) => {
+                    let pred = self.tcx.short_string(related_pred, &mut err.long_ty_path());
+                    format!("cannot satisfy `{pred}`")
+                }
+                _ => {
+                    mentioned.push(related_pred);
+                    continue;
+                }
+            };
+            // Two predicates can print identically (e.g. `From<?0>` and `From<?1>` both show as
+            // `From<_>`); only emit each unique note string once.
+            if !mentioned_strs.contains(&note) {
+                err.note(note.clone());
+                mentioned_strs.push(note);
+            }
+            mentioned.push(related_pred);
+        }
+
         self.note_obligation_cause(&mut err, obligation);
         err.emit()
     }

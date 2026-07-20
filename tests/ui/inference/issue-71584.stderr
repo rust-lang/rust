@@ -7,6 +7,8 @@ LL |     d = d % n.into();
    |           type must be known at this point
    |
    = note: cannot satisfy `<u64 as Rem<_>>::Output == u64`
+   = note: cannot satisfy `u64: Rem<_>`
+   = note: the type must also implement `From<u32>`
 help: try using a fully qualified path to specify the expected types
    |
 LL -     d = d % n.into();

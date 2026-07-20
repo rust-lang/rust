@@ -4,6 +4,7 @@ error[E0282]: type annotations needed
 LL |         Ok(())
    |         ^^ cannot infer type of the type parameter `E` declared on the enum `Result`
    |
+   = note: the type must also implement `From<std::io::Error>`
 help: consider specifying the generic arguments
    |
 LL |         Ok::<(), E>(())

@@ -5,6 +5,7 @@ LL |         ret = <Self::Base as Functor>::fmap(arg);
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the associated function `fmap`
    |
    = note: cannot satisfy `<<Self as FunctorExt<T>>::Base as Functor>::With<_> == Self`
+   = note: cannot satisfy `<<Self as FunctorExt<T>>::Base as Functor>::With<_> == _`
 help: consider specifying the generic arguments
    |
 LL |         ret = <Self::Base as Functor>::fmap::<T, U>(arg);

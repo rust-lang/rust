@@ -3,30 +3,40 @@ error[E0282]: type annotations needed
    |
 LL |   print!("{:?} {a} {a:?}", [], a = 1 + 1);
    |                            ^^ cannot infer type
+   |
+   = note: the type must also implement `Debug`
 
 error[E0282]: type annotations needed
   --> $DIR/span-format_args-issue-140578.rs:7:30
    |
 LL |   println!("{:?} {a} {a:?}", [], a = 1 + 1);
    |                              ^^ cannot infer type
+   |
+   = note: the type must also implement `Debug`
 
 error[E0282]: type annotations needed
   --> $DIR/span-format_args-issue-140578.rs:12:35
    |
 LL |   println!("{:?} {:?} {a} {a:?}", [], [], a = 1 + 1);
    |                                   ^^ cannot infer type
+   |
+   = note: the type must also implement `Debug`
 
 error[E0282]: type annotations needed
   --> $DIR/span-format_args-issue-140578.rs:17:41
    |
 LL |   println!("{:?} {:?} {a} {a:?} {b:?}", [], [], a = 1 + 1, b = []);
    |                                         ^^ cannot infer type
+   |
+   = note: the type must also implement `Debug`
 
 error[E0282]: type annotations needed
   --> $DIR/span-format_args-issue-140578.rs:26:9
    |
 LL |         [],
    |         ^^ cannot infer type
+   |
+   = note: the type must also implement `Debug`
 
 error: aborting due to 5 previous errors
 

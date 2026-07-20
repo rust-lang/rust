@@ -4,6 +4,7 @@ error[E0282]: type annotations needed for `Result<Child, _>`
 LL |         .or_else(|err| {
    |                  ^^^^^
    |
+   = note: the type must also implement `Debug`
 help: try giving this closure an explicit return type
    |
 LL |         .or_else(|err| -> Result<_, F> {

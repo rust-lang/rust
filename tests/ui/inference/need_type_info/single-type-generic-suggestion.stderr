@@ -5,6 +5,7 @@ LL |     "".parse();
    |        ^^^^^ cannot infer type of the type parameter `F` declared on the method `parse`
    |
    = note: cannot satisfy `<_ as FromStr>::Err == _`
+   = note: the type must also implement `FromStr`
 help: consider specifying a concrete type for the type parameter `F`
    |
 LL |     "".parse::</* Type */>();
