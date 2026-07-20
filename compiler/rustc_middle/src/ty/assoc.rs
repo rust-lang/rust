@@ -142,7 +142,7 @@ impl AssocItem {
         matches!(self.kind, ty::AssocKind::Const { is_type_const: true, .. })
     }
 
-    /// Whether this associated item can be constrained with an equality binding.
+    /// Whether this associated item can be constrained with an equality constraint.
     pub fn can_have_equality_constraint(&self, tcx: TyCtxt<'_>) -> bool {
         match self.kind {
             ty::AssocKind::Type { .. } => true,
