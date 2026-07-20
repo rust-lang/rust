@@ -6,13 +6,14 @@ LL |     let _unimported = Blah { field: u8 };
    |
    = note: -Ztrack-diagnostics: created at compiler/rustc_resolve/src/late/diagnostics.rs:LL:CC
 
-error[E0423]: expected value, found builtin type `u8`
+error[E0423]: cannot find value `u8` in this scope
   --> $DIR/track3.rs:LL:CC
    |
 LL |     let _unimported = Blah { field: u8 };
-   |                                     ^^ not a value
+   |                                     ^^ not found in this scope
    |
    = note: -Ztrack-diagnostics: created at compiler/rustc_resolve/src/late/diagnostics.rs:LL:CC
+   = note: a builtin type named `u8` exists in another namespace
 
 error: aborting due to 2 previous errors
 

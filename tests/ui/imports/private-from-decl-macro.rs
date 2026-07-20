@@ -25,7 +25,7 @@ mod single {
     fn check() {
         let s = S {};
         #[cfg(fail)]
-        let s = S; //[fail]~ ERROR expected value, found struct `S`
+        let s = S; //[fail]~ ERROR cannot find value `S` in this scope
     }
 }
 

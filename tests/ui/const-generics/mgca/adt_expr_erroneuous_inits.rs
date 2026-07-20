@@ -21,6 +21,6 @@ fn bar() {
     //~^ ERROR: cannot find struct, variant or union type `Fooo` in this scope
     //~| ERROR: struct expression with invalid base path
     accepts::<{ NonStruct { }}>();
-    //~^ ERROR: expected struct, variant or union type, found function `NonStruct`
+    //~^ ERROR: cannot find struct, variant or union type `NonStruct` in this scope
     //~| ERROR: struct expression with invalid base path
 }

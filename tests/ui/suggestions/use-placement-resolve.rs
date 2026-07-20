@@ -8,4 +8,4 @@
 
 fn main() {}
 
-fn foobar<T: Debug>(x: T) {} //~ ERROR expected trait, found derive macro
+fn foobar<T: Debug>(x: T) {} //~ ERROR cannot find trait `Debug` in this scope

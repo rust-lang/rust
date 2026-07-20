@@ -8,7 +8,7 @@ fn main() {
     //~^ ERROR expected `;` or `]`, found `,`
     let a: [i32, ];
     //~^ ERROR expected `;` or `]`, found `,`
-    //~| ERROR expected value, found builtin type `i32` [E0423]
+    //~| ERROR cannot find value `i32` in this scope [E0423]
     let c: [i32, x];
     //~^ ERROR expected `;` or `]`, found `,`
     //~| ERROR attempt to use a non-constant value in a constant [E0435]
