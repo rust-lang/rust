@@ -1,4 +1,4 @@
-# Rust Codegen
+# Rust codegen
 
 The first phase in debug info generation requires Rust to inspect the MIR of the program and
 communicate it to LLVM.
@@ -11,7 +11,7 @@ a thin wrapper around LLVM's internals that exists in [rustc_llvm].
 [ssa_di]: https://github.com/rust-lang/rust/tree/main/compiler/rustc_codegen_ssa/src/debuginfo
 [rustc_llvm]: https://github.com/rust-lang/rust/tree/main/compiler/rustc_llvm
 
-# Type Information
+# Type information
 
 Type information typically consists of the type name, size, alignment, as well as things like
 fields, generic parameters, and storage modifiers if they are relevant.
@@ -31,7 +31,7 @@ limitations when no other option will work.
 Rust's generated DI nodes "pretend" to be C/C++ for both CDB and LLDB's sake.
 This can result in some unintuitive and non-idiomatic debug info.
 
-### Pointers and Reference
+### Pointers and reference
 
 Wide pointers/references/`Box` are treated as a struct with 2 fields: `data_ptr` and `length`.
 
@@ -188,6 +188,6 @@ An important note is that due to limitations in LLDB, the `DISCR_*` value genera
 This is largely a non-issue for LLDB because the
 `DISCR_*` value and the `tag` are read into `uint64_t` values regardless of their type.
 
-# Source Information
+# Source information
 
 TODO
