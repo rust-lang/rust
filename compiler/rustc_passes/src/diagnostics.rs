@@ -1190,3 +1190,15 @@ pub(crate) struct OnTypeErrorMalformedFormatLiterals {
 pub(crate) struct OnTypeErrorNotExactlyOneGeneric {
     pub count: usize,
 }
+
+#[derive(Diagnostic)]
+#[diag("extern mutable statics are incompatible with `#[linkage]`")]
+#[note(
+    "marking the extern static mutable would allow changing which \
+    symbol the static references rather than make the target of the \
+    symbol mutable"
+)]
+pub(crate) struct StaticMutLinkage {
+    #[primary_span]
+    pub span: Span,
+}

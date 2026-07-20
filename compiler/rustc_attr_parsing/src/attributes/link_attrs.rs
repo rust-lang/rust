@@ -647,7 +647,7 @@ impl SingleAttributeParser for LinkageParser {
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
         Allow(Target::Static),
-        Allow(Target::ForeignStatic),
+        Allow(Target::ForeignStatic), // extern static mut denied in check_attr
         Allow(Target::ForeignFn),
         Warn(Target::Method(MethodKind::Trait { body: false })), // Not inherited
     ]);
