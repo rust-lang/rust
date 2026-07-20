@@ -21,7 +21,7 @@ use rustc_hir::attrs::{
     OptimizeAttr, ReprAttr,
 };
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::LocalModDefId;
+use rustc_hir::def_id::LocalModId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{
     self as hir, Attribute, CRATE_HIR_ID, Constness, FnSig, ForeignItem, GenericParam,
@@ -37,7 +37,7 @@ use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{self, TyCtxt, TypingMode, Unnormalized};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::CrateType;
-use rustc_session::errors::feature_err;
+use rustc_session::diagnostics::feature_err;
 use rustc_session::lint;
 use rustc_session::lint::builtin::{
     CONFLICTING_REPR_HINTS, INVALID_DOC_ATTRIBUTES, MALFORMED_DIAGNOSTIC_ATTRIBUTES,
@@ -233,8 +233,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::OnUnimplemented { directive } => {
                 self.check_diagnostic_on_unimplemented(hir_id, directive.as_deref())
             }
-            AttributeKind::OnConst { span, .. } => {
-                self.check_diagnostic_on_const(*span, hir_id, target, item)
+            AttributeKind::OnConst { span, directive } => {
+                self.check_diagnostic_on_const(*span, hir_id, target, item, directive.as_deref())
             }
             AttributeKind::OnMove { directive } => {
                 self.check_diagnostic_on_move(hir_id, directive.as_deref())
@@ -296,6 +296,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::NoStd { .. } => (),
             AttributeKind::OnUnknown { .. } => (),
             AttributeKind::OnUnmatchedArgs { .. } => (),
+            AttributeKind::Opaque => (),
             AttributeKind::Optimize(..) => (),
             AttributeKind::PanicRuntime => (),
             AttributeKind::PatchableFunctionEntry { .. } => (),
@@ -395,6 +396,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::RustcSpecializationTrait => (),
             AttributeKind::RustcStdInternalSymbol => (),
             AttributeKind::RustcStrictCoherence(..) => (),
+            AttributeKind::RustcTestEntrypointMarker => (),
             AttributeKind::RustcTestMarker(..) => (),
             AttributeKind::RustcThenThisWouldNeed(..) => (),
             AttributeKind::RustcTrivialFieldReads => (),
@@ -486,13 +488,30 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 }
             }
 
-            if let EiiImplResolution::Macro(eii_macro) = resolution
-                && find_attr!(self.tcx, *eii_macro, EiiDeclaration(EiiDecl { impl_unsafe, .. }) if *impl_unsafe)
-                && !impl_marked_unsafe
-            {
+            let needs_unsafe = match resolution {
+                EiiImplResolution::Macro(eii_macro) => {
+                    find_attr!(self.tcx, *eii_macro, EiiDeclaration(EiiDecl { impl_unsafe, .. }) if *impl_unsafe)
+                }
+                EiiImplResolution::Known(foreign_item_did) => {
+                    let foreign_item_did = *foreign_item_did;
+                    self.tcx
+                        .externally_implementable_items(foreign_item_did.krate)
+                        .get(&foreign_item_did)
+                        .map(|(decl, _)| decl.impl_unsafe)
+                        .unwrap_or(false)
+                }
+                EiiImplResolution::Error(_) => false,
+            };
+
+            if needs_unsafe && !impl_marked_unsafe {
+                let name = match resolution {
+                    EiiImplResolution::Macro(eii_macro) => self.tcx.item_name(*eii_macro),
+                    EiiImplResolution::Known(def_id) => self.tcx.item_name(*def_id),
+                    EiiImplResolution::Error(_) => unreachable!(),
+                };
                 self.dcx().emit_err(diagnostics::EiiImplRequiresUnsafe {
                     span: *span,
-                    name: self.tcx.item_name(*eii_macro),
+                    name,
                     suggestion: diagnostics::EiiImplRequiresUnsafeSuggestion {
                         left: inner_span.shrink_to_lo(),
                         right: inner_span.shrink_to_hi(),
@@ -545,10 +564,36 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         hir_id: HirId,
         target: Target,
         item: Option<ItemLike<'_>>,
+        directive: Option<&Directive>,
     ) {
         // We only check the non-constness here. A diagnostic for use
         // on not-trait impl items is issued during attribute parsing.
         if target == (Target::Impl { of_trait: true }) {
+            if let Some(directive) = directive
+                && let Node::Item(Item { kind: ItemKind::Impl(hir::Impl { generics, .. }), .. }) =
+                    self.tcx.hir_node(hir_id)
+            {
+                directive.visit_params(&mut |argument_name, span| {
+                    let has_generic = generics.params.iter().any(|p| {
+                        if !matches!(p.kind, GenericParamKind::Lifetime { .. })
+                            && let ParamName::Plain(name) = p.name
+                            && name.name == argument_name
+                        {
+                            true
+                        } else {
+                            false
+                        }
+                    });
+                    if !has_generic {
+                        self.tcx.emit_node_span_lint(
+                            MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
+                            hir_id,
+                            span,
+                            diagnostics::OnConstMalformedFormatLiterals { name: argument_name },
+                        )
+                    }
+                });
+            }
             match item.unwrap() {
                 ItemLike::Item(it) => match it.expect_impl().constness {
                     Constness::Const { .. } => {
@@ -566,9 +611,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 ItemLike::ForeignItem => {}
             }
         }
-        // FIXME(#155570) Can we do something with generic args here?
-        // regardless, we don't check the validity of generic args here
-        // ...whose generics would that be, anyway? The traits' or the impls'?
     }
 
     /// Checks use of generic formatting parameters in `#[diagnostic::on_move]`
@@ -755,7 +797,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     for i in impls {
                         let name = match i.resolution {
                             EiiImplResolution::Macro(def_id) => self.tcx.item_name(def_id),
-                            EiiImplResolution::Known(decl) => decl.name.name,
+                            EiiImplResolution::Known(def_id) => self.tcx.item_name(def_id),
                             EiiImplResolution::Error(_eg) => continue,
                         };
                         self.dcx().emit_err(diagnostics::EiiWithTrackCaller {
@@ -1759,7 +1801,7 @@ fn check_non_exported_macro_for_invalid_attrs(tcx: TyCtxt<'_>, item: &Item<'_>) 
     }
 }
 
-fn check_mod_attrs(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
+fn check_mod_attrs(tcx: TyCtxt<'_>, module_def_id: LocalModId) {
     let check_attr_visitor = &mut CheckAttrVisitor { tcx, abort: Cell::new(false) };
     tcx.hir_visit_item_likes_in_module(module_def_id, check_attr_visitor);
     if module_def_id.to_local_def_id().is_top_level_module() {

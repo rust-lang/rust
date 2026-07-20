@@ -25,7 +25,5 @@ fi
   ${SKIP_TIDY:+$SKIP_TIDY} \
   ${SKIP_RUST_ANALYZER:+$SKIP_RUST_ANALYZER} \
   --skip tests \
-  --skip coverage-map \
-  --skip coverage-run \
   --skip library \
   --skip tidyselftest

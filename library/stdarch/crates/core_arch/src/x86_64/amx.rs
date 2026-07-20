@@ -632,50 +632,6 @@ pub unsafe fn __tile_stream_loaddrs(dst: *mut __tile1024i, base: *const u8, stri
     (*dst).tile = tileloaddrst164_internal((*dst).rows, (*dst).colsb, base, stride as u64);
 }
 
-/// Perform matrix multiplication of two tiles a and b, containing packed single precision (32-bit)
-/// floating-point elements, which are converted to TF32 (tensor-float32) format, and accumulate the
-///  results into a packed single precision tile.
-/// For each possible combination of (row of a, column of b), it performs
-///  - convert to TF32
-///  - multiply the corresponding elements of a and b
-///  - accumulate the results into the corresponding row and column of dst using round-to-nearest-even
-/// rounding mode.
-/// Output FP32 denormals are always flushed to zero, input single precision denormals are always
-/// handled and *not* treated as zero.
-#[inline]
-#[rustc_legacy_const_generics(0, 1, 2)]
-#[target_feature(enable = "amx-tf32")]
-#[cfg_attr(
-    all(test, not(target_vendor = "apple")),
-    assert_instr(tmmultf32ps, DST = 0, A = 1, B = 2)
-)]
-#[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
-pub unsafe fn _tile_mmultf32ps<const DST: i32, const A: i32, const B: i32>() {
-    static_assert_uimm_bits!(DST, 3);
-    static_assert_uimm_bits!(A, 3);
-    static_assert_uimm_bits!(B, 3);
-    tmmultf32ps(DST as i8, A as i8, B as i8);
-}
-
-/// Perform matrix multiplication of two tiles a and b, containing packed single precision (32-bit)
-/// floating-point elements, which are converted to TF32 (tensor-float32) format, and accumulate the
-///  results into a packed single precision tile.
-/// For each possible combination of (row of a, column of b), it performs
-///  - convert to TF32
-///  - multiply the corresponding elements of a and b
-///  - accumulate the results into the corresponding row and column of dst using round-to-nearest-even
-/// rounding mode.
-/// Output FP32 denormals are always flushed to zero, input single precision denormals are always
-/// handled and *not* treated as zero.
-/// The shape of the tile is specified in the struct of [`__tile1024i`]. The register of the tile is allocated by the compiler.
-#[inline]
-#[target_feature(enable = "amx-tf32")]
-#[cfg_attr(all(test, not(target_vendor = "apple")), assert_instr(tmmultf32ps))]
-#[unstable(feature = "x86_amx_intrinsics", issue = "126622")]
-pub unsafe fn __tile_mmultf32ps(dst: *mut __tile1024i, a: __tile1024i, b: __tile1024i) {
-    (*dst).tile = tmmultf32ps_internal(a.rows, b.colsb, a.colsb, (*dst).tile, a.tile, b.tile);
-}
-
 /// Moves a row from a tile register to a zmm register, converting the packed 32-bit signed integer
 /// elements to packed single-precision (32-bit) floating-point elements.
 #[inline]
@@ -1036,11 +992,6 @@ unsafe extern "unadjusted" {
     fn tileloaddrst164(dst: i8, base: *const u8, stride: u64);
     #[link_name = "llvm.x86.tileloaddrst164.internal"]
     fn tileloaddrst164_internal(rows: u16, colsb: u16, base: *const u8, stride: u64) -> Tile;
-
-    #[link_name = "llvm.x86.tmmultf32ps"]
-    fn tmmultf32ps(dst: i8, a: i8, b: i8);
-    #[link_name = "llvm.x86.tmmultf32ps.internal"]
-    fn tmmultf32ps_internal(m: u16, n: u16, k: u16, dst: Tile, a: Tile, b: Tile) -> Tile;
 
     #[link_name = "llvm.x86.tcvtrowd2ps"]
     fn tcvtrowd2ps(tile: i8, row: u32) -> f32x16;
@@ -2366,55 +2317,6 @@ mod tests {
                     })
                 );
             }
-        }
-    }
-
-    #[simd_test(enable = "amx-tf32")]
-    fn test_tile_mmultf32ps() {
-        unsafe {
-            _init_amx();
-            let a: [[f32; 16]; 16] = array::from_fn(|i| [i as _; _]);
-            let b: [[f32; 16]; 16] = [array::from_fn(|j| j as _); _];
-            let mut res = [[0.0; 16]; 16];
-
-            let mut config = __tilecfg::default();
-            config.palette = 1;
-            (0..=2).for_each(|i| {
-                config.colsb[i] = 64;
-                config.rows[i] = 16;
-            });
-            _tile_loadconfig(config.as_ptr());
-            _tile_zero::<0>();
-            _tile_loadd::<1>(a.as_ptr().cast(), 64);
-            _tile_loadd::<2>(b.as_ptr().cast(), 64);
-            _tile_mmultf32ps::<0, 1, 2>();
-            _tile_stored::<0>(res.as_mut_ptr().cast(), 64);
-            _tile_release();
-
-            let expected = array::from_fn(|i| array::from_fn(|j| 16.0 * i as f32 * j as f32));
-            assert_eq!(res, expected);
-        }
-    }
-
-    #[simd_test(enable = "amx-tf32")]
-    fn test__tile_mmultf32ps() {
-        unsafe {
-            _init_amx();
-            let a: [[f32; 16]; 16] = array::from_fn(|i| [i as _; _]);
-            let b: [[f32; 16]; 16] = [array::from_fn(|j| j as _); _];
-            let mut res = [[0.0; 16]; 16];
-
-            let mut tile_a = __tile1024i::zeroed(16, 64);
-            let mut tile_b = __tile1024i::zeroed(16, 64);
-            let mut tile_c = __tile1024i::zeroed(16, 64);
-
-            __tile_loadd(&mut tile_a, a.as_ptr().cast(), 64);
-            __tile_loadd(&mut tile_b, b.as_ptr().cast(), 64);
-            __tile_mmultf32ps(&mut tile_c, tile_a, tile_b);
-            __tile_stored(res.as_mut_ptr().cast(), 64, tile_c);
-
-            let expected = array::from_fn(|i| array::from_fn(|j| 16.0 * i as f32 * j as f32));
-            assert_eq!(res, expected);
         }
     }
 }

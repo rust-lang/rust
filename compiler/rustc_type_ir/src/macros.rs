@@ -50,7 +50,6 @@ TrivialTypeTraversalImpls! {
     u32,
     u64,
     // tidy-alphabetical-start
-    crate::AliasRelationDirection,
     crate::BoundConstness,
     crate::DebruijnIndex,
     crate::PredicatePolarity,

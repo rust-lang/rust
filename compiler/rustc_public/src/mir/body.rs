@@ -139,7 +139,7 @@ pub struct BasicBlock {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct Terminator {
     pub kind: TerminatorKind,
-    pub span: Span,
+    pub source_info: SourceInfo,
 }
 
 impl Terminator {
@@ -269,6 +269,7 @@ pub enum AssertMessage {
     ResumedAfterDrop(CoroutineKind),
     MisalignedPointerDereference { required: Operand, found: Operand },
     NullPointerDereference,
+    NullReferenceConstructed,
     InvalidEnumConstruction(Operand),
 }
 
@@ -342,6 +343,7 @@ impl AssertMessage {
                 Ok("misaligned pointer dereference")
             }
             AssertMessage::NullPointerDereference => Ok("null pointer dereference occurred"),
+            AssertMessage::NullReferenceConstructed => Ok("null reference produced"),
             AssertMessage::InvalidEnumConstruction(_) => {
                 Ok("trying to construct an enum from an invalid value")
             }
@@ -468,7 +470,7 @@ pub enum NonDivergingIntrinsic {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct Statement {
     pub kind: StatementKind,
-    pub span: Span,
+    pub source_info: SourceInfo,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]

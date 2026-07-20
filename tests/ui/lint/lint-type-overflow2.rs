@@ -5,9 +5,6 @@
 #![deny(overflowing_literals)]
 
 fn main() {
-    let x2: i8 = --128; //~ ERROR literal out of range for `i8`
-    //~| WARN use of a double negation
-
     let x = -65520.0_f16; //~ ERROR literal out of range for `f16`
     let x =  65520.0_f16; //~ ERROR literal out of range for `f16`
     let x = -3.40282357e+38_f32; //~ ERROR literal out of range for `f32`

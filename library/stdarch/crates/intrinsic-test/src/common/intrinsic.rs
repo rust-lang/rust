@@ -1,5 +1,6 @@
 use super::argument::ArgumentList;
-use crate::common::{SupportedArchitecture, constraint::Constraint};
+use crate::common::{SupportedArchitecture, intrinsic_helpers::SimdLen};
+use itertools::Itertools;
 
 /// An intrinsic
 #[derive(Debug, PartialEq, Clone)]
@@ -20,27 +21,6 @@ pub struct Intrinsic<A: SupportedArchitecture> {
     pub extension: String,
 }
 
-/// Invokes `f` for each combination of the values in the constraint ranges.
-///
-/// For example, given `constraints=[Equal(0), Range(1..2), Set([3, 4])]` and `imm_values=[]`, this
-/// produces the four calls to `f`: `f([0, 1, 3])`, `f([0, 1, 4])`, `f([0, 2, 3])`, `f([0, 2, 4])`.
-fn recurse_specializations<'a, E>(
-    constraints: &mut (impl Iterator<Item = &'a Constraint> + Clone),
-    imm_values: &mut Vec<i64>,
-    f: &mut impl FnMut(&[i64]) -> Result<(), E>,
-) -> Result<(), E> {
-    if let Some(current) = constraints.next() {
-        for i in current.iter() {
-            imm_values.push(i);
-            recurse_specializations(&mut constraints.clone(), imm_values, f)?;
-            imm_values.pop();
-        }
-        Ok(())
-    } else {
-        f(&imm_values)
-    }
-}
-
 impl<A: SupportedArchitecture> Intrinsic<A> {
     /// Invokes `f` for "specialisation" of the intrinsic - a specific instantiation of the
     /// constant generics of the intrinsic. `f` takes a slice where the `i`th element corresponds
@@ -49,17 +29,20 @@ impl<A: SupportedArchitecture> Intrinsic<A> {
     /// For an intrinsic with three arguments with constraints `Equal(0)`, `Range(1..2)`,
     /// `Set([3, 4])` respectively, this would produce four calls to `f`: `f(0, 1, 3)`,
     /// `f(0, 1, 4)`, `f(0, 2, 3)`, `f(0, 2, 4)`.
-    pub fn iter_specializations<E>(
-        &self,
-        mut f: impl FnMut(&[i64]) -> Result<(), E>,
-    ) -> Result<(), E> {
-        recurse_specializations(
-            &mut self
+    pub fn specializations(&self) -> impl Iterator<Item = Vec<i64>> {
+        self.arguments
+            .iter()
+            .filter_map(|arg| arg.constraint.as_ref())
+            .map(|constraint| constraint.into_iter())
+            .multi_cartesian_product()
+    }
+
+    /// Returns `true` if this intrinsic has any argument or result types that are scalable vectors
+    pub fn has_scalable_argument_or_result(&self) -> bool {
+        self.results.num_lanes() == SimdLen::Scalable
+            || self
                 .arguments
                 .iter()
-                .filter_map(|arg| arg.constraint.as_ref()),
-            &mut Vec::new(),
-            &mut f,
-        )
+                .any(|a| a.ty.num_lanes() == SimdLen::Scalable)
     }
 }

@@ -1,4 +1,7 @@
+use super::{AllocError, GlobalAllocator};
 use crate::alloc::Layout;
+use crate::hint::assert_unchecked;
+use crate::ptr::NonNull;
 use crate::{cmp, ptr};
 
 /// A memory allocator that can be registered as the standard library’s default
@@ -299,5 +302,74 @@ pub unsafe trait GlobalAlloc {
             }
         }
         new_ptr
+    }
+}
+
+/// Allows all [`GlobalAllocator`]s to be used with the legacy [`GlobalAlloc`] interface.
+#[stable(feature = "global_alloc", since = "1.28.0")]
+unsafe impl<A> GlobalAlloc for A
+where
+    A: GlobalAllocator + ?Sized,
+{
+    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+        // SAFETY: guaranteed by the caller.
+        // This might lead to the removal of zero-size checks inside the
+        // `Allocator` implementation.
+        unsafe { assert_unchecked(layout.size() != 0) };
+        match self.allocate(layout) {
+            Ok(ptr) => ptr.cast().as_ptr(),
+            Err(AllocError) => ptr::null_mut(),
+        }
+    }
+
+    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+        // SAFETY: guaranteed by the caller.
+        unsafe { assert_unchecked(layout.size() != 0) };
+        // SAFETY: only non-null pointers can be currently allocated.
+        let ptr = unsafe { NonNull::new_unchecked(ptr) };
+        // SAFETY: guaranteed by caller.
+        unsafe { self.deallocate(ptr, layout) };
+    }
+
+    unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
+        // SAFETY: guaranteed by the caller.
+        unsafe { assert_unchecked(layout.size() != 0) };
+        match self.allocate_zeroed(layout) {
+            Ok(ptr) => ptr.cast().as_ptr(),
+            Err(AllocError) => ptr::null_mut(),
+        }
+    }
+
+    unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
+        // SAFETY: guaranteed by the caller.
+        unsafe { assert_unchecked(layout.size() != 0) };
+        // SAFETY: guaranteed by the caller.
+        unsafe { assert_unchecked(new_size != 0) };
+
+        // SAFETY: only non-null pointers can be currently allocated.
+        let ptr = unsafe { NonNull::new_unchecked(ptr) };
+        let alignment = layout.alignment();
+        // SAFETY: the caller must ensure that the `new_size` does not overflow
+        // when rounded up to the next multiple of `alignment`.
+        let new_layout = unsafe { Layout::from_size_alignment_unchecked(new_size, alignment) };
+
+        // SAFETY:
+        // Two preconditions are guaranteed by the caller:
+        // * `ptr` is currently allocated with this allocator.
+        // * `layout` fits the block of memory.
+        // The size precondition is upheld by selecting between `grow` and `shrink`
+        // based on the size.
+        let ptr = unsafe {
+            if new_size >= layout.size() {
+                self.grow(ptr, layout, new_layout)
+            } else {
+                self.shrink(ptr, layout, new_layout)
+            }
+        };
+
+        match ptr {
+            Ok(ptr) => ptr.cast().as_ptr(),
+            Err(AllocError) => ptr::null_mut(),
+        }
     }
 }

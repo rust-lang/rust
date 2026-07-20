@@ -6,7 +6,6 @@ use hir::{
     Adt, AsAssocItem, AsExternAssocItem, CaptureKind, DisplayTarget, DropGlue,
     DynCompatibilityViolation, HasCrate, HasSource, HirDisplay, Layout, LayoutError,
     MethodViolationCode, Name, Semantics, Symbol, Trait, Type, TypeInfo, Variant,
-    db::ExpandDatabase,
 };
 use ide_db::{
     RootDatabase,
@@ -543,7 +542,7 @@ pub(super) fn definition(
                     let source = it.source(db)?;
                     let mut body = source.value.body()?.syntax().clone();
                     if let Some(macro_file) = source.file_id.macro_file() {
-                        let span_map = db.expansion_span_map(macro_file);
+                        let span_map = macro_file.expansion_span_map(db);
                         body = prettify_macro_expansion(db, body, span_map, it.krate(db).into());
                     }
                     if env::var_os("RA_DEV").is_some() {
@@ -575,7 +574,7 @@ pub(super) fn definition(
                     let source = it.source(db)?;
                     let mut body = source.value.body()?.syntax().clone();
                     if let Some(macro_file) = source.file_id.macro_file() {
-                        let span_map = db.expansion_span_map(macro_file);
+                        let span_map = macro_file.expansion_span_map(db);
                         body = prettify_macro_expansion(db, body, span_map, it.krate(db).into());
                     }
                     if env::var_os("RA_DEV").is_some() {

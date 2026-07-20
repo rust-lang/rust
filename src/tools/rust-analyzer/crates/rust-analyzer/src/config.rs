@@ -395,7 +395,7 @@ config_data! {
         ///
         /// Controls how many independent `proc-macro-srv` processes rust-analyzer
         /// runs in parallel to handle macro expansion.
-        procMacro_processes: NumProcesses = NumProcesses::Concrete(1),
+        procMacro_processes: NumProcesses = NumProcesses::Concrete(2),
 
         /// Internal config, path to proc-macro server executable.
         procMacro_server: Option<Utf8PathBuf> = None,
@@ -833,6 +833,10 @@ config_data! {
         cargo_cfgs: Vec<String> = {
             vec!["debug_assertions".into(), "miri".into()]
         },
+        /// Path to a `.cargo/config.toml` style file to pass to cargo via `--config`
+        /// for every cargo invocation (metadata, build scripts, config discovery).
+        /// Useful to give rust-analyzer a consistent view of the project configuration.
+        cargo_configPath: Option<Utf8PathBuf> = None,
         /// Extra arguments that are passed to every cargo invocation.
         cargo_extraArgs: Vec<String> = vec![],
         /// Extra environment variables that will be set when running cargo, rustc
@@ -1127,7 +1131,7 @@ pub struct Config {
 
     default_config: &'static DefaultConfigData,
     /// Config node that obtains its initial value during the server initialization and
-    /// by receiving a `lsp_types::notification::DidChangeConfiguration`.
+    /// by receiving a [`lsp_types::DidChangeConfigurationNotification`].
     client_config: (FullConfigInput, ConfigErrors),
 
     /// Config node whose values apply to **every** Rust project.
@@ -1684,6 +1688,8 @@ pub struct RunnablesConfig {
     pub override_cargo: Option<String>,
     /// Additional arguments for the `cargo`, e.g. `--release`.
     pub cargo_extra_args: Vec<String>,
+    /// Path to an extra config file passed to cargo via `--config`.
+    pub config_path: Option<AbsPathBuf>,
     /// Additional arguments for the binary being run, if it is a test or benchmark.
     pub extra_test_binary_args: Vec<String>,
     /// Subcommand used for doctest runnables instead of `test`.
@@ -2418,6 +2424,7 @@ impl Config {
         });
         let sysroot_src =
             self.cargo_sysrootSrc(source_root).as_ref().map(|sysroot| self.root_path.join(sysroot));
+        let config_path = self.cargo_config_path(source_root);
         let extra_includes = self
             .vfs_extraIncludes(source_root)
             .iter()
@@ -2484,6 +2491,7 @@ impl Config {
             set_test: *self.cfg_setTest(source_root),
             no_deps: *self.cargo_noDeps(source_root),
             metadata_extra_args: self.cargo_metadataExtraArgs(source_root).clone(),
+            config_path,
         }
     }
 
@@ -2573,6 +2581,7 @@ impl Config {
             extra_env: self.extra_env(source_root).clone(),
             target_dir_config: self.target_dir_from_config(source_root),
             set_test: true,
+            config_path: self.cargo_config_path(source_root),
         }
     }
 
@@ -2629,12 +2638,17 @@ impl Config {
                     extra_args: self.check_extra_args(source_root),
                     extra_test_bin_args: self.runnables_extraTestBinaryArgs(source_root).clone(),
                     extra_env: self.check_extra_env(source_root),
+                    config_path: self.cargo_config_path(source_root),
                     target_dir_config: self.target_dir_from_config(source_root),
                     set_test: *self.cfg_setTest(source_root),
                 },
                 ansi_color_output: self.color_diagnostic_output(),
             },
         }
+    }
+
+    fn cargo_config_path(&self, source_root: Option<SourceRootId>) -> Option<AbsPathBuf> {
+        self.cargo_configPath(source_root).as_ref().map(|path| self.root_path.join(path))
     }
 
     fn target_dir_from_config(&self, source_root: Option<SourceRootId>) -> TargetDirectoryConfig {
@@ -2657,6 +2671,7 @@ impl Config {
         RunnablesConfig {
             override_cargo: self.runnables_command(source_root).clone(),
             cargo_extra_args: self.runnables_extraArgs(source_root).clone(),
+            config_path: self.cargo_config_path(source_root),
             extra_test_binary_args: self.runnables_extraTestBinaryArgs(source_root).clone(),
             test_command: self.runnables_test_command(source_root).clone(),
             test_override_command: self.runnables_test_overrideCommand(source_root).clone(),
@@ -3501,8 +3516,8 @@ impl FullConfigInput {
         fields.sort_by_key(|&(x, ..)| x);
         fields
             .iter()
-            .tuple_windows()
-            .for_each(|(a, b)| assert!(a.0 != b.0, "{a:?} duplicate field"));
+            .array_windows()
+            .for_each(|[a, b]| assert!(a.0 != b.0, "{a:?} duplicate field"));
         fields
     }
 
@@ -4146,7 +4161,8 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
                                 "enumDescriptions": [
                                     "Do not show this item or its methods (if it is a trait) in auto-import completions.",
                                     "Do not show this trait's methods in auto-import completions.",
-                                    "Do not show this module's all items in it in auto-import completions."
+                                    "Do not show this module's all items in it in auto-import completions.",
+                                    "Do not show this enum's variants in auto-import completions."
                                 ],
                             },
                         }

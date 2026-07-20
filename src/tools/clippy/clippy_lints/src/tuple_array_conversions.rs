@@ -1,16 +1,21 @@
+use arrayvec::ArrayVec;
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::res::MaybeResPath;
-use clippy_utils::visitors::local_used_once;
-use clippy_utils::{get_enclosing_block, is_from_proc_macro};
-use itertools::Itertools;
+use clippy_utils::visitors::{Visitable, for_each_expr};
+use clippy_utils::{SpanlessEq, is_from_proc_macro};
+use core::ops::ControlFlow::{Break, Continue};
+use core::{iter, mem};
 use rustc_ast::LitKind;
-use rustc_hir::{Expr, ExprKind, Node, PatKind};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::ty::{self, Ty};
+use rustc_ast::visit::{VisitorResult, try_visit, visit_opt, walk_list};
+use rustc_data_structures::packed::Pu128;
+use rustc_hir::intravisit::Visitor;
+use rustc_hir::{Arm, Expr, ExprKind, HirId, ImplItemKind, ItemKind, Node, PatKind, Stmt, TraitFn, TraitItemKind};
+use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::impl_lint_pass;
-use std::iter::once;
+use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -52,177 +57,255 @@ impl TupleArrayConversions {
     }
 }
 
-impl LateLintPass<'_> for TupleArrayConversions {
-    fn check_expr<'tcx>(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
-        if expr.span.in_external_macro(cx.sess().source_map()) || !self.msrv.meets(cx, msrvs::TUPLE_ARRAY_CONVERSIONS) {
-            return;
-        }
+/// The maximum size of a tuple/array for which `From` is implemented.
+const MAX_CVT_COUNT: usize = 12;
 
-        match expr.kind {
-            ExprKind::Array(elements) if (1..=12).contains(&elements.len()) => check_array(cx, expr, elements),
-            ExprKind::Tup(elements) if (1..=12).contains(&elements.len()) => check_tuple(cx, expr, elements),
+impl LateLintPass<'_> for TupleArrayConversions {
+    #[expect(clippy::too_many_lines)]
+    fn check_expr<'tcx>(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) {
+        match e.kind {
+            ExprKind::Array([]) | ExprKind::Tup([]) => {},
+            ExprKind::Array(es) | ExprKind::Tup(es) if es.len() > MAX_CVT_COUNT => {},
+
+            // Create an array using every item in a tuple (e.g. `[x.0, x.1, x.2]`).
+            ExprKind::Array([first, rest @ ..]) if let ExprKind::Field(first_base, first_field) = first.kind => {
+                if first_field.name == sym::integer(0)
+                    && let ctxt = e.span.ctxt()
+                    && ctxt == first.span.ctxt()
+                    && ctxt == first_field.span.ctxt()
+                    // Check that the remaining elements are accesses to the expected field.
+                    && let Some(bases) = rest.iter().enumerate().map(|(i, e)| {
+                        if let ExprKind::Field(base, field) = e.kind
+                            && field.name == sym::integer(i + 1)
+                            && ctxt == e.span.ctxt()
+                            && ctxt == field.span.ctxt()
+                        {
+                            Some(base)
+                        } else {
+                            None
+                        }
+                    }).collect::<Option<ArrayVec<_, MAX_CVT_COUNT>>>()
+                    // Check that the source and destination types are the same and copyable.
+                    && let ty::Tuple(src_tys) = *cx.typeck_results().expr_ty_adjusted(first_base).kind()
+                    && src_tys.len() == rest.len() + 1
+                    && let ty::Array(dst_ty, _) = *cx.typeck_results().expr_ty(e).kind()
+                    && src_tys.iter().all(|ty| ty == dst_ty)
+                    && cx.tcx.type_is_copy_modulo_regions(cx.typing_env(), dst_ty)
+                    // Check that all accesses are to the same base last as that can be a complex check.
+                    && let mut eq = SpanlessEq::new(cx).deny_side_effects()
+                    && bases.iter().all(|e| eq.eq_expr(ctxt, first_base, e))
+                    && self.msrv.meets(cx, msrvs::TUPLE_ARRAY_CONVERSIONS)
+                    && !ctxt.in_external_macro(cx.tcx.sess.source_map())
+                    && !is_from_proc_macro(cx, e)
+                {
+                    span_lint_and_help(
+                        cx,
+                        TUPLE_ARRAY_CONVERSIONS,
+                        e.span,
+                        "it looks like you're trying to convert a tuple to an array",
+                        None,
+                        "use `.into()` instead, or `<[T; N]>::from` if type annotations are needed",
+                    );
+                }
+            },
+
+            // Create a tuple using every item in an array (e.g. `(x[0], x[1], x[2])`).
+            ExprKind::Tup([first, rest @ ..]) if let ExprKind::Index(first_base, first_idx, _) = first.kind => {
+                if let ExprKind::Lit(idx_lit) = first_idx.kind
+                    && let LitKind::Int(Pu128(0), _) = idx_lit.node
+                    && let ctxt = e.span.ctxt()
+                    && ctxt == first.span.ctxt()
+                    && ctxt == first_idx.span.ctxt()
+                    && ctxt == idx_lit.span.ctxt()
+                    // Check that the remaining elements are array accesses with the expected index.
+                    && let Some(bases) = rest.iter().enumerate().map(|(i, e)| {
+                        if let ExprKind::Index(base, idx, _) = e.kind
+                            && let ExprKind::Lit(idx_lit) = idx.kind
+                            && let LitKind::Int(idx_num, _) = idx_lit.node
+                            && idx_num == Pu128((i + 1) as u128)
+                            && ctxt == e.span.ctxt()
+                            && ctxt == idx_lit.span.ctxt()
+                        {
+                            Some(base)
+                        } else {
+                            None
+                        }
+                    }).collect::<Option<ArrayVec<_, MAX_CVT_COUNT>>>()
+                    // Check that the source and destination types are the same and copyable.
+                    && let ty::Array(src_ty, src_len) = *cx.typeck_results().expr_ty_adjusted(first_base).kind()
+                    && src_len.try_to_target_usize(cx.tcx) == Some((rest.len() + 1) as u64)
+                    && let ty::Tuple(dst_tys) = *cx.typeck_results().expr_ty(e).kind()
+                    && dst_tys.iter().all(|ty| ty == src_ty)
+                    && cx.tcx.type_is_copy_modulo_regions(cx.typing_env(), src_ty)
+                    // Check that all accesses are to the same base last as that can be a complex check.
+                    && let mut eq = SpanlessEq::new(cx).deny_side_effects()
+                    && bases.iter().all(|e| eq.eq_expr(ctxt, first_base, e))
+                    && self.msrv.meets(cx, msrvs::TUPLE_ARRAY_CONVERSIONS)
+                    && !ctxt.in_external_macro(cx.tcx.sess.source_map())
+                    && !is_from_proc_macro(cx, e)
+                {
+                    span_lint_and_help(
+                        cx,
+                        TUPLE_ARRAY_CONVERSIONS,
+                        e.span,
+                        "it looks like you're trying to convert an array to a tuple",
+                        None,
+                        "use `.into()` instead, or `<(T0, T1, ..., Tn)>::from` if type annotations are needed",
+                    );
+                }
+            },
+
+            // Destructure an array/tuple and create the other by using all the items.
+            // e.g. `|(x, y, z)| [x, y, z]`
+            ExprKind::Array([first, rest @ ..]) | ExprKind::Tup([first, rest @ ..])
+                if let Some((first_id, first_ident)) = first.res_local_id_and_ident()
+                    && let ctxt = e.span.ctxt()
+                    && ctxt == first.span.ctxt()
+                    && ctxt == first_ident.span.ctxt()
+                    // Collect all the remaining local IDs involved.
+                    // This is done first so we don't go through `TyCtxt` unless needed.
+                    && let Some(mut ids) = rest
+                        .iter()
+                        .map(|e| {
+                            e.res_local_id_and_ident()
+                                .filter(|&(_, ident)| ctxt == e.span.ctxt() && ctxt == ident.span.ctxt())
+                                .map(|(id, _)| id)
+                        })
+                        .collect::<Option<ArrayVec<_, MAX_CVT_COUNT>>>()
+                    // Check that all locals used are from a single destructuring in the same order.
+                    // The iterator will be used later to get the enclosing scope for the bindings.
+                    && let mut parent_iter = cx.tcx.hir_parent_iter(first_id)
+                    && let Some((id_parent, Node::Pat(id_parent_pat))) = parent_iter.next()
+                    && let PatKind::Tuple([first_pat, rest_pats @ ..], _)
+                    | PatKind::Slice([first_pat, rest_pats @ ..], ..) = id_parent_pat.kind
+                    && first_id == first_pat.hir_id
+                    && let PatKind::Binding(.., None) = first_pat.kind
+                    && iter::zip(&ids, rest_pats)
+                        .all(|(&id, pat)| id == pat.hir_id && matches!(pat.kind, PatKind::Binding(.., None)))
+                    // Check that the source and destination types are the same.
+                    && let Some(src_ty) = match *cx.typeck_results().node_type(id_parent).kind() {
+                        ty::Array(src_ty, src_len)
+                            if matches!(e.kind, ExprKind::Tup(_))
+                                && src_len.try_to_target_usize(cx.tcx) == Some((rest.len() + 1) as u64) =>
+                        {
+                            Some(src_ty)
+                        },
+                        ty::Tuple(src_tys)
+                            if  let [src_ty, ref rest_tys @ ..] = **src_tys
+                                && rest.len() == rest_tys.len()
+                                && matches!(e.kind, ExprKind::Array(_))
+                                && rest_tys.iter().all(|&ty| src_ty == ty) =>
+                        {
+                            Some(src_ty)
+                        },
+                        _ => None,
+                    }
+                    && match *cx.typeck_results().expr_ty(e).kind() {
+                        ty::Array(dst_ty, _) => dst_ty == src_ty,
+                        ty::Tuple(dst_tys) => dst_tys.iter().all(|ty| src_ty == ty),
+                        __ => false,
+                    }
+                    && ctxt == id_parent_pat.span.ctxt()
+                    // Check that each binding is used at most once.
+                    && let Some(use_scope) = find_binding_use_scope(cx.tcx, parent_iter)
+                    && let () = ids.push(first_id)
+                    && let mut ids_used = [false; MAX_CVT_COUNT]
+                    && let None = for_each_expr(cx.tcx, use_scope, |e| {
+                        if let Some(id) = e.res_local_id()
+                            && let Some(i) = ids.iter().position(|&x| id == x)
+                            && mem::replace(&mut ids_used[i], true)
+                        {
+                            Break(())
+                        } else {
+                            Continue(())
+                        }
+                    })
+                    && !ctxt.in_external_macro(cx.tcx.sess.source_map())
+                    && !is_from_proc_macro(cx, e) =>
+            {
+                let (msg, help) = if let ExprKind::Array(_) = e.kind {
+                    (
+                        "it looks like you're trying to convert a tuple to an array",
+                        "use `.into()` instead, or `<[T; N]>::from` if type annotations are needed",
+                    )
+                } else {
+                    (
+                        "it looks like you're trying to convert an array to a tuple",
+                        "use `.into()` instead, or `<(T0, T1, ..., Tn)>::from` if type annotations are needed",
+                    )
+                };
+                span_lint_and_help(cx, TUPLE_ARRAY_CONVERSIONS, e.span, msg, None, help);
+            },
+
             _ => {},
         }
     }
 }
 
-fn check_array<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, elements: &'tcx [Expr<'tcx>]) {
-    let Some(ty) = cx.typeck_results().expr_ty(expr).builtin_index() else {
-        unreachable!("`expr` must be an array or slice due to `ExprKind::Array`");
-    };
-
-    if let [first, ..] = elements
-        && let Some(locals) = (match first.kind {
-            ExprKind::Field(_, _) => elements
-                .iter()
-                .enumerate()
-                .map(|(i, f)| -> Option<&'tcx Expr<'tcx>> {
-                    let ExprKind::Field(lhs, ident) = f.kind else {
-                        return None;
-                    };
-                    (ident.name.as_str() == i.to_string()).then_some(lhs)
-                })
-                .collect::<Option<Vec<_>>>(),
-            ExprKind::Path(_) => Some(elements.iter().collect()),
-            _ => None,
-        })
-        && all_bindings_are_for_conv(cx, &[ty], elements, &locals, ToType::Array)
-        && !is_from_proc_macro(cx, expr)
-    {
-        span_lint_and_help(
-            cx,
-            TUPLE_ARRAY_CONVERSIONS,
-            expr.span,
-            "it looks like you're trying to convert a tuple to an array",
-            None,
-            "use `.into()` instead, or `<[T; N]>::from` if type annotations are needed",
-        );
-    }
-}
-
-fn check_tuple<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, elements: &'tcx [Expr<'tcx>]) {
-    if let ty::Tuple(tys) = cx.typeck_results().expr_ty(expr).kind()
-        && let [first, ..] = elements
-        // Fix #11100
-        && tys.iter().all_equal()
-        && let Some(locals) = (match first.kind {
-            ExprKind::Index(..) => elements
-                .iter()
-                .enumerate()
-                .map(|(i, i_expr)| -> Option<&'tcx Expr<'tcx>> {
-                    if let ExprKind::Index(lhs, index, _) = i_expr.kind
-                        && let ExprKind::Lit(lit) = index.kind
-                        && let LitKind::Int(val, _) = lit.node
-                    {
-                        return (val == i as u128).then_some(lhs);
-                    }
-
-                    None
-                })
-                .collect::<Option<Vec<_>>>(),
-            ExprKind::Path(_) => Some(elements.iter().collect()),
-            _ => None,
-        })
-        && all_bindings_are_for_conv(cx, tys, elements, &locals, ToType::Tuple)
-        && !is_from_proc_macro(cx, expr)
-    {
-        span_lint_and_help(
-            cx,
-            TUPLE_ARRAY_CONVERSIONS,
-            expr.span,
-            "it looks like you're trying to convert an array to a tuple",
-            None,
-            "use `.into()` instead, or `<(T0, T1, ..., Tn)>::from` if type annotations are needed",
-        );
-    }
-}
-
-/// Checks that every binding in `elements` comes from the same parent `Pat` with the kind if there
-/// is a parent `Pat`. Returns false in any of the following cases:
-/// * `kind` does not match `pat.kind`
-/// * one or more elements in `elements` is not a binding
-/// * one or more bindings does not have the same parent `Pat`
-/// * one or more bindings are used after `expr`
-/// * the bindings do not all have the same type
-#[expect(clippy::cast_possible_truncation)]
-fn all_bindings_are_for_conv<'tcx>(
-    cx: &LateContext<'tcx>,
-    final_tys: &[Ty<'tcx>],
-    elements: &[Expr<'_>],
-    locals: &[&Expr<'_>],
-    kind: ToType,
-) -> bool {
-    let Some(locals) = locals.iter().map(|e| e.res_local_id()).collect::<Option<Vec<_>>>() else {
-        return false;
-    };
-    let local_parents = locals.iter().map(|l| cx.tcx.parent_hir_node(*l)).collect::<Vec<_>>();
-
-    local_parents
-        .iter()
-        .map(|node| match node {
-            Node::Pat(pat) => kind.eq(&pat.kind).then_some(pat.hir_id),
-            Node::LetStmt(l) => Some(l.hir_id),
-            _ => None,
-        })
-        .all_equal()
-        && locals.iter().zip(local_parents.iter()).all(|(&l, &parent)| {
-            if let Node::LetStmt(_) = parent {
-                return true;
-            }
-
-            let Some(b) = get_enclosing_block(cx, l) else {
-                return true;
-            };
-            local_used_once(cx, b, l).is_some()
-        })
-        && local_parents.first().is_some_and(|node| {
-            let Some(ty) = match node {
-                Node::Pat(pat)
-                    if let PatKind::Tuple(pats, _) | PatKind::Slice(pats, None, []) = &pat.kind
-                        && pats.iter().zip(locals.iter()).all(|(p, l)| {
-                            if let PatKind::Binding(_, id, _, _) = p.kind {
-                                id == *l
-                            } else {
-                                true
-                            }
-                        }) =>
-                {
-                    Some(pat.hir_id)
-                },
-                Node::LetStmt(l) => Some(l.hir_id),
-                _ => None,
-            }
-            .map(|hir_id| cx.typeck_results().node_type(hir_id)) else {
-                return false;
-            };
-            match (kind, ty.kind()) {
-                // Ensure the final type and the original type have the same length, and that there
-                // is no implicit `&mut`<=>`&` anywhere (#11100). Bit ugly, I know, but it works.
-                (ToType::Array, ty::Tuple(tys)) => {
-                    tys.len() == elements.len() && tys.iter().chain(final_tys.iter().copied()).all_equal()
-                },
-                (ToType::Tuple, ty::Array(ty, len)) => {
-                    let Some(len) = len.try_to_target_usize(cx.tcx) else {
-                        return false;
-                    };
-                    len as usize == elements.len() && final_tys.iter().chain(once(ty)).all_equal()
-                },
-                _ => false,
-            }
-        })
-}
-
 #[derive(Clone, Copy)]
-enum ToType {
-    Array,
-    Tuple,
+enum BindingUseRange<'tcx> {
+    Arm(&'tcx Arm<'tcx>),
+    Param(&'tcx Expr<'tcx>),
+    LetStmt(&'tcx [Stmt<'tcx>], Option<&'tcx Expr<'tcx>>),
+    LetExpr(&'tcx Expr<'tcx>, &'tcx Expr<'tcx>),
+}
+impl<'tcx> Visitable<'tcx> for BindingUseRange<'tcx> {
+    fn visit<V: Visitor<'tcx>>(self, visitor: &mut V) -> V::Result {
+        match self {
+            Self::Arm(a) => visitor.visit_arm(a),
+            Self::Param(e) => visitor.visit_expr(e),
+            Self::LetStmt(stmts, e) => {
+                walk_list!(visitor, visit_stmt, stmts);
+                visit_opt!(visitor, visit_expr, e);
+                <V::Result as VisitorResult>::output()
+            },
+            Self::LetExpr(cond, then) => {
+                try_visit!(visitor.visit_expr(cond));
+                visitor.visit_expr(then)
+            },
+        }
+    }
 }
 
-impl PartialEq<PatKind<'_>> for ToType {
-    fn eq(&self, other: &PatKind<'_>) -> bool {
-        match self {
-            ToType::Array => matches!(other, PatKind::Tuple(_, _)),
-            ToType::Tuple => matches!(other, PatKind::Slice(_, _, _)),
+/// Given a parent iterator from a binding node, finds the parts of the HIR tree which can
+/// use that binding.
+fn find_binding_use_scope<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    mut iter: impl Iterator<Item = (HirId, Node<'tcx>)>,
+) -> Option<BindingUseRange<'tcx>> {
+    loop {
+        match iter.next() {
+            Some((_, Node::Pat(p))) if !matches!(p.kind, PatKind::Or(_)) => {},
+            Some((_, Node::PatField(_))) => {},
+            Some((_, Node::Arm(a))) => break Some(BindingUseRange::Arm(a)),
+            Some((_, Node::Param(_))) => {
+                let body = match iter.next() {
+                    Some((_, Node::Expr(e))) if let ExprKind::Closure(c) = e.kind => c.body,
+                    Some((_, Node::Item(i))) if let ItemKind::Fn { body, .. } = i.kind => body,
+                    Some((_, Node::TraitItem(i))) if let TraitItemKind::Fn(_, TraitFn::Provided(body)) = i.kind => body,
+                    Some((_, Node::ImplItem(i))) if let ImplItemKind::Fn(_, body) = i.kind => body,
+                    _ => break None,
+                };
+                break Some(BindingUseRange::Param(tcx.hir_body(body).value));
+            },
+            Some((_, Node::LetStmt(_)))
+                if let Some((id, Node::Stmt(_))) = iter.next()
+                    && let Some((_, Node::Block(b))) = iter.next()
+                    && let mut stmts = b.stmts.iter()
+                    && stmts.any(|s| s.hir_id == id) =>
+            {
+                break Some(BindingUseRange::LetStmt(stmts.as_slice(), b.expr));
+            },
+            Some((_, Node::Expr(e)))
+                if let ExprKind::Let(_) = e.kind
+                    && let Some((cond, then)) = iter.find_map(|(_, n)| match n {
+                        Node::Expr(e) if let ExprKind::If(cond, then, _) = e.kind => Some((cond, then)),
+                        _ => None,
+                    }) =>
+            {
+                break Some(BindingUseRange::LetExpr(cond, then));
+            },
+            _ => break None,
         }
     }
 }

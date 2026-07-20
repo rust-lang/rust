@@ -1,0 +1,13 @@
+error: expected expression, found `direct_const_arg!()` constant
+  --> $DIR/invalid-direct-const-arg-owner-issue-159172.rs:21:13
+   |
+LL |       let _ = core::direct_const_arg!(|| {
+   |  _____________^
+LL | |
+LL | |         use std::io::*;
+LL | |         write!(_, "")
+LL | |     });
+   | |______^
+
+error: aborting due to 1 previous error
+

@@ -606,10 +606,16 @@ pub(crate) struct IncompatibleTargetModifiers {
     "the `{$flag_name_prefixed}` flag modifies the ABI so Rust crates compiled with different values of this flag cannot be used together safely"
 )]
 #[note(
-    "unset `{$flag_name_prefixed}` in this crate is incompatible with `{$flag_name_prefixed}={$extern_value}` in dependency `{$extern_crate}`"
+    "`{$flag_name_prefixed}` is unset in this crate which is incompatible with {$has_extern_value ->
+        [false]  `{$flag_name_prefixed}` being set
+        *[other] `{$flag_name_prefixed}={$extern_value}`
+    } in dependency `{$extern_crate}`"
 )]
 #[help(
-    "set `{$flag_name_prefixed}={$extern_value}` in this crate or unset `{$flag_name_prefixed}` in `{$extern_crate}`"
+    "set {$has_extern_value ->
+        [false]  `{$flag_name_prefixed}`
+        *[other] `{$flag_name_prefixed}={$extern_value}`
+    } in this crate or unset `{$flag_name_prefixed}` in `{$extern_crate}`"
 )]
 #[help(
     "if you are sure this will not cause problems, you may use `-Cunsafe-allow-abi-mismatch={$flag_name}` to silence this error"
@@ -622,6 +628,7 @@ pub(crate) struct IncompatibleTargetModifiersLMissed {
     pub flag_name: String,
     pub flag_name_prefixed: String,
     pub extern_value: String,
+    pub has_extern_value: bool,
 }
 
 #[derive(Diagnostic)]
@@ -630,10 +637,16 @@ pub(crate) struct IncompatibleTargetModifiersLMissed {
     "the `{$flag_name_prefixed}` flag modifies the ABI so Rust crates compiled with different values of this flag cannot be used together safely"
 )]
 #[note(
-    "`{$flag_name_prefixed}={$local_value}` in this crate is incompatible with unset `{$flag_name_prefixed}` in dependency `{$extern_crate}`"
+    "{$has_local_value ->
+        [false]  `{$flag_name_prefixed}` being set
+        *[other] `{$flag_name_prefixed}={$local_value}`
+    } in this crate is incompatible with `{$flag_name_prefixed}` being unset in dependency `{$extern_crate}`"
 )]
 #[help(
-    "unset `{$flag_name_prefixed}` in this crate or set `{$flag_name_prefixed}={$local_value}` in `{$extern_crate}`"
+    "unset `{$flag_name_prefixed}` in this crate or set {$has_local_value ->
+        [false]  `{$flag_name_prefixed}`
+        *[other] `{$flag_name_prefixed}={$local_value}`
+    } in `{$extern_crate}`"
 )]
 #[help(
     "if you are sure this will not cause problems, you may use `-Cunsafe-allow-abi-mismatch={$flag_name}` to silence this error"
@@ -646,6 +659,7 @@ pub(crate) struct IncompatibleTargetModifiersRMissed {
     pub flag_name: String,
     pub flag_name_prefixed: String,
     pub local_value: String,
+    pub has_local_value: bool,
 }
 
 #[derive(Diagnostic)]
@@ -703,4 +717,19 @@ pub(crate) struct MitigationLessStrictInDependency {
     pub mitigation_name: String,
     pub mitigation_level: String,
     pub extern_crate: Symbol,
+}
+
+#[derive(Diagnostic)]
+pub(crate) enum StaticLinkingNotSupported<'a> {
+    #[diag(
+        "static linking of `{$lib_name}` is not supported on `{$target}`; using dynamic linking instead"
+    )]
+    #[help("remove `kind = \"static\"` and ensure a shared library is available")]
+    UserRequested { lib_name: Symbol, target: &'a str },
+
+    #[diag(
+        "library `{$lib_name}` is linked statically by a dependency, but `{$target}` requires dynamic linking; using dynamic linking instead"
+    )]
+    #[help("ensure a shared library is available")]
+    FromDependency { lib_name: Symbol, target: &'a str },
 }

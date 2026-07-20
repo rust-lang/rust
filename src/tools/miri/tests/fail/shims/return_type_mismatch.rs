@@ -1,5 +1,8 @@
 //@ignore-target: windows # File handling is not implemented yet
 //@compile-flags: -Zmiri-disable-isolation
+
+#![allow(suspicious_runtime_symbol_definitions)]
+
 use std::ffi::{CString, OsStr, c_char, c_int, c_short};
 use std::os::unix::ffi::OsStrExt;
 

@@ -3,11 +3,10 @@
 //@ aux-build:quebec.rs
 //@ aux-build:sierra.rs
 //@ build-aux-docs
-//@ doc-flags:--merge=finalize
-//@ doc-flags:--include-parts-dir=info/doc.parts/tango
-//@ doc-flags:--include-parts-dir=info/doc.parts/romeo
-//@ doc-flags:--include-parts-dir=info/doc.parts/quebec
-//@ doc-flags:--include-parts-dir=info/doc.parts/sierra
+//@ doc-flags:--read-doc-meta-dir=info/doc.parts/tango
+//@ doc-flags:--read-doc-meta-dir=info/doc.parts/romeo
+//@ doc-flags:--read-doc-meta-dir=info/doc.parts/quebec
+//@ doc-flags:--read-doc-meta-dir=info/doc.parts/sierra
 //@ doc-flags:--enable-index-page
 //@ doc-flags:-Zunstable-options
 

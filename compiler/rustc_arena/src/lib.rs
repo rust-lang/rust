@@ -542,11 +542,12 @@ impl DroplessArena {
 
     #[inline]
     pub fn alloc_from_iter<T, I: IntoIterator<Item = T>>(&self, iter: I) -> &mut [T] {
+        assert!(!mem::needs_drop::<T>());
+        assert!(size_of::<T>() != 0);
+
         // Warning: this function is reentrant: `iter` could hold a reference to `&self` and
         // allocate additional elements while we're iterating.
         let iter = iter.into_iter();
-        assert!(size_of::<T>() != 0);
-        assert!(!mem::needs_drop::<T>());
 
         let size_hint = iter.size_hint();
 
@@ -577,6 +578,7 @@ impl DroplessArena {
     ) -> Result<&mut [T], E> {
         // Despite the similarity with `alloc_from_iter`, we cannot reuse their fast case, as we
         // cannot know the minimum length of the iterator in this case.
+        assert!(!mem::needs_drop::<T>());
         assert!(size_of::<T>() != 0);
 
         // Takes care of reentrancy.

@@ -55,6 +55,7 @@
 
 use crate::ffi::{VaArgSafe, VaList};
 use crate::marker::{ConstParamTy, DiscriminantKind, PointeeSized, Tuple};
+use crate::num::imp::libm;
 use crate::{mem, ptr};
 
 mod bounds;
@@ -818,19 +819,19 @@ pub const fn forget<T: ?Sized>(_: T);
 ///
 /// // This is how the standard library does it. This is the best method, if
 /// // you need to do something like this
-/// fn split_at_stdlib<T>(slice: &mut [T], mid: usize)
+/// fn split_at_stdlib<T>(to_split: &mut [T], mid: usize)
 ///                       -> (&mut [T], &mut [T]) {
-///     let len = slice.len();
+///     let len = to_split.len();
 ///     assert!(mid <= len);
 ///     unsafe {
-///         let ptr = slice.as_mut_ptr();
-///         // This now has three mutable references pointing at the same
-///         // memory. `slice`, the rvalue ret.0, and the rvalue ret.1.
-///         // `slice` is never used after `let ptr = ...`, and so one can
-///         // treat it as "dead", and therefore, you only have two real
-///         // mutable slices.
-///         (slice::from_raw_parts_mut(ptr, mid),
-///          slice::from_raw_parts_mut(ptr.add(mid), len - mid))
+///         let ptr = to_split.as_mut_ptr();
+///         let fst = slice::from_raw_parts_mut(ptr, mid);
+///         let snd = slice::from_raw_parts_mut(ptr.add(mid), len - mid);
+///         // The function now has three mutable references to overlapping memory:
+///         // `to_split`, `fst`, and `snd`.
+///         // `to_split` is never used after `let ptr = ...` so it can be treated as "dead".
+///         // This leaves two "live" mutable slice references, `fst` and `snd`, with no overlap.
+///         (fst, snd)
 ///     }
 /// }
 /// ```
@@ -989,20 +990,20 @@ pub unsafe fn volatile_copy_memory<T>(dst: *mut T, src: *const T, count: usize);
 /// [`write_bytes`]: ptr::write_bytes
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn volatile_set_memory<T>(dst: *mut T, val: u8, count: usize);
+pub const unsafe fn volatile_set_memory<T>(dst: *mut T, val: u8, count: usize);
 
 /// Performs a volatile load from the `src` pointer.
 ///
 /// The stabilized version of this intrinsic is [`core::ptr::read_volatile`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn volatile_load<T>(src: *const T) -> T;
+pub const unsafe fn volatile_load<T>(src: *const T) -> T;
 /// Performs a volatile store to the `dst` pointer.
 ///
 /// The stabilized version of this intrinsic is [`core::ptr::write_volatile`].
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub unsafe fn volatile_store<T>(dst: *mut T, val: T);
+pub const unsafe fn volatile_store<T>(dst: *mut T, val: T);
 
 /// Performs a volatile load from the `src` pointer
 /// The pointer is not required to be aligned.
@@ -1025,9 +1026,12 @@ pub unsafe fn unaligned_volatile_store<T>(dst: *mut T, val: T);
 ///
 /// The stabilized version of this intrinsic is
 /// [`f16::sqrt`](../../std/primitive.f16.html#method.sqrt)
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn sqrtf16(x: f16) -> f16;
+pub fn sqrtf16(x: f16) -> f16 {
+    sqrtf32(x as f32) as f16
+}
 /// Returns the square root of an `f32`
 ///
 /// The stabilized version of this intrinsic is
@@ -1054,9 +1058,12 @@ pub fn sqrtf128(x: f128) -> f128;
 ///
 /// The stabilized version of this intrinsic is
 /// [`f16::powi`](../../std/primitive.f16.html#method.powi)
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn powif16(a: f16, x: i32) -> f16;
+pub fn powif16(a: f16, x: i32) -> f16 {
+    powif32(a as f32, x) as f16
+}
 /// Raises an `f32` to an integer power.
 ///
 /// The stabilized version of this intrinsic is
@@ -1083,243 +1090,368 @@ pub fn powif128(a: f128, x: i32) -> f128;
 ///
 /// The stabilized version of this intrinsic is
 /// [`f16::sin`](../../std/primitive.f16.html#method.sin)
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn sinf16(x: f16) -> f16;
+pub fn sinf16(x: f16) -> f16 {
+    sinf32(x as f32) as f16
+}
 /// Returns the sine of an `f32`.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f32::sin`](../../std/primitive.f32.html#method.sin)
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn sinf32(x: f32) -> f32;
+pub fn sinf32(x: f32) -> f32 {
+    cfg_select! {
+        all(target_env = "msvc", target_arch = "x86") => sinf64(x as f64) as f32,
+        _ => libm::likely_available::sinf(x),
+    }
+}
 /// Returns the sine of an `f64`.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f64::sin`](../../std/primitive.f64.html#method.sin)
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn sinf64(x: f64) -> f64;
+pub fn sinf64(x: f64) -> f64 {
+    libm::likely_available::sin(x)
+}
 /// Returns the sine of an `f128`.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f128::sin`](../../std/primitive.f128.html#method.sin)
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn sinf128(x: f128) -> f128;
+pub fn sinf128(x: f128) -> f128 {
+    libm::maybe_available::sinf128(x)
+}
 
 /// Returns the cosine of an `f16`.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f16::cos`](../../std/primitive.f16.html#method.cos)
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn cosf16(x: f16) -> f16;
+pub fn cosf16(x: f16) -> f16 {
+    cosf32(x as f32) as f16
+}
 /// Returns the cosine of an `f32`.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f32::cos`](../../std/primitive.f32.html#method.cos)
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn cosf32(x: f32) -> f32;
+pub fn cosf32(x: f32) -> f32 {
+    cfg_select! {
+        all(target_env = "msvc", target_arch = "x86") => cosf64(x as f64) as f32,
+        _ => libm::likely_available::cosf(x),
+    }
+}
 /// Returns the cosine of an `f64`.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f64::cos`](../../std/primitive.f64.html#method.cos)
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn cosf64(x: f64) -> f64;
+pub fn cosf64(x: f64) -> f64 {
+    libm::likely_available::cos(x)
+}
 /// Returns the cosine of an `f128`.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f128::cos`](../../std/primitive.f128.html#method.cos)
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn cosf128(x: f128) -> f128;
+pub fn cosf128(x: f128) -> f128 {
+    libm::maybe_available::cosf128(x)
+}
 
 /// Raises an `f16` to an `f16` power.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f16::powf`](../../std/primitive.f16.html#method.powf)
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn powf16(a: f16, x: f16) -> f16;
+pub fn powf16(a: f16, x: f16) -> f16 {
+    powf32(a as f32, x as f32) as f16
+}
 /// Raises an `f32` to an `f32` power.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f32::powf`](../../std/primitive.f32.html#method.powf)
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn powf32(a: f32, x: f32) -> f32;
+pub fn powf32(a: f32, x: f32) -> f32 {
+    cfg_select! {
+        all(target_env = "msvc", target_arch = "x86") => powf64(a as f64, x as f64) as f32,
+        _ => libm::likely_available::powf(a, x),
+    }
+}
 /// Raises an `f64` to an `f64` power.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f64::powf`](../../std/primitive.f64.html#method.powf)
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn powf64(a: f64, x: f64) -> f64;
+pub fn powf64(a: f64, x: f64) -> f64 {
+    libm::likely_available::pow(a, x)
+}
 /// Raises an `f128` to an `f128` power.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f128::powf`](../../std/primitive.f128.html#method.powf)
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn powf128(a: f128, x: f128) -> f128;
+pub fn powf128(a: f128, x: f128) -> f128 {
+    libm::maybe_available::powf128(a, x)
+}
 
 /// Returns the exponential of an `f16`.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f16::exp`](../../std/primitive.f16.html#method.exp)
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn expf16(x: f16) -> f16;
+pub fn expf16(x: f16) -> f16 {
+    expf32(x as f32) as f16
+}
 /// Returns the exponential of an `f32`.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f32::exp`](../../std/primitive.f32.html#method.exp)
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn expf32(x: f32) -> f32;
+pub fn expf32(x: f32) -> f32 {
+    cfg_select! {
+        all(target_env = "msvc", target_arch = "x86") => expf64(x as f64) as f32,
+        _ => libm::likely_available::expf(x),
+    }
+}
 /// Returns the exponential of an `f64`.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f64::exp`](../../std/primitive.f64.html#method.exp)
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn expf64(x: f64) -> f64;
+pub fn expf64(x: f64) -> f64 {
+    libm::likely_available::exp(x)
+}
 /// Returns the exponential of an `f128`.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f128::exp`](../../std/primitive.f128.html#method.exp)
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn expf128(x: f128) -> f128;
+pub fn expf128(x: f128) -> f128 {
+    libm::maybe_available::expf128(x)
+}
 
 /// Returns 2 raised to the power of an `f16`.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f16::exp2`](../../std/primitive.f16.html#method.exp2)
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn exp2f16(x: f16) -> f16;
+pub fn exp2f16(x: f16) -> f16 {
+    exp2f32(x as f32) as f16
+}
 /// Returns 2 raised to the power of an `f32`.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f32::exp2`](../../std/primitive.f32.html#method.exp2)
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn exp2f32(x: f32) -> f32;
+pub fn exp2f32(x: f32) -> f32 {
+    cfg_select! {
+        all(target_env = "msvc", target_arch = "x86") => exp2f64(x as f64) as f32,
+        _ => libm::likely_available::exp2f(x),
+    }
+}
 /// Returns 2 raised to the power of an `f64`.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f64::exp2`](../../std/primitive.f64.html#method.exp2)
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn exp2f64(x: f64) -> f64;
+pub fn exp2f64(x: f64) -> f64 {
+    libm::likely_available::exp2(x)
+}
 /// Returns 2 raised to the power of an `f128`.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f128::exp2`](../../std/primitive.f128.html#method.exp2)
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn exp2f128(x: f128) -> f128;
+pub fn exp2f128(x: f128) -> f128 {
+    libm::maybe_available::exp2f128(x)
+}
 
 /// Returns the natural logarithm of an `f16`.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f16::ln`](../../std/primitive.f16.html#method.ln)
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn logf16(x: f16) -> f16;
+pub fn logf16(x: f16) -> f16 {
+    logf32(x as f32) as f16
+}
 /// Returns the natural logarithm of an `f32`.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f32::ln`](../../std/primitive.f32.html#method.ln)
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn logf32(x: f32) -> f32;
+pub fn logf32(x: f32) -> f32 {
+    cfg_select! {
+        all(target_env = "msvc", target_arch = "x86") => logf64(x as f64) as f32,
+        _ => libm::likely_available::logf(x),
+    }
+}
 /// Returns the natural logarithm of an `f64`.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f64::ln`](../../std/primitive.f64.html#method.ln)
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn logf64(x: f64) -> f64;
+pub fn logf64(x: f64) -> f64 {
+    libm::likely_available::log(x)
+}
 /// Returns the natural logarithm of an `f128`.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f128::ln`](../../std/primitive.f128.html#method.ln)
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn logf128(x: f128) -> f128;
+pub fn logf128(x: f128) -> f128 {
+    libm::maybe_available::logf128(x)
+}
 
 /// Returns the base 10 logarithm of an `f16`.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f16::log10`](../../std/primitive.f16.html#method.log10)
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn log10f16(x: f16) -> f16;
+pub fn log10f16(x: f16) -> f16 {
+    log10f32(x as f32) as f16
+}
 /// Returns the base 10 logarithm of an `f32`.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f32::log10`](../../std/primitive.f32.html#method.log10)
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn log10f32(x: f32) -> f32;
+pub fn log10f32(x: f32) -> f32 {
+    cfg_select! {
+        all(target_env = "msvc", target_arch = "x86") => log10f64(x as f64) as f32,
+        _ => libm::likely_available::log10f(x),
+    }
+}
 /// Returns the base 10 logarithm of an `f64`.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f64::log10`](../../std/primitive.f64.html#method.log10)
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn log10f64(x: f64) -> f64;
+pub fn log10f64(x: f64) -> f64 {
+    libm::likely_available::log10(x)
+}
 /// Returns the base 10 logarithm of an `f128`.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f128::log10`](../../std/primitive.f128.html#method.log10)
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn log10f128(x: f128) -> f128;
+pub fn log10f128(x: f128) -> f128 {
+    libm::maybe_available::log10f128(x)
+}
 
 /// Returns the base 2 logarithm of an `f16`.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f16::log2`](../../std/primitive.f16.html#method.log2)
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn log2f16(x: f16) -> f16;
+pub fn log2f16(x: f16) -> f16 {
+    log2f32(x as f32) as f16
+}
 /// Returns the base 2 logarithm of an `f32`.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f32::log2`](../../std/primitive.f32.html#method.log2)
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn log2f32(x: f32) -> f32;
+pub fn log2f32(x: f32) -> f32 {
+    cfg_select! {
+        all(target_env = "msvc", target_arch = "x86") => log2f64(x as f64) as f32,
+        _ => libm::likely_available::log2f(x),
+    }
+}
 /// Returns the base 2 logarithm of an `f64`.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f64::log2`](../../std/primitive.f64.html#method.log2)
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn log2f64(x: f64) -> f64;
+pub fn log2f64(x: f64) -> f64 {
+    libm::likely_available::log2(x)
+}
 /// Returns the base 2 logarithm of an `f128`.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f128::log2`](../../std/primitive.f128.html#method.log2)
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub fn log2f128(x: f128) -> f128;
+pub fn log2f128(x: f128) -> f128 {
+    libm::maybe_available::log2f128(x)
+}
 
-/// Returns `a * b + c` for `f16` values.
+/// Returns `a * b + c` without rounding the intermediate result for `f16` values.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f16::mul_add`](../../std/primitive.f16.html#method.mul_add)
 #[rustc_intrinsic_const_stable_indirect]
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub const fn fmaf16(a: f16, b: f16, c: f16) -> f16;
-/// Returns `a * b + c` for `f32` values.
+pub const fn fmaf16(a: f16, b: f16, c: f16) -> f16 {
+    // NOTE: f32 does not have sufficient precision, so use f64 instead.
+    // see also https://github.com/llvm/llvm-project/issues/128450#issuecomment-2727540179.
+    fmaf64(a as f64, b as f64, c as f64) as f16
+}
+/// Returns `a * b + c` without rounding the intermediate result for `f32` values.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f32::mul_add`](../../std/primitive.f32.html#method.mul_add)
@@ -1327,7 +1459,7 @@ pub const fn fmaf16(a: f16, b: f16, c: f16) -> f16;
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const fn fmaf32(a: f32, b: f32, c: f32) -> f32;
-/// Returns `a * b + c` for `f64` values.
+/// Returns `a * b + c` without rounding the intermediate result for `f64` values.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f64::mul_add`](../../std/primitive.f64.html#method.mul_add)
@@ -1335,7 +1467,7 @@ pub const fn fmaf32(a: f32, b: f32, c: f32) -> f32;
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const fn fmaf64(a: f64, b: f64, c: f64) -> f64;
-/// Returns `a * b + c` for `f128` values.
+/// Returns `a * b + c` without rounding the intermediate result for `f128` values.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f128::mul_add`](../../std/primitive.f128.html#method.mul_add)
@@ -1354,9 +1486,12 @@ pub const fn fmaf128(a: f128, b: f128, c: f128) -> f128;
 /// and add instructions. It is unspecified whether or not a fused operation
 /// is selected, and that may depend on optimization level and context, for
 /// example.
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub const fn fmuladdf16(a: f16, b: f16, c: f16) -> f16;
+pub const fn fmuladdf16(a: f16, b: f16, c: f16) -> f16 {
+    a * b + c
+}
 /// Returns `a * b + c` for `f32` values, non-deterministically executing
 /// either a fused multiply-add or two operations with rounding of the
 /// intermediate result.
@@ -1367,9 +1502,12 @@ pub const fn fmuladdf16(a: f16, b: f16, c: f16) -> f16;
 /// and add instructions. It is unspecified whether or not a fused operation
 /// is selected, and that may depend on optimization level and context, for
 /// example.
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub const fn fmuladdf32(a: f32, b: f32, c: f32) -> f32;
+pub const fn fmuladdf32(a: f32, b: f32, c: f32) -> f32 {
+    a * b + c
+}
 /// Returns `a * b + c` for `f64` values, non-deterministically executing
 /// either a fused multiply-add or two operations with rounding of the
 /// intermediate result.
@@ -1380,9 +1518,12 @@ pub const fn fmuladdf32(a: f32, b: f32, c: f32) -> f32;
 /// and add instructions. It is unspecified whether or not a fused operation
 /// is selected, and that may depend on optimization level and context, for
 /// example.
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub const fn fmuladdf64(a: f64, b: f64, c: f64) -> f64;
+pub const fn fmuladdf64(a: f64, b: f64, c: f64) -> f64 {
+    a * b + c
+}
 /// Returns `a * b + c` for `f128` values, non-deterministically executing
 /// either a fused multiply-add or two operations with rounding of the
 /// intermediate result.
@@ -1393,18 +1534,24 @@ pub const fn fmuladdf64(a: f64, b: f64, c: f64) -> f64;
 /// and add instructions. It is unspecified whether or not a fused operation
 /// is selected, and that may depend on optimization level and context, for
 /// example.
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub const fn fmuladdf128(a: f128, b: f128, c: f128) -> f128;
+pub const fn fmuladdf128(a: f128, b: f128, c: f128) -> f128 {
+    a * b + c
+}
 
 /// Returns the largest integer less than or equal to an `f16`.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f16::floor`](../../std/primitive.f16.html#method.floor)
 #[rustc_intrinsic_const_stable_indirect]
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub const fn floorf16(x: f16) -> f16;
+pub const fn floorf16(x: f16) -> f16 {
+    floorf32(x as f32) as f16
+}
 /// Returns the largest integer less than or equal to an `f32`.
 ///
 /// The stabilized version of this intrinsic is
@@ -1435,9 +1582,12 @@ pub const fn floorf128(x: f128) -> f128;
 /// The stabilized version of this intrinsic is
 /// [`f16::ceil`](../../std/primitive.f16.html#method.ceil)
 #[rustc_intrinsic_const_stable_indirect]
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub const fn ceilf16(x: f16) -> f16;
+pub const fn ceilf16(x: f16) -> f16 {
+    ceilf32(x as f32) as f16
+}
 /// Returns the smallest integer greater than or equal to an `f32`.
 ///
 /// The stabilized version of this intrinsic is
@@ -1468,9 +1618,12 @@ pub const fn ceilf128(x: f128) -> f128;
 /// The stabilized version of this intrinsic is
 /// [`f16::trunc`](../../std/primitive.f16.html#method.trunc)
 #[rustc_intrinsic_const_stable_indirect]
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub const fn truncf16(x: f16) -> f16;
+pub const fn truncf16(x: f16) -> f16 {
+    truncf32(x as f32) as f16
+}
 /// Returns the integer part of an `f32`.
 ///
 /// The stabilized version of this intrinsic is
@@ -1502,9 +1655,12 @@ pub const fn truncf128(x: f128) -> f128;
 /// The stabilized version of this intrinsic is
 /// [`f16::round_ties_even`](../../std/primitive.f16.html#method.round_ties_even)
 #[rustc_intrinsic_const_stable_indirect]
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub const fn round_ties_even_f16(x: f16) -> f16;
+pub const fn round_ties_even_f16(x: f16) -> f16 {
+    round_ties_even_f32(x as f32) as f16
+}
 
 /// Returns the nearest integer to an `f32`. Rounds half-way cases to the number with an even
 /// least significant digit.
@@ -1541,9 +1697,12 @@ pub const fn round_ties_even_f128(x: f128) -> f128;
 /// The stabilized version of this intrinsic is
 /// [`f16::round`](../../std/primitive.f16.html#method.round)
 #[rustc_intrinsic_const_stable_indirect]
+#[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
-pub const fn roundf16(x: f16) -> f16;
+pub const fn roundf16(x: f16) -> f16 {
+    roundf32(x as f32) as f16
+}
 /// Returns the nearest integer to an `f32`. Rounds half-way cases away from zero.
 ///
 /// The stabilized version of this intrinsic is
@@ -3477,34 +3636,46 @@ pub const fn fabs<T: bounds::FloatPrimitive>(x: T) -> T;
 ///
 /// The stabilized version of this intrinsic is
 /// [`f16::copysign`](../../std/primitive.f16.html#method.copysign)
+#[inline]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-pub const fn copysignf16(x: f16, y: f16) -> f16;
+pub const fn copysignf16(x: f16, y: f16) -> f16 {
+    f16::from_bits((x.to_bits() & !f16::SIGN_MASK) | (y.to_bits() & f16::SIGN_MASK))
+}
 
 /// Copies the sign from `y` to `x` for `f32` values.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f32::copysign`](../../std/primitive.f32.html#method.copysign)
+#[inline]
 #[rustc_nounwind]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
-pub const fn copysignf32(x: f32, y: f32) -> f32;
+pub const fn copysignf32(x: f32, y: f32) -> f32 {
+    f32::from_bits((x.to_bits() & !f32::SIGN_MASK) | (y.to_bits() & f32::SIGN_MASK))
+}
 /// Copies the sign from `y` to `x` for `f64` values.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f64::copysign`](../../std/primitive.f64.html#method.copysign)
+#[inline]
 #[rustc_nounwind]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
-pub const fn copysignf64(x: f64, y: f64) -> f64;
+pub const fn copysignf64(x: f64, y: f64) -> f64 {
+    f64::from_bits((x.to_bits() & !f64::SIGN_MASK) | (y.to_bits() & f64::SIGN_MASK))
+}
 
 /// Copies the sign from `y` to `x` for `f128` values.
 ///
 /// The stabilized version of this intrinsic is
 /// [`f128::copysign`](../../std/primitive.f128.html#method.copysign)
+#[inline]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-pub const fn copysignf128(x: f128, y: f128) -> f128;
+pub const fn copysignf128(x: f128, y: f128) -> f128 {
+    f128::from_bits((x.to_bits() & !f128::SIGN_MASK) | (y.to_bits() & f128::SIGN_MASK))
+}
 
 /// Generates the LLVM body for the automatic differentiation of `f` using Enzyme,
 /// with `df` as the derivative function and `args` as its arguments.

@@ -13,19 +13,38 @@ use tracing::{debug, instrument, trace};
 
 use crate::FnCtxt;
 
+/// Whatever to use subtyping or not when inspecting obligations
+#[derive(Debug, Copy, Clone)]
+pub(crate) enum UseSubtyping {
+    /// Do **not** use subtyping. [`FnCtxt::obligations_for_self_ty`] will only return obligations
+    /// where the self type is known to be equal to the provided vid.
+    No,
+
+    /// Use subtyping. [`FnCtxt::obligations_for_self_ty`] will return obligations
+    /// where the self type is related to the provided vid via subtyping.
+    ///
+    /// Using this requires extra care, as traits holding for a subtype or a supertype, does not
+    /// necessarily imply that they hold for the respective supertype or subtype.
+    Yes,
+}
+
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Returns a list of all obligations whose self type has been unified
     /// with the unconstrained type `self_ty`.
     #[instrument(skip(self), level = "debug")]
-    pub(crate) fn obligations_for_self_ty(&self, self_ty: ty::TyVid) -> PredicateObligations<'tcx> {
+    pub(crate) fn obligations_for_self_ty(
+        &self,
+        self_ty: ty::TyVid,
+        subtyping: UseSubtyping,
+    ) -> PredicateObligations<'tcx> {
         if self.next_trait_solver() {
-            self.obligations_for_self_ty_next(self_ty)
+            self.obligations_for_self_ty_next(self_ty, subtyping)
         } else {
-            let ty_var_root = self.root_var(self_ty);
             let mut obligations = self.fulfillment_cx.borrow().pending_obligations();
             trace!("pending_obligations = {:#?}", obligations);
-            obligations
-                .retain(|obligation| self.predicate_has_self_ty(obligation.predicate, ty_var_root));
+            obligations.retain(|obligation| {
+                self.predicate_has_self_ty(obligation.predicate, self_ty, subtyping)
+            });
             obligations
         }
     }
@@ -35,14 +54,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         predicate: ty::Predicate<'tcx>,
         expected_vid: ty::TyVid,
+        subtyping: UseSubtyping,
     ) -> bool {
         match predicate.kind().skip_binder() {
             ty::PredicateKind::Clause(ty::ClauseKind::Trait(data)) => {
-                self.type_matches_expected_vid(data.self_ty(), expected_vid)
+                self.type_matches_expected_vid(data.self_ty(), expected_vid, subtyping)
             }
             ty::PredicateKind::Clause(ty::ClauseKind::Projection(data)) => {
                 if data.projection_term.kind.is_trait_projection() {
-                    self.type_matches_expected_vid(data.self_ty(), expected_vid)
+                    self.type_matches_expected_vid(data.self_ty(), expected_vid, subtyping)
                 } else {
                     false
                 }
@@ -55,7 +75,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(..))
             | ty::PredicateKind::DynCompatible(..)
             | ty::PredicateKind::NormalizesTo(..)
-            | ty::PredicateKind::AliasRelate(..)
             | ty::PredicateKind::Clause(ty::ClauseKind::ConstEvaluatable(..))
             | ty::PredicateKind::ConstEquate(..)
             | ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(..))
@@ -65,14 +84,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self), ret)]
-    fn type_matches_expected_vid(&self, ty: Ty<'tcx>, expected_vid: ty::TyVid) -> bool {
+    fn type_matches_expected_vid(
+        &self,
+        ty: Ty<'tcx>,
+        expected_vid: ty::TyVid,
+        subtyping: UseSubtyping,
+    ) -> bool {
         let ty = self.shallow_resolve(ty);
         debug!(?ty);
 
         match *ty.kind() {
-            ty::Infer(ty::TyVar(found_vid)) => {
-                self.root_var(expected_vid) == self.root_var(found_vid)
-            }
+            ty::Infer(ty::TyVar(found_vid)) => match subtyping {
+                UseSubtyping::No => self.root_var(expected_vid) == self.root_var(found_vid),
+                UseSubtyping::Yes => {
+                    self.sub_unification_table_root_var(expected_vid)
+                        == self.sub_unification_table_root_var(found_vid)
+                }
+            },
             _ => false,
         }
     }
@@ -80,6 +108,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn obligations_for_self_ty_next(
         &self,
         self_ty: ty::TyVid,
+        subtyping: UseSubtyping,
     ) -> PredicateObligations<'tcx> {
         // We only look at obligations which may reference the self type.
         // This lookup uses the `sub_root` instead of the inference variable
@@ -94,6 +123,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .borrow()
             .pending_obligations_potentially_referencing_sub_root(&self.infcx, sub_root_var);
         debug!(?obligations);
+
         let mut obligations_for_self_ty = PredicateObligations::new();
         for obligation in obligations {
             let mut visitor = NestedObligationsForSelfTy {
@@ -101,6 +131,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self_ty,
                 obligations_for_self_ty: &mut obligations_for_self_ty,
                 root_cause: &obligation.cause,
+                subtyping,
             };
 
             let goal = obligation.as_goal();
@@ -183,6 +214,7 @@ struct NestedObligationsForSelfTy<'a, 'tcx> {
     self_ty: ty::TyVid,
     root_cause: &'a ObligationCause<'tcx>,
     obligations_for_self_ty: &'a mut PredicateObligations<'tcx>,
+    subtyping: UseSubtyping,
 }
 
 impl<'tcx> ProofTreeVisitor<'tcx> for NestedObligationsForSelfTy<'_, 'tcx> {
@@ -210,7 +242,7 @@ impl<'tcx> ProofTreeVisitor<'tcx> for NestedObligationsForSelfTy<'_, 'tcx> {
             .orig_values()
             .iter()
             .filter_map(|arg| arg.as_type())
-            .any(|ty| self.fcx.type_matches_expected_vid(ty, self.self_ty))
+            .any(|ty| self.fcx.type_matches_expected_vid(ty, self.self_ty, self.subtyping))
         {
             debug!(goal = ?inspect_goal.goal(), "goal does not mention self type");
             return;
@@ -218,7 +250,7 @@ impl<'tcx> ProofTreeVisitor<'tcx> for NestedObligationsForSelfTy<'_, 'tcx> {
 
         let tcx = self.fcx.tcx;
         let goal = inspect_goal.goal();
-        if self.fcx.predicate_has_self_ty(goal.predicate, self.self_ty) {
+        if self.fcx.predicate_has_self_ty(goal.predicate, self.self_ty, self.subtyping) {
             self.obligations_for_self_ty.push(traits::Obligation::new(
                 tcx,
                 self.root_cause.clone(),

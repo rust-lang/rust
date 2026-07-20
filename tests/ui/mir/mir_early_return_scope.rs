@@ -1,6 +1,6 @@
 //@ run-pass
 #![allow(unused_variables)]
-// FIXME(static_mut_refs): this could use an atomic
+// FIXME(static_mut_refs): use raw pointers instead of references
 #![allow(static_mut_refs)]
 static mut DROP: bool = false;
 

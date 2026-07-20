@@ -16,7 +16,7 @@ pub(crate) fn placeholder(
 ) -> AstFragment {
     fn mac_placeholder() -> Box<ast::MacCall> {
         Box::new(ast::MacCall {
-            path: ast::Path { span: DUMMY_SP, segments: ThinVec::new(), tokens: None },
+            path: ast::Path { span: DUMMY_SP, segments: ThinVec::new() },
             args: Box::new(ast::DelimArgs {
                 dspan: ast::tokenstream::DelimSpan::dummy(),
                 delim: Delimiter::Parenthesis,
@@ -27,11 +27,8 @@ pub(crate) fn placeholder(
 
     let ident = Ident::dummy();
     let attrs = ast::AttrVec::new();
-    let vis = vis.unwrap_or(ast::Visibility {
-        span: DUMMY_SP,
-        kind: ast::VisibilityKind::Inherited,
-        tokens: None,
-    });
+    let vis =
+        vis.unwrap_or(ast::Visibility { span: DUMMY_SP, kind: ast::VisibilityKind::Inherited });
     let span = DUMMY_SP;
     let expr_placeholder = || {
         Box::new(ast::Expr {
@@ -42,17 +39,8 @@ pub(crate) fn placeholder(
             tokens: None,
         })
     };
-    let ty = || {
-        Box::new(ast::Ty { id, kind: ast::TyKind::MacCall(mac_placeholder()), span, tokens: None })
-    };
-    let pat = || {
-        Box::new(ast::Pat {
-            id,
-            kind: ast::PatKind::MacCall(mac_placeholder()),
-            span,
-            tokens: None,
-        })
-    };
+    let ty = || Box::new(ast::Ty { id, kind: ast::TyKind::MacCall(mac_placeholder()), span });
+    let pat = || Box::new(ast::Pat { id, kind: ast::PatKind::MacCall(mac_placeholder()), span });
 
     match kind {
         AstFragmentKind::Crate => AstFragment::Crate(ast::Crate {
@@ -115,13 +103,11 @@ pub(crate) fn placeholder(
             id,
             span,
             kind: ast::PatKind::MacCall(mac_placeholder()),
-            tokens: None,
         })),
         AstFragmentKind::Ty => AstFragment::Ty(Box::new(ast::Ty {
             id,
             span,
             kind: ast::TyKind::MacCall(mac_placeholder()),
-            tokens: None,
         })),
         AstFragmentKind::Stmts => AstFragment::Stmts(smallvec![{
             let mac = Box::new(ast::MacCallStmt {
@@ -189,7 +175,6 @@ pub(crate) fn placeholder(
             mut_restriction: ast::MutRestriction {
                 kind: ast::RestrictionKind::Unrestricted,
                 span: DUMMY_SP,
-                tokens: None,
             },
             safety: Safety::Default,
             default: None,

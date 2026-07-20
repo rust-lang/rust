@@ -14,18 +14,6 @@ pub mod solver_relating;
 
 pub type RelateResult<I, T> = Result<T, TypeError<I>>;
 
-/// Whether aliases should be related structurally or not. Used
-/// to adjust the behavior of generalization and combine.
-///
-/// This should always be `No` unless in a few special-cases when
-/// instantiating canonical responses and in the new solver. Each
-/// such case should have a comment explaining why it is used.
-#[derive(Debug, Copy, Clone)]
-pub enum StructurallyRelateAliases {
-    Yes,
-    No,
-}
-
 /// Extra information about why we ended up with a particular variance.
 /// This is only used to add more information to error messages, and
 /// has no effect on soundness. While choosing the 'wrong' `VarianceDiagInfo`
@@ -512,11 +500,14 @@ pub fn structurally_relate_tys<I: Interner, R: TypeRelation<I>>(
         }
 
         (ty::FnDef(a_def_id, a_args), ty::FnDef(b_def_id, b_args)) if a_def_id == b_def_id => {
-            if a_args.is_empty() {
+            if a_args.skip_binder().is_empty() {
                 Ok(a)
             } else {
+                let a_args = a_args.no_bound_vars().unwrap();
+                let b_args = b_args.no_bound_vars().unwrap();
                 relation.relate_ty_args(a, b, a_def_id.into(), a_args, b_args, |args| {
-                    Ty::new_fn_def(cx, a_def_id, args)
+                    // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
+                    Ty::new_fn_def(cx, a_def_id, ty::Binder::dummy(args))
                 })
             }
         }

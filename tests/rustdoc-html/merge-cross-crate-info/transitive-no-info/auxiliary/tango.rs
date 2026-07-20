@@ -1,6 +1,6 @@
 //@ aux-build:quebec.rs
 //@ build-aux-docs
-//@ doc-flags:--merge=none
+//@ doc-flags:--write-doc-meta-dir=info/doc.parts/tango
 //@ doc-flags:--enable-index-page
 //@ doc-flags:-Zunstable-options
 

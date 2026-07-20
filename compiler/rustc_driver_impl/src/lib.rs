@@ -598,15 +598,26 @@ fn list_metadata(sess: &Session, metadata_loader: &dyn MetadataLoader) {
     match sess.io.input {
         Input::File(ref path) => {
             let mut v = Vec::new();
-            locator::list_file_metadata(
+            if let Err(error) = locator::list_file_metadata(
                 &sess.target,
                 path,
                 metadata_loader,
                 &mut v,
                 &sess.opts.unstable_opts.ls,
                 sess.cfg_version,
-            )
-            .unwrap();
+            ) {
+                if path.extension().is_some_and(|extension| extension == "rs") {
+                    let mut err = sess
+                        .dcx()
+                        .struct_fatal("`-Zls` takes a `.rmeta` file as input, not a source file");
+                    if rustc_session::utils::was_invoked_from_cargo() {
+                        // Give a Cargo-tailored suggestion if we're coming from Cargo
+                        err.note("use `rustc +nightly -Zls=... path/to/file.rmeta` directly, instead of going through Cargo");
+                    }
+                    err.emit();
+                }
+                sess.dcx().fatal(error.to_string());
+            }
             safe_println!("{}", String::from_utf8(v).unwrap());
         }
         Input::Str { .. } => {
@@ -1412,7 +1423,7 @@ fn ice_path_with_config(config: Option<&UnstableOptions>) -> &'static Option<Pat
                     return None;
                 }
                 if let Some(unstable_opts) = config && unstable_opts.metrics_dir.is_some() {
-                    tracing::warn!("ignoring -Zerror-metrics in favor of RUSTC_ICE for destination of ICE report files");
+                    tracing::warn!("ignoring -Zmetrics-dir in favor of RUSTC_ICE for destination of ICE report files");
                 }
                 PathBuf::from(s)
             }

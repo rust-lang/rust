@@ -1,0 +1,36 @@
+error: `#[splat]` is not allowed in the arguments of functions with the `rust-call` ABI
+  --> $DIR/reject-closure-issue-158605.rs:10:5
+   |
+LL |     extern "rust-call" fn method(#[splat] self: Self);
+   |     ^^^^^^^^^^^^^^^^^^           ^^^^^^^^
+   |
+   = help: remove `#[splat]` or change the ABI
+
+error: `#[splat]` is not allowed in the arguments of functions with the `rust-call` ABI
+  --> $DIR/reject-closure-issue-158605.rs:15:5
+   |
+LL |     extern "rust-call" fn method(#[splat] self: Self) {
+   |     ^^^^^^^^^^^^^^^^^^           ^^^^^^^^
+   |
+   = help: remove `#[splat]` or change the ABI
+
+error: `#[splat]` is not allowed on closure arguments
+  --> $DIR/reject-closure-issue-158605.rs:22:7
+   |
+LL |       (|#[splat] x: i32| {
+   |  _______^^^^^^^^_________^
+LL | |
+LL | |         println!("{x}");
+LL | |     })(1);
+   | |_____^
+   |
+   = help: remove `#[splat]` or turn the closure into a function
+
+error: functions with the "rust-call" ABI must take a single non-self tuple argument
+  --> $DIR/reject-closure-issue-158605.rs:28:26
+   |
+LL |     Trait::method(3_i32, 4_i64);
+   |                          ^^^^^
+
+error: aborting due to 4 previous errors
+

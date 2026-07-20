@@ -293,7 +293,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         root_vid: ty::TyVid,
     ) {
         let unsafe_infer_vars = unsafe_infer_vars.get_or_init(|| {
-            let unsafe_infer_vars = compute_unsafe_infer_vars(self, self.body_id);
+            let unsafe_infer_vars = compute_unsafe_infer_vars(self, self.body_def_id);
             debug!(?unsafe_infer_vars);
             unsafe_infer_vars
         });
@@ -378,8 +378,8 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             let sugg = self.try_to_suggest_annotations(diverging_vids, coercions);
             self.tcx.emit_node_span_lint(
                 lint::builtin::DEPENDENCY_ON_UNIT_NEVER_TYPE_FALLBACK,
-                self.tcx.local_def_id_to_hir_id(self.body_id),
-                self.tcx.def_span(self.body_id),
+                self.tcx.local_def_id_to_hir_id(self.body_def_id),
+                self.tcx.def_span(self.body_def_id),
                 diagnostics::DependencyOnUnitNeverTypeFallback {
                     obligation_span: never_error.obligation.cause.span,
                     obligation: never_error.obligation.predicate,
@@ -446,8 +446,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         diverging_vids: &[ty::TyVid],
         coercions: &VecGraph<ty::TyVid, true>,
     ) -> diagnostics::SuggestAnnotations {
-        let body =
-            self.tcx.hir_maybe_body_owned_by(self.body_id).expect("body id must have an owner");
+        let body = self.tcx.hir_body_owned_by(self.body_def_id);
         // For each diverging var, look through the HIR for a place to give it
         // a type annotation. We do this per var because we only really need one
         // suggestion to influence a var to be `()`.
@@ -633,9 +632,9 @@ pub(crate) enum UnsafeUseReason {
 /// `compute_unsafe_infer_vars` will return `{ id(?X) -> (hir_id, span, Call) }`
 fn compute_unsafe_infer_vars<'a, 'tcx>(
     fcx: &'a FnCtxt<'a, 'tcx>,
-    body_id: LocalDefId,
+    body_def_id: LocalDefId,
 ) -> UnordMap<ty::TyVid, (HirId, Span, UnsafeUseReason)> {
-    let body = fcx.tcx.hir_maybe_body_owned_by(body_id).expect("body id must have an owner");
+    let body = fcx.tcx.hir_body_owned_by(body_def_id);
     let mut res = UnordMap::default();
 
     struct UnsafeInferVarsVisitor<'a, 'tcx> {
@@ -763,7 +762,7 @@ fn compute_unsafe_infer_vars<'a, 'tcx>(
 
     UnsafeInferVarsVisitor { fcx, res: &mut res }.visit_expr(&body.value);
 
-    debug!(?res, "collected the following unsafe vars for {body_id:?}");
+    debug!(?res, "collected the following unsafe vars for {body_def_id:?}");
 
     res
 }

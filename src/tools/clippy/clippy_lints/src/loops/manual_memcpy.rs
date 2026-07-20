@@ -27,7 +27,7 @@ pub(super) fn check<'tcx>(
     if let Some(higher::Range {
         start: Some(start),
         end: Some(end),
-        limits,
+        ty: range_ty,
         span: _,
     }) = higher::Range::hir(cx, arg)
         // the var must be a single name
@@ -89,7 +89,11 @@ pub(super) fn check<'tcx>(
                     }
                 })
             })
-            .map(|o| o.map(|(ty, dst, src)| build_manual_memcpy_suggestion(cx, start, end, limits, ty, &dst, &src)))
+            .map(|o| {
+                o.map(|(ty, dst, src)| {
+                    build_manual_memcpy_suggestion(cx, start, end, range_ty.limits(), ty, &dst, &src)
+                })
+            })
             .collect::<Option<Vec<_>>>()
             .filter(|v| !v.is_empty())
             .map(|v| v.join("\n    "));

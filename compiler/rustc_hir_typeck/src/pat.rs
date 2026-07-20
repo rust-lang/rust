@@ -21,7 +21,7 @@ use rustc_infer::infer::RegionVariableOrigin;
 use rustc_middle::traits::PatternOriginExpr;
 use rustc_middle::ty::{self, Pinnedness, Ty, TypeVisitableExt, Unnormalized};
 use rustc_middle::{bug, span_bug};
-use rustc_session::errors::feature_err;
+use rustc_session::diagnostics::feature_err;
 use rustc_session::lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
@@ -1585,7 +1585,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             Res::Def(DefKind::AssocFn | DefKind::Ctor(_, CtorKind::Fn) | DefKind::Variant, _) => {
                 let expected = "unit struct, unit variant or constant";
-                let e = report_unexpected_variant_res(tcx, res, None, qpath, span, E0533, expected);
+                let e = report_unexpected_variant_res(
+                    tcx,
+                    res,
+                    None,
+                    &[],
+                    qpath,
+                    span,
+                    E0533,
+                    expected,
+                );
                 return Err(e);
             }
             Res::SelfCtor(def_id) => {
@@ -1599,6 +1608,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         tcx,
                         res,
                         None,
+                        &[],
                         qpath,
                         span,
                         E0533,
@@ -1761,7 +1771,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let tcx = self.tcx;
         let report_unexpected_res = |res: Res| {
             let expected = "tuple struct or tuple variant";
-            let e = report_unexpected_variant_res(tcx, res, None, qpath, pat.span, E0164, expected);
+            let sub_pats = match pat.kind {
+                hir::PatKind::TupleStruct(_, sub_pats, _) => sub_pats,
+                _ => &[],
+            };
+            let e = report_unexpected_variant_res(
+                tcx, res, None, sub_pats, qpath, pat.span, E0164, expected,
+            );
             Err(e)
         };
 

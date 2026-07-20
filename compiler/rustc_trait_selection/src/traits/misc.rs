@@ -190,7 +190,7 @@ pub fn type_allowed_to_implement_const_param_ty<'tcx>(
         }
 
         // Check regions assuming the self type of the impl is WF
-        let errors = infcx.resolve_regions(parent_cause.body_id, param_env, [self_type]);
+        let errors = infcx.resolve_regions(parent_cause.body_def_id, param_env, [self_type]);
         if !errors.is_empty() {
             infringing_inner_tys.push((inner_ty, InfringingFieldsReason::Regions(errors)));
             continue;
@@ -279,7 +279,7 @@ pub fn all_fields_implement_trait<'tcx>(
             }
 
             // Check regions assuming the self type of the impl is WF
-            let errors = infcx.resolve_regions(parent_cause.body_id, param_env, [self_type]);
+            let errors = infcx.resolve_regions(parent_cause.body_def_id, param_env, [self_type]);
             if !errors.is_empty() {
                 infringing.push((field, ty, InfringingFieldsReason::Regions(errors)));
             }

@@ -1,6 +1,6 @@
 //@ check-fail
 //@ normalize-stderr: "randomization_seed: \d+" -> "randomization_seed: $$SEED"
-//@ normalize-stderr: "valid_range: 0\.\.=\d+" -> "valid_range: 0..=$$MAX"
+//@ normalize-stderr: "pointer is 0\.\.=\d+" -> "pointer is 0..=$$MAX"
 //@ normalize-stderr: "in_memory_order: \[[^\]]+\]" -> "in_memory_order: $$MEMORY_INDEX"
 //@ normalize-stderr: "offsets: \[[^\]]+\]" -> "offsets: $$OFFSETS"
 //@ revisions: x86_64 aarch64 win

@@ -14,7 +14,7 @@ use tracing::info;
 use crate::back::symbol_export::{self, allocator_shim_symbols, symbol_name_for_instance_in_crate};
 use crate::back::write::CodegenContext;
 use crate::base::allocator_kind_for_codegen;
-use crate::errors::{DynamicLinkingWithLTO, LtoDisallowed, LtoDylib, LtoProcMacro};
+use crate::diagnostics::{DynamicLinkingWithLTO, LtoDisallowed, LtoDylib, LtoProcMacro};
 use crate::traits::*;
 
 pub struct ThinModule<B: WriteBackendMethods> {

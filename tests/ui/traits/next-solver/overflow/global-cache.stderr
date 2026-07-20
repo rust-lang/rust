@@ -1,4 +1,4 @@
-error[E0275]: overflow evaluating the requirement `Inc<Inc<Inc<Inc<Inc<Inc<Inc<...>>>>>>>: Trait`
+error[E0275]: overflow evaluating the requirement `Inc<Inc<Inc<Inc<Inc<Inc<Inc<_>>>>>>>: Trait`
   --> $DIR/global-cache.rs:21:19
    |
 LL |     impls_trait::<Four<Four<Four<Four<()>>>>>();

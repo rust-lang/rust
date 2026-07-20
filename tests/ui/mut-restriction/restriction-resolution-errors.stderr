@@ -1,0 +1,107 @@
+error: field mutation can only be restricted to ancestor modules
+  --> $DIR/restriction-resolution-errors.rs:10:24
+   |
+LL |             pub mut(in ::std) i2: i32,
+   |                        ^^^^^
+
+error: field mutation can only be restricted to ancestor modules
+  --> $DIR/restriction-resolution-errors.rs:11:24
+   |
+LL |             pub mut(in self::c) i3: i32,
+   |                        ^^^^^^^
+
+error: field mutation can only be restricted to ancestor modules
+  --> $DIR/restriction-resolution-errors.rs:12:24
+   |
+LL |             pub mut(in super::d) i4: i32,
+   |                        ^^^^^^^^
+
+error[E0433]: too many leading `super` keywords within `crate::a::b`
+  --> $DIR/restriction-resolution-errors.rs:15:38
+   |
+LL |             pub mut(in super::super::super) i7: i32,
+   |                                      ^^^^^ this `super` would go above the crate root
+
+error: field mutation can only be restricted to ancestor modules
+  --> $DIR/restriction-resolution-errors.rs:32:16
+   |
+LL |         mut(in crate::a) e1: i32,
+   |                ^^^^^^^^
+
+error[E0433]: too many leading `super` keywords within `crate`
+  --> $DIR/restriction-resolution-errors.rs:36:13
+   |
+LL |         mut(super) e5: i32,
+   |             ^^^^^ this `super` would go above the crate root
+
+error: field mutation can only be restricted to ancestor modules
+  --> $DIR/restriction-resolution-errors.rs:38:16
+   |
+LL |     Tup(mut(in external) i32),
+   |                ^^^^^^^^
+
+error: field mutation can only be restricted to ancestor modules
+  --> $DIR/restriction-resolution-errors.rs:52:24
+   |
+LL |             pub mut(in crate::m2) i32,
+   |                        ^^^^^^^^^
+
+error: field mutation can only be restricted to ancestor modules
+  --> $DIR/restriction-resolution-errors.rs:54:24
+   |
+LL |             pub mut(in m6::m5) i32,
+   |                        ^^^^^^
+
+error[E0433]: cannot find module or crate `a` in this scope
+  --> $DIR/restriction-resolution-errors.rs:9:24
+   |
+LL |             pub mut(in a::b) i1: i32,
+   |                        ^ use of unresolved module or unlinked crate `a`
+   |
+help: there is a crate or module with a similar name
+   |
+LL -             pub mut(in a::b) i1: i32,
+LL +             pub mut(in c::b) i1: i32,
+   |
+help: consider importing this module
+   |
+LL +         use a;
+   |
+
+error[E0433]: cannot find module `c` in the crate root
+  --> $DIR/restriction-resolution-errors.rs:13:31
+   |
+LL |             pub mut(in crate::c) i5: i32,
+   |                               ^ not found in the crate root
+
+error[E0577]: expected module, found enum `super::E`
+  --> $DIR/restriction-resolution-errors.rs:14:24
+   |
+LL |             pub mut(in super::E) i6: i32,
+   |                        ^^^^^^^^ not a module
+
+error[E0577]: expected module, found enum `crate::a::E`
+  --> $DIR/restriction-resolution-errors.rs:33:16
+   |
+LL |     pub mod b {
+   |     --------- similarly named module `b` defined here
+...
+LL |         mut(in crate::a::E) e2: i32,
+   |                ^^^^^^^^^^^
+   |
+help: a module with a similar name exists
+   |
+LL -         mut(in crate::a::E) e2: i32,
+LL +         mut(in crate::a::b) e2: i32,
+   |
+
+error[E0577]: expected module, found enum `m7`
+  --> $DIR/restriction-resolution-errors.rs:55:24
+   |
+LL |             pub mut(in m7) i32,
+   |                        ^^ not a module
+
+error: aborting due to 14 previous errors
+
+Some errors have detailed explanations: E0433, E0577.
+For more information about an error, try `rustc --explain E0433`.

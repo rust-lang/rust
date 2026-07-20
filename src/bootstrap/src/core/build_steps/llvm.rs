@@ -14,18 +14,17 @@ use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use std::{env, fs};
 
-use build_helper::exit;
 use build_helper::git::PathFreshness;
 
 use crate::core::build_steps::llvm;
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step, StepMetadata};
-use crate::core::config::{Config, TargetSelection};
+use crate::core::config::{Config, LlvmPgoGenerationMode, TargetSelection};
 use crate::utils::build_stamp::{BuildStamp, generate_smart_stamp_hash};
 use crate::utils::exec::command;
 use crate::utils::helpers::{
     self, exe, get_clang_cl_resource_dir, libdir, t, unhashed_basename, up_to_date,
 };
-use crate::{CLang, GitRepo, Kind, trace};
+use crate::{CLang, GitRepo, Kind, exit, trace};
 
 #[derive(Clone)]
 pub struct LlvmResult {
@@ -369,14 +368,17 @@ impl Step for Llvm {
         // This flag makes sure `FileCheck` is copied in the final binaries directory.
         cfg.define("LLVM_INSTALL_UTILS", "ON");
 
-        if builder.config.llvm_profile_generate {
+        if let Some(mode) = builder.config.llvm_pgo.generate_profile.as_ref() {
             cfg.define("LLVM_BUILD_INSTRUMENTED", "IR");
-            if let Ok(llvm_profile_dir) = std::env::var("LLVM_PROFILE_DIR") {
-                cfg.define("LLVM_PROFILE_DATA_DIR", llvm_profile_dir);
+            match mode {
+                LlvmPgoGenerationMode::Implicit => {}
+                LlvmPgoGenerationMode::Directory(llvm_profile_dir) => {
+                    cfg.define("LLVM_PROFILE_DATA_DIR", llvm_profile_dir);
+                }
             }
             cfg.define("LLVM_BUILD_RUNTIME", "No");
         }
-        if let Some(path) = builder.config.llvm_profile_use.as_ref() {
+        if let Some(path) = builder.config.llvm_pgo.use_profile.as_ref() {
             cfg.define("LLVM_PROFDATA_FILE", path);
         }
 
@@ -800,7 +802,7 @@ fn configure_cmake(
     // Needs `suppressed_compiler_flag_prefixes` to be gone, and hence
     // https://github.com/llvm/llvm-project/issues/88780 to be fixed.
     for flag in builder
-        .cc_handled_clags(target, CLang::C)
+        .cc_handled_cflags(target, CLang::C)
         .into_iter()
         .chain(builder.cc_unhandled_cflags(target, GitRepo::Llvm, CLang::C))
         .filter(|flag| !suppressed_compiler_flag_prefixes.iter().any(|p| flag.starts_with(p)))
@@ -821,7 +823,7 @@ fn configure_cmake(
     cfg.define("CMAKE_C_FLAGS", cflags);
     let mut cxxflags = ccflags.cxxflags.clone();
     for flag in builder
-        .cc_handled_clags(target, CLang::Cxx)
+        .cc_handled_cflags(target, CLang::Cxx)
         .into_iter()
         .chain(builder.cc_unhandled_cflags(target, GitRepo::Llvm, CLang::Cxx))
         .filter(|flag| {
@@ -1326,7 +1328,7 @@ impl Step for Lld {
         // when doing PGO on CI, cmake or clang-cl don't automatically link clang's
         // profiler runtime in. In that case, we need to manually ask cmake to do it, to avoid
         // linking errors, much like LLVM's cmake setup does in that situation.
-        if builder.config.llvm_profile_generate
+        if builder.config.llvm_pgo.generate_profile.is_some()
             && target.is_msvc()
             && let Some(clang_cl_path) = builder.config.llvm_clang_cl.as_ref()
         {

@@ -641,42 +641,99 @@ pub fn source_span_for_markdown_range_inner(
     let mut start_bytes = 0;
     let mut end_bytes = 0;
 
+    let span_of_all_fragments: Span = span_of_fragments(fragments)?;
+
+    let mut prev_lines_bytes = 0;
     'outer: for (line_no, md_line) in md_lines.enumerate() {
         loop {
             let source_line = src_lines.next()?;
-            match source_line.find(md_line) {
-                Some(offset) => {
-                    if line_no == starting_line {
-                        start_bytes += offset;
-
-                        if starting_line == ending_line {
-                            break 'outer;
-                        }
-                    } else if line_no == ending_line {
-                        end_bytes += offset;
-                        break 'outer;
-                    } else if line_no < starting_line {
-                        start_bytes += source_line.len() - md_line.len();
-                    } else {
-                        end_bytes += source_line.len() - md_line.len();
-                    }
-                    break;
+            let source_line_len = u32::try_from(source_line.len()).unwrap();
+            let source_line_span =
+                span_of_all_fragments.split_at(prev_lines_bytes).1.split_at(source_line_len).0;
+            let fragment = fragments
+                .iter()
+                // `source_line_span` might contain indentation that `fragment.span` doesn't contain
+                .find(|fragment| fragment.span.overlaps(source_line_span));
+            // Since we're counting bytes, `prev_line_bytes` includes the "\n".
+            prev_lines_bytes += source_line_len + 1;
+            if let Some(fragment) = fragment
+                && let Some(offset) = source_line.find(md_line)
+            {
+                if fragment.span.lo() > source_line_span.lo()
+                    && source_line
+                        [..usize::try_from(fragment.span.lo().0 - source_line_span.lo().0).unwrap()]
+                        .chars()
+                        .any(|c| !c.is_whitespace())
+                {
+                    // Make sure anything between the start of this line and the fragment itself is just indentation.
+                    // Because source_line is built by splitting the span that covers all fragments, this only finds
+                    // characters *between* doc comments, not characters before or after doc comments.
+                    //
+                    //     1| /** doc */
+                    //     2| #[inline] /** doc2 */
+                    //        ^^^^^^^^^
+                    //        | this
+                    //
+                    //     3| fn foo() {}
+                    return None;
                 }
-                None => {
-                    // Since this is a source line that doesn't include a markdown line,
-                    // we have to count the newline that we split from earlier.
-                    if line_no <= starting_line {
-                        start_bytes += source_line.len() + 1;
-                    } else {
-                        end_bytes += source_line.len() + 1;
+                if fragment.span.hi() < source_line_span.hi()
+                    && source_line
+                        [usize::try_from(fragment.span.hi().0 - source_line_span.lo().0).unwrap()..]
+                        .chars()
+                        .any(|c| !c.is_whitespace())
+                {
+                    // Make sure anything between the start of this line and the fragment itself is just indentation.
+                    // Because source_line is built by splitting the span that covers all fragments, this only finds
+                    // characters *between* doc comments, not characters before or after doc comments.
+                    //     1| /** doc */ #[inline]
+                    //                   ^^^^^^^^^
+                    //                   | this
+                    //
+                    //     2| /** doc2 */
+                    //     3| fn foo() {}
+                    return None;
+                }
+                if line_no == starting_line {
+                    start_bytes += offset;
+
+                    if starting_line == ending_line {
+                        break 'outer;
                     }
+                } else if line_no == ending_line {
+                    end_bytes += offset;
+                    break 'outer;
+                } else if line_no < starting_line {
+                    start_bytes += source_line.len() - md_line.len();
+                } else {
+                    end_bytes += source_line.len() - md_line.len();
+                }
+                break;
+            } else {
+                // Since this is a source line that doesn't include a markdown line,
+                // we have to count it and its newline as non-markdown bytes.
+                if line_no <= starting_line {
+                    start_bytes += source_line.len() + 1;
+                } else if source_line.chars().any(|c| !c.is_whitespace()) {
+                    // We're past the first line, but haven't found the last line,
+                    // but we found a non-empty non-markdown line.
+                    // This could be an attribute, and we don't want a diagnostic
+                    // suggesting to delete that attribute, so we return None to be safe.
+                    //     1| /** doc */
+                    //     2 | #[inline]
+                    //          ^^^^^^^^^
+                    //          | this
+                    //     3| /** doc2 */
+                    //     4| fn foo() {}
+                    return None;
+                } else {
+                    end_bytes += source_line.len() + 1;
                 }
             }
         }
     }
 
-    let span = span_of_fragments(fragments)?;
-    let src_span = span.from_inner(InnerSpan::new(
+    let src_span = span_of_all_fragments.from_inner(InnerSpan::new(
         md_range.start + start_bytes,
         md_range.end + start_bytes + end_bytes,
     ));

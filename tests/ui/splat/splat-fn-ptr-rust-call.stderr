@@ -1,0 +1,30 @@
+error: `#[splat]` is not allowed in the arguments of functions with the `rust-call` ABI
+  --> $DIR/splat-fn-ptr-rust-call.rs:8:1
+   |
+LL | extern "rust-call" fn f(#[splat] _: ()) {}
+   | ^^^^^^^^^^^^^^^^^^      ^^^^^^^^
+   |
+   = help: remove `#[splat]` or change the ABI
+
+error: `#[splat]` is not allowed in the arguments of functions with the `rust-call` ABI
+  --> $DIR/splat-fn-ptr-rust-call.rs:13:13
+   |
+LL |     let f2: extern "rust-call" fn(#[splat] ()) = f;
+   |             ^^^^^^^^^^^^^^^^^^    ^^^^^^^^
+   |
+   = help: remove `#[splat]` or change the ABI
+
+error: functions with the "rust-call" ABI must take a single non-self tuple argument
+  --> $DIR/splat-fn-ptr-rust-call.rs:16:5
+   |
+LL |     f();
+   |     ^^^
+
+error: functions with the "rust-call" ABI must take a single non-self tuple argument
+  --> $DIR/splat-fn-ptr-rust-call.rs:17:5
+   |
+LL |     f2();
+   |     ^^^^
+
+error: aborting due to 4 previous errors
+

@@ -30,7 +30,10 @@
             source: Some(
                 "rustc",
             ),
-            message: "Please register your known path in the path module",
+            message: String(
+                "Please register your known path in the path module",
+            ),
+            tags: None,
             related_information: Some(
                 [
                     DiagnosticRelatedInformation {
@@ -61,7 +64,6 @@
                     },
                 ],
             ),
-            tags: None,
             data: None,
         },
         fix: None,
@@ -97,7 +99,10 @@
             source: Some(
                 "rustc",
             ),
-            message: "Please register your known path in the path module",
+            message: String(
+                "Please register your known path in the path module",
+            ),
+            tags: None,
             related_information: Some(
                 [
                     DiagnosticRelatedInformation {
@@ -128,7 +133,6 @@
                     },
                 ],
             ),
-            tags: None,
             data: None,
         },
         fix: None,
@@ -164,7 +168,10 @@
             source: Some(
                 "rustc",
             ),
-            message: "Please register your known path in the path module",
+            message: String(
+                "Please register your known path in the path module",
+            ),
+            tags: None,
             related_information: Some(
                 [
                     DiagnosticRelatedInformation {
@@ -221,7 +228,6 @@
                     },
                 ],
             ),
-            tags: None,
             data: None,
         },
         fix: None,

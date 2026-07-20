@@ -4,6 +4,7 @@
 #![feature(deref_patterns)]
 #![feature(impl_trait_in_assoc_type)]
 #![feature(iterator_try_collect)]
+#![feature(option_into_flat_iter)]
 #![feature(try_blocks)]
 #![feature(yeet_expr)]
 // tidy-alphabetical-end
@@ -447,7 +448,6 @@ fn mir_promoted(
         DefKind::AssocConst { .. }
         | DefKind::Const { .. }
         | DefKind::Static { .. }
-        | DefKind::InlineConst
         | DefKind::AnonConst => tcx.mir_const_qualif(def),
         _ => ConstQualifs::default(),
     };

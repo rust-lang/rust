@@ -3157,7 +3157,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of the `offset` pointer method with a `usize` casted to an
+    /// Checks for usage of the `offset` pointer method with a `usize` cast to an
     /// `isize`.
     ///
     /// ### Why is this bad?
@@ -5598,7 +5598,7 @@ impl Methods {
                     if name == sym::map {
                         map_clone::check(cx, expr, recv, m_arg, self.msrv);
                         map_with_unused_argument_over_ranges::check(cx, expr, recv, m_arg, self.msrv, span);
-                        manual_is_variant_and::check_map(cx, expr);
+                        manual_is_variant_and::check_map(cx, expr, self.msrv);
                         match method_call(recv) {
                             Some((map_name @ (sym::iter | sym::into_iter), recv2, _, _, _)) => {
                                 iter_kv_map::check(cx, map_name, expr, recv2, m_arg, self.msrv, sym::map);

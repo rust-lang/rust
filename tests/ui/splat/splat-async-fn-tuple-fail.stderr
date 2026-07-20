@@ -1,8 +1,8 @@
-error: multiple `#[splat]`s are not allowed in the same function
+error: multiple `#[splat]`s are not allowed in the same function argument list
   --> $DIR/splat-async-fn-tuple-fail.rs:10:28
    |
 LL | async fn async_multi_splat(#[splat] (_a, _b): (u32, i8), #[splat] (_c, _d): (u32, i8)) {}
-   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                            ^^^^^^^^                      ^^^^^^^^
    |
    = help: remove `#[splat]` from all but one argument
 

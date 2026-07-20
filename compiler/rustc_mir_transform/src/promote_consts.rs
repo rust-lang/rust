@@ -704,7 +704,10 @@ impl<'tcx> Validator<'_, 'tcx> {
             // const function that uses that constant, again requiring evaluation of the constant.
             // However, this form of cycle renders both the constant and function unusable in
             // general, so we don't need to special-case it here.
-            Const::Unevaluated(uc, _) => self.tcx.def_kind(uc.def) != DefKind::InlineConst,
+            Const::Unevaluated(uc, _) => {
+                self.tcx.def_kind(uc.def) != DefKind::AnonConst
+                    || self.tcx.anon_const_kind(uc.def) != ty::AnonConstKind::NonTypeSystemInline
+            }
         }
     }
 }

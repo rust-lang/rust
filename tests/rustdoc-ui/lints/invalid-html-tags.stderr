@@ -123,7 +123,6 @@ error: incomplete HTML tag `img`
    |
 LL |   /// > <img
    |  _______^
-LL | |
 LL | | /// > href="#broken"
    | |____________________^
 

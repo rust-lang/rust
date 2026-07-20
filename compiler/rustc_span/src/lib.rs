@@ -738,7 +738,7 @@ impl Default for SpanData {
 
 impl PartialOrd for Span {
     fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
-        PartialOrd::partial_cmp(&self.data(), &rhs.data())
+        Some(self.cmp(rhs))
     }
 }
 impl Ord for Span {
@@ -1238,20 +1238,25 @@ impl Span {
     /// If "self" is the span of the outer_ident, and "within" is the span of the `($ident,)`
     /// expr, then this will return the span of the `$ident` macro variable.
     pub fn within_macro(self, within: Span, sm: &SourceMap) -> Option<Span> {
-        match Span::prepare_to_combine(self, within) {
-            // Only return something if it doesn't overlap with the original span,
-            // and the span isn't "imported" (i.e. from unavailable sources).
-            // FIXME: This does limit the usefulness of the error when the macro is
-            // from a foreign crate; we could also take into account `-Zmacro-backtrace`,
-            // which doesn't redact this span (but that would mean passing in even more
-            // args to this function, lol).
-            Ok((self_, _, parent))
-                if self_.hi < self.lo() || self.hi() < self_.lo && !sm.is_imported(within) =>
-            {
-                Some(Span::new(self_.lo, self_.hi, self_.ctxt, parent))
-            }
-            _ => None,
+        let (self_, _, parent) = Span::prepare_to_combine(self, within).ok()?;
+
+        // Only return something if it doesn't overlap with the original span
+        // and the span isn't "imported" (i.e. from unavailable sources).
+        // FIXME: This does limit the usefulness of the error when the macro is
+        // from a foreign crate; we could also take into account `-Zmacro-backtrace`,
+        // which doesn't redact this span (but that would mean passing in even more
+        // args to this function, lol).
+        if self.data().contains(self_) || sm.is_imported(within) {
+            return None;
         }
+
+        // Don't return something if it's marked with `#[diagnostic::opaque]`.
+        // This already accounts for `-Zmacro-backtrace`.
+        if within.data().ctxt.outer_expn_data().diagnostic_opaque {
+            return None;
+        }
+
+        Some(Span::new(self_.lo, self_.hi, self_.ctxt, parent))
     }
 
     pub fn from_inner(self, inner: InnerSpan) -> Span {

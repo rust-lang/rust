@@ -1,6 +1,6 @@
 use rustc_feature::AttributeStability;
 use rustc_hir::AttrPath;
-use rustc_session::errors::feature_err;
+use rustc_session::diagnostics::feature_err;
 use rustc_span::{Span, sym};
 
 use crate::{AttributeParser, ShouldEmit};

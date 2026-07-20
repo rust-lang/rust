@@ -19,7 +19,7 @@
 //! index in that node's edge list. We effectively ignore that an edge index of 0 could be
 //! encoded with 0 bytes in order to not require 3 bits to store the byte width of the edges.
 //! The overhead of calculating the correct byte width for each edge is mitigated by
-//! building edge lists with [`EdgesVec`] which keeps a running max of the edges in a node.
+//! computing the max of the edge list once per node instead of per edge.
 //!
 //! When we decode this data, we do not immediately create [`SerializedDepNodeIndex`] and
 //! instead keep the data in its denser serialized form which lets us turn our on-disk size
@@ -61,7 +61,6 @@ use tracing::{debug, instrument};
 use super::graph::{CurrentDepGraph, DepNodeColorMap, DesiredColor, TrySetColorResult};
 use super::retained::RetainedDepGraph;
 use super::{DepKind, DepNode, DepNodeIndex};
-use crate::dep_graph::edges::EdgesVec;
 
 // The maximum value of `SerializedDepNodeIndex` leaves the upper two bits
 // unused so that we can store multiple index types in `CompressedHybridIndex`,
@@ -562,22 +561,19 @@ impl SerializedNodeHeader {
 }
 
 #[derive(Debug)]
-struct NodeInfo {
+struct NodeInfo<'a> {
     node: DepNode,
     value_fingerprint: Fingerprint,
-    edges: EdgesVec,
+    edges: &'a [DepNodeIndex],
 }
 
-impl NodeInfo {
+impl NodeInfo<'_> {
     fn encode(&self, e: &mut MemEncoder, index: DepNodeIndex) {
-        let NodeInfo { ref node, value_fingerprint, ref edges } = *self;
-        let header = SerializedNodeHeader::new(
-            node,
-            index,
-            value_fingerprint,
-            edges.max_index(),
-            edges.len(),
-        );
+        let NodeInfo { ref node, value_fingerprint, edges } = *self;
+        // The largest index picks the byte width of the edge list.
+        let edge_max = edges.iter().map(|e| e.as_u32()).max().unwrap_or(0);
+        let header =
+            SerializedNodeHeader::new(node, index, value_fingerprint, edge_max, edges.len());
         e.write_array(header.bytes);
 
         if header.len().is_none() {
@@ -592,43 +588,6 @@ impl NodeInfo {
                 bytes_per_index
             });
         }
-    }
-
-    /// Encode a node that was promoted from the previous graph. It reads the edges directly from
-    /// the previous dep graph and expects all edges to already have a new dep node index assigned.
-    /// This avoids the overhead of constructing `EdgesVec`, which would be needed to call `encode`.
-    #[inline]
-    fn encode_promoted(
-        e: &mut MemEncoder,
-        node: &DepNode,
-        index: DepNodeIndex,
-        value_fingerprint: Fingerprint,
-        edges: &[DepNodeIndex],
-    ) -> usize {
-        let edge_count = edges.len();
-
-        // Find the highest edge in the new dep node indices
-        let edge_max = edges.iter().map(|x| x.as_u32()).max().unwrap_or(0);
-
-        let header =
-            SerializedNodeHeader::new(node, index, value_fingerprint, edge_max, edge_count);
-        e.write_array(header.bytes);
-
-        if header.len().is_none() {
-            // The edges are all unique and the number of unique indices is less than u32::MAX.
-            e.emit_u32(edge_count.try_into().unwrap());
-        }
-
-        let bytes_per_index = header.bytes_per_index();
-        for edge in edges {
-            let edge = edge.as_u32();
-            e.write_with(|dest| {
-                *dest = edge.to_le_bytes();
-                bytes_per_index
-            });
-        }
-
-        edge_count
     }
 }
 
@@ -770,21 +729,18 @@ impl EncoderState {
     fn encode_node(
         &self,
         index: DepNodeIndex,
-        node: &NodeInfo,
+        node: &NodeInfo<'_>,
         retained_graph: &Option<Lock<RetainedDepGraph>>,
         local: &mut LocalEncoderState,
     ) {
         node.encode(&mut local.encoder, index);
         self.flush_mem_encoder(&mut *local);
-        self.record(&node.node, index, node.edges.len(), &node.edges, retained_graph, &mut *local);
+        self.record(&node.node, index, node.edges.len(), node.edges, retained_graph, &mut *local);
     }
 
-    /// Encodes a node that was promoted from the previous graph. It reads the information directly from
-    /// the previous dep graph for performance reasons.
-    ///
-    /// This differs from `encode_node` where you have to explicitly provide the relevant `NodeInfo`.
-    ///
-    /// It expects all edges to already have a new dep node index assigned.
+    /// Encodes a node that was promoted from the previous graph, reading the node and its
+    /// fingerprint directly from the previous dep graph. It expects all edges to already
+    /// have a new dep node index assigned.
     #[inline]
     fn encode_promoted_node(
         &self,
@@ -794,12 +750,12 @@ impl EncoderState {
         local: &mut LocalEncoderState,
         edges: &[DepNodeIndex],
     ) {
-        let node = self.previous.index_to_node(prev_index);
-        let value_fingerprint = self.previous.value_fingerprint_for_index(prev_index);
-        let edge_count =
-            NodeInfo::encode_promoted(&mut local.encoder, node, index, value_fingerprint, edges);
-        self.flush_mem_encoder(&mut *local);
-        self.record(node, index, edge_count, edges, retained_graph, &mut *local);
+        let node = NodeInfo {
+            node: *self.previous.index_to_node(prev_index),
+            value_fingerprint: self.previous.value_fingerprint_for_index(prev_index),
+            edges,
+        };
+        self.encode_node(index, &node, retained_graph, local);
     }
 
     fn finish(&self, profiler: &SelfProfilerRef, current: &CurrentDepGraph) -> FileEncodeResult {
@@ -957,7 +913,7 @@ impl GraphEncoder {
         &self,
         node: DepNode,
         value_fingerprint: Fingerprint,
-        edges: EdgesVec,
+        edges: &[DepNodeIndex],
     ) -> DepNodeIndex {
         let _prof_timer = self.profiler.generic_activity("incr_comp_encode_dep_graph");
         let node = NodeInfo { node, value_fingerprint, edges };
@@ -977,7 +933,7 @@ impl GraphEncoder {
         colors: &DepNodeColorMap,
         node: DepNode,
         value_fingerprint: Fingerprint,
-        edges: EdgesVec,
+        edges: &[DepNodeIndex],
         is_green: bool,
     ) -> DepNodeIndex {
         let _prof_timer = self.profiler.generic_activity("incr_comp_encode_dep_graph");

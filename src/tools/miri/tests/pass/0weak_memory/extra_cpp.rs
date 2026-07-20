@@ -3,8 +3,6 @@
 // Tests operations not performable through C++'s atomic API
 // but doable in safe (at least sound) Rust.
 
-#![feature(atomic_from_mut)]
-
 use std::sync::atomic::Ordering::*;
 use std::sync::atomic::{AtomicU16, AtomicU32};
 use std::thread::spawn;

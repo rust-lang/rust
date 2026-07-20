@@ -1,8 +1,8 @@
 error: doc comment uses two spaces for a hard line break
-  --> tests/ui/doc/doc_comment_double_space_linebreaks.rs:8:43
+  --> tests/ui/doc/doc_comment_double_space_linebreaks.rs:8:44
    |
-LL | //! Should warn on double space linebreaks  
-   |                                           ^^
+LL | //! Should warn on double space line breaks  
+   |                                            ^^
    |
    = help: replace this double space with a backslash: `\`
    = note: `-D clippy::doc-comment-double-space-linebreaks` implied by `-D warnings`
@@ -13,7 +13,7 @@ error: doc comment uses two spaces for a hard line break
    |
 LL | /// Should warn when doc comment uses double space  
    |                                                   ^^
-LL | /// as a line-break, even when there are multiple  
+LL | /// as a line break, even when there are multiple  
    |                                                  ^^
    |
    = help: replace this double space with a backslash: `\`

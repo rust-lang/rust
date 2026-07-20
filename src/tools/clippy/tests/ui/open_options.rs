@@ -1,4 +1,3 @@
-#![allow(unused_must_use)]
 #![warn(clippy::nonsensical_open_options)]
 
 use std::fs::OpenOptions;

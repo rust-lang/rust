@@ -467,6 +467,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     res: Res::Err,
                     args: Some(constraint.gen_args),
                     infer_args: false,
+                    delegation_child_segment: false,
                 };
 
                 let alias_args = self.lower_generic_args_of_assoc_item(

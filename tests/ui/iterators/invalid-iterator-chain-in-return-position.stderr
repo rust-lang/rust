@@ -1,0 +1,69 @@
+error[E0271]: expected `foo` to return `i32`, but it returns `()`
+  --> $DIR/invalid-iterator-chain-in-return-position.rs:10:13
+   |
+LL | fn bar() -> impl Iterator<Item = i32> {
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `i32`, found `()`
+...
+LL |     x.iter_mut().map(foo)
+   |     --------------------- return type was inferred to be `Map<std::slice::IterMut<'_, Vec<u8>>, for<'a> fn(&'a mut Vec<u8>) {foo}>` here
+   |
+   = note: required for `Map<std::slice::IterMut<'_, Vec<u8>>, for<'a> fn(&'a mut Vec<u8>) {foo}>` to implement `Iterator`
+note: the method call chain might not have had the expected associated types
+  --> $DIR/invalid-iterator-chain-in-return-position.rs:16:18
+   |
+LL |       let mut x: Vec<Vec<u8>> = vec![
+   |  _______________________________-
+LL | |         vec![0, 2, 1],
+LL | |         vec![5, 4, 3],
+LL | |     ];
+   | |_____- this expression has type `Vec<Vec<u8>>`
+LL |       x.iter_mut().map(foo)
+   |         ---------- ^^^^^^^^ `Iterator::Item` changed to `()` here
+   |         |
+   |         `Iterator::Item` is `&mut Vec<u8>` here
+
+error[E0271]: expected `foo` to return `i32`, but it returns `()`
+  --> $DIR/invalid-iterator-chain-in-return-position.rs:19:13
+   |
+LL | fn baz() -> impl Iterator<Item = i32> {
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `i32`, found `()`
+...
+LL |     it
+   |     -- return type was inferred to be `Map<std::slice::IterMut<'_, Vec<u8>>, for<'a> fn(&'a mut Vec<u8>) {foo}>` here
+   |
+   = note: required for `Map<std::slice::IterMut<'_, Vec<u8>>, for<'a> fn(&'a mut Vec<u8>) {foo}>` to implement `Iterator`
+note: the method call chain might not have had the expected associated types
+  --> $DIR/invalid-iterator-chain-in-return-position.rs:25:27
+   |
+LL |       let mut x: Vec<Vec<u8>> = vec![
+   |  _______________________________-
+LL | |         vec![0, 2, 1],
+LL | |         vec![5, 4, 3],
+LL | |     ];
+   | |_____- this expression has type `Vec<Vec<u8>>`
+LL |       let it = x.iter_mut().map(foo);
+   |                  ---------- ^^^^^^^^ `Iterator::Item` changed to `()` here
+   |                  |
+   |                  `Iterator::Item` is `&mut Vec<u8>` here
+
+error[E0271]: expected `IntoIter<u32>` to be an iterator that yields `i32`, but it yields `u32`
+  --> $DIR/invalid-iterator-chain-in-return-position.rs:29:17
+   |
+LL | fn chained() -> impl Iterator<Item = i32> {
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^ expected `i32`, found `u32`
+   |
+note: the method call chain might not have had the expected associated types
+  --> $DIR/invalid-iterator-chain-in-return-position.rs:32:7
+   |
+LL |     let x = vec![0u32, 1, 2];
+   |             ---------------- this expression has type `Vec<u32>`
+LL |     x.into_iter().filter(|x| *x > 0).map(|x| x.checked_add(1)).flatten()
+   |       ^^^^^^^^^^^ ------------------ ------------------------- ^^^^^^^^^ `Iterator::Item` changed to `u32` here
+   |       |           |                  |
+   |       |           |                  `Iterator::Item` changed to `Option<u32>` here
+   |       |           `Iterator::Item` remains `u32` here
+   |       `Iterator::Item` is `u32` here
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0271`.

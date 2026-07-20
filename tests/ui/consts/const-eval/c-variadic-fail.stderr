@@ -418,7 +418,7 @@ LL |     const { read_as::<*const fn(&'static ())>(std::ptr::dangling::<for<'a> 
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error[E0080]: memory access failed: ALLOC0 has been freed, so this pointer is dangling
+error[E0080]: memory access failed: ALLOC$ID has been freed, so this pointer is dangling
   --> $DIR/c-variadic-fail.rs:140:13
    |
 LL |             ap.next_arg::<i32>();
@@ -451,7 +451,7 @@ LL | |     };
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error[E0080]: using ALLOC1 as variable argument list pointer but it does not point to a variable argument list
+error[E0080]: using ALLOC$ID as variable argument list pointer but it does not point to a variable argument list
   --> $DIR/c-variadic-fail.rs:162:22
    |
 LL |     const { unsafe { helper(1, 2, 3) } };
@@ -483,7 +483,7 @@ LL |     const { unsafe { helper(1, 2, 3) } };
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error[E0080]: using ALLOC2 as variable argument list pointer but it does not point to a variable argument list
+error[E0080]: using ALLOC$ID as variable argument list pointer but it does not point to a variable argument list
   --> $DIR/c-variadic-fail.rs:178:22
    |
 LL |     const { unsafe { helper(1, 2, 3) } };
@@ -515,7 +515,7 @@ LL |     const { unsafe { helper(1, 2, 3) } };
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error[E0080]: using ALLOC3 as variable argument list pointer but it does not point to a variable argument list
+error[E0080]: using ALLOC$ID as variable argument list pointer but it does not point to a variable argument list
   --> $DIR/c-variadic-fail.rs:191:22
    |
 LL |     const { unsafe { helper(1, 2, 3) } };

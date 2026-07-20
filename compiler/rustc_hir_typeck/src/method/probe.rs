@@ -12,6 +12,7 @@ use rustc_hir_analysis::autoderef::{self, Autoderef};
 use rustc_infer::infer::canonical::{Canonical, OriginalQueryValues, QueryResponse};
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk, TyCtxtInferExt};
 use rustc_infer::traits::{ObligationCauseCode, PredicateObligation, query};
+use rustc_lint::builtin::METHOD_CALL_ON_DIVERGING_INFER_VAR;
 use rustc_macros::Diagnostic;
 use rustc_middle::middle::stability;
 use rustc_middle::ty::elaborate::supertrait_def_ids;
@@ -86,6 +87,15 @@ pub(crate) struct ProbeContext<'a, 'tcx> {
     /// machinery, since we don't particularly care about, for example, similarly named
     /// candidates if we're *reporting* similarly named candidates.
     is_suggestion: IsSuggestion,
+
+    /// Hack for applying method probing routine for arbitrary types
+    /// in order to get adjustments as if they were at receiver position.
+    /// Used only for delegation's `Self` arguments mapping.
+    /// FIXME(fn_delegation): now this hack is used, however in perfect world
+    /// we would like to separate adjustments finding logic from probe context,
+    /// if we do so we will be able to find wanted adjustments given only two
+    /// types without reusing the whole method probing routine
+    self_ty_override: Option<Ty<'tcx>>,
 }
 
 impl<'a, 'tcx> Deref for ProbeContext<'a, 'tcx> {
@@ -259,10 +269,10 @@ pub(crate) enum Mode {
     Path,
 }
 
-#[derive(PartialEq, Eq, Copy, Clone, Debug)]
-pub(crate) enum ProbeScope {
+#[derive(PartialEq, Eq, Debug)]
+pub(crate) enum ProbeScope<'tcx> {
     // Single candidate coming from pre-resolved delegation method.
-    Single(DefId),
+    Single(DefId, Option<Ty<'tcx>> /* self_ty override */),
 
     // Assemble candidates coming only from traits in scope.
     TraitsInScope,
@@ -330,7 +340,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         is_suggestion: IsSuggestion,
         self_ty: Ty<'tcx>,
         scope_expr_id: HirId,
-        scope: ProbeScope,
+        scope: ProbeScope<'tcx>,
     ) -> PickResult<'tcx> {
         self.probe_op(
             item_name.span,
@@ -354,7 +364,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         is_suggestion: IsSuggestion,
         self_ty: Ty<'tcx>,
         scope_expr_id: HirId,
-        scope: ProbeScope,
+        scope: ProbeScope<'tcx>,
     ) -> Result<Vec<Candidate<'tcx>>, MethodError<'tcx>> {
         self.probe_op(
             item_name.span,
@@ -384,7 +394,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         is_suggestion: IsSuggestion,
         self_ty: Ty<'tcx>,
         scope_expr_id: HirId,
-        scope: ProbeScope,
+        scope: ProbeScope<'tcx>,
         op: OP,
     ) -> Result<R, MethodError<'tcx>>
     where
@@ -393,6 +403,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         #[derive(Diagnostic)]
         #[diag("type annotations needed")]
         struct MissingTypeAnnot;
+
+        #[derive(Diagnostic)]
+        #[diag("method call on a diverging inference variable")]
+        #[help("consider providing a type annotation")]
+        struct MethodCallOnDivergingInferenceVariable;
 
         let mut orig_values = OriginalQueryValues::default();
         let predefined_opaques_in_body = if self.next_trait_solver() {
@@ -459,6 +474,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // If we encountered an `_` type or an error type during autoderef, this is
         // ambiguous.
         if let Some(bad_ty) = &steps.opt_bad_ty {
+            // We care about the opt_bad_ty given the inference state at the point of computing the auto deref chain,
+            // so we don't call structurally_resolve_type as it processes obligations in our local FnCtxt,
+            // potentially making inference progress.
+            let ty = &bad_ty.ty;
+            let ty = self
+                .probe_instantiate_query_response(span, &orig_values, ty)
+                .unwrap_or_else(|_| span_bug!(span, "instantiating {:?} failed?", ty));
+            let ty = ty.value;
+
             if is_suggestion.0 {
                 // Ambiguity was encountered during a suggestion. There's really
                 // not much use in suggesting methods in this case.
@@ -482,15 +506,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     span,
                     MissingTypeAnnot,
                 );
+            // If `ty` is an inference variable that was created by being adjusted from the never type,
+            // We demand the type to be equal to the never type, so we can probe the never type for methods
+            // (see https://github.com/rust-lang/rust/issues/143349)
+            } else if let ty::Infer(ty::TyVar(ty_id)) = *ty.kind()
+                && let ty_id = self.sub_unification_table_root_var(ty_id)
+                && self
+                    .diverging_type_vars
+                    .borrow()
+                    .iter()
+                    .any(|&candidate_id| self.sub_unification_table_root_var(candidate_id) == ty_id)
+            {
+                self.tcx.emit_node_span_lint(
+                    METHOD_CALL_ON_DIVERGING_INFER_VAR,
+                    scope_expr_id,
+                    span,
+                    MethodCallOnDivergingInferenceVariable,
+                );
+                let root_ty = Ty::new_var(self.tcx, ty_id);
+                self.demand_eqtype(span, root_ty, self.tcx.types.never);
             } else {
-                // Ended up encountering a type variable when doing autoderef,
-                // but it may not be a type variable after processing obligations
-                // in our local `FnCtxt`, so don't call `structurally_resolve_type`.
-                let ty = &bad_ty.ty;
-                let ty = self
-                    .probe_instantiate_query_response(span, &orig_values, ty)
-                    .unwrap_or_else(|_| span_bug!(span, "instantiating {:?} failed?", ty));
-                let ty = self.resolve_vars_if_possible(ty.value);
                 let guar = match *ty.kind() {
                     _ if let Some(guar) = self.tainted_by_errors() => guar,
                     ty::Infer(ty::TyVar(_)) => {
@@ -511,7 +546,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             && !self.tcx.features().arbitrary_self_types();
 
                         let mut err = self.err_ctxt().emit_inference_failure_err(
-                            self.body_id,
+                            self.body_def_id,
                             err_span,
                             ty.into(),
                             TypeAnnotationNeeded::E0282,
@@ -556,7 +591,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     probe_cx.assemble_inherent_candidates();
                     probe_cx.assemble_extension_candidates_for_all_traits();
                 }
-                ProbeScope::Single(def_id) => {
+                ProbeScope::Single(def_id, self_ty_override) => {
                     let item = self.tcx.associated_item(def_id);
                     // FIXME(fn_delegation): Delegation to inherent methods is not yet supported.
                     assert_eq!(item.container, AssocContainer::Trait);
@@ -567,6 +602,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let trait_args = self.fresh_args_for_item(trait_span, trait_def_id);
                     let trait_ref = ty::TraitRef::new_from_args(self.tcx, trait_def_id, trait_args);
 
+                    probe_cx.self_ty_override = self_ty_override;
                     probe_cx.push_candidate(
                         Candidate {
                             item,
@@ -782,6 +818,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             static_candidates: RefCell::new(Vec::new()),
             scope_expr_id,
             is_suggestion,
+            self_ty_override: None,
         }
     }
 
@@ -810,9 +847,9 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     fn push_candidate(&mut self, candidate: Candidate<'tcx>, is_inherent: bool) {
         let is_accessible = if let Some(name) = self.method_name {
             let item = candidate.item;
-            let hir_id = self.tcx.local_def_id_to_hir_id(self.body_id);
+            let container_id = item.container_id(self.tcx);
             let def_scope =
-                self.tcx.adjust_ident_and_get_scope(name, item.container_id(self.tcx), hir_id).1;
+                self.tcx.adjust_ident_and_get_scope(name, container_id, self.body_def_id).1;
             item.visibility(self.tcx).is_accessible_from(def_scope, self.tcx)
         } else {
             true
@@ -995,12 +1032,12 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         // We use `DeepRejectCtxt` here which may return false positive on where clauses
         // with alias self types. We need to later on reject these as inherent candidates
         // in `consider_probe`.
-        let bounds = self.param_env.caller_bounds().iter().filter_map(|predicate| {
-            let bound_predicate = predicate.kind();
-            match bound_predicate.skip_binder() {
+        let bounds = self.param_env.caller_bounds().iter().filter_map(|clause| {
+            let bound_clause = clause.kind();
+            match bound_clause.skip_binder() {
                 ty::ClauseKind::Trait(trait_predicate) => DeepRejectCtxt::relate_rigid_rigid(tcx)
                     .types_may_unify(param_ty, trait_predicate.trait_ref.self_ty())
-                    .then(|| bound_predicate.rebind(trait_predicate.trait_ref)),
+                    .then(|| bound_clause.rebind(trait_predicate.trait_ref)),
                 ty::ClauseKind::RegionOutlives(_)
                 | ty::ClauseKind::TypeOutlives(_)
                 | ty::ClauseKind::Projection(_)
@@ -1881,13 +1918,19 @@ impl<'tcx> Pick<'tcx> {
 }
 
 impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
-    fn select_trait_candidate(
+    fn select_trait_candidate_for_diagnostics(
         &self,
         trait_ref: ty::TraitRef<'tcx>,
     ) -> traits::SelectionResult<'tcx, traits::Selection<'tcx>> {
         let obligation =
             traits::Obligation::new(self.tcx, self.misc(self.span), self.param_env, trait_ref);
-        traits::SelectionContext::new(self).select(&obligation)
+        let candidate = traits::SelectionContext::new(self).select(&obligation);
+        if let Ok(Some(traits::ImplSource::UserDefined(impl_source_user_defined_data))) = &candidate
+            && self.infcx.tcx.do_not_recommend_impl(impl_source_user_defined_data.impl_def_id)
+        {
+            return Err(traits::SelectionError::Unimplemented);
+        }
+        candidate
     }
 
     /// Used for ambiguous method call error reporting. Uses probing that throws away the result internally,
@@ -1915,7 +1958,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     xform_self_ty,
                     self_ty,
                 );
-                match self.select_trait_candidate(trait_ref) {
+                match self.select_trait_candidate_for_diagnostics(trait_ref) {
                     Ok(Some(traits::ImplSource::UserDefined(ref impl_data))) => {
                         // If only a single impl matches, make the error message point
                         // to that impl.
@@ -1936,7 +1979,6 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         }
     }
 
-    #[instrument(level = "debug", skip(self, possibly_unsatisfied_predicates), ret)]
     fn consider_probe(
         &self,
         self_ty: Ty<'tcx>,
@@ -2084,7 +2126,9 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         ocx.register_obligation(obligation);
                     } else {
                         result = ProbeResult::NoMatch;
-                        if let Ok(Some(candidate)) = self.select_trait_candidate(trait_ref) {
+                        if let Ok(Some(candidate)) =
+                            self.select_trait_candidate_for_diagnostics(trait_ref)
+                        {
                             for nested_obligation in candidate.nested_obligations() {
                                 if !self.infcx.predicate_may_hold(&nested_obligation) {
                                     possibly_unsatisfied_predicates.push((
@@ -2544,7 +2588,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     ) -> (Ty<'tcx>, Option<Ty<'tcx>>) {
         if item.is_fn() && self.mode == Mode::MethodCall {
             let sig = self.xform_method_sig(item.def_id, args);
-            (sig.inputs()[0], Some(sig.output()))
+            (self.self_ty_override.unwrap_or(sig.inputs()[0]), Some(sig.output()))
         } else {
             (impl_ty, None)
         }

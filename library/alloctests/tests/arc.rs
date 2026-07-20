@@ -328,3 +328,65 @@ mod pin_coerce_unsized {
         arg
     }
 }
+
+/// Test that `Arc::make_mut` does not forget an allocator when it steals the data.
+#[test]
+fn issue_158875_make_mut_dont_leak_allocator() {
+    use std::alloc::Global;
+
+    let alloc = Rc::new(Global);
+
+    {
+        let mut arc = Arc::new_in(123, alloc.clone());
+        let weak = Arc::downgrade(&arc); // create a weak so make_mut steals the data
+        _ = Arc::make_mut(&mut arc);
+        assert_eq!(weak.upgrade(), None);
+    }
+
+    assert_eq!(Rc::strong_count(&alloc), 1); // if this is >1, we have a memory leak!
+}
+
+/// Test that `Arc::make_mut` does not cause a UAF if the allocator panics on
+/// clone when it steals the data.
+#[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
+fn issue_155746_make_mut_panic_safety() {
+    use std::alloc::{Allocator, System};
+    use std::panic::AssertUnwindSafe;
+
+    #[derive(Default)]
+    struct PanickingCloneAlloc {
+        do_panic: Rc<Cell<bool>>,
+    }
+    unsafe impl Allocator for PanickingCloneAlloc {
+        fn allocate(
+            &self,
+            layout: std::alloc::Layout,
+        ) -> Result<std::ptr::NonNull<[u8]>, std::alloc::AllocError> {
+            System.allocate(layout)
+        }
+
+        unsafe fn deallocate(&self, ptr: std::ptr::NonNull<u8>, layout: std::alloc::Layout) {
+            unsafe { System.deallocate(ptr, layout) }
+        }
+    }
+    impl Clone for PanickingCloneAlloc {
+        fn clone(&self) -> Self {
+            if self.do_panic.get() { panic!() } else { Self { do_panic: self.do_panic.clone() } }
+        }
+    }
+
+    let alloc = PanickingCloneAlloc::default();
+    let mut arc = Arc::new_in(vec![vec![1]], alloc.clone());
+
+    let _weak = Arc::downgrade(&arc); // create a weak so make_mut steals the data
+
+    alloc.do_panic.set(true);
+    std::panic::catch_unwind(AssertUnwindSafe(|| {
+        Arc::make_mut(&mut arc);
+    }))
+    .unwrap_err();
+
+    assert_eq!(*arc, [[1]]);
+    assert_eq!(Arc::strong_count(&arc), 1); // if this is 0, we have a UAF!
+}

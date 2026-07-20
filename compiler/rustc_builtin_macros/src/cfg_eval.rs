@@ -3,7 +3,7 @@ use core::ops::ControlFlow;
 use rustc_ast as ast;
 use rustc_ast::mut_visit::MutVisitor;
 use rustc_ast::visit::{AssocCtxt, Visitor};
-use rustc_ast::{Attribute, HasAttrs, HasTokens, NodeId, mut_visit, visit};
+use rustc_ast::{Attribute, HasTokens, NodeId, mut_visit, visit};
 use rustc_errors::PResult;
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_expand::config::StripUnconfigured;
@@ -67,7 +67,7 @@ fn has_cfg_or_cfg_attr(annotatable: &Annotatable) -> bool {
 }
 
 impl CfgEval<'_> {
-    fn configure<T: HasAttrs + HasTokens>(&mut self, node: T) -> Option<T> {
+    fn configure<T: HasTokens>(&mut self, node: T) -> Option<T> {
         self.0.configure(node)
     }
 

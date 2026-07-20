@@ -340,7 +340,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 | ObligationCauseCode::WhereClauseInExpr(..) = code
                 {
                     self.note_obligation_cause_code(
-                        error.obligation.cause.body_id,
+                        error.obligation.cause.body_def_id,
                         &mut diag,
                         error.obligation.predicate,
                         error.obligation.param_env,

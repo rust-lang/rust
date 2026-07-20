@@ -1,5 +1,8 @@
 use crate::cell::Cell;
 
+#[cfg(target_has_threads)]
+compile_error!("Using no_threads implementation on a target with threads");
+
 pub struct RwLock {
     // This platform has no threads, so we can use a Cell here.
     mode: Cell<isize>,

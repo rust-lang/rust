@@ -7,7 +7,7 @@ use base_db::{
     SourceRootId, SourceRootInput, all_crates, relevant_crates, set_all_crates_with_durability,
 };
 
-use hir_def::{ModuleId, db::DefDatabase, nameres::crate_def_map};
+use hir_def::{ModuleId, nameres::crate_def_map};
 use hir_expand::EditionedFileId;
 use rustc_hash::FxHashMap;
 use salsa::Durability;
@@ -43,7 +43,7 @@ impl Default for TestDB {
             crates_map: Default::default(),
             nonce: Nonce::new(),
         };
-        this.set_expand_proc_attr_macros_with_durability(true, Durability::HIGH);
+        hir_def::set_expand_proc_attr_macros(&mut this, true);
         // This needs to be here otherwise `CrateGraphBuilder` panics.
         set_all_crates_with_durability(&mut this, std::iter::empty(), Durability::HIGH);
         _ = base_db::LibraryRoots::builder(Default::default())

@@ -1,4 +1,3 @@
-#![allow(unused)]
 #![warn(clippy::redundant_type_annotations)]
 
 #[derive(Debug, Default)]

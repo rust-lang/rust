@@ -27,7 +27,7 @@ impl Input {
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
             kind: Vec::with_capacity(capacity),
-            joint: Vec::with_capacity(capacity / size_of::<bits>()),
+            joint: Vec::with_capacity(capacity.div_ceil(bits::BITS as usize)),
             contextual_kind: Vec::with_capacity(capacity),
             edition: Vec::with_capacity(capacity),
         }

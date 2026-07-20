@@ -17,6 +17,10 @@ macro_rules! accidental_dollar_prefix {
     ( $test:$tt ) => {}; //~ ERROR missing fragment
 }
 
+macro_rules! accidental_dollar_prefix_in_repetition {
+    ( $($test:$tt),* ) => {}; //~ ERROR missing fragment
+}
+
 fn main() {
     used_arm!();
     used_macro_unused_arm!();

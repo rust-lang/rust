@@ -1,4 +1,4 @@
-// ignore-tidy-filelength
+// ignore-tidy-file-filelength
 
 use std::num::NonZero;
 
@@ -266,7 +266,7 @@ impl<'a> Diagnostic<'a, ()> for BuiltinUngatedAsyncFnTrackCaller<'_> {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
         let mut diag = Diag::new(dcx, level, "`#[track_caller]` on async functions is a no-op")
             .with_span_label(self.label, "this function will not propagate the caller location");
-        rustc_session::errors::add_feature_diagnostics(
+        rustc_session::diagnostics::add_feature_diagnostics(
             &mut diag,
             self.session,
             sym::async_fn_track_caller,
@@ -319,7 +319,7 @@ impl<'a> Diagnostic<'a, ()> for BuiltinTypeAliasBounds<'_> {
                 see issue #112792 <https://github.com/rust-lang/rust/issues/112792> for more information"
             ));
         if self.enable_feat_help {
-            diag.help(msg!("add `#![feature(lazy_type_alias)]` to the crate attributes to enable the desired semantics"));
+            diag.help(msg!("add `#![feature(checked_type_aliases)]` to the crate attributes to enable the desired semantics"));
         }
 
         // We perform the walk in here instead of in `<TypeAliasBounds as LateLintPass>` to
@@ -601,8 +601,6 @@ pub(crate) struct BuiltinDerefNullptr {
     pub label: Span,
 }
 
-// FIXME: migrate fluent::lint::builtin_asm_labels
-
 #[derive(Diagnostic)]
 pub(crate) enum BuiltinSpecialModuleNameUsed {
     #[diag("found module declaration for lib.rs")]
@@ -612,6 +610,33 @@ pub(crate) enum BuiltinSpecialModuleNameUsed {
     #[diag("found module declaration for main.rs")]
     #[note("a binary crate cannot be used as library")]
     Main,
+}
+
+// c_void_return.rs
+#[derive(Diagnostic)]
+#[diag("`c_void` should not be used as a return type")]
+#[help("returning `()` in Rust is equivalent to returning `void` in C")]
+pub(crate) struct CVoidReturn {
+    #[suggestion(
+        "remove the return type to implicitly return `()`",
+        code = "",
+        applicability = "maybe-incorrect"
+    )]
+    pub suggestion: Span,
+}
+
+// c_void_return.rs
+#[derive(Diagnostic)]
+#[diag("declarations returning `c_void` are not compatible with C functions returning `void`")]
+#[help("returning `()` in Rust is equivalent to returning `void` in C")]
+#[note("`c_void` is only used through raw pointers for compatibility with `void` pointers")]
+pub(crate) struct ExternCVoidReturn {
+    #[suggestion(
+        "remove the return type to implicitly return `()`",
+        code = "",
+        applicability = "maybe-incorrect"
+    )]
+    pub suggestion: Span,
 }
 
 // deref_into_dyn_supertrait.rs
@@ -2701,7 +2726,7 @@ pub(crate) enum MutRefSugg {
 
 #[derive(Subdiagnostic)]
 #[suggestion(
-    "this type already provides \"interior mutability\", so its binding doesn't need to be declared as mutable",
+    "this type already provides \"interior mutability\", so its binding doesn't need to be declared as mutable when borrowed with a shared reference",
     style = "verbose",
     applicability = "maybe-incorrect",
     code = ""

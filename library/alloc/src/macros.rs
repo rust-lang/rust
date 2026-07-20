@@ -39,6 +39,7 @@
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "vec_macro"]
 #[allow_internal_unstable(rustc_attrs, liballoc_internals)]
+#[rustc_diagnostic_opaque]
 macro_rules! vec {
     () => (
         $crate::vec::Vec::new()
@@ -108,6 +109,7 @@ macro_rules! vec {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow_internal_unstable(hint_must_use, liballoc_internals)]
 #[rustc_diagnostic_item = "format_macro"]
+#[rustc_diagnostic_opaque]
 macro_rules! format {
     ($($arg:tt)*) => {
         $crate::__export::must_use({

@@ -3,11 +3,10 @@
 
 #![allow(incomplete_features)]
 #![feature(splat)]
+#![feature(tuple_trait)]
 
 struct Foo<T>(T);
 
-// FIXME(splat): also add assoc/method with splatted generic tuple traits
-// also add generics inside the splatted tuple
 impl<T> Foo<T> {
     fn new(t: T) -> Self {
         Self(t)
@@ -20,12 +19,13 @@ impl<T> Foo<T> {
     fn lifetime<'a>(&self, #[splat] _s: (u32, f64, &'a str)) {}
 
     fn const_generic<const N: usize>(&self, #[splat] _s: (u32, f64, [u8; N])) {}
+
+    fn generic_in_tuple<U>(&self, #[splat] _s: (U, u32)) {}
+
+    fn generic_tuple_assoc<U: std::marker::Tuple>(_u: U, #[splat] _s: ()) {}
 }
 
-// FIXME(splat): also add generics to the trait
-// also add assoc/method with splatted generic tuple traits
-// also add generics inside the splatted tuple
-trait BarTrait {
+trait BarTrait<T> {
     fn trait_assoc<W>(w: W, #[splat] _s: ());
 
     fn trait_method<X>(&self, x: X, #[splat] _s: (u32, f64));
@@ -33,9 +33,13 @@ trait BarTrait {
     fn trait_lifetime<'a>(&self, #[splat] _s: (u32, f64, &'a str)) {}
 
     fn trait_const_generic<const N: usize>(&self, #[splat] _s: (u32, f64, [u8; N])) {}
+
+    fn trait_generic_in_tuple<U>(&self, #[splat] _s: (T, U)) {}
+
+    fn trait_generic_tuple<U: std::marker::Tuple>(&self, #[splat] _s: U) {}
 }
 
-impl<T> BarTrait for Foo<T> {
+impl<T> BarTrait<T> for Foo<T> {
     fn trait_assoc<W>(_w: W, #[splat] _s: ()) {}
 
     fn trait_method<X>(&self, _x: X, #[splat] _s: (u32, f64)) {}
@@ -43,6 +47,10 @@ impl<T> BarTrait for Foo<T> {
     fn trait_lifetime<'a>(&self, #[splat] _s: (u32, f64, &'a str)) {}
 
     fn trait_const_generic<const N: usize>(&self, #[splat] _s: (u32, f64, [u8; N])) {}
+
+    fn trait_generic_in_tuple<U>(&self, #[splat] _s: (T, U)) {}
+
+    fn trait_generic_tuple<U: std::marker::Tuple>(&self, #[splat] _s: U) {}
 }
 
 fn main() {
@@ -57,8 +65,13 @@ fn main() {
     foo.method("v", 1u32, 2.3);
     foo.lifetime(1u32, 2.3, "asdf");
     foo.const_generic(1u32, 2.3, [1, 2, 3]);
+    foo.generic_in_tuple(42i32, 1u32);
+    Foo::<f32>::generic_tuple_assoc(());
 
+    Foo::<u32>::trait_assoc("w");
     foo.trait_method("x", 42u32, 9.8);
     foo.trait_lifetime(1u32, 2.3, "asdf");
     foo.trait_const_generic(1u32, 2.3, [1, 2, 3]);
+    foo.trait_generic_in_tuple("hello", 42i32);
+    foo.trait_generic_tuple();
 }

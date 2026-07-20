@@ -311,7 +311,7 @@ impl<'tcx> rustc_type_ir::inherent::AdtDef<TyCtxt<'tcx>> for AdtDef<'tcx> {
 
     fn destructor(self, tcx: TyCtxt<'tcx>) -> Option<AdtDestructorKind> {
         Some(match tcx.constness(self.destructor(tcx)?.did) {
-            hir::Constness::Const { always: true } => todo!("FIXME(comptime)"),
+            hir::Constness::Const { always: true } => unimplemented!("FIXME(comptime)"),
             hir::Constness::Const { always: false } => AdtDestructorKind::Const,
             hir::Constness::NotConst => AdtDestructorKind::NotConst,
         })
@@ -331,6 +331,17 @@ impl From<AdtKind> for DataTypeKind {
             AdtKind::Struct => DataTypeKind::Struct,
             AdtKind::Union => DataTypeKind::Union,
             AdtKind::Enum => DataTypeKind::Enum,
+        }
+    }
+}
+
+impl AdtKind {
+    pub fn article(self) -> &'static str {
+        match self {
+            AdtKind::Struct => "a",
+            // https://english.stackexchange.com/a/266324
+            AdtKind::Union => "a",
+            AdtKind::Enum => "an",
         }
     }
 }
@@ -452,6 +463,14 @@ impl<'tcx> AdtDef<'tcx> {
             AdtKind::Struct => "struct",
             AdtKind::Union => "union",
             AdtKind::Enum => "enum",
+        }
+    }
+
+    /// Returns a description of this abstract data type with the article.
+    pub fn article(self) -> &'static str {
+        match self.adt_kind() {
+            AdtKind::Struct | AdtKind::Union => "a",
+            AdtKind::Enum => "an",
         }
     }
 

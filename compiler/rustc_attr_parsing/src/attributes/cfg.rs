@@ -1,7 +1,7 @@
 use std::convert::identity;
 
 use rustc_ast::token::Delimiter;
-use rustc_ast::tokenstream::DelimSpan;
+use rustc_ast::tokenstream::{DelimSpan, WithTokens};
 use rustc_ast::{AttrItem, Attribute, LitKind, ast, token};
 use rustc_errors::{Applicability, Diagnostic, PResult, msg};
 use rustc_feature::{Features, GatedCfg, find_gated_cfg};
@@ -11,7 +11,7 @@ use rustc_parse::parser::{ForceCollect, Parser, Recovery};
 use rustc_parse::{exp, parse_in};
 use rustc_session::Session;
 use rustc_session::config::ExpectedValues;
-use rustc_session::errors::feature_err;
+use rustc_session::diagnostics::feature_err;
 use rustc_session::lint::builtin::UNEXPECTED_CFGS;
 use rustc_session::parse::ParseSess;
 use rustc_span::{ErrorGuaranteed, Span, Symbol, sym};
@@ -319,8 +319,8 @@ pub fn parse_cfg_attr(
     sess: &Session,
     features: Option<&Features>,
     lint_node_id: ast::NodeId,
-) -> Option<(CfgEntry, Vec<(AttrItem, Span)>)> {
-    match cfg_attr.get_normal_item().args.unparsed_ref().unwrap() {
+) -> Option<(CfgEntry, Vec<(WithTokens<AttrItem>, Span)>)> {
+    match &cfg_attr.get_normal_item().args {
         ast::AttrArgs::Delimited(ast::DelimArgs { dspan, delim, tokens }) if !tokens.is_empty() => {
             check_cfg_attr_bad_delim(&sess.psess, *dspan, *delim);
             match parse_in(&sess.psess, tokens.clone(), "`cfg_attr` input", |p| {
@@ -349,7 +349,7 @@ pub fn parse_cfg_attr(
         }
         _ => {
             let (span, reason) = if let ast::AttrArgs::Delimited(ast::DelimArgs { dspan, .. }) =
-                cfg_attr.get_normal_item().args.unparsed_ref()?
+                cfg_attr.get_normal_item().args
             {
                 (dspan.entire(), AttributeParseErrorReason::ExpectedAtLeastOneArgument)
             } else {
@@ -393,7 +393,7 @@ fn parse_cfg_attr_internal<'a>(
     features: Option<&Features>,
     lint_node_id: ast::NodeId,
     attribute: &Attribute,
-) -> PResult<'a, (CfgEntry, Vec<(ast::AttrItem, Span)>)> {
+) -> PResult<'a, (CfgEntry, Vec<(WithTokens<ast::AttrItem>, Span)>)> {
     // Parse cfg predicate
     let pred_start = parser.token.span;
     let meta = MetaItemOrLitParser::parse_single(

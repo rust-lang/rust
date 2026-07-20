@@ -177,10 +177,10 @@ fn compare_method_predicate_entailment<'tcx>(
     trait_m: ty::AssocItem,
     impl_trait_ref: ty::TraitRef<'tcx>,
 ) -> Result<(), ErrorGuaranteed> {
-    // This node-id should be used for the `body_id` field on each
+    // This node-id should be used for the `body_def_id` field on each
     // `ObligationCause` (and the `FnCtxt`).
     //
-    // FIXME(@lcnr): remove that after removing `cause.body_id` from
+    // FIXME(@lcnr): remove that after removing `cause.body_def_id` from
     // obligations.
     let impl_m_def_id = impl_m.def_id.expect_local();
     let impl_m_span = tcx.def_span(impl_m_def_id);
@@ -239,26 +239,21 @@ fn compare_method_predicate_entailment<'tcx>(
     let hybrid_preds = hybrid_preds.into_iter().map(Unnormalized::skip_norm_wip);
     let normalize_cause = traits::ObligationCause::misc(impl_m_span, impl_m_def_id);
     let param_env = ty::ParamEnv::new(tcx.mk_clauses_from_iter(hybrid_preds));
-    // FIXME(-Zhigher-ranked-assumptions): The `hybrid_preds`
+    // NOTE(-Zhigher-ranked-assumptions): The `hybrid_preds`
     // should be well-formed. However, using them may result in
     // region errors as we currently don't track placeholder
     // assumptions.
     //
-    // To avoid being backwards incompatible with the old solver,
-    // we also eagerly normalize the where-bounds in the new solver
-    // here while ignoring region constraints. This means we can then
-    // use where-bounds whose normalization results in placeholder
-    // errors further down without getting any errors.
+    // We eagerly normalize the where-clauses here while ignoring
+    // region constraints. This means we can then use where-bounds
+    // whose normalization results in placeholder errors further
+    // down without getting any errors.
     //
-    // It should be sound to do so as the only region errors here
+    // This should be sound to do so as the only region errors here
     // should be due to missing implied bounds.
     //
     // cc trait-system-refactor-initiative/issues/166.
-    let param_env = if tcx.next_trait_solver_globally() {
-        traits::deeply_normalize_param_env_ignoring_regions(tcx, param_env, normalize_cause)
-    } else {
-        traits::normalize_param_env_or_error(tcx, param_env, normalize_cause)
-    };
+    let param_env = traits::normalize_param_env_or_error(tcx, param_env, normalize_cause);
     debug!(caller_bounds=?param_env.caller_bounds());
 
     let infcx = &tcx.infer_ctxt().build(TypingMode::non_body_analysis());
@@ -803,7 +798,7 @@ struct ImplTraitInTraitCollector<'a, 'tcx, E> {
     types: FxIndexMap<DefId, (Ty<'tcx>, ty::GenericArgsRef<'tcx>)>,
     span: Span,
     param_env: ty::ParamEnv<'tcx>,
-    body_id: LocalDefId,
+    impl_m_id: LocalDefId,
 }
 
 impl<'a, 'tcx, E> ImplTraitInTraitCollector<'a, 'tcx, E>
@@ -814,9 +809,9 @@ where
         ocx: &'a ObligationCtxt<'a, 'tcx, E>,
         span: Span,
         param_env: ty::ParamEnv<'tcx>,
-        body_id: LocalDefId,
+        impl_m_id: LocalDefId,
     ) -> Self {
-        ImplTraitInTraitCollector { ocx, types: FxIndexMap::default(), span, param_env, body_id }
+        ImplTraitInTraitCollector { ocx, types: FxIndexMap::default(), span, param_env, impl_m_id }
     }
 }
 
@@ -852,7 +847,7 @@ where
             {
                 let pred = pred.fold_with(self);
                 let pred = self.ocx.normalize(
-                    &ObligationCause::misc(self.span, self.body_id),
+                    &ObligationCause::misc(self.span, self.impl_m_id),
                     self.param_env,
                     Unnormalized::new_wip(pred),
                 );
@@ -861,7 +856,7 @@ where
                     self.cx(),
                     ObligationCause::new(
                         self.span,
-                        self.body_id,
+                        self.impl_m_id,
                         ObligationCauseCode::WhereClause(def_id, pred_span),
                     ),
                     self.param_env,
@@ -2351,7 +2346,7 @@ fn compare_type_predicate_entailment<'tcx>(
         return Ok(());
     }
 
-    // This `DefId` should be used for the `body_id` field on each
+    // This `DefId` should be used for the `body_def_id` field on each
     // `ObligationCause` (and the `FnCtxt`). This is what
     // `regionck_item` expects.
     let impl_ty_def_id = impl_ty.def_id.expect_local();
@@ -2636,7 +2631,7 @@ fn param_env_with_gat_bounds<'tcx>(
 ) -> ty::ParamEnv<'tcx> {
     let param_env = tcx.param_env(impl_ty.def_id);
     let container_id = impl_ty.container_id(tcx);
-    let mut predicates = param_env.caller_bounds().to_vec();
+    let mut clauses = param_env.caller_bounds().to_vec();
 
     // for RPITITs, we should install predicates that allow us to project all
     // of the RPITITs associated with the same body. This is because checking
@@ -2733,7 +2728,7 @@ fn param_env_with_gat_bounds<'tcx>(
                 //
                 // impl<T> X for T where T: X { type Y = <T as X>::Y; }
             }
-            _ => predicates.push(
+            _ => clauses.push(
                 ty::Binder::bind_with_vars(
                     ty::ProjectionPredicate {
                         projection_term: ty::AliasTerm::new_from_def_id(
@@ -2750,7 +2745,7 @@ fn param_env_with_gat_bounds<'tcx>(
         };
     }
 
-    ty::ParamEnv::new(tcx.mk_clauses(&predicates))
+    ty::ParamEnv::new(tcx.mk_clauses(&clauses))
 }
 
 /// Manually check here that `async fn foo()` wasn't matched against `fn foo()`,

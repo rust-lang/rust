@@ -9,10 +9,9 @@
 
 use rustc_ast as ast;
 use rustc_ast::visit;
-use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::lang_items::GenericRequirement;
-use rustc_hir::{LangItem, LanguageItems, MethodKind, Target};
+use rustc_hir::{LangItem, LanguageItems, Target};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
 use rustc_session::cstore::ExternCrate;
@@ -27,18 +26,10 @@ pub(crate) enum Duplicate {
     CrateDepends,
 }
 
-enum CollectWeak {
-    Allowed,
-    Ignore,
-}
-
 struct LanguageItemCollector<'ast, 'tcx> {
     items: LanguageItems,
     tcx: TyCtxt<'tcx>,
     resolver: &'ast ResolverAstLowering<'tcx>,
-    // FIXME(#118552): We should probably feed def_span eagerly on def-id creation
-    // so we can avoid constructing this map for local def-ids.
-    item_spans: FxHashMap<DefId, Span>,
     parent_item: Option<&'ast ast::Item>,
 }
 
@@ -47,13 +38,7 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
         tcx: TyCtxt<'tcx>,
         resolver: &'ast ResolverAstLowering<'tcx>,
     ) -> LanguageItemCollector<'ast, 'tcx> {
-        LanguageItemCollector {
-            tcx,
-            resolver,
-            items: LanguageItems::new(),
-            item_spans: FxHashMap::default(),
-            parent_item: None,
-        }
+        LanguageItemCollector { tcx, resolver, items: LanguageItems::new(), parent_item: None }
     }
 
     fn check_for_lang(
@@ -63,21 +48,30 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
         attrs: &'ast [ast::Attribute],
         item_span: Span,
         generics: Option<&'ast ast::Generics>,
-        collect_weak: CollectWeak,
     ) {
         if let Some((name, attr_span)) = extract_ast(attrs) {
             match LangItem::from_name(name) {
                 // Known lang item
                 Some(lang_item) => {
                     if actual_target != lang_item.target() {
-                        self.tcx
+                        // `#[panic_handler]` is turned into `#[lang = "panic_impl"]`, but in contrast
+                        // to the actual lang item attr, is applied to `Fn` instead of `ForeignFn`.
+                        if !(lang_item.is_weak()
+                            && actual_target == Target::Fn
+                            && lang_item.target() == Target::ForeignFn
+                            && matches!(lang_item, LangItem::PanicImpl))
+                        {
+                            self.tcx
                             .dcx()
-                            .delayed_bug("lang item target is checked in attribute parser");
-                        return;
+                            .delayed_bug(format!("lang item target is checked in attribute parser: {:?} has {} but expected {}", def_id, actual_target, lang_item.target()));
+                            return;
+                        }
                     }
                     // Weak lang items are handled separately
-                    // Weak only lang items are always handled here
-                    if !lang_item.is_weak() || matches!(collect_weak, CollectWeak::Allowed) {
+                    if lang_item.is_weak() && actual_target == Target::ForeignFn {
+                        self.items.missing.push(lang_item);
+                    } else {
+                        // Weak only lang items are always handled here
                         self.collect_item_extended(
                             lang_item,
                             def_id,
@@ -116,7 +110,6 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
                     .join(", ")
             };
 
-            let first_defined_span = self.item_spans.get(&original_def_id).copied();
             let mut orig_crate_name = None;
             let mut orig_dependency_of = None;
             let orig_is_local = original_def_id.is_local();
@@ -131,7 +124,7 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
                     .join(", ")
             };
 
-            if first_defined_span.is_none() {
+            if !original_def_id.is_local() {
                 orig_crate_name = Some(self.tcx.crate_name(original_def_id.krate));
                 if let Some(ExternCrate { dependency_of: inner_dependency_of, .. }) =
                     self.tcx.extern_crate(original_def_id.krate)
@@ -162,7 +155,7 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
                 dependency_of,
                 is_local,
                 path,
-                first_defined_span,
+                first_defined_span: original_def_id.as_local().map(|did| self.tcx.source_span(did)),
                 orig_crate_name,
                 orig_dependency_of,
                 orig_is_local,
@@ -172,10 +165,6 @@ impl<'ast, 'tcx> LanguageItemCollector<'ast, 'tcx> {
         } else {
             // Matched.
             self.items.set(lang_item, item_def_id);
-            // Collect span for error later
-            if let Some(item_span) = item_span {
-                self.item_spans.insert(item_def_id, item_span);
-            }
         }
     }
 
@@ -269,7 +258,7 @@ fn get_lang_items(tcx: TyCtxt<'_>, (): ()) -> LanguageItems {
     visit::Visitor::visit_crate(&mut collector, krate);
 
     // Find all required but not-yet-defined lang items.
-    weak_lang_items::check_crate(tcx, &mut collector.items, krate);
+    weak_lang_items::check_crate(tcx, &mut collector.items);
 
     // Return all the lang items that were found.
     collector.items
@@ -277,27 +266,7 @@ fn get_lang_items(tcx: TyCtxt<'_>, (): ()) -> LanguageItems {
 
 impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
     fn visit_item(&mut self, i: &'ast ast::Item) {
-        let target = match &i.kind {
-            ast::ItemKind::ExternCrate(..) => Target::ExternCrate,
-            ast::ItemKind::Use(_) => Target::Use,
-            ast::ItemKind::Static(_) => Target::Static,
-            ast::ItemKind::Const(_) | ast::ItemKind::ConstBlock(_) => Target::Const,
-            ast::ItemKind::Fn(_) | ast::ItemKind::Delegation(..) => Target::Fn,
-            ast::ItemKind::Mod(..) => Target::Mod,
-            ast::ItemKind::ForeignMod(_) => Target::ForeignFn,
-            ast::ItemKind::GlobalAsm(_) => Target::GlobalAsm,
-            ast::ItemKind::TyAlias(_) => Target::TyAlias,
-            ast::ItemKind::Enum(..) => Target::Enum,
-            ast::ItemKind::Struct(..) => Target::Struct,
-            ast::ItemKind::Union(..) => Target::Union,
-            ast::ItemKind::Trait(_) => Target::Trait,
-            ast::ItemKind::TraitAlias(..) => Target::TraitAlias,
-            ast::ItemKind::Impl(imp_) => Target::Impl { of_trait: imp_.of_trait.is_some() },
-            ast::ItemKind::MacroDef(..) => Target::MacroDef,
-            ast::ItemKind::MacCall(_) | ast::ItemKind::DelegationMac(_) => {
-                unreachable!("macros should have been expanded")
-            }
-        };
+        let target = Target::from_ast_item(i);
 
         self.check_for_lang(
             target,
@@ -305,7 +274,6 @@ impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
             &i.attrs,
             i.span,
             i.opt_generics(),
-            CollectWeak::Allowed,
         );
 
         let parent_item = self.parent_item.replace(i);
@@ -315,12 +283,11 @@ impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
 
     fn visit_foreign_item(&mut self, i: &'ast ast::ForeignItem) {
         self.check_for_lang(
-            Target::Fn,
+            Target::from_foreign_item_kind(&i.kind),
             self.resolver.owners[&i.id].def_id,
             &i.attrs,
             i.span,
             None,
-            CollectWeak::Ignore,
         );
     }
 
@@ -331,48 +298,14 @@ impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
             &variant.attrs,
             variant.span,
             None,
-            CollectWeak::Allowed,
         );
     }
 
     fn visit_assoc_item(&mut self, i: &'ast ast::AssocItem, ctxt: visit::AssocCtxt) {
-        let (target, generics) = match &i.kind {
-            ast::AssocItemKind::Fn(..) | ast::AssocItemKind::Delegation(..) => {
-                let (body, generics) = if let ast::AssocItemKind::Fn(fun) = &i.kind {
-                    (fun.body.is_some(), Some(&fun.generics))
-                } else {
-                    (true, None)
-                };
-                (
-                    match &self.parent_item.unwrap().kind {
-                        ast::ItemKind::Impl(i) => {
-                            if i.of_trait.is_some() {
-                                Target::Method(MethodKind::TraitImpl)
-                            } else {
-                                Target::Method(MethodKind::Inherent)
-                            }
-                        }
-                        ast::ItemKind::Trait(_) => Target::Method(MethodKind::Trait { body }),
-                        _ => unreachable!(),
-                    },
-                    generics,
-                )
-            }
-            ast::AssocItemKind::Const(ct) => (Target::AssocConst, Some(&ct.generics)),
-            ast::AssocItemKind::Type(ty) => (Target::AssocTy, Some(&ty.generics)),
-            ast::AssocItemKind::MacCall(_) | ast::AssocItemKind::DelegationMac(_) => {
-                unreachable!("macros should have been expanded")
-            }
-        };
+        let target = Target::from_assoc_item_kind(&i.kind, ctxt);
+        let generics = i.opt_generics();
 
-        self.check_for_lang(
-            target,
-            self.resolver.owners[&i.id].def_id,
-            &i.attrs,
-            i.span,
-            generics,
-            CollectWeak::Allowed,
-        );
+        self.check_for_lang(target, self.resolver.owners[&i.id].def_id, &i.attrs, i.span, generics);
 
         visit::walk_assoc_item(self, i, ctxt);
     }

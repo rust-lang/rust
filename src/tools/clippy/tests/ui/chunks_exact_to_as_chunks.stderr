@@ -50,7 +50,51 @@ help: consider using `as_chunks_mut::<4>()` instead
    |
 LL |     let mut it = arr.chunks_exact_mut(4);
    |                      ^^^^^^^^^^^^^^^^^^^
-   = note: you can access the chunks using `it.0.iter()`, and the remainder using `it.1`
+   = note: you can access the chunks using `it.0.iter_mut()`, and the remainder using `it.1`
 
-error: aborting due to 4 previous errors
+error: using `chunks_exact` with a constant chunk size
+  --> tests/ui/chunks_exact_to_as_chunks.rs:47:23
+   |
+LL |         let _ = slice.chunks_exact(N);
+   |                       ^^^^^^^^^^^^^^^
+   |
+help: consider using `as_chunks::<N>()` instead
+  --> tests/ui/chunks_exact_to_as_chunks.rs:47:23
+   |
+LL |         let _ = slice.chunks_exact(N);
+   |                       ^^^^^^^^^^^^^^^
+
+error: using `chunks_exact` with a constant chunk size
+  --> tests/ui/chunks_exact_to_as_chunks.rs:49:23
+   |
+LL |           let _ = slice.chunks_exact({
+   |  _______________________^
+LL | |
+LL | |             const fn bar<const M: usize>() -> usize {
+LL | |                 M
+LL | |             }
+LL | |             bar::<5>()
+LL | |         });
+   | |__________^
+   |
+help: consider using `as_chunks::<{
+
+                  const fn bar<const M: usize>() -> usize {
+                      M
+                  }
+                  bar::<5>()
+              }>()` instead
+  --> tests/ui/chunks_exact_to_as_chunks.rs:49:23
+   |
+LL |           let _ = slice.chunks_exact({
+   |  _______________________^
+LL | |
+LL | |             const fn bar<const M: usize>() -> usize {
+LL | |                 M
+LL | |             }
+LL | |             bar::<5>()
+LL | |         });
+   | |__________^
+
+error: aborting due to 6 previous errors
 

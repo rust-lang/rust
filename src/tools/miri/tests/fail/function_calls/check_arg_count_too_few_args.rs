@@ -1,3 +1,5 @@
+#![allow(invalid_runtime_symbol_definitions)]
+
 fn main() {
     extern "C" {
         fn malloc() -> *mut std::ffi::c_void;

@@ -28,10 +28,7 @@ pub fn destructor(db: &dyn HirDatabase, adt: AdtId) -> Option<ImplId> {
     let interner = DbInterner::new_with(db, module.krate(db));
     let drop_trait = interner.lang_items().Drop?;
     let impls = match module.block(db) {
-        Some(block) => match TraitImpls::for_block(db, block) {
-            Some(it) => &**it,
-            None => return None,
-        },
+        Some(block) => TraitImpls::for_block(db, block)?,
         None => TraitImpls::for_crate(db, module.krate(db)),
     };
     impls.for_trait_and_self_ty(drop_trait, &SimplifiedType::Adt(adt.into())).0.first().copied()

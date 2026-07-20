@@ -1,7 +1,7 @@
 //@ run-pass
 // Test method calls with self as an argument
 
-// FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
+// FIXME(static_mut_refs): use raw pointers instead of references
 #![allow(static_mut_refs)]
 
 static mut COUNT: u64 = 1;

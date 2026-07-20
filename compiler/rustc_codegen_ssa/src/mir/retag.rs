@@ -4,19 +4,18 @@
 //! of an assignment. The first step to retagging is to generate a [`RetagPlan`], which
 //! describes which pointers within the place or operand can be retagged.
 
-#![allow(unused)]
-use rustc_abi::{BackendRepr, FieldIdx, FieldsShape, VariantIdx, Variants};
+use rustc_abi::{FieldIdx, FieldsShape, Size, VariantIdx, Variants};
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_middle::mir::{Rvalue, WithRetag};
 use rustc_middle::ty;
 use rustc_middle::ty::layout::TyAndLayout;
 
-use crate::RetagInfo;
 use crate::mir::FunctionCx;
-use crate::mir::operand::OperandRef;
+use crate::mir::operand::{OperandRef, OperandRefBuilder, OperandValue};
 use crate::mir::place::PlaceRef;
-use crate::traits::BuilderMethods;
+use crate::traits::{BaseTypeCodegenMethods, BuilderMethods, ConstCodegenMethods};
+use crate::{RetagFlags, RetagInfo};
 
 pub(crate) fn rvalue_needs_retag(rvalue: &Rvalue<'_>) -> bool {
     // `Ref` has its own internal retagging
@@ -58,12 +57,6 @@ impl<'a, 'tcx, V> RetagPlan<V> {
         if layout.is_sized() && layout.size < bx.tcx().data_layout.pointer_size() {
             return None;
         }
-        // SIMD vectors may only contain raw pointers, integers, and floating point values,
-        // which do not need to be retagged.
-        if matches!(layout.backend_repr, BackendRepr::SimdVector { .. }) {
-            return None;
-        }
-
         // Check the type of this value to see what to do with it (retag, or recurse).
         match layout.ty.kind() {
             &ty::Ref(_, pointee, mt) => {
@@ -168,12 +161,42 @@ impl<'a, 'tcx, V> RetagPlan<V> {
     /// to types that are entirely covered by `UnsafePinned`, for which retags
     /// are a no-op.
     fn emit_retag<Bx: BuilderMethods<'a, 'tcx>>(
-        _bx: &mut Bx,
-        _pointee_layout: TyAndLayout<'tcx>,
-        _ptr_kind: Option<Mutability>,
-        _is_fn_entry: bool,
+        bx: &mut Bx,
+        pointee_layout: TyAndLayout<'tcx>,
+        ptr_kind: Option<Mutability>,
+        is_fn_entry: bool,
     ) -> Option<RetagPlan<Bx::Value>> {
-        None
+        let tcx = bx.tcx();
+
+        let pointee_ty = pointee_layout.ty;
+
+        let is_mutable = matches!(ptr_kind, Some(Mutability::Mut) | None);
+        let is_unpin = pointee_ty.is_unpin(tcx, bx.typing_env());
+        let is_freeze = pointee_ty.is_freeze(tcx, bx.typing_env());
+        let is_box = ptr_kind.is_none();
+
+        // `&mut !Unpin` is not protected
+        let is_protected = is_fn_entry && (!is_mutable || is_unpin);
+
+        if is_mutable && !is_unpin {
+            return None;
+        }
+
+        let im_layout = bx.const_null(bx.type_ptr());
+        let pin_layout = bx.const_null(bx.type_ptr());
+
+        let mut flags = RetagFlags::empty();
+        flags.set(RetagFlags::IS_PROTECTED, is_protected);
+        flags.set(RetagFlags::IS_MUTABLE, is_mutable);
+        flags.set(RetagFlags::IS_FREEZE, is_freeze);
+        flags.set(RetagFlags::IS_BOX, is_box);
+
+        Some(RetagPlan::EmitRetag(RetagInfo {
+            size: pointee_layout.size,
+            im_layout,
+            pin_layout,
+            flags,
+        }))
     }
 }
 
@@ -181,19 +204,162 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     /// Retags the pointers within an [`OperandRef`].
     pub(crate) fn codegen_retag_operand(
         &mut self,
-        _bx: &mut Bx,
+        bx: &mut Bx,
         operand: OperandRef<'tcx, Bx::Value>,
-        _is_fn_entry: bool,
+        is_fn_entry: bool,
     ) -> OperandRef<'tcx, Bx::Value> {
+        if let OperandValue::Ref(place_ref) = operand.val {
+            let place_ref = place_ref.with_type(operand.layout);
+            self.codegen_retag_place(bx, place_ref, is_fn_entry);
+        } else if let Some(plan) = RetagPlan::<Bx::Value>::build(bx, operand.layout, is_fn_entry) {
+            let mut builder = OperandRefBuilder::from_existing(operand);
+            self.retag_operand(bx, &plan, operand, &mut builder, Size::ZERO);
+            return builder.build(bx.cx());
+        }
         operand
     }
 
     /// Retags the pointers within a [`PlaceRef`].
     pub(crate) fn codegen_retag_place(
         &mut self,
-        _bx: &mut Bx,
-        _place_ref: PlaceRef<'tcx, Bx::Value>,
-        _is_fn_entry: bool,
+        bx: &mut Bx,
+        place_ref: PlaceRef<'tcx, Bx::Value>,
+        is_fn_entry: bool,
     ) {
+        if let Some(plan) = RetagPlan::<Bx::Value>::build(bx, place_ref.layout, is_fn_entry) {
+            self.retag_place(bx, &plan, place_ref);
+        }
+    }
+
+    fn retag_operand(
+        &mut self,
+        bx: &mut Bx,
+        plan: &RetagPlan<Bx::Value>,
+        curr_operand: OperandRef<'tcx, Bx::Value>,
+        builder: &mut OperandRefBuilder<'tcx, Bx::Value>,
+        offset: Size,
+    ) {
+        match plan {
+            RetagPlan::EmitRetag(info) => {
+                let (pointer, _) = curr_operand.val.pointer_parts();
+                let retagged_pointer = bx.retag_reg(pointer, info);
+                builder.update_imm(offset, retagged_pointer);
+            }
+            RetagPlan::Recurse { field_plans, variant_plans } => {
+                let layout = curr_operand.layout;
+                for (ix, plan) in field_plans {
+                    let inner_offset = layout.fields.offset(ix.as_usize());
+                    let field_offset = offset + inner_offset;
+
+                    let field_layout = curr_operand.layout.field(bx, ix.index());
+                    // Part of https://github.com/rust-lang/compiler-team/issues/838
+                    if curr_operand.layout.is_ssa_standalone() && !field_layout.is_ssa_standalone()
+                    {
+                        // FIXME: support vector types, requires insert_element as part of cg-ssa
+                        // FIXME: Nothing should be looking at the *array* inside a `repr(simd)` type,
+                        // as that array doesn't really exist. Perhaps this should be a `bug!`,
+                        // with simd types handled before getting here?
+                    } else {
+                        let field_operand = curr_operand.extract_field(self, bx, ix.as_usize());
+                        self.retag_operand(bx, &plan, field_operand, builder, field_offset);
+                    }
+                }
+
+                if !variant_plans.is_empty() {
+                    let discr_ty = layout.ty.discriminant_ty(bx.tcx());
+                    let discr_val = curr_operand.codegen_get_discr(self, bx, discr_ty);
+
+                    if let Some(val) = bx.const_to_opt_u128(discr_val, false) {
+                        let ix = VariantIdx::from_usize(val as usize);
+                        if let Some(plan) = variant_plans.get(&ix) {
+                            let mut variant_op = curr_operand;
+                            variant_op.layout = curr_operand.layout.for_variant(bx, ix);
+
+                            self.retag_operand(bx, plan, variant_op, builder, offset);
+                        }
+                    } else {
+                        // We create a temporary place to store the operand, because its value will differ
+                        // depending on the variant that we have.
+                        let scratch = PlaceRef::alloca(bx, curr_operand.layout);
+                        scratch.storage_live(bx);
+                        curr_operand.store_with_annotation(bx, scratch);
+
+                        // We retag the contents of the place
+                        self.retag_variants(bx, scratch, discr_val, variant_plans);
+
+                        // Afterward, we load the now-updated operand and end the lifetime of the place.
+                        let updated_op = bx.load_operand(scratch);
+                        scratch.storage_dead(bx);
+
+                        match updated_op.val {
+                            OperandValue::ZeroSized | OperandValue::Ref(_) => {}
+                            OperandValue::Immediate(imm) => builder.update_imm(offset, imm),
+                            OperandValue::Pair(fst, snd) => {
+                                builder.update_imm(offset, fst);
+                                builder.update_imm(offset + Size::from_bytes(1), snd)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fn retag_place(
+        &mut self,
+        bx: &mut Bx,
+        plan: &RetagPlan<Bx::Value>,
+        place: PlaceRef<'tcx, Bx::Value>,
+    ) {
+        match plan {
+            RetagPlan::EmitRetag(info) => {
+                bx.retag_mem(place.val.llval, info);
+            }
+            RetagPlan::Recurse { field_plans, variant_plans } => {
+                for (ix, plan) in field_plans {
+                    let field_place = place.project_field(bx, ix.as_usize());
+                    self.retag_place(bx, &plan, field_place);
+                }
+                if !variant_plans.is_empty() {
+                    let operand = bx.load_operand(place);
+                    let discr_ty = place.layout.ty.discriminant_ty(bx.tcx());
+                    let discr_val = operand.codegen_get_discr(self, bx, discr_ty);
+                    self.retag_variants(bx, place, discr_val, variant_plans);
+                }
+            }
+        }
+    }
+
+    /// Retags each variant of a [`PlaceRef`] with the given discriminant.
+    fn retag_variants(
+        &mut self,
+        bx: &mut Bx,
+        place: PlaceRef<'tcx, Bx::Value>,
+        discr: Bx::Value,
+        variant_plans: &FxIndexMap<VariantIdx, RetagPlan<Bx::Value>>,
+    ) {
+        let layout = place.layout;
+
+        let root_block = bx.llbb();
+        let mut variant_blocks = Vec::with_capacity(variant_plans.len());
+        let join_block = bx.append_sibling_block("retag_join");
+
+        for (ix, plan) in variant_plans {
+            let variant_discr = layout.ty.discriminant_for_variant(bx.tcx(), *ix);
+            let variant_discr_val = variant_discr.expect("Invalid variant index.").val;
+
+            let variant_block = bx.append_sibling_block("retag_variant");
+            bx.switch_to_block(variant_block);
+
+            let variant_place = place.project_downcast(bx, *ix);
+            self.retag_place(bx, plan, variant_place);
+
+            variant_blocks.push((variant_discr_val, variant_block));
+            bx.br(join_block);
+        }
+
+        bx.switch_to_block(root_block);
+        bx.switch(discr, join_block, variant_blocks.into_iter());
+        bx.switch_to_block(join_block);
     }
 }

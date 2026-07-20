@@ -3,6 +3,7 @@ mod free_alias;
 mod inherent;
 mod opaque_types;
 
+use rustc_type_ir::search_graph::LowerAvailableDepth;
 use rustc_type_ir::solve::QueryResultOrRerunNonErased;
 use rustc_type_ir::{self as ty, Interner, ProjectionPredicate};
 use tracing::{instrument, trace};
@@ -67,7 +68,16 @@ where
         let (
             NestedNormalizationGoals(nested_goals),
             GoalEvaluation { goal: _, certainty, stalled_on: _, has_changed: _ },
-        ) = self.evaluate_goal_raw(GoalSource::TypeRelating, normalizes_to, None)?;
+        ) = self.evaluate_goal_raw(
+            GoalSource::TypeRelating,
+            normalizes_to,
+            // We don't lower thr available depth for this `NormalizesTo` goal, as evaluating
+            // it is an extra step only exists in the new solver that behaves like a function
+            // call rather than an independent nested goal evaluation. So, decreasing the
+            // available depth may end up regressions which hit the recursion limits for crates
+            // compiled well with the old solver.
+            LowerAvailableDepth::No,
+        )?;
 
         trace!(?nested_goals);
 

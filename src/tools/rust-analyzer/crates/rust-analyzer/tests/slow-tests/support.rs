@@ -9,7 +9,7 @@ use crossbeam_channel::{Receiver, after, select};
 use itertools::Itertools;
 use lsp_server::{Connection, Message, Notification, Request};
 use lsp_types::{
-    PublishDiagnosticsParams, TextDocumentIdentifier, Url, notification::Exit, request::Shutdown,
+    ExitNotification, PublishDiagnosticsParams, ShutdownRequest, TextDocumentIdentifier, Uri,
 };
 use parking_lot::{Mutex, MutexGuard};
 use paths::{Utf8Path, Utf8PathBuf};
@@ -229,13 +229,13 @@ impl Project<'_> {
                     ..Default::default()
                 }),
                 text_document: Some(lsp_types::TextDocumentClientCapabilities {
-                    definition: Some(lsp_types::GotoCapability {
+                    definition: Some(lsp_types::DefinitionClientCapabilities {
                         link_support: Some(true),
                         ..Default::default()
                     }),
                     code_action: Some(lsp_types::CodeActionClientCapabilities {
                         code_action_literal_support: Some(
-                            lsp_types::CodeActionLiteralSupport::default(),
+                            lsp_types::ClientCodeActionLiteralOptions::default(),
                         ),
                         ..Default::default()
                     }),
@@ -244,7 +244,7 @@ impl Project<'_> {
                         ..Default::default()
                     }),
                     inlay_hint: Some(lsp_types::InlayHintClientCapabilities {
-                        resolve_support: Some(lsp_types::InlayHintResolveClientCapabilities {
+                        resolve_support: Some(lsp_types::ClientInlayHintResolveOptions {
                             properties: vec![
                                 "textEdits".to_owned(),
                                 "tooltip".to_owned(),
@@ -321,22 +321,22 @@ impl Server {
 
     pub(crate) fn doc_id(&self, rel_path: &str) -> TextDocumentIdentifier {
         let path = self.dir.path().join(rel_path);
-        TextDocumentIdentifier { uri: Url::from_file_path(path).unwrap() }
+        TextDocumentIdentifier { uri: Uri::from_file_path(path).unwrap() }
     }
 
     pub(crate) fn notification<N>(&self, params: N::Params)
     where
-        N: lsp_types::notification::Notification,
+        N: lsp_types::Notification,
         N::Params: Serialize,
     {
-        let r = Notification::new(N::METHOD.to_owned(), params);
+        let r = Notification::new(N::METHOD.into(), params);
         self.send_notification(r)
     }
 
     #[track_caller]
     pub(crate) fn request<R>(&self, params: R::Params, expected_resp: Value)
     where
-        R: lsp_types::request::Request,
+        R: lsp_types::Request,
         R::Params: Serialize,
     {
         let actual = self.send_request::<R>(params);
@@ -354,13 +354,13 @@ impl Server {
     #[track_caller]
     pub(crate) fn send_request<R>(&self, params: R::Params) -> Value
     where
-        R: lsp_types::request::Request,
+        R: lsp_types::Request,
         R::Params: Serialize,
     {
         let id = self.req_id.get();
         self.req_id.set(id.wrapping_add(1));
 
-        let r = Request::new(id.into(), R::METHOD.to_owned(), params);
+        let r = Request::new(id.into(), R::METHOD.into(), params);
         self.send_request_(r)
     }
     #[track_caller]
@@ -494,7 +494,7 @@ impl Server {
 
     pub(crate) fn write_file_and_save(&self, path: &str, text: String) {
         fs::write(self.dir.path().join(path), &text).unwrap();
-        self.notification::<lsp_types::notification::DidSaveTextDocument>(
+        self.notification::<lsp_types::DidSaveTextDocumentNotification>(
             lsp_types::DidSaveTextDocumentParams {
                 text_document: self.doc_id(path),
                 text: Some(text),
@@ -505,8 +505,8 @@ impl Server {
 
 impl Drop for Server {
     fn drop(&mut self) {
-        self.request::<Shutdown>((), Value::Null);
-        self.notification::<Exit>(());
+        self.request::<ShutdownRequest>((), Value::Null);
+        self.notification::<ExitNotification>(());
     }
 }
 

@@ -1,6 +1,9 @@
-//@ check-pass
 //@ compile-flags: -Znext-solver
-// Issue 100177
+
+// Regression test for #100177.
+// This was fixed by lazy norm of param env with the next solver.
+// But it regressed again as we switched back to be consistent with
+// the old solver. See #158643.
 
 trait GenericTrait<T> {}
 
@@ -20,6 +23,8 @@ impl<T> Sender for T {
     type Msg = ();
 
     fn send<C>()
+    //~^ ERROR: the trait bound `C: Channel<()>` is not satisfied
+    //~| ERROR: the trait bound `C: Channel<()>` is not satisfied
     where
         C: Channel<Self::Msg>,
     {

@@ -43,6 +43,10 @@
 //! This code should only compile in modules where the uninhabitedness of `Foo`
 //! is visible.
 
+use std::assert_matches;
+
+use rustc_data_structures::fx::FxHashSet;
+use rustc_span::def_id::LocalModId;
 use rustc_type_ir::TyKind::*;
 use tracing::instrument;
 
@@ -54,7 +58,12 @@ pub mod inhabited_predicate;
 pub use inhabited_predicate::InhabitedPredicate;
 
 pub(crate) fn provide(providers: &mut Providers) {
-    *providers = Providers { inhabited_predicate_adt, inhabited_predicate_type, ..*providers };
+    *providers = Providers {
+        inhabited_predicate_adt,
+        inhabited_predicate_type,
+        is_opsem_inhabited_raw,
+        ..*providers
+    };
 }
 
 /// Returns an `InhabitedPredicate` that is generic over type parameters and
@@ -93,7 +102,7 @@ impl<'tcx> VariantDef {
                 match field.vis {
                     Visibility::Public => pred,
                     Visibility::Restricted(from) => {
-                        pred.or(tcx, InhabitedPredicate::NotInModule(from))
+                        InhabitedPredicate::NotInModule(from).or(tcx, pred)
                     }
                 }
             }),
@@ -184,19 +193,38 @@ impl<'tcx> Ty<'tcx> {
     pub fn is_inhabited_from(
         self,
         tcx: TyCtxt<'tcx>,
-        module: DefId,
+        module: LocalModId,
         typing_env: ty::TypingEnv<'tcx>,
     ) -> bool {
         self.inhabited_predicate(tcx).apply(tcx, typing_env, module)
     }
 
-    /// Returns true if the type is uninhabited without regard to visibility
+    /// Returns true if the type is uninhabited without regard to visibility.
+    ///
+    /// This is still conservative; for instance, a `#[non_exhaustive]` enum *in another crate*
+    /// is always considered inhabited.
     pub fn is_privately_uninhabited(
         self,
         tcx: TyCtxt<'tcx>,
         typing_env: ty::TypingEnv<'tcx>,
     ) -> bool {
         !self.inhabited_predicate(tcx).apply_ignore_module(tcx, typing_env)
+    }
+
+    /// Returns whether `self` is considered inhabited on the opsem level, i.e., its validity
+    /// invariant might be satisfiable. `self` is expected to be monomorphic and normalized.
+    ///
+    /// Key constraints are:
+    /// - if a type's validity invariant is satisfiable, it must be opsem-inhabited.
+    /// - if a type's layout is marked uninhabited, it must be opsem-uninhabited.
+    ///
+    /// Beyond that, the value returned by this function is not a stable guarantee.
+    pub fn is_opsem_inhabited(self, tcx: TyCtxt<'tcx>, typing_env: ty::TypingEnv<'tcx>) -> bool {
+        // Handle simple cases directly, use the query with its cache for the rest.
+        is_opsem_inhabited_recursor(self, tcx, &mut (), /* stop_at_ref */ false, &|ty, _, _| {
+            // ADT handler: stop recursing, invoke the query.
+            tcx.is_opsem_inhabited_raw(typing_env.as_query_input(ty))
+        })
     }
 }
 
@@ -219,4 +247,161 @@ fn inhabited_predicate_type<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> InhabitedP
 
         _ => bug!("unexpected TyKind, use `Ty::inhabited_predicate`"),
     }
+}
+
+/// Recurse over a type to determine whether it is inhabited on the opsem level.
+/// See `is_opsem_inhabited` above for the spec of what we compute.
+///
+/// When we encounter an ADT, we call `adt_handler`, giving it as its last argument a closure that
+/// it can invoke to continue the recursion. This lets us share the logic for "simple" cases
+/// (i.e., everything except for ADTs) between `Ty::is_opsem_inhabited` and the query.
+///
+/// `seen` is used to detect infinite recursion: the set contains all ADTs that we encountered
+/// on our path to the current type.
+/// If `stop_at_ref` is true, we stop recursing at the next reference we encounter.
+fn is_opsem_inhabited_recursor<'tcx, SEEN>(
+    ty: Ty<'tcx>,
+    tcx: TyCtxt<'tcx>,
+    seen: &mut SEEN,
+    stop_at_ref: bool,
+    adt_handler: &impl Fn(
+        Ty<'tcx>,
+        &mut SEEN,
+        &dyn Fn(Ty<'tcx>, &mut SEEN, /* stop_at_ref */ bool) -> bool,
+    ) -> bool,
+) -> bool {
+    match *ty.kind() {
+        // Trivially (un)inhabited types
+        ty::Int(_)
+        | ty::Uint(_)
+        | ty::Float(_)
+        | ty::Bool
+        | ty::Char
+        | ty::Str
+        | ty::Foreign(..)
+        | ty::RawPtr(..)
+        | ty::FnPtr(..)
+        | ty::FnDef(..) => true,
+        ty::Dynamic(..) => true, // We can't reason about traits, assume they are inhabited
+        ty::Slice(..) => true,   // Slices can always be empty
+        ty::Never => false,
+
+        // Types where we recurse
+        ty::Ref(_, pointee, _) => {
+            if stop_at_ref {
+                // Bailing out here is safe as the layout code always considers references
+                // inhabited, so the implication ("layout uninhabited => opsem uninhabited")
+                // is upheld.
+                return true;
+            }
+            is_opsem_inhabited_recursor(pointee, tcx, seen, stop_at_ref, adt_handler)
+        }
+        ty::Tuple(tys) => tys
+            .iter()
+            .all(|ty| is_opsem_inhabited_recursor(ty, tcx, seen, stop_at_ref, adt_handler)),
+        ty::Array(elem, len) => {
+            len.try_to_target_usize(tcx).unwrap() == 0
+                || is_opsem_inhabited_recursor(elem, tcx, seen, stop_at_ref, adt_handler)
+        }
+        ty::Pat(inner, _pat) => {
+            is_opsem_inhabited_recursor(inner, tcx, seen, stop_at_ref, adt_handler)
+        }
+        ty::Closure(_def, args) => {
+            let args = args.as_closure();
+            args.upvar_tys()
+                .iter()
+                .all(|ty| is_opsem_inhabited_recursor(ty, tcx, seen, stop_at_ref, adt_handler))
+        }
+        ty::Coroutine(_def, args) => {
+            let args = args.as_coroutine();
+            args.upvar_tys()
+                .iter()
+                .all(|ty| is_opsem_inhabited_recursor(ty, tcx, seen, stop_at_ref, adt_handler))
+        }
+        ty::CoroutineClosure(_def, args) => {
+            let args = args.as_coroutine_closure();
+            args.upvar_tys()
+                .iter()
+                .all(|ty| is_opsem_inhabited_recursor(ty, tcx, seen, stop_at_ref, adt_handler))
+        }
+        ty::UnsafeBinder(base) => {
+            let base = tcx.instantiate_bound_regions_with_erased((*base).into());
+            is_opsem_inhabited_recursor(base, tcx, seen, stop_at_ref, adt_handler)
+        }
+        ty::Adt(..) => {
+            // ADTs need a special handler to avoid infinite recursion. That handler is meant to
+            // call back into the recursor. Ideally it'd just call `is_opsem_inhabited_recursor` but
+            // then it would have to pass itself as the adt_handler argument which is not possible
+            // in Rust... so we provide the handler with a callback that it can use to continue the
+            // recursion with the same `adt_handler`.
+            adt_handler(ty, seen, &|ty, seen, stop_at_ref| {
+                is_opsem_inhabited_recursor(ty, tcx, seen, stop_at_ref, adt_handler)
+            })
+        }
+
+        ty::Error(_error_guaranteed) => {
+            // We have a token proving there was an error, so we can return a dummy value.
+            true
+        }
+
+        ty::Infer(..)
+        | ty::Placeholder(..)
+        | ty::Bound(..)
+        | ty::Param(..)
+        | ty::Alias(..)
+        | ty::CoroutineWitness(..) => {
+            bug!("non-normalized type in `is_opsem_uninhabited`: `{ty}`")
+        }
+    }
+}
+
+fn is_opsem_inhabited_raw<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    env: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>,
+) -> bool {
+    let (ty, typing_env) = (env.value, env.typing_env);
+    assert_matches!(
+        ty.kind(),
+        ty::Adt(..),
+        "the query should only be invoked by `Ty::is_opsem_inhabited`"
+    );
+
+    is_opsem_inhabited_recursor(
+        ty,
+        tcx,
+        &mut FxHashSet::<DefId>::default(),
+        /* stop_at_ref */ false,
+        &|ty, seen, rec| {
+            let ty::Adt(adt_def, adt_args) = *ty.kind() else {
+                unreachable! {}
+            };
+            if adt_def.is_union() {
+                // Unions are always inhabited.
+                return true;
+            }
+
+            let new_adt = seen.insert(adt_def.did());
+            // If we have seen this ADT before, stop at the next reference to avoid infinite
+            // recursion. We can't stop here since we have to ensure that "layout uninhabited"
+            // implies "opsem uninhabited". References are always layout-inhabited so the
+            // implication is vacuously true.
+            let stop_at_ref = !new_adt;
+
+            // We are inhabited if in some variant all fields are inhabited.
+            let inhabited = adt_def.variants().iter().any(|variant| {
+                variant.fields.iter().all(|field| {
+                    let ty = field.ty(tcx, adt_args);
+                    let ty = tcx.normalize_erasing_regions(typing_env, ty);
+                    rec(ty, seen, stop_at_ref)
+                })
+            });
+
+            // Remove the type again so that we allow it to appear on other branches.
+            if new_adt {
+                seen.remove(&adt_def.did());
+            }
+
+            inhabited
+        },
+    )
 }

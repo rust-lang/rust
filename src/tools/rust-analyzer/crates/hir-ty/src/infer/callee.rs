@@ -585,13 +585,7 @@ impl<'a, 'db> DeferredCallResolution<'db> {
                     method_callee.args,
                 );
             }
-            None => {
-                assert!(
-                    ctx.lang_items.FnOnce.is_none(),
-                    "Expected to find a suitable `Fn`/`FnMut`/`FnOnce` implementation for `{:?}`",
-                    self.closure_ty
-                )
-            }
+            None => {}
         }
     }
 }

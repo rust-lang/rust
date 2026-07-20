@@ -23,6 +23,12 @@ We understand that AI is useful when communicating as a non-native English speak
 If you are using AI to edit your comments for this purpose, please take the time to ensure it reflects your own voice and ideas.
 If using AI for translation, we recommend writing in your native language and including the AI translation in a quote block.
 
+**AI should not be used to author code for E-easy+E-has-instructions issues**.
+
+E-easy issues are usually easier for maintainers to just fix directly than write instructions for. When we write instructions for them, we do that because this provides an opportunity for newcomers to learn the codebase. Using AI to author the code for you annihilates this benefit.
+
+AI *may* be used to understand the codebase for E-easy+E-has-instructions contributions, but not to write any code.
+
 This policy was adapted from [uv's AI policy].
 
 [uv's AI policy]: https://github.com/astral-sh/.github/blob/c5187e200db51bfe11d56e13053d29bd3793fdd8/AI_POLICY.md

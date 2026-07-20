@@ -390,17 +390,15 @@ impl<'a, Ty: fmt::Display> fmt::Debug for ArgAbi<'a, Ty> {
 impl<'a, Ty> ArgAbi<'a, Ty> {
     /// This defines the "default ABI" for that type, that is then later adjusted in `fn_abi_adjust_for_abi`.
     pub fn new(
-        cx: &impl HasDataLayout,
         layout: TyAndLayout<'a, Ty>,
         scalar_attrs: impl Fn(Scalar, Size) -> ArgAttributes,
     ) -> Self {
         let mode = match layout.backend_repr {
             _ if layout.is_zst() => PassMode::Ignore,
             BackendRepr::Scalar(scalar) => PassMode::Direct(scalar_attrs(scalar, Size::ZERO)),
-            BackendRepr::ScalarPair(a, b) => PassMode::Pair(
-                scalar_attrs(a, Size::ZERO),
-                scalar_attrs(b, a.size(cx).align_to(b.align(cx).abi)),
-            ),
+            BackendRepr::ScalarPair { a, b, b_offset } => {
+                PassMode::Pair(scalar_attrs(a, Size::ZERO), scalar_attrs(b, b_offset))
+            }
             BackendRepr::SimdVector { .. } => PassMode::Direct(ArgAttributes::new()),
             BackendRepr::Memory { .. } => Self::indirect_pass_mode(&layout),
             BackendRepr::SimdScalableVector { .. } => PassMode::Direct(ArgAttributes::new()),
@@ -877,7 +875,7 @@ where
 {
     match layout.backend_repr {
         BackendRepr::Scalar(scalar) => !scalar.is_uninit_valid(),
-        BackendRepr::ScalarPair(s1, s2) => {
+        BackendRepr::ScalarPair { a: s1, b: s2, b_offset: _ } => {
             !s1.is_uninit_valid()
                 && !s2.is_uninit_valid()
                 // Ensure there is no padding.

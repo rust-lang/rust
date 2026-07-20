@@ -95,9 +95,13 @@ fn inline_to_global_operand<'a, 'tcx, Cx: LayoutOf<'tcx, LayoutOfResult = TyAndL
             );
 
             let instance = match mono_type.kind() {
-                &ty::FnDef(def_id, args) => {
-                    Instance::expect_resolve(cx.tcx(), cx.typing_env(), def_id, args, value.span)
-                }
+                &ty::FnDef(def_id, args) => Instance::expect_resolve(
+                    cx.tcx(),
+                    cx.typing_env(),
+                    def_id,
+                    args.no_bound_vars().unwrap(),
+                    value.span,
+                ),
                 _ => bug!("asm sym is not a function"),
             };
 
@@ -441,7 +445,7 @@ fn wasm_type<'tcx>(signature: &mut String, arg_abi: &ArgAbi<'_, Ty<'tcx>>, ptr_t
             signature.push_str(direct_type);
         }
         PassMode::Pair(_, _) => match arg_abi.layout.backend_repr {
-            BackendRepr::ScalarPair(a, b) => {
+            BackendRepr::ScalarPair { a, b, b_offset: _ } => {
                 signature.push_str(wasm_primitive(a.primitive(), ptr_type));
                 signature.push_str(", ");
                 signature.push_str(wasm_primitive(b.primitive(), ptr_type));

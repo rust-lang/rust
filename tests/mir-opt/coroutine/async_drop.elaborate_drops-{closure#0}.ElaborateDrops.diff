@@ -33,8 +33,8 @@
 +     let mut _39: &mut std::task::Context<'_>;
 +     let mut _40: std::future::ResumeTy;
 +     let mut _41: &mut impl std::future::Future<Output = ()>;
-+     let mut _42: std::pin::Pin<&mut {async closure@$DIR/async_drop.rs:78:27: 78:35}>;
-+     let mut _43: &mut {async closure@$DIR/async_drop.rs:78:27: 78:35};
++     let mut _42: std::pin::Pin<&mut {async closure@$DIR/async_drop.rs:86:27: 86:35}>;
++     let mut _43: &mut {async closure@$DIR/async_drop.rs:86:27: 86:35};
 +     let mut _44: impl std::future::Future<Output = ()>;
 +     let mut _45: std::future::ResumeTy;
 +     let mut _46: std::task::Poll<()>;
@@ -50,8 +50,8 @@
 +     let mut _56: &mut std::task::Context<'_>;
 +     let mut _57: std::future::ResumeTy;
 +     let mut _58: &mut impl std::future::Future<Output = ()>;
-+     let mut _59: std::pin::Pin<&mut {closure@$DIR/async_drop.rs:70:25: 70:27}>;
-+     let mut _60: &mut {closure@$DIR/async_drop.rs:70:25: 70:27};
++     let mut _59: std::pin::Pin<&mut {closure@$DIR/async_drop.rs:78:25: 78:27}>;
++     let mut _60: &mut {closure@$DIR/async_drop.rs:78:25: 78:27};
 +     let mut _61: impl std::future::Future<Output = ()>;
 +     let mut _62: std::future::ResumeTy;
 +     let mut _63: std::task::Poll<()>;
@@ -200,13 +200,13 @@
                                           let _23: AsyncInt;
                                           scope 10 {
                                               debug foo => _23;
-                                              let _24: {closure@$DIR/async_drop.rs:70:25: 70:27};
+                                              let _24: {closure@$DIR/async_drop.rs:78:25: 78:27};
                                               scope 11 {
                                                   debug async_closure => _24;
                                                   let _25: AsyncInt;
                                                   scope 12 {
                                                       debug foo => _25;
-                                                      let _26: {async closure@$DIR/async_drop.rs:78:27: 78:35};
+                                                      let _26: {async closure@$DIR/async_drop.rs:86:27: 86:35};
                                                       scope 13 {
                                                           debug async_coroutine => _26;
                                                       }
@@ -321,11 +321,11 @@
           StorageLive(_23);
           _23 = AsyncInt(const 14_i32);
           StorageLive(_24);
-          _24 = {closure@$DIR/async_drop.rs:70:25: 70:27} { foo: move _23 };
+          _24 = {closure@$DIR/async_drop.rs:78:25: 78:27} { foo: move _23 };
           StorageLive(_25);
           _25 = AsyncInt(const 15_i32);
           StorageLive(_26);
-          _26 = {closure@$DIR/async_drop.rs:78:27: 78:35} { foo: move _25 };
+          _26 = {closure@$DIR/async_drop.rs:86:27: 86:35} { foo: move _25 };
           _0 = const ();
 -         drop(_26) -> [return: bb10, unwind: bb44, drop: bb23];
 +         goto -> bb103;
@@ -838,12 +838,12 @@
 + 
 +     bb102: {
 +         StorageLive(_27);
-+         _27 = async_drop_in_place::<{async closure@$DIR/async_drop.rs:78:27: 78:35}>(copy (_42.0: &mut {async closure@$DIR/async_drop.rs:78:27: 78:35})) -> [return: bb101, unwind: bb85];
++         _27 = async_drop_in_place::<{async closure@$DIR/async_drop.rs:86:27: 86:35}>(copy (_42.0: &mut {async closure@$DIR/async_drop.rs:86:27: 86:35})) -> [return: bb101, unwind: bb85];
 +     }
 + 
 +     bb103: {
 +         _43 = &mut _26;
-+         _42 = Pin::<&mut {async closure@$DIR/async_drop.rs:78:27: 78:35}>::new_unchecked(move _43) -> [return: bb102, unwind: bb44];
++         _42 = Pin::<&mut {async closure@$DIR/async_drop.rs:86:27: 86:35}>::new_unchecked(move _43) -> [return: bb102, unwind: bb44];
 +     }
 + 
 +     bb104: {
@@ -939,12 +939,12 @@
 + 
 +     bb122: {
 +         StorageLive(_44);
-+         _44 = async_drop_in_place::<{closure@$DIR/async_drop.rs:70:25: 70:27}>(copy (_59.0: &mut {closure@$DIR/async_drop.rs:70:25: 70:27})) -> [return: bb121, unwind: bb106];
++         _44 = async_drop_in_place::<{closure@$DIR/async_drop.rs:78:25: 78:27}>(copy (_59.0: &mut {closure@$DIR/async_drop.rs:78:25: 78:27})) -> [return: bb121, unwind: bb106];
 +     }
 + 
 +     bb123: {
 +         _60 = &mut _24;
-+         _59 = Pin::<&mut {closure@$DIR/async_drop.rs:70:25: 70:27}>::new_unchecked(move _60) -> [return: bb122, unwind: bb46];
++         _59 = Pin::<&mut {closure@$DIR/async_drop.rs:78:25: 78:27}>::new_unchecked(move _60) -> [return: bb122, unwind: bb46];
 +     }
 + 
 +     bb124: {

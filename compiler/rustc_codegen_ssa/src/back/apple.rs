@@ -10,7 +10,7 @@ pub(super) use rustc_target::spec::apple::OSVersion;
 use rustc_target::spec::{Arch, Env, Os, Target};
 use tracing::debug;
 
-use crate::errors::{XcrunError, XcrunSdkPathWarning};
+use crate::diagnostics::{XcrunError, XcrunSdkPathWarning};
 
 #[cfg(test)]
 mod tests;

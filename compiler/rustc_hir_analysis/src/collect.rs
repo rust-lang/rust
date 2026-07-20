@@ -15,7 +15,7 @@
 //! crate as a kind of pass. This should eventually be factored away.
 
 use std::cell::Cell;
-use std::{assert_matches, iter};
+use std::{assert_matches, debug_assert_matches, iter};
 
 use rustc_abi::{ExternAbi, Size};
 use rustc_ast::Recovered;
@@ -63,7 +63,7 @@ pub(crate) fn provide(providers: &mut Providers) {
         type_of: type_of::type_of,
         type_of_opaque: type_of::type_of_opaque,
         type_of_opaque_hir_typeck: type_of::type_of_opaque_hir_typeck,
-        type_alias_is_lazy: type_of::type_alias_is_lazy,
+        type_alias_is_checked: type_of::type_alias_is_checked,
         item_bounds: item_bounds::item_bounds,
         explicit_item_bounds: item_bounds::explicit_item_bounds,
         item_self_bounds: item_bounds::item_self_bounds,
@@ -1635,11 +1635,12 @@ fn const_param_default<'tcx>(
 }
 
 fn anon_const_kind<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> ty::AnonConstKind {
+    debug_assert_matches!(tcx.def_kind(def), DefKind::AnonConst);
     let hir_id = tcx.local_def_id_to_hir_id(def);
-    let const_arg_id = tcx.parent_hir_id(hir_id);
-    match tcx.hir_node(const_arg_id) {
-        hir::Node::ConstArg(_) => {
-            let parent_hir_node = tcx.hir_node(tcx.parent_hir_id(const_arg_id));
+    let parent_node_id = tcx.parent_hir_id(hir_id);
+    match tcx.hir_node(parent_node_id) {
+        hir::Node::ConstArg(const_arg) => {
+            debug_assert_matches!(const_arg.kind, hir::ConstArgKind::Anon(hir::AnonConst { def_id, .. }) if *def_id == def);
             if tcx.features().generic_const_exprs() {
                 ty::AnonConstKind::GCE
             } else if tcx.features().min_generic_const_args() {
@@ -1647,15 +1648,19 @@ fn anon_const_kind<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> ty::AnonConstKin
             } else if let hir::Node::Expr(hir::Expr {
                 kind: hir::ExprKind::Repeat(_, repeat_count),
                 ..
-            }) = parent_hir_node
-                && repeat_count.hir_id == const_arg_id
+            }) = tcx.parent_hir_node(parent_node_id)
+                && repeat_count.hir_id == parent_node_id
             {
                 ty::AnonConstKind::RepeatExprCount
             } else {
                 ty::AnonConstKind::MCG
             }
         }
-        _ => ty::AnonConstKind::NonTypeSystem,
+        hir::Node::Expr(hir::Expr {
+            kind: hir::ExprKind::ConstBlock(..) | hir::ExprKind::InlineAsm(..),
+            ..
+        }) => ty::AnonConstKind::NonTypeSystemInline,
+        _ => ty::AnonConstKind::NonTypeSystemAnon,
     }
 }
 

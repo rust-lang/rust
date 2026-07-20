@@ -6,7 +6,7 @@ use rustc_expand::base::{Annotatable, ExpandResult, ExtCtxt};
 use rustc_expand::expand::AstFragment;
 use rustc_lint_defs::builtin::DUPLICATE_MACRO_ATTRIBUTES;
 use rustc_parse::{exp, parser};
-use rustc_session::errors::report_lit_error;
+use rustc_session::diagnostics::report_lit_error;
 use rustc_span::{BytePos, Span, Symbol};
 
 use crate::diagnostics;

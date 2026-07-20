@@ -104,10 +104,13 @@ pub fn contains_ty_adt_constructor_opaque<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'
                     return true;
                 }
 
-                if let ty::Alias(_, AliasTy {
-                    kind: ty::Opaque { def_id },
-                    ..
-                }) = *inner_ty.kind()
+                if let ty::Alias(
+                    _,
+                    AliasTy {
+                        kind: ty::Opaque { def_id },
+                        ..
+                    },
+                ) = *inner_ty.kind()
                 {
                     if !seen.insert(def_id) {
                         return false;
@@ -337,10 +340,13 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
             is_must_use_ty(cx, *ty)
         },
         ty::Tuple(args) => args.iter().any(|ty| is_must_use_ty(cx, ty)),
-        ty::Alias(_, AliasTy {
-            kind: ty::Opaque { def_id },
-            ..
-        }) => {
+        ty::Alias(
+            _,
+            AliasTy {
+                kind: ty::Opaque { def_id },
+                ..
+            },
+        ) => {
             for (predicate, _) in cx.tcx.explicit_item_self_bounds(*def_id).skip_binder() {
                 if let ty::ClauseKind::Trait(trait_predicate) = predicate.kind().skip_binder()
                     && find_attr!(cx.tcx, trait_predicate.trait_ref.def_id, MustUse { .. })
@@ -525,7 +531,7 @@ fn is_uninit_value_valid_for_layout<'tcx>(cx: &LateContext<'tcx>, layout: TyAndL
 
     match layout.layout.backend_repr {
         BackendRepr::Scalar(s) => s.is_uninit_valid(),
-        BackendRepr::ScalarPair(a, b) => a.is_uninit_valid() && b.is_uninit_valid(),
+        BackendRepr::ScalarPair { a, b, .. } => a.is_uninit_valid() && b.is_uninit_valid(),
         BackendRepr::SimdVector { element, count } => count == 0 || element.is_uninit_valid(),
         BackendRepr::SimdScalableVector { element, .. } => element.is_uninit_valid(),
         // Here validity is determined by the structural fields instead.
@@ -713,14 +719,17 @@ pub fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'t
             Some(ExprFnSig::Closure(decl, subs.as_closure().sig()))
         },
         ty::FnDef(id, subs) => Some(ExprFnSig::Sig(
-            cx.tcx.fn_sig(id).instantiate(cx.tcx, subs).skip_norm_wip(),
+            cx.tcx.fn_sig(id).instantiate(cx.tcx, subs.no_bound_vars().unwrap()).skip_norm_wip(),
             Some(id),
         )),
-        ty::Alias(_, AliasTy {
-            kind: ty::Opaque { def_id },
-            args,
-            ..
-        }) => sig_from_bounds(
+        ty::Alias(
+            _,
+            AliasTy {
+                kind: ty::Opaque { def_id },
+                args,
+                ..
+            },
+        ) => sig_from_bounds(
             cx,
             ty,
             cx.tcx
@@ -762,22 +771,22 @@ pub fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'t
 fn sig_from_bounds<'tcx>(
     cx: &LateContext<'tcx>,
     ty: Ty<'tcx>,
-    predicates: impl IntoIterator<Item = ty::Clause<'tcx>>,
+    clauses: impl IntoIterator<Item = ty::Clause<'tcx>>,
     predicates_id: Option<DefId>,
 ) -> Option<ExprFnSig<'tcx>> {
     let mut inputs = None;
     let mut output = None;
     let lang_items = cx.tcx.lang_items();
 
-    for pred in predicates {
-        match pred.kind().skip_binder() {
+    for clause in clauses {
+        match clause.kind().skip_binder() {
             ty::ClauseKind::Trait(p)
                 if (lang_items.fn_trait() == Some(p.def_id())
                     || lang_items.fn_mut_trait() == Some(p.def_id())
                     || lang_items.fn_once_trait() == Some(p.def_id()))
                     && p.self_ty() == ty =>
             {
-                let i = pred.kind().rebind(p.trait_ref.args.type_at(1));
+                let i = clause.kind().rebind(p.trait_ref.args.type_at(1));
                 if inputs.is_some_and(|inputs| i != inputs) {
                     // Multiple different fn trait impls. Is this even allowed?
                     return None;
@@ -792,7 +801,7 @@ fn sig_from_bounds<'tcx>(
                     // Multiple different fn trait impls. Is this even allowed?
                     return None;
                 }
-                output = Some(pred.kind().rebind(p.term.expect_type()));
+                output = Some(clause.kind().rebind(p.term.expect_type()));
             },
             _ => (),
         }
@@ -1174,7 +1183,10 @@ pub fn make_normalized_projection<'tcx>(
             );
             return None;
         }
-        match tcx.try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(Ty::new_alias(tcx, ty::IsRigid::No, ty))) {
+        match tcx.try_normalize_erasing_regions(
+            typing_env,
+            Unnormalized::new_wip(Ty::new_alias(tcx, ty::IsRigid::No, ty)),
+        ) {
             Ok(ty) => Some(ty),
             Err(e) => {
                 debug_assert!(false, "failed to normalize type `{ty}`: {e:#?}");
@@ -1276,10 +1288,13 @@ impl<'tcx> InteriorMut<'tcx> {
                         .find_map(|f| self.interior_mut_ty_chain_inner(cx, f.ty(cx.tcx, args).skip_norm_wip(), depth))
                 }
             },
-            ty::Alias(_, AliasTy {
-                kind: ty::Projection { .. },
-                ..
-            }) => match cx
+            ty::Alias(
+                _,
+                AliasTy {
+                    kind: ty::Projection { .. },
+                    ..
+                },
+            ) => match cx
                 .tcx
                 .try_normalize_erasing_regions(cx.typing_env(), Unnormalized::new_wip(ty))
             {
@@ -1328,7 +1343,10 @@ pub fn make_normalized_projection_with_regions<'tcx>(
         }
         let cause = ObligationCause::dummy();
         let (infcx, param_env) = tcx.infer_ctxt().build_with_typing_env(typing_env);
-        match infcx.at(&cause, param_env).query_normalize(Ty::new_alias(tcx, ty::IsRigid::No, ty)) {
+        match infcx
+            .at(&cause, param_env)
+            .query_normalize(Ty::new_alias(tcx, ty::IsRigid::No, ty))
+        {
             Ok(ty) => Some(ty.value),
             Err(e) => {
                 debug_assert!(false, "failed to normalize type `{ty}`: {e:#?}");

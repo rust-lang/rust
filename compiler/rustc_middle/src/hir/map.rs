@@ -10,19 +10,19 @@ use rustc_data_structures::steal::Steal;
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{DynSend, DynSync, par_for_each_in, try_par_for_each_in};
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId, LocalModDefId};
+use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId, LocalModId};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::lints::DelayedLints;
 use rustc_hir::*;
 use rustc_hir_pretty as pprust_hir;
-use rustc_span::def_id::StableCrateId;
+use rustc_span::def_id::{CRATE_MOD_ID, StableCrateId};
 use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, kw, with_metavar_spans};
 
 use crate::hir::{ModuleItems, ProjectedMaybeOwner, nested_filter};
 use crate::middle::debugger_visualizer::DebuggerVisualizerFile;
 use crate::query::{IntoQueryKey, LocalCrate};
-use crate::ty::TyCtxt;
+use crate::ty::{self, TyCtxt};
 
 /// An iterator that walks up the ancestor tree of a given `HirId`.
 /// Constructed using `tcx.hir_parent_iter(hir_id)`.
@@ -207,7 +207,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
-    pub fn hir_module_free_items(self, module: LocalModDefId) -> impl Iterator<Item = ItemId> {
+    pub fn hir_module_free_items(self, module: LocalModId) -> impl Iterator<Item = ItemId> {
         self.hir_module_items(module).free_items()
     }
 
@@ -322,10 +322,12 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn hir_body_owner_kind(self, def_id: impl Into<DefId>) -> BodyOwnerKind {
         let def_id = def_id.into();
         match self.def_kind(def_id) {
-            DefKind::Const { .. } | DefKind::AssocConst { .. } | DefKind::AnonConst => {
+            DefKind::Const { .. } | DefKind::AssocConst { .. } => {
                 BodyOwnerKind::Const { inline: false }
             }
-            DefKind::InlineConst => BodyOwnerKind::Const { inline: true },
+            DefKind::AnonConst => BodyOwnerKind::Const {
+                inline: self.anon_const_kind(def_id) == ty::AnonConstKind::NonTypeSystemInline,
+            },
             DefKind::Ctor(..) | DefKind::Fn | DefKind::AssocFn => BodyOwnerKind::Fn,
             DefKind::Closure | DefKind::SyntheticCoroutineBody => BodyOwnerKind::Closure,
             DefKind::Static { safety: _, mutability, nested: false } => {
@@ -410,7 +412,7 @@ impl<'tcx> TyCtxt<'tcx> {
         find_attr!(self.hir_krate_attrs(), RustcCoherenceIsCore)
     }
 
-    pub fn hir_get_module(self, module: LocalModDefId) -> (&'tcx Mod<'tcx>, Span, HirId) {
+    pub fn hir_get_module(self, module: LocalModId) -> (&'tcx Mod<'tcx>, Span, HirId) {
         let hir_id = HirId::make_owner(module.to_local_def_id());
         match self.hir_owner_node(hir_id.owner) {
             OwnerNode::Item(&Item { span, kind: ItemKind::Mod(_, m), .. }) => (m, span, hir_id),
@@ -424,7 +426,7 @@ impl<'tcx> TyCtxt<'tcx> {
     where
         V: Visitor<'tcx>,
     {
-        let (top_mod, span, hir_id) = self.hir_get_module(LocalModDefId::CRATE_DEF_ID);
+        let (top_mod, span, hir_id) = self.hir_get_module(CRATE_MOD_ID);
         visitor.visit_mod(top_mod, span, hir_id)
     }
 
@@ -475,11 +477,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// This method is the equivalent of `visit_all_item_likes_in_crate` but restricted to
     /// item-likes in a single module.
-    pub fn hir_visit_item_likes_in_module<V>(
-        self,
-        module: LocalModDefId,
-        visitor: &mut V,
-    ) -> V::Result
+    pub fn hir_visit_item_likes_in_module<V>(self, module: LocalModId, visitor: &mut V) -> V::Result
     where
         V: Visitor<'tcx>,
     {
@@ -499,30 +497,26 @@ impl<'tcx> TyCtxt<'tcx> {
         V::Result::output()
     }
 
-    pub fn hir_for_each_module(self, mut f: impl FnMut(LocalModDefId)) {
+    pub fn hir_for_each_module(self, mut f: impl FnMut(LocalModId)) {
         let crate_items = self.hir_crate_items(());
-        for module in crate_items.submodules.iter() {
-            f(LocalModDefId::new_unchecked(module.def_id))
+        for &module in crate_items.submodules.iter() {
+            f(module)
         }
     }
 
     #[inline]
-    pub fn par_hir_for_each_module(self, f: impl Fn(LocalModDefId) + DynSend + DynSync) {
+    pub fn par_hir_for_each_module(self, f: impl Fn(LocalModId) + DynSend + DynSync) {
         let crate_items = self.hir_crate_items(());
-        par_for_each_in(&crate_items.submodules[..], |module| {
-            f(LocalModDefId::new_unchecked(module.def_id))
-        })
+        par_for_each_in(&crate_items.submodules[..], |&&module| f(module));
     }
 
     #[inline]
     pub fn try_par_hir_for_each_module(
         self,
-        f: impl Fn(LocalModDefId) -> Result<(), ErrorGuaranteed> + DynSend + DynSync,
+        f: impl Fn(LocalModId) -> Result<(), ErrorGuaranteed> + DynSend + DynSync,
     ) -> Result<(), ErrorGuaranteed> {
         let crate_items = self.hir_crate_items(());
-        try_par_for_each_in(&crate_items.submodules[..], |module| {
-            f(LocalModDefId::new_unchecked(module.def_id))
-        })
+        try_par_for_each_in(&crate_items.submodules[..], |&&module| f(module))
     }
 
     /// Returns an iterator for the nodes in the ancestor tree of the `current_id`
@@ -877,13 +871,6 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn hir_delegation_info(self, delegation_id: LocalDefId) -> &'tcx DelegationInfo {
         self.hir_opt_delegation_info(delegation_id).expect("processing delegation")
-    }
-
-    pub fn hir_is_delegation_child_segment(self, segment: &PathSegment<'_>) -> bool {
-        let parent_def = self.hir_get_parent_item(segment.hir_id).def_id;
-
-        self.hir_opt_delegation_info(parent_def)
-            .is_some_and(|info| info.child_seg_id == segment.hir_id)
     }
 
     #[inline]
@@ -1266,7 +1253,7 @@ fn upstream_crates(tcx: TyCtxt<'_>) -> Vec<(StableCrateId, Svh)> {
     upstream_crates
 }
 
-pub(super) fn hir_module_items(tcx: TyCtxt<'_>, module_id: LocalModDefId) -> ModuleItems {
+pub(super) fn hir_module_items(tcx: TyCtxt<'_>, module_id: LocalModId) -> ModuleItems {
     let mut collector = ItemCollector::new(tcx, false);
 
     let (hir_mod, span, hir_id) = tcx.hir_get_module(module_id);
@@ -1307,7 +1294,7 @@ pub(crate) fn hir_crate_items(tcx: TyCtxt<'_>, _: ()) -> ModuleItems {
     // A "crate collector" and "module collector" start at a
     // module item (the former starts at the crate root) but only
     // the former needs to collect it. ItemCollector does not do this for us.
-    collector.submodules.push(CRATE_OWNER_ID);
+    collector.submodules.push(CRATE_MOD_ID);
     tcx.hir_walk_toplevel_module(&mut collector);
 
     let ItemCollector {
@@ -1346,7 +1333,7 @@ struct ItemCollector<'tcx> {
     // (see <https://github.com/rust-lang/rust/pull/158119#issuecomment-4751513679>).
     crate_collector: bool,
     tcx: TyCtxt<'tcx>,
-    submodules: Vec<OwnerId> = vec![],
+    submodules: Vec<LocalModId> = vec![],
     items: Vec<ItemId> = vec![],
     trait_items: Vec<TraitItemId> = vec![],
     impl_items: Vec<ImplItemId> = vec![],
@@ -1395,7 +1382,7 @@ impl<'hir> Visitor<'hir> for ItemCollector<'hir> {
 
         // Items that are modules are handled here instead of in visit_mod.
         if let ItemKind::Mod(_, module) = &item.kind {
-            self.submodules.push(item.owner_id);
+            self.submodules.push(LocalModId::new_unchecked(item.owner_id.def_id));
             // A module collector does not recurse inside nested modules.
             if self.crate_collector {
                 intravisit::walk_mod(self, module);

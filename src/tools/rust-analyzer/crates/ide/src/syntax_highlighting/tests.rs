@@ -1584,3 +1584,16 @@ static STATIC: () = ();
         false,
     );
 }
+
+#[test]
+fn async_fn_non_mut_param() {
+    check_highlighting(
+        r#"
+async fn get_double_async(num: u32) -> u32 {
+    num
+}
+        "#,
+        expect_file!["./test_data/async_fn_non_mut_param.html"],
+        false,
+    );
+}

@@ -26,12 +26,13 @@ use rustc_resolve::rustdoc::{
 use rustc_session::config::CrateType;
 use rustc_session::lint::Lint;
 use rustc_span::BytePos;
+use rustc_span::def_id::ModId;
 use rustc_span::symbol::{Ident, Symbol, sym};
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, info, instrument, trace};
 
 use crate::clean::utils::find_nearest_parent_module;
-use crate::clean::{self, Crate, Item, ItemId, ItemLink, PrimitiveType};
+use crate::clean::{self, Crate, Item, ItemId, ItemLink, PrimitiveType, reexport_chain};
 use crate::core::DocContext;
 use crate::html::markdown::{MarkdownLink, MarkdownLinkRange, markdown_links};
 use crate::lint::{BROKEN_INTRA_DOC_LINKS, PRIVATE_INTRA_DOC_LINKS};
@@ -170,7 +171,7 @@ struct UnresolvedPath<'a> {
     /// Item on which the link is resolved, used for resolving `Self`.
     item_id: DefId,
     /// The scope the link was resolved in.
-    module_id: DefId,
+    module_id: ModId,
     /// If part of the link resolved, this has the `Res`.
     ///
     /// In `[std::io::Error::x]`, `std::io::Error` would be a partial resolution.
@@ -208,7 +209,7 @@ pub(crate) enum UrlFragment {
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub(crate) struct ResolutionInfo {
     item_id: DefId,
-    module_id: DefId,
+    module_id: ModId,
     dis: Option<Disambiguator>,
     path_str: Box<str>,
     extra_fragment: Option<String>,
@@ -286,7 +287,7 @@ impl<'tcx> LinkCollector<'_, 'tcx> {
         &self,
         path_str: &'path str,
         item_id: DefId,
-        module_id: DefId,
+        module_id: ModId,
     ) -> Result<(Res, DefId), UnresolvedPath<'path>> {
         let tcx = self.cx.tcx;
         let no_res = || UnresolvedPath {
@@ -355,7 +356,7 @@ impl<'tcx> LinkCollector<'_, 'tcx> {
         path_str: &str,
         ns: Namespace,
         item_id: DefId,
-        module_id: DefId,
+        module_id: ModId,
     ) -> Option<Res> {
         if let res @ Some(..) = resolve_self_ty(self.cx.tcx, path_str, ns, item_id) {
             return res;
@@ -392,7 +393,7 @@ impl<'tcx> LinkCollector<'_, 'tcx> {
         ns: Namespace,
         disambiguator: Option<Disambiguator>,
         item_id: DefId,
-        module_id: DefId,
+        module_id: ModId,
     ) -> Result<Vec<(Res, Option<DefId>)>, UnresolvedPath<'path>> {
         let tcx = self.cx.tcx;
 
@@ -604,7 +605,7 @@ fn resolve_associated_item<'tcx>(
     item_name: Symbol,
     ns: Namespace,
     disambiguator: Option<Disambiguator>,
-    module_id: DefId,
+    module_id: ModId,
 ) -> Vec<(Res, DefId)> {
     let item_ident = Ident::with_dummy_span(item_name);
 
@@ -665,7 +666,7 @@ fn resolve_assoc_on_primitive<'tcx>(
     prim: PrimitiveType,
     ns: Namespace,
     item_ident: Ident,
-    module_id: DefId,
+    module_id: ModId,
 ) -> Vec<(Res, DefId)> {
     let root_res = Res::Primitive(prim);
     let items = resolve_primitive_inherent_assoc_item(tcx, prim, ns, item_ident);
@@ -690,7 +691,7 @@ fn resolve_assoc_on_adt<'tcx>(
     item_ident: Ident,
     ns: Namespace,
     disambiguator: Option<Disambiguator>,
-    module_id: DefId,
+    module_id: ModId,
 ) -> Vec<(Res, DefId)> {
     debug!("looking for associated item named {item_ident} for item {adt_def_id:?}");
     let root_res = Res::from_def_id(tcx, adt_def_id);
@@ -735,7 +736,7 @@ fn resolve_assoc_on_simple_type<'tcx>(
     ty_def_id: DefId,
     item_ident: Ident,
     ns: Namespace,
-    module_id: DefId,
+    module_id: ModId,
 ) -> Vec<(Res, DefId)> {
     let root_res = Res::from_def_id(tcx, ty_def_id);
     // Checks if item_name belongs to `impl SomeItem`
@@ -781,7 +782,7 @@ fn resolve_structfield<'tcx>(adt_def: ty::AdtDef<'tcx>, item_name: Symbol) -> Op
 /// `<io::Error as error::Error>::source`.
 fn resolve_associated_trait_item<'tcx>(
     ty: Ty<'tcx>,
-    module: DefId,
+    module: ModId,
     item_ident: Ident,
     ns: Namespace,
     tcx: TyCtxt<'tcx>,
@@ -841,7 +842,7 @@ fn trait_assoc_to_impl_assoc_item<'tcx>(
 fn trait_impls_for<'tcx>(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
-    module: DefId,
+    module: ModId,
 ) -> FxIndexSet<(DefId, DefId)> {
     let mut impls = FxIndexSet::default();
 
@@ -1097,7 +1098,7 @@ impl LinkCollector<'_, '_> {
                 return;
             }
             let module_id = match tcx.def_kind(item_id) {
-                DefKind::Mod if item.inner_docs(tcx) => item_id,
+                DefKind::Mod if item.inner_docs(tcx) => ModId::new_unchecked(item_id),
                 _ => find_nearest_parent_module(tcx, item_id).unwrap(),
             };
             for md_link in preprocessed_markdown_links(&doc) {
@@ -1148,10 +1149,19 @@ impl LinkCollector<'_, '_> {
             // `use` statement, we need to use the `def_id` of the `use` statement, not the
             // inlined item.
             // <https://github.com/rust-lang/rust/pull/151120>
-            let item_id = if let Some(inline_stmt_id) = item.inline_stmt_id
-                && find_attr!(tcx, inline_stmt_id, Deprecated { span, ..} if span == depr_span)
-            {
-                inline_stmt_id.to_def_id()
+            let item_id = if let Some(inline_stmt_id) = item.inline_stmt_id {
+                let target_def_id = item.item_id.expect_def_id();
+                reexport_chain(tcx, inline_stmt_id, target_def_id)
+                    .iter()
+                    .flat_map(|reexport| reexport.id())
+                    .find(|&reexport_def_id| {
+                        find_attr!(
+                            tcx,
+                            reexport_def_id,
+                            Deprecated { span, .. } if span == depr_span
+                        )
+                    })
+                    .unwrap_or(target_def_id)
             } else {
                 item.item_id.expect_def_id()
             };
@@ -1171,7 +1181,7 @@ impl LinkCollector<'_, '_> {
         dox: &str,
         item: &Item,
         item_id: DefId,
-        module_id: DefId,
+        module_id: ModId,
         PreprocessedMarkdownLink(pp_link, ori_link): &PreprocessedMarkdownLink,
     ) -> Option<ItemLink> {
         trace!("considering link '{}'", ori_link.link);
@@ -1497,7 +1507,7 @@ impl LinkCollector<'_, '_> {
             Some((sp, _)) => sp,
             None => item.attr_span(self.cx.tcx),
         };
-        rustc_session::errors::feature_err(
+        rustc_session::diagnostics::feature_err(
             self.cx.tcx.sess,
             sym::intra_doc_pointers,
             span,
@@ -2103,7 +2113,7 @@ fn resolution_failure(
                     }
 
                     let last_found_module = match *partial_res {
-                        Some(Res::Def(DefKind::Mod, id)) => Some(id),
+                        Some(Res::Def(DefKind::Mod, id)) => Some(ModId::new_unchecked(id)),
                         None => Some(module_id),
                         _ => None,
                     };
@@ -2199,8 +2209,7 @@ fn resolution_failure(
                             | Use
                             | LifetimeParam
                             | Ctor(_, _)
-                            | AnonConst
-                            | InlineConst => {
+                            | AnonConst => {
                                 let note = assoc_item_not_allowed(res);
                                 if let Some(span) = sp {
                                     diag.span_label(span, note);

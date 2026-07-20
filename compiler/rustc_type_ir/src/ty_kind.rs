@@ -22,12 +22,12 @@ use crate::ty::AliasTy;
 use crate::visit::TypeVisitable;
 use crate::{
     self as ty, BoundVarIndexKind, FloatTy, FreeAliasTy, InherentAliasTy, IntTy, Interner,
-    OpaqueAliasTy, ProjectionAliasTy, UintTy,
+    OpaqueAliasTy, ProjectionAliasTy, UintTy, Unnormalized,
 };
 
 mod closure;
 
-#[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner)]
+#[derive_where(Clone, Copy, Hash, PartialEq, Eq, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, GenericTypeVisitable, TypeFoldable_Generic, Lift_Generic)]
 #[cfg_attr(
     feature = "nightly",
@@ -212,7 +212,7 @@ pub enum TyKind<I: Interner> {
     /// fn foo() -> i32 { 1 }
     /// let bar = foo; // bar: fn() -> i32 {foo}
     /// ```
-    FnDef(I::FunctionId, I::GenericArgs),
+    FnDef(I::FunctionId, ty::Binder<I, I::GenericArgs>),
 
     /// A pointer to a function.
     ///
@@ -352,14 +352,18 @@ impl<I: Interner> Eq for TyKind<I> {}
 
 impl<I: Interner> TyKind<I> {
     pub fn fn_sig(self, interner: I) -> ty::Binder<I, ty::FnSig<I>> {
+        self.unnormalized_fn_sig(interner).skip_normalization()
+    }
+
+    pub fn unnormalized_fn_sig(self, interner: I) -> Unnormalized<I, ty::Binder<I, ty::FnSig<I>>> {
         match self {
-            ty::FnPtr(sig_tys, hdr) => sig_tys.with(hdr),
+            ty::FnPtr(sig_tys, hdr) => Unnormalized::new_wip(sig_tys.with(hdr)),
             ty::FnDef(def_id, args) => {
-                interner.fn_sig(def_id).instantiate(interner, args).skip_norm_wip()
+                interner.fn_sig(def_id).instantiate(interner, args.no_bound_vars().unwrap())
             }
             ty::Error(_) => {
                 // ignore errors (#54954)
-                ty::Binder::dummy(ty::FnSig::dummy())
+                Unnormalized::dummy(ty::Binder::dummy(ty::FnSig::dummy()))
             }
             ty::Closure(..) => panic!(
                 "to get the signature of a closure, use `args.as_closure().sig()` not `fn_sig()`",

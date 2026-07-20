@@ -1,6 +1,9 @@
-//@ check-pass
 //@ compile-flags: -Znext-solver
-// Issue 108933
+
+// Regression test for #108933.
+// This was fixed by lazy norm of param env with the next solver.
+// But it regressed again as we switched back to be consistent with
+// the old solver. See #158643.
 
 trait Add<Rhs> {
     type Sum;
@@ -24,6 +27,7 @@ where
 }
 
 fn g<T>()
+//~^ ERROR: the trait bound `T: Trait<()>` is not satisfied
 where
     T: Trait<Unit>,
     <T as Trait<()>>::Output: Sized,

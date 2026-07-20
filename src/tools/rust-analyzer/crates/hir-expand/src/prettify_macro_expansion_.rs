@@ -1,15 +1,15 @@
 //! Pretty printing of macros output.
 
-use base_db::Crate;
+use base_db::{Crate, SourceDatabase};
 use rustc_hash::FxHashMap;
 use syntax::SyntaxNode;
 
-use crate::{db::ExpandDatabase, span_map::ExpansionSpanMap};
+use crate::span_map::ExpansionSpanMap;
 
 /// Inserts whitespace and replaces `$crate` in macro expansions.
 #[expect(deprecated)]
 pub fn prettify_macro_expansion(
-    db: &dyn ExpandDatabase,
+    db: &dyn SourceDatabase,
     syn: SyntaxNode,
     span_map: &ExpansionSpanMap,
     target_crate_id: Crate,

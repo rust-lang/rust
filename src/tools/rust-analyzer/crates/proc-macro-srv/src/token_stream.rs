@@ -190,7 +190,7 @@ impl<S> TokenStream<S> {
                     continue;
                 }
                 rustc_lexer::TokenKind::LineComment { doc_style: Some(doc_style) } => {
-                    let text = &s[range.start + 2..range.end];
+                    let text = &s[range.start + 3..range.end];
                     tokenstream.push(TokenTree::Punct(Punct { ch: b'#', joint: false, span }));
                     if doc_style == DocStyle::Inner {
                         tokenstream.push(TokenTree::Punct(Punct { ch: b'!', joint: false, span }));
@@ -216,7 +216,7 @@ impl<S> TokenStream<S> {
                 }
                 rustc_lexer::TokenKind::BlockComment { doc_style: Some(doc_style), terminated } => {
                     let text =
-                        &s[range.start + 2..if terminated { range.end - 2 } else { range.end }];
+                        &s[range.start + 3..if terminated { range.end - 2 } else { range.end }];
                     tokenstream.push(TokenTree::Punct(Punct { ch: b'#', joint: false, span }));
                     if doc_style == DocStyle::Inner {
                         tokenstream.push(TokenTree::Punct(Punct { ch: b'!', joint: false, span }));
@@ -757,5 +757,11 @@ mod tests {
             TokenStream::from_str("{} () [] <> ;/., \"gfhdgfuiofghd\" 0f32 r#\"dff\"# 'r#lt", ())
                 .unwrap();
         assert_eq!(token_stream.to_string(), "{}()[]<> ;/., \"gfhdgfuiofghd\"0f32 r#\"dff\"#'r#lt");
+    }
+
+    #[test]
+    fn doc_comment_from_str() {
+        let token_stream = TokenStream::from_str("/// foo", ()).unwrap();
+        assert_eq!(token_stream.to_string(), r#"# [doc = " foo"]"#);
     }
 }

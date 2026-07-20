@@ -11,7 +11,6 @@
 //! For a high-level overview of how this solver works, check out the relevant
 //! section of the rustc-dev-guide.
 
-mod alias_relate;
 mod assembly;
 mod effect_goals;
 mod eval_ctxt;
@@ -24,12 +23,12 @@ mod trait_goals;
 use derive_where::derive_where;
 use rustc_type_ir::inherent::*;
 pub use rustc_type_ir::solve::*;
-use rustc_type_ir::{self as ty, Interner, TyVid};
+use rustc_type_ir::{self as ty, Interner};
 use tracing::instrument;
 
 pub use self::eval_ctxt::{
     EvalCtxt, GenerateProofTree, SolverDelegateEvalExt,
-    evaluate_root_goal_for_proof_tree_raw_provider,
+    evaluate_root_goal_for_proof_tree_raw_provider, fast_path,
 };
 use crate::delegate::SolverDelegate;
 use crate::solve::assembly::Candidate;
@@ -424,22 +423,4 @@ pub struct GoalEvaluation<I: Interner> {
     /// If the [`Certainty`] was `Maybe`, then keep track of whether the goal has changed
     /// before rerunning it.
     pub stalled_on: Option<GoalStalledOn<I>>,
-}
-
-/// The conditions that must change for a goal to warrant
-#[derive_where(Clone, Debug; I: Interner)]
-pub struct GoalStalledOn<I: Interner> {
-    pub num_opaques: usize,
-    pub stalled_vars: Vec<I::GenericArg>,
-    pub sub_roots: Vec<TyVid>,
-    /// The certainty that will be returned on subsequent evaluations if this
-    /// goal remains stalled.
-    pub stalled_certainty: Certainty,
-    pub previously_succeeded_in_erased: SucceededInErased<I>,
-}
-
-#[derive_where(Clone, Debug; I: Interner)]
-pub enum SucceededInErased<I: Interner> {
-    Yes { accessed_opaques: AccessedOpaques<I> },
-    No,
 }

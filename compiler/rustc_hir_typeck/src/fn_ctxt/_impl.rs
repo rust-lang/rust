@@ -213,7 +213,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // let it keep doing that and just ensure that compilation won't succeed.
                 self.dcx().span_delayed_bug(
                     self.tcx.hir_span(id),
-                    format!("`{prev}` overridden by `{ty}` for {id:?} in {:?}", self.body_id),
+                    format!("`{prev}` overridden by `{ty}` for {id:?} in {:?}", self.body_def_id),
                 );
             }
         }
@@ -755,14 +755,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub(crate) fn type_var_is_sized(&self, self_ty: ty::TyVid) -> bool {
         let sized_did = self.tcx.lang_items().sized_trait();
-        self.obligations_for_self_ty(self_ty).into_iter().any(|obligation| {
-            match obligation.predicate.kind().skip_binder() {
+
+        // NB: `T: Sized` implies that all subtypes and all supertypes of `T` are also sized,
+        //     so it's valid to use subtyping here. (subtyping has to preserve layout and
+        //     `T <: U => &T <: &U`, so subtyping can't change sizedness)
+        self.obligations_for_self_ty(self_ty, super::UseSubtyping::Yes).into_iter().any(
+            |obligation| match obligation.predicate.kind().skip_binder() {
                 ty::PredicateKind::Clause(ty::ClauseKind::Trait(data)) => {
                     Some(data.def_id()) == sized_did
                 }
                 _ => false,
-            }
-        })
+            },
+        )
     }
 
     pub(crate) fn err_args(&self, len: usize, guar: ErrorGuaranteed) -> Vec<Ty<'tcx>> {
@@ -1066,7 +1070,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             arg_span,
                             span,
                             container_id,
-                            self.body_id.to_def_id(),
+                            self.body_def_id.to_def_id(),
                         ) {
                             self.set_tainted_by_errors(e);
                         }
@@ -1188,7 +1192,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // error in `validate_res_from_ribs` -- it's just difficult to tell whether the
             // self type has any generic types during rustc_resolve, which is what we use
             // to determine if this is a hard error or warning.
-            if std::iter::successors(Some(self.body_id.to_def_id()), |&def_id| {
+            if std::iter::successors(Some(self.body_def_id.to_def_id()), |&def_id| {
                 self.tcx.generics_of(def_id).parent
             })
             .all(|def_id| def_id != impl_def_id)
@@ -1530,7 +1534,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let guar = self.tainted_by_errors().unwrap_or_else(|| {
             self.err_ctxt()
                 .emit_inference_failure_err(
-                    self.body_id,
+                    self.body_def_id,
                     sp,
                     ty.into(),
                     TypeAnnotationNeeded::E0282,
@@ -1556,7 +1560,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let e = self.tainted_by_errors().unwrap_or_else(|| {
                 self.err_ctxt()
                     .emit_inference_failure_err(
-                        self.body_id,
+                        self.body_def_id,
                         sp,
                         ct.into(),
                         TypeAnnotationNeeded::E0282,

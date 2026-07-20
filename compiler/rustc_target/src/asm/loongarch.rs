@@ -8,12 +8,19 @@ def_reg_class! {
     LoongArch LoongArchInlineAsmRegClass {
         reg,
         freg,
+        vreg,
+        xreg,
     }
 }
 
 impl LoongArchInlineAsmRegClass {
     pub fn valid_modifiers(self, _arch: super::InlineAsmArch) -> &'static [char] {
-        &[]
+        match self {
+            Self::freg => &['w', 'u'],
+            Self::vreg => &['u'],
+            Self::xreg => &['w'],
+            _ => &[],
+        }
     }
 
     pub fn suggest_class(self, _arch: InlineAsmArch, _ty: InlineAsmType) -> Option<Self> {
@@ -35,6 +42,7 @@ impl LoongArchInlineAsmRegClass {
     pub fn supported_types(
         self,
         arch: InlineAsmArch,
+        allow_experimental_reg: bool,
     ) -> &'static [(InlineAsmType, Option<Symbol>)] {
         match (self, arch) {
             (Self::reg, InlineAsmArch::LoongArch64) => {
@@ -42,6 +50,27 @@ impl LoongArchInlineAsmRegClass {
             }
             (Self::reg, InlineAsmArch::LoongArch32) => types! { _: I8, I16, I32, F16, F32; },
             (Self::freg, _) => types! { f: F16, F32; d: F64; },
+            (Self::vreg, _) => {
+                if allow_experimental_reg {
+                    types! {
+                        lsx: F16, F32, F64,
+                            VecI8(16), VecI16(8), VecI32(4), VecI64(2), VecF32(4), VecF64(2);
+                    }
+                } else {
+                    &[]
+                }
+            }
+            (Self::xreg, _) => {
+                if allow_experimental_reg {
+                    types! {
+                        lasx: F16, F32, F64,
+                            VecI8(16), VecI16(8), VecI32(4), VecI64(2), VecF32(4), VecF64(2),
+                            VecI8(32), VecI16(16), VecI32(8), VecI64(4), VecF32(8), VecF64(4);
+                    }
+                } else {
+                    &[]
+                }
+            }
             _ => unreachable!("unsupported register class"),
         }
     }
@@ -108,6 +137,70 @@ def_regs! {
         f29: freg = ["$f29","$fs5"],
         f30: freg = ["$f30","$fs6"],
         f31: freg = ["$f31","$fs7"],
+        vr0: vreg = ["$vr0"],
+        vr1: vreg = ["$vr1"],
+        vr2: vreg = ["$vr2"],
+        vr3: vreg = ["$vr3"],
+        vr4: vreg = ["$vr4"],
+        vr5: vreg = ["$vr5"],
+        vr6: vreg = ["$vr6"],
+        vr7: vreg = ["$vr7"],
+        vr8: vreg = ["$vr8"],
+        vr9: vreg = ["$vr9"],
+        vr10: vreg = ["$vr10"],
+        vr11: vreg = ["$vr11"],
+        vr12: vreg = ["$vr12"],
+        vr13: vreg = ["$vr13"],
+        vr14: vreg = ["$vr14"],
+        vr15: vreg = ["$vr15"],
+        vr16: vreg = ["$vr16"],
+        vr17: vreg = ["$vr17"],
+        vr18: vreg = ["$vr18"],
+        vr19: vreg = ["$vr19"],
+        vr20: vreg = ["$vr20"],
+        vr21: vreg = ["$vr21"],
+        vr22: vreg = ["$vr22"],
+        vr23: vreg = ["$vr23"],
+        vr24: vreg = ["$vr24"],
+        vr25: vreg = ["$vr25"],
+        vr26: vreg = ["$vr26"],
+        vr27: vreg = ["$vr27"],
+        vr28: vreg = ["$vr28"],
+        vr29: vreg = ["$vr29"],
+        vr30: vreg = ["$vr30"],
+        vr31: vreg = ["$vr31"],
+        xr0: xreg = ["$xr0"],
+        xr1: xreg = ["$xr1"],
+        xr2: xreg = ["$xr2"],
+        xr3: xreg = ["$xr3"],
+        xr4: xreg = ["$xr4"],
+        xr5: xreg = ["$xr5"],
+        xr6: xreg = ["$xr6"],
+        xr7: xreg = ["$xr7"],
+        xr8: xreg = ["$xr8"],
+        xr9: xreg = ["$xr9"],
+        xr10: xreg = ["$xr10"],
+        xr11: xreg = ["$xr11"],
+        xr12: xreg = ["$xr12"],
+        xr13: xreg = ["$xr13"],
+        xr14: xreg = ["$xr14"],
+        xr15: xreg = ["$xr15"],
+        xr16: xreg = ["$xr16"],
+        xr17: xreg = ["$xr17"],
+        xr18: xreg = ["$xr18"],
+        xr19: xreg = ["$xr19"],
+        xr20: xreg = ["$xr20"],
+        xr21: xreg = ["$xr21"],
+        xr22: xreg = ["$xr22"],
+        xr23: xreg = ["$xr23"],
+        xr24: xreg = ["$xr24"],
+        xr25: xreg = ["$xr25"],
+        xr26: xreg = ["$xr26"],
+        xr27: xreg = ["$xr27"],
+        xr28: xreg = ["$xr28"],
+        xr29: xreg = ["$xr29"],
+        xr30: xreg = ["$xr30"],
+        xr31: xreg = ["$xr31"],
         #error = ["$r0","$zero"] =>
             "constant zero cannot be used as an operand for inline asm",
         #error = ["$r2","$tp"] =>
@@ -131,5 +224,61 @@ impl LoongArchInlineAsmReg {
         _modifier: Option<char>,
     ) -> fmt::Result {
         out.write_str(self.name())
+    }
+
+    pub fn overlapping_regs(self, mut cb: impl FnMut(LoongArchInlineAsmReg)) {
+        macro_rules! reg_conflicts {
+            (
+                $(
+                    $f:ident : $v:ident : $x:ident
+                ),*;
+            ) => {
+                match self {
+                    $(
+                        Self::$f | Self::$v | Self::$x => {
+                            cb(Self::$f);
+                            cb(Self::$v);
+                            cb(Self::$x);
+                        }
+                    )*
+                    r => cb(r),
+                }
+            };
+        }
+
+        reg_conflicts! {
+            f0 : vr0 : xr0,
+            f1 : vr1 : xr1,
+            f2 : vr2 : xr2,
+            f3 : vr3 : xr3,
+            f4 : vr4 : xr4,
+            f5 : vr5 : xr5,
+            f6 : vr6 : xr6,
+            f7 : vr7 : xr7,
+            f8 : vr8 : xr8,
+            f9 : vr9 : xr9,
+            f10 : vr10 : xr10,
+            f11 : vr11 : xr11,
+            f12 : vr12 : xr12,
+            f13 : vr13 : xr13,
+            f14 : vr14 : xr14,
+            f15 : vr15 : xr15,
+            f16 : vr16 : xr16,
+            f17 : vr17 : xr17,
+            f18 : vr18 : xr18,
+            f19 : vr19 : xr19,
+            f20 : vr20 : xr20,
+            f21 : vr21 : xr21,
+            f22 : vr22 : xr22,
+            f23 : vr23 : xr23,
+            f24 : vr24 : xr24,
+            f25 : vr25 : xr25,
+            f26 : vr26 : xr26,
+            f27 : vr27 : xr27,
+            f28 : vr28 : xr28,
+            f29 : vr29 : xr29,
+            f30 : vr30 : xr30,
+            f31 : vr31 : xr31;
+        }
     }
 }

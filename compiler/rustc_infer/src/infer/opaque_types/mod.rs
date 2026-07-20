@@ -26,7 +26,7 @@ impl<'tcx> InferCtxt<'tcx> {
     pub fn replace_opaque_types_with_inference_vars<T: TypeFoldable<TyCtxt<'tcx>>>(
         &self,
         value: T,
-        body_id: LocalDefId,
+        body_def_id: LocalDefId,
         span: Span,
         param_env: ty::ParamEnv<'tcx>,
     ) -> InferOk<'tcx, T> {
@@ -60,7 +60,7 @@ impl<'tcx> InferCtxt<'tcx> {
                                     self.tcx,
                                     ObligationCause::new(
                                         span,
-                                        body_id,
+                                        body_def_id,
                                         traits::ObligationCauseCode::OpaqueReturnType(None),
                                     ),
                                     goal.param_env,

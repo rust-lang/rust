@@ -1,8 +1,6 @@
 use crate::array;
 use crate::iter::adapters::SourceIter;
-use crate::iter::{
-    ByRefSized, FusedIterator, InPlaceIterable, TrustedFused, TrustedRandomAccessNoCoerce,
-};
+use crate::iter::{FusedIterator, InPlaceIterable, TrustedFused, TrustedRandomAccessNoCoerce};
 use crate::num::NonZero;
 use crate::ops::{ControlFlow, NeverShortCircuit, Try};
 
@@ -128,15 +126,11 @@ where
         self.next_back_remainder();
 
         let mut acc = init;
-        let mut iter = ByRefSized(&mut self.iter).rev();
 
         // NB remainder is handled by `next_back_remainder`, so
-        // `next_chunk` can't return `Err` with non-empty remainder
+        // `next_chunk_back` can't return `Err` with non-empty remainder
         // (assuming correct `I as ExactSizeIterator` impl).
-        while let Ok(mut chunk) = iter.next_chunk() {
-            // FIXME: do not do double reverse
-            //        (we could instead add `next_chunk_back` for example)
-            chunk.reverse();
+        while let Ok(chunk) = self.iter.next_chunk_back() {
             acc = f(acc, chunk)?
         }
 

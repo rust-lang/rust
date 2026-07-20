@@ -1,0 +1,12 @@
+error[E0658]: `cfg(target_has_threads)` is experimental and subject to change
+  --> $DIR/feature-gate-cfg-target-has-threads.rs:1:7
+   |
+LL | #[cfg(target_has_threads)]
+   |       ^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(cfg_target_has_threads)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0658`.

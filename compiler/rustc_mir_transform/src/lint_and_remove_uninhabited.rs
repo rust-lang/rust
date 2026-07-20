@@ -14,7 +14,7 @@ impl<'tcx> crate::MirPass<'tcx> for LintAndRemoveUninhabited {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let def_id = body.source.def_id().expect_local();
         tracing::debug!(?def_id);
-        let parent_module = tcx.parent_module_from_def_id(def_id).to_def_id();
+        let parent_module = tcx.parent_module_from_def_id(def_id);
         let typing_env = body.typing_env(tcx);
 
         // check if the function's return type is inhabited

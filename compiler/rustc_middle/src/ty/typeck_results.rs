@@ -13,7 +13,7 @@ use rustc_hir::{
     self as hir, BindingMode, ByRef, HirId, ItemLocalId, ItemLocalMap, ItemLocalSet, Mutability,
 };
 use rustc_index::IndexVec;
-use rustc_macros::{StableHash, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
+use rustc_macros::{Lift, StableHash, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_session::Session;
 use rustc_span::Span;
 
@@ -537,8 +537,8 @@ impl<'tcx> TypeckResults<'tcx> {
     ) -> impl Iterator<Item = &ty::CapturedPlace<'tcx>> {
         self.closure_min_captures
             .get(&closure_def_id)
-            .map(|closure_min_captures| closure_min_captures.values().flat_map(|v| v.iter()))
-            .into_iter()
+            .map(|closure_min_captures| closure_min_captures.values())
+            .into_flat_iter()
             .flatten()
     }
 
@@ -798,7 +798,7 @@ impl<'tcx> UserType<'tcx> {
 /// from constants that are named via paths, like `Foo::<A>::new` and
 /// so forth.
 #[derive(Copy, Clone, Debug, PartialEq, TyEncodable, TyDecodable)]
-#[derive(Eq, Hash, StableHash, TypeFoldable, TypeVisitable)]
+#[derive(Eq, Hash, StableHash, TypeFoldable, TypeVisitable, Lift)]
 pub enum UserTypeKind<'tcx> {
     Ty(Ty<'tcx>),
 
@@ -863,24 +863,12 @@ impl<'tcx> IsIdentity for CanonicalUserType<'tcx> {
 
 impl<'tcx> std::fmt::Display for UserType<'tcx> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.bounds.is_empty() {
-            self.kind.fmt(f)
-        } else {
-            self.kind.fmt(f)?;
+        self.kind.fmt(f)?;
+        for b in self.bounds {
             write!(f, " + ")?;
-            std::fmt::Debug::fmt(&self.bounds, f)
+            b.fmt(f)?;
         }
-    }
-}
-
-impl<'tcx> std::fmt::Display for UserTypeKind<'tcx> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Ty(arg0) => {
-                ty::print::with_no_trimmed_paths!(write!(f, "Ty({})", arg0))
-            }
-            Self::TypeOf(arg0, arg1) => write!(f, "TypeOf({:?}, {:?})", arg0, arg1),
-        }
+        Ok(())
     }
 }
 

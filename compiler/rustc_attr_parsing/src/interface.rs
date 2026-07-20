@@ -5,7 +5,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use rustc_ast as ast;
 use rustc_ast::token::DocFragmentKind;
-use rustc_ast::{AttrItemKind, AttrStyle, CRATE_NODE_ID, NodeId, Safety};
+use rustc_ast::{AttrStyle, CRATE_NODE_ID, NodeId, Safety};
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level, MultiSpan};
 use rustc_feature::{BUILTIN_ATTRIBUTE_MAP, Features};
@@ -20,9 +20,9 @@ use crate::attributes::AttributeSafety;
 use crate::context::{
     ATTRIBUTE_PARSERS, AcceptContext, FinalizeContext, FinalizeFn, SharedContext,
 };
-use crate::early_parsed::{EARLY_PARSED_ATTRIBUTES, EarlyParsedState};
 use crate::parser::{AllowExprMetavar, ArgParser, PathParser, RefPathParser};
 use crate::session_diagnostics::ParsedDescription;
+use crate::synthetic::SyntheticAttrState;
 use crate::{AttributeTemplate, OmitDoc, ShouldEmit};
 
 pub struct EmitAttribute(
@@ -64,7 +64,7 @@ impl<'sess> AttributeParser<'sess> {
     /// errors will be emitted as a delayed bugs. in other words, we *expect* attributes parsed
     /// with `parse_limited` to be reparsed later during ast lowering where we *do* emit the errors
     ///
-    /// Due to this function not taking in RegisteredTools, *do not* use this for parsing any lint attributes
+    /// Due to this function not taking in `RegisteredTools`, *do not* use this for parsing any lint attributes
     pub fn parse_limited(
         sess: &'sess Session,
         attrs: &[ast::Attribute],
@@ -86,7 +86,7 @@ impl<'sess> AttributeParser<'sess> {
     /// This does the same as `parse_limited`, except it has a `should_emit` parameter which allows it to emit errors.
     /// Usually you want `parse_limited`, which emits no errors.
     ///
-    /// Due to this function not taking in RegisteredTools, *do not* use this for parsing any lint attributes
+    /// Due to this function not taking in `RegisteredTools`, *do not* use this for parsing any lint attributes
     pub fn parse_limited_should_emit(
         sess: &'sess Session,
         attrs: &[ast::Attribute],
@@ -158,15 +158,12 @@ impl<'sess> AttributeParser<'sess> {
         allow_expr_metavar: AllowExprMetavar,
         expected_safety: AttributeSafety,
     ) -> Option<T> {
-        let ast::AttrKind::Normal(normal_attr) = &attr.kind else {
-            panic!("parse_single called on a doc attr")
-        };
-        let parts =
-            normal_attr.item.path.segments.iter().map(|seg| seg.ident.name).collect::<Vec<_>>();
+        let attr_item = attr.get_normal_item();
+        let parts = attr_item.path.segments.iter().map(|seg| seg.ident.name).collect::<Vec<_>>();
 
-        let path = AttrPath::from_ast(&normal_attr.item.path, identity);
+        let path = AttrPath::from_ast(&attr_item.path, identity);
         let args = ArgParser::from_attr_args(
-            &normal_attr.item.args.unparsed_ref().unwrap(),
+            &attr_item.args,
             &parts,
             &sess.psess,
             emit_errors,
@@ -175,10 +172,10 @@ impl<'sess> AttributeParser<'sess> {
         Self::parse_single_args(
             sess,
             attr.span,
-            normal_attr.item.span(),
+            attr_item.span(),
             attr.style,
             path,
-            Some(normal_attr.item.unsafety),
+            Some(attr_item.unsafety),
             expected_safety,
             ParsedDescription::Attribute,
             target_span,
@@ -259,7 +256,7 @@ impl<'sess> AttributeParser<'sess> {
     }
 
     pub(crate) fn sess(&self) -> &'sess Session {
-        &self.sess
+        self.sess
     }
 
     pub(crate) fn features(&self) -> &'sess Features {
@@ -293,7 +290,7 @@ impl<'sess> AttributeParser<'sess> {
     ) -> Vec<Attribute> {
         let mut attributes = Vec::new();
         let mut attr_paths: Vec<RefPathParser<'_>> = Vec::new();
-        let mut early_parsed_state = EarlyParsedState::default();
+        let mut synthetic_attr_state = SyntheticAttrState::default();
 
         let mut finalizers: Vec<FinalizeFn> = Vec::with_capacity(attrs.len());
 
@@ -329,19 +326,12 @@ impl<'sess> AttributeParser<'sess> {
                         comment: *symbol,
                     }));
                 }
+                ast::AttrKind::Synthetic(synthetic) => {
+                    synthetic_attr_state.accept_synthetic_attr(attr_span, lower_span, synthetic);
+                }
                 ast::AttrKind::Normal(n) => {
                     attr_paths.push(PathParser(&n.item.path));
                     let attr_path = AttrPath::from_ast(&n.item.path, lower_span);
-
-                    let args = match &n.item.args {
-                        AttrItemKind::Unparsed(args) => args,
-                        AttrItemKind::Parsed(parsed) => {
-                            early_parsed_state
-                                .accept_early_parsed_attribute(attr_span, lower_span, parsed);
-                            continue;
-                        }
-                    };
-
                     let parts =
                         n.item.path.segments.iter().map(|seg| seg.ident.name).collect::<Vec<_>>();
                     let inner_span = lower_span(n.item.span());
@@ -356,11 +346,11 @@ impl<'sess> AttributeParser<'sess> {
                         );
                         self.check_attribute_stability(&attr_path, attr_span, accept.stability);
                         if let [part] = parts.as_slice() {
-                            debug_assert!(BUILTIN_ATTRIBUTE_MAP.contains(&part));
+                            debug_assert!(BUILTIN_ATTRIBUTE_MAP.contains(part));
                         }
 
                         let Some(args) = ArgParser::from_attr_args(
-                            args,
+                            &n.item.args,
                             &parts,
                             &self.sess.psess,
                             self.should_emit,
@@ -426,13 +416,12 @@ impl<'sess> AttributeParser<'sess> {
                         Self::check_target(&accept.allowed_targets, "", &mut cx);
                         #[cfg(debug_assertions)]
                         if !cx.shared.has_lint_been_emitted.load(Ordering::Relaxed) {
-                            cx.shared.cx.check_args_used(&attr, &args)
+                            cx.shared.cx.check_args_used(attr, &args)
                         }
                     } else {
                         let attr = AttrItem {
                             path: attr_path.clone(),
-                            args: self
-                                .lower_attr_args(n.item.args.unparsed_ref().unwrap(), lower_span),
+                            args: self.lower_attr_args(&n.item.args, lower_span),
                             id: HashIgnoredAttrId { attr_id: attr.id },
                             style: attr.style,
                             span: attr_span,
@@ -458,7 +447,7 @@ impl<'sess> AttributeParser<'sess> {
             }
         }
 
-        early_parsed_state.finalize_early_parsed_attributes(&mut attributes);
+        synthetic_attr_state.finalize_synthetic_attrs(&mut attributes);
         for f in &finalizers {
             if let Some(attr) = f(&mut FinalizeContext {
                 shared: SharedContext {
@@ -507,14 +496,13 @@ impl<'sess> AttributeParser<'sess> {
         /// The list of attributes that are parsed attributes,
         /// even though they don't have a parser in `Late::parsers()`
         const SPECIAL_ATTRIBUTES: &[&[Symbol]] = &[
-            // Cfg attrs are removed after being early-parsed, so don't need to be in the parser list
+            // Cfg attrs are removed after being converted into synthetic attrs and don't need to
+            // be in the parser list.
             &[sym::cfg],
             &[sym::cfg_attr],
         ];
 
-        ATTRIBUTE_PARSERS.accepters.contains_key(path)
-            || EARLY_PARSED_ATTRIBUTES.contains(&path)
-            || SPECIAL_ATTRIBUTES.contains(&path)
+        ATTRIBUTE_PARSERS.accepters.contains_key(path) || SPECIAL_ATTRIBUTES.contains(&path)
     }
 
     fn lower_attr_args(&self, args: &ast::AttrArgs, lower_span: impl Fn(Span) -> Span) -> AttrArgs {

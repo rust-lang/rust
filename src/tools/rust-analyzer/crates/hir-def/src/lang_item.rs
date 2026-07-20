@@ -2,6 +2,7 @@
 //!
 //! This attribute to tell the compiler about semi built-in std library
 //! features, such as Fn family of traits.
+use base_db::SourceDatabase;
 use hir_expand::name::Name;
 use intern::{Symbol, sym};
 use stdx::impl_from;
@@ -10,7 +11,6 @@ use crate::{
     AdtId, AssocItemId, AttrDefId, ConstId, Crate, EnumId, EnumVariantId, FunctionId, ImplId,
     ItemContainerId, MacroId, ModuleDefId, StaticId, StructId, TraitId, TypeAliasId, UnionId,
     attrs::AttrFlags,
-    db::DefDatabase,
     nameres::{DefMap, assoc::TraitItems, crate_def_map, crate_local_def_map},
 };
 
@@ -35,7 +35,7 @@ impl_from!(
 
 /// Salsa query. This will look for lang items in a specific crate.
 #[salsa_macros::tracked(returns(as_deref))]
-pub fn crate_lang_items(db: &dyn DefDatabase, krate: Crate) -> Option<Box<LangItems>> {
+pub fn crate_lang_items(db: &dyn SourceDatabase, krate: Crate) -> Option<Box<LangItems>> {
     let _p = tracing::info_span!("crate_lang_items_query").entered();
 
     let mut lang_items = LangItems::default();
@@ -113,7 +113,7 @@ pub fn crate_lang_items(db: &dyn DefDatabase, krate: Crate) -> Option<Box<LangIt
 /// Salsa query. Look for a lang items, starting from the specified crate and recursively
 /// traversing its dependencies.
 #[salsa_macros::tracked(returns(ref))]
-pub fn lang_items(db: &dyn DefDatabase, start_crate: Crate) -> LangItems {
+pub fn lang_items(db: &dyn SourceDatabase, start_crate: Crate) -> LangItems {
     let _p = tracing::info_span!("lang_items_query").entered();
 
     let mut result = crate_lang_items(db, start_crate).cloned().unwrap_or_default();
@@ -138,7 +138,7 @@ pub fn lang_items(db: &dyn DefDatabase, start_crate: Crate) -> LangItems {
 }
 
 impl LangItems {
-    fn collect_lang_item<T>(&mut self, db: &dyn DefDatabase, item: T)
+    fn collect_lang_item<T>(&mut self, db: &dyn SourceDatabase, item: T)
     where
         T: Into<AttrDefId> + Into<LangItemTarget> + Copy,
     {
@@ -150,7 +150,7 @@ impl LangItems {
 }
 
 fn resolve_core_trait(
-    db: &dyn DefDatabase,
+    db: &dyn SourceDatabase,
     core_def_map: &DefMap,
     modules: &[Symbol],
     name: Symbol,
@@ -175,7 +175,7 @@ fn resolve_core_trait(
 }
 
 fn resolve_core_macro(
-    db: &dyn DefDatabase,
+    db: &dyn SourceDatabase,
     core_def_map: &DefMap,
     modules: &[Symbol],
     name: Symbol,
@@ -196,7 +196,7 @@ fn resolve_core_macro(
 }
 
 impl LangItems {
-    fn resolve_manually(&mut self, db: &dyn DefDatabase) {
+    fn resolve_manually(&mut self, db: &dyn SourceDatabase) {
         let parent_trait =
             |lang_item: &mut Option<TraitId>, def: Option<FunctionId>| match def?.loc(db).container
             {
@@ -318,7 +318,7 @@ impl LangItems {
 }
 
 #[salsa::tracked(returns(as_deref))]
-pub(crate) fn crate_notable_traits(db: &dyn DefDatabase, krate: Crate) -> Option<Box<[TraitId]>> {
+pub fn crate_notable_traits(db: &dyn SourceDatabase, krate: Crate) -> Option<Box<[TraitId]>> {
     let mut traits = Vec::new();
 
     let crate_def_map = crate_def_map(db, krate);
@@ -397,7 +397,7 @@ macro_rules! language_item_table {
                 }
             }
 
-            fn fill_non_lang_core_items(&mut self, db: &dyn DefDatabase, core_def_map: &DefMap) {
+            fn fill_non_lang_core_items(&mut self, db: &dyn SourceDatabase, core_def_map: &DefMap) {
                 $( self.$non_lang_trait = resolve_core_trait(db, core_def_map, &[ $(sym::$non_lang_trait_module),* ], sym::$non_lang_trait); )*
                 $( self.$non_lang_macro_field = resolve_core_macro(db, core_def_map, &[ $(sym::$non_lang_macro_module),* ], sym::$non_lang_macro); )*
             }

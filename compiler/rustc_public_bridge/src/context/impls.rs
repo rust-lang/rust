@@ -201,6 +201,11 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
         self.tcx.trait_impls_in_crate(crate_num).iter().map(|impl_def_id| *impl_def_id).collect()
     }
 
+    /// Returns the inherent implementations of the given definition.
+    pub fn inherent_impls(&self, def_id: DefId) -> Vec<DefId> {
+        self.tcx.inherent_impls(def_id).iter().copied().collect()
+    }
+
     pub fn trait_impl(&self, impl_def: DefId) -> EarlyBinder<'tcx, TraitRef<'tcx>> {
         self.tcx.impl_trait_ref(impl_def)
     }
@@ -776,6 +781,11 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
                 .collect()
         };
         assoc_items
+    }
+
+    /// Returns the associated item of the given `DefId`, or `None` if it is not an associated item.
+    pub fn associated_item(&self, def_id: DefId) -> Option<AssocItem> {
+        self.tcx.opt_associated_item(def_id)
     }
 
     /// Get all vtable entries of a trait.

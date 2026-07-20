@@ -560,7 +560,9 @@ fn resolve_callsite<'tcx, I: Inliner<'tcx>>(
             // To resolve an instance its args have to be fully normalized.
             let args = tcx
                 .try_normalize_erasing_regions(inliner.typing_env(), Unnormalized::new_wip(args))
-                .ok()?;
+                .ok()?
+                .no_bound_vars()
+                .unwrap();
             let mut callee =
                 Instance::try_resolve(tcx, inliner.typing_env(), def_id, args).ok().flatten()?;
 
@@ -730,7 +732,7 @@ fn check_mir_is_available<'tcx, I: Inliner<'tcx>>(
             }
         }
         // These have no own callable MIR.
-        InstanceKind::Intrinsic(_) | InstanceKind::Virtual(..) => {
+        InstanceKind::Intrinsic(_) | InstanceKind::LlvmIntrinsic(_) | InstanceKind::Virtual(..) => {
             debug!("instance without MIR (intrinsic / virtual)");
             return Err("implementation limitation -- cannot inline intrinsic");
         }

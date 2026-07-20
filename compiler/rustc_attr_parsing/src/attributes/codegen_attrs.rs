@@ -2,15 +2,15 @@ use rustc_feature::AttributeStability;
 use rustc_hir::attrs::{
     CoverageAttrKind, InstrumentFnAttr, OptimizeAttr, RtsanSetting, SanitizerSet, UsedBy,
 };
-use rustc_session::errors::feature_err;
+use rustc_session::diagnostics::feature_err;
 use rustc_span::edition::Edition::Edition2024;
 
 use super::prelude::*;
 use crate::attributes::AttributeSafety;
 use crate::session_diagnostics::{
-    EmptyExportName, NakedFunctionIncompatibleAttribute, NullOnExport, NullOnObjcClass,
-    NullOnObjcSelector, ObjcClassExpectedStringLiteral, ObjcSelectorExpectedStringLiteral,
-    SanitizeInvalidStatic, TargetFeatureOnLangItem,
+    EmptyExportName, EmptySection, NakedFunctionIncompatibleAttribute, NullOnExport,
+    NullOnObjcClass, NullOnObjcSelector, NullOnSection, ObjcClassExpectedStringLiteral,
+    ObjcSelectorExpectedStringLiteral, SanitizeInvalidStatic, TargetFeatureOnLangItem,
 };
 use crate::target_checking::Policy::AllowSilent;
 
@@ -248,9 +248,6 @@ impl AttributeParser for NakedParser {
         // NOTE: when making changes to this list, check that `error_codes/E0736.md` remains
         // accurate.
         const ALLOW_LIST: &[rustc_span::Symbol] = &[
-            // conditional compilation
-            sym::cfg_trace,
-            sym::cfg_attr_trace,
             // testing (allowed here so better errors can be generated in `rustc_builtin_macros::test`)
             sym::test,
             sym::ignore,
@@ -795,7 +792,8 @@ pub(crate) struct PatchableFunctionEntryParser;
 impl SingleAttributeParser for PatchableFunctionEntryParser {
     const PATH: &[Symbol] = &[sym::patchable_function_entry];
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Fn)]);
-    const TEMPLATE: AttributeTemplate = template!(List: &["prefix_nops = m, entry_nops = n"]);
+    const TEMPLATE: AttributeTemplate =
+        template!(List: &["prefix_nops = m, entry_nops = n, section = \"section\""]);
     const STABILITY: AttributeStability = unstable!(patchable_function_entry);
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
@@ -803,74 +801,85 @@ impl SingleAttributeParser for PatchableFunctionEntryParser {
 
         let mut prefix = None;
         let mut entry = None;
+        let mut section = None;
 
         if meta_item_list.len() == 0 {
             cx.adcx().expected_at_least_one_argument(meta_item_list.span);
             return None;
         }
 
-        let mut errored = false;
-
         for item in meta_item_list.mixed() {
             let Some((ident, value)) = cx.expect_name_value(item, item.span(), None) else {
-                continue;
+                return None;
             };
 
             let attrib_to_write = match ident.name {
                 sym::prefix_nops => {
                     // Duplicate prefixes are not allowed
                     if prefix.is_some() {
-                        errored = true;
                         cx.adcx().duplicate_key(ident.span, sym::prefix_nops);
-                        continue;
+                        return None;
                     }
                     &mut prefix
                 }
                 sym::entry_nops => {
                     // Duplicate entries are not allowed
                     if entry.is_some() {
-                        errored = true;
                         cx.adcx().duplicate_key(ident.span, sym::entry_nops);
-                        continue;
+                        return None;
                     }
                     &mut entry
                 }
+                sym::section => {
+                    // Duplicate entries are not allowed
+                    if section.is_some() {
+                        cx.adcx().duplicate_key(ident.span, sym::section);
+                        return None;
+                    }
+                    // Only a string type value is allowed.
+                    let Some(value_str) = value.value_as_str() else {
+                        cx.adcx().expect_string_literal(value);
+                        return None;
+                    };
+                    // The section name does not allow null characters.
+                    if value_str.as_str().contains('\0') {
+                        cx.emit_err(NullOnSection { span: value.value_span });
+                    }
+                    // The section name is not allowed to be empty, LLVM does
+                    // not allow them.
+                    if value_str.is_empty() {
+                        cx.emit_err(EmptySection { span: value.value_span });
+                    }
+                    section = Some(value_str);
+                    // Integer parsing is not needed, process next item.
+                    continue;
+                }
                 _ => {
-                    errored = true;
                     cx.adcx().expected_specific_argument(
                         ident.span,
                         &[sym::prefix_nops, sym::entry_nops],
                     );
-                    continue;
+                    return None;
                 }
             };
 
             let rustc_ast::LitKind::Int(val, _) = value.value_as_lit().kind else {
-                errored = true;
                 cx.adcx().expected_integer_literal(value.value_span);
-                continue;
+                return None;
             };
 
             let Ok(val) = val.get().try_into() else {
-                errored = true;
                 cx.adcx().expected_integer_literal_in_range(
                     value.value_span,
                     u8::MIN as isize,
                     u8::MAX as isize,
                 );
-                continue;
+                return None;
             };
 
             *attrib_to_write = Some(val);
         }
 
-        if errored {
-            None
-        } else {
-            Some(AttributeKind::PatchableFunctionEntry {
-                prefix: prefix.unwrap_or(0),
-                entry: entry.unwrap_or(0),
-            })
-        }
+        Some(AttributeKind::PatchableFunctionEntry { prefix, entry, section })
     }
 }

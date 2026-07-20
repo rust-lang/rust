@@ -42,13 +42,7 @@ error: fn_abi_of(test) = FnAbi {
                                abi: $SOME_ALIGN,
                            },
                            backend_repr: Scalar(
-                               Initialized {
-                                   value: Int(
-                                       I8,
-                                       false,
-                                   ),
-                                   valid_range: 0..=255,
-                               },
+                               u8 is ..,
                            ),
                            fields: Primitive,
                            largest_niche: None,
@@ -80,22 +74,13 @@ error: fn_abi_of(test) = FnAbi {
                            abi: $SOME_ALIGN,
                        },
                        backend_repr: Scalar(
-                           Initialized {
-                               value: Int(
-                                   I8,
-                                   false,
-                               ),
-                               valid_range: 0..=1,
-                           },
+                           u8 is 0..=1,
                        ),
                        fields: Primitive,
                        largest_niche: Some(
                            Niche {
                                offset: Size(0 bytes),
-                               value: Int(
-                                   I8,
-                                   false,
-                               ),
+                               value: u8,
                                valid_range: 0..=1,
                            },
                        ),
@@ -138,22 +123,13 @@ error: fn_abi_of(TestFnPtr) = FnAbi {
                                abi: $SOME_ALIGN,
                            },
                            backend_repr: Scalar(
-                               Initialized {
-                                   value: Int(
-                                       I8,
-                                       false,
-                                   ),
-                                   valid_range: 0..=1,
-                               },
+                               u8 is 0..=1,
                            ),
                            fields: Primitive,
                            largest_niche: Some(
                                Niche {
                                    offset: Size(0 bytes),
-                                   value: Int(
-                                       I8,
-                                       false,
-                                   ),
+                                   value: u8,
                                    valid_range: 0..=1,
                                },
                            ),
@@ -185,13 +161,7 @@ error: fn_abi_of(TestFnPtr) = FnAbi {
                            abi: $SOME_ALIGN,
                        },
                        backend_repr: Scalar(
-                           Initialized {
-                               value: Int(
-                                   I8,
-                                   false,
-                               ),
-                               valid_range: 0..=255,
-                           },
+                           u8 is ..,
                        ),
                        fields: Primitive,
                        largest_niche: None,
@@ -234,14 +204,7 @@ error: fn_abi_of(test_generic) = FnAbi {
                                abi: $SOME_ALIGN,
                            },
                            backend_repr: Scalar(
-                               Initialized {
-                                   value: Pointer(
-                                       AddressSpace(
-                                           0,
-                                       ),
-                                   ),
-                                   valid_range: $FULL,
-                               },
+                               pointer is $FULL,
                            ),
                            fields: Primitive,
                            largest_niche: None,
@@ -319,13 +282,7 @@ error: ABIs are not compatible
                                abi: $SOME_ALIGN,
                            },
                            backend_repr: Scalar(
-                               Initialized {
-                                   value: Int(
-                                       I8,
-                                       false,
-                                   ),
-                                   valid_range: 0..=255,
-                               },
+                               u8 is ..,
                            ),
                            fields: Primitive,
                            largest_niche: None,
@@ -391,13 +348,7 @@ error: ABIs are not compatible
                                abi: $SOME_ALIGN,
                            },
                            backend_repr: Scalar(
-                               Initialized {
-                                   value: Int(
-                                       I32,
-                                       false,
-                                   ),
-                                   valid_range: $FULL,
-                               },
+                               u32 is ..,
                            ),
                            fields: Primitive,
                            largest_niche: None,
@@ -621,12 +572,7 @@ error: ABIs are not compatible
                                abi: $SOME_ALIGN,
                            },
                            backend_repr: Scalar(
-                               Initialized {
-                                   value: Float(
-                                       F32,
-                                   ),
-                                   valid_range: $FULL,
-                               },
+                               f32 is ..,
                            ),
                            fields: Primitive,
                            largest_niche: None,
@@ -692,13 +638,7 @@ error: ABIs are not compatible
                                abi: $SOME_ALIGN,
                            },
                            backend_repr: Scalar(
-                               Initialized {
-                                   value: Int(
-                                       I32,
-                                       false,
-                                   ),
-                                   valid_range: $FULL,
-                               },
+                               u32 is ..,
                            ),
                            fields: Primitive,
                            largest_niche: None,
@@ -770,13 +710,7 @@ error: ABIs are not compatible
                                abi: $SOME_ALIGN,
                            },
                            backend_repr: Scalar(
-                               Initialized {
-                                   value: Int(
-                                       I32,
-                                       true,
-                                   ),
-                                   valid_range: $FULL,
-                               },
+                               i32 is ..,
                            ),
                            fields: Primitive,
                            largest_niche: None,
@@ -842,13 +776,7 @@ error: ABIs are not compatible
                                abi: $SOME_ALIGN,
                            },
                            backend_repr: Scalar(
-                               Initialized {
-                                   value: Int(
-                                       I32,
-                                       false,
-                                   ),
-                                   valid_range: $FULL,
-                               },
+                               u32 is ..,
                            ),
                            fields: Primitive,
                            largest_niche: None,
@@ -934,24 +862,13 @@ error: fn_abi_of(assoc_test) = FnAbi {
                                abi: $SOME_ALIGN,
                            },
                            backend_repr: Scalar(
-                               Initialized {
-                                   value: Pointer(
-                                       AddressSpace(
-                                           0,
-                                       ),
-                                   ),
-                                   valid_range: $NON_NULL,
-                               },
+                               pointer is $NON_NULL,
                            ),
                            fields: Primitive,
                            largest_niche: Some(
                                Niche {
                                    offset: Size(0 bytes),
-                                   value: Pointer(
-                                       AddressSpace(
-                                           0,
-                                       ),
-                                   ),
+                                   value: pointer,
                                    valid_range: $NON_NULL,
                                },
                            ),

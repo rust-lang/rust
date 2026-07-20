@@ -1,4 +1,4 @@
-// ignore-tidy-filelength
+// ignore-tidy-file-filelength
 
 use std::borrow::Cow;
 use std::iter;
@@ -28,11 +28,11 @@ use rustc_session::{Session, lint};
 use rustc_span::edit_distance::{edit_distance, find_best_match_for_name};
 use rustc_span::edition::Edition;
 use rustc_span::{DUMMY_SP, DesugaringKind, Ident, Span, Symbol, kw, sym};
-use thin_vec::ThinVec;
+use thin_vec::{ThinVec, thin_vec};
 use tracing::debug;
 
 use super::NoConstantGenericsReason;
-use crate::error_helper::{ImportSuggestion, LabelSuggestion, TypoSuggestion};
+use crate::diagnostics::impls::{ImportSuggestion, LabelSuggestion, TypoSuggestion};
 use crate::late::{
     AliasPossibility, LateResolutionVisitor, LifetimeBinderKind, LifetimeRes, LifetimeRibKind,
     LifetimeUseSet, QSelf, RibKind,
@@ -104,7 +104,6 @@ fn import_candidate_to_enum_paths(suggestion: &ImportSuggestion) -> (String, Str
     let enum_path = ast::Path {
         span: suggestion.path.span,
         segments: suggestion.path.segments[0..path_len - 1].iter().cloned().collect(),
-        tokens: None,
     };
     let enum_path_string = path_names_to_string(&enum_path);
 
@@ -133,7 +132,7 @@ pub(super) struct MissingLifetime {
 
 /// Description of the lifetimes appearing in a function parameter.
 /// This is used to provide a literal explanation to the elision failure.
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub(super) struct ElisionFnParameter {
     /// The index of the argument in the original definition.
     pub index: usize,
@@ -3034,8 +3033,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     let doc_visible = doc_visible
                         && (module_def_id.is_local() || !r.tcx.is_doc_hidden(module_def_id));
                     if module_def_id == def_id {
-                        let path =
-                            Path { span: name_binding.span, segments: path_segments, tokens: None };
+                        let path = Path { span: name_binding.span, segments: path_segments };
                         result = Some((
                             r.expect_module(module_def_id),
                             ImportSuggestion {
@@ -3070,7 +3068,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 if let Res::Def(DefKind::Ctor(CtorOf::Variant, kind), def_id) = name_binding.res() {
                     let mut segms = enum_import_suggestion.path.segments.clone();
                     segms.push(ast::PathSegment::from_ident(ident.orig(orig_ident_span)));
-                    let path = Path { span: name_binding.span, segments: segms, tokens: None };
+                    let path = Path { span: name_binding.span, segments: segms };
                     variants.push((path, def_id, kind));
                 }
             });
@@ -3983,9 +3981,12 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         span: lifetime_ref.ident.span,
                         name: lifetime_ref.ident.name,
                         param_kind: diagnostics::ParamKindInNonTrivialAnonConst::Lifetime,
-                        help: self.r.tcx.sess.is_nightly_build(),
+                        help: self.r.tcx.sess.is_nightly_build()
+                            && !self.r.features.min_generic_const_args(),
                         is_gca: self.r.features.generic_const_args(),
                         help_gca: self.r.features.generic_const_args(),
+                        help_suggest_gca: self.r.tcx.sess.is_nightly_build()
+                            && !self.r.features.generic_const_args(),
                     })
                     .emit()
             }
@@ -4495,7 +4496,6 @@ fn mk_where_bound_predicate(
                     kind: ast::TyKind::Path(None, poly_trait_ref.trait_ref.path.clone()),
                     id: DUMMY_NODE_ID,
                     span: DUMMY_SP,
-                    tokens: None,
                 })),
             },
             span: DUMMY_SP,
@@ -4522,11 +4522,11 @@ fn mk_where_bound_predicate(
     let new_where_bound_predicate = ast::WhereBoundPredicate {
         bound_generic_params: ThinVec::new(),
         bounded_ty: Box::new(ty.clone()),
-        bounds: vec![ast::GenericBound::Trait(ast::PolyTraitRef {
+        bounds: thin_vec![ast::GenericBound::Trait(ast::PolyTraitRef {
             bound_generic_params: ThinVec::new(),
             modifiers: ast::TraitBoundModifiers::NONE,
             trait_ref: ast::TraitRef {
-                path: ast::Path { segments: modified_segments, span: DUMMY_SP, tokens: None },
+                path: ast::Path { segments: modified_segments, span: DUMMY_SP },
                 ref_id: DUMMY_NODE_ID,
             },
             span: DUMMY_SP,

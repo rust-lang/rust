@@ -1,5 +1,5 @@
 error: calling `.parse()` on a string without trimming the trailing newline character
-  --> tests/ui/read_line_without_trim.rs:12:25
+  --> tests/ui/read_line_without_trim.rs:11:25
    |
 LL |     let _x: i32 = input.parse().unwrap();
    |                   ----- ^^^^^^^
@@ -7,7 +7,7 @@ LL |     let _x: i32 = input.parse().unwrap();
    |                   help: try: `input.trim_end()`
    |
 note: call to `.read_line()` here, which leaves a trailing newline character in the buffer, which in turn will cause the checking to always fail
-  --> tests/ui/read_line_without_trim.rs:11:5
+  --> tests/ui/read_line_without_trim.rs:10:5
    |
 LL |     std::io::stdin().read_line(&mut input).unwrap();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -15,7 +15,7 @@ LL |     std::io::stdin().read_line(&mut input).unwrap();
    = help: to override `-D warnings` add `#[allow(clippy::read_line_without_trim)]`
 
 error: calling `.parse()` on a string without trimming the trailing newline character
-  --> tests/ui/read_line_without_trim.rs:17:20
+  --> tests/ui/read_line_without_trim.rs:16:20
    |
 LL |     let _x = input.parse::<i32>().unwrap();
    |              ----- ^^^^^^^^^^^^^^
@@ -23,13 +23,13 @@ LL |     let _x = input.parse::<i32>().unwrap();
    |              help: try: `input.trim_end()`
    |
 note: call to `.read_line()` here, which leaves a trailing newline character in the buffer, which in turn will cause the checking to always fail
-  --> tests/ui/read_line_without_trim.rs:16:5
+  --> tests/ui/read_line_without_trim.rs:15:5
    |
 LL |     std::io::stdin().read_line(&mut input).unwrap();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: calling `.parse()` on a string without trimming the trailing newline character
-  --> tests/ui/read_line_without_trim.rs:22:20
+  --> tests/ui/read_line_without_trim.rs:21:20
    |
 LL |     let _x = input.parse::<u32>().unwrap();
    |              ----- ^^^^^^^^^^^^^^
@@ -37,13 +37,13 @@ LL |     let _x = input.parse::<u32>().unwrap();
    |              help: try: `input.trim_end()`
    |
 note: call to `.read_line()` here, which leaves a trailing newline character in the buffer, which in turn will cause the checking to always fail
-  --> tests/ui/read_line_without_trim.rs:21:5
+  --> tests/ui/read_line_without_trim.rs:20:5
    |
 LL |     std::io::stdin().read_line(&mut input).unwrap();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: calling `.parse()` on a string without trimming the trailing newline character
-  --> tests/ui/read_line_without_trim.rs:27:20
+  --> tests/ui/read_line_without_trim.rs:26:20
    |
 LL |     let _x = input.parse::<f32>().unwrap();
    |              ----- ^^^^^^^^^^^^^^
@@ -51,13 +51,13 @@ LL |     let _x = input.parse::<f32>().unwrap();
    |              help: try: `input.trim_end()`
    |
 note: call to `.read_line()` here, which leaves a trailing newline character in the buffer, which in turn will cause the checking to always fail
-  --> tests/ui/read_line_without_trim.rs:26:5
+  --> tests/ui/read_line_without_trim.rs:25:5
    |
 LL |     std::io::stdin().read_line(&mut input).unwrap();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: calling `.parse()` on a string without trimming the trailing newline character
-  --> tests/ui/read_line_without_trim.rs:32:20
+  --> tests/ui/read_line_without_trim.rs:31:20
    |
 LL |     let _x = input.parse::<bool>().unwrap();
    |              ----- ^^^^^^^^^^^^^^^
@@ -65,13 +65,13 @@ LL |     let _x = input.parse::<bool>().unwrap();
    |              help: try: `input.trim_end()`
    |
 note: call to `.read_line()` here, which leaves a trailing newline character in the buffer, which in turn will cause the checking to always fail
-  --> tests/ui/read_line_without_trim.rs:31:5
+  --> tests/ui/read_line_without_trim.rs:30:5
    |
 LL |     std::io::stdin().read_line(&mut input).unwrap();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: comparing a string literal without trimming the trailing newline character
-  --> tests/ui/read_line_without_trim.rs:43:8
+  --> tests/ui/read_line_without_trim.rs:42:8
    |
 LL |     if input == "foo" {
    |        -----^^^^^^^^^
@@ -79,13 +79,13 @@ LL |     if input == "foo" {
    |        help: try: `input.trim_end()`
    |
 note: call to `.read_line()` here, which leaves a trailing newline character in the buffer, which in turn will cause the comparison to always fail
-  --> tests/ui/read_line_without_trim.rs:42:5
+  --> tests/ui/read_line_without_trim.rs:41:5
    |
 LL |     std::io::stdin().read_line(&mut input).unwrap();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: checking the end of a string without trimming the trailing newline character
-  --> tests/ui/read_line_without_trim.rs:50:8
+  --> tests/ui/read_line_without_trim.rs:49:8
    |
 LL |     if input.ends_with("foo") {
    |        -----^^^^^^^^^^^^^^^^^
@@ -93,7 +93,7 @@ LL |     if input.ends_with("foo") {
    |        help: try: `input.trim_end()`
    |
 note: call to `.read_line()` here, which leaves a trailing newline character in the buffer, which in turn will cause the parsing to always fail
-  --> tests/ui/read_line_without_trim.rs:49:5
+  --> tests/ui/read_line_without_trim.rs:48:5
    |
 LL |     std::io::stdin().read_line(&mut input).unwrap();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

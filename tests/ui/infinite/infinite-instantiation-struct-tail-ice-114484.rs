@@ -10,7 +10,7 @@
 //~| ERROR reached the recursion limit finding the struct tail for `VirtualWrapper<SomeData<256>, 0>`
 //~| ERROR reached the recursion limit finding the struct tail for `VirtualWrapper<SomeData<256>, 0>`
 //~| ERROR reached the recursion limit finding the struct tail for `VirtualWrapper<SomeData<256>, 0>`
-//~| ERROR reached the recursion limit while instantiating `<VirtualWrapper<..., 1> as MyTrait>::virtualize`
+//~| ERROR reached the recursion limit while instantiating `<VirtualWrapper<_, 1> as MyTrait>::virtualize`
 
 //@ build-fail
 //@ compile-flags: --diagnostic-width=100 -Zwrite-long-types-to-disk=yes

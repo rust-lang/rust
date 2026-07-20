@@ -9,6 +9,8 @@
 //! // tidy-alphabetical-end
 //! ```
 //!
+//! Numeric sequences are parsed as `u64` values, so each sequence must fit within `u64`.
+//!
 //! Empty lines and lines starting (ignoring spaces) with `//` or `#` (except those starting with
 //! `#!`) are considered comments are are sorted together with the next line (but do not affect
 //! sorting).
@@ -208,6 +210,13 @@ fn check_lines<'a>(path: &Path, content: &'a str, tidy_ctx: &TidyCtx, check: &mu
                 let end_nl_end = sub_find(rest, end + END_MARKER.len().., "\n")
                     .map(|r| r.end)
                     .unwrap_or(content.len() - offset);
+
+                // This can happen when start and end tags are on the same line...
+                // annoying, but then there's nothing to sort, just skip.
+                if end_nl_start < start_nl_end {
+                    offset += end_nl_end;
+                    continue;
+                }
 
                 let section = &rest[start_nl_end..=end_nl_start];
                 let sorted = sort_section(section);

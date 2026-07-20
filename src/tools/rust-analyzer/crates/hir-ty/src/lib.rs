@@ -61,11 +61,11 @@ mod tests;
 
 use std::{hash::Hash, ops::ControlFlow};
 
+use base_db::SourceDatabase;
 use hir_def::{
     CallableDefId, ConstId, DefWithBodyId, EnumVariantId, ExpressionStoreOwnerId, FunctionId,
     GenericDefId, HasModule, LifetimeParamId, ModuleId, StaticId, TypeAliasId, TypeOrConstParamId,
     TypeParamId,
-    db::DefDatabase,
     expr_store::{Body, ExpressionStore},
     hir::{BindingId, ExprId, ExprOrPatId, PatId},
     resolver::{HasResolver, Resolver, TypeNs},
@@ -566,7 +566,7 @@ impl From<EnumVariantId> for InferBodyId {
 }
 
 impl HasModule for InferBodyId {
-    fn module(&self, db: &dyn DefDatabase) -> ModuleId {
+    fn module(&self, db: &dyn SourceDatabase) -> ModuleId {
         match self {
             InferBodyId::DefWithBodyId(id) => id.module(db),
             InferBodyId::AnonConstId(id) => id.module(db),
@@ -575,7 +575,7 @@ impl HasModule for InferBodyId {
 }
 
 impl HasResolver for InferBodyId {
-    fn resolver(self, db: &dyn DefDatabase) -> Resolver<'_> {
+    fn resolver(self, db: &dyn SourceDatabase) -> Resolver<'_> {
         match self {
             InferBodyId::DefWithBodyId(id) => id.resolver(db),
             InferBodyId::AnonConstId(id) => id.resolver(db),

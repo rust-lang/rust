@@ -12,7 +12,7 @@ use ide_db::{
     FileId, FileRange, RootDatabase, SymbolKind,
     base_db::{CrateOrigin, LangCrateOrigin, all_crates},
     defs::{Definition, find_std_module},
-    documentation::{Documentation, HasDocs},
+    documentation::HasDocs,
     famous_defs::FamousDefs,
     ra_fixture::UpmapFromRaFixture,
 };
@@ -50,7 +50,6 @@ pub struct NavigationTarget {
     pub kind: Option<SymbolKind>,
     pub container_name: Option<Symbol>,
     pub description: Option<String>,
-    pub docs: Option<Documentation<'static>>,
     /// In addition to a `name` field, a `NavigationTarget` may also be aliased
     /// In such cases we want a `NavigationTarget` to be accessible by its alias
     pub alias: Option<Symbol>,
@@ -69,7 +68,7 @@ impl fmt::Debug for NavigationTarget {
         f.field("file_id", &self.file_id).field("full_range", &self.full_range);
         opt!(focus_range);
         f.field("name", &self.name);
-        opt!(kind container_name description docs);
+        opt!(kind container_name description);
         f.finish()
     }
 }
@@ -106,7 +105,6 @@ impl UpmapFromRaFixture for NavigationTarget {
                 virtual_file_id,
                 real_file_id,
             )?,
-            docs: self.docs.upmap_from_ra_fixture(analysis, virtual_file_id, real_file_id)?,
             alias: self.alias.upmap_from_ra_fixture(analysis, virtual_file_id, real_file_id)?,
         })
     }
@@ -156,7 +154,6 @@ impl NavigationTarget {
                             full_range,
                             SymbolKind::Module,
                         );
-                        res.docs = module.docs(db).map(Documentation::into_owned);
                         res.description = Some(
                             module.display(db, module.krate(db).to_display_target(db)).to_string(),
                         );
@@ -233,7 +230,6 @@ impl NavigationTarget {
             focus_range,
             container_name: None,
             description: None,
-            docs: None,
             alias: None,
         }
     }
@@ -294,7 +290,6 @@ impl<'db> TryToNav for FileSymbol<'db> {
                         }
                         hir::ModuleDef::BuiltinType(_) => None,
                     },
-                    docs: None,
                 }
             }),
         )
@@ -458,7 +453,6 @@ where
                 D::KIND,
             )
             .map(|mut res| {
-                res.docs = self.docs(db).map(Documentation::into_owned);
                 res.description =
                     Some(self.display(db, self.krate(db).to_display_target(db)).to_string());
                 res.container_name = self.container_name(db);
@@ -545,7 +539,6 @@ impl TryToNav for hir::ExternCrateDecl {
                     SymbolKind::CrateRoot,
                 );
 
-                res.docs = self.docs(db).map(Documentation::into_owned);
                 res.description = Some(self.display(db, krate.to_display_target(db)).to_string());
                 res.container_name = container_name(db, *self);
                 res
@@ -567,7 +560,6 @@ impl TryToNav for hir::Field {
             FieldSource::Named(it) => {
                 NavigationTarget::from_named(db, src.with_value(it), SymbolKind::Field).map(
                     |mut res| {
-                        res.docs = self.docs(db).map(Documentation::into_owned);
                         res.description =
                             Some(self.display(db, krate.to_display_target(db)).to_string());
                         res
@@ -601,17 +593,11 @@ impl TryToNav for hir::Macro {
             Either::Left(it) => it,
             Either::Right(it) => it,
         };
-        Some(
-            NavigationTarget::from_named(
-                db,
-                src.as_ref().with_value(name_owner),
-                self.kind(db).into(),
-            )
-            .map(|mut res| {
-                res.docs = self.docs(db).map(Documentation::into_owned);
-                res
-            }),
-        )
+        Some(NavigationTarget::from_named(
+            db,
+            src.as_ref().with_value(name_owner),
+            self.kind(db).into(),
+        ))
     }
 }
 
@@ -683,7 +669,6 @@ impl ToNav for LocalSource {
                     focus_range,
                     container_name: None,
                     description: None,
-                    docs: None,
                 }
             },
         )
@@ -715,7 +700,6 @@ impl TryToNav for hir::Label {
                 focus_range,
                 container_name: None,
                 description: None,
-                docs: None,
             },
         ))
     }
@@ -755,7 +739,6 @@ impl TryToNav for hir::TypeParam {
                 focus_range,
                 container_name: None,
                 description: None,
-                docs: None,
             },
         ))
     }
@@ -789,7 +772,6 @@ impl TryToNav for hir::LifetimeParam {
                 focus_range,
                 container_name: None,
                 description: None,
-                docs: None,
             },
         ))
     }
@@ -822,7 +804,6 @@ impl TryToNav for hir::ConstParam {
                 focus_range,
                 container_name: None,
                 description: None,
-                docs: None,
             },
         ))
     }
@@ -847,7 +828,6 @@ impl TryToNav for hir::InlineAsmOperand {
                 focus_range,
                 container_name: None,
                 description: None,
-                docs: None,
             },
         ))
     }

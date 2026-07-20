@@ -9422,6 +9422,27 @@ fn main(a$0: impl T) {}
 }
 
 #[test]
+fn hover_impl_trait_arg_with_anon_const_arg_does_not_recurse() {
+    check(
+        r#"
+trait Tr<const N: usize> {}
+pub fn f(x$0: impl Tr<{ 0 }>) {}
+"#,
+        expect![[r#"
+            *x*
+
+            ```rust
+            x: impl Tr<{const}> + ?Sized
+            ```
+
+            ---
+
+            type param may need Drop
+        "#]],
+    );
+}
+
+#[test]
 fn hover_struct_default_arg_self() {
     check(
         r#"

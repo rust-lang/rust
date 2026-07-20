@@ -188,9 +188,7 @@ pub(crate) struct AnnotationRequired<'a> {
     #[subdiagnostic]
     pub bad_label: Option<InferenceBadError<'a>>,
     #[subdiagnostic]
-    pub infer_subdiags: Vec<SourceKindSubdiag<'a>>,
-    #[subdiagnostic]
-    pub multi_suggestions: Vec<SourceKindMultiSuggestion<'a>>,
+    pub subdiagnostic: Option<SourceKindSubdiag<'a>>,
 }
 
 // Copy of `AnnotationRequired` for E0283
@@ -210,9 +208,7 @@ pub(crate) struct AmbiguousImpl<'a> {
     #[subdiagnostic]
     pub bad_label: Option<InferenceBadError<'a>>,
     #[subdiagnostic]
-    pub infer_subdiags: Vec<SourceKindSubdiag<'a>>,
-    #[subdiagnostic]
-    pub multi_suggestions: Vec<SourceKindMultiSuggestion<'a>>,
+    pub subdiagnostic: Option<SourceKindSubdiag<'a>>,
 }
 
 // Copy of `AnnotationRequired` for E0284
@@ -232,9 +228,7 @@ pub(crate) struct AmbiguousReturn<'a> {
     #[subdiagnostic]
     pub bad_label: Option<InferenceBadError<'a>>,
     #[subdiagnostic]
-    pub infer_subdiags: Vec<SourceKindSubdiag<'a>>,
-    #[subdiagnostic]
-    pub multi_suggestions: Vec<SourceKindMultiSuggestion<'a>>,
+    pub subdiagnostic: Option<SourceKindSubdiag<'a>>,
 }
 
 // Used when a better one isn't available
@@ -294,7 +288,7 @@ pub(crate) enum SourceKindSubdiag<'a> {
         x_kind: &'static str,
         prefix_kind: UnderspecifiedArgKind,
         prefix: &'a str,
-        arg_name: String,
+        arg_name: &'a str,
     },
     #[label(
         "cannot infer {$is_type ->
@@ -308,7 +302,7 @@ pub(crate) enum SourceKindSubdiag<'a> {
             *[false] parameter {$param_name}
         }"
     )]
-    GenericLabel {
+    Generic {
         #[primary_span]
         span: Span,
         is_type: bool,
@@ -316,48 +310,9 @@ pub(crate) enum SourceKindSubdiag<'a> {
         parent_exists: bool,
         parent_prefix: String,
         parent_name: String,
+        #[subdiagnostic]
+        suggestion: Option<SpecifyGenericParamsSuggestion>,
     },
-    #[suggestion(
-        "consider specifying the generic {$arg_count ->
-            [one] argument
-            *[other] arguments
-        }",
-        style = "verbose",
-        code = "::<{args}>",
-        applicability = "has-placeholders"
-    )]
-    GenericSuggestion {
-        #[primary_span]
-        span: Span,
-        arg_count: usize,
-        args: String,
-    },
-    #[suggestion(
-        "consider specifying a concrete type for the type parameter `{$param}`",
-        style = "verbose",
-        code = "::</* Type */>",
-        applicability = "has-placeholders"
-    )]
-    GenericTypeSuggestion {
-        #[primary_span]
-        span: Span,
-        param: String,
-    },
-    #[suggestion(
-        "consider specifying a const for the const parameter `{$param}`",
-        style = "verbose",
-        code = "::</* CONST */>",
-        applicability = "has-placeholders"
-    )]
-    ConstGenericSuggestion {
-        #[primary_span]
-        span: Span,
-        param: String,
-    },
-}
-
-#[derive(Subdiagnostic)]
-pub(crate) enum SourceKindMultiSuggestion<'a> {
     #[multipart_suggestion(
         "try using a fully qualified path to specify the expected types",
         style = "verbose",
@@ -386,7 +341,7 @@ pub(crate) enum SourceKindMultiSuggestion<'a> {
     },
 }
 
-impl<'a> SourceKindMultiSuggestion<'a> {
+impl<'a> SourceKindSubdiag<'a> {
     pub(crate) fn new_fully_qualified(
         span: Span,
         def_path: String,
@@ -417,6 +372,50 @@ impl<'a> SourceKindMultiSuggestion<'a> {
         };
         Self::ClosureReturn { start_span, start_span_code, end_span }
     }
+}
+
+/// Suggestion to specify generic parameter(s) via `::<>`.
+#[derive(Subdiagnostic)]
+pub(crate) enum SpecifyGenericParamsSuggestion {
+    #[suggestion(
+        "consider specifying the generic {$arg_count ->
+            [one] argument
+            *[other] arguments
+        }",
+        style = "verbose",
+        code = "::<{args}>",
+        applicability = "has-placeholders"
+    )]
+    GenericSuggestion {
+        #[primary_span]
+        span: Span,
+        arg_count: usize,
+        args: String,
+    },
+    // FIXME: there is really no reason for `Generic{Type,Const}Suggestion` to be separate
+    // variants, all of these should be unified.
+    #[suggestion(
+        "consider specifying a concrete type for the type parameter `{$param}`",
+        style = "verbose",
+        code = "::</* Type */>",
+        applicability = "has-placeholders"
+    )]
+    GenericTypeSuggestion {
+        #[primary_span]
+        span: Span,
+        param: String,
+    },
+    #[suggestion(
+        "consider specifying a const for the const parameter `{$param}`",
+        style = "verbose",
+        code = "::</* CONST */>",
+        applicability = "has-placeholders"
+    )]
+    ConstGenericSuggestion {
+        #[primary_span]
+        span: Span,
+        param: String,
+    },
 }
 
 pub(crate) enum RegionOriginNote<'a> {
@@ -1204,9 +1203,9 @@ impl Subdiagnostic for ConsiderBorrowingParamHelp {
 #[diag("`impl` item signature doesn't match `trait` item signature")]
 pub(crate) struct TraitImplDiff {
     #[primary_span]
-    #[label("found `{$found}`")]
+    #[label("found `{$found_short}`")]
     pub sp: Span,
-    #[label("expected `{$expected}`")]
+    #[label("expected `{$expected_short}`")]
     pub trait_sp: Span,
     #[note(
         "expected signature `{$expected}`
@@ -1219,6 +1218,8 @@ pub(crate) struct TraitImplDiff {
         "verify the lifetime relationships in the `trait` and `impl` between the `self` argument, the other inputs and its output"
     )]
     pub rel_help: bool,
+    pub expected_short: String,
+    pub found_short: String,
     pub expected: String,
     pub found: String,
 }

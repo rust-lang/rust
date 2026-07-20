@@ -94,7 +94,7 @@ impl IllFormedAttributeInput {
         Self {
             num_suggestions: suggestions.len(),
             suggestions: DiagArgValue::StrListSepByAnd(
-                suggestions.into_iter().map(|s| format!("`{s}`").into()).collect(),
+                suggestions.iter().map(|s| format!("`{s}`").into()).collect(),
             ),
             has_docs: docs.is_some(),
             docs: docs.unwrap_or(""),
@@ -278,6 +278,10 @@ pub(crate) struct AttrCrateLevelOnly;
 #[derive(Diagnostic)]
 #[diag("`#[diagnostic::do_not_recommend]` does not expect any arguments")]
 pub(crate) struct DoNotRecommendDoesNotExpectArgs;
+
+#[derive(Diagnostic)]
+#[diag("`#[diagnostic::opaque]` does not expect any arguments")]
+pub(crate) struct OpaqueDoesNotExpectArgs;
 
 #[derive(Diagnostic)]
 #[diag("invalid `crate_type` value")]

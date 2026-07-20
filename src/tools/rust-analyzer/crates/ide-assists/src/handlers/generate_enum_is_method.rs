@@ -141,7 +141,7 @@ impl Method {
         };
 
         let variant_name = variant.name()?;
-        let fn_name = format!("is_{}", &to_lower_snake_case(&variant_name.text()));
+        let fn_name = format!("is_{}", to_lower_snake_case(&variant_name.text()));
         Some(Method { pattern_suffix, fn_name, variant_name })
     }
 }

@@ -23,11 +23,12 @@ use rustc_hir::{Attribute, StabilityLevel};
 use rustc_middle::middle::stability;
 use rustc_middle::ty::{RegisteredTools, TyCtxt};
 use rustc_session::Session;
-use rustc_session::errors::feature_err;
+use rustc_session::diagnostics::feature_err;
 use rustc_session::lint::builtin::{
     LEGACY_DERIVE_HELPERS, OUT_OF_SCOPE_MACRO_CALLS, UNKNOWN_DIAGNOSTIC_ATTRIBUTES,
     UNUSED_MACRO_RULES, UNUSED_MACROS,
 };
+use rustc_span::def_id::ModId;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{self, AstPass, ExpnData, ExpnKind, LocalExpnId, MacroKind};
@@ -214,8 +215,8 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         features: &[Symbol],
         parent_module_id: Option<NodeId>,
     ) -> LocalExpnId {
-        let parent_module =
-            parent_module_id.map(|module_id| self.owner_def_id(module_id).to_def_id());
+        let parent_module = parent_module_id
+            .map(|module_id| ModId::new_unchecked(self.owner_def_id(module_id).to_def_id()));
         let expn_id = self.tcx.with_stable_hashing_context(|hcx| {
             LocalExpnId::fresh(
                 ExpnData::allow_unstable(
@@ -230,8 +231,9 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
             )
         });
 
-        let parent_scope = parent_module
-            .map_or(self.empty_module, |def_id| self.expect_module(def_id).expect_local());
+        let parent_scope = parent_module.map_or(self.empty_module, |mod_id| {
+            self.expect_module(mod_id.to_def_id()).expect_local()
+        });
         self.ast_transform_scopes.insert(expn_id, parent_scope);
 
         expn_id
@@ -248,19 +250,30 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         force: bool,
     ) -> Result<Arc<SyntaxExtension>, Indeterminate> {
         let invoc_id = invoc.expansion_data.id;
-        let parent_scope = match self.invocation_parent_scopes.get(&invoc_id) {
-            Some(parent_scope) => *parent_scope,
-            None => {
-                // If there's no entry in the table, then we are resolving an eagerly expanded
-                // macro, which should inherit its parent scope from its eager expansion root -
+        let (parent_scope, invocation_parent) = match (
+            self.invocation_parent_scopes.get(&invoc_id),
+            self.invocation_parents.get(&invoc_id),
+        ) {
+            (Some(parent_scope), Some(invocation_parent)) => (*parent_scope, *invocation_parent),
+            (None, None) => {
+                // Eager macro invocations are not collected into the reduced graph, so they
+                // inherit their parent scope and invocation parent from the eager expansion root -
                 // the macro that requested this eager expansion.
                 let parent_scope = *self
                     .invocation_parent_scopes
                     .get(&eager_expansion_root)
                     .expect("non-eager expansion without a parent scope");
+                let invocation_parent = *self
+                    .invocation_parents
+                    .get(&eager_expansion_root)
+                    .expect("non-eager expansion without an invocation parent");
                 self.invocation_parent_scopes.insert(invoc_id, parent_scope);
-                parent_scope
+                self.invocation_parents.insert(invoc_id, invocation_parent);
+                (parent_scope, invocation_parent)
             }
+            _ => unreachable!(
+                "invocation parent tables must both contain or both miss an invocation"
+            ),
         };
 
         let (mut derives, mut inner_attr, mut deleg_impl) = (&[][..], false, None);
@@ -275,7 +288,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
             InvocationKind::GlobDelegation { ref item, .. } => {
                 let ast::AssocItemKind::DelegationMac(deleg) = &item.kind else { unreachable!() };
                 let DelegationSuffixes::Glob(star_span) = deleg.suffixes else { unreachable!() };
-                deleg_impl = Some((self.invocation_parent(invoc_id), star_span));
+                deleg_impl = Some((invocation_parent.parent_def, star_span));
                 // It is sufficient to consider glob delegation a bang macro for now.
                 (&deleg.prefix, MacroKind::Bang)
             }
@@ -286,16 +299,13 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         let supports_macro_expansion = invoc.fragment_kind.supports_macro_expansion();
         let node_id = invoc.expansion_data.lint_node_id;
         // This is a heuristic, but it's good enough for the lint.
-        let looks_like_invoc_in_mod_inert_attr = self
-            .invocation_parents
-            .get(&invoc_id)
-            .or_else(|| self.invocation_parents.get(&eager_expansion_root))
-            .filter(|&&InvocationParent { parent_def: mod_def_id, in_attr, .. }| {
+        let looks_like_invoc_in_mod_inert_attr = Some(invocation_parent)
+            .filter(|&InvocationParent { parent_def: mod_def_id, in_attr, .. }| {
                 in_attr
                     && invoc.fragment_kind == AstFragmentKind::Expr
                     && self.tcx.def_kind(mod_def_id) == DefKind::Mod
             })
-            .map(|&InvocationParent { parent_def: mod_def_id, .. }| mod_def_id);
+            .map(|InvocationParent { parent_def: mod_def_id, .. }| mod_def_id);
         let sugg_span = match &invoc.kind {
             InvocationKind::Attr { item: Annotatable::Item(item), .. }
                 if !item.span.from_expansion() =>
@@ -721,6 +731,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             (sym::on_unknown, Some(sym::diagnostic_on_unknown)),
             (sym::on_unmatched_args, Some(sym::diagnostic_on_unmatched_args)),
             (sym::on_type_error, Some(sym::diagnostic_on_type_error)),
+            (sym::opaque, Some(sym::diagnostic_opaque)),
         ];
 
         if res == Res::NonMacroAttr(NonMacroAttrKind::Tool)
@@ -1170,7 +1181,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             && kinds.contains(MacroKinds::BANG)
             // And the `macro_rules` is defined inside the attribute's module,
             // so it cannot be in scope unless imported.
-            && self.tcx.is_descendant_of(def_id, mod_def_id.to_def_id())
+            && self.tcx.is_descendant_of(def_id, mod_def_id)
         {
             // Try to resolve our ident ignoring `macro_rules` scopes.
             // If such resolution is successful and gives the same result

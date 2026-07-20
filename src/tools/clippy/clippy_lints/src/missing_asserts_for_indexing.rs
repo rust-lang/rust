@@ -221,13 +221,11 @@ fn upper_index_expr(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<usize> {
         && let LitKind::Int(Pu128(index), _) = lit.node
     {
         Some(index as usize)
-    } else if let Some(Range {
-        end: Some(end), limits, ..
-    }) = Range::hir(cx, expr)
+    } else if let Some(Range { end: Some(end), ty, .. }) = Range::hir(cx, expr)
         && let ExprKind::Lit(lit) = &end.kind
         && let LitKind::Int(Pu128(index @ 1..), _) = lit.node
     {
-        match limits {
+        match ty.limits() {
             RangeLimits::HalfOpen => Some(index as usize - 1),
             RangeLimits::Closed => Some(index as usize),
         }

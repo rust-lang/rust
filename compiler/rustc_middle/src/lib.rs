@@ -27,7 +27,6 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![allow(rustc::direct_use_of_rustc_type_ir)]
-#![cfg_attr(bootstrap, feature(box_as_ptr))]
 #![cfg_attr(doc, feature(intra_doc_pointers))]
 #![feature(allocator_api)]
 #![feature(associated_type_defaults)]
@@ -46,6 +45,7 @@
 #![feature(min_specialization)]
 #![feature(negative_impls)]
 #![feature(never_type)]
+#![feature(option_into_flat_iter)]
 #![feature(ptr_alignment_type)]
 #![feature(range_bounds_is_empty)]
 #![feature(rustc_attrs)]

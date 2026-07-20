@@ -9,6 +9,7 @@
 #![feature(deref_patterns)]
 #![feature(iterator_try_collect)]
 #![feature(never_type)]
+#![feature(option_into_flat_iter)]
 // tidy-alphabetical-end
 
 use rustc_middle::query::Providers;

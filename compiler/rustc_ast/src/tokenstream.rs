@@ -18,9 +18,12 @@ use rustc_span::{DUMMY_SP, Span, SpanDecoder, SpanEncoder, Symbol, sym};
 use thin_vec::ThinVec;
 
 use crate::ast::AttrStyle;
-use crate::ast_traits::{HasAttrs, HasTokens};
+use crate::ast_traits::HasTokens;
 use crate::token::{self, Delimiter, Token, TokenKind};
 use crate::{AttrVec, Attribute};
+
+#[cfg(test)]
+mod tests;
 
 /// Part of a `TokenStream`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Encodable, Decodable, StableHash)]
@@ -86,6 +89,22 @@ impl TokenTree {
             },
             _ => Cow::Borrowed(self),
         }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct WithTokens<T> {
+    pub node: T,
+    pub tokens: Option<LazyAttrTokenStream>,
+}
+
+impl<T> WithTokens<T> {
+    pub fn new(node: T) -> WithTokens<T> {
+        WithTokens { node, tokens: None }
+    }
+
+    pub fn map<U>(self, f: impl FnOnce(T) -> U) -> WithTokens<U> {
+        WithTokens { node: f(self.node), tokens: self.tokens }
     }
 }
 
@@ -634,7 +653,7 @@ impl TokenStream {
         TokenStream::new(vec![TokenTree::token_alone(kind, span)])
     }
 
-    pub fn from_ast(node: &(impl HasAttrs + HasTokens + fmt::Debug)) -> TokenStream {
+    pub fn from_ast(node: &(impl HasTokens + fmt::Debug)) -> TokenStream {
         let tokens = node.tokens().unwrap_or_else(|| panic!("missing tokens for node: {:?}", node));
         let mut tts = vec![];
         attrs_and_tokens_to_token_trees(node.attrs(), tokens, &mut tts);
@@ -833,21 +852,18 @@ impl StableHash for TokenStream {
 }
 
 #[derive(Clone)]
-pub struct TokenStreamIter<'t> {
-    stream: &'t TokenStream,
-    index: usize,
-}
+pub struct TokenStreamIter<'t>(std::slice::Iter<'t, TokenTree>);
 
 impl<'t> TokenStreamIter<'t> {
     fn new(stream: &'t TokenStream) -> Self {
-        TokenStreamIter { stream, index: 0 }
+        TokenStreamIter(stream.0.as_slice().iter())
     }
 
     // Peeking could be done via `Peekable`, but most iterators need peeking,
     // and this is simple and avoids the need to use `peekable` and `Peekable`
     // at all the use sites.
     pub fn peek(&self) -> Option<&'t TokenTree> {
-        self.stream.0.get(self.index)
+        self.0.as_slice().first()
     }
 }
 
@@ -855,10 +871,11 @@ impl<'t> Iterator for TokenStreamIter<'t> {
     type Item = &'t TokenTree;
 
     fn next(&mut self) -> Option<&'t TokenTree> {
-        self.stream.0.get(self.index).map(|tree| {
-            self.index += 1;
-            tree
-        })
+        self.0.next()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.0.size_hint()
     }
 }
 

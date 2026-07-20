@@ -1,18 +1,18 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
-    "config:recommended",
+    // Use https://github.com/rust-lang/renovate/blob/main/actions.json
+    "github>rust-lang/renovate:actions",
     // Open a PR to migrate the config when Renovate deprecates syntax
     ":configMigration",
     // Refresh lock files on the first day of each month
     // (still gated by dashboard approval for now)
     ":maintainLockFilesMonthly",
-    // Pin GitHub Actions to their commit SHA digests, resolving floating tags
-    // (e.g. `v4`) to the full SemVer version (e.g. `v4.1.2`)
-    "helpers:pinGitHubActionDigestsToSemver"
   ],
   // Require manual approval from the Dependency Dashboard before opening PRs
   "dependencyDashboardApproval": true,
+  // Renovate shouldn't update a PR if it is in the bors merge queue.
+  "stopUpdatingLabel": "S-waiting-on-bors",
   "packageRules": [
     {
       // No dashboard approval necessary for GitHub Actions updates

@@ -6,14 +6,18 @@ use span::{Edition, ErasedFileAstId};
 
 use crate::{
     item_tree::{
-        Const, DefDatabase, Enum, ExternBlock, ExternCrate, FieldsShape, Function, Impl, ItemTree,
-        Macro2, MacroCall, MacroRules, Mod, ModItemId, ModKind, RawVisibilityId, Static, Struct,
-        Trait, TypeAlias, Union, Use, UseTree, UseTreeKind, attrs::AttrsOrCfg,
+        Const, Enum, ExternBlock, ExternCrate, FieldsShape, Function, Impl, ItemTree, Macro2,
+        MacroCall, MacroRules, Mod, ModItemId, ModKind, RawVisibilityId, SourceDatabase, Static,
+        Struct, Trait, TypeAlias, Union, Use, UseTree, UseTreeKind, attrs::AttrsOrCfg,
     },
     visibility::RawVisibility,
 };
 
-pub(super) fn print_item_tree(db: &dyn DefDatabase, tree: &ItemTree, edition: Edition) -> String {
+pub(super) fn print_item_tree(
+    db: &dyn SourceDatabase,
+    tree: &ItemTree,
+    edition: Edition,
+) -> String {
     let mut p =
         Printer { db, tree, buf: String::new(), indent_level: 0, needs_indent: true, edition };
 
@@ -45,7 +49,7 @@ macro_rules! wln {
 }
 
 struct Printer<'a> {
-    db: &'a dyn DefDatabase,
+    db: &'a dyn SourceDatabase,
     tree: &'a ItemTree,
     buf: String,
     indent_level: usize,

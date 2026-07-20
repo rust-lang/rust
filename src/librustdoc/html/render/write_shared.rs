@@ -11,7 +11,7 @@
 //!    contents, so they do not include a hash in their filename and are not safe to
 //!    cache with `Cache-Control: immutable`. They include the contents of the
 //!    --resource-suffix flag and are emitted when --emit-type is empty (default)
-//!    or contains "invocation-specific".
+//!    or contains "html-non-static-files".
 
 use std::cell::RefCell;
 use std::ffi::{OsStr, OsString};
@@ -887,7 +887,7 @@ impl<'item> DocVisitor<'item> for TypeImplCollector<'_, '_, 'item> {
             // Only include this impl if it actually unifies with this alias.
             // Synthetic impls are not included; those are also included in the HTML.
             //
-            // FIXME(lazy_type_alias): Once the feature is complete or stable, rewrite this
+            // FIXME(checked_type_alias): Once the feature is complete or stable, rewrite this
             // to use type unification.
             // Be aware of `tests/rustdoc-html/type-alias/deeply-nested-112515.rs` which might
             // regress.

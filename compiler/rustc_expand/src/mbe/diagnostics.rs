@@ -2,9 +2,11 @@ use std::borrow::Cow;
 
 use rustc_ast::token::{self, Token};
 use rustc_ast::tokenstream::TokenStream;
-use rustc_errors::{Applicability, Diag, DiagCtxtHandle, DiagMessage};
+use rustc_data_structures::fx::FxHashSet;
+use rustc_errors::{Applicability, Diag, DiagCtxtHandle, DiagMessage, pluralize};
 use rustc_hir::attrs::diagnostic::{CustomDiagnostic, Directive, FormatArgs};
 use rustc_macros::Subdiagnostic;
+use rustc_middle::bug;
 use rustc_parse::parser::{Parser, Recovery, token_descr};
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::SourceMap;
@@ -16,7 +18,7 @@ use crate::expand::{AstFragmentKind, parse_ast_fragment};
 use crate::mbe::macro_parser::ParseResult::*;
 use crate::mbe::macro_parser::{MatcherLoc, NamedParseResult, TtParser};
 use crate::mbe::macro_rules::{
-    Tracker, try_match_macro, try_match_macro_attr, try_match_macro_derive,
+    Tracker, WhichMatcher, try_match_macro, try_match_macro_attr, try_match_macro_derive,
 };
 
 pub(super) enum FailedMacro<'a> {
@@ -44,7 +46,7 @@ pub(super) fn failed_to_match_macro(
 
     // An error occurred, try the expansion again, tracking the expansion closely for better
     // diagnostics.
-    let mut tracker = CollectTrackerAndEmitter::new(psess.dcx(), sp);
+    let mut tracker = CollectTrackerAndEmitter::new(name, psess.dcx(), sp);
 
     let try_success_result = match args {
         FailedMacro::Func => try_match_macro(psess, name, body, rules, &mut tracker),
@@ -121,7 +123,7 @@ pub(super) fn failed_to_match_macro(
         for rule in rules {
             let MacroRule::Func { lhs, .. } = rule else { continue };
             let parser = parser_from_cx(psess, body.clone(), Recovery::Allowed);
-            let mut tt_parser = TtParser::new(name);
+            let mut tt_parser = TtParser::new();
 
             if let Success(_) =
                 tt_parser.parse_tt(&mut Cow::Borrowed(&parser), lhs, &mut NoopTracker)
@@ -145,7 +147,20 @@ pub(super) fn failed_to_match_macro(
 
 /// The tracker used for the slow error path that collects useful info for diagnostics.
 struct CollectTrackerAndEmitter<'dcx, 'matcher> {
+    macro_name: Ident,
     dcx: DiagCtxtHandle<'dcx>,
+
+    /// The matcher currently being parsed.
+    //
+    // FIXME: Factor out a per-arm `Tracker` so that the `Option` is unnecessary.
+    current: Option<(WhichMatcher, &'matcher [MatcherLoc])>,
+
+    /// Matches of [`MatcherLoc`]s that successfully consumed input from the parser.
+    ///
+    /// This accumulates all calls to [`Tracker::matched_one()`]. It is used to identify all
+    /// competing matches for ambiguity errors.
+    matches: FxHashSet<SuccessfulMatch>,
+
     remaining_matcher: Option<&'matcher MatcherLoc>,
     /// Which arm's failure should we report? (the one furthest along)
     best_failure: Option<BestFailure>,
@@ -153,24 +168,45 @@ struct CollectTrackerAndEmitter<'dcx, 'matcher> {
     result: Option<(Span, ErrorGuaranteed)>,
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+struct SuccessfulMatch {
+    /// The position in the parser.
+    ///
+    /// As per [`Parser::approx_token_stream_pos()`].
+    input_pos: u32,
+
+    /// The index of the [`MatcherLoc`].
+    loc_index: u32,
+}
+
 struct BestFailure {
     token: Token,
-    position_in_tokenstream: (bool, u32),
+
+    /// The matcher in which the failure occurred.
+    matcher: WhichMatcher,
+
+    /// The approximate (parser) position of the failure.
+    ///
+    /// This is relative to [`Self::matcher`].
+    position: u32,
+
     msg: &'static str,
     remaining_matcher: MatcherLoc,
 }
 
 impl BestFailure {
-    fn is_better_position(&self, position: (bool, u32)) -> bool {
-        position > self.position_in_tokenstream
+    fn is_better_position(&self, matcher: WhichMatcher, position: u32) -> bool {
+        (matcher, position) > (self.matcher, self.position)
     }
 }
 
 impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'matcher> {
-    type Failure = (Token, u32, &'static str);
+    fn prepare(&mut self, which_matcher: WhichMatcher, matcher: &'matcher [MatcherLoc]) {
+        if self.current.is_some() {
+            bug!("`Self::after_arm()` was not called to clean up context");
+        }
 
-    fn build_failure(tok: Token, position: u32, msg: &'static str) -> Self::Failure {
-        (tok, position, msg)
+        self.current = Some((which_matcher, matcher));
     }
 
     fn before_match_loc(&mut self, parser: &TtParser, matcher: &'matcher MatcherLoc) {
@@ -181,8 +217,15 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
         }
     }
 
-    fn after_arm(&mut self, in_body: bool, result: &NamedParseResult<Self::Failure>) {
-        match result {
+    fn matched_one(&mut self, parser: &Parser<'_>, loc_index: usize) {
+        let input_pos = parser.approx_token_stream_pos();
+        let loc_index: u32 = loc_index.try_into().unwrap();
+        let m = SuccessfulMatch { input_pos, loc_index };
+        self.matches.insert(m);
+    }
+
+    fn after_arm(&mut self, result: &NamedParseResult) {
+        match *result {
             Success(_) => {
                 // Nonterminal parser recovery might turn failed matches into successful ones,
                 // but for that it must have emitted an error already
@@ -191,33 +234,112 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
                     "should not collect detailed info for successful macro match",
                 );
             }
-            Failure((token, approx_position, msg)) => {
-                debug!(?token, ?msg, "a new failure of an arm");
-
-                let position_in_tokenstream = (in_body, *approx_position);
-                if self
-                    .best_failure
-                    .as_ref()
-                    .is_none_or(|failure| failure.is_better_position(position_in_tokenstream))
-                {
-                    self.best_failure = Some(BestFailure {
-                        token: *token,
-                        position_in_tokenstream,
-                        msg,
-                        remaining_matcher: self
-                            .remaining_matcher
-                            .expect("must have collected matcher already")
-                            .clone(),
-                    })
+            Failure => {
+                if self.best_failure.is_none() {
+                    bug!("A matching failure occurred but `Self::failure()` was not called");
                 }
             }
-            Error(err_sp, msg) => {
-                let span = err_sp.substitute_dummy(self.root_span);
-                let guar = self.dcx.span_err(span, msg.clone());
-                self.result = Some((span, guar));
+            Ambiguity => {
+                if self.result.is_none() {
+                    bug!("An ambiguity error occurred but `Self::ambiguity()` was not called");
+                }
             }
-            ErrorReported(guar) => self.result = Some((self.root_span, *guar)),
+            ErrorReported(guar) => self.result = Some((self.root_span, guar)),
         }
+
+        self.current = None;
+        self.matches.clear();
+    }
+
+    fn failure(&mut self, parser: &Parser<'_>) {
+        let Some((which_matcher, _)) = self.current else {
+            bug!("`Self::prepare()` was not called to initialize context");
+        };
+
+        let mut token = parser.token;
+        let approx_position = parser.approx_token_stream_pos();
+        let msg = if token.kind == token::Eof {
+            // FIXME: Can this be factored out of the EOF case?
+            if !token.span.is_dummy() {
+                token.span = token.span.shrink_to_hi();
+            }
+            "missing tokens in macro arguments"
+        } else {
+            "no rules expected this token in macro call"
+        };
+
+        debug!(?token, ?msg, "a new failure of an arm");
+
+        if self
+            .best_failure
+            .as_ref()
+            .is_none_or(|failure| failure.is_better_position(which_matcher, approx_position))
+        {
+            self.best_failure = Some(BestFailure {
+                token,
+                matcher: which_matcher,
+                position: approx_position,
+                msg,
+                remaining_matcher: self
+                    .remaining_matcher
+                    .expect("must have collected matcher already")
+                    .clone(),
+            })
+        }
+    }
+
+    fn ambiguity(&mut self, parser: &Parser<'_>) {
+        let Some((_, matcher)) = self.current else {
+            bug!("`Self::prepare()` was not called to initialize context");
+        };
+
+        #[expect(
+            rustc::potential_query_instability,
+            reason = "sorting the results deterministically afterwards"
+        )]
+        let (mut bb_locs, mut next_locs) = self
+            .matches
+            .iter()
+            .filter(|m| m.input_pos == parser.approx_token_stream_pos())
+            .partition::<Vec<&SuccessfulMatch>, _>(|m| {
+                let loc = &matcher[m.loc_index as usize];
+                matches!(loc, MatcherLoc::MetaVarDecl { .. })
+            });
+
+        // Use a reasonable and deterministic ordering for data in the error message.
+        bb_locs.sort_unstable_by_key(|m| m.loc_index);
+        next_locs.sort_unstable_by_key(|m| m.loc_index);
+
+        let span = parser.token.span.substitute_dummy(self.root_span);
+
+        if parser.token == token::Eof {
+            let msg = "ambiguity: multiple successful parses".to_string();
+            let guar = self.dcx.span_err(span, msg);
+            self.result = Some((span, guar));
+            return;
+        }
+
+        let nts = bb_locs
+            .into_iter()
+            .map(|m| {
+                let loc = &matcher[m.loc_index as usize];
+                let MatcherLoc::MetaVarDecl { bind, kind, .. } = loc else { unreachable!() };
+                format!("{kind} ('{bind}')")
+            })
+            .collect::<Vec<String>>()
+            .join(" or ");
+
+        let msg = format!(
+            "local ambiguity when calling macro `{}`: multiple parsing options: {}",
+            self.macro_name,
+            match next_locs.len() {
+                0 => format!("built-in NTs {nts}."),
+                n => format!("built-in NTs {nts} or {n} other option{s}.", s = pluralize!(n)),
+            }
+        );
+
+        let guar = self.dcx.span_err(span, msg);
+        self.result = Some((span, guar));
     }
 
     fn description() -> &'static str {
@@ -230,8 +352,17 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
 }
 
 impl<'dcx> CollectTrackerAndEmitter<'dcx, '_> {
-    fn new(dcx: DiagCtxtHandle<'dcx>, root_span: Span) -> Self {
-        Self { dcx, remaining_matcher: None, best_failure: None, root_span, result: None }
+    fn new(macro_name: Ident, dcx: DiagCtxtHandle<'dcx>, root_span: Span) -> Self {
+        Self {
+            macro_name,
+            dcx,
+            current: None,
+            matches: FxHashSet::default(),
+            remaining_matcher: None,
+            best_failure: None,
+            root_span,
+            result: None,
+        }
     }
 }
 

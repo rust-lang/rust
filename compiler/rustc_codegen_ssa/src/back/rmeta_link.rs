@@ -2,27 +2,38 @@
 //! and potentially other data collected and used when building or linking a rlib.
 //! See <https://github.com/rust-lang/rust/issues/138243>.
 
+use std::fs::File;
 use std::path::{Path, PathBuf};
 
 use object::read::archive::ArchiveFile;
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::memmap::Mmap;
+use rustc_hir::attrs::NativeLibKind;
 use rustc_serialize::opaque::mem_encoder::MemEncoder;
 use rustc_serialize::opaque::{MAGIC_END_BYTES, MemDecoder};
 use rustc_serialize::{Decodable, Encodable};
+use rustc_span::Symbol;
+use rustc_target::spec::Target;
+use tracing::debug;
 
-use super::metadata::search_for_section;
+use super::metadata::{get_metadata_xcoff, search_for_section};
+use crate::NativeLib;
 
 pub(crate) const FILENAME: &str = "lib.rmeta-link";
 pub(crate) const SECTION: &str = ".rmeta-link";
 
 pub struct RmetaLink {
     pub rust_object_files: Vec<String>,
+    /// Positionally aligned with `native_libraries` in regular metadata: index `i` is the
+    /// bundled filename for native library `i`, or `None` if that library needs no bundling.
+    pub native_lib_filenames: Vec<Option<String>>,
 }
 
 impl RmetaLink {
     pub(crate) fn encode(&self) -> Vec<u8> {
         let mut encoder = MemEncoder::new();
         self.rust_object_files.encode(&mut encoder);
+        self.native_lib_filenames.encode(&mut encoder);
         let mut data = encoder.finish();
         data.extend_from_slice(MAGIC_END_BYTES);
         data
@@ -31,7 +42,8 @@ impl RmetaLink {
     pub(crate) fn decode(data: &[u8]) -> Option<RmetaLink> {
         let mut decoder = MemDecoder::new(data, 0).ok()?;
         let rust_object_files = Vec::<String>::decode(&mut decoder);
-        Some(RmetaLink { rust_object_files })
+        let native_lib_filenames = Vec::<Option<String>>::decode(&mut decoder);
+        Some(RmetaLink { rust_object_files, native_lib_filenames })
     }
 }
 
@@ -69,4 +81,52 @@ impl RmetaLinkCache {
     ) -> Option<&RmetaLink> {
         self.cache.entry(rlib_path.to_path_buf()).or_insert_with(load).as_ref()
     }
+
+    pub fn native_lib_filenames(
+        &mut self,
+        target: &Target,
+        rlib_path: &Path,
+        native_libs: &[NativeLib],
+    ) -> Vec<Option<Symbol>> {
+        if !crate_may_have_bundled_libs(native_libs) {
+            return Vec::new();
+        }
+        self.get_or_insert_with(rlib_path, || read_from_path(target, rlib_path))
+            .map(|rl| {
+                rl.native_lib_filenames.iter().map(|f| f.as_deref().map(Symbol::intern)).collect()
+            })
+            .unwrap_or_default()
+    }
+}
+
+fn crate_may_have_bundled_libs(libs: &[NativeLib]) -> bool {
+    libs.iter()
+        .any(|lib| matches!(lib.kind, NativeLibKind::Static { bundle: Some(true) | None, .. }))
+}
+
+// FIXME: this is mostly a copy-paste of `DefaultMetadataLoader::get_rlib_metadata`.
+fn read_from_path(target: &Target, path: &Path) -> Option<RmetaLink> {
+    let Ok(file) = File::open(path) else {
+        debug!("failed to open rlib for rmeta-link: {}", path.display());
+        return None;
+    };
+    let Ok(mmap) = (unsafe { Mmap::map(file) }) else {
+        debug!("failed to mmap rlib for rmeta-link: {}", path.display());
+        return None;
+    };
+
+    if target.is_like_aix {
+        let archive = ArchiveFile::parse(&*mmap).ok()?;
+        for entry in archive.members() {
+            let entry = entry.ok()?;
+            if entry.name() == FILENAME.as_bytes() {
+                let member_data = entry.data(&*mmap).ok()?;
+                let section_data = get_metadata_xcoff(path, member_data).ok()?;
+                return RmetaLink::decode(section_data);
+            }
+        }
+        return None;
+    }
+
+    read_from_data(&mmap, path)
 }

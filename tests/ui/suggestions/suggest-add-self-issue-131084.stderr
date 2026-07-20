@@ -1,0 +1,93 @@
+error: expected one of `:`, `@`, or `|`, found `)`
+  --> $DIR/suggest-add-self-issue-131084.rs:9:26
+   |
+LL |     fn some_fn(&some_name) {
+   |                          ^ expected one of `:`, `@`, or `|`
+   |
+help: if this is a `self` type, give it a parameter name
+   |
+LL |     fn some_fn(self: &some_name) {
+   |                +++++
+help: if this is a parameter name, give it a type
+   |
+LL -     fn some_fn(&some_name) {
+LL +     fn some_fn(some_name: &TypeName) {
+   |
+help: if this is a type, explicitly ignore the parameter name
+   |
+LL |     fn some_fn(_: &some_name) {
+   |                ++
+
+error: expected one of `:`, `@`, or `|`, found `)`
+  --> $DIR/suggest-add-self-issue-131084.rs:15:31
+   |
+LL |     fn mut_param(mut some_name) {
+   |                               ^ expected one of `:`, `@`, or `|`
+   |
+help: if this is a `self` type, give it a parameter name
+   |
+LL |     fn mut_param(self: mut some_name) {
+   |                  +++++
+help: if this is a parameter name, give it a type
+   |
+LL |     fn mut_param(mut some_name: TypeName) {
+   |                               ++++++++++
+help: if this is a type, explicitly ignore the parameter name
+   |
+LL |     fn mut_param(_: mut some_name) {
+   |                  ++
+
+error: expected one of `:`, `@`, or `|`, found `s`
+  --> $DIR/suggest-add-self-issue-131084.rs:21:32
+   |
+LL |     fn type_before_name(String s) {
+   |                         -------^
+   |                         |      |
+   |                         |      expected one of `:`, `@`, or `|`
+   |                         help: declare the type after the parameter binding: `<identifier>: <type>`
+
+error[E0424]: expected value, found module `self`
+  --> $DIR/suggest-add-self-issue-131084.rs:11:9
+   |
+LL |     fn some_fn(&some_name) {
+   |        ------- this function doesn't have a `self` parameter
+LL |
+LL |         self
+   |         ^^^^ `self` value is a keyword only available in methods with a `self` parameter
+   |
+help: add a `self` receiver parameter to make the associated `fn` a method
+   |
+LL |     fn some_fn(&self, &some_name) {
+   |                ++++++
+
+error[E0424]: expected value, found module `self`
+  --> $DIR/suggest-add-self-issue-131084.rs:17:9
+   |
+LL |     fn mut_param(mut some_name) {
+   |        --------- this function doesn't have a `self` parameter
+LL |
+LL |         self
+   |         ^^^^ `self` value is a keyword only available in methods with a `self` parameter
+   |
+help: add a `self` receiver parameter to make the associated `fn` a method
+   |
+LL |     fn mut_param(&self, mut some_name) {
+   |                  ++++++
+
+error[E0424]: expected value, found module `self`
+  --> $DIR/suggest-add-self-issue-131084.rs:23:9
+   |
+LL |     fn type_before_name(String s) {
+   |        ---------------- this function doesn't have a `self` parameter
+LL |
+LL |         self
+   |         ^^^^ `self` value is a keyword only available in methods with a `self` parameter
+   |
+help: add a `self` receiver parameter to make the associated `fn` a method
+   |
+LL |     fn type_before_name(&self, String s) {
+   |                         ++++++
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0424`.

@@ -1,4 +1,4 @@
-/* ignore-tidy-filelength */
+/* ignore-tidy-file-filelength */
 /*
 	When static files are updated, their suffixes need to be updated.
 	1. In the top directory run:
@@ -7,8 +7,6 @@
 		find build -path '*'/stage1-std/'*'/static.files
 	3. Copy the filenames with updated suffixes from the directory.
 */
-
-/* ignore-tidy-filelength */
 
 :root {
 	--nav-sub-mobile-padding: 8px;

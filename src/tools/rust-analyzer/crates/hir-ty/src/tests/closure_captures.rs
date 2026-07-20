@@ -102,7 +102,7 @@ fn check_closure_captures(#[rust_analyzer::rust_fixture] ra_fixture: &str, expec
 
                     // FIXME: Deduplicate this with hir::Local::sources().
                     let captured_local = capture.captured_local();
-                    let local_text_range = if body.self_params.contains(&captured_local)
+                    let local_text_range = if body.is_any_self_param(captured_local)
                         && let Some(source) = source_map.self_param_syntax()
                     {
                         format!("{:?}", text_range(db, source))

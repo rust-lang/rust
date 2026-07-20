@@ -2,7 +2,7 @@ use std::fmt;
 
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
-use rustc_macros::{Decodable_NoContext, Encodable_NoContext, StableHash, StableHash_NoContext};
+use rustc_macros::{Decodable_NoContext, Encodable_NoContext, StableHash_NoContext};
 use rustc_type_ir_macros::{GenericTypeVisitable, TypeFoldable_Generic, TypeVisitable_Generic};
 
 use crate::{self as ty, Interner};
@@ -103,31 +103,9 @@ pub enum PredicateKind<I: Interner> {
     /// It is likely more useful to think of this as a function `normalizes_to(alias)`,
     /// whose return value is written into `term`.
     NormalizesTo(ty::NormalizesTo<I>),
-
-    /// Separate from `ClauseKind::Projection` which is used for normalization in new solver.
-    /// This predicate requires two terms to be equal to eachother.
-    ///
-    /// Only used for new solver.
-    AliasRelate(I::Term, I::Term, AliasRelationDirection),
 }
 
 impl<I: Interner> Eq for PredicateKind<I> {}
-
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Copy)]
-#[cfg_attr(feature = "nightly", derive(StableHash, Encodable_NoContext, Decodable_NoContext))]
-pub enum AliasRelationDirection {
-    Equate,
-    Subtype,
-}
-
-impl std::fmt::Display for AliasRelationDirection {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            AliasRelationDirection::Equate => write!(f, "=="),
-            AliasRelationDirection::Subtype => write!(f, "<:"),
-        }
-    }
-}
 
 impl<I: Interner> fmt::Debug for ClauseKind<I> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -161,9 +139,6 @@ impl<I: Interner> fmt::Debug for PredicateKind<I> {
             PredicateKind::ConstEquate(c1, c2) => write!(f, "ConstEquate({c1:?}, {c2:?})"),
             PredicateKind::Ambiguous => write!(f, "Ambiguous"),
             PredicateKind::NormalizesTo(p) => p.fmt(f),
-            PredicateKind::AliasRelate(t1, t2, dir) => {
-                write!(f, "AliasRelate({t1:?}, {dir:?}, {t2:?})")
-            }
         }
     }
 }

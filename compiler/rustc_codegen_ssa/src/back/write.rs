@@ -15,9 +15,7 @@ use rustc_errors::{
 };
 use rustc_fs_util::link_or_copy;
 use rustc_hir::find_attr;
-use rustc_incremental::{
-    copy_cgu_workproduct_to_incr_comp_cache_dir, in_incr_comp_dir, in_incr_comp_dir_sess,
-};
+use rustc_incremental::{copy_cgu_workproduct_to_incr_comp_cache_dir, in_incr_comp_dir_sess};
 use rustc_macros::{Decodable, Encodable};
 use rustc_metadata::fs::copy_to_stdout;
 use rustc_middle::bug;
@@ -35,11 +33,11 @@ use tracing::debug;
 
 use crate::back::link::ensure_removed;
 use crate::back::lto::{self, SerializedModule, check_lto_allowed};
-use crate::errors::ErrorCreatingRemarkDir;
+use crate::diagnostics::ErrorCreatingRemarkDir;
 use crate::traits::*;
 use crate::{
     CachedModuleCodegen, CompiledModule, CompiledModules, CrateInfo, ModuleCodegen, ModuleKind,
-    errors,
+    diagnostics,
 };
 
 const PRE_LTO_BC_EXT: &str = "pre-lto.bc";
@@ -108,6 +106,7 @@ pub struct ModuleConfig {
     pub emit_lifetime_markers: bool,
     pub llvm_plugins: Vec<String>,
     pub autodiff: Vec<config::AutoDiff>,
+    pub autodiff_post_passes: Option<String>,
     pub offload: Vec<config::Offload>,
 }
 
@@ -259,6 +258,10 @@ impl ModuleConfig {
             emit_lifetime_markers: sess.emit_lifetime_markers(),
             llvm_plugins: if_regular!(sess.opts.unstable_opts.llvm_plugins.clone(), vec![]),
             autodiff: if_regular!(sess.opts.unstable_opts.autodiff.clone(), vec![]),
+            autodiff_post_passes: if_regular!(
+                sess.opts.unstable_opts.autodiff_post_passes.clone(),
+                None
+            ),
             offload: if_regular!(sess.opts.unstable_opts.offload.clone(), vec![]),
         }
     }
@@ -512,10 +515,10 @@ pub fn produce_final_output_artifacts(
     // Produce final compile outputs.
     let copy_gracefully = |from: &Path, to: &OutFileName| match to {
         OutFileName::Stdout if let Err(e) = copy_to_stdout(from) => {
-            sess.dcx().emit_err(errors::CopyPath::new(from, to.as_path(), e));
+            sess.dcx().emit_err(diagnostics::CopyPath::new(from, to.as_path(), e));
         }
         OutFileName::Real(path) if let Err(e) = fs::copy(from, path) => {
-            sess.dcx().emit_err(errors::CopyPath::new(from, path, e));
+            sess.dcx().emit_err(diagnostics::CopyPath::new(from, path, e));
         }
         _ => {}
     };
@@ -527,8 +530,9 @@ pub fn produce_final_output_artifacts(
             let path = crate_output.temp_path_for_cgu(output_type, &module.name);
             let output = crate_output.path(output_type);
             if !output_type.is_text_output() && output.is_tty() {
-                sess.dcx()
-                    .emit_err(errors::BinaryOutputToTty { shorthand: output_type.shorthand() });
+                sess.dcx().emit_err(diagnostics::BinaryOutputToTty {
+                    shorthand: output_type.shorthand(),
+                });
             } else {
                 copy_gracefully(&path, &output);
             }
@@ -540,12 +544,14 @@ pub fn produce_final_output_artifacts(
             if crate_output.outputs.contains_explicit_name(&output_type) {
                 // 2) Multiple codegen units, with `--emit foo=some_name`. We have
                 //    no good solution for this case, so warn the user.
-                sess.dcx()
-                    .emit_warn(errors::IgnoringEmitPath { extension: output_type.extension() });
+                sess.dcx().emit_warn(diagnostics::IgnoringEmitPath {
+                    extension: output_type.extension(),
+                });
             } else if crate_output.single_output_file.is_some() {
                 // 3) Multiple codegen units, with `-o some_name`. We have
                 //    no good solution for this case, so warn the user.
-                sess.dcx().emit_warn(errors::IgnoringOutput { extension: output_type.extension() });
+                sess.dcx()
+                    .emit_warn(diagnostics::IgnoringOutput { extension: output_type.extension() });
             } else {
                 // 4) Multiple codegen units, but no explicit name. We
                 //    just leave the `foo.0.x` files in place.
@@ -884,20 +890,24 @@ fn execute_copy_from_cache_work_item(
     let mut links_from_incr_cache = Vec::new();
 
     let mut load_from_incr_comp_dir = |output_path: PathBuf, saved_path: &str| {
-        let source_file = in_incr_comp_dir(incr_comp_session_dir, saved_path);
+        let source_file_in_incr_comp_dir = incr_comp_session_dir.join(saved_path);
         debug!(
             "copying preexisting module `{}` from {:?} to {}",
             module.name,
-            source_file,
+            source_file_in_incr_comp_dir,
             output_path.display()
         );
-        match link_or_copy(&source_file, &output_path) {
+        match link_or_copy(&source_file_in_incr_comp_dir, &output_path) {
             Ok(_) => {
-                links_from_incr_cache.push(source_file);
+                links_from_incr_cache.push(source_file_in_incr_comp_dir);
                 Some(output_path)
             }
             Err(error) => {
-                dcx.emit_err(errors::CopyPathBuf { source_file, output_path, error });
+                dcx.emit_err(diagnostics::CopyPathBuf {
+                    source_file: source_file_in_incr_comp_dir,
+                    output_path,
+                    error,
+                });
                 None
             }
         }
@@ -938,7 +948,7 @@ fn execute_copy_from_cache_work_item(
             None
         };
     if should_emit_obj && object.is_none() {
-        dcx.emit_fatal(errors::NoSavedObjectFile { cgu_name: &module.name })
+        dcx.emit_fatal(diagnostics::NoSavedObjectFile { cgu_name: &module.name })
     }
 
     CompiledModule {
@@ -1004,12 +1014,17 @@ fn do_thin_lto<B: WriteBackendMethods>(
     // After we've requested tokens then we'll, when we can,
     // get tokens on `coordinator_receive` which will
     // get managed in the main loop below.
-    let coordinator_send2 = coordinator_send.clone();
-    let helper = jobserver::client()
-        .into_helper_thread(move |token| {
-            drop(coordinator_send2.send(ThinLtoMessage::Token(token)));
-        })
-        .expect("failed to spawn helper thread");
+    // Note that using `jobserver::Proxy` is not necessary here, the code below always acquires
+    // tokens before releasing them, so we can never accidentally release the last token
+    // permanently held by rustc process.
+    let jobserver_helper = cgcx.parallel.then(|| {
+        let coordinator_send2 = coordinator_send.clone();
+        jobserver::client()
+            .into_helper_thread(move |token| {
+                drop(coordinator_send2.send(ThinLtoMessage::Token(token)));
+            })
+            .expect("failed to spawn helper thread")
+    });
 
     let mut work_items = vec![];
 
@@ -1029,7 +1044,7 @@ fn do_thin_lto<B: WriteBackendMethods>(
         let insertion_index =
             work_items.binary_search_by_key(&cost, |&(_, cost)| cost).unwrap_or_else(|e| e);
         work_items.insert(insertion_index, (work, cost));
-        if cgcx.parallel {
+        if let Some(helper) = &jobserver_helper {
             helper.request_token();
         }
     }
@@ -1233,12 +1248,18 @@ fn start_executing_work<B: WriteBackendMethods>(
     // After we've requested tokens then we'll, when we can,
     // get tokens on `coordinator_receive` which will
     // get managed in the main loop below.
-    let coordinator_send2 = coordinator_send.clone();
-    let helper = jobserver::client()
-        .into_helper_thread(move |token| {
-            drop(coordinator_send2.send(Message::Token::<B>(token)));
-        })
-        .expect("failed to spawn helper thread");
+    // Note that using `jobserver::Proxy` is not necessary here, the code below always acquires
+    // tokens before releasing them, so we can never accidentally release the last token
+    // permanently held by rustc process.
+    let parallel = !sess.opts.unstable_opts.no_parallel_backend && backend.supports_parallel();
+    let jobserver_helper = parallel.then(|| {
+        let coordinator_send2 = coordinator_send.clone();
+        jobserver::client()
+            .into_helper_thread(move |token| {
+                drop(coordinator_send2.send(Message::Token::<B>(token)));
+            })
+            .expect("failed to spawn helper thread")
+    });
 
     let opt_level = tcx.backend_optimization_level(());
     let backend_features = tcx.global_backend_features(()).clone();
@@ -1279,7 +1300,7 @@ fn start_executing_work<B: WriteBackendMethods>(
         target_is_like_gpu: tcx.sess.target.is_like_gpu,
         split_debuginfo: tcx.sess.split_debuginfo(),
         split_dwarf_kind: tcx.sess.opts.unstable_opts.split_dwarf_kind,
-        parallel: backend.supports_parallel() && !sess.opts.unstable_opts.no_parallel_backend,
+        parallel,
         pointer_size: tcx.data_layout.pointer_size(),
     };
 
@@ -1626,7 +1647,7 @@ fn start_executing_work<B: WriteBackendMethods>(
                     };
                     work_items.insert(insertion_index, (llvm_work_item, cost));
 
-                    if cgcx.parallel {
+                    if let Some(helper) = &jobserver_helper {
                         helper.request_token();
                     }
                     assert_eq!(main_thread_state, MainThreadState::Codegenning);
@@ -1709,7 +1730,7 @@ fn start_executing_work<B: WriteBackendMethods>(
 
         drop(codegen_state);
         drop(tokens);
-        drop(helper);
+        drop(jobserver_helper);
         assert!(work_items.is_empty());
 
         if !needs_fat_lto.is_empty() {

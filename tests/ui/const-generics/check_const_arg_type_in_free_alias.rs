@@ -1,5 +1,5 @@
 //@ revisions: eager lazy
-#![cfg_attr(lazy, feature(lazy_type_alias))]
+#![cfg_attr(lazy, feature(checked_type_aliases))]
 #![cfg_attr(lazy, expect(incomplete_features))]
 
 // We currently do not check free type aliases for well formedness.

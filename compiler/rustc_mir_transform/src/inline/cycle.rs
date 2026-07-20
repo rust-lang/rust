@@ -21,7 +21,9 @@ fn should_recurse<'tcx>(tcx: TyCtxt<'tcx>, callee: ty::Instance<'tcx>) -> bool {
         }
 
         // These have no own callable MIR.
-        InstanceKind::Intrinsic(_) | InstanceKind::Virtual(..) => return false,
+        InstanceKind::Intrinsic(_) | InstanceKind::LlvmIntrinsic(_) | InstanceKind::Virtual(..) => {
+            return false;
+        }
 
         // These have MIR and if that MIR is inlined, instantiated and then inlining is run
         // again, a function item can end up getting inlined. Thus we'll be able to cause
@@ -223,5 +225,5 @@ pub(crate) fn mir_inliner_callees<'tcx>(
             calls.insert(call);
         }
     }
-    tcx.arena.alloc_from_iter(calls.iter().copied())
+    tcx.arena.alloc_from_iter(calls.iter().map(|(did, args)| (*did, args.no_bound_vars().unwrap())))
 }

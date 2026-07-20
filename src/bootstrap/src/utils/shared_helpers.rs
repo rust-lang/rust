@@ -16,7 +16,8 @@
 use std::env;
 use std::ffi::OsString;
 use std::fs::OpenOptions;
-use std::io::Write;
+use std::io::{BufRead, Write};
+use std::path::Path;
 use std::process::Command;
 use std::str::FromStr;
 
@@ -125,4 +126,31 @@ pub fn parse_value_from_args<'a>(args: &'a [OsString], key: &str) -> Option<&'a 
     }
 
     None
+}
+
+/// Collect all the command line arguments, including the arguments from any `@argfile`
+pub fn collect_args() -> Vec<OsString> {
+    let mut args = Vec::with_capacity(env::args_os().len());
+    for arg in env::args_os().skip(1) {
+        if let Some(s) = arg.to_str()
+            && let Some(path) = s.strip_prefix('@')
+        {
+            args.extend(args_from_argfile(Path::new(path)));
+        } else {
+            args.push(arg)
+        }
+    }
+    args
+}
+
+/// Reads all the arguments from argfile given by `path`.
+/// Each argument should be on a line by itself
+fn args_from_argfile(path: &Path) -> Vec<OsString> {
+    fn collect_lines(path: &Path) -> Result<Vec<OsString>, std::io::Error> {
+        let file = std::fs::File::open(path)?;
+        let lines: Result<Vec<OsString>, std::io::Error> =
+            std::io::BufReader::new(file).lines().map(|r| r.map(OsString::from)).collect();
+        lines
+    }
+    collect_lines(path).expect("read args from argfile {path:?}")
 }

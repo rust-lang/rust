@@ -1,0 +1,4 @@
+break tests/ui/locals_nested_field_fragment.rs:12
+continue
+locals
+quit

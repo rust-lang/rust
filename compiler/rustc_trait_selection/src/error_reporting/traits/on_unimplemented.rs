@@ -46,7 +46,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             return CustomDiagnostic::default();
         }
         let (filter_options, format_args) =
-            self.on_unimplemented_components(trait_pred, obligation, long_ty_path);
+            self.on_unimplemented_components(trait_pred, obligation, long_ty_path, true);
         if let Some(command) = find_attr!(self.tcx, trait_pred.def_id(), OnUnimplemented {directive, ..} => directive.as_deref()).flatten() {
             command.eval(
                 Some(&filter_options),
@@ -62,6 +62,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         trait_pred: ty::PolyTraitPredicate<'tcx>,
         obligation: &PredicateObligation<'tcx>,
         long_ty_path: &mut Option<PathBuf>,
+        print_infer_ty_var: bool,
     ) -> (FilterOptions, FormatArgs) {
         let (def_id, args) = (trait_pred.def_id(), trait_pred.skip_binder().trait_ref.args);
         let trait_pred = trait_pred.skip_binder();
@@ -72,7 +73,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         // FIXME(-Zlower-impl-trait-in-trait-to-assoc-ty): HIR is not present for RPITITs,
         // but I guess we could synthesize one here. We don't see any errors that rely on
         // that yet, though.
-        let item_context = self.describe_enclosure(obligation.cause.body_id).unwrap_or("");
+        let item_context = self.describe_enclosure(obligation.cause.body_def_id).unwrap_or("");
 
         let direct = match obligation.cause.code() {
             ObligationCauseCode::BuiltinDerived(..)
@@ -244,7 +245,13 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
                         if let Some(ty) = trait_pred.trait_ref.args[param.index as usize].as_type()
                         {
-                            self.tcx.short_string(ty, long_ty_path)
+                            if print_infer_ty_var == false
+                                && let ty::Infer(ty::TyVar(_)) = ty.kind()
+                            {
+                                format!("{}", param.name)
+                            } else {
+                                self.tcx.short_string(ty, long_ty_path)
+                            }
                         } else {
                             trait_pred.trait_ref.args[param.index as usize].to_string()
                         }

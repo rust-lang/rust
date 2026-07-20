@@ -4,7 +4,7 @@
 
 use std::debug_assert_matches;
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{DelegationSelfTyPropagationKind, PathSegment};
@@ -21,6 +21,7 @@ type RemapTable = FxHashMap<u32, u32>;
 struct ParamIndexRemapper<'tcx> {
     tcx: TyCtxt<'tcx>,
     remap_table: RemapTable,
+    delegation_parent_consts: FxHashSet<ty::ParamConst>,
 }
 
 impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ParamIndexRemapper<'tcx> {
@@ -337,7 +338,7 @@ fn create_generic_args<'tcx>(
     delegation_id: LocalDefId,
     mut parent_args: &[ty::GenericArg<'tcx>],
     mut child_args: &[ty::GenericArg<'tcx>],
-) -> Vec<ty::GenericArg<'tcx>> {
+) -> (Vec<ty::GenericArg<'tcx>>, &'tcx [ty::GenericArg<'tcx>]) {
     let delegation_generics = tcx.generics_of(delegation_id);
     let delegation_args = ty::GenericArgs::identity_for_item(tcx, delegation_id);
 
@@ -389,7 +390,7 @@ fn create_generic_args<'tcx>(
     let zero_self = zero_self.as_ref().into_iter();
     let after_lifetimes_self = after_lifetimes_self.as_ref().into_iter();
 
-    zero_self
+    let args = zero_self
         .chain(delegation_parent_args)
         .chain(parent_args.iter().filter(|a| a.as_region().is_some()))
         .chain(child_args.iter().filter(|a| a.as_region().is_some()))
@@ -398,7 +399,9 @@ fn create_generic_args<'tcx>(
         .chain(child_args.iter().filter(|a| a.as_region().is_none()))
         .chain(synth_args)
         .copied()
-        .collect::<Vec<_>>()
+        .collect::<Vec<_>>();
+
+    (args, delegation_parent_args)
 }
 
 pub(crate) fn inherit_predicates_for_delegation_item<'tcx>(
@@ -432,6 +435,44 @@ pub(crate) fn inherit_predicates_for_delegation_item<'tcx>(
                     && trait_pred.self_ty().skip_binder().is_param(0)
                 {
                     continue;
+                }
+
+                // If we have a constant in parent or child args that came from delegation
+                // parent:
+                // ```rust
+                // trait Trait<T, const B: bool> { /* .. */}
+                // impl<const N: usize> S<N> {
+                //     reuse Trait::<S<N>, N>::foo;
+                // }
+                // ```
+                // Then if we inherit const predicate from `Trait` then we end up with
+                // two `ConstArgHasType` for `N` constant:
+                // 1) ConstArgHasType(N/#0, bool) from `Trait`
+                // 2) ConstArgHasType(N/#0, usize) from delegation parent
+                // So in case the constant came from delegation parent we will not inherit
+                // ConstArgHasType from signature.
+                // The check is so complicated because we build generic args for signature
+                // and predicates inheritance, for the example above it will be
+                // `args = [S<N/#0>, N/#0, S<N/#0>, N/#0]`, where
+                // args[0] - Self type, args[1] - delegation parent const, args[2] - first
+                // arg of callee path, args[3] - second arg of callee path.
+                // When processing predicate ConstArgHasType(B/#2, bool)
+                // from delegation signature (`Trait::foo`), we need to map `B/#2` into some
+                // arg from `args`. The mapping which is built by `create_mapping` function is:
+                // `{0: 0, 2: 3, 1: 2}`, so as `B/#2` has index `2` it is mapped into third
+                // arg from `args` - `N/#0`. After we obtained mapped const param, we check if
+                // it came from delegation parent, and if so we do not process its `ConstArgHasType`
+                // predicate.
+                // (Issue #158675).
+                if let ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, _)) =
+                    pred.0.as_predicate().fold_with(&mut self.folder).kind().skip_binder()
+                {
+                    let unnorm_const = EarlyBinder::bind(self.tcx, ct).instantiate(self.tcx, args);
+                    if let ty::ConstKind::Param(param) = unnorm_const.skip_norm_wip().kind()
+                        && self.folder.delegation_parent_consts.contains(&param)
+                    {
+                        continue;
+                    }
                 }
 
                 let new_pred = pred.0.fold_with(&mut self.folder);
@@ -497,10 +538,21 @@ fn create_folder_and_args<'tcx>(
     parent_args: &'tcx [ty::GenericArg<'tcx>],
     child_args: &'tcx [ty::GenericArg<'tcx>],
 ) -> (ParamIndexRemapper<'tcx>, Vec<ty::GenericArg<'tcx>>) {
-    let args = create_generic_args(tcx, sig_id, def_id, parent_args, child_args);
+    let (args, delegation_parent_args) =
+        create_generic_args(tcx, sig_id, def_id, parent_args, child_args);
+
     let remap_table = create_mapping(tcx, sig_id, def_id);
 
-    (ParamIndexRemapper { tcx, remap_table }, args)
+    let delegation_parent_consts = delegation_parent_args
+        .iter()
+        .filter_map(|a| {
+            a.as_const().and_then(|c| {
+                if let ty::ConstKind::Param(param) = c.kind() { Some(param) } else { None }
+            })
+        })
+        .collect();
+
+    (ParamIndexRemapper { tcx, remap_table, delegation_parent_consts }, args)
 }
 
 fn check_constraints<'tcx>(

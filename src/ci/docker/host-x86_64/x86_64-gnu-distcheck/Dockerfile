@@ -28,6 +28,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   xz-utils \
   libssl-dev \
   pkg-config \
+  zlib1g-dev \
   && rm -rf /var/lib/apt/lists/*
 
 COPY scripts/sccache.sh /scripts/

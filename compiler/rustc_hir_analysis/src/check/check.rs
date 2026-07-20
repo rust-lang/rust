@@ -839,9 +839,8 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             tcx.ensure_ok().associated_items(def_id);
             if of_trait {
                 let impl_trait_header = tcx.impl_trait_header(def_id);
-                res = res.and(tcx.ensure_result().coherent_trait(
-                    impl_trait_header.trait_ref.instantiate_identity().skip_norm_wip().def_id,
-                ));
+                res = res
+                    .and(tcx.ensure_result().coherent_trait(impl_trait_header.trait_ref.def_id()));
 
                 if res.is_ok() {
                     // Checking this only makes sense if the all trait impls satisfy basic
@@ -977,7 +976,7 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             tcx.ensure_ok().predicates_of(def_id);
             let ty = tcx.type_of(def_id).instantiate_identity();
             let span = tcx.def_span(def_id);
-            if tcx.type_alias_is_lazy(def_id) {
+            if tcx.type_alias_is_checked(def_id) {
                 res = res.and(enter_wf_checking_ctxt(tcx, def_id, |wfcx| {
                     let item_ty = wfcx.deeply_normalize(span, Some(WellFormedLoc::Ty(def_id)), ty);
                     wfcx.register_wf_obligation(
@@ -1172,7 +1171,6 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
 
         // These have no wf checks
         DefKind::AnonConst
-        | DefKind::InlineConst
         | DefKind::ExternCrate
         | DefKind::Macro(..)
         | DefKind::Use
@@ -1255,7 +1253,7 @@ fn check_overriding_final_trait_item<'tcx>(
     trait_item: ty::AssocItem,
     impl_item: ty::AssocItem,
 ) {
-    if trait_item.defaultness(tcx).is_final() {
+    if trait_item.is_fn() && trait_item.defaultness(tcx).is_final() {
         tcx.dcx().emit_err(diagnostics::OverridingFinalTraitFunction {
             impl_span: tcx.def_span(impl_item.def_id),
             trait_span: tcx.def_span(trait_item.def_id),

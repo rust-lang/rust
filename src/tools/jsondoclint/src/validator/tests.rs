@@ -1,5 +1,7 @@
 use rustc_hash::FxHashMap;
-use rustdoc_json_types::{Abi, FORMAT_VERSION, FunctionHeader, Item, ItemKind, Visibility};
+use rustdoc_json_types::{
+    Abi, FORMAT_VERSION, FunctionHeader, Item, ItemKind, ProvidedDefaultUnstable, Visibility,
+};
 
 use super::*;
 use crate::json_find::SelectorPart;
@@ -221,6 +223,7 @@ fn errors_on_missing_path() {
                             abi: Abi::Rust,
                         },
                         has_body: true,
+                        default_unstable: None,
                     }),
                 },
             ),
@@ -242,6 +245,155 @@ fn errors_on_missing_path() {
                     .to_owned(),
             ),
             id: Id(1),
+        }],
+    );
+}
+
+fn krate_with_trait_item(inner: ItemEnum) -> Crate {
+    let item_id = Id(2);
+    Crate {
+        root: Id(0),
+        crate_version: None,
+        includes_private: false,
+        index: FxHashMap::from_iter([
+            (
+                Id(0),
+                Item {
+                    id: Id(0),
+                    crate_id: 0,
+                    name: Some("root".to_owned()),
+                    span: None,
+                    visibility: Visibility::Public,
+                    docs: None,
+                    links: FxHashMap::default(),
+                    attrs: Vec::new(),
+                    deprecation: None,
+                    stability: None,
+                    const_stability: None,
+                    inner: ItemEnum::Module(Module {
+                        is_crate: true,
+                        items: vec![Id(1)],
+                        is_stripped: false,
+                    }),
+                },
+            ),
+            (
+                Id(1),
+                Item {
+                    id: Id(1),
+                    crate_id: 0,
+                    name: Some("Trait".to_owned()),
+                    span: None,
+                    visibility: Visibility::Public,
+                    docs: None,
+                    links: FxHashMap::default(),
+                    attrs: Vec::new(),
+                    deprecation: None,
+                    stability: None,
+                    const_stability: None,
+                    inner: ItemEnum::Trait(Trait {
+                        is_auto: false,
+                        is_unsafe: false,
+                        is_dyn_compatible: true,
+                        items: vec![item_id],
+                        generics: Generics { params: vec![], where_predicates: vec![] },
+                        bounds: vec![],
+                        implementations: vec![],
+                    }),
+                },
+            ),
+            (
+                item_id,
+                Item {
+                    id: item_id,
+                    crate_id: 0,
+                    name: Some("TraitItem".to_owned()),
+                    span: None,
+                    visibility: Visibility::Public,
+                    docs: None,
+                    links: FxHashMap::default(),
+                    attrs: Vec::new(),
+                    deprecation: None,
+                    stability: None,
+                    const_stability: None,
+                    inner,
+                },
+            ),
+        ]),
+        paths: FxHashMap::default(),
+        external_crates: FxHashMap::default(),
+        target: rustdoc_json_types::Target { triple: "".to_string(), target_features: vec![] },
+        format_version: FORMAT_VERSION,
+    }
+}
+
+#[test]
+fn errors_on_default_unstable_without_function_body() {
+    let krate = krate_with_trait_item(ItemEnum::Function(Function {
+        sig: FunctionSignature { inputs: vec![], output: None, is_c_variadic: false },
+        generics: Generics { params: vec![], where_predicates: vec![] },
+        header: FunctionHeader {
+            is_const: false,
+            is_unsafe: false,
+            is_async: false,
+            abi: Abi::Rust,
+        },
+        has_body: false,
+        default_unstable: Some(Box::new(ProvidedDefaultUnstable { feature: "feature".to_owned() })),
+    }));
+
+    check(
+        &krate,
+        &[Error {
+            id: Id(2),
+            kind: ErrorKind::Custom(
+                "`default_unstable` must be `None` when `has_body == false`, but \
+                 function item id 2 had `default_unstable` with feature `feature`"
+                    .to_owned(),
+            ),
+        }],
+    );
+}
+
+#[test]
+fn errors_on_default_unstable_without_assoc_const_value() {
+    let krate = krate_with_trait_item(ItemEnum::AssocConst {
+        type_: Type::Primitive("usize".to_owned()),
+        value: None,
+        default_unstable: Some(Box::new(ProvidedDefaultUnstable { feature: "feature".to_owned() })),
+    });
+
+    check(
+        &krate,
+        &[Error {
+            id: Id(2),
+            kind: ErrorKind::Custom(
+                "`default_unstable` must be `None` when `value` is `None`, but \
+                 assoc const id 2 had `default_unstable` with feature `feature`"
+                    .to_owned(),
+            ),
+        }],
+    );
+}
+
+#[test]
+fn errors_on_default_unstable_without_assoc_type_default() {
+    let krate = krate_with_trait_item(ItemEnum::AssocType {
+        generics: Generics { params: vec![], where_predicates: vec![] },
+        bounds: vec![],
+        type_: None,
+        default_unstable: Some(Box::new(ProvidedDefaultUnstable { feature: "feature".to_owned() })),
+    });
+
+    check(
+        &krate,
+        &[Error {
+            id: Id(2),
+            kind: ErrorKind::Custom(
+                "`default_unstable` must be `None` when `type_` is `None`, but \
+                 assoc type id 2 had `default_unstable` with feature `feature`"
+                    .to_owned(),
+            ),
         }],
     );
 }

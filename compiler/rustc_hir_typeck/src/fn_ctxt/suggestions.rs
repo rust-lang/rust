@@ -1,4 +1,4 @@
-// ignore-tidy-filelength
+// ignore-tidy-file-filelength
 use core::cmp::min;
 use core::iter;
 
@@ -23,7 +23,7 @@ use rustc_middle::ty::{
     self, Article, Binder, IsSuggestable, Ty, TyCtxt, TypeVisitableExt, Unnormalized, Upcast,
     suggest_constraining_type_params,
 };
-use rustc_session::errors::ExprParenthesesNeeded;
+use rustc_session::diagnostics::ExprParenthesesNeeded;
 use rustc_span::{ExpnKind, Ident, MacroKind, Span, Spanned, Symbol, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::error_reporting::traits::DefIdOrName;
@@ -40,11 +40,11 @@ use crate::method::probe;
 use crate::method::probe::{IsSuggestion, Mode, ProbeScope};
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    pub(crate) fn body_fn_sig(&self) -> Option<ty::FnSig<'tcx>> {
+    pub(crate) fn fn_sig(&self) -> Option<ty::FnSig<'tcx>> {
         self.typeck_results
             .borrow()
             .liberated_fn_sigs()
-            .get(self.tcx.local_def_id_to_hir_id(self.body_id))
+            .get(self.tcx.local_def_id_to_hir_id(self.body_def_id))
             .copied()
     }
 
@@ -170,7 +170,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         ty: Ty<'tcx>,
     ) -> Option<(DefIdOrName, Ty<'tcx>, Vec<Ty<'tcx>>)> {
-        self.err_ctxt().extract_callable_info(self.body_id, self.param_env, ty)
+        self.err_ctxt().extract_callable_info(self.body_def_id, self.param_env, ty)
     }
 
     pub(crate) fn suggest_two_fn_call(
@@ -359,14 +359,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let methods =
             self.get_conversion_methods_for_diagnostic(expr.span, expected, found, expr.hir_id);
 
-        if let Some((suggestion, msg, applicability, verbose, annotation)) =
+        if let Some((suggestion, msg, applicability, annotation)) =
             self.suggest_deref_or_ref(expr, found, expected)
         {
-            if verbose {
-                err.multipart_suggestion(msg, suggestion, applicability);
-            } else {
-                err.multipart_suggestion(msg, suggestion, applicability);
-            }
+            err.multipart_suggestion(msg, suggestion, applicability);
             if annotation {
                 let suggest_annotation = match expr.peel_drop_temps().kind {
                     hir::ExprKind::AddrOf(hir::BorrowKind::Ref, mutbl, _) => mutbl.ref_prefix_str(),
@@ -2292,7 +2288,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return false;
         };
         let ret_ty_matches = |diagnostic_item| {
-            let Some(sig) = self.body_fn_sig() else {
+            let Some(sig) = self.fn_sig() else {
                 return false;
             };
             let ty::Adt(kind, _) = sig.output().kind() else {
@@ -2918,7 +2914,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         Vec<(Span, String)>,
         String,
         Applicability,
-        bool, /* verbose */
         bool, /* suggest `&` or `&mut` type annotation */
     )> {
         let sess = self.sess();
@@ -2949,7 +2944,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             vec![(sp.with_hi(pos), String::new())],
                             "consider removing the leading `b`".to_string(),
                             Applicability::MachineApplicable,
-                            true,
                             false,
                         ));
                     }
@@ -2963,7 +2957,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             vec![(sp.shrink_to_lo(), "b".to_string())],
                             "consider adding a leading `b`".to_string(),
                             Applicability::MachineApplicable,
-                            true,
                             false,
                         ));
                     }
@@ -3020,7 +3013,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             vec![(sugg_sp, String::new())],
                             "consider removing deref here".to_string(),
                             Applicability::MachineApplicable,
-                            true,
                             false,
                         ));
                     }
@@ -3035,7 +3027,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // If the block does not have a final expression, it will return () and we do not make a suggestion to borrow that.
                         let ExprKind::Block(then, _) = then.kind else { return None };
                         let Some(then) = then.expr else { return None };
-                        let (mut suggs, help, app, verbose, mutref) =
+                        let (mut suggs, help, app, mutref) =
                             self.suggest_deref_or_ref(then, checked_ty, expected)?;
 
                         // If there is no `else`, the return type of this `if` will be (), so suggesting to change the `then` block is useless
@@ -3047,7 +3039,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.suggest_deref_or_ref(els_expr, checked_ty, expected)?;
                         suggs.extend(else_suggs);
 
-                        return Some((suggs, help, app, verbose, mutref));
+                        return Some((suggs, help, app, mutref));
                     }
 
                     if let Some((sugg, msg)) = self.can_use_as_ref(expr) {
@@ -3055,7 +3047,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             sugg,
                             msg.to_string(),
                             Applicability::MachineApplicable,
-                            true,
                             false,
                         ));
                     }
@@ -3076,15 +3067,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                     let make_sugg = |expr: &Expr<'_>, span: Span, sugg: &str| {
                         if expr_needs_parens(expr) {
-                            (
-                                vec![
-                                    (span.shrink_to_lo(), format!("{prefix}{sugg}(")),
-                                    (span.shrink_to_hi(), ")".to_string()),
-                                ],
-                                false,
-                            )
+                            vec![
+                                (span.shrink_to_lo(), format!("{prefix}{sugg}(")),
+                                (span.shrink_to_hi(), ")".to_string()),
+                            ]
                         } else {
-                            (vec![(span.shrink_to_lo(), format!("{prefix}{sugg}"))], true)
+                            vec![(span.shrink_to_lo(), format!("{prefix}{sugg}"))]
                         }
                     };
 
@@ -3095,24 +3083,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }) = self.tcx.parent_hir_node(expr.hir_id)
                         && let &ty::Ref(..) = self.check_expr(lhs).kind()
                     {
-                        let (sugg, verbose) = make_sugg(lhs, lhs.span, "*");
+                        let sugg = make_sugg(lhs, lhs.span, "*");
 
                         return Some((
                             sugg,
                             "consider dereferencing the borrow".to_string(),
                             Applicability::MachineApplicable,
-                            verbose,
                             false,
                         ));
                     }
 
                     let sugg = mutability.ref_prefix_str();
-                    let (sugg, verbose) = make_sugg(expr, sp, sugg);
+                    let sugg = make_sugg(expr, sp, sugg);
                     return Some((
                         sugg,
                         format!("consider {}borrowing here", mutability.mutably_str()),
                         Applicability::MachineApplicable,
-                        verbose,
                         false,
                     ));
                 }
@@ -3130,7 +3116,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         vec![(sp.with_hi(end), String::new())],
                         "consider removing the borrow".to_string(),
                         Applicability::MachineApplicable,
-                        true,
                         true,
                     ))
                 };
@@ -3194,7 +3179,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             vec![(span, src)],
                             "consider dereferencing".to_string(),
                             applicability,
-                            true,
                             false,
                         ));
                     }
@@ -3231,7 +3215,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             } else {
                                 Applicability::MachineApplicable
                             },
-                            true,
                             false,
                         ));
                     }
@@ -3266,7 +3249,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     ],
                                     "consider removing the Box".to_string(),
                                     Applicability::MachineApplicable,
-                                    false,
                                     false,
                                 ));
                             }
@@ -3316,7 +3298,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 ],
                                 message,
                                 Applicability::MachineApplicable,
-                                true,
                                 false,
                             ));
                         }
@@ -3325,7 +3306,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             vec![(span, suggestion)],
                             message,
                             Applicability::MachineApplicable,
-                            true,
                             false,
                         ));
                     }

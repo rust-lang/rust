@@ -49,7 +49,7 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
     pub fn scalar<C: HasDataLayout>(cx: &C, scalar: Scalar) -> Self {
         let largest_niche = Niche::from_scalar(cx, Size::ZERO, scalar);
         let size = scalar.size(cx);
-        let align = scalar.align(cx);
+        let align = scalar.default_align(cx);
 
         let range = scalar.valid_range(cx);
 
@@ -90,8 +90,8 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
 
     pub fn scalar_pair<C: HasDataLayout>(cx: &C, a: Scalar, b: Scalar) -> Self {
         let dl = cx.data_layout();
-        let b_align = b.align(dl).abi;
-        let align = a.align(dl).abi.max(b_align).max(dl.aggregate_align);
+        let b_align = b.default_align(dl).abi;
+        let align = a.default_align(dl).abi.max(b_align).max(dl.aggregate_align);
         let b_offset = a.size(dl).align_to(b_align);
         let size = (b_offset + b.size(dl)).align_to(align);
 
@@ -110,7 +110,7 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
                 offsets: [Size::ZERO, b_offset].into(),
                 in_memory_order: [FieldIdx::new(0), FieldIdx::new(1)].into(),
             },
-            backend_repr: BackendRepr::ScalarPair(a, b),
+            backend_repr: BackendRepr::ScalarPair { a, b, b_offset },
             largest_niche,
             uninhabited: false,
             align: AbiAlign::new(align),

@@ -4,14 +4,32 @@
 #![feature(splat)]
 #![feature(c_variadic)]
 
-fn multisplat_bad(#[splat] (_a, _b): (u32, i8), #[splat] (_c, _d): (u32, i8)) {}
-//~^ ERROR multiple `#[splat]`s are not allowed in the same function
+fn multisplat_fn_bad(#[splat] (_a, _b): (u32, i8), #[splat] (_c, _d): (u32, i8)) {}
+//~^ ERROR multiple `#[splat]`s are not allowed in the same function argument list
+
+fn multisplat_arg_bad(
+    #[splat]
+    #[splat]
+    //~^ ERROR  multiple `splat` attributes
+    (_a, _b): (u32, i8),
+) {
+}
+
+fn multisplat_arg_fn_bad(
+    #[splat]
+    //~^ ERROR multiple `#[splat]`s are not allowed in the same function argument list
+    #[splat]
+    //~^ ERROR  multiple `splat` attributes
+    (_a, _b): (u32, i8),
+    #[splat] (_c, _d): (u32, i8),
+) {
+}
 
 unsafe extern "C" fn splat_variadic(#[splat] (_a, _b): (u32, i8), varargs: ...) {}
-//~^ ERROR `...` and `#[splat]` are not allowed in the same function
+//~^ ERROR `...` and `#[splat]` are not allowed in the same function argument list
 
 unsafe extern "C" fn splat_variadic2(varargs: ..., #[splat] (_a, _b): (u32, i8)) {}
-//~^ ERROR `...` and `#[splat]` are not allowed in the same function
+//~^ ERROR `...` and `#[splat]` are not allowed in the same function argument list
 //~| ERROR `...` must be the last argument of a C-variadic function
 
 extern "C" {

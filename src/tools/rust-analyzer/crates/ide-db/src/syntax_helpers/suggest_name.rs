@@ -447,10 +447,9 @@ fn name_of_type<'db>(
         name
     } else if let Some((inner_ty, _)) = ty.as_reference() {
         return name_of_type(&inner_ty, db, edition);
-    } else if let Some(inner_ty) = ty.as_slice() {
-        return Some(sequence_name(Some(&inner_ty), db, edition));
     } else {
-        return None;
+        let inner_ty = ty.as_slice()?;
+        return Some(sequence_name(Some(&inner_ty), db, edition));
     };
     normalize(&name, edition)
 }

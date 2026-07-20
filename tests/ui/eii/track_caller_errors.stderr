@@ -1,0 +1,11 @@
+error: `#[decl1]` is not allowed to have `#[track_caller]`
+  --> $DIR/track_caller_errors.rs:10:1
+   |
+LL | #[track_caller]
+   | ^^^^^^^^^^^^^^^
+LL | #[decl1]
+LL | fn impl1(x: u64) {
+   | ---------------- `#[decl1]` is not allowed to have `#[track_caller]`
+
+error: aborting due to 1 previous error
+

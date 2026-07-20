@@ -14,6 +14,7 @@ use std::{
     ops::{Deref, Index},
 };
 
+use base_db::SourceDatabase;
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
 use hir_expand::{InFile, MacroCallId, mod_path::ModPath, name::Name};
@@ -27,7 +28,6 @@ use tt::TextRange;
 
 use crate::{
     AdtId, BlockId, ExpressionStoreOwnerId, GenericDefId, SyntheticSyntax,
-    db::DefDatabase,
     expr_store::path::{AssociatedTypeBinding, GenericArg, GenericArgs, NormalPath, Path},
     hir::{
         Array, AsmOperand, Binding, BindingId, Expr, ExprId, ExprOrPatId, InlineAsm, Label,
@@ -466,7 +466,7 @@ impl ExpressionStore {
         ExpressionStore::EMPTY
     }
 
-    pub fn of(db: &dyn DefDatabase, def: ExpressionStoreOwnerId) -> &ExpressionStore {
+    pub fn of(db: &dyn SourceDatabase, def: ExpressionStoreOwnerId) -> &ExpressionStore {
         match def {
             ExpressionStoreOwnerId::Signature(def) => {
                 use crate::signatures::{
@@ -494,7 +494,7 @@ impl ExpressionStore {
     }
 
     pub fn with_source_map(
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         def: ExpressionStoreOwnerId,
     ) -> (&ExpressionStore, &ExpressionStoreSourceMap) {
         match def {
@@ -589,7 +589,7 @@ impl ExpressionStore {
     /// Returns an iterator over all block expressions in this store that define inner items.
     pub fn blocks<'a>(
         &'a self,
-        db: &'a dyn DefDatabase,
+        db: &'a dyn SourceDatabase,
     ) -> impl Iterator<Item = (BlockId, &'a DefMap)> + 'a {
         self.expr_only
             .as_ref()

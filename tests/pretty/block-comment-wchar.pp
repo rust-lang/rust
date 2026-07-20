@@ -1,8 +1,8 @@
 // This is meant as a test case for Issue 3961.
 //
 // Test via: rustc -Zunpretty normal tests/pretty/block-comment-wchar.rs
-// ignore-tidy-cr
-// ignore-tidy-tab
+// ignore-tidy-file-cr
+// ignore-tidy-file-tab
 //@ pp-exact:block-comment-wchar.pp
 fn f() {
     fn nested() {

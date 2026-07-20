@@ -60,6 +60,7 @@ This API is completely unstable and subject to change.
 #![feature(gen_blocks)]
 #![feature(iter_intersperse)]
 #![feature(never_type)]
+#![feature(option_into_flat_iter)]
 #![feature(slice_partition_dedup)]
 #![feature(try_blocks)]
 #![feature(unwrap_infallible)]
@@ -89,7 +90,7 @@ use rustc_middle::mir::interpret::GlobalId;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{Const, Ty, TyCtxt};
 use rustc_middle::{middle, ty};
-use rustc_session::errors::feature_err;
+use rustc_session::diagnostics::feature_err;
 use rustc_span::{ErrorGuaranteed, Span};
 use rustc_trait_selection::traits;
 
@@ -186,9 +187,13 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
             }
             _ => (),
         }
-        // Skip `AnonConst`s because we feed their `type_of`.
+        // Skip `AnonConst`s and type system `InlineConst`s because we feed their `type_of` in
+        // `feed_anon_const_type`.
         // Also skip items for which typeck forwards to parent typeck.
-        if !(matches!(def_kind, DefKind::AnonConst) || def_kind.is_typeck_child()) {
+        if !(def_kind == DefKind::AnonConst
+            && tcx.anon_const_kind(item_def_id) != ty::AnonConstKind::NonTypeSystemInline
+            || tcx.is_typeck_child(item_def_id.to_def_id()))
+        {
             tcx.ensure_ok().typeck(item_def_id);
         }
         // Ensure we generate the new `DefId` before finishing `check_crate`.

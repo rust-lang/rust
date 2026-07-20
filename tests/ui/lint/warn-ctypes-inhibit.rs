@@ -1,9 +1,9 @@
 //@ run-pass
-
-#![allow(dead_code)]
 //@ compile-flags:-D improper-ctypes
 
+#![allow(dead_code)]
 #![allow(improper_ctypes)]
+#![allow(suspicious_runtime_symbol_definitions)]
 
 mod libc {
     extern "C" {

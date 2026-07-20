@@ -1,6 +1,6 @@
 //@ check-pass
 
-#![feature(lazy_type_alias)]
+#![feature(checked_type_aliases)]
 #![deny(missing_debug_implementations)]
 
 pub struct Local;

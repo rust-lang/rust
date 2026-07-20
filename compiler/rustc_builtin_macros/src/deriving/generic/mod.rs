@@ -609,7 +609,6 @@ impl<'a> TraitDef<'a> {
                 vis: ast::Visibility {
                     span: self.span.shrink_to_lo(),
                     kind: ast::VisibilityKind::Inherited,
-                    tokens: None,
                 },
                 attrs: ast::AttrVec::new(),
                 kind: ast::AssocItemKind::Type(Box::new(ast::TyAlias {
@@ -617,7 +616,7 @@ impl<'a> TraitDef<'a> {
                     ident,
                     generics: Generics::default(),
                     after_where_clause: ast::WhereClause::default(),
-                    bounds: Vec::new(),
+                    bounds: ThinVec::new(),
                     ty: Some(type_def.to_ty(cx, self.span, type_ident, generics)),
                 })),
                 tokens: None,
@@ -639,7 +638,7 @@ impl<'a> TraitDef<'a> {
                     // Extra restrictions on the generics parameters to the
                     // type being derived upon.
                     let span = param.ident.span.with_ctxt(ctxt);
-                    let bounds: Vec<_> = self
+                    let bounds: ThinVec<_> = self
                         .additional_bounds
                         .iter()
                         .map(|p| {
@@ -723,7 +722,7 @@ impl<'a> TraitDef<'a> {
                     {
                         continue;
                     }
-                    let mut bounds: Vec<_> = self
+                    let mut bounds: ThinVec<_> = self
                         .additional_bounds
                         .iter()
                         .map(|p| {
@@ -808,30 +807,24 @@ impl<'a> TraitDef<'a> {
                     rustc_ast::AttrItem {
                         unsafety: Safety::Default,
                         path: rustc_const_unstable,
-                        args: rustc_ast::ast::AttrItemKind::Unparsed(AttrArgs::Delimited(
-                            DelimArgs {
-                                dspan: DelimSpan::from_single(self.span),
-                                delim: rustc_ast::token::Delimiter::Parenthesis,
-                                tokens: [
-                                    TokenKind::Ident(sym::feature, IdentIsRaw::No),
-                                    TokenKind::Eq,
-                                    TokenKind::lit(LitKind::Str, sym::derive_const, None),
-                                    TokenKind::Comma,
-                                    TokenKind::Ident(sym::issue, IdentIsRaw::No),
-                                    TokenKind::Eq,
-                                    TokenKind::lit(LitKind::Str, sym::derive_const_issue, None),
-                                ]
-                                .into_iter()
-                                .map(|kind| {
-                                    TokenTree::Token(
-                                        Token { kind, span: self.span },
-                                        Spacing::Alone,
-                                    )
-                                })
-                                .collect(),
-                            },
-                        )),
-                        tokens: None,
+                        args: AttrArgs::Delimited(DelimArgs {
+                            dspan: DelimSpan::from_single(self.span),
+                            delim: rustc_ast::token::Delimiter::Parenthesis,
+                            tokens: [
+                                TokenKind::Ident(sym::feature, IdentIsRaw::No),
+                                TokenKind::Eq,
+                                TokenKind::lit(LitKind::Str, sym::derive_const, None),
+                                TokenKind::Comma,
+                                TokenKind::Ident(sym::issue, IdentIsRaw::No),
+                                TokenKind::Eq,
+                                TokenKind::lit(LitKind::Str, sym::derive_const_issue, None),
+                            ]
+                            .into_iter()
+                            .map(|kind| {
+                                TokenTree::Token(Token { kind, span: self.span }, Spacing::Alone)
+                            })
+                            .collect(),
+                        }),
                     },
                     self.span,
                 ),
@@ -1080,11 +1073,7 @@ impl<'a> MethodDef<'a> {
             id: ast::DUMMY_NODE_ID,
             attrs: self.attributes.clone(),
             span,
-            vis: ast::Visibility {
-                span: trait_lo_sp,
-                kind: ast::VisibilityKind::Inherited,
-                tokens: None,
-            },
+            vis: ast::Visibility { span: trait_lo_sp, kind: ast::VisibilityKind::Inherited },
             kind: ast::AssocItemKind::Fn(Box::new(ast::Fn {
                 defaultness,
                 sig,

@@ -177,7 +177,8 @@ unsafe fn test_vaes() {
     }
     test_mm256_aesenclast_epi128();
 
-    // The tests below require avx512.
+    // The tests below require avx512. GH runners don't have this, but we still want to run this
+    // natively if the machine happens to have AVX512. So we bail out dynamically.
     if !is_x86_feature_detected!("avx512f") {
         println!("warning: skipping avx512 tests");
         return;

@@ -8,7 +8,7 @@ use std::cell::Cell;
 
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::par_join;
-use rustc_hir::def_id::{LocalDefId, LocalModDefId};
+use rustc_hir::def_id::{LocalDefId, LocalModId};
 use rustc_hir::{self as hir, AmbigArg, HirId, intravisit as hir_visit};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, TyCtxt};
@@ -151,8 +151,8 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
         hir_visit::walk_pat(self, p);
     }
 
-    fn visit_lit(&mut self, hir_id: HirId, lit: hir::Lit, negated: bool) {
-        lint_callback!(self, check_lit, hir_id, lit, negated);
+    fn visit_lit(&mut self, hir_id: HirId, lit: hir::Lit, is_negated_pat: bool) {
+        lint_callback!(self, check_lit, hir_id, lit, is_negated_pat);
     }
 
     fn visit_expr_field(&mut self, field: &'tcx hir::ExprField<'tcx>) {
@@ -198,7 +198,6 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
     }
 
     fn visit_variant_data(&mut self, s: &'tcx hir::VariantData<'tcx>) {
-        lint_callback!(self, check_struct_def, s);
         hir_visit::walk_struct_def(self, s);
     }
 
@@ -335,7 +334,7 @@ crate::late_lint_methods!(impl_late_lint_pass, []);
 
 pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx> + 'tcx>(
     tcx: TyCtxt<'tcx>,
-    module_def_id: LocalModDefId,
+    mod_id: LocalModId,
     builtin_lints: T,
 ) {
     let context = LateContext {
@@ -344,7 +343,7 @@ pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx> + 'tcx>(
         cached_typeck_results: Cell::new(None),
         param_env: ty::ParamEnv::empty(),
         effective_visibilities: tcx.effective_visibilities(()),
-        last_node_with_lint_attrs: tcx.local_def_id_to_hir_id(module_def_id),
+        last_node_with_lint_attrs: tcx.local_def_id_to_hir_id(mod_id),
         generics: None,
         only_module: true,
     };
@@ -363,26 +362,26 @@ pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx> + 'tcx>(
     let builtin_lints_must_run = is_lint_pass_required(skippable_lints, &builtin_lints.get_lints());
     if passes.is_empty() {
         if builtin_lints_must_run {
-            late_lint_mod_inner(tcx, module_def_id, context, builtin_lints);
+            late_lint_mod_inner(tcx, mod_id, context, builtin_lints);
         }
     } else {
         if builtin_lints_must_run {
             passes.push(Box::new(builtin_lints) as Box<dyn LateLintPass<'tcx>>);
         }
         let pass = RuntimeCombinedLateLintPass { passes };
-        late_lint_mod_inner(tcx, module_def_id, context, pass);
+        late_lint_mod_inner(tcx, mod_id, context, pass);
     }
 }
 
 fn late_lint_mod_inner<'tcx, T: LateLintPass<'tcx>>(
     tcx: TyCtxt<'tcx>,
-    module_def_id: LocalModDefId,
+    mod_id: LocalModId,
     context: LateContext<'tcx>,
     pass: T,
 ) {
     let mut cx = LateContextAndPass { context, pass };
 
-    let (module, _span, hir_id) = tcx.hir_get_module(module_def_id);
+    let (module, _span, hir_id) = tcx.hir_get_module(mod_id);
 
     cx.with_lint_attrs(hir_id, |cx| {
         // There is no module lint that will have the crate itself as an item, so check it here.

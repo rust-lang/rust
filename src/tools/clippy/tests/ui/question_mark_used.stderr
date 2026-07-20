@@ -1,5 +1,5 @@
 error: the `?` operator was used
-  --> tests/ui/question_mark_used.rs:11:5
+  --> tests/ui/question_mark_used.rs:9:5
    |
 LL |     other_function()?;
    |     ^^^^^^^^^^^^^^^^^

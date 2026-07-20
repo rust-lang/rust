@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# ignore-tidy-linelength
+# ignore-tidy-file-linelength
 
 from __future__ import absolute_import, division, print_function
 import shlex

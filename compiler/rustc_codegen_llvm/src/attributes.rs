@@ -86,11 +86,26 @@ fn patchable_function_entry_attrs<'ll>(
     attr: Option<PatchableFunctionEntry>,
 ) -> SmallVec<[&'ll Attribute; 2]> {
     let mut attrs = SmallVec::new();
-    let patchable_spec = attr.unwrap_or_else(|| {
-        PatchableFunctionEntry::from_config(sess.opts.unstable_opts.patchable_function_entry)
-    });
-    let entry = patchable_spec.entry();
-    let prefix = patchable_spec.prefix();
+
+    let mut entry = sess.opts.unstable_opts.patchable_function_entry.entry();
+    let mut prefix = sess.opts.unstable_opts.patchable_function_entry.prefix();
+    let mut section = sess.opts.unstable_opts.patchable_function_entry.section();
+    let section_sym;
+
+    // Apply attribute specified overrides, if any.
+    if let Some(patchable_spec) = attr {
+        if let Some(sym) = patchable_spec.section() {
+            section_sym = sym;
+            section = Some(section_sym.as_str());
+        }
+        // Override the nop counts if either is present. If only one is present, the
+        // other count is implied to be 0.
+        if patchable_spec.entry().is_some() || patchable_spec.prefix().is_some() {
+            entry = patchable_spec.entry().unwrap_or(0);
+            prefix = patchable_spec.prefix().unwrap_or(0);
+        }
+    }
+
     if entry > 0 {
         attrs.push(llvm::CreateAttrStringValue(
             cx.llcx,
@@ -103,6 +118,13 @@ fn patchable_function_entry_attrs<'ll>(
             cx.llcx,
             "patchable-function-prefix",
             &format!("{}", prefix),
+        ));
+    }
+    if let Some(section) = section {
+        attrs.push(llvm::CreateAttrStringValue(
+            cx.llcx,
+            "patchable-function-entry-section",
+            section,
         ));
     }
     attrs
@@ -640,6 +662,13 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
                 codegen_fn_attrs.symbol_name.unwrap_or_else(|| tcx.item_name(instance.def_id()));
             let name = name.as_str();
             to_add.push(llvm::CreateAttrStringValue(cx.llcx, "wasm-import-name", name));
+        }
+    }
+
+    if sess.pointer_authentication() {
+        let cfg = sess.pointer_auth_config.as_ref().unwrap();
+        for ptrauth_attr in cfg.fn_attrs() {
+            to_add.push(llvm::CreateAttrString(cx.llcx, ptrauth_attr));
         }
     }
 

@@ -25,7 +25,7 @@ use rustc_resolve::rustdoc::{
     DocFragment, add_doc_fragment, attrs_to_doc_fragments, inner_docs, span_of_fragments,
 };
 use rustc_session::Session;
-use rustc_span::def_id::CRATE_DEF_ID;
+use rustc_span::def_id::{CRATE_DEF_ID, ModId};
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{Symbol, kw, sym};
 use rustc_span::{DUMMY_SP, FileName, Ident, Loc, RemapPathScopeComponents};
@@ -871,7 +871,7 @@ impl Item {
 
     /// Returns the visibility of the current item. If the visibility is "inherited", then `None`
     /// is returned.
-    pub(crate) fn visibility(&self, tcx: TyCtxt<'_>) -> Option<Visibility<DefId>> {
+    pub(crate) fn visibility(&self, tcx: TyCtxt<'_>) -> Option<Visibility<ModId>> {
         let def_id = match self.item_id {
             // Anything but DefId *shouldn't* matter, but return a reasonable value anyway.
             ItemId::Auto { .. } | ItemId::Blanket { .. } => return None,

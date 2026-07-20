@@ -1,4 +1,4 @@
-error[E0271]: type mismatch resolving `<Result<..., ()> as Future>::Error == Foo`
+error[E0271]: type mismatch resolving `<Result<_, ()> as Future>::Error == Foo`
    ╭▸ $DIR/E0271.rs:19:5
    │
 LL │ ┏     Box::new(
@@ -7,14 +7,14 @@ LL │ ┃             Err::<(), _>(
 LL │ ┃                 Ok::<_, ()>(
    ‡ ┃
 LL │ ┃     )
-   │ ┗━━━━━┛ type mismatch resolving `<Result<..., ()> as Future>::Error == Foo`
+   │ ┗━━━━━┛ type mismatch resolving `<Result<_, ()> as Future>::Error == Foo`
    ╰╴
 note: expected this to be `Foo`
    ╭▸ $DIR/E0271.rs:9:18
    │
 LL │     type Error = E;
    │                  ━
-   ├ note: required for the cast from `Box<Result<..., ()>>` to `Box<...>`
+   ├ note: required for the cast from `Box<Result<_, ()>>` to `Box<_>`
    ├ note: the full name for the type has been written to '$TEST_BUILD_DIR/E0271.long-type-$LONG_TYPE_HASH.txt'
    ╰ note: consider using `--verbose` to print the full type name to the console
 

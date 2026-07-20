@@ -269,7 +269,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     // monomorphization, and if there is an error during collection then codegen never starts -- so
     // we don't have to do it again.
 
-    fx.fill_function_debug_context();
+    fx.fill_function_debug_context(&mut start_bx);
 
     let (per_local_var_debug_info, consts_debug_info) =
         fx.compute_per_local_var_debug_info(&mut start_bx).unzip();
@@ -501,7 +501,7 @@ fn arg_local_refs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                     PassMode::Direct(_) => {
                         let llarg = bx.get_param(llarg_idx);
                         llarg_idx += 1;
-                        debug_assert!(bx.is_backend_immediate(arg.layout));
+                        debug_assert!(arg.layout.backend_repr.is_scalar_or_simd());
                         return local(OperandRef {
                             val: OperandValue::Immediate(llarg),
                             layout: arg.layout,

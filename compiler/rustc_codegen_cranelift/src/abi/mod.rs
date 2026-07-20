@@ -14,7 +14,7 @@ use cranelift_codegen::isa::CallConv;
 use cranelift_module::ModuleError;
 use rustc_abi::{CanonAbi, ExternAbi, X86Call};
 use rustc_codegen_ssa::base::is_call_from_compiler_builtins_to_upstream_monomorphization;
-use rustc_codegen_ssa::errors::CompilerBuiltinsCannotCall;
+use rustc_codegen_ssa::diagnostics::CompilerBuiltinsCannotCall;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -220,7 +220,7 @@ fn make_local_place<'tcx>(
         );
     }
     let place = if is_ssa {
-        if let BackendRepr::ScalarPair(_, _) = layout.backend_repr {
+        if let BackendRepr::ScalarPair { a: _, b: _, b_offset: _ } = layout.backend_repr {
             CPlace::new_var_pair(fx, local, layout)
         } else {
             CPlace::new_var(fx, local, layout)
@@ -421,7 +421,7 @@ pub(crate) fn codegen_terminator_call<'tcx>(
             fx.tcx,
             ty::TypingEnv::fully_monomorphized(),
             def_id,
-            fn_args,
+            fn_args.no_bound_vars().unwrap(),
             source_info.span,
         );
 
@@ -440,18 +440,6 @@ pub(crate) fn codegen_terminator_call<'tcx>(
             }
         }
 
-        if fx.tcx.symbol_name(instance).name.starts_with("llvm.") {
-            crate::intrinsics::codegen_llvm_intrinsic_call(
-                fx,
-                fx.tcx.symbol_name(instance).name,
-                args,
-                ret_place,
-                target,
-                source_info.span,
-            );
-            return;
-        }
-
         match instance.def {
             InstanceKind::Intrinsic(_) => {
                 match crate::intrinsics::codegen_intrinsic_call(
@@ -465,6 +453,17 @@ pub(crate) fn codegen_terminator_call<'tcx>(
                     Ok(()) => return,
                     Err(instance) => Some(instance),
                 }
+            }
+            InstanceKind::LlvmIntrinsic(_) => {
+                crate::intrinsics::codegen_llvm_intrinsic_call(
+                    fx,
+                    fx.tcx.symbol_name(instance).name,
+                    args,
+                    ret_place,
+                    target,
+                    source_info.span,
+                );
+                return;
             }
             // We don't need AsyncDropGlueCtorShim here because it is not `noop func`,
             // it is `func returning noop future`

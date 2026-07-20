@@ -10,12 +10,11 @@
 //!    configuration after a double dash (`--extra-checks=py -- foo.py`)
 //! 2. Build configuration based on args/environment:
 //!    - Formatters by default are in check only mode
-//!    - If in CI (TIDY_PRINT_DIFF=1 is set), check and print the diff
 //!    - If `--bless` is provided, formatters may run
 //!    - Pass any additional config after the `--`. If no files are specified,
 //!      use a default.
-//! 3. Print the output of the given command. If it fails and `TIDY_PRINT_DIFF`
-//!    is set, rerun the tool to print a suggestion diff (for e.g. CI)
+//! 3. Print the output of the given command. If it fails, rerun the tool to print a suggestion
+//!    diff.
 
 use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
@@ -200,12 +199,10 @@ fn js_prepare(root_path: &Path, outdir: &Path, npm: &Path, tidy_ctx: &TidyCtx) -
 
 fn show_bless_help(mode: &str, action: &str, bless: bool) {
     if !bless {
-        eprintln!("rerun tidy with `--extra-checks={mode} --bless` to {action}");
+        eprintln!(
+            "rerun with `--bless` to {action}: `./x.py test tidy --extra-checks={mode} --bless`"
+        );
     }
-}
-
-fn show_diff() -> bool {
-    std::env::var("TIDY_PRINT_DIFF").is_ok_and(|v| v.eq_ignore_ascii_case("true") || v == "1")
 }
 
 fn check_spellcheck(root_path: &Path, outdir: &Path, cargo: &Path, tidy_ctx: &TidyCtx) {
@@ -314,7 +311,7 @@ fn check_python_lint(
 
     let res = run_ruff(root_path, outdir, py_path, &cfg_args, &file_args, args);
 
-    if res.is_err() && !bless && show_diff() {
+    if res.is_err() && !bless {
         eprintln!("\npython linting failed! Printing diff suggestions:");
 
         let diff_res = run_ruff(
@@ -358,18 +355,16 @@ fn check_python_fmt(
     let res = run_ruff(root_path, outdir, py_path, &cfg_args, &file_args, &args);
 
     if res.is_err() && !bless {
-        if show_diff() {
-            eprintln!("\npython formatting does not match! Printing diff:");
+        eprintln!("\npython formatting does not match! Printing diff:");
 
-            let _ = run_ruff(
-                root_path,
-                outdir,
-                py_path,
-                &cfg_args,
-                &file_args,
-                &["format".as_ref(), "--diff".as_ref()],
-            );
-        }
+        let _ = run_ruff(
+            root_path,
+            outdir,
+            py_path,
+            &cfg_args,
+            &file_args,
+            &["format".as_ref(), "--diff".as_ref()],
+        );
         show_bless_help("py:fmt", "reformat Python code", bless);
     }
 
@@ -421,7 +416,7 @@ fn check_cpp_fmt(
     let args = merge_args(&cfg_args_clang_format, &file_args_clang_format);
     let res = py_runner(py_path, false, None, "clang-format", &args);
 
-    if res.is_err() && !bless && show_diff() {
+    if res.is_err() && !bless {
         eprintln!("\nclang-format linting failed! Printing diff suggestions:");
 
         let mut cfg_args_diff = cfg_args.clone();

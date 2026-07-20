@@ -1,5 +1,5 @@
 // Ensure that we can't call `const_make_global` twice.
-//@ ignore-parallel-frontend different alloc ids
+
 #![feature(core_intrinsics)]
 #![feature(const_heap)]
 
@@ -11,7 +11,7 @@ const Y: &i32 = unsafe {
     *i = 20;
     intrinsics::const_make_global(ptr);
     intrinsics::const_make_global(ptr);
-    //~^ error: attempting to call `const_make_global` twice on the same allocation ALLOC0
+    //~^ error: attempting to call `const_make_global` twice on the same allocation ALLOC$ID
     &*i
 };
 

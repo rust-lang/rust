@@ -8,7 +8,9 @@ use rustc_literal_escaper::{EscapeError, Mode};
 use rustc_span::{BytePos, Span};
 use tracing::debug;
 
-use crate::errors::{MoreThanOneCharNote, MoreThanOneCharSugg, NoBraceUnicodeSub, UnescapeError};
+use crate::diagnostics::{
+    MoreThanOneCharNote, MoreThanOneCharSugg, NoBraceUnicodeSub, UnescapeError,
+};
 
 pub(crate) fn emit_unescape_error(
     dcx: DiagCtxtHandle<'_>,

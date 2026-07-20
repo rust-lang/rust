@@ -124,18 +124,22 @@ pub(crate) struct FnParamCVarArgsNotLast {
 }
 
 #[derive(Diagnostic)]
-#[diag("`#[splat]` is not supported on argument index {$splatted_arg_index}")]
+#[diag(
+    "`#[splat]` is only supported on argument index {$max_valid_splatted_arg_index} or less, this `#[splat]` is on index {$first_invalid_splatted_arg_index}"
+)]
 #[help("remove `#[splat]`, or use it on an argument closer to the start of the argument list")]
-pub(crate) struct InvalidSplattedArg {
-    pub splatted_arg_index: u16,
+pub(crate) struct InvalidSplattedArgs {
+    pub max_valid_splatted_arg_index: u16,
+
+    pub first_invalid_splatted_arg_index: u16,
 
     #[primary_span]
     #[label("`#[splat]` is not supported here")]
-    pub span: Span,
+    pub spans: Vec<Span>,
 }
 
 #[derive(Diagnostic)]
-#[diag("multiple `#[splat]`s are not allowed in the same function")]
+#[diag("multiple `#[splat]`s are not allowed in the same function argument list")]
 #[help("remove `#[splat]` from all but one argument")]
 pub(crate) struct DuplicateSplattedArgs {
     #[primary_span]
@@ -143,11 +147,28 @@ pub(crate) struct DuplicateSplattedArgs {
 }
 
 #[derive(Diagnostic)]
-#[diag("`...` and `#[splat]` are not allowed in the same function")]
+#[diag("`...` and `#[splat]` are not allowed in the same function argument list")]
 #[help("remove `#[splat]` or remove `...`")]
 pub(crate) struct CVarArgsAndSplat {
     #[primary_span]
     pub spans: Vec<Span>,
+}
+
+#[derive(Diagnostic)]
+#[diag("`#[splat]` is not allowed on closure arguments")]
+#[help("remove `#[splat]` or turn the closure into a function")]
+pub(crate) struct SplatNotAllowedOnClosures {
+    #[primary_span]
+    pub spans: Vec<Span>,
+}
+
+#[derive(Diagnostic)]
+#[diag("`#[splat]` is not allowed in the arguments of functions with the `{$abi}` ABI")]
+#[help("remove `#[splat]` or change the ABI")]
+pub(crate) struct SplatNotAllowedOnAbiCall {
+    #[primary_span]
+    pub spans: Vec<Span>,
+    pub abi: Symbol,
 }
 
 #[derive(Diagnostic)]
@@ -722,7 +743,7 @@ pub(crate) struct FieldlessUnion {
 pub(crate) struct WhereClauseAfterTypeAlias {
     #[primary_span]
     pub span: Span,
-    #[help("add `#![feature(lazy_type_alias)]` to the crate attributes to enable")]
+    #[help("add `#![feature(checked_type_aliases)]` to the crate attributes to enable")]
     pub help: bool,
 }
 
@@ -978,6 +999,7 @@ pub(crate) struct MatchArmWithNoBody {
     // resulting code to be correct.
     #[suggestion(
         "add a body after the pattern",
+        // ignore-tidy-todo
         code = " => {{ todo!() }}",
         applicability = "has-placeholders",
         style = "verbose"

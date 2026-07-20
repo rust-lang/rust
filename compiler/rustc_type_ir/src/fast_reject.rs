@@ -233,7 +233,7 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
         // No need to decrement the depth here as this function is only
         // recursively reachable via `types_may_unify_inner` which already
         // increments the depth for us.
-        iter::zip(obligation_args.iter(), impl_args.iter()).all(|(obl, imp)| {
+        let may_unify = |(obl, imp): (I::GenericArg, I::GenericArg)| {
             match (obl.kind(), imp.kind()) {
                 // We don't fast reject based on regions.
                 (ty::GenericArgKind::Lifetime(_), ty::GenericArgKind::Lifetime(_)) => true,
@@ -245,7 +245,14 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
                 }
                 _ => panic!("kind mismatch: {obl:?} {imp:?}"),
             }
-        })
+        };
+
+        // Specialize the common `(1, 1)` case to avoid iterator machinery.
+        if let ([obl], [imp]) = (obligation_args.as_slice(), impl_args.as_slice()) {
+            return may_unify((*obl, *imp));
+        }
+
+        iter::zip(obligation_args.iter(), impl_args.iter()).all(may_unify)
     }
 
     fn types_may_unify_inner(self, lhs: I::Ty, rhs: I::Ty, depth: usize) -> bool {
@@ -418,7 +425,12 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
 
             ty::FnDef(lhs_def_id, lhs_args) => match rhs.kind() {
                 ty::FnDef(rhs_def_id, rhs_args) => {
-                    lhs_def_id == rhs_def_id && self.args_may_unify_inner(lhs_args, rhs_args, depth)
+                    lhs_def_id == rhs_def_id
+                        && self.args_may_unify_inner(
+                            lhs_args.no_bound_vars().unwrap(),
+                            rhs_args.no_bound_vars().unwrap(),
+                            depth,
+                        )
                 }
                 _ => false,
             },

@@ -18,7 +18,7 @@ use crate::ty::{self, ConstKind, GenericArgsRef, ScalarInt, Ty, TyCtxt};
 /// Represents the result of const evaluation via the `eval_to_allocation` query.
 /// Not to be confused with `ConstAllocation`, which directly refers to the underlying data!
 /// Here we indirect via an `AllocId`.
-#[derive(Copy, Clone, StableHash, TyEncodable, TyDecodable, Debug, Hash, Eq, PartialEq)]
+#[derive(Copy, Clone, StableHash, TyEncodable, TyDecodable, Debug, Eq, PartialEq)]
 pub struct ConstAlloc<'tcx> {
     /// The value lives here, at offset 0, and that allocation definitely is an `AllocKind::Memory`
     /// (so you can use `AllocMap::unwrap_memory`).

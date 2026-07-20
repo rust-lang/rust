@@ -87,7 +87,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                                 *self.tcx,
                                 self.typing_env,
                                 def_id,
-                                args,
+                                args.no_bound_vars().unwrap(),
                             )
                             .ok_or_else(|| err_inval!(TooGeneric))?
                         };

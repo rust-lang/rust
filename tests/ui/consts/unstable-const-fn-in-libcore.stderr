@@ -6,6 +6,11 @@ LL |     const fn unwrap_or_else<F: [const] FnOnce() -> T>(self, f: F) -> T {
 ...
 LL |     }
    |     - value is dropped here
+   |
+help: consider further restricting type parameter `F` with unstable trait `Destruct`
+   |
+LL |     const fn unwrap_or_else<F: [const] FnOnce() -> T + [const] Destruct>(self, f: F) -> T {
+   |                                                      ++++++++++++++++++
 
 error[E0493]: destructor of `Opt<T>` cannot be evaluated at compile-time
   --> $DIR/unstable-const-fn-in-libcore.rs:19:55

@@ -122,6 +122,11 @@
 //! Allocations must behave like "normal" memory: in particular, reads must not have
 //! side-effects, and writes must become visible to other threads using the usual synchronization
 //! primitives.
+//! Allocations must support all atomic operations that are available for the target (as
+//! determined by the `target_has_atomic*` set of cfg flags).
+//! The precise instructions used for atomic operations are generally not guaranteed, so portable
+//! software should place all Rust allocations in memory regions that support all atomic
+//! instructions.
 //!
 //! For any allocation with `base` address, `size`, and a set of
 //! `addresses`, the following are guaranteed:
@@ -300,27 +305,25 @@
 //! represent the tagged pointer as an actual pointer and not a `usize`*. For instance:
 //!
 //! ```
-//! unsafe {
-//!     // A flag we want to pack into our pointer
-//!     static HAS_DATA: usize = 0x1;
-//!     static FLAG_MASK: usize = !HAS_DATA;
+//! // A flag we want to pack into our pointer
+//! static HAS_DATA: usize = 0x1;
+//! static FLAG_MASK: usize = !HAS_DATA;
 //!
-//!     // Our value, which must have enough alignment to have spare least-significant-bits.
-//!     let my_precious_data: u32 = 17;
-//!     assert!(align_of::<u32>() > 1);
+//! // Our value, which must have enough alignment to have spare least-significant-bits.
+//! let my_precious_data: u32 = 17;
+//! assert!(align_of::<u32>() > 1);
 //!
-//!     // Create a tagged pointer
-//!     let ptr = &my_precious_data as *const u32;
-//!     let tagged = ptr.map_addr(|addr| addr | HAS_DATA);
+//! // Create a tagged pointer
+//! let ptr = &my_precious_data as *const u32;
+//! let tagged = ptr.map_addr(|addr| addr | HAS_DATA);
 //!
-//!     // Check the flag:
-//!     if tagged.addr() & HAS_DATA != 0 {
-//!         // Untag and read the pointer
-//!         let data = *tagged.map_addr(|addr| addr & FLAG_MASK);
-//!         assert_eq!(data, 17);
-//!     } else {
-//!         unreachable!()
-//!     }
+//! // Check the flag:
+//! if tagged.addr() & HAS_DATA != 0 {
+//!     // Untag and read the pointer
+//!     let data = unsafe { *tagged.map_addr(|addr| addr & FLAG_MASK) };
+//!     assert_eq!(data, 17);
+//! } else {
+//!     unreachable!()
 //! }
 //! ```
 //!
@@ -1810,16 +1813,24 @@ pub const unsafe fn read<T>(src: *const T) -> T {
 #[track_caller]
 #[rustc_diagnostic_item = "ptr_read_unaligned"]
 pub const unsafe fn read_unaligned<T>(src: *const T) -> T {
-    let mut tmp = MaybeUninit::<T>::uninit();
+    // Always true thanks to the repr, but to demonstrate
+    const {
+        assert!(mem::offset_of!(Unaligned::<T>, 0) == 0);
+        assert!(size_of::<T>() == size_of::<Unaligned<T>>());
+    }
+
+    let src = src.cast::<Unaligned<T>>();
     // SAFETY: the caller must guarantee that `src` is valid for reads.
-    // `src` cannot overlap `tmp` because `tmp` was just allocated on
-    // the stack as a separate allocation.
+    // Reading it as `Unaligned<T>` instead of `T` reads those same bytes because
+    // it's the same size (thus zero offset), but with alignment 1 instead.
     //
-    // Also, since we just wrote a valid value into `tmp`, it is guaranteed
-    // to be properly initialized.
+    // Similarly, because it's the same bytes it's sound to transmute from the
+    // `Unaligned<T>` to `T`.  Transmute is a value-based (not a place-based)
+    // operation that doesn't care about alignment.
     unsafe {
-        copy_nonoverlapping(src as *const u8, tmp.as_mut_ptr() as *mut u8, size_of::<T>());
-        tmp.assume_init()
+        let unaligned = read(src);
+        // Can't just destructure because that's not allowed in const fn
+        mem::transmute_neo(unaligned)
     }
 }
 
@@ -2012,14 +2023,18 @@ pub const unsafe fn write<T>(dst: *mut T, src: T) {
 #[rustc_diagnostic_item = "ptr_write_unaligned"]
 #[track_caller]
 pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
-    // SAFETY: the caller must guarantee that `dst` is valid for writes.
-    // `dst` cannot overlap `src` because the caller has mutable access
-    // to `dst` while `src` is owned by this function.
-    unsafe {
-        copy_nonoverlapping((&raw const src) as *const u8, dst as *mut u8, size_of::<T>());
-        // We are calling the intrinsic directly to avoid function calls in the generated code.
-        intrinsics::forget(src);
+    // Always true thanks to the repr, but to demonstrate
+    const {
+        assert!(mem::offset_of!(Unaligned::<T>, 0) == 0);
+        assert!(size_of::<T>() == size_of::<Unaligned<T>>());
     }
+
+    let dst = dst.cast::<Unaligned<T>>();
+    let src = Unaligned(src);
+    // SAFETY: the caller must guarantee that `dst` is valid for writes.
+    // Writing it as `Unaligned<T>` instead of `T` writes those same bytes because
+    // it's the same size (thus zero offset), but with alignment 1 instead.
+    unsafe { write(dst, src) }
 }
 
 /// Performs a volatile read of the value from `src` without moving it.
@@ -2050,6 +2065,9 @@ pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 ///   synchronization.
 ///
 /// Note that volatile memory operations where T is a zero-sized type are noops and may be ignored.
+///
+/// When invoked during const evaluation, this behaves like a regular read. In particular, such
+/// reads must always follow the first of the two cases above.
 ///
 /// [allocation]: crate::ptr#allocated-object
 /// [atomic]: crate::sync::atomic#memory-model-for-atomic-accesses
@@ -2106,9 +2124,10 @@ pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 /// ```
 #[inline]
 #[stable(feature = "volatile", since = "1.9.0")]
+#[rustc_const_unstable(feature = "const_volatile", issue = "159094")]
 #[track_caller]
 #[rustc_diagnostic_item = "ptr_read_volatile"]
-pub unsafe fn read_volatile<T>(src: *const T) -> T {
+pub const unsafe fn read_volatile<T>(src: *const T) -> T {
     // SAFETY: the caller must uphold the safety contract for `volatile_load`.
     unsafe {
         ub_checks::assert_unsafe_precondition!(
@@ -2159,6 +2178,9 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 /// dropped when operating on Rust memory. Additionally, it does not drop `src`. Semantically, `src`
 /// is moved into the location pointed to by `dst`.
 ///
+/// When invoked during const evaluation, this behaves like a regular write. In particular, such
+/// reads must always follow the first of the two cases above.
+///
 /// [allocation]: crate::ptr#allocated-object
 /// [atomic]: crate::sync::atomic#memory-model-for-atomic-accesses
 ///
@@ -2208,9 +2230,10 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 /// ```
 #[inline]
 #[stable(feature = "volatile", since = "1.9.0")]
+#[rustc_const_unstable(feature = "const_volatile", issue = "159094")]
 #[rustc_diagnostic_item = "ptr_write_volatile"]
 #[track_caller]
-pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
+pub const unsafe fn write_volatile<T>(dst: *mut T, src: T) {
     // SAFETY: the caller must uphold the safety contract for `volatile_store`.
     unsafe {
         ub_checks::assert_unsafe_precondition!(
@@ -2809,3 +2832,8 @@ pub macro addr_of($place:expr) {
 pub macro addr_of_mut($place:expr) {
     &raw mut $place
 }
+
+/// Used in [`read_unaligned`] and [`write_unaligned`] to load and store `T`
+/// with alignment 1 rather than its usual `align_of::<T>()` alignment.
+#[repr(Rust, packed)]
+struct Unaligned<T>(T);

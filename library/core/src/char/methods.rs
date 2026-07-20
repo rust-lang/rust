@@ -1812,6 +1812,28 @@ impl char {
         ToCasefold(CaseMappingIter::new(conversions::to_casefold(self)))
     }
 
+    /// Returns the code point value as a `u32`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(char_to_u32)]
+    ///
+    /// let ascii = 'a';
+    /// let heart = '❤';
+    ///
+    /// assert_eq!(ascii.to_u32(), 97_u32);
+    /// assert_eq!(heart.to_u32(), 0x2764_u32);
+    /// ```
+    #[must_use = "this returns the result of the operation, \
+                  without modifying the original"]
+    #[unstable(feature = "char_to_u32", issue = "158938")]
+    #[rustc_const_unstable(feature = "char_to_u32", issue = "158938")]
+    #[inline(always)]
+    pub const fn to_u32(self) -> u32 {
+        self as u32
+    }
+
     /// Checks if the value is within the ASCII range.
     ///
     /// # Examples
@@ -2354,8 +2376,8 @@ impl char {
     /// before using this function.
     ///
     /// [infra-aw]: https://infra.spec.whatwg.org/#ascii-whitespace
-    /// [pct]: https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap07.html#tag_07_03_01
-    /// [bfs]: https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_06_05
+    /// [pct]: https://pubs.opengroup.org/onlinepubs/9799919799/basedefs/V1_chap07.html#tag_07_03_01
+    /// [bfs]: https://pubs.opengroup.org/onlinepubs/9799919799/utilities/V3_chap02.html#tag_19_06_05
     ///
     /// # Examples
     ///

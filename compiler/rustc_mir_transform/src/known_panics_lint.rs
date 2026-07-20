@@ -563,7 +563,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                 let right = self.use_ecx(|this| this.ecx.read_immediate(&right))?;
 
                 let val = self.use_ecx(|this| this.ecx.binary_op(bin_op, &left, &right))?;
-                if matches!(val.layout.backend_repr, BackendRepr::ScalarPair(..)) {
+                if matches!(val.layout.backend_repr, BackendRepr::ScalarPair { .. }) {
                     // FIXME `Value` should properly support pairs in `Immediate`... but currently
                     // it does not.
                     let (val, overflow) = val.to_pair(&self.ecx);
@@ -629,7 +629,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     // so bail out if the target is not one.
                     match (value.layout.backend_repr, to.backend_repr) {
                         (BackendRepr::Scalar(..), BackendRepr::Scalar(..)) => {}
-                        (BackendRepr::ScalarPair(..), BackendRepr::ScalarPair(..)) => {}
+                        (BackendRepr::ScalarPair { .. }, BackendRepr::ScalarPair { .. }) => {}
                         _ => return None,
                     }
 

@@ -1,8 +1,7 @@
 //@aux-build:option_helpers.rs
 #![warn(clippy::search_is_some)]
-#![allow(clippy::manual_pattern_char_comparison)]
+#![expect(clippy::manual_pattern_char_comparison)]
 #![allow(clippy::useless_vec)]
-#![allow(dead_code)]
 extern crate option_helpers;
 use option_helpers::IteratorFalsePositives;
 //@no-rustfix

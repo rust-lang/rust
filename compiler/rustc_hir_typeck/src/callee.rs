@@ -2,18 +2,19 @@ use std::iter;
 
 use rustc_abi::{CanonAbi, ExternAbi};
 use rustc_ast::util::parser::ExprPrecedence;
+use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed, StashKey, msg};
 use rustc_hir::def::{self, CtorKind, Namespace, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, HirId, LangItem, find_attr};
 use rustc_hir_analysis::autoderef::Autoderef;
-use rustc_infer::infer::BoundRegionConversionTime;
+use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes};
 use rustc_infer::traits::{Obligation, ObligationCause, ObligationCauseCode};
+use rustc_middle::bug;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
 };
 use rustc_middle::ty::{self, FnSig, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
-use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{Ident, Span, sym};
 use rustc_target::spec::{AbiMap, AbiMapping};
@@ -39,11 +40,11 @@ pub(crate) fn check_legal_trait_for_method_call(
     receiver: Option<Span>,
     expr_span: Span,
     trait_id: DefId,
-    body_id: DefId,
+    body_def_id: DefId,
 ) -> Result<(), ErrorGuaranteed> {
     if tcx.is_lang_item(trait_id, LangItem::Drop)
         // Allow calling `Drop::pin_drop` in `Drop::drop`
-        && !tcx.is_lang_item(tcx.parent(body_id), LangItem::Drop)
+        && !tcx.is_lang_item(tcx.parent(body_def_id), LangItem::Drop)
     {
         let sugg = if let Some(receiver) = receiver.filter(|s| !s.is_empty()) {
             diagnostics::ExplicitDestructorCallSugg::Snippet {
@@ -550,6 +551,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         let (fn_sig, def_id, callee_generic_args) = match *callee_ty.kind() {
             ty::FnDef(def_id, args) => {
+                let args = args.no_bound_vars().unwrap();
                 self.enforce_context_effects(Some(call_expr.hir_id), call_expr.span, def_id, args);
                 let fn_sig = self.tcx.fn_sig(def_id).instantiate(self.tcx, args).skip_norm_wip();
 
@@ -629,8 +631,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Performs arguments check with an additional routine of adjusting the first argument,
-    /// so it corresponds to the first parameter of the function. We reuse adjustments
-    /// that are obtained from `probe_for_name`, where the first argument pretends to be
+    /// (and possibly other arguments) so it corresponds to the first parameter of the function.
+    /// We reuse adjustments that are obtained from `probe_for_name`, where the first argument pretends to be
     /// a receiver like in a method call. At this point this routine is used for delegations,
     /// as from this moment we always generate a call (earlier method calls were generated),
     /// so we can both propagate parent generics and get benefits from adjustments from method call.
@@ -659,58 +661,105 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
         };
 
-        let Some(scope) = self.get_scope_for_method_call_adjustments(call_expr, arg_exprs) else {
+        let Some((candidate_res, args_to_map)) =
+            self.get_info_for_method_call_adjustments(call_expr, arg_exprs)
+        else {
             return do_check();
         };
 
-        let first_expr = &arg_exprs[0];
-        let first_arg_type = self.check_expr(first_expr);
+        // After we found pick for first argument we need to resolve inference variables
+        // in order to find adjustments for other mapped arguments.
+        let mut resolved_inputs = vec![];
+        let mut prev_types = FxHashMap::default();
+        let formal_input_tys = fn_sig.inputs();
 
-        // Reuse method probing that is used during method call, as all this code pretends that
-        // we generated method call.
-        let pick = self.probe_for_name(
-            Mode::MethodCall,
-            Ident::dummy(),
-            None,
-            IsSuggestion(false),
-            first_arg_type,
-            call_expr.hir_id,
-            scope,
-        );
+        let args_to_map = arg_exprs
+            .iter()
+            .enumerate()
+            .filter(|(idx, _)| args_to_map.contains(idx))
+            .collect::<Vec<_>>();
 
-        let Ok(ref pick) = pick else { return do_check() };
+        for &(idx, arg) in &args_to_map {
+            let is_first_arg = idx == 0;
+            let self_ty_override = if is_first_arg { None } else { Some(resolved_inputs[idx]) };
+            let scope = ProbeScope::Single(candidate_res, self_ty_override);
+            let arg_type = self.check_expr(arg);
 
-        // Fool typechecker by placing an adjusted type of the first arg to avoid errors.
-        // We already wrote type of `first_expr` during `self.check_expr(first_expr)` above.
-        let first_arg_type = self
-            .typeck_results
-            .borrow_mut()
-            .node_types_mut()
-            .insert(first_expr.hir_id, pick.self_ty)
-            .expect("must be set");
+            // Reuse method probing that is used during method call, as all this code pretends that
+            // we generated method call.
+            let pick = self.probe_for_name(
+                Mode::MethodCall,
+                Ident::dummy(),
+                None,
+                IsSuggestion(false),
+                arg_type,
+                call_expr.hir_id,
+                scope,
+            );
+
+            let Ok(ref pick) = pick else { return do_check() };
+
+            let mut ctx = ConfirmContext::new(self, arg.span, arg, arg);
+            let (adjusted_arg_type, method_adjustments) =
+                ctx.create_ty_adjustments_from_pick(arg_type, pick);
+
+            if is_first_arg && args_to_map.len() > 1 {
+                // We successfully found a pick and adjustments for first argument,
+                // now we have to unify it with signature input in order to resolve
+                // all inference variables. After that we update input signature for
+                // adjustments search for mapped arguments.
+                let cause = self.cause(call_expr.span, ObligationCauseCode::Misc);
+                if self
+                    .at(&cause, self.param_env)
+                    .sup(DefineOpaqueTypes::Yes, formal_input_tys[0], adjusted_arg_type)
+                    .is_err()
+                {
+                    return do_check();
+                }
+
+                resolved_inputs = self.resolve_vars_if_possible(formal_input_tys.to_vec());
+            }
+
+            // Fool typechecker by placing an adjusted type of the first arg to avoid errors.
+            // We already wrote type of `first_expr` during `self.check_expr(first_expr)` above.
+            prev_types.insert(
+                arg.hir_id,
+                (
+                    self.typeck_results
+                        .borrow_mut()
+                        .node_types_mut()
+                        .insert(arg.hir_id, adjusted_arg_type)
+                        .expect("must be set"),
+                    method_adjustments,
+                ),
+            );
+        }
 
         do_check();
 
-        let mut results = self.typeck_results.borrow_mut();
+        for (_, arg) in args_to_map {
+            let mut results = self.typeck_results.borrow_mut();
+            let mut adjustments = results.adjustments_mut();
 
-        // Remove any added adjustments for `first_expr` during `do_check` and replace them with ours.
-        let mut adjustments = results.adjustments_mut();
-        let adjustments = adjustments.entry(first_expr.hir_id).or_default();
+            let (prev_type, method_adjustments) =
+                prev_types.remove(&arg.hir_id).expect("must be in a map");
 
-        let mut ctx = ConfirmContext::new(self, first_expr.span, first_expr, first_expr);
-        *adjustments = ctx.create_ty_adjustments_from_pick(first_arg_type, pick).1;
+            // Remove any added adjustments for arg expression during `do_check` and replace them with ours.
+            let adjustments = adjustments.entry(arg.hir_id).or_default();
+            *adjustments = method_adjustments;
 
-        // Restore original first provided arg type.
-        results.node_types_mut().insert(first_expr.hir_id, first_arg_type);
+            // Restore original first provided arg type.
+            results.node_types_mut().insert(arg.hir_id, prev_type);
+        }
     }
 
     /// Gets scope for method-call like adjustments for the first argument of the call.
     /// Now only delegations are processed this way.
-    fn get_scope_for_method_call_adjustments(
+    fn get_info_for_method_call_adjustments(
         &self,
         call_expr: &'tcx hir::Expr<'tcx>,
         arg_exprs: &'tcx [hir::Expr<'tcx>],
-    ) -> Option<ProbeScope> {
+    ) -> Option<(DefId, &FxIndexSet<usize>)> {
         // Check that we are inside delegation and processing its call. First, we check that
         // the parent of call expr. is delegation and then make sure that it is compiler-generated
         // by comparing their hir ids (otherwise we will encounter errors in nested delegations,
@@ -724,17 +773,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return None;
         };
 
-        let Some(path_res_id) = info.call_path_res else { return None };
-
         // Check that delegation has first provided arg and that the call path
         // resolves to a trait method (inherent methods are not yet supported).
         if arg_exprs.is_empty()
-            || !self.tcx.opt_associated_item(path_res_id).is_some_and(|i| i.is_method())
+            || !self.tcx.opt_associated_item(info.call_path_res).is_some_and(|i| i.is_method())
         {
             return None;
         }
 
-        Some(ProbeScope::Single(path_res_id))
+        Some((info.call_path_res, &info.arguments_to_map))
     }
 
     /// Attempts to reinterpret `method(rcvr, args...)` as `rcvr.method(args...)`
@@ -1042,7 +1089,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         callee_did: DefId,
         callee_args: GenericArgsRef<'tcx>,
     ) {
-        let const_context = self.tcx.hir_body_const_context(self.body_id);
+        let const_context = self.tcx.hir_body_const_context(self.body_def_id);
 
         if let hir::Constness::Const { always: true } = self.tcx.constness(callee_did) {
             match const_context {
@@ -1062,7 +1109,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         // If we have `rustc_do_not_const_check`, do not check `[const]` bounds.
-        if self.has_rustc_attrs && find_attr!(self.tcx, self.body_id, RustcDoNotConstCheck) {
+        if self.has_rustc_attrs && find_attr!(self.tcx, self.body_def_id, RustcDoNotConstCheck) {
             return;
         }
 
@@ -1186,11 +1233,16 @@ impl<'a, 'tcx> DeferredCallResolution<'tcx> {
                 );
             }
             None => {
-                span_bug!(
-                    self.call_expr.span,
-                    "Expected to find a suitable `Fn`/`FnMut`/`FnOnce` implementation for `{}`",
-                    self.closure_ty
-                )
+                let guar = fcx.tainted_by_errors().unwrap_or_else(|| {
+                    fcx.dcx().span_delayed_bug(
+                        self.call_expr.span,
+                        format!(
+                            "Expected to find a suitable `Fn`/`FnMut`/`FnOnce` implementation for `{}`",
+                            self.closure_ty
+                        ),
+                    )
+                });
+                fcx.write_resolution(self.call_expr.hir_id, Err(guar));
             }
         }
     }

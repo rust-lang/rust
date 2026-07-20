@@ -134,7 +134,7 @@ impl<'tcx> JsonRenderer<'tcx> {
 impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
     const DESCR: &'static str = "json";
     const RUN_ON_MODULE: bool = false;
-    const NON_STATIC_FILE_EMIT_TYPE: EmitType = EmitType::JsonFiles;
+    const NON_STATIC_FILE_EMIT_TYPE: EmitType = EmitType::IrJsonFiles;
 
     type ModuleData = ();
 

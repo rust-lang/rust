@@ -7,15 +7,15 @@ use rustc_middle::middle::codegen_fn_attrs::{TargetFeature, TargetFeatureKind};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
-use rustc_session::errors::feature_err;
+use rustc_session::diagnostics::feature_err;
 use rustc_session::lint::builtin::AARCH64_SOFTFLOAT_NEON;
 use rustc_span::{Span, Symbol, edit_distance, sym};
 use rustc_target::spec::{Arch, SanitizerSet};
 use rustc_target::target_features::{RUSTC_SPECIFIC_FEATURES, Stability};
 use smallvec::SmallVec;
 
-use crate::errors::{CrossArchFeatureNote, FeatureNotValid, FeatureNotValidHint};
-use crate::{errors, target_features};
+use crate::diagnostics::{CrossArchFeatureNote, FeatureNotValid, FeatureNotValidHint};
+use crate::{diagnostics, target_features};
 
 /// Compute the enabled target features from the `#[target_feature]` function attribute.
 /// Enabled target features are added to `target_features`.
@@ -72,7 +72,7 @@ pub(crate) fn from_target_feature_attr(
         // Only allow target features whose feature gates have been enabled
         // and which are permitted to be toggled.
         if let Err(reason) = stability.toggle_allowed() {
-            tcx.dcx().emit_err(errors::ForbiddenTargetFeatureAttr {
+            tcx.dcx().emit_err(diagnostics::ForbiddenTargetFeatureAttr {
                 span: feature_span,
                 feature: feature_str,
                 reason,
@@ -104,10 +104,10 @@ pub(crate) fn from_target_feature_attr(
                                 AARCH64_SOFTFLOAT_NEON,
                                 tcx.local_def_id_to_hir_id(did),
                                 feature_span,
-                                errors::Aarch64SoftfloatNeon,
+                                diagnostics::Aarch64SoftfloatNeon,
                             );
                         } else {
-                            tcx.dcx().emit_err(errors::ForbiddenTargetFeatureAttr {
+                            tcx.dcx().emit_err(diagnostics::ForbiddenTargetFeatureAttr {
                                 span: feature_span,
                                 feature: name.as_str(),
                                 reason: "this feature is incompatible with the target ABI",
@@ -156,7 +156,7 @@ pub(crate) fn check_target_feature_trait_unsafe(tcx: TyCtxt<'_>, id: LocalDefId,
     if let DefKind::AssocFn = tcx.def_kind(id) {
         let parent_id = tcx.local_parent(id);
         if let DefKind::Trait | DefKind::Impl { of_trait: true } = tcx.def_kind(parent_id) {
-            tcx.dcx().emit_err(errors::TargetFeatureSafeTrait {
+            tcx.dcx().emit_err(diagnostics::TargetFeatureSafeTrait {
                 span: attr_span,
                 def: tcx.def_span(id),
             });
@@ -275,7 +275,7 @@ pub fn cfg_target_feature<'a, const N: usize>(
         &sess.opts.cg.target_feature,
         /* err_callback */
         |feature| {
-            sess.dcx().emit_warn(errors::UnknownCTargetFeaturePrefix { feature });
+            sess.dcx().emit_warn(diagnostics::UnknownCTargetFeaturePrefix { feature });
         },
         |base_feature, new_features, enable| {
             // Iteration order is irrelevant since this only influences an `FxHashMap`.
@@ -310,21 +310,21 @@ pub fn cfg_target_feature<'a, const N: usize>(
                         }
                     });
                     let unknown_feature = if let Some(rust_feature) = rust_feature {
-                        errors::UnknownCTargetFeature {
+                        diagnostics::UnknownCTargetFeature {
                             feature: base_feature,
-                            rust_feature: errors::PossibleFeature::Some { rust_feature },
+                            rust_feature: diagnostics::PossibleFeature::Some { rust_feature },
                         }
                     } else {
-                        errors::UnknownCTargetFeature {
+                        diagnostics::UnknownCTargetFeature {
                             feature: base_feature,
-                            rust_feature: errors::PossibleFeature::None,
+                            rust_feature: diagnostics::PossibleFeature::None,
                         }
                     };
                     sess.dcx().emit_warn(unknown_feature);
                 }
                 Some((_, stability, _)) => {
                     if let Stability::Forbidden { reason, hard_error } = stability {
-                        let diag = errors::ForbiddenCTargetFeature {
+                        let diag = diagnostics::ForbiddenCTargetFeature {
                             feature: base_feature,
                             enabled: if enable { "enabled" } else { "disabled" },
                             reason,
@@ -345,7 +345,7 @@ pub fn cfg_target_feature<'a, const N: usize>(
                         } else {
                             "this feature is not stably supported"
                         };
-                        sess.dcx().emit_warn(errors::UnstableCTargetFeature {
+                        sess.dcx().emit_warn(diagnostics::UnstableCTargetFeature {
                             feature: base_feature,
                             note,
                         });
@@ -356,7 +356,7 @@ pub fn cfg_target_feature<'a, const N: usize>(
     );
 
     if let Some(f) = check_tied_features(sess, &enabled_disabled_features) {
-        sess.dcx().emit_err(errors::TargetFeatureDisableOrEnable {
+        sess.dcx().emit_err(diagnostics::TargetFeatureDisableOrEnable {
             features: f,
             span: None,
             missing_features: None,

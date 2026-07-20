@@ -1,7 +1,7 @@
 //! Give useful errors and suggestions to users when an item can't be
 //! found or is otherwise invalid.
 
-// ignore-tidy-filelength
+// ignore-tidy-file-filelength
 
 use core::ops::ControlFlow;
 use std::borrow::Cow;
@@ -160,7 +160,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         match *ty.peel_refs().kind() {
             ty::Param(param) => {
-                let generics = self.tcx.generics_of(self.body_id);
+                let generics = self.tcx.generics_of(self.body_def_id);
                 let generic_param = generics.type_param(param, self.tcx);
                 for unsatisfied in unsatisfied_predicates.iter() {
                     // The parameter implements `IntoIterator`
@@ -266,7 +266,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // NOTE: Reporting a method error should also suppress any unused trait errors,
         // since the method error is very possibly the reason why the trait wasn't used.
         for &import_id in
-            self.tcx.in_scope_traits(call_id).into_iter().flatten().flat_map(|c| c.import_ids)
+            self.tcx.in_scope_traits(call_id).into_flat_iter().flat_map(|c| c.import_ids)
         {
             self.typeck_results.borrow_mut().used_trait_imports.insert(import_id);
         }
@@ -634,7 +634,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         impl<'a, 'tcx> LetVisitor<'a, 'tcx> {
             // Check scope of binding.
             fn is_sub_scope(&self, sub_id: hir::ItemLocalId, super_id: hir::ItemLocalId) -> bool {
-                let scope_tree = self.fcx.tcx.region_scope_tree(self.fcx.body_id);
+                let scope_tree = self.fcx.tcx.region_scope_tree(self.fcx.body_def_id);
                 if let Some(sub_var_scope) = scope_tree.var_scope(sub_id)
                     && let Some(super_var_scope) = scope_tree.var_scope(super_id)
                     && scope_tree.is_subscope_of(sub_var_scope, super_var_scope)
@@ -742,7 +742,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             && let hir::def::Res::Local(recv_id) = path.res
             && let Some(segment) = path.segments.first()
         {
-            let body = self.tcx.hir_body_owned_by(self.body_id);
+            let body = self.tcx.hir_body_owned_by(self.body_def_id);
 
             if let Node::Expr(call_expr) = self.tcx.parent_hir_node(rcvr.hir_id) {
                 let mut let_visitor = LetVisitor {
@@ -1148,7 +1148,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         let mut ty_span = match rcvr_ty.kind() {
             ty::Param(param_type) => {
-                Some(param_type.span_from_generics(self.tcx, self.body_id.to_def_id()))
+                Some(param_type.span_from_generics(self.tcx, self.body_def_id.to_def_id()))
             }
             ty::Adt(def, _) if def.did().is_local() => Some(self.tcx.def_span(def.did())),
             _ => None,
@@ -1779,7 +1779,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         ty::Param(_) => {
                             // Account for `fn` items like in `issue-35677.rs` to
                             // suggest restricting its type params.
-                            Some(self.tcx.hir_node_by_def_id(self.body_id))
+                            Some(self.tcx.hir_node_by_def_id(self.body_def_id))
                         }
                         ty::Adt(def, _) => {
                             def.did().as_local().map(|def_id| self.tcx.hir_node_by_def_id(def_id))
@@ -2842,7 +2842,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => None,
             });
         if let Some((field, field_ty)) = field_receiver {
-            let scope = tcx.parent_module_from_def_id(self.body_id);
+            let scope = tcx.parent_module_from_def_id(self.body_def_id);
             let is_accessible = field.vis.is_accessible_from(scope, tcx);
 
             if is_accessible {
@@ -3147,7 +3147,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             seg1.ident.span,
             StashKey::CallAssocMethod,
             |err| {
-                let body = self.tcx.hir_body_owned_by(self.body_id);
+                let body = self.tcx.hir_body_owned_by(self.body_def_id);
                 struct LetVisitor {
                     ident_name: Symbol,
                 }
@@ -3997,7 +3997,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     {
         let parent_map = self.tcx.visible_parent_map(());
 
-        let scope = self.tcx.parent_module_from_def_id(self.body_id);
+        let scope = self.tcx.parent_module_from_def_id(self.body_def_id);
         let (accessible_candidates, inaccessible_candidates): (Vec<_>, Vec<_>) =
             candidates.into_iter().partition(|id| {
                 let vis = self.tcx.visibility(*id);
@@ -4555,7 +4555,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
             // Obtain the span for `param` and use it for a structured suggestion.
             if let Some(param) = param_type {
-                let generics = self.tcx.generics_of(self.body_id.to_def_id());
+                let generics = self.tcx.generics_of(self.body_def_id.to_def_id());
                 let type_param = generics.type_param(param, self.tcx);
                 let tcx = self.tcx;
                 if let Some(def_id) = type_param.def_id.as_local() {

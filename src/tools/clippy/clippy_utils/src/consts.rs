@@ -979,6 +979,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
         }
     }
 
+    #[expect(clippy::too_many_lines)]
     fn binop(&self, op: BinOpKind, left: &Expr<'_>, right: &Expr<'_>) -> Option<Constant> {
         let l = self.expr(left)?;
         let r = self.expr(right);
@@ -1027,6 +1028,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
                 },
                 ty::Uint(ity) => {
                     let bits = ity.bits();
+                    let mask = !0u128 >> (128 - bits);
 
                     match op {
                         BinOpKind::Add => l.checked_add(r).and_then(|n| ity.ensure_fits(n)).map(Constant::Int),
@@ -1034,8 +1036,12 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
                         BinOpKind::Mul => l.checked_mul(r).and_then(|n| ity.ensure_fits(n)).map(Constant::Int),
                         BinOpKind::Div => l.checked_div(r).map(Constant::Int),
                         BinOpKind::Rem => l.checked_rem(r).map(Constant::Int),
-                        BinOpKind::Shr if r < bits => l.checked_shr(r.try_into().ok()?).map(Constant::Int),
-                        BinOpKind::Shl if r < bits => l.checked_shl(r.try_into().ok()?).map(Constant::Int),
+                        BinOpKind::Shr if r < bits => {
+                            l.checked_shr(r.try_into().ok()?).map(|x| Constant::Int(x & mask))
+                        },
+                        BinOpKind::Shl if r < bits => {
+                            l.checked_shl(r.try_into().ok()?).map(|x| Constant::Int(x & mask))
+                        },
                         BinOpKind::BitXor => Some(Constant::Int(l ^ r)),
                         BinOpKind::BitOr => Some(Constant::Int(l | r)),
                         BinOpKind::BitAnd => Some(Constant::Int(l & r)),

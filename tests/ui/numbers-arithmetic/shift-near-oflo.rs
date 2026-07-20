@@ -1,7 +1,7 @@
 //@ run-pass
 //@ compile-flags: -C debug-assertions
 
-// FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
+// FIXME(static_mut_refs): use raw pointers instead of references
 #![allow(static_mut_refs)]
 
 // Check that we do *not* overflow on a number of edge cases.

@@ -22,12 +22,6 @@ pub(in crate::num) const fn mul() -> ! {
 
 #[cold]
 #[track_caller]
-pub(in crate::num) const fn div() -> ! {
-    panic!("attempt to divide with overflow")
-}
-
-#[cold]
-#[track_caller]
 pub(in crate::num) const fn rem() -> ! {
     panic!("attempt to calculate the remainder with overflow")
 }

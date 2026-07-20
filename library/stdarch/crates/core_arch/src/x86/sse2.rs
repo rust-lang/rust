@@ -1445,7 +1445,7 @@ pub unsafe fn _mm_stream_si128(mem_addr: *mut __m128i, a: __m128i) {
     );
 }
 
-/// Stores a 32-bit integer value in the specified memory location.
+/// Stores a 32-bit integer value in a 4-byte aligned memory location.
 /// To minimize caching, the data is flagged as non-temporal (unlikely to be
 /// used again soon).
 ///

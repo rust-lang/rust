@@ -333,17 +333,20 @@ impl<'db> ExprValidator<'db> {
         let pattern_arena = Arena::new();
         let cx = MatchCheckCtx::new(self.owner.module(self.db()), &self.infcx, self.env);
         for stmt in &**statements {
-            let diag = match *stmt {
+            match *stmt {
                 Statement::Expr { expr: stmt_expr, has_semi: true } if self.validate_lints => {
-                    self.check_unused_must_use(stmt_expr)
+                    let mut diags = Vec::new();
+                    self.check_unused_must_use(stmt_expr, &mut diags);
+                    self.diagnostics.extend(diags);
                 }
                 Statement::Let { pat, initializer, else_branch: None, .. } => {
-                    self.check_non_exhaustive_let(&cx, &pattern_arena, pat, initializer)
+                    if let Some(diag) =
+                        self.check_non_exhaustive_let(&cx, &pattern_arena, pat, initializer)
+                    {
+                        self.diagnostics.push(diag);
+                    }
                 }
-                _ => None,
-            };
-            if let Some(diag) = diag {
-                self.diagnostics.push(diag);
+                _ => {}
             }
         }
     }
@@ -415,7 +418,37 @@ impl<'db> ExprValidator<'db> {
         pattern
     }
 
-    fn check_unused_must_use(&self, expr: ExprId) -> Option<BodyValidationDiagnostic<'db>> {
+    fn check_unused_must_use(
+        &self,
+        mut expr: ExprId,
+        acc: &mut Vec<BodyValidationDiagnostic<'db>>,
+    ) {
+        // Walk through container expressions so that the value-producing leaf is
+        // checked even when wrapped in a block, `unsafe { .. }`, `if`/`match`, or
+        // a `const { .. }` block.  Single-tail chains are followed by reassigning
+        // `expr`; branching containers (`if`/`match`) recurse on each arm.
+        loop {
+            match &self.body[expr] {
+                Expr::Block { tail: Some(tail), .. }
+                | Expr::Unsafe { tail: Some(tail), .. }
+                | Expr::Const(tail) => expr = *tail,
+                Expr::If { then_branch, else_branch, .. } => {
+                    self.check_unused_must_use(*then_branch, acc);
+                    if let Some(else_branch) = else_branch {
+                        self.check_unused_must_use(*else_branch, acc);
+                    }
+                    return;
+                }
+                Expr::Match { arms, .. } => {
+                    for arm in arms.iter() {
+                        self.check_unused_must_use(arm.expr, acc);
+                    }
+                    return;
+                }
+                _ => break,
+            }
+        }
+
         let fn_def = match &self.body[expr] {
             Expr::Call { callee, .. } => {
                 let callee_ty = self.infer.expr_ty(*callee);
@@ -430,7 +463,7 @@ impl<'db> ExprValidator<'db> {
             Expr::MethodCall { .. } => {
                 self.infer.method_resolution(expr).map(|(func, _)| func.into())
             }
-            _ => return None,
+            _ => None,
         };
         let ty_def = self.infer.type_of_expr_with_adjust(expr).and_then(|ty| match ty.kind() {
             TyKind::Adt(adt, _) => Some(adt.def_id().into()),
@@ -440,7 +473,9 @@ impl<'db> ExprValidator<'db> {
             AttrFlags::must_use_message(self.db(), owner?)
                 .map(|message| BodyValidationDiagnostic::UnusedMustUse { expr, message })
         };
-        must_use_diag(fn_def).or_else(|| must_use_diag(ty_def))
+        if let Some(diag) = must_use_diag(fn_def).or_else(|| must_use_diag(ty_def)) {
+            acc.push(diag);
+        }
     }
 
     fn check_for_trailing_return(&mut self, body_expr: ExprId, body: &Body) {

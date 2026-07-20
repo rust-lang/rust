@@ -344,9 +344,9 @@ impl<'a> State<'a> {
                     let ast::TraitImplHeader { defaultness, safety, polarity, ref trait_ref } =
                         *of_trait;
                     self.print_defaultness(defaultness);
+                    self.print_constness(*constness);
                     self.print_safety(safety);
                     impl_generics(self);
-                    self.print_constness(*constness);
                     if let ast::ImplPolarity::Negative(_) = polarity {
                         self.word("!");
                     }

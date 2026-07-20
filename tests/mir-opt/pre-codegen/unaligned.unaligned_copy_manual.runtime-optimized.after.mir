@@ -1,0 +1,34 @@
+// MIR for `unaligned_copy_manual` after runtime-optimized
+
+fn unaligned_copy_manual(_1: *const u128, _2: *mut u128) -> () {
+    debug src => _1;
+    debug dst => _2;
+    let mut _0: ();
+    let _3: *const unaligned_copy_manual::Packed<u128>;
+    let mut _5: u128;
+    scope 1 {
+        debug src => _3;
+        let _4: *mut unaligned_copy_manual::Packed<u128>;
+        scope 2 {
+            debug dst => _4;
+        }
+        scope 4 (inlined std::ptr::mut_ptr::<impl *mut u128>::cast::<Packed<u128>>) {
+        }
+    }
+    scope 3 (inlined std::ptr::const_ptr::<impl *const u128>::cast::<Packed<u128>>) {
+    }
+
+    bb0: {
+        StorageLive(_3);
+        _3 = copy _1 as *const unaligned_copy_manual::Packed<u128> (PtrToPtr);
+        StorageLive(_4);
+        _4 = copy _2 as *mut unaligned_copy_manual::Packed<u128> (PtrToPtr);
+        StorageLive(_5);
+        _5 = copy ((*_3).0: u128);
+        ((*_4).0: u128) = move _5;
+        StorageDead(_5);
+        StorageDead(_4);
+        StorageDead(_3);
+        return;
+    }
+}

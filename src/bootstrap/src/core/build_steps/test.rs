@@ -4,15 +4,14 @@
 //! However, this contains ~all test parts we expect people to be able to build and run locally.
 
 // (This file should be split up, but having tidy block all changes is not helpful.)
-// ignore-tidy-filelength
+// ignore-tidy-file-filelength
 
 use std::collections::HashSet;
 use std::env::split_paths;
 use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
+use std::process::Command;
 use std::{env, fs, iter};
-
-use build_helper::exit;
 
 use crate::core::build_steps::compile::{ArtifactKeepMode, Std, run_cargo};
 use crate::core::build_steps::doc::{DocumentationFormat, prepare_doc_compiler};
@@ -43,7 +42,7 @@ use crate::utils::helpers::{
     up_to_date,
 };
 use crate::utils::render_tests::{add_flags_and_try_run_tests, try_run_tests};
-use crate::{CLang, CodegenBackendKind, GitRepo, Mode, PathSet, TestTarget, envify};
+use crate::{CLang, CodegenBackendKind, GitRepo, Mode, PathSet, TestTarget, envify, exit};
 
 mod compiletest;
 pub mod failed_tests;
@@ -1086,10 +1085,12 @@ impl Step for IntrinsicTest {
         cmd.env("CFLAGS", cflags);
         // intrinsic-test shells out to `cargo` and `rustfmt` make bootstrap's
         // managed binaries findable by prepending their dirs to PATH.
-        let rustfmt_path = builder.config.initial_rustfmt.clone().unwrap_or_else(|| {
-            eprintln!("intrinsic-test: rustfmt is required but not available on this channel");
-            crate::exit!(1);
-        });
+        let Some(rustfmt_path) = builder.config.initial_rustfmt.clone() else {
+            eprintln!(
+                "WARNING: intrinsic-test skipped because rustfmt is required but not available on this channel"
+            );
+            return;
+        };
 
         let mut path_dirs: Vec<PathBuf> = Vec::new();
         if let Some(cargo_dir) = builder.initial_cargo.parent() {
@@ -1976,6 +1977,12 @@ impl Step for Coverage {
         for mode in Self::ALL_MODES {
             run = run.alias(mode.as_str());
         }
+
+        // Allow `./x test --skip=tests` to properly skip the coverage tests,
+        // by not treating the `coverage-map` and `coverage-run` aliases as
+        // implied command-line arguments.
+        run = run.default_to_suites_only();
+
         run
     }
 
@@ -2016,13 +2023,6 @@ impl Step for Coverage {
         modes.retain(|mode| {
             !run.builder.config.skip.iter().any(|skip| skip == Path::new(mode.as_str()))
         });
-
-        // FIXME(Zalathar): Make these commands skip all coverage tests, as expected:
-        // - `./x test --skip=tests`
-        // - `./x test --skip=tests/coverage`
-        // - `./x test --skip=coverage`
-        // Skip handling currently doesn't have a way to know that skipping the coverage
-        // suite should also skip the `coverage-map` and `coverage-run` aliases.
 
         for mode in modes {
             run.builder.ensure(Coverage { compiler, target, mode });
@@ -2474,7 +2474,13 @@ Please disable assertions with `rust.debug-assertions = false`.
                 "-Lnative={}",
                 builder.test_helpers_out(test_compiler.host).display()
             ));
-            targetflags.push(format!("-Lnative={}", builder.test_helpers_out(target).display()));
+            let target_helpers = builder.test_helpers_out(target);
+            targetflags.push(format!("-Lnative={}", target_helpers.display()));
+            if target.is_pauthtest() {
+                // For the pauthtest target, embed an rpath to the directory containing the helper
+                // dynamic library.
+                targetflags.push(format!("-Clink-arg=-Wl,-rpath,{}", target_helpers.display()));
+            }
         }
 
         for flag in hostflags {
@@ -2675,9 +2681,9 @@ Please disable assertions with `rust.debug-assertions = false`.
         // Only pass correct values for these flags for the `run-make` suite as it
         // requires that a C++ compiler was configured which isn't always the case.
         if !builder.config.dry_run() && mode == CompiletestMode::RunMake {
-            let mut cflags = builder.cc_handled_clags(target, CLang::C);
+            let mut cflags = builder.cc_handled_cflags(target, CLang::C);
             cflags.extend(builder.cc_unhandled_cflags(target, GitRepo::Rustc, CLang::C));
-            let mut cxxflags = builder.cc_handled_clags(target, CLang::Cxx);
+            let mut cxxflags = builder.cc_handled_cflags(target, CLang::Cxx);
             cxxflags.extend(builder.cc_unhandled_cflags(target, GitRepo::Rustc, CLang::Cxx));
             cmd.arg("--cc")
                 .arg(builder.cc(target))
@@ -4120,32 +4126,54 @@ impl Step for TestHelpers {
         };
         let dst = builder.test_helpers_out(target);
         let src = builder.src.join("tests/auxiliary/rust_test_helpers.c");
-        if up_to_date(&src, &dst.join("librust_test_helpers.a")) {
-            return;
-        }
-
         let _guard = builder.msg_unstaged(Kind::Build, "test helpers", target);
         t!(fs::create_dir_all(&dst));
-        let mut cfg = cc::Build::new();
 
-        // We may have found various cross-compilers a little differently due to our
-        // extra configuration, so inform cc of these compilers. Note, though, that
-        // on MSVC we still need cc's detection of env vars (ugh).
-        if !target.is_msvc() {
-            if let Some(ar) = builder.ar(target) {
-                cfg.archiver(ar);
+        if !up_to_date(&src, &dst.join("librust_test_helpers.a")) {
+            let mut cfg = cc::Build::new();
+
+            // We may have found various cross-compilers a little differently due to our
+            // extra configuration, so inform cc of these compilers. Note, though, that
+            // on MSVC we still need cc's detection of env vars (ugh).
+            if !target.is_msvc() {
+                if let Some(ar) = builder.ar(target) {
+                    cfg.archiver(ar);
+                }
+                cfg.compiler(builder.cc(target));
             }
-            cfg.compiler(builder.cc(target));
+            cfg.cargo_metadata(false)
+                .out_dir(&dst)
+                .target(&target.triple)
+                .host(&builder.config.host_target.triple)
+                .opt_level(0)
+                .warnings(false)
+                .debug(false)
+                .file(builder.src.join("tests/auxiliary/rust_test_helpers.c"))
+                .compile("rust_test_helpers");
         }
-        cfg.cargo_metadata(false)
-            .out_dir(&dst)
-            .target(&target.triple)
-            .host(&builder.config.host_target.triple)
-            .opt_level(0)
-            .warnings(false)
-            .debug(false)
-            .file(builder.src.join("tests/auxiliary/rust_test_helpers.c"))
-            .compile("rust_test_helpers");
+        if target.is_pauthtest() {
+            let so = dst.join("librust_test_helpers.so");
+            if up_to_date(&src, &so) {
+                return;
+            }
+
+            let status = Command::new(builder.cc(target))
+                .arg("-target")
+                .arg(target.triple)
+                .arg("-march=armv8.3-a+pauth")
+                .arg("-fPIC")
+                .arg("-shared")
+                .arg("-O0") // Use O0 to match what static library is compiled at.
+                .arg("-o")
+                .arg(&so)
+                .arg(&src)
+                .status()
+                .unwrap_or_else(|_| panic!("Failed to run clang for {} toolchain", target.triple));
+
+            if !status.success() {
+                panic!("Linking of librust_test_helpers.so failed (target: {})", target.triple);
+            }
+        }
     }
 }
 

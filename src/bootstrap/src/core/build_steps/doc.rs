@@ -70,7 +70,7 @@ macro_rules! book {
 // adding a build step in `src/bootstrap/code/builder/mod.rs`!
 // NOTE: Make sure to add the corresponding submodule when adding a new book.
 book!(
-    CargoBook, "src/tools/cargo/src/doc", "cargo", &[];
+    CargoBook, "src/tools/cargo/doc/book", "cargo", &[];
     ClippyBook, "src/tools/clippy/book", "clippy", &[];
     EditionGuide, "src/doc/edition-guide", "edition-guide", &[];
     EmbeddedBook, "src/doc/embedded-book", "embedded-book", &[];
@@ -667,7 +667,7 @@ impl Step for Std {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        let crates = compile::std_crates_for_run_make(&run);
+        let crates = compile::std_crates_for_make_run(&run);
         let target_is_no_std = run.builder.no_std(run.target).unwrap_or(false);
         if crates.is_empty() && target_is_no_std {
             return;
@@ -831,7 +831,9 @@ fn doc_std(
         cargo.rustdocflag(arg);
     }
 
-    if builder.config.library_docs_private_items {
+    // This is needed for cargo-semver-checks and potentially other downstream tools that consume
+    // the JSON data.
+    if format == DocumentationFormat::Json || builder.config.library_docs_private_items {
         cargo.rustdocflag("--document-private-items").rustdocflag("--document-hidden-items");
     }
 

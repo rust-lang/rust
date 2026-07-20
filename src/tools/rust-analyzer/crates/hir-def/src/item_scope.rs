@@ -3,7 +3,7 @@
 
 use std::{fmt, sync::LazyLock};
 
-use base_db::Crate;
+use base_db::{Crate, SourceDatabase};
 use either::Either;
 use hir_expand::{AstId, MacroCallId, attrs::AttrId, name::Name};
 use indexmap::map::Entry;
@@ -19,7 +19,6 @@ use thin_vec::ThinVec;
 use crate::{
     AdtId, BuiltinDeriveImplId, BuiltinType, ConstId, ExternBlockId, ExternCrateId, FxIndexMap,
     HasModule, ImplId, Lookup, MacroCallStyles, MacroId, ModuleDefId, ModuleId, TraitId, UseId,
-    db::DefDatabase,
     per_ns::{Item, MacrosItem, PerNs, TypesItem, ValuesItem},
     visibility::Visibility,
 };
@@ -260,7 +259,7 @@ impl ItemScope {
             .dedup()
     }
 
-    pub fn fully_resolve_import(&self, db: &dyn DefDatabase, mut import: ImportId) -> PerNs {
+    pub fn fully_resolve_import(&self, db: &dyn SourceDatabase, mut import: ImportId) -> PerNs {
         let mut res = PerNs::none();
 
         let mut scope = self;
@@ -761,7 +760,7 @@ impl ItemScope {
         }
     }
 
-    pub(crate) fn dump(&self, db: &dyn DefDatabase, buf: &mut String) {
+    pub(crate) fn dump(&self, db: &dyn SourceDatabase, buf: &mut String) {
         let mut entries: Vec<_> = self.resolutions().collect();
         entries.sort_by_key(|(name, _)| name.clone());
 
@@ -967,11 +966,11 @@ impl ItemInNs {
     }
 
     /// Returns the crate defining this item (or `None` if `self` is built-in).
-    pub fn krate(&self, db: &dyn DefDatabase) -> Option<Crate> {
+    pub fn krate(&self, db: &dyn SourceDatabase) -> Option<Crate> {
         self.module(db).map(|module_id| module_id.krate(db))
     }
 
-    pub fn module(&self, db: &dyn DefDatabase) -> Option<ModuleId> {
+    pub fn module(&self, db: &dyn SourceDatabase) -> Option<ModuleId> {
         match self {
             ItemInNs::Types(id) | ItemInNs::Values(id) => id.module(db),
             ItemInNs::Macros(id) => Some(id.module(db)),

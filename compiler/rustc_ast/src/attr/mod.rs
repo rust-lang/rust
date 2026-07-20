@@ -7,21 +7,21 @@ use std::fmt::Debug;
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use rustc_index::bit_set::GrowableBitSet;
-use rustc_span::{Ident, Span, Symbol, sym};
+use rustc_span::{Ident, Span, Symbol, kw, sym};
 use smallvec::{SmallVec, smallvec};
 use thin_vec::{ThinVec, thin_vec};
 
-use crate::AttrItemKind;
 use crate::ast::{
     AttrArgs, AttrId, AttrItem, AttrKind, AttrStyle, AttrVec, Attribute, DUMMY_NODE_ID, DelimArgs,
     Expr, ExprKind, LitKind, MetaItem, MetaItemInner, MetaItemKind, MetaItemLit, NormalAttr, Path,
-    PathSegment, Safety,
+    PathSegment, Safety, SyntheticAttr,
 };
 use crate::token::{
     self, CommentKind, Delimiter, DocFragmentKind, InvisibleOrigin, MetaVarKind, Token,
 };
 use crate::tokenstream::{
-    DelimSpan, LazyAttrTokenStream, Spacing, TokenStream, TokenStreamIter, TokenTree,
+    AttrTokenStream, AttrTokenTree, DelimSpacing, DelimSpan, LazyAttrTokenStream, Spacing,
+    TokenStream, TokenStreamIter, TokenTree,
 };
 use crate::util::comments;
 use crate::util::literal::escape_string_symbol;
@@ -62,23 +62,16 @@ impl Attribute {
     pub fn get_normal_item(&self) -> &AttrItem {
         match &self.kind {
             AttrKind::Normal(normal) => &normal.item,
-            AttrKind::DocComment(..) => panic!("unexpected doc comment"),
+            AttrKind::Synthetic(..) | AttrKind::DocComment(..) => unreachable!(),
         }
     }
 
-    /// Replaces the arguments of this attribute with new arguments `AttrItemKind`.
-    /// This is useful for making this attribute into a trace attribute, and should otherwise be avoided.
-    pub fn replace_args(&mut self, new_args: AttrItemKind) {
-        match &mut self.kind {
-            AttrKind::Normal(normal) => normal.item.args = new_args,
-            AttrKind::DocComment(..) => panic!("unexpected doc comment"),
-        }
-    }
-
-    pub fn unwrap_normal_item(self) -> AttrItem {
+    pub fn convert_normal_to_synthetic(self, synthetic_attr: SyntheticAttr) -> Attribute {
         match self.kind {
-            AttrKind::Normal(normal) => normal.item,
-            AttrKind::DocComment(..) => panic!("unexpected doc comment"),
+            AttrKind::Normal(..) => {
+                Attribute { kind: AttrKind::Synthetic(Box::new(synthetic_attr)), ..self }
+            }
+            AttrKind::Synthetic(..) | AttrKind::DocComment(..) => unreachable!(),
         }
     }
 }
@@ -90,11 +83,11 @@ impl AttributeExt for Attribute {
 
     fn value_span(&self) -> Option<Span> {
         match &self.kind {
-            AttrKind::Normal(normal) => match &normal.item.args.unparsed_ref()? {
+            AttrKind::Normal(normal) => match &normal.item.args {
                 AttrArgs::Eq { expr, .. } => Some(expr.span),
                 _ => None,
             },
-            AttrKind::DocComment(..) => None,
+            AttrKind::Synthetic(..) | AttrKind::DocComment(..) => None,
         }
     }
 
@@ -103,30 +96,28 @@ impl AttributeExt for Attribute {
     /// a doc comment) will return `false`.
     fn is_doc_comment(&self) -> Option<Span> {
         match self.kind {
-            AttrKind::Normal(..) => None,
+            AttrKind::Normal(..) | AttrKind::Synthetic(..) => None,
             AttrKind::DocComment(..) => Some(self.span),
         }
     }
 
     /// For a single-segment attribute, returns its name; otherwise, returns `None`.
     fn name(&self) -> Option<Symbol> {
+        use SyntheticAttr::*;
         match &self.kind {
-            AttrKind::Normal(normal) => {
-                if let [ident] = &*normal.item.path.segments {
-                    Some(ident.ident.name)
-                } else {
-                    None
-                }
-            }
+            AttrKind::Normal(normal) => normal.item.name(),
+            AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace) => None,
             AttrKind::DocComment(..) => None,
         }
     }
 
     fn symbol_path(&self) -> Option<SmallVec<[Symbol; 1]>> {
+        use SyntheticAttr::*;
         match &self.kind {
-            AttrKind::Normal(p) => {
-                Some(p.item.path.segments.iter().map(|i| i.ident.name).collect())
+            AttrKind::Normal(normal) => {
+                Some(normal.item.path.segments.iter().map(|i| i.ident.name).collect())
             }
+            AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace) => None,
             AttrKind::DocComment(_, _) => None,
         }
     }
@@ -134,6 +125,7 @@ impl AttributeExt for Attribute {
     fn path_span(&self) -> Option<Span> {
         match &self.kind {
             AttrKind::Normal(attr) => Some(attr.item.path.span),
+            AttrKind::Synthetic(..) => unreachable!(),
             AttrKind::DocComment(_, _) => None,
         }
     }
@@ -150,7 +142,7 @@ impl AttributeExt for Attribute {
                         .zip(name)
                         .all(|(s, n)| s.args.is_none() && s.ident.name == *n)
             }
-            AttrKind::DocComment(..) => false,
+            AttrKind::Synthetic(..) | AttrKind::DocComment(..) => false,
         }
     }
 
@@ -159,10 +151,10 @@ impl AttributeExt for Attribute {
     }
 
     fn is_word(&self) -> bool {
-        if let AttrKind::Normal(normal) = &self.kind {
-            matches!(normal.item.args, AttrItemKind::Unparsed(AttrArgs::Empty))
-        } else {
-            false
+        match &self.kind {
+            AttrKind::Normal(normal) => matches!(normal.item.args, AttrArgs::Empty),
+            AttrKind::Synthetic(..) => unreachable!(),
+            AttrKind::DocComment(..) => false,
         }
     }
 
@@ -176,7 +168,7 @@ impl AttributeExt for Attribute {
     fn meta_item_list(&self) -> Option<ThinVec<MetaItemInner>> {
         match &self.kind {
             AttrKind::Normal(normal) => normal.item.meta_item_list(),
-            AttrKind::DocComment(..) => None,
+            AttrKind::Synthetic(..) | AttrKind::DocComment(..) => None,
         }
     }
 
@@ -198,6 +190,7 @@ impl AttributeExt for Attribute {
     fn value_str(&self) -> Option<Symbol> {
         match &self.kind {
             AttrKind::Normal(normal) => normal.item.value_str(),
+            AttrKind::Synthetic(..) => unreachable!(),
             AttrKind::DocComment(..) => None,
         }
     }
@@ -210,16 +203,14 @@ impl AttributeExt for Attribute {
     fn doc_str_and_fragment_kind(&self) -> Option<(Symbol, DocFragmentKind)> {
         match &self.kind {
             AttrKind::DocComment(kind, data) => Some((*data, DocFragmentKind::Sugared(*kind))),
-            AttrKind::Normal(normal) if normal.item.path == sym::doc => {
-                if let Some(value) = normal.item.value_str()
-                    && let Some(value_span) = normal.item.value_span()
-                {
-                    Some((value, DocFragmentKind::Raw(value_span)))
-                } else {
-                    None
-                }
+            AttrKind::Normal(normal)
+                if normal.item.path == sym::doc
+                    && let Some(value) = normal.item.value_str()
+                    && let Some(value_span) = normal.item.value_span() =>
+            {
+                Some((value, DocFragmentKind::Raw(value_span)))
             }
-            _ => None,
+            AttrKind::Normal(..) | AttrKind::Synthetic(..) => None,
         }
     }
 
@@ -288,13 +279,14 @@ impl Attribute {
     pub fn meta(&self) -> Option<MetaItem> {
         match &self.kind {
             AttrKind::Normal(normal) => normal.item.meta(self.span),
-            AttrKind::DocComment(..) => None,
+            AttrKind::Synthetic(..) | AttrKind::DocComment(..) => None,
         }
     }
 
     pub fn meta_kind(&self) -> Option<MetaItemKind> {
         match &self.kind {
             AttrKind::Normal(normal) => normal.item.meta_kind(),
+            AttrKind::Synthetic(..) => unreachable!(),
             AttrKind::DocComment(..) => None,
         }
     }
@@ -307,6 +299,8 @@ impl Attribute {
                 .unwrap_or_else(|| panic!("attribute is missing tokens: {self:?}"))
                 .to_attr_token_stream()
                 .to_token_trees(),
+            // Empty tokens here ensures synthetic attributes are invisible to proc macros.
+            AttrKind::Synthetic(..) => vec![],
             AttrKind::DocComment(comment_kind, data) => vec![TokenTree::token_alone(
                 token::DocComment(comment_kind, self.style, data),
                 self.span,
@@ -344,12 +338,16 @@ impl Attribute {
 }
 
 impl AttrItem {
+    pub fn name(&self) -> Option<Symbol> {
+        if let [seg] = &*self.path.segments { Some(seg.ident.name) } else { None }
+    }
+
     pub fn span(&self) -> Span {
         self.args.span().map_or(self.path.span, |args_span| self.path.span.to(args_span))
     }
 
     pub fn meta_item_list(&self) -> Option<ThinVec<MetaItemInner>> {
-        match &self.args.unparsed_ref()? {
+        match &self.args {
             AttrArgs::Delimited(args) if args.delim == Delimiter::Parenthesis => {
                 MetaItemKind::list_from_tokens(args.tokens.clone())
             }
@@ -370,7 +368,7 @@ impl AttrItem {
     /// #[attr("value")]
     /// ```
     fn value_str(&self) -> Option<Symbol> {
-        match &self.args.unparsed_ref()? {
+        match &self.args {
             AttrArgs::Eq { expr, .. } => match expr.kind {
                 ExprKind::Lit(token_lit) => {
                     LitKind::from_token_lit(token_lit).ok().and_then(|lit| lit.str())
@@ -394,7 +392,7 @@ impl AttrItem {
     /// #[attr("value")]
     /// ```
     fn value_span(&self) -> Option<Span> {
-        match &self.args.unparsed_ref()? {
+        match &self.args {
             AttrArgs::Eq { expr, .. } => Some(expr.span),
             AttrArgs::Delimited(_) | AttrArgs::Empty => None,
         }
@@ -410,7 +408,7 @@ impl AttrItem {
     }
 
     pub fn meta_kind(&self) -> Option<MetaItemKind> {
-        MetaItemKind::from_attr_args(self.args.unparsed_ref()?)
+        MetaItemKind::from_attr_args(&self.args)
     }
 }
 
@@ -515,7 +513,7 @@ impl MetaItem {
                     iter.next();
                 }
                 let span = span.with_hi(segments.last().unwrap().ident.span.hi());
-                Path { span, segments, tokens: None }
+                Path { span, segments }
             }
             Some(TokenTree::Delimited(
                 _span,
@@ -737,23 +735,6 @@ pub fn mk_doc_comment(
     Attribute { kind: AttrKind::DocComment(comment_kind, data), id: g.mk_attr_id(), style, span }
 }
 
-fn mk_attr(
-    g: &AttrIdGenerator,
-    style: AttrStyle,
-    unsafety: Safety,
-    path: Path,
-    args: AttrArgs,
-    span: Span,
-) -> Attribute {
-    mk_attr_from_item(
-        g,
-        AttrItem { unsafety, path, args: AttrItemKind::Unparsed(args), tokens: None },
-        None,
-        style,
-        span,
-    )
-}
-
 pub fn mk_attr_from_item(
     g: &AttrIdGenerator,
     item: AttrItem,
@@ -769,6 +750,50 @@ pub fn mk_attr_from_item(
     }
 }
 
+fn mk_attr_tokens(
+    style: AttrStyle,
+    unsafety: Safety,
+    item_tokens: AttrTokenStream,
+    span: Span,
+) -> LazyAttrTokenStream {
+    let safety_kw = match unsafety {
+        Safety::Default => None,
+        Safety::Unsafe(span) => Some((kw::Unsafe, span)),
+        Safety::Safe(span) => Some((kw::Safe, span)),
+    };
+    let item_tokens = if let Some((kw, kw_span)) = safety_kw {
+        AttrTokenStream::new(vec![
+            AttrTokenTree::Token(Token::from_ast_ident(Ident::new(kw, kw_span)), Spacing::Alone),
+            AttrTokenTree::Delimited(
+                DelimSpan::from_single(span),
+                DelimSpacing::new(Spacing::JointHidden, Spacing::Alone),
+                Delimiter::Parenthesis,
+                item_tokens,
+            ),
+        ])
+    } else {
+        item_tokens
+    };
+
+    let mut tokens = match style {
+        AttrStyle::Outer => {
+            vec![AttrTokenTree::Token(Token::new(token::Pound, span), Spacing::JointHidden)]
+        }
+        AttrStyle::Inner => vec![
+            AttrTokenTree::Token(Token::new(token::Pound, span), Spacing::Joint),
+            AttrTokenTree::Token(Token::new(token::Bang, span), Spacing::JointHidden),
+        ],
+    };
+    tokens.push(AttrTokenTree::Delimited(
+        DelimSpan::from_single(span),
+        DelimSpacing::new(Spacing::JointHidden, Spacing::Alone),
+        Delimiter::Bracket,
+        item_tokens,
+    ));
+
+    LazyAttrTokenStream::new_direct(AttrTokenStream::new(tokens))
+}
+
 pub fn mk_attr_word(
     g: &AttrIdGenerator,
     style: AttrStyle,
@@ -778,7 +803,18 @@ pub fn mk_attr_word(
 ) -> Attribute {
     let path = Path::from_ident(Ident::new(name, span));
     let args = AttrArgs::Empty;
-    mk_attr(g, style, unsafety, path, args, span)
+
+    let tokens = Some(mk_attr_tokens(
+        style,
+        unsafety,
+        AttrTokenStream::new(vec![AttrTokenTree::Token(
+            Token::from_ast_ident(Ident::new(name, span)),
+            Spacing::Alone,
+        )]),
+        span,
+    ));
+
+    mk_attr_from_item(g, AttrItem { unsafety, path, args }, tokens, style, span)
 }
 
 pub fn mk_attr_nested_word(
@@ -800,7 +836,26 @@ pub fn mk_attr_nested_word(
         delim: Delimiter::Parenthesis,
         tokens: inner_tokens,
     });
-    mk_attr(g, style, unsafety, path, attr_args, span)
+
+    let tokens = Some(mk_attr_tokens(
+        style,
+        unsafety,
+        AttrTokenStream::new(vec![
+            AttrTokenTree::Token(Token::from_ast_ident(Ident::new(outer, span)), Spacing::Alone),
+            AttrTokenTree::Delimited(
+                DelimSpan::from_single(span),
+                DelimSpacing::new(Spacing::JointHidden, Spacing::Alone),
+                Delimiter::Parenthesis,
+                AttrTokenStream::new(vec![AttrTokenTree::Token(
+                    Token::from_ast_ident(Ident::new(inner, span)),
+                    Spacing::Alone,
+                )]),
+            ),
+        ]),
+        span,
+    ));
+
+    mk_attr_from_item(g, AttrItem { unsafety, path, args: attr_args }, tokens, style, span)
 }
 
 pub fn mk_attr_name_value_str(
@@ -821,7 +876,22 @@ pub fn mk_attr_name_value_str(
     });
     let path = Path::from_ident(Ident::new(name, span));
     let args = AttrArgs::Eq { eq_span: span, expr };
-    mk_attr(g, style, unsafety, path, args, span)
+
+    let tokens = Some(mk_attr_tokens(
+        style,
+        unsafety,
+        AttrTokenStream::new(vec![
+            AttrTokenTree::Token(Token::from_ast_ident(Ident::new(name, span)), Spacing::Alone),
+            AttrTokenTree::Token(Token::new(token::Eq, span), Spacing::Alone),
+            AttrTokenTree::Token(
+                Token::new(token::TokenKind::lit(lit.kind, lit.symbol, lit.suffix), span),
+                Spacing::Alone,
+            ),
+        ]),
+        span,
+    ));
+
+    mk_attr_from_item(g, AttrItem { unsafety, path, args }, tokens, style, span)
 }
 
 pub fn filter_by_name(attrs: &[Attribute], name: Symbol) -> impl Iterator<Item = &Attribute> {

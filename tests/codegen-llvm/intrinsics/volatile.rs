@@ -162,7 +162,28 @@ pub unsafe fn unaligned_volatile_load_fat(a: *const UninitFatPointer) -> UninitF
 
 // CHECK-LABEL: @unaligned_volatile_store
 #[no_mangle]
-pub unsafe fn unaligned_volatile_store(a: *mut u8, b: u8) {
-    // CHECK: store volatile
+pub unsafe fn unaligned_volatile_store(a: *mut u16, b: u16) {
+    // CHECK: store volatile i16 %b, ptr %a, align 1
+    intrinsics::unaligned_volatile_store(a, b)
+}
+
+// CHECK-LABEL: @unaligned_volatile_store_pair
+#[no_mangle]
+pub unsafe fn unaligned_volatile_store_pair(a: *mut (u16, u16), b: (u16, u16)) {
+    // CHECK: store volatile i16 %b.0, ptr %a, align 1
+    // CHECK: [[TEMP:%.+]] = getelementptr inbounds i8, ptr %a, {{i16|i32|i64}} 2
+    // CHECK: store volatile i16 %b.1, ptr [[TEMP]], align 1
+    intrinsics::unaligned_volatile_store(a, b)
+}
+
+// CHECK-LABEL: @unaligned_volatile_store_array
+#[no_mangle]
+pub unsafe fn unaligned_volatile_store_array(a: *mut [u16; 7], b: [u16; 7]) {
+    // Note that only the store side is unaligned; the load from the argument is aligned.
+
+    // CHECK-NOT: memcpy
+    // CHECK: call void @llvm.memcpy{{.+}}(ptr align 1 %a, ptr align 2 %b, {{i16|i32|i64}} 14, i1 true)
+    // CHECK-NOT: memcpy
+    // CHECK: ret void
     intrinsics::unaligned_volatile_store(a, b)
 }

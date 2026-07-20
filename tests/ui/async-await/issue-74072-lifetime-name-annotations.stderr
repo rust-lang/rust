@@ -10,37 +10,6 @@ LL |     *x += 1;
 LL |     y
    |     - returning this value requires that `*x` is borrowed for `'1`
 
-error[E0506]: cannot assign to `*x` because it is borrowed
-  --> $DIR/issue-74072-lifetime-name-annotations.rs:17:9
-   |
-LL |     (async move || {
-   |                  - return type of async closure is &'1 i32
-...
-LL |         let y = &*x;
-   |                 --- `*x` is borrowed here
-LL |         *x += 1;
-   |         ^^^^^^^ `*x` is assigned to here but it was already borrowed
-LL |         y
-   |         - returning this value requires that `*x` is borrowed for `'1`
-
-error: lifetime may not live long enough
-  --> $DIR/issue-74072-lifetime-name-annotations.rs:13:20
-   |
-LL |       (async move || {
-   |  ______-------------_^
-   | |      |           |
-   | |      |           return type of async closure `{async closure body@$DIR/issue-74072-lifetime-name-annotations.rs:13:20: 19:6}` contains a lifetime `'2`
-   | |      lifetime `'1` represents this closure's body
-LL | |
-LL | |
-LL | |         let y = &*x;
-LL | |         *x += 1;
-LL | |         y
-LL | |     })()
-   | |_____^ returning this value requires that `'1` must outlive `'2`
-   |
-   = note: closure implements `AsyncFnMut`, so references to captured variables can't escape the closure
-
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/issue-74072-lifetime-name-annotations.rs:13:5
    |
@@ -59,26 +28,13 @@ LL | ||     })()
 LL |    }
    |    - temporary value is freed at the end of this statement
 
-error[E0506]: cannot assign to `*x` because it is borrowed
-  --> $DIR/issue-74072-lifetime-name-annotations.rs:27:9
-   |
-LL |     (async move || -> &i32 {
-   |                          - return type of async closure is &'1 i32
-...
-LL |         let y = &*x;
-   |                 --- `*x` is borrowed here
-LL |         *x += 1;
-   |         ^^^^^^^ `*x` is assigned to here but it was already borrowed
-LL |         y
-   |         - returning this value requires that `*x` is borrowed for `'1`
-
 error: lifetime may not live long enough
-  --> $DIR/issue-74072-lifetime-name-annotations.rs:23:28
+  --> $DIR/issue-74072-lifetime-name-annotations.rs:13:20
    |
-LL |       (async move || -> &i32 {
-   |  ______---------------------_^
-   | |      |                |
-   | |      |                return type of async closure `{async closure body@$DIR/issue-74072-lifetime-name-annotations.rs:23:28: 29:6}` contains a lifetime `'2`
+LL |       (async move || {
+   |  ______-------------_^
+   | |      |           |
+   | |      |           return type of async closure is &'2 i32
    | |      lifetime `'1` represents this closure's body
 LL | |
 LL | |
@@ -89,6 +45,19 @@ LL | |     })()
    | |_____^ returning this value requires that `'1` must outlive `'2`
    |
    = note: closure implements `AsyncFnMut`, so references to captured variables can't escape the closure
+
+error[E0506]: cannot assign to `*x` because it is borrowed
+  --> $DIR/issue-74072-lifetime-name-annotations.rs:17:9
+   |
+LL |     (async move || {
+   |                  - return type of async closure is &'1 i32
+...
+LL |         let y = &*x;
+   |                 --- `*x` is borrowed here
+LL |         *x += 1;
+   |         ^^^^^^^ `*x` is assigned to here but it was already borrowed
+LL |         y
+   |         - returning this value requires that `*x` is borrowed for `'1`
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/issue-74072-lifetime-name-annotations.rs:23:5
@@ -107,6 +76,37 @@ LL | ||     })()
    |         creates a temporary value which is freed while still in use
 LL |    }
    |    - temporary value is freed at the end of this statement
+
+error: lifetime may not live long enough
+  --> $DIR/issue-74072-lifetime-name-annotations.rs:23:28
+   |
+LL |       (async move || -> &i32 {
+   |  ______---------------------_^
+   | |      |                |
+   | |      |                let's call the lifetime of this reference `'2`
+   | |      lifetime `'1` represents this closure's body
+LL | |
+LL | |
+LL | |         let y = &*x;
+LL | |         *x += 1;
+LL | |         y
+LL | |     })()
+   | |_____^ returning this value requires that `'1` must outlive `'2`
+   |
+   = note: closure implements `AsyncFnMut`, so references to captured variables can't escape the closure
+
+error[E0506]: cannot assign to `*x` because it is borrowed
+  --> $DIR/issue-74072-lifetime-name-annotations.rs:27:9
+   |
+LL |     (async move || -> &i32 {
+   |                          - return type of async closure is &'1 i32
+...
+LL |         let y = &*x;
+   |                 --- `*x` is borrowed here
+LL |         *x += 1;
+   |         ^^^^^^^ `*x` is assigned to here but it was already borrowed
+LL |         y
+   |         - returning this value requires that `*x` is borrowed for `'1`
 
 error[E0506]: cannot assign to `*x` because it is borrowed
   --> $DIR/issue-74072-lifetime-name-annotations.rs:35:9

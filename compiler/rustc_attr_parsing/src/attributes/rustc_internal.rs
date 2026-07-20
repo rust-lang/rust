@@ -589,13 +589,7 @@ impl SingleAttributeParser for LangParser {
         }
 
         // Check the target
-        let allowed_targets: &[_] = if lang_item == LangItem::PanicImpl {
-            &[Allow(Target::Fn), Allow(Target::ForeignFn)]
-        } else if lang_item.is_weak_only() {
-            &[Allow(Target::ForeignFn)]
-        } else {
-            &[Allow(lang_item.target())]
-        };
+        let allowed_targets: &[_] = &[Allow(lang_item.target())];
         cx.check_target(&format!(" = \"{name}\""), &AllowedTargets::AllowList(allowed_targets));
 
         Some(AttributeKind::Lang(lang_item))

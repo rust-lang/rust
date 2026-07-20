@@ -398,7 +398,7 @@ impl<'tcx> UniversalRegions<'tcx> {
                 });
             }
             DefiningTy::CoroutineClosure(..) => {
-                todo!()
+                unimplemented!()
             }
             DefiningTy::Coroutine(def_id, args) => {
                 let v = with_no_trimmed_paths!(
@@ -448,12 +448,12 @@ impl<'tcx> UniversalRegions<'tcx> {
     }
 }
 
-struct UniversalRegionsBuilder<'infcx, 'tcx> {
-    infcx: &'infcx BorrowckInferCtxt<'tcx>,
+struct UniversalRegionsBuilder<'a, 'tcx> {
+    infcx: &'a BorrowckInferCtxt<'tcx>,
     mir_def: LocalDefId,
 }
 
-impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
+impl<'tcx> UniversalRegionsBuilder<'_, 'tcx> {
     fn build(self) -> UniversalRegions<'tcx> {
         debug!("build(mir_def={:?})", self.mir_def);
 
@@ -603,7 +603,9 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
                     ty::CoroutineClosure(def_id, args) => {
                         DefiningTy::CoroutineClosure(def_id, args)
                     }
-                    ty::FnDef(def_id, args) => DefiningTy::FnDef(def_id, args),
+                    ty::FnDef(def_id, args) => {
+                        DefiningTy::FnDef(def_id, args.no_bound_vars().unwrap())
+                    }
                     _ => span_bug!(
                         tcx.def_span(self.mir_def),
                         "expected defining type for `{:?}`: `{:?}`",
@@ -615,7 +617,10 @@ impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
 
             BodyOwnerKind::Const { .. } | BodyOwnerKind::Static(..) => {
                 match tcx.def_kind(self.mir_def) {
-                    DefKind::InlineConst => {
+                    DefKind::AnonConst
+                        if tcx.anon_const_kind(self.mir_def)
+                            == ty::AnonConstKind::NonTypeSystemInline =>
+                    {
                         // This is required for `AscribeUserType` canonical query, which will call
                         // `type_of(inline_const_def_id)`. That `type_of` would inject erased lifetimes
                         // into borrowck, which is ICE #78174.

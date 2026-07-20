@@ -101,10 +101,10 @@ pub struct VarsOs {
     inner: env_imp::Env,
 }
 
-#[stable(feature = "env_vars_unimpl_send_sync", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "env_vars_unimpl_send_sync", since = "1.98.0")]
 impl !Send for VarsOs {}
 
-#[stable(feature = "env_vars_unimpl_send_sync", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "env_vars_unimpl_send_sync", since = "1.98.0")]
 impl !Sync for VarsOs {}
 
 /// Returns an iterator of (variable, value) pairs of strings, for all the
@@ -1096,6 +1096,7 @@ pub mod consts {
     /// * `"netbsd"`
     /// * `"nto"`
     /// * `"openbsd"`
+    /// * `"qnx"`
     /// * `"redox"`
     /// * `"solaris"`
     /// * `"solid_asp3"`

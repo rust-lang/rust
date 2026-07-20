@@ -317,6 +317,10 @@ fn opaque_types_defined_by<'tcx>(
     tcx: TyCtxt<'tcx>,
     item: LocalDefId,
 ) -> &'tcx ty::List<LocalDefId> {
+    // Closures and coroutines are type checked with their parent
+    // Note that we also support `SyntheticCoroutineBody` since we create
+    // a MIR body for the def kind, and some MIR passes (like promotion)
+    // may require doing analysis using its typing env.
     if tcx.is_typeck_child(item.to_def_id()) {
         return tcx.opaque_types_defined_by(tcx.local_parent(item));
     }
@@ -333,6 +337,12 @@ fn opaque_types_defined_by<'tcx>(
         | DefKind::Const { .. }
         | DefKind::AssocConst { .. }
         | DefKind::AnonConst => {
+            // Non-type-system inline consts should be caught by `if tcx.is_typeck_child` above
+            debug_assert!(
+                kind != DefKind::AnonConst
+                    || tcx.anon_const_kind(item) != ty::AnonConstKind::NonTypeSystemInline
+            );
+
             collector.collect_taits_declared_in_body();
         }
         DefKind::AssocTy | DefKind::TyAlias | DefKind::GlobalAsm => {}
@@ -345,15 +355,8 @@ fn opaque_types_defined_by<'tcx>(
         | DefKind::Trait
         | DefKind::ForeignTy
         | DefKind::TraitAlias
-
-        // Closures and coroutines are type checked with their parent
-        // Note that we also support `SyntheticCoroutineBody` since we create
-        // a MIR body for the def kind, and some MIR passes (like promotion)
-        // may require doing analysis using its typing env.
         | DefKind::Closure
-        | DefKind::InlineConst
         | DefKind::SyntheticCoroutineBody
-
         | DefKind::TyParam
         | DefKind::ConstParam
         | DefKind::Ctor(_, _)

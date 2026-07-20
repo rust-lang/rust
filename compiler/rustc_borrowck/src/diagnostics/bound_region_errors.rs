@@ -9,12 +9,12 @@ use rustc_infer::infer::{
 };
 use rustc_infer::traits::ObligationCause;
 use rustc_infer::traits::query::{
-    CanonicalTypeOpAscribeUserTypeGoal, CanonicalTypeOpDeeplyNormalizeGoal,
-    CanonicalTypeOpNormalizeGoal, CanonicalTypeOpProvePredicateGoal,
+    CanonicalTypeOpAscribeUserTypeGoal, CanonicalTypeOpNormalizeGoal,
+    CanonicalTypeOpProvePredicateGoal,
 };
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{
-    self, RePlaceholder, Region, RegionVid, Ty, TyCtxt, TypeFoldable, UniverseIndex, Unnormalized,
+    self, RePlaceholder, Region, RegionVid, Ty, TyCtxt, TypeFoldable, UniverseIndex,
 };
 use rustc_span::Span;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
@@ -109,14 +109,6 @@ impl<'tcx, T: Copy + fmt::Display + TypeFoldable<TyCtxt<'tcx>> + 'tcx> ToUnivers
     }
 }
 
-impl<'tcx, T: Copy + fmt::Display + TypeFoldable<TyCtxt<'tcx>> + 'tcx> ToUniverseInfo<'tcx>
-    for CanonicalTypeOpDeeplyNormalizeGoal<'tcx, T>
-{
-    fn to_universe_info(self, base_universe: ty::UniverseIndex) -> UniverseInfo<'tcx> {
-        UniverseInfo::TypeOp(Rc::new(DeeplyNormalizeQuery { canonical_query: self, base_universe }))
-    }
-}
-
 impl<'tcx> ToUniverseInfo<'tcx> for CanonicalTypeOpAscribeUserTypeGoal<'tcx> {
     fn to_universe_info(self, base_universe: ty::UniverseIndex) -> UniverseInfo<'tcx> {
         UniverseInfo::TypeOp(Rc::new(AscribeUserTypeQuery { canonical_query: self, base_universe }))
@@ -137,13 +129,13 @@ pub(crate) trait TypeOpInfo<'tcx> {
 
     fn base_universe(&self) -> ty::UniverseIndex;
 
-    fn nice_error<'infcx>(
+    fn nice_error<'diag>(
         &self,
-        mbcx: &mut MirBorrowckCtxt<'_, 'infcx, 'tcx>,
+        mbcx: &mut MirBorrowckCtxt<'_, 'diag, 'tcx>,
         cause: ObligationCause<'tcx>,
         placeholder_region: ty::Region<'tcx>,
         error_region: Option<ty::Region<'tcx>>,
-    ) -> Option<Diag<'infcx>>;
+    ) -> Option<Diag<'diag>>;
 
     /// Constraints require that `error_element` appear in the
     /// values of `placeholder`, but this cannot be proven to
@@ -213,13 +205,13 @@ impl<'tcx> TypeOpInfo<'tcx> for PredicateQuery<'tcx> {
         self.base_universe
     }
 
-    fn nice_error<'infcx>(
+    fn nice_error<'diag>(
         &self,
-        mbcx: &mut MirBorrowckCtxt<'_, 'infcx, 'tcx>,
+        mbcx: &mut MirBorrowckCtxt<'_, 'diag, 'tcx>,
         cause: ObligationCause<'tcx>,
         placeholder_region: ty::Region<'tcx>,
         error_region: Option<ty::Region<'tcx>>,
-    ) -> Option<Diag<'infcx>> {
+    ) -> Option<Diag<'diag>> {
         let (infcx, key, _) =
             mbcx.infcx.tcx.infer_ctxt().build_with_canonical(cause.span, &self.canonical_query);
         let ocx = ObligationCtxt::new(&infcx);
@@ -247,7 +239,14 @@ where
     fn fallback_error(&self, tcx: TyCtxt<'tcx>, span: Span) -> Diag<'tcx> {
         tcx.dcx().create_err(HigherRankedLifetimeError {
             cause: Some(HigherRankedErrorCause::CouldNotNormalize {
-                value: self.canonical_query.canonical.value.value.value.to_string(),
+                value: self
+                    .canonical_query
+                    .canonical
+                    .value
+                    .value
+                    .value
+                    .skip_normalization()
+                    .to_string(),
             }),
             span,
         })
@@ -257,13 +256,13 @@ where
         self.base_universe
     }
 
-    fn nice_error<'infcx>(
+    fn nice_error<'diag>(
         &self,
-        mbcx: &mut MirBorrowckCtxt<'_, 'infcx, 'tcx>,
+        mbcx: &mut MirBorrowckCtxt<'_, 'diag, 'tcx>,
         cause: ObligationCause<'tcx>,
         placeholder_region: ty::Region<'tcx>,
         error_region: Option<ty::Region<'tcx>>,
-    ) -> Option<Diag<'infcx>> {
+    ) -> Option<Diag<'diag>> {
         let (infcx, key, _) =
             mbcx.infcx.tcx.infer_ctxt().build_with_canonical(cause.span, &self.canonical_query);
         let ocx = ObligationCtxt::new(&infcx);
@@ -275,54 +274,7 @@ where
         // the former fails to normalize the `nll/relate_tys/impl-fn-ignore-binder-via-bottom.rs`
         // test. Check after #85499 lands to see if its fixes have erased this difference.
         let ty::ParamEnvAnd { param_env, value } = key;
-        let _ = ocx.normalize(&cause, param_env, Unnormalized::new_wip(value.value));
-
-        let diag = try_extract_error_from_fulfill_cx(
-            &ocx,
-            mbcx.mir_def_id(),
-            placeholder_region,
-            error_region,
-        )?
-        .with_dcx(mbcx.dcx());
-        Some(diag)
-    }
-}
-
-struct DeeplyNormalizeQuery<'tcx, T> {
-    canonical_query: CanonicalTypeOpDeeplyNormalizeGoal<'tcx, T>,
-    base_universe: ty::UniverseIndex,
-}
-
-impl<'tcx, T> TypeOpInfo<'tcx> for DeeplyNormalizeQuery<'tcx, T>
-where
-    T: Copy + fmt::Display + TypeFoldable<TyCtxt<'tcx>> + 'tcx,
-{
-    fn fallback_error(&self, tcx: TyCtxt<'tcx>, span: Span) -> Diag<'tcx> {
-        tcx.dcx().create_err(HigherRankedLifetimeError {
-            cause: Some(HigherRankedErrorCause::CouldNotNormalize {
-                value: self.canonical_query.canonical.value.value.value.to_string(),
-            }),
-            span,
-        })
-    }
-
-    fn base_universe(&self) -> ty::UniverseIndex {
-        self.base_universe
-    }
-
-    fn nice_error<'infcx>(
-        &self,
-        mbcx: &mut MirBorrowckCtxt<'_, 'infcx, 'tcx>,
-        cause: ObligationCause<'tcx>,
-        placeholder_region: ty::Region<'tcx>,
-        error_region: Option<ty::Region<'tcx>>,
-    ) -> Option<Diag<'infcx>> {
-        let (infcx, key, _) =
-            mbcx.infcx.tcx.infer_ctxt().build_with_canonical(cause.span, &self.canonical_query);
-        let ocx = ObligationCtxt::new(&infcx);
-
-        let ty::ParamEnvAnd { param_env, value } = key;
-        let _ = ocx.deeply_normalize(&cause, param_env, Unnormalized::new_wip(value.value));
+        let _ = ocx.normalize(&cause, param_env, value.value);
 
         let diag = try_extract_error_from_fulfill_cx(
             &ocx,
@@ -351,13 +303,13 @@ impl<'tcx> TypeOpInfo<'tcx> for AscribeUserTypeQuery<'tcx> {
         self.base_universe
     }
 
-    fn nice_error<'infcx>(
+    fn nice_error<'diag>(
         &self,
-        mbcx: &mut MirBorrowckCtxt<'_, 'infcx, 'tcx>,
+        mbcx: &mut MirBorrowckCtxt<'_, 'diag, 'tcx>,
         cause: ObligationCause<'tcx>,
         placeholder_region: ty::Region<'tcx>,
         error_region: Option<ty::Region<'tcx>>,
-    ) -> Option<Diag<'infcx>> {
+    ) -> Option<Diag<'diag>> {
         let (infcx, key, _) =
             mbcx.infcx.tcx.infer_ctxt().build_with_canonical(cause.span, &self.canonical_query);
         let ocx = ObligationCtxt::new(&infcx);
@@ -384,13 +336,13 @@ impl<'tcx> TypeOpInfo<'tcx> for crate::type_check::InstantiateOpaqueType<'tcx> {
         self.base_universe.unwrap()
     }
 
-    fn nice_error<'infcx>(
+    fn nice_error<'diag>(
         &self,
-        mbcx: &mut MirBorrowckCtxt<'_, 'infcx, 'tcx>,
+        mbcx: &mut MirBorrowckCtxt<'_, 'diag, 'tcx>,
         _cause: ObligationCause<'tcx>,
         placeholder_region: ty::Region<'tcx>,
         error_region: Option<ty::Region<'tcx>>,
-    ) -> Option<Diag<'infcx>> {
+    ) -> Option<Diag<'diag>> {
         try_extract_error_from_region_constraints(
             mbcx.infcx,
             mbcx.mir_def_id(),
@@ -404,6 +356,7 @@ impl<'tcx> TypeOpInfo<'tcx> for crate::type_check::InstantiateOpaqueType<'tcx> {
             |vid| RegionVariableOrigin::Nll(mbcx.regioncx.definitions[vid].origin),
             |vid| mbcx.regioncx.definitions[vid].universe,
         )
+        .map(|d| d.with_dcx(mbcx.dcx()))
     }
 }
 

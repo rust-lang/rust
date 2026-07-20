@@ -1,4 +1,4 @@
-// ignore-tidy-tab
+// ignore-tidy-file-tab
 
 static FOO: u8 = b'\f';  //~ ERROR unknown byte escape
 

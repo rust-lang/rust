@@ -53,7 +53,7 @@ use rustc_data_structures::steal::Steal;
 use rustc_data_structures::tagged_ptr::TaggedRef;
 use rustc_data_structures::unord::ExtendUnord;
 use rustc_errors::codes::*;
-use rustc_errors::{DiagArgFromDisplay, DiagCtxtHandle};
+use rustc_errors::{DiagArgFromDisplay, DiagCtxtHandle, ErrorGuaranteed};
 use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId, LocalDefIdMap};
 use rustc_hir::definitions::PerParentDisambiguatorState;
@@ -67,7 +67,7 @@ use rustc_macros::extension;
 use rustc_middle::queries::Providers;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{PerOwnerResolverData, ResolverAstLowering, TyCtxt};
-use rustc_session::errors::add_feature_diagnostics;
+use rustc_session::diagnostics::add_feature_diagnostics;
 use rustc_span::symbol::{Ident, Symbol, kw, sym};
 use rustc_span::{DUMMY_SP, DesugaringKind, Span};
 use smallvec::{SmallVec, smallvec};
@@ -98,6 +98,49 @@ pub mod stability;
 pub fn provide(providers: &mut Providers) {
     providers.index_ast = index_ast;
     providers.lower_to_hir = lower_to_hir;
+}
+
+#[cfg(debug_assertions)]
+pub(crate) mod re_lowering {
+    use rustc_ast::NodeId;
+    use rustc_ast::node_id::NodeMap;
+    use rustc_hir::{self as hir};
+
+    use crate::LoweringContext;
+
+    #[derive(Debug, Default)]
+    pub(crate) struct ReloweringChecker {
+        node_id_to_local_id: NodeMap<hir::ItemLocalId>,
+        can_relower: bool,
+    }
+
+    impl ReloweringChecker {
+        pub(crate) fn assert_node_is_not_relowered(
+            &mut self,
+            ast_node_id: NodeId,
+            local_id: hir::ItemLocalId,
+        ) {
+            if !self.can_relower {
+                let old = self.node_id_to_local_id.insert(ast_node_id, local_id);
+                assert_eq!(old, None);
+            }
+        }
+
+        pub(crate) fn allow_relowering<'a, 'hir, TRes>(
+            ctx: &mut LoweringContext<'a, 'hir>,
+            op: impl FnOnce(&mut LoweringContext<'a, 'hir>) -> TRes,
+        ) -> TRes {
+            assert!(!ctx.relowering_checker.can_relower, "reentrant relowering is not supported");
+
+            ctx.relowering_checker.can_relower = true;
+
+            let res = op(ctx);
+
+            ctx.relowering_checker.can_relower = false;
+
+            res
+        }
+    }
 }
 
 struct LoweringContext<'a, 'hir> {
@@ -146,7 +189,7 @@ struct LoweringContext<'a, 'hir> {
     ident_and_label_to_local_id: NodeMap<hir::ItemLocalId>,
     /// NodeIds that are lowered inside the current HIR owner. Only used for duplicate lowering check.
     #[cfg(debug_assertions)]
-    node_id_to_local_id: NodeMap<hir::ItemLocalId>,
+    relowering_checker: re_lowering::ReloweringChecker,
     /// The `NodeId` space is split in two.
     /// `0..resolver.next_node_id` are created by the resolver on the AST.
     /// The higher part `resolver.next_node_id..next_node_id` are created during lowering.
@@ -205,8 +248,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // and we never call `lower_node_id(owner)`.
             item_local_id_counter: hir::ItemLocalId::new(1),
             ident_and_label_to_local_id: Default::default(),
+
             #[cfg(debug_assertions)]
-            node_id_to_local_id: Default::default(),
+            relowering_checker: Default::default(),
+
             trait_map: Default::default(),
             next_node_id: resolver.next_node_id,
             node_id_to_def_id: NodeMap::default(),
@@ -305,17 +350,6 @@ impl<'tcx> ResolverAstLowering<'tcx> {
             RustcLegacyConstGenerics{fn_indexes,..} => fn_indexes
         )
         .map(|fn_indexes| fn_indexes.iter().map(|(num, _)| *num).collect())
-    }
-
-    /// Obtain the list of lifetimes parameters to add to an item.
-    ///
-    /// Extra lifetime parameters should only be added in places that can appear
-    /// as a `binder` in `LifetimeRes`.
-    ///
-    /// The extra lifetimes that appear from the parenthesized `Fn`-trait desugaring
-    /// should appear at the enclosing `PolyTraitRef`.
-    fn extra_lifetime_params(&self, id: NodeId) -> &[(Ident, NodeId, MissingLifetimeKind)] {
-        self.extra_lifetime_params_map.get(&id).map_or(&[], |v| &v[..])
     }
 }
 
@@ -512,11 +546,11 @@ fn index_ast<'tcx>(
                 attrs: AttrVec::default(),
                 id,
                 span,
-                vis: Visibility { kind: VisibilityKind::Public, span, tokens: None },
+                vis: Visibility { kind: VisibilityKind::Public, span },
                 // Lacking a better choice, we replace the contents with a macro call.
                 // Unexpanded macros should never reach lowering, so this is not confusing.
                 kind: dummy(Box::new(MacCall {
-                    path: Path { span, segments: thin_vec![], tokens: None },
+                    path: Path { span, segments: thin_vec![] },
                     args: Box::new(DelimArgs {
                         dspan: DelimSpan::from_single(span),
                         delim: Delimiter::Parenthesis,
@@ -619,11 +653,6 @@ fn index_ast<'tcx>(
 
 #[instrument(level = "trace", skip(tcx))]
 fn lower_to_hir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::MaybeOwner<'_> {
-    // Queries that borrow `resolver_for_lowering`.
-    tcx.ensure_done().output_filenames(());
-    tcx.ensure_done().early_lint_checks(());
-    tcx.ensure_done().debugger_visualizers(LOCAL_CRATE);
-    tcx.ensure_done().get_lang_items(());
     let ast_index = tcx.index_ast(());
     let resolver_and_node = ast_index.get(def_id).map(Steal::steal);
 
@@ -808,7 +837,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let current_ident_and_label_to_local_id = mem::take(&mut self.ident_and_label_to_local_id);
 
         #[cfg(debug_assertions)]
-        let current_node_id_to_local_id = mem::take(&mut self.node_id_to_local_id);
+        let current_relowering_checker = mem::take(&mut self.relowering_checker);
         let current_trait_map = mem::take(&mut self.trait_map);
         let current_owner = mem::replace(&mut self.current_hir_id_owner, owner_id);
         let current_local_counter =
@@ -824,10 +853,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         // Always allocate the first `HirId` for the owner itself.
         #[cfg(debug_assertions)]
-        {
-            let _old = self.node_id_to_local_id.insert(owner, hir::ItemLocalId::ZERO);
-            debug_assert_eq!(_old, None);
-        }
+        self.relowering_checker.assert_node_is_not_relowered(owner, hir::ItemLocalId::ZERO);
 
         let item = f(self);
         assert_eq!(owner_id, item.def_id());
@@ -845,7 +871,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         #[cfg(debug_assertions)]
         {
-            self.node_id_to_local_id = current_node_id_to_local_id;
+            self.relowering_checker = current_relowering_checker;
         }
         self.trait_map = current_trait_map;
         self.current_hir_id_owner = current_owner;
@@ -936,10 +962,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         // Check whether the same `NodeId` is lowered more than once.
         #[cfg(debug_assertions)]
-        {
-            let old = self.node_id_to_local_id.insert(ast_node_id, local_id);
-            assert_eq!(old, None);
-        }
+        self.relowering_checker.assert_node_is_not_relowered(ast_node_id, local_id);
 
         hir_id
     }
@@ -1014,6 +1037,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 res,
                 args,
                 infer_args: args.is_none(),
+                delegation_child_segment: false,
             }]),
         })
     }
@@ -1094,7 +1118,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> &'hir [hir::GenericParam<'hir>] {
         // Start by creating params for extra lifetimes params, as this creates the definitions
         // that may be referred to by the AST inside `generic_params`.
-        let extra_lifetimes = self.resolver.extra_lifetime_params(binder);
+        let extra_lifetimes = self.owner.extra_lifetime_params(binder);
         debug!(?extra_lifetimes);
         let extra_lifetimes: Vec<_> = extra_lifetimes
             .iter()
@@ -1438,6 +1462,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             }
                         }
                     }
+                    TyKind::DirectConstArg(expr)
+                        if self.tcx.features().min_generic_const_args() =>
+                    {
+                        let ct = match self.can_lower_expr_to_const_arg_direct(expr) {
+                            Ok(()) => self.lower_expr_to_const_arg_direct(expr, None),
+                            Err(e) => e.emit(self),
+                        };
+                        let ct = self.arena.alloc(ct);
+                        return GenericArg::Const(ct.try_as_ambig_ct().unwrap());
+                    }
                     _ => {}
                 }
                 GenericArg::Type(self.lower_ty_alloc(ty, itctx).try_as_ambig_ty().unwrap())
@@ -1710,10 +1744,35 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 );
                 hir::TyKind::Err(guar)
             }
+            TyKind::View(ty, fields) => {
+                let ty = self.lower_ty_alloc(ty, itctx);
+                let fields = self.arena.alloc_slice(fields);
+                hir::TyKind::View(ty, fields)
+            }
+            TyKind::DirectConstArg(expr) => {
+                let e = self.emit_bad_direct_const_arg(t.span, expr, "type");
+                hir::TyKind::Err(e)
+            }
             TyKind::Dummy => panic!("`TyKind::Dummy` should never be lowered"),
         };
 
         hir::Ty { kind, span: self.lower_span(t.span), hir_id: self.lower_node_id(t.id) }
+    }
+
+    pub(crate) fn emit_bad_direct_const_arg(
+        &mut self,
+        span: Span,
+        expr: &Expr,
+        expected: &'static str,
+    ) -> ErrorGuaranteed {
+        let msg = format!("expected {expected}, found `direct_const_arg!()` constant");
+        if expr::WillCreateDefIdsVisitor.visit_expr(expr).is_break() {
+            // FIXME(mgca): make this non-fatal once we have a better way to handle
+            // nested items in invalid `direct_const_arg!()` arguments.
+            self.dcx().struct_span_fatal(span, msg).emit()
+        } else {
+            self.dcx().struct_span_err(span, msg).emit()
+        }
     }
 
     fn lower_ty_direct_lifetime(
@@ -2628,23 +2687,86 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     #[instrument(level = "debug", skip(self), ret)]
-    fn lower_expr_to_const_arg_direct(&mut self, expr: &Expr) -> hir::ConstArg<'hir> {
+    fn can_lower_expr_to_const_arg_direct(
+        &mut self,
+        expr: &Expr,
+    ) -> Result<(), UnrepresentableConstArgError> {
+        let is_mgca = self.tcx.features().min_generic_const_args();
+        // Note the only stable case is currently ExprKind::Path. All others have an is_mgca guard.
+        match &expr.kind {
+            ExprKind::Call(func, args)
+                if is_mgca && let ExprKind::Path(_qself, _path) = &func.kind =>
+            {
+                for arg in args {
+                    self.can_lower_expr_to_const_arg_direct(arg)?;
+                }
+                Ok(())
+            }
+            ExprKind::Tup(exprs) if is_mgca => {
+                for expr in exprs {
+                    self.can_lower_expr_to_const_arg_direct(expr)?;
+                }
+                Ok(())
+            }
+            ExprKind::Path(qself, path)
+                if is_mgca
+                    || path.is_potential_trivial_const_arg()
+                        && matches!(
+                            self.get_partial_res(expr.id)
+                                .and_then(|partial_res| partial_res.full_res()),
+                            Some(Res::Def(DefKind::ConstParam, _))
+                        ) =>
+            {
+                Ok(())
+            }
+            ExprKind::Struct(se) if is_mgca => {
+                for f in &se.fields {
+                    self.can_lower_expr_to_const_arg_direct(&f.expr)?;
+                }
+                Ok(())
+            }
+            ExprKind::Array(elements) if is_mgca => {
+                for element in elements {
+                    self.can_lower_expr_to_const_arg_direct(element)?;
+                }
+                Ok(())
+            }
+            ExprKind::Underscore if is_mgca => Ok(()),
+            ExprKind::Block(block, _)
+                if is_mgca
+                    && let [stmt] = block.stmts.as_slice()
+                    && let StmtKind::Expr(expr) = &stmt.kind =>
+            {
+                self.can_lower_expr_to_const_arg_direct(expr)
+            }
+            ExprKind::Lit(literal) if is_mgca => Ok(()),
+            ExprKind::Unary(UnOp::Neg, inner_expr)
+                if is_mgca && let ExprKind::Lit(_) = &inner_expr.kind =>
+            {
+                Ok(())
+            }
+            ExprKind::ConstBlock(anon) if is_mgca => Ok(()),
+            ExprKind::DirectConstArg(expr) if is_mgca => {
+                // Always report this as able to be represented directly. If it turns out not to be,
+                // `lower_expr_to_const_arg_direct` will report an error.
+                Ok(())
+            }
+            _ => Err(UnrepresentableConstArgError::new(expr)),
+        }
+    }
+
+    /// It is not allowed to call this function without checking can_lower_expr_to_const_arg_direct
+    /// first, as we assume all feature gates/etc. have been checked already.
+    #[instrument(level = "debug", skip(self), ret)]
+    fn lower_expr_to_const_arg_direct(
+        &mut self,
+        expr: &Expr,
+        id_override: Option<NodeId>,
+    ) -> hir::ConstArg<'hir> {
+        debug_assert!(self.can_lower_expr_to_const_arg_direct(expr).is_ok());
+
         let span = self.lower_span(expr.span);
-
-        let overly_complex_const = |this: &mut Self| {
-            let msg = "complex const arguments must be placed inside of a `const` block";
-            let e = if expr::WillCreateDefIdsVisitor.visit_expr(expr).is_break() {
-                // FIXME(mgca): make this non-fatal once we have a better way to handle
-                // nested items in const args
-                // Issue: https://github.com/rust-lang/rust/issues/154539
-                this.dcx().struct_span_fatal(expr.span, msg).emit()
-            } else {
-                this.dcx().struct_span_err(expr.span, msg).emit()
-            };
-
-            ConstArg { hir_id: this.next_id(), kind: hir::ConstArgKind::Error(e), span }
-        };
-
+        let node_id = id_override.unwrap_or(expr.id);
         match &expr.kind {
             ExprKind::Call(func, args) if let ExprKind::Path(qself, path) = &func.kind => {
                 let qpath = self.lower_qpath(
@@ -2658,23 +2780,27 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 );
 
                 let lowered_args = self.arena.alloc_from_iter(args.iter().map(|arg| {
-                    let const_arg = self.lower_expr_to_const_arg_direct(arg);
+                    let const_arg = self.lower_expr_to_const_arg_direct(arg, None);
                     &*self.arena.alloc(const_arg)
                 }));
 
                 ConstArg {
-                    hir_id: self.next_id(),
+                    hir_id: self.lower_node_id(node_id),
                     kind: hir::ConstArgKind::TupleCall(qpath, lowered_args),
                     span,
                 }
             }
             ExprKind::Tup(exprs) => {
                 let exprs = self.arena.alloc_from_iter(exprs.iter().map(|expr| {
-                    let expr = self.lower_expr_to_const_arg_direct(&expr);
+                    let expr = self.lower_expr_to_const_arg_direct(expr, None);
                     &*self.arena.alloc(expr)
                 }));
 
-                ConstArg { hir_id: self.next_id(), kind: hir::ConstArgKind::Tup(exprs), span }
+                ConstArg {
+                    hir_id: self.lower_node_id(node_id),
+                    kind: hir::ConstArgKind::Tup(exprs),
+                    span,
+                }
             }
             ExprKind::Path(qself, path) => {
                 let qpath = self.lower_qpath(
@@ -2688,7 +2814,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     None,
                 );
 
-                ConstArg { hir_id: self.next_id(), kind: hir::ConstArgKind::Path(qpath), span }
+                ConstArg {
+                    hir_id: self.lower_node_id(node_id),
+                    kind: hir::ConstArgKind::Path(qpath),
+                    span,
+                }
             }
             ExprKind::Struct(se) => {
                 let path = self.lower_qpath(
@@ -2710,7 +2840,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     // then go unused as the `Target::ExprField` is not actually
                     // corresponding to `Node::ExprField`.
                     self.lower_attrs(hir_id, &f.attrs, f.span, Target::ExprField);
-                    let expr = self.lower_expr_to_const_arg_direct(&f.expr);
+                    let expr = self.lower_expr_to_const_arg_direct(&f.expr, None);
 
                     &*self.arena.alloc(hir::ConstArgExprField {
                         hir_id,
@@ -2721,14 +2851,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }));
 
                 ConstArg {
-                    hir_id: self.next_id(),
+                    hir_id: self.lower_node_id(node_id),
                     kind: hir::ConstArgKind::Struct(path, fields),
                     span,
                 }
             }
             ExprKind::Array(elements) => {
                 let lowered_elems = self.arena.alloc_from_iter(elements.iter().map(|element| {
-                    let const_arg = self.lower_expr_to_const_arg_direct(element);
+                    let const_arg = self.lower_expr_to_const_arg_direct(element, None);
                     &*self.arena.alloc(const_arg)
                 }));
                 let array_expr = self.arena.alloc(hir::ConstArgArrayExpr {
@@ -2737,31 +2867,28 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 });
 
                 ConstArg {
-                    hir_id: self.next_id(),
+                    hir_id: self.lower_node_id(node_id),
                     kind: hir::ConstArgKind::Array(array_expr),
                     span,
                 }
             }
             ExprKind::Underscore => ConstArg {
-                hir_id: self.lower_node_id(expr.id),
+                hir_id: self.lower_node_id(node_id),
                 kind: hir::ConstArgKind::Infer(()),
                 span,
             },
-            ExprKind::Block(block, _) => {
+            ExprKind::Block(block, _)
                 if let [stmt] = block.stmts.as_slice()
-                    && let StmtKind::Expr(expr) = &stmt.kind
-                {
-                    return self.lower_expr_to_const_arg_direct(expr);
-                }
-
-                overly_complex_const(self)
+                    && let StmtKind::Expr(expr) = &stmt.kind =>
+            {
+                return self.lower_expr_to_const_arg_direct(expr, id_override);
             }
             ExprKind::Lit(literal) => {
                 let span = self.lower_span(expr.span);
                 let literal = self.lower_lit(literal, span);
 
                 ConstArg {
-                    hir_id: self.lower_node_id(expr.id),
+                    hir_id: self.lower_node_id(node_id),
                     kind: hir::ConstArgKind::Literal { lit: literal.node, negated: false },
                     span,
                 }
@@ -2772,29 +2899,45 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let span = self.lower_span(expr.span);
                 let literal = self.lower_lit(literal, span);
 
-                if !matches!(literal.node, LitKind::Int(..)) {
+                let kind = if !matches!(literal.node, LitKind::Int(..)) {
                     let err =
                         self.dcx().struct_span_err(expr.span, "negated literal must be an integer");
-
-                    return ConstArg {
-                        hir_id: self.next_id(),
-                        kind: hir::ConstArgKind::Error(err.emit()),
-                        span,
-                    };
-                }
-
+                    hir::ConstArgKind::Error(err.emit())
+                } else {
+                    hir::ConstArgKind::Literal { lit: literal.node, negated: true }
+                };
+                ConstArg { hir_id: self.lower_node_id(node_id), kind, span }
+            }
+            ExprKind::ConstBlock(anon_const) => {
+                // Do not use lower_anon_const_to_const_arg, as that attempts to represent the body
+                // directly. Instead, force an anon const.
+                let def_id = self.local_def_id(anon_const.id);
+                assert_eq!(DefKind::AnonConst, self.tcx.def_kind(def_id));
+                let lowered_anon = self.lower_anon_const_to_anon_const(anon_const, span);
                 ConstArg {
-                    hir_id: self.lower_node_id(expr.id),
-                    kind: hir::ConstArgKind::Literal { lit: literal.node, negated: true },
+                    hir_id: self.lower_node_id(node_id),
+                    kind: hir::ConstArgKind::Anon(lowered_anon),
                     span,
                 }
             }
-            ExprKind::ConstBlock(anon_const) => {
-                let def_id = self.local_def_id(anon_const.id);
-                assert_eq!(DefKind::AnonConst, self.tcx.def_kind(def_id));
-                self.lower_anon_const_to_const_arg(anon_const, span)
+            ExprKind::DirectConstArg(expr) => {
+                // `can_lower_expr_to_const_arg_direct` always returns success upon encountering a
+                // ExprKind::DirectConstArg, which effectively forces the expression to be lowered
+                // as a direct arg. If it actually turns out to not be possible, emit an error
+                // instead.
+                match self.can_lower_expr_to_const_arg_direct(expr) {
+                    Ok(()) => self.lower_expr_to_const_arg_direct(expr, id_override),
+                    Err(err) => err.emit(self),
+                }
             }
-            _ => overly_complex_const(self),
+            _ => {
+                span_bug!(
+                    expr.span,
+                    "lower_expr_to_const_arg_direct encountered an unlowerable expression, either \
+                    can_lower_expr_to_const_arg_direct returned Ok() on something it shouldn't \
+                    have, or you forgot to check can_lower_expr_to_const_arg_direct first"
+                );
+            }
         }
     }
 
@@ -2813,67 +2956,23 @@ impl<'hir> LoweringContext<'_, 'hir> {
         anon: &AnonConst,
         span: Span,
     ) -> hir::ConstArg<'hir> {
-        let tcx = self.tcx;
-
-        // We cannot change parsing depending on feature gates available,
-        // we can only require feature gates to be active as a delayed check.
-        // Thus we just parse anon consts generally and make the real decision
-        // making in ast lowering.
-        // FIXME(min_generic_const_args): revisit once stable
-        if tcx.features().min_generic_const_args() {
-            return match anon.mgca_disambiguation {
-                MgcaDisambiguation::AnonConst => {
-                    let lowered_anon = self.lower_anon_const_to_anon_const(anon, span);
-                    ConstArg {
-                        hir_id: self.next_id(),
-                        kind: hir::ConstArgKind::Anon(lowered_anon),
-                        span: lowered_anon.span,
-                    }
-                }
-                MgcaDisambiguation::Direct => self.lower_expr_to_const_arg_direct(&anon.value),
-            };
-        }
-
-        // Unwrap a block, so that e.g. `{ P }` is recognised as a parameter. Const arguments
-        // currently have to be wrapped in curly brackets, so it's necessary to special-case.
-        let expr = if let ExprKind::Block(block, _) = &anon.value.kind
-            && let [stmt] = block.stmts.as_slice()
-            && let StmtKind::Expr(expr) = &stmt.kind
-            && let ExprKind::Path(..) = &expr.kind
-        {
-            expr
-        } else {
+        // Stable only allows one nesting of blocks for directly represented paths. mGCA allows
+        // arbitrarily many, and are handled inside lower_expr_to_const_arg_direct for consistency.
+        let expr = if self.tcx.features().min_generic_const_args() {
             &anon.value
+        } else {
+            anon.value.maybe_unwrap_block()
         };
 
-        let maybe_res =
-            self.get_partial_res(expr.id).and_then(|partial_res| partial_res.full_res());
-        if let ExprKind::Path(qself, path) = &expr.kind
-            && path.is_potential_trivial_const_arg()
-            && matches!(maybe_res, Some(Res::Def(DefKind::ConstParam, _)))
-        {
-            let qpath = self.lower_qpath(
-                expr.id,
-                qself,
-                path,
-                ParamMode::Explicit,
-                AllowReturnTypeNotation::No,
-                ImplTraitContext::Disallowed(ImplTraitPosition::Path),
-                None,
-            );
-
-            return ConstArg {
-                hir_id: self.lower_node_id(anon.id),
-                kind: hir::ConstArgKind::Path(qpath),
-                span: self.lower_span(expr.span),
-            };
+        if self.can_lower_expr_to_const_arg_direct(expr).is_ok() {
+            return self.lower_expr_to_const_arg_direct(expr, Some(anon.id));
         }
 
         let lowered_anon = self.lower_anon_const_to_anon_const(anon, anon.value.span);
         ConstArg {
             hir_id: self.next_id(),
             kind: hir::ConstArgKind::Anon(lowered_anon),
-            span: self.lower_span(expr.span),
+            span: self.lower_span(anon.value.span),
         }
     }
 
@@ -3167,5 +3266,38 @@ impl<'hir> GenericArgsCtor<'hir> {
             span_ext: this.lower_span(self.span),
         };
         this.arena.alloc(ga)
+    }
+}
+
+#[derive(Debug)]
+struct UnrepresentableConstArgError {
+    span: Span,
+    will_create_def_ids: bool,
+}
+
+impl UnrepresentableConstArgError {
+    fn new(expr: &Expr) -> Self {
+        Self {
+            span: expr.span,
+            will_create_def_ids: expr::WillCreateDefIdsVisitor.visit_expr(expr).is_break(),
+        }
+    }
+
+    fn emit<'hir>(self, lowering_context: &mut LoweringContext<'_, 'hir>) -> ConstArg<'hir> {
+        let msg = "complex const arguments must be placed inside of a `const` block";
+        let e = if self.will_create_def_ids {
+            // FIXME(mgca): make this non-fatal once we have a better way to handle
+            // nested items in const args
+            // Issue: https://github.com/rust-lang/rust/issues/154539
+            lowering_context.dcx().struct_span_fatal(self.span, msg).emit()
+        } else {
+            lowering_context.dcx().struct_span_err(self.span, msg).emit()
+        };
+
+        ConstArg {
+            hir_id: lowering_context.next_id(),
+            kind: hir::ConstArgKind::Error(e),
+            span: self.span,
+        }
     }
 }

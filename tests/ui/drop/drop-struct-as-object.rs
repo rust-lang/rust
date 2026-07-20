@@ -5,7 +5,7 @@
 // Test that destructor on a struct runs successfully after the struct
 // is boxed and converted to an object.
 
-// FIXME(static_mut_refs): this could use an atomic
+// FIXME(static_mut_refs): use raw pointers instead of references
 #![allow(static_mut_refs)]
 
 static mut value: usize = 0;

@@ -446,7 +446,7 @@ fn resolve_rust_intrinsic<'tcx>(
 ) -> Option<(Symbol, GenericArgsRef<'tcx>)> {
     let ty::FnDef(def_id, args) = *func_ty.kind() else { return None };
     let intrinsic = tcx.intrinsic(def_id)?;
-    Some((intrinsic.name, args))
+    Some((intrinsic.name, args.no_bound_vars().unwrap()))
 }
 
 struct SimplifyUbCheck<'tcx> {

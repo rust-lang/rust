@@ -39,7 +39,7 @@ use rustc_resolve::{Resolver, ResolverOutputs};
 use rustc_session::Session;
 use rustc_session::config::{CrateType, Input, OutFileName, OutputFilenames, OutputType};
 use rustc_session::cstore::Untracked;
-use rustc_session::errors::feature_err;
+use rustc_session::diagnostics::feature_err;
 use rustc_session::output::{filename_for_input, invalid_output_for_target};
 use rustc_session::search_paths::PathKind;
 use rustc_span::{
@@ -791,7 +791,7 @@ fn resolver_for_lowering_raw<'tcx>(
     &'tcx Steal<ast::Crate>,
     &'tcx ty::ResolverGlobalCtxt,
 ) {
-    let arenas = Resolver::arenas();
+    let arenas = WorkerLocal::new(|_| Resolver::arenas());
     let _ = tcx.registered_tools(()); // Uses `crate_for_resolver`.
     let (krate, pre_configured_attrs) = tcx.crate_for_resolver(()).steal();
     let mut resolver = Resolver::new(
@@ -881,9 +881,11 @@ pub fn write_interface<'tcx>(tcx: TyCtxt<'tcx>) {
         &tcx.sess.psess.attr_id_generator,
     );
     let export_output = tcx.output_filenames(()).interface_path();
-    let mut file = fs::File::create_buffered(export_output).unwrap();
-    if let Err(err) = write!(file, "{}", krate) {
-        tcx.dcx().fatal(format!("error writing interface file: {}", err));
+    let mut file = fs::File::create_buffered(&export_output).unwrap_or_else(|error| {
+        tcx.dcx().emit_fatal(diagnostics::FailedWritingFile { path: &export_output, error })
+    });
+    if let Err(error) = write!(file, "{}", krate) {
+        tcx.dcx().emit_fatal(diagnostics::FailedWritingFile { path: &export_output, error });
     }
 }
 
@@ -1010,7 +1012,6 @@ pub fn create_and_enter_global_ctxt<T, F: for<'tcx> FnOnce(TyCtxt<'tcx>) -> T>(
         ),
         providers.hooks,
         compiler.current_gcx.clone(),
-        Arc::clone(&compiler.jobserver_proxy),
         |tcx| {
             let feed = tcx.create_crate_num(stable_crate_id).unwrap();
             assert_eq!(feed.key(), LOCAL_CRATE);

@@ -1,4 +1,4 @@
-// ignore-tidy-filelength
+// ignore-tidy-file-filelength
 
 use std::iter;
 use std::ops::ControlFlow;
@@ -46,6 +46,7 @@ use tracing::{debug, instrument};
 use super::explain_borrow::{BorrowExplanation, LaterUseKind};
 use super::{DescribePlaceOpt, RegionName, RegionNameSource, UseSpans};
 use crate::borrow_set::{BorrowData, TwoPhaseActivation};
+use crate::consumers::OutlivesConstraint;
 use crate::diagnostics::conflict_errors::StorageDeadOrDrop::LocalStorageDead;
 use crate::diagnostics::{CapturedMessageOpt, call_kind, find_all_local_uses};
 use crate::{InitializationRequiringAction, MirBorrowckCtxt, WriteKind, borrowck_errors};
@@ -69,7 +70,7 @@ enum StorageDeadOrDrop<'tcx> {
     Destructor(Ty<'tcx>),
 }
 
-impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
+impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
     pub(crate) fn report_use_of_moved_or_uninitialized(
         &mut self,
         location: Location,
@@ -352,7 +353,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     fn suggest_ref_or_clone(
         &self,
         mpi: MovePathIndex,
-        err: &mut Diag<'infcx>,
+        err: &mut Diag<'_>,
         move_spans: UseSpans<'tcx>,
         moved_place: PlaceRef<'tcx>,
         has_suggest_reborrow: &mut bool,
@@ -589,7 +590,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         body: &hir::Expr<'_>,
         place: &Place<'tcx>,
         move_span: Span,
-        err: &mut Diag<'infcx>,
+        err: &mut Diag<'_>,
     ) {
         let var_info = self.body.var_debug_info.iter().find(|info| match info.value {
             VarDebugInfoContents::Place(ref p) => p == place,
@@ -633,7 +634,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
     pub(crate) fn suggest_reborrow(
         &self,
-        err: &mut Diag<'infcx>,
+        err: &mut Diag<'_>,
         span: Span,
         moved_place: PlaceRef<'tcx>,
     ) {
@@ -680,7 +681,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             hir::ExprKind::Call(callee, _)
                 if let &ty::FnDef(_, args) = typeck.node_type(callee.hir_id).kind() =>
             {
-                args
+                args.no_bound_vars().unwrap()
             }
             _ => return None,
         };
@@ -828,7 +829,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         location: Location,
         span: Span,
         use_spans: UseSpans<'tcx>,
-    ) -> Diag<'infcx> {
+    ) -> Diag<'diag> {
         // We need all statements in the body where the binding was assigned to later find all
         // the branching code paths where the binding *wasn't* assigned to.
         let inits = &self.move_data.init_path_map[mpi];
@@ -1758,7 +1759,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         location: Location,
         (place, _span): (Place<'tcx>, Span),
         borrow: &BorrowData<'tcx>,
-    ) -> Diag<'infcx> {
+    ) -> Diag<'diag> {
         let borrow_spans = self.retrieve_borrow_spans(borrow);
         let borrow_span = borrow_spans.args_or_use();
 
@@ -1803,7 +1804,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         (place, span): (Place<'tcx>, Span),
         gen_borrow_kind: BorrowKind,
         issued_borrow: &BorrowData<'tcx>,
-    ) -> Diag<'infcx> {
+    ) -> Diag<'diag> {
         let issued_spans = self.retrieve_borrow_spans(issued_borrow);
         let issued_span = issued_spans.args_or_use();
 
@@ -2093,7 +2094,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         err
     }
 
-    fn suggest_copy_for_type_in_cloned_ref(&self, err: &mut Diag<'infcx>, place: Place<'tcx>) {
+    fn suggest_copy_for_type_in_cloned_ref(&self, err: &mut Diag<'_>, place: Place<'tcx>) {
         let tcx = self.infcx.tcx;
         let Some(body_id) = tcx.hir_node(self.mir_hir_id()).body_id() else { return };
 
@@ -3076,40 +3077,48 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 ),
             (
                 Some(name),
-                BorrowExplanation::MustBeValidFor {
-                    category:
-                        category @ (ConstraintCategory::Return(_)
-                        | ConstraintCategory::CallArgument(_)
-                        | ConstraintCategory::OpaqueType),
-                    from_closure: false,
-                    ref region_name,
-                    span,
-                    ..
-                },
-            ) if borrow_spans.for_coroutine() || borrow_spans.for_closure() => self
-                .report_escaping_closure_capture(
+                BorrowExplanation::MustBeValidFor { ref best_blame, ref region_name, .. },
+            ) if let OutlivesConstraint {
+                category:
+                    category @ (ConstraintCategory::Return(_)
+                    | ConstraintCategory::CallArgument(_)
+                    | ConstraintCategory::OpaqueType),
+                from_closure: false,
+                span,
+                ..
+            } = best_blame.constraint()
+                && (borrow_spans.for_coroutine() || borrow_spans.for_closure()) =>
+            {
+                self.report_escaping_closure_capture(
                     borrow_spans,
                     borrow_span,
                     region_name,
-                    category,
-                    span,
+                    *category,
+                    *span,
                     &format!("`{name}`"),
                     "function",
-                ),
+                )
+            }
             (
                 name,
                 BorrowExplanation::MustBeValidFor {
-                    category: ConstraintCategory::Assignment,
-                    from_closure: false,
+                    ref best_blame,
                     region_name:
                         RegionName {
                             source: RegionNameSource::AnonRegionFromUpvar(upvar_span, upvar_name),
                             ..
                         },
-                    span,
                     ..
                 },
-            ) => self.report_escaping_data(borrow_span, &name, upvar_span, upvar_name, span),
+            ) if let OutlivesConstraint {
+                category: ConstraintCategory::Assignment,
+                from_closure: false,
+                span,
+                ..
+            } = best_blame.constraint() =>
+            {
+                self.report_escaping_data(borrow_span, &name, upvar_span, upvar_name, *span)
+            }
             (Some(name), explanation) => self.report_local_value_does_not_live_long_enough(
                 location,
                 &name,
@@ -3141,20 +3150,16 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         drop_span: Span,
         borrow_spans: UseSpans<'tcx>,
         explanation: BorrowExplanation<'tcx>,
-    ) -> Diag<'infcx> {
+    ) -> Diag<'diag> {
         let borrow_span = borrow_spans.var_or_use_path_span();
-        if let BorrowExplanation::MustBeValidFor {
-            category,
-            span,
-            ref opt_place_desc,
-            from_closure: false,
-            ..
-        } = explanation
+        if let BorrowExplanation::MustBeValidFor { best_blame, opt_place_desc, .. } = &explanation
+            && let OutlivesConstraint { category, span, from_closure: false, .. } =
+                best_blame.constraint()
             && let Err(diag) = self.try_report_cannot_return_reference_to_local(
                 borrow,
                 borrow_span,
-                span,
-                category,
+                *span,
+                *category,
                 opt_place_desc.as_ref(),
             )
         {
@@ -3318,7 +3323,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         &self,
         drop_span: Span,
         borrow_span: Span,
-    ) -> Diag<'infcx> {
+    ) -> Diag<'diag> {
         debug!(
             "report_thread_local_value_does_not_live_long_enough(\
              {:?}, {:?}\
@@ -3355,15 +3360,16 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         borrow_spans: UseSpans<'tcx>,
         proper_span: Span,
         explanation: BorrowExplanation<'tcx>,
-    ) -> Diag<'infcx> {
-        if let BorrowExplanation::MustBeValidFor { category, span, from_closure: false, .. } =
-            explanation
+    ) -> Diag<'diag> {
+        if let BorrowExplanation::MustBeValidFor { ref best_blame, .. } = explanation
+            && let OutlivesConstraint { category, span, from_closure: false, .. } =
+                best_blame.constraint()
         {
             if let Err(diag) = self.try_report_cannot_return_reference_to_local(
                 borrow,
                 proper_span,
-                span,
-                category,
+                *span,
+                *category,
                 None,
             ) {
                 return diag;
@@ -3509,7 +3515,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         return_span: Span,
         category: ConstraintCategory<'tcx>,
         opt_place_desc: Option<&String>,
-    ) -> Result<(), Diag<'infcx>> {
+    ) -> Result<(), Diag<'diag>> {
         let return_kind = match category {
             ConstraintCategory::Return(_) => "return",
             ConstraintCategory::Yield => "yield",
@@ -3627,7 +3633,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         constraint_span: Span,
         captured_var: &str,
         scope: &str,
-    ) -> Diag<'infcx> {
+    ) -> Diag<'diag> {
         let tcx = self.infcx.tcx;
         let args_span = use_span.args_or_use();
 
@@ -3745,13 +3751,13 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         upvar_span: Span,
         upvar_name: Symbol,
         escape_span: Span,
-    ) -> Diag<'infcx> {
+    ) -> Diag<'diag> {
         let tcx = self.infcx.tcx;
 
         let escapes_from = tcx.def_descr(self.mir_def_id().to_def_id());
 
         let mut err =
-            borrowck_errors::borrowed_data_escapes_closure(tcx, escape_span, escapes_from);
+            borrowck_errors::borrowed_data_escapes_closure(self.dcx(), escape_span, escapes_from);
 
         err.span_label(
             upvar_span,

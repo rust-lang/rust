@@ -10,7 +10,6 @@ use Option::Some;
 
 fn foo<const N: Option<u32>>() {}
 
-
 trait Trait {
     type const ASSOC: u32;
 }
@@ -26,7 +25,7 @@ fn bar<T: Trait, const N: u32>() {
 
     // this on the other hand is not allowed as `N + 1` is not a legal
     // const argument
-    foo::<{ Some::<u32> { 0: N + 1 } }>();
+    foo::<{ core::direct_const_arg!(Some::<u32> { 0: N + 1 }) }>();
     //~^ ERROR: complex const arguments must be placed inside of a `const` block
 
     // this also is not allowed as generic parameters cannot be used

@@ -8,7 +8,7 @@ pub trait SourceDb: salsa::Database {
 
 #[query_group]
 pub trait RootDb: SourceDb {
-    #[salsa::invoke_interned(parse)]
+    #[salsa::transparent]
     fn parse(&self, id: usize) -> String;
 }
 

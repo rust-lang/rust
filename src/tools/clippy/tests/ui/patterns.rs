@@ -1,5 +1,6 @@
 //@aux-build:proc_macros.rs
-#![allow(clippy::uninlined_format_args, clippy::single_match)]
+#![warn(clippy::redundant_pattern)]
+#![expect(clippy::single_match, clippy::uninlined_format_args)]
 
 #[macro_use]
 extern crate proc_macros;

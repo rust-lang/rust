@@ -1,5 +1,5 @@
 // Issue #62863
-// ignore-tidy-cr
+// ignore-tidy-file-cr
 
 // Note: if you see ^M in this file, that's how your editor renders literal `\r`
 

@@ -58,7 +58,7 @@ fn find_assignments(body: &Body<'_>, local: Local) -> Vec<Location> {
     visitor.locations
 }
 
-impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
+impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
     pub(crate) fn report_mutability_error(
         &mut self,
         access_place: Place<'tcx>,
@@ -655,7 +655,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     }
 
     /// Suggest `map[k] = v` => `map.insert(k, v)` and the like.
-    fn suggest_map_index_mut_alternatives(&self, ty: Ty<'tcx>, err: &mut Diag<'infcx>, span: Span) {
+    fn suggest_map_index_mut_alternatives(&self, ty: Ty<'tcx>, err: &mut Diag<'_>, span: Span) {
         let Some(adt) = ty.ty_adt_def() else { return };
         let did = adt.did();
         if self.infcx.tcx.is_diagnostic_item(sym::HashMap, did)
@@ -664,15 +664,15 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             /// Walks through the HIR, looking for the corresponding span for this error.
             /// When it finds it, see if it corresponds to assignment operator whose LHS
             /// is an index expr.
-            struct SuggestIndexOperatorAlternativeVisitor<'a, 'infcx, 'tcx> {
+            struct SuggestIndexOperatorAlternativeVisitor<'a, 'diag, 'tcx> {
                 assign_span: Span,
-                err: &'a mut Diag<'infcx>,
+                err: &'a mut Diag<'diag>,
                 ty: Ty<'tcx>,
                 suggested: bool,
                 infcx: &'a rustc_infer::infer::InferCtxt<'tcx>,
             }
 
-            impl<'a, 'infcx, 'tcx> Visitor<'tcx> for SuggestIndexOperatorAlternativeVisitor<'a, 'infcx, 'tcx> {
+            impl<'tcx> Visitor<'tcx> for SuggestIndexOperatorAlternativeVisitor<'_, '_, 'tcx> {
                 fn visit_stmt(&mut self, stmt: &'tcx hir::Stmt<'tcx>) {
                     hir::intravisit::walk_stmt(self, stmt);
                     let expr = match stmt.kind {
@@ -1241,7 +1241,13 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                             typeck_results.node_type_opt(expr.hir_id).as_ref().map(|ty| ty.kind())
                         {
                             let arg_pos = args.iter().position(|arg| arg.hir_id == closure_id)?;
-                            Some((*def_id, expr.span, arg_pos, arg_pos, generic_args))
+                            Some((
+                                *def_id,
+                                expr.span,
+                                arg_pos,
+                                arg_pos,
+                                generic_args.no_bound_vars().unwrap(),
+                            ))
                         } else {
                             None
                         }
@@ -1914,7 +1920,7 @@ fn suggest_ampmut<'tcx>(
                 let trait_ref = ty::TraitRef::from_assoc(
                     tcx,
                     tcx.require_lang_item(hir::LangItem::IndexMut, rhs_span),
-                    method_args,
+                    method_args.no_bound_vars().unwrap(),
                 );
                 // The type only implements `Index` but not `IndexMut`, we must not suggest `&mut`.
                 if !infcx

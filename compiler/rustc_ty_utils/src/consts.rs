@@ -54,7 +54,7 @@ fn recurse_build<'tcx>(
         &ExprKind::PlaceUnwrapUnsafeBinder { .. }
         | &ExprKind::ValueUnwrapUnsafeBinder { .. }
         | &ExprKind::WrapUnsafeBinder { .. } => {
-            todo!("FIXME(unsafe_binders)")
+            unimplemented!("FIXME(unsafe_binders)")
         }
         &ExprKind::Literal { lit, neg } => {
             let sp = node.span;
@@ -210,7 +210,7 @@ fn recurse_build<'tcx>(
             error(GenericConstantTooComplexSub::OperationNotSupported(node.span))?
         }
         ExprKind::Reborrow { .. } => {
-            todo!();
+            unimplemented!();
         }
     })
 }
@@ -310,7 +310,7 @@ impl<'a, 'tcx> IsThirPolymorphic<'a, 'tcx> {
             | thir::ExprKind::ThreadLocalRef(_)
             | thir::ExprKind::Yield { .. } => false,
             thir::ExprKind::Reborrow { .. } => {
-                todo!();
+                unimplemented!();
             }
         }
     }
@@ -367,7 +367,7 @@ fn thir_abstract_const<'tcx>(
         // we want to look into them or treat them as opaque projections.
         //
         // Right now we do neither of that and simply always fail to unify them.
-        DefKind::AnonConst | DefKind::InlineConst => (),
+        DefKind::AnonConst => (),
         _ => return Ok(None),
     }
 

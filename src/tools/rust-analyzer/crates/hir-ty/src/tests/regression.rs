@@ -44,6 +44,26 @@ fn no_panic_on_field_of_enum() {
 }
 
 #[test]
+fn anon_const_projection_in_impl_predicate() {
+    check_no_mismatches(
+        r#"
+trait Trait {
+    type Assoc;
+}
+
+struct S<const N: usize>;
+
+impl<const N: usize> S<N>
+where
+    S<{ N }>: Trait,
+{
+    fn new(_: <S<N> as Trait>::Assoc) {}
+}
+        "#,
+    );
+}
+
+#[test]
 fn bug_585() {
     check_infer(
         r#"
@@ -2911,6 +2931,18 @@ impl Foo for Bar {
             Err(())
         }
     }
+}
+"#,
+    );
+}
+
+#[test]
+fn regression_unresolved_deferred_closure_call_resolution() {
+    check_no_mismatches(
+        r#"
+//- minicore: fn
+fn caller() {
+    let _: &[u8] = &(|| encode_fn())();
 }
 "#,
     );

@@ -35,7 +35,6 @@ impl<'tcx> At<'_, 'tcx> {
             let Normalized { value, obligations } = crate::solve::normalize(*self, value);
             InferOk { value, obligations }
         } else {
-            let value = value.skip_normalization();
             let mut selcx = SelectionContext::new(self.infcx);
             let Normalized { value, obligations } =
                 normalize_with_depth(&mut selcx, self.param_env, self.cause.clone(), 0, value);
@@ -99,7 +98,7 @@ pub(crate) fn normalize_with_depth<'a, 'b, 'tcx, T>(
     param_env: ty::ParamEnv<'tcx>,
     cause: ObligationCause<'tcx>,
     depth: usize,
-    value: T,
+    value: Unnormalized<'tcx, T>,
 ) -> Normalized<'tcx, T>
 where
     T: TypeFoldable<TyCtxt<'tcx>>,
@@ -115,7 +114,7 @@ pub(crate) fn normalize_with_depth_to<'a, 'b, 'tcx, T>(
     param_env: ty::ParamEnv<'tcx>,
     cause: ObligationCause<'tcx>,
     depth: usize,
-    value: T,
+    value: Unnormalized<'tcx, T>,
     obligations: &mut PredicateObligations<'tcx>,
 ) -> T
 where
@@ -123,7 +122,9 @@ where
 {
     debug!(obligations.len = obligations.len());
     let mut normalizer = AssocTypeNormalizer::new(selcx, param_env, cause, depth, obligations);
-    let result = ensure_sufficient_stack(|| AssocTypeNormalizer::fold(&mut normalizer, value));
+    let result = ensure_sufficient_stack(|| {
+        AssocTypeNormalizer::fold(&mut normalizer, value.skip_normalization())
+    });
     debug!(?result, obligations.len = normalizer.obligations.len());
     debug!(?normalizer.obligations,);
     result
@@ -315,7 +316,7 @@ impl<'a, 'b, 'tcx> AssocTypeNormalizer<'a, 'b, 'tcx> {
         // placeholders as the trait solver does not expect to encounter escaping bound
         // vars in obligations.
         //
-        // FIXME(lazy_type_alias): Check how much this actually matters for perf before
+        // FIXME(checked_type_alias): Check how much this actually matters for perf before
         // stabilization. This is a bit weird and generally not how we handle binders in
         // the compiler so ideally we'd do the same boundvar->placeholder->boundvar dance
         // that other kinds of normalization do.

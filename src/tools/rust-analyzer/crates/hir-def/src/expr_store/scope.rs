@@ -1,11 +1,11 @@
 //! Name resolution for expressions.
+use base_db::SourceDatabase;
 use hir_expand::{MacroDefId, name::Name};
 use la_arena::{Arena, ArenaMap, Idx, IdxRange, RawIdx};
 
 use crate::{
     BlockId, DefWithBodyId, ExpressionStoreOwnerId, GenericDefId, VariantId,
-    db::DefDatabase,
-    expr_store::{Body, ExpressionStore, HygieneId},
+    expr_store::{Body, ExpressionStore, HygieneId, body::Param},
     hir::{
         Array, Binding, BindingId, Expr, ExprId, Item, LabelId, Pat, PatId, Statement,
         generics::GenericParams,
@@ -56,7 +56,7 @@ pub struct ScopeData {
 #[salsa::tracked]
 impl ExprScopes {
     #[salsa::tracked(returns(ref))]
-    pub fn body_expr_scopes(db: &dyn DefDatabase, def: DefWithBodyId) -> ExprScopes {
+    pub fn body_expr_scopes(db: &dyn SourceDatabase, def: DefWithBodyId) -> ExprScopes {
         let body = Body::of(db, def);
         let mut scopes = ExprScopes::new_body(body);
         scopes.shrink_to_fit();
@@ -64,7 +64,7 @@ impl ExprScopes {
     }
 
     #[salsa::tracked(returns(ref))]
-    pub fn sig_expr_scopes(db: &dyn DefDatabase, def: GenericDefId) -> ExprScopes {
+    pub fn sig_expr_scopes(db: &dyn SourceDatabase, def: GenericDefId) -> ExprScopes {
         let (_, store) = GenericParams::with_store(db, def);
         let roots = store.expr_roots();
         let mut scopes = ExprScopes::new_store(store, roots);
@@ -73,7 +73,7 @@ impl ExprScopes {
     }
 
     #[salsa::tracked(returns(ref))]
-    pub fn variant_scopes(db: &dyn DefDatabase, def: VariantId) -> ExprScopes {
+    pub fn variant_scopes(db: &dyn SourceDatabase, def: VariantId) -> ExprScopes {
         let fields = VariantFields::of(db, def);
         let roots = fields.store.expr_roots();
         let mut scopes = ExprScopes::new_store(&fields.store, roots);
@@ -84,7 +84,7 @@ impl ExprScopes {
 
 impl ExprScopes {
     #[inline]
-    pub fn of(db: &dyn DefDatabase, def: impl Into<ExpressionStoreOwnerId>) -> &ExprScopes {
+    pub fn of(db: &dyn SourceDatabase, def: impl Into<ExpressionStoreOwnerId>) -> &ExprScopes {
         match def.into() {
             ExpressionStoreOwnerId::Body(def) => Self::body_expr_scopes(db, def),
             ExpressionStoreOwnerId::Signature(def) => Self::sig_expr_scopes(db, def),
@@ -147,10 +147,10 @@ impl ExprScopes {
             ),
         };
         let mut root = scopes.root_scope();
-        if let Some(self_param) = body.self_param() {
+        if let Some(Param { formal: self_param, user_written: _ }) = body.self_param {
             scopes.add_bindings(body, root, self_param, body.binding_hygiene(self_param));
         }
-        scopes.add_params_bindings(body, root, &body.params);
+        body.params.iter().for_each(|param| scopes.add_pat_bindings(body, root, param.formal));
         compute_expr_scopes(body.root_expr(), body, &mut scopes, &mut { root }, &mut root);
         scopes
     }
@@ -246,10 +246,6 @@ impl ExprScopes {
         }
 
         pattern.walk_child_pats(|pat| self.add_pat_bindings(store, scope, pat));
-    }
-
-    fn add_params_bindings(&mut self, store: &ExpressionStore, scope: ScopeId, params: &[PatId]) {
-        params.iter().for_each(|pat| self.add_pat_bindings(store, scope, *pat));
     }
 
     fn set_scope(&mut self, node: ExprId, scope: ScopeId) {
@@ -356,7 +352,7 @@ fn compute_expr_scopes(
         }
         Expr::Closure { args, body: body_expr, .. } => {
             let mut scope = scopes.new_scope(*scope);
-            scopes.add_params_bindings(store, scope, args);
+            args.iter().for_each(|arg| scopes.add_pat_bindings(store, scope, *arg));
             compute_expr_scopes(scopes, *body_expr, &mut scope, const_scope);
         }
         Expr::Match { expr, arms } => {

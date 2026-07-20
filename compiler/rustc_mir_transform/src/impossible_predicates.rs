@@ -27,25 +27,64 @@
 //!    it's usually never invoked in this way.
 
 use rustc_middle::mir::{Body, START_BLOCK, TerminatorKind};
-use rustc_middle::ty::{TyCtxt, TypeFlags, TypeVisitableExt, Unnormalized};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeFlags, TypeVisitableExt, Unnormalized};
 use rustc_span::def_id::DefId;
 use rustc_trait_selection::traits;
 use tracing::trace;
 
 use crate::pass_manager::MirPass;
 
+fn is_structurally_unsized<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
+    match ty.kind() {
+        ty::Str | ty::Slice(_) | ty::Dynamic(_, _) | ty::Foreign(_) => true,
+        ty::Tuple(tys) => tys.last().is_some_and(|ty| is_structurally_unsized(tcx, *ty)),
+        ty::Adt(def, args) => {
+            def.sizedness_constraint(tcx, ty::SizedTraitKind::Sized).is_some_and(|ty| {
+                is_structurally_unsized(tcx, ty.instantiate(tcx, args).skip_norm_wip())
+            })
+        }
+        _ => false,
+    }
+}
+
+fn has_structurally_impossible_sized_predicate<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    sized_trait: DefId,
+    predicate: ty::Clause<'tcx>,
+) -> bool {
+    let Some(trait_predicate) = predicate.as_trait_clause() else {
+        return false;
+    };
+    let trait_predicate = trait_predicate.skip_binder();
+
+    trait_predicate.polarity == ty::PredicatePolarity::Positive
+        && trait_predicate.def_id() == sized_trait
+        && is_structurally_unsized(tcx, trait_predicate.self_ty())
+}
+
 pub(crate) struct ImpossiblePredicates;
 
-pub(crate) fn has_impossible_predicates(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
+pub(crate) fn has_impossible_predicates<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> bool {
     let predicates = tcx.predicates_of(def_id).instantiate_identity(tcx);
     tracing::trace!(?predicates);
+
+    // Some `Sized` predicates that mention local generics are still impossible
+    // for every instantiation, e.g. `dyn Trait<T>: Sized`.
+    if let Some(sized_trait) = tcx.lang_items().sized_trait() {
+        if predicates.predicates.iter().copied().map(Unnormalized::skip_norm_wip).any(|predicate| {
+            has_structurally_impossible_sized_predicate(tcx, sized_trait, predicate)
+        }) {
+            return true;
+        }
+    }
+
     let predicates =
         predicates.predicates.into_iter().map(Unnormalized::skip_norm_wip).filter(|p| {
             !p.has_type_flags(
                 // Only consider global clauses to simplify.
                 TypeFlags::HAS_FREE_LOCAL_NAMES
                 // Clauses that refer to alias constants as they cause cycles.
-                | TypeFlags::HAS_CT_PROJECTION,
+                | TypeFlags::HAS_CONST_ALIAS,
             )
         });
     let predicates: Vec<_> = traits::elaborate(tcx, predicates).collect();

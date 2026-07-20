@@ -16,7 +16,7 @@ mod utils;
 #[path = "../../utils/libc.rs"]
 mod libc_utils;
 
-use libc_utils::errno_result;
+use libc_utils::{errno_check, errno_result};
 
 fn main() {
     test_dup();
@@ -43,10 +43,15 @@ fn main() {
     #[cfg(target_os = "linux")]
     test_posix_fallocate::<libc::off64_t>(libc::posix_fallocate64);
     #[cfg(target_os = "linux")]
+    test_fallocate::<libc::off_t>(libc::fallocate);
+    #[cfg(target_os = "linux")]
+    test_fallocate::<libc::off64_t>(libc::fallocate64);
+    #[cfg(target_os = "linux")]
     test_sync_file_range();
     test_fstat();
     test_stat();
     test_lstat();
+    test_futimens();
     test_isatty();
     test_read_and_uninit();
     test_nofollow_not_symlink();
@@ -164,8 +169,6 @@ fn test_statx_on_file_path() {
 
 #[cfg(target_os = "linux")]
 fn test_statx_empty_path_on_pipe() {
-    use libc_utils::errno_check;
-
     unsafe {
         let mut fds = [0; 2];
         errno_check(libc::pipe(fds.as_mut_ptr()));
@@ -253,7 +256,7 @@ fn test_file_open_dir() {
     // let err =
     //     errno_result(unsafe { libc::read(fd, buf.as_mut_ptr().cast(), buf.len()) }).unwrap_err();
     // assert_eq!(err.raw_os_error().unwrap(), libc::EISDIR, "unexpected errno: {err}");
-    // libc_utils::errno_check(unsafe { libc::close(fd) });
+    // errno_check(unsafe { libc::close(fd) });
 }
 
 fn test_dup_stdout_stderr() {
@@ -266,6 +269,7 @@ fn test_dup_stdout_stderr() {
     }
 }
 
+/// This test assumes that there are no gaps in the FD table and the next free slot is less than 50.
 fn test_dup() {
     let bytes = b"dup and dup2";
     let path = utils::prepare_with_content("miri_test_libc_dup.txt", bytes);
@@ -273,8 +277,16 @@ fn test_dup() {
 
     unsafe {
         let fd = errno_result(libc::open(name.as_ptr(), libc::O_RDONLY)).unwrap();
+        assert!(fd < 50);
         let new_fd = libc::dup(fd);
-        let new_fd2 = libc::dup2(fd, 8);
+        assert_eq!(new_fd, fd + 1);
+        let new_fd = libc::dup2(fd, new_fd); // overwrite the one we just dup'd
+        assert_eq!(new_fd, fd + 1);
+        let new_fd2 = libc::dup2(fd, 99);
+        assert_eq!(new_fd2, 99);
+        let new_fd3 = libc::fcntl(new_fd2, libc::F_DUPFD, 999);
+        assert_eq!(new_fd3, 999);
+        errno_check(libc::close(new_fd2));
 
         let mut first_buf = [0u8; 4];
         let first_len = libc::read(fd, first_buf.as_mut_ptr() as *mut libc::c_void, 4);
@@ -291,7 +303,7 @@ fn test_dup() {
         let remaining_bytes = &remaining_bytes[second_len..];
 
         let mut third_buf = [0u8; 4];
-        let third_len = libc::read(new_fd2, third_buf.as_mut_ptr() as *mut libc::c_void, 4);
+        let third_len = libc::read(new_fd3, third_buf.as_mut_ptr() as *mut libc::c_void, 4);
         assert!(third_len > 0);
         let third_len = third_len as usize;
         assert_eq!(third_buf[..third_len], remaining_bytes[..third_len]);
@@ -606,6 +618,75 @@ fn test_posix_fallocate<T: From<i32>>(
 }
 
 #[cfg(target_os = "linux")]
+fn test_fallocate<T: From<i32>>(
+    fallocate: unsafe extern "C" fn(
+        fd: libc::c_int,
+        mode: libc::c_int,
+        offset: T,
+        len: T,
+    ) -> libc::c_int,
+) {
+    use libc_utils::{errno_check, errno_result};
+
+    // -- Test errors ---
+    // libc::off_t is i32 in target i686-unknown-linux-gnu
+    // https://docs.rs/libc/latest/i686-unknown-linux-gnu/libc/type.off_t.html
+
+    // invalid fd
+    let err = errno_result(unsafe { fallocate(42, 0, T::from(0), T::from(10)) }).unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::EBADF);
+
+    let path = utils::prepare("miri_test_libc_fallocate_errors.txt");
+    let file = File::create(&path).unwrap();
+
+    // invalid offset
+    let err = errno_result(unsafe { fallocate(file.as_raw_fd(), 0, T::from(-10), T::from(10)) })
+        .unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::EINVAL);
+
+    // invalid len
+    let err = errno_result(unsafe { fallocate(file.as_raw_fd(), 0, T::from(0), T::from(-10)) })
+        .unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::EINVAL);
+
+    // fd not writable
+    let c_path = CString::new(path.as_os_str().as_bytes()).expect("CString::new failed");
+    let fd = errno_result(unsafe { libc::open(c_path.as_ptr(), libc::O_RDONLY) }).unwrap();
+    let err = errno_result(unsafe { fallocate(fd, 0, T::from(0), T::from(10)) }).unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::EBADF);
+
+    // --- Test correct behaviour ---
+    let bytes = b"hello";
+    let path = utils::prepare("miri_test_libc_fallocate.txt");
+    let mut file = File::create(&path).unwrap();
+    file.write_all(bytes).unwrap();
+    file.sync_all().unwrap();
+    assert_eq!(file.metadata().unwrap().len(), 5);
+
+    let c_path = CString::new(path.as_os_str().as_bytes()).expect("CString::new failed");
+    let fd = errno_result(unsafe { libc::open(c_path.as_ptr(), libc::O_RDWR) }).unwrap();
+
+    // Allocate to a bigger size from offset 0
+    errno_check(unsafe { fallocate(fd, 0, T::from(0), T::from(10)) });
+    assert_eq!(file.metadata().unwrap().len(), 10);
+
+    // Write after allocation
+    file.write(b"dup").unwrap();
+    file.sync_all().unwrap();
+    assert_eq!(file.metadata().unwrap().len(), 10);
+
+    // Can't truncate to a smaller size with fallocate
+    errno_check(unsafe { fallocate(fd, 0, T::from(0), T::from(3)) });
+    assert_eq!(file.metadata().unwrap().len(), 10);
+
+    // Allocate from offset
+    errno_check(unsafe { fallocate(fd, 0, T::from(7), T::from(7)) });
+    assert_eq!(file.metadata().unwrap().len(), 14);
+
+    remove_file(&path).unwrap();
+}
+
+#[cfg(target_os = "linux")]
 fn test_sync_file_range() {
     use std::io::Write;
 
@@ -716,6 +797,63 @@ fn test_lstat() {
     check_stat_fields(stat);
 
     remove_file(&symlink_path).unwrap();
+    remove_file(&path).unwrap();
+}
+
+fn test_futimens() {
+    use std::mem::MaybeUninit;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    let path = utils::prepare_with_content("miri_test_libc_futimens.txt", b"hello");
+    let file = File::options().write(true).open(&path).unwrap();
+    let fd = file.as_raw_fd();
+
+    // Reads back the file's (access, modification) times as `(sec, nsec)` pairs via `fstat`.
+    let get_times = || {
+        let mut stat = MaybeUninit::<libc::stat>::uninit();
+        errno_check(unsafe { libc::fstat(fd, stat.as_mut_ptr()) });
+        let stat = unsafe { stat.assume_init_ref() };
+        ((stat.st_atime, stat.st_atime_nsec), (stat.st_mtime, stat.st_mtime_nsec))
+    };
+
+    // Setting both timestamps round-trips, including sub-second precision. We use 100ms since the
+    // coarsest clock any host rounds to is Windows/NTFS's 100ns.
+    let times = [
+        libc::timespec { tv_sec: 1_000_000_000, tv_nsec: 100_000_000 },
+        libc::timespec { tv_sec: 1_234_567_890, tv_nsec: 200_000_000 },
+    ];
+    errno_check(unsafe { libc::futimens(fd, times.as_ptr()) });
+    assert_eq!(get_times(), ((1_000_000_000, 100_000_000), (1_234_567_890, 200_000_000)));
+
+    // `UTIME_OMIT` leaves the access time unchanged while updating the modification time.
+    let times = [
+        libc::timespec { tv_sec: 0, tv_nsec: libc::UTIME_OMIT },
+        libc::timespec { tv_sec: 2_000_000_000, tv_nsec: 0 },
+    ];
+    errno_check(unsafe { libc::futimens(fd, times.as_ptr()) });
+    assert_eq!(get_times(), ((1_000_000_000, 100_000_000), (2_000_000_000, 0)));
+
+    // `UTIME_NOW` sets a timestamp to the current time (here for access, alongside `UTIME_OMIT`).
+    let before = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs();
+    let times = [
+        libc::timespec { tv_sec: 0, tv_nsec: libc::UTIME_NOW },
+        libc::timespec { tv_sec: 0, tv_nsec: libc::UTIME_OMIT },
+    ];
+    errno_check(unsafe { libc::futimens(fd, times.as_ptr()) });
+    let (atime, mtime) = get_times();
+    assert!(atime.0 as u64 >= before);
+    assert_eq!(mtime, (2_000_000_000, 0));
+
+    // A NULL `times` pointer sets both timestamps to the current time.
+    errno_check(unsafe { libc::futimens(fd, std::ptr::null()) });
+    let (atime, mtime) = get_times();
+    assert!(atime.0 as u64 >= before);
+    assert!(mtime.0 as u64 >= before);
+
+    // A bad file descriptor fails with `EBADF`.
+    let err = errno_result(unsafe { libc::futimens(-1, times.as_ptr()) }).unwrap_err();
+    assert_eq!(err.raw_os_error(), Some(libc::EBADF));
+
     remove_file(&path).unwrap();
 }
 
@@ -1200,7 +1338,7 @@ fn test_linkat() {
 
     // Call linkat
     unsafe {
-        libc_utils::errno_check(libc::linkat(
+        errno_check(libc::linkat(
             libc::AT_FDCWD,
             c_source.as_ptr(),
             libc::AT_FDCWD,

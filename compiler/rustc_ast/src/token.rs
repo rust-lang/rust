@@ -699,7 +699,7 @@ impl Token {
 
     /// Returns `true` if the token can appear at the start of a pattern.
     ///
-    /// Shamelessly borrowed from `can_begin_expr`, only used for diagnostics right now.
+    /// Shamelessly borrowed from `can_begin_expr`.
     pub fn can_begin_pattern(&self, pat_kind: NtPatKind) -> bool {
         match &self.uninterpolate().kind {
             // box, ref, mut, and other identifiers (can stricten)

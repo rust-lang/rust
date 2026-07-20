@@ -1540,10 +1540,14 @@ impl Seek for File {
         (&*self).stream_position()
     }
 }
+#[doc(hidden)]
+#[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
 impl crate::io::IoHandle for File {}
 
 impl Dir {
     /// Attempts to open a directory at `path` in read-only mode.
+    ///
+    /// This function opens a directory. To open a file instead, see [`File::open`].
     ///
     /// # Errors
     ///
@@ -1570,7 +1574,29 @@ impl Dir {
             .map(|inner| Self { inner })
     }
 
+    /// Queries metadata about the underlying directory.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(dirfd)]
+    /// use std::fs::Dir;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let dir = Dir::open("foo")?;
+    ///     let metadata = dir.metadata()?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn metadata(&self) -> io::Result<Metadata> {
+        self.inner.metadata().map(Metadata)
+    }
+
     /// Attempts to open a file in read-only mode relative to this directory.
+    ///
+    /// This function interprets `path` relative to the directory provided by `self`. To open a file
+    /// relative to the current working directory, or at an absolute path, see [`File::open`].
     ///
     /// # Errors
     ///
@@ -1598,7 +1624,47 @@ impl Dir {
             .map(|f| File { inner: f })
     }
 
-    /// Queries metadata about the underlying directory.
+    /// Attempts to open a file according to `opts` relative to this directory.
+    ///
+    /// This function interprets `path` relative to the directory provided by `self`. To open a file
+    /// relative to the current working directory, or at an absolute path, see [`File::open`].
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if `path` does not point to an existing file.
+    /// Other errors may also be returned according to [`OpenOptions::open`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(dirfd)]
+    /// use std::{fs::{Dir, OpenOptions}, io::{self, Write}};
+    ///
+    /// fn main() -> io::Result<()> {
+    ///     let dir = Dir::open("foo")?;
+    ///     let mut opts = OpenOptions::new();
+    ///     opts.read(true).write(true);
+    ///     let mut f = dir.open_file_with("bar.txt", &opts)?;
+    ///     f.write_all(b"Hello, world!")?;
+    ///     let contents = io::read_to_string(f)?;
+    ///     assert_eq!(contents, "Hello, world!");
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn open_file_with<P: AsRef<Path>>(&self, path: P, opts: &OpenOptions) -> io::Result<File> {
+        self.inner.open_file(path.as_ref(), &opts.0).map(|f| File { inner: f })
+    }
+
+    /// Attempts to remove a file relative to this directory.
+    ///
+    /// This function interprets `path` relative to the directory provided by `self`. To remove a file
+    /// relative to the current working directory, or at an absolute path, see [`fs::remove_file`][remove_file].
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if `path` does not point to an existing file.
+    /// Other errors may also be returned according to [`OpenOptions::open`].
     ///
     /// # Examples
     ///
@@ -1608,13 +1674,46 @@ impl Dir {
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let dir = Dir::open("foo")?;
-    ///     let metadata = dir.metadata()?;
+    ///     dir.remove_file("bar.txt")?;
     ///     Ok(())
     /// }
     /// ```
     #[unstable(feature = "dirfd", issue = "120426")]
-    pub fn metadata(&self) -> io::Result<Metadata> {
-        self.inner.metadata().map(Metadata)
+    pub fn remove_file<P: AsRef<Path>>(&self, path: P) -> io::Result<()> {
+        self.inner.remove_file(path.as_ref())
+    }
+
+    /// Attempts to rename a file or directory relative to this directory to a new name, replacing
+    /// the destination file if present.
+    ///
+    /// This function interprets `from` relative to the directory provided by `self` and `to` relative to the directory
+    /// provided by `to_dir`. To rename a file relative to the current working directory, or at an absolute path, see [`fs::rename`][rename].
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if `from` does not point to an existing file or directory.
+    /// Other errors may also be returned according to [`OpenOptions::open`].
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(dirfd)]
+    /// use std::fs::Dir;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let dir = Dir::open("foo")?;
+    ///     dir.rename("bar.txt", &dir, "quux.txt")?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "dirfd", issue = "120426")]
+    pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(
+        &self,
+        from: P,
+        to_dir: &Self,
+        to: Q,
+    ) -> io::Result<()> {
+        self.inner.rename(from.as_ref(), &to_dir.inner, to.as_ref())
     }
 }
 

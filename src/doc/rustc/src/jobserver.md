@@ -1,5 +1,7 @@
 # Jobserver
 
+<!-- ignore-tidy-file-tab -->
+
 Internally, `rustc` may take advantage of parallelism. `rustc` will coordinate
 with the build system calling it if a [GNU Make jobserver] is passed in the
 `MAKEFLAGS` environment variable. Other flags may have an effect as well, such
@@ -27,8 +29,6 @@ When calling `rustc` from GNU Make, it is recommended that all `rustc`
 invocations are marked as recursive in the `Makefile` (by prefixing the command
 line with the `+` indicator), so that GNU Make enables the jobserver for them.
 For instance:
-
-<!-- ignore-tidy-tab -->
 
 ```make
 x:

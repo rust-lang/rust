@@ -30,7 +30,7 @@ impl SpanMap {
     /// in order.
     pub fn finish(&mut self) {
         always!(
-            self.spans.iter().tuple_windows().all(|(a, b)| a.0 < b.0),
+            self.spans.iter().array_windows().all(|[a, b]| a.0 < b.0),
             "spans are not in order"
         );
         self.spans.shrink_to_fit();

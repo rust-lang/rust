@@ -31,7 +31,7 @@ use tracing::{instrument, trace};
 
 use super::{AllocId, Allocation, InterpCx, MPlaceTy, Machine, MemoryKind, PlaceTy, interp_ok};
 use crate::const_eval::DummyMachine;
-use crate::{const_eval, errors};
+use crate::{const_eval, diagnostics};
 
 pub trait CompileTimeMachine<'tcx> = Machine<
         'tcx,
@@ -160,7 +160,8 @@ fn intern_as_new_static<'tcx>(
     tcx.set_nested_alloc_id_static(alloc_id, feed.def_id());
 
     if tcx.is_thread_local_static(static_id.into()) {
-        tcx.dcx().emit_err(errors::NestedStaticInThreadLocal { span: tcx.def_span(static_id) });
+        tcx.dcx()
+            .emit_err(diagnostics::NestedStaticInThreadLocal { span: tcx.def_span(static_id) });
     }
 
     // These do not inherit the codegen attrs of the parent static allocation, since

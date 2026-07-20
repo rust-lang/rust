@@ -13,6 +13,8 @@ use std::process::{self, Command, Stdio};
 use std::{env, thread};
 use walkdir::WalkDir;
 
+use crate::parse::SourceFile;
+
 pub struct Scoped<'inner, 'outer: 'inner, T>(T, PhantomData<&'inner mut T>, PhantomData<&'outer mut ()>);
 impl<T> Scoped<'_, '_, T> {
     pub fn new(value: T) -> Self {
@@ -96,13 +98,10 @@ impl<'a> File<'a> {
         }
     }
 
-    /// Opens and reads a file into a string, panicking of failure.
+    /// Opens a file for reading, panicking of failure.
     #[track_caller]
-    pub fn open_read_to_cleared_string<'dst>(
-        path: &'a (impl AsRef<Path> + ?Sized),
-        dst: &'dst mut String,
-    ) -> &'dst mut String {
-        Self::open(path, OpenOptions::new().read(true)).read_to_cleared_string(dst)
+    pub fn open_read(path: &'a (impl AsRef<Path> + ?Sized)) -> Self {
+        Self::open(path, OpenOptions::new().read(true))
     }
 
     /// Read the entire contents of a file to the given buffer.
@@ -118,13 +117,19 @@ impl<'a> File<'a> {
         self.read_append_to_string(dst)
     }
 
+    /// Writes the entire contents of the specified buffer to the file, panicking on failure.
+    #[track_caller]
+    pub fn write(&mut self, data: &[u8]) {
+        expect_action(self.inner.write_all(data), ErrAction::Write, self.path);
+    }
+
     /// Replaces the entire contents of a file.
     #[track_caller]
     pub fn replace_contents(&mut self, data: &[u8]) {
         let res = match self.inner.seek(SeekFrom::Start(0)) {
-            Ok(_) => match self.inner.write_all(data) {
-                Ok(()) => self.inner.set_len(data.len() as u64),
-                Err(e) => Err(e),
+            Ok(_) => {
+                self.write(data);
+                self.inner.set_len(data.len() as u64)
             },
             Err(e) => Err(e),
         };
@@ -365,6 +370,34 @@ impl FileUpdater {
     }
 
     #[track_caller]
+    pub fn update_loaded_file_checked(
+        &mut self,
+        tool: &str,
+        mode: UpdateMode,
+        file: &SourceFile<'_>,
+        update: &mut dyn FnMut(&Path, &str, &mut String) -> UpdateStatus,
+    ) {
+        self.dst_buf.clear();
+        match (
+            mode,
+            update(file.path.get().as_ref(), &file.contents, &mut self.dst_buf),
+        ) {
+            (UpdateMode::Check, UpdateStatus::Changed) => {
+                eprintln!(
+                    "the contents of `{}` are out of date\nplease run `{tool}` to update",
+                    file.path.get(),
+                );
+                process::exit(1);
+            },
+            (UpdateMode::Change, UpdateStatus::Changed) => {
+                File::open(file.path.get(), OpenOptions::new().truncate(true).write(true))
+                    .write(self.dst_buf.as_bytes());
+            },
+            (UpdateMode::Check | UpdateMode::Change, UpdateStatus::Unchanged) => {},
+        }
+    }
+
+    #[track_caller]
     fn update_file_inner(&mut self, path: &Path, update: &mut dyn FnMut(&Path, &str, &mut String) -> UpdateStatus) {
         let mut file = File::open(path, OpenOptions::new().read(true).write(true));
         file.read_to_cleared_string(&mut self.src_buf);
@@ -430,51 +463,59 @@ pub fn update_text_region_fn(
 }
 
 #[track_caller]
-pub fn try_rename_file(old_name: &Path, new_name: &Path) -> bool {
-    match OpenOptions::new().create_new(true).write(true).open(new_name) {
-        Ok(file) => drop(file),
-        Err(e) if matches!(e.kind(), io::ErrorKind::AlreadyExists | io::ErrorKind::NotFound) => return false,
-        Err(ref e) => panic_action(e, ErrAction::Create, new_name),
+pub fn try_rename_file(old_name: impl AsRef<Path>, new_name: impl AsRef<Path>) -> bool {
+    #[track_caller]
+    fn f(old_name: &Path, new_name: &Path) -> bool {
+        match OpenOptions::new().create_new(true).write(true).open(new_name) {
+            Ok(file) => drop(file),
+            Err(e) if matches!(e.kind(), io::ErrorKind::AlreadyExists | io::ErrorKind::NotFound) => return false,
+            Err(ref e) => panic_action(e, ErrAction::Create, new_name),
+        }
+        match fs::rename(old_name, new_name) {
+            Ok(()) => true,
+            Err(ref e) => {
+                drop(fs::remove_file(new_name));
+                // `NotADirectory` happens on posix when renaming a directory to an existing file.
+                // Windows will ignore this and rename anyways.
+                if matches!(e.kind(), io::ErrorKind::NotFound | io::ErrorKind::NotADirectory) {
+                    false
+                } else {
+                    panic_action(e, ErrAction::Rename, old_name);
+                }
+            },
+        }
     }
-    match fs::rename(old_name, new_name) {
-        Ok(()) => true,
-        Err(ref e) => {
-            drop(fs::remove_file(new_name));
-            // `NotADirectory` happens on posix when renaming a directory to an existing file.
-            // Windows will ignore this and rename anyways.
-            if matches!(e.kind(), io::ErrorKind::NotFound | io::ErrorKind::NotADirectory) {
-                false
-            } else {
-                panic_action(e, ErrAction::Rename, old_name);
-            }
-        },
-    }
+    f(old_name.as_ref(), new_name.as_ref())
 }
 
 #[track_caller]
-pub fn try_rename_dir(old_name: &Path, new_name: &Path) -> bool {
-    match fs::create_dir(new_name) {
-        Ok(()) => {},
-        Err(e) if matches!(e.kind(), io::ErrorKind::AlreadyExists | io::ErrorKind::NotFound) => return false,
-        Err(ref e) => panic_action(e, ErrAction::Create, new_name),
+pub fn try_rename_dir(old_name: impl AsRef<Path>, new_name: impl AsRef<Path>) -> bool {
+    #[track_caller]
+    fn f(old_name: &Path, new_name: &Path) -> bool {
+        match fs::create_dir(new_name) {
+            Ok(()) => {},
+            Err(e) if matches!(e.kind(), io::ErrorKind::AlreadyExists | io::ErrorKind::NotFound) => return false,
+            Err(ref e) => panic_action(e, ErrAction::Create, new_name),
+        }
+        // Windows can't reliably rename to an empty directory.
+        #[cfg(windows)]
+        drop(fs::remove_dir(new_name));
+        match fs::rename(old_name, new_name) {
+            Ok(()) => true,
+            Err(ref e) => {
+                // Already dropped earlier on windows.
+                #[cfg(not(windows))]
+                drop(fs::remove_dir(new_name));
+                // `NotADirectory` happens on posix when renaming a file to an existing directory.
+                if matches!(e.kind(), io::ErrorKind::NotFound | io::ErrorKind::NotADirectory) {
+                    false
+                } else {
+                    panic_action(e, ErrAction::Rename, old_name);
+                }
+            },
+        }
     }
-    // Windows can't reliably rename to an empty directory.
-    #[cfg(windows)]
-    drop(fs::remove_dir(new_name));
-    match fs::rename(old_name, new_name) {
-        Ok(()) => true,
-        Err(ref e) => {
-            // Already dropped earlier on windows.
-            #[cfg(not(windows))]
-            drop(fs::remove_dir(new_name));
-            // `NotADirectory` happens on posix when renaming a file to an existing directory.
-            if matches!(e.kind(), io::ErrorKind::NotFound | io::ErrorKind::NotADirectory) {
-                false
-            } else {
-                panic_action(e, ErrAction::Rename, old_name);
-            }
-        },
-    }
+    f(old_name.as_ref(), new_name.as_ref())
 }
 
 #[track_caller]
@@ -576,21 +617,29 @@ pub fn split_args_for_threads(
 }
 
 #[track_caller]
-pub fn delete_file_if_exists(path: &Path) -> bool {
-    match fs::remove_file(path) {
-        Ok(()) => true,
-        Err(e) if matches!(e.kind(), io::ErrorKind::NotFound | io::ErrorKind::IsADirectory) => false,
-        Err(ref e) => panic_action(e, ErrAction::Delete, path),
+pub fn delete_file_if_exists(path: impl AsRef<Path>) -> bool {
+    #[track_caller]
+    fn f(path: &Path) -> bool {
+        match fs::remove_file(path) {
+            Ok(()) => true,
+            Err(e) if matches!(e.kind(), io::ErrorKind::NotFound | io::ErrorKind::IsADirectory) => false,
+            Err(ref e) => panic_action(e, ErrAction::Delete, path),
+        }
     }
+    f(path.as_ref())
 }
 
 #[track_caller]
-pub fn delete_dir_if_exists(path: &Path) {
-    match fs::remove_dir_all(path) {
-        Ok(()) => {},
-        Err(e) if matches!(e.kind(), io::ErrorKind::NotFound | io::ErrorKind::NotADirectory) => {},
-        Err(ref e) => panic_action(e, ErrAction::Delete, path),
+pub fn delete_dir_if_exists(path: impl AsRef<Path>) {
+    #[track_caller]
+    fn f(path: &Path) {
+        match fs::remove_dir_all(path) {
+            Ok(()) => {},
+            Err(e) if matches!(e.kind(), io::ErrorKind::NotFound | io::ErrorKind::NotADirectory) => {},
+            Err(ref e) => panic_action(e, ErrAction::Delete, path),
+        }
     }
+    f(path.as_ref());
 }
 
 /// Walks all items excluding top-level dot files/directories and any target directories.
@@ -600,6 +649,28 @@ pub fn walk_dir_no_dot_or_target(p: impl AsRef<Path>) -> impl Iterator<Item = ::
             .file_name()
             .is_none_or(|x| x != "target" && x.as_encoded_bytes().first().copied() != Some(b'.'))
     })
+}
+
+pub fn slice_groups<T>(slice: &[T], split_idx: impl FnMut(&T, &[T]) -> usize) -> impl Iterator<Item = &[T]> {
+    struct I<'a, T, F> {
+        slice: &'a [T],
+        split_idx: F,
+    }
+    impl<'a, T, F: FnMut(&T, &[T]) -> usize> Iterator for I<'a, T, F> {
+        type Item = &'a [T];
+        fn next(&mut self) -> Option<Self::Item> {
+            let (head, tail) = self.slice.split_first()?;
+            let idx = (self.split_idx)(head, tail) + 1;
+            if let Some((head, tail)) = self.slice.split_at_checked(idx) {
+                self.slice = tail;
+                Some(head)
+            } else {
+                self.slice = &mut [];
+                None
+            }
+        }
+    }
+    I { slice, split_idx }
 }
 
 pub fn slice_groups_mut<T>(

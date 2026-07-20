@@ -1,7 +1,7 @@
 //! Regression test for https://github.com/rust-lang/rust/issues/15858
 
 //@ run-pass
-// FIXME(static_mut_refs): this could use an atomic
+// FIXME(static_mut_refs): use raw pointers instead of references
 #![allow(static_mut_refs)]
 static mut DROP_RAN: bool = false;
 
