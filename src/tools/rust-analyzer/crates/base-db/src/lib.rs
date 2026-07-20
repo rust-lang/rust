@@ -66,7 +66,6 @@ pub use crate::{
     },
 };
 use dashmap::{DashMap, mapref::entry::Entry};
-pub use query_group;
 use rustc_hash::{FxHashSet, FxHasher};
 use salsa::{Durability, Setter};
 pub use semver::{BuildMetadata, Prerelease, Version, VersionReq};
@@ -265,7 +264,7 @@ pub struct SourceRootInput {
 }
 
 #[salsa_macros::db]
-pub trait SourceDatabase: salsa::Database {
+pub trait SourceDatabase: salsa::Database + std::fmt::Debug {
     /// Text of the file.
     fn file_text(&self, file_id: vfs::FileId) -> FileText;
 
