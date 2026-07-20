@@ -525,7 +525,7 @@ pub const unsafe trait Allocator {
 pub unsafe trait GlobalAllocator: StaticAllocator + Sync + 'static {}
 
 /// Marks a type's [`Clone`] implementation as sound with regard to [`Allocator`] equivalence.
-/// Implementors must ensure that, upon cloning, the two allocators are interchangeable
+/// Implementors must ensure that, upon cloning, the two allocators are equivalent
 /// (i.e. it is possible to free memory with one that was allocated with the other).
 /// Further, mutable accesses such as moving or dropping the allocator must not invalidate
 /// its currently allocated blocks at least so long as clones exist.
@@ -536,8 +536,8 @@ pub unsafe trait GlobalAllocator: StaticAllocator + Sync + 'static {}
 #[unstable(feature = "allocator_api", issue = "32838")]
 pub unsafe trait AllocatorClone: Allocator + Clone {}
 
-/// Marks a type's [`PartialEq`] implementation as sound with regard to [`Allocator`].
-/// Implementors must ensure that, upon equality, the two allocators are interchangeable
+/// Marks a type's [`PartialEq`] implementation as sound with regard to [`Allocator`] equivalence.
+/// Implementors must ensure that, upon equality, the two allocators are equivalent
 /// (i.e. it is possible to free memory with one that was allocated with the other), and
 /// that the two allocators behave "as if" they are clones of each other as per
 /// [`AllocatorClone`].
