@@ -103,7 +103,14 @@ fn copy_via_tempfile_and_rename(src: &Path, dst: &Path) -> io::Result<()> {
     let mut tmp = tempfile::Builder::new()
         .prefix(dst.file_name().unwrap_or_default())
         .tempfile_in(dst_dir)?;
-    io::copy(&mut fs::File::open(src)?, tmp.as_file_mut())?;
+    let mut src_file = fs::File::open(src)?;
+    io::copy(&mut src_file, tmp.as_file_mut())?;
+    // `fs::copy` (what this function replaces) also copies the source's
+    // permissions, which matters for executable outputs; a freshly created
+    // NamedTempFile does not inherit them, so set them explicitly before
+    // persisting.
+    tmp.as_file()
+        .set_permissions(src_file.metadata()?.permissions())?;
     tmp.persist(dst).map_err(|e| e.error)?;
     Ok(())
 }
