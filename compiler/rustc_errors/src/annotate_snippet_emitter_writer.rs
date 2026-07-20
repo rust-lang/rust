@@ -47,6 +47,7 @@ pub struct AnnotateSnippetEmitter {
     track_diagnostics: bool,
     terminal_url: TerminalUrl,
     theme: OutputTheme,
+    show_suggestions_with_unavailable_source: bool,
 }
 
 impl Debug for AnnotateSnippetEmitter {
@@ -63,6 +64,10 @@ impl Debug for AnnotateSnippetEmitter {
             .field("track_diagnostics", &self.track_diagnostics)
             .field("terminal_url", &self.terminal_url)
             .field("theme", &self.theme)
+            .field(
+                "show_suggestions_with_unavailable_source",
+                &self.show_suggestions_with_unavailable_source,
+            )
             .finish()
     }
 }
@@ -136,6 +141,7 @@ impl AnnotateSnippetEmitter {
             track_diagnostics: false,
             terminal_url: TerminalUrl::No,
             theme: OutputTheme::Ascii,
+            show_suggestions_with_unavailable_source: false,
         }
     }
 
@@ -307,6 +313,12 @@ impl AnnotateSnippetEmitter {
                 SuggestionStyle::HideCodeInline
                 | SuggestionStyle::ShowCode
                 | SuggestionStyle::ShowAlways => {
+                    // Get the original unavailable spans before `suggestion` is consumed.
+                    let unavailable_source_span = if self.show_suggestions_with_unavailable_source {
+                        self.suggestion_span_with_unavailable_source(sm, &suggestion)
+                    } else {
+                        None
+                    };
                     let substitutions = suggestion
                         .substitutions
                         .into_iter()
@@ -356,6 +368,30 @@ impl AnnotateSnippetEmitter {
                         .collect::<Vec<_>>();
 
                     if substitutions.is_empty() {
+                        if let Some(span) = unavailable_source_span {
+                            let msg = format_diag_message(&suggestion.msg, args).to_string();
+                            report.push(std::mem::replace(
+                                &mut group,
+                                Group::with_title(
+                                    annotate_snippets::Level::HELP.secondary_title(msg),
+                                ),
+                            ));
+
+                            let file_ann = collect_annotations(args, &span, sm);
+                            let level = annotate_snippets::Level::HELP;
+                            for (file_idx, (file, annotations)) in file_ann.into_iter().enumerate()
+                            {
+                                group = self.unannotated_messages(
+                                    annotations,
+                                    &file.name,
+                                    sm,
+                                    file_idx,
+                                    &mut report,
+                                    group,
+                                    &level,
+                                );
+                            }
+                        }
                         continue;
                     }
                     let mut msg = format_diag_message(&suggestion.msg, args).to_string();
@@ -644,6 +680,34 @@ impl AnnotateSnippetEmitter {
             }
         }
         group
+    }
+
+    fn suggestion_span_with_unavailable_source(
+        &self,
+        sm: &Arc<SourceMap>,
+        suggestion: &CodeSuggestion,
+    ) -> Option<MultiSpan> {
+        // These spans cannot be rendered as source patches because their source
+        // files are unavailable, but can still be shown as locations.
+        let spans = suggestion
+            .substitutions
+            .iter()
+            .flat_map(|subst| &subst.parts)
+            .filter_map(|part| {
+                if sm.is_valid_span(part.span).is_err() {
+                    debug!("suggestion contains an invalid span: {:?}", part);
+                    return None;
+                }
+                let lines = sm.span_to_lines(part.span).ok()?;
+                if sm.ensure_source_file_source_present(&lines.file) {
+                    None
+                } else {
+                    Some(part.span)
+                }
+            })
+            .collect::<Vec<_>>();
+
+        if spans.is_empty() { None } else { Some(MultiSpan::from_spans(spans)) }
     }
 }
 
