@@ -1,7 +1,6 @@
 //! Regression test for issue <https://github.com/rust-lang/rust/issues/159591>.
 //! The null pointer `p` should never be dereferenced.
-//@[noopt] run-pass
-//@[opt] run-crash
+//@ run-pass
 //@ revisions: noopt opt
 //@ check-run-results
 //@[noopt] compile-flags: -C opt-level=0

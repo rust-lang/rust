@@ -159,6 +159,15 @@ fn target_self(val: i32) {
 // EMIT_MIR early_otherwise_branch.dont_hoist_deref.EarlyOtherwiseBranch.diff
 #[custom_mir(dialect = "runtime")]
 fn dont_hoist_deref(q: u64, p: *const u64) -> u64 {
+    // The dereference of `p` cannot be hoisted because the `otherwise` branch
+    // can be taken without dereferencing `p`.
+    // Hoisting the dereference could therefore cause UB when `p` is null.
+    // Hoisting a dereference also requires proving that the dereference is safe to reorder.
+    // CHECK-LABEL: fn dont_hoist_deref(
+    // CHECK: bb0: {
+    // CHECK-NEXT: switchInt(copy _1)
+    // CHECK: switchInt(copy (*_2))
+    // CHECK: switchInt(copy (*_2))
     mir! {
         {
             match q {
