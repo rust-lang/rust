@@ -1,0 +1,234 @@
+// MIR for `main` 0 nll
+
+| Free Region Mapping
+| '?0 | Global | ['?0, '?1]
+| '?1 | Local | ['?1]
+|
+| Inferred Region Values
+| '?0 | U0 | {bb0[0..=6], bb1[0..=6], bb2[0..=5], bb3[0..=1], bb4[0..=5], bb5[0..=10], bb6[0..=5], bb7[0..=1], bb8[0..=1], bb9[0], bb10[0], bb11[0], bb12[0], bb13[0], bb14[0], bb15[0], bb16[0], bb17[0], bb18[0], bb19[0], '?0, '?1}
+| '?1 | U0 | {bb0[0..=6], bb1[0..=6], bb2[0..=5], bb3[0..=1], bb4[0..=5], bb5[0..=10], bb6[0..=5], bb7[0..=1], bb8[0..=1], bb9[0], bb10[0], bb11[0], bb12[0], bb13[0], bb14[0], bb15[0], bb16[0], bb17[0], bb18[0], bb19[0], '?1}
+| '?2 | U0 | {bb0[3..=6], bb1[0..=6], bb2[0..=5], bb3[0..=1], bb4[0..=5], bb5[0..=10], bb9[0], bb10[0], bb11[0], bb14[0], bb15[0], bb16[0]}
+| '?3 | U0 | {bb0[3..=6], bb1[0..=6], bb2[0..=5], bb3[0..=1], bb4[0..=5], bb5[0..=10], bb9[0], bb10[0], bb11[0], bb14[0], bb15[0], bb16[0]}
+| '?4 | U0 | {bb0[3..=6], bb1[0..=6], bb2[0..=5], bb3[0..=1], bb4[0..=5], bb5[0..=10], bb9[0], bb10[0], bb11[0], bb14[0], bb15[0], bb16[0]}
+| '?5 | U0 | {bb0[4..=6], bb1[0..=6], bb2[0..=5], bb3[0..=1], bb4[0..=5], bb5[0..=10], bb9[0], bb10[0], bb11[0], bb14[0], bb15[0], bb16[0]}
+| '?6 | U0 | {bb0[5..=6], bb1[0..=6], bb2[0..=5], bb3[0..=1], bb4[0..=5], bb5[0..=10], bb9[0], bb10[0], bb11[0], bb14[0], bb15[0], bb16[0]}
+| '?7 | U0 | {bb0[6], bb1[0..=6], bb2[0..=5], bb3[0..=1], bb4[0..=5], bb5[0..=10], bb9[0], bb10[0], bb11[0], bb14[0], bb15[0], bb16[0]}
+| '?8 | U0 | {bb0[6], bb1[0..=6], bb2[0..=5], bb3[0..=1], bb4[0..=5], bb5[0..=10], bb9[0], bb10[0], bb11[0], bb14[0], bb15[0], bb16[0]}
+| '?9 | U0 | {bb0[6], bb1[0..=6], bb2[0..=5], bb3[0..=1], bb4[0..=5], bb5[0..=10], bb9[0], bb10[0], bb11[0], bb14[0], bb15[0], bb16[0]}
+| '?10 | U0 | {bb0[0..=6], bb1[0..=6], bb2[0..=5], bb3[0..=1], bb4[0..=5], bb5[0..=10], bb6[0..=5], bb7[0..=1], bb8[0..=1], bb9[0], bb10[0], bb11[0], bb12[0], bb13[0], bb14[0], bb15[0], bb16[0], bb17[0], bb18[0], bb19[0], '?0, '?1}
+| '?11 | U0 | {bb0[6], bb1[0..=6], bb2[0..=5], bb3[0..=1], bb4[0..=5], bb5[0..=10], bb9[0], bb10[0], bb11[0], bb14[0], bb15[0], bb16[0]}
+| '?12 | U0 | {bb0[6], bb1[0..=6], bb2[0..=5], bb3[0..=1], bb4[0..=5], bb5[0..=10], bb9[0], bb10[0], bb11[0], bb14[0], bb15[0], bb16[0]}
+| '?13 | U0 | {bb0[0..=6], bb1[0..=6], bb2[0..=5], bb3[0..=1], bb4[0..=5], bb5[0..=10], bb6[0..=5], bb7[0..=1], bb8[0..=1], bb9[0], bb10[0], bb11[0], bb12[0], bb13[0], bb14[0], bb15[0], bb16[0], bb17[0], bb18[0], bb19[0], '?0, '?1}
+| '?14 | U0 | {bb0[6], bb1[0..=6], bb2[0..=5], bb3[0..=1], bb4[0..=5], bb5[0..=10], bb9[0], bb10[0], bb11[0], bb14[0], bb15[0], bb16[0]}
+| '?15 | U0 | {bb0[5..=6], bb1[0..=6], bb2[0..=5], bb3[0..=1], bb4[0..=5], bb5[0..=10], bb9[0], bb10[0], bb11[0], bb14[0], bb15[0], bb16[0]}
+| '?16 | U0 | {bb0[6], bb1[0..=6], bb2[0..=5], bb3[0..=1], bb4[0..=5], bb5[0..=10], bb9[0], bb10[0], bb11[0], bb14[0], bb15[0], bb16[0]}
+| '?17 | U0 | {bb0[6], bb1[0..=6], bb2[0..=5], bb3[0..=1], bb4[0..=5], bb5[0..=10], bb9[0], bb10[0], bb11[0], bb14[0], bb15[0], bb16[0]}
+| '?18 | U0 | {bb0[0..=6], bb1[0..=6], bb2[0..=5], bb3[0..=1], bb4[0..=5], bb5[0..=10], bb6[0..=5], bb7[0..=1], bb8[0..=1], bb9[0], bb10[0], bb11[0], bb12[0], bb13[0], bb14[0], bb15[0], bb16[0], bb17[0], bb18[0], bb19[0], '?0, '?1}
+| '?19 | U0 | {bb0[6], bb1[0..=6], bb2[0..=5], bb3[0..=1], bb4[0..=5], bb5[0..=10], bb9[0], bb10[0], bb11[0], bb14[0], bb15[0], bb16[0]}
+| '?20 | U0 | {bb0[4..=6], bb1[0..=6], bb2[0..=5], bb3[0..=1], bb4[0..=5], bb5[0..=10], bb9[0], bb10[0], bb11[0], bb14[0], bb15[0], bb16[0]}
+| '?21 | U0 | {bb0[6], bb1[0..=6], bb2[0..=5], bb3[0..=1], bb4[0..=5], bb5[0..=10], bb9[0], bb10[0], bb11[0], bb14[0], bb15[0], bb16[0]}
+|
+| Inference Constraints
+| '?0 live at {bb0[0..=6], bb1[0..=6], bb2[0..=5], bb3[0..=1], bb4[0..=5], bb5[0..=10], bb6[0..=5], bb7[0..=1], bb8[0..=1], bb9[0], bb10[0], bb11[0], bb12[0], bb13[0], bb14[0], bb15[0], bb16[0], bb17[0], bb18[0], bb19[0]}
+| '?1 live at {bb0[0..=6], bb1[0..=6], bb2[0..=5], bb3[0..=1], bb4[0..=5], bb5[0..=10], bb6[0..=5], bb7[0..=1], bb8[0..=1], bb9[0], bb10[0], bb11[0], bb12[0], bb13[0], bb14[0], bb15[0], bb16[0], bb17[0], bb18[0], bb19[0]}
+| '?4 live at {bb0[3]}
+| '?5 live at {bb0[4]}
+| '?6 live at {bb0[5]}
+| '?7 live at {bb5[3]}
+| '?8 live at {bb5[10]}
+| '?9 live at {bb5[10]}
+| '?10 live at {bb5[10]}
+| '?11 live at {bb5[10]}
+| '?12 live at {bb1[0..=6], bb2[0..=5], bb3[0..=1], bb4[0..=5], bb5[0..=7], bb9[0], bb10[0], bb11[0], bb14[0], bb15[0], bb16[0]}
+| '?13 live at {bb1[0..=6], bb2[0..=5], bb3[0..=1], bb4[0..=5], bb5[0..=7], bb9[0], bb10[0], bb11[0], bb14[0], bb15[0], bb16[0]}
+| '?14 live at {bb0[6]}
+| '?15 live at {bb0[5]}
+| '?16 live at {bb5[4..=9]}
+| '?17 live at {bb5[8..=10]}
+| '?18 live at {bb5[8..=10]}
+| '?19 live at {bb5[10]}
+| '?20 live at {bb0[4]}
+| '?21 live at {bb0[6]}
+| '?0: '?10 due to Predicate($DIR/critical_unwind_edge.rs:26:8: 26:27 (#0)) at Single(bb5[10]) ($DIR/critical_unwind_edge.rs:41:5: 41:33 (#0)
+| '?0: '?10 due to Predicate($DIR/critical_unwind_edge.rs:26:14: 26:26 (#0)) at Single(bb5[10]) ($DIR/critical_unwind_edge.rs:41:5: 41:33 (#0)
+| '?0: '?13 due to Assignment at Single(bb0[6]) ($DIR/critical_unwind_edge.rs:37:21: 37:40 (#0)
+| '?2: '?3 due to Boring at Single(bb0[3]) ($DIR/critical_unwind_edge.rs:37:36: 37:39 (#0)
+| '?3: '?4 due to Boring at Single(bb0[3]) ($DIR/critical_unwind_edge.rs:37:36: 37:39 (#0)
+| '?4: '?3 due to Boring at Single(bb0[3]) ($DIR/critical_unwind_edge.rs:37:36: 37:39 (#0)
+| '?4: '?20 due to Boring at Single(bb0[3]) ($DIR/critical_unwind_edge.rs:37:36: 37:39 (#0)
+| '?5: '?15 due to Boring at Single(bb0[4]) ($DIR/critical_unwind_edge.rs:37:36: 37:39 (#0)
+| '?6: '?14 due to Boring at Single(bb0[5]) ($DIR/critical_unwind_edge.rs:37:36: 37:39 (#0)
+| '?7: '?16 due to Assignment at Single(bb5[3]) ($DIR/critical_unwind_edge.rs:40:23: 40:31 (#0)
+| '?8: '?9 due to Predicate($DIR/critical_unwind_edge.rs:26:14: 26:26 (#0)) at Single(bb5[10]) ($DIR/critical_unwind_edge.rs:41:5: 41:33 (#0)
+| '?8: '?11 due to Predicate($DIR/critical_unwind_edge.rs:27:14: 27:26 (#0)) at Single(bb5[10]) ($DIR/critical_unwind_edge.rs:41:5: 41:33 (#0)
+| '?9: '?8 due to Predicate($DIR/critical_unwind_edge.rs:26:14: 26:26 (#0)) at Single(bb5[10]) ($DIR/critical_unwind_edge.rs:41:5: 41:33 (#0)
+| '?9: '?17 due to CallArgument(Some(FnDef(DefId(0:13 ~ critical_unwind_edge[72cc]::diff), Binder { value: ['{erased}, (), std::boxed::Box<dyn [Binder { value: Trait(Trait), bound_vars: [] }, Binder { value: Projection(ExistentialProjection { def_id: DefId(0:4 ~ critical_unwind_edge[72cc]::Trait::Item), args: [], term: Term::Ty(&'{erased} ()), .. }), bound_vars: [] }] + '{erased}, std::alloc::Global>, &'{erased} std::vec::Vec<(), std::alloc::Global>], bound_vars: [] }))) at Single(bb5[10]) ($DIR/critical_unwind_edge.rs:41:5: 41:33 (#0)
+| '?10: '?0 due to Predicate($DIR/critical_unwind_edge.rs:26:8: 26:27 (#0)) at Single(bb5[10]) ($DIR/critical_unwind_edge.rs:41:5: 41:33 (#0)
+| '?10: '?0 due to Predicate($DIR/critical_unwind_edge.rs:26:14: 26:26 (#0)) at Single(bb5[10]) ($DIR/critical_unwind_edge.rs:41:5: 41:33 (#0)
+| '?11: '?8 due to Predicate($DIR/critical_unwind_edge.rs:27:14: 27:26 (#0)) at Single(bb5[10]) ($DIR/critical_unwind_edge.rs:41:5: 41:33 (#0)
+| '?12: '?17 due to Boring at Single(bb5[7]) ($DIR/critical_unwind_edge.rs:41:10: 41:19 (#0)
+| '?12: '?21 due to Assignment at Single(bb0[6]) ($DIR/critical_unwind_edge.rs:37:21: 37:40 (#0)
+| '?13: '?18 due to Boring at Single(bb5[7]) ($DIR/critical_unwind_edge.rs:41:10: 41:19 (#0)
+| '?14: '?21 due to CallArgument(Some(FnDef(DefId(0:12 ~ critical_unwind_edge[72cc]::make_dyn_trait), Binder { value: [], bound_vars: [] }))) at Single(bb0[6]) ($DIR/critical_unwind_edge.rs:37:21: 37:40 (#0)
+| '?15: '?6 due to Boring at Single(bb0[5]) ($DIR/critical_unwind_edge.rs:37:36: 37:39 (#0)
+| '?16: '?19 due to Boring at Single(bb5[9]) ($DIR/critical_unwind_edge.rs:41:21: 41:32 (#0)
+| '?17: '?9 due to CallArgument(Some(FnDef(DefId(0:13 ~ critical_unwind_edge[72cc]::diff), Binder { value: ['{erased}, (), std::boxed::Box<dyn [Binder { value: Trait(Trait), bound_vars: [] }, Binder { value: Projection(ExistentialProjection { def_id: DefId(0:4 ~ critical_unwind_edge[72cc]::Trait::Item), args: [], term: Term::Ty(&'{erased} ()), .. }), bound_vars: [] }] + '{erased}, std::alloc::Global>, &'{erased} std::vec::Vec<(), std::alloc::Global>], bound_vars: [] }))) at Single(bb5[10]) ($DIR/critical_unwind_edge.rs:41:5: 41:33 (#0)
+| '?17: '?12 due to Boring at Single(bb5[7]) ($DIR/critical_unwind_edge.rs:41:10: 41:19 (#0)
+| '?18: '?10 due to CallArgument(Some(FnDef(DefId(0:13 ~ critical_unwind_edge[72cc]::diff), Binder { value: ['{erased}, (), std::boxed::Box<dyn [Binder { value: Trait(Trait), bound_vars: [] }, Binder { value: Projection(ExistentialProjection { def_id: DefId(0:4 ~ critical_unwind_edge[72cc]::Trait::Item), args: [], term: Term::Ty(&'{erased} ()), .. }), bound_vars: [] }] + '{erased}, std::alloc::Global>, &'{erased} std::vec::Vec<(), std::alloc::Global>], bound_vars: [] }))) at Single(bb5[10]) ($DIR/critical_unwind_edge.rs:41:5: 41:33 (#0)
+| '?19: '?11 due to CallArgument(Some(FnDef(DefId(0:13 ~ critical_unwind_edge[72cc]::diff), Binder { value: ['{erased}, (), std::boxed::Box<dyn [Binder { value: Trait(Trait), bound_vars: [] }, Binder { value: Projection(ExistentialProjection { def_id: DefId(0:4 ~ critical_unwind_edge[72cc]::Trait::Item), args: [], term: Term::Ty(&'{erased} ()), .. }), bound_vars: [] }] + '{erased}, std::alloc::Global>, &'{erased} std::vec::Vec<(), std::alloc::Global>], bound_vars: [] }))) at Single(bb5[10]) ($DIR/critical_unwind_edge.rs:41:5: 41:33 (#0)
+| '?20: '?5 due to Boring at Single(bb0[4]) ($DIR/critical_unwind_edge.rs:37:36: 37:39 (#0)
+| '?21: '?12 due to Assignment at Single(bb0[6]) ($DIR/critical_unwind_edge.rs:37:21: 37:40 (#0)
+|
+| Borrows
+| bw0: issued at bb5[3] in '?7
+|
+| User Type Annotations
+| 0: user_ty: Canonical { value: TypeOf(Box<^c_0>::new_uninit at <impl boxed::<{impl#0}> for Box<^c_1, ^c_2>>), max_universe: U0, var_kinds: [Ty { ui: U0, sub_root: 0 }, Ty { ui: U0, sub_root: 1 }, Ty { ui: U0, sub_root: 2 }] }, span: $SRC_DIR/alloc/src/macros.rs:LL:COL, inferred_ty: fn() -> std::boxed::Box<std::mem::MaybeUninit<[(); ValTree(Leaf(0x0000000000000001): usize)]>> {std::boxed::Box::<[(); ValTree(Leaf(0x0000000000000001): usize)]>::new_uninit}
+|
+fn main() -> () {
+    let mut _0: ();
+    let _1: std::boxed::Box<(dyn Trait<Item = &'?12 ()> + '?13)>;
+    let mut _2: &'?14 ();
+    let _3: &'?15 ();
+    let _4: ();
+    let mut _6: std::boxed::Box<std::mem::MaybeUninit<[(); ValTree(Leaf(0x0000000000000001): usize)]>>;
+    let mut _7: std::boxed::Box<std::mem::MaybeUninit<[(); ValTree(Leaf(0x0000000000000001): usize)]>>;
+    let mut _8: ();
+    let _9: ();
+    let mut _10: ();
+    let _12: ();
+    let mut _13: std::boxed::Box<(dyn Trait<Item = &'?17 ()> + '?18)>;
+    let mut _14: &'?19 std::vec::Vec<()>;
+    let mut _15: &'?20 ();
+    scope 1 {
+        debug dyn_trait => _1;
+        let _5: std::vec::Vec<()>;
+        scope 2 {
+            debug storage => _5;
+            let _11: &'?16 std::vec::Vec<()>;
+            scope 3 {
+                debug storage_ref => _11;
+            }
+        }
+    }
+
+    bb0: {
+        StorageLive(_1);
+        StorageLive(_2);
+        StorageLive(_3);
+        _15 = const main::promoted[0];
+        _3 = &'?5 (*_15);
+        _2 = &'?6 (*_3);
+        _1 = ConstValue(ZeroSized: for<Region(BrNamed(DefId(0:21 ~ critical_unwind_edge[72cc]::make_dyn_trait::'_)))> fn(&'^0.Named(DefId(0:21 ~ critical_unwind_edge[72cc]::make_dyn_trait::'_)) ()) -> Box<(dyn Trait<Item = &'^1_0.Named(DefId(0:21 ~ critical_unwind_edge[72cc]::make_dyn_trait::'_)) ()> + 'static)> {make_dyn_trait})(move _2) -> [return: bb1, unwind: bb13];
+    }
+
+    bb1: {
+        StorageDead(_2);
+        FakeRead(ForLet(None), _1);
+        StorageDead(_3);
+        StorageLive(_5);
+        StorageLive(_6);
+        StorageLive(_7);
+        _7 = ConstValue(ZeroSized: fn() -> Box<MaybeUninit<[(); ValTree(Leaf(0x0000000000000001): usize)]>> {Box::<[(); ValTree(Leaf(0x0000000000000001): usize)]>::new_uninit})() -> [return: bb2, unwind: bb14];
+    }
+
+    bb2: {
+        StorageLive(_8);
+        _8 = ();
+        ((((*_7).1: std::mem::ManuallyDrop<[(); ValTree(Leaf(0x0000000000000001): usize)]>).0: std::mem::MaybeDangling<[(); ValTree(Leaf(0x0000000000000001): usize)]>).0: [(); ValTree(Leaf(0x0000000000000001): usize)]) = [move _8];
+        StorageDead(_8);
+        _6 = move _7;
+        drop(_7) -> [return: bb3, unwind: bb10];
+    }
+
+    bb3: {
+        StorageDead(_7);
+        _5 = ConstValue(ZeroSized: fn(Box<MaybeUninit<[(); ValTree(Leaf(0x0000000000000001): usize)]>>) -> Vec<()> {std::boxed::box_assume_init_into_vec_unsafe::<(), ValTree(Leaf(0x0000000000000001): usize)>})(move _6) -> [return: bb4, unwind: bb15];
+    }
+
+    bb4: {
+        StorageDead(_6);
+        FakeRead(ForLet(None), _5);
+        StorageLive(_9);
+        StorageLive(_10);
+        _10 = ();
+        _9 = ConstValue(ZeroSized: fn(()) {may_panic::<()>})(move _10) -> [return: bb5, unwind: bb16];
+    }
+
+    bb5: {
+        StorageDead(_10);
+        StorageDead(_9);
+        StorageLive(_11);
+        _11 = &'?7 _5;
+        FakeRead(ForLet(None), _11);
+        StorageLive(_12);
+        StorageLive(_13);
+        _13 = move _1;
+        StorageLive(_14);
+        _14 = copy _11;
+        _12 = ConstValue(ZeroSized: fn(Box<(dyn Trait<Item = &'?9 ()> + '?10)>, &'?11 Vec<()>) {diff::<'?8, (), Box<(dyn Trait<Item = &'?9 ()> + '?10)>, &'?11 Vec<()>>})(move _13, move _14) -> [return: bb6, unwind: bb17];
+    }
+
+    bb6: {
+        StorageDead(_14);
+        StorageDead(_13);
+        StorageDead(_12);
+        _0 = const ConstValue(ZeroSized: ());
+        StorageDead(_11);
+        drop(_5) -> [return: bb7, unwind: bb18];
+    }
+
+    bb7: {
+        StorageDead(_5);
+        drop(_1) -> [return: bb8, unwind: bb19];
+    }
+
+    bb8: {
+        StorageDead(_1);
+        return;
+    }
+
+    bb9 (cleanup): {
+        drop(_5) -> [return: bb11, unwind terminate(cleanup)];
+    }
+
+    bb10 (cleanup): {
+        drop(_6) -> [return: bb11, unwind terminate(cleanup)];
+    }
+
+    bb11 (cleanup): {
+        drop(_1) -> [return: bb12, unwind terminate(cleanup)];
+    }
+
+    bb12 (cleanup): {
+        resume;
+    }
+
+    bb13 (cleanup): {
+        goto -> bb12;
+    }
+
+    bb14 (cleanup): {
+        goto -> bb11;
+    }
+
+    bb15 (cleanup): {
+        goto -> bb11;
+    }
+
+    bb16 (cleanup): {
+        goto -> bb9;
+    }
+
+    bb17 (cleanup): {
+        goto -> bb9;
+    }
+
+    bb18 (cleanup): {
+        goto -> bb11;
+    }
+
+    bb19 (cleanup): {
+        goto -> bb12;
+    }
+}

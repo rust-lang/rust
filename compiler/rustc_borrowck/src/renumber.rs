@@ -1,9 +1,10 @@
-use rustc_index::IndexSlice;
+use rustc_index::{IndexSlice, IndexVec};
 use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_middle::mir::visit::{MutVisitor, TyContext};
-use rustc_middle::mir::{Body, ConstOperand, Location, Promoted};
+use rustc_middle::mir::*;
 use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, TypeFoldable, fold_regions};
 use rustc_span::Symbol;
+use thin_vec::ThinVec;
 use tracing::{debug, instrument};
 
 use crate::BorrowckInferCtxt;
@@ -21,10 +22,66 @@ pub(crate) fn renumber_mir<'tcx>(
     let mut renumberer = RegionRenumberer { infcx };
 
     for body in promoted.iter_mut() {
+        split_critical_edges(body);
         renumberer.visit_body_preserves_cfg(body);
     }
 
+    split_critical_edges(body);
     renumberer.visit_body_preserves_cfg(body);
+}
+
+#[instrument(skip(body), level = "debug")]
+fn split_critical_edges(body: &mut Body<'_>) {
+    let predecessors: IndexVec<BasicBlock, _> =
+        body.basic_blocks.predecessors().iter().map(|preds| preds.len()).collect();
+    debug!(?predecessors);
+
+    let mut new_blocks = vec![];
+    for bb in predecessors.indices() {
+        let term = body.basic_blocks[bb].terminator();
+        if term.successors().count() <= 1 {
+            continue;
+        }
+        if term.successors().all(|s| predecessors[s] <= 1) {
+            continue;
+        }
+
+        debug!(
+            "{bb:?} has critical edges: {:?}",
+            term.successors().map(|s| (s, predecessors[s])).collect::<Vec<_>>(),
+        );
+
+        let original_succ: Vec<_> = term.successors().collect();
+        new_blocks.push((bb, original_succ));
+    }
+
+    if new_blocks.is_empty() {
+        return;
+    }
+
+    debug!(?new_blocks);
+    let basic_blocks = body.basic_blocks.as_mut();
+    for (bb, successors) in new_blocks.iter_mut() {
+        let source_info = basic_blocks[*bb].terminator().source_info;
+        for target in successors.iter_mut() {
+            if predecessors[*target] <= 1 {
+                continue;
+            }
+
+            let is_cleanup = basic_blocks[*target].is_cleanup;
+            let terminator = Terminator {
+                source_info,
+                kind: TerminatorKind::Goto { target: *target },
+                attributes: ThinVec::new(),
+            };
+            *target = basic_blocks.push(BasicBlockData::new(Some(terminator), is_cleanup))
+        }
+    }
+
+    for (bb, new_succ) in new_blocks {
+        let mut new_succ = new_succ.into_iter();
+        basic_blocks[bb].terminator_mut().successors_mut(|succ| *succ = new_succ.next().unwrap());
+    }
 }
 
 // The fields are used only for debugging output in `sccs_info`.
