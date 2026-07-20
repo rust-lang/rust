@@ -148,29 +148,8 @@ For the PR:
 - Include a copy of the bump commit message in the PR description for quick reference. Feel free to
   include additional notes that might be helpful for the maintainers when reviewing.
 
-> [!TIP]
->
-> Example subtree-push PR title and description:
->
-> **PR title**: `subtree-push nightly-2025-10-07`
->
-> **PR description**:
->
-> ```text
-> Bumping the toolchain version as part of a git subtree push.
->
-> current toolchain (nightly-2025-04-02):
-> - 1.88.0-nightly (e2014e876 2025-04-01)
->
-> latest toolchain (nightly-2025-10-07):
-> - 1.92.0-nightly (f6aa851db 2025-10-07)
-> ```
-
-> [!WARNING]
->
-> Make sure to immediately follow-up with a subtree-pull direction, syncing `rustfmt` to
-> `rust-lang/rust`. We need the {subtree-push, subtree-pull} directions to be performed in
-> lock-step, to minimize any changes in between that makes the logistics more complex.
+**Make sure to minimize the time between the subtree-push direction and the subtree-pull direction
+to avoid unnecessary complications.**
 
 ## Subtree pull direction: syncing from `rustfmt` to `rust-lang/rust`
 
