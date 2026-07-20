@@ -49,14 +49,15 @@ fn main() -> Result<()> {
     let targets_to_skip =
         targets_to_skip.as_deref().map(|s| s.split(",").collect::<Vec<_>>()).unwrap_or_default();
 
-    let rustc =
-        PathBuf::from(std::env::var("RUSTC").expect("must pass RUSTC env var pointing to rustc"));
+    let rustc = PathBuf::from(
+        std::env::var_os("RUSTC").ok_or_eyre("must pass RUSTC env var pointing to rustc")?,
+    );
     let check_only = std::env::var("TARGET_CHECK_ONLY").as_deref() == Ok("1");
 
-    let targets = rustc_stdout(&rustc, &["--print", "target-list"]);
-    let targets =
-        targets.lines().filter(|target| !targets_to_skip.contains(target)).collect::<Vec<_>>();
+    eprintln!("Collecting rustc target information");
+    let rustc_targets = rustc_target_info(&rustc, &targets_to_skip)?;
 
+    eprintln!("Collecting target_infos");
     let mut info_patterns = parse::load_target_infos(Path::new(input_dir))
         .wrap_err("failed loading target_info")?
         .into_iter()
@@ -67,21 +68,18 @@ fn main() -> Result<()> {
         })
         .collect::<Vec<_>>();
 
-    eprintln!("Collecting rustc information");
-    let rustc_infos =
-        targets.iter().map(|target| rustc_target_info(&rustc, target)).collect::<Vec<_>>();
-
-    let targets = targets
+    let targets = rustc_targets
         .into_iter()
-        .map(|target| target_doc_info(&mut info_patterns, target))
-        .zip(rustc_infos)
-        .map(|(md, rustc)| TargetInfo {
-            name: md.name,
-            maintainers: md.maintainers,
-            sections: md.sections,
-            footnotes: md.footnotes,
-            target_cfgs: rustc.target_cfgs,
-            metadata: rustc.metadata,
+        .map(|rustc| {
+            let md = target_doc_info(&mut info_patterns, &rustc.name);
+            TargetInfo {
+                name: rustc.name,
+                maintainers: md.maintainers,
+                sections: md.sections,
+                footnotes: md.footnotes,
+                target_cfgs: rustc.target_cfgs,
+                metadata: rustc.metadata,
+            }
         })
         .collect::<Vec<_>>();
 
@@ -147,7 +145,6 @@ struct TargetPatternEntry {
 
 /// Information about a target obtained from the target_info markdown file.
 struct TargetInfoMd {
-    name: String,
     maintainers: Vec<String>,
     sections: Vec<(String, String)>,
     footnotes: Vec<String>,
@@ -186,11 +183,12 @@ fn target_doc_info(info_patterns: &mut [TargetPatternEntry], target: &str) -> Ta
         }
     }
 
-    TargetInfoMd { name: target.to_owned(), maintainers, sections, footnotes }
+    TargetInfoMd { maintainers, sections, footnotes }
 }
 
 /// Information about a target obtained from rustc.
 struct RustcTargetInfo {
+    name: String,
     target_cfgs: Vec<(String, String)>,
     metadata: RustcTargetMetadata,
 }
@@ -203,47 +201,59 @@ struct RustcTargetMetadata {
     std: Option<bool>,
 }
 
-/// Get information about a target from rustc.
-fn rustc_target_info(rustc: &Path, target: &str) -> RustcTargetInfo {
-    let cfgs = rustc_stdout(rustc, &["--print", "cfg", "--target", target]);
-    let target_cfgs = cfgs
-        .lines()
-        .filter_map(|line| {
-            if line.starts_with("target_") {
-                let Some((key, value)) = line.split_once('=') else {
-                    // For example `unix`
-                    return None;
-                };
-                Some((key.to_owned(), value.to_owned()))
-            } else {
-                None
-            }
-        })
-        .collect();
-
+/// Get information about targets from rustc.
+fn rustc_target_info(rustc: &Path, targets_to_skip: &[&str]) -> Result<Vec<RustcTargetInfo>> {
     #[derive(Deserialize)]
     struct TargetJson {
         metadata: RustcTargetMetadata,
     }
 
-    let json_spec = rustc_stdout(
-        rustc,
-        &["-Zunstable-options", "--print", "target-spec-json", "--target", target],
-    );
-    let spec = serde_json::from_str::<TargetJson>(&json_spec)
-        .expect("parsing --print target-spec-json for metadata");
+    let json_specs =
+        rustc_stdout(rustc, &["-Zunstable-options", "--print", "all-target-specs-json"])?;
+    let specs = serde_json::from_str::<HashMap<String, TargetJson>>(&json_specs)
+        .wrap_err("parsing --print all-target-specs-json for metadata")?;
 
-    RustcTargetInfo { target_cfgs, metadata: spec.metadata }
+    let mut rustc_targets = Vec::with_capacity(specs.len());
+
+    for (target, spec) in specs {
+        if targets_to_skip.contains(&&*target) {
+            continue;
+        }
+
+        let cfgs = rustc_stdout(rustc, &["--print", "cfg", "--target", &target])
+            .wrap_err_with(|| format!("failed to get target cfgs for {target}"))?;
+        let target_cfgs = cfgs
+            .lines()
+            .filter_map(|line| {
+                if line.starts_with("target_") {
+                    let Some((key, value)) = line.split_once('=') else {
+                        // For example `unix`
+                        return None;
+                    };
+                    Some((key.to_owned(), value.to_owned()))
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        rustc_targets.push(RustcTargetInfo { name: target, target_cfgs, metadata: spec.metadata });
+    }
+
+    rustc_targets.sort_unstable_by(|a, b| a.name.cmp(&b.name));
+
+    Ok(rustc_targets)
 }
 
-fn rustc_stdout(rustc: &Path, args: &[&str]) -> String {
-    let output = Command::new(rustc).args(args).output().unwrap();
-    if !output.status.success() {
-        panic!(
+fn rustc_stdout(rustc: &Path, args: &[&str]) -> Result<String> {
+    let output = Command::new(rustc).args(args).output()?;
+    if output.status.success() {
+        Ok(String::from_utf8(output.stdout)?)
+    } else {
+        bail!(
             "rustc failed: {}, {}",
             output.status,
             String::from_utf8(output.stderr).unwrap_or_default()
-        )
+        );
     }
-    String::from_utf8(output.stdout).unwrap()
 }
