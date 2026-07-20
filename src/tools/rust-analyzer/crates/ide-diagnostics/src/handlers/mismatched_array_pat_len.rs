@@ -111,4 +111,15 @@ fn f(arr: [i32; 3]) {
 "#,
         );
     }
+
+    #[test]
+    fn destructuring_assignment_array_rest() {
+        check_diagnostics(
+            r#"
+fn main() {
+    [..] = [1, 2, 3];
+}
+    "#,
+        );
+    }
 }

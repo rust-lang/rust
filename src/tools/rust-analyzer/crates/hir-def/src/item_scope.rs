@@ -483,8 +483,11 @@ impl ItemScope {
     }
 
     pub(crate) fn remove_from_value_ns(&mut self, name: &Name, def: ModuleDefId) {
-        let entry = self.values.shift_remove(name);
-        assert!(entry.is_some_and(|entry| entry.def == def))
+        // predicate needed since a different item with the same name may be registered instead,
+        // leading to `shift_remove` removing the wrong item.
+        if self.values.get(name).is_some_and(|entry| entry.def == def) {
+            let _ = self.values.shift_remove(name);
+        }
     }
 
     pub(crate) fn get_legacy_macro(&self, name: &Name) -> Option<&[MacroId]> {
