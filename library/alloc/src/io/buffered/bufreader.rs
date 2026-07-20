@@ -1,6 +1,6 @@
 mod buffer;
 
-pub(super) use buffer::Buffer;
+use buffer::Buffer;
 
 use crate::fmt;
 use crate::io::{
@@ -79,16 +79,14 @@ impl<R: Read> BufReader<R> {
         BufReader::with_capacity(DEFAULT_BUF_SIZE, inner)
     }
 
+    /// Attempts to allocate an internal buffer, _then_ calls the provided function
+    /// to retrieve the inner reader `R`.
     #[doc(hidden)]
     #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
-    pub fn try_new_buffer() -> io::Result<Buffer> {
-        Buffer::try_with_capacity(DEFAULT_BUF_SIZE)
-    }
-
-    #[doc(hidden)]
-    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
-    pub fn with_buffer(inner: R, buf: Buffer) -> Self {
-        Self { inner, buf }
+    pub fn try_new_with(f: impl FnOnce() -> io::Result<R>) -> io::Result<Self> {
+        let buf = Buffer::try_with_capacity(DEFAULT_BUF_SIZE)?;
+        let inner = f()?;
+        Ok(Self { inner, buf })
     }
 
     /// Creates a new `BufReader<R>` with the specified buffer capacity.

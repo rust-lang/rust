@@ -99,18 +99,16 @@ impl<W: Write> BufWriter<W> {
         BufWriter::with_capacity(DEFAULT_BUF_SIZE, inner)
     }
 
+    /// Attempts to allocate an internal buffer, _then_ calls the provided function
+    /// to retrieve the inner writer `W`.
     #[doc(hidden)]
     #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
-    pub fn try_new_buffer() -> io::Result<Vec<u8>> {
-        Vec::try_with_capacity(DEFAULT_BUF_SIZE).map_err(|_| {
+    pub fn try_new_with(f: impl FnOnce() -> io::Result<W>) -> io::Result<Self> {
+        let buf = Vec::try_with_capacity(DEFAULT_BUF_SIZE).map_err(|_| {
             io::const_error!(ErrorKind::OutOfMemory, "failed to allocate write buffer")
-        })
-    }
-
-    #[doc(hidden)]
-    #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
-    pub fn with_buffer(inner: W, buf: Vec<u8>) -> Self {
-        Self { inner, buf, panicked: false }
+        })?;
+        let inner = f()?;
+        Ok(Self { inner, buf, panicked: false })
     }
 
     /// Creates a new `BufWriter<W>` with at least the specified buffer capacity.

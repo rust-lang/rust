@@ -15,10 +15,7 @@ use core::mem::MaybeUninit;
 use crate::boxed::Box;
 use crate::io::{self, BorrowedBuf, ErrorKind, Read};
 
-#[doc(hidden)]
-#[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
-#[derive(Debug)]
-pub struct Buffer {
+pub(super) struct Buffer {
     // The buffer.
     buf: Box<[MaybeUninit<u8>]>,
     // The current seek offset into `buf`, must always be <= `filled`.
