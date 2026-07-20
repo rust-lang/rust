@@ -172,7 +172,7 @@ impl<'sess> AttributeParser<'sess> {
         Self::parse_single_args(
             sess,
             attr.span,
-            attr_item.span(),
+            attr_item.span,
             attr.style,
             path,
             Some(attr_item.unsafety),
@@ -334,7 +334,7 @@ impl<'sess> AttributeParser<'sess> {
                     let attr_path = AttrPath::from_ast(&n.item.path, lower_span);
                     let parts =
                         n.item.path.segments.iter().map(|seg| seg.ident.name).collect::<Vec<_>>();
-                    let inner_span = lower_span(n.item.span());
+                    let inner_span = lower_span(n.item.span);
 
                     if let Some(accept) = ATTRIBUTE_PARSERS.accepters.get(parts.as_slice()) {
                         self.check_attribute_safety(

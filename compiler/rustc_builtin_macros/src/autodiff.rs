@@ -20,7 +20,7 @@ mod llvm_enzyme {
     };
     use rustc_expand::base::{Annotatable, ExtCtxt};
     use rustc_hir::attrs::RustcAutodiff;
-    use rustc_span::{Ident, Span, Symbol, kw, sym};
+    use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
     use thin_vec::{ThinVec, thin_vec};
     use tracing::{debug, trace};
 
@@ -362,6 +362,7 @@ mod llvm_enzyme {
             unsafety: ast::Safety::Default,
             path: ast::Path::from_ident(Ident::with_dummy_span(sym::inline)),
             args: ast::AttrArgs::Delimited(never_arg),
+            span: DUMMY_SP,
         };
         let inline_never_attr = Box::new(ast::NormalAttr { item: inline_item, tokens: None });
         let new_id = ecx.sess.psess.attr_id_generator.mk_attr_id();
