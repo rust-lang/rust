@@ -388,11 +388,11 @@ fn inlined_slow_read_byte<R: Read>(reader: &mut R) -> Option<Result<u8>> {
 // Used by `BufReader::spec_read_byte`, for which the `inline(never)` is
 // important.
 #[inline(never)]
-pub(in crate::io) fn uninlined_slow_read_byte<R: Read>(reader: &mut R) -> Option<Result<u8>> {
+pub(super) fn uninlined_slow_read_byte<R: Read>(reader: &mut R) -> Option<Result<u8>> {
     inlined_slow_read_byte(reader)
 }
 
-pub(in crate::io) const fn bytes<R>(inner: R) -> Bytes<R> {
+pub(super) const fn bytes<R>(inner: R) -> Bytes<R> {
     Bytes { inner }
 }
 
@@ -430,7 +430,7 @@ impl<B: BufRead> Iterator for Split<B> {
     }
 }
 
-pub(in crate::io) const fn split<B>(buf: B, delim: u8) -> Split<B> {
+pub(super) const fn split<B>(buf: B, delim: u8) -> Split<B> {
     Split { buf, delim }
 }
 
@@ -469,6 +469,6 @@ impl<B: BufRead> Iterator for Lines<B> {
     }
 }
 
-pub(in crate::io) const fn lines<B>(buf: B) -> Lines<B> {
+pub(super) const fn lines<B>(buf: B) -> Lines<B> {
     Lines { buf }
 }
