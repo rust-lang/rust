@@ -622,7 +622,7 @@ pub enum Spacing {
 
 /// A `TokenStream` is an abstract sequence of tokens, organized into [`TokenTree`]s.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Encodable, Decodable)]
-pub struct TokenStream(pub(crate) Arc<Vec<TokenTree>>);
+pub struct TokenStream(Arc<Vec<TokenTree>>);
 
 impl TokenStream {
     pub fn new(tts: Vec<TokenTree>) -> TokenStream {
