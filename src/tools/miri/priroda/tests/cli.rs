@@ -32,11 +32,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Regex::new(&regex::escape(&manifest_dir.display().to_string())).unwrap();
     let miri_dir_regex = Regex::new(&regex::escape(&miri_dir.display().to_string())).unwrap();
     let rustc_sysroot_regex = Regex::new(&regex::escape(&rustc_sysroot)).unwrap();
-
+    let pointer_regex = Regex::new(r"0x[0-9a-f]+\[alloc[0-9]+\]<[0-9]+>").unwrap();
     config.comment_defaults.base().normalize_stdout.extend([
         (manifest_dir_regex.into(), b"{MANIFEST_DIR}".to_vec()),
         (miri_dir_regex.into(), b"{MIRI_DIR}".to_vec()),
         (rustc_sysroot_regex.into(), b"{RUSTC_SYSROOT}".to_vec()),
+        (pointer_regex.into(), b"{ALLOC_PTR}".to_vec()),
     ]);
 
     // Priroda CLI tests do not currently require annotation comments in the test files

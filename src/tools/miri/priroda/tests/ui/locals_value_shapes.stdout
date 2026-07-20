@@ -1,0 +1,38 @@
+(priroda) breakpoint added: {MANIFEST_DIR}/tests/ui/locals_value_shapes.rs:29
+(priroda) Hit breakpoint
+{MANIFEST_DIR}/tests/ui/locals_value_shapes.rs:29
+(priroda) Name: <none>, Id: _0, Ty: (), Value: <uninit>
+Name: dead_box, Id: _1, Ty: std::boxed::Box<u8>, Value: [{ALLOC_PTR}]
+Name: consumed, Id: _2, Ty: std::boxed::Box<u8>, Value: [{ALLOC_PTR}]
+Name: <none>, Id: _3, Ty: (), Value: <dead>
+Name: <none>, Id: _4, Ty: std::boxed::Box<u8>, Value: <dead>
+Name: pointed_box, Id: _5, Ty: std::boxed::Box<u8>, Value: [{ALLOC_PTR}]
+Name: pointer_box, Id: _6, Ty: &std::boxed::Box<u8>, Value: {&_: &std::boxed::Box<u8>}
+Name: scalar, Id: _7, Ty: u8, Value: 42_u8
+Name: pointed, Id: _8, Ty: u8, Value: [33]
+Name: scalar_pointer, Id: _9, Ty: &u8, Value: {&_: &u8}
+Name: scalar_pair, Id: _10, Ty: &[u8], Value: (pointer to {ALLOC_PTR}, 0x0000000000000002): &[u8]
+Name: <none>, Id: _11, Ty: &[u8], Value: (pointer to {ALLOC_PTR}, 0x0000000000000002): &[u8]
+Name: <none>, Id: _12, Ty: &[u8; 2], Value: <dead>
+Name: <none>, Id: _13, Ty: [u8; 2], Value: <uninit>
+Name: <none>, Id: _14, Ty: std::ops::RangeFull, Value: <dead>
+Name: mplace, Id: _15, Ty: Aggregate, Value: [34 12 2a __]
+Name: <none>, Id: _16, Ty: u8, Value: <dead>
+Name: uninit_scalar, Id: _17, Ty: u32, Value: <uninit>
+Name: <none>, Id: _18, Ty: (u8, &u8, usize, &Aggregate), Value: <dead>
+Name: <none>, Id: _19, Ty: (u8, &u8, usize, &Aggregate), Value: <dead>
+Name: <none>, Id: _20, Ty: u8, Value: <dead>
+Name: <none>, Id: _21, Ty: &u8, Value: <dead>
+Name: <none>, Id: _22, Ty: usize, Value: <dead>
+Name: <none>, Id: _23, Ty: &[u8], Value: <dead>
+Name: <none>, Id: _24, Ty: &Aggregate, Value: <dead>
+Name: <none>, Id: _25, Ty: &[u8; 2], Value: {&_: &[u8; 2]}
+(priroda) Id: _0, Ty: (), Value: <uninit>
+(priroda) Id: _4, Ty: std::boxed::Box<u8>, Value: <dead>
+(priroda) Id: _5, Ty: std::boxed::Box<u8>, Value: [{ALLOC_PTR}]
+(priroda) Id: _7, Ty: u8, Value: 42_u8
+(priroda) Id: _8, Ty: u8, Value: [33]
+(priroda) Id: _13, Ty: [u8; 2], Value: <uninit>
+(priroda) Id: _15, Ty: Aggregate, Value: [34 12 2a __]
+(priroda) no local for this id
+(priroda) quitting

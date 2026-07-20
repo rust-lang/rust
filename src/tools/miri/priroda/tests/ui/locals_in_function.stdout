@@ -2,7 +2,7 @@
 (priroda) Hit breakpoint
 {MANIFEST_DIR}/tests/ui/locals_in_function.rs:5
 (priroda) Name: <none>, Id: _0, Ty: (), Value: <uninit>
-Name: x, Id: _1, Ty: i32, Value: <immediate>
+Name: x, Id: _1, Ty: i32, Value: 1_i32
 Name: y, Id: _2, Ty: bool, Value: <dead>
 Name: <none>, Id: _3, Ty: (i32, bool), Value: <dead>
 Name: <none>, Id: _4, Ty: i32, Value: <dead>

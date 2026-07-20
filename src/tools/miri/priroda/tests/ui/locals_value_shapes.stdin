@@ -1,0 +1,12 @@
+break tests/ui/locals_value_shapes.rs:29
+continue
+locals
+print 0
+print 4
+print 5
+print 7
+print 8
+print 13
+print 15
+print 999
+quit

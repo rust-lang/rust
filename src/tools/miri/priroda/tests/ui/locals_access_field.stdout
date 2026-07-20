@@ -2,13 +2,13 @@
 (priroda) Hit breakpoint
 {MANIFEST_DIR}/tests/ui/locals_access_field.rs:14
 (priroda) Name: <none>, Id: _0, Ty: (), Value: <uninit>
-Name: extraslice, Id: _1, Ty: ExtraSlice<'_>, Value: <indirect>
-Name: _slice, Id: _2, Ty: &[u8], Value: <immediate-pair>
-Name: _extra, Id: _3, Ty: u32, Value: <immediate>
+Name: extraslice, Id: _1, Ty: ExtraSlice<'_>, Value: [{ALLOC_PTR} 00 00 00 00 00 00 00 00 00 00 00 00 __ __ __ __]
+Name: _slice, Id: _2, Ty: &[u8], Value: (pointer to {ALLOC_PTR}, 0x0000000000000000): &[u8]
+Name: _extra, Id: _3, Ty: u32, Value: 0_u32
 (priroda) Id: _0, Ty: (), Value: <uninit>
-(priroda) Id: _1, Ty: ExtraSlice<'_>, Value: <indirect>
-(priroda) Id: _2, Ty: &[u8], Value: <immediate-pair>
-(priroda) Id: _3, Ty: u32, Value: <immediate>
+(priroda) Id: _1, Ty: ExtraSlice<'_>, Value: [{ALLOC_PTR} 00 00 00 00 00 00 00 00 00 00 00 00 __ __ __ __]
+(priroda) Id: _2, Ty: &[u8], Value: (pointer to {ALLOC_PTR}, 0x0000000000000000): &[u8]
+(priroda) Id: _3, Ty: u32, Value: 0_u32
 (priroda) no local for this id
 (priroda) no local for this id
 (priroda) quitting
