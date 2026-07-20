@@ -428,19 +428,7 @@ impl<R: ?Sized + Read> Read for BufReader<R> {
 
         cfg_select! {
             no_global_oom_handling => {
-                // SAFETY:
-                // * inner_buf and buf are non-overlapping
-                // * buf[..len] is already initialized
-                // * buf[len..len + count] is initialized by copy_nonoverlapping
-                // * len + count is within the capacity of buf based on the reservation completed above
-                unsafe {
-                    let count = inner_buf.len();
-                    let len = buf.len();
-                    let src = inner_buf.as_ptr();
-                    let dst = buf.as_mut_ptr().add(len);
-                    core::ptr::copy_nonoverlapping(src, dst, count);
-                    buf.set_len(len + count);
-                }
+                buf.try_extend_from_slice_of_bytes(inner_buf)?;
             }
             _ => {
                 buf.extend_from_slice(inner_buf);
