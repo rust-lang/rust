@@ -130,7 +130,7 @@ impl<'db> SolverDelegate for SolverContext<'db> {
 
     fn add_item_bounds_for_hidden_type(
         &self,
-        opaque_id: OpaqueTyIdWrapper,
+        opaque_id: OpaqueTyIdWrapper<'_>,
         args: GenericArgs<'db>,
         param_env: ParamEnv<'db>,
         hidden_ty: Ty<'db>,

@@ -1267,7 +1267,11 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
         }
     }
 
-    fn lower_impl_trait(&mut self, def_id: InternedOpaqueTyId, bounds: &[TypeBound]) -> ImplTrait {
+    fn lower_impl_trait(
+        &mut self,
+        def_id: InternedOpaqueTyId<'db>,
+        bounds: &[TypeBound],
+    ) -> ImplTrait {
         let interner = self.interner;
         cov_mark::hit!(lower_rpit);
         let args = GenericArgs::identity_for_item(interner, def_id.into());
@@ -1526,7 +1530,7 @@ impl ImplTraitId {
     }
 }
 
-impl InternedOpaqueTyId {
+impl InternedOpaqueTyId<'_> {
     #[inline]
     pub fn predicates<'db>(self, db: &'db dyn HirDatabase) -> EarlyBinder<'db, &'db [Clause<'db>]> {
         self.loc(db).predicates(db)

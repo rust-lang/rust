@@ -498,9 +498,9 @@ fn contains_illegal_impl_trait_in_trait<'db>(
     db: &'db dyn HirDatabase,
     sig: &EarlyBinder<'db, Binder<'db, rustc_type_ir::FnSig<DbInterner<'db>>>>,
 ) -> Option<MethodViolationCode> {
-    struct OpaqueTypeCollector(FxHashSet<InternedOpaqueTyId>);
+    struct OpaqueTypeCollector<'db>(FxHashSet<InternedOpaqueTyId<'db>>);
 
-    impl<'db> rustc_type_ir::TypeVisitor<DbInterner<'db>> for OpaqueTypeCollector {
+    impl<'db> rustc_type_ir::TypeVisitor<DbInterner<'db>> for OpaqueTypeCollector<'db> {
         type Result = ControlFlow<()>;
 
         fn visit_ty(
