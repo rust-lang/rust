@@ -1,9 +1,7 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::DefId;
-use rustc_infer::infer::relate::{
-    PredicateEmittingRelation, Relate, RelateResult, StructurallyRelateAliases, TypeRelation,
-};
+use rustc_infer::infer::relate::{PredicateEmittingRelation, Relate, RelateResult, TypeRelation};
 use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin};
 use rustc_infer::traits::Obligation;
 use rustc_infer::traits::solve::Goal;
@@ -550,10 +548,6 @@ impl<'b, 'tcx> TypeRelation<TyCtxt<'tcx>> for NllTypeRelating<'_, 'b, 'tcx> {
 impl<'b, 'tcx> PredicateEmittingRelation<InferCtxt<'tcx>> for NllTypeRelating<'_, 'b, 'tcx> {
     fn span(&self) -> Span {
         self.locations.span(self.type_checker.body)
-    }
-
-    fn structurally_relate_aliases(&self) -> StructurallyRelateAliases {
-        StructurallyRelateAliases::No
     }
 
     fn param_env(&self) -> ty::ParamEnv<'tcx> {

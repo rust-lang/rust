@@ -14,7 +14,9 @@ use std::iter;
 use canonicalizer::Canonicalizer;
 use rustc_index::IndexVec;
 use rustc_type_ir::inherent::*;
-use rustc_type_ir::relate::solver_relating::RelateExt;
+use rustc_type_ir::relate::{
+    self, Relate, RelateResult, TypeRelation, VarianceDiagInfo, relate_args_invariantly,
+};
 use rustc_type_ir::{
     self as ty, Canonical, CanonicalVarKind, CanonicalVarValues, InferCtxtLike, Interner,
     TypeFoldable, TypingMode, TypingModeEqWrapper,
@@ -246,6 +248,199 @@ where
     })
 }
 
+/// Enforce that `a` is equal to `b`.
+///
+/// In normal type relating, we don't structurally relate non-rigid aliases
+/// as they can be normalized to any type. So we emit projection obligations to
+/// defer the checks. E.g. in `infcx.eq` or `infcx.relate`.
+/// But when unifying query response with original vars, we want to directly
+/// set the original vars to values in response.
+///
+/// Therefore this type relation is created to **always** structurally relate
+/// aliases, or more specifically, structurally eq everything.
+struct ResponseRelating<'infcx, Infcx, I: Interner> {
+    infcx: &'infcx Infcx,
+    span: I::Span,
+}
+
+impl<'infcx, Infcx, I> ResponseRelating<'infcx, Infcx, I>
+where
+    Infcx: InferCtxtLike<Interner = I>,
+    I: Interner,
+{
+    fn new(infcx: &'infcx Infcx, span: I::Span) -> Self {
+        ResponseRelating { infcx, span }
+    }
+}
+
+impl<Infcx, I> TypeRelation<I> for ResponseRelating<'_, Infcx, I>
+where
+    Infcx: InferCtxtLike<Interner = I>,
+    I: Interner,
+{
+    fn cx(&self) -> I {
+        self.infcx.cx()
+    }
+
+    fn relate_ty_args(
+        &mut self,
+        a_ty: I::Ty,
+        _b_ty: I::Ty,
+        _def_id: I::DefId,
+        a_args: I::GenericArgs,
+        b_args: I::GenericArgs,
+        _: impl FnOnce(I::GenericArgs) -> I::Ty,
+    ) -> RelateResult<I, I::Ty> {
+        relate_args_invariantly(self, a_args, b_args)?;
+        Ok(a_ty)
+    }
+    fn relate_with_variance<T: Relate<I>>(
+        &mut self,
+        _variance: ty::Variance,
+        _info: VarianceDiagInfo<I>,
+        a: T,
+        b: T,
+    ) -> RelateResult<I, T> {
+        self.relate(a, b)
+    }
+
+    #[instrument(skip(self), level = "trace")]
+    fn tys(&mut self, a: I::Ty, b: I::Ty) -> RelateResult<I, I::Ty> {
+        if a == b {
+            return Ok(a);
+        }
+
+        let infcx = self.infcx;
+        let a = infcx.shallow_resolve(a);
+        let b = infcx.shallow_resolve(b);
+
+        match (a.kind(), b.kind()) {
+            (ty::Infer(ty::TyVar(a_id)), ty::Infer(ty::TyVar(b_id))) => {
+                infcx.equate_ty_vids_raw(a_id, b_id);
+            }
+
+            (ty::Infer(ty::TyVar(a_vid)), _) => {
+                infcx.instantiate_ty_var_raw(a_vid, b);
+            }
+
+            (_, ty::Infer(ty::TyVar(b_vid))) => {
+                infcx.instantiate_ty_var_raw(b_vid, a);
+            }
+
+            (ty::Error(e), _) | (_, ty::Error(e)) => {
+                infcx.set_tainted_by_errors(e);
+                return Ok(Ty::new_error(infcx.cx(), e));
+            }
+
+            // FIXME: Share the arms below with `super_combine_tys`.
+            // We can't use `super_combine_tys` here because we want to support
+            // values with escaping bound vars so that we can avoid
+            // instantiating binders when relating them.
+            //
+            // Relate integral variables to other types
+            (ty::Infer(ty::IntVar(a_id)), ty::Infer(ty::IntVar(b_id))) => {
+                infcx.equate_int_vids_raw(a_id, b_id);
+            }
+            (ty::Infer(ty::IntVar(v_id)), ty::Int(v)) => {
+                infcx.instantiate_int_var_raw(v_id, ty::IntVarValue::IntType(v));
+            }
+            (ty::Int(v), ty::Infer(ty::IntVar(v_id))) => {
+                infcx.instantiate_int_var_raw(v_id, ty::IntVarValue::IntType(v));
+            }
+            (ty::Infer(ty::IntVar(v_id)), ty::Uint(v)) => {
+                infcx.instantiate_int_var_raw(v_id, ty::IntVarValue::UintType(v));
+            }
+            (ty::Uint(v), ty::Infer(ty::IntVar(v_id))) => {
+                infcx.instantiate_int_var_raw(v_id, ty::IntVarValue::UintType(v));
+            }
+
+            // Relate floating-point variables to other types
+            (ty::Infer(ty::FloatVar(a_id)), ty::Infer(ty::FloatVar(b_id))) => {
+                infcx.equate_float_vids_raw(a_id, b_id);
+            }
+            (ty::Infer(ty::FloatVar(v_id)), ty::Float(v)) => {
+                infcx.instantiate_float_var_raw(v_id, ty::FloatVarValue::Known(v));
+            }
+            (ty::Float(v), ty::Infer(ty::FloatVar(v_id))) => {
+                infcx.instantiate_float_var_raw(v_id, ty::FloatVarValue::Known(v));
+            }
+
+            (_, ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)))
+            | (ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)), _) => {
+                panic!("We do not expect to encounter `Fresh` variables in the new solver")
+            }
+
+            _ => {
+                relate::structurally_relate_tys(self, a, b)?;
+            }
+        }
+
+        Ok(a)
+    }
+
+    #[instrument(skip(self), level = "trace")]
+    fn regions(&mut self, a: I::Region, b: I::Region) -> RelateResult<I, I::Region> {
+        self.infcx.equate_regions(a, b, VisibleForLeakCheck::Yes, self.span);
+
+        Ok(a)
+    }
+
+    #[instrument(skip(self), level = "trace")]
+    fn consts(&mut self, a: I::Const, b: I::Const) -> RelateResult<I, I::Const> {
+        if a == b {
+            return Ok(a);
+        }
+
+        let infcx = self.infcx;
+        // FIXME: make this a debug_assert.
+        // Currently proof tree evaluation can unify infer vars in original
+        // vars while not resolving them.
+        // See `tests/ui/traits/next-solver/transmute-from-async-closure.rs`
+        let a = infcx.shallow_resolve_const(a);
+        debug_assert_eq!(b, infcx.shallow_resolve_const(b));
+        match (a.kind(), b.kind()) {
+            (
+                ty::ConstKind::Infer(ty::InferConst::Var(a_vid)),
+                ty::ConstKind::Infer(ty::InferConst::Var(b_vid)),
+            ) => {
+                infcx.equate_const_vids_raw(a_vid, b_vid);
+            }
+
+            (ty::ConstKind::Infer(ty::InferConst::Var(a_vid)), _) => {
+                infcx.instantiate_const_var_raw(a_vid, b);
+            }
+
+            (_, ty::ConstKind::Infer(ty::InferConst::Var(b_vid))) => {
+                infcx.instantiate_const_var_raw(b_vid, a);
+            }
+
+            _ => {
+                relate::structurally_relate_consts(self, a, b)?;
+            }
+        }
+
+        Ok(a)
+    }
+
+    fn binders<T>(
+        &mut self,
+        a: ty::Binder<I, T>,
+        b: ty::Binder<I, T>,
+    ) -> RelateResult<I, ty::Binder<I, T>>
+    where
+        T: Relate<I>,
+    {
+        if a == b {
+            return Ok(a);
+        }
+
+        debug_assert_eq!(a.bound_vars(), b.bound_vars());
+        self.relate(a.skip_binder(), b.skip_binder())?;
+
+        Ok(a)
+    }
+}
+
 /// Unify the `original_values` with the `var_values` returned by the canonical query..
 ///
 /// This assumes that this unification will always succeed. This is the case when
@@ -272,9 +467,8 @@ fn unify_query_var_values<D, I>(
     assert_eq!(original_values.len(), var_values.len());
 
     for (&orig, response) in iter::zip(original_values, var_values.var_values.iter()) {
-        let goals =
-            delegate.eq_structurally_relating_aliases(param_env, orig, response, span).unwrap();
-        assert!(goals.is_empty());
+        let mut must_eq = ResponseRelating::new(&**delegate, span);
+        must_eq.relate(orig, response).unwrap();
     }
 }
 

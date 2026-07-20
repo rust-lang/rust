@@ -1,5 +1,6 @@
 use tracing::{debug, instrument};
 
+use crate::data_structures::HashSet;
 use crate::inherent::*;
 use crate::visit::TypeVisitableExt;
 use crate::{
@@ -49,29 +50,40 @@ fn max_universe_inner<
     infcx: &Infcx,
     t: T,
 ) -> UniverseIndex {
-    if !MaxUniverse::<Infcx, VISIT_PLACEHOLDER, VISIT_INFER>::needs_visit(&t) {
+    if !MaxUniverse::<Infcx, I, VISIT_PLACEHOLDER, VISIT_INFER>::needs_visit(&t) {
         return UniverseIndex::ROOT;
     }
 
-    let mut visitor = MaxUniverse::<_, VISIT_PLACEHOLDER, VISIT_INFER>::new(infcx);
-    // FIXME: make this a debug_assert and let callers resolve vars if there's
-    // perf win here.
+    let mut visitor = MaxUniverse::<_, _, VISIT_PLACEHOLDER, VISIT_INFER>::new(infcx);
+    // FIXME: make this a debug_assert and let callers resolve vars. Then the input only needs to
+    // be `TypeVisitable`.
     let t = infcx.resolve_vars_if_possible(t);
     t.visit_with(&mut visitor);
     visitor.max_universe()
 }
 
-struct MaxUniverse<'a, Infcx: InferCtxtLike, const VISIT_PLACEHOLDER: bool, const VISIT_INFER: bool>
-{
+struct MaxUniverse<
+    'a,
+    Infcx: InferCtxtLike<Interner = I>,
+    I: Interner,
+    const VISIT_PLACEHOLDER: bool,
+    const VISIT_INFER: bool,
+> {
     max_universe: UniverseIndex,
     infcx: &'a Infcx,
+    cache: HashSet<I::Ty>,
 }
 
-impl<'a, Infcx: InferCtxtLike, const VISIT_PLACEHOLDER: bool, const VISIT_INFER: bool>
-    MaxUniverse<'a, Infcx, VISIT_PLACEHOLDER, VISIT_INFER>
+impl<
+    'a,
+    Infcx: InferCtxtLike<Interner = I>,
+    I: Interner,
+    const VISIT_PLACEHOLDER: bool,
+    const VISIT_INFER: bool,
+> MaxUniverse<'a, Infcx, I, VISIT_PLACEHOLDER, VISIT_INFER>
 {
     fn new(infcx: &'a Infcx) -> Self {
-        MaxUniverse { infcx, max_universe: UniverseIndex::ROOT }
+        MaxUniverse { infcx, max_universe: UniverseIndex::ROOT, cache: Default::default() }
     }
 
     fn max_universe(self) -> UniverseIndex {
@@ -79,7 +91,7 @@ impl<'a, Infcx: InferCtxtLike, const VISIT_PLACEHOLDER: bool, const VISIT_INFER:
     }
 
     #[instrument(ret, level = "debug")]
-    fn needs_visit<T: TypeVisitable<I>, I: Interner>(t: &T) -> bool {
+    fn needs_visit<T: TypeVisitable<I>>(t: &T) -> bool {
         (VISIT_PLACEHOLDER && t.has_placeholders()) || (VISIT_INFER && t.has_infer())
     }
 }
@@ -90,12 +102,16 @@ impl<
     I: Interner,
     const VISIT_PLACEHOLDER: bool,
     const VISIT_INFER: bool,
-> TypeVisitor<I> for MaxUniverse<'a, Infcx, VISIT_PLACEHOLDER, VISIT_INFER>
+> TypeVisitor<I> for MaxUniverse<'a, Infcx, I, VISIT_PLACEHOLDER, VISIT_INFER>
 {
     type Result = ();
 
     fn visit_ty(&mut self, t: I::Ty) {
         if !Self::needs_visit(&t) {
+            return;
+        }
+
+        if self.cache.contains(&t) {
             return;
         }
 
@@ -110,6 +126,8 @@ impl<
             }
             _ => t.super_visit_with(self),
         }
+
+        assert!(self.cache.insert(t), "we shouldn't visit {t:?} twice");
     }
 
     fn visit_const(&mut self, c: I::Const) {
