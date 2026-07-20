@@ -380,9 +380,9 @@ trait TraitChangeModeSelfOwnToRef {
 #[rustc_clean(except="hir_owner,predicates_of", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 trait TraitChangeModeSelfOwnToRef {
-    #[rustc_clean(except="hir_owner,fn_sig,generics_of", cfg="bpass2")]
+    #[rustc_clean(except="hir_owner,fn_sig,type_of,generics_of", cfg="bpass2")]
     #[rustc_clean(cfg="bpass3")]
-    #[rustc_clean(except="hir_owner,fn_sig,generics_of", cfg="bpass5")]
+    #[rustc_clean(except="hir_owner,fn_sig,type_of,generics_of", cfg="bpass5")]
     #[rustc_clean(cfg="bpass6")]
     fn method(&self);
 }
@@ -509,9 +509,9 @@ trait TraitAddLifetimeParameterToMethod {
 #[rustc_clean(except="hir_owner,predicates_of", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 trait TraitAddLifetimeParameterToMethod {
-    #[rustc_clean(except="hir_owner,fn_sig,generics_of", cfg="bpass2")]
+    #[rustc_clean(except="hir_owner,fn_sig,type_of,generics_of", cfg="bpass2")]
     #[rustc_clean(cfg="bpass3")]
-    #[rustc_clean(except="hir_owner,fn_sig,generics_of", cfg="bpass5")]
+    #[rustc_clean(except="hir_owner,fn_sig,type_of,generics_of", cfg="bpass5")]
     #[rustc_clean(cfg="bpass6")]
     fn method<'a>();
 }

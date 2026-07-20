@@ -247,11 +247,19 @@ where
             // Resolving async_drop_in_place<T> function for drop_ty
             tcx.require_lang_item(LangItem::AsyncDropInPlace, span)
         };
+        let async_drop_fn_sig = tcx.fn_sig(async_drop_fn_def_id);
 
         let fut_ty = tcx
             .instantiate_bound_regions_with_erased(
-                // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
-                Ty::new_fn_def(tcx, async_drop_fn_def_id, ty::Binder::dummy([drop_ty])).fn_sig(tcx),
+                Ty::new_fn_def(
+                    tcx,
+                    async_drop_fn_def_id,
+                    async_drop_fn_sig
+                        .instantiate(tcx, &[drop_ty.into()])
+                        .skip_norm_wip()
+                        .rebind([drop_ty]),
+                )
+                .fn_sig(tcx),
             )
             .output();
         let fut = self.new_temp(fut_ty);
@@ -373,7 +381,6 @@ where
             unwind_with_dead,
             vec![self.storage_live(fut)],
             TerminatorKind::Call {
-                // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
                 func: Operand::function_handle(tcx, async_drop_fn_def_id, &[drop_ty.into()], span),
                 args: [dummy_spanned(drop_arg)].into(),
                 destination: fut.into(),
@@ -402,7 +409,6 @@ where
                 func: Operand::function_handle(
                     tcx,
                     pin_obj_new_unchecked_fn,
-                    // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
                     &[obj_ref_ty.into()],
                     span,
                 ),
@@ -568,7 +574,6 @@ where
             unwind,
             Vec::new(),
             TerminatorKind::Call {
-                // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
                 func: Operand::function_handle(tcx, poll_fn, &[fut_ty.into()], source_info.span),
                 args: [
                     dummy_spanned(Operand::Move(fut_pin_local.into())),
@@ -598,7 +603,6 @@ where
                     func: Operand::function_handle(
                         tcx,
                         get_context_fn,
-                        // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
                         &[tcx.lifetimes.re_erased.into(), tcx.lifetimes.re_erased.into()],
                         source_info.span,
                     ),
@@ -1251,7 +1255,6 @@ where
                 ),
             )],
             TerminatorKind::Call {
-                // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
                 func: Operand::function_handle(tcx, drop_fn, &[ty.into()], self.source_info.span),
                 args: [dummy_spanned(Operand::Move(Place::from(ref_place)))].into(),
                 destination: unit_temp,

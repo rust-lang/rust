@@ -63,13 +63,21 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
 
     let icx = ItemCtxt::new(tcx, def_id);
 
+    let new_bound_fn_def = |hir, did| {
+        let args = ty::GenericArgs::identity_for_item(tcx, def_id);
+        Ty::new_fn_def(
+            tcx,
+            did,
+            match tcx.late_bound_vars_optional(hir) {
+                Some(late_bound) => ty::Binder::bind_with_vars(args, late_bound),
+                None => ty::Binder::dummy(args),
+            },
+        )
+    };
+
     let output = match tcx.hir_node(hir_id) {
         Node::TraitItem(item) => match item.kind {
-            TraitItemKind::Fn(..) => {
-                let args = ty::GenericArgs::identity_for_item(tcx, def_id);
-                // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
-                Ty::new_fn_def(tcx, def_id.to_def_id(), ty::Binder::dummy(args))
-            }
+            TraitItemKind::Fn(_, _) => new_bound_fn_def(item.hir_id(), def_id.to_def_id()),
             TraitItemKind::Const(ty, rhs) => rhs
                 .and_then(|rhs| {
                     ty.is_suggestable_infer_ty().then(|| {
@@ -92,11 +100,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
         },
 
         Node::ImplItem(item) => match item.kind {
-            ImplItemKind::Fn(..) => {
-                let args = ty::GenericArgs::identity_for_item(tcx, def_id);
-                // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
-                Ty::new_fn_def(tcx, def_id.to_def_id(), ty::Binder::dummy(args))
-            }
+            ImplItemKind::Fn(_, _) => new_bound_fn_def(item.hir_id(), def_id.to_def_id()),
             ImplItemKind::Const(ty, rhs) => {
                 if ty.is_suggestable_infer_ty() {
                     infer_placeholder_type(
@@ -171,11 +175,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
                 }
                 _ => icx.lower_ty(self_ty),
             },
-            ItemKind::Fn { .. } => {
-                let args = ty::GenericArgs::identity_for_item(tcx, def_id);
-                // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
-                Ty::new_fn_def(tcx, def_id.to_def_id(), ty::Binder::dummy(args))
-            }
+            ItemKind::Fn { .. } => new_bound_fn_def(item.hir_id(), def_id.to_def_id()),
             ItemKind::Enum(..) | ItemKind::Struct(..) | ItemKind::Union(..) => {
                 let def = tcx.adt_def(def_id);
                 let args = ty::GenericArgs::identity_for_item(tcx, def_id);
@@ -196,10 +196,8 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
         Node::OpaqueTy(..) => tcx.type_of_opaque(def_id).instantiate_identity().skip_norm_wip(),
 
         Node::ForeignItem(foreign_item) => match foreign_item.kind {
-            ForeignItemKind::Fn(..) => {
-                let args = ty::GenericArgs::identity_for_item(tcx, def_id);
-                // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
-                Ty::new_fn_def(tcx, def_id.to_def_id(), ty::Binder::dummy(args))
+            ForeignItemKind::Fn(_, _, _generics) => {
+                new_bound_fn_def(foreign_item.hir_id(), def_id.to_def_id())
             }
             ForeignItemKind::Static(ty, _, _) => {
                 let ty = icx.lower_ty(ty);
@@ -219,11 +217,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
             VariantData::Unit(..) | VariantData::Struct { .. } => {
                 tcx.type_of(tcx.hir_get_parent_item(hir_id)).instantiate_identity().skip_norm_wip()
             }
-            VariantData::Tuple(_, _, ctor) => {
-                let args = ty::GenericArgs::identity_for_item(tcx, def_id);
-                // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
-                Ty::new_fn_def(tcx, ctor.to_def_id(), ty::Binder::dummy(args))
-            }
+            VariantData::Tuple(_, hir_id, ctor) => new_bound_fn_def(*hir_id, ctor.to_def_id()),
         },
 
         Node::Field(field) => icx.lower_ty(field.ty),

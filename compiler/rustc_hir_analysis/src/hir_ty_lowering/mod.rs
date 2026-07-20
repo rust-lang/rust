@@ -1483,13 +1483,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 Ok(ct)
             }
             TypeRelativePath::Ctor { ctor_def_id, args } => match tcx.def_kind(ctor_def_id) {
-                DefKind::Ctor(_, CtorKind::Fn) => {
-                    // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
-                    Ok(ty::Const::zero_sized(
-                        tcx,
-                        tcx.type_of(ctor_def_id).instantiate(tcx, args).skip_norm_wip(),
-                    ))
-                }
+                DefKind::Ctor(_, CtorKind::Fn) => Ok(ty::Const::zero_sized(
+                    tcx,
+                    tcx.type_of(ctor_def_id).instantiate(tcx, args).skip_norm_wip(),
+                )),
                 DefKind::Ctor(ctor_of, CtorKind::Const) => {
                     Ok(self.construct_const_ctor_value(ctor_def_id, ctor_of, args))
                 }
@@ -2964,7 +2961,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         }
                     });
 
-                    // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
                     ty::Const::zero_sized(
                         tcx,
                         tcx.type_of(did)
