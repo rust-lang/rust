@@ -1853,7 +1853,7 @@ mod prim_ref {}
 ///     - It is [the never type `!`][prim_never].
 ///     - It is a function item type or closure type.
 /// - A `repr(transparent)` type is ABI-compatible with its unique field that does not have trivial ABI
-///   (as defined above), if such a field exists.
+///   (as defined above), if such a field exists. (Note that if no such field exists, then the `repr(transparent)` type itself has trivial ABI, so the case above applies.)
 /// - `i32` is ABI-compatible with `NonZero<i32>`, and similar for all other integer types.
 /// - If `T` is guaranteed to be subject to the [null pointer
 ///   optimization](option/index.html#representation), and `E` is an enum satisfying the following
