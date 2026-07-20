@@ -1,5 +1,5 @@
 error: unused "map closure" when calling `Result::map_or_else` value
-  --> tests/ui/unnecessary_result_map_or_else.rs:11:5
+  --> tests/ui/unnecessary_result_map_or_else.rs:7:5
    |
 LL |     x.map_or_else(|err| err, |n| n);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -13,7 +13,7 @@ LL +     x.unwrap_or_else(|err| err);
    |
 
 error: unused "map closure" when calling `Result::map_or_else` value
-  --> tests/ui/unnecessary_result_map_or_else.rs:16:5
+  --> tests/ui/unnecessary_result_map_or_else.rs:12:5
    |
 LL |     x.map_or_else(|err: ()| err, |n: ()| n);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -25,7 +25,7 @@ LL +     x.unwrap_or_else(|err: ()| err);
    |
 
 error: unused "map closure" when calling `Result::map_or_else` value
-  --> tests/ui/unnecessary_result_map_or_else.rs:27:5
+  --> tests/ui/unnecessary_result_map_or_else.rs:23:5
    |
 LL | /     x.map_or_else(
 LL | |
@@ -51,7 +51,7 @@ LL +     x.unwrap_or_else(|err| err);
    |
 
 error: unused "map closure" when calling `Result::map_or_else` value
-  --> tests/ui/unnecessary_result_map_or_else.rs:39:5
+  --> tests/ui/unnecessary_result_map_or_else.rs:35:5
    |
 LL | /     x.map_or_else(
 LL | |
@@ -77,7 +77,7 @@ LL +     x.unwrap_or_else(|err| err);
    |
 
 error: unused "map closure" when calling `Result::map_or_else` value
-  --> tests/ui/unnecessary_result_map_or_else.rs:91:5
+  --> tests/ui/unnecessary_result_map_or_else.rs:87:5
    |
 LL |     x.map_or_else(|err| err, |(a, b)| (a, b));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -89,7 +89,7 @@ LL +     x.unwrap_or_else(|err| err);
    |
 
 error: unused "map closure" when calling `Result::map_or_else` value
-  --> tests/ui/unnecessary_result_map_or_else.rs:96:5
+  --> tests/ui/unnecessary_result_map_or_else.rs:92:5
    |
 LL | /     x.map_or_else(
 LL | |
@@ -115,7 +115,7 @@ LL +     x.unwrap_or_else(|err| err);
    |
 
 error: unused "map closure" when calling `Result::map_or_else` value
-  --> tests/ui/unnecessary_result_map_or_else.rs:108:5
+  --> tests/ui/unnecessary_result_map_or_else.rs:104:5
    |
 LL | /     x.map_or_else(
 LL | |
