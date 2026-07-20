@@ -1,6 +1,3 @@
-use std::cmp::Ordering;
-use std::ops::RangeInclusive;
-
 use rustc_middle::bug;
 use rustc_middle::mir::{self, BasicBlock, CallReturnPlaces, Location, TerminatorEdges};
 
@@ -15,9 +12,6 @@ pub trait Direction {
     /// `statements.len()` when going backward.)
     fn first_index(block_data: &mir::BasicBlockData<'_>) -> EffectIndex;
 
-    /// Returns `true` if `a` comes before `b` for this direction.
-    fn index_precedes(a: EffectIndex, b: EffectIndex) -> bool;
-
     /// Returns the next index for this direction.
     fn next_index(idx: EffectIndex) -> EffectIndex;
 
@@ -31,36 +25,6 @@ pub trait Direction {
         propagate: impl FnMut(BasicBlock, &A::Domain),
     ) where
         A: Analysis<'tcx>;
-
-    /// Called by `ResultsCursor` to recompute the domain value for a location
-    /// in a basic block. Applies all effects between the given `EffectIndex`s.
-    ///
-    /// `effects.start()` must precede or equal `effects.end()` in this direction.
-    fn apply_effects_in_range<'tcx, A>(
-        analysis: &A,
-        state: &mut A::Domain,
-        block: BasicBlock,
-        block_data: &mir::BasicBlockData<'tcx>,
-        effects: RangeInclusive<EffectIndex>,
-    ) where
-        A: Analysis<'tcx>,
-    {
-        let (from, to) = (*effects.start(), *effects.end());
-        let terminator_index = block_data.statements.len();
-
-        assert!(to.statement_index <= terminator_index);
-        assert!(from.statement_index <= terminator_index);
-        assert!(!Self::index_precedes(to, from));
-
-        let mut idx = from;
-        loop {
-            analysis.apply_effect(state, block, block_data, idx);
-            if idx == to {
-                break;
-            }
-            idx = Self::next_index(idx);
-        }
-    }
 
     /// Called by `ResultsVisitor` to recompute the analysis domain values for
     /// all locations in a basic block (starting from `entry_state` and to
@@ -83,14 +47,6 @@ impl Direction for Backward {
 
     fn first_index(block_data: &mir::BasicBlockData<'_>) -> EffectIndex {
         Effect::Early.at_index(block_data.statements.len())
-    }
-
-    fn index_precedes(a: EffectIndex, b: EffectIndex) -> bool {
-        // Higher statement indices precede lower statement indices, and then `Early` effects
-        // precede `Primary` effects. (That's why the two comparisons use different orders for `a`
-        // and `b`.)
-        let ord = b.statement_index.cmp(&a.statement_index).then_with(|| a.effect.cmp(&b.effect));
-        ord == Ordering::Less
     }
 
     /// Returns the next index for this direction.
@@ -210,13 +166,6 @@ impl Direction for Forward {
 
     fn first_index(_block_data: &mir::BasicBlockData<'_>) -> EffectIndex {
         Effect::Early.at_index(0)
-    }
-
-    fn index_precedes(a: EffectIndex, b: EffectIndex) -> bool {
-        // Lower statement indices precede higher statement indices, and then `Early` effects
-        // precede `Primary` effects.
-        let ord = a.statement_index.cmp(&b.statement_index).then_with(|| a.effect.cmp(&b.effect));
-        ord == Ordering::Less
     }
 
     /// Returns the next index for this direction.
