@@ -11,14 +11,6 @@ macro_rules! TrivialTypeTraversalImpls {
                 ) -> ::std::result::Result<Self, F::Error> {
                     Ok(self)
                 }
-
-                #[inline]
-                fn fold_with<F: $crate::TypeFolder<I>>(
-                    self,
-                    _: &mut F,
-                ) -> Self {
-                    self
-                }
             }
 
             impl<I: $crate::Interner> $crate::TypeVisitable<I> for $ty {
