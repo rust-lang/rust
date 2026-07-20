@@ -103,6 +103,7 @@ impl<W: Write> BufWriter<W> {
     /// to retrieve the inner writer `W`.
     #[doc(hidden)]
     #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+    #[inline]
     pub fn try_new_with(f: impl FnOnce() -> io::Result<W>) -> io::Result<Self> {
         let buf = Vec::try_with_capacity(DEFAULT_BUF_SIZE).map_err(|_| {
             io::const_error!(ErrorKind::OutOfMemory, "failed to allocate write buffer")
