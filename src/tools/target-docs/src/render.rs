@@ -143,6 +143,16 @@ pub fn render_static(check_only: bool, src_output: &Path, targets: &[TargetInfo]
         replace_section(content, "TARGET_LIST", &target_list)
     })?;
 
+    let unmaintained_target_list = targets
+        .iter()
+        .filter(|target| target.maintainers.is_empty())
+        .map(|target| format!("- [{0}](platform-support/targets/{0}.md)", target.name))
+        .collect::<Vec<_>>()
+        .join("\n");
+    replace_file(check_only, src_output, "platform-support/unmaintained-targets.md", |content| {
+        replace_section(content, "TARGET_LIST", &unmaintained_target_list)
+    })?;
+
     replace_file(check_only, src_output, "platform-support.md", |content| {
         render_platform_support_tables(content, targets)
     })?;
