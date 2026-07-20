@@ -565,9 +565,12 @@ fn transcribe_pnr<'tx>(
 
             let leading_if_span =
                 guard.span_with_leading_if.with_hi(guard.span_with_leading_if.lo() + BytePos(2));
-            let mut ts =
-                TokenStream::token_alone(token::Ident(kw::If, IdentIsRaw::No), leading_if_span);
-            ts.push_stream(TokenStream::from_ast(&guard.cond));
+            let ts = std::iter::once(TokenTree::token_alone(
+                token::Ident(kw::If, IdentIsRaw::No),
+                leading_if_span,
+            ))
+            .chain(TokenStream::from_ast(&guard.cond).iter().cloned())
+            .collect();
 
             mk_delimited(guard.span_with_leading_if, MetaVarKind::Guard, ts)
         }
