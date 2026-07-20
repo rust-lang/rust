@@ -1,10 +1,11 @@
 use rustc_ast::token::NtExprKind::*;
 use rustc_ast::token::NtPatKind::*;
-use rustc_ast::token::{self, InvisibleOrigin, MetaVarKind, NonterminalKind, Token};
-use rustc_ast::tokenstream::WithTokens;
+use rustc_ast::token::{self, IdentIsRaw, InvisibleOrigin, MetaVarKind, NonterminalKind, Token};
+use rustc_ast::tokenstream::{TokenStream, WithTokens};
+use rustc_ast::{ExprKind, StmtKind, TyKind, UnOp};
 use rustc_ast_pretty::pprust;
 use rustc_errors::PResult;
-use rustc_span::{Ident, kw};
+use rustc_span::{BytePos, Ident, kw};
 
 use crate::diagnostics::UnexpectedNonterminal;
 use crate::parser::pat::{CommaRecoveryMode, RecoverColon, RecoverComma};
@@ -119,34 +120,39 @@ impl<'a> Parser<'a> {
     /// site.
     #[inline]
     pub fn parse_nonterminal(&mut self, kind: NonterminalKind) -> PResult<'a, ParseNtResult> {
-        // A `macro_rules!` invocation may pass a captured item/expr to a proc-macro,
-        // which requires having captured tokens available. Since we cannot determine
-        // in advance whether or not a proc-macro will be (transitively) invoked,
-        // we always capture tokens for any nonterminal that needs them.
+        // Extra information is collected to help re-parse the meta-variable later.
+        // FIXME: Don't build a real AST; we just need a token stream.
         match kind {
             // Note that TT is treated differently to all the others.
             NonterminalKind::TT => Ok(ParseNtResult::Tt(self.parse_token_tree())),
-            NonterminalKind::Item => match self
-                .parse_item(ForceCollect::Yes, AllowConstBlockItems::Yes)?
-            {
-                Some(item) => Ok(ParseNtResult::Item(item)),
-                None => Err(self.dcx().create_err(UnexpectedNonterminal::Item(self.token.span))),
-            },
+            NonterminalKind::Item => {
+                let item =
+                    self.parse_item(ForceCollect::Yes, AllowConstBlockItems::Yes)?.ok_or_else(
+                        || self.dcx().create_err(UnexpectedNonterminal::Item(self.token.span)),
+                    )?;
+                Ok(ParseNtResult::Item(item.span, TokenStream::from_ast(&item)))
+            }
             NonterminalKind::Block => {
                 // While a block *expression* may have attributes (e.g. `#[my_attr] { ... }`),
                 // the ':block' matcher does not support them
-                Ok(ParseNtResult::Block(self.collect_tokens_no_attrs(|this| {
-                    this.parse_block().map(|block| WithTokens::new(block))
-                })?))
+                let block =
+                    self.collect_tokens_no_attrs(|this| this.parse_block().map(WithTokens::new))?;
+                Ok(ParseNtResult::Block(block.node.span, TokenStream::from_ast(&block)))
             }
-            NonterminalKind::Stmt => match self.parse_stmt(ForceCollect::Yes)? {
-                Some(stmt) => Ok(ParseNtResult::Stmt(Box::new(stmt))),
-                None => {
-                    Err(self.dcx().create_err(UnexpectedNonterminal::Statement(self.token.span)))
-                }
-            },
-            NonterminalKind::Pat(pat_kind) => Ok(ParseNtResult::Pat(
-                self.collect_tokens_no_attrs(|this| {
+            NonterminalKind::Stmt => {
+                let stmt = self.parse_stmt(ForceCollect::Yes)?.ok_or_else(|| {
+                    self.dcx().create_err(UnexpectedNonterminal::Statement(self.token.span))
+                })?;
+                let stream = if let StmtKind::Empty = stmt.kind {
+                    // FIXME: Properly collect tokens for empty statements.
+                    TokenStream::token_alone(token::Semi, stmt.span)
+                } else {
+                    TokenStream::from_ast(&stmt)
+                };
+                Ok(ParseNtResult::Stmt(stmt.span, stream))
+            }
+            NonterminalKind::Pat(pat_kind) => {
+                let pat = self.collect_tokens_no_attrs(|this| {
                     match pat_kind {
                         PatParam { .. } => this.parse_pat_no_top_alt(None, None),
                         PatWithOr => this.parse_pat_no_top_guard(
@@ -157,21 +163,43 @@ impl<'a> Parser<'a> {
                         ),
                     }
                     .map(|pat| WithTokens::new(Box::new(pat)))
-                })?,
-                pat_kind,
-            )),
+                })?;
+                Ok(ParseNtResult::Pat(pat.node.span, TokenStream::from_ast(&pat), pat_kind))
+            }
             NonterminalKind::Expr(expr_kind) => {
-                Ok(ParseNtResult::Expr(self.parse_expr_force_collect()?, expr_kind))
+                let expr = self.parse_expr_force_collect()?;
+                let (can_begin_literal_maybe_minus, can_begin_string_literal) = match &expr.kind {
+                    ExprKind::Lit(_) => (true, true),
+                    ExprKind::Unary(UnOp::Neg, e) if matches!(&e.kind, ExprKind::Lit(_)) => {
+                        (true, false)
+                    }
+                    _ => (false, false),
+                };
+
+                Ok(ParseNtResult::Expr {
+                    span: expr.span,
+                    tokens: TokenStream::from_ast(&expr),
+                    kind: expr_kind,
+                    can_begin_literal_maybe_minus,
+                    can_begin_string_literal,
+                })
             }
             NonterminalKind::Literal => {
                 // The `:literal` matcher does not support attributes.
-                Ok(ParseNtResult::Literal(
-                    self.collect_tokens_no_attrs(|this| this.parse_literal_maybe_minus())?,
-                ))
+                let lit = self.collect_tokens_no_attrs(|this| this.parse_literal_maybe_minus())?;
+                Ok(ParseNtResult::Literal(lit.span, TokenStream::from_ast(&lit)))
             }
-            NonterminalKind::Ty => Ok(ParseNtResult::Ty(self.collect_tokens_no_attrs(|this| {
-                this.parse_ty_no_question_mark_recover().map(|ty| WithTokens::new(ty))
-            })?)),
+            NonterminalKind::Ty => {
+                let ty = self.collect_tokens_no_attrs(|this| {
+                    this.parse_ty_no_question_mark_recover().map(WithTokens::new)
+                })?;
+                let is_path = matches!(&ty.node.kind, TyKind::Path(None, _path));
+                Ok(ParseNtResult::Ty {
+                    span: ty.node.span,
+                    tokens: TokenStream::from_ast(&ty),
+                    is_path,
+                })
+            }
             // This could be handled like a token, since it is one.
             NonterminalKind::Ident => {
                 if let Some((ident, is_raw)) = get_macro_ident(&self.token) {
@@ -185,18 +213,25 @@ impl<'a> Parser<'a> {
                 }
             }
             NonterminalKind::Path => {
-                Ok(ParseNtResult::Path(self.collect_tokens_no_attrs(|this| {
-                    this.parse_path(PathStyle::Type).map(|path| WithTokens::new(Box::new(path)))
-                })?))
+                let path = self.collect_tokens_no_attrs(|this| {
+                    this.parse_path(PathStyle::Type).map(WithTokens::new)
+                })?;
+                Ok(ParseNtResult::Path(path.node.span, TokenStream::from_ast(&path)))
             }
-            NonterminalKind::Meta => Ok(ParseNtResult::Meta(
-                self.parse_attr_item(ForceCollect::Yes)?.map(|item| Box::new(item)),
-            )),
+            NonterminalKind::Meta => {
+                let attr_item = self.parse_attr_item(ForceCollect::Yes)?;
+                let has_meta_form = attr_item.node.meta_kind().is_some();
+                Ok(ParseNtResult::Meta {
+                    span: attr_item.node.span(),
+                    tokens: TokenStream::from_ast(&attr_item),
+                    has_meta_form,
+                })
+            }
             NonterminalKind::Vis => {
-                Ok(ParseNtResult::Vis(self.collect_tokens_no_attrs(|this| {
-                    this.parse_visibility(FollowedByType::Yes)
-                        .map(|vis| WithTokens::new(Box::new(vis)))
-                })?))
+                let vis = self.collect_tokens_no_attrs(|this| {
+                    this.parse_visibility(FollowedByType::Yes).map(|vis| WithTokens::new(vis))
+                })?;
+                Ok(ParseNtResult::Vis(vis.node.span, TokenStream::from_ast(&vis)))
             }
             NonterminalKind::Lifetime => {
                 // We want to keep `'keyword` parsing, just like `keyword` is still
@@ -212,7 +247,20 @@ impl<'a> Parser<'a> {
                 }
             }
             NonterminalKind::Guard => {
-                Ok(ParseNtResult::Guard(self.expect_match_arm_guard(ForceCollect::Yes)?))
+                let guard = self.expect_match_arm_guard(ForceCollect::Yes)?;
+
+                // FIXME(macro_guard_matcher):
+                // Perhaps it would be better to treat the leading `if` as part of `ast::Guard` during parsing?
+                // Currently they are separate, but in macros we match and emit the leading `if` for `:guard` matchers, which creates some inconsistency.
+
+                let leading_if_span = guard
+                    .span_with_leading_if
+                    .with_hi(guard.span_with_leading_if.lo() + BytePos(2));
+                let mut ts =
+                    TokenStream::token_alone(token::Ident(kw::If, IdentIsRaw::No), leading_if_span);
+                ts.push_stream(TokenStream::from_ast(&guard.cond));
+
+                Ok(ParseNtResult::Guard(guard.span_with_leading_if, ts))
             }
         }
     }
