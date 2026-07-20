@@ -18,7 +18,7 @@ use crate::mir::{BinOp, Body, Place, UnOp};
 use crate::target::{MachineInfo, MachineSize};
 use crate::ty::{
     AdtDef, AdtKind, Allocation, AssocItem, Asyncness, ClosureDef, ClosureKind, Constness,
-    CoroutineDef, Discr, FieldDef, FnDef, ForeignDef, ForeignItemKind, ForeignModule,
+    CoroutineDef, Discr, FieldDef, FloatTy, FnDef, ForeignDef, ForeignItemKind, ForeignModule,
     ForeignModuleDef, GenericArgs, GenericPredicates, Generics, ImplDef, ImplTrait, IntrinsicDef,
     LineInfo, MirConst, PolyFnSig, RigidTy, Span, TraitDecl, TraitDef, TraitRef, Ty, TyConst,
     TyConstId, TyKind, UintTy, VariantDef, VariantIdx, VtblEntry,
@@ -514,7 +514,7 @@ impl<'tcx> CompilerInterface<'tcx> {
         self.with_cx(|tables, cx| cx.new_const_bool(value).stable(tables, cx))
     }
 
-    /// Create a new constant that represents the given value.
+    /// Create a new integer constant that represents the given value.
     pub(crate) fn try_new_const_uint(
         &self,
         value: u128,
@@ -524,6 +524,22 @@ impl<'tcx> CompilerInterface<'tcx> {
             let ty = cx.ty_new_uint(uint_ty.internal(tables, cx.tcx));
             cx.try_new_const_uint(value, ty).map(|cnst| cnst.stable(tables, cx))
         })
+    }
+
+    /// Create a new float constant that represents the given value.
+    /// The value is the binary representation of the float constant.
+    /// Example: `try_new_const_float(2.5_f32.to_bits() as u128, FloatTy::F32)`.
+    pub(crate) fn try_new_const_float(
+        &self,
+        value: u128,
+        float_ty: FloatTy,
+    ) -> Result<MirConst, Error> {
+        let mut tables = self.tables.borrow_mut();
+        let cx = &*self.cx.borrow();
+        let ty = cx.new_rigid_ty(RigidTy::Float(float_ty).internal(&mut *tables, cx.tcx));
+        // We use `try_new_const_uint` here since it is capable of constructing all scalars in the mir
+        // that are not pointer.
+        cx.try_new_const_uint(value, ty).map(|cnst| cnst.stable(&mut *tables, cx))
     }
 
     pub(crate) fn try_new_ty_const_uint(
