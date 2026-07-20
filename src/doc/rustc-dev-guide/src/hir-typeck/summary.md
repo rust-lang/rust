@@ -26,8 +26,9 @@ fn foo(x: Foo, y: self::Foo) { ... }
 ```
 
 Those two parameters `x` and `y` each have the same type: but they will have
-distinct `hir::Ty` nodes. Those nodes will have different spans, and of course
-they encode the path somewhat differently. But once they are "collected" into
+distinct `hir::Ty` nodes.
+Those nodes will have different spans, and of course they encode the path somewhat differently.
+But once they are "collected" into
 `Ty<'tcx>` nodes, they will be represented by the exact same internal type.
 
 Collection is defined as a bundle of [queries] for computing information about
@@ -35,8 +36,7 @@ the various functions, traits, and other items in the crate being compiled.
 Note that each of these queries is concerned with *interprocedural* things –
 for example, for a function definition, collection will figure out the type and
 signature of the function, but it will not visit the *body* of the function in
-any way, nor examine type annotations on local variables (that's the job of
-type *checking*).
+any way, nor examine type annotations on local variables (that's the job of type *checking*).
 
 For more details, see the [`collect`][collect] module.
 
