@@ -14,8 +14,8 @@ These crates draw heavily on [type inference] and [trait solving].
 
 Type "collection" is the process of converting the types found in the HIR
 (`hir::Ty`), which represent the syntactic things that the user wrote, into the
-**internal representation** used by the compiler (`Ty<'tcx>`) – we also do
-similar conversions for where-clauses and other bits of the function signature.
+**internal representation** used by the compiler (`Ty<'tcx>`).
+Note that we also do similar conversions for where-clauses and other bits of the function signature.
 
 To try and get a sense of the difference, consider this function:
 
