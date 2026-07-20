@@ -1317,6 +1317,10 @@ impl Step for UnstableBookGen {
         cmd.arg(rustc_path);
         cmd.arg(out);
 
+        // Running rustc requires the library path if rust.rpath = false
+        // or any other libraries are in a custom location.
+        builder.add_rustc_lib_path(self.build_compiler, &mut cmd);
+
         cmd.run(builder);
     }
 }
