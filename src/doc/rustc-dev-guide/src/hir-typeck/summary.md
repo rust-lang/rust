@@ -3,7 +3,7 @@
 The [`hir_analysis`] crate contains the source for "type collection" as well
 as a bunch of related functionality.
 Checking the bodies of functions is implemented in the [`hir_typeck`] crate.
-These crates draw heavily on the [type inference] and [trait solving].
+These crates draw heavily on [type inference] and [trait solving].
 
 [`hir_analysis`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_analysis/index.html
 [`hir_typeck`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_typeck/index.html
