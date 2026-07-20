@@ -678,7 +678,11 @@ impl TokenStream {
 
     /// Push `tt` onto the end of the stream, possibly gluing it to the last
     /// token. Uses `make_mut` to maximize efficiency.
-    pub fn push_tree(&mut self, tt: TokenTree) {
+    ///
+    /// This is intended for specific proc macro use. For general `TokenStream`
+    /// construction within the compiler just build a `Vec<TokenTree>` with
+    /// normal `Vec` operations and then do `TokenStream::new`.
+    pub fn push_tree_with_gluing(&mut self, tt: TokenTree) {
         let vec_mut = Arc::make_mut(&mut self.0);
 
         if Self::try_glue_to_last(vec_mut, &tt) {
@@ -691,7 +695,11 @@ impl TokenStream {
     /// Push `stream` onto the end of the stream, possibly gluing the first
     /// token tree to the last token. (No other token trees will be glued.)
     /// Uses `make_mut` to maximize efficiency.
-    pub fn push_stream(&mut self, stream: TokenStream) {
+    ///
+    /// This is intended for specific proc macro use. For general `TokenStream`
+    /// construction within the compiler just build a `Vec<TokenTree>` with
+    /// normal `Vec` operations and then do `TokenStream::new`.
+    pub fn push_stream_with_gluing(&mut self, stream: TokenStream) {
         let vec_mut = Arc::make_mut(&mut self.0);
 
         let stream_iter = stream.0.iter().cloned();
