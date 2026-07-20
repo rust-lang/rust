@@ -448,12 +448,12 @@ impl<'tcx> UniversalRegions<'tcx> {
     }
 }
 
-struct UniversalRegionsBuilder<'infcx, 'tcx> {
-    infcx: &'infcx BorrowckInferCtxt<'tcx>,
+struct UniversalRegionsBuilder<'a, 'tcx> {
+    infcx: &'a BorrowckInferCtxt<'tcx>,
     mir_def: LocalDefId,
 }
 
-impl<'cx, 'tcx> UniversalRegionsBuilder<'cx, 'tcx> {
+impl<'tcx> UniversalRegionsBuilder<'_, 'tcx> {
     fn build(self) -> UniversalRegions<'tcx> {
         debug!("build(mir_def={:?})", self.mir_def);
 

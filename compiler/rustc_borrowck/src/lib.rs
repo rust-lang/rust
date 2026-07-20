@@ -139,7 +139,8 @@ fn mir_borrowck(
         let opaque_types = Default::default();
         Ok(tcx.arena.alloc(opaque_types))
     } else {
-        let mut root_cx = BorrowCheckRootCtxt::new(tcx, def, None);
+        let tainted_by_errors = Default::default();
+        let mut root_cx = BorrowCheckRootCtxt::new(tcx, def, None, &tainted_by_errors);
         root_cx.do_mir_borrowck();
         root_cx.finalize()
     }
@@ -315,7 +316,7 @@ struct CollectRegionConstraintsResult<'tcx> {
 /// the current body. This initializes the relevant data structures
 /// and then type checks the MIR body.
 fn borrowck_collect_region_constraints<'tcx>(
-    root_cx: &mut BorrowCheckRootCtxt<'tcx>,
+    root_cx: &mut BorrowCheckRootCtxt<'_, 'tcx>,
     def: LocalDefId,
 ) -> CollectRegionConstraintsResult<'tcx> {
     let tcx = root_cx.tcx;
@@ -393,8 +394,9 @@ fn borrowck_collect_region_constraints<'tcx>(
 /// Using the region constraints computed by [borrowck_collect_region_constraints]
 /// and the additional constraints from [BorrowCheckRootCtxt::handle_opaque_type_uses],
 /// compute the region graph and actually check for any borrowck errors.
-fn borrowck_check_region_constraints<'tcx>(
-    root_cx: &mut BorrowCheckRootCtxt<'tcx>,
+fn borrowck_check_region_constraints<'diag, 'tcx>(
+    root_cx: &mut BorrowCheckRootCtxt<'diag, 'tcx>,
+    diags_buffer: &mut BorrowckDiagnosticsBuffer<'diag, 'tcx>,
     CollectRegionConstraintsResult {
         infcx,
         body_owned,
@@ -461,7 +463,6 @@ fn borrowck_check_region_constraints<'tcx>(
     let movable_coroutine = body.coroutine.is_some()
         && tcx.coroutine_movability(def.to_def_id()) == hir::Movability::Movable;
 
-    let diags_buffer = &mut BorrowckDiagnosticsBuffer::default();
     // While promoteds should mostly be correct by construction, we need to check them for
     // invalid moves to detect moving out of arrays:`struct S; fn main() { &([S][0]); }`.
     for promoted_body in &promoted {
@@ -495,8 +496,8 @@ fn borrowck_check_region_constraints<'tcx>(
             diags_buffer,
             polonius_context: polonius_context.as_ref(),
         };
-        struct MoveVisitor<'a, 'b, 'infcx, 'tcx> {
-            ctxt: &'a mut MirBorrowckCtxt<'b, 'infcx, 'tcx>,
+        struct MoveVisitor<'a, 'b, 'diag, 'tcx> {
+            ctxt: &'a mut MirBorrowckCtxt<'b, 'diag, 'tcx>,
         }
 
         impl<'tcx> Visitor<'tcx> for MoveVisitor<'_, '_, '_, 'tcx> {
@@ -578,7 +579,7 @@ fn borrowck_check_region_constraints<'tcx>(
         used_mut_upvars: mbcx.used_mut_upvars,
     };
 
-    if let Some(guar) = mbcx.diags_buffer.emit_errors().or(infcx.tainted_by_errors()) {
+    if let Some(guar) = infcx.tainted_by_errors() {
         root_cx.set_tainted_by_errors(guar);
     }
 
@@ -727,9 +728,9 @@ impl<'tcx> Deref for BorrowckInferCtxt<'tcx> {
     }
 }
 
-pub(crate) struct MirBorrowckCtxt<'a, 'infcx, 'tcx> {
-    root_cx: &'a BorrowCheckRootCtxt<'tcx>,
-    infcx: &'infcx BorrowckInferCtxt<'tcx>,
+pub(crate) struct MirBorrowckCtxt<'a, 'diag, 'tcx> {
+    root_cx: &'a BorrowCheckRootCtxt<'diag, 'tcx>,
+    infcx: &'a BorrowckInferCtxt<'tcx>,
     body: &'a Body<'tcx>,
     move_data: &'a MoveData<'tcx>,
 
@@ -785,7 +786,7 @@ pub(crate) struct MirBorrowckCtxt<'a, 'infcx, 'tcx> {
     /// The counter for generating new region names.
     next_region_name: RefCell<usize>,
 
-    diags_buffer: &'a mut BorrowckDiagnosticsBuffer<'infcx, 'tcx>,
+    diags_buffer: &'a mut BorrowckDiagnosticsBuffer<'diag, 'tcx>,
     move_errors: Vec<MoveError<'tcx>>,
 
     /// Results of Polonius analysis.
