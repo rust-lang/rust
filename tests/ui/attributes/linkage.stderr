@@ -46,5 +46,13 @@ LL |     let _ = #[linkage = "weak"]
    |
    = help: `#[linkage]` can be applied to foreign functions, foreign statics, functions, methods, and statics
 
-error: aborting due to 6 previous errors
+error: `const fn` are incompatible with `#[linkage]`
+  --> $DIR/linkage.rs:45:1
+   |
+LL | #[linkage = "weak"]
+   | ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `const fn` may be called at compile time, which happens before linking
+
+error: aborting due to 7 previous errors
 
