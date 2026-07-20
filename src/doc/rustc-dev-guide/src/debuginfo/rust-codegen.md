@@ -5,7 +5,7 @@ communicate it to LLVM.
 This is primarily done in [`rustc_codegen_llvm/debuginfo`][llvm_di], though
 some type-name processing exists in [`rustc_codegen_ssa/debuginfo`][ssa_di].
 Rust communicates to LLVM via the `DIBuilder` API,
-a thin wrapper around LLVM's internals that exists in [rustc_llvm][rustc_llvm].
+a thin wrapper around LLVM's internals that exists in [rustc_llvm].
 
 [llvm_di]: https://github.com/rust-lang/rust/tree/main/compiler/rustc_codegen_llvm/src/debuginfo
 [ssa_di]: https://github.com/rust-lang/rust/tree/main/compiler/rustc_codegen_ssa/src/debuginfo
@@ -51,9 +51,9 @@ There is a semantic difference between C++ references and Rust references that i
 >
 >Because references are not objects, **there are no arrays of references, no pointers to references, and no references to references**
 
-The current proposed solution is to simply [typedef the pointer nodes][issue_144394].
+The current proposed solution is to simply [typedef the pointer nodes].
 
-[issue_144394]: https://github.com/rust-lang/rust/pull/144394
+[typedef the pointer nodes]: https://github.com/rust-lang/rust/pull/144394
 
 Using the `const` qualifier to denote non-`mut` poses potential issues due to LLDB's internal
 optimizations. In short, LLDB attempts to cache the child-values of variables (e.g. struct fields,
@@ -69,9 +69,9 @@ While most of the type information is fairly straight forward, one notable issue
 format of the target.
 Each format has different semantics and limitations, as such they require
 slightly different debug info in some cases.
-This is gated by calls to [`cpp_like_debuginfo`][cpp_like].
+This is gated by calls to [`cpp_like_debuginfo`].
 
-[cpp_like]: https://github.com/rust-lang/rust/blob/main/compiler/rustc_codegen_ssa/src/debuginfo/type_names.rs#L813
+[`cpp_like_debuginfo`]: https://github.com/rust-lang/rust/blob/main/compiler/rustc_codegen_ssa/src/debuginfo/type_names.rs#L813
 
 ### Naming
 
