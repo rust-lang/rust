@@ -2372,8 +2372,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                 // of the union - we should error in that case.
                 let tcx = this.infcx.tcx;
                 if base.ty(this.body(), tcx).ty.is_union()
-                    && this.move_data.path_map[mpi].iter().any(|moi| {
-                        this.move_data.moves[*moi].source.is_predecessor_of(location, this.body)
+                    && this.move_data.move_out_path_map[mpi].iter().any(|moi| {
+                        this.move_data.move_outs[*moi].source.is_predecessor_of(location, this.body)
                     })
                 {
                     return;
