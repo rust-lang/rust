@@ -4560,7 +4560,7 @@ declare_lint! {
     Warn,
     "detects uses of ambiguously glob imported traits",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: fcw!(FutureReleaseError #147992),
+        reason: fcw!(FutureReleaseError #152822),
         report_in_deps: false,
     };
 }
