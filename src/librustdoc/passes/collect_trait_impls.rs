@@ -53,7 +53,24 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
         for &cnum in tcx.crates(()) {
             for &impl_def_id in tcx.trait_impls_in_crate(cnum) {
                 cx.with_param_env(impl_def_id, |cx| {
-                    inline::build_impl(cx, impl_def_id, None, &mut new_items_external);
+                    let opt_trait_ref = tcx.impl_opt_trait_ref(impl_def_id);
+                    let self_ty = tcx.type_of(impl_def_id).instantiate_identity().skip_norm_wip();
+                    let self_ty =
+                        clean_middle_ty(ty::Binder::dummy(self_ty), cx, Some(impl_def_id), None);
+                    if self_ty.is_full_generic()
+                        || self_ty
+                            .primitive_type()
+                            .is_some_and(|primitive| prims.contains(&primitive))
+                        || self_ty
+                            .def_id(&cx.cache)
+                            .is_some_and(|did| crate_items.contains(&ItemId::DefId(did)))
+                        || opt_trait_ref.is_some_and(|trait_ref| {
+                            crate_items.contains(&ItemId::DefId(trait_ref.def_id()))
+                                || Some(trait_ref.def_id()) == tcx.lang_items().deref_trait()
+                        })
+                    {
+                        inline::build_impl(cx, impl_def_id, None, &mut new_items_external);
+                    }
                 });
             }
         }
