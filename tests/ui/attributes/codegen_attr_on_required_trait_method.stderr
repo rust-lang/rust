@@ -1,3 +1,11 @@
+error: `#[linkage]` attribute cannot be used on required trait methods
+  --> $DIR/codegen_attr_on_required_trait_method.rs:14:5
+   |
+LL |     #[linkage = "common"]
+   |     ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[linkage]` can be applied to foreign functions, foreign statics, functions with a body, and statics
+
 error: `#[cold]` attribute cannot be used on required trait methods
   --> $DIR/codegen_attr_on_required_trait_method.rs:6:5
    |
@@ -19,15 +27,6 @@ LL |     #[link_section = "__TEXT,__text"]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: `#[link_section]` can be applied to functions with a body and statics
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-
-error: `#[linkage]` attribute cannot be used on required trait methods
-  --> $DIR/codegen_attr_on_required_trait_method.rs:14:5
-   |
-LL |     #[linkage = "common"]
-   |     ^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: `#[linkage]` can be applied to foreign functions, foreign statics, functions with a body, and statics
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: aborting due to 3 previous errors
