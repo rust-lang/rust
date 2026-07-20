@@ -763,19 +763,21 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     }
 
     fn opaque_types_defined_by(self, defining_anchor: LocalDefId) -> Self::LocalDefIds {
-        self.opaque_types_defined_by(defining_anchor)
+        let root_def_id = self.typeck_root_def_id_local(defining_anchor);
+        self.opaque_types_defined_by(root_def_id)
     }
 
     fn opaque_types_and_coroutines_defined_by(
         self,
         defining_anchor: Self::LocalDefId,
     ) -> Self::LocalDefIds {
+        let root_def_id = self.typeck_root_def_id_local(defining_anchor);
         let coroutines_defined_by = self
             .nested_bodies_within(defining_anchor)
             .iter()
             .filter(|def_id| self.is_coroutine(def_id.to_def_id()));
         self.mk_local_def_ids_from_iter(
-            self.opaque_types_defined_by(defining_anchor).iter().chain(coroutines_defined_by),
+            self.opaque_types_defined_by(root_def_id).iter().chain(coroutines_defined_by),
         )
     }
 
