@@ -63,11 +63,10 @@ use rustc_data_structures::transitive_relation::TransitiveRelation;
 use rustc_data_structures::undo_log::UndoLogs;
 use rustc_middle::bug;
 use rustc_middle::mir::ConstraintCategory;
-use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::outlives::{Component, push_outlives_components};
 use rustc_middle::ty::{
     self, GenericArgKind, GenericArgsRef, PolyTypeOutlivesPredicate, Region, RegionExt, RegionVid,
-    Ty, TyCtxt, TypeFoldable as _, TypeVisitableExt,
+    Ty, TyCtxt, TypeVisitableExt, eager_resolve_vars,
 };
 use rustc_span::Span;
 use smallvec::smallvec;
@@ -76,7 +75,6 @@ use tracing::{debug, instrument};
 use super::env::OutlivesEnvironment;
 use crate::infer::outlives::env::RegionBoundPairs;
 use crate::infer::outlives::verify::VerifyBoundCx;
-use crate::infer::resolve::OpportunisticRegionResolver;
 use crate::infer::snapshot::undo_log::UndoLog;
 use crate::infer::{
     self, GenericKind, InferCtxt, SubregionOrigin, TypeOutlivesConstraint, VerifyBound,
@@ -288,17 +286,12 @@ impl<'tcx> InferCtxt<'tcx> {
     /// flow of the inferencer. The key point is that it is
     /// invoked after all type-inference variables have been bound --
     /// right before lexical region resolution.
-    #[instrument(level = "debug", skip(self, outlives_env, deeply_normalize_ty))]
+    #[instrument(level = "debug", skip(self, outlives_env))]
     pub fn process_registered_region_obligations(
         &self,
         outlives_env: &OutlivesEnvironment<'tcx>,
-        mut deeply_normalize_ty: impl FnMut(
-            PolyTypeOutlivesPredicate<'tcx>,
-            SubregionOrigin<'tcx>,
-        )
-            -> Result<PolyTypeOutlivesPredicate<'tcx>, NoSolution>,
         span: Span,
-    ) -> Result<(), (PolyTypeOutlivesPredicate<'tcx>, SubregionOrigin<'tcx>)> {
+    ) {
         assert!(!self.in_snapshot(), "cannot process registered region obligations in a snapshot");
 
         if self.tcx.assumptions_on_binders() {
@@ -322,17 +315,10 @@ impl<'tcx> InferCtxt<'tcx> {
             }
 
             for TypeOutlivesConstraint { sup_type, sub_region, origin } in my_region_obligations {
-                let outlives = ty::Binder::dummy(ty::OutlivesPredicate(sup_type, sub_region));
-                let ty::OutlivesPredicate(sup_type, sub_region) =
-                    deeply_normalize_ty(outlives, origin.clone())
-                        .map_err(|NoSolution| (outlives, origin.clone()))?
-                        .no_bound_vars()
-                        .expect("started with no bound vars, should end with no bound vars");
                 // `TypeOutlives` is structural, so we should try to opportunistically resolve all
                 // region vids before processing regions, so we have a better chance to match clauses
                 // in our param-env.
-                let (sup_type, sub_region) =
-                    (sup_type, sub_region).fold_with(&mut OpportunisticRegionResolver::new(self));
+                let (sup_type, sub_region) = eager_resolve_vars(self, (sup_type, sub_region));
 
                 if self.tcx.sess.opts.unstable_opts.higher_ranked_assumptions
                     && outlives_env
@@ -355,8 +341,6 @@ impl<'tcx> InferCtxt<'tcx> {
                 outlives.type_must_outlive(origin, sup_type, sub_region, category);
             }
         }
-
-        Ok(())
     }
 }
 
@@ -435,6 +419,8 @@ where
         category: ConstraintCategory<'tcx>,
     ) {
         assert!(!ty.has_escaping_bound_vars());
+        debug_assert!(!ty.has_non_region_infer());
+        debug_assert!(!self.tcx.next_trait_solver_globally() || !ty.has_non_rigid_aliases());
 
         let mut components = smallvec![];
         push_outlives_components(self.tcx, ty, &mut components);
