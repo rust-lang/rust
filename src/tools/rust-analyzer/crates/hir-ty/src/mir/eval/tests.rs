@@ -1084,3 +1084,72 @@ fn main() {
 "#,
     );
 }
+
+#[test]
+fn fabs_intrinsic() {
+    check_pass(
+        r#"
+//- minicore: copy, panic
+pub unsafe trait FloatPrimitive: Sized + Copy {}
+unsafe impl FloatPrimitive for f32 {}
+unsafe impl FloatPrimitive for f64 {}
+
+#[rustc_intrinsic]
+fn fabs<T: FloatPrimitive>(x: T) -> T;
+
+fn should_not_reach() { panic!() }
+
+fn main() {
+    if fabs(-3.5f32) != 3.5f32 {
+        should_not_reach();
+    }
+    if fabs(3.5f32) != 3.5f32 {
+        should_not_reach();
+    }
+    if fabs(-3.5f64) != 3.5f64 {
+        should_not_reach();
+    }
+}
+"#,
+    );
+}
+
+#[test]
+fn unreachable_intrinsic() {
+    check_error_with(
+        r#"
+#[rustc_intrinsic]
+fn unreachable() -> !;
+
+fn main() {
+    unreachable();
+}
+"#,
+        |e| {
+            let mut err = &e;
+            while let MirEvalError::InFunction(inner, _) = err {
+                err = inner;
+            }
+            matches!(err, MirEvalError::UndefinedBehavior(_))
+        },
+    );
+}
+
+#[test]
+fn caller_location_intrinsic() {
+    check_pass(
+        r#"
+//- minicore: panic_location
+fn should_not_reach() {
+    panic!()
+}
+
+fn main() {
+    let loc = core::panic::Location::caller();
+    if loc.line() != 1 || loc.column() != 1 {
+        should_not_reach();
+    }
+}
+"#,
+    );
+}

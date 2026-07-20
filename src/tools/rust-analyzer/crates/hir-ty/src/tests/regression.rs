@@ -2947,3 +2947,49 @@ fn caller() {
 "#,
     );
 }
+
+#[test]
+fn regression_22772() {
+    check_no_mismatches(
+        r#"
+trait Resolve {
+    type Prev;
+}
+
+fn migrations_preserve_index() {
+    pub struct RefExpr1<'x> {
+        pub foo: &'x schema::v0::_Ref0,
+    }
+
+    pub fn new_column<'x, C>() -> &'x C {
+        loop {}
+    }
+
+    RefExpr1 { foo: new_column::<schema::Foo>() };
+
+    mod schema {
+        pub struct Foo {}
+        pub struct FooNew {}
+
+        impl crate::Resolve for FooNew {
+            type Prev = Foo;
+        }
+
+        pub mod v0 {
+            pub type _Ref0 = <super::FooNew as crate::Resolve>::Prev;
+        }
+    }
+}
+    "#,
+    );
+}
+
+#[test]
+fn array_repeat_closure() {
+    check(
+        r#"
+fn f() {[_; || ()]}
+     // ^^^^^^^^^^ expected (), got [{unknown}; _]
+    "#,
+    );
+}

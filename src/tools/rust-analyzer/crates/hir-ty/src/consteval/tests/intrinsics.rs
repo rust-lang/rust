@@ -225,6 +225,28 @@ fn const_eval_select() {
 }
 
 #[test]
+fn const_allocate() {
+    check_number(
+        r#"
+        //- minicore: fn
+        #[rustc_intrinsic]
+        pub const unsafe fn const_allocate(size: usize, align: usize) -> *mut u8;
+        #[rustc_intrinsic]
+        pub const unsafe fn const_deallocate(ptr: *mut u8, size: usize, align: usize);
+
+        const GOAL: u8 = unsafe {
+            let ptr = const_allocate(4, 4);
+            *ptr = 5;
+            let value = *ptr;
+            const_deallocate(ptr, 4, 4);
+            value
+        };
+        "#,
+        5,
+    );
+}
+
+#[test]
 fn wrapping_add() {
     check_number(
         r#"

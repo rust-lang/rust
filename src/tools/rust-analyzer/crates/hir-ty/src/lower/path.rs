@@ -956,16 +956,20 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
                                 ImplTraitLoweringMode::Disallowed | ImplTraitLoweringMode::Opaque,
                             ) => {
                                 let ty = this.ctx.lower_ty(type_ref);
+                                let bound_vars = this.ctx.peek_bound_vars();
                                 let pred = Clause(Predicate::new(
                                     interner,
-                                    Binder::dummy(rustc_type_ir::PredicateKind::Clause(
-                                        rustc_type_ir::ClauseKind::Projection(
-                                            ProjectionPredicate {
-                                                projection_term,
-                                                term: ty.into(),
-                                            },
+                                    Binder::bind_with_vars(
+                                        rustc_type_ir::PredicateKind::Clause(
+                                            rustc_type_ir::ClauseKind::Projection(
+                                                ProjectionPredicate {
+                                                    projection_term,
+                                                    term: ty.into(),
+                                                },
+                                            ),
                                         ),
-                                    )),
+                                        bound_vars,
+                                    ),
                                 ));
                                 predicates.push((pred, GenericPredicateSource::SelfOnly));
                             }
@@ -1187,7 +1191,7 @@ pub(crate) fn substs_from_args_and_bindings<'db>(
         ctx,
     );
 
-    let mut substs = Vec::with_capacity(def_generics.len());
+    let mut substs = Vec::with_capacity(def_generics.len(true));
 
     substs.extend(
         def_generics.iter_parent_id().enumerate().map(|(idx, id)| ctx.parent_arg(idx as u32, id)),
