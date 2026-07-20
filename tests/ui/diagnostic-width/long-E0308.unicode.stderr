@@ -18,8 +18,8 @@ LL │  ┃         ))))))))))))))))))))))))))))))
 LL │  ┃     ))))))))))))))))))))))))))))));
    │  ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛ expected `Atype<Btype<Ctype<_, i32>, i32>, i32>`, found `Result<Result<Result<_, _>, _>, _>`
    │
-   ├ note: expected struct `Atype<Btype<_, i32>, i32>`
-   │            found enum `Result<Result<_, _>, _>`
+   ├ note: expected struct `b::Aty..., i32>`
+   │            found enum `Result..._>, _>`
    ├ note: the full name for the type has been written to '$TEST_BUILD_DIR/long-E0308.long-type-$LONG_TYPE_HASH.txt'
    ╰ note: consider using `--verbose` to print the full type name to the console
 
@@ -34,8 +34,8 @@ LL │ ┃         ))))))))))))))))))))))))))))))
 LL │ ┃     ))))))))))))))))))))))));
    │ ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛ expected `Option<Result<Option<Option<_>>, _>>`, found `Result<Result<Result<_, _>, _>, _>`
    │
-   ├ note: expected enum `Option<Result<Option<_>, _>>`
-   │          found enum `Result<Result<_, _>, _>`
+   ├ note: expected enum `Option<Result<Option...>>>>>>, _>>`
+   │          found enum `Result<Result..._>, _>, _>`
    ├ note: the full name for the type has been written to '$TEST_BUILD_DIR/long-E0308.long-type-$LONG_TYPE_HASH.txt'
    ╰ note: consider using `--verbose` to print the full type name to the console
 

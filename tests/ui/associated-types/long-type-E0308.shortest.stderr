@@ -1,0 +1,49 @@
+error[E0308]: mismatched types
+  --> $DIR/long-type-E0308.rs:32:5
+   |
+LL |   ) -> <
+   |  ______-
+LL | |     <
+LL | |         <T::Wrapper<T> as FooBar>::Assoc as FooBar
+LL | |     >::Assoc as FooBar
+LL | | >::Wrapper<<T::Assoc as FooBar>::Assoc>
+   | |_______________________________________- expected `<_ as FooBar>::Wrapper<_>` because of return type
+...
+LL |       value...oc())
+   |       ^^^^^...^^^^^ expected `really_really_really_long_module::FooBar::Wrapper`, found `really_really_really_long_module::FooBar::Assoc`
+   |
+   = note: expected associated type `<<<<_ as FooBar>::Wrapper<_> as...per<_>`
+              found associated type `<<<<_ as FooBar>::Assoc as Fo...per<_>`
+   = note: an associated type was expected, but a different one was found
+   = note: the full name for the type has been written to '$TEST_BUILD_DIR/long-type-E0308.long-type-$LONG_TYPE_HASH.txt'
+   = note: consider using `--verbose` to print the full type name to the console
+
+error[E0308]: mismatched types
+  --> $DIR/long-type-E0308.rs:46:5
+   |
+LL | fn bar<T>(x: <T as Bar<u8>>::Assoc) -> <T as...Assoc
+   |                                        -----...----- expected `<T as Bar<u16>>::Assoc` because of return type
+...
+LL |     x
+   |     ^ expected `u16`, found `u8`
+   |
+   = note: expected associated type `<_ as Bar<u16>>::Assoc`
+              found associated type `<_ as Bar<u8>>::Assoc`
+   = note: an associated type was expected, but a different one was found
+
+error[E0308]: mismatched types
+  --> $DIR/long-type-E0308.rs:60:5
+   |
+LL | fn qux<T>(x: <T as Qux>::Assoc<u8>) -> <T as...<u16>
+   |                                        -----...----- expected `<T as Qux>::Assoc<u16>` because of return type
+...
+LL |     x
+   |     ^ expected `u16`, found `u8`
+   |
+   = note: expected associated type `<_ as Qux>::Assoc<u16>`
+              found associated type `<_ as Qux>::Assoc<u8>`
+   = note: an associated type was expected, but a different one was found
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

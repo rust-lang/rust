@@ -211,6 +211,43 @@ impl DiagStyledString {
     pub fn content(&self) -> String {
         self.0.iter().map(|x| x.content.as_str()).collect::<String>()
     }
+
+    /// Merge segments of the same style.
+    pub fn compact(&mut self) {
+        let segments = std::mem::take(&mut self.0);
+        let mut iter = segments.into_iter();
+        let Some(mut prev) = iter.next() else { return };
+        while let Some(segment) = iter.next() {
+            if prev.style == segment.style {
+                prev.content.push_str(&segment.content);
+            } else {
+                self.0.push(prev);
+                prev = segment;
+            }
+        }
+        self.0.push(prev);
+    }
+
+    /// Remove the middle of all long segments for shorter rendering.
+    pub fn shorten(&mut self) {
+        self.compact();
+        /// The marker for removed text.
+        const ELLIPSIS: &str = "...";
+        /// How many chars at the start and end will remain.
+        const PADDING: usize = 6;
+        /// The distance after which it is not worth it to reduce the text.
+        const DELTA: usize = 3;
+
+        for segment in self.0.iter_mut() {
+            let char_len = segment.content.chars().count();
+            if char_len > PADDING * 2 + ELLIPSIS.chars().count() + DELTA
+                && let Some((left, _)) = segment.content.char_indices().nth(PADDING)
+                && let Some((right, _)) = segment.content.char_indices().nth(char_len - PADDING)
+            {
+                segment.content.replace_range(left..right, ELLIPSIS);
+            }
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]
