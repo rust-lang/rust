@@ -1,4 +1,4 @@
-// LLVM SipHash-2-4
+// LLVM SipHash-2-4 (64 bit version)
 pub fn llvm_pointer_auth_stable_siphash(data: &[u8]) -> u16 {
     let raw = llvm_siphash_2_4_64(data);
 
@@ -91,10 +91,9 @@ fn load_u64_partial(bytes: &[u8]) -> u64 {
     b
 }
 
-// LLVM siphash<2,4> 64-bit output
-fn llvm_siphash_2_4_64(data: &[u8]) -> u64 {
-    let k0 = u64_from_le(&SIPHASH_KEY[0..8]);
-    let k1 = u64_from_le(&SIPHASH_KEY[8..16]);
+fn siphash_2_4_64_with_key(data: &[u8], key: &[u8; 16]) -> u64 {
+    let k0 = u64_from_le(&key[0..8]);
+    let k1 = u64_from_le(&key[8..16]);
 
     let mut v0: u64 = 0x736f6d6570736575 ^ k0;
     let mut v1: u64 = 0x646f72616e646f6d ^ k1;
@@ -140,3 +139,13 @@ fn llvm_siphash_2_4_64(data: &[u8]) -> u64 {
 
     v0 ^ v1 ^ v2 ^ v3
 }
+// LLVM siphash<2,4> 64-bit output
+fn llvm_siphash_2_4_64(data: &[u8]) -> u64 {
+    siphash_2_4_64_with_key(data, &SIPHASH_KEY)
+}
+
+#[cfg(test)]
+mod llvm_siphash_vectors;
+
+#[cfg(test)]
+mod tests;
