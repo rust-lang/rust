@@ -87,11 +87,23 @@ fn main() -> Result<()> {
 
     eprintln!("Rendering targets, check_only={check_only}");
     let targets_dir = Path::new(output_src).join("platform-support").join("targets");
+    let old_targets_dir = Path::new(output_src).join("platform-support");
     if !check_only {
         std::fs::create_dir_all(&targets_dir).wrap_err("creating platform-support/targets dir")?;
     }
     for info in &targets {
-        let doc = render::render_target_md(info);
+        let mut doc = render::render_target_md(info);
+
+        //FIXME: This is temporary during migration
+        if info.maintainers.is_empty() && info.sections.is_empty() {
+            let old_path = old_targets_dir.join(format!("{}.md", info.name));
+            if old_path.is_file() {
+                doc = std::fs::read_to_string(old_path)?;
+                //eprintln!("WARN: {}: using legacy target info", info.name);
+            } /*else {
+                eprintln!("WARN: {}: no target info", info.name);
+            }*/
+        }
 
         if !check_only {
             std::fs::write(targets_dir.join(format!("{}.md", info.name)), doc)
