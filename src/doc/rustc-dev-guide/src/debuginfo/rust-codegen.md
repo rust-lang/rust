@@ -31,7 +31,7 @@ limitations when no other option will work.
 Rust's generated DI nodes "pretend" to be C/C++ for both CDB and LLDB's sake.
 This can result in some unintuitive and non-idiomatic debug info.
 
-### Pointers and reference
+### Pointers and references
 
 Wide pointers/references/`Box` are treated as a struct with 2 fields: `data_ptr` and `length`.
 
