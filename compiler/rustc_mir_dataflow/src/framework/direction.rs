@@ -185,8 +185,6 @@ impl Direction for Backward {
     ) where
         A: Analysis<'tcx>,
     {
-        vis.visit_block_entry(state);
-
         let loc = Location { block, statement_index: block_data.statements.len() };
         let term = block_data.terminator();
         analysis.apply_early_terminator_effect(state, term, loc);
@@ -307,8 +305,6 @@ impl Direction for Forward {
     ) where
         A: Analysis<'tcx>,
     {
-        vis.visit_block_entry(state);
-
         for (statement_index, stmt) in block_data.statements.iter().enumerate() {
             let loc = Location { block, statement_index };
             analysis.apply_early_statement_effect(state, stmt, loc);
