@@ -316,12 +316,31 @@ fn fake_token_stream_for_file_mod(
     let attr = attr_to_exclude.expect("file modules must have an attribute to exclude");
     assert_eq!(attr.style, ast::AttrStyle::Inner);
 
-    let mut body_tts = Vec::new();
-    body_tts.extend(lex_token_trees_for_span(psess, spans.inner_span.until(attr.span))?);
-    body_tts.extend(lex_token_trees_for_span(
-        psess,
-        attr.span.between(spans.inner_span.shrink_to_hi()),
-    )?);
+    // A replacement attribute from `cfg_attr` only spans the nested attribute. If none of that
+    // `cfg_attr`'s other expanded attributes remain, remove the entire source attribute instead.
+    let attr_span = item
+        .attrs
+        .iter()
+        .filter(|candidate| {
+            matches!(
+                &candidate.kind,
+                ast::AttrKind::Synthetic(synthetic)
+                    if matches!(synthetic.as_ref(), ast::SyntheticAttr::CfgAttrTrace)
+            ) && candidate.span.contains(attr.span)
+                && !item.attrs.iter().any(|other| {
+                    matches!(&other.kind, ast::AttrKind::Normal(_))
+                        && candidate.span.contains(other.span)
+                })
+        })
+        .fold(
+            attr.span,
+            |outer, candidate| {
+                if candidate.span.contains(outer) { candidate.span } else { outer }
+            },
+        );
+
+    let body_tts = TokenStream::new(lex_token_trees_for_span(psess, spans.inner_span)?.collect());
+    let body_tts = remove_attr_from_token_stream(&body_tts, attr_span)?;
 
     let mut wrapper_tts = Vec::new();
     for attr in item.attrs.iter().filter(|attr| attr.style == ast::AttrStyle::Outer) {
@@ -338,10 +357,45 @@ fn fake_token_stream_for_file_mod(
         DelimSpan::from_single(semi.span),
         DelimSpacing::new(Spacing::Alone, Spacing::Alone),
         token::Delimiter::Brace,
-        TokenStream::new(body_tts),
+        body_tts,
     ));
 
     Some(TokenStream::new(wrapper_tts))
+}
+
+fn remove_attr_from_token_stream(stream: &TokenStream, attr_span: Span) -> Option<TokenStream> {
+    let mut trees: Vec<_> = stream.iter().cloned().collect();
+
+    if let Some(first) = trees.iter().position(|tree| attr_span.contains(tree.span())) {
+        let last = trees.iter().rposition(|tree| attr_span.contains(tree.span())).unwrap();
+        trees.drain(first..=last);
+
+        // An attribute produced by `cfg_attr` is nested in its comma-separated argument list.
+        // Remove one separator along with it so the remaining `cfg_attr` is still valid.
+        if trees.get(first).is_some_and(
+            |tree| matches!(tree, TokenTree::Token(token, _) if token.kind == token::Comma),
+        ) {
+            trees.remove(first);
+        } else if first > 0
+            && matches!(&trees[first - 1], TokenTree::Token(token, _) if token.kind == token::Comma)
+        {
+            trees.remove(first - 1);
+        }
+
+        return Some(TokenStream::new(trees));
+    }
+
+    for tree in &mut trees {
+        if tree.span().contains(attr_span)
+            && let TokenTree::Delimited(_, _, _, inner) = tree
+            && let Some(new_inner) = remove_attr_from_token_stream(inner, attr_span)
+        {
+            *inner = new_inner;
+            return Some(TokenStream::new(trees));
+        }
+    }
+
+    None
 }
 
 fn lex_token_trees_for_span(
