@@ -21,6 +21,18 @@ pub struct Preload<'a, T: ?Sized> {
     _marker: PhantomData<&'a T>,
 }
 
+/// Waits until all previously submitted offload kernels on the current
+/// host thread have completed.
+///
+/// This does not copy preloaded values back to the host and does not release
+/// their device mappings. Those operations still occur when the corresponding
+/// [`Preload`] or [`PreloadMut`] guard is dropped.
+#[inline(always)]
+#[unstable(feature = "offload", issue = "124509")]
+pub fn offload_sync() {
+    crate::intrinsics::offload_sync();
+}
+
 // We store a raw pointer instead of a reference, since the real location of the data will be on a
 // GPU, at a different address. We only use the CPU pointer as a key to our runtime cpu-gpu pointer
 // map. In the future we might even directly store the gpu ptr here, which would make it even
