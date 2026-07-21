@@ -208,6 +208,7 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
     // and small enough to prevent hangs.
     const STARTING_DEPTH: usize = 8;
 
+    #[inline]
     pub fn args_may_unify(
         self,
         obligation_args: I::GenericArgs,
@@ -224,6 +225,7 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
         self.types_may_unify_inner(lhs, rhs, depth_limit)
     }
 
+    #[inline]
     fn args_may_unify_inner(
         self,
         obligation_args: I::GenericArgs,
