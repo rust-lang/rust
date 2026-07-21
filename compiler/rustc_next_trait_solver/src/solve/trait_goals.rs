@@ -236,59 +236,23 @@ where
         // when merging candidates anyways.
         //
         // See tests/ui/impl-trait/auto-trait-leakage/avoid-query-cycle-via-item-bound.rs.
-        let source = CandidateSource::BuiltinImpl(BuiltinImplSource::Misc);
         if let ty::Alias(is_rigid, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) =
             goal.predicate.self_ty().kind()
         {
             debug_assert!(is_rigid == ty::IsRigid::Yes);
-            if ecx.opaque_accesses.might_rerun() {
-                ecx.opaque_accesses.rerun_always(RerunReason::AutoTraitLeakage)?;
-                return Err(NoSolution.into());
+            structural_traits::consider_auto_trait_candidate_for_opaque_ty(ecx, goal, def_id, args)
+        } else {
+            // We need to make sure to stall any coroutines we are inferring to avoid query cycles.
+            if let Some(cand) = ecx.try_stall_coroutine(goal.predicate.self_ty()) {
+                return cand;
             }
 
-            for item_bound in cx.item_self_bounds(def_id.into()).skip_binder() {
-                if item_bound
-                    .as_trait_clause()
-                    .is_some_and(|b| b.def_id() == goal.predicate.def_id())
-                {
-                    return Err(NoSolution.into());
-                }
-            }
-
-            let candidate = ecx.probe_trait_candidate(source).enter(|ecx| {
-                let hidden_ty = cx.type_of(def_id.into()).instantiate(cx, args).skip_norm_wip();
-                ecx.add_goal(
-                    GoalSource::ImplWhereBound,
-                    goal.with(cx, goal.predicate.with_replaced_self_ty(cx, hidden_ty)),
-                )?;
-                ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-            });
-
-            // If this hidden-type proof would constrain non-region inference,
-            // treating it as a hard success can reveal the hidden type to the
-            // caller. A hard failure can do the same when it depends on caller
-            // bounds. For now, we are very conservative with caller bounds.
-            let param_env_may_leak_hidden_ty = !goal.param_env.caller_bounds().is_empty();
-            return match candidate {
-                Ok(candidate) if has_only_region_constraints(candidate.result) => Ok(candidate),
-                Ok(_) => ecx.forced_ambiguity(MaybeInfo::AMBIGUOUS),
-                Err(NoSolutionOrRerunNonErased::NoSolution(_)) if param_env_may_leak_hidden_ty => {
-                    ecx.forced_ambiguity(MaybeInfo::AMBIGUOUS)
-                }
-                Err(err) => Err(err),
-            };
+            ecx.probe_and_evaluate_goal_for_constituent_tys(
+                CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
+                goal,
+                structural_traits::instantiate_constituent_tys_for_auto_trait,
+            )
         }
-
-        // We need to make sure to stall any coroutines we are inferring to avoid query cycles.
-        if let Some(cand) = ecx.try_stall_coroutine(goal.predicate.self_ty()) {
-            return cand;
-        }
-
-        ecx.probe_and_evaluate_goal_for_constituent_tys(
-            source,
-            goal,
-            structural_traits::instantiate_constituent_tys_for_auto_trait,
-        )
     }
 
     fn consider_trait_alias_candidate(
