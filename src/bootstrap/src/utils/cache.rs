@@ -289,7 +289,7 @@ impl Cache {
     }
 
     #[cfg(test)]
-    pub fn into_executed_steps(mut self) -> Vec<ExecutedStep> {
+    pub fn into_executed_steps(self) -> Vec<ExecutedStep> {
         mem::take(&mut self.executed_steps.borrow_mut())
     }
 }
