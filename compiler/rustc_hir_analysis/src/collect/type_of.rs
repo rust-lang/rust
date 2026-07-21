@@ -63,12 +63,17 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
 
     let icx = ItemCtxt::new(tcx, def_id);
 
-    let new_bound_fn_def = |hir, did| {
+    let new_bound_fn_def = |hir: HirId, did| {
         let args = ty::GenericArgs::identity_for_item(tcx, def_id);
-        Ty::new_fn_def(
+        Ty::new_fn_def_raw(
             tcx,
             did,
-            match tcx.late_bound_vars_optional(hir) {
+            match &tcx
+                .late_bound_vars_map(hir.owner)
+                .get(&hir.local_id)
+                .cloned()
+                .map(|x| tcx.mk_bound_variable_kinds(&x))
+            {
                 Some(late_bound) => ty::Binder::bind_with_vars(args, late_bound),
                 None => ty::Binder::dummy(args),
             },

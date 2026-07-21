@@ -251,7 +251,7 @@ where
 
         let fut_ty = tcx
             .instantiate_bound_regions_with_erased(
-                Ty::new_fn_def(
+                Ty::new_fn_def_raw(
                     tcx,
                     async_drop_fn_def_id,
                     async_drop_fn_sig

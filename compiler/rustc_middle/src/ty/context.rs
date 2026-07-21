@@ -2567,15 +2567,6 @@ impl<'tcx> TyCtxt<'tcx> {
         )
     }
 
-    pub fn late_bound_vars_optional(
-        self,
-        id: HirId,
-    ) -> Option<&'tcx List<ty::BoundVariableKind<'tcx>>> {
-        Some(self.mk_bound_variable_kinds(
-            &self.late_bound_vars_map(id.owner).get(&id.local_id).cloned()?,
-        ))
-    }
-
     /// Given the def-id of an early-bound lifetime on an opaque corresponding to
     /// a duplicated captured lifetime, map it back to the early- or late-bound
     /// lifetime of the function from which it originally as captured. If it is
