@@ -20,8 +20,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
-COPY scripts/autodiff.sh /scripts/
-
 ENV NO_DOWNLOAD_CI_LLVM 1
 ENV CODEGEN_BACKENDS llvm
 
@@ -34,4 +32,8 @@ ENV RUST_CONFIGURE_ARGS \
     --disable-docs \
     --set llvm.download-ci-llvm=false
 
-ENV SCRIPT /scripts/autodiff.sh
+ENV SCRIPT="../x.py test --stage 2 --no-fail-fast \
+    tests/codegen-llvm/autodiff \
+    tests/pretty/autodiff \
+    tests/ui/autodiff \
+    tests/ui/feature-gates/feature-gate-autodiff.rs"
