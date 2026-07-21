@@ -480,6 +480,10 @@ impl TypeId {
     #[unstable(feature = "type_info", issue = "146922")]
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
     #[rustc_comptime]
+    // FIXME(type_info): Add enum variant pattern types and use them to represent individual variants
+    // Then add a `variant` method to get a wrapper around such a pattern type (similar to the FRT
+    // type we have) and add methods on that. It's the only way to really sensibly represent
+    // things like `non_exhaustive` which can be applied to variants as well.
     pub fn fields(self, variant_index: usize) -> usize {
         intrinsics::type_id_fields(self, variant_index)
     }
@@ -555,6 +559,15 @@ impl TypeId {
                 field_index,
             ),
         }
+    }
+
+    /// Returns whether a type is marked with `#[non_exhaustive]`.
+    /// Returns `false` for everything but adts.
+    #[unstable(feature = "type_info", issue = "146922")]
+    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    #[rustc_comptime]
+    pub fn non_exhaustive(self) -> bool {
+        intrinsics::non_exhaustive(self)
     }
 }
 
