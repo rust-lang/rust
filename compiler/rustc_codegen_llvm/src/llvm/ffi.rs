@@ -2572,6 +2572,12 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustModuleInstructionStats(M: &Module) -> u64;
 
     pub(crate) fn LLVMRustModuleSerialize(M: &Module, is_thin: bool) -> &'static mut Buffer;
+    pub(crate) fn LLVMRustFatLtoSplitModule(
+        M: &Module,
+        NumFnParts: size_t,
+        VerifyEach: bool,
+        OutBufs: *mut *mut Buffer,
+    ) -> bool;
     pub(crate) fn LLVMRustCreateThinLTOData(
         Modules: *const ThinLTOModule,
         NumModules: size_t,

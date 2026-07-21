@@ -10,11 +10,13 @@ use object::{Object, ObjectSection};
 use rustc_codegen_ssa::back::lto::{SerializedModule, ThinModule, ThinShared};
 use rustc_codegen_ssa::back::rmeta_link;
 use rustc_codegen_ssa::back::write::{
-    CodegenContext, FatLtoInput, SharedEmitter, TargetMachineFactoryFn, ThinLtoInput,
+    CodegenContext, CompiledModuleResults, FatLtoInput, SharedEmitter, TargetMachineFactoryFn,
+    ThinLtoInput, fat_lto_partition_module_name,
 };
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{CompiledModule, ModuleCodegen, ModuleKind};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::jobserver;
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_errors::{DiagCtxt, DiagCtxtHandle};
@@ -199,6 +201,7 @@ pub(crate) fn run_thin(
                       is deferred to the linker"
         );
     }
+
     thin_lto(cgcx, prof, dcx, modules, upstream_modules, &symbols_below_threshold)
 }
 
@@ -640,6 +643,124 @@ pub(crate) fn run_pass_manager(
     debug!("lto done");
 }
 
+/// Splits and codegens an optimized fat-LTO module into ordered partitions.
+pub(crate) fn codegen_fat_lto_partitioned(
+    cgcx: &CodegenContext,
+    prof: &SelfProfilerRef,
+    shared_emitter: &SharedEmitter,
+    tm_factory: TargetMachineFactoryFn<LlvmCodegenBackend>,
+    dcx: DiagCtxtHandle<'_>,
+    module: ModuleCodegen<ModuleLlvm>,
+) -> CompiledModuleResults {
+    let partitions = cgcx.fat_lto_partitions;
+    let buffers = {
+        let _timer = prof.generic_activity_with_arg("LLVM_fat_lto_split", &*module.name);
+        let mut out: Vec<*mut llvm::Buffer> = vec![std::ptr::null_mut(); partitions + 1];
+        if !unsafe {
+            llvm::LLVMRustFatLtoSplitModule(
+                module.module_llvm.llmod(),
+                partitions,
+                cgcx.module_config.verify_llvm_ir,
+                out.as_mut_ptr(),
+            )
+        } {
+            write::llvm_err(dcx, LlvmError::SplitFatLtoModule);
+        }
+        out.into_iter().map(|p| Buffer(unsafe { p.as_mut().unwrap() })).collect::<Vec<_>>()
+    };
+    let name = module.name.clone();
+    drop(module);
+
+    let codegen_partition = |i: usize, buffer: &Buffer| {
+        let dcx = DiagCtxt::new(Box::new(shared_emitter.clone()));
+        let dcx = dcx.handle();
+        let part_name = fat_lto_partition_module_name(&name, i);
+        let part_id = CString::new(part_name.as_str()).unwrap();
+        let module_llvm =
+            ModuleLlvm::parse(cgcx, Arc::clone(&tm_factory), &part_id, buffer.data(), dcx);
+        let module = ModuleCodegen::new_regular(part_name, module_llvm);
+        codegen(cgcx, prof, shared_emitter, module, &cgcx.module_config)
+    };
+
+    if cgcx.parallel {
+        enum PartitionMessage {
+            Token(io::Result<jobserver::Acquired>),
+            Done(usize, CompiledModule),
+            Panic(Box<dyn std::any::Any + Send>),
+        }
+
+        let (sender, receiver) = std::sync::mpsc::channel();
+        let token_sender = sender.clone();
+        let jobserver_helper = jobserver::client()
+            .into_helper_thread(move |token| {
+                drop(token_sender.send(PartitionMessage::Token(token)))
+            })
+            .expect("failed to spawn jobserver helper thread");
+        let mut partition_order = (0..buffers.len()).collect::<Vec<_>>();
+        partition_order.sort_unstable_by(|&a, &b| {
+            buffers[b].data().len().cmp(&buffers[a].data().len()).then(a.cmp(&b))
+        });
+        let next = std::sync::atomic::AtomicUsize::new(0);
+
+        std::thread::scope(|s| {
+            let (codegen_partition, buffers, partition_order, next) =
+                (&codegen_partition, &buffers, &partition_order, &next);
+            let spawn = |token: Option<jobserver::Acquired>| {
+                let sender = sender.clone();
+                s.spawn(move || {
+                    let _token = token;
+                    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                        let _profiler = cgcx
+                            .time_trace
+                            .then(<LlvmCodegenBackend as WriteBackendMethods>::thread_profiler);
+                        while let Some(&index) = partition_order
+                            .get(next.fetch_add(1, std::sync::atomic::Ordering::Relaxed))
+                        {
+                            let module = codegen_partition(index, &buffers[index]);
+                            if sender.send(PartitionMessage::Done(index, module)).is_err() {
+                                break;
+                            }
+                        }
+                    }));
+                    if let Err(panic) = result {
+                        drop(sender.send(PartitionMessage::Panic(panic)));
+                    }
+                });
+            };
+
+            let mut completed = 0;
+            let mut worker_count = 1;
+            let mut results = (0..buffers.len()).map(|_| None).collect::<Vec<_>>();
+            spawn(None);
+            jobserver_helper.request_token();
+
+            while completed != buffers.len() {
+                match receiver.recv().unwrap() {
+                    PartitionMessage::Token(token) => {
+                        let token = token.unwrap_or_else(|err| {
+                            dcx.fatal(format!("failed to acquire jobserver token: {err}"))
+                        });
+                        spawn(Some(token));
+                        worker_count += 1;
+                        if worker_count < buffers.len() {
+                            jobserver_helper.request_token();
+                        }
+                    }
+                    PartitionMessage::Done(index, module) => {
+                        results[index] = Some(module);
+                        completed += 1;
+                    }
+                    PartitionMessage::Panic(panic) => std::panic::resume_unwind(panic),
+                }
+            }
+
+            results.into_iter().map(Option::unwrap).collect()
+        })
+    } else {
+        buffers.iter().enumerate().map(|(i, buffer)| codegen_partition(i, buffer)).collect()
+    }
+}
+
 #[repr(transparent)]
 pub(crate) struct Buffer(&'static mut llvm::Buffer);
 
@@ -702,7 +823,7 @@ pub(crate) fn optimize_and_codegen_thin_module(
     shared_emitter: &SharedEmitter,
     tm_factory: TargetMachineFactoryFn<LlvmCodegenBackend>,
     thin_module: ThinModule<LlvmCodegenBackend>,
-) -> CompiledModule {
+) -> CompiledModuleResults {
     let dcx = DiagCtxt::new(Box::new(shared_emitter.clone()));
     let dcx = dcx.handle();
 
@@ -781,7 +902,7 @@ pub(crate) fn optimize_and_codegen_thin_module(
             save_temp_bitcode(cgcx, &module, "thin-lto-after-pm");
         }
     }
-    codegen(cgcx, prof, shared_emitter, module, &cgcx.module_config)
+    std::iter::once(codegen(cgcx, prof, shared_emitter, module, &cgcx.module_config)).collect()
 }
 
 /// Maps LLVM module identifiers to their corresponding LLVM LTO cache keys

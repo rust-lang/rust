@@ -29,6 +29,7 @@ use rustc_session::config::{
 use rustc_span::source_map::SourceMap;
 use rustc_span::{FileName, InnerSpan, Span, SpanData};
 use rustc_target::spec::{MergeFunctions, SanitizerSet};
+use smallvec::{SmallVec, smallvec};
 use tracing::debug;
 
 use crate::back::link::ensure_removed;
@@ -41,6 +42,12 @@ use crate::{
 };
 
 const PRE_LTO_BC_EXT: &str = "pre-lto.bc";
+
+pub type CompiledModuleResults = SmallVec<[CompiledModule; 1]>;
+
+pub fn fat_lto_partition_module_name(base: &str, index: usize) -> String {
+    format!("{base}.fat-lto-part{index:04}")
+}
 
 /// What kind of object file to emit.
 #[derive(Clone, Copy, PartialEq, Encodable, Decodable)]
@@ -324,6 +331,7 @@ pub struct CodegenContext {
     pub lto: Lto,
     pub use_linker_plugin_lto: bool,
     pub dylib_lto: bool,
+    pub fat_lto_partitions: usize,
     pub prefer_dynamic: bool,
     pub save_temps: bool,
     pub fewer_names: bool,
@@ -617,10 +625,10 @@ pub fn produce_final_output_artifacts(
         // rlib.
         let needs_crate_object = crate_output.outputs.contains_key(&OutputType::Exe);
 
-        let keep_numbered_bitcode = user_wants_bitcode && sess.codegen_units().as_usize() > 1;
+        let keep_numbered_bitcode = user_wants_bitcode && compiled_modules.modules.len() > 1;
 
         let keep_numbered_objects =
-            needs_crate_object || (user_wants_objects && sess.codegen_units().as_usize() > 1);
+            needs_crate_object || (user_wants_objects && compiled_modules.modules.len() > 1);
 
         for module in compiled_modules.modules.iter() {
             if !keep_numbered_objects {
@@ -972,7 +980,7 @@ fn do_fat_lto<B: WriteBackendMethods>(
     exported_symbols_for_lto: &[String],
     each_linked_rlib_for_lto: &[PathBuf],
     needs_fat_lto: Vec<FatLtoInput<B>>,
-) -> CompiledModule {
+) -> Vec<CompiledModule> {
     let _timer = sess.prof.verbose_generic_activity("LLVM_fatlto");
 
     let dcx = DiagCtxt::new(Box::new(shared_emitter.clone()));
@@ -989,6 +997,7 @@ fn do_fat_lto<B: WriteBackendMethods>(
         each_linked_rlib_for_lto,
         needs_fat_lto,
     )
+    .into_vec()
 }
 
 fn do_thin_lto<B: WriteBackendMethods>(
@@ -1122,7 +1131,7 @@ fn do_thin_lto<B: WriteBackendMethods>(
                 used_token_count -= 1;
 
                 match result {
-                    Ok(compiled_module) => compiled_modules.push(compiled_module),
+                    Ok(modules) => compiled_modules.extend(modules),
                     Err(Some(WorkerFatalError)) => {
                         // Like `CodegenAborted`, wait for remaining work to finish.
                         codegen_aborted = Some(FatalError);
@@ -1180,7 +1189,7 @@ pub(crate) enum ThinLtoMessage {
 
     /// The backend has finished processing a work item for a codegen unit.
     /// Sent from a backend worker thread.
-    WorkItem { result: Result<CompiledModule, Option<WorkerFatalError>> },
+    WorkItem { result: Result<CompiledModuleResults, Option<WorkerFatalError>> },
 }
 
 /// A message sent from the coordinator thread to the main thread telling it to
@@ -1275,11 +1284,14 @@ fn start_executing_work<B: WriteBackendMethods>(
         None
     };
 
+    let fat_lto_partitions = sess.opts.unstable_opts.fat_lto_partitions;
+
     let cgcx = CodegenContext {
         crate_types: tcx.crate_types().to_vec(),
         lto: sess.lto(),
         use_linker_plugin_lto: sess.opts.cg.linker_plugin_lto.enabled(),
         dylib_lto: sess.opts.unstable_opts.dylib_lto,
+        fat_lto_partitions,
         prefer_dynamic: sess.opts.cg.prefer_dynamic,
         fewer_names: sess.fewer_names(),
         save_temps: sess.opts.cg.save_temps,
@@ -1911,7 +1923,7 @@ fn spawn_thin_lto_work<B: WriteBackendMethods>(
 
         let result = std::panic::catch_unwind(AssertUnwindSafe(|| match work {
             ThinLtoWorkItem::CopyPostLtoArtifacts(m) => {
-                execute_copy_from_cache_work_item(&cgcx, &prof, shared_emitter, m)
+                smallvec![execute_copy_from_cache_work_item(&cgcx, &prof, shared_emitter, m)]
             }
             ThinLtoWorkItem::ThinLto(m) => {
                 let _timer = prof.generic_activity_with_arg("codegen_module_perform_lto", m.name());
@@ -2150,7 +2162,7 @@ impl<B: WriteBackendMethods> OngoingCodegen<B> {
                 );
 
                 CompiledModules {
-                    modules: vec![do_fat_lto(
+                    modules: do_fat_lto(
                         sess,
                         &cgcx,
                         shared_emitter,
@@ -2158,7 +2170,7 @@ impl<B: WriteBackendMethods> OngoingCodegen<B> {
                         &crate_info.exported_symbols_for_lto,
                         &crate_info.each_linked_rlib_file_for_lto,
                         needs_fat_lto,
-                    )],
+                    ),
                     allocator_module: None,
                 }
             }

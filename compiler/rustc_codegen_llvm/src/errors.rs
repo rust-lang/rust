@@ -120,6 +120,8 @@ pub(crate) enum LlvmError<'a> {
     PrepareThinLtoModule,
     #[diag("failed to parse bitcode for LTO module")]
     ParseBitcode,
+    #[diag("failed to split fat LTO module into partitions")]
+    SplitFatLtoModule,
 }
 
 pub(crate) struct WithLlvmError<'a>(pub LlvmError<'a>, pub String);
@@ -147,6 +149,9 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for WithLlvmError<'_> {
                 msg!("failed to prepare thin LTO module: {$llvm_err}")
             }
             ParseBitcode => msg!("failed to parse bitcode for LTO module: {$llvm_err}"),
+            SplitFatLtoModule => {
+                msg!("failed to split fat LTO module into partitions: {$llvm_err}")
+            }
         };
         self.0
             .into_diag(dcx, level)

@@ -331,7 +331,7 @@ impl WriteBackendMethods for AotDriver {
         _exported_symbols_for_lto: &[String],
         _each_linked_rlib_for_lto: &[PathBuf],
         _modules: Vec<FatLtoInput<Self>>,
-    ) -> CompiledModule {
+    ) -> rustc_codegen_ssa::back::write::CompiledModuleResults {
         unreachable!()
     }
 
@@ -361,7 +361,7 @@ impl WriteBackendMethods for AotDriver {
         _shared_emitter: &SharedEmitter,
         _tm_factory: TargetMachineFactoryFn<Self>,
         _thin: ThinModule<Self>,
-    ) -> CompiledModule {
+    ) -> rustc_codegen_ssa::back::write::CompiledModuleResults {
         unreachable!()
     }
 

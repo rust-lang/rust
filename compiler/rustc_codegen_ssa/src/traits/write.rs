@@ -44,7 +44,7 @@ pub trait WriteBackendMethods: Clone + 'static {
         exported_symbols_for_lto: &[String],
         each_linked_rlib_for_lto: &[PathBuf],
         modules: Vec<FatLtoInput<Self>>,
-    ) -> CompiledModule;
+    ) -> crate::back::write::CompiledModuleResults;
     /// Performs thin LTO by performing necessary global analysis and returning two
     /// lists, one of the modules that need optimization and another for modules that
     /// can simply be copied over from the incr. comp. cache.
@@ -69,7 +69,7 @@ pub trait WriteBackendMethods: Clone + 'static {
         shared_emitter: &SharedEmitter,
         tm_factory: TargetMachineFactoryFn<Self>,
         thin: ThinModule<Self>,
-    ) -> CompiledModule;
+    ) -> crate::back::write::CompiledModuleResults;
     fn codegen(
         cgcx: &CodegenContext,
         prof: &SelfProfilerRef,

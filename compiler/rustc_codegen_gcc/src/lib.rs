@@ -443,8 +443,9 @@ impl WriteBackendMethods for GccCodegenBackend {
         _exported_symbols_for_lto: &[String],
         each_linked_rlib_for_lto: &[PathBuf],
         modules: Vec<FatLtoInput<Self>>,
-    ) -> CompiledModule {
-        back::lto::run_fat(cgcx, &sess.prof, shared_emitter, each_linked_rlib_for_lto, modules)
+    ) -> rustc_codegen_ssa::back::write::CompiledModuleResults {
+        [back::lto::run_fat(cgcx, &sess.prof, shared_emitter, each_linked_rlib_for_lto, modules)]
+            .into()
     }
 
     fn run_thin_lto(
@@ -475,7 +476,7 @@ impl WriteBackendMethods for GccCodegenBackend {
         _shared_emitter: &SharedEmitter,
         _tm_factory: TargetMachineFactoryFn<Self>,
         _thin: ThinModule<Self>,
-    ) -> CompiledModule {
+    ) -> rustc_codegen_ssa::back::write::CompiledModuleResults {
         unreachable!()
     }
 

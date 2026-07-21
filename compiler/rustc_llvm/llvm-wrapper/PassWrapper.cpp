@@ -2,8 +2,13 @@
 
 #include "llvm-c/Core.h"
 #include "llvm/ADT/ArrayRef.h"
+#include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/DenseSet.h"
+#include "llvm/ADT/EquivalenceClasses.h"
+#include "llvm/ADT/STLExtras.h"
+#include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/ADT/SmallVector.h"
+#include "llvm/ADT/Twine.h"
 #include "llvm/Analysis/Lint.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
 #if LLVM_VERSION_GE(22, 0)
@@ -14,6 +19,8 @@
 #include "llvm/CodeGen/CommandFlags.h"
 #include "llvm/IR/AssemblyAnnotationWriter.h"
 #include "llvm/IR/AutoUpgrade.h"
+#include "llvm/IR/Comdat.h"
+#include "llvm/IR/Constants.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/PassManager.h"
 #include "llvm/IR/Verifier.h"
@@ -53,8 +60,10 @@
 #include "llvm/Transforms/Utils/AssignGUID.h"
 #endif
 #include "llvm/Transforms/Utils/CanonicalizeAliases.h"
+#include "llvm/Transforms/Utils/Cloning.h"
 #include "llvm/Transforms/Utils/FunctionImportUtils.h"
 #include "llvm/Transforms/Utils/NameAnonGlobals.h"
+#include <algorithm>
 #include <set>
 #include <string>
 #include <vector>
@@ -1511,6 +1520,240 @@ extern "C" LLVMModuleRef LLVMRustParseBitcodeForLTO(LLVMContextRef Context,
     return nullptr;
   }
   return wrap(std::move(*SrcOrError).release());
+}
+
+static void forEachFatLtoUser(
+    const Value *V, function_ref<void(const GlobalValue *)> Visit) {
+  SmallVector<const User *, 8> Worklist(V->user_begin(), V->user_end());
+  SmallPtrSet<const User *, 32> Seen;
+  while (!Worklist.empty()) {
+    const User *U = Worklist.pop_back_val();
+    if (!Seen.insert(U).second)
+      continue;
+    if (const auto *I = dyn_cast<Instruction>(U))
+      Visit(I->getFunction());
+    else if (const auto *GV = dyn_cast<GlobalValue>(U))
+      Visit(GV);
+    else if (isa<Constant>(U))
+      Worklist.append(U->user_begin(), U->user_end());
+    else
+      report_fatal_error("unexpected non-constant global value user");
+  }
+}
+
+static EquivalenceClasses<const GlobalValue *> findFatLtoClusters(Module &Mod) {
+  EquivalenceClasses<const GlobalValue *> Clusters;
+  DenseMap<const Comdat *, const GlobalValue *> ComdatMembers;
+
+  for (GlobalValue &GV : Mod.global_values()) {
+    if (GV.isDeclaration())
+      continue;
+    Clusters.insert(&GV);
+
+    if (const Comdat *C = GV.getComdat())
+      Clusters.unionSets(ComdatMembers.try_emplace(C, &GV).first->second, &GV);
+
+    const GlobalObject *Root = GV.getAliaseeObject();
+    if (const auto *IFunc = dyn_cast_or_null<GlobalIFunc>(Root))
+      Root = IFunc->getResolverFunction();
+    if (Root && Root != &GV)
+      Clusters.unionSets(&GV, Root);
+
+    if (const auto *F = dyn_cast<Function>(&GV))
+      for (const BasicBlock &BB : *F)
+        if (const BlockAddress *BA = BlockAddress::lookup(&BB); BA && BA->isConstantUsed())
+          forEachFatLtoUser(BA, [&](const GlobalValue *User) { Clusters.unionSets(F, User); });
+  }
+  return Clusters;
+}
+
+static void walkFatLtoConstants(
+    const Constant *Root,
+    function_ref<const Constant *(const GlobalValue *)> Visit) {
+  SmallVector<const Constant *, 16> Worklist(1, Root);
+  SmallPtrSet<const Constant *, 32> Seen;
+  while (!Worklist.empty()) {
+    const Constant *C = Worklist.pop_back_val();
+    if (!Seen.insert(C).second)
+      continue;
+    if (const auto *GV = dyn_cast<GlobalValue>(C)) {
+      if (const Constant *Next = Visit(GV))
+        Worklist.push_back(Next);
+      continue;
+    }
+    for (const Value *Operand : C->operands())
+      if (const auto *OperandC = dyn_cast<Constant>(Operand))
+        Worklist.push_back(OperandC);
+  }
+}
+
+extern "C" bool LLVMRustFatLtoSplitModule(LLVMModuleRef M, size_t NumFnParts,
+                                          bool VerifyEach,
+                                          LLVMRustBuffer **OutBufs) {
+  if (NumFnParts == 0 || NumFnParts > 256) {
+    LLVMRustSetLastError("invalid fat LTO partition count");
+    return false;
+  }
+
+  Module &Mod = *unwrap(M);
+  const unsigned DataPart = static_cast<unsigned>(NumFnParts);
+  EquivalenceClasses<const GlobalValue *> Clusters = findFatLtoClusters(Mod);
+  DenseMap<const GlobalValue *, unsigned> ClusterParts;
+
+  uint64_t TotalCost = 0;
+  for (const Function &F : Mod)
+    if (!F.isDeclaration())
+      TotalCost += std::max<uint64_t>(1, F.getInstructionCount());
+  const uint64_t Target = std::max<uint64_t>(
+      1, TotalCost / NumFnParts + (TotalCost % NumFnParts != 0));
+  uint64_t Accumulated = 0;
+  unsigned Current = 0;
+  for (const Function &F : Mod) {
+    if (F.isDeclaration())
+      continue;
+    ClusterParts.try_emplace(Clusters.getLeaderValue(&F), Current);
+    Accumulated += std::max<uint64_t>(1, F.getInstructionCount());
+    if (Accumulated >= Target * (Current + 1) && Current + 1 < NumFnParts)
+      ++Current;
+  }
+
+  if (!Mod.getModuleInlineAsm().empty())
+    for (const auto &Cluster : Clusters)
+      if (Cluster->isLeader())
+        ClusterParts[Cluster->getData()] = 0;
+
+  auto PartOf = [&](const GlobalValue *GV) -> unsigned {
+    auto Leader = Clusters.findLeader(GV);
+    if (Leader == Clusters.member_end())
+      return DataPart;
+    auto It = ClusterParts.find(*Leader);
+    return It == ClusterParts.end() ? DataPart : It->second;
+  };
+
+  std::vector<SmallPtrSet<const GlobalVariable *, 32>> ConstantDependencies(
+      NumFnParts);
+  for (const Function &F : Mod) {
+    if (F.isDeclaration())
+      continue;
+    auto &Dependencies = ConstantDependencies[PartOf(&F)];
+    for (const BasicBlock &BB : F)
+      for (const Instruction &I : BB)
+        for (const Value *Operand : I.operands())
+          if (const auto *C = dyn_cast<Constant>(Operand))
+            walkFatLtoConstants(C, [&](const GlobalValue *GV) -> const Constant * {
+              if (const auto *A = dyn_cast<GlobalAlias>(GV))
+                return A->getAliasee();
+              const auto *G = dyn_cast<GlobalVariable>(GV);
+              if (G && G->isConstant() && G->hasInitializer() &&
+                  !G->hasAppendingLinkage() && Dependencies.insert(G).second)
+                return G->getInitializer();
+              return nullptr;
+            });
+  }
+
+  SmallPtrSet<const GlobalValue *, 32> VirtualCrossPartitionUses;
+  for (unsigned P = 0; P != DataPart; ++P) {
+    auto &Dependencies = ConstantDependencies[P];
+    Dependencies.remove_if(
+        [&](const GlobalVariable *G) { return PartOf(G) != DataPart; });
+
+    for (const GlobalVariable *G : Dependencies) {
+      walkFatLtoConstants(G, [&](const GlobalValue *GV) -> const Constant * {
+        if (PartOf(GV) != P)
+          VirtualCrossPartitionUses.insert(GV);
+        const auto *Ref = dyn_cast<GlobalVariable>(GV);
+        return Ref && Dependencies.contains(Ref) && Ref->hasInitializer()
+                   ? Ref->getInitializer() : nullptr;
+      });
+    }
+  }
+
+  uint64_t AnonCounter = 0;
+  for (GlobalValue &GV : Mod.global_values()) {
+    if (!GV.hasLocalLinkage() || GV.isDeclaration())
+      continue;
+    bool UsedOutside = VirtualCrossPartitionUses.contains(&GV);
+    const unsigned Own = PartOf(&GV);
+    forEachFatLtoUser(&GV, [&](const GlobalValue *User) { UsedOutside |= PartOf(User) != Own; });
+    if (!UsedOutside)
+      continue;
+    if (GV.getName().starts_with(".L") || GV.getName().empty())
+      GV.setName("__rustc_fatlto_anon." + Twine(AnonCounter++));
+    GV.setLinkage(GlobalValue::ExternalLinkage);
+    GV.setVisibility(GlobalValue::HiddenVisibility);
+    GV.setDSOLocal(true);
+  }
+
+  SmallVector<std::unique_ptr<LLVMRustBuffer>, 16> Results;
+  Results.reserve(DataPart + 1);
+  for (unsigned P = 0; P <= DataPart; ++P) {
+    ValueToValueMapTy VMap;
+    std::unique_ptr<Module> Part =
+        CloneModule(Mod, VMap, [&](const GlobalValue *GV) {
+          const auto *G = dyn_cast<GlobalVariable>(GV);
+          return PartOf(GV) == P ||
+                 (P != DataPart && G && ConstantDependencies[P].contains(G));
+        });
+
+    for (const GlobalIFunc &IFunc : Mod.ifuncs()) {
+      if (PartOf(&IFunc) == P)
+        continue;
+      auto *Clone = dyn_cast_or_null<GlobalIFunc>(VMap.lookup(&IFunc));
+      if (!Clone)
+        continue;
+      Clone->setName("");
+      Function *Declaration = Function::Create(
+          cast<FunctionType>(IFunc.getValueType()),
+          GlobalValue::ExternalLinkage, IFunc.getAddressSpace(),
+          IFunc.getName(), Part.get());
+      Declaration->setVisibility(IFunc.getVisibility());
+      Declaration->setDLLStorageClass(IFunc.getDLLStorageClass());
+      Declaration->setDSOLocal(IFunc.isDSOLocal());
+      Declaration->setUnnamedAddr(IFunc.getUnnamedAddr());
+      Declaration->setPartition(IFunc.getPartition());
+      Clone->replaceAllUsesWith(Declaration);
+      Clone->eraseFromParent();
+    }
+
+    if (P != DataPart)
+      for (const GlobalVariable *G : ConstantDependencies[P]) {
+        auto *Clone = cast<GlobalVariable>(VMap.lookup(G));
+        Clone->setLinkage(GlobalValue::AvailableExternallyLinkage);
+        Clone->setComdat(nullptr);
+      }
+
+    for (const GlobalVariable &G : Mod.globals()) {
+      if (!G.hasAppendingLinkage() || PartOf(&G) == P)
+        continue;
+      auto *Clone = dyn_cast_or_null<GlobalVariable>(VMap.lookup(&G));
+      if (!Clone)
+        continue;
+      if (!Clone->use_empty()) {
+        LLVMRustSetLastError(
+            "unselected appending global still has uses after fat LTO split");
+        return false;
+      }
+      Clone->eraseFromParent();
+    }
+
+    for (GlobalValue &GV : make_early_inc_range(Part->global_values()))
+      if (GV.isDeclaration() && GV.use_empty())
+        GV.eraseFromParent();
+
+    if (P != 0)
+      Part->setModuleInlineAsm("");
+    if (VerifyEach && verifyModule(*Part, &errs())) {
+      LLVMRustSetLastError("fat LTO partition failed verification");
+      return false;
+    }
+    auto Ret = std::make_unique<LLVMRustBuffer>();
+    auto OS = raw_string_ostream(Ret->data);
+    WriteBitcodeToFile(*Part, OS);
+    Results.push_back(std::move(Ret));
+  }
+  for (unsigned P = 0; P <= DataPart; ++P)
+    OutBufs[P] = Results[P].release();
+  return true;
 }
 
 // Computes the LTO cache key for the provided 'ModId' in the given 'Data',

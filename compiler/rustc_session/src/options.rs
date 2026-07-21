@@ -826,6 +826,7 @@ mod desc {
     pub(crate) const parse_opt_comma_list: &str = parse_comma_list;
     pub(crate) const parse_number: &str = "a number";
     pub(crate) const parse_opt_number: &str = parse_number;
+    pub(crate) const parse_fat_lto_partitions: &str = "an integer from 1 to 256";
     pub(crate) const parse_frame_pointer: &str = "one of `true`/`yes`/`on`, `false`/`no`/`off`, or (with -Zunstable-options) `non-leaf` or `always`";
     pub(crate) const parse_threads: &str = "a number or `sync`";
     pub(crate) const parse_time_passes_format: &str = "`text` (default) or `json`";
@@ -1199,6 +1200,14 @@ pub mod parse {
             }
             None => false,
         }
+    }
+
+    pub(crate) fn parse_fat_lto_partitions(slot: &mut usize, v: Option<&str>) -> bool {
+        let Some(partitions @ 1..=256) = v.and_then(|value| value.parse().ok()) else {
+            return false;
+        };
+        *slot = partitions;
+        true
     }
 
     /// Use this for any numeric option that lacks a static default.
@@ -2488,6 +2497,9 @@ options! {
         "rely on user specified linker commands to find clangrt"),
     extra_const_ub_checks: bool = (false, parse_bool, [TRACKED],
         "turns on more checks to detect const UB, which can be slow (default: no)"),
+    fat_lto_partitions: usize = (1, parse_fat_lto_partitions, [TRACKED],
+        "split the merged fat-LTO module into this many function partitions plus a data \
+        partition for parallel codegen (LLVM backend only; default: 1, no partitioning)"),
     #[rustc_lint_opt_deny_field_access("use `Session::fewer_names` instead of this field")]
     fewer_names: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "reduce memory use by retaining fewer names within compilation artifacts (LLVM-IR) \

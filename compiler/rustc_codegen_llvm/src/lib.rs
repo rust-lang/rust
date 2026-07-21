@@ -19,6 +19,7 @@ use std::any::Any;
 use std::ffi::CStr;
 use std::mem::ManuallyDrop;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use back::owned_target_machine::OwnedTargetMachine;
 use back::write::{create_informational_target_machine, create_target_machine};
@@ -27,8 +28,8 @@ use llvm_util::target_config;
 use rustc_ast::expand::allocator::AllocatorMethod;
 use rustc_codegen_ssa::back::lto::ThinModule;
 use rustc_codegen_ssa::back::write::{
-    CodegenContext, FatLtoInput, ModuleConfig, SharedEmitter, TargetMachineFactoryConfig,
-    TargetMachineFactoryFn, ThinLtoInput,
+    CodegenContext, CompiledModuleResults, FatLtoInput, ModuleConfig, SharedEmitter,
+    TargetMachineFactoryConfig, TargetMachineFactoryFn, ThinLtoInput,
 };
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{CompiledModule, CompiledModules, CrateInfo, ModuleCodegen, TargetConfig};
@@ -142,12 +143,12 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         exported_symbols_for_lto: &[String],
         each_linked_rlib_for_lto: &[PathBuf],
         modules: Vec<FatLtoInput<Self>>,
-    ) -> CompiledModule {
+    ) -> CompiledModuleResults {
         let mut module = back::lto::run_fat(
             cgcx,
             &sess.prof,
             shared_emitter,
-            tm_factory,
+            Arc::clone(&tm_factory),
             exported_symbols_for_lto,
             each_linked_rlib_for_lto,
             modules,
@@ -157,7 +158,19 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         let dcx = dcx.handle();
         back::lto::run_pass_manager(cgcx, &sess.prof, dcx, &mut module, false);
 
-        back::write::codegen(cgcx, &sess.prof, shared_emitter, module, &cgcx.module_config)
+        if cgcx.fat_lto_partitions > 1 {
+            back::lto::codegen_fat_lto_partitioned(
+                cgcx,
+                &sess.prof,
+                shared_emitter,
+                tm_factory,
+                dcx,
+                module,
+            )
+        } else {
+            [back::write::codegen(cgcx, &sess.prof, shared_emitter, module, &cgcx.module_config)]
+                .into()
+        }
     }
     fn run_thin_lto(
         cgcx: &CodegenContext,
@@ -191,7 +204,7 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         shared_emitter: &SharedEmitter,
         tm_factory: TargetMachineFactoryFn<LlvmCodegenBackend>,
         thin: ThinModule<Self>,
-    ) -> CompiledModule {
+    ) -> CompiledModuleResults {
         back::lto::optimize_and_codegen_thin_module(cgcx, prof, shared_emitter, tm_factory, thin)
     }
     fn codegen(
