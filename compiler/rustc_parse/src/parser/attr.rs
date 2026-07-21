@@ -35,12 +35,6 @@ enum OuterAttributeType {
     Attribute,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub enum AllowLeadingUnsafe {
-    Yes,
-    No,
-}
-
 impl<'a> Parser<'a> {
     /// Parses attributes that appear before an item.
     pub(super) fn parse_outer_attributes(&mut self) -> PResult<'a, AttrWrapper> {
@@ -435,10 +429,7 @@ impl<'a> Parser<'a> {
     /// MetaItem = SimplePath ( '=' UNSUFFIXED_LIT | '(' MetaSeq? ')' )? ;
     /// MetaSeq = MetaItemInner (',' MetaItemInner)* ','? ;
     /// ```
-    pub fn parse_meta_item(
-        &mut self,
-        unsafe_allowed: AllowLeadingUnsafe,
-    ) -> PResult<'a, ast::MetaItem> {
+    pub fn parse_meta_item(&mut self) -> PResult<'a, ast::MetaItem> {
         if let Some(MetaVarKind::Meta { has_meta_form }) = self.token.is_metavar_seq() {
             return if has_meta_form {
                 let attr_item = self
@@ -452,30 +443,13 @@ impl<'a> Parser<'a> {
                 self.unexpected_any()
             };
         }
-
         let lo = self.token.span;
-        let is_unsafe = if unsafe_allowed == AllowLeadingUnsafe::Yes {
-            self.eat_keyword(exp!(Unsafe))
-        } else {
-            false
-        };
-        let unsafety = if is_unsafe {
-            let unsafe_span = self.prev_token.span;
-            self.expect(exp!(OpenParen))?;
-
-            ast::Safety::Unsafe(unsafe_span)
-        } else {
-            ast::Safety::Default
-        };
 
         let path = self.parse_path(PathStyle::Mod)?;
         let kind = self.parse_meta_item_kind()?;
-        if is_unsafe {
-            self.expect(exp!(CloseParen))?;
-        }
         let span = lo.to(self.prev_token.span);
 
-        Ok(ast::MetaItem { unsafety, path, kind, span })
+        Ok(ast::MetaItem { unsafety: ast::Safety::Default, path, kind, span })
     }
 
     pub(crate) fn parse_meta_item_kind(&mut self) -> PResult<'a, ast::MetaItemKind> {
@@ -500,7 +474,7 @@ impl<'a> Parser<'a> {
             Err(err) => err.cancel(), // we provide a better error below
         }
 
-        match self.parse_meta_item(AllowLeadingUnsafe::No) {
+        match self.parse_meta_item() {
             Ok(mi) => return Ok(ast::MetaItemInner::MetaItem(mi)),
             Err(err) => err.cancel(), // we provide a better error below
         }

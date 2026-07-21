@@ -7,7 +7,7 @@ use std::fmt::Debug;
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use rustc_index::bit_set::GrowableBitSet;
-use rustc_span::{Ident, Span, Symbol, kw, sym};
+use rustc_span::{Ident, Span, Symbol, sym};
 use smallvec::{SmallVec, smallvec};
 use thin_vec::{ThinVec, thin_vec};
 
@@ -748,29 +748,9 @@ pub fn mk_attr_from_item(
 
 fn mk_attr_tokens(
     style: AttrStyle,
-    unsafety: Safety,
     item_tokens: AttrTokenStream,
     span: Span,
 ) -> LazyAttrTokenStream {
-    let safety_kw = match unsafety {
-        Safety::Default => None,
-        Safety::Unsafe(span) => Some((kw::Unsafe, span)),
-        Safety::Safe(span) => Some((kw::Safe, span)),
-    };
-    let item_tokens = if let Some((kw, kw_span)) = safety_kw {
-        AttrTokenStream::new(vec![
-            AttrTokenTree::Token(Token::from_ast_ident(Ident::new(kw, kw_span)), Spacing::Alone),
-            AttrTokenTree::Delimited(
-                DelimSpan::from_single(span),
-                DelimSpacing::new(Spacing::JointHidden, Spacing::Alone),
-                Delimiter::Parenthesis,
-                item_tokens,
-            ),
-        ])
-    } else {
-        item_tokens
-    };
-
     let mut tokens = match style {
         AttrStyle::Outer => {
             vec![AttrTokenTree::Token(Token::new(token::Pound, span), Spacing::JointHidden)]
@@ -792,19 +772,12 @@ fn mk_attr_tokens(
 
 // `span` is used for the `Attribute` and everything within it (except for any span within
 // `unsafety`).
-pub fn mk_attr_word(
-    g: &AttrIdGenerator,
-    style: AttrStyle,
-    unsafety: Safety,
-    name: Symbol,
-    span: Span,
-) -> Attribute {
+pub fn mk_attr_word(g: &AttrIdGenerator, style: AttrStyle, name: Symbol, span: Span) -> Attribute {
     let path = Path::from_ident(Ident::new(name, span));
     let args = AttrArgs::Empty;
 
     let tokens = Some(mk_attr_tokens(
         style,
-        unsafety,
         AttrTokenStream::new(vec![AttrTokenTree::Token(
             Token::from_ast_ident(Ident::new(name, span)),
             Spacing::Alone,
@@ -812,7 +785,13 @@ pub fn mk_attr_word(
         span,
     ));
 
-    mk_attr_from_item(g, AttrItem { unsafety, path, args, span }, tokens, style, span)
+    mk_attr_from_item(
+        g,
+        AttrItem { unsafety: Safety::Default, path, args, span },
+        tokens,
+        style,
+        span,
+    )
 }
 
 // `span` is used for the `Attribute` and everything within it (except for any span within
@@ -820,7 +799,6 @@ pub fn mk_attr_word(
 pub fn mk_attr_nested_word(
     g: &AttrIdGenerator,
     style: AttrStyle,
-    unsafety: Safety,
     outer: Symbol,
     inner: Symbol,
     span: Span,
@@ -839,7 +817,6 @@ pub fn mk_attr_nested_word(
 
     let tokens = Some(mk_attr_tokens(
         style,
-        unsafety,
         AttrTokenStream::new(vec![
             AttrTokenTree::Token(Token::from_ast_ident(Ident::new(outer, span)), Spacing::Alone),
             AttrTokenTree::Delimited(
@@ -855,7 +832,13 @@ pub fn mk_attr_nested_word(
         span,
     ));
 
-    mk_attr_from_item(g, AttrItem { unsafety, path, args: attr_args, span }, tokens, style, span)
+    mk_attr_from_item(
+        g,
+        AttrItem { unsafety: Safety::Default, path, args: attr_args, span },
+        tokens,
+        style,
+        span,
+    )
 }
 
 // `span` is used for the `Attribute` and everything within it (except for any span within
@@ -863,7 +846,6 @@ pub fn mk_attr_nested_word(
 pub fn mk_attr_name_value_str(
     g: &AttrIdGenerator,
     style: AttrStyle,
-    unsafety: Safety,
     name: Symbol,
     val: Symbol,
     span: Span,
@@ -881,7 +863,6 @@ pub fn mk_attr_name_value_str(
 
     let tokens = Some(mk_attr_tokens(
         style,
-        unsafety,
         AttrTokenStream::new(vec![
             AttrTokenTree::Token(Token::from_ast_ident(Ident::new(name, span)), Spacing::Alone),
             AttrTokenTree::Token(Token::new(token::Eq, span), Spacing::Alone),
@@ -893,7 +874,13 @@ pub fn mk_attr_name_value_str(
         span,
     ));
 
-    mk_attr_from_item(g, AttrItem { unsafety, path, args, span }, tokens, style, span)
+    mk_attr_from_item(
+        g,
+        AttrItem { unsafety: Safety::Default, path, args, span },
+        tokens,
+        style,
+        span,
+    )
 }
 
 pub fn filter_by_name(attrs: &[Attribute], name: Symbol) -> impl Iterator<Item = &Attribute> {
