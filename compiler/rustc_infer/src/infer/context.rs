@@ -364,7 +364,8 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         use rustc_data_structures::undo_log::UndoLogs;
 
         use crate::infer::UndoLog;
-        inner.undo_log.push(UndoLog::PushSolverRegionConstraint);
+        let previous_was_and = inner.solver_region_constraint_storage.is_and();
+        inner.undo_log.push(UndoLog::PushSolverRegionConstraint { previous_was_and });
         inner.solver_region_constraint_storage.push(c);
     }
 
