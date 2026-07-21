@@ -6,21 +6,17 @@
 //@ assembly-output: emit-asm
 //@ compile-flags: --crate-type=lib -Copt-level=3 -C panic=abort
 
-#![feature(no_core, lang_items, repr_simd, intrinsics)]
+#![feature(no_core, lang_items, intrinsics)]
 #![no_core]
 #![allow(non_camel_case_types)]
 
 extern crate minicore;
+use minicore::simd::Simd;
 use minicore::*;
 
-#[repr(simd)]
-pub struct f64x4([f64; 4]);
-
-#[repr(simd)]
-pub struct m64x4([i64; 4]);
-
-#[repr(simd)]
-pub struct pf64x4([*mut f64; 4]);
+type f64x4 = Simd<f64, 4>;
+type m64x4 = Simd<i64, 4>;
+type pf64x4 = Simd<*mut f64, 4>;
 
 #[rustc_intrinsic]
 unsafe fn simd_scatter<V, P, M>(values: V, pointer: P, mask: M);
