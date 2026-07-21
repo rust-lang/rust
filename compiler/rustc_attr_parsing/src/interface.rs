@@ -18,7 +18,8 @@ use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
 
 use crate::attributes::AttributeSafety;
 use crate::context::{
-    ATTRIBUTE_PARSERS, AcceptContext, FinalizeContext, FinalizeFn, SharedContext,
+    ATTRIBUTE_PARSERS, AcceptContext, FinalizeCheckContext, FinalizeCheckFn, FinalizeContext,
+    FinalizeFn, FinalizeOutput, SharedContext,
 };
 use crate::parser::{AllowExprMetavar, ArgParser, PathParser, RefPathParser};
 use crate::session_diagnostics::ParsedDescription;
@@ -448,8 +449,14 @@ impl<'sess> AttributeParser<'sess> {
         }
 
         synthetic_attr_state.finalize_synthetic_attrs(&mut attributes);
+
+        // First, run all finalizers to produce the parsed attributes. Cross-attribute
+        // checks that need to inspect the fully parsed attributes are deferred until all
+        // finalizers have run (see below), since the parsed attributes are not yet all
+        // available here.
+        let mut deferred_checks: Vec<(FinalizeCheckFn, Span)> = Vec::new();
         for f in &finalizers {
-            if let Some(attr) = f(&mut FinalizeContext {
+            let FinalizeOutput { attr, deferred_check } = f(&mut FinalizeContext {
                 shared: SharedContext {
                     cx: self,
                     target_span,
@@ -459,9 +466,33 @@ impl<'sess> AttributeParser<'sess> {
                     has_lint_been_emitted: AtomicBool::new(false),
                 },
                 all_attrs: &attr_paths,
-            }) {
+            });
+            if let Some(attr) = attr {
                 attributes.push(Attribute::Parsed(attr));
             }
+            if let Some(deferred_check) = deferred_check {
+                deferred_checks.push(deferred_check);
+            }
+        }
+
+        // Now that all attributes have been parsed, run the deferred checks. These can
+        // inspect the fully parsed attributes via `FinalizeCheckContext::parsed_attrs`.
+        for (check, attr_span) in deferred_checks {
+            check(
+                &FinalizeCheckContext {
+                    shared: SharedContext {
+                        cx: self,
+                        target_span,
+                        target,
+                        emit_lint: &mut emit_lint,
+                        #[cfg(debug_assertions)]
+                        has_lint_been_emitted: AtomicBool::new(false),
+                    },
+                    all_attrs: &attr_paths,
+                    parsed_attrs: &attributes,
+                },
+                attr_span,
+            );
         }
 
         if !matches!(self.should_emit, ShouldEmit::Nothing) && target == Target::WherePredicate {
