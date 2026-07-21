@@ -75,7 +75,7 @@ impl Thread {
             rust_start();
         }
 
-        extern "C" fn thread_start(
+        unsafe extern "C" fn thread_start(
             data: *mut usize,
             guard_page_pre: usize,
             stack_size: usize,

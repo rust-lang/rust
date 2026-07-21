@@ -359,6 +359,8 @@ pub(crate) fn do_yield() {
 /// This function is safe unless a virtual address is specified. In that case,
 /// the kernel will return an alias to the existing range. This violates Rust's
 /// pointer uniqueness guarantee.
+// The phys argument uses an integer rather than pointer type as pointer
+// provenance only covers virtual memory, not physical memory.
 pub(crate) unsafe fn map_memory<T>(
     phys: Option<core::num::NonZeroUsize>,
     virt: Option<core::ptr::NonNull<T>>,
@@ -491,8 +493,8 @@ pub(crate) unsafe fn update_memory_flags<T>(
 }
 
 /// Creates a thread with a given stack and up to four arguments.
-pub(crate) fn create_thread<T>(
-    start: extern "C" fn(*mut usize, usize, usize) -> !,
+pub(crate) unsafe fn create_thread<T>(
+    start: unsafe extern "C" fn(*mut usize, usize, usize) -> !,
     stack: *mut [u8],
     arg0: *mut T,
     arg1: *const u8,
