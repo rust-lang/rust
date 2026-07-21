@@ -450,14 +450,14 @@ pub(crate) struct GlobDelegationOutsideImpls {
 }
 
 #[derive(Diagnostic)]
-#[diag("`crate_name` within an `#![cfg_attr]` attribute is forbidden")]
+#[diag("`crate_name` within a `#![cfg_attr]` attribute is forbidden")]
 pub(crate) struct CrateNameInCfgAttr {
     #[primary_span]
     pub span: Span,
 }
 
 #[derive(Diagnostic)]
-#[diag("`crate_type` within an `#![cfg_attr]` attribute is forbidden")]
+#[diag("`crate_type` within a `#![cfg_attr]` attribute is forbidden")]
 pub(crate) struct CrateTypeInCfgAttr {
     #[primary_span]
     pub span: Span,

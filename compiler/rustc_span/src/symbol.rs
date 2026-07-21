@@ -1252,6 +1252,7 @@ symbols! {
         macro_reexport,
         macro_use,
         macro_vis_matcher,
+        macroless_generic_const_args,
         macros_in_extern,
         main,
         managed_boxes,
