@@ -3,6 +3,7 @@ error[E0277]: the trait bound `Foo: Bound` is not satisfied
    |
 LL | / fn generic<T>()
 LL | |
+LL | |
 LL | | where
 LL | |     <Foo as Trait<T>>::Assoc: Bound,
    | |____________________________________^ unsatisfied trait bound
@@ -26,7 +27,36 @@ LL | impl<T: Bound, U> Trait<U> for T {
    |         unsatisfied trait bound introduced here
 
 error[E0277]: the trait bound `Foo: Bound` is not satisfied
-  --> $DIR/normalizes-to-is-not-productive.rs:43:31
+  --> $DIR/normalizes-to-is-not-productive.rs:40:1
+   |
+LL | / fn generic<T>()
+LL | |
+LL | |
+LL | | where
+LL | |     <Foo as Trait<T>>::Assoc: Bound,
+   | |____________________________________^ unsatisfied trait bound
+   |
+help: the trait `Bound` is not implemented for `Foo`
+  --> $DIR/normalizes-to-is-not-productive.rs:18:1
+   |
+LL | struct Foo;
+   | ^^^^^^^^^^
+help: the trait `Bound` is implemented for `u32`
+  --> $DIR/normalizes-to-is-not-productive.rs:11:1
+   |
+LL | impl Bound for u32 {
+   | ^^^^^^^^^^^^^^^^^^
+note: required for `Foo` to implement `Trait<T>`
+  --> $DIR/normalizes-to-is-not-productive.rs:23:19
+   |
+LL | impl<T: Bound, U> Trait<U> for T {
+   |         -----     ^^^^^^^^     ^
+   |         |
+   |         unsatisfied trait bound introduced here
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0277]: the trait bound `Foo: Bound` is not satisfied
+  --> $DIR/normalizes-to-is-not-productive.rs:44:31
    |
 LL |     <Foo as Trait<T>>::Assoc: Bound,
    |                               ^^^^^ unsatisfied trait bound
@@ -57,7 +87,7 @@ LL | | }
    | |_^ required by this bound in `Bound`
 
 error[E0277]: the trait bound `Foo: Bound` is not satisfied
-  --> $DIR/normalizes-to-is-not-productive.rs:48:19
+  --> $DIR/normalizes-to-is-not-productive.rs:49:19
    |
 LL |     impls_bound::<Foo>();
    |                   ^^^ unsatisfied trait bound
@@ -78,6 +108,6 @@ note: required by a bound in `impls_bound`
 LL | fn impls_bound<T: Bound>() {
    |                   ^^^^^ required by this bound in `impls_bound`
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

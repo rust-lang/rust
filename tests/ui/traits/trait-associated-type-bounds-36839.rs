@@ -1,5 +1,3 @@
-//@ check-pass
-
 pub trait Foo {
     type Bar;
 }
@@ -12,6 +10,7 @@ pub trait Broken {
 impl<T> Broken for T {
     type Assoc = ();
     fn broken(&self) where Self::Assoc: Foo {
+    //~^ ERROR the trait bound `(): Foo` is not satisfied
         let _x: <Self::Assoc as Foo>::Bar;
     }
 }

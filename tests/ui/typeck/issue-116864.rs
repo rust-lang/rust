@@ -30,6 +30,7 @@ async fn foo<BAZ>(_: BAZ, mut cb: impl for<'any> FnMutFut<&'any BAZ::Param, ()>)
 //[current]~^^ ERROR: expected an `FnMut(&'any i32)` closure, found `impl for<'any> FnMutFut<&'any BAZ::Param, ()>`
 //[current]~| ERROR: expected an `FnMut(&'any i32)` closure, found `impl for<'any> FnMutFut<&'any BAZ::Param, ()>`
 //[current]~| ERROR: expected an `FnMut(&'any i32)` closure, found `impl for<'any> FnMutFut<&'any BAZ::Param, ()>`
+//[current]~| ERROR: expected an `FnMut(&'any i32)` closure, found `impl for<'any> FnMutFut<&'any BAZ::Param, ()>`
 where
     BAZ: Baz<Param = i32>,
 {

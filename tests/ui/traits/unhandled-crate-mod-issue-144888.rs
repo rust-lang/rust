@@ -10,11 +10,11 @@ impl dyn Foo<()> {}
 trait Foo<T>: Super<Assoc = T>
 //~^ ERROR type mismatch resolving
 //~| ERROR the size for values of type `Self` cannot be known at compilation time
+//~| ERROR type mismatch resolving
+//~| ERROR the size for values of type `Self` cannot be known at compilation time
 where
     <Self as Mirror>::Assoc: Clone,
     //~^ ERROR type mismatch resolving
-    //~| ERROR the size for values of type `Self` cannot be known at compilation time
-    //~| ERROR type mismatch resolving
     //~| ERROR the size for values of type `Self` cannot be known at compilation time
 {
     fn transmute(&self) {}

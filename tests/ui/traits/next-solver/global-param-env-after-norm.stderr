@@ -1,0 +1,20 @@
+error[E0277]: the trait bound `NewSolver: From<OldSolver>` is not satisfied
+  --> $DIR/global-param-env-after-norm.rs:9:5
+   |
+LL |     OldSolver: Into<T::Item>,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+help: the trait `From<OldSolver>` is not implemented for `NewSolver`
+  --> $DIR/global-param-env-after-norm.rs:3:1
+   |
+LL | struct NewSolver;
+   | ^^^^^^^^^^^^^^^^
+   = note: required for `OldSolver` to implement `Into<NewSolver>`
+help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+   |
+LL + #![feature(trivial_bounds)]
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

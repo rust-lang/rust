@@ -1,5 +1,22 @@
+error[E0277]: the trait bound `for<Region(BrNamed(DefId(0:8 ~ higher_ranked_fn_type[9e51]::caller::'a)))> fn(&'^0.Named(DefId(0:8 ~ higher_ranked_fn_type[9e51]::caller::'a)) ()): Foo` is not satisfied
+  --> $DIR/higher-ranked-fn-type.rs:18:5
+   |
+LL |     (for<'a> fn(&'a ())): Foo,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ unsatisfied trait bound
+   |
+   = help: the trait `Foo` is not implemented for `for<Region(BrNamed(DefId(0:8 ~ higher_ranked_fn_type[9e51]::caller::'a)))> fn(&'^0.Named(DefId(0:8 ~ higher_ranked_fn_type[9e51]::caller::'a)) ())`
+help: this trait has no implementations, consider adding one
+  --> $DIR/higher-ranked-fn-type.rs:6:1
+   |
+LL | trait Foo {
+   | ^^^^^^^^^
+help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+   |
+LL + #![feature(trivial_bounds)]
+   |
+
 error[E0277]: the trait bound `for<Region(BrNamed(DefId(0:6 ~ higher_ranked_fn_type[9e51]::called::'b)))> fn(&'^1_0.Named(DefId(0:6 ~ higher_ranked_fn_type[9e51]::called::'b)) ()): Foo` is not satisfied
-  --> $DIR/higher-ranked-fn-type.rs:20:5
+  --> $DIR/higher-ranked-fn-type.rs:22:5
    |
 LL |     called()
    |     ^^^^^^^^ unsatisfied trait bound
@@ -19,6 +36,6 @@ LL | where
 LL |     for<'b> fn(&'b ()): Foo,
    |                         ^^^ required by this bound in `called`
 
-error: aborting due to 1 previous error
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

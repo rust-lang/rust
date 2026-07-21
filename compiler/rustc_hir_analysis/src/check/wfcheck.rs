@@ -22,7 +22,7 @@ use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::traits::solve::NoSolution;
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
 use rustc_middle::ty::{
-    self, GenericArgKind, GenericArgs, GenericParamDefKind, Ty, TyCtxt, TypeFlags, TypeFoldable,
+    self, GenericArgKind, GenericArgs, GenericParamDefKind, Ty, TyCtxt, TypeFoldable,
     TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, Unnormalized,
     Upcast,
 };
@@ -2283,7 +2283,8 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
     /// aren't true.
     #[instrument(level = "debug", skip(self))]
     fn check_false_global_bounds(&mut self) {
-        let tcx = self.ocx.infcx.tcx;
+        let infcx = self.ocx.infcx;
+        let tcx = infcx.tcx;
         let mut span = tcx.def_span(self.body_def_id);
         let empty_env = ty::ParamEnv::empty();
 
@@ -2302,10 +2303,8 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
                 _ => {}
             }
 
-            // Match the existing behavior.
-            if pred.is_global() && !pred.has_type_flags(TypeFlags::HAS_BINDER_VARS) {
-                let pred = self.normalize(span, None, Unnormalized::new_wip(pred));
-
+            let pred = self.deeply_normalize(span, None, Unnormalized::new_wip(pred));
+            if pred.is_global() && pred.kind().bound_vars().is_empty() {
                 // only use the span of the predicate clause (#90869)
                 let hir_node = tcx.hir_node_by_def_id(self.body_def_id);
                 if let Some(hir::Generics { predicates, .. }) = hir_node.generics() {
@@ -2317,16 +2316,12 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
                         .unwrap_or(obligation_span);
                 }
 
-                let obligation = Obligation::new(
-                    tcx,
-                    traits::ObligationCause::new(
-                        span,
-                        self.body_def_id,
-                        ObligationCauseCode::TrivialBound,
-                    ),
-                    empty_env,
-                    pred,
+                let cause = traits::ObligationCause::new(
+                    span,
+                    self.body_def_id,
+                    ObligationCauseCode::TrivialBound,
                 );
+                let obligation = Obligation::new(tcx, cause, empty_env, pred);
                 self.ocx.register_obligation(obligation);
             }
         }

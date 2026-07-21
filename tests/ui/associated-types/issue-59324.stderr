@@ -2,7 +2,7 @@ error[E0277]: the trait bound `Bug: Foo` is not satisfied
   --> $DIR/issue-59324.rs:11:1
    |
 LL | / pub trait ThriftService<Bug: NotFoo>:
-LL | |
+...  |
 LL | |     Service<AssocType = <Bug as Foo>::OnlyFoo>
    | |______________________________________________^ the trait `Foo` is not implemented for `Bug`
    |
@@ -12,11 +12,14 @@ LL | pub trait ThriftService<Bug: NotFoo + Foo>:
    |                                     +++++
 
 error[E0277]: the trait bound `Bug: Foo` is not satisfied
-  --> $DIR/issue-59324.rs:13:13
+  --> $DIR/issue-59324.rs:11:1
    |
-LL |     Service<AssocType = <Bug as Foo>::OnlyFoo>
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Foo` is not implemented for `Bug`
+LL | / pub trait ThriftService<Bug: NotFoo>:
+...  |
+LL | |     Service<AssocType = <Bug as Foo>::OnlyFoo>
+   | |______________________________________________^ the trait `Foo` is not implemented for `Bug`
    |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: consider further restricting type parameter `Bug` with trait `Foo`
    |
 LL | pub trait ThriftService<Bug: NotFoo + Foo>:

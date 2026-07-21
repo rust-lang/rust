@@ -50,7 +50,7 @@ LL | impl<T, U> Dyn for dyn Foo<T, U> + '_ {}
    |
 note: for a trait to be dyn compatible it needs to allow building a vtable
       for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
-  --> $DIR/ice-generics-of-crate-root-152335.rs:21:30
+  --> $DIR/ice-generics-of-crate-root-152335.rs:23:30
    |
 LL | trait Foo<T, U>: Super<ActuallySuper, Assoc = T>
    |       --- this trait is not dyn compatible...
@@ -95,16 +95,10 @@ LL | trait Foo<T, U>: Super<ActuallySuper, Assoc = T> + Sized
    |                                                  +++++++
 
 error[E0271]: type mismatch resolving `<Self as Super<ActuallySuper>>::Assoc == Self`
-  --> $DIR/ice-generics-of-crate-root-152335.rs:21:30
+  --> $DIR/ice-generics-of-crate-root-152335.rs:17:1
    |
 LL | trait Foo<T, U>: Super<ActuallySuper, Assoc = T>
-   | ------------------------------------------------
-   | |         |
-   | |         found type parameter
-   | expected type parameter
-...
-LL |     <Self as Mirror>::Assoc: Super,
-   |                              ^^^^^ expected type parameter `Self`, found type parameter `T`
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected type parameter `Self`, found type parameter `T`
    |
    = note: expected type parameter `Self`
               found type parameter `T`
@@ -117,12 +111,13 @@ LL | impl<T: Super<ActuallySuper, Assoc = T>> Mirror for T {}
    |                              ---------   ^^^^^^     ^
    |                              |
    |                              unsatisfied trait bound introduced here
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: the size for values of type `Self` cannot be known at compilation time
-  --> $DIR/ice-generics-of-crate-root-152335.rs:21:30
+  --> $DIR/ice-generics-of-crate-root-152335.rs:17:1
    |
-LL |     <Self as Mirror>::Assoc: Super,
-   |                              ^^^^^ doesn't have a size known at compile-time
+LL | trait Foo<T, U>: Super<ActuallySuper, Assoc = T>
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
    |
 note: required for `Self` to implement `Mirror`
   --> $DIR/ice-generics-of-crate-root-152335.rs:38:42
@@ -131,6 +126,7 @@ LL | impl<T: Super<ActuallySuper, Assoc = T>> Mirror for T {}
    |      -                                   ^^^^^^     ^
    |      |
    |      unsatisfied trait bound implicitly introduced here
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 help: consider further restricting `Self`
    |
 LL | trait Foo<T, U>: Super<ActuallySuper, Assoc = T> + Sized
@@ -188,7 +184,7 @@ LL |     fn transmute(&self, t: T) -> <Self as B>::Assoc where Self: Sized;
    |                                                     +++++++++++++++++
 
 error[E0271]: type mismatch resolving `<Self as Super<ActuallySuper>>::Assoc == Self`
-  --> $DIR/ice-generics-of-crate-root-152335.rs:21:30
+  --> $DIR/ice-generics-of-crate-root-152335.rs:23:30
    |
 LL | trait Foo<T, U>: Super<ActuallySuper, Assoc = T>
    | ------------------------------------------------
@@ -210,10 +206,9 @@ LL | impl<T: Super<ActuallySuper, Assoc = T>> Mirror for T {}
    |                              ---------   ^^^^^^     ^
    |                              |
    |                              unsatisfied trait bound introduced here
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: the size for values of type `Self` cannot be known at compilation time
-  --> $DIR/ice-generics-of-crate-root-152335.rs:21:30
+  --> $DIR/ice-generics-of-crate-root-152335.rs:23:30
    |
 LL |     <Self as Mirror>::Assoc: Super,
    |                              ^^^^^ doesn't have a size known at compile-time

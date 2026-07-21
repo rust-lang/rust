@@ -1,0 +1,11 @@
+error: implementation of `WithAssoc` is not general enough
+  --> $DIR/normalize-param-env-missing-implied-bound-2.rs:36:1
+   |
+LL | fn hrtb<T: for<'a> Trait<&'a ()>>() {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ implementation of `WithAssoc` is not general enough
+   |
+   = note: `&'0 ()` must implement `WithAssoc`, for any lifetime `'0`...
+   = note: ...but `WithAssoc` is actually implemented for the type `&'static ()`
+
+error: aborting due to 1 previous error
+

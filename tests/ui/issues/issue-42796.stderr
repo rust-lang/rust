@@ -1,5 +1,16 @@
+error[E0277]: the trait bound `String: Copy` is not satisfied
+  --> $DIR/issue-42796.rs:9:40
+   |
+LL | pub fn poison<S>(victim: String) where <String as Mirror<S>>::Image: Copy {
+   |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `String`
+   |
+help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+   |
+LL + #![feature(trivial_bounds)]
+   |
+
 error[E0382]: borrow of moved value: `s`
-  --> $DIR/issue-42796.rs:18:20
+  --> $DIR/issue-42796.rs:19:20
    |
 LL |     let s = "Hello!".to_owned();
    |         - move occurs because `s` has type `String`, which does not implement the `Copy` trait
@@ -14,6 +25,7 @@ help: consider cloning the value if the performance cost is acceptable
 LL |     let mut s_copy = s.clone();
    |                       ++++++++
 
-error: aborting due to 1 previous error
+error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0382`.
+Some errors have detailed explanations: E0277, E0382.
+For more information about an error, try `rustc --explain E0277`.
