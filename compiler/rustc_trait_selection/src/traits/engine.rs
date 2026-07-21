@@ -54,7 +54,6 @@ impl<'tcx, E> TraitEngine<'tcx, E> for DualFulfillmentCtxt<'tcx, E>
 where
     E: FromSolverError<'tcx, NextSolverError<'tcx>> + FromSolverError<'tcx, OldSolverError<'tcx>>,
 {
-    #[inline]
     fn register_predicate_obligation(
         &mut self,
         infcx: &InferCtxt<'tcx>,
@@ -66,7 +65,6 @@ where
         }
     }
 
-    #[inline]
     fn try_evaluate_obligations(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E> {
         match self {
             DualFulfillmentCtxt::Old(cx) => cx.try_evaluate_obligations(infcx),
@@ -74,7 +72,6 @@ where
         }
     }
 
-    #[inline]
     fn collect_remaining_errors(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E> {
         match self {
             DualFulfillmentCtxt::Old(cx) => cx.collect_remaining_errors(infcx),
@@ -82,7 +79,6 @@ where
         }
     }
 
-    #[inline]
     fn has_pending_obligations(&self) -> bool {
         match self {
             DualFulfillmentCtxt::Old(cx) => cx.has_pending_obligations(),
@@ -90,7 +86,6 @@ where
         }
     }
 
-    #[inline]
     fn pending_obligations(&self) -> PredicateObligations<'tcx> {
         match self {
             DualFulfillmentCtxt::Old(cx) => cx.pending_obligations(),
@@ -98,7 +93,6 @@ where
         }
     }
 
-    #[inline]
     fn pending_obligations_potentially_referencing_sub_root(
         &self,
         infcx: &InferCtxt<'tcx>,
@@ -114,7 +108,6 @@ where
         }
     }
 
-    #[inline]
     fn drain_stalled_obligations_for_coroutines(
         &mut self,
         infcx: &InferCtxt<'tcx>,
