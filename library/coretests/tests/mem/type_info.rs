@@ -247,6 +247,7 @@ fn test_enums() {
         assert!(ty.variants[2].fields.len() == 2);
 
         let ty_id = TypeId::of::<E>();
+        assert!(!ty_id.non_exhaustive());
         assert!(ty_id.size() == Some(size_of::<E>()));
         assert!(ty_id.variants() == 3);
         assert!(ty_id.fields(0) == 1);

@@ -165,6 +165,7 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::minimumf128
         | sym::mul_with_overflow
         | sym::needs_drop
+        | sym::non_exhaustive
         | sym::offload
         | sym::offset_of
         | sym::overflow_checks
@@ -353,6 +354,7 @@ pub(crate) fn check_intrinsic_type(
         sym::field_representing_type_actual_type_id => (0, 0, vec![type_id_ty()], type_id_ty()),
         sym::field_representing_type_name => (0, 0, vec![type_id_ty()], Ty::new_static_str(tcx)),
         sym::field_representing_type_offset => (0, 0, vec![type_id_ty()], tcx.types.usize),
+        sym::non_exhaustive => (0, 0, vec![type_id_ty()], tcx.types.bool),
         sym::offload => (
             3,
             0,

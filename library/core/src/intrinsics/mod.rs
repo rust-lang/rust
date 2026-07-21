@@ -3198,6 +3198,12 @@ pub fn field_representing_type_name(_frt_type_id: crate::any::TypeId) -> &'stati
 #[rustc_comptime]
 pub fn field_representing_type_offset(_frt_type_id: crate::any::TypeId) -> usize;
 
+/// Checks whether this type is non-exhaustive.
+#[rustc_intrinsic]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_comptime]
+pub fn non_exhaustive(_id: crate::any::TypeId) -> bool;
+
 /// Lowers in MIR to `Rvalue::Aggregate` with `AggregateKind::RawPtr`.
 ///
 /// This is used to implement functions like `slice::from_raw_parts_mut` and
