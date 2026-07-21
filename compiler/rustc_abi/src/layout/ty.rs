@@ -299,6 +299,26 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
         found
     }
 
+    pub fn complex_float<C>(&self, cx: &C) -> Option<Float>
+    where
+        Ty: TyAbiInterface<'a, C> + Copy,
+    {
+        if !Ty::is_complex_number(*self, cx) {
+            return None;
+        }
+
+        let BackendRepr::ScalarPair { a, b, .. } = self.backend_repr else {
+            return None;
+        };
+
+        debug_assert_eq!(a, b);
+
+        match a.primitive() {
+            Primitive::Float(f) => Some(f),
+            _ => None,
+        }
+    }
+
     /// Whether this type/layout has any padding that is dependent on a variant, i.e. has bytes that
     /// are padding for some, but not all, valid values of this type.
     pub fn has_variant_dependent_padding<C>(&self, cx: &C) -> bool
