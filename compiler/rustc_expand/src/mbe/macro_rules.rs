@@ -363,7 +363,7 @@ pub(super) trait Tracker<'matcher> {
     fn prepare(&mut self, which_matcher: WhichMatcher, matcher: &'matcher [MatcherLoc]);
 
     /// This is called before trying to match next MatcherLoc on the current token.
-    fn before_match_loc(&mut self, parser: &TtParser, matcher: &'matcher MatcherLoc);
+    fn before_match_loc(&mut self, matcher: &'matcher MatcherLoc);
 
     /// A [`MatcherLoc`] successfully consumed input from the parser.
     ///
@@ -404,7 +404,7 @@ pub(super) struct NoopTracker;
 impl<'matcher> Tracker<'matcher> for NoopTracker {
     fn prepare(&mut self, _which_matcher: WhichMatcher, _matcher: &'matcher [MatcherLoc]) {}
 
-    fn before_match_loc(&mut self, _parser: &TtParser, _matcher: &'matcher MatcherLoc) {}
+    fn before_match_loc(&mut self, _matcher: &'matcher MatcherLoc) {}
 
     fn matched_one(&mut self, _parser: &Parser<'_>, _loc_index: usize) {}
 

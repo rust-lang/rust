@@ -155,7 +155,9 @@ impl Display for MatcherLoc {
             }
             MatcherLoc::Eof => f.write_str("end of macro"),
 
-            // These are not printed in the diagnostic
+            // FIXME: A prior comment noted that the following variants should not be printed in
+            // diagnostics. "while trying to match sequence end" appears in several stderrs in the
+            // ui tests. Other variants might be reachable too.
             MatcherLoc::Delimited => f.write_str("delimiter"),
             MatcherLoc::Sequence { .. } => f.write_str("sequence start"),
             MatcherLoc::SequenceKleeneOpNoSep { .. } => f.write_str("sequence end"),
@@ -451,10 +453,6 @@ impl TtParser {
         }
     }
 
-    pub(super) fn has_no_remaining_items_for_step(&self) -> bool {
-        self.cur_mps.is_empty()
-    }
-
     /// Process the matcher positions of `cur_mps` until it is empty. In the process, this will
     /// produce more mps in `next_mps` and `bb_mps`.
     ///
@@ -504,7 +502,7 @@ impl TtParser {
         checking_for_ambiguity: bool,
     ) -> Option<NamedParseResult> {
         let matcher_loc = &matcher[mp.idx];
-        track.before_match_loc(self, matcher_loc);
+        track.before_match_loc(matcher_loc);
         let token = &parser.token;
 
         match matcher_loc {

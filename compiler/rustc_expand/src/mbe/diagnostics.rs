@@ -209,10 +209,8 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
         self.current = Some((which_matcher, matcher));
     }
 
-    fn before_match_loc(&mut self, parser: &TtParser, matcher: &'matcher MatcherLoc) {
-        if self.remaining_matcher.is_none()
-            || (parser.has_no_remaining_items_for_step() && *matcher != MatcherLoc::Eof)
-        {
+    fn before_match_loc(&mut self, matcher: &'matcher MatcherLoc) {
+        if self.remaining_matcher.is_none() || *matcher != MatcherLoc::Eof {
             self.remaining_matcher = Some(matcher);
         }
     }
