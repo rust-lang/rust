@@ -1701,7 +1701,7 @@ impl<'a> Parser<'a> {
                     let eq_lt = maybe_eq_tok.span.to(lt_span);
                     err.span_suggestion_verbose(
                         eq_lt,
-                        "did you mean",
+                        "you might have meant to write a \"less than or equal to\" comparison",
                         "<=",
                         Applicability::Unspecified,
                     );

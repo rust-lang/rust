@@ -4,7 +4,7 @@ error: expected one of `!`, `(`, `+`, `::`, `<`, `>`, or `as`, found `{`
 LL |     if a =< b {
    |               ^ expected one of 7 possible tokens
    |
-help: did you mean
+help: you might have meant to write a "less than or equal to" comparison
    |
 LL -     if a =< b {
 LL +     if a <= b {

@@ -626,13 +626,16 @@ impl<'a> Parser<'a> {
         let mut err = self.dcx().struct_span_err(end.span, msg);
         if end.is_doc_comment() {
             err.span_label(end.span, "this doc comment doesn't document anything");
-        } else if self.token == TokenKind::Semi {
-            err.span_suggestion(
-                self.token.span,
-                "consider removing this semicolon",
-                "",
-                Applicability::MaybeIncorrect,
-            );
+        } else {
+            err.span_label(end.span, "expected an item after this");
+            if self.token == TokenKind::Semi {
+                err.span_suggestion_verbose(
+                    self.token.span,
+                    "remove the semicolon after the attribute",
+                    "",
+                    Applicability::MaybeIncorrect,
+                );
+            }
         }
         if let [.., penultimate, _] = attrs {
             err.span_label(start.span.to(penultimate.span), "other attributes here");
@@ -2429,16 +2432,19 @@ impl<'a> Parser<'a> {
                     &inherited_vis,
                     Case::Insensitive,
                 ) {
-                    Ok(_) => {
-                        self.dcx().struct_span_err(
+                    Ok(_) => self
+                        .dcx()
+                        .struct_span_err(
                             lo.to(self.prev_token.span),
                             format!("functions are not allowed in {adt_ty} definitions"),
                         )
                         .with_help(
                             "unlike in C++, Java, and C#, functions are declared in `impl` blocks",
                         )
-                        .with_help("see https://doc.rust-lang.org/book/ch05-03-method-syntax.html for more information")
-                    }
+                        .with_help(
+                            "see https://doc.rust-lang.org/book/ch05-03-method-syntax.html \
+                             for more information",
+                        ),
                     Err(err) => {
                         err.cancel();
                         self.restore_snapshot(snapshot);
@@ -2476,12 +2482,15 @@ impl<'a> Parser<'a> {
                 {
                     err.span_suggestion_verbose(
                         removal_span,
-                        "remove this `let` keyword",
+                        "remove the `let` keyword",
                         String::new(),
                         Applicability::MachineApplicable,
                     );
                     err.note("the `let` keyword is not allowed in `struct` fields");
-                    err.note("see <https://doc.rust-lang.org/book/ch05-01-defining-structs.html> for more information");
+                    err.note(
+                        "see <https://doc.rust-lang.org/book/ch05-01-defining-structs.html> \
+                         for more information",
+                    );
                     err.emit();
                     return Ok(ident);
                 } else {

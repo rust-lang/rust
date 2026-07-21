@@ -2062,7 +2062,15 @@ impl<'a> Parser<'a> {
                     Applicability::MachineApplicable,
                 );
             }
-            err.span_suggestion_verbose(lo.shrink_to_lo(), format!("{prefix}you can still access the deprecated `try!()` macro using the \"raw identifier\" syntax"), "r#", Applicability::MachineApplicable);
+            err.span_suggestion_verbose(
+                lo.shrink_to_lo(),
+                format!(
+                    "{prefix}you can still access the deprecated `try!()` macro using the \
+                     \"raw identifier\" syntax"
+                ),
+                "r#",
+                Applicability::MachineApplicable,
+            );
             let guar = err.emit();
             Ok(self.mk_expr_err(lo.to(hi), guar))
         } else {

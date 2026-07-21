@@ -6,7 +6,7 @@ LL |     let x: i32,
    |
    = note: the `let` keyword is not allowed in `struct` fields
    = note: see <https://doc.rust-lang.org/book/ch05-01-defining-structs.html> for more information
-help: remove this `let` keyword
+help: remove the `let` keyword
    |
 LL -     let x: i32,
 LL +     x: i32,
@@ -20,7 +20,7 @@ LL |     let y: i32,
    |
    = note: the `let` keyword is not allowed in `struct` fields
    = note: see <https://doc.rust-lang.org/book/ch05-01-defining-structs.html> for more information
-help: remove this `let` keyword
+help: remove the `let` keyword
    |
 LL -     let y: i32,
 LL +     y: i32,

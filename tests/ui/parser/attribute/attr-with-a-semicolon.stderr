@@ -2,7 +2,13 @@ error: expected item after attributes
   --> $DIR/attr-with-a-semicolon.rs:1:1
    |
 LL | #[derive(Debug, Clone)];
-   | ^^^^^^^^^^^^^^^^^^^^^^^- help: consider removing this semicolon
+   | ^^^^^^^^^^^^^^^^^^^^^^^ expected an item after this
+   |
+help: remove the semicolon after the attribute
+   |
+LL - #[derive(Debug, Clone)];
+LL + #[derive(Debug, Clone)]
+   |
 
 error: aborting due to 1 previous error
 
