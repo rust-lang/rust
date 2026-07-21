@@ -101,7 +101,11 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
                 // If the place doesn't actually need dropping, treat it like a regular goto.
                 let ty = self.instantiate_ty(place.ty(self.callee_body, self.tcx).ty);
                 if ty.needs_drop(self.tcx, self.typing_env) {
-                    self.penalty += CALL_PENALTY;
+                    let local_idx = place.local.as_usize();
+                    let is_dropping_argument = local_idx >= 1
+                        && local_idx <= self.callee_body.arg_count
+                        && place.projection.is_empty();
+                    self.penalty += if is_dropping_argument { INSTR_COST } else { CALL_PENALTY };
                     if let UnwindAction::Cleanup(_) = unwind {
                         self.penalty += LANDINGPAD_PENALTY;
                     }
@@ -135,10 +139,18 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
                     self.penalty += INSTR_COST;
                 }
             }
-            TerminatorKind::Assert { unwind, .. } => {
-                // Asserts are safety checks (bounds, overflow). Discount them
-                // because inlining is required to prove them unreachable.
-                self.penalty += INSTR_COST;
+            TerminatorKind::Assert { msg, unwind, .. } => {
+                let is_compiler_safety_check = matches!(
+                    &**msg,
+                    AssertKind::BoundsCheck { .. }
+                        | AssertKind::Overflow(..)
+                        | AssertKind::OverflowNeg(..)
+                        | AssertKind::DivisionByZero(..)
+                        | AssertKind::RemainderByZero(..)
+                        | AssertKind::MisalignedPointerDereference { .. }
+                        | AssertKind::NullPointerDereference
+                );
+                self.penalty += if is_compiler_safety_check { INSTR_COST } else { CALL_PENALTY };
                 if let UnwindAction::Cleanup(_) = unwind {
                     self.penalty += LANDINGPAD_PENALTY;
                 }
