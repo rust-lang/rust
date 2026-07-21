@@ -461,7 +461,7 @@ pub fn eagerly_handle_placeholders_in_universe<Infcx: InferCtxtLike<Interner = I
     let assumptions = infcx.get_placeholder_assumptions(u);
 
     // Do this before rewriting type outlives constraints: alias/env matching below needs to
-    // see placeholders equated with current-universe region variables in the same conjunction.
+    // see placeholders equated with current-universe region variables in the same `And` branch.
     let constraint = normalize_equated_region_vars(infcx, constraint, u);
 
     // 1. rewrite type outlives constraints involving things from `u` into either region constraints
