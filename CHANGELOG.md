@@ -3,6 +3,38 @@
 ## [Unreleased]
 
 
+## [1.10.0] 2026-07-21
+
+### Fixed
+- Prevent ranges from getting incorrectly collapsed in patterns that lead to invalid code [#6871](https://github.com/rust-lang/rustfmt/pull/6871). Issue: [#6869](https://github.com/rust-lang/rustfmt/issues/6869).
+- Don't format statements outside of selected `--file-lines` range [#6867](https://github.com/rust-lang/rustfmt/pull/6867). Issue: [#6863](https://github.com/rust-lang/rustfmt/issues/6863).
+- Respect `--file-lines` when making various whitespace related changes [#6841](https://github.com/rust-lang/rustfmt/pull/6841). Issue: [#5136](https://github.com/rust-lang/rustfmt/issues/5136).
+- Fix formatting of commented single function parameter [#6840](https://github.com/rust-lang/rustfmt/pull/6840). Issue: [#6825](https://github.com/rust-lang/rustfmt/issues/6825).
+- (Style Edition 2027) Fix formatting of long return types in functions exceeding max width [#6835](https://github.com/rust-lang/rustfmt/pull/6835). Issue: [#6831](https://github.com/rust-lang/rustfmt/issues/6831).
+- Update `style_edition` configuration option docs to reflect that the option is stable, and that the option value `"2027"` is still unstable [#6936](https://github.com/rust-lang/rustfmt/pull/6936).
+- Prevent panic when rewriting associated item delegations `#![feature(fn_delegation)]` [rust-lang/rust#154454](https://github.com/rust-lang/rust/pull/154454). Issue: [#6513](https://github.com/rust-lang/rustfmt/issues/6513).
+- Fix pattern types formatting (`#![feature(pattern_types)`) [rust-lang/rust#156016](https://github.com/rust-lang/rust/pull/156016).
+
+### Changed
+- Stabilize `hex_literal_case` [#6935](https://github.com/rust-lang/rustfmt/pull/6935). This configuration option controls the case of the letters in hexadecimal literal values.
+- Improve error message for nightly-only '--message-format' arguments [#6780](https://github.com/rust-lang/rustfmt/pull/6780).
+- Improve formatting of comments within item headers [#6457](https://github.com/rust-lang/rustfmt/pull/6457). We now preserve original whitespace and comments in the header snippets instead of realigning or reformatting them.
+- Highlight config documentation version [#6931](https://github.com/rust-lang/rustfmt/pull/6931).
+- Format try blocks more similarly to ordinary blocks (`#![feature(try_blocks)]`, `#![feature(try_blocks_heterogeneous)]`) [rust-lang/rust#153445](https://github.com/rust-lang/rust/pull/153445). Issue: [#6799](https://github.com/rust-lang/rustfmt/issues/6799).
+
+### Added
+- Add `doc_comment_code_block_small_heuristics` unstable option (Tracking Issue [#6942](https://github.com/rust-lang/rustfmt/issues/6942)) to override `use_small_heuristics` in doc comment code blocks [#6616](https://github.com/rust-lang/rustfmt/pull/6616).
+- Implement initial formatting for `#![feature(super_let)]` [#6952](https://github.com/rust-lang/rustfmt/pull/6952).
+- Implement initial formatting for Field Representing Types (FRTs) as part of `#![feature(field_projections)]` [rust-lang/rust#152730](https://github.com/rust-lang/rust/pull/152730).
+- Implement initial formatting for `#![feature(impl_restriction)]` [rust-lang/rust#152943](https://github.com/rust-lang/rust/pull/152943).
+
+### Misc
+- Bump `clap-cargo` to 0.18.3 and `cargo_metadata` to 0.23 [#6873](https://github.com/rust-lang/rustfmt/pull/6873).
+- Update dependencies to remove `windows-targets` dependency [#6895](https://github.com/rust-lang/rustfmt/pull/6895).
+- Bump `annotate-snippets` to 0.11.5 [#6903](https://github.com/rust-lang/rustfmt/pull/6903).
+- Bump `itertools` to 0.15 [#6955](https://github.com/rust-lang/rustfmt/pull/6955).
+
+
 ## [1.9.0] 2026-02-26
 
 ### Fixed
