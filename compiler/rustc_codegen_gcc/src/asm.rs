@@ -674,7 +674,8 @@ fn reg_class_to_gcc(reg_class: InlineAsmRegClass) -> &'static str {
         InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::reg) => "r",
         InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg) => "w",
         InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg_low16) => "x",
-        InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::preg) => {
+        InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::zreg)
+        | InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::preg) => {
             unreachable!("clobber-only")
         }
         InlineAsmRegClass::Amdgpu(AmdgpuInlineAsmRegClass::Sgpr(_)) => "Sg",
@@ -786,7 +787,8 @@ fn dummy_output_type<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, reg: InlineAsmRegCl
         | InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg_low16) => {
             cx.type_vector(cx.type_i64(), 2)
         }
-        InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::preg) => {
+        InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::zreg)
+        | InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::preg) => {
             unreachable!("clobber-only")
         }
         InlineAsmRegClass::Amdgpu(_) => cx.type_i32(),
@@ -1001,7 +1003,8 @@ fn modifier_to_gcc(
         | InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg_low16) => {
             if modifier == Some('v') { None } else { modifier }
         }
-        InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::preg) => {
+        InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::zreg)
+        | InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::preg) => {
             unreachable!("clobber-only")
         }
         InlineAsmRegClass::Amdgpu(_) => None,

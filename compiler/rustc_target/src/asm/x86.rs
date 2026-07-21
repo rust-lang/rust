@@ -3,7 +3,7 @@ use std::fmt;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_span::Symbol;
 
-use super::{InlineAsmArch, InlineAsmType, ModifierInfo};
+use super::{InlineAsmArch, InlineAsmSize, InlineAsmType, ModifierInfo};
 use crate::spec::{RelocModel, Target};
 
 def_reg_class! {
@@ -49,33 +49,45 @@ impl X86InlineAsmRegClass {
 
     pub fn suggest_class(self, _arch: InlineAsmArch, ty: InlineAsmType) -> Option<Self> {
         match self {
-            Self::reg | Self::reg_abcd if ty.size().bits() == 8 => Some(Self::reg_byte),
+            Self::reg | Self::reg_abcd if ty.size() == InlineAsmSize::FixedInBytes(1) => {
+                Some(Self::reg_byte)
+            }
             _ => None,
         }
     }
 
     pub fn suggest_modifier(self, arch: InlineAsmArch, ty: InlineAsmType) -> Option<ModifierInfo> {
         match self {
-            Self::reg => match ty.size().bits() {
-                16 => Some(('x', "ax", 16).into()),
-                32 if arch == InlineAsmArch::X86_64 => Some(('e', "eax", 32).into()),
+            Self::reg => match ty.size() {
+                InlineAsmSize::FixedInBytes(2) => {
+                    Some(('x', "ax", InlineAsmSize::FixedInBytes(2)).into())
+                }
+                InlineAsmSize::FixedInBytes(4) if arch == InlineAsmArch::X86_64 => {
+                    Some(('e', "eax", InlineAsmSize::FixedInBytes(4)).into())
+                }
                 _ => None,
             },
-            Self::reg_abcd => match ty.size().bits() {
-                16 => Some(('x', "ax", 16).into()),
-                32 if arch == InlineAsmArch::X86_64 => Some(('e', "eax", 32).into()),
+            Self::reg_abcd => match ty.size() {
+                InlineAsmSize::FixedInBytes(2) => {
+                    Some(('x', "ax", InlineAsmSize::FixedInBytes(2)).into())
+                }
+                InlineAsmSize::FixedInBytes(4) if arch == InlineAsmArch::X86_64 => {
+                    Some(('e', "eax", InlineAsmSize::FixedInBytes(4)).into())
+                }
                 _ => None,
             },
             Self::reg_byte => None,
             Self::xmm_reg => None,
-            Self::ymm_reg => match ty.size().bits() {
-                256 => None,
-                _ => Some(('x', "xmm0", 128).into()),
+            Self::ymm_reg => match ty.size() {
+                InlineAsmSize::FixedInBytes(32) => None,
+                _ => Some(('x', "xmm0", InlineAsmSize::FixedInBytes(16)).into()),
             },
-            Self::zmm_reg => match ty.size().bits() {
-                512 => None,
-                256 => Some(('y', "ymm0", 256).into()),
-                _ => Some(('x', "xmm0", 128).into()),
+            Self::zmm_reg => match ty.size() {
+                InlineAsmSize::FixedInBytes(64) => None,
+                InlineAsmSize::FixedInBytes(32) => {
+                    Some(('y', "ymm0", InlineAsmSize::FixedInBytes(32)).into())
+                }
+                _ => Some(('x', "xmm0", InlineAsmSize::FixedInBytes(16)).into()),
             },
             Self::kreg | Self::kreg0 => None,
             Self::mmx_reg | Self::x87_reg => None,
@@ -87,15 +99,15 @@ impl X86InlineAsmRegClass {
         match self {
             Self::reg | Self::reg_abcd => {
                 if arch == InlineAsmArch::X86_64 {
-                    Some(('r', "rax", 64).into())
+                    Some(('r', "rax", InlineAsmSize::FixedInBytes(8)).into())
                 } else {
-                    Some(('e', "eax", 32).into())
+                    Some(('e', "eax", InlineAsmSize::FixedInBytes(4)).into())
                 }
             }
             Self::reg_byte => None,
-            Self::xmm_reg => Some(('x', "xmm0", 128).into()),
-            Self::ymm_reg => Some(('y', "ymm0", 256).into()),
-            Self::zmm_reg => Some(('z', "zmm0", 512).into()),
+            Self::xmm_reg => Some(('x', "xmm0", InlineAsmSize::FixedInBytes(16)).into()),
+            Self::ymm_reg => Some(('y', "ymm0", InlineAsmSize::FixedInBytes(32)).into()),
+            Self::zmm_reg => Some(('z', "zmm0", InlineAsmSize::FixedInBytes(64)).into()),
             Self::kreg | Self::kreg0 => None,
             Self::mmx_reg | Self::x87_reg => None,
             Self::tmm_reg => None,

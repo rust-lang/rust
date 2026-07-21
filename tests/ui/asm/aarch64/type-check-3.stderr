@@ -1,96 +1,123 @@
 warning: formatting may not be suitable for sub-register argument
-  --> $DIR/type-check-3.rs:48:15
+  --> $DIR/type-check-3.rs:54:15
    |
 LL |         asm!("{}", in(reg) 0u8);
    |               ^^           --- for this argument
    |
-   = help: use `{0:w}` to have the register formatted as `w0` (for 32-bit values)
-   = help: or use `{0:x}` to keep the default formatting of `x0` (for 64-bit values)
+   = help: use `{0:w}` to have the register formatted as `w0` (for 4-byte values)
+   = help: or use `{0:x}` to keep the default formatting of `x0` (for 8-byte values)
    = note: `#[warn(asm_sub_register)]` on by default
 
 warning: formatting may not be suitable for sub-register argument
-  --> $DIR/type-check-3.rs:50:15
+  --> $DIR/type-check-3.rs:56:15
    |
 LL |         asm!("{}", in(reg) 0u16);
    |               ^^           ---- for this argument
    |
-   = help: use `{0:w}` to have the register formatted as `w0` (for 32-bit values)
-   = help: or use `{0:x}` to keep the default formatting of `x0` (for 64-bit values)
+   = help: use `{0:w}` to have the register formatted as `w0` (for 4-byte values)
+   = help: or use `{0:x}` to keep the default formatting of `x0` (for 8-byte values)
 
 warning: formatting may not be suitable for sub-register argument
-  --> $DIR/type-check-3.rs:52:15
+  --> $DIR/type-check-3.rs:58:15
    |
 LL |         asm!("{}", in(reg) 0i32);
    |               ^^           ---- for this argument
    |
-   = help: use `{0:w}` to have the register formatted as `w0` (for 32-bit values)
-   = help: or use `{0:x}` to keep the default formatting of `x0` (for 64-bit values)
+   = help: use `{0:w}` to have the register formatted as `w0` (for 4-byte values)
+   = help: or use `{0:x}` to keep the default formatting of `x0` (for 8-byte values)
 
 warning: formatting may not be suitable for sub-register argument
-  --> $DIR/type-check-3.rs:54:15
+  --> $DIR/type-check-3.rs:60:15
    |
 LL |         asm!("{}", in(reg) 0f32);
    |               ^^           ---- for this argument
    |
-   = help: use `{0:w}` to have the register formatted as `w0` (for 32-bit values)
-   = help: or use `{0:x}` to keep the default formatting of `x0` (for 64-bit values)
-
-warning: formatting may not be suitable for sub-register argument
-  --> $DIR/type-check-3.rs:57:15
-   |
-LL |         asm!("{}", in(vreg) 0i16);
-   |               ^^            ---- for this argument
-   |
-   = help: use `{0:h}` to have the register formatted as `h0` (for 16-bit values)
-   = help: or use `{0:v}` to keep the default formatting of `v0` (for 128-bit values)
-
-warning: formatting may not be suitable for sub-register argument
-  --> $DIR/type-check-3.rs:59:15
-   |
-LL |         asm!("{}", in(vreg) 0f32);
-   |               ^^            ---- for this argument
-   |
-   = help: use `{0:s}` to have the register formatted as `s0` (for 32-bit values)
-   = help: or use `{0:v}` to keep the default formatting of `v0` (for 128-bit values)
-
-warning: formatting may not be suitable for sub-register argument
-  --> $DIR/type-check-3.rs:61:15
-   |
-LL |         asm!("{}", in(vreg) 0f64);
-   |               ^^            ---- for this argument
-   |
-   = help: use `{0:d}` to have the register formatted as `d0` (for 64-bit values)
-   = help: or use `{0:v}` to keep the default formatting of `v0` (for 128-bit values)
+   = help: use `{0:w}` to have the register formatted as `w0` (for 4-byte values)
+   = help: or use `{0:x}` to keep the default formatting of `x0` (for 8-byte values)
 
 warning: formatting may not be suitable for sub-register argument
   --> $DIR/type-check-3.rs:63:15
    |
+LL |         asm!("{}", in(vreg) 0i16);
+   |               ^^            ---- for this argument
+   |
+   = help: use `{0:h}` to have the register formatted as `h0` (for 2-byte values)
+   = help: or use `{0:v}` to keep the default formatting of `v0` (for 16-byte values)
+
+warning: formatting may not be suitable for sub-register argument
+  --> $DIR/type-check-3.rs:65:15
+   |
+LL |         asm!("{}", in(vreg) 0f32);
+   |               ^^            ---- for this argument
+   |
+   = help: use `{0:s}` to have the register formatted as `s0` (for 4-byte values)
+   = help: or use `{0:v}` to keep the default formatting of `v0` (for 16-byte values)
+
+warning: formatting may not be suitable for sub-register argument
+  --> $DIR/type-check-3.rs:67:15
+   |
+LL |         asm!("{}", in(vreg) 0f64);
+   |               ^^            ---- for this argument
+   |
+   = help: use `{0:d}` to have the register formatted as `d0` (for 8-byte values)
+   = help: or use `{0:v}` to keep the default formatting of `v0` (for 16-byte values)
+
+warning: formatting may not be suitable for sub-register argument
+  --> $DIR/type-check-3.rs:69:15
+   |
 LL |         asm!("{}", in(vreg_low16) 0f64);
    |               ^^                  ---- for this argument
    |
-   = help: use `{0:d}` to have the register formatted as `d0` (for 64-bit values)
-   = help: or use `{0:v}` to keep the default formatting of `v0` (for 128-bit values)
+   = help: use `{0:d}` to have the register formatted as `d0` (for 8-byte values)
+   = help: or use `{0:v}` to keep the default formatting of `v0` (for 16-byte values)
 
 warning: formatting may not be suitable for sub-register argument
-  --> $DIR/type-check-3.rs:66:15
+  --> $DIR/type-check-3.rs:71:15
+   |
+LL |         asm!("{}", in(zreg) svi16);
+   |               ^^            ----- for this argument
+   |
+   = help: use `{0:z}` to have the register formatted as `z0` (for scalable values)
+   = help: or use `{0:z}` to keep the default formatting of `z0` (for scalable values)
+
+warning: formatting may not be suitable for sub-register argument
+  --> $DIR/type-check-3.rs:73:15
+   |
+LL |         asm!("{}", in(zreg) svi32);
+   |               ^^            ----- for this argument
+   |
+   = help: use `{0:z}` to have the register formatted as `z0` (for scalable values)
+   = help: or use `{0:z}` to keep the default formatting of `z0` (for scalable values)
+
+warning: formatting may not be suitable for sub-register argument
+  --> $DIR/type-check-3.rs:75:15
+   |
+LL |         asm!("{}", in(zreg) svf64);
+   |               ^^            ----- for this argument
+   |
+   = help: use `{0:z}` to have the register formatted as `z0` (for scalable values)
+   = help: or use `{0:z}` to keep the default formatting of `z0` (for scalable values)
+
+warning: formatting may not be suitable for sub-register argument
+  --> $DIR/type-check-3.rs:78:15
    |
 LL |         asm!("{0} {0}", in(reg) 0i16);
    |               ^^^ ^^^           ---- for this argument
    |
-   = help: use `{0:w}` to have the register formatted as `w0` (for 32-bit values)
-   = help: or use `{0:x}` to keep the default formatting of `x0` (for 64-bit values)
+   = help: use `{0:w}` to have the register formatted as `w0` (for 4-byte values)
+   = help: or use `{0:x}` to keep the default formatting of `x0` (for 8-byte values)
 
 warning: formatting may not be suitable for sub-register argument
-  --> $DIR/type-check-3.rs:68:15
+  --> $DIR/type-check-3.rs:80:15
    |
 LL |         asm!("{0} {0:x}", in(reg) 0i16);
    |               ^^^                 ---- for this argument
    |
-   = help: use `{0:w}` to have the register formatted as `w0` (for 32-bit values)
-   = help: or use `{0:x}` to keep the default formatting of `x0` (for 64-bit values)
+   = help: use `{0:w}` to have the register formatted as `w0` (for 4-byte values)
+   = help: or use `{0:x}` to keep the default formatting of `x0` (for 8-byte values)
 
 error: type `i128` cannot be used with this register class
-  --> $DIR/type-check-3.rs:73:28
+  --> $DIR/type-check-3.rs:85:28
    |
 LL |         asm!("{}", in(reg) 0i128);
    |                            ^^^^^
@@ -98,7 +125,7 @@ LL |         asm!("{}", in(reg) 0i128);
    = note: register class `reg` supports these types: i8, i16, i32, i64, f16, f32, f64
 
 error: type `float64x2_t` cannot be used with this register class
-  --> $DIR/type-check-3.rs:75:28
+  --> $DIR/type-check-3.rs:87:28
    |
 LL |         asm!("{}", in(reg) f64x2);
    |                            ^^^^^
@@ -106,15 +133,63 @@ LL |         asm!("{}", in(reg) f64x2);
    = note: register class `reg` supports these types: i8, i16, i32, i64, f16, f32, f64
 
 error: type `Simd256bit` cannot be used with this register class
-  --> $DIR/type-check-3.rs:77:29
+  --> $DIR/type-check-3.rs:89:29
    |
 LL |         asm!("{}", in(vreg) f64x4);
    |                             ^^^^^
    |
    = note: register class `vreg` supports these types: i8, i16, i32, i64, f16, f32, f64, f128, i8x8, i16x4, i32x2, i64x1, f16x4, f32x2, f64x1, i8x16, i16x8, i32x4, i64x2, f16x8, f32x4, f64x2
 
+error: type `svint32_t` cannot be used with this register class
+  --> $DIR/type-check-3.rs:91:28
+   |
+LL |         asm!("{}", in(reg) svi32);
+   |                            ^^^^^
+   |
+   = note: register class `reg` supports these types: i8, i16, i32, i64, f16, f32, f64
+
+error: type `svbool_t` cannot be used with this register class
+  --> $DIR/type-check-3.rs:93:28
+   |
+LL |         asm!("{}", in(reg) svb8);
+   |                            ^^^^
+   |
+   = note: register class `reg` supports these types: i8, i16, i32, i64, f16, f32, f64
+
+error: type `svint32_t` cannot be used with this register class
+  --> $DIR/type-check-3.rs:95:29
+   |
+LL |         asm!("{}", in(vreg) svi32);
+   |                             ^^^^^
+   |
+   = note: register class `vreg` supports these types: i8, i16, i32, i64, f16, f32, f64, f128, i8x8, i16x4, i32x2, i64x1, f16x4, f32x2, f64x1, i8x16, i16x8, i32x4, i64x2, f16x8, f32x4, f64x2
+
+error: type `svbool_t` cannot be used with this register class
+  --> $DIR/type-check-3.rs:97:29
+   |
+LL |         asm!("{}", in(vreg) svb8);
+   |                             ^^^^
+   |
+   = note: register class `vreg` supports these types: i8, i16, i32, i64, f16, f32, f64, f128, i8x8, i16x4, i32x2, i64x1, f16x4, f32x2, f64x1, i8x16, i16x8, i32x4, i64x2, f16x8, f32x4, f64x2
+
+error: type `svint32_t` cannot be used with this register class
+  --> $DIR/type-check-3.rs:99:29
+   |
+LL |         asm!("{}", in(preg) svi32);
+   |                             ^^^^^
+   |
+   = note: register class `preg` supports these types: svbool_t
+
+error: type `svbool_t` cannot be used with this register class
+  --> $DIR/type-check-3.rs:101:29
+   |
+LL |         asm!("{}", in(zreg) svb8);
+   |                             ^^^^
+   |
+   = note: register class `zreg` supports these types: svint8_t, svint16_t, svint32_t, svint64_t, svint128_t, svfloat26_t, svfloat32_t, svfloat64_t, svint128_t, svfloat128_t
+
 error: incompatible types for asm inout argument
-  --> $DIR/type-check-3.rs:88:33
+  --> $DIR/type-check-3.rs:111:33
    |
 LL |         asm!("{:x}", inout(reg) 0u32 => val_f32);
    |                                 ^^^^    ^^^^^^^ type `f32`
@@ -124,7 +199,7 @@ LL |         asm!("{:x}", inout(reg) 0u32 => val_f32);
    = note: asm inout arguments must have the same type, unless they are both pointers or integers of the same size
 
 error: incompatible types for asm inout argument
-  --> $DIR/type-check-3.rs:90:33
+  --> $DIR/type-check-3.rs:113:33
    |
 LL |         asm!("{:x}", inout(reg) 0u32 => val_ptr);
    |                                 ^^^^    ^^^^^^^ type `*mut u8`
@@ -134,7 +209,7 @@ LL |         asm!("{:x}", inout(reg) 0u32 => val_ptr);
    = note: asm inout arguments must have the same type, unless they are both pointers or integers of the same size
 
 error: incompatible types for asm inout argument
-  --> $DIR/type-check-3.rs:92:33
+  --> $DIR/type-check-3.rs:115:33
    |
 LL |         asm!("{:x}", inout(reg) main => val_u32);
    |                                 ^^^^    ^^^^^^^ type `u32`
@@ -143,5 +218,5 @@ LL |         asm!("{:x}", inout(reg) main => val_u32);
    |
    = note: asm inout arguments must have the same type, unless they are both pointers or integers of the same size
 
-error: aborting due to 6 previous errors; 10 warnings emitted
+error: aborting due to 12 previous errors; 13 warnings emitted
 

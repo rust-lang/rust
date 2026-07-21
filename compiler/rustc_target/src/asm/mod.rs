@@ -1,7 +1,6 @@
 use std::borrow::Cow;
 use std::fmt;
 
-use rustc_abi::Size;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_macros::{Decodable, Encodable, StableHash};
 use rustc_span::Symbol;
@@ -11,11 +10,11 @@ use crate::spec::{Arch, RelocModel, Target};
 pub struct ModifierInfo {
     pub modifier: char,
     pub result: &'static str,
-    pub size: u16,
+    pub size: InlineAsmSize,
 }
 
-impl From<(char, &'static str, u16)> for ModifierInfo {
-    fn from((modifier, result, size): (char, &'static str, u16)) -> Self {
+impl From<(char, &'static str, InlineAsmSize)> for ModifierInfo {
+    fn from((modifier, result, size): (char, &'static str, InlineAsmSize)) -> Self {
         Self { modifier, result, size }
     }
 }
@@ -796,6 +795,31 @@ pub enum InlineAsmType {
     VecF32(u64),
     VecF64(u64),
     VecF128(u64),
+    SveVecI8,
+    SveVecI16,
+    SveVecI32,
+    SveVecI64,
+    SveVecI128,
+    SveVecF16,
+    SveVecF32,
+    SveVecF64,
+    SveVecF128,
+    SveVecBool,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum InlineAsmSize {
+    FixedInBytes(u64),
+    Scalable,
+}
+
+impl InlineAsmSize {
+    pub fn fixed_size_in_bytes(self) -> Option<u64> {
+        match self {
+            Self::FixedInBytes(size) => Some(size),
+            Self::Scalable => None,
+        }
+    }
 }
 
 impl InlineAsmType {
@@ -803,27 +827,29 @@ impl InlineAsmType {
         matches!(self, Self::I8 | Self::I16 | Self::I32 | Self::I64 | Self::I128)
     }
 
-    pub fn size(self) -> Size {
-        Size::from_bytes(match self {
-            Self::I8 => 1,
-            Self::I16 => 2,
-            Self::I32 => 4,
-            Self::I64 => 8,
-            Self::I128 => 16,
-            Self::F16 => 2,
-            Self::F32 => 4,
-            Self::F64 => 8,
-            Self::F128 => 16,
-            Self::VecI8(n) => n * 1,
-            Self::VecI16(n) => n * 2,
-            Self::VecI32(n) => n * 4,
-            Self::VecI64(n) => n * 8,
-            Self::VecI128(n) => n * 16,
-            Self::VecF16(n) => n * 2,
-            Self::VecF32(n) => n * 4,
-            Self::VecF64(n) => n * 8,
-            Self::VecF128(n) => n * 16,
-        })
+    pub fn size(self) -> InlineAsmSize {
+        match self {
+            Self::I8 => InlineAsmSize::FixedInBytes(1),
+            Self::I16 | Self::F16 => InlineAsmSize::FixedInBytes(2),
+            Self::I32 | Self::F32 => InlineAsmSize::FixedInBytes(4),
+            Self::I64 | Self::F64 => InlineAsmSize::FixedInBytes(8),
+            Self::I128 | Self::F128 => InlineAsmSize::FixedInBytes(16),
+            Self::VecI8(n) => InlineAsmSize::FixedInBytes(n),
+            Self::VecI16(n) | Self::VecF16(n) => InlineAsmSize::FixedInBytes(n * 2),
+            Self::VecI32(n) | Self::VecF32(n) => InlineAsmSize::FixedInBytes(n * 4),
+            Self::VecI64(n) | Self::VecF64(n) => InlineAsmSize::FixedInBytes(n * 8),
+            Self::VecI128(n) | Self::VecF128(n) => InlineAsmSize::FixedInBytes(n * 16),
+            Self::SveVecI8
+            | Self::SveVecI16
+            | Self::SveVecI32
+            | Self::SveVecI64
+            | Self::SveVecI128
+            | Self::SveVecF16
+            | Self::SveVecF32
+            | Self::SveVecF64
+            | Self::SveVecF128
+            | Self::SveVecBool => InlineAsmSize::Scalable,
+        }
     }
 }
 
@@ -848,6 +874,16 @@ impl fmt::Display for InlineAsmType {
             Self::VecF32(n) => write!(f, "f32x{n}"),
             Self::VecF64(n) => write!(f, "f64x{n}"),
             Self::VecF128(n) => write!(f, "f128x{n}"),
+            Self::SveVecI8 => f.write_str("svint8_t"),
+            Self::SveVecI16 => f.write_str("svint16_t"),
+            Self::SveVecI32 => f.write_str("svint32_t"),
+            Self::SveVecI64 => f.write_str("svint64_t"),
+            Self::SveVecI128 => f.write_str("svint128_t"),
+            Self::SveVecF16 => f.write_str("svfloat26_t"),
+            Self::SveVecF32 => f.write_str("svfloat32_t"),
+            Self::SveVecF64 => f.write_str("svfloat64_t"),
+            Self::SveVecF128 => f.write_str("svfloat128_t"),
+            Self::SveVecBool => f.write_str("svbool_t"),
         }
     }
 }

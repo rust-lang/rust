@@ -689,9 +689,13 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
         // https://llvm.org/docs/LangRef.html#supported-constraint-code-list
         InlineAsmRegOrRegClass::RegClass(reg) => match reg {
             AArch64(AArch64InlineAsmRegClass::reg) => "r",
-            AArch64(AArch64InlineAsmRegClass::vreg) => "w",
+            AArch64(AArch64InlineAsmRegClass::vreg) | AArch64(AArch64InlineAsmRegClass::zreg) => {
+                "w"
+            }
             AArch64(AArch64InlineAsmRegClass::vreg_low16) => "x",
-            AArch64(AArch64InlineAsmRegClass::preg) => unreachable!("clobber-only"),
+            // Although the above link suggests its just 'Upa', llvm's own tests seem to suggest its
+            // '@3Upa'. (see "src/llvm-project/clang/test/CodeGen/AArch64/sve-inline-asm-datatypes.c" line 139)
+            AArch64(AArch64InlineAsmRegClass::preg) => "@3Upa",
             Arm(ArmInlineAsmRegClass::reg) => "r",
             Arm(ArmInlineAsmRegClass::sreg)
             | Arm(ArmInlineAsmRegClass::dreg_low16)
@@ -799,7 +803,8 @@ fn modifier_to_llvm(
                 modifier
             }
         }
-        AArch64(AArch64InlineAsmRegClass::preg) => unreachable!("clobber-only"),
+        AArch64(AArch64InlineAsmRegClass::zreg) => modifier,
+        AArch64(AArch64InlineAsmRegClass::preg) => modifier,
         Arm(ArmInlineAsmRegClass::reg) => None,
         Arm(ArmInlineAsmRegClass::sreg) | Arm(ArmInlineAsmRegClass::sreg_low16) => None,
         Arm(ArmInlineAsmRegClass::dreg)
@@ -902,7 +907,8 @@ fn dummy_output_type<'ll>(cx: &CodegenCx<'ll, '_>, reg: InlineAsmRegClass) -> &'
         AArch64(AArch64InlineAsmRegClass::vreg) | AArch64(AArch64InlineAsmRegClass::vreg_low16) => {
             cx.type_vector(cx.type_i64(), 2)
         }
-        AArch64(AArch64InlineAsmRegClass::preg) => unreachable!("clobber-only"),
+        AArch64(AArch64InlineAsmRegClass::zreg) => cx.type_scalable_vector(cx.type_i64(), 2),
+        AArch64(AArch64InlineAsmRegClass::preg) => cx.type_scalable_vector(cx.type_i1(), 16),
         Arm(ArmInlineAsmRegClass::reg) => cx.type_i32(),
         Arm(ArmInlineAsmRegClass::sreg) | Arm(ArmInlineAsmRegClass::sreg_low16) => cx.type_f32(),
         Arm(ArmInlineAsmRegClass::dreg)

@@ -12,7 +12,7 @@ error: cannot use value of type `{closure@$DIR/type-check-2.rs:32:28: 32:36}` fo
 LL |         asm!("{}", in(reg) |x: i32| x);
    |                            ^^^^^^^^^^
    |
-   = note: only integers, floats, SIMD vectors, pointers and function pointers can be used as arguments for inline assembly
+   = note: only integers, floats, SIMD vectors, scalable vectors, pointers and function pointers can be used as arguments for inline assembly
 
 error: cannot use value of type `Vec<i32>` for inline assembly
   --> $DIR/type-check-2.rs:34:28
@@ -20,7 +20,7 @@ error: cannot use value of type `Vec<i32>` for inline assembly
 LL |         asm!("{}", in(reg) vec![0]);
    |                            ^^^^^^^
    |
-   = note: only integers, floats, SIMD vectors, pointers and function pointers can be used as arguments for inline assembly
+   = note: only integers, floats, SIMD vectors, scalable vectors, pointers and function pointers can be used as arguments for inline assembly
 
 error: cannot use value of type `(i32, i32, i32)` for inline assembly
   --> $DIR/type-check-2.rs:36:28
@@ -28,7 +28,7 @@ error: cannot use value of type `(i32, i32, i32)` for inline assembly
 LL |         asm!("{}", in(reg) (1, 2, 3));
    |                            ^^^^^^^^^
    |
-   = note: only integers, floats, SIMD vectors, pointers and function pointers can be used as arguments for inline assembly
+   = note: only integers, floats, SIMD vectors, scalable vectors, pointers and function pointers can be used as arguments for inline assembly
 
 error: cannot use value of type `[i32; 3]` for inline assembly
   --> $DIR/type-check-2.rs:38:28
@@ -36,7 +36,7 @@ error: cannot use value of type `[i32; 3]` for inline assembly
 LL |         asm!("{}", in(reg) [1, 2, 3]);
    |                            ^^^^^^^^^
    |
-   = note: only integers, floats, SIMD vectors, pointers and function pointers can be used as arguments for inline assembly
+   = note: only integers, floats, SIMD vectors, scalable vectors, pointers and function pointers can be used as arguments for inline assembly
 
 error: cannot use value of type `fn() {main}` for inline assembly
   --> $DIR/type-check-2.rs:46:31
@@ -44,7 +44,7 @@ error: cannot use value of type `fn() {main}` for inline assembly
 LL |         asm!("{}", inout(reg) f);
    |                               ^
    |
-   = note: only integers, floats, SIMD vectors, pointers and function pointers can be used as arguments for inline assembly
+   = note: only integers, floats, SIMD vectors, scalable vectors, pointers and function pointers can be used as arguments for inline assembly
 
 error: cannot use value of type `&mut i32` for inline assembly
   --> $DIR/type-check-2.rs:49:31
@@ -52,7 +52,7 @@ error: cannot use value of type `&mut i32` for inline assembly
 LL |         asm!("{}", inout(reg) r);
    |                               ^
    |
-   = note: only integers, floats, SIMD vectors, pointers and function pointers can be used as arguments for inline assembly
+   = note: only integers, floats, SIMD vectors, scalable vectors, pointers and function pointers can be used as arguments for inline assembly
 
 error: aborting due to 7 previous errors
 

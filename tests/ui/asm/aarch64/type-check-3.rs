@@ -1,9 +1,9 @@
 //@ only-aarch64
-//@ compile-flags: -C target-feature=+neon
+//@ compile-flags: -C target-feature=+neon,+sve
 
-#![feature(repr_simd)]
+#![feature(repr_simd, stdarch_aarch64_sve)]
 
-use std::arch::aarch64::float64x2_t;
+use std::arch::aarch64::{float64x2_t, svdup_n_f64, svdup_n_s16, svdup_n_s32, svptrue_b8};
 use std::arch::{asm, global_asm};
 
 #[repr(simd)]
@@ -13,6 +13,10 @@ struct Simd256bit([f64; 4]);
 fn main() {
     let f64x2: float64x2_t = unsafe { std::mem::transmute(0i128) };
     let f64x4 = Simd256bit([0.0, 0.0, 0.0, 0.0]);
+    let svi16 = unsafe { svdup_n_s16(0i16) };
+    let svi32 = unsafe { svdup_n_s32(0i32) };
+    let svf64 = unsafe { svdup_n_f64(0f64) };
+    let svb8 = unsafe { svptrue_b8() };
 
     unsafe {
         // Types must be listed in the register class.
@@ -33,6 +37,8 @@ fn main() {
         asm!("{:d}", in(vreg) 0f64);
         asm!("{:q}", in(vreg) f64x2);
         asm!("{:v}", in(vreg) f64x2);
+        asm!("{:z}", in(zreg) svi32);
+        asm!("{:p}", in(preg) svb8);
 
         // Should be the same as vreg
         asm!("{:q}", in(vreg_low16) f64x2);
@@ -62,6 +68,12 @@ fn main() {
         //~^ WARN formatting may not be suitable for sub-register argument
         asm!("{}", in(vreg_low16) 0f64);
         //~^ WARN formatting may not be suitable for sub-register argument
+        asm!("{}", in(zreg) svi16);
+        //~^ WARN formatting may not be suitable for sub-register argument
+        asm!("{}", in(zreg) svi32);
+        //~^ WARN formatting may not be suitable for sub-register argument
+        asm!("{}", in(zreg) svf64);
+        //~^ WARN formatting may not be suitable for sub-register argument
 
         asm!("{0} {0}", in(reg) 0i16);
         //~^ WARN formatting may not be suitable for sub-register argument
@@ -76,9 +88,20 @@ fn main() {
         //~^ ERROR type `float64x2_t` cannot be used with this register class
         asm!("{}", in(vreg) f64x4);
         //~^ ERROR type `Simd256bit` cannot be used with this register class
+        asm!("{}", in(reg) svi32);
+        //~^ ERROR type `svint32_t` cannot be used with this register class
+        asm!("{}", in(reg) svb8);
+        //~^ ERROR type `svbool_t` cannot be used with this register class
+        asm!("{}", in(vreg) svi32);
+        //~^ ERROR type `svint32_t` cannot be used with this register class
+        asm!("{}", in(vreg) svb8);
+        //~^ ERROR type `svbool_t` cannot be used with this register class
+        asm!("{}", in(preg) svi32);
+        //~^ ERROR type `svint32_t` cannot be used with this register class
+        asm!("{}", in(zreg) svb8);
+        //~^ ERROR type `svbool_t` cannot be used with this register class
 
         // Split inout operands must have compatible types
-
         let mut val_i16: i16;
         let mut val_f32: f32;
         let mut val_u32: u32;
