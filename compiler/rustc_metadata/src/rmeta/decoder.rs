@@ -1293,10 +1293,14 @@ impl CrateMetadata {
         canonical_symbols
     }
 
-    fn get_mod_child(&self, tcx: TyCtxt<'_>, id: DefIndex) -> ModChild {
+    fn get_mod_child(&self, tcx: TyCtxt<'_>, id: DefIndex, parent_id: DefIndex) -> ModChild {
         let ident = self.item_ident(tcx, id);
-        let res = Res::Def(self.def_kind(id), self.local_def_id(id));
-        let vis = self.get_visibility(tcx, id);
+        let def_kind = self.def_kind(id);
+        let res = Res::Def(def_kind, self.local_def_id(id));
+        let vis = match def_kind {
+            DefKind::Variant => self.get_visibility(tcx, parent_id),
+            _ => self.get_visibility(tcx, id),
+        };
 
         ModChild { ident, res, vis, reexport_chain: Default::default() }
     }
@@ -1316,7 +1320,7 @@ impl CrateMetadata {
                 // the view of this crate as a proc macro crate.
                 if id == CRATE_DEF_INDEX {
                     for (child_index, _) in data.macros.decode((self, tcx)) {
-                        yield self.get_mod_child(tcx, child_index);
+                        yield self.get_mod_child(tcx, child_index, id);
                     }
                 }
             } else {
@@ -1325,7 +1329,7 @@ impl CrateMetadata {
                 let non_reexports =
                     non_reexports.expect("provided `DefIndex` must refer to a module-like item");
                 for child_index in non_reexports.decode((self, tcx)) {
-                    yield self.get_mod_child(tcx, child_index);
+                    yield self.get_mod_child(tcx, child_index, id);
                 }
 
                 let reexports = self.root.tables.module_children_reexports.get(self, id);

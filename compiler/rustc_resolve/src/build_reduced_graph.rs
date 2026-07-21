@@ -1513,7 +1513,6 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         let def_id = feed.key();
         let vis = self.resolve_visibility(&variant.vis);
         self.r.define_local(parent, ident, TypeNS, self.res(def_id), vis, variant.span, expn_id);
-        self.r.feed_visibility(feed, vis);
 
         // If the variant is marked as non_exhaustive then lower the visibility to within the crate.
         let ctor_vis =

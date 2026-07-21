@@ -183,8 +183,9 @@ impl EffectiveVisibilities {
             // All effective visibilities except `reachable_through_impl_trait` are limited to
             // nominal visibility. For some items nominal visibility doesn't make sense so we
             // don't check this condition for them.
-            let is_impl = matches!(tcx.def_kind(def_id), DefKind::Impl { .. });
-            if !is_impl && tcx.trait_impl_of_assoc(def_id.to_def_id()).is_none() {
+            let is_impl_or_variant =
+                matches!(tcx.def_kind(def_id), DefKind::Impl { .. } | DefKind::Variant);
+            if !is_impl_or_variant && tcx.trait_impl_of_assoc(def_id.to_def_id()).is_none() {
                 let nominal_vis = tcx.visibility(def_id);
                 if ev.reachable.greater_than(nominal_vis, tcx) {
                     if let Node::Item(item) = tcx.hir_node_by_def_id(def_id)

@@ -655,10 +655,6 @@ impl<'tcx> EmbargoVisitor<'tcx> {
                 }
                 let def = self.tcx.adt_def(def_id);
                 for variant in def.variants() {
-                    if let Some(item_ev) = item_ev {
-                        self.update(variant.def_id.expect_local(), item_ev, Level::Reachable);
-                    }
-
                     if let Some(variant_ev) = self.get(variant.def_id.expect_local()) {
                         if let Some(ctor_def_id) = variant.ctor_def_id() {
                             self.update(ctor_def_id.expect_local(), variant_ev, Level::Reachable);

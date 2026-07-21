@@ -309,12 +309,16 @@ impl<'a, 'ra, 'tcx> EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> {
     ) {
         if self.macro_reachable.insert((module_def_id, defining_mod)) {
             let module = self.r.expect_module(module_def_id.to_def_id());
+            if module.def_kind() == Some(DefKind::Enum) {
+                return;
+            }
             for (_, name_resolution) in self.r.resolutions(module).borrow().iter() {
                 let Some(decl) = name_resolution.borrow().best_decl() else {
                     continue;
                 };
 
                 if let Res::Def(def_kind, def_id) = decl.res()
+                    && def_kind != DefKind::Variant
                     && let Some(def_id) = def_id.as_local()
                     // FIXME: defs should be checked with `EffectiveVisibilities::is_reachable`.
                     && decl.vis().is_accessible_from(defining_mod, self.r.tcx)
@@ -377,9 +381,8 @@ impl<'a, 'ra, 'tcx> Visitor<'a> for EffectiveVisibilitiesVisitor<'a, 'ra, 'tcx> 
             ast::ItemKind::Enum(_, _, EnumDef { variants }) => {
                 self.set_bindings_effective_visibilities(def_id);
                 for variant in variants {
-                    let variant_def_id = self.r.child_def_id(item.id, variant.id);
                     for field in variant.data.fields() {
-                        self.update_field(self.r.child_def_id(item.id, field.id), variant_def_id);
+                        self.update_field(self.r.child_def_id(item.id, field.id), def_id);
                     }
                 }
             }

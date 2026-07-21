@@ -1013,7 +1013,6 @@ fn should_encode_visibility(def_kind: DefKind) -> bool {
         | DefKind::Struct
         | DefKind::Union
         | DefKind::Enum
-        | DefKind::Variant
         | DefKind::Trait
         | DefKind::TyAlias
         | DefKind::ForeignTy
@@ -1039,7 +1038,8 @@ fn should_encode_visibility(def_kind: DefKind) -> bool {
         | DefKind::Impl { .. }
         | DefKind::Closure
         | DefKind::ExternCrate
-        | DefKind::SyntheticCoroutineBody => false,
+        | DefKind::SyntheticCoroutineBody
+        | DefKind::Variant => false,
     }
 }
 
