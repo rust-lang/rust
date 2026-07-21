@@ -4,7 +4,7 @@ use crate::data_structures::HashSet;
 use crate::inherent::*;
 use crate::visit::TypeVisitableExt;
 use crate::{
-    ConstKind, InferCtxtLike, InferTy, Interner, RegionKind, TyKind, TypeFoldable,
+    ConstKind, InferCtxtLike, InferTy, Interner, Region, RegionKind, TyKind, TypeFoldable,
     TypeSuperVisitable, TypeVisitable, TypeVisitor, UniverseIndex,
 };
 
@@ -148,7 +148,7 @@ impl<
         }
     }
 
-    fn visit_region(&mut self, r: I::Region) {
+    fn visit_region(&mut self, r: Region<I>) {
         match r.kind() {
             RegionKind::RePlaceholder(p) if VISIT_PLACEHOLDER => {
                 self.max_universe = self.max_universe.max(p.universe)
