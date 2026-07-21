@@ -877,7 +877,7 @@ pub fn adjust_intrinsic_return_value<'a, 'gcc, 'tcx>(
         "__builtin_ia32_rdrand64_step" => {
             let random_number = args[0].dereference(None).to_rvalue();
             let success_variable =
-                builder.current_func().new_local(None, return_value.get_type(), "success");
+                builder.new_temp(builder.current_func(), None, return_value.get_type());
             builder.llbb().add_assignment(None, success_variable, return_value);
 
             let field1 = builder.context.new_field(None, random_number.get_type(), "random_number");

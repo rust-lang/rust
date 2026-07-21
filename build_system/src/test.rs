@@ -946,7 +946,6 @@ fn contains_ui_error_patterns(file_path: &Path, keep_lto_tests: bool) -> Result<
             "//@ known-bug",
             "-Cllvm-args",
             "//~",
-            "thread",
         ]
         .iter()
         .any(|check| line.contains(check))
@@ -1248,6 +1247,7 @@ fn run_ui_tests(env: &Env, args: &TestArg) -> Result<(), String> {
         &"--compiletest-rustc-args",
         &rustc_args,
         &"--bypass-ignore-backends",
+        &"--force-rerun",
     ];
 
     for test_name in &args.test_args {

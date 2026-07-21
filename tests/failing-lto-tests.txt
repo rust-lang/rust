@@ -4,3 +4,7 @@ tests/ui/uninhabited/uninhabited-transparent-return-abi.rs
 tests/ui/coroutine/panic-drops-resume.rs
 tests/ui/coroutine/panic-drops.rs
 tests/ui/coroutine/panic-safe.rs
+tests/ui/panic-handler/catch-unwind-during-unwind-68696.rs
+tests/ui/threads-sendsync/task-stderr.rs
+tests/ui/extern/issue-64655-allow-unwind-when-calling-panic-directly.rs
+tests/ui/extern/issue-64655-extern-rust-must-allow-unwind.rs

@@ -432,7 +432,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         if self.is_non_native_int_type(a_type) || self.is_non_native_int_type(b_type) {
             // This algorithm is based on compiler-rt's __cmpti2:
             // https://github.com/llvm-mirror/compiler-rt/blob/f0745e8476f069296a7c71accedd061dce4cdf79/lib/builtins/cmpti2.c#L21
-            let result = self.current_func().new_local(self.location, self.int_type, "icmp_result");
+            let result = self.new_temp(self.current_func(), self.location, self.int_type);
             let block1 = self.current_func().new_block("block1");
             let block2 = self.current_func().new_block("block2");
             let block3 = self.current_func().new_block("block3");

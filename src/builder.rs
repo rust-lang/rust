@@ -84,7 +84,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             self.atomic_load(dst.get_type(), dst, load_ordering, Size::from_bytes(size));
         let previous_var =
             func.new_local(self.location, previous_value.get_type(), "previous_value");
-        let return_value = func.new_local(self.location, previous_value.get_type(), "return_value");
+        let return_value = self.new_temp(func, self.location, previous_value.get_type());
         self.llbb().add_assignment(self.location, previous_var, previous_value);
         self.llbb().add_assignment(self.location, return_value, previous_var.to_rvalue());
 
@@ -359,11 +359,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let void_type = self.context.new_type::<()>();
         let current_func = self.block.get_function();
         if return_type != void_type {
-            let result = current_func.new_local(
-                self.location,
-                return_type,
-                format!("returnValue{}", self.next_value_counter()),
-            );
+            let result = self.new_temp(current_func, self.location, return_type);
             self.block.add_assignment(self.location, result, call);
             result.to_rvalue()
         } else {
@@ -427,11 +423,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                 args_adjusted,
                 orig_args,
             );
-            let result = current_func.new_local(
-                self.location,
-                return_value.get_type(),
-                format!("ptrReturnValue{}", self.next_value_counter()),
-            );
+            let result = self.new_temp(current_func, self.location, return_value.get_type());
             self.block.add_assignment(self.location, result, return_value);
             result.to_rvalue()
         } else {
@@ -477,11 +469,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let return_type = self.context.new_type::<bool>();
         let current_func = self.block.get_function();
         // FIXME(antoyo): return the new_call() directly? Since the overflow function has no side-effects.
-        let result = current_func.new_local(
-            self.location,
-            return_type,
-            format!("overflowReturnValue{}", self.next_value_counter()),
-        );
+        let result = self.new_temp(current_func, self.location, return_type);
         self.block.add_assignment(
             self.location,
             result,
@@ -671,8 +659,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let call = self.call(typ, fn_attrs, fn_abi, func, args, None, instance); // FIXME(antoyo): use funclet here?
         self.block = current_block;
 
-        let return_value =
-            self.current_func().new_local(self.location, call.get_type(), "invokeResult");
+        let return_value = self.new_temp(self.current_func(), self.location, call.get_type());
 
         try_block.add_assignment(self.location, return_value, call);
 
@@ -719,8 +706,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         if return_type == void_type {
             self.block.end_with_void_return(self.location)
         } else {
-            let return_value =
-                self.current_func().new_local(self.location, return_type, "unreachableReturn");
+            let return_value = self.new_temp(self.current_func(), self.location, return_type);
             self.block.end_with_return(self.location, return_value)
         }
     }
@@ -1039,11 +1025,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         // the current basic block. Otherwise, it could be used in another basic block, causing a
         // dereference after a drop, for instance.
         let deref = ptr.dereference(self.location).to_rvalue();
-        let loaded_value = function.new_local(
-            self.location,
-            aligned_type,
-            format!("loadedValue{}", self.next_value_counter()),
-        );
+        let loaded_value = self.new_temp(function, self.location, aligned_type);
         block.add_assignment(self.location, loaded_value, deref);
         loaded_value.to_rvalue()
     }
@@ -1161,7 +1143,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let next_bb = self.append_sibling_block("repeat_loop_next");
 
         let ptr_type = start.get_type();
-        let current = self.llbb().get_function().new_local(self.location, ptr_type, "loop_var");
+        let current = self.new_temp(self.llbb().get_function(), self.location, ptr_type);
         let current_val = current.to_rvalue();
         self.assign(current, start);
 
@@ -1526,7 +1508,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         mut else_val: RValue<'gcc>,
     ) -> RValue<'gcc> {
         let func = self.current_func();
-        let variable = func.new_local(self.location, then_val.get_type(), "selectVar");
+        let variable = self.new_temp(func, self.location, then_val.get_type());
         let then_block = func.new_block("then");
         let else_block = func.new_block("else");
         let after_block = func.new_block("after");
@@ -1672,11 +1654,9 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     #[cfg(not(feature = "master"))]
     fn cleanup_landing_pad(&mut self, _pers_fn: Function<'gcc>) -> (RValue<'gcc>, RValue<'gcc>) {
         let value1 = self
-            .current_func()
-            .new_local(self.location, self.u8_type.make_pointer(), "landing_pad0")
+            .new_temp(self.current_func(), self.location, self.u8_type.make_pointer())
             .to_rvalue();
-        let value2 =
-            self.current_func().new_local(self.location, self.i32_type, "landing_pad1").to_rvalue();
+        let value2 = self.new_temp(self.current_func(), self.location, self.i32_type).to_rvalue();
         (value1, value2)
     }
 
@@ -1744,7 +1724,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
         // NOTE: since success contains the call to the intrinsic, it must be added to the basic block before
         // expected so that we store expected after the call.
-        let success_var = self.current_func().new_local(self.location, self.bool_type, "success");
+        let success_var = self.new_temp(self.current_func(), self.location, self.bool_type);
         self.llbb().add_assignment(self.location, success_var, success);
 
         (expected.to_rvalue(), success_var.to_rvalue())
@@ -2445,11 +2425,31 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         self.bitcast_if_needed(res, result_type)
     }
 
+    /// Create a temporary variable.
+    ///
+    /// GCC will use more stack space with a local variable than with a temporary variable in debug mode,
+    /// so in order to avoid having the stack probe test fail in CI, we avoid creating local variables for temporaries.
+    pub fn new_temp(
+        &self,
+        function: Function<'gcc>,
+        location: Option<Location<'gcc>>,
+        typ: Type<'gcc>,
+    ) -> LValue<'gcc> {
+        #[cfg(feature = "master")]
+        {
+            function.new_temp(location, typ)
+        }
+        #[cfg(not(feature = "master"))]
+        {
+            function.new_local(location, typ, format!("temp{}", self.next_value_counter()))
+        }
+    }
+
     // GCC doesn't like deeply nested expressions.
     // By assigning intermediate expressions to a variable, this allow us to avoid deeply nested
     // expressions and GCC will use much less RAM.
     fn assign_to_var(&self, value: RValue<'gcc>) -> RValue<'gcc> {
-        let var = self.current_func().new_local(self.location, value.get_type(), "opResult");
+        let var = self.new_temp(self.current_func(), self.location, value.get_type());
         self.llbb().add_assignment(self.location, var, value);
         var.to_rvalue()
     }

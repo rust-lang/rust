@@ -936,7 +936,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let else_block = func.new_block("else");
         let after_block = func.new_block("after");
 
-        let result = func.new_local(None, self.u32_type, "zeros");
+        let result = self.new_temp(func, None, self.u32_type);
         let zero = self.cx.gcc_zero(arg.get_type());
         let cond = self.gcc_icmp(IntPredicate::IntEQ, arg, zero);
         self.llbb().end_with_conditional(None, cond, then_block, else_block);
@@ -1017,7 +1017,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
             // else call it on the 64 high bits and add 64. In the else case, 64 high bits can't be 0
             // because arg is not 0.
 
-            let result = self.current_func().new_local(None, result_type, "count_zeroes_results");
+            let result = self.new_temp(self.current_func(), None, result_type);
 
             let cz_then_block = self.current_func().new_block("cz_then");
             let cz_else_block = self.current_func().new_block("cz_else");
@@ -1132,8 +1132,8 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
         let loop_tail = func.new_block("tail");
 
         let counter_type = self.int_type;
-        let counter = self.current_func().new_local(None, counter_type, "popcount_counter");
-        let val = self.current_func().new_local(None, value_type, "popcount_value");
+        let counter = self.new_temp(self.current_func(), None, counter_type);
+        let val = self.new_temp(self.current_func(), None, value_type);
         let zero = self.gcc_zero(counter_type);
         self.llbb().add_assignment(self.location, counter, zero);
         self.llbb().add_assignment(self.location, val, value);
