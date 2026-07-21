@@ -1934,7 +1934,7 @@ fn offload_bool_arg<'ll, 'tcx>(args: &[OperandRef<'tcx, &'ll llvm::Value>], idx:
 fn codegen_offload_sync<'ll, 'tcx>(bx: &mut Builder<'_, 'll, 'tcx>) {
     let cx = bx.cx;
 
-    register_offload(cx);
+    //register_offload(cx);
 
     let offload_globals_ref = cx.offload_globals.borrow();
     let offload_globals = match offload_globals_ref.as_ref() {
