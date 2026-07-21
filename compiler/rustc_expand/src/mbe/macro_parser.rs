@@ -502,7 +502,7 @@ impl TtParser {
         checking_for_ambiguity: bool,
     ) -> Option<NamedParseResult> {
         let matcher_loc = &matcher[mp.idx];
-        track.before_match_loc(matcher_loc);
+        track.trying_match(parser.approx_token_stream_pos(), &parser.token, mp.idx);
         let token = &parser.token;
 
         match matcher_loc {
@@ -519,7 +519,7 @@ impl TtParser {
                     mp.idx += 1;
                     self.cur_mps.push(mp);
                 } else if token_name_eq(t, token) {
-                    track.matched_one(parser, mp.idx);
+                    track.matched_one(parser.approx_token_stream_pos(), mp.idx);
                     mp.idx += 1;
                     self.next_mps.push(mp);
                 }
@@ -579,7 +579,7 @@ impl TtParser {
 
                 if token_name_eq(token, separator) {
                     // The separator matches the current token. Advance past it.
-                    track.matched_one(parser, mp.idx);
+                    track.matched_one(parser.approx_token_stream_pos(), mp.idx);
                     mp.idx += 1;
                     self.next_mps.push(mp);
                 }
@@ -601,7 +601,7 @@ impl TtParser {
                 // EOF tokens would cause unexpected processing in `match_one()`.
                 debug_assert!(parser.token != token::Eof, "{kind:?} should not accept EOF tokens");
 
-                track.matched_one(parser, mp.idx);
+                track.matched_one(parser.approx_token_stream_pos(), mp.idx);
 
                 if let ControlFlow::Break(result) =
                     self.check_for_ambiguity(parser, matcher, track, checking_for_ambiguity)
@@ -628,7 +628,7 @@ impl TtParser {
                     return None;
                 }
 
-                track.matched_one(parser, mp.idx);
+                track.matched_one(parser.approx_token_stream_pos(), mp.idx);
 
                 if let ControlFlow::Break(result) =
                     self.check_for_ambiguity(parser, matcher, track, checking_for_ambiguity)

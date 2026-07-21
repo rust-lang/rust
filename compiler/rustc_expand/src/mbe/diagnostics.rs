@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use rustc_ast::token::{self, Token};
 use rustc_ast::tokenstream::TokenStream;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, DiagMessage, pluralize};
 use rustc_hir::attrs::diagnostic::{CustomDiagnostic, Directive, FormatArgs};
 use rustc_macros::Subdiagnostic;
@@ -161,6 +161,9 @@ struct CollectTrackerAndEmitter<'dcx, 'matcher> {
     /// competing matches for ambiguity errors.
     matches: FxHashSet<SuccessfulMatch>,
 
+    /// Tokens seen during parsing.
+    tokens: FxHashMap<u32, Token>,
+
     remaining_matcher: Option<&'matcher MatcherLoc>,
     /// Which arm's failure should we report? (the one furthest along)
     best_failure: Option<BestFailure>,
@@ -209,14 +212,21 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
         self.current = Some((which_matcher, matcher));
     }
 
-    fn before_match_loc(&mut self, matcher: &'matcher MatcherLoc) {
+    fn trying_match(&mut self, input_pos: u32, token: &Token, loc_index: usize) {
+        let Some((_, matcher)) = self.current else {
+            bug!("`Self::prepare()` was not called to initialize context");
+        };
+        let matcher = &matcher[loc_index];
+
+        let old_token = self.tokens.insert(input_pos, *token);
+        debug_assert!(old_token.is_none_or(|t| t == *token));
+
         if self.remaining_matcher.is_none() || *matcher != MatcherLoc::Eof {
             self.remaining_matcher = Some(matcher);
         }
     }
 
-    fn matched_one(&mut self, parser: &Parser<'_>, loc_index: usize) {
-        let input_pos = parser.approx_token_stream_pos();
+    fn matched_one(&mut self, input_pos: u32, loc_index: usize) {
         let loc_index: u32 = loc_index.try_into().unwrap();
         let m = SuccessfulMatch { input_pos, loc_index };
         self.matches.insert(m);
@@ -247,6 +257,7 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
 
         self.current = None;
         self.matches.clear();
+        self.tokens.clear();
     }
 
     fn failure(&mut self, parser: &Parser<'_>) {
@@ -356,6 +367,7 @@ impl<'dcx> CollectTrackerAndEmitter<'dcx, '_> {
             dcx,
             current: None,
             matches: FxHashSet::default(),
+            tokens: FxHashMap::default(),
             remaining_matcher: None,
             best_failure: None,
             root_span,
