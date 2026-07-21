@@ -321,13 +321,13 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
                 return None;
             }
 
-            if tcx.sess.opts.output_types.contains_key(&OutputType::Mir) {
+            if sess.opts.output_types.contains_key(&OutputType::Mir) {
                 if let Err(error) = pretty::emit_mir(tcx) {
                     tcx.dcx().emit_fatal(CantEmitMIR { error });
                 }
             }
 
-            let linker = Linker::codegen_and_build_linker(tcx, &*compiler.codegen_backend);
+            let linker = Linker::codegen_and_build_linker(tcx, codegen_backend);
 
             tcx.report_unused_features();
 
