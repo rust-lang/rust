@@ -601,7 +601,7 @@ impl<'a> Parser<'a> {
                     && let [segment] = path.segments.as_slice()
                     && edit_distance("macro_rules", &segment.ident.to_string(), 2).is_some()
                 {
-                    err.span_suggestion(
+                    err.span_suggestion_verbose(
                         path.span,
                         "perhaps you meant to define a macro",
                         "macro_rules",
@@ -627,7 +627,7 @@ impl<'a> Parser<'a> {
         if end.is_doc_comment() {
             err.span_label(end.span, "this doc comment doesn't document anything");
         } else if self.token == TokenKind::Semi {
-            err.span_suggestion_verbose(
+            err.span_suggestion(
                 self.token.span,
                 "consider removing this semicolon",
                 "",
@@ -2474,7 +2474,7 @@ impl<'a> Parser<'a> {
                         .map_err(|err| err.cancel())
                     && self.token == TokenKind::Colon
                 {
-                    err.span_suggestion(
+                    err.span_suggestion_verbose(
                         removal_span,
                         "remove this `let` keyword",
                         String::new(),
@@ -2632,7 +2632,7 @@ impl<'a> Parser<'a> {
                     vec![(open, "{".to_string()), (close, '}'.to_string())],
                     Applicability::MaybeIncorrect,
                 );
-                err.span_suggestion(
+                err.span_suggestion_verbose(
                     span.with_neighbor(self.token.span).shrink_to_hi(),
                     "add a semicolon",
                     ';',
@@ -3248,7 +3248,7 @@ impl<'a> Parser<'a> {
                             .span_to_snippet(original_sp)
                             .expect("Span extracted directly from keyword should always work");
 
-                        err.span_suggestion(
+                        err.span_suggestion_verbose(
                             self.token_uninterpolated_span(),
                             format!("`{original_kw}` already used earlier, remove this one"),
                             "",
@@ -3263,7 +3263,7 @@ impl<'a> Parser<'a> {
                             let misplaced_qual_sp = self.token_uninterpolated_span();
                             let misplaced_qual = self.span_to_snippet(misplaced_qual_sp).unwrap();
 
-                            err.span_suggestion(
+                            err.span_suggestion_verbose(
                                     correct_pos_sp.to(misplaced_qual_sp),
                                     format!("`{misplaced_qual}` must come before `{current_qual}`"),
                                     format!("{misplaced_qual} {current_qual}"),
@@ -3287,7 +3287,7 @@ impl<'a> Parser<'a> {
 
                             // There was no explicit visibility
                             if matches!(orig_vis.kind, VisibilityKind::Inherited) {
-                                err.span_suggestion(
+                                err.span_suggestion_verbose(
                                     sp_start.to(self.prev_token.span),
                                     format!("visibility `{vs}` must come before `{snippet}`"),
                                     format!("{vs} {snippet}"),
@@ -3296,7 +3296,7 @@ impl<'a> Parser<'a> {
                             }
                             // There was an explicit visibility
                             else {
-                                err.span_suggestion(
+                                err.span_suggestion_verbose(
                                     current_vis.span,
                                     "there is already a visibility modifier, remove one",
                                     "",

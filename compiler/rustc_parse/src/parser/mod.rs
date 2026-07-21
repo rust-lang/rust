@@ -1805,7 +1805,7 @@ impl<'a> Parser<'a> {
                 format!("the {kind_desc} was parsed as having {op_desc} binary expression"),
             );
 
-            err.span_suggestion(
+            err.span_suggestion_verbose(
                 lhs_end_span,
                 format!("you may have meant to write a `;` to terminate the {kind_desc} earlier"),
                 ";",
