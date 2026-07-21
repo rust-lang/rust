@@ -806,17 +806,17 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
     // Step 2)
     let s_ident_t = offload_globals.ident_t_global;
     let geps = get_geps(builder, ty, ty2, a1, a2, a4, has_dynamic);
-    generate_mapper_call(
-        builder,
-        geps,
-        offload_globals,
-        memtransfer_begin,
-        begin_mapper_decl,
-        fn_ty,
-        num_args,
-        s_ident_t,
-        TransferType::Kernel,
-    );
+    //generate_mapper_call(
+    //    builder,
+    //    geps,
+    //    offload_globals,
+    //    memtransfer_begin,
+    //    begin_mapper_decl,
+    //    fn_ty,
+    //    num_args,
+    //    s_ident_t,
+    //    TransferType::Kernel,
+    //);
     let values = KernelArgsTy::new(
         &cx,
         num_args,
@@ -853,15 +853,15 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
 
     // Step 4)
     let geps = get_geps(builder, ty, ty2, a1, a2, a4, has_dynamic);
-    generate_mapper_call(
-        builder,
-        geps,
-        offload_globals,
-        memtransfer_end,
-        end_mapper_decl,
-        fn_ty,
-        num_args,
-        s_ident_t,
-        TransferType::Kernel,
-    );
+    //generate_mapper_call(
+    //    builder,
+    //    geps,
+    //    offload_globals,
+    //    memtransfer_end,
+    //    end_mapper_decl,
+    //    fn_ty,
+    //    num_args,
+    //    s_ident_t,
+    //    TransferType::Kernel,
+    //);
 }

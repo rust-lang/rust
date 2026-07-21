@@ -3577,6 +3577,11 @@ pub const fn offload<F, T: crate::marker::Tuple, R>(
 #[rustc_nounwind]
 pub fn offload_preload<T: ?Sized>(ptr: *const T, is_mut: bool);
 
+/// Waits for previously submitted offload operations to complete.
+#[rustc_intrinsic]
+#[rustc_nounwind]
+pub fn offload_sync();
+
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub fn offload_preload_end<T: ?Sized>(ptr: *const T, is_mut: bool);

@@ -229,6 +229,11 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 codegen_autodiff(self, tcx, instance, args, result);
                 return IntrinsicResult::WroteIntoPlace;
             }
+            sym::offload_sync => {
+                codegen_offload_sync(self);
+                return IntrinsicResult::WroteIntoPlace;
+            }
+
             sym::offload_preload => {
                 codegen_offload_preload(self, tcx, instance, args);
                 return IntrinsicResult::WroteIntoPlace;
@@ -1925,6 +1930,19 @@ fn offload_bool_arg<'ll, 'tcx>(args: &[OperandRef<'tcx, &'ll llvm::Value>], idx:
     }
 
     raw != 0
+}
+fn codegen_offload_sync<'ll, 'tcx>(bx: &mut Builder<'_, 'll, 'tcx>) {
+    let cx = bx.cx;
+
+    register_offload(cx);
+
+    let offload_globals_ref = cx.offload_globals.borrow();
+    let offload_globals = match offload_globals_ref.as_ref() {
+        Some(globals) => globals,
+        None => bug!("offload globals were not initialized"),
+    };
+
+    crate::builder::gpu_helper::synchronize_async_info(bx, offload_globals);
 }
 fn codegen_offload_preload_drop<'ll, 'tcx>(
     bx: &mut Builder<'_, 'll, 'tcx>,

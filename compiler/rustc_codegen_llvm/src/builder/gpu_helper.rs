@@ -61,7 +61,7 @@ pub(crate) fn get_geps<'ll, 'tcx>(
     [gep1, gep2, gep3]
 }
 
-fn synchronize_async_info<'ll, 'tcx>(
+pub(crate) fn synchronize_async_info<'ll, 'tcx>(
     builder: &mut Builder<'_, 'll, 'tcx>,
     offload_globals: &OffloadGlobals<'ll>,
 ) {
@@ -100,7 +100,7 @@ pub(crate) fn generate_mapper_call<'ll, 'tcx>(
         args.append(&mut vec![i32_0, nullptr, i32_0, nullptr]);
     }
     if matches!(transfer, TransferType::End) {
-        synchronize_async_info(builder, offload_globals);
+        //synchronize_async_info(builder, offload_globals);
         let a = offload_globals.taskwait;
         let b = offload_globals.taskwait_ty;
         let c = offload_globals.threadnum;

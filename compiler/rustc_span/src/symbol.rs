@@ -1425,6 +1425,7 @@ symbols! {
         of,
         off,
         offload,
+        offload_sync,
         offload_preload,
         offload_preload_end,
         offload_kernel,
