@@ -1,7 +1,6 @@
 //@ check-pass
 
-#![feature(min_adt_const_params)]
-#![feature(min_generic_const_args)]
+#![feature(min_adt_const_params, min_generic_const_args, macroless_generic_const_args)]
 
 struct S<const X: (u32, u32)>;
 
