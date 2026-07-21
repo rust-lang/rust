@@ -1,5 +1,5 @@
 error: `#[splat]` is not allowed in the arguments of functions with the `rust-call` ABI
-  --> $DIR/splat-self-rust-call-issue-158800.rs:10:5
+  --> $DIR/splat-rust-call-fn-trait-self-issue-158800.rs:10:5
    |
 LL |     extern "rust-call" fn call_once(#[splat] self) {}
    |     ^^^^^^^^^^^^^^^^^^              ^^^^^^^^
@@ -7,13 +7,13 @@ LL |     extern "rust-call" fn call_once(#[splat] self) {}
    = help: remove `#[splat]` or change the ABI
 
 error: functions with the "rust-call" ABI must take a single non-self tuple argument
-  --> $DIR/splat-self-rust-call-issue-158800.rs:10:46
+  --> $DIR/splat-rust-call-fn-trait-self-issue-158800.rs:10:46
    |
 LL |     extern "rust-call" fn call_once(#[splat] self) {}
    |                                              ^^^^
 
 error[E0116]: cannot define inherent `impl` for a type outside of the crate where the type is defined
-  --> $DIR/splat-self-rust-call-issue-158800.rs:8:1
+  --> $DIR/splat-rust-call-fn-trait-self-issue-158800.rs:8:1
    |
 LL | impl<T> dyn FnOnce(T) -> () {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl for type defined outside of crate
@@ -22,7 +22,7 @@ LL | impl<T> dyn FnOnce(T) -> () {
    = note: for more details about the orphan rules, see <https://doc.rust-lang.org/reference/items/implementations.html?highlight=orphan#orphan-rules>
 
 error[E0277]: the size for values of type `(dyn FnOnce(T) + 'static)` cannot be known at compilation time
-  --> $DIR/splat-self-rust-call-issue-158800.rs:10:46
+  --> $DIR/splat-rust-call-fn-trait-self-issue-158800.rs:10:46
    |
 LL |     extern "rust-call" fn call_once(#[splat] self) {}
    |                                              ^^^^ doesn't have a size known at compile-time
