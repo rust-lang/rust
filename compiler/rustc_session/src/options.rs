@@ -2497,6 +2497,9 @@ options! {
         "rely on user specified linker commands to find clangrt"),
     extra_const_ub_checks: bool = (false, parse_bool, [TRACKED],
         "turns on more checks to detect const UB, which can be slow (default: no)"),
+    fat_lto_crates: Vec<String> = (Vec::new(), parse_comma_list, [TRACKED],
+        "with -Clto=thin, fat-merge the named crates into a single module that takes part \
+        in the ThinLTO link (LLVM backend only)"),
     fat_lto_partitions: usize = (1, parse_fat_lto_partitions, [TRACKED],
         "split the merged fat-LTO module into this many function partitions plus a data \
         partition for parallel codegen (LLVM backend only; default: 1, no partitioning)"),

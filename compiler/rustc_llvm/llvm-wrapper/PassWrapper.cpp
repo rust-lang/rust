@@ -14,6 +14,7 @@
 #if LLVM_VERSION_GE(22, 0)
 #include "llvm/Analysis/RuntimeLibcallInfo.h"
 #endif
+#include "llvm/Bitcode/BitcodeReader.h"
 #include "llvm/Bitcode/BitcodeWriter.h"
 #include "llvm/Bitcode/BitcodeWriterPass.h"
 #include "llvm/CodeGen/CommandFlags.h"
@@ -1219,6 +1220,24 @@ struct LLVMRustThinLTOData {
 
   LLVMRustThinLTOData() : Index(/* HaveGVs = */ false) {}
 };
+
+extern "C" bool LLVMRustGetThinLTOModuleHash(const char *Data, size_t Len,
+                                             const char *Identifier,
+                                             uint32_t *HashOut) {
+  auto Buffer = MemoryBufferRef(StringRef(Data, Len), Identifier);
+  ModuleSummaryIndex Index(/* HaveGVs = */ false);
+  if (Error Err = readModuleSummaryIndex(Buffer, Index)) {
+    LLVMRustSetLastError(toString(std::move(Err)).c_str());
+    return false;
+  }
+  const auto &Paths = Index.modulePaths();
+  if (Paths.size() != 1 || Paths.begin()->second == ModuleHash{}) {
+    LLVMRustSetLastError("missing or invalid ThinLTO module hash");
+    return false;
+  }
+  std::copy(Paths.begin()->second.begin(), Paths.begin()->second.end(), HashOut);
+  return true;
+}
 
 // Just an argument to the `LLVMRustCreateThinLTOData` function below.
 struct LLVMRustThinLTOModule {

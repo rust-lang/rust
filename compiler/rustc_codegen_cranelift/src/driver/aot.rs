@@ -339,6 +339,8 @@ impl WriteBackendMethods for AotDriver {
         _cgcx: &CodegenContext,
         _prof: &SelfProfilerRef,
         _dcx: rustc_errors::DiagCtxtHandle<'_>,
+        _shared_emitter: &SharedEmitter,
+        _tm_factory: TargetMachineFactoryFn<Self>,
         _exported_symbols_for_lto: &[String],
         _each_linked_rlib_for_lto: &[PathBuf],
         _modules: Vec<ThinLtoInput<Self>>,

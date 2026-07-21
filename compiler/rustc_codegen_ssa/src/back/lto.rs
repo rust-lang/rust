@@ -64,6 +64,12 @@ impl<M: ModuleBufferMethods> SerializedModule<M> {
         SerializedModule::FromUncompressedFile(mmap)
     }
 
+    pub fn try_from_file(bc_path: &Path) -> std::io::Result<Self> {
+        let file = fs::File::open(bc_path)?;
+        let mmap = unsafe { Mmap::map(file)? };
+        Ok(SerializedModule::FromUncompressedFile(mmap))
+    }
+
     pub fn data(&self) -> &[u8] {
         match *self {
             SerializedModule::Local(ref m) => m.data(),

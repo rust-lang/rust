@@ -10,8 +10,8 @@ use object::{Object, ObjectSection};
 use rustc_codegen_ssa::back::lto::{SerializedModule, ThinModule, ThinShared};
 use rustc_codegen_ssa::back::rmeta_link;
 use rustc_codegen_ssa::back::write::{
-    CodegenContext, CompiledModuleResults, FatLtoInput, SharedEmitter, TargetMachineFactoryFn,
-    ThinLtoInput, fat_lto_partition_module_name,
+    CodegenContext, CompiledModuleResults, FAT_LTO_CORE_MODULE_NAME, FatLtoInput, SharedEmitter,
+    TargetMachineFactoryFn, ThinLtoInput, fat_lto_partition_module_name, write_incr_comp_file,
 };
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{CompiledModule, ModuleCodegen, ModuleKind};
@@ -38,12 +38,73 @@ use crate::{LlvmCodegenBackend, ModuleLlvm};
 /// session to determine which CGUs we can reuse.
 const THIN_LTO_KEYS_INCR_COMP_FILE_NAME: &str = "thin-lto-past-keys.bin";
 
+const FAT_LTO_CORE_CACHE_MANIFEST: &str = "fat-lto-core-cache";
+const FAT_LTO_CORE_CACHE_BITCODE: &str = "fat-lto-core.pre-lto.bc";
+
+// A synthetic core has no dep node, so identify its ordered inputs by name and
+// LLVM's full-module hashes, which survive incremental serialization.
+fn fat_lto_core_input_hash(
+    modules: &[(SerializedModule<ModuleBuffer>, CString)],
+) -> Option<blake3::Hash> {
+    let mut hasher = blake3::Hasher::new();
+    hasher.update(b"rustc-fat-lto-core-input-v1\0");
+    for (module, name) in modules {
+        let mut module_hash = [0u32; 5];
+        let ok = unsafe {
+            llvm::LLVMRustGetThinLTOModuleHash(
+                module.data().as_ptr().cast(),
+                module.data().len(),
+                name.as_ptr(),
+                module_hash.as_mut_ptr(),
+            )
+        };
+        if !ok {
+            info!("fat LTO core cache disabled for {name:?}: {:?}", llvm::last_error());
+            return None;
+        }
+        hasher.update(name.as_bytes_with_nul());
+        hasher.update(module_hash.map(u32::to_le_bytes).as_flattened());
+    }
+    Some(hasher.finalize())
+}
+
+fn load_fat_lto_core_cache(
+    cgcx: &CodegenContext,
+    input_hash: blake3::Hash,
+) -> Option<SerializedModule<ModuleBuffer>> {
+    let session_dir = cgcx.incr_comp_session_dir.as_ref()?;
+    let manifest = std::fs::read(session_dir.join(FAT_LTO_CORE_CACHE_MANIFEST)).ok()?;
+    if manifest.len() != 64 || manifest[..32] != input_hash.as_bytes()[..] {
+        return None;
+    }
+    let module = SerializedModule::try_from_file(&session_dir.join(FAT_LTO_CORE_CACHE_BITCODE));
+    module.ok().filter(|module| manifest[32..] == blake3::hash(module.data()).as_bytes()[..])
+}
+
+fn save_fat_lto_core_cache(
+    cgcx: &CodegenContext,
+    dcx: DiagCtxtHandle<'_>,
+    input_hash: blake3::Hash,
+    module: &SerializedModule<ModuleBuffer>,
+) {
+    let session_dir = cgcx.incr_comp_session_dir.as_ref().unwrap();
+    let manifest = [*input_hash.as_bytes(), *blake3::hash(module.data()).as_bytes()].concat();
+    for (name, data) in
+        [(FAT_LTO_CORE_CACHE_BITCODE, module.data()), (FAT_LTO_CORE_CACHE_MANIFEST, &manifest[..])]
+    {
+        let path = session_dir.join(name);
+        if let Err(err) = write_incr_comp_file(&path, data) {
+            dcx.fatal(format!("error writing fat LTO core cache `{}`: {err}", path.display()));
+        }
+    }
+}
+
 fn prepare_lto(
     cgcx: &CodegenContext,
     exported_symbols_for_lto: &[String],
     each_linked_rlib_for_lto: &[PathBuf],
     dcx: DiagCtxtHandle<'_>,
-) -> (Vec<CString>, Vec<(SerializedModule<ModuleBuffer>, CString)>) {
+) -> (Vec<CString>, Vec<(SerializedModule<ModuleBuffer>, CString, bool)>) {
     let mut symbols_below_threshold = exported_symbols_for_lto
         .iter()
         .map(|symbol| CString::new(symbol.to_owned()).unwrap())
@@ -94,6 +155,7 @@ fn prepare_lto(
     // with either fat or thin LTO
     let mut upstream_modules = Vec::new();
     for path in each_linked_rlib_for_lto {
+        let in_fat_lto_core = cgcx.fat_lto_rlibs.contains(path);
         let archive_data = unsafe {
             Mmap::map(std::fs::File::open(&path).expect("couldn't open rlib"))
                 .expect("couldn't map rlib")
@@ -116,7 +178,7 @@ fn prepare_lto(
             ) {
                 Ok(data) => {
                     let module = SerializedModule::FromRlib(data.to_vec());
-                    upstream_modules.push((module, CString::new(name).unwrap()));
+                    upstream_modules.push((module, CString::new(name).unwrap(), in_fat_lto_core));
                 }
                 Err(e) => dcx.emit_fatal(e),
             }
@@ -166,6 +228,8 @@ pub(crate) fn run_fat(
     let dcx = dcx.handle();
     let (symbols_below_threshold, upstream_modules) =
         prepare_lto(cgcx, exported_symbols_for_lto, each_linked_rlib_for_lto, dcx);
+    let upstream_modules =
+        upstream_modules.into_iter().map(|(module, name, _)| (module, name)).collect();
     let symbols_below_threshold =
         symbols_below_threshold.iter().map(|c| c.as_ptr()).collect::<Vec<_>>();
     fat_lto(
@@ -177,6 +241,7 @@ pub(crate) fn run_fat(
         modules,
         upstream_modules,
         &symbols_below_threshold,
+        /* internalize */ true,
     )
 }
 
@@ -187,6 +252,8 @@ pub(crate) fn run_thin(
     cgcx: &CodegenContext,
     prof: &SelfProfilerRef,
     dcx: DiagCtxtHandle<'_>,
+    shared_emitter: &SharedEmitter,
+    tm_factory: TargetMachineFactoryFn<LlvmCodegenBackend>,
     exported_symbols_for_lto: &[String],
     each_linked_rlib_for_lto: &[PathBuf],
     modules: Vec<ThinLtoInput<LlvmCodegenBackend>>,
@@ -202,7 +269,78 @@ pub(crate) fn run_thin(
         );
     }
 
-    thin_lto(cgcx, prof, dcx, modules, upstream_modules, &symbols_below_threshold)
+    let mut modules = modules;
+    let mut cache_hit = false;
+    let upstream_modules = if cgcx.lto == config::Lto::Thin
+        && (cgcx.fat_lto_local || !cgcx.fat_lto_rlibs.is_empty())
+    {
+        let core_local = if cgcx.fat_lto_local { std::mem::take(&mut modules) } else { Vec::new() };
+        let (core_upstream, rest): (Vec<_>, Vec<_>) =
+            upstream_modules.into_iter().partition(|(_, _, in_core)| *in_core);
+        let core_names: Vec<_> = core_upstream.iter().map(|(_, name, _)| name).collect();
+        info!("adding upstream modules {core_names:?} to fat LTO core");
+        let mut core_modules =
+            core_upstream.into_iter().map(|(module, name, _)| (module, name)).collect::<Vec<_>>();
+        let upstream_modules =
+            rest.into_iter().map(|(module, name, _)| (module, name)).collect::<Vec<_>>();
+        for module in core_local {
+            core_modules.push(match module {
+                ThinLtoInput::Red { name, buffer } => (buffer, CString::new(name).unwrap()),
+                ThinLtoInput::Green { wp, bitcode_path } => {
+                    (SerializedModule::from_file(&bitcode_path), CString::new(wp.cgu_name).unwrap())
+                }
+            });
+        }
+
+        if !core_modules.is_empty() {
+            core_modules.sort_by(|a, b| a.1.cmp(&b.1));
+            let input_hash = cgcx
+                .fat_lto_core_cache_enabled
+                .then(|| fat_lto_core_input_hash(&core_modules))
+                .flatten();
+            let buffer = match input_hash.and_then(|hash| load_fat_lto_core_cache(cgcx, hash)) {
+                Some(buffer) => {
+                    info!("fat LTO core pre-LTO cache hit: {}", input_hash.unwrap());
+                    cache_hit = true;
+                    buffer
+                }
+                None => {
+                    if let Some(input_hash) = input_hash {
+                        info!("fat LTO core pre-LTO cache miss: {input_hash}");
+                    }
+                    let merged = fat_lto(
+                        cgcx,
+                        prof,
+                        dcx,
+                        shared_emitter,
+                        tm_factory,
+                        Vec::new(),
+                        core_modules,
+                        &[],
+                        /* internalize */ false,
+                    );
+                    let (llmod, core) = (merged.module_llvm.llmod(), FAT_LTO_CORE_MODULE_NAME);
+                    unsafe {
+                        llvm::LLVMSetModuleIdentifier(llmod, core.as_ptr().cast(), core.len())
+                    };
+                    let buffer = SerializedModule::Local(ModuleBuffer::new(
+                        merged.module_llvm.llmod(),
+                        /* is_thin */ true,
+                    ));
+                    if let Some(input_hash) = input_hash {
+                        save_fat_lto_core_cache(cgcx, dcx, input_hash, &buffer);
+                    }
+                    buffer
+                }
+            };
+            modules.push(ThinLtoInput::Red { name: FAT_LTO_CORE_MODULE_NAME.to_string(), buffer });
+        }
+        upstream_modules
+    } else {
+        upstream_modules.into_iter().map(|(module, name, _)| (module, name)).collect()
+    };
+
+    thin_lto(cgcx, prof, dcx, modules, upstream_modules, &symbols_below_threshold, cache_hit)
 }
 
 fn fat_lto(
@@ -214,6 +352,7 @@ fn fat_lto(
     modules: Vec<FatLtoInput<LlvmCodegenBackend>>,
     mut serialized_modules: Vec<(SerializedModule<ModuleBuffer>, CString)>,
     symbols_below_threshold: &[*const libc::c_char],
+    internalize: bool,
 ) -> ModuleCodegen<ModuleLlvm> {
     let _timer = prof.generic_activity("LLVM_fat_lto_build_monolithic_module");
     info!("going for a fat lto");
@@ -328,16 +467,18 @@ fn fat_lto(
         unsafe { llvm::LLVMRustLinkerFree(linker) };
         save_temp_bitcode(cgcx, &module, "lto.input");
 
-        // Internalize everything below threshold to help strip out more modules and such.
-        unsafe {
-            let ptr = symbols_below_threshold.as_ptr();
-            llvm::LLVMRustRunRestrictionPass(
-                llmod,
-                ptr as *const *const libc::c_char,
-                symbols_below_threshold.len() as libc::size_t,
-            );
+        if internalize {
+            // Internalize everything below threshold to help strip out more modules and such.
+            unsafe {
+                let ptr = symbols_below_threshold.as_ptr();
+                llvm::LLVMRustRunRestrictionPass(
+                    llmod,
+                    ptr as *const *const libc::c_char,
+                    symbols_below_threshold.len() as libc::size_t,
+                );
+            }
+            save_temp_bitcode(cgcx, &module, "lto.after-restriction");
         }
-        save_temp_bitcode(cgcx, &module, "lto.after-restriction");
     }
 
     module
@@ -380,6 +521,7 @@ fn thin_lto(
     modules: Vec<ThinLtoInput<LlvmCodegenBackend>>,
     serialized_modules: Vec<(SerializedModule<ModuleBuffer>, CString)>,
     symbols_below_threshold: &[*const libc::c_char],
+    core_merge_cache_hit: bool,
 ) -> (Vec<ThinModule<LlvmCodegenBackend>>, Vec<WorkProduct>) {
     let _timer = prof.generic_activity("LLVM_thin_lto_global_analysis");
     unsafe {
@@ -500,6 +642,18 @@ fn thin_lto(
         info!("checking which modules can be-reused and which have to be re-optimized.");
         for (module_index, module_name) in shared.module_names.iter().enumerate() {
             let module_name = module_name_to_str(module_name);
+            // The fat LTO core has no dep node of its own: it is reusable only if its
+            // pre-LTO merge was cached and LLVM's cache key for the link still matches.
+            if module_name == FAT_LTO_CORE_MODULE_NAME
+                && core_merge_cache_hit
+                && !cgcx.fat_lto_core_work_products.is_empty()
+                && let Some(prev_key_map) = &prev_key_map
+                && prev_key_map.keys.get(module_name) == curr_key_map.keys.get(module_name)
+            {
+                copy_jobs.extend(cgcx.fat_lto_core_work_products.iter().cloned());
+                info!(" - {}: re-used", module_name);
+                continue;
+            }
             if let (Some(prev_key_map), true) =
                 (prev_key_map.as_ref(), green_modules.contains_key(module_name))
             {
@@ -525,7 +679,7 @@ fn thin_lto(
         if let Some(path) = key_map_path
             && let Err(err) = curr_key_map.save_to_file(&path)
         {
-            write::llvm_err(dcx, LlvmError::WriteThinLtoKey { err });
+            dcx.emit_fatal(LlvmError::WriteThinLtoKey { err });
         }
 
         (opt_jobs, copy_jobs)
@@ -828,13 +982,15 @@ pub(crate) fn optimize_and_codegen_thin_module(
     let dcx = dcx.handle();
 
     let module_name = &thin_module.shared.module_names[thin_module.idx];
+    let is_core = thin_module.name() == FAT_LTO_CORE_MODULE_NAME;
 
     // Right now the implementation we've got only works over serialized
     // modules, so we create a fresh new LLVM context and parse the module
     // into that context. One day, however, we may do this for upstream
     // crates but for locally codegened modules we may be able to reuse
     // that LLVM Context and Module.
-    let module_llvm = ModuleLlvm::parse(cgcx, tm_factory, module_name, thin_module.data(), dcx);
+    let module_llvm =
+        ModuleLlvm::parse(cgcx, Arc::clone(&tm_factory), module_name, thin_module.data(), dcx);
     let mut module = ModuleCodegen::new_regular(thin_module.name(), module_llvm);
     // Given that the newly created module lacks a thinlto buffer for embedding, we need to re-add it here.
     if cgcx.module_config.embed_bitcode() {
@@ -898,9 +1054,12 @@ pub(crate) fn optimize_and_codegen_thin_module(
         // little differently.
         {
             info!("running thin lto passes over {}", module.name);
-            run_pass_manager(cgcx, prof, dcx, &mut module, true);
+            run_pass_manager(cgcx, prof, dcx, &mut module, /* thin */ !is_core);
             save_temp_bitcode(cgcx, &module, "thin-lto-after-pm");
         }
+    }
+    if is_core && cgcx.fat_lto_partitions > 1 {
+        return codegen_fat_lto_partitioned(cgcx, prof, shared_emitter, tm_factory, dcx, module);
     }
     std::iter::once(codegen(cgcx, prof, shared_emitter, module, &cgcx.module_config)).collect()
 }
@@ -915,26 +1074,32 @@ struct ThinLTOKeysMap {
 impl ThinLTOKeysMap {
     fn save_to_file(&self, path: &Path) -> io::Result<()> {
         use std::io::Write;
-        let mut writer = File::create_buffered(path)?;
+        let mut data = Vec::new();
         // The entries are loaded back into a hash map in `load_from_file()`, so
         // the order in which we write them to file here does not matter.
         for (module, key) in &self.keys {
-            writeln!(writer, "{module} {key}")?;
+            writeln!(data, "{module} {key}")?;
         }
-        Ok(())
+        write_incr_comp_file(path, &data)
     }
 
     fn load_from_file(path: &Path) -> io::Result<Self> {
         use std::io::BufRead;
         let mut keys = BTreeMap::default();
         let file = File::open_buffered(path)?;
+        let invalid = || io::Error::new(io::ErrorKind::InvalidData, "invalid ThinLTO cache keys");
         for line in file.lines() {
             let line = line?;
-            let mut split = line.split(' ');
-            let module = split.next().unwrap();
-            let key = split.next().unwrap();
-            assert_eq!(split.next(), None, "Expected two space-separated values, found {line:?}");
-            keys.insert(module.to_string(), key.to_string());
+            // A malformed file (e.g. torn by a crashed session) must be treated as
+            // a cache miss by the caller, not crash the compiler.
+            let mut fields = line.split_whitespace();
+            let (Some(module), Some(key), None) = (fields.next(), fields.next(), fields.next())
+            else {
+                return Err(invalid());
+            };
+            if keys.insert(module.to_string(), key.to_string()).is_some() {
+                return Err(invalid());
+            }
         }
         Ok(Self { keys })
     }

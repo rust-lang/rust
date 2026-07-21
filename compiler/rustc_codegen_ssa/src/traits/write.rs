@@ -52,6 +52,8 @@ pub trait WriteBackendMethods: Clone + 'static {
         cgcx: &CodegenContext,
         prof: &SelfProfilerRef,
         dcx: DiagCtxtHandle<'_>,
+        shared_emitter: &SharedEmitter,
+        tm_factory: TargetMachineFactoryFn<Self>,
         exported_symbols_for_lto: &[String],
         each_linked_rlib_for_lto: &[PathBuf],
         modules: Vec<ThinLtoInput<Self>>,

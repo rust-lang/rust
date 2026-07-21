@@ -902,6 +902,7 @@ unsafe extern "C" {
         C: &Context,
     ) -> &Module;
     pub(crate) safe fn LLVMCloneModule(M: &Module) -> &Module;
+    pub(crate) fn LLVMSetModuleIdentifier(M: &Module, Ident: *const c_char, Len: size_t);
 
     /// Data layout. See Module::getDataLayout.
     pub(crate) fn LLVMGetDataLayoutStr(M: &Module) -> *const c_char;
@@ -2572,6 +2573,12 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustModuleInstructionStats(M: &Module) -> u64;
 
     pub(crate) fn LLVMRustModuleSerialize(M: &Module, is_thin: bool) -> &'static mut Buffer;
+    pub(crate) fn LLVMRustGetThinLTOModuleHash(
+        Data: *const c_char,
+        Len: size_t,
+        Identifier: *const c_char,
+        HashOut: *mut u32,
+    ) -> bool;
     pub(crate) fn LLVMRustFatLtoSplitModule(
         M: &Module,
         NumFnParts: size_t,

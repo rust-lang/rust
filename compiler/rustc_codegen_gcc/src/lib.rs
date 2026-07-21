@@ -452,6 +452,8 @@ impl WriteBackendMethods for GccCodegenBackend {
         _cgcx: &CodegenContext,
         _prof: &SelfProfilerRef,
         _dcx: DiagCtxtHandle<'_>,
+        _shared_emitter: &SharedEmitter,
+        _tm_factory: TargetMachineFactoryFn<Self>,
         // FIXME(bjorn3): Limit LTO exports to these symbols
         _exported_symbols_for_lto: &[String],
         _each_linked_rlib_for_lto: &[PathBuf],

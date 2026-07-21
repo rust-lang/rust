@@ -19,7 +19,7 @@ use rustc_incremental::{copy_cgu_workproduct_to_incr_comp_cache_dir, in_incr_com
 use rustc_macros::{Decodable, Encodable};
 use rustc_metadata::fs::copy_to_stdout;
 use rustc_middle::bug;
-use rustc_middle::dep_graph::{WorkProduct, WorkProductMap};
+use rustc_middle::dep_graph::{WorkProduct, WorkProductId, WorkProductMap};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::config::{
@@ -43,10 +43,22 @@ use crate::{
 
 const PRE_LTO_BC_EXT: &str = "pre-lto.bc";
 
+pub const FAT_LTO_CORE_MODULE_NAME: &str = "__rustc_fat_lto_core";
+
 pub type CompiledModuleResults = SmallVec<[CompiledModule; 1]>;
 
 pub fn fat_lto_partition_module_name(base: &str, index: usize) -> String {
     format!("{base}.fat-lto-part{index:04}")
+}
+
+// Existing files may be hard-linked into previous incremental session dirs, so
+// they must be replaced by rename rather than rewritten in place.
+pub fn write_incr_comp_file(path: &Path, data: &[u8]) -> io::Result<()> {
+    let temp_path = path.with_extension("tmp");
+    fs::write(&temp_path, data)?;
+    #[cfg(windows)]
+    let _ = fs::remove_file(path);
+    fs::rename(temp_path, path)
 }
 
 /// What kind of object file to emit.
@@ -331,6 +343,11 @@ pub struct CodegenContext {
     pub lto: Lto,
     pub use_linker_plugin_lto: bool,
     pub dylib_lto: bool,
+    pub fat_lto_local: bool,
+    pub fat_lto_rlibs: Arc<Vec<PathBuf>>,
+    pub fat_lto_core_work_products: Arc<Vec<WorkProduct>>,
+    pub fat_lto_core_cache_enabled: bool,
+    pub fat_lto_core_local_cgu_names: Arc<Vec<String>>,
     pub fat_lto_partitions: usize,
     pub prefer_dynamic: bool,
     pub save_temps: bool,
@@ -370,6 +387,8 @@ fn generate_thin_lto_work<B: WriteBackendMethods>(
     cgcx: &CodegenContext,
     prof: &SelfProfilerRef,
     dcx: DiagCtxtHandle<'_>,
+    shared_emitter: &SharedEmitter,
+    tm_factory: TargetMachineFactoryFn<B>,
     exported_symbols_for_lto: &[String],
     each_linked_rlib_for_lto: &[PathBuf],
     needs_thin_lto: Vec<ThinLtoInput<B>>,
@@ -380,6 +399,8 @@ fn generate_thin_lto_work<B: WriteBackendMethods>(
         cgcx,
         prof,
         dcx,
+        shared_emitter,
+        tm_factory,
         exported_symbols_for_lto,
         each_linked_rlib_for_lto,
         needs_thin_lto,
@@ -470,6 +491,7 @@ pub(crate) fn start_async_codegen<B: WriteBackendMethods>(
 fn copy_all_cgu_workproducts_to_incr_comp_cache_dir(
     sess: &Session,
     compiled_modules: &CompiledModules,
+    pre_lto_only_modules: &[String],
 ) -> WorkProductMap {
     let mut work_products = WorkProductMap::default();
 
@@ -507,6 +529,14 @@ fn copy_all_cgu_workproducts_to_incr_comp_cache_dir(
             &module.links_from_incr_cache,
         );
         work_products.insert(id, product);
+    }
+
+    for cgu_name in pre_lto_only_modules {
+        let file_name = pre_lto_bitcode_filename(cgu_name);
+        debug_assert!(in_incr_comp_dir_sess(sess, &file_name).exists());
+        let saved_files = std::iter::once((PRE_LTO_BC_EXT.to_string(), file_name)).collect();
+        let product = WorkProduct { cgu_name: cgu_name.clone(), saved_files };
+        work_products.insert(WorkProductId::from_cgu_name(cgu_name), product);
     }
 
     work_products
@@ -859,7 +889,7 @@ fn execute_optimize_work_item<B: WriteBackendMethods>(
         ComputedLtoType::Thin => {
             let thin_buffer = B::serialize_module(module.module_llvm, true);
             if let Some(path) = bitcode {
-                fs::write(&path, thin_buffer.data()).unwrap_or_else(|e| {
+                write_incr_comp_file(&path, thin_buffer.data()).unwrap_or_else(|e| {
                     panic!("Error writing pre-lto-bitcode file `{}`: {}", path.display(), e);
                 });
             }
@@ -868,7 +898,7 @@ fn execute_optimize_work_item<B: WriteBackendMethods>(
         ComputedLtoType::Fat => match bitcode {
             Some(path) => {
                 let buffer = B::serialize_module(module.module_llvm, false);
-                fs::write(&path, buffer.data()).unwrap_or_else(|e| {
+                write_incr_comp_file(&path, buffer.data()).unwrap_or_else(|e| {
                     panic!("Error writing pre-lto-bitcode file `{}`: {}", path.display(), e);
                 });
                 WorkItemResult::NeedsFatLto(FatLtoInput::Serialized {
@@ -1046,6 +1076,8 @@ fn do_thin_lto<B: WriteBackendMethods>(
         cgcx,
         prof,
         dcx,
+        &shared_emitter,
+        Arc::clone(&tm_factory),
         &exported_symbols_for_lto,
         &each_linked_rlib_for_lto,
         needs_thin_lto,
@@ -1284,13 +1316,53 @@ fn start_executing_work<B: WriteBackendMethods>(
         None
     };
 
+    let intern = |krate: &String| rustc_span::Symbol::intern(&krate.replace('-', "_"));
+    let fat_lto_crates: Vec<_> =
+        sess.opts.unstable_opts.fat_lto_crates.iter().map(intern).collect();
+    let fat_lto_local = fat_lto_crates.contains(&tcx.crate_name(rustc_span::def_id::LOCAL_CRATE));
+    let fat_lto_rlibs: Arc<Vec<PathBuf>> = Arc::new(
+        tcx.crates(())
+            .iter()
+            .filter(|&&cnum| fat_lto_crates.contains(&tcx.crate_name(cnum)))
+            .filter_map(|&cnum| tcx.used_crate_source(cnum).rlib.clone())
+            .collect(),
+    );
+    let fat_lto_core_cache_enabled = sess.lto() == Lto::Thin
+        && (fat_lto_local || !fat_lto_rlibs.is_empty())
+        && sess.opts.incremental.is_some()
+        && !sess.opts.unstable_opts.disable_incr_comp_backend_caching;
+    let fat_lto_core_local_cgu_names: Arc<Vec<String>> = Arc::new(
+        (fat_lto_core_cache_enabled && fat_lto_local)
+            .then(|| tcx.collect_and_partition_mono_items(()).codegen_units.iter())
+            .map_or_else(Vec::new, |cgus| cgus.map(|cgu| cgu.name().to_string()).collect()),
+    );
     let fat_lto_partitions = sess.opts.unstable_opts.fat_lto_partitions;
+    let fat_lto_core_work_products = Arc::new(if !fat_lto_core_cache_enabled {
+        Vec::new()
+    } else {
+        let previous = |name: String| {
+            tcx.dep_graph.previous_work_product(&WorkProductId::from_cgu_name(&name))
+        };
+        if fat_lto_partitions == 1 {
+            previous(FAT_LTO_CORE_MODULE_NAME.to_string()).into_iter().collect()
+        } else {
+            (0..=fat_lto_partitions)
+                .map(|i| previous(fat_lto_partition_module_name(FAT_LTO_CORE_MODULE_NAME, i)))
+                .collect::<Option<Vec<_>>>()
+                .unwrap_or_default()
+        }
+    });
 
     let cgcx = CodegenContext {
         crate_types: tcx.crate_types().to_vec(),
         lto: sess.lto(),
         use_linker_plugin_lto: sess.opts.cg.linker_plugin_lto.enabled(),
         dylib_lto: sess.opts.unstable_opts.dylib_lto,
+        fat_lto_local,
+        fat_lto_rlibs,
+        fat_lto_core_work_products,
+        fat_lto_core_cache_enabled,
+        fat_lto_core_local_cgu_names,
         fat_lto_partitions,
         prefer_dynamic: sess.opts.cg.prefer_dynamic,
         fewer_names: sess.fewer_names(),
@@ -2148,6 +2220,14 @@ impl<B: WriteBackendMethods> OngoingCodegen<B> {
 
         let (shared_emitter, shared_emitter_main) = SharedEmitter::new();
 
+        // CGUs merged into the fat LTO core still need their pre-LTO bitcode registered.
+        let pre_lto_only_modules = match &maybe_lto_modules {
+            MaybeLtoModules::ThinLto { cgcx, .. } => {
+                cgcx.fat_lto_core_local_cgu_names.as_ref().clone()
+            }
+            _ => Vec::new(),
+        };
+
         // Catch fatal errors to ensure shared_emitter_main.check() can emit the actual diagnostics
         let compiled_modules = catch_fatal_errors(|| match maybe_lto_modules {
             MaybeLtoModules::NoLto(compiled_modules) => {
@@ -2208,8 +2288,11 @@ impl<B: WriteBackendMethods> OngoingCodegen<B> {
         // out deterministic results.
         compiled_modules.modules.sort_by(|a, b| a.name.cmp(&b.name));
 
-        let work_products =
-            copy_all_cgu_workproducts_to_incr_comp_cache_dir(sess, &compiled_modules);
+        let work_products = copy_all_cgu_workproducts_to_incr_comp_cache_dir(
+            sess,
+            &compiled_modules,
+            &pre_lto_only_modules,
+        );
         produce_final_output_artifacts(sess, &compiled_modules, &self.output_filenames);
 
         (compiled_modules, work_products)

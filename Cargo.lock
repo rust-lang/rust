@@ -3798,6 +3798,7 @@ name = "rustc_codegen_llvm"
 version = "0.0.0"
 dependencies = [
  "bitflags",
+ "blake3",
  "gimli 0.31.1",
  "itertools",
  "libc",
