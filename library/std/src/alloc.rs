@@ -136,7 +136,8 @@ use crate::{hint, mem, ptr};
 /// program opts in to using jemalloc as the global allocator, `System` will
 /// still allocate memory using `malloc` and `HeapAlloc`.
 #[stable(feature = "alloc_system_type", since = "1.28.0")]
-#[derive(Debug, Default, Copy, Clone)]
+#[derive(Copy, Debug)]
+#[derive_const(Clone, Default)]
 pub struct System;
 
 impl System {
