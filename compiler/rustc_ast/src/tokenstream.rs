@@ -622,7 +622,7 @@ pub enum Spacing {
 
 /// A `TokenStream` is an abstract sequence of tokens, organized into [`TokenTree`]s.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash, Encodable, Decodable)]
-pub struct TokenStream(pub(crate) Arc<Vec<TokenTree>>);
+pub struct TokenStream(Arc<Vec<TokenTree>>);
 
 impl TokenStream {
     pub fn new(tts: Vec<TokenTree>) -> TokenStream {
@@ -881,7 +881,7 @@ impl<'t> Iterator for TokenStreamIter<'t> {
 }
 
 #[derive(Clone, Debug)]
-pub struct TokenTreeCursor {
+struct TokenTreeCursor {
     stream: TokenStream,
     /// Points to the current token tree in the stream. In `TokenCursor::curr`,
     /// this can be any token tree. In `TokenCursor::stack`, this is always a
@@ -891,27 +891,27 @@ pub struct TokenTreeCursor {
 
 impl TokenTreeCursor {
     #[inline]
-    pub fn new(stream: TokenStream) -> Self {
+    fn new(stream: TokenStream) -> Self {
         TokenTreeCursor { stream, index: 0 }
     }
 
     #[inline]
-    pub fn curr(&self) -> Option<&TokenTree> {
+    fn curr(&self) -> Option<&TokenTree> {
         self.stream.get(self.index)
     }
 
-    pub fn look_ahead(&self, n: usize) -> Option<&TokenTree> {
+    fn look_ahead(&self, n: usize) -> Option<&TokenTree> {
         self.stream.get(self.index + n)
     }
 
     #[inline]
-    pub fn bump(&mut self) {
+    fn bump(&mut self) {
         self.index += 1;
     }
 
     // For skipping ahead in rare circumstances.
     #[inline]
-    pub fn bump_to_end(&mut self) {
+    fn bump_to_end(&mut self) {
         self.index = self.stream.len();
     }
 }
@@ -927,16 +927,66 @@ pub struct TokenCursor {
     // The delimiters for this token stream are found in `self.stack.last()`;
     // if that is `None` we are in the outermost token stream which never has
     // delimiters.
-    pub curr: TokenTreeCursor,
+    curr: TokenTreeCursor,
 
     // Token streams surrounding the current one. The index within each cursor
     // always points to a `TokenTree::Delimited`.
-    pub stack: Vec<TokenTreeCursor>,
+    stack: Vec<TokenTreeCursor>,
 }
 
 impl TokenCursor {
+    #[inline]
+    pub fn new(stream: TokenStream) -> Self {
+        TokenCursor { curr: TokenTreeCursor::new(stream), stack: vec![] }
+    }
+
     pub fn next(&mut self) -> (Token, Spacing) {
         self.inlined_next()
+    }
+
+    /// An `n` of zero is the next token tree in the current token stream; won't look outside the
+    /// current token stream.
+    #[inline]
+    pub fn look_ahead(&self, n: usize) -> Option<&TokenTree> {
+        self.curr.look_ahead(n)
+    }
+
+    /// Returns the first token tree (if there is one) past the close delimiter of the enclosing
+    /// delimited sequence. Panics if we are not within a delimited sequence.
+    #[inline]
+    pub fn look_ahead_past_close_delim(&self) -> Option<&TokenTree> {
+        self.stack.last().unwrap().look_ahead(1)
+    }
+
+    /// Clones the `TokenTree::Delimited` that we are currently within. Panics if we are not within
+    /// a delimited sequence.
+    #[inline]
+    pub fn clone_enclosing_delim(&self) -> TokenTree {
+        self.stack.last().unwrap().curr().unwrap().clone()
+    }
+
+    /// For skipping to the end of the current sequence, in rare circumstances.
+    #[inline]
+    pub fn bump_to_end(&mut self) {
+        self.curr.bump_to_end()
+    }
+
+    /// Note: the outermost stream has depth of 0.
+    #[inline]
+    pub fn depth(&self) -> usize {
+        self.stack.len()
+    }
+
+    /// Returns details about the parent delimited sequence, if there is one.
+    #[inline]
+    pub fn parent_delim_and_span(&self) -> Option<(Delimiter, DelimSpan)> {
+        if let Some(last) = self.stack.last()
+            && let Some(TokenTree::Delimited(span, _, delim, _)) = last.curr()
+        {
+            Some((*delim, *span))
+        } else {
+            None
+        }
     }
 
     /// This always-inlined version should only be used on hot code paths.
