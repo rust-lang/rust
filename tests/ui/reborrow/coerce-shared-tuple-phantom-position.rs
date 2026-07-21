@@ -1,4 +1,5 @@
-//@ known-bug: unknown
+// `PhantomData` positions must not hide invalid multi-field `CoerceShared` impls or cause an ICE.
+
 #![feature(reborrow)]
 #![allow(dead_code)]
 
@@ -56,6 +57,7 @@ impl<'a, T, U> Clone for InterleavedRef<'a, T, U> {
 impl<'a, T, U> Copy for InterleavedRef<'a, T, U> {}
 
 impl<'a, T, U> CoerceShared<InterleavedRef<'a, T, U>> for InterleavedMut<'a, T, U> {}
+//~^ ERROR implementing `CoerceShared` does not allow multiple lifetimes or fields to be coerced
 
 fn read_source_leading<'a>(value: SourceLeadingRef<'a, i32>) -> &'a i32 {
     value.0

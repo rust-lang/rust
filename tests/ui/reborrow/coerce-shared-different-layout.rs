@@ -1,4 +1,5 @@
-//@ known-bug: unknown
+// `CoerceShared` impls with incompatible data-field layouts must be rejected without an ICE.
+
 #![feature(reborrow)]
 #![allow(dead_code)]
 
@@ -27,6 +28,7 @@ impl<'a, T> Clone for ImbrisRef<'a, T> {
 impl<'a, T> Copy for ImbrisRef<'a, T> {}
 
 impl<'a, T> CoerceShared<ImbrisRef<'a, T>> for ImbrisMut<'a, T> {}
+//~^ ERROR implementing `CoerceShared` does not allow multiple lifetimes or fields to be coerced
 
 fn ptr(value: ImbrisRef<'_, i32>) -> NonNull<i32> {
     value.ptr
