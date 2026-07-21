@@ -107,14 +107,11 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
                     }
                 }
             }
-            TerminatorKind::Call { func, unwind, target, .. } => {
+            TerminatorKind::Call { func, unwind, .. } => {
                 self.penalty += if let Some((def_id, ..)) = func.const_fn_def()
                     && self.tcx.intrinsic(def_id).is_some()
                 {
                     // Don't give intrinsics the extra penalty for calls
-                    INSTR_COST
-                } else if target.is_none() {
-                    // Diverging calls (like panics) are likely cold/error paths.
                     INSTR_COST
                 } else {
                     CALL_PENALTY
