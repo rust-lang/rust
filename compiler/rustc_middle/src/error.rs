@@ -59,7 +59,7 @@ pub(crate) struct RecursionLimitReached<'tcx> {
     #[primary_span]
     pub span: Span,
     pub ty: Ty<'tcx>,
-    pub suggested_limit: rustc_hir::limit::Limit,
+    pub suggested_limit: rustc_data_structures::Limit,
 }
 
 #[derive(Diagnostic)]
@@ -71,7 +71,7 @@ pub(crate) struct RecursionLimitReachedSizeSkeleton<'tcx> {
     #[primary_span]
     pub span: Span,
     pub ty: Ty<'tcx>,
-    pub suggested_limit: rustc_hir::limit::Limit,
+    pub suggested_limit: rustc_data_structures::Limit,
 }
 
 #[derive(Diagnostic)]

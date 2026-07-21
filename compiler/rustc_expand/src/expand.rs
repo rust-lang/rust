@@ -18,13 +18,13 @@ use rustc_attr_parsing::{
     AttributeParser, AttributeSafety, CFG_TEMPLATE, EvalConfigResult, ShouldEmit,
     eval_config_entry, parse_cfg, validate_attr,
 };
+use rustc_data_structures::Limit;
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::PResult;
 use rustc_feature::Features;
 use rustc_hir::Target;
 use rustc_hir::def::MacroKinds;
-use rustc_hir::limit::Limit;
 use rustc_parse::parser::{
     AllowConstBlockItems, AttemptLocalParseRecovery, CommaRecoveryMode, ForceCollect, Parser,
     RecoverColon, RecoverComma, Recovery, token_descr,

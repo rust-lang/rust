@@ -5,12 +5,12 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize};
 use std::{env, io};
 
-use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::profiling::{SelfProfiler, SelfProfilerRef};
 use rustc_data_structures::sync::{
     AppendOnlyVec, DynSend, DynSync, Lock, MappedReadGuard, ReadGuard, RwLock,
 };
+use rustc_data_structures::{Limit, flock};
 use rustc_errors::annotate_snippet_emitter_writer::AnnotateSnippetEmitter;
 use rustc_errors::codes::*;
 use rustc_errors::emitter::{DynEmitter, HumanReadableErrorType, OutputTheme, stderr_destination};
@@ -21,7 +21,6 @@ use rustc_errors::{
     TerminalUrl,
 };
 use rustc_feature::UnstableFeatures;
-use rustc_hir::limit::Limit;
 use rustc_macros::StableHash;
 pub use rustc_span::def_id::StableCrateId;
 use rustc_span::edition::Edition;
