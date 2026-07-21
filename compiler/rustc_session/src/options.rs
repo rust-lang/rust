@@ -41,6 +41,7 @@ macro_rules! insert {
 macro_rules! hash_opt {
     ($opt_name:ident, $opt_expr:expr, $sub_hashes:expr, $_for_crate_hash: ident, [UNTRACKED]) => {{}};
     ($opt_name:ident, $opt_expr:expr, $sub_hashes:expr, $_for_crate_hash: ident, [TRACKED]) => {{ insert!($opt_name, $opt_expr, $sub_hashes) }};
+    ($opt_name:ident, $opt_expr:expr, $sub_hashes:expr, $_for_crate_hash: ident, [TRACKED_UNSTABLE]) => {{ insert!($opt_name, $opt_expr, $sub_hashes) }};
     ($opt_name:ident, $opt_expr:expr, $sub_hashes:expr, $for_crate_hash: ident, [TRACKED_NO_CRATE_HASH]) => {{
         if !$for_crate_hash {
             insert!($opt_name, $opt_expr, $sub_hashes)
@@ -52,6 +53,7 @@ macro_rules! hash_opt {
 macro_rules! hash_substruct {
     ($opt_name:ident, $opt_expr:expr, $error_format:expr, $for_crate_hash:expr, $hasher:expr, [UNTRACKED]) => {{}};
     ($opt_name:ident, $opt_expr:expr, $error_format:expr, $for_crate_hash:expr, $hasher:expr, [TRACKED]) => {{}};
+    ($opt_name:ident, $opt_expr:expr, $error_format:expr, $for_crate_hash:expr, $hasher:expr, [TRACKED_UNSTABLE]) => {{}};
     ($opt_name:ident, $opt_expr:expr, $error_format:expr, $for_crate_hash:expr, $hasher:expr, [TRACKED_NO_CRATE_HASH]) => {{}};
     ($opt_name:ident, $opt_expr:expr, $error_format:expr, $for_crate_hash:expr, $hasher:expr, [SUBSTRUCT]) => {{
         use crate::config::dep_tracking::DepTrackingHash;
@@ -438,6 +440,25 @@ macro_rules! options {
     }
 }
 
+macro_rules! require_unstable_options {
+    ($opt_name:ident, $group_name:ident, [UNTRACKED],
+        ($early_dcx:ident, $meta:ident, $unstable_opts:ident)) => {{}};
+    ($opt_name:ident, $group_name:ident, [TRACKED],
+        ($early_dcx:ident, $meta:ident, $unstable_opts:ident)) => {{}};
+    ($opt_name:ident, $group_name:ident, [TRACKED_UNSTABLE],
+        ($early_dcx:ident, $meta:ident, $unstable_opts:ident)) => {{
+        if $meta.$group_name.$opt_name.is_set && !$unstable_opts {
+            $early_dcx
+                .early_err(format!("`-T{}` requires `-Zunstable-options`", stringify!($opt_name)))
+                .raise_fatal();
+        }
+    }};
+    ($opt_name:ident, $group_name:ident, [TRACKED_NO_CRATE_HASH],
+        ($early_dcx:ident, $meta:ident, $unstable_opts:ident)) => {{}};
+    ($opt_name:ident, $group_name:ident, [SUBSTRUCT],
+        ($early_dcx:ident, $meta:ident, $unstable_opts:ident)) => {{}};
+}
+
 trait TargetModifierOptionValue {
     fn to_string_for_diag(&self) -> String;
 }
@@ -517,6 +538,21 @@ macro_rules! target_modifier_options {
                 )*
                 out.join("\n")
             }
+
+             pub fn require_unstable_options(
+                 early_dcx: &EarlyDiagCtxt,
+                 meta: &OptionsMetadata,
+                 unstable_opts: bool
+             ) {
+                 $(
+                    require_unstable_options!(
+                        $opt,
+                        $group_name,
+                        [$dep_tracking_marker],
+                        (early_dcx, meta, unstable_opts)
+                    );
+                 )*
+             }
 
             pub fn is_target_modifier(name: &str) -> bool {
                 let name = name.replace('-', "_");
@@ -2238,7 +2274,7 @@ target_modifier_options! {
     TargetOptions, TargetOptionsMetadata, T_OPTIONS, topts, "T", target,
 
     // tidy-alphabetical-start
-    fixed_x18: bool = (false, parse_bool, [TRACKED],
+    fixed_x18: bool = (false, parse_bool, [TRACKED_UNSTABLE],
         "make the x18 register reserved on AArch64 (default: no)"),
     // tidy-alphabetical-end
 
