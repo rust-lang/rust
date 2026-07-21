@@ -767,6 +767,9 @@ impl Step for Rustdoc {
         if builder.config.jemalloc(target) {
             extra_features.push("jemalloc".to_string());
         }
+        if !builder.config.rust_debug_logging {
+            extra_features.push("max_level_info".to_string())
+        }
 
         let compilers = RustcPrivateCompilers::from_target_compiler(builder, target_compiler);
         let tool_path = builder
