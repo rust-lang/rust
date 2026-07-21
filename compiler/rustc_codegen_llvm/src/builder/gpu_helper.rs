@@ -100,20 +100,20 @@ pub(crate) fn generate_mapper_call<'ll, 'tcx>(
         args.append(&mut vec![i32_0, nullptr, i32_0, nullptr]);
     }
     if matches!(transfer, TransferType::End) {
-        //synchronize_async_info(builder, offload_globals);
-        let a = offload_globals.taskwait;
-        let b = offload_globals.taskwait_ty;
-        let c = offload_globals.threadnum;
-        let d = offload_globals.threadnum_ty;
-        dbg!(&c);
-        dbg!(&d);
-        dbg!("first");
-        let tid = builder.call(d, None, None, c, &vec![s_ident_t], None, None);
-        let args2 = vec![s_ident_t, tid];
-        dbg!(&a);
-        dbg!(&b);
-        dbg!("second");
-        builder.call(b, None, None, a, &args2, None, None);
+        synchronize_async_info(builder, offload_globals);
+        //let a = offload_globals.taskwait;
+        //let b = offload_globals.taskwait_ty;
+        //let c = offload_globals.threadnum;
+        //let d = offload_globals.threadnum_ty;
+        //dbg!(&c);
+        //dbg!(&d);
+        //dbg!("first");
+        //let tid = builder.call(d, None, None, c, &vec![s_ident_t], None, None);
+        //let args2 = vec![s_ident_t, tid];
+        //dbg!(&a);
+        //dbg!(&b);
+        //dbg!("second");
+        //builder.call(b, None, None, a, &args2, None, None);
     }
     builder.call(fn_ty, None, None, fn_to_call, &args, None, None);
 }

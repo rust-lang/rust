@@ -38,11 +38,10 @@ pub(crate) struct OffloadGlobals<'ll> {
 
     pub ident_t_global: &'ll llvm::Value,
 
-    pub taskwait: &'ll llvm::Value,
-    pub taskwait_ty: &'ll llvm::Type,
-    pub threadnum: &'ll llvm::Value,
-    pub threadnum_ty: &'ll llvm::Type,
-
+    //pub taskwait: &'ll llvm::Value,
+    //pub taskwait_ty: &'ll llvm::Type,
+    //pub threadnum: &'ll llvm::Value,
+    //pub threadnum_ty: &'ll llvm::Type,
     pub async_info_create: &'ll Value,
     pub async_info_create_ty: &'ll Type,
 
@@ -65,7 +64,7 @@ impl<'ll> OffloadGlobals<'ll> {
         let (begin_mapper, _, end_mapper, mapper_fn_ty) = gen_tgt_data_mappers(cx);
         let (nowait_begin_mapper, nowait_mapper_fn_ty) = gen_tgt_data_nowait_mappers(cx);
         let ident_t_global = generate_at_one(cx);
-        let (taskwait, taskwait_ty, threadnum, threadnum_ty) = generate_sync(cx);
+        //let (taskwait, taskwait_ty, threadnum, threadnum_ty) = generate_sync(cx);
         // ptr __tgt_async_info_create(i64)
         let async_info_create_ty = cx.type_func(&[cx.type_i64()], cx.type_ptr());
 
@@ -122,10 +121,10 @@ impl<'ll> OffloadGlobals<'ll> {
             mapper_fn_ty,
             nowait_mapper_fn_ty,
             ident_t_global,
-            taskwait,
-            taskwait_ty,
-            threadnum,
-            threadnum_ty,
+            //taskwait,
+            //taskwait_ty,
+            //threadnum,
+            //threadnum_ty,
             async_info_create,
             async_info_create_ty,
 
@@ -347,27 +346,27 @@ fn generate_launcher<'ll>(cx: &CodegenCx<'ll, '_>) -> (&'ll llvm::Value, &'ll ll
     (tgt_decl, tgt_fn_ty)
 }
 
-fn generate_sync<'ll>(
-    cx: &CodegenCx<'ll, '_>,
-) -> (&'ll llvm::Value, &'ll llvm::Type, &'ll llvm::Value, &'ll llvm::Type) {
-    let tptr = cx.type_ptr();
-    let ti32 = cx.type_i32();
-    let args1 = vec![tptr, ti32];
-    let args2 = vec![tptr];
-    let fn_ty1 = cx.type_func(&args1, ti32);
-    let fn_ty2 = cx.type_func(&args2, ti32);
-    let name1 = "__kmpc_omp_taskwait";
-    let name2 = "__kmpc_global_thread_num";
-    let decl1 = declare_offload_fn(&cx, name1, fn_ty1);
-    let decl2 = declare_offload_fn(&cx, name2, fn_ty2);
-
-    let nounwind = llvm::AttributeKind::NoUnwind.create_attr(cx.llcx);
-    attributes::apply_to_llfn(decl1, Function, &[nounwind]);
-    attributes::apply_to_llfn(decl2, Function, &[nounwind]);
-    //int32 __kmpc_omp_taskwait(ident_t *loc_ref, kmp_int32 gtid);
-    //int32 __kmpc_global_thread_num(ident_t *);
-    (decl1, fn_ty1, decl2, fn_ty2)
-}
+//fn generate_sync<'ll>(
+//    cx: &CodegenCx<'ll, '_>,
+//) -> (&'ll llvm::Value, &'ll llvm::Type, &'ll llvm::Value, &'ll llvm::Type) {
+//    let tptr = cx.type_ptr();
+//    let ti32 = cx.type_i32();
+//    let args1 = vec![tptr, ti32];
+//    let args2 = vec![tptr];
+//    let fn_ty1 = cx.type_func(&args1, ti32);
+//    let fn_ty2 = cx.type_func(&args2, ti32);
+//    let name1 = "__kmpc_omp_taskwait";
+//    let name2 = "__kmpc_global_thread_num";
+//    let decl1 = declare_offload_fn(&cx, name1, fn_ty1);
+//    let decl2 = declare_offload_fn(&cx, name2, fn_ty2);
+//
+//    let nounwind = llvm::AttributeKind::NoUnwind.create_attr(cx.llcx);
+//    attributes::apply_to_llfn(decl1, Function, &[nounwind]);
+//    attributes::apply_to_llfn(decl2, Function, &[nounwind]);
+//    //int32 __kmpc_omp_taskwait(ident_t *loc_ref, kmp_int32 gtid);
+//    //int32 __kmpc_global_thread_num(ident_t *);
+//    (decl1, fn_ty1, decl2, fn_ty2)
+//}
 
 // What is our @1 here? A magic global, used in our data_{begin/update/end}_mapper:
 // @0 = private unnamed_addr constant [23 x i8] c";unknown;unknown;0;0;;\00", align 1
