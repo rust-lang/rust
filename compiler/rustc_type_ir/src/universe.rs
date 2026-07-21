@@ -1,6 +1,6 @@
 use tracing::{debug, instrument};
 
-use crate::data_structures::HashSet;
+use crate::data_structures::DelayedSet;
 use crate::inherent::*;
 use crate::visit::TypeVisitableExt;
 use crate::{
@@ -71,7 +71,7 @@ struct MaxUniverse<
 > {
     max_universe: UniverseIndex,
     infcx: &'a Infcx,
-    cache: HashSet<I::Ty>,
+    cache: DelayedSet<I::Ty>,
 }
 
 impl<
@@ -127,7 +127,7 @@ impl<
             _ => t.super_visit_with(self),
         }
 
-        assert!(self.cache.insert(t), "we shouldn't visit {t:?} twice");
+        self.cache.insert(t);
     }
 
     fn visit_const(&mut self, c: I::Const) {
