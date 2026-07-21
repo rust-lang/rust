@@ -230,7 +230,14 @@ impl<'a, T: FormatHandler + 'a> FormatContext<'a, T> {
 
         // For some reason, the source_map does not include terminating
         // newlines so we must add one on for each file. This is sad.
-        source_file::append_newline(&mut visitor.buffer);
+        let num_newlines = count_newlines(&visitor.buffer);
+        if self
+            .config
+            .file_lines()
+            .contains_line(&path, num_newlines + 1)
+        {
+            source_file::append_newline(&mut visitor.buffer);
+        }
 
         format_lines(
             &mut visitor.buffer,
