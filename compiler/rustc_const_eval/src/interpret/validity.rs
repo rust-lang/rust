@@ -960,7 +960,9 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
             | ty::Closure(..)
             | ty::Pat(..)
             | ty::CoroutineClosure(..)
-            | ty::Coroutine(..) => interp_ok(false),
+            | ty::Coroutine(..)
+            | ty::View(..)
+            | ty::ViewInfer(..) => interp_ok(false),
             // Some types only occur during typechecking, they have no layout.
             // We should not see them here and we could not check them anyway.
             ty::Error(_)

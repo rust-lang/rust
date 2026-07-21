@@ -369,7 +369,9 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                     subtype_is_empty: cx.is_uninhabited(*sub_ty),
                 }
             }
-            ty::Adt(def, args) if def.is_enum() => {
+            ty::Adt(def, args) | ty::View(def, args, _) | ty::ViewInfer(def, args, _)
+                if def.is_enum() =>
+            {
                 let is_declared_nonexhaustive = cx.is_foreign_non_exhaustive_enum(ty);
                 if def.variants().is_empty() && !is_declared_nonexhaustive {
                     ConstructorSet::NoConstructors
@@ -407,8 +409,10 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                     ConstructorSet::Variants { variants, non_exhaustive: is_declared_nonexhaustive }
                 }
             }
-            ty::Adt(def, _) if def.is_union() => ConstructorSet::Union,
-            ty::Adt(..) | ty::Tuple(..) => {
+            ty::Adt(def, _) | ty::View(def, _, _) | ty::ViewInfer(def, _, _) if def.is_union() => {
+                ConstructorSet::Union
+            }
+            ty::Adt(..) | ty::Tuple(..) | ty::View(..) | ty::ViewInfer(..) => {
                 ConstructorSet::Struct { empty: cx.is_uninhabited(ty.inner()) }
             }
             ty::Ref(..) => ConstructorSet::Ref,

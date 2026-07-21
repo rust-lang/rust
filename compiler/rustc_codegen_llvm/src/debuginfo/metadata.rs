@@ -473,7 +473,7 @@ pub(crate) fn spanned_type_di_node<'ll, 'tcx>(
         // Some `Box` are newtyped pointers, make debuginfo aware of that.
         // Only works if the allocator argument is a 1-ZST and hence irrelevant for layout
         // (or if there is no allocator argument).
-        ty::Adt(def, args)
+        ty::Adt(def, args) | ty::View(def, args, _) | ty::ViewInfer(def, args, _)
             if def.is_box()
                 && args.get(1).is_none_or(|arg| cx.layout_of(arg.expect_ty()).is_1zst()) =>
         {
@@ -483,7 +483,7 @@ pub(crate) fn spanned_type_di_node<'ll, 'tcx>(
         ty::Closure(..) => build_closure_env_di_node(cx, unique_type_id),
         ty::CoroutineClosure(..) => build_closure_env_di_node(cx, unique_type_id),
         ty::Coroutine(..) => enums::build_coroutine_di_node(cx, unique_type_id),
-        ty::Adt(def, ..) => match def.adt_kind() {
+        ty::Adt(def, ..) | ty::View(def, ..) | ty::ViewInfer(def, ..) => match def.adt_kind() {
             AdtKind::Struct => build_struct_type_di_node(cx, unique_type_id, span),
             AdtKind::Union => build_union_type_di_node(cx, unique_type_id, span),
             AdtKind::Enum => enums::build_enum_type_di_node(cx, unique_type_id, span),

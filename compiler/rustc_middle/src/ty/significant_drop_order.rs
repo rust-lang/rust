@@ -142,7 +142,7 @@ pub fn ty_dtor_span<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Span> {
         | ty::Array(_, _)
         | ty::UnsafeBinder(_) => None,
 
-        ty::Adt(adt_def, _) => {
+        ty::Adt(adt_def, _) | ty::View(adt_def, _, _) | ty::ViewInfer(adt_def, _, _) => {
             if let Some(dtor) = tcx.adt_destructor(adt_def.did()) {
                 Some(tcx.def_span(tcx.parent(dtor.did)))
             } else {

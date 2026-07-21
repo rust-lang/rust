@@ -67,10 +67,12 @@ fn sizedness_constraint_for_ty<'tcx>(
             tys.last().and_then(|&ty| sizedness_constraint_for_ty(tcx, sizedness, ty))
         }
 
-        ty::Adt(adt, args) => adt.sizedness_constraint(tcx, sizedness).and_then(|intermediate| {
-            let ty = intermediate.instantiate(tcx, args).skip_norm_wip();
-            sizedness_constraint_for_ty(tcx, sizedness, ty)
-        }),
+        ty::Adt(adt, args) | ty::View(adt, args, _) | ty::ViewInfer(adt, args, _) => {
+            adt.sizedness_constraint(tcx, sizedness).and_then(|intermediate| {
+                let ty = intermediate.instantiate(tcx, args).skip_norm_wip();
+                sizedness_constraint_for_ty(tcx, sizedness, ty)
+            })
+        }
 
         ty::Placeholder(..) | ty::Bound(..) | ty::Infer(..) => {
             bug!("unexpected type `{ty:?}` in `sizedness_constraint_for_ty`")
@@ -390,6 +392,8 @@ fn impl_self_is_guaranteed_unsized<'tcx>(tcx: TyCtxt<'tcx>, impl_def_id: DefId) 
         | ty::Never
         | ty::Tuple(_)
         | ty::Alias(_, _)
+        | ty::View(_, _, _)
+        | ty::ViewInfer(_, _, _)
         | ty::Param(_)
         | ty::Bound(_, _)
         | ty::Placeholder(_)

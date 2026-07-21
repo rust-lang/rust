@@ -303,7 +303,7 @@ impl<I: Interner> FlagComputation<I> {
                 }
             },
 
-            ty::Adt(_, args) => {
+            ty::Adt(_, args) | ty::View(_, args, _) | ty::ViewInfer(_, args, _) => {
                 self.add_args(args.as_slice());
             }
 

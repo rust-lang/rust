@@ -64,7 +64,7 @@ pub fn trivial_dropck_outlives<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
             trivial_dropck_outlives(tcx, args.as_coroutine_closure().tupled_upvars_ty())
         }
 
-        ty::Adt(def, _) => {
+        ty::Adt(def, _) | ty::View(def, _, _) | ty::ViewInfer(def, _, _) => {
             if def.is_manually_drop() {
                 // `ManuallyDrop` never has a dtor.
                 true
@@ -383,7 +383,7 @@ pub fn dtorck_constraint_for_ty_inner<'tcx>(
             }
         }
 
-        ty::Adt(def, args) => {
+        ty::Adt(def, args) | ty::View(def, args, _) | ty::ViewInfer(def, args, _) => {
             let DropckConstraint { dtorck_types, outlives, overflows } =
                 tcx.at(span).adt_dtorck_constraint(def.did());
             // FIXME: we can try to recursively `dtorck_constraint_on_ty`

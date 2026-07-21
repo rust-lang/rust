@@ -987,7 +987,7 @@ where
                 ty::Tuple(tys) => TyMaybeWithLayout::Ty(tys[i]),
 
                 // ADTs.
-                ty::Adt(def, args) => {
+                ty::Adt(def, args) | ty::View(def, args, _) | ty::ViewInfer(def, args, _) => {
                     match this.variants {
                         Variants::Single { index } => {
                             let field = &def.variant(index).fields[FieldIdx::from_usize(i)];

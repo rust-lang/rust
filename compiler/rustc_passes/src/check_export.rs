@@ -273,7 +273,7 @@ impl<'tcx, 'a> TypeVisitor<TyCtxt<'tcx>> for ExportableItemsChecker<'tcx, 'a> {
 
     fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
         match ty.kind() {
-            ty::Adt(adt_def, _) => {
+            ty::Adt(adt_def, _) | ty::View(adt_def, _, _) | ty::ViewInfer(adt_def, _, _) => {
                 let did = adt_def.did();
                 let exportable = if did.is_local() {
                     self.exportable_items.contains(&did)

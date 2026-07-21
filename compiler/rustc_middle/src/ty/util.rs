@@ -1215,6 +1215,8 @@ impl<'tcx> Ty<'tcx> {
             | ty::Infer(_)
             | ty::Alias(..)
             | ty::Param(_)
+            | ty::View(..)
+            | ty::ViewInfer(..)
             | ty::Placeholder(_) => false,
         }
     }
@@ -1265,6 +1267,8 @@ impl<'tcx> Ty<'tcx> {
             | ty::Infer(_)
             | ty::Alias(..)
             | ty::Param(_)
+            | ty::View(..)
+            | ty::ViewInfer(..)
             | ty::Placeholder(_) => false,
         }
     }
@@ -1319,6 +1323,8 @@ impl<'tcx> Ty<'tcx> {
             | ty::Infer(_)
             | ty::Alias(..)
             | ty::Param(_)
+            | ty::View(..)
+            | ty::ViewInfer(..)
             | ty::Placeholder(_) => false,
         }
     }
@@ -1455,6 +1461,11 @@ impl<'tcx> Ty<'tcx> {
         match self.kind() {
             // Look for an impl of `StructuralPartialEq`.
             ty::Adt(..) => tcx.has_structural_eq_impl(self),
+
+            // FIXME(scrabsha): ?????
+            // Like, `false` is probably the wrong thing to do, but also: what is the right thing
+            // to do?
+            ty::View(..) | ty::ViewInfer(..) => false,
 
             // Primitive types that satisfy `Eq`.
             ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Str | ty::Never => true,
@@ -1593,6 +1604,8 @@ pub fn needs_drop_components_with_async<'tcx>(
         | ty::CoroutineClosure(..)
         | ty::Coroutine(..)
         | ty::CoroutineWitness(..)
+        | ty::View(..)
+        | ty::ViewInfer(..)
         | ty::UnsafeBinder(_) => Ok(smallvec![ty]),
     }
 }

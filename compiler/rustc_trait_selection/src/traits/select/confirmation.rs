@@ -1241,7 +1241,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // `&mut T` and `&T` always implement `BikeshedGuaranteedNoDrop`.
             ty::Ref(..) => {}
             // `ManuallyDrop<T>` always implements `BikeshedGuaranteedNoDrop`.
-            ty::Adt(def, _) if def.is_manually_drop() => {}
+            ty::Adt(def, _) | ty::View(def, _, _) | ty::ViewInfer(def, _, _)
+                if def.is_manually_drop() => {}
             // Arrays and tuples implement `BikeshedGuaranteedNoDrop` only if
             // their constituent types implement `BikeshedGuaranteedNoDrop`.
             ty::Tuple(tys) => {
@@ -1295,6 +1296,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             | ty::Coroutine(..)
             | ty::UnsafeBinder(_)
             | ty::CoroutineWitness(..)
+            | ty::View(..)
+            | ty::ViewInfer(..)
             | ty::Bound(..) => {
                 obligations.push(obligation.with(
                     tcx,

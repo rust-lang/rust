@@ -1719,7 +1719,9 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                 ty::Pat(ty, _) | ty::Slice(ty) | ty::Array(ty, _) => {
                     ty_may_have_ref_inner(tcx, *ty, depth)
                 }
-                ty::Adt(adt_def, args) => {
+                ty::Adt(adt_def, args)
+                | ty::View(adt_def, args, _)
+                | ty::ViewInfer(adt_def, args, _) => {
                     adt_def.has_param()
                         || adt_def.has_aliases()
                         || adt_def.all_fields().any(|field| {

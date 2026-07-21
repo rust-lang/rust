@@ -3,7 +3,7 @@ use std::fmt::{self, Write as _};
 use std::iter;
 use std::ops::{Deref, DerefMut};
 
-use rustc_abi::{ExternAbi, Size};
+use rustc_abi::{ExternAbi, FIRST_VARIANT, Size};
 use rustc_apfloat::Float;
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
 use rustc_data_structures::fx::{FxIndexMap, IndexEntry};
@@ -758,6 +758,30 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                 write!(self, "(")?;
                 ty.print(self)?;
                 write!(self, ") is {pat:?}")?;
+            }
+            ty::View(adt_def, args, fields) => {
+                self.print_def_path(adt_def.did(), args)?;
+                write!(self, ".{{")?;
+                if !fields.is_empty() {
+                    write!(self, " ")?;
+                    let struct_fields = &adt_def.variant(FIRST_VARIANT).fields;
+                    let mut first = false;
+                    for field in fields {
+                        if !first {
+                            write!(self, ", ")?;
+                        } else {
+                            first = false;
+                        }
+                        let ident = struct_fields[field].ident(self.tcx());
+                        write!(self, "{ident}")?;
+                    }
+                    write!(self, " ")?;
+                }
+                write!(self, "}}")?;
+            }
+            ty::ViewInfer(adt_def, args, fields) => {
+                self.print_def_path(adt_def.did(), args)?;
+                write!(self, ".{{ {fields:?} }}")?;
             }
             ty::RawPtr(ty, mutbl) => {
                 write!(self, "*{} ", mutbl.ptr_str())?;

@@ -2196,7 +2196,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
 
             ty::Pat(ty, _) => ty::Binder::dummy(vec![*ty]),
 
-            ty::Adt(def, args) => {
+            ty::Adt(def, args) | ty::View(def, args, _) | ty::ViewInfer(def, args, _) => {
                 if let Some(crit) = def.sizedness_constraint(self.tcx(), sizedness) {
                     ty::Binder::dummy(vec![crit.instantiate(self.tcx(), args).skip_norm_wip()])
                 } else {
@@ -2285,6 +2285,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             | ty::Dynamic(..)
             | ty::Adt(..)
             | ty::Alias(..)
+            | ty::View(..)
+            | ty::ViewInfer(..)
             | ty::Param(..)
             | ty::Placeholder(..)
             | ty::Bound(..)
@@ -2413,17 +2415,24 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 }),
 
             // For `PhantomData<T>`, we pass `T`.
-            ty::Adt(def, args) if def.is_phantom_data() => {
+            ty::Adt(def, args) | ty::View(def, args, _) | ty::ViewInfer(def, args, _)
+                if def.is_phantom_data() =>
+            {
                 ty::Binder::dummy(AutoImplConstituents {
                     types: args.types().collect(),
                     assumptions: vec![],
                 })
             }
 
-            ty::Adt(def, args) => ty::Binder::dummy(AutoImplConstituents {
-                types: def.all_fields().map(|f| f.ty(self.tcx(), args).skip_norm_wip()).collect(),
-                assumptions: vec![],
-            }),
+            ty::Adt(def, args) | ty::View(def, args, _) | ty::ViewInfer(def, args, _) => {
+                ty::Binder::dummy(AutoImplConstituents {
+                    types: def
+                        .all_fields()
+                        .map(|f| f.ty(self.tcx(), args).skip_norm_wip())
+                        .collect(),
+                    assumptions: vec![],
+                })
+            }
 
             ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => {
                 if self.infcx.can_define_opaque_ty(def_id) {

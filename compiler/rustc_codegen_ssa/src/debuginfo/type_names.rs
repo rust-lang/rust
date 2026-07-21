@@ -80,7 +80,7 @@ fn push_debuginfo_type_name<'tcx>(
         ty::Uint(uint_ty) => output.push_str(uint_ty.name_str()),
         ty::Float(float_ty) => output.push_str(float_ty.name_str()),
         ty::Foreign(def_id) => push_item_name(tcx, def_id, qualified, output),
-        ty::Adt(def, args) => {
+        ty::Adt(def, args) | ty::View(def, args, _) | ty::ViewInfer(def, args, _) => {
             // `layout_for_cpp_like_fallback` will be `Some` if we want to use the fallback encoding.
             let layout_for_cpp_like_fallback = if cpp_like_debuginfo && def.is_enum() {
                 match tcx.layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(t)) {

@@ -3475,7 +3475,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let dcx = self.dcx();
         let tcx = self.tcx();
         match ty.kind() {
-            ty::Adt(def, _) => {
+            ty::Adt(def, _) | ty::View(def, _, _) | ty::ViewInfer(def, _, _) => {
                 let base_did = def.did();
                 let kind_name = tcx.def_descr(base_did);
                 let (variant_idx, variant) = if def.is_enum() {

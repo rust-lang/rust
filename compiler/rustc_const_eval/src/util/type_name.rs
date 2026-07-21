@@ -60,7 +60,13 @@ impl<'tcx> Printer<'tcx> for TypeNamePrinter<'tcx> {
             )
             | ty::Closure(def_id, args)
             | ty::CoroutineClosure(def_id, args)
-            | ty::Coroutine(def_id, args) => self.print_def_path(def_id, args),
+            | ty::Coroutine(def_id, args)
+            | ty::View(ty::AdtDef(Interned(&ty::AdtDefData { did: def_id, .. }, _)), args, _)
+            | ty::ViewInfer(
+                ty::AdtDef(Interned(&ty::AdtDefData { did: def_id, .. }, _)),
+                args,
+                _,
+            ) => self.print_def_path(def_id, args),
             ty::Foreign(def_id) => self.print_def_path(def_id, &[]),
 
             ty::FnDef(def_id, args) => self.print_def_path(def_id, args.no_bound_vars().unwrap()),
