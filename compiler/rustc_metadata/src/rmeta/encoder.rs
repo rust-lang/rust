@@ -2367,6 +2367,10 @@ pub struct EncodedMetadata {
 }
 
 impl EncodedMetadata {
+    pub fn empty() -> EncodedMetadata {
+        EncodedMetadata { full_metadata: None, stub_metadata: None, path: None, _temp_dir: None }
+    }
+
     #[inline]
     pub fn from_path(
         path: PathBuf,
