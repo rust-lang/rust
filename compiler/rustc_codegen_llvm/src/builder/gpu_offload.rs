@@ -41,6 +41,18 @@ pub(crate) struct OffloadGlobals<'ll> {
     pub taskwait_ty: &'ll llvm::Type,
     pub threadnum: &'ll llvm::Value,
     pub threadnum_ty: &'ll llvm::Type,
+
+    pub async_info_create: &'ll Value,
+    pub async_info_create_ty: &'ll Type,
+
+    pub async_info_synchronize: &'ll Value,
+    pub async_info_synchronize_ty: &'ll Type,
+
+    pub async_info_destroy: &'ll Value,
+    pub async_info_destroy_ty: &'ll Type,
+
+    pub async_kernel_launcher: &'ll Value,
+    pub async_kernel_launcher_ty: &'ll Type,
 }
 
 impl<'ll> OffloadGlobals<'ll> {
@@ -52,11 +64,50 @@ impl<'ll> OffloadGlobals<'ll> {
         let (nowait_begin_mapper, nowait_mapper_fn_ty) = gen_tgt_data_nowait_mappers(cx);
         let ident_t_global = generate_at_one(cx);
         let (taskwait, taskwait_ty, threadnum, threadnum_ty) = generate_sync(cx);
+        // ptr __tgt_async_info_create(i64)
+        let async_info_create_ty = cx.type_func(&[cx.type_i64()], cx.type_ptr());
 
+        // i32 __tgt_async_info_synchronize(ptr)
+        let async_info_synchronize_ty = cx.type_func(&[cx.type_ptr()], cx.type_i32());
+
+        // void __tgt_async_info_destroy(ptr)
+        let async_info_destroy_ty = cx.type_func(&[cx.type_ptr()], cx.type_void());
+
+        // i32 __tgt_target_kernel_async(
+        //     ptr ident,
+        //     i64 device,
+        //     i32 num_teams,
+        //     i32 thread_limit,
+        //     ptr host_ptr,
+        //     ptr kernel_args,
+        //     ptr async_info)
+        let async_kernel_launcher_ty = cx.type_func(
+            &[
+                cx.type_ptr(),
+                cx.type_i64(),
+                cx.type_i32(),
+                cx.type_i32(),
+                cx.type_ptr(),
+                cx.type_ptr(),
+                cx.type_ptr(),
+            ],
+            cx.type_i32(),
+        );
         // We want LLVM's openmp-opt pass to pick up and optimize this module, since it covers both
         // openmp and offload optimizations.
         llvm::add_module_flag_u32(cx.llmod(), llvm::ModuleFlagMergeBehavior::Max, "openmp", 51);
 
+        let async_info_create =
+            declare_offload_fn(cx, "__tgt_async_info_create", async_info_create_ty);
+
+        let async_info_synchronize =
+            declare_offload_fn(cx, "__tgt_async_info_synchronize", async_info_synchronize_ty);
+
+        let async_info_destroy =
+            declare_offload_fn(cx, "__tgt_async_info_destroy", async_info_destroy_ty);
+
+        let async_kernel_launcher =
+            declare_offload_fn(cx, "__tgt_target_kernel_async", async_kernel_launcher_ty);
         OffloadGlobals {
             launcher_fn,
             launcher_ty,
@@ -72,6 +123,17 @@ impl<'ll> OffloadGlobals<'ll> {
             taskwait_ty,
             threadnum,
             threadnum_ty,
+            async_info_create,
+            async_info_create_ty,
+
+            async_info_synchronize,
+            async_info_synchronize_ty,
+
+            async_info_destroy,
+            async_info_destroy_ty,
+
+            async_kernel_launcher,
+            async_kernel_launcher_ty,
         }
     }
 }
