@@ -78,7 +78,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     fn add_static_aliases<F>(
         &self,
         aliases: &[(DefId, Linkage, Visibility)],
-        aliasee: &str,
+        aliased: &str,
         create_global: &F,
     ) where
         F: Fn(&CodegenCx<'gcc, 'tcx>, &str, Visibility) -> LValue<'gcc>,
@@ -88,7 +88,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             let symbol_name = self.tcx.symbol_name(instance);
 
             let alias = create_global(self, symbol_name.name, visibility);
-            alias.add_attribute(VarAttribute::Alias(aliasee));
+            alias.add_attribute(VarAttribute::Alias(aliased));
 
             // Add the alias name to the set of cached items, so there is no duplicate
             // instance added to it during the normal `external static` codegen
@@ -103,8 +103,8 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     #[cfg(feature = "master")]
     fn add_function_aliases(
         &self,
-        aliasee_instance: Instance<'tcx>,
-        aliasee: Function<'gcc>,
+        aliased_instance: Instance<'tcx>,
+        aliased: Function<'gcc>,
         attrs: &CodegenFnAttrs,
         aliases: &[(DefId, Linkage, Visibility)],
     ) {
@@ -114,7 +114,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             // predefine another copy of the original instance
             // with a new symbol name
             let alias_fn_decl = self.predefine_without_aliases(
-                aliasee_instance,
+                aliased_instance,
                 attrs,
                 linkage,
                 visibility,
@@ -129,7 +129,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             }
 
             let void_type = self.context.new_type::<()>();
-            let call = self.context.new_call(None, aliasee, &args);
+            let call = self.context.new_call(None, aliased, &args);
             if alias_fn_decl.get_return_type() == void_type {
                 block.add_eval(None, call);
                 block.end_with_void_return(None);
