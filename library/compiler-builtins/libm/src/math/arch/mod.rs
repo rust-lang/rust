@@ -7,7 +7,7 @@
 
 // Most implementations should be defined here, to ensure they are not made available when
 // soft floats are required.
-#[cfg(feature = "arch")]
+#[cfg(all(feature = "arch", not(miri)))]
 cfg_select! {
     all(target_arch = "wasm32", intrinsics_enabled) => {
         mod wasm32;
