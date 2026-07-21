@@ -20,6 +20,19 @@ use clap::{CommandFactory, Parser};
 #[cfg(test)]
 mod cargo_fmt_tests;
 
+const fn is_nightly() -> bool {
+    match option_env!("CFG_RELEASE_CHANNEL") {
+        None => true,
+        Some(c) => matches!(c.as_bytes(), b"nightly" | b"dev"),
+    }
+}
+
+const MESSAGE_FORMATS: &str = if is_nightly() {
+    "short|json|human"
+} else {
+    "short|human"
+};
+
 #[derive(Parser)]
 #[command(
     disable_version_flag = true,
@@ -54,8 +67,11 @@ pub struct Opts {
     #[arg(long = "manifest-path", value_name = "manifest-path")]
     manifest_path: Option<String>,
 
-    /// Specify message-format: short|json|human
-    #[arg(long = "message-format", value_name = "message-format")]
+    #[arg(
+        long = "message-format",
+        value_name = "message-format",
+        help = format!("Specify message-format: {MESSAGE_FORMATS}")
+    )]
     message_format: Option<String>,
 
     /// Options passed to rustfmt
@@ -186,6 +202,11 @@ fn convert_message_format_to_rustfmt_args(
             Ok(())
         }
         "json" => {
+            if !is_nightly() {
+                return Err(String::from(
+                    "--message-format json is only supported in nightly builds",
+                ));
+            }
             if contains_emit_mode {
                 return Err(String::from(
                     "cannot include --emit arg when --message-format is set to json",
@@ -202,7 +223,8 @@ fn convert_message_format_to_rustfmt_args(
         }
         "human" => Ok(()),
         _ => Err(format!(
-            "invalid --message-format value: {message_format}. Allowed values are: short|json|human"
+            "invalid --message-format value: {message_format}. Allowed values are: \
+                {MESSAGE_FORMATS}"
         )),
     }
 }
@@ -281,7 +303,7 @@ impl Target {
 
         Target {
             path: canonicalized,
-            kind: target.kind[0].clone(),
+            kind: target.kind[0].to_string(),
             edition: target.edition,
         }
     }
@@ -444,10 +466,11 @@ fn get_targets_with_hitlist(
     targets: &mut BTreeSet<Target>,
 ) -> Result<(), io::Error> {
     let metadata = get_cargo_metadata(manifest_path)?;
-    let mut workspace_hitlist: BTreeSet<&String> = BTreeSet::from_iter(hitlist);
+    let mut workspace_hitlist: BTreeSet<&str> =
+        BTreeSet::from_iter(hitlist.into_iter().map(|s| s.as_str()));
 
     for package in metadata.packages {
-        if workspace_hitlist.remove(&package.name) {
+        if workspace_hitlist.remove(package.name.as_ref()) {
             for target in package.targets {
                 targets.insert(Target::from_target(&target));
             }
