@@ -1,5 +1,3 @@
-use std::assert_matches;
-
 use rustc_middle::mir::BinOp;
 use rustc_span::Symbol;
 
@@ -180,34 +178,77 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
             }
 
-            // Vector table lookup: each index selects a byte from the 8 or 16-byte table,
+            // Vector table lookup: each index selects a byte from the table,
             // out-of-range -> 0.
             //
-            // Used to implement the vqtbl1 and vqtbl1q set of functions, e.g.:
+            // Used to implement the vtblN, vqtblN and vqtblNq set of functions, e.g.:
             //
             // - https://developer.arm.com/architectures/instruction-sets/intrinsics/vtbl1_u8
+            // - https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbl1_u8
             // - https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbl1q_s8
+            // - https://developer.arm.com/architectures/instruction-sets/intrinsics/vtbl2_u8
+            // - https://developer.arm.com/architectures/instruction-sets/intrinsics/vqtbl4q_s8
             //
             // LLVM does not have a portable shuffle that takes non-const indices
             // so we need to implement this ourselves.
-            "neon.tbl1.v8i8" | "neon.tbl1.v16i8" => {
-                let [table, indices] = this.check_shim_sig_unadjusted(link_name, args)?;
+            _ if unprefixed_name.starts_with("neon.tbl") => {
+                // The table segments always have 16 elements, the index vector and output vector
+                // have either 8 or 16 elements.
+                let (table_segments, indices) = match unprefixed_name {
+                    "neon.tbl1.v8i8" | "neon.tbl1.v16i8" => {
+                        let [table, indices] = this.check_shim_sig_unadjusted(link_name, args)?;
+                        let (table, len) = this.project_to_simd(table)?;
+                        assert_eq!(len, 16);
+                        (vec![table], indices)
+                    }
+                    "neon.tbl2.v8i8" | "neon.tbl2.v16i8" => {
+                        let [table0, table1, indices] =
+                            this.check_shim_sig_unadjusted(link_name, args)?;
+                        let (table0, len0) = this.project_to_simd(table0)?;
+                        let (table1, len1) = this.project_to_simd(table1)?;
+                        assert_eq!([len0, len1], [16; 2]);
+                        (vec![table0, table1], indices)
+                    }
+                    "neon.tbl3.v8i8" | "neon.tbl3.v16i8" => {
+                        let [table0, table1, table2, indices] =
+                            this.check_shim_sig_unadjusted(link_name, args)?;
+                        let (table0, len0) = this.project_to_simd(table0)?;
+                        let (table1, len1) = this.project_to_simd(table1)?;
+                        let (table2, len2) = this.project_to_simd(table2)?;
+                        assert_eq!([len0, len1, len2], [16; 3]);
+                        (vec![table0, table1, table2], indices)
+                    }
+                    "neon.tbl4.v8i8" | "neon.tbl4.v16i8" => {
+                        let [table0, table1, table2, table3, indices] =
+                            this.check_shim_sig_unadjusted(link_name, args)?;
+                        let (table0, len0) = this.project_to_simd(table0)?;
+                        let (table1, len1) = this.project_to_simd(table1)?;
+                        let (table2, len2) = this.project_to_simd(table2)?;
+                        let (table3, len3) = this.project_to_simd(table3)?;
+                        assert_eq!([len0, len1, len2, len3], [16; 4]);
+                        (vec![table0, table1, table2, table3], indices)
+                    }
+                    _ => unreachable!(),
+                };
 
-                let (table, table_len) = this.project_to_simd(table)?;
                 let (indices, idx_len) = this.project_to_simd(indices)?;
                 let (dest, dest_len) = this.project_to_simd(dest)?;
-                assert_matches!(table_len, 8 | 16);
                 assert_eq!(idx_len, dest_len);
 
                 for i in 0..dest_len {
                     let idx = this.read_immediate(&this.project_index(&indices, i)?)?;
-                    let idx_u = idx.to_scalar().to_u8()?;
-                    let val = if u64::from(idx_u) < table_len {
-                        let t = this.read_immediate(&this.project_index(&table, idx_u.into())?)?;
+                    let idx = idx.to_scalar().to_u8()?;
+
+                    // The LLVM intrinsic table segments always have 16 elements.
+                    let val = if usize::from(idx) < table_segments.len().strict_mul(16) {
+                        let table = &table_segments[usize::from(idx.strict_div(16))];
+                        let lane = u64::from(idx.strict_rem(16));
+                        let t = this.read_immediate(&this.project_index(table, lane)?)?;
                         t.to_scalar()
                     } else {
                         Scalar::from_u8(0)
                     };
+
                     this.write_scalar(val, &this.project_index(&dest, i)?)?;
                 }
             }
