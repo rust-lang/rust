@@ -39,6 +39,7 @@ use rustc_trait_selection::traits::{self, ObligationCauseCode, ObligationCtxt};
 use tracing::{debug, instrument, trace};
 
 use crate::Expectation::{self, ExpectCastableToType, ExpectHasType, NoExpectation};
+use crate::callee::SplatLoweringInfo;
 use crate::coercion::CoerceMany;
 use crate::diagnostics::{
     AddressOfTemporaryTaken, BaseExpressionDoubleDot, BaseExpressionDoubleDotAddExpr,
@@ -1479,7 +1480,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     args,
                     method.sig.fn_sig_kind.c_variadic(),
                     method_tuple_args_flag,
-                    Some(method.def_id),
+                    SplatLoweringInfo::FnDef(method.def_id),
                     Some(method.args),
                 );
 
@@ -1491,22 +1492,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let guar = self.report_method_error(expr.hir_id, rcvr_t, error, expected, false);
 
                 let err_inputs = self.err_args(args.len(), guar);
-                let err_output = Ty::new_error(self.tcx, guar);
+                let err_ty = Ty::new_error(self.tcx, guar);
 
                 self.check_argument_types(
                     segment.ident.span,
                     expr,
                     &err_inputs,
-                    err_output,
+                    err_ty,
                     NoExpectation,
                     args,
                     false,
                     TupleArgumentsFlag::DontTupleArguments,
-                    None,
+                    SplatLoweringInfo::Error(guar),
                     Some(GenericArgsRef::default()),
                 );
 
-                err_output
+                err_ty
             }
         }
     }

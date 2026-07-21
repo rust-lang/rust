@@ -31,6 +31,7 @@ use tracing::debug;
 
 use crate::Expectation::*;
 use crate::TupleArgumentsFlag::*;
+use crate::callee::SplatLoweringInfo;
 use crate::coercion::CoerceMany;
 use crate::diagnostics::SuggestPtrNullMut;
 use crate::fn_ctxt::arg_matrix::{ArgMatrix, Compatibility, Error, ExpectedIdx, ProvidedIdx};
@@ -202,8 +203,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         c_variadic: bool,
         // Whether all the arguments have been bundled in a tuple (ex: closures), or one has been splatted
         tuple_arguments: TupleArgumentsFlag,
-        // The DefId for the function being called, for better error messages
-        fn_def_id: Option<DefId>,
+        // Lowering info if a splatted function is being called.
+        fn_id: SplatLoweringInfo<'tcx>,
         // The generics of the function being called. Only used for splatting
         callee_generic_args: Option<ty::GenericArgsRef<'tcx>>,
     ) {
@@ -300,7 +301,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 provided_args,
                 expected_input_tys,
                 tuple_arguments,
-                fn_def_id,
+                fn_id,
                 callee_generic_args,
             );
             let TupledArgCheckOutcome {
@@ -551,7 +552,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 provided_args,
                 c_variadic,
                 err_code,
-                fn_def_id,
+                fn_id,
                 call_span,
                 call_expr,
                 tuple_arguments,
@@ -574,8 +575,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         mut expected_input_tys: Option<Vec<Ty<'tcx>>>,
         // Whether all the arguments have been bundled in a tuple (ex: closures), or one has been splatted
         tuple_arguments: TupleArgumentsFlag,
-        // The DefId for the function being called, for better error messages
-        fn_def_id: Option<DefId>,
+        // Lowering info if a splatted function is being called.
+        fn_id: SplatLoweringInfo<'tcx>,
         // The generics of the function being called. Only used for splatting
         callee_generic_args: Option<ty::GenericArgsRef<'tcx>>,
     ) -> TupledArgCheckOutcome<'tcx> {
@@ -735,7 +736,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // If we don't check argument counts here, and there's a subtle bug in the code above,
                 // later compilation stages can fail in unrelated places with confusing errors.
                 if !matches!(tuple_type.kind(), ty::Tuple(_)) {
-                    let spans = if let Some(def_id) = fn_def_id
+                    let spans = if let SplatLoweringInfo::FnDef(def_id) = fn_id
                         && let Some(hir_node) = self.tcx.hir_get_if_local(def_id)
                         && let Some(fn_decl) = hir_node.fn_decl()
                         && let Some(arg_ty) = fn_decl.inputs.get(first_tupled_arg_index_usz)
@@ -796,7 +797,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.write_splatted_call(
                     call_expr.hir_id,
                     call_span,
-                    fn_def_id,
+                    fn_id,
                     callee_generic_args,
                     first_tupled_arg_index,
                     tupled_args_count.unwrap().try_into().unwrap(),
@@ -833,7 +834,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         provided_args: IndexVec<ProvidedIdx, &'tcx hir::Expr<'tcx>>,
         c_variadic: bool,
         err_code: ErrCode,
-        fn_def_id: Option<DefId>,
+        // Lowering info if a splatted function is being called.
+        fn_id: SplatLoweringInfo<'tcx>,
         call_span: Span,
         call_expr: &'tcx hir::Expr<'tcx>,
         // FIXME(splat): when the feature design is settled, improve the errors here
@@ -848,7 +850,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             provided_args,
             c_variadic,
             err_code,
-            fn_def_id,
+            fn_id,
             call_span,
             call_expr,
             tuple_arguments,
@@ -922,7 +924,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Call out where the function is defined
         fn_call_diag_ctxt.label_fn_like(
             &mut err,
-            fn_def_id,
+            fn_id,
             fn_call_diag_ctxt.callee_ty,
             call_expr,
             None,
@@ -1592,7 +1594,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn label_fn_like(
         &self,
         err: &mut Diag<'_>,
-        callable_def_id: Option<DefId>,
+        // Lowering info if a splatted function is being called.
+        callable_id: SplatLoweringInfo<'tcx>,
         callee_ty: Option<Ty<'tcx>>,
         call_expr: &'tcx hir::Expr<'tcx>,
         expected_ty: Option<Ty<'tcx>>,
@@ -1603,7 +1606,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         is_method: bool,
         tuple_arguments: TupleArgumentsFlag,
     ) {
-        let Some(mut def_id) = callable_def_id else {
+        let SplatLoweringInfo::FnDef(mut def_id) = callable_id else {
+            // FIXME(FnPtr, splat): Handle FnPtr types and splatting here
             return;
         };
 
@@ -1942,14 +1946,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn label_generic_mismatches(
         &self,
         err: &mut Diag<'_>,
-        callable_def_id: Option<DefId>,
+        // Lowering info if a splatted function is being called.
+        callable_id: SplatLoweringInfo<'tcx>,
         matched_inputs: &IndexVec<ExpectedIdx, Option<ProvidedIdx>>,
         provided_arg_tys: &IndexVec<ProvidedIdx, (Ty<'tcx>, Span)>,
         formal_and_expected_inputs: &IndexVec<ExpectedIdx, (Ty<'tcx>, Ty<'tcx>)>,
         is_method: bool,
         is_splat: bool,
     ) {
-        let Some(def_id) = callable_def_id else {
+        let SplatLoweringInfo::FnDef(def_id) = callable_id else {
+            // FIXME(FnPtr, splat): Handle FnPtr types and splatting here
             return;
         };
 
@@ -2186,7 +2192,8 @@ impl<'a, 'tcx> FnCallDiagCtxt<'a, 'tcx> {
         provided_args: IndexVec<ProvidedIdx, &'tcx Expr<'tcx>>,
         c_variadic: bool,
         err_code: ErrCode,
-        fn_def_id: Option<DefId>,
+        // Lowering info if a splatted function is being called.
+        fn_id: SplatLoweringInfo<'tcx>,
         call_span: Span,
         call_expr: &'tcx Expr<'tcx>,
         tuple_arguments: TupleArgumentsFlag,
@@ -2198,7 +2205,7 @@ impl<'a, 'tcx> FnCallDiagCtxt<'a, 'tcx> {
             provided_args,
             c_variadic,
             err_code,
-            fn_def_id,
+            fn_id,
             call_span,
             call_expr,
             tuple_arguments,
@@ -2309,7 +2316,7 @@ impl<'a, 'tcx> FnCallDiagCtxt<'a, 'tcx> {
                     };
                     self.arg_matching_ctxt.args_ctxt.call_ctxt.fn_ctxt.label_fn_like(
                         &mut err,
-                        self.fn_def_id,
+                        self.fn_id,
                         self.callee_ty,
                         self.call_expr,
                         None,
@@ -2467,7 +2474,7 @@ impl<'a, 'tcx> FnCallDiagCtxt<'a, 'tcx> {
             // Call out where the function is defined
             self.label_fn_like(
                 &mut err,
-                self.fn_def_id,
+                self.fn_id,
                 self.callee_ty,
                 self.call_expr,
                 Some(expected_ty),
@@ -2886,7 +2893,7 @@ impl<'a, 'tcx> FnCallDiagCtxt<'a, 'tcx> {
     fn label_generic_mismatches(&self, err: &mut Diag<'a>) {
         self.fn_ctxt.label_generic_mismatches(
             err,
-            self.fn_def_id,
+            self.fn_id,
             &self.matched_inputs,
             &self.provided_arg_tys,
             &self.formal_and_expected_inputs,
@@ -3081,7 +3088,8 @@ impl<'a, 'tcx> ArgMatchingCtxt<'a, 'tcx> {
         provided_args: IndexVec<ProvidedIdx, &'tcx Expr<'tcx>>,
         c_variadic: bool,
         err_code: ErrCode,
-        fn_def_id: Option<DefId>,
+        // Lowering info if a splatted function is being called.
+        fn_id: SplatLoweringInfo<'tcx>,
         call_span: Span,
         call_expr: &'tcx Expr<'tcx>,
         tuple_arguments: TupleArgumentsFlag,
@@ -3093,7 +3101,7 @@ impl<'a, 'tcx> ArgMatchingCtxt<'a, 'tcx> {
             provided_args,
             c_variadic,
             err_code,
-            fn_def_id,
+            fn_id,
             call_span,
             call_expr,
             tuple_arguments,
@@ -3228,7 +3236,8 @@ impl<'a, 'tcx> ArgsCtxt<'a, 'tcx> {
         provided_args: IndexVec<ProvidedIdx, &'tcx Expr<'tcx>>,
         c_variadic: bool,
         err_code: ErrCode,
-        fn_def_id: Option<DefId>,
+        // Lowering info if a splatted function is being called.
+        fn_id: SplatLoweringInfo<'tcx>,
         call_span: Span,
         call_expr: &'tcx Expr<'tcx>,
         tuple_arguments: TupleArgumentsFlag,
@@ -3240,7 +3249,7 @@ impl<'a, 'tcx> ArgsCtxt<'a, 'tcx> {
             provided_args,
             c_variadic,
             err_code,
-            fn_def_id,
+            fn_id,
             call_span,
             call_expr,
             tuple_arguments,
@@ -3347,7 +3356,8 @@ struct CallCtxt<'a, 'tcx> {
     provided_args: IndexVec<ProvidedIdx, &'tcx hir::Expr<'tcx>>,
     c_variadic: bool,
     err_code: ErrCode,
-    fn_def_id: Option<DefId>,
+    /// Lowering info if a splatted function is being called.
+    fn_id: SplatLoweringInfo<'tcx>,
     call_span: Span,
     call_expr: &'tcx hir::Expr<'tcx>,
     tuple_arguments: TupleArgumentsFlag,
@@ -3371,7 +3381,8 @@ impl<'a, 'tcx> CallCtxt<'a, 'tcx> {
         provided_args: IndexVec<ProvidedIdx, &'tcx hir::Expr<'tcx>>,
         c_variadic: bool,
         err_code: ErrCode,
-        fn_def_id: Option<DefId>,
+        // Lowering info if a splatted function is being called.
+        fn_id: SplatLoweringInfo<'tcx>,
         call_span: Span,
         call_expr: &'tcx hir::Expr<'tcx>,
         tuple_arguments: TupleArgumentsFlag,
@@ -3403,7 +3414,7 @@ impl<'a, 'tcx> CallCtxt<'a, 'tcx> {
             provided_args,
             c_variadic,
             err_code,
-            fn_def_id,
+            fn_id,
             call_span,
             call_expr,
             tuple_arguments,
@@ -3490,7 +3501,7 @@ impl<'a, 'tcx> CallCtxt<'a, 'tcx> {
             "()".to_string()
         } else if ty.is_suggestable(self.tcx, false) {
             format!("/* {ty} */")
-        } else if let Some(fn_def_id) = self.fn_def_id
+        } else if let SplatLoweringInfo::FnDef(fn_def_id) = self.fn_id
             && self.tcx.def_kind(fn_def_id).is_fn_like()
             && let self_implicit =
                 matches!(self.call_expr.kind, hir::ExprKind::MethodCall(..)) as usize
@@ -3500,6 +3511,9 @@ impl<'a, 'tcx> CallCtxt<'a, 'tcx> {
         {
             format!("/* {} */", arg.name)
         } else {
+            // FIXME(FnPtr, splat): What suggestions are needed for FnPtrs?
+            // SplatLoweringInfo::FnPtr(Ty) and SplatLoweringInfo::Error currently fall through to
+            // this placeholder
             "/* value */".to_string()
         }
     }

@@ -37,7 +37,7 @@ pub struct TypeckResults<'tcx> {
     type_dependent_defs: ItemLocalMap<Result<(DefKind, DefId), ErrorGuaranteed>>,
 
     /// Resolved definitions for splatted function calls.
-    splatted_defs: ItemLocalMap<Result<SplattedDef, ErrorGuaranteed>>,
+    splatted_defs: ItemLocalMap<Result<SplattedDef<'tcx>, ErrorGuaranteed>>,
 
     /// Resolved field indices for field accesses in expressions (`S { field }`, `obj.field`)
     /// or patterns (`S { field }`). The index is often useful by itself, but to learn more
@@ -291,18 +291,20 @@ impl<'tcx> TypeckResults<'tcx> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.type_dependent_defs }
     }
 
-    pub fn splatted_defs(&self) -> LocalTableInContext<'_, Result<SplattedDef, ErrorGuaranteed>> {
+    pub fn splatted_defs(
+        &self,
+    ) -> LocalTableInContext<'_, Result<SplattedDef<'tcx>, ErrorGuaranteed>> {
         LocalTableInContext { hir_owner: self.hir_owner, data: &self.splatted_defs }
     }
 
-    pub fn splatted_def(&self, id: HirId) -> Option<SplattedDef> {
+    pub fn splatted_def(&self, id: HirId) -> Option<SplattedDef<'tcx>> {
         validate_hir_id_for_typeck_results(self.hir_owner, id);
         self.splatted_defs.get(&id.local_id).cloned().and_then(|r| r.ok())
     }
 
     pub fn splatted_defs_mut(
         &mut self,
-    ) -> LocalTableInContextMut<'_, Result<SplattedDef, ErrorGuaranteed>> {
+    ) -> LocalTableInContextMut<'_, Result<SplattedDef<'tcx>, ErrorGuaranteed>> {
         LocalTableInContextMut { hir_owner: self.hir_owner, data: &mut self.splatted_defs }
     }
 
@@ -427,7 +429,7 @@ impl<'tcx> TypeckResults<'tcx> {
     }
 
     pub fn is_splatted_call(&self, expr: &hir::Expr<'_>) -> bool {
-        matches!(self.splatted_defs().get(expr.hir_id), Some(Ok(SplattedDef { .. })))
+        matches!(self.splatted_defs().get(expr.hir_id), Some(Ok(_)))
     }
 
     /// Returns the computed binding mode for a `PatKind::Binding` pattern
@@ -594,14 +596,62 @@ impl<'tcx> TypeckResults<'tcx> {
 
 /// A resolved splatted function call.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, StableHash, TyEncodable, TyDecodable)]
-pub struct SplattedDef {
-    /// The function DefId, if available (FnPtrs don't have DefIds)
-    pub def_id: Option<DefId>,
-    /// The index of the first argument in the callee's splatted tuple, and the index of the
-    /// splatted tuple argument in the caller.
-    pub arg_index: u16,
-    /// The number of arguments in the splatted tuple.
-    pub arg_count: u16,
+pub enum SplattedDef<'tcx> {
+    /// A resolved FnDef call.
+    FnDef {
+        /// The DefId of the FnDef (used to look up its type).
+        def_id: DefId,
+
+        /// The index of the first argument in the callee's splatted tuple, and the index of the
+        /// splatted tuple argument in the caller.
+        arg_index: u16,
+
+        /// The number of arguments in the splatted tuple.
+        arg_count: u16,
+    },
+
+    /// A resolved FnPtr Call.
+    FnPtr {
+        /// The resolved type of the FnPtr.
+        fn_ptr_type: Ty<'tcx>,
+
+        /// The index of the first argument in the callee's splatted tuple, and the index of the
+        /// splatted tuple argument in the caller.
+        arg_index: u16,
+
+        /// The number of arguments in the splatted tuple.
+        arg_count: u16,
+    },
+}
+
+impl<'tcx> SplattedDef<'tcx> {
+    pub fn def_id(&self) -> Option<DefId> {
+        match self {
+            SplattedDef::FnDef { def_id, .. } => Some(*def_id),
+            SplattedDef::FnPtr { .. } => None,
+        }
+    }
+
+    pub fn fn_ptr_type(&self) -> Option<Ty<'tcx>> {
+        match self {
+            SplattedDef::FnDef { .. } => None,
+            SplattedDef::FnPtr { fn_ptr_type, .. } => Some(*fn_ptr_type),
+        }
+    }
+
+    pub fn arg_index(&self) -> u16 {
+        match self {
+            SplattedDef::FnDef { arg_index, .. } => *arg_index,
+            SplattedDef::FnPtr { arg_index, .. } => *arg_index,
+        }
+    }
+
+    pub fn arg_count(&self) -> u16 {
+        match self {
+            SplattedDef::FnDef { arg_count, .. } => *arg_count,
+            SplattedDef::FnPtr { arg_count, .. } => *arg_count,
+        }
+    }
 }
 
 /// Validate that the given HirId (respectively its `local_id` part) can be

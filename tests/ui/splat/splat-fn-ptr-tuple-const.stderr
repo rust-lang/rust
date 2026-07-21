@@ -1,52 +1,14 @@
-error: compiler/rustc_mir_build/src/thir/cx/expr.rs:LL:CC: splatted FnPtr side-tables are not yet implemented
-  --> $DIR/splat-fn-ptr-tuple-const.rs:29:20
+error: function pointer calls are not allowed in constants
+  --> $DIR/splat-fn-ptr-tuple-const.rs:14:20
    |
 LL |     const R2: () = F2(1, 2);
    |                    ^^^^^^^^
 
-
-
-Box<dyn Any>
-stack backtrace:
-
-note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
-
-note: please make sure that you have updated to the latest nightly
-
-note: rustc {version} running on {platform}
-
-query stack during panic:
-#0 [thir_body] building THIR for `main::R2`
-#1 [check_match] match-checking `main::R2`
-#2 [mir_built] building MIR for `main::R2`
-#3 [trivial_const] checking if `main::R2` is a trivial const
-#4 [eval_to_const_value_raw] simplifying constant for the type system `main::R2`
-#5 [analysis] running analysis passes on crate `splat_fn_ptr_tuple_const`
-end of query stack
-error: compiler/rustc_mir_build/src/thir/cx/expr.rs:LL:CC: splatted FnPtr side-tables are not yet implemented
-  --> $DIR/splat-fn-ptr-tuple-const.rs:33:20
+error: function pointer calls are not allowed in constants
+  --> $DIR/splat-fn-ptr-tuple-const.rs:18:20
    |
 LL |     const R1: () = F1((1, 2));
    |                    ^^^^^^^^^^
 
-
-
-Box<dyn Any>
-stack backtrace:
-
-note: we would appreciate a bug report: https://github.com/rust-lang/rust/issues/new?labels=C-bug%2C+I-ICE%2C+T-compiler&template=ice.md
-
-note: please make sure that you have updated to the latest nightly
-
-note: rustc {version} running on {platform}
-
-query stack during panic:
-#0 [thir_body] building THIR for `main::R1`
-#1 [check_match] match-checking `main::R1`
-#2 [mir_built] building MIR for `main::R1`
-#3 [trivial_const] checking if `main::R1` is a trivial const
-#4 [eval_to_const_value_raw] simplifying constant for the type system `main::R1`
-#5 [analysis] running analysis passes on crate `splat_fn_ptr_tuple_const`
-end of query stack
 error: aborting due to 2 previous errors
 
