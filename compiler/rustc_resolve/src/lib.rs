@@ -24,7 +24,7 @@
 use std::cell::Ref;
 use std::collections::BTreeSet;
 use std::ops::ControlFlow;
-use std::sync::Arc;
+use std::sync::{Arc, Once};
 use std::{fmt, mem};
 
 use diagnostics::{ParamKindInEnumDiscriminant, ParamKindInNonTrivialAnonConst};
@@ -80,7 +80,7 @@ use tracing::{debug, instrument};
 use crate::diagnostics::impls::{
     ImportSuggestion, LabelSuggestion, OnUnknownData, StructCtor, Suggestion,
 };
-use crate::imports::NameResolutionRef;
+use crate::imports::{ImportResolution, NameResolutionRef};
 use crate::ref_mut::{CmCell, CmRefCell};
 
 mod build_reduced_graph;
@@ -656,7 +656,7 @@ struct ModuleData<'ra> {
     /// Resolutions in modules from other crates are not populated until accessed.
     lazy_resolutions: Resolutions<'ra>,
     /// True if this is a module from other crate that needs to be populated on access.
-    populate_on_access: CacheCell<bool>,
+    populate_on_access: Once,
     /// Used to disambiguate underscore items (`const _: T = ...`) in the module.
     underscore_disambiguator: CmCell<u32>,
 
@@ -710,7 +710,6 @@ impl<'ra> ModuleData<'ra> {
         vis: Visibility<ModId>,
         arenas: &'ra ResolverArenas<'ra>,
     ) -> Self {
-        let is_foreign = !kind.is_local();
         let self_decl = match kind {
             ModuleKind::Def(def_kind, def_id, ..) => {
                 let expn_id = expansion.as_local().unwrap_or(LocalExpnId::ROOT);
@@ -722,7 +721,7 @@ impl<'ra> ModuleData<'ra> {
             parent,
             kind,
             lazy_resolutions: Default::default(),
-            populate_on_access: CacheCell::new(is_foreign),
+            populate_on_access: Once::new(),
             underscore_disambiguator: CmCell::new(0),
             unexpanded_invocations: Default::default(),
             no_implicit_prelude,
@@ -1323,7 +1322,7 @@ pub struct Resolver<'ra, 'tcx> {
 
     graph_root: LocalModule<'ra>,
 
-    /// Assert that we are in speculative resolution mode.
+    /// Assert that we are in speculative resolution mode (unsafe field).
     assert_speculative: bool,
 
     prelude: Option<Module<'ra>> = None,
@@ -1341,7 +1340,7 @@ pub struct Resolver<'ra, 'tcx> {
     determined_imports: Vec<Import<'ra>> = Vec::new(),
 
     /// All non-determined imports.
-    indeterminate_imports: Vec<Import<'ra>> = Vec::new(),
+    indeterminate_imports: Vec<(Import<'ra>, Option<ImportResolution<'ra>>, usize)> = Vec::new(),
 
     // Spans for local variables found during pattern resolution.
     // Used for suggestions during error reporting.
@@ -1891,28 +1890,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         module
     }
 
-    fn new_extern_module(
-        &self,
-        parent: Option<ExternModule<'ra>>,
-        kind: ModuleKind,
-        expn_id: ExpnId,
-        span: Span,
-        no_implicit_prelude: bool,
-    ) -> ExternModule<'ra> {
-        let def_id = kind.def_id();
-        let module = ExternModule::new(
-            parent,
-            kind,
-            self.tcx.visibility(def_id),
-            expn_id,
-            span,
-            no_implicit_prelude,
-            self.arenas,
-        );
-        self.extern_module_map.borrow_mut().insert(def_id, module);
-        module
-    }
-
     fn next_node_id(&mut self) -> NodeId {
         let start = self.next_node_id;
         let next = start.as_u32().checked_add(1).expect("input too large; ran out of NodeIds");
@@ -2183,11 +2160,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     fn resolutions(&self, module: Module<'ra>) -> &'ra Resolutions<'ra> {
-        if module.populate_on_access.get() {
-            module.populate_on_access.set(false);
-            // unchecked because extern
-            *module.lazy_resolutions.borrow_mut_unchecked() =
-                self.build_reduced_graph_external(module.expect_extern());
+        if !module.is_local() {
+            // as long as 1 thread is building this external table, all other threads will wait
+            module.populate_on_access.call_once(|| {
+                *module.lazy_resolutions.borrow_mut_unchecked() =
+                    self.build_reduced_graph_external(module.expect_extern());
+            });
         }
         &module.0.0.lazy_resolutions
     }
@@ -2200,6 +2178,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         self.resolutions(module).borrow().get(&key).map(|resolution| resolution.0.borrow())
     }
 
+    #[track_caller]
     fn resolution_or_default(
         &self,
         module: Module<'ra>,
@@ -2819,49 +2798,68 @@ use std::cell::{Cell as CacheCell, RefCell as CacheRefCell};
 mod ref_mut {
     use std::cell::{BorrowMutError, Cell, Ref, RefCell, RefMut};
     use std::fmt;
+    use std::marker::PhantomData;
     use std::ops::Deref;
 
     use crate::Resolver;
 
     /// A wrapper around a mutable reference that conditionally allows mutable access.
     pub(crate) struct RefOrMut<'a, T> {
-        p: &'a mut T,
+        // We keep a raw pointer because it makes `reborrow_ref` possible. It is always safe to
+        // cast this to a `&T` because `RefOrMut` is only created through `new` which takes
+        // a `&mut T`.
+        p: *mut T,
         mutable: bool,
+        _marker: PhantomData<&'a mut T>,
     }
 
     impl<'a, T> Deref for RefOrMut<'a, T> {
         type Target = T;
 
         fn deref(&self) -> &Self::Target {
-            self.p
+            // SAFETY: `RefOrMUt` is only constructable through a `&mut T`.
+            unsafe { self.p.as_ref_unchecked() }
         }
     }
 
     impl<'a, T> AsRef<T> for RefOrMut<'a, T> {
         fn as_ref(&self) -> &T {
-            self.p
+            // SAFETY: `RefOrMUt` is only constructable through a `&mut T`.
+            unsafe { self.p.as_ref_unchecked() }
         }
     }
 
     impl<'a, T> RefOrMut<'a, T> {
         pub(crate) fn new(p: &'a mut T, mutable: bool) -> Self {
-            RefOrMut { p, mutable }
+            RefOrMut { p, mutable, _marker: PhantomData }
+        }
+
+        pub(crate) fn reborrow_ref(&self) -> RefOrMut<'_, T> {
+            assert!(
+                !self.mutable,
+                "Tried to reborrow a mutable `RefOrMut` through shared reference."
+            );
+            RefOrMut { p: self.p, mutable: self.mutable, _marker: PhantomData }
         }
 
         /// This is needed because this wraps a `&mut T` and is therefore not `Copy`.
         pub(crate) fn reborrow(&mut self) -> RefOrMut<'_, T> {
-            RefOrMut { p: self.p, mutable: self.mutable }
+            RefOrMut { p: self.p, mutable: self.mutable, _marker: PhantomData }
         }
 
         /// Returns a mutable reference to the inner value if allowed.
         ///
         /// # Panics
+        ///
         /// Panics if the `mutable` flag is false.
         #[track_caller]
         pub(crate) fn get_mut(&mut self) -> &mut T {
             match self.mutable {
                 false => panic!("can't mutably borrow speculative resolver"),
-                true => self.p,
+                // SAFETY:
+                // - `RefOrMut` is only constructable through a `&mut T` and we
+                //   have tested that it may indeed be used as a `&mut T` in this match.
+                true => unsafe { self.p.as_mut_unchecked() },
             }
         }
     }
@@ -2913,12 +2911,12 @@ mod ref_mut {
         }
     }
 
-    /// A wrapper around a [`RefCell`] that only allows mutable borrows based on a condition in the resolver.
+    /// A wrapper around a [`RefCell`] that only allows writes (mutable borrows) based on a condition in the resolver.
     #[derive(Default)]
     pub(crate) struct CmRefCell<T>(RefCell<T>);
 
     impl<T> CmRefCell<T> {
-        pub(crate) const fn new(value: T) -> CmRefCell<T> {
+        pub(crate) fn new(value: T) -> CmRefCell<T> {
             CmRefCell(RefCell::new(value))
         }
 
