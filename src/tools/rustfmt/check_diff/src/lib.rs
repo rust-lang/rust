@@ -50,7 +50,7 @@ impl FromStr for Edition {
 
 #[derive(Debug, Clone, Copy)]
 pub enum StyleEdition {
-    // rustfmt style_edition 2021. Also equivaluent to 2015 and 2018.
+    // rustfmt style_edition 2021. Also equivalent to 2015 and 2018.
     Edition2021,
     // rustfmt style_edition 2024
     Edition2024,
@@ -82,7 +82,7 @@ impl FromStr for StyleEdition {
 pub enum FormatCodeError {
     // IO Error when running code formatter
     Io(std::io::Error),
-    /// An error occured that prevents code formatting. For example, a parse error.
+    /// An error occurred that prevents code formatting. For example, a parse error.
     CodeNotFormatted(Vec<u8>),
 }
 

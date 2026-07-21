@@ -64,19 +64,17 @@ impl Rewrite for ast::Local {
             return Err(RewriteError::SkipFormatting);
         }
 
-        // FIXME(super_let): Implement formatting
-        if self.super_.is_some() {
-            return Err(RewriteError::SkipFormatting);
-        }
-
+        let super_ = self.super_.is_some();
+        // FIXME: deletes any comments in between super and let
+        let let_ = if super_ { "super let " } else { "let " };
         let attrs_str = self.attrs.rewrite_result(context, shape)?;
         let mut result = if attrs_str.is_empty() {
-            "let ".to_owned()
+            let_.to_owned()
         } else {
             combine_strs_with_missing_comments(
                 context,
                 &attrs_str,
-                "let ",
+                let_,
                 mk_sp(
                     self.attrs.last().map(|a| a.span.hi()).unwrap(),
                     self.span.lo(),
@@ -85,10 +83,9 @@ impl Rewrite for ast::Local {
                 false,
             )?
         };
-        let let_kw_offset = result.len() - "let ".len();
+        let let_kw_offset = result.len() - let_.len();
 
-        // 4 = "let ".len()
-        let pat_shape = shape.offset_left(4, self.span())?;
+        let pat_shape = shape.offset_left(let_.len(), self.span())?;
         // 1 = ;
         let pat_shape = pat_shape.sub_width(1, self.span())?;
         let pat_str = self.pat.rewrite_result(context, pat_shape)?;
@@ -2588,13 +2585,13 @@ fn rewrite_fn_base(
             .map_or(false, |last_line| last_line.contains("//"));
 
         if context.config.style_edition() >= StyleEdition::Edition2024 {
-            if closing_paren_overflow_max_width {
-                result.push(')');
+            if params_last_line_contains_comment {
                 result.push_str(&indent.to_string_with_newline(context.config));
+                result.push(')');
                 no_params_and_over_max_width = true;
-            } else if params_last_line_contains_comment {
-                result.push_str(&indent.to_string_with_newline(context.config));
+            } else if closing_paren_overflow_max_width {
                 result.push(')');
+                result.push_str(&indent.to_string_with_newline(context.config));
                 no_params_and_over_max_width = true;
             } else {
                 result.push(')');
@@ -2677,7 +2674,12 @@ fn rewrite_fn_base(
                 .unwrap_or(ret_shape)
         };
 
-        if multi_line_ret_str || ret_should_indent {
+        let exceeds_max_width = last_line_width(&result) + ret_str_len > context.config.max_width();
+
+        if multi_line_ret_str
+            || ret_should_indent
+            || (context.config.style_edition() >= StyleEdition::Edition2027 && exceeds_max_width)
+        {
             // Now that we know the proper indent and width, we need to
             // re-layout the return type.
             let ret_str = fd.output.rewrite_result(context, ret_shape)?;
