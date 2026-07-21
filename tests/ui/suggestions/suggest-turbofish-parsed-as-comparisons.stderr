@@ -1,60 +1,24 @@
-error[E0423]: expected value, found struct `HashMap`
-  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:11:34
+error: can't compare two types
+  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:11:41
    |
 LL |     let _ = Arc::new(RwLock::new(HashMap<i32, i64>::default()));
-   |                                  ^^^^^^^
+   |                                         ^        ^ these are parsed as "less than" and "greater than"
    |
-  --> $SRC_DIR/std/src/collections/hash/map.rs:LL:COL
-  ::: $SRC_DIR/std/src/collections/hash/map.rs:LL:COL
+help: you likely intended to write type `HashMap` with type parameters, but type parameters in expression contexts require the use of the "turbofish" `::<>`
    |
-   = note: `HashMap` defined here
+LL |     let _ = Arc::new(RwLock::new(HashMap::<i32, i64>::default()));
+   |                                         ++
 
-error[E0423]: expected value, found builtin type `i32`
-  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:11:42
-   |
-LL |     let _ = Arc::new(RwLock::new(HashMap<i32, i64>::default()));
-   |                                          ^^^ not a value
-
-error[E0423]: expected value, found builtin type `i64`
-  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:11:47
-   |
-LL |     let _ = Arc::new(RwLock::new(HashMap<i32, i64>::default()));
-   |                                               ^^^ not a value
-
-error[E0425]: cannot find external crate `default` in the crate root
-  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:11:53
-   |
-LL |     let _ = Arc::new(RwLock::new(HashMap<i32, i64>::default()));
-   |                                                     ^^^^^^^ not found in the crate root
-
-error[E0423]: expected value, found struct `HashMap`
-  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:17:19
+error: can't compare two types
+  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:14:26
    |
 LL |     let _ = S.foo(HashMap<i32, i64>::default());
-   |                   ^^^^^^^
+   |                          ^        ^ these are parsed as "less than" and "greater than"
    |
-  --> $SRC_DIR/std/src/collections/hash/map.rs:LL:COL
-  ::: $SRC_DIR/std/src/collections/hash/map.rs:LL:COL
+help: you likely intended to write type `HashMap` with type parameters, but type parameters in expression contexts require the use of the "turbofish" `::<>`
    |
-   = note: `HashMap` defined here
-
-error[E0423]: expected value, found builtin type `i32`
-  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:17:27
-   |
-LL |     let _ = S.foo(HashMap<i32, i64>::default());
-   |                           ^^^ not a value
-
-error[E0423]: expected value, found builtin type `i64`
-  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:17:32
-   |
-LL |     let _ = S.foo(HashMap<i32, i64>::default());
-   |                                ^^^ not a value
-
-error[E0425]: cannot find external crate `default` in the crate root
-  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:17:38
-   |
-LL |     let _ = S.foo(HashMap<i32, i64>::default());
-   |                                      ^^^^^^^ not found in the crate root
+LL |     let _ = S.foo(HashMap::<i32, i64>::default());
+   |                          ++
 
 error[E0061]: this function takes 1 argument but 2 arguments were supplied
   --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:11:22
@@ -71,13 +35,13 @@ LL +     let _ = Arc::new(RwLock::new(HashMap<i32));
    |
 
 error[E0061]: this method takes 1 argument but 2 arguments were supplied
-  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:17:15
+  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:14:15
    |
 LL |     let _ = S.foo(HashMap<i32, i64>::default());
    |               ^^^              --------------- unexpected argument #2 of type `bool`
    |
 note: expected `HashMap<i32, i64>`, found `bool`
-  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:17:19
+  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:14:19
    |
 LL |     let _ = S.foo(HashMap<i32, i64>::default());
    |                   ^^^^^^^^^^^
@@ -94,7 +58,6 @@ LL -     let _ = S.foo(HashMap<i32, i64>::default());
 LL +     let _ = S.foo(/* HashMap<i32, i64> */);
    |
 
-error: aborting due to 10 previous errors
+error: aborting due to 4 previous errors
 
-Some errors have detailed explanations: E0061, E0423, E0425.
-For more information about an error, try `rustc --explain E0061`.
+For more information about this error, try `rustc --explain E0061`.
