@@ -439,11 +439,7 @@ pub(super) fn path(
     edition: Edition,
 ) -> String {
     let crate_name = module.krate(db).display_name(db).as_ref().map(|it| it.to_string());
-    let module_path = module
-        .path_to_root(db)
-        .into_iter()
-        .rev()
-        .flat_map(|it| it.name(db).map(|name| name.display(db, edition).to_string()));
+    let module_path = module.path_segments(db).map(|it| it.display(db, edition).to_string());
     crate_name.into_iter().chain(module_path).chain(item_name).join("::")
 }
 

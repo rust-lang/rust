@@ -753,10 +753,7 @@ impl flags::AnalysisStats {
             };
             if verbosity.is_spammy() {
                 let full_name = module
-                    .path_to_root(db)
-                    .into_iter()
-                    .rev()
-                    .filter_map(|it| it.name(db))
+                    .path_segments(db)
                     .chain(Some(body.name(db).unwrap_or_else(Name::missing)))
                     .map(|it| it.display(db, Edition::LATEST).to_string())
                     .join("::");
@@ -1487,10 +1484,7 @@ fn full_name(db: &RootDatabase, name: impl Fn() -> Option<Name>, module: hir::Mo
         .into_iter()
         .chain(
             module
-                .path_to_root(db)
-                .into_iter()
-                .filter_map(|it| it.name(db))
-                .rev()
+                .path_segments(db)
                 .chain(Some(name().unwrap_or_else(Name::missing)))
                 .map(|it| it.display(db, Edition::LATEST).to_string()),
         )

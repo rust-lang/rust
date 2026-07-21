@@ -438,12 +438,9 @@ impl ModuleDef {
     }
 
     pub fn canonical_path(&self, db: &dyn HirDatabase, edition: Edition) -> Option<String> {
-        let mut segments = vec![self.name(db)?];
-        for m in self.module(db)?.path_to_root(db) {
-            segments.extend(m.name(db))
-        }
-        segments.reverse();
-        Some(segments.iter().map(|it| it.display(db, edition)).join("::"))
+        let name = self.name(db)?;
+        let segments = self.module(db)?.path_segments(db).chain(Some(name));
+        Some(segments.map(|it| it.display(db, edition).to_string()).join("::"))
     }
 
     pub fn canonical_module_path(
@@ -677,6 +674,20 @@ impl Module {
             curr = next
         }
         res
+    }
+
+    /// Names of the modules enclosing `self`, crate root first, `self` last.
+    ///
+    /// Nameless modules — the crate root, and block modules — drop out, so this is
+    /// generally shorter than [`Module::path_to_root`]. Segments stay `Name`s rather
+    /// than rendered text because callers disagree on the edition to display with,
+    /// and some need to take the path apart rather than print it.
+    ///
+    /// [`ModuleDef::canonical_module_path`] is the same walk yielding the `Module`s
+    /// themselves, for callers that need more than the name — each module's own
+    /// edition, say.
+    pub fn path_segments(self, db: &dyn HirDatabase) -> impl Iterator<Item = Name> {
+        self.path_to_root(db).into_iter().rev().filter_map(|it| it.name(db))
     }
 
     pub fn modules_in_scope(&self, db: &dyn HirDatabase, pub_only: bool) -> Vec<(Name, Module)> {
