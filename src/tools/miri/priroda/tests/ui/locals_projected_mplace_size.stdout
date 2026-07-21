@@ -3,8 +3,8 @@
 {MANIFEST_DIR}/tests/ui/locals_projected_mplace_size.rs:36
 (priroda) Name: <none>, Id: _0, Ty: (), Value: <uninit>
 Name: <none>, Id: _1, Ty: Envelope, Value: [aa __ __ __ 22 11 33 __ 77 66 55 44 88 __ __ __ 00 ff ee dd cc bb aa 99 34 12 __ __ __ __ __ __]
-Name: prefix, Id: _1.0, Ty: u8, Value: <unsupported-projection>
-Name: target, Id: _1.1, Ty: Payload, Value: <unsupported-projection>
-Name: trailer, Id: _1.2, Ty: u64, Value: <unsupported-projection>
-Name: checksum, Id: _1.3, Ty: u16, Value: <unsupported-projection>
+Name: prefix, Id: _1.0, Ty: u8, Value: [aa]
+Name: target, Id: _1.1, Ty: Payload, Value: [22 11 33 __ 77 66 55 44 88 __ __ __]
+Name: trailer, Id: _1.2, Ty: u64, Value: [00 ff ee dd cc bb aa 99]
+Name: checksum, Id: _1.3, Ty: u16, Value: [34 12]
 (priroda) quitting

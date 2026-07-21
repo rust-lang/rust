@@ -505,6 +505,20 @@ impl<'tcx> PrirodaContext<'tcx> {
         interp_ok(format!("[{}]", rendered.join(" ")))
     }
 
+    /// Render an evaluated operand using the same raw representation for
+    /// whole locals and projected MIR places.
+    fn render_op(&self, op: OpTy<'tcx>) -> String {
+        match op.as_mplace_or_imm() {
+            Either::Right(imm) => format!("{imm}"),
+
+            Either::Left(mplace) =>
+                match self.render_mplace_bytes(&mplace).report_err() {
+                    Ok(bytes) => bytes,
+                    Err(err) => format!("<error: {}>", interpret::format_interp_error(err)),
+                },
+        }
+    }
+
     /// Render the source-side path from composite debug info, such as `.field`.
     fn render_source_projection(
         fragment: Option<&VarDebugInfoFragment<'tcx>>,
@@ -599,15 +613,7 @@ impl<'tcx> PrirodaContext<'tcx> {
                     .ecx
                     .local_to_op(local, None)
                     .expect("this error can only occur in CTFE on generic code");
-                local_desc.value = match op.as_mplace_or_imm() {
-                    Either::Right(imm) => format!("{imm}"),
-
-                    Either::Left(mplace) =>
-                        match self.render_mplace_bytes(&mplace).report_err() {
-                            Ok(bytes) => bytes,
-                            Err(err) => format!("<error: {}>", interpret::format_interp_error(err)),
-                        },
-                };
+                local_desc.value = self.render_op(op);
             }
         };
 
@@ -658,7 +664,8 @@ impl<'tcx> PrirodaContext<'tcx> {
         // and `_slice._extra`, not as two separate locals both named `_slice`.
 
         // Whole-place debug entries enrich the direct storage-local description.
-        // Projected places and constants are handled separately/deferred.
+        // Projected places are evaluated from their original MIR Place and use
+        // the same raw renderer as ordinary locals.
         for var_debug_info in &frame.body().var_debug_info {
             if let VarDebugInfoContents::Place(place) = &var_debug_info.value {
                 if let Some(local_idx) = place.as_local()
@@ -672,6 +679,13 @@ impl<'tcx> PrirodaContext<'tcx> {
                     let storage_projection = Self::render_storage_projection(place.projection);
                     let source_projection =
                         Self::render_source_projection(var_debug_info.composite.as_deref());
+                    let value = self
+                        .ecx
+                        .eval_place_to_op(*place, None)
+                        .map(|op| self.render_op(op))
+                        .unwrap_or_else(|err| {
+                            format!("<error: {}>", interpret::format_interp_error(err))
+                        });
 
                     local_descs.push(LocalDesc {
                         source_name: Some(var_debug_info.name),
@@ -679,8 +693,7 @@ impl<'tcx> PrirodaContext<'tcx> {
                         local: Some(place.local),
                         storage_projection,
                         ty: place.ty(local_decls, self.ecx.tcx.tcx).ty.to_string(),
-                        // FIXME: projection not handled yet.
-                        value: "<unsupported-projection>".to_string(),
+                        value,
                     });
                 }
             }
