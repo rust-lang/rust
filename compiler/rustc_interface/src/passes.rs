@@ -1299,10 +1299,24 @@ pub(crate) fn start_codegen<'tcx>(
 
     let metadata = rustc_metadata::fs::encode_and_write_metadata(tcx);
 
+    let is_host_metadata = tcx
+        .sess
+        .opts
+        .unstable_opts
+        .offload
+        .iter()
+        .any(|o| matches!(o, rustc_session::config::Offload::HostMetadata(_)));
+
     let codegen = tcx.sess.time("codegen_crate", || {
-        if tcx.sess.opts.unstable_opts.no_codegen || !tcx.sess.opts.output_types.should_codegen() {
-            // Skip crate items and just output metadata in -Z no-codegen mode.
+        if tcx.sess.opts.unstable_opts.no_codegen
+            || !tcx.sess.opts.output_types.should_codegen()
+            || is_host_metadata
+        {
             tcx.sess.dcx().abort_if_errors();
+
+            if is_host_metadata {
+                rustc_monomorphize::write_host_metadata_offload_manifest(tcx);
+            }
 
             // Linker::link will skip join_codegen in case of a CodegenResults Any value.
             Box::new(CompiledModules { modules: vec![], allocator_module: None })

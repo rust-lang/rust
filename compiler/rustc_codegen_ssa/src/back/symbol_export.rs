@@ -606,19 +606,11 @@ fn symbol_export_level(tcx: TyCtxt<'_>, sym_def_id: DefId) -> SymbolExportLevel 
     // are not considered for export
     let codegen_fn_attrs = tcx.codegen_fn_attrs(sym_def_id);
     let is_extern = codegen_fn_attrs.contains_extern_indicator();
-    let is_device_offload = tcx.sess.opts.unstable_opts.offload.iter().any(|o| {
-        matches!(
-            o,
-            rustc_session::config::Offload::DeviceWithManifest(_)
-                | rustc_session::config::Offload::Device
-        )
-    });
-    let is_offload = is_device_offload && is_offload_kernel(codegen_fn_attrs);
     let std_internal =
         codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL);
     let eii = codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::EXTERNALLY_IMPLEMENTABLE_ITEM);
 
-    if (is_extern && !std_internal && !eii) || is_offload {
+    if is_extern && !std_internal && !eii {
         let target = &tcx.sess.target.llvm_target;
         // WebAssembly cannot export data symbols, so reduce their export level
         // FIXME(jdonszelmann) don't do a substring match here.

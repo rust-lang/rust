@@ -861,7 +861,6 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                     &mut self.used_items,
                 );
 
-                // TODO(Sa4dUs): check why it only collects non generic fns
                 if let ty::FnDef(def_id, _) = *callee_ty.kind()
                     && self.tcx.is_intrinsic(def_id, rustc_span::sym::offload)
                     && let Some(kernel) = args.first()
@@ -1912,38 +1911,6 @@ pub(crate) fn collect_crate_mono_items<'tcx>(
     let mono_items = tcx.with_stable_hashing_context(move |mut hcx| {
         state.visited.into_inner().into_sorted(&mut hcx, true)
     });
-
-    // Write out the offload manifest of required generic kernel instantiations.
-    if let Some(path) = tcx.sess.opts.unstable_opts.offload.iter().find_map(|o| {
-        if let rustc_session::config::Offload::HostMetadata(p) = o { Some(p) } else { None }
-    }) {
-        let instances: Vec<ty::Instance<'tcx>> = mono_items
-            .iter()
-            .filter_map(|item| {
-                if let MonoItem::Fn(instance) = item {
-                    if tcx
-                        .codegen_fn_attrs(instance.def_id())
-                        .flags
-                        .contains(CodegenFnAttrFlags::OFFLOAD_KERNEL)
-                    {
-                        Some(*instance)
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
-            })
-            .collect();
-        if let Err(e) =
-            crate::offload_manifest::write_manifest(std::path::Path::new(path), tcx, &instances)
-        {
-            tcx.dcx().emit_fatal(crate::diagnostics::OffloadManifestWriteError {
-                path: path.clone(),
-                err: e.to_string(),
-            });
-        }
-    }
 
     (mono_items, state.usage_map.into_inner())
 }

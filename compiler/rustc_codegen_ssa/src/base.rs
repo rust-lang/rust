@@ -41,9 +41,8 @@ use tracing::{debug, info};
 use crate::assert_module_sources::CguReuse;
 use crate::back::link::are_upstream_rust_objects_already_included;
 use crate::back::write::{
-    ComputedLtoType, OngoingCodegen, compute_per_cgu_lto_type, empty_ongoing_codegen,
-    start_async_codegen, submit_codegened_module_to_llvm, submit_post_lto_module_to_llvm,
-    submit_pre_lto_module_to_llvm,
+    ComputedLtoType, OngoingCodegen, compute_per_cgu_lto_type, start_async_codegen,
+    submit_codegened_module_to_llvm, submit_post_lto_module_to_llvm, submit_pre_lto_module_to_llvm,
 };
 use crate::common::{self, IntPredicate, RealPredicate, TypeKind};
 use crate::meth::load_vtable;
@@ -700,21 +699,6 @@ pub fn codegen_crate<
     if tcx.sess.target.need_explicit_cpu && tcx.sess.opts.cg.target_cpu.is_none() {
         // The target has no default cpu, but none is set explicitly
         tcx.dcx().emit_fatal(diagnostics::CpuRequired);
-    }
-
-    // A `HostMetadata` pass only exists to collect the set of generic kernel instantiations
-    // required by the host and write the offload manifest.
-    let is_host_metadata = tcx
-        .sess
-        .opts
-        .unstable_opts
-        .offload
-        .iter()
-        .any(|o| matches!(o, rustc_session::config::Offload::HostMetadata(_)));
-
-    if is_host_metadata {
-        let _ = tcx.collect_and_partition_mono_items(());
-        return empty_ongoing_codegen(backend, tcx);
     }
 
     if let Some(target_cpu) = &tcx.sess.opts.cg.target_cpu

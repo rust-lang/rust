@@ -9,6 +9,8 @@ use std::fs;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lock;
 use rustc_hir::def_id::{DefId, DefIndex, LOCAL_CRATE};
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use rustc_middle::mono::MonoItem;
 use rustc_middle::ty::codec::{TyDecoder, TyEncoder};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_serialize::opaque::{FileEncoder, MemDecoder};
@@ -369,6 +371,50 @@ pub(crate) fn write_manifest<'tcx>(
     let mut encoder = OffloadManifestEncoder::new(path, tcx)?;
     instances.encode(&mut encoder);
     encoder.finish()
+}
+
+/// Write out the offload host-metadata manifest for `mono_items`. No-op unless
+/// the session was invoked with `-Zoffload=HostMetadata=<path>`.
+pub fn write_host_metadata_offload_manifest<'tcx>(tcx: TyCtxt<'tcx>) {
+    let Some(path) = tcx.sess.opts.unstable_opts.offload.iter().find_map(|o| {
+        if let rustc_session::config::Offload::HostMetadata(p) = o { Some(p) } else { None }
+    }) else {
+        return;
+    };
+
+    let partitions = tcx.collect_and_partition_mono_items(());
+    let mono_items: Vec<MonoItem<'_>> = partitions
+        .codegen_units
+        .iter()
+        .flat_map(|cgu| cgu.items().iter())
+        .map(|(item, _)| *item)
+        .collect();
+
+    let instances: Vec<ty::Instance<'tcx>> = mono_items
+        .iter()
+        .filter_map(|item| {
+            if let MonoItem::Fn(instance) = item {
+                if tcx
+                    .codegen_fn_attrs(instance.def_id())
+                    .flags
+                    .contains(CodegenFnAttrFlags::OFFLOAD_KERNEL)
+                {
+                    Some(*instance)
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    if let Err(e) = write_manifest(std::path::Path::new(path), tcx, &instances) {
+        tcx.dcx().emit_fatal(crate::diagnostics::OffloadManifestWriteError {
+            path: path.clone(),
+            err: e.to_string(),
+        });
+    }
 }
 
 /// Read a list of offload kernel instances from the manifest file.

@@ -160,12 +160,6 @@ impl<'tcx> MonoItem<'tcx> {
             return InstantiationMode::GloballyShared { may_conflict: false };
         }
 
-        // Offload kernels are looked up by symbol name at runtime by the host.
-        // They must be emitted exactly once with external linkage.
-        if codegen_fn_attrs.flags.intersects(CodegenFnAttrFlags::OFFLOAD_KERNEL) {
-            return InstantiationMode::GloballyShared { may_conflict: false };
-        }
-
         // This is technically a heuristic even though it's in the "not a heuristic" part of
         // instantiation mode selection.
         // It is surely possible to untangle this; the root problem is that the way we instantiate
