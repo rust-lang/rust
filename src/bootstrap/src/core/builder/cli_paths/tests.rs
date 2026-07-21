@@ -1,10 +1,8 @@
 use std::collections::{BTreeSet, HashSet};
-use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use crate::Build;
-use crate::core::builder::cli_paths::match_paths_to_steps_and_run;
 use crate::core::builder::{Builder, StepDescription};
 use crate::utils::tests::TestCtx;
 
@@ -34,7 +32,7 @@ fn render_steps_for_cli_args(args_str: &str) -> String {
     let mut builder = Builder::new(&build);
 
     // Tell the builder to log steps that it would run, instead of running them.
-    let mut buf = Arc::new(Mutex::new(String::new()));
+    let buf = Arc::new(Mutex::new(String::new()));
     let buf2 = Arc::clone(&buf);
     builder.log_cli_step_for_tests = Some(Box::new(move |step_desc, pathsets, targets| {
         use std::fmt::Write;

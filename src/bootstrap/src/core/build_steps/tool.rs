@@ -1235,6 +1235,7 @@ impl Step for LlvmBitcodeLinker {
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
+#[cfg_attr(test, expect(dead_code))]
 pub struct LibcxxVersionTool {
     pub target: TargetSelection,
 }

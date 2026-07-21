@@ -4,6 +4,7 @@
 use serde::{Deserialize, Deserializer};
 
 use crate::core::config::StringOrBool;
+#[cfg_attr(test, expect(unused_imports))]
 use crate::core::config::toml::{Merge, ReplaceOpt, TomlConfig};
 use crate::{HashMap, HashSet, PathBuf, define_config, exit};
 

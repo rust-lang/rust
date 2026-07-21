@@ -15,7 +15,6 @@
 //!
 //! More documentation can be found in each respective module below, and you can
 //! also check out the `src/bootstrap/README.md` file for more information.
-#![cfg_attr(test, allow(unused))]
 
 use std::cell::Cell;
 use std::collections::{BTreeSet, HashMap, HashSet};
