@@ -1,9 +1,10 @@
-error[E0404]: expected trait, found derive macro `Debug`
+error[E0404]: cannot find trait `Debug` in this scope
   --> $DIR/use-placement-resolve.rs:11:14
    |
 LL | fn foobar<T: Debug>(x: T) {}
-   |              ^^^^^ not a trait
+   |              ^^^^^ not found in this scope
    |
+   = note: a derive macro named `Debug` exists in another namespace
 help: consider importing this trait instead
    |
 LL + use std::fmt::Debug;

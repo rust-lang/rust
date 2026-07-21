@@ -1,4 +1,4 @@
-error[E0423]: expected value, found struct `Empty1`
+error[E0423]: cannot find value `Empty1` in this scope
   --> $DIR/empty-struct-braces-expr.rs:15:14
    |
 LL | struct Empty1 {}
@@ -12,6 +12,7 @@ LL |     let e1 = Empty1;
 LL | pub struct XEmpty2;
    | ------------------ similarly named unit struct `XEmpty2` defined here
    |
+   = note: a struct named `Empty1` exists in another namespace
 help: use struct literal syntax instead
    |
 LL |     let e1 = Empty1 {};
@@ -22,7 +23,7 @@ LL -     let e1 = Empty1;
 LL +     let e1 = XEmpty2;
    |
 
-error[E0423]: expected value, found struct `XEmpty1`
+error[E0423]: cannot find value `XEmpty1` in this scope
   --> $DIR/empty-struct-braces-expr.rs:22:15
    |
 LL |     let xe1 = XEmpty1;
@@ -35,6 +36,7 @@ LL | pub struct XEmpty1 {}
 LL | pub struct XEmpty2;
    | ------------------ similarly named unit struct `XEmpty2` defined here
    |
+   = note: a struct named `XEmpty1` exists in another namespace
 help: use struct literal syntax instead
    |
 LL |     let xe1 = XEmpty1 {};
@@ -45,7 +47,7 @@ LL -     let xe1 = XEmpty1;
 LL +     let xe1 = XEmpty2;
    |
 
-error[E0423]: expected function, tuple struct or tuple variant, found struct `Empty1`
+error[E0423]: cannot find function, tuple struct or tuple variant `Empty1` in this scope
   --> $DIR/empty-struct-braces-expr.rs:16:14
    |
 LL | struct Empty1 {}
@@ -59,6 +61,7 @@ LL |     let e1 = Empty1();
 LL | pub struct XEmpty2;
    | ------------------ similarly named unit struct `XEmpty2` defined here
    |
+   = note: a struct named `Empty1` exists in another namespace
 help: use struct literal syntax instead
    |
 LL -     let e1 = Empty1();
@@ -93,7 +96,7 @@ LL -     let e3 = E::Empty3();
 LL +     let e3 = E::Empty3 {};
    |
 
-error[E0423]: expected function, tuple struct or tuple variant, found struct `XEmpty1`
+error[E0423]: cannot find function, tuple struct or tuple variant `XEmpty1` in this scope
   --> $DIR/empty-struct-braces-expr.rs:23:15
    |
 LL |     let xe1 = XEmpty1();
@@ -106,6 +109,7 @@ LL | pub struct XEmpty1 {}
 LL | pub struct XEmpty2;
    | ------------------ similarly named unit struct `XEmpty2` defined here
    |
+   = note: a struct named `XEmpty1` exists in another namespace
 help: use struct literal syntax instead
    |
 LL -     let xe1 = XEmpty1();
