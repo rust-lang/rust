@@ -1,11 +1,16 @@
 #[cfg(feature = "master")]
-use gccjit::{FnAttribute, VarAttribute, LValue};
+use std::borrow::Cow;
+
+#[cfg(feature = "master")]
+use gccjit::{FnAttribute, Function, LValue, ToRValue, VarAttribute};
 use rustc_codegen_ssa::traits::PreDefineCodegenMethods;
 use rustc_hir::attrs::Linkage;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+#[cfg(feature = "master")]
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
 use rustc_middle::mono::Visibility;
 use rustc_middle::ty::layout::{FnAbiOf, HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, Instance, TypeVisitableExt};
@@ -44,6 +49,7 @@ impl<'gcc, 'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         let global = create_global(self, global_name, visibility);
 
         let attrs = self.tcx.codegen_instance_attrs(instance.def);
+        #[cfg(feature = "master")]
         self.add_static_aliases(&attrs.foreign_item_symbol_aliases, global_name, &create_global);
 
         self.instances.borrow_mut().insert(instance, global);
@@ -58,38 +64,28 @@ impl<'gcc, 'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     ) {
         assert!(!instance.args.has_infer());
 
-        let fn_abi = self.fn_abi_of_instance(instance, ty::List::empty());
-        self.linkage.set(base::linkage_to_gcc(linkage));
-        let decl = self.declare_fn(symbol_name, fn_abi);
-        //let attrs = self.tcx.codegen_instance_attrs(instance.def);
+        let attrs = self.tcx.codegen_instance_attrs(instance.def);
 
-        attributes::from_fn_attrs(self, decl, instance);
+        let decl =
+            self.predefine_without_aliases(instance, &attrs, linkage, visibility, symbol_name);
 
-        // If we're compiling the compiler-builtins crate, e.g., the equivalent of
-        // compiler-rt, then we want to implicitly compile everything with hidden
-        // visibility as we're going to link this object all over the place but
-        // don't want the symbols to get exported.
-        if linkage != Linkage::Internal && self.tcx.is_compiler_builtins(LOCAL_CRATE) {
-            #[cfg(feature = "master")]
-            decl.add_attribute(FnAttribute::Visibility(gccjit::Visibility::Hidden));
-        } else if visibility != Visibility::Default {
-            #[cfg(feature = "master")]
-            decl.add_attribute(FnAttribute::Visibility(base::visibility_to_gcc(visibility)));
-        }
-
-        // FIXME(antoyo): call set_link_section() to allow initializing argc/argv.
-        // FIXME(antoyo): set unique comdat.
-        // FIXME(antoyo): use inline attribute from there in linkage.set() above.
+        #[cfg(feature = "master")]
+        self.add_function_aliases(instance, decl, &attrs, &attrs.foreign_item_symbol_aliases);
 
         self.functions.borrow_mut().insert(symbol_name.to_string(), decl);
         self.function_instances.borrow_mut().insert(instance, decl);
     }
 }
 
-#[cfg(feature = "master")]
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
-    fn add_static_aliases<F>(&self, aliases: &[(DefId, Linkage, Visibility)], aliasee: &str, create_global: &F)
-        where F: Fn(&CodegenCx<'gcc, 'tcx>, &str, Visibility) -> LValue<'gcc>
+    #[cfg(feature = "master")]
+    fn add_static_aliases<F>(
+        &self,
+        aliases: &[(DefId, Linkage, Visibility)],
+        aliasee: &str,
+        create_global: &F,
+    ) where
+        F: Fn(&CodegenCx<'gcc, 'tcx>, &str, Visibility) -> LValue<'gcc>,
     {
         for (alias, _linkage, visibility) in aliases {
             let instance = Instance::mono(self.tcx, *alias);
@@ -106,5 +102,80 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             // which would result in incorrect codegen
             assert!(prev_entry.is_none(), "An instance was already present for {instance:?}");
         }
+    }
+
+    #[cfg(feature = "master")]
+    fn add_function_aliases(
+        &self,
+        aliasee_instance: Instance<'tcx>,
+        aliasee: Function<'gcc>,
+        attrs: &Cow<'_, CodegenFnAttrs>,
+        aliases: &[(DefId, Linkage, Visibility)],
+    ) {
+        for (alias, linkage, visibility) in aliases {
+            let symbol_name = self.tcx.symbol_name(Instance::mono(self.tcx, *alias));
+
+            // predefine another copy of the original instance
+            // with a new symbol name
+            let alias_fn_decl = self.predefine_without_aliases(
+                aliasee_instance,
+                attrs,
+                *linkage,
+                *visibility,
+                symbol_name.name,
+            );
+
+            let block = alias_fn_decl.new_block("start");
+            let nb_params = alias_fn_decl.get_param_count();
+            let mut args = Vec::with_capacity(nb_params);
+            for idx in 0..nb_params {
+                args.push(alias_fn_decl.get_param(idx as _).to_rvalue());
+            }
+
+            let void_type = self.context.new_type::<()>();
+            let call = self.context.new_call(None, aliasee, &args);
+            if alias_fn_decl.get_return_type() == void_type {
+                block.add_eval(None, call);
+                block.end_with_void_return(None);
+            } else {
+                block.end_with_return(None, call);
+            }
+        }
+    }
+
+    fn predefine_without_aliases(
+        &self,
+        instance: Instance<'tcx>,
+        _attrs: &Cow<'_, CodegenFnAttrs>,
+        linkage: Linkage,
+        visibility: Visibility,
+        symbol_name: &str,
+    ) -> Function<'gcc> {
+        let fn_abi = self.fn_abi_of_instance(instance, ty::List::empty());
+        self.linkage.set(base::linkage_to_gcc(linkage));
+        let fn_decl = self.declare_fn(symbol_name, fn_abi);
+
+        attributes::from_fn_attrs(self, fn_decl, instance);
+
+        // If we're compiling the compiler-builtins crate, e.g., the equivalent of
+        // compiler-rt, then we want to implicitly compile everything with hidden
+        // visibility as we're going to link this object all over the place but
+        // don't want the symbols to get exported.
+        if linkage != Linkage::Internal && self.tcx.is_compiler_builtins(LOCAL_CRATE) {
+            #[cfg(feature = "master")]
+            fn_decl.add_attribute(FnAttribute::Visibility(gccjit::Visibility::Hidden));
+        } else if visibility != Visibility::Default {
+            #[cfg(feature = "master")]
+            fn_decl.add_attribute(FnAttribute::Visibility(base::visibility_to_gcc(visibility)));
+        }
+
+        // FIXME(GuillaumeGomez): Add support for link section for `Function`.
+        // fn_decl.set_link_section(&attrs.link_section);
+
+        // FIXME(antoyo): set unique comdat.
+        // FIXME(antoyo): use inline attribute from there in linkage.set() above.
+        // FIXME: Should we handle dso?
+
+        fn_decl
     }
 }
