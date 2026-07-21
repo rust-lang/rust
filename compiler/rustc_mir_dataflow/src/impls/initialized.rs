@@ -228,7 +228,6 @@ pub struct MaybeUninitializedPlaces<'a, 'tcx> {
     move_data: &'a MoveData<'tcx>,
 
     mark_inactive_variants_as_uninit: bool,
-    include_inactive_in_otherwise: bool,
     skip_unreachable_unwind: DenseBitSet<mir::BasicBlock>,
 }
 
@@ -239,7 +238,6 @@ impl<'a, 'tcx> MaybeUninitializedPlaces<'a, 'tcx> {
             body,
             move_data,
             mark_inactive_variants_as_uninit: false,
-            include_inactive_in_otherwise: false,
             skip_unreachable_unwind: DenseBitSet::new_empty(body.basic_blocks.len()),
         }
     }
@@ -251,13 +249,6 @@ impl<'a, 'tcx> MaybeUninitializedPlaces<'a, 'tcx> {
     /// checker, where this information gets propagated along `FakeEdge`s.
     pub fn mark_inactive_variants_as_uninit(mut self) -> Self {
         self.mark_inactive_variants_as_uninit = true;
-        self
-    }
-
-    /// Ensures definitely inactive variants are included in the set of uninitialized places for
-    /// blocks reached through an `otherwise` edge.
-    pub fn include_inactive_in_otherwise(mut self) -> Self {
-        self.include_inactive_in_otherwise = true;
         self
     }
 
@@ -585,10 +576,7 @@ impl<'tcx> Analysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
             SwitchTargetIndex::Normal(target_idx) => {
                 InactiveVariants::Active(data.variants[target_idx])
             }
-            SwitchTargetIndex::Otherwise if self.include_inactive_in_otherwise => {
-                InactiveVariants::Inactives(data.variants.clone())
-            }
-            _ => return,
+            SwitchTargetIndex::Otherwise => InactiveVariants::Inactives(data.variants.clone()),
         };
 
         // Mark all move paths that correspond to variants other than this one as maybe
