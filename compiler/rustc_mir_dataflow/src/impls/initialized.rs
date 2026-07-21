@@ -1,15 +1,20 @@
 use std::assert_matches;
 
 use rustc_abi::VariantIdx;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_index::bit_set::{DenseBitSet, MixedBitSet};
 use rustc_middle::bug;
-use rustc_middle::mir::{self, Body, CallReturnPlaces, Local, Location, TerminatorEdges};
+use rustc_middle::mir::{
+    self, BasicBlock, Body, CallReturnPlaces, Local, Location, StatementKind, TerminatorEdges,
+};
 use rustc_middle::ty::{self, TyCtxt};
 use smallvec::SmallVec;
 use tracing::instrument;
 
 use crate::drop_flag_effects::{DropFlagState, InactiveVariants};
-use crate::move_paths::{HasMoveData, InitKind, LookupResult, MoveData, MovePathIndex};
+use crate::move_paths::{
+    HasMoveData, Init, InitKind, InitLocation, LookupResult, MoveData, MovePathIndex,
+};
 use crate::{
     Analysis, GenKill, MaybeReachable, SwitchTargetIndex, drop_flag_effects,
     drop_flag_effects_for_function_entry, drop_flag_effects_for_location, on_all_children_bits,
@@ -669,5 +674,67 @@ impl<'tcx> Analysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
                 None
             }
         }));
+    }
+}
+
+impl EverInitializedPlaces<'_, '_> {
+    /// Whether the init of `local` at `init` can reach `target` via a path that doesn't pass
+    /// through a `StorageDead(local)`. Mirrors the gen/kill structure of `EverInitializedPlaces`.
+    pub fn init_reaches_location(
+        body: &Body<'_>,
+        local: Local,
+        init: Init,
+        target: Location,
+    ) -> bool {
+        let init_loc = match init.location {
+            // Arguments are initialized on entry, and `StorageDead` is never emitted for them, so
+            // they reach every location.
+            InitLocation::Argument(_) => return true,
+            InitLocation::Statement(init_loc) => init_loc,
+        };
+
+        // Worklist of locations to walk forward from, seeded with the location(s) following `init`.
+        let mut queue = vec![];
+
+        let basic_blocks = &body.basic_blocks;
+        let init_block_data = &basic_blocks[init_loc.block];
+        if init_loc.statement_index < init_block_data.statements.len() {
+            // This case mirrors `apply_primary_statement_effect`.
+            queue.push(init_loc.successor_within_block());
+        } else if init.kind == InitKind::NonPanicPathOnly {
+            // This case mirrors `apply_call_return_effect`.
+            let TerminatorEdges::AssignOnReturn { return_, .. } =
+                init_block_data.terminator().edges()
+            else {
+                bug!("`NonPanicPathOnly` should only be seen on terminators with return edges");
+            };
+            queue.extend(return_.into_iter().map(BasicBlock::start_location));
+        } else {
+            // This case mirrors `apply_primary_terminator_effect`.
+            queue.extend(init_block_data.terminator().successors().map(BasicBlock::start_location));
+        }
+
+        let mut visited = FxIndexSet::default();
+        'outer: while let Some(loc) = queue.pop() {
+            if !visited.insert(loc) {
+                continue;
+            }
+            // Walk from `loc` to the end of its block, looking for `target` or a kill.
+            let block_data = &basic_blocks[loc.block];
+            for statement_index in loc.statement_index..=block_data.statements.len() {
+                if target == (Location { block: loc.block, statement_index }) {
+                    return true;
+                }
+                if let Some(stmt) = block_data.statements.get(statement_index)
+                    && let StatementKind::StorageDead(dead) = stmt.kind
+                    && dead == local
+                {
+                    continue 'outer;
+                }
+            }
+
+            queue.extend(block_data.terminator().successors().map(BasicBlock::start_location));
+        }
+        false
     }
 }
