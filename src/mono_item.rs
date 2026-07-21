@@ -1,16 +1,12 @@
+use gccjit::Function;
 #[cfg(feature = "master")]
-use std::borrow::Cow;
-
-#[cfg(feature = "master")]
-use gccjit::{FnAttribute, Function, LValue, ToRValue, VarAttribute};
+use gccjit::{FnAttribute, LValue, ToRValue, VarAttribute};
 use rustc_codegen_ssa::traits::PreDefineCodegenMethods;
 use rustc_hir::attrs::Linkage;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::bug;
-use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-#[cfg(feature = "master")]
-use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
+use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
 use rustc_middle::mono::Visibility;
 use rustc_middle::ty::layout::{FnAbiOf, HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, Instance, TypeVisitableExt};
@@ -87,11 +83,11 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     ) where
         F: Fn(&CodegenCx<'gcc, 'tcx>, &str, Visibility) -> LValue<'gcc>,
     {
-        for (alias, _linkage, visibility) in aliases {
-            let instance = Instance::mono(self.tcx, *alias);
+        for &(alias, _linkage, visibility) in aliases {
+            let instance = Instance::mono(self.tcx, alias);
             let symbol_name = self.tcx.symbol_name(instance);
 
-            let alias = create_global(self, symbol_name.name, *visibility);
+            let alias = create_global(self, symbol_name.name, visibility);
             alias.add_attribute(VarAttribute::Alias(aliasee));
 
             // Add the alias name to the set of cached items, so there is no duplicate
@@ -109,19 +105,19 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         &self,
         aliasee_instance: Instance<'tcx>,
         aliasee: Function<'gcc>,
-        attrs: &Cow<'_, CodegenFnAttrs>,
+        attrs: &CodegenFnAttrs,
         aliases: &[(DefId, Linkage, Visibility)],
     ) {
-        for (alias, linkage, visibility) in aliases {
-            let symbol_name = self.tcx.symbol_name(Instance::mono(self.tcx, *alias));
+        for &(alias, linkage, visibility) in aliases {
+            let symbol_name = self.tcx.symbol_name(Instance::mono(self.tcx, alias));
 
             // predefine another copy of the original instance
             // with a new symbol name
             let alias_fn_decl = self.predefine_without_aliases(
                 aliasee_instance,
                 attrs,
-                *linkage,
-                *visibility,
+                linkage,
+                visibility,
                 symbol_name.name,
             );
 
@@ -146,7 +142,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     fn predefine_without_aliases(
         &self,
         instance: Instance<'tcx>,
-        _attrs: &Cow<'_, CodegenFnAttrs>,
+        _attrs: &CodegenFnAttrs,
         linkage: Linkage,
         visibility: Visibility,
         symbol_name: &str,
