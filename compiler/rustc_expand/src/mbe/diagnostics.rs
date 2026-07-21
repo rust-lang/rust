@@ -297,7 +297,7 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
         }
     }
 
-    fn ambiguity(&mut self, parser: &Parser<'_>) {
+    fn ambiguity(&mut self) {
         let Some((_, matcher)) = self.current else {
             bug!("`Self::prepare()` was not called to initialize context");
         };
@@ -306,22 +306,38 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
             rustc::potential_query_instability,
             reason = "sorting the results deterministically afterwards"
         )]
-        let (mut bb_locs, mut next_locs) = self
-            .matches
+        let mut matches = self.matches.iter().collect::<Vec<_>>();
+        // Sort by input position, then `MatcherLoc` index.
+        matches.sort_unstable();
+
+        // Identify the earliest position where ambiguity occurred.
+        let input_pos = matches
+            .array_windows::<2>()
+            .find(|ms @ [a, b]| {
+                let mut locs = ms.iter().map(|x| &matcher[x.loc_index as usize]);
+                a.input_pos == b.input_pos
+                    && locs
+                        .any(|loc| matches!(loc, MatcherLoc::MetaVarDecl { .. } | MatcherLoc::Eof))
+            })
+            .map(|[a, _]| a.input_pos)
+            .unwrap_or_else(|| bug!("no ambiguity detected"));
+
+        let (bb_locs, next_locs) = matches
             .iter()
-            .filter(|m| m.input_pos == parser.approx_token_stream_pos())
+            .filter(|m| m.input_pos == input_pos)
             .partition::<Vec<&SuccessfulMatch>, _>(|m| {
                 let loc = &matcher[m.loc_index as usize];
                 matches!(loc, MatcherLoc::MetaVarDecl { .. })
             });
 
-        // Use a reasonable and deterministic ordering for data in the error message.
-        bb_locs.sort_unstable_by_key(|m| m.loc_index);
-        next_locs.sort_unstable_by_key(|m| m.loc_index);
+        debug_assert!(bb_locs.iter().is_sorted());
+        debug_assert!(next_locs.iter().is_sorted());
 
-        let span = parser.token.span.substitute_dummy(self.root_span);
+        let token = *self.tokens.get(&input_pos).unwrap();
 
-        if parser.token == token::Eof {
+        let span = token.span.substitute_dummy(self.root_span);
+
+        if token == token::Eof {
             let msg = "ambiguity: multiple successful parses".to_string();
             let guar = self.dcx.span_err(span, msg);
             self.result = Some((span, guar));

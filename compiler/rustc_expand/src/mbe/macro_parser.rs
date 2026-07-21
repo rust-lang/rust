@@ -675,7 +675,7 @@ impl TtParser {
         }
 
         if std::mem::take(&mut self.found_ambiguity) || !self.next_mps.is_empty() {
-            track.ambiguity(parser);
+            track.ambiguity();
             ControlFlow::Break(Some(Ambiguity))
         } else {
             ControlFlow::Continue(())
