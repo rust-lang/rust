@@ -1,17 +1,10 @@
 use crate::simd::{
-    Simd, SimdElement,
+    Simd,
     num::{SimdFloat, SimdInt, SimdUint},
 };
 
-mod sealed {
-    use super::*;
-    pub trait Sealed {}
-    impl<T: SimdElement, const N: usize> Sealed for Simd<T, N> {}
-}
-use sealed::Sealed;
-
 /// Converts SIMD vectors to vectors of bytes
-pub trait ToBytes: Sealed {
+pub impl(self) trait ToBytes {
     /// This type, reinterpreted as bytes.
     type Bytes: Copy
         + Unpin
