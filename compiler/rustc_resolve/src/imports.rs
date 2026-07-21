@@ -795,13 +795,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
             self.write_import_resolutions(&imports_to_resolve);
 
-            self.indeterminate_imports = imports_to_resolve
-                .extract_if(.., |(_, _, count)| {
-                    indeterminate_count += *count;
-                    *count > 0
-                })
-                .collect();
-            self.determined_imports.extend(imports_to_resolve.into_iter().map(|(i, _, _)| i));
+            let determined_imports = imports_to_resolve.extract_if(.., |(.., count)| {
+                indeterminate_count += *count;
+                *count == 0
+            });
+            self.determined_imports.extend(determined_imports.map(|(import, ..)| import));
+            self.indeterminate_imports = imports_to_resolve;
         }
     }
 
