@@ -713,6 +713,40 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         })
     }
 
+    fn pretty_print_closure_inner(
+        &mut self,
+        did: DefId,
+        args: ty::GenericArgsRef<'tcx>,
+    ) -> Result<(), PrintError> {
+        if self.should_truncate() {
+            write!(self, "@...")
+        } else if self.tcx().sess.opts.unstable_opts.span_free_formats {
+            write!(self, "@")?;
+            self.print_def_path(did, args)
+        } else if let Some(did) = did.as_local() {
+            let span = self.tcx().def_span(did);
+            let loc = if with_forced_trimmed_paths() {
+                self.tcx()
+                    .sess
+                    .source_map()
+                    .span_to_short_string(span, RemapPathScopeComponents::DIAGNOSTICS)
+            } else {
+                self.tcx().sess.source_map().span_to_diagnostic_string(span)
+            };
+            write!(
+                self,
+                "@{}",
+                // This may end up in stderr diagnostics but it may also be
+                // emitted into MIR. Hence we use the remapped path if
+                // available
+                loc
+            )
+        } else {
+            write!(self, "@")?;
+            self.print_def_path(did, args)
+        }
+    }
+
     fn pretty_print_type(&mut self, ty: Ty<'tcx>) -> Result<(), PrintError> {
         match *ty.kind() {
             ty::Bool => write!(self, "bool")?,
@@ -904,22 +938,12 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                         //
                         // This will look like:
                         //    {async fn body of some_fn()}
-                        let did_of_the_fn_item = self.tcx().parent(did);
                         write!(self, " of ")?;
+                        let did_of_the_fn_item = self.tcx().parent(did);
                         self.print_def_path(did_of_the_fn_item, args)?;
                         write!(self, "()")?;
-                    } else if let Some(local_did) = did.as_local() {
-                        let span = self.tcx().def_span(local_did);
-                        write!(
-                            self,
-                            "@{}",
-                            // This may end up in stderr diagnostics but it may also be emitted
-                            // into MIR. Hence we use the remapped path if available
-                            self.tcx().sess.source_map().span_to_diagnostic_string(span)
-                        )?;
                     } else {
-                        write!(self, "@")?;
-                        self.print_def_path(did, args)?;
+                        self.pretty_print_closure_inner(did, args)?;
                     }
                 } else {
                     self.print_def_path(did, args)?;
@@ -937,63 +961,19 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             }
             ty::CoroutineWitness(did, args) => {
                 write!(self, "{{")?;
-                if !self.tcx().sess.verbose_internals() {
+                if !self.should_print_verbose() {
                     write!(self, "coroutine witness")?;
-                    if let Some(did) = did.as_local() {
-                        let span = self.tcx().def_span(did);
-                        write!(
-                            self,
-                            "@{}",
-                            // This may end up in stderr diagnostics but it may also be emitted
-                            // into MIR. Hence we use the remapped path if available
-                            self.tcx().sess.source_map().span_to_diagnostic_string(span)
-                        )?;
-                    } else {
-                        write!(self, "@")?;
-                        self.print_def_path(did, args)?;
-                    }
+                    self.pretty_print_closure_inner(did, args)?;
                 } else {
                     self.print_def_path(did, args)?;
                 }
-
                 write!(self, "}}")?
             }
             ty::Closure(did, args) => {
                 write!(self, "{{")?;
                 if !self.should_print_verbose() {
                     write!(self, "closure")?;
-                    if self.should_truncate() {
-                        write!(self, "@...}}")?;
-                        return Ok(());
-                    } else {
-                        if let Some(did) = did.as_local() {
-                            if self.tcx().sess.opts.unstable_opts.span_free_formats {
-                                write!(self, "@")?;
-                                self.print_def_path(did.to_def_id(), args)?;
-                            } else {
-                                let span = self.tcx().def_span(did);
-                                let loc = if with_forced_trimmed_paths() {
-                                    self.tcx().sess.source_map().span_to_short_string(
-                                        span,
-                                        RemapPathScopeComponents::DIAGNOSTICS,
-                                    )
-                                } else {
-                                    self.tcx().sess.source_map().span_to_diagnostic_string(span)
-                                };
-                                write!(
-                                    self,
-                                    "@{}",
-                                    // This may end up in stderr diagnostics but it may also be
-                                    // emitted into MIR. Hence we use the remapped path if
-                                    // available
-                                    loc
-                                )?;
-                            }
-                        } else {
-                            write!(self, "@")?;
-                            self.print_def_path(did, args)?;
-                        }
-                    }
+                    self.pretty_print_closure_inner(did, args)?;
                 } else {
                     self.print_def_path(did, args)?;
                     write!(self, " closure_kind_ty=")?;
@@ -1011,43 +991,14 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     match self.tcx().coroutine_kind(self.tcx().coroutine_for_closure(did)).unwrap()
                     {
                         hir::CoroutineKind::Desugared(
-                            hir::CoroutineDesugaring::Async,
+                            desugaring,
                             hir::CoroutineSource::Closure,
-                        ) => write!(self, "async closure")?,
-                        hir::CoroutineKind::Desugared(
-                            hir::CoroutineDesugaring::AsyncGen,
-                            hir::CoroutineSource::Closure,
-                        ) => write!(self, "async gen closure")?,
-                        hir::CoroutineKind::Desugared(
-                            hir::CoroutineDesugaring::Gen,
-                            hir::CoroutineSource::Closure,
-                        ) => write!(self, "gen closure")?,
+                        ) => write!(self, "{desugaring}closure")?,
                         _ => unreachable!(
                             "coroutine from coroutine-closure should have CoroutineSource::Closure"
                         ),
-                    }
-                    if let Some(did) = did.as_local() {
-                        if self.tcx().sess.opts.unstable_opts.span_free_formats {
-                            write!(self, "@")?;
-                            self.print_def_path(did.to_def_id(), args)?;
-                        } else {
-                            let span = self.tcx().def_span(did);
-                            // This may end up in stderr diagnostics but it may also be emitted
-                            // into MIR. Hence we use the remapped path if available
-                            let loc = if with_forced_trimmed_paths() {
-                                self.tcx().sess.source_map().span_to_short_string(
-                                    span,
-                                    RemapPathScopeComponents::DIAGNOSTICS,
-                                )
-                            } else {
-                                self.tcx().sess.source_map().span_to_diagnostic_string(span)
-                            };
-                            write!(self, "@{loc}")?;
-                        }
-                    } else {
-                        write!(self, "@")?;
-                        self.print_def_path(did, args)?;
-                    }
+                    };
+                    self.pretty_print_closure_inner(did, args)?;
                 } else {
                     self.print_def_path(did, args)?;
                     write!(self, " closure_kind_ty=")?;

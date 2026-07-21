@@ -4,11 +4,13 @@ error[E0425]: cannot find value `debug` in this scope
 LL |     log(debug, m1::arguments);
    |         ^^^^^ not found in this scope
 
-error[E0423]: expected value, found module `m1::arguments`
-  --> $DIR/bad-expr-path2.rs:6:16
+error[E0423]: cannot find value `arguments` in module `m1`
+  --> $DIR/bad-expr-path2.rs:6:20
    |
 LL |     log(debug, m1::arguments);
-   |                ^^^^^^^^^^^^^ not a value
+   |                    ^^^^^^^^^ not found in `m1`
+   |
+   = note: a module named `m1::arguments` exists in another namespace
 
 error[E0580]: `main` function has wrong type
   --> $DIR/bad-expr-path2.rs:5:1

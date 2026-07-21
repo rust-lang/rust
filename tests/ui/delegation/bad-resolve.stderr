@@ -40,11 +40,13 @@ error[E0423]: expected function, found associated constant `Trait::C`
 LL |     reuse <F as Trait>::C;
    |           ^^^^^^^^^^^^^^^ not a function
 
-error[E0575]: expected method or associated constant, found associated type `Trait::Type`
-  --> $DIR/bad-resolve.rs:26:11
+error[E0575]: cannot find method or associated constant `Type` in trait `Trait`
+  --> $DIR/bad-resolve.rs:26:25
    |
 LL |     reuse <F as Trait>::Type;
-   |           ^^^^^^^^^^^^^^^^^^ not a method or associated constant
+   |                         ^^^^ not found in `Trait`
+   |
+   = note: an associated type named `Trait::Type` exists in another namespace
 
 error[E0576]: cannot find method or associated constant `baz` in trait `Trait`
   --> $DIR/bad-resolve.rs:29:25
@@ -82,11 +84,13 @@ LL -     reuse Trait::foo2 { self.0 }
 LL +     reuse Trait::foo { self.0 }
    |
 
-error[E0423]: expected function, found module `prefix::self`
-  --> $DIR/bad-resolve.rs:44:7
+error[E0423]: cannot find function `self` in module `prefix`
+  --> $DIR/bad-resolve.rs:44:16
    |
 LL | reuse prefix::{self, super, crate};
-   |       ^^^^^^ not a function
+   |                ^^^^ not found in `prefix`
+   |
+   = note: a module named `prefix::self` exists in another namespace
 
 error[E0186]: method `foo` has a `&self` declaration in the trait, but not in the impl
   --> $DIR/bad-resolve.rs:34:11

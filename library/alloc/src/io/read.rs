@@ -795,9 +795,7 @@ pub const DEFAULT_BUF_SIZE: usize = cfg_select! {
 /// 2. We're passing a raw buffer to the function `f`, and it is expected that
 ///    the function only *appends* bytes to the buffer. We'll get undefined
 ///    behavior if existing bytes are overwritten to have non-UTF-8 data.
-#[doc(hidden)]
-#[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
-pub unsafe fn append_to_string<F>(buf: &mut String, f: F) -> Result<usize>
+pub(super) unsafe fn append_to_string<F>(buf: &mut String, f: F) -> Result<usize>
 where
     F: FnOnce(&mut Vec<u8>) -> Result<usize>,
 {
@@ -988,9 +986,7 @@ where
     read(buf)
 }
 
-#[doc(hidden)]
-#[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
-pub fn default_read_exact<R: Read + ?Sized>(this: &mut R, mut buf: &mut [u8]) -> Result<()> {
+pub(super) fn default_read_exact<R: Read + ?Sized>(this: &mut R, mut buf: &mut [u8]) -> Result<()> {
     while !buf.is_empty() {
         match this.read(buf) {
             Ok(0) => break,
@@ -1015,9 +1011,7 @@ where
     Ok(())
 }
 
-#[doc(hidden)]
-#[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
-pub fn default_read_buf_exact<R: Read + ?Sized>(
+pub(super) fn default_read_buf_exact<R: Read + ?Sized>(
     this: &mut R,
     mut cursor: BorrowedCursor<'_, u8>,
 ) -> Result<()> {

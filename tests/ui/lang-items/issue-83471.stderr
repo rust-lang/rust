@@ -1,8 +1,10 @@
-error[E0573]: expected type, found built-in attribute `export_name`
+error[E0573]: cannot find type `export_name` in this scope
   --> $DIR/issue-83471.rs:24:13
    |
 LL |     fn call(export_name);
-   |             ^^^^^^^^^^^ not a type
+   |             ^^^^^^^^^^^ not found in this scope
+   |
+   = note: a built-in attribute named `export_name` exists in another namespace
 
 warning: anonymous parameters are deprecated and will be removed in the next edition
   --> $DIR/issue-83471.rs:24:13

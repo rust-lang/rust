@@ -21,6 +21,15 @@ pub(crate) struct BothFfiConstAndPure {
 }
 
 #[derive(Diagnostic)]
+#[diag("attribute should be applied to `#[repr(transparent)]` types")]
+pub(crate) struct RustcPubTransparent {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label("not a `#[repr(transparent)]` type")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("{$attr_str} attribute cannot have empty value")]
 pub(crate) struct DocAliasEmpty<'a> {
     #[primary_span]
