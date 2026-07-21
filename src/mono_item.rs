@@ -1,5 +1,5 @@
 #[cfg(feature = "master")]
-use gccjit::{FnAttribute, VarAttribute};
+use gccjit::{FnAttribute, VarAttribute, LValue};
 use rustc_codegen_ssa::traits::PreDefineCodegenMethods;
 use rustc_hir::attrs::Linkage;
 use rustc_hir::def::DefKind;
@@ -21,7 +21,7 @@ impl<'gcc, 'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         def_id: DefId,
         _linkage: Linkage,
         visibility: Visibility,
-        symbol_name: &str,
+        global_name: &str,
     ) {
         let attrs = self.tcx.codegen_fn_attrs(def_id);
         let instance = Instance::mono(self.tcx, def_id);
@@ -33,11 +33,19 @@ impl<'gcc, 'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         let gcc_type = self.layout_of(ty).gcc_type(self);
 
         let is_tls = attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL);
-        let global = self.define_global(symbol_name, gcc_type, is_tls, attrs.link_section);
-        #[cfg(feature = "master")]
-        global.add_attribute(VarAttribute::Visibility(base::visibility_to_gcc(visibility)));
 
-        // FIXME(antoyo): set linkage.
+        let create_global = |this: &CodegenCx<'gcc, 'tcx>, name: &str, visibility: Visibility| {
+            let global = this.define_global(name, gcc_type, is_tls, attrs.link_section);
+            #[cfg(feature = "master")]
+            global.add_attribute(VarAttribute::Visibility(base::visibility_to_gcc(visibility)));
+            // FIXME(antoyo): set linkage.
+            global
+        };
+        let global = create_global(self, global_name, visibility);
+
+        let attrs = self.tcx.codegen_instance_attrs(instance.def);
+        self.add_static_aliases(&attrs.foreign_item_symbol_aliases, global_name, &create_global);
+
         self.instances.borrow_mut().insert(instance, global);
     }
 
@@ -75,5 +83,28 @@ impl<'gcc, 'tcx> PreDefineCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
 
         self.functions.borrow_mut().insert(symbol_name.to_string(), decl);
         self.function_instances.borrow_mut().insert(instance, decl);
+    }
+}
+
+#[cfg(feature = "master")]
+impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
+    fn add_static_aliases<F>(&self, aliases: &[(DefId, Linkage, Visibility)], aliasee: &str, create_global: &F)
+        where F: Fn(&CodegenCx<'gcc, 'tcx>, &str, Visibility) -> LValue<'gcc>
+    {
+        for (alias, _linkage, visibility) in aliases {
+            let instance = Instance::mono(self.tcx, *alias);
+            let symbol_name = self.tcx.symbol_name(instance);
+
+            let alias = create_global(self, symbol_name.name, *visibility);
+            alias.add_attribute(VarAttribute::Alias(aliasee));
+
+            // Add the alias name to the set of cached items, so there is no duplicate
+            // instance added to it during the normal `external static` codegen
+            let prev_entry = self.instances.borrow_mut().insert(instance, alias);
+
+            // If there already was a previous entry, then `add_static_aliases` was called multiple times for the same `alias`
+            // which would result in incorrect codegen
+            assert!(prev_entry.is_none(), "An instance was already present for {instance:?}");
+        }
     }
 }
