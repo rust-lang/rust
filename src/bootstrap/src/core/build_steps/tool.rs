@@ -141,6 +141,7 @@ impl Step for ToolBuild {
         let pgo_config = match self.path {
             "src/tools/rustdoc" => Some(&builder.config.rustdoc_pgo),
             "src/tools/cargo" => Some(&builder.config.cargo_pgo),
+            "src/tools/clippy" => Some(&builder.config.clippy_pgo),
             _ => None,
         };
         if let Some(pgo_config) = pgo_config {

@@ -995,6 +995,11 @@
 # Instrument cargo, so that when executed, it will gather profiles
 # to this path.
 #pgo.cargo.generate = "/tmp/profiles/foo.profraw"
+# Use the following profile to PGO optimize clippy.
+#pgo.clippy.use = "/tmp/profiles/foo.profraw"
+# Instrument clippy, so that when executed, it will gather profiles
+# to this path.
+#pgo.clippy.generate = "/tmp/profiles/foo.profraw"
 # Use the following profile to PGO optimize LLVM.
 #pgo.llvm.use = "/tmp/profiles/foo.profraw"
 # Instrument LLVM, so that when executed, it will gather profiles
