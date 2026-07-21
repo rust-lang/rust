@@ -160,6 +160,53 @@ fn get_or_create_async_info_global<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) -> &'ll
     global
 }
 
+use rustc_codegen_ssa::common::IntPredicate;
+
+pub(crate) fn get_or_create_async_info<'ll, 'tcx>(
+    builder: &mut Builder<'_, 'll, 'tcx>,
+    offload_globals: &OffloadGlobals<'ll>,
+) -> &'ll Value {
+    let cx = builder.cx;
+    let ptr_ty = cx.type_ptr();
+    let null = cx.const_null(ptr_ty);
+
+    let current = builder.load(ptr_ty, offload_globals.async_info_global, Align::EIGHT);
+
+    let is_null = builder.icmp(IntPredicate::IntEQ, current, null);
+
+    let create_bb = Builder::append_block(cx, builder.llfn(), "offload.async.create");
+    let ready_bb = Builder::append_block(cx, builder.llfn(), "offload.async.ready");
+
+    builder.cond_br(is_null, create_bb, ready_bb);
+
+    unsafe {
+        llvm::LLVMPositionBuilderAtEnd(&builder.llbuilder, create_bb);
+    }
+
+    let device_id = cx.get_const_i64(u64::MAX); // -1/default device
+
+    let created = builder.call(
+        offload_globals.async_info_create_ty,
+        None,
+        None,
+        offload_globals.async_info_create,
+        &[device_id],
+        None,
+        None,
+    );
+
+    builder.store(created, offload_globals.async_info_global, Align::EIGHT);
+
+    builder.br(ready_bb);
+
+    unsafe {
+        llvm::LLVMPositionBuilderAtEnd(&builder.llbuilder, ready_bb);
+    }
+
+    // Reload instead of needing a phi.
+    builder.load(ptr_ty, offload_globals.async_info_global, Align::EIGHT)
+}
+
 // We need to register offload before using it. We also should unregister it once we are done, for
 // good measures. Previously we have done so before and after each individual offload intrinsic
 // call, but that comes at a performance cost. The repeated (un)register calls might also confuse
@@ -733,7 +780,8 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
     let has_dynamic = metadata.iter().any(|m| !matches!(m.payload_size, OffloadSize::Static(_)));
 
     let tgt_decl = offload_globals.launcher_fn;
-    let tgt_target_kernel_ty = offload_globals.launcher_ty;
+    //let tgt_target_kernel_ty = offload_globals.launcher_ty;
+    let tgt_target_kernel_ty = offload_globals.async_kernel_launcher_ty;
 
     let tgt_kernel_decl = offload_globals.kernel_args_ty;
     let begin_mapper_decl = offload_globals.begin_mapper;
@@ -789,7 +837,7 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
 
         builder.store(value.2, ptr, value.0);
     }
-
+    let async_info = get_or_create_async_info(builder, offload_globals);
     let args = vec![
         s_ident_t,
         // FIXME(offload) give users a way to select which GPU to use.
@@ -798,6 +846,7 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
         threads_per_block,
         region_id,
         a5,
+        async_info,
     ];
     builder.call(tgt_target_kernel_ty, None, None, tgt_decl, &args, None, None);
     // %41 = call i32 @__tgt_target_kernel(ptr @1, i64 -1, i32 2097152, i32 256, ptr @.kernel_1.region_id, ptr %kernel_args)

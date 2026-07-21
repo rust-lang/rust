@@ -1,6 +1,6 @@
 use crate::SimpleCx;
 use crate::builder::Builder;
-use crate::builder::gpu_offload::OffloadGlobals;
+use crate::builder::gpu_offload::{OffloadGlobals, get_or_create_async_info};
 use crate::intrinsic::TransferType;
 use crate::llvm;
 use crate::llvm::{Type, Value};
@@ -61,6 +61,23 @@ pub(crate) fn get_geps<'ll, 'tcx>(
     [gep1, gep2, gep3]
 }
 
+fn synchronize_async_info<'ll, 'tcx>(
+    builder: &mut Builder<'_, 'll, 'tcx>,
+    offload_globals: &OffloadGlobals<'ll>,
+) {
+    let async_info = get_or_create_async_info(builder, offload_globals);
+
+    builder.call(
+        offload_globals.async_info_synchronize_ty,
+        None,
+        None,
+        offload_globals.async_info_synchronize,
+        &[async_info],
+        None,
+        None,
+    );
+}
+
 pub(crate) fn generate_mapper_call<'ll, 'tcx>(
     builder: &mut Builder<'_, 'll, 'tcx>,
     geps: [&'ll Value; 3],
@@ -83,6 +100,7 @@ pub(crate) fn generate_mapper_call<'ll, 'tcx>(
         args.append(&mut vec![i32_0, nullptr, i32_0, nullptr]);
     }
     if matches!(transfer, TransferType::End) {
+        synchronize_async_info(builder, offload_globals);
         let a = offload_globals.taskwait;
         let b = offload_globals.taskwait_ty;
         let c = offload_globals.threadnum;
