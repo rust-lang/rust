@@ -6,7 +6,7 @@ use rustc_middle::{bug, mir, span_bug};
 
 use super::FunctionCx;
 use crate::diagnostics;
-use crate::mir::operand::OperandRef;
+use crate::mir::operand::{OperandRef, OperandValue};
 use crate::traits::*;
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
@@ -17,6 +17,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ) -> OperandRef<'tcx, Bx::Value> {
         let val = self.eval_mir_constant(constant);
         let ty = self.monomorphize(constant.ty());
+        if val.all_bytes_uninit(self.cx.tcx()) {
+            let layout = bx.layout_of(ty);
+            return OperandRef { val: OperandValue::Uninit, layout, move_annotation: None };
+        }
         OperandRef::from_const(bx, val, ty)
     }
 
