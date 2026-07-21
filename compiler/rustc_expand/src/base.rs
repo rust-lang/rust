@@ -38,9 +38,11 @@ use crate::mbe::macro_rules::ParserAnyMacro;
 use crate::module::DirOwnership;
 use crate::stats::MacroStat;
 
-// When adding new variants, make sure to
-// adjust the `visit_*` / `flat_map_*` calls in `InvocationCollector`
-// to use `assign_id!`
+/// This type encapsulates every AST node that can have attributes, i.e. those
+/// nodes with a non-trivial implementation of `HasAttrs`.
+///
+/// When adding new variants, make sure to adjust the `visit_*` / `flat_map_*`
+/// calls in `InvocationCollector` to use `assign_id!`
 #[derive(Debug, Clone)]
 pub enum Annotatable {
     Item(Box<ast::Item>),
@@ -117,6 +119,7 @@ impl Annotatable {
         }
     }
 
+    /// Converts the `Annotatable` to a token stream, e.g. to hand to a proc macro.
     pub fn to_tokens(&self) -> TokenStream {
         match self {
             Annotatable::Item(node) => TokenStream::from_ast(node),
