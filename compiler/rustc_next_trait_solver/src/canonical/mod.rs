@@ -14,6 +14,7 @@ use std::iter;
 use canonicalizer::Canonicalizer;
 use rustc_index::IndexVec;
 use rustc_type_ir::inherent::*;
+use rustc_type_ir::region_constraint::RegionConstraint as SolverRegionConstraint;
 use rustc_type_ir::relate::{
     self, Relate, RelateResult, TypeRelation, VarianceDiagInfo, relate_args_invariantly,
 };
@@ -382,10 +383,12 @@ where
     fn regions(&mut self, a: Region<I>, b: Region<I>) -> RelateResult<I, Region<I>> {
         if self.cx().assumptions_on_binders() {
             if a != b {
-                self.infcx
-                    .register_solver_region_constraint(ty::RegionConstraint::RegionOutlives(a, b));
-                self.infcx
-                    .register_solver_region_constraint(ty::RegionConstraint::RegionOutlives(b, a));
+                self.infcx.register_solver_region_constraint(
+                    SolverRegionConstraint::RegionOutlives(a, b),
+                );
+                self.infcx.register_solver_region_constraint(
+                    SolverRegionConstraint::RegionOutlives(b, a),
+                );
             }
         } else {
             self.infcx.equate_regions(a, b, VisibleForLeakCheck::Yes, self.span);

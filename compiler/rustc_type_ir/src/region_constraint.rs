@@ -536,9 +536,9 @@ fn normalize_equated_region_vars<Infcx: InferCtxtLike<Interner = I>, I: Interner
 
 fn compute_equated_region_var_replacements<Infcx: InferCtxtLike<Interner = I>, I: Interner>(
     infcx: &Infcx,
-    region_outlives: &[(I::Region, I::Region)],
+    region_outlives: &[(Region<I>, Region<I>)],
     u: UniverseIndex,
-) -> Vec<(I::Region, I::Region)> {
+) -> Vec<(Region<I>, Region<I>)> {
     compute_equated_region_var_replacements_from(
         region_outlives,
         |r| is_current_universe_region_var(infcx, r, u),
@@ -599,7 +599,7 @@ fn has_reverse_region_outlives_edge<R: Eq>(region_outlives: &[(R, R)], r1: R, r2
 
 fn collect_conjunctive_region_outlives<I: Interner>(
     constraint: &RegionConstraint<I>,
-    out: &mut Vec<(I::Region, I::Region)>,
+    out: &mut Vec<(Region<I>, Region<I>)>,
 ) {
     use RegionConstraint::*;
 
@@ -616,19 +616,19 @@ fn collect_conjunctive_region_outlives<I: Interner>(
 
 fn is_current_universe_region_var<Infcx: InferCtxtLike<Interner = I>, I: Interner>(
     infcx: &Infcx,
-    region: I::Region,
+    region: Region<I>,
     u: UniverseIndex,
 ) -> bool {
     is_region_var::<I>(region) && max_universe(infcx, region) == u
 }
 
-fn is_region_var<I: Interner>(region: I::Region) -> bool {
+fn is_region_var<I: Interner>(region: Region<I>) -> bool {
     matches!(region.kind(), RegionKind::ReVar(_))
 }
 
 struct EquatedRegionVarReplacer<I: Interner> {
     cx: I,
-    replacements: Vec<(I::Region, I::Region)>,
+    replacements: Vec<(Region<I>, Region<I>)>,
 }
 
 impl<I: Interner> TypeFolder<I> for EquatedRegionVarReplacer<I> {
@@ -636,7 +636,7 @@ impl<I: Interner> TypeFolder<I> for EquatedRegionVarReplacer<I> {
         self.cx
     }
 
-    fn fold_region(&mut self, r: I::Region) -> I::Region {
+    fn fold_region(&mut self, r: Region<I>) -> Region<I> {
         // If a region variable has multiple non-var partners, the remaining folded
         // constraints still relate those partners, so first-match only affects representation.
         self.replacements.iter().find_map(|(from, to)| (*from == r).then_some(*to)).unwrap_or(r)
