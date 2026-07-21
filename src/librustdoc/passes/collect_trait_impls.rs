@@ -66,6 +66,7 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
                         || opt_trait_ref.is_some_and(|trait_ref| {
                             crate_items.contains(&ItemId::DefId(trait_ref.def_id()))
                                 || Some(trait_ref.def_id()) == tcx.lang_items().deref_trait()
+                                || tcx.is_doc_notable_trait(trait_ref.def_id())
                         })
                     {
                         inline::build_impl(cx, impl_def_id, None, &mut new_items_external);
