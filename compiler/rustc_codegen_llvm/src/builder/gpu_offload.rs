@@ -779,7 +779,7 @@ pub(crate) fn gen_call_handling<'ll, 'tcx>(
 
     let has_dynamic = metadata.iter().any(|m| !matches!(m.payload_size, OffloadSize::Static(_)));
 
-    let tgt_decl = offload_globals.launcher_fn;
+    let tgt_decl = offload_globals.async_kernel_launcher; //launcher_fn
     //let tgt_target_kernel_ty = offload_globals.launcher_ty;
     let tgt_target_kernel_ty = offload_globals.async_kernel_launcher_ty;
 
