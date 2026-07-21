@@ -1,4 +1,5 @@
 use rustc_index::IndexVec;
+use rustc_middle::ty::RegionUtilitiesExt;
 use rustc_type_ir::RegionVid;
 
 use crate::infer::SubregionOrigin;
