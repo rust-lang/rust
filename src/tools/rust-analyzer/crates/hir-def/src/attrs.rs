@@ -593,7 +593,7 @@ fn extract_cfgs(result: &mut Vec<CfgExpr>, attr: ast::Meta) -> ControlFlow<Infal
 
 #[salsa::tracked]
 impl AttrFlags {
-    #[salsa::tracked]
+    #[salsa::tracked(returns(copy))]
     pub fn query(db: &dyn SourceDatabase, owner: AttrDefId) -> AttrFlags {
         let mut attr_flags = AttrFlags::empty();
         collect_attrs(db, owner, |attr| match_attr_flags(&mut attr_flags, attr));
@@ -740,7 +740,7 @@ impl AttrFlags {
 
         return lang_item(db, owner);
 
-        #[salsa::tracked]
+        #[salsa::tracked(returns(clone))]
         fn lang_item(db: &dyn SourceDatabase, owner: AttrDefId) -> Option<Symbol> {
             collect_attrs(db, owner, |attr| {
                 if let ast::Meta::KeyValueMeta(attr) = attr
@@ -769,7 +769,7 @@ impl AttrFlags {
     ///
     /// Prefer [`AttrFlags::repr()`] in non-perf-sensitive places as it also has a check that
     /// that the ADT has repr.
-    #[salsa::tracked]
+    #[salsa::tracked(returns(copy))]
     pub fn repr_assume_has(db: &dyn SourceDatabase, owner: AdtId) -> Option<ReprOptions> {
         let mut result = None;
         collect_attrs::<Infallible>(db, owner.into(), |attr| {
@@ -922,7 +922,7 @@ impl AttrFlags {
 
         return rustc_layout_scalar_valid_range(db, owner);
 
-        #[salsa::tracked]
+        #[salsa::tracked(returns(copy))]
         fn rustc_layout_scalar_valid_range(
             db: &dyn SourceDatabase,
             owner: AdtId,
@@ -1049,7 +1049,7 @@ impl AttrFlags {
         }
         return doc_keyword(db, owner);
 
-        #[salsa::tracked]
+        #[salsa::tracked(returns(clone))]
         fn doc_keyword(db: &dyn SourceDatabase, owner: ModuleId) -> Option<Symbol> {
             collect_attrs(db, AttrDefId::ModuleId(owner), |attr| {
                 if let ast::Meta::TokenTreeMeta(attr) = attr
@@ -1166,7 +1166,7 @@ impl AttrFlags {
 
         return unstable_feature(db, owner);
 
-        #[salsa::tracked]
+        #[salsa::tracked(returns(clone))]
         fn unstable_feature(db: &dyn SourceDatabase, owner: AttrDefId) -> Option<Symbol> {
             collect_attrs(db, owner, |attr| {
                 if let ast::Meta::TokenTreeMeta(attr) = attr
