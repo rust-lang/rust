@@ -810,25 +810,6 @@ include!("../../core/src/primitive_docs.rs");
 #[unstable(feature = "restricted_std", issue = "none")]
 mod __restricted_std_workaround {}
 
-// FIXME(jhpratt) This is currently only used by portable SIMD. Once rust-lang/portable-simd#529 is
-// merged, this should be able to be removed.
-mod sealed {
-    /// This trait being unreachable from outside the crate
-    /// prevents outside implementations of our extension traits.
-    /// This allows adding more trait methods in the future.
-    #[unstable(feature = "sealed", issue = "none")]
-    pub trait Sealed {}
-}
-
-macro_rules! impl_sealed {
-    ($($t:ty)*) => {$(
-        /// Allows implementations within `std`.
-        #[unstable(feature = "sealed", issue = "none")]
-        impl crate::sealed::Sealed for $t {}
-    )*}
-}
-impl_sealed! { isize i8 i16 i32 i64 i128 usize u8 u16 u32 u64 u128 f32 f64 }
-
 #[cfg(test)]
 #[allow(dead_code)] // Not used in all configurations.
 pub(crate) mod test_helpers;
