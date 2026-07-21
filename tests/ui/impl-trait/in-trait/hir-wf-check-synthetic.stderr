@@ -1,5 +1,5 @@
 error[E0277]: expected an `FnOnce<&'a i32>` closure, found `()`
-  --> $DIR/hir-wf-check-synthetic.rs:10:17
+  --> $DIR/hir-wf-check-synthetic.rs:9:17
    |
 LL |     fn foo() -> impl Sized
    |                 ^^^^^^^^^^ expected an `FnOnce<&'a i32>` closure, found `()`
@@ -7,7 +7,7 @@ LL |     fn foo() -> impl Sized
    = help: the trait `for<'a> FnOnce<&'a i32>` is not implemented for `()`
 
 error[E0277]: expected an `FnOnce<&'a i32>` closure, found `()`
-  --> $DIR/hir-wf-check-synthetic.rs:10:17
+  --> $DIR/hir-wf-check-synthetic.rs:9:17
    |
 LL |     fn foo() -> impl Sized
    |                 ^^^^^^^^^^ expected an `FnOnce<&'a i32>` closure, found `()`
@@ -16,9 +16,10 @@ LL |     fn foo() -> impl Sized
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: expected an `FnOnce<&'a i32>` closure, found `()`
-  --> $DIR/hir-wf-check-synthetic.rs:10:5
+  --> $DIR/hir-wf-check-synthetic.rs:9:5
    |
 LL | /     fn foo() -> impl Sized
+...  |
 LL | |     where
 LL | |         for<'a> <() as FnOnce<&'a i32>>::Output: Tr,
    | |____________________________________________________^ expected an `FnOnce<&'a i32>` closure, found `()`
@@ -26,7 +27,7 @@ LL | |         for<'a> <() as FnOnce<&'a i32>>::Output: Tr,
    = help: the trait `for<'a> FnOnce<&'a i32>` is not implemented for `()`
 
 error[E0277]: expected an `FnOnce<&'a i32>` closure, found `()`
-  --> $DIR/hir-wf-check-synthetic.rs:10:17
+  --> $DIR/hir-wf-check-synthetic.rs:9:17
    |
 LL |     fn foo() -> impl Sized
    |                 ^^^^^^^^^^ expected an `FnOnce<&'a i32>` closure, found `()`
@@ -34,7 +35,7 @@ LL |     fn foo() -> impl Sized
    = help: the trait `for<'a> FnOnce<&'a i32>` is not implemented for `()`
 
 error[E0277]: expected an `FnOnce<&'a i32>` closure, found `()`
-  --> $DIR/hir-wf-check-synthetic.rs:10:22
+  --> $DIR/hir-wf-check-synthetic.rs:9:22
    |
 LL |     fn foo() -> impl Sized
    |                      ^^^^^ expected an `FnOnce<&'a i32>` closure, found `()`
@@ -42,7 +43,7 @@ LL |     fn foo() -> impl Sized
    = help: the trait `for<'a> FnOnce<&'a i32>` is not implemented for `()`
 
 error[E0277]: expected an `FnOnce<&'a i32>` closure, found `()`
-  --> $DIR/hir-wf-check-synthetic.rs:10:17
+  --> $DIR/hir-wf-check-synthetic.rs:9:17
    |
 LL |     fn foo() -> impl Sized
    |                 ^^^^^^^^^^ expected an `FnOnce<&'a i32>` closure, found `()`
@@ -51,7 +52,7 @@ LL |     fn foo() -> impl Sized
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error[E0277]: expected an `FnOnce<&'a i32>` closure, found `()`
-  --> $DIR/hir-wf-check-synthetic.rs:10:17
+  --> $DIR/hir-wf-check-synthetic.rs:9:17
    |
 LL |     fn foo() -> impl Sized
    |                 ^^^^^^^^^^ expected an `FnOnce<&'a i32>` closure, found `()`
