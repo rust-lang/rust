@@ -16,6 +16,7 @@ use crate::llvm::AttributePlace::Function;
 use crate::llvm::{self, Linkage, Type, Value};
 use crate::{SimpleCx, attributes};
 
+use rustc_target::spec::HasTargetSpec;
 //int32 __kmpc_omp_taskwait(ident_t *loc_ref, kmp_int32 gtid);
 //int32 __kmpc_global_thread_num(ident_t *);
 
@@ -53,6 +54,7 @@ pub(crate) struct OffloadGlobals<'ll> {
 
     pub async_kernel_launcher: &'ll Value,
     pub async_kernel_launcher_ty: &'ll Type,
+    pub async_info_global: &'ll llvm::Value,
 }
 
 impl<'ll> OffloadGlobals<'ll> {
@@ -108,6 +110,7 @@ impl<'ll> OffloadGlobals<'ll> {
 
         let async_kernel_launcher =
             declare_offload_fn(cx, "__tgt_target_kernel_async", async_kernel_launcher_ty);
+        let async_info_global = get_or_create_async_info_global(cx);
         OffloadGlobals {
             launcher_fn,
             launcher_ty,
@@ -134,8 +137,27 @@ impl<'ll> OffloadGlobals<'ll> {
 
             async_kernel_launcher,
             async_kernel_launcher_ty,
+            async_info_global,
         }
     }
+}
+
+fn get_or_create_async_info_global<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) -> &'ll llvm::Value {
+    let name = c"__rust_offload_async_info";
+
+    if let Some(global) = unsafe { llvm::LLVMGetNamedGlobal(cx.llmod, name.as_ptr()) } {
+        return global;
+    }
+
+    let global = unsafe { llvm::LLVMAddGlobal(cx.llmod, cx.type_ptr(), name.as_ptr()) };
+
+    unsafe {
+        llvm::LLVMSetInitializer(global, cx.const_null(cx.type_ptr()));
+        llvm::set_thread_local_mode(global, llvm::ThreadLocalMode::GeneralDynamic);
+        llvm::LLVMSetLinkage(global, llvm::Linkage::LinkOnceODRLinkage);
+    }
+
+    global
 }
 
 // We need to register offload before using it. We also should unregister it once we are done, for
