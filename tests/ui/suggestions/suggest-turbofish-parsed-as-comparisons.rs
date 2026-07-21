@@ -6,18 +6,49 @@ use std::collections::HashMap;
 struct S;
 impl S {
     fn foo(&self, _: HashMap<i32, i64>) {}
+    fn bar(&self, _: Many<i32, i32, i32, i32>) {}
 }
+fn bar(_: Many<i32, i32, i32, i32>) {}
+struct Many<A, B, C, D> {
+    a: A,
+    b: B,
+    c: C,
+    d: D,
+}
+
+impl<A, B, C, D> Many<A, B, C, D> {
+    fn new() -> Self { todo!() }
+}
+
 fn main() {
     let _ = Arc::new(RwLock::new(HashMap<i32, i64>::default()));
-    //~^ ERROR expected value, found struct `HashMap` [E0423]
-    //~| ERROR expected value, found builtin type `i32` [E0423]
-    //~| ERROR expected value, found builtin type `i64` [E0423]
-    //~| ERROR cannot find external crate `default` in the crate root [E0425]
-    //~| ERROR this function takes 1 argument but 2 arguments were supplied [E0061]
+    //~^ ERROR can't compare two types
     let _ = S.foo(HashMap<i32, i64>::default());
-    //~^ ERROR expected value, found struct `HashMap` [E0423]
-    //~| ERROR expected value, found builtin type `i32` [E0423]
-    //~| ERROR expected value, found builtin type `i64` [E0423]
-    //~| ERROR cannot find external crate `default` in the crate root [E0425]
-    //~| ERROR this method takes 1 argument but 2 arguments were supplied [E0061]
+    //~^ ERROR can't compare two types
+    let _ = bar(Many<i32, i32, i32, i32>::new());
+    //~^ ERROR can't compare two types
+    let _ = S.bar(Many<i32, i32, i32, i32>::new());
+    //~^ ERROR can't compare two types
+    let _ = bar(Many<i32, i32, i32, i32>::new(), Many<i32, i32, i32, i32>::new());
+    //~^ ERROR can't compare two types
+    //~| ERROR can't compare two types
+    let _ = S.bar(Many<i32, i32, i32, i32>::new(), Many<i32, i32, i32, i32>::new());
+    //~^ ERROR can't compare two types
+    //~| ERROR can't compare two types
+    let _ = bar(1, 2, Many<i32, i32, i32, i32>::new());
+    //~^ ERROR can't compare two types
+    let _ = S.bar(1, 2, Many<i32, i32, i32, i32>::new());
+    //~^ ERROR can't compare two types
+    let _ = bar(a, b, Many<i32, i32, i32, i32>::new(), c, d);
+    //~^ ERROR can't compare two types
+    //~| ERROR cannot find value `a` in this scope
+    //~| ERROR cannot find value `b` in this scope
+    //~| ERROR cannot find value `c` in this scope
+    //~| ERROR cannot find value `d` in this scope
+    let _ = S.bar(a, b, Many<i32, i32, i32, i32>::new(), c, d);
+    //~^ ERROR can't compare two types
+    //~| ERROR cannot find value `a` in this scope
+    //~| ERROR cannot find value `b` in this scope
+    //~| ERROR cannot find value `c` in this scope
+    //~| ERROR cannot find value `d` in this scope
 }
