@@ -59,25 +59,21 @@ impl<'tcx> MaybePlacesSwitchIntData<'tcx> {
                 {
                     match enum_place.ty(body, tcx).ty.kind() {
                         ty::Adt(enum_def, _) => {
-                            // The value of each discriminant, in AdtDef order.
-                            let discriminant_vals: SmallVec<[u128; 4]> =
-                                enum_def.discriminants(tcx).map(|(_, discr)| discr.val).collect();
-                            let mut i = 0;
-
                             // For each value in the SwitchInt, find the VariantIdx for the variant
                             // with that value. This works because `discriminant_vals` and
                             // `targets.all_values()` are guaranteed to list variants in the same
-                            // order. (If that ever changes we will get out-of-bounds panics here.)
+                            // AdtDef order. (If that ever changes the `expect` will panic.)
+                            let mut discriminants = enum_def.discriminants(tcx);
                             let variants = targets
                                 .all_values()
                                 .iter()
                                 .map(|value| {
-                                    loop {
-                                        if discriminant_vals[i] == value.get() {
-                                            return VariantIdx::new(i);
-                                        }
-                                        i += 1;
-                                    }
+                                    // On each call to this closure `find` only consumes part of
+                                    // the `discriminants` iterator.
+                                    discriminants
+                                        .find(|(_, discr)| discr.val == value.get())
+                                        .expect("SwitchInt vals should match a variant")
+                                        .0
                                 })
                                 .collect();
 
