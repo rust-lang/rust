@@ -12,6 +12,9 @@ use tracing::{debug, instrument};
 
 use crate::patch::MirPatch;
 
+// Bound fixpoint iterations to avoid non-termination on self-referential types.
+const SROA_ITERATION_LIMIT: usize = 10;
+
 pub(super) struct ScalarReplacementOfAggregates;
 
 impl<'tcx> crate::MirPass<'tcx> for ScalarReplacementOfAggregates {
@@ -30,7 +33,7 @@ impl<'tcx> crate::MirPass<'tcx> for ScalarReplacementOfAggregates {
 
         let mut excluded = excluded_locals(body);
         let typing_env = body.typing_env(tcx);
-        loop {
+        for _ in 0..SROA_ITERATION_LIMIT {
             debug!(?excluded);
             let escaping = escaping_locals(tcx, &excluded, body);
             debug!(?escaping);
