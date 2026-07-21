@@ -65,7 +65,22 @@ pub(crate) fn synchronize_async_info<'ll, 'tcx>(
     builder: &mut Builder<'_, 'll, 'tcx>,
     offload_globals: &OffloadGlobals<'ll>,
 ) {
-    let async_info = get_or_create_async_info(builder, offload_globals);
+    let cx = builder.cx;
+    let ptr_ty = cx.type_ptr();
+    let null = cx.const_null(ptr_ty);
+
+    let async_info = builder.load(ptr_ty, offload_globals.async_info_global, Align::EIGHT);
+
+    let is_null = builder.icmp(rustc_codegen_ssa::common::IntPredicate::IntEQ, async_info, null);
+
+    let sync_bb = Builder::append_block(cx, builder.llfn(), "offload.async.sync");
+    let done_bb = Builder::append_block(cx, builder.llfn(), "offload.async.sync.done");
+
+    builder.cond_br(is_null, done_bb, sync_bb);
+
+    unsafe {
+        llvm::LLVMPositionBuilderAtEnd(&builder.llbuilder, sync_bb);
+    }
 
     builder.call(
         offload_globals.async_info_synchronize_ty,
@@ -76,6 +91,12 @@ pub(crate) fn synchronize_async_info<'ll, 'tcx>(
         None,
         None,
     );
+
+    builder.br(done_bb);
+
+    unsafe {
+        llvm::LLVMPositionBuilderAtEnd(&builder.llbuilder, done_bb);
+    }
 }
 
 pub(crate) fn generate_mapper_call<'ll, 'tcx>(
