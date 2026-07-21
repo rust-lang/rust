@@ -1540,9 +1540,12 @@ where
         // `tests/ui/higher-ranked/leak-check/leak-check-in-selection-6-ambig-unify.rs`.
         let region_constraints = if self.cx().assumptions_on_binders() {
             ExternalRegionConstraints::NextGen(if let Certainty::Yes = certainty {
-                evaluate_solver_constraint(
-                    &self.delegate.get_solver_region_constraint().canonical_form(),
-                )
+                let constraint = self.delegate.get_solver_region_constraint();
+                debug_assert_eq!(
+                    constraint,
+                    evaluate_solver_constraint(&constraint.clone().canonical_form())
+                );
+                constraint
             } else {
                 RegionConstraint::new_true()
             })
