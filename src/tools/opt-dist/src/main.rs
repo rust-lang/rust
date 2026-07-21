@@ -249,7 +249,9 @@ fn execute_pipeline(
                 // Their profiles are then merged together into a single PGO profile.
                 let mut builder = Bootstrap::build(env)
                     .with_rustdoc()
+                    .with_cargo()
                     .rustc_pgo_instrument(&rustc_profile_dir_root)
+                    .cargo_pgo_instrument(&rustc_profile_dir_root)
                     .rustdoc_pgo_instrument(&rustc_profile_dir_root);
 
                 if env.supports_shared_llvm() {
@@ -274,7 +276,9 @@ fn execute_pipeline(
             stage.section("Build PGO optimized rustc", |section| {
                 let mut cmd = Bootstrap::build(env)
                     .with_rustdoc()
+                    .with_cargo()
                     .rustc_pgo_optimize(&rustc_profile)
+                    .cargo_pgo_optimize(&rustc_profile)
                     .rustdoc_pgo_optimize(&rustdoc_profile);
                 if env.use_bolt() {
                     cmd = cmd.with_rustc_bolt_ldflags();
@@ -417,6 +421,7 @@ fn execute_pipeline(
     let mut dist = Bootstrap::dist(env, &dist_args)
         .llvm_pgo_optimize(llvm_pgo_profile.as_ref())
         .rustc_pgo_optimize(&rustc_pgo_profile)
+        .cargo_pgo_optimize(&rustc_pgo_profile)
         .rustdoc_pgo_optimize(&rustdoc_pgo_profile);
 
     // if LLVM is not built we'll have PGO optimized rustc

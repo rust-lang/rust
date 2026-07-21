@@ -138,8 +138,13 @@ impl Step for ToolBuild {
             }
         }
 
-        if self.path == "src/tools/rustdoc" {
-            apply_pgo(builder, &mut cargo, self.build_compiler, &builder.config.rustdoc_pgo);
+        let pgo_config = match self.path {
+            "src/tools/rustdoc" => Some(&builder.config.rustdoc_pgo),
+            "src/tools/cargo" => Some(&builder.config.cargo_pgo),
+            _ => None,
+        };
+        if let Some(pgo_config) = pgo_config {
+            apply_pgo(builder, &mut cargo, self.build_compiler, pgo_config);
         }
 
         if !self.allow_features.is_empty() {
