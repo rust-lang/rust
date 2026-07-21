@@ -1322,10 +1322,10 @@ impl Build {
 
         if let Some(map_to) = self.debuginfo_map_to(which, RemapScheme::NonCompiler) {
             let map = format!("{}={}", self.src.display(), map_to);
-            let cc = self.cc(target);
-            if cc.ends_with("clang") || cc.ends_with("gcc") {
+            let cc = self.cc_tool(target);
+            if cc.is_like_clang() || cc.is_like_gnu() {
                 base.push(format!("-fdebug-prefix-map={map}"));
-            } else if cc.ends_with("clang-cl.exe") {
+            } else if cc.is_like_clang_cl() {
                 base.push("-Xclang".into());
                 base.push(format!("-fdebug-prefix-map={map}"));
             }
