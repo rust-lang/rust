@@ -50,7 +50,7 @@ use crate::core::config::toml::target::{
 };
 use crate::core::config::{
     CompilerBuiltins, CompressDebuginfo, DebuginfoLevel, DryRun, GccCiMode, LlvmLibunwind, Merge,
-    ReplaceOpt, RustcLto, SplitDebuginfo, StringOrBool, threads_from_config,
+    OverrideAllocator, ReplaceOpt, RustcLto, SplitDebuginfo, StringOrBool, threads_from_config,
 };
 use crate::core::download::{
     DownloadContext, download_beta_toolchain, is_download_ci_available, maybe_download_rustfmt,
@@ -247,7 +247,7 @@ pub struct Config {
     pub hosts: Vec<TargetSelection>,
     pub targets: Vec<TargetSelection>,
     pub local_rebuild: bool,
-    pub jemalloc: bool,
+    pub override_allocator: Option<OverrideAllocator>,
     pub control_flow_guard: bool,
     pub ehcont_guard: bool,
 
@@ -589,6 +589,7 @@ impl Config {
             thin_lto_import_instr_limit: rust_thin_lto_import_instr_limit,
             parallel_frontend_threads: rust_parallel_frontend_threads,
             remap_debuginfo: rust_remap_debuginfo,
+            override_allocator: rust_override_allocator,
             jemalloc: rust_jemalloc,
             test_compare_mode: rust_test_compare_mode,
             llvm_libunwind: rust_llvm_libunwind,
@@ -976,6 +977,7 @@ impl Config {
                     codegen_backends: target_codegen_backends,
                     runner: target_runner,
                     optimized_compiler_builtins: target_optimized_compiler_builtins,
+                    override_allocator: target_override_allocator,
                     jemalloc: target_jemalloc,
                 } = cfg;
 
@@ -1052,7 +1054,11 @@ impl Config {
                 target.rpath = target_rpath;
                 target.rustflags = target_rustflags.unwrap_or_default();
                 target.optimized_compiler_builtins = target_optimized_compiler_builtins;
-                target.jemalloc = target_jemalloc;
+                target.override_allocator = reconcile_jemalloc(
+                    target_jemalloc,
+                    target_override_allocator,
+                    &format!("target.{triple}"),
+                );
                 if let Some(backends) = target_codegen_backends {
                     target.codegen_backends =
                         Some(parse_codegen_backends(backends, &format!("target.{triple}")))
@@ -1463,7 +1469,6 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             initial_rustdoc,
             initial_rustfmt,
             initial_sysroot,
-            jemalloc: rust_jemalloc.unwrap_or(false),
             jobs: Some(threads_from_config(flags_jobs.or(build_jobs).unwrap_or(0))),
             json_output: flags_json_output,
             keep_stage: flags_keep_stage,
@@ -1524,6 +1529,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             on_fail: flags_on_fail,
             optimized_compiler_builtins,
             out,
+            override_allocator: reconcile_jemalloc(rust_jemalloc, rust_override_allocator, "rust"),
             patch_binaries_for_nix: build_patch_binaries_for_nix,
             path_modification_cache,
             paths,
@@ -1957,8 +1963,11 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
         self.enabled_codegen_backends(target).first().unwrap()
     }
 
-    pub fn jemalloc(&self, target: TargetSelection) -> bool {
-        self.target_config.get(&target).and_then(|cfg| cfg.jemalloc).unwrap_or(self.jemalloc)
+    pub fn override_allocator(&self, target: TargetSelection) -> Option<OverrideAllocator> {
+        self.target_config
+            .get(&target)
+            .and_then(|cfg| cfg.override_allocator)
+            .or(self.override_allocator)
     }
 
     pub fn rpath_enabled(&self, target: TargetSelection) -> bool {
@@ -2049,6 +2058,38 @@ impl AsRef<ExecutionContext> for Config {
     fn as_ref(&self) -> &ExecutionContext {
         &self.exec_ctx
     }
+}
+
+/// Reconciles the deprecated `jemalloc` boolean option with the new
+/// `override-allocator` option.
+///
+/// Emits a warning if `jemalloc` is present and errors out if it is set but
+/// `override-allocator` is not `jemalloc`. The allocator is overridden if
+/// either option is set.
+fn reconcile_jemalloc(
+    jemalloc: Option<bool>,
+    override_allocator: Option<OverrideAllocator>,
+    section: &str,
+) -> Option<OverrideAllocator> {
+    if let Some(jemalloc) = jemalloc {
+        println!(
+            "WARNING: The `{section}.jemalloc` option is deprecated. \
+             Use `{section}.override-allocator` instead.",
+        );
+        if jemalloc && override_allocator.is_some_and(|a| a != OverrideAllocator::Jemalloc) {
+            panic!(
+                "ERROR: `{section}.jemalloc` is set but `{section}.override-allocator` is \
+                 not `jemalloc` ({:?}). Remove the deprecated `jemalloc` option or set \
+                 `override-allocator = \"jemalloc\"`.",
+                override_allocator,
+            );
+        }
+    }
+    override_allocator.or(if jemalloc == Some(true) {
+        Some(OverrideAllocator::Jemalloc)
+    } else {
+        None
+    })
 }
 
 fn compute_src_directory(src_dir: Option<PathBuf>, exec_ctx: &ExecutionContext) -> Option<PathBuf> {
