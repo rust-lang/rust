@@ -1406,6 +1406,10 @@ impl<I: Interner> FnHeader<I> {
         self.fn_sig_kind.abi()
     }
 
+    pub fn splatted(self) -> Option<u8> {
+        self.fn_sig_kind.splatted()
+    }
+
     /// Create a new safe FnHeader with the `extern "Rust"` ABI, that isn't C-style variadic or splatted.
     pub fn dummy() -> Self {
         Self { fn_sig_kind: FnSigKind::dummy() }
