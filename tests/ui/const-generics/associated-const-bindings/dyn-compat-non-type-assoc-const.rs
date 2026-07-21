@@ -1,4 +1,4 @@
-// Ensure that traits with non-type associated consts require explicit dyn bindings.
+// Ensure that traits with non-type associated consts are dyn *in*compatible.
 
 //@ dont-require-annotations: NOTE
 
@@ -7,11 +7,14 @@
 
 trait Trait {
     const K: usize;
+    //~^ NOTE it contains associated const `K` that's not defined as `type const`
 }
 
 fn main() {
-    let _: dyn Trait; //~ ERROR the value of the associated constant `K` in `Trait` must be specified
+    let _: dyn Trait; //~ ERROR the trait `Trait` is not dyn compatible
 
-    // Specifying the non-type assoc const makes the dyn type fully constrained.
+    // Check that specifying the non-type assoc const doesn't work without full GCA.
     let _: dyn Trait<K = 0>;
+    //~^ ERROR the trait `Trait` is not dyn compatible
+    //~| ERROR use of trait associated const not defined as `type const`
 }

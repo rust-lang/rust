@@ -837,6 +837,10 @@ impl DynCompatibilityViolation {
             Self::AssocConst(name, AssocConstViolation::FeatureNotEnabled, _) => {
                 format!("it contains associated const `{name}`").into()
             }
+            Self::AssocConst(name, AssocConstViolation::NonType, _) => {
+                format!("it contains associated const `{name}` that's not defined as `type const`")
+                    .into()
+            }
             Self::AssocConst(name, AssocConstViolation::Generic, _) => {
                 format!("it contains generic associated const `{name}`").into()
             }
@@ -987,6 +991,9 @@ pub enum MethodViolation {
 pub enum AssocConstViolation {
     /// Unstable feature `min_generic_const_args` wasn't enabled.
     FeatureNotEnabled,
+
+    /// Not defined as a type-level associated const.
+    NonType,
 
     /// Has own generic parameters (GAC).
     Generic,
