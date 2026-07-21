@@ -57,6 +57,7 @@ use crate::core::download::{
 };
 use crate::utils::channel;
 use crate::utils::exec::{ExecutionContext, command};
+#[cfg_attr(test, expect(unused_imports))]
 use crate::utils::helpers::{exe, fail, get_host_target};
 use crate::{
     CodegenBackendKind, GitInfo, OnceLock, TargetSelection, check_ci_llvm, exit, helpers, t,

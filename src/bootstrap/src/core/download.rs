@@ -505,8 +505,8 @@ pub(crate) fn is_download_ci_available(target_triple: &str, llvm_assertions: boo
 
 #[cfg(test)]
 pub(crate) fn maybe_download_rustfmt<'a>(
-    dwn_ctx: impl AsRef<DownloadContext<'a>>,
-    out: &Path,
+    _dwn_ctx: impl AsRef<DownloadContext<'a>>,
+    _out: &Path,
 ) -> Option<PathBuf> {
     Some(PathBuf::new())
 }
@@ -574,7 +574,7 @@ pub(crate) fn maybe_download_rustfmt<'a>(
 }
 
 #[cfg(test)]
-pub(crate) fn download_beta_toolchain<'a>(dwn_ctx: impl AsRef<DownloadContext<'a>>, out: &Path) {}
+pub(crate) fn download_beta_toolchain<'a>(_dwn_ctx: impl AsRef<DownloadContext<'a>>, _out: &Path) {}
 
 #[cfg(not(test))]
 pub(crate) fn download_beta_toolchain<'a>(dwn_ctx: impl AsRef<DownloadContext<'a>>, out: &Path) {
@@ -600,6 +600,7 @@ pub(crate) fn download_beta_toolchain<'a>(dwn_ctx: impl AsRef<DownloadContext<'a
 }
 
 #[allow(clippy::too_many_arguments)]
+#[cfg_attr(test, expect(dead_code))]
 fn download_toolchain<'a>(
     dwn_ctx: impl AsRef<DownloadContext<'a>>,
     out: &Path,

@@ -200,6 +200,7 @@ pub const LLVM_INVALIDATION_PATHS: &[&str] = &[
 ];
 
 /// Detect whether LLVM sources have been modified locally or not.
+#[cfg_attr(test, expect(dead_code))]
 pub(crate) fn detect_llvm_freshness(config: &Config, is_git: bool) -> PathFreshness {
     if is_git {
         config.check_path_modifications(LLVM_INVALIDATION_PATHS)
