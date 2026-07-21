@@ -18,7 +18,7 @@ use rustc_type_ir::relate::{
     self, Relate, RelateResult, TypeRelation, VarianceDiagInfo, relate_args_invariantly,
 };
 use rustc_type_ir::{
-    self as ty, Canonical, CanonicalVarKind, CanonicalVarValues, InferCtxtLike, Interner,
+    self as ty, Canonical, CanonicalVarKind, CanonicalVarValues, InferCtxtLike, Interner, Region,
     TypeFoldable, TypingMode, TypingModeEqWrapper,
 };
 use tracing::instrument;
@@ -379,7 +379,7 @@ where
     }
 
     #[instrument(skip(self), level = "trace")]
-    fn regions(&mut self, a: I::Region, b: I::Region) -> RelateResult<I, I::Region> {
+    fn regions(&mut self, a: Region<I>, b: Region<I>) -> RelateResult<I, Region<I>> {
         self.infcx.equate_regions(a, b, VisibleForLeakCheck::Yes, self.span);
 
         Ok(a)

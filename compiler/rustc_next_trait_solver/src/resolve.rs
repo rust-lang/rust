@@ -1,7 +1,7 @@
 use rustc_type_ir::data_structures::DelayedMap;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::{
-    self as ty, InferCtxtLike, Interner, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    self as ty, InferCtxtLike, Interner, Region, TypeFoldable, TypeFolder, TypeSuperFoldable,
     TypeVisitableExt,
 };
 
@@ -70,7 +70,7 @@ impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I> for EagerRes
         }
     }
 
-    fn fold_region(&mut self, r: I::Region) -> I::Region {
+    fn fold_region(&mut self, r: Region<I>) -> Region<I> {
         match r.kind() {
             ty::ReVar(vid) => self.delegate.opportunistic_resolve_lt_var(vid),
             _ => r,

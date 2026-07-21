@@ -2,14 +2,12 @@ use std::fmt;
 
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
-use rustc_data_structures::intern::Interned;
-#[cfg(feature = "nightly")]
-use rustc_macros::HashStable_NoContext;
-#[cfg(feature = "nightly")]
-use rustc_serialize::{Decodable, Encodable};
+use rustc_macros::StableHash_NoContext;
+use rustc_type_ir_macros::{GenericTypeVisitable, Lift_Generic};
 use tracing::debug;
 
 use crate::inherent::*;
+use crate::intern::Interned;
 use crate::relate::{Relate, RelateResult, TypeRelation};
 use crate::{
     BoundRegion, BoundRegionKind, BoundVar, BoundVarIndexKind, DebruijnIndex, FallibleTypeFolder,
@@ -19,8 +17,9 @@ use crate::{
 
 /// Use this rather than `RegionKind`, whenever possible.
 #[derive_where(Clone, Copy, PartialEq, Eq, Hash; I: Interner)]
-#[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
+#[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
 #[cfg_attr(feature = "nightly", rustc_pass_by_value)]
+#[derive(GenericTypeVisitable, Lift_Generic)]
 pub struct Region<I: Interner>(pub I::InternedRegionKind);
 
 // These are only the `inherent` trait methods that have been ported across
@@ -52,14 +51,16 @@ impl<I: Interner> Region<I> {
 
     #[inline]
     pub fn is_bound(self) -> bool {
-        matches!(self.0.kind(), RegionKind::ReBound(..))
+        matches!(self.0.get(), RegionKind::ReBound(..))
     }
 
+    // FIXME this should be made private and instead accessed via the
+    // trait Flags
     #[inline]
     pub fn type_flags(self) -> TypeFlags {
         let mut flags = TypeFlags::empty();
 
-        match self.0.kind() {
+        match self.0.get() {
             RegionKind::ReVar(..) => {
                 flags = flags | TypeFlags::HAS_FREE_REGIONS;
                 flags = flags | TypeFlags::HAS_FREE_LOCAL_REGIONS;
@@ -104,7 +105,7 @@ impl<I: Interner> Region<I> {
 
     #[inline]
     pub fn kind(self) -> RegionKind<I> {
-        self.0.kind()
+        self.0.get()
     }
 }
 
@@ -125,16 +126,7 @@ impl<I: Interner> IntoKind for Region<I> {
     type Kind = RegionKind<I>;
 
     fn kind(self) -> Self::Kind {
-        self.0.kind()
-    }
-}
-
-#[cfg(feature = "nightly")]
-impl<'tcx, T: Copy> IntoKind for Interned<'tcx, T> {
-    type Kind = T;
-
-    fn kind(self) -> Self::Kind {
-        *self.0
+        self.0.get()
     }
 }
 
@@ -167,25 +159,5 @@ impl<I: Interner> TypeFoldable<I> for Region<I> {
 
     fn fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self {
         folder.fold_region(self)
-    }
-}
-
-#[cfg(feature = "nightly")]
-impl<I: Interner, E: rustc_serialize::Encoder> Encodable<E> for Region<I>
-where
-    RegionKind<I>: Encodable<E>,
-{
-    fn encode(&self, e: &mut E) {
-        self.kind().encode(e);
-    }
-}
-
-#[cfg(feature = "nightly")]
-impl<I: Interner, D: crate::InternerDecoder<Interner = I>> Decodable<D> for Region<I>
-where
-    RegionKind<I>: Decodable<D>,
-{
-    fn decode(decoder: &mut D) -> Self {
-        decoder.interner().intern_region(Decodable::decode(decoder))
     }
 }

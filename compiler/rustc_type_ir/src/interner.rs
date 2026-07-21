@@ -6,11 +6,10 @@ use std::ops::Deref;
 use rustc_ast_ir::Movability;
 use rustc_ast_ir::visit::VisitorResult;
 use rustc_index::bit_set::DenseBitSet;
-#[cfg(feature = "nightly")]
-use rustc_serialize::Decoder;
 
 use crate::fold::TypeFoldable;
 use crate::inherent::*;
+use crate::intern::Interned;
 use crate::ir_print::IrPrint;
 use crate::lang_items::{SolverAdtLangItem, SolverProjectionLangItem, SolverTraitLangItem};
 use crate::relate::Relate;
@@ -188,12 +187,7 @@ pub trait Interner:
     type EarlyParamRegion: ParamLike;
     type LateParamRegion: Copy + Debug + Hash + Eq;
 
-    type InternedRegionKind: Copy
-        + Debug
-        + Hash
-        + Eq
-        + PartialEq
-        + IntoKind<Kind = RegionKind<Self>>;
+    type InternedRegionKind: Interned<Self, Value = RegionKind<Self>>;
 
     type RegionAssumptions: Copy
         + Debug
@@ -492,14 +486,6 @@ pub trait Interner:
     fn intern_canonical_bound(self, var: BoundVar) -> Region<Self>;
 }
 
-/// A decoder that can reconstruct interned IR values by supplying an interner.
-#[cfg(feature = "nightly")]
-pub trait InternerDecoder: Decoder {
-    type Interner: Interner;
-
-    fn interner(&self) -> Self::Interner;
-}
-
 macro_rules! declare_lift_into {
     ($($assoc:ident),* $(,)?) => {
         /// An interner whose associated types can be lifted into another interner `J`.
@@ -524,16 +510,19 @@ declare_lift_into! {
     BoundVarKinds,
     Const,
     DefId,
+    EarlyParamRegion,
+    ErrorGuaranteed,
     FreeConstAliasId,
     FreeTyAliasId,
     GenericArg,
     GenericArgs,
     InherentAssocConstId,
     InherentAssocTyId,
+    InternedRegionKind,
+    LateParamRegion,
     OpaqueTyId,
     ParamEnv,
     PatList,
-    Region,
     RegionAssumptions,
     Symbol,
     Term,
