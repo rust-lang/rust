@@ -322,6 +322,10 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         self.resolve_vars_if_possible(value)
     }
 
+    fn commit_if_ok<T, E>(&self, f: impl FnOnce() -> Result<T, E>) -> Result<T, E> {
+        self.commit_if_ok(|_| f())
+    }
+
     fn probe<T>(&self, probe: impl FnOnce() -> T) -> T {
         self.probe(|_| probe())
     }

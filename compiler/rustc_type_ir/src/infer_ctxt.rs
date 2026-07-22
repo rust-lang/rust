@@ -463,6 +463,8 @@ pub trait InferCtxtLike: Sized {
     where
         T: TypeFoldable<Self::Interner>;
 
+    fn commit_if_ok<T, E>(&self, f: impl FnOnce() -> Result<T, E>) -> Result<T, E>;
+
     fn probe<T>(&self, probe: impl FnOnce() -> T) -> T;
 
     fn sub_regions(
