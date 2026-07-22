@@ -35,6 +35,16 @@ pub struct Item<Def, Import = ImportId> {
     pub import: Option<Import>,
 }
 
+impl<Def: PartialEq, Import: Copy + PartialEq> Item<Def, Import> {
+    /// Whether `import` is the same import that produced `self`, now resolving to a different
+    /// `def`. This happens when an import is first recorded as an indeterminate resolution
+    /// (e.g. only one namespace was available at the time) and later re-resolves to another
+    /// def, such as an explicit import that shadows a glob only after the glob has been seen.
+    pub(crate) fn is_reresolved_by(&self, def: &Def, import: Option<Import>) -> bool {
+        import.is_some() && self.import == import && self.def != *def
+    }
+}
+
 pub type TypesItem = Item<ModuleDefId, ImportOrExternCrate>;
 pub type ValuesItem = Item<ModuleDefId, ImportOrGlob>;
 // May be Externcrate for `[macro_use]`'d macros
