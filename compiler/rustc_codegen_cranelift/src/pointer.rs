@@ -41,7 +41,7 @@ impl Pointer {
         match self.base {
             PointerBase::Addr(base_addr) => {
                 let offset: i64 = self.offset.into();
-                if offset == 0 { base_addr } else { fx.bcx.ins().iadd_imm(base_addr, offset) }
+                if offset == 0 { base_addr } else { fx.bcx.ins().iadd_imm_s(base_addr, offset) }
             }
             PointerBase::Stack(stack_slot) => {
                 fx.bcx.ins().stack_addr(fx.pointer_type, stack_slot, self.offset)
@@ -71,7 +71,7 @@ impl Pointer {
                         fx.bcx.ins().iconst(fx.pointer_type, i64::try_from(align.bytes()).unwrap())
                     }
                 };
-                let addr = fx.bcx.ins().iadd_imm(base_addr, new_offset);
+                let addr = fx.bcx.ins().iadd_imm_s(base_addr, new_offset);
                 Pointer { base: PointerBase::Addr(addr), offset: Offset32::new(0) }
             } else {
                 panic!(
@@ -106,21 +106,28 @@ impl Pointer {
         }
     }
 
-    pub(crate) fn load(self, fx: &mut FunctionCx<'_, '_, '_>, ty: Type, flags: MemFlags) -> Value {
+    pub(crate) fn load(
+        self,
+        fx: &mut FunctionCx<'_, '_, '_>,
+        ty: Type,
+        flags: MemFlagsData,
+    ) -> Value {
         match self.base {
             PointerBase::Addr(base_addr) => fx.bcx.ins().load(ty, flags, base_addr, self.offset),
-            PointerBase::Stack(stack_slot) => fx.bcx.ins().stack_load(ty, stack_slot, self.offset),
+            PointerBase::Stack(stack_slot) => {
+                fx.bcx.ins().stack_load(fx.pointer_type, ty, stack_slot, self.offset)
+            }
             PointerBase::Dangling(_align) => unreachable!(),
         }
     }
 
-    pub(crate) fn store(self, fx: &mut FunctionCx<'_, '_, '_>, value: Value, flags: MemFlags) {
+    pub(crate) fn store(self, fx: &mut FunctionCx<'_, '_, '_>, value: Value, flags: MemFlagsData) {
         match self.base {
             PointerBase::Addr(base_addr) => {
                 fx.bcx.ins().store(flags, value, base_addr, self.offset);
             }
             PointerBase::Stack(stack_slot) => {
-                fx.bcx.ins().stack_store(value, stack_slot, self.offset);
+                fx.bcx.ins().stack_store(fx.pointer_type, value, stack_slot, self.offset);
             }
             PointerBase::Dangling(_align) => unreachable!(),
         }

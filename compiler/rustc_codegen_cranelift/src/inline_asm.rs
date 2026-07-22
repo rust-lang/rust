@@ -847,7 +847,7 @@ fn call_inline_asm<'tcx>(
         stack_slot.offset(fx, i32::try_from(offset.bytes()).unwrap().into()).store(
             fx,
             value,
-            MemFlags::trusted(),
+            MemFlagsData::trusted(),
         );
     }
 
@@ -865,7 +865,7 @@ fn call_inline_asm<'tcx>(
         let value = stack_slot.offset(fx, i32::try_from(offset.bytes()).unwrap().into()).load(
             fx,
             ty,
-            MemFlags::trusted(),
+            MemFlagsData::trusted(),
         );
         place.write_cvalue(fx, CValue::by_val(value, place.layout()));
     }
