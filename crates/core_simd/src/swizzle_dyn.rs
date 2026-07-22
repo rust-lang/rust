@@ -63,7 +63,7 @@ impl<const N: usize> Simd<u8, N> {
                 16 => transize(loong64_lsx_swizzle, self, idxs),
                 #[cfg(all(target_arch = "loongarch64", target_feature = "lasx"))]
                 32 => transize(loong64_lasx_swizzle, self, idxs),
-                #[cfg(all(target_arch = "loongarch64", target_feature = "lsx",))]
+                #[cfg(all(target_arch = "loongarch64", target_feature = "lsx"))]
                 32 => transize(swizzle_dyn_split::<32, 16>, self, idxs),
                 #[cfg(all(target_arch = "loongarch64", target_feature = "lasx"))]
                 64 => transize(swizzle_dyn_split::<64, 32>, self, idxs),
