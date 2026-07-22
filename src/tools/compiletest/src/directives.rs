@@ -20,7 +20,7 @@ use crate::directives::line::DirectiveLine;
 use crate::directives::needs::PreparedNeedsConditions;
 use crate::edition::{Edition, parse_edition};
 use crate::errors::ErrorKind;
-use crate::executor::{CollectedTestDesc, ShouldFail};
+use crate::executor::{CollectedTestDesc, ShouldFail, TestVariant};
 use crate::util::static_regex;
 use crate::{fatal, help};
 
@@ -892,7 +892,7 @@ pub(crate) fn make_test_description(
     path: &Utf8Path,
     filterable_path: &Utf8Path,
     file_directives: &FileDirectives<'_>,
-    test_revision: Option<&str>,
+    variant: &TestVariant,
     poisoned: &mut bool,
     aux_props: &mut AuxProps,
 ) -> CollectedTestDesc {
@@ -901,25 +901,25 @@ pub(crate) fn make_test_description(
 
     // Perform a per-file (rather than per-line) ignore decision to skip running debuginfo tests
     // if we don't have a debugger for them available.
-    // This is needed because we duplicate the Config once for each debugger.
-    if config.mode == TestMode::DebugInfo {
-        match &config.debugger {
-            Some(Debugger::Cdb) => {
+    // We do this to materialize debuginfo tests for each debugger and explicitly ignore
+    // the variants that are not supported in our environment.
+    if let Some(debugger) = variant.debugger.as_ref() {
+        match debugger {
+            Debugger::Cdb => {
                 if let Some(msg) = check_cdb_support(config) {
                     ignore_message = Some(Cow::Owned(msg));
                 }
             }
-            Some(Debugger::Gdb) => {
+            Debugger::Gdb => {
                 if let Some(msg) = check_gdb_support(config) {
                     ignore_message = Some(Cow::Owned(msg));
                 }
             }
-            Some(Debugger::Lldb) => {
+            Debugger::Lldb => {
                 if let Some(msg) = check_lldb_support(config) {
                     ignore_message = Some(Cow::Owned(msg));
                 }
             }
-            None => {}
         }
     }
 
@@ -929,7 +929,7 @@ pub(crate) fn make_test_description(
             config,
             file_directives,
             &mut |ln @ &DirectiveLine { line_number, .. }| {
-                if !ln.applies_to_test_revision(test_revision) {
+                if !ln.applies_to_test_revision(variant.revision()) {
                     return;
                 }
 
@@ -958,9 +958,9 @@ pub(crate) fn make_test_description(
                 decision!(ignore_llvm(config, ln));
                 decision!(ignore_backends(config, ln));
                 decision!(needs_backends(config, ln));
-                decision!(ignore_cdb(config, ln));
-                decision!(ignore_gdb(config, ln));
-                decision!(ignore_lldb(config, ln));
+                decision!(ignore_cdb(config, variant, ln));
+                decision!(ignore_gdb(config, variant, ln));
+                decision!(ignore_lldb(config, variant, ln));
                 decision!(ignore_parallel_frontend(config, ln));
 
                 if config.target == "wasm32-unknown-unknown"
@@ -1019,9 +1019,17 @@ fn check_lldb_support(config: &Config) -> Option<String> {
     if config.lldb.is_none() { Some("lldb is not available".to_string()) } else { None }
 }
 
-fn ignore_cdb(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
-    if config.debugger != Some(Debugger::Cdb) {
-        return IgnoreDecision::Continue;
+fn ignore_cdb(config: &Config, variant: &TestVariant, line: &DirectiveLine<'_>) -> IgnoreDecision {
+    if variant.debugger != Some(Debugger::Cdb) {
+        return if line.name == "only-cdb" {
+            IgnoreDecision::Ignore { reason: "debugger is not cdb".to_string() }
+        } else {
+            IgnoreDecision::Continue
+        };
+    }
+
+    if line.name == "ignore-cdb" {
+        return IgnoreDecision::Ignore { reason: "debugger is cdb".to_string() };
     }
 
     if let Some(actual_version) = config.cdb_version {
@@ -1044,9 +1052,17 @@ fn ignore_cdb(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
     IgnoreDecision::Continue
 }
 
-fn ignore_gdb(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
-    if config.debugger != Some(Debugger::Gdb) {
-        return IgnoreDecision::Continue;
+fn ignore_gdb(config: &Config, variant: &TestVariant, line: &DirectiveLine<'_>) -> IgnoreDecision {
+    if variant.debugger != Some(Debugger::Gdb) {
+        return if line.name == "only-gdb" {
+            IgnoreDecision::Ignore { reason: "debugger is not gdb".to_string() }
+        } else {
+            IgnoreDecision::Continue
+        };
+    }
+
+    if line.name == "ignore-gdb" {
+        return IgnoreDecision::Ignore { reason: "debugger is gdb".to_string() };
     }
 
     if let Some(actual_version) = config.gdb_version {
@@ -1096,9 +1112,17 @@ fn ignore_gdb(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
     IgnoreDecision::Continue
 }
 
-fn ignore_lldb(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
-    if config.debugger != Some(Debugger::Lldb) {
-        return IgnoreDecision::Continue;
+fn ignore_lldb(config: &Config, variant: &TestVariant, line: &DirectiveLine<'_>) -> IgnoreDecision {
+    if variant.debugger != Some(Debugger::Lldb) {
+        return if line.name == "only-lldb" {
+            IgnoreDecision::Ignore { reason: "debugger is not lldb".to_string() }
+        } else {
+            IgnoreDecision::Continue
+        };
+    }
+
+    if line.name == "ignore-lldb" {
+        return IgnoreDecision::Ignore { reason: "debugger is lldb".to_string() };
     }
 
     if let Some(actual_version) = &config.lldb_version {

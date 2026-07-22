@@ -9,7 +9,7 @@ use crate::directives::{
     FileDirectives, KNOWN_DIRECTIVE_NAMES_SET, LineNumber, extract_llvm_version,
     extract_version_range, line_directive, parse_edition, parse_normalize_rule,
 };
-use crate::executor::{CollectedTestDesc, ShouldFail};
+use crate::executor::{CollectedTestDesc, ShouldFail, TestVariant};
 
 /// All directive handlers should have a name that is also in `KNOWN_DIRECTIVE_NAMES_SET`.
 #[test]
@@ -46,10 +46,13 @@ fn make_test_description(
     filterable_path: &Utf8Path,
     file_contents: &str,
     revision: Option<&str>,
+    debugger: Option<Debugger>,
 ) -> CollectedTestDesc {
     let cache = DirectivesCache::load(config);
     let mut poisoned = false;
     let file_directives = FileDirectives::from_file_contents(path, file_contents);
+
+    let variant = TestVariant { revision: revision.map(str::to_owned), debugger };
 
     let mut aux_props = AuxProps::default();
     let test = crate::directives::make_test_description(
@@ -59,7 +62,7 @@ fn make_test_description(
         path,
         filterable_path,
         &file_directives,
-        revision,
+        &variant,
         &mut poisoned,
         &mut aux_props,
     );
@@ -283,7 +286,14 @@ fn parse_early_props(config: &Config, contents: &str) -> EarlyProps {
 fn check_ignore(config: &Config, contents: &str) -> bool {
     let tn = String::new();
     let p = Utf8Path::new("a.rs");
-    let d = make_test_description(&config, tn, p, p, contents, None);
+    let d = make_test_description(&config, tn, p, p, contents, None, None);
+    d.is_ignored()
+}
+
+fn check_ignore_debugger(config: &Config, contents: &str, debugger: Option<Debugger>) -> bool {
+    let tn = String::new();
+    let p = Utf8Path::new("a.rs");
+    let d = make_test_description(&config, tn, p, p, contents, None, debugger);
     d.is_ignored()
 }
 
@@ -293,9 +303,9 @@ fn should_fail() {
     let tn = String::new();
     let p = Utf8Path::new("a.rs");
 
-    let d = make_test_description(&config, tn.clone(), p, p, "", None);
+    let d = make_test_description(&config, tn.clone(), p, p, "", None, None);
     assert_eq!(d.should_fail, ShouldFail::No);
-    let d = make_test_description(&config, tn, p, p, "//@ should-fail", None);
+    let d = make_test_description(&config, tn, p, p, "//@ should-fail", None, None);
     assert_eq!(d.should_fail, ShouldFail::Yes);
 }
 
@@ -449,18 +459,11 @@ fn cross_compile() {
 
 #[test]
 fn debugger() {
-    let mut config = cfg().build();
-    config.debugger = None;
-    assert!(!check_ignore(&config, "//@ ignore-cdb"));
-
-    config.debugger = Some(Debugger::Cdb);
-    assert!(check_ignore(&config, "//@ ignore-cdb"));
-
-    config.debugger = Some(Debugger::Gdb);
-    assert!(check_ignore(&config, "//@ ignore-gdb"));
-
-    config.debugger = Some(Debugger::Lldb);
-    assert!(check_ignore(&config, "//@ ignore-lldb"));
+    let config = cfg().build();
+    assert!(!check_ignore_debugger(&config, "//@ ignore-cdb", None));
+    assert!(check_ignore_debugger(&config, "//@ ignore-cdb", Some(Debugger::Cdb)));
+    assert!(check_ignore_debugger(&config, "//@ ignore-gdb", Some(Debugger::Gdb)));
+    assert!(check_ignore_debugger(&config, "//@ ignore-lldb", Some(Debugger::Lldb)));
 }
 
 #[test]
