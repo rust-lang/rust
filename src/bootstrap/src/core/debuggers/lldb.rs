@@ -10,18 +10,17 @@ pub(crate) struct Lldb {
 }
 
 pub(crate) fn discover_lldb(builder: &Builder<'_>) -> Option<Lldb> {
-    let lldb_exe = match &builder.config.lldb {
-        Some(DebuggerPath::Path(path)) => path.clone(),
-        Some(DebuggerPath::Discover) => PathBuf::from("lldb"),
+    // If a path to a LLDB binary was provided, it has to exist and return some version, to avoid
+    // silent failures.
+    let (lldb_exe, explicitly_set_lldb) = match &builder.config.lldb {
+        Some(DebuggerPath::Path(path)) => (path.clone(), true),
+        Some(DebuggerPath::Discover) => (PathBuf::from("lldb"), false),
         None => return None,
     };
 
     let mut cmd = command(&lldb_exe);
     cmd.arg("--version");
 
-    // If a path to a LLDB binary was provided, it has to exist and return some version, to avoid
-    // silent failures.
-    let explicitly_set_lldb = builder.config.lldb.is_some();
     if !explicitly_set_lldb {
         cmd = cmd.allow_failure();
     }

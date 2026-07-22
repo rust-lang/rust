@@ -50,7 +50,8 @@ use crate::core::config::toml::target::{
 };
 use crate::core::config::{
     CompilerBuiltins, CompressDebuginfo, DebuggerPath, DebuginfoLevel, DryRun, GccCiMode,
-    LlvmLibunwind, Merge,OverrideAllocator, ReplaceOpt, RustcLto, SplitDebuginfo, StringOrBool, threads_from_config,
+    LlvmLibunwind, Merge, OverrideAllocator, ReplaceOpt, RustcLto, SplitDebuginfo, StringOrBool,
+    threads_from_config,
 };
 use crate::core::download::{
     DownloadContext, download_beta_toolchain, is_download_ci_available, maybe_download_rustfmt,
