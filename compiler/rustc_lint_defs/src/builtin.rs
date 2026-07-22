@@ -2897,6 +2897,41 @@ declare_lint! {
     /// but is being phased out. This is similar to the `semicolon_in_expressions_from_macros` lint,
     /// but applies to macros expanded from a different crate.
     ///
+    /// ### Example
+    ///
+    /// ```rust,ignore (needs separate file)
+    /// fn main() {
+    ///     let val = match true {
+    ///         true => false,
+    ///         _ => example_separate_crate::foo!()
+    ///     };
+    /// }
+    /// ```
+    ///
+    /// where the crate `example-separate-crate` contains:
+    ///
+    /// ```rust,ignore (must be compiled as separate crate)
+    /// #[macro_export]
+    /// macro_rules! foo {
+    ///     () => { true; }
+    /// }
+    /// ```
+    ///
+    /// produces:
+    ///
+    /// ```text
+    /// warning: trailing semicolon in macro used in expression position
+    ///  --> src/main.rs:4:14
+    ///   |
+    /// 4 |         _ => example_separate_crate::foo!()
+    ///   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ///   |
+    ///   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    ///   = note: for more information, see issue #79813 <https://github.com/rust-lang/rust/issues/79813>
+    ///   = note: `#[warn(semicolon_in_expressions_from_non_local_macros)]` (part of `#[warn(future_incompatible)]`) on by default
+    ///   = note: this warning originates in the macro `example_separate_crate::foo` (in Nightly builds, run with -Z macro-backtrace for more info)
+    /// ```
+    ///
     /// ### Explanation
     ///
     /// Previous, Rust ignored trailing semicolon in a macro
