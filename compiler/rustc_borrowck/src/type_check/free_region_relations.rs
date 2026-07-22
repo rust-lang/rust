@@ -401,15 +401,26 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
                     // The bound says that `r1 <= r2`; we store `r2: r1`.
                     let r1 = self.universal_regions.to_region_vid(r1);
                     let r2 = self.universal_regions.to_region_vid(r2);
+                    if  !(self.universal_regions.is_universal_region(r1) || self.universal_regions.is_universal_region(r2)) {
+                        return;
+                    }
                     self.relate_universal_regions(r2, r1);
                 }
 
                 OutlivesBound::RegionSubParam(r_a, param_b) => {
+                    let r1 = self.universal_regions.to_region_vid(r_a);
+                    if !self.universal_regions.is_universal_region(r1) {
+                        return;
+                    }
                     self.region_bound_pairs
                         .insert(ty::OutlivesPredicate(GenericKind::Param(param_b), r_a));
                 }
 
                 OutlivesBound::RegionSubAlias(r_a, alias_b) => {
+                    let r1 = self.universal_regions.to_region_vid(r_a);
+                    if !self.universal_regions.is_universal_region(r1) {
+                        return;
+                    }
                     self.region_bound_pairs
                         .insert(ty::OutlivesPredicate(GenericKind::Alias(alias_b), r_a));
                 }
