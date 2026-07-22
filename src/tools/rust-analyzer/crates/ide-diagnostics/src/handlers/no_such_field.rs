@@ -1,7 +1,9 @@
 use either::Either;
 use hir::{HasSource, HirDisplay, Semantics, VariantId};
 use ide_db::text_edit::TextEdit;
-use ide_db::{EditionedFileId, RootDatabase, source_change::SourceChange};
+use ide_db::{
+    EditionedFileId, RootDatabase, helpers::is_editable_crate, source_change::SourceChange,
+};
 use syntax::{
     AstNode,
     ast::{self, edit::IndentLevel, make},
@@ -86,6 +88,10 @@ fn missing_record_expr_field_fixes(
         }
     };
     let def_file_id = def_file_id.original_file(sema.db);
+
+    if !is_editable_crate(module.krate(sema.db), sema.db) {
+        return None;
+    }
 
     let new_field_type = sema.type_of_expr(&record_expr_field.expr()?)?.adjusted();
     if new_field_type.is_unknown() {
@@ -445,6 +451,18 @@ fn main() {
         0$0: 0
     }
 }
+"#,
+        )
+    }
+
+    #[test]
+    fn no_such_field_no_fix_for_struct_in_library_crate() {
+        check_no_fix(
+            r#"
+//- /lib.rs crate:lib new_source_root:library
+pub struct S { pub a: i32 }
+//- /main.rs crate:main deps:lib new_source_root:local
+fn f() { let _ = lib::S { a: 1, b$0: false }; }
 "#,
         )
     }
