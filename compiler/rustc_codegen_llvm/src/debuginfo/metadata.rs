@@ -1635,7 +1635,7 @@ fn build_unsafe_binder_type_di_node<'ll, 'tcx>(
             binder_type
         )
     };
-    let inner_type = inner.skip_binder();
+    let inner_type = cx.tcx.instantiate_bound_regions_with_erased((*inner).into());
     let inner_type_di_node = type_di_node(cx, inner_type);
 
     let type_name = compute_debuginfo_type_name(cx.tcx, binder_type, true);

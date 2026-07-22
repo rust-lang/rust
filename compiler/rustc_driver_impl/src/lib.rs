@@ -231,28 +231,21 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
         let sess = &compiler.sess;
         let codegen_backend = &*compiler.codegen_backend;
 
-        // This is used for early exits unrelated to errors. E.g. when just
-        // printing some information without compiling, or exiting immediately
-        // after parsing, etc.
-        let early_exit = || {
-            sess.dcx().abort_if_errors();
-        };
-
         // This implements `-Whelp`. It should be handled very early, like
         // `--help`/`-Zhelp`/`-Chelp`. This is the earliest it can run, because
         // it must happen after lints are registered, during session creation.
         if sess.opts.describe_lints {
             describe_lints(sess, registered_lints);
-            return early_exit();
+            return;
         }
 
         // We have now handled all help options, exit
         if help_only {
-            return early_exit();
+            return;
         }
 
         if print_crate_info(codegen_backend, sess, has_input) == Compilation::Stop {
-            return early_exit();
+            return;
         }
 
         if !has_input {
@@ -261,12 +254,12 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
 
         if !sess.opts.unstable_opts.ls.is_empty() {
             list_metadata(sess, &*codegen_backend.metadata_loader());
-            return early_exit();
+            return;
         }
 
         if sess.opts.unstable_opts.link_only {
             process_rlink(sess, compiler);
-            return early_exit();
+            return;
         }
 
         // Parse the crate root source code (doesn't parse submodules yet)
@@ -285,28 +278,23 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
                 pretty::print(sess, pp_mode, pretty::PrintExtra::AfterParsing { krate: &krate });
             }
             trace!("finished pretty-printing");
-            return early_exit();
+            return;
         }
 
         if callbacks.after_crate_root_parsing(compiler, &mut krate) == Compilation::Stop {
-            return early_exit();
+            return;
         }
 
         if sess.opts.unstable_opts.parse_crate_root_only {
-            return early_exit();
+            return;
         }
 
         let linker = create_and_enter_global_ctxt(compiler, krate, |tcx| {
-            let early_exit = || {
-                sess.dcx().abort_if_errors();
-                None
-            };
-
             // Make sure name resolution and macro expansion is run.
             let _ = tcx.resolver_for_lowering();
 
             if callbacks.after_expansion(compiler, tcx) == Compilation::Stop {
-                return early_exit();
+                return None;
             }
 
             passes::write_dep_info(tcx);
@@ -316,11 +304,11 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
             if sess.opts.output_types.contains_key(&OutputType::DepInfo)
                 && sess.opts.output_types.len() == 1
             {
-                return early_exit();
+                return None;
             }
 
             if sess.opts.unstable_opts.no_analysis {
-                return early_exit();
+                return None;
             }
 
             tcx.ensure_ok().analysis(());
@@ -330,16 +318,16 @@ pub fn run_compiler(at_args: &[String], callbacks: &mut (dyn Callbacks + Send)) 
             }
 
             if callbacks.after_analysis(compiler, tcx) == Compilation::Stop {
-                return early_exit();
+                return None;
             }
 
-            if tcx.sess.opts.output_types.contains_key(&OutputType::Mir) {
+            if sess.opts.output_types.contains_key(&OutputType::Mir) {
                 if let Err(error) = pretty::emit_mir(tcx) {
                     tcx.dcx().emit_fatal(CantEmitMIR { error });
                 }
             }
 
-            let linker = Linker::codegen_and_build_linker(tcx, &*compiler.codegen_backend);
+            let linker = Linker::codegen_and_build_linker(tcx, codegen_backend);
 
             tcx.report_unused_features();
 

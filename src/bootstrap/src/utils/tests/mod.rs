@@ -1,14 +1,10 @@
 //! This module contains shared utilities for bootstrap tests.
 
 use std::path::{Path, PathBuf};
-use std::thread;
 
 use tempfile::TempDir;
 
-use crate::core::builder::Builder;
-use crate::core::config::DryRun;
-use crate::utils::helpers::get_host_target;
-use crate::{Build, Config, Flags, t};
+use crate::{Config, Flags};
 
 pub mod git;
 
@@ -69,11 +65,11 @@ impl ConfigBuilder {
         }
     }
 
-    pub fn path(mut self, path: &str) -> Self {
+    pub fn path(self, path: &str) -> Self {
         self.arg(path)
     }
 
-    pub fn paths(mut self, paths: &[&str]) -> Self {
+    pub fn paths(self, paths: &[&str]) -> Self {
         self.args(paths)
     }
 
@@ -90,7 +86,7 @@ impl ConfigBuilder {
     }
 
     /// Set the specified target to be treated as a no_std target.
-    pub fn override_target_no_std(mut self, target: &str) -> Self {
+    pub fn override_target_no_std(self, target: &str) -> Self {
         self.args(&["--set", &format!("target.{target}.no-std=true")])
     }
 
