@@ -354,7 +354,7 @@ pub fn set_alloc_error_hook(hook: fn(Layout)) {
 /// Unwinding from the allocation error hook is not unsafe per se; however, callers of
 /// [`handle_alloc_error`] may assume that that method will never unwind for safety and/or
 /// correctness. Note that this [also includes][example-1] the [standard library][example-2]
-/// at times; thus, callers must ensure that only code which explicitly promises *not* to
+/// at times. Thus, callers must ensure that only code which explicitly promises *not* to
 /// rely on this guarantee of `handle_alloc_error` may be called between setting an unwinding
 /// hook and unsetting it via [`take_alloc_error_hook`]. This requirement applies across threads,
 /// as the hooks are global.
