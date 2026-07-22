@@ -22,16 +22,16 @@ pub(crate) fn renumber_mir<'tcx>(
     let mut renumberer = RegionRenumberer { infcx };
 
     for body in promoted.iter_mut() {
-        split_critical_edges(body);
+        split_critical_unwind_edges(body);
         renumberer.visit_body_preserves_cfg(body);
     }
 
-    split_critical_edges(body);
+    split_critical_unwind_edges(body);
     renumberer.visit_body_preserves_cfg(body);
 }
 
 #[instrument(skip(body), level = "debug")]
-fn split_critical_edges(body: &mut Body<'_>) {
+fn split_critical_unwind_edges(body: &mut Body<'_>) {
     let predecessors: IndexVec<BasicBlock, _> =
         body.basic_blocks.predecessors().iter().map(|preds| preds.len()).collect();
     debug!(?predecessors);
@@ -39,20 +39,13 @@ fn split_critical_edges(body: &mut Body<'_>) {
     let mut new_blocks = vec![];
     for bb in predecessors.indices() {
         let term = body.basic_blocks[bb].terminator();
-        if term.successors().count() <= 1 {
-            continue;
-        }
-        if term.successors().all(|s| predecessors[s] <= 1) {
+        let Some(&UnwindAction::Cleanup(unwind)) = term.unwind() else { continue };
+        if predecessors[unwind] <= 1 {
             continue;
         }
 
-        debug!(
-            "{bb:?} has critical edges: {:?}",
-            term.successors().map(|s| (s, predecessors[s])).collect::<Vec<_>>(),
-        );
-
-        let original_succ: Vec<_> = term.successors().collect();
-        new_blocks.push((bb, original_succ));
+        debug!("{bb:?} has critical unwind edge: {unwind:?}");
+        new_blocks.push((bb, unwind));
     }
 
     if new_blocks.is_empty() {
@@ -61,26 +54,16 @@ fn split_critical_edges(body: &mut Body<'_>) {
 
     debug!(?new_blocks);
     let basic_blocks = body.basic_blocks.as_mut();
-    for (bb, successors) in new_blocks.iter_mut() {
-        let source_info = basic_blocks[*bb].terminator().source_info;
-        for target in successors.iter_mut() {
-            if predecessors[*target] <= 1 {
-                continue;
-            }
-
-            let is_cleanup = basic_blocks[*target].is_cleanup;
-            let terminator = Terminator {
-                source_info,
-                kind: TerminatorKind::Goto { target: *target },
-                attributes: ThinVec::new(),
-            };
-            *target = basic_blocks.push(BasicBlockData::new(Some(terminator), is_cleanup))
-        }
-    }
-
-    for (bb, new_succ) in new_blocks {
-        let mut new_succ = new_succ.into_iter();
-        basic_blocks[bb].terminator_mut().successors_mut(|succ| *succ = new_succ.next().unwrap());
+    for (bb, target) in new_blocks {
+        let source_info = basic_blocks[bb].terminator().source_info;
+        let terminator = Terminator {
+            source_info,
+            kind: TerminatorKind::Goto { target },
+            attributes: ThinVec::new(),
+        };
+        let new_target = basic_blocks.push(BasicBlockData::new(Some(terminator), true));
+        *basic_blocks[bb].terminator_mut().unwind_mut().unwrap() =
+            UnwindAction::Cleanup(new_target);
     }
 }
 
