@@ -1,12 +1,6 @@
 //@ run-pass
 //@ ignore-backends: gcc
-#![feature(
-    c_variadic,
-    const_c_variadic,
-    c_variadic_int128,
-    const_destruct,
-    const_raw_ptr_comparison
-)]
+#![feature(const_c_variadic, c_variadic_int128, const_destruct, const_raw_ptr_comparison)]
 #![allow(unused_features)] // c_variadic_int128 is only used on 64-bit targets.
 
 use std::ffi::*;
