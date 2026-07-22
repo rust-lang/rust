@@ -145,6 +145,13 @@
 //!   the allocation), `base + o` will not wrap around the address space (in
 //!   other words, will not overflow `usize`)
 //!
+//! Allocations typically have a fixed size that cannot change. However, allocations created by
+//! directly invoking page table operations of the operating system, e.g. via `mmap`, are allowed to
+//! grow by adding more pages to them at the end. Unmapping parts of an allocation (i.e., shrinking
+//! it or punching holes into it) is currently not supported. Allocations created via
+//! "compiler-recognized" operations, such as `std::alloc` methods or `libc::malloc`, can never
+//! change their size, even if they use `mmap` under the hood.
+//!
 //! [`null()`]: null
 //!
 //! # Provenance
