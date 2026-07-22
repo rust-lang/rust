@@ -131,6 +131,59 @@ pub unsafe fn alloc(layout: Layout) -> *mut u8 {
     }
 }
 
+/// Allocates memory with the global allocator, as a typed allocation function for LLVM
+/// AllocToken and heap partitioning support.
+///
+/// This function is annotated with the `#[rustc_alloc_token_hint]` attribute, so the allocation
+/// call within it is annotated with the allocation token hint (i.e., the contents of the
+/// `!alloc_token` metadata) for its type parameter `T` (i.e., the allocated type).
+///
+/// # Safety
+///
+/// See [`GlobalAlloc::alloc`]. `layout` must be the layout of `T` and must have non-zero size.
+#[cfg(sanitize = "alloc-token")]
+#[rustc_alloc_token_hint]
+#[must_use = "losing the pointer will leak memory"]
+#[inline]
+#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+pub(crate) unsafe fn alloc_with_token_hint<T>(layout: Layout) -> *mut u8 {
+    unsafe {
+        // Make sure we don't accidentally allow omitting the allocator shim in
+        // stable code until it is actually stabilized.
+        __rust_no_alloc_shim_is_unstable_v2();
+
+        __rust_alloc(layout.size(), layout.alignment())
+    }
+}
+
+/// Allocates memory with the global allocator, as a typed allocation function for LLVM
+/// AllocToken and heap partitioning support, for an array of `T` (e.g., a buffer allocated by
+/// `Vec<T>` or `String`).
+///
+/// This function is annotated with the `#[rustc_alloc_token_hint]` attribute, so the allocation
+/// call within it is annotated with the allocation token hint (i.e., the contents of the
+/// `!alloc_token` metadata) for its type parameter `T` (i.e., the element type of the allocated
+/// array).
+///
+/// # Safety
+///
+/// See [`GlobalAlloc::alloc`]. `layout` must be a valid layout for an array of `T` and must have
+/// non-zero size.
+#[cfg(sanitize = "alloc-token")]
+#[rustc_alloc_token_hint]
+#[must_use = "losing the pointer will leak memory"]
+#[inline]
+#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+pub(crate) unsafe fn alloc_array_with_token_hint<T>(layout: Layout) -> *mut u8 {
+    unsafe {
+        // Make sure we don't accidentally allow omitting the allocator shim in
+        // stable code until it is actually stabilized.
+        __rust_no_alloc_shim_is_unstable_v2();
+
+        __rust_alloc(layout.size(), layout.alignment())
+    }
+}
+
 /// Deallocates memory with the global allocator.
 ///
 /// This function forwards calls to the [`GlobalAlloc::dealloc`] method

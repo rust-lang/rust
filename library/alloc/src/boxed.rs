@@ -254,6 +254,22 @@ const fn box_new_uninit(layout: Layout) -> *mut u8 {
     }
 }
 
+/// Monomorphic-per-type variant of `box_new_uninit` for LLVM AllocToken and heap partitioning
+/// support. The raw allocation call must be made within a typed allocation function (e.g.,
+/// `alloc::alloc_with_token_hint`) to be annotated with the allocation token hint for `T`.
+#[inline]
+#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
+#[cfg(all(sanitize = "alloc-token", not(no_global_oom_handling)))]
+fn box_new_uninit_with_token_hint<T>() -> *mut u8 {
+    let layout = <T as SizedTypeProperties>::LAYOUT;
+    if layout.size() == 0 {
+        return NonNull::<T>::dangling().as_ptr() as *mut u8;
+    }
+    // SAFETY: `layout` is the layout of `T` and has non-zero size.
+    let ptr = unsafe { crate::alloc::alloc_with_token_hint::<T>(layout) };
+    if ptr.is_null() { handle_alloc_error(layout) } else { ptr }
+}
+
 /// Helper for `vec!`.
 ///
 /// This is unsafe, but has to be marked as safe or else we couldn't use it in `vec!`.
@@ -287,7 +303,12 @@ impl<T> Box<T> {
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn new(x: T) -> Self {
         // This is `Box::new_uninit` but inlined to avoid build time regressions.
+        #[cfg(not(sanitize = "alloc-token"))]
         let ptr = box_new_uninit(<T as SizedTypeProperties>::LAYOUT) as *mut T;
+        // Use the typed allocation path for LLVM AllocToken and heap partitioning support, so the
+        // allocation call is annotated with the allocation token hint for `T`.
+        #[cfg(sanitize = "alloc-token")]
+        let ptr = box_new_uninit_with_token_hint::<T>() as *mut T;
         // Nothing below can panic so we do not have to worry about deallocating `ptr`.
         // SAFETY: we just allocated the box to store `x`.
         unsafe { core::intrinsics::write_via_move(ptr, x) };
