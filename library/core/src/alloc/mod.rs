@@ -160,13 +160,6 @@ impl fmt::Display for AllocError {
 /// that are in the implementor's control (e.g., via an incorrect `unsafe
 /// impl AllocatorClone for MyAllocator`).
 ///
-/// Users of this trait must not rely on side effects of allocating or deallocating method calls
-/// on `Allocator` implementors being observable (i.e. it is sound for an allocation followed
-/// by a deallocation to be moved to the stack, or for the compiler to spuriously introduce
-/// an allocation-deallocation pair where one was not specified manually). While it is possible
-/// to make such calls *unlikely* to be elided (e.g. for benchmarking), this cannot be relied upon
-/// for soundness.
-///
 /// More concretely, the following code example is unsound, irrespective of whether your custom
 /// allocator allows counting how many allocations have happened:
 ///
@@ -560,7 +553,14 @@ where
 /// Implementors must ensure that memory cannot be freed except via a call to
 /// `Allocator::deallocate`, and that subtype coercion preserves this invariant.
 ///
-/// This trivially applies to allocators that always maintain global state, such as
+/// Additionally, users of this trait must not rely on side effects of allocating or deallocating
+/// method calls on `StaticAllocator` implementors being observable (i.e. it is sound for an
+/// allocation followed by a deallocation to be moved to the stack, or for the compiler to
+/// spuriously introduce an allocation-deallocation pair where one was not specified manually).
+/// While it is possible to make such calls *unlikely* to be elided (e.g. for benchmarking), this
+/// cannot be relied upon for soundness.
+///
+/// These requirements trivially apply to allocators that always maintain global state, such as
 /// `System` or `Global`. However, due to subtype coercion, it is *not* sound to implement
 /// for an arbitrary `Allocator + 'static` due to [edge-case interactions][unsound] with
 /// `Pin::clone`. Namely, an impl of `StaticAllocator for MyAllocator + 'long` guarantees that an
