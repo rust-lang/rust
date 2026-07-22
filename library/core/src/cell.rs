@@ -2150,8 +2150,9 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 /// use `UnsafeCell` to wrap their data.
 ///
 /// Note that only the immutability guarantee for shared references is affected by `UnsafeCell`. The
-/// uniqueness guarantee for mutable references is unaffected. There is *no* legal way to obtain
-/// aliasing `&mut`, not even with `UnsafeCell<T>`.
+/// uniqueness guarantee for mutable references is unaffected. As explained below, for the duration
+/// of the lifetime of an `&mut`, no other reference may exist and no pointer may be used to access
+/// that memory; this applies even with `UnsafeCell<T>`.
 ///
 /// `UnsafeCell` does nothing to avoid data races; they are still undefined behavior. If multiple
 /// threads have access to the same `UnsafeCell`, they must follow the usual rules of the
@@ -2171,11 +2172,13 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 ///
 /// - If you create a safe reference with lifetime `'a` (either a `&T` or `&mut T` reference), then
 ///   you must not access the data in any way that contradicts that reference for the remainder of
-///   `'a`. For example, this means that if you take the `*mut T` from an `UnsafeCell<T>` and cast it
-///   to a `&T`, then the data in `T` must remain immutable (modulo any `UnsafeCell` data found
-///   within `T`, of course) until that reference's lifetime expires. Similarly, if you create a
-///   `&mut T` reference, then you must not access the data within the
-///   `UnsafeCell` until that reference expires.
+///   `'a`, and you must not create any contradicting references. For example, this means that if
+///   you take the `*mut T` from an `UnsafeCell<T>` and cast it to a `&T`, then the data in `T` must
+///   remain immutable (modulo any `UnsafeCell` data found within `T`, of course) until that
+///   reference's lifetime expires, and no `&mut` reference to this data may be created. Similarly,
+///   if you create a `&mut T` reference, then you must not access the data within the `UnsafeCell`
+///   with any other pointer/reference until that reference expires, and no reference of any kind
+///   may be created.
 ///
 /// - For both `&T` without `UnsafeCell<_>` and `&mut T`, you must also not deallocate the data
 ///   until the reference expires. As a special exception, given a `&T`, any part of it that is
@@ -2200,7 +2203,7 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 /// Note that whilst mutating the contents of a `&UnsafeCell<T>` (even while other
 /// `&UnsafeCell<T>` references alias the cell) is
 /// ok (provided you enforce the above invariants some other way), it is still undefined behavior
-/// to have multiple `&mut UnsafeCell<T>` aliases. That is, `UnsafeCell` is a wrapper
+/// to have aliasing `&mut UnsafeCell<T>` (or aliasing `&mut` of *any* type). That is, `UnsafeCell` is a wrapper
 /// designed to have a special interaction with _shared_ accesses (_i.e._, through an
 /// `&UnsafeCell<_>` reference); there is no magic whatsoever when dealing with _exclusive_
 /// accesses (_e.g._, through a `&mut UnsafeCell<_>`): neither the cell nor the wrapped value
