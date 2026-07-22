@@ -1,7 +1,8 @@
+use crate::build_sysroot::SysrootConfig;
 use crate::path::Dirs;
 use crate::prepare::GitRepo;
 use crate::utils::{CargoProject, Compiler, spawn_and_wait};
-use crate::{CodegenBackend, SysrootKind, build_sysroot};
+use crate::{CodegenBackend, build_sysroot};
 
 static ABI_CAFE_REPO: GitRepo = GitRepo::github(
     "Gankra",
@@ -15,12 +16,11 @@ static ABI_CAFE_REPO: GitRepo = GitRepo::github(
 static ABI_CAFE: CargoProject = CargoProject::new(ABI_CAFE_REPO.source_dir(), "abi_cafe_target");
 
 pub(crate) fn run(
-    sysroot_kind: SysrootKind,
+    sysroot_config: &SysrootConfig,
     dirs: &Dirs,
     cg_clif_dylib: &CodegenBackend,
     rustup_toolchain_name: Option<&str>,
     bootstrap_host_compiler: &Compiler,
-    panic_unwind_support: bool,
 ) {
     std::fs::create_dir_all(&dirs.download_dir).unwrap();
     ABI_CAFE_REPO.fetch(dirs);
@@ -29,12 +29,11 @@ pub(crate) fn run(
     eprintln!("Building sysroot for abi-cafe");
     build_sysroot::build_sysroot(
         dirs,
-        sysroot_kind,
+        sysroot_config,
         cg_clif_dylib,
         bootstrap_host_compiler,
         rustup_toolchain_name,
         bootstrap_host_compiler.triple.clone(),
-        panic_unwind_support,
     );
 
     eprintln!("Running abi-cafe");
