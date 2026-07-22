@@ -160,13 +160,7 @@ where
     let prev_universe = delegate.universe();
     let universes_created_in_query = response.max_universe.index();
     for _ in 0..universes_created_in_query {
-        let new_universe = delegate.create_next_universe();
-        if delegate.cx().assumptions_on_binders() {
-            delegate.insert_placeholder_assumptions(
-                new_universe,
-                Some(rustc_type_ir::region_constraint::Assumptions::empty()),
-            );
-        }
+        delegate.create_next_universe();
     }
 
     let var_values = response.value.var_values();
