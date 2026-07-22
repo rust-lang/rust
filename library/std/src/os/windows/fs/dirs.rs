@@ -1,14 +1,9 @@
 use crate::fs::{HomeDirs, MediaDirs};
 use crate::io;
 
-trait Sealed {}
-impl Sealed for HomeDirs {}
-impl Sealed for MediaDirs {}
-
 /// Windows-specific extensions to [`fs::HomeDirs`](HomeDirs).
 #[unstable(feature = "dir_discovery", issue = "157515")]
-#[expect(private_bounds, reason = "sealed")]
-pub trait HomeDirsExt: Sized + Sealed {
+pub impl(self) trait HomeDirsExt: Sized {
     /// Load the known user folder paths using the [Known Folders] API.
     ///
     /// The loaded known folders are:
@@ -56,8 +51,7 @@ pub trait HomeDirsExt: Sized + Sealed {
 
 /// Windows-specific extensions to [`fs::MediaDirs`](MediaDirs).
 #[unstable(feature = "media_dir_discovery", issue = "157515")]
-#[expect(private_bounds, reason = "sealed")]
-pub trait MediaDirsExt: Sized + Sealed {
+pub impl(self) trait MediaDirsExt: Sized {
     /// Load the known user folder paths using the [Known Folders] API.
     ///
     /// The loaded known folders are:

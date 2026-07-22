@@ -3,14 +3,9 @@ use crate::fs::{HomeDirs, MediaDirs};
 use crate::io::{self, ErrorKind, const_error};
 use crate::path::PathBuf;
 
-trait Sealed {}
-impl Sealed for HomeDirs {}
-impl Sealed for MediaDirs {}
-
 /// Darwin-specific extensions to [`fs::HomeDirs`](HomeDirs).
 #[unstable(feature = "dir_discovery", issue = "157515")]
-#[expect(private_bounds, reason = "sealed")]
-pub trait HomeDirsExt: Sized + Sealed {
+pub impl(self) trait HomeDirsExt: Sized {
     /// Load the standard user directory paths for the current user.
     ///
     /// On iOS, tvOS, watchOS, visionOS, and sandboxed macOS applications,
@@ -69,8 +64,7 @@ pub trait HomeDirsExt: Sized + Sealed {
 
 /// Darwin-specific extensions to [`fs::MediaDirs`](MediaDirs).
 #[unstable(feature = "media_dir_discovery", issue = "157515")]
-#[expect(private_bounds, reason = "sealed")]
-pub trait MediaDirsExt: Sized + Sealed {
+pub impl(self) trait MediaDirsExt: Sized {
     /// Load the standard user directory paths for the current user.
     ///
     /// The produced directory paths are not guaranteed to be the canonical

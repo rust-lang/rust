@@ -6,10 +6,6 @@ use crate::io::{self, ErrorKind, const_error};
 use crate::os::unix::ffi::{OsStrExt, OsStringExt};
 use crate::path::{Path, PathBuf};
 
-trait Sealed {}
-impl Sealed for HomeDirs {}
-impl Sealed for MediaDirs {}
-
 /// XDG-specific extensions to [`fs::HomeDirs`](HomeDirs).
 ///
 /// The XDG conventions are defined by the Freedesktop.org project in the
@@ -25,8 +21,7 @@ impl Sealed for MediaDirs {}
 ///
 /// [xdg-basedir]: https://specifications.freedesktop.org/basedir/
 #[unstable(feature = "dir_discovery", issue = "157515")]
-#[expect(private_bounds, reason = "sealed")]
-pub trait HomeDirsExt: Sized + Sealed {
+pub impl(self) trait HomeDirsExt: Sized {
     /// Load the user directory paths according to the
     /// [XDG Base Directory Specification][xdg-basedir].
     ///
@@ -138,8 +133,7 @@ pub trait HomeDirsExt: Sized + Sealed {
 ///
 /// [xdg-user-dirs]: https://www.freedesktop.org/wiki/Software/xdg-user-dirs/
 #[unstable(feature = "media_dir_discovery", issue = "157515")]
-#[expect(private_bounds, reason = "sealed")]
-pub trait MediaDirsExt: Sized + Sealed {
+pub impl(self) trait MediaDirsExt: Sized {
     /// Load the user directory paths according to the [xdg-user-dirs] tool.
     ///
     /// This directly reads and parses the `$XDG_CONFIG_HOME/user-dirs.dirs`
