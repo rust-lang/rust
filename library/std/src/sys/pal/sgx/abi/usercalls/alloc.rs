@@ -6,6 +6,7 @@ use super::super::mem::{is_enclave_range, is_user_range};
 use crate::arch::asm;
 use crate::cell::UnsafeCell;
 use crate::convert::TryInto;
+use crate::marker::{PhantomData, Unsize};
 use crate::mem::{self, ManuallyDrop, MaybeUninit};
 use crate::ops::{CoerceUnsized, Deref, DerefMut, Index, IndexMut};
 use crate::ptr::{self, NonNull};
@@ -119,7 +120,7 @@ pub unsafe trait UserSafe {
         let is_aligned = |p: *const u8| -> bool { p.is_aligned_to(Self::align_of()) };
 
         assert!(is_aligned(ptr as *const u8));
-        assert!(is_user_range(ptr as _, size_of_val(unsafe { &*ptr })));
+        assert!(is_user_range(ptr as _, unsafe { mem::size_of_val_raw(ptr) }));
         assert!(!ptr.is_null());
     }
 }
@@ -155,53 +156,60 @@ unsafe impl<T: UserSafeSized> UserSafe for [T] {
     }
 }
 
-/// A reference to some type in userspace memory. `&UserRef<T>` is equivalent
-/// to `&T` in enclave memory. Access to the memory is only allowed by copying
-/// to avoid TOCTTOU issues. After copying, code should make sure to completely
-/// check the value before use.
+/// An immutable pointer to some type in userspace memory, used for reading from said memory.
 ///
-/// It is also possible to obtain a mutable reference `&mut UserRef<T>`. Unlike
-/// regular mutable references, these are not exclusive. Userspace may always
-/// write to the backing memory at any time, so it can't be assumed that there
-/// the pointed-to memory is uniquely borrowed. The two different reference types
-/// are used solely to indicate intent: a mutable reference is for writing to
-/// user memory, an immutable reference for reading from user memory.
+/// `UserRef<'a, T>` is equivalent to `&'a T` in enclave memory. Access to the
+/// memory is only allowed by copying to avoid TOCTTOU issues. After copying,
+/// code should make sure to completely check the value before use.
+///
+/// It is impossible to safely obtain a direct reference to the contents of `UserRef<T>`.
+/// Userspace may write to the backing memory at any time, so it can't be assumed that
+/// the pointed-to memory is safely borrowed.
 #[unstable(feature = "sgx_platform", issue = "56975")]
-#[repr(transparent)]
-pub struct UserRef<T: ?Sized>(UnsafeCell<T>);
+pub struct UserRef<'a, T: 'a + UserSafe + ?Sized> {
+    data: NonNull<T>,
+    _phantom: PhantomData<&'a T>,
+}
+
+#[unstable(feature = "sgx_platform", issue = "56975")]
+impl<'a, T: UserSafe + ?Sized> Clone for UserRef<'a, T> {
+    fn clone(&self) -> Self {
+        unsafe { UserRef::from_non_null_unchecked(self.data) }
+    }
+}
+
+#[unstable(feature = "sgx_platform", issue = "56975")]
+impl<'a, T: UserSafe + ?Sized> Copy for UserRef<'a, T> {}
+
+#[unstable(feature = "sgx_platform", issue = "56975")]
+unsafe impl<'a, T: UserSafe + ?Sized> Send for UserRef<'a, T> {}
+
+/// Mutable equivalent to [`UserRef`]: a mutable pointer to some type in userspace memory,
+/// used for writing to said memory.
+///
+/// `UserMut<'a, T>` is equivalent to `&'a mut T` in enclave memory. It has the same copy-out
+/// and safety considerations as [`UserRef`].
+#[unstable(feature = "sgx_platform", issue = "56975")]
+pub struct UserMut<'a, T: 'a + UserSafe + ?Sized> {
+    data: NonNull<T>,
+    _phantom: PhantomData<&'a mut T>,
+}
+
+#[unstable(feature = "sgx_platform", issue = "56975")]
+unsafe impl<'a, T: UserSafe + ?Sized> Send for UserMut<'a, T> {}
+
 /// An owned type in userspace memory. `User<T>` is equivalent to `Box<T>` in
 /// enclave memory. Access to the memory is only allowed by copying to avoid
 /// TOCTTOU issues. The user memory will be freed when the value is dropped.
 /// After copying, code should make sure to completely check the value before
 /// use.
 #[unstable(feature = "sgx_platform", issue = "56975")]
-pub struct User<T: UserSafe + ?Sized>(NonNull<UserRef<T>>);
+pub struct User<T: UserSafe + ?Sized>(NonNull<T>);
 
 #[unstable(feature = "sgx_platform", issue = "56975")]
-unsafe impl<T: UserSafeSized> Send for User<T> {}
+unsafe impl<T: UserSafe + ?Sized> Send for User<T> {}
 
-#[unstable(feature = "sgx_platform", issue = "56975")]
-unsafe impl<T: UserSafeSized> Send for User<[T]> {}
-
-trait NewUserRef<T: ?Sized> {
-    unsafe fn new_userref(v: T) -> Self;
-}
-
-impl<T: ?Sized> NewUserRef<*mut T> for NonNull<UserRef<T>> {
-    unsafe fn new_userref(v: *mut T) -> Self {
-        // SAFETY: The caller has guaranteed the pointer is valid
-        unsafe { NonNull::new_unchecked(v as _) }
-    }
-}
-
-impl<T: ?Sized> NewUserRef<NonNull<T>> for NonNull<UserRef<T>> {
-    unsafe fn new_userref(v: NonNull<T>) -> Self {
-        // SAFETY: The caller has guaranteed the pointer is valid
-        unsafe { NonNull::new_userref(v.as_ptr()) }
-    }
-}
-
-/// A type which can a destination for safely copying from userspace.
+/// A type which can be a destination for safely copying from userspace.
 ///
 /// # Safety
 ///
@@ -260,7 +268,7 @@ where
                 T::align_of() as _ // dangling pointer ok for size 0
             };
             if let Ok(v) = crate::panic::catch_unwind(|| T::from_raw_sized(ptr, size)) {
-                User(NonNull::new_userref(v))
+                User(v)
             } else {
                 rtabort!("Got invalid pointer from alloc() usercall")
             }
@@ -271,7 +279,7 @@ where
     pub fn new_from_enclave(val: &T) -> Self {
         unsafe {
             let mut user = Self::new_uninit_bytes(size_of_val(val));
-            user.copy_from_enclave(val);
+            user.as_user_mut().copy_from_enclave(val);
             user
         }
     }
@@ -291,7 +299,7 @@ where
     pub unsafe fn from_raw(ptr: *mut T) -> Self {
         // SAFETY: the caller must uphold the safety contract for `from_raw`.
         unsafe { T::check_ptr(ptr) };
-        User(unsafe { NonNull::new_userref(ptr) })
+        User(unsafe { NonNull::new_unchecked(ptr) })
     }
 
     /// Converts this value into a raw pointer. The value will no longer be
@@ -337,7 +345,7 @@ where
     /// * The pointed-to range does not fit in the address space
     /// * The pointed-to range is not in user memory
     pub unsafe fn from_raw_parts(ptr: *mut T, len: usize) -> Self {
-        User(unsafe { NonNull::new_userref(<[T]>::from_raw_sized(ptr as _, len * size_of::<T>())) })
+        User(unsafe { <[T]>::from_raw_sized(ptr as _, len * size_of::<T>()) })
     }
 }
 
@@ -515,11 +523,11 @@ pub(crate) unsafe fn copy_from_userspace(src: *const u8, dst: *mut u8, len: usiz
 }
 
 #[unstable(feature = "sgx_platform", issue = "56975")]
-impl<T: ?Sized> UserRef<T>
+impl<'a, T: ?Sized> UserRef<'a, T>
 where
     T: UserSafe,
 {
-    /// Creates a `&UserRef<[T]>` from a raw pointer.
+    /// Creates a `UserRef<'a, T>` from a raw pointer.
     ///
     /// # Safety
     /// The caller must ensure `ptr` points to `T`.
@@ -530,10 +538,25 @@ where
     /// * The pointer is not aligned
     /// * The pointer is null
     /// * The pointed-to range is not in user memory
-    pub unsafe fn from_ptr<'a>(ptr: *const T) -> &'a Self {
+    pub unsafe fn from_ptr(ptr: *const T) -> Self {
         // SAFETY: The caller must uphold the safety contract for `from_ptr`.
-        unsafe { T::check_ptr(ptr) };
-        unsafe { &*(ptr as *const Self) }
+        unsafe {
+            T::check_ptr(ptr);
+            Self::from_non_null_unchecked(NonNull::new_unchecked(ptr as _))
+        }
+    }
+
+    /// Creates a `UserRef<'a, T>` from a non-null pointer without performing further checks.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure:
+    ///
+    /// * `non_null` points to `T`
+    /// * The pointer is aligned
+    /// * The pointed-to range is in user memory
+    unsafe fn from_non_null_unchecked(non_null: NonNull<T>) -> Self {
+        UserRef { data: non_null, _phantom: PhantomData }
     }
 
     /// Copies the value from user memory and place it into `dest`.
@@ -541,11 +564,11 @@ where
     /// # Panics
     /// This function panics if the destination doesn't have the same size as
     /// the source. This can happen for dynamically-sized types such as slices.
-    pub fn copy_to_enclave<U: ?Sized + UserSafeCopyDestination<T>>(&self, dest: &mut U) {
+    pub fn copy_to_enclave<U: ?Sized + UserSafeCopyDestination<T>>(self, dest: &mut U) {
         unsafe {
-            assert_eq!(size_of_val(dest), size_of_val(&*self.0.get()));
+            assert_eq!(size_of_val(dest), mem::size_of_val_raw(self.data.as_ptr()));
             copy_from_userspace(
-                self.0.get() as *const T as *const u8,
+                self.as_raw_ptr() as *const u8,
                 dest.as_mut_ptr() as *mut u8,
                 size_of_val(dest),
             );
@@ -553,33 +576,33 @@ where
     }
 
     /// Obtain a raw pointer from this reference.
-    pub fn as_raw_ptr(&self) -> *const T {
-        self as *const _ as _
+    pub fn as_raw_ptr(self) -> *const T {
+        self.data.as_ptr()
     }
 }
 
 #[unstable(feature = "sgx_platform", issue = "56975")]
-impl<T> UserRef<T>
+impl<'a, T> UserRef<'a, T>
 where
     T: UserSafe,
 {
     /// Copies the value from user memory into enclave memory.
-    pub fn to_enclave(&self) -> T {
+    pub fn to_enclave(self) -> T {
         unsafe {
             let mut data = mem::MaybeUninit::uninit();
-            copy_from_userspace(self.0.get() as _, data.as_mut_ptr() as _, size_of::<T>());
+            copy_from_userspace(self.as_raw_ptr() as _, data.as_mut_ptr() as _, size_of::<T>());
             data.assume_init()
         }
     }
 }
 
 #[unstable(feature = "sgx_platform", issue = "56975")]
-impl<T: ?Sized> UserRef<T>
+impl<'a, T: ?Sized> UserMut<'a, T>
 where
     T: UserSafe,
 {
-    /// Creates a `&mut UserRef<[T]>` from a raw pointer. See the struct
-    /// documentation for the nuances regarding a `&mut UserRef<T>`.
+    /// Creates a `UserMut<'a, [T]>` from a raw pointer. See the struct
+    /// documentation for the nuances regarding a `UserMut<'a, T>`.
     ///
     /// # Safety
     /// The caller must ensure `ptr` points to `T`.
@@ -590,10 +613,25 @@ where
     /// * The pointer is not aligned
     /// * The pointer is null
     /// * The pointed-to range is not in user memory
-    pub unsafe fn from_mut_ptr<'a>(ptr: *mut T) -> &'a mut Self {
+    pub unsafe fn from_mut_ptr(ptr: *mut T) -> Self {
         // SAFETY: The caller must uphold the safety contract for `from_mut_ptr`.
-        unsafe { T::check_ptr(ptr) };
-        unsafe { &mut *(ptr as *mut Self) }
+        unsafe {
+            T::check_ptr(ptr);
+            UserMut::from_non_null_unchecked(unsafe { NonNull::new_unchecked(ptr) })
+        }
+    }
+
+    /// Creates a `UserMut<'a, T>` from a non-null pointer without performing further checks.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure:
+    ///
+    /// * `non_null` points to `T`
+    /// * The pointer is aligned
+    /// * The pointed-to range is in user memory
+    unsafe fn from_non_null_unchecked(non_null: NonNull<T>) -> Self {
+        UserMut { data: non_null, _phantom: PhantomData }
     }
 
     /// Copies `val` into user memory.
@@ -601,29 +639,41 @@ where
     /// # Panics
     /// This function panics if the destination doesn't have the same size as
     /// the source. This can happen for dynamically-sized types such as slices.
-    pub fn copy_from_enclave(&mut self, val: &T) {
+    pub fn copy_from_enclave(self, val: &T) {
         unsafe {
-            assert_eq!(size_of_val(val), size_of_val(&*self.0.get()));
+            assert_eq!(size_of_val(val), mem::size_of_val_raw(self.data.as_ptr()));
             copy_to_userspace(
                 val as *const T as *const u8,
-                self.0.get() as *mut T as *mut u8,
+                self.data.as_ptr() as *mut u8,
                 size_of_val(val),
             );
         }
     }
 
     /// Obtain a raw pointer from this reference.
-    pub fn as_raw_mut_ptr(&mut self) -> *mut T {
-        self as *mut _ as _
+    pub fn as_raw_mut_ptr(self) -> *mut T {
+        self.data.as_ptr()
+    }
+
+    /// Limited convenience implementation of reborrowing that ties return type lifetime to lifetime of borrow of `self`.
+    // FIXME: remove when `Reborrow` trait ergonomics improve
+    pub fn reborrow(&mut self) -> UserMut<'_, T> {
+        unsafe { Self::from_non_null_unchecked(self.data) }
+    }
+
+    /// Limited convenience implementation of owned dereferencing that ties return type lifetime to lifetime of borrow of self.
+    // FIXME: remove when `CoerceShared` trait ergonomics improve
+    pub fn coerce_shared(&self) -> UserRef<'_, T> {
+        unsafe { UserRef::from_non_null_unchecked(self.data) }
     }
 }
 
 #[unstable(feature = "sgx_platform", issue = "56975")]
-impl<T> UserRef<[T]>
+impl<'a, T> UserRef<'a, [T]>
 where
     [T]: UserSafe,
 {
-    /// Creates a `&UserRef<[T]>` from a raw thin pointer and a slice length.
+    /// Creates a `UserRef<'a, [T]>` from a raw thin pointer and a slice length.
     ///
     /// # Safety
     /// The caller must ensure `ptr` points to `n` elements of `T`.
@@ -635,23 +685,26 @@ where
     /// * The pointer is null
     /// * The pointed-to range does not fit in the address space
     /// * The pointed-to range is not in user memory
-    pub unsafe fn from_raw_parts<'a>(ptr: *const T, len: usize) -> &'a Self {
+    pub unsafe fn from_raw_parts(ptr: *const T, len: usize) -> Self {
         // SAFETY: The caller must uphold the safety contract for `from_raw_parts`.
-        unsafe { &*(<[T]>::from_raw_sized(ptr as _, len * size_of::<T>()).as_ptr() as *const Self) }
+        unsafe {
+            let data = <[T]>::from_raw_sized(ptr as _, len * size_of::<T>());
+            UserRef::from_non_null_unchecked(data)
+        }
     }
 
     /// Obtain a raw pointer to the first element of this user slice.
-    pub fn as_ptr(&self) -> *const T {
-        self.0.get() as _
+    pub fn as_ptr(self) -> *const T {
+        self.data.as_ptr() as _
     }
 
     /// Obtain the number of elements in this user slice.
-    pub fn len(&self) -> usize {
-        unsafe { self.0.get().len() }
+    pub fn len(self) -> usize {
+        unsafe { self.data.as_ptr().len() }
     }
 
     /// Copies the value from user memory and appends it to `dest`.
-    pub fn append_to_enclave_vec(&self, dest: &mut Vec<T>) {
+    pub fn append_to_enclave_vec(self, dest: &mut Vec<T>) {
         dest.reserve(self.len());
         self.copy_to_enclave(&mut dest.spare_capacity_mut()[..self.len()]);
         // SAFETY: We reserve enough space above.
@@ -659,29 +712,25 @@ where
     }
 
     /// Copies the value from user memory into a vector in enclave memory.
-    pub fn to_enclave(&self) -> Vec<T> {
+    pub fn to_enclave(self) -> Vec<T> {
         let mut ret = Vec::with_capacity(self.len());
         self.append_to_enclave_vec(&mut ret);
         ret
     }
 
     /// Returns an iterator over the slice.
-    pub fn iter(&self) -> Iter<'_, T>
-    where
-        T: UserSafe, // FIXME: should be implied by [T]: UserSafe?
-    {
-        unsafe { Iter((&*self.as_raw_ptr()).iter()) }
+    pub fn iter(self) -> Iter<'a, T> {
+        Iter(self)
     }
 }
 
 #[unstable(feature = "sgx_platform", issue = "56975")]
-impl<T> UserRef<[T]>
+impl<'a, T> UserMut<'a, [T]>
 where
     [T]: UserSafe,
 {
-    /// Creates a `&mut UserRef<[T]>` from a raw thin pointer and a slice length.
-    /// See the struct documentation for the nuances regarding a
-    /// `&mut UserRef<T>`.
+    /// Creates a `UserMut<'a, [T]>` from a raw thin pointer and a slice length.
+    /// See the struct documentation for the nuances regarding `UserMut<'a, T>`.
     ///
     /// # Safety
     /// The caller must ensure `ptr` points to `n` elements of `T`.
@@ -693,78 +742,103 @@ where
     /// * The pointer is null
     /// * The pointed-to range does not fit in the address space
     /// * The pointed-to range is not in user memory
-    pub unsafe fn from_raw_parts_mut<'a>(ptr: *mut T, len: usize) -> &'a mut Self {
+    pub unsafe fn from_raw_parts_mut(ptr: *mut T, len: usize) -> Self {
         // SAFETY: The caller must uphold the safety contract for `from_raw_parts_mut`.
         unsafe {
-            &mut *(<[T]>::from_raw_sized(ptr as _, len * size_of::<T>()).as_ptr() as *mut Self)
+            let data = <[T]>::from_raw_sized(ptr as _, len * size_of::<T>());
+            UserMut::from_non_null_unchecked(data)
         }
     }
 
     /// Obtain a raw pointer to the first element of this user slice.
-    pub fn as_mut_ptr(&mut self) -> *mut T {
-        self.0.get() as _
+    pub fn as_mut_ptr(self) -> *mut T {
+        self.data.as_mut_ptr()
     }
 
     /// Returns an iterator that allows modifying each value.
-    pub fn iter_mut(&mut self) -> IterMut<'_, T>
-    where
-        T: UserSafe, // FIXME: should be implied by [T]: UserSafe?
-    {
-        unsafe { IterMut((&mut *self.as_raw_mut_ptr()).iter_mut()) }
+    pub fn iter_mut(self) -> IterMut<'a, T> {
+        IterMut(self)
     }
 }
 
 /// Immutable user slice iterator
 ///
-/// This struct is created by the `iter` method on `UserRef<[T]>`.
+/// This struct is created by the [`iter`] method on `UserRef<[T]>`.
+///
+/// [`iter`]: UserRef::iter
 #[unstable(feature = "sgx_platform", issue = "56975")]
-pub struct Iter<'a, T: 'a + UserSafe>(slice::Iter<'a, T>);
+pub struct Iter<'a, T: 'a>(UserRef<'a, [T]>)
+where
+    [T]: UserSafe;
 
 #[unstable(feature = "sgx_platform", issue = "56975")]
-impl<'a, T: UserSafe> Iterator for Iter<'a, T> {
-    type Item = &'a UserRef<T>;
+impl<'a, T: UserSafe> Iterator for Iter<'a, T>
+where
+    [T]: UserSafe,
+{
+    type Item = UserRef<'a, T>;
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        unsafe { self.0.next().map(|e| UserRef::from_ptr(e)) }
+        let cur_user_ref = self.0.data;
+
+        if cur_user_ref.len() == 0 {
+            return None;
+        }
+
+        // SAFETY; `cur_user_ref` was derived from a valid [UserRef] and has length >= 1
+        unsafe {
+            let item = UserRef::from_non_null_unchecked(cur_user_ref.as_non_null_ptr());
+            self.0.data = cur_user_ref.get_unchecked_mut(1..);
+            Some(item)
+        }
     }
 }
 
 /// Mutable user slice iterator
 ///
-/// This struct is created by the `iter_mut` method on `UserRef<[T]>`.
+/// This struct is created by the [`iter_mut`] method on `UserMut<[T]>`.
+///
+/// [`iter_mut`]: UserMut::iter_mut
 #[unstable(feature = "sgx_platform", issue = "56975")]
-pub struct IterMut<'a, T: 'a + UserSafe>(slice::IterMut<'a, T>);
+pub struct IterMut<'a, T: 'a>(UserMut<'a, [T]>)
+where
+    [T]: UserSafe;
 
 #[unstable(feature = "sgx_platform", issue = "56975")]
-impl<'a, T: UserSafe> Iterator for IterMut<'a, T> {
-    type Item = &'a mut UserRef<T>;
+impl<'a, T: UserSafe> Iterator for IterMut<'a, T>
+where
+    [T]: UserSafe,
+{
+    type Item = UserMut<'a, T>;
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        unsafe { self.0.next().map(|e| UserRef::from_mut_ptr(e)) }
+        let cur_user_mut = self.0.data;
+
+        if cur_user_mut.len() == 0 {
+            return None;
+        }
+
+        // SAFETY; `cur_user_mut` was derived from a valid [UserMut] and has length >= 1
+        unsafe {
+            let item = UserMut::from_non_null_unchecked(cur_user_mut.as_non_null_ptr());
+            self.0.data = cur_user_mut.get_unchecked_mut(1..);
+            Some(item)
+        }
     }
 }
 
 #[unstable(feature = "sgx_platform", issue = "56975")]
-impl<T: ?Sized> Deref for User<T>
-where
-    T: UserSafe,
-{
-    type Target = UserRef<T>;
-
-    fn deref(&self) -> &Self::Target {
-        unsafe { &*self.0.as_ptr() }
+impl<T: ?Sized + UserSafe> User<T> {
+    /// Equivalent of `& *` on [Box]; create an immutable user reference to the memory that `Self` points to
+    pub fn as_user_ref(&self) -> UserRef<'_, T> {
+        unsafe { UserRef::from_non_null_unchecked(self.0) }
     }
-}
 
-#[unstable(feature = "sgx_platform", issue = "56975")]
-impl<T: ?Sized> DerefMut for User<T>
-where
-    T: UserSafe,
-{
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        unsafe { &mut *self.0.as_ptr() }
+    /// Equivalent of `&mut *` on [Box]; create a mutable user reference to the memory that `Self` points to
+    pub fn as_user_mut(&mut self) -> UserMut<'_, T> {
+        unsafe { UserMut::from_non_null_unchecked(self.0) }
     }
 }
 
@@ -775,28 +849,41 @@ where
 {
     fn drop(&mut self) {
         unsafe {
-            let ptr = (*self.0.as_ptr()).0.get();
-            super::free(ptr as _, size_of_val(&mut *ptr), T::align_of());
+            let ptr = self.0.as_ptr();
+            super::free(ptr as _, mem::size_of_val_raw(ptr), T::align_of());
         }
     }
 }
 
 #[unstable(feature = "sgx_platform", issue = "56975")]
-impl<T: CoerceUnsized<U>, U> CoerceUnsized<UserRef<U>> for UserRef<T> {}
+impl<'a, T: UserSafe + Unsize<U> + ?Sized, U: UserSafe + ?Sized> CoerceUnsized<UserRef<'a, U>>
+    for UserRef<'a, T>
+{
+}
 
 #[unstable(feature = "sgx_platform", issue = "56975")]
-impl<T, I> Index<I> for UserRef<[T]>
+impl<'a, T: UserSafe + Unsize<U> + ?Sized, U: UserSafe + ?Sized> CoerceUnsized<UserMut<'a, U>>
+    for UserMut<'a, T>
+{
+}
+
+#[unstable(feature = "sgx_platform", issue = "56975")]
+impl<'a, T> UserRef<'a, [T]>
 where
     [T]: UserSafe,
-    I: SliceIndex<[T]>,
-    I::Output: UserSafe,
 {
-    type Output = UserRef<I::Output>;
-
+    /// Index this user reference.
+    ///
+    /// Implemented as an instance method rather than an [std::ops::Index] trait instance, since the
+    /// returned [UserRef] is owned.
     #[inline]
-    fn index(&self, index: I) -> &UserRef<I::Output> {
+    pub fn index<I>(self, index: I) -> UserRef<'a, I::Output>
+    where
+        I: SliceIndex<[T]>,
+        I::Output: UserSafe,
+    {
         unsafe {
-            if let Some(slice) = index.get(&*self.as_raw_ptr()) {
+            if let Some(slice) = index.get_raw(self.as_raw_ptr()) {
                 UserRef::from_ptr(slice)
             } else {
                 rtabort!("index out of range for user slice");
@@ -806,17 +893,23 @@ where
 }
 
 #[unstable(feature = "sgx_platform", issue = "56975")]
-impl<T, I> IndexMut<I> for UserRef<[T]>
+impl<'a, T> UserMut<'a, [T]>
 where
     [T]: UserSafe,
-    I: SliceIndex<[T]>,
-    I::Output: UserSafe,
 {
+    /// Mutably index this user reference.
+    ///
+    /// Implemented as an instance method rather than an [std::ops::IndexMut] trait instance, since the
+    /// returned [UserMut] is owned.
     #[inline]
-    fn index_mut(&mut self, index: I) -> &mut UserRef<I::Output> {
+    pub fn index_mut<'b, I>(self, index: I) -> UserMut<'a, I::Output>
+    where
+        I: SliceIndex<[T]>,
+        I::Output: UserSafe,
+    {
         unsafe {
-            if let Some(slice) = index.get_mut(&mut *self.as_raw_mut_ptr()) {
-                UserRef::from_mut_ptr(slice)
+            if let Some(slice) = index.get_raw_mut(self.as_raw_mut_ptr()) {
+                UserMut::from_mut_ptr(slice)
             } else {
                 rtabort!("index out of range for user slice");
             }
@@ -825,7 +918,7 @@ where
 }
 
 #[unstable(feature = "sgx_platform", issue = "56975")]
-impl UserRef<super::raw::ByteBuffer> {
+impl<'a> UserRef<'a, super::raw::ByteBuffer> {
     /// Copies the user memory range pointed to by the user `ByteBuffer` to
     /// enclave memory.
     ///
@@ -835,11 +928,11 @@ impl UserRef<super::raw::ByteBuffer> {
     /// * The pointer is null
     /// * The pointed-to range does not fit in the address space
     /// * The pointed-to range is not in user memory
-    pub fn copy_user_buffer(&self) -> Vec<u8> {
+    pub fn copy_user_buffer(self) -> Vec<u8> {
         unsafe {
             let buf = self.to_enclave();
             if buf.len > 0 {
-                User::from_raw_parts(buf.data as _, buf.len).to_enclave()
+                User::from_raw_parts(buf.data as _, buf.len).as_user_ref().to_enclave()
             } else {
                 // Mustn't look at `data` or call `free` if `len` is `0`.
                 Vec::with_capacity(0)
