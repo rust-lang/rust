@@ -111,21 +111,7 @@ impl<const N: usize> Simd<u8, N> {
     }
 }
 
-#[cfg(any(
-    target_feature = "simd128",
-    all(
-        target_feature = "ssse3",
-        not(target_feature = "avx2"),
-        not(target_feature = "avx512vbmi")
-    ),
-    all(target_feature = "avx2", not(target_feature = "avx512vbmi")),
-    all(
-        target_arch = "loongarch64",
-        target_feature = "lsx",
-        not(target_feature = "lasx")
-    ),
-    all(target_arch = "loongarch64", target_feature = "lasx")
-))]
+#[allow(dead_code, reason = "only used on some targets/features")]
 /// Implements an arbitrary shuffle over double the native vector width
 /// using 4 native-width shuffles
 fn swizzle_dyn_split<const N: usize, const HALF: usize>(
