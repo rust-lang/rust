@@ -401,7 +401,9 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
                     // The bound says that `r1 <= r2`; we store `r2: r1`.
                     let r1 = self.universal_regions.to_region_vid(r1);
                     let r2 = self.universal_regions.to_region_vid(r2);
-                    if  !(self.universal_regions.is_universal_region(r1) || self.universal_regions.is_universal_region(r2)) {
+                    if !(self.universal_regions.is_universal_region(r1)
+                        || self.universal_regions.is_universal_region(r2))
+                    {
                         return;
                     }
                     self.relate_universal_regions(r2, r1);
