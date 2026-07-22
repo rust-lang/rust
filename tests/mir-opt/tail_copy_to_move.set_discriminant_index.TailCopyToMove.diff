@@ -1,0 +1,16 @@
+- // MIR for `set_discriminant_index` before TailCopyToMove
++ // MIR for `set_discriminant_index` after TailCopyToMove
+  
+  fn set_discriminant_index(_1: [Choice; 4], _2: usize) -> usize {
+      let mut _0: usize;
+      let mut _3: [Choice; 4];
+  
+      bb0: {
+-         _3 = copy _1;
++         _3 = move _1;
+          _0 = copy _2;
+          discriminant(_3[_2]) = 1;
+          return;
+      }
+  }
+  

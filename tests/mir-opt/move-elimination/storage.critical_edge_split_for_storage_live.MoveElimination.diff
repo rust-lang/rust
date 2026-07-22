@@ -1,0 +1,36 @@
+- // MIR for `critical_edge_split_for_storage_live` before MoveElimination
++ // MIR for `critical_edge_split_for_storage_live` after MoveElimination
+  
+  fn critical_edge_split_for_storage_live(_1: bool) -> () {
+      debug x => _2;
+      let mut _0: ();
+      let mut _2: u32;
+      let mut _3: *const u32;
+  
+      bb0: {
+-         switchInt(copy _1) -> [1: bb1, otherwise: bb2];
++         switchInt(copy _1) -> [1: bb1, otherwise: bb3];
+      }
+  
+      bb1: {
++         nop;
+          StorageLive(_2);
+          _2 = const 1_u32;
++         StorageLive(_3);
+          _3 = &raw const _2;
+          _3 = opaque::<*const u32>(copy _3) -> [return: bb2, unwind unreachable];
+      }
+  
+      bb2: {
++         StorageDead(_3);
++         nop;
+          StorageDead(_2);
+          return;
++     }
++ 
++     bb3: {
++         StorageLive(_2);
++         goto -> bb2;
+      }
+  }
+  
