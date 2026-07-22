@@ -90,20 +90,9 @@ pub fn split_debuginfo(name: impl Into<PathBuf>) -> Option<PathBuf> {
 
 /// Returns `true` if the file name given looks like a dynamic library.
 pub fn is_dylib(path: &Path) -> bool {
-    let extension = path.extension().and_then(|ext| ext.to_str());
-
-    // versioned dylib such as libXXX.so.22.1-rust-1.99.0-nightly
-    let is_versioned_so = path
-        .file_name()
-        .and_then(|name| name.to_str())
-        .and_then(|name| name.rsplit_once(".so."))
-        .is_some_and(|(_, version)| {
-            version.bytes().next().is_some_and(|byte| byte.is_ascii_digit())
-        });
-
-    matches!(extension, Some("dylib" | "so" | "dll"))
-        || is_versioned_so
-        || (extension == Some("a") && is_aix_shared_archive(path))
+    path.extension().and_then(|ext| ext.to_str()).is_some_and(|ext| {
+        ext == "dylib" || ext == "so" || ext == "dll" || (ext == "a" && is_aix_shared_archive(path))
+    })
 }
 
 /// Return the path to the containing submodule if available.

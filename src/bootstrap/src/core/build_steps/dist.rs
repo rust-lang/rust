@@ -619,19 +619,6 @@ impl Step for Rustc {
                 );
             }
 
-            if builder.config.llvm_offload {
-                let src_dir = builder.sysroot_target_libdir(target_compiler, target);
-                let dst_dir = image.join("lib/rustlib").join(target).join("lib");
-
-                for offload_target in ["amdgcn-amd-amdhsa", "nvptx64-nvidia-cuda"] {
-                    let src = src_dir.join(offload_target);
-                    let dst = dst_dir.join(offload_target);
-
-                    t!(fs::create_dir_all(&dst));
-                    builder.cp_link_r(&src, &dst);
-                }
-            }
-
             if builder.tool_enabled("wasm-component-ld") {
                 let src_dir = builder.sysroot_target_bindir(target_compiler, target);
                 let ld = exe("wasm-component-ld", target_compiler.host);

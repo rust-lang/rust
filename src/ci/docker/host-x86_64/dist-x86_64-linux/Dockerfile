@@ -65,7 +65,7 @@ RUN ./cmake.sh
 # Now build LLVM+Clang, afterwards configuring further compilations to use the
 # clang/clang++ compilers.
 COPY scripts/build-clang.sh /tmp/
-ENV LLVM_BUILD_TARGETS="X86;AMDGPU;NVPTX"
+ENV LLVM_BUILD_TARGETS=X86
 RUN ./build-clang.sh
 ENV CC=clang CXX=clang++
 
