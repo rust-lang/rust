@@ -353,12 +353,13 @@ pub fn parse_cfg_attr(
             {
                 (dspan.entire(), AttributeParseErrorReason::ExpectedAtLeastOneArgument)
             } else {
-                (cfg_attr.span, AttributeParseErrorReason::ExpectedList)
+                (cfg_attr.get_normal_item().span, AttributeParseErrorReason::ExpectedList)
             };
 
             sess.dcx().emit_err(AttributeParseError {
                 span,
                 attr_span: cfg_attr.span,
+                inner_span: cfg_attr.get_normal_item().span,
                 template: CFG_ATTR_TEMPLATE,
                 path: AttrPath::from_ast(&cfg_attr.get_normal_item().path, identity),
                 description: ParsedDescription::Attribute,

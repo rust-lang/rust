@@ -5,10 +5,10 @@ LL | fn barqux(#[rustc_force_inline] _x: u32) {}
    |           ^^^^^^^^^^^^^^^^^^^^^
 
 error[E0805]: malformed `rustc_force_inline` attribute input
-  --> $DIR/invalid.rs:15:1
+  --> $DIR/invalid.rs:15:3
    |
 LL | #[rustc_force_inline(bar, baz)]
-   | ^^^^^^^^^^^^^^^^^^^^----------^
+   |   ^^^^^^^^^^^^^^^^^^----------
    |                     |
    |                     expected a single argument here
    |
@@ -25,10 +25,10 @@ LL + #[rustc_force_inline]
    |
 
 error[E0539]: malformed `rustc_force_inline` attribute input
-  --> $DIR/invalid.rs:20:1
+  --> $DIR/invalid.rs:20:3
    |
 LL | #[rustc_force_inline(2)]
-   | ^^^^^^^^^^^^^^^^^^^^^-^^
+   |   ^^^^^^^^^^^^^^^^^^^-^
    |                      |
    |                      expected a string literal here
    |
@@ -45,10 +45,10 @@ LL + #[rustc_force_inline]
    |
 
 error[E0539]: malformed `rustc_force_inline` attribute input
-  --> $DIR/invalid.rs:25:1
+  --> $DIR/invalid.rs:25:3
    |
 LL | #[rustc_force_inline = 2]
-   | ^^^^^^^^^^^^^^^^^^^^^^^-^
+   |   ^^^^^^^^^^^^^^^^^^^^^-
    |                        |
    |                        expected a string literal here
    |

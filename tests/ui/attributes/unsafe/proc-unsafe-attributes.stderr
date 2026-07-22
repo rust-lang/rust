@@ -91,10 +91,10 @@ LL | #[proc_macro_derive(r#unsafe(Foo))]
    |                     ++
 
 error[E0565]: malformed `proc_macro_derive` attribute input
-  --> $DIR/proc-unsafe-attributes.rs:12:1
+  --> $DIR/proc-unsafe-attributes.rs:12:3
    |
 LL | #[proc_macro_derive(unsafe(Foo))]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^-----^^
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^-----^
    |                           |
    |                           didn't expect any arguments here
    |

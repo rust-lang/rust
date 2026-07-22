@@ -1,8 +1,8 @@
 error[E0565]: malformed `non_exhaustive` attribute input
-  --> $DIR/invalid-attribute.rs:1:1
+  --> $DIR/invalid-attribute.rs:1:3
    |
 LL | #[non_exhaustive(anything)]
-   | ^^^^^^^^^^^^^^^^----------^
+   |   ^^^^^^^^^^^^^^----------
    |                 |
    |                 didn't expect any arguments here
    |

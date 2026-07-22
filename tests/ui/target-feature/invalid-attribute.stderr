@@ -23,10 +23,10 @@ LL | #[target_feature(enable = "sse2")]
    = help: the `target_feature` attribute can only be applied to functions
 
 error[E0539]: malformed `target_feature` attribute input
-  --> $DIR/invalid-attribute.rs:24:1
+  --> $DIR/invalid-attribute.rs:24:3
    |
 LL | #[target_feature = "+sse2"]
-   | ^^^^^^^^^^^^^^^^^---------^
+   |   ^^^^^^^^^^^^^^^---------
    |                  |
    |                  expected this to be a list
    |
@@ -37,10 +37,10 @@ LL + #[target_feature(enable = "feat1, feat2")]
    |
 
 error[E0539]: malformed `target_feature` attribute input
-  --> $DIR/invalid-attribute.rs:30:1
+  --> $DIR/invalid-attribute.rs:30:3
    |
 LL | #[target_feature(bar)]
-   | ^^^^^^^^^^^^^^^^^---^^
+   |   ^^^^^^^^^^^^^^^---^
    |                  |
    |                  expected this to be of the form `enable = "..."`
    |
@@ -51,10 +51,10 @@ LL + #[target_feature(enable = "feat1, feat2")]
    |
 
 error[E0539]: malformed `target_feature` attribute input
-  --> $DIR/invalid-attribute.rs:33:1
+  --> $DIR/invalid-attribute.rs:33:3
    |
 LL | #[target_feature(disable = "baz")]
-   | ^^^^^^^^^^^^^^^^^-------^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^-------^^^^^^^^^
    |                  |
    |                  the only valid argument here is `enable`
    |

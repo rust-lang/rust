@@ -1,8 +1,8 @@
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/word-only.rs:12:1
+  --> $DIR/word-only.rs:12:3
    |
 LL | #[coverage]
-   | ^^^^^^^^^^^ expected this to be a list
+   |   ^^^^^^^^ expected this to be a list
    |
 help: try changing it to one of the following valid forms of the attribute
    |
@@ -12,10 +12,10 @@ LL | #[coverage(on)]
    |           ++++
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/word-only.rs:17:5
+  --> $DIR/word-only.rs:17:8
    |
 LL |     #![coverage]
-   |     ^^^^^^^^^^^^ expected this to be a list
+   |        ^^^^^^^^ expected this to be a list
    |
 help: try changing it to one of the following valid forms of the attribute
    |
@@ -25,10 +25,10 @@ LL |     #![coverage(on)]
    |                ++++
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/word-only.rs:21:1
+  --> $DIR/word-only.rs:21:3
    |
 LL | #[coverage]
-   | ^^^^^^^^^^^ expected this to be a list
+   |   ^^^^^^^^ expected this to be a list
    |
 help: try changing it to one of the following valid forms of the attribute
    |
@@ -46,10 +46,10 @@ LL | #[coverage]
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/word-only.rs:26:1
+  --> $DIR/word-only.rs:26:3
    |
 LL | #[coverage]
-   | ^^^^^^^^^^^ expected this to be a list
+   |   ^^^^^^^^ expected this to be a list
    |
 help: try changing it to one of the following valid forms of the attribute
    |
@@ -59,10 +59,10 @@ LL | #[coverage(on)]
    |           ++++
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/word-only.rs:29:5
+  --> $DIR/word-only.rs:29:7
    |
 LL |     #[coverage]
-   |     ^^^^^^^^^^^ expected this to be a list
+   |       ^^^^^^^^ expected this to be a list
    |
 help: try changing it to one of the following valid forms of the attribute
    |
@@ -80,10 +80,10 @@ LL |     #[coverage]
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/word-only.rs:35:1
+  --> $DIR/word-only.rs:35:3
    |
 LL | #[coverage]
-   | ^^^^^^^^^^^ expected this to be a list
+   |   ^^^^^^^^ expected this to be a list
    |
 help: try changing it to one of the following valid forms of the attribute
    |
@@ -101,10 +101,10 @@ LL | #[coverage]
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/word-only.rs:39:5
+  --> $DIR/word-only.rs:39:7
    |
 LL |     #[coverage]
-   |     ^^^^^^^^^^^ expected this to be a list
+   |       ^^^^^^^^ expected this to be a list
    |
 help: try changing it to one of the following valid forms of the attribute
    |
@@ -122,10 +122,10 @@ LL |     #[coverage]
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/word-only.rs:44:5
+  --> $DIR/word-only.rs:44:7
    |
 LL |     #[coverage]
-   |     ^^^^^^^^^^^ expected this to be a list
+   |       ^^^^^^^^ expected this to be a list
    |
 help: try changing it to one of the following valid forms of the attribute
    |
@@ -143,10 +143,10 @@ LL |     #[coverage]
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/word-only.rs:50:1
+  --> $DIR/word-only.rs:50:3
    |
 LL | #[coverage]
-   | ^^^^^^^^^^^ expected this to be a list
+   |   ^^^^^^^^ expected this to be a list
    |
 help: try changing it to one of the following valid forms of the attribute
    |
@@ -156,10 +156,10 @@ LL | #[coverage(on)]
    |           ++++
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/word-only.rs:53:5
+  --> $DIR/word-only.rs:53:7
    |
 LL |     #[coverage]
-   |     ^^^^^^^^^^^ expected this to be a list
+   |       ^^^^^^^^ expected this to be a list
    |
 help: try changing it to one of the following valid forms of the attribute
    |
@@ -177,10 +177,10 @@ LL |     #[coverage]
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/word-only.rs:58:5
+  --> $DIR/word-only.rs:58:7
    |
 LL |     #[coverage]
-   |     ^^^^^^^^^^^ expected this to be a list
+   |       ^^^^^^^^ expected this to be a list
    |
 help: try changing it to one of the following valid forms of the attribute
    |
@@ -198,10 +198,10 @@ LL |     #[coverage]
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/word-only.rs:64:1
+  --> $DIR/word-only.rs:64:3
    |
 LL | #[coverage]
-   | ^^^^^^^^^^^ expected this to be a list
+   |   ^^^^^^^^ expected this to be a list
    |
 help: try changing it to one of the following valid forms of the attribute
    |

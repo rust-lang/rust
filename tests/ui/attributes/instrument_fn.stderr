@@ -75,10 +75,10 @@ LL |     #[instrument_fn = "off"]
    = help: the `instrument_fn` attribute can only be applied to functions with a body
 
 error[E0805]: malformed `instrument_fn` attribute input
-  --> $DIR/instrument_fn.rs:37:1
+  --> $DIR/instrument_fn.rs:37:3
    |
 LL | #[instrument_fn(entry = "on")]
-   | ^^^^^^^^^^^^^^^--------------^
+   |   ^^^^^^^^^^^^^--------------
    |                |
    |                expected a single argument here
    |
@@ -89,10 +89,10 @@ LL + #[instrument_fn = "on|off"]
    |
 
 error[E0539]: malformed `instrument_fn` attribute input
-  --> $DIR/instrument_fn.rs:40:1
+  --> $DIR/instrument_fn.rs:40:3
    |
 LL | #[instrument_fn]
-   | ^^^^^^^^^^^^^^^^ valid arguments are "on" or "off"
+   |   ^^^^^^^^^^^^^ valid arguments are "on" or "off"
    |
 help: must be of the form
    |
@@ -100,10 +100,10 @@ LL | #[instrument_fn = "on|off"]
    |                 ++++++++++
 
 error[E0539]: malformed `instrument_fn` attribute input
-  --> $DIR/instrument_fn.rs:43:1
+  --> $DIR/instrument_fn.rs:43:3
    |
 LL | #[instrument_fn = 1]
-   | ^^^^^^^^^^^^^^^^^^-^
+   |   ^^^^^^^^^^^^^^^^-
    |                   |
    |                   valid arguments are "on" or "off"
    |

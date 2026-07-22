@@ -9,10 +9,10 @@ LL | #[coverage]
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/bad-attr-ice.rs:11:1
+  --> $DIR/bad-attr-ice.rs:11:3
    |
 LL | #[coverage]
-   | ^^^^^^^^^^^ expected this to be a list
+   |   ^^^^^^^^ expected this to be a list
    |
 help: try changing it to one of the following valid forms of the attribute
    |

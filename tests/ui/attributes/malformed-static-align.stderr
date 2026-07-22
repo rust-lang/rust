@@ -1,8 +1,8 @@
 error[E0539]: malformed `rustc_align_static` attribute input
-  --> $DIR/malformed-static-align.rs:4:1
+  --> $DIR/malformed-static-align.rs:4:3
    |
 LL | #[rustc_align_static = 16]
-   | ^^^^^^^^^^^^^^^^^^^^^----^
+   |   ^^^^^^^^^^^^^^^^^^^----
    |                      |
    |                      expected this to be a list
    |

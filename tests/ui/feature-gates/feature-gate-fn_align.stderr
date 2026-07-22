@@ -19,10 +19,10 @@ LL |     #[rustc_align]
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0539]: malformed `rustc_align` attribute input
-  --> $DIR/feature-gate-fn_align.rs:12:5
+  --> $DIR/feature-gate-fn_align.rs:12:7
    |
 LL |     #[rustc_align]
-   |     ^^^^^^^^^^^^^^ expected this to be a list
+   |       ^^^^^^^^^^^ expected this to be a list
    |
 help: must be of the form
    |

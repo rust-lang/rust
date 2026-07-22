@@ -1,8 +1,8 @@
 error[E0539]: malformed `linkage` attribute input
-  --> $DIR/linkage3.rs:6:5
+  --> $DIR/linkage3.rs:6:7
    |
 LL |     #[linkage = "foo"]
-   |     ^^^^^^^^^^^^-----^
+   |       ^^^^^^^^^^-----
    |                 |
    |                 valid arguments are `available_externally`, `common`, `extern_weak`, `external`, `internal`, `linkonce`, `linkonce_odr`, `weak` or `weak_odr`
 

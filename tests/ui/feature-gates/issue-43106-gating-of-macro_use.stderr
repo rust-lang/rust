@@ -17,10 +17,10 @@ LL | #![macro_use(my_macro)]
    | ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0539]: malformed `macro_use` attribute input
-  --> $DIR/issue-43106-gating-of-macro_use.rs:17:5
+  --> $DIR/issue-43106-gating-of-macro_use.rs:17:7
    |
 LL |     #[macro_use = "2700"] struct S;
-   |     ^^^^^^^^^^^^--------^
+   |       ^^^^^^^^^^--------
    |                 |
    |                 expected a list or no arguments here
    |

@@ -39,10 +39,10 @@ LL | #[optimize(banana)]
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0539]: malformed `optimize` attribute input
-  --> $DIR/feature-gate-optimize_attribute.rs:12:1
+  --> $DIR/feature-gate-optimize_attribute.rs:12:3
    |
 LL | #[optimize(banana)]
-   | ^^^^^^^^^^^------^^
+   |   ^^^^^^^^^------^
    |            |
    |            valid arguments are `size`, `speed` or `none`
    |

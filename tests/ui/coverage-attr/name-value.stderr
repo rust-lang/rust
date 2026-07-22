@@ -1,8 +1,8 @@
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/name-value.rs:12:1
+  --> $DIR/name-value.rs:12:3
    |
 LL | #[coverage = "off"]
-   | ^^^^^^^^^^^-------^
+   |   ^^^^^^^^^-------
    |            |
    |            expected this to be a list
    |
@@ -16,10 +16,10 @@ LL + #[coverage(on)]
    |
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/name-value.rs:17:5
+  --> $DIR/name-value.rs:17:8
    |
 LL |     #![coverage = "off"]
-   |     ^^^^^^^^^^^^-------^
+   |        ^^^^^^^^^-------
    |                 |
    |                 expected this to be a list
    |
@@ -33,10 +33,10 @@ LL +     #![coverage(on)]
    |
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/name-value.rs:21:1
+  --> $DIR/name-value.rs:21:3
    |
 LL | #[coverage = "off"]
-   | ^^^^^^^^^^^-------^
+   |   ^^^^^^^^^-------
    |            |
    |            expected this to be a list
    |
@@ -58,10 +58,10 @@ LL | #[coverage = "off"]
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/name-value.rs:26:1
+  --> $DIR/name-value.rs:26:3
    |
 LL | #[coverage = "off"]
-   | ^^^^^^^^^^^-------^
+   |   ^^^^^^^^^-------
    |            |
    |            expected this to be a list
    |
@@ -75,10 +75,10 @@ LL + #[coverage(on)]
    |
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/name-value.rs:29:5
+  --> $DIR/name-value.rs:29:7
    |
 LL |     #[coverage = "off"]
-   |     ^^^^^^^^^^^-------^
+   |       ^^^^^^^^^-------
    |                |
    |                expected this to be a list
    |
@@ -100,10 +100,10 @@ LL |     #[coverage = "off"]
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/name-value.rs:35:1
+  --> $DIR/name-value.rs:35:3
    |
 LL | #[coverage = "off"]
-   | ^^^^^^^^^^^-------^
+   |   ^^^^^^^^^-------
    |            |
    |            expected this to be a list
    |
@@ -125,10 +125,10 @@ LL | #[coverage = "off"]
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/name-value.rs:39:5
+  --> $DIR/name-value.rs:39:7
    |
 LL |     #[coverage = "off"]
-   |     ^^^^^^^^^^^-------^
+   |       ^^^^^^^^^-------
    |                |
    |                expected this to be a list
    |
@@ -150,10 +150,10 @@ LL |     #[coverage = "off"]
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/name-value.rs:44:5
+  --> $DIR/name-value.rs:44:7
    |
 LL |     #[coverage = "off"]
-   |     ^^^^^^^^^^^-------^
+   |       ^^^^^^^^^-------
    |                |
    |                expected this to be a list
    |
@@ -175,10 +175,10 @@ LL |     #[coverage = "off"]
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/name-value.rs:50:1
+  --> $DIR/name-value.rs:50:3
    |
 LL | #[coverage = "off"]
-   | ^^^^^^^^^^^-------^
+   |   ^^^^^^^^^-------
    |            |
    |            expected this to be a list
    |
@@ -192,10 +192,10 @@ LL + #[coverage(on)]
    |
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/name-value.rs:53:5
+  --> $DIR/name-value.rs:53:7
    |
 LL |     #[coverage = "off"]
-   |     ^^^^^^^^^^^-------^
+   |       ^^^^^^^^^-------
    |                |
    |                expected this to be a list
    |
@@ -217,10 +217,10 @@ LL |     #[coverage = "off"]
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/name-value.rs:58:5
+  --> $DIR/name-value.rs:58:7
    |
 LL |     #[coverage = "off"]
-   |     ^^^^^^^^^^^-------^
+   |       ^^^^^^^^^-------
    |                |
    |                expected this to be a list
    |
@@ -242,10 +242,10 @@ LL |     #[coverage = "off"]
    = help: the `coverage` attribute can be applied to crates, functions, impl blocks, and modules
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/name-value.rs:64:1
+  --> $DIR/name-value.rs:64:3
    |
 LL | #[coverage = "off"]
-   | ^^^^^^^^^^^-------^
+   |   ^^^^^^^^^-------
    |            |
    |            expected this to be a list
    |

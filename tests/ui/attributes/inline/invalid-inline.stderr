@@ -1,8 +1,8 @@
 error[E0805]: malformed `inline` attribute input
-  --> $DIR/invalid-inline.rs:3:1
+  --> $DIR/invalid-inline.rs:3:3
    |
 LL | #[inline(please,no)]
-   | ^^^^^^^^-----------^
+   |   ^^^^^^-----------
    |         |
    |         expected a single argument here
    |
@@ -20,10 +20,10 @@ LL + #[inline]
    |
 
 error[E0805]: malformed `inline` attribute input
-  --> $DIR/invalid-inline.rs:7:1
+  --> $DIR/invalid-inline.rs:7:3
    |
 LL | #[inline()]
-   | ^^^^^^^^--^
+   |   ^^^^^^--
    |         |
    |         expected an argument here
    |

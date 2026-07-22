@@ -510,6 +510,7 @@ pub enum ParsedDescription {
 pub(crate) struct AttributeParseError<'a> {
     pub(crate) span: Span,
     pub(crate) attr_span: Span,
+    pub(crate) inner_span: Span,
     pub(crate) template: AttributeTemplate,
     pub(crate) path: AttrPath,
     pub(crate) description: ParsedDescription,
@@ -653,7 +654,7 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
         let description = self.description();
 
         let mut diag = Diag::new(dcx, level, format!("malformed `{name}` {description} input"));
-        diag.span(self.attr_span);
+        diag.span(self.inner_span);
         diag.code(E0539);
         match &self.reason {
             AttributeParseErrorReason::ExpectedStringLiteral { byte_string } => {
@@ -728,8 +729,9 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError<'_> {
                 diag.code(E0565);
             }
             AttributeParseErrorReason::ExpectedNameValue(None) => {
-                // If the span is the entire attribute, the suggestion we add below this match already contains enough information
-                if self.span != self.attr_span {
+                // If the span is the entire attribute inner, the suggestion we add below this
+                // match already contains enough information.
+                if self.span != self.inner_span {
                     diag.span_label(self.span, "expected this to be of the form `... = \"...\"`");
                 }
             }

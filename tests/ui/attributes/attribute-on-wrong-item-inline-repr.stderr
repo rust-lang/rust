@@ -7,10 +7,10 @@ LL |     #[inline]
    = help: the `inline` attribute can only be applied to functions
 
 error[E0539]: malformed `inline` attribute input
-  --> $DIR/attribute-on-wrong-item-inline-repr.rs:12:5
+  --> $DIR/attribute-on-wrong-item-inline-repr.rs:12:7
    |
 LL |     #[inline(XYZ)]
-   |     ^^^^^^^^^---^^
+   |       ^^^^^^^---^
    |              |
    |              valid arguments are `always` or `never`
    |
@@ -36,38 +36,38 @@ LL |     #[inline(XYZ)]
    = help: the `inline` attribute can only be applied to functions
 
 error[E0539]: malformed `repr` attribute input
-  --> $DIR/attribute-on-wrong-item-inline-repr.rs:17:5
+  --> $DIR/attribute-on-wrong-item-inline-repr.rs:17:7
    |
 LL |     #[repr(nothing)]
-   |     ^^^^^^^-------^^
+   |       ^^^^^-------^
    |            |
    |            valid arguments are `align`, `packed`, `Rust`, `C`, `simd`, `transparent`, `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize` or `usize`
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
 
 error[E0539]: malformed `repr` attribute input
-  --> $DIR/attribute-on-wrong-item-inline-repr.rs:21:5
+  --> $DIR/attribute-on-wrong-item-inline-repr.rs:21:7
    |
 LL |     #[repr(something_not_real)]
-   |     ^^^^^^^------------------^^
+   |       ^^^^^------------------^
    |            |
    |            valid arguments are `align`, `packed`, `Rust`, `C`, `simd`, `transparent`, `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize` or `usize`
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
 
 error[E0539]: malformed `repr` attribute input
-  --> $DIR/attribute-on-wrong-item-inline-repr.rs:27:5
+  --> $DIR/attribute-on-wrong-item-inline-repr.rs:27:7
    |
 LL |     #[repr]
-   |     ^^^^^^^ expected this to be a list
+   |       ^^^^ expected this to be a list
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
 
 error[E0539]: malformed `inline` attribute input
-  --> $DIR/attribute-on-wrong-item-inline-repr.rs:33:5
+  --> $DIR/attribute-on-wrong-item-inline-repr.rs:33:7
    |
 LL |     #[inline(ABC)]
-   |     ^^^^^^^^^---^^
+   |       ^^^^^^^---^
    |              |
    |              valid arguments are `always` or `never`
    |
@@ -93,10 +93,10 @@ LL |     #[inline(ABC)]
    = help: the `inline` attribute can only be applied to functions
 
 error[E0539]: malformed `repr` attribute input
-  --> $DIR/attribute-on-wrong-item-inline-repr.rs:38:14
+  --> $DIR/attribute-on-wrong-item-inline-repr.rs:38:16
    |
 LL |     let _z = #[repr] 1;
-   |              ^^^^^^^ expected this to be a list
+   |                ^^^^ expected this to be a list
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
 
