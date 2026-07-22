@@ -5,7 +5,7 @@
 #![crate_type = "lib"]
 
 thread_local! {
-    //~^ ERROR the `#[rustc_align_static]` attribute is an experimental feature
+    //~^ ERROR the `rustc_align_static` attribute is an experimental feature
     #[rustc_align_static(16)]
     static THREAD_LOCAL: u16 = 0;
 }
