@@ -2313,6 +2313,10 @@ options! {
         "threshold to allow cross crate inlining of functions"),
     dead_fn_elimination: bool = (false, parse_bool, [UNTRACKED],
         "eliminate functions unreachable from the entry point before codegen (experimental)"),
+    dead_fn_emit_used_set: Option<PathBuf> = (None, parse_opt_pathbuf, [UNTRACKED],
+        "walk this crate's MIR (no codegen needed) and write per-dependency used-set files \
+         into this directory: the extern fns it reaches, for cross-crate dead-fn elimination \
+         (experimental)"),
     dead_fn_used_set: Option<PathBuf> = (None, parse_opt_pathbuf, [UNTRACKED],
         "path to a used-set file (mangled symbols a downstream binary reaches in this crate); \
          enables cross-crate dead-fn elimination for library crates (experimental)"),
@@ -2320,10 +2324,6 @@ options! {
         "block after metadata emission for up to N seconds waiting for the used-set file to \
          appear, so a downstream binary's frontend can produce it while this library's codegen \
          is deferred in the same process — no frontend re-run (experimental)"),
-    dead_fn_emit_used_set: Option<PathBuf> = (None, parse_opt_pathbuf, [UNTRACKED],
-        "walk this crate's MIR (no codegen needed) and write per-dependency used-set files \
-         into this directory: the extern fns it reaches, for cross-crate dead-fn elimination \
-         (experimental)"),
     debug_info_type_line_numbers: bool = (false, parse_bool, [TRACKED],
         "emit type and line information for additional data types (default: no)"),
     debuginfo_compression: DebugInfoCompression = (DebugInfoCompression::None, parse_debuginfo_compression, [TRACKED],
