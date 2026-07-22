@@ -100,19 +100,21 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
     }
 
     tcx.sess.prof.generic_activity("build_primitive_trait_impls").run(|| {
-        for def_id in PrimitiveType::all_impls(tcx) {
-            // Try to inline primitive impls from other crates.
-            if !def_id.is_local() {
-                cx.with_param_env(def_id, |cx| {
-                    inline::build_impl(cx, def_id, None, &mut new_items_external);
-                });
-            }
-        }
         for (prim, did) in PrimitiveType::primitive_locations(tcx) {
             // Do not calculate blanket impl list for docs that are not going to be rendered.
             // While the `impl` blocks themselves are only in `libcore`, the module with `doc`
             // attached is directly included in `libstd` as well.
             if did.is_local() {
+                for impl_def_id in prim.impls(tcx) {
+                    // Try to inline primitive impls from other crates.
+                    if !impl_def_id.is_local() {
+                        cx.with_param_env(impl_def_id, |cx| {
+                            inline::build_impl(cx, impl_def_id, None, &mut new_items_external);
+                        });
+                    }
+                }
+
+                // HACK: this is all one massive hack that is very hard to get rid of (see comment below)
                 for def_id in prim.impls(tcx).filter(|&def_id| {
                     // Avoid including impl blocks with filled-in generics.
                     // https://github.com/rust-lang/rust/issues/94937
