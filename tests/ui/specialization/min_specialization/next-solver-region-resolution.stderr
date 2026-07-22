@@ -1,22 +1,58 @@
-error[E0391]: cycle detected when computing normalized predicates of `<impl at $DIR/next-solver-region-resolution.rs:18:1: 21:21>`
-  --> $DIR/next-solver-region-resolution.rs:18:1
+error[E0046]: not all trait items implemented, missing: `Item`
+  --> $DIR/next-solver-region-resolution.rs:12:1
+   |
+LL |       type Item;
+   |       --------- `Item` from trait
+...
+LL | / impl<'a, T> Foo for &'a T
+LL | |
+LL | | where
+LL | |     Self::Item: 'a,
+   | |___________________^ missing `Item` in implementation
+
+error[E0283]: type annotations needed: cannot satisfy `&'a T: Foo`
+  --> $DIR/next-solver-region-resolution.rs:12:21
+   |
+LL | impl<'a, T> Foo for &'a T
+   |                     ^^^^^
+   |
+note: multiple `impl`s satisfying `&'a T: Foo` found
+  --> $DIR/next-solver-region-resolution.rs:12:1
+   |
+LL | / impl<'a, T> Foo for &'a T
+LL | |
+LL | | where
+LL | |     Self::Item: 'a,
+   | |___________________^
+...
+LL | / impl<'a, T> Foo for &T
+LL | |
+LL | | where
+LL | |     Self::Item: Baz,
+   | |____________________^
+
+error[E0046]: not all trait items implemented, missing: `Item`
+  --> $DIR/next-solver-region-resolution.rs:19:1
+   |
+LL |       type Item;
+   |       --------- `Item` from trait
+...
+LL | / impl<'a, T> Foo for &T
+LL | |
+LL | | where
+LL | |     Self::Item: Baz,
+   | |____________________^ missing `Item` in implementation
+
+error: cannot normalize `<&_ as Foo>::Item: '_`
+  --> $DIR/next-solver-region-resolution.rs:19:1
    |
 LL | / impl<'a, T> Foo for &T
 LL | |
 LL | | where
 LL | |     Self::Item: Baz,
    | |____________________^
-   |
-   = note: ...which immediately requires computing normalized predicates of `<impl at $DIR/next-solver-region-resolution.rs:18:1: 21:21>` again
-note: cycle used when computing whether impls specialize one another
-  --> $DIR/next-solver-region-resolution.rs:12:1
-   |
-LL | / impl<'a, T> Foo for &'a T
-LL | | where
-LL | |     Self::Item: 'a,
-   | |___________________^
-   = note: for more information, see <https://rustc-dev-guide.rust-lang.org/overview.html#queries> and <https://rustc-dev-guide.rust-lang.org/query.html>
 
-error: aborting due to 1 previous error
+error: aborting due to 4 previous errors
 
-For more information about this error, try `rustc --explain E0391`.
+Some errors have detailed explanations: E0046, E0283.
+For more information about an error, try `rustc --explain E0046`.
