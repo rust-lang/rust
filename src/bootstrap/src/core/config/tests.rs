@@ -1,13 +1,12 @@
 use std::collections::BTreeSet;
-use std::fs::{File, remove_file};
+use std::fs;
+use std::fs::File;
 use std::io::Write;
-use std::path::{Path, PathBuf};
-use std::{env, fs};
+use std::path::PathBuf;
 
 use build_helper::ci::CiEnv;
 use build_helper::git::PathFreshness;
 use clap::CommandFactory;
-use serde::Deserialize;
 
 use super::flags::Flags;
 use super::toml::change_id::ChangeIdWrapper;
@@ -16,21 +15,12 @@ use super::{Config, RUSTC_IF_UNCHANGED_ALLOWED_PATHS};
 use crate::ChangeId;
 use crate::core::build_steps::clippy::{LintConfig, get_clippy_rules_in_order};
 use crate::core::build_steps::llvm::LLVM_INVALIDATION_PATHS;
-use crate::core::build_steps::{llvm, test};
-use crate::core::config::toml::TomlConfig;
-use crate::core::config::{
-    BootstrapOverrideLld, CompilerBuiltins, StringOrBool, Target, TargetSelection,
-};
+use crate::core::config::{BootstrapOverrideLld, CompilerBuiltins, Target, TargetSelection};
 use crate::utils::tests::TestCtx;
 use crate::utils::tests::git::git_test;
 
 pub(crate) fn parse(config: &str) -> Config {
     TestCtx::new().config("check").with_default_toml_config(config).create_config()
-}
-
-fn get_toml(file: &Path) -> Result<TomlConfig, toml::de::Error> {
-    let contents = std::fs::read_to_string(file).unwrap();
-    toml::from_str(&contents).and_then(|table: toml::Value| TomlConfig::deserialize(table))
 }
 
 fn modified(upstream: impl Into<String>, changes: &[&str]) -> PathFreshness {
