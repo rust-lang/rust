@@ -50,7 +50,8 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     /// - Unconstrained ints are replaced with `i32`.
     ///
     /// - Unconstrained floats are replaced with `f64`, except when there is a trait predicate
-    ///   `f32: From<{float}>`, in which case `f32` is used as the fallback instead.
+    ///   `f32: From<{float}>`, in which case `f32` is used as the fallback instead and a
+    ///   [`FLOAT_LITERAL_F32_FALLBACK`] FCW is emitted.
     ///
     /// - Non-numerics may get replaced with `()` or `!`, depending on how they
     ///   were categorized by [`Self::calculate_diverging_fallback`], crate's
