@@ -595,7 +595,6 @@ pub fn detail_exit(code: i32, is_test: bool) -> ! {
     }
 }
 
-#[cfg_attr(test, expect(dead_code))]
 pub fn fail(s: &str) -> ! {
     eprintln!("\n\n{s}\n\n");
     detail_exit(1, cfg!(test));
