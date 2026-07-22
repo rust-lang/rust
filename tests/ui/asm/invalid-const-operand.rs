@@ -1,3 +1,4 @@
+//@ edition:2021
 //@ needs-asm-support
 //@ ignore-nvptx64
 //@ ignore-spirv
@@ -28,6 +29,10 @@ fn test1() {
         asm!("{}", const 0 as *mut u8);
         asm!("{}", const &0);
         asm!("{}", const b"Foo".as_slice());
+        //~^ ERROR invalid type for `const` operand
+        asm!("{}", const "Foo");
+        //~^ ERROR invalid type for `const` operand
+        asm!("{}", const c"Foo");
         //~^ ERROR invalid type for `const` operand
 
         asm!("{}", const test1 as fn());
