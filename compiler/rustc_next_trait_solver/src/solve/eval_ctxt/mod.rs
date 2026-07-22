@@ -684,7 +684,7 @@ where
             &orig_values,
             response,
             self.origin_span,
-        );
+        )?;
 
         // FIXME: We previously had an assert here that checked that recomputing
         // a goal after applying its constraints did not change its response.
@@ -1734,7 +1734,7 @@ pub(super) fn evaluate_root_goal_for_proof_tree<D: SolverDelegate<Interner = I>,
     let (canonical_result, final_revision) =
         delegate.cx().evaluate_root_goal_for_proof_tree_raw(canonical_goal);
 
-    let proof_tree = inspect::GoalEvaluation {
+    let mut proof_tree = inspect::GoalEvaluation {
         uncanonicalized_goal: goal,
         orig_values,
         final_revision,
@@ -1746,13 +1746,34 @@ pub(super) fn evaluate_root_goal_for_proof_tree<D: SolverDelegate<Interner = I>,
         Ok(response) => response,
     };
 
-    let (normalization_nested_goals, _certainty) = instantiate_and_apply_query_response(
+    let Ok((normalization_nested_goals, _certainty)) = instantiate_and_apply_query_response(
         delegate,
         goal.param_env,
         &proof_tree.orig_values,
         response,
         origin_span,
-    );
+    ) else {
+        proof_tree.result = Err(NoSolution);
+        // The recorded states may contain the same constraints which made the response
+        // inapplicable in the caller, so they cannot be safely replayed by diagnostics.
+        let var_kinds = canonical_goal.canonical.var_kinds;
+        proof_tree.final_revision = delegate.cx().mk_probe(inspect::Probe {
+            steps: vec![],
+            kind: inspect::ProbeKind::Root { result: Err(NoSolution) },
+            // This failed proof has no state to replay. Keep an identity state in the
+            // solver query's canonical variables instead of response-canonicalizing
+            // caller-side values, which may contain parameters.
+            final_state: ty::Canonical {
+                value: inspect::State {
+                    var_values: CanonicalVarValues::make_identity(delegate.cx(), var_kinds),
+                    data: (),
+                },
+                max_universe: canonical_goal.canonical.max_universe,
+                var_kinds,
+            },
+        });
+        return (Err(NoSolution), proof_tree);
+    };
 
     (Ok(normalization_nested_goals), proof_tree)
 }
