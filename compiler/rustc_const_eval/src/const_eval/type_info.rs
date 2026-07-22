@@ -383,6 +383,49 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
         interp_ok(())
     }
 
+    pub(crate) fn write_type_id_generics(
+        &mut self,
+        place: &impl Writeable<'tcx, CtfeProvenance>,
+        ty: Ty<'tcx>,
+    ) -> InterpResult<'tcx> {
+        let generics: ty::Binder<'_, ty::GenericArgsRef<'_>> = match *ty.kind() {
+            ty::Bool
+            | ty::Char
+            | ty::Int(..)
+            | ty::Uint(..)
+            | ty::Float(..)
+            | ty::Foreign(..)
+            | ty::Str
+            | ty::Array(..)
+            | ty::Pat(..)
+            | ty::RawPtr(..)
+            | ty::Ref(..)
+            | ty::FnPtr(..)
+            | ty::Dynamic(..)
+            | ty::CoroutineWitness(..)
+            | ty::Never
+            | ty::Tuple(..)
+            | ty::Alias(..)
+            | ty::Param(..)
+            | ty::Bound(..)
+            | ty::Placeholder(..)
+            | ty::Infer(..)
+            | ty::Error(..)
+            | ty::Slice(..) => ty::Binder::dummy(ty::GenericArgsRef::default()),
+            ty::Adt(_, args) => ty::Binder::dummy(args),
+            ty::FnDef(_, binder) => binder,
+            ty::UnsafeBinder(binder) => binder.rebind(ty::GenericArgsRef::default()),
+            ty::Closure(_, args) => ty::Binder::dummy(args),
+            ty::CoroutineClosure(_, args) => ty::Binder::dummy(args),
+            ty::Coroutine(_, args) => ty::Binder::dummy(args),
+        };
+
+        // FIXME(type_info): also provide the late bound vars to reflection
+        let generics = generics.skip_binder();
+
+        self.write_generics(place, generics)
+    }
+
     pub(crate) fn write_fn_ptr_type_info(
         &mut self,
         place: impl Writeable<'tcx, CtfeProvenance>,

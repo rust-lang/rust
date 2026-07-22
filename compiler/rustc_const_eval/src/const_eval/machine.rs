@@ -767,6 +767,11 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 ecx.write_type_id(field_ty, dest)?;
             }
 
+            sym::type_id_generics => {
+                let ty = ecx.read_type_id(&args[0])?;
+                ecx.write_type_id_generics(dest, ty)?;
+            }
+
             sym::non_exhaustive => {
                 let ty = ecx.read_type_id(&args[0])?;
 

@@ -223,6 +223,7 @@ pub struct Variant {
 #[derive(Debug)]
 #[non_exhaustive]
 #[unstable(feature = "type_info", issue = "146922")]
+#[lang = "type_info_generic"]
 pub enum Generic {
     /// Lifetimes.
     Lifetime(Lifetime),
@@ -568,6 +569,15 @@ impl TypeId {
     #[rustc_comptime]
     pub fn non_exhaustive(self) -> bool {
         intrinsics::non_exhaustive(self)
+    }
+
+    /// Returns a list of generic parameters of the type.
+    /// Returns an empty slice for everything that doesn't have generics.
+    #[unstable(feature = "type_info", issue = "146922")]
+    #[rustc_const_unstable(feature = "type_info", issue = "146922")]
+    #[rustc_comptime]
+    pub fn generics(self) -> &'static [Generic] {
+        intrinsics::type_id_generics(self)
     }
 }
 
