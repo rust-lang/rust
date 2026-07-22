@@ -137,7 +137,9 @@ pub(crate) struct MaxNumNodesInValtree {
 
 #[derive(Diagnostic)]
 #[diag("constant {$global_const_id} cannot be used as pattern")]
-#[note("constants that reference mutable or external memory cannot be used as patterns")]
+#[note(
+    "constants that reference mutable or external memory or that contain dangling references cannot be used as patterns"
+)]
 pub(crate) struct InvalidConstInValtree {
     #[primary_span]
     pub span: Span,
