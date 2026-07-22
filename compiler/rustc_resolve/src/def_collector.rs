@@ -166,7 +166,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                 nested: false,
             },
             ItemKind::Const(citem) => {
-                let is_type_const = matches!(citem.rhs_kind, ConstItemRhsKind::TypeConst { .. });
+                let is_type_const = citem.kind == ConstItemKind::TypeConst;
                 DefKind::Const { is_type_const }
             }
             ItemKind::ConstBlock(..) => DefKind::Const { is_type_const: false },
@@ -387,11 +387,9 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
             | AssocItemKind::Delegation(Delegation { ident, .. }) => {
                 (*ident, DefKind::AssocFn, ValueNS)
             }
-            AssocItemKind::Const(ConstItem { ident, rhs_kind, .. }) => (
+            AssocItemKind::Const(ConstItem { ident, kind, .. }) => (
                 *ident,
-                DefKind::AssocConst {
-                    is_type_const: matches!(rhs_kind, ConstItemRhsKind::TypeConst { .. }),
-                },
+                DefKind::AssocConst { is_type_const: *kind == ConstItemKind::TypeConst },
                 ValueNS,
             ),
             AssocItemKind::Type(TyAlias { ident, .. }) => (*ident, DefKind::AssocTy, TypeNS),
