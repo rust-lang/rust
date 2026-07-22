@@ -153,6 +153,7 @@ mod test {
     use super::{HInt, NarrowingDiv};
 
     #[test]
+    #[cfg_attr(miri, ignore)] // This test is very slow when using Miri
     fn inverse_mul() {
         for x in 0..=u8::MAX {
             for y in 1..=u8::MAX {
