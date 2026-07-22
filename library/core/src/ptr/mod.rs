@@ -124,8 +124,11 @@
 //! interior mutability and for `const` items. Writing or creating a mutable reference to a
 //! read-only allocation is undefined behavior, and most atomic operations are not supported
 //! for read-only allocations either (see [here][atomic-ro] for exceptions).
+//! Additionally, some target-specific intrinsics are not supported on read-only
+//! allocations even if their memory write is masked off, such as [`_mm_maskmoveu_si128`].
 //!
 //! [atomic-ro]: crate::sync::atomic#atomic-accesses-to-read-only-memory
+//! [`_mm_maskmoveu_si128`]: ../../core/arch/x86/fn._mm_maskmoveu_si128.html
 //!
 //! Allocations must behave like "normal" memory: in particular, reads must not have
 //! side-effects, and writes must become visible to other threads using the usual synchronization
