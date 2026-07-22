@@ -517,21 +517,21 @@ unsafe extern "Rust" {
 /// in response to an allocation error are encouraged to call this function,
 /// rather than directly invoking [`panic!`] or similar.
 ///
-/// This function is guaranteed to diverge (not return normally with a value), but depending on
-/// global configuration, it may either panic (resulting in unwinding or aborting as per
-/// configuration for all panics), or abort the process (with no unwinding).
+/// Callers may assume that this function always aborts execution. However, implementors that do not
+/// rely on this invariant are encouraged to document this in order to be compatible with users of
+/// [`set_alloc_error_hook_unwinding`].
 ///
 /// The default behavior is:
 ///
 ///  * If the binary links against `std` (typically the case), then
 ///   print a message to standard error and abort the process.
 ///   This behavior can be replaced with [`set_alloc_error_hook`] and [`take_alloc_error_hook`].
-///   Future versions of Rust may panic by default instead.
 ///
 /// * If the binary does not link against `std` (all of its crates are marked
 ///   [`#![no_std]`][no_std]), then call [`panic!`] with a message.
 ///   [The panic handler] applies as to any panic.
 ///
+/// [`set_alloc_error_hook_unwinding`]: ../../std/alloc/fn.set_alloc_error_hook_unwinding.html
 /// [`set_alloc_error_hook`]: ../../std/alloc/fn.set_alloc_error_hook.html
 /// [`take_alloc_error_hook`]: ../../std/alloc/fn.take_alloc_error_hook.html
 /// [The panic handler]: https://doc.rust-lang.org/reference/runtime.html#the-panic_handler-attribute
