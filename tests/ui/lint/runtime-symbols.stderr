@@ -1,5 +1,5 @@
 error: invalid definition of the runtime `memmove` symbol used by the standard library
-  --> $DIR/runtime-symbols.rs:14:5
+  --> $DIR/runtime-symbols.rs:13:5
    |
 LL |     pub fn memmove() {}
    |     ^^^^^^^^^^^^^^^^
@@ -10,7 +10,7 @@ LL |     pub fn memmove() {}
    = note: `#[deny(invalid_runtime_symbol_definitions)]` on by default
 
 error: invalid definition of the runtime `memset` symbol used by the standard library
-  --> $DIR/runtime-symbols.rs:18:9
+  --> $DIR/runtime-symbols.rs:17:9
    |
 LL |         pub fn memset();
    |         ^^^^^^^^^^^^^^^^
@@ -20,7 +20,7 @@ LL |         pub fn memset();
    = help: either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = "memset")]`, or `#[link_name = "memset"]`
 
 error: invalid definition of the runtime `memcmp` symbol used by the standard library
-  --> $DIR/runtime-symbols.rs:21:9
+  --> $DIR/runtime-symbols.rs:20:9
    |
 LL |         pub fn memcmp();
    |         ^^^^^^^^^^^^^^^^
@@ -30,7 +30,7 @@ LL |         pub fn memcmp();
    = help: either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = "memcmp")]`, or `#[link_name = "memcmp"]`
 
 error: invalid definition of the runtime `strlen` symbol used by the standard library
-  --> $DIR/runtime-symbols.rs:26:5
+  --> $DIR/runtime-symbols.rs:25:5
    |
 LL |     pub static strlen: () = ();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -40,7 +40,7 @@ LL |     pub static strlen: () = ();
    = help: either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = "strlen")]`, or `#[link_name = "strlen"]`
 
 error: invalid definition of the runtime `strlen` symbol used by the standard library
-  --> $DIR/runtime-symbols.rs:32:9
+  --> $DIR/runtime-symbols.rs:31:9
    |
 LL |         static strlen2: Option<unsafe extern "C" fn(s: *const c_char)>;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -50,7 +50,7 @@ LL |         static strlen2: Option<unsafe extern "C" fn(s: *const c_char)>;
    = help: either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = "strlen")]`, or `#[link_name = "strlen"]`
 
 error: invalid definition of the runtime `memcpy` symbol used by the standard library
-  --> $DIR/runtime-symbols.rs:38:5
+  --> $DIR/runtime-symbols.rs:37:5
    |
 LL |     pub fn memcpy(dest: *mut c_void, src: *const c_void, n: usize) -> *mut c_void {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -60,7 +60,7 @@ LL |     pub fn memcpy(dest: *mut c_void, src: *const c_void, n: usize) -> *mut 
    = help: either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = "memcpy")]`, or `#[link_name = "memcpy"]`
 
 error: invalid definition of the runtime `bcmp` symbol used by the standard library
-  --> $DIR/runtime-symbols.rs:45:5
+  --> $DIR/runtime-symbols.rs:44:5
    |
 LL |     pub unsafe extern "C" fn bcmp(s1: *const c_void, s2: *const c_void, n: usize, _: ...) -> c_int {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -70,7 +70,7 @@ LL |     pub unsafe extern "C" fn bcmp(s1: *const c_void, s2: *const c_void, n: 
    = help: either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = "bcmp")]`, or `#[link_name = "bcmp"]`
 
 error: invalid definition of the runtime `bcmp` symbol used by the standard library
-  --> $DIR/runtime-symbols.rs:52:5
+  --> $DIR/runtime-symbols.rs:51:5
    |
 LL |     pub extern "C" fn bcmp_(s1: *const c_void, s2: *const c_void, n: usize) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -80,7 +80,7 @@ LL |     pub extern "C" fn bcmp_(s1: *const c_void, s2: *const c_void, n: usize)
    = help: either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = "bcmp")]`, or `#[link_name = "bcmp"]`
 
 warning: suspicious definition of the runtime `memcpy` symbol used by the standard library
-  --> $DIR/runtime-symbols.rs:58:5
+  --> $DIR/runtime-symbols.rs:57:5
    |
 LL |     pub extern "C" fn memcpy(dest: *mut c_void, src: *const c_void, n: i64) -> *mut c_void {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -92,7 +92,7 @@ LL |     pub extern "C" fn memcpy(dest: *mut c_void, src: *const c_void, n: i64)
    = note: `#[warn(suspicious_runtime_symbol_definitions)]` on by default
 
 warning: suspicious definition of the runtime `memmove` symbol used by the standard library
-  --> $DIR/runtime-symbols.rs:64:5
+  --> $DIR/runtime-symbols.rs:63:5
    |
 LL |     pub extern "C" fn memmove(dest: *mut c_void, src: *const c_void, n: i64) -> *mut c_void {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -103,7 +103,7 @@ LL |     pub extern "C" fn memmove(dest: *mut c_void, src: *const c_void, n: i64
    = help: allow this lint if the signature is compatible
 
 warning: suspicious definition of the runtime `memset` symbol used by the standard library
-  --> $DIR/runtime-symbols.rs:70:9
+  --> $DIR/runtime-symbols.rs:69:9
    |
 LL |         fn memset(s: *mut c_void, c: c_int, n: usize) -> f64;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -114,7 +114,7 @@ LL |         fn memset(s: *mut c_void, c: c_int, n: usize) -> f64;
    = help: allow this lint if the signature is compatible
 
 warning: suspicious definition of the runtime `bcmp` symbol used by the standard library
-  --> $DIR/runtime-symbols.rs:75:5
+  --> $DIR/runtime-symbols.rs:74:5
    |
 LL |     pub extern "C" fn bcmp_(s1: *const U8, s2: *const U8, n: usize) -> c_int {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -125,7 +125,7 @@ LL |     pub extern "C" fn bcmp_(s1: *const U8, s2: *const U8, n: usize) -> c_in
    = help: allow this lint if the signature is compatible
 
 warning: suspicious definition of the runtime `strlen` symbol used by the standard library
-  --> $DIR/runtime-symbols.rs:81:5
+  --> $DIR/runtime-symbols.rs:80:5
    |
 LL |     pub extern "C" fn strlen(s: *const u64) -> usize {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

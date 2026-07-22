@@ -11,6 +11,7 @@ use semver::Version;
 
 use crate::debuggers::LldbVersion;
 use crate::edition::Edition;
+use crate::executor::TestVariant;
 use crate::fatal;
 use crate::util::{Utf8PathBufExt, add_dylib_path, string_enum};
 
@@ -452,18 +453,6 @@ pub(crate) struct Config {
     /// modes, e.g. `tests/coverage/` can be run under both [`TestMode::CoverageRun`] and
     /// [`TestMode::CoverageMap`].
     pub(crate) suite: TestSuite,
-
-    /// When specified, **only** the specified [`Debugger`] will be used to run against the
-    /// `tests/debuginfo` test suite. When unspecified, `compiletest` will attempt to find all three
-    /// of {`lldb`, `cdb`, `gdb`} implicitly, and then try to run the `debuginfo` test suite against
-    /// all three debuggers.
-    ///
-    /// FIXME: this implicit behavior is really nasty, in that it makes it hard for the user to
-    /// control *which* debugger(s) are available and used to run the debuginfo test suite. We
-    /// should have `bootstrap` allow the user to *explicitly* configure the debuggers, and *not*
-    /// try to implicitly discover some random debugger from the user environment. This makes the
-    /// debuginfo test suite particularly hard to work with.
-    pub(crate) debugger: Option<Debugger>,
 
     /// Run ignored tests *unconditionally*, overriding their ignore reason.
     ///
@@ -1307,13 +1296,13 @@ pub(crate) fn output_relative_path(config: &Config, relative_dir: &Utf8Path) -> 
 pub(crate) fn output_testname_unique(
     config: &Config,
     testpaths: &TestPaths,
-    revision: Option<&str>,
+    variant: &TestVariant,
 ) -> Utf8PathBuf {
     let mode = config.compare_mode.as_ref().map_or("", |m| m.to_str());
-    let debugger = config.debugger.as_ref().map_or("", |m| m.to_str());
+    let debugger = variant.debugger.as_ref().map_or("", |m| m.to_str());
     Utf8PathBuf::from(&testpaths.file.file_stem().unwrap())
         .with_extra_extension(config.mode.output_dir_disambiguator())
-        .with_extra_extension(revision.unwrap_or(""))
+        .with_extra_extension(variant.revision().unwrap_or(""))
         .with_extra_extension(mode)
         .with_extra_extension(debugger)
 }
@@ -1324,10 +1313,10 @@ pub(crate) fn output_testname_unique(
 pub(crate) fn output_base_dir(
     config: &Config,
     testpaths: &TestPaths,
-    revision: Option<&str>,
+    variant: &TestVariant,
 ) -> Utf8PathBuf {
     output_relative_path(config, &testpaths.relative_dir)
-        .join(output_testname_unique(config, testpaths, revision))
+        .join(output_testname_unique(config, testpaths, variant))
 }
 
 /// Absolute path to the base filename used as output for the given
@@ -1336,9 +1325,9 @@ pub(crate) fn output_base_dir(
 pub(crate) fn output_base_name(
     config: &Config,
     testpaths: &TestPaths,
-    revision: Option<&str>,
+    variant: &TestVariant,
 ) -> Utf8PathBuf {
-    output_base_dir(config, testpaths, revision).join(testpaths.file.file_stem().unwrap())
+    output_base_dir(config, testpaths, variant).join(testpaths.file.file_stem().unwrap())
 }
 
 /// Absolute path to the directory to use for incremental compilation. Example:
@@ -1346,7 +1335,7 @@ pub(crate) fn output_base_name(
 pub(crate) fn incremental_dir(
     config: &Config,
     testpaths: &TestPaths,
-    revision: Option<&str>,
+    variant: &TestVariant,
 ) -> Utf8PathBuf {
-    output_base_name(config, testpaths, revision).with_extension("inc")
+    output_base_name(config, testpaths, variant).with_extension("inc")
 }

@@ -61,6 +61,7 @@ use std::io::Write;
 
 use cranelift_codegen::entity::SecondaryMap;
 use cranelift_codegen::ir::entities::AnyEntity;
+use cranelift_codegen::isa::TargetIsa;
 use cranelift_codegen::write::{FuncWriter, PlainWriter};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_session::Session;
@@ -242,6 +243,22 @@ impl FunctionCx<'_, '_, '_> {
     }
 }
 
+pub(crate) fn format_clif_ir_header(isa: &dyn TargetIsa, symbol_name: &str) -> String {
+    use std::fmt::Write;
+
+    let mut header = String::new();
+    for flag in isa.flags().iter() {
+        writeln!(header, "set {}", flag).unwrap();
+    }
+    write!(header, "target {}", isa.triple().architecture.to_string()).unwrap();
+    for isa_flag in isa.isa_flags().iter() {
+        write!(header, " {}", isa_flag).unwrap();
+    }
+    writeln!(header, "\n").unwrap();
+    writeln!(header, "; symbol {}", symbol_name).unwrap();
+    header
+}
+
 pub(crate) fn should_write_ir(sess: &Session) -> bool {
     sess.opts.output_types.contains_key(&OutputType::LlvmAssembly)
 }
@@ -280,18 +297,9 @@ pub(crate) fn write_clif_file(
 ) {
     // FIXME work around filename too long errors
     write_ir_file(output_filenames, &format!("{}.{}.clif", symbol_name, postfix), |file| {
-        let mut clif = String::new();
+        let mut clif = format_clif_ir_header(isa, symbol_name);
         cranelift_codegen::write::decorate_function(&mut clif_comments, &mut clif, func).unwrap();
 
-        for flag in isa.flags().iter() {
-            writeln!(file, "set {}", flag)?;
-        }
-        write!(file, "target {}", isa.triple().architecture)?;
-        for isa_flag in isa.isa_flags().iter() {
-            write!(file, " {}", isa_flag)?;
-        }
-        writeln!(file, "\n")?;
-        writeln!(file)?;
         file.write_all(clif.as_bytes())?;
         Ok(())
     });

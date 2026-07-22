@@ -79,7 +79,6 @@ fn incomplete_config_for_rustdoc_gui_test() -> Config {
         sysroot_base: Utf8PathBuf::default(),
         stage: Default::default(),
         stage_id: String::default(),
-        debugger: Default::default(),
         run_ignored: Default::default(),
         with_rustc_debug_assertions: Default::default(),
         with_std_debug_assertions: Default::default(),

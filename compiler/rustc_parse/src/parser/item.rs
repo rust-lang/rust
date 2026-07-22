@@ -324,13 +324,14 @@ impl<'a> Parser<'a> {
             // CONST ITEM
             self.recover_const_mut(const_span);
             self.recover_missing_kw_before_item()?;
-            let (ident, generics, ty, rhs_kind) = self.parse_const_item(false, const_span)?;
+            let (ident, generics, ty, body) = self.parse_const_item(const_span)?;
             ItemKind::Const(Box::new(ConstItem {
                 defaultness: def_(),
                 ident,
                 generics,
                 ty,
-                rhs_kind,
+                body,
+                kind: ConstItemKind::Body,
                 define_opaque: None,
             }))
         } else if let Some(kind) = self.is_reuse_item() {
@@ -345,7 +346,7 @@ impl<'a> Parser<'a> {
                 // TYPE CONST (mgca)
                 self.recover_const_mut(const_span);
                 self.recover_missing_kw_before_item()?;
-                let (ident, generics, ty, rhs_kind) = self.parse_const_item(true, const_span)?;
+                let (ident, generics, ty, body) = self.parse_const_item(const_span)?;
                 // Make sure this is only allowed if the feature gate is enabled.
                 // #![feature(mgca_type_const_syntax)]
                 self.psess.gated_spans.gate(sym::mgca_type_const_syntax, lo.to(const_span));
@@ -354,7 +355,8 @@ impl<'a> Parser<'a> {
                     ident,
                     generics,
                     ty,
-                    rhs_kind,
+                    body,
+                    kind: ConstItemKind::TypeConst,
                     define_opaque: None,
                 }))
             } else {
@@ -1264,7 +1266,8 @@ impl<'a> Parser<'a> {
                                 ident,
                                 generics: Generics::default(),
                                 ty,
-                                rhs_kind: ConstItemRhsKind::Body { rhs: expr },
+                                body: expr,
+                                kind: ConstItemKind::Body,
                                 define_opaque,
                             }))
                         }
@@ -1506,7 +1509,7 @@ impl<'a> Parser<'a> {
                 let kind = match ForeignItemKind::try_from(kind) {
                     Ok(kind) => kind,
                     Err(kind) => match kind {
-                        ItemKind::Const(ConstItem { ident, ty, rhs_kind, .. }) => {
+                        ItemKind::Const(ConstItem { ident, ty, body, .. }) => {
                             let const_span = Some(span.with_hi(ident.span.lo()))
                                 .filter(|span| span.can_be_used_for_suggestions());
                             self.dcx().emit_err(diagnostics::ExternItemCannotBeConst {
@@ -1517,13 +1520,7 @@ impl<'a> Parser<'a> {
                                 ident,
                                 ty,
                                 mutability: Mutability::Not,
-                                expr: match rhs_kind {
-                                    ConstItemRhsKind::Body { rhs } => rhs,
-                                    ConstItemRhsKind::TypeConst { rhs: Some(anon) } => {
-                                        Some(anon.value)
-                                    }
-                                    ConstItemRhsKind::TypeConst { rhs: None } => None,
-                                },
+                                expr: body,
                                 safety: Safety::Default,
                                 define_opaque: None,
                                 eii_impls: ThinVec::default(),
@@ -1686,9 +1683,8 @@ impl<'a> Parser<'a> {
     /// ```
     fn parse_const_item(
         &mut self,
-        const_arg: bool,
         const_span: Span,
-    ) -> PResult<'a, (Ident, Generics, Box<Ty>, ConstItemRhsKind)> {
+    ) -> PResult<'a, (Ident, Generics, Box<Ty>, Option<Box<Expr>>)> {
         let ident = self.parse_ident_or_underscore()?;
 
         let mut generics = self.parse_generics()?;
@@ -1715,14 +1711,7 @@ impl<'a> Parser<'a> {
         let before_where_clause =
             if self.may_recover() { self.parse_where_clause()? } else { WhereClause::default() };
 
-        let rhs = match (self.eat(exp!(Eq)), const_arg) {
-            (true, true) => {
-                ConstItemRhsKind::TypeConst { rhs: Some(self.parse_expr_anon_const()?) }
-            }
-            (true, false) => ConstItemRhsKind::Body { rhs: Some(self.parse_expr()?) },
-            (false, true) => ConstItemRhsKind::TypeConst { rhs: None },
-            (false, false) => ConstItemRhsKind::Body { rhs: None },
-        };
+        let rhs = if self.eat(exp!(Eq)) { Some(self.parse_expr()?) } else { None };
 
         let after_where_clause = self.parse_where_clause()?;
 
@@ -1730,18 +1719,18 @@ impl<'a> Parser<'a> {
         // Users may be tempted to write such code if they are still used to the deprecated
         // where-clause location on type aliases and associated types. See also #89122.
         if before_where_clause.has_where_token
-            && let Some(rhs_span) = rhs.span()
+            && let Some(rhs) = &rhs
         {
             self.dcx().emit_err(diagnostics::WhereClauseBeforeConstBody {
                 span: before_where_clause.span,
                 name: ident.span,
-                body: rhs_span,
+                body: rhs.span,
                 sugg: if !after_where_clause.has_where_token {
-                    self.psess.source_map().span_to_snippet(rhs_span).ok().map(|body_s| {
+                    self.psess.source_map().span_to_snippet(rhs.span).ok().map(|body_s| {
                         diagnostics::WhereClauseBeforeConstBodySugg {
                             left: before_where_clause.span.shrink_to_lo(),
                             snippet: body_s,
-                            right: before_where_clause.span.shrink_to_hi().to(rhs_span),
+                            right: before_where_clause.span.shrink_to_hi().to(rhs.span),
                         }
                     })
                 } else {
@@ -1778,7 +1767,7 @@ impl<'a> Parser<'a> {
         generics.where_clause = where_clause;
 
         if let Some(rhs) = self.try_recover_const_missing_semi(&rhs, const_span) {
-            return Ok((ident, generics, ty, ConstItemRhsKind::Body { rhs: Some(rhs) }));
+            return Ok((ident, generics, ty, Some(rhs)));
         }
         self.expect_semi()?;
 
@@ -3700,13 +3689,13 @@ impl<'a> Parser<'a> {
     /// Returns a corrected expression if recovery is successful.
     fn try_recover_const_missing_semi(
         &mut self,
-        rhs: &ConstItemRhsKind,
+        rhs: &Option<Box<Expr>>,
         const_span: Span,
     ) -> Option<Box<Expr>> {
         if self.token == TokenKind::Semi {
             return None;
         }
-        let ConstItemRhsKind::Body { rhs: Some(rhs) } = rhs else {
+        let Some(rhs) = rhs else {
             return None;
         };
         if !self.in_fn_body || !self.may_recover() || rhs.span.from_expansion() {

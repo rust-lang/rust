@@ -43,7 +43,7 @@ use crate::common::{
     output_base_dir, output_relative_path,
 };
 use crate::directives::{AuxProps, DirectivesCache, FileDirectives};
-use crate::executor::CollectedTest;
+use crate::executor::{CollectedTest, TestVariant};
 
 /// Called by `main` after the config has been parsed.
 fn run_tests(config: Arc<Config>) {
@@ -76,43 +76,31 @@ fn run_tests(config: Arc<Config>) {
     // SAFETY: at this point we're still single-threaded.
     unsafe { env::set_var("__COMPAT_LAYER", "RunAsInvoker") };
 
-    let mut configs = Vec::new();
+    // Debugging emscripten code doesn't make sense today
+    let ignore_tests = config.mode == TestMode::DebugInfo && config.target.contains("emscripten");
+
     if let TestMode::DebugInfo = config.mode {
-        // Debugging emscripten code doesn't make sense today
-        if !config.target.contains("emscripten") {
-            // FIXME: ideally, we would just have one config, and then have some mechanism of
-            // generating multiple variants of a test, one for each debugger (something like
-            // debuginfo revisions). But for now, we just create three configs.
-            configs.extend([
-                Arc::new(Config { debugger: Some(Debugger::Cdb), ..config.as_ref().clone() }),
-                Arc::new(Config { debugger: Some(Debugger::Gdb), ..config.as_ref().clone() }),
-                Arc::new(Config { debugger: Some(Debugger::Lldb), ..config.as_ref().clone() }),
-            ]);
+        // FIXME: this should ideally happen somewhere else..
+        if config.target.contains("android") {
+            println!("{} debug-info test uses tcp 5039 port. please reserve it", config.target);
 
-            // FIXME: this should ideally happen somewhere else..
-            if config.target.contains("android") {
-                println!("{} debug-info test uses tcp 5039 port. please reserve it", config.target);
-
-                // android debug-info test uses remote debugger so, we test 1 thread
-                // at once as they're all sharing the same TCP port to communicate
-                // over.
-                //
-                // we should figure out how to lift this restriction! (run them all
-                // on different ports allocated dynamically).
-                //
-                // SAFETY: at this point we are still single-threaded.
-                unsafe { env::set_var("RUST_TEST_THREADS", "1") };
-            }
+            // android debug-info test uses remote debugger so, we test 1 thread
+            // at once as they're all sharing the same TCP port to communicate
+            // over.
+            //
+            // we should figure out how to lift this restriction! (run them all
+            // on different ports allocated dynamically).
+            //
+            // SAFETY: at this point we are still single-threaded.
+            unsafe { env::set_var("RUST_TEST_THREADS", "1") };
         }
-    } else {
-        configs.push(config.clone());
     };
 
     // Discover all of the tests in the test suite directory, and build a `CollectedTest`
     // structure for each test (or each revision of a multi-revision test).
     let mut tests = Vec::new();
-    for c in configs {
-        tests.extend(collect_and_make_tests(c));
+    if !ignore_tests {
+        tests.extend(collect_and_make_tests(config.clone()));
     }
 
     tests.sort_by(|a, b| Ord::cmp(&a.desc.name, &b.desc.name));
@@ -446,56 +434,68 @@ fn make_test(cx: &TestCollectorCx, collector: &mut TestCollector, testpaths: &Te
         early_props.revisions.iter().map(|r| Some(r.as_str())).collect()
     };
 
-    // For each revision (or the sole dummy revision), create and append a
+    // For debuginfo tests, we have to run them once for each debugger.
+    // We thus create a cartesian product of each revision and each supported debugger here.
+    let debuggers = if cx.config.mode == TestMode::DebugInfo {
+        vec![Some(Debugger::Cdb), Some(Debugger::Gdb), Some(Debugger::Lldb)]
+    } else {
+        vec![None]
+    };
+
+    // For each revision (or the sole dummy revision) and each debugger, create and append a
     // `CollectedTest` that can be handed over to the test executor.
-    collector.tests.extend(revisions.into_iter().map(|revision| {
-        // Create a test name and description to hand over to the executor.
-        let (test_name, filterable_path) =
-            make_test_name_and_filterable_path(&cx.config, testpaths, revision);
+    for debugger in debuggers {
+        collector.tests.extend(revisions.iter().map(|&revision| {
+            let revision = revision.map(str::to_owned);
+            let variant = TestVariant { revision, debugger };
 
-        // While scanning for ignore/only/needs directives, also collect aux
-        // paths for up-to-date checking.
-        let mut aux_props = AuxProps::default();
+            // Create a test name and description to hand over to the executor.
+            let (test_name, filterable_path) =
+                make_test_name_and_filterable_path(&cx.config, testpaths, &variant);
 
-        // Create a description struct for the test/revision.
-        // This is where `ignore-*`/`only-*`/`needs-*` directives are handled,
-        // because they historically needed to set the libtest ignored flag.
-        let mut desc = make_test_description(
-            &cx.config,
-            &cx.cache,
-            test_name,
-            &test_path,
-            &filterable_path,
-            &file_directives,
-            revision,
-            &mut collector.poisoned,
-            &mut aux_props,
-        );
+            // While scanning for ignore/only/needs directives, also collect aux
+            // paths for up-to-date checking.
+            let mut aux_props = AuxProps::default();
 
-        // If a test's inputs haven't changed since the last time it ran,
-        // mark it as ignored so that the executor will skip it.
-        if !desc.is_ignored()
-            && !cx.config.force_rerun
-            && is_up_to_date(cx, testpaths, &aux_props, revision)
-        {
-            // Keep this in sync with the "up-to-date" message detected by bootstrap.
-            // FIXME(Zalathar): Now that we are no longer tied to libtest, we could
-            // find a less fragile way to communicate this status to bootstrap.
-            desc.ignore_message = Some("up-to-date".into());
-        }
+            // Create a description struct for the test/revision.
+            // This is where `ignore-*`/`only-*`/`needs-*` directives are handled,
+            // because they historically needed to set the libtest ignored flag.
+            let mut desc = make_test_description(
+                &cx.config,
+                &cx.cache,
+                test_name,
+                &test_path,
+                &filterable_path,
+                &file_directives,
+                &variant,
+                &mut collector.poisoned,
+                &mut aux_props,
+            );
 
-        let config = Arc::clone(&cx.config);
-        let testpaths = testpaths.clone();
-        let revision = revision.map(str::to_owned);
+            // If a test's inputs haven't changed since the last time it ran,
+            // mark it as ignored so that the executor will skip it.
+            if !desc.is_ignored()
+                && !cx.config.force_rerun
+                && is_up_to_date(cx, testpaths, &aux_props, &variant)
+            {
+                // Keep this in sync with the "up-to-date" message detected by bootstrap.
+                // FIXME(Zalathar): Now that we are no longer tied to libtest, we could
+                // find a less fragile way to communicate this status to bootstrap.
+                desc.ignore_message = Some("up-to-date".into());
+            }
 
-        CollectedTest { desc, config, testpaths, revision }
-    }));
+            let config = Arc::clone(&cx.config);
+            let testpaths = testpaths.clone();
+
+            CollectedTest { desc, config, testpaths, variant }
+        }));
+    }
 }
 
 /// The path of the `stamp` file that gets created or updated whenever a
 /// particular test completes successfully.
-fn stamp_file_path(config: &Config, testpaths: &TestPaths, revision: Option<&str>) -> Utf8PathBuf {
-    output_base_dir(config, testpaths, revision).join("stamp")
+fn stamp_file_path(config: &Config, testpaths: &TestPaths, variant: &TestVariant) -> Utf8PathBuf {
+    output_base_dir(config, testpaths, variant).join("stamp")
 }
 
 /// Returns a list of files that, if modified, would cause this test to no
@@ -552,9 +552,9 @@ fn is_up_to_date(
     cx: &TestCollectorCx,
     testpaths: &TestPaths,
     aux_props: &AuxProps,
-    revision: Option<&str>,
+    variant: &TestVariant,
 ) -> bool {
-    let stamp_file_path = stamp_file_path(&cx.config, testpaths, revision);
+    let stamp_file_path = stamp_file_path(&cx.config, testpaths, variant);
     // Check the config hash inside the stamp file.
     let contents = match fs::read_to_string(&stamp_file_path) {
         Ok(f) => f,
@@ -562,7 +562,7 @@ fn is_up_to_date(
         // The test hasn't succeeded yet, so it is not up-to-date.
         Err(_) => return false,
     };
-    let expected_hash = runtest::compute_stamp_hash(&cx.config);
+    let expected_hash = runtest::compute_stamp_hash(&cx.config, variant);
     if contents != expected_hash {
         // Some part of compiletest configuration has changed since the test
         // last succeeded, so it is not up-to-date.
@@ -572,7 +572,7 @@ fn is_up_to_date(
     // Check the timestamp of the stamp file against the last modified time
     // of all files known to be relevant to the test.
     let mut inputs_stamp = cx.common_inputs_stamp.clone();
-    for path in files_related_to_test(&cx.config, testpaths, aux_props, revision) {
+    for path in files_related_to_test(&cx.config, testpaths, aux_props, variant.revision()) {
         inputs_stamp.add_path(&path);
     }
 
@@ -627,12 +627,12 @@ impl Stamp {
 fn make_test_name_and_filterable_path(
     config: &Config,
     testpaths: &TestPaths,
-    revision: Option<&str>,
+    variant: &TestVariant,
 ) -> (String, Utf8PathBuf) {
     // Print the name of the file, relative to the sources root.
     let path = testpaths.file.strip_prefix(&config.src_root).unwrap();
-    let debugger = match config.debugger {
-        Some(d) => format!("-{}", d),
+    let debugger = match variant.debugger.as_ref() {
+        Some(d) => format!("-{d}"),
         None => String::new(),
     };
     let mode_suffix = match config.compare_mode {
@@ -646,7 +646,7 @@ fn make_test_name_and_filterable_path(
         debugger,
         mode_suffix,
         path,
-        revision.map_or("".to_string(), |rev| format!("#{}", rev))
+        variant.revision().map_or("".to_string(), |rev| format!("#{}", rev))
     );
 
     // `path` is the full path from the repo root like, `tests/ui/foo/bar.rs`.
