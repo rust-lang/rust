@@ -896,6 +896,24 @@ impl_vvvv!("lasx", lasx_xvfnmsub_d, simd_ext_fnmsub, m256d, f64x4);
 impl_vugv!("lasx", lasx_xvinsgr2vr_w, simd_insert, m256i, i32x8, i32, 3);
 impl_vugv!("lasx", lasx_xvinsgr2vr_d, simd_insert, m256i, i64x4, i64, 2);
 
+impl_vavg!("lasx", lasx_xvavg_b, m256i, i8x32, i16x32);
+impl_vavg!("lasx", lasx_xvavg_h, m256i, i16x16, i32x16);
+impl_vavg!("lasx", lasx_xvavg_w, m256i, i32x8, i64x8);
+impl_vavg!("lasx", lasx_xvavg_d, m256i, i64x4, i128x4);
+impl_vavg!("lasx", lasx_xvavg_bu, m256i, u8x32, u16x32);
+impl_vavg!("lasx", lasx_xvavg_hu, m256i, u16x16, u32x16);
+impl_vavg!("lasx", lasx_xvavg_wu, m256i, u32x8, u64x8);
+impl_vavg!("lasx", lasx_xvavg_du, m256i, u64x4, u128x4);
+
+impl_vavgr!("lasx", lasx_xvavgr_b, m256i, i8x32, i16x32);
+impl_vavgr!("lasx", lasx_xvavgr_h, m256i, i16x16, i32x16);
+impl_vavgr!("lasx", lasx_xvavgr_w, m256i, i32x8, i64x8);
+impl_vavgr!("lasx", lasx_xvavgr_d, m256i, i64x4, i128x4);
+impl_vavgr!("lasx", lasx_xvavgr_bu, m256i, u8x32, u16x32);
+impl_vavgr!("lasx", lasx_xvavgr_hu, m256i, u16x16, u32x16);
+impl_vavgr!("lasx", lasx_xvavgr_wu, m256i, u32x8, u64x8);
+impl_vavgr!("lasx", lasx_xvavgr_du, m256i, u64x4, u128x4);
+
 #[cfg(test)]
 mod tests {
     use crate::{
