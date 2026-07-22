@@ -34,9 +34,6 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
         synth.impls
     });
 
-    let local_crate = ExternalCrate { crate_num: LOCAL_CRATE };
-    let prims: FxHashSet<PrimitiveType> = local_crate.primitives(tcx).map(|(_, p)| p).collect();
-
     let crate_items = {
         let mut coll = ItemAndAliasCollector::new(&cx.cache);
         cx.sess().time("collect_items_for_trait_impls", || coll.visit_crate(&krate));
@@ -57,9 +54,6 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
                     let self_ty =
                         clean_middle_ty(ty::Binder::dummy(self_ty), cx, Some(impl_def_id), None);
                     if self_ty.is_full_generic()
-                        || self_ty
-                            .primitive_type()
-                            .is_some_and(|primitive| prims.contains(&primitive))
                         || self_ty
                             .def_id(&cx.cache)
                             .is_some_and(|did| crate_items.contains(&ItemId::DefId(did)))
