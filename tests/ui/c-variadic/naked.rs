@@ -1,7 +1,6 @@
 //@ run-pass
 //@ only-x86_64
 //@ only-linux
-#![feature(c_variadic_naked_functions)]
 
 #[repr(C)]
 #[derive(Debug, PartialEq)]
