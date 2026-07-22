@@ -87,18 +87,17 @@ impl<'tcx> ExternRefVisitor<'tcx> {
             | BackendRepr::SimdScalableVector { element, .. } => scalar_is_externref(element),
             BackendRepr::Memory { .. } => {
                 let cx = LayoutCx::new(self.tcx, ty::TypingEnv::fully_monomorphized());
-                let fields_contain = |this: &mut Self, layout: TyAndLayout<'tcx>| match layout
-                    .fields
-                {
-                    FieldsShape::Primitive => false,
-                    FieldsShape::Array { count, .. } => {
-                        count > 0 && this.contains_externref(layout.field(&cx, 0))
-                    }
-                    FieldsShape::Union(_) | FieldsShape::Arbitrary { .. } => (0..layout
-                        .fields
-                        .count())
-                        .any(|i| this.contains_externref(layout.field(&cx, i))),
-                };
+                let fields_contain =
+                    |this: &mut Self, layout: TyAndLayout<'tcx>| match layout.fields {
+                        FieldsShape::Primitive => false,
+                        FieldsShape::Array { count, .. } => {
+                            count > 0 && this.contains_externref(layout.field(&cx, 0))
+                        }
+                        FieldsShape::Union(_) | FieldsShape::Arbitrary { .. } => {
+                            (0..layout.fields.count())
+                                .any(|i| this.contains_externref(layout.field(&cx, i)))
+                        }
+                    };
                 if fields_contain(self, layout) {
                     return true;
                 }
