@@ -26,8 +26,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let (ty, dyn_ty) = self.tcx.erase_and_anonymize_regions((ty, dyn_ty));
 
         // All vtables must be monomorphic, bail out otherwise.
-        ensure_monomorphic_enough(*self.tcx, ty)?;
-        ensure_monomorphic_enough(*self.tcx, dyn_ty)?;
+        ensure_monomorphic_enough(ty)?;
+        ensure_monomorphic_enough(dyn_ty)?;
 
         let salt = M::get_global_alloc_salt(self, None);
         let vtable_symbolic_allocation = self.tcx.reserve_and_set_vtable_alloc(ty, dyn_ty, salt);
