@@ -228,11 +228,8 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             .diverging_type_vars
             .borrow()
             .iter()
-            .map(|&ty_id| self.shallow_resolve(Ty::new_var(self.tcx, ty_id)))
-            .filter_map(|ty| ty.ty_vid())
-            .map(|vid| self.root_var(vid))
+            .filter_map(|&vid| self.infcx.shallow_resolve_ty_var_or_get_root(vid).err())
             .collect();
-
         {
             // Construct a coercion graph where an edge `A -> B` indicates
             // a type variable is that is coerced

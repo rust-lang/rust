@@ -309,7 +309,10 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
     pub(crate) fn unresolved_root_variables(&mut self) -> Vec<ty::TyVid> {
         (0..self.num_vars())
             .map(ty::TyVid::from_usize)
-            .filter(|&vid| self.root_var(vid) == vid && self.probe(vid).is_unknown())
+            .filter(|&vid| {
+                let (root, value) = self.probe_with_root_vid(vid);
+                root == vid && value.is_unknown()
+            })
             .collect()
     }
 }

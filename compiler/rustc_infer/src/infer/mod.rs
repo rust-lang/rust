@@ -41,7 +41,7 @@ use tracing::{debug, instrument};
 use type_variable::TypeVariableOrigin;
 
 use crate::infer::snapshot::undo_log::UndoLog;
-use crate::infer::type_variable::FloatVariableOrigin;
+use crate::infer::type_variable::{FloatVariableOrigin, TypeVariableValue};
 use crate::infer::unify_key::{ConstVariableOrigin, ConstVariableValue, ConstVidKey};
 use crate::traits::{
     self, ObligationCause, ObligationInspector, PredicateObligation, PredicateObligations,
@@ -199,10 +199,7 @@ impl<'tcx> InferCtxtInner<'tcx> {
     }
 
     #[inline]
-    fn try_type_variables_probe_ref(
-        &self,
-        vid: ty::TyVid,
-    ) -> Option<&type_variable::TypeVariableValue<'tcx>> {
+    fn try_type_variables_probe_ref(&self, vid: ty::TyVid) -> Option<&TypeVariableValue<'tcx>> {
         // Uses a read-only view of the unification table, this way we don't
         // need an undo log.
         self.type_variable_storage.eq_relations_ref().try_probe_value(vid)
@@ -1204,6 +1201,16 @@ impl<'tcx> InferCtxt<'tcx> {
         }
     }
 
+    /// If `vid` resolves to a type, return that type. Otherwise return the root variable id for `vid`.
+    pub fn shallow_resolve_ty_var_or_get_root(&self, vid: TyVid) -> Result<Ty<'tcx>, TyVid> {
+        let (root, value) = self.inner.borrow_mut().type_variables().probe_with_root_vid(vid);
+
+        match value {
+            TypeVariableValue::Known { value } => Ok(value),
+            TypeVariableValue::Unknown { universe: _ } => Err(root),
+        }
+    }
+
     pub fn shallow_resolve(&self, ty: Ty<'tcx>) -> Ty<'tcx> {
         if let ty::Infer(v) = *ty.kind() {
             match v {
@@ -1884,10 +1891,9 @@ where
     (0..table.len() as u32)
         .map(V::from_index)
         .filter(|&vid| {
-            // vid is a root variable
-            table.find(vid) == vid
-                // ...and it's currently unresolved
-                && is_unresolved(table.try_probe_value(vid).unwrap().clone())
+            // NB: as of writing this `ena` doesn't provide a non-inlined `probe_key_value`...
+            let (root, value) = table.inlined_probe_key_value(vid);
+            root == vid && is_unresolved(value)
         })
         .collect()
 }
