@@ -1,11 +1,11 @@
 use either::Either;
-use hir::{HasSource, HirDisplay, InMacroFile, Semantics, VariantId};
+use hir::{HasSource, HirDisplay, InFile, Semantics, VariantId};
 use ide_db::text_edit::TextEdit;
 use ide_db::{
     EditionedFileId, RootDatabase, helpers::is_editable_crate, source_change::SourceChange,
 };
 use syntax::{
-    AstNode, TextSize,
+    AstNode,
     ast::{self, edit::IndentLevel, make},
 };
 
@@ -102,56 +102,35 @@ fn missing_record_expr_field_fixes(
         make::ty(&new_field_type.display_source_code(sema.db, module.into(), true).ok()?),
     );
 
-    let (mut indent, offset, postfix, needs_comma) =
-        if let Some(last_field) = record_fields.fields().last() {
-            let indent = IndentLevel::from_node(last_field.syntax());
-            let offset = last_field.syntax().text_range().end();
-            let needs_comma = !last_field.to_string().ends_with(',');
-            (indent, offset, String::new(), needs_comma)
-        } else {
-            // We don't have enough whitespace information in a macro-defined empty struct
-            // to compute the correct indent.
-            if def_file_id.is_macro() {
-                return None;
-            }
-
-            let indent = IndentLevel::from_node(record_fields.syntax());
-            let offset = record_fields.l_curly_token()?.text_range().end();
-            let postfix = if record_fields.syntax().text().contains_char('\n') {
-                ",".into()
-            } else {
-                format!(",\n{indent}")
-            };
-            (indent + 1, offset, postfix, false)
-        };
-    let (def_file_id, offset) = if let Some(macro_file) = def_file_id.macro_file() {
-        // Map the preceding token so the source insertion uses the end of that token.
-        let (range, _) =
-            InMacroFile::new(macro_file, offset - TextSize::new(1)).original_file_range(sema.db);
-        let anchor = sema
-            .parse(range.file_id)
-            .syntax()
-            .token_at_offset(range.range.start())
-            .right_biased()?;
-        indent = IndentLevel::from_token(&anchor);
-        (range.file_id, range.range.end())
+    let after = if let Some(last_field) = record_fields.fields().last() {
+        last_field.syntax().last_token()?
     } else {
-        (def_file_id.file_id()?, offset)
+        record_fields.l_curly_token()?
+    };
+    let hir::FileRange { file_id, range } =
+        InFile::new(def_file_id, after.text_range()).original_node_file_range_opt(sema.db)?.0;
+    let origin = sema.parse(file_id).syntax().covering_element(range);
+    let indent = IndentLevel::from_element(&origin);
+
+    let (comma, indent, postfix) = match after.kind() {
+        syntax::SyntaxKind::L_CURLY => {
+            let newline = !after.next_token().is_some_and(|it| it.text().contains('\n'));
+            ("", indent + 1, if newline { format!(",\n{indent}") } else { ",".into() })
+        }
+        _ => (",", indent, String::new()),
     };
 
-    let mut new_field = new_field.to_string();
     // FIXME: check submodule instead of FileId
-    let vis = if usage_file_id != def_file_id && !matches!(def_id, hir::Variant::EnumVariant(_)) {
+    let vis = if usage_file_id != file_id && !matches!(def_id, hir::Variant::EnumVariant(_)) {
         "pub(crate) "
     } else {
         ""
     };
-    let comma = if needs_comma { "," } else { "" };
-    new_field = format!("{comma}\n{indent}{vis}{new_field}{postfix}");
+    let new_field = format!("{comma}\n{indent}{vis}{new_field}{postfix}");
 
     let source_change = SourceChange::from_text_edit(
-        def_file_id.file_id(sema.db),
-        TextEdit::insert(offset, new_field),
+        file_id.file_id(sema.db),
+        TextEdit::insert(range.end(), new_field),
     );
 
     return Some(vec![fix(
