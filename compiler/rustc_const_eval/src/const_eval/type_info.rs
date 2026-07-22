@@ -20,7 +20,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
     // A general method to write an array to a static slice place.
     fn allocate_fill_and_write_slice_ptr(
         &mut self,
-        slice_place: impl Writeable<'tcx, CtfeProvenance>,
+        slice_place: &impl Writeable<'tcx, CtfeProvenance>,
         len: u64,
         writer: impl Fn(&mut Self, /* index */ u64, MPlaceTy<'tcx>) -> InterpResult<'tcx>,
     ) -> InterpResult<'tcx> {
@@ -45,7 +45,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
         // Write the slice pointing to the array
         let array_place = array_place.map_provenance(CtfeProvenance::as_immutable);
         let ptr = Immediate::new_slice(array_place.ptr(), len, self);
-        self.write_immediate(ptr, &slice_place)
+        self.write_immediate(ptr, slice_place)
     }
 
     /// Writes a `core::mem::type_info::TypeInfo` for a given type, `ty` to the given place.
@@ -262,7 +262,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
         let tuple_layout = self.layout_of(tuple_ty)?;
         let fields_slice_place = self.project_field(&tuple_place, FieldIdx::ZERO)?;
         self.allocate_fill_and_write_slice_ptr(
-            fields_slice_place,
+            &fields_slice_place,
             fields.len() as u64,
             |this, i, place| {
                 let field_ty = fields[i as usize];
@@ -424,7 +424,7 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                 sym::inputs => {
                     let inputs = sig.inputs();
                     self.allocate_fill_and_write_slice_ptr(
-                        field_place,
+                        &field_place,
                         inputs.len() as _,
                         |this, i, place| this.write_type_id(inputs[i as usize], &place),
                     )?;
