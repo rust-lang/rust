@@ -16,6 +16,7 @@
 // tidy-alphabetical-start
 #![feature(allocator_api)]
 #![feature(array_into_iter_constructors)]
+#![feature(cfg_sanitize)]
 #![feature(char_internals)]
 #![feature(const_alloc_error)]
 #![feature(const_cmp)]
