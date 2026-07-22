@@ -296,6 +296,7 @@ unsafe impl Allocator for System {
 unsafe impl GlobalAllocator for System {}
 
 static HOOK: AtomicPtr<()> = AtomicPtr::new(ptr::null_mut());
+static ABORT: AtomicBool = AtomicBool::new(true);
 
 /// Registers a custom allocation error hook, replacing any that was previously registered.
 ///
@@ -310,8 +311,9 @@ static HOOK: AtomicPtr<()> = AtomicPtr::new(ptr::null_mut());
 /// The hook function is provided with a [`Layout`] struct which contains information
 /// about the allocation that failed.
 ///
-/// The hook function may choose to panic or abort; in the event that it returns normally, this
-/// will cause an immediate abort.
+/// Regardless of whether the hook aborts, unwinds, or returns, the process will always abort
+/// immediately after the hook is executed; an unwind will never propagate out of
+/// `handle_alloc_error`.
 ///
 /// Since [`take_alloc_error_hook`] is a safe function that allows retrieving the hook, the hook
 /// function must be _sound_ to call even if no memory allocations were attempted.
@@ -338,6 +340,29 @@ static HOOK: AtomicPtr<()> = AtomicPtr::new(ptr::null_mut());
 /// ```
 #[unstable(feature = "alloc_error_hook", issue = "51245")]
 pub fn set_alloc_error_hook(hook: fn(Layout)) {
+    ABORT.store(true, Ordering::Release);
+    HOOK.store(hook as *mut (), Ordering::Release);
+}
+
+/// Registers a custom allocation error hook, replacing any that was previously registered.
+///
+/// Unlike [`set_alloc_error_hook`], unwinds from the hook may propagate.
+///
+/// # Safety
+///
+/// Unwinding from the allocation error hook is not unsafe per se; however, large swathes of
+/// library code assume this never happens and may cause UB. Therefore, upon setting a hook
+/// that may unwind, care should be taken to audit code in dependencies for possible unsoundness
+/// in the presence of unwinds and ensure UB is not triggered.
+///
+/// Note that this has [also affected][example-1] the [standard library][example-2] in the past;
+/// this operation is *immensely unsafe* to perform in the presence of unaudited code.
+///
+/// [example-1]: https://github.com/rust-lang/rust/issues/157203
+/// [example-2]: https://github.com/rust-lang/rust/issues/156490
+#[unstable(feature = "alloc_error_hook", issue = "51245")]
+pub unsafe fn set_alloc_error_hook_unwinding(hook: fn(Layout)) {
+    ABORT.store(false, Ordering::Release);
     HOOK.store(hook as *mut (), Ordering::Release);
 }
 
@@ -423,6 +448,14 @@ fn default_alloc_error_hook(layout: Layout) {
 #[unstable(feature = "alloc_internals", issue = "none")]
 pub fn rust_oom(layout: Layout) -> ! {
     crate::sys::backtrace::__rust_end_short_backtrace(|| {
+        use core::mem::DropGuard;
+
+        let guard = DropGuard::new((), |_| crate::process::abort());
+        let abort = ABORT.load(Ordering::Acquire);
+        // Unwinds permitted, don't arm the guard.
+        if !abort {
+            DropGuard::dismiss(guard);
+        }
         let hook = HOOK.load(Ordering::Acquire);
         let hook: fn(Layout) =
             if hook.is_null() { default_alloc_error_hook } else { unsafe { mem::transmute(hook) } };

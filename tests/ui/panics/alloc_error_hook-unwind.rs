@@ -1,4 +1,5 @@
-//! Test that out-of-memory conditions trigger catchable panics with `set_alloc_error_hook`.
+//! Test that out-of-memory conditions trigger catchable panics
+//! with `set_alloc_error_hook_unwinding`.
 
 //@ run-pass
 //@ needs-unwind
@@ -12,7 +13,9 @@ use std::mem::forget;
 use std::panic::catch_unwind;
 
 fn main() {
-    std::alloc::set_alloc_error_hook(|_| panic!());
+    unsafe {
+        std::alloc::set_alloc_error_hook_unwinding(|_| panic!());
+    }
 
     let panic = catch_unwind(|| {
         // This is guaranteed to exceed even the size of the address space
