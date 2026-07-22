@@ -1,0 +1,42 @@
+error[E0277]: the trait bound `NoNot: Not` is not satisfied
+  --> $DIR/unary-op-associated-output-mismatch-issue-106138.rs:27:13
+   |
+LL |     let _ = !value;
+   |             ^^^^^^ unsatisfied trait bound
+   |
+help: the trait `Not` is not implemented for `NoNot`
+  --> $DIR/unary-op-associated-output-mismatch-issue-106138.rs:19:1
+   |
+LL | struct NoNot;
+   | ^^^^^^^^^^^^
+
+error[E0284]: type annotations needed
+  --> $DIR/unary-op-associated-output-mismatch-issue-106138.rs:33:9
+   |
+LL |     let value = make();
+   |         ^^^^^
+LL |
+LL |     let _ = !value;
+   |             ------ type must be known at this point
+   |
+   = note: cannot satisfy `<_ as Not>::Output == _`
+help: consider giving `value` an explicit type
+   |
+LL |     let value: /* Type */ = make();
+   |              ++++++++++++
+
+error[E0790]: cannot call associated function on trait without specifying the corresponding `impl` type
+  --> $DIR/unary-op-associated-output-mismatch-issue-106138.rs:39:13
+   |
+LL |     let x = Default::default();
+   |             ^^^^^^^^^^^^^^^^^^ cannot call associated function of trait
+   |
+help: use a fully-qualified path to a specific available implementation
+   |
+LL |     let x = </* self type */ as Default>::default();
+   |             +++++++++++++++++++        +
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0277, E0284, E0790.
+For more information about an error, try `rustc --explain E0277`.
