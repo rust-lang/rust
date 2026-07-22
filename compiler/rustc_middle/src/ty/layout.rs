@@ -6,6 +6,7 @@ use rustc_abi::{
     PointerKind, Primitive, ReprFlags, ReprOptions, Scalar, Size, TagEncoding, TargetDataLayout,
     TyAbiInterface, VariantIdx, Variants,
 };
+use rustc_data_structures::Limit;
 use rustc_errors::{
     Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg, Level,
 };
@@ -353,7 +354,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
         let recursion_limit = tcx.recursion_limit();
         if depth >= recursion_limit.0 {
             let suggested_limit = match recursion_limit {
-                hir::limit::Limit(0) => hir::limit::Limit(2),
+                Limit(0) => Limit(2),
                 limit => limit * 2,
             };
             let reported = tcx.dcx().emit_err(crate::error::RecursionLimitReachedSizeSkeleton {
