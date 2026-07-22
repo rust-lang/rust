@@ -259,35 +259,27 @@ unsafe fn aarch64_swizzle<const N: usize>(bytes: Simd<u8, N>, idxs: Simd<u8, N>)
 #[inline]
 #[allow(clippy::let_and_return)]
 unsafe fn avx2_pshufb(bytes: Simd<u8, 32>, idxs: Simd<u8, 32>) -> Simd<u8, 32> {
-    use crate::simd::{Select, cmp::SimdPartialOrd};
     #[cfg(target_arch = "x86")]
     use core::arch::x86;
     #[cfg(target_arch = "x86_64")]
     use core::arch::x86_64 as x86;
     use x86::_mm256_permute2x128_si256 as avx2_cross_shuffle;
     use x86::_mm256_shuffle_epi8 as avx2_half_pshufb;
-    let mid = Simd::splat(16u8);
-    let high = mid + mid;
     // SAFETY: Caller promised AVX2
     unsafe {
-        // This is ordering sensitive, and LLVM will order these how you put them.
-        // Most AVX2 impls use ~5 "ports", and only 1 or 2 are capable of permutes.
-        // But the "compose" step will lower to ops that can also use at least 1 other port.
-        // So this tries to break up permutes so composition flows through "open" ports.
-        // Comparative benches should be done on multiple AVX2 CPUs before reordering this
-
-        let hihi = avx2_cross_shuffle::<0x11>(bytes.into(), bytes.into());
-        let hi_shuf = Simd::from(avx2_half_pshufb(
-            hihi,        // duplicate the vector's top half
-            idxs.into(), // so that using only 4 bits of an index still picks bytes 16-31
-        ));
-        // A zero-fill during the compose step gives the "all-Neon-like" OOB-is-0 semantics
-        let compose = idxs.simd_lt(high).select(hi_shuf, Simd::splat(0));
         let lolo = avx2_cross_shuffle::<0x00>(bytes.into(), bytes.into());
-        let lo_shuf = Simd::from(avx2_half_pshufb(lolo, idxs.into()));
-        // Repeat, then pick indices < 16, overwriting indices 0-15 from previous compose step
-        let compose = idxs.simd_lt(mid).select(lo_shuf, compose);
-        compose
+        let hihi = avx2_cross_shuffle::<0x11>(bytes.into(), bytes.into());
+
+        // Adding 0x60 preserves the low nibble and bit 4 for valid
+        // indices 0..=31. Larger indices get their high bit set, so
+        // VPSHUFB supplies the required out-of-bounds zeroing.
+        let control = x86::_mm256_adds_epu8(idxs.into(), x86::_mm256_set1_epi8(0x60));
+
+        // Move index bit 4 into each byte's sign bit for VPBLENDVB.
+        let select_high = x86::_mm256_slli_epi16::<3>(control);
+        let from_low = avx2_half_pshufb(lolo, control);
+        let from_high = avx2_half_pshufb(hihi, control);
+        x86::_mm256_blendv_epi8(from_low, from_high, select_high).into()
     }
 }
 
