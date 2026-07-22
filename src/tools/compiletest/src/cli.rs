@@ -8,9 +8,7 @@ use std::sync::{Arc, OnceLock};
 use camino::{Utf8Path, Utf8PathBuf};
 use clap::Parser;
 
-use crate::common::{
-    CodegenBackend, CompareMode, Config, Debugger, ForcePassMode, TestMode, TestSuite,
-};
+use crate::common::{CodegenBackend, CompareMode, Config, ForcePassMode, TestMode, TestSuite};
 use crate::edition::Edition;
 use crate::{debuggers, directives, early_config_check, run_tests};
 
@@ -200,9 +198,6 @@ struct Args {
     /// Default Rust edition.
     #[arg(long)]
     edition: Option<Edition>,
-    /// Only test a specific debugger in debuginfo tests.
-    #[arg(long)]
-    debugger: Option<String>,
     /// The codegen backend currently used.
     #[arg(long)]
     default_codegen_backend: Option<CodegenBackend>,
@@ -422,11 +417,6 @@ pub(crate) fn parse_config(args: Vec<String>) -> Config {
 
         mode,
         suite: args.suite,
-        debugger: args.debugger.map(|debugger| {
-            debugger
-                .parse::<Debugger>()
-                .unwrap_or_else(|_| panic!("unknown `--debugger` option `{debugger}` given"))
-        }),
         run_ignored: args.ignored,
         with_rustc_debug_assertions: args.with_rustc_debug_assertions,
         with_std_debug_assertions: args.with_std_debug_assertions,
