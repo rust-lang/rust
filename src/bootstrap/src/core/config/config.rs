@@ -57,7 +57,6 @@ use crate::core::download::{
 };
 use crate::utils::channel;
 use crate::utils::exec::{ExecutionContext, command};
-#[cfg_attr(test, expect(unused_imports))]
 use crate::utils::helpers::{exe, fail, get_host_target};
 use crate::{
     CodegenBackendKind, GitInfo, OnceLock, TargetSelection, check_ci_llvm, exit, helpers, t,
@@ -1274,8 +1273,7 @@ impl Config {
         }
 
         // CI should always run stage 2 builds, unless it specifically states otherwise
-        #[cfg(not(test))]
-        if flags_stage.is_none() && ci_env.is_running_in_ci() {
+        if cfg!(not(test)) && flags_stage.is_none() && ci_env.is_running_in_ci() {
             match flags_cmd {
                 Subcommand::Test { .. }
                 | Subcommand::Miri { .. }
@@ -2305,24 +2303,14 @@ fn postprocess_toml(
     toml.merge(None, &mut Default::default(), override_toml, ReplaceOpt::Override);
 }
 
-#[cfg(test)]
-pub fn check_stage0_version(
-    _program_path: &Path,
-    _component_name: &'static str,
-    _src_dir: &Path,
-    _exec_ctx: &ExecutionContext,
-) {
-}
-
 /// check rustc/cargo version is same or lower with 1 apart from the building one
-#[cfg(not(test))]
 pub fn check_stage0_version(
     program_path: &Path,
     component_name: &'static str,
     src_dir: &Path,
     exec_ctx: &ExecutionContext,
 ) {
-    if exec_ctx.dry_run() {
+    if cfg!(test) || exec_ctx.dry_run() {
         return;
     }
 
@@ -2515,8 +2503,9 @@ pub fn parse_download_ci_llvm<'a>(
         }
 
         // Fetching the LLVM submodule is unnecessary for self-tests.
-        #[cfg(not(test))]
-        update_submodule(dwn_ctx, rust_info, "src/llvm-project");
+        if cfg!(not(test)) {
+            update_submodule(dwn_ctx, rust_info, "src/llvm-project");
+        }
 
         // Check for untracked changes in `src/llvm-project` and other important places.
         let has_changes = has_changes_from_upstream(dwn_ctx, LLVM_INVALIDATION_PATHS);
@@ -2537,8 +2526,11 @@ pub fn parse_download_ci_llvm<'a>(
                 );
             }
 
-            #[cfg(not(test))]
-            if b && dwn_ctx.is_running_on_ci() && CiEnv::is_rust_lang_managed_ci_job() {
+            if cfg!(not(test))
+                && b
+                && dwn_ctx.is_running_on_ci()
+                && CiEnv::is_rust_lang_managed_ci_job()
+            {
                 // On rust-lang CI, we must always rebuild LLVM if there were any modifications to it
                 panic!(
                     "`llvm.download-ci-llvm` cannot be set to `true` on CI. Use `if-unchanged` instead."
