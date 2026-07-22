@@ -257,6 +257,7 @@ fn test_enums() {
         assert!(ty_id.field(2, 0).type_id() == TypeId::of::<()>());
         assert!(ty_id.field(2, 1).type_id() == TypeId::of::<&str>());
         assert!(ty_id.field(2, 1).name() == "b");
+        assert!(ty_id.generics().is_empty());
     }
 
     const {

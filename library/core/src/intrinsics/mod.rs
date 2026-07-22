@@ -3204,6 +3204,13 @@ pub fn field_representing_type_offset(_frt_type_id: crate::any::TypeId) -> usize
 #[rustc_comptime]
 pub fn non_exhaustive(_id: crate::any::TypeId) -> bool;
 
+/// Returns the list of generic args on this type.
+/// Only meaningful for Adts, closures, ... Everything else returns an empty slice.
+#[rustc_intrinsic]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_comptime]
+pub fn type_id_generics(_id: crate::any::TypeId) -> &'static [crate::mem::type_info::Generic];
+
 /// Lowers in MIR to `Rvalue::Aggregate` with `AggregateKind::RawPtr`.
 ///
 /// This is used to implement functions like `slice::from_raw_parts_mut` and
