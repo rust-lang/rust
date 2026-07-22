@@ -123,7 +123,13 @@ impl<T> RawVec<T, Global> {
     #[must_use]
     #[inline]
     pub(crate) fn with_capacity(capacity: usize) -> Self {
-        Self { inner: RawVecInner::with_capacity(capacity, T::LAYOUT), _marker: PhantomData }
+        #[cfg(not(sanitize = "alloc-token"))]
+        let inner = RawVecInner::with_capacity(capacity, T::LAYOUT);
+        // Use the typed allocation path for LLVM AllocToken and heap partitioning support, so the
+        // allocation call is annotated with the allocation token hint for `T`.
+        #[cfg(sanitize = "alloc-token")]
+        let inner = RawVecInner::with_capacity_typed::<T>(capacity, T::LAYOUT);
+        Self { inner, _marker: PhantomData }
     }
 
     /// Like `with_capacity`, but guarantees the buffer is zeroed.
@@ -139,7 +145,8 @@ impl<T> RawVec<T, Global> {
 }
 
 impl RawVecInner<Global> {
-    #[cfg(not(any(no_global_oom_handling, test)))]
+    // `with_capacity_typed` is always used for LLVM AllocToken and heap partitioning support.
+    #[cfg(not(any(no_global_oom_handling, test, sanitize = "alloc-token")))]
     #[must_use]
     #[inline]
     fn with_capacity(capacity: usize, elem_layout: Layout) -> Self {
@@ -147,6 +154,53 @@ impl RawVecInner<Global> {
             Ok(res) => res,
             Err(err) => handle_error(err),
         }
+    }
+
+    /// Monomorphic-per-type variant of `with_capacity` for LLVM AllocToken and heap partitioning
+    /// support. The raw allocation call must be made within a typed allocation function (e.g.,
+    /// `alloc::alloc_array_typed`) to be annotated with the allocation token hint for `T` (i.e.,
+    /// the element type of the allocated array).
+    #[cfg(all(sanitize = "alloc-token", not(any(no_global_oom_handling, test))))]
+    #[must_use]
+    #[inline]
+    fn with_capacity_typed<T>(capacity: usize, elem_layout: Layout) -> Self {
+        match Self::try_allocate_in_typed::<T>(capacity, elem_layout) {
+            Ok(res) => res,
+            Err(err) => handle_error(err),
+        }
+    }
+
+    #[cfg(all(sanitize = "alloc-token", not(any(no_global_oom_handling, test))))]
+    fn try_allocate_in_typed<T>(
+        capacity: usize,
+        elem_layout: Layout,
+    ) -> Result<Self, TryReserveError> {
+        // Avoid `unwrap_or_else` here to reduce the amount of LLVM IR generated.
+        let layout = match layout_array(capacity, elem_layout) {
+            Ok(layout) => layout,
+            Err(_) => return Err(CapacityOverflow.into()),
+        };
+
+        // Don't allocate here because `Drop` will not deallocate when `capacity` is 0.
+        if layout.size() == 0 {
+            return Ok(Self::new_in(Global, elem_layout.alignment()));
+        }
+
+        // SAFETY: `layout` is a valid layout for an array of `T` and has non-zero size (checked
+        // above).
+        let ptr = unsafe { crate::alloc::alloc_array_typed::<T>(layout) };
+        let ptr = match NonNull::new(ptr) {
+            Some(ptr) => ptr,
+            None => return Err(AllocError { layout, non_exhaustive: () }.into()),
+        };
+
+        // Allocators currently return a `NonNull<[u8]>` whose length matches the size requested. If
+        // that ever changes, the capacity here should change to `ptr.len() / size_of::<T>()`.
+        Ok(Self {
+            ptr: Unique::from(ptr.cast()),
+            cap: unsafe { Cap::new_unchecked(capacity) },
+            alloc: Global,
+        })
     }
 }
 
