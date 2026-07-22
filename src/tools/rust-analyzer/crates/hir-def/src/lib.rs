@@ -492,7 +492,7 @@ mod tracked_struct_token {
     }
 }
 
-#[salsa_macros::tracked(constructor = new_)]
+#[salsa::tracked(constructor = new_)]
 #[derive(PartialOrd, Ord)]
 pub struct BlockIdLt<'db> {
     pub ast_id: AstId<ast::BlockExpr>,
@@ -534,7 +534,7 @@ impl BlockId {
     }
 }
 
-#[salsa_macros::tracked(debug)]
+#[salsa::tracked(debug)]
 #[derive(PartialOrd, Ord)]
 pub struct ModuleIdLt<'db> {
     /// The crate this module belongs to.
@@ -718,7 +718,7 @@ pub struct HrtbLifetimeParamId {
     pub local_id: usize,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa_macros::Supertype)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Supertype)]
 pub enum ItemContainerId {
     ExternBlockId(ExternBlockId),
     ModuleId(ModuleId),
@@ -728,7 +728,7 @@ pub enum ItemContainerId {
 impl_from!(ModuleId for ItemContainerId);
 
 /// A Data Type
-#[derive(Debug, PartialOrd, Ord, Clone, Copy, PartialEq, Eq, Hash, salsa_macros::Supertype)]
+#[derive(Debug, PartialOrd, Ord, Clone, Copy, PartialEq, Eq, Hash, salsa::Supertype)]
 pub enum AdtId {
     StructId(StructId),
     UnionId(UnionId),
@@ -737,7 +737,7 @@ pub enum AdtId {
 impl_from!(StructId, UnionId, EnumId for AdtId);
 
 /// A macro
-#[derive(Debug, PartialOrd, Ord, Clone, Copy, PartialEq, Eq, Hash, salsa_macros::Supertype)]
+#[derive(Debug, PartialOrd, Ord, Clone, Copy, PartialEq, Eq, Hash, salsa::Supertype)]
 pub enum MacroId {
     Macro2Id(Macro2Id),
     MacroRulesId(MacroRulesId),
@@ -859,7 +859,7 @@ impl From<DefWithBodyId> for ModuleDefId {
 }
 
 /// The defs which have a body.
-#[derive(Debug, PartialOrd, Ord, Clone, Copy, PartialEq, Eq, Hash, salsa_macros::Supertype)]
+#[derive(Debug, PartialOrd, Ord, Clone, Copy, PartialEq, Eq, Hash, salsa::Supertype)]
 pub enum DefWithBodyId {
     /// A function body.
     FunctionId(FunctionId),
@@ -889,7 +889,7 @@ impl DefWithBodyId {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, salsa_macros::Supertype)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, salsa::Supertype)]
 pub enum AssocItemId {
     FunctionId(FunctionId),
     ConstId(ConstId),
@@ -911,7 +911,7 @@ impl_from!(
     for ModuleDefId
 );
 
-#[derive(Debug, PartialOrd, Ord, Clone, Copy, PartialEq, Eq, Hash, salsa_macros::Supertype)]
+#[derive(Debug, PartialOrd, Ord, Clone, Copy, PartialEq, Eq, Hash, salsa::Supertype)]
 pub enum GenericDefId {
     AdtId(AdtId),
     // consts can have type parameters from their parents (i.e. associated consts of traits)
@@ -1058,7 +1058,7 @@ impl_from!(
     for GenericDefId
 );
 
-#[derive(Debug, PartialOrd, Ord, Clone, Copy, PartialEq, Eq, Hash, salsa_macros::Supertype)]
+#[derive(Debug, PartialOrd, Ord, Clone, Copy, PartialEq, Eq, Hash, salsa::Supertype)]
 pub enum CallableDefId {
     FunctionId(FunctionId),
     StructId(StructId),
@@ -1085,7 +1085,7 @@ impl CallableDefId {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, salsa_macros::Supertype)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, salsa::Supertype)]
 pub enum AttrDefId {
     ModuleId(ModuleId),
     AdtId(AdtId),
@@ -1124,7 +1124,7 @@ impl_from!(
 );
 
 #[derive(
-    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, salsa_macros::Supertype, salsa::Update,
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, salsa::Supertype, salsa::Update,
 )]
 pub enum VariantId {
     EnumVariantId(EnumVariantId),

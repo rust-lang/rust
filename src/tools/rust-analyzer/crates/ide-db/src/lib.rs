@@ -78,7 +78,7 @@ pub use span::{self, FileId};
 pub type FilePosition = FilePositionWrapper<FileId>;
 pub type FileRange = FileRangeWrapper<FileId>;
 
-#[salsa_macros::db]
+#[salsa::db]
 pub struct RootDatabase {
     // FIXME: Revisit this commit now that we migrated to the new salsa, given we store arcs in this
     // db directly now
@@ -94,7 +94,7 @@ pub struct RootDatabase {
 
 impl std::panic::RefUnwindSafe for RootDatabase {}
 
-#[salsa_macros::db]
+#[salsa::db]
 impl salsa::Database for RootDatabase {}
 
 impl Drop for RootDatabase {
@@ -120,7 +120,7 @@ impl fmt::Debug for RootDatabase {
     }
 }
 
-#[salsa_macros::db]
+#[salsa::db]
 impl SourceDatabase for RootDatabase {
     fn file_text(&self, file_id: vfs::FileId) -> FileText {
         self.files.file_text(file_id)

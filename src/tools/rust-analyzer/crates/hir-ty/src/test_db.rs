@@ -16,7 +16,7 @@ use syntax::TextRange;
 use test_utils::extract_annotations;
 use triomphe::Arc;
 
-#[salsa_macros::db]
+#[salsa::db]
 pub(crate) struct TestDB {
     storage: salsa::Storage<Self>,
     files: Arc<base_db::Files>,
@@ -75,7 +75,7 @@ impl fmt::Debug for TestDB {
     }
 }
 
-#[salsa_macros::db]
+#[salsa::db]
 impl SourceDatabase for TestDB {
     fn file_text(&self, file_id: base_db::FileId) -> FileText {
         self.files.file_text(file_id)
@@ -138,7 +138,7 @@ impl SourceDatabase for TestDB {
     }
 }
 
-#[salsa_macros::db]
+#[salsa::db]
 impl salsa::Database for TestDB {}
 
 impl panic::RefUnwindSafe for TestDB {}
