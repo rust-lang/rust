@@ -4,7 +4,6 @@
 use serde::{Deserialize, Deserializer};
 
 use crate::core::config::StringOrBool;
-#[cfg_attr(test, expect(unused_imports))]
 use crate::core::config::toml::{Merge, ReplaceOpt, TomlConfig};
 use crate::{HashMap, HashSet, PathBuf, define_config, exit};
 
@@ -46,7 +45,6 @@ define_config! {
 
 /// Compares the current `Llvm` options against those in the CI LLVM builder and detects any incompatible options.
 /// It does this by destructuring the `Llvm` instance to make sure every `Llvm` field is covered and not missing.
-#[cfg(not(test))]
 pub fn check_incompatible_options_for_ci_llvm(
     current_config_toml: TomlConfig,
     ci_config_toml: TomlConfig,
