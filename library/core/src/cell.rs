@@ -2226,35 +2226,19 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 /// order to avoid its interior mutability property from spreading from `T` into the `Outer` type,
 /// thus this can cause distortions in the type size in these cases.
 ///
-/// Note that the only valid way to obtain a `*mut T` pointer to the contents of a
-/// _shared_ `UnsafeCell<T>` is through [`.get()`]  or [`.raw_get()`]. A `&T` or `&mut T` reference
-/// can then be obtained from that pointer, as long as the aliasing rules outlined above are obeyed.
-/// Even though `T` and `UnsafeCell<T>` have the
-/// same memory layout, the following is not allowed and undefined behavior:
-///
-/// ```rust,compile_fail
-/// # use std::cell::UnsafeCell;
-/// unsafe fn not_allowed<T>(ptr: &UnsafeCell<T>) -> &mut T {
-///   let t = ptr as *const UnsafeCell<T> as *mut T;
-///   // This is undefined behavior, because the `*mut T` pointer
-///   // was not obtained through `.get()` nor `.raw_get()`:
-///   unsafe { &mut *t }
-/// }
-/// ```
-///
-/// Instead, do this:
+/// The following examples make use of this guarantee:
 ///
 /// ```rust
 /// # use std::cell::UnsafeCell;
-/// // Safety: the caller must ensure that there are no references that
-/// // point to the *contents* of the `UnsafeCell`.
-/// unsafe fn get_mut<T>(ptr: &UnsafeCell<T>) -> &mut T {
-///   unsafe { &mut *ptr.get() }
+/// /// # Safety
+/// /// The caller must not call `get_mut_unchecked` again (on any alias of `ptr`) for the duration
+/// /// of the lifetime of the returned reference.
+/// # #[allow(invalid_reference_casting)] // FIXME should the lint really fire here?
+/// unsafe fn get_mut_unchecked<T>(ptr: &UnsafeCell<T>) -> &mut T {
+///   let t = ptr as *const UnsafeCell<T> as *mut T;
+///   unsafe { &mut *t }
 /// }
 /// ```
-///
-/// Converting in the other direction from a `&mut T`
-/// to an `&UnsafeCell<T>` is allowed:
 ///
 /// ```rust
 /// # use std::cell::UnsafeCell;
@@ -2266,7 +2250,6 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 /// ```
 ///
 /// [niche]: https://rust-lang.github.io/unsafe-code-guidelines/glossary.html#niche
-/// [`.raw_get()`]: `UnsafeCell::raw_get`
 ///
 /// # Examples
 ///
@@ -2428,6 +2411,9 @@ impl<T: ?Sized> UnsafeCell<T> {
     /// must uphold the aliasing rules; see [the type-level docs][UnsafeCell#aliasing-rules] for
     /// more discussion and caveats.
     ///
+    /// This is equivalent to casting `self` to a raw pointer and then casting that raw
+    /// pointer to `*mut T`.
+    ///
     /// # Examples
     ///
     /// ```
@@ -2445,8 +2431,7 @@ impl<T: ?Sized> UnsafeCell<T> {
     #[rustc_should_not_be_called_on_const_items]
     pub const fn get(&self) -> *mut T {
         // We can just cast the pointer from `UnsafeCell<T>` to `T` because of
-        // #[repr(transparent)]. This exploits std's special status, there is
-        // no guarantee for user code that this will work in future versions of the compiler!
+        // #[repr(transparent)].
         self as *const UnsafeCell<T> as *const T as *mut T
     }
 
@@ -2479,6 +2464,8 @@ impl<T: ?Sized> UnsafeCell<T> {
     /// This can be cast to a pointer of any kind. When creating (shared or mutable) references, you
     /// must uphold the aliasing rules; see [the type-level docs][UnsafeCell#aliasing-rules] for
     /// more discussion and caveats.
+    ///
+    /// This is equivalent to casting `this` to `*mut T`.
     ///
     /// [`get`]: UnsafeCell::get()
     ///
