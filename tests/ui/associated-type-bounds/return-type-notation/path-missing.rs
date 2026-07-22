@@ -10,7 +10,7 @@ where
     <T as A>::method(..): Send,
     //~^ ERROR cannot find method or associated constant `method` in trait `A`
     <T as A>::bad(..): Send,
-    //~^ ERROR expected method or associated constant, found associated type `A::bad`
+    //~^ ERROR cannot find method or associated constant `bad` in trait `A`
 {
 }
 

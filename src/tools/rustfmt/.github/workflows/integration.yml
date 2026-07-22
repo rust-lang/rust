@@ -5,6 +5,9 @@ on:
       - main
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
   integration-tests:
     runs-on: ubuntu-latest
@@ -64,7 +67,7 @@ jobs:
 
     steps:
     - name: checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       # Run build
     - name: install rustup
@@ -74,7 +77,6 @@ jobs:
 
     - name: run integration tests
       env:
-        INTEGRATION: ${{ matrix.integration }}
         TARGET: x86_64-unknown-linux-gnu
-      run: ./ci/integration.sh
+      run: cargo run --manifest-path ci/Cargo.toml integration ${{ matrix.integration }}
       continue-on-error: ${{ matrix.allow-failure == true }}

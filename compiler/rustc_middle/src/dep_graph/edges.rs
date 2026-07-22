@@ -1,7 +1,7 @@
 //! How a task's reads are recorded and deduplicated into the edge list of its node.
 
-use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lock;
+use rustc_index::IndexVec;
 
 use super::DepNodeIndex;
 
@@ -64,37 +64,65 @@ impl TaskReads {
 
 /// Records the reads of a task with many reads.
 ///
-/// Recorders are pooled globally, reusing the read list and hash set allocations
+/// Recorders are pooled globally, reusing the read list and epoch filter allocations
 /// across tasks.
 #[derive(Debug, Default)]
 pub(crate) struct ReadsRecorder {
     /// The deduplicated reads, in first-read order.
     reads: Vec<DepNodeIndex>,
-    seen: FxHashSet<DepNodeIndex>,
+    /// Seen-before filter: a slot counts as seen only while it holds `epoch`.
+    epochs: IndexVec<DepNodeIndex, u8>,
+    epoch: u8,
 }
 
 impl ReadsRecorder {
     /// Seeds a fresh recorder with reads that are already known to be distinct.
     fn seed(&mut self, reads: &[DepNodeIndex]) {
         debug_assert!(self.reads.is_empty());
-        self.seen.extend(reads);
+        let epoch = self.epoch;
+        for &index in reads {
+            *self.slot(index) = epoch;
+        }
         self.reads.extend_from_slice(reads);
     }
 
     /// Records a read of `index` and returns whether it was new for the current task.
     #[inline]
     fn insert(&mut self, index: DepNodeIndex) -> bool {
-        let new = self.seen.insert(index);
-        if new {
+        let epoch = self.epoch;
+        let slot = self.slot(index);
+        if *slot == epoch {
+            false
+        } else {
+            *slot = epoch;
             self.reads.push(index);
+            true
         }
-        new
     }
 
-    /// Prepares the recorder for a new task, keeping the backing allocations.
+    /// The epoch slot for `index`, growing the filter (with slack) to cover it.
+    #[inline]
+    fn slot(&mut self, index: DepNodeIndex) -> &mut u8 {
+        let index = index.as_usize();
+        if index >= self.epochs.raw.len() {
+            // New indices keep showing up all session, so growing to exactly
+            // `index + 1` (e.g. `ensure_contains_elem`) would resize again and
+            // again. The power-of-two slack makes resizes rare, and starting
+            // at 64 skips the smallest sizes.
+            self.epochs.raw.resize((index + 1).next_power_of_two().max(64), 0);
+        }
+        &mut self.epochs.raw[index]
+    }
+
+    /// Prepares the recorder for a new task, keeping the backing allocations. Bumping the
+    /// epoch invalidates every slot at once; on wraparound the slots are zeroed.
     fn clear(&mut self) {
         self.reads.clear();
-        self.seen.clear();
+        self.epoch = self.epoch.wrapping_add(1);
+        if self.epoch == 0 {
+            self.epochs.raw.fill(0);
+            self.epoch = 1;
+        }
     }
 
     /// Returns a finished task's recorder to the pool. The cap keeps deeply nested tasks

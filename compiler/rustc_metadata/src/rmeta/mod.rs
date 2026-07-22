@@ -269,6 +269,7 @@ pub(crate) struct CrateRoot {
     lang_items_missing: LazyArray<LangItem>,
     stripped_cfg_items: LazyArray<StrippedCfgItem<DefIndex>>,
     diagnostic_items: LazyArray<(Symbol, DefIndex)>,
+    canonical_symbols: LazyArray<(Symbol, DefIndex)>,
     native_libraries: LazyArray<NativeLib>,
     foreign_modules: LazyArray<ForeignModule>,
     traits: LazyArray<DefIndex>,

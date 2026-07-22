@@ -9,74 +9,16 @@
 //@ compile-flags: -C target-feature=+avx512bw
 //@ compile-flags: -Zmerge-functions=disabled
 
-#![feature(no_core, repr_simd, f16, f128)]
+#![feature(no_core, f16, f128)]
 #![crate_type = "rlib"]
 #![no_core]
 #![allow(asm_sub_register, non_camel_case_types)]
 
 extern crate minicore;
+use minicore::simd::*;
 use minicore::*;
 
 type ptr = *mut u8;
-
-#[repr(simd)]
-pub struct i8x16([i8; 16]);
-#[repr(simd)]
-pub struct i16x8([i16; 8]);
-#[repr(simd)]
-pub struct i32x4([i32; 4]);
-#[repr(simd)]
-pub struct i64x2([i64; 2]);
-#[repr(simd)]
-pub struct f16x8([f16; 8]);
-#[repr(simd)]
-pub struct f32x4([f32; 4]);
-#[repr(simd)]
-pub struct f64x2([f64; 2]);
-
-#[repr(simd)]
-pub struct i8x32([i8; 32]);
-#[repr(simd)]
-pub struct i16x16([i16; 16]);
-#[repr(simd)]
-pub struct i32x8([i32; 8]);
-#[repr(simd)]
-pub struct i64x4([i64; 4]);
-#[repr(simd)]
-pub struct f16x16([f16; 16]);
-#[repr(simd)]
-pub struct f32x8([f32; 8]);
-#[repr(simd)]
-pub struct f64x4([f64; 4]);
-
-#[repr(simd)]
-pub struct i8x64([i8; 64]);
-#[repr(simd)]
-pub struct i16x32([i16; 32]);
-#[repr(simd)]
-pub struct i32x16([i32; 16]);
-#[repr(simd)]
-pub struct i64x8([i64; 8]);
-#[repr(simd)]
-pub struct f16x32([f16; 32]);
-#[repr(simd)]
-pub struct f32x16([f32; 16]);
-#[repr(simd)]
-pub struct f64x8([f64; 8]);
-
-macro_rules! impl_copy {
-    ($($ty:ident)*) => {
-        $(
-            impl Copy for $ty {}
-        )*
-    };
-}
-
-impl_copy!(
-    i8x16 i16x8 i32x4 i64x2 f16x8 f32x4 f64x2
-    i8x32 i16x16 i32x8 i64x4 f16x16 f32x8 f64x4
-    i8x64 i16x32 i32x16 i64x8 f16x32 f32x16 f64x8
-);
 
 extern "C" {
     fn extern_func();

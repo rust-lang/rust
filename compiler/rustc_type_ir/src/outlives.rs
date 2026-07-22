@@ -8,11 +8,11 @@ use smallvec::{SmallVec, smallvec};
 use crate::data_structures::SsoHashSet;
 use crate::inherent::*;
 use crate::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt as _, TypeVisitor};
-use crate::{self as ty, AliasTy, Interner, OutlivesPredicate, Unnormalized};
+use crate::{self as ty, AliasTy, Interner, OutlivesPredicate, Region, Unnormalized};
 
 #[derive_where(Debug; I: Interner)]
 pub enum Component<I: Interner> {
-    Region(I::Region),
+    Region(Region<I>),
     Param(I::ParamTy),
     Placeholder(ty::PlaceholderType<I>),
     UnresolvedInferenceVariable(ty::InferTy),
@@ -211,7 +211,7 @@ impl<I: Interner> TypeVisitor<I> for OutlivesCollector<'_, I> {
         }
     }
 
-    fn visit_region(&mut self, lt: I::Region) -> Self::Result {
+    fn visit_region(&mut self, lt: Region<I>) -> Self::Result {
         if !lt.is_bound() {
             self.out.push(Component::Region(lt));
         }
@@ -264,7 +264,7 @@ pub fn compute_alias_components_recursive<I: Interner>(
 pub fn declared_bounds_from_definition<I: Interner>(
     cx: I,
     alias_ty: AliasTy<I>,
-) -> impl Iterator<Item = I::Region> {
+) -> impl Iterator<Item = Region<I>> {
     let def_id = match alias_ty.kind {
         ty::AliasTyKind::Projection { def_id } => def_id.into(),
         ty::AliasTyKind::Inherent { def_id } => def_id.into(),

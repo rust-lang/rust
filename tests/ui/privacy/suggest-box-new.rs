@@ -12,7 +12,7 @@ fn main() {
         x: ()
     };
     let _ = std::collections::HashMap();
-    //~^ ERROR expected function, tuple struct or tuple variant, found struct `std::collections::HashMap`
+    //~^ ERROR cannot find function, tuple struct or tuple variant `HashMap` in module `std::collections`
     let _ = std::collections::HashMap {};
     //~^ ERROR cannot construct `HashMap<_, _, _, _>` with struct literal syntax due to private fields
     let _ = Box {}; //~ ERROR cannot construct `Box<_, _>` with struct literal syntax due to private fields

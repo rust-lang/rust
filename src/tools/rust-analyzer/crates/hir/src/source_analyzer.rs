@@ -13,7 +13,8 @@ use std::{
 use either::Either;
 use hir_def::{
     AdtId, AssocItemId, CallableDefId, ConstId, DefWithBodyId, ExpressionStoreOwnerId, FieldId,
-    FunctionId, GenericDefId, HasModule, LocalFieldId, ModuleDefId, StructId, VariantId,
+    FunctionId, GenericDefId, HasModule, LocalFieldId, LoweringMode, ModuleDefId, StructId,
+    VariantId,
     expr_store::{
         Body, BodySourceMap, ExpressionStore, ExpressionStoreSourceMap, HygieneId,
         lower::{ExprCollector, lower_generic_params},
@@ -32,8 +33,8 @@ use hir_expand::{
     name::{AsName, Name},
 };
 use hir_ty::{
-    Adjustment, InferBodyId, InferenceResult, LifetimeElisionKind, ParamEnvAndCrate,
-    TyLoweringContext, TyLoweringInferVarsCtx,
+    Adjustment, InferBodyId, InferenceResult, LifetimeElisionKind, LifetimeLoweringMode,
+    ParamEnvAndCrate, TyLoweringContext, TyLoweringInferVarsCtx,
     diagnostics::{
         InsideUnsafeBlock, record_literal_missing_fields, record_pattern_missing_fields,
         unsafe_operations,
@@ -378,8 +379,15 @@ impl<'db> SourceAnalyzer<'db> {
         };
         let generic_def = owner.generic_def(db);
         let module = generic_def.module(db);
-        let (store, params, _) =
-            lower_generic_params(db, module, generic_def, self.file_id, None, Some(where_clause));
+        let (store, params, _) = lower_generic_params(
+            db,
+            module,
+            generic_def,
+            self.file_id,
+            None,
+            Some(where_clause),
+            LoweringMode::Ide,
+        );
         let predicates = params.where_predicates();
         if predicates.is_empty() {
             return PredicateEvaluationResult::holds("predicate does not impose any obligations");
@@ -462,6 +470,7 @@ impl<'db> SourceAnalyzer<'db> {
             // (this can impact the lifetimes generated, e.g. in `const` they won't be `'static`, but this seems like a
             // small problem).
             LifetimeElisionKind::Infer,
+            LifetimeLoweringMode::LateParam,
         )
         .with_infer_vars_behavior(Some(&mut vars_cts))
         .lower_ty(type_ref);
@@ -1274,7 +1283,8 @@ impl<'db> SourceAnalyzer<'db> {
         }
 
         // FIXME: collectiong here shouldnt be necessary?
-        let mut collector = ExprCollector::new(db, self.resolver.module(), self.file_id);
+        let mut collector =
+            ExprCollector::new(db, self.resolver.module(), self.file_id, LoweringMode::Ide);
         let hir_path =
             collector.lower_path(path.clone(), &mut ExprCollector::impl_trait_error_allocator)?;
         let parent_hir_path = path
@@ -1479,7 +1489,8 @@ impl<'db> SourceAnalyzer<'db> {
         db: &dyn HirDatabase,
         path: &ast::Path,
     ) -> Option<PathResolutionPerNs> {
-        let mut collector = ExprCollector::new(db, self.resolver.module(), self.file_id);
+        let mut collector =
+            ExprCollector::new(db, self.resolver.module(), self.file_id, LoweringMode::Ide);
         let hir_path =
             collector.lower_path(path.clone(), &mut ExprCollector::impl_trait_error_allocator)?;
         let (store, _) = collector.store.finish();
@@ -1880,6 +1891,7 @@ fn resolve_hir_path_(
                     def,
                     &generics,
                     LifetimeElisionKind::Infer,
+                    LifetimeLoweringMode::LateParam,
                 )
                 .lower_ty_ext(type_ref);
                 res.map(|ty_ns| (ty_ns, path.segments().first()))
@@ -2038,6 +2050,7 @@ fn resolve_hir_path_qualifier(
                     def,
                     &generics,
                     LifetimeElisionKind::Infer,
+                    LifetimeLoweringMode::LateParam,
                 )
                 .lower_ty_ext(type_ref);
                 res.map(|ty_ns| (ty_ns, path.segments().first()))

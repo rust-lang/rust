@@ -9,6 +9,7 @@ use build_helper::git::GitConfig;
 use camino::{Utf8Path, Utf8PathBuf};
 use semver::Version;
 
+use crate::debuggers::LldbVersion;
 use crate::edition::Edition;
 use crate::executor::TestVariant;
 use crate::fatal;
@@ -586,7 +587,7 @@ pub(crate) struct Config {
     /// Version of LLDB.
     ///
     /// FIXME: `lldb_version` is *derived* from lldb, but it's *not* technically a config!
-    pub(crate) lldb_version: Option<u32>,
+    pub(crate) lldb_version: Option<LldbVersion>,
 
     /// Version of LLVM.
     ///

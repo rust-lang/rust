@@ -14,15 +14,14 @@
 //@ assembly-output: emit-asm
 //@ compile-flags: --crate-type=lib -Copt-level=3 -C panic=abort
 
-#![feature(no_core, lang_items, repr_simd, intrinsics)]
+#![feature(no_core, lang_items, intrinsics)]
 #![no_core]
 #![allow(non_camel_case_types)]
 
 extern crate minicore;
 use minicore::*;
 
-#[repr(simd)]
-pub struct mask8x16([i8; 16]);
+type mask8x16 = simd::Simd<i8, 16>;
 
 #[rustc_intrinsic]
 unsafe fn simd_reduce_all<T>(x: T) -> bool;

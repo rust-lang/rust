@@ -15,7 +15,7 @@ pub(super) use crate::attributes::{
 };
 // contexts
 #[doc(hidden)]
-pub(super) use crate::context::{AcceptContext, FinalizeContext};
+pub(super) use crate::context::{AcceptContext, FinalizeCheckContext, FinalizeContext};
 #[doc(hidden)]
 pub(super) use crate::parser::*;
 // target checking

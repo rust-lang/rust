@@ -4,7 +4,7 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::ty::relate::{
     self, Relate, RelateResult, TypeRelation, relate_args_with_variances,
 };
-use rustc_middle::ty::{self, RegionVid, Ty, TyCtxt, TypeVisitable};
+use rustc_middle::ty::{self, RegionUtilitiesExt, RegionVid, Ty, TyCtxt, TypeVisitable};
 
 use super::{ConstraintDirection, PoloniusContext};
 use crate::universal_regions::UniversalRegions;

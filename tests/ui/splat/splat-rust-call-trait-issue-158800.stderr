@@ -1,0 +1,31 @@
+error: `#[splat]` is not allowed in the arguments of functions with the `rust-call` ABI
+  --> $DIR/splat-rust-call-trait-issue-158800.rs:9:5
+   |
+LL |     extern "rust-call" fn f(#[splat] _: ()) where Self: Sized;
+   |     ^^^^^^^^^^^^^^^^^^      ^^^^^^^^
+   |
+   = help: remove `#[splat]` or change the ABI
+
+error: `#[splat]` is not allowed in the arguments of functions with the `rust-call` ABI
+  --> $DIR/splat-rust-call-trait-issue-158800.rs:14:5
+   |
+LL |     extern "rust-call" fn f(#[splat] _: ()) where Self: Sized {}
+   |     ^^^^^^^^^^^^^^^^^^      ^^^^^^^^
+   |
+   = help: remove `#[splat]` or change the ABI
+
+error[E0277]: the size for values of type `(dyn Trait + 'static)` cannot be known at compilation time
+  --> $DIR/splat-rust-call-trait-issue-158800.rs:14:51
+   |
+LL |     extern "rust-call" fn f(#[splat] _: ()) where Self: Sized {}
+   |                                                   ^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn Trait + 'static)`
+help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+   |
+LL + #![feature(trivial_bounds)]
+   |
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

@@ -766,6 +766,11 @@ fn simd_swizzle() {
 }
 
 fn simd_swizzle_dyn() {
+    if cfg!(target_arch = "loongarch64") {
+        // We don't support the required intrinsic here.
+        return;
+    }
+
     fn check_swizzle_dyn<const N: usize>() {
         assert_eq!(
             Simd::<u8, N>::default().swizzle_dyn(Simd::<u8, N>::default()),

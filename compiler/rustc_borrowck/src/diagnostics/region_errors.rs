@@ -15,7 +15,8 @@ use rustc_middle::bug;
 use rustc_middle::hir::place::PlaceBase;
 use rustc_middle::mir::{AnnotationSource, ConstraintCategory, ReturnConstraint};
 use rustc_middle::ty::{
-    self, GenericArgs, Region, RegionVid, Ty, TyCtxt, TypeFoldable, TypeVisitor, fold_regions,
+    self, GenericArgs, Region, RegionUtilitiesExt, RegionVid, Ty, TyCtxt, TypeFoldable,
+    TypeVisitor, fold_regions,
 };
 use rustc_span::{Ident, Span, kw};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
@@ -189,7 +190,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     }
 }
 
-impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
+impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
     // For generic associated types (GATs) which implied 'static requirement
     // from higher-ranked trait bounds (HRTB). Try to locate span of the trait
     // and the span which bounded to the trait for adding 'static lifetime suggestion
@@ -605,7 +606,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         &self,
         errci: &ErrorConstraintInfo<'tcx>,
         kind: ReturnConstraint,
-    ) -> Diag<'infcx> {
+    ) -> Diag<'diag> {
         let ErrorConstraintInfo { outlived_fr, span, .. } = errci;
 
         let mut output_ty = self.regioncx.universal_regions().unnormalized_output_ty;
@@ -674,7 +675,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     ///    |     ^^^^^^^^^^ `x` escapes the function body here
     /// ```
     #[instrument(level = "debug", skip(self))]
-    fn report_escaping_data_error(&self, errci: &ErrorConstraintInfo<'tcx>) -> Diag<'infcx> {
+    fn report_escaping_data_error(&self, errci: &ErrorConstraintInfo<'tcx>) -> Diag<'diag> {
         let ErrorConstraintInfo { span, category, .. } = errci;
 
         let fr_name_and_span = self.regioncx.get_var_name_and_span_for_region(
@@ -708,7 +709,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         }
 
         let mut diag =
-            borrowck_errors::borrowed_data_escapes_closure(self.infcx.tcx, *span, escapes_from);
+            borrowck_errors::borrowed_data_escapes_closure(self.dcx(), *span, escapes_from);
 
         if let Some((Some(outlived_fr_name), outlived_fr_span)) = outlived_fr_name_and_span {
             diag.span_label(
@@ -785,7 +786,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
     ///    |     ^^^^^^^^^^^^^^ function was supposed to return data with lifetime `'a` but it
     ///    |                    is returning data with lifetime `'b`
     /// ```
-    fn report_general_error(&self, errci: &ErrorConstraintInfo<'tcx>) -> Diag<'infcx> {
+    fn report_general_error(&self, errci: &ErrorConstraintInfo<'tcx>) -> Diag<'diag> {
         let ErrorConstraintInfo { fr, outlived_fr, span, category, .. } = errci;
 
         let mir_def_name = self.infcx.tcx.def_descr(self.mir_def_id().to_def_id());

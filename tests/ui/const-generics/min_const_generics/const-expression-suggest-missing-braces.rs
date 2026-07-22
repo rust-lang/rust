@@ -9,8 +9,8 @@ fn b() {
     // FIXME(const_generics): these diagnostics are awful, because trait objects without `dyn` were
     // a terrible mistake.
     foo::<BAR + BAR>();
-    //~^ ERROR expected trait, found constant `BAR`
-    //~| ERROR expected trait, found constant `BAR`
+    //~^ ERROR cannot find trait `BAR` in this scope
+    //~| ERROR cannot find trait `BAR` in this scope
     //~| ERROR type provided when a constant was expected
 }
 fn c() {

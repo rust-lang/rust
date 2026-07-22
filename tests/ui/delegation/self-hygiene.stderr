@@ -1,4 +1,4 @@
-error[E0424]: expected value, found module `self`
+error[E0424]: cannot find value `self` in this scope
   --> $DIR/self-hygiene.rs:3:34
    |
 LL |   macro_rules! emit_self { () => { self } }
@@ -10,9 +10,10 @@ LL | |         emit_self!();
 LL | |     }
    | |_____- this function has a `self` parameter, but a macro invocation can only access identifiers it receives from parameters
    |
+   = note: a module named `self` exists in another namespace
    = note: this error originates in the macro `emit_self` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0424]: expected value, found module `self`
+error[E0424]: cannot find value `self` in this scope
   --> $DIR/self-hygiene.rs:3:34
    |
 LL |   macro_rules! emit_self { () => { self } }
@@ -24,6 +25,7 @@ LL | |     emit_self!()
 LL | | }
    | |_- delegation supports a `self` parameter, but a macro invocation can only access identifiers it receives from parameters
    |
+   = note: a module named `self` exists in another namespace
    = note: this error originates in the macro `emit_self` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors

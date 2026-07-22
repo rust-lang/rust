@@ -326,13 +326,7 @@ pub(super) fn try_for_lint(attr: &ast::Attr, token: &SyntaxToken) -> Option<Hove
         _ => return None,
     };
 
-    let tmp;
-    let needle = if is_clippy {
-        tmp = format!("clippy::{}", token.text());
-        &tmp
-    } else {
-        token.text()
-    };
+    let needle = if is_clippy { &format!("clippy::{}", token.text()) } else { token.text() };
 
     let lint =
         lints.binary_search_by_key(&needle, |lint| lint.label).ok().map(|idx| &lints[idx])?;
@@ -456,6 +450,7 @@ pub(super) fn definition(
     notable_traits: &[(Trait, Vec<(Option<Type<'_>>, Name)>)],
     macro_arm: Option<u32>,
     render_extras: bool,
+    render_private_fields: bool,
     subst_types: Option<&Vec<(Symbol, Type<'_>)>>,
     config: &HoverConfig<'_>,
     edition: Edition,
@@ -465,22 +460,27 @@ pub(super) fn definition(
     let label = match def {
         Definition::Trait(trait_) => trait_
             .display_limited(db, config.max_trait_assoc_items_count, display_target)
+            .with_private_fields(render_private_fields)
             .to_string(),
-        Definition::Adt(adt @ (Adt::Struct(_) | Adt::Union(_))) => {
-            adt.display_limited(db, config.max_fields_count, display_target).to_string()
-        }
-        Definition::EnumVariant(variant) => {
-            variant.display_limited(db, config.max_fields_count, display_target).to_string()
-        }
-        Definition::Adt(adt @ Adt::Enum(_)) => {
-            adt.display_limited(db, config.max_enum_variants_count, display_target).to_string()
-        }
+        Definition::Adt(adt @ (Adt::Struct(_) | Adt::Union(_))) => adt
+            .display_limited(db, config.max_fields_count, display_target)
+            .with_private_fields(render_private_fields)
+            .to_string(),
+        Definition::EnumVariant(variant) => variant
+            .display_limited(db, config.max_fields_count, display_target)
+            .with_private_fields(render_private_fields)
+            .to_string(),
+        Definition::Adt(adt @ Adt::Enum(_)) => adt
+            .display_limited(db, config.max_enum_variants_count, display_target)
+            .with_private_fields(render_private_fields)
+            .to_string(),
         Definition::SelfType(impl_def) => {
             let self_ty = &impl_def.self_ty(db);
             match self_ty.as_adt() {
-                Some(adt) => {
-                    adt.display_limited(db, config.max_fields_count, display_target).to_string()
-                }
+                Some(adt) => adt
+                    .display_limited(db, config.max_fields_count, display_target)
+                    .with_private_fields(render_private_fields)
+                    .to_string(),
                 None => self_ty.display(db, display_target).to_string(),
             }
         }
@@ -496,7 +496,11 @@ pub(super) fn definition(
         }
         _ => def.label(db, display_target),
     };
-    let docs = def.docs_with_rangemap(db, famous_defs, display_target);
+    let docs = if config.documentation {
+        def.docs_with_rangemap(db, famous_defs, display_target)
+    } else {
+        None
+    };
     let value = || match def {
         Definition::EnumVariant(it) => {
             if !it.parent_enum(db).is_data_carrying(db) {
@@ -525,7 +529,8 @@ pub(super) fn definition(
             let body = it.eval(db);
             Some(match body {
                 Ok(it) => match it.render_debug(db) {
-                    Ok(it) => it,
+                    Ok(rendered) if rendered.is_empty() => it.render(db, display_target),
+                    Ok(rendered) => rendered,
                     Err(err) => {
                         let it = it.render(db, display_target);
                         if env::var_os("RA_DEV").is_some() {
@@ -557,7 +562,9 @@ pub(super) fn definition(
             let body = it.eval(db);
             Some(match body {
                 Ok(it) => match it.render_debug(db) {
-                    Ok(it) => it,
+                    Ok(rendered) if rendered.is_empty() => it.render(db, display_target),
+                    Ok(rendered) => rendered,
+
                     Err(err) => {
                         let it = it.render(db, display_target);
                         if env::var_os("RA_DEV").is_some() {

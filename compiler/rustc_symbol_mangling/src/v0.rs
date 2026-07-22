@@ -17,8 +17,8 @@ use rustc_middle::bug;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::print::{Print, PrintError, Printer};
 use rustc_middle::ty::{
-    self, FloatTy, GenericArg, GenericArgKind, Instance, IntTy, ReifyReason, Ty, TyCtxt,
-    TypeVisitable, TypeVisitableExt, UintTy, Unnormalized,
+    self, FloatTy, GenericArg, GenericArgKind, Instance, IntTy, RegionUtilitiesExt, ReifyReason,
+    Ty, TyCtxt, TypeVisitable, TypeVisitableExt, UintTy, Unnormalized,
 };
 use rustc_span::sym;
 
@@ -566,6 +566,7 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
             }
 
             ty::FnPtr(sig_tys, hdr) => {
+                let splatted_arg_index = hdr.splatted().map(usize::from);
                 let sig = sig_tys.with(hdr);
                 self.push("F");
                 self.wrap_binder(&sig, |p, sig| {
@@ -585,7 +586,15 @@ impl<'tcx> Printer<'tcx> for V0SymbolMangler<'tcx> {
                             }
                         }
                     }
-                    for &ty in sig.inputs() {
+                    for (i, &ty) in sig.inputs().iter().enumerate() {
+                        if splatted_arg_index == Some(i) {
+                            // The splat feature is unstable and its mangling is subject to change
+                            // FIXME(splat):
+                            // - for efficiency we might want to use a letter that can't occur in any type, rather than
+                            //   taking an unused letter
+                            // - splat isn't implemented for legacy mangling
+                            p.push("w");
+                        }
                         ty.print(p)?;
                     }
                     if sig.c_variadic() {

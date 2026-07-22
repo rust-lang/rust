@@ -61,7 +61,7 @@ Build the library as `cdylib`:
 crate-type = ["cdylib"]
 ```
 
-The target-cpu must be from the list [supported by LLVM] (or printed with `rustc --target amdgcn-amd-amdhsa --print target-cpus`).
+The target-cpu[^1] must be from the list [supported by LLVM] (or printed with `rustc --target amdgcn-amd-amdhsa --print target-cpus`).
 The GPU version on the current system can be found e.g. with [`rocminfo`].
 For a GPU series that has xnack support but the target GPU has not, the `-xnack-support` target-feature needs to be enabled.
 I.e. if the ISA info as printed with [`rocminfo`] says something about `xnack-`, e.g. `gfx1010:xnack-`, add `-Ctarget-feature=-xnack-support` to the rustflags.
@@ -77,6 +77,12 @@ rustflags = ["-Ctarget-cpu=gfx1100"]
 [unstable]
 build-std = ["core"] # Optional: "alloc"
 ```
+
+[^1]: For this target, crates with different values of `-C target-cpu` are not link-compatible.
+Because of this, the compiler ensures that all crates that are linked together
+were compiled with the same `target-cpu`. This must be considered when
+using `rustc` commands for building. It is less relevant for Cargo, since Cargo
+generally uses the same `target-cpu` for all crates in a build.
 
 ## Running Rust programs
 

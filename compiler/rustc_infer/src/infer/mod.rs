@@ -10,7 +10,6 @@ pub use opaque_types::{OpaqueTypeStorage, OpaqueTypeStorageEntries, OpaqueTypeTa
 use region_constraints::{
     GenericKind, RegionConstraintCollector, RegionConstraintStorage, VarInfos, VerifyBound,
 };
-pub use relate::StructurallyRelateAliases;
 pub use relate::combine::PredicateEmittingRelation;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::undo_log::{Rollback, UndoLogs};
@@ -30,8 +29,9 @@ use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::{
     self, BoundVarReplacerDelegate, ConstVid, FloatVid, GenericArg, GenericArgKind, GenericArgs,
     GenericArgsRef, GenericParamDefKind, InferConst, IntVid, OpaqueTypeKey, ProvisionalHiddenType,
-    PseudoCanonicalInput, Term, TermKind, Ty, TyCtxt, TyVid, TypeFoldable, TypeFolder,
-    TypeSuperFoldable, TypeVisitable, TypeVisitableExt, TypingEnv, TypingMode, fold_regions,
+    PseudoCanonicalInput, RegionExt, RegionUtilitiesExt, Term, TermKind, Ty, TyCtxt, TyVid,
+    TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitable, TypeVisitableExt, TypingEnv,
+    TypingMode, fold_regions,
 };
 use rustc_span::{DUMMY_SP, Span, Symbol};
 use rustc_type_ir::MayBeErased;

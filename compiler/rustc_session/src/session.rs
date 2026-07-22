@@ -38,8 +38,8 @@ use crate::code_stats::CodeStats;
 pub use crate::code_stats::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use crate::config::{
     self, Cfg, CheckCfg, CoverageLevel, CoverageOptions, CrateType, DebugInfo, ErrorOutputType,
-    FunctionReturn, Input, InstrumentCoverage, InstrumentMcount, OptLevel, OutFileName, OutputType,
-    PointerAuthOption, SwitchWithOptPath,
+    FunctionReturn, Input, InstrumentCoverage, InstrumentMcount, NATIVE_CPU, OptLevel, OutFileName,
+    OutputType, PointerAuthOption, SwitchWithOptPath,
 };
 use crate::filesearch::FileSearch;
 use crate::lint::LintId;
@@ -701,7 +701,7 @@ impl Session {
             IncrCompSession::Active { session_directory: session_dir, _lock_file: lock_file };
     }
 
-    pub fn finalize_incr_comp_session(&self, new_directory_path: PathBuf) {
+    pub fn finalize_incr_comp_session(&self) {
         let mut incr_comp_session = self.incr_comp_session.borrow_mut();
 
         if let IncrCompSession::Active { .. } = *incr_comp_session {
@@ -710,34 +710,17 @@ impl Session {
         }
 
         // Note: this will also drop the lock file, thus unlocking the directory.
-        *incr_comp_session = IncrCompSession::Finalized { session_directory: new_directory_path };
-    }
-
-    pub fn mark_incr_comp_session_as_invalid(&self) {
-        let mut incr_comp_session = self.incr_comp_session.borrow_mut();
-
-        let session_directory = match *incr_comp_session {
-            IncrCompSession::Active { ref session_directory, .. } => session_directory.clone(),
-            IncrCompSession::InvalidBecauseOfErrors { .. } => return,
-            _ => panic!("trying to invalidate `IncrCompSession` `{:?}`", *incr_comp_session),
-        };
-
-        // Note: this will also drop the lock file, thus unlocking the directory.
-        *incr_comp_session = IncrCompSession::InvalidBecauseOfErrors { session_directory };
+        *incr_comp_session = IncrCompSession::FinalizedOrRemoved;
     }
 
     pub fn incr_comp_session_dir(&self) -> MappedReadGuard<'_, PathBuf> {
         let incr_comp_session = self.incr_comp_session.borrow();
-        ReadGuard::map(incr_comp_session, |incr_comp_session| match *incr_comp_session {
-            IncrCompSession::NotInitialized => panic!(
+        ReadGuard::map(incr_comp_session, |incr_comp_session| match incr_comp_session {
+            IncrCompSession::NotInitialized | IncrCompSession::FinalizedOrRemoved => panic!(
                 "trying to get session directory from `IncrCompSession`: {:?}",
-                *incr_comp_session,
+                incr_comp_session,
             ),
-            IncrCompSession::Active { ref session_directory, .. }
-            | IncrCompSession::Finalized { ref session_directory }
-            | IncrCompSession::InvalidBecauseOfErrors { ref session_directory } => {
-                session_directory
-            }
+            IncrCompSession::Active { session_directory, .. } => session_directory,
         })
     }
 
@@ -1695,6 +1678,15 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
             sess.dcx().emit_err(diagnostics::UnsupportedPackedStack);
         }
     }
+
+    if let Some(ref cpu_name) = sess.opts.cg.target_cpu {
+        if cpu_name == NATIVE_CPU && sess.target.requires_consistent_cpu {
+            sess.dcx().emit_fatal(diagnostics::NativeTargetCpuNotAllowed {
+                target_triple: &sess.opts.target_triple,
+                need_explicit_cpu: sess.target.need_explicit_cpu,
+            });
+        }
+    }
 }
 
 /// Holds data on the current incremental compilation session, if there is one.
@@ -1708,13 +1700,10 @@ enum IncrCompSession {
     /// alone has an effect, because the file will unlock when the session is
     /// dropped.
     Active { session_directory: PathBuf, _lock_file: flock::Lock },
-    /// This is the state after the session directory has been finalized. In this
-    /// state, the contents of the directory must not be modified any more.
-    Finalized { session_directory: PathBuf },
-    /// This is an error state that is reached when some compilation error has
-    /// occurred. It indicates that the contents of the session directory must
-    /// not be used, since they might be invalid.
-    InvalidBecauseOfErrors { session_directory: PathBuf },
+    /// This is the state after the session directory has been finalized or
+    /// removed after errors. In this state, the contents of the directory must
+    /// not be modified any more.
+    FinalizedOrRemoved,
 }
 
 /// A wrapper around an [`DiagCtxt`] that is used for early error emissions.

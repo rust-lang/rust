@@ -413,6 +413,7 @@ pub(crate) fn create_anon_const<'a, 'db>(
     }
 }
 
+#[salsa::tracked(cycle_result = const_eval_discriminant_cycle_result)]
 pub(crate) fn const_eval_discriminant_variant(
     db: &dyn HirDatabase,
     variant_id: EnumVariantId,
@@ -449,7 +450,7 @@ pub(crate) fn const_eval_discriminant_variant(
     Ok(c)
 }
 
-pub(crate) fn const_eval_discriminant_cycle_result(
+fn const_eval_discriminant_cycle_result(
     _: &dyn HirDatabase,
     _: salsa::Id,
     _: EnumVariantId,

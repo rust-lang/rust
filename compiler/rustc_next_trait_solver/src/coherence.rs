@@ -4,7 +4,7 @@ use std::ops::ControlFlow;
 use derive_where::derive_where;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::{
-    self as ty, InferCtxtLike, Interner, TrivialTypeTraversalImpls, TypeVisitable,
+    self as ty, InferCtxtLike, Interner, Region, TrivialTypeTraversalImpls, TypeVisitable,
     TypeVisitableExt, TypeVisitor,
 };
 use tracing::instrument;
@@ -317,7 +317,7 @@ where
 {
     type Result = ControlFlow<OrphanCheckEarlyExit<I, E>>;
 
-    fn visit_region(&mut self, _r: I::Region) -> Self::Result {
+    fn visit_region(&mut self, _r: Region<I>) -> Self::Result {
         ControlFlow::Continue(())
     }
 

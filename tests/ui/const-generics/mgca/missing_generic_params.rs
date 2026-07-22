@@ -7,7 +7,7 @@
 // is only possible within bodies. So a delayed
 // bug was generated with no error ever reported.
 
-#![feature(min_generic_const_args)]
+#![feature(min_generic_const_args, macroless_generic_const_args)]
 #![allow(incomplete_features)]
 trait Trait {}
 impl Trait for [(); N] {}

@@ -243,15 +243,6 @@ pub(crate) struct RustcAllowConstFnUnstable {
 }
 
 #[derive(Diagnostic)]
-#[diag("attribute should be applied to `#[repr(transparent)]` types")]
-pub(crate) struct RustcPubTransparent {
-    #[primary_span]
-    pub attr_span: Span,
-    #[label("not a `#[repr(transparent)]` type")]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("attribute cannot be applied to a `async`, `gen` or `async gen` function")]
 pub(crate) struct RustcForceInlineCoro {
     #[primary_span]
@@ -370,6 +361,20 @@ pub(crate) struct DuplicateDiagnosticItemInCrate {
     #[note("the diagnostic item is first defined here")]
     pub orig_span: Option<Span>,
     #[note("the diagnostic item is first defined in crate `{$orig_crate_name}`")]
+    pub different_crates: bool,
+    pub crate_name: Symbol,
+    pub orig_crate_name: Symbol,
+    pub name: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag("duplicate canonical symbol in crate `{$crate_name}`: `{$name}`")]
+pub(crate) struct DuplicateCanonicalSymbolInCrate {
+    #[primary_span]
+    pub duplicate_span: Option<Span>,
+    #[note("the canonical symbol is first defined here")]
+    pub orig_span: Option<Span>,
+    #[note("the canonical symbol is first defined in crate `{$orig_crate_name}`")]
     pub different_crates: bool,
     pub crate_name: Symbol,
     pub orig_crate_name: Symbol,

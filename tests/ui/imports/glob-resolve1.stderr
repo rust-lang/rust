@@ -22,12 +22,13 @@ note: function `bar::epriv` exists but is inaccessible
 LL |         fn epriv();
    |         ^^^^^^^^^^^ not accessible
 
-error[E0423]: expected value, found enum `B`
+error[E0423]: cannot find value `B` in this scope
   --> $DIR/glob-resolve1.rs:29:5
    |
 LL |     B;
    |     ^
    |
+   = note: an enum named `B` exists in another namespace
 note: the enum is defined here
   --> $DIR/glob-resolve1.rs:15:5
    |

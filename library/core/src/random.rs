@@ -14,6 +14,15 @@ pub trait Rng {
     fn fill_bytes(&mut self, bytes: &mut [u8]);
 }
 
+/// Implements `Rng` for mutable references to random number generators by
+/// forwarding all methods to the referenced generator.
+#[unstable(feature = "random", issue = "130703")]
+impl<'a, R: Rng + ?Sized> Rng for &'a mut R {
+    fn fill_bytes(&mut self, bytes: &mut [u8]) {
+        R::fill_bytes(self, bytes);
+    }
+}
+
 /// A trait representing a distribution of random values for a type.
 #[unstable(feature = "random", issue = "130703")]
 pub trait Distribution<T> {

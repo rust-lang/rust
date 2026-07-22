@@ -49,8 +49,8 @@ fn main() {
     <u8 as Tr::Y>::NN; //~ ERROR expected trait, found associated type `Tr::Y`
     <u8 as E::Y>::NN; //~ ERROR expected trait, found variant `E::Y`
 
-    let _: <u8 as Dr>::Z; //~ ERROR expected associated type, found associated function `Dr::Z`
-    <u8 as Dr>::X; //~ ERROR expected method or associated constant, found associated type `Dr::X`
-    let _: <u8 as Dr>::Z::N; //~ ERROR expected associated type, found associated function `Dr::Z`
+    let _: <u8 as Dr>::Z; //~ ERROR cannot find associated type `Z` in trait `Dr`
+    <u8 as Dr>::X; //~ ERROR cannot find method or associated constant `X` in trait `Dr`
+    let _: <u8 as Dr>::Z::N; //~ ERROR cannot find associated type `Z` in trait `Dr`
     <u8 as Dr>::X::N; //~ ERROR no associated function or constant named `N` found for type `u16`
 }

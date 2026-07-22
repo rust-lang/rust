@@ -4,12 +4,6 @@ error[E0596]: cannot borrow `*x` as mutable, as it is behind a `&` reference
 LL |     let mut c1 = || set(&mut *x);
    |                         ^^^^^^^ cannot borrow as mutable
 
-error[E0596]: cannot borrow `*x` as mutable, as it is behind a `&` reference
-  --> $DIR/borrowck-closures-mut-of-imm.rs:12:25
-   |
-LL |     let mut c2 = || set(&mut *x);
-   |                         ^^^^^^^ cannot borrow as mutable
-
 error[E0524]: two closures require unique access to `x` at the same time
   --> $DIR/borrowck-closures-mut-of-imm.rs:12:18
    |
@@ -25,6 +19,12 @@ LL |     let mut c2 = || set(&mut *x);
 ...
 LL |     c2(); c1();
    |           -- first borrow later used here
+
+error[E0596]: cannot borrow `*x` as mutable, as it is behind a `&` reference
+  --> $DIR/borrowck-closures-mut-of-imm.rs:12:25
+   |
+LL |     let mut c2 = || set(&mut *x);
+   |                         ^^^^^^^ cannot borrow as mutable
 
 error: aborting due to 3 previous errors
 

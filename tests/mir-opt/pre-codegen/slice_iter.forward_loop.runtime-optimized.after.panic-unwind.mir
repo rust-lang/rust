@@ -34,7 +34,7 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
                                 }
                             }
                         }
-                        scope 25 (inlined without_provenance_mut::<T>) {
+                        scope 25 (inlined std::ptr::without_provenance_mut::<T>) {
                         }
                     }
                     scope 20 (inlined std::ptr::const_ptr::<impl *const T>::addr) {
@@ -77,7 +77,7 @@ fn forward_loop(_1: &[T], _2: impl Fn(&T)) -> () {
                     scope 7 {
                     }
                     scope 11 (inlined std::ptr::without_provenance::<T>) {
-                        scope 12 (inlined without_provenance_mut::<T>) {
+                        scope 12 (inlined std::ptr::without_provenance_mut::<T>) {
                         }
                     }
                     scope 13 (inlined NonNull::<T>::as_ptr) {

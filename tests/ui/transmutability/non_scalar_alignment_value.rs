@@ -1,6 +1,4 @@
-#![feature(min_generic_const_args)]
-
-#![feature(transmutability)]
+#![feature(min_generic_const_args, macroless_generic_const_args, transmutability)]
 
 mod assert {
     use std::mem::{Assume, TransmuteFrom};

@@ -2,7 +2,7 @@
 //! the type of each expression and pattern.
 //!
 //! For type inference, compare the implementations in rustc (the various
-//! check_* methods in rustc_hir_analysis/check/mod.rs are a good entry point) and
+//! check_* methods in [`rustc_hir_typeck/check.rs`] are a good entry point) and
 //! IntelliJ-Rust (org.rust.lang.core.types.infer). Our entry point for
 //! inference here is the `infer` function, which infers the types of all
 //! expressions in a given function.
@@ -12,6 +12,8 @@
 //! we might determine that certain variables need to be equal to each other, or
 //! to certain types. To record this, we use the union-find implementation from
 //! the `ena` crate, which is extracted from rustc.
+//!
+//! [`rustc_hir_typeck/check.rs`]: https://github.com/rust-lang/rust/blob/5503df87342a73d0c29126a7e08dc9c1255c46ad/compiler/rustc_hir_typeck/src/check.rs
 
 mod autoderef;
 mod callee;
@@ -91,8 +93,8 @@ use crate::{
         unify::resolve_completely::WriteBackCtxt,
     },
     lower::{
-        ImplTraitIdx, ImplTraitLoweringMode, LifetimeElisionKind, LoweringMode,
-        diagnostics::TyLoweringDiagnostic,
+        ImplTraitIdx, ImplTraitLoweringMode, LifetimeElisionKind, LifetimeLoweringMode,
+        LoweringMode, diagnostics::TyLoweringDiagnostic,
     },
     method_resolution::CandidateId,
     next_solver::{
@@ -522,6 +524,18 @@ pub enum InferenceDiagnostic {
         #[type_visitable(ignore)]
         expr: ExprId,
     },
+    ReturnOutsideFunction {
+        #[type_visitable(ignore)]
+        expr: ExprId,
+        #[type_visitable(ignore)]
+        kind: ReturnKind,
+    },
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum ReturnKind {
+    ReturnExpr,
+    BecomeExpr,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -1932,6 +1946,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
             self.allow_using_generic_params,
             infer_vars,
             &self.defined_anon_consts,
+            LifetimeLoweringMode::LateParam,
         );
         f(&mut ctx)
     }
@@ -2008,9 +2023,10 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
             && let GeneralConstId::AnonConstId(konst) = konst.def.0
         {
             self.defined_anon_consts.borrow_mut().push(konst);
+        } else {
+            self.write_expr_ty(expr, expected_ty);
         }
 
-        self.write_expr_ty(expr, expected_ty);
         // FIXME: Report an error if needed.
         konst.unwrap_or_else(|_| self.table.next_const_var(Span::Dummy))
     }
@@ -2266,6 +2282,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
             self.allow_using_generic_params,
             Some(&mut vars_ctx),
             &self.defined_anon_consts,
+            LifetimeLoweringMode::LateParam,
         );
 
         if let Some(type_anchor) = path.type_anchor() {

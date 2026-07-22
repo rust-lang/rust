@@ -961,18 +961,12 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
             }
             Expr::Await { .. } => not_supported!("await"),
             Expr::Yeet { .. } => not_supported!("yeet"),
-            &Expr::Const(_) => {
-                // let subst = self.placeholder_subst();
-                // self.lower_const(
-                //     id.into(),
-                //     current,
-                //     place,
-                //     subst,
-                //     expr_id.into(),
-                //     self.expr_ty_without_adjust(expr_id),
-                // )?;
-                // Ok(Some(current))
-                not_supported!("const block")
+            &Expr::Const(id) => {
+                // Inline const blocks (`const { .. }`) are stored with their inner expression in
+                // the same body (see inference, which infers the inner expression directly), so we
+                // lower that expression in place. Const-ness is irrelevant here: MIR evaluation
+                // already runs in a const context.
+                self.lower_expr_to_place(id, place, current)
             }
             Expr::Cast { expr, type_ref: _ } => {
                 let Some((it, current)) = self.lower_expr_to_some_operand(*expr, current)? else {
@@ -2129,7 +2123,7 @@ fn cast_kind<'db>(
     })
 }
 
-#[salsa_macros::tracked(returns(ref), cycle_result = mir_body_for_closure_cycle_result)]
+#[salsa_macros::tracked(returns(as_ref), cycle_result = mir_body_for_closure_cycle_result)]
 pub fn mir_body_for_closure_query<'db>(
     db: &'db dyn HirDatabase,
     closure: InternedClosureId,
@@ -2288,7 +2282,7 @@ pub fn mir_body_for_closure_query<'db>(
     Ok(ctx.result)
 }
 
-#[salsa_macros::tracked(returns(ref), cycle_result = mir_body_cycle_result)]
+#[salsa_macros::tracked(returns(as_ref), cycle_result = mir_body_cycle_result)]
 pub fn mir_body_query<'db>(db: &'db dyn HirDatabase, def: InferBodyId) -> Result<'db, MirBody> {
     let krate = def.krate(db);
     let edition = krate.data(db).edition;
@@ -2358,8 +2352,14 @@ pub fn lower_body_to_mir<'db>(
 ) -> Result<'db, MirBody> {
     // Extract params and self_param only when lowering the body's root expression for a function.
     if let Some(fid) = owner.as_function() {
-        let callable_sig =
-            db.callable_item_signature(fid.into()).instantiate_identity().skip_binder();
+        let callable_sig = {
+            let resolver = owner.resolver(db);
+            let interner = DbInterner::new_with(db, resolver.krate());
+            interner.liberate_late_bound_regions(
+                fid.into(),
+                db.callable_item_signature(fid.into()).instantiate_identity().skip_norm_wip(),
+            )
+        };
         let mut param_tys = callable_sig.inputs().iter().copied();
         let self_param = self_param.and_then(|id| Some((id, param_tys.next()?)));
 

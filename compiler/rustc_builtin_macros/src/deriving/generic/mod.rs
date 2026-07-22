@@ -825,6 +825,7 @@ impl<'a> TraitDef<'a> {
                             })
                             .collect(),
                         }),
+                        span: self.span,
                     },
                     self.span,
                 ),

@@ -7,24 +7,12 @@ use tracing::{instrument, trace};
 use crate::error::{ExpectedFound, TypeError};
 use crate::fold::TypeFoldable;
 use crate::inherent::*;
-use crate::{self as ty, Interner};
+use crate::{self as ty, Interner, Region};
 
 pub mod combine;
 pub mod solver_relating;
 
 pub type RelateResult<I, T> = Result<T, TypeError<I>>;
-
-/// Whether aliases should be related structurally or not. Used
-/// to adjust the behavior of generalization and combine.
-///
-/// This should always be `No` unless in a few special-cases when
-/// instantiating canonical responses and in the new solver. Each
-/// such case should have a comment explaining why it is used.
-#[derive(Debug, Copy, Clone)]
-pub enum StructurallyRelateAliases {
-    Yes,
-    No,
-}
 
 /// Extra information about why we ended up with a particular variance.
 /// This is only used to add more information to error messages, and
@@ -100,7 +88,7 @@ pub trait TypeRelation<I: Interner>: Sized {
 
     fn tys(&mut self, a: I::Ty, b: I::Ty) -> RelateResult<I, I::Ty>;
 
-    fn regions(&mut self, a: I::Region, b: I::Region) -> RelateResult<I, I::Region>;
+    fn regions(&mut self, a: Region<I>, b: Region<I>) -> RelateResult<I, Region<I>>;
 
     fn consts(&mut self, a: I::Const, b: I::Const) -> RelateResult<I, I::Const>;
 

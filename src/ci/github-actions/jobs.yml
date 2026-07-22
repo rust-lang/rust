@@ -485,7 +485,7 @@ auto:
         --enable-sanitizers
         --enable-profiler
         --disable-docs
-        --set rust.jemalloc
+        --set rust.override-allocator=jemalloc
         --set llvm.link-shared=true
         --set rust.lto=thin
         --set rust.codegen-units=1
@@ -520,7 +520,7 @@ auto:
       RUST_CONFIGURE_ARGS: >-
         --enable-sanitizers
         --enable-profiler
-        --set rust.jemalloc
+        --set rust.override-allocator=jemalloc
         --set target.aarch64-apple-ios-macabi.sanitizers=false
         --set target.x86_64-apple-ios-macabi.sanitizers=false
         --set target.aarch64-apple-tvos.profiler=false
@@ -545,7 +545,7 @@ auto:
         --enable-full-tools
         --enable-sanitizers
         --enable-profiler
-        --set rust.jemalloc
+        --set rust.override-allocator=jemalloc
         --set llvm.link-shared=true
         --set rust.lto=thin
         --set rust.codegen-units=1
@@ -566,7 +566,7 @@ auto:
       RUST_CONFIGURE_ARGS: >-
         --enable-sanitizers
         --enable-profiler
-        --set rust.jemalloc
+        --set rust.override-allocator=jemalloc
       DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
       # Aarch64 tooling only needs to support macOS 11.0 and up as nothing else
       # supports the hardware, so only need to test it there.

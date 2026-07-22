@@ -11,7 +11,7 @@ mod test_1 {
         //~^ ERROR: function takes 3 generic arguments but 6 generic arguments were supplied
 
         bar::<String, String, { String }>();
-        //~^ ERROR: expected value, found struct `String` [E0423]
+        //~^ ERROR: cannot find value `String` in this scope [E0423]
 
         bar::<'static, 'static, 'static, 'static, 'static>();
         //~^ ERROR: function takes 2 lifetime arguments but 5 lifetime arguments were supplied

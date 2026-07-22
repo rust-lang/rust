@@ -33,6 +33,19 @@ pub struct TypeParamData {
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub struct LifetimeParamData {
     pub name: Name,
+    pub bound_type: LifetimeBoundType,
+}
+
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
+pub enum LifetimeBoundType {
+    EarlyBound,
+    LateBound,
+}
+
+impl LifetimeParamData {
+    pub fn is_late_bound(&self) -> bool {
+        self.bound_type == LifetimeBoundType::LateBound
+    }
 }
 
 /// Data about a generic const parameter (to a function, struct, impl, ...).
@@ -293,7 +306,12 @@ impl GenericParams {
 
     #[inline]
     pub fn len_lifetimes(&self) -> usize {
-        self.lifetimes.len()
+        self.lifetimes.len() - self.len_late_bound_lifetimes()
+    }
+
+    #[inline]
+    pub fn len_late_bound_lifetimes(&self) -> usize {
+        self.lifetimes.iter().filter(|(_, p)| p.bound_type == LifetimeBoundType::LateBound).count()
     }
 
     #[inline]
@@ -330,6 +348,20 @@ impl GenericParams {
         &self,
     ) -> impl DoubleEndedIterator<Item = (LocalLifetimeParamId, &LifetimeParamData)> {
         self.lifetimes.iter()
+    }
+
+    #[inline]
+    pub fn iter_early_bound_lt(
+        &self,
+    ) -> impl DoubleEndedIterator<Item = (LocalLifetimeParamId, &LifetimeParamData)> {
+        self.lifetimes.iter().filter(|(_, p)| p.bound_type == LifetimeBoundType::EarlyBound)
+    }
+
+    #[inline]
+    pub fn iter_late_bound_lt(
+        &self,
+    ) -> impl DoubleEndedIterator<Item = (LocalLifetimeParamId, &LifetimeParamData)> {
+        self.lifetimes.iter().filter(|(_, p)| p.bound_type == LifetimeBoundType::LateBound)
     }
 
     pub fn find_type_by_name(&self, name: &Name, parent: GenericDefId) -> Option<TypeParamId> {
@@ -374,6 +406,24 @@ impl GenericParams {
     ) -> Option<LifetimeParamId> {
         self.lifetimes.iter().find_map(|(id, p)| {
             if &p.name == name { Some(LifetimeParamId { local_id: id, parent }) } else { None }
+        })
+    }
+
+    pub fn lifetime_param_idx(
+        &self,
+        lifetime_param_id: &LocalLifetimeParamId,
+    ) -> Option<(usize, bool)> {
+        let mut late_bound_idx = 0;
+        self.iter_lt().enumerate().find_map(|(idx, (param_id, param_data))| {
+            let idx = if param_data.is_late_bound() {
+                let prev = late_bound_idx;
+                late_bound_idx += 1;
+                prev
+            } else {
+                idx - late_bound_idx
+            };
+
+            (param_id == *lifetime_param_id).then(|| (idx, param_data.is_late_bound()))
         })
     }
 }

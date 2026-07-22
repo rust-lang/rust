@@ -408,6 +408,19 @@ impl SourceRootConfig {
             .collect()
     }
 
+    /// Returns whether `path` belongs to a library (non-local) source root, such as the
+    /// sysroot sources or a cargo registry dependency.
+    ///
+    /// Paths that belong to no configured file set are *not* considered library files, as
+    /// files outside of any loaded workspace (for example scratch files) fall into the
+    /// catch-all file set despite being client-editable.
+    pub fn path_is_library(&self, path: &VfsPath) -> bool {
+        match self.fsc.classify_path(path) {
+            Some(idx) => !self.local_filesets.contains(&(idx as u64)),
+            None => false,
+        }
+    }
+
     /// Maps local source roots to their parent source roots by bytewise comparing of root paths .
     /// If a `SourceRoot` doesn't have a parent and is local then it is not contained in this mapping but it can be asserted that it is a root `SourceRoot`.
     pub fn source_root_parent_map(&self) -> FxHashMap<SourceRootId, SourceRootId> {

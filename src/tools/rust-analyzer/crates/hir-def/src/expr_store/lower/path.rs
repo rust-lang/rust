@@ -54,6 +54,13 @@ pub(super) fn lower_path(
         ast_segments.push(_segment.clone());
         segments.push(name);
     };
+
+    let old_lifetimes_constrained_by_input = if collector.is_argument_lt_bound_scope() {
+        Some(std::mem::take(&mut collector.named_lifetime_store.lifetimes_constrained_by_input))
+    } else {
+        None
+    };
+
     loop {
         let Some(segment) = path.segment() else {
             segments.push(Name::missing());
@@ -112,7 +119,10 @@ pub(super) fn lower_path(
             ast::PathSegmentKind::Type { type_ref, trait_ref } => {
                 debug_assert!(path.qualifier().is_none()); // this can only occur at the first segment
 
-                let self_type = collector.lower_type_ref(type_ref?, impl_trait_lower_fn);
+                let type_ref = type_ref?;
+                let self_type = collector.for_path_type_projection(|collector| {
+                    collector.lower_type_ref(type_ref, impl_trait_lower_fn)
+                });
 
                 match trait_ref {
                     // <T>::foo
@@ -122,7 +132,9 @@ pub(super) fn lower_path(
                     }
                     // <T as Trait<A>>::Foo desugars to Trait<Self=T, A>::Foo
                     Some(trait_ref) => {
-                        let path = collector.lower_path(trait_ref.path()?, impl_trait_lower_fn)?;
+                        let path = collector.for_path_type_projection(|collector| {
+                            collector.lower_path(trait_ref.path()?, impl_trait_lower_fn)
+                        })?;
                         // FIXME: Unnecessary clone
                         collector.alloc_type_ref(
                             TypeRef::Path(path.clone()),
@@ -242,6 +254,24 @@ pub(super) fn lower_path(
     }
 
     let mod_path = Interned::new(ModPath::from_segments(kind, segments));
+
+    let type_alias_constrained_lifetimes = collector.get_constrained_lifetimes_if_type_alias(
+        &mod_path,
+        generic_args.last().and_then(|g| g.as_ref()),
+    );
+    if let Some(old_lifetimes_constrained_by_input) = old_lifetimes_constrained_by_input {
+        if let Some(lifetimes) = type_alias_constrained_lifetimes {
+            collector.named_lifetime_store.lifetimes_constrained_by_input =
+                old_lifetimes_constrained_by_input;
+            collector.extend_type_alias_lifetime(lifetimes.into_iter());
+        } else {
+            collector
+                .named_lifetime_store
+                .lifetimes_constrained_by_input
+                .extend(old_lifetimes_constrained_by_input);
+        }
+    }
+
     if type_anchor.is_none() && generic_args.is_empty() {
         return Some(Path::BarePath(mod_path));
     } else {

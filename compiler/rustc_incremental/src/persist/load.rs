@@ -192,7 +192,7 @@ pub fn setup_dep_graph(
     let load_result = load_dep_graph(sess);
 
     sess.time("incr_comp_garbage_collect_session_directories", || {
-        if let Err(e) = garbage_collect_session_directories(sess) {
+        if let Err(e) = garbage_collect_session_directories(sess, &sess.incr_comp_session_dir()) {
             warn!(
                 "Error while trying to garbage collect incremental compilation \
                 cache directory: {e}",

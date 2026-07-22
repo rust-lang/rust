@@ -63,7 +63,7 @@ impl Cat {
 impl Cat {
   fn meow() {
     if self.whiskers > 3 {
-        //~^ ERROR expected value, found module `self`
+        //~^ ERROR cannot find value `self` in this scope
         println!("MEOW");
     }
   }
@@ -90,5 +90,5 @@ impl Cat {
 
 fn main() {
     self += 1;
-    //~^ ERROR expected value, found module `self`
+    //~^ ERROR cannot find value `self` in this scope
 }

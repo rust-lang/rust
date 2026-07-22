@@ -21,7 +21,7 @@ use crate::core::builder::{
     Builder, Cargo as CargoCommand, RunConfig, ShouldRun, Step, StepMetadata, apply_pgo,
     cargo_profile_var,
 };
-use crate::core::config::{DebuginfoLevel, RustcLto, TargetSelection};
+use crate::core::config::{DebuginfoLevel, OverrideAllocator, RustcLto, TargetSelection};
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{add_dylib_path, exe, t};
 use crate::{Compiler, FileType, Kind, Mode};
@@ -138,8 +138,13 @@ impl Step for ToolBuild {
             }
         }
 
-        if self.path == "src/tools/rustdoc" {
-            apply_pgo(builder, &mut cargo, self.build_compiler, &builder.config.rustdoc_pgo);
+        let pgo_config = match self.path {
+            "src/tools/rustdoc" => Some(&builder.config.rustdoc_pgo),
+            "src/tools/cargo" => Some(&builder.config.cargo_pgo),
+            _ => None,
+        };
+        if let Some(pgo_config) = pgo_config {
+            apply_pgo(builder, &mut cargo, self.build_compiler, pgo_config);
         }
 
         if !self.allow_features.is_empty() {
@@ -240,7 +245,9 @@ pub fn prepare_tool_cargo(
     cargo.env("LZMA_API_STATIC", "1");
 
     // See also the "JEMALLOC_SYS_WITH_LG_PAGE" setting in the compile build step.
-    if builder.config.jemalloc(target) && env::var_os("JEMALLOC_SYS_WITH_LG_PAGE").is_none() {
+    if let Some(OverrideAllocator::Jemalloc) = builder.config.override_allocator(target)
+        && env::var_os("JEMALLOC_SYS_WITH_LG_PAGE").is_none()
+    {
         // Build jemalloc on AArch64 with support for page sizes up to 64K
         // See: https://github.com/rust-lang/rust/pull/135081
         if target.starts_with("aarch64") {
@@ -764,8 +771,8 @@ impl Step for Rustdoc {
         // to build rustdoc.
         //
         let mut extra_features = Vec::new();
-        if builder.config.jemalloc(target) {
-            extra_features.push("jemalloc".to_string());
+        if let Some(allocator) = builder.config.override_allocator(target) {
+            extra_features.push(allocator.feature_name().to_string());
         }
 
         let compilers = RustcPrivateCompilers::from_target_compiler(builder, target_compiler);
@@ -1588,8 +1595,8 @@ tool_rustc_extended!(Clippy {
     stable: true,
     add_bins_to_sysroot: ["clippy-driver"],
     add_features: |builder, target, features| {
-        if builder.config.jemalloc(target) {
-            features.push("jemalloc".to_string());
+        if let Some(allocator) = builder.config.override_allocator(target) {
+            features.push(allocator.feature_name().to_string());
         }
     }
 });
@@ -1599,8 +1606,8 @@ tool_rustc_extended!(Miri {
     stable: false,
     add_bins_to_sysroot: ["miri"],
     add_features: |builder, target, features| {
-        if builder.config.jemalloc(target) {
-            features.push("jemalloc".to_string());
+        if let Some(allocator) = builder.config.override_allocator(target) {
+            features.push(allocator.feature_name().to_string());
         }
     },
     // Always compile also tests when building miri. Otherwise feature unification can cause rebuilds between building and testing miri.

@@ -18,7 +18,8 @@ use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
 
 use crate::attributes::AttributeSafety;
 use crate::context::{
-    ATTRIBUTE_PARSERS, AcceptContext, FinalizeContext, FinalizeFn, SharedContext,
+    ATTRIBUTE_PARSERS, AcceptContext, FinalizeCheckContext, FinalizeCheckFn, FinalizeContext,
+    FinalizeFn, FinalizeOutput, SharedContext,
 };
 use crate::parser::{AllowExprMetavar, ArgParser, PathParser, RefPathParser};
 use crate::session_diagnostics::ParsedDescription;
@@ -64,7 +65,7 @@ impl<'sess> AttributeParser<'sess> {
     /// errors will be emitted as a delayed bugs. in other words, we *expect* attributes parsed
     /// with `parse_limited` to be reparsed later during ast lowering where we *do* emit the errors
     ///
-    /// Due to this function not taking in RegisteredTools, *do not* use this for parsing any lint attributes
+    /// Due to this function not taking in `RegisteredTools`, *do not* use this for parsing any lint attributes
     pub fn parse_limited(
         sess: &'sess Session,
         attrs: &[ast::Attribute],
@@ -86,7 +87,7 @@ impl<'sess> AttributeParser<'sess> {
     /// This does the same as `parse_limited`, except it has a `should_emit` parameter which allows it to emit errors.
     /// Usually you want `parse_limited`, which emits no errors.
     ///
-    /// Due to this function not taking in RegisteredTools, *do not* use this for parsing any lint attributes
+    /// Due to this function not taking in `RegisteredTools`, *do not* use this for parsing any lint attributes
     pub fn parse_limited_should_emit(
         sess: &'sess Session,
         attrs: &[ast::Attribute],
@@ -172,7 +173,7 @@ impl<'sess> AttributeParser<'sess> {
         Self::parse_single_args(
             sess,
             attr.span,
-            attr_item.span(),
+            attr_item.span,
             attr.style,
             path,
             Some(attr_item.unsafety),
@@ -256,7 +257,7 @@ impl<'sess> AttributeParser<'sess> {
     }
 
     pub(crate) fn sess(&self) -> &'sess Session {
-        &self.sess
+        self.sess
     }
 
     pub(crate) fn features(&self) -> &'sess Features {
@@ -328,14 +329,13 @@ impl<'sess> AttributeParser<'sess> {
                 }
                 ast::AttrKind::Synthetic(synthetic) => {
                     synthetic_attr_state.accept_synthetic_attr(attr_span, lower_span, synthetic);
-                    continue;
                 }
                 ast::AttrKind::Normal(n) => {
                     attr_paths.push(PathParser(&n.item.path));
                     let attr_path = AttrPath::from_ast(&n.item.path, lower_span);
                     let parts =
                         n.item.path.segments.iter().map(|seg| seg.ident.name).collect::<Vec<_>>();
-                    let inner_span = lower_span(n.item.span());
+                    let inner_span = lower_span(n.item.span);
 
                     if let Some(accept) = ATTRIBUTE_PARSERS.accepters.get(parts.as_slice()) {
                         self.check_attribute_safety(
@@ -347,7 +347,7 @@ impl<'sess> AttributeParser<'sess> {
                         );
                         self.check_attribute_stability(&attr_path, attr_span, accept.stability);
                         if let [part] = parts.as_slice() {
-                            debug_assert!(BUILTIN_ATTRIBUTE_MAP.contains(&part));
+                            debug_assert!(BUILTIN_ATTRIBUTE_MAP.contains(part));
                         }
 
                         let Some(args) = ArgParser::from_attr_args(
@@ -417,7 +417,7 @@ impl<'sess> AttributeParser<'sess> {
                         Self::check_target(&accept.allowed_targets, "", &mut cx);
                         #[cfg(debug_assertions)]
                         if !cx.shared.has_lint_been_emitted.load(Ordering::Relaxed) {
-                            cx.shared.cx.check_args_used(&attr, &args)
+                            cx.shared.cx.check_args_used(attr, &args)
                         }
                     } else {
                         let attr = AttrItem {
@@ -449,8 +449,14 @@ impl<'sess> AttributeParser<'sess> {
         }
 
         synthetic_attr_state.finalize_synthetic_attrs(&mut attributes);
+
+        // First, run all finalizers to produce the parsed attributes. Cross-attribute
+        // checks that need to inspect the fully parsed attributes are deferred until all
+        // finalizers have run (see below), since the parsed attributes are not yet all
+        // available here.
+        let mut deferred_checks: Vec<(FinalizeCheckFn, Span)> = Vec::new();
         for f in &finalizers {
-            if let Some(attr) = f(&mut FinalizeContext {
+            let FinalizeOutput { attr, deferred_check } = f(&mut FinalizeContext {
                 shared: SharedContext {
                     cx: self,
                     target_span,
@@ -460,9 +466,33 @@ impl<'sess> AttributeParser<'sess> {
                     has_lint_been_emitted: AtomicBool::new(false),
                 },
                 all_attrs: &attr_paths,
-            }) {
+            });
+            if let Some(attr) = attr {
                 attributes.push(Attribute::Parsed(attr));
             }
+            if let Some(deferred_check) = deferred_check {
+                deferred_checks.push(deferred_check);
+            }
+        }
+
+        // Now that all attributes have been parsed, run the deferred checks. These can
+        // inspect the fully parsed attributes via `FinalizeCheckContext::parsed_attrs`.
+        for (check, attr_span) in deferred_checks {
+            check(
+                &FinalizeCheckContext {
+                    shared: SharedContext {
+                        cx: self,
+                        target_span,
+                        target,
+                        emit_lint: &mut emit_lint,
+                        #[cfg(debug_assertions)]
+                        has_lint_been_emitted: AtomicBool::new(false),
+                    },
+                    all_attrs: &attr_paths,
+                    parsed_attrs: &attributes,
+                },
+                attr_span,
+            );
         }
 
         if !matches!(self.should_emit, ShouldEmit::Nothing) && target == Target::WherePredicate {

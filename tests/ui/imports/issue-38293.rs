@@ -13,5 +13,5 @@ mod bar {
 use bar::baz::{self};
 
 fn main() {
-    baz(); //~ ERROR expected function, found module `baz`
+    baz(); //~ ERROR cannot find function `baz` in this scope
 }

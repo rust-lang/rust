@@ -1,35 +1,35 @@
 error: the constant `N` is not of type `u32`
-  --> $DIR/adt_expr_arg_tuple_expr_fail.rs:13:21
+  --> $DIR/adt_expr_arg_tuple_expr_fail.rs:17:21
    |
 LL |     takes_tuple::<{ (N, N2) }>();
    |                     ^^^^^^^ expected `u32`, found `usize`
 
 error: the constant `N` is not of type `u32`
-  --> $DIR/adt_expr_arg_tuple_expr_fail.rs:15:21
+  --> $DIR/adt_expr_arg_tuple_expr_fail.rs:19:21
    |
 LL |     takes_tuple::<{ (N, T::ASSOC) }>();
    |                     ^^^^^^^^^^^^^ expected `u32`, found `usize`
 
 error: the constant `<T as Trait>::ASSOC` is not of type `u32`
-  --> $DIR/adt_expr_arg_tuple_expr_fail.rs:15:21
+  --> $DIR/adt_expr_arg_tuple_expr_fail.rs:19:21
    |
 LL |     takes_tuple::<{ (N, T::ASSOC) }>();
    |                     ^^^^^^^^^^^^^ expected `u32`, found `usize`
 
 error: the constant `N` is not of type `u32`
-  --> $DIR/adt_expr_arg_tuple_expr_fail.rs:19:28
+  --> $DIR/adt_expr_arg_tuple_expr_fail.rs:23:28
    |
 LL |     takes_nested_tuple::<{ (N, (N, N2)) }>();
    |                            ^^^^^^^^^^^^ expected `u32`, found `usize`
 
 error: the constant `N` is not of type `u32`
-  --> $DIR/adt_expr_arg_tuple_expr_fail.rs:21:28
+  --> $DIR/adt_expr_arg_tuple_expr_fail.rs:25:28
    |
 LL |     takes_nested_tuple::<{ (N, (N, T::ASSOC)) }>();
    |                            ^^^^^^^^^^^^^^^^^^ expected `u32`, found `usize`
 
 error: the constant `<T as Trait>::ASSOC` is not of type `u32`
-  --> $DIR/adt_expr_arg_tuple_expr_fail.rs:21:28
+  --> $DIR/adt_expr_arg_tuple_expr_fail.rs:25:28
    |
 LL |     takes_nested_tuple::<{ (N, (N, T::ASSOC)) }>();
    |                            ^^^^^^^^^^^^^^^^^^ expected `u32`, found `usize`

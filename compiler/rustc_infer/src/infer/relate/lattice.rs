@@ -25,7 +25,6 @@ use rustc_middle::ty::{self, Ty, TyCtxt, TyVar, TypeVisitableExt};
 use rustc_span::Span;
 use tracing::{debug, instrument};
 
-use super::StructurallyRelateAliases;
 use super::combine::PredicateEmittingRelation;
 use crate::infer::{DefineOpaqueTypes, InferCtxt, SubregionOrigin, TypeTrace};
 use crate::traits::{Obligation, PredicateObligations};
@@ -261,10 +260,6 @@ impl<'infcx, 'tcx> LatticeOp<'infcx, 'tcx> {
 impl<'tcx> PredicateEmittingRelation<InferCtxt<'tcx>> for LatticeOp<'_, 'tcx> {
     fn span(&self) -> Span {
         self.trace.span()
-    }
-
-    fn structurally_relate_aliases(&self) -> StructurallyRelateAliases {
-        StructurallyRelateAliases::No
     }
 
     fn param_env(&self) -> ty::ParamEnv<'tcx> {

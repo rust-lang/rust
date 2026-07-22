@@ -1581,7 +1581,7 @@ pub fn foo<'x, T>(x: &'x mut T) -> u8 where T: Clone, { 0u8 }
 fn main() { fo$0 }
 "#,
         CompletionItemKind::SymbolKind(ide_db::SymbolKind::Function),
-        expect!("fn(&'x mut T) -> u8"),
+        expect!("fn(&mut T) -> u8"),
         expect!("pub fn foo<'x, T>(x: &'x mut T) -> u8 where T: Clone,"),
     );
 
@@ -1614,7 +1614,7 @@ fn main() {
 }
 "#,
         CompletionItemKind::SymbolKind(SymbolKind::Method),
-        expect!("const fn(&'foo mut self, &'foo Foo) -> !"),
+        expect!("const fn(&'foo mut self, &Foo) -> !"),
         expect!("pub const fn baz<'foo>(&'foo mut self, x: &'foo Foo) -> !"),
     );
 }

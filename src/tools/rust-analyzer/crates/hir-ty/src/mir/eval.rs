@@ -738,6 +738,42 @@ impl<'a, 'db: 'a> Evaluator<'a, 'db> {
         self.cached_ptr_size
     }
 
+    fn caller_location_fields(&self, owner: InferBodyId, span: MirSpan) -> (String, u32, u32) {
+        let Some((file_id, text_range)) = self.resolve_mir_span(owner, span) else {
+            return (String::new(), 0, 0);
+        };
+        let source_root = self.db.file_source_root(file_id).source_root_id(self.db);
+        let source_root = self.db.source_root(source_root).source_root(self.db);
+        let path = source_root.path_for_file(&file_id).map(|path| path.to_string());
+        let (line, col) = self.db.line_column(file_id, text_range.start()).unwrap_or((0, 0));
+        (path.unwrap_or_default(), line + 1, col + 1)
+    }
+
+    fn resolve_mir_span(&self, owner: InferBodyId, span: MirSpan) -> Option<(FileId, TextRange)> {
+        let (source_map, self_param_syntax) = match owner {
+            InferBodyId::DefWithBodyId(def) => {
+                let body = &Body::with_source_map(self.db, def).1;
+                (&**body, body.self_param_syntax())
+            }
+            InferBodyId::AnonConstId(def) => {
+                (ExpressionStore::with_source_map(self.db, def.loc(self.db).owner).1, None)
+            }
+        };
+        let span: InFile<SyntaxNodePtr> = match span {
+            MirSpan::ExprId(e) => source_map.expr_syntax(e).ok()?.map(|it| it.into()),
+            MirSpan::PatId(p) => source_map.pat_syntax(p).ok()?.map(|it| it.syntax_node_ptr()),
+            MirSpan::BindingId(b) => source_map
+                .patterns_for_binding(b)
+                .iter()
+                .find_map(|p| source_map.pat_syntax(*p).ok())?
+                .map(|it| it.syntax_node_ptr()),
+            MirSpan::SelfParam => self_param_syntax?.map(|it| it.syntax_node_ptr()),
+            MirSpan::Unknown => return None,
+        };
+        let file_id = span.file_id.original_file(self.db);
+        Some((file_id.file_id(self.db), span.value.text_range()))
+    }
+
     fn projected_ty(&self, ty: PlaceTy<'db>, proj: PlaceElem) -> PlaceTy<'db> {
         let pair = (ty, proj);
         if let Some(r) = self.projected_ty_cache.borrow().get(&pair) {
@@ -3181,26 +3217,33 @@ pub fn render_const_using_debug_impl<'db>(
     let Some(debug_fmt_fn) = lang_items.Debug_fmt else {
         not_supported!("core::fmt::Debug::fmt not found");
     };
-    // a1 = &[""]
-    let a1 = evaluator.heap_allocate(evaluator.ptr_size() * 2, evaluator.ptr_size())?;
-    // a2 = &[::core::fmt::ArgumentV1::new(&(THE_CONST), ::core::fmt::Debug::fmt)]
-    // FIXME: we should call the said function, but since its name is going to break in the next rustc version
-    // and its ABI doesn't break yet, we put it in memory manually.
-    let a2 = evaluator.heap_allocate(evaluator.ptr_size() * 2, evaluator.ptr_size())?;
-    evaluator.write_memory(a2, &data.addr.to_bytes())?;
+    let ptr_size = evaluator.ptr_size();
+    // Construct the arguments of `format_args!("{:?}", THE_CONST)` directly in memory and hand
+    // them to `std::fmt::format`.
+    //
+    // `core::fmt::rt::Argument` is a niche-encoded `Placeholder { value: NonNull<()>, formatter }`,
+    // i.e. two words: a pointer to the value, and the type-erased `<T as Debug>::fmt` function.
+    // A non-null `value` is what distinguishes the `Placeholder` variant from `Count`.
+    let argument = evaluator.heap_allocate(ptr_size * 2, ptr_size)?;
+    evaluator.write_memory(argument, &data.addr.to_bytes())?;
     let debug_fmt_fn_ptr = evaluator.vtable_map.id(Ty::new_fn_def(
         evaluator.interner(),
         CallableDefId::FunctionId(debug_fmt_fn).into(),
         GenericArgs::new_from_slice(&[ty.into()]),
     ));
-    evaluator.write_memory(a2.offset(evaluator.ptr_size()), &debug_fmt_fn_ptr.to_le_bytes())?;
-    // a3 = ::core::fmt::Arguments::new_v1(a1, a2)
-    // FIXME: similarly, we should call function here, not directly working with memory.
-    let a3 = evaluator.heap_allocate(evaluator.ptr_size() * 6, evaluator.ptr_size())?;
-    evaluator.write_memory(a3, &a1.to_bytes())?;
-    evaluator.write_memory(a3.offset(evaluator.ptr_size()), &[1])?;
-    evaluator.write_memory(a3.offset(2 * evaluator.ptr_size()), &a2.to_bytes())?;
-    evaluator.write_memory(a3.offset(3 * evaluator.ptr_size()), &[1])?;
+    evaluator.write_memory(argument.offset(ptr_size), &debug_fmt_fn_ptr.to_le_bytes())?;
+    // Since Rust 1.93 `core::fmt::Arguments` is two words wide:
+    //   struct Arguments<'a> { template: NonNull<u8>, args: NonNull<Argument<'a>> }
+    // `template` points at a byte-encoded format string; `format_args!("{:?}", x)` encodes to a
+    // single default placeholder (`0xC0`) followed by the end marker (`0x00`). `args` points at
+    // our one-element argument array, and must stay pointer-aligned: `core` uses the low bit of
+    // `args` as a tag (1 = inline `&str` form, 0 = placeholder form), and heap allocations here
+    // are pointer-aligned so the bit is 0 as required.
+    let template = evaluator.heap_allocate(2, 1)?;
+    evaluator.write_memory(template, &[0xC0, 0x00])?;
+    let arguments = evaluator.heap_allocate(ptr_size * 2, ptr_size)?;
+    evaluator.write_memory(arguments, &template.to_bytes())?;
+    evaluator.write_memory(arguments.offset(ptr_size), &argument.to_bytes())?;
     let Some(ValueNs::FunctionId(format_fn)) = resolver.resolve_path_in_value_ns_fully(
         db,
         &hir_def::expr_store::path::Path::from_known_path_with_no_generic(path![std::fmt::format]),
@@ -3210,13 +3253,24 @@ pub fn render_const_using_debug_impl<'db>(
     };
     let interval = evaluator.interpret_mir(
         db.mir_body(format_fn.into()).map_err(|e| MirEvalError::MirLowerError(format_fn, e))?,
-        [IntervalOrOwned::Borrowed(Interval { addr: a3, size: evaluator.ptr_size() * 6 })]
-            .into_iter(),
+        [IntervalOrOwned::Borrowed(Interval { addr: arguments, size: ptr_size * 2 })].into_iter(),
     )?;
     let message_string = interval.get(&evaluator)?;
-    let addr =
-        Address::from_bytes(&message_string[evaluator.ptr_size()..2 * evaluator.ptr_size()])?;
-    let size = from_bytes!(usize, message_string[2 * evaluator.ptr_size()..]);
+    let words = [
+        from_bytes!(usize, message_string[0..ptr_size]),
+        from_bytes!(usize, message_string[ptr_size..2 * ptr_size]),
+        from_bytes!(usize, message_string[2 * ptr_size..3 * ptr_size]),
+    ];
+    let Some(addr) = words.into_iter().map(Address::from_usize).find(|it| matches!(it, Heap(_)))
+    else {
+        // No heap buffer means the formatted string is empty.
+        return Ok(String::new());
+    };
+    let size = words
+        .into_iter()
+        .filter(|&it| !matches!(Address::from_usize(it), Heap(_)))
+        .min()
+        .unwrap_or(0);
     Ok(std::string::String::from_utf8_lossy(evaluator.read_memory(addr, size)?).into_owned())
 }
 

@@ -31,7 +31,7 @@ fn main() {
         reuse_ptr(0)
     }
     self.0;
-    //~^ ERROR expected value, found module `self`
+    //~^ ERROR cannot find value `self` in this scope
     let z = x;
     //~^ ERROR cannot find value `x` in this scope
 }

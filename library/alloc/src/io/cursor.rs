@@ -1,8 +1,9 @@
 use crate::alloc::Allocator;
 use crate::boxed::Box;
 use crate::io::{
-    self, BorrowedCursor, Cursor, ErrorKind, IoSlice, IoSliceMut, Read, WriteThroughCursor,
-    slice_write, slice_write_all, slice_write_all_vectored, slice_write_vectored,
+    self, BorrowedCursor, BufRead, Cursor, ErrorKind, IoSlice, IoSliceMut, Read,
+    WriteThroughCursor, slice_write, slice_write_all, slice_write_all_vectored,
+    slice_write_vectored,
 };
 use crate::string::String;
 use crate::vec::Vec;
@@ -100,6 +101,19 @@ where
         self.set_position(self.position() + len as u64);
 
         Ok(len)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T> BufRead for Cursor<T>
+where
+    T: AsRef<[u8]>,
+{
+    fn fill_buf(&mut self) -> io::Result<&[u8]> {
+        Ok(Cursor::split(self).1)
+    }
+    fn consume(&mut self, amt: usize) {
+        self.set_position(self.position() + amt as u64);
     }
 }
 

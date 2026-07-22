@@ -962,7 +962,9 @@ impl<'a> Parser<'a> {
             self.recover_vcs_conflict_marker();
             match parse_item(self) {
                 Ok(None) => {
-                    let mut is_unnecessary_semicolon = !items.is_empty()
+                    let mut is_unnecessary_semicolon = (self.token == token::Semi
+                        && self.prev_token == token::Semi)
+                        || !items.is_empty()
                         // When the close delim is `)` in a case like the following, `token.kind`
                         // is expected to be `token::CloseParen`, but the actual `token.kind` is
                         // `token::CloseBrace`. This is because the `token.kind` of the close delim
@@ -1011,7 +1013,7 @@ impl<'a> Parser<'a> {
                             .span_label(self.prev_token.span, "item list ends here");
                     }
                     if is_unnecessary_semicolon {
-                        err.span_suggestion(
+                        err.span_suggestion_verbose(
                             semicolon_span,
                             "consider removing this semicolon",
                             "",

@@ -51,7 +51,7 @@ use crate::inherent::*;
 use crate::relate::{Relate, RelateResult, TypeRelation, VarianceDiagInfo};
 use crate::{
     AliasTy, Binder, BoundRegion, BoundVar, BoundVariableKind, DebruijnIndex, FallibleTypeFolder,
-    InferCtxtLike, Interner, IsRigid, OutlivesPredicate, RegionKind, TyKind, TypeFoldable,
+    InferCtxtLike, Interner, IsRigid, OutlivesPredicate, Region, RegionKind, TyKind, TypeFoldable,
     TypeFolder, TypeVisitable, TypeVisitor, TypingMode, UniverseIndex, Variance, VisitorResult,
     max_universe, set_aliases_to_non_rigid,
 };
@@ -59,8 +59,8 @@ use crate::{
 #[derive_where(Clone, Debug; I: Interner)]
 pub struct Assumptions<I: Interner> {
     pub type_outlives: Vec<Binder<I, OutlivesPredicate<I, I::Ty>>>,
-    pub region_outlives: TransitiveRelation<I::Region>,
-    pub inverse_region_outlives: TransitiveRelation<I::Region>,
+    pub region_outlives: TransitiveRelation<Region<I>>,
+    pub inverse_region_outlives: TransitiveRelation<Region<I>>,
 }
 
 impl<I: Interner> Assumptions<I> {
@@ -74,7 +74,7 @@ impl<I: Interner> Assumptions<I> {
 
     pub fn new(
         type_outlives: Vec<Binder<I, OutlivesPredicate<I, I::Ty>>>,
-        region_outlives: TransitiveRelation<I::Region>,
+        region_outlives: TransitiveRelation<Region<I>>,
     ) -> Self {
         Self {
             inverse_region_outlives: {
@@ -93,7 +93,7 @@ impl<I: Interner> Assumptions<I> {
 #[derive_where(Clone, Hash, PartialEq, Debug; I: Interner)]
 pub enum RegionConstraint<I: Interner> {
     Ambiguity,
-    RegionOutlives(I::Region, I::Region),
+    RegionOutlives(Region<I>, Region<I>),
     /// Requirement that a (potentially higher ranked) alias outlives some (potentially higher ranked)
     /// region due to an assumption in the environment. This cannot be satisfied via component outlives
     /// or item bounds.
@@ -103,7 +103,7 @@ pub enum RegionConstraint<I: Interner> {
     ///
     /// We eagerly destructure alias outlives requirements into region outlives requirements corresponding to
     /// component outlives & item bound outlives rules, leaving only param env candidates.
-    AliasTyOutlivesViaEnv(Binder<I, (AliasTy<I>, I::Region)>),
+    AliasTyOutlivesViaEnv(Binder<I, (AliasTy<I>, Region<I>)>),
     /// This is an `I::Ty` for two reasons:
     /// 1. We need the type visitable impl to be able to `visit_ty` on this so canonicalization
     ///    knows about the placeholder
@@ -113,18 +113,18 @@ pub enum RegionConstraint<I: Interner> {
     ///
     /// We cannot eagerly look at assumptions as we are usually working with an incomplete set of assumptions
     /// and there may wind up being assumptions we can use to prove this when we're in a smaller universe.
-    PlaceholderTyOutlives(I::Ty, I::Region),
+    PlaceholderTyOutlives(I::Ty, Region<I>),
 
     And(Box<[RegionConstraint<I>]>),
     Or(Box<[RegionConstraint<I>]>),
 }
 
 // This is not a derived impl because a perfect derive leads to inductive
-// cycle causing the trait to never actually be implemented
+// cycle causing the trait to never actually be implemented.
 #[cfg(feature = "nightly")]
 impl<I: Interner> StableHash for RegionConstraint<I>
 where
-    I::Region: StableHash,
+    Region<I>: StableHash,
     I::Ty: StableHash,
     I::GenericArgs: StableHash,
     I::TraitAssocTyId: StableHash,
@@ -535,7 +535,7 @@ fn compute_new_region_constraints<Infcx: InferCtxtLike<Interner = I>, I: Interne
         for ub in region_flow.reachable_from(r) {
             // we want to retain any region constraints between two "placeholder-likes" where for our
             // purposes a placeholder-like is either a placeholder or variable in a lower universe
-            let is_placeholder_like = |r: I::Region| match r.kind() {
+            let is_placeholder_like = |r: Region<I>| match r.kind() {
                 RegionKind::ReLateParam(..)
                 | RegionKind::ReEarlyParam(..)
                 | RegionKind::RePlaceholder(..)
@@ -948,9 +948,9 @@ fn rewrite_type_outlives_constraints_in_universe_for_eager_placeholder_handling<
 /// Returns all regions `r2` for which `r: r2` is known to hold in
 /// the universe associated with `assumptions`
 pub fn regions_outlived_by<I: Interner>(
-    r: I::Region,
+    r: Region<I>,
     assumptions: &Assumptions<I>,
-) -> impl Iterator<Item = I::Region> {
+) -> impl Iterator<Item = Region<I>> {
     // FIXME(-Zassumptions-on-binders): do we need to be adding the reflexive edge here?
     assumptions.region_outlives.reachable_from(r).into_iter().chain([r])
 }
@@ -958,17 +958,17 @@ pub fn regions_outlived_by<I: Interner>(
 /// Returns all regions `r2` for which `r2: r` is known to hold in
 /// the universe associated with `assumptions`
 pub fn regions_outliving<I: Interner>(
-    r: I::Region,
+    r: Region<I>,
     assumptions: &Assumptions<I>,
     cx: I,
-) -> impl Iterator<Item = I::Region> {
+) -> impl Iterator<Item = Region<I>> {
     assumptions
         .inverse_region_outlives
         .reachable_from(r)
         .into_iter()
         // FIXME(-Zassumptions-on-binders): 'static may have been an input region canonicalized to something else is that important?
         // FIXME(-Zassumptions-on-binders): do we need to adding the reflexive edge here?
-        .chain([r, I::Region::new_static(cx)])
+        .chain([r, Region::new_static(cx)])
 }
 
 /// Returns all regions `r` for which `!t: r` is known to hold in
@@ -977,7 +977,7 @@ pub fn regions_outlived_by_placeholder<I: Interner>(
     t: I::Ty,
     assumptions: &Assumptions<I>,
     cx: I,
-) -> impl Iterator<Item = I::Region> {
+) -> impl Iterator<Item = Region<I>> {
     match t.kind() {
         TyKind::Placeholder(..) | TyKind::Param(..) => (),
         _ => unreachable!("non-placeholder in `regions_outlived_by_placeholder`: {t:?}"),
@@ -985,7 +985,7 @@ pub fn regions_outlived_by_placeholder<I: Interner>(
 
     assumptions.type_outlives.iter().flat_map(move |binder| match binder.no_bound_vars() {
         Some(OutlivesPredicate(ty, r)) => (ty == t).then_some(r),
-        None => Some(I::Region::new_static(cx)),
+        None => Some(Region::new_static(cx)),
     })
 }
 
@@ -1002,7 +1002,7 @@ impl<I: Interner> TypeFolder<I> for PlaceholderReplacer<I> {
         self.cx
     }
 
-    fn fold_region(&mut self, r: I::Region) -> I::Region {
+    fn fold_region(&mut self, r: Region<I>) -> Region<I> {
         match r.kind() {
             RegionKind::RePlaceholder(p) if p.universe == self.universe => {
                 let bound_vars_len = self.bound_vars.len();
@@ -1010,7 +1010,7 @@ impl<I: Interner> TypeFolder<I> for PlaceholderReplacer<I> {
                     var: BoundVar::from_usize(self.existing_var_count + bound_vars_len),
                     kind: p.bound.kind,
                 });
-                I::Region::new_bound(self.cx, self.current_index, *mapped_var)
+                Region::new_bound(self.cx, self.current_index, *mapped_var)
             }
             // FIXME(-Zassumptions-on-binders): We should be handling region variables here somehow
             _ => r,
@@ -1032,7 +1032,7 @@ impl<I: Interner> TypeFolder<I> for PlaceholderReplacer<I> {
 #[instrument(level = "debug", skip(infcx), ret)]
 fn alias_outlives_candidates_from_assumptions<Infcx: InferCtxtLike<Interner = I>, I: Interner>(
     infcx: &Infcx,
-    bound_outlives: Binder<I, (AliasTy<I>, I::Region)>,
+    bound_outlives: Binder<I, (AliasTy<I>, Region<I>)>,
     assumptions: &Assumptions<I>,
 ) -> RegionConstraint<I> {
     let mut candidates = Vec::new();
@@ -1115,7 +1115,7 @@ impl<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeRelation<I>
         rustc_type_ir::relate::structurally_relate_tys(self, a, b)
     }
 
-    fn regions(&mut self, a: I::Region, b: I::Region) -> RelateResult<I, I::Region> {
+    fn regions(&mut self, a: Region<I>, b: Region<I>) -> RelateResult<I, Region<I>> {
         if a != b {
             self.region_constraints.push(RegionConstraint::RegionOutlives(a, b));
             self.region_constraints.push(RegionConstraint::RegionOutlives(b, a));

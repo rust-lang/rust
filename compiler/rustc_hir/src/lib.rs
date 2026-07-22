@@ -19,6 +19,7 @@ extern crate self as rustc_hir;
 
 mod arena;
 pub mod attrs;
+pub mod canonical_symbols;
 pub mod def;
 pub mod def_path_hash_map;
 pub mod definitions;
@@ -39,6 +40,7 @@ pub mod weak_lang_items;
 #[cfg(test)]
 mod tests;
 
+pub use canonical_symbols::{CanonicalSymbol, CanonicalSymbols};
 #[doc(no_inline)]
 pub use hir::*;
 pub use lang_items::{LangItem, LanguageItems};

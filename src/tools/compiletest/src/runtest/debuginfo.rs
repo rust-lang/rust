@@ -362,7 +362,7 @@ impl TestCx<'_> {
             Some(ref version) => {
                 writeln!(
                     self.stdout,
-                    "NOTE: compiletest thinks it is using LLDB version {}",
+                    "NOTE: compiletest thinks it is using LLDB version: {:?}",
                     version
                 );
             }

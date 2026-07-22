@@ -25,7 +25,7 @@ impl Trait for S {
     //~| ERROR expected function, found associated constant `Trait::C`
     reuse <F as Trait>::Type;
     //~^ ERROR item `Type` is an associated method, which doesn't match its trait `Trait`
-    //~| ERROR expected method or associated constant, found associated type `Trait::Type`
+    //~| ERROR cannot find method or associated constant `Type` in trait `Trait`
     reuse <F as Trait>::baz;
     //~^ ERROR method `baz` is not a member of trait `Trait`
     //~| ERROR cannot find method or associated constant `baz` in trait `Trait`
@@ -42,6 +42,6 @@ impl Trait for S {
 mod prefix {}
 reuse unresolved_prefix::{a, b, c}; //~ ERROR cannot find module or crate `unresolved_prefix`
 reuse prefix::{self, super, crate}; //~ ERROR `crate` in paths can only be used in start position
-//~^ ERROR expected function, found module `prefix::self`
+//~^ ERROR cannot find function `self` in module `prefix`
 
 fn main() {}

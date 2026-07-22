@@ -4,13 +4,7 @@ error: layout_of(UnsignedAroundZero) = Layout {
                abi: Align(2 bytes),
            },
            backend_repr: Scalar(
-               Initialized {
-                   value: Int(
-                       I16,
-                       false,
-                   ),
-                   valid_range: (..=1) | (65535..),
-               },
+               u16 is (..=1) | (65535..),
            ),
            fields: Arbitrary {
                offsets: [
@@ -23,22 +17,13 @@ error: layout_of(UnsignedAroundZero) = Layout {
            largest_niche: Some(
                Niche {
                    offset: Size(0 bytes),
-                   value: Int(
-                       I16,
-                       false,
-                   ),
+                   value: u16,
                    valid_range: (..=1) | (65535..),
                },
            ),
            uninhabited: false,
            variants: Multiple {
-               tag: Initialized {
-                   value: Int(
-                       I16,
-                       false,
-                   ),
-                   valid_range: (..=1) | (65535..),
-               },
+               tag: u16 is (..=1) | (65535..),
                tag_encoding: Direct,
                tag_field: 0,
                variants: [
@@ -89,13 +74,7 @@ error: layout_of(SignedAroundZero) = Layout {
                abi: Align(2 bytes),
            },
            backend_repr: Scalar(
-               Initialized {
-                   value: Int(
-                       I16,
-                       true,
-                   ),
-                   valid_range: (..=1) | (65535..),
-               },
+               i16 is -1..=1,
            ),
            fields: Arbitrary {
                offsets: [
@@ -108,22 +87,13 @@ error: layout_of(SignedAroundZero) = Layout {
            largest_niche: Some(
                Niche {
                    offset: Size(0 bytes),
-                   value: Int(
-                       I16,
-                       true,
-                   ),
+                   value: i16,
                    valid_range: (..=1) | (65535..),
                },
            ),
            uninhabited: false,
            variants: Multiple {
-               tag: Initialized {
-                   value: Int(
-                       I16,
-                       true,
-                   ),
-                   valid_range: (..=1) | (65535..),
-               },
+               tag: i16 is -1..=1,
                tag_encoding: Direct,
                tag_field: 0,
                variants: [

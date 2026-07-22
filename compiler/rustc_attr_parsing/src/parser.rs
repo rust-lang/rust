@@ -72,11 +72,11 @@ impl<P: Borrow<Path>> PathParser<P> {
         self.word().map(|ident| ident.name)
     }
 
-    /// Asserts that this MetaItem is some specific word.
+    /// Asserts that this `MetaItem` is some specific word.
     ///
     /// See [`word`](Self::word) for examples of what a word is.
     pub fn word_is(&self, sym: Symbol) -> bool {
-        self.word().map(|i| i.name == sym).unwrap_or(false)
+        self.word().is_some_and(|i| i.name == sym)
     }
 
     /// Checks whether the first segments match the givens.
@@ -175,7 +175,7 @@ impl ArgParser {
             }
             AttrArgs::Eq { eq_span, expr } => Self::NameValue(NameValueParser {
                 eq_span: *eq_span,
-                value: expr_to_lit(psess, &expr, expr.span, should_emit)
+                value: expr_to_lit(psess, expr, expr.span, should_emit)
                     .map_err(|e| should_emit.emit_err(e))
                     .ok()??,
                 value_span: expr.span,
@@ -183,7 +183,7 @@ impl ArgParser {
         })
     }
 
-    /// Asserts that this MetaItem is a list
+    /// Asserts that this `MetaItem` is a list
     ///
     /// Some examples:
     ///
@@ -196,7 +196,7 @@ impl ArgParser {
         }
     }
 
-    /// Asserts that this MetaItem is a name-value pair.
+    /// Asserts that this `MetaItem` is a name-value pair.
     ///
     /// Some examples:
     ///
@@ -226,13 +226,10 @@ impl ArgParser {
     /// Explicitly ignore the arguments, disarming the arguments-used check
     pub fn ignore_args(&self) {
         #[cfg(debug_assertions)]
-        match self {
-            ArgParser::List(list) => {
-                for item in list.mixed() {
-                    item.ignore_args();
-                }
+        if let ArgParser::List(list) = self {
+            for item in list.mixed() {
+                item.ignore_args();
             }
-            _ => {}
         }
     }
 }
@@ -284,7 +281,7 @@ impl MetaItemOrLitParser {
     pub fn meta_item_no_args(&self) -> Option<&MetaItemParser> {
         let meta_item = self.meta_item()?;
         match meta_item.args().as_no_args() {
-            Ok(_) => Some(meta_item),
+            Ok(()) => Some(meta_item),
             Err(_) => None,
         }
     }
@@ -301,15 +298,15 @@ impl MetaItemOrLitParser {
     }
 }
 
-/// Utility that deconstructs a MetaItem into usable parts.
+/// Utility that deconstructs a `MetaItem` into usable parts.
 ///
-/// MetaItems are syntactically extremely flexible, but specific attributes want to parse
+/// `MetaItems` are syntactically extremely flexible, but specific attributes want to parse
 /// them in custom, more restricted ways. For common argument shapes, prefer the higher-level
 /// [`AcceptContext::expect_list`](crate::context::AcceptContext::expect_list) and
 /// [`AcceptContext::expect_single`](crate::context::AcceptContext::expect_single) helpers.
 /// Use this struct when parsing a custom restricted syntax.
 ///
-/// MetaItems consist of some path, and some args. The args could be empty. In other words:
+/// `MetaItems` consist of some path, and some args. The args could be empty. In other words:
 ///
 /// - `name` -> args are empty
 /// - `name(...)` -> args are a [`list`](ArgParser::as_list), which is the bit between the
@@ -317,7 +314,7 @@ impl MetaItemOrLitParser {
 /// - `name = value`-> arg is [`name_value`](ArgParser::as_name_value), where the argument is the
 ///   `= value` part
 ///
-/// The syntax of MetaItems can be found at <https://doc.rust-lang.org/reference/attributes.html>
+/// The syntax of `MetaItems` can be found at <https://doc.rust-lang.org/reference/attributes.html>
 pub struct MetaItemParser {
     path: OwnedPathParser,
     args: ArgParser,
@@ -367,7 +364,7 @@ impl MetaItemParser {
         &self.args
     }
 
-    /// Asserts that this MetaItem starts with a word, or single segment path.
+    /// Asserts that this `MetaItem` starts with a word, or single segment path.
     ///
     /// Some examples:
     /// - `#[inline]`: `inline` is a word
@@ -438,12 +435,10 @@ fn expr_to_lit<'sess>(
             Ok(lit) => {
                 if token_lit.suffix.is_some() {
                     Err(psess.dcx().create_err(SuffixedLiteralInAttribute { span: lit.span }))
+                } else if lit.kind.is_unsuffixed() {
+                    Ok(Some(lit))
                 } else {
-                    if lit.kind.is_unsuffixed() {
-                        Ok(Some(lit))
-                    } else {
-                        Err(psess.dcx().create_err(SuffixedLiteralInAttribute { span: lit.span }))
-                    }
+                    Err(psess.dcx().create_err(SuffixedLiteralInAttribute { span: lit.span }))
                 }
             }
             Err(err) => {
@@ -523,7 +518,7 @@ impl<'a, 'sess> MetaItemListParserContext<'a, 'sess> {
             Ok(lit) => lit,
             Err(err) => {
                 return Err(create_lit_error(
-                    &self.parser.psess,
+                    self.parser.psess,
                     err,
                     token_lit,
                     self.parser.prev_token_uninterpolated_span(),
@@ -539,9 +534,8 @@ impl<'a, 'sess> MetaItemListParserContext<'a, 'sess> {
                 ShouldEmit::ErrorsAndLints { recovery: Recovery::Forbidden }
             ) {
                 return Err(err);
-            } else {
-                self.should_emit.emit_err(err)
-            };
+            }
+            self.should_emit.emit_err(err);
         }
 
         Ok(lit)
@@ -630,11 +624,11 @@ impl<'a, 'sess> MetaItemListParserContext<'a, 'sess> {
                 Err(err) => {
                     // If `parse_attr_item` made any progress, it likely has a more precise error we should prefer
                     // If it didn't make progress we use the `expected_lit` from below
-                    if self.parser.approx_token_stream_pos() != prev_pros {
-                        Err(err)
-                    } else {
+                    if self.parser.approx_token_stream_pos() == prev_pros {
                         err.cancel();
                         Err(self.expected_lit())
+                    } else {
+                        Err(err)
                     }
                 }
             }

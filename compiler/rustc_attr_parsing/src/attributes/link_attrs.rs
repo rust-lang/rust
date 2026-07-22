@@ -576,7 +576,7 @@ impl NoArgsAttributeParser for FfiPureParser {
     const STABILITY: AttributeStability = unstable!(ffi_pure);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::FfiPure;
 
-    fn finalize_check(cx: &FinalizeContext<'_, '_>, attr_span: Span) {
+    fn finalize_check(cx: &FinalizeCheckContext<'_, '_>, attr_span: Span) {
         // `#[ffi_const]` functions cannot be `#[ffi_pure]`.
         if cx.all_attrs.iter().any(|a| a.word_is(sym::ffi_const)) {
             cx.emit_err(BothFfiConstAndPure { attr_span });

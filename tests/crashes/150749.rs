@@ -6,7 +6,7 @@ trait CollectArray {
 }
 impl CollectArray for () {
     fn inner_array() {
-        let temp_ptr: [(); Self];
+        let temp_ptr: [(); core::direct_const_arg!(Self)];
     }
 }
 fn main() {}
