@@ -17,7 +17,6 @@ use std::{fmt, iter, mem};
 
 use rustc_abi::{ExternAbi, FieldIdx, Layout, LayoutData, TargetDataLayout, VariantIdx};
 use rustc_ast as ast;
-use rustc_data_structures::defer;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::profiling::SelfProfilerRef;
@@ -27,13 +26,13 @@ use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{
     self, DynSend, DynSync, FreezeReadGuard, Lock, RwLock, WorkerLocal,
 };
+use rustc_data_structures::{Limit, defer};
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, MultiSpan};
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
 use rustc_hir::definitions::{DefPathData, Definitions, PerParentDisambiguatorState};
 use rustc_hir::intravisit::VisitorExt;
 use rustc_hir::lang_items::LangItem;
-use rustc_hir::limit::Limit;
 use rustc_hir::{self as hir, CRATE_HIR_ID, HirId, Node, TraitCandidate, find_attr};
 use rustc_index::IndexVec;
 use rustc_macros::Diagnostic;
