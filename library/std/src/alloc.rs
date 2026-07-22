@@ -296,6 +296,7 @@ unsafe impl Allocator for System {
 unsafe impl GlobalAllocator for System {}
 
 static HOOK: AtomicPtr<()> = AtomicPtr::new(ptr::null_mut());
+/// Do we abort on unwind from the hook?
 static ABORT: AtomicBool = AtomicBool::new(true);
 
 /// Registers a custom allocation error hook, replacing any that was previously registered.
@@ -350,13 +351,13 @@ pub fn set_alloc_error_hook(hook: fn(Layout)) {
 ///
 /// # Safety
 ///
-/// Unwinding from the allocation error hook is not unsafe per se; however, large swathes of
-/// library code assume this never happens and may cause UB. Therefore, upon setting a hook
-/// that may unwind, care should be taken to audit code in dependencies for possible unsoundness
-/// in the presence of unwinds and ensure UB is not triggered.
-///
-/// Note that this has [also affected][example-1] the [standard library][example-2] in the past;
-/// this operation is *immensely unsafe* to perform in the presence of unaudited code.
+/// Unwinding from the allocation error hook is not unsafe per se; however, callers of
+/// [`handle_alloc_error`] may assume that that method will never unwind for safety and/or
+/// correctness. Note that this [also includes][example-1] the [standard library][example-2]
+/// at times; thus, callers must ensure that only code which explicitly promises *not* to
+/// rely on this guarantee of `handle_alloc_error` may be called between setting an unwinding
+/// hook and unsetting it via [`take_alloc_error_hook`]. This requirement applies across threads,
+/// as the hooks are global.
 ///
 /// [example-1]: https://github.com/rust-lang/rust/issues/157203
 /// [example-2]: https://github.com/rust-lang/rust/issues/156490
