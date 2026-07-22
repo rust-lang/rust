@@ -421,33 +421,42 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return Ty::new_error(tcx, guar);
         }
 
-        let oprnd_t = self.structurally_resolve_type(expr.span, oprnd_t);
+        // `Not` and `Neg` can be selected using an unresolved operand type,
+        // later constraints may still determine that type,
+        // so we call `resolve_vars_with_obligations` for them.
         match unop {
-            hir::UnOp::Deref => self.lookup_derefing(expr, oprnd, oprnd_t).unwrap_or_else(|| {
-                let mut err =
-                    self.dcx().create_err(CantDereference { span: expr.span, ty: oprnd_t });
-                let sp = tcx.sess.source_map().start_point(expr.span).with_parent(None);
-                if let Some(sp) = tcx.sess.psess.ambiguous_block_expr_parse.borrow().get(&sp) {
-                    err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
-                }
-                // The operand may be an uncalled function, in which case it is its return type
-                // the user meant to dereference. Only suggest the call when that return type is
-                // itself dereferenceable, mirroring the checks `lookup_derefing` just failed.
-                self.suggest_fn_call(&mut err, oprnd, oprnd_t, |output| {
-                    output.builtin_deref(true).is_some()
-                        || self.tcx.lang_items().deref_trait().is_some_and(|deref_trait| {
-                            self.type_implements_trait(deref_trait, [output], self.param_env)
-                                .may_apply()
-                        })
-                });
-                Ty::new_error(tcx, err.emit())
-            }),
+            hir::UnOp::Deref => {
+                // Dereferencing must distinguish builtin pointers from
+                // overloaded `Deref`, so it still requires a structurally resolved type.
+                let oprnd_t = self.structurally_resolve_type(expr.span, oprnd_t);
+                self.lookup_derefing(expr, oprnd, oprnd_t).unwrap_or_else(|| {
+                    let mut err =
+                        self.dcx().create_err(CantDereference { span: expr.span, ty: oprnd_t });
+                    let sp = tcx.sess.source_map().start_point(expr.span).with_parent(None);
+                    if let Some(sp) = tcx.sess.psess.ambiguous_block_expr_parse.borrow().get(&sp) {
+                        err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
+                    }
+                    // The operand may be an uncalled function, in which case it is its return type
+                    // the user meant to dereference. Only suggest the call when that return type is
+                    // itself dereferenceable, mirroring the checks `lookup_derefing` just failed.
+                    self.suggest_fn_call(&mut err, oprnd, oprnd_t, |output| {
+                        output.builtin_deref(true).is_some()
+                            || self.tcx.lang_items().deref_trait().is_some_and(|deref_trait| {
+                                self.type_implements_trait(deref_trait, [output], self.param_env)
+                                    .may_apply()
+                            })
+                    });
+                    Ty::new_error(tcx, err.emit())
+                })
+            }
             hir::UnOp::Not => {
+                let oprnd_t = self.resolve_vars_with_obligations(oprnd_t);
                 let result = self.check_user_unop(expr, oprnd_t, unop, expected_inner);
                 // If it's builtin, we can reuse the type, this helps inference.
                 if oprnd_t.is_integral() || *oprnd_t.kind() == ty::Bool { oprnd_t } else { result }
             }
             hir::UnOp::Neg => {
+                let oprnd_t = self.resolve_vars_with_obligations(oprnd_t);
                 let result = self.check_user_unop(expr, oprnd_t, unop, expected_inner);
                 // If it's builtin, we can reuse the type, this helps inference.
                 if oprnd_t.is_numeric() { oprnd_t } else { result }
