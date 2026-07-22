@@ -1908,6 +1908,9 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// then be dropped which will properly destroy `T` and release the
     /// allocated memory.
     ///
+    /// However, "unleaking" as per the above via [`Box::from_raw_in`] is only sound
+    /// for the global allocator.
+    ///
     /// Note: this is an associated function, which means that you have
     /// to call it as `Box::leak(b)` instead of `b.leak()`. This
     /// is so that there is no conflict with a method on the inner type.
