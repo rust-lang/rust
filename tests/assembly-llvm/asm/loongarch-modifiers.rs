@@ -13,51 +13,14 @@
 //@ compile-flags: -Ctarget-feature=+32s
 //@ compile-flags: -Zmerge-functions=disabled
 
-#![feature(asm_experimental_reg, no_core, repr_simd)]
+#![feature(asm_experimental_reg, no_core)]
 #![crate_type = "rlib"]
 #![no_core]
 #![allow(asm_sub_register)]
 
 extern crate minicore;
+use minicore::simd::*;
 use minicore::*;
-
-#[repr(simd)]
-pub struct i8x16([i8; 16]);
-#[repr(simd)]
-pub struct i16x8([i16; 8]);
-#[repr(simd)]
-pub struct i32x4([i32; 4]);
-#[repr(simd)]
-pub struct i64x2([i64; 2]);
-#[repr(simd)]
-pub struct f32x4([f32; 4]);
-#[repr(simd)]
-pub struct f64x2([f64; 2]);
-#[repr(simd)]
-pub struct i8x32([i8; 32]);
-#[repr(simd)]
-pub struct i16x16([i16; 16]);
-#[repr(simd)]
-pub struct i32x8([i32; 8]);
-#[repr(simd)]
-pub struct i64x4([i64; 4]);
-#[repr(simd)]
-pub struct f32x8([f32; 8]);
-#[repr(simd)]
-pub struct f64x4([f64; 4]);
-
-impl Copy for i8x16 {}
-impl Copy for i16x8 {}
-impl Copy for i32x4 {}
-impl Copy for i64x2 {}
-impl Copy for f32x4 {}
-impl Copy for f64x2 {}
-impl Copy for i8x32 {}
-impl Copy for i16x16 {}
-impl Copy for i32x8 {}
-impl Copy for i64x4 {}
-impl Copy for f32x8 {}
-impl Copy for f64x4 {}
 
 macro_rules! check { ($func:ident, $ty:ty, $class:ident, $code:literal) => {
     #[no_mangle]
