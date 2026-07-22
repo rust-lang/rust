@@ -1,9 +1,56 @@
 use crate::fs::{HomeDirs, MediaDirs};
-use crate::io;
+use crate::path::PathBuf;
+use crate::{env, io};
 
 /// Windows-specific extensions to [`fs::HomeDirs`](HomeDirs).
 #[unstable(feature = "dir_discovery", issue = "157515")]
 pub impl(self) trait HomeDirsExt: Sized {
+    /// Load the known user folder paths from environment variables.
+    ///
+    /// The loaded known folders are:
+    ///
+    /// | `HomeDirs` | Environment Variable |
+    /// | ---------- | -------------------- |
+    /// | [`cache_home`] | `%LOCALAPPDATA%` (`%USERPROFILE%\AppData\Local`) |
+    /// | [`config_home`] | `%APPDATA%` (`%USERPROFILE%\AppData\Roaming`) |
+    /// | [`data_home`] | `%APPDATA%` (`%USERPROFILE%\AppData\Roaming`) |
+    /// | [`state_home`] | `%LOCALAPPDATA%` (`%USERPROFILE%\AppData\Local`) |
+    ///
+    /// Note that caches/state are both put in `AppData\Local`, and config/data
+    /// in `AppData\Roaming`. It is always possible for multiple user directories
+    /// to be configured to the same path, but this is the common configuration
+    /// on Windows platforms, making it even more important to not assume files
+    /// in different user directories cannot alias each other.
+    ///
+    /// # Errors
+    ///
+    /// Errors if `%APPDATA%` or `%LOCALAPPDATA%` are not set or are non-UTF-8.
+    ///
+    /// # Implementation-specific behavior
+    ///
+    /// Windows keeps these environment variables updated to contain the paths
+    /// to the configured folder path, but it is possible for the environment
+    /// variables to not match the underlying system, such as when the user or
+    /// a program modifies the environment directly, or if the configuration
+    /// changed after the environment block was copied from the system.
+    ///
+    /// Unlike [`known_folders`](Self::known_folders), this does not require
+    /// `Shell32.dll` and thus does not require the overhead of linking in
+    /// DLLs that may result in Windows considering the application as a
+    /// graphical application.
+    ///
+    /// This behavior may change in the future. One example change that we
+    /// explicitly reserve the right to make is to load additional common
+    /// directories not currently in this list. The lack of configuration
+    /// for a folder not currently in this list will not be an error and
+    /// will result in a `None` value for that path in the returned value.
+    ///
+    /// [`cache_home`]: HomeDirs::cache_home
+    /// [`config_home`]: HomeDirs::config_home
+    /// [`data_home`]: HomeDirs::data_home
+    /// [`state_home`]: HomeDirs::state_home
+    fn appdata_env() -> io::Result<Self>;
+
     /// Load the known user folder paths using the [Known Folders] API.
     ///
     /// The loaded known folders are:
@@ -29,8 +76,8 @@ pub impl(self) trait HomeDirsExt: Sized {
     ///
     /// # Implementation-specific behavior
     ///
-    /// Calls [`SHGetKnownFolderPath`] for the current user once for each known
-    /// folder. Does not create the folder if missing.
+    /// Calls [`SHGetKnownFolderPath`] from `Shell32.dll` for the current user
+    /// once for each known folder. Does not create the folder if missing.
     ///
     /// This behavior may change in the future. One example change that we
     /// explicitly reserve the right to make is to load additional common
@@ -102,6 +149,24 @@ pub impl(self) trait MediaDirsExt: Sized {
 #[cfg(windows)]
 #[unstable(feature = "dir_discovery", issue = "157515")]
 impl HomeDirsExt for HomeDirs {
+    fn appdata_env() -> io::Result<Self> {
+        let wrap_err = |e: env::VarError| io::Error::new(io::ErrorKind::NotFound, e);
+        let local_app_data = PathBuf::from(env::var("LOCALAPPDATA").map_err(wrap_err)?);
+        let roaming_app_data = PathBuf::from(env::var("APPDATA").map_err(wrap_err)?);
+
+        // AppData/Local -- system-local, doesn't make sense to sync to another
+        // AppData/Roaming -- data that makes sense to sync across machines
+
+        let mut dirs = HomeDirs::empty();
+
+        dirs.cache = Some(local_app_data.clone());
+        dirs.config = Some(roaming_app_data.clone());
+        dirs.data = Some(roaming_app_data);
+        dirs.state = Some(local_app_data);
+
+        Ok(dirs)
+    }
+
     fn known_folders() -> io::Result<Self> {
         use crate::sys::c;
 
