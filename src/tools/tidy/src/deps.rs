@@ -8,11 +8,9 @@ use std::path::Path;
 
 use cargo_metadata::semver::Version;
 use cargo_metadata::{Metadata, Package, PackageId};
+use shim_utils::proc_macro_deps;
 
 use crate::diagnostics::{RunningCheck, TidyCtx};
-
-#[path = "../../../bootstrap/src/utils/proc_macro_deps.rs"]
-mod proc_macro_deps;
 
 #[derive(Clone, Copy)]
 struct ListLocation {
@@ -704,6 +702,8 @@ pub fn check(root: &Path, cargo: &Path, tidy_ctx: TidyCtx) {
 
 /// Ensure the list of proc-macro crate transitive dependencies is up to date
 fn check_proc_macro_dep_list(root: &Path, cargo: &Path, bless: bool, check: &mut RunningCheck) {
+    const PROC_MACRO_DEPS_RS_PATH: &str = "src/shim_utils/src/proc_macro_deps.rs";
+
     if std::env::var("RUSTC").is_err() {
         panic!("tidy must be run under bootstrap (./x test tidy), not as a standalone command");
     }
@@ -732,7 +732,7 @@ fn check_proc_macro_dep_list(root: &Path, cargo: &Path, bless: bool, check: &mut
     if needs_blessing && bless {
         let mut proc_macro_deps: Vec<_> = proc_macro_deps.into_iter().collect();
         proc_macro_deps.sort();
-        let mut file = File::create(root.join("src/bootstrap/src/utils/proc_macro_deps.rs"))
+        let mut file = File::create(root.join(PROC_MACRO_DEPS_RS_PATH))
             .expect("`proc_macro_deps` should exist");
         writeln!(
             &mut file,
@@ -758,13 +758,13 @@ pub static CRATES: &[&str] = &[
         for missing in proc_macro_deps.difference(&expected) {
             error_found = true;
             check.error(format!(
-                "proc-macro crate dependency `{missing}` is not registered in `src/bootstrap/src/utils/proc_macro_deps.rs`",
+                "proc-macro crate dependency `{missing}` is not registered in `{PROC_MACRO_DEPS_RS_PATH}`",
             ));
         }
         for extra in expected.difference(&proc_macro_deps) {
             error_found = true;
             check.error(format!(
-                "`{extra}` is registered in `src/bootstrap/src/utils/proc_macro_deps.rs`, but is not a proc-macro crate dependency",
+                "`{extra}` is registered in `{PROC_MACRO_DEPS_RS_PATH}`, but is not a proc-macro crate dependency",
             ));
         }
         if error_found {

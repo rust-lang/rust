@@ -1,11 +1,3 @@
-//! This module is explictly not `mod`ed as it's shared across multiple crates
-//! like bootstrap and compiletest via `#[path]` moduled declarations.
-//! It's important to keep this file isolated from the rest of build_helper so it can be compiled
-//! without build_helper.
-
-// Roughly match the `std::process::Command` API
-#![allow(dead_code, unreachable_pub)]
-
 use std::ffi::{OsStr, OsString};
 use std::io::Write;
 use std::path::Path;
