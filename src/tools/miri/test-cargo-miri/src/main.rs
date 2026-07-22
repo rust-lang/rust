@@ -67,6 +67,10 @@ fn main() {
 mod test {
     use byteorder_2::{BigEndian, ByteOrder};
 
+    extern crate cargo_miri_test;
+    extern crate exported_symbol;
+    extern crate issue_rust_86261;
+
     // Make sure in-crate tests with dev-dependencies work
     #[test]
     fn dev_dependency() {
@@ -75,9 +79,6 @@ mod test {
 
     #[test]
     fn exported_symbol() {
-        extern crate cargo_miri_test;
-        extern crate exported_symbol;
-        extern crate issue_rust_86261;
         // Test calling exported symbols in (transitive) dependencies.
         // Repeat calls to make sure the `Instance` cache is not broken.
         for _ in 0..3 {
@@ -94,5 +95,10 @@ mod test {
             unsafe { NoMangleStruct() }
             unsafe { no_mangle_generic() }
         }
+    }
+
+    #[test]
+    fn static_initializer_in_dep() {
+        exported_symbol::check_initialized();
     }
 }
