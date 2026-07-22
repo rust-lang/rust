@@ -114,6 +114,8 @@ fn synthesize_auto_trait_impl<'tcx>(
         auto_trait::AutoTraitResult::ExplicitImpl => return None,
     };
 
+    super::inline::record_extern_trait(cx, trait_def_id);
+
     Some(clean::Item {
         inner: Box::new(clean::ItemInner {
             name: None,
