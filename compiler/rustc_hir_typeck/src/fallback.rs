@@ -1,4 +1,3 @@
-use std::cell::OnceCell;
 use std::ops::ControlFlow;
 
 use rustc_data_structures::fx::FxHashSet;
@@ -244,13 +243,16 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
                 &coercion_graph,
             );
 
-            let unsafe_infer_vars = OnceCell::new();
-            for &root_vid in &diverging_root_vids {
-                self.lint_never_type_fallback_flowing_into_unsafe_code(
-                    &unsafe_infer_vars,
-                    &coercion_graph,
-                    root_vid,
-                );
+            if !diverging_root_vids.is_empty() {
+                let unsafe_infer_vars = compute_unsafe_infer_vars(self, self.body_def_id);
+
+                for &root_vid in &diverging_root_vids {
+                    self.lint_never_type_fallback_flowing_into_unsafe_code(
+                        &unsafe_infer_vars,
+                        &coercion_graph,
+                        root_vid,
+                    );
+                }
             }
         }
 
@@ -261,16 +263,10 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
 
     fn lint_never_type_fallback_flowing_into_unsafe_code(
         &self,
-        unsafe_infer_vars: &OnceCell<UnordMap<ty::TyVid, (HirId, Span, UnsafeUseReason)>>,
+        unsafe_infer_vars: &UnordMap<ty::TyVid, (HirId, Span, UnsafeUseReason)>,
         coercion_graph: &VecGraph<ty::TyVid, true>,
         root_vid: ty::TyVid,
     ) {
-        let unsafe_infer_vars = unsafe_infer_vars.get_or_init(|| {
-            let unsafe_infer_vars = compute_unsafe_infer_vars(self, self.body_def_id);
-            debug!(?unsafe_infer_vars);
-            unsafe_infer_vars
-        });
-
         let affected_unsafe_infer_vars =
             graph::depth_first_search_as_undirected(&coercion_graph, root_vid)
                 .filter_map(|x| unsafe_infer_vars.get(&x).copied())
