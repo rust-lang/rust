@@ -5,7 +5,7 @@
 // The old solver doesn't verify depth when looking up cache.
 // To avoid breakage, we evaluate with higher recursion limit in the next solver
 // and emit an FCW for this.
-// See the `NEXT_TRAIT_SOLVER_OVERFLOW` FCW.
+// See the `recursion_depth_exceeding_limit` FCW.
 
 #![recursion_limit = "8"]
 
@@ -38,21 +38,21 @@ fn foo() {
     a.anyone_can_call();
 
     let b: <W<W<W<W<W<W<W<W<W<W<()>>>>>>>>>> as HasAssoc>::Assoc = loop {};
-    //[next]~^ WARN: overflow evaluating the requirement `<W<W<W<W<W<W<W<_>>>>>>> as HasAssoc>::Assoc == _` [next_trait_solver_overflow]
+    //[next]~^ WARN: overflow evaluating the requirement `<W<W<W<W<W<W<W<_>>>>>>> as HasAssoc>::Assoc == _` [recursion_depth_exceeding_limit]
     //[next]~| WARN: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-    //[next]~| WARN: overflow evaluating the requirement `<W<W<W<W<W<W<W<_>>>>>>> as HasAssoc>::Assoc == _` [next_trait_solver_overflow]
+    //[next]~| WARN: overflow evaluating the requirement `<W<W<W<W<W<W<W<_>>>>>>> as HasAssoc>::Assoc == _` [recursion_depth_exceeding_limit]
     //[next]~| WARN: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-    //[next]~| WARN: overflow evaluating the requirement `W<W<W<W<W<W<W<W<W<W<()>>>>>>>>>>: HasAssoc` [next_trait_solver_overflow]
+    //[next]~| WARN: overflow evaluating the requirement `W<W<W<W<W<W<W<W<W<W<()>>>>>>>>>>: HasAssoc` [recursion_depth_exceeding_limit]
     //[next]~| WARN: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-    //[next]~| WARN: overflow evaluating the requirement `<W<W<W<W<W<W<_>>>>>> as HasAssoc>::Assoc well-formed` [next_trait_solver_overflow]
+    //[next]~| WARN: overflow evaluating the requirement `<W<W<W<W<W<W<_>>>>>> as HasAssoc>::Assoc well-formed` [recursion_depth_exceeding_limit]
     //[next]~| WARN: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-    //[next]~| WARN: overflow evaluating the requirement `<W<W<W<W<W<W<W<_>>>>>>> as HasAssoc>::Assoc == _` [next_trait_solver_overflow]
+    //[next]~| WARN: overflow evaluating the requirement `<W<W<W<W<W<W<W<_>>>>>>> as HasAssoc>::Assoc == _` [recursion_depth_exceeding_limit]
     //[next]~| WARN: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-    //[next]~| WARN: overflow evaluating the requirement `<W<W<W<W<W<W<_>>>>>> as HasAssoc>::Assoc well-formed` [next_trait_solver_overflow]
+    //[next]~| WARN: overflow evaluating the requirement `<W<W<W<W<W<W<_>>>>>> as HasAssoc>::Assoc well-formed` [recursion_depth_exceeding_limit]
     //[next]~| WARN: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-    //[next]~| WARN: overflow evaluating the requirement `<W<W<W<W<W<W<W<_>>>>>>> as HasAssoc>::Assoc == _` [next_trait_solver_overflow]
+    //[next]~| WARN: overflow evaluating the requirement `<W<W<W<W<W<W<W<_>>>>>>> as HasAssoc>::Assoc == _` [recursion_depth_exceeding_limit]
     //[next]~| WARN: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-    //[next]~| WARN: overflow evaluating the requirement `<W<W<W<W<W<W<_>>>>>> as HasAssoc>::Assoc well-formed` [next_trait_solver_overflow]
+    //[next]~| WARN: overflow evaluating the requirement `<W<W<W<W<W<W<_>>>>>> as HasAssoc>::Assoc well-formed` [recursion_depth_exceeding_limit]
     //[next]~| WARN: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
     // Force normalization when looking up methods and the self_ty is normalized to infer.

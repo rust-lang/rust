@@ -796,7 +796,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
 
     fn emit_next_solver_overflow_fcw(self, predicate: ty::Predicate<'tcx>, span: Span) {
         self.emit_node_span_lint(
-            rustc_session::lint::builtin::NEXT_TRAIT_SOLVER_OVERFLOW,
+            rustc_session::lint::builtin::RECURSION_DEPTH_EXCEEDING_LIMIT,
             CRATE_HIR_ID,
             span,
             rustc_errors::DiagDecorator(|diag| {

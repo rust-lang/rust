@@ -20,9 +20,8 @@ fn require_sync<T: Sync>() {}
 
 fn main() {
     require_sync::<Foo<Foo<Foo<Foo<Foo<Foo<()>>>>>>>();
-    //[next]~^ WARN: overflow evaluating the requirement `Foo<Foo<Foo<Foo<Foo<Foo<()>>>>>>: Sync` [next_trait_solver_overflow]
+    //[next]~^ WARN: overflow evaluating the requirement `Foo<Foo<Foo<Foo<Foo<Foo<()>>>>>>: Sync` [recursion_depth_exceeding_limit]
     //[next]~| WARN: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-    //[next]~| WARN: overflow evaluating the requirement `Foo<Foo<Foo<Foo<Foo<Foo<()>>>>>>: Sync` [next_trait_solver_overflow]
+    //[next]~| WARN: overflow evaluating the requirement `Foo<Foo<Foo<Foo<Foo<Foo<()>>>>>>: Sync` [recursion_depth_exceeding_limit]
     //[next]~| WARN: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-
 }

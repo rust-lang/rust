@@ -318,7 +318,7 @@ where
 /// does so. Thus the next solver is more prone to overflow.
 /// To mitigate breakages, we re-evaluate the overflowed goal with doubled recursion limit
 /// and emit a FCW if it succeeds.
-/// See the doc comment on `NEXT_TRAIT_SOLVER_OVERFLOW` and #159228 for more details.
+/// See the doc comment on `RECURSION_DEPTH_EXCEEDING_LIMIT` and #159228 for more details.
 fn maybe_evaluate_root_goal_with_higher_recursion_limit<D, I>(
     delegate: &D,
     goal: Goal<I, I::Predicate>,
@@ -328,7 +328,7 @@ fn maybe_evaluate_root_goal_with_higher_recursion_limit<D, I>(
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
-    if delegate.typing_mode_raw().is_coherence() {
+    if !delegate.enable_next_solver_overflow_fcw() {
         return;
     }
 
@@ -351,21 +351,21 @@ fn maybe_evaluate_root_goal_with_higher_recursion_limit<D, I>(
     }
 
     let rerun_result = delegate.commit_if_ok(|| {
-        let new_result =
+        let rerun_result =
             EvalCtxt::enter_root(delegate, delegate.cx().recursion_limit() * 2, span, |ecx| {
                 ecx.evaluate_goal_no_fast_paths(GoalSource::Misc, goal)
             });
-        if let Ok(goal_evaluation) = &new_result
+        if let Ok(goal_evaluation) = &rerun_result
             && goal_evaluation.certainty.is_yes()
         {
-            Ok(new_result)
+            Ok(rerun_result)
         } else {
             Err(())
         }
     });
-    if let Ok(new_result) = rerun_result {
+    if let Ok(rerun_result) = rerun_result {
         delegate.cx().emit_next_solver_overflow_fcw(predicate, span);
-        *initial_result = new_result;
+        *initial_result = rerun_result;
     }
 }
 
@@ -373,7 +373,7 @@ fn maybe_evaluate_root_goal_with_higher_recursion_limit<D, I>(
 /// does so. Thus the next solver is more prone to overflow.
 /// To mitigate breakages, we re-evaluate the overflowed goal with doubled recursion limit
 /// and emit a FCW if it succeeds.
-/// See the doc comment on `NEXT_TRAIT_SOLVER_OVERFLOW` and #159228 for more details.
+/// See the doc comment on `RECURSION_DEPTH_EXCEEDING_LIMIT` and #159228 for more details.
 fn maybe_evaluate_root_goal_for_proof_tree_with_higher_recursion_limit<D, I>(
     delegate: &D,
     goal: Goal<I, I::Predicate>,
@@ -386,7 +386,7 @@ fn maybe_evaluate_root_goal_for_proof_tree_with_higher_recursion_limit<D, I>(
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
-    if delegate.typing_mode_raw().is_coherence() {
+    if !delegate.enable_next_solver_overflow_fcw() {
         return;
     }
 
@@ -425,9 +425,9 @@ fn maybe_evaluate_root_goal_for_proof_tree_with_higher_recursion_limit<D, I>(
             Err(())
         }
     });
-    if let Ok(new_result_pair) = rerun_result {
+    if let Ok(rerun_result) = rerun_result {
         delegate.cx().emit_next_solver_overflow_fcw(predicate, span);
-        *initial_result = new_result_pair;
+        *initial_result = rerun_result;
     }
 }
 

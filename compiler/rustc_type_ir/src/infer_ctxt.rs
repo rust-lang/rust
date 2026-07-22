@@ -344,6 +344,8 @@ pub trait InferCtxtLike: Sized {
         true
     }
 
+    fn enable_next_solver_overflow_fcw(&self) -> bool;
+
     fn disable_trait_solver_fast_paths(&self) -> bool;
 
     fn typing_mode_raw(&self) -> TypingMode<Self::Interner>;
