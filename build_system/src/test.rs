@@ -788,7 +788,13 @@ fn test_stdarch(env: &Env, args: &TestArg) -> Result<(), String> {
         format!("{rustflags} -Ainternal_features").trim().to_owned(),
     );
     env.insert("TARGET".to_string(), args.config_info.target_triple.clone());
-    run_cargo_command(&[&"test", &"--manifest-path", &manifest_path], None, &env, args)?;
+
+    let mut command: Vec<&dyn AsRef<OsStr>> =
+        vec![&"test", &"--manifest-path", &manifest_path, &"--"];
+    for test_name in &args.test_args {
+        command.push(test_name);
+    }
+    run_cargo_command(&command, None, &env, args)?;
     Ok(())
 }
 

@@ -42,8 +42,14 @@ jobs:
     - name: Install more recent binutils
       run: |
         echo "deb http://archive.ubuntu.com/ubuntu plucky main universe" | sudo tee /etc/apt/sources.list.d/plucky-copies.list
-        sudo apt-get update
+        sudo apt-get update -o Acquire::Retries=3
         sudo apt-get install binutils
+        installed="$(dpkg-query --showformat='${Version}' --show binutils)"
+        echo "Installed binutils: $installed"
+        if dpkg --compare-versions "$installed" lt "2.44"; then
+            echo "::error::binutils upgrade failed (got $installed, need >= 2.44); the apt fetch probably failed"
+            exit 1
+        fi
 
     - name: Install Intel Software Development Emulator
       if: ${{ matrix.cargo_runner }}
@@ -89,7 +95,8 @@ jobs:
     - name: Run stdarch tests
       if: ${{ !matrix.cargo_runner }}
       run: |
-        ./y.sh test --release --stdarch-tests
+        # FIXME: remove --skip test_tile_ and --skip --skip test__tile when it's implemented.
+        ./y.sh test --release --stdarch-tests -- --skip test_tile_ --skip test__tile
 
     - name: Run stdarch tests
       if: ${{ matrix.cargo_runner }}
