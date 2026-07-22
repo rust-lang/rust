@@ -277,7 +277,10 @@ impl<'cx> MacroExpanderResult<'cx> {
         arm_span: Span,
         macro_ident: Ident,
     ) -> Self {
-        let parser = ParserAnyMacro::from_tts(cx, tts, site_span, arm_span, macro_ident, &[], &[]);
+        // Emit SEMICOLON_IN_EXPRESSIONS_FROM_MACROS here, rather than the NON_LOCAL version.
+        let is_local = true;
+        let parser =
+            ParserAnyMacro::from_tts(cx, tts, site_span, arm_span, is_local, macro_ident, &[], &[]);
         ExpandResult::Ready(Box::new(parser))
     }
 }
