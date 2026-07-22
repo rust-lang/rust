@@ -553,13 +553,6 @@ where
 /// Implementors must ensure that memory cannot be freed except via a call to
 /// `Allocator::deallocate`, and that subtype coercion preserves this invariant.
 ///
-/// Additionally, users of this trait must not rely on side effects of allocating or deallocating
-/// method calls on `StaticAllocator` implementors being observable (i.e. it is sound for an
-/// allocation followed by a deallocation to be moved to the stack, or for the compiler to
-/// spuriously introduce an allocation-deallocation pair where one was not specified manually).
-/// While it is possible to make such calls *unlikely* to be elided (e.g. for benchmarking), this
-/// cannot be relied upon for soundness.
-///
 /// These requirements trivially apply to allocators that always maintain global state, such as
 /// `System` or `Global`. However, due to subtype coercion, it is *not* sound to implement
 /// for an arbitrary `Allocator + 'static` due to [edge-case interactions][unsound] with
