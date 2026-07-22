@@ -54,7 +54,7 @@ cfg_select! {
         pub mod linux;
     }
     target_family = "wasm" => {
-        #[cfg(any(target_env = "p1", target_env = "p2"))]
+        #[cfg(any(target_env = "p1", target_env = "p2", target_env = "p3"))]
         pub mod wasi;
         #[cfg(target_env = "p2")]
         pub mod wasip2;
