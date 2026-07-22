@@ -227,11 +227,16 @@ fn check<'tcx>(
         let expected = Ty::new_fn_ptr(cx.tcx, lang_sig);
         let actual = Ty::new_fn_ptr(cx.tcx, user_sig);
 
+        // ! is ABI compatible with ()
+        // https://github.com/rust-lang/rust/issues/159446
+        let lang_ret_incompatible_with_unit = !lang_sig.output().skip_binder().is_unit()
+            && !lang_sig.output().skip_binder().is_never();
+        let user_sig_ret_is_unit = user_sig.output().skip_binder().is_unit();
+
         if lang_sig.abi() != user_sig.abi()
             || lang_sig.c_variadic() != user_sig.c_variadic()
             || lang_sig.inputs().skip_binder().len() != user_sig.inputs().skip_binder().len()
-            || (!lang_sig.output().skip_binder().is_unit()
-                && user_sig.output().skip_binder().is_unit())
+            || (lang_ret_incompatible_with_unit && user_sig_ret_is_unit)
         {
             cx.emit_span_lint(
                 INVALID_RUNTIME_SYMBOL_DEFINITIONS,

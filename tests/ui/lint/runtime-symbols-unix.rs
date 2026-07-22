@@ -57,6 +57,18 @@ fn suspicious() {
         pub static exit2: Option<unsafe extern "C" fn(f32) -> !>;
         //~^ WARN suspicious definition of the runtime `exit` symbol
     }
+
+    extern "C" {
+        #[link_name = "exit"]
+        pub fn exit3(code: i32) -> i32;
+        //~^ WARN suspicious definition of the runtime `exit` symbol
+
+        // ! is ABI compatible with ()
+        // https://github.com/rust-lang/rust/issues/159446
+        #[link_name = "exit"]
+        pub fn exit4(code: i32);
+        //~^ WARN suspicious definition of the runtime `exit` symbol
+    }
 }
 
 fn main() {}
