@@ -13,13 +13,14 @@ pub(crate) fn opts() -> TargetOptions {
     // but LLVM maintainers rejected it: https://reviews.llvm.org/D51440
     let pre_link_args = TargetOptions::link_args(
         LinkerFlavor::Gnu(Cc::Yes, Lld::No),
-        &["-nolibc", "--unwindlib=none"],
+        &["-nolibc", "--unwindlib=libunwind", "-static-libgcc"],
     );
     // Order of `late_link_args*` does not matter with LLD.
     let mingw_libs = &["-lmingw32", "-lmingwex", "-lmsvcrt", "-lkernel32", "-luser32"];
 
     let mut late_link_args =
         TargetOptions::link_args(LinkerFlavor::Gnu(Cc::No, Lld::No), mingw_libs);
+    add_link_args(&mut late_link_args, LinkerFlavor::Gnu(Cc::No, Lld::No), &["-l:libunwind.a"]);
     add_link_args(&mut late_link_args, LinkerFlavor::Gnu(Cc::Yes, Lld::No), mingw_libs);
 
     TargetOptions {
