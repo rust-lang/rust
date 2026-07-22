@@ -12,6 +12,58 @@
 #[stable(feature = "simd_arch", since = "1.27.0")]
 pub use crate::core_arch::arch::*;
 
+/// Platform-specific intrinsics for the `wasm32` platform.
+///
+/// This module shadows the `core_arch` re-export to additionally provide the
+/// [`externref`](wasm32::externref) lang type, which is defined here (rather
+/// than in `stdarch`) as it is tightly coupled to compiler support.
+#[cfg(any(target_arch = "wasm32", doc))]
+#[doc(cfg(target_arch = "wasm32"))]
+#[stable(feature = "simd_wasm32", since = "1.33.0")]
+pub mod wasm32 {
+    #[stable(feature = "simd_wasm32", since = "1.33.0")]
+    pub use crate::core_arch::arch::wasm32::*;
+
+    /// A WebAssembly `externref`: an opaque, unforgeable reference to a host
+    /// value, valid only while it remains live on the wasm stack.
+    ///
+    /// `externref` is a bare-position-only type: it may appear only as the
+    /// top-level type of a function parameter, return value or local binding
+    /// (function pointer signature slots included). It cannot appear inside
+    /// any other type — no references, aggregates, statics or generic
+    /// arguments — which is enforced at type-check time.
+    ///
+    /// The primary use is typing `extern "C"` imports and exports, where
+    /// values cross the host boundary directly and identity-preserving, with
+    /// liveness traced by the host GC:
+    ///
+    /// ```ignore (wasm-only)
+    /// unsafe extern "C" {
+    ///     fn create_ref() -> externref;
+    ///     fn use_ref(v: externref);
+    /// }
+    /// ```
+    #[allow(non_camel_case_types)]
+    #[lang = "externref"]
+    #[non_exhaustive]
+    #[derive(Copy, Clone)]
+    #[unstable(feature = "wasm_externref", issue = "none")]
+    pub struct externref;
+
+    #[unstable(feature = "wasm_externref", issue = "none")]
+    impl !Send for externref {}
+
+    #[unstable(feature = "wasm_externref", issue = "none")]
+    impl !Sync for externref {}
+
+    #[unstable(feature = "wasm_externref", issue = "none")]
+    impl crate::fmt::Debug for externref {
+        fn fmt(&self, f: &mut crate::fmt::Formatter<'_>) -> crate::fmt::Result {
+            f.write_str("externref")
+        }
+    }
+}
+
 /// Inline assembly.
 ///
 /// Refer to [Rust By Example] for a usage guide and the [reference] for

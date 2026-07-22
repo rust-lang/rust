@@ -13,8 +13,6 @@
     proc_macro_hygiene,
     stmt_expr_attributes,
     core_intrinsics,
-    lang_items,
-    negative_impls,
     no_core,
     fmt_helpers_for_derive,
     rustc_attrs,

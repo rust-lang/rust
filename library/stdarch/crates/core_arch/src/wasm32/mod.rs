@@ -19,38 +19,6 @@ mod memory;
 #[stable(feature = "simd_wasm32", since = "1.33.0")]
 pub use self::memory::*;
 
-/// A WebAssembly `externref`: an opaque, unforgeable reference to a host
-/// value, valid only while it remains live on the wasm stack.
-///
-/// `externref` is a bare-position-only type: it may appear only as the
-/// top-level type of a function parameter, return value or local binding
-/// (function pointer signature slots included). It cannot appear inside any
-/// other type — no references, aggregates, statics or generic arguments —
-/// which is enforced at type-check time.
-///
-/// The primary use is typing `extern "C"` imports and exports, where values
-/// cross the host boundary directly and identity-preserving, with liveness
-/// traced by the host GC:
-///
-/// ```ignore (wasm-only)
-/// unsafe extern "C" {
-///     fn create_ref() -> externref;
-///     fn use_ref(v: externref);
-/// }
-/// ```
-#[allow(non_camel_case_types)]
-#[lang = "externref"]
-#[non_exhaustive]
-#[derive(Copy, Clone)]
-#[unstable(feature = "wasm_externref", issue = "none")]
-pub struct externref;
-
-#[unstable(feature = "wasm_externref", issue = "none")]
-impl !Send for externref {}
-
-#[unstable(feature = "wasm_externref", issue = "none")]
-impl !Sync for externref {}
-
 /// Generates the [`unreachable`] instruction, which causes an unconditional [trap].
 ///
 /// This function is safe to call and immediately aborts the execution.
