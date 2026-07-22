@@ -1,10 +1,10 @@
-error: `#[cold]` attribute cannot be used on structs
-  --> $DIR/cold-attribute-application-54044.rs:4:1
+error: the `cold` attribute cannot be used on structs
+  --> $DIR/cold-attribute-application-54044.rs:4:3
    |
 LL | #[cold]
-   | ^^^^^^^
+   |   ^^^^
    |
-   = help: `#[cold]` can only be applied to functions
+   = help: the `cold` attribute can only be applied to functions
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 note: the lint level is defined here
   --> $DIR/cold-attribute-application-54044.rs:2:9
@@ -12,13 +12,13 @@ note: the lint level is defined here
 LL | #![deny(unused_attributes)]
    |         ^^^^^^^^^^^^^^^^^
 
-error: `#[cold]` attribute cannot be used on expressions
-  --> $DIR/cold-attribute-application-54044.rs:10:5
+error: the `cold` attribute cannot be used on expressions
+  --> $DIR/cold-attribute-application-54044.rs:10:7
    |
 LL |     #[cold]
-   |     ^^^^^^^
+   |       ^^^^
    |
-   = help: `#[cold]` can only be applied to functions
+   = help: the `cold` attribute can only be applied to functions
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: aborting due to 2 previous errors

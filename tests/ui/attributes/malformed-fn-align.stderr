@@ -49,13 +49,13 @@ error[E0589]: invalid alignment value: not a power of two
 LL | #[rustc_align(0)]
    |               ^
 
-error: `#[repr(align(...))]` attribute cannot be used on functions
-  --> $DIR/malformed-fn-align.rs:26:1
+error: the `repr(align(...))` attribute cannot be used on functions
+  --> $DIR/malformed-fn-align.rs:26:3
    |
 LL | #[repr(align(16))]
-   | ^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^
    |
-   = help: `#[repr(align(...))]` can only be applied to data types
+   = help: the `repr(align(...))` attribute can only be applied to data types
    = help: use `#[rustc_align(...)]` instead
 
 error: expected a literal (`1u8`, `1.0f32`, `"string"`, etc.) here, found expression
@@ -96,37 +96,37 @@ error[E0589]: invalid alignment value: not a power of two
 LL | #[rustc_align(3)]
    |               ^
 
-error: `#[rustc_align]` attribute cannot be used on structs
-  --> $DIR/malformed-fn-align.rs:44:1
+error: the `rustc_align` attribute cannot be used on structs
+  --> $DIR/malformed-fn-align.rs:44:3
    |
 LL | #[rustc_align(16)]
-   | ^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^
    |
-   = help: `#[rustc_align]` can only be applied to functions
+   = help: the `rustc_align` attribute can only be applied to functions
 
-error: `#[rustc_align]` attribute cannot be used on constants
-  --> $DIR/malformed-fn-align.rs:47:1
+error: the `rustc_align` attribute cannot be used on constants
+  --> $DIR/malformed-fn-align.rs:47:3
    |
 LL | #[rustc_align(32)]
-   | ^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^
    |
-   = help: `#[rustc_align]` can only be applied to functions
+   = help: the `rustc_align` attribute can only be applied to functions
 
-error: `#[rustc_align]` attribute cannot be used on modules
-  --> $DIR/malformed-fn-align.rs:50:1
+error: the `rustc_align` attribute cannot be used on modules
+  --> $DIR/malformed-fn-align.rs:50:3
    |
 LL | #[rustc_align(32)]
-   | ^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^
    |
-   = help: `#[rustc_align]` can only be applied to functions
+   = help: the `rustc_align` attribute can only be applied to functions
 
-error: `#[rustc_align]` attribute cannot be used on use statements
-  --> $DIR/malformed-fn-align.rs:53:1
+error: the `rustc_align` attribute cannot be used on use statements
+  --> $DIR/malformed-fn-align.rs:53:3
    |
 LL | #[rustc_align(32)]
-   | ^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^
    |
-   = help: `#[rustc_align]` can only be applied to functions
+   = help: the `rustc_align` attribute can only be applied to functions
 
 error: aborting due to 15 previous errors
 

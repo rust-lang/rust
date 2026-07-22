@@ -29,13 +29,13 @@ LL -     #[rustc_confusables(invalid_meta_item)]
 LL +     #[rustc_confusables("name1", "name2", ...)]
    |
 
-error: `#[rustc_confusables]` attribute cannot be used on functions
-  --> $DIR/rustc_confusables.rs:45:1
+error: the `rustc_confusables` attribute cannot be used on functions
+  --> $DIR/rustc_confusables.rs:45:3
    |
 LL | #[rustc_confusables("blah")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^
    |
-   = help: `#[rustc_confusables]` can only be applied to inherent methods
+   = help: the `rustc_confusables` attribute can only be applied to inherent methods
 
 error[E0599]: no method named `inser` found for struct `rustc_confusables_across_crate::BTreeSet` in the current scope
   --> $DIR/rustc_confusables.rs:12:7

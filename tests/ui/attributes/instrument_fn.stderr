@@ -18,61 +18,61 @@ LL |     let _x = #[instrument_fn = "on"]
    = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: `#[instrument_fn]` attribute cannot be used on crates
-  --> $DIR/instrument_fn.rs:2:1
+error: the `instrument_fn` attribute cannot be used on crates
+  --> $DIR/instrument_fn.rs:2:4
    |
 LL | #![instrument_fn = "off"]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |    ^^^^^^^^^^^^^
    |
-   = help: `#[instrument_fn]` can only be applied to functions
+   = help: the `instrument_fn` attribute can only be applied to functions
 
-error: `#[instrument_fn]` attribute cannot be used on structs
-  --> $DIR/instrument_fn.rs:4:1
+error: the `instrument_fn` attribute cannot be used on structs
+  --> $DIR/instrument_fn.rs:4:3
    |
 LL | #[instrument_fn = "on"]
-   | ^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^
    |
-   = help: `#[instrument_fn]` can only be applied to functions
+   = help: the `instrument_fn` attribute can only be applied to functions
 
-error: `#[instrument_fn]` attribute cannot be used on modules
-  --> $DIR/instrument_fn.rs:7:1
+error: the `instrument_fn` attribute cannot be used on modules
+  --> $DIR/instrument_fn.rs:7:3
    |
 LL | #[instrument_fn = "on"]
-   | ^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^
    |
-   = help: `#[instrument_fn]` can only be applied to functions
+   = help: the `instrument_fn` attribute can only be applied to functions
 
-error: `#[instrument_fn]` attribute cannot be used on inherent impl blocks
-  --> $DIR/instrument_fn.rs:10:1
+error: the `instrument_fn` attribute cannot be used on inherent impl blocks
+  --> $DIR/instrument_fn.rs:10:3
    |
 LL | #[instrument_fn = "on"]
-   | ^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^
    |
-   = help: `#[instrument_fn]` can only be applied to functions
+   = help: the `instrument_fn` attribute can only be applied to functions
 
-error: `#[instrument_fn]` attribute cannot be used on expressions
-  --> $DIR/instrument_fn.rs:14:9
+error: the `instrument_fn` attribute cannot be used on expressions
+  --> $DIR/instrument_fn.rs:14:11
    |
 LL |         #[instrument_fn = "off"]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+   |           ^^^^^^^^^^^^^
    |
-   = help: `#[instrument_fn]` can only be applied to functions
+   = help: the `instrument_fn` attribute can only be applied to functions
 
-error: `#[instrument_fn]` attribute cannot be used on traits
-  --> $DIR/instrument_fn.rs:20:1
+error: the `instrument_fn` attribute cannot be used on traits
+  --> $DIR/instrument_fn.rs:20:3
    |
 LL | #[instrument_fn = "off"]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^
    |
-   = help: `#[instrument_fn]` can only be applied to functions
+   = help: the `instrument_fn` attribute can only be applied to functions
 
-error: `#[instrument_fn]` attribute cannot be used on required trait methods
-  --> $DIR/instrument_fn.rs:22:5
+error: the `instrument_fn` attribute cannot be used on required trait methods
+  --> $DIR/instrument_fn.rs:22:7
    |
 LL |     #[instrument_fn = "off"]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^^^^^^
    |
-   = help: `#[instrument_fn]` can only be applied to functions with a body
+   = help: the `instrument_fn` attribute can only be applied to functions with a body
 
 error[E0805]: malformed `instrument_fn` attribute input
   --> $DIR/instrument_fn.rs:37:1
@@ -113,13 +113,13 @@ LL - #[instrument_fn = 1]
 LL + #[instrument_fn = "on|off"]
    |
 
-error: `#[instrument_fn]` attribute cannot be used on closures
-  --> $DIR/instrument_fn.rs:47:14
+error: the `instrument_fn` attribute cannot be used on closures
+  --> $DIR/instrument_fn.rs:47:16
    |
 LL |     let _x = #[instrument_fn = "on"]
-   |              ^^^^^^^^^^^^^^^^^^^^^^^
+   |                ^^^^^^^^^^^^^
    |
-   = help: `#[instrument_fn]` can be applied to functions and methods
+   = help: the `instrument_fn` attribute can be applied to functions and methods
 
 error: aborting due to 13 previous errors
 

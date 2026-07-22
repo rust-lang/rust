@@ -11,16 +11,16 @@ LL | foo!();
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
    = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: `#[allow_internal_unstable]` attribute cannot be used on macro calls
-  --> $DIR/feature-gate-check-nested-macro-invocation.rs:8:9
+error: the `allow_internal_unstable` attribute cannot be used on macro calls
+  --> $DIR/feature-gate-check-nested-macro-invocation.rs:8:11
    |
 LL |         #[allow_internal_unstable()]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |           ^^^^^^^^^^^^^^^^^^^^^^^
 ...
 LL | foo!();
    | ------ in this macro invocation
    |
-   = help: `#[allow_internal_unstable]` can be applied to functions and macro defs
+   = help: the `allow_internal_unstable` attribute can be applied to functions and macro defs
    = note: placing this attribute on a macro invocation does nothing even if the macro expands to what would be a valid target for the attribute
    = note: this error originates in the macro `foo` (in Nightly builds, run with -Z macro-backtrace for more info)
 

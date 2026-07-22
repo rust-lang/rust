@@ -1,18 +1,18 @@
-error: `#[repr(transparent)]` attribute cannot be used on functions
-  --> $DIR/repr-transparent-other-items.rs:3:1
+error: the `repr(transparent)` attribute cannot be used on functions
+  --> $DIR/repr-transparent-other-items.rs:3:3
    |
 LL | #[repr(transparent)]
-   | ^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^
    |
-   = help: `#[repr(transparent)]` can only be applied to data types
+   = help: the `repr(transparent)` attribute can only be applied to data types
 
-error: `#[repr(transparent)]` attribute cannot be used on statics
-  --> $DIR/repr-transparent-other-items.rs:6:1
+error: the `repr(transparent)` attribute cannot be used on statics
+  --> $DIR/repr-transparent-other-items.rs:6:3
    |
 LL | #[repr(transparent)]
-   | ^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^
    |
-   = help: `#[repr(transparent)]` can only be applied to data types
+   = help: the `repr(transparent)` attribute can only be applied to data types
 
 error: aborting due to 2 previous errors
 

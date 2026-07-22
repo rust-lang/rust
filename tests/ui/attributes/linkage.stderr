@@ -1,50 +1,50 @@
-error: `#[linkage]` attribute cannot be used on type aliases
-  --> $DIR/linkage.rs:6:1
+error: the `linkage` attribute cannot be used on type aliases
+  --> $DIR/linkage.rs:6:3
    |
 LL | #[linkage = "weak"]
-   | ^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^
    |
-   = help: `#[linkage]` can be applied to foreign statics, functions, and statics
+   = help: the `linkage` attribute can be applied to foreign statics, functions, and statics
 
-error: `#[linkage]` attribute cannot be used on modules
-  --> $DIR/linkage.rs:9:1
+error: the `linkage` attribute cannot be used on modules
+  --> $DIR/linkage.rs:9:3
    |
 LL | #[linkage = "weak"]
-   | ^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^
    |
-   = help: `#[linkage]` can be applied to foreign statics, functions, and statics
+   = help: the `linkage` attribute can be applied to foreign statics, functions, and statics
 
-error: `#[linkage]` attribute cannot be used on structs
-  --> $DIR/linkage.rs:12:1
+error: the `linkage` attribute cannot be used on structs
+  --> $DIR/linkage.rs:12:3
    |
 LL | #[linkage = "weak"]
-   | ^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^
    |
-   = help: `#[linkage]` can be applied to foreign statics, functions, and statics
+   = help: the `linkage` attribute can be applied to foreign statics, functions, and statics
 
-error: `#[linkage]` attribute cannot be used on inherent impl blocks
-  --> $DIR/linkage.rs:15:1
+error: the `linkage` attribute cannot be used on inherent impl blocks
+  --> $DIR/linkage.rs:15:3
    |
 LL | #[linkage = "weak"]
-   | ^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^
    |
-   = help: `#[linkage]` can be applied to foreign statics, functions, and statics
+   = help: the `linkage` attribute can be applied to foreign statics, functions, and statics
 
-error: `#[linkage]` attribute cannot be used on expressions
-  --> $DIR/linkage.rs:23:5
+error: the `linkage` attribute cannot be used on expressions
+  --> $DIR/linkage.rs:23:7
    |
 LL |     #[linkage = "weak"]
-   |     ^^^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^
    |
-   = help: `#[linkage]` can be applied to foreign statics, functions, and statics
+   = help: the `linkage` attribute can be applied to foreign statics, functions, and statics
 
-error: `#[linkage]` attribute cannot be used on closures
-  --> $DIR/linkage.rs:39:13
+error: the `linkage` attribute cannot be used on closures
+  --> $DIR/linkage.rs:39:15
    |
 LL |     let _ = #[linkage = "weak"]
-   |             ^^^^^^^^^^^^^^^^^^^
+   |               ^^^^^^^
    |
-   = help: `#[linkage]` can be applied to foreign functions, foreign statics, functions, methods, and statics
+   = help: the `linkage` attribute can be applied to foreign functions, foreign statics, functions, methods, and statics
 
 error: aborting due to 6 previous errors
 

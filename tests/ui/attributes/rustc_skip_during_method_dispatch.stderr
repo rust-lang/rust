@@ -91,13 +91,13 @@ LL - #[rustc_skip_during_method_dispatch("array")]
 LL + #[rustc_skip_during_method_dispatch(array, boxed_slice)]
    |
 
-error: `#[rustc_skip_during_method_dispatch]` attribute cannot be used on trait impl blocks
-  --> $DIR/rustc_skip_during_method_dispatch.rs:34:1
+error: the `rustc_skip_during_method_dispatch` attribute cannot be used on trait impl blocks
+  --> $DIR/rustc_skip_during_method_dispatch.rs:34:3
    |
 LL | #[rustc_skip_during_method_dispatch(array)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[rustc_skip_during_method_dispatch]` can only be applied to traits
+   = help: the `rustc_skip_during_method_dispatch` attribute can only be applied to traits
 
 error: aborting due to 8 previous errors
 

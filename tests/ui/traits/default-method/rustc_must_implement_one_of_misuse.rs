@@ -36,11 +36,11 @@ trait Tr5 {
 }
 
 #[rustc_must_implement_one_of(abc, xyz)]
-//~^ ERROR `#[rustc_must_implement_one_of]` attribute cannot be used on functions
+//~^ ERROR the `rustc_must_implement_one_of` attribute cannot be used on functions
 fn function() {}
 
 #[rustc_must_implement_one_of(abc, xyz)]
-//~^ ERROR `#[rustc_must_implement_one_of]` attribute cannot be used on structs
+//~^ ERROR the `rustc_must_implement_one_of` attribute cannot be used on structs
 struct Struct {}
 
 fn main() {}

@@ -1,26 +1,26 @@
-error: `#[target_feature]` attribute cannot be used on extern crates
-  --> $DIR/invalid-attribute.rs:12:1
+error: the `target_feature` attribute cannot be used on extern crates
+  --> $DIR/invalid-attribute.rs:12:3
    |
 LL | #[target_feature(enable = "sse2")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^
    |
-   = help: `#[target_feature]` can only be applied to functions
+   = help: the `target_feature` attribute can only be applied to functions
 
-error: `#[target_feature]` attribute cannot be used on use statements
-  --> $DIR/invalid-attribute.rs:16:1
+error: the `target_feature` attribute cannot be used on use statements
+  --> $DIR/invalid-attribute.rs:16:3
    |
 LL | #[target_feature(enable = "sse2")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^
    |
-   = help: `#[target_feature]` can only be applied to functions
+   = help: the `target_feature` attribute can only be applied to functions
 
-error: `#[target_feature]` attribute cannot be used on foreign modules
-  --> $DIR/invalid-attribute.rs:20:1
+error: the `target_feature` attribute cannot be used on foreign modules
+  --> $DIR/invalid-attribute.rs:20:3
    |
 LL | #[target_feature(enable = "sse2")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^
    |
-   = help: `#[target_feature]` can only be applied to functions
+   = help: the `target_feature` attribute can only be applied to functions
 
 error[E0539]: malformed `target_feature` attribute input
   --> $DIR/invalid-attribute.rs:24:1
@@ -64,101 +64,101 @@ LL - #[target_feature(disable = "baz")]
 LL + #[target_feature(enable = "feat1, feat2")]
    |
 
-error: `#[target_feature]` attribute cannot be used on modules
-  --> $DIR/invalid-attribute.rs:38:1
+error: the `target_feature` attribute cannot be used on modules
+  --> $DIR/invalid-attribute.rs:38:3
    |
 LL | #[target_feature(enable = "sse2")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^
    |
-   = help: `#[target_feature]` can only be applied to functions
+   = help: the `target_feature` attribute can only be applied to functions
 
-error: `#[target_feature]` attribute cannot be used on constants
-  --> $DIR/invalid-attribute.rs:42:1
+error: the `target_feature` attribute cannot be used on constants
+  --> $DIR/invalid-attribute.rs:42:3
    |
 LL | #[target_feature(enable = "sse2")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^
    |
-   = help: `#[target_feature]` can only be applied to functions
+   = help: the `target_feature` attribute can only be applied to functions
 
-error: `#[target_feature]` attribute cannot be used on structs
-  --> $DIR/invalid-attribute.rs:46:1
+error: the `target_feature` attribute cannot be used on structs
+  --> $DIR/invalid-attribute.rs:46:3
    |
 LL | #[target_feature(enable = "sse2")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^
    |
-   = help: `#[target_feature]` can only be applied to functions
+   = help: the `target_feature` attribute can only be applied to functions
 
-error: `#[target_feature]` attribute cannot be used on enums
-  --> $DIR/invalid-attribute.rs:50:1
+error: the `target_feature` attribute cannot be used on enums
+  --> $DIR/invalid-attribute.rs:50:3
    |
 LL | #[target_feature(enable = "sse2")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^
    |
-   = help: `#[target_feature]` can only be applied to functions
+   = help: the `target_feature` attribute can only be applied to functions
 
-error: `#[target_feature]` attribute cannot be used on unions
-  --> $DIR/invalid-attribute.rs:54:1
+error: the `target_feature` attribute cannot be used on unions
+  --> $DIR/invalid-attribute.rs:54:3
    |
 LL | #[target_feature(enable = "sse2")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^
    |
-   = help: `#[target_feature]` can only be applied to functions
+   = help: the `target_feature` attribute can only be applied to functions
 
-error: `#[target_feature]` attribute cannot be used on type aliases
-  --> $DIR/invalid-attribute.rs:61:1
+error: the `target_feature` attribute cannot be used on type aliases
+  --> $DIR/invalid-attribute.rs:61:3
    |
 LL | #[target_feature(enable = "sse2")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^
    |
-   = help: `#[target_feature]` can only be applied to functions
+   = help: the `target_feature` attribute can only be applied to functions
 
-error: `#[target_feature]` attribute cannot be used on traits
-  --> $DIR/invalid-attribute.rs:65:1
+error: the `target_feature` attribute cannot be used on traits
+  --> $DIR/invalid-attribute.rs:65:3
    |
 LL | #[target_feature(enable = "sse2")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^
    |
-   = help: `#[target_feature]` can only be applied to functions
+   = help: the `target_feature` attribute can only be applied to functions
 
-error: `#[target_feature]` attribute cannot be used on statics
-  --> $DIR/invalid-attribute.rs:75:1
+error: the `target_feature` attribute cannot be used on statics
+  --> $DIR/invalid-attribute.rs:75:3
    |
 LL | #[target_feature(enable = "sse2")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^
    |
-   = help: `#[target_feature]` can only be applied to functions
+   = help: the `target_feature` attribute can only be applied to functions
 
-error: `#[target_feature]` attribute cannot be used on trait impl blocks
-  --> $DIR/invalid-attribute.rs:79:1
+error: the `target_feature` attribute cannot be used on trait impl blocks
+  --> $DIR/invalid-attribute.rs:79:3
    |
 LL | #[target_feature(enable = "sse2")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^
    |
-   = help: `#[target_feature]` can only be applied to functions
+   = help: the `target_feature` attribute can only be applied to functions
 
-error: `#[target_feature]` attribute cannot be used on inherent impl blocks
-  --> $DIR/invalid-attribute.rs:85:1
+error: the `target_feature` attribute cannot be used on inherent impl blocks
+  --> $DIR/invalid-attribute.rs:85:3
    |
 LL | #[target_feature(enable = "sse2")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^
    |
-   = help: `#[target_feature]` can only be applied to functions
+   = help: the `target_feature` attribute can only be applied to functions
 
-error: `#[target_feature]` attribute cannot be used on expressions
-  --> $DIR/invalid-attribute.rs:106:5
+error: the `target_feature` attribute cannot be used on expressions
+  --> $DIR/invalid-attribute.rs:106:7
    |
 LL |     #[target_feature(enable = "sse2")]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^^^^^^^
    |
-   = help: `#[target_feature]` can only be applied to functions
+   = help: the `target_feature` attribute can only be applied to functions
 
-error: `#[target_feature]` attribute cannot be used on closures
-  --> $DIR/invalid-attribute.rs:112:5
+error: the `target_feature` attribute cannot be used on closures
+  --> $DIR/invalid-attribute.rs:112:7
    |
 LL |     #[target_feature(enable = "sse2")]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^^^^^^^
    |
-   = help: `#[target_feature]` can be applied to functions and methods
+   = help: the `target_feature` attribute can be applied to functions and methods
 
 error: cannot use `#[inline(always)]` with `#[target_feature]`
   --> $DIR/invalid-attribute.rs:69:1

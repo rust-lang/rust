@@ -12,21 +12,21 @@ LL - #[non_exhaustive(anything)]
 LL + #[non_exhaustive]
    |
 
-error: `#[non_exhaustive]` attribute cannot be used on traits
-  --> $DIR/invalid-attribute.rs:5:1
+error: the `non_exhaustive` attribute cannot be used on traits
+  --> $DIR/invalid-attribute.rs:5:3
    |
 LL | #[non_exhaustive]
-   | ^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^
    |
-   = help: `#[non_exhaustive]` can be applied to data types and enum variants
+   = help: the `non_exhaustive` attribute can be applied to data types and enum variants
 
-error: `#[non_exhaustive]` attribute cannot be used on unions
-  --> $DIR/invalid-attribute.rs:9:1
+error: the `non_exhaustive` attribute cannot be used on unions
+  --> $DIR/invalid-attribute.rs:9:3
    |
 LL | #[non_exhaustive]
-   | ^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^
    |
-   = help: `#[non_exhaustive]` can be applied to enum variants, enums, and structs
+   = help: the `non_exhaustive` attribute can be applied to enum variants, enums, and structs
 
 error: aborting due to 3 previous errors
 

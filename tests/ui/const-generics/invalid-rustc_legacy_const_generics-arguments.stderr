@@ -40,13 +40,13 @@ LL - #[rustc_legacy_const_generics(1, a, 2, b)]
 LL + #[rustc_legacy_const_generics(N)]
    |
 
-error: `#[rustc_legacy_const_generics]` attribute cannot be used on structs
-  --> $DIR/invalid-rustc_legacy_const_generics-arguments.rs:20:1
+error: the `rustc_legacy_const_generics` attribute cannot be used on structs
+  --> $DIR/invalid-rustc_legacy_const_generics-arguments.rs:20:3
    |
 LL | #[rustc_legacy_const_generics(0)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[rustc_legacy_const_generics]` can only be applied to functions
+   = help: the `rustc_legacy_const_generics` attribute can only be applied to functions
 
 error: suffixed literals are not allowed in attributes
   --> $DIR/invalid-rustc_legacy_const_generics-arguments.rs:23:31
@@ -70,21 +70,21 @@ LL - #[rustc_legacy_const_generics(0usize)]
 LL + #[rustc_legacy_const_generics(N)]
    |
 
-error: `#[rustc_legacy_const_generics]` attribute cannot be used on foreign functions
-  --> $DIR/invalid-rustc_legacy_const_generics-arguments.rs:29:5
+error: the `rustc_legacy_const_generics` attribute cannot be used on foreign functions
+  --> $DIR/invalid-rustc_legacy_const_generics-arguments.rs:29:7
    |
 LL |     #[rustc_legacy_const_generics(1)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[rustc_legacy_const_generics]` can only be applied to functions
+   = help: the `rustc_legacy_const_generics` attribute can only be applied to functions
 
-error: `#[rustc_legacy_const_generics]` attribute cannot be used on inherent methods
-  --> $DIR/invalid-rustc_legacy_const_generics-arguments.rs:37:5
+error: the `rustc_legacy_const_generics` attribute cannot be used on inherent methods
+  --> $DIR/invalid-rustc_legacy_const_generics-arguments.rs:37:7
    |
 LL |     #[rustc_legacy_const_generics(0)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[rustc_legacy_const_generics]` can only be applied to functions
+   = help: the `rustc_legacy_const_generics` attribute can only be applied to functions
 
 error[E0539]: malformed `rustc_legacy_const_generics` attribute input
   --> $DIR/invalid-rustc_legacy_const_generics-arguments.rs:41:1

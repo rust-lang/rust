@@ -176,13 +176,13 @@ help: must be of the form
 LL | #[rustc_confusables("name1", "name2", ...)]
    |                    +++++++++++++++++++++++
 
-error: `#[rustc_confusables]` attribute cannot be used on functions
-  --> $DIR/malformed-attrs.rs:36:1
+error: the `rustc_confusables` attribute cannot be used on functions
+  --> $DIR/malformed-attrs.rs:36:3
    |
 LL | #[rustc_confusables]
-   | ^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^
    |
-   = help: `#[rustc_confusables]` can only be applied to inherent methods
+   = help: the `rustc_confusables` attribute can only be applied to inherent methods
 
 error[E0539]: malformed `deprecated` attribute input
   --> $DIR/malformed-attrs.rs:39:1
@@ -207,13 +207,13 @@ LL | #[rustc_macro_transparency = "semiopaque"]
 LL | #[rustc_macro_transparency = "transparent"]
    |                            +++++++++++++++
 
-error: `#[rustc_macro_transparency]` attribute cannot be used on functions
-  --> $DIR/malformed-attrs.rs:43:1
+error: the `rustc_macro_transparency` attribute cannot be used on functions
+  --> $DIR/malformed-attrs.rs:43:3
    |
 LL | #[rustc_macro_transparency]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[rustc_macro_transparency]` can only be applied to macro defs
+   = help: the `rustc_macro_transparency` attribute can only be applied to macro defs
 
 error[E0539]: malformed `repr` attribute input
   --> $DIR/malformed-attrs.rs:46:1
@@ -407,13 +407,13 @@ LL - #[used()]
 LL + #[used]
    |
 
-error: `#[used]` attribute cannot be used on functions
-  --> $DIR/malformed-attrs.rs:73:1
+error: the `used` attribute cannot be used on functions
+  --> $DIR/malformed-attrs.rs:73:3
    |
 LL | #[used()]
-   | ^^^^^^^^^
+   |   ^^^^
    |
-   = help: `#[used]` can only be applied to statics
+   = help: the `used` attribute can only be applied to statics
 
 error[E0539]: malformed `crate_name` attribute input
   --> $DIR/malformed-attrs.rs:76:1
@@ -898,22 +898,22 @@ error: valid forms for the attribute are `#[doc = "string"]`, `#[doc(alias)]`, `
 LL | #[doc]
    | ^^^^^^
 
-warning: `#[link]` attribute cannot be used on functions
-  --> $DIR/malformed-attrs.rs:85:1
+warning: the `link` attribute cannot be used on functions
+  --> $DIR/malformed-attrs.rs:85:3
    |
 LL | #[link]
-   | ^^^^^^^
+   |   ^^^^
    |
-   = help: `#[link]` can only be applied to foreign modules
+   = help: the `link` attribute can only be applied to foreign modules
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
-warning: `#[link_name]` attribute cannot be used on functions
-  --> $DIR/malformed-attrs.rs:89:1
+warning: the `link_name` attribute cannot be used on functions
+  --> $DIR/malformed-attrs.rs:89:3
    |
 LL | #[link_name]
-   | ^^^^^^^^^^^^
+   |   ^^^^^^^^^
    |
-   = help: `#[link_name]` can be applied to foreign functions and foreign statics
+   = help: the `link_name` attribute can be applied to foreign functions and foreign statics
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: valid forms for the attribute are `#[ignore = "reason"]` and `#[ignore]`
@@ -925,13 +925,13 @@ LL | #[ignore()]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
 
-warning: `#[no_implicit_prelude]` attribute cannot be used on functions
-  --> $DIR/malformed-attrs.rs:102:1
+warning: the `no_implicit_prelude` attribute cannot be used on functions
+  --> $DIR/malformed-attrs.rs:102:3
    |
 LL | #[no_implicit_prelude = 23]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[no_implicit_prelude]` can be applied to crates and modules
+   = help: the `no_implicit_prelude` attribute can be applied to crates and modules
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 warning: missing options for `diagnostic::on_unimplemented` attribute
@@ -957,13 +957,13 @@ warning: `#[diagnostic::do_not_recommend]` does not expect any arguments
 LL | #[diagnostic::do_not_recommend()]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: `#[automatically_derived]` attribute cannot be used on modules
-  --> $DIR/malformed-attrs.rs:191:1
+warning: the `automatically_derived` attribute cannot be used on modules
+  --> $DIR/malformed-attrs.rs:191:3
    |
 LL | #[automatically_derived = 18]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[automatically_derived]` can only be applied to trait impl blocks
+   = help: the `automatically_derived` attribute can only be applied to trait impl blocks
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: valid forms for the attribute are `#[ignore = "reason"]` and `#[ignore]`

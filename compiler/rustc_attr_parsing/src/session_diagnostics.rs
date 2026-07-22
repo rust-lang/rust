@@ -372,17 +372,18 @@ pub(crate) struct EmptyConfusables {
 }
 
 #[derive(Diagnostic)]
-#[help("`#[{$name}{$attribute_args}]` can {$only}be applied to {$applied}")]
-#[diag("`#[{$name}{$attribute_args}]` attribute cannot be used on {$target}")]
+#[help("the `{$name}{$attribute_args}` attribute can {$only}be applied to {$applied}")]
+#[diag("the `{$name}{$attribute_args}` attribute cannot be used on {$target}")]
 pub(crate) struct InvalidTarget {
     #[primary_span]
+    pub span: Span,
     #[suggestion(
         "remove the attribute",
         code = "",
         applicability = "machine-applicable",
         style = "tool-only"
     )]
-    pub span: Span,
+    pub attr_span: Span,
     pub name: AttrPath,
     pub target: &'static str,
     pub applied: DiagArgValue,
