@@ -536,6 +536,48 @@ where
         unsafe { &*(ptr as *const Self) }
     }
 
+    /// Copies the value from user memory and place it into `dest`.
+    ///
+    /// # Panics
+    /// This function panics if the destination doesn't have the same size as
+    /// the source. This can happen for dynamically-sized types such as slices.
+    pub fn copy_to_enclave<U: ?Sized + UserSafeCopyDestination<T>>(&self, dest: &mut U) {
+        unsafe {
+            assert_eq!(size_of_val(dest), size_of_val(&*self.0.get()));
+            copy_from_userspace(
+                self.0.get() as *const T as *const u8,
+                dest.as_mut_ptr() as *mut u8,
+                size_of_val(dest),
+            );
+        }
+    }
+
+    /// Obtain a raw pointer from this reference.
+    pub fn as_raw_ptr(&self) -> *const T {
+        self as *const _ as _
+    }
+}
+
+#[unstable(feature = "sgx_platform", issue = "56975")]
+impl<T> UserRef<T>
+where
+    T: UserSafe,
+{
+    /// Copies the value from user memory into enclave memory.
+    pub fn to_enclave(&self) -> T {
+        unsafe {
+            let mut data = mem::MaybeUninit::uninit();
+            copy_from_userspace(self.0.get() as _, data.as_mut_ptr() as _, size_of::<T>());
+            data.assume_init()
+        }
+    }
+}
+
+#[unstable(feature = "sgx_platform", issue = "56975")]
+impl<T: ?Sized> UserRef<T>
+where
+    T: UserSafe,
+{
     /// Creates a `&mut UserRef<[T]>` from a raw pointer. See the struct
     /// documentation for the nuances regarding a `&mut UserRef<T>`.
     ///
@@ -570,45 +612,9 @@ where
         }
     }
 
-    /// Copies the value from user memory and place it into `dest`.
-    ///
-    /// # Panics
-    /// This function panics if the destination doesn't have the same size as
-    /// the source. This can happen for dynamically-sized types such as slices.
-    pub fn copy_to_enclave<U: ?Sized + UserSafeCopyDestination<T>>(&self, dest: &mut U) {
-        unsafe {
-            assert_eq!(size_of_val(dest), size_of_val(&*self.0.get()));
-            copy_from_userspace(
-                self.0.get() as *const T as *const u8,
-                dest.as_mut_ptr() as *mut u8,
-                size_of_val(dest),
-            );
-        }
-    }
-
-    /// Obtain a raw pointer from this reference.
-    pub fn as_raw_ptr(&self) -> *const T {
-        self as *const _ as _
-    }
-
     /// Obtain a raw pointer from this reference.
     pub fn as_raw_mut_ptr(&mut self) -> *mut T {
         self as *mut _ as _
-    }
-}
-
-#[unstable(feature = "sgx_platform", issue = "56975")]
-impl<T> UserRef<T>
-where
-    T: UserSafe,
-{
-    /// Copies the value from user memory into enclave memory.
-    pub fn to_enclave(&self) -> T {
-        unsafe {
-            let mut data = mem::MaybeUninit::uninit();
-            copy_from_userspace(self.0.get() as _, data.as_mut_ptr() as _, size_of::<T>());
-            data.assume_init()
-        }
     }
 }
 
@@ -634,34 +640,8 @@ where
         unsafe { &*(<[T]>::from_raw_sized(ptr as _, len * size_of::<T>()).as_ptr() as *const Self) }
     }
 
-    /// Creates a `&mut UserRef<[T]>` from a raw thin pointer and a slice length.
-    /// See the struct documentation for the nuances regarding a
-    /// `&mut UserRef<T>`.
-    ///
-    /// # Safety
-    /// The caller must ensure `ptr` points to `n` elements of `T`.
-    ///
-    /// # Panics
-    /// This function panics if:
-    ///
-    /// * The pointer is not aligned
-    /// * The pointer is null
-    /// * The pointed-to range does not fit in the address space
-    /// * The pointed-to range is not in user memory
-    pub unsafe fn from_raw_parts_mut<'a>(ptr: *mut T, len: usize) -> &'a mut Self {
-        // SAFETY: The caller must uphold the safety contract for `from_raw_parts_mut`.
-        unsafe {
-            &mut *(<[T]>::from_raw_sized(ptr as _, len * size_of::<T>()).as_ptr() as *mut Self)
-        }
-    }
-
     /// Obtain a raw pointer to the first element of this user slice.
     pub fn as_ptr(&self) -> *const T {
-        self.0.get() as _
-    }
-
-    /// Obtain a raw pointer to the first element of this user slice.
-    pub fn as_mut_ptr(&mut self) -> *mut T {
         self.0.get() as _
     }
 
@@ -691,6 +671,38 @@ where
         T: UserSafe, // FIXME: should be implied by [T]: UserSafe?
     {
         unsafe { Iter((&*self.as_raw_ptr()).iter()) }
+    }
+}
+
+#[unstable(feature = "sgx_platform", issue = "56975")]
+impl<T> UserRef<[T]>
+where
+    [T]: UserSafe,
+{
+    /// Creates a `&mut UserRef<[T]>` from a raw thin pointer and a slice length.
+    /// See the struct documentation for the nuances regarding a
+    /// `&mut UserRef<T>`.
+    ///
+    /// # Safety
+    /// The caller must ensure `ptr` points to `n` elements of `T`.
+    ///
+    /// # Panics
+    /// This function panics if:
+    ///
+    /// * The pointer is not aligned
+    /// * The pointer is null
+    /// * The pointed-to range does not fit in the address space
+    /// * The pointed-to range is not in user memory
+    pub unsafe fn from_raw_parts_mut<'a>(ptr: *mut T, len: usize) -> &'a mut Self {
+        // SAFETY: The caller must uphold the safety contract for `from_raw_parts_mut`.
+        unsafe {
+            &mut *(<[T]>::from_raw_sized(ptr as _, len * size_of::<T>()).as_ptr() as *mut Self)
+        }
+    }
+
+    /// Obtain a raw pointer to the first element of this user slice.
+    pub fn as_mut_ptr(&mut self) -> *mut T {
+        self.0.get() as _
     }
 
     /// Returns an iterator that allows modifying each value.
