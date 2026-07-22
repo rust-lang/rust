@@ -323,7 +323,6 @@ fn make_win_llvm_dist(plat_root: &Path, target: TargetSelection, builder: &Build
     let target_libs = [
         // MinGW libs
         "libunwind.a",
-        "libunwind.dll.a",
         "libmingw32.a",
         "libmingwex.a",
         "libmsvcrt.a",
