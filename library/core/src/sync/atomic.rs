@@ -255,7 +255,7 @@ use crate::{fmt, intrinsics};
     reason = "implementation detail which may disappear or be replaced at any time",
     issue = "none"
 )]
-#[expect(missing_debug_implementations)]
+#[allow(missing_debug_implementations)]
 mod private {
     #[cfg(target_has_atomic_load_store = "8")]
     #[repr(C, align(1))]

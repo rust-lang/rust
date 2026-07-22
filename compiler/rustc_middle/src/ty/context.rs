@@ -996,20 +996,18 @@ impl<'tcx> TyCtxt<'tcx> {
         self.type_of(ordering_enum).no_bound_vars().unwrap()
     }
 
-    /// Obtain the given diagnostic item's `DefId`. Use `is_diagnostic_item` if you just want to
-    /// compare against another `DefId`, since `is_diagnostic_item` is cheaper.
-    pub fn get_diagnostic_item(self, name: Symbol) -> Option<DefId> {
-        self.all_diagnostic_items(()).name_to_id.get(&name).copied()
+    pub fn get_diagnostic_item(self, _name: Symbol) -> Option<DefId> {
+        None // better switch over everyone to `is_diagnostic_item` I guess
     }
 
     /// Obtain the diagnostic item's name
-    pub fn get_diagnostic_name(self, id: DefId) -> Option<Symbol> {
-        self.diagnostic_items(id.krate).id_to_name.get(&id).copied()
+    pub fn get_diagnostic_name(self, did: DefId) -> Option<Symbol> {
+        find_attr!(self, did, RustcDiagnosticItem(sym) => *sym)
     }
 
     /// Check whether the diagnostic item with the given `name` has the given `DefId`.
     pub fn is_diagnostic_item(self, name: Symbol, did: DefId) -> bool {
-        self.diagnostic_items(did.krate).name_to_id.get(&name) == Some(&did)
+        if let Some(n) = self.get_diagnostic_name(did) { n == name } else { false }
     }
 
     pub fn is_coroutine(self, def_id: DefId) -> bool {

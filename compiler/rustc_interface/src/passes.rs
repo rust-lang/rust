@@ -1241,11 +1241,6 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) {
         sess.time("check_lint_expectations", || tcx.ensure_ok().check_expectations(None));
 
         // This query is only invoked normally if a diagnostic is emitted that needs any
-        // diagnostic item. If the crate compiles without checking any diagnostic items,
-        // we will fail to emit overlap diagnostics. Thus we invoke it here unconditionally.
-        let _ = tcx.all_diagnostic_items(());
-
-        // This query is only invoked normally if a diagnostic is emitted that needs any
         // canonical symbol. If the crate compiles without checking any runtime symbols,
         // we will fail to emit overlap diagnostics. Thus we invoke it here unconditionally.
         let _ = tcx.all_canonical_symbols(());

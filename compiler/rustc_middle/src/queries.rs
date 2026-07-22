@@ -2256,13 +2256,6 @@ rustc_queries! {
         desc { "calculating the lang items map" }
     }
 
-    /// Returns all diagnostic items defined in all crates.
-    query all_diagnostic_items(_: ()) -> &'tcx rustc_hir::diagnostic_items::DiagnosticItems {
-        arena_cache
-        eval_always
-        desc { "calculating the diagnostic items map" }
-    }
-
     /// Returns all the canonical symbols defined in all crates.
     query all_canonical_symbols(_: ()) -> &'tcx CanonicalSymbols {
         arena_cache
@@ -2276,12 +2269,6 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    /// Returns the diagnostic items defined in a crate.
-    query diagnostic_items(_: CrateNum) -> &'tcx rustc_hir::diagnostic_items::DiagnosticItems {
-        arena_cache
-        desc { "calculating the diagnostic items map in a crate" }
-        separate_provide_extern
-    }
 
     /// Returns the canonical symbols defined in a crate.
     query canonical_symbols(_: CrateNum) -> &'tcx CanonicalSymbols {

@@ -2079,7 +2079,7 @@ pub macro pin($value:expr $(,)?) {
 /// See <https://github.com/rust-lang/rust/issues/153438>.
 #[unstable(feature = "pin_macro_internals", issue = "none")]
 #[doc(hidden)]
-#[expect(missing_debug_implementations, reason = "this type is only used by the `pin!` macro")]
+#[allow(missing_debug_implementations, reason = "this type is only used by the `pin!` macro")]
 #[rustc_diagnostic_item = "PinMacroHelper"]
 pub struct PinMacroHelper<T> {
     pub value: T,

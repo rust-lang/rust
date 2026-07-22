@@ -18,7 +18,6 @@ use rustc_expand::proc_macro::{AttrProcMacro, BangProcMacro, DeriveProcMacro};
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::{DefPath, DefPathData};
-use rustc_hir::diagnostic_items::DiagnosticItems;
 use rustc_hir::{CanonicalSymbols, Safety};
 use rustc_index::Idx;
 use rustc_middle::middle::lib_features::LibFeatures;
@@ -1267,22 +1266,6 @@ impl CrateMetadata {
             .decode((self, tcx))
             .map(|item| item.map_scope_id(|index| DefId { krate: cnum, index }));
         tcx.arena.alloc_from_iter(item_names)
-    }
-
-    /// Iterates over the diagnostic items in the given crate.
-    fn get_diagnostic_items(&self, tcx: TyCtxt<'_>) -> DiagnosticItems {
-        let mut id_to_name = DefIdMap::default();
-        let name_to_id = self
-            .root
-            .diagnostic_items
-            .decode((self, tcx))
-            .map(|(name, def_index)| {
-                let id = self.local_def_id(def_index);
-                id_to_name.insert(id, name);
-                (name, id)
-            })
-            .collect();
-        DiagnosticItems { id_to_name, name_to_id }
     }
 
     /// Iterates over the canonical_symbols in the given crate.

@@ -398,7 +398,6 @@ provide! { tcx, def_id, other, cdata,
     stripped_cfg_items => { cdata.get_stripped_cfg_items(tcx, cdata.cnum) }
     intrinsic_raw => { cdata.get_intrinsic(tcx, def_id.index) }
     defined_lang_items => { cdata.get_lang_items(tcx) }
-    diagnostic_items => { cdata.get_diagnostic_items(tcx) }
     canonical_symbols => { cdata.get_canonical_symbols(tcx) }
     missing_lang_items => { cdata.get_missing_lang_items(tcx) }
 

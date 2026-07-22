@@ -354,20 +354,6 @@ pub(crate) struct LangItemWithTrackCaller {
 }
 
 #[derive(Diagnostic)]
-#[diag("duplicate diagnostic item in crate `{$crate_name}`: `{$name}`")]
-pub(crate) struct DuplicateDiagnosticItemInCrate {
-    #[primary_span]
-    pub duplicate_span: Option<Span>,
-    #[note("the diagnostic item is first defined here")]
-    pub orig_span: Option<Span>,
-    #[note("the diagnostic item is first defined in crate `{$orig_crate_name}`")]
-    pub different_crates: bool,
-    pub crate_name: Symbol,
-    pub orig_crate_name: Symbol,
-    pub name: Symbol,
-}
-
-#[derive(Diagnostic)]
 #[diag("duplicate canonical symbol in crate `{$crate_name}`: `{$name}`")]
 pub(crate) struct DuplicateCanonicalSymbolInCrate {
     #[primary_span]
