@@ -1,5 +1,5 @@
 #![crate_type = "staticlib"]
-#![feature(c_variadic, c_variadic_int128)]
+#![feature(c_variadic_int128)]
 
 use core::ffi::{CStr, VaList, c_char, c_double, c_int, c_long, c_longlong};
 

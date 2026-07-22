@@ -1,4 +1,3 @@
-#![feature(c_variadic)]
 #![crate_type = "lib"]
 
 // Check that `...` in closures is rejected.

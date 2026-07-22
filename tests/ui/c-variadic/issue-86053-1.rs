@@ -1,6 +1,5 @@
 // Regression test for the ICE described in issue #86053.
 
-#![feature(c_variadic)]
 #![crate_type="lib"]
 
 fn ordering4 < 'a , 'b     > ( a :            ,   self , self ,   self ,
