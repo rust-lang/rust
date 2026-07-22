@@ -211,7 +211,13 @@ fn compile_tests(tempdir: PathBuf, current_dir: String) {
         "lang compile",
         "tests/compile",
         TestMode::Compile,
-        &["simd-ffi.rs", "asm_nul_byte.rs", "global_asm_nul_byte.rs", "naked_asm_nul_byte.rs"],
+        &[
+            "simd-ffi.rs",
+            "asm_nul_byte.rs",
+            "global_asm_nul_byte.rs",
+            "naked_asm_nul_byte.rs",
+            "x86_interrupt_first_arg_byval.rs",
+        ],
     );
 }
 
