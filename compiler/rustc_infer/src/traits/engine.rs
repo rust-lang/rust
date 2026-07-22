@@ -120,6 +120,17 @@ pub trait TraitEngine<'tcx, E: 'tcx>: 'tcx {
         self.pending_obligations()
     }
 
+    /// Pending obligations potentially referencing float inference variables.
+    ///
+    /// FIXME: use a generic filter for `pending_obligations_potentially_referencing_sub_root`
+    /// and this after `TraitEngine` doesn't need to be dyn compatible.
+    fn pending_obligations_potentially_referencing_float_infer(
+        &self,
+        _infcx: &InferCtxt<'tcx>,
+    ) -> PredicateObligations<'tcx> {
+        self.pending_obligations()
+    }
+
     /// Among all pending obligations, collect those are stalled on a inference variable which has
     /// changed since the last call to `try_evaluate_obligations`. Those obligations are marked as
     /// successful and returned.
