@@ -10,8 +10,6 @@ impl S {
 fn main() {
     let _ = Arc::new(RwLock::new(HashMap<i32, i64>::default()));
     //~^ ERROR can't compare two types
-    //~| ERROR this function takes 1 argument but 2 arguments were supplied [E0061]
     let _ = S.foo(HashMap<i32, i64>::default());
     //~^ ERROR can't compare two types
-    //~| ERROR this method takes 1 argument but 2 arguments were supplied [E0061]
 }

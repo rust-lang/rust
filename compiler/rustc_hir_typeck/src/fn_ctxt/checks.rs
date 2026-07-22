@@ -903,6 +903,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let mut err = fn_call_diag_ctxt.initial_final_diagnostic();
         fn_call_diag_ctxt.suggest_confusable(&mut err);
+        fn_call_diag_ctxt.detect_missing_turbofish(&mut err);
 
         // As we encounter issues, keep track of what we want to provide for the suggestion.
 
@@ -3141,6 +3142,28 @@ impl<'a, 'tcx> ArgMatchingCtxt<'a, 'tcx> {
                 Applicability::MaybeIncorrect,
             );
             return;
+        }
+    }
+
+    fn detect_missing_turbofish(&self, err: &mut Diag<'_>) {
+        if self.formal_and_expected_inputs.len() + 1 != self.provided_args.len() {
+            return;
+        }
+        let mut iter = self.provided_args.iter().peekable();
+        while let Some(arg) = iter.next() {
+            if let Some(next) = iter.peek()
+                && let hir::ExprKind::Binary(_, lt_left, lt_right) = arg.kind
+                && let hir::ExprKind::Binary(_, gt_left, gt_right) = next.kind
+                && let hir::ExprKind::Path(_) = lt_left.kind
+                && let hir::ExprKind::Path(_) = lt_right.kind
+                && let hir::ExprKind::Path(_) = gt_left.kind
+                && let hir::ExprKind::Call(..) = gt_right.kind
+            {
+                // We've encountered a likely missing turbofish error, for which we've already
+                // emitted a more targeted diagnostic during name resolution making this one
+                // redundant (`LateResolutionVisitor::detect_missing_turbofish`).
+                err.downgrade_to_delayed_bug();
+            }
         }
     }
 

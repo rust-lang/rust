@@ -10,7 +10,7 @@ LL |     let _ = Arc::new(RwLock::new(HashMap::<i32, i64>::default()));
    |                                         ++
 
 error: can't compare two types
-  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:14:26
+  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:13:26
    |
 LL |     let _ = S.foo(HashMap<i32, i64>::default());
    |                          ^        ^ these are parsed as "less than" and "greater than"
@@ -20,44 +20,5 @@ help: you likely intended to write type `HashMap` with type parameters, but type
 LL |     let _ = S.foo(HashMap::<i32, i64>::default());
    |                          ++
 
-error[E0061]: this function takes 1 argument but 2 arguments were supplied
-  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:11:22
-   |
-LL |     let _ = Arc::new(RwLock::new(HashMap<i32, i64>::default()));
-   |                      ^^^^^^^^^^^              --------------- unexpected argument #2 of type `bool`
-   |
-note: associated function defined here
-  --> $SRC_DIR/std/src/sync/poison/rwlock.rs:LL:COL
-help: remove the extra argument
-   |
-LL -     let _ = Arc::new(RwLock::new(HashMap<i32, i64>::default()));
-LL +     let _ = Arc::new(RwLock::new(HashMap<i32));
-   |
+error: aborting due to 2 previous errors
 
-error[E0061]: this method takes 1 argument but 2 arguments were supplied
-  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:14:15
-   |
-LL |     let _ = S.foo(HashMap<i32, i64>::default());
-   |               ^^^              --------------- unexpected argument #2 of type `bool`
-   |
-note: expected `HashMap<i32, i64>`, found `bool`
-  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:14:19
-   |
-LL |     let _ = S.foo(HashMap<i32, i64>::default());
-   |                   ^^^^^^^^^^^
-   = note: expected struct `HashMap<i32, i64>`
-                found type `bool`
-note: method defined here
-  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:8:8
-   |
-LL |     fn foo(&self, _: HashMap<i32, i64>) {}
-   |        ^^^        --------------------
-help: remove the extra argument
-   |
-LL -     let _ = S.foo(HashMap<i32, i64>::default());
-LL +     let _ = S.foo(/* HashMap<i32, i64> */);
-   |
-
-error: aborting due to 4 previous errors
-
-For more information about this error, try `rustc --explain E0061`.
