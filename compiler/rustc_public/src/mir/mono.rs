@@ -32,6 +32,8 @@ pub enum InstanceKind {
     Item,
     /// A compiler intrinsic function.
     Intrinsic,
+    /// An LLVM intrinsic function.
+    LlvmIntrinsic,
     /// A virtual function definition stored in a VTable.
     /// The `idx` field indicates the position in the VTable for this instance.
     Virtual { idx: usize },
@@ -113,7 +115,10 @@ impl Instance {
             InstanceKind::Intrinsic => {
                 Some(with(|context| context.intrinsic(self.def.def_id()).unwrap().fn_name()))
             }
-            InstanceKind::Item | InstanceKind::Virtual { .. } | InstanceKind::Shim => None,
+            InstanceKind::LlvmIntrinsic
+            | InstanceKind::Item
+            | InstanceKind::Virtual { .. }
+            | InstanceKind::Shim => None,
         }
     }
 

@@ -25,8 +25,6 @@ macro_rules! weak_lang_items {
 
 macro_rules! weak_only_lang_items {
     ($($item:ident,)*) => {
-        pub static WEAK_ONLY_LANG_ITEMS: &[LangItem] = &[$(LangItem::$item,)*];
-
         impl LangItem {
             pub fn is_weak_only(self) -> bool {
                 matches!(self, $(LangItem::$item)|*)
@@ -47,4 +45,12 @@ weak_only_lang_items! {
     MemCmp,
     Bcmp,
     StrLen,
+    Open,
+    Read,
+    Write,
+    Close,
+    Malloc,
+    Realloc,
+    Free,
+    Exit,
 }

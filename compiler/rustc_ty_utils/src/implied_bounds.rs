@@ -130,7 +130,6 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
         DefKind::Static { .. }
         | DefKind::Const { .. }
         | DefKind::AnonConst
-        | DefKind::InlineConst
         | DefKind::Struct
         | DefKind::Union
         | DefKind::Enum
@@ -176,13 +175,13 @@ fn impl_spans(tcx: TyCtxt<'_>, def_id: LocalDefId) -> impl Iterator<Item = Span>
     if let hir::ItemKind::Impl(impl_) = item.kind {
         let trait_args = impl_
             .of_trait
-            .into_iter()
-            .flat_map(|of_trait| of_trait.trait_ref.path.segments.last().unwrap().args().args)
+            .map(|of_trait| of_trait.trait_ref.path.segments.last().unwrap().args().args)
+            .into_flat_iter()
             .map(|arg| arg.span());
         let dummy_spans_for_default_args = impl_
             .of_trait
-            .into_iter()
-            .flat_map(|of_trait| iter::repeat(of_trait.trait_ref.path.span));
+            .map(|of_trait| iter::repeat(of_trait.trait_ref.path.span))
+            .into_flat_iter();
         iter::once(impl_.self_ty.span).chain(trait_args).chain(dummy_spans_for_default_args)
     } else {
         bug!("unexpected item for impl {def_id:?}: {item:?}")

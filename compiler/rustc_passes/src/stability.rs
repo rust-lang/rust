@@ -9,7 +9,7 @@ use rustc_data_structures::unord::{ExtendUnord, UnordMap, UnordSet};
 use rustc_feature::{EnabledLangFeature, EnabledLibFeature, UNSTABLE_LANG_FEATURES};
 use rustc_hir::attrs::{AttributeKind, DeprecatedSince};
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId, LocalModDefId};
+use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId, LocalModId};
 use rustc_hir::intravisit::{self, Visitor, VisitorExt};
 use rustc_hir::{
     self as hir, AmbigArg, ConstStability, Constness, DefaultBodyStability, FieldDef, HirId, Item,
@@ -520,21 +520,21 @@ impl<'tcx> Visitor<'tcx> for MissingStabilityAnnotations<'tcx> {
 
 /// Cross-references the feature names of unstable APIs with enabled
 /// features and possibly prints errors.
-fn check_mod_unstable_api_usage(tcx: TyCtxt<'_>, module_def_id: LocalModDefId) {
-    tcx.hir_visit_item_likes_in_module(module_def_id, &mut Checker { tcx });
+fn check_mod_unstable_api_usage(tcx: TyCtxt<'_>, mod_id: LocalModId) {
+    tcx.hir_visit_item_likes_in_module(mod_id, &mut Checker { tcx });
 
     let is_staged_api =
         tcx.sess.opts.unstable_opts.force_unstable_if_unmarked || tcx.features().staged_api();
     if is_staged_api {
         let effective_visibilities = &tcx.effective_visibilities(());
         let mut missing = MissingStabilityAnnotations { tcx, effective_visibilities };
-        if module_def_id.is_top_level_module() {
+        if mod_id.is_top_level_module() {
             missing.check_missing_stability(CRATE_DEF_ID);
         }
-        tcx.hir_visit_item_likes_in_module(module_def_id, &mut missing);
+        tcx.hir_visit_item_likes_in_module(mod_id, &mut missing);
     }
 
-    if module_def_id.is_top_level_module() {
+    if mod_id.is_top_level_module() {
         check_unused_or_stable_features(tcx)
     }
 }
@@ -1112,8 +1112,7 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
                 .iter()
                 .flat_map(|&cnum| {
                     find_attr!(tcx, cnum.as_def_id(), UnstableRemoved(rem_features) => rem_features)
-                        .into_iter()
-                        .flatten()
+                        .into_flat_iter()
                 })
                 .collect::<Vec<_>>();
 
@@ -1148,9 +1147,6 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
             .1;
         tcx.dcx().emit_err(diagnostics::ImpliedFeatureNotExist { span, feature, implied_by });
     }
-
-    // FIXME(#44232): the `used_features` table no longer exists, so we
-    // don't lint about unused features. We should re-enable this one day!
 }
 
 fn unnecessary_partially_stable_feature_lint(

@@ -1,4 +1,4 @@
-error[E0609]: no field `field` on type `(..., ..., ..., ...)`
+error[E0609]: no field `field` on type `((_, _, _, _), _, _, _)`
   --> $DIR/long-E0609.rs:9:7
    |
 LL |     x.field;

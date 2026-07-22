@@ -16,7 +16,7 @@ use crate::lang_items::SolverTraitLangItem;
 use crate::region_constraint::RegionConstraint;
 use crate::search_graph::PathKind;
 use crate::{
-    self as ty, Canonical, CanonicalVarValues, CantBeErased, Interner, TypingMode, Upcast,
+    self as ty, Canonical, CanonicalVarValues, CantBeErased, Interner, TyVid, TypingMode, Upcast,
 };
 
 pub type CanonicalInput<I, T = <I as Interner>::Predicate> =
@@ -941,4 +941,51 @@ impl SizedTraitKind {
             SizedTraitKind::MetaSized => SolverTraitLangItem::MetaSized,
         })
     }
+}
+
+#[derive_where(Clone, Debug; I: Interner)]
+pub enum SucceededInErased<I: Interner> {
+    /// This goal previously succeeded in erased mode, which based on `accessed_opaques`
+    /// might make us take a fast path slightly more often.
+    Yes {
+        accessed_opaques: AccessedOpaques<I>,
+    },
+    No,
+}
+
+#[derive_where(Clone, Debug; I: Interner)]
+pub enum GoalStalledOnOpaques<I: Interner> {
+    /// This goal got stalled in `compute_goal_fast_path`. Usually this means
+    /// the goal is stalled on not that much, only one or two variables, and
+    /// definitely nothing to do with opaque types. So we don't store that information.
+    No,
+    Yes {
+        num_opaques_in_storage: usize,
+        previously_succeeded_in_erased: SucceededInErased<I>,
+    },
+}
+
+/// The conditions that must change for a goal to warrant
+#[derive_where(Clone, Debug; I: Interner)]
+pub struct GoalStalledOn<I: Interner> {
+    pub stalled_vars: Vec<I::GenericArg>,
+    pub sub_roots: Vec<TyVid>,
+    /// The certainty that will be returned on subsequent evaluations if this
+    /// goal remains stalled.
+    pub stalled_certainty: Certainty,
+    pub opaques: GoalStalledOnOpaques<I>,
+}
+
+/// For some goals we can trivially answer some questions without going through
+/// canonicalization. There are three options:
+
+#[derive(Clone, Debug)]
+pub enum ComputeGoalFastPathOutcome<I: Interner> {
+    /// Do not attempt the fast path. Compute as normal.
+    NoFastPath,
+    /// The goal trivially holds, immediately produce a result with [`Certainty::Yes`]
+    TriviallyHolds,
+    /// The goal is trivially stalled: we know for sure that it makes no sense to compute it right
+    /// now, but can return information about what its stalled on and when it can be computed for real.
+    TriviallyStalled { stalled_on: GoalStalledOn<I> },
 }

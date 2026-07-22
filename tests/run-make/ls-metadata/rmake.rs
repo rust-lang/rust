@@ -10,7 +10,7 @@ use run_make_support::{rfs, rustc};
 
 fn main() {
     rustc().input("foo.rs").run();
-    rustc().arg("-Zls=root").input("foo").run();
+    rustc().arg("-Zls=root").input("foo").run_fail();
     rfs::create_file("bar");
-    rustc().arg("-Zls=root").input("bar").run();
+    rustc().arg("-Zls=root").input("bar").run_fail();
 }

@@ -27,504 +27,23 @@ use core::panic;
 use std::collections::HashSet;
 use std::fmt::Write;
 use std::io::{self, ErrorKind};
-use std::sync::{Arc, OnceLock};
+use std::sync::Arc;
 use std::time::SystemTime;
 use std::{env, fs, vec};
 
 use build_helper::git::{get_git_modified_files, get_git_untracked_files};
 use camino::{Utf8Component, Utf8Path, Utf8PathBuf};
-use getopts::Options;
 use rayon::iter::{ParallelBridge, ParallelIterator};
 use tracing::debug;
 use walkdir::WalkDir;
 
 use self::directives::{EarlyProps, make_test_description};
 use crate::common::{
-    CodegenBackend, CompareMode, Config, Debugger, ForcePassMode, TestMode, TestPaths,
-    UI_EXTENSIONS, expected_output_path, output_base_dir, output_relative_path,
+    CodegenBackend, Config, Debugger, TestMode, TestPaths, UI_EXTENSIONS, expected_output_path,
+    output_base_dir, output_relative_path,
 };
 use crate::directives::{AuxProps, DirectivesCache, FileDirectives};
-use crate::edition::parse_edition;
 use crate::executor::CollectedTest;
-
-/// Creates the `Config` instance for this invocation of compiletest.
-///
-/// The config mostly reflects command-line arguments, but there might also be
-/// some code here that inspects environment variables or even runs executables
-/// (e.g. when discovering debugger versions).
-fn parse_config(args: Vec<String>) -> Config {
-    let mut opts = Options::new();
-    opts.reqopt("", "compile-lib-path", "path to host shared libraries", "PATH")
-        .reqopt("", "run-lib-path", "path to target shared libraries", "PATH")
-        .reqopt("", "rustc-path", "path to rustc to use for compiling", "PATH")
-        .optopt("", "cargo-path", "path to cargo to use for compiling", "PATH")
-        .optopt(
-            "",
-            "stage0-rustc-path",
-            "path to rustc to use for compiling run-make recipes",
-            "PATH",
-        )
-        .optopt(
-            "",
-            "query-rustc-path",
-            "path to rustc to use for querying target information (defaults to `--rustc-path`)",
-            "PATH",
-        )
-        .optopt("", "rustdoc-path", "path to rustdoc to use for compiling", "PATH")
-        .optopt("", "coverage-dump-path", "path to coverage-dump to use in tests", "PATH")
-        .reqopt("", "python", "path to python to use for doc tests", "PATH")
-        .optopt("", "jsondocck-path", "path to jsondocck to use for doc tests", "PATH")
-        .optopt("", "jsondoclint-path", "path to jsondoclint to use for doc tests", "PATH")
-        .optopt("", "run-clang-based-tests-with", "path to Clang executable", "PATH")
-        .optopt("", "llvm-filecheck", "path to LLVM's FileCheck binary", "DIR")
-        .reqopt("", "src-root", "directory containing sources", "PATH")
-        .reqopt("", "src-test-suite-root", "directory containing test suite sources", "PATH")
-        .reqopt("", "build-root", "path to root build directory", "PATH")
-        .reqopt("", "build-test-suite-root", "path to test suite specific build directory", "PATH")
-        .reqopt("", "sysroot-base", "directory containing the compiler sysroot", "PATH")
-        .reqopt("", "stage", "stage number under test", "N")
-        .reqopt("", "stage-id", "the target-stage identifier", "stageN-TARGET")
-        .reqopt(
-            "",
-            "mode",
-            "which sort of compile tests to run",
-            "pretty | debug-info | codegen | rustdoc-html \
-            | rustdoc-json | codegen-units | incremental | run-make | ui \
-            | rustdoc-js | mir-opt | assembly | crashes",
-        )
-        .reqopt(
-            "",
-            "suite",
-            "which suite of compile tests to run. used for nicer error reporting.",
-            "SUITE",
-        )
-        .optopt(
-            "",
-            "pass",
-            "force {check,build,run}-pass tests to this mode.",
-            "check | build | run",
-        )
-        .optopt("", "run", "whether to execute run-* tests", "auto | always | never")
-        .optflag("", "ignored", "run tests marked as ignored")
-        .optflag("", "has-enzyme", "run tests that require enzyme")
-        .optflag("", "has-offload", "run tests that require offload")
-        .optflag("", "with-rustc-debug-assertions", "whether rustc was built with debug assertions")
-        .optflag("", "with-std-debug-assertions", "whether std was built with debug assertions")
-        .optflag("", "with-std-remap-debuginfo", "whether std was built with remapping")
-        .optmulti(
-            "",
-            "skip",
-            "skip tests matching SUBSTRING. Can be passed multiple times",
-            "SUBSTRING",
-        )
-        .optflag("", "exact", "filters match exactly")
-        .optopt(
-            "",
-            "runner",
-            "supervisor program to run tests under \
-             (eg. emulator, valgrind)",
-            "PROGRAM",
-        )
-        .optmulti("", "host-rustcflags", "flags to pass to rustc for host", "FLAGS")
-        .optmulti("", "target-rustcflags", "flags to pass to rustc for target", "FLAGS")
-        .optflag(
-            "",
-            "rust-randomized-layout",
-            "set this when rustc/stdlib were compiled with randomized layouts",
-        )
-        .optflag("", "optimize-tests", "run tests with optimizations enabled")
-        .optflag("", "verbose", "run tests verbosely, showing all output")
-        .optflag(
-            "",
-            "verbose-run-make-subprocess-output",
-            "show verbose subprocess output for successful run-make tests",
-        )
-        .optflag(
-            "",
-            "bless",
-            "overwrite stderr/stdout files instead of complaining about a mismatch",
-        )
-        .optflag("", "fail-fast", "stop as soon as possible after any test fails")
-        .optopt("", "target", "the target to build for", "TARGET")
-        .optopt("", "host", "the host to build for", "HOST")
-        .optopt("", "cdb", "path to CDB to use for CDB debuginfo tests", "PATH")
-        .optopt("", "gdb", "path to GDB to use for GDB debuginfo tests", "PATH")
-        .optopt("", "lldb", "path to LLDB to use for LLDB debuginfo tests", "PATH")
-        .optopt("", "lldb-version", "the version of LLDB used", "VERSION STRING")
-        .optopt("", "llvm-version", "the version of LLVM used", "VERSION STRING")
-        .optflag("", "system-llvm", "is LLVM the system LLVM")
-        .optopt("", "android-cross-path", "Android NDK standalone path", "PATH")
-        .optopt("", "adb-path", "path to the android debugger", "PATH")
-        .optopt("", "adb-test-dir", "path to tests for the android debugger", "PATH")
-        .reqopt("", "cc", "path to a C compiler", "PATH")
-        .reqopt("", "cxx", "path to a C++ compiler", "PATH")
-        .reqopt("", "cflags", "flags for the C compiler", "FLAGS")
-        .reqopt("", "cxxflags", "flags for the CXX compiler", "FLAGS")
-        .optopt("", "ar", "path to an archiver", "PATH")
-        .optopt("", "target-linker", "path to a linker for the target", "PATH")
-        .optopt("", "host-linker", "path to a linker for the host", "PATH")
-        .reqopt("", "llvm-components", "list of LLVM components built in", "LIST")
-        .optopt("", "llvm-bin-dir", "Path to LLVM's `bin` directory", "PATH")
-        .optopt("", "nodejs", "the name of nodejs", "PATH")
-        .optopt("", "npm", "the name of npm", "PATH")
-        .optopt("", "remote-test-client", "path to the remote test client", "PATH")
-        .optopt(
-            "",
-            "compare-mode",
-            "mode describing what file the actual ui output will be compared to",
-            "COMPARE MODE",
-        )
-        .optflag(
-            "",
-            "rustfix-coverage",
-            "enable this to generate a Rustfix coverage file, which is saved in \
-            `./<build_test_suite_root>/rustfix_missing_coverage.txt`",
-        )
-        .optflag("", "force-rerun", "rerun tests even if the inputs are unchanged")
-        .optflag("", "only-modified", "only run tests that result been modified")
-        // FIXME: Temporarily retained so we can point users to `--no-capture`
-        .optflag("", "nocapture", "")
-        .optflag("", "no-capture", "don't capture stdout/stderr of tests")
-        .optflag("", "profiler-runtime", "is the profiler runtime enabled for this target")
-        .optflag("h", "help", "show this message")
-        .reqopt("", "channel", "current Rust channel", "CHANNEL")
-        .optflag(
-            "",
-            "git-hash",
-            "run tests which rely on commit version being compiled into the binaries",
-        )
-        .optopt("", "edition", "default Rust edition", "EDITION")
-        .reqopt("", "nightly-branch", "name of the git branch for nightly", "BRANCH")
-        .reqopt(
-            "",
-            "git-merge-commit-email",
-            "email address used for finding merge commits",
-            "EMAIL",
-        )
-        .optopt(
-            "",
-            "compiletest-diff-tool",
-            "What custom diff tool to use for displaying compiletest tests.",
-            "COMMAND",
-        )
-        .reqopt("", "minicore-path", "path to minicore aux library", "PATH")
-        .optopt(
-            "",
-            "debugger",
-            "only test a specific debugger in debuginfo tests",
-            "gdb | lldb | cdb",
-        )
-        .optopt(
-            "",
-            "default-codegen-backend",
-            "the codegen backend currently used",
-            "CODEGEN BACKEND NAME",
-        )
-        .optopt(
-            "",
-            "override-codegen-backend",
-            "the codegen backend to use instead of the default one",
-            "CODEGEN BACKEND [NAME | PATH]",
-        )
-        .optflag("", "bypass-ignore-backends", "ignore `//@ ignore-backends` directives")
-        .reqopt("", "jobs", "number of parallel jobs bootstrap was configured with", "JOBS")
-        .optopt(
-            "",
-            "parallel-frontend-threads",
-            "number of parallel threads to use for the frontend when building test artifacts",
-            "THREADS_COUNT",
-        )
-        .optopt("", "iteration-count", "number of times to execute each test", "COUNT");
-
-    let (argv0, args_) = args.split_first().unwrap();
-    if args.len() == 1 || args[1] == "-h" || args[1] == "--help" {
-        let message = format!("Usage: {} [OPTIONS] [TESTNAME...]", argv0);
-        println!("{}", opts.usage(&message));
-        println!();
-        panic!()
-    }
-
-    let matches = &match opts.parse(args_) {
-        Ok(m) => m,
-        Err(f) => panic!("{:?}", f),
-    };
-
-    if matches.opt_present("h") || matches.opt_present("help") {
-        let message = format!("Usage: {} [OPTIONS]  [TESTNAME...]", argv0);
-        println!("{}", opts.usage(&message));
-        println!();
-        panic!()
-    }
-
-    fn make_absolute(path: Utf8PathBuf) -> Utf8PathBuf {
-        if path.is_relative() {
-            Utf8PathBuf::try_from(env::current_dir().unwrap()).unwrap().join(path)
-        } else {
-            path
-        }
-    }
-
-    fn opt_path(m: &getopts::Matches, nm: &str) -> Utf8PathBuf {
-        match m.opt_str(nm) {
-            Some(s) => Utf8PathBuf::from(&s),
-            None => panic!("no option (=path) found for {}", nm),
-        }
-    }
-
-    let host = matches.opt_str("host").expect("`--host` must be unconditionally specified");
-    let target = matches.opt_str("target").expect("`--target` must be unconditionally specified");
-
-    let android_cross_path = matches.opt_str("android-cross-path").map(Utf8PathBuf::from);
-
-    let adb_path = matches.opt_str("adb-path").map(Utf8PathBuf::from);
-    let adb_test_dir = matches.opt_str("adb-test-dir").map(Utf8PathBuf::from);
-    let adb_device_status = target.contains("android") && adb_test_dir.is_some();
-
-    // FIXME: `cdb_version` is *derived* from cdb, but it's *not* technically a config!
-    let cdb = matches.opt_str("cdb").map(Utf8PathBuf::from);
-    let cdb_version = cdb.as_deref().and_then(debuggers::query_cdb_version);
-    // FIXME: `gdb_version` is *derived* from gdb, but it's *not* technically a config!
-    let gdb = matches.opt_str("gdb").map(Utf8PathBuf::from);
-    let gdb_version = gdb.as_deref().and_then(debuggers::query_gdb_version);
-    // FIXME: `lldb_version` is *derived* from lldb, but it's *not* technically a config!
-    let lldb = matches.opt_str("lldb").map(Utf8PathBuf::from);
-    let lldb_version =
-        matches.opt_str("lldb-version").as_deref().and_then(debuggers::extract_lldb_version);
-    // FIXME: this is very questionable, we really should be obtaining LLVM version info from
-    // `bootstrap`, and not trying to be figuring out that in `compiletest` by running the
-    // `FileCheck` binary.
-    let llvm_version =
-        matches.opt_str("llvm-version").as_deref().map(directives::extract_llvm_version).or_else(
-            || directives::extract_llvm_version_from_binary(&matches.opt_str("llvm-filecheck")?),
-        );
-
-    let default_codegen_backend = match matches.opt_str("default-codegen-backend").as_deref() {
-        Some(backend) => match CodegenBackend::try_from(backend) {
-            Ok(backend) => backend,
-            Err(error) => {
-                panic!("invalid value `{backend}` for `--defalt-codegen-backend`: {error}")
-            }
-        },
-        // By default, it's always llvm.
-        None => CodegenBackend::Llvm,
-    };
-    let override_codegen_backend = matches.opt_str("override-codegen-backend");
-
-    let run_ignored = matches.opt_present("ignored");
-    let with_rustc_debug_assertions = matches.opt_present("with-rustc-debug-assertions");
-    let with_std_debug_assertions = matches.opt_present("with-std-debug-assertions");
-    let with_std_remap_debuginfo = matches.opt_present("with-std-remap-debuginfo");
-    let mode = matches.opt_str("mode").unwrap().parse().expect("invalid mode");
-    let has_enzyme = matches.opt_present("has-enzyme");
-    let has_offload = matches.opt_present("has-offload");
-    let filters = if mode == TestMode::RunMake {
-        matches
-            .free
-            .iter()
-            .map(|f| {
-                // Here `f` is relative to `./tests/run-make`. So if you run
-                //
-                //   ./x test tests/run-make/crate-loading
-                //
-                //  then `f` is "crate-loading".
-                let path = Utf8Path::new(f);
-                let mut iter = path.iter().skip(1);
-
-                if iter.next().is_some_and(|s| s == "rmake.rs") && iter.next().is_none() {
-                    // Strip the "rmake.rs" suffix. For example, if `f` is
-                    // "crate-loading/rmake.rs" then this gives us "crate-loading".
-                    path.parent().unwrap().to_string()
-                } else {
-                    f.to_string()
-                }
-            })
-            .collect::<Vec<_>>()
-    } else {
-        // Note that the filters are relative to the root dir of the different test
-        // suites. For example, with:
-        //
-        //   ./x test tests/ui/lint/unused
-        //
-        // the filter is "lint/unused".
-        matches.free.clone()
-    };
-    let compare_mode = matches.opt_str("compare-mode").map(|s| {
-        s.parse().unwrap_or_else(|_| {
-            let variants: Vec<_> = CompareMode::STR_VARIANTS.iter().copied().collect();
-            panic!(
-                "`{s}` is not a valid value for `--compare-mode`, it should be one of: {}",
-                variants.join(", ")
-            );
-        })
-    });
-    if matches.opt_present("nocapture") {
-        panic!("`--nocapture` is deprecated; please use `--no-capture`");
-    }
-
-    let stage = match matches.opt_str("stage") {
-        Some(stage) => stage.parse::<u32>().expect("expected `--stage` to be an unsigned integer"),
-        None => panic!("`--stage` is required"),
-    };
-
-    let src_root = opt_path(matches, "src-root");
-    let src_test_suite_root = opt_path(matches, "src-test-suite-root");
-    assert!(
-        src_test_suite_root.starts_with(&src_root),
-        "`src-root` must be a parent of `src-test-suite-root`: `src-root`=`{}`, `src-test-suite-root` = `{}`",
-        src_root,
-        src_test_suite_root
-    );
-
-    let build_root = opt_path(matches, "build-root");
-    let build_test_suite_root = opt_path(matches, "build-test-suite-root");
-    assert!(build_test_suite_root.starts_with(&build_root));
-
-    let jobs = match matches.opt_str("jobs") {
-        Some(jobs) => jobs.parse::<u32>().expect("expected `--jobs` to be an `u32`"),
-        None => panic!("`--jobs` is required"),
-    };
-
-    let parallel_frontend_threads = match matches.opt_str("parallel-frontend-threads") {
-        Some(threads) => {
-            threads.parse::<u32>().expect("expected `--parallel-frontend-threads` to be an `u32`")
-        }
-        None => Config::DEFAULT_PARALLEL_FRONTEND_THREADS,
-    };
-    let iteration_count = match matches.opt_str("iteration-count") {
-        Some(count) => {
-            count.parse::<u32>().expect("expected `--iteration-count` to be a positive integer")
-        }
-        None => Config::DEFAULT_ITERATION_COUNT,
-    };
-    assert!(iteration_count > 0, "`--iteration-count` must be a positive integer");
-
-    Config {
-        bless: matches.opt_present("bless"),
-        fail_fast: matches.opt_present("fail-fast")
-            || env::var_os("RUSTC_TEST_FAIL_FAST").is_some(),
-
-        host_compile_lib_path: make_absolute(opt_path(matches, "compile-lib-path")),
-        target_run_lib_path: make_absolute(opt_path(matches, "run-lib-path")),
-        rustc_path: opt_path(matches, "rustc-path"),
-        cargo_path: matches.opt_str("cargo-path").map(Utf8PathBuf::from),
-        stage0_rustc_path: matches.opt_str("stage0-rustc-path").map(Utf8PathBuf::from),
-        query_rustc_path: matches.opt_str("query-rustc-path").map(Utf8PathBuf::from),
-        rustdoc_path: matches.opt_str("rustdoc-path").map(Utf8PathBuf::from),
-        coverage_dump_path: matches.opt_str("coverage-dump-path").map(Utf8PathBuf::from),
-        python: matches.opt_str("python").unwrap(),
-        jsondocck_path: matches.opt_str("jsondocck-path").map(Utf8PathBuf::from),
-        jsondoclint_path: matches.opt_str("jsondoclint-path").map(Utf8PathBuf::from),
-        run_clang_based_tests_with: matches
-            .opt_str("run-clang-based-tests-with")
-            .map(Utf8PathBuf::from),
-        llvm_filecheck: matches.opt_str("llvm-filecheck").map(Utf8PathBuf::from),
-        llvm_bin_dir: matches.opt_str("llvm-bin-dir").map(Utf8PathBuf::from),
-
-        src_root,
-        src_test_suite_root,
-
-        build_root,
-        build_test_suite_root,
-
-        sysroot_base: opt_path(matches, "sysroot-base"),
-
-        stage,
-        stage_id: matches.opt_str("stage-id").unwrap(),
-
-        mode,
-        suite: matches.opt_str("suite").unwrap().parse().expect("invalid suite"),
-        debugger: matches.opt_str("debugger").map(|debugger| {
-            debugger
-                .parse::<Debugger>()
-                .unwrap_or_else(|_| panic!("unknown `--debugger` option `{debugger}` given"))
-        }),
-        run_ignored,
-        with_rustc_debug_assertions,
-        with_std_debug_assertions,
-        with_std_remap_debuginfo,
-        filters,
-        skip: matches.opt_strs("skip"),
-        filter_exact: matches.opt_present("exact"),
-        force_pass_mode: matches.opt_str("pass").map(|mode| {
-            mode.parse::<ForcePassMode>()
-                .unwrap_or_else(|_| panic!("unknown `--pass` option `{}` given", mode))
-        }),
-        // FIXME: this run scheme is... confusing.
-        run: matches.opt_str("run").and_then(|mode| match mode.as_str() {
-            "auto" => None,
-            "always" => Some(true),
-            "never" => Some(false),
-            _ => panic!("unknown `--run` option `{}` given", mode),
-        }),
-        runner: matches.opt_str("runner"),
-        host_rustcflags: matches.opt_strs("host-rustcflags"),
-        target_rustcflags: matches.opt_strs("target-rustcflags"),
-        optimize_tests: matches.opt_present("optimize-tests"),
-        rust_randomized_layout: matches.opt_present("rust-randomized-layout"),
-        target,
-        host,
-        cdb,
-        cdb_version,
-        gdb,
-        gdb_version,
-        lldb,
-        lldb_version,
-        llvm_version,
-        system_llvm: matches.opt_present("system-llvm"),
-        android_cross_path,
-        adb_path,
-        adb_test_dir,
-        adb_device_status,
-        verbose: matches.opt_present("verbose"),
-        verbose_run_make_subprocess_output: matches
-            .opt_present("verbose-run-make-subprocess-output"),
-        only_modified: matches.opt_present("only-modified"),
-        remote_test_client: matches.opt_str("remote-test-client").map(Utf8PathBuf::from),
-        compare_mode,
-        rustfix_coverage: matches.opt_present("rustfix-coverage"),
-        has_enzyme,
-        has_offload,
-        channel: matches.opt_str("channel").unwrap(),
-        git_hash: matches.opt_present("git-hash"),
-        edition: matches.opt_str("edition").as_deref().map(parse_edition),
-
-        cc: matches.opt_str("cc").unwrap(),
-        cxx: matches.opt_str("cxx").unwrap(),
-        cflags: matches.opt_str("cflags").unwrap(),
-        cxxflags: matches.opt_str("cxxflags").unwrap(),
-        ar: matches.opt_str("ar").unwrap_or_else(|| String::from("ar")),
-        target_linker: matches.opt_str("target-linker"),
-        host_linker: matches.opt_str("host-linker"),
-        llvm_components: matches.opt_str("llvm-components").unwrap(),
-        nodejs: matches.opt_str("nodejs").map(Utf8PathBuf::from),
-
-        force_rerun: matches.opt_present("force-rerun"),
-
-        target_cfgs: OnceLock::new(),
-        builtin_cfg_names: OnceLock::new(),
-        supported_crate_types: OnceLock::new(),
-
-        capture: !matches.opt_present("no-capture"),
-
-        nightly_branch: matches.opt_str("nightly-branch").unwrap(),
-        git_merge_commit_email: matches.opt_str("git-merge-commit-email").unwrap(),
-
-        profiler_runtime: matches.opt_present("profiler-runtime"),
-
-        diff_command: matches.opt_str("compiletest-diff-tool"),
-
-        minicore_path: opt_path(matches, "minicore-path"),
-
-        default_codegen_backend,
-        override_codegen_backend,
-        bypass_ignore_backends: matches.opt_present("bypass-ignore-backends"),
-
-        jobs,
-
-        parallel_frontend_threads,
-        iteration_count,
-    }
-}
 
 /// Called by `main` after the config has been parsed.
 fn run_tests(config: Arc<Config>) {
@@ -561,19 +80,28 @@ fn run_tests(config: Arc<Config>) {
     if let TestMode::DebugInfo = config.mode {
         // Debugging emscripten code doesn't make sense today
         if !config.target.contains("emscripten") {
-            match config.debugger {
-                Some(Debugger::Cdb) => configs.extend(debuggers::configure_cdb(&config)),
-                Some(Debugger::Gdb) => configs.extend(debuggers::configure_gdb(&config)),
-                Some(Debugger::Lldb) => configs.extend(debuggers::configure_lldb(&config)),
-                // FIXME: the *implicit* debugger discovery makes it really difficult to control
-                // which {`cdb`, `gdb`, `lldb`} are used. These should **not** be implicitly
-                // discovered by `compiletest`; these should be explicit `bootstrap` configuration
-                // options that are passed to `compiletest`!
-                None => {
-                    configs.extend(debuggers::configure_cdb(&config));
-                    configs.extend(debuggers::configure_gdb(&config));
-                    configs.extend(debuggers::configure_lldb(&config));
-                }
+            // FIXME: ideally, we would just have one config, and then have some mechanism of
+            // generating multiple variants of a test, one for each debugger (something like
+            // debuginfo revisions). But for now, we just create three configs.
+            configs.extend([
+                Arc::new(Config { debugger: Some(Debugger::Cdb), ..config.as_ref().clone() }),
+                Arc::new(Config { debugger: Some(Debugger::Gdb), ..config.as_ref().clone() }),
+                Arc::new(Config { debugger: Some(Debugger::Lldb), ..config.as_ref().clone() }),
+            ]);
+
+            // FIXME: this should ideally happen somewhere else..
+            if config.target.contains("android") {
+                println!("{} debug-info test uses tcp 5039 port. please reserve it", config.target);
+
+                // android debug-info test uses remote debugger so, we test 1 thread
+                // at once as they're all sharing the same TCP port to communicate
+                // over.
+                //
+                // we should figure out how to lift this restriction! (run them all
+                // on different ports allocated dynamically).
+                //
+                // SAFETY: at this point we are still single-threaded.
+                unsafe { env::set_var("RUST_TEST_THREADS", "1") };
             }
         }
     } else {
@@ -789,7 +317,7 @@ fn collect_tests_from_dir(
         && let Some(("assembly" | "codegen", backend)) = last.split_once('-')
         && let Some(Utf8Component::Normal(parent)) = components.next()
         && parent == "tests"
-        && let Ok(backend) = CodegenBackend::try_from(backend)
+        && let Ok(backend) = backend.parse::<CodegenBackend>()
         && backend != cx.config.default_codegen_backend
     {
         // We ignore asm tests which don't match the current codegen backend.
@@ -946,11 +474,10 @@ fn make_test(cx: &TestCollectorCx, collector: &mut TestCollector, testpaths: &Te
 
         // If a test's inputs haven't changed since the last time it ran,
         // mark it as ignored so that the executor will skip it.
-        if !desc.ignore
+        if !desc.is_ignored()
             && !cx.config.force_rerun
             && is_up_to_date(cx, testpaths, &aux_props, revision)
         {
-            desc.ignore = true;
             // Keep this in sync with the "up-to-date" message detected by bootstrap.
             // FIXME(Zalathar): Now that we are no longer tied to libtest, we could
             // find a less fragile way to communicate this status to bootstrap.

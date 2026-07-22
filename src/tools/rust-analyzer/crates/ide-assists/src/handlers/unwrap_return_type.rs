@@ -113,16 +113,21 @@ pub(crate) fn unwrap_return_type(acc: &mut Assists, ctx: &AssistContext<'_, '_>)
 
                     let arg_list = call_expr.arg_list().unwrap();
                     if is_unit_type {
-                        let tail_parent = tail_expr
-                            .syntax()
-                            .parent()
-                            .and_then(Either::<ast::ReturnExpr, ast::StmtList>::cast)
-                            .unwrap();
+                        let tail_parent = tail_expr.syntax().parent().and_then(
+                            Either::<Either<ast::ReturnExpr, ast::BreakExpr>, ast::StmtList>::cast,
+                        );
                         match tail_parent {
-                            Either::Left(ret_expr) => {
-                                editor.replace(ret_expr.syntax(), make.expr_return(None).syntax())
+                            Some(Either::Left(_expr)) => {
+                                if let Some(ws) = tail_expr
+                                    .syntax()
+                                    .prev_sibling_or_token()
+                                    .filter(|e| e.kind() == SyntaxKind::WHITESPACE)
+                                {
+                                    editor.delete(ws);
+                                }
+                                editor.delete(tail_expr.syntax());
                             }
-                            Either::Right(stmt_list) => {
+                            Some(Either::Right(stmt_list)) => {
                                 let new_block = if stmt_list.statements().next().is_none() {
                                     make.expr_empty_block()
                                 } else {
@@ -132,6 +137,10 @@ pub(crate) fn unwrap_return_type(acc: &mut Assists, ctx: &AssistContext<'_, '_>)
                                     stmt_list.syntax(),
                                     new_block.stmt_list().unwrap().syntax(),
                                 );
+                            }
+                            // Parent is a match arm or similar — replace with ()
+                            None => {
+                                editor.replace(tail_expr.syntax(), make.expr_unit().syntax());
                             }
                         }
                     } else if let Some(first_arg) = arg_list.args().next() {
@@ -2239,6 +2248,102 @@ fn foo(the_field: u32) -> u32 {
         }
     }
     the_field
+}
+"#,
+            "Unwrap Result return type",
+        );
+    }
+
+    #[test]
+    fn unwrap_option_return_type_unit_type_match_arm() {
+        check_assist_by_label(
+            unwrap_return_type,
+            r#"
+//- minicore: option
+fn foo(flag: bool) -> Option<()$0> {
+    match flag {
+        true => Some(()),
+        false => None,
+    }
+}
+"#,
+            r#"
+fn foo(flag: bool) {
+    match flag {
+        true => (),
+        false => ${1:()}$0,
+    }
+}
+"#,
+            "Unwrap Option return type",
+        );
+    }
+
+    #[test]
+    fn unwrap_option_return_type_unit_type_break() {
+        check_assist_by_label(
+            unwrap_return_type,
+            r#"
+//- minicore: option
+fn foo() -> Option<()$0> {
+    loop {
+        break Some(());
+    }
+}
+"#,
+            r#"
+fn foo() {
+    loop {
+        break;
+    }
+}
+"#,
+            "Unwrap Option return type",
+        );
+    }
+
+    #[test]
+    fn unwrap_option_return_type_unit_type_break_with_label() {
+        check_assist_by_label(
+            unwrap_return_type,
+            r#"
+//- minicore: option
+fn foo() -> Option<()$0> {
+    'outer: loop {
+        break 'outer Some(());
+    }
+}
+"#,
+            r#"
+fn foo() {
+    'outer: loop {
+        break 'outer;
+    }
+}
+"#,
+            "Unwrap Option return type",
+        );
+    }
+
+    #[test]
+    fn unwrap_result_return_type_unit_type_match_arm() {
+        check_assist_by_label(
+            unwrap_return_type,
+            r#"
+//- minicore: result
+fn foo(flag: bool) -> Result<(), ()$0> {
+    match flag {
+        true => Ok(()),
+        false => Err(()),
+    }
+}
+"#,
+            r#"
+fn foo(flag: bool) {
+    match flag {
+        true => (),
+        false => (),
+    }
 }
 "#,
             "Unwrap Result return type",

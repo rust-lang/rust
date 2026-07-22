@@ -13,7 +13,7 @@ use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdMap};
 use rustc_middle::metadata::{AmbigModChild, ModChild, Reexport};
 use rustc_middle::span_bug;
 use rustc_middle::ty::Visibility;
-use rustc_session::errors::feature_err;
+use rustc_session::diagnostics::feature_err;
 use rustc_session::lint::LintId;
 use rustc_session::lint::builtin::{
     AMBIGUOUS_GLOB_REEXPORTS, EXPORTED_PRIVATE_DEPENDENCIES, HIDDEN_GLOB_REEXPORTS,
@@ -25,14 +25,14 @@ use rustc_span::{Ident, Span, Symbol, kw, sym};
 use tracing::debug;
 
 use crate::Namespace::{self, *};
+use crate::diagnostics::impls::{OnUnknownData, Suggestion};
 use crate::diagnostics::{
     self, CannotBeReexportedCratePublic, CannotBeReexportedCratePublicNS,
     CannotBeReexportedPrivate, CannotBeReexportedPrivateNS, CannotDetermineImportResolution,
     CannotGlobImportAllCrates, ConsiderAddingMacroExport, ConsiderMarkingAsPub,
     ConsiderMarkingAsPubCrate,
 };
-use crate::error_helper::{OnUnknownData, Suggestion};
-use crate::ref_mut::CmCell;
+use crate::ref_mut::{CmCell, CmRefCell};
 use crate::{
     AmbiguityError, BindingKey, CmResolver, Decl, DeclData, DeclKind, Determinacy, Finalize,
     IdentKey, ImportSuggestion, ImportSummary, LocalModule, ModuleOrUniformRoot, ParentScope,
@@ -69,7 +69,6 @@ impl<'ra> PendingDecl<'ra> {
 }
 
 /// Contains data for specific kinds of imports.
-#[derive(Clone)]
 pub(crate) enum ImportKind<'ra> {
     Single {
         /// `source` in `use prefix::source as target`.
@@ -157,7 +156,7 @@ impl<'ra> std::fmt::Debug for ImportKind<'ra> {
 }
 
 /// One import.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub(crate) struct ImportData<'ra> {
     pub kind: ImportKind<'ra>,
 
@@ -211,22 +210,9 @@ pub(crate) struct ImportData<'ra> {
     pub on_unknown_attr: Option<OnUnknownData>,
 }
 
-/// All imports are unique and allocated on a same arena,
-/// so we can use referential equality to compare them.
+/// `Interned` is used because values of this type have "identity" and compare as unequal even if
+/// they have the same contents.
 pub(crate) type Import<'ra> = Interned<'ra, ImportData<'ra>>;
-
-// Allows us to use Interned without actually enforcing (via Hash/PartialEq/...) uniqueness of the
-// contained data.
-// FIXME: We may wish to actually have at least debug-level assertions that Interned's guarantees
-// are upheld.
-impl std::hash::Hash for ImportData<'_> {
-    fn hash<H>(&self, _: &mut H)
-    where
-        H: std::hash::Hasher,
-    {
-        unreachable!()
-    }
-}
 
 impl<'ra> ImportData<'ra> {
     pub(crate) fn is_glob(&self) -> bool {
@@ -280,7 +266,7 @@ impl<'ra> ImportData<'ra> {
 }
 
 /// Records information about the resolution of a name in a namespace of a module.
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub(crate) struct NameResolution<'ra> {
     /// Single imports that may define the name in the namespace.
     /// Imports are arena-allocated, so it's ok to use pointers as keys.
@@ -291,6 +277,10 @@ pub(crate) struct NameResolution<'ra> {
     pub glob_decl: Option<Decl<'ra>> = None,
     pub orig_ident_span: Span,
 }
+
+/// `Interned` is used because values of this type have "identity" and compare as unequal even if
+/// they have the same contents.
+pub(crate) type NameResolutionRef<'ra> = Interned<'ra, CmRefCell<NameResolution<'ra>>>;
 
 impl<'ra> NameResolution<'ra> {
     pub(crate) fn new(orig_ident_span: Span) -> Self {
@@ -320,9 +310,62 @@ impl<'ra> NameResolution<'ra> {
     }
 }
 
+// module to keep the TLS private and only accessible through the function `enter_cycle_detector`.
+pub(crate) mod cycle_detection {
+    use std::ptr;
+
+    use crate::{BindingKey, CacheRefCell, LocalModule};
+
+    thread_local!(
+        /// During import resolution, recursive imports can form cycles.
+        /// This set stores the active resolution stack for the current thread.
+        /// By keeping track of the module and `BindingKey` pair that identifies
+        /// the specific resolution.
+        ///
+        /// The pointer is the interned address of a `Interned<'ra, ModuleData>` allocated
+        /// in the `Resolver Arenas` (lifetime `'ra`), it is thus stable and allows casting
+        /// to a `*const ()` for comparison. This is done because we can't use lifetimes
+        /// other than `'static` in thread local storage.
+        static ACTIVE_RESOLUTIONS: CacheRefCell<Vec<(*const (), BindingKey)>> = Default::default();
+    );
+
+    pub(crate) struct ActiveResolutionGuard {
+        key: (*const (), BindingKey),
+    }
+
+    impl Drop for ActiveResolutionGuard {
+        fn drop(&mut self) {
+            ACTIVE_RESOLUTIONS.with_borrow_mut(|ar| {
+                // Only this guard is allowed to remove this key.
+                assert!(
+                    Some(self.key) == ar.pop(),
+                    "This guard should be the only one removing this key"
+                );
+            });
+        }
+    }
+
+    /// Returns `Err(())` if a cycle is detected, otherwise this returns a
+    /// guard that will remove the resolution when dropped.
+    pub(crate) fn enter_cycle_detector<'ra>(
+        module: LocalModule<'ra>,
+        binding_key: BindingKey,
+    ) -> Result<ActiveResolutionGuard, ()> {
+        let module_key = ptr::from_ref(module.0.0).cast();
+        let key = (module_key, binding_key);
+        ACTIVE_RESOLUTIONS.with_borrow_mut(|ar| {
+            if ar.contains(&key) {
+                return Err(());
+            }
+            ar.push(key);
+            Ok(ActiveResolutionGuard { key })
+        })
+    }
+}
+
 /// An error that may be transformed into a diagnostic later. Used to combine multiple unresolved
 /// import errors within the same use tree into a single diagnostic.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub(crate) struct UnresolvedImportError {
     pub(crate) span: Span,
     pub(crate) label: Option<String>,
@@ -341,7 +384,7 @@ fn pub_use_of_private_extern_crate_hack(
     import: ImportSummary,
     decl: Decl<'_>,
 ) -> Option<LocalDefId> {
-    match (import.is_single, decl.kind) {
+    match (import.is_single, &decl.kind) {
         (true, DeclKind::Import { import: decl_import, .. })
             if let ImportKind::ExternCrate { def_id, .. } = decl_import.kind
                 && import.vis.is_public() =>
@@ -430,7 +473,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             kind: DeclKind::Import { source_decl: decl, import },
             ambiguity: CmCell::new(None),
             span: import.span,
-            initial_vis: vis.to_def_id(),
+            initial_vis: vis.to_mod_id(),
             ambiguity_vis_max: CmCell::new(None),
             ambiguity_vis_min: CmCell::new(None),
             expansion: import.parent_scope.expansion,
@@ -640,6 +683,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let (binding, t) = {
             let resolution = &mut *self
                 .resolution_or_default(module.to_module(), key, orig_ident_span)
+                .0
                 .borrow_mut(self);
             let old_decl = resolution.determined_decl();
             let old_vis = old_decl.map(|d| d.vis());
@@ -777,7 +821,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 ) => {
                     self.per_ns(|this, ns| {
                         match import_decls[ns] {
-                            PendingDecl::Ready(Some(import_decl)) => {
+                            PendingDecl::Ready(Some(decl)) => {
+                                // We need the `target`, `source` can be extracted.
+                                let import_decl = this.new_import_decl(decl, import);
                                 if import_decl.is_assoc_item()
                                     && !this.features.import_trait_associated_functions()
                                 {
@@ -1107,11 +1153,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 Some(import),
             );
             let pending_decl = match binding_result {
-                Ok(binding) => {
-                    // We need the `target`, `source` can be extracted.
-                    let import_decl = this.new_import_decl(binding, import);
-                    PendingDecl::Ready(Some(import_decl))
-                }
+                Ok(binding) => PendingDecl::Ready(Some(binding)),
                 Err(Determinacy::Determined) => PendingDecl::Ready(None),
                 Err(Determinacy::Undetermined) => {
                     indeterminate_count += 1;
@@ -1604,7 +1646,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ns: Namespace,
     ) -> Option<BufferedEarlyLint> {
         let crate_private_reexport = match decl.vis() {
-            Visibility::Restricted(def_id) if def_id.is_top_level_module() => true,
+            Visibility::Restricted(mod_id) if mod_id.is_top_level_module() => true,
             _ => false,
         };
 

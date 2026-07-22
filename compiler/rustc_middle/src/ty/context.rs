@@ -20,7 +20,6 @@ use rustc_ast as ast;
 use rustc_data_structures::defer;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::intern::Interned;
-use rustc_data_structures::jobserver::Proxy;
 use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_data_structures::sharded::{IntoPointer, ShardedHashMap};
 use rustc_data_structures::stable_hash::StableHash;
@@ -602,6 +601,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// to the only allowed case.
     pub fn feed_anon_const_type(self, key: LocalDefId, value: ty::EarlyBinder<'tcx, Ty<'tcx>>) {
         debug_assert_eq!(self.def_kind(key), DefKind::AnonConst);
+        debug_assert!(self.anon_const_kind(key) != ty::AnonConstKind::NonTypeSystemInline);
         TyCtxtFeed { tcx: self, key }.type_of(value)
     }
 
@@ -619,7 +619,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 other => bug!("{key:?} is not an assoc item of a trait impl: {other:?}"),
             }
         }
-        TyCtxtFeed { tcx: self, key }.visibility(vis.to_def_id())
+        TyCtxtFeed { tcx: self, key }.visibility(vis.to_mod_id())
     }
 }
 
@@ -766,9 +766,6 @@ pub struct GlobalCtxt<'tcx> {
     pub(crate) alloc_map: interpret::AllocMap<'tcx>,
 
     current_gcx: CurrentGcx,
-
-    /// A jobserver reference used to release then acquire a token while waiting on a query.
-    pub jobserver_proxy: Arc<Proxy>,
 }
 
 impl<'tcx> GlobalCtxt<'tcx> {
@@ -848,7 +845,6 @@ impl<'tcx> TyCtxt<'tcx> {
             DefKind::AnonConst
                 | DefKind::AssocConst { .. }
                 | DefKind::Const { .. }
-                | DefKind::InlineConst
                 | DefKind::GlobalAsm
         ) {
             CodegenFnAttrs::EMPTY
@@ -944,7 +940,6 @@ impl<'tcx> TyCtxt<'tcx> {
         query_system: QuerySystem<'tcx>,
         hooks: crate::hooks::Providers,
         current_gcx: CurrentGcx,
-        jobserver_proxy: Arc<Proxy>,
         f: impl FnOnce(TyCtxt<'tcx>) -> T,
     ) -> T {
         let data_layout = sess.target.parse_data_layout().unwrap_or_else(|err| {
@@ -982,7 +977,6 @@ impl<'tcx> TyCtxt<'tcx> {
             data_layout,
             alloc_map: interpret::AllocMap::new(),
             current_gcx,
-            jobserver_proxy,
         });
 
         // This is a separate function to work around a crash with parallel rustc (#135870)
@@ -1324,8 +1318,8 @@ impl<'tcx> TyCtxt<'tcx> {
         // Visibilities for opaque types are meaningless, but still provided
         // so that all items have visibilities.
         if matches!(def_kind, DefKind::Closure | DefKind::OpaqueTy) {
-            let parent_mod = self.parent_module_from_def_id(def_id).to_def_id();
-            feed.visibility(ty::Visibility::Restricted(parent_mod));
+            let parent_mod = self.parent_module_from_def_id(def_id);
+            feed.visibility(ty::Visibility::Restricted(parent_mod.to_mod_id()));
         }
 
         feed
@@ -2690,6 +2684,10 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn disable_trait_solver_fast_paths(self) -> bool {
         self.sess.opts.unstable_opts.disable_fast_paths
+    }
+
+    pub fn disable_param_env_normalization_hack(self) -> bool {
+        self.sess.opts.unstable_opts.disable_param_env_normalization_hack
     }
 
     pub fn renormalize_rigid_aliases(self) -> bool {

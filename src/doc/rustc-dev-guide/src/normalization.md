@@ -189,7 +189,7 @@ Secondly, instead of having normalization directly return the type specified in 
 We do this so that normalization is idempotent/callers do not need to run it in a loop.
 
 ```rust
-#![feature(lazy_type_alias)]
+#![feature(checked_type_alias)]
 
 type Foo<T: Iterator> = Bar<T>;
 type Bar<T: Iterator> = <T as Iterator>::Item;

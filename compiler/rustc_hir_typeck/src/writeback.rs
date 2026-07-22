@@ -948,8 +948,8 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
         // We must deeply normalize in the new solver, since later lints expect
         // that types that show up in the typeck are fully normalized.
         let mut value = if self.should_normalize && self.fcx.next_trait_solver() {
-            let body_id = tcx.hir_body_owner_def_id(self.body.id());
-            let cause = ObligationCause::misc(self.span.to_span(tcx), body_id);
+            let body_def_id = tcx.hir_body_owner_def_id(self.body.id());
+            let cause = ObligationCause::misc(self.span.to_span(tcx), body_def_id);
             let at = self.fcx.at(&cause, self.fcx.param_env);
             let universes = vec![None; outer_exclusive_binder(&value).as_usize()];
             match solve::deeply_normalize_with_skipped_universes_and_ambiguous_coroutine_goals(

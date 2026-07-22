@@ -698,7 +698,10 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for MakeSuggestableFolder<'tcx> {
 
             FnDef(def_id, args) if self.placeholder.is_none() => Ty::new_fn_ptr(
                 self.tcx,
-                self.tcx.fn_sig(def_id).instantiate(self.tcx, args).skip_norm_wip(),
+                self.tcx
+                    .fn_sig(def_id)
+                    .instantiate(self.tcx, args.no_bound_vars().unwrap())
+                    .skip_norm_wip(),
             ),
 
             Closure(..)

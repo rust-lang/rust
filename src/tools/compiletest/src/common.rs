@@ -2,12 +2,14 @@ use std::borrow::Cow;
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::iter;
 use std::process::Command;
+use std::str::FromStr;
 use std::sync::OnceLock;
 
 use build_helper::git::GitConfig;
 use camino::{Utf8Path, Utf8PathBuf};
 use semver::Version;
 
+use crate::debuggers::LldbVersion;
 use crate::edition::Edition;
 use crate::fatal;
 use crate::util::{Utf8PathBufExt, add_dylib_path, string_enum};
@@ -227,15 +229,15 @@ pub(crate) enum CodegenBackend {
     Llvm,
 }
 
-impl<'a> TryFrom<&'a str> for CodegenBackend {
-    type Error = &'static str;
+impl FromStr for CodegenBackend {
+    type Err = &'static str;
 
-    fn try_from(value: &'a str) -> Result<Self, Self::Error> {
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
         match value.to_lowercase().as_str() {
             "cranelift" => Ok(Self::Cranelift),
             "gcc" => Ok(Self::Gcc),
             "llvm" => Ok(Self::Llvm),
-            _ => Err("unknown backend"),
+            _ => Err("unknown codegen backend"),
         }
     }
 }
@@ -596,7 +598,7 @@ pub(crate) struct Config {
     /// Version of LLDB.
     ///
     /// FIXME: `lldb_version` is *derived* from lldb, but it's *not* technically a config!
-    pub(crate) lldb_version: Option<u32>,
+    pub(crate) lldb_version: Option<LldbVersion>,
 
     /// Version of LLVM.
     ///

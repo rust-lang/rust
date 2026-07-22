@@ -427,7 +427,13 @@ pub trait InferCtxtLike: Sized {
     fn equate_float_vids_raw(&self, a: ty::FloatVid, b: ty::FloatVid);
     fn equate_const_vids_raw(&self, a: ty::ConstVid, b: ty::ConstVid);
 
-    fn instantiate_ty_var_raw<R: PredicateEmittingRelation<Self>>(
+    /// Use `instantiate_ty_var` instead unless you have reasons to skip
+    /// generalization.
+    fn instantiate_ty_var_raw(&self, vid: ty::TyVid, ty: <Self::Interner as Interner>::Ty);
+    /// Use `instantiate_const_var` instead unless you have reasons to skip
+    /// generalization.
+    fn instantiate_const_var_raw(&self, vid: ty::ConstVid, ct: <Self::Interner as Interner>::Const);
+    fn instantiate_ty_var<R: PredicateEmittingRelation<Self>>(
         &self,
         relation: &mut R,
         target_is_expected: bool,
@@ -437,7 +443,7 @@ pub trait InferCtxtLike: Sized {
     ) -> RelateResult<Self::Interner, ()>;
     fn instantiate_int_var_raw(&self, vid: ty::IntVid, value: ty::IntVarValue);
     fn instantiate_float_var_raw(&self, vid: ty::FloatVid, value: ty::FloatVarValue);
-    fn instantiate_const_var_raw<R: PredicateEmittingRelation<Self>>(
+    fn instantiate_const_var<R: PredicateEmittingRelation<Self>>(
         &self,
         relation: &mut R,
         target_is_expected: bool,
@@ -532,8 +538,8 @@ where
     Infcx: InferCtxtLike<Interner = I>,
 {
     // Iterate through all goals in param_env to find the one that has the same symbol.
-    for pred in param_env.caller_bounds().iter() {
-        if let ty::ClauseKind::UnstableFeature(sym) = pred.kind().skip_binder() {
+    for clause in param_env.caller_bounds().iter() {
+        if let ty::ClauseKind::UnstableFeature(sym) = clause.kind().skip_binder() {
             if sym == symbol {
                 return true;
             }

@@ -1,11 +1,7 @@
 use std::collections::BTreeSet;
 
 use either::Either;
-use hir::{
-    FileRange, PathResolution, Semantics, TypeInfo,
-    db::{ExpandDatabase, HirDatabase},
-    sym,
-};
+use hir::{FileRange, PathResolution, Semantics, TypeInfo, db::HirDatabase, sym};
 use ide_db::{
     EditionedFileId, FxHashMap, RootDatabase,
     base_db::Crate,
@@ -79,7 +75,7 @@ pub(crate) fn inline_into_callers(acc: &mut Assists, ctx: &AssistContext<'_, '_>
 
     let function = ctx.sema.to_def(&ast_func)?;
 
-    let def_file_editor = SyntaxEditor::new(ast_func.syntax().ancestors().last().unwrap()).0;
+    let def_file_editor = SyntaxEditor::new(ast_func.syntax().tree_top()).0;
     let params = get_fn_params(ctx.sema.db, function, &param_list, def_file_editor.make())?;
 
     let mut file_editors = FxHashMap::default();
@@ -255,7 +251,7 @@ pub(crate) fn inline_call(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Opt
         return None;
     }
     let syntax = call_info.node.syntax().clone();
-    let editor = SyntaxEditor::new(syntax.ancestors().last().unwrap()).0;
+    let editor = SyntaxEditor::new(syntax.tree_top()).0;
     let params = get_fn_params(ctx.sema.db, function, &param_list, editor.make())?;
 
     if call_info.arguments.len() != params.len() {
@@ -352,7 +348,7 @@ fn inline(
     let file_id = sema.hir_file_for(fn_body.syntax());
     let body_to_clone = if let Some(macro_file) = file_id.macro_file() {
         cov_mark::hit!(inline_call_defined_in_macro);
-        let span_map = sema.db.expansion_span_map(macro_file);
+        let span_map = macro_file.expansion_span_map(sema.db);
         let body_prettified =
             prettify_macro_expansion(sema.db, fn_body.syntax().clone(), span_map, *krate);
         if let Some(body) = ast::BlockExpr::cast(body_prettified) { body } else { fn_body.clone() }
@@ -496,7 +492,7 @@ fn inline(
             let param_ty = param_ty.clone().map(|param_ty| {
                 let file_id = sema.hir_file_for(param_ty.syntax());
                 if let Some(macro_file) = file_id.macro_file() {
-                    let span_map = sema.db.expansion_span_map(macro_file);
+                    let span_map = macro_file.expansion_span_map(sema.db);
                     let param_ty_prettified = prettify_macro_expansion(
                         sema.db,
                         param_ty.syntax().clone(),
@@ -1570,11 +1566,8 @@ async fn foo(arg: u32) -> u32 {
 }
 fn spawn<T>(_: T) {}
 fn main() {
-    spawn({
-        let arg = 42;
-        async move {
-            bar(arg).await * 2
-        }
+    spawn(async move {
+        bar(42).await * 2
     });
 }
 "#,
@@ -1605,12 +1598,9 @@ async fn foo(arg: u32) -> u32 {
 }
 fn spawn<T>(_: T) {}
 fn main() {
-    spawn({
-        let arg = 42;
-        async move {
-            bar(arg).await;
-            42
-        }
+    spawn(async move {
+        bar(42).await;
+        42
     });
 }
 "#,
@@ -1645,11 +1635,10 @@ fn spawn<T>(_: T) {}
 fn main() {
     let var = 42;
     spawn({
-        let x = var;
         let y = var + 1;
         let z: &u32 = &var;
         async move {
-            bar(x).await;
+            bar(var).await;
             y + y + *z
         }
     });

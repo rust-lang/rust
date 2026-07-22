@@ -1,7 +1,7 @@
 use rustc_ast as ast;
 use rustc_ast::token::{self, MetaVarKind};
-use rustc_ast::tokenstream::ParserRange;
-use rustc_ast::{AttrItemKind, Attribute, attr};
+use rustc_ast::tokenstream::{ParserRange, WithTokens};
+use rustc_ast::{Attribute, attr};
 use rustc_errors::codes::*;
 use rustc_errors::{Diag, PResult, msg};
 use rustc_span::{BytePos, Span};
@@ -13,7 +13,7 @@ use super::{
     Trailing, UsePreAttrPos,
 };
 use crate::parser::FnContext;
-use crate::{errors, exp};
+use crate::{diagnostics, exp};
 
 // Public for rustfmt usage
 #[derive(Debug)]
@@ -153,7 +153,15 @@ impl<'a> Parser<'a> {
                 );
             }
             bracket_res?;
-            let item = this.parse_attr_item(ForceCollect::No)?;
+
+            let attr_item = this.parse_attr_item(ForceCollect::No)?;
+            // `attr_item` will never have tokens: within `parse_attr_item`, `collect_tokens`
+            // attaches tokens only if:
+            // - `ForceCollect::Yes` is passed (not true), or
+            // - attributes on the parsed node require tokens (not true, because attr items can't
+            //   have attributes of their own, hence the empty `HasAttrs` impl for `AttrItem`).
+            assert!(attr_item.tokens.is_none());
+
             this.expect(exp!(CloseBracket))?;
             let attr_sp = lo.to(this.prev_token.span);
 
@@ -162,11 +170,17 @@ impl<'a> Parser<'a> {
                 this.error_on_forbidden_inner_attr(
                     attr_sp,
                     inner_parse_policy,
-                    item.is_valid_for_outer_style(),
+                    attr_item.node.is_valid_for_outer_style(),
                 );
             }
 
-            Ok(attr::mk_attr_from_item(&self.psess.attr_id_generator, item, None, style, attr_sp))
+            Ok(attr::mk_attr_from_item(
+                &self.psess.attr_id_generator,
+                attr_item.node,
+                None,
+                style,
+                attr_sp,
+            ))
         })
     }
 
@@ -308,7 +322,10 @@ impl<'a> Parser<'a> {
     ///     PATH
     ///     PATH `=` UNSUFFIXED_LIT
     /// The delimiters or `=` are still put into the resulting token stream.
-    pub fn parse_attr_item(&mut self, force_collect: ForceCollect) -> PResult<'a, ast::AttrItem> {
+    pub fn parse_attr_item(
+        &mut self,
+        force_collect: ForceCollect,
+    ) -> PResult<'a, WithTokens<ast::AttrItem>> {
         if let Some(item) = self.eat_metavar_seq_with_matcher(
             |mv_kind| matches!(mv_kind, MetaVarKind::Meta { .. }),
             |this| this.parse_attr_item(force_collect),
@@ -333,7 +350,7 @@ impl<'a> Parser<'a> {
                 this.expect(exp!(CloseParen))?;
             }
             Ok((
-                ast::AttrItem { unsafety, path, args: AttrItemKind::Unparsed(args), tokens: None },
+                WithTokens::new(ast::AttrItem { unsafety, path, args }),
                 Trailing::No,
                 UsePreAttrPos::No,
             ))
@@ -391,7 +408,7 @@ impl<'a> Parser<'a> {
         debug!("checking if {:?} is unsuffixed", lit);
 
         if !lit.kind.is_unsuffixed() {
-            self.dcx().emit_err(errors::SuffixedLiteralInAttribute { span: lit.span });
+            self.dcx().emit_err(diagnostics::SuffixedLiteralInAttribute { span: lit.span });
         }
 
         Ok(lit)
@@ -426,7 +443,8 @@ impl<'a> Parser<'a> {
                     .eat_metavar_seq(MetaVarKind::Meta { has_meta_form: true }, |this| {
                         this.parse_attr_item(ForceCollect::No)
                     })
-                    .unwrap();
+                    .unwrap()
+                    .node;
                 Ok(attr_item.meta(attr_item.path.span).unwrap())
             } else {
                 self.unexpected_any()
@@ -485,7 +503,7 @@ impl<'a> Parser<'a> {
             Err(err) => err.cancel(), // we provide a better error below
         }
 
-        let mut err = errors::InvalidMetaItem {
+        let mut err = diagnostics::InvalidMetaItem {
             span: self.token.span,
             descr: super::token_descr(&self.token),
             quote_ident_sugg: None,
@@ -501,7 +519,7 @@ impl<'a> Parser<'a> {
             while let token::Ident(..) = self.token.kind {
                 self.bump();
             }
-            err.quote_ident_sugg = Some(errors::InvalidMetaItemQuoteIdentSugg {
+            err.quote_ident_sugg = Some(diagnostics::InvalidMetaItemQuoteIdentSugg {
                 before,
                 after: self.prev_token.span.shrink_to_hi(),
             });

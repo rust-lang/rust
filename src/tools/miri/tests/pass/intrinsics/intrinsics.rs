@@ -1,4 +1,5 @@
 //@compile-flags: -Zmiri-permissive-provenance
+//@run-native
 #![feature(core_intrinsics, layout_for_ptr, ptr_metadata)]
 //! Tests for various intrinsics that do not fit anywhere else.
 
@@ -32,14 +33,12 @@ fn main() {
         assert_eq!(size_of_val_raw(0x100 as *const i32), 4);
     }
 
-    assert_eq!(intrinsics::type_name::<Option<i32>>(), "core::option::Option<i32>");
+    assert_eq!(const { intrinsics::type_name::<Option<i32>>() }, "core::option::Option<i32>");
 
     assert_eq!(intrinsics::likely(false), false);
     assert_eq!(intrinsics::unlikely(true), true);
 
-    // Skip this test when we use the fallback bodies, as that one is deterministic.
-    // (CI sets `--cfg force_intrinsic_fallback` together with `-Zmiri-force-intrinsic-fallback`.)
-    if !cfg!(force_intrinsic_fallback) {
+    if cfg!(miri) {
         check_nondet(|| intrinsics::is_val_statically_known(0));
     }
 

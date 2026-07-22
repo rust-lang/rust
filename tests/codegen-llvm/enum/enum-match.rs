@@ -1,5 +1,8 @@
 //@ compile-flags: -Copt-level=1
 //@ only-64bit
+//@ revisions: LLVM22 LLVM23
+//@ [LLVM22] max-llvm-major-version: 22
+//@ [LLVM23] min-llvm-version: 23
 
 #![crate_type = "lib"]
 #![feature(core_intrinsics)]
@@ -18,8 +21,9 @@ pub enum Enum0 {
 // CHECK-LABEL: define{{( dso_local)?}} noundef{{( range\(i8 [0-9]+, [0-9]+\))?}} i8 @match0(i8{{.+}}%0)
 // CHECK-NEXT: start:
 // CHECK-NEXT: %[[IS_B:.+]] = icmp eq i8 %0, 2
-// CHECK-NEXT: %[[TRUNC:.+]] = and i8 %0, 1
-// CHECK-NEXT: %[[R:.+]] = select i1 %[[IS_B]], i8 13, i8 %[[TRUNC]]
+// LLVM22-NEXT: %[[TRUNC:.+]] = and i8 %0, 1
+// LLVM22-NEXT: %[[R:.+]] = select i1 %[[IS_B]], i8 13, i8 %[[TRUNC]]
+// LLVM23-NEXT: %[[R:.+]] = select i1 %[[IS_B]], i8 13, i8 %0
 // CHECK-NEXT: ret i8 %[[R]]
 #[no_mangle]
 pub fn match0(e: Enum0) -> u8 {

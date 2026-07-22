@@ -68,7 +68,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedTraitNames {
             && cx.tcx.resolutions(()).maybe_unused_trait_imports.contains(&item.owner_id.def_id)
             // Only check this import if it is visible to its module only (no pub, pub(crate), ...)
             && let module = cx.tcx.parent_module_from_def_id(item.owner_id.def_id)
-            && cx.tcx.visibility(item.owner_id.def_id) == Visibility::Restricted(module.to_def_id())
+            && cx.tcx.local_visibility(item.owner_id.def_id) == Visibility::Restricted(module)
             && let Some(last_segment) = path.segments.last()
             && let Some(snip) = snippet_opt(cx, last_segment.ident.span)
             && self.msrv.meets(cx, msrvs::UNDERSCORE_IMPORTS)

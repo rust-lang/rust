@@ -27,6 +27,10 @@ impl ExprCollector<'_> {
         let mut named_args: FxHashMap<Symbol, usize> = Default::default();
         let mut reg_args: FxHashSet<usize> = Default::default();
         for piece in asm.asm_pieces() {
+            if !self.check_cfg(&piece) {
+                continue;
+            }
+
             let slot = operands.len();
             let mut lower_reg = |reg: Option<ast::AsmRegSpec>| {
                 let reg = reg?;

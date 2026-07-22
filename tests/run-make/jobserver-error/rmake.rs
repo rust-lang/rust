@@ -1,4 +1,4 @@
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 //! If the environment variables contain an invalid `jobserver-auth`, this used to cause an ICE
 //! until this was fixed in [do not panic on failure to acquire jobserver token
 //! #109694](https://github.com/rust-lang/rust/pull/109694).

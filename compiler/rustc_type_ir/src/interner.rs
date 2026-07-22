@@ -16,7 +16,7 @@ use crate::solve::{
     AccessedOpaques, CanonicalInput, Certainty, ExternalConstraintsData, QueryResult, inspect,
 };
 use crate::visit::{Flags, TypeVisitable};
-use crate::{self as ty, CanonicalParamEnvCacheEntry, search_graph};
+use crate::{self as ty, CanonicalParamEnvCacheEntry, TraitRef, search_graph};
 
 #[cfg_attr(feature = "nightly", rustc_diagnostic_item = "type_ir_interner")]
 pub trait Interner:
@@ -398,8 +398,7 @@ pub trait Interner:
 
     fn for_each_relevant_impl<R: VisitorResult>(
         self,
-        trait_def_id: Self::TraitId,
-        self_ty: Self::Ty,
+        trait_ref: TraitRef<Self>,
         f: impl FnMut(Self::ImplId) -> R,
     ) -> R;
     fn for_each_blanket_impl<R: VisitorResult>(

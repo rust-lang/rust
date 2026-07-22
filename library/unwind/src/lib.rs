@@ -33,13 +33,10 @@ cfg_select! {
         target_os = "solid_asp3",
         all(target_vendor = "fortanix", target_env = "sgx"),
         all(target_os = "wasi", panic = "unwind"),
+        target_os = "xous",
     ) => {
         mod libunwind;
         pub use libunwind::*;
-    }
-    target_os = "xous" => {
-        mod unwinding;
-        pub use unwinding::*;
     }
     target_family = "wasm" => {
         mod wasm;
@@ -56,7 +53,14 @@ cfg_select! {
     }
 }
 
-#[cfg(target_env = "musl")]
+// `target_abi = "pauthtest"` is currently only used by the Linux/musl
+// `aarch64-unknown-linux-pauthtest` target. That target only supports unwinding
+// via libunwind.
+#[cfg(target_abi = "pauthtest")]
+#[link(name = "unwind")]
+unsafe extern "C" {}
+
+#[cfg(all(target_env = "musl", not(target_abi = "pauthtest")))]
 cfg_select! {
     all(feature = "llvm-libunwind", feature = "system-llvm-libunwind") => {
         compile_error!("`llvm-libunwind` and `system-llvm-libunwind` cannot be enabled at the same time");
@@ -193,7 +197,7 @@ unsafe extern "C" {}
 #[link(name = "unwind")]
 unsafe extern "C" {}
 
-#[cfg(target_os = "nto")]
+#[cfg(any(target_os = "nto", target_os = "qnx"))]
 cfg_select! {
     target_env = "nto70" => {
         #[link(name = "gcc")]

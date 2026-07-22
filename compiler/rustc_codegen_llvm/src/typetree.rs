@@ -1,35 +1,47 @@
-use std::ffi::{CString, c_char, c_uint};
+use std::ffi::{CString, c_char};
 
-use rustc_ast::expand::typetree::{FncTree, TypeTree as RustTypeTree};
+use rustc_ast::expand::typetree::{FncTree, Kind, TypeTree as RustTypeTree};
 
 use crate::attributes;
+use crate::context::FullCx;
 use crate::llvm::{self, EnzymeWrapper, Value};
 
 fn to_enzyme_typetree(
-    rust_typetree: RustTypeTree,
+    rust_typetree: &RustTypeTree,
     _data_layout: &str,
     llcx: &llvm::Context,
-) -> llvm::TypeTree {
+) -> (llvm::TypeTree, Vec<llvm::TypeTree>) {
     let mut enzyme_tt = llvm::TypeTree::new();
-    process_typetree_recursive(&mut enzyme_tt, &rust_typetree, &[], llcx);
-    enzyme_tt
+    let extra_ints = process_typetree_recursive(&mut enzyme_tt, &rust_typetree, &[], llcx);
+
+    let mut int_vec = vec![];
+    for _ in 0..extra_ints {
+        let mut int_tt = llvm::TypeTree::new();
+        int_tt.insert(&[0], llvm::CConcreteType::DT_Integer, llcx);
+        int_vec.push(int_tt);
+    }
+
+    (enzyme_tt, int_vec)
 }
+
 fn process_typetree_recursive(
     enzyme_tt: &mut llvm::TypeTree,
     rust_typetree: &RustTypeTree,
     parent_indices: &[i64],
     llcx: &llvm::Context,
-) {
+) -> u32 {
+    let mut extra_ints = 0;
     for rust_type in &rust_typetree.0 {
         let concrete_type = match rust_type.kind {
-            rustc_ast::expand::typetree::Kind::Anything => llvm::CConcreteType::DT_Anything,
-            rustc_ast::expand::typetree::Kind::Integer => llvm::CConcreteType::DT_Integer,
-            rustc_ast::expand::typetree::Kind::Pointer => llvm::CConcreteType::DT_Pointer,
-            rustc_ast::expand::typetree::Kind::Half => llvm::CConcreteType::DT_Half,
-            rustc_ast::expand::typetree::Kind::Float => llvm::CConcreteType::DT_Float,
-            rustc_ast::expand::typetree::Kind::Double => llvm::CConcreteType::DT_Double,
-            rustc_ast::expand::typetree::Kind::F128 => llvm::CConcreteType::DT_FP128,
-            rustc_ast::expand::typetree::Kind::Unknown => llvm::CConcreteType::DT_Unknown,
+            Kind::Anything => llvm::CConcreteType::DT_Anything,
+            Kind::Integer => llvm::CConcreteType::DT_Integer,
+            Kind::Pointer => llvm::CConcreteType::DT_Pointer,
+            Kind::RustSlice => llvm::CConcreteType::DT_Pointer,
+            Kind::Half => llvm::CConcreteType::DT_Half,
+            Kind::Float => llvm::CConcreteType::DT_Float,
+            Kind::Double => llvm::CConcreteType::DT_Double,
+            Kind::F128 => llvm::CConcreteType::DT_FP128,
+            Kind::Unknown => llvm::CConcreteType::DT_Unknown,
         };
 
         let mut indices = parent_indices.to_vec();
@@ -43,21 +55,28 @@ fn process_typetree_recursive(
 
         enzyme_tt.insert(&indices, concrete_type, llcx);
 
-        if rust_type.kind == rustc_ast::expand::typetree::Kind::Pointer
+        if matches!(rust_type.kind, Kind::RustSlice) {
+            // We lower slices to `ptr,int`, so add the int here.
+            extra_ints += 1;
+        }
+
+        if matches!(rust_type.kind, Kind::Pointer | Kind::RustSlice)
             && !rust_type.child.0.is_empty()
         {
             process_typetree_recursive(enzyme_tt, &rust_type.child, &indices, llcx);
         }
     }
+    extra_ints
+}
+
+// Describes all the locations in which we know how to apply an Enzyme TypeTree.
+enum TTLocation {
+    Definition,
+    Callsite,
 }
 
 #[cfg_attr(not(feature = "llvm_enzyme"), allow(unused))]
-pub(crate) fn add_tt<'ll>(
-    llmod: &'ll llvm::Module,
-    llcx: &'ll llvm::Context,
-    fn_def: &'ll Value,
-    tt: FncTree,
-) {
+pub(crate) fn add_tt<'tcx, 'll>(cx: &FullCx<'ll, 'tcx>, fn_def: &'ll Value, tt: FncTree) {
     // TypeTree processing uses functions from Enzyme, which we might not have available if we did
     // not build this compiler with `llvm_enzyme`. This feature is not strictly necessary, but
     // skipping this function increases the chance that Enzyme fails to compile some code.
@@ -66,6 +85,16 @@ pub(crate) fn add_tt<'ll>(
     #[cfg(not(feature = "llvm_enzyme"))]
     return;
 
+    let tcx = cx.tcx;
+    if !tcx.sess.opts.unstable_opts.autodiff.contains(&rustc_session::config::AutoDiff::Enable) {
+        return;
+    }
+    if tcx.sess.opts.unstable_opts.autodiff.contains(&rustc_session::config::AutoDiff::NoTT) {
+        return;
+    }
+
+    let llmod = cx.llmod;
+    let llcx = cx.llcx;
     let inputs = tt.args;
     let ret_tt: RustTypeTree = tt.ret;
 
@@ -77,41 +106,81 @@ pub(crate) fn add_tt<'ll>(
     let attr_name = "enzyme_type";
     let c_attr_name = CString::new(attr_name).unwrap();
 
+    let tt_location: TTLocation =
+        if llvm::LLVMRustIsCall(fn_def) { TTLocation::Callsite } else { TTLocation::Definition };
+
+    let mut offset = 0;
     for (i, input) in inputs.iter().enumerate() {
-        unsafe {
-            let enzyme_tt = to_enzyme_typetree(input.clone(), llvm_data_layout, llcx);
+        let (enzyme_tt, extra_ints) = to_enzyme_typetree(&input, llvm_data_layout, llcx);
+
+        // This scope is just a visual reminder that we *must* drop the enzyme_wrapper before
+        // we drop any typetrees (mainly enzyme_tt and extra_ints). Drop calls can not accept
+        // arguments like an enzyme_wrapper, so the typetree drop impl has to call get_instance
+        // on the static enzyme instance, which is behind a Mutex. Therefore we'd deadlock if we
+        // hold the enzyme_wrapper while dropping the typetrees.
+        {
             let enzyme_wrapper = EnzymeWrapper::get_instance();
-            let c_str = enzyme_wrapper.tree_to_string(enzyme_tt.inner);
-            let c_str = std::ffi::CStr::from_ptr(c_str);
+            let c_str = enzyme_wrapper.tree_to_cstr(enzyme_tt.inner);
 
-            let attr = llvm::LLVMCreateStringAttribute(
-                llcx,
-                c_attr_name.as_ptr(),
-                c_attr_name.as_bytes().len() as c_uint,
-                c_str.as_ptr(),
-                c_str.to_bytes().len() as c_uint,
-            );
-
-            attributes::apply_to_llfn(fn_def, llvm::AttributePlace::Argument(i as u32), &[attr]);
+            let attr = llvm::CreateAttrStringValueFromCStr(llcx, &c_attr_name, &c_str);
+            let arg_pos = llvm::AttributePlace::Argument(i as u32 + offset);
+            // FIXME(autodiff): We currently know that this is correct for all the cases in which we
+            // call this function. But we should make it more robust for the future.
+            match tt_location {
+                TTLocation::Definition => {
+                    attributes::apply_to_llfn(fn_def, arg_pos, &[attr]);
+                }
+                TTLocation::Callsite => {
+                    attributes::apply_to_callsite(fn_def, arg_pos, &[attr]);
+                }
+            }
             enzyme_wrapper.tree_to_string_free(c_str.as_ptr());
+            for v in &extra_ints {
+                offset += 1;
+                let c_str = enzyme_wrapper.tree_to_cstr(v.inner);
+                let int_attr = llvm::CreateAttrStringValueFromCStr(llcx, &c_attr_name, &c_str);
+                let arg_pos = llvm::AttributePlace::Argument(i as u32 + offset);
+                match tt_location {
+                    TTLocation::Definition => {
+                        attributes::apply_to_llfn(fn_def, arg_pos, &[int_attr]);
+                    }
+                    TTLocation::Callsite => {
+                        attributes::apply_to_callsite(fn_def, arg_pos, &[int_attr]);
+                    }
+                }
+                enzyme_wrapper.tree_to_string_free(c_str.as_ptr());
+            }
+        }
+    }
+    // We will only fail this if Rust types got lowered to LLVM in a way that we didn't predict.
+    // Error, so we can learn from our mistakes.
+    if matches!(tt_location, TTLocation::Definition) {
+        let expected = offset as usize + inputs.len();
+        let actual = llvm::count_params(fn_def) as usize;
+        if expected != actual {
+            tcx.dcx().warn(format!(
+                "autodiff type-tree failure. We expected {expected} LLVM argument(s), \
+                 but the generated LLVM function has {actual} parameter(s)"
+            ));
         }
     }
 
-    unsafe {
-        let enzyme_tt = to_enzyme_typetree(ret_tt, llvm_data_layout, llcx);
+    // FIXME(autodiff): We should think more about what it means if a function returns a slice or
+    // other fat ptrs.
+    let (enzyme_tt, _extra_ints) = to_enzyme_typetree(&ret_tt, llvm_data_layout, llcx);
+    if ret_tt != RustTypeTree::new() {
         let enzyme_wrapper = EnzymeWrapper::get_instance();
-        let c_str = enzyme_wrapper.tree_to_string(enzyme_tt.inner);
-        let c_str = std::ffi::CStr::from_ptr(c_str);
-
-        let ret_attr = llvm::LLVMCreateStringAttribute(
-            llcx,
-            c_attr_name.as_ptr(),
-            c_attr_name.as_bytes().len() as c_uint,
-            c_str.as_ptr(),
-            c_str.to_bytes().len() as c_uint,
-        );
-
-        attributes::apply_to_llfn(fn_def, llvm::AttributePlace::ReturnValue, &[ret_attr]);
+        let c_str = enzyme_wrapper.tree_to_cstr(enzyme_tt.inner);
+        let ret_attr = llvm::CreateAttrStringValueFromCStr(llcx, &c_attr_name, &c_str);
+        let arg_pos = llvm::AttributePlace::ReturnValue;
+        match tt_location {
+            TTLocation::Definition => {
+                attributes::apply_to_llfn(fn_def, arg_pos, &[ret_attr]);
+            }
+            TTLocation::Callsite => {
+                attributes::apply_to_callsite(fn_def, arg_pos, &[ret_attr]);
+            }
+        }
         enzyme_wrapper.tree_to_string_free(c_str.as_ptr());
     }
 }

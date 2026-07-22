@@ -121,6 +121,7 @@
 #![feature(derive_const)]
 #![feature(diagnostic_on_const)]
 #![feature(diagnostic_on_unmatched_args)]
+#![feature(diagnostic_opaque)]
 #![feature(doc_cfg)]
 #![feature(doc_notable_trait)]
 #![feature(extern_types)]
@@ -339,6 +340,9 @@ mod bool;
 mod escape;
 mod tuple;
 mod unit;
+#[cfg_attr(feature = "nightly", not(bootstrap))]
+#[unstable(feature = "view_type_macro", issue = "155938")]
+pub mod view;
 
 #[stable(feature = "core_primitive", since = "1.43.0")]
 pub mod primitive;
@@ -386,4 +390,17 @@ pub mod simd {
     pub use crate::core_simd::simd::*;
 }
 
+// Include private modules that exist solely to provide rustdoc
+// documentation for built-in attributes. Using `include!` because rustdoc
+// only looks for these modules at the crate level.
+include!("attribute_docs.rs");
+
+// Include a number of private modules that exist solely to provide
+// the rustdoc documentation for the existing keywords. Using `include!`
+// because rustdoc only looks for these modules at the crate level.
+include!("keyword_docs.rs");
+
+// Include a number of private modules that exist solely to provide
+// the rustdoc documentation for primitive types. Using `include!`
+// because rustdoc only looks for these modules at the crate level.
 include!("primitive_docs.rs");

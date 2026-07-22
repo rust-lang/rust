@@ -6,7 +6,7 @@ use rustc_ast::ast::{BinOpKind, Expr, ExprKind, StmtKind};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
-use rustc_session::declare_lint_pass;
+use rustc_session::impl_lint_pass;
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, Spanned};
 
@@ -63,9 +63,13 @@ declare_clippy_lint! {
     "groupings of binary operations that look suspiciously like typos"
 }
 
-declare_lint_pass!(SuspiciousOperationGroupings => [
-    SUSPICIOUS_OPERATION_GROUPINGS,
-]);
+impl_lint_pass!(SuspiciousOperationGroupings => [SUSPICIOUS_OPERATION_GROUPINGS]);
+
+#[derive(Default)]
+pub struct SuspiciousOperationGroupings {
+    // Spans already linted.
+    linted_spans: FxHashSet<Span>,
+}
 
 impl EarlyLintPass for SuspiciousOperationGroupings {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
@@ -74,7 +78,7 @@ impl EarlyLintPass for SuspiciousOperationGroupings {
         }
 
         if let Some(binops) = extract_related_binops(&expr.kind) {
-            check_binops(cx, &binops.iter().collect::<Vec<_>>());
+            check_binops(cx, &binops.iter().collect::<Vec<_>>(), &mut self.linted_spans);
 
             let mut op_types = Vec::with_capacity(binops.len());
             // We could use a hashmap, etc. to avoid being O(n*m) here, but
@@ -90,13 +94,13 @@ impl EarlyLintPass for SuspiciousOperationGroupings {
             for op_type in op_types {
                 let ops: Vec<_> = binops.iter().filter(|b| b.op == op_type).collect();
 
-                check_binops(cx, &ops);
+                check_binops(cx, &ops, &mut self.linted_spans);
             }
         }
     }
 }
 
-fn check_binops(cx: &EarlyContext<'_>, binops: &[&BinaryOp<'_>]) {
+fn check_binops(cx: &EarlyContext<'_>, binops: &[&BinaryOp<'_>], linted_spans: &mut FxHashSet<Span>) {
     let binop_count = binops.len();
     if binop_count < 2 {
         // Single binary operation expressions would likely be false
@@ -153,7 +157,7 @@ fn check_binops(cx: &EarlyContext<'_>, binops: &[&BinaryOp<'_>]) {
 
     if let Some(expected_loc) = expected_ident_loc {
         match (no_difference_info, double_difference_info) {
-            (Some(i), None) => attempt_to_emit_no_difference_lint(cx, binops, i, expected_loc),
+            (Some(i), None) => attempt_to_emit_no_difference_lint(cx, binops, i, expected_loc, linted_spans),
             (None, Some((double_difference_index, ident_loc1, ident_loc2))) => {
                 if one_ident_difference_count == binop_count - 1
                     && let Some(binop) = binops.get(double_difference_index)
@@ -170,7 +174,7 @@ fn check_binops(cx: &EarlyContext<'_>, binops: &[&BinaryOp<'_>]) {
 
                     if let Some(sugg) = ident_swap_sugg(cx, &paired_identifiers, binop, changed_loc, &mut applicability)
                     {
-                        emit_suggestion(cx, binop.span, sugg, applicability);
+                        emit_suggestion(cx, binop.span, sugg, applicability, linted_spans);
                     }
                 }
             },
@@ -184,6 +188,7 @@ fn attempt_to_emit_no_difference_lint(
     binops: &[&BinaryOp<'_>],
     i: usize,
     expected_loc: IdentLocation,
+    linted_spans: &mut FxHashSet<Span>,
 ) {
     if let Some(binop) = binops.get(i).copied() {
         // We need to try and figure out which identifier we should
@@ -210,6 +215,7 @@ fn attempt_to_emit_no_difference_lint(
                     binop.span,
                     replace_left_sugg(cx, binop, &sugg, &mut applicability),
                     applicability,
+                    linted_spans,
                 );
                 return;
             }
@@ -224,6 +230,7 @@ fn attempt_to_emit_no_difference_lint(
                     binop.span,
                     replace_right_sugg(cx, binop, &sugg, &mut applicability),
                     applicability,
+                    linted_spans,
                 );
                 return;
             }
@@ -231,7 +238,17 @@ fn attempt_to_emit_no_difference_lint(
     }
 }
 
-fn emit_suggestion(cx: &EarlyContext<'_>, span: Span, sugg: String, applicability: Applicability) {
+fn emit_suggestion(
+    cx: &EarlyContext<'_>,
+    span: Span,
+    sugg: String,
+    applicability: Applicability,
+    linted_spans: &mut FxHashSet<Span>,
+) {
+    // Avoid cases already linted.
+    if !linted_spans.insert(span) {
+        return;
+    }
     span_lint_and_sugg(
         cx,
         SUSPICIOUS_OPERATION_GROUPINGS,

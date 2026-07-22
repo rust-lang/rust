@@ -7,7 +7,6 @@ use either::Either;
 use hir_def::{
     AdtId, AssocItemId, AstIdLoc, Complete, DefWithBodyId, ExternCrateId, HasModule, ImplId,
     Lookup, MacroId, ModuleDefId, ModuleId, TraitId,
-    db::DefDatabase,
     expr_store::Body,
     item_scope::{ImportId, ImportOrExternCrate, ImportOrGlob},
     nameres::crate_def_map,
@@ -410,7 +409,7 @@ impl<'a> SymbolCollector<'a> {
         );
         self.with_container_name(impl_name.as_deref().map(Symbol::intern), |s| {
             for &(ref name, assoc_item_id) in &impl_id.impl_items(self.db).items {
-                if s.collect_pub_only && s.db.assoc_visibility(assoc_item_id) != Visibility::Public
+                if s.collect_pub_only && assoc_item_id.assoc_visibility(s.db) != Visibility::Public
                 {
                     continue;
                 }
@@ -460,7 +459,7 @@ impl<'a> SymbolCollector<'a> {
         trait_do_not_complete: Option<Complete>,
     ) -> Complete
     where
-        L: Lookup<Database = dyn DefDatabase> + Into<ModuleDefId>,
+        L: Lookup + Into<ModuleDefId>,
         <L as Lookup>::Data: HasSource,
         <<L as Lookup>::Data as HasSource>::Value: HasName,
     {

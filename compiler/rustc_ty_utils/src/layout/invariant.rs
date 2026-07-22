@@ -1,6 +1,7 @@
 use std::assert_matches;
 
 use rustc_abi::{BackendRepr, FieldsShape, Scalar, Size, TagEncoding, Variants};
+use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutCx, TyAndLayout};
 use rustc_middle::{bug, ty};
 
@@ -31,6 +32,15 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
         assert!(
             layout.is_uninhabited(),
             "{:?} is type-level uninhabited but not ABI-uninhabited?",
+            layout.ty
+        );
+    }
+    // ABI uninhabitedness should imply opsem uninhabitedness. However, we can only check that if
+    // the type is really monomorphic (while we can compute a layout for some generic types).
+    if layout.is_uninhabited() && !layout.ty.has_param() {
+        assert!(
+            !layout.ty.is_opsem_inhabited(tcx, cx.typing_env),
+            "{:?} is ABI-uninhabited but not opsem-uninhabited?",
             layout.ty
         );
     }
@@ -84,7 +94,7 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
 
     fn check_layout_abi<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayout<'tcx>) {
         // Verify the ABI-mandated alignment and size for scalars.
-        let align = layout.backend_repr.scalar_align(cx);
+        let align = layout.backend_repr.scalar_platform_align(cx);
         let size = layout.backend_repr.scalar_size(cx);
         if let Some(align) = align {
             assert_eq!(
@@ -158,14 +168,20 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                     }
                 }
             }
-            BackendRepr::ScalarPair(scalar1, scalar2) => {
+            BackendRepr::ScalarPair { a: scalar1, b: scalar2, b_offset } => {
                 // Check that the underlying pair of fields matches.
                 let inner = skip_newtypes(cx, layout);
                 assert!(
-                    matches!(inner.layout.backend_repr(), BackendRepr::ScalarPair(..)),
+                    matches!(inner.layout.backend_repr(), BackendRepr::ScalarPair { .. }),
                     "`ScalarPair` type {} is newtype around non-`ScalarPair` type {}",
                     layout.ty,
                     inner.ty
+                );
+                // `a` is at memory offset zero, so to keep them from overlapping the offset
+                // to `b` must be at least as much as the size of `a`.
+                assert!(
+                    b_offset >= scalar1.size(cx),
+                    "`ScalarPair` scalars are overlapping in {layout:?}",
                 );
                 if matches!(inner.layout.variants(), Variants::Multiple { .. }) {
                     // FIXME: ScalarPair for enums is enormously complicated and it is very hard
@@ -208,9 +224,9 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                 };
                 // The fields should be at the right offset, and match the `scalar` layout.
                 let size1 = scalar1.size(cx);
-                let align1 = scalar1.align(cx).abi;
+                let align1 = scalar1.default_align(cx).abi;
                 let size2 = scalar2.size(cx);
-                let align2 = scalar2.align(cx).abi;
+                let align2 = scalar2.default_align(cx).abi;
                 assert_eq!(
                     offset1,
                     Size::ZERO,
@@ -235,6 +251,10 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                     "`ScalarPair` second field at bad offset in {inner:#?}",
                 );
                 assert_eq!(
+                    b_offset, field2_offset,
+                    "`ScalarPair` with inconsistent b_offset in {inner:#?}",
+                );
+                assert_eq!(
                     field2.size, size2,
                     "`ScalarPair` second field with bad size in {inner:#?}",
                 );
@@ -251,7 +271,7 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
             BackendRepr::SimdVector { element, count } => {
                 let align = layout.align.abi;
                 let size = layout.size;
-                let element_align = element.align(cx).abi;
+                let element_align = element.default_align(cx).abi;
                 let element_size = element.size(cx);
                 // Currently, vectors must always be aligned to at least their elements:
                 assert!(align >= element_align);
@@ -321,12 +341,15 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                 }
                 // The top-level ABI and the ABI of the variants should be coherent.
                 let scalar_coherent = |s1: Scalar, s2: Scalar| {
-                    s1.size(cx) == s2.size(cx) && s1.align(cx) == s2.align(cx)
+                    s1.size(cx) == s2.size(cx) && s1.default_align(cx) == s2.default_align(cx)
                 };
                 let abi_coherent = match (layout.backend_repr, variant.backend_repr) {
                     (BackendRepr::Scalar(s1), BackendRepr::Scalar(s2)) => scalar_coherent(s1, s2),
-                    (BackendRepr::ScalarPair(a1, b1), BackendRepr::ScalarPair(a2, b2)) => {
-                        scalar_coherent(a1, a2) && scalar_coherent(b1, b2)
+                    (
+                        BackendRepr::ScalarPair { a: a1, b: b1, b_offset: b1_offset },
+                        BackendRepr::ScalarPair { a: a2, b: b2, b_offset: b2_offset },
+                    ) => {
+                        scalar_coherent(a1, a2) && scalar_coherent(b1, b2) && b1_offset == b2_offset
                     }
                     (BackendRepr::Memory { .. }, _) => true,
                     _ => false,

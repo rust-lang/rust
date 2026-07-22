@@ -109,7 +109,6 @@ fn call_unreachable(cx: &ExtCtxt<'_>, span: Span) -> Box<ast::Expr> {
         id: ast::DUMMY_NODE_ID,
         rules: ast::BlockCheckMode::Unsafe(ast::CompilerGenerated),
         span,
-        tokens: None,
     }))
 }
 

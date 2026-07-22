@@ -431,9 +431,9 @@ checksum = "a6cb138bb79a146c1bd460005623e142ef0181e3d0219cb493e02f7d08a35695"
 
 [[package]]
 name = "itertools"
-version = "0.14.0"
+version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2b192c782037fadd9cfa75548310488aabdbf3d2da73885b31bd0abd03351285"
+checksum = "8b4baf93f58d4425749ca49a51c50ebab072c5df6994d08fed93541c331481dc"
 dependencies = [
  "either",
 ]
@@ -678,9 +678,9 @@ checksum = "dc897dd8d9e8bd1ed8cdad82b5966c3e0ecae09fb1907d58efaa013543185d0a"
 
 [[package]]
 name = "rustc-demangle"
-version = "0.1.27"
+version = "0.1.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b50b8869d9fc858ce7266cce0194bd74df58b9d0e3f6df3a9fc8eb470d95c09d"
+checksum = "b74b56ffa8bb2830709a538c2cbcae9aa062db0d2a42563bfb09bdaae44020eb"
 
 [[package]]
 name = "rustix"
@@ -850,17 +850,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "stdarch-gen-hexagon-scalar"
-version = "0.1.0"
-dependencies = [
- "regex",
-]
-
-[[package]]
 name = "stdarch-gen-loongarch"
 version = "0.1.0"
 dependencies = [
  "rand 0.9.4",
+ "stdarch-gen-common",
 ]
 
 [[package]]
@@ -869,7 +863,6 @@ version = "0.1.0"
 dependencies = [
  "assert-instr-macro",
  "cc",
- "cfg-if",
  "rustc-demangle",
  "simd-test-macro",
  "wasmprinter",

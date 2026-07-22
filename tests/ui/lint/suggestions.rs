@@ -1,4 +1,4 @@
-// ignore-tidy-tab
+// ignore-tidy-file-tab
 //@ run-rustfix
 
 #![warn(unused_mut, unused_parens)] // UI tests pass `-A unused`—see Issue #43896

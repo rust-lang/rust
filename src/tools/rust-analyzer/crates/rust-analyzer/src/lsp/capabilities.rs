@@ -2,17 +2,18 @@
 use ide::{CompletionFieldsToResolve, InlayFieldsToResolve};
 use ide_db::{FxHashSet, line_index::WideEncoding};
 use lsp_types::{
-    CallHierarchyServerCapability, CodeActionKind, CodeActionOptions, CodeActionProviderCapability,
-    CodeLensOptions, CompletionOptions, CompletionOptionsCompletionItem, DeclarationCapability,
-    DocumentOnTypeFormattingOptions, FileOperationFilter, FileOperationPattern,
-    FileOperationPatternKind, FileOperationRegistrationOptions, FoldingRangeProviderCapability,
-    HoverProviderCapability, ImplementationProviderCapability, InlayHintOptions,
-    InlayHintServerCapabilities, OneOf, PositionEncodingKind, RenameOptions, SaveOptions,
-    SelectionRangeProviderCapability, SemanticTokensFullOptions, SemanticTokensLegend,
-    SemanticTokensOptions, ServerCapabilities, SignatureHelpOptions, TextDocumentSyncCapability,
-    TextDocumentSyncKind, TextDocumentSyncOptions, TypeDefinitionProviderCapability,
-    WorkDoneProgressOptions, WorkspaceFileOperationsServerCapabilities,
-    WorkspaceFoldersServerCapabilities, WorkspaceServerCapabilities,
+    CallHierarchyProvider, ChangeNotifications, CodeActionKind, CodeActionOptions,
+    CodeActionProvider, CodeLensOptions, CompletionOptions, DeclarationProvider,
+    DefinitionProvider, DocumentFormattingProvider, DocumentHighlightProvider,
+    DocumentOnTypeFormattingOptions, DocumentRangeFormattingProvider, DocumentSymbolProvider,
+    FileOperationFilter, FileOperationOptions, FileOperationPattern, FileOperationPatternKind,
+    FileOperationRegistrationOptions, FoldingRangeProvider, Full, HoverProvider,
+    ImplementationProvider, InlayHintOptions, InlayHintProvider, PositionEncodingKind,
+    ReferencesProvider, RenameOptions, RenameProvider, SaveOptions, SelectionRangeProvider,
+    SemanticTokensLegend, SemanticTokensOptions, ServerCapabilities, ServerCompletionItemOptions,
+    SignatureHelpOptions, TextDocumentSync, TextDocumentSyncKind, TextDocumentSyncOptions,
+    TypeDefinitionProvider, WorkDoneProgressOptions, WorkspaceFoldersServerCapabilities,
+    WorkspaceOptions, WorkspaceSymbolProvider,
 };
 use serde_json::json;
 
@@ -32,9 +33,9 @@ pub fn server_capabilities(config: &Config) -> ServerCapabilities {
                 _ => None,
             },
         },
-        text_document_sync: Some(TextDocumentSyncCapability::Options(TextDocumentSyncOptions {
+        text_document_sync: Some(TextDocumentSync::Options(TextDocumentSyncOptions {
             open_close: Some(true),
-            change: Some(TextDocumentSyncKind::INCREMENTAL),
+            change: Some(TextDocumentSyncKind::Incremental),
             will_save: None,
             will_save_wait_until: None,
             save: if config.caps().did_save_text_document_dynamic_registration() {
@@ -43,7 +44,9 @@ pub fn server_capabilities(config: &Config) -> ServerCapabilities {
                 Some(SaveOptions::default().into())
             },
         })),
-        hover_provider: Some(HoverProviderCapability::Simple(true)),
+        notebook_document_sync: None,
+        selection_range_provider: Some(SelectionRangeProvider::Bool(true)),
+        hover_provider: Some(HoverProvider::Bool(true)),
         completion_provider: Some(CompletionOptions {
             resolve_provider: if config.client_is_neovim() {
                 config.has_completion_item_resolve_additionalTextEdits().then_some(true)
@@ -65,20 +68,24 @@ pub fn server_capabilities(config: &Config) -> ServerCapabilities {
             retrigger_characters: None,
             work_done_progress_options: WorkDoneProgressOptions { work_done_progress: None },
         }),
-        declaration_provider: Some(DeclarationCapability::Simple(true)),
-        definition_provider: Some(OneOf::Left(true)),
-        type_definition_provider: Some(TypeDefinitionProviderCapability::Simple(true)),
-        implementation_provider: Some(ImplementationProviderCapability::Simple(true)),
-        references_provider: Some(OneOf::Left(true)),
-        document_highlight_provider: Some(OneOf::Left(true)),
-        document_symbol_provider: Some(OneOf::Left(true)),
-        workspace_symbol_provider: Some(OneOf::Left(true)),
+        definition_provider: Some(DefinitionProvider::Bool(true)),
+        type_definition_provider: Some(TypeDefinitionProvider::Bool(true)),
+        implementation_provider: Some(ImplementationProvider::Bool(true)),
+        references_provider: Some(ReferencesProvider::Bool(true)),
+        document_highlight_provider: Some(DocumentHighlightProvider::Bool(true)),
+        document_symbol_provider: Some(DocumentSymbolProvider::Bool(true)),
+        workspace_symbol_provider: Some(WorkspaceSymbolProvider::Bool(true)),
         code_action_provider: Some(config.caps().code_action_capabilities()),
-        code_lens_provider: Some(CodeLensOptions { resolve_provider: Some(true) }),
-        document_formatting_provider: Some(OneOf::Left(true)),
+        code_lens_provider: Some(CodeLensOptions {
+            resolve_provider: Some(true),
+            work_done_progress_options: WorkDoneProgressOptions { work_done_progress: None },
+        }),
+        document_formatting_provider: Some(DocumentFormattingProvider::Bool(true)),
         document_range_formatting_provider: match config.rustfmt(None) {
-            RustfmtConfig::Rustfmt { enable_range_formatting: true, .. } => Some(OneOf::Left(true)),
-            _ => Some(OneOf::Left(false)),
+            RustfmtConfig::Rustfmt { enable_range_formatting: true, .. } => {
+                Some(DocumentRangeFormattingProvider::Bool(true))
+            }
+            _ => Some(DocumentRangeFormattingProvider::Bool(false)),
         },
         document_on_type_formatting_provider: Some({
             let mut chars = ide::Analysis::SUPPORTED_TRIGGER_CHARS.iter();
@@ -87,22 +94,21 @@ pub fn server_capabilities(config: &Config) -> ServerCapabilities {
                 more_trigger_character: Some(chars.map(|c| c.to_string()).collect()),
             }
         }),
-        selection_range_provider: Some(SelectionRangeProviderCapability::Simple(true)),
-        folding_range_provider: Some(FoldingRangeProviderCapability::Simple(true)),
-        rename_provider: Some(OneOf::Right(RenameOptions {
+        rename_provider: Some(RenameProvider::RenameOptions(RenameOptions {
             prepare_provider: Some(true),
             work_done_progress_options: WorkDoneProgressOptions { work_done_progress: None },
         })),
-        linked_editing_range_provider: None,
         document_link_provider: None,
         color_provider: None,
+        folding_range_provider: Some(FoldingRangeProvider::Bool(true)),
+        declaration_provider: Some(DeclarationProvider::Bool(true)),
         execute_command_provider: None,
-        workspace: Some(WorkspaceServerCapabilities {
+        workspace: Some(WorkspaceOptions {
             workspace_folders: Some(WorkspaceFoldersServerCapabilities {
                 supported: Some(true),
-                change_notifications: Some(OneOf::Left(true)),
+                change_notifications: Some(ChangeNotifications::Bool(true)),
             }),
-            file_operations: Some(WorkspaceFileOperationsServerCapabilities {
+            file_operations: Some(FileOperationOptions {
                 did_create: None,
                 will_create: None,
                 did_rename: None,
@@ -129,29 +135,45 @@ pub fn server_capabilities(config: &Config) -> ServerCapabilities {
                 did_delete: None,
                 will_delete: None,
             }),
+            text_document_content: None,
         }),
-        call_hierarchy_provider: Some(CallHierarchyServerCapability::Simple(true)),
+        call_hierarchy_provider: Some(CallHierarchyProvider::Bool(true)),
         semantic_tokens_provider: Some(
             SemanticTokensOptions {
                 legend: SemanticTokensLegend {
-                    token_types: semantic_tokens::SUPPORTED_TYPES.to_vec(),
-                    token_modifiers: semantic_tokens::SUPPORTED_MODIFIERS.to_vec(),
+                    token_types: semantic_tokens::SupportedType::iter()
+                        .map(|semantic_token_type| semantic_token_type.to_string())
+                        .collect(),
+                    token_modifiers: semantic_tokens::SupportedModifiers::iter()
+                        .map(|semantic_token_type| semantic_token_type.to_string())
+                        .collect(),
                 },
 
-                full: Some(SemanticTokensFullOptions::Delta { delta: Some(true) }),
-                range: Some(true),
+                full: Some(Full::SemanticTokensFullDelta(lsp_types::SemanticTokensFullDelta {
+                    delta: Some(true),
+                })),
+                range: Some(lsp_types::SemanticTokensOptionsRange::Bool(true)),
                 work_done_progress_options: Default::default(),
             }
             .into(),
         ),
         moniker_provider: None,
-        inlay_hint_provider: Some(OneOf::Right(InlayHintServerCapabilities::Options(
-            InlayHintOptions {
-                work_done_progress_options: Default::default(),
-                resolve_provider: Some(config.caps().inlay_hints_resolve_provider()),
-            },
-        ))),
+        linked_editing_range_provider: None,
         inline_value_provider: None,
+        inlay_hint_provider: Some(InlayHintProvider::InlayHintOptions(InlayHintOptions {
+            work_done_progress_options: Default::default(),
+            resolve_provider: Some(config.caps().inlay_hints_resolve_provider()),
+        })),
+        diagnostic_provider: Some(lsp_types::DiagnosticProvider::DiagnosticOptions(
+            lsp_types::DiagnosticOptions {
+                identifier: Some("rust-analyzer".to_owned()),
+                inter_file_dependencies: true,
+                // FIXME
+                workspace_diagnostics: false,
+                work_done_progress_options: WorkDoneProgressOptions { work_done_progress: None },
+            },
+        )),
+        inline_completion_provider: None,
         experimental: Some(json!({
             "externalDocs": true,
             "hoverRange": true,
@@ -168,16 +190,7 @@ pub fn server_capabilities(config: &Config) -> ServerCapabilities {
             "ssr": true,
             "workspaceSymbolScopeKindFiltering": true,
         })),
-        diagnostic_provider: Some(lsp_types::DiagnosticServerCapabilities::Options(
-            lsp_types::DiagnosticOptions {
-                identifier: Some("rust-analyzer".to_owned()),
-                inter_file_dependencies: true,
-                // FIXME
-                workspace_diagnostics: false,
-                work_done_progress_options: WorkDoneProgressOptions { work_done_progress: None },
-            },
-        )),
-        inline_completion_provider: None,
+        type_hierarchy_provider: None,
     }
 }
 
@@ -244,33 +257,34 @@ impl ClientCapabilities {
         })() == Some(true)
     }
 
-    fn completion_item(&self) -> Option<CompletionOptionsCompletionItem> {
-        Some(CompletionOptionsCompletionItem {
+    fn completion_item(&self) -> Option<ServerCompletionItemOptions> {
+        Some(ServerCompletionItemOptions {
             label_details_support: Some(self.completion_label_details_support()),
         })
     }
 
-    fn code_action_capabilities(&self) -> CodeActionProviderCapability {
+    fn code_action_capabilities(&self) -> CodeActionProvider {
         self.0
             .text_document
             .as_ref()
             .and_then(|it| it.code_action.as_ref())
             .and_then(|it| it.code_action_literal_support.as_ref())
-            .map_or(CodeActionProviderCapability::Simple(true), |_| {
-                CodeActionProviderCapability::Options(CodeActionOptions {
+            .map_or(CodeActionProvider::Bool(true), |_| {
+                CodeActionProvider::CodeActionOptions(CodeActionOptions {
                     // Advertise support for all built-in CodeActionKinds.
                     // Ideally we would base this off of the client capabilities
                     // but the client is supposed to fall back gracefully for unknown values.
                     code_action_kinds: Some(vec![
-                        CodeActionKind::EMPTY,
-                        CodeActionKind::QUICKFIX,
-                        CodeActionKind::REFACTOR,
-                        CodeActionKind::REFACTOR_EXTRACT,
-                        CodeActionKind::REFACTOR_INLINE,
-                        CodeActionKind::REFACTOR_REWRITE,
+                        CodeActionKind::Empty,
+                        CodeActionKind::QuickFix,
+                        CodeActionKind::Refactor,
+                        CodeActionKind::RefactorExtract,
+                        CodeActionKind::RefactorInline,
+                        CodeActionKind::RefactorRewrite,
                     ]),
                     resolve_provider: Some(true),
                     work_done_progress_options: Default::default(),
+                    documentation: None,
                 })
             })
     }
@@ -307,8 +321,8 @@ impl ClientCapabilities {
     }
 
     pub fn did_save_text_document_dynamic_registration(&self) -> bool {
-        let caps = (|| -> _ { self.0.text_document.as_ref()?.synchronization.clone() })()
-            .unwrap_or_default();
+        let caps =
+            (|| -> _ { self.0.text_document.as_ref()?.synchronization })().unwrap_or_default();
         caps.did_save == Some(true) && caps.dynamic_registration == Some(true)
     }
 
@@ -501,7 +515,7 @@ impl ClientCapabilities {
     }
 
     pub fn diagnostics_refresh(&self) -> bool {
-        (|| -> _ { self.0.workspace.as_ref()?.diagnostic.as_ref()?.refresh_support })()
+        (|| -> _ { self.0.workspace.as_ref()?.diagnostics.as_ref()?.refresh_support })()
             .unwrap_or_default()
     }
 

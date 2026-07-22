@@ -142,6 +142,15 @@ To enable a name with a value, use `"key=value"`.
 To disable, prefix the entry with a `!`.
 
 
+## rust-analyzer.cargo.configPath {#cargo.configPath}
+
+Default: `null`
+
+Path to a `.cargo/config.toml` style file to pass to cargo via `--config`
+for every cargo invocation (metadata, build scripts, config discovery).
+Useful to give rust-analyzer a consistent view of the project configuration.
+
+
 ## rust-analyzer.cargo.extraArgs {#cargo.extraArgs}
 
 Default: `[]`
@@ -1359,7 +1368,7 @@ This config takes a map of crate names with the exported proc-macro names to ign
 
 ## rust-analyzer.procMacro.processes {#procMacro.processes}
 
-Default: `1`
+Default: `2`
 
 Number of proc-macro server processes to spawn.
 

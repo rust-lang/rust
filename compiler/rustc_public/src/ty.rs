@@ -727,6 +727,16 @@ impl FnDef {
         let kind = self.ty().kind();
         kind.fn_sig().unwrap()
     }
+
+    /// Get the generics of this function definition.
+    pub fn generics_of(&self) -> Generics {
+        with(|cx| cx.generics_of(self.0))
+    }
+
+    /// Get the associated item information if this function is one.
+    pub fn associated_item(&self) -> Option<AssocItem> {
+        with(|cx| cx.associated_item(self.0))
+    }
 }
 
 crate_def_with_ty! {
@@ -863,6 +873,16 @@ impl AdtDef {
     pub fn discriminant_for_variant(&self, idx: VariantIdx) -> Discr {
         with(|cx| cx.adt_discr_for_variant(*self, idx))
     }
+
+    /// Get the generics of this ADT definition.
+    pub fn generics_of(&self) -> Generics {
+        with(|cx| cx.generics_of(self.0))
+    }
+
+    /// Retrieve the inherent implementations for this ADT.
+    pub fn inherent_impls(&self) -> Vec<ImplDef> {
+        with(|cx| cx.inherent_impls(*self))
+    }
 }
 
 pub struct Discr {
@@ -970,7 +990,7 @@ crate_def_with_ty! {
     pub ConstDef;
 }
 
-crate_def! {
+crate_def_with_ty! {
     /// A trait impl definition.
     #[derive(Serialize)]
     pub ImplDef;
@@ -984,6 +1004,11 @@ impl ImplDef {
 
     pub fn associated_items(&self) -> AssocItems {
         with(|cx| cx.associated_items(self.def_id()))
+    }
+
+    /// Get the generics of this implementation.
+    pub fn generics_of(&self) -> Generics {
+        with(|cx| cx.generics_of(self.0))
     }
 }
 
@@ -1526,7 +1551,6 @@ pub enum PredicateKind {
     Coerce(CoercePredicate),
     ConstEquate(TyConst, TyConst),
     Ambiguous,
-    AliasRelate(TermKind, TermKind, AliasRelationDirection),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
@@ -1557,12 +1581,6 @@ pub struct SubtypePredicate {
 pub struct CoercePredicate {
     pub a: Ty,
     pub b: Ty,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
-pub enum AliasRelationDirection {
-    Equate,
-    Subtype,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]

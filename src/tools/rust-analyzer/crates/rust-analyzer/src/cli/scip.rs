@@ -948,4 +948,68 @@ pub mod example_mod {
 
         assert_eq!(token.definition_body, Some(expected_range));
     }
+
+    #[test]
+    fn function_enclosing_range_trivia() {
+        let s = "fn first() {}\n// belongs to first\n/// second docs\nfn second() {}";
+
+        let mut host = AnalysisHost::default();
+        let change_fixture = ChangeFixture::parse(s);
+        host.raw_database_mut().apply_change(change_fixture.change);
+
+        let analysis = host.analysis();
+        let si = StaticIndex::compute(
+            &analysis,
+            VendoredLibrariesConfig::Included {
+                workspace_root: &VfsPath::new_virtual_path("/workspace".to_owned()),
+            },
+        );
+
+        let file = si.files.first().unwrap();
+        let token = file
+            .tokens
+            .iter()
+            .filter_map(|(_, token_id)| si.tokens.get(*token_id))
+            .find(|token| token.display_name.as_deref() == Some("second"))
+            .unwrap();
+
+        let definition_body = token.definition_body.unwrap();
+        assert_eq!(
+            definition_body.range.start(),
+            TextSize::new(s.find("/// second docs").unwrap() as u32)
+        );
+        assert_eq!(definition_body.range.end(), TextSize::of(s));
+    }
+
+    #[test]
+    fn const_enclosing_range_trivia() {
+        let s = "const FOO_ONE: i32 = 123; // one\nconst FOO_TWO: i32 = 123; // two";
+
+        let mut host = AnalysisHost::default();
+        let change_fixture = ChangeFixture::parse(s);
+        host.raw_database_mut().apply_change(change_fixture.change);
+
+        let analysis = host.analysis();
+        let si = StaticIndex::compute(
+            &analysis,
+            VendoredLibrariesConfig::Included {
+                workspace_root: &VfsPath::new_virtual_path("/workspace".to_owned()),
+            },
+        );
+
+        let file = si.files.first().unwrap();
+        let token = file
+            .tokens
+            .iter()
+            .filter_map(|(_, token_id)| si.tokens.get(*token_id))
+            .find(|token| token.display_name.as_deref() == Some("FOO_TWO"))
+            .unwrap();
+
+        let definition_body = token.definition_body.unwrap();
+        assert_eq!(
+            definition_body.range.start(),
+            TextSize::new(s.find("const FOO_TWO").unwrap() as u32)
+        );
+        assert_eq!(definition_body.range.end(), TextSize::new(s.find(" // two").unwrap() as u32));
+    }
 }

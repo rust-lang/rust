@@ -130,6 +130,28 @@ mod target_modifier_consistency_check {
         }
         true
     }
+    pub(super) fn target_cpu(
+        sess: &Session,
+        l: &TargetModifier,
+        r: Option<&TargetModifier>,
+    ) -> bool {
+        if !sess.target.requires_consistent_cpu {
+            return true;
+        }
+        let l_tech_value = l.extend().tech_value;
+        let r_tech_value = match r {
+            Some(r) => r.extend().tech_value,
+            // If only one of the two compared crates specifies the CPU
+            // explicitly we compare against the target's default CPU.
+            None => {
+                // We reuse the same parsing logic.
+                CodegenOptionsTargetModifiers::TargetCpu
+                    .reparse(sess.target.cpu.as_ref())
+                    .tech_value
+            }
+        };
+        l_tech_value == r_tech_value
+    }
 }
 
 impl TargetModifier {
@@ -152,7 +174,11 @@ impl TargetModifier {
                 }
                 _ => {}
             },
-            _ => {}
+            OptionsTargetModifiers::CodegenOptions(codegen) => match codegen {
+                CodegenOptionsTargetModifiers::TargetCpu => {
+                    return target_modifier_consistency_check::target_cpu(sess, self, other);
+                }
+            },
         };
         match other {
             Some(other) => self.extend().tech_value == other.extend().tech_value,
@@ -771,6 +797,7 @@ mod desc {
     pub(crate) const parse_list: &str = "a space-separated list of strings";
     pub(crate) const parse_list_with_polarity: &str =
         "a comma-separated list of strings, with elements beginning with + or -";
+    pub(crate) const parse_pointer_authentication_list_with_polarity: &str = "a comma-separated list of options, each of the form `+<name>` or `-<name>`, where `<name>` is one of: `aarch64-jump-table-hardening`, `auth-traps`, `calls`, `elf-got`, `function-pointer-type-discrimination`, `indirect-gotos`, `init-fini`, `init-fini-address-discrimination`, `intrinsics`, `return-addresses`, `typeinfo-vt-ptr-discrimination`, `vt-ptr-addr-discrimination` or `vt-ptr-type-discrimination`";
     pub(crate) const parse_autodiff: &str = "a comma separated list of settings: `Enable`, `PrintSteps`, `PrintTA`, `PrintTAFn`, `PrintAA`, `PrintPerf`, `PrintModBefore`, `PrintModAfter`, `PrintModFinal`, `PrintPasses`, `NoPostopt`, `LooseTypes`, `Inline`, `NoTT`";
     pub(crate) const parse_offload: &str =
         "a comma separated list of settings: `Host=<Absolute-Path>`, `Device`, `Test`";
@@ -784,7 +811,7 @@ mod desc {
     pub(crate) const parse_passes: &str = "a space-separated list of passes, or `all`";
     pub(crate) const parse_panic_strategy: &str = "either `unwind`, `abort`, or `immediate-abort`";
     pub(crate) const parse_on_broken_pipe: &str = "either `kill`, `error`, or `inherit`";
-    pub(crate) const parse_patchable_function_entry: &str = "either two comma separated integers (total_nops,prefix_nops), with prefix_nops <= total_nops, or one integer (total_nops)";
+    pub(crate) const parse_patchable_function_entry: &str = "a comma separated list of (prefix_nops,total_nops,section_name), (prefix_nops,total_nops), or (total_nops). Where prefix_nops <= total_nops where 0 < total_nops <= 255 and prefix_nops <= total_nops";
     pub(crate) const parse_opt_panic_strategy: &str = parse_panic_strategy;
     pub(crate) const parse_relro_level: &str = "one of: `full`, `partial`, or `off`";
     pub(crate) const parse_sanitizers: &str = "comma separated list of sanitizers: `address`, `cfi`, `dataflow`, `hwaddress`, `kcfi`, `kernel-address`, `kernel-hwaddress`, `leak`, `memory`, `memtag`, `safestack`, `shadow-call-stack`, `thread`, or 'realtime'";
@@ -1036,6 +1063,37 @@ pub mod parse {
         }
     }
 
+    pub(crate) fn parse_pointer_authentication_list_with_polarity(
+        slot: &mut Vec<(PointerAuthOption, bool)>,
+        v: Option<&str>,
+    ) -> bool {
+        let Some(s) = v else {
+            return false;
+        };
+
+        let mut map = BTreeMap::<PointerAuthOption, bool>::new();
+
+        for item in s.split(',') {
+            let Some(name) = item.strip_prefix(&['+', '-'][..]) else {
+                return false;
+            };
+
+            let Some(opt) = PointerAuthOption::parse(name) else {
+                return false;
+            };
+
+            let enabled = item.starts_with('+');
+
+            // Last occurrence wins.
+            map.insert(opt, enabled);
+        }
+
+        slot.clear();
+        slot.extend(map);
+
+        true
+    }
+
     pub(crate) fn parse_fmt_debug(opt: &mut FmtDebug, v: Option<&str>) -> bool {
         *opt = match v {
             Some("full") => FmtDebug::Full,
@@ -1206,20 +1264,24 @@ pub mod parse {
     ) -> bool {
         let mut total_nops = 0;
         let mut prefix_nops = 0;
+        let mut section = None;
 
         if !parse_number(&mut total_nops, v) {
-            let parts = v.and_then(|v| v.split_once(',')).unzip();
-            if !parse_number(&mut total_nops, parts.0) {
+            let parts: Vec<_> = v.unwrap_or("").split(',').collect();
+            if parts.len() < 2 || parts.len() > 3 {
                 return false;
             }
-            if !parse_number(&mut prefix_nops, parts.1) {
+
+            if !parse_number(&mut total_nops, Some(parts[0])) {
                 return false;
             }
+            if !parse_number(&mut prefix_nops, Some(parts[1])) {
+                return false;
+            }
+            section = parts.get(2).map(|x| x.to_string());
         }
 
-        if let Some(pfe) =
-            PatchableFunctionEntry::from_total_and_prefix_nops(total_nops, prefix_nops)
-        {
+        if let Some(pfe) = PatchableFunctionEntry::from_parts(total_nops, prefix_nops, section) {
             *slot = pfe;
             return true;
         }
@@ -1617,7 +1679,7 @@ pub mod parse {
         let mut seen_instruction_threshold = false;
         let mut seen_skip_entry = false;
         let mut seen_skip_exit = false;
-        for option in v.into_iter().flat_map(|v| v.split(',')) {
+        for option in v.map(|v| v.split(',')).into_flat_iter() {
             match option {
                 "always" if !seen_always && !seen_never => {
                     options.always = true;
@@ -2237,7 +2299,7 @@ options! {
     symbol_mangling_version: Option<SymbolManglingVersion> = (None,
         parse_symbol_mangling_version, [TRACKED],
         "which mangling version to use for symbol names ('legacy', 'v0' (default), or 'hashed')"),
-    target_cpu: Option<String> = (None, parse_opt_string, [TRACKED],
+    target_cpu: Option<String> = (None, parse_opt_string, [TRACKED] { TARGET_MODIFIER: TargetCpu },
         "select target processor (`rustc --print target-cpus` for details)"),
     target_feature: String = (String::new(), parse_target_feature, [TRACKED],
         "target specific attributes. (`rustc --print target-features` for details). \
@@ -2294,6 +2356,8 @@ options! {
         `=LooseTypes`
         `=Inline`
         Multiple options can be combined with commas."),
+    autodiff_post_passes: Option<String> = (None, parse_opt_string, [TRACKED],
+        "set llvm passes to run after enzyme (no passes run when it is empty)"),
     #[rustc_lint_opt_deny_field_access("use `Session::binary_dep_depinfo` instead of this field")]
     binary_dep_depinfo: bool = (false, parse_bool, [TRACKED],
         "include artifacts (sysroot, crate dependencies) used during compilation in dep-info \
@@ -2347,6 +2411,8 @@ options! {
         "disable various performance optimizations in trait solving"),
     disable_incr_comp_backend_caching: bool = (false, parse_bool, [TRACKED],
         "disable caching of compiled objects by the codegen backend during incremental compilation"),
+    disable_param_env_normalization_hack: bool = (false, parse_bool, [TRACKED],
+        "do not treat all aliases in the environment as rigid with `-Znext-solver`"),
     dual_proc_macros: bool = (false, parse_bool, [TRACKED],
         "load proc macros for both target and host, but only link to the target (default: no)"),
     dump_dep_graph: bool = (false, parse_bool, [UNTRACKED],
@@ -2413,6 +2479,9 @@ options! {
     fmt_debug: FmtDebug = (FmtDebug::Full, parse_fmt_debug, [TRACKED],
         "how detailed `#[derive(Debug)]` should be. `full` prints types recursively, \
         `shallow` prints only type names, `none` prints nothing and disables `{:?}`. (default: `full`)"),
+    force_intrinsic_fallback: bool = (false, parse_bool, [TRACKED],
+        "always use the fallback body of an intrinsic, if it has one, instead of lowering \
+        the intrinsic in the codegen backend (default: no)."),
     force_unstable_if_unmarked: bool = (false, parse_bool, [TRACKED],
         "force all crates to be `rustc_private` unstable (default: no)"),
     function_return: FunctionReturn = (FunctionReturn::default(), parse_function_return, [TRACKED],
@@ -2557,8 +2626,6 @@ options! {
         "Whether to remove some of the MIR debug info from methods.  Default: None"),
     move_size_limit: Option<usize> = (None, parse_opt_number, [TRACKED],
         "the size at which the `large_assignments` lint starts to be emitted"),
-    mutable_noalias: bool = (true, parse_bool, [TRACKED],
-        "emit noalias metadata for mutable references (default: yes)"),
     namespaced_crates: bool = (false, parse_bool, [TRACKED],
         "allow crates to be namespaced by other crates (default: no)"),
     next_solver: NextSolverConfig = (NextSolverConfig::default(), parse_next_solver_config, [TRACKED],
@@ -2617,6 +2684,26 @@ options! {
         "whether to use the PLT when calling into shared libraries;
         only has effect for PIC code on systems with ELF binaries
         (default: PLT is disabled if full relro is enabled on x86_64)"),
+    pointer_authentication: Vec<(PointerAuthOption, bool)> = (
+        Vec::new(),
+        parse_pointer_authentication_list_with_polarity,
+        [TRACKED]
+        { TARGET_MODIFIER: PointerAuthentication },
+        "A comma-separated list of pointer authentication options, each prefixed with `+` (enable) or `-` (disable). Available options:
+        `aarch64-jump-table-hardening` - enable hardened lowering for jump-table dispatch
+        `auth-traps` - trap immediately on pointer authentication failure
+        `calls` - enable signing and authentication of all indirect calls
+        `elf-got` - enable authentication of pointers from GOT (ELF only)
+        `function-pointer-type-discrimination` - enable type discrimination on C function pointers
+        `indirect-gotos` - enable signing and authentication of indirect goto targets
+        `init-fini` - enable signing of function pointers in init/fini arrays
+        `init-fini-address-discrimination` - enable address discrimination in init/fini arrays
+        `intrinsics` - pointer authentication intrinsics
+        `return-addresses` - enable signing and authentication of return addresses
+        `typeinfo-vt-ptr-discrimination - incorporate type and address discrimination in authenticated vtable pointers for std::type_info
+        `vt-ptr-addr-discrimination - incorporate address discrimination in authenticated vtable pointers
+        `vt-ptr-type-discrimination - incorporate type discrimination in authenticated vtable pointers
+        Example: `-Zpointer-authentication=+calls,-init-fini`."),
     polonius: Polonius = (Polonius::default(), parse_polonius, [TRACKED],
         "enable polonius-based borrow-checker (default: no)"),
     pre_link_arg: (/* redirected to pre_link_args */) = ((), parse_string_push, [UNTRACKED],

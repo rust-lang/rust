@@ -640,10 +640,13 @@ pub fn park_timeout(dur: Duration) {
 ///
 /// On Windows:
 /// - It may undercount the amount of parallelism available on systems with more
-///   than 64 logical CPUs. However, programs typically need specific support to
-///   take advantage of more than 64 logical CPUs, and in the absence of such
-///   support, the number returned by this function accurately reflects the
-///   number of logical CPUs the program can use by default.
+///   than 64 logical CPUs, because it reports only the logical CPUs in one
+///   processor group. Before Windows 11 and Windows Server 2022, a process was by
+///   default confined to a single processor group, so this count reflected the CPUs
+///   it could use without explicitly opting into other groups. Starting with Windows
+///   11 and Windows Server 2022, a process and its threads have affinities that by
+///   default span all processor groups, so on systems with more than 64 logical CPUs
+///   this may report fewer CPUs than are available to the program.
 /// - It may overcount the amount of parallelism available on systems limited by
 ///   process-wide affinity masks, or job object limitations.
 ///

@@ -277,7 +277,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .param_env
             .caller_bounds()
             .iter()
-            .filter_map(|p| p.as_trait_clause())
+            .filter_map(|c| c.as_trait_clause())
             // Micro-optimization: filter out predicates with different polarities.
             .filter(|p| p.polarity() == stack.obligation.predicate.polarity());
 
@@ -1030,10 +1030,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // supertraits.
                     let a_auto_traits: FxIndexSet<DefId> = a_data
                         .auto_traits()
-                        .chain(principal_def_id_a.into_iter().flat_map(|principal_def_id| {
-                            elaborate::supertrait_def_ids(self.tcx(), principal_def_id)
-                                .filter(|def_id| self.tcx().trait_is_auto(*def_id))
-                        }))
+                        .chain(
+                            principal_def_id_a
+                                .map(|principal_def_id| {
+                                    elaborate::supertrait_def_ids(self.tcx(), principal_def_id)
+                                        .filter(|def_id| self.tcx().trait_is_auto(*def_id))
+                                })
+                                .into_flat_iter(),
+                        )
                         .collect();
                     let auto_traits_compatible = b_data
                         .auto_traits()
@@ -1055,7 +1059,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             if upcast_trait_ref.def_id() == target_trait_did
                                 && let Ok(nested) = self.match_upcast_principal(
                                     obligation,
-                                    upcast_trait_ref,
+                                    ty::Unnormalized::new_wip(upcast_trait_ref),
                                     a_data,
                                     b_data,
                                     a_region,

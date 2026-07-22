@@ -1445,7 +1445,7 @@ impl Step for Cargo {
 
         let cargo = builder.ensure(tool::Cargo::from_build_compiler(build_compiler, target));
         let src = builder.src.join("src/tools/cargo");
-        let etc = src.join("src/etc");
+        let etc = src.join("etc");
 
         // Prepare the image directory
         let mut tarball = Tarball::new(builder, "cargo", &target.triple);
@@ -3035,11 +3035,11 @@ impl Step for ReproducibleArtifacts {
     fn run(self, builder: &Builder<'_>) -> Self::Output {
         let mut added_anything = false;
         let tarball = Tarball::new(builder, "reproducible-artifacts", &self.target.triple);
-        if let Some(path) = builder.config.rust_profile_use.as_ref() {
+        if let Some(path) = builder.config.rust_pgo.use_profile.as_ref() {
             tarball.add_file(path, ".", FileType::Regular);
             added_anything = true;
         }
-        if let Some(path) = builder.config.llvm_profile_use.as_ref() {
+        if let Some(path) = builder.config.llvm_pgo.use_profile.as_ref() {
             tarball.add_file(path, ".", FileType::Regular);
             added_anything = true;
         }

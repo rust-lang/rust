@@ -3,6 +3,7 @@ use rustc_ast::{IntTy, LitIntType, LitKind, UintTy};
 use rustc_feature::AttributeStability;
 use rustc_hir::attrs::IntType::{SignedInt, UnsignedInt};
 use rustc_hir::attrs::ReprAttr;
+use rustc_session::diagnostics::feature_err;
 
 use super::prelude::*;
 use crate::session_diagnostics;
@@ -141,13 +142,16 @@ fn parse_repr(cx: &mut AcceptContext<'_, '_>, param: &MetaItemParser) -> Option<
             Some(ReprC)
         }
         Some(sym::simd) => {
-            cx.check_target(
-                "(simd)",
-                &AllowedTargets::AllowList(&[
-                    Allow(Target::Struct),   // Feature gated in `rustc_ast_passes`
-                    Warn(Target::MacroCall), // FIXME: This is not feature gated (!!)
-                ]),
-            );
+            if cx.features.is_some_and(|feats| !feats.repr_simd()) {
+                feature_err(
+                    &cx.sess(),
+                    sym::repr_simd,
+                    param.span(),
+                    "SIMD types are experimental and possibly buggy",
+                )
+                .emit();
+            }
+            cx.check_target("(simd)", &AllowedTargets::AllowList(&[Allow(Target::Struct)]));
             cx.expect_no_args(param.args())?;
             Some(ReprSimd)
         }

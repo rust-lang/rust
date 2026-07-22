@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use base_db::Crate;
+use base_db::{Crate, SourceDatabase};
 use fst::{Automaton, Streamer, raw::IndexedValue};
 use hir_expand::name::Name;
 use itertools::Itertools;
@@ -14,7 +14,6 @@ use stdx::format_to;
 use crate::{
     AdtId, AssocItemId, AttrDefId, Complete, EnumId, FxIndexMap, ModuleDefId, ModuleId, TraitId,
     attrs::AttrFlags,
-    db::DefDatabase,
     item_scope::{ImportOrExternCrate, ItemInNs},
     nameres::{assoc::TraitItems, crate_def_map},
     visibility::Visibility,
@@ -65,13 +64,13 @@ type ImportMapIndex = FxIndexMap<ItemInNs, (SmallVec<[ImportInfo; 1]>, IsTraitAs
 #[salsa::tracked]
 impl ImportMap {
     #[salsa::tracked(returns(ref))]
-    pub fn of(db: &dyn DefDatabase, krate: Crate) -> Self {
+    pub fn of(db: &dyn SourceDatabase, krate: Crate) -> Self {
         Self::import_map_query_impl(db, krate)
     }
 }
 
 impl ImportMap {
-    pub fn dump(&self, db: &dyn DefDatabase) -> String {
+    pub fn dump(&self, db: &dyn SourceDatabase) -> String {
         let mut out = String::new();
         for (k, v) in self.item_to_info_map.iter() {
             format_to!(out, "{:?} ({:?}) -> ", k, v.1);
@@ -83,7 +82,7 @@ impl ImportMap {
         out
     }
 
-    fn import_map_query_impl(db: &dyn DefDatabase, krate: Crate) -> Self {
+    fn import_map_query_impl(db: &dyn SourceDatabase, krate: Crate) -> Self {
         let _p = tracing::info_span!("import_map_query").entered();
 
         let map = Self::collect_import_map(db, krate);
@@ -134,7 +133,7 @@ impl ImportMap {
         self.item_to_info_map.get(&item).map(|(info, _)| &**info)
     }
 
-    fn collect_import_map(db: &dyn DefDatabase, krate: Crate) -> ImportMapIndex {
+    fn collect_import_map(db: &dyn SourceDatabase, krate: Crate) -> ImportMapIndex {
         let _p = tracing::info_span!("collect_import_map").entered();
 
         let def_map = crate_def_map(db, krate);
@@ -238,7 +237,7 @@ impl ImportMap {
     }
 
     fn collect_enum_variants(
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         map: &mut ImportMapIndex,
         enum_: EnumId,
         enum_import_info: &ImportInfo,
@@ -265,7 +264,7 @@ impl ImportMap {
     }
 
     fn collect_trait_assoc_items(
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         map: &mut ImportMapIndex,
         tr: TraitId,
         is_type_in_ns: bool,
@@ -454,7 +453,7 @@ impl Query {
 ///
 /// This returns a list of items that could be imported from dependencies of `krate`.
 pub fn search_dependencies(
-    db: &dyn DefDatabase,
+    db: &dyn SourceDatabase,
     krate: Crate,
     query: &Query,
 ) -> FxHashSet<(ItemInNs, Complete)> {
@@ -494,7 +493,7 @@ pub fn search_dependencies(
 }
 
 fn search_maps(
-    _db: &dyn DefDatabase,
+    _db: &dyn SourceDatabase,
     import_maps: &[&ImportMap],
     mut stream: fst::map::Union<'_>,
     query: &Query,
@@ -538,7 +537,7 @@ mod tests {
     use super::*;
 
     impl ImportMap {
-        fn fmt_for_test(&self, db: &dyn DefDatabase) -> String {
+        fn fmt_for_test(&self, db: &dyn SourceDatabase) -> String {
             let mut importable_paths: Vec<_> = self
                 .item_to_info_map
                 .iter()
@@ -614,7 +613,7 @@ mod tests {
     }
 
     fn assoc_item_path(
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         dependency_imports: &ImportMap,
         dependency: ItemInNs,
     ) -> Option<String> {
@@ -665,7 +664,7 @@ mod tests {
         expect.assert_eq(&actual)
     }
 
-    fn render_path(db: &dyn DefDatabase, info: &ImportInfo) -> String {
+    fn render_path(db: &dyn SourceDatabase, info: &ImportInfo) -> String {
         let mut module = info.container;
         let mut segments = vec![&info.name];
 

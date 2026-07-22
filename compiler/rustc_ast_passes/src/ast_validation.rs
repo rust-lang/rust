@@ -16,6 +16,7 @@
 //! constructions produced by proc macros. This pass is only intended for simple checks that do not
 //! require name resolution or type checking, or other kinds of complex analysis.
 
+use std::collections::BTreeMap;
 use std::mem;
 use std::str::FromStr;
 
@@ -29,12 +30,12 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::{DiagCtxtHandle, Diagnostic, LintBuffer};
 use rustc_feature::Features;
 use rustc_session::Session;
-use rustc_session::errors::feature_err;
+use rustc_session::diagnostics::feature_err;
 use rustc_session::lint::builtin::{
     DEPRECATED_WHERE_CLAUSE_LOCATION, MISSING_ABI, MISSING_UNSAFE_ON_EXTERN,
     PATTERNS_IN_FNS_WITHOUT_BODY, UNUSED_VISIBILITIES,
 };
-use rustc_span::{Ident, Span, kw, sym};
+use rustc_span::{Ident, Span, Symbol, kw, sym};
 use rustc_target::spec::{AbiMap, AbiMapping};
 
 use crate::diagnostics::{self, TildeConstReason};
@@ -43,6 +44,41 @@ use crate::diagnostics::{self, TildeConstReason};
 enum SelfSemantic {
     Yes,
     No,
+}
+
+/// Is `#[splat]` allowed semantically in a function or closure?
+/// Only applies to the function kind and header, the parameters are checked elsewhere.
+enum SplatSemantic {
+    Yes,
+    NoClosures(Span),
+    NoAbiCall { span: Span, abi: Symbol },
+}
+
+impl SplatSemantic {
+    /// Returns if splatting is semantically allowed for the given `FnKind`,
+    /// Only checks the function kind and header, not the parameters.
+    fn from_fn_kind(fk: &FnKind<'_>) -> Self {
+        match fk {
+            FnKind::Fn(_, _, f) => Self::from_extern(f.sig.header.ext),
+            // Splatting closures is banned, because closure arguments are already de-tupled.
+            FnKind::Closure(_, _, _, expr) => SplatSemantic::NoClosures(expr.span),
+        }
+    }
+
+    fn from_extern(ext: Extern) -> Self {
+        match ext {
+            Extern::None => SplatSemantic::Yes,
+            // FIXME(splat): should splatting extern "C" or other ABIs be allowed?
+            Extern::Implicit(_) => SplatSemantic::Yes,
+            // For now, splatting rust-call is banned, because it already de-tuples args.
+            Extern::Explicit(abi_str, span) => match abi_str.symbol_unescaped {
+                sym::rust_dash_call => {
+                    SplatSemantic::NoAbiCall { span, abi: abi_str.symbol_unescaped }
+                }
+                _ => SplatSemantic::Yes,
+            },
+        }
+    }
 }
 
 enum TraitOrImpl {
@@ -350,10 +386,15 @@ impl<'a> AstValidator<'a> {
         });
     }
 
-    fn check_fn_decl(&self, fn_decl: &FnDecl, self_semantic: SelfSemantic) {
+    fn check_fn_decl(
+        &self,
+        fn_decl: &FnDecl,
+        self_semantic: SelfSemantic,
+        splat_semantic: SplatSemantic,
+    ) {
         self.check_decl_num_args(fn_decl);
         let c_variadic_span = self.check_decl_cvariadic_pos(fn_decl);
-        self.check_decl_splatting(fn_decl, c_variadic_span);
+        self.check_decl_splatting(fn_decl, c_variadic_span, splat_semantic);
         self.check_decl_attrs(fn_decl);
         self.check_decl_self_param(fn_decl, self_semantic);
     }
@@ -399,62 +440,93 @@ impl<'a> AstValidator<'a> {
     /// Emits an error if a function declaration has more than one splatted argument, with a
     /// C-variadic parameter, or a splat at an unsupported index (for performance).
     /// Example: `fn foo(#[splat] x: (), #[splat] y: ())` will emit an error.
-    fn check_decl_splatting(&self, fn_decl: &FnDecl, c_variadic_span: Option<Span>) {
-        let (splatted_arg_indexes, mut splatted_spans): (Vec<u16>, Vec<Span>) = fn_decl
+    fn check_decl_splatting(
+        &self,
+        fn_decl: &FnDecl,
+        c_variadic_span: Option<Span>,
+        splat_semantic: SplatSemantic,
+    ) {
+        let mut splatted_arg_spans: BTreeMap<u16, Vec<Span>> = fn_decl
             .inputs
             .iter()
             .enumerate()
             .filter_map(|(index, arg)| {
-                arg.attrs
+                let splat_arg_spans: Vec<Span> = arg
+                    .attrs
                     .iter()
-                    .any(|attr| attr.has_name(sym::splat))
-                    .then_some((u16::try_from(index).unwrap(), arg.span))
+                    .filter_map(|attr| attr.has_name(sym::splat).then_some(attr.span))
+                    .collect();
+                if splat_arg_spans.is_empty() {
+                    None
+                } else {
+                    Some((u16::try_from(index).unwrap(), splat_arg_spans))
+                }
             })
-            .unzip();
+            .collect();
 
         // A splatted argument greater than or equal to the "no splatted" marker index is not
-        // supported.
-        if let (Some(&splatted_arg_index), Some(&splatted_span)) =
-            (splatted_arg_indexes.last(), splatted_spans.last())
-            && splatted_arg_index >= u16::from(FnDecl::NO_SPLATTED_ARG_INDEX)
-        {
-            self.dcx().emit_err(diagnostics::InvalidSplattedArg {
-                splatted_arg_index,
-                span: splatted_span,
+        // supported. It is ok to drop these spans after issuing this error, because they are
+        // always invalid.
+        let out_of_range_spans =
+            splatted_arg_spans.split_off(&u16::from(FnDecl::NO_SPLATTED_ARG_INDEX));
+        if !out_of_range_spans.is_empty() {
+            self.dcx().emit_err(diagnostics::InvalidSplattedArgs {
+                max_valid_splatted_arg_index: u16::from(FnDecl::MAX_VALID_SPLATTED_ARG_INDEX),
+                first_invalid_splatted_arg_index: *out_of_range_spans.keys().next().unwrap(),
+                spans: out_of_range_spans.values().flatten().copied().collect(),
             });
         }
 
-        // Multiple splatted arguments are invalid: we can't know which arguments go in each splat.
-        if splatted_arg_indexes.len() > 1 {
-            self.dcx()
-                .emit_err(diagnostics::DuplicateSplattedArgs { spans: splatted_spans.clone() });
-        }
+        if !splatted_arg_spans.is_empty() {
+            let splatted_spans = || splatted_arg_spans.values().flatten().copied().collect();
 
-        if let Some(c_variadic_span) = c_variadic_span
-            && !splatted_spans.is_empty()
-        {
-            splatted_spans.push(c_variadic_span);
-            self.dcx().emit_err(diagnostics::CVarArgsAndSplat { spans: splatted_spans });
+            // Multiple splatted arguments are invalid: we can't know which arguments go in each splat.
+            if splatted_arg_spans.len() > 1 {
+                self.dcx().emit_err(diagnostics::DuplicateSplattedArgs { spans: splatted_spans() });
+            }
+
+            // C-variadic parameters and splats are not allowed together.
+            if let Some(c_variadic_span) = c_variadic_span {
+                let mut splatted_spans = splatted_spans();
+                splatted_spans.push(c_variadic_span);
+                self.dcx().emit_err(diagnostics::CVarArgsAndSplat { spans: splatted_spans });
+            }
+
+            // Splatting is not allowed on closures, or some function ABIs.
+            match splat_semantic {
+                SplatSemantic::NoClosures(closure_span) => {
+                    let mut splatted_spans = splatted_spans();
+                    splatted_spans.push(closure_span);
+                    self.dcx()
+                        .emit_err(diagnostics::SplatNotAllowedOnClosures { spans: splatted_spans });
+                }
+                SplatSemantic::NoAbiCall { span, abi } => {
+                    let mut splatted_spans = splatted_spans();
+                    splatted_spans.push(span);
+                    self.dcx().emit_err(diagnostics::SplatNotAllowedOnAbiCall {
+                        spans: splatted_spans,
+                        abi,
+                    });
+                }
+                SplatSemantic::Yes => {}
+            }
         }
     }
 
     fn check_decl_attrs(&self, fn_decl: &FnDecl) {
+        use SyntheticAttr::*;
         fn_decl
             .inputs
             .iter()
             .flat_map(|i| i.attrs.as_ref())
-            .filter(|attr| {
-                let arr = [
-                    sym::allow,
-                    sym::cfg_trace,
-                    sym::cfg_attr_trace,
-                    sym::deny,
-                    sym::expect,
-                    sym::forbid,
-                    sym::splat,
-                    sym::warn,
-                ];
-                !attr.has_any_name(&arr) && rustc_attr_parsing::is_builtin_attr(*attr)
+            .filter(|attr| match &attr.kind {
+                AttrKind::Normal(normal) => {
+                    let arr =
+                        [sym::allow, sym::deny, sym::expect, sym::forbid, sym::splat, sym::warn];
+                    !attr.has_any_name(&arr) && rustc_attr_parsing::is_builtin_attr(&normal.item)
+                }
+                AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace) => false,
+                AttrKind::DocComment(..) => true,
             })
             .for_each(|attr| {
                 if attr.is_doc_comment() {
@@ -1055,7 +1127,11 @@ impl<'a> AstValidator<'a> {
         match &ty.kind {
             TyKind::FnPtr(bfty) => {
                 self.check_fn_ptr_safety(bfty.decl_span, bfty.safety);
-                self.check_fn_decl(&bfty.decl, SelfSemantic::No);
+                self.check_fn_decl(
+                    &bfty.decl,
+                    SelfSemantic::No,
+                    SplatSemantic::from_extern(bfty.ext),
+                );
                 Self::check_decl_no_pat(&bfty.decl, |span, _, _| {
                     self.dcx().emit_err(diagnostics::PatternFnPointer { span });
                 });
@@ -1438,7 +1514,7 @@ impl Visitor<'_> for AstValidator<'_> {
                 }
                 visit::walk_item(self, item)
             }
-            ItemKind::Struct(ident, generics, vdata) => {
+            ItemKind::Struct(.., vdata) => {
                 self.with_tilde_const(Some(TildeConstReason::Struct { span: item.span }), |this| {
                     // Scalable vectors can only be tuple structs
                     let scalable_vector_attr =
@@ -1457,29 +1533,15 @@ impl Visitor<'_> for AstValidator<'_> {
                         }
                     }
 
-                    match vdata {
-                        VariantData::Struct { fields, .. } => {
-                            this.visit_attrs_vis_ident(&item.attrs, &item.vis, ident);
-                            this.visit_generics(generics);
-                            walk_list!(this, visit_field_def, fields);
-                        }
-                        _ => visit::walk_item(this, item),
-                    }
+                    visit::walk_item(this, item);
                 })
             }
-            ItemKind::Union(ident, generics, vdata) => {
+            ItemKind::Union(.., vdata) => {
                 if vdata.fields().is_empty() {
                     self.dcx().emit_err(diagnostics::FieldlessUnion { span: item.span });
                 }
                 self.with_tilde_const(Some(TildeConstReason::Union { span: item.span }), |this| {
-                    match vdata {
-                        VariantData::Struct { fields, .. } => {
-                            this.visit_attrs_vis_ident(&item.attrs, &item.vis, ident);
-                            this.visit_generics(generics);
-                            walk_list!(this, visit_field_def, fields);
-                        }
-                        _ => visit::walk_item(this, item),
-                    }
+                    visit::walk_item(this, item)
                 });
             }
             ItemKind::Const(ConstItem { defaultness, ident, rhs_kind, .. }) => {
@@ -1530,7 +1592,7 @@ impl Visitor<'_> for AstValidator<'_> {
                 }
                 self.check_type_no_bounds(bounds, "this context");
 
-                if self.features.lazy_type_alias() {
+                if self.features.checked_type_aliases() {
                     if let Err(err) = self.check_type_alias_where_clause_location(ty_alias) {
                         self.dcx().emit_err(err);
                     }
@@ -1746,7 +1808,8 @@ impl Visitor<'_> for AstValidator<'_> {
             Some(FnCtxt::Assoc(_)) => SelfSemantic::Yes,
             _ => SelfSemantic::No,
         };
-        self.check_fn_decl(fk.decl(), self_semantic);
+        let splat_semantic = SplatSemantic::from_fn_kind(&fk);
+        self.check_fn_decl(fk.decl(), self_semantic, splat_semantic);
 
         if let Some(&FnHeader { safety, .. }) = fk.header() {
             self.check_item_safety(span, safety);

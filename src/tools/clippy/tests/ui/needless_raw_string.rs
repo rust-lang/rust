@@ -1,5 +1,5 @@
-#![allow(clippy::needless_raw_string_hashes, clippy::no_effect, unused)]
 #![warn(clippy::needless_raw_strings)]
+#![expect(clippy::needless_raw_string_hashes, clippy::no_effect)]
 
 fn main() {
     r#"aaa"#;

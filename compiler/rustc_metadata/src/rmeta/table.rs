@@ -175,7 +175,6 @@ fixed_size_enum! {
         ( Use                                      )
         ( ForeignMod                               )
         ( AnonConst                                )
-        ( InlineConst                              )
         ( OpaqueTy                                 )
         ( Field                                    )
         ( LifetimeParam                            )

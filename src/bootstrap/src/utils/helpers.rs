@@ -10,13 +10,14 @@ use std::thread::panicking;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 use std::{env, fs, io, panic, str};
 
+use build_helper::ci::CiEnv;
 use object::read::archive::ArchiveFile;
 
-use crate::BootstrapOverrideLld;
 use crate::core::builder::Builder;
 use crate::core::config::{Config, TargetSelection};
 use crate::utils::exec::{BootstrapCommand, command};
 pub use crate::utils::shared_helpers::{dylib_path, dylib_path_var};
+use crate::{BootstrapOverrideLld, StepStack};
 
 #[cfg(test)]
 mod tests;
@@ -96,7 +97,11 @@ pub fn is_dylib(path: &Path) -> bool {
 
 /// Return the path to the containing submodule if available.
 pub fn submodule_path_of(builder: &Builder<'_>, path: &str) -> Option<String> {
-    let submodule_paths = builder.submodule_paths();
+    submodule_path_of_paths(builder.submodule_paths(), path)
+}
+
+fn submodule_path_of_paths(submodule_paths: &[String], path: &str) -> Option<String> {
+    let path = Path::new(path);
     submodule_paths.iter().find_map(|submodule_path| {
         if path.starts_with(submodule_path) { Some(submodule_path.to_string()) } else { None }
     })
@@ -561,4 +566,36 @@ pub fn set_file_times<P: AsRef<Path>>(path: P, times: fs::FileTimes) -> io::Resu
         fs::File::open(path)?
     };
     f.set_times(times)
+}
+
+/// If code is not 0 (successful exit status), exit status is 101 (rust's default error code.)
+/// If `is_test` true and code is an error code, it will cause a panic.
+pub fn detail_exit(code: i32, is_test: bool) -> ! {
+    // if in test and code is an error code, panic with status code provided
+    if is_test {
+        panic!("status code: {code}");
+    } else {
+        // If we're in CI, print the current bootstrap invocation command, to make it easier to
+        // figure out what exactly has failed.
+        if CiEnv::is_ci() {
+            // Skip the first argument, as it will be some absolute path to the bootstrap binary.
+            let bootstrap_args =
+                std::env::args().skip(1).map(|a| a.to_string()).collect::<Vec<_>>().join(" ");
+            eprintln!("Bootstrap failed while executing `{bootstrap_args}`");
+            eprintln!("Currently active steps:");
+            StepStack::with_current(|stack| {
+                for step in stack.get_active_steps() {
+                    eprintln!("{} at {}", step.info, step.location);
+                }
+            });
+        }
+
+        // otherwise, exit with provided status code
+        std::process::exit(code);
+    }
+}
+
+pub fn fail(s: &str) -> ! {
+    eprintln!("\n\n{s}\n\n");
+    detail_exit(1, cfg!(test));
 }

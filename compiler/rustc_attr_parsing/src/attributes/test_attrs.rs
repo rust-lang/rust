@@ -214,3 +214,14 @@ impl SingleAttributeParser for RustcTestMarkerParser {
         Some(AttributeKind::RustcTestMarker(value_str))
     }
 }
+
+pub(crate) struct RustcTestEntrypointMarkerParser;
+
+impl NoArgsAttributeParser for RustcTestEntrypointMarkerParser {
+    const PATH: &[Symbol] = &[sym::rustc_test_entrypoint_marker];
+    const ALLOWED_TARGETS: AllowedTargets<'_> =
+        AllowedTargets::AllowList(&[Allow(Target::Fn), Allow(Target::Closure)]);
+    const ON_DUPLICATE: OnDuplicate = OnDuplicate::Warn;
+    const STABILITY: AttributeStability = unstable!(rustc_attrs);
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcTestEntrypointMarker;
+}

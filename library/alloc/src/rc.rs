@@ -2090,8 +2090,6 @@ impl<T: ?Sized + CloneToUninit, A: Allocator + Clone> Rc<T, A> {
         } else if Rc::weak_count(this) != 0 {
             // Can just steal the data, all that's left is Weaks
 
-            // We don't need panic-protection like the above branch does, but we might as well
-            // use the same mechanism.
             let mut in_progress: UniqueRcUninit<T, A> =
                 UniqueRcUninit::new(&**this, this.alloc.clone());
             unsafe {
@@ -2104,10 +2102,18 @@ impl<T: ?Sized + CloneToUninit, A: Allocator + Clone> Rc<T, A> {
                     size_of_val,
                 );
 
+                // This leaves us with 0 strong refs, so the data has
+                // effectively been moved to the new rc.
                 this.inner().dec_strong();
+
                 // Remove implicit strong-weak ref (no need to craft a fake
                 // Weak here -- we know other Weaks can clean up for us)
                 this.inner().dec_weak();
+
+                // Last chance to not accidentally forget the allocator.
+                // Only drop at the end of the scope to avoid panics.
+                let _alloc = ptr::read(&this.alloc);
+
                 // Replace `this` with newly constructed Rc that has the moved data.
                 ptr::write(this, in_progress.into_rc());
             }

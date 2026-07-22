@@ -1,0 +1,4 @@
+break tests/ui/locals_tuple_field_fragment.rs:4
+continue
+locals
+quit

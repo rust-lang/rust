@@ -8,6 +8,7 @@ use ide_db::{
     RootDatabase, SnippetCap,
     documentation::{Documentation, HasDocs},
     imports::insert_use::ImportScope,
+    source_change::SnippetEdit,
     syntax_helpers::suggest_name::NameGenerator,
     text_edit::TextEdit,
     ty_filter::TryEnum,
@@ -401,7 +402,7 @@ fn get_receiver_text(
 
     // The receiver texts should be interpreted as-is, as they are expected to be
     // normal Rust expressions.
-    escape_snippet_bits(&mut text);
+    SnippetEdit::escape_snippet_bits(&mut text);
     return text;
 
     fn indent_of_tail_line(text: &str) -> usize {
@@ -409,15 +410,6 @@ fn get_receiver_text(
         let trimmed = tail_line.trim_start_matches(' ');
         tail_line.len() - trimmed.len()
     }
-}
-
-/// Escapes `\` and `$` so that they don't get interpreted as snippet-specific constructs.
-///
-/// Note that we don't need to escape the other characters that can be escaped,
-/// because they wouldn't be treated as snippet-specific constructs without '$'.
-fn escape_snippet_bits(text: &mut String) {
-    stdx::replace(text, '\\', "\\\\");
-    stdx::replace(text, '$', "\\$");
 }
 
 fn receiver_accessor(receiver: &ast::Expr) -> ast::Expr {

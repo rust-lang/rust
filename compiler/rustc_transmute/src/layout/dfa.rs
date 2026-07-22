@@ -257,15 +257,15 @@ where
     pub(crate) fn bytes_from(&self, start: State) -> impl Iterator<Item = (Byte, State)> {
         self.transitions
             .get(&start)
-            .into_iter()
-            .flat_map(|transitions| transitions.byte_transitions.iter())
+            .map(|transitions| transitions.byte_transitions.iter())
+            .into_flat_iter()
     }
 
     pub(crate) fn refs_from(&self, start: State) -> impl Iterator<Item = (Reference<R, T>, State)> {
         self.transitions
             .get(&start)
-            .into_iter()
-            .flat_map(|transitions| transitions.ref_transitions.iter())
+            .map(|transitions| transitions.ref_transitions.iter())
+            .into_flat_iter()
             .map(|(r, s)| (*r, *s))
     }
 

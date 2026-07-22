@@ -324,9 +324,33 @@ impl CodegenBackend for LlvmCodegenBackend {
         target_config(sess)
     }
 
+    /// Intrinsics whose fallback body will not be used by the LLVM backend.
     fn replaced_intrinsics(&self) -> Vec<Symbol> {
-        let mut will_not_use_fallback =
-            vec![sym::unchecked_funnel_shl, sym::unchecked_funnel_shr, sym::carrying_mul_add];
+        #[rustfmt::skip]
+        let mut will_not_use_fallback = vec![
+            // These are mapped to LLVM intrinsics instead.
+            sym::unchecked_funnel_shl,
+            sym::unchecked_funnel_shr,
+            sym::carrying_mul_add,
+
+            // Fallback via libm, but the LLVM intrinsic is used instead.
+            sym::sinf16, sym::sinf32, sym::sinf64,
+            sym::cosf16, sym::cosf32, sym::cosf64,
+            sym::powf16, sym::powf32, sym::powf64,
+            sym::expf16, sym::expf32, sym::expf64,
+            sym::exp2f16, sym::exp2f32, sym::exp2f64,
+            sym::logf16, sym::logf32, sym::logf64,
+            sym::log10f16, sym::log10f32, sym::log10f64,
+            sym::log2f16, sym::log2f32, sym::log2f64,
+
+            // Fallback via f32 or f64, but the LLVM intrinsic is used instead.
+            sym::floorf16, sym::ceilf16, sym::truncf16,
+            sym::round_ties_even_f16, sym::roundf16,
+            sym::sqrtf16, sym::powif16,
+            sym::fmaf16,
+
+            sym::copysignf16, sym::copysignf32, sym::copysignf64, sym::copysignf128,
+        ];
 
         if llvm_util::get_version() >= (22, 0, 0) {
             will_not_use_fallback.push(sym::carryless_mul);

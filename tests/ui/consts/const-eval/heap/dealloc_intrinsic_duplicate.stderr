@@ -1,4 +1,4 @@
-error[E0080]: memory access failed: ALLOC0 has been freed, so this pointer is dangling
+error[E0080]: memory access failed: ALLOC$ID has been freed, so this pointer is dangling
   --> $DIR/dealloc_intrinsic_duplicate.rs:9:5
    |
 LL |     intrinsics::const_deallocate(ptr, 4, 4);

@@ -376,7 +376,7 @@ impl<'a, 'tcx> QueryNormalizer<'a, 'tcx> {
         // of type/const and we need to continue folding it to reveal the TAIT behind it
         // or further normalize nested alias consts.
         if res != term.to_term(tcx, ty::IsRigid::No)
-            && (res.has_type_flags(ty::TypeFlags::HAS_CT_PROJECTION)
+            && (res.has_type_flags(ty::TypeFlags::HAS_CONST_ALIAS)
                 || matches!(
                     term.kind,
                     ty::AliasTermKind::FreeTy { .. } | ty::AliasTermKind::FreeConst { .. }

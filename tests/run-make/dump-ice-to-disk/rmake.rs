@@ -195,7 +195,10 @@ fn test_flag_and_env(baseline: &IceDump) {
             .env("RUSTC_ICE", &real_dir)
             .arg("-Ztreat-err-as-bug=1")
             .arg(metrics_arg)
-            .run_fail();
+            .run_fail()
+            .assert_stderr_contains(
+                "ignoring -Zmetrics-dir in favor of RUSTC_ICE for destination of ICE report files",
+            );
 
         let cwd_ice_files = find_ice_dumps_in_dir(cwd());
         assert!(cwd_ice_files.is_empty(), "RUSTC_ICE should override -Zmetrics-dir");

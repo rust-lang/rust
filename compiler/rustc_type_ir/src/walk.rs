@@ -135,9 +135,11 @@ fn push_inner<I: Interner>(stack: &mut TypeWalkerStack<I>, parent: I::GenericArg
             | ty::Closure(_, args)
             | ty::CoroutineClosure(_, args)
             | ty::Coroutine(_, args)
-            | ty::CoroutineWitness(_, args)
-            | ty::FnDef(_, args) => {
+            | ty::CoroutineWitness(_, args) => {
                 stack.extend(args.iter().rev());
+            }
+            ty::FnDef(_, args) => {
+                stack.extend(args.no_bound_vars().unwrap().iter().rev());
             }
             ty::Tuple(ts) => stack.extend(ts.iter().rev().map(|ty| ty.into())),
             ty::FnPtr(sig_tys, _hdr) => {

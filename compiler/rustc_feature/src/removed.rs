@@ -107,7 +107,7 @@ declare_features! (
     /// Allows deriving traits as per `SmartPointer` specification
     (removed, derive_smart_pointer, "1.84.0", Some(123430), Some("replaced by `CoercePointee`"), 131284),
     /// Allows macros to customize macro argument matcher diagnostics.
-    (removed, diagnostic_on_unmatch_args, "CURRENT_RUSTC_VERSION", Some(155642), Some("renamed to `diagnostic_on_unmatched_args`"), 157887),
+    (removed, diagnostic_on_unmatch_args, "1.98.0", Some(155642), Some("renamed to `diagnostic_on_unmatched_args`"), 157887),
     /// Tells rustdoc to automatically generate `#[doc(cfg(...))]`.
     (removed, doc_auto_cfg, "1.92.0", Some(43781), Some("merged into `doc_cfg`"), 138907),
     /// Allows `#[doc(cfg_hide(...))]`.
@@ -179,6 +179,8 @@ declare_features! (
     (removed, issue_5723_bootstrap, "1.95.0", None, None),
     /// Lazily evaluate constants. This allows constants to depend on type parameters.
     (removed, lazy_normalization_consts, "1.56.0", Some(72219), Some("superseded by `generic_const_exprs`"), 88369),
+    /// Allow to have type alias types for inter-crate use.
+    (removed, lazy_type_alias, "1.72.0", Some(112792), Some("renamed to `checked_type_aliases`"), 158758),
     /// Changes `impl Trait` to capture all lifetimes in scope.
     (removed, lifetime_capture_rules_2024, "1.87.0", None, Some("unnecessary -- use edition 2024 instead"), 136787),
     /// Allows using the `#[link_args]` attribute.

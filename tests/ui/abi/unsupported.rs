@@ -1,5 +1,5 @@
 //@ add-minicore
-//@ revisions: x64 x64_win i686 aarch64 arm riscv32 riscv64
+//@ revisions: x64 x64_win i686 aarch64 arm riscv32 riscv64 wasm32 wasm64
 //
 //@ [x64] needs-llvm-components: x86
 //@ [x64] compile-flags: --target=x86_64-unknown-linux-gnu --crate-type=rlib
@@ -15,6 +15,10 @@
 //@ [riscv32] compile-flags: --target=riscv32i-unknown-none-elf --crate-type=rlib
 //@ [riscv64] needs-llvm-components: riscv
 //@ [riscv64] compile-flags: --target=riscv64gc-unknown-none-elf --crate-type=rlib
+//@ [wasm32] needs-llvm-components: webassembly
+//@ [wasm32] compile-flags: --target wasm32-unknown-unknown --crate-type=rlib
+//@ [wasm64] needs-llvm-components: webassembly
+//@ [wasm64] compile-flags: --target wasm64-unknown-unknown --crate-type=rlib
 //@ ignore-backends: gcc
 #![no_core]
 #![feature(
@@ -28,7 +32,8 @@
     abi_riscv_interrupt,
     abi_cmse_nonsecure_call,
     abi_vectorcall,
-    cmse_nonsecure_entry
+    cmse_nonsecure_entry,
+    abi_custom
 )]
 
 extern crate minicore;
@@ -37,7 +42,7 @@ use minicore::*;
 extern "ptx-kernel" fn ptx() {}
 //~^ ERROR is not a supported ABI
 fn ptx_ptr(f: extern "ptx-kernel" fn()) {
-//~^ ERROR is not a supported ABI
+    //~^ ERROR is not a supported ABI
     f()
 }
 extern "ptx-kernel" {}
@@ -46,13 +51,13 @@ extern "gpu-kernel" fn gpu() {}
 //~^ ERROR is not a supported ABI
 
 extern "aapcs" fn aapcs() {}
-//[x64,x64_win,i686,aarch64,riscv32,riscv64]~^ ERROR is not a supported ABI
+//[x64,x64_win,i686,aarch64,riscv32,riscv64,wasm32,wasm64]~^ ERROR is not a supported ABI
 fn aapcs_ptr(f: extern "aapcs" fn()) {
-    //[x64,x64_win,i686,aarch64,riscv32,riscv64]~^ ERROR is not a supported ABI
+    //[x64,x64_win,i686,aarch64,riscv32,riscv64,wasm32,wasm64]~^ ERROR is not a supported ABI
     f()
 }
 extern "aapcs" {}
-//[x64,x64_win,i686,aarch64,riscv32,riscv64]~^ ERROR is not a supported ABI
+//[x64,x64_win,i686,aarch64,riscv32,riscv64,wasm32,wasm64]~^ ERROR is not a supported ABI
 
 extern "msp430-interrupt" {}
 //~^ ERROR is not a supported ABI
@@ -61,72 +66,72 @@ extern "avr-interrupt" {}
 //~^ ERROR is not a supported ABI
 
 extern "riscv-interrupt-m" {}
-//[x64,x64_win,i686,arm,aarch64]~^ ERROR is not a supported ABI
+//[x64,x64_win,i686,arm,aarch64,wasm32,wasm64]~^ ERROR is not a supported ABI
 
 extern "x86-interrupt" {}
-//[aarch64,arm,riscv32,riscv64]~^ ERROR is not a supported ABI
+//[aarch64,arm,riscv32,riscv64,wasm32,wasm64]~^ ERROR is not a supported ABI
 
 extern "thiscall" fn thiscall() {}
-//[x64,x64_win,arm,aarch64,riscv32,riscv64]~^ ERROR is not a supported ABI
+//[x64,x64_win,arm,aarch64,riscv32,riscv64,wasm32,wasm64]~^ ERROR is not a supported ABI
 fn thiscall_ptr(f: extern "thiscall" fn()) {
-    //[x64,x64_win,arm,aarch64,riscv32,riscv64]~^ ERROR is not a supported ABI
+    //[x64,x64_win,arm,aarch64,riscv32,riscv64,wasm32,wasm64]~^ ERROR is not a supported ABI
     f()
 }
 extern "thiscall" {}
-//[x64,x64_win,arm,aarch64,riscv32,riscv64]~^ ERROR is not a supported ABI
+//[x64,x64_win,arm,aarch64,riscv32,riscv64,wasm32,wasm64]~^ ERROR is not a supported ABI
 
 extern "stdcall" fn stdcall() {}
-//[x64,arm,aarch64,riscv32,riscv64]~^ ERROR is not a supported ABI
+//[x64,arm,aarch64,riscv32,riscv64,wasm32,wasm64]~^ ERROR is not a supported ABI
 //[x64_win]~^^ WARN unsupported_calling_conventions
 //[x64_win]~^^^ WARN this was previously accepted
 fn stdcall_ptr(f: extern "stdcall" fn()) {
-    //[x64,arm,aarch64,riscv32,riscv64]~^ ERROR is not a supported ABI
+    //[x64,arm,aarch64,riscv32,riscv64,wasm32,wasm64]~^ ERROR is not a supported ABI
     //[x64_win]~^^ WARN unsupported_calling_conventions
     //[x64_win]~|  WARN this was previously accepted
     f()
 }
 extern "stdcall" {}
-//[x64,arm,aarch64,riscv32,riscv64]~^ ERROR is not a supported ABI
+//[x64,arm,aarch64,riscv32,riscv64,wasm32,wasm64]~^ ERROR is not a supported ABI
 //[x64_win]~^^ WARN unsupported_calling_conventions
 //[x64_win]~^^^ WARN this was previously accepted
 extern "stdcall-unwind" {}
-//[x64,arm,aarch64,riscv32,riscv64]~^ ERROR is not a supported ABI
+//[x64,arm,aarch64,riscv32,riscv64,wasm32,wasm64]~^ ERROR is not a supported ABI
 //[x64_win]~^^ WARN unsupported_calling_conventions
 //[x64_win]~^^^ WARN this was previously accepted
 
 extern "cdecl" fn cdecl() {}
-//[x64,x64_win,arm,aarch64,riscv32,riscv64]~^ WARN unsupported_calling_conventions
-//[x64,x64_win,arm,aarch64,riscv32,riscv64]~^^ WARN this was previously accepted
+//[x64,x64_win,arm,aarch64,riscv32,riscv64,wasm32,wasm64]~^ WARN unsupported_calling_conventions
+//[x64,x64_win,arm,aarch64,riscv32,riscv64,wasm32,wasm64]~^^ WARN this was previously accepted
 fn cdecl_ptr(f: extern "cdecl" fn()) {
-    //[x64,x64_win,arm,aarch64,riscv32,riscv64]~^ WARN unsupported_calling_conventions
-    //[x64,x64_win,arm,aarch64,riscv32,riscv64]~| WARN this was previously accepted
+    //[x64,x64_win,arm,aarch64,riscv32,riscv64,wasm32,wasm64]~^ WARN unsupported_calling_conventions
+    //[x64,x64_win,arm,aarch64,riscv32,riscv64,wasm32,wasm64]~| WARN this was previously accepted
     f()
 }
 extern "cdecl" {}
-//[x64,x64_win,arm,aarch64,riscv32,riscv64]~^ WARN unsupported_calling_conventions
-//[x64,x64_win,arm,aarch64,riscv32,riscv64]~^^ WARN this was previously accepted
+//[x64,x64_win,arm,aarch64,riscv32,riscv64,wasm32,wasm64]~^ WARN unsupported_calling_conventions
+//[x64,x64_win,arm,aarch64,riscv32,riscv64,wasm32,wasm64]~^^ WARN this was previously accepted
 extern "cdecl-unwind" {}
-//[x64,x64_win,arm,aarch64,riscv32,riscv64]~^ WARN unsupported_calling_conventions
-//[x64,x64_win,arm,aarch64,riscv32,riscv64]~^^ WARN this was previously accepted
+//[x64,x64_win,arm,aarch64,riscv32,riscv64,wasm32,wasm64]~^ WARN unsupported_calling_conventions
+//[x64,x64_win,arm,aarch64,riscv32,riscv64,wasm32,wasm64]~^^ WARN this was previously accepted
 
 extern "vectorcall" fn vectorcall() {}
-//[arm,aarch64,riscv32,riscv64]~^ ERROR is not a supported ABI
+//[arm,aarch64,riscv32,riscv64,wasm32,wasm64]~^ ERROR is not a supported ABI
 fn vectorcall_ptr(f: extern "vectorcall" fn()) {
-    //[arm,aarch64,riscv32,riscv64]~^ ERROR is not a supported ABI
+    //[arm,aarch64,riscv32,riscv64,wasm32,wasm64]~^ ERROR is not a supported ABI
     f()
 }
 extern "vectorcall" {}
-//[arm,aarch64,riscv32,riscv64]~^ ERROR is not a supported ABI
+//[arm,aarch64,riscv32,riscv64,wasm32,wasm64]~^ ERROR is not a supported ABI
 
 fn cmse_call_ptr(f: extern "cmse-nonsecure-call" fn()) {
-//~^ ERROR is not a supported ABI
+    //~^ ERROR is not a supported ABI
     f()
 }
 
 extern "cmse-nonsecure-entry" fn cmse_entry() {}
 //~^ ERROR is not a supported ABI
 fn cmse_entry_ptr(f: extern "cmse-nonsecure-entry" fn()) {
-//~^ ERROR is not a supported ABI
+    //~^ ERROR is not a supported ABI
     f()
 }
 extern "cmse-nonsecure-entry" {}
@@ -137,3 +142,10 @@ extern "cmse-nonsecure-entry" {}
 extern "cdecl" {}
 //[x64_win]~^ WARN unsupported_calling_conventions
 //[x64_win]~^^ WARN this was previously accepted
+
+fn custom_ptr(f: extern "custom" fn()) {
+    //[wasm32,wasm64]~^ ERROR is not a supported ABI
+    let _ = f;
+}
+extern "custom" {}
+//[wasm32,wasm64]~^ ERROR is not a supported ABI

@@ -121,7 +121,7 @@ pub mod macos;
 pub mod motor;
 #[cfg(target_os = "netbsd")]
 pub mod netbsd;
-#[cfg(target_os = "nto")]
+#[cfg(any(target_os = "nto", target_os = "qnx"))]
 pub mod nto;
 #[cfg(target_os = "nuttx")]
 pub mod nuttx;

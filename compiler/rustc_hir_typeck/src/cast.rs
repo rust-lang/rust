@@ -64,7 +64,7 @@ pub(crate) struct CastCheck<'tcx> {
     cast_ty: Ty<'tcx>,
     cast_span: Span,
     span: Span,
-    pub body_id: LocalDefId,
+    pub body_def_id: LocalDefId,
 }
 
 /// The kind of pointer and associated metadata (thin, length or vtable) - we
@@ -118,7 +118,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Some(&f) => self.pointer_kind(f, span)?,
             },
 
-            ty::UnsafeBinder(_) => todo!("FIXME(unsafe_binder)"),
+            ty::UnsafeBinder(_) => unimplemented!("FIXME(unsafe_binder)"),
 
             // Pointers to foreign types are thin, despite being unsized
             ty::Foreign(..) => Some(PointerKind::Thin),
@@ -247,8 +247,15 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         span: Span,
     ) -> Result<CastCheck<'tcx>, ErrorGuaranteed> {
         let expr_span = expr.span.find_ancestor_inside(span).unwrap_or(expr.span);
-        let check =
-            CastCheck { expr, expr_ty, expr_span, cast_ty, cast_span, span, body_id: fcx.body_id };
+        let check = CastCheck {
+            expr,
+            expr_ty,
+            expr_span,
+            cast_ty,
+            cast_span,
+            span,
+            body_def_id: fcx.body_def_id,
+        };
 
         // For better error messages, check for some obviously unsized
         // cases now. We do a more thorough check at the end, once
@@ -724,6 +731,10 @@ impl<'a, 'tcx> CastCheck<'tcx> {
     }
 
     fn trivial_cast_lint(&self, fcx: &FnCtxt<'a, 'tcx>) {
+        if self.is_non_trivial_ref_trait_object_upcast(fcx) {
+            return;
+        }
+
         let (numeric, lint) = if self.cast_ty.is_numeric() && self.expr_ty.is_numeric() {
             (true, lint::builtin::TRIVIAL_NUMERIC_CASTS)
         } else {
@@ -737,6 +748,35 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             self.span,
             diagnostics::TrivialCast { numeric, expr_ty, cast_ty },
         );
+    }
+
+    // A trait-object upcast from a method receiver, such as
+    // `(other as &dyn Any).downcast_ref::<u32>()`,
+    // is not trivial, because it may change the method resolution, we want to skip the lint in this case.
+    // see issue #148219
+    fn is_non_trivial_ref_trait_object_upcast(&self, fcx: &FnCtxt<'a, 'tcx>) -> bool {
+        if !matches!(
+            (self.expr_ty.kind(), self.cast_ty.kind()),
+            (ty::Ref(_, from_ty, _), ty::Ref(_, to_ty, _))
+                if matches!(
+                    (from_ty.kind(), to_ty.kind()),
+                    (ty::Dynamic(from_data, _), ty::Dynamic(to_data, _)) if from_data != to_data
+                )
+        ) {
+            return false;
+        }
+
+        let hir::Node::Expr(cast_expr) = fcx.tcx.parent_hir_node(self.expr.hir_id) else {
+            return false;
+        };
+        let hir::Node::Expr(parent) = fcx.tcx.parent_hir_node(cast_expr.hir_id) else {
+            return false;
+        };
+
+        matches!(
+            parent.kind,
+            hir::ExprKind::MethodCall(_, receiver, ..) if receiver.hir_id == cast_expr.hir_id
+        )
     }
 
     fn expr_span_for_type_resolution(&self, fcx: &FnCtxt<'a, 'tcx>) -> Span {

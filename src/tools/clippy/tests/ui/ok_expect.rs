@@ -1,4 +1,5 @@
-#![allow(clippy::unnecessary_literal_unwrap)]
+#![warn(clippy::ok_expect)]
+#![expect(clippy::unnecessary_literal_unwrap)]
 
 use std::io;
 

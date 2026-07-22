@@ -1,4 +1,4 @@
-use hir::{FileRange, HirDisplay, InFile, db::ExpandDatabase};
+use hir::{FileRange, HirDisplay, InFile};
 use ide_db::text_edit::TextEdit;
 use ide_db::{
     assists::{Assist, AssistId},
@@ -82,7 +82,7 @@ fn field_fix(
         return None;
     }
     let expr_ptr = &d.expr;
-    let root = ctx.sema.db.parse_or_expand(expr_ptr.file_id);
+    let root = expr_ptr.file_id.parse_or_expand(ctx.sema.db);
     let expr = expr_ptr.value.to_node(&root);
     let (file_id, range) = match expr.left()? {
         ast::Expr::MethodCallExpr(mcall) => {
@@ -118,7 +118,7 @@ fn assoc_func_fix(
         let db = ctx.sema.db;
 
         let expr_ptr = &d.expr;
-        let root = db.parse_or_expand(expr_ptr.file_id);
+        let root = expr_ptr.file_id.parse_or_expand(db);
         let expr: ast::Expr = expr_ptr.value.to_node(&root).left()?;
 
         let call = ast::MethodCallExpr::cast(expr.syntax().clone())?;

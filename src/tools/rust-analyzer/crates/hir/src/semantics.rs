@@ -26,7 +26,6 @@ use hir_expand::{
     EditionedFileId, ExpandResult, FileRange, HirFileId, InMacroFile, MacroCallId,
     attrs::AstPathExt,
     builtin::{BuiltinFnLikeExpander, EagerExpander},
-    db::ExpandDatabase,
     files::{FileRangeWrapper, HirFileRange, InRealFile},
     mod_path::{ModPath, PathKind},
     name::AsName,
@@ -522,7 +521,7 @@ impl<'db> SemanticsImpl<'db> {
                         let file_id = declaration_tree_id.file_id();
                         let in_file = InFile::new(file_id, declaration);
                         let node = in_file.to_node(self.db);
-                        let root = find_root(node.syntax());
+                        let root = node.syntax().tree_top();
                         self.cache(root, file_id);
                         Some(in_file.with_value(node.syntax().clone()))
                     }
@@ -531,7 +530,7 @@ impl<'db> SemanticsImpl<'db> {
             }
             HirFileId::MacroFile(macro_file) => {
                 let node = macro_file.loc(self.db).to_node(self.db);
-                let root = find_root(&node.value);
+                let root = node.value.tree_top();
                 self.cache(root, node.file_id);
                 Some(node)
             }
@@ -544,13 +543,13 @@ impl<'db> SemanticsImpl<'db> {
         let def_map = module.id.def_map(self.db);
         let definition = def_map[module.id].origin.definition_source(self.db);
         let definition = definition.map(|it| it.node());
-        let root_node = find_root(&definition.value);
+        let root_node = definition.value.tree_top();
         self.cache(root_node, definition.file_id);
         definition
     }
 
     pub fn parse_or_expand(&self, file_id: HirFileId) -> SyntaxNode {
-        let node = self.db.parse_or_expand(file_id);
+        let node = file_id.parse_or_expand(self.db);
         self.cache(node.clone(), file_id);
         node
     }
@@ -564,7 +563,7 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     pub fn expand(&self, file_id: MacroCallId) -> ExpandResult<SyntaxNode> {
-        let res = self.db.parse_macro_expansion(file_id).as_ref().map(|it| it.0.syntax_node());
+        let res = file_id.parse_macro_expansion(self.db).as_ref().map(|it| it.0.syntax_node());
         self.cache(res.value.clone(), file_id.into());
         res
     }
@@ -661,7 +660,7 @@ impl<'db> SemanticsImpl<'db> {
             .into_iter()
             .map(|call| {
                 let file_id = call?.left()?;
-                let ExpandResult { value, err } = self.db.parse_macro_expansion(file_id);
+                let ExpandResult { value, err } = file_id.parse_macro_expansion(self.db);
                 let root_node = value.0.syntax_node();
                 self.cache(root_node.clone(), file_id.into());
                 Some(ExpandResult { value: root_node, err: err.clone() })
@@ -690,7 +689,7 @@ impl<'db> SemanticsImpl<'db> {
 
     pub fn derive_helpers_in_scope(&self, adt: &ast::Adt) -> Option<Vec<(Symbol, Symbol)>> {
         let sa = self.analyze_no_infer(adt.syntax())?;
-        let id = self.db.ast_id_map(sa.file_id).ast_id(adt);
+        let id = sa.file_id.ast_id_map(self.db).ast_id(adt);
         let result = sa
             .resolver
             .def_map()
@@ -713,7 +712,7 @@ impl<'db> SemanticsImpl<'db> {
         })?;
         let attr_name = attr.path().and_then(|it| it.as_single_name_ref())?.as_name();
         let sa = self.analyze_no_infer(adt.syntax())?;
-        let id = self.db.ast_id_map(sa.file_id).ast_id(&adt);
+        let id = sa.file_id.ast_id_map(self.db).ast_id(&adt);
         let res: Vec<_> = sa
             .resolver
             .def_map()
@@ -739,12 +738,7 @@ impl<'db> SemanticsImpl<'db> {
         token_to_map: SyntaxToken,
     ) -> Option<(SyntaxNode, Vec<(SyntaxToken, u8)>)> {
         let macro_file = self.to_def(actual_macro_call)?;
-        hir_expand::db::expand_speculative(
-            self.db,
-            macro_file,
-            speculative_args.syntax(),
-            token_to_map,
-        )
+        self.speculative_expand_raw(macro_file, speculative_args.syntax(), token_to_map)
     }
 
     pub fn speculative_expand_raw(
@@ -753,7 +747,7 @@ impl<'db> SemanticsImpl<'db> {
         speculative_args: &SyntaxNode,
         token_to_map: SyntaxToken,
     ) -> Option<(SyntaxNode, Vec<(SyntaxToken, u8)>)> {
-        hir_expand::db::expand_speculative(self.db, macro_file, speculative_args, token_to_map)
+        macro_file.expand_speculative(self.db, speculative_args, token_to_map)
     }
 
     /// Expand the macro call with a different item as the input, mapping the `token_to_map` down into the
@@ -766,12 +760,7 @@ impl<'db> SemanticsImpl<'db> {
     ) -> Option<(SyntaxNode, Vec<(SyntaxToken, u8)>)> {
         let macro_call = self.wrap_node_infile(actual_macro_call.clone());
         let macro_call_id = self.with_ctx(|ctx| ctx.item_to_macro_call(macro_call.as_ref()))?;
-        hir_expand::db::expand_speculative(
-            self.db,
-            macro_call_id,
-            speculative_args.syntax(),
-            token_to_map,
-        )
+        self.speculative_expand_raw(macro_call_id, speculative_args.syntax(), token_to_map)
     }
 
     pub fn speculative_expand_derive_as_pseudo_attr_macro(
@@ -789,12 +778,7 @@ impl<'db> SemanticsImpl<'db> {
             )
             .map(|(_, it, _)| it)
         })?;
-        hir_expand::db::expand_speculative(
-            self.db,
-            macro_call_id,
-            speculative_args.syntax(),
-            token_to_map,
-        )
+        self.speculative_expand_raw(macro_call_id, speculative_args.syntax(), token_to_map)
     }
 
     /// Checks if renaming `renamed` to `new_name` may introduce conflicts with other locals,
@@ -1002,7 +986,8 @@ impl<'db> SemanticsImpl<'db> {
         else {
             return tok.into();
         };
-        let span = self.db.real_span_map(tok.file_id).span_for_range(tok.value.text_range());
+        let span =
+            HirFileId::from(tok.file_id).span_map(self.db).span_for_range(tok.value.text_range());
         let Some(InMacroFile { file_id, value: mut mapped_tokens }) = self.with_ctx(|ctx| {
             Some(
                 ctx.cache
@@ -1067,7 +1052,8 @@ impl<'db> SemanticsImpl<'db> {
                         && let Some(p) = first.parent()
                     {
                         let range = first.text_range().cover(last.text_range());
-                        let node = find_root(&p)
+                        let node = p
+                            .tree_top()
                             .covering_element(range)
                             .ancestors()
                             .take_while(|it| it.text_range() == range)
@@ -1253,7 +1239,7 @@ impl<'db> SemanticsImpl<'db> {
         let _p = tracing::info_span!("descend_into_macros_impl").entered();
 
         let db = self.db;
-        let span = db.span_map(file_id).span_for_range(token.text_range());
+        let span = file_id.span_map(db).span_for_range(token.text_range());
 
         // Process the expansion of a call, pushing all tokens with our span in the expansion back onto our stack
         let process_expansion_for_token =
@@ -1497,7 +1483,7 @@ impl<'db> SemanticsImpl<'db> {
                                     self.analyze_impl(InFile::new(expansion, &parent), None, false)
                                 })?
                                 .resolver;
-                            let id = db.ast_id_map(expansion).ast_id(&adt);
+                            let id = expansion.ast_id_map(db).ast_id(&adt);
                             let helpers = resolver
                                 .def_map()
                                 .derive_helpers_in_scope(InFile::new(expansion, id))?;
@@ -1577,7 +1563,7 @@ impl<'db> SemanticsImpl<'db> {
     pub fn original_ast_node<N: AstNode>(&self, node: N) -> Option<N> {
         self.wrap_node_infile(node).original_ast_node_rooted(self.db).map(
             |InRealFile { file_id, value }| {
-                self.cache(find_root(value.syntax()), file_id.into());
+                self.cache(value.syntax().tree_top(), file_id.into());
                 value
             },
         )
@@ -1589,7 +1575,7 @@ impl<'db> SemanticsImpl<'db> {
         let InFile { file_id, .. } = self.find_file(node);
         InFile::new(file_id, node).original_syntax_node_rooted(self.db).map(
             |InRealFile { file_id, value }| {
-                self.cache(find_root(&value), file_id.into());
+                self.cache(value.tree_top(), file_id.into());
                 value
             },
         )
@@ -1978,8 +1964,7 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     pub fn resolve_macro_call_arm(&self, macro_call: &ast::MacroCall) -> Option<u32> {
-        let file_id = self.to_def(macro_call)?;
-        self.db.parse_macro_expansion(file_id).value.1.matched_arm
+        self.to_def(macro_call)?.expansion_span_map(self.db).matched_arm
     }
 
     pub fn get_unsafe_ops(&self, def: ExpressionStoreOwner) -> FxHashSet<ExprOrPatSource> {
@@ -2171,7 +2156,7 @@ impl<'db> SemanticsImpl<'db> {
     pub fn source<Def: HasSource>(&self, def: Def) -> Option<InFile<Def::Ast>> {
         // FIXME: source call should go through the parse cache
         let res = def.source(self.db)?;
-        self.cache(find_root(res.value.syntax()), res.file_id);
+        self.cache(res.value.syntax().tree_top(), res.file_id);
         Some(res)
     }
 
@@ -2375,7 +2360,7 @@ impl<'db> SemanticsImpl<'db> {
 
     /// Wraps the node in a [`InFile`] with the file id it belongs to.
     fn find_file<'node>(&self, node: &'node SyntaxNode) -> InFile<&'node SyntaxNode> {
-        let root_node = find_root(node);
+        let root_node = node.tree_top();
         let file_id = self.lookup(&root_node).unwrap_or_else(|| {
             panic!(
                 "\n\nFailed to lookup {:?} in this Semantics.\n\
@@ -2461,7 +2446,7 @@ impl<'db> SemanticsImpl<'db> {
             }
         };
         let adt_source = adt_ast_id.to_in_file_node(self.db);
-        self.cache(adt_source.value.syntax().ancestors().last().unwrap(), adt_source.file_id);
+        self.cache(adt_source.value.syntax().tree_top(), adt_source.file_id);
         ToDef::to_def(self, adt_source.as_ref())
     }
 
@@ -2618,7 +2603,7 @@ fn macro_call_to_macro_id(
     ctx: &mut SourceToDefCtx<'_, '_>,
     macro_call_id: MacroCallId,
 ) -> Option<MacroId> {
-    let db: &dyn ExpandDatabase = ctx.db;
+    let db = ctx.db;
     let loc = macro_call_id.loc(db);
 
     match loc.def.ast_id() {
@@ -2700,10 +2685,6 @@ impl ToDef for ast::IdentPat {
     fn to_def(sema: &SemanticsImpl<'_>, src: InFile<&Self>) -> Option<Self::Def> {
         sema.with_ctx(|ctx| ctx.bind_pat_to_def(src, sema))
     }
-}
-
-fn find_root(node: &SyntaxNode) -> SyntaxNode {
-    node.ancestors().last().unwrap()
 }
 
 /// `SemanticsScope` encapsulates the notion of a scope (the set of visible

@@ -58,7 +58,7 @@ pub(super) fn check<'tcx>(
 }
 
 /// Check for an implicit cast from reference to raw pointer outside an explicit `as`.
-pub(super) fn check_implicit_cast(cx: &LateContext<'_>, expr: &Expr<'_>) {
+pub(super) fn check_implicit_cast<'cx>(cx: &LateContext<'cx>, expr: &Expr<'cx>) {
     if !expr.span.from_expansion()
         && let ExprKind::AddrOf(BorrowKind::Ref, _, pointee) = expr.kind
         && !matches!(get_parent_expr(cx, expr).map(|e| e.kind), Some(ExprKind::Cast(..)))
@@ -67,6 +67,7 @@ pub(super) fn check_implicit_cast(cx: &LateContext<'_>, expr: &Expr<'_>) {
         && let Adjust::Borrow(AutoBorrow::RawPtr(mutability)) = borrow.kind
         // Do not suggest taking a raw pointer to a temporary value
         && !is_expr_temporary_value(cx, pointee)
+        && !is_from_proc_macro(cx, expr)
     {
         span_lint_and_then(cx, BORROW_AS_PTR, expr.span, "implicit borrow as raw pointer", |diag| {
             diag.span_suggestion_verbose(

@@ -727,7 +727,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     match wf::obligations(
                         self.infcx,
                         obligation.param_env,
-                        obligation.cause.body_id,
+                        obligation.cause.body_def_id,
                         obligation.recursion_depth + 1,
                         term,
                         obligation.cause.span,
@@ -772,6 +772,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
 
                 ty::PredicateKind::DynCompatible(trait_def_id) => {
+                    // `DynCompatible` obligations are only emitted as
+                    // nested obligations of `WellFormed` goals. It is quite
+                    // rare, but possible, that we encounter them during
+                    // evaluation. See #158665 for more details here.
                     if self.tcx().is_dyn_compatible(trait_def_id) {
                         Ok(EvaluatedToOk)
                     } else {
@@ -974,9 +978,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ty::PredicateKind::NormalizesTo(..) => {
                     bug!("NormalizesTo is only used by the new solver")
                 }
-                ty::PredicateKind::AliasRelate(..) => {
-                    bug!("AliasRelate is only used by the new solver")
-                }
                 ty::PredicateKind::Ambiguous => Ok(EvaluatedToAmbig),
                 ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, ty)) => {
                     let ct = self.infcx.shallow_resolve_const(ct);
@@ -1082,7 +1083,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     param_env,
                     obligation.cause.clone(),
                     obligation.recursion_depth + 1,
-                    obligation.predicate,
+                    Unnormalized::new_wip(obligation.predicate),
                     &mut nested_obligations,
                 );
                 if predicate != obligation.predicate {
@@ -1729,7 +1730,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 obligation.param_env,
                 obligation.cause.clone(),
                 obligation.recursion_depth + 1,
-                trait_bound,
+                ty::Unnormalized::new_wip(trait_bound),
             )
         });
         self.infcx
@@ -1781,20 +1782,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             BoundRegionConversionTime::HigherRankedType,
             env_predicate,
         );
-        let infer_projection = if potentially_unnormalized_candidates {
-            ensure_sufficient_stack(|| {
+        let mut infer_projection = infer_predicate.projection_term;
+        if potentially_unnormalized_candidates {
+            infer_projection = ensure_sufficient_stack(|| {
                 normalize_with_depth_to(
                     self,
                     obligation.param_env,
                     obligation.cause.clone(),
                     obligation.recursion_depth + 1,
-                    infer_predicate.projection_term,
+                    ty::Unnormalized::new_wip(infer_projection),
                     &mut nested_obligations,
                 )
             })
-        } else {
-            infer_predicate.projection_term
-        };
+        }
 
         let is_match = self
             .infcx
@@ -2474,7 +2474,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                             param_env,
                             cause.clone(),
                             recursion_depth,
-                            placeholder_ty,
+                            Unnormalized::new_wip(placeholder_ty),
                         )
                     });
 
@@ -2537,26 +2537,26 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
 
         let impl_args = self.infcx.fresh_args_for_item(obligation.cause.span, impl_def_id);
 
-        let trait_ref =
-            impl_trait_header.trait_ref.instantiate(self.tcx(), impl_args).skip_norm_wip();
+        let trait_ref = impl_trait_header.trait_ref.instantiate(self.tcx(), impl_args);
         debug!(?impl_trait_header);
 
-        let Normalized { value: impl_trait_ref, obligations: mut nested_obligations } =
-            ensure_sufficient_stack(|| {
-                normalize_with_depth(
-                    self,
-                    obligation.param_env,
-                    obligation.cause.clone(),
-                    obligation.recursion_depth + 1,
-                    trait_ref,
-                )
-            });
+        let mut nested_obligations = PredicateObligations::new();
+        let impl_trait_ref = ensure_sufficient_stack(|| {
+            normalize_with_depth_to(
+                self,
+                obligation.param_env,
+                obligation.cause.clone(),
+                obligation.recursion_depth + 1,
+                trait_ref,
+                &mut nested_obligations,
+            )
+        });
 
         debug!(?impl_trait_ref, ?placeholder_obligation_trait_ref);
 
         let cause = ObligationCause::new(
             obligation.cause.span,
-            obligation.cause.body_id,
+            obligation.cause.body_def_id,
             ObligationCauseCode::MatchImpl(obligation.cause.clone(), impl_def_id),
         );
 
@@ -2582,7 +2582,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
     fn match_upcast_principal(
         &mut self,
         obligation: &PolyTraitObligation<'tcx>,
-        unnormalized_upcast_principal: ty::PolyTraitRef<'tcx>,
+        unnormalized_upcast_principal: ty::Unnormalized<'tcx, ty::PolyTraitRef<'tcx>>,
         a_data: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
         b_data: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
         a_region: ty::Region<'tcx>,
@@ -2596,10 +2596,15 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         // supertraits.
         let a_auto_traits: FxIndexSet<DefId> = a_data
             .auto_traits()
-            .chain(a_data.principal_def_id().into_iter().flat_map(|principal_def_id| {
-                elaborate::supertrait_def_ids(tcx, principal_def_id)
-                    .filter(|def_id| tcx.trait_is_auto(*def_id))
-            }))
+            .chain(
+                a_data
+                    .principal_def_id()
+                    .map(|principal_def_id| {
+                        elaborate::supertrait_def_ids(tcx, principal_def_id)
+                            .filter(|def_id| tcx.trait_is_auto(*def_id))
+                    })
+                    .into_flat_iter(),
+            )
             .collect();
 
         let upcast_principal = normalize_with_depth_to(
@@ -2870,7 +2875,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 param_env,
                 cause.clone(),
                 recursion_depth,
-                predicate.skip_norm_wip(),
+                predicate,
                 &mut obligations,
             );
             obligations.push(Obligation {
@@ -2883,11 +2888,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
 
         // Register any outlives obligations from the trait here, cc #124336.
         if tcx.def_kind(def_id) == (DefKind::Impl { of_trait: true }) {
-            for clause in tcx
-                .impl_super_outlives(def_id)
-                .iter_instantiated(tcx, args)
-                .map(Unnormalized::skip_norm_wip)
-            {
+            for clause in tcx.impl_super_outlives(def_id).iter_instantiated(tcx, args) {
                 let clause = normalize_with_depth_to(
                     self,
                     param_env,

@@ -1,4 +1,3 @@
-#![allow(unused)]
 #![warn(clippy::permissions_set_readonly_false)]
 
 use std::fs::File;

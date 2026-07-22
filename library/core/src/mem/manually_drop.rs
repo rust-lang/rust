@@ -178,6 +178,7 @@ impl<T> ManuallyDrop<T> {
     #[stable(feature = "manually_drop", since = "1.20.0")]
     #[rustc_const_stable(feature = "const_manually_drop", since = "1.32.0")]
     #[inline(always)]
+    #[rustc_no_writable]
     pub const fn new(value: T) -> ManuallyDrop<T> {
         ManuallyDrop { value: MaybeDangling::new(value) }
     }

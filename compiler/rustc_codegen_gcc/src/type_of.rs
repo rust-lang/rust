@@ -75,7 +75,7 @@ fn uncached_gcc_type<'gcc, 'tcx>(
                 };
             return cx.context.new_vector_type(element, count);
         }
-        BackendRepr::ScalarPair(..) => {
+        BackendRepr::ScalarPair { .. } => {
             return cx.type_struct(
                 &[
                     layout.scalar_pair_element_gcc_type(cx, 0),
@@ -154,8 +154,6 @@ fn uncached_gcc_type<'gcc, 'tcx>(
 }
 
 pub trait LayoutGccExt<'tcx> {
-    fn is_gcc_immediate(&self) -> bool;
-    fn is_gcc_scalar_pair(&self) -> bool;
     fn gcc_type<'gcc>(&self, cx: &CodegenCx<'gcc, 'tcx>) -> Type<'gcc>;
     fn immediate_gcc_type<'gcc>(&self, cx: &CodegenCx<'gcc, 'tcx>) -> Type<'gcc>;
     fn scalar_gcc_type_at<'gcc>(
@@ -177,25 +175,6 @@ pub trait LayoutGccExt<'tcx> {
 }
 
 impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
-    fn is_gcc_immediate(&self) -> bool {
-        match self.backend_repr {
-            BackendRepr::Scalar(_) | BackendRepr::SimdVector { .. } => true,
-            // FIXME(rustc_scalable_vector): Not yet implemented in rustc_codegen_gcc.
-            BackendRepr::SimdScalableVector { .. } => todo!(),
-            BackendRepr::ScalarPair(..) | BackendRepr::Memory { .. } => false,
-        }
-    }
-
-    fn is_gcc_scalar_pair(&self) -> bool {
-        match self.backend_repr {
-            BackendRepr::ScalarPair(..) => true,
-            BackendRepr::Scalar(_)
-            | BackendRepr::SimdVector { .. }
-            | BackendRepr::SimdScalableVector { .. }
-            | BackendRepr::Memory { .. } => false,
-        }
-    }
-
     /// Gets the GCC type corresponding to a Rust type, i.e., `rustc_middle::ty::Ty`.
     /// The pointee type of the pointer in `PlaceRef` is always this type.
     /// For sized types, it is also the right LLVM type for an `alloca`
@@ -308,8 +287,8 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
         // This must produce the same result for `repr(transparent)` wrappers as for the inner type!
         // In other words, this should generally not look at the type at all, but only at the
         // layout.
-        let (a, b) = match self.backend_repr {
-            BackendRepr::ScalarPair(ref a, ref b) => (a, b),
+        let (a, b, b_offset) = match self.backend_repr {
+            BackendRepr::ScalarPair { ref a, ref b, b_offset } => (a, b, b_offset),
             _ => bug!("TyAndLayout::scalar_pair_element_llty({:?}): not applicable", self),
         };
         let scalar = [a, b][index];
@@ -325,7 +304,7 @@ impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
             return cx.type_i1();
         }
 
-        let offset = if index == 0 { Size::ZERO } else { a.size(cx).align_to(b.align(cx).abi) };
+        let offset = if index == 0 { Size::ZERO } else { b_offset };
         self.scalar_gcc_type_at(cx, scalar, offset)
     }
 
@@ -348,14 +327,6 @@ impl<'gcc, 'tcx> LayoutTypeCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
 
     fn immediate_backend_type(&self, layout: TyAndLayout<'tcx>) -> Type<'gcc> {
         layout.immediate_gcc_type(self)
-    }
-
-    fn is_backend_immediate(&self, layout: TyAndLayout<'tcx>) -> bool {
-        layout.is_gcc_immediate()
-    }
-
-    fn is_backend_scalar_pair(&self, layout: TyAndLayout<'tcx>) -> bool {
-        layout.is_gcc_scalar_pair()
     }
 
     fn scalar_pair_element_backend_type(

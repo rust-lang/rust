@@ -90,17 +90,7 @@ pub struct FooFloat3 {
 }
 
 pub mod tests {
-    use Foo;
-    use Foo1;
-    use Foo2;
-    use Foo3;
-    use Foo4;
-    use Foo5;
-    use FooFloat1;
-    use FooFloat2;
-    use FooFloat3;
-    use FooOversize1;
-    use FooOversize2;
+    use super::*;
 
     // ENABLED: i64 @f1()
     // DISABLED: void @f1(ptr {{.*}}sret

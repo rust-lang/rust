@@ -34,7 +34,7 @@ use tracing::debug;
 pub use crate::config::cfg::{Cfg, CheckCfg, ExpectedValues};
 use crate::config::native_libs::parse_native_libs;
 pub use crate::config::print_request::{PrintKind, PrintRequest};
-use crate::errors::FileWriteFail;
+use crate::diagnostics::FileWriteFail;
 pub use crate::options::*;
 use crate::search_paths::SearchPath;
 use crate::utils::CanonicalizedPath;
@@ -45,6 +45,9 @@ mod externs;
 mod native_libs;
 mod print_request;
 pub mod sigpipe;
+
+/// Special CPU name requesting the CPU of the current host.
+pub const NATIVE_CPU: &str = "native";
 
 /// The different settings that the `-C strip` flag can have.
 #[derive(Clone, Copy, PartialEq, Hash, Debug)]
@@ -1602,6 +1605,48 @@ pub struct BranchProtection {
     pub gcs: bool,
 }
 
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialOrd, PartialEq)]
+pub enum PointerAuthOption {
+    // See <compiler/rustc_session/src/options.rs> and Clang's command line reference:
+    // <https://clang.llvm.org/docs/ClangCommandLineReference.html#cmdoption-clang-fptrauth-auth-traps>
+    // for the origin and meaning of the enum values.
+    // tidy-alphabetical-start
+    Aarch64JumpTableHardening,
+    AuthTraps,
+    Calls,
+    ElfGot,
+    FunctionPointerTypeDiscrimination,
+    IndirectGotos,
+    InitFini,
+    InitFiniAddressDiscrimination,
+    Intrinsics,
+    ReturnAddresses,
+    TypeInfoVTPtrDisc,
+    VTPtrAddrDisc,
+    VTPtrTypeDisc,
+    // tidy-alphabetical-end
+}
+impl PointerAuthOption {
+    pub fn parse(s: &str) -> Option<Self> {
+        match s {
+            "aarch64-jump-table-hardening" => Some(Self::Aarch64JumpTableHardening),
+            "auth-traps" => Some(Self::AuthTraps),
+            "calls" => Some(Self::Calls),
+            "elf-got" => Some(Self::ElfGot),
+            "function-pointer-type-discrimination" => Some(Self::FunctionPointerTypeDiscrimination),
+            "indirect-gotos" => Some(Self::IndirectGotos),
+            "init-fini" => Some(Self::InitFini),
+            "init-fini-address-discrimination" => Some(Self::InitFiniAddressDiscrimination),
+            "intrinsics" => Some(Self::Intrinsics),
+            "return-addresses" => Some(Self::ReturnAddresses),
+            "typeinfo-vt-ptr-discrimination" => Some(Self::TypeInfoVTPtrDisc),
+            "vt-ptr-addr-discrimination" => Some(Self::VTPtrAddrDisc),
+            "vt-ptr-type-discrimination" => Some(Self::VTPtrTypeDisc),
+            _ => None,
+        }
+    }
+}
+
 pub fn build_configuration(sess: &Session, mut user_cfg: Cfg) -> Cfg {
     // First disallow some configuration given on the command line
     cfg::disallow_cfgs(sess, &user_cfg);
@@ -3098,8 +3143,8 @@ pub(crate) mod dep_tracking {
         CoverageOptions, CrateType, DebugInfo, DebugInfoCompression, ErrorOutputType, FmtDebug,
         FunctionReturn, InliningThreshold, InstrumentCoverage, InstrumentMcount, InstrumentXRay,
         LinkerPluginLto, LocationDetail, LtoCli, MirStripDebugInfo, NextSolverConfig, Offload,
-        OptLevel, OutFileName, OutputType, OutputTypes, PatchableFunctionEntry, Polonius,
-        ResolveDocLinks, SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath,
+        OptLevel, OutFileName, OutputType, OutputTypes, PatchableFunctionEntry, PointerAuthOption,
+        Polonius, ResolveDocLinks, SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath,
         SymbolManglingVersion, WasiExecModel,
     };
     use crate::lint;
@@ -3207,6 +3252,7 @@ pub(crate) mod dep_tracking {
         Align,
         CodegenRetagOptions,
         RustcVersion,
+        PointerAuthOption,
     );
 
     impl<T1, T2> DepTrackingHash for (T1, T2)
@@ -3342,23 +3388,29 @@ impl DumpMonoStatsFormat {
 
 /// `-Z patchable-function-entry` representation - how many nops to put before and after function
 /// entry.
-#[derive(Clone, Copy, PartialEq, Hash, Debug, Default)]
+#[derive(Clone, PartialEq, Hash, Debug, Default)]
 pub struct PatchableFunctionEntry {
     /// Nops before the entry
     prefix: u8,
     /// Nops after the entry
     entry: u8,
+    /// An optional section name to record the entry location
+    section: Option<String>,
 }
 
 impl PatchableFunctionEntry {
-    pub fn from_total_and_prefix_nops(
+    pub fn from_parts(
         total_nops: u8,
         prefix_nops: u8,
+        section: Option<String>,
     ) -> Option<PatchableFunctionEntry> {
         if total_nops < prefix_nops {
             None
+        // Section name cannot contain null characters.
+        } else if section.as_ref().map(|x| x.contains('\0') || x.is_empty()).unwrap_or(false) {
+            None
         } else {
-            Some(Self { prefix: prefix_nops, entry: total_nops - prefix_nops })
+            Some(Self { prefix: prefix_nops, entry: total_nops - prefix_nops, section })
         }
     }
     pub fn prefix(&self) -> u8 {
@@ -3366,6 +3418,9 @@ impl PatchableFunctionEntry {
     }
     pub fn entry(&self) -> u8 {
         self.entry
+    }
+    pub fn section(&self) -> Option<&str> {
+        self.section.as_ref().map(|x| x.as_str())
     }
 }
 

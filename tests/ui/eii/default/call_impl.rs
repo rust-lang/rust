@@ -3,8 +3,8 @@
 //@ run-pass
 //@ check-run-results
 //@ ignore-backends: gcc
-// FIXME: linking on windows (specifically mingw) not yet supported, see tracking issue #125418
-//@ ignore-windows
+// FIXME(#125418): linking on Windows GNU targets is not yet supported.
+//@ ignore-windows-gnu
 // Tests EIIs with default implementations.
 // When an explicit implementation is given in one dependency, and the declaration is in another,
 // the explicit implementation is preferred.

@@ -779,8 +779,8 @@ PR #{number} "{title}" fixes a regression and has been nominated for backport.
 This topic will help T-compiler getting context about it.
 
 Tip: to approve or decline from this Zulip thread, use:
-@_**triagebot** backport approve beta #{number}
-@_**triagebot** backport decline beta #{number}
+@_**triagebot** backport approve
+@_**triagebot** backport decline
 """,
     """\
 /poll Should #{number} be beta backported?
@@ -809,8 +809,8 @@ PR #{number} "{title}" fixes a regression and has been nominated for backport.
 This topic will help T-compiler getting context about it.
 
 Tip: to approve or decline from this Zulip thread, use:
-@_**triagebot** backport approve stable #{number}
-@_**triagebot** backport decline stable #{number}
+@_**triagebot** backport approve
+@_**triagebot** backport decline
 """,
     """\
 /poll Approve stable backport of #{number}?
@@ -1182,10 +1182,10 @@ new or modified directive in `src/doc/rustc-dev-guide/`.
 
 [mentions."src/tools/miri"]
 message = """
-`miri` is developed in its own repository. If possible, consider \
-making this change to \
-[rust-lang/miri](https://github.com/rust-lang/miri) \
-instead.
+`miri` is developed in its own repository. If the Miri part of this change \
+can be broken out, consider making this change to \
+[rust-lang/miri](https://github.com/rust-lang/miri) instead. \
+However, if Miri needs adjusting for rustc changes, just ignore this message.
 """
 cc = ["@rust-lang/miri"]
 
@@ -1464,10 +1464,26 @@ message = """
 """
 cc = ["@jieyouxu"]
 
+[mentions."compiler/rustc_attr_parsing/src/attributes/diagnostic"]
+message = "Some changes occurred to diagnostic attributes."
+cc = ["@mejrs"]
+[mentions."compiler/rustc_hir/src/attrs/diagnostic.rs"]
+message = "Some changes occurred to diagnostic attributes."
+cc = ["@mejrs"]
+
 # Content-based mentions
+
+[mentions."miri"]
+type = "content"
+trigger_files = ["library"]
+message = """
+Any special-casing of Miri in the standard library requires review.
+"""
+cc = ["@rust-lang/miri"]
 
 [mentions."#[miri::intrinsic_fallback_is_spec]"]
 type = "content"
+trigger_files = ["library"]
 message = """
 ⚠️ `#[miri::intrinsic_fallback_is_spec]` must only be used if the function actively checks for all UB cases,
 and explores the possible non-determinism of the intrinsic.
@@ -1476,6 +1492,7 @@ cc = ["@rust-lang/miri"]
 
 [mentions."#[rustc_allow_const_fn_unstable"]
 type = "content"
+trigger_files = ["library"]
 message = """
 ⚠️ `#[rustc_allow_const_fn_unstable]` needs careful audit to avoid accidentally exposing unstable
 implementation details on stable.
@@ -1484,18 +1501,12 @@ cc = ["@rust-lang/wg-const-eval"]
 
 [mentions."#[rustc_intrinsic_const_stable_indirect]"]
 type = "content"
+trigger_files = ["library"]
 message = """
 ⚠️ `#[rustc_intrinsic_const_stable_indirect]` controls whether intrinsics can be exposed to stable const
 code; adding it needs t-lang approval.
 """
 cc = ["@rust-lang/wg-const-eval"]
-
-[mentions."compiler/rustc_attr_parsing/src/attributes/diagnostic"]
-message = "Some changes occurred to diagnostic attributes."
-cc = ["@mejrs"]
-[mentions."compiler/rustc_hir/src/attrs/diagnostic.rs"]
-message = "Some changes occurred to diagnostic attributes."
-cc = ["@mejrs"]
 
 # ------------------------------------------------------------------------------
 # PR assignments

@@ -12,6 +12,7 @@ use rustc_middle::ty::{
     TypeVisitableExt, TypeVisitor, TypingMode, Unnormalized,
 };
 use rustc_span::Span;
+use rustc_span::def_id::ModId;
 use rustc_trait_selection::regions::InferCtxtRegionExt;
 use rustc_trait_selection::traits::{ObligationCtxt, elaborate, normalize_param_env_or_error};
 
@@ -380,7 +381,7 @@ fn report_mismatched_rpitit_signature<'tcx>(
     );
 }
 
-fn type_visibility<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<ty::Visibility<DefId>> {
+fn type_visibility<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<ty::Visibility<ModId>> {
     match *ty.kind() {
         ty::Ref(_, ty, _) => type_visibility(tcx, ty),
         ty::Adt(def, args) => {

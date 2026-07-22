@@ -25,7 +25,6 @@ use rustc_middle::ty::{self, Ty, TyCtxt, TyVar, TypeVisitableExt};
 use rustc_span::Span;
 use tracing::{debug, instrument};
 
-use super::StructurallyRelateAliases;
 use super::combine::PredicateEmittingRelation;
 use crate::infer::{DefineOpaqueTypes, InferCtxt, SubregionOrigin, TypeTrace};
 use crate::traits::{Obligation, PredicateObligations};
@@ -263,10 +262,6 @@ impl<'tcx> PredicateEmittingRelation<InferCtxt<'tcx>> for LatticeOp<'_, 'tcx> {
         self.trace.span()
     }
 
-    fn structurally_relate_aliases(&self) -> StructurallyRelateAliases {
-        StructurallyRelateAliases::No
-    }
-
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.param_env
     }
@@ -291,12 +286,8 @@ impl<'tcx> PredicateEmittingRelation<InferCtxt<'tcx>> for LatticeOp<'_, 'tcx> {
         }))
     }
 
-    fn register_alias_relate_predicate(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) {
-        self.register_predicates([ty::Binder::dummy(ty::PredicateKind::AliasRelate(
-            a.into(),
-            b.into(),
-            // FIXME(deferred_projection_equality): This isn't right, I think?
-            ty::AliasRelationDirection::Equate,
-        ))]);
+    fn ambient_variance(&self) -> ty::Variance {
+        // FIXME(deferred_projection_equality): This isn't right, I think?
+        ty::Variance::Invariant
     }
 }

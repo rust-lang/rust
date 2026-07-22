@@ -1,6 +1,5 @@
 //@ aux-build:tango.rs
 //@ build-aux-docs
-//@ doc-flags:--merge=shared
 //@ doc-flags:--enable-index-page
 //@ doc-flags:-Zunstable-options
 
@@ -13,7 +12,7 @@
 //@ hasraw search.index/name/*.js 'Sierra'
 //@ !hasraw search.index/name/*.js 'Quebec'
 
-// since tango is documented with --merge=finalize, we overwrite q's
+// since tango is documented with "finalize mode", we overwrite q's
 // cross-crate information
 extern crate tango;
 pub struct Sierra;

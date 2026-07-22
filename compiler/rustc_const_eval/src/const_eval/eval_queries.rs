@@ -21,7 +21,7 @@ use crate::interpret::{
     InterpResult, MPlaceTy, MemoryKind, OpTy, RefTracking, ReturnContinuation, create_static_alloc,
     intern_const_alloc_recursive, interp_ok, throw_exhaust,
 };
-use crate::{CTRL_C_RECEIVED, errors};
+use crate::{CTRL_C_RECEIVED, diagnostics};
 
 fn retry_codegen_mode_with_postanalysis<'tcx, K: TypeVisitable<TyCtxt<'tcx>>, V>(
     key: ty::PseudoCanonicalInput<'tcx, K>,
@@ -64,7 +64,6 @@ fn setup_for_eval<'tcx>(
                     | DefKind::Static { .. }
                     | DefKind::ConstParam
                     | DefKind::AnonConst
-                    | DefKind::InlineConst
                     | DefKind::AssocConst { .. }
             ),
         "Unexpected DefKind: {:?}",
@@ -162,28 +161,31 @@ fn intern_and_validate<'tcx, R: InterpretationResult<'tcx>>(
         Ok(()) => {}
         Err(InternError::DanglingPointer) => {
             throw_inval!(AlreadyReported(ReportedErrorInfo::non_const_eval_error(
-                ecx.tcx
-                    .dcx()
-                    .emit_err(errors::DanglingPtrInFinal { span: ecx.tcx.span, kind: intern_kind }),
+                ecx.tcx.dcx().emit_err(diagnostics::DanglingPtrInFinal {
+                    span: ecx.tcx.span,
+                    kind: intern_kind
+                }),
             )));
         }
         Err(InternError::BadMutablePointer) => {
             throw_inval!(AlreadyReported(ReportedErrorInfo::non_const_eval_error(
-                ecx.tcx
-                    .dcx()
-                    .emit_err(errors::MutablePtrInFinal { span: ecx.tcx.span, kind: intern_kind }),
+                ecx.tcx.dcx().emit_err(diagnostics::MutablePtrInFinal {
+                    span: ecx.tcx.span,
+                    kind: intern_kind
+                }),
             )));
         }
         Err(InternError::ConstAllocNotGlobal) => {
             throw_inval!(AlreadyReported(ReportedErrorInfo::non_const_eval_error(
-                ecx.tcx.dcx().emit_err(errors::ConstHeapPtrInFinal { span: ecx.tcx.span }),
+                ecx.tcx.dcx().emit_err(diagnostics::ConstHeapPtrInFinal { span: ecx.tcx.span }),
             )));
         }
         Err(InternError::PartialPointer) => {
             throw_inval!(AlreadyReported(ReportedErrorInfo::non_const_eval_error(
-                ecx.tcx
-                    .dcx()
-                    .emit_err(errors::PartialPtrInFinal { span: ecx.tcx.span, kind: intern_kind }),
+                ecx.tcx.dcx().emit_err(diagnostics::PartialPtrInFinal {
+                    span: ecx.tcx.span,
+                    kind: intern_kind
+                }),
             )));
         }
     }
@@ -533,7 +535,7 @@ fn report_validation_error<'tcx>(
     let bytes = ecx.print_alloc_bytes_for_diagnostics(alloc_id);
     let info = ecx.get_alloc_info(alloc_id);
     let raw_bytes =
-        errors::RawBytesNote { size: info.size.bytes(), align: info.align.bytes(), bytes };
+        diagnostics::RawBytesNote { size: info.size.bytes(), align: info.align.bytes(), bytes };
 
     crate::const_eval::report(ecx, error, move |diag, span, frames| {
         diag.span_label(span, "it is undefined behavior to use this value");

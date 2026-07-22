@@ -65,13 +65,14 @@ jobs:
       - name: install multiarch
         if: ${{ matrix.multiarch != '' }}
         run: |
+          set -x
           # armhf, s390x, ppc64el, riscv64 need Ubuntu Ports to be in the mirror list
           sudo bash -c "echo 'https://ports.ubuntu.com/	priority:4' >> /etc/apt/apt-mirrors.txt"
           # Add architecture
           sudo dpkg --add-architecture ${{ matrix.multiarch }}
           # Ubuntu Ports often has outdated mirrors so try a few times to get the apt repo
           for TRY in $(seq 3); do
-            { sudo apt update && break; } || sleep 60
+            { sudo apt update -o APT::Update::Error-Mode=any && break; } || sleep 60
           done
           # Install needed packages
           sudo apt install $(echo "libatomic1: zlib1g-dev:" | sed 's/:/:${{ matrix.multiarch }}/g')
@@ -92,6 +93,8 @@ jobs:
           echo "CC_${{ matrix.host_target }}=${{ matrix.gcc_cross }}-gcc" | tee -a $GITHUB_ENV
           TARGET_UPPERCASE=$(echo ${{ matrix.host_target }} | tr '[:lower:]-' '[:upper:]_')
           echo "CARGO_TARGET_${TARGET_UPPERCASE}_LINKER=${{ matrix.gcc_cross }}-gcc" | tee -a $GITHUB_ENV
+          echo "CARGO_HOST_${TARGET_UPPERCASE}_LINKER=${{ matrix.gcc_cross }}-gcc" | tee -a $GITHUB_ENV
+          echo "MIRI_TESTS_CROSS_COMPILED=1" | tee -a $GITHUB_ENV
 
       # The main test job! We don't run this in qemu as that is quite slow,
       # so those targets only get the clippy check below.

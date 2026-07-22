@@ -184,15 +184,7 @@ fn lock_file_path(session_dir: &Path) -> PathBuf {
 /// Returns the path for a given filename within the incremental compilation directory
 /// in the current session.
 pub fn in_incr_comp_dir_sess(sess: &Session, file_name: &str) -> PathBuf {
-    in_incr_comp_dir(&sess.incr_comp_session_dir(), file_name)
-}
-
-/// Returns the path for a given filename within the incremental compilation directory,
-/// not necessarily from the current session.
-///
-/// To ensure the file is part of the current session, use [`in_incr_comp_dir_sess`].
-pub fn in_incr_comp_dir(incr_comp_session_dir: &Path, file_name: &str) -> PathBuf {
-    incr_comp_session_dir.join(file_name)
+    sess.incr_comp_session_dir().join(file_name)
 }
 
 /// Allocates the private session directory.

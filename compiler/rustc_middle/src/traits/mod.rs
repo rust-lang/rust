@@ -44,13 +44,13 @@ use crate::ty::{self, AdtKind, GenericArgsRef, Ty};
 pub struct ObligationCause<'tcx> {
     pub span: Span,
 
-    /// The ID of the fn body that triggered this obligation. This is
+    /// The ID of the fn that triggered this obligation. This is
     /// used for region obligations to determine the precise
     /// environment in which the region obligation should be evaluated
     /// (in particular, closures can add new assumptions). See the
     /// field `region_obligations` of the `FulfillmentContext` for more
     /// information.
-    pub body_id: LocalDefId,
+    pub body_def_id: LocalDefId,
 
     code: ObligationCauseCodeHandle<'tcx>,
 }
@@ -62,7 +62,7 @@ pub struct ObligationCause<'tcx> {
 // which is hashed as an interned pointer. See #90996.
 impl Hash for ObligationCause<'_> {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.body_id.hash(state);
+        self.body_def_id.hash(state);
         self.span.hash(state);
     }
 }
@@ -71,14 +71,14 @@ impl<'tcx> ObligationCause<'tcx> {
     #[inline]
     pub fn new(
         span: Span,
-        body_id: LocalDefId,
+        body_def_id: LocalDefId,
         code: ObligationCauseCode<'tcx>,
     ) -> ObligationCause<'tcx> {
-        ObligationCause { span, body_id, code: code.into() }
+        ObligationCause { span, body_def_id, code: code.into() }
     }
 
-    pub fn misc(span: Span, body_id: LocalDefId) -> ObligationCause<'tcx> {
-        ObligationCause::new(span, body_id, ObligationCauseCode::Misc)
+    pub fn misc(span: Span, body_def_id: LocalDefId) -> ObligationCause<'tcx> {
+        ObligationCause::new(span, body_def_id, ObligationCauseCode::Misc)
     }
 
     #[inline(always)]
@@ -88,7 +88,7 @@ impl<'tcx> ObligationCause<'tcx> {
 
     #[inline(always)]
     pub fn dummy_with_span(span: Span) -> ObligationCause<'tcx> {
-        ObligationCause { span, body_id: CRATE_DEF_ID, code: Default::default() }
+        ObligationCause { span, body_def_id: CRATE_DEF_ID, code: Default::default() }
     }
 
     #[inline]

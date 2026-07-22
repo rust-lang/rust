@@ -691,6 +691,33 @@ fn cttz() {
         "#,
         3,
     );
+    check_number(
+        r#"
+        #[rustc_intrinsic]
+        pub fn cttz<T: Copy>(x: T) -> T;
+
+        const GOAL: i8 = cttz(0i8);
+        "#,
+        8,
+    );
+    check_number(
+        r#"
+        #[rustc_intrinsic]
+        pub fn cttz<T: Copy>(x: T) -> T;
+
+        const GOAL: u32 = cttz(0u32);
+        "#,
+        32,
+    );
+    check_number(
+        r#"
+        #[rustc_intrinsic]
+        pub fn cttz<T: Copy>(x: T) -> T;
+
+        const GOAL: u64 = cttz(0u64);
+        "#,
+        64,
+    );
 }
 
 #[test]

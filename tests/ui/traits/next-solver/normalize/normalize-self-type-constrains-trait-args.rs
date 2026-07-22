@@ -3,9 +3,9 @@
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@ check-pass
 
-// This goal is also possible w/ a GAT, but lazy_type_alias
+// This goal is also possible w/ a GAT, but checked_type_aliases
 // makes the behavior a bit more readable.
-#![feature(lazy_type_alias)]
+#![feature(checked_type_aliases)]
 
 struct Wr<T>(T);
 trait Foo {}

@@ -1,5 +1,5 @@
 error[E0599]: no associated function or constant named `from_mut` found for struct `Atomic<u64>` in the current scope
-  --> $DIR/atomic-from-mut-not-available.rs:24:36
+  --> $DIR/atomic-from-mut-not-available.rs:25:36
    |
 LL |     core::sync::atomic::AtomicU64::from_mut(&mut 0u64);
    |                                    ^^^^^^^^ associated function or constant not found in `Atomic<u64>`

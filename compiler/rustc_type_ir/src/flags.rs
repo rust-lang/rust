@@ -80,7 +80,7 @@ bitflags::bitflags! {
         /// Does this have `Inherent`?
         const HAS_TY_INHERENT             = 1 << 13;
         /// Does this have `ConstKind::Alias`?
-        const HAS_CT_PROJECTION           = 1 << 14;
+        const HAS_CONST_ALIAS           = 1 << 14;
 
         /// Does this have `Alias` or `ConstKind::Alias`?
         ///
@@ -89,7 +89,7 @@ bitflags::bitflags! {
                                           | TypeFlags::HAS_TY_FREE_ALIAS.bits()
                                           | TypeFlags::HAS_TY_OPAQUE.bits()
                                           | TypeFlags::HAS_TY_INHERENT.bits()
-                                          | TypeFlags::HAS_CT_PROJECTION.bits();
+                                          | TypeFlags::HAS_CONST_ALIAS.bits();
 
         /// Is a type or const error reachable?
         const HAS_NON_REGION_ERROR          = 1 << 15;
@@ -202,8 +202,8 @@ impl<I: Interner> FlagComputation<I> {
     pub fn for_clauses(clauses: &[I::Clause]) -> FlagComputation<I> {
         let mut result = FlagComputation::new();
         for c in clauses {
-            result.add_flags(c.as_predicate().flags());
-            result.add_exclusive_binder(c.as_predicate().outer_exclusive_binder());
+            result.add_flags(c.flags());
+            result.add_exclusive_binder(c.outer_exclusive_binder());
         }
         result
     }
@@ -360,7 +360,7 @@ impl<I: Interner> FlagComputation<I> {
             }
 
             ty::FnDef(_, args) => {
-                self.add_args(args.as_slice());
+                self.add_binder_args(args);
             }
 
             ty::FnPtr(sig_tys, _) => self.bound_computation(sig_tys, |computation, sig_tys| {
@@ -443,10 +443,6 @@ impl<I: Interner> FlagComputation<I> {
                 self.add_alias_term(alias);
                 self.add_term(term);
             }
-            ty::PredicateKind::AliasRelate(t1, t2, _) => {
-                self.add_term(t1);
-                self.add_term(t2);
-            }
             ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(_sym)) => {}
             ty::PredicateKind::Ambiguous => {}
         }
@@ -480,7 +476,7 @@ impl<I: Interner> FlagComputation<I> {
             ty::ConstKind::Alias(is_rigid, alias_const) => {
                 self.add_is_rigid(is_rigid);
                 self.add_args(alias_const.args.as_slice());
-                self.add_flags(TypeFlags::HAS_CT_PROJECTION);
+                self.add_flags(TypeFlags::HAS_CONST_ALIAS);
             }
             ty::ConstKind::Infer(infer) => match infer {
                 ty::InferConst::Fresh(_) => self.add_flags(TypeFlags::HAS_CT_FRESH),
@@ -540,6 +536,18 @@ impl<I: Interner> FlagComputation<I> {
                 ty::GenericArgKind::Const(ct) => self.add_const(ct),
             }
         }
+    }
+
+    fn add_binder_args(&mut self, args: ty::Binder<I, I::GenericArgs>) {
+        self.bound_computation(args, |this, args| {
+            for arg in args.iter() {
+                match arg.kind() {
+                    ty::GenericArgKind::Type(ty) => this.add_ty(ty),
+                    ty::GenericArgKind::Lifetime(r) => this.add_region(r),
+                    ty::GenericArgKind::Const(ct) => this.add_const(ct),
+                }
+            }
+        });
     }
 
     fn add_is_rigid(&mut self, is_rigid: ty::IsRigid) {

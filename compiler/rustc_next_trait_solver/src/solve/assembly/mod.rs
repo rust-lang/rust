@@ -539,28 +539,24 @@ where
         candidates: &mut Vec<Candidate<I>>,
     ) -> Result<(), RerunNonErased> {
         let cx = self.cx();
-        cx.for_each_relevant_impl(
-            goal.predicate.trait_def_id(cx),
-            goal.predicate.self_ty(),
-            |impl_def_id| -> Result<_, _> {
-                // For every `default impl`, there's always a non-default `impl`
-                // that will *also* apply. There's no reason to register a candidate
-                // for this impl, since it is *not* proof that the trait goal holds.
-                if cx.impl_is_default(impl_def_id) {
-                    return Ok(());
-                }
-                match G::consider_impl_candidate(self, goal, impl_def_id, |ecx, certainty| {
-                    ecx.evaluate_added_goals_and_make_canonical_response(certainty)
-                })
-                .map_err_to_rerun()?
-                {
-                    Ok(candidate) => candidates.push(candidate),
-                    Err(NoSolution) => {}
-                }
+        cx.for_each_relevant_impl(goal.predicate.trait_ref(cx), |impl_def_id| -> Result<_, _> {
+            // For every `default impl`, there's always a non-default `impl`
+            // that will *also* apply. There's no reason to register a candidate
+            // for this impl, since it is *not* proof that the trait goal holds.
+            if cx.impl_is_default(impl_def_id) {
+                return Ok(());
+            }
+            match G::consider_impl_candidate(self, goal, impl_def_id, |ecx, certainty| {
+                ecx.evaluate_added_goals_and_make_canonical_response(certainty)
+            })
+            .map_err_to_rerun()?
+            {
+                Ok(candidate) => candidates.push(candidate),
+                Err(NoSolution) => {}
+            }
 
-                Ok(())
-            },
-        )
+            Ok(())
+        })
     }
 
     #[instrument(level = "trace", skip_all)]
@@ -1099,8 +1095,8 @@ where
                     if let ty::Alias(is_rigid, alias_ty) = ty.kind()
                         && let Some(opaque_ty) = alias_ty.try_to_opaque()
                     {
-                        debug_assert_eq!(is_rigid, ty::IsRigid::No);
                         if opaque_ty == self.opaque_ty {
+                            debug_assert_eq!(is_rigid, ty::IsRigid::No);
                             return self.self_ty;
                         }
                     }

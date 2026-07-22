@@ -84,7 +84,7 @@ pub struct Foo {
               GROUP [] 1 1 1
                 IDENT 1 doc
                 PUNCT 1 = [alone]
-                LITER 1 Str / The domain where this federated instance is running
+                LITER 1 Str  The domain where this federated instance is running
               PUNCT 1 # [joint]
               GROUP [] 1 1 1
                 IDENT 1 helper
@@ -120,7 +120,7 @@ pub struct Foo {
               GROUP [] 1 1 1
                 IDENT 1 doc
                 PUNCT 1 = [alone]
-                LITER 1 Str / The domain where this federated instance is running
+                LITER 1 Str  The domain where this federated instance is running
               PUNCT 1 # [joint]
               GROUP [] 1 1 1
                 IDENT 1 helper
@@ -156,7 +156,7 @@ pub struct Foo {
               GROUP [] 42:Root[0000, 0]@0..0#0 42:Root[0000, 0]@0..0#0 42:Root[0000, 0]@0..0#0
                 IDENT 42:Root[0000, 0]@0..0#0 doc
                 PUNCT 42:Root[0000, 0]@0..0#0 = [alone]
-                LITER 42:Root[0000, 0]@75..130#0 Str / The domain where this federated instance is running
+                LITER 42:Root[0000, 0]@75..130#0 Str  The domain where this federated instance is running
               PUNCT 42:Root[0000, 0]@135..136#0 # [joint]
               GROUP [] 42:Root[0000, 0]@136..137#0 42:Root[0000, 0]@157..158#0 42:Root[0000, 0]@136..158#0
                 IDENT 42:Root[0000, 0]@137..143#0 helper
@@ -192,7 +192,7 @@ pub struct Foo {
               GROUP [] 42:Root[0000, 0]@0..0#0 42:Root[0000, 0]@0..0#0 42:Root[0000, 0]@0..0#0
                 IDENT 42:Root[0000, 0]@0..0#0 doc
                 PUNCT 42:Root[0000, 0]@0..0#0 = [alone]
-                LITER 42:Root[0000, 0]@75..130#0 Str / The domain where this federated instance is running
+                LITER 42:Root[0000, 0]@75..130#0 Str  The domain where this federated instance is running
               PUNCT 42:Root[0000, 0]@135..136#0 # [joint]
               GROUP [] 42:Root[0000, 0]@136..137#0 42:Root[0000, 0]@157..158#0 42:Root[0000, 0]@136..158#0
                 IDENT 42:Root[0000, 0]@137..143#0 helper

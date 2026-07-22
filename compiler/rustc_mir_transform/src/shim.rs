@@ -327,7 +327,13 @@ pub fn build_drop_shim<'tcx>(
         start.terminator = Some(Terminator {
             source_info,
             kind: TerminatorKind::Call {
-                func: Operand::function_handle(tcx, def_id, [ty::GenericArg::from(slice_ty)], span),
+                // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
+                func: Operand::function_handle(
+                    tcx,
+                    def_id,
+                    ty::Binder::dummy([ty::GenericArg::from(slice_ty)]),
+                    span,
+                ),
                 args: Box::new([Spanned { span, node: Operand::Move(Place::from(erased_local)) }]),
                 destination: Place::from(RETURN_PLACE),
                 target: Some(return_block),
@@ -618,7 +624,8 @@ impl<'tcx> CloneShimBuilder<'tcx> {
         let tcx = self.tcx;
 
         // `func == Clone::clone(&ty) -> ty`
-        let func_ty = Ty::new_fn_def(tcx, self.def_id, [ty]);
+        // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
+        let func_ty = Ty::new_fn_def(tcx, self.def_id, ty::Binder::dummy([ty]));
         let func = Operand::Constant(Box::new(ConstOperand {
             span: self.span,
             user_ty: None,
@@ -1061,6 +1068,8 @@ pub(super) fn build_adt_ctor(tcx: TyCtxt<'_>, ctor_id: DefId) -> Body<'_> {
     // so this would otherwise not get filled).
     body.set_mentioned_items(Vec::new());
 
+    // We don't pass any passes here, we just force a phase change to `Optimized`.
+    // Otherwise this bit of MIR will trigger assertions trying to detect MIR with an invalid phase.
     pm::run_passes_no_validate(
         tcx,
         &mut body,

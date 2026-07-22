@@ -211,7 +211,7 @@ impl EarlyLintPass for NonCamelCaseTypes {
 
 declare_lint! {
     /// The `non_snake_case` lint detects variables, methods, functions,
-    /// lifetime parameters and modules that don't have snake case names.
+    /// lifetime parameters, named fields and modules that don't have snake case names.
     ///
     /// ### Example
     ///
@@ -452,10 +452,8 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
         }
     }
 
-    fn check_struct_def(&mut self, cx: &LateContext<'_>, s: &hir::VariantData<'_>) {
-        for sf in s.fields() {
-            self.check_snake_case(cx, "structure field", &sf.ident);
-        }
+    fn check_field_def(&mut self, cx: &LateContext<'_>, field: &hir::FieldDef<'_>) {
+        self.check_snake_case(cx, "structure field", &field.ident);
     }
 }
 

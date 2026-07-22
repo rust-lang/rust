@@ -97,7 +97,6 @@ pub struct Path {
     /// The segments in the path: the things separated by `::`.
     /// Global paths begin with `kw::PathRoot`.
     pub segments: ThinVec<PathSegment>,
-    pub tokens: Option<LazyAttrTokenStream>,
 }
 
 // Succeeds if the path has a single segment that is arg-free and matches the given symbol.
@@ -135,7 +134,7 @@ impl Path {
     /// Convert a span and an identifier to the corresponding
     /// one-segment path.
     pub fn from_ident(ident: Ident) -> Path {
-        Path { segments: thin_vec![PathSegment::from_ident(ident)], span: ident.span, tokens: None }
+        Path { segments: thin_vec![PathSegment::from_ident(ident)], span: ident.span }
     }
 
     pub fn is_global(&self) -> bool {
@@ -407,7 +406,7 @@ impl GenericBound {
     }
 }
 
-pub type GenericBounds = Vec<GenericBound>;
+pub type GenericBounds = ThinVec<GenericBound>;
 
 /// Specifies the enforced ordering for generic parameters. In the future,
 /// if we wanted to relax this order, we could override `PartialEq` and
@@ -616,7 +615,6 @@ pub struct Block {
     /// Distinguishes between `unsafe { ... }` and `{ ... }`.
     pub rules: BlockCheckMode,
     pub span: Span,
-    pub tokens: Option<LazyAttrTokenStream>,
 }
 
 /// A match pattern.
@@ -627,7 +625,6 @@ pub struct Pat {
     pub id: NodeId,
     pub kind: PatKind,
     pub span: Span,
-    pub tokens: Option<LazyAttrTokenStream>,
 }
 
 impl Pat {
@@ -663,7 +660,7 @@ impl Pat {
             _ => return None,
         };
 
-        Some(Box::new(Ty { kind, id: self.id, span: self.span, tokens: None }))
+        Some(Box::new(Ty { kind, id: self.id, span: self.span }))
     }
 
     /// Walk top-down and call `it` in each place where a pattern occurs
@@ -1378,15 +1375,6 @@ pub enum UnsafeSource {
     UserProvided,
 }
 
-/// Track whether under `feature(min_generic_const_args)` this anon const
-/// was explicitly disambiguated as an anon const or not through the use of
-/// `const { ... }` syntax.
-#[derive(Clone, PartialEq, Encodable, Decodable, Debug, Copy, Walkable)]
-pub enum MgcaDisambiguation {
-    AnonConst,
-    Direct,
-}
-
 /// A constant (expression) that's not an item or associated item,
 /// but needs its own `DefId` for type-checking, const-eval, etc.
 /// These are usually found nested inside types (e.g., array lengths)
@@ -1396,7 +1384,6 @@ pub enum MgcaDisambiguation {
 pub struct AnonConst {
     pub id: NodeId,
     pub value: Box<Expr>,
-    pub mgca_disambiguation: MgcaDisambiguation,
 }
 
 /// An expression.
@@ -1534,7 +1521,7 @@ impl Expr {
                 let (Some(lhs), Some(rhs)) = (lhs.to_bound(), rhs.to_bound()) else {
                     return None;
                 };
-                TyKind::TraitObject(vec![lhs, rhs], TraitObjectSyntax::None)
+                TyKind::TraitObject(thin_vec![lhs, rhs], TraitObjectSyntax::None)
             }
 
             ExprKind::Underscore => TyKind::Infer,
@@ -1543,7 +1530,7 @@ impl Expr {
             _ => return None,
         };
 
-        Some(Box::new(Ty { kind, id: self.id, span: self.span, tokens: None }))
+        Some(Box::new(Ty { kind, id: self.id, span: self.span }))
     }
 
     pub fn precedence(&self) -> ExprPrecedence {
@@ -1627,6 +1614,7 @@ impl Expr {
             | ExprKind::UnsafeBinderCast(..)
             | ExprKind::While(..)
             | ExprKind::Yield(YieldKind::Postfix(..))
+            | ExprKind::DirectConstArg(..)
             | ExprKind::Err(_)
             | ExprKind::Dummy => prefix_attrs_precedence(&self.attrs),
         }
@@ -1665,6 +1653,15 @@ impl From<Box<Expr>> for Expr {
     fn from(value: Box<Expr>) -> Self {
         *value
     }
+}
+
+#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
+pub struct ForLoop {
+    pub pat: Box<Pat>,
+    pub iter: Box<Expr>,
+    pub body: Box<Block>,
+    pub label: Option<Label>,
+    pub kind: ForLoopKind,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
@@ -1792,13 +1789,7 @@ pub enum ExprKind {
     /// `'label: for await? pat in iter { block }`
     ///
     /// This is desugared to a combination of `loop` and `match` expressions.
-    ForLoop {
-        pat: Box<Pat>,
-        iter: Box<Expr>,
-        body: Box<Block>,
-        label: Option<Label>,
-        kind: ForLoopKind,
-    },
+    ForLoop(Box<ForLoop>),
     /// Conditionless loop (can be exited with `break`, `continue`, or `return`).
     ///
     /// `'label: loop { block }`
@@ -1868,7 +1859,7 @@ pub enum ExprKind {
     ///
     /// Usually not written directly in user code but
     /// indirectly via the macro `core::mem::offset_of!(...)`.
-    OffsetOf(Box<Ty>, Vec<Ident>),
+    OffsetOf(Box<Ty>, ThinVec<Ident>),
 
     /// A macro invocation; pre-expansion.
     MacCall(Box<MacCall>),
@@ -1919,6 +1910,9 @@ pub enum ExprKind {
     FormatArgs(Box<FormatArgs>),
 
     UnsafeBinderCast(UnsafeBinderCastKind, Box<Expr>, Option<Box<Ty>>),
+
+    /// An mGCA `direct_const_arg!()` expression.
+    DirectConstArg(Box<Expr>),
 
     /// Placeholder for an expression that wasn't syntactically well formed in some way.
     Err(ErrorGuaranteed),
@@ -2449,17 +2443,11 @@ pub struct Ty {
     pub id: NodeId,
     pub kind: TyKind,
     pub span: Span,
-    pub tokens: Option<LazyAttrTokenStream>,
 }
 
 impl Clone for Ty {
     fn clone(&self) -> Self {
-        ensure_sufficient_stack(|| Self {
-            id: self.id,
-            kind: self.kind.clone(),
-            span: self.span,
-            tokens: self.tokens.clone(),
-        })
+        ensure_sufficient_stack(|| Self { id: self.id, kind: self.kind.clone(), span: self.span })
     }
 }
 
@@ -2564,6 +2552,10 @@ pub enum TyKind {
     /// Usually not written directly in user code but indirectly via the macro
     /// `core::field::field_of!(...)`.
     FieldOf(Box<Ty>, Option<Ident>, Ident),
+    /// A view of a type. `T.{ field_1, field_2 }`.
+    View(Box<Ty>, #[visitable(ignore)] ThinVec<Ident>),
+    /// An mGCA `direct_const_arg!()` expression.
+    DirectConstArg(Box<Expr>),
     /// Sometimes we need a dummy value when no error has occurred.
     Dummy,
     /// Placeholder for a kind that has failed to be defined.
@@ -2630,7 +2622,6 @@ pub struct TyPat {
     pub id: NodeId,
     pub kind: TyPatKind,
     pub span: Span,
-    pub tokens: Option<LazyAttrTokenStream>,
 }
 
 /// All the different flavors of pattern that Rust recognizes.
@@ -2993,12 +2984,8 @@ impl Param {
     /// Builds a `Param` object from `ExplicitSelf`.
     pub fn from_self(attrs: AttrVec, eself: ExplicitSelf, eself_ident: Ident) -> Param {
         let span = eself.span.to(eself_ident.span);
-        let infer_ty = Box::new(Ty {
-            id: DUMMY_NODE_ID,
-            kind: TyKind::ImplicitSelf,
-            span: eself_ident.span,
-            tokens: None,
-        });
+        let infer_ty =
+            Box::new(Ty { id: DUMMY_NODE_ID, kind: TyKind::ImplicitSelf, span: eself_ident.span });
         let (mutbl, ty) = match eself.node {
             SelfKind::Explicit(ty, mutbl) => (mutbl, ty),
             SelfKind::Value(mutbl) => (mutbl, infer_ty),
@@ -3008,7 +2995,6 @@ impl Param {
                     id: DUMMY_NODE_ID,
                     kind: TyKind::Ref(lt, MutTy { ty: infer_ty, mutbl }),
                     span,
-                    tokens: None,
                 }),
             ),
             SelfKind::Pinned(lt, mutbl) => (
@@ -3017,7 +3003,6 @@ impl Param {
                     id: DUMMY_NODE_ID,
                     kind: TyKind::PinnedRef(lt, MutTy { ty: infer_ty, mutbl }),
                     span,
-                    tokens: None,
                 }),
             ),
         };
@@ -3027,7 +3012,6 @@ impl Param {
                 id: DUMMY_NODE_ID,
                 kind: PatKind::Ident(BindingMode(ByRef::No, mutbl), eself_ident, None),
                 span,
-                tokens: None,
             }),
             span,
             ty,
@@ -3063,6 +3047,9 @@ impl FnDecl {
     ///
     /// Must have the same value as `FnSigKind::NO_SPLATTED_ARG_INDEX` and `FnDeclFlags::NO_SPLATTED_ARG_INDEX`.
     pub const NO_SPLATTED_ARG_INDEX: u8 = u8::MAX;
+
+    /// The maximum valid splatted argument index.
+    pub const MAX_VALID_SPLATTED_ARG_INDEX: u8 = Self::NO_SPLATTED_ARG_INDEX - 1;
 
     /// Returns a splatted argument index, if any are present.
     pub fn splatted(&self) -> Option<u8> {
@@ -3434,6 +3421,9 @@ pub enum AttrKind {
     /// A normal attribute.
     Normal(Box<NormalAttr>),
 
+    /// A synthetic attribute inserted by the compiler.
+    Synthetic(Box<SyntheticAttr>),
+
     /// A doc comment (e.g. `/// ...`, `//! ...`, `/** ... */`, `/*! ... */`).
     /// Doc attributes (e.g. `#[doc="..."]`) are represented with the `Normal`
     /// variant (which is much less compact and thus more expensive).
@@ -3443,7 +3433,8 @@ pub enum AttrKind {
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct NormalAttr {
     pub item: AttrItem,
-    // Tokens for the full attribute, e.g. `#[foo]`, `#![bar]`.
+    // Tokens for the full attribute, e.g. `#[foo]`, `#![bar]`. (Compare this with
+    // `ParseNtResult::Meta`; `expand_cfg_attr_item` is where the two cases interact.)
     pub tokens: Option<LazyAttrTokenStream>,
 }
 
@@ -3453,8 +3444,7 @@ impl NormalAttr {
             item: AttrItem {
                 unsafety: Safety::Default,
                 path: Path::from_ident(ident),
-                args: AttrItemKind::Unparsed(AttrArgs::Empty),
-                tokens: None,
+                args: AttrArgs::Empty,
             },
             tokens: None,
         }
@@ -3465,50 +3455,32 @@ impl NormalAttr {
 pub struct AttrItem {
     pub unsafety: Safety,
     pub path: Path,
-    pub args: AttrItemKind,
-    // Tokens for the meta item, e.g. just the `foo` within `#[foo]` or `#![foo]`.
-    pub tokens: Option<LazyAttrTokenStream>,
+    pub args: AttrArgs,
 }
 
-/// Some attributes are stored in a parsed form, for performance reasons.
-/// Their arguments don't have to be reparsed everytime they're used
-#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
-pub enum AttrItemKind {
-    Parsed(EarlyParsedAttribute),
-    Unparsed(AttrArgs),
-}
-
-impl AttrItemKind {
-    pub fn unparsed(self) -> Option<AttrArgs> {
-        match self {
-            AttrItemKind::Unparsed(args) => Some(args),
-            AttrItemKind::Parsed(_) => None,
-        }
-    }
-
-    pub fn unparsed_ref(&self) -> Option<&AttrArgs> {
-        match self {
-            AttrItemKind::Unparsed(args) => Some(args),
-            AttrItemKind::Parsed(_) => None,
-        }
-    }
-
-    pub fn span(&self) -> Option<Span> {
-        match self {
-            AttrItemKind::Unparsed(args) => args.span(),
-            AttrItemKind::Parsed(_) => None,
-        }
-    }
-}
-
-/// Some attributes are stored in parsed form in the AST.
-/// This is done for performance reasons, so the attributes don't need to be reparsed on every use.
-///
-/// Currently all early parsed attributes are excluded from pretty printing at rustc_ast_pretty::pprust::state::print_attribute_inline.
-/// When adding new early parsed attributes, consider whether they should be pretty printed.
+/// Synthetic attributes are inserted by the compiler. They cannot be written in source code, and
+/// so cannot be pretty-printed by the AST pretty printer (because its output should be valid Rust
+/// code). They receive special treatment because they must not affect observable language
+/// behaviour: they are invisible to proc macros and are unable to re-enter the parser.
 #[derive(Clone, Encodable, Decodable, Debug, StableHash)]
-pub enum EarlyParsedAttribute {
+pub enum SyntheticAttr {
+    /// This synthetic attribute is added by the compiler when a `cfg` attribute is expanded so that
+    /// subsequent code can tell that conditional compilation occurred. A `#[cfg(pred)]` with a
+    /// true predicate is replaced by a synthetic `CfgTrace` attribute that records the parsed
+    /// predicate. A `#[cfg(pred)]` with a false predicate leaves no trace because there is no node
+    /// left to annotate.
+    ///
+    /// The attribute is used for some diagnostics, by rustdoc (for detecting feature usage), and
+    /// by some clippy lints.
     CfgTrace(CfgEntry),
+
+    /// This synthetic attribute is added by the compiler when a `cfg_attr` attribute is expanded so
+    /// that subsequent code can tell that conditional compilation occurred. A `#[cfg_attr(pred,
+    /// attrs)]` is replaced by a synthetic `CfgAttrTrace` attribute whether the predicate
+    /// evaluated true or not (or even failed to parse). The `pred` and `attrs` are not recorded
+    /// because they are not needed.
+    ///
+    /// The attribute is used by some clippy lints.
     CfgAttrTrace,
 }
 
@@ -3583,7 +3555,6 @@ impl PolyTraitRef {
 pub struct Visibility {
     pub kind: VisibilityKind,
     pub span: Span,
-    pub tokens: Option<LazyAttrTokenStream>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
@@ -3603,14 +3574,12 @@ impl VisibilityKind {
 pub struct ImplRestriction {
     pub kind: RestrictionKind,
     pub span: Span,
-    pub tokens: Option<LazyAttrTokenStream>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct MutRestriction {
     pub kind: RestrictionKind,
     pub span: Span,
-    pub tokens: Option<LazyAttrTokenStream>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
@@ -3728,6 +3697,19 @@ impl Item {
             | ItemKind::Union(_, generics, _) => Some(&generics),
             ItemKind::Trait(i) => Some(&i.generics),
             ItemKind::Impl(i) => Some(&i.generics),
+        }
+    }
+}
+
+impl Item<AssocItemKind> {
+    pub fn opt_generics(&self) -> Option<&Generics> {
+        match &self.kind {
+            AssocItemKind::Fn(fun) => Some(&fun.generics),
+            AssocItemKind::Const(ct) => Some(&ct.generics),
+            AssocItemKind::Type(ty) => Some(&ty.generics),
+            AssocItemKind::Delegation(..)
+            | AssocItemKind::MacCall(_)
+            | AssocItemKind::DelegationMac(_) => None,
         }
     }
 }
@@ -3924,7 +3906,7 @@ pub struct EiiImpl {
     ///
     /// This field is that shortcut: we prefill the extern target to skip a name resolution step,
     /// making sure it never fails. It'd be awful UX if we fail name resolution in code invisible to the user.
-    pub known_eii_macro_resolution: Option<EiiDecl>,
+    pub known_eii_macro_resolution: Option<Path>,
     pub impl_safety: Safety,
     pub span: Span,
     pub inner_span: Span,
@@ -4389,33 +4371,44 @@ mod size_asserts {
 
     use super::*;
     // tidy-alphabetical-start
-    static_assert_size!(AssocItem, 80);
+    static_assert_size!(AssocItem, 72);
     static_assert_size!(AssocItemKind, 16);
+    static_assert_size!(AttrKind, 16);
     static_assert_size!(Attribute, 32);
-    static_assert_size!(Block, 32);
-    static_assert_size!(Expr, 72);
-    static_assert_size!(ExprKind, 40);
+    static_assert_size!(Block, 24);
+    static_assert_size!(Expr, 64);
+    static_assert_size!(ExprKind, 32);
     static_assert_size!(Fn, 192);
-    static_assert_size!(ForeignItem, 80);
+    static_assert_size!(FnDecl, 24);
+    static_assert_size!(FnHeader, 76);
+    static_assert_size!(FnSig, 96);
+    static_assert_size!(ForeignItem, 72);
     static_assert_size!(ForeignItemKind, 16);
     static_assert_size!(GenericArg, 24);
-    static_assert_size!(GenericBound, 88);
+    static_assert_size!(GenericArgs, 40);
+    static_assert_size!(GenericBound, 80);
+    static_assert_size!(GenericParam, 80);
     static_assert_size!(Generics, 40);
     static_assert_size!(Impl, 80);
-    static_assert_size!(Item, 152);
+    static_assert_size!(Item, 144);
     static_assert_size!(ItemKind, 88);
+    static_assert_size!(Lifetime, 16);
     static_assert_size!(LitKind, 24);
     static_assert_size!(Local, 96);
+    static_assert_size!(MetaItem, 80);
+    static_assert_size!(MetaItemKind, 40);
     static_assert_size!(MetaItemLit, 40);
+    static_assert_size!(NormalAttr, 72);
     static_assert_size!(Param, 40);
-    static_assert_size!(Pat, 80);
-    static_assert_size!(PatKind, 56);
-    static_assert_size!(Path, 24);
+    static_assert_size!(Pat, 64);
+    static_assert_size!(PatKind, 48);
+    static_assert_size!(Path, 16);
     static_assert_size!(PathSegment, 24);
+    static_assert_size!(QSelf, 24);
     static_assert_size!(Stmt, 32);
     static_assert_size!(StmtKind, 16);
-    static_assert_size!(TraitImplHeader, 72);
-    static_assert_size!(Ty, 64);
+    static_assert_size!(TraitImplHeader, 64);
+    static_assert_size!(Ty, 56);
     static_assert_size!(TyKind, 40);
     // tidy-alphabetical-end
 }

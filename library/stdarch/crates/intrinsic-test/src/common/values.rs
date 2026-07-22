@@ -26,7 +26,7 @@ pub fn test_values_array_static<T: TypeDefinition>(
         w,
         "static {name}: [{ty}; {load_size}] = {values};",
         name = test_values_array_name(ty),
-        ty = ty.rust_scalar_type(),
+        ty = ty.rust_scalar_type_for_test_value_array(),
         load_size = test_values_array_length(&ty),
         values = test_values_array(&ty)
     )
@@ -50,8 +50,16 @@ pub fn test_values_array_name<T: TypeDefinition>(ty: &T) -> String {
 /// which is then printed as a hex value in the generated code (and if identified as a negative
 /// value, with the appropriate minus and corrected hex pattern). Calls to `fN::from_bits` are
 /// generated for floats.
+///
+/// An exception to the above is when `ty` is a boolean, where this function returns
+/// `[true, false]` - as there are only ever two values for a boolean. This only works because the
+/// generated accesses to the test value array is always modulo the length of the test value array.
 pub fn test_values_array(ty: &IntrinsicType) -> String {
     let (bit_len, kind) = match ty {
+        IntrinsicType {
+            kind: TypeKind::Bool,
+            ..
+        } => (1, TypeKind::Bool),
         IntrinsicType {
             kind: TypeKind::Float,
             bit_len: Some(bit_len),
@@ -75,6 +83,9 @@ pub fn test_values_array(ty: &IntrinsicType) -> String {
             let src = bit_pattern_for_test_values_array(bit_len, i);
             assert!(src == 0 || src.ilog2() < bit_len);
             match kind {
+                TypeKind::Bool if ty.num_lanes() != SimdLen::Scalable => {
+                    fmt(&format_args!("{}", if src == 1 { true } else { false }))
+                }
                 TypeKind::Float => fmt(&format_args!("f{bit_len}::from_bits({src:#x})")),
                 TypeKind::Vector | TypeKind::Int(Sign::Signed) if (src >> (bit_len - 1)) != 0 => {
                     // `src` is a two's complement representation of a negative value.
@@ -134,13 +145,17 @@ pub fn test_values_array_length(ty: &IntrinsicType) -> u32 {
 pub fn bit_pattern_for_test_values_array(bits: u32, index: u32) -> u64 {
     let index = index as usize;
     match bits {
-        bits @ (1 | 2 | 3 | 4 | 5 | 6 | 7 | 8) => BIT_PATTERNS_8[index % (1 << bits)].into(),
+        1 => BIT_PATTERNS_1[index % BIT_PATTERNS_1.len()].into(),
+        bits @ (2 | 3 | 4 | 5 | 6 | 7 | 8) => BIT_PATTERNS_8[index % (1 << bits)].into(),
         16 => BIT_PATTERNS_16[index % BIT_PATTERNS_16.len()].into(),
         32 => BIT_PATTERNS_32[index % BIT_PATTERNS_32.len()].into(),
         64 => BIT_PATTERNS_64[index % BIT_PATTERNS_64.len()],
         _ => unimplemented!("bit_pattern_for_test_values_array(bits: {bits}, ..)"),
     }
 }
+
+// Contains every possible 1-bit value in order
+pub const BIT_PATTERNS_1: &[u8] = &[0x0, 0x1];
 
 // Contains every possible 8-bit value in order
 pub const BIT_PATTERNS_8: &[u8] = &[

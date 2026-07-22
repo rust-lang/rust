@@ -843,7 +843,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                             self.tcx,
                             ty::TypingEnv::fully_monomorphized(),
                             def_id,
-                            args,
+                            args.no_bound_vars().unwrap(),
                             source,
                         )
                         && instance.def.requires_caller_location(self.tcx)
@@ -899,6 +899,9 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
                 mir::AssertKind::NullPointerDereference => {
                     push_mono_lang_item(self, LangItem::PanicNullPointerDereference);
                 }
+                mir::AssertKind::NullReferenceConstructed => {
+                    push_mono_lang_item(self, LangItem::PanicNullReferenceConstructed);
+                }
                 mir::AssertKind::InvalidEnumConstruction(_) => {
                     push_mono_lang_item(self, LangItem::PanicInvalidEnumConstruction);
                 }
@@ -949,6 +952,7 @@ fn visit_fn_use<'tcx>(
     output: &mut MonoItems<'tcx>,
 ) {
     if let ty::FnDef(def_id, args) = *ty.kind() {
+        let args = args.no_bound_vars().unwrap();
         let instance = if is_direct_call {
             ty::Instance::expect_resolve(
                 tcx,
@@ -995,11 +999,18 @@ fn visit_instance_use<'tcx>(
                 output.push(create_fn_mono_item(tcx, panic_instance, source));
             }
         } else if !intrinsic.must_be_overridden
-            && !tcx.sess.replaced_intrinsics.contains(&intrinsic.name)
+            && (tcx.sess.opts.unstable_opts.force_intrinsic_fallback
+                || !tcx.sess.replaced_intrinsics.contains(&intrinsic.name))
         {
             // Codegen the fallback body of intrinsics with fallback bodies.
             // We have to skip this otherwise as there's no body to codegen.
-            // We also skip intrinsics the backend handles, to reduce monomorphizations.
+            //
+            // We also skip `replaced_intrinsics` which are always replaced by the backend and hence
+            // monomorphizing the fallback body would be pointless.
+            //
+            // However, when -Zforce-intrinsic-fallback is set (e.g. to test the fallback
+            // implementations) we ignore the optimization hint and do monomorphize
+            // the fallback body.
             let instance = ty::Instance::new_raw(instance.def_id(), instance.args);
             if tcx.should_codegen_locally(instance) {
                 output.push(create_fn_mono_item(tcx, instance, source));
@@ -1008,7 +1019,9 @@ fn visit_instance_use<'tcx>(
     }
 
     match instance.def {
-        ty::InstanceKind::Virtual(..) | ty::InstanceKind::Intrinsic(_) => {
+        ty::InstanceKind::Virtual(..)
+        | ty::InstanceKind::Intrinsic(_)
+        | ty::InstanceKind::LlvmIntrinsic(_) => {
             if !is_direct_call {
                 bug!("{:?} being reified", instance);
             }
@@ -1390,6 +1403,7 @@ fn visit_mentioned_item<'tcx>(
     match *item {
         MentionedItem::Fn(ty) => {
             if let ty::FnDef(def_id, args) = *ty.kind() {
+                let args = args.no_bound_vars().unwrap();
                 let instance = Instance::expect_resolve(
                     tcx,
                     ty::TypingEnv::fully_monomorphized(),

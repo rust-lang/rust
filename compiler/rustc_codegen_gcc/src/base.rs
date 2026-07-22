@@ -7,7 +7,6 @@ use gccjit::{CType, Context, FunctionType, GlobalKind};
 use rustc_codegen_ssa::ModuleCodegen;
 use rustc_codegen_ssa::base::maybe_create_entry_wrapper;
 use rustc_codegen_ssa::mono_item::MonoItemExt;
-use rustc_codegen_ssa::traits::DebugInfoCodegenMethods;
 use rustc_hir::attrs::{AttributeKind, Linkage};
 use rustc_hir::find_attr;
 use rustc_middle::dep_graph;

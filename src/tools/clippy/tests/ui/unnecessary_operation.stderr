@@ -127,5 +127,13 @@ error: unnecessary operation
 LL |     [42, 55][get_usize()];
    |     ^^^^^^^^^^^^^^^^^^^^^^ help: statement can be written as: `assert!([42, 55].len() > get_usize());`
 
-error: aborting due to 20 previous errors
+error: unnecessary operation
+  --> tests/ui/unnecessary_operation.rs:181:9
+   |
+LL | /         {
+LL | |             never()
+LL | |         };
+   | |__________^ help: statement can be reduced to: `never();`
+
+error: aborting due to 21 previous errors
 

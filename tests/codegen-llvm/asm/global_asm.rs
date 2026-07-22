@@ -7,10 +7,10 @@
 
 use std::arch::global_asm;
 
-// CHECK-LABEL: foo
 // CHECK: module asm
+// CHECK-LABEL: foo
 // this regex will capture the correct unconditional branch inst.
-// CHECK: module asm "{{[[:space:]]+}}jmp baz"
+// CHECK: "{{[[:space:]]+}}jmp baz"
 global_asm!(
     r#"
     .global foo

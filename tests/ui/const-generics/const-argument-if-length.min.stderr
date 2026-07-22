@@ -6,6 +6,7 @@ LL |     pad: [u8; is_zst::<T>()],
    |
    = note: type parameters may not be used in const expressions
    = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = help: alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item
 
 error[E0277]: the size for values of type `T` cannot be known at compilation time
   --> $DIR/const-argument-if-length.rs:16:12

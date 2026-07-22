@@ -109,13 +109,13 @@ pub const unsafe fn simd_rem<T>(lhs: T, rhs: T) -> T;
 
 /// Shifts vector left elementwise, with UB on overflow.
 ///
-/// Shifts `lhs` left by `rhs`, shifting in sign bits for signed types.
+/// Shifts `lhs` left by `rhs`, shifting in zeros.
 ///
 /// `T` must be a vector of integers.
 ///
 /// # Safety
 ///
-/// Each element of `rhs` must be less than `<int>::BITS`.
+/// Each element of `rhs` must be in `0..<int>::BITS`.
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn simd_shl<T>(lhs: T, rhs: T) -> T;
@@ -128,7 +128,7 @@ pub const unsafe fn simd_shl<T>(lhs: T, rhs: T) -> T;
 ///
 /// # Safety
 ///
-/// Each element of `rhs` must be less than `<int>::BITS`.
+/// Each element of `rhs` must be in `0..<int>::BITS`.
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn simd_shr<T>(lhs: T, rhs: T) -> T;
@@ -145,7 +145,7 @@ pub const unsafe fn simd_shr<T>(lhs: T, rhs: T) -> T;
 ///
 /// # Safety
 ///
-/// Each element of `shift` must be less than `<int>::BITS`.
+/// Each element of `shift` must be in `0..<int>::BITS`.
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn simd_funnel_shl<T>(a: T, b: T, shift: T) -> T;
@@ -162,7 +162,7 @@ pub const unsafe fn simd_funnel_shl<T>(a: T, b: T, shift: T) -> T;
 ///
 /// # Safety
 ///
-/// Each element of `shift` must be less than `<int>::BITS`.
+/// Each element of `shift` must be in `0..<int>::BITS`.
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub const unsafe fn simd_funnel_shr<T>(a: T, b: T, shift: T) -> T;
@@ -371,8 +371,8 @@ pub const unsafe fn simd_shuffle<T, U, V>(x: T, y: T, idx: U) -> V;
 /// `val`.
 ///
 /// # Safety
-/// Unmasked values in `T` must be readable as if by `<ptr>::read` (e.g. aligned to the element
-/// type).
+/// Each pointer in `ptr` whose corresponding value in `mask` is `!0` must be readable as if by
+/// [`ptr::read`][crate::ptr::read] (e.g. aligned to the element type).
 ///
 /// `mask` must only contain `0` or `!0` values.
 #[rustc_intrinsic]
@@ -395,8 +395,8 @@ pub const unsafe fn simd_gather<T, U, V>(val: T, ptr: U, mask: V) -> T;
 /// (This is relevant in case two of the stores overlap.)
 ///
 /// # Safety
-/// Unmasked values in `T` must be writeable as if by `<ptr>::write` (e.g. aligned to the element
-/// type).
+/// Each pointer in `ptr` whose corresponding value in `mask` is `!0` must be writable as if by
+/// [`ptr::write`][crate::ptr::write] (e.g. aligned to the element type).
 ///
 /// `mask` must only contain `0` or `!0` values.
 #[rustc_intrinsic]
@@ -433,6 +433,9 @@ pub enum SimdAlign {
 /// # Safety
 /// `ptr` must be aligned according to the `ALIGN` parameter, see [`SimdAlign`] for details.
 ///
+/// Each pointer offset from `ptr` whose corresponding value in `mask` is `!0` must be readable as if
+/// by [`ptr::read`][crate::ptr::read].
+///
 /// `mask` must only contain `0` or `!0` values.
 #[rustc_intrinsic]
 #[rustc_nounwind]
@@ -454,6 +457,9 @@ pub const unsafe fn simd_masked_load<V, U, T, const ALIGN: SimdAlign>(mask: V, p
 ///
 /// # Safety
 /// `ptr` must be aligned according to the `ALIGN` parameter, see [`SimdAlign`] for details.
+///
+/// Each pointer offset from `ptr` whose corresponding value in `mask` is `!0` must be writable as if
+/// by [`ptr::write`][crate::ptr::write].
 ///
 /// `mask` must only contain `0` or `!0` values.
 #[rustc_intrinsic]

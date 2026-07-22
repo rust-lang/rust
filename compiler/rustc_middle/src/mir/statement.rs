@@ -2,6 +2,7 @@
 
 use std::ops;
 
+use rustc_data_structures::outline;
 use tracing::{debug, instrument};
 
 use super::interpret::GlobalAlloc;
@@ -157,10 +158,9 @@ impl<'tcx> PlaceTy<'tcx> {
                         .copied()
                         .unwrap_or_else(|| bug!("field {f:?} out of range: {self_ty:?}")),
                 ),
-                // Only prefix fields (upvars and current state) are
-                // accessible without a variant index.
+                // Only upvars are accessible without a variant index.
                 ty::Coroutine(_, args) => Unnormalized::dummy(
-                    args.as_coroutine().prefix_tys().get(f.index()).copied().unwrap_or_else(|| {
+                    args.as_coroutine().upvar_tys().get(f.index()).copied().unwrap_or_else(|| {
                         bug!("field {f:?} out of range of prefixes for {self_ty}")
                     }),
                 ),
@@ -620,7 +620,7 @@ impl<'tcx> Operand<'tcx> {
     pub fn function_handle(
         tcx: TyCtxt<'tcx>,
         def_id: DefId,
-        args: impl IntoIterator<Item = GenericArg<'tcx>>,
+        args: ty::Binder<'tcx, impl IntoIterator<Item = GenericArg<'tcx>>>,
         span: Span,
     ) -> Self {
         let ty = Ty::new_fn_def(tcx, def_id, args);
@@ -707,7 +707,11 @@ impl<'tcx> Operand<'tcx> {
     /// find as the `func` in a [`TerminatorKind::Call`].
     pub fn const_fn_def(&self) -> Option<(DefId, GenericArgsRef<'tcx>)> {
         let const_ty = self.constant()?.const_.ty();
-        if let ty::FnDef(def_id, args) = *const_ty.kind() { Some((def_id, args)) } else { None }
+        if let ty::FnDef(def_id, args) = *const_ty.kind() {
+            Some((def_id, args.no_bound_vars().unwrap()))
+        } else {
+            None
+        }
     }
 
     pub fn ty<D>(&self, local_decls: &D, tcx: TyCtxt<'tcx>) -> Ty<'tcx>
@@ -1034,66 +1038,107 @@ impl RawPtrKind {
     }
 }
 
+// FIXME(panstromek)
+//  I'd like to use real ThinVec here, but it fails to borrow check,
+//  probably because ThinVec doesn't have #[may_dangle] on Drop impl?
+type ThinVec<T> = Option<Box<Vec<T>>>;
+
+// This collection is almost always empty, so we
+// use thin representation and optimize all methods
+// for that by inlining the empty check
+// and outlining the rest.
 #[derive(Default, Debug, Clone, TyEncodable, TyDecodable, StableHash, TypeFoldable, TypeVisitable)]
-pub struct StmtDebugInfos<'tcx>(Vec<StmtDebugInfo<'tcx>>);
+pub struct StmtDebugInfos<'tcx>(ThinVec<StmtDebugInfo<'tcx>>);
 
 impl<'tcx> StmtDebugInfos<'tcx> {
     pub fn push(&mut self, debuginfo: StmtDebugInfo<'tcx>) {
-        self.0.push(debuginfo);
+        self.0.get_or_insert_default().push(debuginfo);
     }
-
+    #[inline]
     pub fn drop_debuginfo(&mut self) {
-        self.0.clear();
+        match &mut self.0 {
+            None => (),
+            Some(v) => outline(move || v.clear()),
+        }
     }
 
+    #[inline]
     pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
+        match &self.0 {
+            None => true,
+            Some(v) => outline(move || v.is_empty()),
+        }
     }
-
+    #[inline]
     pub fn prepend(&mut self, debuginfos: &mut Self) {
         if debuginfos.is_empty() {
             return;
         };
-        debuginfos.0.append(self);
-        std::mem::swap(debuginfos, self);
+        outline(move || {
+            debuginfos.append(self);
+            std::mem::swap(debuginfos, self);
+        })
     }
-
+    #[inline]
     pub fn append(&mut self, debuginfos: &mut Self) {
         if debuginfos.is_empty() {
             return;
         };
-        self.0.append(debuginfos);
+        outline(move || {
+            self.0.get_or_insert_default().append(debuginfos.0.as_mut().unwrap().as_mut())
+        });
     }
-
+    #[inline]
     pub fn extend(&mut self, debuginfos: &Self) {
         if debuginfos.is_empty() {
             return;
         };
-        self.0.extend_from_slice(debuginfos);
+        outline(move || self.0.get_or_insert_default().extend_from_slice(debuginfos.as_slice()))
     }
 
+    #[inline]
+    pub fn as_slice(&self) -> &[StmtDebugInfo<'tcx>] {
+        match &self.0 {
+            None => &[],
+            Some(items) => outline(move || items.as_slice()),
+        }
+    }
+
+    #[inline]
+    pub fn as_mut_slice(&mut self) -> &mut [StmtDebugInfo<'tcx>] {
+        match &mut self.0 {
+            None => &mut [],
+            Some(items) => outline(move || items.as_mut_slice()),
+        }
+    }
+    #[inline]
     pub fn retain_locals(&mut self, locals: &DenseBitSet<Local>) {
-        self.retain(|debuginfo| match debuginfo {
-            StmtDebugInfo::AssignRef(local, _) | StmtDebugInfo::InvalidAssign(local) => {
-                locals.contains(*local)
-            }
-        });
+        match &mut self.0 {
+            None => (),
+            Some(items) => outline(move || {
+                items.retain(|debuginfo| match debuginfo {
+                    StmtDebugInfo::AssignRef(local, _) | StmtDebugInfo::InvalidAssign(local) => {
+                        locals.contains(*local)
+                    }
+                })
+            }),
+        }
     }
 }
 
 impl<'tcx> ops::Deref for StmtDebugInfos<'tcx> {
-    type Target = Vec<StmtDebugInfo<'tcx>>;
+    type Target = [StmtDebugInfo<'tcx>];
 
     #[inline]
-    fn deref(&self) -> &Vec<StmtDebugInfo<'tcx>> {
-        &self.0
+    fn deref(&self) -> &Self::Target {
+        self.as_slice()
     }
 }
 
 impl<'tcx> ops::DerefMut for StmtDebugInfos<'tcx> {
     #[inline]
-    fn deref_mut(&mut self) -> &mut Vec<StmtDebugInfo<'tcx>> {
-        &mut self.0
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.as_mut_slice()
     }
 }
 

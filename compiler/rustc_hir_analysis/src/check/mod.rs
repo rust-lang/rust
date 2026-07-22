@@ -91,7 +91,7 @@ use rustc_middle::ty::{
     self, GenericArgs, GenericArgsRef, OutlivesPredicate, Region, Ty, TyCtxt, TypingMode,
 };
 use rustc_middle::{bug, span_bug};
-use rustc_session::errors::feature_err;
+use rustc_session::diagnostics::feature_err;
 use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::{BytePos, DUMMY_SP, Ident, Span, Symbol, kw};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
@@ -311,7 +311,7 @@ fn default_body_is_unstable(
     });
 
     let inject_span = item_did.is_local().then(|| tcx.crate_level_attribute_injection_span());
-    rustc_session::errors::add_feature_diagnostics_for_issue(
+    rustc_session::diagnostics::add_feature_diagnostics_for_issue(
         &mut err,
         &tcx.sess,
         feature,
@@ -479,10 +479,9 @@ fn fn_sig_suggestion<'tcx>(
                     }
                 }
             };
-            Some(format!("{splat}{arg_ty}"))
+            format!("{splat}{arg_ty}")
         })
-        .chain(std::iter::once(if sig.c_variadic() { Some("...".to_string()) } else { None }))
-        .flatten()
+        .chain(if sig.c_variadic() { Some("...".to_string()) } else { None })
         .collect::<Vec<String>>()
         .join(", ");
     let mut output = sig.output();
@@ -509,6 +508,7 @@ fn fn_sig_suggestion<'tcx>(
     // lifetimes between the `impl` and the `trait`, but this should be good enough to
     // fill in a significant portion of the missing code, and other subsequent
     // suggestions can help the user fix the code.
+    // ignore-tidy-todo
     format!("{safety}{asyncness}fn {ident}{generics}({args}){output}{where_clauses} {{ todo!() }}")
 }
 

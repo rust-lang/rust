@@ -7,7 +7,7 @@ use rustc_hir::attrs::{
     AttributeKind, CfgEntry, CfgHideShow, DocAttribute, DocCfgHideShow, DocCfgHideShowValue,
     DocInline, HideOrShow,
 };
-use rustc_session::errors::feature_err;
+use rustc_session::diagnostics::feature_err;
 use rustc_span::{Span, Symbol, edition, sym};
 
 use super::prelude::{ALL_TARGETS, AllowedTargets};
@@ -348,8 +348,11 @@ impl DocParser {
                 // If it's a list, then only `any()` and `none()` are allowed and they must not
                 // contain any item.
                 MetaItemOrLitParser::MetaItemParser(sub_item) => {
-                    if let Some(ident) = sub_item.ident()
-                        && [sym::any, sym::none].contains(&ident.name)
+                    let Some(ident) = sub_item.ident() else {
+                        cx.adcx().expected_identifier(sub_item.path().span());
+                        continue;
+                    };
+                    if [sym::any, sym::none].contains(&ident.name)
                         && let ArgParser::List(list) = sub_item.args()
                         && list.mixed().count() == 0
                     {
@@ -371,9 +374,7 @@ impl DocParser {
                     } else {
                         cx.emit_lint(
                             rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
-                            DocAutoCfgHideShowUnexpectedItem {
-                                attr_name: sub_item.ident().unwrap().name,
-                            },
+                            DocAutoCfgHideShowUnexpectedItem { attr_name: ident.name },
                             sub_item.span(),
                         );
                     }

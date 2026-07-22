@@ -46,7 +46,7 @@ fn fn_sig_for_fn_abi<'tcx>(
     match *ty.kind() {
         ty::FnDef(def_id, args) => {
             let mut sig = tcx.instantiate_bound_regions_with_erased(
-                tcx.fn_sig(def_id).instantiate(tcx, args).skip_norm_wip(),
+                tcx.fn_sig(def_id).instantiate(tcx, args.no_bound_vars().unwrap()).skip_norm_wip(),
             );
 
             // Modify `fn(self, ...)` to `fn(self: *mut Self, ...)`.
@@ -366,11 +366,6 @@ fn arg_attrs_for_rust_scalar<'tcx>(
             // See https://github.com/rust-lang/unsafe-code-guidelines/issues/326
             let noalias_for_box = tcx.sess.opts.unstable_opts.box_noalias;
 
-            // LLVM prior to version 12 had known miscompiles in the presence of noalias attributes
-            // (see #54878), so it was conditionally disabled, but we don't support earlier
-            // versions at all anymore. We still support turning it off using -Zmutable-noalias.
-            let noalias_mut_ref = tcx.sess.opts.unstable_opts.mutable_noalias;
-
             // `&T` where `T` contains no `UnsafeCell<U>` is immutable, and can be marked as both
             // `readonly` and `noalias`, as LLVM's definition of `noalias` is based solely on memory
             // dependencies rather than pointer equality. However this only applies to arguments,
@@ -379,7 +374,7 @@ fn arg_attrs_for_rust_scalar<'tcx>(
             // `&mut T` and `Box<T>` where `T: Unpin` are unique and hence `noalias`.
             let no_alias = match kind {
                 PointerKind::SharedRef { frozen } => frozen,
-                PointerKind::MutableRef { unpin } => unpin && noalias_mut_ref,
+                PointerKind::MutableRef { unpin } => unpin,
                 PointerKind::Box { unpin, global } => unpin && global && noalias_for_box,
             };
             // We can never add `noalias` in return position; that LLVM attribute has some very surprising semantics
@@ -486,7 +481,7 @@ fn fn_abi_sanity_check<'tcx>(
                     BackendRepr::Scalar(_)
                     | BackendRepr::SimdVector { .. }
                     | BackendRepr::SimdScalableVector { .. } => {}
-                    BackendRepr::ScalarPair(..) => {
+                    BackendRepr::ScalarPair { .. } => {
                         panic!("`PassMode::Direct` used for ScalarPair type {}", arg.layout.ty)
                     }
                     BackendRepr::Memory { sized } => {
@@ -513,7 +508,7 @@ fn fn_abi_sanity_check<'tcx>(
                 // Similar to `Direct`, we need to make sure that backends use `layout.backend_repr`
                 // and ignore the rest of the layout.
                 assert!(
-                    matches!(arg.layout.backend_repr, BackendRepr::ScalarPair(..)),
+                    matches!(arg.layout.backend_repr, BackendRepr::ScalarPair { .. }),
                     "PassMode::Pair for type {}",
                     arg.layout.ty
                 );
@@ -612,7 +607,7 @@ fn fn_abi_new_uncached<'tcx>(
             layout
         };
 
-        Ok(ArgAbi::new(cx, layout, |scalar, offset| {
+        Ok(ArgAbi::new(layout, |scalar, offset| {
             arg_attrs_for_rust_scalar(*cx, scalar, layout, offset, is_return, determined_fn_def_id)
         }))
     };
@@ -741,7 +736,7 @@ fn make_thin_self_ptr<'tcx>(
         Ty::new_mut_ptr(tcx, layout.ty)
     } else {
         match layout.backend_repr {
-            BackendRepr::ScalarPair(..) | BackendRepr::Scalar(..) => (),
+            BackendRepr::ScalarPair { .. } | BackendRepr::Scalar(..) => (),
             _ => bug!("receiver type has unsupported layout: {:?}", layout),
         }
 

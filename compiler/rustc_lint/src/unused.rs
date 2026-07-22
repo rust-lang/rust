@@ -1,5 +1,5 @@
 use rustc_ast::util::{classify, parser};
-use rustc_ast::{self as ast, ExprKind, FnRetTy, HasAttrs as _, StmtKind};
+use rustc_ast::{self as ast, ExprKind, FnRetTy, ForLoop, HasAttrs as _, StmtKind};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::MultiSpan;
 use rustc_hir::{self as hir};
@@ -338,7 +338,7 @@ trait UnusedDelimLint {
                 && !snip.starts_with(' ')
             {
                 " "
-            } else if let Ok(snip) = sm.span_to_prev_source(value_span)
+            } else if let Ok(snip) = sm.span_to_next_source(value_span)
                 && snip.starts_with(|c: char| c.is_alphanumeric())
             {
                 " "
@@ -381,7 +381,7 @@ trait UnusedDelimLint {
                 (cond, UnusedDelimsCtx::WhileCond, true, Some(left), Some(right), true)
             }
 
-            ForLoop { ref iter, ref body, .. } => {
+            ForLoop(ast::ForLoop { ref iter, ref body, .. }) => {
                 (iter, UnusedDelimsCtx::ForIterExpr, true, None, Some(body.span.lo()), true)
             }
 
@@ -417,13 +417,19 @@ trait UnusedDelimLint {
             }
             // either function/method call, or something this lint doesn't care about
             ref call_or_other => {
-                let (args_to_check, ctx) = match *call_or_other {
-                    Call(_, ref args) => (&args[..], UnusedDelimsCtx::FunctionArg),
-                    MethodCall(ref call) => (&call.args[..], UnusedDelimsCtx::MethodArg),
+                let (args_to_check, ctx, callee_from_expansion) = match *call_or_other {
+                    Call(ref callee, ref args) => {
+                        (&args[..], UnusedDelimsCtx::FunctionArg, callee.span.from_expansion())
+                    }
+                    MethodCall(ref call) => (
+                        &call.args[..],
+                        UnusedDelimsCtx::MethodArg,
+                        call.seg.ident.span.from_expansion(),
+                    ),
                     Closure(ref closure)
                         if matches!(closure.fn_decl.output, FnRetTy::Default(_)) =>
                     {
-                        (&[closure.body.clone()][..], UnusedDelimsCtx::ClosureBody)
+                        (&[closure.body.clone()][..], UnusedDelimsCtx::ClosureBody, false)
                     }
                     // actual catch-all arm
                     _ => {
@@ -438,6 +444,11 @@ trait UnusedDelimLint {
                     return;
                 }
                 for arg in args_to_check {
+                    // Whether an expression is wrapped in a block can change which `macro_rules!`
+                    // arm is taken. Don't report the braces as unused in that case. (Issue #158747)
+                    if callee_from_expansion && Self::block_wraps_expanded_expr(arg) {
+                        continue;
+                    }
                     self.check_unused_delims_expr(cx, arg, ctx, false, None, None, false);
                 }
                 return;
@@ -515,6 +526,20 @@ trait UnusedDelimLint {
             None,
             false,
         );
+    }
+
+    // Returns true for a user-written block whose only expression came from a macro expansion.
+    fn block_wraps_expanded_expr(value: &ast::Expr) -> bool {
+        if let ast::ExprKind::Block(ref block, None) = value.kind
+            && block.rules == ast::BlockCheckMode::Default
+            && !value.span.from_expansion()
+            && let [stmt] = block.stmts.as_slice()
+            && let ast::StmtKind::Expr(ref expr) = stmt.kind
+        {
+            expr.span.from_expansion()
+        } else {
+            false
+        }
     }
 }
 
@@ -703,7 +728,7 @@ impl EarlyLintPass for UnusedParens {
         }
 
         match e.kind {
-            ExprKind::Let(ref pat, _, _, _) | ExprKind::ForLoop { ref pat, .. } => {
+            ExprKind::Let(ref pat, _, _, _) | ExprKind::ForLoop(ForLoop { ref pat, .. }) => {
                 self.check_unused_parens_pat(cx, pat, false, false, (true, true));
             }
             // We ignore parens in cases like `if (((let Some(0) = Some(1))))` because we already

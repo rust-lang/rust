@@ -1,4 +1,4 @@
-// ignore-tidy-cr
+// ignore-tidy-file-cr
 
 /// doc comment with bare CR: ''
 pub fn foo() {}

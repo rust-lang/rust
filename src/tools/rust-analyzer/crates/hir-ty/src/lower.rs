@@ -290,6 +290,11 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
         self.lifetime_elision = lifetime_elision;
     }
 
+    pub(crate) fn set_owner(&mut self, owner: &'a SingleGenerics<'db>) {
+        self.store = owner.store();
+        self.def = ExpressionStoreOwnerId::Signature(owner.def());
+    }
+
     pub(crate) fn with_interning_mode(mut self, interning_mode: LoweringMode) -> Self {
         self.interning_mode = interning_mode;
         self
@@ -1948,7 +1953,7 @@ fn resolve_type_param_assoc_type_shorthand(
 
     let mut supertraits_resolution = None;
     for maybe_parent_generics in generics.iter_owners().rev() {
-        ctx.store = maybe_parent_generics.store();
+        ctx.set_owner(maybe_parent_generics);
         for pred in maybe_parent_generics.where_predicates() {
             let (WherePredicate::TypeBound { target, bound }
             | WherePredicate::ForLifetime { lifetimes: _, target, bound }) = pred
@@ -2366,7 +2371,7 @@ fn generic_predicates(
         // Collect only diagnostics from the child, not including parents.
         ctx.diagnostics.clear();
 
-        ctx.store = maybe_parent_generics.store();
+        ctx.set_owner(maybe_parent_generics);
         for pred in maybe_parent_generics.where_predicates() {
             tracing::debug!(?pred);
             for (pred, source) in ctx.lower_where_predicate(pred, false) {
@@ -2568,14 +2573,14 @@ pub(crate) fn generic_defaults_with_diagnostics(
     let generics = generics.get().unwrap();
     let mut defaults = ThinVec::new();
     if let Some(parent) = generics.parent() {
-        ctx.store = parent.store();
+        ctx.set_owner(parent);
         defaults.extend(
             parent.iter_with_idx().map(|(idx, _id, p)| handle_generic_param(&mut ctx, idx, p)),
         );
     }
     ctx.diagnostics.clear(); // Don't include diagnostics from the parent.
     ctx.defined_anon_consts.clear();
-    ctx.store = store_for_self;
+    ctx.set_owner(generics.owner());
     defaults.extend(
         generics.iter_self_with_idx().map(|(idx, _id, p)| handle_generic_param(&mut ctx, idx, p)),
     );

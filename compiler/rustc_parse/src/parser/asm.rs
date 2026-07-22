@@ -1,8 +1,8 @@
-use rustc_ast::{self as ast, AsmMacro, MgcaDisambiguation};
+use rustc_ast::{self as ast, AsmMacro};
 use rustc_span::{Span, Symbol, kw};
 
 use super::{ExpKeywordPair, ForceCollect, IdentIsRaw, Trailing, UsePreAttrPos};
-use crate::{PResult, Parser, errors, exp, token};
+use crate::{PResult, Parser, diagnostics, exp, token};
 
 /// An argument to one of the `asm!` macros. The argument is syntactically valid, but is otherwise
 /// not validated at all.
@@ -84,7 +84,7 @@ fn eat_operand_keyword<'a>(
         if p.eat_keyword_noexpect(exp.kw) {
             // in gets printed as `r#in` otherwise
             let symbol = if exp.kw == kw::In { "in" } else { exp.kw.as_str() };
-            Err(p.dcx().create_err(errors::AsmUnsupportedOperand {
+            Err(p.dcx().create_err(diagnostics::AsmUnsupportedOperand {
                 span,
                 symbol,
                 macro_name: asm_macro.macro_name(),
@@ -104,7 +104,7 @@ fn parse_asm_operand<'a>(
     Ok(Some(if eat_operand_keyword(p, exp!(In), asm_macro)? {
         let reg = parse_reg(p)?;
         if p.eat_keyword(exp!(Underscore)) {
-            let err = dcx.create_err(errors::AsmUnderscoreInput { span: p.token.span });
+            let err = dcx.create_err(diagnostics::AsmUnderscoreInput { span: p.token.span });
             return Err(err);
         }
         let expr = p.parse_expr()?;
@@ -120,7 +120,7 @@ fn parse_asm_operand<'a>(
     } else if eat_operand_keyword(p, exp!(Inout), asm_macro)? {
         let reg = parse_reg(p)?;
         if p.eat_keyword(exp!(Underscore)) {
-            let err = dcx.create_err(errors::AsmUnderscoreInput { span: p.token.span });
+            let err = dcx.create_err(diagnostics::AsmUnderscoreInput { span: p.token.span });
             return Err(err);
         }
         let expr = p.parse_expr()?;
@@ -134,7 +134,7 @@ fn parse_asm_operand<'a>(
     } else if eat_operand_keyword(p, exp!(Inlateout), asm_macro)? {
         let reg = parse_reg(p)?;
         if p.eat_keyword(exp!(Underscore)) {
-            let err = dcx.create_err(errors::AsmUnderscoreInput { span: p.token.span });
+            let err = dcx.create_err(diagnostics::AsmUnderscoreInput { span: p.token.span });
             return Err(err);
         }
         let expr = p.parse_expr()?;
@@ -149,12 +149,12 @@ fn parse_asm_operand<'a>(
         let block = p.parse_block()?;
         ast::InlineAsmOperand::Label { block }
     } else if p.eat_keyword(exp!(Const)) {
-        let anon_const = p.parse_expr_anon_const(|_, _| MgcaDisambiguation::AnonConst)?;
+        let anon_const = p.parse_expr_anon_const()?;
         ast::InlineAsmOperand::Const { anon_const }
     } else if p.eat_keyword(exp!(Sym)) {
         let expr = p.parse_expr()?;
         let ast::ExprKind::Path(qself, path) = &expr.kind else {
-            let err = dcx.create_err(errors::AsmSymNoPath { span: expr.span });
+            let err = dcx.create_err(diagnostics::AsmSymNoPath { span: expr.span });
             return Err(err);
         };
         let sym =
@@ -174,7 +174,7 @@ pub fn parse_asm_args<'a>(
     let dcx = p.dcx();
 
     if p.token == token::Eof {
-        return Err(dcx.create_err(errors::AsmRequiresTemplate { span: sp }));
+        return Err(dcx.create_err(diagnostics::AsmRequiresTemplate { span: sp }));
     }
 
     let mut args = Vec::new();
@@ -193,7 +193,7 @@ pub fn parse_asm_args<'a>(
         if !p.eat(exp!(Comma)) {
             if allow_templates {
                 // After a template string, we always expect *only* a comma...
-                return Err(dcx.create_err(errors::AsmExpectedComma { span: p.token.span }));
+                return Err(dcx.create_err(diagnostics::AsmExpectedComma { span: p.token.span }));
             } else {
                 // ...after that delegate to `expect` to also include the other expected tokens.
                 return Err(p.expect(exp!(Comma)).err().unwrap());
@@ -265,7 +265,7 @@ pub fn parse_asm_args<'a>(
                     ) => {}
                 ast::ExprKind::MacCall(..) => {}
                 _ => {
-                    let err = dcx.create_err(errors::AsmExpectedOther {
+                    let err = dcx.create_err(diagnostics::AsmExpectedOther {
                         span: template.span,
                         is_inline_asm: matches!(asm_macro, AsmMacro::Asm),
                     });
@@ -340,7 +340,7 @@ fn parse_clobber_abi<'a>(p: &mut Parser<'a>) -> PResult<'a, Vec<(Symbol, Span)>>
     p.expect(exp!(OpenParen))?;
 
     if p.eat(exp!(CloseParen)) {
-        return Err(p.dcx().create_err(errors::NonABI { span: p.token.span }));
+        return Err(p.dcx().create_err(diagnostics::NonABI { span: p.token.span }));
     }
 
     let mut new_abis = Vec::new();
@@ -351,7 +351,7 @@ fn parse_clobber_abi<'a>(p: &mut Parser<'a>) -> PResult<'a, Vec<(Symbol, Span)>>
             }
             Err(opt_lit) => {
                 let span = opt_lit.map_or(p.token.span, |lit| lit.span);
-                return Err(p.dcx().create_err(errors::AsmExpectedStringLiteral { span }));
+                return Err(p.dcx().create_err(diagnostics::AsmExpectedStringLiteral { span }));
             }
         };
 
@@ -373,7 +373,7 @@ fn parse_reg<'a>(p: &mut Parser<'a>) -> PResult<'a, ast::InlineAsmRegOrRegClass>
             ast::InlineAsmRegOrRegClass::Reg(symbol)
         }
         _ => {
-            return Err(p.dcx().create_err(errors::ExpectedRegisterClassOrExplicitRegister {
+            return Err(p.dcx().create_err(diagnostics::ExpectedRegisterClassOrExplicitRegister {
                 span: p.token.span,
             }));
         }

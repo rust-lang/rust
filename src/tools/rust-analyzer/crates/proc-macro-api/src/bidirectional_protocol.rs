@@ -56,7 +56,7 @@ pub fn run_conversation(
                 return Ok(BidirectionalMessage::Response(response));
             }
             BidirectionalMessage::SubRequest(sr) => {
-                // TODO: Avoid `AssertUnwindSafe` by making the callback `UnwindSafe` once `ExpandDatabase`
+                // TODO: Avoid `AssertUnwindSafe` by making the callback `UnwindSafe` once `SourceDatabase`
                 // becomes unwind-safe (currently blocked by `parking_lot::RwLock` in the VFS).
                 let resp = match catch_unwind(AssertUnwindSafe(|| callback(sr))) {
                     Ok(Ok(resp)) => BidirectionalMessage::SubResponse(resp),

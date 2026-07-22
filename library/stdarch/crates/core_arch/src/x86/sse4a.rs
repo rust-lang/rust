@@ -28,6 +28,11 @@ unsafe extern "unadjusted" {
 ///
 /// If `length == 0 && index > 0` or `length + index > 64` the result is
 /// undefined.
+///
+/// The extracted bits are saved in the least-significant bit positions of the lower
+/// quadword of the destination; the remaining bits in the lower quadword of the
+/// destination register are cleared to 0. The upper quadword of the destination
+/// register is undefined.
 #[inline]
 #[target_feature(enable = "sse4a")]
 #[cfg_attr(test, assert_instr(extrq))]
@@ -43,7 +48,10 @@ pub fn _mm_extract_si64(x: __m128i, y: __m128i) -> __m128i {
 /// and index are both zero, bits `[63:0]` of parameter `x` are extracted. It is a compile-time error
 /// for `len + idx` to be greater than 64 or for `len` to be zero and `idx` to be non-zero.
 ///
-/// Returns a 128-bit integer vector whose lower 64 bits contain the extracted bits.
+/// The extracted bits are saved in the least-significant bit positions of the lower
+/// quadword of the destination; the remaining bits in the lower quadword of the
+/// destination register are cleared to 0. The upper quadword of the destination
+/// register is undefined.
 #[inline]
 #[target_feature(enable = "sse4a")]
 #[cfg_attr(test, assert_instr(extrq, LEN = 5, IDX = 5))]
@@ -66,6 +74,8 @@ pub fn _mm_extracti_si64<const LEN: i32, const IDX: i32>(x: __m128i) -> __m128i 
 ///
 /// If the `length` is zero it is interpreted as `64`. If `index + length > 64`
 /// or `index > 0 && length == 0` the result is undefined.
+///
+/// The upper 64 bits of the destination are undefined.
 #[inline]
 #[target_feature(enable = "sse4a")]
 #[cfg_attr(test, assert_instr(insertq))]
@@ -80,6 +90,8 @@ pub fn _mm_insert_si64(x: __m128i, y: __m128i) -> __m128i {
 /// `idx` specifies the index of the LSB. `len` specifies the number of bits to insert. If length and index
 /// are both zero, bits `[63:0]` of parameter `x` are replaced with bits `[63:0]` of parameter `y`. It is a
 /// compile-time error for `len + idx` to be greater than 64 or for `len` to be zero and `idx` to be non-zero.
+///
+/// The upper 64 bits of the destination are undefined.
 #[inline]
 #[target_feature(enable = "sse4a")]
 #[cfg_attr(test, assert_instr(insertq, LEN = 5, IDX = 5))]
@@ -150,6 +162,11 @@ mod tests {
     use crate::core_arch::x86::*;
     use stdarch_test::simd_test;
 
+    // Normally this requires SSE2, but for tests it does not matter whether we use the instruction.
+    fn _mm_cvtsi128_si64(a: __m128i) -> i64 {
+        unsafe { simd_extract!(a.as_i64x2(), 0) }
+    }
+
     #[simd_test(enable = "sse4a")]
     fn test_mm_extract_si64() {
         let b = 0b0110_0000_0000_i64;
@@ -160,7 +177,11 @@ mod tests {
         let y = _mm_setr_epi64x(v, 0);
         let e = _mm_setr_epi64x(0b0110_i64, 0);
         let r = _mm_extract_si64(x, y);
-        assert_eq_m128i(r, e);
+
+        // The upper quadword of the destination register is undefined.
+        let r = _mm_cvtsi128_si64(r);
+        let e = _mm_cvtsi128_si64(e);
+        assert_eq!(r, e);
     }
 
     #[simd_test(enable = "sse4a")]
@@ -168,7 +189,11 @@ mod tests {
         let a = _mm_setr_epi64x(0x0123456789abcdef, 0);
         let r = _mm_extracti_si64::<8, 8>(a);
         let e = _mm_setr_epi64x(0xcd, 0);
-        assert_eq_m128i(r, e);
+
+        // The upper quadword of the destination register is undefined.
+        let r = _mm_cvtsi128_si64(r);
+        let e = _mm_cvtsi128_si64(e);
+        assert_eq!(r, e);
     }
 
     #[simd_test(enable = "sse4a")]
@@ -185,7 +210,11 @@ mod tests {
         //        ^idx: 2^3 = 8 ^length = 2^2 = 4
         let y = _mm_setr_epi64x(i, v);
         let r = _mm_insert_si64(x, y);
-        assert_eq_m128i(r, expected);
+
+        // The upper quadword of the destination register is undefined.
+        let r = _mm_cvtsi128_si64(r);
+        let expected = _mm_cvtsi128_si64(expected);
+        assert_eq!(r, expected);
     }
 
     #[simd_test(enable = "sse4a")]
@@ -194,7 +223,11 @@ mod tests {
         let b = _mm_setr_epi64x(0x0011223344556677, 0);
         let r = _mm_inserti_si64::<8, 8>(a, b);
         let e = _mm_setr_epi64x(0x0123456789ab77ef, 0);
-        assert_eq_m128i(r, e);
+
+        // The upper quadword of the destination register is undefined.
+        let r = _mm_cvtsi128_si64(r);
+        let e = _mm_cvtsi128_si64(e);
+        assert_eq!(r, e);
     }
 
     #[repr(align(16))]

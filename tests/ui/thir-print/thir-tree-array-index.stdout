@@ -956,12 +956,12 @@ body:
                                                                                                                                     span: $DIR/thir-tree-array-index.rs:17:6: 17:19 (#0)
                                                                                                                                     kind: 
                                                                                                                                         Call {
-                                                                                                                                            ty: FnDef(DefId(0:3 ~ thir_tree_array_index[2569]::index), [])
+                                                                                                                                            ty: FnDef(DefId(0:3 ~ thir_tree_array_index[2569]::index), Binder { value: [], bound_vars: [] })
                                                                                                                                             from_hir_call: true
                                                                                                                                             fn_span: $DIR/thir-tree-array-index.rs:17:6: 17:19 (#0)
                                                                                                                                             fun:
                                                                                                                                                 Expr {
-                                                                                                                                                    ty: FnDef(DefId(0:3 ~ thir_tree_array_index[2569]::index), [])
+                                                                                                                                                    ty: FnDef(DefId(0:3 ~ thir_tree_array_index[2569]::index), Binder { value: [], bound_vars: [] })
                                                                                                                                                     temp_scope_id: 80
                                                                                                                                                     span: $DIR/thir-tree-array-index.rs:17:6: 17:11 (#0)
                                                                                                                                                     kind: 
@@ -970,7 +970,7 @@ body:
                                                                                                                                                             hir_id: HirId(DefId(0:4 ~ thir_tree_array_index[2569]::indexing).80)
                                                                                                                                                             value:
                                                                                                                                                                 Expr {
-                                                                                                                                                                    ty: FnDef(DefId(0:3 ~ thir_tree_array_index[2569]::index), [])
+                                                                                                                                                                    ty: FnDef(DefId(0:3 ~ thir_tree_array_index[2569]::index), Binder { value: [], bound_vars: [] })
                                                                                                                                                                     temp_scope_id: 80
                                                                                                                                                                     span: $DIR/thir-tree-array-index.rs:17:6: 17:11 (#0)
                                                                                                                                                                     kind: 

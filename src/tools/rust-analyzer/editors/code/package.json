@@ -974,6 +974,19 @@
             {
                 "title": "Cargo",
                 "properties": {
+                    "rust-analyzer.cargo.configPath": {
+                        "markdownDescription": "Path to a `.cargo/config.toml` style file to pass to cargo via `--config`\nfor every cargo invocation (metadata, build scripts, config discovery).\nUseful to give rust-analyzer a consistent view of the project configuration.",
+                        "default": null,
+                        "type": [
+                            "null",
+                            "string"
+                        ]
+                    }
+                }
+            },
+            {
+                "title": "Cargo",
+                "properties": {
                     "rust-analyzer.cargo.extraArgs": {
                         "markdownDescription": "Extra arguments that are passed to every cargo invocation.",
                         "default": [],
@@ -1389,7 +1402,8 @@
                                             "enumDescriptions": [
                                                 "Do not show this item or its methods (if it is a trait) in auto-import completions.",
                                                 "Do not show this trait's methods in auto-import completions.",
-                                                "Do not show this module's all items in it in auto-import completions."
+                                                "Do not show this module's all items in it in auto-import completions.",
+                                                "Do not show this enum's variants in auto-import completions."
                                             ]
                                         }
                                     }
@@ -2859,7 +2873,7 @@
                 "properties": {
                     "rust-analyzer.procMacro.processes": {
                         "markdownDescription": "Number of proc-macro server processes to spawn.\n\nControls how many independent `proc-macro-srv` processes rust-analyzer\nruns in parallel to handle macro expansion.",
-                        "default": 1,
+                        "default": 2,
                         "anyOf": [
                             {
                                 "type": "number",

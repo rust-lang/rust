@@ -182,8 +182,9 @@ fn miri_config(
                         .map(Into::into)
                         .collect(),
                     envs: vec![
-                        // Reset `RUSTFLAGS` to work around <https://github.com/rust-lang/rust/pull/119574#issuecomment-1876878344>.
+                        // Reset `RUSTFLAGS`/`CARGO_ENCODED_RUSTFLAGS` to work around <https://github.com/rust-lang/rust/pull/119574#issuecomment-1876878344>.
                         ("RUSTFLAGS".into(), None),
+                        ("CARGO_ENCODED_RUSTFLAGS".into(), None),
                         // Reset `MIRIFLAGS` because it caused trouble in the past and should not be needed.
                         ("MIRIFLAGS".into(), None),
                         // Allow `cargo miri build`.

@@ -15,10 +15,10 @@
 // FIXME: This is a mess that needs some untangling work
 use std::{iter, mem, sync::atomic::AtomicUsize, time::Duration};
 
-use hir::{ChangeWithProcMacros, ProcMacrosBuilder, db::DefDatabase};
+use hir::{ChangeWithProcMacros, ProcMacrosBuilder};
 use ide_db::{
     FxHashMap,
-    base_db::{CrateGraphBuilder, ProcMacroLoadingError, ProcMacroPaths, salsa::Durability},
+    base_db::{CrateGraphBuilder, ProcMacroLoadingError, ProcMacroPaths},
 };
 use itertools::Itertools;
 use load_cargo::{ProjectFolders, load_proc_macro};
@@ -109,14 +109,10 @@ impl GlobalState {
             self.reload_flycheck();
         }
 
-        if self.analysis_host.raw_database().expand_proc_attr_macros()
-            != self.config.expand_proc_attr_macros()
-        {
-            self.analysis_host.raw_database_mut().set_expand_proc_attr_macros_with_durability(
-                self.config.expand_proc_attr_macros(),
-                Durability::HIGH,
-            );
-        }
+        hir::db::set_expand_proc_attr_macros(
+            self.analysis_host.raw_database_mut(),
+            self.config.expand_proc_attr_macros(),
+        );
 
         if self.config.cargo(None) != old_config.cargo(None) {
             let req = FetchWorkspaceRequest { path: None, force_crate_graph_reload: false };
@@ -544,8 +540,8 @@ impl GlobalState {
             // FIXME: can we abort the build scripts here if they are already running?
             self.workspaces = Arc::new(workspaces);
             self.check_workspaces_msrv().for_each(|message| {
-                self.send_notification::<lsp_types::notification::ShowMessage>(
-                    lsp_types::ShowMessageParams { typ: lsp_types::MessageType::WARNING, message },
+                self.send_notification::<lsp_types::ShowMessageNotification>(
+                    lsp_types::ShowMessageParams { kind: lsp_types::MessageType::Warning, message },
                 );
             });
 
@@ -585,10 +581,10 @@ impl GlobalState {
                             })
                         })
                         .map(|(base, pat)| lsp_types::FileSystemWatcher {
-                            glob_pattern: lsp_types::GlobPattern::Relative(
+                            glob_pattern: lsp_types::GlobPattern::RelativePattern(
                                 lsp_types::RelativePattern {
-                                    base_uri: lsp_types::OneOf::Right(
-                                        lsp_types::Url::from_file_path(base).unwrap(),
+                                    base_uri: lsp_types::BaseUri::Uri(
+                                        lsp_types::Uri::from_file_path(base).unwrap(),
                                     ),
                                     pattern: pat.to_owned(),
                                 },
@@ -610,7 +606,7 @@ impl GlobalState {
                             })
                         })
                         .map(|glob_pattern| lsp_types::FileSystemWatcher {
-                            glob_pattern: lsp_types::GlobPattern::String(glob_pattern),
+                            glob_pattern: lsp_types::GlobPattern::Pattern(glob_pattern),
                             kind: None,
                         })
                         .collect()
@@ -624,7 +620,7 @@ impl GlobalState {
                             continue;
                         };
                         watchers.push(lsp_types::FileSystemWatcher {
-                            glob_pattern: lsp_types::GlobPattern::String(
+                            glob_pattern: lsp_types::GlobPattern::Pattern(
                                 build.build_file.to_string(),
                             ),
                             kind: None,
@@ -638,7 +634,7 @@ impl GlobalState {
                     .chain(self.workspaces.iter().map(|ws| ws.manifest().map(ManifestPath::as_ref)))
                     .flatten()
                     .map(|glob_pattern| lsp_types::FileSystemWatcher {
-                        glob_pattern: lsp_types::GlobPattern::String(glob_pattern.to_string()),
+                        glob_pattern: lsp_types::GlobPattern::Pattern(glob_pattern.to_string()),
                         kind: None,
                     }),
             );
@@ -650,7 +646,7 @@ impl GlobalState {
                 method: "workspace/didChangeWatchedFiles".to_owned(),
                 register_options: Some(serde_json::to_value(registration_options).unwrap()),
             };
-            self.send_request::<lsp_types::request::RegisterCapability>(
+            self.send_request::<lsp_types::RegistrationRequest>(
                 lsp_types::RegistrationParams { registrations: vec![registration] },
                 |_, _| (),
             );
@@ -663,11 +659,16 @@ impl GlobalState {
             Config::user_config_dir_path().as_deref(),
         );
 
-        if (self.proc_macro_clients.len() < self.workspaces.len() || !same_workspaces)
-            && self.config.expand_proc_macros()
-        {
+        if !same_workspaces && self.config.expand_proc_macros() {
             info!("Spawning proc-macro servers");
 
+            // Workspaces referring to the same proc-macro server executable (i.e. the same
+            // sysroot) with an identical spawn environment share a single client, and thereby
+            // a single set of server processes.
+            let mut clients: Vec<(
+                (AbsPathBuf, Option<semver::Version>, FxHashMap<String, Option<String>>),
+                ProcMacroClient,
+            )> = Vec::new();
             self.proc_macro_clients = Arc::from_iter(self.workspaces.iter().map(|ws| {
                 let path = match self.config.proc_macro_srv() {
                     Some(path) => path,
@@ -699,20 +700,30 @@ impl GlobalState {
 
                     _ => Default::default(),
                 };
-                info!("Using proc-macro server at {path}");
+
+                let key = (path, ws.toolchain.clone(), env);
+                if let Some((_, client)) = clients.iter().find(|(k, _)| *k == key) {
+                    return Some(Ok(client.clone()));
+                }
+
+                let (path, toolchain, env) = &key;
+                info!("Spawning proc-macro server at {path}");
                 let num_process = self.config.proc_macro_num_processes();
 
-                Some(
-                    ProcMacroClient::spawn(&path, &env, ws.toolchain.as_ref(), num_process)
-                        .map_err(|err| {
-                            tracing::error!(
-                                "Failed to run proc-macro server from path {path}, error: {err:?}",
-                            );
-                            anyhow::format_err!(
-                                "Failed to run proc-macro server from path {path}, error: {err:?}",
-                            )
-                        }),
-                )
+                Some(match ProcMacroClient::spawn(path, env, toolchain.as_ref(), num_process) {
+                    Ok(client) => {
+                        clients.push((key.clone(), client.clone()));
+                        Ok(client)
+                    }
+                    Err(err) => {
+                        tracing::error!(
+                            "Failed to run proc-macro server from path {path}, error: {err:?}",
+                        );
+                        Err(anyhow::format_err!(
+                            "Failed to run proc-macro server from path {path}, error: {err:?}",
+                        ))
+                    }
+                })
             }))
         }
 

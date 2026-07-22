@@ -1073,6 +1073,20 @@ pub const trait Destruct: PointeeSized {}
 #[rustc_dyn_incompatible_trait]
 pub trait Tuple {}
 
+/// Creates a new style directly represented const argument.
+/// ```ignore (cannot test this from within core yet)
+/// type const BAR<const N: usize>: usize = N;
+/// type const FOO<const N: usize>: usize = direct!(BAR::<N>);
+/// ```
+#[rustc_builtin_macro(direct_const_arg)]
+#[unstable(feature = "min_generic_const_args", issue = "132980")]
+#[macro_export]
+macro_rules! direct_const_arg {
+    ($($arg:tt)*) => {
+        /* compiler built-in */
+    };
+}
+
 /// A marker for types which can be used as types of `const` generic parameters.
 ///
 /// These types must have a proper equivalence relation (`Eq`) and it must be automatically

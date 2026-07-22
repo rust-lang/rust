@@ -100,7 +100,7 @@ fn spawn_test_thread(
     test: &CollectedTest,
     completion_sender: mpsc::Sender<TestCompletion>,
 ) -> Option<thread::JoinHandle<()>> {
-    if test.desc.ignore && !test.config.run_ignored {
+    if test.desc.is_ignored() && !test.config.run_ignored {
         completion_sender
             .send(TestCompletion { id, outcome: TestOutcome::Ignored, stdout: None })
             .unwrap();
@@ -336,9 +336,14 @@ pub(crate) struct CollectedTest {
 pub(crate) struct CollectedTestDesc {
     pub(crate) name: String,
     pub(crate) filterable_path: Utf8PathBuf,
-    pub(crate) ignore: bool,
     pub(crate) ignore_message: Option<Cow<'static, str>>,
     pub(crate) should_fail: ShouldFail,
+}
+
+impl CollectedTestDesc {
+    pub(crate) fn is_ignored(&self) -> bool {
+        self.ignore_message.is_some()
+    }
 }
 
 /// Tests with `//@ should-fail` are tests of compiletest itself, and should

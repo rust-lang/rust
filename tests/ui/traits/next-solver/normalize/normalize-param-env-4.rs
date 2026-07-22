@@ -1,8 +1,10 @@
 //@ revisions: current next
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
-//@[next] known-bug: #92505
-//@[current] check-pass
+//@ check-pass
+
+// Issue #92505.
+// Now that we eager norm param env in the next solver, it compiles.
 
 trait Trait {
     type Assoc;

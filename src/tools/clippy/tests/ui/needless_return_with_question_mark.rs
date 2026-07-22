@@ -1,12 +1,11 @@
 //@aux-build:proc_macros.rs
-#![allow(
+#![warn(clippy::needless_return_with_question_mark)]
+#![expect(
+    clippy::diverging_sub_expression,
     clippy::needless_return,
     clippy::no_effect,
     clippy::unit_arg,
-    clippy::useless_conversion,
-    clippy::diverging_sub_expression,
-    clippy::let_unit_value,
-    unused
+    clippy::useless_conversion
 )]
 
 #[macro_use]

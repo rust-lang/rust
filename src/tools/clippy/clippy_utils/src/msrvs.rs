@@ -3,7 +3,8 @@ use rustc_ast::Attribute;
 use rustc_ast::attr::AttributeExt;
 use rustc_attr_parsing::parse_version;
 use rustc_data_structures::smallvec::SmallVec;
-use rustc_hir::{HirId, RustcVersion};
+use rustc_hir::def_id::DefId;
+use rustc_hir::{HirId, RustcVersion, StabilityLevel, StableSince};
 use rustc_lint::LateContext;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
@@ -24,7 +25,7 @@ macro_rules! msrv_aliases {
 
 // names may refer to stabilized feature flags or library items
 msrv_aliases! {
-    1,97,0 { ISOLATE_LOWEST_ONE }
+    1,97,0 { ISOLATE_LOWEST_ONE, BIT_WIDTH }
     1,93,0 { VEC_DEQUE_POP_BACK_IF, VEC_DEQUE_POP_FRONT_IF }
     1,91,0 { DURATION_FROM_MINUTES_HOURS }
     1,88,0 { LET_CHAINS, AS_CHUNKS }
@@ -174,6 +175,25 @@ impl Msrv {
             },
             _ => {},
         }
+    }
+
+    pub fn is_stable(self, cx: &LateContext<'_>, def_id: DefId) -> bool {
+        cx.tcx.lookup_stability(def_id).is_none_or(|stability| {
+            if let StabilityLevel::Stable { since, .. } = stability.level {
+                let version = match since {
+                    StableSince::Version(version) => version,
+                    StableSince::Current => RustcVersion::CURRENT,
+                    StableSince::Err(_) => return false,
+                };
+
+                self.meets(cx, version)
+            } else {
+                // Unstable fn.
+                // FIXME: can we check that the feature is enabled?
+                // Please see https://github.com/rust-lang/rust-clippy/pull/17309#discussion_r3486693263 for false-positive concerns.
+                false
+            }
+        })
     }
 }
 

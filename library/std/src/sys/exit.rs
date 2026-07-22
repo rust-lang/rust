@@ -68,6 +68,25 @@ cfg_select! {
     }
 }
 
+#[cfg(not(test))]
+cfg_select! {
+    any(
+        target_family = "unix",
+        target_os = "wasi",
+    ) => {
+        // Used by rustc for checking the definitions of other function with the same symbol names
+        //
+        // See the `invalid_runtime_symbols_definitions` lint.
+        mod runtime_symbols {
+            unsafe extern "C" {
+                #[lang = "exit_fn"]
+                fn exit(status: core::ffi::c_int) -> !;
+            }
+        }
+    }
+    _ => {}
+}
+
 pub fn exit(code: i32) -> ! {
     cfg_select! {
         target_os = "hermit" => {

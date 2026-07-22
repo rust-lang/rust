@@ -74,6 +74,32 @@ impl_binder_encode_decode! {
     ty::HostEffectPredicate<I>,
 }
 
+#[cfg(feature = "nightly")]
+impl<T: GenericArgs<I>, I: Interner<GenericArgs = T>, E: rustc_serialize::Encoder>
+    rustc_serialize::Encodable<E> for ty::Binder<I, T>
+where
+    T: rustc_serialize::Encodable<E>,
+    I::BoundVarKinds: rustc_serialize::Encodable<E>,
+{
+    fn encode(&self, e: &mut E) {
+        self.bound_vars().encode(e);
+        self.as_ref().skip_binder().encode(e);
+    }
+}
+
+#[cfg(feature = "nightly")]
+impl<T: GenericArgs<I>, I: Interner<GenericArgs = T>, D: rustc_serialize::Decoder>
+    rustc_serialize::Decodable<D> for ty::Binder<I, T>
+where
+    T: TypeVisitable<I> + rustc_serialize::Decodable<D>,
+    I::BoundVarKinds: rustc_serialize::Decodable<D>,
+{
+    fn decode(decoder: &mut D) -> Self {
+        let bound_vars = rustc_serialize::Decodable::decode(decoder);
+        ty::Binder::bind_with_vars(rustc_serialize::Decodable::decode(decoder), bound_vars)
+    }
+}
+
 impl<I: Interner, T> Binder<I, T>
 where
     T: TypeVisitable<I>,
@@ -445,6 +471,12 @@ impl<I: Interner, T> EarlyBinder<I, T> {
     /// the analogous operation on [`Binder`].
     pub fn skip_binder(self) -> T {
         self.value
+    }
+}
+
+impl<I: Interner> EarlyBinder<I, ty::TraitRef<I>> {
+    pub fn def_id(&self) -> I::TraitId {
+        self.value.def_id
     }
 }
 

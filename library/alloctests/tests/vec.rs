@@ -1028,6 +1028,15 @@ fn test_into_iter_next_chunk() {
 }
 
 #[test]
+fn test_into_iter_next_chunk_back() {
+    let mut iter = b"lorem".to_vec().into_iter();
+
+    assert_eq!(iter.next_chunk_back().unwrap(), [b'e', b'm']); // N is inferred as 2
+    assert_eq!(iter.next_chunk_back().unwrap(), [b'l', b'o', b'r']); // N is inferred as 3
+    assert_eq!(iter.next_chunk_back::<4>().unwrap_err().as_slice(), &[]); // N is explicitly 4
+}
+
+#[test]
 fn test_into_iter_clone() {
     fn iter_equal<I: Iterator<Item = i32>>(it: I, slice: &[i32]) {
         let v: Vec<i32> = it.collect();
@@ -1130,6 +1139,14 @@ fn test_into_iter_zst() {
 
     let mut it = vec![C, C].into_iter();
     it.next_chunk::<4>().unwrap_err();
+    drop(it);
+
+    let mut it = vec![C, C].into_iter();
+    it.next_chunk_back::<1>().unwrap();
+    drop(it);
+
+    let mut it = vec![C, C].into_iter();
+    it.next_chunk_back::<4>().unwrap_err();
     drop(it);
 }
 

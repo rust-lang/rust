@@ -1,4 +1,4 @@
-error: compiler/rustc_mir_build/src/thir/cx/expr.rs:LL:CC: no splatted def for function or method callee
+error: compiler/rustc_mir_build/src/thir/cx/expr.rs:LL:CC: splatted FnPtr side-tables are not yet implemented
    |
 LL |     fn_ptr(1, 2);
    |     ^^^^^^^^^^^^

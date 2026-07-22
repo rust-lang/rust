@@ -67,7 +67,8 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
         Node::TraitItem(item) => match item.kind {
             TraitItemKind::Fn(..) => {
                 let args = ty::GenericArgs::identity_for_item(tcx, def_id);
-                Ty::new_fn_def(tcx, def_id.to_def_id(), args)
+                // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
+                Ty::new_fn_def(tcx, def_id.to_def_id(), ty::Binder::dummy(args))
             }
             TraitItemKind::Const(ty, rhs) => rhs
                 .and_then(|rhs| {
@@ -93,7 +94,8 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
         Node::ImplItem(item) => match item.kind {
             ImplItemKind::Fn(..) => {
                 let args = ty::GenericArgs::identity_for_item(tcx, def_id);
-                Ty::new_fn_def(tcx, def_id.to_def_id(), args)
+                // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
+                Ty::new_fn_def(tcx, def_id.to_def_id(), ty::Binder::dummy(args))
             }
             ImplItemKind::Const(ty, rhs) => {
                 if ty.is_suggestable_infer_ty() {
@@ -171,7 +173,8 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
             },
             ItemKind::Fn { .. } => {
                 let args = ty::GenericArgs::identity_for_item(tcx, def_id);
-                Ty::new_fn_def(tcx, def_id.to_def_id(), args)
+                // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
+                Ty::new_fn_def(tcx, def_id.to_def_id(), ty::Binder::dummy(args))
             }
             ItemKind::Enum(..) | ItemKind::Struct(..) | ItemKind::Union(..) => {
                 let def = tcx.adt_def(def_id);
@@ -195,7 +198,8 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
         Node::ForeignItem(foreign_item) => match foreign_item.kind {
             ForeignItemKind::Fn(..) => {
                 let args = ty::GenericArgs::identity_for_item(tcx, def_id);
-                Ty::new_fn_def(tcx, def_id.to_def_id(), args)
+                // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
+                Ty::new_fn_def(tcx, def_id.to_def_id(), ty::Binder::dummy(args))
             }
             ForeignItemKind::Static(ty, _, _) => {
                 let ty = icx.lower_ty(ty);
@@ -217,7 +221,8 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
             }
             VariantData::Tuple(_, _, ctor) => {
                 let args = ty::GenericArgs::identity_for_item(tcx, def_id);
-                Ty::new_fn_def(tcx, ctor.to_def_id(), args)
+                // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
+                Ty::new_fn_def(tcx, ctor.to_def_id(), ty::Binder::dummy(args))
             }
         },
 
@@ -522,7 +527,7 @@ fn infer_placeholder_type<'tcx>(
 
 fn check_feature_inherent_assoc_ty(tcx: TyCtxt<'_>, span: Span) {
     if !tcx.features().inherent_associated_types() {
-        use rustc_session::errors::feature_err;
+        use rustc_session::diagnostics::feature_err;
         use rustc_span::sym;
         feature_err(
             &tcx.sess,
@@ -534,9 +539,9 @@ fn check_feature_inherent_assoc_ty(tcx: TyCtxt<'_>, span: Span) {
     }
 }
 
-pub(crate) fn type_alias_is_lazy<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> bool {
+pub(crate) fn type_alias_is_checked<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> bool {
     use hir::intravisit::Visitor;
-    if tcx.features().lazy_type_alias() {
+    if tcx.features().checked_type_aliases() {
         return true;
     }
     struct HasTait;

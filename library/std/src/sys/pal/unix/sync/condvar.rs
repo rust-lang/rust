@@ -1,9 +1,9 @@
 use super::Mutex;
 use crate::cell::UnsafeCell;
 use crate::pin::Pin;
-#[cfg(not(target_os = "nto"))]
+#[cfg(not(any(target_os = "nto", target_os = "qnx")))]
 use crate::sys::pal::time::TIMESPEC_MAX;
-#[cfg(target_os = "nto")]
+#[cfg(any(target_os = "nto", target_os = "qnx"))]
 use crate::sys::pal::time::TIMESPEC_MAX_CAPPED;
 use crate::time::Duration;
 
@@ -69,10 +69,10 @@ impl Condvar {
 
         let timeout = Timespec::now(Self::CLOCK).checked_add_duration(&dur);
 
-        #[cfg(not(target_os = "nto"))]
+        #[cfg(not(any(target_os = "nto", target_os = "qnx")))]
         let timeout = timeout.and_then(|t| t.to_timespec()).unwrap_or(TIMESPEC_MAX);
 
-        #[cfg(target_os = "nto")]
+        #[cfg(any(target_os = "nto", target_os = "qnx"))]
         let timeout = timeout.and_then(|t| t.to_timespec_capped()).unwrap_or(TIMESPEC_MAX_CAPPED);
 
         let r = unsafe { libc::pthread_cond_timedwait(self.raw(), mutex, &timeout) };

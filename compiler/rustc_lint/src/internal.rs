@@ -170,7 +170,13 @@ fn get_callee_span_generic_args_and_args<'tcx>(
         && let callee_ty = cx.typeck_results().expr_ty(callee)
         && let ty::FnDef(callee_def_id, generic_args) = callee_ty.kind()
     {
-        return Some((*callee_def_id, callee.span, generic_args, None, args));
+        return Some((
+            *callee_def_id,
+            callee.span,
+            generic_args.no_bound_vars().unwrap(),
+            None,
+            args,
+        ));
     }
     if let ExprKind::MethodCall(segment, recv, args, _) = expr.kind
         && let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)

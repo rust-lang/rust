@@ -8,8 +8,7 @@ mod path;
 
 use std::{cell::OnceCell, mem};
 
-use arrayvec::ArrayVec;
-use base_db::FxIndexSet;
+use base_db::{FxIndexSet, SourceDatabase};
 use cfg::CfgOptions;
 use either::Either;
 use hir_expand::{
@@ -19,6 +18,7 @@ use hir_expand::{
     span_map::SpanMap,
 };
 use intern::{Symbol, sym};
+use itertools::Itertools;
 use rustc_abi::ExternAbi;
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
@@ -38,11 +38,11 @@ use crate::{
     AdtId, BlockId, BlockLoc, ConstId, DefWithBodyId, FunctionId, GenericDefId, ImplId,
     ItemContainerId, MacroId, ModuleDefId, ModuleId, TraitId, TypeAliasId, UnresolvedMacro,
     attrs::AttrFlags,
-    db::DefDatabase,
     expr_store::{
         Body, BodySourceMap, ExprPtr, ExprRoot, ExpressionStore, ExpressionStoreBuilder,
         ExpressionStoreDiagnostics, ExpressionStoreSourceMap, HygieneId, LabelPtr, LifetimePtr,
         PatPtr, TypePtr,
+        body::Param,
         expander::Expander,
         lower::generics::ImplTraitLowerFn,
         path::{AssociatedTypeBinding, GenericArg, GenericArgs, GenericArgsParentheses, Path},
@@ -67,7 +67,7 @@ use crate::{
 pub use self::path::hir_segment_to_ast_segment;
 
 pub(super) fn lower_body(
-    db: &dyn DefDatabase,
+    db: &dyn SourceDatabase,
     owner: DefWithBodyId,
     current_file_id: HirFileId,
     module: ModuleId,
@@ -82,7 +82,7 @@ pub(super) fn lower_body(
     // even though they should be the same. Also, when the body comes from multiple expansions, their
     // hygiene is different.
 
-    let mut self_params = ArrayVec::new();
+    let mut self_param = None;
     let mut source_map_self_param = None;
     let mut params = vec![];
     let mut collector = ExprCollector::new(db, module, current_file_id);
@@ -100,9 +100,43 @@ pub(super) fn lower_body(
     // If #[rust_analyzer::skip] annotated, only construct enough information for the signature
     // and skip the body.
     if skip_body {
+        collector.with_expr_root(|collector| {
+            if let Some(param_list) = parameters {
+                if let Some(self_param_syn) =
+                    param_list.self_param().filter(|self_param| collector.check_cfg(self_param))
+                {
+                    let is_mutable = self_param_syn.mut_token().is_some()
+                        && self_param_syn.amp_token().is_none();
+                    let hygiene = self_param_syn
+                        .name()
+                        .map(|name| collector.hygiene_id_for(name.syntax().text_range()))
+                        .unwrap_or(HygieneId::ROOT);
+                    let binding_id: la_arena::Idx<Binding> = collector.alloc_binding(
+                        Name::new_symbol_root(sym::self_),
+                        BindingAnnotation::new(is_mutable, false),
+                        hygiene,
+                    );
+                    self_param = Some(Param::new(binding_id));
+                    source_map_self_param =
+                        Some(collector.expander.in_file(AstPtr::new(&self_param_syn)));
+                }
+                let count = param_list.params().filter(|it| collector.check_cfg(it)).count();
+                params = (0..count).map(|_| Param::new(collector.missing_pat())).collect();
+            };
+
+            collector.missing_expr()
+        });
+        let (store, source_map) = collector.store.finish();
+        return (
+            Body { store, params: params.into_boxed_slice(), self_param },
+            BodySourceMap { self_param: source_map_self_param, store: source_map },
+        );
+    }
+
+    collector.with_expr_root(|collector| {
         if let Some(param_list) = parameters {
             if let Some(self_param_syn) =
-                param_list.self_param().filter(|self_param| collector.check_cfg(self_param))
+                param_list.self_param().filter(|it| collector.check_cfg(it))
             {
                 let is_mutable =
                     self_param_syn.mut_token().is_some() && self_param_syn.amp_token().is_none();
@@ -115,59 +149,31 @@ pub(super) fn lower_body(
                     BindingAnnotation::new(is_mutable, false),
                     hygiene,
                 );
-                self_params.push(binding_id);
+                self_param = Some(Param::new(binding_id));
                 source_map_self_param =
                     Some(collector.expander.in_file(AstPtr::new(&self_param_syn)));
             }
-            let count = param_list.params().filter(|it| collector.check_cfg(it)).count();
-            params = (0..count).map(|_| collector.missing_pat()).collect();
-        };
-        collector.with_expr_root(|collector| collector.missing_expr());
-        let (store, source_map) = collector.store.finish();
-        return (
-            Body { store, params: params.into_boxed_slice(), self_params },
-            BodySourceMap { self_param: source_map_self_param, store: source_map },
-        );
-    }
 
-    if let Some(param_list) = parameters {
-        if let Some(self_param_syn) = param_list.self_param().filter(|it| collector.check_cfg(it)) {
-            let is_mutable =
-                self_param_syn.mut_token().is_some() && self_param_syn.amp_token().is_none();
-            let hygiene = self_param_syn
-                .name()
-                .map(|name| collector.hygiene_id_for(name.syntax().text_range()))
-                .unwrap_or(HygieneId::ROOT);
-            let binding_id: la_arena::Idx<Binding> = collector.alloc_binding(
-                Name::new_symbol_root(sym::self_),
-                BindingAnnotation::new(is_mutable, false),
-                hygiene,
+            let is_extern = matches!(
+                owner,
+                DefWithBodyId::FunctionId(id)
+                    if matches!(id.loc(db).container, ItemContainerId::ExternBlockId(_)),
             );
-            self_params.push(binding_id);
-            source_map_self_param = Some(collector.expander.in_file(AstPtr::new(&self_param_syn)));
-        }
 
-        let is_extern = matches!(
-            owner,
-            DefWithBodyId::FunctionId(id)
-                if matches!(id.loc(db).container, ItemContainerId::ExternBlockId(_)),
-        );
-
-        for param in param_list.params() {
-            if collector.check_cfg(&param) {
-                let param_pat = if is_extern {
-                    collector.collect_extern_fn_param(param.pat())
-                } else {
-                    collector.collect_pat_top(param.pat())
-                };
-                params.push(param_pat);
+            for param in param_list.params() {
+                if collector.check_cfg(&param) {
+                    let param_pat = if is_extern {
+                        collector.collect_extern_fn_param(param.pat())
+                    } else {
+                        collector.collect_pat_top(param.pat())
+                    };
+                    params.push(Param::new(param_pat));
+                }
             }
-        }
-    };
+        };
 
-    collector.with_expr_root(|collector| {
         collector.collect(
-            &mut self_params,
+            &mut self_param,
             &mut params,
             body,
             if is_async_fn {
@@ -187,13 +193,13 @@ pub(super) fn lower_body(
 
     let (store, source_map) = collector.store.finish();
     (
-        Body { store, params: params.into_boxed_slice(), self_params },
+        Body { store, params: params.into_boxed_slice(), self_param },
         BodySourceMap { self_param: source_map_self_param, store: source_map },
     )
 }
 
 pub(crate) fn lower_type_ref(
-    db: &dyn DefDatabase,
+    db: &dyn SourceDatabase,
     module: ModuleId,
     type_ref: InFile<Option<ast::Type>>,
 ) -> (ExpressionStore, ExpressionStoreSourceMap, TypeRefId) {
@@ -205,7 +211,7 @@ pub(crate) fn lower_type_ref(
 }
 
 pub fn lower_generic_params(
-    db: &dyn DefDatabase,
+    db: &dyn SourceDatabase,
     module: ModuleId,
     def: GenericDefId,
     file_id: HirFileId,
@@ -221,7 +227,7 @@ pub fn lower_generic_params(
 }
 
 pub(crate) fn lower_impl(
-    db: &dyn DefDatabase,
+    db: &dyn SourceDatabase,
     module: ModuleId,
     impl_syntax: InFile<ast::Impl>,
     impl_id: ImplId,
@@ -249,7 +255,7 @@ pub(crate) fn lower_impl(
 }
 
 pub(crate) fn lower_trait(
-    db: &dyn DefDatabase,
+    db: &dyn SourceDatabase,
     module: ModuleId,
     trait_syntax: InFile<ast::Trait>,
     trait_id: TraitId,
@@ -271,7 +277,7 @@ pub(crate) fn lower_trait(
 }
 
 pub(crate) fn lower_type_alias(
-    db: &dyn DefDatabase,
+    db: &dyn SourceDatabase,
     module: ModuleId,
     alias: InFile<ast::TypeAlias>,
     type_alias_id: TypeAliasId,
@@ -306,7 +312,7 @@ pub(crate) fn lower_type_alias(
 }
 
 pub(crate) fn lower_function(
-    db: &dyn DefDatabase,
+    db: &dyn SourceDatabase,
     module: ModuleId,
     fn_: InFile<ast::Fn>,
     function_id: FunctionId,
@@ -431,7 +437,7 @@ pub(crate) fn lower_function(
 }
 
 pub struct ExprCollector<'db> {
-    db: &'db dyn DefDatabase,
+    db: &'db dyn SourceDatabase,
     cfg_options: &'db CfgOptions,
     expander: Expander<'db>,
     def_map: &'db DefMap,
@@ -547,7 +553,7 @@ impl BindingList {
 
 impl<'db> ExprCollector<'db> {
     pub fn new(
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         module: ModuleId,
         current_file_id: HirFileId,
     ) -> ExprCollector<'_> {
@@ -952,8 +958,8 @@ impl<'db> ExprCollector<'db> {
     /// drop order are stable.
     fn lower_coroutine_body_with_moved_arguments(
         &mut self,
-        self_params: &mut ArrayVec<BindingId, 2>,
-        params: &mut [PatId],
+        self_param: &mut Option<Param<BindingId>>,
+        params: &mut [Param<PatId>],
         body: ExprId,
         kind: CoroutineKind,
         coroutine_source: CoroutineSource,
@@ -984,10 +990,11 @@ impl<'db> ExprCollector<'db> {
         // If `<pattern>` is a simple ident, then it is lowered to a single
         // `let <pattern> = <pattern>;` statement as an optimization.
 
-        let mut statements = Vec::new();
+        let mut statements =
+            Vec::with_capacity(usize::from(self_param.is_some()) + (params.len() * 2));
 
-        if let Some(&self_param) = self_params.first() {
-            let Binding { ref name, mode, hygiene, .. } = self.store.bindings[self_param];
+        if let Some(self_param) = self_param {
+            let Binding { ref name, mode, hygiene, .. } = self.store.bindings[self_param.formal];
             let name = name.clone();
             let child_binding_id = self.alloc_binding(name.clone(), mode, hygiene);
             let child_pat_id =
@@ -1003,11 +1010,11 @@ impl<'db> ExprCollector<'db> {
                 initializer: Some(expr),
                 else_branch: None,
             });
-            self_params.push(child_binding_id);
+            self_param.user_written = child_binding_id;
         }
 
         for param in params {
-            let (name, hygiene, is_simple_parameter) = match self.store.pats[*param] {
+            let (name, hygiene, is_simple_parameter) = match self.store.pats[param.formal] {
                 // Check if this is a binding pattern, if so, we can optimize and avoid adding a
                 // `let <pat> = __argN;` statement. In this case, we do not rename the parameter.
                 Pat::Bind { id, subpat: None, .. }
@@ -1016,55 +1023,57 @@ impl<'db> ExprCollector<'db> {
                         BindingAnnotation::Unannotated | BindingAnnotation::Mutable
                     ) =>
                 {
-                    (self.store.bindings[id].name.clone(), self.store.bindings[id].hygiene, true)
+                    let binding = &self.store.bindings[id];
+                    (binding.name.clone(), binding.hygiene, true)
                 }
                 Pat::Bind { id, .. } => {
                     // If this is a `ref` binding, we can't leave it as is but we can at least reuse the name, for better display.
-                    (self.store.bindings[id].name.clone(), self.store.bindings[id].hygiene, false)
+                    let binding = &self.store.bindings[id];
+                    (binding.name.clone(), binding.hygiene, false)
                 }
                 _ => (self.generate_new_name(), HygieneId::ROOT, false),
             };
-            let pat_syntax = self.store.pat_map_back.get(*param).copied();
-            let child_binding_id =
-                self.alloc_binding(name.clone(), BindingAnnotation::Mutable, hygiene);
-            let child_pat_id =
-                self.alloc_pat_desugared(Pat::Bind { id: child_binding_id, subpat: None });
-            self.add_definition_to_binding(child_binding_id, child_pat_id);
-            if let Some(pat_syntax) = pat_syntax {
-                self.store.pat_map_back.insert(child_pat_id, pat_syntax);
+            let pat_syntax = self.store.pat_map_back.get(param.formal).copied();
+            if !is_simple_parameter {
+                // It needs to be mutable so the inner patterns can borrow it mutably (`ref mut`).
+                let child_binding_id =
+                    self.alloc_binding(name.clone(), BindingAnnotation::Mutable, hygiene);
+                let child_pat_id =
+                    self.alloc_pat_desugared(Pat::Bind { id: child_binding_id, subpat: None });
+                self.add_definition_to_binding(child_binding_id, child_pat_id);
+                if let Some(pat_syntax) = pat_syntax {
+                    self.store.pat_map_back.insert(child_pat_id, pat_syntax);
+                }
+                let expr = self.alloc_expr_desugared(Expr::Path(name.clone().into()));
+                if !hygiene.is_root() {
+                    self.store.ident_hygiene.insert(expr.into(), hygiene);
+                }
+                statements.push(Statement::Let {
+                    pat: child_pat_id,
+                    type_ref: None,
+                    initializer: Some(expr),
+                    else_branch: None,
+                });
             }
             let expr = self.alloc_expr_desugared(Expr::Path(name.clone().into()));
             if !hygiene.is_root() {
                 self.store.ident_hygiene.insert(expr.into(), hygiene);
             }
             statements.push(Statement::Let {
-                pat: child_pat_id,
+                pat: param.formal,
                 type_ref: None,
                 initializer: Some(expr),
                 else_branch: None,
             });
-            if !is_simple_parameter {
-                let expr = self.alloc_expr_desugared(Expr::Path(name.clone().into()));
-                if !hygiene.is_root() {
-                    self.store.ident_hygiene.insert(expr.into(), hygiene);
-                }
-                statements.push(Statement::Let {
-                    pat: *param,
-                    type_ref: None,
-                    initializer: Some(expr),
-                    else_branch: None,
-                });
 
-                let parent_binding_id =
-                    self.alloc_binding(name.clone(), BindingAnnotation::Mutable, hygiene);
-                let parent_pat_id =
-                    self.alloc_pat_desugared(Pat::Bind { id: parent_binding_id, subpat: None });
-                self.add_definition_to_binding(parent_binding_id, parent_pat_id);
-                if let Some(pat_syntax) = pat_syntax {
-                    self.store.pat_map_back.insert(parent_pat_id, pat_syntax);
-                }
-                *param = parent_pat_id;
+            let parent_binding_id = self.alloc_binding(name, BindingAnnotation::Mutable, hygiene);
+            let parent_pat_id =
+                self.alloc_pat_desugared(Pat::Bind { id: parent_binding_id, subpat: None });
+            self.add_definition_to_binding(parent_binding_id, parent_pat_id);
+            if let Some(pat_syntax) = pat_syntax {
+                self.store.pat_map_back.insert(parent_pat_id, pat_syntax);
             }
+            *param = Param { formal: parent_pat_id, user_written: param.formal };
         }
 
         let coroutine = self.desugared_coroutine_expr(
@@ -1105,8 +1114,8 @@ impl<'db> ExprCollector<'db> {
 
     fn collect(
         &mut self,
-        self_params: &mut ArrayVec<BindingId, 2>,
-        params: &mut [PatId],
+        self_param: &mut Option<Param<BindingId>>,
+        params: &mut [Param<PatId>],
         expr: Option<ast::Expr>,
         awaitable: Awaitable,
         is_async_fn: bool,
@@ -1123,7 +1132,7 @@ impl<'db> ExprCollector<'db> {
                     (false, false) => unreachable!(),
                 };
                 this.lower_coroutine_body_with_moved_arguments(
-                    self_params,
+                    self_param,
                     params,
                     body,
                     kind,
@@ -1562,6 +1571,10 @@ impl<'db> ExprCollector<'db> {
                         args.reserve_exact(num_params);
                         arg_types.reserve_exact(num_params);
                         for param in pl.params() {
+                            if !this.check_cfg(&param) {
+                                continue;
+                            }
+
                             let pat = this.collect_pat_top(param.pat());
                             let type_ref =
                                 param.ty().map(|it| this.lower_type_ref_disallow_impl_trait(it));
@@ -1599,13 +1612,15 @@ impl<'db> ExprCollector<'db> {
                     let closure_kind = if let Some(kind) = kind {
                         // It's important that this expr is allocated immediately before the closure.
                         // We rely on it for `coroutine_for_closure()`.
+                        let mut args_with_user_written = args.iter().copied().map(Param::new).collect::<Vec<_>>();
                         body = this.lower_coroutine_body_with_moved_arguments(
-                            &mut ArrayVec::new(),
-                            &mut args,
+                            &mut None,
+                            &mut args_with_user_written,
                             body,
                             kind,
                             CoroutineSource::Closure,
                         );
+                        args.iter_mut().set_from(args_with_user_written.iter().map(|arg| arg.formal));
                         is_coroutine_closure = true;
 
                         ClosureKind::CoroutineClosure(kind)
@@ -1666,7 +1681,7 @@ impl<'db> ExprCollector<'db> {
                 }
             }
             ast::Expr::TupleExpr(e) => {
-                let mut exprs: Vec<_> = e.fields().map(|expr| self.collect_expr(expr)).collect();
+                let mut exprs: Vec<_> = e.fields().filter_map(|expr| self.maybe_collect_expr(expr)).collect();
                 // if there is a leading comma, the user is most likely to type out a leading expression
                 // so we insert a missing expression at the beginning for IDE features
                 if comma_follows_token(e.l_paren_token()) {
@@ -1681,13 +1696,7 @@ impl<'db> ExprCollector<'db> {
                 match kind {
                     ArrayExprKind::ElementList(e) => {
                         let elements = e
-                            .filter_map(|expr| {
-                                if self.check_cfg(&expr) {
-                                    Some(self.collect_expr(expr))
-                                } else {
-                                    None
-                                }
-                            })
+                            .filter_map(|expr| self.maybe_collect_expr(expr))
                             .collect();
                         self.alloc_expr(Expr::Array(Array::ElementList { elements }), syntax_ptr)
                     }
@@ -1728,16 +1737,18 @@ impl<'db> ExprCollector<'db> {
                 let e = e.macro_call()?;
                 let macro_ptr = AstPtr::new(&e);
                 let id = self.collect_macro_call(e, macro_ptr, true, |this, expansion| {
-                    expansion.map(|it| this.collect_expr(it))
+                    expansion.map(|it| this.maybe_collect_expr(it))
                 });
                 match id {
-                    Some(id) => {
+                    Some(Some(id)) => {
                         // Make the macro-call point to its expanded expression so we can query
                         // semantics on syntax pointers to the macro
                         let src = self.expander.in_file(syntax_ptr);
                         self.store.expr_map.insert(src, id.into());
                         id
                     }
+                    // Macro expanded into a disabled cfg (yes, there is such thing, see the weird_cfgs test).
+                    Some(None) => return None,
                     None => self.alloc_expr(Expr::Missing, syntax_ptr),
                 }
             }
@@ -2420,7 +2431,7 @@ impl<'db> ExprCollector<'db> {
                     expansion.statements().for_each(|stmt| this.collect_stmt(statements, stmt));
                     expansion.expr().and_then(|expr| match expr {
                         ast::Expr::MacroExpr(mac) => this.collect_macro_as_stmt(statements, mac),
-                        expr => Some(this.collect_expr(expr)),
+                        expr => this.maybe_collect_expr(expr),
                     })
                 }
                 None => None,
@@ -2457,8 +2468,7 @@ impl<'db> ExprCollector<'db> {
                     if let Some(expr) = self.collect_macro_as_stmt(statements, mac) {
                         statements.push(Statement::Expr { expr, has_semi })
                     }
-                } else {
-                    let expr = self.collect_expr_opt(expr);
+                } else if let Some(expr) = expr.and_then(|expr| self.maybe_collect_expr(expr)) {
                     statements.push(Statement::Expr { expr, has_semi });
                 }
             }
@@ -2504,7 +2514,7 @@ impl<'db> ExprCollector<'db> {
             statements.push(Statement::Item(Item::Other));
             return;
         };
-        let macro_id = self.db.macro_def(macro_id);
+        let macro_id = macro_id.definition(self.db);
         statements.push(Statement::Item(Item::MacroDef(Box::new(macro_id))));
         self.label_ribs.push(LabelRib::new(RibKind::MacroDef(Box::new(macro_id))));
     }
@@ -2720,7 +2730,7 @@ impl<'db> ExprCollector<'db> {
                 pats.push(self.collect_pat(first, binding_list));
                 binding_list.reject_new = true;
                 for rest in it {
-                    for (_, it) in binding_list.is_used.iter_mut() {
+                    for it in binding_list.is_used.values_mut() {
                         *it = false;
                     }
                     pats.push(self.collect_pat(rest, binding_list));

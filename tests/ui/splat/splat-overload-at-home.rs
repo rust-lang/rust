@@ -1,5 +1,5 @@
 //@ run-pass
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 //! Test using `#[splat]` on some "overloading at home" example code.
 //! <https://internals.rust-lang.org/t/pre-pre-rfc-splatting-for-named-arguments-and-function-overloading/24012>
 

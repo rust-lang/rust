@@ -1,3 +1,4 @@
+// This code is automatically generated. DO NOT MODIFY.
 //! Hexagon scalar intrinsics
 //!
 //! This module provides intrinsics for scalar (non-HVX) Hexagon DSP operations,

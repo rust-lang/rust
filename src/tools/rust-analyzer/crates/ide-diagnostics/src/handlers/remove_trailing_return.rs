@@ -1,4 +1,4 @@
-use hir::{FileRange, db::ExpandDatabase, diagnostics::RemoveTrailingReturn};
+use hir::{FileRange, diagnostics::RemoveTrailingReturn};
 use ide_db::text_edit::TextEdit;
 use ide_db::{assists::Assist, source_change::SourceChange};
 use syntax::{AstNode, ast};
@@ -37,7 +37,7 @@ pub(crate) fn remove_trailing_return(
 }
 
 fn fixes(ctx: &DiagnosticsContext<'_, '_>, d: &RemoveTrailingReturn) -> Option<Vec<Assist>> {
-    let root = ctx.sema.db.parse_or_expand(d.return_expr.file_id);
+    let root = d.return_expr.file_id.parse_or_expand(ctx.sema.db);
     let return_expr = d.return_expr.value.to_node(&root);
     let stmt = return_expr.syntax().parent().and_then(ast::ExprStmt::cast);
 

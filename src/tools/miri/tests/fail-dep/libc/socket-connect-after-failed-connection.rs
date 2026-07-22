@@ -54,7 +54,7 @@ fn main() {
     assert!(errno != 0);
 
     // Ensure that error readiness is cleared after reading SO_ERROR.
-    let readiness = current_epoll_readiness::<8>(client_sockfd, EPOLLET | EPOLLOUT | EPOLLERR);
+    let readiness = current_epoll_readiness(client_sockfd, EPOLLET | EPOLLOUT | EPOLLERR);
     assert!(readiness & EPOLLERR == 0);
 
     unsafe {

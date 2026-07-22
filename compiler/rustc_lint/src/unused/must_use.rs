@@ -143,7 +143,7 @@ pub fn is_ty_must_use<'tcx>(
         return IsTyMustUse::Trivial;
     }
 
-    let parent_mod_did = cx.tcx.parent_module(expr.hir_id).to_def_id();
+    let parent_mod_did = cx.tcx.parent_module(expr.hir_id);
     let is_uninhabited =
         |t: Ty<'tcx>| !t.is_inhabited_from(cx.tcx, parent_mod_did, cx.typing_env());
 

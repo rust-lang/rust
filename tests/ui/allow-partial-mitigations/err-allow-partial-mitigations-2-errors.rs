@@ -1,4 +1,4 @@
-// ignore-tidy-linelength
+// ignore-tidy-file-linelength
 //@ revisions: both enable-separately-disable-together enable-together-disable-separately
 //@ check-fail
 //@ ignore-nvptx64 stack protector is not supported

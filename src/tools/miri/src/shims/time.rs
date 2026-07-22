@@ -43,6 +43,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     return Some(TimeoutClock::Monotonic);
                 }
             }
+            #[allow(clippy::collapsible_match)] // collapsing would remove symmetry
             Os::MacOs => {
                 // `CLOCK_UPTIME_RAW` supposed to not increment while the system is asleep... but
                 // that's not really something a program running inside Miri can tell, anyway.
@@ -463,8 +464,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     /// Parse a `timespec` struct and return it as a [`Duration`]. It returns [`None`]
     /// if the value in the `timespec` struct is invalid. Some libc functions will return
     /// EINVAL in this case.
-    fn read_timespec(&mut self, tp: &MPlaceTy<'tcx>) -> InterpResult<'tcx, Option<Duration>> {
-        let this = self.eval_context_mut();
+    fn read_timespec(&self, tp: &MPlaceTy<'tcx>) -> InterpResult<'tcx, Option<Duration>> {
+        let this = self.eval_context_ref();
         let sec_field = this.project_field_named(tp, "tv_sec")?;
         let sec = this.read_scalar(&sec_field)?.to_int(sec_field.layout.size)?;
         let nsec_field = this.project_field_named(tp, "tv_nsec")?;

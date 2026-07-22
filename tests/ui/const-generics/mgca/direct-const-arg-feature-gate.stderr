@@ -1,0 +1,29 @@
+error[E0658]: use of unstable library feature `min_generic_const_args`
+  --> $DIR/direct-const-arg-feature-gate.rs:1:32
+   |
+LL | fn foo<const N: usize>(_: [(); core::direct_const_arg!(N)]) {}
+   |                                ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #132980 <https://github.com/rust-lang/rust/issues/132980> for more information
+   = help: add `#![feature(min_generic_const_args)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: generic parameters may not be used in const operations
+  --> $DIR/direct-const-arg-feature-gate.rs:1:56
+   |
+LL | fn foo<const N: usize>(_: [(); core::direct_const_arg!(N)]) {}
+   |                                                        ^ cannot perform const operation using `N`
+   |
+   = help: const parameters may only be used as standalone arguments here, i.e. `N`
+   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
+   = help: alternatively, you can use `#![feature(generic_const_args)]` and extract the expression into a `type const` item
+
+error: expected expression, found `direct_const_arg!()` constant
+  --> $DIR/direct-const-arg-feature-gate.rs:1:32
+   |
+LL | fn foo<const N: usize>(_: [(); core::direct_const_arg!(N)]) {}
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

@@ -32,7 +32,7 @@ fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &[DefId] {
                 let item_def_id = trait_item_ref.owner_id.to_def_id();
                 [item_def_id]
                     .into_iter()
-                    .chain(rpitit_items.get(&item_def_id).into_iter().flatten().copied())
+                    .chain(rpitit_items.get(&item_def_id).into_flat_iter().copied())
             }))
         }
         hir::ItemKind::Impl(impl_) => {
@@ -44,7 +44,7 @@ fn associated_item_def_ids(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &[DefId] {
                 let item_def_id = impl_item_ref.owner_id.to_def_id();
                 [item_def_id]
                     .into_iter()
-                    .chain(rpitit_items.get(&item_def_id).into_iter().flatten().copied())
+                    .chain(rpitit_items.get(&item_def_id).into_flat_iter().copied())
             }))
         }
         _ => span_bug!(item.span, "associated_item_def_ids: not impl or trait"),
@@ -343,7 +343,7 @@ fn associated_type_for_impl_trait_in_impl(
         let mut own_params = trait_assoc_generics.own_params.clone();
 
         let parent_generics = tcx.generics_of(impl_local_def_id.to_def_id());
-        let parent_count = parent_generics.parent_count + parent_generics.own_params.len();
+        let parent_count = parent_generics.count();
 
         for param in &mut own_params {
             param.index = param.index + parent_count as u32 - trait_assoc_parent_count as u32;

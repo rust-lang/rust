@@ -104,7 +104,7 @@ fn match_candidate<'tcx>(
             obligation.param_env,
             obligation.cause.clone(),
             obligation.recursion_depth,
-            candidate,
+            Unnormalized::new_wip(candidate),
             &mut nested,
         );
     }
@@ -245,7 +245,7 @@ fn evaluate_host_effect_from_conditionally_const_item_bounds<'tcx>(
                         obligation.param_env,
                         obligation.cause.clone(),
                         obligation.recursion_depth,
-                        trait_ref.skip_norm_wip(),
+                        trait_ref,
                         nested,
                     );
                     (trait_ref, span)
@@ -464,7 +464,7 @@ fn evaluate_host_effect_for_destruct_goal<'tcx>(
                 })
                 .collect();
             match adt_def.destructor(tcx).map(|dtor| tcx.constness(dtor.did)) {
-                Some(hir::Constness::Const { always: true }) => todo!("FIXME(comptime)"),
+                Some(hir::Constness::Const { always: true }) => unimplemented!("FIXME(comptime)"),
                 // `Drop` impl exists, but it's not const. Type cannot be `[const] Destruct`.
                 Some(hir::Constness::NotConst) => return Err(EvaluationFailure::NoSolution),
                 // `Drop` impl exists, and it's const. Require `Ty: [const] Drop` to hold.
@@ -558,7 +558,7 @@ fn evaluate_host_effect_for_fn_goal<'tcx>(
         // but they don't really need to right now.
         ty::CoroutineClosure(_, _) => return Err(EvaluationFailure::NoSolution),
 
-        ty::Closure(def, args) => (def, args),
+        ty::Closure(def, args) => (def, ty::Binder::dummy(args)),
 
         // Everything else needs explicit impls or cannot have an impl
         _ => return Err(EvaluationFailure::NoSolution),
@@ -569,12 +569,12 @@ fn evaluate_host_effect_for_fn_goal<'tcx>(
         hir::Constness::Const { always: true } => Err(EvaluationFailure::NoSolution),
         hir::Constness::Const { always: false } => Ok(tcx
             .const_conditions(def)
-            .instantiate(tcx, args)
+            .instantiate(tcx, args.no_bound_vars().unwrap())
             .into_iter()
             .map(|(c, span)| {
                 let code = ObligationCauseCode::WhereClause(def, span);
                 let cause =
-                    ObligationCause::new(obligation.cause.span, obligation.cause.body_id, code);
+                    ObligationCause::new(obligation.cause.span, obligation.cause.body_def_id, code);
                 Obligation::new(
                     tcx,
                     cause,
@@ -601,7 +601,8 @@ fn evaluate_host_effect_from_selection_candidate<'tcx>(
                     match tcx.impl_trait_header(impl_.impl_def_id).constness {
                         rustc_hir::Constness::Const { always } => {
                             if always {
-                                todo!()
+                                // FIXME(comptime): just bailing for now to avoid an ICE in a test.
+                                return Err(EvaluationFailure::NoSolution);
                             }
                         }
                         rustc_hir::Constness::NotConst => {

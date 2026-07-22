@@ -106,7 +106,7 @@ prepare:
 SKIP_COMPILER := --skip=compiler
 SKIP_SRC := --skip=src
 TEST_SET1 := $(SKIP_COMPILER) $(SKIP_SRC)
-TEST_SET2 := --skip=tests --skip=coverage-map --skip=coverage-run --skip=library --skip=tidyselftest
+TEST_SET2 := --skip=tests --skip=library --skip=tidyselftest
 
 ## MSVC native builders
 

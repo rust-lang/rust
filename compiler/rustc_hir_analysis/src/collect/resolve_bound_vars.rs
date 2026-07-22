@@ -1310,12 +1310,13 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                         && !self.tcx.asyncness(lifetime_ref.hir_id.owner.def_id).is_async()
                         && !self.tcx.features().anonymous_lifetime_in_impl_trait()
                     {
-                        let mut diag: rustc_errors::Diag<'_> = rustc_session::errors::feature_err(
-                            &self.tcx.sess,
-                            sym::anonymous_lifetime_in_impl_trait,
-                            lifetime_ref.ident.span,
-                            "anonymous lifetimes in `impl Trait` are unstable",
-                        );
+                        let mut diag: rustc_errors::Diag<'_> =
+                            rustc_session::diagnostics::feature_err(
+                                &self.tcx.sess,
+                                sym::anonymous_lifetime_in_impl_trait,
+                                lifetime_ref.ident.span,
+                                "anonymous lifetimes in `impl Trait` are unstable",
+                            );
 
                         if let Some(generics) =
                             self.tcx.hir_get_generics(lifetime_ref.hir_id.owner.def_id)
@@ -1956,7 +1957,6 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             | DefKind::ForeignTy
             | DefKind::GlobalAsm
             | DefKind::Impl { .. }
-            | DefKind::InlineConst
             | DefKind::LifetimeParam
             | DefKind::Macro(_)
             | DefKind::Mod

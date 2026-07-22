@@ -291,7 +291,8 @@ fn layout_of_uncached<'tcx>(
                     }
                 }
                 ty::PatternKind::NotNull => {
-                    if let BackendRepr::Scalar(scalar) | BackendRepr::ScalarPair(scalar, _) =
+                    if let BackendRepr::Scalar(scalar)
+                    | BackendRepr::ScalarPair { a: scalar, b: _, b_offset: _ } =
                         &mut layout.backend_repr
                     {
                         scalar.valid_range_mut().start = 1;
@@ -574,7 +575,7 @@ fn layout_of_uncached<'tcx>(
 
             let prefix_layouts = args
                 .as_coroutine()
-                .prefix_tys()
+                .upvar_tys()
                 .iter()
                 .map(|ty| cx.layout_of(ty))
                 .try_collect::<IndexVec<_, _>>()?;
@@ -718,8 +719,7 @@ fn layout_of_uncached<'tcx>(
             let discriminants_iter = || {
                 def.is_enum()
                     .then(|| def.discriminants(tcx).map(|(v, d)| (v, d.val as i128)))
-                    .into_iter()
-                    .flatten()
+                    .into_flat_iter()
             };
 
             let maybe_unsized = def.is_struct()

@@ -29,6 +29,9 @@ pub(crate) fn target() -> Target {
                 "sm_60", "sm_61", "sm_62"
             ),
 
+            // crates with different `target-cpu`s are not link-compatible for NVPTX
+            requires_consistent_cpu: true,
+
             // FIXME: create tests for the atomics.
             max_atomic_width: Some(64),
 

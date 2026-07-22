@@ -151,7 +151,7 @@ impl<'a> PathTransform<'a> {
                 prettify_macro_expansion(
                     db,
                     node,
-                    db.expansion_span_map(file_id),
+                    file_id.expansion_span_map(db),
                     self.target_scope.module().krate(db).into(),
                 )
             }
@@ -415,16 +415,18 @@ impl Ctx<'_> {
                         editor.replace(path.syntax(), qualified.clone().syntax());
                     } else if let Some(path_ty) = ast::PathType::cast(parent) {
                         let old = path_ty.syntax();
+                        let needs_paren = old.parent().is_some_and(|it| subst.needs_parens_in(&it));
+                        let subst =
+                            if needs_paren { make.ty_paren(subst.clone()) } else { subst.clone() };
 
                         if old.parent().is_some() {
-                            editor.replace(old, subst.clone().syntax());
+                            editor.replace(old, subst.syntax());
                         } else {
                             let start = path_ty.syntax().first_child().map(NodeOrToken::Node)?;
                             let end = path_ty.syntax().last_child().map(NodeOrToken::Node)?;
                             editor.replace_all(
                                 start..=end,
                                 subst
-                                    .clone()
                                     .syntax()
                                     .children()
                                     .map(NodeOrToken::Node)

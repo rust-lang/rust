@@ -950,3 +950,20 @@ fn test_unique_rc_unsizing_coercion() {
     let rc: Rc<[u8]> = UniqueRc::into_rc(rc);
     assert_eq!(*rc, [123, 0, 0]);
 }
+
+/// Test that `Rc::make_mut` does not forget an allocator when it steals the data.
+#[test]
+fn issue_158875_make_mut_dont_leak_allocator() {
+    use std::alloc::Global;
+
+    let alloc = Rc::new(Global);
+
+    {
+        let mut arc = Rc::new_in(123, alloc.clone());
+        let weak = Rc::downgrade(&arc); // create a weak so make_mut steals the data
+        _ = Rc::make_mut(&mut arc);
+        assert_eq!(weak.upgrade(), None);
+    }
+
+    assert_eq!(Rc::strong_count(&alloc), 1); // if this is >1, we have a memory leak!
+}

@@ -74,7 +74,7 @@ def execute_command(command_interpreter, command):
     global registered_breakpoints
 
     res = lldb.SBCommandReturnObject()
-    print(command)
+    print(f"(lldb) {command}")
     command_interpreter.HandleCommand(command, res)
 
     if res.Succeeded():

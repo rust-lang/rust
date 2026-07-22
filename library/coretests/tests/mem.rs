@@ -139,32 +139,6 @@ fn test_transmute_copy_unaligned() {
 }
 
 #[test]
-#[cfg(panic = "unwind")]
-fn test_transmute_copy_grow_panics() {
-    use std::panic;
-
-    let err = panic::catch_unwind(panic::AssertUnwindSafe(|| unsafe {
-        let _unused: u64 = transmute_copy(&1_u8);
-    }));
-
-    match err {
-        Ok(_) => unreachable!(),
-        Err(payload) => {
-            payload
-                .downcast::<&'static str>()
-                .and_then(|s| {
-                    if *s == "cannot transmute_copy if Dst is larger than Src" {
-                        Ok(s)
-                    } else {
-                        Err(s)
-                    }
-                })
-                .unwrap_or_else(|p| panic::resume_unwind(p));
-        }
-    }
-}
-
-#[test]
 #[allow(dead_code)]
 fn test_discriminant_send_sync() {
     enum Regular {

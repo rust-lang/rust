@@ -318,6 +318,13 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
     pub fn storage_dead<Bx: BuilderMethods<'a, 'tcx, Value = V>>(&self, bx: &mut Bx) {
         bx.lifetime_end(self.val.llval, self.layout.size);
     }
+
+    /// The same place, but with [`PlaceValue::align`] lowered to [`Align::ONE`].
+    pub fn unaligned(self) -> Self {
+        let Self { val, layout } = self;
+        let val = PlaceValue { align: Align::ONE, ..val };
+        Self { val, layout }
+    }
 }
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {

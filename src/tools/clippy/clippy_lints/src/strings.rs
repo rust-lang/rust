@@ -1,9 +1,7 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::res::{MaybeDef, MaybeQPath};
 use clippy_utils::source::{snippet, snippet_with_applicability, snippet_with_context};
-use clippy_utils::{
-    SpanlessEq, get_expr_use_or_unification_node, get_parent_expr, is_lint_allowed, method_calls, peel_blocks, sym,
-};
+use clippy_utils::{SpanlessEq, get_expr_use_or_unification_node, get_parent_expr, is_lint_allowed, method_calls, sym};
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
@@ -11,7 +9,6 @@ use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, LangItem, Node};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
-use rustc_span::{Spanned, SyntaxContext};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -96,7 +93,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Check if the string is transformed to byte array and casted back to string.
+    /// Check if the string is transformed to byte array and cast back to string.
     ///
     /// ### Why is this bad?
     /// It's unnecessary, the string can be used directly.
@@ -220,27 +217,21 @@ declare_lint_pass!(TrimSplitWhitespace => [TRIM_SPLIT_WHITESPACE]);
 
 impl<'tcx> LateLintPass<'tcx> for StringAdd {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
-        let ctxt = e.span.ctxt();
-        if ctxt.in_external_macro(cx.sess().source_map()) {
-            return;
-        }
         match e.kind {
-            ExprKind::Binary(
-                Spanned {
-                    node: BinOpKind::Add, ..
-                },
-                left,
-                _,
-            ) if is_string(cx, left) => {
-                if !is_lint_allowed(cx, STRING_ADD_ASSIGN, e.hir_id) {
-                    let parent = get_parent_expr(cx, e);
-                    if let Some(p) = parent
-                            && let ExprKind::Assign(target, _, _) = p.kind
-                            // avoid duplicate matches
-                            && SpanlessEq::new(cx).eq_expr(ctxt, target, left)
-                    {
-                        return;
-                    }
+            ExprKind::Binary(op, lhs, _)
+                if let BinOpKind::Add = op.node
+                    && cx.typeck_results().expr_ty(lhs).is_lang_item(cx, LangItem::String)
+                    && let ctxt = e.span.ctxt()
+                    && op.span.ctxt() == ctxt
+                    && !ctxt.in_external_macro(cx.tcx.sess.source_map()) =>
+            {
+                if !is_lint_allowed(cx, STRING_ADD_ASSIGN, e.hir_id)
+                    && let Node::Expr(parent) = cx.tcx.parent_hir_node(e.hir_id)
+                    && let ExprKind::Assign(assign_lhs, ..) = parent.kind
+                    && parent.span.ctxt() == ctxt
+                    && SpanlessEq::new(cx).eq_expr(ctxt, assign_lhs, lhs)
+                {
+                    return;
                 }
                 span_lint(
                     cx,
@@ -249,7 +240,16 @@ impl<'tcx> LateLintPass<'tcx> for StringAdd {
                     "you added something to a string. Consider using `String::push_str()` instead",
                 );
             },
-            ExprKind::Assign(target, src, _) if is_string(cx, target) && is_add(cx, ctxt, src, target) => {
+            ExprKind::Assign(lhs, rhs, _)
+                if let ExprKind::Binary(op, add_lhs, _) = rhs.kind
+                    && let BinOpKind::Add = op.node
+                    && cx.typeck_results().expr_ty(lhs).is_lang_item(cx, LangItem::String)
+                    && let ctxt = e.span.ctxt()
+                    && SpanlessEq::new(cx).eq_expr(ctxt, lhs, add_lhs)
+                    && rhs.span.ctxt() == ctxt
+                    && op.span.ctxt() == ctxt
+                    && !ctxt.in_external_macro(cx.tcx.sess.source_map()) =>
+            {
                 span_lint(
                     cx,
                     STRING_ADD_ASSIGN,
@@ -258,39 +258,24 @@ impl<'tcx> LateLintPass<'tcx> for StringAdd {
                          `String::push_str()` instead",
                 );
             },
-            ExprKind::Index(target, _idx, _) => {
-                let e_ty = cx.typeck_results().expr_ty_adjusted(target).peel_refs();
-                if e_ty.is_str() || e_ty.is_lang_item(cx, LangItem::String) {
-                    span_lint(
-                        cx,
-                        STRING_SLICE,
-                        e.span,
-                        "indexing into a string may panic if the index is within a UTF-8 character",
-                    );
-                }
+            ExprKind::Index(base, ..)
+                if let ty::Ref(_, ty, _) = *cx.typeck_results().expr_ty_adjusted(base).kind()
+                    && match *ty.kind() {
+                        ty::Adt(def, _) => def.is_lang_item(cx, LangItem::String),
+                        ty::Str => true,
+                        _ => false,
+                    }
+                    && !e.span.in_external_macro(cx.tcx.sess.source_map()) =>
+            {
+                span_lint(
+                    cx,
+                    STRING_SLICE,
+                    e.span,
+                    "indexing into a string may panic if the index is within a UTF-8 character",
+                );
             },
             _ => {},
         }
-    }
-}
-
-fn is_string(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
-    cx.typeck_results()
-        .expr_ty(e)
-        .peel_refs()
-        .is_lang_item(cx, LangItem::String)
-}
-
-fn is_add(cx: &LateContext<'_>, ctxt: SyntaxContext, src: &Expr<'_>, target: &Expr<'_>) -> bool {
-    match peel_blocks(src).kind {
-        ExprKind::Binary(
-            Spanned {
-                node: BinOpKind::Add, ..
-            },
-            left,
-            _,
-        ) => SpanlessEq::new(cx).eq_expr(ctxt, target, left),
-        _ => false,
     }
 }
 

@@ -1,7 +1,7 @@
 //! Handles the `Enter` key press, including comment continuation and
 //! indentation in brace-delimited constructs.
 
-use ide_db::{FilePosition, RootDatabase};
+use ide_db::{FilePosition, RootDatabase, source_change::SnippetEdit};
 use syntax::{
     AstNode, SmolStr, SourceFile,
     SyntaxKind::*,
@@ -113,7 +113,8 @@ fn on_enter_in_braces(l_curly: SyntaxToken, position: FilePosition) -> Option<Te
         return None;
     }
 
-    let (r_curly, content) = brace_contents_on_same_line(&l_curly)?;
+    let (r_curly, mut content) = brace_contents_on_same_line(&l_curly)?;
+    SnippetEdit::escape_snippet_bits(&mut content);
     let indent = IndentLevel::from_token(&l_curly);
     Some(TextEdit::replace(
         TextRange::new(position.offset, r_curly.text_range().start()),
@@ -681,6 +682,24 @@ use path::{$0
     Thing
 };
             "#,
+        );
+    }
+
+    #[test]
+    fn escapes_dollar_sign_in_brace_contents() {
+        do_check(
+            r#"
+fn f() {
+    const {$0$bar};
+}
+"#,
+            r#"
+fn f() {
+    const {
+        $0\$bar
+    };
+}
+"#,
         );
     }
 }

@@ -916,7 +916,7 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
         if matches!(bm.0, ByRef::Yes(Mutability::Mut))
             && let MutblCap::WeaklyNot = pat_info.max_ref_mutbl
         {
-            // FIXME: Emit an error: cannot borrow as mutable inside an `&` pattern.
+            self.push_diagnostic(InferenceDiagnostic::MutRefInImmRefPat { pat });
         }
 
         // ...and store it in a side table:
@@ -1242,10 +1242,10 @@ impl<'a, 'db> InferenceContext<'a, 'db> {
         // Report an error if an incorrect number of fields was specified.
         if matches!(variant, VariantId::UnionId(_)) {
             if fields.len() != 1 {
-                // FIXME: Emit an error, unions can't have more than one field.
+                self.push_diagnostic(InferenceDiagnostic::UnionPatMustHaveExactlyOneField { pat });
             }
             if has_rest_pat {
-                // FIXME: Emit an error, unions can't have a rest pat.
+                self.push_diagnostic(InferenceDiagnostic::UnionPatHasRest { pat });
             }
         } else if !unmentioned_fields.is_empty() && !has_rest_pat {
             // FIXME: Emit an error.

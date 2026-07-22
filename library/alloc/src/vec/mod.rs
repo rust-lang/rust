@@ -2629,23 +2629,49 @@ impl<T, A: Allocator> Vec<T, A> {
         self.dedup_by(|a, b| key(a) == key(b))
     }
 
-    /// Removes all but the first of consecutive elements in the vector satisfying a given equality
-    /// relation.
+    /// Removes all but the first of consecutive elements in the vector that are
+    /// "equal" according to the given predicate function.
     ///
-    /// The `same_bucket` function is passed references to two elements from the vector and
-    /// must determine if the elements compare equal. The elements are passed in opposite order
-    /// from their order in the slice, so if `same_bucket(a, b)` returns `true`, `a` is removed.
+    /// The predicate `same_bucket(x, p)` is passed references to two elements.
+    /// If it returns `true`, the element `x` is removed from the vector.
     ///
-    /// If the vector is sorted, this removes all duplicates.
+    /// The element `p` occurs *before* `x` in the vector (`[.., p, .., x, ..]`),
+    /// so `same_bucket(x, p)` is receiving them in reversed order (unlike [`windows`]).
+    ///
+    /// If the vector is sorted, this removes all duplicates. For more complicated predicates
+    /// however, the order (ascending vs. descending) can matter.
+    ///
+    /// [`windows`]: slice::windows
     ///
     /// # Examples
     ///
     /// ```
     /// let mut vec = vec!["foo", "bar", "Bar", "baz", "bar"];
-    ///
-    /// vec.dedup_by(|a, b| a.eq_ignore_ascii_case(b));
-    ///
+    /// vec.dedup_by(|x, p| x.eq_ignore_ascii_case(p));
     /// assert_eq!(vec, ["foo", "bar", "baz", "bar"]);
+    /// ```
+    ///
+    /// Both references passed to `same_bucket` are mutable.
+    /// This allows merging elements by mutating `p` and returning `true`:
+    ///
+    /// ```
+    /// let mut ranges = vec![1..2, 2..4, 2..5, 8..9];
+    ///
+    /// // Sort ranges by start, and if equal, by end (lexicographically)
+    /// // Sorting in reverse instead (`x.start.cmp(&p.start)...`) would later fail
+    /// ranges.sort_unstable_by(|p, x| p.start.cmp(&x.start).then(p.end.cmp(&x.end)));
+    ///
+    /// // Merge touching (`1..2` and `2..4`) and then overlapping (`1..4` and `2..5`) ranges
+    /// ranges.dedup_by(|x, p| {
+    ///     if p.end >= x.start {
+    ///         p.end = p.end.max(x.end);
+    ///         true
+    ///     } else {
+    ///         false
+    ///     }
+    /// });
+    ///
+    /// assert_eq!(ranges, [1..5, 8..9]);
     /// ```
     #[stable(feature = "dedup_by", since = "1.16.0")]
     pub fn dedup_by<F>(&mut self, mut same_bucket: F)
@@ -2938,8 +2964,26 @@ impl<T, A: Allocator> Vec<T, A> {
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     unsafe fn append_elements(&mut self, other: *const [T]) {
+        self.reserve(other.len());
+        unsafe {
+            self.append_elements_unreserved(other);
+        }
+    }
+
+    /// Appends elements to `self` from other buffer, returning [`TryReserveError`] on OOM.
+    #[inline]
+    unsafe fn try_append_elements(&mut self, other: *const [T]) -> Result<(), TryReserveError> {
+        self.try_reserve(other.len())?;
+        unsafe {
+            self.append_elements_unreserved(other);
+        }
+        Ok(())
+    }
+
+    /// Appends elements to `self` from other buffer without reserving additional capacity.
+    #[inline]
+    unsafe fn append_elements_unreserved(&mut self, other: *const [T]) {
         let count = other.len();
-        self.reserve(count);
         let len = self.len();
         if count > 0 {
             unsafe {
@@ -3606,6 +3650,22 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
         unsafe {
             self.spec_extend_from_within(range);
         }
+    }
+}
+
+impl<A: Allocator> Vec<u8, A> {
+    #[cfg_attr(
+        not(no_global_oom_handling),
+        expect(
+            dead_code,
+            reason = "currently only used in IO module when global OOM handling is disabled"
+        )
+    )]
+    pub(crate) fn try_extend_from_slice_of_bytes(
+        &mut self,
+        other: &[u8],
+    ) -> Result<(), TryReserveError> {
+        unsafe { self.try_append_elements(other) }
     }
 }
 

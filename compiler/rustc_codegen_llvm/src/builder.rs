@@ -7,7 +7,7 @@ pub(crate) mod autodiff;
 pub(crate) mod gpu_offload;
 
 use libc::{c_char, c_uint};
-use rustc_abi::{self as abi, Align, Size, WrappingRange};
+use rustc_abi::{self as abi, Align, CanonAbi, Size, WrappingRange};
 use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::common::{IntPredicate, RealPredicate, SynchronizationScope, TypeKind};
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
@@ -475,6 +475,11 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             bundles.push(kcfi_bundle);
         }
 
+        let pauth = self.ptrauth_operand_bundle(llfn, fn_abi);
+        if let Some(p) = pauth.as_ref().map(|b| b.as_ref()) {
+            bundles.push(p);
+        }
+
         let invoke = unsafe {
             llvm::LLVMBuildInvokeWithOperandBundles(
                 self.llbuilder,
@@ -765,7 +770,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         let val = if let Some(_) = place.val.llextra {
             // FIXME: Merge with the `else` below?
             OperandValue::Ref(place.val)
-        } else if place.layout.is_llvm_immediate() {
+        } else if place.layout.backend_repr.is_scalar_or_simd() {
             let mut const_llval = None;
             let llty = place.layout.llvm_type(self);
             if let Some(global) = llvm::LLVMIsAGlobalVariable(place.val.llval) {
@@ -788,9 +793,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 }
             });
             OperandValue::Immediate(llval)
-        } else if let abi::BackendRepr::ScalarPair(a, b) = place.layout.backend_repr {
-            let b_offset = a.size(self).align_to(b.align(self).abi);
-
+        } else if let abi::BackendRepr::ScalarPair { a, b, b_offset } = place.layout.backend_repr {
             let mut load = |i, scalar: abi::Scalar, layout, align, offset| {
                 let llptr = if i == 0 {
                     place.val.llval
@@ -868,8 +871,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         unsafe {
             let store = llvm::LLVMBuildStore(self.llbuilder, val, ptr);
             let align = align.min(self.cx().tcx.sess.target.max_reliable_alignment());
-            let align =
-                if flags.contains(MemFlags::UNALIGNED) { 1 } else { align.bytes() as c_uint };
+            let align = align.bytes() as c_uint;
             llvm::LLVMSetAlignment(store, align);
             if flags.contains(MemFlags::VOLATILE) {
                 llvm::LLVMSetVolatile(store, llvm::TRUE);
@@ -1175,7 +1177,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         // vs. copying a struct with mixed types requires different derivative handling.
         // The TypeTree tells Enzyme exactly what memory layout to expect.
         if let Some(tt) = tt {
-            crate::typetree::add_tt(self.cx().llmod, self.cx().llcx, memcpy, tt);
+            crate::typetree::add_tt(self, memcpy, tt);
         }
     }
 
@@ -1470,6 +1472,11 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         let kcfi_bundle = self.kcfi_operand_bundle(caller_attrs, fn_abi, callee_instance, llfn);
         if let Some(kcfi_bundle) = kcfi_bundle.as_ref().map(|b| b.as_ref()) {
             bundles.push(kcfi_bundle);
+        }
+
+        let pauth = self.ptrauth_operand_bundle(llfn, fn_abi);
+        if let Some(p) = pauth.as_ref().map(|b| b.as_ref()) {
+            bundles.push(p);
         }
 
         let call = unsafe {
@@ -1902,6 +1909,11 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             bundles.push(kcfi_bundle);
         }
 
+        let pauth = self.ptrauth_operand_bundle(llfn, fn_abi);
+        if let Some(p) = pauth.as_ref().map(|b| b.as_ref()) {
+            bundles.push(p);
+        }
+
         let callbr = unsafe {
             llvm::LLVMBuildCallBr(
                 self.llbuilder,
@@ -2019,6 +2031,40 @@ impl<'a, 'll, 'tcx> Builder<'a, 'll, 'tcx> {
             None
         };
         kcfi_bundle
+    }
+
+    // Emits pauth operand bundle.
+    fn ptrauth_operand_bundle(
+        &mut self,
+        llfn: &'ll Value,
+        fn_abi: Option<&FnAbi<'tcx, Ty<'tcx>>>,
+    ) -> Option<llvm::OperandBundleBox<'ll>> {
+        if self.sess().pointer_authentication_functions().is_none() {
+            return None;
+        }
+        // Pointer authentication support is currently limited to extern "C" calls; filter out other
+        // ABIs.
+        if fn_abi?.conv != CanonAbi::C {
+            return None;
+        }
+        // Filter out LLVM intrinsics.
+        if llvm::get_value_name(llfn).starts_with(b"llvm.") {
+            return None;
+        }
+
+        // FIXME(jchlanda) Operand bundles should only be attached to indirect function calls.
+        // However, function pointer signing is currently performed in `get_fn_addr`, which causes
+        // the logic to be applied too broadly, including to function values (not just pointers).
+        // As a result, direct calls using signed function values must also receive operand
+        // bundles.
+        // Once this is resolved, we should analyze each call and skip direct calls. See the
+        // discussion in the rust-lang issue: <https://github.com/rust-lang/rust/issues/152532>
+        let key: u32 = 0;
+        let discriminator: u64 = 0;
+        Some(llvm::OperandBundleBox::new(
+            "ptrauth",
+            &[self.const_u32(key), self.const_u64(discriminator)],
+        ))
     }
 
     /// Emits a call to `llvm.instrprof.increment`. Used by coverage instrumentation.

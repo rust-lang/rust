@@ -1157,7 +1157,7 @@ intrinsics:
     doc: Interleave even elements from two inputs
     arguments: ["op1: {sve_type}", "op2: {sve_type}"]
     return_type: "{sve_type}"
-    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    types: [b8, f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
     assert_instr: [trn1]
     compose:
       - LLVMLink: { name: "trn1.{sve_type}" }
@@ -1167,10 +1167,13 @@ intrinsics:
     doc: Interleave even elements from two inputs
     arguments: ["op1: {sve_type}", "op2: {sve_type}"]
     return_type: "{sve_type}"
-    types: [b8, b16, b32, b64]
+    types: [b16, b32, b64]
     assert_instr: [trn1]
     compose:
-      - LLVMLink: { name: "trn1.{sve_type}" }
+      - LLVMLink:
+          name: "llvm.aarch64.sve.trn1.b{size}"
+          arguments: ["op1: svbool_t", "op2: svbool_t"]
+          return_type: "svbool_t"
 
   - name: svtrn1q[_{type}]
     attr: [*sve-unstable]
@@ -1188,7 +1191,7 @@ intrinsics:
     doc: Interleave odd elements from two inputs
     arguments: ["op1: {sve_type}", "op2: {sve_type}"]
     return_type: "{sve_type}"
-    types: [f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
+    types: [b8, f32, f64, i8, i16, i32, i64, u8, u16, u32, u64]
     assert_instr: [trn2]
     compose:
       - LLVMLink: { name: "trn2.{sve_type}" }
@@ -1198,10 +1201,13 @@ intrinsics:
     doc: Interleave odd elements from two inputs
     arguments: ["op1: {sve_type}", "op2: {sve_type}"]
     return_type: "{sve_type}"
-    types: [b8, b16, b32, b64]
+    types: [b16, b32, b64]
     assert_instr: [trn2]
     compose:
-      - LLVMLink: { name: "trn2.{sve_type}" }
+      - LLVMLink:
+          name: "llvm.aarch64.sve.trn2.b{size}"
+          arguments: ["op1: svbool_t", "op2: svbool_t"]
+          return_type: "svbool_t"
 
   - name: svtrn2q[_{type}]
     attr: [*sve-unstable]

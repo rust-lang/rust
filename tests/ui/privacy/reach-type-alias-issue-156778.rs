@@ -1,5 +1,5 @@
 //@ check-pass
-#![feature(lazy_type_alias)]
+#![feature(checked_type_aliases)]
 
 use src::hidden_core;
 mod src {

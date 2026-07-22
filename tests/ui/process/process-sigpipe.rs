@@ -31,9 +31,9 @@ fn main() {
         thread::sleep_ms(5000);
         process::exit(1);
     });
-    // QNX Neutrino does not have `yes`. Therefore, use `while-echo` for `nto`
+    // QNX does not have `yes`. Therefore, use `while-echo` for `nto`
     // and `yes` for other platforms.
-    let command = if cfg!(target_os = "nto") {
+    let command = if cfg!(any(target_os = "nto", target_os = "qnx")) {
         "while echo y ; do : ; done | head"
     } else {
         "yes | head"

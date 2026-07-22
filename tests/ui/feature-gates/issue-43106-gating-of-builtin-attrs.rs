@@ -98,7 +98,6 @@
 #![crate_name = "0900"]
 #![crate_type = "bin"] // cannot pass "0800" here
 
-// FIXME(#44232) we should warn that this isn't used.
 #![feature(rust1)]
 //~^ WARN no longer requires an attribute to enable
 //~| NOTE `#[warn(stable_features)]` on by default

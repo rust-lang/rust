@@ -6,9 +6,6 @@ fn unwrap(_1: Option<T>) -> T {
     let mut _2: isize;
     let _3: T;
     let mut _4: !;
-    let mut _5: isize;
-    let mut _6: isize;
-    let mut _7: isize;
     scope 1 {
         debug x => _3;
     }
@@ -32,12 +29,10 @@ fn unwrap(_1: Option<T>) -> T {
         _3 = move ((_1 as Some).0: T);
         _0 = move _3;
         StorageDead(_3);
-        _5 = discriminant(_1);
         return;
     }
 
     bb4 (cleanup): {
-        _7 = discriminant(_1);
         resume;
     }
 }

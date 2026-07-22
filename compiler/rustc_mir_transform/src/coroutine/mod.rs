@@ -79,6 +79,7 @@ use rustc_span::def_id::DefId;
 use tracing::{debug, instrument};
 
 use crate::deref_separator::deref_finder;
+use crate::patch::MirPatch;
 use crate::{abort_unwinding_calls, pass_manager as pm, simplify};
 
 pub(super) struct StateTransform;
@@ -199,6 +200,8 @@ struct TransformVisitor<'tcx> {
     old_yield_ty: Ty<'tcx>,
 
     old_ret_ty: Ty<'tcx>,
+
+    patch: Option<MirPatch<'tcx>>,
 }
 
 impl<'tcx> TransformVisitor<'tcx> {
@@ -408,10 +411,50 @@ impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
     }
 
     #[tracing::instrument(level = "trace", skip(self), ret)]
-    fn visit_place(&mut self, place: &mut Place<'tcx>, _: PlaceContext, _location: Location) {
+    fn visit_place(&mut self, place: &mut Place<'tcx>, _: PlaceContext, location: Location) {
         // Replace an Local in the remap with a coroutine struct access
         if let Some(&Some((ty, variant_index, idx))) = self.remap.get(place.local) {
             replace_base(place, self.make_field(variant_index, idx, ty), self.tcx);
+        }
+        if let Some(new_projection) = self.process_projection(&place.projection, location) {
+            place.projection = self.tcx.mk_place_elems(&new_projection);
+        }
+    }
+
+    fn process_projection_elem(
+        &mut self,
+        elem: PlaceElem<'tcx>,
+        location: Location,
+    ) -> Option<PlaceElem<'tcx>> {
+        match elem {
+            PlaceElem::Index(local) => {
+                if let Some(&Some((ty, variant, idx))) = self.remap.get(local) {
+                    // `PlaceElem::Index` only accepts a `Local`, not an arbitrary `Place`.
+                    // If the local in indexing was saved across a yield point and remapped to a
+                    // coroutine struct field, we cannot inline the struct field access into
+                    // the index projection.
+                    // For example, an local storing the counter to track which element to drop in
+                    // an array is one such case.
+                    //
+                    // Instead, we inject an assignment before this location to restore the
+                    // saved local from the coroutine struct (`local = copy $projection`),
+                    // and leave the `PlaceElem::Index(local)` projection unchanged.
+                    let field = self.make_field(variant, idx, ty);
+                    self.patch.as_mut().unwrap().add_assign(
+                        location,
+                        Place::from(local),
+                        Rvalue::Use(Operand::Copy(field), WithRetag::No),
+                    );
+                }
+                None
+            }
+            PlaceElem::Field(..)
+            | PlaceElem::OpaqueCast(..)
+            | PlaceElem::UnwrapUnsafeBinder(..)
+            | PlaceElem::Deref
+            | PlaceElem::ConstantIndex { .. }
+            | PlaceElem::Subslice { .. }
+            | PlaceElem::Downcast(..) => None,
         }
     }
 
@@ -1096,6 +1139,7 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
             new_ret_local,
             old_ret_ty,
             old_yield_ty,
+            patch: Some(MirPatch::new(body)),
         };
         transform.visit_body(body);
 
@@ -1116,6 +1160,7 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
                 Some(Statement::new(source_info, assign))
             }),
         );
+        transform.patch.take().unwrap().apply(body);
 
         // Remove the context argument within generator bodies.
         if matches!(coroutine_kind, CoroutineKind::Desugared(CoroutineDesugaring::Gen, _)) {

@@ -162,13 +162,17 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                 ty::AnonConstKind::GCE => Some(parent_did),
 
                 // Field defaults are allowed to use generic parameters, e.g. `field: u32 = /*defid: N + 1*/`
-                ty::AnonConstKind::NonTypeSystem
+                ty::AnonConstKind::NonTypeSystemAnon
                     if matches!(tcx.parent_hir_node(hir_id), Node::TyPat(_) | Node::Field(_)) =>
                 {
                     Some(parent_did)
                 }
                 // Default to no generic parameters for other kinds of anon consts
-                ty::AnonConstKind::NonTypeSystem => None,
+                ty::AnonConstKind::NonTypeSystemAnon => None,
+                ty::AnonConstKind::NonTypeSystemInline => span_bug!(
+                    tcx.def_span(def_id),
+                    "a DefKind::AnonConst with a HIR parent of hir::Node::AnonConst should never be an AnonConstKind::NonTypeSystemInline"
+                ),
             }
         }
         Node::ConstBlock(_)
@@ -214,6 +218,17 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
             "synthetic HIR should have its `generics_of` explicitly fed"
         ),
 
+        Node::ConstArg(..) => {
+            // These can show up in mGCA when representing "direct" const arguments. The
+            // DefCollector cannot know whether an anon const will be represented by an actual HIR
+            // Node::AnonConst, or whether it will be represented directly, so it must generate a
+            // DefId. If it ends up being direct, this DefId is then attached to the top-level
+            // ConstArg, which is what we are seeing here.
+            debug_assert!(tcx.features().min_generic_const_args());
+            // Forward to the real parent.
+            Some(tcx.local_parent(def_id))
+        }
+
         _ => span_bug!(tcx.def_span(def_id), "generics_of: unexpected node kind {node:?}"),
     };
 
@@ -242,8 +257,9 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
         let generics = tcx.generics_of(def_id);
         assert!(!has_self);
         parent_has_self = generics.has_self;
-        own_start = generics.count() as u32;
-        generics.parent_count + generics.own_params.len()
+        let count = generics.count();
+        own_start = count as u32;
+        count
     });
 
     let mut own_params: Vec<_> = Vec::with_capacity(hir_generics.params.len() + has_self as usize);

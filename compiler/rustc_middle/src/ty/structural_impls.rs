@@ -250,6 +250,7 @@ TrivialTypeTraversalImpls! {
     rustc_span::Ident,
     rustc_span::Span,
     rustc_span::Symbol,
+    rustc_span::def_id::ModId,
     rustc_target::asm::InlineAsmRegOrRegClass,
     // tidy-alphabetical-end
 }

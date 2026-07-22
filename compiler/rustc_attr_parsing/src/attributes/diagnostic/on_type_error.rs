@@ -18,6 +18,8 @@ pub(crate) struct OnTypeErrorParser {
 impl OnTypeErrorParser {
     fn parse<'sess>(&mut self, cx: &mut AcceptContext<'_, 'sess>, args: &ArgParser, mode: Mode) {
         if !cx.features().diagnostic_on_type_error() {
+            // `UnknownDiagnosticAttribute` is emitted in rustc_resolve/macros.rs
+            args.ignore_args();
             return;
         }
 

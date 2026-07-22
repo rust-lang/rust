@@ -1,6 +1,6 @@
 //! regression test for <https://github.com/rust-lang/rust/issues/74564>
 //@ build-pass
-// ignore-tidy-filelength
+// ignore-tidy-file-filelength
 #![crate_type = "rlib"]
 
 fn banana(v: &str) -> u32 {

@@ -10,7 +10,7 @@ use super::operand::{OperandRef, OperandValue};
 use super::place::PlaceValue;
 use super::{FunctionCx, IntrinsicResult};
 use crate::common::{AtomicRmwBinOp, SynchronizationScope};
-use crate::errors::InvalidMonomorphization;
+use crate::diagnostics::InvalidMonomorphization;
 use crate::mir::operand::OperandRefBuilder;
 use crate::traits::*;
 use crate::{MemFlags, meth, size_of_val};
@@ -63,6 +63,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         result_place: Option<PlaceValue<Bx::Value>>,
         source_info: SourceInfo,
     ) -> IntrinsicResult<'tcx, Bx::Value> {
+        // When `-Zforce-intrinsic-fallback` is enabled, always use the fallback body if it exists,
+        if bx.tcx().sess.opts.unstable_opts.force_intrinsic_fallback
+            && let Some(def) = bx.tcx().intrinsic(instance.def_id())
+            && !def.must_be_overridden
+        {
+            return IntrinsicResult::Fallback(ty::Instance::new_raw(
+                instance.def_id(),
+                instance.args,
+            ));
+        }
+
         let span = source_info.span;
 
         let name = bx.tcx().item_name(instance.def_id());
@@ -74,7 +85,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         if let sym::typed_swap_nonoverlapping = name {
             let pointee_ty = fn_args.type_at(0);
             let pointee_layout = bx.layout_of(pointee_ty);
-            if !bx.is_backend_ref(pointee_layout)
+            if pointee_layout.is_ssa_standalone()
                 // But if we're not going to optimize, trying to use the fallback
                 // body just makes things worse, so don't bother.
                 || bx.sess().opts.optimize == OptLevel::No
@@ -262,14 +273,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 );
                 OperandValue::ZeroSized
             }
-            sym::volatile_store => {
+            sym::volatile_store | sym::unaligned_volatile_store => {
                 let dst = args[0].deref(bx.cx());
+                let dst = if name == sym::volatile_store { dst } else { dst.unaligned() };
                 args[1].val.volatile_store(bx, dst);
-                OperandValue::ZeroSized
-            }
-            sym::unaligned_volatile_store => {
-                let dst = args[0].deref(bx.cx());
-                args[1].val.unaligned_volatile_store(bx, dst);
                 OperandValue::ZeroSized
             }
             sym::disjoint_bitor => {
@@ -602,7 +609,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         };
 
         debug_assert!(
-            op_val.is_expected_variant_for_type(bx.cx(), result_layout),
+            op_val.is_expected_variant_for_type(result_layout),
             "[{name:?}] Value {op_val:?} is wrong for type {result_layout:?}",
         );
 

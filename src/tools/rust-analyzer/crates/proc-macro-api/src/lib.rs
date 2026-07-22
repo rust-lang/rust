@@ -78,9 +78,9 @@ pub enum ProcMacroKind {
     Bang,
 }
 
-/// A handle to an external process which load dylibs with macros (.so or .dll)
+/// A handle to proc-macro server process pool which load dylibs with macros (.so or .dll)
 /// and runs actual macro expansion functions.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ProcMacroClient {
     /// Currently, the proc macro process expands all procedural macros sequentially.
     ///

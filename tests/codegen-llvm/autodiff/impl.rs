@@ -1,4 +1,4 @@
-//@ compile-flags: -Zautodiff=Enable -Zautodiff=NoPostopt -C opt-level=3 -Clto=fat
+//@ compile-flags: -Zautodiff=Enable -Zautodiff_post_passes=function(mem2reg,instsimplify,simplifycfg) -C opt-level=3 -Clto=fat
 //@ no-prefer-dynamic
 //@ needs-enzyme
 

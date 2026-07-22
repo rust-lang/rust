@@ -647,7 +647,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                     // a pair and sometimes not. But as a hack we always return a pair
                     // and just make the 2nd component `Bottom` when it does not exist.
                     Some(val) => {
-                        if matches!(val.layout.backend_repr, BackendRepr::ScalarPair(..)) {
+                        if matches!(val.layout.backend_repr, BackendRepr::ScalarPair { .. }) {
                             let (val, overflow) = val.to_scalar_pair();
                             (FlatSet::Elem(val), FlatSet::Elem(overflow))
                         } else {
@@ -814,7 +814,7 @@ impl<'a, 'tcx> Collector<'a, 'tcx> {
             return Some(Const::Val(ConstValue::Scalar(value), ty));
         }
 
-        if matches!(layout.backend_repr, BackendRepr::Scalar(..) | BackendRepr::ScalarPair(..)) {
+        if matches!(layout.backend_repr, BackendRepr::Scalar(..) | BackendRepr::ScalarPair { .. }) {
             let alloc_id = ecx
                 .intern_with_temp_alloc(layout, |ecx, dest| {
                     try_write_constant(ecx, dest, place, ty, state, map)

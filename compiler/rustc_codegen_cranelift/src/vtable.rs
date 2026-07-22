@@ -56,13 +56,14 @@ pub(crate) fn get_ptr_and_method_ref<'tcx>(
         }
     }
 
-    let (ptr, vtable) = if let BackendRepr::ScalarPair(_, _) = arg.layout().backend_repr {
-        let (ptr, vtable) = arg.load_scalar_pair(fx);
-        (Pointer::new(ptr), vtable)
-    } else {
-        let (ptr, vtable) = arg.try_to_ptr().unwrap();
-        (ptr, vtable.unwrap())
-    };
+    let (ptr, vtable) =
+        if let BackendRepr::ScalarPair { a: _, b: _, b_offset: _ } = arg.layout().backend_repr {
+            let (ptr, vtable) = arg.load_scalar_pair(fx);
+            (Pointer::new(ptr), vtable)
+        } else {
+            let (ptr, vtable) = arg.try_to_ptr().unwrap();
+            (ptr, vtable.unwrap())
+        };
 
     let usize_size = fx.layout_of(fx.tcx.types.usize).size.bytes();
     let func_ref = fx.bcx.ins().load(

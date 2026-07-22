@@ -2,62 +2,63 @@ ast-stats ================================================================
 ast-stats POST EXPANSION AST STATS: input_stats
 ast-stats Name                Accumulated Size         Count     Item Size
 ast-stats ----------------------------------------------------------------
-ast-stats Item                   1_672 (NN.N%)            11           152
-ast-stats - Enum                     152 (NN.N%)             1
-ast-stats - ExternCrate              152 (NN.N%)             1
-ast-stats - ForeignMod               152 (NN.N%)             1
-ast-stats - Impl                     152 (NN.N%)             1
-ast-stats - Trait                    152 (NN.N%)             1
-ast-stats - Fn                       304 (NN.N%)             2
-ast-stats - Use                      608 (NN.N%)             4
-ast-stats Ty                       896 (NN.N%)            14            64
-ast-stats - Ptr                       64 (NN.N%)             1
-ast-stats - Ref                       64 (NN.N%)             1
-ast-stats - ImplicitSelf             128 (NN.N%)             2
-ast-stats - Path                     640 (NN.N%)            10
-ast-stats PathSegment              864 (NN.N%)            36            24
-ast-stats Expr                     648 (NN.N%)             9            72
-ast-stats - InlineAsm                 72 (NN.N%)             1
-ast-stats - Match                     72 (NN.N%)             1
-ast-stats - Path                      72 (NN.N%)             1
-ast-stats - Struct                    72 (NN.N%)             1
-ast-stats - Lit                      144 (NN.N%)             2
-ast-stats - Block                    216 (NN.N%)             3
-ast-stats Pat                      560 (NN.N%)             7            80
-ast-stats - Struct                    80 (NN.N%)             1
-ast-stats - Wild                      80 (NN.N%)             1
-ast-stats - Ident                    400 (NN.N%)             5
-ast-stats GenericParam             480 (NN.N%)             5            96
-ast-stats GenericBound             352 (NN.N%)             4            88
-ast-stats - Trait                    352 (NN.N%)             4
-ast-stats AssocItem                320 (NN.N%)             4            80
-ast-stats - Fn                       160 (NN.N%)             2
-ast-stats - Type                     160 (NN.N%)             2
-ast-stats FieldDef                 272 (NN.N%)             2           136
-ast-stats Variant                  208 (NN.N%)             2           104
-ast-stats Block                    192 (NN.N%)             6            32
+ast-stats Item                   1_584 (NN.N%)            11           144
+ast-stats - Enum                     144 (NN.N%)             1
+ast-stats - ExternCrate              144 (NN.N%)             1
+ast-stats - ForeignMod               144 (NN.N%)             1
+ast-stats - Impl                     144 (NN.N%)             1
+ast-stats - Trait                    144 (NN.N%)             1
+ast-stats - Fn                       288 (NN.N%)             2
+ast-stats - Use                      576 (NN.N%)             4
+ast-stats PathSegment              840 (NN.N%)            35            24
+ast-stats Ty                       784 (NN.N%)            14            56
+ast-stats - Ptr                       56 (NN.N%)             1
+ast-stats - Ref                       56 (NN.N%)             1
+ast-stats - ImplicitSelf             112 (NN.N%)             2
+ast-stats - Path                     560 (NN.N%)            10
+ast-stats Expr                     576 (NN.N%)             9            64
+ast-stats - InlineAsm                 64 (NN.N%)             1
+ast-stats - Match                     64 (NN.N%)             1
+ast-stats - Path                      64 (NN.N%)             1
+ast-stats - Struct                    64 (NN.N%)             1
+ast-stats - Lit                      128 (NN.N%)             2
+ast-stats - Block                    192 (NN.N%)             3
+ast-stats Pat                      448 (NN.N%)             7            64
+ast-stats - Struct                    64 (NN.N%)             1
+ast-stats - Wild                      64 (NN.N%)             1
+ast-stats - Ident                    320 (NN.N%)             5
+ast-stats GenericParam             400 (NN.N%)             5            80
+ast-stats GenericBound             320 (NN.N%)             4            80
+ast-stats - Trait                    320 (NN.N%)             4
+ast-stats AssocItem                288 (NN.N%)             4            72
+ast-stats - Fn                       144 (NN.N%)             2
+ast-stats - Type                     144 (NN.N%)             2
+ast-stats FieldDef                 240 (NN.N%)             2           120
+ast-stats Variant                  192 (NN.N%)             2            96
 ast-stats Stmt                     160 (NN.N%)             5            32
 ast-stats - Let                       32 (NN.N%)             1
 ast-stats - Semi                      32 (NN.N%)             1
 ast-stats - Expr                      96 (NN.N%)             3
 ast-stats Param                    160 (NN.N%)             4            40
+ast-stats Block                    144 (NN.N%)             6            24
 ast-stats Attribute                128 (NN.N%)             4            32
 ast-stats - DocComment                32 (NN.N%)             1
-ast-stats - Normal                    96 (NN.N%)             3
+ast-stats - Synthetic                 32 (NN.N%)             1
+ast-stats - Normal                    64 (NN.N%)             2
 ast-stats InlineAsm                120 (NN.N%)             1           120
 ast-stats FnDecl                   120 (NN.N%)             5            24
 ast-stats Local                     96 (NN.N%)             1            96
 ast-stats Arm                       96 (NN.N%)             2            48
-ast-stats ForeignItem               80 (NN.N%)             1            80
-ast-stats - Fn                        80 (NN.N%)             1
-ast-stats WherePredicate            72 (NN.N%)             1            72
-ast-stats - BoundPredicate            72 (NN.N%)             1
+ast-stats ForeignItem               72 (NN.N%)             1            72
+ast-stats - Fn                        72 (NN.N%)             1
+ast-stats WherePredicate            56 (NN.N%)             1            56
+ast-stats - BoundPredicate            56 (NN.N%)             1
 ast-stats ExprField                 48 (NN.N%)             1            48
 ast-stats GenericArgs               40 (NN.N%)             1            40
 ast-stats - AngleBracketed            40 (NN.N%)             1
 ast-stats Crate                     40 (NN.N%)             1            40
 ast-stats ----------------------------------------------------------------
-ast-stats Total                  7_624                   127
+ast-stats Total                  6_952                   126
 ast-stats ================================================================
 hir-stats ================================================================
 hir-stats HIR STATS: input_stats
@@ -96,7 +97,7 @@ hir-stats - Trait                    256 (NN.N%)             4
 hir-stats Attribute                160 (NN.N%)             4            40
 hir-stats Variant                  144 (NN.N%)             2            72
 hir-stats GenericArgs              144 (NN.N%)             3            48
-hir-stats FieldDef                 128 (NN.N%)             2            64
+hir-stats FieldDef                 144 (NN.N%)             2            72
 hir-stats FnDecl                   120 (NN.N%)             3            40
 hir-stats Stmt                      96 (NN.N%)             3            32
 hir-stats - Expr                      32 (NN.N%)             1
@@ -119,5 +120,5 @@ hir-stats TraitItemId                8 (NN.N%)             2             4
 hir-stats ImplItemId                 8 (NN.N%)             2             4
 hir-stats ForeignItemId              4 (NN.N%)             1             4
 hir-stats ----------------------------------------------------------------
-hir-stats Total                  8_576                   172
+hir-stats Total                  8_592                   172
 hir-stats ================================================================

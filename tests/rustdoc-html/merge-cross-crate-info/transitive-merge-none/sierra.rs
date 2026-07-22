@@ -1,8 +1,7 @@
 //@ aux-build:tango.rs
 //@ build-aux-docs
-//@ doc-flags:--merge=finalize
-//@ doc-flags:--include-parts-dir=info/doc.parts/tango
-//@ doc-flags:--include-parts-dir=info/doc.parts/quebec
+//@ doc-flags:--read-doc-meta-dir=info/doc.parts/tango
+//@ doc-flags:--read-doc-meta-dir=info/doc.parts/quebec
 //@ doc-flags:--enable-index-page
 //@ doc-flags:-Zunstable-options
 
@@ -21,7 +20,7 @@
 //@ hasraw search.index/name/*.js 'Quebec'
 
 // We avoid writing any cross-crate information, preferring to include it
-// with --include-parts-dir.
+// with --read-doc-meta-dir.
 extern crate tango;
 pub struct Sierra;
 impl tango::Tango for Sierra {}

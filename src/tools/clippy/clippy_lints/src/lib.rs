@@ -75,6 +75,7 @@ mod assigning_clones;
 mod async_yields_async;
 mod attrs;
 mod await_holding_invalid;
+mod bit_width;
 mod blocks_in_conditions;
 mod bool_assert_comparison;
 mod bool_comparison;
@@ -454,9 +455,7 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
     // NOTE: Do not add any more pre-expansion passes. These should be removed eventually.
     // Due to the architecture of the compiler, currently `cfg_attr` attributes on crate
     // level (i.e `#![cfg_attr(...)]`) will still be expanded even when using a pre-expansion pass.
-    store.register_pre_expansion_lint_pass(
-        Box::new(move || Box::new(attrs::EarlyAttributes::new(conf)))
-    );
+    store.register_pre_expansion_lint_pass(Box::new(move || Box::new(attrs::EarlyAttributes::new(conf))));
 
     let format_args_storage = FormatArgsStorage::default();
     let attr_storage = AttrStorage::default();
@@ -497,7 +496,7 @@ rustc_lint::early_lint_methods!(
         UnnestedOrPatterns: unnested_or_patterns::UnnestedOrPatterns = unnested_or_patterns::UnnestedOrPatterns::new(conf),
         EarlyFunctions: functions::EarlyFunctions = functions::EarlyFunctions,
         Documentation: doc::Documentation = doc::Documentation::new(conf),
-        SuspiciousOperationGroupings: suspicious_operation_groupings::SuspiciousOperationGroupings = suspicious_operation_groupings::SuspiciousOperationGroupings,
+        SuspiciousOperationGroupings: suspicious_operation_groupings::SuspiciousOperationGroupings = <suspicious_operation_groupings::SuspiciousOperationGroupings>::default(),
         DoubleParens: double_parens::DoubleParens = double_parens::DoubleParens,
         UnsafeNameRemoval: unsafe_removed_from_name::UnsafeNameRemoval = unsafe_removed_from_name::UnsafeNameRemoval,
         ElseIfWithoutElse: else_if_without_else::ElseIfWithoutElse = else_if_without_else::ElseIfWithoutElse,
@@ -506,7 +505,6 @@ rustc_lint::early_lint_methods!(
         MiscEarlyLints: misc_early::MiscEarlyLints = misc_early::MiscEarlyLints,
         UnusedUnit: unused_unit::UnusedUnit = unused_unit::UnusedUnit,
         Precedence: precedence::Precedence = precedence::Precedence,
-        RedundantElse: redundant_else::RedundantElse = redundant_else::RedundantElse,
         NeedlessArbitrarySelfType: needless_arbitrary_self_type::NeedlessArbitrarySelfType = needless_arbitrary_self_type::NeedlessArbitrarySelfType,
         LiteralDigitGrouping: literal_representation::LiteralDigitGrouping = literal_representation::LiteralDigitGrouping::new(conf),
         DecimalLiteralRepresentation: literal_representation::DecimalLiteralRepresentation = literal_representation::DecimalLiteralRepresentation::new(conf),
@@ -731,6 +729,7 @@ rustc_lint::late_lint_methods!(
         NeedlessLateInit: needless_late_init::NeedlessLateInit<'tcx> = needless_late_init::NeedlessLateInit::new(conf),
         ReturnSelfNotMustUse: return_self_not_must_use::ReturnSelfNotMustUse = return_self_not_must_use::ReturnSelfNotMustUse,
         NumberedFields: init_numbered_fields::NumberedFields = init_numbered_fields::NumberedFields,
+        ManualBitWidth: bit_width::ManualBitWidth = bit_width::ManualBitWidth::new(conf),
         ManualBits: manual_bits::ManualBits = manual_bits::ManualBits::new(conf),
         DefaultUnionRepresentation: default_union_representation::DefaultUnionRepresentation = default_union_representation::DefaultUnionRepresentation,
         OnlyUsedInRecursion: only_used_in_recursion::OnlyUsedInRecursion = <only_used_in_recursion::OnlyUsedInRecursion>::default(),
@@ -761,7 +760,7 @@ rustc_lint::late_lint_methods!(
         BoolToIntWithIf: bool_to_int_with_if::BoolToIntWithIf = bool_to_int_with_if::BoolToIntWithIf,
         BoxDefault: box_default::BoxDefault = box_default::BoxDefault,
         ImplicitSaturatingAdd: implicit_saturating_add::ImplicitSaturatingAdd = implicit_saturating_add::ImplicitSaturatingAdd,
-        MissingTraitMethods: missing_trait_methods::MissingTraitMethods = missing_trait_methods::MissingTraitMethods,
+        MissingTraitMethods: missing_trait_methods::MissingTraitMethods = missing_trait_methods::MissingTraitMethods::new(conf),
         FromRawWithVoidPtr: from_raw_with_void_ptr::FromRawWithVoidPtr = from_raw_with_void_ptr::FromRawWithVoidPtr,
         ConfusingXorAndPow: suspicious_xor_used_as_pow::ConfusingXorAndPow = suspicious_xor_used_as_pow::ConfusingXorAndPow,
         ManualIsAsciiCheck: manual_is_ascii_check::ManualIsAsciiCheck = manual_is_ascii_check::ManualIsAsciiCheck::new(conf),
@@ -859,6 +858,7 @@ rustc_lint::late_lint_methods!(
         ManualAssertEq: manual_assert_eq::ManualAssertEq = manual_assert_eq::ManualAssertEq,
         WithCapacityZero: with_capacity_zero::WithCapacityZero = with_capacity_zero::WithCapacityZero,
         RefPatterns: ref_patterns::RefPatterns = ref_patterns::RefPatterns,
+        RedundantElse: redundant_else::RedundantElse = redundant_else::RedundantElse,
         // add late passes here, used by `cargo dev new_lint`
     ]]
 );

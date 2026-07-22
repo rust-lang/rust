@@ -12,7 +12,7 @@
 
 pub mod check_consts;
 pub mod const_eval;
-mod errors;
+mod diagnostics;
 pub mod interpret;
 pub mod util;
 

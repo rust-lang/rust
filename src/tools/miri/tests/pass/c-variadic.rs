@@ -121,13 +121,6 @@ fn equal_up_to_free_lifetime() {
 }
 
 fn clone() {
-    if cfg!(force_intrinsic_fallback) {
-        // Skip this test when we use the fallback bodies. The fallback body does
-        // not hook into the Miri allocation bookkeeping for variable argument lists
-        // and would would falsely report UB.
-        return;
-    }
-
     unsafe extern "C" fn clone_the_va_list(args: ...) {
         // The implicit `drop` will catch a `VaList` that isn't properly initialized.
         let _ = args.clone();
@@ -137,13 +130,6 @@ fn clone() {
 }
 
 fn clone_and_advance() {
-    if cfg!(force_intrinsic_fallback) {
-        // Skip this test when we use the fallback bodies. The fallback body does
-        // not hook into the Miri allocation bookkeeping for variable argument lists
-        // and would would falsely report UB.
-        return;
-    }
-
     unsafe extern "C" fn variadic(mut a: ...) {
         unsafe {
             let mut b = a.clone();

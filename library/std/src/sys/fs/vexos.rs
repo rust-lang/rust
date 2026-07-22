@@ -545,7 +545,7 @@ fn map_fresult(fresult: vex_sdk::FRESULT) -> io::Result<()> {
     match fresult {
         vex_sdk::FRESULT::FR_OK => Ok(()),
         vex_sdk::FRESULT::FR_DISK_ERR => Err(io::const_error!(
-            io::ErrorKind::Uncategorized,
+            io::ErrorKind::InputOutputError,
             "internal function reported an unrecoverable hard error",
         )),
         vex_sdk::FRESULT::FR_INT_ERR => Err(io::const_error!(

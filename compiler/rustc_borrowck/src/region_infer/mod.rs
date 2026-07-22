@@ -1285,9 +1285,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 return RegionRelationCheckResult::Error;
             }
 
-            let blame_constraint = self
-                .best_blame_constraint(longer_fr, NllRegionVariableOrigin::FreeRegion, shorter_fr)
-                .0;
+            let best_blame = self.best_blame_constraint(
+                longer_fr,
+                NllRegionVariableOrigin::FreeRegion,
+                shorter_fr,
+            );
+            let OutlivesConstraint { category, span, .. } = best_blame.constraint();
 
             // Grow `shorter_fr` until we find some non-local regions.
             // We will always find at least one: `'static`. We'll call
@@ -1346,8 +1349,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 propagated_outlives_requirements.push(ClosureOutlivesRequirement {
                     subject: ClosureOutlivesSubject::Region(fr_minus),
                     outlived_free_region: fr_plus,
-                    blame_span: blame_constraint.cause.span,
-                    category: blame_constraint.category,
+                    blame_span: *span,
+                    category: *category,
                 });
             }
             return RegionRelationCheckResult::Propagated;
@@ -1614,7 +1617,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         from_region: RegionVid,
         from_region_origin: NllRegionVariableOrigin<'tcx>,
         to_region: RegionVid,
-    ) -> (BlameConstraint<'tcx>, Vec<OutlivesConstraint<'tcx>>) {
+    ) -> BestBlame<'tcx> {
         assert!(from_region != to_region, "Trying to blame a region for itself!");
 
         let path = self.constraint_path_between_regions(from_region, to_region).unwrap();
@@ -1630,7 +1633,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         });
 
         // Edge case: it's possible that `'from_region` is an unnameable placeholder.
-        let path = if let Some(unnameable) = due_to_placeholder_outlives
+        let mut path = if let Some(unnameable) = due_to_placeholder_outlives
             && unnameable != from_region
         {
             // We ignore the extra edges due to unnameable placeholders to get
@@ -1651,24 +1654,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 ))
                 .collect::<Vec<_>>()
         );
-
-        // We try to avoid reporting a `ConstraintCategory::Predicate` as our best constraint.
-        // Instead, we use it to produce an improved `ObligationCauseCode`.
-        // FIXME - determine what we should do if we encounter multiple
-        // `ConstraintCategory::Predicate` constraints. Currently, we just pick the first one.
-        let cause_code = path
-            .iter()
-            .find_map(|constraint| {
-                if let ConstraintCategory::Predicate(predicate_span) = constraint.category {
-                    // We currently do not store the `DefId` in the `ConstraintCategory`
-                    // for performances reasons. The error reporting code used by NLL only
-                    // uses the span, so this doesn't cause any problems at the moment.
-                    Some(ObligationCauseCode::WhereClause(CRATE_DEF_ID.to_def_id(), predicate_span))
-                } else {
-                    None
-                }
-            })
-            .unwrap_or_else(|| ObligationCauseCode::Misc);
 
         // When reporting an error, there is typically a chain of constraints leading from some
         // "source" region which must outlive some "target" region.
@@ -1805,41 +1790,34 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
         debug!(?best_choice, ?blame_source);
 
-        let best_constraint = if let Some(next) = path.get(best_choice + 1)
+        let best_blame_idx = if let Some(next) = path.get(best_choice + 1)
             && matches!(path[best_choice].category, ConstraintCategory::Return(_))
             && next.category == ConstraintCategory::OpaqueType
         {
             // The return expression is being influenced by the return type being
             // impl Trait, point at the return type and not the return expr.
-            *next
+            best_choice + 1
         } else if path[best_choice].category == ConstraintCategory::Return(ReturnConstraint::Normal)
             && let Some(field) = path.iter().find_map(|p| {
                 if let ConstraintCategory::ClosureUpvar(f) = p.category { Some(f) } else { None }
             })
         {
-            OutlivesConstraint {
-                category: ConstraintCategory::Return(ReturnConstraint::ClosureUpvar(field)),
-                ..path[best_choice]
-            }
+            path[best_choice].category =
+                ConstraintCategory::Return(ReturnConstraint::ClosureUpvar(field));
+            best_choice
         } else {
-            path[best_choice]
+            best_choice
         };
 
         assert!(
             !matches!(
-                best_constraint.category,
+                path[best_blame_idx].category,
                 ConstraintCategory::OutlivesUnnameablePlaceholder(_)
             ),
             "Illegal placeholder constraint blamed; should have redirected to other region relation"
         );
 
-        let blame_constraint = BlameConstraint {
-            category: best_constraint.category,
-            from_closure: best_constraint.from_closure,
-            cause: ObligationCause::new(best_constraint.span, CRATE_DEF_ID, cause_code.clone()),
-            variance_info: best_constraint.variance_info,
-        };
-        (blame_constraint, path)
+        BestBlame { path, idx: best_blame_idx }
     }
 
     pub(crate) fn universe_info(&self, universe: ty::UniverseIndex) -> UniverseInfo<'tcx> {
@@ -1914,9 +1892,40 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct BlameConstraint<'tcx> {
-    pub category: ConstraintCategory<'tcx>,
-    pub from_closure: bool,
-    pub cause: ObligationCause<'tcx>,
-    pub variance_info: ty::VarianceDiagInfo<TyCtxt<'tcx>>,
+pub(crate) struct BestBlame<'tcx> {
+    /// See docs on [`RegionInferenceContext::best_blame_constraint`] for what this is.
+    path: Vec<OutlivesConstraint<'tcx>>,
+    /// Index into `path` of the constraint most relevant to report to users.
+    idx: usize,
+}
+
+impl<'tcx> BestBlame<'tcx> {
+    pub(crate) fn to_obligation_cause(&self) -> ObligationCause<'tcx> {
+        // FIXME - determine what we should do if we encounter multiple
+        // `ConstraintCategory::Predicate` constraints. Currently, we just pick the first one.
+        let cause_code = self
+            .path
+            .iter()
+            .find_map(|constraint| {
+                if let ConstraintCategory::Predicate(predicate_span) = constraint.category {
+                    // We currently do not store the `DefId` in the `ConstraintCategory`
+                    // for performances reasons. The error reporting code used by NLL only
+                    // uses the span, so this doesn't cause any problems at the moment.
+                    Some(ObligationCauseCode::WhereClause(CRATE_DEF_ID.to_def_id(), predicate_span))
+                } else {
+                    None
+                }
+            })
+            .unwrap_or_else(|| ObligationCauseCode::Misc);
+
+        ObligationCause::new(self.constraint().span, CRATE_DEF_ID, cause_code.clone())
+    }
+
+    pub(crate) fn constraint(&self) -> &OutlivesConstraint<'tcx> {
+        &self.path[self.idx]
+    }
+
+    pub(crate) fn path(&self) -> &[OutlivesConstraint<'tcx>] {
+        &self.path
+    }
 }

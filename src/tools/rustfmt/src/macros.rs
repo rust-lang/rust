@@ -404,7 +404,6 @@ fn rewrite_empty_macro_def_body(
         id: rustc_ast::node_id::DUMMY_NODE_ID,
         rules: ast::BlockCheckMode::Default,
         span,
-        tokens: None,
     };
     block.rewrite_result(context, shape)
 }

@@ -38,21 +38,19 @@ pub unsafe fn environ() -> *mut *const *const c_char {
     unsafe { libc::_NSGetEnviron() as *mut *const *const c_char }
 }
 
-// On FreeBSD, environ comes from CRT rather than libc
+// On FreeBSD, environ lives in crt1.o, not libc.so, so a shared library
+// cannot take a strong link-time reference to it (#153451), and dlsym cannot
+// find it in a statically linked executable, which has no dynamic symbol
+// table to search (#158939). A weak reference covers both: it binds at link
+// time in any executable, and in a shared library the runtime linker
+// resolves it against the environ the executable exports.
 #[cfg(target_os = "freebsd")]
 pub unsafe fn environ() -> *mut *const *const c_char {
-    use crate::sync::LazyLock;
-
-    struct Environ(*mut *const *const c_char);
-    unsafe impl Send for Environ {}
-    unsafe impl Sync for Environ {}
-
-    static ENVIRON: LazyLock<Environ> = LazyLock::new(|| {
-        Environ(unsafe {
-            libc::dlsym(libc::RTLD_DEFAULT, c"environ".as_ptr()) as *mut *const *const c_char
-        })
-    });
-    ENVIRON.0
+    unsafe extern "C" {
+        #[linkage = "extern_weak"]
+        static environ: *mut *const *const c_char;
+    }
+    unsafe { environ }
 }
 
 // Use the `environ` static which is part of POSIX.
@@ -75,14 +73,19 @@ pub fn env_read_lock() -> impl Drop {
 pub fn env() -> Env {
     unsafe {
         let _guard = env_read_lock();
-        let mut environ = *environ();
         let mut result = Vec::new();
-        if !environ.is_null() {
-            while !(*environ).is_null() {
-                if let Some(key_value) = parse(CStr::from_ptr(*environ).to_bytes()) {
-                    result.push(key_value);
+        // A null return means the platform could not locate the symbol;
+        // treat it like an empty environment.
+        let environ_ptr = environ();
+        if !environ_ptr.is_null() {
+            let mut environ = *environ_ptr;
+            if !environ.is_null() {
+                while !(*environ).is_null() {
+                    if let Some(key_value) = parse(CStr::from_ptr(*environ).to_bytes()) {
+                        result.push(key_value);
+                    }
+                    environ = environ.add(1);
                 }
-                environ = environ.add(1);
             }
         }
         return Env::new(result);

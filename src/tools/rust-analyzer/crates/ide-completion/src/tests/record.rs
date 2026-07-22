@@ -235,6 +235,23 @@ fn main() {
 }
 
 #[test]
+fn in_own_default_impl() {
+    cov_mark::check!(functional_update_field);
+    check(
+        r#"
+    //- minicore:default
+    struct Foo { foo1: u32, foo2: u32 }
+    impl Default for Foo {
+        fn default() -> Self { Self { foo1: 0, $0 }
+    }
+    "#,
+        expect![[r#"
+                fd foo2 u32
+            "#]],
+    );
+}
+
+#[test]
 fn functional_update_one_dot() {
     cov_mark::check!(functional_update_one_dot);
     check(

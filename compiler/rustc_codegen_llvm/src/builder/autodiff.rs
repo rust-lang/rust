@@ -118,7 +118,9 @@ pub(crate) fn adjust_activity_to_abi<'tcx>(
         // If the argument is lowered as a `ScalarPair`, we need to duplicate its activity.
         // Otherwise, the number of activities won't match the number of LLVM arguments and
         // this will lead to errors when verifying the Enzyme call.
-        if let rustc_abi::BackendRepr::ScalarPair(_, _) = layout.backend_repr() {
+        if let rustc_abi::BackendRepr::ScalarPair { a: _, b: _, b_offset: _ } =
+            layout.backend_repr()
+        {
             new_activities.push(da[i].clone());
             new_positions.push(i + 1 - del_activities);
         }
@@ -143,7 +145,6 @@ pub(crate) fn adjust_activity_to_abi<'tcx>(
 // FIXME(ZuseZ4): This logic is a bit more complicated than it should be, can we simplify it
 // using iterators and peek()?
 fn match_args_from_caller_to_enzyme<'ll, 'tcx>(
-    cx: &SimpleCx<'ll>,
     builder: &mut Builder<'_, 'll, 'tcx>,
     width: u32,
     args: &mut Vec<&'ll Value>,
@@ -157,6 +158,7 @@ fn match_args_from_caller_to_enzyme<'ll, 'tcx>(
     // need to match those.
     // FIXME(ZuseZ4): This logic is a bit more complicated than it should be, can we simplify it
     // using iterators and peek()?
+    let cx = &builder.scx;
     let mut outer_pos: usize = 0;
     let mut activity_pos = 0;
 
@@ -292,8 +294,7 @@ fn match_args_from_caller_to_enzyme<'ll, 'tcx>(
 // FIXME(ZuseZ4): `outer_fn` should include upstream safety checks to
 // cover some assumptions of enzyme/autodiff, which could lead to UB otherwise.
 pub(crate) fn generate_enzyme_call<'ll, 'tcx>(
-    builder: &mut Builder<'_, 'll, 'tcx>,
-    cx: &SimpleCx<'ll>,
+    bx: &mut Builder<'_, 'll, 'tcx>,
     fn_to_diff: &'ll Value,
     outer_name: &str,
     ret_ty: &'ll Type,
@@ -303,6 +304,7 @@ pub(crate) fn generate_enzyme_call<'ll, 'tcx>(
     dest_place: Option<PlaceValue<&'ll Value>>,
     fnc_tree: FncTree,
 ) -> IntrinsicResult<'tcx, &'ll Value> {
+    let cx: &SimpleCx<'ll> = &bx.scx;
     // We have to pick the name depending on whether we want forward or reverse mode autodiff.
     let mut ad_name: String = match attrs.mode {
         DiffMode::Forward => "__enzyme_fwddiff",
@@ -369,34 +371,27 @@ pub(crate) fn generate_enzyme_call<'ll, 'tcx>(
         args.push(cx.get_const_int(cx.type_i64(), attrs.width as u64));
     }
 
-    match_args_from_caller_to_enzyme(
-        &cx,
-        builder,
-        attrs.width,
-        &mut args,
-        &attrs.input_activity,
-        fn_args,
-    );
+    match_args_from_caller_to_enzyme(bx, attrs.width, &mut args, &attrs.input_activity, fn_args);
 
     if !fnc_tree.args.is_empty() || !fnc_tree.ret.0.is_empty() {
-        crate::typetree::add_tt(cx.llmod, cx.llcx, fn_to_diff, fnc_tree);
+        crate::typetree::add_tt(&bx, fn_to_diff, fnc_tree);
     }
 
-    let call = builder.call(enzyme_ty, None, None, ad_fn, &args, None, None);
+    let call = bx.call(enzyme_ty, None, None, ad_fn, &args, None, None);
 
-    let fn_ret_ty = builder.cx.val_ty(call);
-    if fn_ret_ty == builder.cx.type_void() || fn_ret_ty == builder.cx.type_struct(&[], false) {
+    let fn_ret_ty = bx.cx.val_ty(call);
+    if fn_ret_ty == bx.cx.type_void() || fn_ret_ty == bx.cx.type_struct(&[], false) {
         // If we return void or an empty struct, then our caller (due to how we generated it)
         // does not expect a return value. As such, we have no pointer (or place) into which
         // we could store our value, and would store into an undef, which would cause UB.
         // As such, we just ignore the return value in those cases.
         IntrinsicResult::Operand(OperandValue::ZeroSized)
     } else if let Some(dest_place) = dest_place {
-        builder.store_to_place(call, dest_place);
+        bx.store_to_place(call, dest_place);
         IntrinsicResult::WroteIntoPlace
     } else {
         IntrinsicResult::Operand(
-            OperandRef::from_immediate_or_packed_pair(builder, call, dest_layout).val,
+            OperandRef::from_immediate_or_packed_pair(bx, call, dest_layout).val,
         )
     }
 }

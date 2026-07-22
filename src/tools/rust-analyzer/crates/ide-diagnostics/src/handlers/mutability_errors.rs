@@ -1,4 +1,3 @@
-use hir::db::ExpandDatabase;
 use ide_db::source_change::SourceChange;
 use ide_db::text_edit::TextEdit;
 use syntax::{AstNode, SyntaxKind, SyntaxNode, SyntaxNodePtr, SyntaxToken, T, ast};
@@ -9,7 +8,7 @@ use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext, fix};
 //
 // This diagnostic is triggered on mutating an immutable variable.
 pub(crate) fn need_mut(ctx: &DiagnosticsContext<'_, '_>, d: &hir::NeedMut) -> Option<Diagnostic> {
-    let root = ctx.sema.db.parse_or_expand(d.span.file_id);
+    let root = d.span.file_id.parse_or_expand(ctx.sema.db);
     let node = d.span.value.to_node(&root);
     let mut span = d.span;
     if let Some(parent) = node.parent()

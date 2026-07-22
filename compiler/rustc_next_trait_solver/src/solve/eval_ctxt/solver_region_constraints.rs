@@ -8,11 +8,11 @@ use rustc_type_ir::outlives::{Component, push_outlives_components};
 #[cfg(not(feature = "nightly"))]
 use rustc_type_ir::region_constraint::TransitiveRelationBuilder;
 use rustc_type_ir::region_constraint::{
-    Assumptions, RegionConstraint, eagerly_handle_placeholders_in_universe, max_universe,
+    Assumptions, RegionConstraint, eagerly_handle_placeholders_in_universe,
 };
 use rustc_type_ir::{
     AliasTy, Binder, ClauseKind, InferCtxtLike, Interner, OutlivesPredicate, TypeVisitable,
-    TypeVisitableExt, TypeVisitor, UniverseIndex,
+    TypeVisitableExt, TypeVisitor, UniverseIndex, max_universe,
 };
 use tracing::{debug, instrument};
 

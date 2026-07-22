@@ -6,8 +6,8 @@ use rustc_ast::token::{self, Lit, LitKind, Token, TokenKind};
 use rustc_ast::util::parser::AssocOp;
 use rustc_ast::{
     self as ast, AngleBracketedArg, AngleBracketedArgs, AnonConst, AttrVec, BinOpKind, BindingMode,
-    Block, BlockCheckMode, Expr, ExprKind, GenericArg, Generics, Item, ItemKind,
-    MgcaDisambiguation, Param, Pat, PatKind, Path, PathSegment, QSelf, Recovered, Ty, TyKind,
+    Block, BlockCheckMode, Expr, ExprKind, GenericArg, GenericArgs, Generics, Item, ItemKind,
+    Param, Pat, PatKind, Path, PathSegment, QSelf, Recovered, Ty, TyKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
@@ -15,7 +15,7 @@ use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, PResult, Subdiagnostic, Suggestions, msg,
     pluralize,
 };
-use rustc_session::errors::ExprParenthesesNeeded;
+use rustc_session::diagnostics::ExprParenthesesNeeded;
 use rustc_span::symbol::used_keywords;
 use rustc_span::{BytePos, DUMMY_SP, Ident, Span, SpanSnippetError, Spanned, Symbol, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
@@ -26,19 +26,21 @@ use super::{
     BlockMode, CommaRecoveryMode, ExpTokenPair, Parser, PathStyle, Restrictions, SemiColonMode,
     SeqSep, TokenType,
 };
-use crate::errors::{
+use crate::diagnostics::{
     AddParen, AmbiguousPlus, AsyncMoveBlockIn2015, AsyncUseBlockIn2015, AttributeOnParamType,
     AwaitSuggestion, BadQPathStage2, BadTypePlus, BadTypePlusSub, ColonAsSemi,
     ComparisonOperatorsCannotBeChained, ComparisonOperatorsCannotBeChainedSugg,
     DocCommentDoesNotDocumentAnything, DocCommentOnParamType, DoubleColonInBound,
-    ExpectedIdentifier, ExpectedSemi, ExpectedSemiSugg, GenericParamsWithoutAngleBrackets,
-    GenericParamsWithoutAngleBracketsSugg, HelpIdentifierStartsWithNumber, HelpUseLatestEdition,
-    InInTypo, IncorrectAwait, IncorrectSemicolon, IncorrectUseOfAwait, IncorrectUseOfUse,
-    MisspelledKw, PatternMethodParamWithoutBody, QuestionMarkInType, QuestionMarkInTypeSugg,
-    SelfParamNotFirst, StructLiteralBodyWithoutPath, StructLiteralBodyWithoutPathSugg,
-    SuggAddMissingLetStmt, SuggEscapeIdentifier, SuggRemoveComma, TernaryOperator,
-    TernaryOperatorSuggestion, UnexpectedConstInGenericParam, UnexpectedConstParamDeclaration,
-    UnexpectedConstParamDeclarationSugg, UnmatchedAngleBrackets, UseEqInstead, WrapType,
+    ExpectedIdentifier, ExpectedSemi, ExpectedSemiSugg, FoundPathInGenerics,
+    GenericParamsWithoutAngleBrackets, GenericParamsWithoutAngleBracketsSugg,
+    HelpIdentifierStartsWithNumber, HelpUseLatestEdition, InInTypo, IncorrectAwait,
+    IncorrectSemicolon, IncorrectUseOfAwait, IncorrectUseOfUse, MisspelledKw,
+    PatternMethodParamWithoutBody, QuestionMarkInType, QuestionMarkInTypeSugg, SelfParamNotFirst,
+    StructLiteralBodyWithoutPath, StructLiteralBodyWithoutPathSugg, SuggAddMissingLetStmt,
+    SuggEscapeIdentifier, SuggRemoveComma, SuggestBindTypeParameter, SuggestIntroduceTypeParameter,
+    TernaryOperator, TernaryOperatorSuggestion, UnexpectedConstInGenericParam,
+    UnexpectedConstParamDeclaration, UnexpectedConstParamDeclarationSugg, UnmatchedAngleBrackets,
+    UseEqInstead, WrapType,
 };
 use crate::exp;
 use crate::parser::FnContext;
@@ -51,9 +53,8 @@ pub(super) fn dummy_arg(ident: Ident, guar: ErrorGuaranteed) -> Param {
         id: ast::DUMMY_NODE_ID,
         kind: PatKind::Ident(BindingMode::NONE, ident, None),
         span: ident.span,
-        tokens: None,
     });
-    let ty = Ty { kind: TyKind::Err(guar), span: ident.span, id: ast::DUMMY_NODE_ID, tokens: None };
+    let ty = Ty { kind: TyKind::Err(guar), span: ident.span, id: ast::DUMMY_NODE_ID };
     Param {
         attrs: AttrVec::default(),
         id: ast::DUMMY_NODE_ID,
@@ -86,12 +87,7 @@ impl RecoverQPath for Ty {
         Some(Box::new(self.clone()))
     }
     fn recovered(qself: Option<Box<QSelf>>, path: ast::Path) -> Self {
-        Self {
-            span: path.span,
-            kind: TyKind::Path(qself, path),
-            id: ast::DUMMY_NODE_ID,
-            tokens: None,
-        }
+        Self { span: path.span, kind: TyKind::Path(qself, path), id: ast::DUMMY_NODE_ID }
     }
 }
 
@@ -101,12 +97,7 @@ impl RecoverQPath for Pat {
         self.to_ty()
     }
     fn recovered(qself: Option<Box<QSelf>>, path: ast::Path) -> Self {
-        Self {
-            span: path.span,
-            kind: PatKind::Path(qself, path),
-            id: ast::DUMMY_NODE_ID,
-            tokens: None,
-        }
+        Self { span: path.span, kind: PatKind::Path(qself, path), id: ast::DUMMY_NODE_ID }
     }
 }
 
@@ -882,7 +873,7 @@ impl<'a> Parser<'a> {
                 && let ast::AttrKind::Normal(next_attr_kind) = next_attr.kind
                 && let Some(next_attr_args_span) = next_attr_kind.item.args.span()
                 && let [next_segment] = &next_attr_kind.item.path.segments[..]
-                && segment.ident.name == sym::cfg
+                && next_segment.ident.name == sym::cfg
             {
                 let next_expr = match snapshot.parse_expr() {
                     Ok(next_expr) => next_expr,
@@ -980,11 +971,7 @@ impl<'a> Parser<'a> {
             // }
             debug!(?maybe_struct_name, ?self.token);
             let mut snapshot = self.create_snapshot_for_diagnostic();
-            let path = Path {
-                segments: ThinVec::new(),
-                span: self.prev_token.span.shrink_to_lo(),
-                tokens: None,
-            };
+            let path = Path { segments: ThinVec::new(), span: self.prev_token.span.shrink_to_lo() };
             let struct_expr = snapshot.parse_expr_struct(None, path, false);
             let block_tail = self.parse_block_tail(lo, s, AttemptLocalParseRecovery::No);
             return Some(match (struct_expr, block_tail) {
@@ -1856,7 +1843,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, T> {
         self.expect(exp!(PathSep))?;
 
-        let mut path = ast::Path { segments: ThinVec::new(), span: DUMMY_SP, tokens: None };
+        let mut path = ast::Path { segments: ThinVec::new(), span: DUMMY_SP };
         self.parse_path_segments(&mut path.segments, T::PATH_STYLE, None)?;
         path.span = ty_span.to(self.prev_token.span);
 
@@ -2399,12 +2386,7 @@ impl<'a> Parser<'a> {
         self.dcx().emit_err(PatternMethodParamWithoutBody { span: pat.span });
 
         // Pretend the pattern is `_`, to avoid duplicate errors from AST validation.
-        let pat = Box::new(Pat {
-            kind: PatKind::Wild,
-            span: pat.span,
-            id: ast::DUMMY_NODE_ID,
-            tokens: None,
-        });
+        let pat = Box::new(Pat { kind: PatKind::Wild, span: pat.span, id: ast::DUMMY_NODE_ID });
         Ok((pat, ty))
     }
 
@@ -2583,11 +2565,7 @@ impl<'a> Parser<'a> {
             self.dcx().emit_err(UnexpectedConstParamDeclaration { span: param.span(), sugg });
 
         let value = self.mk_expr_err(param.span(), guar);
-        Some(GenericArg::Const(AnonConst {
-            id: ast::DUMMY_NODE_ID,
-            value,
-            mgca_disambiguation: MgcaDisambiguation::Direct,
-        }))
+        Some(GenericArg::Const(AnonConst { id: ast::DUMMY_NODE_ID, value }))
     }
 
     pub(super) fn recover_const_param_declaration(
@@ -2671,11 +2649,7 @@ impl<'a> Parser<'a> {
                     );
                     let guar = err.emit();
                     let value = self.mk_expr_err(start.to(expr.span), guar);
-                    return Ok(GenericArg::Const(AnonConst {
-                        id: ast::DUMMY_NODE_ID,
-                        value,
-                        mgca_disambiguation: MgcaDisambiguation::Direct,
-                    }));
+                    return Ok(GenericArg::Const(AnonConst { id: ast::DUMMY_NODE_ID, value }));
                 } else if snapshot.token == token::Colon
                     && expr.span.lo() == snapshot.token.span.hi()
                     && matches!(expr.kind, ExprKind::Path(..))
@@ -2744,11 +2718,7 @@ impl<'a> Parser<'a> {
         );
         let guar = err.emit();
         let value = self.mk_expr_err(span, guar);
-        GenericArg::Const(AnonConst {
-            id: ast::DUMMY_NODE_ID,
-            value,
-            mgca_disambiguation: MgcaDisambiguation::Direct,
-        })
+        GenericArg::Const(AnonConst { id: ast::DUMMY_NODE_ID, value })
     }
 
     /// Some special error handling for the "top-level" patterns in a match arm,
@@ -2821,7 +2791,6 @@ impl<'a> Parser<'a> {
                                                     PathSegment::from_ident(*old_ident),
                                                     PathSegment::from_ident(*ident),
                                                 ],
-                                                tokens: None,
                                             },
                                         );
                                         first_pat = self.mk_pat(new_span, path);
@@ -2832,7 +2801,7 @@ impl<'a> Parser<'a> {
                                         segments.push(PathSegment::from_ident(*ident));
                                         let path = PatKind::Path(
                                             old_qself.clone(),
-                                            Path { span: new_span, segments, tokens: None },
+                                            Path { span: new_span, segments },
                                         );
                                         first_pat = self.mk_pat(new_span, path);
                                         show_sugg = true;
@@ -3163,5 +3132,49 @@ impl<'a> Parser<'a> {
             }
         }
         Ok(())
+    }
+    pub(super) fn maybe_type_in_generic_parameter(&mut self, origin_error: Diag<'a>) -> Diag<'a> {
+        if !self.may_recover() {
+            return origin_error;
+        }
+        self.with_recovery(super::Recovery::Forbidden, |snapshot| {
+            snapshot.bump();
+            let lo = snapshot.token.span.shrink_to_lo();
+
+            let ty = match snapshot.parse_ty() {
+                Ok(t) => t,
+                Err(err) => {
+                    err.cancel();
+                    return origin_error;
+                }
+            };
+            let TyKind::Path(_, path) = ty.kind else {
+                return origin_error;
+            };
+            let Some(GenericArgs::AngleBracketed(AngleBracketedArgs { span: _, ref args })) =
+                path.segments[0].args
+            else {
+                return origin_error;
+            };
+
+            let path_span = path.span;
+            let mut new_error = snapshot.dcx().create_err(FoundPathInGenerics {
+                span: path_span,
+                path: snapshot.span_to_snippet(path_span).unwrap(),
+            });
+            new_error.subdiagnostic(SuggestBindTypeParameter { span: lo });
+            origin_error.cancel();
+
+            let params = args
+                .iter()
+                .map(|arg| snapshot.span_to_snippet(arg.span()).unwrap())
+                .collect::<Vec<_>>()
+                .join(", ");
+            new_error.subdiagnostic(SuggestIntroduceTypeParameter {
+                span: path_span,
+                parameters: params,
+            });
+            new_error
+        })
     }
 }

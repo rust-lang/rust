@@ -2,7 +2,7 @@
 
 use std::{cell::Cell, cmp::Ordering, iter};
 
-use base_db::{Crate, CrateOrigin, LangCrateOrigin};
+use base_db::{Crate, CrateOrigin, LangCrateOrigin, SourceDatabase};
 use hir_expand::{
     Lookup,
     mod_path::{ModPath, PathKind},
@@ -12,18 +12,31 @@ use intern::sym;
 use rustc_hash::FxHashSet;
 
 use crate::{
-    FindPathConfig, ModuleDefId, ModuleId,
-    db::DefDatabase,
+    ModuleDefId, ModuleId,
     import_map::ImportMap,
     item_scope::ItemInNs,
     nameres::DefMap,
     visibility::{Visibility, VisibilityExplicitness},
 };
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Copy)]
+pub struct FindPathConfig {
+    /// If true, prefer to unconditionally use imports of the `core` and `alloc` crate
+    /// over the std.
+    pub prefer_no_std: bool,
+    /// If true, prefer import paths containing a prelude module.
+    pub prefer_prelude: bool,
+    /// If true, prefer abs path (starting with `::`) where it is available.
+    pub prefer_absolute: bool,
+    /// If true, paths containing `#[unstable]` segments may be returned, but only if if there is no
+    /// stable path. This does not check, whether the item itself that is being imported is `#[unstable]`.
+    pub allow_unstable: bool,
+}
+
 /// Find a path that can be used to refer to a certain item. This can depend on
 /// *from where* you're referring to the item, hence the `from` parameter.
 pub fn find_path(
-    db: &dyn DefDatabase,
+    db: &dyn SourceDatabase,
     item: ItemInNs,
     from: ModuleId,
     mut prefix_kind: PrefixKind,
@@ -43,9 +56,11 @@ pub fn find_path(
     if item_module.block(db).is_some() {
         prefix_kind = PrefixKind::Plain;
     }
-    cfg.prefer_no_std = cfg.prefer_no_std || db.crate_supports_no_std(from.krate(db));
 
     let from_def_map = from.def_map(db);
+
+    cfg.prefer_no_std = cfg.prefer_no_std || from_def_map.is_no_std();
+
     find_path_inner(
         &FindPathCtx {
             db,
@@ -98,7 +113,7 @@ impl PrefixKind {
 }
 
 struct FindPathCtx<'db> {
-    db: &'db dyn DefDatabase,
+    db: &'db dyn SourceDatabase,
     prefix: PrefixKind,
     cfg: FindPathConfig,
     ignore_local_imports: bool,
@@ -252,7 +267,7 @@ fn find_path_for_module(
 }
 
 fn find_in_scope(
-    db: &dyn DefDatabase,
+    db: &dyn SourceDatabase,
     def_map: &DefMap,
     from: ModuleId,
     item: ItemInNs,
@@ -269,7 +284,7 @@ fn find_in_scope(
 /// Returns single-segment path (i.e. without any prefix) if `item` is found in prelude and its
 /// name doesn't clash in current scope.
 fn find_in_prelude(
-    db: &dyn DefDatabase,
+    db: &dyn SourceDatabase,
     local_def_map: &DefMap,
     item: ItemInNs,
     from: ModuleId,
@@ -302,7 +317,7 @@ fn find_in_prelude(
 }
 
 fn is_kw_kind_relative_to_from(
-    db: &dyn DefDatabase,
+    db: &dyn SourceDatabase,
     def_map: &DefMap,
     item: ModuleId,
     from: ModuleId,
@@ -641,8 +656,9 @@ fn find_local_import_locations(
 
 #[cfg(test)]
 mod tests {
+    use std::cell::LazyCell;
+
     use expect_test::{Expect, expect};
-    use hir_expand::db::ExpandDatabase;
     use itertools::Itertools;
     use span::Edition;
     use stdx::format_to;
@@ -672,10 +688,10 @@ mod tests {
             syntax::SourceFile::parse(&format!("use {path};"), span::Edition::CURRENT);
         let ast_path =
             parsed_path_file.syntax_node().descendants().find_map(syntax::ast::Path::cast).unwrap();
-        let mod_path = ModPath::from_src(&db, ast_path, &mut |range| {
-            db.span_map(pos.file_id.into()).span_for_range(range).ctx
-        })
-        .unwrap();
+        let span_map = LazyCell::new(|| hir_expand::HirFileId::from(pos.file_id).span_map(&db));
+        let mod_path =
+            ModPath::from_src(&db, ast_path, &mut |range| span_map.span_for_range(range).ctx)
+                .unwrap();
 
         let (def_map, local_def_map) = module.local_def_map(&db);
         let resolved = def_map

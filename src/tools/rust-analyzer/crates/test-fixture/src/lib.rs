@@ -17,7 +17,6 @@ use cfg::CfgOptions;
 use hir_expand::{
     EditionedFileId, FileRange,
     change::ChangeWithProcMacros,
-    db::ExpandDatabase,
     files::FilePosition,
     proc_macro::{
         ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacroKind, ProcMacrosBuilder,
@@ -139,7 +138,7 @@ pub const WORKSPACE: base_db::SourceRootId = base_db::SourceRootId(0);
 ///
 /// Available proc macros: `identity` (attr), `DeriveIdentity` (derive), `input_replace` (attr),
 /// `mirror` (bang), `shorten` (bang)
-pub trait WithFixture: Default + ExpandDatabase + SourceDatabase + 'static {
+pub trait WithFixture: Default + SourceDatabase + 'static {
     /// See the trait documentation for more information on fixtures.
     #[track_caller]
     fn with_single_file(
@@ -231,7 +230,7 @@ pub trait WithFixture: Default + ExpandDatabase + SourceDatabase + 'static {
     }
 }
 
-impl<DB: ExpandDatabase + SourceDatabase + Default + 'static> WithFixture for DB {}
+impl<DB: SourceDatabase + Default + 'static> WithFixture for DB {}
 
 pub struct ChangeFixture {
     pub file_position: Option<(span::EditionedFileId, RangeOrOffset)>,
@@ -847,7 +846,7 @@ struct IdentityProcMacroExpander;
 impl ProcMacroExpander for IdentityProcMacroExpander {
     fn expand(
         &self,
-        _: &dyn ExpandDatabase,
+        _: &dyn SourceDatabase,
         subtree: &TopSubtree,
         _: Option<&TopSubtree>,
         _: &Env,
@@ -870,7 +869,7 @@ struct Issue18089ProcMacroExpander;
 impl ProcMacroExpander for Issue18089ProcMacroExpander {
     fn expand(
         &self,
-        _: &dyn ExpandDatabase,
+        _: &dyn SourceDatabase,
         subtree: &TopSubtree,
         _: Option<&TopSubtree>,
         _: &Env,
@@ -906,7 +905,7 @@ struct AttributeInputReplaceProcMacroExpander;
 impl ProcMacroExpander for AttributeInputReplaceProcMacroExpander {
     fn expand(
         &self,
-        _: &dyn ExpandDatabase,
+        _: &dyn SourceDatabase,
         _: &TopSubtree,
         attrs: Option<&TopSubtree>,
         _: &Env,
@@ -930,7 +929,7 @@ struct Issue18840ProcMacroExpander;
 impl ProcMacroExpander for Issue18840ProcMacroExpander {
     fn expand(
         &self,
-        _: &dyn ExpandDatabase,
+        _: &dyn SourceDatabase,
         fn_: &TopSubtree,
         _: Option<&TopSubtree>,
         _: &Env,
@@ -967,7 +966,7 @@ struct MirrorProcMacroExpander;
 impl ProcMacroExpander for MirrorProcMacroExpander {
     fn expand(
         &self,
-        _: &dyn ExpandDatabase,
+        _: &dyn SourceDatabase,
         input: &TopSubtree,
         _: Option<&TopSubtree>,
         _: &Env,
@@ -1006,7 +1005,7 @@ struct ShortenProcMacroExpander;
 impl ProcMacroExpander for ShortenProcMacroExpander {
     fn expand(
         &self,
-        _: &dyn ExpandDatabase,
+        _: &dyn SourceDatabase,
         input: &TopSubtree,
         _: Option<&TopSubtree>,
         _: &Env,
@@ -1051,7 +1050,7 @@ struct Issue17479ProcMacroExpander;
 impl ProcMacroExpander for Issue17479ProcMacroExpander {
     fn expand(
         &self,
-        _: &dyn ExpandDatabase,
+        _: &dyn SourceDatabase,
         subtree: &TopSubtree,
         _: Option<&TopSubtree>,
         _: &Env,
@@ -1082,7 +1081,7 @@ struct Issue18898ProcMacroExpander;
 impl ProcMacroExpander for Issue18898ProcMacroExpander {
     fn expand(
         &self,
-        _: &dyn ExpandDatabase,
+        _: &dyn SourceDatabase,
         subtree: &TopSubtree,
         _: Option<&TopSubtree>,
         _: &Env,
@@ -1136,7 +1135,7 @@ struct DisallowCfgProcMacroExpander;
 impl ProcMacroExpander for DisallowCfgProcMacroExpander {
     fn expand(
         &self,
-        _: &dyn ExpandDatabase,
+        _: &dyn SourceDatabase,
         subtree: &TopSubtree,
         _: Option<&TopSubtree>,
         _: &Env,
@@ -1168,7 +1167,7 @@ struct GenerateSuffixedTypeProcMacroExpander;
 impl ProcMacroExpander for GenerateSuffixedTypeProcMacroExpander {
     fn expand(
         &self,
-        _: &dyn ExpandDatabase,
+        _: &dyn SourceDatabase,
         subtree: &TopSubtree,
         _attrs: Option<&TopSubtree>,
         _env: &Env,

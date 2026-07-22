@@ -19,17 +19,6 @@ pub trait RelateExt: InferCtxtLike {
         Vec<Goal<Self::Interner, <Self::Interner as Interner>::Predicate>>,
         TypeError<Self::Interner>,
     >;
-
-    fn eq_structurally_relating_aliases<T: Relate<Self::Interner>>(
-        &self,
-        param_env: <Self::Interner as Interner>::ParamEnv,
-        lhs: T,
-        rhs: T,
-        span: <Self::Interner as Interner>::Span,
-    ) -> Result<
-        Vec<Goal<Self::Interner, <Self::Interner as Interner>::Predicate>>,
-        TypeError<Self::Interner>,
-    >;
 }
 
 impl<Infcx: InferCtxtLike> RelateExt for Infcx {
@@ -44,29 +33,7 @@ impl<Infcx: InferCtxtLike> RelateExt for Infcx {
         Vec<Goal<Self::Interner, <Self::Interner as Interner>::Predicate>>,
         TypeError<Self::Interner>,
     > {
-        let mut relate =
-            SolverRelating::new(self, StructurallyRelateAliases::No, variance, param_env, span);
-        relate.relate(lhs, rhs)?;
-        Ok(relate.goals)
-    }
-
-    fn eq_structurally_relating_aliases<T: Relate<Self::Interner>>(
-        &self,
-        param_env: <Self::Interner as Interner>::ParamEnv,
-        lhs: T,
-        rhs: T,
-        span: <Self::Interner as Interner>::Span,
-    ) -> Result<
-        Vec<Goal<Self::Interner, <Self::Interner as Interner>::Predicate>>,
-        TypeError<Self::Interner>,
-    > {
-        let mut relate = SolverRelating::new(
-            self,
-            StructurallyRelateAliases::Yes,
-            ty::Invariant,
-            param_env,
-            span,
-        );
+        let mut relate = SolverRelating::new(self, variance, param_env, span);
         relate.relate(lhs, rhs)?;
         Ok(relate.goals)
     }
@@ -76,7 +43,6 @@ impl<Infcx: InferCtxtLike> RelateExt for Infcx {
 pub struct SolverRelating<'infcx, Infcx, I: Interner> {
     infcx: &'infcx Infcx,
     // Immutable fields.
-    structurally_relate_aliases: StructurallyRelateAliases,
     param_env: I::ParamEnv,
     span: I::Span,
     // Mutable fields.
@@ -114,14 +80,12 @@ where
 {
     pub fn new(
         infcx: &'infcx Infcx,
-        structurally_relate_aliases: StructurallyRelateAliases,
         ambient_variance: ty::Variance,
         param_env: I::ParamEnv,
         span: I::Span,
     ) -> Self {
         SolverRelating {
             infcx,
-            structurally_relate_aliases,
             span,
             ambient_variance,
             param_env,
@@ -230,10 +194,10 @@ where
             }
 
             (ty::Infer(ty::TyVar(a_vid)), _) => {
-                infcx.instantiate_ty_var_raw(self, true, a_vid, self.ambient_variance, b)?;
+                infcx.instantiate_ty_var(self, true, a_vid, self.ambient_variance, b)?;
             }
             (_, ty::Infer(ty::TyVar(b_vid))) => {
-                infcx.instantiate_ty_var_raw(
+                infcx.instantiate_ty_var(
                     self,
                     false,
                     b_vid,
@@ -366,10 +330,6 @@ where
         self.param_env
     }
 
-    fn structurally_relate_aliases(&self) -> StructurallyRelateAliases {
-        self.structurally_relate_aliases
-    }
-
     fn register_predicates(
         &mut self,
         obligations: impl IntoIterator<Item: ty::Upcast<I, I::Predicate>>,
@@ -383,27 +343,7 @@ where
         self.goals.extend(obligations);
     }
 
-    fn register_alias_relate_predicate(&mut self, a: I::Ty, b: I::Ty) {
-        self.register_predicates([ty::Binder::dummy(match self.ambient_variance {
-            ty::Covariant => ty::PredicateKind::AliasRelate(
-                a.into(),
-                b.into(),
-                ty::AliasRelationDirection::Subtype,
-            ),
-            // a :> b is b <: a
-            ty::Contravariant => ty::PredicateKind::AliasRelate(
-                b.into(),
-                a.into(),
-                ty::AliasRelationDirection::Subtype,
-            ),
-            ty::Invariant => ty::PredicateKind::AliasRelate(
-                a.into(),
-                b.into(),
-                ty::AliasRelationDirection::Equate,
-            ),
-            ty::Bivariant => {
-                unreachable!("Expected bivariance to be handled in relate_with_variance")
-            }
-        })]);
+    fn ambient_variance(&self) -> ty::Variance {
+        self.ambient_variance
     }
 }

@@ -581,7 +581,6 @@ symbols! {
         cfg_accessible,
         cfg_attr,
         cfg_attr_multi,
-        cfg_attr_trace: "<cfg_attr_trace>", // must not be a valid identifier
         cfg_boolean_literals,
         cfg_contract_checks,
         cfg_doctest,
@@ -598,15 +597,16 @@ symbols! {
         cfg_target_has_atomic,
         cfg_target_has_atomic_equal_alignment,
         cfg_target_has_reliable_f16_f128,
+        cfg_target_has_threads,
         cfg_target_object_format,
         cfg_target_thread_local,
         cfg_target_vendor,
-        cfg_trace: "<cfg_trace>", // must not be a valid identifier
         cfg_ub_checks,
         cfg_version,
         cfi,
         cfi_encoding,
         char,
+        checked_type_aliases,
         clflushopt_target_feature,
         client,
         clippy,
@@ -615,6 +615,7 @@ symbols! {
         clone_closures,
         clone_fn,
         clone_from,
+        close_fn,
         closure,
         closure_lifetime_binder,
         closure_to_fn_coercion,
@@ -819,8 +820,10 @@ symbols! {
         diagnostic_on_unknown,
         diagnostic_on_unmatch_args,
         diagnostic_on_unmatched_args,
+        diagnostic_opaque,
         dialect,
         direct,
+        direct_const_arg,
         discriminant_kind,
         discriminant_type,
         discriminant_value,
@@ -898,6 +901,7 @@ symbols! {
         exhaustive_integer_patterns,
         exhaustive_patterns,
         existential_type,
+        exit_fn,
         exp2f16,
         exp2f32,
         exp2f64,
@@ -1009,6 +1013,7 @@ symbols! {
         format_unsafe_arg,
         fp,
         framework,
+        free_fn,
         freeze,
         freeze_impls,
         freg,
@@ -1170,6 +1175,8 @@ symbols! {
         lang_items,
         large_assignments,
         last,
+        lasx,
+        late_bound_turbofishing,
         lateout,
         lazy_normalization_consts,
         lazy_type_alias,
@@ -1227,6 +1234,7 @@ symbols! {
         loop_hints,
         loop_match,
         lr,
+        lsx,
         lt,
         m68k,
         m68k_target_feature,
@@ -1248,6 +1256,7 @@ symbols! {
         macro_vis_matcher,
         macros_in_extern,
         main,
+        malloc_fn,
         managed_boxes,
         manually_drop,
         map,
@@ -1473,6 +1482,7 @@ symbols! {
         on_unmatched_args,
         opaque,
         opaque_module_name_placeholder: "<opaque>",
+        open_fn,
         ops,
         opt_out_copy,
         optimize,
@@ -1533,6 +1543,7 @@ symbols! {
         panic_misaligned_pointer_dereference,
         panic_nounwind,
         panic_null_pointer_dereference,
+        panic_null_reference_constructed,
         panic_runtime,
         panic_str_2015,
         panic_unwind,
@@ -1656,9 +1667,11 @@ symbols! {
         raw_identifiers,
         raw_ref_op,
         re_rebalance_coherence,
+        read_fn,
         read_via_copy,
         readonly,
         realloc,
+        realloc_fn,
         realtime,
         reason,
         reborrow,
@@ -1735,6 +1748,7 @@ symbols! {
         rust_analyzer,
         rust_begin_unwind,
         rust_cold_cc,
+        rust_dash_call: "rust-call",
         rust_eh_personality,
         rust_future,
         rust_logo,
@@ -1773,6 +1787,7 @@ symbols! {
         rustc_deprecated_safe_2024,
         rustc_diagnostic_item,
         rustc_diagnostic_macros,
+        rustc_diagnostic_opaque,
         rustc_do_not_const_check,
         rustc_doc_primitive,
         rustc_driver,
@@ -1850,6 +1865,7 @@ symbols! {
         rustc_specialization_trait,
         rustc_std_internal_symbol,
         rustc_strict_coherence,
+        rustc_test_entrypoint_marker,
         rustc_test_marker,
         rustc_then_this_would_need,
         rustc_trivial_field_reads,
@@ -1874,6 +1890,7 @@ symbols! {
         saturating_sub,
         sdylib,
         search_unbox,
+        section,
         select_unpredictable,
         self_in_typedefs,
         self_struct_ctor,
@@ -2081,6 +2098,7 @@ symbols! {
         target_has_reliable_f16_math,
         target_has_reliable_f128,
         target_has_reliable_f128_math,
+        target_has_threads,
         target_object_format,
         target_os,
         target_pointer_width,
@@ -2314,6 +2332,7 @@ symbols! {
         vgpr384,
         vgpr512,
         vgpr1024,
+        view_type,
         view_types,
         vis,
         visible_private_types,
@@ -2359,6 +2378,7 @@ symbols! {
         write_box_via_move,
         write_bytes,
         write_fmt,
+        write_fn,
         write_macro,
         write_str,
         write_via_move,
@@ -2373,6 +2393,7 @@ symbols! {
         xloop,
         xmm_reg,
         xop_target_feature,
+        xreg,
         xtensa,
         xtensa_target_feature,
         yeet_desugar_details,
@@ -2648,6 +2669,7 @@ impl Symbol {
 
     /// Maps a string to its interned representation.
     #[rustc_diagnostic_item = "SymbolIntern"]
+    #[inline]
     pub fn intern(str: &str) -> Self {
         with_session_globals(|session_globals| session_globals.symbol_interner.intern_str(str))
     }
@@ -2660,6 +2682,7 @@ impl Symbol {
     /// interner. Interners are long-lived, and there are very few of them, and
     /// this function is typically used for short-lived things, so in practice
     /// it works out ok.
+    #[inline]
     pub fn as_str(&self) -> &str {
         with_session_globals(|session_globals| unsafe {
             std::mem::transmute::<&str, &str>(session_globals.symbol_interner.get_str(*self))

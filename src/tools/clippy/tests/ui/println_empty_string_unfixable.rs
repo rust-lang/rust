@@ -1,4 +1,4 @@
-#![allow(clippy::match_single_binding)]
+#![warn(clippy::println_empty_string)]
 
 // If there is a comment in the span of macro call, we don't provide an auto-fix suggestion.
 #[rustfmt::skip]

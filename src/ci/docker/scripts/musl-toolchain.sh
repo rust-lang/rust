@@ -6,7 +6,7 @@
 # musl unlike GLIBC is forward compatible so upgrading it shouldn't break old distributions.
 # Right now we have: Binutils 2.31.1, GCC 9.2.0, musl 1.2.5.
 
-# ignore-tidy-linelength
+# ignore-tidy-file-linelength
 
 set -ex
 

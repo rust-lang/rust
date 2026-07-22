@@ -31,15 +31,13 @@ use rustc_target::spec::{
     RelocModel, RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, TlsModel,
 };
 
-use crate::interface::{initialize_checked_jobserver, parse_cfg};
+use crate::interface::parse_cfg;
 
 fn sess_and_cfg<F>(args: &[&'static str], f: F)
 where
     F: FnOnce(Session, Cfg),
 {
     let mut early_dcx = EarlyDiagCtxt::new(ErrorOutputType::default());
-    initialize_checked_jobserver(&early_dcx);
-
     let matches = optgroups().parse(args).unwrap();
     let sessopts = build_session_options(&mut early_dcx, &matches);
     let target = rustc_session::config::build_target_config(
@@ -788,6 +786,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(annotate_moves, AnnotateMoves::Enabled(Some(1234)));
     tracked!(assume_incomplete_release, true);
     tracked!(autodiff, vec![AutoDiff::Enable, AutoDiff::NoTT]);
+    tracked!(autodiff_post_passes, Some("function(mem2reg,instsimplify,simplifycfg)".to_string()));
     tracked!(binary_dep_depinfo, true);
     tracked!(box_noalias, false);
     tracked!(
@@ -851,7 +850,6 @@ fn test_unstable_options_tracking_hash() {
     tracked!(mir_opt_level, Some(4));
     tracked!(mir_preserve_ub, true);
     tracked!(move_size_limit, Some(4096));
-    tracked!(mutable_noalias, false);
     tracked!(next_solver, NextSolverConfig { coherence: true, globally: true });
     tracked!(no_generate_arange_section, true);
     tracked!(no_link, true);
@@ -866,7 +864,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(panic_in_drop, PanicStrategy::Abort);
     tracked!(
         patchable_function_entry,
-        PatchableFunctionEntry::from_total_and_prefix_nops(10, 5)
+        PatchableFunctionEntry::from_parts(10, 5, None)
             .expect("total must be greater than or equal to prefix")
     );
     tracked!(plt, Some(true));

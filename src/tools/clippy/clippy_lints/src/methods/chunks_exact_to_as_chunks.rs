@@ -3,10 +3,10 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
 use clippy_utils::source::snippet_with_context;
-use clippy_utils::visitors::is_const_evaluatable;
+use clippy_utils::visitors::is_const_param_evaluatable;
 use clippy_utils::{get_expr_use_site, sym};
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, Node, PatKind};
+use rustc_hir::{BlockCheckMode, Expr, ExprKind, Node, PatKind, QPath};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
 use rustc_span::{DesugaringKind, ExpnKind, Span, Symbol};
@@ -25,25 +25,22 @@ pub(super) fn check<'tcx>(
         return;
     }
 
-    if is_const_evaluatable(cx.tcx, cx.typeck_results(), arg) {
-        if !msrv.meets(cx, msrvs::AS_CHUNKS) {
-            return;
-        }
-
+    if is_const_param_evaluatable(cx.tcx, cx.typeck_results(), arg) {
         let use_ctxt = get_expr_use_site(cx.tcx, cx.typeck_results(), expr.span.ctxt(), expr);
 
-        if use_ctxt.is_ty_unified {
+        if use_ctxt.is_ty_unified || !msrv.meets(cx, msrvs::AS_CHUNKS) {
             return;
         }
 
-        let suggestion_method = if method_name == sym::chunks_exact_mut {
-            "as_chunks_mut"
-        } else {
-            "as_chunks"
-        };
+        let is_mut = method_name == sym::chunks_exact_mut;
+        let suggestion_method = if is_mut { "as_chunks_mut" } else { "as_chunks" };
+        let iter_method = if is_mut { "iter_mut" } else { "iter" };
 
         let mut applicability = Applicability::MachineApplicable;
-        let arg_str = snippet_with_context(cx, arg.span, expr.span.ctxt(), "_", &mut applicability).0;
+        let mut arg_str = snippet_with_context(cx, arg.span, expr.span.ctxt(), "_", &mut applicability).0;
+        if expr_needs_braces_for_const(arg) {
+            arg_str = std::borrow::Cow::Owned(format!("{{ {arg_str} }}"));
+        }
 
         let as_chunks = format_args!("{suggestion_method}::<{arg_str}>()");
 
@@ -64,7 +61,7 @@ pub(super) fn check<'tcx>(
                         {
                             diag.span_suggestion(
                                 call_span,
-                                "consider using `as_chunks` instead",
+                                format!("consider using `{suggestion_method}` instead"),
                                 format!("{as_chunks}.0"),
                                 applicability,
                             );
@@ -79,8 +76,8 @@ pub(super) fn check<'tcx>(
                         {
                             diag.span_suggestion(
                                 call_span,
-                                "consider using `as_chunks` instead",
-                                format!("{as_chunks}.0.iter()"),
+                                format!("consider using `{suggestion_method}` instead"),
+                                format!("{as_chunks}.0.{iter_method}()"),
                                 applicability,
                             );
                             return;
@@ -95,10 +92,28 @@ pub(super) fn check<'tcx>(
                     && let PatKind::Binding(_, _, ident, _) = let_stmt.pat.kind
                 {
                     diag.note(format!(
-                        "you can access the chunks using `{ident}.0.iter()`, and the remainder using `{ident}.1`"
+                        "you can access the chunks using `{ident}.0.{iter_method}()`, and the remainder using `{ident}.1`"
                     ));
                 }
             },
         );
+    }
+}
+
+/// Whether the given expression needs braces to be a syntactically valid const generics argument.
+///
+/// For more details, see: <https://doc.rust-lang.org/reference/paths.html#railroad-GenericArgsConst>
+fn expr_needs_braces_for_const(e: &Expr<'_>) -> bool {
+    match e.kind {
+        ExprKind::Lit(_) => false,
+        ExprKind::Block(block, None) => {
+            // unsafe blocks need braces
+            block.rules != BlockCheckMode::DefaultBlock
+        },
+        ExprKind::Path(QPath::Resolved(_, p)) => {
+            // path must be a single segment. E.g. Foo::BAR is not allowed
+            p.segments.len() != 1
+        },
+        _ => true,
     }
 }

@@ -18,14 +18,13 @@
 
 use ide_db::{
     SnippetCap,
+    source_change::SnippetEdit,
     syntax_helpers::format_string_exprs::{Arg, parse_format_exprs, with_placeholders},
 };
 use syntax::{AstToken, ast};
 
 use crate::{
-    Completions,
-    completions::postfix::{build_postfix_snippet_builder, escape_snippet_bits},
-    context::CompletionContext,
+    Completions, completions::postfix::build_postfix_snippet_builder, context::CompletionContext,
 };
 
 /// Mapping ("postfix completion item" => "macro to use")
@@ -57,10 +56,10 @@ pub(crate) fn add_format_like_completions(
 
     if let Ok((mut out, mut exprs)) = parse_format_exprs(receiver_text.text()) {
         // Escape any snippet bits in the out text and any of the exprs.
-        escape_snippet_bits(&mut out);
+        SnippetEdit::escape_snippet_bits(&mut out);
         for arg in &mut exprs {
             if let Arg::Ident(text) | Arg::Expr(text) = arg {
-                escape_snippet_bits(text)
+                SnippetEdit::escape_snippet_bits(text)
             }
         }
 

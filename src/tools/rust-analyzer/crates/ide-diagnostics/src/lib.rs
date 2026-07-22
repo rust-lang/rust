@@ -65,6 +65,7 @@ mod handlers {
     pub(crate) mod missing_match_arms;
     pub(crate) mod missing_unsafe;
     pub(crate) mod moved_out_of_ref;
+    pub(crate) mod mut_ref_in_imm_ref_pat;
     pub(crate) mod mutability_errors;
     pub(crate) mod mutable_ref;
     pub(crate) mod no_such_field;
@@ -89,6 +90,8 @@ mod handlers {
     pub(crate) mod unimplemented_builtin_macro;
     pub(crate) mod unimplemented_trait;
     pub(crate) mod union_expr_must_have_exactly_one_field;
+    pub(crate) mod union_pat_has_rest;
+    pub(crate) mod union_pat_must_have_exactly_one_field;
     pub(crate) mod unreachable_label;
     pub(crate) mod unresolved_assoc_item;
     pub(crate) mod unresolved_extern_crate;
@@ -100,6 +103,7 @@ mod handlers {
     pub(crate) mod unresolved_module;
     pub(crate) mod unused_must_use;
     pub(crate) mod unused_variables;
+    pub(crate) mod yield_outside_coroutine;
 
     // The handlers below are unusual, the implement the diagnostics as well.
     pub(crate) mod field_shorthand;
@@ -113,10 +117,7 @@ mod tests;
 
 use std::sync::LazyLock;
 
-use hir::{
-    Crate, DisplayTarget, InFile, MacroCallIdExt, Semantics, db::ExpandDatabase,
-    diagnostics::AnyDiagnostic,
-};
+use hir::{Crate, DisplayTarget, InFile, MacroCallIdExt, Semantics, diagnostics::AnyDiagnostic};
 use ide_db::{
     FileId, FileRange, FxHashMap, FxHashSet, RootDatabase, Severity, SnippetCap,
     assists::{Assist, AssistId, AssistResolveStrategy, ExprFillDefaultMode},
@@ -479,6 +480,7 @@ pub fn semantic_diagnostics(
             AnyDiagnostic::MissingMatchArms(d) => handlers::missing_match_arms::missing_match_arms(&ctx, &d),
             AnyDiagnostic::MissingUnsafe(d) => handlers::missing_unsafe::missing_unsafe(&ctx, &d),
             AnyDiagnostic::MovedOutOfRef(d) => handlers::moved_out_of_ref::moved_out_of_ref(&ctx, &d),
+            AnyDiagnostic::MutRefInImmRefPat(d) => handlers::mut_ref_in_imm_ref_pat::mut_ref_in_imm_ref_pat(&ctx, &d),
             AnyDiagnostic::MutableRefBinding(d) => handlers::mutable_ref::mutable_ref_binding(&ctx, &d),
             AnyDiagnostic::NeedMut(d) => match handlers::mutability_errors::need_mut(&ctx, &d) {
                 Some(it) => it,
@@ -548,9 +550,16 @@ pub fn semantic_diagnostics(
             AnyDiagnostic::TypeMustBeKnown(d) => handlers::type_must_be_known::type_must_be_known(&ctx, &d),
             AnyDiagnostic::PatternArgInExternFn(d) => handlers::pattern_arg_in_extern_fn::pattern_arg_in_extern_fn(&ctx, &d),
             AnyDiagnostic::UnionExprMustHaveExactlyOneField(d) => handlers::union_expr_must_have_exactly_one_field::union_expr_must_have_exactly_one_field(&ctx, &d),
+            AnyDiagnostic::UnionPatMustHaveExactlyOneField(d) => {
+                handlers::union_pat_must_have_exactly_one_field::union_pat_must_have_exactly_one_field(&ctx, &d)
+            }
+            AnyDiagnostic::UnionPatHasRest(d) => {
+                handlers::union_pat_has_rest::union_pat_has_rest(&ctx, &d)
+            }
             AnyDiagnostic::UnimplementedTrait(d) => handlers::unimplemented_trait::unimplemented_trait(&ctx, &d),
             AnyDiagnostic::FruInDestructuringAssignment(d) => handlers::fru_in_destructuring_assignment::fru_in_destructuring_assignment(&ctx, &d),
             AnyDiagnostic::ExplicitDropMethodUse(d) => handlers::explicit_drop_method_use::explicit_drop_method_use(&ctx, &d),
+            AnyDiagnostic::YieldOutsideCoroutine(d) => handlers::yield_outside_coroutine::yield_outside_coroutine(&ctx, &d),
         };
         res.push(d)
     }
@@ -606,7 +615,7 @@ fn handle_diag_from_macros(
     node: &InFile<SyntaxNode>,
 ) -> bool {
     let Some(macro_file) = node.file_id.macro_file() else { return true };
-    let span_map = sema.db.expansion_span_map(macro_file);
+    let span_map = macro_file.expansion_span_map(sema.db);
     let mut spans = span_map.spans_for_range(node.text_range());
     if spans.any(|span| {
         span.ctx.outer_expn(sema.db).is_some_and(|expansion| {

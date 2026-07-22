@@ -1,6 +1,6 @@
 // Issue #11669
 
-// ignore-tidy-cr
+// ignore-tidy-file-cr
 
 fn main() {
     // \r\n

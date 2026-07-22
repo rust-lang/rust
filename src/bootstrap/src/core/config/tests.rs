@@ -11,6 +11,7 @@ use serde::Deserialize;
 
 use super::flags::Flags;
 use super::toml::change_id::ChangeIdWrapper;
+use super::toml::rust::parse_codegen_backends;
 use super::{Config, RUSTC_IF_UNCHANGED_ALLOWED_PATHS};
 use crate::ChangeId;
 use crate::core::build_steps::clippy::{LintConfig, get_clippy_rules_in_order};
@@ -204,6 +205,15 @@ fn rust_optimize() {
     assert!(parse("rust.optimize = \"s\"").rust_optimize.is_release());
     assert_eq!(parse("rust.optimize = 1").rust_optimize.get_opt_level(), Some("1".to_string()));
     assert_eq!(parse("rust.optimize = \"s\"").rust_optimize.get_opt_level(), Some("s".to_string()));
+}
+
+#[test]
+#[should_panic(expected = "Duplicate value 'llvm' for 'rust.codegen-backends'")]
+fn rejects_duplicate_codegen_backends() {
+    parse_codegen_backends(
+        vec!["llvm", "llvm", "cranelift"].into_iter().map(str::to_owned).collect(),
+        "rust",
+    );
 }
 
 #[test]

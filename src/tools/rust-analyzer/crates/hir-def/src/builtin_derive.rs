@@ -3,13 +3,14 @@
 //! To save time and memory, builtin derives are not really expanded. Instead, we record them
 //! and create their impls based on lowered data, see crates/hir-ty/src/builtin_derive.rs.
 
+use base_db::SourceDatabase;
 use hir_expand::{InFile, builtin::BuiltinDeriveExpander, name::Name};
 use intern::{Symbol, sym};
 use tt::TextRange;
 
 use crate::{
     AdtId, BuiltinDeriveImplId, BuiltinDeriveImplLoc, FunctionId, HasModule, MacroId,
-    db::DefDatabase, lang_item::LangItems,
+    lang_item::LangItems,
 };
 
 macro_rules! declare_enum {
@@ -109,7 +110,7 @@ impl BuiltinDeriveImplTrait {
 impl BuiltinDeriveImplMethod {
     pub fn trait_method(
         self,
-        db: &dyn DefDatabase,
+        db: &dyn SourceDatabase,
         impl_: BuiltinDeriveImplId,
     ) -> Option<FunctionId> {
         let loc = impl_.loc(db);
@@ -143,7 +144,7 @@ pub(crate) fn with_derive_traits(
 }
 
 impl BuiltinDeriveImplLoc {
-    pub fn source(&self, db: &dyn DefDatabase) -> InFile<TextRange> {
+    pub fn source(&self, db: &dyn SourceDatabase) -> InFile<TextRange> {
         let (adt_ast_id, module) = match self.adt {
             AdtId::StructId(adt) => {
                 let adt_loc = adt.loc(db);

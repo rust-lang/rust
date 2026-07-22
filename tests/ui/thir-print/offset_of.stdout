@@ -315,12 +315,12 @@ body:
                                                         span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#4)
                                                         kind: 
                                                             Call {
-                                                                ty: FnDef(DefId(core::intrinsics::offset_of), [Alpha])
+                                                                ty: FnDef(DefId(core::intrinsics::offset_of), Binder { value: [Alpha], bound_vars: [] })
                                                                 from_hir_call: false
                                                                 fn_span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#4)
                                                                 fun:
                                                                     Expr {
-                                                                        ty: FnDef(DefId(core::intrinsics::offset_of), [Alpha])
+                                                                        ty: FnDef(DefId(core::intrinsics::offset_of), Binder { value: [Alpha], bound_vars: [] })
                                                                         temp_scope_id: 7
                                                                         span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#4)
                                                                         kind: 
@@ -398,12 +398,12 @@ body:
                                                         span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#5)
                                                         kind: 
                                                             Call {
-                                                                ty: FnDef(DefId(core::intrinsics::offset_of), [Alpha])
+                                                                ty: FnDef(DefId(core::intrinsics::offset_of), Binder { value: [Alpha], bound_vars: [] })
                                                                 from_hir_call: false
                                                                 fn_span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#5)
                                                                 fun:
                                                                     Expr {
-                                                                        ty: FnDef(DefId(core::intrinsics::offset_of), [Alpha])
+                                                                        ty: FnDef(DefId(core::intrinsics::offset_of), Binder { value: [Alpha], bound_vars: [] })
                                                                         temp_scope_id: 17
                                                                         span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#5)
                                                                         kind: 
@@ -481,12 +481,12 @@ body:
                                                         span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#6)
                                                         kind: 
                                                             Call {
-                                                                ty: FnDef(DefId(core::intrinsics::offset_of), [Blah])
+                                                                ty: FnDef(DefId(core::intrinsics::offset_of), Binder { value: [Blah], bound_vars: [] })
                                                                 from_hir_call: false
                                                                 fn_span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#6)
                                                                 fun:
                                                                     Expr {
-                                                                        ty: FnDef(DefId(core::intrinsics::offset_of), [Blah])
+                                                                        ty: FnDef(DefId(core::intrinsics::offset_of), Binder { value: [Blah], bound_vars: [] })
                                                                         temp_scope_id: 27
                                                                         span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#6)
                                                                         kind: 
@@ -572,12 +572,12 @@ body:
                                                                         span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#7)
                                                                         kind: 
                                                                             Call {
-                                                                                ty: FnDef(DefId(core::intrinsics::offset_of), [Alpha])
+                                                                                ty: FnDef(DefId(core::intrinsics::offset_of), Binder { value: [Alpha], bound_vars: [] })
                                                                                 from_hir_call: false
                                                                                 fn_span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#7)
                                                                                 fun:
                                                                                     Expr {
-                                                                                        ty: FnDef(DefId(core::intrinsics::offset_of), [Alpha])
+                                                                                        ty: FnDef(DefId(core::intrinsics::offset_of), Binder { value: [Alpha], bound_vars: [] })
                                                                                         temp_scope_id: 37
                                                                                         span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#7)
                                                                                         kind: 
@@ -614,12 +614,12 @@ body:
                                                                         span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#7)
                                                                         kind: 
                                                                             Call {
-                                                                                ty: FnDef(DefId(core::intrinsics::offset_of), [Beta])
+                                                                                ty: FnDef(DefId(core::intrinsics::offset_of), Binder { value: [Beta], bound_vars: [] })
                                                                                 from_hir_call: false
                                                                                 fn_span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#7)
                                                                                 fun:
                                                                                     Expr {
-                                                                                        ty: FnDef(DefId(core::intrinsics::offset_of), [Beta])
+                                                                                        ty: FnDef(DefId(core::intrinsics::offset_of), Binder { value: [Beta], bound_vars: [] })
                                                                                         temp_scope_id: 37
                                                                                         span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#7)
                                                                                         kind: 
@@ -707,12 +707,12 @@ body:
                                                                         span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#8)
                                                                         kind: 
                                                                             Call {
-                                                                                ty: FnDef(DefId(core::intrinsics::offset_of), [Alpha])
+                                                                                ty: FnDef(DefId(core::intrinsics::offset_of), Binder { value: [Alpha], bound_vars: [] })
                                                                                 from_hir_call: false
                                                                                 fn_span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#8)
                                                                                 fun:
                                                                                     Expr {
-                                                                                        ty: FnDef(DefId(core::intrinsics::offset_of), [Alpha])
+                                                                                        ty: FnDef(DefId(core::intrinsics::offset_of), Binder { value: [Alpha], bound_vars: [] })
                                                                                         temp_scope_id: 47
                                                                                         span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#8)
                                                                                         kind: 
@@ -749,12 +749,12 @@ body:
                                                                         span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#8)
                                                                         kind: 
                                                                             Call {
-                                                                                ty: FnDef(DefId(core::intrinsics::offset_of), [Beta])
+                                                                                ty: FnDef(DefId(core::intrinsics::offset_of), Binder { value: [Beta], bound_vars: [] })
                                                                                 from_hir_call: false
                                                                                 fn_span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#8)
                                                                                 fun:
                                                                                     Expr {
-                                                                                        ty: FnDef(DefId(core::intrinsics::offset_of), [Beta])
+                                                                                        ty: FnDef(DefId(core::intrinsics::offset_of), Binder { value: [Beta], bound_vars: [] })
                                                                                         temp_scope_id: 47
                                                                                         span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#8)
                                                                                         kind: 
@@ -1062,12 +1062,12 @@ body:
                                                         span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#9)
                                                         kind: 
                                                             Call {
-                                                                ty: FnDef(DefId(core::intrinsics::offset_of), [Gamma<T/#0>])
+                                                                ty: FnDef(DefId(core::intrinsics::offset_of), Binder { value: [Gamma<T/#0>], bound_vars: [] })
                                                                 from_hir_call: false
                                                                 fn_span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#9)
                                                                 fun:
                                                                     Expr {
-                                                                        ty: FnDef(DefId(core::intrinsics::offset_of), [Gamma<T/#0>])
+                                                                        ty: FnDef(DefId(core::intrinsics::offset_of), Binder { value: [Gamma<T/#0>], bound_vars: [] })
                                                                         temp_scope_id: 7
                                                                         span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#9)
                                                                         kind: 
@@ -1145,12 +1145,12 @@ body:
                                                         span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#10)
                                                         kind: 
                                                             Call {
-                                                                ty: FnDef(DefId(core::intrinsics::offset_of), [Gamma<T/#0>])
+                                                                ty: FnDef(DefId(core::intrinsics::offset_of), Binder { value: [Gamma<T/#0>], bound_vars: [] })
                                                                 from_hir_call: false
                                                                 fn_span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#10)
                                                                 fun:
                                                                     Expr {
-                                                                        ty: FnDef(DefId(core::intrinsics::offset_of), [Gamma<T/#0>])
+                                                                        ty: FnDef(DefId(core::intrinsics::offset_of), Binder { value: [Gamma<T/#0>], bound_vars: [] })
                                                                         temp_scope_id: 19
                                                                         span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#10)
                                                                         kind: 
@@ -1228,12 +1228,12 @@ body:
                                                         span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#11)
                                                         kind: 
                                                             Call {
-                                                                ty: FnDef(DefId(core::intrinsics::offset_of), [Delta<T/#0>])
+                                                                ty: FnDef(DefId(core::intrinsics::offset_of), Binder { value: [Delta<T/#0>], bound_vars: [] })
                                                                 from_hir_call: false
                                                                 fn_span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#11)
                                                                 fun:
                                                                     Expr {
-                                                                        ty: FnDef(DefId(core::intrinsics::offset_of), [Delta<T/#0>])
+                                                                        ty: FnDef(DefId(core::intrinsics::offset_of), Binder { value: [Delta<T/#0>], bound_vars: [] })
                                                                         temp_scope_id: 31
                                                                         span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#11)
                                                                         kind: 
@@ -1311,12 +1311,12 @@ body:
                                                         span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#12)
                                                         kind: 
                                                             Call {
-                                                                ty: FnDef(DefId(core::intrinsics::offset_of), [Delta<T/#0>])
+                                                                ty: FnDef(DefId(core::intrinsics::offset_of), Binder { value: [Delta<T/#0>], bound_vars: [] })
                                                                 from_hir_call: false
                                                                 fn_span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#12)
                                                                 fun:
                                                                     Expr {
-                                                                        ty: FnDef(DefId(core::intrinsics::offset_of), [Delta<T/#0>])
+                                                                        ty: FnDef(DefId(core::intrinsics::offset_of), Binder { value: [Delta<T/#0>], bound_vars: [] })
                                                                         temp_scope_id: 43
                                                                         span: $SRC_DIR/core/src/mem/mod.rs:LL:COL (#12)
                                                                         kind: 

@@ -1533,6 +1533,43 @@ impl<'a> Iterator for EncodeUtf16<'a> {
             (len.div_ceil(3) + 1, Some(len + 1))
         }
     }
+
+    #[inline]
+    fn count(self) -> usize {
+        let extra = if self.extra == 0 { 0 } else { 1 };
+        // Find UTF-8 non-continuation bytes and map:
+        //
+        // len_utf8() | len_utf16()
+        // -----------|------------
+        // 1          | 1
+        // 2          | 1
+        // 3          | 1
+        // 4          | 2
+        //
+        // Because we never map to larger values the result is never larger than
+        // `self.chars.as_str().len()` so the sum can never overflow
+        self.chars.as_str().as_bytes().iter().fold(extra, |acc, &byte| {
+            acc.wrapping_add({
+                if byte < 0b1000_0000 {
+                    // 0b0xxx_xxxx: ASCII-compatible U+0000 to U+007F
+                    1
+                } else if byte < 0b1100_0000 {
+                    // 0b10xx_xxxx: UTF-8 continuation byte, skip
+                    0
+                } else if byte < 0b1111_0000 {
+                    // 0b110x_xxxx: start of a 2-byte UTF-8 sequence for U+0080 to U+07FF
+                    // 0b1110_xxxx: start of a 3-byte UTF-8 sequence for U+0800 to U+FFFF
+                    1
+                } else {
+                    // 0b1111_0xxx: start of a 4-byte UTF-8 sequence for U+010000 to U+10FFFF
+                    // This is exactly the range encoded as a surrogate pair in UTF-16
+                    //
+                    // 0b1111_1xxx: would fall here but never occurs in valid UTF-8
+                    2
+                }
+            })
+        })
+    }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]

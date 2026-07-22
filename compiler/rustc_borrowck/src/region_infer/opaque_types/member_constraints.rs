@@ -49,7 +49,7 @@ pub(super) fn apply_member_constraints<'tcx>(
             rcx.scc_values.add_region(scc_a, scc_b);
         }
 
-        for defining_use in member_constraints.get(&scc_a).into_iter().flatten() {
+        for defining_use in member_constraints.get(&scc_a).into_flat_iter() {
             apply_member_constraint(rcx, scc_a, &defining_use.arg_regions);
         }
     }

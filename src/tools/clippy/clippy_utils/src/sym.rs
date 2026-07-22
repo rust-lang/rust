@@ -40,6 +40,7 @@ generate! {
     AsyncReadExt,
     AsyncWriteExt,
     BACKSLASH_SINGLE_QUOTE: r"\'",
+    BITS,
     BTreeEntry,
     BTreeSet,
     Binary,

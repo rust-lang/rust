@@ -15,8 +15,7 @@ use rustc_middle::ty::layout::{
     HasTypingEnv, LayoutOf, TyAndLayout, WIDE_PTR_ADDR, WIDE_PTR_EXTRA,
 };
 use rustc_middle::ty::{
-    self, AdtDef, AdtKind, CoroutineArgsExt, ExistentialTraitRef, Instance, Ty, TyCtxt,
-    Unnormalized, Visibility,
+    self, AdtDef, AdtKind, ExistentialTraitRef, Instance, Ty, TyCtxt, Unnormalized, Visibility,
 };
 use rustc_session::config::{self, DebugInfo, Lto};
 use rustc_span::{DUMMY_SP, FileName, RemapPathScopeComponents, SourceFile, Span, Symbol, hygiene};
@@ -1044,7 +1043,7 @@ fn visibility_di_flags<'ll, 'tcx>(
     match visibility {
         Visibility::Public => DIFlags::FlagPublic,
         // Private fields have a restricted visibility of the module containing the type.
-        Visibility::Restricted(did) if did == parent_did => DIFlags::FlagPrivate,
+        Visibility::Restricted(did) if did.to_def_id() == parent_did => DIFlags::FlagPrivate,
         // `pub(crate)`/`pub(super)` visibilities are any other restricted visibility.
         Visibility::Restricted(..) => DIFlags::FlagProtected,
     }
@@ -1241,7 +1240,7 @@ fn build_upvar_field_di_nodes<'ll, 'tcx>(
     closure_or_coroutine_di_node: &'ll DIType,
 ) -> SmallVec<&'ll DIType> {
     let (&def_id, up_var_tys) = match closure_or_coroutine_ty.kind() {
-        ty::Coroutine(def_id, args) => (def_id, args.as_coroutine().prefix_tys()),
+        ty::Coroutine(def_id, args) => (def_id, args.as_coroutine().upvar_tys()),
         ty::Closure(def_id, args) => (def_id, args.as_closure().upvar_tys()),
         ty::CoroutineClosure(def_id, args) => (def_id, args.as_coroutine_closure().upvar_tys()),
         _ => {

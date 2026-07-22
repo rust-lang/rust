@@ -697,6 +697,14 @@
 # FIXME(#61117): Some tests fail when this option is enabled.
 #rust.debuginfo-level-tests = 0
 
+# Compress debuginfo of Rust and C/C++ code.
+# Currently, this only works on Linux.
+# Valid options:
+# - "off" or false: disable compression
+# - true: compress debuginfo with the default compression method (currently zlib)
+# - "zlib": compress debuginfo with zlib
+#rust.compress-debuginfo = "off"
+
 # Should rustc and the standard library be built with split debuginfo? Default
 # is platform dependent.
 #
@@ -966,6 +974,29 @@
 
 
 # =============================================================================
+# Profile-guided optimization options
+#
+# Configure the PGO profile to be used for compilation, or a path where the
+# profile will be written by an instrumented binary, for individual components
+# =============================================================================
+
+# Use the following profile to PGO optimize the Rust compiler.
+#pgo.rustc.use = "/tmp/profiles/foo.profraw"
+# Instrument the Rust compiler, so that when executed, it will gather profiles
+# to this path.
+#pgo.rustc.generate = "/tmp/profiles/foo.profraw"
+# Use the following profile to PGO optimize rustdoc.
+#pgo.rustdoc.use = "/tmp/profiles/foo.profraw"
+# Instrument rustdoc, so that when executed, it will gather profiles
+# to this path.
+#pgo.rustdoc.generate = "/tmp/profiles/foo.profraw"
+# Use the following profile to PGO optimize LLVM.
+#pgo.llvm.use = "/tmp/profiles/foo.profraw"
+# Instrument LLVM, so that when executed, it will gather profiles
+# Note: for LLVM specifically, this should be a directory, not a file path.
+#pgo.llvm.generate = "/tmp/profiles"
+
+# =============================================================================
 # Options for specific targets
 #
 # Each of the following options is scoped to the specific target triple in
@@ -1018,6 +1049,14 @@
 # producing a `.pdb` file. On Windows GNU rustc doesn't support splitting debuginfo,
 # and enabling it causes issues.
 #split-debuginfo = if linux || windows-gnu { off } else if windows-msvc { packed } else if apple { unpacked }
+
+# Compress debuginfo for Rust and C/C++ code of this target.
+# Currently, this only works on Linux.
+# Valid options:
+# - "off" or false: disable compression
+# - true: compress debuginfo with the default compression method (currently zlib)
+# - "zlib": compress debuginfo with zlib
+#compress-debuginfo = "off"
 
 # Path to the `llvm-config` binary of the installation of a custom LLVM to link
 # against. Note that if this is specified we don't compile LLVM at all for this

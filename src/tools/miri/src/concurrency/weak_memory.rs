@@ -19,6 +19,9 @@
 //!   that C++20 intended to copy (<https://plv.mpi-sws.org/scfix/paper.pdf>); a change was
 //!   introduced when translating the math to English. According to Viktor Vafeiadis, this
 //!   difference is harmless. So we stick to what the standard says, and allow fewer behaviors.)
+//! - If an SC store happens after a load (of any ordering), then the existing store (of any ordering)
+//!   seen by the load is marked as an SC store. (The paper's model only marks stores that happen-before
+//!   an SC store as SC.)
 //! - SC fences are treated like AcqRel RMWs to a global clock, to ensure they induce enough
 //!   synchronization with the surrounding accesses. This rules out legal behavior, but it is really
 //!   hard to be more precise here.
@@ -77,8 +80,9 @@
 //
 // 3. §4.5 of the paper wants an SC store to mark all existing stores in the buffer that happens before it
 // as SC. This is not done in the operational semantics but implemented correctly in tsan11
-// (https://github.com/ChrisLidbury/tsan11/blob/ecbd6b81e9b9454e01cba78eb9d88684168132c7/lib/tsan/rtl/tsan_relaxed.cc#L160-L167)
-// and here.
+// (https://github.com/ChrisLidbury/tsan11/blob/ecbd6b81e9b9454e01cba78eb9d88684168132c7/lib/tsan/rtl/tsan_relaxed.cc#L160-L167).
+// On top of this we've added a C++20 change: if the current SC store happens after a load, then the store seen by that load
+// is marked SC.
 //
 // 4. W_SC ; R_SC case requires the SC load to ignore all but last store marked SC (stores not marked SC are not
 // affected). But this rule is applied to all loads in ReadsFromSet from the paper (last two lines of code), not just SC load.
@@ -149,7 +153,8 @@ struct StoreElement {
     /// The vector clock that can be acquired by loading this store.
     sync_clock: VClock,
 
-    /// Whether this store is SC.
+    /// Whether this store is SC. If a store happens-before or precedes in `mo` another SC store,
+    /// then it is also marked as SC.
     is_seqcst: bool,
 
     /// The value of this store. `None` means uninitialized.
@@ -222,23 +227,29 @@ impl StoreBufferAlloc {
     fn get_or_create_store_buffer_mut<'tcx>(
         &mut self,
         range: AllocRange,
-        init: Result<Option<Scalar>, ()>,
+        init: Option<Scalar>,
     ) -> InterpResult<'tcx, &mut StoreBuffer> {
         let buffers = self.store_buffers.get_mut();
         let access_type = buffers.access_type(range);
         let pos = match access_type {
             AccessType::PerfectlyOverlapping(pos) => pos,
             AccessType::Empty(pos) => {
-                let init =
-                    init.expect("cannot have empty store buffer when previous write was atomic");
+                // We can use `init` for a new store buffer (with a default `sync_clock` that
+                // acquires nothing) because there was no data race and no previous atomic write
+                // either.
                 buffers.insert_at_pos(pos, range, StoreBuffer::new(init));
                 pos
             }
             AccessType::ImperfectlyOverlapping(pos_range) => {
-                // Once we reach here we would've already checked that this access is not racy.
-                let init = init.expect(
-                    "cannot have partially overlapping store buffer when previous write was atomic",
-                );
+                // We can use `init` for a new store buffer (with a default `sync_clock` that
+                // acquires nothing) because there was no data race and all previous atomic writes
+                // are fully synchronized (as otherwise the imperfect overlap would be UB).
+                // It is tempting to try to sanity-check this against the data race clock view of
+                // whether there was any overlap, but that is very tricky: because we are skipping
+                // clock tracking until the first thread is spawned, we don't actually have a good
+                // view of whether a given atomic access "creates a new atomic object" or not.
+                // A sanity check would require is to always track clocks for atomic accesses, which
+                // does show up in benchmarks so we don't do it.
                 buffers.remove_pos_range(pos_range.clone());
                 buffers.insert_at_pos(pos_range.start, range, StoreBuffer::new(init));
                 pos_range.start
@@ -371,7 +382,7 @@ impl<'tcx> StoreBuffer {
                 } else if is_seqcst
                     && store_elem.store_timestamp <= clocks.read_seqcst[store_elem.store_thread]
                 {
-                    // The current SC load cannot read-before the last store sequenced-before
+                    // The current SC load cannot read-from any but the last store sequenced-before
                     // the last SC fence.
                     // C++17 §32.4 [atomics.order] paragraph 5
                     false
@@ -433,11 +444,23 @@ impl<'tcx> StoreBuffer {
         }
         self.buffer.push_back(store_elem);
         if is_seqcst {
-            // Every store that happens before this needs to be marked as SC
-            // so that in a later SC load, only the last SC store (i.e. this one) or stores that
-            // aren't ordered by hb with the last SC is picked.
+            // Every store that happens-before or is coherence-ordered before the ongoing SC store
+            // needs to be marked as SC, so that in a later SC load, only the latest SC-marked store
+            // or unmarked stores can be picked.
             self.buffer.iter_mut().rev().for_each(|elem| {
                 if elem.store_timestamp <= thread_clock[elem.store_thread] {
+                    // This store happens-before the ongoing SC store.
+                    elem.is_seqcst = true;
+                } else if elem
+                    .load_info
+                    .borrow()
+                    .timestamps
+                    .iter()
+                    .any(|(&idx, &load_ts)| load_ts <= thread_clock[idx])
+                {
+                    // This store has a load which happens before the ongoing store.
+                    // This store must precede the onging store in modification order,
+                    // and is therefore coherence-ordered before the ongoing SC store.
                     elem.is_seqcst = true;
                 }
             })
@@ -494,7 +517,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             let range = alloc_range(base_offset, place.layout.size);
             let sync_clock = data_race_clocks.sync_clock(range);
-            let buffer = alloc_buffers.get_or_create_store_buffer_mut(range, Ok(Some(init)))?;
+            let buffer = alloc_buffers.get_or_create_store_buffer_mut(range, Some(init))?;
             // The RMW always reads from the most recent store.
             buffer.read_from_last_store(global, threads, atomic == AtomicRwOrd::SeqCst);
             buffer.buffered_write(
@@ -558,10 +581,11 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 
     /// Add the given write to the store buffer. (Does not change machine memory.)
+    /// Must only be called after we determined that there is no data race or mixed-size race.
     ///
     /// `init` says with which value to initialize the store buffer in case there wasn't a store
-    /// buffer for this memory range before. `Err(())` means the value is not available;
-    /// `Ok(None)` means the memory does not contain a valid scalar.
+    /// buffer for this memory range before. `None` means the memory does not contain a valid
+    /// scalar.
     ///
     /// Must be called *after* `validate_atomic_store` to ensure that `sync_clock` is up-to-date.
     fn buffered_atomic_write(
@@ -569,7 +593,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         val: Scalar,
         dest: &MPlaceTy<'tcx>,
         atomic: AtomicWriteOrd,
-        init: Result<Option<Scalar>, ()>,
+        init: Option<Scalar>,
     ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let (alloc_id, base_offset, ..) = this.ptr_get_alloc_id(dest.ptr(), 0)?;

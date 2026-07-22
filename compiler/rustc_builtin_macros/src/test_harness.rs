@@ -355,7 +355,7 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> Box<ast::Item> {
         attrs: thin_vec![main_attr, coverage_attr, doc_hidden_attr],
         id: ast::DUMMY_NODE_ID,
         kind: main,
-        vis: ast::Visibility { span: sp, kind: ast::VisibilityKind::Public, tokens: None },
+        vis: ast::Visibility { span: sp, kind: ast::VisibilityKind::Public },
         span: sp,
         tokens: None,
     });

@@ -1,0 +1,19 @@
+break tests/ui/locals_corpus_async.rs:31
+break tests/ui/locals_corpus_async.rs:45
+break tests/ui/locals_corpus_async.rs:55
+break tests/ui/locals_corpus_async.rs:66
+break tests/ui/locals_corpus_async.rs:20
+break tests/ui/locals_corpus_async.rs:76
+continue
+locals
+continue
+locals
+continue
+locals
+continue
+locals
+continue
+locals
+continue
+locals
+quit

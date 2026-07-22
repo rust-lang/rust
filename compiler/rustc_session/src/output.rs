@@ -6,7 +6,7 @@ use rustc_span::{Span, Symbol};
 
 use crate::Session;
 use crate::config::{CrateType, OutFileName, OutputFilenames, OutputType};
-use crate::errors::{CrateNameEmpty, FileIsNotWriteable, InvalidCharacterInCrateName};
+use crate::diagnostics::{CrateNameEmpty, FileIsNotWriteable, InvalidCharacterInCrateName};
 
 pub fn out_filename(
     sess: &Session,

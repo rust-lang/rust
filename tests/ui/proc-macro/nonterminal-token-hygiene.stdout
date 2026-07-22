@@ -5,29 +5,31 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
         stream: TokenStream [
             Ident {
                 ident: "struct",
-                span: $DIR/nonterminal-token-hygiene.rs:33:5: 33:11 (#5),
+                span: $DIR/nonterminal-token-hygiene.rs:35:5: 35:11 (#5),
             },
             Ident {
                 ident: "S",
-                span: $DIR/nonterminal-token-hygiene.rs:33:12: 33:13 (#5),
+                span: $DIR/nonterminal-token-hygiene.rs:35:12: 35:13 (#5),
             },
             Punct {
                 ch: ';',
                 spacing: Alone,
-                span: $DIR/nonterminal-token-hygiene.rs:33:13: 33:14 (#5),
+                span: $DIR/nonterminal-token-hygiene.rs:35:13: 35:14 (#5),
             },
         ],
-        span: $DIR/nonterminal-token-hygiene.rs:23:27: 23:32 (#4),
+        span: $DIR/nonterminal-token-hygiene.rs:25:27: 25:32 (#4),
     },
 ]
 #![feature /* 0#0 */(prelude_import /* 0#0 */)]
 #![no_std /* 0#0 */]
+// ignore-tidy-file-linelength
+//
 // Make sure that marks from declarative macros are applied to tokens in nonterminal.
 
 //@ check-pass
 //@ compile-flags: -Z span-debug -Z macro-backtrace -Z unpretty=expanded,hygiene
 //@ compile-flags: -Z trim-diagnostic-paths=no
-// ignore-tidy-linelength
+//
 //@ normalize-stdout: "\d+#" -> "0#"
 //@ normalize-stdout: "expn\d{3,}" -> "expnNNN"
 //@ normalize-stdout: "extern crate compiler_builtins /\* \d+ \*/" -> "extern crate compiler_builtins /* NNN */"

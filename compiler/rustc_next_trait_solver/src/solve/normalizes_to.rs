@@ -82,7 +82,7 @@ where
             },
             |ecx| {
                 ecx.probe(|&result| ProbeKind::RigidAlias { result }).enter(|this| {
-                    this.structurally_instantiate_normalizes_to_term(goal, goal.predicate.alias);
+                    this.instantiate_normalizes_to_as_rigid(goal)?;
                     this.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                 })
             },
@@ -111,13 +111,9 @@ where
         Ok(())
     }
 
-    /// When normalizing an associated item, constrain the expected term to `term`.
+    /// When normalizing an associated item, constrain the expected term to `value`.
     ///
-    /// We know `term` to always be a fully unconstrained inference variable, so
-    /// `eq` should never fail here. However, in case `term` contains aliases, we
-    /// emit nested `AliasRelate` goals to structurally normalize the alias.
-    ///
-    /// Additionally, when `term` is a const, this registers a `ConstArgHasType`
+    /// Additionally, when `value` is a const, this registers a `ConstArgHasType`
     /// goal to ensure that the const value's type matches the declared type of
     /// the alias it was normalized from.
     ///
@@ -140,28 +136,25 @@ where
     fn instantiate_normalizes_to_term(
         &mut self,
         goal: Goal<I, NormalizesTo<I>>,
-        term: I::Term,
+        value: I::Term,
     ) -> Result<(), NoSolutionOrRerunNonErased> {
-        self.push_const_arg_has_type_goal(goal.param_env, goal.predicate.alias, term)?;
-        self.eq(goal.param_env, goal.predicate.term, term)
-            .expect("expected goal term to be fully unconstrained");
+        self.push_const_arg_has_type_goal(goal.param_env, goal.predicate.alias, value)?;
+        // While `goal.predicate.term` should always be a fully unconstrained inference variable,
+        // `eq` can still fail if `value` is not fully normalized, due to `eq` eagerly normalizing,
+        // and that normalization can fail.
+        self.eq(goal.param_env, goal.predicate.term, value)?;
         Ok(())
     }
 
-    /// Unlike `instantiate_normalizes_to_term` this instantiates the expected term
-    /// with a rigid alias. Using this is pretty much always wrong.
-    fn structurally_instantiate_normalizes_to_term(
+    fn instantiate_normalizes_to_as_rigid(
         &mut self,
         goal: Goal<I, NormalizesTo<I>>,
-        term: ty::AliasTerm<I>,
-    ) {
-        self.relate(
+    ) -> Result<(), NoSolutionOrRerunNonErased> {
+        self.eq(
             goal.param_env,
-            term.to_term(self.cx(), ty::IsRigid::Yes),
-            ty::Invariant,
             goal.predicate.term,
+            goal.predicate.alias.to_term(self.cx(), ty::IsRigid::Yes),
         )
-        .expect("expected goal term to be fully unconstrained");
     }
 }
 
@@ -356,10 +349,7 @@ where
                             | ty::TypingMode::PostBorrowck { .. }
                             | ty::TypingMode::PostAnalysis
                             | ty::TypingMode::Codegen => {
-                                ecx.structurally_instantiate_normalizes_to_term(
-                                    goal,
-                                    goal.predicate.alias,
-                                );
+                                ecx.instantiate_normalizes_to_as_rigid(goal)?;
                                 return ecx.evaluate_added_goals_and_make_canonical_response(
                                     Certainty::Yes,
                                 );
@@ -394,7 +384,7 @@ where
                         ecx.add_goal(GoalSource::Misc, goal.with(cx, PredicateKind::Ambiguous))?;
                         return then(ecx, Certainty::Yes);
                     } else {
-                        ecx.structurally_instantiate_normalizes_to_term(goal, goal.predicate.alias);
+                        ecx.instantiate_normalizes_to_as_rigid(goal)?;
                         return then(ecx, Certainty::Yes);
                     }
                 } else {
@@ -767,10 +757,7 @@ where
                 // as rigid.
                 return alias_bound_result.or_else(|NoSolution| {
                     ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|this| {
-                        this.structurally_instantiate_normalizes_to_term(
-                            goal,
-                            goal.predicate.alias,
-                        );
+                        this.instantiate_normalizes_to_as_rigid(goal)?;
                         this.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                     })
                 });
@@ -796,7 +783,7 @@ where
 
             ty::UnsafeBinder(_) => {
                 // FIXME(unsafe_binder): Figure out how to handle pointee for unsafe binders.
-                todo!()
+                unimplemented!()
             }
 
             ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))
@@ -1018,7 +1005,7 @@ where
 
             ty::UnsafeBinder(_) => {
                 // FIXME(unsafe_binders): instantiate this with placeholders?? i guess??
-                todo!("discr subgoal...")
+                unimplemented!("discr subgoal...")
             }
 
             // Given an alias, parameter, or placeholder we add an impl candidate normalizing to a rigid
@@ -1026,7 +1013,7 @@ where
             // this impl candidate anyways. It's still a bit scuffed.
             ty::Alias(ty::IsRigid::Yes, _) | ty::Param(_) | ty::Placeholder(..) => {
                 return ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
-                    ecx.structurally_instantiate_normalizes_to_term(goal, goal.predicate.alias);
+                    ecx.instantiate_normalizes_to_as_rigid(goal)?;
                     ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                 });
             }

@@ -9,10 +9,10 @@
 //! where parent follows the same scheme.
 
 use arrayvec::ArrayVec;
+use base_db::SourceDatabase;
 use hir_def::{
     ConstParamId, GenericDefId, GenericParamId, ItemContainerId, LifetimeParamId, Lookup,
     TypeOrConstParamId, TypeParamId,
-    db::DefDatabase,
     expr_store::ExpressionStore,
     hir::generics::{
         GenericParamDataRef, GenericParams, LifetimeParamData, TypeOrConstParamData,
@@ -20,7 +20,7 @@ use hir_def::{
     },
 };
 
-pub(crate) fn generics(db: &dyn DefDatabase, def: GenericDefId) -> Generics<'_> {
+pub(crate) fn generics(db: &dyn SourceDatabase, def: GenericDefId) -> Generics<'_> {
     let mut chain = ArrayVec::new();
     let mut parent_params_len = 0;
     if let Some(parent_def) = parent_generic_def(db, def) {
@@ -143,7 +143,7 @@ impl<'db> Generics<'db> {
         self.chain.iter()
     }
 
-    fn owner(&self) -> &SingleGenerics<'db> {
+    pub(crate) fn owner(&self) -> &SingleGenerics<'db> {
         self.chain.last().expect("must have an owner params")
     }
 
@@ -306,7 +306,7 @@ pub(crate) struct ProvenanceSplit {
     pub(crate) lifetimes: usize,
 }
 
-fn parent_generic_def(db: &dyn DefDatabase, def: GenericDefId) -> Option<GenericDefId> {
+fn parent_generic_def(db: &dyn SourceDatabase, def: GenericDefId) -> Option<GenericDefId> {
     let container = match def {
         GenericDefId::FunctionId(it) => it.lookup(db).container,
         GenericDefId::TypeAliasId(it) => it.lookup(db).container,
