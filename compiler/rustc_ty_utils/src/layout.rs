@@ -614,6 +614,12 @@ fn layout_of_uncached<'tcx>(
             univariant(tys, kind)?
         }
 
+        // The wasm `externref` type: an opaque reference lowered as a pointer
+        // in the wasm externref address space.
+        ty::Adt(def, _args) if tcx.is_lang_item(def.did(), hir::LangItem::ExternRef) => {
+            scalar(Pointer(AddressSpace::WASM_EXTERNREF))
+        }
+
         // Scalable vector types
         //
         // ```rust (ignore, example)

@@ -28,7 +28,8 @@ use crate::traits::ObligationCause;
 use crate::ty::layout::{FloatExt, IntegerExt};
 use crate::ty::{
     self, Asyncness, FallibleTypeFolder, GenericArgKind, GenericArgsRef, Ty, TyCtxt, TypeFoldable,
-    TypeFolder, TypeSuperFoldable, TypeVisitableExt, Unnormalized, Upcast,
+    TypeFolder, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
+    TypeVisitor, Unnormalized, Upcast,
 };
 
 #[derive(Copy, Clone, Debug)]
@@ -141,6 +142,79 @@ impl<'tcx> TyCtxt<'tcx> {
             hcx.while_hashing_spans(false, |hcx| ty.stable_hash(hcx, &mut hasher));
             hasher.finish()
         })
+    }
+
+    /// Whether `ty` is the wasm `externref` lang type itself.
+    pub fn is_externref(self, ty: Ty<'tcx>) -> bool {
+        matches!(ty.kind(), ty::Adt(def, _) if self.is_lang_item(def.did(), hir::LangItem::ExternRef))
+    }
+
+    /// wasm `externref` values exist only in wasm value slots: function
+    /// parameters, return values and locals. Function pointer signature slots
+    /// are also value positions, so bare `externref` is permitted there.
+    ///
+    /// This reports whether `ty` mentions `externref` in any other position,
+    /// e.g. behind a reference or pointer, as an aggregate member, or as a
+    /// generic argument. `allow_bare` permits `ty` itself being `externref`
+    /// (i.e. `ty` occupies a value slot).
+    pub fn ty_mentions_externref_illegally(self, ty: Ty<'tcx>, allow_bare: bool) -> bool {
+        use std::ops::ControlFlow;
+
+        if self.lang_items().externref().is_none() {
+            return false;
+        }
+        if allow_bare && self.is_externref(ty) {
+            return false;
+        }
+
+        struct MentionVisitor<'tcx> {
+            tcx: TyCtxt<'tcx>,
+        }
+        impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for MentionVisitor<'tcx> {
+            type Result = ControlFlow<()>;
+            fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<()> {
+                match t.kind() {
+                    ty::Adt(..) if self.tcx.is_externref(t) => ControlFlow::Break(()),
+                    // Function pointer parameter/return slots are value
+                    // positions: bare `externref` is allowed in them.
+                    ty::FnPtr(sig_tys, _) => {
+                        for io in sig_tys.skip_binder().inputs_and_output {
+                            if !self.tcx.is_externref(io) {
+                                io.visit_with(self)?;
+                            }
+                        }
+                        ControlFlow::Continue(())
+                    }
+                    // Fn items are code, not storage; their signatures are
+                    // value positions and their generic instantiations are
+                    // checked separately as generic arguments.
+                    ty::FnDef(..) => ControlFlow::Continue(()),
+                    _ => t.super_visit_with(self),
+                }
+            }
+        }
+        ty.visit_with(&mut MentionVisitor { tcx: self }).is_break()
+    }
+
+    /// Whether `def_id` is (an item within) an `impl` of the wasm `externref`
+    /// lang type. By coherence such impls can only be written in the defining
+    /// crate (`core`); they are exempt from externref position checks so that
+    /// `Copy`/`Clone` impls are expressible.
+    pub fn is_externref_impl_item(self, mut def_id: DefId) -> bool {
+        if self.lang_items().externref().is_none() {
+            return false;
+        }
+        loop {
+            if let DefKind::Impl { .. } = self.def_kind(def_id) {
+                return self.is_externref(
+                    self.type_of(def_id).instantiate_identity().skip_normalization(),
+                );
+            }
+            match self.opt_parent(def_id) {
+                Some(parent) => def_id = parent,
+                None => return false,
+            }
+        }
     }
 
     pub fn res_generics_def_id(self, res: Res) -> Option<DefId> {

@@ -936,6 +936,7 @@ symbols! {
         extern_weak,
         external,
         external_doc,
+        externref,
         f16,
         f16_nan,
         f16c_target_feature,

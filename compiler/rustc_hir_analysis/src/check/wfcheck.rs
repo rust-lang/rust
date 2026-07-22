@@ -1016,6 +1016,17 @@ pub(crate) fn check_type_defn<'tcx>(
                 );
                 wfcx.register_wf_obligation(span, Some(WellFormedLoc::Ty(field_id)), ty.into());
 
+                if tcx.ty_mentions_externref_illegally(ty, /* allow_bare */ false) {
+                    tcx.dcx().span_err(
+                        span,
+                        format!(
+                            "wasm `externref` cannot be used in a {} field: it may only appear \
+                             as a bare function parameter, return value or local",
+                            adt_def.variant_descr()
+                        ),
+                    );
+                }
+
                 if matches!(ty.kind(), ty::Adt(def, _) if def.repr().scalable())
                     && !matches!(adt_def.repr().scalable, Some(ScalableElt::Container))
                 {
@@ -1645,6 +1656,23 @@ fn check_fn_or_method<'tcx>(
             Some(WellFormedLoc::Param { function: def_id, param_idx: idx }),
             ty.into(),
         );
+    }
+
+    // wasm `externref` may appear bare in parameter/return slots, but never
+    // inside another type. Impls of `externref` itself (core-only, by
+    // coherence) are exempt so `Clone` is expressible.
+    if !tcx.is_externref_impl_item(def_id.to_def_id()) {
+        for (idx, ty) in sig.inputs_and_output.iter().enumerate() {
+            if tcx.ty_mentions_externref_illegally(ty, /* allow_bare */ true) {
+                tcx.dcx().span_err(
+                    arg_span(idx),
+                    format!(
+                        "wasm `externref` cannot be used inside `{ty}`: it may only appear \
+                         as a bare function parameter, return value or local"
+                    ),
+                );
+            }
+        }
     }
 
     check_where_clauses(wfcx, def_id);

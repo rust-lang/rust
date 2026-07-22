@@ -103,6 +103,15 @@ struct WritebackCx<'cx, 'tcx> {
     body: &'tcx hir::Body<'tcx>,
 
     rustc_dump_user_args: bool,
+
+    /// Whether to enforce wasm `externref` position rules in this body
+    /// (the lang item exists and this body is not part of `externref`'s own
+    /// core-only impls).
+    externref_checks: bool,
+
+    /// Spans already reported for externref position errors, to avoid
+    /// duplicate diagnostics for the same node.
+    reported_externref: FxHashSet<Span>,
 }
 
 impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
@@ -113,11 +122,16 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
     ) -> WritebackCx<'cx, 'tcx> {
         let owner = body.id().hir_id.owner;
 
+        let externref_checks = fcx.tcx.lang_items().externref().is_some()
+            && !fcx.tcx.is_externref_impl_item(owner.to_def_id());
+
         let mut wbcx = WritebackCx {
             fcx,
             typeck_results: ty::TypeckResults::new(owner),
             body,
             rustc_dump_user_args,
+            externref_checks,
+            reported_externref: FxHashSet::default(),
         };
 
         // HACK: We specifically don't want the (opaque) error from tainting our
@@ -132,6 +146,29 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.fcx.tcx
+    }
+
+    /// Enforce wasm `externref` position rules: values may only occupy bare
+    /// value slots (function parameters, return values, locals and function
+    /// pointer signature slots), never appear inside another type or as a
+    /// generic argument.
+    fn check_externref_position(&mut self, span: Span, ty: Ty<'tcx>, allow_bare: bool) {
+        if !self.externref_checks {
+            return;
+        }
+        if self.tcx().ty_mentions_externref_illegally(ty, allow_bare)
+            && self.reported_externref.insert(span)
+        {
+            let msg = if allow_bare {
+                format!(
+                    "wasm `externref` cannot be used inside `{ty}`: it may only appear as a \
+                     bare function parameter, return value or local"
+                )
+            } else {
+                "wasm `externref` cannot be used as a generic argument".to_string()
+            };
+            self.tcx().dcx().span_err(span, msg);
+        }
     }
 
     fn write_ty_to_typeck_results(&mut self, hir_id: HirId, ty: Ty<'tcx>) {
@@ -675,6 +712,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         let n_ty = self.fcx.node_ty(hir_id);
         let n_ty = self.resolve(n_ty, &span);
         self.write_ty_to_typeck_results(hir_id, n_ty);
+        self.check_externref_position(span, n_ty, /* allow_bare */ true);
         debug!(?n_ty);
 
         // Resolve any generic parameters
@@ -682,6 +720,9 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             let args = self.resolve(args, &span);
             debug!("write_args_to_tcx({:?}, {:?})", hir_id, args);
             assert!(!args.has_infer() && !args.has_placeholders());
+            for ty in args.types() {
+                self.check_externref_position(span, ty, /* allow_bare */ false);
+            }
             self.typeck_results.node_args_mut().insert(hir_id, args);
         }
     }
@@ -697,6 +738,9 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             Some(adjustment) => {
                 let resolved_adjustment = self.resolve(adjustment, &span);
                 debug!(?resolved_adjustment);
+                for adjust in &resolved_adjustment {
+                    self.check_externref_position(span, adjust.target, /* allow_bare */ true);
+                }
                 self.typeck_results.adjustments_mut().insert(hir_id, resolved_adjustment);
             }
         }

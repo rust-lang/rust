@@ -797,6 +797,13 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
             check_static_inhabited(tcx, def_id);
             check_static_linkage(tcx, def_id);
             let ty = tcx.type_of(def_id).instantiate_identity().skip_norm_wip();
+            if tcx.ty_mentions_externref_illegally(ty, /* allow_bare */ false) {
+                tcx.dcx().span_err(
+                    tcx.ty_span(def_id),
+                    "wasm `externref` cannot be used in a `static`: it may only appear as a \
+                     bare function parameter, return value or local",
+                );
+            }
             res = res.and(wfcheck::check_static_item(
                 tcx, def_id, ty, /* should_check_for_sync */ true,
             ));
@@ -947,6 +954,13 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Result<(),
                 let ty_span = tcx.ty_span(def_id);
                 let ty = wfcx.deeply_normalize(ty_span, Some(WellFormedLoc::Ty(def_id)), ty);
                 wfcx.register_wf_obligation(ty_span, Some(WellFormedLoc::Ty(def_id)), ty.into());
+                if tcx.ty_mentions_externref_illegally(ty, /* allow_bare */ false) {
+                    tcx.dcx().span_err(
+                        ty_span,
+                        "wasm `externref` cannot be used in a `const`: it may only appear as a \
+                         bare function parameter, return value or local",
+                    );
+                }
                 wfcx.register_bound(
                     traits::ObligationCause::new(
                         ty_span,

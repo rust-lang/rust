@@ -758,6 +758,11 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 if def.is_phantom_data() {
                     return FfiPhantom(ty);
                 }
+                // wasm `externref` lowers to a wasm reference type, which is a
+                // first-class type in the wasm C ABI.
+                if tcx.is_lang_item(def.did(), hir::LangItem::ExternRef) {
+                    return FfiSafe;
+                }
                 match def.adt_kind() {
                     AdtKind::Struct | AdtKind::Union => {
                         if let Some(sym::cstring_type | sym::cstr_type) =

@@ -1,0 +1,80 @@
+error: wasm `externref` cannot be used in a struct field: it may only appear as a bare function parameter, return value or local
+  --> $DIR/externref-position-errors.rs:35:12
+   |
+LL |     pub v: externref,
+   |            ^^^^^^^^^
+
+error: wasm `externref` cannot be used in a struct field: it may only appear as a bare function parameter, return value or local
+  --> $DIR/externref-position-errors.rs:40:23
+   |
+LL | pub struct BadWrapper(externref);
+   |                       ^^^^^^^^^
+
+error: wasm `externref` cannot be used inside `&externref`: it may only appear as a bare function parameter, return value or local
+  --> $DIR/externref-position-errors.rs:28:25
+   |
+LL |     fn bad_ref_param(v: &externref);
+   |                         ^^^^^^^^^^
+
+error: wasm `externref` cannot be used in a `static`: it may only appear as a bare function parameter, return value or local
+  --> $DIR/externref-position-errors.rs:30:24
+   |
+LL |     static BAD_STATIC: externref;
+   |                        ^^^^^^^^^
+
+error: wasm `externref` cannot be used inside `(externref, externref)`: it may only appear as a bare function parameter, return value or local
+  --> $DIR/externref-position-errors.rs:60:13
+   |
+LL |     let t = (v, v);
+   |             ^^^^^^
+
+error: wasm `externref` cannot be used inside `(externref, externref)`: it may only appear as a bare function parameter, return value or local
+  --> $DIR/externref-position-errors.rs:60:9
+   |
+LL |     let t = (v, v);
+   |         ^
+
+error: wasm `externref` cannot be used inside `[externref; 2]`: it may only appear as a bare function parameter, return value or local
+  --> $DIR/externref-position-errors.rs:66:13
+   |
+LL |     let a = [v, v];
+   |             ^^^^^^
+
+error: wasm `externref` cannot be used inside `[externref; 2]`: it may only appear as a bare function parameter, return value or local
+  --> $DIR/externref-position-errors.rs:66:9
+   |
+LL |     let a = [v, v];
+   |         ^
+
+error: wasm `externref` cannot be used inside `&externref`: it may only appear as a bare function parameter, return value or local
+  --> $DIR/externref-position-errors.rs:72:13
+   |
+LL |     let r = &v;
+   |             ^^
+
+error: wasm `externref` cannot be used inside `&externref`: it may only appear as a bare function parameter, return value or local
+  --> $DIR/externref-position-errors.rs:72:9
+   |
+LL |     let r = &v;
+   |         ^
+
+error: wasm `externref` cannot be used as a generic argument
+  --> $DIR/externref-position-errors.rs:82:5
+   |
+LL |     generic(v);
+   |     ^^^^^^^
+
+error: wasm `externref` cannot be used inside `{closure@$DIR/externref-position-errors.rs:87:14: 87:21}`: it may only appear as a bare function parameter, return value or local
+  --> $DIR/externref-position-errors.rs:87:14
+   |
+LL |     let _c = move || v;
+   |              ^^^^^^^^^
+
+error: wasm `externref` cannot be used inside `{closure@$DIR/externref-position-errors.rs:87:14: 87:21}`: it may only appear as a bare function parameter, return value or local
+  --> $DIR/externref-position-errors.rs:87:9
+   |
+LL |     let _c = move || v;
+   |         ^^
+
+error: aborting due to 13 previous errors
+

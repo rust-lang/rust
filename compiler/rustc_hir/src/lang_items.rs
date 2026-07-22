@@ -271,6 +271,9 @@ language_item_table! {
     PartialEq,               sym::eq,                  eq_trait,                   Target::Trait,          GenericRequirement::Exact(1);
     PartialOrd,              sym::partial_ord,         partial_ord_trait,          Target::Trait,          GenericRequirement::Exact(1);
     CVoid,                   sym::c_void,              c_void,                     Target::Enum,           GenericRequirement::None;
+    // An opaque handle to a WebAssembly `externref` value, lowered as a pointer
+    // in the wasm externref address space.
+    ExternRef,               sym::externref,           externref,                  Target::Struct,         GenericRequirement::Exact(0);
 
     Type,                    sym::type_info,           type_struct,                Target::Struct,         GenericRequirement::None;
     TypeId,                  sym::type_id,             type_id,                    Target::Struct,         GenericRequirement::None;
