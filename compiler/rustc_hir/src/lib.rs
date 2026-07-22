@@ -22,7 +22,6 @@ pub mod attrs;
 pub mod def;
 pub mod def_path_hash_map;
 pub mod definitions;
-pub mod diagnostic_items;
 pub use rustc_span::def_id;
 mod hir;
 pub use rustc_hir_id::{self as hir_id, *};

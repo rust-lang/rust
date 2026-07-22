@@ -637,8 +637,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         let stripped_cfg_items = stat!("stripped-cfg-items", || self.encode_stripped_cfg_items());
 
-        let diagnostic_items = stat!("diagnostic-items", || self.encode_diagnostic_items());
-
         let native_libraries = stat!("native-libs", || self.encode_native_libraries());
 
         let foreign_modules = stat!("foreign-modules", || self.encode_foreign_modules());
@@ -756,7 +754,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 lib_features,
                 stability_implications,
                 lang_items,
-                diagnostic_items,
                 lang_items_missing,
                 stripped_cfg_items,
                 native_libraries,
@@ -2132,13 +2129,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let implications = tcx.stability_implications(LOCAL_CRATE);
         let sorted = implications.to_sorted_stable_ord();
         self.lazy_array(sorted.into_iter().map(|(k, v)| (*k, *v)))
-    }
-
-    fn encode_diagnostic_items(&mut self) -> LazyArray<(Symbol, DefIndex)> {
-        empty_proc_macro!(self);
-        let tcx = self.tcx;
-        let diagnostic_items = &tcx.diagnostic_items(LOCAL_CRATE).name_to_id;
-        self.lazy_array(diagnostic_items.iter().map(|(&name, def_id)| (name, def_id.index)))
     }
 
     fn encode_lang_items(&mut self) -> LazyArray<(DefIndex, LangItem)> {

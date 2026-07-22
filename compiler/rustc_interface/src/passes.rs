@@ -1239,11 +1239,6 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) {
         // This check has to be run after all lints are done processing. We don't
         // define a lint filter, as all lint checks should have finished at this point.
         sess.time("check_lint_expectations", || tcx.ensure_ok().check_expectations(None));
-
-        // This query is only invoked normally if a diagnostic is emitted that needs any
-        // diagnostic item. If the crate compiles without checking any diagnostic items,
-        // we will fail to emit overlap diagnostics. Thus we invoke it here unconditionally.
-        let _ = tcx.all_diagnostic_items(());
     });
 
     // If `-Zvalidate-mir` is set, we also want to compute the final MIR for each item

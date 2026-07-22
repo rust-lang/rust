@@ -16,7 +16,6 @@ mod check_export;
 pub mod dead;
 mod debugger_visualizer;
 pub mod delegation;
-mod diagnostic_items;
 mod diagnostics;
 mod eii;
 pub mod entry;
@@ -34,7 +33,6 @@ pub fn provide(providers: &mut Providers) {
     check_attr::provide(providers);
     dead::provide(providers);
     debugger_visualizer::provide(providers);
-    diagnostic_items::provide(providers);
     entry::provide(providers);
     lang_items::provide(providers);
     lib_features::provide(providers);

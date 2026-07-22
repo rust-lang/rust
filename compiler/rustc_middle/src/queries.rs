@@ -2255,23 +2255,9 @@ rustc_queries! {
         desc { "calculating the lang items map" }
     }
 
-    /// Returns all diagnostic items defined in all crates.
-    query all_diagnostic_items(_: ()) -> &'tcx rustc_hir::diagnostic_items::DiagnosticItems {
-        arena_cache
-        eval_always
-        desc { "calculating the diagnostic items map" }
-    }
-
     /// Returns the lang items defined in another crate by loading it from metadata.
     query defined_lang_items(_: CrateNum) -> &'tcx [(DefId, LangItem)] {
         desc { "calculating the lang items defined in a crate" }
-        separate_provide_extern
-    }
-
-    /// Returns the diagnostic items defined in a crate.
-    query diagnostic_items(_: CrateNum) -> &'tcx rustc_hir::diagnostic_items::DiagnosticItems {
-        arena_cache
-        desc { "calculating the diagnostic items map in a crate" }
         separate_provide_extern
     }
 
