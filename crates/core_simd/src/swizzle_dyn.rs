@@ -30,17 +30,20 @@ impl<const N: usize> Simd<u8, N> {
         use core::arch::x86_64 as x86;
         // SAFETY: Intrinsics covered by cfg
         unsafe {
+            #[allow(
+                unreachable_patterns,
+                reason = "avoids writing verbose cfg(not), earlier branches take priority"
+            )]
             match N {
+                // Aarch64
                 #[cfg(all(
                     any(target_arch = "aarch64", target_arch = "arm64ec"),
                     target_feature = "neon",
                     target_endian = "little"
                 ))]
                 8 | 16 | 24 | 32 | 48 | 64 => aarch64_swizzle(self, idxs),
-                #[cfg(target_feature = "ssse3")]
-                16 => transize(x86::_mm_shuffle_epi8, self, zeroing_idxs(idxs)),
-                #[cfg(target_feature = "simd128")]
-                16 => transize(wasm::i8x16_swizzle, self, idxs),
+
+                // 32-bit ARMv7
                 #[cfg(all(
                     target_arch = "arm",
                     target_feature = "v7",
@@ -48,10 +51,26 @@ impl<const N: usize> Simd<u8, N> {
                     target_endian = "little"
                 ))]
                 16 => transize(armv7_neon_swizzle_u8x16, self, idxs),
+
+                // WASM SIMD128
+                #[cfg(target_feature = "simd128")]
+                16 => transize(wasm::i8x16_swizzle, self, idxs),
+                #[cfg(target_feature = "simd128")]
+                32 => transize(swizzle_dyn_split::<32, 16>, self, idxs),
+
+                // LoongArch64
                 #[cfg(all(target_arch = "loongarch64", target_feature = "lsx"))]
                 16 => transize(loong64_lsx_swizzle, self, idxs),
-                #[cfg(all(target_feature = "avx2", not(target_feature = "avx512vbmi")))]
-                32 => transize(avx2_pshufb, self, idxs),
+                #[cfg(all(target_arch = "loongarch64", target_feature = "lasx"))]
+                32 => transize(loong64_lasx_swizzle, self, idxs),
+                #[cfg(all(target_arch = "loongarch64", target_feature = "lsx"))]
+                32 => transize(swizzle_dyn_split::<32, 16>, self, idxs),
+                #[cfg(all(target_arch = "loongarch64", target_feature = "lasx"))]
+                64 => transize(swizzle_dyn_split::<64, 32>, self, idxs),
+
+                // x86, x86-64
+                #[cfg(target_feature = "ssse3")]
+                16 => transize(x86::_mm_shuffle_epi8, self, zeroing_idxs(idxs)),
                 #[cfg(all(target_feature = "avx512vl", target_feature = "avx512vbmi"))]
                 32 => {
                     // Unlike vpshufb, vpermb doesn't zero out values in the result based on the index high bit
@@ -64,8 +83,10 @@ impl<const N: usize> Simd<u8, N> {
                     };
                     transize(swizzler, self, idxs)
                 }
-                #[cfg(all(target_arch = "loongarch64", target_feature = "lasx"))]
-                32 => transize(loong64_lasx_swizzle, self, idxs),
+                #[cfg(target_feature = "avx2")]
+                32 => transize(avx2_pshufb, self, idxs),
+                #[cfg(target_feature = "ssse3")]
+                32 => transize(swizzle_dyn_split::<32, 16>, self, idxs),
                 // Notable absence: avx512bw pshufb shuffle
                 #[cfg(all(target_feature = "avx512vl", target_feature = "avx512vbmi"))]
                 64 => {
@@ -79,6 +100,10 @@ impl<const N: usize> Simd<u8, N> {
                     };
                     transize(swizzler, self, idxs)
                 }
+                #[cfg(target_feature = "avx2")]
+                64 => transize(swizzle_dyn_split::<64, 32>, self, idxs),
+
+                // scalar fallback
                 _ => {
                     let mut array = [0; N];
                     for (i, k) in idxs.to_array().into_iter().enumerate() {
@@ -91,6 +116,48 @@ impl<const N: usize> Simd<u8, N> {
             }
         }
     }
+}
+
+#[allow(dead_code, reason = "only used on some targets/features")]
+/// Implements an arbitrary shuffle over double the native vector width
+/// using 4 native-width shuffles
+fn swizzle_dyn_split<const N: usize, const HALF: usize>(
+    bytes: Simd<u8, N>,
+    idxs: Simd<u8, N>,
+) -> Simd<u8, N> {
+    let table_low = bytes.extract::<0, HALF>();
+    let table_high = bytes.extract::<HALF, HALF>();
+    let idxs_low = idxs.extract::<0, HALF>();
+    let idxs_high = idxs.extract::<HALF, HALF>();
+    let table_high_offset = Simd::<u8, HALF>::splat(HALF as u8);
+
+    let output_low_from_low = table_low.swizzle_dyn(idxs_low);
+    let output_low_from_high = table_high.swizzle_dyn(idxs_low - table_high_offset);
+    let output_low = output_low_from_low | output_low_from_high;
+
+    let output_high_from_low = table_low.swizzle_dyn(idxs_high);
+    let output_high_from_high = table_high.swizzle_dyn(idxs_high - table_high_offset);
+    let output_high = output_high_from_low | output_high_from_high;
+
+    // This is simply a concatenation of two native-sized vectors.
+    // The swizzle does nothing - it maps the elements right back where they already are.
+    // There doesn't seem to be a more direct way to do this as of this writing.
+    // TODO: simplify once a plain `concat` is available.
+    use crate::simd::Swizzle;
+    struct CombineHalves;
+    impl<const N: usize> Swizzle<N> for CombineHalves {
+        const INDEX: [usize; N] = const {
+            let mut index = [0; N];
+            let mut i = 0;
+            while i < N {
+                index[i] = i;
+                i += 1;
+            }
+            index
+        };
+    }
+
+    CombineHalves::concat_swizzle(output_low, output_high)
 }
 
 /// armv7 neon supports swizzling `u8x16` by swizzling two u8x8 blocks
