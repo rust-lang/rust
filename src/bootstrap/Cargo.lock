@@ -60,6 +60,7 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "sha2",
+ "shim_utils",
  "sysinfo",
  "tar",
  "tempfile",
@@ -659,6 +660,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f40ca3c46823713e0d4209592e8d6e826aa57e928f09752619fc696c499637f6"
 dependencies = [
  "lazy_static",
+]
+
+[[package]]
+name = "shim_utils"
+version = "0.0.0"
+dependencies = [
+ "tempfile",
 ]
 
 [[package]]
