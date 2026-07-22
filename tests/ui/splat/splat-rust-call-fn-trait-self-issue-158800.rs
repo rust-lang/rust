@@ -1,9 +1,9 @@
-//! Regression test for `#[splat] self` in a rust-call method not ICEing in WF
+//! Regression test for `#[splat] self` in a rust-call Fn* trait method not ICEing in WF
 //! checking.
 
 #![feature(splat)]
 #![feature(unboxed_closures)]
-#![allow(incomplete_features)]
+#![expect(incomplete_features)]
 
 impl<T> dyn FnOnce(T) -> () {
     //~^ ERROR cannot define inherent `impl` for a type outside of the crate
