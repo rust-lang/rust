@@ -209,7 +209,7 @@ impl<'tcx> InferCtxtInner<'tcx> {
     }
 
     #[inline]
-    fn type_variables(&mut self) -> type_variable::TypeVariableTable<'_, 'tcx> {
+    pub fn type_variables(&mut self) -> type_variable::TypeVariableTable<'_, 'tcx> {
         self.type_variable_storage.with_log(&mut self.undo_log)
     }
 
@@ -1884,10 +1884,9 @@ where
     (0..table.len() as u32)
         .map(V::from_index)
         .filter(|&vid| {
-            // vid is a root variable
-            table.find(vid) == vid
-                // ...and it's currently unresolved
-                && is_unresolved(table.try_probe_value(vid).unwrap().clone())
+            // NB: as of writing this `ena` doesn't provide a non-inlined `probe_key_value`...
+            let (root, value) = table.inlined_probe_key_value(vid);
+            root == vid && is_unresolved(value)
         })
         .collect()
 }

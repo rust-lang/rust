@@ -228,9 +228,11 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             .diverging_type_vars
             .borrow()
             .iter()
-            .map(|&ty_id| self.shallow_resolve(Ty::new_var(self.tcx, ty_id)))
-            .filter_map(|ty| ty.ty_vid())
-            .map(|vid| self.root_var(vid))
+            .filter_map(|&vid| {
+                let (root, value) =
+                    self.infcx.inner.borrow_mut().type_variables().probe_with_root_vid(vid);
+                value.is_unknown().then_some(root)
+            })
             .collect();
 
         {
