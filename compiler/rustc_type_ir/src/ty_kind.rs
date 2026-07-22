@@ -18,11 +18,9 @@ use self::TyKind::*;
 pub use self::closure::*;
 use crate::inherent::*;
 use crate::ty::AliasTy;
-#[cfg(feature = "nightly")]
-use crate::visit::TypeVisitable;
 use crate::{
     self as ty, BoundVarIndexKind, FloatTy, FreeAliasTy, InherentAliasTy, IntTy, Interner,
-    OpaqueAliasTy, ProjectionAliasTy, UintTy, Unnormalized,
+    OpaqueAliasTy, ProjectionAliasTy, Region, UintTy, Unnormalized,
 };
 
 mod closure;
@@ -198,7 +196,7 @@ pub enum TyKind<I: Interner> {
 
     /// A reference; a pointer with an associated lifetime. Written as
     /// `&'a mut T` or `&'a T`.
-    Ref(I::Region, I::Ty, Mutability),
+    Ref(Region<I>, I::Ty, Mutability),
 
     /// The anonymous type of a function declaration/definition.
     ///
@@ -242,7 +240,7 @@ pub enum TyKind<I: Interner> {
     UnsafeBinder(UnsafeBinderInner<I>),
 
     /// A trait object. Written as `dyn for<'b> Trait<'b, Assoc = u32> + Send + 'a`.
-    Dynamic(I::BoundExistentialPredicates, I::Region),
+    Dynamic(I::BoundExistentialPredicates, Region<I>),
 
     /// The anonymous type of a closure. Used to represent the type of `|a| a`.
     ///
@@ -1299,35 +1297,6 @@ impl<I: Interner> Deref for UnsafeBinderInner<I> {
     }
 }
 
-#[cfg(feature = "nightly")]
-impl<I: Interner, E: rustc_serialize::Encoder> rustc_serialize::Encodable<E>
-    for UnsafeBinderInner<I>
-where
-    I::Ty: rustc_serialize::Encodable<E>,
-    I::BoundVarKinds: rustc_serialize::Encodable<E>,
-{
-    fn encode(&self, e: &mut E) {
-        self.bound_vars().encode(e);
-        self.as_ref().skip_binder().encode(e);
-    }
-}
-
-#[cfg(feature = "nightly")]
-impl<I: Interner, D: rustc_serialize::Decoder> rustc_serialize::Decodable<D>
-    for UnsafeBinderInner<I>
-where
-    I::Ty: TypeVisitable<I> + rustc_serialize::Decodable<D>,
-    I::BoundVarKinds: rustc_serialize::Decodable<D>,
-{
-    fn decode(decoder: &mut D) -> Self {
-        let bound_vars = rustc_serialize::Decodable::decode(decoder);
-        UnsafeBinderInner(ty::Binder::bind_with_vars(
-            rustc_serialize::Decodable::decode(decoder),
-            bound_vars,
-        ))
-    }
-}
-
 // This is just a `FnSig` without the `FnHeader` fields.
 #[derive_where(Clone, Copy, Debug, PartialEq, Hash; I: Interner)]
 #[cfg_attr(
@@ -1404,6 +1373,10 @@ impl<I: Interner> FnHeader<I> {
 
     pub fn abi(self) -> ExternAbi {
         self.fn_sig_kind.abi()
+    }
+
+    pub fn splatted(self) -> Option<u8> {
+        self.fn_sig_kind.splatted()
     }
 
     /// Create a new safe FnHeader with the `extern "Rust"` ABI, that isn't C-style variadic or splatted.

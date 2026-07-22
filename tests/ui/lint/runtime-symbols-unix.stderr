@@ -1,5 +1,5 @@
 error: invalid definition of the runtime `open` symbol used by the standard library
-  --> $DIR/runtime-symbols-unix.rs:14:5
+  --> $DIR/runtime-symbols-unix.rs:15:5
    |
 LL |     pub fn open() {}
    |     ^^^^^^^^^^^^^
@@ -10,7 +10,7 @@ LL |     pub fn open() {}
    = note: `#[deny(invalid_runtime_symbol_definitions)]` on by default
 
 error: invalid definition of the runtime `read` symbol used by the standard library
-  --> $DIR/runtime-symbols-unix.rs:18:9
+  --> $DIR/runtime-symbols-unix.rs:19:9
    |
 LL |         pub fn read();
    |         ^^^^^^^^^^^^^^
@@ -20,7 +20,7 @@ LL |         pub fn read();
    = help: either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = "read")]`, or `#[link_name = "read"]`
 
 error: invalid definition of the runtime `write` symbol used by the standard library
-  --> $DIR/runtime-symbols-unix.rs:21:9
+  --> $DIR/runtime-symbols-unix.rs:22:9
    |
 LL |         pub fn write();
    |         ^^^^^^^^^^^^^^^
@@ -30,17 +30,17 @@ LL |         pub fn write();
    = help: either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = "write")]`, or `#[link_name = "write"]`
 
 error: invalid definition of the runtime `close` symbol used by the standard library
-  --> $DIR/runtime-symbols-unix.rs:26:5
+  --> $DIR/runtime-symbols-unix.rs:27:5
    |
 LL |     pub static close: () = ();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: expected `unsafe extern "C" fn(i32) -> i32`
-           found    `static close: ()`
-   = help: either fix the signature or remove any attributes `#[unsafe(no_mangle)]` or `#[unsafe(export_name = "close")]`
+           found    `()`
+   = help: either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = "close")]`, or `#[link_name = "close"]`
 
 error: invalid definition of the runtime `malloc` symbol used by the standard library
-  --> $DIR/runtime-symbols-unix.rs:30:9
+  --> $DIR/runtime-symbols-unix.rs:31:9
    |
 LL |         pub fn malloc();
    |         ^^^^^^^^^^^^^^^^
@@ -50,7 +50,7 @@ LL |         pub fn malloc();
    = help: either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = "malloc")]`, or `#[link_name = "malloc"]`
 
 error: invalid definition of the runtime `realloc` symbol used by the standard library
-  --> $DIR/runtime-symbols-unix.rs:33:9
+  --> $DIR/runtime-symbols-unix.rs:34:9
    |
 LL |         pub fn realloc();
    |         ^^^^^^^^^^^^^^^^^
@@ -60,7 +60,7 @@ LL |         pub fn realloc();
    = help: either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = "realloc")]`, or `#[link_name = "realloc"]`
 
 error: invalid definition of the runtime `free` symbol used by the standard library
-  --> $DIR/runtime-symbols-unix.rs:36:9
+  --> $DIR/runtime-symbols-unix.rs:37:9
    |
 LL |         pub fn free();
    |         ^^^^^^^^^^^^^^
@@ -70,7 +70,7 @@ LL |         pub fn free();
    = help: either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = "free")]`, or `#[link_name = "free"]`
 
 error: invalid definition of the runtime `exit` symbol used by the standard library
-  --> $DIR/runtime-symbols-unix.rs:39:9
+  --> $DIR/runtime-symbols-unix.rs:40:9
    |
 LL |         pub fn exit();
    |         ^^^^^^^^^^^^^^
@@ -80,7 +80,7 @@ LL |         pub fn exit();
    = help: either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = "exit")]`, or `#[link_name = "exit"]`
 
 warning: suspicious definition of the runtime `open` symbol used by the standard library
-  --> $DIR/runtime-symbols-unix.rs:46:9
+  --> $DIR/runtime-symbols-unix.rs:47:9
    |
 LL |         pub fn open(path: *const U8, oflag: usize, ...) -> c_int;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -92,7 +92,7 @@ LL |         pub fn open(path: *const U8, oflag: usize, ...) -> c_int;
    = note: `#[warn(suspicious_runtime_symbol_definitions)]` on by default
 
 warning: suspicious definition of the runtime `free` symbol used by the standard library
-  --> $DIR/runtime-symbols-unix.rs:49:9
+  --> $DIR/runtime-symbols-unix.rs:50:9
    |
 LL |         pub fn free(ptr: *const U8);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -103,7 +103,7 @@ LL |         pub fn free(ptr: *const U8);
    = help: allow this lint if the signature is compatible
 
 warning: suspicious definition of the runtime `exit` symbol used by the standard library
-  --> $DIR/runtime-symbols-unix.rs:52:9
+  --> $DIR/runtime-symbols-unix.rs:53:9
    |
 LL |         pub fn exit(code: f32) -> !;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -113,5 +113,16 @@ LL |         pub fn exit(code: f32) -> !;
    = help: either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = "exit")]`, or `#[link_name = "exit"]`
    = help: allow this lint if the signature is compatible
 
-error: aborting due to 8 previous errors; 3 warnings emitted
+warning: suspicious definition of the runtime `exit` symbol used by the standard library
+  --> $DIR/runtime-symbols-unix.rs:58:9
+   |
+LL |         pub static exit2: Option<unsafe extern "C" fn(f32) -> !>;
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected `unsafe extern "C" fn(i32) -> !`
+           found    `unsafe extern "C" fn(f32) -> !`
+   = help: either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = "exit")]`, or `#[link_name = "exit"]`
+   = help: allow this lint if the signature is compatible
+
+error: aborting due to 8 previous errors; 4 warnings emitted
 

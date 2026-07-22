@@ -504,12 +504,10 @@ impl DefMap {
                         );
                     }
 
-                    let def_map;
                     let module_data = if module.block(db) == self.block_id() {
                         &self[module]
                     } else {
-                        def_map = module.def_map(db);
-                        &def_map[module]
+                        &module.def_map(db)[module]
                     };
 
                     // Since it is a qualified path here, it should not contains legacy macros
@@ -753,14 +751,7 @@ impl DefMap {
 
     fn resolve_in_prelude(&self, db: &dyn SourceDatabase, name: &Name) -> PerNs {
         if let Some((prelude, _use)) = self.prelude {
-            let keep;
-            let def_map = if prelude.krate(db) == self.krate {
-                self
-            } else {
-                // Extend lifetime
-                keep = prelude.def_map(db);
-                keep
-            };
+            let def_map = if prelude.krate(db) == self.krate { self } else { prelude.def_map(db) };
             def_map[prelude].scope.get(name)
         } else {
             PerNs::none()

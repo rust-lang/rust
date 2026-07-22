@@ -1,5 +1,5 @@
 error[E0228]: cannot deduce the lifetime bound for this trait object type from context
-  --> $DIR/object-lifetime-default-inherent-gac.rs:19:48
+  --> $DIR/object-lifetime-default-inherent-gac.rs:24:48
    |
 LL |     fn check<'r>() where [(); Parent::CT::<'r, dyn super::Trait>]: {}
    |                                                ^^^^^^^^^^^^^^^^
@@ -10,7 +10,7 @@ LL |     fn check<'r>() where [(); Parent::CT::<'r, dyn super::Trait + /* 'a */>
    |                                                                 ++++++++++
 
 error[E0228]: cannot deduce the lifetime bound for this trait object type from context
-  --> $DIR/object-lifetime-default-inherent-gac.rs:32:50
+  --> $DIR/object-lifetime-default-inherent-gac.rs:37:50
    |
 LL |     fn check<'r>() where [(); Parent::<'r>::CT::<dyn super::Trait>]: {}
    |                                                  ^^^^^^^^^^^^^^^^

@@ -249,6 +249,34 @@ fn main() {
 }
 
 #[test]
+fn fuzzy_completion_order_is_case_insensitive_and_deterministic() {
+    check(
+        r#"
+//- /lib.rs crate:dep
+pub mod zed {
+    pub struct HIRThing;
+}
+pub mod alpha {
+    pub struct HIRThing;
+}
+pub struct BeforeHIRThing;
+pub struct HiiirThing;
+
+//- /main.rs crate:main deps:dep
+fn main() {
+    hir$0
+}
+"#,
+        expect![[r#"
+            st HIRThing (use dep::alpha::HIRThing)            HIRThing
+            st HIRThing (use dep::zed::HIRThing)              HIRThing
+            st BeforeHIRThing (use dep::BeforeHIRThing) BeforeHIRThing
+            st HiiirThing (use dep::HiiirThing)             HiiirThing
+        "#]],
+    );
+}
+
+#[test]
 fn trait_function_fuzzy_completion() {
     let fixture = r#"
         //- /lib.rs crate:dep

@@ -1,22 +1,22 @@
-error[E0271]: type mismatch resolving `T == {async block@$DIR/stalled-coroutine-obligations.rs:18:18: 18:23}`
+error[E0271]: type mismatch resolving `T == {async block@stalled-coroutine-obligations.rs:18:18}`
   --> $DIR/stalled-coroutine-obligations.rs:18:14
    |
 LL |     let foo: T = async {};
    |              ^ types differ
 
-error[E0271]: type mismatch resolving `U == {async block@$DIR/stalled-coroutine-obligations.rs:22:18: 22:23}`
+error[E0271]: type mismatch resolving `U == {async block@stalled-coroutine-obligations.rs:22:18}`
   --> $DIR/stalled-coroutine-obligations.rs:22:14
    |
 LL |     let bar: U = async {};
    |              ^ types differ
 
-error[E0271]: type mismatch resolving `T == {async block@$DIR/stalled-coroutine-obligations.rs:33:18: 33:23}`
+error[E0271]: type mismatch resolving `T == {async block@stalled-coroutine-obligations.rs:33:18}`
   --> $DIR/stalled-coroutine-obligations.rs:33:14
    |
 LL |     let foo: T = async { a };
    |              ^ types differ
 
-error[E0271]: type mismatch resolving `impl Future + Send == {async block@$DIR/stalled-coroutine-obligations.rs:41:9: 41:19}`
+error[E0271]: type mismatch resolving `impl Future + Send == {async block@stalled-coroutine-obligations.rs:41:9}`
   --> $DIR/stalled-coroutine-obligations.rs:39:43
    |
 LL |     fn stalled_send(&self, b: *mut ()) -> impl Future + Send {

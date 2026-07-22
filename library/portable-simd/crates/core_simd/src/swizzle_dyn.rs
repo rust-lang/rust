@@ -14,11 +14,6 @@ impl<const N: usize> Simd<u8, N> {
     pub fn swizzle_dyn(self, idxs: Simd<u8, N>) -> Self {
         #![allow(unused_imports, unused_unsafe)]
         #[cfg(all(
-            any(target_arch = "aarch64", target_arch = "arm64ec"),
-            target_endian = "little"
-        ))]
-        use core::arch::aarch64::{uint8x8_t, vqtbl1q_u8, vtbl1_u8};
-        #[cfg(all(
             target_arch = "arm",
             target_feature = "v7",
             target_feature = "neon",
@@ -37,25 +32,15 @@ impl<const N: usize> Simd<u8, N> {
         unsafe {
             match N {
                 #[cfg(all(
-                    any(
-                        target_arch = "aarch64",
-                        target_arch = "arm64ec",
-                        all(target_arch = "arm", target_feature = "v7")
-                    ),
-                    target_feature = "neon",
-                    target_endian = "little"
-                ))]
-                8 => transize(vtbl1_u8, self, idxs),
-                #[cfg(target_feature = "ssse3")]
-                16 => transize(x86::_mm_shuffle_epi8, self, zeroing_idxs(idxs)),
-                #[cfg(target_feature = "simd128")]
-                16 => transize(wasm::i8x16_swizzle, self, idxs),
-                #[cfg(all(
                     any(target_arch = "aarch64", target_arch = "arm64ec"),
                     target_feature = "neon",
                     target_endian = "little"
                 ))]
-                16 => transize(vqtbl1q_u8, self, idxs),
+                8 | 16 | 24 | 32 | 48 | 64 => aarch64_swizzle(self, idxs),
+                #[cfg(target_feature = "ssse3")]
+                16 => transize(x86::_mm_shuffle_epi8, self, zeroing_idxs(idxs)),
+                #[cfg(target_feature = "simd128")]
+                16 => transize(wasm::i8x16_swizzle, self, idxs),
                 #[cfg(all(
                     target_arch = "arm",
                     target_feature = "v7",
@@ -63,6 +48,8 @@ impl<const N: usize> Simd<u8, N> {
                     target_endian = "little"
                 ))]
                 16 => transize(armv7_neon_swizzle_u8x16, self, idxs),
+                #[cfg(all(target_arch = "loongarch64", target_feature = "lsx"))]
+                16 => transize(loong64_lsx_swizzle, self, idxs),
                 #[cfg(all(target_feature = "avx2", not(target_feature = "avx512vbmi")))]
                 32 => transize(avx2_pshufb, self, idxs),
                 #[cfg(all(target_feature = "avx512vl", target_feature = "avx512vbmi"))]
@@ -77,6 +64,8 @@ impl<const N: usize> Simd<u8, N> {
                     };
                     transize(swizzler, self, idxs)
                 }
+                #[cfg(all(target_arch = "loongarch64", target_feature = "lasx"))]
+                32 => transize(loong64_lasx_swizzle, self, idxs),
                 // Notable absence: avx512bw pshufb shuffle
                 #[cfg(all(target_feature = "avx512vl", target_feature = "avx512vbmi"))]
                 64 => {
@@ -126,6 +115,73 @@ unsafe fn armv7_neon_swizzle_u8x16(bytes: Simd<u8, 16>, idxs: Simd<u8, 16>) -> S
     }
 }
 
+/// AArch64 NEON supports swizzling 8, 16, 24, 32, 48 or 64 by stacking multiple TBL instructions.
+///
+/// # Safety
+/// This requires AArch64 NEON to work
+#[cfg(all(
+    any(target_arch = "aarch64", target_arch = "arm64ec"),
+    target_feature = "neon",
+    target_endian = "little"
+))]
+unsafe fn aarch64_swizzle<const N: usize>(bytes: Simd<u8, N>, idxs: Simd<u8, N>) -> Simd<u8, N> {
+    use core::arch::aarch64::*;
+    use core::mem::transmute_copy;
+
+    // SAFETY: Caller promised AArch64 NEON support
+    unsafe {
+        match N {
+            8 => transmute_copy(&vtbl1_u8(transmute_copy(&bytes), transmute_copy(&idxs))),
+            16 => transmute_copy(&vqtbl1q_u8(transmute_copy(&bytes), transmute_copy(&idxs))),
+            24 => {
+                let bytes: uint8x8x3_t = transmute_copy(&bytes);
+                let idxs: uint8x8x3_t = transmute_copy(&idxs);
+
+                let ret0 = vtbl3_u8(bytes, idxs.0);
+                let ret1 = vtbl3_u8(bytes, idxs.1);
+                let ret2 = vtbl3_u8(bytes, idxs.2);
+
+                let ret = uint8x8x3_t(ret0, ret1, ret2);
+                transmute_copy(&ret)
+            }
+            32 => {
+                let bytes: uint8x16x2_t = transmute_copy(&bytes);
+                let idxs: uint8x16x2_t = transmute_copy(&idxs);
+
+                let ret0 = vqtbl2q_u8(bytes, idxs.0);
+                let ret1 = vqtbl2q_u8(bytes, idxs.1);
+
+                let ret = uint8x16x2_t(ret0, ret1);
+                transmute_copy(&ret)
+            }
+            48 => {
+                let bytes: uint8x16x3_t = transmute_copy(&bytes);
+                let idxs: uint8x16x3_t = transmute_copy(&idxs);
+
+                let ret0 = vqtbl3q_u8(bytes, idxs.0);
+                let ret1 = vqtbl3q_u8(bytes, idxs.1);
+                let ret2 = vqtbl3q_u8(bytes, idxs.2);
+
+                let ret = uint8x16x3_t(ret0, ret1, ret2);
+                transmute_copy(&ret)
+            }
+            64 => {
+                let bytes: uint8x16x4_t = transmute_copy(&bytes);
+                let idxs: uint8x16x4_t = transmute_copy(&idxs);
+
+                let ret0 = vqtbl4q_u8(bytes, idxs.0);
+                let ret1 = vqtbl4q_u8(bytes, idxs.1);
+                let ret2 = vqtbl4q_u8(bytes, idxs.2);
+                let ret3 = vqtbl4q_u8(bytes, idxs.3);
+
+                let ret = uint8x16x4_t(ret0, ret1, ret2, ret3);
+                transmute_copy(&ret)
+            }
+            _ => unreachable!(),
+        }
+    }
+}
+
 /// "vpshufb like it was meant to be" on AVX2
 ///
 /// # Safety
@@ -165,6 +221,38 @@ unsafe fn avx2_pshufb(bytes: Simd<u8, 32>, idxs: Simd<u8, 32>) -> Simd<u8, 32> {
         // Repeat, then pick indices < 16, overwriting indices 0-15 from previous compose step
         let compose = idxs.simd_lt(mid).select(lo_shuf, compose);
         compose
+    }
+}
+
+/// LoongArch64 LSX supports swizzling `u8x16`
+///
+/// # Safety
+/// This requires LoongArch LSX to work
+#[cfg(all(target_arch = "loongarch64", target_feature = "lsx"))]
+unsafe fn loong64_lsx_swizzle(bytes: Simd<u8, 16>, idxs: Simd<u8, 16>) -> Simd<u8, 16> {
+    use core::arch::loongarch64::{lsx_vand_v, lsx_vshuf_b, lsx_vslei_bu};
+    // SAFETY: Caller promised loongarch lsx support
+    unsafe {
+        let bytes = lsx_vshuf_b(bytes.into(), bytes.into(), idxs.into());
+        let mask = lsx_vslei_bu::<15>(idxs.into());
+        lsx_vand_v(bytes, mask).into()
+    }
+}
+
+/// LoongArch64 LASX supports swizzling `u8x32`
+///
+/// # Safety
+/// This requires LoongArch LASX to work
+#[cfg(all(target_arch = "loongarch64", target_feature = "lasx"))]
+unsafe fn loong64_lasx_swizzle(bytes: Simd<u8, 32>, idxs: Simd<u8, 32>) -> Simd<u8, 32> {
+    use core::arch::loongarch64::{lasx_xvand_v, lasx_xvpermi_q, lasx_xvshuf_b, lasx_xvslei_bu};
+    // SAFETY: Caller promised loongarch lasx support
+    unsafe {
+        let lolo = lasx_xvpermi_q::<0x00>(bytes.into(), bytes.into());
+        let hihi = lasx_xvpermi_q::<0x11>(bytes.into(), bytes.into());
+        let bytes = lasx_xvshuf_b(hihi, lolo, idxs.into());
+        let mask = lasx_xvslei_bu::<31>(idxs.into());
+        lasx_xvand_v(bytes, mask).into()
     }
 }
 

@@ -13,6 +13,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
+use build_helper::git::PathFreshness;
+
 use crate::core::builder::{Builder, Cargo, Kind, RunConfig, ShouldRun, Step};
 use crate::core::config::TargetSelection;
 use crate::utils::build_stamp::{BuildStamp, generate_smart_stamp_hash};
@@ -135,9 +137,11 @@ pub enum GccBuildStatus {
 /// Tries to download GCC from CI if it is enabled and GCC artifacts
 /// are available for the given target.
 /// Returns a path to the libgccjit.so file.
-#[cfg(not(test))]
 fn try_download_gcc(builder: &Builder<'_>, target_pair: GccTargetPair) -> Option<PathBuf> {
-    use build_helper::git::PathFreshness;
+    // Don't actually download GCC during unit tests.
+    if cfg!(test) {
+        return None;
+    }
 
     // Try to download GCC from CI if configured and available
     if !matches!(builder.config.gcc_ci_mode, crate::core::config::GccCiMode::DownloadFromCi) {
@@ -192,11 +196,6 @@ fn try_download_gcc(builder: &Builder<'_>, target_pair: GccTargetPair) -> Option
             None
         }
     }
-}
-
-#[cfg(test)]
-fn try_download_gcc(_builder: &Builder<'_>, _target_pair: GccTargetPair) -> Option<PathBuf> {
-    None
 }
 
 /// This returns information about whether GCC should be built or if it's already built.
@@ -367,15 +366,13 @@ pub fn add_cg_gcc_cargo_flags(cargo: &mut Cargo, gcc: &GccOutput) {
 }
 
 /// The absolute path to the downloaded GCC artifacts.
-#[cfg(not(test))]
 fn ci_gcc_root(config: &crate::Config, target: TargetSelection) -> PathBuf {
     config.out.join(target).join("ci-gcc")
 }
 
 /// Detect whether GCC sources have been modified locally or not.
-#[cfg(not(test))]
 fn detect_gcc_freshness(config: &crate::Config, is_git: bool) -> build_helper::git::PathFreshness {
-    use build_helper::git::PathFreshness;
+    assert!(cfg!(not(test)), "unit tests shouldn't care about GCC freshness");
 
     if is_git {
         config.check_path_modifications(&["src/gcc", "src/bootstrap/download-ci-gcc-stamp"])

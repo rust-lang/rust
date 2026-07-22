@@ -14,6 +14,7 @@ use la_arena::{Idx, RawIdx};
 use rustc_hash::FxHashMap;
 use thin_vec::ThinVec;
 
+use crate::lower::LifetimeLoweringMode;
 use crate::{
     InferenceDiagnostic, InferenceTyDiagnosticSource, Span, TyLoweringDiagnostic,
     db::{AnonConstId, HirDatabase},
@@ -107,6 +108,7 @@ impl<'db, 'a> InferenceTyLoweringContext<'db, 'a> {
         allow_using_generic_params: bool,
         infer_vars: Option<&'a mut dyn TyLoweringInferVarsCtx<'db>>,
         defined_anon_consts: &'a RefCell<ThinVec<AnonConstId>>,
+        lifetime_lowering_mode: LifetimeLoweringMode,
     ) -> Self {
         let mut ctx = TyLoweringContext::new(
             db,
@@ -116,6 +118,7 @@ impl<'db, 'a> InferenceTyLoweringContext<'db, 'a> {
             generic_def,
             generics,
             lifetime_elision,
+            lifetime_lowering_mode,
         )
         .with_infer_vars_behavior(infer_vars);
         if !allow_using_generic_params {

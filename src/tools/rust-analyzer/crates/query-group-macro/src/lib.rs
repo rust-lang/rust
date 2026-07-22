@@ -6,11 +6,10 @@ use proc_macro::TokenStream;
 use proc_macro2::Span;
 use queries::{Queries, TrackedQuery, Transparent};
 use quote::{ToTokens, format_ident, quote};
-use syn::parse::{Parse, ParseStream};
-use syn::punctuated::Punctuated;
+use syn::parse::ParseStream;
 use syn::spanned::Spanned;
 use syn::visit_mut::VisitMut;
-use syn::{Attribute, FnArg, ItemTrait, Path, Token, TraitItem, parse_quote, parse_quote_spanned};
+use syn::{Attribute, FnArg, ItemTrait, Path, TraitItem, parse_quote, parse_quote_spanned};
 
 mod queries;
 
@@ -87,50 +86,6 @@ enum QueryKind {
     Transparent,
 }
 
-#[derive(Default, Debug, Clone)]
-struct Cycle {
-    cycle_result: Option<(syn::Ident, Path)>,
-}
-
-impl Parse for Cycle {
-    fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
-        let options = Punctuated::<Option, Token![,]>::parse_terminated(input)?;
-        let mut cycle_result = None;
-        for option in options {
-            let name = option.name.to_string();
-            match &*name {
-                "cycle_result" => {
-                    if cycle_result.is_some() {
-                        return Err(syn::Error::new_spanned(&option.name, "duplicate option"));
-                    }
-                    cycle_result = Some((option.name, option.value));
-                }
-                _ => {
-                    return Err(syn::Error::new_spanned(
-                        &option.name,
-                        "unknown cycle option. Accepted values: `cycle_result`",
-                    ));
-                }
-            }
-        }
-        return Ok(Self { cycle_result });
-
-        struct Option {
-            name: syn::Ident,
-            value: Path,
-        }
-
-        impl Parse for Option {
-            fn parse(input: ParseStream<'_>) -> syn::Result<Self> {
-                let name = input.parse()?;
-                input.parse::<Token![=]>()?;
-                let value = input.parse()?;
-                Ok(Self { name, value })
-            }
-        }
-    }
-}
-
 pub(crate) fn query_group_impl(
     _args: proc_macro::TokenStream,
     input: proc_macro::TokenStream,
@@ -158,7 +113,6 @@ pub(crate) fn query_group_impl(
 
             let mut query_kind = QueryKind::TrackedWithSalsaStruct;
             let mut invoke = None;
-            let mut cycle = None;
 
             let params: Vec<FnArg> = signature.inputs.clone().into_iter().collect();
             let pat_and_tys = params
@@ -172,10 +126,6 @@ pub(crate) fn query_group_impl(
 
             for SalsaAttr { name, tts, span } in salsa_attrs {
                 match name.as_str() {
-                    "cycle" => {
-                        let c = syn::parse::<Parenthesized<Cycle>>(tts)?;
-                        cycle = Some(c.0);
-                    }
                     "invoke" => {
                         let path = syn::parse::<Parenthesized<Path>>(tts)?;
                         invoke = Some(path.0.clone());
@@ -208,7 +158,6 @@ pub(crate) fn query_group_impl(
                         signature: signature.clone(),
                         pat_and_tys: pat_and_tys.clone(),
                         invoke,
-                        cycle,
                         default: method.default.take(),
                     };
 

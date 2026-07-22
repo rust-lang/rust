@@ -1,15 +1,18 @@
+use std::ops::RangeInclusive;
+
 use hir::{HirDisplay, TypeInfo};
 use ide_db::{
     assists::GroupLabel,
     syntax_helpers::{LexedStr, suggest_name},
 };
 use syntax::{
-    Direction, NodeOrToken, SyntaxKind, SyntaxNode, SyntaxToken, T, TextRange,
+    Direction, NodeOrToken, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken, T, TextRange,
     algo::{ancestors_at_offset, skip_trivia_token},
     ast::{
         self, AstNode,
         edit::{AstNodeEdit, IndentLevel},
     },
+    hacks::parse_expr_from_str,
     syntax_editor::{Element, Position},
 };
 
@@ -92,7 +95,7 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -
     let node = node.ancestors().take_while(|anc| anc.text_range() == node.text_range()).last()?;
     let range = node.text_range();
 
-    let (to_replace, analysis) = if node.kind() == SyntaxKind::TOKEN_TREE {
+    let (to_replace, analysis, use_source_expr) = if node.kind() == SyntaxKind::TOKEN_TREE {
         let (first, last) = extract_token_range_of(&node, ctx.selection_trimmed())?;
 
         let first_descend = ctx.sema.descend_into_macros_single_exact(first.clone());
@@ -111,14 +114,14 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -
         if !node.text_range().contains_range(original_range.range) {
             return None;
         }
-        (cover_edit_range(&node, original_range.range), expr)
+        (cover_edit_range(&node, original_range.range), expr, true)
     } else {
         let expr = node
             .descendants()
             .take_while(|it| range.contains_range(it.text_range()))
             .find_map(valid_target_expr(ctx))?;
         let to_extract = expr.syntax().syntax_element();
-        (to_extract.clone()..=to_extract, expr)
+        (to_extract.clone()..=to_extract, expr, false)
     };
     let place = match to_replace.start() {
         NodeOrToken::Node(node) => node.clone(),
@@ -217,6 +220,11 @@ pub(crate) fn extract_variable(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -
                     editor.add_annotation(pat_name.syntax().clone(), tabstop);
                 }
 
+                let to_extract_no_ref = if use_source_expr {
+                    source_expr(ctx, to_replace.clone()).unwrap()
+                } else {
+                    to_extract_no_ref.clone()
+                };
                 let initializer = match ty.as_ref().filter(|_| needs_ref) {
                     Some(receiver_type) if receiver_type.is_mutable_reference() => {
                         make.expr_ref(to_extract_no_ref.clone(), true)
@@ -329,6 +337,15 @@ fn peel_parens(mut expr: ast::Expr) -> ast::Expr {
         expr = expr_inside;
     }
     expr
+}
+
+fn source_expr(
+    ctx: &AssistContext<'_, '_>,
+    range: RangeInclusive<SyntaxElement>,
+) -> Option<ast::Expr> {
+    let range = range.start().text_range().cover(range.end().text_range());
+    let text = ctx.source_file().syntax().text().slice(range).to_string();
+    parse_expr_from_str(&text, ctx.edition())
 }
 
 /// Check whether the node is a valid expression which can be extracted to a variable.
@@ -2828,7 +2845,6 @@ fn main() {
 
     #[test]
     fn extract_variable_in_token_tree() {
-        // FIXME: Keep the original trivia instead of extracting macro expanded?
         check_assist_by_label(
             extract_variable,
             r#"
@@ -2850,7 +2866,7 @@ macro_rules! foo {
 }
 
 fn main() {
-    let $0var_name = 2+3;
+    let $0var_name = 2 + 3;
     let x = foo!(= var_name + 4);
 }
 "#,
@@ -2878,7 +2894,7 @@ macro_rules! foo {
 }
 
 fn main() {
-    let $0var_name = 2+3;
+    let $0var_name = 2 + 3;
     let x = foo!(= var_name + 4);
 }
 "#,
@@ -2906,7 +2922,7 @@ macro_rules! foo {
 }
 
 fn main() {
-    let $0var_name = 2+3+4;
+    let $0var_name = 2 + 3 + 4;
     let x = foo!(= var_name);
 }
 "#,
@@ -2937,10 +2953,38 @@ macro_rules! foo {
 }
 
 fn main() {
-    let $0var_name = 2+3+4;
+    let $0var_name = 2 + 3 + 4;
     let x = foo!(= {
         var_name
     });
+}
+"#,
+            "Extract into variable",
+        );
+
+        check_assist_by_label(
+            extract_variable,
+            r#"
+macro_rules! identity {
+    ($e:expr) => {
+        $e
+    };
+}
+
+fn main() {
+    let x = identity!($0(1+2)$0);
+}
+"#,
+            r#"
+macro_rules! identity {
+    ($e:expr) => {
+        $e
+    };
+}
+
+fn main() {
+    let $0var_name = (1+2);
+    let x = identity!(var_name);
 }
 "#,
             "Extract into variable",
@@ -2970,7 +3014,7 @@ macro_rules! foo {
 }
 
 fn main() {
-    let $0x = 2+3;
+    let $0x = 2 + 3;
     let x = foo!(= Foo { x: x });
 }
 "#,
@@ -2998,8 +3042,53 @@ macro_rules! foo {
 }
 
 fn main() {
-    let $0var_name = 2+3;
+    let $0var_name = 2 + 3;
     let x = foo!(= Foo { x: var_name + 4 });
+}
+"#,
+            "Extract into variable",
+        );
+    }
+
+    #[test]
+    fn extract_variable_in_assert_macro_preserves_required_whitespace() {
+        check_assist_by_label(
+            extract_variable,
+            r#"
+//- minicore: assert
+fn check(value: &mut usize) -> bool {
+    false
+}
+
+fn foo(mut bar: usize) {
+    assert!(check($0&mut bar$0));
+}
+"#,
+            r#"
+fn check(value: &mut usize) -> bool {
+    false
+}
+
+fn foo(mut bar: usize) {
+    let $0value = &mut bar;
+    assert!(check(value));
+}
+"#,
+            "Extract into variable",
+        );
+
+        check_assist_by_label(
+            extract_variable,
+            r#"
+//- minicore: assert
+fn main() {
+    assert!($0if true {true} else {false}$0);
+}
+"#,
+            r#"
+fn main() {
+    let $0var_name = if true {true} else {false};
+    assert!(var_name);
 }
 "#,
             "Extract into variable",

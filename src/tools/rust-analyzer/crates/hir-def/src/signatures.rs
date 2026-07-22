@@ -21,8 +21,8 @@ use triomphe::Arc;
 
 use crate::{
     ConstId, EnumId, EnumVariantId, EnumVariantLoc, ExternBlockId, FunctionId, FxIndexMap,
-    HasModule, ImplId, ItemContainerId, ModuleId, StaticId, StructId, TraitId, TypeAliasId,
-    UnionId, VariantId,
+    HasModule, ImplId, ItemContainerId, LoweringMode, ModuleId, StaticId, StructId, TraitId,
+    TypeAliasId, UnionId, VariantId,
     attrs::AttrFlags,
     expr_store::{
         Body, ExpressionStore, ExpressionStoreBuilder, ExpressionStoreSourceMap,
@@ -117,6 +117,7 @@ impl StructSignature {
             file_id,
             source.generic_param_list(),
             source.where_clause(),
+            LoweringMode::Analysis,
         );
         (
             Arc::new(StructSignature {
@@ -190,6 +191,7 @@ impl UnionSignature {
             file_id,
             source.generic_param_list(),
             source.where_clause(),
+            LoweringMode::Analysis,
         );
         (
             Arc::new(UnionSignature {
@@ -265,6 +267,7 @@ impl EnumSignature {
             file_id,
             source.generic_param_list(),
             source.where_clause(),
+            LoweringMode::Analysis,
         );
 
         (
@@ -987,7 +990,7 @@ fn lower_fields<Field: ast::HasAttrs + ast::HasVisibility>(
     override_visibility: Option<Option<ast::Visibility>>,
 ) -> Option<(Arena<FieldData>, ExpressionStore, ExpressionStoreSourceMap)> {
     let cfg_options = module.krate(db).cfg_options(db);
-    let mut col = ExprCollector::new(db, module, fields.file_id);
+    let mut col = ExprCollector::new(db, module, fields.file_id, crate::LoweringMode::Analysis);
     let override_visibility = override_visibility.map(|vis| {
         LazyCell::new(|| {
             let span_map = fields.file_id.span_map(db);

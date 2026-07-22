@@ -1,0 +1,26 @@
+error: `#[splat]` is not allowed in the arguments of functions with the `rust-call` ABI
+  --> $DIR/splat-rust-call-type-issue-158800.rs:11:5
+   |
+LL |     extern "rust-call" fn f(#[splat] _: ());
+   |     ^^^^^^^^^^^^^^^^^^      ^^^^^^^^
+   |
+   = help: remove `#[splat]` or change the ABI
+
+error: `#[splat]` is not allowed in the arguments of functions with the `rust-call` ABI
+  --> $DIR/splat-rust-call-type-issue-158800.rs:16:5
+   |
+LL |     extern "rust-call" fn f2(#[splat] _: ()) {}
+   |     ^^^^^^^^^^^^^^^^^^       ^^^^^^^^
+   |
+   = help: remove `#[splat]` or change the ABI
+
+error: `#[splat]` is not allowed in the arguments of functions with the `rust-call` ABI
+  --> $DIR/splat-rust-call-type-issue-158800.rs:21:5
+   |
+LL |     extern "rust-call" fn f(#[splat] _: ()) {}
+   |     ^^^^^^^^^^^^^^^^^^      ^^^^^^^^
+   |
+   = help: remove `#[splat]` or change the ABI
+
+error: aborting due to 3 previous errors
+

@@ -15,11 +15,11 @@ use rustc_data_structures::sync::Lock;
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::proc_macro::{AttrProcMacro, BangProcMacro, DeriveProcMacro};
-use rustc_hir::Safety;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE};
 use rustc_hir::definitions::{DefPath, DefPathData};
 use rustc_hir::diagnostic_items::DiagnosticItems;
+use rustc_hir::{CanonicalSymbols, Safety};
 use rustc_index::Idx;
 use rustc_middle::middle::lib_features::LibFeatures;
 use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
@@ -402,11 +402,6 @@ impl<'a> BlobDecodeContext<'a> {
 impl<'a, 'tcx> TyDecoder<'tcx> for MetadataDecodeContext<'a, 'tcx> {
     const CLEAR_CROSS_CRATE: bool = true;
 
-    #[inline]
-    fn interner(&self) -> TyCtxt<'tcx> {
-        self.tcx
-    }
-
     fn cached_ty_for_shorthand<F>(&mut self, shorthand: usize, or_insert_with: F) -> Ty<'tcx>
     where
         F: FnOnce(&mut Self) -> Ty<'tcx>,
@@ -440,6 +435,15 @@ impl<'a, 'tcx> TyDecoder<'tcx> for MetadataDecodeContext<'a, 'tcx> {
     fn decode_alloc_id(&mut self) -> rustc_middle::mir::interpret::AllocId {
         let ads = self.alloc_decoding_session;
         ads.decode_alloc_id(self)
+    }
+}
+
+impl<'a, 'tcx> rustc_middle::ty::InternerDecoder for MetadataDecodeContext<'a, 'tcx> {
+    type Interner = TyCtxt<'tcx>;
+
+    #[inline]
+    fn interner(&self) -> TyCtxt<'tcx> {
+        self.tcx
     }
 }
 
@@ -750,6 +754,7 @@ impl MetadataBlob {
             "lang_items".to_owned(),
             "features".to_owned(),
             "items".to_owned(),
+            "target_modifiers".to_owned(),
         ];
         let ls_kinds = if ls_kinds.contains(&"all".to_owned()) { &all_ls_kinds } else { ls_kinds };
 
@@ -919,11 +924,28 @@ impl MetadataBlob {
 
                     write!(out, "\n")?;
                 }
+                "target_modifiers" => {
+                    writeln!(out, "=Target modifiers=")?;
+
+                    for modifier in root.decode_target_modifiers(self) {
+                        let extended = modifier.extend();
+
+                        writeln!(
+                            out,
+                            "-{}{}={} [{}]",
+                            extended.prefix,
+                            extended.name,
+                            modifier.value_name,
+                            extended.tech_value,
+                        )?;
+                    }
+                }
 
                 _ => {
                     writeln!(
                         out,
-                        "unknown -Zls kind. allowed values are: all, root, lang_items, features, items"
+                        "unknown -Zls kind. allowed values are: all, root, lang_items, features, items, \
+                            target_modifiers"
                     )?;
                 }
             }
@@ -1261,6 +1283,18 @@ impl CrateMetadata {
             })
             .collect();
         DiagnosticItems { id_to_name, name_to_id }
+    }
+
+    /// Iterates over the canonical_symbols in the given crate.
+    fn get_canonical_symbols(&self, tcx: TyCtxt<'_>) -> CanonicalSymbols {
+        let mut canonical_symbols = CanonicalSymbols::new();
+
+        for (name, def_index) in self.root.canonical_symbols.decode((self, tcx)) {
+            let id = self.local_def_id(def_index);
+            let _ = canonical_symbols.set(name, id);
+        }
+
+        canonical_symbols
     }
 
     fn get_mod_child(&self, tcx: TyCtxt<'_>, id: DefIndex) -> ModChild {

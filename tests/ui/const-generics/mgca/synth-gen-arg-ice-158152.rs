@@ -1,4 +1,4 @@
-#![feature(min_generic_const_args)]
+#![feature(min_generic_const_args, macroless_generic_const_args)]
 
 trait A<T> {}
 trait Trait<const N: usize> {}

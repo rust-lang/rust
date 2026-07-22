@@ -160,6 +160,12 @@ impl<'a> IntoIterator for &'a LlvmConfigOutput {
     }
 }
 
+fn is_libstdcxx_cxx11_abi_flag(flag: &str) -> bool {
+    flag == "-D_GLIBCXX_USE_CXX11_ABI"
+        || flag.starts_with("-D_GLIBCXX_USE_CXX11_ABI=")
+        || flag == "-U_GLIBCXX_USE_CXX11_ABI"
+}
+
 fn main() {
     if cfg!(feature = "check_only") {
         return;
@@ -252,6 +258,14 @@ fn main() {
     for flag in &cxxflags {
         // Ignore flags like `-m64` when we're doing a cross build
         if is_crossed && flag.starts_with("-m") {
+            continue;
+        }
+
+        // This is a libstdc++ implementation detail for the C++ library that
+        // built the runnable llvm-config. When cross-compiling, target LLVM may
+        // have been built against a target libstdc++ with a different default.
+        // Let the target compiler/toolchain select its ABI instead.
+        if is_crossed && is_libstdcxx_cxx11_abi_flag(flag.as_ref()) {
             continue;
         }
 

@@ -14,7 +14,6 @@ use rustc_middle::util::Providers;
 use rustc_parse::lexer::StripTokens;
 use rustc_parse::new_parser_from_source_str;
 use rustc_parse::parser::Recovery;
-use rustc_parse::parser::attr::AllowLeadingUnsafe;
 use rustc_query_impl::print_query_stack;
 use rustc_session::config::{self, Cfg, CheckCfg, ExpectedValues, Input, OutFileName};
 use rustc_session::parse::ParseSess;
@@ -62,7 +61,7 @@ pub(crate) fn parse_cfg(dcx: DiagCtxtHandle<'_>, cfgs: Vec<String>) -> Cfg {
             {
                 Ok(mut parser) => {
                     parser = parser.recovery(Recovery::Forbidden);
-                    match parser.parse_meta_item(AllowLeadingUnsafe::No) {
+                    match parser.parse_meta_item() {
                         Ok(meta_item)
                             if parser.token == token::Eof
                                 && parser.dcx().has_errors().is_none() =>
@@ -167,7 +166,7 @@ pub(crate) fn parse_check_cfg(dcx: DiagCtxtHandle<'_>, specs: Vec<String>) -> Ch
                 }
             };
 
-        let meta_item = match parser.parse_meta_item(AllowLeadingUnsafe::No) {
+        let meta_item = match parser.parse_meta_item() {
             Ok(meta_item) if parser.token == token::Eof && parser.dcx().has_errors().is_none() => {
                 meta_item
             }

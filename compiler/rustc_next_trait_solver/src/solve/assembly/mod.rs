@@ -14,7 +14,7 @@ use rustc_type_ir::solve::{
     RerunNonErased, RerunReason, RerunResultExt, SizedTraitKind, StalledOnCoroutines,
 };
 use rustc_type_ir::{
-    self as ty, AliasTy, Interner, MayBeErased, TypeFlags, TypeFoldable, TypeFolder,
+    self as ty, AliasTy, Interner, MayBeErased, Region, TypeFlags, TypeFoldable, TypeFolder,
     TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor,
     TypingMode, Unnormalized, Upcast, elaborate,
 };
@@ -1432,7 +1432,7 @@ where
         }
     }
 
-    fn visit_region(&mut self, r: I::Region) -> Self::Result {
+    fn visit_region(&mut self, r: Region<I>) -> Self::Result {
         match self.ecx.eager_resolve_region(r).kind() {
             ty::ReStatic | ty::ReError(_) | ty::ReBound(..) => ControlFlow::Continue(()),
             ty::RePlaceholder(p) => {

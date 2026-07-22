@@ -93,22 +93,22 @@ mod runtime_symbols {
     use crate::ffi::{c_char, c_int, c_void};
 
     unsafe extern "C" {
-        #[lang = "memcpy_fn"]
+        #[rustc_canonical_symbol]
         fn memcpy(dest: *mut c_void, src: *const c_void, n: usize) -> *mut c_void;
 
-        #[lang = "memmove_fn"]
+        #[rustc_canonical_symbol]
         fn memmove(dest: *mut c_void, src: *const c_void, n: usize) -> *mut c_void;
 
-        #[lang = "memset_fn"]
+        #[rustc_canonical_symbol]
         fn memset(s: *mut c_void, c: c_int, n: usize) -> *mut c_void;
 
-        #[lang = "memcmp_fn"]
+        #[rustc_canonical_symbol]
         fn memcmp(s1: *const c_void, s2: *const c_void, n: usize) -> c_int;
 
-        #[lang = "bcmp_fn"]
+        #[rustc_canonical_symbol]
         fn bcmp(s1: *const c_void, s2: *const c_void, n: usize) -> c_int;
 
-        #[lang = "strlen_fn"]
+        #[rustc_canonical_symbol]
         fn strlen(s: *const c_char) -> usize;
     }
 }

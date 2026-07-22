@@ -13,12 +13,13 @@
 //@[powerpc64_vsx] needs-llvm-components: powerpc
 //@ compile-flags: -Zmerge-functions=disabled
 
-#![feature(no_core, repr_simd, asm_experimental_arch)]
+#![feature(no_core, asm_experimental_arch)]
 #![crate_type = "rlib"]
 #![no_core]
 #![allow(asm_sub_register, non_camel_case_types)]
 
 extern crate minicore;
+use minicore::simd::*;
 use minicore::*;
 
 #[cfg_attr(altivec, cfg(not(target_feature = "altivec")))]
@@ -29,26 +30,6 @@ compile_error!("altivec cfg and target feature mismatch");
 compile_error!("vsx cfg and target feature mismatch");
 
 type ptr = *const i32;
-
-#[repr(simd)]
-pub struct i8x16([i8; 16]);
-#[repr(simd)]
-pub struct i16x8([i16; 8]);
-#[repr(simd)]
-pub struct i32x4([i32; 4]);
-#[repr(simd)]
-pub struct i64x2([i64; 2]);
-#[repr(simd)]
-pub struct f32x4([f32; 4]);
-#[repr(simd)]
-pub struct f64x2([f64; 2]);
-
-impl Copy for i8x16 {}
-impl Copy for i16x8 {}
-impl Copy for i32x4 {}
-impl Copy for i64x2 {}
-impl Copy for f32x4 {}
-impl Copy for f64x2 {}
 
 extern "C" {
     fn extern_func();

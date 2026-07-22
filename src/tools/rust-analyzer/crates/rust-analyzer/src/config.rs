@@ -216,7 +216,7 @@ config_data! {
         /// to always show them).
         inlayHints_closingBraceHints_minLines: usize = 25,
 
-        /// Show inlay hints for closure captures.
+        /// Show inlay hints for closure and coroutine captures.
         inlayHints_closureCaptureHints_enable: bool = false,
 
         /// Show inlay type hints for return types of closures.

@@ -1,7 +1,5 @@
 //! Compare numeric types approximately.
 
-use float_cmp::Ulps;
-
 pub trait ApproxEq {
     fn approxeq(&self, other: &Self, _ulps: i64) -> bool;
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result;
@@ -43,7 +41,14 @@ macro_rules! impl_float_approxeq {
                 if self.is_nan() && other.is_nan() {
                     true
                 } else {
-                    (self.ulps(other) as i64).abs() <= ulps
+                    let allowed_ulp_diff = ulps;
+
+                    // Approximate the ULP by taking half the distance between the number one place "up"
+                    // and the number one place "down".
+                    let ulp = (other.next_up() - other.next_down()) / 2.0;
+                    let ulp_diff = ((self - other) / ulp).abs().round() as i64;
+
+                    ulp_diff <= allowed_ulp_diff
                 }
             }
 
@@ -55,7 +60,7 @@ macro_rules! impl_float_approxeq {
     };
 }
 
-impl_float_approxeq! { f32, f64 }
+impl_float_approxeq! { f16, f32, f64 }
 
 impl<T: ApproxEq, const N: usize> ApproxEq for [T; N] {
     fn approxeq(&self, other: &Self, ulps: i64) -> bool {

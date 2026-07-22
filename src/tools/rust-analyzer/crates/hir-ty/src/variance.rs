@@ -58,7 +58,7 @@ fn variances_of_query(db: &dyn HirDatabase, def: GenericDefId) -> StoredVariance
     }
 
     let generics = generics(db, def);
-    let count = generics.len();
+    let count = generics.len(true);
     if count == 0 {
         return VariancesOf::empty(DbInterner::new_no_crate(db)).store();
     }
@@ -106,7 +106,7 @@ pub(crate) fn variances_of_cycle_initial(
 ) -> StoredVariancesOf {
     let interner = DbInterner::new_no_crate(db);
     let generics = generics(db, def);
-    let count = generics.len();
+    let count = generics.len(true);
 
     VariancesOf::new_from_iter(interner, std::iter::repeat_n(Variance::Bivariant, count)).store()
 }
@@ -152,7 +152,7 @@ impl<'db> Context<'db> {
 
         // Const parameters are always invariant.
         // Make all const parameters invariant.
-        for (idx, param) in self.generics.iter_id().enumerate() {
+        for (idx, param) in self.generics.iter_id(false).enumerate() {
             if let GenericParamId::ConstParamId(_) = param {
                 variances[idx] = Variance::Invariant;
             }
@@ -940,7 +940,7 @@ struct FixedPoint<T, U, V>(&'static FixedPoint<(), T, U>, V);
                     res,
                     "{name}[{}]\n",
                     generics(&db, def)
-                        .iter()
+                        .iter(false)
                         .map(|(_, param)| match param {
                             GenericParamDataRef::TypeParamData(type_param_data) => {
                                 type_param_data.name.as_ref().unwrap()

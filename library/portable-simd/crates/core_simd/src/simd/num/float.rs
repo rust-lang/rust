@@ -1,11 +1,10 @@
-use super::sealed::Sealed;
 use crate::simd::{
     Mask, Select, Simd, SimdCast, SimdElement,
     cmp::{SimdPartialEq, SimdPartialOrd},
 };
 
 /// Operations on SIMD vectors of floats.
-pub trait SimdFloat: Copy + Sealed {
+pub impl(self) trait SimdFloat: Copy {
     /// Mask type used for manipulating this SIMD vector type.
     type Mask;
 
@@ -240,8 +239,6 @@ pub trait SimdFloat: Copy + Sealed {
 macro_rules! impl_trait {
     { $($ty:ty { bits: $bits_ty:ty, mask: $mask_ty:ty }),* } => {
         $(
-        impl<const N: usize> Sealed for Simd<$ty, N> {}
-
         impl<const N: usize> SimdFloat for Simd<$ty, N>
         {
             type Mask = Mask<<$mask_ty as SimdElement>::Mask, N>;

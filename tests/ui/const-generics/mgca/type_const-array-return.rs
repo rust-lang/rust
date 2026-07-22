@@ -1,7 +1,7 @@
 //@ check-pass
 // This test should compile without an ICE.
 #![expect(incomplete_features)]
-#![feature(min_generic_const_args)]
+#![feature(min_generic_const_args, macroless_generic_const_args)]
 
 pub struct A;
 

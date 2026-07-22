@@ -1,0 +1,22 @@
+error[E0391]: cycle detected when computing layout of `Thing<Identity>`
+  --> $DIR/uninitialized-gat-projection-cycle-issue-153205.rs:18:1
+   |
+LL | struct Thing<A: Apply>(A::Output<Self>);
+   | ^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: ...which requires computing layout of `<Identity as Apply>::Output<Thing<Identity>>`...
+  --> $DIR/uninitialized-gat-projection-cycle-issue-153205.rs:9:5
+   |
+LL |     type Output<T>;
+   |     ^^^^^^^^^^^^^^
+   = note: ...which again requires computing layout of `Thing<Identity>`, completing the cycle
+note: cycle used when optimizing MIR for `main`
+  --> $DIR/uninitialized-gat-projection-cycle-issue-153205.rs:25:1
+   |
+LL | fn main() {
+   | ^^^^^^^^^
+   = note: for more information, see <https://rustc-dev-guide.rust-lang.org/overview.html#queries> and <https://rustc-dev-guide.rust-lang.org/query.html>
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0391`.

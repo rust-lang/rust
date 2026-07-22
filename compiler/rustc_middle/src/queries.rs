@@ -63,6 +63,7 @@ use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::{ErrorGuaranteed, catch_fatal_errors};
 use rustc_hir as hir;
 use rustc_hir::attrs::{EiiDecl, EiiImpl, StrippedCfgItem};
+use rustc_hir::canonical_symbols::CanonicalSymbols;
 use rustc_hir::def::{DefKind, DocLinkResMap};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdSet, LocalModId};
 use rustc_hir::lang_items::{LangItem, LanguageItems};
@@ -2262,6 +2263,13 @@ rustc_queries! {
         desc { "calculating the diagnostic items map" }
     }
 
+    /// Returns all the canonical symbols defined in all crates.
+    query all_canonical_symbols(_: ()) -> &'tcx CanonicalSymbols {
+        arena_cache
+        eval_always
+        desc { "calculating the canonical symbols map" }
+    }
+
     /// Returns the lang items defined in another crate by loading it from metadata.
     query defined_lang_items(_: CrateNum) -> &'tcx [(DefId, LangItem)] {
         desc { "calculating the lang items defined in a crate" }
@@ -2272,6 +2280,13 @@ rustc_queries! {
     query diagnostic_items(_: CrateNum) -> &'tcx rustc_hir::diagnostic_items::DiagnosticItems {
         arena_cache
         desc { "calculating the diagnostic items map in a crate" }
+        separate_provide_extern
+    }
+
+    /// Returns the canonical symbols defined in a crate.
+    query canonical_symbols(_: CrateNum) -> &'tcx CanonicalSymbols {
+        arena_cache
+        desc { "calculating the canonical symbols map in a crate" }
         separate_provide_extern
     }
 

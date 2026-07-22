@@ -1,9 +1,10 @@
-error[E0423]: expected value, found struct `Mod::Foo`
-  --> $DIR/assoc-const-as-field.rs:11:9
+error[E0423]: cannot find value `Foo` in module `Mod`
+  --> $DIR/assoc-const-as-field.rs:11:14
    |
 LL |     foo(Mod::Foo.Bar);
-   |         ^^^^^^^^
+   |              ^^^
    |
+   = note: a struct named `Mod::Foo` exists in another namespace
 help: use the path separator to refer to an item
    |
 LL -     foo(Mod::Foo.Bar);

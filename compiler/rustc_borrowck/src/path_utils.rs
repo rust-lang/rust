@@ -26,7 +26,7 @@ pub(super) fn each_borrow_involving_path<'tcx, F, I, S>(
 
     // The number of candidates can be large, but borrows for different locals cannot conflict with
     // each other, so we restrict the working set a priori.
-    let Some(borrows_for_place_base) = borrow_set.local_map.get(&place.local) else { return };
+    let Some(borrows_for_place_base) = borrow_set.borrows_on_local(place.local) else { return };
 
     // check for loan restricting path P being used. Accounts for
     // borrows of P, P.a.b, etc.

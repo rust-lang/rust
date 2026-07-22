@@ -1,41 +1,33 @@
-error[E0424]: expected value, found module `self`
-  --> $DIR/impl-reuse-self-hygiene.rs:9:76
+error[E0424]: cannot find value `self` in this scope
+  --> $DIR/impl-reuse-self-hygiene.rs:10:17
    |
 LL | macro_rules! one_line_reuse { ($self:ident) => { reuse impl Trait for S1 { $self.0 } } }
-   |                                                  --------------------------^^^^^----
+   |                                                  -----------------------------------
    |                                                  |                         |
+   |                                                  |                         due to this macro variable
    |                                                  |                         `self` value is a keyword only available in methods with a `self` parameter
    |                                                  `self` not allowed in an implementation
-...
 LL | one_line_reuse!(self);
-   | --------------------- in this macro invocation
+   |                 ^^^^
    |
-   = note: this error originates in the macro `one_line_reuse` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: a module named `self` exists in another namespace
 
-error[E0424]: expected value, found module `self`
-  --> $DIR/impl-reuse-self-hygiene.rs:9:76
+error[E0424]: cannot find value `self` in this scope
+  --> $DIR/impl-reuse-self-hygiene.rs:10:17
    |
 LL | macro_rules! one_line_reuse { ($self:ident) => { reuse impl Trait for S1 { $self.0 } } }
-   |                                                  --------------------------^^^^^----
+   |                                                  -----------------------------------
    |                                                  |                         |
+   |                                                  |                         due to this macro variable
    |                                                  |                         `self` value is a keyword only available in methods with a `self` parameter
    |                                                  `self` not allowed in an implementation
-...
 LL | one_line_reuse!(self);
-   | --------------------- in this macro invocation
+   |                 ^^^^
    |
+   = note: a module named `self` exists in another namespace
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-   = note: this error originates in the macro `one_line_reuse` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0424]: expected value, found module `self`
-  --> $DIR/impl-reuse-self-hygiene.rs:16:22
-   |
-LL | macro_rules! one_line_reuse_expr { ($x:expr) => { reuse impl Trait for S2 { $x } } }
-   |                                                   ------------------------------ `self` not allowed in an implementation
-LL | one_line_reuse_expr!(self.0);
-   |                      ^^^^ `self` value is a keyword only available in methods with a `self` parameter
-
-error[E0424]: expected value, found module `self`
+error[E0424]: cannot find value `self` in this scope
   --> $DIR/impl-reuse-self-hygiene.rs:16:22
    |
 LL | macro_rules! one_line_reuse_expr { ($x:expr) => { reuse impl Trait for S2 { $x } } }
@@ -43,17 +35,30 @@ LL | macro_rules! one_line_reuse_expr { ($x:expr) => { reuse impl Trait for S2 {
 LL | one_line_reuse_expr!(self.0);
    |                      ^^^^ `self` value is a keyword only available in methods with a `self` parameter
    |
+   = note: a module named `self` exists in another namespace
+
+error[E0424]: cannot find value `self` in this scope
+  --> $DIR/impl-reuse-self-hygiene.rs:16:22
+   |
+LL | macro_rules! one_line_reuse_expr { ($x:expr) => { reuse impl Trait for S2 { $x } } }
+   |                                                   ------------------------------ `self` not allowed in an implementation
+LL | one_line_reuse_expr!(self.0);
+   |                      ^^^^ `self` value is a keyword only available in methods with a `self` parameter
+   |
+   = note: a module named `self` exists in another namespace
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error[E0424]: expected value, found module `self`
+error[E0424]: cannot find value `self` in this scope
   --> $DIR/impl-reuse-self-hygiene.rs:23:23
    |
 LL | macro_rules! one_line_reuse_expr2 { ($x:expr) => { reuse impl Trait for s3!() { $x } } }
    |                                                    --------------------------------- `self` not allowed in an implementation
 LL | one_line_reuse_expr2!(self.0);
    |                       ^^^^ `self` value is a keyword only available in methods with a `self` parameter
+   |
+   = note: a module named `self` exists in another namespace
 
-error[E0424]: expected value, found module `self`
+error[E0424]: cannot find value `self` in this scope
   --> $DIR/impl-reuse-self-hygiene.rs:23:23
    |
 LL | macro_rules! one_line_reuse_expr2 { ($x:expr) => { reuse impl Trait for s3!() { $x } } }
@@ -61,6 +66,7 @@ LL | macro_rules! one_line_reuse_expr2 { ($x:expr) => { reuse impl Trait for s3!
 LL | one_line_reuse_expr2!(self.0);
    |                       ^^^^ `self` value is a keyword only available in methods with a `self` parameter
    |
+   = note: a module named `self` exists in another namespace
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: aborting due to 6 previous errors

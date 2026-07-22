@@ -1,24 +1,30 @@
-error[E0423]: expected value, found struct `xcrate_unit_struct::StructWithFields`
-  --> $DIR/unit-struct.rs:9:13
+error[E0423]: cannot find value `StructWithFields` in crate `xcrate_unit_struct`
+  --> $DIR/unit-struct.rs:9:33
    |
 LL |     let _ = xcrate_unit_struct::StructWithFields;
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: use struct literal syntax instead: `xcrate_unit_struct::StructWithFields { foo: val }`
+   |             --------------------^^^^^^^^^^^^^^^^
+   |             |
+   |             help: use struct literal syntax instead: `xcrate_unit_struct::StructWithFields { foo: val }`
    |
   ::: $DIR/auxiliary/xcrate_unit_struct.rs:20:1
    |
 LL | pub struct StructWithFields {
    | --------------------------- `xcrate_unit_struct::StructWithFields` defined here
+   |
+   = note: a struct named `xcrate_unit_struct::StructWithFields` exists in another namespace
 
-error[E0423]: expected value, found struct `xcrate_unit_struct::StructWithPrivFields`
-  --> $DIR/unit-struct.rs:11:13
+error[E0423]: cannot find value `StructWithPrivFields` in crate `xcrate_unit_struct`
+  --> $DIR/unit-struct.rs:11:33
    |
 LL |     let _ = xcrate_unit_struct::StructWithPrivFields;
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                 ^^^^^^^^^^^^^^^^^^^^
    |
   ::: $DIR/auxiliary/xcrate_unit_struct.rs:25:1
    |
 LL | pub struct StructWithPrivFields {
    | ------------------------------- `xcrate_unit_struct::StructWithPrivFields` defined here
+   |
+   = note: a struct named `xcrate_unit_struct::StructWithPrivFields` exists in another namespace
 
 error: aborting due to 2 previous errors
 

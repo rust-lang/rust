@@ -185,13 +185,6 @@ pub(crate) struct DeletePartial<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag("error deleting incremental compilation session directory `{$path}`: {$err}")]
-pub(crate) struct DeleteFull<'a> {
-    pub path: &'a Path,
-    pub err: std::io::Error,
-}
-
-#[derive(Diagnostic)]
 #[diag("did not finalize incremental compilation session directory `{$path}`: {$err}")]
 #[help("the next build will not be able to reuse work from this compilation")]
 pub(crate) struct Finalize<'a> {

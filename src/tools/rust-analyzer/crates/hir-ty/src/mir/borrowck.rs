@@ -133,59 +133,66 @@ fn all_mir_bodies<'db>(
     }
 }
 
-#[salsa_macros::tracked(returns(ref), lru = 2024)]
-pub fn borrowck_query(
-    db: &dyn HirDatabase,
-    def: InferBodyId,
-) -> Result<Box<[BorrowckResult]>, MirLowerError> {
-    let _p = tracing::info_span!("borrowck_query").entered();
-    let module = def.module(db);
-    let interner = DbInterner::new_with(db, module.krate(db));
-    let env = db.trait_environment(def.generic_def(db));
-    // This calculates opaques defining scope which is a bit costly therefore is put outside `all_mir_bodies()`.
-    let typing_mode = TypingMode::borrowck(interner, def.into());
-    let res = all_mir_bodies(
-        db,
-        def,
-        |body, owner| {
-            // FIXME(next-solver): Opaques.
-            let infcx = interner.infer_ctxt().build(typing_mode);
-            BorrowckResult {
-                owner,
-                mutability_of_locals: mutability_of_locals(&infcx, env, body),
-                moved_out_of_ref: moved_out_of_ref(&infcx, env, body),
-                partially_moved: partially_moved(&infcx, env, body),
-                borrow_regions: borrow_regions(db, body),
-            }
-        },
-        |(parent, parent_mir_body), (child, child_mir_body)| {
-            for (upvar, child_locals) in &child_mir_body.upvar_locals {
-                let Some(&parent_local) = parent_mir_body.binding_locals.get(*upvar) else {
-                    continue;
-                };
-                for (child_local, capture_place) in child_locals {
-                    if !capture_place
-                        .projections
-                        .iter()
-                        .any(|proj| matches!(proj.kind, HirProjectionKind::Deref))
-                    {
-                        let parent_mol = &mut parent.mutability_of_locals[parent_local];
-                        match (&*parent_mol, &child.mutability_of_locals[*child_local]) {
-                            (MutabilityReason::Mut { .. }, _) => {}
-                            (_, MutabilityReason::Mut { .. }) => {
-                                // FIXME: Fix the child spans.
-                                *parent_mol = MutabilityReason::Mut { spans: Vec::new() }
+impl InferBodyId {
+    pub fn borrowck(self, db: &dyn HirDatabase) -> Result<&[BorrowckResult], MirLowerError> {
+        return borrowck_query(db, self).map_err(|e| e.clone());
+
+        #[salsa::tracked(returns(as_deref), lru = 2024)]
+        fn borrowck_query(
+            db: &dyn HirDatabase,
+            def: InferBodyId,
+        ) -> Result<Box<[BorrowckResult]>, MirLowerError> {
+            let _p = tracing::info_span!("InferBodyId::borrowck").entered();
+            let module = def.module(db);
+            let interner = DbInterner::new_with(db, module.krate(db));
+            let env = db.trait_environment(def.generic_def(db));
+            // This calculates opaques defining scope which is a bit costly therefore is put outside `all_mir_bodies()`.
+            let typing_mode = TypingMode::borrowck(interner, def.into());
+            all_mir_bodies(
+                db,
+                def,
+                |body, owner| {
+                    // FIXME(next-solver): Opaques.
+                    let infcx = interner.infer_ctxt().build(typing_mode);
+                    BorrowckResult {
+                        owner,
+                        mutability_of_locals: mutability_of_locals(&infcx, env, body),
+                        moved_out_of_ref: moved_out_of_ref(&infcx, env, body),
+                        partially_moved: partially_moved(&infcx, env, body),
+                        borrow_regions: borrow_regions(db, body),
+                    }
+                },
+                |(parent, parent_mir_body), (child, child_mir_body)| {
+                    for (upvar, child_locals) in &child_mir_body.upvar_locals {
+                        let Some(&parent_local) = parent_mir_body.binding_locals.get(*upvar) else {
+                            continue;
+                        };
+                        for (child_local, capture_place) in child_locals {
+                            if !capture_place
+                                .projections
+                                .iter()
+                                .any(|proj| matches!(proj.kind, HirProjectionKind::Deref))
+                            {
+                                let parent_mol = &mut parent.mutability_of_locals[parent_local];
+                                match (&*parent_mol, &child.mutability_of_locals[*child_local]) {
+                                    (MutabilityReason::Mut { .. }, _) => {}
+                                    (_, MutabilityReason::Mut { .. }) => {
+                                        // FIXME: Fix the child spans.
+                                        *parent_mol = MutabilityReason::Mut { spans: Vec::new() }
+                                    }
+                                    (MutabilityReason::Not, _) => {}
+                                    (_, MutabilityReason::Not) => {
+                                        *parent_mol = MutabilityReason::Not
+                                    }
+                                    (MutabilityReason::Unused, MutabilityReason::Unused) => {}
+                                }
                             }
-                            (MutabilityReason::Not, _) => {}
-                            (_, MutabilityReason::Not) => *parent_mol = MutabilityReason::Not,
-                            (MutabilityReason::Unused, MutabilityReason::Unused) => {}
                         }
                     }
-                }
-            }
-        },
-    )?;
-    Ok(res)
+                },
+            )
+        }
+    }
 }
 
 fn moved_out_of_ref<'db>(

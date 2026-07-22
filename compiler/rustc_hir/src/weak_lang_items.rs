@@ -23,34 +23,7 @@ macro_rules! weak_lang_items {
     }
 }
 
-macro_rules! weak_only_lang_items {
-    ($($item:ident,)*) => {
-        impl LangItem {
-            pub fn is_weak_only(self) -> bool {
-                matches!(self, $(LangItem::$item)|*)
-            }
-        }
-    }
-}
-
 weak_lang_items! {
     PanicImpl,          rust_begin_unwind;
     EhPersonality,      rust_eh_personality;
-}
-
-weak_only_lang_items! {
-    MemCpy,
-    MemMove,
-    MemSet,
-    MemCmp,
-    Bcmp,
-    StrLen,
-    Open,
-    Read,
-    Write,
-    Close,
-    Malloc,
-    Realloc,
-    Free,
-    Exit,
 }

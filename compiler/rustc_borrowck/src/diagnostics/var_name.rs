@@ -1,7 +1,7 @@
 use rustc_index::IndexSlice;
 use rustc_middle::mir::visit::{PlaceContext, VisitPlacesWith, Visitor};
 use rustc_middle::mir::{Body, Local, Place};
-use rustc_middle::ty::{self, RegionVid, TyCtxt};
+use rustc_middle::ty::{self, RegionUtilitiesExt, RegionVid, TyCtxt};
 use rustc_span::{Span, Symbol};
 use tracing::debug;
 

@@ -7,7 +7,7 @@ LL |         let mut stream_reader = BufReader::new(&stream);
    |                                 required by a bound introduced by this call
    |
 note: required by a bound in `BufReader::<R>::new`
-  --> $SRC_DIR/std/src/io/buffered/bufreader.rs:LL:COL
+  --> $SRC_DIR/alloc/src/io/buffered/bufreader.rs:LL:COL
 help: consider removing the leading `&`-reference
    |
 LL -         let mut stream_reader = BufReader::new(&stream);

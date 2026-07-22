@@ -46,7 +46,7 @@ LL |     fn type_before_name(String s) {
    |                         |      expected one of `:`, `@`, or `|`
    |                         help: declare the type after the parameter binding: `<identifier>: <type>`
 
-error[E0424]: expected value, found module `self`
+error[E0424]: cannot find value `self` in this scope
   --> $DIR/suggest-add-self-issue-131084.rs:11:9
    |
 LL |     fn some_fn(&some_name) {
@@ -55,12 +55,13 @@ LL |
 LL |         self
    |         ^^^^ `self` value is a keyword only available in methods with a `self` parameter
    |
+   = note: a module named `self` exists in another namespace
 help: add a `self` receiver parameter to make the associated `fn` a method
    |
 LL |     fn some_fn(&self, &some_name) {
    |                ++++++
 
-error[E0424]: expected value, found module `self`
+error[E0424]: cannot find value `self` in this scope
   --> $DIR/suggest-add-self-issue-131084.rs:17:9
    |
 LL |     fn mut_param(mut some_name) {
@@ -69,12 +70,13 @@ LL |
 LL |         self
    |         ^^^^ `self` value is a keyword only available in methods with a `self` parameter
    |
+   = note: a module named `self` exists in another namespace
 help: add a `self` receiver parameter to make the associated `fn` a method
    |
 LL |     fn mut_param(&self, mut some_name) {
    |                  ++++++
 
-error[E0424]: expected value, found module `self`
+error[E0424]: cannot find value `self` in this scope
   --> $DIR/suggest-add-self-issue-131084.rs:23:9
    |
 LL |     fn type_before_name(String s) {
@@ -83,6 +85,7 @@ LL |
 LL |         self
    |         ^^^^ `self` value is a keyword only available in methods with a `self` parameter
    |
+   = note: a module named `self` exists in another namespace
 help: add a `self` receiver parameter to make the associated `fn` a method
    |
 LL |     fn type_before_name(&self, String s) {

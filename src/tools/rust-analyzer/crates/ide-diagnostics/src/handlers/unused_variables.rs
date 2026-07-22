@@ -378,19 +378,6 @@ fn main() {
         );
     }
 
-    // regression test as we used to panic in this scenario
-    #[test]
-    fn unknown_struct_pattern_param_type() {
-        check_diagnostics(
-            r#"
-struct S { field : u32 }
-fn f(S { field }: error) {
-      // ^^^^^ 💡 warn: unused variable
-}
-"#,
-        );
-    }
-
     #[test]
     fn crate_attrs_lint_smoke_test() {
         check_diagnostics(

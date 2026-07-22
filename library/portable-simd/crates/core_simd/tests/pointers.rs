@@ -2,7 +2,7 @@
 
 use core_simd::simd::{
     Simd,
-    ptr::{SimdConstPtr, SimdMutPtr},
+    ptr::{self, SimdConstPtr, SimdMutPtr},
 };
 
 macro_rules! common_tests {
@@ -82,11 +82,20 @@ mod const_ptr {
 
         fn with_exposed_provenance<const LANES: usize>() {
             test_helpers::test_unary_elementwise(
-                &Simd::<*const u32, LANES>::with_exposed_provenance,
+                &ptr::with_exposed_provenance::<u32, LANES>,
                 &core::ptr::with_exposed_provenance::<u32>,
                 &|_| true,
             );
         }
+
+        fn without_provenance<const LANES: usize>() {
+            test_helpers::test_unary_elementwise(
+                &ptr::without_provenance::<u32, LANES>,
+                &core::ptr::without_provenance::<u32>,
+                &|_| true,
+            );
+        }
+
     }
 }
 
@@ -105,10 +114,19 @@ mod mut_ptr {
 
         fn with_exposed_provenance<const LANES: usize>() {
             test_helpers::test_unary_elementwise(
-                &Simd::<*mut u32, LANES>::with_exposed_provenance,
+                &ptr::with_exposed_provenance_mut::<u32, LANES>,
                 &core::ptr::with_exposed_provenance_mut::<u32>,
                 &|_| true,
             );
         }
+
+        fn without_provenance<const LANES: usize>() {
+            test_helpers::test_unary_elementwise(
+                &ptr::without_provenance_mut::<u32, LANES>,
+                &core::ptr::without_provenance_mut::<u32>,
+                &|_| true,
+            );
+        }
+
     }
 }

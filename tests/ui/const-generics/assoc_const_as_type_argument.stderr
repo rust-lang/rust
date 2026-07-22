@@ -1,8 +1,10 @@
-error[E0575]: expected associated type, found associated constant `Trait::ASSOC`
-  --> $DIR/assoc_const_as_type_argument.rs:8:11
+error[E0575]: cannot find associated type `ASSOC` in trait `Trait`
+  --> $DIR/assoc_const_as_type_argument.rs:8:25
    |
 LL |     bar::<<T as Trait>::ASSOC>();
-   |           ^^^^^^^^^^^^^^^^^^^ not a associated type
+   |                         ^^^^^ not found in `Trait`
+   |
+   = note: an associated constant named `Trait::ASSOC` exists in another namespace
 
 error[E0747]: unresolved item provided when a constant was expected
   --> $DIR/assoc_const_as_type_argument.rs:8:11

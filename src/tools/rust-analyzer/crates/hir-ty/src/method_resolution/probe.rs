@@ -2046,7 +2046,7 @@ impl<'a, 'db, Choice: ProbeChoice<'db>> ProbeContext<'a, 'db, Choice> {
             let args = GenericArgs::for_item(
                 self.interner(),
                 method.into(),
-                |param_index, param_id, _| {
+                |param_index, param_id, _, _| {
                     let i = param_index as usize;
                     if i < args.len() {
                         args[i]

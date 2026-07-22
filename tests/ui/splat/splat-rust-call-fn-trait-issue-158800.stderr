@@ -1,0 +1,20 @@
+error: `#[splat]` is not allowed in the arguments of functions with the `rust-call` ABI
+  --> $DIR/splat-rust-call-fn-trait-issue-158800.rs:10:5
+   |
+LL |     extern "rust-call" fn call_once(#[splat] _: ()) {}
+   |     ^^^^^^^^^^^^^^^^^^              ^^^^^^^^
+   |
+   = help: remove `#[splat]` or change the ABI
+
+error[E0116]: cannot define inherent `impl` for a type outside of the crate where the type is defined
+  --> $DIR/splat-rust-call-fn-trait-issue-158800.rs:8:1
+   |
+LL | impl<T> dyn FnOnce(T) -> () {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ impl for type defined outside of crate
+   |
+   = help: consider defining a trait and implementing it for the type or using a newtype wrapper like `struct MyType(ExternalType);` and implement it
+   = note: for more details about the orphan rules, see <https://doc.rust-lang.org/reference/items/implementations.html?highlight=orphan#orphan-rules>
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0116`.

@@ -3,7 +3,7 @@ use rustc_ast::tokenstream::{DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_ast::{AttrItem, ast};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_session::config::Offload;
-use rustc_span::{Ident, Span, sym};
+use rustc_span::{DUMMY_SP, Ident, Span, sym};
 use thin_vec::thin_vec;
 
 use crate::diagnostics;
@@ -115,6 +115,7 @@ pub(crate) fn expand_kernel(
         unsafety: ast::Safety::Unsafe(span),
         path: ast::Path::from_ident(Ident::new(sym::no_mangle, span)),
         args: ast::AttrArgs::Empty,
+        span,
     };
 
     let no_mangle_attr = Box::new(ast::NormalAttr { item: unsafe_item, tokens: None });
@@ -179,6 +180,7 @@ pub(crate) fn expand_kernel(
         unsafety: ast::Safety::Default,
         path: ast::Path::from_ident(Ident::with_dummy_span(sym::inline)),
         args: ast::AttrArgs::Delimited(never_arg),
+        span: DUMMY_SP,
     };
     let inline_never_attr = Box::new(ast::NormalAttr { item: inline_item, tokens: None });
 

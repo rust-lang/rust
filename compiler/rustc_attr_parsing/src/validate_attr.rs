@@ -24,45 +24,41 @@ pub fn check_attr(psess: &ParseSess, attr: &Attribute) {
     use ast::SyntheticAttr::*;
     match &attr.kind {
         AttrKind::Normal(_) => {}
-        AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace) => return,
-        AttrKind::DocComment(..) => return,
+        AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace) | AttrKind::DocComment(..) => return,
     }
 
     let builtin_attr_info = attr.name().and_then(|name| BUILTIN_ATTRIBUTE_MAP.get(&name));
 
     // Check input tokens for built-in and key-value attributes.
-    match builtin_attr_info {
-        Some(name) => {
-            if AttributeParser::is_parsed_attribute(slice::from_ref(&name)) {
-                return;
-            }
-            match parse_meta(psess, attr) {
-                // Don't check safety again, we just did that
-                Ok(meta) => {
-                    // FIXME The only unparsed builtin attributes that are left are the lint attributes, so we can hardcode the template here
-                    let lint_attrs = [sym::forbid, sym::allow, sym::warn, sym::deny, sym::expect];
-                    assert!(lint_attrs.contains(name));
+    if let Some(name) = builtin_attr_info {
+        if AttributeParser::is_parsed_attribute(slice::from_ref(name)) {
+            return;
+        }
+        match parse_meta(psess, attr) {
+            // Don't check safety again, we just did that
+            Ok(meta) => {
+                // FIXME The only unparsed builtin attributes that are left are the lint attributes, so we can hardcode the template here
+                let lint_attrs = [sym::forbid, sym::allow, sym::warn, sym::deny, sym::expect];
+                assert!(lint_attrs.contains(name));
 
-                    let template = template!(
-                        List: &["lint1", "lint1, lint2, ...", r#"lint1, lint2, lint3, reason = "...""#],
-                        "https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes"
-                    );
-                    check_builtin_meta_item(psess, &meta, attr.style, *name, template, false)
-                }
-                Err(err) => {
-                    err.emit();
-                }
+                let template = template!(
+                    List: &["lint1", "lint1, lint2, ...", r#"lint1, lint2, lint3, reason = "...""#],
+                    "https://doc.rust-lang.org/reference/attributes/diagnostics.html#lint-check-attributes"
+                );
+                check_builtin_meta_item(psess, &meta, attr.style, *name, template, false)
+            }
+            Err(err) => {
+                err.emit();
             }
         }
-        _ => {
-            let attr_item = attr.get_normal_item();
-            if let AttrArgs::Eq { .. } = attr_item.args {
-                // All key-value attributes are restricted to meta-item syntax.
-                match parse_meta(psess, attr) {
-                    Ok(_) => {}
-                    Err(err) => {
-                        err.emit();
-                    }
+    } else {
+        let attr_item = attr.get_normal_item();
+        if let AttrArgs::Eq { .. } = attr_item.args {
+            // All key-value attributes are restricted to meta-item syntax.
+            match parse_meta(psess, attr) {
+                Ok(_) => {}
+                Err(err) => {
+                    err.emit();
                 }
             }
         }
@@ -86,7 +82,8 @@ pub fn parse_meta<'a>(psess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Met
             AttrArgs::Eq { expr, .. } => {
                 if let ast::ExprKind::Lit(token_lit) = expr.kind {
                     let res = ast::MetaItemLit::from_token_lit(token_lit, expr.span);
-                    let res = match res {
+
+                    match res {
                         Ok(lit) => {
                             if token_lit.suffix.is_some() {
                                 let mut err = psess.dcx().struct_span_err(
@@ -98,9 +95,8 @@ pub fn parse_meta<'a>(psess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Met
                                     use an unsuffixed version (`1`, `1.0`, etc.)",
                                 );
                                 return Err(err);
-                            } else {
-                                MetaItemKind::NameValue(lit)
                             }
+                            MetaItemKind::NameValue(lit)
                         }
                         Err(err) => {
                             let guar = report_lit_error(psess, err, token_lit, expr.span);
@@ -112,8 +108,7 @@ pub fn parse_meta<'a>(psess: &'a ParseSess, attr: &Attribute) -> PResult<'a, Met
                             };
                             MetaItemKind::NameValue(lit)
                         }
-                    };
-                    res
+                    }
                 } else {
                     // Example cases:
                     // - `#[foo = 1+1]`: results in `ast::ExprKind::Binary`.

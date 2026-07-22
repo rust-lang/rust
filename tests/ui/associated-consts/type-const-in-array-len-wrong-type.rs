@@ -1,6 +1,9 @@
-#![feature(generic_const_exprs)]
-#![feature(min_generic_const_args)]
-#![feature(inherent_associated_types)]
+#![feature(
+    generic_const_exprs,
+    min_generic_const_args,
+    macroless_generic_const_args,
+    inherent_associated_types
+)]
 
 struct OnDiskDirEntry<'a>(&'a ());
 

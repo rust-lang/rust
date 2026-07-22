@@ -11,7 +11,7 @@ use rustc_type_ir::region_constraint::{
     Assumptions, RegionConstraint, eagerly_handle_placeholders_in_universe,
 };
 use rustc_type_ir::{
-    AliasTy, Binder, ClauseKind, InferCtxtLike, Interner, OutlivesPredicate, TypeVisitable,
+    AliasTy, Binder, ClauseKind, InferCtxtLike, Interner, OutlivesPredicate, Region, TypeVisitable,
     TypeVisitableExt, TypeVisitor, UniverseIndex, max_universe,
 };
 use tracing::{debug, instrument};
@@ -155,7 +155,7 @@ where
     pub(in crate::solve) fn destructure_type_outlives(
         &mut self,
         ty: I::Ty,
-        r: I::Region,
+        r: Region<I>,
     ) -> RegionConstraint<I> {
         let mut components = Default::default();
         push_outlives_components(self.cx(), ty, &mut components);
@@ -165,14 +165,14 @@ where
     fn destructure_components(
         &mut self,
         components: &[Component<I>],
-        r: I::Region,
+        r: Region<I>,
     ) -> RegionConstraint<I> {
         RegionConstraint::And(
             components.into_iter().map(|c| self.destructure_component(c, r)).collect(),
         )
     }
 
-    fn destructure_component(&mut self, c: &Component<I>, r: I::Region) -> RegionConstraint<I> {
+    fn destructure_component(&mut self, c: &Component<I>, r: Region<I>) -> RegionConstraint<I> {
         use Component::*;
         match c {
             Region(c_r) => RegionConstraint::RegionOutlives(*c_r, r),
@@ -197,7 +197,7 @@ where
     fn destructure_alias_outlives(
         &mut self,
         alias: AliasTy<I>,
-        r: I::Region,
+        r: Region<I>,
     ) -> RegionConstraint<I> {
         let item_bounds =
             rustc_type_ir::outlives::declared_bounds_from_definition(self.cx(), alias)

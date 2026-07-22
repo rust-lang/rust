@@ -423,7 +423,7 @@ impl<'a, 'tcx> LoanInvalidationsGenerator<'a, 'tcx> {
         // Two-phase borrow support: For each activation that is newly
         // generated at this statement, check if it interferes with
         // another borrow.
-        for &borrow_index in self.borrow_set.activations_at_location(location) {
+        for &borrow_index in self.borrow_set.activations_at_location(&location) {
             let borrow = &self.borrow_set[borrow_index];
 
             // only mutable borrows should be 2-phase

@@ -831,7 +831,9 @@ fn doc_std(
         cargo.rustdocflag(arg);
     }
 
-    if builder.config.library_docs_private_items {
+    // This is needed for cargo-semver-checks and potentially other downstream tools that consume
+    // the JSON data.
+    if format == DocumentationFormat::Json || builder.config.library_docs_private_items {
         cargo.rustdocflag("--document-private-items").rustdocflag("--document-hidden-items");
     }
 
@@ -1317,6 +1319,10 @@ impl Step for UnstableBookGen {
         cmd.arg(rustc_path);
         cmd.arg(out);
 
+        // Running rustc requires the library path if rust.rpath = false
+        // or any other libraries are in a custom location.
+        builder.add_rustc_lib_path(self.build_compiler, &mut cmd);
+
         cmd.run(builder);
     }
 }
@@ -1393,8 +1399,8 @@ impl Step for RustcBook {
     /// "rustbook" is used to convert it to HTML.
     fn run(self, builder: &Builder<'_>) {
         // FIXME: Temporary workaround for https://github.com/rust-lang/rust/issues/158378
-        #[cfg(not(test))] // So this check doesn't affect the bootstrap tests
-        if self.target == "i686-pc-windows-msvc" {
+        // Make sure this workaround doesn't break unit tests on the affected host.
+        if cfg!(not(test)) && self.target == "i686-pc-windows-msvc" {
             eprintln!("WARNING: Skipping rustc book build to work around #158378");
             return;
         }

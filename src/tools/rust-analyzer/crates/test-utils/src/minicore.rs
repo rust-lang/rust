@@ -59,6 +59,7 @@
 //!     option: panic
 //!     ord: eq, option
 //!     panic: fmt
+//!     panic_location: panic
 //!     pat: panic
 //!     phantom_data:
 //!     pin:
@@ -2093,7 +2094,38 @@ pub mod str {
 // endregion:str
 
 // region:panic
-mod panic {
+pub mod panic {
+    // region:panic_location
+    #[rustc_intrinsic]
+    pub const fn caller_location() -> &'static Location<'static>;
+
+    #[lang = "panic_location"]
+    pub struct Location<'a> {
+        file: &'a str,
+        line: u32,
+        col: u32,
+    }
+
+    impl<'a> Location<'a> {
+        #[track_caller]
+        pub const fn caller() -> &'static Location<'static> {
+            caller_location()
+        }
+
+        pub const fn file(&self) -> &str {
+            self.file
+        }
+
+        pub const fn line(&self) -> u32 {
+            self.line
+        }
+
+        pub const fn column(&self) -> u32 {
+            self.col
+        }
+    }
+    // endregion:panic_location
+
     pub macro panic_2021 {
         () => ({
             const fn panic_cold_explicit() -> ! {
@@ -2483,6 +2515,7 @@ macro_rules! matches {
 
 pub mod prelude {
     pub mod v1 {
+        #[rustfmt::skip]
         pub use crate::{
             clone::Clone,                                 // :clone
             cmp::{Eq, PartialEq},                         // :eq
@@ -2509,6 +2542,16 @@ pub mod prelude {
             panic,                                        // :panic
             result::Result::{self, Err, Ok},              // :result
             str::FromStr,                                 // :str
+            write, writeln,                               // :write
+            assert,                                       // :assert
+            format_args, format_args_nl, const_format_args, print, // :fmt
+            todo,                                         // :todo
+            unimplemented,                                // :unimplemented
+            include,                                      // :include
+            include_bytes,                                // :include_bytes
+            concat,                                       // :concat
+            env, option_env,                              // :env
+            matches,                                      // :matches
         };
     }
 

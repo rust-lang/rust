@@ -383,6 +383,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         span: Span,
         source: PathSource<'_, 'ast, 'ra>,
         res: Option<Res>,
+        could_be_expr: bool,
     ) -> BaseError {
         // Make the base error.
         let mut expected = source.descr_expected();
@@ -400,28 +401,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     }
                     _ => None,
                 },
-                could_be_expr: match res {
-                    Res::Def(DefKind::Fn, _) => {
-                        // Verify whether this is a fn call or an Fn used as a type.
-                        self.r
-                            .tcx
-                            .sess
-                            .source_map()
-                            .span_to_snippet(span)
-                            .is_ok_and(|snippet| snippet.ends_with(')'))
-                    }
-                    Res::Def(
-                        DefKind::Ctor(..)
-                        | DefKind::AssocFn
-                        | DefKind::Const { .. }
-                        | DefKind::AssocConst { .. },
-                        _,
-                    )
-                    | Res::SelfCtor(_)
-                    | Res::PrimTy(_)
-                    | Res::Local(_) => true,
-                    _ => false,
-                },
+                could_be_expr,
                 suggestion: None,
                 module: None,
             }
@@ -571,10 +551,34 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 fallback_label,
                 span: item_span,
                 span_label,
-                could_be_expr: false,
+                could_be_expr,
                 suggestion,
                 module,
             }
+        }
+    }
+
+    fn could_be_expr(&self, res: Res, span: Span) -> bool {
+        match res {
+            // Verify whether this is a fn call or an Fn used as a type.
+            Res::Def(DefKind::Fn, _) => self
+                .r
+                .tcx
+                .sess
+                .source_map()
+                .span_to_snippet(span)
+                .is_ok_and(|snippet| snippet.ends_with(')')),
+            Res::Def(
+                DefKind::Ctor(..)
+                | DefKind::AssocFn
+                | DefKind::Const { .. }
+                | DefKind::AssocConst { .. },
+                _,
+            )
+            | Res::SelfCtor(_)
+            | Res::PrimTy(_)
+            | Res::Local(_) => true,
+            _ => false,
         }
     }
 
@@ -636,11 +640,28 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         qself: Option<&QSelf>,
     ) -> (Diag<'tcx>, Vec<ImportSuggestion>) {
         debug!(?res, ?source);
-        let base_error = self.make_base_error(path, span, source, res);
+        let cross_namespace_res = res.filter(|res| !res.matches_ns(source.namespace()));
+        let could_be_expr = res.is_some_and(|res| self.could_be_expr(res, span));
+        let base_error = self.make_base_error(
+            path,
+            span,
+            source,
+            if cross_namespace_res.is_some() { None } else { res },
+            could_be_expr,
+        );
 
         let code = source.error_code(res.is_some());
         let mut err = self.r.dcx().struct_span_err(base_error.span, base_error.msg.clone());
         err.code(code);
+
+        if let Some(res) = cross_namespace_res {
+            err.note(format!(
+                "{} {} named `{}` exists in another namespace",
+                res.article(),
+                res.descr(),
+                Segment::names_to_string(path),
+            ));
+        }
 
         // Try to get the span of the identifier within the path's syntax context
         // (if that's different).

@@ -9,30 +9,17 @@
 //@ assembly-output: emit-asm
 //@ compile-flags: --crate-type=lib -Copt-level=3 -C panic=abort
 
-#![feature(no_core, lang_items, repr_simd, intrinsics, adt_const_params)]
+#![feature(no_core, lang_items, intrinsics, adt_const_params)]
 #![no_core]
 #![allow(non_camel_case_types)]
 
 extern crate minicore;
+use minicore::simd::*;
 use minicore::*;
 
-#[repr(simd)]
-pub struct i8x16([i8; 16]);
-
-#[repr(simd)]
-pub struct m8x16([i8; 16]);
-
-#[repr(simd)]
-pub struct f32x8([f32; 8]);
-
-#[repr(simd)]
-pub struct m32x8([i32; 8]);
-
-#[repr(simd)]
-pub struct f64x4([f64; 4]);
-
-#[repr(simd)]
-pub struct m64x4([i64; 4]);
+type m8x16 = i8x16;
+type m32x8 = i32x8;
+type m64x4 = i64x4;
 
 #[rustc_intrinsic]
 unsafe fn simd_masked_store<M, P, T, const ALIGN: SimdAlign>(mask: M, pointer: P, values: T);

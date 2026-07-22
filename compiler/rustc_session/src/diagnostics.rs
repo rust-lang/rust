@@ -435,11 +435,20 @@ pub(crate) struct CrateNameEmpty {
 
 #[derive(Diagnostic)]
 #[diag("invalid character {$character} in crate name: `{$crate_name}`")]
+#[note("crate names may only contain alphanumeric characters or underscores")]
 pub(crate) struct InvalidCharacterInCrateName {
     #[primary_span]
     pub(crate) span: Option<Span>,
     pub(crate) character: char,
     pub(crate) crate_name: Symbol,
+    #[subdiagnostic]
+    pub(crate) suggestion: Option<InvalidCharacterInCrateNameSuggestion>,
+}
+
+#[derive(Subdiagnostic)]
+#[help("you might have meant to use `--crate-name={$suggested_name}`")]
+pub(crate) struct InvalidCharacterInCrateNameSuggestion {
+    pub(crate) suggested_name: String,
 }
 
 #[derive(Subdiagnostic)]
@@ -716,3 +725,17 @@ pub(crate) struct ThinLtoNotSupportedByBackend;
 #[derive(Diagnostic)]
 #[diag("`-Zpacked-stack` is only supported on s390x")]
 pub(crate) struct UnsupportedPackedStack;
+
+#[derive(Diagnostic)]
+#[diag("`-Ctarget-cpu=native` is not allowed for target `{$target_triple}`")]
+#[note("this target requires consistent `-Ctarget-cpu` values across all crates")]
+#[help(
+    "specify the target CPU explicitly {$need_explicit_cpu ->
+        [false] or leave it blank to use the default
+        *[other] {\"\"}
+    }"
+)]
+pub(crate) struct NativeTargetCpuNotAllowed<'a> {
+    pub(crate) target_triple: &'a TargetTuple,
+    pub(crate) need_explicit_cpu: bool,
+}

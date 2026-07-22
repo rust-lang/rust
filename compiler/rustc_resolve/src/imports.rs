@@ -50,11 +50,12 @@ pub(crate) enum PendingDecl<'ra> {
 }
 
 enum ImportResolutionKind<'ra> {
+    // these are the decls the import imports, not the import declarations themselves
     Single(PerNS<PendingDecl<'ra>>),
     Glob(Vec<(Decl<'ra>, BindingKey, Span /* orig_ident_span */)>),
 }
 
-struct ImportResolution<'ra> {
+pub(crate) struct ImportResolution<'ra> {
     kind: ImportResolutionKind<'ra>,
     imported_module: ModuleOrUniformRoot<'ra>,
 }
@@ -312,9 +313,10 @@ impl<'ra> NameResolution<'ra> {
 
 // module to keep the TLS private and only accessible through the function `enter_cycle_detector`.
 pub(crate) mod cycle_detection {
+    use std::cell::RefCell;
     use std::ptr;
 
-    use crate::{BindingKey, CacheRefCell, LocalModule};
+    use crate::{BindingKey, LocalModule};
 
     thread_local!(
         /// During import resolution, recursive imports can form cycles.
@@ -326,7 +328,7 @@ pub(crate) mod cycle_detection {
         /// in the `Resolver Arenas` (lifetime `'ra`), it is thus stable and allows casting
         /// to a `*const ()` for comparison. This is done because we can't use lifetimes
         /// other than `'static` in thread local storage.
-        static ACTIVE_RESOLUTIONS: CacheRefCell<Vec<(*const (), BindingKey)>> = Default::default();
+        static ACTIVE_RESOLUTIONS: RefCell<Vec<(*const (), BindingKey)>> = Default::default();
     );
 
     pub(crate) struct ActiveResolutionGuard {
@@ -776,30 +778,41 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         while indeterminate_count < prev_indeterminate_count {
             prev_indeterminate_count = indeterminate_count;
             indeterminate_count = 0;
-            let mut resolutions = Vec::new();
+
+            let mut imports_to_resolve = mem::take(&mut self.indeterminate_imports);
+
             self.assert_speculative = true;
-            for import in mem::take(&mut self.indeterminate_imports) {
-                let (resolution, import_indeterminate_count) = self.cm().resolve_import(import);
-                indeterminate_count += import_indeterminate_count;
-                match import_indeterminate_count {
-                    0 => self.determined_imports.push(import),
-                    _ => self.indeterminate_imports.push(import),
-                }
-                if let Some(resolution) = resolution {
-                    resolutions.push((import, resolution));
-                }
-            }
+            let cm_resolver = self.cm();
+
+            rustc_data_structures::sync::par_for_each_slice(
+                &mut imports_to_resolve,
+                |(import, resolution, indeterminate_count)| {
+                    (*resolution, *indeterminate_count) =
+                        cm_resolver.reborrow_ref().resolve_import(*import);
+                },
+            );
             self.assert_speculative = false;
-            self.write_import_resolutions(resolutions);
+
+            self.write_import_resolutions(&imports_to_resolve);
+
+            self.indeterminate_imports = imports_to_resolve
+                .extract_if(.., |(_, _, count)| {
+                    indeterminate_count += *count;
+                    *count > 0
+                })
+                .collect();
+            self.determined_imports.extend(imports_to_resolve.into_iter().map(|(i, _, _)| i));
         }
     }
 
     fn write_import_resolutions(
         &mut self,
-        import_resolutions: Vec<(Import<'ra>, ImportResolution<'ra>)>,
+        import_resolutions: &[(Import<'ra>, Option<ImportResolution<'ra>>, usize)],
     ) {
-        for (import, resolution) in &import_resolutions {
-            let ImportResolution { imported_module, .. } = resolution;
+        for &(import, ref resolution, _) in import_resolutions {
+            let Some(ImportResolution { imported_module, .. }) = resolution else {
+                continue;
+            };
             import.imported_module.set(Some(*imported_module), self);
 
             if import.is_glob()
@@ -807,12 +820,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 && import.parent_scope.module != *module
                 && module.is_local()
             {
-                module.glob_importers.borrow_mut(self).push(*import);
+                module.glob_importers.borrow_mut(self).push(import);
             }
         }
 
-        for (import, resolution) in import_resolutions {
-            let ImportResolution { imported_module, kind: resolution_kind } = resolution;
+        for &(import, ref resolution, _) in import_resolutions {
+            let Some(ImportResolution { imported_module, kind: resolution_kind }) = resolution
+            else {
+                continue;
+            };
 
             match (&import.kind, resolution_kind) {
                 (
@@ -879,11 +895,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     }
 
                     for (binding, key, orig_ident_span) in imported_decls {
-                        let import_decl = self.new_import_decl(binding, import);
+                        let import_decl = self.new_import_decl(*binding, import);
                         let _ = self
                             .try_plant_decl_into_local_module(
                                 key.ident,
-                                orig_ident_span,
+                                *orig_ident_span,
                                 key.ns,
                                 import_decl,
                             )
@@ -918,7 +934,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         for (is_indeterminate, import) in determined_imports
             .iter()
             .map(|i| (false, i))
-            .chain(indeterminate_imports.iter().map(|i| (true, i)))
+            .chain(indeterminate_imports.iter().map(|(i, _, _)| (true, i)))
         {
             let unresolved_import_error = self.finalize_import(*import);
             // If this import is unresolved then create a dummy import
@@ -959,7 +975,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             return;
         }
 
-        for import in &indeterminate_imports {
+        for (import, _, _) in &indeterminate_imports {
             let path = import_path_to_string(
                 &import.module_path.iter().map(|seg| seg.ident).collect::<Vec<_>>(),
                 &import.kind,
@@ -1139,7 +1155,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             _ => unreachable!(),
         };
 
-        let mut import_decls = PerNS::default();
+        let mut decls = PerNS::default();
         let mut indeterminate_count = 0;
         self.per_ns_cm(|mut this, ns| {
             if bindings[ns].get() != PendingDecl::Pending {
@@ -1160,12 +1176,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     PendingDecl::Pending
                 }
             };
-            import_decls[ns] = pending_decl;
+            decls[ns] = pending_decl;
         });
-        let import_resolution = ImportResolution {
-            imported_module: module,
-            kind: ImportResolutionKind::Single(import_decls),
-        };
+        let import_resolution =
+            ImportResolution { imported_module: module, kind: ImportResolutionKind::Single(decls) };
 
         (Some(import_resolution), indeterminate_count)
     }

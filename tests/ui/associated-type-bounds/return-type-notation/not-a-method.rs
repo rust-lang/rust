@@ -13,7 +13,7 @@ where
 fn not_a_method_and_typoed()
 where
     function(): Send,
-    //~^ ERROR expected type, found function `function`
+    //~^ ERROR cannot find type `function` in this scope
 {
 }
 

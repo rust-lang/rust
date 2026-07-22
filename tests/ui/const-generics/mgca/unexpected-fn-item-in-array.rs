@@ -1,6 +1,6 @@
 // Make sure we don't ICE when encountering an fn item during lowering in mGCA.
 
-#![feature(min_generic_const_args)]
+#![feature(min_generic_const_args, macroless_generic_const_args)]
 
 trait A<T> {}
 

@@ -1,0 +1,42 @@
+error[E0423]: cannot find value `path` in this scope
+  --> $DIR/builtin-attribute-not-value.rs:2:5
+   |
+LL |     path;
+   |     ^^^^ not found in this scope
+   |
+   = note: a built-in attribute named `path` exists in another namespace
+
+error[E0423]: cannot find value `path` in this scope
+  --> $DIR/builtin-attribute-not-value.rs:13:5
+   |
+LL |     path;
+   |     ^^^^
+   |
+   = note: a built-in attribute named `path` exists in another namespace
+help: a local variable with a similar name exists
+   |
+LL |     pathh;
+   |         +
+
+error[E0423]: cannot find value `path` in this scope
+  --> $DIR/builtin-attribute-not-value.rs:24:15
+   |
+LL |     path: (),
+   |     ---- a field by that name exists in `Self`
+...
+LL |         Wat { path }
+   |               ^^^^
+   |
+   = note: a built-in attribute named `path` exists in another namespace
+
+error[E0423]: cannot find function `path` in this scope
+  --> $DIR/builtin-attribute-not-value.rs:7:5
+   |
+LL |     path();
+   |     ^^^^ not found in this scope
+   |
+   = note: a built-in attribute named `path` exists in another namespace
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0423`.

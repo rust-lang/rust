@@ -5,7 +5,7 @@ use crate::{AliasConst, ClosureKind};
 use crate::{
     AliasTerm, AliasTy, Binder, CoercePredicate, ExistentialProjection, ExistentialTraitRef, FnSig,
     HostEffectPredicate, Interner, NormalizesTo, OutlivesPredicate, PatternKind, Placeholder,
-    ProjectionPredicate, SubtypePredicate, TraitPredicate, TraitRef,
+    ProjectionPredicate, Region, SubtypePredicate, TraitPredicate, TraitRef,
 };
 
 pub trait IrPrint<T> {
@@ -55,6 +55,15 @@ define_display_via_print!(
 
 define_debug_via_print!(TraitRef, ExistentialTraitRef, PatternKind);
 
+impl<I: Interner> fmt::Display for Region<I>
+where
+    I: IrPrint<Region<I>>,
+{
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        <I as IrPrint<Region<I>>>::print(self, fmt)
+    }
+}
+
 impl<I: Interner, T> fmt::Display for OutlivesPredicate<I, T>
 where
     I: IrPrint<OutlivesPredicate<I, T>>,
@@ -95,6 +104,12 @@ mod into_diag_arg_impls {
     }
 
     impl<I: Interner> IntoDiagArg for ExistentialTraitRef<I> {
+        fn into_diag_arg(self, path: &mut Option<std::path::PathBuf>) -> DiagArgValue {
+            self.to_string().into_diag_arg(path)
+        }
+    }
+
+    impl<I: Interner + IrPrint<Region<I>>> IntoDiagArg for Region<I> {
         fn into_diag_arg(self, path: &mut Option<std::path::PathBuf>) -> DiagArgValue {
             self.to_string().into_diag_arg(path)
         }

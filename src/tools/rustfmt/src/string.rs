@@ -360,7 +360,16 @@ fn is_new_line(grapheme: &str) -> bool {
 }
 
 fn is_whitespace(grapheme: &str) -> bool {
-    grapheme.chars().all(char::is_whitespace)
+    // We explicitly match these characters instead of using char::is_whitespace
+    // because char::is_whitespace uses Unicode White_Space which is broader
+    // than the Rust language's definition of whitespace. For example it would
+    // also match \u{A0} (non-breaking space). \x0B (vertical tab) and \x0C
+    // (form feed) are included here because the Rust language defines them
+    // as whitespace, but is_ascii_whitespace excludes them.
+
+    grapheme
+        .chars()
+        .all(|c| matches!(c, ' ' | '\t' | '\n' | '\r' | '\x0B' | '\x0C'))
 }
 
 fn is_punctuation(grapheme: &str) -> bool {

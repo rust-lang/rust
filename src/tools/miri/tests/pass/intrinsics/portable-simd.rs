@@ -766,6 +766,11 @@ fn simd_swizzle() {
 }
 
 fn simd_swizzle_dyn() {
+    // FIXME: needs llvm.neon.tbl2 support, see https://github.com/rust-lang/miri/pull/5219.
+    if cfg!(target_arch = "aarch64") {
+        return;
+    }
+
     fn check_swizzle_dyn<const N: usize>() {
         assert_eq!(
             Simd::<u8, N>::default().swizzle_dyn(Simd::<u8, N>::default()),

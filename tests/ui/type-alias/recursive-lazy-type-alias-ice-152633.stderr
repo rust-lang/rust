@@ -1,5 +1,5 @@
 error[E0275]: overflow normalizing the type alias `Arr2`
-  --> $DIR/recursive-lazy-type-alias-ice-152633.rs:12:1
+  --> $DIR/recursive-lazy-type-alias-ice-152633.rs:11:1
    |
 LL | type Arr2 = [usize; <Arr2 as Trait>::ASSOC];
    | ^^^^^^^^^

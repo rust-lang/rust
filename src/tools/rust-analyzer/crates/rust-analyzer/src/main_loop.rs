@@ -829,6 +829,7 @@ impl GlobalState {
                 health @ (lsp_ext::Health::Warning | lsp_ext::Health::Error),
                 Some(message),
             ) = (status.health, &status.message)
+                && self.last_reported_status.message != status.message
             {
                 let open_log_button = tracing::enabled!(tracing::Level::ERROR)
                     && (self.fetch_build_data_error().is_err()
@@ -995,10 +996,14 @@ impl GlobalState {
                     }
 
                     let path = VfsPath::from(path);
-                    // if the file is in mem docs, it's managed by the client via notifications
-                    // so only set it if its not in there
-                    if !self.mem_docs.contains(&path)
-                        && (is_changed || vfs.file_id(&path).is_none())
+                    // If the file is in mem docs, it's managed by the client via
+                    // notifications so only set it if its not in there. Library files are
+                    // exempt from that authority as they are considered immutable, for
+                    // them disk is always the source of truth.
+                    let is_library = self.source_root_config.path_is_library(&path);
+                    let client_is_authoritative = !is_library && self.mem_docs.contains(&path);
+                    if !client_is_authoritative
+                        && (is_changed || is_library || vfs.file_id(&path).is_none())
                     {
                         vfs.set_file_contents(path, contents);
                     }

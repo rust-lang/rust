@@ -212,6 +212,13 @@ impl MirConst {
     pub fn try_from_uint(value: u128, uint_ty: UintTy) -> Result<MirConst, Error> {
         with(|cx| cx.try_new_const_uint(value, uint_ty))
     }
+
+    /// Build a new constant that represents the given floating point number.
+    /// The value is the binary representation of the float constant.
+    /// Example: `try_from_float(2.5_f32.to_bits() as u128, FloatTy::F32)`.
+    pub fn try_from_float(value: u128, float_ty: FloatTy) -> Result<MirConst, Error> {
+        with(|cx| cx.try_new_const_float(value, float_ty))
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

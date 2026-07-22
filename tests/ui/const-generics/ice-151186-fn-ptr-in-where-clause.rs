@@ -1,6 +1,6 @@
 // Regression test for https://github.com/rust-lang/rust/issues/151186
 
-#![feature(min_generic_const_args)]
+#![feature(min_generic_const_args, macroless_generic_const_args)]
 #![allow(incomplete_features)]
 
 trait Maybe<T> {}
