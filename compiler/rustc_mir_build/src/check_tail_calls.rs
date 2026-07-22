@@ -4,7 +4,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::CRATE_DEF_ID;
 use rustc_hir::{LangItem, Safety};
-use rustc_infer::infer::{DefineOpaqueTypes, TyCtxtInferExt as _};
+use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::span_bug;
@@ -13,6 +13,7 @@ use rustc_middle::thir::{BodyTy, Expr, ExprId, ExprKind, Thir};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::{ErrorGuaranteed, Span};
+use rustc_trait_selection::traits::ObligationCtxt;
 
 pub(crate) fn check_tail_calls(tcx: TyCtxt<'_>, def: LocalDefId) -> Result<(), ErrorGuaranteed> {
     let (thir, expr) = tcx.thir_body(def)?;
@@ -164,8 +165,10 @@ impl<'tcx> TailCallCkVisitor<'_, 'tcx> {
             let caller_sig = caller_sig.set_safety(Safety::Safe);
             let callee_sig = callee_sig.set_safety(Safety::Safe);
 
-            if let Err(_e) =
-                infcx.at(&cause, param_env).sub(DefineOpaqueTypes::No, caller_sig, callee_sig)
+            let ocx = ObligationCtxt::new(&infcx);
+
+            if ocx.sub(&cause, param_env, caller_sig, callee_sig).is_err()
+                || !ocx.evaluate_obligations_error_on_ambiguity().is_empty()
             {
                 let caller_ty = self.tcx.type_of(self.caller_def_id).skip_binder();
                 found_errors = Err(self.report_signature_mismatch(
