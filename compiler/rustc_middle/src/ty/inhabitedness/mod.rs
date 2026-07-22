@@ -43,8 +43,6 @@
 //! This code should only compile in modules where the uninhabitedness of `Foo`
 //! is visible.
 
-use std::assert_matches;
-
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::DefKind;
 use rustc_span::bug;
@@ -66,7 +64,7 @@ pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers {
         inhabited_predicate_for_def,
         inhabited_predicate_type,
-        is_opsem_inhabited_raw,
+        is_opsem_inhabited_adt_cached,
         ..*providers
     };
 }
@@ -273,7 +271,7 @@ struct OpsemInhabitedCtx<'tcx> {
     tcx: TyCtxt<'tcx>,
     typing_env: TypingEnv<'tcx>,
     /// IDs of ADTs that have been encountered in the current stack.
-    /// It's `None` unless we are inside the `is_opsem_inhabited_raw` query,
+    /// It's `None` unless we are inside the `is_opsem_inhabited_adt_cached` query,
     /// which is only invoked for more complex types.
     seen: Option<FxHashSet<DefId>>,
     /// If an ADT is encountered recursively within itself, then `stop_at_ref`
@@ -332,7 +330,7 @@ impl<'tcx> OpsemInhabitedCtx<'tcx> {
                 let base = tcx.instantiate_bound_regions_with_erased((*base).into());
                 self.is_inhabited_ty(base)
             }
-            ty::Adt(..) => self.is_inhabited_adt_ty(ty),
+            ty::Adt(def, args) => self.is_inhabited_adt_ty(def, args),
 
             ty::Error(_error_guaranteed) => {
                 // We have a token proving there was an error, so we can return a dummy value.
@@ -350,10 +348,11 @@ impl<'tcx> OpsemInhabitedCtx<'tcx> {
         }
     }
 
-    fn is_inhabited_adt_ty(&mut self, ty: Ty<'tcx>) -> bool {
-        let ty::Adt(adt_def, adt_args) = *ty.kind() else {
-            unreachable! {}
-        };
+    fn is_inhabited_adt_ty(
+        &mut self,
+        adt_def: ty::AdtDef<'tcx>,
+        adt_args: ty::GenericArgsRef<'tcx>,
+    ) -> bool {
         let Self { tcx, typing_env, .. } = *self;
 
         if adt_def.is_union() {
@@ -363,7 +362,8 @@ impl<'tcx> OpsemInhabitedCtx<'tcx> {
 
         let Some(seen) = self.seen.as_mut() else {
             // stop recursing, invoke the query.
-            return tcx.is_opsem_inhabited_raw(typing_env.as_query_input(ty));
+            return tcx
+                .is_opsem_inhabited_adt_cached(typing_env.as_query_input((adt_def, adt_args)));
         };
 
         let new_adt = seen.insert(adt_def.did());
@@ -393,17 +393,11 @@ impl<'tcx> OpsemInhabitedCtx<'tcx> {
     }
 }
 
-fn is_opsem_inhabited_raw<'tcx>(
+fn is_opsem_inhabited_adt_cached<'tcx>(
     tcx: TyCtxt<'tcx>,
-    env: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>,
+    env: ty::PseudoCanonicalInput<'tcx, (ty::AdtDef<'tcx>, ty::GenericArgsRef<'tcx>)>,
 ) -> bool {
-    let (ty, typing_env) = (env.value, env.typing_env);
-    assert_matches!(
-        ty.kind(),
-        ty::Adt(..),
-        "the query should only be invoked by `Ty::is_opsem_inhabited`"
-    );
-
+    let ((def, args), typing_env) = (env.value, env.typing_env);
     OpsemInhabitedCtx { tcx, typing_env, seen: Some(FxHashSet::default()), stop_at_ref: false }
-        .is_inhabited_adt_ty(ty)
+        .is_inhabited_adt_ty(def, args)
 }
