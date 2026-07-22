@@ -32,7 +32,7 @@ impl From<&AttrKind> for SimpleAttrKind {
             AttrKind::Synthetic(synthetic) => {
                 match &**synthetic {
                     SyntheticAttr::CfgTrace(_) => Self::CfgTrace,
-                    SyntheticAttr::CfgAttrTrace => Self::CfgAttrTrace,
+                    SyntheticAttr::CfgAttrTrace(_) => Self::CfgAttrTrace,
                 }
             }
             AttrKind::DocComment(..) => Self::Doc,
