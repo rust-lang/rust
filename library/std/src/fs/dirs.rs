@@ -71,8 +71,12 @@ impl HomeDirs {
     /// A base directory relative to which user-specific non-essential cache
     /// data files should be stored.
     ///
-    /// Files in this directory may be automatically purged any time they are
-    /// not currently open.
+    /// "Cache" files are temporary data that can be used to cache redundant
+    /// work of an application, but which can be discarded arbitrarily and
+    /// recreated as necessary. Files in this directory may potentially be
+    /// automatically purged any time they are not currently open, or they
+    /// may not, depending on system configuration. A robust application
+    /// should ensure that its caches do not grow unboundedly.
     ///
     /// This is the same directory for all applications. As such, applications
     /// should use a subdirectory for application-specific cache files.
@@ -102,6 +106,12 @@ impl HomeDirs {
     /// A base directory relative to which user-specific configuration files
     /// should be stored.
     ///
+    /// "Config" files are configuration managed by the user, either by editing
+    /// the files directly or through a managing application. Configuration is
+    /// generally expected to be meaningful to the user and portable enough to
+    /// back up and synchronize across the same user's account on multiple
+    /// systems.
+    ///
     /// This is the same directory for all applications. As such, applications
     /// should use a subdirectory for application-specific configuration files.
     ///
@@ -129,6 +139,13 @@ impl HomeDirs {
 
     /// A base directory relative to which user-specific data files should be
     /// stored.
+    ///
+    /// "Data" files are application-specific data that is meaningful to the
+    /// user in some way and does not implicitly rely on system configuration
+    /// or details of how the application is installed otherwise irrelevant to
+    /// the user. As such, data makes sense to back up and synchronize between
+    /// the same user's account on multiple systems. If a file is specific to
+    /// a single machine, it's probably [state](Self::state_home).
     ///
     /// This is the same directory for all applications. As such, applications
     /// should use a subdirectory for application-specific data files.
