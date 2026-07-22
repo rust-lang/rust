@@ -186,7 +186,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         match intrinsic_name {
             sym::type_name => {
                 let tp_ty = instance.args.type_at(0);
-                ensure_monomorphic_enough(tcx, tp_ty)?;
+                ensure_monomorphic_enough(tp_ty)?;
                 let (alloc_id, meta) = alloc_type_name(tcx, tp_ty);
                 let val = ConstValue::Slice { alloc_id, meta };
                 let val = self.const_val_to_op(val, dest.layout.ty, Some(dest.layout))?;
@@ -194,14 +194,14 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
             sym::needs_drop => {
                 let tp_ty = instance.args.type_at(0);
-                ensure_monomorphic_enough(tcx, tp_ty)?;
+                ensure_monomorphic_enough(tp_ty)?;
                 let val = ConstValue::from_bool(tp_ty.needs_drop(tcx, self.typing_env));
                 let val = self.const_val_to_op(val, tcx.types.bool, Some(dest.layout))?;
                 self.copy_op(&val, dest)?;
             }
             sym::type_id => {
                 let tp_ty = instance.args.type_at(0);
-                ensure_monomorphic_enough(tcx, tp_ty)?;
+                ensure_monomorphic_enough(tp_ty)?;
                 self.write_type_id(tp_ty, dest)?;
             }
             sym::type_id_eq => {
