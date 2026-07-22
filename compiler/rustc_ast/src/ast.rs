@@ -3514,7 +3514,7 @@ pub enum SyntheticAttr {
     /// because they are not needed.
     ///
     /// The attribute is used by some clippy lints.
-    CfgAttrTrace,
+    CfgAttrTrace(CfgEntry),
 }
 
 impl AttrItem {

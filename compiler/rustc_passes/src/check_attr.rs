@@ -237,7 +237,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             // All of the following attributes have no specific checks.
             // tidy-alphabetical-start
             AttributeKind::AutomaticallyDerived => (),
-            AttributeKind::CfgAttrTrace => (),
+            AttributeKind::CfgAttrTrace(..) => (),
             AttributeKind::CfgTrace(..) => (),
             AttributeKind::CfiEncoding { .. } => (),
             AttributeKind::Cold => (),

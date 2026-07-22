@@ -1011,7 +1011,7 @@ pub enum AttributeKind {
     AutomaticallyDerived,
 
     /// Represents the trace attribute of `#[cfg_attr]`
-    CfgAttrTrace,
+    CfgAttrTrace(ThinVec<(CfgEntry, Span)>),
 
     /// Represents the trace attribute of `#[cfg]`
     CfgTrace(ThinVec<(CfgEntry, Span)>),

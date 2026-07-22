@@ -525,7 +525,7 @@ impl<'a> AstValidator<'a> {
                         [sym::allow, sym::deny, sym::expect, sym::forbid, sym::splat, sym::warn];
                     !attr.has_any_name(&arr) && rustc_attr_parsing::is_builtin_attr(&normal.item)
                 }
-                AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace) => false,
+                AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace(_)) => false,
                 AttrKind::DocComment(..) => true,
             })
             .for_each(|attr| {

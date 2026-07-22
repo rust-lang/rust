@@ -248,17 +248,13 @@ impl<'a> StripUnconfigured<'a> {
     /// is in the original source file. Gives a compiler error if the syntax of
     /// the attribute is incorrect.
     pub(crate) fn expand_cfg_attr(&self, cfg_attr: &Attribute, recursive: bool) -> Vec<Attribute> {
-        // A synthetic trace attribute left in AST in place of the original `cfg_attr` attribute.
-        // It can later be used by lints or other diagnostics.
-        let trace_attr = cfg_attr.clone().convert_normal_to_synthetic(SyntheticAttr::CfgAttrTrace);
-
         let Some((cfg_predicate, expanded_attrs)) = rustc_attr_parsing::parse_cfg_attr(
             cfg_attr,
             self.sess,
             self.features,
             self.lint_node_id,
         ) else {
-            return vec![trace_attr];
+            return vec![];
         };
 
         // Lint on zero attributes in source.
@@ -271,7 +267,15 @@ impl<'a> StripUnconfigured<'a> {
             );
         }
 
-        if !attr::eval_config_entry(self.sess, &cfg_predicate).as_bool() {
+        let cfg_eval = attr::eval_config_entry(self.sess, &cfg_predicate).as_bool();
+
+        // A synthetic trace attribute left in AST in place of the original `cfg_attr` attribute.
+        // It can later be used by lints or other diagnostics.
+        let trace_attr = cfg_attr
+            .clone()
+            .convert_normal_to_synthetic(SyntheticAttr::CfgAttrTrace(cfg_predicate));
+
+        if !cfg_eval {
             return vec![trace_attr];
         }
 
