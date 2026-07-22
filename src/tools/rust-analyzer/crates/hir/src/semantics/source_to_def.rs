@@ -165,8 +165,20 @@ impl<'db> SourceToDefCache<'db> {
         self.expansion_info_cache.entry(macro_file).or_insert_with(|| {
             let exp_info = macro_file.expansion_info(db);
 
+            // Ensure that the cache contains syntax nodes from expanded macros,
+            // whose root may be in another file.
             let InMacroFile { file_id, value } = exp_info.expanded();
             Self::cache(&mut self.root_to_file_cache, value, file_id.into());
+
+            // include!("foo.rs") invocations are awkward: in addition to the
+            // expansion site there's the included file (foo.rs), so we need to
+            // ensure that it exists in the cache too.
+            if macro_file.is_include_macro(db) {
+                let arg = exp_info.arg();
+                if let Some(arg_node) = arg.value {
+                    Self::cache(&mut self.root_to_file_cache, arg_node.tree_top(), arg.file_id);
+                }
+            }
 
             exp_info
         })
