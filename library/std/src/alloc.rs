@@ -53,6 +53,11 @@
 //! The `#[global_allocator]` can only be used once in a crate
 //! or its recursive dependencies.
 //!
+//! The global allocator is invoked via the functions in this module
+//! ([`alloc`][crate::alloc::alloc], [`alloc_zeroed`], [`dealloc`], [`realloc`]). Note, however,
+//! that invoking those functions is *not* equivalent to directly invoking the underlying methods on
+//! the declared global allocator! See the documentation of those functions for details.
+//!
 //! [^system-alloc]: Note that the Rust standard library internals may still
 //! directly call [`System`] when necessary (for example for the runtime
 //! support typically required to implement a global allocator, see [re-entrance] on [`GlobalAlloc`]
