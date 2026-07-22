@@ -588,7 +588,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
 
                 self.on_stack_function_params.borrow_mut().insert(func, FxHashSet::default());
 
-                crate::attributes::from_fn_attrs(self, func, instance);
+                crate::attributes::from_fn_attrs(self, func, instance, None);
 
                 func
             };

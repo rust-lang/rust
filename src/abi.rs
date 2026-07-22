@@ -159,7 +159,10 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
         #[cfg(not(feature = "master"))]
         let apply_attrs = |ty: Type<'gcc>, _attrs: &ArgAttributes, _arg_index: usize| ty;
 
-        for arg in self.args.iter() {
+        for (source_arg_index, arg) in self.args.iter().enumerate() {
+            #[cfg(not(feature = "master"))]
+            let _ = source_arg_index;
+
             let arg_ty = match arg.mode {
                 PassMode::Ignore => continue,
                 PassMode::Pair(a, b) => {
@@ -185,9 +188,31 @@ impl<'gcc, 'tcx> FnAbiGccExt<'gcc, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     apply_attrs(ty, &cast.attrs, argument_tys.len())
                 }
                 PassMode::Indirect { attrs: _, meta_attrs: None, on_stack: true } => {
-                    // This is a "byval" argument, so we don't apply the `restrict` attribute on it.
-                    on_stack_param_indices.insert(argument_tys.len());
-                    arg.layout.gcc_type(cx)
+                    let x86_interrupt_first_arg = {
+                        #[cfg(feature = "master")]
+                        {
+                            source_arg_index == 0
+                                && matches!(self.conv, CanonAbi::Interrupt(InterruptKind::X86))
+                        }
+                        #[cfg(not(feature = "master"))]
+                        {
+                            false
+                        }
+                    };
+
+                    if x86_interrupt_first_arg {
+                        // Rust lowers the first `x86-interrupt` argument as a byval stack slot.
+                        // LLVM represents that as a pointer parameter with `byval`; GCC's
+                        // interrupt attribute likewise requires a pointer-shaped first parameter.
+                        // Do not add this parameter to `on_stack_param_indices`: that set is only
+                        // needed when GCC represents a byval argument as a value parameter, while
+                        // this parameter is already pointer-shaped.
+                        cx.type_ptr_to(arg.layout.gcc_type(cx))
+                    } else {
+                        // This is a "byval" argument, so we don't apply the `restrict` attribute on it.
+                        on_stack_param_indices.insert(argument_tys.len());
+                        arg.layout.gcc_type(cx)
+                    }
                 }
                 PassMode::Direct(attrs) => {
                     apply_attrs(arg.layout.immediate_gcc_type(cx), &attrs, argument_tys.len())

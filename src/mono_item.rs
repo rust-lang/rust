@@ -151,7 +151,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         self.linkage.set(base::linkage_to_gcc(linkage));
         let fn_decl = self.declare_fn(symbol_name, fn_abi);
 
-        attributes::from_fn_attrs(self, fn_decl, instance);
+        attributes::from_fn_attrs(self, fn_decl, instance, Some(fn_abi));
 
         // If we're compiling the compiler-builtins crate, e.g., the equivalent of
         // compiler-rt, then we want to implicitly compile everything with hidden
