@@ -2671,28 +2671,26 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_const_item_rhs(
         &mut self,
-        rhs_kind: &ConstItemRhsKind,
+        body: &Option<Box<Expr>>,
+        kind: ConstItemKind,
         span: Span,
     ) -> hir::ConstItemRhs<'hir> {
-        match rhs_kind {
-            ConstItemRhsKind::Body { rhs: Some(body) } => {
-                hir::ConstItemRhs::Body(self.lower_const_body(span, Some(body)))
+        match (body, kind) {
+            (body, ConstItemKind::Body) => {
+                hir::ConstItemRhs::Body(self.lower_const_body(span, body.as_deref()))
             }
-            ConstItemRhsKind::Body { rhs: None } => {
-                hir::ConstItemRhs::Body(self.lower_const_body(span, None))
-            }
-            ConstItemRhsKind::TypeConst { rhs: Some(anon) } => {
+            (Some(body), ConstItemKind::TypeConst) => {
                 hir::ConstItemRhs::TypeConst(self.arena.alloc(
                     match self.can_lower_expr_to_const_arg_direct(
-                        &anon.value,
+                        &body,
                         DirectConstArgContext::MacrolessMinGenericConstArgs,
                     ) {
-                        Ok(()) => self.lower_expr_to_const_arg_direct(&anon.value, Some(anon.id)),
+                        Ok(()) => self.lower_expr_to_const_arg_direct(&body, None),
                         Err(err) => err.emit(self),
                     },
                 ))
             }
-            ConstItemRhsKind::TypeConst { rhs: None } => {
+            (None, ConstItemKind::TypeConst) => {
                 let const_arg = ConstArg {
                     hir_id: self.next_id(),
                     kind: hir::ConstArgKind::Error(
