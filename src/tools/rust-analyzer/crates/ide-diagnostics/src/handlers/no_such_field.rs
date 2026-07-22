@@ -1,11 +1,11 @@
 use either::Either;
-use hir::{HasSource, HirDisplay, Semantics, VariantId};
+use hir::{HasSource, HirDisplay, InMacroFile, Semantics, VariantId};
 use ide_db::text_edit::TextEdit;
 use ide_db::{
     EditionedFileId, RootDatabase, helpers::is_editable_crate, source_change::SourceChange,
 };
 use syntax::{
-    AstNode,
+    AstNode, TextSize,
     ast::{self, edit::IndentLevel, make},
 };
 
@@ -87,7 +87,6 @@ fn missing_record_expr_field_fixes(
             record_field_list(fields)?
         }
     };
-    let def_file_id = def_file_id.original_file(sema.db);
 
     if !is_editable_crate(module.krate(sema.db), sema.db) {
         return None;
@@ -103,13 +102,19 @@ fn missing_record_expr_field_fixes(
         make::ty(&new_field_type.display_source_code(sema.db, module.into(), true).ok()?),
     );
 
-    let (indent, offset, postfix, needs_comma) =
+    let (mut indent, offset, postfix, needs_comma) =
         if let Some(last_field) = record_fields.fields().last() {
             let indent = IndentLevel::from_node(last_field.syntax());
             let offset = last_field.syntax().text_range().end();
             let needs_comma = !last_field.to_string().ends_with(',');
             (indent, offset, String::new(), needs_comma)
         } else {
+            // We don't have enough whitespace information in a macro-defined empty struct
+            // to compute the correct indent.
+            if def_file_id.is_macro() {
+                return None;
+            }
+
             let indent = IndentLevel::from_node(record_fields.syntax());
             let offset = record_fields.l_curly_token()?.text_range().end();
             let postfix = if record_fields.syntax().text().contains_char('\n') {
@@ -119,6 +124,20 @@ fn missing_record_expr_field_fixes(
             };
             (indent + 1, offset, postfix, false)
         };
+    let (def_file_id, offset) = if let Some(macro_file) = def_file_id.macro_file() {
+        // Map the preceding token so the source insertion uses the end of that token.
+        let (range, _) =
+            InMacroFile::new(macro_file, offset - TextSize::new(1)).original_file_range(sema.db);
+        let anchor = sema
+            .parse(range.file_id)
+            .syntax()
+            .token_at_offset(range.range.start())
+            .right_biased()?;
+        indent = IndentLevel::from_token(&anchor);
+        (range.file_id, range.range.end())
+    } else {
+        (def_file_id.file_id()?, offset)
+    };
 
     let mut new_field = new_field.to_string();
     // FIXME: check submodule instead of FileId
@@ -450,6 +469,68 @@ fn main() {
     Struct {
         0$0: 0
     }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn test_add_field_macro_defined_struct() {
+        check_fix(
+            r#"
+macro_rules! identity { ($($t:tt)*) => { $($t)* }; }
+identity! {
+    struct S {
+        a: i32
+    }
+}
+fn f() { let _ = S { a: 1, b$0: false }; }
+"#,
+            r#"
+macro_rules! identity { ($($t:tt)*) => { $($t)* }; }
+identity! {
+    struct S {
+        a: i32,
+        b: bool
+    }
+}
+fn f() { let _ = S { a: 1, b: false }; }
+"#,
+        );
+    }
+
+    #[test]
+    fn test_add_field_macro_defined_struct_large_offset() {
+        // Regression test: we should handle macro definitions whose offset is larger than
+        // the max position in main.rs.
+        check_fix(
+            r#"
+//- /main.rs
+#[macro_use]
+mod m;
+make_items!();
+fn f() { let _ = S { a: 1, bbb$0: 2 }; }
+//- /m.rs
+macro_rules! make_items {
+    () => {
+        pub struct Padding {
+            pub p0: i32, pub p1: i32, pub p2: i32,
+            pub p3: i32, pub p4: i32, pub p5: i32,
+        }
+        pub struct S { pub a: i32 }
+    };
+}
+"#,
+            r#"
+macro_rules! make_items {
+    () => {
+        pub struct Padding {
+            pub p0: i32, pub p1: i32, pub p2: i32,
+            pub p3: i32, pub p4: i32, pub p5: i32,
+        }
+        pub struct S { pub a: i32,
+        pub(crate) bbb: i32 }
+    };
 }
 "#,
         )
