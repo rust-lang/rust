@@ -726,8 +726,10 @@ fn check_new_solver_banned_features(sess: &Session, features: &Features) {
         .find(|feat| feat.gate_name == sym::generic_const_exprs)
         .map(|feat| feat.attr_sp)
     {
+        // Abort immediately, otherwise GCE can lower to `ConstKind::Expr`,
+        // which the new solver intentionally does not support.
         #[allow(rustc::symbol_intern_string_literal)]
-        sess.dcx().emit_err(diagnostics::IncompatibleFeatures {
+        sess.dcx().emit_fatal(diagnostics::IncompatibleFeatures {
             spans: vec![gce_span],
             f1: Symbol::intern("-Znext-solver=globally"),
             f2: sym::generic_const_exprs,
