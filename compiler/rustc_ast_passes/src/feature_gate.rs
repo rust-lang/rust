@@ -220,8 +220,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 self.check_impl_trait(ty, false)
             }
             ast::ItemKind::Const(ast::ConstItem {
-                rhs_kind: ast::ConstItemRhsKind::TypeConst { .. },
-                ..
+                kind: ast::ConstItemKind::TypeConst, ..
             }) => {
                 // Make sure this is only allowed if the feature gate is enabled.
                 // #![feature(min_generic_const_args)]
@@ -396,7 +395,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 false
             }
             ast::AssocItemKind::Const(ast::ConstItem {
-                rhs_kind: ast::ConstItemRhsKind::TypeConst { rhs },
+                body,
+                kind: ast::ConstItemKind::TypeConst,
                 ..
             }) => {
                 // Make sure this is only allowed if the feature gate is enabled.
@@ -405,7 +405,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 // Make sure associated `type const` defaults in traits are only allowed
                 // if the feature gate is enabled.
                 // #![feature(associated_type_defaults)]
-                if ctxt == AssocCtxt::Trait && rhs.is_some() {
+                if ctxt == AssocCtxt::Trait && body.is_some() {
                     gate!(
                         self,
                         associated_type_defaults,
