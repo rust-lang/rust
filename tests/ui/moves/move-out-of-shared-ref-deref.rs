@@ -1,3 +1,5 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/52262>.
+
 #[derive(Debug)]
 enum MyError {
     NotFound { key: Vec<u8> },
