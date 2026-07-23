@@ -1732,6 +1732,7 @@ mod size_asserts {
 
     use super::*;
     // tidy-alphabetical-start
+    static_assert_size!(Body<'_>, 272);
     static_assert_size!(BasicBlockData<'_>, 144);
     static_assert_size!(LocalDecl<'_>, 40);
     static_assert_size!(SourceScopeData<'_>, 64);
