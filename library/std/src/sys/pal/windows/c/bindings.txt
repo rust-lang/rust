@@ -33,7 +33,6 @@ CONSOLE_MODE
 CONSOLE_READCONSOLE_CONTROL
 CONTEXT
 CopyFileExW
-CoTaskMemFree
 CP_UTF8
 CREATE_ALWAYS
 CREATE_BREAKAWAY_FROM_JOB
@@ -2285,6 +2284,8 @@ IsThreadAFiber
 KF_FLAG_DONT_VERIFY
 LINGER
 listen
+LOAD_LIBRARY_SEARCH_SYSTEM32
+LoadLibraryExA
 LocalFree
 LOCKFILE_EXCLUSIVE_LOCK
 LOCKFILE_FAIL_IMMEDIATELY
@@ -2410,7 +2411,6 @@ SetLastError
 setsockopt
 SetThreadStackGuarantee
 SetWaitableTimer
-SHGetKnownFolderPath
 shutdown
 Sleep
 SleepConditionVariableSRW

@@ -245,3 +245,22 @@ windows_link::link!("ws2_32.dll" "system" fn GetHostNameW(name : PWSTR, namelen 
 unsafe extern "C" {
     pub fn atexit(cb: unsafe extern "C" fn()) -> c_int;
 }
+
+// Functions in DLLs that we want to lazily load
+compat_fn_with_fallback! {
+    #[lazy]
+    pub static SHELL32: &CStr = c"shell32";
+
+    pub fn SHGetKnownFolderPath(rfid: *const GUID, dwflags: u32, htoken: HANDLE, ppszpath: *mut PWSTR) -> HRESULT {
+        panic!("Known Folders not available")
+    }
+}
+
+compat_fn_with_fallback! {
+    #[lazy]
+    pub static OLE32: &CStr = c"ole32";
+
+    pub fn CoTaskMemFree(pv: *const core::ffi::c_void) -> () {
+        panic!("COM not available")
+    }
+}
