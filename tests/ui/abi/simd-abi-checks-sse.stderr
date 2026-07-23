@@ -1,8 +1,8 @@
-error: this function definition uses SIMD vector type `SseVector` which (with the chosen ABI) requires the `sse` target feature, which is not enabled
-  --> $DIR/simd-abi-checks-sse.rs:20:1
+error: this function definition uses SIMD vector type `Simd<i64, 2>` which (with the chosen ABI) requires the `sse` target feature, which is not enabled
+  --> $DIR/simd-abi-checks-sse.rs:17:1
    |
-LL | pub unsafe extern "C" fn f(_: SseVector) {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
+LL | pub unsafe extern "C" fn f(_: Simd<i64, 2>) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
    |
    = help: consider enabling it globally (`-C target-feature=+sse`) or locally (`#[target_feature(enable="sse")]`)
 
