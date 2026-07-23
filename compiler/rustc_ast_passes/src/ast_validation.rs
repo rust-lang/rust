@@ -1544,9 +1544,9 @@ impl Visitor<'_> for AstValidator<'_> {
                     visit::walk_item(this, item)
                 });
             }
-            ItemKind::Const(ConstItem { defaultness, ident, rhs_kind, .. }) => {
+            ItemKind::Const(ConstItem { defaultness, ident, body, .. }) => {
                 self.check_defaultness(item.span, *defaultness, AllowDefault::No, AllowFinal::No);
-                if !rhs_kind.has_expr() {
+                if body.is_none() {
                     self.dcx().emit_err(diagnostics::ConstWithoutBody {
                         span: item.span,
                         replace_span: self.ending_semi_or_hi(item.span),
@@ -1941,8 +1941,8 @@ impl Visitor<'_> for AstValidator<'_> {
 
         if let AssocCtxt::Impl { .. } = ctxt {
             match &item.kind {
-                AssocItemKind::Const(ConstItem { rhs_kind, .. }) => {
-                    if !rhs_kind.has_expr() {
+                AssocItemKind::Const(ConstItem { body, .. }) => {
+                    if body.is_none() {
                         self.dcx().emit_err(diagnostics::AssocConstWithoutBody {
                             span: item.span,
                             replace_span: self.ending_semi_or_hi(item.span),

@@ -1,6 +1,6 @@
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::*;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{self, Instance, TyCtxt};
 use tracing::{debug, instrument};
 
 use crate::patch::MirPatch;
@@ -30,17 +30,7 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveNoopLandingPads {
             return;
         }
 
-        let mut nop_landing_pads = DenseBitSet::new_empty(body.basic_blocks.len());
-
-        // This is a post-order traversal, so that if A post-dominates B
-        // then A will be visited before B.
-        for (bb, bbdata) in traversal::postorder(body) {
-            let is_nop_landing_pad = self.is_nop_landing_pad(bbdata, &nop_landing_pads);
-            debug!("is_nop_landing_pad({bb:?}) = {is_nop_landing_pad}");
-            if is_nop_landing_pad {
-                nop_landing_pads.insert(bb);
-            }
-        }
+        let nop_landing_pads = find_noop_landing_pads(body, None);
 
         if nop_landing_pads.is_empty() {
             debug!("no nop landing pads in MIR");
@@ -83,10 +73,12 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveNoopLandingPads {
 }
 
 impl RemoveNoopLandingPads {
-    fn is_nop_landing_pad(
+    fn is_nop_landing_pad<'tcx>(
         &self,
-        bbdata: &BasicBlockData<'_>,
+        bbdata: &BasicBlockData<'tcx>,
+        body: &Body<'tcx>,
         nop_landing_pads: &DenseBitSet<BasicBlock>,
+        extra: Option<&ExtraInfo<'tcx>>,
     ) -> bool {
         for stmt in &bbdata.statements {
             match &stmt.kind {
@@ -128,6 +120,25 @@ impl RemoveNoopLandingPads {
             | TerminatorKind::FalseUnwind { .. } => {
                 terminator.successors().all(|succ| nop_landing_pads.contains(succ))
             }
+            TerminatorKind::Drop { place, .. } => {
+                if let Some(extra) = extra {
+                    let ty = place.ty(body, extra.tcx).ty;
+                    debug!("monomorphize: instance={:?}", extra.instance);
+                    let ty = extra.instance.instantiate_mir_and_normalize_erasing_regions(
+                        extra.tcx,
+                        extra.typing_env,
+                        ty::EarlyBinder::bind(extra.tcx, ty),
+                    );
+                    let drop_fn = Instance::resolve_drop_glue(extra.tcx, ty);
+                    if let ty::InstanceKind::Shim(ty::ShimKind::DropGlue(_, None)) = drop_fn.def {
+                        // no need to drop anything, if all of our successors are also no-op then we
+                        // can be skipped.
+                        return terminator.successors().all(|succ| nop_landing_pads.contains(succ));
+                    }
+                }
+
+                false
+            }
             TerminatorKind::CoroutineDrop
             | TerminatorKind::Yield { .. }
             | TerminatorKind::Return
@@ -136,8 +147,41 @@ impl RemoveNoopLandingPads {
             | TerminatorKind::Call { .. }
             | TerminatorKind::TailCall { .. }
             | TerminatorKind::Assert { .. }
-            | TerminatorKind::Drop { .. }
             | TerminatorKind::InlineAsm { .. } => false,
         }
     }
+}
+
+/// This provides extra information that allows further analysis.
+///
+/// Used by rustc_codegen_ssa.
+pub struct ExtraInfo<'tcx> {
+    pub tcx: TyCtxt<'tcx>,
+    pub instance: Instance<'tcx>,
+    pub typing_env: ty::TypingEnv<'tcx>,
+}
+
+pub fn find_noop_landing_pads<'tcx>(
+    body: &Body<'tcx>,
+    extra: Option<ExtraInfo<'tcx>>,
+) -> DenseBitSet<BasicBlock> {
+    let mut nop_landing_pads = DenseBitSet::new_empty(body.basic_blocks.len());
+
+    // This is a post-order traversal, so that if A post-dominates B
+    // then A will be visited before B.
+    let postorder: Vec<_> = traversal::postorder(body).map(|(bb, _)| bb).collect();
+    for bb in postorder {
+        let is_nop_landing_pad = RemoveNoopLandingPads.is_nop_landing_pad(
+            &body.basic_blocks[bb],
+            body,
+            &nop_landing_pads,
+            extra.as_ref(),
+        );
+        if is_nop_landing_pad {
+            nop_landing_pads.insert(bb);
+        }
+        debug!("    is_nop_landing_pad({:?}) = {}", bb, is_nop_landing_pad);
+    }
+
+    nop_landing_pads
 }

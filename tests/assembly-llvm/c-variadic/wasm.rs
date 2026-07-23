@@ -6,7 +6,7 @@
 //@ [WASM32] needs-llvm-components: webassembly
 //@ [WASM64] compile-flags: -Copt-level=3 -Zmerge-functions=disabled --target wasm64-unknown-unknown
 //@ [WASM64] needs-llvm-components: webassembly
-#![feature(c_variadic, no_core, lang_items, intrinsics, rustc_attrs)]
+#![feature(no_core, lang_items, intrinsics, rustc_attrs)]
 #![no_core]
 #![crate_type = "lib"]
 

@@ -17,7 +17,7 @@
 //@ [win] only-windows
 //@ [win] only-x86_64
 
-#![feature(rustc_attrs, c_variadic)]
+#![feature(rustc_attrs)]
 #![crate_type = "lib"]
 
 // Can't use `minicore` here as this is testing the implementation in `core::ffi` specifically.

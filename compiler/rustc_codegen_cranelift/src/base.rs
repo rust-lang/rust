@@ -7,6 +7,7 @@ use cranelift_module::ModuleError;
 use rustc_ast::InlineAsmOptions;
 use rustc_codegen_ssa::base::is_call_from_compiler_builtins_to_upstream_monomorphization;
 use rustc_data_structures::profiling::SelfProfilerRef;
+use rustc_errors::DiagCtxtHandle;
 use rustc_index::IndexVec;
 use rustc_middle::ty::TypeVisitableExt;
 use rustc_middle::ty::adjustment::PointerCoercion;
@@ -18,7 +19,7 @@ use rustc_span::Symbol;
 use crate::constant::ConstantCx;
 use crate::debuginfo::{FunctionDebugContext, TypeDebugContext};
 use crate::prelude::*;
-use crate::pretty_clif::CommentWriter;
+use crate::pretty_clif::{CommentWriter, format_clif_ir_header};
 use crate::{codegen_f16_f128, enable_verifier};
 
 pub(crate) struct CodegenedFunction {
@@ -119,7 +120,7 @@ pub(crate) fn codegen_fn<'tcx>(
 
     tcx.prof.generic_activity("codegen clif ir").run(|| codegen_fn_body(&mut fx, start_block));
     fx.bcx.seal_all_blocks();
-    fx.bcx.finalize();
+    fx.bcx.finalize(fx.module.target_config());
 
     // Recover all necessary data from fx, before accessing func will prevent future access to it.
     let symbol_name = fx.symbol_name;
@@ -148,6 +149,7 @@ pub(crate) fn codegen_fn<'tcx>(
 
 pub(crate) fn compile_fn(
     prof: &SelfProfilerRef,
+    dcx: DiagCtxtHandle<'_>,
     output_filenames: &OutputFilenames,
     should_write_ir: bool,
     cached_context: &mut Context,
@@ -168,23 +170,15 @@ pub(crate) fn compile_fn(
 
     #[cfg(false)]
     let _clif_guard = {
-        use std::fmt::Write;
-
+        let isa = module.isa();
+        let symbol_name = &codegened_func.symbol_name;
         let func_clone = context.func.clone();
         let clif_comments_clone = clif_comments.clone();
-        let mut clif = String::new();
-        for flag in module.isa().flags().iter() {
-            writeln!(clif, "set {}", flag).unwrap();
-        }
-        write!(clif, "target {}", module.isa().triple().architecture.to_string()).unwrap();
-        for isa_flag in module.isa().isa_flags().iter() {
-            write!(clif, " {}", isa_flag).unwrap();
-        }
-        writeln!(clif, "\n").unwrap();
-        writeln!(clif, "; symbol {}", codegened_func.symbol_name).unwrap();
+
+        let clif = crate::pretty_clif::format_clif_ir_header(isa, symbol_name);
         crate::PrintOnPanic(move || {
             let mut clif = clif.clone();
-            ::cranelift_codegen::write::decorate_function(
+            cranelift_codegen::write::decorate_function(
                 &mut &clif_comments_clone,
                 &mut clif,
                 &func_clone,
@@ -200,28 +194,33 @@ pub(crate) fn compile_fn(
         match module.define_function(codegened_func.func_id, context) {
             Ok(()) => {}
             Err(ModuleError::Compilation(CodegenError::ImplLimitExceeded)) => {
-                let early_dcx = rustc_session::EarlyDiagCtxt::new(
-                    rustc_session::config::ErrorOutputType::default(),
-                );
-                early_dcx.early_fatal(format!(
+                dcx.fatal(format!(
                     "backend implementation limit exceeded while compiling {name}",
                     name = codegened_func.symbol_name
                 ));
             }
             Err(ModuleError::Compilation(CodegenError::Verifier(err))) => {
-                let early_dcx = rustc_session::EarlyDiagCtxt::new(
-                    rustc_session::config::ErrorOutputType::default(),
-                );
-                let _ = early_dcx.early_err(format!("{:?}", err));
+                dcx.err(format!("{err:?}"));
                 let pretty_error = cranelift_codegen::print_errors::pretty_verifier_error(
                     &context.func,
                     Some(Box::new(&clif_comments)),
                     err,
                 );
-                early_dcx.early_fatal(format!("cranelift verify error:\n{}", pretty_error));
+                dcx.fatal(format!("cranelift verify error:\n{pretty_error}"));
             }
             Err(err) => {
-                panic!("Error while defining {name}: {err:?}", name = codegened_func.symbol_name);
+                let mut clif = format_clif_ir_header(module.isa(), &codegened_func.symbol_name);
+                cranelift_codegen::write::decorate_function(
+                    &mut &clif_comments,
+                    &mut clif,
+                    &context.func,
+                )
+                .unwrap();
+
+                panic!(
+                    "Error while defining {name}: {err:?}\n\nPost-optimization Cranelift IR:\n{clif}",
+                    name = codegened_func.symbol_name
+                );
             }
         }
     });
@@ -639,10 +638,11 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
                     let ref_ = place.place_ref(fx, lval.layout());
                     lval.write_cvalue(fx, ref_);
                 }
-                Rvalue::Reborrow(_, _, place) => {
+                Rvalue::Reborrow(ty, _, place) => {
+                    assert_eq!(lval.layout().ty, ty);
                     let cplace = codegen_place(fx, place);
                     let val = cplace.to_cvalue(fx);
-                    lval.write_cvalue(fx, val)
+                    lval.write_cvalue_transmute(fx, val)
                 }
                 Rvalue::ThreadLocalRef(def_id) => {
                     let val = crate::constant::codegen_tls_ref(fx, def_id, lval.layout());
@@ -667,7 +667,7 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
                             let val = operand.load_scalar(fx);
                             match layout.ty.kind() {
                                 ty::Bool => {
-                                    let res = fx.bcx.ins().icmp_imm(IntCC::Equal, val, 0);
+                                    let res = fx.bcx.ins().icmp_imm_u(IntCC::Equal, val, 0);
                                     CValue::by_val(res, layout)
                                 }
                                 ty::Uint(_) | ty::Int(_) => {
@@ -695,7 +695,7 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
                         }
                         UnOp::PtrMetadata => match layout.backend_repr {
                             BackendRepr::Scalar(_) => CValue::zst(dest_layout),
-                            BackendRepr::ScalarPair { a: _, b: _, b_offset: _ } => {
+                            BackendRepr::ScalarPair { .. } => {
                                 CValue::by_val(operand.load_scalar_pair(fx).1, dest_layout)
                             }
                             _ => bug!("Unexpected `PtrToMetadata` operand: {operand:?}"),
@@ -855,13 +855,13 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
                         fx.bcx.ins().jump(loop_block, &[zero.into()]);
 
                         fx.bcx.switch_to_block(loop_block);
-                        let done = fx.bcx.ins().icmp_imm(IntCC::Equal, index, times as i64);
+                        let done = fx.bcx.ins().icmp_imm_u(IntCC::Equal, index, times as i64);
                         fx.bcx.ins().brif(done, done_block, &[], loop_block2, &[]);
 
                         fx.bcx.switch_to_block(loop_block2);
                         let to = lval.place_index(fx, index);
                         to.write_cvalue(fx, operand);
-                        let index = fx.bcx.ins().iadd_imm(index, 1);
+                        let index = fx.bcx.ins().iadd_imm_u(index, 1);
                         fx.bcx.ins().jump(loop_block, &[index.into()]);
 
                         fx.bcx.switch_to_block(done_block);
@@ -953,7 +953,7 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
                 let count = codegen_operand(fx, count).load_scalar(fx);
 
                 let bytes = if elem_size != 1 {
-                    fx.bcx.ins().imul_imm(count, elem_size as i64)
+                    fx.bcx.ins().imul_imm_u(count, elem_size as i64)
                 } else {
                     count
                 };
@@ -1006,7 +1006,7 @@ pub(crate) fn codegen_place<'tcx>(
                     fx.bcx.ins().iconst(fx.pointer_type, offset as i64)
                 } else {
                     let len = codegen_array_len(fx, cplace);
-                    fx.bcx.ins().iadd_imm(len, -(offset as i64))
+                    fx.bcx.ins().iadd_imm_s(len, -(offset as i64))
                 };
                 cplace = cplace.place_index(fx, index);
             }
@@ -1033,7 +1033,7 @@ pub(crate) fn codegen_place<'tcx>(
                         let (ptr, len) = cplace.to_ptr_unsized();
                         cplace = CPlace::for_ptr_with_extra(
                             ptr.offset_i64(fx, elem_layout.size.bytes() as i64 * (from as i64)),
-                            fx.bcx.ins().iadd_imm(len, -(from as i64 + to as i64)),
+                            fx.bcx.ins().iadd_imm_s(len, -(from as i64 + to as i64)),
                             cplace.layout(),
                         );
                     }

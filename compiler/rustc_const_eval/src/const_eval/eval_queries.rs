@@ -19,7 +19,7 @@ use crate::const_eval::CheckAlignment;
 use crate::interpret::{
     CtfeValidationMode, GlobalId, Immediate, InternError, InternKind, InterpCx, InterpErrorKind,
     InterpResult, MPlaceTy, MemoryKind, OpTy, RefTracking, ReturnContinuation, create_static_alloc,
-    intern_const_alloc_recursive, interp_ok, throw_exhaust,
+    ensure_monomorphic_enough, intern_const_alloc_recursive, interp_ok, throw_exhaust,
 };
 use crate::{CTRL_C_RECEIVED, diagnostics};
 
@@ -96,8 +96,10 @@ fn eval_body_using_ecx<'tcx, R: InterpretationResult<'tcx>>(
     body: &'tcx mir::Body<'tcx>,
 ) -> InterpResult<'tcx, R> {
     let tcx = *ecx.tcx;
-    let layout = ecx
-        .layout_of(body.bound_return_ty(tcx).instantiate(tcx, cid.instance.args).skip_norm_wip())?;
+    let ty = body.bound_return_ty(tcx).instantiate(tcx, cid.instance.args).skip_norm_wip();
+    ensure_monomorphic_enough(ty)?;
+
+    let layout = ecx.layout_of(ty)?;
     let (intern_kind, ret) = setup_for_eval(ecx, cid, layout)?;
 
     trace!(

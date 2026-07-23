@@ -4,8 +4,6 @@
 //@ ignore-backends: gcc
 //@ run-pass
 
-#![feature(c_variadic)]
-
 trait Trait {
     unsafe extern "C" fn foo(x: i32, y: i32, mut ap: ...) -> i32 {
         x + y + ap.next_arg::<i32>() + ap.next_arg::<i32>()

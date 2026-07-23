@@ -335,7 +335,8 @@ fn generate_default_impl(
             span,
             underscore,
             unit,
-            ast::ConstItemRhsKind::new_body(ecx.expr_block(ecx.block(span, stmts))),
+            Some(ecx.expr_block(ecx.block(span, stmts))),
+            ast::ConstItemKind::Body,
         )
     };
 

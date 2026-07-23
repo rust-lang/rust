@@ -83,7 +83,7 @@ mod prelude {
     pub(crate) use cranelift_codegen::ir::condcodes::{FloatCC, IntCC};
     pub(crate) use cranelift_codegen::ir::function::Function;
     pub(crate) use cranelift_codegen::ir::{
-        AbiParam, Block, FuncRef, Inst, InstBuilder, MemFlags, Signature, SourceLoc, StackSlot,
+        AbiParam, Block, FuncRef, Inst, InstBuilder, MemFlagsData, Signature, SourceLoc, StackSlot,
         StackSlotData, StackSlotKind, TrapCode, Type, Value, types,
     };
     pub(crate) use cranelift_module::{self, DataDescription, FuncId, Linkage, Module};

@@ -1,7 +1,7 @@
 use std::num::NonZero;
 
+use rustc_data_structures::Limit;
 use rustc_data_structures::unord::UnordMap;
-use rustc_hir::limit::Limit;
 use rustc_middle::bug;
 #[expect(unused_imports, reason = "used by doc comments")]
 use rustc_middle::dep_graph::DepKindVTable;

@@ -189,7 +189,7 @@ fn eq_expr(l: &Expr, r: &Expr) -> bool {
                 && eq_expr(&lf.iter, &rf.iter)
                 && eq_block(&lf.body, &rf.body)
                 && lf.kind == rf.kind
-        }
+        },
         (Loop(lt, ll, _), Loop(rt, rl, _)) => eq_label(ll.as_ref(), rl.as_ref()) && eq_block(lt, rt),
         (Block(lb, ll), Block(rb, rl)) => eq_label(ll.as_ref(), rl.as_ref()) && eq_block(lb, rb),
         (TryBlock(lb, lt), TryBlock(rb, rt)) => eq_block(lb, rb) && both(lt.as_deref(), rt.as_deref(), eq_ty),
@@ -350,7 +350,8 @@ fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 ident: li,
                 generics: lg,
                 ty: lt,
-                rhs_kind: lb,
+                body: lb,
+                kind: lk,
                 define_opaque: _,
             }),
             Const(box ConstItem {
@@ -358,7 +359,9 @@ fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 ident: ri,
                 generics: rg,
                 ty: rt,
-                rhs_kind: rb,
+
+                body: rb,
+                kind: rk,
                 define_opaque: _,
             }),
         ) => {
@@ -366,7 +369,8 @@ fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 && eq_id(*li, *ri)
                 && eq_generics(lg, rg)
                 && eq_ty(lt, rt)
-                && both(Some(lb), Some(rb), eq_const_item_rhs)
+                && lk == rk
+                && both(lb.as_deref(), rb.as_deref(), eq_expr)
         },
         (
             Fn(box ast::Fn {
@@ -615,7 +619,8 @@ fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
                 ident: li,
                 generics: lg,
                 ty: lt,
-                rhs_kind: lb,
+                body: lb,
+                kind: lk,
                 define_opaque: _,
             }),
             Const(box ConstItem {
@@ -623,7 +628,8 @@ fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
                 ident: ri,
                 generics: rg,
                 ty: rt,
-                rhs_kind: rb,
+                body: rb,
+                kind: rk,
                 define_opaque: _,
             }),
         ) => {
@@ -631,7 +637,8 @@ fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
                 && eq_id(*li, *ri)
                 && eq_generics(lg, rg)
                 && eq_ty(lt, rt)
-                && both(Some(lb), Some(rb), eq_const_item_rhs)
+                && lk == rk
+                && both(lb.as_deref(), rb.as_deref(), eq_expr)
         },
         (
             Fn(box ast::Fn {
@@ -789,21 +796,6 @@ fn eq_use_tree(l: &UseTree, r: &UseTree) -> bool {
 
 fn eq_anon_const(l: &AnonConst, r: &AnonConst) -> bool {
     eq_expr(&l.value, &r.value)
-}
-
-fn eq_const_item_rhs(l: &ConstItemRhsKind, r: &ConstItemRhsKind) -> bool {
-    use ConstItemRhsKind::*;
-    match (l, r) {
-        (TypeConst { rhs: Some(l) }, TypeConst { rhs: Some(r) }) => eq_anon_const(l, r),
-        (TypeConst { rhs: None }, TypeConst { rhs: None }) | (Body { rhs: None }, Body { rhs: None }) => true,
-        (Body { rhs: Some(l) }, Body { rhs: Some(r) }) => eq_expr(l, r),
-        (TypeConst { rhs: Some(..) }, TypeConst { rhs: None })
-        | (TypeConst { rhs: None }, TypeConst { rhs: Some(..) })
-        | (Body { rhs: None }, Body { rhs: Some(..) })
-        | (Body { rhs: Some(..) }, Body { rhs: None })
-        | (TypeConst { .. }, Body { .. })
-        | (Body { .. }, TypeConst { .. }) => false,
-    }
 }
 
 fn eq_use_tree_kind(l: &UseTreeKind, r: &UseTreeKind) -> bool {
@@ -1003,9 +995,7 @@ fn eq_attr(l: &Attribute, r: &Attribute) -> bool {
     l.style == r.style
         && match (&l.kind, &r.kind) {
             (DocComment(l1, l2), DocComment(r1, r2)) => l1 == r1 && l2 == r2,
-            (Normal(l), Normal(r)) => {
-                eq_path(&l.item.path, &r.item.path) && eq_attr_args(&l.item.args, &r.item.args)
-            },
+            (Normal(l), Normal(r)) => eq_path(&l.item.path, &r.item.path) && eq_attr_args(&l.item.args, &r.item.args),
             (Synthetic(..), _) | (_, Synthetic(..)) => unreachable!(),
             _ => false,
         }

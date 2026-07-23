@@ -962,6 +962,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         for arg in args {
             match arg.val {
                 OperandValue::ZeroSized => {}
+                OperandValue::Uninit => {}
                 OperandValue::Immediate(a) => llargs.push(a),
                 OperandValue::Pair(a, b) => {
                     llargs.push(a);
@@ -1939,7 +1940,7 @@ fn get_args_from_tuple<'ll, 'tcx>(
             result
         }
 
-        OperandValue::ZeroSized => vec![],
+        OperandValue::ZeroSized | OperandValue::Uninit => vec![],
     }
 }
 

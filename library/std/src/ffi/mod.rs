@@ -166,12 +166,7 @@ pub mod c_str;
 
 #[stable(feature = "core_c_void", since = "1.30.0")]
 pub use core::ffi::c_void;
-#[unstable(
-    feature = "c_variadic",
-    reason = "the `c_variadic` feature has not been properly tested on \
-              all supported platforms",
-    issue = "44930"
-)]
+#[stable(feature = "c_variadic", since = "CURRENT_RUSTC_VERSION")]
 pub use core::ffi::{VaArgSafe, VaList};
 #[stable(feature = "core_ffi_c", since = "1.64.0")]
 pub use core::ffi::{

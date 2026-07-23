@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
+use rustc_data_structures::Limit;
 use rustc_errors::codes::*;
-use rustc_hir::limit::Limit;
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Ident, MacroRulesNormalizedIdent, Span, Symbol};
 

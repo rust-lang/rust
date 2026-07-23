@@ -100,12 +100,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ) {
         match *rvalue {
             mir::Rvalue::Use(ref operand, with_retag) => {
-                if let mir::Operand::Constant(const_op) = operand {
-                    let val = self.eval_mir_constant(&const_op);
-                    if val.all_bytes_uninit(self.cx.tcx()) {
-                        return;
-                    }
-                }
                 let cg_operand = self.codegen_operand(bx, operand);
                 // Crucially, we do *not* use `OperandValue::Ref` for types with
                 // `BackendRepr::Scalar | BackendRepr::ScalarPair`. This ensures we match the MIR
@@ -176,6 +170,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     OperandValue::ZeroSized => {
                         bug!("unsized coercion on a ZST rvalue");
                     }
+                    OperandValue::Uninit => {
+                        bug!("unsized coercion on an uninit rvalue");
+                    }
                 }
             }
 
@@ -194,24 +191,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     return;
                 }
 
-                // When the element is a const with all bytes uninit, emit a single memset that
-                // writes undef to the entire destination.
-                if let mir::Operand::Constant(const_op) = elem {
-                    let val = self.eval_mir_constant(const_op);
-                    if val.all_bytes_uninit(self.cx.tcx()) {
-                        let size = bx.const_usize(dest.layout.size.bytes());
-                        bx.memset(
-                            dest.val.llval,
-                            bx.const_undef(bx.type_i8()),
-                            size,
-                            dest.val.align,
-                            MemFlags::empty(),
-                        );
-                        return;
-                    }
-                }
-
                 let cg_elem = self.codegen_operand(bx, elem);
+
+                if let OperandValue::Uninit = cg_elem.val {
+                    return;
+                }
 
                 let try_init_all_same = |bx: &mut Bx, v| {
                     let start = dest.val.llval;
@@ -372,6 +356,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let cx = bx.cx();
         match (operand.val, operand.layout.backend_repr, cast.backend_repr) {
             _ if cast.is_zst() => OperandValue::ZeroSized,
+            (OperandValue::Uninit, _, _) => OperandValue::Uninit,
             (OperandValue::Ref(source_place_val), abi::BackendRepr::Memory { .. }, _) => {
                 assert_eq!(source_place_val.llextra, None);
                 // The existing alignment is part of `source_place_val`,

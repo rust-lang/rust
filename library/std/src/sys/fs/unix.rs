@@ -2079,9 +2079,6 @@ pub fn link(original: &CStr, link: &CStr) -> io::Result<()> {
             target_os = "vxworks",
             target_os = "redox",
             target_os = "espidf",
-            // Android has `linkat` on newer versions, but we happen to know
-            // `link` always has the correct behavior, so it's here as well.
-            target_os = "android",
             // Other misc platforms
             target_os = "horizon",
             target_os = "vita",

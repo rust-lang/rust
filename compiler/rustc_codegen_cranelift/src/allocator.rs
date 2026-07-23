@@ -73,7 +73,7 @@ pub(crate) fn codegen(tcx: TyCtxt<'_>, module: &mut dyn Module, methods: &[Alloc
         bcx.switch_to_block(block);
         bcx.ins().return_(&[]);
         bcx.seal_all_blocks();
-        bcx.finalize();
+        bcx.finalize(module.target_config());
 
         module.define_function(func_id, &mut ctx).unwrap();
     }

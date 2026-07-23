@@ -1,12 +1,11 @@
 use std::fmt;
 use std::ops::{Div, Mul};
 
-use rustc_error_messages::{DiagArgValue, IntoDiagArg};
-use rustc_macros::{Decodable, Encodable, StableHash};
+use rustc_macros::{Decodable_NoContext, Encodable_NoContext, StableHash};
 
 /// New-type wrapper around `usize` for representing limits. Ensures that comparisons against
 /// limits are consistent throughout the compiler.
-#[derive(Clone, Copy, Debug, StableHash, Encodable, Decodable)]
+#[derive(Clone, Copy, Debug, StableHash, Encodable_NoContext, Decodable_NoContext)]
 pub struct Limit(pub usize);
 
 impl Limit {
@@ -53,11 +52,5 @@ impl Mul<usize> for Limit {
 
     fn mul(self, rhs: usize) -> Self::Output {
         Limit::new(self.0 * rhs)
-    }
-}
-
-impl IntoDiagArg for Limit {
-    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
-        self.to_string().into_diag_arg(&mut None)
     }
 }
