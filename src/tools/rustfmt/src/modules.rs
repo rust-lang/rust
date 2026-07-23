@@ -16,7 +16,7 @@ use crate::parse::parser::{
     Directory, DirectoryOwnership, ModError, ModulePathSuccess, Parser, ParserError,
 };
 use crate::parse::session::ParseSess;
-use crate::utils::{contains_skip, mk_sp};
+use crate::utils::{contains_custom_attributes, contains_skip, mk_sp};
 
 mod visitor;
 
@@ -472,6 +472,16 @@ impl<'ast, 'psess, 'c> ModResolver<'ast, 'psess> {
             }
             Err(e) => match e {
                 ModError::FileNotFound(_, default_path, _secondary_path) => {
+                    if contains_custom_attributes(attrs) {
+                        // It's possible that at least one of the attributes is a custom proc macro
+                        // that takes the module tokens as an input. It's hard to know for sure
+                        // since rustfmt only operates on the AST pre-expansion. In this case we'll
+                        // be overly permissive and just ignore the file not found error so rustfmt
+                        // can still try formatting the input.
+                        tracing::warn!("Couldn't find file for mod {};`", mod_name.to_string());
+                        return Ok(None);
+                    }
+
                     Err(ModuleResolutionError {
                         module: mod_name.to_string(),
                         kind: ModuleResolutionErrorKind::NotFound { file: default_path },
