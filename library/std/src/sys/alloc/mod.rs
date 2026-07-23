@@ -116,6 +116,8 @@ cfg_select! {
 }
 
 pub use imp::{alloc, dealloc, realloc};
+#[cfg(sanitize = "alloc-token")]
+pub use imp::{alloc_with_token, alloc_zeroed_with_token, realloc_with_token};
 
 cfg_select! {
     any(

@@ -1,8 +1,9 @@
 use libc::c_uint;
 use rustc_ast::expand::allocator::{
     AllocatorMethod, AllocatorTy, NO_ALLOC_SHIM_IS_UNSTABLE, SpecialAllocatorMethod,
-    default_fn_name, global_fn_name,
+    default_fn_name, default_fn_name_alloc_token, global_fn_name,
 };
+use rustc_codegen_ssa::base::allocator_shim_method_name;
 use rustc_codegen_ssa::traits::BaseTypeCodegenMethods as _;
 use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
@@ -61,8 +62,26 @@ pub(crate) unsafe fn codegen(
             }
         };
 
-        let from_name = mangle_internal_symbol(tcx, &global_fn_name(method.name));
-        let to_name = mangle_internal_symbol(tcx, &default_fn_name(method.name));
+        let from_name = allocator_shim_method_name(tcx, method);
+        let to_name = if method.with_token {
+            if method.forward_to_global {
+                // Forward to the non-token-enabled allocation function of the allocator
+                // registered with the `#[global_allocator]` attribute, ignoring the token
+                // identifier, for backward compatibility with existing allocators.
+                mangle_internal_symbol(tcx, &global_fn_name(method.name))
+            } else {
+                mangle_internal_symbol(tcx, &default_fn_name_alloc_token(method.name))
+            }
+        } else {
+            mangle_internal_symbol(tcx, &default_fn_name(method.name))
+        };
+        // The forwarded-to non-token-enabled allocation function does not take the token
+        // identifier argument (i.e., the last argument).
+        let to_args = if method.with_token && method.forward_to_global {
+            &args[..args.len() - 1]
+        } else {
+            &args[..]
+        };
 
         let alloc_attr_flag = match method.special {
             Some(SpecialAllocatorMethod::Alloc) => CodegenFnAttrFlags::ALLOCATOR,
@@ -80,6 +99,7 @@ pub(crate) unsafe fn codegen(
             &from_name,
             Some(&to_name),
             &args,
+            to_args,
             output,
             no_return,
             &attrs,
@@ -92,6 +112,7 @@ pub(crate) unsafe fn codegen(
         &cx,
         &mangle_internal_symbol(tcx, NO_ALLOC_SHIM_IS_UNSTABLE),
         None,
+        &[],
         &[],
         None,
         false,
@@ -111,6 +132,7 @@ fn create_wrapper_function(
     from_name: &str,
     to_name: Option<&str>,
     args: &[&Type],
+    to_args: &[&Type],
     output: Option<&Type>,
     no_return: bool,
     attrs: &CodegenFnAttrs,
@@ -151,13 +173,14 @@ fn create_wrapper_function(
     let mut bx = SBuilder::build(&cx, llbb);
 
     if let Some(to_name) = to_name {
+        let to_ty = cx.type_func(to_args, output.unwrap_or_else(|| cx.type_void()));
         let callee = declare_simple_fn(
             &cx,
             to_name,
             llvm::CallConv::CCallConv,
             llvm::UnnamedAddr::Global,
             llvm::Visibility::Hidden,
-            ty,
+            to_ty,
         );
         if let Some(no_return) = no_return {
             // -> ! DIFlagNoReturn
@@ -165,12 +188,12 @@ fn create_wrapper_function(
         }
         llvm::set_visibility(callee, llvm::Visibility::Hidden);
 
-        let args = args
+        let args = to_args
             .iter()
             .enumerate()
             .map(|(i, _)| llvm::get_param(llfn, i as c_uint))
             .collect::<Vec<_>>();
-        let ret = bx.call(ty, callee, &args, None);
+        let ret = bx.call(to_ty, callee, &args, None);
         llvm::LLVMSetTailCall(ret, TRUE);
         if output.is_some() {
             bx.ret(ret);

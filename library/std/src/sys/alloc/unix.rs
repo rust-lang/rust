@@ -74,6 +74,58 @@ pub unsafe fn realloc(ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 
     }
 }
 
+// Forward to the token-enabled C allocator interface, so that programs using the default
+// allocator can use a token-enabled C memory allocator for the whole program, including foreign
+// code, in mixed binaries, for LLVM AllocToken and heap partitioning support. There are no
+// token-enabled equivalents of `posix_memalign`/`aligned_alloc`, so allocations that require
+// more alignment than `malloc` provides (i.e., `MIN_ALIGN`) fall back to the non-token-enabled
+// allocation functions.
+#[cfg(sanitize = "alloc-token")]
+#[inline]
+pub unsafe fn alloc_with_token(layout: Layout, token: usize) -> *mut u8 {
+    if layout.align() <= MIN_ALIGN && layout.align() <= layout.size() {
+        unsafe { __alloc_token_malloc(layout.size(), token) as *mut u8 }
+    } else {
+        unsafe { alloc(layout) }
+    }
+}
+
+#[cfg(sanitize = "alloc-token")]
+#[inline]
+pub unsafe fn alloc_zeroed_with_token(layout: Layout, token: usize) -> *mut u8 {
+    if layout.align() <= MIN_ALIGN && layout.align() <= layout.size() {
+        unsafe { __alloc_token_calloc(1, layout.size(), token) as *mut u8 }
+    } else {
+        unsafe { alloc_zeroed(layout) }
+    }
+}
+
+#[cfg(sanitize = "alloc-token")]
+#[inline]
+pub unsafe fn realloc_with_token(
+    ptr: *mut u8,
+    layout: Layout,
+    new_size: usize,
+    token: usize,
+) -> *mut u8 {
+    if layout.align() <= MIN_ALIGN && layout.align() <= new_size {
+        unsafe { __alloc_token_realloc(ptr as *mut libc::c_void, new_size, token) as *mut u8 }
+    } else {
+        unsafe { realloc_fallback(ptr, layout, new_size) }
+    }
+}
+
+#[cfg(sanitize = "alloc-token")]
+unsafe extern "C" {
+    fn __alloc_token_malloc(size: usize, token: usize) -> *mut libc::c_void;
+    fn __alloc_token_calloc(count: usize, size: usize, token: usize) -> *mut libc::c_void;
+    fn __alloc_token_realloc(
+        ptr: *mut libc::c_void,
+        size: usize,
+        token: usize,
+    ) -> *mut libc::c_void;
+}
+
 cfg_select! {
     // We use posix_memalign wherever possible, but some targets have very incomplete POSIX coverage
     // so we need a fallback for those.
