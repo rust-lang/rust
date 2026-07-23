@@ -1569,6 +1569,8 @@ impl<'a> Parser<'a> {
         }
         Ok(MutRestriction {
             kind: RestrictionKind::Unrestricted,
+            // NOTE: this span is later thrown away
+            //  as a part of FieldDef size optimization.
             span: self.token.span.shrink_to_lo(),
         })
     }

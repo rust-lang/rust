@@ -894,13 +894,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 None => Ident::new(sym::integer(index), self.lower_span(f.span)),
             },
             vis_span: self.lower_span(f.vis.span),
-            mut_restriction: self.lower_mut_restriction(&f.mut_restriction),
+            mut_restriction: self.lower_mut_restriction(f.mut_restriction()),
             default: f
-                .default
-                .as_ref()
+                .default_value()
                 .map(|v| self.lower_anon_const_to_anon_const(v, v.value.span)),
             ty,
-            safety: self.lower_safety(f.safety, hir::Safety::Safe),
+            safety: self.lower_safety(f.safety(), hir::Safety::Safe),
         }
     }
 
