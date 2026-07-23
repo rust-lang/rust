@@ -30,7 +30,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_middle::bug;
-use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::middle::privacy::{self, Level};
 use rustc_middle::mir::interpret::{ConstAllocation, ErrorHandled, GlobalAlloc};
 use rustc_middle::query::Providers;
@@ -175,31 +175,15 @@ impl<'tcx> ReachableContext<'tcx> {
     }
 
     fn propagate_node(&mut self, node: &Node<'tcx>, search_item: LocalDefId) {
-        if !self.any_library {
-            // If we are building an executable, only explicitly extern
-            // types need to be exported.
-            let codegen_attrs = if self.tcx.def_kind(search_item).has_codegen_attrs() {
-                self.tcx.codegen_fn_attrs(search_item)
-            } else {
-                CodegenFnAttrs::EMPTY
-            };
-            let is_extern = codegen_attrs.contains_extern_indicator();
-            // Right now, the only way to get "foreign item symbol aliases" is by being an EII-implementation.
-            // EII implementations will generate under their own name but also under the name of some foreign item
-            // (hence alias) that may be in another crate. These functions are marked as always-reachable since
-            // it's very hard to track whether the original foreign item was reachable. It may live in another crate
-            // and may be reachable from sibling crates.
-            let has_foreign_aliases_eii = !codegen_attrs.foreign_item_symbol_aliases.is_empty();
-            if is_extern || has_foreign_aliases_eii {
-                self.reachable_symbols.insert(search_item);
-            }
-        } else {
-            // If we are building a library, then reachable symbols will
-            // continue to participate in linkage after this product is
-            // produced. In this case, we traverse the ast node, recursing on
-            // all reachable nodes from this one.
+        // If we are building a library, then reachable symbols will
+        // continue to participate in linkage after this product is
+        // produced.
+        // If we are building an executable, only things that explicitly need linkage control
+        // need to be exported.
+        if self.any_library || has_custom_linkage(self.tcx, search_item) {
             self.reachable_symbols.insert(search_item);
         }
+        // Traverse the ast node, recursing on all reachable nodes from this one.
 
         match *node {
             Node::Item(item) => {
@@ -444,6 +428,8 @@ fn has_custom_linkage(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         // FIXME(nbdd0121): `#[used]` are marked as reachable here so it's picked up by
         // `linked_symbols` in cg_ssa. They won't be exported in binary or cdylib due to their
         // `SymbolExportLevel::Rust` export level but may end up being exported in dylibs.
+        // Also note that Miri is relying on this to be able to find private `link_section` statics
+        // across all crates.
         || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_COMPILER)
         || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER)
         // Right now, the only way to get "foreign item symbol aliases" is by being an EII-implementation.
