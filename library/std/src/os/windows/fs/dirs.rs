@@ -155,11 +155,11 @@ impl HomeDirsExt for HomeDirs {
         let roaming_app_data = env::var_os("APPDATA")
             .map(PathBuf::from)
             .filter(|p| p.is_absolute())
-            .ok_or(const_error!(io::ErrorKind::InvalidData, "non-absolute %APPDATA%"))?;
+            .ok_or(const_error!(ErrorKind::InvalidData, "non-absolute %APPDATA%"))?;
         let local_app_data = env::var_os("LOCALAPPDATA")
             .map(PathBuf::from)
             .filter(|p| p.is_absolute())
-            .ok_or(const_error!(io::ErrorKind::InvalidData, "non-absolute %LOCALAPPDATA%"))?;
+            .ok_or(const_error!(ErrorKind::InvalidData, "non-absolute %LOCALAPPDATA%"))?;
 
         // AppData/Local -- system-local, doesn't make sense to sync to another
         // AppData/Roaming -- data that makes sense to sync across machines
