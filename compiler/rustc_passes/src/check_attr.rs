@@ -473,7 +473,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     fn check_eii_impl(&self, impls: &[EiiImpl], target: Target) {
-        for EiiImpl { span, inner_span, resolution, impl_marked_unsafe, is_default: _ } in impls {
+        for EiiImpl { span, inner_span, resolution, impl_unsafe_span, is_default: _ } in impls {
             match target {
                 Target::Fn | Target::Static => {}
                 _ => {
@@ -481,35 +481,48 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 }
             }
 
-            let needs_unsafe = match resolution {
-                EiiImplResolution::Macro(eii_macro) => {
-                    find_attr!(self.tcx, *eii_macro, EiiDeclaration(EiiDecl { impl_unsafe, .. }) if *impl_unsafe)
-                }
-                EiiImplResolution::Known(foreign_item_did) => {
-                    let foreign_item_did = *foreign_item_did;
-                    self.tcx
-                        .externally_implementable_items(foreign_item_did.krate)
-                        .get(&foreign_item_did)
-                        .map(|(decl, _)| decl.impl_unsafe)
-                        .unwrap_or(false)
-                }
-                EiiImplResolution::Error(_) => false,
+            let impl_unsafe = match resolution {
+                EiiImplResolution::Macro(eii_macro) => find_attr!(
+                    self.tcx,
+                    *eii_macro,
+                    EiiDeclaration(EiiDecl { impl_unsafe, .. }) => *impl_unsafe
+                ),
+                EiiImplResolution::Known(foreign_item_did) => self
+                    .tcx
+                    .externally_implementable_items(foreign_item_did.krate)
+                    .get(foreign_item_did)
+                    .map(|(decl, _)| decl.impl_unsafe),
+                EiiImplResolution::Error(_) => None,
+            };
+            let Some(needs_unsafe) = impl_unsafe else {
+                continue;
             };
 
-            if needs_unsafe && !impl_marked_unsafe {
-                let name = match resolution {
-                    EiiImplResolution::Macro(eii_macro) => self.tcx.item_name(*eii_macro),
-                    EiiImplResolution::Known(def_id) => self.tcx.item_name(*def_id),
-                    EiiImplResolution::Error(_) => unreachable!(),
-                };
-                self.dcx().emit_err(diagnostics::EiiImplRequiresUnsafe {
-                    span: *span,
-                    name,
-                    suggestion: diagnostics::EiiImplRequiresUnsafeSuggestion {
-                        left: inner_span.shrink_to_lo(),
-                        right: inner_span.shrink_to_hi(),
-                    },
-                });
+            let name = match resolution {
+                EiiImplResolution::Macro(eii_macro) => self.tcx.item_name(*eii_macro),
+                EiiImplResolution::Known(def_id) => self.tcx.item_name(*def_id),
+                EiiImplResolution::Error(_) => unreachable!(),
+            };
+
+            match (needs_unsafe, *impl_unsafe_span) {
+                (true, None) => {
+                    self.dcx().emit_err(diagnostics::EiiImplRequiresUnsafe {
+                        span: *span,
+                        name,
+                        suggestion: diagnostics::EiiImplRequiresUnsafeSuggestion {
+                            left: inner_span.shrink_to_lo(),
+                            right: inner_span.shrink_to_hi(),
+                        },
+                    });
+                }
+                (false, Some(unsafe_span)) => {
+                    self.dcx().emit_err(diagnostics::EiiImplCannotBeUnsafe {
+                        impl_span: *span,
+                        unsafe_span,
+                        name,
+                    });
+                }
+                _ => {}
             }
         }
     }
