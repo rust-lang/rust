@@ -142,8 +142,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// version (resolve_vars_if_possible), this version will
     /// also select obligations if it seems useful, in an effort
     /// to get more type information.
-    // FIXME(-Znext-solver): A lot of the calls to this method should
-    // probably be `resolve_vars_with_obligations` or `structurally_resolve_type` instead.
     #[instrument(skip(self), level = "debug", ret)]
     pub(crate) fn resolve_vars_with_obligations<T: TypeFoldable<TyCtxt<'tcx>>>(
         &self,
