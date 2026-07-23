@@ -1,8 +1,10 @@
 //@ add-minicore
-//@ revisions: aarch64 arm64ec
+//@ revisions: aarch64 aarch64_be arm64ec
 //@ assembly-output: emit-asm
 //@ [aarch64] compile-flags: --target aarch64-unknown-linux-gnu
 //@ [aarch64] needs-llvm-components: aarch64
+//@ [aarch64_be] compile-flags: --target aarch64_be-unknown-linux-gnu
+//@ [aarch64_be] needs-llvm-components: aarch64
 //@ [arm64ec] compile-flags: --target arm64ec-pc-windows-msvc
 //@ [arm64ec] needs-llvm-components: aarch64
 //@ compile-flags: -Zmerge-functions=disabled
