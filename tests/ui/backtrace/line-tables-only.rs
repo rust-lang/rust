@@ -45,10 +45,11 @@ fn main() {
 
     // FIXME(jieyouxu): for some forsaken reason on i686-msvc `foo` doesn't have an entry in the
     // line tables?
+    // And with #143208 we also lost `bar` in the line tables.
     #[cfg(not(all(target_pointer_width = "32", target_env = "msvc")))]
     {
         assert_contains(&backtrace, "foo", "line-tables-only-helper.rs", 5);
+        assert_contains(&backtrace, "bar", "line-tables-only-helper.rs", 10);
     }
-    assert_contains(&backtrace, "bar", "line-tables-only-helper.rs", 10);
     assert_contains(&backtrace, "baz", "line-tables-only-helper.rs", 5);
 }

@@ -62,6 +62,19 @@ index 2e16f2cf27..3ac3df99a8 100644
          # Add RUSTFLAGS_BOOTSTRAP to RUSTFLAGS for bootstrap compilation.
          # Note that RUSTFLAGS_BOOTSTRAP should always be added to the end of
          # RUSTFLAGS, since that causes RUSTFLAGS_BOOTSTRAP to override RUSTFLAGS.
+diff --git a/src/bootstrap/src/core/builder/cargo.rs b/src/bootstrap/src/core/builder/cargo.rs
+index 6de70c7d70c..d5035b581ce 100644
+--- a/src/bootstrap/src/core/builder/cargo.rs
++++ b/src/bootstrap/src/core/builder/cargo.rs
+@@ -1197,7 +1197,7 @@ fn cargo(
+         cargo.env("RUSTC_BOOTSTRAP", "1");
+
+         if matches!(mode, Mode::Std) {
+-            cargo.arg("-Zno-embed-metadata");
++            cargo.arg("-Zembed-metadata=no");
+         }
+
+         if self.config.dump_bootstrap_shims {
 diff --git a/src/bootstrap/src/core/config/config.rs b/src/bootstrap/src/core/config/config.rs
 index bc68bfe396..00143ef3ed 100644
 --- a/src/bootstrap/src/core/config/config.rs

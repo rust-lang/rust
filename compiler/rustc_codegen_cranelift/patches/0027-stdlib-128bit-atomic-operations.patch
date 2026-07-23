@@ -37,14 +37,15 @@ diff --git a/library/core/src/sync/atomic.rs b/library/core/src/sync/atomic.rs
 index 8a9a0b5..92ed9a6 100644
 --- a/library/core/src/sync/atomic.rs
 +++ b/library/core/src/sync/atomic.rs
-@@ -3762,42 +3757,6 @@ atomic_int! {
+@@ -3762,44 +3757,6 @@ atomic_int! {
      8,
      u64 AtomicU64
  }
--#[cfg(target_has_atomic_load_store = "128")]
+-#[cfg(any(target_has_atomic_load_store = "128", doc))]
 -atomic_int! {
--    cfg(target_has_atomic = "128"),
--    cfg(target_has_atomic_primitive_alignment = "128"),
+-    target_has_atomic_load_store = "128",
+-    target_has_atomic = "128",
+-    target_has_atomic_primitive_alignment = "128",
 -    unstable(feature = "integer_atomics", issue = "99069"),
 -    unstable(feature = "integer_atomics", issue = "99069"),
 -    unstable(feature = "integer_atomics", issue = "99069"),
@@ -59,10 +60,11 @@ index 8a9a0b5..92ed9a6 100644
 -    16,
 -    i128 AtomicI128
 -}
--#[cfg(target_has_atomic_load_store = "128")]
+-#[cfg(any(target_has_atomic_load_store = "128", doc))]
 -atomic_int! {
--    cfg(target_has_atomic = "128"),
--    cfg(target_has_atomic_primitive_alignment = "128"),
+-    target_has_atomic_load_store = "128",
+-    target_has_atomic = "128",
+-    target_has_atomic_primitive_alignment = "128",
 -    unstable(feature = "integer_atomics", issue = "99069"),
 -    unstable(feature = "integer_atomics", issue = "99069"),
 -    unstable(feature = "integer_atomics", issue = "99069"),

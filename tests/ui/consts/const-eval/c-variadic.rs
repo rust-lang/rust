@@ -2,7 +2,6 @@
 //@ run-pass
 //@ ignore-backends: gcc
 
-#![feature(c_variadic)]
 #![feature(const_c_variadic)]
 #![feature(const_destruct)]
 #![feature(const_cmp)]

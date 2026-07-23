@@ -1,11 +1,11 @@
 use std::fmt;
 
+use rustc_data_structures::Limit;
 use rustc_data_structures::intern::Interned;
 use rustc_errors::{Applicability, Diag, IntoDiagArg};
 use rustc_hir as hir;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
-use rustc_hir::limit::Limit;
 use rustc_middle::bug;
 use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::print::{FmtPrinter, Print, PrintTraitRefExt as _, RegionHighlightMode};

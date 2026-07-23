@@ -4010,44 +4010,16 @@ pub struct ConstItem {
     pub ident: Ident,
     pub generics: Generics,
     pub ty: Box<Ty>,
-    pub rhs_kind: ConstItemRhsKind,
+    pub body: Option<Box<Expr>>,
+    #[visitable(ignore)]
+    pub kind: ConstItemKind,
     pub define_opaque: Option<ThinVec<(NodeId, Path)>>,
 }
 
-#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
-pub enum ConstItemRhsKind {
-    Body { rhs: Option<Box<Expr>> },
-    TypeConst { rhs: Option<AnonConst> },
-}
-
-impl ConstItemRhsKind {
-    pub fn new_body(rhs: Box<Expr>) -> Self {
-        Self::Body { rhs: Some(rhs) }
-    }
-
-    pub fn span(&self) -> Option<Span> {
-        Some(self.expr()?.span)
-    }
-
-    pub fn expr(&self) -> Option<&Expr> {
-        match self {
-            Self::Body { rhs: Some(body) } => Some(&body),
-            Self::TypeConst { rhs: Some(anon) } => Some(&anon.value),
-            _ => None,
-        }
-    }
-
-    pub fn has_expr(&self) -> bool {
-        match self {
-            Self::Body { rhs: Some(_) } => true,
-            Self::TypeConst { rhs: Some(_) } => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_type_const(&self) -> bool {
-        matches!(self, &Self::TypeConst { .. })
-    }
+#[derive(Clone, Copy, Encodable, Decodable, Debug, PartialEq, Eq)]
+pub enum ConstItemKind {
+    Body,
+    TypeConst,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]

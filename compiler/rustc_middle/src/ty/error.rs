@@ -4,10 +4,10 @@ use std::hash::{DefaultHasher, Hash, Hasher};
 use std::io::{Read, Write};
 use std::path::PathBuf;
 
+use rustc_data_structures::Limit;
 use rustc_errors::pluralize;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind};
-use rustc_hir::limit::Limit;
 use rustc_macros::extension;
 pub use rustc_type_ir::error::ExpectedFound;
 

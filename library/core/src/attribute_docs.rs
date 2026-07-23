@@ -555,3 +555,29 @@ mod track_caller_attribute {}
 /// [function-like procedural macros]: ../reference/procedural-macros.html#the-proc_macro-attribute
 /// [`proc_macro`]: ../proc_macro/index.html
 mod proc_macro_attribute {}
+
+#[doc(attribute = "link_section")]
+//
+/// Places a function or static in a specific object-file section.
+///
+/// The `link_section` attribute specifies the section of the generated object file where a
+/// function or static is placed. Section names and their meaning are target-specific.
+///
+/// ```rust,no_run
+/// # #[cfg(target_os = "linux")] {
+/// #[unsafe(link_section = ".example_section")]
+/// pub static VALUE: u32 = 42;
+/// # }
+/// ```
+///
+/// Incorrectly placing code or data in a section can violate requirements imposed by the target,
+/// linker, or runtime. For example, placing mutable data in a read-only section may result in
+/// undefined behavior. For this reason, `link_section` is an unsafe attribute.
+///
+/// Starting with the 2024 edition, the attribute must be written using the `unsafe(...)` syntax.
+/// Earlier editions also permit `#[link_section = "..."]`.
+///
+/// For more information, see the Reference on [the `link_section` attribute].
+///
+/// [the `link_section` attribute]: ../reference/abi.html#the-link_section-attribute
+mod link_section_attribute {}

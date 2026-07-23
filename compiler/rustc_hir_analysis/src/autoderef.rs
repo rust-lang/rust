@@ -1,4 +1,4 @@
-use rustc_hir::limit::Limit;
+use rustc_data_structures::Limit;
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::PredicateObligations;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, Unnormalized};

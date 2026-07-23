@@ -1,53 +1,53 @@
 error: expected type, found `,`
-  --> $DIR/issue-86053-1.rs:6:47
+  --> $DIR/issue-86053-1.rs:5:47
    |
 LL | fn ordering4 < 'a , 'b     > ( a :            ,   self , self ,   self ,
    |                                               ^ expected type
 
 error: unexpected `self` parameter in function
-  --> $DIR/issue-86053-1.rs:6:51
+  --> $DIR/issue-86053-1.rs:5:51
    |
 LL | fn ordering4 < 'a , 'b     > ( a :            ,   self , self ,   self ,
    |                                                   ^^^^ must be the first parameter of an associated function
 
 error: unexpected `self` parameter in function
-  --> $DIR/issue-86053-1.rs:6:58
+  --> $DIR/issue-86053-1.rs:5:58
    |
 LL | fn ordering4 < 'a , 'b     > ( a :            ,   self , self ,   self ,
    |                                                          ^^^^ must be the first parameter of an associated function
 
 error: unexpected `self` parameter in function
-  --> $DIR/issue-86053-1.rs:6:67
+  --> $DIR/issue-86053-1.rs:5:67
    |
 LL | fn ordering4 < 'a , 'b     > ( a :            ,   self , self ,   self ,
    |                                                                   ^^^^ must be the first parameter of an associated function
 
 error: unexpected `self` parameter in function
-  --> $DIR/issue-86053-1.rs:11:5
+  --> $DIR/issue-86053-1.rs:10:5
    |
 LL |     self , _: ... ,   self ,   self , _: ... ) where F : FnOnce ( & 'a & 'b usize ) {
    |     ^^^^ must be the first parameter of an associated function
 
 error: unexpected `self` parameter in function
-  --> $DIR/issue-86053-1.rs:11:23
+  --> $DIR/issue-86053-1.rs:10:23
    |
 LL |     self , _: ... ,   self ,   self , _: ... ) where F : FnOnce ( & 'a & 'b usize ) {
    |                       ^^^^ must be the first parameter of an associated function
 
 error: unexpected `self` parameter in function
-  --> $DIR/issue-86053-1.rs:11:32
+  --> $DIR/issue-86053-1.rs:10:32
    |
 LL |     self , _: ... ,   self ,   self , _: ... ) where F : FnOnce ( & 'a & 'b usize ) {
    |                                ^^^^ must be the first parameter of an associated function
 
 error: `...` must be the last argument of a C-variadic function
-  --> $DIR/issue-86053-1.rs:11:12
+  --> $DIR/issue-86053-1.rs:10:12
    |
 LL |     self , _: ... ,   self ,   self , _: ... ) where F : FnOnce ( & 'a & 'b usize ) {
    |            ^^^^^^
 
 error: `...` is not supported for non-extern functions
-  --> $DIR/issue-86053-1.rs:11:39
+  --> $DIR/issue-86053-1.rs:10:39
    |
 LL |     self , _: ... ,   self ,   self , _: ... ) where F : FnOnce ( & 'a & 'b usize ) {
    |                                       ^^^^^^
@@ -55,7 +55,7 @@ LL |     self , _: ... ,   self ,   self , _: ... ) where F : FnOnce ( & 'a & 'b
    = help: only `extern "C"` and `extern "C-unwind"` functions may have a C variable argument list
 
 error[E0425]: cannot find type `F` in this scope
-  --> $DIR/issue-86053-1.rs:11:54
+  --> $DIR/issue-86053-1.rs:10:54
    |
 LL |     self , _: ... ,   self ,   self , _: ... ) where F : FnOnce ( & 'a & 'b usize ) {
    |                                                      ^

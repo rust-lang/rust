@@ -76,7 +76,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
             CastKind::PointerCoercion(PointerCoercion::ReifyFnPointer(_), _) => {
                 // All reifications must be monomorphic, bail out otherwise.
-                ensure_monomorphic_enough(*self.tcx, src.layout.ty)?;
+                ensure_monomorphic_enough(src.layout.ty)?;
 
                 // The src operand does not matter, just its type
                 match *src.layout.ty.kind() {
@@ -112,7 +112,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
             CastKind::PointerCoercion(PointerCoercion::ClosureFnPointer(_), _) => {
                 // All reifications must be monomorphic, bail out otherwise.
-                ensure_monomorphic_enough(*self.tcx, src.layout.ty)?;
+                ensure_monomorphic_enough(src.layout.ty)?;
 
                 // The src operand does not matter, just its type
                 match *src.layout.ty.kind() {
@@ -445,8 +445,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
             _ => {
                 // Do not ICE if we are not monomorphic enough.
-                ensure_monomorphic_enough(*self.tcx, src.layout.ty)?;
-                ensure_monomorphic_enough(*self.tcx, cast_ty)?;
+                ensure_monomorphic_enough(src.layout.ty)?;
+                ensure_monomorphic_enough(cast_ty)?;
 
                 span_bug!(
                     self.cur_span(),
@@ -502,8 +502,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
             _ => {
                 // Do not ICE if we are not monomorphic enough.
-                ensure_monomorphic_enough(*self.tcx, src.layout.ty)?;
-                ensure_monomorphic_enough(*self.tcx, cast_ty.ty)?;
+                ensure_monomorphic_enough(src.layout.ty)?;
+                ensure_monomorphic_enough(cast_ty.ty)?;
 
                 span_bug!(
                     self.cur_span(),

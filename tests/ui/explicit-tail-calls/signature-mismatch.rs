@@ -1,6 +1,5 @@
 #![expect(incomplete_features)]
 #![feature(explicit_tail_calls, rust_tail_cc)]
-#![feature(c_variadic)]
 
 fn _f0((): ()) {
     become _g0(); //~ error: mismatched signatures
