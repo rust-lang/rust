@@ -1,5 +1,6 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/37725>.
+//@ compile-flags: -Zmir-opt-level=2
 //@ build-pass
-// compiler-opts: -Zmir-opt-level=2
 
 #![allow(dead_code)]
 trait Foo {

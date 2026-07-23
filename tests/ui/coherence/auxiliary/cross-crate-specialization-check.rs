@@ -1,3 +1,5 @@
+//! Auxiliary file for <https://github.com/rust-lang/rust/issues/37291>.
+
 #![crate_type = "lib"]
 
 use std::ops::Mul;

@@ -1,3 +1,4 @@
+//! Auxiliary file for <https://github.com/rust-lang/rust/issues/74236>.
 //@ edition:2018
 
 mod private { pub struct Pub; }

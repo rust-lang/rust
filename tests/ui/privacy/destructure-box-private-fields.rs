@@ -1,3 +1,6 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/38412>.
+//! This used to ICE with `encountered unmarked API`.
+
 fn main() {
     let Box(a) = loop { };
     //~^ ERROR cannot match against a tuple struct which contains private fields

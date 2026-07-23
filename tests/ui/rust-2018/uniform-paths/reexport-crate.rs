@@ -1,13 +1,14 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/52140>.
 //@ run-pass
-//@ aux-build:some_crate.rs
-//@ compile-flags:--extern some_crate
+//@ aux-build:reexport-crate.rs
+//@ compile-flags:--extern reexport_crate
 //@ edition:2018
 
 mod foo {
-    pub use some_crate;
+    pub use reexport_crate;
 }
 
 fn main() {
-    ::some_crate::hello();
-    foo::some_crate::hello();
+    ::reexport_crate::hello();
+    foo::reexport_crate::hello();
 }

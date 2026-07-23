@@ -1,3 +1,5 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/37311>.
+//! Test recursion with each step size increase don't hang compier forever.
 //@ build-fail
 //@ compile-flags: --diagnostic-width=100 -Zwrite-long-types-to-disk=yes
 

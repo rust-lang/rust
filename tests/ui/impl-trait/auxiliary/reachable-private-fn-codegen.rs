@@ -1,3 +1,4 @@
+//! Auxiliary file for <https://github.com/rust-lang/rust/issues/50865>.
 //@ revisions: default miropt
 //@[miropt]compile-flags: -Z mir-opt-level=3
 // ~^ This flag is for #77668, it used to be ICE.

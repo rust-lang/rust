@@ -1,16 +1,18 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/52141>.
+//! Test wildcard import resolves correctly while renamed.
 //@ run-pass
-//@ aux-build:some_crate.rs
-//@ compile-flags:--extern some_crate
+//@ aux-build:glob-import-renamed-crate.rs
+//@ compile-flags:--extern glob_import_renamed_crate
 //@ edition:2018
 
-use some_crate as some_name;
+use glob_import_renamed_crate as some_name;
 
 mod foo {
     pub use crate::some_name::*;
 }
 
 fn main() {
-    ::some_crate::hello();
+    ::glob_import_renamed_crate::hello();
     some_name::hello();
     foo::hello();
 }
