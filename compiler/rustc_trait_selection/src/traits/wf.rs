@@ -830,13 +830,8 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                 // perfect and there may be ways to abuse the fact that we
                 // ignore requirements with escaping bound vars. That's a
                 // more general issue however.
-                // If this is the item whose signature is currently being checked,
-                // its output is already on the WF stack. Walking it again can
-                // recurse through recovery consts that mention the same fn item.
-                if did.as_local() != Some(self.body_def_id) {
-                    let fn_sig = tcx.fn_sig(did).instantiate(tcx, args).skip_norm_wip();
-                    fn_sig.output().skip_binder().visit_with(self);
-                }
+                let fn_sig = tcx.fn_sig(did).instantiate(tcx, args).skip_norm_wip();
+                fn_sig.output().skip_binder().visit_with(self);
 
                 let obligations = self.nominal_obligations(did, args);
                 self.out.extend(obligations);
