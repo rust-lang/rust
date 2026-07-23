@@ -7,7 +7,6 @@
 //@[harness]check-pass
 //@ edition:2024
 
-
 // Note: the HIR revision includes a `.stderr` file because there are some
 // errors that only occur once we get past the AST.
 // The `harness` revision runs test-harness expansion (`--test`) over this
