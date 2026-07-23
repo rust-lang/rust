@@ -121,8 +121,8 @@ pub impl(self) trait MediaDirsExt: Sized {
 
 fn user_home() -> io::Result<PathBuf> {
     env::home_dir()
-        .filter(|p| !p.is_empty())
-        .ok_or(const_error!(ErrorKind::NotFound, "no home directory"))
+        .filter(|p| p.is_absolute())
+        .ok_or(const_error!(ErrorKind::InvalidData, "home path not absolute"))
 }
 
 #[unstable(feature = "dir_discovery", issue = "157515")]

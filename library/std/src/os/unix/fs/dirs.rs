@@ -1,4 +1,3 @@
-use crate::borrow::Cow;
 use crate::env::{self, JoinPathsError, SplitPaths, join_paths, split_paths, var_os};
 use crate::ffi::{OsStr, OsString};
 use crate::fs::{self, HomeDirs, MediaDirs};
@@ -257,41 +256,11 @@ impl MediaDirsExt for MediaDirs {
             Err(e) => return Err(e),
         };
 
-        for line in spec.split(|&b| b == b'\n') {
-            // trim leading whitespace
-            let trimmed = line.trim_ascii_start();
-            // skip empty lines and comments
-            if trimmed.is_empty() || trimmed.starts_with(&[b'#']) {
-                continue;
-            }
-
-            // only variable assignment lines are allowed; split on `=`
-            let mut split = trimmed.splitn(2, |&b| b == b'=');
-            // extract assignment parts; ignore lines not in this format
-            let Some(var) = split.next() else { continue };
-            let Some(val) = split.next() else { continue };
-            debug_assert_eq!(split.next(), None);
-
-            // the path value is quoted; unquote it
-            let Some(path) = xdg_unquote(val) else { continue };
-
-            // expand the $HOME prefix if present
-            let path = if path.starts_with(b"$HOME/") {
-                user_home.join(OsStr::from_bytes(&path[6..]))
-            } else {
-                PathBuf::from(OsString::from_vec(path.into_owned()))
-            };
-
-            // ignore relative paths
-            if path.is_relative() {
-                continue;
-            }
-
-            // setting to the home dir disables the directory configuration
-            let path = (path != user_home).then_some(path);
-
+        for (xdg, path) in
+            spec.split(|&b| b == b'\n').flat_map(|line| parse_user_dirs_line(line, &user_home))
+        {
             // load the known user directories
-            match var {
+            match xdg {
                 b"XDG_DESKTOP_DIR" => dirs.desktop = path,
                 b"XDG_DOCUMENTS_DIR" => dirs.documents = path,
                 b"XDG_DOWNLOAD_DIR" => dirs.downloads = path,
@@ -320,8 +289,8 @@ impl MediaDirsExt for MediaDirs {
 
 fn user_home() -> io::Result<PathBuf> {
     env::home_dir()
-        .filter(|p| !p.is_empty())
-        .ok_or(const_error!(ErrorKind::NotFound, "no home directory"))
+        .filter(|p| p.is_absolute())
+        .ok_or(const_error!(ErrorKind::InvalidData, "home path not absolute"))
 }
 
 fn xdg_dir(env: &str, fallback: impl FnOnce() -> PathBuf) -> PathBuf {
@@ -332,15 +301,51 @@ fn xdg_env(env: &str, fallback: &str) -> OsString {
     var_os(env).filter(|s| !s.is_empty()).unwrap_or_else(|| OsString::from(fallback))
 }
 
-fn xdg_unquote(bytes: &[u8]) -> Option<Cow<'_, [u8]>> {
-    let [b'"', bytes @ .., b'"'] = bytes else { return None };
-
-    if !bytes.contains(&b'\\') {
-        return Some(Cow::Borrowed(bytes));
+fn parse_user_dirs_line<'a>(
+    line: &'a [u8],
+    user_home: &Path,
+) -> Option<(&'a [u8], Option<PathBuf>)> {
+    // trim whitespace
+    let trimmed = line.trim_ascii();
+    // skip empty lines and comments
+    if trimmed.is_empty() || trimmed.starts_with(&[b'#']) {
+        return None;
     }
+
+    // only variable assignment lines are allowed; split on `=`
+    let mut split = trimmed.splitn(2, |&b| b == b'=');
+    // extract assignment parts; ignore lines not in this format
+    let var = split.next()?;
+    let val = split.next()?;
+    debug_assert_eq!(split.next(), None);
+
+    // the path value is quoted; unquote it
+    let path = xdg_unquote(val, user_home)?;
+
+    let path = Some(path)
+        // ignore non-absolute paths
+        .filter(|path| path.is_absolute())
+        // setting to the home dir disables the directory configuration
+        .filter(|path| path != user_home);
+
+    Some((var, path))
+}
+
+fn xdg_unquote(bytes: &[u8], user_home: &Path) -> Option<PathBuf> {
+    let [b'"', bytes @ .., b'"'] = bytes else { return None };
 
     let mut rest = bytes;
     let mut s = Vec::with_capacity(rest.len());
+
+    // expand leading $HOME only
+    if rest.starts_with(b"$HOME/") {
+        s.extend_from_slice(user_home.as_os_str().as_bytes());
+        if !user_home.has_trailing_sep() {
+            s.push(b'/');
+        }
+        rest = &rest[6..];
+    }
+
     loop {
         let i = rest
             .iter()
@@ -369,7 +374,7 @@ fn xdg_unquote(bytes: &[u8]) -> Option<Cow<'_, [u8]>> {
         }
     }
 
-    Some(Cow::Owned(s))
+    Some(PathBuf::from(OsString::from_vec(s)))
 }
 
 #[cfg(test)]
@@ -408,5 +413,19 @@ mod tests {
         assert!(dirs.pictures().is_some());
         assert!(dirs.videos().is_some());
         assert!(dirs.templates().is_some());
+    }
+
+    #[test]
+    fn test_user_dirs_parsing() {
+        assert_eq!(
+            parse_user_dirs_line(
+                br#"XDG_TEMPLATES_DIR="$HOME/My \"Quoted\" Templates""#,
+                Path::new("/home/ferris"),
+            ),
+            Some((
+                &b"XDG_TEMPLATES_DIR"[..],
+                Some(Path::new("/home/ferris/My \"Quoted\" Templates").to_path_buf()),
+            ))
+        );
     }
 }
