@@ -15,7 +15,14 @@
 // `target_has_reliable_*` are not "known" configs since they are unstable.
 #![expect(unexpected_cfgs)]
 
+use std::assert_matches;
 use std::hint::black_box;
+
+// On x86 without SSE2 (e.g. the i586 target), floating-point math is evaluated
+// with x87 excess precision, so an inexact `mul_add_relaxed` may round to a
+// value that is neither the `fN`-precise fused nor unfused result. Skip the
+// exact-value checks there. <https://github.com/rust-lang/rust/issues/114479>
+const EXCESS_PRECISION: bool = cfg!(all(target_arch = "x86", not(target_feature = "sse2")));
 
 fn main() {
     test_f32();
@@ -34,8 +41,10 @@ fn test_f32() {
 
     // `0.1 * 0.1` is inexact, so the fused (one rounding) and unfused (two
     // roundings) results differ; either is allowed.
-    let r = black_box(0.1_f32).mul_add_relaxed(0.1, -0.01);
-    assert!(r == 5.2154064e-10 || r == 9.313226e-10);
+    if !EXCESS_PRECISION {
+        let r = black_box(0.1_f32).mul_add_relaxed(0.1, -0.01);
+        assert_matches!(r, 5.2154064e-10 | 9.313226e-10);
+    }
 
     // Edge cases behave like `a * b + c` regardless of fusion.
     assert!(black_box(f32::NAN).mul_add_relaxed(1.0, 1.0).is_nan());
@@ -47,8 +56,10 @@ fn test_f64() {
     assert_eq!(black_box(2.0_f64).mul_add_relaxed(3.0, 4.0), 10.0);
     assert_eq!(black_box(1.0_f64).mul_add_relaxed(1.0, 1.0), 2.0);
 
-    let r = black_box(0.1_f64).mul_add_relaxed(0.1, -0.01);
-    assert!(r == 9.020562075079397e-19 || r == 1.734723475976807e-18);
+    if !EXCESS_PRECISION {
+        let r = black_box(0.1_f64).mul_add_relaxed(0.1, -0.01);
+        assert_matches!(r, 9.020562075079397e-19 | 1.734723475976807e-18);
+    }
 
     assert!(black_box(f64::NAN).mul_add_relaxed(1.0, 1.0).is_nan());
     assert_eq!(black_box(f64::INFINITY).mul_add_relaxed(2.0, 1.0), f64::INFINITY);
