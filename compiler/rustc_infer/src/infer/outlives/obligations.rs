@@ -420,7 +420,10 @@ where
     ) {
         assert!(!ty.has_escaping_bound_vars());
         debug_assert!(!ty.has_non_region_infer());
-        debug_assert!(!self.tcx.next_trait_solver_globally() || !ty.has_non_rigid_aliases());
+        debug_assert!(
+            !self.tcx.next_trait_solver_globally() || !ty.has_non_rigid_aliases(),
+            "{ty:?} has non-rigid aliases"
+        );
 
         let mut components = smallvec![];
         push_outlives_components(self.tcx, ty, &mut components);
@@ -446,7 +449,10 @@ where
                 Component::Placeholder(placeholder_ty) => {
                     self.placeholder_ty_must_outlive(origin, region, *placeholder_ty);
                 }
-                Component::Alias(alias_ty) => self.alias_ty_must_outlive(origin, region, *alias_ty),
+                Component::Alias(is_rigid, alias_ty) => {
+                    debug_assert_eq!(*is_rigid, ty::IsRigid::yes_if_next_solver(self.tcx));
+                    self.alias_ty_must_outlive(origin, region, *alias_ty);
+                }
                 Component::EscapingAlias(subcomponents) => {
                     self.components_must_outlive(origin, subcomponents, region, category);
                 }
