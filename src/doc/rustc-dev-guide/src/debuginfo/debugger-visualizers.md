@@ -6,15 +6,14 @@ be piped through a debug adapter such as an IDE's debugger API.
 The term "Visualizer" is a bit of a misnomer.
 The real goal isn't just to prettify the output, but
 to provide an interface for the user to interact with that is as useful as possible.
-In many cases
-this means reconstructing the original type as closely as possible to its Rust representation, but
-not always.
+In many cases,
+this means reconstructing the original type as closely as possible to its Rust representation,
+but not always.
 
 The visualizer interface allows generating "synthetic children" - fields that don't exist in the
 debug info, but can be derived from invariants about the language and the type itself.
-A simple
-example is allowing one to interact with the elements of a `Vec<T>` instead of just it's `*mut u8`
-heap pointer, length, and capacity.
+A simple example is allowing one to interact with the elements of a `Vec<T>`
+instead of just it's `*mut u8` heap pointer, length, and capacity.
 
 ## `rust-lldb`, `rust-gdb`, and `rust-windbg.cmd`
 
@@ -34,11 +33,10 @@ This attribute currently works for GDB and natvis scripts.
 
 [dbg_vis_attr]: https://doc.rust-lang.org/reference/attributes/debugger.html#the-debugger_visualizer-attribute
 
-GDB python scripts are embedded in the `.debug_gdb_scripts` section of the binary.
-More information
-can be found [here](https://sourceware.org/gdb/current/onlinedocs/gdb.html/dotdebug_005fgdb_005fscripts-section.html).
-Rustc accomplishes this in [`rustc_codegen_llvm/src/debuginfo/gdb.rs`][gdb_rs]
+GDB python scripts are embedded in the `.debug_gdb_scripts` section of the binary ([more info]).
+Rustc accomplishes this in [`rustc_codegen_llvm/src/debuginfo/gdb.rs`][gdb_rs].
 
+[more info]: https://sourceware.org/gdb/current/onlinedocs/gdb.html/dotdebug_005fgdb_005fscripts-section.html
 [gdb_rs]: https://github.com/rust-lang/rust/blob/main/compiler/rustc_codegen_llvm/src/debuginfo/gdb.rs
 
 Natvis files can be embedded in the PDB debug info using the [`/NATVIS` linker option][linker_opt],
@@ -55,22 +53,20 @@ The files specified by the attribute are collected into
 LLDB is not currently supported, but there are a few methods that could potentially allow support in
 the future.
 Officially, the intended method is via a [formatter bytecode][bytecode].
-This was
-created to offer a comparable experience to GDB's, but without  the safety concerns associated with
-embedding an entire python script.
+This was created to offer a comparable experience to GDB's,
+but without  the safety concerns associated with embedding an entire Python script.
 The opcodes are limited, but it works with `SBValue` and `SBType`
-in roughly the same way as python visualizer scripts.
+in roughly the same way as Python visualizer scripts.
 Implementing this would require writing some sort of DSL/mini compiler.
 
 [bytecode]: https://lldb.llvm.org/resources/formatterbytecode.html
 
 Alternatively, it might be possible to copy GDB's strategy entirely: create a bespoke section in the
 binary and embed a python script in it.
-LLDB will not load it automatically, but the python API does
+LLDB will not load it automatically, but the Python API does
 allow one to access the [raw sections of the debug info][SBSection].
-With this, it may be possible
-to extract the python script from our bespoke section and then load it in during the startup of
-Rust's visualizer scripts.
+With this, it may be possible to extract the Python script from our bespoke section
+and then load it in during the startup of Rust's visualizer scripts.
 
 [SBSection]: https://lldb.llvm.org/python_api/lldb.SBSection.html#sbsection
 
@@ -99,35 +95,35 @@ keep in mind that are relevant to these scripts:
 * Everything allocates, even `int`
 * Use tuples when possible.
   `list` is effectively `Vec<Box<[Any]>>`, whereas tuples are equivalent to `Box<[Any]>`.
-They have one less layer of indirection, don't carry extra capacity and can't
-grow/shrink which can be advantageous in many cases.
-An additional benefit is that Python caches and
-recycles the underlying allocations of all tuples up to size 20.
+  They have one less layer of indirection, don't carry extra capacity and can't grow/shrink,
+  which can be advantageous in many cases.
+  An additional benefit is that Python caches and
+  recycles the underlying allocations of all tuples up to size 20.
 * Regexes are slow and should be avoided when simple string manipulation will do
 * Strings are immutable, thus many string operations implictly copy the contents.
 * When concatenating large lists of strings, `"".join(iterable_of_strings)` is typically the fastest
-way to do it.
+  way to do it.
 * f-strings are generally the fastest way to do small, simple string transformations such as
 surrounding a string with parentheses.
 * The act of calling a function is somewhat slow (even if the function is completely empty).
   If the code section is very hot, consider inlining the function manually.
 * Local variable access is significantly faster than global and built-in function access
 * Member/method access via the `.` operator is also slow, consider reassigning deeply nested values
-to local variables to avoid this cost (e.g. `h = a.b.c.d.e.f.g.h`).
+  to local variables to avoid this cost (e.g. `h = a.b.c.d.e.f.g.h`).
 * Accessing inherited methods and fields is about 2x slower than base-class methods and fields.
-Avoid inheritance whenever possible.
+  Avoid inheritance whenever possible.
 * Use [`__slots__`](https://wiki.python.org/moin/UsingSlots) wherever possible.
   `__slots__` is a way
-to indicate to Python that your class's fields won't change and speeds up field access by a
-noticable amount.
-This does require you to name your fields in advance and initialize them in
-`__init__`, but it's a small price to pay for the benefits.
+  to indicate to Python that your class's fields won't change and speeds up field access by a
+  noticable amount.
+  This does require you to name your fields in advance and initialize them in
+  `__init__`, but it's a small price to pay for the benefits.
 * Match statements/if..elif..else are not optimized in any way.
-  The conditions are checked in order,
-1 by 1. If possible, use an alternative such as dictionary dispatch or a table of values
+  The conditions are checked in order, 1 by 1.
+  If possible, use an alternative such as dictionary dispatch or a table of values
 * Compute lazily when possible
 * List comprehensions are typically faster than loops, generator comprehensions are a bit slower
-than list comprehensions, but use less memory.
-You can think of comprehensions as equivalent to Rust's `iter.map()`.
-List comprehensions effectively call `collect::<Vec<_>>` at the end, whereas
-generator comprehensions do not.
+  than list comprehensions, but use less memory.
+  You can think of comprehensions as equivalent to Rust's `iter.map()`.
+  List comprehensions effectively call `collect::<Vec<_>>` at the end, whereas
+  generator comprehensions do not.
