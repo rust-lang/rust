@@ -3149,16 +3149,26 @@ fn add_order_independent_options(
         // linking. One token is available implicitly since we are running on the main thread.
         let client = jobserver::client();
         let mut tokens = Vec::new();
+        let mut unsupported = false;
         for _ in 0..limit.get() - 1 {
-            if let Some(token) =
-                client.try_acquire().expect("IO error when acquiring jobserver token")
-            {
-                tokens.push(token)
+            match client.try_acquire() {
+                Ok(Some(token)) => tokens.push(token),
+                Ok(None) => {}
+                Err(e) if e.kind() == io::ErrorKind::Unsupported => {
+                    assert!(tokens.is_empty());
+                    unsupported = true;
+                    break;
+                }
+                Err(_) => bug!("IO error when acquiring jobserver token"),
             }
         }
 
         let prefix = if sess.target.is_like_windows { "/threads:" } else { "--threads=" };
-        cmd.link_arg(format!("{prefix}{}", 1 + tokens.len()));
+        // Error on the side of oversubscription if non-blocking token acquiring is unsupported.
+        // Linking is typically the last step in a multi-crate project build,
+        // so the resources should usually be free.
+        let threads = if unsupported { limit.get() } else { 1 + tokens.len() };
+        cmd.link_arg(format!("{prefix}{threads}"));
         // FIXME: release the tokens after the linker process exists and not immediately.
         drop(tokens);
     }
