@@ -179,10 +179,12 @@ impl UdpSocket {
                 } else {
                     return Err(io::const_error!(io::ErrorKind::Other, "library error"));
                 };
-                for (&s, d) in rr[22..22 + rxlen as usize].iter().zip(buf.iter_mut()) {
-                    *d = s;
-                }
-                Ok((rxlen as usize, addr))
+                let max = (rxlen as usize).min(buf.len()).min(rr.len() - 22);
+                // Both sides must be sliced: `max` is shorter than `buf` whenever
+                // the datagram doesn't fill it, and `copy_from_slice` panics on a
+                // length mismatch.
+                buf[..max].copy_from_slice(&rr[22..][..max]);
+                Ok((max, addr))
             }
         } else {
             Err(io::const_error!(io::ErrorKind::InvalidInput, "unable to recv"))
