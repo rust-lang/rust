@@ -1,4 +1,7 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/51907>.
+//! Test extern `C` trait object methods don't ICE.
 //@ run-pass
+
 trait Foo {
     extern "C" fn borrow(&self);
     extern "C" fn take(self: Box<Self>);

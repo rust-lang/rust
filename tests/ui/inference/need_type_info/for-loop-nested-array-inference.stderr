@@ -1,5 +1,5 @@
 error[E0282]: type annotations needed
-  --> $DIR/issue-51116.rs:5:13
+  --> $DIR/for-loop-nested-array-inference.rs:8:13
    |
 LL |             *tile = 0;
    |             ^^^^^ cannot infer type
