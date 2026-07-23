@@ -392,12 +392,10 @@ where
         }
 
         let infcx = self.infcx;
-        // FIXME: make this a debug_assert.
-        // Currently proof tree evaluation can unify infer vars in original
-        // vars while not resolving them.
-        // See `tests/ui/traits/next-solver/transmute-from-async-closure.rs`
+        // Proof tree evaluation can unify inference variables in the original
+        // values without eagerly resolving them.
         let a = infcx.shallow_resolve_const(a);
-        debug_assert_eq!(b, infcx.shallow_resolve_const(b));
+        let b = infcx.shallow_resolve_const(b);
         match (a.kind(), b.kind()) {
             (
                 ty::ConstKind::Infer(ty::InferConst::Var(a_vid)),

@@ -1,0 +1,40 @@
+error[E0107]: missing generics for struct `BarType`
+  --> $DIR/lower-universe-resolved-const-issue-159703.rs:10:30
+   |
+LL | impl<const N: usize> Foo for BarType {}
+   |                              ^^^^^^^ expected 1 generic argument
+   |
+note: struct defined here, with 1 generic parameter: `N`
+  --> $DIR/lower-universe-resolved-const-issue-159703.rs:8:8
+   |
+LL | struct BarType<const N: usize>;
+   |        ^^^^^^^ --------------
+help: add missing generic argument
+   |
+LL | impl<const N: usize> Foo for BarType<N> {}
+   |                                     +++
+
+error[E0308]: mismatched types
+  --> $DIR/lower-universe-resolved-const-issue-159703.rs:15:7
+   |
+LL |     a(bar);
+   |     - ^^^ expected `&dyn Foo`, found `BarType<_>`
+   |     |
+   |     arguments to this function are incorrect
+   |
+   = note: expected reference `&dyn Foo`
+                 found struct `BarType<_>`
+note: function defined here
+  --> $DIR/lower-universe-resolved-const-issue-159703.rs:13:4
+   |
+LL | fn a(x: &Foo) {
+   |    ^ -------
+help: consider borrowing here
+   |
+LL |     a(&bar);
+   |       +
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0107, E0308.
+For more information about an error, try `rustc --explain E0107`.
