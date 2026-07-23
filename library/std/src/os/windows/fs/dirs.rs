@@ -143,7 +143,7 @@ pub impl(self) trait MediaDirsExt: Sized {
     /// [`music`]: MediaDirs::music
     /// [`pictures`]: MediaDirs::pictures
     /// [`videos`]: MediaDirs::videos
-    #[unstable(feature = "dir_discovery", issue = "157515")]
+    #[unstable(feature = "media_dir_discovery", issue = "157515")]
     fn known_folders() -> io::Result<Self>;
 }
 
