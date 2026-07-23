@@ -98,6 +98,7 @@ use std::fs::{self, File};
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
+use rustc_data_structures::either::Either;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::sync::par_join;
 use rustc_data_structures::unord::{UnordMap, UnordSet};
@@ -457,6 +458,13 @@ fn merge_codegen_units<'tcx>(
                 };
                 cgu.set_name(new_cgu_name);
             }
+
+            // Assign symbol name to each CGU units.
+            cgu.set_symbol_name(Symbol::intern(&rustc_symbol_mangling::mangle_cgu(
+                cx.tcx,
+                LOCAL_CRATE,
+                Either::Right(cgu.name().as_str()),
+            )));
         }
 
         // A sorted order here ensures what follows can be deterministic.
@@ -491,6 +499,12 @@ fn merge_codegen_units<'tcx>(
             let numbered_codegen_unit_name =
                 cgu_name_builder.build_cgu_name_no_mangle(LOCAL_CRATE, &["cgu"], Some(suffix));
             cgu.set_name(numbered_codegen_unit_name);
+
+            cgu.set_symbol_name(Symbol::intern(&rustc_symbol_mangling::mangle_cgu(
+                cx.tcx,
+                LOCAL_CRATE,
+                Either::Left(index.try_into().unwrap()),
+            )));
         }
     }
 }
