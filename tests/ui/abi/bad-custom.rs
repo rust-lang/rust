@@ -95,6 +95,9 @@ unsafe extern "custom" {
     //~^ ERROR foreign functions with the "custom" ABI cannot be safe
 }
 
+type Safe = safe extern "custom" fn();
+//~^ ERROR function pointers cannot be declared with `safe` safety qualifier
+
 fn caller(f: unsafe extern "custom" fn(i64) -> i64, mut x: i64) -> i64 {
     //~^ ERROR invalid signature for `extern "custom"` function
     unsafe { f(x) }

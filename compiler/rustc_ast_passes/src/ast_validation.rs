@@ -575,7 +575,7 @@ impl<'a> AstValidator<'a> {
 
                     CanonAbi::Custom => {
                         // An `extern "custom"` function must be unsafe.
-                        self.reject_safe_fn(abi, ctxt, sig);
+                        self.reject_safe_fn(abi, ctxt, sig, opt_ident.is_none());
 
                         // An `extern "custom"` function cannot be `async` and/or `gen`.
                         self.reject_coroutine(abi, sig);
@@ -615,18 +615,27 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn reject_safe_fn(&self, abi: ExternAbi, ctxt: FnCtxt, sig: &BorrowedFnSig<'_>) {
+    fn reject_safe_fn(
+        &self,
+        abi: ExternAbi,
+        ctxt: FnCtxt,
+        sig: &BorrowedFnSig<'_>,
+        is_fn_ptr: bool,
+    ) {
         let dcx = self.dcx();
 
         match sig.header.safety {
             Safety::Unsafe(_) => { /* all good */ }
             Safety::Safe(safe_span) => {
-                let source_map = self.sess.psess.source_map();
-                let safe_span = source_map.span_until_non_whitespace(safe_span.to(sig.span));
-                dcx.emit_err(diagnostics::AbiCustomSafeForeignFunction {
-                    span: sig.span,
-                    safe_span,
-                });
+                // Function pointers already error when `safe` is used.
+                if !is_fn_ptr {
+                    let source_map = self.sess.psess.source_map();
+                    let safe_span = source_map.span_until_non_whitespace(safe_span.to(sig.span));
+                    dcx.emit_err(diagnostics::AbiCustomSafeForeignFunction {
+                        span: sig.span,
+                        safe_span,
+                    });
+                }
             }
             Safety::Default => match ctxt {
                 FnCtxt::Foreign => { /* all good */ }
@@ -732,8 +741,12 @@ impl<'a> AstValidator<'a> {
     }
 
     fn check_fn_ptr_safety(&self, span: Span, safety: Safety) {
-        if matches!(safety, Safety::Safe(_)) {
-            self.dcx().emit_err(diagnostics::InvalidSafetyOnFnPtr { span });
+        if let Safety::Safe(safe_span) = safety {
+            let remove_span = self.sess.source_map().span_until_non_whitespace(span);
+            self.dcx().emit_err(diagnostics::InvalidSafetyOnFnPtr {
+                span: safe_span,
+                safe_span: remove_span,
+            });
         }
     }
 
