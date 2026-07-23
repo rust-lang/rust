@@ -1,5 +1,5 @@
 //@ revisions: ice_155125 ice_155127 ice_155128 ice_155164 ice_155202
-//@[ice_155202] edition: 2024
+//@[ice_155202] edition: 2018..
 
 #![feature(min_generic_const_args, fn_delegation)]
 
