@@ -1,27 +1,30 @@
-error[E0569]: requires an `unsafe impl` declaration due to `#[may_dangle]` attribute
-  --> $DIR/dropck-eyepatch-implies-unsafe-impl.rs:21:1
+error: usage of the unsafe `may_dangle` attribute
+  --> $DIR/dropck-eyepatch-implies-unsafe-impl.rs:21:6
    |
 LL | impl<#[may_dangle] A, B: fmt::Debug> Drop for Pt<A, B> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |      ^^^^^^^^^^^^^
    |
-   = note: the trait `Drop` enforces invariants that the compiler can't check. Review the trait documentation and make sure this implementation upholds those invariants before adding the `unsafe` keyword
-help: add `unsafe` to this trait implementation
+   = note: the `may_dangle` attribute enforces invariants that the compiler can't check. Review its documentation and make sure this implementation upholds those invariants before adding the `unsafe` keyword
+   = note: if you are involved with bootstrapping the compiler you must use `unsafe impl Drop<#[may_dangle]...`, for `#[unsafe(may_dangle)]` cannot yet be used in the beta compiler
+help: add `unsafe` to this attribute
    |
-LL | unsafe impl<#[may_dangle] A, B: fmt::Debug> Drop for Pt<A, B> {
-   | ++++++
+LL - impl<#[may_dangle] A, B: fmt::Debug> Drop for Pt<A, B> {
+LL + impl<#[unsafe(may_dangle)] A, B: fmt::Debug> Drop for Pt<A, B> {
+   |
 
-error[E0569]: requires an `unsafe impl` declaration due to `#[may_dangle]` attribute
-  --> $DIR/dropck-eyepatch-implies-unsafe-impl.rs:27:1
+error: usage of the unsafe `may_dangle` attribute
+  --> $DIR/dropck-eyepatch-implies-unsafe-impl.rs:27:6
    |
 LL | impl<#[may_dangle] 'a, 'b, B: fmt::Debug> Drop for Pr<'a, 'b, B> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |      ^^^^^^^^^^^^^
    |
-   = note: the trait `Drop` enforces invariants that the compiler can't check. Review the trait documentation and make sure this implementation upholds those invariants before adding the `unsafe` keyword
-help: add `unsafe` to this trait implementation
+   = note: the `may_dangle` attribute enforces invariants that the compiler can't check. Review its documentation and make sure this implementation upholds those invariants before adding the `unsafe` keyword
+   = note: if you are involved with bootstrapping the compiler you must use `unsafe impl Drop<#[may_dangle]...`, for `#[unsafe(may_dangle)]` cannot yet be used in the beta compiler
+help: add `unsafe` to this attribute
    |
-LL | unsafe impl<#[may_dangle] 'a, 'b, B: fmt::Debug> Drop for Pr<'a, 'b, B> {
-   | ++++++
+LL - impl<#[may_dangle] 'a, 'b, B: fmt::Debug> Drop for Pr<'a, 'b, B> {
+LL + impl<#[unsafe(may_dangle)] 'a, 'b, B: fmt::Debug> Drop for Pr<'a, 'b, B> {
+   |
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0569`.

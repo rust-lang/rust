@@ -19,13 +19,13 @@ impl<'a, B: fmt::Debug> Drop for Dr<'a, B> {
     fn drop(&mut self) { println!("drop {} {:?}", self.0, self.1); }
 }
 impl<#[may_dangle] A, B: fmt::Debug> Drop for Pt<A, B> {
-    //~^ ERROR requires an `unsafe impl` declaration due to `#[may_dangle]` attribute
+    //~^ ERROR usage of the unsafe `may_dangle` attribute
 
     // (unsafe to access self.1  due to #[may_dangle] on A)
     fn drop(&mut self) { println!("drop {} {:?}", self.0, self.2); }
 }
 impl<#[may_dangle] 'a, 'b, B: fmt::Debug> Drop for Pr<'a, 'b, B> {
-    //~^ ERROR requires an `unsafe impl` declaration due to `#[may_dangle]` attribute
+    //~^ ERROR usage of the unsafe `may_dangle` attribute
 
     // (unsafe to access self.1 due to #[may_dangle] on 'a)
     fn drop(&mut self) { println!("drop {} {:?}", self.0, self.2); }

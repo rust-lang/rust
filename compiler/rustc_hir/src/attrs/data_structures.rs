@@ -1174,7 +1174,12 @@ pub enum AttributeKind {
     Marker,
 
     /// Represents [`#[may_dangle]`](https://std-dev-guide.rust-lang.org/tricky/may-dangle.html).
-    MayDangle(Span),
+    MayDangle {
+        /// Was this attribute declared as `#[unsafe(may_dangle)]`?
+        unsafe_used: bool,
+        span: Span,
+        inner_span: Span,
+    },
 
     /// Represents `#[move_size_limit]`
     MoveSizeLimit {

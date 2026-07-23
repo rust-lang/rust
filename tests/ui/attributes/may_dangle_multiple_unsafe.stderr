@@ -1,0 +1,20 @@
+error[E0199]: implementing the `Drop` trait is not unsafe
+  --> $DIR/may_dangle_multiple_unsafe.rs:6:1
+   |
+LL | unsafe impl<#[unsafe(may_dangle)] T> Drop for PerhapsLoosely<T> {
+   | ^^^^^^ `unsafe` is redundantly used here
+   |
+note: the safety obligation of `may_dangle` has already been discharged by the `unsafe` use in the `may_dangle` attribute 
+  --> $DIR/may_dangle_multiple_unsafe.rs:6:13
+   |
+LL | unsafe impl<#[unsafe(may_dangle)] T> Drop for PerhapsLoosely<T> {
+   |             ^^^^^^^^^^^^^^^^^^^^^
+help: remove `unsafe` from this trait implementation
+   |
+LL - unsafe impl<#[unsafe(may_dangle)] T> Drop for PerhapsLoosely<T> {
+LL + impl<#[unsafe(may_dangle)] T> Drop for PerhapsLoosely<T> {
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0199`.
