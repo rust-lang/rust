@@ -208,7 +208,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::NonExhaustive(attr_span) => {
                 self.check_non_exhaustive(*attr_span, span, target, item)
             }
-            AttributeKind::MayDangle(attr_span) => self.check_may_dangle(hir_id, *attr_span),
+            AttributeKind::MayDangle { span, .. } => self.check_may_dangle(hir_id, *span),
             AttributeKind::Link(_, attr_span) => self.check_link(hir_id, *attr_span, target),
             AttributeKind::MacroExport { span, .. } => {
                 self.check_macro_export(hir_id, *span, target)

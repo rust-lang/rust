@@ -62,7 +62,7 @@ impl AttributeKind {
             MacroExport { .. } => Yes,
             MacroUse { .. } => No,
             Marker => No,
-            MayDangle(..) => No,
+            MayDangle { .. } => No,
             MoveSizeLimit { .. } => No,
             MustNotSupend { .. } => Yes,
             MustUse { .. } => Yes,
