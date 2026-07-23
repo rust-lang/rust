@@ -581,3 +581,80 @@ mod proc_macro_attribute {}
 ///
 /// [the `link_section` attribute]: ../reference/abi.html#the-link_section-attribute
 mod link_section_attribute {}
+
+#[doc(attribute = "no_mangle")]
+//
+/// Exports an item without Rust symbol name mangling.
+///
+/// Rust normally changes an item's symbol name to encode information such as its module path.
+/// Applying `no_mangle` instead uses the item's identifier as the exported symbol name.
+///
+/// ```rust
+/// #[unsafe(no_mangle)]
+/// pub extern "C" fn initialize() {}
+/// ```
+///
+/// The attribute controls the symbol name and export behavior, but does not change the function's
+/// calling convention. Functions intended to be called by non-Rust code will usually also use an
+/// appropriate `extern` ABI such as `extern "C"`.
+///
+/// Exporting an unmangled name is unsafe because it may collide with another exported or
+/// well-known symbol. Such a collision can lead to undefined behavior.
+///
+/// Starting with the 2024 edition, the attribute must be written using the `unsafe(...)` syntax.
+/// Earlier editions also permit `#[no_mangle]`.
+///
+/// For more information, see the Reference on [the `no_mangle` attribute].
+///
+/// [the `no_mangle` attribute]: ../reference/abi.html#the-no_mangle-attribute
+mod no_mangle_attribute {}
+
+#[doc(attribute = "export_name")]
+//
+/// Exports a function or static under a chosen symbol name.
+///
+/// The `export_name` attribute sets the symbol name that a function or static exposes in the
+/// generated object file. The item's Rust name remains unchanged.
+///
+/// ```rust
+/// #[unsafe(export_name = "initialize")]
+/// pub extern "C" fn initialize_library() {}
+/// ```
+///
+/// Like [`no_mangle`], this attribute controls the exported symbol name but does not change the
+/// function's calling convention.
+///
+/// Choosing an exported name is unsafe because it can collide with another exported or
+/// well-known symbol, which may cause undefined behavior.
+///
+/// Starting with the 2024 edition, the attribute must be written using the `unsafe(...)` syntax.
+/// Earlier editions also permit `#[export_name = "..."]`.
+///
+/// For more information, see the Reference on [the `export_name` attribute].
+///
+/// [`no_mangle`]: ./attribute.no_mangle.html
+/// [the `export_name` attribute]: ../reference/abi.html#the-export_name-attribute
+mod export_name_attribute {}
+
+#[doc(attribute = "link_name")]
+//
+/// Imports an external function or static using a different symbol name.
+///
+/// The `link_name` attribute is applied to a declaration inside an `extern` block. It specifies
+/// the symbol that the linker resolves for that declaration.
+///
+/// ```rust,no_run
+/// unsafe extern "C" {
+///     #[link_name = "actual_symbol_name"]
+///     fn name_in_rust();
+/// }
+/// ```
+///
+/// In this example, Rust code uses `name_in_rust`, while the linker resolves
+/// `actual_symbol_name`. The attribute can only be applied to function and static declarations
+/// inside an `extern` block.
+///
+/// For more information, see the Reference on [the `link_name` attribute].
+///
+/// [the `link_name` attribute]: ../reference/items/external-blocks.html#the-link_name-attribute
+mod link_name_attribute {}
