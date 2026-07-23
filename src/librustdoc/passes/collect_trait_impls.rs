@@ -168,12 +168,14 @@ struct SyntheticImplCollector<'a, 'tcx> {
 impl DocVisitor<'_> for SyntheticImplCollector<'_, '_> {
     fn visit_item(&mut self, i: &Item) {
         if i.is_struct() || i.is_enum() || i.is_union() {
+            let item_def_id = i.item_id.expect_def_id();
             // FIXME(eddyb) is this `doc(hidden)` check needed?
-            if !self.cx.tcx.is_doc_hidden(i.item_id.expect_def_id()) {
-                self.impls.extend(synthesize_auto_trait_and_blanket_impls(
-                    self.cx,
-                    i.item_id.expect_def_id(),
-                ));
+            // FIXME(camelid) should we skip the `doc(hidden)` check if --document-hidden-items is passed?
+            if (self.cx.document_private()
+                || self.cx.cache.effective_visibilities.is_reachable(self.cx.tcx, item_def_id))
+                && !self.cx.tcx.is_doc_hidden(item_def_id)
+            {
+                self.impls.extend(synthesize_auto_trait_and_blanket_impls(self.cx, item_def_id));
             }
         }
 
