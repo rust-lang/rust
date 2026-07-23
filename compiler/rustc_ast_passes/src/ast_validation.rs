@@ -551,7 +551,7 @@ impl<'a> AstValidator<'a> {
         abi: ExternAbi,
         ctxt: FnCtxt,
         opt_ident: Option<&Ident>,
-        sig: &FnSig,
+        sig: &BorrowedFnSig<'_>,
     ) {
         match AbiMap::from_target(&self.sess.target).canonize_abi(abi, false) {
             AbiMapping::Direct(canon_abi) | AbiMapping::Deprecated(canon_abi) => {
@@ -615,7 +615,7 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn reject_safe_fn(&self, abi: ExternAbi, ctxt: FnCtxt, sig: &FnSig) {
+    fn reject_safe_fn(&self, abi: ExternAbi, ctxt: FnCtxt, sig: &BorrowedFnSig<'_>) {
         let dcx = self.dcx();
 
         match sig.header.safety {
@@ -641,7 +641,7 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn reject_coroutine(&self, abi: ExternAbi, sig: &FnSig) {
+    fn reject_coroutine(&self, abi: ExternAbi, sig: &BorrowedFnSig<'_>) {
         if let Some(coroutine_kind) = sig.header.coroutine_kind {
             let coroutine_kind_span = self
                 .sess
@@ -658,7 +658,7 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn reject_return(&self, abi: ExternAbi, sig: &FnSig) {
+    fn reject_return(&self, abi: ExternAbi, sig: &BorrowedFnSig<'_>) {
         if let FnRetTy::Ty(ref ret_ty) = sig.decl.output
             && match &ret_ty.kind {
                 TyKind::Never => false,
@@ -670,7 +670,12 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn reject_params_or_return(&self, abi: ExternAbi, opt_ident: Option<&Ident>, sig: &FnSig) {
+    fn reject_params_or_return(
+        &self,
+        abi: ExternAbi,
+        opt_ident: Option<&Ident>,
+        sig: &BorrowedFnSig<'_>,
+    ) {
         let mut spans: Vec<_> = sig.decl.inputs.iter().map(|p| p.span).collect();
         if let FnRetTy::Ty(ref ret_ty) = sig.decl.output
             && match &ret_ty.kind {
@@ -683,7 +688,7 @@ impl<'a> AstValidator<'a> {
         }
 
         if !spans.is_empty() {
-            let header_span = sig.header_span();
+            let header_span = sig.header.span().unwrap_or(sig.span.shrink_to_lo());
             let suggestion_span = header_span.shrink_to_hi().to(sig.decl.output.span());
             let padding = if header_span.is_empty() { "" } else { " " };
 
@@ -1631,7 +1636,7 @@ impl Visitor<'_> for AstValidator<'_> {
                     self.extern_mod_abi.unwrap_or(ExternAbi::FALLBACK),
                     FnCtxt::Foreign,
                     Some(ident),
-                    sig,
+                    &sig.as_borrowed(),
                 );
 
                 if let Some(attr) = attr::find_by_name(fi.attrs(), sym::track_caller)
@@ -1836,7 +1841,12 @@ impl Visitor<'_> for AstValidator<'_> {
 
             if let Some((extern_abi, extern_abi_span)) = ext {
                 // Some ABIs impose special restrictions on the signature.
-                self.check_extern_fn_signature(extern_abi, ctxt, Some(&fun.ident), &fun.sig);
+                self.check_extern_fn_signature(
+                    extern_abi,
+                    ctxt,
+                    Some(&fun.ident),
+                    &fun.sig.as_borrowed(),
+                );
 
                 // #[track_caller] can only be used with the rust ABI.
                 if let Some(attr) = attr::find_by_name(attrs, sym::track_caller)

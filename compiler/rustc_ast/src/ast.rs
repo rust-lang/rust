@@ -2362,6 +2362,19 @@ impl FnSig {
     pub fn extern_span(&self) -> Span {
         self.header.ext.span().unwrap_or(self.safety_span().shrink_to_hi())
     }
+
+    pub fn as_borrowed<'a>(&'a self) -> BorrowedFnSig<'a> {
+        BorrowedFnSig { header: self.header, decl: &self.decl, span: self.span }
+    }
+}
+
+/// A borrowed version of `FnSig`, used to share logic between function declarations and function
+/// pointer types.
+#[derive(Clone, Debug)]
+pub struct BorrowedFnSig<'a> {
+    pub header: FnHeader,
+    pub decl: &'a FnDecl,
+    pub span: Span,
 }
 
 /// A constraint on an associated item.
