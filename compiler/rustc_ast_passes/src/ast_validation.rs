@@ -677,12 +677,15 @@ impl<'a> AstValidator<'a> {
         sig: &BorrowedFnSig<'_>,
     ) {
         let mut spans: Vec<_> = sig.decl.inputs.iter().map(|p| p.span).collect();
+
+        let allowed_return = |ret_ty: &Ty| match &ret_ty.kind {
+            TyKind::Never if abi != ExternAbi::Custom => true,
+            TyKind::Tup(tup) if tup.is_empty() => true,
+            _ => false,
+        };
+
         if let FnRetTy::Ty(ref ret_ty) = sig.decl.output
-            && match &ret_ty.kind {
-                TyKind::Never => false,
-                TyKind::Tup(tup) if tup.is_empty() => false,
-                _ => true,
-            }
+            && !allowed_return(ret_ty)
         {
             spans.push(ret_ty.span);
         }
