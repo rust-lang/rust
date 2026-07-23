@@ -253,7 +253,7 @@ compat_fn_with_fallback! {
     pub static SHELL32: &CStr = c"shell32";
 
     pub fn SHGetKnownFolderPath(rfid: *const GUID, dwflags: u32, htoken: HANDLE, ppszpath: *mut PWSTR) -> HRESULT {
-        panic!("Known Folders not available")
+        unsafe { SetLastError(ERROR_CALL_NOT_IMPLEMENTED as u32); E_NOTIMPL }
     }
 }
 
@@ -263,6 +263,6 @@ compat_fn_with_fallback! {
     pub static OLE32: &CStr = c"ole32";
 
     pub fn CoTaskMemFree(pv: *const core::ffi::c_void) -> () {
-        panic!("COM not available")
+        // without OLE32 there's no COM alloc, so no-op COM free is fine
     }
 }
