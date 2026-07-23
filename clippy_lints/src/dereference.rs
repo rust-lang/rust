@@ -902,6 +902,10 @@ impl TyCoercionStability {
                 | TyKind::TraitObject(..)
                 | TyKind::InferDelegation(..)
                 | TyKind::Err(_) => Self::Reborrow,
+                TyKind::View(ty, _) => {
+                    // FIXME(scrabsha): what are the semantics of view types here?
+                    Self::for_hir_ty(ty)
+                },
                 TyKind::UnsafeBinder(..) => Self::None,
             };
         }

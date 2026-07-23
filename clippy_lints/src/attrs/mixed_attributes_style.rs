@@ -1,6 +1,6 @@
 use super::MIXED_ATTRIBUTES_STYLE;
 use clippy_utils::diagnostics::span_lint;
-use rustc_ast::{AttrKind, AttrStyle, Attribute};
+use rustc_ast::{AttrKind, AttrStyle, Attribute, SyntheticAttr};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_lint::{EarlyContext, LintContext as _};
 use rustc_span::source_map::SourceMap;
@@ -12,6 +12,8 @@ enum SimpleAttrKind {
     Doc,
     /// A normal attribute, with its name symbols.
     Normal(Vec<Symbol>),
+    CfgTrace,
+    CfgAttrTrace,
 }
 
 impl From<&AttrKind> for SimpleAttrKind {
@@ -26,6 +28,10 @@ impl From<&AttrKind> for SimpleAttrKind {
                     .map(|seg| seg.ident.name)
                     .collect::<Vec<_>>();
                 Self::Normal(path_symbols)
+            },
+            AttrKind::Synthetic(synthetic) => match &**synthetic {
+                SyntheticAttr::CfgTrace(_) => Self::CfgTrace,
+                SyntheticAttr::CfgAttrTrace => Self::CfgAttrTrace,
             },
             AttrKind::DocComment(..) => Self::Doc,
         }

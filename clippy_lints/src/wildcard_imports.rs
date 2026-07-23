@@ -123,9 +123,7 @@ impl LateLintPass<'_> for WildcardImports {
         }
 
         let module = cx.tcx.parent_module_from_def_id(item.owner_id.def_id);
-        if cx.tcx.visibility(item.owner_id.def_id) != ty::Visibility::Restricted(module.to_def_id())
-            && !self.warn_on_all
-        {
+        if cx.tcx.local_visibility(item.owner_id.def_id) != ty::Visibility::Restricted(module) && !self.warn_on_all {
             return;
         }
         if let ItemKind::Use(use_path, UseKind::Glob) = &item.kind

@@ -10,8 +10,8 @@ use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::adjustment::{Adjust, DerefAdjustKind};
 use rustc_middle::ty::{
-    self, Binder, ClosureKind, FnSig, GenericArg, GenericArgKind, List, Region, Ty, TypeVisitableExt as _,
-    TypeckResults,
+    self, Binder, ClosureKind, FnSig, GenericArg, GenericArgKind, List, Region, RegionUtilitiesExt as _, Ty,
+    TypeVisitableExt as _, TypeckResults,
 };
 use rustc_session::declare_lint_pass;
 use rustc_span::symbol::sym;

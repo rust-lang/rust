@@ -163,7 +163,7 @@ zerocopy = { name = 'zerocopy', version = '0.7.35' }
 rustversion = { name = 'rustversion', version = '1.0.17' }
 env_logger = { name = 'env_logger', version = '0.11.3' }
 webpki-roots = { name = 'webpki-roots', version = '0.26.3' }
-rustc-demangle = { name = 'rustc-demangle', version = '0.1.24' }
+rustc-demangle = { name = 'rustc-demangle', version = '0.1.28' }
 mime = { name = 'mime', version = '0.3.17' }
 termcolor = { name = 'termcolor', version = '1.4.1' }
 subtle = { name = 'subtle', version = '2.6.1' }

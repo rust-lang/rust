@@ -8,7 +8,7 @@ use core::ops::ControlFlow;
 use rustc_errors::Applicability;
 use rustc_hir::{Block, Expr, PatKind, StmtKind};
 use rustc_lint::{LateContext, LintContext as _};
-use rustc_middle::ty::GenericArgKind;
+use rustc_middle::ty::{GenericArgKind, RegionUtilitiesExt as _};
 use rustc_span::edition::Edition;
 
 use super::LET_AND_RETURN;

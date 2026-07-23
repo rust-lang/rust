@@ -187,7 +187,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                         Some(sym::Into | sym::From)
                     )
                     && let ty::FnDef(_, args) = cx.typeck_results().expr_ty(arg).kind()
-                    && let &[from_ty, to_ty] = args.into_type_list(cx.tcx).as_slice()
+                    && let &[from_ty, to_ty] = args.no_bound_vars().unwrap().into_type_list(cx.tcx).as_slice()
                     && same_type_modulo_regions(from_ty, to_ty)
                 {
                     span_lint_and_then(

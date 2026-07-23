@@ -1650,6 +1650,10 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             TyKind::UnsafeBinder(binder) => {
                 self.hash_ty(binder.inner_ty);
             },
+            TyKind::View(ty, _) => {
+                self.hash_ty(ty);
+                // FIXME(scrabsha): probably hash the fields as well?
+            },
             TyKind::Err(_)
             | TyKind::Infer(())
             | TyKind::Never

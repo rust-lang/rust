@@ -592,7 +592,7 @@ fn is_uninit_value_valid_for_layout<'tcx>(cx: &LateContext<'tcx>, layout: TyAndL
 
     match layout.layout.backend_repr {
         BackendRepr::Scalar(s) => s.is_uninit_valid(),
-        BackendRepr::ScalarPair(a, b) => a.is_uninit_valid() && b.is_uninit_valid(),
+        BackendRepr::ScalarPair { a, b, .. } => a.is_uninit_valid() && b.is_uninit_valid(),
         BackendRepr::SimdVector { element, count } => count == 0 || element.is_uninit_valid(),
         BackendRepr::SimdScalableVector { element, .. } => element.is_uninit_valid(),
         // Here validity is determined by the structural fields instead.
@@ -780,7 +780,10 @@ pub fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'t
             Some(ExprFnSig::Closure(decl, subs.as_closure().sig()))
         },
         ty::FnDef(id, subs) => Some(ExprFnSig::Sig(
-            cx.tcx.fn_sig(id).instantiate(cx.tcx, subs).skip_norm_wip(),
+            cx.tcx
+                .fn_sig(id)
+                .instantiate(cx.tcx, subs.no_bound_vars().unwrap())
+                .skip_norm_wip(),
             Some(id),
         )),
         ty::Alias(
