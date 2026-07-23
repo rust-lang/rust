@@ -49,6 +49,7 @@ pub impl(self) trait HomeDirsExt: Sized {
     /// [`config_home`]: HomeDirs::config_home
     /// [`data_home`]: HomeDirs::data_home
     /// [`state_home`]: HomeDirs::state_home
+    #[unstable(feature = "dir_discovery", issue = "157515")]
     fn appdata_env() -> io::Result<Self>;
 
     /// Load the known user folder paths using the [Known Folders] API.
@@ -188,7 +189,7 @@ impl HomeDirsExt for HomeDirs {
 }
 
 #[cfg(windows)]
-#[unstable(feature = "dir_discovery", issue = "157515")]
+#[unstable(feature = "media_dir_discovery", issue = "157515")]
 impl MediaDirsExt for MediaDirs {
     fn known_folders() -> io::Result<Self> {
         use crate::sys::c;
