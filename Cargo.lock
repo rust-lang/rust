@@ -879,7 +879,7 @@ dependencies = [
  "semver",
  "serde",
  "serde_json",
- "tempfile",
+ "shim_utils",
  "tracing",
  "tracing-subscriber",
  "unified-diff",
@@ -5329,6 +5329,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "shim_utils"
+version = "0.0.0"
+dependencies = [
+ "tempfile",
+]
+
+[[package]]
 name = "shlex"
 version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5662,6 +5669,7 @@ dependencies = [
  "rustc-hash 2.1.1",
  "semver",
  "serde",
+ "shim_utils",
  "similar",
  "tempfile",
  "termcolor",
