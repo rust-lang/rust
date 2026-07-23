@@ -61,6 +61,7 @@ error: fn_abi_of(pass_zst) = FnAbi {
                SysV64,
            ),
            can_unwind: false,
+           ptrauth_type_discriminator: 0,
        }
   --> $DIR/sysv64-zst.rs:8:1
    |

@@ -106,6 +106,7 @@ error: fn_abi_of(test) = FnAbi {
            fixed_count: 1,
            conv: Rust,
            can_unwind: $SOME_BOOL,
+           ptrauth_type_discriminator: 0,
        }
   --> $DIR/debug.rs:31:1
    |
@@ -187,6 +188,7 @@ error: fn_abi_of(TestFnPtr) = FnAbi {
            fixed_count: 1,
            conv: Rust,
            can_unwind: $SOME_BOOL,
+           ptrauth_type_discriminator: 0,
        }
   --> $DIR/debug.rs:37:1
    |
@@ -258,6 +260,7 @@ error: fn_abi_of(test_generic) = FnAbi {
            fixed_count: 1,
            conv: Rust,
            can_unwind: $SOME_BOOL,
+           ptrauth_type_discriminator: 0,
        }
   --> $DIR/debug.rs:40:1
    |
@@ -336,6 +339,7 @@ error: ABIs are not compatible
            fixed_count: 1,
            conv: Rust,
            can_unwind: $SOME_BOOL,
+           ptrauth_type_discriminator: 0,
        }
        right ABI = FnAbi {
            args: [
@@ -402,6 +406,7 @@ error: ABIs are not compatible
            fixed_count: 1,
            conv: Rust,
            can_unwind: $SOME_BOOL,
+           ptrauth_type_discriminator: 0,
        }
   --> $DIR/debug.rs:59:1
    |
@@ -481,6 +486,7 @@ error: ABIs are not compatible
            fixed_count: 1,
            conv: Rust,
            can_unwind: $SOME_BOOL,
+           ptrauth_type_discriminator: 0,
        }
        right ABI = FnAbi {
            args: [
@@ -554,6 +560,7 @@ error: ABIs are not compatible
            fixed_count: 1,
            conv: Rust,
            can_unwind: $SOME_BOOL,
+           ptrauth_type_discriminator: 0,
        }
   --> $DIR/debug.rs:62:1
    |
@@ -626,6 +633,7 @@ error: ABIs are not compatible
            fixed_count: 1,
            conv: Rust,
            can_unwind: $SOME_BOOL,
+           ptrauth_type_discriminator: 0,
        }
        right ABI = FnAbi {
            args: [
@@ -692,6 +700,7 @@ error: ABIs are not compatible
            fixed_count: 1,
            conv: Rust,
            can_unwind: $SOME_BOOL,
+           ptrauth_type_discriminator: 0,
        }
   --> $DIR/debug.rs:65:1
    |
@@ -764,6 +773,7 @@ error: ABIs are not compatible
            fixed_count: 1,
            conv: Rust,
            can_unwind: $SOME_BOOL,
+           ptrauth_type_discriminator: 0,
        }
        right ABI = FnAbi {
            args: [
@@ -830,6 +840,7 @@ error: ABIs are not compatible
            fixed_count: 1,
            conv: Rust,
            can_unwind: $SOME_BOOL,
+           ptrauth_type_discriminator: 0,
        }
   --> $DIR/debug.rs:69:1
    |
@@ -924,6 +935,7 @@ error: fn_abi_of(assoc_test) = FnAbi {
            fixed_count: 1,
            conv: Rust,
            can_unwind: $SOME_BOOL,
+           ptrauth_type_discriminator: 0,
        }
   --> $DIR/debug.rs:52:5
    |
