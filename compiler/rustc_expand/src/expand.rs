@@ -1336,8 +1336,6 @@ impl InvocationCollectorNode for Box<ast::Item> {
             return Ok(walk_flat_map(node, collector));
         }
 
-        // Work around borrow checker not seeing through `P`'s deref.
-        let (span, mut attrs) = (node.span, mem::take(&mut node.attrs));
         let ItemKind::Mod(_, ident, ref mut mod_kind) = node.kind else { unreachable!() };
         let ecx = &mut collector.cx;
         let (file_path, dir_path, dir_ownership) = match mod_kind {
@@ -1346,7 +1344,7 @@ impl InvocationCollectorNode for Box<ast::Item> {
                 let (dir_path, dir_ownership) = mod_dir_path(
                     ecx.sess,
                     ident,
-                    &attrs,
+                    &node.attrs,
                     &ecx.current_expansion.module,
                     ecx.current_expansion.dir_ownership,
                     *inline,
@@ -1355,14 +1353,13 @@ impl InvocationCollectorNode for Box<ast::Item> {
                 // This lets `parse_external_mod` catch cycles if it's self-referential.
                 let file_path = match inline {
                     Inline::Yes => None,
-                    Inline::No { .. } => mod_file_path_from_attr(ecx.sess, &attrs, &dir_path),
+                    Inline::No { .. } => mod_file_path_from_attr(ecx.sess, &node.attrs, &dir_path),
                 };
-                node.attrs = attrs;
                 (file_path, dir_path, dir_ownership)
             }
             ModKind::Unloaded => {
                 // We have an outline `mod foo;` so we need to parse the file.
-                let old_attrs_len = attrs.len();
+                let old_attrs_len = node.attrs.len();
                 let ParsedExternalMod {
                     items,
                     spans,
@@ -1373,10 +1370,10 @@ impl InvocationCollectorNode for Box<ast::Item> {
                 } = parse_external_mod(
                     ecx.sess,
                     ident,
-                    span,
+                    node.span,
                     &ecx.current_expansion.module,
                     ecx.current_expansion.dir_ownership,
-                    &mut attrs,
+                    &mut node.attrs,
                 );
 
                 if let Some(lint_store) = ecx.lint_store {
@@ -1385,14 +1382,13 @@ impl InvocationCollectorNode for Box<ast::Item> {
                         ecx.ecfg.features,
                         ecx.resolver.registered_tools(),
                         ecx.current_expansion.lint_node_id,
-                        &attrs,
+                        &node.attrs,
                         &items,
                         ident.name,
                     );
                 }
 
                 *mod_kind = ModKind::Loaded(items, Inline::No { had_parse_error }, spans);
-                node.attrs = attrs;
                 if node.attrs.len() > old_attrs_len {
                     // If we loaded an out-of-line module and added some inner attributes,
                     // then we need to re-configure it and re-collect attributes for
