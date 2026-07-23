@@ -2,7 +2,7 @@
 //@ compile-flags: -Copt-level=3 -Zmerge-functions=disabled --target=aarch64-unknown-linux-gnu
 //@ needs-llvm-components: aarch64
 //@ add-minicore
-#![feature(no_core, repr_simd, f16, f128)]
+#![feature(no_core, f16, f128)]
 #![crate_type = "lib"]
 #![no_std]
 #![no_core]
@@ -12,10 +12,8 @@
 // useful for optimization. It prevents additional bitcasts that make LLVM patterns fail.
 
 extern crate minicore;
+use minicore::simd::Simd;
 use minicore::*;
-
-#[repr(simd)]
-pub struct Simd<T, const N: usize>([T; N]);
 
 #[repr(C)]
 struct Pair<T>(T, T);
