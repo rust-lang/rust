@@ -2,6 +2,7 @@
 
 use std::iter;
 
+use rustc_ast::attr::data_structures::CfgEntry;
 use rustc_ast::token::{Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::{
     AttrTokenStream, AttrTokenTree, LazyAttrTokenStream, Spacing, TokenTree, WithTokens,
@@ -254,7 +255,10 @@ impl<'a> StripUnconfigured<'a> {
             self.features,
             self.lint_node_id,
         ) else {
-            return vec![];
+            let trace_attr = cfg_attr.clone().convert_normal_to_synthetic(
+                SyntheticAttr::CfgAttrTrace(CfgEntry::Bool(true, cfg_attr.span)),
+            );
+            return vec![trace_attr];
         };
 
         // Lint on zero attributes in source.
