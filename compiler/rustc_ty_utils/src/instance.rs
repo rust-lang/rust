@@ -167,6 +167,7 @@ fn resolve_associated_item<'tcx>(
                     ty::TypingMode::Coherence
                     | ty::TypingMode::Typeck { .. }
                     | ty::TypingMode::PostTypeckUntilBorrowck { .. }
+                    | ty::TypingMode::Reflection
                     | ty::TypingMode::PostBorrowck { .. } => false,
                     ty::TypingMode::PostAnalysis | ty::TypingMode::Codegen => {
                         !trait_ref.still_further_specializable()

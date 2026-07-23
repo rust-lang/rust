@@ -123,6 +123,10 @@ pub enum TypingMode<I: Interner, S: TypingModeErasedStatus = MayBeErased> {
     /// This is currently only used by the new solver, but should be implemented in
     /// the old solver as well.
     PostBorrowck { defined_opaque_types: I::LocalDefIds },
+    /// During the evaluation of reflection logic that ignores lifetimes, we can only
+    /// handle impls that are fully generic over all lifetimes without constraints on
+    /// those lifetimes (other than implied bounds).
+    Reflection,
     /// After analysis, mostly during MIR optimizations, we're able to
     /// reveal all opaque types. As the hidden type should *never* be observable
     /// directly by the user, this should not be used by checks which may expose
@@ -173,6 +177,7 @@ impl<I: Interner> PartialEq for TypingModeEqWrapper<I> {
     fn eq(&self, other: &Self) -> bool {
         match (self.0, other.0) {
             (TypingMode::Coherence, TypingMode::Coherence) => true,
+            (TypingMode::Reflection, TypingMode::Reflection) => true,
             (
                 TypingMode::Typeck { defining_opaque_types_and_generators: l },
                 TypingMode::Typeck { defining_opaque_types_and_generators: r },
@@ -193,6 +198,7 @@ impl<I: Interner> PartialEq for TypingModeEqWrapper<I> {
             ) => true,
             (
                 TypingMode::Coherence
+                | TypingMode::Reflection
                 | TypingMode::Typeck { .. }
                 | TypingMode::PostTypeckUntilBorrowck { .. }
                 | TypingMode::PostBorrowck { .. }
@@ -218,6 +224,25 @@ impl<I: Interner, S: TypingModeErasedStatus> TypingMode<I, S> {
             TypingMode::Coherence => true,
             TypingMode::Typeck { .. }
             | TypingMode::PostTypeckUntilBorrowck { .. }
+            | TypingMode::Reflection
+            | TypingMode::PostBorrowck { .. }
+            | TypingMode::PostAnalysis
+            | TypingMode::Codegen
+            | TypingMode::ErasedNotCoherence(_) => false,
+        }
+    }
+
+    /// There are a bunch of places in the compiler where we single out `Reflection`,
+    /// and alter behavior. We'd like to *always* match on `TypingMode` exhaustively,
+    /// but not having this method leads to a bunch of noisy code.
+    ///
+    /// See also the documentation on [`TypingMode`] about exhaustive matching.
+    pub fn is_reflection(&self) -> bool {
+        match self {
+            TypingMode::Reflection => true,
+            TypingMode::Typeck { .. }
+            | TypingMode::PostTypeckUntilBorrowck { .. }
+            | TypingMode::Coherence
             | TypingMode::PostBorrowck { .. }
             | TypingMode::PostAnalysis
             | TypingMode::Codegen
@@ -236,6 +261,7 @@ impl<I: Interner, S: TypingModeErasedStatus> TypingMode<I, S> {
             TypingMode::Coherence
             | TypingMode::Typeck { .. }
             | TypingMode::PostTypeckUntilBorrowck { .. }
+            | TypingMode::Reflection
             | TypingMode::PostBorrowck { .. }
             | TypingMode::PostAnalysis
             | TypingMode::Codegen => false,
@@ -262,6 +288,7 @@ impl<I: Interner> TypingMode<I, MayBeErased> {
             }
             TypingMode::PostAnalysis => TypingMode::PostAnalysis,
             TypingMode::Codegen => TypingMode::Codegen,
+            TypingMode::Reflection => TypingMode::Reflection,
             TypingMode::ErasedNotCoherence(MayBeErased) => panic!(
                 "Called `assert_not_erased` from a place that can be called by the trait solver in `TypingMode::ErasedNotCoherence`. `TypingMode` is `ErasedNotCoherence` in a place where that should be impossible"
             ),
@@ -327,6 +354,7 @@ impl<I: Interner> From<TypingMode<I, CantBeErased>> for TypingMode<I, MayBeErase
             }
             TypingMode::PostAnalysis => TypingMode::PostAnalysis,
             TypingMode::Codegen => TypingMode::Codegen,
+            TypingMode::Reflection => TypingMode::Reflection,
         }
     }
 }
@@ -563,6 +591,7 @@ where
         TypingMode::Coherence
         | TypingMode::Typeck { .. }
         | TypingMode::PostTypeckUntilBorrowck { .. }
+        | TypingMode::Reflection
         | TypingMode::PostBorrowck { .. }
         | TypingMode::PostAnalysis => infcx.cx().features().feature_bound_holds_in_crate(symbol),
         TypingMode::Codegen => true,
