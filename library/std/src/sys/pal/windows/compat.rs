@@ -24,7 +24,7 @@ use crate::ffi::{CStr, c_void};
 use crate::ptr::{self, NonNull};
 use crate::sync::atomic::{AtomicUsize, Ordering};
 use crate::sys::c;
-#[cfg(not(target_family = "win7"))]
+#[cfg(not(target_vendor = "win7"))]
 use crate::sys::pal::windows::futex::{futex_wait, futex_wake_all};
 
 // This uses a static initializer to preload some imported functions.
@@ -207,9 +207,9 @@ impl LazyModule {
     /// Some thread must have started loading the module. (`self.1 is (0 | usize::MAX)`)
     unsafe fn wait_unchecked(&self) -> Option<Module> {
         while self.1.load(Ordering::Acquire) != 0 {
-            #[cfg(target_family = "win7")]
+            #[cfg(not(target_vendor = "win7"))]
             futex_wait(&self.1, usize::MAX, None);
-            #[cfg(not(target_family = "win7"))]
+            #[cfg(target_vendor = "win7")]
             crate::hint::spin_loop(); // no WaitOnAddress, so fall back to busy-wait
         }
         unsafe { self.get_unchecked() }
