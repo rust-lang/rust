@@ -273,7 +273,6 @@ impl<T> RwLock<T> {
         self.data.get_mut()
     }
 
-    #[inline(always)]
     pub fn read(&self) -> ReadGuard<'_, T> {
         if ERROR_CHECKING {
             self.try_read().expect("lock was already held")
@@ -295,7 +294,6 @@ impl<T> RwLock<T> {
         }
     }
 
-    #[inline(always)]
     pub fn try_read(&self) -> Result<ReadGuard<'_, T>, ()> {
         let mode = self.mode;
 
@@ -315,7 +313,6 @@ impl<T> RwLock<T> {
         .ok_or(())
     }
 
-    #[inline(always)]
     pub fn write(&self) -> WriteGuard<'_, T> {
         if ERROR_CHECKING {
             self.try_write().expect("lock was already held")
@@ -337,7 +334,6 @@ impl<T> RwLock<T> {
         }
     }
 
-    #[inline(always)]
     pub fn try_write(&self) -> Result<WriteGuard<'_, T>, ()> {
         let mode = self.mode;
 
