@@ -2811,6 +2811,59 @@ impl Step for Enzyme {
     }
 }
 
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct Offload {
+    pub target: TargetSelection,
+}
+
+impl Step for Offload {
+    type Output = Option<GeneratedTarball>;
+    const IS_HOST: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("offload")
+    }
+
+    fn is_default_step(builder: &Builder<'_>) -> bool {
+        builder.config.llvm_offload
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(Offload { target: run.target });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        if !builder.unstable_features() {
+            return None;
+        }
+
+        let target = self.target;
+
+        let offload = builder.ensure(llvm::OmpOffload { target });
+
+        if builder.config.dry_run() {
+            return None;
+        }
+
+        let target_libdir = format!("lib/rustlib/{}/lib", target.triple);
+
+        let mut tarball = Tarball::new(builder, "offload", &target.triple);
+        tarball.set_overlay(OverlayKind::Offload);
+        tarball.is_preview(true);
+
+        let offload_libdir = builder.offload_out(target).join("lib");
+
+        for path in offload.artifact_paths_with_symlink_targets() {
+            let relative = t!(path.strip_prefix(&offload_libdir));
+            let destdir = Path::new(&target_libdir).join(relative.parent().unwrap());
+
+            tarball.add_file(path, destdir, FileType::NativeLibrary);
+        }
+
+        Some(tarball.generate())
+    }
+}
+
 /// Tarball intended for internal consumption to ease rustc/std development.
 ///
 /// Should not be considered stable by end users.
