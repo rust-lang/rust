@@ -22,6 +22,7 @@ use rustc_middle::ty::{
     self, AdtDef, CoroutineArgsExt, EarlyBinder, PseudoCanonicalInput, Ty, TyCtxt,
     TypeVisitableExt, Unnormalized,
 };
+use rustc_session::config::PackCoroutineLayout;
 use rustc_session::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use rustc_span::{Symbol, sym};
 use tracing::{debug, instrument};
@@ -580,13 +581,20 @@ fn layout_of_uncached<'tcx>(
                 .map(|ty| cx.layout_of(ty))
                 .try_collect::<IndexVec<_, _>>()?;
 
+            let pack = match info.pack {
+                PackCoroutineLayout::No => rustc_abi::PackCoroutineLayout::Classic,
+                PackCoroutineLayout::CapturesOnly => rustc_abi::PackCoroutineLayout::CapturesOnly,
+            };
+
             let layout = cx
                 .calc
                 .coroutine(
                     &local_layouts,
+                    &info.relocated_upvars,
                     prefix_layouts,
                     &info.variant_fields,
                     &info.storage_conflicts,
+                    pack,
                     |tag| TyAndLayout {
                         ty: tag.primitive().to_ty(tcx),
                         layout: tcx.mk_layout(LayoutData::scalar(cx, tag)),

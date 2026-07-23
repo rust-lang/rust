@@ -121,7 +121,9 @@ pub use self::typeck_results::{
 use crate::error::{OpaqueHiddenTypeMismatch, TypeMismatchReason};
 use crate::metadata::{AmbigModChild, ModChild};
 use crate::middle::privacy::EffectiveVisibilities;
-use crate::mir::{Body, CoroutineLayout, CoroutineSavedLocal, MirPhase, SourceInfo};
+use crate::mir::{
+    Body, CoroutineLayout, CoroutineSavedLocal, CoroutineSavedTy, MirPhase, SourceInfo,
+};
 use crate::query::{IntoQueryKey, Providers};
 use crate::ty;
 use crate::ty::codec::{TyDecoder, TyEncoder};
@@ -1996,24 +1998,40 @@ impl<'tcx> TyCtxt<'tcx> {
         args: GenericArgsRef<'tcx>,
     ) -> Result<&'tcx CoroutineLayout<'tcx>, &'tcx LayoutError<'tcx>> {
         if self.is_async_drop_in_place_coroutine(def_id) {
-            // layout of `async_drop_in_place<T>::{closure}` in case,
-            // when T is a coroutine, contains this internal coroutine's ptr in upvars
-            // and doesn't require any locals. Here is an `empty coroutine's layout`
             let arg_cor_ty = args.first().unwrap().expect_ty();
             if arg_cor_ty.is_coroutine() {
+                // Use the actual upvar type from the coroutine args
+                let upvar_tys = args.as_coroutine().upvar_tys();
+                let upvar_ty =
+                    upvar_tys.first().copied().unwrap_or_else(|| Ty::new_mut_ptr(self, arg_cor_ty));
                 let span = self.def_span(def_id);
                 let source_info = SourceInfo::outermost(span);
-                // Even minimal, empty coroutine has 3 states (RESERVED_VARIANTS),
+                let mut field_tys: IndexVec<CoroutineSavedLocal, CoroutineSavedTy<'tcx>> =
+                    IndexVec::new();
+                let upvar_saved_local = field_tys.push(CoroutineSavedTy {
+                    ty: upvar_ty,
+                    source_info,
+                    ignore_for_traits: true,
+                    debuginfo_name: None,
+                });
+                // Even minimal, the trivial coroutine has 3 states (RESERVED_VARIANTS),
                 // so variant_fields and variant_source_info should have 3 elements.
-                let variant_fields: IndexVec<VariantIdx, IndexVec<FieldIdx, CoroutineSavedLocal>> =
-                    iter::repeat(IndexVec::new()).take(CoroutineArgs::RESERVED_VARIANTS).collect();
+                let mut variant_fields: IndexVec<
+                    VariantIdx,
+                    IndexVec<FieldIdx, CoroutineSavedLocal>,
+                > = iter::repeat(IndexVec::new()).take(CoroutineArgs::RESERVED_VARIANTS).collect();
+                variant_fields[VariantIdx::ZERO].push(upvar_saved_local);
                 let variant_source_info: IndexVec<VariantIdx, SourceInfo> =
                     iter::repeat(source_info).take(CoroutineArgs::RESERVED_VARIANTS).collect();
+                let relocated_upvars: IndexVec<CoroutineSavedLocal, Option<CoroutineSavedLocal>> =
+                    IndexVec::from_raw(vec![Some(upvar_saved_local)]);
                 let proxy_layout = CoroutineLayout {
-                    field_tys: [].into(),
+                    field_tys,
                     variant_fields,
                     variant_source_info,
-                    storage_conflicts: BitMatrix::new(0, 0),
+                    storage_conflicts: BitMatrix::new(1, 1),
+                    relocated_upvars,
+                    pack: rustc_session::config::PackCoroutineLayout::No,
                 };
                 return Ok(self.arena.alloc(proxy_layout));
             } else {
