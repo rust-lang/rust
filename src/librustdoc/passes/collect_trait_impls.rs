@@ -34,9 +34,6 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
         synth.impls
     });
 
-    let local_crate = ExternalCrate { crate_num: LOCAL_CRATE };
-    let prims: FxHashSet<PrimitiveType> = local_crate.primitives(tcx).map(|(_, p)| p).collect();
-
     let crate_items = {
         let mut coll = ItemAndAliasCollector::new(&cx.cache);
         cx.sess().time("collect_items_for_trait_impls", || coll.visit_crate(&krate));
@@ -53,23 +50,28 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
             for &impl_def_id in tcx.trait_impls_in_crate(cnum) {
                 cx.with_param_env(impl_def_id, |cx| {
                     let opt_trait_ref = tcx.impl_opt_trait_ref(impl_def_id);
-                    let self_ty = tcx.type_of(impl_def_id).instantiate_identity().skip_norm_wip();
-                    let self_ty =
-                        clean_middle_ty(ty::Binder::dummy(self_ty), cx, Some(impl_def_id), None);
-                    if self_ty.is_full_generic()
-                        || self_ty
-                            .primitive_type()
-                            .is_some_and(|primitive| prims.contains(&primitive))
-                        || self_ty
-                            .def_id(&cx.cache)
-                            .is_some_and(|did| crate_items.contains(&ItemId::DefId(did)))
-                        || opt_trait_ref.is_some_and(|trait_ref| {
-                            crate_items.contains(&ItemId::DefId(trait_ref.def_id()))
-                                || Some(trait_ref.def_id()) == tcx.lang_items().deref_trait()
-                                || tcx.is_doc_notable_trait(trait_ref.def_id())
-                        })
-                    {
+                    if opt_trait_ref.is_some_and(|trait_ref| {
+                        crate_items.contains(&ItemId::DefId(trait_ref.def_id()))
+                            || Some(trait_ref.def_id()) == tcx.lang_items().deref_trait()
+                            || tcx.is_doc_notable_trait(trait_ref.def_id())
+                    }) {
                         inline::build_impl(cx, impl_def_id, None, &mut new_items_external);
+                    } else {
+                        let self_ty =
+                            tcx.type_of(impl_def_id).instantiate_identity().skip_norm_wip();
+                        let self_ty = clean_middle_ty(
+                            ty::Binder::dummy(self_ty),
+                            cx,
+                            Some(impl_def_id),
+                            None,
+                        );
+                        if self_ty.is_full_generic()
+                            || self_ty
+                                .def_id(&cx.cache)
+                                .is_some_and(|did| crate_items.contains(&ItemId::DefId(did)))
+                        {
+                            inline::build_impl(cx, impl_def_id, None, &mut new_items_external);
+                        }
                     }
                 });
             }
@@ -98,19 +100,21 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
     }
 
     tcx.sess.prof.generic_activity("build_primitive_trait_impls").run(|| {
-        for def_id in PrimitiveType::all_impls(tcx) {
-            // Try to inline primitive impls from other crates.
-            if !def_id.is_local() {
-                cx.with_param_env(def_id, |cx| {
-                    inline::build_impl(cx, def_id, None, &mut new_items_external);
-                });
-            }
-        }
         for (prim, did) in PrimitiveType::primitive_locations(tcx) {
             // Do not calculate blanket impl list for docs that are not going to be rendered.
             // While the `impl` blocks themselves are only in `libcore`, the module with `doc`
             // attached is directly included in `libstd` as well.
             if did.is_local() {
+                for impl_def_id in prim.impls(tcx) {
+                    // Try to inline primitive impls from other crates.
+                    if !impl_def_id.is_local() {
+                        cx.with_param_env(impl_def_id, |cx| {
+                            inline::build_impl(cx, impl_def_id, None, &mut new_items_external);
+                        });
+                    }
+                }
+
+                // HACK: this is all one massive hack that is very hard to get rid of (see comment below)
                 for def_id in prim.impls(tcx).filter(|&def_id| {
                     // Avoid including impl blocks with filled-in generics.
                     // https://github.com/rust-lang/rust/issues/94937
