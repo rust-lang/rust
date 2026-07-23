@@ -1,3 +1,7 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/42796>.
+//! Where clause implying trait assoc type is `Copy`, poisoned cache to
+//! believe `String: Copy`, which exposed UB.
+
 pub trait Mirror<Smoke> {
     type Image;
 }
