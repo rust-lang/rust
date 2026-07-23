@@ -821,14 +821,21 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 let predicate = fcx.resolve_vars_if_possible(obligation.predicate);
                 let cast_span = self.cast_span;
 
-                if let ObligationCauseCode::BinOp { lhs_hir_id, rhs_span, .. } =
+                let ObligationCauseCode::BinOp { lhs_hir_id, rhs_hir_id, rhs_span, .. } =
                     obligation.cause.code()
-                    && (fcx.tcx.hir_span(*lhs_hir_id).contains(cast_span)
-                        || rhs_span.contains(cast_span))
-                    && matches!(
-                        predicate.kind().skip_binder(),
-                        ty::PredicateKind::Clause(ty::ClauseKind::Trait(_))
-                    )
+                else {
+                    return None;
+                };
+                let lhs_ty = fcx.resolve_vars_if_possible(fcx.node_ty(*lhs_hir_id));
+                let rhs_ty = fcx.resolve_vars_if_possible(fcx.node_ty(*rhs_hir_id));
+
+                if (fcx.tcx.hir_span(*lhs_hir_id).contains(cast_span)
+                    && lhs_ty.contains(self.cast_ty))
+                    || (rhs_span.contains(cast_span) && rhs_ty.contains(self.cast_ty))
+                        && matches!(
+                            predicate.kind().skip_binder(),
+                            ty::PredicateKind::Clause(ty::ClauseKind::Trait(_))
+                        )
                 {
                     obligation.cause.span = cast_span;
                     obligation.predicate = predicate;
