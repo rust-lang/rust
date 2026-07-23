@@ -94,8 +94,8 @@ use rustc_errors::{DiagCtxt, DiagCtxtHandle};
 use rustc_middle::dep_graph::{WorkProduct, WorkProductMap};
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::Providers;
-use rustc_session::Session;
 use rustc_session::config::{OptLevel, OutputFilenames};
+use rustc_session::{IncrCompSession, Session};
 use rustc_span::{Symbol, sym};
 use rustc_target::spec::{Arch, RelocModel};
 use tempfile::TempDir;
@@ -297,13 +297,14 @@ impl CodegenBackend for GccCodegenBackend {
         &self,
         ongoing_codegen: Box<dyn Any>,
         sess: &Session,
+        incr_comp_session: Option<&IncrCompSession>,
         _outputs: &OutputFilenames,
         crate_info: &CrateInfo,
     ) -> (CompiledModules, WorkProductMap) {
         ongoing_codegen
             .downcast::<rustc_codegen_ssa::back::write::OngoingCodegen<GccCodegenBackend>>()
             .expect("Expected GccCodegenBackend's OngoingCodegen, found Box<Any>")
-            .join(sess, crate_info)
+            .join(sess, incr_comp_session, crate_info)
     }
 
     fn target_config(&self, sess: &Session) -> TargetConfig {

@@ -11,7 +11,7 @@ use rustc_middle::query::on_disk_cache::OnDiskCache;
 use rustc_serialize::opaque::{FileEncoder, MemDecoder};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_session::config::IncrementalStateAssertion;
-use rustc_session::{Session, StableCrateId};
+use rustc_session::{IncrCompSession, Session, StableCrateId};
 use rustc_span::Symbol;
 use tracing::{debug, warn};
 
@@ -32,56 +32,59 @@ enum LoadResult {
     IoError { path: PathBuf, err: io::Error },
 }
 
-fn delete_dirty_work_product(sess: &Session, swp: SerializedWorkProduct) {
+fn delete_dirty_work_product(
+    sess: &Session,
+    incr_comp_session: &IncrCompSession,
+    swp: SerializedWorkProduct,
+) {
     debug!("delete_dirty_work_product({:?})", swp);
-    work_product::delete_workproduct_files(sess, &swp.work_product);
+    work_product::delete_workproduct_files(sess, incr_comp_session, &swp.work_product);
 }
 
-fn load_dep_graph(sess: &Session) -> LoadResult {
+fn load_dep_graph(sess: &Session, incr_comp_session: &IncrCompSession) -> LoadResult {
     assert!(sess.opts.incremental.is_some());
 
     let _timer = sess.prof.generic_activity("incr_comp_prepare_load_dep_graph");
 
     // Calling `sess.incr_comp_session_dir()` will panic if `sess.opts.incremental.is_none()`.
     // Fortunately, we just checked that this isn't the case.
-    let path = dep_graph_path(sess);
+    let Some(path) = old_dep_graph_path(incr_comp_session) else {
+        return LoadResult::DataOutOfDate;
+    };
     let expected_hash = sess.opts.dep_tracking_hash(false);
 
     let mut prev_work_products = UnordMap::default();
 
-    // If we are only building with -Zquery-dep-graph but without an actual
-    // incr. comp. session directory, we skip this. Otherwise we'd fail
-    // when trying to load work products.
-    if sess.incr_comp_session_dir_opt().is_some() {
-        let work_products_path = work_products_path(sess);
+    let Some(work_products_path) = old_work_products_path(incr_comp_session) else {
+        return LoadResult::DataOutOfDate;
+    };
 
-        if let Ok(OpenFile { mmap, start_pos }) =
-            file_format::open_incremental_file(sess, &work_products_path)
-        {
-            // Decode the list of work_products
-            let Ok(mut work_product_decoder) = MemDecoder::new(&mmap[..], start_pos) else {
-                sess.dcx().emit_warn(diagnostics::CorruptFile { path: &work_products_path });
-                return LoadResult::DataOutOfDate;
-            };
-            let work_products: Vec<SerializedWorkProduct> =
-                Decodable::decode(&mut work_product_decoder);
+    if let Ok(OpenFile { mmap, start_pos }) =
+        file_format::open_incremental_file(sess, &work_products_path)
+    {
+        // Decode the list of work_products
+        let Ok(mut work_product_decoder) = MemDecoder::new(&mmap[..], start_pos) else {
+            sess.dcx().emit_warn(diagnostics::CorruptFile { path: &work_products_path });
+            return LoadResult::DataOutOfDate;
+        };
+        let work_products: Vec<SerializedWorkProduct> =
+            Decodable::decode(&mut work_product_decoder);
 
-            for swp in work_products {
-                let all_files_exist = swp.work_product.saved_files.items().all(|(_, path)| {
-                    let exists = in_incr_comp_dir_sess(sess, path).exists();
-                    if !exists && sess.opts.unstable_opts.incremental_info {
-                        eprintln!("incremental: could not find file for work product: {path}",);
-                    }
-                    exists
-                });
-
-                if all_files_exist {
-                    debug!("reconcile_work_products: all files for {:?} exist", swp);
-                    prev_work_products.insert(swp.id, swp.work_product);
-                } else {
-                    debug!("reconcile_work_products: some file for {:?} does not exist", swp);
-                    delete_dirty_work_product(sess, swp);
+        for swp in work_products {
+            let all_files_exist = swp.work_product.saved_files.items().all(|(_, path)| {
+                let exists = in_old_incr_comp_dir_sess(incr_comp_session, path).unwrap().exists();
+                if !exists && sess.opts.unstable_opts.incremental_info {
+                    eprintln!("incremental: could not find file for work product: {path}",);
                 }
+                exists
+            });
+
+            if all_files_exist {
+                debug!("reconcile_work_products: all files for {:?} exist", swp);
+                prev_work_products.insert(swp.id, swp.work_product);
+            } else {
+                debug!("reconcile_work_products: some file for {:?} does not exist", swp);
+                delete_dirty_work_product(sess, incr_comp_session, swp);
             }
         }
     }
@@ -124,14 +127,20 @@ fn load_dep_graph(sess: &Session) -> LoadResult {
 /// If we are not in incremental compilation mode, returns `None`.
 /// Otherwise, tries to load the query result cache from disk,
 /// creating an empty cache if it could not be loaded.
-pub fn load_query_result_cache(sess: &Session) -> Option<OnDiskCache> {
+pub fn load_query_result_cache(
+    sess: &Session,
+    incr_comp_session: Option<&IncrCompSession>,
+) -> Option<OnDiskCache> {
     if sess.opts.incremental.is_none() {
         return None;
     }
+    let incr_comp_session = incr_comp_session.unwrap();
 
     let _prof_timer = sess.prof.generic_activity("incr_comp_load_query_result_cache");
 
-    let path = query_cache_path(sess);
+    let Some(path) = old_query_cache_path(incr_comp_session) else {
+        return Some(OnDiskCache::new_empty());
+    };
     match file_format::open_incremental_file(sess, &path) {
         Ok(OpenFile { mmap, start_pos }) => {
             let cache = OnDiskCache::new(sess, mmap, start_pos).unwrap_or_else(|()| {
@@ -181,18 +190,20 @@ pub fn setup_dep_graph(
     sess: &Session,
     crate_name: Symbol,
     stable_crate_id: StableCrateId,
-) -> DepGraph {
+) -> (DepGraph, Option<IncrCompSession>) {
     if sess.opts.incremental.is_none() {
-        return DepGraph::new_disabled();
+        return (DepGraph::new_disabled(), None);
     }
 
     // `load_dep_graph` can only be called after `prepare_session_directory`.
-    prepare_session_directory(sess, crate_name, stable_crate_id);
+    let incr_comp_session = prepare_session_directory(sess, crate_name, stable_crate_id);
     // Try to load the previous session's dep graph and work products.
-    let load_result = load_dep_graph(sess);
+    let load_result = load_dep_graph(sess, &incr_comp_session);
 
     sess.time("incr_comp_garbage_collect_session_directories", || {
-        if let Err(e) = garbage_collect_session_directories(sess, &sess.incr_comp_session_dir()) {
+        if let Err(e) =
+            garbage_collect_session_directories(sess, &incr_comp_session.new_session_directory)
+        {
             warn!(
                 "Error while trying to garbage collect incremental compilation \
                 cache directory: {e}",
@@ -209,9 +220,11 @@ pub fn setup_dep_graph(
             Default::default()
         }
         LoadResult::DataOutOfDate => {
-            if let Err(err) = delete_all_session_dir_contents(sess) {
-                sess.dcx()
-                    .emit_err(diagnostics::DeleteIncompatible { path: dep_graph_path(sess), err });
+            if let Err(err) = delete_all_session_dir_contents(&incr_comp_session) {
+                sess.dcx().emit_err(diagnostics::DeleteIncompatible {
+                    path: dep_graph_path(&incr_comp_session),
+                    err,
+                });
             }
             Default::default()
         }
@@ -219,7 +232,7 @@ pub fn setup_dep_graph(
     };
 
     // Stream the dep-graph to an alternate file, to avoid overwriting anything in case of errors.
-    let path_buf = staging_dep_graph_path(sess);
+    let path_buf = staging_dep_graph_path(&incr_comp_session);
 
     let mut encoder = FileEncoder::new(&path_buf).unwrap_or_else(|err| {
         // We're in incremental mode but couldn't set up streaming output of the dep graph.
@@ -232,5 +245,5 @@ pub fn setup_dep_graph(
     // First encode the commandline arguments hash
     sess.opts.dep_tracking_hash(false).encode(&mut encoder);
 
-    DepGraph::new(sess, prev_graph, prev_work_products, encoder)
+    (DepGraph::new(sess, prev_graph, prev_work_products, encoder), Some(incr_comp_session))
 }

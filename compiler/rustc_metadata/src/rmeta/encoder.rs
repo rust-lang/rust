@@ -2466,13 +2466,22 @@ pub fn encode_metadata(tcx: TyCtxt<'_>, path: &Path, ref_path: Option<&Path>) {
 
     // If the metadata dep-node is green, try to reuse the saved work product.
     if tcx.dep_graph.is_fully_enabled()
+        && let incr_comp_session = tcx.incr_comp_session.unwrap()
+        && let Some(old_incr_comp_session_dir) = &incr_comp_session.old_session_directory
         && let work_product_id = WorkProductId::from_cgu_name("metadata")
         && let Some(work_product) = tcx.dep_graph.previous_work_product(&work_product_id)
         && tcx.dep_graph.try_mark_green(tcx, &dep_node).is_some()
     {
         let saved_path = &work_product.saved_files["rmeta"];
-        let incr_comp_session_dir = tcx.sess.incr_comp_session_dir();
-        let source_file_in_incr_dir = &incr_comp_session_dir.join(saved_path);
+        let source_file_in_incr_dir = &old_incr_comp_session_dir.join(saved_path);
+        let source_file_in_new_incr_dir = incr_comp_session.new_session_directory.join(saved_path);
+        debug!(
+            "copying preexisting metadata from {source_file_in_incr_dir:?} to {source_file_in_new_incr_dir:?}"
+        );
+        match rustc_fs_util::link_or_copy(&source_file_in_incr_dir, source_file_in_new_incr_dir) {
+            Ok(_) => {}
+            Err(err) => tcx.dcx().emit_fatal(FailCreateFileEncoder { err }),
+        };
         debug!("copying preexisting metadata from {source_file_in_incr_dir:?} to {path:?}");
         match rustc_fs_util::link_or_copy(&source_file_in_incr_dir, path) {
             Ok(_) => {}
