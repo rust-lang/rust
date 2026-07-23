@@ -272,11 +272,6 @@ impl MediaDirsExt for MediaDirs {
             let Some(val) = split.next() else { continue };
             debug_assert_eq!(split.next(), None);
 
-            // ensure the path is absolute or $HOME-relative
-            if !val.starts_with(b"\"/") && !val.starts_with(b"\"$HOME/") {
-                continue;
-            }
-
             // the path value is quoted; unquote it
             let Some(path) = xdg_unquote(val) else { continue };
 
@@ -287,15 +282,23 @@ impl MediaDirsExt for MediaDirs {
                 PathBuf::from(OsString::from_vec(path.into_owned()))
             };
 
+            // ignore relative paths
+            if path.is_relative() {
+                continue;
+            }
+
+            // setting to the home dir disables the directory configuration
+            let path = (path != user_home).then_some(path);
+
             // load the known user directories
             match var {
-                b"XDG_DESKTOP_DIR" => dirs.desktop = Some(path),
-                b"XDG_DOCUMENTS_DIR" => dirs.documents = Some(path),
-                b"XDG_DOWNLOAD_DIR" => dirs.downloads = Some(path),
-                b"XDG_MUSIC_DIR" => dirs.music = Some(path),
-                b"XDG_PICTURES_DIR" => dirs.pictures = Some(path),
-                b"XDG_VIDEOS_DIR" => dirs.videos = Some(path),
-                b"XDG_TEMPLATES_DIR" => dirs.extra.templates = Some(path),
+                b"XDG_DESKTOP_DIR" => dirs.desktop = path,
+                b"XDG_DOCUMENTS_DIR" => dirs.documents = path,
+                b"XDG_DOWNLOAD_DIR" => dirs.downloads = path,
+                b"XDG_MUSIC_DIR" => dirs.music = path,
+                b"XDG_PICTURES_DIR" => dirs.pictures = path,
+                b"XDG_VIDEOS_DIR" => dirs.videos = path,
+                b"XDG_TEMPLATES_DIR" => dirs.extra.templates = path,
                 _ => {
                     // ignore unknown variable assignment
                 }
