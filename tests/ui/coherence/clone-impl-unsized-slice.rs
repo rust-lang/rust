@@ -1,5 +1,5 @@
-// Regression test for #48728, an ICE that occurred computing
-// coherence "help" information.
+//! Regression test for <https://github.com/rust-lang/rust/issues/48728>.
+//! ICE occurred computing coherence "help" information.
 
 //@ check-pass
 #[derive(Clone)]
