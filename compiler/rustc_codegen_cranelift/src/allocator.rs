@@ -13,6 +13,11 @@ pub(crate) fn codegen(tcx: TyCtxt<'_>, module: &mut dyn Module, methods: &[Alloc
     let usize_ty = module.target_config().pointer_type();
 
     for method in methods {
+        // Allocation token instrumentation is not supported by this backend.
+        if method.with_token {
+            continue;
+        }
+
         let mut arg_tys = Vec::with_capacity(method.inputs.len());
         for input in method.inputs.iter() {
             match input.ty {

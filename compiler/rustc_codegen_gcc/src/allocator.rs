@@ -29,6 +29,11 @@ pub(crate) unsafe fn codegen(
     let i8p = i8.make_pointer();
 
     for method in methods {
+        // Allocation token instrumentation is not supported by this backend.
+        if method.with_token {
+            continue;
+        }
+
         let mut types = Vec::with_capacity(method.inputs.len());
         for input in method.inputs.iter() {
             match input.ty {

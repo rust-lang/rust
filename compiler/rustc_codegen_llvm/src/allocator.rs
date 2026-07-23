@@ -1,8 +1,9 @@
 use libc::c_uint;
 use rustc_ast::expand::allocator::{
     AllocatorMethod, AllocatorTy, NO_ALLOC_SHIM_IS_UNSTABLE, SpecialAllocatorMethod,
-    default_fn_name, global_fn_name,
+    default_fn_name, default_fn_name_alloc_token, global_fn_name,
 };
+use rustc_codegen_ssa::base::allocator_shim_method_name;
 use rustc_codegen_ssa::traits::BaseTypeCodegenMethods as _;
 use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
@@ -61,8 +62,32 @@ pub(crate) unsafe fn codegen(
             }
         };
 
-        let from_name = mangle_internal_symbol(tcx, &global_fn_name(method.name));
-        let to_name = mangle_internal_symbol(tcx, &default_fn_name(method.name));
+        let from_name = allocator_shim_method_name(tcx, method);
+        let to_name = if method.with_token {
+            if method.forward_to_global {
+                // Forward to the non-token-enabled allocation function of the allocator
+                // registered with the `#[global_allocator]` attribute, ignoring the token
+                // identifier, for backward compatibility with existing allocators.
+                mangle_internal_symbol(tcx, &global_fn_name(method.name))
+            } else {
+                mangle_internal_symbol(tcx, &default_fn_name_alloc_token(method.name))
+            }
+        } else {
+            mangle_internal_symbol(tcx, &default_fn_name(method.name))
+        };
+        let from_args = if method.token.is_some() { &args[..args.len() - 1] } else { &args[..] };
+        // The fast ABI encodes the token identifier in the allocation function name (e.g.,
+        // `__alloc_token_0___rust_alloc`) instead of appending a token identifier argument, and
+        // the default implementation of the token-enabled version of the allocator method takes
+        // the token identifier as the last argument, so the token identifier is passed as a
+        // constant. For allocators registered with the `#[global_allocator]` attribute, the
+        // non-token-enabled allocation function of the registered allocator does not take the
+        // token identifier argument (i.e., the last argument).
+        let to_args = if method.with_token && method.forward_to_global {
+            &args[..args.len() - 1]
+        } else {
+            &args[..]
+        };
 
         let alloc_attr_flag = match method.special {
             Some(SpecialAllocatorMethod::Alloc) => CodegenFnAttrFlags::ALLOCATOR,
@@ -79,10 +104,12 @@ pub(crate) unsafe fn codegen(
             &cx,
             &from_name,
             Some(&to_name),
-            &args,
+            from_args,
+            to_args,
             output,
             no_return,
             &attrs,
+            method.token,
         );
     }
 
@@ -93,9 +120,11 @@ pub(crate) unsafe fn codegen(
         &mangle_internal_symbol(tcx, NO_ALLOC_SHIM_IS_UNSTABLE),
         None,
         &[],
+        &[],
         None,
         false,
         &CodegenFnAttrs::new(),
+        None,
     );
 
     if tcx.sess.opts.debuginfo != DebugInfo::None {
@@ -111,9 +140,11 @@ fn create_wrapper_function(
     from_name: &str,
     to_name: Option<&str>,
     args: &[&Type],
+    to_args: &[&Type],
     output: Option<&Type>,
     no_return: bool,
     attrs: &CodegenFnAttrs,
+    token: Option<u32>,
 ) {
     let ty = cx.type_func(args, output.unwrap_or_else(|| cx.type_void()));
     let llfn = declare_simple_fn(
@@ -151,13 +182,14 @@ fn create_wrapper_function(
     let mut bx = SBuilder::build(&cx, llbb);
 
     if let Some(to_name) = to_name {
+        let to_ty = cx.type_func(to_args, output.unwrap_or_else(|| cx.type_void()));
         let callee = declare_simple_fn(
             &cx,
             to_name,
             llvm::CallConv::CCallConv,
             llvm::UnnamedAddr::Global,
             llvm::Visibility::Hidden,
-            ty,
+            to_ty,
         );
         if let Some(no_return) = no_return {
             // -> ! DIFlagNoReturn
@@ -165,12 +197,15 @@ fn create_wrapper_function(
         }
         llvm::set_visibility(callee, llvm::Visibility::Hidden);
 
-        let args = args
-            .iter()
-            .enumerate()
-            .map(|(i, _)| llvm::get_param(llfn, i as c_uint))
+        let mut call_args = (0..usize::min(args.len(), to_args.len()))
+            .map(|i| llvm::get_param(llfn, i as c_uint))
             .collect::<Vec<_>>();
-        let ret = bx.call(ty, callee, &args, None);
+        if to_args.len() > args.len() {
+            let token = token.expect("missing token identifier for the token identifier argument");
+            let token_ty = to_args[to_args.len() - 1];
+            call_args.push(unsafe { llvm::LLVMConstInt(token_ty, token.into(), llvm::FALSE) });
+        }
+        let ret = bx.call(to_ty, callee, &call_args, None);
         llvm::LLVMSetTailCall(ret, TRUE);
         if output.is_some() {
             bx.ret(ret);

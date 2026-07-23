@@ -6,8 +6,8 @@ use std::{cmp, iter};
 use itertools::Itertools;
 use rustc_abi::FIRST_VARIANT;
 use rustc_ast::expand::allocator::{
-    ALLOC_ERROR_HANDLER, ALLOCATOR_METHODS, AllocatorKind, AllocatorMethod, AllocatorMethodInput,
-    AllocatorTy,
+    ALLOC_ERROR_HANDLER, ALLOC_TOKEN_ALLOCATOR_METHODS, ALLOC_TOKEN_FN_PREFIX, ALLOCATOR_METHODS,
+    AllocatorKind, AllocatorMethod, AllocatorMethodInput, AllocatorTy, global_fn_name,
 };
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
@@ -697,6 +697,43 @@ pub fn allocator_shim_contents(tcx: TyCtxt<'_>, kind: AllocatorKind) -> Vec<Allo
         methods.extend(ALLOCATOR_METHODS.into_iter().copied());
     }
 
+    // With extended coverage enabled, the `AllocTokenPass` rewrites the annotated `__rust_alloc`,
+    // `__rust_alloc_zeroed`, and `__rust_realloc` calls to token-enabled versions of these
+    // allocation functions, so the allocator shim generation also needs to generate those for LLVM
+    // AllocToken and heap partitioning support.
+    //
+    // The fast ABI encodes the token identifier in the allocation function name (e.g.,
+    // `__alloc_token_0___rust_alloc`) instead of appending a token identifier argument, so the
+    // token-enabled versions of these allocation functions are generated for each token
+    // identifier, forwarding to the default implementations of the token-enabled versions of
+    // the allocator methods with the token identifier as a constant. For allocators registered
+    // with the `#[global_allocator]` attribute, the token-enabled versions of these allocation
+    // functions forward to the non-token-enabled allocation functions of the registered
+    // allocator, ignoring the token identifier, for backward compatibility with existing
+    // allocators.
+    if tcx.sess.is_sanitizer_alloc_token_enabled()
+        && tcx.sess.opts.unstable_opts.sanitizer_alloc_token_extended.unwrap_or(true)
+    {
+        if tcx.sess.opts.unstable_opts.sanitizer_alloc_token_fast_abi == Some(true) {
+            // The fast ABI requires a maximum number of tokens.
+            let max = tcx.sess.alloc_token_max().unwrap_or(0);
+            for token in 0..max {
+                methods.extend(ALLOC_TOKEN_ALLOCATOR_METHODS.iter().map(|method| {
+                    AllocatorMethod {
+                        forward_to_global: kind == AllocatorKind::Global,
+                        token: Some(token),
+                        ..*method
+                    }
+                }));
+            }
+        } else {
+            methods.extend(ALLOC_TOKEN_ALLOCATOR_METHODS.iter().map(|method| AllocatorMethod {
+                forward_to_global: kind == AllocatorKind::Global,
+                ..*method
+            }));
+        }
+    }
+
     // If the return value of allocator_kind_for_codegen is Some then
     // alloc_error_handler_kind must also be Some.
     if tcx.alloc_error_handler_kind(()).unwrap() == AllocatorKind::Default {
@@ -705,10 +742,28 @@ pub fn allocator_shim_contents(tcx: TyCtxt<'_>, kind: AllocatorKind) -> Vec<Allo
             special: None,
             inputs: &[AllocatorMethodInput { name: "layout", ty: AllocatorTy::Layout }],
             output: AllocatorTy::Never,
+            with_token: false,
+            forward_to_global: false,
+            token: None,
         });
     }
 
     methods
+}
+
+/// Returns the exported name of the given allocator shim method. The name of a token-enabled
+/// method is the `__alloc_token_` prefix followed by the mangled name of its non-token-enabled
+/// counterpart (i.e., the prefix is applied outside the symbol mangling), because the
+/// `AllocTokenPass` rewrites allocation calls to token-enabled versions of the allocation
+/// functions by prepending the prefix to the already-mangled name of the callee. With the fast
+/// ABI, the prefix also encodes the token identifier (e.g., `__alloc_token_0_`).
+pub fn allocator_shim_method_name<'tcx>(tcx: TyCtxt<'tcx>, method: &AllocatorMethod) -> String {
+    let name = mangle_internal_symbol(tcx, &global_fn_name(method.name));
+    match method.token {
+        Some(token) if method.with_token => format!("{ALLOC_TOKEN_FN_PREFIX}{token}_{name}"),
+        _ if method.with_token => format!("{ALLOC_TOKEN_FN_PREFIX}{name}"),
+        _ => name,
+    }
 }
 
 pub fn codegen_crate<

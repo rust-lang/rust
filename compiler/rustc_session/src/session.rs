@@ -1578,6 +1578,14 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         sess.dcx().emit_err(diagnostics::SanitizerAllocTokenFastAbiRequiresAllocToken);
     }
 
+    // Fast ABI requires a maximum number of tokens.
+    if sess.opts.unstable_opts.sanitizer_alloc_token_fast_abi == Some(true)
+        && sess.is_sanitizer_alloc_token_enabled()
+        && sess.alloc_token_max().is_none()
+    {
+        sess.dcx().emit_err(diagnostics::SanitizerAllocTokenFastAbiRequiresMax);
+    }
+
     // LLVM CFI pointer generalization requires CFI or KCFI.
     if sess.is_sanitizer_cfi_generalize_pointers_enabled() {
         if !(sess.is_sanitizer_cfi_enabled() || sess.is_sanitizer_kcfi_enabled()) {

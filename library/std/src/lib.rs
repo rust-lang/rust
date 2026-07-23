@@ -270,11 +270,13 @@
 // Language features:
 // tidy-alphabetical-start
 #![feature(alloc_error_handler)]
+#![feature(alloc_with_token)]
 #![feature(allocator_internals)]
 #![feature(allow_internal_unsafe)]
 #![feature(allow_internal_unstable)]
 #![feature(asm_experimental_arch)]
 #![feature(autodiff)]
+#![feature(cfg_sanitize)]
 #![feature(cfg_sanitizer_cfi)]
 #![feature(cfg_target_has_threads)]
 #![feature(cfg_target_thread_local)]
@@ -307,6 +309,7 @@
 #![feature(prelude_import)]
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
+#![feature(sanitize)]
 #![feature(staged_api)]
 #![feature(stmt_expr_attributes)]
 #![feature(strict_provenance_lints)]

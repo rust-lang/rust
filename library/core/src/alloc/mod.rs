@@ -46,6 +46,19 @@ impl fmt::Display for AllocError {
     }
 }
 
+/// A token identifier for LLVM AllocToken and heap partitioning support.
+#[unstable(feature = "alloc_with_token", issue = "159111")]
+#[repr(transparent)]
+#[derive(Copy, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+pub struct AllocToken(pub usize);
+
+#[unstable(feature = "alloc_with_token", issue = "159111")]
+impl fmt::Display for AllocToken {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.0, f)
+    }
+}
+
 /// An implementation of `Allocator` can allocate, grow, shrink, and deallocate arbitrary blocks of
 /// data described via [`Layout`][].
 ///
@@ -452,6 +465,84 @@ pub const unsafe trait Allocator {
         }
 
         Ok(new_ptr)
+    }
+
+    /// Behaves like `allocate`, but also passes a token identifier, for LLVM AllocToken and heap
+    /// partitioning support (i.e., for token-enabled memory allocators that use token
+    /// identifiers to separate allocations into partitions).
+    ///
+    /// The default implementation ignores `token` and calls `allocate`, for backward
+    /// compatibility with existing allocators.
+    #[unstable(feature = "alloc_with_token", issue = "159111")]
+    fn allocate_with_token(
+        &self,
+        layout: Layout,
+        token: AllocToken,
+    ) -> Result<NonNull<[u8]>, AllocError> {
+        let _ = token;
+        self.allocate(layout)
+    }
+
+    /// Behaves like `allocate_zeroed`, but also passes a token identifier, for LLVM AllocToken
+    /// and heap partitioning support (i.e., for token-enabled memory allocators that use token
+    /// identifiers to separate allocations into partitions).
+    ///
+    /// The default implementation ignores `token` and calls `allocate_zeroed`, for backward
+    /// compatibility with existing allocators.
+    #[unstable(feature = "alloc_with_token", issue = "159111")]
+    fn allocate_zeroed_with_token(
+        &self,
+        layout: Layout,
+        token: AllocToken,
+    ) -> Result<NonNull<[u8]>, AllocError> {
+        let _ = token;
+        self.allocate_zeroed(layout)
+    }
+
+    /// Behaves like `grow`, but also passes a token identifier, for LLVM AllocToken and heap
+    /// partitioning support (i.e., for token-enabled memory allocators that use token
+    /// identifiers to separate allocations into partitions).
+    ///
+    /// The default implementation ignores `token` and calls `grow`, for backward compatibility
+    /// with existing allocators.
+    ///
+    /// # Safety
+    ///
+    /// Same as `grow`.
+    #[unstable(feature = "alloc_with_token", issue = "159111")]
+    unsafe fn grow_with_token(
+        &self,
+        ptr: NonNull<u8>,
+        old_layout: Layout,
+        new_layout: Layout,
+        token: AllocToken,
+    ) -> Result<NonNull<[u8]>, AllocError> {
+        let _ = token;
+        // SAFETY: the safety contract for `grow` must be upheld by the caller.
+        unsafe { self.grow(ptr, old_layout, new_layout) }
+    }
+
+    /// Behaves like `shrink`, but also passes a token identifier, for LLVM AllocToken and heap
+    /// partitioning support (i.e., for token-enabled memory allocators that use token
+    /// identifiers to separate allocations into partitions).
+    ///
+    /// The default implementation ignores `token` and calls `shrink`, for backward
+    /// compatibility with existing allocators.
+    ///
+    /// # Safety
+    ///
+    /// Same as `shrink`.
+    #[unstable(feature = "alloc_with_token", issue = "159111")]
+    unsafe fn shrink_with_token(
+        &self,
+        ptr: NonNull<u8>,
+        old_layout: Layout,
+        new_layout: Layout,
+        token: AllocToken,
+    ) -> Result<NonNull<[u8]>, AllocError> {
+        let _ = token;
+        // SAFETY: the safety contract for `shrink` must be upheld by the caller.
+        unsafe { self.shrink(ptr, old_layout, new_layout) }
     }
 }
 

@@ -1,7 +1,7 @@
 use std::collections::hash_map::Entry::*;
 
 use rustc_abi::{CanonAbi, X86Call};
-use rustc_ast::expand::allocator::{AllocatorKind, NO_ALLOC_SHIM_IS_UNSTABLE, global_fn_name};
+use rustc_ast::expand::allocator::{AllocatorKind, NO_ALLOC_SHIM_IS_UNSTABLE};
 use rustc_crate_store::CrateDepKind;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::unord::UnordMap;
@@ -26,7 +26,7 @@ use tracing::debug;
 
 use crate::SymbolExport;
 use crate::back::symbol_export;
-use crate::base::allocator_shim_contents;
+use crate::base::{allocator_shim_contents, allocator_shim_method_name};
 
 fn threshold(tcx: TyCtxt<'_>) -> SymbolExportLevel {
     crates_export_threshold(tcx.crate_types())
@@ -609,7 +609,7 @@ pub(crate) fn allocator_shim_symbols(
 ) -> impl Iterator<Item = (String, SymbolExportKind)> {
     allocator_shim_contents(tcx, kind)
         .into_iter()
-        .map(move |method| mangle_internal_symbol(tcx, global_fn_name(method.name).as_str()))
+        .map(move |method| allocator_shim_method_name(tcx, &method))
         .chain([mangle_internal_symbol(tcx, NO_ALLOC_SHIM_IS_UNSTABLE)])
         .map(move |symbol_name| {
             let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, &symbol_name));

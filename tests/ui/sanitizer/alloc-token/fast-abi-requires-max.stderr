@@ -1,0 +1,4 @@
+error: `-Zsanitizer-alloc-token-fast-abi` requires a maximum number of tokens (i.e., `-Zsanitizer-alloc-token-max`)
+
+error: aborting due to 1 previous error
+
