@@ -2,9 +2,10 @@ use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::source::SpanExt as _;
 use clippy_utils::{fulfill_or_allowed, is_cfg_test, is_from_proc_macro};
 use rustc_errors::{Applicability, SuggestionStyle};
-use rustc_hir::{HirId, Item, ItemKind, Mod};
+use rustc_hir::{Item, ItemKind, Mod};
 use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_span::hygiene::AstPass;
+use rustc_span::def_id::LocalModId;
 use rustc_span::{ExpnKind, sym};
 
 declare_clippy_lint! {
@@ -56,7 +57,7 @@ fn cfg_test_module<'tcx>(cx: &LateContext<'tcx>, item: &Item<'tcx>) -> bool {
 }
 
 impl LateLintPass<'_> for ItemsAfterTestModule {
-    fn check_mod(&mut self, cx: &LateContext<'_>, module: &Mod<'_>, _: HirId) {
+    fn check_mod(&mut self, cx: &LateContext<'_>, module: &Mod<'_>, _: LocalModId) {
         let mut items = module.item_ids.iter().map(|&id| cx.tcx.hir_item(id));
 
         let Some((mod_pos, test_mod)) = items.by_ref().enumerate().find(|(_, item)| cfg_test_module(cx, item)) else {
