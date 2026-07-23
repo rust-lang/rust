@@ -1,0 +1,19 @@
+error: definition in module root file
+ --> src/custom/mod.rs:1:1
+  |
+1 | pub struct Foo;
+  | ^^^^^^^^^^^^^^^
+  |
+  = help: move struct `Foo` to a dedicated file
+  = note: `-D clippy::definition-in-module-root` implied by `-D warnings`
+  = help: to override `-D warnings` add `#[allow(clippy::definition_in_module_root)]`
+
+error: definition in module root file
+ --> src/custom/mod.rs:2:1
+  |
+2 | pub fn bar() {}
+  | ^^^^^^^^^^^^^^^
+  |
+  = help: move function `bar` to a dedicated file
+
+error: could not compile `fail-path-attr` (lib) due to 2 previous errors

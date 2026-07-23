@@ -2,7 +2,7 @@
 //@require-annotations-for-level: WARN
 
 #![warn(clippy::single_match_else)]
-#![allow(unused, clippy::needless_return, clippy::no_effect, clippy::uninlined_format_args)]
+#![expect(clippy::needless_return)]
 extern crate proc_macros;
 use proc_macros::with_span;
 

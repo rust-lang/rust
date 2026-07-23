@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::get_expr_use_or_unification_node;
-use clippy_utils::res::{MaybeQPath, MaybeResPath};
+use clippy_utils::res::{MaybeQPath as _, MaybeResPath as _};
 use core::cell::Cell;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;

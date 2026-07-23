@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::macros::{FormatArgsStorage, format_args_inputs_span};
-use clippy_utils::res::MaybeResPath;
+use clippy_utils::res::MaybeResPath as _;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{is_expn_of, is_in_test, sym};
 use rustc_errors::Applicability;

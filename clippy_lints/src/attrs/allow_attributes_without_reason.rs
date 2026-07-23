@@ -2,7 +2,7 @@ use super::{ALLOW_ATTRIBUTES_WITHOUT_REASON, Attribute};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_from_proc_macro;
 use rustc_ast::{MetaItemInner, MetaItemKind};
-use rustc_lint::{EarlyContext, LintContext};
+use rustc_lint::{EarlyContext, LintContext as _};
 use rustc_span::sym;
 use rustc_span::symbol::Symbol;
 

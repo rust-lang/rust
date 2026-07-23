@@ -6,7 +6,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::{Block, Body, HirId, Path, PathSegment, StabilityLevel, StableSince};
-use rustc_lint::{LateContext, LateLintPass, Lint, LintContext};
+use rustc_lint::{LateContext, LateLintPass, Lint, LintContext as _};
 use rustc_session::impl_lint_pass;
 use rustc_span::symbol::kw;
 use rustc_span::{Span, sym};

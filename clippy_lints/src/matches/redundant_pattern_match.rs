@@ -1,6 +1,6 @@
 use super::REDUNDANT_PATTERN_MATCHING;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
+use clippy_utils::res::{MaybeDef as _, MaybeTypeckRes as _};
 use clippy_utils::sugg::{Sugg, make_unop};
 use clippy_utils::ty::needs_ordered_drop;
 use clippy_utils::visitors::{any_temporaries_need_ordered_drop, for_each_expr_without_closures};
@@ -13,7 +13,7 @@ use rustc_hir::{Arm, Expr, ExprKind, Node, Pat, PatExpr, PatExprKind, PatKind, Q
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, GenericArgKind, Ty};
 use rustc_span::{Span, Symbol, kw};
-use std::fmt::Write;
+use std::fmt::Write as _;
 use std::ops::ControlFlow;
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {

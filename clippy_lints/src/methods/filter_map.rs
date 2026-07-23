@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::macros::{is_panic, matching_root_macro_call, root_macro_call};
-use clippy_utils::res::{MaybeDef, MaybeResPath, MaybeTypeckRes};
+use clippy_utils::res::{MaybeDef as _, MaybeResPath as _, MaybeTypeckRes as _};
 use clippy_utils::source::{indent_of, reindent_multiline, snippet};
 use clippy_utils::{SpanlessEq, higher, peel_blocks, sym};
 use hir::{Body, HirId, MatchSource, Pat};

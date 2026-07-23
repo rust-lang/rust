@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::res::MaybeResPath;
+use clippy_utils::res::MaybeResPath as _;
 use clippy_utils::{is_full_collection_range, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};

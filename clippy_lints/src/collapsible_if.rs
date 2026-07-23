@@ -1,7 +1,7 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::msrvs::Msrv;
-use clippy_utils::source::{IntoSpan as _, SpanExt, snippet, snippet_block_with_applicability};
+use clippy_utils::source::{IntoSpan as _, SpanExt as _, snippet, snippet_block_with_applicability};
 use clippy_utils::{can_use_if_let_chains, span_contains_cfg, span_contains_non_whitespace, sym, tokenize_with_text};
 use rustc_ast::{BinOpKind, MetaItemInner};
 use rustc_errors::Applicability;
@@ -336,7 +336,7 @@ fn span_extract_keyword(cx: &LateContext<'_>, span: Span, keyword: &str) -> Opti
 
 /// Peel the parentheses from an `if` expression, e.g. `((if true {} else {}))`.
 pub(super) fn peel_parens(cx: &LateContext<'_>, mut span: Span) -> (Span, Span, Span) {
-    use crate::rustc_span::Pos;
+    use crate::rustc_span::Pos as _;
 
     let start = span.shrink_to_lo();
     let end = span.shrink_to_hi();

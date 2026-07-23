@@ -99,6 +99,11 @@ fn main() {
     let _ = &String::new() as *const _;
     let _ = &mut String::new() as *mut _;
     const FOO: *const String = &String::new() as *const _;
+
+    // Regression test for #13910.
+    // This should not lint because the suggested replacement fails during
+    // const evaluation.
+    static mut REGRESSION: *mut i32 = &mut [42] as *mut [i32] as *mut i32;
 }
 
 #[clippy::msrv = "1.75"]

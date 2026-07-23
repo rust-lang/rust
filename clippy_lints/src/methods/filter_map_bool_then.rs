@@ -1,14 +1,14 @@
 use super::FILTER_MAP_BOOL_THEN;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::res::{MaybeDef, MaybeTypeckRes};
-use clippy_utils::source::{SpanExt, snippet_with_context};
+use clippy_utils::res::{MaybeDef as _, MaybeTypeckRes as _};
+use clippy_utils::source::{SpanExt as _, snippet_with_context};
 use clippy_utils::ty::is_copy;
 use clippy_utils::{CaptureKind, can_move_expr_to_closure, contains_return, is_from_proc_macro, peel_blocks, sym};
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, HirId, Param, Pat};
-use rustc_lint::{LateContext, LintContext};
+use rustc_lint::{LateContext, LintContext as _};
 use rustc_middle::ty::Binder;
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_span::Span;

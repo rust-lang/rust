@@ -86,6 +86,7 @@ error: error reading Clippy's configuration file: unknown field `foobar`, expect
            too-many-arguments-threshold
            too-many-lines-threshold
            trait-assoc-item-kinds-order
+           trait-impl-item-order
            trivial-copy-size-limit
            type-complexity-threshold
            unnecessary-box-size
@@ -188,6 +189,7 @@ error: error reading Clippy's configuration file: unknown field `barfoo`, expect
            too-many-arguments-threshold
            too-many-lines-threshold
            trait-assoc-item-kinds-order
+           trait-impl-item-order
            trivial-copy-size-limit
            type-complexity-threshold
            unnecessary-box-size
@@ -290,6 +292,7 @@ error: error reading Clippy's configuration file: unknown field `allow_mixed_uni
            too-many-arguments-threshold
            too-many-lines-threshold
            trait-assoc-item-kinds-order
+           trait-impl-item-order
            trivial-copy-size-limit
            type-complexity-threshold
            unnecessary-box-size

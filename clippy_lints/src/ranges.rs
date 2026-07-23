@@ -2,8 +2,8 @@ use clippy_config::Conf;
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::MaybeResPath;
-use clippy_utils::source::{SpanExt, snippet, snippet_with_applicability};
+use clippy_utils::res::MaybeResPath as _;
+use clippy_utils::source::{SpanExt as _, snippet, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{
@@ -433,8 +433,8 @@ fn can_switch_ranges<'tcx>(
                 .param_env(id)
                 .caller_bounds()
                 .into_iter()
-                .any(|c| {
-                    if let ClauseKind::Trait(t) = c.kind().skip_binder()
+                .any(|p| {
+                    if let ClauseKind::Trait(t) = p.kind().skip_binder()
                         && t.polarity == PredicatePolarity::Positive
                         && matches!(
                             cx.tcx.get_diagnostic_name(t.trait_ref.def_id),

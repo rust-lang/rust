@@ -8,7 +8,7 @@ use rustc_middle::mir::visit::Visitor as _;
 use rustc_middle::mir::{self, Mutability};
 use rustc_middle::ty::{self, TyCtxt, TypeVisitor};
 use rustc_mir_dataflow::impls::MaybeStorageLive;
-use rustc_mir_dataflow::{Analysis, ResultsCursor};
+use rustc_mir_dataflow::{Analysis as _, ResultsCursor};
 use std::borrow::Cow;
 use std::ops::ControlFlow;
 

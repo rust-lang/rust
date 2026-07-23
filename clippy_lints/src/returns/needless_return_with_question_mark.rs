@@ -1,10 +1,10 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::res::{MaybeDef, MaybeQPath};
+use clippy_utils::res::{MaybeDef as _, MaybeQPath as _};
 use clippy_utils::{is_from_proc_macro, is_inside_let_else};
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::ResultErr;
 use rustc_hir::{Expr, ExprKind, HirId, MatchSource, Node, Stmt, StmtKind};
-use rustc_lint::{LateContext, LintContext};
+use rustc_lint::{LateContext, LintContext as _};
 use rustc_middle::ty::adjustment::Adjust;
 
 use super::NEEDLESS_RETURN_WITH_QUESTION_MARK;

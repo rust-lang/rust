@@ -8,7 +8,7 @@ use rustc_hir::{
     AmbigArg, BodyId, ExprKind, GenericBound, GenericParam, GenericParamKind, Generics, ImplItem, ImplItemKind, Item,
     ItemKind, PredicateOrigin, Ty, WherePredicate, WherePredicateKind,
 };
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lint::{LateContext, LateLintPass, LintContext as _};
 use rustc_middle::hir::nested_filter;
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;

@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::MaybeDef as _;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{return_ty, trait_ref_of_method};
 use rustc_abi::ExternAbi;

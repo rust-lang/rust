@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::macros::{FormatArgsStorage, format_args_inputs_span, root_macro_call_first_node};
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::MaybeDef as _;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{contains_return, is_inside_always_const_context, peel_blocks, sym};

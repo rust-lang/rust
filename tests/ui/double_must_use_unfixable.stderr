@@ -1,4 +1,4 @@
-error: this function has a `#[must_use]` attribute with no message, but returns a type already marked as `#[must_use]`
+error: this function has a `#[must_use]` attribute with no message, but returns a type already considered as `#[must_use]`
   --> tests/ui/double_must_use_unfixable.rs:6:1
    |
 LL | pub fn issue_12320() -> Result<(), ()> {
@@ -13,7 +13,7 @@ LL | #[cfg_attr(all(), must_use, deprecated)]
    = note: `-D clippy::double-must-use` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::double_must_use)]`
 
-error: this function has a `#[must_use]` attribute with no message, but returns a type already marked as `#[must_use]`
+error: this function has a `#[must_use]` attribute with no message, but returns a type already considered as `#[must_use]`
   --> tests/ui/double_must_use_unfixable.rs:12:1
    |
 LL | pub fn issue_12320_2() -> Result<(), ()> {

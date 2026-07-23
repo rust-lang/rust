@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::res::MaybeResPath;
+use clippy_utils::res::MaybeResPath as _;
 use clippy_utils::source::{indent_of, snippet};
 use clippy_utils::{expr_or_init, get_builtin_attr, peel_hir_expr_unary, sym};
 use rustc_ast::BindingMode;

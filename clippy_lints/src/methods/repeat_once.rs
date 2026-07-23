@@ -1,6 +1,6 @@
 use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::MaybeDef as _;
 use clippy_utils::source::snippet;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, LangItem};

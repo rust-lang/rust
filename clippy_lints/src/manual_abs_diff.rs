@@ -2,7 +2,7 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::If;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::MaybeDef as _;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::peel_and_count_ty_refs;
 use clippy_utils::{eq_expr_value, peel_blocks, span_contains_comment, sym};

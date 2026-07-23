@@ -1,6 +1,6 @@
 use super::NEEDLESS_MATCH;
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::res::{MaybeDef, MaybeQPath};
+use clippy_utils::res::{MaybeDef as _, MaybeQPath as _};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::same_type_modulo_regions;
 use clippy_utils::{

@@ -198,10 +198,6 @@ mod issue8055_regression {
         }
     }
 
-    #[expect(
-        clippy::needless_collect,
-        reason = "FIXME: proposed fix cannot determine type, see issue #17315"
-    )]
     fn foo() {
         Foo {
             inner: [].iter(),

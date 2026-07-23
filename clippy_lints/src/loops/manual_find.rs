@@ -1,7 +1,7 @@
 use super::MANUAL_FIND;
 use super::utils::make_iterator_snippet;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::res::{MaybeDef, MaybeQPath, MaybeResPath};
+use clippy_utils::res::{MaybeDef as _, MaybeQPath as _, MaybeResPath as _};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::usage::contains_return_break_continue_macro;

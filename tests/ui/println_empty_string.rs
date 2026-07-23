@@ -1,5 +1,5 @@
 #![warn(clippy::println_empty_string)]
-#![expect(clippy::match_single_binding)]
+#![expect(clippy::match_single_binding, clippy::nonstandard_macro_braces)]
 
 fn main() {
     println!();

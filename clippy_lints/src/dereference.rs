@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_hir_and_then};
-use clippy_utils::res::MaybeResPath;
+use clippy_utils::res::MaybeResPath as _;
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::has_enclosing_paren;
 use clippy_utils::ty::{
@@ -12,14 +12,14 @@ use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
-use rustc_hir::intravisit::{InferKind, Visitor, VisitorExt, walk_ty};
+use rustc_hir::intravisit::{InferKind, Visitor, VisitorExt as _, walk_ty};
 use rustc_hir::{
     self as hir, AmbigArg, BindingMode, Body, BodyId, BorrowKind, Expr, ExprKind, HirId, Item, MatchSource, Mutability,
     Node, OwnerId, Pat, PatKind, Path, QPath, TyKind, UnOp,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow, AutoBorrowMutability};
-use rustc_middle::ty::{self, AssocTag, Ty, TyCtxt, TypeVisitableExt, TypeckResults, Unnormalized};
+use rustc_middle::ty::{self, AssocTag, Ty, TyCtxt, TypeVisitableExt as _, TypeckResults, Unnormalized};
 use rustc_session::impl_lint_pass;
 use rustc_span::{Span, Symbol, SyntaxContext};
 use std::borrow::Cow;
@@ -905,7 +905,7 @@ impl TyCoercionStability {
                 TyKind::View(ty, _) => {
                     // FIXME(scrabsha): what are the semantics of view types here?
                     Self::for_hir_ty(ty)
-                }
+                },
                 TyKind::UnsafeBinder(..) => Self::None,
             };
         }

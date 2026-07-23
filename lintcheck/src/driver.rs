@@ -1,6 +1,6 @@
 use crate::recursive::{DriverInfo, deserialize_line, serialize_line};
 
-use std::io::{self, BufReader, Write};
+use std::io::{self, BufReader, Write as _};
 use std::net::TcpStream;
 use std::process::{self, Command, Stdio};
 use std::{env, mem};
