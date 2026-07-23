@@ -1,8 +1,8 @@
 #![forbid(unsafe_op_in_unsafe_fn)]
-use crate::ffi::OsStr;
+use crate::ffi::{CStr, OsStr};
 use crate::io;
 use crate::path::{Path, PathBuf, Prefix};
-use crate::sys::unsupported;
+use crate::sys::{cstr, unsupported};
 
 path_separator_bytes!(b'\\');
 
@@ -16,6 +16,12 @@ pub fn parse_prefix(_: &OsStr) -> Option<Prefix<'_>> {
 }
 
 pub const HAS_PREFIXES: bool = true;
+
+#[inline]
+pub fn with_native_path<T>(path: &Path, f: &dyn Fn(&CStr) -> io::Result<T>) -> io::Result<T> {
+    let path = cstr(path)?;
+    f(&path)
+}
 
 pub(crate) fn absolute(_path: &Path) -> io::Result<PathBuf> {
     unsupported()

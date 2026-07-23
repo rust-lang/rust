@@ -10,7 +10,7 @@ use crate::os::hermit::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, Raw
 use crate::path::{Path, PathBuf};
 use crate::sync::Arc;
 use crate::sys::fd::FileDesc;
-pub use crate::sys::fs::common::{Dir, copy, exists};
+pub use crate::sys::fs::common::{Dir, copy};
 use crate::sys::helpers::run_path_with_cstr;
 use crate::sys::time::SystemTime;
 use crate::sys::{AsInner, AsInnerMut, FromInner, IntoInner, cvt, unsupported, unsupported_err};
@@ -234,9 +234,7 @@ impl DirEntry {
     }
 
     pub fn metadata(&self) -> io::Result<FileAttr> {
-        let mut path = self.path();
-        path.set_file_name(self.file_name_os_str());
-        lstat(&path)
+        run_path_with_cstr(&self.path(), &lstat)
     }
 
     pub fn file_type(&self) -> io::Result<FileType> {
@@ -554,62 +552,66 @@ pub fn readdir(path: &Path) -> io::Result<ReadDir> {
     Ok(ReadDir::new(InnerReadDir::new(root, vec)))
 }
 
-pub fn unlink(path: &Path) -> io::Result<()> {
-    run_path_with_cstr(path, &|path| cvt(unsafe { hermit_abi::unlink(path.as_ptr()) }).map(|_| ()))
+pub fn unlink(path: &CStr) -> io::Result<()> {
+    cvt(unsafe { hermit_abi::unlink(path.as_ptr()) }).map(|_| ())
 }
 
-pub fn rename(_old: &Path, _new: &Path) -> io::Result<()> {
+pub fn rename(_old: &CStr, _new: &CStr) -> io::Result<()> {
     unsupported()
 }
 
-pub fn set_perm(_p: &Path, _perm: FilePermissions) -> io::Result<()> {
+pub fn set_perm(_p: &CStr, _perm: FilePermissions) -> io::Result<()> {
     Err(Error::from_raw_os_error(22))
 }
 
-pub fn set_times(_p: &Path, _times: FileTimes) -> io::Result<()> {
+pub fn set_times(_p: &CStr, _times: FileTimes) -> io::Result<()> {
     Err(Error::from_raw_os_error(22))
 }
 
-pub fn set_times_nofollow(_p: &Path, _times: FileTimes) -> io::Result<()> {
+pub fn set_times_nofollow(_p: &CStr, _times: FileTimes) -> io::Result<()> {
     Err(Error::from_raw_os_error(22))
 }
 
-pub fn rmdir(path: &Path) -> io::Result<()> {
-    run_path_with_cstr(path, &|path| cvt(unsafe { hermit_abi::rmdir(path.as_ptr()) }).map(|_| ()))
+pub fn rmdir(path: &CStr) -> io::Result<()> {
+    cvt(unsafe { hermit_abi::rmdir(path.as_ptr()) }).map(|_| ())
+}
+
+pub fn exists(path: &CStr) -> io::Result<bool> {
+    match stat(path) {
+        Ok(_) => Ok(true),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(false),
+        Err(error) => Err(error),
+    }
 }
 
 pub fn remove_dir_all(_path: &Path) -> io::Result<()> {
     unsupported()
 }
 
-pub fn readlink(_p: &Path) -> io::Result<PathBuf> {
+pub fn readlink(_p: &CStr) -> io::Result<PathBuf> {
     unsupported()
 }
 
-pub fn symlink(_original: &Path, _link: &Path) -> io::Result<()> {
+pub fn symlink(_original: &CStr, _link: &CStr) -> io::Result<()> {
     unsupported()
 }
 
-pub fn link(_original: &Path, _link: &Path) -> io::Result<()> {
+pub fn link(_original: &CStr, _link: &CStr) -> io::Result<()> {
     unsupported()
 }
 
-pub fn stat(path: &Path) -> io::Result<FileAttr> {
-    run_path_with_cstr(path, &|path| {
-        let mut stat_val: stat_struct = unsafe { mem::zeroed() };
-        cvt(unsafe { hermit_abi::stat(path.as_ptr(), &mut stat_val) })?;
-        Ok(FileAttr::from_stat(stat_val))
-    })
+pub fn stat(path: &CStr) -> io::Result<FileAttr> {
+    let mut stat_val: stat_struct = unsafe { mem::zeroed() };
+    cvt(unsafe { hermit_abi::stat(path.as_ptr(), &mut stat_val) })?;
+    Ok(FileAttr::from_stat(stat_val))
 }
 
-pub fn lstat(path: &Path) -> io::Result<FileAttr> {
-    run_path_with_cstr(path, &|path| {
-        let mut stat_val: stat_struct = unsafe { mem::zeroed() };
-        cvt(unsafe { hermit_abi::lstat(path.as_ptr(), &mut stat_val) })?;
-        Ok(FileAttr::from_stat(stat_val))
-    })
+pub fn lstat(path: &CStr) -> io::Result<FileAttr> {
+    let mut stat_val: stat_struct = unsafe { mem::zeroed() };
+    cvt(unsafe { hermit_abi::lstat(path.as_ptr(), &mut stat_val) })?;
+    Ok(FileAttr::from_stat(stat_val))
 }
 
-pub fn canonicalize(_p: &Path) -> io::Result<PathBuf> {
+pub fn canonicalize(_p: &CStr) -> io::Result<PathBuf> {
     unsupported()
 }

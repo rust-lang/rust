@@ -1,4 +1,4 @@
-use crate::ffi::{OsString, c_char};
+use crate::ffi::{CStr, OsString, c_char};
 use crate::fmt;
 use crate::fs::TryLockError;
 use crate::hash::Hash;
@@ -11,10 +11,7 @@ use crate::sys::{unsupported, unsupported_err};
 #[expect(dead_code)]
 #[path = "unsupported.rs"]
 mod unsupported_fs;
-pub use unsupported_fs::{
-    Dir, DirBuilder, FileTimes, canonicalize, link, readlink, remove_dir_all, rename, rmdir,
-    symlink, unlink,
-};
+pub use unsupported_fs::{Dir, DirBuilder, FileTimes};
 
 /// VEXos file descriptor.
 ///
@@ -149,7 +146,7 @@ impl DirEntry {
     }
 
     pub fn metadata(&self) -> io::Result<FileAttr> {
-        stat(&self.path)
+        run_path_with_cstr(&self.path(), &stat)
     }
 
     pub fn file_type(&self) -> io::Result<FileType> {
@@ -488,45 +485,85 @@ pub fn readdir(_p: &Path) -> io::Result<ReadDir> {
     unsupported()
 }
 
-pub fn set_perm(_p: &Path, _perm: FilePermissions) -> io::Result<()> {
+pub fn unlink(_p: &CStr) -> io::Result<()> {
     unsupported()
 }
 
-pub fn set_times(_p: &Path, _times: FileTimes) -> io::Result<()> {
+pub fn rename(_old: &CStr, _new: &CStr) -> io::Result<()> {
     unsupported()
 }
 
-pub fn set_times_nofollow(_p: &Path, _times: FileTimes) -> io::Result<()> {
+pub fn set_perm(_p: &CStr, _perm: FilePermissions) -> io::Result<()> {
     unsupported()
 }
 
-pub fn exists(path: &Path) -> io::Result<bool> {
-    run_path_with_cstr(path, &|path| Ok(unsafe { vex_sdk::vexFileStatus(path.as_ptr()) } != 0))
+pub fn set_times(_p: &CStr, _times: FileTimes) -> io::Result<()> {
+    unsupported()
 }
 
-pub fn stat(p: &Path) -> io::Result<FileAttr> {
+pub fn set_times_nofollow(_p: &CStr, _times: FileTimes) -> io::Result<()> {
+    unsupported()
+}
+
+pub fn rmdir(_p: &CStr) -> io::Result<()> {
+    unsupported()
+}
+
+pub fn remove_dir_all(_path: &Path) -> io::Result<()> {
+    unsupported()
+}
+
+pub fn exists(path: &CStr) -> io::Result<bool> {
+    Ok(unsafe { vex_sdk::vexFileStatus(path.as_ptr()) } != 0)
+}
+
+pub fn readlink(_p: &CStr) -> io::Result<PathBuf> {
+    unsupported()
+}
+
+pub fn symlink(_original: &CStr, _link: &CStr) -> io::Result<()> {
+    unsupported()
+}
+
+pub fn link(_src: &CStr, _dst: &CStr) -> io::Result<()> {
+    unsupported()
+}
+
+pub fn stat(p: &CStr) -> io::Result<FileAttr> {
     // `vexFileStatus` returns 3 if the given path is a directory, 1 if the path is a
     // file, or 0 if no such path exists.
     const FILE_STATUS_DIR: u32 = 3;
+    let file_type = unsafe { vex_sdk::vexFileStatus(p.as_ptr()) };
 
-    run_path_with_cstr(p, &|c_path| {
-        let file_type = unsafe { vex_sdk::vexFileStatus(c_path.as_ptr()) };
+    // We can't get the size if its a directory because we cant open it as a file
+    if file_type == FILE_STATUS_DIR {
+        Ok(FileAttr::Dir)
+    } else {
+        let file = unsafe { vex_sdk::vexFileOpen(p.as_ptr(), c"".as_ptr()) };
 
-        // We can't get the size if its a directory because we cant open it as a file
-        if file_type == FILE_STATUS_DIR {
-            Ok(FileAttr::Dir)
+        if file.is_null() {
+            Err(io::const_error!(io::ErrorKind::NotFound, "could not open file"))
         } else {
-            let mut opts = OpenOptions::new();
-            opts.read(true);
-            let file = File::open(p, &opts)?;
-            file.file_attr()
+            // `vexFileSize` returns -1 upon error, so u64::try_from will fail on error.
+            if let Ok(size) = u64::try_from(unsafe {
+                // SAFETY: `self.fd` contains a valid pointer to `FIL` for this struct's lifetime.
+                vex_sdk::vexFileSize(file)
+            }) {
+                Ok(FileAttr::File { size })
+            } else {
+                Err(io::const_error!(io::ErrorKind::InvalidData, "failed to get file size"))
+            }
         }
-    })
+    }
 }
 
-pub fn lstat(p: &Path) -> io::Result<FileAttr> {
+pub fn lstat(p: &CStr) -> io::Result<FileAttr> {
     // Symlinks aren't supported in this filesystem
     stat(p)
+}
+
+pub fn canonicalize(_p: &CStr) -> io::Result<PathBuf> {
+    unsupported()
 }
 
 // Cannot use `copy` from `common` here, since `File::set_permissions` is unsupported on this target.
