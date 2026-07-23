@@ -1,9 +1,10 @@
-use std::fmt;
+//! Auxiliary file for <https://github.com/rust-lang/rust/issues/24687>.
+//! This is a file with many multi-byte characters, to try to encourage
+//! the compiler to trip on them. The Drop implementation below will
+//! need to have its source location embedded into the debug info for
+//! the output file.
 
-// This ia file with many multi-byte characters, to try to encourage
-// the compiler to trip on them.  The Drop implementation below will
-// need to have its source location embedded into the debug info for
-// the output file.
+use std::fmt;
 
 // αααααααααααααααααααααααααααααααααααααααααααααααααααααααααααααααααααααα
 // ββββββββββββββββββββββββββββββββββββββββββββββββββββββββββββββββββββββ

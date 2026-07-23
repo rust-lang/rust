@@ -1,9 +1,10 @@
-#![allow(unused_macros)]
-
-// Tests that repetition matchers cannot match the empty token tree (since that would be
-// ambiguous).
+//! Regression test for <https://github.com/rust-lang/rust/issues/5067>.
+//! Tests that repetition matchers cannot match the empty token tree (since that would be
+//! ambiguous).
 
 //@ edition:2018
+
+#![allow(unused_macros)]
 
 macro_rules! foo {
     ( $()* ) => {};
