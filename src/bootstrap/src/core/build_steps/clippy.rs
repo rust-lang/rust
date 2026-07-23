@@ -197,7 +197,7 @@ impl Step for Std {
             Kind::Clippy,
         );
 
-        std_cargo(builder, target, &mut cargo, &self.crates);
+        std_cargo(builder, Mode::Std, target, &mut cargo, &self.crates);
 
         let _guard = builder.msg(
             Kind::Clippy,

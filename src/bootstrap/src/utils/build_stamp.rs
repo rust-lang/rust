@@ -7,7 +7,7 @@ use std::{fs, io};
 
 use sha2::digest::Digest;
 
-use crate::core::builder::Builder;
+use crate::core::builder::{Builder, Kind};
 use crate::core::config::TargetSelection;
 use crate::utils::helpers::{hex_encode, mtime};
 use crate::{CodegenBackendKind, Compiler, Mode, helpers, t};
@@ -142,7 +142,8 @@ pub fn libstd_stamp(
     build_compiler: Compiler,
     target: TargetSelection,
 ) -> BuildStamp {
-    BuildStamp::new(&builder.cargo_out(build_compiler, Mode::Std, target)).with_prefix("libstd")
+    let mode = if builder.kind == Kind::Dist { Mode::DistStd } else { Mode::Std };
+    BuildStamp::new(&builder.cargo_out(build_compiler, mode, target)).with_prefix("libstd")
 }
 
 /// Cargo's output path for librustc in a given stage, compiled by a particular

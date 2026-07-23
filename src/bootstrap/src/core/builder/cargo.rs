@@ -792,10 +792,13 @@ impl Builder<'_> {
 
         // Add extra cfg not defined in/by rustc
         //
-        // Note: Although it would seems that "-Zunstable-options" to `rustflags` is useless as
-        // cargo would implicitly add it, it was discover that sometimes bootstrap only use
-        // `rustflags` without `cargo` making it required.
-        rustflags.arg("-Zunstable-options");
+        // Note: Although it would seem that "-Zunstable-options" to `rustflags` is useless as
+        // cargo would implicitly add it, it was discovered that sometimes bootstrap uses
+        // `rustflags` that require it without `cargo` requiring it.
+        // The library profile sets this for std.
+        if !mode.is_std() {
+            rustflags.arg("-Zunstable-options");
+        }
 
         // Add parallel frontend threads configuration
         if let Some(threads) = self.config.rust_parallel_frontend_threads {
@@ -830,7 +833,7 @@ impl Builder<'_> {
         let mut rustdocflags = rustflags.clone();
 
         match mode {
-            Mode::Std | Mode::ToolBootstrap | Mode::ToolStd | Mode::ToolTarget => {}
+            Mode::Std | Mode::DistStd | Mode::ToolBootstrap | Mode::ToolStd | Mode::ToolTarget => {}
             Mode::Rustc | Mode::Codegen | Mode::ToolRustcPrivate => {
                 // Build proc macros both for the host and the target unless proc-macros are not
                 // supported by the target.
@@ -894,7 +897,9 @@ impl Builder<'_> {
                 "binary-dep-depinfo,proc_macro_span,proc_macro_span_shrink,proc_macro_diagnostic"
                     .to_string()
             }
-            Mode::Std | Mode::Rustc | Mode::Codegen | Mode::ToolRustcPrivate => String::new(),
+            Mode::Std | Mode::DistStd | Mode::Rustc | Mode::Codegen | Mode::ToolRustcPrivate => {
+                String::new()
+            }
         };
 
         cargo.arg("-j").arg(self.jobs().to_string());
@@ -931,6 +936,7 @@ impl Builder<'_> {
         // things still build right, please do!
         match mode {
             Mode::Std => metadata.push_str("std"),
+            Mode::DistStd => metadata.push_str("diststd"),
             // When we're building rustc tools, they're built with a search path
             // that contains things built during the rustc build. For example,
             // bitflags is built during the rustc build, and is a dependency of
@@ -1024,42 +1030,47 @@ impl Builder<'_> {
             cargo.env("MIRI_HOST_SYSROOT", &host_sysroot);
         }
 
-        cargo.env(profile_var("STRIP"), self.config.rust_strip.to_string());
+        if mode != Mode::DistStd {
+            cargo.env(profile_var("STRIP"), self.config.rust_strip.to_string());
+        }
 
         if let Some(stack_protector) = &self.config.rust_stack_protector {
             rustflags.arg(&format!("-Zstack-protector={stack_protector}"));
         }
 
         let debuginfo_level = match mode {
-            Mode::Rustc | Mode::Codegen => self.config.rust_debuginfo_level_rustc,
-            Mode::Std => self.config.rust_debuginfo_level_std,
+            Mode::Rustc | Mode::Codegen => Some(self.config.rust_debuginfo_level_rustc),
+            Mode::Std => Some(self.config.rust_debuginfo_level_std),
             Mode::ToolBootstrap | Mode::ToolStd | Mode::ToolRustcPrivate | Mode::ToolTarget => {
-                self.config.rust_debuginfo_level_tools
+                Some(self.config.rust_debuginfo_level_tools)
             }
+            Mode::DistStd => None,
         };
-        cargo.env(profile_var("DEBUG"), debuginfo_level.to_string());
-        if let Some(opt_level) = &self.config.rust_optimize.get_opt_level() {
+        debuginfo_level.map(|value| cargo.env(profile_var("DEBUG"), value.to_string()));
+        if let Some(opt_level) = &self.config.rust_optimize.get_opt_level()
+            && mode != Mode::DistStd
+        {
             cargo.env(profile_var("OPT_LEVEL"), opt_level);
         }
-        cargo.env(
-            profile_var("DEBUG_ASSERTIONS"),
-            match mode {
-                Mode::Std => self.config.std_debug_assertions,
-                Mode::Rustc | Mode::Codegen => self.config.rustc_debug_assertions,
-                Mode::ToolBootstrap | Mode::ToolStd | Mode::ToolRustcPrivate | Mode::ToolTarget => {
-                    self.config.tools_debug_assertions
-                }
+        let debug_assertions = match mode {
+            Mode::Std => Some(self.config.std_debug_assertions),
+            Mode::Rustc | Mode::Codegen => Some(self.config.rustc_debug_assertions),
+            Mode::ToolBootstrap | Mode::ToolStd | Mode::ToolRustcPrivate | Mode::ToolTarget => {
+                Some(self.config.tools_debug_assertions)
             }
-            .to_string(),
-        );
-        cargo.env(
-            profile_var("OVERFLOW_CHECKS"),
-            if mode == Mode::Std {
-                self.config.rust_overflow_checks_std.to_string()
-            } else {
-                self.config.rust_overflow_checks.to_string()
-            },
-        );
+            Mode::DistStd => None,
+        };
+        debug_assertions.map(|value| cargo.env(profile_var("DEBUG_ASSERTIONS"), value.to_string()));
+        if mode != Mode::DistStd {
+            cargo.env(
+                profile_var("OVERFLOW_CHECKS"),
+                if mode == Mode::Std {
+                    self.config.rust_overflow_checks_std.to_string()
+                } else {
+                    self.config.rust_overflow_checks.to_string()
+                },
+            );
+        }
 
         match self.config.split_debuginfo(target) {
             SplitDebuginfo::Packed => rustflags.arg("-Csplit-debuginfo=packed"),
@@ -1078,7 +1089,7 @@ impl Builder<'_> {
             // Any library crate that's part of the sysroot should be marked unstable
             // (including third-party dependencies), unless it uses a staged_api
             // `#![stable(..)]` attribute to explicitly mark itself stable.
-            Mode::Std | Mode::Codegen | Mode::Rustc => {
+            Mode::Std | Mode::DistStd | Mode::Codegen | Mode::Rustc => {
                 cargo.env("RUSTC_FORCE_UNSTABLE", "1");
             }
 
@@ -1146,6 +1157,7 @@ impl Builder<'_> {
                 }
             }
             Mode::Std
+            | Mode::DistStd
             | Mode::ToolBootstrap
             | Mode::ToolRustcPrivate
             | Mode::ToolStd
@@ -1196,7 +1208,7 @@ impl Builder<'_> {
         // Enable usage of unstable features
         cargo.env("RUSTC_BOOTSTRAP", "1");
 
-        if matches!(mode, Mode::Std) {
+        if mode.is_std() {
             cargo.arg("-Zno-embed-metadata");
         }
 
@@ -1224,7 +1236,7 @@ impl Builder<'_> {
         // For other crates, however, we know that we've already got a standard
         // library up and running, so we can use the normal compiler to compile
         // build scripts in that situation.
-        if mode == Mode::Std {
+        if mode.is_std() {
             cargo
                 .env("RUSTC_SNAPSHOT", &self.initial_rustc)
                 .env("RUSTC_SNAPSHOT_LIBDIR", self.rustc_snapshot_libdir());
@@ -1398,7 +1410,10 @@ impl Builder<'_> {
         }
 
         match (mode, self.config.rust_codegen_units_std, self.config.rust_codegen_units) {
-            (Mode::Std, Some(n), _) | (_, _, Some(n)) => {
+            (Mode::Std, Some(n), _) => {
+                cargo.env(profile_var("CODEGEN_UNITS"), n.to_string());
+            }
+            (m, _, Some(n)) if m != Mode::DistStd => {
                 cargo.env(profile_var("CODEGEN_UNITS"), n.to_string());
             }
             _ => {
@@ -1427,7 +1442,7 @@ impl Builder<'_> {
         // When we build Rust dylibs they're all intended for intermediate
         // usage, so make sure we pass the -Cprefer-dynamic flag instead of
         // linking all deps statically into the dylib.
-        if matches!(mode, Mode::Std) {
+        if mode.is_std() {
             rustflags.arg("-Cprefer-dynamic");
         }
         if matches!(mode, Mode::Rustc) && !self.link_std_into_rustc_driver(target) {
@@ -1465,19 +1480,6 @@ impl Builder<'_> {
             if self.config.rust_randomize_layout {
                 rustflags.arg("--cfg=randomized_layouts");
             }
-            // Always enable inlining MIR when building the standard library.
-            // Without this flag, MIR inlining is disabled when incremental compilation is enabled.
-            // That causes some mir-opt tests which inline functions from the standard library to
-            // break when incremental compilation is enabled. So this overrides the "no inlining
-            // during incremental builds" heuristic for the standard library.
-            rustflags.arg("-Zinline-mir");
-
-            // Similarly, we need to keep debug info for functions inlined into other std functions,
-            // even if we're not going to output debuginfo for the crate we're currently building,
-            // so that it'll be available when downstream consumers of std try to use it.
-            rustflags.arg("-Zinline-mir-preserve-debug");
-
-            rustflags.arg("-Zmir_strip_debuginfo=locals-in-tiny-functions");
         }
 
         // take target-specific extra rustflags if any otherwise take `rust.rustflags`
@@ -1496,7 +1498,7 @@ impl Builder<'_> {
             } else {
                 match (mode, self.config.rust_optimize.is_release()) {
                     // Some std configuration exists in its own profile
-                    (Mode::Std, _) => Some("dist"),
+                    (Mode::DistStd, _) => Some("dist"),
                     (_, true) => Some("release"),
                     (_, false) => Some("dev"),
                 }
@@ -1522,7 +1524,9 @@ impl Builder<'_> {
 pub fn cargo_profile_var(name: &str, config: &Config, mode: Mode) -> String {
     let profile = match (mode, config.rust_optimize.is_release()) {
         // Some std configuration exists in its own profile
-        (Mode::Std, _) => "DIST",
+        (Mode::DistStd, _) => {
+            panic!("Attempted to override the distributed std's profile with {name}")
+        }
         (_, true) => "RELEASE",
         (_, false) => "DEV",
     };

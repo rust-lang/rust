@@ -302,6 +302,12 @@ pub enum Mode {
     /// Build the standard library, placing output in the "stageN-std" directory.
     Std,
 
+    /// Build the standard library as intended for distribution. This involves ignoring any
+    /// bootstrap.toml configuration and following the defined `dist` profile/config in the
+    /// library workspace. This ensures that any required configuration is shared for Cargo's
+    /// build-std implementation.
+    DistStd,
+
     /// Build librustc, and compiler libraries, placing output in the "stageN-rustc" directory.
     Rustc,
 
@@ -349,13 +355,17 @@ pub enum Mode {
 impl Mode {
     pub fn must_support_dlopen(&self) -> bool {
         match self {
-            Mode::Std | Mode::Codegen => true,
+            Mode::Std | Mode::DistStd | Mode::Codegen => true,
             Mode::ToolBootstrap
             | Mode::ToolRustcPrivate
             | Mode::ToolStd
             | Mode::ToolTarget
             | Mode::Rustc => false,
         }
+    }
+
+    pub fn is_std(&self) -> bool {
+        *self == Mode::Std || *self == Mode::DistStd
     }
 }
 
@@ -910,7 +920,7 @@ impl Build {
     /// release/debug)
     fn cargo_dir(&self, mode: Mode) -> &'static str {
         match (mode, self.config.rust_optimize.is_release()) {
-            (Mode::Std, _) => "dist",
+            (Mode::DistStd, _) => "dist",
             (_, true) => "release",
             (_, false) => "debug",
         }
@@ -941,7 +951,7 @@ impl Build {
 
         let (stage, suffix) = match mode {
             // Std is special, stage N std is built with stage N rustc
-            Mode::Std => (Some(build_compiler.stage), "std"),
+            Mode::Std | Mode::DistStd => (Some(build_compiler.stage), "std"),
             // The rest of things are built with stage N-1 rustc
             Mode::Rustc => (Some(build_compiler.stage + 1), "rustc"),
             Mode::Codegen => (Some(build_compiler.stage + 1), "codegen"),
@@ -1147,7 +1157,7 @@ impl Build {
 
         let actual_stage = match mode.into() {
             // Std has the same stage as the compiler that builds it
-            Some(Mode::Std) => target_and_stage.stage,
+            Some(Mode::Std | Mode::DistStd) => target_and_stage.stage,
             // Other things have stage corresponding to their build compiler + 1
             Some(
                 Mode::Rustc

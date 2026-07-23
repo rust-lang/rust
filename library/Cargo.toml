@@ -2,17 +2,12 @@ cargo-features = ["profile-rustflags"]
 
 [workspace]
 resolver = "1"
-members = [
-  "std",
-  "sysroot",
-  "coretests",
-  "alloctests",
-]
+members = ["std", "sysroot", "coretests", "alloctests"]
 
 exclude = [
-  # stdarch has its own Cargo workspace
-  "stdarch",
-  "windows_link"
+    # stdarch has its own Cargo workspace
+    "stdarch",
+    "windows_link",
 ]
 
 [profile.release.package.compiler_builtins]
@@ -46,13 +41,46 @@ object.debug = 0
 rustc-demangle.debug = 0
 rustc-demangle.opt-level = "s"
 
-# panic_abort must always be compiled with panic=abort, even when the rest of the
-# sysroot is panic=unwind.
-[profile.dev.package.panic_abort]
-rustflags = ["-Cpanic=abort"]
+[profile.dev]
+rustflags = [
+    # `profile.lto=off` implies `-Cembed-bitcode=no`, but unconditionally embedding
+    # bitcode is necessary for when users enable LTO.
+    # Required until Cargo can re-build the standard library based on the value
+    # of `profile.lto` in the user's profile.
+    "-Cembed-bitcode=yes",
+    # `std`, `alloc` and `core` imports some dependencies by #[path] (like
+    # backtrace, core_simd, std_float, ...), those dependencies have their own
+    # features but cargo isn't involved in the #[path] process and so cannot pass the
+    # complete list of features, so for that reason we don't enable checking of
+    # features for std crates.
+    "--check-cfg=cfg(feature,values(any()))",
+    # Sometimes bootstrap sets rustflags with unstable options, so we preemptively pass it
+    # here. This shouldn't be needed for the `dist` profile unless the configuration of
+    # distributed std changes in the future.
+    "-Zunstable-options",
+    # Always enable inlining MIR when building the standard library.
+    # Without this flag, MIR inlining is disabled when incremental compilation is enabled.
+    # That causes some mir-opt tests which inline functions from the standard library to
+    # break when incremental compilation is enabled. So this overrides the "no inlining
+    # during incremental builds" heuristic for the standard library.
+    "-Zinline-mir",
+    # Similarly, we need to keep debug info for functions inlined into other std functions,
+    # even if we're not going to output debuginfo for the crate we're currently building,
+    # so that it'll be available when downstream consumers of std try to use it.
+    "-Zinline-mir-preserve-debug",
+    "-Zmir_strip_debuginfo=locals-in-tiny-functions",
+]
 
-[profile.release.package.panic_abort]
-rustflags = ["-Cpanic=abort"]
+[profile.release]
+rustflags = [
+    # Same as `profile.dev.rustflags`
+    "-Cembed-bitcode=yes",
+    "--check-cfg=cfg(feature,values(any()))",
+    "-Zunstable-options",
+    "-Zinline-mir",
+    "-Zinline-mir-preserve-debug",
+    "-Zmir_strip_debuginfo=locals-in-tiny-functions",
+]
 
 # The "dist" profile is used by bootstrap for prebuilt libstd artifacts
 # These settings ensure that the prebuilt artifacts support a variety of features
@@ -62,21 +90,51 @@ inherits = "release"
 codegen-units = 1
 debug = 1 # "limited"
 rustflags = [
-    # `profile.lto=off` implies `-Cembed-bitcode=no`, but unconditionally embedding
-    # bitcode is necessary for when users enable LTO.
-    # Required until Cargo can re-build the standard library based on the value
-    # of `profile.lto` in the user's profile.
+    # Inherited from `profile.release.rustflags`
     "-Cembed-bitcode=yes",
+    "--check-cfg=cfg(feature,values(any()))",
+    "-Zinline-mir",
+    "-Zinline-mir-preserve-debug",
+    "-Zmir_strip_debuginfo=locals-in-tiny-functions",
+
     # Enable frame pointers
-    "-Zunstable-options",
     "-Cforce-frame-pointers=non-leaf",
+]
+
+
+# panic_abort must always be compiled with panic=abort, even when the rest of the
+# sysroot is panic=unwind.
+[profile.dev.package.panic_abort]
+rustflags = [
+    "-Cpanic=abort",
+    "-Cembed-bitcode=yes",
+    "--check-cfg=cfg(feature,values(any()))",
+    "-Zunstable-options",
+    "-Zinline-mir",
+    "-Zinline-mir-preserve-debug",
+    "-Zmir-strip-debuginfo=locals-in-tiny-functions",
+]
+
+[profile.release.package.panic_abort]
+rustflags = [
+    "-Cpanic=abort",
+    "-Cembed-bitcode=yes",
+    "--check-cfg=cfg(feature,values(any()))",
+    "-Zunstable-options",
+    "-Zinline-mir",
+    "-Zinline-mir-preserve-debug",
+    "-Zmir_strip_debuginfo=locals-in-tiny-functions",
 ]
 
 [profile.dist.package.panic_abort]
 rustflags = [
     "-Cpanic=abort",
+    # Inherited from `profile.dist.rustflags`
     "-Cembed-bitcode=yes",
-    "-Zunstable-options",
+    "--check-cfg=cfg(feature,values(any()))",
+    "-Zinline-mir",
+    "-Zinline-mir-preserve-debug",
+    "-Zmir_strip_debuginfo=locals-in-tiny-functions",
     "-Cforce-frame-pointers=non-leaf",
 ]
 

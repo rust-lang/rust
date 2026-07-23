@@ -90,7 +90,7 @@ impl Step for Std {
             builder.config.cmd.kind(),
         );
 
-        std_cargo(builder, target, &mut cargo, &self.crates);
+        std_cargo(builder, Mode::Std, target, &mut cargo, &self.crates);
         if matches!(builder.config.cmd, Subcommand::Fix) {
             // By default, cargo tries to fix all targets. Tell it not to fix tests until we've added `test` to the sysroot.
             cargo.arg("--lib");
@@ -137,7 +137,7 @@ impl Step for Std {
             Kind::Check,
         );
 
-        std_cargo(builder, target, &mut cargo, &self.crates);
+        std_cargo(builder, Mode::Std, target, &mut cargo, &self.crates);
 
         let stamp =
             build_stamp::libstd_stamp(builder, build_compiler, target).with_prefix("check-test");
@@ -511,7 +511,7 @@ pub fn prepare_compiler_for_check(
             std_rmeta_sysroot = prepare_std(builder, build_compiler, target);
             build_compiler
         }
-        Mode::Std => {
+        Mode::Std | Mode::DistStd => {
             // When checking std stage N, we want to do it with the stage N compiler
             // Note: we don't need to build the host stdlib here, because when compiling std, the
             // stage 0 stdlib is used to compile build scripts and proc macros.
