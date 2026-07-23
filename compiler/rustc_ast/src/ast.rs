@@ -2480,6 +2480,12 @@ pub struct FnPtrTy {
     pub decl_span: Span,
 }
 
+impl FnPtrTy {
+    pub fn header(&self) -> FnHeader {
+        FnHeader { constness: Const::No, coroutine_kind: None, safety: self.safety, ext: self.ext }
+    }
+}
+
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct UnsafeBinderTy {
     pub generic_params: ThinVec<GenericParam>,
