@@ -1,3 +1,4 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/159664>
 use std::mem;
 
 fn main() {

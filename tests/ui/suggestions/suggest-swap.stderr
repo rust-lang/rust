@@ -1,5 +1,5 @@
 error[E0499]: cannot borrow `arr[_]` as mutable more than once at a time
-  --> $DIR/suggest-swap.rs:11:9
+  --> $DIR/suggest-swap.rs:12:9
    |
 LL |     mem::swap(
    |     --------- first borrow later used by call
