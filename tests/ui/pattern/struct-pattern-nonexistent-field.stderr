@@ -1,5 +1,5 @@
 error[E0026]: struct `SimpleStruct` does not have a field named `state`
-  --> $DIR/issue-51102.rs:13:17
+  --> $DIR/struct-pattern-nonexistent-field.rs:16:17
    |
 LL |                 state: 0,
    |                 ^^^^^
@@ -8,7 +8,7 @@ LL |                 state: 0,
    |                 help: `SimpleStruct` has a field named `no_state_here`
 
 error[E0025]: field `no_state_here` bound multiple times in the pattern
-  --> $DIR/issue-51102.rs:24:17
+  --> $DIR/struct-pattern-nonexistent-field.rs:27:17
    |
 LL |                 no_state_here: 0,
    |                 ---------------- first use of `no_state_here`
@@ -16,7 +16,7 @@ LL |                 no_state_here: 1
    |                 ^^^^^^^^^^^^^^^^ multiple uses of `no_state_here` in pattern
 
 error[E0026]: variant `SimpleEnum::NoState` does not have a field named `state`
-  --> $DIR/issue-51102.rs:33:17
+  --> $DIR/struct-pattern-nonexistent-field.rs:36:17
    |
 LL |                 state: 0
    |                 ^^^^^ variant `SimpleEnum::NoState` does not have this field

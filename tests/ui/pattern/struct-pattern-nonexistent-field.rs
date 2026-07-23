@@ -1,3 +1,6 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/51102>.
+//! Test matching non-existing fields via struct pattern syntax in closures doesn't ICE.
+
 enum SimpleEnum {
     NoState,
 }
