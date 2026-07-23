@@ -22,8 +22,32 @@ LL - extern "custom" fn must_be_unsafe(a: i64) -> i64 {
 LL + extern "custom" fn must_be_unsafe() {
    |
 
+error: functions with the "custom" ABI must be unsafe
+  --> $DIR/bad-custom.rs:13:21
+   |
+LL | type MustbeUnsafe = extern "custom" fn(i64) -> i64;
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: add the `unsafe` keyword to this definition
+   |
+LL | type MustbeUnsafe = unsafe extern "custom" fn(i64) -> i64;
+   |                     ++++++
+
 error: invalid signature for `extern "custom"` function
-  --> $DIR/bad-custom.rs:14:41
+  --> $DIR/bad-custom.rs:13:40
+   |
+LL | type MustbeUnsafe = extern "custom" fn(i64) -> i64;
+   |                                        ^^^     ^^^
+   |
+   = note: functions with the "custom" ABI cannot have any parameters or return type
+help: remove the parameters and return type
+   |
+LL - type MustbeUnsafe = extern "custom" fn(i64) -> i64;
+LL + type MustbeUnsafe = extern "custom" fn();
+   |
+
+error: invalid signature for `extern "custom"` function
+  --> $DIR/bad-custom.rs:18:41
    |
 LL | unsafe extern "custom" fn no_parameters(a: i64) {
    |                                         ^^^^^^
@@ -36,7 +60,20 @@ LL + unsafe extern "custom" fn no_parameters() {
    |
 
 error: invalid signature for `extern "custom"` function
-  --> $DIR/bad-custom.rs:20:47
+  --> $DIR/bad-custom.rs:23:47
+   |
+LL | type NoParameters = unsafe extern "custom" fn(i64);
+   |                                               ^^^
+   |
+   = note: functions with the "custom" ABI cannot have any parameters or return type
+help: remove the parameters and return type
+   |
+LL - type NoParameters = unsafe extern "custom" fn(i64);
+LL + type NoParameters = unsafe extern "custom" fn();
+   |
+
+error: invalid signature for `extern "custom"` function
+  --> $DIR/bad-custom.rs:27:47
    |
 LL | unsafe extern "custom" fn no_return_type() -> i64 {
    |                                               ^^^
@@ -49,7 +86,20 @@ LL + unsafe extern "custom" fn no_return_type() {
    |
 
 error: invalid signature for `extern "custom"` function
-  --> $DIR/bad-custom.rs:26:53
+  --> $DIR/bad-custom.rs:32:52
+   |
+LL | type NoReturnType = unsafe extern "custom" fn() -> i64;
+   |                                                    ^^^
+   |
+   = note: functions with the "custom" ABI cannot have any parameters or return type
+help: remove the parameters and return type
+   |
+LL - type NoReturnType = unsafe extern "custom" fn() -> i64;
+LL + type NoReturnType = unsafe extern "custom" fn();
+   |
+
+error: invalid signature for `extern "custom"` function
+  --> $DIR/bad-custom.rs:36:53
    |
 LL | unsafe extern "custom" fn no_never_return_type() -> ! {
    |                                                     ^
@@ -62,46 +112,94 @@ LL + unsafe extern "custom" fn no_never_return_type() {
    |
 
 error: invalid signature for `extern "custom"` function
-  --> $DIR/bad-custom.rs:31:34
+  --> $DIR/bad-custom.rs:41:57
    |
-LL | unsafe extern "custom" fn double(a: i64) -> i64 {
-   |                                  ^^^^^^     ^^^
+LL | type NoNeverReturnType = unsafe extern "custom" fn() -> !;
+   |                                                         ^
    |
    = note: functions with the "custom" ABI cannot have any parameters or return type
 help: remove the parameters and return type
    |
-LL - unsafe extern "custom" fn double(a: i64) -> i64 {
-LL + unsafe extern "custom" fn double() {
+LL - type NoNeverReturnType = unsafe extern "custom" fn() -> !;
+LL + type NoNeverReturnType = unsafe extern "custom" fn();
    |
 
 error: invalid signature for `extern "custom"` function
-  --> $DIR/bad-custom.rs:40:39
+  --> $DIR/bad-custom.rs:44:36
    |
-LL |     unsafe extern "custom" fn is_even(self) -> bool {
-   |                                       ^^^^     ^^^^
+LL | unsafe extern "custom" fn not_both(a: i64) -> i64 {
+   |                                    ^^^^^^     ^^^
    |
    = note: functions with the "custom" ABI cannot have any parameters or return type
 help: remove the parameters and return type
    |
-LL -     unsafe extern "custom" fn is_even(self) -> bool {
-LL +     unsafe extern "custom" fn is_even() {
+LL - unsafe extern "custom" fn not_both(a: i64) -> i64 {
+LL + unsafe extern "custom" fn not_both() {
    |
 
 error: invalid signature for `extern "custom"` function
-  --> $DIR/bad-custom.rs:48:43
+  --> $DIR/bad-custom.rs:50:42
    |
-LL |     unsafe extern "custom" fn bitwise_not(a: i64) -> i64 {
-   |                                           ^^^^^^     ^^^
+LL | type NotBoth = unsafe extern "custom" fn(i64) -> i64;
+   |                                          ^^^     ^^^
    |
    = note: functions with the "custom" ABI cannot have any parameters or return type
 help: remove the parameters and return type
    |
-LL -     unsafe extern "custom" fn bitwise_not(a: i64) -> i64 {
-LL +     unsafe extern "custom" fn bitwise_not() {
+LL - type NotBoth = unsafe extern "custom" fn(i64) -> i64;
+LL + type NotBoth = unsafe extern "custom" fn();
    |
 
 error: functions with the "custom" ABI must be unsafe
-  --> $DIR/bad-custom.rs:58:5
+  --> $DIR/bad-custom.rs:56:5
+   |
+LL |     extern "custom" fn is_even(self) -> bool {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: add the `unsafe` keyword to this definition
+   |
+LL |     unsafe extern "custom" fn is_even(self) -> bool {
+   |     ++++++
+
+error: invalid signature for `extern "custom"` function
+  --> $DIR/bad-custom.rs:56:32
+   |
+LL |     extern "custom" fn is_even(self) -> bool {
+   |                                ^^^^     ^^^^
+   |
+   = note: functions with the "custom" ABI cannot have any parameters or return type
+help: remove the parameters and return type
+   |
+LL -     extern "custom" fn is_even(self) -> bool {
+LL +     extern "custom" fn is_even() {
+   |
+
+error: functions with the "custom" ABI must be unsafe
+  --> $DIR/bad-custom.rs:65:5
+   |
+LL |     extern "custom" fn bitwise_not(a: i64) -> i64 {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: add the `unsafe` keyword to this definition
+   |
+LL |     unsafe extern "custom" fn bitwise_not(a: i64) -> i64 {
+   |     ++++++
+
+error: invalid signature for `extern "custom"` function
+  --> $DIR/bad-custom.rs:65:36
+   |
+LL |     extern "custom" fn bitwise_not(a: i64) -> i64 {
+   |                                    ^^^^^^     ^^^
+   |
+   = note: functions with the "custom" ABI cannot have any parameters or return type
+help: remove the parameters and return type
+   |
+LL -     extern "custom" fn bitwise_not(a: i64) -> i64 {
+LL +     extern "custom" fn bitwise_not() {
+   |
+
+error: functions with the "custom" ABI must be unsafe
+  --> $DIR/bad-custom.rs:76:5
    |
 LL |     extern "custom" fn negate(a: i64) -> i64;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -112,7 +210,7 @@ LL |     unsafe extern "custom" fn negate(a: i64) -> i64;
    |     ++++++
 
 error: invalid signature for `extern "custom"` function
-  --> $DIR/bad-custom.rs:58:31
+  --> $DIR/bad-custom.rs:76:31
    |
 LL |     extern "custom" fn negate(a: i64) -> i64;
    |                               ^^^^^^     ^^^
@@ -125,7 +223,7 @@ LL +     extern "custom" fn negate();
    |
 
 error: functions with the "custom" ABI must be unsafe
-  --> $DIR/bad-custom.rs:64:5
+  --> $DIR/bad-custom.rs:82:5
    |
 LL |     extern "custom" fn negate(a: i64) -> i64 {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -136,7 +234,7 @@ LL |     unsafe extern "custom" fn negate(a: i64) -> i64 {
    |     ++++++
 
 error: invalid signature for `extern "custom"` function
-  --> $DIR/bad-custom.rs:64:31
+  --> $DIR/bad-custom.rs:82:31
    |
 LL |     extern "custom" fn negate(a: i64) -> i64 {
    |                               ^^^^^^     ^^^
@@ -149,7 +247,7 @@ LL +     extern "custom" fn negate() {
    |
 
 error: invalid signature for `extern "custom"` function
-  --> $DIR/bad-custom.rs:73:18
+  --> $DIR/bad-custom.rs:91:18
    |
 LL |     fn increment(a: i64) -> i64;
    |                  ^^^^^^     ^^^
@@ -162,7 +260,7 @@ LL +     fn increment();
    |
 
 error: foreign functions with the "custom" ABI cannot be safe
-  --> $DIR/bad-custom.rs:76:5
+  --> $DIR/bad-custom.rs:94:5
    |
 LL |     safe fn extern_cannot_be_safe();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -174,7 +272,7 @@ LL +     fn extern_cannot_be_safe();
    |
 
 error: invalid signature for `extern "custom"` function
-  --> $DIR/bad-custom.rs:80:40
+  --> $DIR/bad-custom.rs:98:40
    |
 LL | fn caller(f: unsafe extern "custom" fn(i64) -> i64, mut x: i64) -> i64 {
    |                                        ^^^     ^^^
@@ -187,7 +285,7 @@ LL + fn caller(f: unsafe extern "custom" fn(), mut x: i64) -> i64 {
    |
 
 error: invalid signature for `extern "custom"` function
-  --> $DIR/bad-custom.rs:86:48
+  --> $DIR/bad-custom.rs:104:48
    |
 LL | fn caller_by_ref(f: &unsafe extern "custom" fn(i64) -> i64, mut x: i64) -> i64 {
    |                                                ^^^     ^^^
@@ -200,20 +298,20 @@ LL + fn caller_by_ref(f: &unsafe extern "custom" fn(), mut x: i64) -> i64 {
    |
 
 error: invalid signature for `extern "custom"` function
-  --> $DIR/bad-custom.rs:92:41
+  --> $DIR/bad-custom.rs:110:40
    |
-LL | type Custom = unsafe extern "custom" fn(i64) -> i64;
-   |                                         ^^^     ^^^
+LL | type Alias = unsafe extern "custom" fn(i64) -> i64;
+   |                                        ^^^     ^^^
    |
    = note: functions with the "custom" ABI cannot have any parameters or return type
 help: remove the parameters and return type
    |
-LL - type Custom = unsafe extern "custom" fn(i64) -> i64;
-LL + type Custom = unsafe extern "custom" fn();
+LL - type Alias = unsafe extern "custom" fn(i64) -> i64;
+LL + type Alias = unsafe extern "custom" fn();
    |
 
 error: functions with the "custom" ABI cannot be `async`
-  --> $DIR/bad-custom.rs:106:1
+  --> $DIR/bad-custom.rs:124:1
    |
 LL | async unsafe extern "custom" fn no_async_fn() {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -225,7 +323,7 @@ LL + unsafe extern "custom" fn no_async_fn() {
    |
 
 error: items with the "custom" ABI can only be declared externally or defined via naked functions
-  --> $DIR/bad-custom.rs:106:1
+  --> $DIR/bad-custom.rs:124:1
    |
 LL | async unsafe extern "custom" fn no_async_fn() {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -237,7 +335,7 @@ LL | async unsafe extern "custom" fn no_async_fn() {
    |
 
 error[E0277]: expected an `Fn()` closure, found `unsafe extern "custom" fn()`
-  --> $DIR/bad-custom.rs:111:64
+  --> $DIR/bad-custom.rs:129:64
    |
 LL | fn no_promotion_to_fn_trait(f: unsafe extern "custom" fn()) -> impl Fn() {
    |                                                                ^^^^^^^^^ call the function in a closure: `|| unsafe { /* code */ }`
@@ -250,43 +348,43 @@ LL |     f
    = note: unsafe function cannot be called generically without an unsafe block
 
 error: items with the "custom" ABI can only be declared externally or defined via naked functions
-  --> $DIR/bad-custom.rs:31:1
+  --> $DIR/bad-custom.rs:44:1
    |
-LL | unsafe extern "custom" fn double(a: i64) -> i64 {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | unsafe extern "custom" fn not_both(a: i64) -> i64 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: convert this to an `#[unsafe(naked)]` function
    |
 LL + #[unsafe(naked)]
-LL | unsafe extern "custom" fn double(a: i64) -> i64 {
+LL | unsafe extern "custom" fn not_both(a: i64) -> i64 {
    |
 
 error: items with the "custom" ABI can only be declared externally or defined via naked functions
-  --> $DIR/bad-custom.rs:40:5
+  --> $DIR/bad-custom.rs:56:5
    |
-LL |     unsafe extern "custom" fn is_even(self) -> bool {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     extern "custom" fn is_even(self) -> bool {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: convert this to an `#[unsafe(naked)]` function
    |
 LL +     #[unsafe(naked)]
-LL |     unsafe extern "custom" fn is_even(self) -> bool {
+LL |     extern "custom" fn is_even(self) -> bool {
    |
 
 error: items with the "custom" ABI can only be declared externally or defined via naked functions
-  --> $DIR/bad-custom.rs:48:5
+  --> $DIR/bad-custom.rs:65:5
    |
-LL |     unsafe extern "custom" fn bitwise_not(a: i64) -> i64 {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     extern "custom" fn bitwise_not(a: i64) -> i64 {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: convert this to an `#[unsafe(naked)]` function
    |
 LL +     #[unsafe(naked)]
-LL |     unsafe extern "custom" fn bitwise_not(a: i64) -> i64 {
+LL |     extern "custom" fn bitwise_not(a: i64) -> i64 {
    |
 
 error: items with the "custom" ABI can only be declared externally or defined via naked functions
-  --> $DIR/bad-custom.rs:64:5
+  --> $DIR/bad-custom.rs:82:5
    |
 LL |     extern "custom" fn negate(a: i64) -> i64 {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -298,96 +396,96 @@ LL |     extern "custom" fn negate(a: i64) -> i64 {
    |
 
 error: functions with the "custom" ABI cannot be called
-  --> $DIR/bad-custom.rs:82:14
+  --> $DIR/bad-custom.rs:100:14
    |
 LL |     unsafe { f(x) }
    |              ^^^^
    |
 note: an `extern "custom"` function can only be called using inline assembly
-  --> $DIR/bad-custom.rs:82:14
+  --> $DIR/bad-custom.rs:100:14
    |
 LL |     unsafe { f(x) }
    |              ^^^^
 
 error: functions with the "custom" ABI cannot be called
-  --> $DIR/bad-custom.rs:88:14
+  --> $DIR/bad-custom.rs:106:14
    |
 LL |     unsafe { f(x) }
    |              ^^^^
    |
 note: an `extern "custom"` function can only be called using inline assembly
-  --> $DIR/bad-custom.rs:88:14
+  --> $DIR/bad-custom.rs:106:14
    |
 LL |     unsafe { f(x) }
    |              ^^^^
 
 error: functions with the "custom" ABI cannot be called
-  --> $DIR/bad-custom.rs:96:14
+  --> $DIR/bad-custom.rs:114:14
    |
 LL |     unsafe { f(x) }
    |              ^^^^
    |
 note: an `extern "custom"` function can only be called using inline assembly
-  --> $DIR/bad-custom.rs:96:14
+  --> $DIR/bad-custom.rs:114:14
    |
 LL |     unsafe { f(x) }
    |              ^^^^
 
 error: functions with the "custom" ABI cannot be called
-  --> $DIR/bad-custom.rs:118:20
+  --> $DIR/bad-custom.rs:136:20
    |
-LL |         assert_eq!(double(21), 42);
-   |                    ^^^^^^^^^^
+LL |         assert_eq!(not_both(21), 42);
+   |                    ^^^^^^^^^^^^
    |
 note: an `extern "custom"` function can only be called using inline assembly
-  --> $DIR/bad-custom.rs:118:20
+  --> $DIR/bad-custom.rs:136:20
    |
-LL |         assert_eq!(double(21), 42);
-   |                    ^^^^^^^^^^
+LL |         assert_eq!(not_both(21), 42);
+   |                    ^^^^^^^^^^^^
 
 error: functions with the "custom" ABI cannot be called
-  --> $DIR/bad-custom.rs:121:29
+  --> $DIR/bad-custom.rs:139:29
    |
 LL |         assert_eq!(unsafe { increment(41) }, 42);
    |                             ^^^^^^^^^^^^^
    |
 note: an `extern "custom"` function can only be called using inline assembly
-  --> $DIR/bad-custom.rs:121:29
+  --> $DIR/bad-custom.rs:139:29
    |
 LL |         assert_eq!(unsafe { increment(41) }, 42);
    |                             ^^^^^^^^^^^^^
 
 error: functions with the "custom" ABI cannot be called
-  --> $DIR/bad-custom.rs:124:17
+  --> $DIR/bad-custom.rs:142:17
    |
 LL |         assert!(Thing(41).is_even());
    |                 ^^^^^^^^^^^^^^^^^^^
    |
 note: an `extern "custom"` function can only be called using inline assembly
-  --> $DIR/bad-custom.rs:124:17
+  --> $DIR/bad-custom.rs:142:17
    |
 LL |         assert!(Thing(41).is_even());
    |                 ^^^^^^^^^^^^^^^^^^^
 
 error: functions with the "custom" ABI cannot be called
-  --> $DIR/bad-custom.rs:127:20
+  --> $DIR/bad-custom.rs:145:20
    |
 LL |         assert_eq!(Thing::bitwise_not(42), !42);
    |                    ^^^^^^^^^^^^^^^^^^^^^^
    |
 note: an `extern "custom"` function can only be called using inline assembly
-  --> $DIR/bad-custom.rs:127:20
+  --> $DIR/bad-custom.rs:145:20
    |
 LL |         assert_eq!(Thing::bitwise_not(42), !42);
    |                    ^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0015]: inline assembly is not allowed in constant functions
-  --> $DIR/bad-custom.rs:102:5
+  --> $DIR/bad-custom.rs:120:5
    |
 LL |     std::arch::naked_asm!("")
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 32 previous errors
+error: aborting due to 40 previous errors
 
 Some errors have detailed explanations: E0015, E0277.
 For more information about an error, try `rustc --explain E0015`.
