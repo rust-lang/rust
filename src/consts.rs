@@ -1,6 +1,6 @@
 #[cfg(feature = "master")]
-use gccjit::{FnAttribute, VarAttribute, Visibility};
-use gccjit::{Function, GlobalKind, LValue, RValue, ToRValue, Type};
+use gccjit::{FnAttribute, ToRValue, VarAttribute, Visibility};
+use gccjit::{Function, GlobalKind, LValue, RValue, Type};
 use rustc_abi::{self as abi, Align, HasDataLayout, Primitive, Size, WrappingRange};
 use rustc_codegen_ssa::traits::{
     BaseTypeCodegenMethods, ConstCodegenMethods, StaticCodegenMethods,
@@ -169,20 +169,31 @@ impl<'gcc, 'tcx> StaticCodegenMethods for CodegenCx<'gcc, 'tcx> {
             // FIXME(antoyo): set link section.
         }
 
-        if attrs.flags.contains(CodegenFnAttrFlags::USED_COMPILER)
-            || attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER)
-        {
-            self.add_used_global(global.to_rvalue());
+        if attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER) {
+            self.add_retained_global(global);
+        } else if attrs.flags.contains(CodegenFnAttrFlags::USED_COMPILER) {
+            self.add_used_global(global);
         }
     }
 }
 
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
-    /// Add a global value to a list to be stored in the `llvm.used` variable, an array of i8*.
-    pub fn add_used_global(&mut self, _global: RValue<'gcc>) {
-        // FIXME(antoyo)
+    /// Need to have the `SHF_GNU_RETAIN` flag, so needs to use the `retain` attribute instead of
+    /// `used`. This is used by `#[used(linker)]`.
+    pub fn add_retained_global(&mut self, global: LValue<'gcc>) {
+        // We need to add the `used` C attribute in any case.
+        self.add_used_global(global);
+        #[cfg(feature = "master")]
+        global.add_attribute(VarAttribute::Retain);
     }
 
+    /// This is used by `#[used(compiler)]` and `#[used]`.
+    pub fn add_used_global(&mut self, _global: LValue<'gcc>) {
+        #[cfg(feature = "master")]
+        _global.add_attribute(VarAttribute::Used);
+    }
+
+    // No need to have the `SHF_GNU_RETAIN` flag, so `used` attribute is ok.
     #[cfg_attr(not(feature = "master"), expect(unused_variables))]
     pub fn add_used_function(&self, function: Function<'gcc>) {
         #[cfg(feature = "master")]
