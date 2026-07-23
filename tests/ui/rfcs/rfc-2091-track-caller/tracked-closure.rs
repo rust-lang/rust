@@ -1,6 +1,5 @@
 //@ run-pass
 
-#![feature(stmt_expr_attributes)]
 #![feature(closure_track_caller)]
 #![feature(coroutine_trait)]
 #![feature(coroutines)]

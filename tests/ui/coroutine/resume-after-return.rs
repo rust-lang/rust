@@ -2,7 +2,7 @@
 //@ run-pass
 //@ needs-unwind
 
-#![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
+#![feature(coroutines, coroutine_trait)]
 
 use std::ops::{Coroutine, CoroutineState};
 use std::panic;

@@ -3,7 +3,7 @@
 // Based on addassign-yield.rs, but with drop tracking enabled. Originally we did not implement
 // the fake_read callback on ExprUseVisitor which caused this case to break.
 
-#![feature(coroutines, stmt_expr_attributes)]
+#![feature(coroutines)]
 
 fn foo() {
     let _y = #[coroutine] static || {

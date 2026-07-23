@@ -1,35 +1,5 @@
-error[E0658]: attributes on expressions are experimental
-  --> $DIR/destructure_patterns.rs:10:13
-   |
-LL |     let c = #[rustc_capture_analysis]
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
-   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error[E0658]: attributes on expressions are experimental
-  --> $DIR/destructure_patterns.rs:39:13
-   |
-LL |     let c = #[rustc_capture_analysis]
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
-   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
-error[E0658]: attributes on expressions are experimental
-  --> $DIR/destructure_patterns.rs:60:13
-   |
-LL |     let c = #[rustc_capture_analysis]
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
-   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
 error: First Pass analysis includes:
-  --> $DIR/destructure_patterns.rs:14:5
+  --> $DIR/destructure_patterns.rs:11:5
    |
 LL | /     || {
 LL | |
@@ -41,23 +11,23 @@ LL | |     };
    | |_____^
    |
 note: Capturing arr[Index] -> ByValue
-  --> $DIR/destructure_patterns.rs:17:29
+  --> $DIR/destructure_patterns.rs:14:29
    |
 LL |         let [a, b, .., e] = arr;
    |                             ^^^
 note: Capturing arr[Index] -> ByValue
-  --> $DIR/destructure_patterns.rs:17:29
+  --> $DIR/destructure_patterns.rs:14:29
    |
 LL |         let [a, b, .., e] = arr;
    |                             ^^^
 note: Capturing arr[Index] -> ByValue
-  --> $DIR/destructure_patterns.rs:17:29
+  --> $DIR/destructure_patterns.rs:14:29
    |
 LL |         let [a, b, .., e] = arr;
    |                             ^^^
 
 error: Min Capture analysis includes:
-  --> $DIR/destructure_patterns.rs:14:5
+  --> $DIR/destructure_patterns.rs:11:5
    |
 LL | /     || {
 LL | |
@@ -69,13 +39,13 @@ LL | |     };
    | |_____^
    |
 note: Min Capture arr[] -> ByValue
-  --> $DIR/destructure_patterns.rs:17:29
+  --> $DIR/destructure_patterns.rs:14:29
    |
 LL |         let [a, b, .., e] = arr;
    |                             ^^^
 
 error: First Pass analysis includes:
-  --> $DIR/destructure_patterns.rs:43:5
+  --> $DIR/destructure_patterns.rs:37:5
    |
 LL | /     || {
 LL | |
@@ -87,18 +57,18 @@ LL | |     };
    | |_____^
    |
 note: Capturing p[(0, 0)] -> Mutable
-  --> $DIR/destructure_patterns.rs:46:58
+  --> $DIR/destructure_patterns.rs:40:58
    |
 LL |         let Point { x: ref mut x, y: _, id: moved_id } = p;
    |                                                          ^
 note: Capturing p[(2, 0)] -> ByValue
-  --> $DIR/destructure_patterns.rs:46:58
+  --> $DIR/destructure_patterns.rs:40:58
    |
 LL |         let Point { x: ref mut x, y: _, id: moved_id } = p;
    |                                                          ^
 
 error: Min Capture analysis includes:
-  --> $DIR/destructure_patterns.rs:43:5
+  --> $DIR/destructure_patterns.rs:37:5
    |
 LL | /     || {
 LL | |
@@ -110,18 +80,18 @@ LL | |     };
    | |_____^
    |
 note: Min Capture p[(0, 0)] -> Mutable
-  --> $DIR/destructure_patterns.rs:46:58
+  --> $DIR/destructure_patterns.rs:40:58
    |
 LL |         let Point { x: ref mut x, y: _, id: moved_id } = p;
    |                                                          ^
 note: Min Capture p[(2, 0)] -> ByValue
-  --> $DIR/destructure_patterns.rs:46:58
+  --> $DIR/destructure_patterns.rs:40:58
    |
 LL |         let Point { x: ref mut x, y: _, id: moved_id } = p;
    |                                                          ^
 
 error: First Pass analysis includes:
-  --> $DIR/destructure_patterns.rs:64:5
+  --> $DIR/destructure_patterns.rs:55:5
    |
 LL | /     || {
 LL | |
@@ -133,23 +103,23 @@ LL | |     };
    | |_____^
    |
 note: Capturing t[(0, 0)] -> Mutable
-  --> $DIR/destructure_patterns.rs:67:54
+  --> $DIR/destructure_patterns.rs:58:54
    |
 LL |         let (ref mut x, ref ref_str, (moved_s, _)) = t;
    |                                                      ^
 note: Capturing t[(1, 0)] -> Immutable
-  --> $DIR/destructure_patterns.rs:67:54
+  --> $DIR/destructure_patterns.rs:58:54
    |
 LL |         let (ref mut x, ref ref_str, (moved_s, _)) = t;
    |                                                      ^
 note: Capturing t[(2, 0),(0, 0)] -> ByValue
-  --> $DIR/destructure_patterns.rs:67:54
+  --> $DIR/destructure_patterns.rs:58:54
    |
 LL |         let (ref mut x, ref ref_str, (moved_s, _)) = t;
    |                                                      ^
 
 error: Min Capture analysis includes:
-  --> $DIR/destructure_patterns.rs:64:5
+  --> $DIR/destructure_patterns.rs:55:5
    |
 LL | /     || {
 LL | |
@@ -161,21 +131,20 @@ LL | |     };
    | |_____^
    |
 note: Min Capture t[(0, 0)] -> Mutable
-  --> $DIR/destructure_patterns.rs:67:54
+  --> $DIR/destructure_patterns.rs:58:54
    |
 LL |         let (ref mut x, ref ref_str, (moved_s, _)) = t;
    |                                                      ^
 note: Min Capture t[(1, 0)] -> Immutable
-  --> $DIR/destructure_patterns.rs:67:54
+  --> $DIR/destructure_patterns.rs:58:54
    |
 LL |         let (ref mut x, ref ref_str, (moved_s, _)) = t;
    |                                                      ^
 note: Min Capture t[(2, 0),(0, 0)] -> ByValue
-  --> $DIR/destructure_patterns.rs:67:54
+  --> $DIR/destructure_patterns.rs:58:54
    |
 LL |         let (ref mut x, ref ref_str, (moved_s, _)) = t;
    |                                                      ^
 
-error: aborting due to 9 previous errors
+error: aborting due to 6 previous errors
 
-For more information about this error, try `rustc --explain E0658`.

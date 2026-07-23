@@ -16,5 +16,11 @@ error: removing an expression is not supported in this position
 LL |     let _ = [1, 2, 3][#[cfg(false)] 1];
    |                       ^^^^^^^^^^^^^
 
-error: aborting due to 3 previous errors
+error: removing an expression is not supported in this position
+  --> $DIR/cfg-non-opt-expr.rs:11:13
+   |
+LL |     let _ = #[cfg(false)] String::new().len();
+   |             ^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
 

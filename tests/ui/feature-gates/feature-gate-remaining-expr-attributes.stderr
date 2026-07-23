@@ -1,0 +1,53 @@
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/feature-gate-remaining-expr-attributes.rs:18:13
+   |
+LL |     let _ = #[allow(unused)] 42;
+   |             ^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/feature-gate-remaining-expr-attributes.rs:21:13
+   |
+LL |     let _ = #[allow(unused)] free_function();
+   |             ^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/feature-gate-remaining-expr-attributes.rs:24:13
+   |
+LL |     let _ = #[allow(unused)] value.method().field;
+   |             ^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/feature-gate-remaining-expr-attributes.rs:27:13
+   |
+LL |     let _ = #[allow(unused)] [0][0];
+   |             ^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: attributes on expressions are experimental
+  --> $DIR/feature-gate-remaining-expr-attributes.rs:30:13
+   |
+LL |     let _ = #[allow(unused)] 1 + 2;
+   |             ^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

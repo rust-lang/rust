@@ -12,9 +12,6 @@ fn test_alignment_not_affected() {
     let mut foo = Foo { x: 0, y: 0 };
 
     let mut c = #[rustc_capture_analysis]
-    //~^ ERROR: attributes on expressions are experimental
-    //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
-    //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
     || {
     //~^ ERROR: First Pass analysis includes:
     //~| ERROR: Min Capture analysis includes:
@@ -43,9 +40,6 @@ fn test_alignment_affected() {
     let mut foo = Foo { x: String::new(), y: 0 };
 
     let mut c = #[rustc_capture_analysis]
-    //~^ ERROR: attributes on expressions are experimental
-    //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
-    //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
     || {
     //~^ ERROR: First Pass analysis includes:
     //~| ERROR: Min Capture analysis includes:
@@ -79,9 +73,6 @@ fn test_truncation_when_ref_and_move() {
     let mut foo = Foo { x: String::new() };
 
     let c = #[rustc_capture_analysis]
-    //~^ ERROR: attributes on expressions are experimental
-    //~| NOTE: see issue #15701 <https://github.com/rust-lang/rust/issues/15701>
-    //~| NOTE: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
     || {
     //~^ ERROR: First Pass analysis includes:
     //~| ERROR: Min Capture analysis includes:

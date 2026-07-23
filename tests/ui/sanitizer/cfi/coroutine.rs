@@ -16,7 +16,7 @@
 //@ compile-flags: --test
 //@ run-pass
 
-#![feature(coroutines, stmt_expr_attributes)]
+#![feature(coroutines)]
 #![feature(coroutine_trait)]
 #![feature(gen_blocks)]
 #![feature(async_iterator)]

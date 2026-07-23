@@ -1,6 +1,6 @@
 //@ run-pass
 
-#![feature(coroutines, stmt_expr_attributes)]
+#![feature(coroutines)]
 
 fn main() {
     let _a = #[coroutine] || {

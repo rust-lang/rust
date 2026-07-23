@@ -1,6 +1,6 @@
 //@ run-rustfix
 
-#![feature(coroutines, stmt_expr_attributes)]
+#![feature(coroutines)]
 
 fn main() {
     let _ = #[coroutine] || yield;

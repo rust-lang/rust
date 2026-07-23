@@ -101,10 +101,8 @@ fn main() {
         || ()
     };
 
-    // Applying attributes to arbitrary expressions requires an unstable
-    // feature, but if that feature were enabled then this would be allowed.
+    // The coverage attribute is also allowed directly on closure expressions.
     let _closure_expr = #[coverage(off)] || ();
-    //~^ ERROR attributes on expressions are experimental [E0658]
 
     match () {
         #[coverage(off)] //~ ERROR attribute cannot be used on

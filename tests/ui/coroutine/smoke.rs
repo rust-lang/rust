@@ -6,7 +6,7 @@
 //@ needs-threads
 //@ compile-flags: --test
 
-#![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
+#![feature(coroutines, coroutine_trait)]
 
 use std::ops::{CoroutineState, Coroutine};
 use std::pin::Pin;

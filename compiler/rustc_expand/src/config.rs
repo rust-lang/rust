@@ -386,9 +386,25 @@ impl<'a> StripUnconfigured<'a> {
         eval_config_entry(self.sess, &cfg)
     }
 
-    /// If attributes are not allowed on expressions, emit an error for `attr`
+    /// Whether `expr` is a closure or method call, possibly parenthesized, on which outer
+    /// attributes are stable.
+    fn is_outer_attr_stable_on_closure_or_method_call_expr(expr: &ast::Expr) -> bool {
+        match &expr.kind {
+            ast::ExprKind::Closure(..) | ast::ExprKind::MethodCall(..) => true,
+            ast::ExprKind::Paren(inner) => {
+                Self::is_outer_attr_stable_on_closure_or_method_call_expr(inner)
+            }
+            _ => false,
+        }
+    }
+
+    /// If attributes are not allowed on `expr`, emit an error for `attr`.
     #[instrument(level = "trace", skip(self))]
-    pub(crate) fn maybe_emit_expr_attr_err(&self, attr: &Attribute) {
+    pub(crate) fn maybe_emit_expr_attr_err(&self, expr: &ast::Expr, attr: &Attribute) {
+        if Self::is_outer_attr_stable_on_closure_or_method_call_expr(expr) {
+            return;
+        }
+
         if self.features.is_some_and(|features| !features.stmt_expr_attributes())
             && !attr.span.allows_unstable(sym::stmt_expr_attributes)
         {
@@ -415,7 +431,7 @@ impl<'a> StripUnconfigured<'a> {
     pub fn configure_expr(&self, expr: &mut ast::Expr, method_receiver: bool) {
         if !method_receiver {
             for attr in expr.attrs.iter() {
-                self.maybe_emit_expr_attr_err(attr);
+                self.maybe_emit_expr_attr_err(expr, attr);
             }
         }
 

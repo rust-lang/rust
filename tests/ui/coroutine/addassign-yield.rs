@@ -5,7 +5,7 @@
 // is being used), we were failing to account for all types that might
 // possibly be live across a yield point.
 
-#![feature(coroutines, stmt_expr_attributes)]
+#![feature(coroutines)]
 
 fn foo() {
     let _x = #[coroutine] static || {
