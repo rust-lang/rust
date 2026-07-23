@@ -1,5 +1,5 @@
 error: arbitrary expressions aren't allowed in patterns
-  --> $DIR/issue-43250.rs:9:8
+  --> $DIR/expr-metavar-in-let-pattern.rs:13:8
    |
 LL |     m!(y);
    |        ^
@@ -7,7 +7,7 @@ LL |     m!(y);
    = note: the `expr` fragment specifier forces the metavariable's content to be an expression
 
 error: arbitrary expressions aren't allowed in patterns
-  --> $DIR/issue-43250.rs:11:8
+  --> $DIR/expr-metavar-in-let-pattern.rs:15:8
    |
 LL |     m!(C);
    |        ^

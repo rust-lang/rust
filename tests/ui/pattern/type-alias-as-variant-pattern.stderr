@@ -1,5 +1,5 @@
 error[E0599]: no associated function or constant named `String` found for struct `String` in the current scope
-  --> $DIR/issue-42880.rs:4:22
+  --> $DIR/type-alias-as-variant-pattern.rs:7:22
    |
 LL |     let f = |&Value::String(_)| ();
    |                      ^^^^^^ associated function or constant not found in `String`

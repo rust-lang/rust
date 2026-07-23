@@ -1,3 +1,5 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/43853>.
+//! Test using `From::from(f())` on a diverging `f()` doesn't ICE.
 //@ run-pass
 //@ needs-unwind
 
