@@ -35,7 +35,6 @@ target = ["riscv64gc-unknown-linux-musl"]
 
 ## Building Rust programs
 
-
 On a riscv64gc-unknown-linux-musl host, the `riscv64gc-unknown-linux-musl`
 target should be automatically installed and used by default.
 
