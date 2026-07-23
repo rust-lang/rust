@@ -81,7 +81,23 @@ class LLDBFeature(Flag):
     a formatter, and handlers in `TypeSystemClang`"""
 
 
-FEATURE_FLAGS: LLDBFeature = LLDBFeature(0)
+def detect_features() -> LLDBFeature:
+    import lldb
+
+    features = LLDBFeature(0)
+
+    # Most feature checks should be possible via simple "does this API exist at all" checks.
+    if getattr(lldb.SBType, "GetStaticFieldWithName", None) is not None:
+        features |= LLDBFeature.StaticFields
+    if getattr(lldb, "eFormatterMatchCallback", None) is not None:
+        features |= LLDBFeature.TypeRecognizers
+    if getattr(lldb, "eBasicTypeFloat128", None) is not None:
+        features |= LLDBFeature.Float128
+
+    return features
+
+
+FEATURE_FLAGS: LLDBFeature = detect_features()
 
 
 class LLDBOpaque:
