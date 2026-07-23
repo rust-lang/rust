@@ -248,6 +248,7 @@ unsafe extern "C" {
 
 // Functions in DLLs that we want to lazily load
 compat_fn_with_fallback! {
+    // Avoid eagerly linking shell32.dll, which marks the loading application as graphical.
     #[lazy]
     pub static SHELL32: &CStr = c"shell32";
 
@@ -257,6 +258,7 @@ compat_fn_with_fallback! {
 }
 
 compat_fn_with_fallback! {
+    // Only used with SHGetKnownFolderPath, so avoid eager load overhead.
     #[lazy]
     pub static OLE32: &CStr = c"ole32";
 
