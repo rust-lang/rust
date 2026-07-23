@@ -950,7 +950,36 @@ impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
         }
 
         match project::poly_project_and_unify_term(&mut self.selcx, &project_obligation) {
-            ProjectAndUnifyResult::Holds(os) => ProcessResult::Changed(mk_pending(obligation, os)),
+            ProjectAndUnifyResult::Holds(os) => {
+                // Every nested obligation is a copy of the obligation we are processing,
+                // registering would make fulfillment process the same obligation forever.
+                // So, stall until an inference variable in the predicate is constrained.
+                if !os.is_empty() && {
+                    let input = infcx
+                        .resolve_vars_if_possible(project_obligation.predicate)
+                        .map_bound(|p| p.projection_term);
+                    os.iter().all(|o| {
+                        o.predicate.as_projection_clause().is_some_and(|p| {
+                            infcx.resolve_vars_if_possible(p).map_bound(|p| p.projection_term)
+                                == input
+                        })
+                    })
+                } {
+                    stalled_on.clear();
+                    stalled_on.extend(args_infer_vars(
+                        &self.selcx,
+                        project_obligation.predicate.map_bound(|pred| pred.projection_term.args),
+                    ));
+                    stalled_on.extend(TyOrConstInferVar::maybe_from_term(
+                        infcx.resolve_vars_if_possible(
+                            project_obligation.predicate.skip_binder().term,
+                        ),
+                    ));
+                    ProcessResult::Unchanged
+                } else {
+                    ProcessResult::Changed(mk_pending(obligation, os))
+                }
+            }
             ProjectAndUnifyResult::FailedNormalization => {
                 stalled_on.clear();
                 stalled_on.extend(args_infer_vars(
