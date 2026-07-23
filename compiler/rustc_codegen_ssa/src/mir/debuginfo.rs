@@ -451,6 +451,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
                 }
 
+                // wasm `externref` values cannot be stored to linear memory,
+                // so spilling one for debuginfo would be unselectable in the
+                // wasm backend. They exist only as wasm locals; emit no
+                // memory-based debug location (clang likewise emits no
+                // location for `__externref_t` variables).
+                if bx.tcx().is_externref(operand.layout.ty) {
+                    return;
+                }
+
                 Self::spill_operand_to_stack(*operand, name, bx)
             }
 
