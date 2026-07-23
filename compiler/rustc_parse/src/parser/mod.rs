@@ -2,6 +2,7 @@ pub mod attr;
 mod attr_wrapper;
 mod diagnostics;
 mod expr;
+mod function;
 mod generics;
 mod item;
 mod nonterminal;
@@ -22,7 +23,8 @@ use attr_wrapper::{AttrWrapper, UsePreAttrPos};
 pub use diagnostics::AttemptLocalParseRecovery;
 // Public to use it for custom `if` expressions in rustfmt forks like https://github.com/tucant/rustfmt
 pub use expr::LetChainsPolicy;
-pub(crate) use item::{FnContext, FnParseMode};
+use function::{FnContext, FnParseMode, FrontMatterParsingMode};
+pub use item::StmtWouldBeAllowed;
 pub use pat::{CommaRecoveryMode, RecoverColon, RecoverComma};
 pub use path::PathStyle;
 use rustc_ast::token::{

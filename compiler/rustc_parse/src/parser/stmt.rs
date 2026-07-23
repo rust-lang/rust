@@ -21,7 +21,7 @@ use super::pat::{PatternLocation, RecoverComma};
 use super::path::PathStyle;
 use super::{
     AllowConstBlockItems, AttrWrapper, BlockMode, FnContext, FnParseMode, ForceCollect, Parser,
-    Restrictions, SemiColonMode, Trailing, UsePreAttrPos,
+    Restrictions, SemiColonMode, StmtWouldBeAllowed, Trailing, UsePreAttrPos,
 };
 use crate::diagnostics::{self, MalformedLoopLabel};
 use crate::exp;
@@ -157,6 +157,7 @@ impl<'a> Parser<'a> {
             FnParseMode { req_name: |_, _| true, context: FnContext::Free, req_body: true },
             force_collect,
             AllowConstBlockItems::No,
+            StmtWouldBeAllowed::Yes,
         )? {
             self.mk_stmt(lo.to(item.span), StmtKind::Item(Box::new(item)))
         } else if self.eat(exp!(Semi)) {

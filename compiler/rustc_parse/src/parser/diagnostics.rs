@@ -45,7 +45,7 @@ use crate::diagnostics::{
 use crate::exp;
 use crate::parser::FnContext;
 use crate::parser::attr::InnerAttrPolicy;
-use crate::parser::item::IsDotDotDot;
+use crate::parser::function::IsDotDotDot;
 
 /// Creates a placeholder argument.
 pub(super) fn dummy_arg(ident: Ident, guar: ErrorGuaranteed) -> Param {
@@ -2232,7 +2232,7 @@ impl<'a> Parser<'a> {
         pat: Box<ast::Pat>,
         require_name: bool,
         first_param: bool,
-        fn_parse_mode: &crate::parser::item::FnParseMode,
+        fn_parse_mode: &crate::parser::FnParseMode,
     ) -> Option<Ident> {
         // If we find a pattern followed by an identifier, it could be an (incorrect)
         // C-style parameter declaration.
@@ -2257,7 +2257,7 @@ impl<'a> Parser<'a> {
         {
             let maybe_emit_anon_params_note = |this: &mut Self, err: &mut Diag<'_>| {
                 let ed = this.token.span.with_neighbor(this.prev_token.span).edition();
-                if matches!(fn_parse_mode.context, crate::parser::item::FnContext::Trait)
+                if matches!(fn_parse_mode.context, crate::parser::FnContext::Trait)
                     && (fn_parse_mode.req_name)(ed, IsDotDotDot::No)
                 {
                     err.note("anonymous parameters are removed in the 2018 edition (see RFC 1685)");

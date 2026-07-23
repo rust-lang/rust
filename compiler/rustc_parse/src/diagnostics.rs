@@ -2345,6 +2345,101 @@ pub(crate) enum AmbiguousMissingKwForItemSub {
     HelpMacro,
 }
 
+// Emitted when an item wanted but `let` is found, and we are in a block that
+// would allow a properly structured `let` statement, but something prior made it not a
+// `let` statement.
+#[derive(Diagnostic)]
+pub(crate) enum LetWithModifier {
+    #[diag("a `let` statement cannot have a visibility")]
+    Visibility(
+        #[primary_span] Span,
+        #[suggestion(
+            "remove the visibility",
+            code = "",
+            applicability = "machine-applicable",
+            style = "short"
+        )]
+        Span,
+    ),
+
+    #[diag("a `let` statement cannot be `final`")]
+    Final(
+        #[primary_span] Span,
+        #[suggestion(
+            "remove the `final`",
+            code = "",
+            applicability = "machine-applicable",
+            style = "short"
+        )]
+        Span,
+        #[subdiagnostic] Option<FinalLetIsNotImmutability>,
+    ),
+
+    #[diag("a `let` statement cannot be `default`")]
+    Default(
+        #[primary_span] Span,
+        #[suggestion(
+            "remove the `default`",
+            code = "",
+            applicability = "machine-applicable",
+            style = "short"
+        )]
+        Span,
+    ),
+}
+
+#[derive(Subdiagnostic)]
+#[note("variables in Rust are immutable by default, and `final` does not control mutability")]
+pub(crate) struct FinalLetIsNotImmutability;
+
+/// Emitted when an item is wanted but `let` is found, and we aren’t in a block
+/// that would allow a properly formatted `let`.
+#[derive(Diagnostic)]
+#[diag("`let` statements are not allowed outside of functions or const blocks")]
+#[note("`let` cannot be used to define global variables")]
+pub(crate) struct LetAsItem {
+    /// Points to the `let` token.
+    #[primary_span]
+    pub span: Span,
+
+    /// May or may not be a suggestion
+    #[subdiagnostic]
+    pub advice: LetAsItemAdvice,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum LetAsItemAdvice {
+    #[suggestion(
+        "consider using `static` to define a global variable",
+        code = "static",
+        applicability = "maybe-incorrect",
+        style = "verbose"
+    )]
+    #[suggestion(
+        "consider using `const` to define a constant",
+        code = "const",
+        applicability = "maybe-incorrect",
+        style = "verbose"
+    )]
+    UseStaticOrConstSugg(#[primary_span] Span),
+
+    /// Used when the item is an associated item.
+    #[suggestion(
+        "consider using `const` instead of `let` for associated const",
+        code = "const",
+        applicability = "maybe-incorrect",
+        style = "verbose"
+    )]
+    UseAssocConstSugg(#[primary_span] Span),
+
+    #[help("consider using `static` or `const` instead of `let`")]
+    UseStaticOrConstNoSugg(#[primary_span] Span),
+
+    /// Used for `let mut`.
+    #[help("consider using `static` and a `Mutex` instead of `let mut`")]
+    UseMutex,
+}
+
 #[derive(Diagnostic)]
 #[diag("missing parameters for function definition")]
 pub(crate) struct MissingFnParams {

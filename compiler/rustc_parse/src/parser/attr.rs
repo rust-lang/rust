@@ -10,7 +10,7 @@ use tracing::debug;
 
 use super::{
     AllowConstBlockItems, AttrWrapper, Capturing, FnParseMode, ForceCollect, Parser, PathStyle,
-    Trailing, UsePreAttrPos,
+    StmtWouldBeAllowed, Trailing, UsePreAttrPos,
 };
 use crate::parser::FnContext;
 use crate::{diagnostics, exp};
@@ -214,6 +214,7 @@ impl<'a> Parser<'a> {
             FnParseMode { req_name: |_, _| true, context: FnContext::Free, req_body: true },
             ForceCollect::No,
             AllowConstBlockItems::Yes,
+            StmtWouldBeAllowed::NoOrUnknown,
         ) {
             Ok(Some(item)) => {
                 err.arg("item", item.kind.descr());

@@ -18,8 +18,7 @@ use crate::diagnostics::{
     HelpUseLatestEdition, InvalidCVariadicType, InvalidDynKeyword, LifetimeAfterMut,
     NeedPlusAfterTraitObjectLifetime, NestedCVariadicType, ReturnTypesUseThinArrow,
 };
-use crate::parser::item::FrontMatterParsingMode;
-use crate::parser::{FnContext, FnParseMode};
+use crate::parser::{FnContext, FnParseMode, FrontMatterParsingMode};
 use crate::{exp, maybe_recover_from_interpolated_ty_qpath};
 
 /// Signals whether parsing a type should allow `+`.
@@ -881,7 +880,7 @@ impl<'a> Parser<'a> {
         if self.may_recover() && self.token == TokenKind::Lt {
             self.recover_fn_ptr_with_generics(lo, &mut params, param_insertion_point)?;
         }
-        let mode = crate::parser::item::FnParseMode {
+        let mode = crate::parser::FnParseMode {
             req_name: |_, _| false,
             context: FnContext::Free,
             req_body: false,

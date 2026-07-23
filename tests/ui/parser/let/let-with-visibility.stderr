@@ -1,0 +1,36 @@
+error: a `let` statement cannot have a visibility
+  --> $DIR/let-with-visibility.rs:7:5
+   |
+LL |     pub let s: &str = "hello world";
+   |     ^^^-
+   |     |
+   |     help: remove the visibility
+
+error: a `let` statement cannot be `final`
+  --> $DIR/let-with-visibility.rs:20:5
+   |
+LL |     final let s: &str = "hello world";
+   |     ^^^^^-
+   |     |
+   |     help: remove the `final`
+   |
+   = note: variables in Rust are immutable by default, and `final` does not control mutability
+
+error: a `let` statement cannot be `final`
+  --> $DIR/let-with-visibility.rs:27:5
+   |
+LL |     final let mut s: &str = "hello world";
+   |     ^^^^^-
+   |     |
+   |     help: remove the `final`
+
+error: a `let` statement cannot be `final`
+  --> $DIR/let-with-visibility.rs:34:5
+   |
+LL |     final let ref s: &str = "hello world";
+   |     ^^^^^-
+   |     |
+   |     help: remove the `final`
+
+error: aborting due to 4 previous errors
+

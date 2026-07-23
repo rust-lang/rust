@@ -1,0 +1,56 @@
+error: `let` statements are not allowed outside of functions or const blocks
+  --> $DIR/let-at-top-level.rs:1:1
+   |
+LL | let x = 1;
+   | ^^^
+   |
+   = note: `let` cannot be used to define global variables
+help: consider using `static` to define a global variable
+   |
+LL - let x = 1;
+LL + static x = 1;
+   |
+help: consider using `const` to define a constant
+   |
+LL - let x = 1;
+LL + const x = 1;
+   |
+
+error: `let` statements are not allowed outside of functions or const blocks
+  --> $DIR/let-at-top-level.rs:4:1
+   |
+LL | let y: i32 = 1;
+   | ^^^
+   |
+   = note: `let` cannot be used to define global variables
+help: consider using `static` to define a global variable
+   |
+LL - let y: i32 = 1;
+LL + static y: i32 = 1;
+   |
+help: consider using `const` to define a constant
+   |
+LL - let y: i32 = 1;
+LL + const y: i32 = 1;
+   |
+
+error: `let` statements are not allowed outside of functions or const blocks
+  --> $DIR/let-at-top-level.rs:7:5
+   |
+LL | pub let z = 1;
+   |     ^^^
+   |
+   = note: `let` cannot be used to define global variables
+help: consider using `static` to define a global variable
+   |
+LL - pub let z = 1;
+LL + pub static z = 1;
+   |
+help: consider using `const` to define a constant
+   |
+LL - pub let z = 1;
+LL + pub const z = 1;
+   |
+
+error: aborting due to 3 previous errors
+

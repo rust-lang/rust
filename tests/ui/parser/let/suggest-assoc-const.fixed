@@ -2,8 +2,8 @@
 //@ run-rustfix
 #![allow(dead_code)]
 trait Trait {
-    let _X: i32;
-    //~^ ERROR non-item in item list
+    const _X: i32;
+    //~^ ERROR `let` statements are not allowed outside of functions or const blocks
 }
 
 fn main() {
