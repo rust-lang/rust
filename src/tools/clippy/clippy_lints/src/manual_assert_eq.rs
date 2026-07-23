@@ -6,7 +6,7 @@ use clippy_utils::ty::implements_trait;
 use clippy_utils::{is_in_const_context, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lint::{LateContext, LateLintPass, LintContext as _};
 use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {

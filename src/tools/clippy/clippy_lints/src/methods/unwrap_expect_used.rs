@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::MaybeDef as _;
 use clippy_utils::ty::is_never_like;
 use clippy_utils::{is_in_test, is_inside_always_const_context, is_lint_allowed};
 use rustc_hir::Expr;

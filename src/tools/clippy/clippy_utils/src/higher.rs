@@ -3,7 +3,7 @@
 #![deny(clippy::missing_docs_in_private_items)]
 
 use crate::consts::{ConstEvalCtxt, Constant};
-use crate::res::MaybeDef;
+use crate::res::MaybeDef as _;
 use crate::{is_expn_of, sym};
 
 use rustc_ast::ast;

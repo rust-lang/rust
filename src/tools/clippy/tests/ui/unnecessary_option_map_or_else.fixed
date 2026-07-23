@@ -1,11 +1,11 @@
 #![warn(clippy::unnecessary_option_map_or_else)]
 #![allow(
-    clippy::let_and_return,
     clippy::let_unit_value,
+    clippy::needless_return,
     clippy::unnecessary_lazy_evaluations,
-    clippy::unnecessary_literal_unwrap,
-    clippy::needless_return
+    clippy::unnecessary_literal_unwrap
 )]
+#![expect(clippy::let_and_return)]
 
 const fn double_it(x: i32) -> i32 {
     x * 2

@@ -4,7 +4,6 @@
 //@[edition2024] edition:2024
 
 #![warn(clippy::uninlined_format_args)]
-#![allow(clippy::literal_string_with_formatting_args)]
 
 fn main() {
     let var = 1;

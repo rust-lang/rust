@@ -1,8 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::source::SpanExt;
+use clippy_utils::source::SpanExt as _;
 use rustc_ast::ast::{Item, VisibilityKind};
 use rustc_errors::Applicability;
-use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
+use rustc_lint::{EarlyContext, EarlyLintPass, LintContext as _};
 use rustc_session::declare_lint_pass;
 use rustc_span::Span;
 use rustc_span::symbol::kw;

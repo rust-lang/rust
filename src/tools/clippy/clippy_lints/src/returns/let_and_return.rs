@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
-use clippy_utils::res::MaybeResPath;
+use clippy_utils::res::MaybeResPath as _;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::sugg::has_enclosing_paren;
 use clippy_utils::visitors::for_each_expr;
@@ -7,8 +7,8 @@ use clippy_utils::{binary_expr_needs_parentheses, fn_def_id, span_contains_non_w
 use core::ops::ControlFlow;
 use rustc_errors::Applicability;
 use rustc_hir::{Block, Expr, PatKind, StmtKind};
-use rustc_lint::{LateContext, LintContext};
-use rustc_middle::ty::{GenericArgKind, RegionUtilitiesExt};
+use rustc_lint::{LateContext, LintContext as _};
+use rustc_middle::ty::{GenericArgKind, RegionUtilitiesExt as _};
 use rustc_span::edition::Edition;
 
 use super::LET_AND_RETURN;

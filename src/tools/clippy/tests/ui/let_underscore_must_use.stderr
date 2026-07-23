@@ -15,6 +15,11 @@ LL |     let _ = g();
    |     ^^^^^^^^^^^^
    |
    = help: consider explicitly using expression value
+note: type is `std::result::Result`
+  --> tests/ui/let_underscore_must_use.rs:70:13
+   |
+LL |     let _ = g();
+   |             ^^^
 
 error: non-binding `let` on a result of a `#[must_use]` function
   --> tests/ui/let_underscore_must_use.rs:74:5
@@ -39,6 +44,11 @@ LL |     let _ = s.g();
    |     ^^^^^^^^^^^^^^
    |
    = help: consider explicitly using expression value
+note: type is `std::result::Result`
+  --> tests/ui/let_underscore_must_use.rs:82:13
+   |
+LL |     let _ = s.g();
+   |             ^^^^^
 
 error: non-binding `let` on a result of a `#[must_use]` function
   --> tests/ui/let_underscore_must_use.rs:87:5
@@ -55,6 +65,11 @@ LL |     let _ = S::p();
    |     ^^^^^^^^^^^^^^^
    |
    = help: consider explicitly using expression value
+note: type is `std::result::Result`
+  --> tests/ui/let_underscore_must_use.rs:90:13
+   |
+LL |     let _ = S::p();
+   |             ^^^^^^
 
 error: non-binding `let` on a result of a `#[must_use]` function
   --> tests/ui/let_underscore_must_use.rs:93:5
@@ -71,9 +86,27 @@ LL |     let _ = if true { Ok(()) } else { Err(()) };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: consider explicitly using expression value
+note: type is `std::result::Result`
+  --> tests/ui/let_underscore_must_use.rs:96:13
+   |
+LL |     let _ = if true { Ok(()) } else { Err(()) };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: non-binding `let` on an expression with `#[must_use]` type
+  --> tests/ui/let_underscore_must_use.rs:99:5
+   |
+LL |     let _: Result<(), ()> = if true { Ok(()) } else { Err(()) };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider explicitly using expression value
+note: type is `std::result::Result`
+  --> tests/ui/let_underscore_must_use.rs:99:12
+   |
+LL |     let _: Result<(), ()> = if true { Ok(()) } else { Err(()) };
+   |            ^^^^^^^^^^^^^^
 
 error: non-binding `let` on a result of a `#[must_use]` function
-  --> tests/ui/let_underscore_must_use.rs:101:5
+  --> tests/ui/let_underscore_must_use.rs:104:5
    |
 LL |     let _ = a.is_ok();
    |     ^^^^^^^^^^^^^^^^^^
@@ -81,28 +114,43 @@ LL |     let _ = a.is_ok();
    = help: consider explicitly using function result
 
 error: non-binding `let` on an expression with `#[must_use]` type
-  --> tests/ui/let_underscore_must_use.rs:104:5
+  --> tests/ui/let_underscore_must_use.rs:107:5
    |
 LL |     let _ = a.map(|_| ());
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: consider explicitly using expression value
+note: type is `std::result::Result`
+  --> tests/ui/let_underscore_must_use.rs:107:13
+   |
+LL |     let _ = a.map(|_| ());
+   |             ^^^^^^^^^^^^^
 
 error: non-binding `let` on an expression with `#[must_use]` type
-  --> tests/ui/let_underscore_must_use.rs:107:5
+  --> tests/ui/let_underscore_must_use.rs:110:5
    |
 LL |     let _ = a;
    |     ^^^^^^^^^^
    |
    = help: consider explicitly using expression value
+note: type is `std::result::Result`
+  --> tests/ui/let_underscore_must_use.rs:110:13
+   |
+LL |     let _ = a;
+   |             ^
 
 error: non-binding `let` on an expression with `#[must_use]` type
-  --> tests/ui/let_underscore_must_use.rs:120:5
+  --> tests/ui/let_underscore_must_use.rs:123:5
    |
 LL |     let _ = Result::<_, std::convert::Infallible>::Ok(T);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: consider explicitly using expression value
+note: type is `main::T` in a `Result` with an uninhabited error
+  --> tests/ui/let_underscore_must_use.rs:123:13
+   |
+LL |     let _ = Result::<_, std::convert::Infallible>::Ok(T);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 13 previous errors
+error: aborting due to 14 previous errors
 

@@ -4,7 +4,7 @@ use clippy_utils::source;
 use rustc_ast::Mutability;
 use rustc_hir::{Expr, ExprKind, Node};
 use rustc_lint::LateContext;
-use rustc_middle::ty::layout::LayoutOf;
+use rustc_middle::ty::layout::LayoutOf as _;
 use rustc_middle::ty::{self, Ty, TypeAndMut};
 
 use super::CAST_SLICE_DIFFERENT_SIZES;

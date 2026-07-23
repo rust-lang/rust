@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_hir_and_then};
-use clippy_utils::res::MaybeResPath;
+use clippy_utils::res::MaybeResPath as _;
 use clippy_utils::sym;
 use clippy_utils::ty::implements_trait;
 use rustc_hir::def_id::{DefId, LocalDefId};

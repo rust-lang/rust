@@ -5,7 +5,7 @@ use clippy_utils::sugg;
 use rustc_errors::Applicability;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
-use rustc_middle::ty::{self, Ty, TypeVisitableExt};
+use rustc_middle::ty::{self, Ty, TypeVisitableExt as _};
 
 /// Checks for `transmute_ptr_to_ptr` lint.
 /// Returns `true` if it's triggered, otherwise returns `false`.

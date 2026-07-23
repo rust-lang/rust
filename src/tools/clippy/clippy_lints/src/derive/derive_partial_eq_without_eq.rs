@@ -5,7 +5,7 @@ use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, HirId};
 use rustc_lint::LateContext;
-use rustc_middle::ty::{self, ClauseKind, GenericParamDefKind, ParamEnv, TraitPredicate, Ty, TyCtxt, Upcast};
+use rustc_middle::ty::{self, ClauseKind, GenericParamDefKind, ParamEnv, TraitPredicate, Ty, TyCtxt, Upcast as _};
 use rustc_span::{Span, sym};
 
 use super::DERIVE_PARTIAL_EQ_WITHOUT_EQ;

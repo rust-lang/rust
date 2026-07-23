@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::res::MaybeQPath;
+use clippy_utils::res::MaybeQPath as _;
 use clippy_utils::ty::{option_or_result_arg_ty, same_type_modulo_regions};
 use clippy_utils::{is_from_proc_macro, last_path_segment, over};
 use rustc_errors::Applicability;

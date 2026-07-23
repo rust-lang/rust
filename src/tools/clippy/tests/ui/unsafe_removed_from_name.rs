@@ -1,5 +1,3 @@
-#![allow(unused_imports)]
-#![allow(dead_code)]
 #![warn(clippy::unsafe_removed_from_name)]
 
 use std::cell::UnsafeCell as TotallySafeCell;

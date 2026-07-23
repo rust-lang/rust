@@ -941,6 +941,7 @@ The minimum rust version that the project supports. Defaults to the `rust-versio
 * [`filter_map_next`](https://rust-lang.github.io/rust-clippy/master/index.html#filter_map_next)
 * [`from_over_into`](https://rust-lang.github.io/rust-clippy/master/index.html#from_over_into)
 * [`if_then_some_else_none`](https://rust-lang.github.io/rust-clippy/master/index.html#if_then_some_else_none)
+* [`implicit_saturating_sub`](https://rust-lang.github.io/rust-clippy/master/index.html#implicit_saturating_sub)
 * [`index_refutable_slice`](https://rust-lang.github.io/rust-clippy/master/index.html#index_refutable_slice)
 * [`inefficient_to_string`](https://rust-lang.github.io/rust-clippy/master/index.html#inefficient_to_string)
 * [`io_other_error`](https://rust-lang.github.io/rust-clippy/master/index.html#io_other_error)
@@ -1162,6 +1163,30 @@ The maximum number of lines a function or method can have
 The order of associated items in traits.
 
 **Default Value:** `["const", "type", "fn"]`
+
+---
+**Affected lints:**
+* [`arbitrary_source_item_ordering`](https://rust-lang.github.io/rust-clippy/master/index.html#arbitrary_source_item_ordering)
+
+
+## `trait-impl-item-order`
+The required ordering of associated items in trait impls: purely alphabetical,
+following the trait definition order, or accepting either.
+
+Note that the trait definition order may change between versions of the
+crate defining the trait without being considered a breaking change.
+
+Examples:
+When using trait definition item ordering:
+```toml
+trait-impl-item-order = "trait_item_ordering"
+```
+When using trait definition item ordering and alphabetical for fallbacks:
+```toml
+trait-impl-item-order = "alphabetical_or_trait_item_ordering"
+```
+
+**Default Value:** `"alphabetical"`
 
 ---
 **Affected lints:**

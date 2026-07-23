@@ -1,5 +1,6 @@
 // run-rustfix
 #![warn(clippy::unnecessary_trailing_comma)]
+#![allow(clippy::nonstandard_macro_braces)]
 
 fn main() {}
 

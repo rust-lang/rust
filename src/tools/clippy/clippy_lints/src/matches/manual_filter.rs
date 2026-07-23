@@ -1,10 +1,10 @@
-use clippy_utils::as_some_expr;
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::res::{MaybeDef, MaybeQPath, MaybeResPath};
+use clippy_utils::res::{MaybeDef as _, MaybeQPath as _, MaybeResPath as _};
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_copy;
 use clippy_utils::visitors::contains_unsafe_block;
+use clippy_utils::{as_some_expr, span_contains_comment};
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::OptionNone;
 use rustc_hir::{Arm, Expr, ExprKind, HirId, Pat, PatKind};
@@ -118,7 +118,13 @@ pub(crate) fn check_and_then_method<'tcx>(
             call_span,
             "manual implementation of `Option::filter`",
             |diag| {
-                let mut applicability = Applicability::MachineApplicable;
+                // A comment inside the replaced `and_then` closure (for example, one explaining the
+                // predicate) would be dropped by the rewrite, so don't auto-apply the fix then (#17376).
+                let mut applicability = if span_contains_comment(cx, call_span) {
+                    Applicability::MaybeIncorrect
+                } else {
+                    Applicability::MachineApplicable
+                };
 
                 let mut cond_snip =
                     Sugg::hir_with_context(cx, some_expr.expr, expr_span_ctxt, "..", &mut applicability);

@@ -2,7 +2,7 @@ use clippy_config::Conf;
 use clippy_config::types::{
     SourceItemOrderingCategory, SourceItemOrderingModuleItemGroupings, SourceItemOrderingModuleItemKind,
     SourceItemOrderingTraitAssocItemKind, SourceItemOrderingTraitAssocItemKinds,
-    SourceItemOrderingWithinModuleItemGroupings,
+    SourceItemOrderingWithinModuleItemGroupings, TraitImplItemOrder,
 };
 use clippy_utils::diagnostics::span_lint_and_note;
 use clippy_utils::is_cfg_test;
@@ -14,7 +14,7 @@ use rustc_hir::{
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty::AssocKind;
 use rustc_session::impl_lint_pass;
-use rustc_span::Ident;
+use rustc_span::{Ident, Symbol};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -177,6 +177,7 @@ pub struct ArbitrarySourceItemOrdering {
     enable_ordering_for_trait: bool,
     module_item_order_groupings: SourceItemOrderingModuleItemGroupings,
     module_items_ordered_within_groupings: SourceItemOrderingWithinModuleItemGroupings,
+    trait_impl_item_order: TraitImplItemOrder,
 }
 
 impl ArbitrarySourceItemOrdering {
@@ -192,6 +193,7 @@ impl ArbitrarySourceItemOrdering {
             enable_ordering_for_trait: conf.source_item_ordering.contains(&Trait),
             module_item_order_groupings: conf.module_item_order_groupings.clone(),
             module_items_ordered_within_groupings: conf.module_items_ordered_within_groupings.clone(),
+            trait_impl_item_order: conf.trait_impl_item_order,
         }
     }
 
@@ -205,6 +207,18 @@ impl ArbitrarySourceItemOrdering {
                 "incorrect ordering of impl items (defined order: {:?})",
                 self.assoc_types_order
             ),
+            Some(cx.tcx.def_span(before_item.owner_id)),
+            format!("should be placed before `{}`", cx.tcx.item_name(before_item.owner_id)),
+        );
+    }
+
+    /// Produces a linting warning for impl items that don't follow the trait definition order.
+    fn lint_trait_impl_item(cx: &LateContext<'_>, item: ImplItemId, before_item: ImplItemId) {
+        span_lint_and_note(
+            cx,
+            ARBITRARY_SOURCE_ITEM_ORDERING,
+            cx.tcx.def_span(item.owner_id),
+            "incorrect ordering of impl items (should follow the trait definition order)",
             Some(cx.tcx.def_span(before_item.owner_id)),
             format!("should be placed before `{}`", cx.tcx.item_name(before_item.owner_id)),
         );
@@ -259,6 +273,121 @@ impl ArbitrarySourceItemOrdering {
             Some(cx.tcx.def_span(before_item.owner_id)),
             format!("should be placed before `{}`", cx.tcx.item_name(before_item.owner_id)),
         );
+    }
+
+    /// Checks the ordering of items in an impl block against the configured
+    /// associated item kind order, alphabetically within each kind.
+    fn check_impl_alphabetical(&self, cx: &LateContext<'_>, trait_impl: &rustc_hir::Impl<'_>) {
+        let mut cur_t: Option<(ImplItemId, Ident)> = None;
+
+        for &item in trait_impl.items {
+            let span = cx.tcx.def_span(item.owner_id);
+            let ident = cx.tcx.item_ident(item.owner_id);
+            if span.in_external_macro(cx.sess().source_map()) {
+                continue;
+            }
+
+            if let Some((cur_t, cur_ident)) = cur_t {
+                let cur_t_kind = convert_assoc_item_kind(cx, cur_t.owner_id);
+                let cur_t_kind_index = self.assoc_types_order.index_of(&cur_t_kind);
+                let item_kind = convert_assoc_item_kind(cx, item.owner_id);
+                let item_kind_index = self.assoc_types_order.index_of(&item_kind);
+
+                if cur_t_kind == item_kind && cur_ident.name.as_str() > ident.name.as_str() {
+                    Self::lint_member_name(cx, ident, cur_ident);
+                } else if cur_t_kind_index > item_kind_index {
+                    self.lint_impl_item(cx, item, cur_t);
+                }
+            }
+            cur_t = Some((item, ident));
+        }
+    }
+
+    /// Checks the ordering of items in a trait impl against the order in
+    /// which they are declared in the trait definition.
+    ///
+    /// Falls back to the alphabetical check for impl blocks without a trait.
+    fn check_impl_trait_def_order(&self, cx: &LateContext<'_>, trait_impl: &rustc_hir::Impl<'_>) {
+        let Some(trait_order) = get_trait_item_order(cx, trait_impl) else {
+            // Bare impl blocks have no trait definition to compare against.
+            self.check_impl_alphabetical(cx, trait_impl);
+            return;
+        };
+
+        let mut cur_t: Option<(ImplItemId, Ident)> = None;
+
+        for &item in trait_impl.items {
+            let span = cx.tcx.def_span(item.owner_id);
+            let ident = cx.tcx.item_ident(item.owner_id);
+            if span.in_external_macro(cx.sess().source_map()) {
+                continue;
+            }
+
+            if let Some((cur_t, cur_ident)) = cur_t {
+                // Compare positions in the trait definition.
+                let cur_pos = trait_order.iter().position(|n| *n == cur_ident.name);
+                let item_pos = trait_order.iter().position(|n| *n == ident.name);
+                if let (Some(cur_pos), Some(item_pos)) = (cur_pos, item_pos)
+                    && cur_pos > item_pos
+                {
+                    Self::lint_trait_impl_item(cx, item, cur_t);
+                }
+            }
+            cur_t = Some((item, ident));
+        }
+    }
+
+    /// Checks impl items, accepting either the alphabetical + kind ordering
+    /// or the trait definition order. Lints only when both are violated.
+    ///
+    /// Fallbacks to the alphabetical check for impl blocks without a trait.
+    fn check_impl_alphabetical_or_trait_def_order(&self, cx: &LateContext<'_>, trait_impl: &rustc_hir::Impl<'_>) {
+        let Some(trait_order) = get_trait_item_order(cx, trait_impl) else {
+            // Bare impl blocks have no trait definition to compare against,
+            // so only the alphabetical ordering applies.
+            self.check_impl_alphabetical(cx, trait_impl);
+            return;
+        };
+
+        let mut cur_t: Option<(ImplItemId, Ident)> = None;
+
+        for &item in trait_impl.items {
+            let span = cx.tcx.def_span(item.owner_id);
+            let ident = cx.tcx.item_ident(item.owner_id);
+            if span.in_external_macro(cx.sess().source_map()) {
+                continue;
+            }
+
+            if let Some((cur_t, cur_ident)) = cur_t {
+                let cur_t_kind = convert_assoc_item_kind(cx, cur_t.owner_id);
+                let cur_t_kind_index = self.assoc_types_order.index_of(&cur_t_kind);
+                let item_kind = convert_assoc_item_kind(cx, item.owner_id);
+                let item_kind_index = self.assoc_types_order.index_of(&item_kind);
+
+                // Same check as in `check_impl_alphabetical`
+                let alpha_violation = if cur_t_kind == item_kind {
+                    cur_ident.name.as_str() > ident.name.as_str()
+                } else {
+                    cur_t_kind_index > item_kind_index
+                };
+
+                // Same check as in `check_impl_trait_def_order`
+                let trait_violation = matches!(
+                    (
+                        trait_order.iter().position(|n| *n == cur_ident.name),
+                        trait_order.iter().position(|n| *n == ident.name),
+                    ),
+                    (Some(cur_pos), Some(item_pos)) if cur_pos > item_pos
+                );
+
+                // Accepting either ordering means linting only when the pair
+                // satisfies neither of them.
+                if alpha_violation && trait_violation {
+                    Self::lint_trait_impl_item(cx, item, cur_t);
+                }
+            }
+            cur_t = Some((item, ident));
+        }
     }
 }
 
@@ -340,30 +469,17 @@ impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
                     cur_t = Some((item, ident));
                 }
             },
-            ItemKind::Impl(trait_impl) if self.enable_ordering_for_impl => {
-                let mut cur_t: Option<(ImplItemId, Ident)> = None;
-
-                for &item in trait_impl.items {
-                    let span = cx.tcx.def_span(item.owner_id);
-                    let ident = cx.tcx.item_ident(item.owner_id);
-                    if span.in_external_macro(cx.sess().source_map()) {
-                        continue;
-                    }
-
-                    if let Some((cur_t, cur_ident)) = cur_t {
-                        let cur_t_kind = convert_assoc_item_kind(cx, cur_t.owner_id);
-                        let cur_t_kind_index = self.assoc_types_order.index_of(&cur_t_kind);
-                        let item_kind = convert_assoc_item_kind(cx, item.owner_id);
-                        let item_kind_index = self.assoc_types_order.index_of(&item_kind);
-
-                        if cur_t_kind == item_kind && cur_ident.name.as_str() > ident.name.as_str() {
-                            Self::lint_member_name(cx, ident, cur_ident);
-                        } else if cur_t_kind_index > item_kind_index {
-                            self.lint_impl_item(cx, item, cur_t);
-                        }
-                    }
-                    cur_t = Some((item, ident));
-                }
+            ItemKind::Impl(trait_impl) if self.enable_ordering_for_impl => match self.trait_impl_item_order {
+                // Match trait impl item orderings based on the configured ordering.
+                TraitImplItemOrder::Alphabetical => {
+                    self.check_impl_alphabetical(cx, trait_impl);
+                },
+                TraitImplItemOrder::TraitItemOrdering => {
+                    self.check_impl_trait_def_order(cx, trait_impl);
+                },
+                TraitImplItemOrder::AlphabeticalOrTraitItemOrdering => {
+                    self.check_impl_alphabetical_or_trait_def_order(cx, trait_impl);
+                },
             },
             _ => {}, // Catch-all for `ItemKinds` that don't have fields.
         }
@@ -565,4 +681,19 @@ fn get_item_name(item: &Item<'_>) -> Option<String> {
         },
         _ => item.kind.ident().map(|name| name.as_str().to_owned()),
     }
+}
+
+/// Returns the associated item names of the implemented trait in
+/// definition order, or `None` if the impl block has no trait.
+fn get_trait_item_order(cx: &LateContext<'_>, trait_impl: &rustc_hir::Impl<'_>) -> Option<Vec<Symbol>> {
+    trait_impl
+        .of_trait
+        .and_then(|t| t.trait_ref.trait_def_id())
+        .map(|def_id| {
+            cx.tcx
+                .associated_items(def_id)
+                .in_definition_order()
+                .map(rustc_middle::ty::AssocItem::name)
+                .collect()
+        })
 }

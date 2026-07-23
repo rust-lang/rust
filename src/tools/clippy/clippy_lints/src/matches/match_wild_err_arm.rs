@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_note;
 use clippy_utils::macros::{is_panic, root_macro_call};
-use clippy_utils::res::MaybeDef;
+use clippy_utils::res::MaybeDef as _;
 use clippy_utils::visitors::is_local_used;
 use clippy_utils::{is_in_const_context, is_wild, peel_blocks_with_stmt};
 use rustc_hir::{Arm, Expr, PatKind};

@@ -1,7 +1,7 @@
 #![feature(rustc_private)]
 
 use clippy_config::{ClippyConfiguration, get_configuration_metadata};
-use itertools::Itertools;
+use itertools::Itertools as _;
 use regex::Regex;
 use std::borrow::Cow;
 use std::{env, fs};
