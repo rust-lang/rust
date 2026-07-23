@@ -40,8 +40,8 @@ use macros::{MacroRulesDecl, MacroRulesScope, MacroRulesScopeRef};
 use rustc_arena::{DroplessArena, TypedArena};
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::{
-    self as ast, AngleBracketedArg, CRATE_NODE_ID, Crate, DUMMY_NODE_ID, Expr, ExprKind,
-    GenericArg, GenericArgs, Generics, NodeId, Path, attr,
+    self as ast, AngleBracketedArg, CRATE_NODE_ID, Crate, DUMMY_NODE_ID, GenericArg, GenericArgs,
+    Generics, NodeId, Path, attr,
 };
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet, default};
 use rustc_data_structures::intern::Interned;
@@ -58,7 +58,7 @@ use rustc_hir::def::{
 };
 use rustc_hir::def_id::{CRATE_DEF_ID, CrateNum, DefId, LOCAL_CRATE, LocalDefId, LocalDefIdMap};
 use rustc_hir::definitions::{PerParentDisambiguatorState, PerParentDisambiguatorsMap};
-use rustc_hir::{PrimTy, TraitCandidate, find_attr};
+use rustc_hir::{PrimTy, TraitCandidate};
 use rustc_index::bit_set::DenseBitSet;
 use rustc_metadata::creader::CStore;
 use rustc_middle::metadata::{AmbigModChild, ModChild, Reexport};
@@ -1061,6 +1061,7 @@ struct DelayedVisResolutionError<'ra> {
     vis: ast::Visibility,
     parent_scope: ParentScope<'ra>,
     error: VisResolutionError,
+    owner: NodeId,
 }
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -1962,7 +1963,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             delegation_infos: self.delegation_infos,
         };
         let ast_lowering = ty::ResolverAstLowering {
-            partial_res_map: self.partial_res_map,
             next_node_id: self.next_node_id,
             owners: self.owners,
             lint_buffer: Steal::new(self.lint_buffer),
@@ -2361,7 +2361,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     fn record_partial_res(&mut self, node_id: NodeId, resolution: PartialRes) {
         debug!("(recording res) recording {:?} for {}", resolution, node_id);
+        // We insert into both the global and the owner-local partial res map.
+        // The global one is needed for many diagnostics, and looking it up in the owner is not always feasible,
+        // as we regularly look at e.g. the parent's ast and resolve some ids there.
+        // We want to keep doing that lazily instead of eagerly, as we only need the information in the error path.
         if let Some(prev_res) = self.partial_res_map.insert(node_id, resolution) {
+            panic!("path resolved multiple times ({prev_res:?} before, {resolution:?} now)");
+        }
+        assert_ne!(self.current_owner.id, DUMMY_NODE_ID);
+        if let Some(prev_res) = self.current_owner.partial_res_map.insert(node_id, resolution) {
             panic!("path resolved multiple times ({prev_res:?} before, {resolution:?} now)");
         }
     }
@@ -2550,36 +2558,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
             _ => None,
         }
-    }
-
-    /// Checks if an expression refers to a function marked with
-    /// `#[rustc_legacy_const_generics]` and returns the argument index list
-    /// from the attribute.
-    fn legacy_const_generic_args(&mut self, expr: &Expr) -> Option<Vec<usize>> {
-        let ExprKind::Path(None, path) = &expr.kind else {
-            return None;
-        };
-        // Don't perform legacy const generics rewriting if the path already
-        // has generic arguments.
-        if path.segments.last().unwrap().args.is_some() {
-            return None;
-        }
-
-        let def_id = self.partial_res_map.get(&expr.id)?.full_res()?.opt_def_id()?;
-
-        // We only support cross-crate argument rewriting. Uses
-        // within the same crate should be updated to use the new
-        // const generics style.
-        if def_id.is_local() {
-            return None;
-        }
-
-        find_attr!(
-            // we can use parsed attrs here since for other crates they're already available
-            self.tcx, def_id,
-            RustcLegacyConstGenerics{fn_indexes,..} => fn_indexes
-        )
-        .map(|fn_indexes| fn_indexes.iter().map(|(num, _)| *num).collect())
     }
 
     fn resolve_main(&mut self) {

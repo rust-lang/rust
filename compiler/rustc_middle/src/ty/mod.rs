@@ -228,6 +228,9 @@ pub struct PerOwnerResolverData<'tcx> {
     /// Lifetime parameters that lowering will have to introduce.
     pub extra_lifetime_params_map: NodeMap<Vec<(Ident, ast::NodeId, MissingLifetimeKind)>> = Default::default(),
 
+    /// Resolutions for nodes that have a single resolution.
+    pub partial_res_map: NodeMap<hir::def::PartialRes> = Default::default(),
+
     /// The id of the owner
     pub id: ast::NodeId,
     /// The `DefId` of the owner, can't be found in `node_id_to_def_id`.
@@ -259,15 +262,47 @@ impl<'tcx> PerOwnerResolverData<'tcx> {
     pub fn extra_lifetime_params(&self, id: NodeId) -> &[(Ident, NodeId, MissingLifetimeKind)] {
         self.extra_lifetime_params_map.get(&id).map_or(&[], |v| &v[..])
     }
+
+    pub fn legacy_const_generic_args(
+        &self,
+        expr: &ast::Expr,
+        tcx: TyCtxt<'tcx>,
+    ) -> Option<Vec<usize>> {
+        let ast::ExprKind::Path(None, path) = &expr.kind else {
+            return None;
+        };
+
+        // Don't perform legacy const generics rewriting if the path already
+        // has generic arguments.
+        if path.segments.last().unwrap().args.is_some() {
+            return None;
+        }
+
+        // We do not need to look at `partial_res_overrides`. That map only contains overrides for
+        // `self_param` locals. And here we are looking for the function definition that `expr`
+        // resolves to.
+        let def_id = self.partial_res_map.get(&expr.id)?.full_res()?.opt_def_id()?;
+
+        // We only support cross-crate argument rewriting. Uses
+        // within the same crate should be updated to use the new
+        // const generics style.
+        if def_id.is_local() {
+            return None;
+        }
+
+        // we can use parsed attrs here since for other crates they're already available
+        find_attr!(
+            tcx, def_id,
+            RustcLegacyConstGenerics{fn_indexes,..} => fn_indexes
+        )
+        .map(|fn_indexes| fn_indexes.iter().map(|(num, _)| *num).collect())
+    }
 }
 
 /// Resolutions that should only be used for lowering.
 /// This struct is meant to be consumed by lowering.
 #[derive(Debug)]
 pub struct ResolverAstLowering<'tcx> {
-    /// Resolutions for nodes that have a single resolution.
-    pub partial_res_map: NodeMap<hir::def::PartialRes>,
-
     pub next_node_id: ast::NodeId,
 
     pub owners: NodeMap<PerOwnerResolverData<'tcx>>,
