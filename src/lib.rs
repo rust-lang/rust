@@ -11,6 +11,7 @@ extern crate rustc_ast_pretty;
 extern crate rustc_data_structures;
 extern crate rustc_errors;
 extern crate rustc_expand;
+extern crate rustc_feature;
 extern crate rustc_parse;
 extern crate rustc_session;
 extern crate rustc_span;
