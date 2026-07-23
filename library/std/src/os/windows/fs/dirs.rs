@@ -1,4 +1,5 @@
 use crate::fs::{HomeDirs, MediaDirs};
+use crate::io::{ErrorKind, const_error};
 use crate::path::PathBuf;
 use crate::{env, io};
 

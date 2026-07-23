@@ -217,7 +217,7 @@ impl LazyModule {
 
     /// Wake any threads waiting for this module to be loaded.
     fn wake(&self) {
-        #[cfg(not(target_family = "win7"))]
+        #[cfg(not(target_vendor = "win7"))]
         futex_wake_all(&self.1);
     }
 
