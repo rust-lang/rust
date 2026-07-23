@@ -1,4 +1,7 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/4759>.
+//! Destructuring a struct and calling consuming method used to segfault.
 //@ run-pass
+
 #![allow(non_shorthand_field_patterns)]
 
 struct T { a: Box<isize> }
