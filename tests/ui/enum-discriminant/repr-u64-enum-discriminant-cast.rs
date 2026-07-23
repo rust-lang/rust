@@ -1,5 +1,6 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/38942>.
+//! This used to ICE when compiling for `i686-apple-darwin`.
 //@ run-pass
-// See https://github.com/rust-lang/rust/issues/38942
 
 #[repr(u64)]
 pub enum NSEventType {
