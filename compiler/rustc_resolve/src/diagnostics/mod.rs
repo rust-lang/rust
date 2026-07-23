@@ -816,6 +816,20 @@ pub(crate) struct CannotBeReexportedCratePublicNS {
 }
 
 #[derive(Diagnostic)]
+#[diag("edition redirect target `{$target}` is less visible than the redirected item")]
+#[help("make the target at least as visible as the redirected item")]
+pub(crate) struct EditionRedirectTargetLessVisible {
+    #[primary_span]
+    #[label("target has more restricted visibility")]
+    pub(crate) target_span: Span,
+    #[label("target is defined here")]
+    pub(crate) target_definition_span: Span,
+    #[label("redirected item is defined here")]
+    pub(crate) redirected_item_span: Span,
+    pub(crate) target: String,
+}
+
+#[derive(Diagnostic)]
 #[diag("extern crate `{$ident}` is private and cannot be re-exported", code = E0365)]
 pub(crate) struct PrivateExternCrateReexport {
     pub ident: Ident,

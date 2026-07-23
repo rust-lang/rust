@@ -4,7 +4,7 @@ use std::str::FromStr;
 use rustc_macros::{BlobDecodable, Encodable, StableHash};
 
 /// The edition of the compiler. (See [RFC 2052](https://github.com/rust-lang/rfcs/blob/master/text/2052-epochs.md).)
-#[derive(Clone, Copy, Hash, PartialEq, PartialOrd, Debug, Encodable, BlobDecodable, Eq)]
+#[derive(Clone, Copy, Hash, PartialEq, PartialOrd, Debug, Encodable, BlobDecodable, Eq, Ord)]
 #[derive(StableHash)]
 pub enum Edition {
     // When adding new editions, be sure to do the following:
