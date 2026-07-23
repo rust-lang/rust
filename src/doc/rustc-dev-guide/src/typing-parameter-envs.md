@@ -1,6 +1,6 @@
-# Typing/Parameter Environments
+# Typing/Parameter environments
 
-## Typing Environments
+## Typing environments
 
 When interacting with the type system there are a few variables to consider that can affect the results of trait solving.
 The set of in-scope where clauses, and what phase of the compiler type system operations are being performed in (the [`ParamEnv`][penv] and [`TypingMode`][tmode] structs respectively).
@@ -14,7 +14,7 @@ whereas different `ParamEnv`s can be used on a per-goal basis.
 [ocx]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/traits/struct.ObligationCtxt.html
 [fnctxt]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_typeck/fn_ctxt/struct.FnCtxt.html
 
-## Parameter Environments
+## Parameter environments
 
 ### What is a `ParamEnv`
 
@@ -197,7 +197,7 @@ impl<T> Other for T {
 
 // `foo`'s unnormalized `ParamEnv` would be:
 // `[T: Sized, U: Sized, U: Trait<T::Bar>]`
-fn foo<T, U>(a: U) 
+fn foo<T, U>(a: U)
 where
     U: Trait<<T as Other>::Bar>,
 {
@@ -222,7 +222,7 @@ In the next-gen trait solver the requirement for all where clauses in the `Param
 [pe]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.ParamEnv.html
 [normalize_env_or_error]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/traits/fn.normalize_param_env_or_error.html
 
-## Typing Modes
+## Typing modes
 
 Depending on what context we are performing type system operations in,
 different behaviour may be required.
