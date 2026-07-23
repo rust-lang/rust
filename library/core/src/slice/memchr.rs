@@ -28,7 +28,12 @@ pub const fn memchr(x: u8, text: &[u8]) -> Option<usize> {
         return memchr_naive(x, text);
     }
 
-    memchr_aligned(x, text)
+    let result = memchr_aligned(x, text);
+    if let Some(index) = result {
+        // SAFETY: `memchr_aligned` only returns the index of a matching byte in `text`.
+        unsafe { crate::hint::assert_unchecked(index < text.len()) };
+    }
+    result
 }
 
 #[inline]
