@@ -2215,9 +2215,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let private_fields: Vec<&ty::FieldDef> = variant
                         .fields
                         .iter()
-                        .filter(|field| {
-                            !field.vis.is_accessible_from(tcx.parent_module(expr.hir_id), tcx)
-                        })
+                        .filter(|field| !field.vis.is_accessible_from(self.mod_id, tcx))
                         .collect();
 
                     if !private_fields.is_empty() {
@@ -2689,7 +2687,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .iter()
             .filter(|field| {
                 skip_fields.iter().all(|&skip| skip.ident.name != field.name)
-                    && self.is_field_suggestable(field, expr.hir_id, expr.span)
+                    && self.is_field_suggestable(field, expr.span)
             })
             .map(|field| field.name)
             .collect()
@@ -3244,7 +3242,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         // try to add a suggestion in case the field is a nested field of a field of the Adt
-        let mod_id = self.tcx.parent_module(expr.hir_id).to_def_id();
         let (ty, unwrap) = if let ty::Adt(def, args) = base_ty.kind()
             && (self.tcx.is_diagnostic_item(sym::Result, def.did())
                 || self.tcx.is_diagnostic_item(sym::Option, def.did()))
@@ -3255,9 +3252,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             (base_ty, "")
         };
-        for found_fields in
-            self.get_field_candidates_considering_privacy_for_diag(span, ty, mod_id, expr.hir_id)
-        {
+        for found_fields in self.get_field_candidates_considering_privacy_for_diag(span, ty) {
             let field_names = found_fields.iter().map(|field| field.0.name).collect::<Vec<_>>();
             let mut candidate_fields: Vec<_> = found_fields
                 .into_iter()
@@ -3267,8 +3262,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         &|candidate_field, _| candidate_field == field,
                         candidate_field,
                         vec![],
-                        mod_id,
-                        expr.hir_id,
                     )
                 })
                 .map(|mut field_path| {
@@ -3329,8 +3322,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         span: Span,
         base_ty: Ty<'tcx>,
-        mod_id: DefId,
-        hir_id: HirId,
     ) -> Vec<Vec<(Ident, Ty<'tcx>)>> {
         debug!("get_field_candidates(span: {:?}, base_t: {:?}", span, base_ty);
 
@@ -3354,15 +3345,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // Some struct, e.g. some that impl `Deref`, have all private fields
                         // because you're expected to deref them to access the _real_ fields.
                         // This, for example, will help us suggest accessing a field through a `Box<T>`.
-                        if fields.iter().all(|field| !field.vis.is_accessible_from(mod_id, tcx)) {
+                        if fields
+                            .iter()
+                            .all(|field| !field.vis.is_accessible_from(self.mod_id, tcx))
+                        {
                             return None;
                         }
                         return Some(
                             fields
                                 .iter()
                                 .filter(move |field| {
-                                    field.vis.is_accessible_from(mod_id, tcx)
-                                        && self.is_field_suggestable(field, hir_id, span)
+                                    field.vis.is_accessible_from(self.mod_id, tcx)
+                                        && self.is_field_suggestable(field, span)
                                 })
                                 // For compile-time reasons put a limit on number of fields we search
                                 .take(100)
@@ -3394,15 +3388,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// This method is called after we have encountered a missing field error to recursively
     /// search for the field
-    #[instrument(skip(self, matches, mod_id, hir_id), level = "debug")]
+    #[instrument(skip(self, matches), level = "debug")]
     pub(crate) fn check_for_nested_field_satisfying_condition_for_diag(
         &self,
         span: Span,
         matches: &impl Fn(Ident, Ty<'tcx>) -> bool,
         (candidate_name, candidate_ty): (Ident, Ty<'tcx>),
         mut field_path: Vec<Ident>,
-        mod_id: DefId,
-        hir_id: HirId,
     ) -> Option<Vec<Ident>> {
         if field_path.len() > 3 {
             // For compile-time reasons and to avoid infinite recursion we only check for fields
@@ -3413,12 +3405,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if matches(candidate_name, candidate_ty) {
             return Some(field_path);
         }
-        for nested_fields in self.get_field_candidates_considering_privacy_for_diag(
-            span,
-            candidate_ty,
-            mod_id,
-            hir_id,
-        ) {
+        for nested_fields in
+            self.get_field_candidates_considering_privacy_for_diag(span, candidate_ty)
+        {
             // recursively search fields of `candidate_field` if it's a ty::Adt
             for field in nested_fields {
                 if let Some(field_path) = self.check_for_nested_field_satisfying_condition_for_diag(
@@ -3426,8 +3415,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     matches,
                     field,
                     field_path.clone(),
-                    mod_id,
-                    hir_id,
                 ) {
                     return Some(field_path);
                 }

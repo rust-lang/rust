@@ -2844,8 +2844,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => None,
             });
         if let Some((field, field_ty)) = field_receiver {
-            let scope = tcx.parent_module_from_def_id(self.body_def_id);
-            let is_accessible = field.vis.is_accessible_from(scope, tcx);
+            let is_accessible = field.vis.is_accessible_from(self.mod_id, tcx);
 
             if is_accessible {
                 if let Some((what, _, _)) = self.extract_callable_info(field_ty) {
@@ -3207,13 +3206,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         return_type: Option<Ty<'tcx>>,
     ) {
         if let SelfSource::MethodCall(expr) = source {
-            let mod_id = self.tcx.parent_module(expr.hir_id).to_def_id();
-            for fields in self.get_field_candidates_considering_privacy_for_diag(
-                span,
-                actual,
-                mod_id,
-                expr.hir_id,
-            ) {
+            for fields in self.get_field_candidates_considering_privacy_for_diag(span, actual) {
                 let call_expr = self.tcx.hir_expect_expr(self.tcx.parent_hir_id(expr.hir_id));
 
                 let lang_items = self.tcx.lang_items();
@@ -3248,8 +3241,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             },
                             candidate_field,
                             vec![],
-                            mod_id,
-                            expr.hir_id,
                         )
                     })
                     .map(|field_path| {
