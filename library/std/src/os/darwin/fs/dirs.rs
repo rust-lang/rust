@@ -9,7 +9,7 @@ pub impl(self) trait HomeDirsExt: Sized {
     /// Load the standard user directory paths for the current user.
     ///
     /// On iOS, tvOS, watchOS, visionOS, and sandboxed macOS applications,
-    /// these directories are within the application's sandbox bundle. Outside
+    /// these directories are within the application's container. Outside
     /// the sandbox, these are subdirectories of the `~/Library` directory on
     /// macOS.
     ///
@@ -34,11 +34,10 @@ pub impl(self) trait HomeDirsExt: Sized {
     ///
     /// # Errors
     ///
-    /// Errors if the the [user home](env::home_dir) cannot be determined.
+    /// Errors if the [user home](env::home_dir) cannot be determined.
     //  Errors due to the underlying sysdir(3) API should never occur, as
     //  - the user domain only has one directory for each search path;
-    //  - the user domain always returns subdirectory paths of `~`;
-    //  - the username plus OS defined path segments cannot exceed PATH_MAX; and
+    //  - the user domain always returns subdirectory paths of `~`; and
     //  - the username and OS defined path segments are always valid UTF-8.
     ///
     /// # Implementation-specific behavior
@@ -113,7 +112,6 @@ pub impl(self) trait MediaDirsExt: Sized {
     /// [`NSDownloadsDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/downloadsdirectory?language=objc
     /// [`NSMusicDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/musicdirectory?language=objc
     /// [`NSPicturesDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/picturesdirectory?language=objc
-    /// [`NSSharedPublicDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/sharedpublicdirectory?language=objc
     /// [`NSMoviesDirectory`]: https://developer.apple.com/documentation/foundation/filemanager/searchpathdirectory/moviesdirectory?language=objc
     #[unstable(feature = "media_dir_discovery", issue = "157515")]
     fn sysdir() -> io::Result<Self>;
@@ -193,6 +191,7 @@ mod sys {
         let Some(path) = iter.next() else {
             return Ok(None);
         };
+        let path = path?;
 
         if iter.next().is_some() {
             // more than one path returned (shouldn't happen for SYSDIR_DOMAIN_MASK_USER)
@@ -202,7 +201,7 @@ mod sys {
             ));
         }
 
-        Ok(Some(path?))
+        Ok(Some(path))
     }
 
     struct Iter<'a> {
@@ -251,7 +250,7 @@ mod sys {
             }
 
             let Ok(path) = CStr::from_bytes_until_nul(&buf) else {
-                // should be impossible given username length limits, but be defensive
+                // should be impossible given home-relative paths, but be defensive
                 return Some(Err(const_error!(
                     ErrorKind::InvalidData,
                     "standard user directory path too long",
