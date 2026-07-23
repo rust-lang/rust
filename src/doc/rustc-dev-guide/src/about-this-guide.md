@@ -1,5 +1,7 @@
 # About this guide
 
+<!-- date-check: Jul 2026 -->
+
 This guide is meant to help document how rustc – the Rust compiler – works,
 as well as to help new contributors get involved in rustc development.
 
@@ -14,18 +16,18 @@ There are several parts to this guide:
 1. [Bootstrapping][p3]:
    Describes how the Rust compiler builds itself using previous versions, including
    an introduction to the bootstrap process and debugging methods.
-1. [High-level Compiler Architecture][p4]:
+1. [High-level compiler architecture][p4]:
    Discusses the high-level architecture of the compiler and stages of the compile process.
-1. [Source Code Representation][p5]:
+1. [Source code representation][p5]:
    Describes the process of taking raw source code from the user
    and transforming it into various forms that the compiler can work with easily.
-1. [Supporting Infrastructure][p6]:
+1. [Supporting infrastructure][p6]:
    Covers command-line argument conventions, compiler entry points like rustc_driver and
    rustc_interface, and the design and implementation of errors and lints.
 1. [Analysis][p7]:
    Discusses the analyses that the compiler uses to check various properties of the code
    and inform later stages of the compile process (e.g., type checking).
-1. [MIR to Binaries][p8]: How linked executable machine code is generated.
+1. [Mir to binaries][p8]: How linked executable machine code is generated.
 1. [Appendices][p9] at the end with useful reference information.
    There are a few of these with different information, including a glossary.
 
