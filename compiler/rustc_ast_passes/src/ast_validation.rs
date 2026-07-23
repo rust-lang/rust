@@ -679,7 +679,7 @@ impl<'a> AstValidator<'a> {
         let mut spans: Vec<_> = sig.decl.inputs.iter().map(|p| p.span).collect();
         if let FnRetTy::Ty(ref ret_ty) = sig.decl.output
             && match &ret_ty.kind {
-                TyKind::Never => false,
+                TyKind::Never if abi != ExternAbi::Custom => false,
                 TyKind::Tup(tup) if tup.is_empty() => false,
                 _ => true,
             }

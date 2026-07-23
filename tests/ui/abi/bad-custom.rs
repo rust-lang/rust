@@ -22,6 +22,12 @@ unsafe extern "custom" fn no_return_type() -> i64 {
     std::arch::naked_asm!("")
 }
 
+#[unsafe(naked)]
+unsafe extern "custom" fn no_never_return_type() -> ! {
+    //~^ ERROR invalid signature for `extern "custom"` function
+    std::arch::naked_asm!("")
+}
+
 unsafe extern "custom" fn double(a: i64) -> i64 {
     //~^ ERROR items with the "custom" ABI can only be declared externally or defined via naked functions
     //~| ERROR invalid signature for `extern "custom"` function
