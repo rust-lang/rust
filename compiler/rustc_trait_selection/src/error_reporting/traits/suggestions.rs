@@ -348,7 +348,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             let (adjusted_ident, def_scope) = self.tcx.adjust_ident_and_get_scope(
                 field_ident,
                 base_def.did(),
-                typeck_results.hir_owner.def_id,
+                self.tcx.parent_module_from_def_id(typeck_results.hir_owner.def_id),
             );
 
             let Some((_, field_def)) =

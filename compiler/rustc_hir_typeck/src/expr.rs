@@ -2763,11 +2763,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         return Ty::new_error(self.tcx(), guar);
                     }
 
-                    let (ident, def_scope) = self.tcx.adjust_ident_and_get_scope(
-                        field,
-                        base_def.did(),
-                        self.body_def_id,
-                    );
+                    let (ident, def_scope) =
+                        self.tcx.adjust_ident_and_get_scope(field, base_def.did(), self.mod_id);
 
                     if let Some((idx, field)) = self.find_adt_field(*base_def, ident) {
                         self.write_field_index(expr.hir_id, idx);
@@ -3793,11 +3790,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .emit();
                         break;
                     };
-                    let (subident, sub_def_scope) = self.tcx.adjust_ident_and_get_scope(
-                        subfield,
-                        variant.def_id,
-                        self.body_def_id,
-                    );
+                    let (subident, sub_def_scope) =
+                        self.tcx.adjust_ident_and_get_scope(subfield, variant.def_id, self.mod_id);
 
                     let Some((subindex, field)) = variant
                         .fields
@@ -3848,7 +3842,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let (ident, def_scope) = self.tcx.adjust_ident_and_get_scope(
                         field,
                         container_def.did(),
-                        self.body_def_id,
+                        self.mod_id,
                     );
 
                     let fields = &container_def.non_enum_variant().fields;

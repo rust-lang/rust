@@ -36,6 +36,7 @@ use rustc_middle::ty::{
     Unnormalized, fold_regions,
 };
 use rustc_middle::{bug, span_bug};
+use rustc_span::def_id::LocalModId;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use rustc_trait_selection::error_reporting::traits::suggestions::NextTypeParamName;
 use rustc_trait_selection::infer::InferCtxtExt;
@@ -128,6 +129,7 @@ pub(crate) fn provide(providers: &mut Providers) {
 pub(crate) struct ItemCtxt<'tcx> {
     tcx: TyCtxt<'tcx>,
     item_def_id: LocalDefId,
+    mod_id: LocalModId,
     tainted_by_errors: Cell<Option<ErrorGuaranteed>>,
     lowering_delegation_segment: bool,
 }
@@ -248,9 +250,11 @@ impl<'tcx> ItemCtxt<'tcx> {
         item_def_id: LocalDefId,
         delegation: bool,
     ) -> ItemCtxt<'tcx> {
+        let mod_id = tcx.parent_module_from_def_id(item_def_id);
         ItemCtxt {
             tcx,
             item_def_id,
+            mod_id,
             tainted_by_errors: Cell::new(None),
             lowering_delegation_segment: delegation,
         }
@@ -329,6 +333,10 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
 
     fn item_def_id(&self) -> LocalDefId {
         self.item_def_id
+    }
+
+    fn mod_id(&self) -> LocalModId {
+        self.mod_id
     }
 
     fn re_infer(&self, span: Span, reason: RegionInferReason<'_>) -> ty::Region<'tcx> {

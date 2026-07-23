@@ -2178,13 +2178,13 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         mut ident: Ident,
         scope: DefId,
-        item_id: LocalDefId,
+        mod_id: LocalModId,
     ) -> (Ident, ModId) {
         let scope = ident
             .span
             .normalize_to_macros_2_0_and_adjust(self.expn_that_defined(scope))
             .and_then(|actual_expansion| actual_expansion.expn_data().parent_module)
-            .unwrap_or_else(|| self.parent_module_from_def_id(item_id).to_mod_id());
+            .unwrap_or(mod_id.to_mod_id());
         (ident, scope)
     }
 
