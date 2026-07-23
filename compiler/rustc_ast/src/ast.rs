@@ -2484,6 +2484,10 @@ impl FnPtrTy {
     pub fn header(&self) -> FnHeader {
         FnHeader { constness: Const::No, coroutine_kind: None, safety: self.safety, ext: self.ext }
     }
+
+    pub fn as_borrowed_fn_sig<'a>(&'a self) -> BorrowedFnSig<'a> {
+        BorrowedFnSig { header: self.header(), decl: &self.decl, span: self.decl_span }
+    }
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
