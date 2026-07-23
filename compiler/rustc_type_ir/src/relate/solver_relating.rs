@@ -124,6 +124,7 @@ where
             combine_ty_args(self.infcx, self, a_ty, b_ty, variances, a_args, b_args, |_| a_ty)
         }
     }
+
     fn relate_with_variance<T: Relate<I>>(
         &mut self,
         variance: ty::Variance,

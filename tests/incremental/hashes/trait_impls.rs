@@ -148,12 +148,12 @@ pub trait ChangeMethodSelfnessTrait {
 #[rustc_clean(cfg="bpass6")]
 impl ChangeMethodSelfnessTrait for Foo {
     #[rustc_clean(
-        except="hir_owner,associated_item,generics_of,fn_sig,typeck_root,optimized_mir",
+        except="hir_owner,associated_item,generics_of,fn_sig,type_of,typeck_root,optimized_mir",
         cfg="bpass2",
     )]
     #[rustc_clean(cfg="bpass3")]
     #[rustc_clean(
-        except="hir_owner,associated_item,generics_of,fn_sig,typeck_root,optimized_mir",
+        except="hir_owner,associated_item,generics_of,fn_sig,type_of,typeck_root,optimized_mir",
         cfg="bpass5",
     )]
     #[rustc_clean(cfg="bpass6")]
@@ -186,12 +186,12 @@ pub trait RemoveMethodSelfnessTrait {
 #[rustc_clean(cfg="bpass6")]
 impl RemoveMethodSelfnessTrait for Foo {
     #[rustc_clean(
-        except="hir_owner,associated_item,generics_of,fn_sig,typeck_root,optimized_mir",
+        except="hir_owner,associated_item,generics_of,fn_sig,type_of,typeck_root,optimized_mir",
         cfg="bpass2",
     )]
     #[rustc_clean(cfg="bpass3")]
     #[rustc_clean(
-        except="hir_owner,associated_item,generics_of,fn_sig,typeck_root,optimized_mir",
+        except="hir_owner,associated_item,generics_of,fn_sig,type_of,typeck_root,optimized_mir",
         cfg="bpass5",
     )]
     #[rustc_clean(cfg="bpass6")]

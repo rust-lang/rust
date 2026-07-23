@@ -66,8 +66,8 @@ pub trait TypeRelation<I: Interner>: Sized {
         a_ty: I::Ty,
         b_ty: I::Ty,
         ty_def_id: I::DefId,
-        a_arg: I::GenericArgs,
-        b_arg: I::GenericArgs,
+        a_args: I::GenericArgs,
+        b_args: I::GenericArgs,
         mk: impl FnOnce(I::GenericArgs) -> I::Ty,
     ) -> RelateResult<I, I::Ty>;
 
@@ -503,12 +503,15 @@ pub fn structurally_relate_tys<I: Interner, R: TypeRelation<I>>(
             if a_args.skip_binder().is_empty() {
                 Ok(a)
             } else {
-                let a_args = a_args.no_bound_vars().unwrap();
-                let b_args = b_args.no_bound_vars().unwrap();
-                relation.relate_ty_args(a, b, a_def_id.into(), a_args, b_args, |args| {
-                    // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
-                    Ty::new_fn_def(cx, a_def_id, ty::Binder::dummy(args))
-                })
+                let x = relation.relate_ty_args(
+                    a,
+                    b,
+                    a_def_id.into(),
+                    a_args.skip_binder(),
+                    b_args.skip_binder(),
+                    |args| Ty::new_fn_def(cx, a_def_id, a_args.rebind(args)),
+                );
+                x
             }
         }
 

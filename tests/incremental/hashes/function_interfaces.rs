@@ -156,9 +156,9 @@ pub fn type_parameter<T>() {}
 pub fn lifetime_parameter    () {}
 
 #[cfg(not(any(bpass1,bpass4)))]
-#[rustc_clean(cfg = "bpass2", except = "hir_owner, generics_of,fn_sig")]
+#[rustc_clean(cfg = "bpass2", except = "hir_owner, generics_of, fn_sig, type_of")]
 #[rustc_clean(cfg = "bpass3")]
-#[rustc_clean(cfg = "bpass5", except = "hir_owner, generics_of,fn_sig")]
+#[rustc_clean(cfg = "bpass5", except = "hir_owner, generics_of, fn_sig, type_of")]
 #[rustc_clean(cfg = "bpass6")]
 pub fn lifetime_parameter<'a>() {}
 

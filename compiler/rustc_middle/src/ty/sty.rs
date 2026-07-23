@@ -725,6 +725,35 @@ impl<'tcx> Ty<'tcx> {
         T::collect_and_apply(iter, |ts| Ty::new_tup(tcx, ts))
     }
 
+    /// Prefer using the [TyCtxt::type_of] query over this, that makes it easier to get all the pieces correct
+    #[inline]
+    pub fn new_fn_def_raw(
+        tcx: TyCtxt<'tcx>,
+        def_id: DefId,
+        args: ty::Binder<'tcx, impl IntoIterator<Item: Into<GenericArg<'tcx>>>>,
+    ) -> Ty<'tcx> {
+        debug_assert_matches!(
+            tcx.def_kind(def_id),
+            DefKind::AssocFn | DefKind::Fn | DefKind::Ctor(_, CtorKind::Fn)
+        );
+
+        let args = args.map_bound(|args| tcx.check_and_mk_args(def_id, args));
+
+        // let hir = tcx.local_def_id_to_hir_id(def_id.as_local().unwrap());
+
+        // let args = match &tcx
+        //     .late_bound_vars_map(hir.owner)
+        //     .get(&hir.local_id)
+        //     .cloned()
+        //     .map(|x| tcx.mk_bound_variable_kinds(&x))
+        // {
+        //     Some(late_bound) => ty::Binder::bind_with_vars(args, late_bound),
+        //     None => ty::Binder::dummy(args),
+        // };
+
+        Ty::new(tcx, FnDef(def_id, args))
+    }
+
     #[inline]
     pub fn new_fn_def(
         tcx: TyCtxt<'tcx>,
@@ -1113,7 +1142,7 @@ impl<'tcx> rustc_type_ir::inherent::Ty<TyCtxt<'tcx>> for Ty<'tcx> {
         def_id: DefId,
         args: ty::Binder<'tcx, ty::GenericArgsRef<'tcx>>,
     ) -> Self {
-        Ty::new_fn_def(interner, def_id, args)
+        Ty::new_fn_def_raw(interner, def_id, args)
     }
 
     fn new_fn_ptr(interner: TyCtxt<'tcx>, sig: ty::Binder<'tcx, ty::FnSig<'tcx>>) -> Self {
