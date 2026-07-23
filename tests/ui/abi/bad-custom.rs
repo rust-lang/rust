@@ -72,16 +72,19 @@ unsafe extern "custom" {
 }
 
 fn caller(f: unsafe extern "custom" fn(i64) -> i64, mut x: i64) -> i64 {
+    //~^ ERROR invalid signature for `extern "custom"` function
     unsafe { f(x) }
     //~^ ERROR functions with the "custom" ABI cannot be called
 }
 
 fn caller_by_ref(f: &unsafe extern "custom" fn(i64) -> i64, mut x: i64) -> i64 {
+    //~^ ERROR invalid signature for `extern "custom"` function
     unsafe { f(x) }
     //~^ ERROR functions with the "custom" ABI cannot be called
 }
 
 type Custom = unsafe extern "custom" fn(i64) -> i64;
+//~^ ERROR invalid signature for `extern "custom"` function
 
 fn caller_alias(f: Custom, mut x: i64) -> i64 {
     unsafe { f(x) }
@@ -99,7 +102,7 @@ async unsafe extern "custom" fn no_async_fn() {
     //~| ERROR functions with the "custom" ABI cannot be `async`
 }
 
-fn no_promotion_to_fn_trait(f: unsafe extern "custom" fn()) -> impl Fn()  {
+fn no_promotion_to_fn_trait(f: unsafe extern "custom" fn()) -> impl Fn() {
     //~^ ERROR expected an `Fn()` closure, found `unsafe extern "custom" fn()`
     f
 }

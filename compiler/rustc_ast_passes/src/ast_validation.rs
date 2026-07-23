@@ -1153,6 +1153,24 @@ impl<'a> AstValidator<'a> {
                 if let Extern::Implicit(extern_span) = bfty.ext {
                     self.handle_missing_abi(extern_span, ty.id);
                 }
+
+                let ext = match bfty.ext {
+                    Extern::None => None,
+                    Extern::Implicit(_) => Some(ExternAbi::FALLBACK),
+                    Extern::Explicit(str_lit, _) => {
+                        ExternAbi::from_str(str_lit.symbol.as_str()).ok()
+                    }
+                };
+
+                // Some ABIs impose special restrictions on the signature.
+                if let Some(extern_abi) = ext {
+                    self.check_extern_fn_signature(
+                        extern_abi,
+                        FnCtxt::Free,
+                        None,
+                        &bfty.as_borrowed_fn_sig(),
+                    );
+                }
             }
             TyKind::TraitObject(bounds, ..) => {
                 let mut any_lifetime_bounds = false;
