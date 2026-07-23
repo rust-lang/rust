@@ -884,9 +884,9 @@ fn is_msvc_link_exe(sess: &Session) -> bool {
         && linker_path.to_str() == Some("link.exe")
 }
 
-fn is_macos_ld(sess: &Session) -> bool {
+fn is_macos_linker(sess: &Session) -> bool {
     let (_, flavor) = linker_and_flavor(sess);
-    sess.target.is_like_darwin && matches!(flavor, LinkerFlavor::Darwin(_, Lld::No))
+    sess.target.is_like_darwin && matches!(flavor, LinkerFlavor::Darwin(..))
 }
 
 fn is_windows_gnu_ld(sess: &Session) -> bool {
@@ -953,8 +953,8 @@ fn report_linker_output(
                 *output += "\r\n"
             }
         });
-    } else if is_macos_ld(sess) {
-        info!("inferred macOS LD");
+    } else if is_macos_linker(sess) {
+        info!("inferred macOS linker");
 
         // FIXME: Tracked by https://github.com/rust-lang/rust/issues/136113
         let deployment_mismatch = |line: &str| {
@@ -967,6 +967,8 @@ fn report_linker_output(
                 && line.contains("building for")
                 && line.contains("but linking with")
                 && line.contains("which was built for newer version"))
+            // lld (ld64.lld / rust-lld):
+            || line.contains("which is newer than target minimum of")
         };
         // FIXME: This is a real warning we would like to show, but it hits too many crates
         // to want to turn it on immediately.
