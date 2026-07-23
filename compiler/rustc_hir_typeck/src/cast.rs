@@ -842,15 +842,12 @@ impl<'a, 'tcx> CastCheck<'tcx> {
 
                     let ocx = ObligationCtxt::new_with_diagnostics(&fcx.infcx);
                     ocx.register_obligation(obligation);
-                    ocx.evaluate_obligations_error_on_ambiguity()
-                        .into_iter()
-                        .filter(|error| {
-                            matches!(
-                                error.code,
-                                traits::FulfillmentErrorCode::Ambiguity { overflow: None }
-                            )
-                        })
-                        .next()
+                    ocx.evaluate_obligations_error_on_ambiguity().into_iter().find(|error| {
+                        matches!(
+                            error.code,
+                            traits::FulfillmentErrorCode::Ambiguity { overflow: None }
+                        )
+                    })
                 } else {
                     None
                 }
