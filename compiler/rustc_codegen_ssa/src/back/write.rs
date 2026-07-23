@@ -2112,15 +2112,7 @@ pub struct Coordinator<B: WriteBackendMethods> {
 
 impl<B: WriteBackendMethods> Coordinator<B> {
     fn join(mut self) -> std::thread::Result<Result<MaybeLtoModules<B>, ()>> {
-        if let Some(future) = self.future.take() {
-            future.join()
-        } else {
-            // Used for passes that do not codegen anything (e.g. the offload host-metadata pass).
-            Ok(Ok(MaybeLtoModules::NoLto(CompiledModules {
-                modules: vec![],
-                allocator_module: None,
-            })))
-        }
+        self.future.take().unwrap().join()
     }
 }
 
