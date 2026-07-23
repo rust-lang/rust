@@ -2,7 +2,7 @@
 // FIXME(min_generic_const_args): using statics as direct const arguments should error instead of
 // ICEing until const eval can evaluate statics to valtrees for const generics.
 
-#![feature(min_generic_const_args)]
+#![feature(min_generic_const_args, macroless_generic_const_args)]
 #![allow(incomplete_features)]
 
 static A: u32 = 0;
