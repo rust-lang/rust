@@ -546,7 +546,13 @@ impl<'a> AstValidator<'a> {
     }
 
     /// Check that the signature of this function does not violate the constraints of its ABI.
-    fn check_extern_fn_signature(&self, abi: ExternAbi, ctxt: FnCtxt, ident: &Ident, sig: &FnSig) {
+    fn check_extern_fn_signature(
+        &self,
+        abi: ExternAbi,
+        ctxt: FnCtxt,
+        opt_ident: Option<&Ident>,
+        sig: &FnSig,
+    ) {
         match AbiMap::from_target(&self.sess.target).canonize_abi(abi, false) {
             AbiMapping::Direct(canon_abi) | AbiMapping::Deprecated(canon_abi) => {
                 match canon_abi {
@@ -575,7 +581,7 @@ impl<'a> AstValidator<'a> {
                         self.reject_coroutine(abi, sig);
 
                         // An `extern "custom"` function must have type `fn()`.
-                        self.reject_params_or_return(abi, ident, sig);
+                        self.reject_params_or_return(abi, opt_ident, sig);
                     }
 
                     CanonAbi::Interrupt(interrupt_kind) => {
@@ -600,7 +606,7 @@ impl<'a> AstValidator<'a> {
                             self.reject_return(abi, sig);
                         } else {
                             // An `extern "interrupt"` function must have type `fn()`.
-                            self.reject_params_or_return(abi, ident, sig);
+                            self.reject_params_or_return(abi, opt_ident, sig);
                         }
                     }
                 }
@@ -664,7 +670,7 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn reject_params_or_return(&self, abi: ExternAbi, ident: &Ident, sig: &FnSig) {
+    fn reject_params_or_return(&self, abi: ExternAbi, opt_ident: Option<&Ident>, sig: &FnSig) {
         let mut spans: Vec<_> = sig.decl.inputs.iter().map(|p| p.span).collect();
         if let FnRetTy::Ty(ref ret_ty) = sig.decl.output
             && match &ret_ty.kind {
@@ -683,10 +689,14 @@ impl<'a> AstValidator<'a> {
 
             self.dcx().emit_err(diagnostics::AbiMustNotHaveParametersOrReturnType {
                 spans,
-                symbol: ident.name,
+                abi,
+
                 suggestion_span,
                 padding,
-                abi,
+                symbol: match opt_ident {
+                    Some(ident) => format!(" {}", ident.name),
+                    None => String::new(),
+                },
             });
         }
     }
@@ -1620,7 +1630,7 @@ impl Visitor<'_> for AstValidator<'_> {
                 self.check_extern_fn_signature(
                     self.extern_mod_abi.unwrap_or(ExternAbi::FALLBACK),
                     FnCtxt::Foreign,
-                    ident,
+                    Some(ident),
                     sig,
                 );
 
@@ -1826,7 +1836,7 @@ impl Visitor<'_> for AstValidator<'_> {
 
             if let Some((extern_abi, extern_abi_span)) = ext {
                 // Some ABIs impose special restrictions on the signature.
-                self.check_extern_fn_signature(extern_abi, ctxt, &fun.ident, &fun.sig);
+                self.check_extern_fn_signature(extern_abi, ctxt, Some(&fun.ident), &fun.sig);
 
                 // #[track_caller] can only be used with the rust ABI.
                 if let Some(attr) = attr::find_by_name(attrs, sym::track_caller)

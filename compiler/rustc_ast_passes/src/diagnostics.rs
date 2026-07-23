@@ -1104,11 +1104,11 @@ pub(crate) struct AbiMustNotHaveParametersOrReturnType {
     #[suggestion(
         "remove the parameters and return type",
         applicability = "maybe-incorrect",
-        code = "{padding}fn {symbol}()",
+        code = "{padding}fn{symbol}()",
         style = "verbose"
     )]
     pub suggestion_span: Span,
-    pub symbol: Symbol,
+    pub symbol: String,
     pub padding: &'static str,
 }
 
