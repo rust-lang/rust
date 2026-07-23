@@ -4,8 +4,7 @@ error: `#[decl1]` is not allowed to have `#[track_caller]`
 LL | #[track_caller]
    | ^^^^^^^^^^^^^^^
 LL | #[decl1]
-LL | fn impl1(x: u64) {
-   | ---------------- `#[decl1]` is not allowed to have `#[track_caller]`
+   | -------- `#[decl1]` is not allowed to have `#[track_caller]`
 
 error: aborting due to 1 previous error
 
