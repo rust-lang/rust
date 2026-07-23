@@ -1,3 +1,4 @@
+#![crate_type = "lib"]
 #![feature(linkage)]
 #![feature(stmt_expr_attributes)]
 #![deny(unused_attributes)]
@@ -35,8 +36,12 @@ extern "C" {
     fn bar();
 }
 
-fn main() {
+fn foo() {
     let _ = #[linkage = "weak"]
     (|| 1);
     //~^^ ERROR attribute cannot be used on
 }
+
+#[linkage = "weak"]
+//~^ERROR `const fn` are incompatible with `#[linkage]`
+const fn linkage() {}

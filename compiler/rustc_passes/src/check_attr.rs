@@ -233,6 +233,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::OnTypeError { directive, .. } => {
                 self.check_diagnostic_on_type_error(hir_id, directive.as_deref())
             }
+            AttributeKind::Linkage(_linkage, span) => {
+                self.check_linkage(*span, hir_id, target, item)
+            }
 
             // All of the following attributes have no specific checks.
             // tidy-alphabetical-start
@@ -268,7 +271,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::LinkName { .. } => (),
             AttributeKind::LinkOrdinal { .. } => (),
             AttributeKind::LinkSection { .. } => (),
-            AttributeKind::Linkage(..) => (),
             AttributeKind::LoopMatch(..) => {}
             AttributeKind::MacroEscape => (),
             AttributeKind::MacroUse { .. } => (),
@@ -1641,6 +1643,31 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         {
             self.dcx()
                 .emit_err(diagnostics::BothOptimizeNoneAndInline { optimize_span, inline_span });
+        }
+    }
+
+    fn check_linkage(
+        &self,
+        span: Span,
+        hir_id: HirId,
+        target: Target,
+        item: Option<&'tcx Item<'tcx>>,
+    ) {
+        // FIXME(eii) Once eii is no longer so experimental, suggest doing
+        // linkage stuff with externally implementable items instead
+        match target {
+            Target::ForeignStatic
+                if self.tcx.is_mutable_static(hir_id.expect_owner().def_id.into()) =>
+            {
+                self.tcx.dcx().emit_err(diagnostics::StaticMutLinkage { span });
+            }
+            Target::Fn
+                if let Item { kind: ItemKind::Fn { sig, .. }, .. } = item.unwrap()
+                    && matches!(sig.header.constness, Constness::Const { .. }) =>
+            {
+                self.tcx.dcx().emit_err(diagnostics::ConstFnLinkage { span });
+            }
+            _ => {}
         }
     }
 }

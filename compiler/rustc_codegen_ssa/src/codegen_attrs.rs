@@ -198,16 +198,10 @@ fn process_builtin_attrs(
                     codegen_fn_attrs.import_linkage = linkage;
 
                     if tcx.is_mutable_static(did.into()) {
-                        let mut diag = tcx.dcx().struct_span_err(
+                        tcx.dcx().span_delayed_bug(
                             *span,
-                            "extern mutable statics are not allowed with `#[linkage]`",
+                            "`extern { #[linkage] static mut ...` is checked in check_attr}",
                         );
-                        diag.note(
-                            "marking the extern static mutable would allow changing which \
-                            symbol the static references rather than make the target of the \
-                            symbol mutable",
-                        );
-                        diag.emit();
                     }
                 } else {
                     codegen_fn_attrs.linkage = linkage;

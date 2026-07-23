@@ -642,14 +642,13 @@ pub(crate) struct LinkageParser;
 impl SingleAttributeParser for LinkageParser {
     const PATH: &[Symbol] = &[sym::linkage];
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
-        Allow(Target::Fn),
+        Allow(Target::Fn), // const fn denied in check_attr
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
         Allow(Target::Static),
-        Allow(Target::ForeignStatic),
+        Allow(Target::ForeignStatic), // extern static mut denied in check_attr
         Allow(Target::ForeignFn),
-        Warn(Target::Method(MethodKind::Trait { body: false })), // Not inherited
     ]);
     const TEMPLATE: AttributeTemplate = template!(NameValueStr: [
         "available_externally",
