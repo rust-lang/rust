@@ -97,6 +97,7 @@ pub struct Config {
     pub change_id: Option<ChangeId>,
     pub bypass_bootstrap_lock: bool,
     pub ccache: Option<String>,
+    pub sde: Option<PathBuf>,
     /// Call Build::ninja() instead of this.
     pub ninja_in_file: bool,
     pub submodules: Option<bool>,
@@ -537,6 +538,7 @@ impl Config {
             ccache: build_ccache,
             exclude: build_exclude,
             compiletest_allow_stage0: build_compiletest_allow_stage0,
+            sde: build_sde,
         } = toml_build.unwrap_or_default();
 
         let Install {
@@ -1591,6 +1593,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             rustfmt_info,
             sanitizers: build_sanitizers.unwrap_or(false),
             save_toolstates: rust_save_toolstates.map(PathBuf::from),
+            sde: build_sde.map(PathBuf::from),
             skip,
             skip_std_check_if_no_download_rustc: flags_skip_std_check_if_no_download_rustc,
             src,
