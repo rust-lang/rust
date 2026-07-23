@@ -243,7 +243,7 @@ fn evaluate_candidate<'tcx>(
         return None;
     }
 
-    // We only handle:
+    // For now, we only handle:
     // ```
     // bb4: {
     //     _8 = discriminant((_3.1: Enum1));
@@ -262,41 +262,8 @@ fn evaluate_candidate<'tcx>(
 
     // When thie BB has exactly one statement, this statement should be discriminant.
     let need_hoist_discriminant = bbs[child].statements.len() == 1;
+    let otherwise_is_empty_unreachable = bbs[targets.otherwise()].is_empty_unreachable();
     let child_place = if need_hoist_discriminant {
-        if !bbs[targets.otherwise()].is_empty_unreachable() {
-            // Someone could write code like this:
-            // ```rust
-            // let Q = val;
-            // if discriminant(P) == otherwise {
-            //     let ptr = &mut Q as *mut _ as *mut u8;
-            //     // It may be difficult for us to effectively determine whether values are valid.
-            //     // Invalid values can come from all sorts of corners.
-            //     unsafe { *ptr = 10; }
-            // }
-            //
-            // match P {
-            //    A => match Q {
-            //        A => {
-            //            // code
-            //        }
-            //        _ => {
-            //            // don't use Q
-            //        }
-            //    }
-            //    _ => {
-            //        // don't use Q
-            //    }
-            // };
-            // ```
-            //
-            // Hoisting the `discriminant(Q)` out of the `A` arm causes us to compute the discriminant of an
-            // invalid value, which is UB.
-            // In order to fix this, **we would either need to show that the discriminant computation of
-            // `place` is computed in all branches**.
-            // FIXME(#95162) For the moment, we adopt a conservative approach and
-            // consider only the `otherwise` branch has no statements and an unreachable terminator.
-            return None;
-        }
         // Handle:
         // ```
         // bb4: {
@@ -325,8 +292,7 @@ fn evaluate_candidate<'tcx>(
         };
         *child_place
     };
-    let destination = if need_hoist_discriminant || bbs[targets.otherwise()].is_empty_unreachable()
-    {
+    let destination = if otherwise_is_empty_unreachable {
         child_targets.otherwise()
     } else {
         targets.otherwise()
@@ -340,6 +306,7 @@ fn evaluate_candidate<'tcx>(
             child_place,
             destination,
             need_hoist_discriminant,
+            otherwise_is_empty_unreachable,
         ) {
             return None;
         }
@@ -359,11 +326,67 @@ fn verify_candidate_branch<'tcx>(
     place: Place<'tcx>,
     destination: BasicBlock,
     need_hoist_discriminant: bool,
+    otherwise_is_empty_unreachable: bool,
 ) -> bool {
     // In order for the optimization to be correct, the terminator must be a `SwitchInt`.
     let TerminatorKind::SwitchInt { discr: switch_op, targets } = &branch.terminator().kind else {
         return false;
     };
+    if !otherwise_is_empty_unreachable {
+        // Someone could write code like this:
+        // ```rust
+        // let Q = val;
+        // if discriminant(P) == otherwise {
+        //     let ptr = &mut Q as *mut _ as *mut u8;
+        //     // It may be difficult for us to effectively determine whether values are valid.
+        //     // Invalid values can come from all sorts of corners.
+        //     unsafe { *ptr = 10; }
+        // }
+        //
+        // match P {
+        //    A => match Q {
+        //        A => {
+        //            // code
+        //        }
+        //        _ => {
+        //            // don't use Q
+        //        }
+        //    }
+        //    _ => {
+        //        // don't use Q
+        //    }
+        // };
+        // ```
+        //
+        // Hoisting the `discriminant(Q)` out of the `A` arm causes us to compute the discriminant of an
+        // invalid value, which is UB.
+        // In order to fix this, **we would either need to show that the discriminant computation of
+        // `place` is computed in all branches**.
+        // For <https://github.com/rust-lang/rust/issues/95162>, we adopt a conservative approach and
+        // consider only the `otherwise` branch has no statements and an unreachable terminator.
+        if need_hoist_discriminant {
+            return false;
+        }
+        // For <https://github.com/rust-lang/rust/issues/159591>:
+        // ```
+        // bb0: {
+        //     switchInt(copy _1) -> [1: bb1, 2: bb2, otherwise: bb5];
+        // }
+        // bb1: {
+        //     switchInt(copy (*_2)) -> [1: bb3, otherwise: bb5];
+        // }
+        // bb2: {
+        //     switchInt(copy (*_2)) -> [2: bb4, otherwise: bb5];
+        // }
+        // ```
+        // We cannot hoist the dereference of `_2` to `bb0`,
+        // because execution can reach `bb5` without dereferencing `_2`.
+        if let Some(place) = switch_op.place()
+            && !place.is_stable_offset()
+        {
+            return false;
+        }
+    }
     if need_hoist_discriminant {
         // If we need hoist discriminant, the branch must have exactly one statement.
         let [statement] = branch.statements.as_slice() else {
