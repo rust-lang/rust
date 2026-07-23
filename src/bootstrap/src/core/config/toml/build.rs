@@ -79,6 +79,7 @@ define_config! {
         ccache: Option<StringOrBool> = "ccache",
         exclude: Option<Vec<PathBuf>> = "exclude",
         record_failed_tests_path: Option<String> = "record_failed_tests_path",
+        sde: Option<String> = "sde",
     }
 }
 

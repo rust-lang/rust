@@ -140,11 +140,13 @@ pr:
   - name: aarch64-gnu-llvm-21-1
     env:
       IMAGE: aarch64-gnu-llvm-21
+      LLVM_VERSION: "21"
       DOCKER_SCRIPT: stage_2_test_set1.sh
     <<: *job-aarch64-linux
   - name: aarch64-gnu-llvm-21-2
     env:
       IMAGE: aarch64-gnu-llvm-21
+      LLVM_VERSION: "21"
       DOCKER_SCRIPT: stage_2_test_set2.sh
     <<: *job-aarch64-linux
   - name: x86_64-gnu-tools
@@ -414,6 +416,7 @@ auto:
     env:
       RUST_BACKTRACE: 1
       IMAGE: x86_64-gnu-llvm-21
+      LLVM_VERSION: "21"
       DOCKER_SCRIPT: stage_2_test_set2.sh
     <<: *job-linux-4c
 
@@ -422,6 +425,7 @@ auto:
     env:
       RUST_BACKTRACE: 1
       IMAGE: x86_64-gnu-llvm-21
+      LLVM_VERSION: "21"
       DOCKER_SCRIPT: x86_64-gnu-llvm2.sh
     <<: *job-linux-4c
 
@@ -430,6 +434,7 @@ auto:
     env:
       RUST_BACKTRACE: 1
       IMAGE: x86_64-gnu-llvm-21
+      LLVM_VERSION: "21"
       DOCKER_SCRIPT: x86_64-gnu-llvm3.sh
     <<: *job-linux-4c
 
