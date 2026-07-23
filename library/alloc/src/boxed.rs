@@ -2535,16 +2535,6 @@ unsafe impl<T: ?Sized + Allocator, A: Allocator> Allocator for Box<T, A> {
 }
 
 #[unstable(feature = "allocator_api", issue = "32838")]
-unsafe impl<T, A> AllocatorClone for Box<T, A>
-where
-    T: AllocatorClone,
-    // Otherwise, the clone impl *here* may unwind.
-    A: AllocatorClone,
-    Box<T, A>: Clone,
-{
-}
-
-#[unstable(feature = "allocator_api", issue = "32838")]
 unsafe impl<T, A> AllocatorEq for Box<T, A>
 where
     T: AllocatorEq + ?Sized,
