@@ -1,6 +1,6 @@
-use crate::clippy_utils::res::MaybeTypeckRes;
+use crate::clippy_utils::res::MaybeTypeckRes as _;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::res::{MaybeDef, MaybeResPath as _};
+use clippy_utils::res::{MaybeDef as _, MaybeResPath as _};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::sym;
 use clippy_utils::ty::implements_trait;

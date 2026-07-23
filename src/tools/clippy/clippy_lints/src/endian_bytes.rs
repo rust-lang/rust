@@ -2,11 +2,11 @@ use crate::Lint;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::{is_lint_allowed, sym};
 use rustc_hir::{Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lint::{LateContext, LateLintPass, LintContext as _};
 use rustc_middle::ty::Ty;
 use rustc_session::declare_lint_pass;
 use rustc_span::Symbol;
-use std::fmt::Write;
+use std::fmt::Write as _;
 
 declare_clippy_lint! {
     /// ### What it does

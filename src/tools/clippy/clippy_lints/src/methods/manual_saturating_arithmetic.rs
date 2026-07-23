@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::res::MaybeResPath;
+use clippy_utils::res::MaybeResPath as _;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sym;
 use rustc_ast::ast;
@@ -8,7 +8,7 @@ use rustc_hir::def::Res;
 use rustc_hir::{self as hir, Expr};
 use rustc_lint::LateContext;
 use rustc_middle::ty::Ty;
-use rustc_middle::ty::layout::LayoutOf;
+use rustc_middle::ty::layout::LayoutOf as _;
 use rustc_span::Symbol;
 
 pub fn check_unwrap_or(

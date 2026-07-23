@@ -60,7 +60,7 @@ fn is_arg(argument: &str, key: &str) -> bool {
 
 #[test]
 fn test_arg_value() {
-    use std::ops::Not;
+    use std::ops::Not as _;
 
     let args = &["--bar=bar", "--foobar", "123", "--foo"].map(String::from);
 

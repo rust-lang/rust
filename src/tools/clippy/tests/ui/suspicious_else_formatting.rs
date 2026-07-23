@@ -1,11 +1,11 @@
 //@aux-build:proc_macro_suspicious_else_formatting.rs
 
-#![warn(clippy::suspicious_else_formatting, clippy::possible_missing_else)]
-#![allow(
+#![warn(clippy::possible_missing_else, clippy::suspicious_else_formatting)]
+#![expect(
     clippy::if_same_then_else,
     clippy::let_unit_value,
-    clippy::needless_ifs,
-    clippy::needless_else
+    clippy::needless_else,
+    clippy::needless_ifs
 )]
 
 extern crate proc_macro_suspicious_else_formatting;

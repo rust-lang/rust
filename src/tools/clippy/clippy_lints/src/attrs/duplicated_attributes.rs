@@ -1,6 +1,6 @@
 use super::DUPLICATED_ATTRIBUTES;
 use clippy_utils::diagnostics::span_lint_and_then;
-use itertools::Itertools;
+use itertools::Itertools as _;
 use rustc_ast::{Attribute, MetaItem};
 use rustc_ast_pretty::pprust::path_to_string;
 use rustc_data_structures::fx::FxHashMap;

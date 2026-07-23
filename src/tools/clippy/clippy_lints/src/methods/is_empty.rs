@@ -1,10 +1,10 @@
 use clippy_utils::consts::ConstEvalCtxt;
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::macros::{is_assert_macro, root_macro_call};
-use clippy_utils::res::MaybeResPath;
+use clippy_utils::res::MaybeResPath as _;
 use clippy_utils::{find_binding_init, get_parent_expr, is_inside_always_const_context};
 use rustc_hir::{Expr, HirId, find_attr};
-use rustc_lint::{LateContext, LintContext};
+use rustc_lint::{LateContext, LintContext as _};
 
 use super::CONST_IS_EMPTY;
 

@@ -1,13 +1,7 @@
 #![feature(box_patterns)]
 #![warn(clippy::unnested_or_patterns)]
-#![allow(
-    clippy::cognitive_complexity,
-    clippy::match_ref_pats,
-    clippy::upper_case_acronyms,
-    clippy::needless_ifs,
-    clippy::manual_range_patterns
-)]
-#![allow(unreachable_patterns, irrefutable_let_patterns, unused)]
+#![allow(clippy::manual_range_patterns)]
+#![expect(irrefutable_let_patterns)]
 
 struct S {
     x: u8,

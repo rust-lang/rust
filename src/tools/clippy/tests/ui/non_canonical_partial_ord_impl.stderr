@@ -1,5 +1,5 @@
 error: non-canonical implementation of `partial_cmp` on an `Ord` type
-  --> tests/ui/non_canonical_partial_ord_impl.rs:20:1
+  --> tests/ui/non_canonical_partial_ord_impl.rs:21:1
    |
 LL | / impl PartialOrd for A {
 LL | |
@@ -20,7 +20,7 @@ LL +     fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(self.cmp
    |
 
 error: non-canonical implementation of `partial_cmp` on an `Ord` type
-  --> tests/ui/non_canonical_partial_ord_impl.rs:55:1
+  --> tests/ui/non_canonical_partial_ord_impl.rs:56:1
    |
 LL | / impl PartialOrd for C {
 LL | |
@@ -39,7 +39,7 @@ LL +     fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(self.cmp
    |
 
 error: non-canonical implementation of `partial_cmp` on an `Ord` type
-  --> tests/ui/non_canonical_partial_ord_impl.rs:191:9
+  --> tests/ui/non_canonical_partial_ord_impl.rs:192:9
    |
 LL | /         impl PartialOrd for A {
 LL | |
@@ -59,7 +59,7 @@ LL +             fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(
    |
 
 error: non-canonical implementation of `partial_cmp` on an `Ord` type
-  --> tests/ui/non_canonical_partial_ord_impl.rs:271:1
+  --> tests/ui/non_canonical_partial_ord_impl.rs:272:1
    |
 LL | / impl PartialOrd for K {
 LL | |
@@ -78,7 +78,7 @@ LL +     fn partial_cmp(&self, other: &Self) -> Option<Ordering> { Some(self.cmp
    |
 
 error: non-canonical implementation of `partial_cmp` on an `Ord` type
-  --> tests/ui/non_canonical_partial_ord_impl.rs:289:1
+  --> tests/ui/non_canonical_partial_ord_impl.rs:290:1
    |
 LL | / impl PartialOrd for L {
 LL | |

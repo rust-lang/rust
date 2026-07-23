@@ -25,7 +25,7 @@ declare_clippy_lint! {
     /// ### What it does
     /// Checks for a `#[must_use]` attribute without
     /// further information on functions and methods that return a type already
-    /// marked as `#[must_use]`.
+    /// considered as `#[must_use]`.
     ///
     /// ### Why is this bad?
     /// The attribute isn't needed. Not using the result
@@ -38,6 +38,12 @@ declare_clippy_lint! {
     /// fn double_must_use() -> Result<(), ()> {
     ///     unimplemented!();
     /// }
+    /// ```
+    ///
+    /// ### Note
+    /// The compiler may consider a type as being indirectly `#[must_use]`. For
+    /// example, although `Box<_>` itself is not `#[must_use]`, `Box<T>` will be
+    /// considered `#[must_use]` if `T` is.
     /// ```
     #[clippy::version = "1.40.0"]
     pub DOUBLE_MUST_USE,

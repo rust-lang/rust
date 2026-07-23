@@ -1,6 +1,6 @@
 use super::MUT_RANGE_BOUND;
 use clippy_utils::diagnostics::span_lint_and_note;
-use clippy_utils::res::MaybeResPath;
+use clippy_utils::res::MaybeResPath as _;
 use clippy_utils::{get_enclosing_block, higher};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{BindingMode, Expr, ExprKind, HirId, Node, PatKind};

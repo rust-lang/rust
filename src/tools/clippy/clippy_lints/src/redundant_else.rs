@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::is_from_proc_macro;
-use clippy_utils::source::{SpanExt, indent_of, reindent_multiline};
+use clippy_utils::source::{SpanExt as _, indent_of, reindent_multiline};
 use rustc_errors::Applicability;
 use rustc_hir::{Block, Expr, ExprKind, MatchSource, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};

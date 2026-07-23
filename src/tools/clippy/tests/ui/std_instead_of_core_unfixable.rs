@@ -1,6 +1,4 @@
-#![warn(clippy::std_instead_of_core)]
-#![warn(clippy::std_instead_of_alloc)]
-#![allow(unused_imports)]
+#![warn(clippy::std_instead_of_alloc, clippy::std_instead_of_core)]
 
 #[rustfmt::skip]
 fn issue14982() {

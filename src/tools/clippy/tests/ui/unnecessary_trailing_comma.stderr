@@ -1,5 +1,5 @@
 error: unnecessary trailing comma
-  --> tests/ui/unnecessary_trailing_comma.rs:10:19
+  --> tests/ui/unnecessary_trailing_comma.rs:11:19
    |
 LL |     println!("Foo" , );
    |                   ^^^ help: remove the trailing comma
@@ -8,115 +8,115 @@ LL |     println!("Foo" , );
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_trailing_comma)]`
 
 error: unnecessary trailing comma
-  --> tests/ui/unnecessary_trailing_comma.rs:11:19
+  --> tests/ui/unnecessary_trailing_comma.rs:12:19
    |
 LL |     println!{"Foo" , };
    |                   ^^^ help: remove the trailing comma
 
 error: unnecessary trailing comma
-  --> tests/ui/unnecessary_trailing_comma.rs:12:19
+  --> tests/ui/unnecessary_trailing_comma.rs:13:19
    |
 LL |     println!["Foo" , ];
    |                   ^^^ help: remove the trailing comma
 
 error: unnecessary trailing comma
-  --> tests/ui/unnecessary_trailing_comma.rs:13:27
+  --> tests/ui/unnecessary_trailing_comma.rs:14:27
    |
 LL |     println!("Foo={}",   1  ,  );
    |                           ^^^^^ help: remove the trailing comma
 
 error: unnecessary trailing comma
-  --> tests/ui/unnecessary_trailing_comma.rs:14:36
+  --> tests/ui/unnecessary_trailing_comma.rs:15:36
    |
 LL |     println!(concat!("b", "o", "o")  , );
    |                                    ^^^^ help: remove the trailing comma
 
 error: unnecessary trailing comma
-  --> tests/ui/unnecessary_trailing_comma.rs:15:22
+  --> tests/ui/unnecessary_trailing_comma.rs:16:22
    |
 LL |     println!("Foo(,)",);
    |                      ^ help: remove the trailing comma
 
 error: unnecessary trailing comma
-  --> tests/ui/unnecessary_trailing_comma.rs:16:22
+  --> tests/ui/unnecessary_trailing_comma.rs:17:22
    |
 LL |     println!("Foo[,]" , );
    |                      ^^^ help: remove the trailing comma
 
 error: unnecessary trailing comma
-  --> tests/ui/unnecessary_trailing_comma.rs:17:22
+  --> tests/ui/unnecessary_trailing_comma.rs:18:22
    |
 LL |     println!["Foo(,)", ];
    |                      ^^ help: remove the trailing comma
 
 error: unnecessary trailing comma
-  --> tests/ui/unnecessary_trailing_comma.rs:18:22
+  --> tests/ui/unnecessary_trailing_comma.rs:19:22
    |
 LL |     println!["Foo[,]", ];
    |                      ^^ help: remove the trailing comma
 
 error: unnecessary trailing comma
-  --> tests/ui/unnecessary_trailing_comma.rs:19:24
+  --> tests/ui/unnecessary_trailing_comma.rs:20:24
    |
 LL |     println!["Foo{{,}}", ];
    |                        ^^ help: remove the trailing comma
 
 error: unnecessary trailing comma
-  --> tests/ui/unnecessary_trailing_comma.rs:20:24
+  --> tests/ui/unnecessary_trailing_comma.rs:21:24
    |
 LL |     println!{"Foo{{,}}", };
    |                        ^^ help: remove the trailing comma
 
 error: unnecessary trailing comma
-  --> tests/ui/unnecessary_trailing_comma.rs:21:22
+  --> tests/ui/unnecessary_trailing_comma.rs:22:22
    |
 LL |     println!{"Foo(,)", };
    |                      ^^ help: remove the trailing comma
 
 error: unnecessary trailing comma
-  --> tests/ui/unnecessary_trailing_comma.rs:22:22
+  --> tests/ui/unnecessary_trailing_comma.rs:23:22
    |
 LL |     println!{"Foo[,]", };
    |                      ^^ help: remove the trailing comma
 
 error: unnecessary trailing comma
-  --> tests/ui/unnecessary_trailing_comma.rs:23:21
+  --> tests/ui/unnecessary_trailing_comma.rs:24:21
    |
 LL |     println!["Foo(,", ];
    |                     ^^ help: remove the trailing comma
 
 error: unnecessary trailing comma
-  --> tests/ui/unnecessary_trailing_comma.rs:24:21
+  --> tests/ui/unnecessary_trailing_comma.rs:25:21
    |
 LL |     println!["Foo[,", ];
    |                     ^^ help: remove the trailing comma
 
 error: unnecessary trailing comma
-  --> tests/ui/unnecessary_trailing_comma.rs:25:24
+  --> tests/ui/unnecessary_trailing_comma.rs:26:24
    |
 LL |     println!["Foo{{,}}", ];
    |                        ^^ help: remove the trailing comma
 
 error: unnecessary trailing comma
-  --> tests/ui/unnecessary_trailing_comma.rs:26:24
+  --> tests/ui/unnecessary_trailing_comma.rs:27:24
    |
 LL |     println!{"Foo{{,}}", };
    |                        ^^ help: remove the trailing comma
 
 error: unnecessary trailing comma
-  --> tests/ui/unnecessary_trailing_comma.rs:27:21
+  --> tests/ui/unnecessary_trailing_comma.rs:28:21
    |
 LL |     println!{"Foo(,", };
    |                     ^^ help: remove the trailing comma
 
 error: unnecessary trailing comma
-  --> tests/ui/unnecessary_trailing_comma.rs:28:21
+  --> tests/ui/unnecessary_trailing_comma.rs:29:21
    |
 LL |     println!{"Foo[,", };
    |                     ^^ help: remove the trailing comma
 
 error: unnecessary trailing comma
-  --> tests/ui/unnecessary_trailing_comma.rs:29:42
+  --> tests/ui/unnecessary_trailing_comma.rs:30:42
    |
 LL |     println!(concat!("Foo", "=", "{}"), 1,);
    |                                          ^ help: remove the trailing comma

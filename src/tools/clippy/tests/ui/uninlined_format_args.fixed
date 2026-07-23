@@ -1,9 +1,8 @@
 //@aux-build:proc_macros.rs
 
 #![warn(clippy::uninlined_format_args)]
-#![allow(named_arguments_used_positionally, unused)]
-#![allow(
-    clippy::eq_op,
+#![allow(named_arguments_used_positionally)]
+#![expect(
     clippy::format_in_format_args,
     clippy::print_literal,
     clippy::unnecessary_literal_unwrap

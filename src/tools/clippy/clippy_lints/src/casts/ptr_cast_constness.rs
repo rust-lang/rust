@@ -6,7 +6,7 @@ use clippy_utils::{std_or_core, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{self as hir, Expr, ExprKind, QPath};
 use rustc_lint::LateContext;
-use rustc_middle::ty::{self, Ty, TypeVisitableExt};
+use rustc_middle::ty::{self, Ty, TypeVisitableExt as _};
 
 use super::PTR_CAST_CONSTNESS;
 

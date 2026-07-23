@@ -1,10 +1,6 @@
 #![warn(clippy::unnecessary_result_map_or_else)]
-#![allow(
-    clippy::unnecessary_literal_unwrap,
-    clippy::let_and_return,
-    clippy::let_unit_value,
-    clippy::needless_return
-)]
+#![allow(clippy::needless_return, clippy::unnecessary_literal_unwrap)]
+#![expect(clippy::let_and_return, clippy::let_unit_value)]
 
 fn main() {
     let x: Result<(), ()> = Ok(());

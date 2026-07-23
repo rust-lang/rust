@@ -6,7 +6,7 @@ use clippy_utils::{is_from_proc_macro, is_trait_impl_item};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{self as hir, FnDecl, HirId};
-use rustc_lint::{LateContext, LintContext};
+use rustc_lint::{LateContext, LintContext as _};
 use rustc_middle::ty::{self, Mutability, Ty};
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;

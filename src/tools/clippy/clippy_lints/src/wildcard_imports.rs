@@ -6,7 +6,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{Item, ItemKind, PathSegment, UseKind};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lint::{LateContext, LateLintPass, LintContext as _};
 use rustc_middle::ty;
 use rustc_session::impl_lint_pass;
 use rustc_span::BytePos;
@@ -123,9 +123,7 @@ impl LateLintPass<'_> for WildcardImports {
         }
 
         let module = cx.tcx.parent_module_from_def_id(item.owner_id.def_id);
-        if cx.tcx.local_visibility(item.owner_id.def_id) != ty::Visibility::Restricted(module)
-            && !self.warn_on_all
-        {
+        if cx.tcx.local_visibility(item.owner_id.def_id) != ty::Visibility::Restricted(module) && !self.warn_on_all {
             return;
         }
         if let ItemKind::Use(use_path, UseKind::Glob) = &item.kind

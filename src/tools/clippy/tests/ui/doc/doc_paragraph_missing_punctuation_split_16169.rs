@@ -9,5 +9,4 @@ pub fn dont_warn_inner_outer() {
 ///
 #[inline]
 ///w
-pub fn dont_warn_split_by_attr() {
-}
+pub fn dont_warn_split_by_attr() {}
