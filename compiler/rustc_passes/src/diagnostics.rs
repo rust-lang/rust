@@ -1083,16 +1083,6 @@ pub(crate) struct EiiImplRequiresUnsafeSuggestion {
 }
 
 #[derive(Diagnostic)]
-#[diag("`#[{$name}]` is not allowed to have `#[track_caller]`")]
-pub(crate) struct EiiWithTrackCaller {
-    #[primary_span]
-    pub attr_span: Span,
-    pub name: Symbol,
-    #[label("`#[{$name}]` is not allowed to have `#[track_caller]`")]
-    pub sig_span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("`#[{$name}]` {$kind} required, but not found")]
 pub(crate) struct EiiWithoutImpl {
     #[primary_span]
