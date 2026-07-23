@@ -1,0 +1,17 @@
+error[E0191]: the value of the associated constant `N` in `HasAssocConst` must be specified
+  --> $DIR/lack-of-wfcheck-generic-const-args.rs:17:25
+   |
+LL | type DynIncompat1 = dyn HasAssocConst;
+   |                         ^^^^^^^^^^^^^
+...
+LL |     const N: usize;
+   |     -------------- `N` defined here
+   |
+help: specify the associated constant
+   |
+LL | type DynIncompat1 = dyn HasAssocConst<N = /* CONST */>;
+   |                                      +++++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0191`.
