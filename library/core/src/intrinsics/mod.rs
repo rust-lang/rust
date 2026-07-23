@@ -873,7 +873,8 @@ pub const unsafe fn transmute_unchecked<Src, Dst>(src: Src) -> Dst;
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_nounwind]
 #[rustc_intrinsic]
-pub const fn needs_drop<T: ?Sized>() -> bool;
+#[rustc_comptime]
+pub fn needs_drop<T: ?Sized>() -> bool;
 
 /// Calculates the offset from a pointer.
 ///
@@ -2945,7 +2946,8 @@ pub unsafe fn vtable_align(ptr: *const ()) -> usize;
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
-pub const fn size_of<T>() -> usize;
+#[rustc_comptime]
+pub fn size_of<T>() -> usize;
 
 /// The minimum alignment of a type.
 ///
@@ -2964,7 +2966,8 @@ pub const fn size_of<T>() -> usize;
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
-pub const fn align_of<T>() -> usize;
+#[rustc_comptime]
+pub fn align_of<T>() -> usize;
 
 /// The offset of a field inside a type.
 ///
@@ -2984,7 +2987,8 @@ pub const fn align_of<T>() -> usize;
 #[rustc_intrinsic_const_stable_indirect]
 #[rustc_intrinsic]
 #[lang = "offset_of"]
-pub const fn offset_of<T: PointeeSized>(variant: u32, field: u32) -> usize;
+#[rustc_comptime]
+pub fn offset_of<T: PointeeSized>(variant: u32, field: u32) -> usize;
 
 /// The offset of a field queried by its field representing type.
 ///
@@ -2998,7 +3002,8 @@ pub const fn offset_of<T: PointeeSized>(variant: u32, field: u32) -> usize;
 #[rustc_intrinsic]
 #[unstable(feature = "field_projections", issue = "145383")]
 #[rustc_const_unstable(feature = "field_projections", issue = "145383")]
-pub const fn field_offset<F: crate::field::Field>() -> usize;
+#[rustc_comptime]
+pub fn field_offset<F: crate::field::Field>() -> usize;
 
 /// Returns the number of variants of the type `T` cast to a `usize`;
 /// if `T` has no variants, returns `0`. Uninhabited variants will be counted.
@@ -3012,7 +3017,8 @@ pub const fn field_offset<F: crate::field::Field>() -> usize;
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
-pub const fn variant_count<T>() -> usize;
+#[rustc_comptime]
+pub fn variant_count<T>() -> usize;
 
 /// The size of the referenced value in bytes.
 ///
@@ -3056,9 +3062,8 @@ pub fn type_id_vtable(
 /// not implement it.
 #[rustc_intrinsic]
 #[unstable(feature = "core_intrinsics", issue = "none")]
-pub const fn type_of(_id: crate::any::TypeId) -> crate::mem::type_info::Type {
-    panic!("`TypeId::info` can only be called at compile-time")
-}
+#[rustc_comptime]
+pub fn type_of(_id: crate::any::TypeId) -> crate::mem::type_info::Type;
 
 /// Gets a static string slice containing the name of a type.
 ///
@@ -3071,7 +3076,8 @@ pub const fn type_of(_id: crate::any::TypeId) -> crate::mem::type_info::Type {
 #[rustc_nounwind]
 #[unstable(feature = "core_intrinsics", issue = "none")]
 #[rustc_intrinsic]
-pub const fn type_name<T: ?Sized>() -> &'static str;
+#[rustc_comptime]
+pub fn type_name<T: ?Sized>() -> &'static str;
 
 /// Gets an identifier which is globally unique to the specified type. This
 /// function will return the same value for a type regardless of whichever
