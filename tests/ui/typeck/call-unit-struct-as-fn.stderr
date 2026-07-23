@@ -1,5 +1,5 @@
 error[E0618]: expected function, found `Foo`
-  --> $DIR/issue-46771.rs:3:23
+  --> $DIR/call-unit-struct-as-fn.rs:6:23
    |
 LL |     struct Foo;
    |     ---------- `Foo` defined here
