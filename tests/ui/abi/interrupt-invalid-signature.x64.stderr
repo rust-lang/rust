@@ -69,5 +69,17 @@ help: remove the return type
 LL | fn x86_ptr_too_many(_f: extern "x86-interrupt" fn(*const u8, *const u8, *const u8) -> u8) {
    |                                                                                       ^^
 
-error: aborting due to 7 previous errors
+error: function pointers cannot be declared with `safe` safety qualifier
+  --> $DIR/interrupt-invalid-signature.rs:145:13
+   |
+LL | type Safe = safe extern "x86-interrupt" fn(*const u8);
+   |             ^^^^
+   |
+help: remove the `safe` qualifier
+   |
+LL - type Safe = safe extern "x86-interrupt" fn(*const u8);
+LL + type Safe = extern "x86-interrupt" fn(*const u8);
+   |
+
+error: aborting due to 8 previous errors
 

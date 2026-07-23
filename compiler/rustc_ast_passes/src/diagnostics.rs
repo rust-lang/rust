@@ -371,6 +371,13 @@ pub(crate) struct InvalidSafetyOnItem {
 pub(crate) struct InvalidSafetyOnFnPtr {
     #[primary_span]
     pub span: Span,
+    #[suggestion(
+        "remove the `safe` qualifier",
+        code = "",
+        applicability = "machine-applicable",
+        style = "verbose"
+    )]
+    pub safe_span: Span,
 }
 
 #[derive(Diagnostic)]

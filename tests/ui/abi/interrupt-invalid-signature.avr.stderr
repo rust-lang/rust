@@ -37,5 +37,17 @@ LL - fn avr_ptr(_f: extern "avr-interrupt" fn(u8) -> u8) {
 LL + fn avr_ptr(_f: extern "avr-interrupt" fn()) {
    |
 
-error: aborting due to 3 previous errors
+error: function pointers cannot be declared with `safe` safety qualifier
+  --> $DIR/interrupt-invalid-signature.rs:141:13
+   |
+LL | type Safe = safe extern "avr-interrupt" fn();
+   |             ^^^^
+   |
+help: remove the `safe` qualifier
+   |
+LL - type Safe = safe extern "avr-interrupt" fn();
+LL + type Safe = extern "avr-interrupt" fn();
+   |
+
+error: aborting due to 4 previous errors
 

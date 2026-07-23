@@ -136,3 +136,11 @@ fn x86_ptr_too_many(_f: extern "x86-interrupt" fn(*const u8, *const u8, *const u
     //[x64,i686]~^ ERROR invalid signature
     //[x64,i686]~| ERROR invalid signature
 }
+
+#[cfg(avr)]
+type Safe = safe extern "avr-interrupt" fn();
+//[avr]~^ ERROR function pointers cannot be declared with `safe` safety qualifier
+
+#[cfg(any(x64, i686))]
+type Safe = safe extern "x86-interrupt" fn(*const u8);
+//[x64,i686]~^ ERROR function pointers cannot be declared with `safe` safety qualifier
