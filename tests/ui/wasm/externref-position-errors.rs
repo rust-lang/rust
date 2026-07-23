@@ -5,6 +5,7 @@
 //@ add-minicore
 //@ compile-flags: --target wasm32-unknown-unknown
 //@ needs-llvm-components: webassembly
+//@ ignore-backends: gcc
 //@ check-fail
 
 #![crate_type = "lib"]
