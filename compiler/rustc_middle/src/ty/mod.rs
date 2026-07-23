@@ -447,19 +447,19 @@ impl Visibility<LocalModId> {
     }
 }
 
-impl<Id: Into<DefId>> Visibility<Id> {
-    /// Returns `true` if an item with this visibility is accessible from the given module.
-    pub fn is_accessible_from(self, module: impl Into<DefId>, tcx: TyCtxt<'_>) -> bool {
+impl<Id: Into<ModId>> Visibility<Id> {
+    /// Returns `true` if an item with this visibility is accessible from the given definition.
+    pub fn is_accessible_from(self, def_id: impl Into<DefId>, tcx: TyCtxt<'_>) -> bool {
         match self {
             // Public items are visible everywhere.
             Visibility::Public => true,
-            Visibility::Restricted(id) => tcx.is_descendant_of(module, id),
+            Visibility::Restricted(id) => tcx.is_descendant_of(def_id, id.into()),
         }
     }
 
     pub fn partial_cmp(
         self,
-        vis: Visibility<impl Into<DefId>>,
+        vis: Visibility<impl Into<ModId>>,
         tcx: TyCtxt<'_>,
     ) -> Option<Ordering> {
         match (self, vis) {
@@ -468,18 +468,18 @@ impl<Id: Into<DefId>> Visibility<Id> {
             (Visibility::Restricted(_), Visibility::Public) => Some(Ordering::Less),
             (Visibility::Restricted(lhs_id), Visibility::Restricted(rhs_id)) => {
                 let (lhs_id, rhs_id) = (lhs_id.into(), rhs_id.into());
-                tcx.def_id_partial_cmp(lhs_id, rhs_id)
+                tcx.def_id_partial_cmp(lhs_id.to_def_id(), rhs_id.to_def_id())
             }
         }
     }
 }
 
-impl<Id: Into<DefId> + Debug + Copy> Visibility<Id> {
+impl<Id: Into<ModId> + Debug + Copy> Visibility<Id> {
     /// Returns `true` if this visibility is strictly larger than the given visibility.
     #[track_caller]
     pub fn greater_than(
         self,
-        vis: Visibility<impl Into<DefId> + Debug + Copy>,
+        vis: Visibility<impl Into<ModId> + Debug + Copy>,
         tcx: TyCtxt<'_>,
     ) -> bool {
         match self.partial_cmp(vis, tcx) {
