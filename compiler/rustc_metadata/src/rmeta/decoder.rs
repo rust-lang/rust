@@ -1313,7 +1313,14 @@ impl CrateMetadata {
         let res = Res::Def(self.def_kind(id), self.local_def_id(id));
         let vis = self.get_visibility(tcx, id);
 
-        ModChild { ident, res, vis, reexport_chain: Default::default() }
+        ModChild {
+            ident,
+            res,
+            vis,
+            reexport_chain: Default::default(),
+            // Children with redirects are encoded as full `ModChild`s.
+            edition_redirects: Default::default(),
+        }
     }
 
     /// Iterates over all named children of the given module,

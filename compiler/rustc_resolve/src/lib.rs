@@ -72,6 +72,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_session::config::CrateType;
 use rustc_session::lint::builtin::PRIVATE_MACRO_USE;
 use rustc_span::def_id::{LocalModId, ModId};
+use rustc_span::edition::Edition;
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind, SyntaxContext, Transparency};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use smallvec::{SmallVec, smallvec};
@@ -1017,6 +1018,28 @@ struct DeclData<'ra> {
     /// declaration from the set, if its visibility is different from `initial_vis`.
     ambiguity_vis_min: CmCell<Option<Decl<'ra>>>,
     parent_module: Option<Module<'ra>>,
+    /// Fully resolved cross-crate redirects attached to this declaration.
+    edition_redirects: &'ra [EditionRedirectDecl<'ra>],
+}
+
+#[derive(Clone, Copy, Debug)]
+struct EditionRedirectDecl<'ra> {
+    before: Edition,
+    target: Decl<'ra>,
+}
+
+/// A redirect declared in the current crate, before it is resolved and converted to crate metadata.
+/// Redirects for each item are stored in ascending order of `before`.
+#[derive(Clone)]
+struct LocalEditionRedirect<'ra> {
+    before: Edition,
+    /// The parsed target path, resolved when module children are finalized.
+    target: Vec<Segment>,
+    /// The scope of the item carrying the attribute, in which `target` must be resolved.
+    parent_scope: ParentScope<'ra>,
+    /// The item carrying the attribute, used when finalizing target-path diagnostics.
+    node_id: NodeId,
+    span: Span,
 }
 
 /// `Interned` is used because values of this type have "identity" and compare as unequal even if
@@ -1370,6 +1393,11 @@ pub struct Resolver<'ra, 'tcx> {
     extern_crate_map: UnordMap<LocalDefId, CrateNum> = Default::default(),
     module_children: LocalDefIdMap<Vec<ModChild>> = Default::default(),
     ambig_module_children: LocalDefIdMap<Vec<AmbigModChild>> = Default::default(),
+    /// Current-crate redirects indexed by the item carrying the attribute.
+    /// Their targets are resolved lazily while producing the item's `ModChild`s,
+    /// after ordinary imports have reached a fixed point.
+    local_edition_redirects: FxHashMap<LocalDefId, Vec<LocalEditionRedirect<'ra>>> =
+        default::fx_hash_map(),
 
     /// A map from nodes to anonymous modules.
     /// Anonymous modules are pseudo-modules that are implicitly created around items
@@ -1580,6 +1608,7 @@ impl<'ra> ResolverArenas<'ra> {
             span,
             expansion,
             parent_module,
+            edition_redirects: &[],
         })
     }
 
@@ -1590,6 +1619,12 @@ impl<'ra> ResolverArenas<'ra> {
     fn alloc_decl(&'ra self, data: DeclData<'ra>) -> Decl<'ra> {
         // SAFETY: `Interned` is valid because values of this type have "identity".
         Interned::new_unchecked(self.dropless.alloc(data))
+    }
+    fn alloc_edition_redirects(
+        &'ra self,
+        redirects: &[EditionRedirectDecl<'ra>],
+    ) -> &'ra [EditionRedirectDecl<'ra>] {
+        if redirects.is_empty() { &[] } else { self.dropless.alloc_slice(redirects) }
     }
     fn alloc_import(&'ra self, import: ImportData<'ra>) -> Import<'ra> {
         // SAFETY: `Interned` is valid because values of this type have "identity".
@@ -2032,6 +2067,28 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         f(self, TypeNS);
         f(self, ValueNS);
         f(self, MacroNS);
+    }
+
+    fn edition_adjusted_decl(&self, decl: Decl<'ra>, edition: Edition) -> Decl<'ra> {
+        // Crates with `edition_redirect` resolve canonical bindings so
+        // redirects can be preserved through their re-exports. Other crates
+        // select using the use-site edition.
+        if self.features.edition_redirect() {
+            return decl;
+        }
+
+        // Glob selection has already determined that this name has multiple
+        // distinct candidates. Applying only the representative declaration's
+        // redirect would discard the ambiguity and make the result depend on
+        // which glob happened to be retained.
+        if decl.is_ambiguity_recursive() {
+            return decl;
+        }
+
+        decl.edition_redirects
+            .iter()
+            .find(|redirect| edition < redirect.before)
+            .map_or(decl, |redirect| redirect.target)
     }
 
     fn is_builtin_macro(&self, res: Res) -> bool {

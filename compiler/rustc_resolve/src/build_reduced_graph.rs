@@ -29,6 +29,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::{CRATE_MOD_ID, ModId};
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind};
 use rustc_span::{Ident, Span, Symbol, kw, sym};
+use smallvec::SmallVec;
 use thin_vec::ThinVec;
 use tracing::debug;
 
@@ -40,9 +41,9 @@ use crate::macros::{MacroRulesDecl, MacroRulesScope, MacroRulesScopeRef};
 use crate::ref_mut::CmCell;
 use crate::{
     BindingKey, Decl, DeclData, DeclKind, DelayedVisResolutionError, ExternModule,
-    ExternPreludeEntry, Finalize, IdentKey, LocalModule, Module, ModuleKind, ModuleOrUniformRoot,
-    ParentScope, PathResult, Res, ResolutionTable, Resolver, Segment, Used, VisResolutionError,
-    diagnostics,
+    ExternPreludeEntry, Finalize, IdentKey, LocalEditionRedirect, LocalModule, Module, ModuleKind,
+    ModuleOrUniformRoot, ParentScope, PathResult, Res, ResolutionTable, Resolver, Segment, Used,
+    VisResolutionError, diagnostics,
 };
 
 impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
@@ -381,13 +382,15 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     .unwrap_or_else(|| res.def_id()),
             )
         };
-        let ModChild { ident: orig_ident, res, vis, ref reexport_chain } = *child;
+        let ModChild { ident: orig_ident, res, vis, ref reexport_chain, ref edition_redirects } =
+            *child;
         let ident = IdentKey::new(orig_ident);
         let span = child_span(self, reexport_chain, res);
         let res = res.expect_non_local();
         let expansion = LocalExpnId::ROOT;
         let ambig = ambig_child.map(|ambig_child| {
-            let ModChild { ident: _, res, vis, ref reexport_chain } = *ambig_child;
+            let ModChild { ident: _, res, vis, ref reexport_chain, edition_redirects: _ } =
+                *ambig_child;
             let span = child_span(self, reexport_chain, res);
             let res = res.expect_non_local();
             // External ambiguities always report the `AMBIGUOUS_GLOB_IMPORTS` lint at the moment.
@@ -397,6 +400,27 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // Record primary definitions.
         let mut define_extern = |ns| {
             let orig_ident_span = orig_ident.span;
+            let edition_redirects = edition_redirects
+                .iter()
+                .map(|redirect| crate::EditionRedirectDecl {
+                    before: redirect.before,
+                    // Model this as a one-step reexport under the original
+                    // child's name: the target supplies the resolution, while
+                    // the child supplies its visibility and provenance.
+                    target: self.arenas.alloc_decl(DeclData {
+                        kind: DeclKind::Def(redirect.target.expect_non_local()),
+                        ambiguity: CmCell::new(None),
+                        initial_vis: vis,
+                        ambiguity_vis_max: CmCell::new(None),
+                        ambiguity_vis_min: CmCell::new(None),
+                        span,
+                        expansion,
+                        parent_module: Some(parent.to_module()),
+                        edition_redirects: &[],
+                    }),
+                })
+                .collect::<SmallVec<[_; 1]>>();
+            let edition_redirects = self.arenas.alloc_edition_redirects(&edition_redirects);
             let decl = self.arenas.alloc_decl(DeclData {
                 kind: DeclKind::Def(res),
                 ambiguity: CmCell::new(ambig),
@@ -406,6 +430,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 span,
                 expansion,
                 parent_module: Some(parent.to_module()),
+                edition_redirects,
             });
             let resolution = self.arenas.alloc_name_resolution(NameResolution {
                 non_glob_decl: Some(decl),
@@ -1406,6 +1431,51 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
 
 impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
     pub(crate) fn brg_visit_item(&mut self, item: &'a Item, feed: TyCtxtFeed<'tcx, LocalDefId>) {
+        // The resolver runs before these attributes are available through HIR.
+        // Parse and retain them here, but leave their target paths unresolved
+        // until ordinary imports have settled.
+        if ast::attr::contains_name(&item.attrs, sym::rustc_edition_redirect)
+            && let Some(Attribute::Parsed(AttributeKind::RustcEditionRedirect(mut redirects))) =
+                AttributeParser::parse_limited_sym(
+                    self.r.tcx.sess,
+                    &item.attrs,
+                    &[sym::rustc_edition_redirect],
+                )
+        {
+            redirects.sort_by_key(|redirect| redirect.before);
+            let mut edition_redirects: Vec<LocalEditionRedirect<'ra>> = Vec::new();
+            for redirect in redirects {
+                if edition_redirects
+                    .last()
+                    .is_some_and(|existing| existing.before == redirect.before)
+                {
+                    self.r.dcx().span_err(
+                        redirect.span,
+                        format!("multiple edition redirects before edition {}", redirect.before),
+                    );
+                    continue;
+                }
+
+                edition_redirects.push(LocalEditionRedirect {
+                    before: redirect.before,
+                    // Attribute path segments have dummy node IDs and are not lowered as paths, so
+                    // resolution must not try to record per-segment results for them.
+                    target: Segment::from_path(&redirect.target)
+                        .into_iter()
+                        .map(|mut segment| {
+                            segment.id = None;
+                            segment
+                        })
+                        .collect(),
+                    // Attribute paths use the lexical and hygiene context of the marked item.
+                    parent_scope: self.parent_scope,
+                    node_id: item.id,
+                    span: redirect.span,
+                });
+            }
+            self.r.local_edition_redirects.insert(feed.key(), edition_redirects);
+        }
+
         let orig_module_scope = self.parent_scope.module;
         self.parent_scope.macro_rules = match item.kind {
             ItemKind::MacroDef(..) => {

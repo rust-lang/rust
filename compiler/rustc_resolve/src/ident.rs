@@ -713,7 +713,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
             }
             Scope::MacroUsePrelude => match self.macro_use_prelude.get(&ident.name).cloned() {
-                Some(decl) => Ok(decl),
+                Some(decl) => Ok(self.edition_adjusted_decl(decl, orig_ident_span.edition())),
                 None => {
                     Err(Determinacy::determined(!self.graph_root.has_unexpanded_invocations(&self)))
                 }
@@ -1112,7 +1112,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let resolution =
             &*self.resolution(module.to_module(), key).ok_or(ControlFlow::Continue(Determined))?;
 
-        let binding = resolution.non_glob_decl.filter(|b| Some(*b) != ignore_decl);
+        let binding = resolution
+            .non_glob_decl
+            .filter(|b| Some(*b) != ignore_decl)
+            .map(|binding| self.edition_adjusted_decl(binding, orig_ident_span.edition()));
 
         if let Some(finalize) = finalize {
             return self.get_mut().finalize_module_binding(

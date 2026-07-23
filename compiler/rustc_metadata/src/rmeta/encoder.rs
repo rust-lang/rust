@@ -1740,11 +1740,13 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             let module_children = tcx.module_children_local(local_def_id);
 
             record_array!(self.tables.module_children_non_reexports[def_id] <-
-                module_children.iter().filter(|child| child.reexport_chain.is_empty())
+                module_children.iter().filter(|child| child.reexport_chain.is_empty()
+                    && child.edition_redirects.is_empty())
                     .map(|child| child.res.def_id().index));
 
             record_defaulted_array!(self.tables.module_children_reexports[def_id] <-
-                module_children.iter().filter(|child| !child.reexport_chain.is_empty()));
+                module_children.iter().filter(|child| !child.reexport_chain.is_empty()
+                    || !child.edition_redirects.is_empty()));
 
             let ambig_module_children = tcx
                 .resolutions(())
