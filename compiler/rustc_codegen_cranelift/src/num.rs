@@ -218,7 +218,7 @@ pub(crate) fn codegen_checked_int_binop<'tcx>(
             let has_overflow = if !signed {
                 fx.bcx.ins().icmp(IntCC::UnsignedLessThan, val, lhs)
             } else {
-                let rhs_is_negative = fx.bcx.ins().icmp_imm(IntCC::SignedLessThan, rhs, 0);
+                let rhs_is_negative = fx.bcx.ins().icmp_imm_s(IntCC::SignedLessThan, rhs, 0);
                 let slt = fx.bcx.ins().icmp(IntCC::SignedLessThan, val, lhs);
                 fx.bcx.ins().bxor(rhs_is_negative, slt)
             };
@@ -232,7 +232,7 @@ pub(crate) fn codegen_checked_int_binop<'tcx>(
             let has_overflow = if !signed {
                 fx.bcx.ins().icmp(IntCC::UnsignedGreaterThan, val, lhs)
             } else {
-                let rhs_is_negative = fx.bcx.ins().icmp_imm(IntCC::SignedLessThan, rhs, 0);
+                let rhs_is_negative = fx.bcx.ins().icmp_imm_s(IntCC::SignedLessThan, rhs, 0);
                 let sgt = fx.bcx.ins().icmp(IntCC::SignedGreaterThan, val, lhs);
                 fx.bcx.ins().bxor(rhs_is_negative, sgt)
             };
@@ -249,7 +249,7 @@ pub(crate) fn codegen_checked_int_binop<'tcx>(
                     let lhs = fx.bcx.ins().uextend(ty.double_width().unwrap(), lhs);
                     let rhs = fx.bcx.ins().uextend(ty.double_width().unwrap(), rhs);
                     let val = fx.bcx.ins().imul(lhs, rhs);
-                    let has_overflow = fx.bcx.ins().icmp_imm(
+                    let has_overflow = fx.bcx.ins().icmp_imm_u(
                         IntCC::UnsignedGreaterThan,
                         val,
                         (1 << ty.bits()) - 1,
@@ -261,9 +261,12 @@ pub(crate) fn codegen_checked_int_binop<'tcx>(
                     let lhs = fx.bcx.ins().sextend(ty.double_width().unwrap(), lhs);
                     let rhs = fx.bcx.ins().sextend(ty.double_width().unwrap(), rhs);
                     let val = fx.bcx.ins().imul(lhs, rhs);
-                    let has_underflow =
-                        fx.bcx.ins().icmp_imm(IntCC::SignedLessThan, val, -(1 << (ty.bits() - 1)));
-                    let has_overflow = fx.bcx.ins().icmp_imm(
+                    let has_underflow = fx.bcx.ins().icmp_imm_s(
+                        IntCC::SignedLessThan,
+                        val,
+                        -(1 << (ty.bits() - 1)),
+                    );
+                    let has_overflow = fx.bcx.ins().icmp_imm_s(
                         IntCC::SignedGreaterThan,
                         val,
                         (1 << (ty.bits() - 1)) - 1,
@@ -275,7 +278,7 @@ pub(crate) fn codegen_checked_int_binop<'tcx>(
                     let val = fx.bcx.ins().imul(lhs, rhs);
                     let has_overflow = if !signed {
                         let val_hi = fx.bcx.ins().umulhi(lhs, rhs);
-                        fx.bcx.ins().icmp_imm(IntCC::NotEqual, val_hi, 0)
+                        fx.bcx.ins().icmp_imm_u(IntCC::NotEqual, val_hi, 0)
                     } else {
                         // Based on LLVM's instruction sequence for compiling
                         // a.checked_mul(b).is_some() to riscv64gc:
@@ -285,9 +288,9 @@ pub(crate) fn codegen_checked_int_binop<'tcx>(
                         // xor     a0, a0, a2
                         // snez    a0, a0
                         let val_hi = fx.bcx.ins().smulhi(lhs, rhs);
-                        let val_sign = fx.bcx.ins().sshr_imm(val, i64::from(ty.bits() - 1));
+                        let val_sign = fx.bcx.ins().sshr_imm_u(val, i64::from(ty.bits() - 1));
                         let xor = fx.bcx.ins().bxor(val_hi, val_sign);
-                        fx.bcx.ins().icmp_imm(IntCC::NotEqual, xor, 0)
+                        fx.bcx.ins().icmp_imm_u(IntCC::NotEqual, xor, 0)
                     };
                     (val, has_overflow)
                 }
@@ -324,13 +327,13 @@ pub(crate) fn codegen_saturating_int_binop<'tcx>(
         (BinOp::Sub, false) => fx.bcx.ins().select(has_overflow, min, val),
         (BinOp::Add, true) => {
             let rhs = rhs.load_scalar(fx);
-            let rhs_ge_zero = fx.bcx.ins().icmp_imm(IntCC::SignedGreaterThanOrEqual, rhs, 0);
+            let rhs_ge_zero = fx.bcx.ins().icmp_imm_s(IntCC::SignedGreaterThanOrEqual, rhs, 0);
             let sat_val = fx.bcx.ins().select(rhs_ge_zero, max, min);
             fx.bcx.ins().select(has_overflow, sat_val, val)
         }
         (BinOp::Sub, true) => {
             let rhs = rhs.load_scalar(fx);
-            let rhs_ge_zero = fx.bcx.ins().icmp_imm(IntCC::SignedGreaterThanOrEqual, rhs, 0);
+            let rhs_ge_zero = fx.bcx.ins().icmp_imm_s(IntCC::SignedGreaterThanOrEqual, rhs, 0);
             let sat_val = fx.bcx.ins().select(rhs_ge_zero, min, max);
             fx.bcx.ins().select(has_overflow, sat_val, val)
         }
@@ -449,7 +452,7 @@ fn codegen_ptr_binop<'tcx>(
                 let pointee_ty = in_lhs.layout().ty.builtin_deref(true).unwrap();
                 let (base, offset) = (in_lhs, in_rhs.load_scalar(fx));
                 let pointee_size = fx.layout_of(pointee_ty).size.bytes();
-                let ptr_diff = fx.bcx.ins().imul_imm(offset, pointee_size as i64);
+                let ptr_diff = fx.bcx.ins().imul_imm_u(offset, pointee_size as i64);
                 let base_val = base.load_scalar(fx);
                 let res = fx.bcx.ins().iadd(base_val, ptr_diff);
                 CValue::by_val(res, base.layout())

@@ -130,6 +130,7 @@ pub struct HirFormatter<'a, 'db> {
     pub entity_limit: Option<usize>,
     /// When rendering functions, whether to show the constraint from the container
     show_container_bounds: bool,
+    render_private_fields: bool,
     omit_verbose_types: bool,
     closure_style: ClosureStyle,
     display_lifetimes: DisplayLifetime,
@@ -263,6 +264,7 @@ pub trait HirDisplay<'db> {
             display_kind,
             closure_style,
             show_container_bounds,
+            render_private_fields: true,
             display_lifetimes: DisplayLifetime::OnlyNamedOrStatic,
         }
     }
@@ -287,6 +289,7 @@ pub trait HirDisplay<'db> {
             display_target,
             display_kind: DisplayKind::Diagnostics,
             show_container_bounds: false,
+            render_private_fields: true,
             display_lifetimes: DisplayLifetime::OnlyNamedOrStatic,
         }
     }
@@ -312,6 +315,7 @@ pub trait HirDisplay<'db> {
             display_target,
             display_kind: DisplayKind::Diagnostics,
             show_container_bounds: false,
+            render_private_fields: true,
             display_lifetimes: DisplayLifetime::OnlyNamedOrStatic,
         }
     }
@@ -337,6 +341,7 @@ pub trait HirDisplay<'db> {
             display_target,
             display_kind: DisplayKind::Diagnostics,
             show_container_bounds: false,
+            render_private_fields: true,
             display_lifetimes: DisplayLifetime::OnlyNamedOrStatic,
         }
     }
@@ -364,6 +369,7 @@ pub trait HirDisplay<'db> {
             display_target: DisplayTarget::from_crate(db, module_id.krate(db)),
             display_kind: DisplayKind::SourceCode { target_module_id: module_id, allow_opaque },
             show_container_bounds: false,
+            render_private_fields: true,
             display_lifetimes: DisplayLifetime::OnlyNamedOrStatic,
             currently_formatting_bounds: Default::default(),
             trait_bounds_need_parens: false,
@@ -394,6 +400,7 @@ pub trait HirDisplay<'db> {
             display_target,
             display_kind: DisplayKind::Test,
             show_container_bounds: false,
+            render_private_fields: true,
             display_lifetimes: DisplayLifetime::Always,
         }
     }
@@ -419,6 +426,7 @@ pub trait HirDisplay<'db> {
             display_target,
             display_kind: DisplayKind::Diagnostics,
             show_container_bounds,
+            render_private_fields: true,
             display_lifetimes: DisplayLifetime::OnlyNamedOrStatic,
         }
     }
@@ -495,6 +503,10 @@ impl<'db> HirFormatter<'_, 'db> {
     pub fn show_container_bounds(&self) -> bool {
         self.show_container_bounds
     }
+
+    pub fn render_private_fields(&self) -> bool {
+        self.render_private_fields
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -566,6 +578,7 @@ pub struct HirDisplayWrapper<'a, 'db, T> {
     display_kind: DisplayKind,
     display_target: DisplayTarget,
     show_container_bounds: bool,
+    render_private_fields: bool,
     display_lifetimes: DisplayLifetime,
 }
 
@@ -601,6 +614,7 @@ impl<'db, T: HirDisplay<'db>> HirDisplayWrapper<'_, 'db, T> {
             display_target: self.display_target,
             closure_style: self.closure_style,
             show_container_bounds: self.show_container_bounds,
+            render_private_fields: self.render_private_fields,
             display_lifetimes: self.display_lifetimes,
             currently_formatting_bounds: Default::default(),
             trait_bounds_need_parens: false,
@@ -614,6 +628,11 @@ impl<'db, T: HirDisplay<'db>> HirDisplayWrapper<'_, 'db, T> {
 
     pub fn with_lifetime_display(mut self, l: DisplayLifetime) -> Self {
         self.display_lifetimes = l;
+        self
+    }
+
+    pub fn with_private_fields(mut self, render: bool) -> Self {
+        self.render_private_fields = render;
         self
     }
 }
@@ -2304,10 +2323,10 @@ impl<'db> HirDisplay<'db> for Region<'db> {
                 Ok(())
             }
             RegionKind::ReBound(BoundVarIndexKind::Bound(db), idx) => {
-                write!(f, "?{}.{}", db.as_u32(), idx.var.as_u32())
+                write!(f, "'?{}.{}", db.as_u32(), idx.var.as_u32())
             }
             RegionKind::ReBound(BoundVarIndexKind::Canonical, idx) => {
-                write!(f, "?c.{}", idx.var.as_u32())
+                write!(f, "'?c.{}", idx.var.as_u32())
             }
             RegionKind::ReVar(_) => write!(f, "_"),
             RegionKind::ReStatic => write!(f, "'static"),
@@ -2319,8 +2338,8 @@ impl<'db> HirDisplay<'db> for Region<'db> {
                 }
             }
             RegionKind::ReErased => write!(f, "'<erased>"),
-            RegionKind::RePlaceholder(_) => write!(f, "<placeholder>"),
-            RegionKind::ReLateParam(_) => write!(f, "<late-param>"),
+            RegionKind::RePlaceholder(_) => write!(f, "'<placeholder>"),
+            RegionKind::ReLateParam(_) => write!(f, "'_"),
         }
     }
 }

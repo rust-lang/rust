@@ -361,15 +361,16 @@ fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> Box<ast::Item> {
         cx.attr_nested_word(sym::allow, sym::deprecated, span),
     ]);
 
-    let block = ast::ConstItemRhsKind::new_body(cx.expr_block(
+    let block = cx.expr_block(
         cx.block(span, thin_vec![cx.stmt_item(span, krate), cx.stmt_item(span, decls_static)]),
-    ));
+    );
 
     let anon_constant = cx.item_const(
         span,
         Ident::new(kw::Underscore, span),
         cx.ty(span, ast::TyKind::Tup(ThinVec::new())),
-        block,
+        Some(block),
+        ast::ConstItemKind::Body,
     );
 
     // Integrate the new item into existing module structures.

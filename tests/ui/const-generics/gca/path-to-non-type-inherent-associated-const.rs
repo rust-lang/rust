@@ -2,9 +2,12 @@
 //! off on implementing paths to IACs until a refactoring of how IAC generics are represented.
 //@ compile-flags: -Znext-solver
 
-#![feature(min_generic_const_args)]
-#![feature(generic_const_args)]
-#![feature(inherent_associated_types)]
+#![feature(
+    inherent_associated_types,
+    min_generic_const_args,
+    generic_const_args,
+    macroless_generic_const_args
+)]
 #![expect(incomplete_features)]
 
 struct StructImpl;

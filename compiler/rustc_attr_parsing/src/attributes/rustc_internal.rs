@@ -582,7 +582,7 @@ impl SingleAttributeParser for LangParser {
         // Only weak lang items may be applied to foreign items
         if [Target::ForeignFn, Target::ForeignStatic, Target::ForeignTy, Target::ForeignMod]
             .contains(&cx.target)
-            && !(lang_item.is_weak() || lang_item.is_weak_only())
+            && !lang_item.is_weak()
         {
             cx.emit_err(UnknownExternLangItem { span: cx.attr_span, lang_item: lang_item.name() });
             return None;
@@ -1144,4 +1144,19 @@ impl NoArgsAttributeParser for RustcExhaustiveParser {
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Enum)]);
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::RustcMustMatchExhaustively;
+}
+
+pub(crate) struct RustcCanonicalSymbolParser;
+
+impl NoArgsAttributeParser for RustcCanonicalSymbolParser {
+    const PATH: &[Symbol] = &[sym::rustc_canonical_symbol];
+    const ALLOWED_TARGETS: AllowedTargets<'_> =
+        AllowedTargets::AllowList(&[Allow(Target::ForeignFn)]);
+    const STABILITY: AttributeStability = unstable!(
+        rustc_attrs,
+        "the `#[rustc_canonical_symbol]` attribute registers a function's symbol to be linted against \
+        by the `invalid_runtime_symbol_definitions` and `suspicious_runtime_symbol_definitions` \
+        lints"
+    );
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcCanonicalSymbol;
 }

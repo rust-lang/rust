@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/non-type-equality-fail.rs:32:9
+  --> $DIR/non-type-equality-fail.rs:31:9
    |
 LL |     let _: Struct<{ <GenericStructImpl<N> as Trait>::PROJECTED_A }> =
    |            -------------------------------------------------------- expected due to this
@@ -10,7 +10,7 @@ LL |         Struct::<{ <GenericStructImpl<N> as Trait>::PROJECTED_B }>;
               found struct `Struct<<GenericStructImpl<N> as Trait>::PROJECTED_B>`
 
 error[E0308]: mismatched types
-  --> $DIR/non-type-equality-fail.rs:37:41
+  --> $DIR/non-type-equality-fail.rs:36:41
    |
 LL |     let _: Struct<{ T::PROJECTED_A }> = Struct::<{ T::PROJECTED_B }>;
    |            --------------------------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `<T as Trait>::PROJECTED_A`, found `<T as Trait>::PROJECTED_B`

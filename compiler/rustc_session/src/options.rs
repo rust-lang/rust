@@ -13,6 +13,7 @@ use rustc_feature::UnstableFeatures;
 use rustc_hashes::Hash64;
 use rustc_hir::attrs::CollapseMacroDebuginfo;
 use rustc_macros::{BlobDecodable, Encodable};
+use rustc_span::edit_distance::edit_distance;
 use rustc_span::edition::Edition;
 use rustc_span::{RealFileName, RemapPathScopeComponents, SourceFileHashAlgorithm};
 use rustc_target::spec::{
@@ -777,7 +778,27 @@ fn build_options<O: Default>(
                     collected_options.mitigations.reset_mitigation(*mitigation, index);
                 }
             }
-            None => early_dcx.early_fatal(format!("unknown {outputname} option: `{key}`")),
+            None => {
+                let mut error =
+                    early_dcx.early_struct_fatal(format!("unknown {outputname} option: `{key}`"));
+                let max_dist = option_to_lookup.chars().count().max(3) / 3;
+                if let Some(option) = descrs
+                    .iter()
+                    .filter(|option| option.removed.is_none())
+                    .filter_map(|option| {
+                        edit_distance(&option_to_lookup, option.name, max_dist)
+                            .map(|dist| (dist, option))
+                    })
+                    .min_by_key(|(dist, _)| *dist)
+                    .map(|(_, option)| option)
+                {
+                    let name = option.name.replace('_', "-");
+                    let value =
+                        if option.type_desc == desc::parse_no_value { "" } else { "=<value>" };
+                    error.help(format!("you might have meant to use `-{prefix} {name}{value}`"));
+                }
+                error.emit()
+            }
         }
     }
     op

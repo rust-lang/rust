@@ -1,12 +1,12 @@
 //! Errors emitted by `rustc_hir_analysis`.
 
 use rustc_abi::ExternAbi;
+use rustc_data_structures::Limit;
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, DiagSymbolList, Diagnostic, EmissionGuarantee, Level,
     MultiSpan, listify, msg,
 };
-use rustc_hir::limit::Limit;
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::{self, Ty};
 use rustc_span::{Ident, Span, Symbol};

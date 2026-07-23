@@ -24,6 +24,7 @@ pub mod error;
 pub mod fast_reject;
 #[cfg_attr(feature = "nightly", rustc_diagnostic_item = "type_ir_inherent")]
 pub mod inherent;
+pub mod intern;
 pub mod ir_print;
 pub mod lang_items;
 pub mod lift;
@@ -32,6 +33,7 @@ pub mod region_constraint;
 pub mod relate;
 pub mod search_graph;
 pub mod solve;
+pub mod sty;
 pub mod walk;
 
 // These modules are not `pub` since they are glob-imported.
@@ -52,6 +54,8 @@ mod pattern;
 mod predicate;
 mod predicate_kind;
 mod region_kind;
+#[cfg(feature = "nightly")]
+mod serialize;
 mod term_kind;
 mod ty;
 mod ty_info;
@@ -83,6 +87,9 @@ pub use predicate_kind::*;
 pub use region_kind::*;
 pub use rustc_ast_ir::{FloatTy, IntTy, Movability, Mutability, Pinnedness, UintTy};
 use rustc_type_ir_macros::GenericTypeVisitable;
+#[cfg(feature = "nightly")]
+pub use serialize::*;
+pub use sty::*;
 pub use term_kind::*;
 pub use ty::{Alias, *};
 pub use ty_info::*;

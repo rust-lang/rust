@@ -7,59 +7,16 @@
 //@ [arm64ec] needs-llvm-components: aarch64
 //@ compile-flags: -Zmerge-functions=disabled
 
-#![feature(no_core, repr_simd, f16, f128)]
+#![feature(no_core, f16, f128)]
 #![crate_type = "rlib"]
 #![no_core]
 #![allow(asm_sub_register, non_camel_case_types)]
 
 extern crate minicore;
+use minicore::simd::*;
 use minicore::*;
 
 type ptr = *mut u8;
-
-#[repr(simd)]
-pub struct i8x8([i8; 8]);
-#[repr(simd)]
-pub struct i16x4([i16; 4]);
-#[repr(simd)]
-pub struct i32x2([i32; 2]);
-#[repr(simd)]
-pub struct i64x1([i64; 1]);
-#[repr(simd)]
-pub struct f16x4([f16; 4]);
-#[repr(simd)]
-pub struct f32x2([f32; 2]);
-#[repr(simd)]
-pub struct f64x1([f64; 1]);
-#[repr(simd)]
-pub struct i8x16([i8; 16]);
-#[repr(simd)]
-pub struct i16x8([i16; 8]);
-#[repr(simd)]
-pub struct i32x4([i32; 4]);
-#[repr(simd)]
-pub struct i64x2([i64; 2]);
-#[repr(simd)]
-pub struct f16x8([f16; 8]);
-#[repr(simd)]
-pub struct f32x4([f32; 4]);
-#[repr(simd)]
-pub struct f64x2([f64; 2]);
-
-impl Copy for i8x8 {}
-impl Copy for i16x4 {}
-impl Copy for i32x2 {}
-impl Copy for i64x1 {}
-impl Copy for f16x4 {}
-impl Copy for f32x2 {}
-impl Copy for f64x1 {}
-impl Copy for i8x16 {}
-impl Copy for i16x8 {}
-impl Copy for i32x4 {}
-impl Copy for i64x2 {}
-impl Copy for f16x8 {}
-impl Copy for f32x4 {}
-impl Copy for f64x2 {}
 
 extern "C" {
     fn extern_func();

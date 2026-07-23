@@ -1,11 +1,16 @@
-#![feature(adt_const_params, min_generic_const_args, unsized_const_params)]
+#![feature(
+    adt_const_params,
+    min_generic_const_args,
+    macroless_generic_const_args,
+    unsized_const_params
+)]
 #![expect(incomplete_features)]
 
 use std::marker::ConstParamTy;
 
 #[derive(Eq, PartialEq, ConstParamTy)]
 struct Foo {
-    field: isize
+    field: isize,
 }
 
 fn foo<const F: Foo>() {}

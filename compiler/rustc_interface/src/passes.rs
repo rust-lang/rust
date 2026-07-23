@@ -14,7 +14,7 @@ use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::{
     AppendOnlyIndexVec, DynSend, DynSync, FreezeLock, WorkerLocal, par_fns,
 };
-use rustc_data_structures::thousands;
+use rustc_data_structures::{Limit, thousands};
 use rustc_errors::timings::TimingSection;
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level};
 use rustc_expand::base::{ExtCtxt, LintStoreExpand};
@@ -23,7 +23,6 @@ use rustc_fs_util::try_canonicalize;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::def_id::{LOCAL_CRATE, StableCrateId, StableCrateIdMap};
 use rustc_hir::definitions::Definitions;
-use rustc_hir::limit::Limit;
 use rustc_hir::{Attribute, Target, find_attr};
 use rustc_incremental::setup_dep_graph;
 use rustc_lint::{BufferedEarlyLint, EarlyCheckNode, LintStore, unerased_lint_store};
@@ -1244,6 +1243,11 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) {
         // diagnostic item. If the crate compiles without checking any diagnostic items,
         // we will fail to emit overlap diagnostics. Thus we invoke it here unconditionally.
         let _ = tcx.all_diagnostic_items(());
+
+        // This query is only invoked normally if a diagnostic is emitted that needs any
+        // canonical symbol. If the crate compiles without checking any runtime symbols,
+        // we will fail to emit overlap diagnostics. Thus we invoke it here unconditionally.
+        let _ = tcx.all_canonical_symbols(());
     });
 
     // If `-Zvalidate-mir` is set, we also want to compute the final MIR for each item

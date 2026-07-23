@@ -19,6 +19,7 @@ use crate::{
     traits::StoredParamEnvAndCrate,
 };
 
+#[salsa::tracked(cycle_result = layout_of_adt_cycle_result)]
 pub fn layout_of_adt_query(
     db: &dyn HirDatabase,
     def: AdtId,
@@ -96,7 +97,7 @@ pub fn layout_of_adt_query(
     Ok(Arc::new(result))
 }
 
-pub(crate) fn layout_of_adt_cycle_result(
+fn layout_of_adt_cycle_result(
     _: &dyn HirDatabase,
     _: salsa::Id,
     _def: AdtId,

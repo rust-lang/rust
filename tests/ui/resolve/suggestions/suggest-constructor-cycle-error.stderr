@@ -1,9 +1,10 @@
 error[E0423]: cannot initialize a tuple struct which contains private fields
-  --> $DIR/suggest-constructor-cycle-error.rs:7:29
+  --> $DIR/suggest-constructor-cycle-error.rs:7:32
    |
 LL | const CONST_NAME: a::Uuid = a::Uuid(());
-   |                             ^^^^^^^
+   |                                ^^^^
    |
+   = note: a struct named `a::Uuid` exists in another namespace
 note: constructor is not visible here due to private fields
   --> $DIR/auxiliary/suggest-constructor-cycle-error.rs:2:21
    |

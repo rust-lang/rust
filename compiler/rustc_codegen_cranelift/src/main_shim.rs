@@ -156,7 +156,7 @@ pub(crate) fn maybe_create_entry_wrapper(
 
             bcx.ins().return_(&[result]);
             bcx.seal_all_blocks();
-            bcx.finalize();
+            bcx.finalize(m.target_config());
         }
 
         if let Err(err) = m.define_function(cmain_func_id, &mut ctx) {

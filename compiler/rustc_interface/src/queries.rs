@@ -99,7 +99,9 @@ impl Linker {
             work_products.insert(id, product);
         }
 
-        sess.dcx().abort_if_errors();
+        if let Some(guar) = sess.dcx().has_errors_or_delayed_bugs() {
+            guar.raise_fatal();
+        }
 
         let _timer = sess.timer("link");
 

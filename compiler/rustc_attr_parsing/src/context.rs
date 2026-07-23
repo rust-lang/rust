@@ -12,8 +12,8 @@ use rustc_ast::{AttrStyle, MetaItemLit, Safety};
 use rustc_data_structures::sync::{DynSend, DynSync};
 use rustc_errors::{Diag, DiagCtxtHandle, Diagnostic, Level, MultiSpan};
 use rustc_feature::AttributeStability;
-use rustc_hir::AttrPath;
 use rustc_hir::attrs::AttributeKind;
+use rustc_hir::{AttrPath, Attribute};
 use rustc_parse::parser::Recovery;
 use rustc_session::Session;
 use rustc_session::lint::{Lint, LintId};
@@ -94,7 +94,24 @@ pub(super) struct GroupTypeInnerAccept {
 
 pub(crate) type AcceptFn =
     Box<dyn for<'sess> Fn(&mut AcceptContext<'_, 'sess>, &ArgParser) + Send + Sync>;
-pub(crate) type FinalizeFn = fn(&mut FinalizeContext<'_, '_>) -> Option<AttributeKind>;
+
+pub(crate) type FinalizeFn = fn(&mut FinalizeContext<'_, '_>) -> FinalizeOutput;
+
+/// A cross-attribute check that runs *after* all attributes on an item have been
+/// finalized, so it can inspect the fully parsed attributes via
+/// [`FinalizeCheckContext::parsed_attrs`]. The [`Span`] is the span of the attribute the
+/// check is associated with, used for diagnostics.
+pub(crate) type FinalizeCheckFn = fn(&FinalizeCheckContext<'_, '_>, Span);
+
+/// The result of finalizing a single attribute parser.
+pub(crate) struct FinalizeOutput {
+    /// The attribute the parser produced, if any.
+    pub(crate) attr: Option<AttributeKind>,
+    /// A check to run once *all* attributes on the item have been finalized, together
+    /// with the span it should be reported at. Deferred so that it can inspect the fully
+    /// parsed attributes via [`FinalizeCheckContext::parsed_attrs`].
+    pub(crate) deferred_check: Option<(FinalizeCheckFn, Span)>,
+}
 
 macro_rules! attribute_parsers {
     (
@@ -123,7 +140,11 @@ macro_rules! attribute_parsers {
                                     allowed_targets: <$names as crate::attributes::AttributeParser>::ALLOWED_TARGETS,
                                     finalizer: |cx| {
                                         let state = STATE_OBJECT.take();
-                                        state.finalize(cx)
+                                        // Compute the deferred check (if any) before consuming
+                                        // the state in `finalize`.
+                                        let deferred_check = state.deferred_finalize_check();
+                                        let attr = state.finalize(cx);
+                                        FinalizeOutput { attr, deferred_check }
                                     }
                                 });
                             }
@@ -275,6 +296,7 @@ attribute_parsers!(
         Single<WithoutArgs<RustcAllocatorZeroedParser>>,
         Single<WithoutArgs<RustcAllowIncoherentImplParser>>,
         Single<WithoutArgs<RustcAsPtrParser>>,
+        Single<WithoutArgs<RustcCanonicalSymbolParser>>,
         Single<WithoutArgs<RustcCaptureAnalysisParser>>,
         Single<WithoutArgs<RustcCoherenceIsCoreParser>>,
         Single<WithoutArgs<RustcCoinductiveParser>>,
@@ -787,6 +809,42 @@ impl<'p, 'sess: 'p> Deref for FinalizeContext<'p, 'sess> {
 }
 
 impl<'p, 'sess: 'p> DerefMut for FinalizeContext<'p, 'sess> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.shared
+    }
+}
+
+/// Context given to deferred cross-attribute checks (`finalize_check`).
+///
+/// These checks run *after* every attribute on an item has been finalized, so unlike
+/// [`FinalizeContext`] this context can also inspect the fully parsed attributes via
+/// [`parsed_attrs`](Self::parsed_attrs).
+pub(crate) struct FinalizeCheckContext<'p, 'sess> {
+    pub(crate) shared: SharedContext<'p, 'sess>,
+
+    /// A list of all attribute on this syntax node.
+    ///
+    /// Useful for compatibility checks with other attributes.
+    ///
+    /// Unlike [`parsed_attrs`](Self::parsed_attrs), this only contains the *paths* of the
+    /// attributes.
+    pub(crate) all_attrs: &'p [RefPathParser<'p>],
+
+    /// All attributes that have been parsed on this syntax node.
+    ///
+    /// Unlike [`all_attrs`](Self::all_attrs), this contains the fully parsed attributes.
+    pub(crate) parsed_attrs: &'p [Attribute],
+}
+
+impl<'p, 'sess: 'p> Deref for FinalizeCheckContext<'p, 'sess> {
+    type Target = SharedContext<'p, 'sess>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.shared
+    }
+}
+
+impl<'p, 'sess: 'p> DerefMut for FinalizeCheckContext<'p, 'sess> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.shared
     }

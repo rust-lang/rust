@@ -43,7 +43,7 @@ use crate::{
 };
 
 use super::{
-    BreakableContext, Diverges, Expectation, InferenceContext, InferenceDiagnostic,
+    BreakableContext, Diverges, Expectation, InferenceContext, InferenceDiagnostic, ReturnKind,
     cast::CastCheck, find_breakable,
 };
 
@@ -576,7 +576,7 @@ impl<'db> InferenceContext<'_, 'db> {
                 self.types.types.never
             }
             &Expr::Return { expr } => self.infer_expr_return(tgt_expr, expr),
-            &Expr::Become { expr } => self.infer_expr_become(expr),
+            &Expr::Become { expr } => self.infer_expr_become(tgt_expr, expr),
             Expr::Yield { expr } => {
                 if let Some((resume_ty, yield_ty)) = self.resume_yield_tys {
                     if let Some(expr) = expr {
@@ -1454,7 +1454,10 @@ impl<'db> InferenceContext<'_, 'db> {
                 }
             }
             None => {
-                // FIXME: diagnose return outside of function
+                self.push_diagnostic(InferenceDiagnostic::ReturnOutsideFunction {
+                    expr: ret,
+                    kind: ReturnKind::ReturnExpr,
+                });
                 if let Some(expr) = expr {
                     self.infer_expr_no_expect(expr, ExprIsRead::Yes);
                 }
@@ -1463,7 +1466,7 @@ impl<'db> InferenceContext<'_, 'db> {
         self.types.types.never
     }
 
-    fn infer_expr_become(&mut self, expr: ExprId) -> Ty<'db> {
+    fn infer_expr_become(&mut self, tgt_expr: ExprId, expr: ExprId) -> Ty<'db> {
         match &self.return_coercion {
             Some(return_coercion) => {
                 let ret_ty = return_coercion.expected_ty();
@@ -1476,7 +1479,10 @@ impl<'db> InferenceContext<'_, 'db> {
                 _ = self.demand_eqtype(expr.into(), call_expr_ty, ret_ty);
             }
             None => {
-                // FIXME: diagnose `become` outside of functions
+                self.push_diagnostic(InferenceDiagnostic::ReturnOutsideFunction {
+                    expr: tgt_expr,
+                    kind: ReturnKind::BecomeExpr,
+                });
                 self.infer_expr_no_expect(expr, ExprIsRead::Yes);
             }
         }

@@ -853,9 +853,15 @@
 # Useful for reproducible builds. Generally only set for releases
 #rust.remap-debuginfo = false
 
-# Link the compiler and LLVM against `jemalloc` instead of the default libc allocator.
+# Link the compiler and LLVM against the specified allocator instead of the default libc allocator.
 # This option is only tested on Linux and OSX. It can also be configured per-target in the
 # [target.<tuple>] section.
+# Possible options: "jemalloc"
+#rust.override-allocator = "jemalloc"
+
+# Deprecated alias for `rust.override-allocator`. Setting this to `true` is
+# equivalent to `rust.override-allocator = "jemalloc"`. If both are set, they
+# must agree.
 #rust.jemalloc = false
 
 # Run tests in various test suites with the "nll compare mode" in addition to
@@ -990,6 +996,11 @@
 # Instrument rustdoc, so that when executed, it will gather profiles
 # to this path.
 #pgo.rustdoc.generate = "/tmp/profiles/foo.profraw"
+# Use the following profile to PGO optimize cargo.
+#pgo.cargo.use = "/tmp/profiles/foo.profraw"
+# Instrument cargo, so that when executed, it will gather profiles
+# to this path.
+#pgo.cargo.generate = "/tmp/profiles/foo.profraw"
 # Use the following profile to PGO optimize LLVM.
 #pgo.llvm.use = "/tmp/profiles/foo.profraw"
 # Instrument LLVM, so that when executed, it will gather profiles
@@ -1159,8 +1170,11 @@
 # order to run `x check`.
 #optimized-compiler-builtins = build.optimized-compiler-builtins (bool or path)
 
-# Link the compiler and LLVM against `jemalloc` instead of the default libc allocator.
-# This overrides the global `rust.jemalloc` option. See that option for more info.
+# Link the compiler and LLVM against the specified allocator instead of the default libc allocator.
+# This overrides the global `rust.override-allocator` option. See that option for more info.
+#override-allocator = rust.override-allocator (string)
+
+# Deprecated alias for `override-allocator`. See `rust.jemalloc` for more info.
 #jemalloc = rust.jemalloc (bool)
 
 # The linker configuration that will *override* the default linker used for Linux

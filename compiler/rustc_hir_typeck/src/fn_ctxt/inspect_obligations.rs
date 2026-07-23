@@ -191,7 +191,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let Some(from_trait) = self.tcx.lang_items().from_trait() else {
             return UnordSet::new();
         };
-        let obligations = self.fulfillment_cx.borrow().pending_obligations();
+        let obligations = self
+            .fulfillment_cx
+            .borrow()
+            .pending_obligations_potentially_referencing_float_infer(self);
         debug!(?obligations);
         let mut vids = UnordSet::new();
         for obligation in obligations {
@@ -209,6 +212,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 }
 
+/// Using an intentionally low depth to minimize the chance of future
+/// breaking changes in case we adapt the approach later on. This also
+/// avoids any hangs for exponentially growing proof trees.
+const MAX_DEPTH_FOR_OBLIGATIONS_VISITORS: usize = 5;
+
 struct NestedObligationsForSelfTy<'a, 'tcx> {
     fcx: &'a FnCtxt<'a, 'tcx>,
     self_ty: ty::TyVid,
@@ -223,10 +231,7 @@ impl<'tcx> ProofTreeVisitor<'tcx> for NestedObligationsForSelfTy<'_, 'tcx> {
     }
 
     fn config(&self) -> InspectConfig {
-        // Using an intentionally low depth to minimize the chance of future
-        // breaking changes in case we adapt the approach later on. This also
-        // avoids any hangs for exponentially growing proof trees.
-        InspectConfig { max_depth: 5 }
+        InspectConfig { max_depth: MAX_DEPTH_FOR_OBLIGATIONS_VISITORS }
     }
 
     fn visit_goal(&mut self, inspect_goal: &InspectGoal<'_, 'tcx>) {
@@ -282,23 +287,37 @@ impl<'tcx> ProofTreeVisitor<'tcx> for FindFromFloatForF32RootVids<'_, 'tcx> {
     }
 
     fn config(&self) -> InspectConfig {
-        // Avoid hang from exponentially growing proof trees (see `cycle-modulo-ambig-aliases.rs`).
-        // 3 is more than enough for all occurrences in practice (a.k.a. `Into`).
-        InspectConfig { max_depth: 3 }
+        InspectConfig { max_depth: MAX_DEPTH_FOR_OBLIGATIONS_VISITORS }
     }
 
     fn visit_goal(&mut self, inspect_goal: &InspectGoal<'_, 'tcx>) {
+        // No need to walk into goal subtrees that certainly hold, since they
+        // wouldn't then be stalled on an infer var.
+        if inspect_goal.result() == Ok(Certainty::Yes) {
+            return;
+        }
+
+        // We don't care about any pending goals which don't actually
+        // use any float infer var.
+        if !inspect_goal
+            .orig_values()
+            .iter()
+            .filter_map(|arg| arg.as_type())
+            .any(|ty| matches!(self.fcx.shallow_resolve(ty).kind(), ty::Infer(ty::FloatVar(_))))
+        {
+            debug!(goal = ?inspect_goal.goal(), "goal does not mention float infer var");
+            return;
+        }
+
         if let Some(vid) = self
             .fcx
             .predicate_from_float_for_f32_root_vid(self.from_trait, inspect_goal.goal().predicate)
         {
             self.vids.insert(vid);
-        } else if let Some(candidate) = inspect_goal.unique_applicable_candidate() {
-            let start_len = self.vids.len();
-            let _ = candidate.goal().infcx().commit_if_ok(|_| {
-                candidate.visit_nested_no_probe(self);
-                if self.vids.len() > start_len { Ok(()) } else { Err(()) }
-            });
+        }
+
+        if let Some(candidate) = inspect_goal.unique_applicable_candidate() {
+            candidate.visit_nested_no_probe(self);
         }
     }
 }

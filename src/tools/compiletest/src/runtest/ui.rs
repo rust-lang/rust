@@ -259,7 +259,7 @@ impl TestCx<'_> {
             // (including the revision) here to avoid the test writer having to manually specify a
             // `#![crate_name = "..."]` as a workaround. This is okay since we're only checking if
             // the fixed code is compilable.
-            if self.revision.is_some() {
+            if self.variant.revision.is_some() {
                 let crate_name =
                     self.testpaths.file.file_stem().expect("test must have a file stem");
                 // crate name must be alphanumeric or `_`.

@@ -24,7 +24,7 @@ use rustc_type_ir::{
 };
 
 use crate::{
-    LifetimeElisionKind, Span, TyLoweringContext,
+    LifetimeElisionKind, LifetimeLoweringMode, Span, TyLoweringContext,
     db::HirDatabase,
     generics::Generics,
     lower::LoweringMode,
@@ -192,6 +192,7 @@ pub fn where_predicate_must_hold<'db>(
         generic_def,
         &generics,
         LifetimeElisionKind::Infer,
+        LifetimeLoweringMode::Bound,
     )
     .with_interning_mode(LoweringMode::Ide);
     let clauses =

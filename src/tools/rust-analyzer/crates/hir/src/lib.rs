@@ -87,15 +87,18 @@ use hir_ty::{
     GenericPredicates, InferBodyId, InferenceResult, ParamEnvAndCrate, TyDefId,
     TyLoweringDiagnostic, ValueTyDefId, all_super_traits, autoderef, check_orphan_rules,
     consteval::try_const_usize,
-    db::{AnonConstId, InternedClosure, InternedClosureId, InternedCoroutineClosureId},
+    db::{
+        AnonConstId, InternedClosure, InternedClosureId, InternedCoroutineClosureId,
+        InternedCoroutineId,
+    },
     diagnostics::BodyValidationDiagnostic,
     direct_super_traits, known_const_to_ast,
     layout::{Layout as TyLayout, RustcEnumVariantIdx, RustcFieldIdx, TagEncoding},
     method_resolution::{self, InherentImpls, MethodResolutionContext},
     mir::interpret_mir,
     next_solver::{
-        AliasTy, AnyImplId, ClauseKind, DbInterner, EarlyBinder, ErrorGuaranteed, GenericArg,
-        GenericArgs, ParamEnv, PolyFnSig, Region, SolverDefId, Ty, TyKind, TypingMode,
+        AliasTy, AnyImplId, ClauseKind, DbInterner, EarlyBinder, ErrorGuaranteed, FnSig,
+        GenericArg, GenericArgs, ParamEnv, PolyFnSig, Region, SolverDefId, Ty, TyKind, TypingMode,
         infer::{DbInternerInferExt, InferCtxt},
     },
     traits::{self, is_inherent_impl_coherent, structurally_normalize_ty},
@@ -668,7 +671,7 @@ impl Module {
         while id.is_block_module(db) {
             id = id.containing_module(db).expect("block without parent module");
         }
-        Module { id }
+        Module { id: unsafe { id.to_static() } }
     }
 
     pub fn path_to_root(self, db: &dyn HirDatabase) -> Vec<Module> {
@@ -1797,7 +1800,7 @@ impl Adt {
         resolver
             .generic_params()
             .and_then(|gp| {
-                gp.iter_lt()
+                gp.iter_early_bound_lt()
                     // there should only be a single lifetime
                     // but `Arena` requires to use an iterator
                     .nth(0)
@@ -2097,8 +2100,8 @@ impl DefWithBody {
             }
         }
 
-        if let Ok(borrowck_results) = db.borrowck(id.into()) {
-            for borrowck_result in borrowck_results.iter() {
+        if let Ok(borrowck_results) = InferBodyId::from(id).borrowck(db) {
+            for borrowck_result in borrowck_results {
                 let mir_body = borrowck_result.mir_body(db);
                 for moof in &borrowck_result.moved_out_of_ref {
                     let span: InFile<SyntaxNodePtr> = match moof.span {
@@ -2380,10 +2383,16 @@ impl Function {
         (fn_ptr.owner, sig_tys.with(hdr))
     }
 
+    fn erased_fn_sig<'db>(self, db: &'db dyn HirDatabase) -> (TypeOwnerId, FnSig<'db>) {
+        let (owner, sig) = self.fn_sig(db);
+        let sig = DbInterner::new_no_crate(db).instantiate_bound_regions_with_erased(sig);
+        (owner, sig)
+    }
+
     /// Get this function's return type
     pub fn ret_type(self, db: &dyn HirDatabase) -> Type<'_> {
-        let (owner, sig) = self.fn_sig(db);
-        Type { owner, ty: EarlyBinder::bind(sig.skip_binder().output()) }
+        let (owner, sig) = self.erased_fn_sig(db);
+        Type { owner, ty: EarlyBinder::bind(sig.output()) }
     }
 
     pub fn async_ret_type<'db>(self, db: &'db dyn HirDatabase) -> Option<Type<'db>> {
@@ -2393,10 +2402,12 @@ impl Function {
         if !self.is_async(db) {
             return None;
         }
-        let ret_ty =
-            db.callable_item_signature(id.into()).instantiate_identity().skip_binder().output();
+        let interner = DbInterner::new_no_crate(db);
+        let sig = db.callable_item_signature(id.into()).instantiate_identity().skip_norm_wip();
+        let ret_ty = interner.instantiate_bound_regions_with_erased(sig).output();
         for pred in ret_ty.impl_trait_bounds(db).into_iter().flatten() {
-            if let ClauseKind::Projection(projection) = pred.kind().skip_binder()
+            let clause = interner.instantiate_bound_regions_with_erased(pred.kind());
+            if let ClauseKind::Projection(projection) = clause
                 && let Some(output_ty) = projection.term.as_type()
             {
                 return Some(Type::new(id.into(), output_ty));
@@ -2425,15 +2436,14 @@ impl Function {
     }
 
     pub fn assoc_fn_params(self, db: &dyn HirDatabase) -> Vec<Param<'_>> {
-        let (owner, sig) = self.fn_sig(db);
+        let (owner, sig) = self.erased_fn_sig(db);
         let func = match self.id {
             AnyFunctionId::FunctionId(id) => Callee::Def(CallableDefId::FunctionId(id)),
             AnyFunctionId::BuiltinDeriveImplMethod { method, impl_ } => {
                 Callee::BuiltinDeriveImplMethod { method, impl_ }
             }
         };
-        sig.skip_binder()
-            .inputs()
+        sig.inputs()
             .iter()
             .enumerate()
             .map(|(idx, &ty)| Param {
@@ -2819,8 +2829,8 @@ impl SelfParam {
     }
 
     pub fn ty<'db>(&self, db: &'db dyn HirDatabase) -> Type<'db> {
-        let (owner, sig) = self.func.fn_sig(db);
-        Type { owner, ty: EarlyBinder::bind(sig.skip_binder().inputs()[0]) }
+        let (owner, sig) = self.func.erased_fn_sig(db);
+        Type { owner, ty: EarlyBinder::bind(sig.inputs()[0]) }
     }
 }
 
@@ -4714,7 +4724,7 @@ impl Impl {
                 module.block(db),
                 &mut |impls| extend_with_impls(Either::Left(impls.for_self_ty(&simplified_ty))),
             );
-            iter::successors(module.block(db), |block| block.loc(db).module.block(db))
+            std::iter::successors(module.block(db), |block| block.module(db).block(db))
                 .filter_map(|block| TraitImpls::for_block(db, block))
                 .for_each(|impls| impls.for_self_ty(&simplified_ty, &mut extend_with_impls));
             for &krate in &*all_crates(db) {
@@ -4930,15 +4940,7 @@ impl<'db> Closure<'db> {
             AnyClosureId::ClosureId(it) => it.loc(db),
             AnyClosureId::CoroutineClosureId(it) => it.loc(db),
         };
-        let InternedClosure { owner: infer_owner, expr: closure, .. } = closure;
-        let infer = InferenceResult::of(db, infer_owner);
-        let owner = infer_owner.expression_store_owner(db);
-        infer.closures_data[&closure]
-            .min_captures
-            .values()
-            .flatten()
-            .map(|capture| ClosureCapture { owner, infer_owner, closure, capture })
-            .collect()
+        captured_items(db, closure)
     }
 
     pub fn fn_trait(&self, _db: &dyn HirDatabase) -> FnTrait {
@@ -4955,6 +4957,34 @@ impl<'db> Closure<'db> {
             },
         }
     }
+}
+
+/// A coroutine expression, including async, generator, and async-generator coroutines.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct Coroutine {
+    id: InternedCoroutineId,
+}
+
+impl Coroutine {
+    /// Returns the values captured by this coroutine.
+    pub fn captured_items<'db>(&self, db: &'db dyn HirDatabase) -> Vec<ClosureCapture<'db>> {
+        captured_items(db, self.id.loc(db))
+    }
+}
+
+fn captured_items<'db>(
+    db: &'db dyn HirDatabase,
+    closure: InternedClosure,
+) -> Vec<ClosureCapture<'db>> {
+    let InternedClosure { owner: infer_owner, expr: closure, .. } = closure;
+    let infer = InferenceResult::of(db, infer_owner);
+    let owner = infer_owner.expression_store_owner(db);
+    infer.closures_data[&closure]
+        .min_captures
+        .values()
+        .flatten()
+        .map(|capture| ClosureCapture { owner, infer_owner, closure, capture })
+        .collect()
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -5414,7 +5444,7 @@ impl<'db> Type<'db> {
                 TypeOwnerId::AnonConstId(def) => def.into(),
                 TypeOwnerId::NoParams(_) => return ty.ty.skip_binder(),
             };
-            let args = GenericArgs::for_item(infcx.interner, owner, |_, param, _| {
+            let args = GenericArgs::for_item(infcx.interner, owner, |_, param, _, _| {
                 *var_for_param
                     .entry(param)
                     .or_insert_with(|| infcx.var_for_def(param, hir_ty::Span::Dummy))
@@ -5855,7 +5885,7 @@ impl<'db> Type<'db> {
         let env = ParamEnvAndCrate { param_env: ParamEnv::empty(interner), krate: self.krate(db) };
         traits::implements_trait_unique_with_infcx(db, env, trait_.id, &mut |infcx| {
             let mut args = Self::instantiate_many_with_infer(iter::once(self).chain(args), infcx);
-            GenericArgs::for_item(infcx.interner, trait_.id.into(), |_, param, _| {
+            GenericArgs::for_item(infcx.interner, trait_.id.into(), |_, param, _, _| {
                 if let GenericParamId::TypeParamId(_) = param
                     && let Some(arg) = args.next()
                 {
@@ -5941,6 +5971,14 @@ impl<'db> Type<'db> {
                 subst,
                 owner: self.owner,
             }),
+            _ => None,
+        }
+    }
+
+    /// Returns this type as a coroutine.
+    pub fn as_coroutine(&self) -> Option<Coroutine> {
+        match self.ty.skip_binder().kind() {
+            TyKind::Coroutine(id, _) => Some(Coroutine { id: id.0 }),
             _ => None,
         }
     }
@@ -6685,6 +6723,10 @@ pub enum CallableKind<'db> {
 }
 
 impl<'db> Callable<'db> {
+    fn erased_sig(&self) -> FnSig<'db> {
+        DbInterner::conjure().instantiate_bound_regions_with_erased(self.sig)
+    }
+
     pub fn kind(&self) -> CallableKind<'db> {
         match self.callee {
             Callee::Def(CallableDefId::FunctionId(it)) => CallableKind::Function(it.into()),
@@ -6725,19 +6767,14 @@ impl<'db> Callable<'db> {
             return None;
         }
         let func = self.as_function()?;
-        Some((
-            func.self_param(db)?,
-            self.ty.derived(self.sig.skip_binder().inputs_and_output.inputs()[0]),
-        ))
+        Some((func.self_param(db)?, self.ty.derived(self.erased_sig().inputs()[0])))
     }
     pub fn n_params(&self) -> usize {
         self.sig.skip_binder().inputs_and_output.inputs().len()
             - if self.is_bound_method { 1 } else { 0 }
     }
     pub fn params(&self) -> Vec<Param<'db>> {
-        self.sig
-            .skip_binder()
-            .inputs_and_output
+        self.erased_sig()
             .inputs()
             .iter()
             .enumerate()
@@ -6747,7 +6784,7 @@ impl<'db> Callable<'db> {
             .collect()
     }
     pub fn return_type(&self) -> Type<'db> {
-        self.ty.derived(self.sig.skip_binder().output())
+        self.ty.derived(self.erased_sig().output())
     }
     pub fn sig(&self) -> impl Eq {
         &self.sig
@@ -7413,7 +7450,7 @@ fn generic_args_from_tys<'db>(
 ) -> (GenericArgs<'db>, TypeOwnerId) {
     let mut owner = None::<TypeOwnerId>;
     let mut args = args.into_iter();
-    let args = GenericArgs::for_item(interner, def_id, |_, id, _| {
+    let args = GenericArgs::for_item(interner, def_id, |_, id, _, _| {
         if matches!(id, GenericParamId::TypeParamId(_))
             && let Some(arg) = args.next()
         {

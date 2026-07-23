@@ -370,7 +370,7 @@ impl<'outer, Outer, const OUTER: usize> () {
 "#,
             r#"
 struct Struct<const C: usize>;
-type $0Type<'inner, 'outer, Outer, Inner, const INNER: usize, const OUTER: usize> = &(Struct<INNER>, Struct<OUTER>, Outer, &'inner (), Inner, &'outer ());
+type $0Type<'inner, 'outer, Outer, Inner, const INNER: usize, const OUTER: usize> = &(Struct<INNER>, Struct<OUTER>, Outer, &(), Inner, &'outer ());
 
 impl<'outer, Outer, const OUTER: usize> () {
     fn func<'inner, Inner, const INNER: usize>(_: Type<'inner, 'outer, Outer, Inner, INNER, OUTER>) {}

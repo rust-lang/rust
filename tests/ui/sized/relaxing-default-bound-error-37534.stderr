@@ -1,9 +1,10 @@
-error[E0404]: expected trait, found derive macro `Hash`
+error[E0404]: cannot find trait `Hash` in this scope
   --> $DIR/relaxing-default-bound-error-37534.rs:3:16
    |
 LL | struct Foo<T: ?Hash> {}
-   |                ^^^^ not a trait
+   |                ^^^^ not found in this scope
    |
+   = note: a derive macro named `Hash` exists in another namespace
 help: consider importing this trait instead
    |
 LL + use std::hash::Hash;

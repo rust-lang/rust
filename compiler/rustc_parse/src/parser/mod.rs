@@ -29,8 +29,7 @@ use rustc_ast::token::{
     self, IdentIsRaw, InvisibleOrigin, MetaVarKind, NtExprKind, NtPatKind, Token, TokenKind,
 };
 use rustc_ast::tokenstream::{
-    ParserRange, ParserReplacement, Spacing, TokenCursor, TokenStream, TokenTree, TokenTreeCursor,
-    WithTokens,
+    ParserRange, ParserReplacement, Spacing, TokenCursor, TokenStream, TokenTree, WithTokens,
 };
 use rustc_ast::util::case::Case;
 use rustc_ast::util::classify;
@@ -346,7 +345,7 @@ impl<'a> Parser<'a> {
     ) -> Self {
         let mut parser = Parser {
             psess,
-            token_cursor: TokenCursor { curr: TokenTreeCursor::new(stream), stack: Vec::new() },
+            token_cursor: TokenCursor::new(stream),
             subparser_name,
             capture_state: CaptureState {
                 capturing: Capturing::No,
@@ -502,10 +501,8 @@ impl<'a> Parser<'a> {
     // Primarily used when `self.token` matches `OpenInvisible(_))`, to look
     // ahead through the current metavar expansion.
     fn check_noexpect_past_close_delim(&self, tok: &TokenKind) -> bool {
-        let mut tree_cursor = self.token_cursor.stack.last().unwrap().clone();
-        tree_cursor.bump();
         matches!(
-            tree_cursor.curr(),
+            self.token_cursor.look_ahead_past_close_delim(),
             Some(TokenTree::Token(token::Token { kind, .. }, _)) if kind == tok
         )
     }
@@ -1157,9 +1154,8 @@ impl<'a> Parser<'a> {
         // Typically around 98% of the `dist > 0` cases have `dist == 1`, so we
         // have a fast special case for that.
         if dist == 1 {
-            // The index is zero because the tree cursor's index always points
-            // to the next token to be gotten.
-            match self.token_cursor.curr.curr() {
+            // `look_ahead(0)` returns the *next* token.
+            match self.token_cursor.look_ahead(0) {
                 Some(tree) => {
                     // Indexing stayed within the current token tree.
                     match tree {
@@ -1174,8 +1170,7 @@ impl<'a> Parser<'a> {
                 None => {
                     // The tree cursor lookahead went (one) past the end of the
                     // current token tree. Try to return a close delimiter.
-                    if let Some(last) = self.token_cursor.stack.last()
-                        && let Some(&TokenTree::Delimited(span, _, delim, _)) = last.curr()
+                    if let Some((delim, span)) = self.token_cursor.parent_delim_and_span()
                         && !delim.skip()
                     {
                         // We are not in the outermost token stream, so we have
@@ -1203,7 +1198,7 @@ impl<'a> Parser<'a> {
         looker(&token)
     }
 
-    /// Like `lookahead`, but skips over token trees rather than tokens. Useful
+    /// Like `look_ahead`, but skips over token trees rather than tokens. Useful
     /// when looking past possible metavariable pasting sites.
     pub fn tree_look_ahead<R>(
         &self,
@@ -1211,7 +1206,7 @@ impl<'a> Parser<'a> {
         looker: impl FnOnce(&TokenTree) -> R,
     ) -> Option<R> {
         assert_ne!(dist, 0);
-        self.token_cursor.curr.look_ahead(dist - 1).map(looker)
+        self.token_cursor.look_ahead(dist - 1).map(looker)
     }
 
     /// Returns whether any of the given keywords are `dist` tokens ahead of the current one.
@@ -1408,7 +1403,7 @@ impl<'a> Parser<'a> {
         if self.token.kind.open_delim().is_some() {
             // Clone the `TokenTree::Delimited` that we are currently
             // within. That's what we are going to return.
-            let tree = self.token_cursor.stack.last().unwrap().curr().unwrap().clone();
+            let tree = self.token_cursor.clone_enclosing_delim();
             debug_assert_matches!(tree, TokenTree::Delimited(..));
 
             // Advance the token cursor through the entire delimited
@@ -1416,22 +1411,22 @@ impl<'a> Parser<'a> {
             // delimited sequence, i.e. at depth `d`. After getting the
             // matching `CloseDelim` we are *after* the delimited sequence,
             // i.e. at depth `d - 1`.
-            let target_depth = self.token_cursor.stack.len() - 1;
+            let target_depth = self.token_cursor.depth() - 1;
 
             if let Capturing::No = self.capture_state.capturing {
                 // We are not capturing tokens, so skip to the end of the
                 // delimited sequence. This is a perf win when dealing with
                 // declarative macros that pass large `tt` fragments through
                 // multiple rules, as seen in the uom-0.37.0 crate.
-                self.token_cursor.curr.bump_to_end();
+                self.token_cursor.bump_to_end();
                 self.bump();
-                debug_assert_eq!(self.token_cursor.stack.len(), target_depth);
+                debug_assert_eq!(self.token_cursor.depth(), target_depth);
             } else {
                 loop {
                     // Advance one token at a time, so `TokenCursor::next()`
                     // can capture these tokens if necessary.
                     self.bump();
-                    if self.token_cursor.stack.len() == target_depth {
+                    if self.token_cursor.depth() == target_depth {
                         break;
                     }
                 }

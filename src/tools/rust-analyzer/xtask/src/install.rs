@@ -108,12 +108,8 @@ fn install_client(sh: &Shell, client_opt: ClientOpt) -> anyhow::Result<()> {
     };
 
     // Find the appropriate VS Code binary.
-    let lifetime_extender;
     let candidates: &[&str] = match client_opt.code_bin.as_deref() {
-        Some(it) => {
-            lifetime_extender = [it];
-            &lifetime_extender[..]
-        }
+        Some(it) => &[it],
         None => VS_CODES,
     };
     let code = candidates

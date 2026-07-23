@@ -629,7 +629,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
 
         for arg in args {
             match arg.val {
-                OperandValue::ZeroSized => {}
+                OperandValue::ZeroSized | OperandValue::Uninit => {}
                 OperandValue::Immediate(_) => call_args.push(arg.immediate()),
                 OperandValue::Pair(a, b) => {
                     call_args.push(a);

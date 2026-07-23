@@ -84,15 +84,17 @@ pub struct Response {
     // request id. We fail deserialization in that case, so we just
     // make this field mandatory.
     pub id: RequestId,
-    #[serde(flatten)]
-    pub response_kind: ResponseKind,
+    #[serde(flatten, with = "ResponseResult")]
+    pub response_result: Result<serde_json::Value, ResponseError>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-#[serde(untagged)]
-pub enum ResponseKind {
-    Ok { result: serde_json::Value },
-    Err { error: ResponseError },
+#[derive(Serialize, Deserialize)]
+#[serde(remote = "Result<serde_json::Value, ResponseError>")]
+enum ResponseResult {
+    #[serde(rename = "result")]
+    Ok(serde_json::Value),
+    #[serde(rename = "error")]
+    Err(ResponseError),
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -203,14 +205,11 @@ impl Message {
 
 impl Response {
     pub fn new_ok<R: serde::Serialize>(id: RequestId, result: R) -> Response {
-        Response {
-            id,
-            response_kind: ResponseKind::Ok { result: serde_json::to_value(result).unwrap() },
-        }
+        Response { id, response_result: Ok(serde_json::to_value(result).unwrap()) }
     }
     pub fn new_err(id: RequestId, code: i32, message: String) -> Response {
         let error = ResponseError { code, message, data: None };
-        Response { id, response_kind: ResponseKind::Err { error } }
+        Response { id, response_result: Err(error) }
     }
 }
 
@@ -305,11 +304,11 @@ fn write_msg_text(out: &mut dyn Write, msg: &str) -> io::Result<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Message, Notification, Request, RequestId};
+    use super::{Message, Notification, Request, RequestId, Response};
 
     #[test]
     fn shutdown_with_explicit_null() {
-        let text = "{\"jsonrpc\": \"2.0\",\"id\": 3,\"method\": \"shutdown\", \"params\": null }";
+        let text = r#"{"jsonrpc": "2.0","id": 3,"method": "shutdown", "params": null }"#;
         let msg: Message = serde_json::from_str(text).unwrap();
 
         assert!(
@@ -319,7 +318,7 @@ mod tests {
 
     #[test]
     fn shutdown_with_no_params() {
-        let text = "{\"jsonrpc\": \"2.0\",\"id\": 3,\"method\": \"shutdown\"}";
+        let text = r#"{"jsonrpc": "2.0","id": 3,"method": "shutdown"}"#;
         let msg: Message = serde_json::from_str(text).unwrap();
 
         assert!(
@@ -329,7 +328,7 @@ mod tests {
 
     #[test]
     fn notification_with_explicit_null() {
-        let text = "{\"jsonrpc\": \"2.0\",\"method\": \"exit\", \"params\": null }";
+        let text = r#"{"jsonrpc": "2.0","method": "exit", "params": null }"#;
         let msg: Message = serde_json::from_str(text).unwrap();
 
         assert!(matches!(msg, Message::Notification(not) if not.method == "exit"));
@@ -337,7 +336,7 @@ mod tests {
 
     #[test]
     fn notification_with_no_params() {
-        let text = "{\"jsonrpc\": \"2.0\",\"method\": \"exit\"}";
+        let text = r#"{"jsonrpc": "2.0","method": "exit"}"#;
         let msg: Message = serde_json::from_str(text).unwrap();
 
         assert!(matches!(msg, Message::Notification(not) if not.method == "exit"));
@@ -352,7 +351,7 @@ mod tests {
         });
         let serialized = serde_json::to_string(&msg).unwrap();
 
-        assert_eq!("{\"id\":3,\"method\":\"shutdown\"}", serialized);
+        assert_eq!(r#"{"id":3,"method":"shutdown"}"#, serialized);
     }
 
     #[test]
@@ -363,6 +362,29 @@ mod tests {
         });
         let serialized = serde_json::to_string(&msg).unwrap();
 
-        assert_eq!("{\"method\":\"exit\"}", serialized);
+        assert_eq!(r#"{"method":"exit"}"#, serialized);
+    }
+
+    #[test]
+    fn serialize_ok_response() {
+        let msg = Message::Response(Response::new_ok(RequestId::from(3), "success"));
+        let serialized = serde_json::to_string(&msg).unwrap();
+
+        assert_eq!(r#"{"id":3,"result":"success"}"#, serialized);
+    }
+
+    #[test]
+    fn serialize_err_response() {
+        let msg = Message::Response(Response::new_err(
+            RequestId::from(3),
+            -32600,
+            String::from("bad response message"),
+        ));
+        let serialized = serde_json::to_string(&msg).unwrap();
+
+        assert_eq!(
+            r#"{"id":3,"error":{"code":-32600,"message":"bad response message"}}"#,
+            serialized
+        );
     }
 }

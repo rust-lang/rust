@@ -3,5 +3,5 @@
 #![feature(min_generic_const_args)]
 
 fn pass_enum<const N : usize, const M : usize = const {N}> {
-  pass_enum::<{None}>
+  pass_enum::<{core::direct_const_arg!(None)}>
 }

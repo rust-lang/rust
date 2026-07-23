@@ -604,9 +604,7 @@ impl File {
     #[unstable(feature = "file_buffered", issue = "130804")]
     pub fn open_buffered<P: AsRef<Path>>(path: P) -> io::Result<io::BufReader<File>> {
         // Allocate the buffer *first* so we don't affect the filesystem otherwise.
-        let buffer = io::BufReader::<Self>::try_new_buffer()?;
-        let file = File::open(path)?;
-        Ok(io::BufReader::with_buffer(file, buffer))
+        io::BufReader::try_new_with(|| File::open(path))
     }
 
     /// Opens a file in write-only mode.
@@ -672,9 +670,7 @@ impl File {
     #[unstable(feature = "file_buffered", issue = "130804")]
     pub fn create_buffered<P: AsRef<Path>>(path: P) -> io::Result<io::BufWriter<File>> {
         // Allocate the buffer *first* so we don't affect the filesystem otherwise.
-        let buffer = io::BufWriter::<Self>::try_new_buffer()?;
-        let file = File::create(path)?;
-        Ok(io::BufWriter::with_buffer(file, buffer))
+        io::BufWriter::try_new_with(|| File::create(path))
     }
 
     /// Creates a new file in read-write mode; error if the file exists.
@@ -2969,7 +2965,7 @@ pub fn copy<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<u64> {
 ///
 /// This function currently corresponds to the `CreateHardLink` function on Windows.
 /// On most Unix systems, it corresponds to the `linkat` function with no flags.
-/// On Android, VxWorks, and Redox, it instead corresponds to the `link` function.
+/// On VxWorks and Redox, it instead corresponds to the `link` function.
 /// On MacOS, it uses the `linkat` function if it is available, but on very old
 /// systems where `linkat` is not available, `link` is selected at runtime instead.
 /// Note that, this [may change in the future][changes].

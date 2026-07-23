@@ -435,11 +435,20 @@ pub(crate) struct CrateNameEmpty {
 
 #[derive(Diagnostic)]
 #[diag("invalid character {$character} in crate name: `{$crate_name}`")]
+#[note("crate names may only contain alphanumeric characters or underscores")]
 pub(crate) struct InvalidCharacterInCrateName {
     #[primary_span]
     pub(crate) span: Option<Span>,
     pub(crate) character: char,
     pub(crate) crate_name: Symbol,
+    #[subdiagnostic]
+    pub(crate) suggestion: Option<InvalidCharacterInCrateNameSuggestion>,
+}
+
+#[derive(Subdiagnostic)]
+#[help("you might have meant to use `--crate-name={$suggested_name}`")]
+pub(crate) struct InvalidCharacterInCrateNameSuggestion {
+    pub(crate) suggested_name: String,
 }
 
 #[derive(Subdiagnostic)]

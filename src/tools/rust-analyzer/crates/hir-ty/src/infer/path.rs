@@ -15,7 +15,7 @@ use crate::{
     infer::{
         InferenceTyLoweringVarsCtx, diagnostics::InferenceTyLoweringContext as TyLoweringContext,
     },
-    lower::{GenericPredicates, LifetimeElisionKind},
+    lower::{GenericPredicates, LifetimeElisionKind, LifetimeLoweringMode},
     method_resolution::{self, CandidateId, MethodError},
     next_solver::{
         GenericArg, GenericArgs, TraitRef, Ty, Unnormalized, infer::traits::ObligationCause,
@@ -166,6 +166,7 @@ impl<'db> InferenceContext<'_, 'db> {
             self.allow_using_generic_params,
             Some(&mut vars_ctx),
             &self.defined_anon_consts,
+            LifetimeLoweringMode::LateParam,
         );
         let mut path_ctx = if no_diagnostics {
             ctx.at_path_forget_diagnostics(path)

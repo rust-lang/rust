@@ -61,6 +61,12 @@ impl Environment {
         self.stage0().join("bin").join(format!("cargo{}", executable_extension()))
     }
 
+    pub fn cargo_stage_2(&self) -> Utf8PathBuf {
+        self.build_artifacts()
+            .join("stage2-tools-bin")
+            .join(format!("cargo{}", executable_extension()))
+    }
+
     pub fn rustc_stage_0(&self) -> Utf8PathBuf {
         self.stage0().join("bin").join(format!("rustc{}", executable_extension()))
     }
