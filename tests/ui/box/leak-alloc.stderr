@@ -3,8 +3,8 @@ error[E0505]: cannot move out of `alloc` because it is borrowed
    |
 LL |     let alloc = Alloc {};
    |         ----- binding `alloc` declared here
-LL |     let boxed = Box::new_in(10, alloc.by_ref());
-   |                                 ----- borrow of `alloc` occurs here
+LL |     let boxed = Box::new_in(10, &alloc);
+   |                                 ------ borrow of `alloc` occurs here
 LL |     let theref = Box::leak(boxed);
 LL |     drop(alloc);
    |          ^^^^^ move out of `alloc` occurs here
@@ -18,8 +18,8 @@ note: if `Alloc` implemented `Clone`, you could clone the value
 LL | struct Alloc {}
    | ^^^^^^^^^^^^ consider implementing `Clone` for this type
 ...
-LL |     let boxed = Box::new_in(10, alloc.by_ref());
-   |                                 ----- you could clone this value
+LL |     let boxed = Box::new_in(10, &alloc);
+   |                                  ----- you could clone this value
 
 error: aborting due to 1 previous error
 

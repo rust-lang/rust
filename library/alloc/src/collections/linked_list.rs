@@ -12,6 +12,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use core::alloc::AllocatorClone;
 use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
 use core::iter::FusedIterator;
@@ -136,13 +137,19 @@ impl<T: fmt::Debug> fmt::Debug for IterMut<'_, T> {
 /// (provided by the [`IntoIterator`] trait). See its documentation for more.
 ///
 /// [`into_iter`]: LinkedList::into_iter
-#[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<
     T,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
 > {
     list: LinkedList<T, A>,
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: Clone, A: Allocator + Clone> Clone for IntoIter<T, A> {
+    fn clone(&self) -> Self {
+        Self { list: self.list.clone() }
+    }
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
@@ -340,7 +347,7 @@ impl<T, A: Allocator> LinkedList<T, A> {
         at: usize,
     ) -> Self
     where
-        A: Clone,
+        A: AllocatorClone,
     {
         // The split node is the new head node of the second part
         if let Some(mut split_node) = split_node {
@@ -383,7 +390,7 @@ impl<T, A: Allocator> LinkedList<T, A> {
         at: usize,
     ) -> Self
     where
-        A: Clone,
+        A: AllocatorClone,
     {
         // The split node is the new tail node of the first part and owns
         // the head of the second part.
@@ -994,7 +1001,7 @@ impl<T, A: Allocator> LinkedList<T, A> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn split_off(&mut self, at: usize) -> LinkedList<T, A>
     where
-        A: Clone,
+        A: AllocatorClone,
     {
         let len = self.len();
         assert!(at <= len, "Cannot split off at a nonexistent index");
@@ -1748,7 +1755,7 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn remove_current_as_list(&mut self) -> Option<LinkedList<T, A>>
     where
-        A: Clone,
+        A: AllocatorClone,
     {
         let mut unlinked_node = self.current?;
         unsafe {
@@ -1776,7 +1783,7 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn split_after(&mut self) -> LinkedList<T, A>
     where
-        A: Clone,
+        A: AllocatorClone,
     {
         let split_off_idx = if self.index == self.list.len { 0 } else { self.index + 1 };
         if self.index == self.list.len {
@@ -1795,7 +1802,7 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
     #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn split_before(&mut self) -> LinkedList<T, A>
     where
-        A: Clone,
+        A: AllocatorClone,
     {
         let split_off_idx = self.index;
         self.index = 0;
@@ -2151,6 +2158,7 @@ impl<T: Ord, A: Allocator> Ord for LinkedList<T, A> {
     }
 }
 
+// `AllocatorClone` bound is necessary due to the `split_off` in `clone_from`.
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Clone, A: Allocator + Clone> Clone for LinkedList<T, A> {
     fn clone(&self) -> Self {
@@ -2167,11 +2175,14 @@ impl<T: Clone, A: Allocator + Clone> Clone for LinkedList<T, A> {
     /// resources of `self`'s elements as well.
     fn clone_from(&mut self, source: &Self) {
         let mut source_iter = source.iter();
-        if self.len() > source.len() {
-            self.split_off(source.len());
-        }
-        for (elem, source_elem) in self.iter_mut().zip(&mut source_iter) {
+        for elem in self.iter_mut() {
+            let Some(source_elem) = source_iter.next() else {
+                break;
+            };
             elem.clone_from(source_elem);
+        }
+        while self.len() > source.len() {
+            self.pop_back();
         }
         if !source_iter.is_empty() {
             self.extend(source_iter.cloned());

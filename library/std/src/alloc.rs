@@ -140,6 +140,12 @@ use crate::{hint, mem, ptr};
 #[derive_const(Clone, Default)]
 pub struct System;
 
+#[unstable(feature = "allocator_api", issue = "32838")]
+unsafe impl core::alloc::AllocatorClone for System {}
+
+#[unstable(feature = "allocator_api", issue = "32838")]
+unsafe impl core::alloc::StaticAllocator for System {}
+
 impl System {
     #[inline]
     fn alloc_impl(&self, layout: Layout, zeroed: bool) -> Result<NonNull<[u8]>, AllocError> {

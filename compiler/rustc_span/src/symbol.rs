@@ -1433,6 +1433,7 @@ symbols! {
         no_sanitize,
         no_stack_check,
         no_std,
+        noalias_allocator,
         nomem,
         non_ascii_idents,
         non_exhaustive,
