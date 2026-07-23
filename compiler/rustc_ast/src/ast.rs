@@ -2339,27 +2339,7 @@ pub struct FnSig {
 impl FnSig {
     /// Return a span encompassing the header, or where to insert it if empty.
     pub fn header_span(&self) -> Span {
-        match self.header.ext {
-            Extern::Implicit(span) | Extern::Explicit(_, span) => {
-                return self.span.with_hi(span.hi());
-            }
-            Extern::None => {}
-        }
-
-        match self.header.safety {
-            Safety::Unsafe(span) | Safety::Safe(span) => return self.span.with_hi(span.hi()),
-            Safety::Default => {}
-        };
-
-        if let Some(coroutine_kind) = self.header.coroutine_kind {
-            return self.span.with_hi(coroutine_kind.span().hi());
-        }
-
-        if let Const::Yes(span) = self.header.constness {
-            return self.span.with_hi(span.hi());
-        }
-
-        self.span.shrink_to_lo()
+        self.header.span().unwrap_or(self.span.shrink_to_lo())
     }
 
     /// The span of the header's safety, or where to insert it if empty.
@@ -3806,6 +3786,30 @@ impl FnHeader {
             || coroutine_kind.is_some()
             || matches!(constness, Const::Yes(_))
             || !matches!(ext, Extern::None)
+    }
+
+    pub fn span(&self) -> Option<Span> {
+        let mut spans = smallvec::SmallVec::<[Span; 4]>::new();
+
+        match self.ext {
+            Extern::Implicit(span) | Extern::Explicit(_, span) => spans.push(span),
+            Extern::None => {}
+        }
+
+        match self.safety {
+            Safety::Unsafe(span) | Safety::Safe(span) => spans.push(span),
+            Safety::Default => {}
+        };
+
+        if let Some(coroutine_kind) = self.coroutine_kind {
+            spans.push(coroutine_kind.span());
+        }
+
+        if let Const::Yes(span) = self.constness {
+            spans.push(span)
+        }
+
+        spans.into_iter().reduce(Span::to)
     }
 }
 
