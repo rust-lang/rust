@@ -68,7 +68,7 @@ use rustc_ast::Label;
 use rustc_ast::visit::{VisitorResult, try_visit, visit_opt, walk_list};
 use rustc_attr_ir::Attribute;
 use rustc_hir_id::HirId;
-use rustc_span::def_id::LocalDefId;
+use rustc_span::def_id::{LocalDefId, LocalModId};
 use rustc_span::{Ident, Span, Symbol};
 
 use crate::hir::*;
@@ -311,7 +311,7 @@ pub trait Visitor<'v>: Sized {
     fn visit_ident(&mut self, ident: Ident) -> Self::Result {
         walk_ident(self, ident)
     }
-    fn visit_mod(&mut self, m: &'v Mod<'v>, _s: Span, _n: HirId) -> Self::Result {
+    fn visit_mod(&mut self, m: &'v Mod<'v>, _s: Span, _id: LocalModId) -> Self::Result {
         walk_mod(self, m)
     }
     fn visit_foreign_item(&mut self, i: &'v ForeignItem<'v>) -> Self::Result {
@@ -581,7 +581,11 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) -> V::
         }
         ItemKind::Mod(ident, ref module) => {
             try_visit!(visitor.visit_ident(ident));
-            try_visit!(visitor.visit_mod(module, item.span, item.hir_id()));
+            try_visit!(visitor.visit_mod(
+                module,
+                item.span,
+                LocalModId::new_unchecked(item.owner_id.def_id)
+            ));
         }
         ItemKind::ForeignMod { abi: _, items } => {
             walk_list!(visitor, visit_foreign_item_ref, items);

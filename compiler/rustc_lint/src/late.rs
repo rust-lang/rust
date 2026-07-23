@@ -13,6 +13,7 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::Session;
 use rustc_span::Span;
+use rustc_span::def_id::CRATE_MOD_ID;
 use tracing::debug;
 
 use crate::passes::LateLintPassObject;
@@ -75,9 +76,9 @@ impl<'tcx, T: LateLintPass<'tcx>> LateContextAndPass<'tcx, T> {
         self.context.param_env = old_param_env;
     }
 
-    fn process_mod(&mut self, m: &'tcx hir::Mod<'tcx>, n: HirId) {
-        lint_callback!(self, check_mod, m, n);
-        hir_visit::walk_mod(self, m);
+    fn process_mod(&mut self, module: &'tcx hir::Mod<'tcx>, id: LocalModId) {
+        lint_callback!(self, check_mod, module, id);
+        hir_visit::walk_mod(self, module);
     }
 }
 
@@ -220,9 +221,9 @@ impl<'tcx, T: LateLintPass<'tcx>> hir_visit::Visitor<'tcx> for LateContextAndPas
         hir_visit::walk_ty(self, t);
     }
 
-    fn visit_mod(&mut self, m: &'tcx hir::Mod<'tcx>, _: Span, n: HirId) {
+    fn visit_mod(&mut self, m: &'tcx hir::Mod<'tcx>, _: Span, id: LocalModId) {
         if !self.context.only_module {
-            self.process_mod(m, n);
+            self.process_mod(m, id);
         }
     }
 
@@ -385,17 +386,17 @@ fn late_lint_mod_inner<'tcx, T: LateLintPass<'tcx>>(
         actually_rustdoc: tcx.sess.opts.actually_rustdoc,
     };
 
-    let (module, _span, hir_id) = tcx.hir_get_module(mod_id);
+    let (module, _span) = tcx.hir_get_module(mod_id);
 
-    cx.with_lint_attrs(hir_id, |cx| {
+    cx.with_lint_attrs(HirId::make_owner(mod_id.to_local_def_id()), |cx| {
         // There is no module lint that will have the crate itself as an item, so check it here.
-        if hir_id == hir::CRATE_HIR_ID {
+        if mod_id == CRATE_MOD_ID {
             lint_callback!(cx, check_crate,);
         }
 
-        cx.process_mod(module, hir_id);
+        cx.process_mod(module, mod_id);
 
-        if hir_id == hir::CRATE_HIR_ID {
+        if mod_id == CRATE_MOD_ID {
             lint_callback!(cx, check_crate_post,);
         }
     });

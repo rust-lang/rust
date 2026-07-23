@@ -8,12 +8,13 @@ use clippy_utils::diagnostics::span_lint_and_note;
 use clippy_utils::is_cfg_test;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::{
-    Attribute, FieldDef, HirId, ImplItemId, IsAuto, Item, ItemKind, Mod, OwnerId, QPath, TraitItemId, TyKind, Variant,
+    Attribute, FieldDef, ImplItemId, IsAuto, Item, ItemKind, Mod, OwnerId, QPath, TraitItemId, TyKind, Variant,
     VariantData,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext, impl_lint_pass};
 use rustc_middle::ty::{AssocKind, TyCtxt};
 use rustc_span::{Ident, Symbol};
+use rustc_span::def_id::LocalModId;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -486,7 +487,7 @@ impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
         }
     }
 
-    fn check_mod(&mut self, cx: &LateContext<'tcx>, module: &'tcx Mod<'tcx>, _: HirId) {
+    fn check_mod(&mut self, cx: &LateContext<'tcx>, module: &'tcx Mod<'tcx>, _: LocalModId) {
         struct CurItem<'a> {
             item: &'a Item<'a>,
             order: usize,
