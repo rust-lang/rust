@@ -24,21 +24,21 @@ underlyng lexing, parsing, function calling, etc. should still offer valuable in
 ## Rust support and TypeSystemClang
 
 As mentioned in the debug info overview, LLDB has partial Rust support.
-To further clarify, Rust
-uses the plugin-pipeline that was built for C/C++ (though it contains some helpers for Rust enum
-types), which relies directly on the `clang` compiler's representation of types.
-This imposes heavy
-restrictions on how much we can change when LLDB's output doesn't match what we want.
-Some
-workarounds can help, but at the end of the day Rust's needs are secondary compared to making sure
+To further clarify,
+Rust uses the plugin-pipeline that was built for C/C++
+(though it contains some helpers for Rust enum types),
+which relies directly on the `clang` compiler's representation of types.
+This imposes heavy restrictions on how much we can change
+when LLDB's output doesn't match what we want.
+Some workarounds can help, but at the end of the day,
+Rust's needs are secondary compared to making sure
 C and C++ compilation and debugging work correctly.
 
 LLDB is receptive to adding a `TypeSystemRust`, but it is a massive undertaking.
-This section serves
-to not only document how we currently interact with [`TypeSystemClang`][ts_clang], but also as light
-guidance on implementing a `TypeSystemRust` in the future.
+This section serves to not only document how we currently interact with [`TypeSystemClang`],
+but also as light guidance on implementing a `TypeSystemRust` in the future.
 
-[ts_clang]: https://github.com/llvm/llvm-project/tree/main/lldb/source/Plugins/TypeSystem/Clang
+[`TypeSystemClang`]: https://github.com/llvm/llvm-project/tree/main/lldb/source/Plugins/TypeSystem/Clang
 
 It is worth noting that a `TypeSystem` directly interacting with the target language's compiler is
 the intention, but it is not a requirement.
@@ -74,9 +74,8 @@ from scratch using publicly available information about the PDB format.
 
 The first step is to process the raw debug nodes into something usable.
 This primarily occurs in the [`DWARFASTParser`][dwarf_ast] and [`PdbAstBuilder`][pdb_ast] classes.
-These classes are fed a
-deserialized form of the debug info generated from [`SymbolFileDWARF`][sf_dwarf] and
-[`SymbolFileNativePDB`][sf_pdb] respectively.
+These classes are fed a deserialized form of the debug info
+generated from [`SymbolFileDWARF`][sf_dwarf] and [`SymbolFileNativePDB`][sf_pdb] respectively.
 The `SymbolFile` implementers make almost no
 transformations to the underlying debug info before passing it to the parsers.
 For both PDB and DWARF, the debug info is read using LLVM's debug info handlers.
@@ -87,9 +86,8 @@ For both PDB and DWARF, the debug info is read using LLVM's debug info handlers.
 [sf_pdb]: https://github.com/llvm/llvm-project/blob/main/lldb/source/Plugins/SymbolFile/NativePDB/SymbolFileNativePDB.h
 
 The parsers translate the nodes into more convenient formats for LLDB's purposes.
-For `clang`, these
-formats are `clang::QualType`, `clang::Decl`, and `clang::DeclContext`, which are the types `clang`
-uses internally when compiling C and C++.
+For `clang`, these formats are `clang::QualType`, `clang::Decl`, and `clang::DeclContext`,
+which are the types `clang` uses internally when compiling C and C++.
 Again, using the compiler's representation of types is not a
 requirement, but the plugin system was built with it as a possibility.
 
@@ -111,13 +109,13 @@ struct, the value that a static or const is initialized with, etc.
 `DeclContext` more or less represents a scope.
 `DeclContext`s typically contain `Decl`s and other
 `DeclContexts`, though the relationship isn't that straight forward.
-For example, a function can be
-both a `Decl` (because function signatures are types), **and** a `DeclContext` (because functions
-contain variable declarations, nested functions declarations, etc.).
+For example, a function can be both a `Decl` (because function signatures are types),
+**and** a `DeclContext`
+(because functions contain variable declarations, nested functions declarations, etc.).
 
 The translation process can be quite verbose, but is usually straightforward.
-Much of the work here
-is dependant on the exact information needed to fill out `LangType`, `Decl`, and `DeclContext`.
+Much of the work here is dependant on the exact information needed to fill out `LangType`,
+`Decl`, and `DeclContext`.
 
 Once a node is translated, a pointer to it is type-erased (`void*`) and wrapped in `CompilerType`,
 `CompilerDecl`, or `CompilerDeclContext`.
@@ -161,11 +159,11 @@ The [`TypeSystem` interface][ts_interface] has 3 major purposes:
 
 1. Act as the "sole authority" of a language's types.
    This allows the type system to be added to LLDB's "pool" of type systems.
-When an executable is loaded, the target language is determined, and
-the pool is queried to find a `TypeSystem` that claims it can handle the language.
-One can also use
-the `TypeSystem` to retrieve the backing `SymbolFile`, search for types, and synthesize basic types
-that might not exist in the debug info (e.g. primitives, arrays-of-`T`, pointers-to-`T`).
+   When an executable is loaded, the target language is determined, and
+   the pool is queried to find a `TypeSystem` that claims it can handle the language.
+   One can also use the `TypeSystem` to retrieve the backing `SymbolFile`,
+   search for types, and synthesize basic types
+   that might not exist in the debug info (e.g. primitives, arrays-of-`T`, pointers-to-`T`).
 2. Manage the lifetimes of the `LangType`, `Decl`, and `DeclContext` objects
 3. Customize the "defaults" of how those types appear and how they can be interacted with.
 
@@ -178,11 +176,10 @@ For example, `TypeSystem::GetFormat` returns the default format for the type if 
 has been applied to it.
 
 Of particular note are `GetIndexOfChildWithName` and `GetNumChildren`.
-The `TypeSystem` versions of
-these functions operate on a *type*, not a value like the `SBValue` versions.
-The values returned
-from the `TypeSystem` functions dictate what parts of the struct can be interacted with *at all* by
-the rest of LLDB.
+The `TypeSystem` versions of these functions operate on a *type*,
+not a value like the `SBValue` versions.
+The values returned from the `TypeSystem` functions
+dictate what parts of the struct can be interacted with *at all* by the rest of LLDB.
 If a field is ommitted, that field effectively no longer exists to LLDB.
 
 Additionally, since they do not work with objects, there is no underlying memory to inspect or
@@ -195,9 +192,8 @@ It is also not possible to determine the value of the discriminant of a sum-type
 Ideally, the `TypeSystem` should expose types as they appear in the debug info with as few
 alterations as possible.
 LLDB's synthetics and frontend can handle making the type pretty.
-If some
-piece of information is useless, the Rust compiler should be altered to not output that debug info
-in the first place.
+If some piece of information is useless,
+the Rust compiler should be altered to not output that debug info in the first place.
 
 ## Expression parsing
 
@@ -214,8 +210,8 @@ They operate on `lldb::ValueObject`s, which are the objects that underpin `SBVal
 ## Language
 
 The [`Language` plugins][lang_plugin] are the C++ equivalent to the Python visualizer scripts.
-They
-operate on `SBValue` objects for the same purpose: creating synthetic children and pretty-printing.
+They operate on `SBValue` objects for the same purpose:
+creating synthetic children and pretty-printing.
 The [CPlusPlusLanguage's implementations][cpp_lang] for the LibCxx types are great resources to
 learn how visualizers should be written.
 
