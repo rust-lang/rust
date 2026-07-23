@@ -44,6 +44,26 @@ LL | impl PartialEq<u32> for Value {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: and another `impl` found in the `core` crate: `impl PartialEq for u32;`
 
-error: aborting due to 3 previous errors
+error[E0283]: type annotations needed
+  --> $DIR/multiple-impl-apply.rs:79:32
+   |
+LL |       let _ = (
+   |  _____________-
+LL | |         {
+LL | |             let _ = 42usize as _;
+   | |                                ^ cannot infer type
+LL | |             Default::default()
+LL | |         }
+LL | |     ) == n;
+   | |_____-    -
+   |
+note: multiple `impl`s satisfying `_: PartialEq<u32>` found
+  --> $DIR/multiple-impl-apply.rs:58:1
+   |
+LL | impl PartialEq<u32> for Value {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: and another `impl` found in the `core` crate: `impl PartialEq for u32;`
+
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0283`.

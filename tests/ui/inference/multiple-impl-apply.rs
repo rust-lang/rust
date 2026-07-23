@@ -71,3 +71,13 @@ fn partial_eq_with_infer_cast_on_lhs() {
     let n: u32 = 17;
     let _ = 42usize as _ == n; //~ ERROR E0283
 }
+
+fn unrelated_infer_cast_in_lhs() {
+    let n: u32 = 17;
+    let _ = (
+        {
+            let _ = 42usize as _; //~ ERROR E0282
+            Default::default()
+        }
+    ) == n;
+}
