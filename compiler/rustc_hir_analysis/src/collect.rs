@@ -38,6 +38,7 @@ use rustc_middle::ty::{
     Unnormalized, fold_regions,
 };
 use rustc_middle::{bug, span_bug};
+use rustc_span::def_id::LocalModId;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use rustc_trait_selection::error_reporting::traits::suggestions::NextTypeParamName;
 use rustc_trait_selection::infer::InferCtxtExt;
@@ -470,6 +471,10 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
 
     fn item_def_id(&self) -> LocalDefId {
         self.item_def_id
+    }
+
+    fn mod_id(&self) -> LocalModId {
+        self.tcx.parent_module_from_def_id(self.item_def_id)
     }
 
     fn re_infer(&self, span: Span, reason: RegionInferReason<'_>) -> ty::Region<'tcx> {

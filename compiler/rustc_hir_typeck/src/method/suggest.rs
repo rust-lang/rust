@@ -3990,11 +3990,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     {
         let parent_map = self.tcx.visible_parent_map(());
 
-        let scope = self.tcx.parent_module_from_def_id(self.body_def_id);
         let (accessible_candidates, inaccessible_candidates): (Vec<_>, Vec<_>) =
             candidates.into_iter().partition(|id| {
                 let vis = self.tcx.visibility(*id);
-                vis.is_accessible_from(scope, self.tcx)
+                vis.is_accessible_from(self.mod_id, self.tcx)
             });
 
         let sugg = |candidates: Vec<_>, visible| {
@@ -4048,7 +4047,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let accessible_sugg = sugg(accessible_candidates, true);
         let inaccessible_sugg = sugg(inaccessible_candidates, false);
 
-        let (module, _, _) = self.tcx.hir_get_module(scope);
+        let (module, _, _) = self.tcx.hir_get_module(self.mod_id);
         let span = module.spans.inject_use_span;
         handle_candidates(accessible_sugg, inaccessible_sugg, span);
     }
