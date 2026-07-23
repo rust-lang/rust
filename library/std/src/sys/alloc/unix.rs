@@ -74,6 +74,161 @@ pub unsafe fn realloc(ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 
     }
 }
 
+// Forward to the token-enabled C allocator interface, so that programs using the default
+// allocator can use a token-enabled C memory allocator for the whole program, including foreign
+// code, in mixed binaries, for LLVM AllocToken and heap partitioning support. There are no
+// token-enabled equivalents of `posix_memalign`/`aligned_alloc`, so allocations that require
+// more alignment than `malloc` provides (i.e., `MIN_ALIGN`) fall back to the non-token-enabled
+// allocation functions.
+#[inline]
+pub unsafe fn alloc_with_token(layout: Layout, token: usize) -> *mut u8 {
+    if layout.align() <= MIN_ALIGN && layout.align() <= layout.size() {
+        unsafe { __alloc_token_malloc(layout.size(), token) as *mut u8 }
+    } else {
+        unsafe { alloc(layout) }
+    }
+}
+
+#[inline]
+pub unsafe fn alloc_zeroed_with_token(layout: Layout, token: usize) -> *mut u8 {
+    if layout.align() <= MIN_ALIGN && layout.align() <= layout.size() {
+        unsafe { __alloc_token_calloc(1, layout.size(), token) as *mut u8 }
+    } else {
+        unsafe { alloc_zeroed(layout) }
+    }
+}
+
+#[inline]
+pub unsafe fn realloc_with_token(
+    ptr: *mut u8,
+    layout: Layout,
+    new_size: usize,
+    token: usize,
+) -> *mut u8 {
+    if layout.align() <= MIN_ALIGN && layout.align() <= new_size {
+        unsafe { __alloc_token_realloc(ptr as *mut libc::c_void, new_size, token) as *mut u8 }
+    } else {
+        unsafe { realloc_fallback(ptr, layout, new_size) }
+    }
+}
+
+unsafe extern "C" {
+    fn __alloc_token_malloc(size: usize, token: usize) -> *mut libc::c_void;
+    fn __alloc_token_calloc(count: usize, size: usize, token: usize) -> *mut libc::c_void;
+    fn __alloc_token_realloc(
+        ptr: *mut libc::c_void,
+        size: usize,
+        token: usize,
+    ) -> *mut libc::c_void;
+}
+
+// Weak default definitions of the token-enabled C allocator interface, which forward to the
+// token-enabled allocator interface using the fast ABI (e.g., `__alloc_token_0_malloc`) when a
+// token-enabled memory allocator provides it; otherwise, ignore the token identifier and call
+// the non-token-enabled allocation functions, so that programs without a token-enabled memory
+// allocator degrade gracefully (i.e., programs remain correct, without heap partitioning).
+//
+// `posix_memalign` has a weak default definition because the `AllocTokenPass` rewrites
+// `posix_memalign` calls (i.e., it is a known allocation function), even though there is no
+// token-enabled equivalent of `posix_memalign` in the token-enabled C allocator interface used
+// by the allocation functions above.
+//
+// Allocation token instrumentation is disabled for these definitions (i.e.,
+// `#[sanitize(alloc_token = "off")]`) so that the `AllocTokenPass` does not rewrite the
+// non-token-enabled allocation calls in them back to the token-enabled versions of the
+// allocation functions (i.e., back to themselves).
+mod alloc_token_defaults {
+    unsafe extern "C" {
+        #[linkage = "extern_weak"]
+        static __alloc_token_0_malloc: Option<unsafe extern "C" fn(usize) -> *mut libc::c_void>;
+        #[linkage = "extern_weak"]
+        static __alloc_token_1_malloc: Option<unsafe extern "C" fn(usize) -> *mut libc::c_void>;
+        #[linkage = "extern_weak"]
+        static __alloc_token_0_calloc:
+            Option<unsafe extern "C" fn(usize, usize) -> *mut libc::c_void>;
+        #[linkage = "extern_weak"]
+        static __alloc_token_1_calloc:
+            Option<unsafe extern "C" fn(usize, usize) -> *mut libc::c_void>;
+        #[linkage = "extern_weak"]
+        static __alloc_token_0_realloc:
+            Option<unsafe extern "C" fn(*mut libc::c_void, usize) -> *mut libc::c_void>;
+        #[linkage = "extern_weak"]
+        static __alloc_token_1_realloc:
+            Option<unsafe extern "C" fn(*mut libc::c_void, usize) -> *mut libc::c_void>;
+        #[linkage = "extern_weak"]
+        static __alloc_token_0_posix_memalign:
+            Option<unsafe extern "C" fn(*mut *mut libc::c_void, usize, usize) -> libc::c_int>;
+        #[linkage = "extern_weak"]
+        static __alloc_token_1_posix_memalign:
+            Option<unsafe extern "C" fn(*mut *mut libc::c_void, usize, usize) -> libc::c_int>;
+    }
+
+    #[linkage = "weak"]
+    #[sanitize(alloc_token = "off")]
+    #[unsafe(no_mangle)]
+    unsafe extern "C" fn __alloc_token_malloc(size: usize, token: usize) -> *mut libc::c_void {
+        unsafe {
+            match if token == 0 { __alloc_token_0_malloc } else { __alloc_token_1_malloc } {
+                Some(f) => f(size),
+                None => libc::malloc(size),
+            }
+        }
+    }
+
+    #[linkage = "weak"]
+    #[sanitize(alloc_token = "off")]
+    #[unsafe(no_mangle)]
+    unsafe extern "C" fn __alloc_token_calloc(
+        count: usize,
+        size: usize,
+        token: usize,
+    ) -> *mut libc::c_void {
+        unsafe {
+            match if token == 0 { __alloc_token_0_calloc } else { __alloc_token_1_calloc } {
+                Some(f) => f(count, size),
+                None => libc::calloc(count, size),
+            }
+        }
+    }
+
+    #[linkage = "weak"]
+    #[sanitize(alloc_token = "off")]
+    #[unsafe(no_mangle)]
+    unsafe extern "C" fn __alloc_token_realloc(
+        ptr: *mut libc::c_void,
+        size: usize,
+        token: usize,
+    ) -> *mut libc::c_void {
+        unsafe {
+            match if token == 0 { __alloc_token_0_realloc } else { __alloc_token_1_realloc } {
+                Some(f) => f(ptr, size),
+                None => libc::realloc(ptr, size),
+            }
+        }
+    }
+
+    #[linkage = "weak"]
+    #[sanitize(alloc_token = "off")]
+    #[unsafe(no_mangle)]
+    unsafe extern "C" fn __alloc_token_posix_memalign(
+        ptr: *mut *mut libc::c_void,
+        align: usize,
+        size: usize,
+        token: usize,
+    ) -> libc::c_int {
+        unsafe {
+            match if token == 0 {
+                __alloc_token_0_posix_memalign
+            } else {
+                __alloc_token_1_posix_memalign
+            } {
+                Some(f) => f(ptr, align, size),
+                None => libc::posix_memalign(ptr, align, size),
+            }
+        }
+    }
+}
+
 cfg_select! {
     // We use posix_memalign wherever possible, but some targets have very incomplete POSIX coverage
     // so we need a fallback for those.
