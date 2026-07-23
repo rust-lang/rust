@@ -1,4 +1,7 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/3702>.
+//! Calling method of trait defined in function used to trigger LLVM assertion.
 //@ run-pass
+
 #![allow(dead_code)]
 
 pub fn main() {

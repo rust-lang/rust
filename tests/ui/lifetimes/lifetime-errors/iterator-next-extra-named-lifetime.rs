@@ -1,3 +1,5 @@
+//! Regression test for <https://github.com/rust-lang/rust/issues/37884>.
+//! This used to leak compiler data structures in error message.
 //@ dont-require-annotations: NOTE
 
 struct RepeatMut<'a, T>(T, &'a ());
