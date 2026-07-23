@@ -303,9 +303,6 @@ impl<'tcx> PerOwnerResolverData<'tcx> {
 /// This struct is meant to be consumed by lowering.
 #[derive(Debug)]
 pub struct ResolverAstLowering<'tcx> {
-    /// Resolutions for nodes that have a single resolution.
-    pub partial_res_map: NodeMap<hir::def::PartialRes>,
-
     pub next_node_id: ast::NodeId,
 
     pub owners: NodeMap<PerOwnerResolverData<'tcx>>,

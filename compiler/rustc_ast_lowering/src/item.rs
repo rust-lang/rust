@@ -672,7 +672,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // Add all the nested `PathListItem`s to the HIR.
                 for &(ref use_tree, id) in trees {
                     let owner_id = self.owner_id(id);
-
                     // Each `use` import is an item and thus are owners of the
                     // names in the path. Up to this point the nested import is
                     // the current owner, since we want each desugared import to

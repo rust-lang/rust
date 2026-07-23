@@ -1,46 +1,20 @@
 error: used import from `std` instead of `core`
-  --> tests/ui/std_instead_of_core_unfixable.rs:7:43
+  --> tests/ui/std_instead_of_core_unfixable.rs:15:9
    |
-LL |     use std::{collections::HashMap, hash::Hash};
-   |                                           ^^^^
+LL |     use std::{error::Error, vec::Vec, fs::File};
+   |         ^^^ help: consider importing the item from `core`: `core`
    |
-   = help: consider importing the item from `core`
    = note: `-D clippy::std-instead-of-core` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::std_instead_of_core)]`
 
-error: used import from `std` instead of `core`
-  --> tests/ui/std_instead_of_core_unfixable.rs:13:22
-   |
-LL |     use std::{error::Error, vec::Vec, fs::File};
-   |                      ^^^^^
-   |
-   = help: consider importing the item from `core`
-
 error: used import from `std` instead of `alloc`
-  --> tests/ui/std_instead_of_core_unfixable.rs:13:34
+  --> tests/ui/std_instead_of_core_unfixable.rs:21:9
    |
-LL |     use std::{error::Error, vec::Vec, fs::File};
-   |                                  ^^^
+LL |     use std::{
+   |         ^^^ help: consider importing the item from `alloc`: `alloc`
    |
-   = help: consider importing the item from `alloc`
    = note: `-D clippy::std-instead-of-alloc` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::std_instead_of_alloc)]`
 
-error: used import from `std` instead of `alloc`
-  --> tests/ui/std_instead_of_core_unfixable.rs:21:17
-   |
-LL |         borrow::Cow,
-   |                 ^^^
-   |
-   = help: consider importing the item from `alloc`
-
-error: used import from `std` instead of `alloc`
-  --> tests/ui/std_instead_of_core_unfixable.rs:23:22
-   |
-LL |         collections::BTreeSet,
-   |                      ^^^^^^^^
-   |
-   = help: consider importing the item from `alloc`
-
-error: aborting due to 5 previous errors
+error: aborting due to 2 previous errors
 

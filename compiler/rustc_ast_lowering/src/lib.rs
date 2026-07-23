@@ -764,29 +764,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn get_partial_res(&self, id: NodeId) -> Option<PartialRes> {
         match self.partial_res_overrides.get(&id) {
             Some(self_param_id) => Some(PartialRes::new(Res::Local(*self_param_id))),
-            None => {
-                let new = self.owner.partial_res_map.get(&id).copied();
-                let old = self.resolver.partial_res_map.get(&id).copied();
-                if new.is_none() != old.is_none() {
-                    let found = self
-                        .resolver
-                        .owners
-                        .items()
-                        .filter_map(|(_owner_id, owner)| {
-                            owner.partial_res_map.get(&id)?;
-                            Some(owner.def_id)
-                        })
-                        .get_only()
-                        .unwrap();
-                    debug!(
-                        "owner_map: {new:?}\nglobal_map: {old:?}\n found in {found:?} {:?}\n current owner: {:?} {:?}",
-                        self.tcx.source_span(found),
-                        self.owner.def_id,
-                        self.tcx.source_span(self.owner.def_id),
-                    );
-                }
-                old
-            }
+            None => self.owner.partial_res_map.get(&id).copied(),
         }
     }
 

@@ -1963,7 +1963,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             delegation_infos: self.delegation_infos,
         };
         let ast_lowering = ty::ResolverAstLowering {
-            partial_res_map: self.partial_res_map,
             next_node_id: self.next_node_id,
             owners: self.owners,
             lint_buffer: Steal::new(self.lint_buffer),
