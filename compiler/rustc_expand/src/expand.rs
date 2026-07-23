@@ -18,13 +18,13 @@ use rustc_attr_parsing::{
     AttributeParser, AttributeSafety, CFG_TEMPLATE, EvalConfigResult, ShouldEmit,
     eval_config_entry, parse_cfg, validate_attr,
 };
+use rustc_data_structures::Limit;
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::PResult;
 use rustc_feature::Features;
 use rustc_hir::Target;
 use rustc_hir::def::MacroKinds;
-use rustc_hir::limit::Limit;
 use rustc_parse::parser::{
     AllowConstBlockItems, AttemptLocalParseRecovery, CommaRecoveryMode, ForceCollect, Parser,
     RecoverColon, RecoverComma, Recovery, token_descr,
@@ -791,10 +791,18 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                     )
                                 ) =>
                         {
-                            rustc_parse::fake_token_stream_for_item(&self.cx.sess.psess, item_inner)
+                            rustc_parse::fake_token_stream_for_item(
+                                &self.cx.sess.psess,
+                                item_inner,
+                                Some(&attr),
+                            )
                         }
                         Annotatable::Item(item_inner) if item_inner.tokens.is_none() => {
-                            rustc_parse::fake_token_stream_for_item(&self.cx.sess.psess, item_inner)
+                            rustc_parse::fake_token_stream_for_item(
+                                &self.cx.sess.psess,
+                                item_inner,
+                                None,
+                            )
                         }
                         // When a function has EII implementations attached (via `eii_impls`),
                         // use fake tokens so the pretty-printer re-emits the EII attribute
@@ -806,7 +814,11 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                             if matches!(&item_inner.kind,
                                 ItemKind::Fn(f) if !f.eii_impls.is_empty()) =>
                         {
-                            rustc_parse::fake_token_stream_for_item(&self.cx.sess.psess, item_inner)
+                            rustc_parse::fake_token_stream_for_item(
+                                &self.cx.sess.psess,
+                                item_inner,
+                                None,
+                            )
                         }
                         Annotatable::ForeignItem(item_inner) if item_inner.tokens.is_none() => {
                             rustc_parse::fake_token_stream_for_foreign_item(

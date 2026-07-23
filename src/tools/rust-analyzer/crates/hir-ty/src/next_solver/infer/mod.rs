@@ -840,7 +840,9 @@ impl<'db> InferCtxt<'db> {
     /// Given a set of generics defined on a type or impl, returns the generic parameters mapping
     /// each type/region parameter to a fresh inference variable.
     pub fn fresh_args_for_item(&self, span: Span, def_id: SolverDefId) -> GenericArgs<'db> {
-        GenericArgs::for_item(self.interner, def_id, |_index, kind, _| self.var_for_def(kind, span))
+        GenericArgs::for_item(self.interner, def_id, |_index, kind, _, _| {
+            self.var_for_def(kind, span)
+        })
     }
 
     /// Like [`Self::fresh_args_for_item`], but first uses the args from `first`.

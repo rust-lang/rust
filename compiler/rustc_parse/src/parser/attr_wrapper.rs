@@ -102,11 +102,27 @@ impl<'a> Parser<'a> {
 
     /// Parses code with `f`. If appropriate, it records the tokens (in
     /// `LazyAttrTokenStream` form) that were parsed in the result, accessible
-    /// via the `HasTokens` trait. The `Trailing` part of the callback's
-    /// result indicates if an extra token should be captured, e.g. a comma or
-    /// semicolon. The `UsePreAttrPos` part of the callback's result indicates
-    /// if we should use `pre_attr_pos` as the collection start position (only
-    /// required in a few cases).
+    /// via the `HasTokens` trait.
+    ///
+    /// Why is this done? Various macro cases require an AST node's tokens.
+    /// - Proc macros: all proc macros take a token stream.
+    ///   - Function-style proc macros (`foo!(..)`): these can receive a token
+    ///     stream without any parsing occurring within the parentheses.
+    ///   - Attribute macros (`#[foo]`): at parse time (pre-resolution) we
+    ///     don't know if a non-builtin `#[foo]` is an attribute proc macro, so
+    ///     the parser does a full parse and collects tokens (lazily) in case.
+    ///   - Derive macros (`derive(Foo)`): any input with
+    ///     `#[cfg]`/`#[cfg_attr]` must be stripped before being passed to the
+    ///     derive macro, which requires parsing. Identifying the end of the
+    ///     item also requires parsing.
+    /// - Decl macros: a matched nonterminal (e.g. `$e:expr`) needs tokens in
+    ///   case it is passed into a proc macro.
+    ///
+    /// The `Trailing` part of the callback's result indicates if an extra
+    /// token should be captured, e.g. a comma or semicolon. The
+    /// `UsePreAttrPos` part of the callback's result indicates if we should
+    /// use `pre_attr_pos` as the collection start position (only required in a
+    /// few cases).
     ///
     /// The `attrs` passed in are in `AttrWrapper` form, which is opaque. The
     /// `AttrVec` within is passed to `f`. See the comment on `AttrWrapper` for

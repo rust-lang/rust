@@ -2,6 +2,7 @@
 
 use std::{fmt, ops::ControlFlow};
 
+use either::Either;
 use intern::{Interned, InternedRef, InternedSliceRef, impl_internable};
 use macros::GenericTypeVisitable;
 use rustc_abi::ReprOptions;
@@ -597,20 +598,17 @@ impl<'db> inherent::AdtDef<DbInterner<'db>> for AdtDef {
         interner: DbInterner<'db>,
     ) -> EarlyBinder<DbInterner<'db>, impl IntoIterator<Item = Ty<'db>>> {
         let db = interner.db();
-        // FIXME: this is disabled just to match the behavior with chalk right now
-        let _field_tys = |id: VariantId| {
-            db.field_types(id).iter().map(|(_, ty)| ty.ty().skip_binder()).collect::<Vec<_>>()
-        };
-        let field_tys = |_id: VariantId| vec![];
-        let tys: Vec<_> = match self.def_id() {
-            hir_def::AdtId::StructId(id) => field_tys(id.into()),
-            hir_def::AdtId::UnionId(id) => field_tys(id.into()),
-            hir_def::AdtId::EnumId(id) => id
-                .enum_variants(db)
-                .variants
-                .values()
-                .flat_map(|&(variant_id, _)| field_tys(variant_id.into()))
-                .collect(),
+        let field_tys =
+            |id: VariantId| db.field_types(id).iter().map(|(_, ty)| ty.ty().skip_binder());
+        let tys = match self.def_id() {
+            hir_def::AdtId::StructId(id) => Either::Left(field_tys(id.into())),
+            hir_def::AdtId::UnionId(id) => Either::Left(field_tys(id.into())),
+            hir_def::AdtId::EnumId(id) => Either::Right(
+                id.enum_variants(db)
+                    .variants
+                    .values()
+                    .flat_map(move |&(variant_id, _)| field_tys(variant_id.into())),
+            ),
         };
 
         EarlyBinder::bind(tys)
@@ -1145,7 +1143,7 @@ impl<'db> Interner for DbInterner<'db> {
     ) -> (rustc_type_ir::TraitRef<Self>, Self::GenericArgsSlice) {
         let trait_def_id = self.projection_parent(def_id).0;
         let trait_generics = crate::generics::generics(self.db, trait_def_id.into());
-        let trait_generics_len = trait_generics.len();
+        let trait_generics_len = trait_generics.len(true);
         let trait_args = GenericArgs::new_from_slice(&args.as_slice()[..trait_generics_len]);
         let alias_args = &args.as_slice()[trait_generics_len..];
         (TraitRef::new_from_args(self, trait_def_id.into(), trait_args), alias_args)
@@ -2486,34 +2484,37 @@ mod tls_cache {
         db_nonce: Nonce,
     }
 
+    impl Cache {
+        const fn default() -> Cache {
+            Cache {
+                cache: GlobalCache::new(),
+                revision: Revision::max(),
+                db_nonce: Nonce::invalid(),
+            }
+        }
+    }
+
     thread_local! {
-        static GLOBAL_CACHE: RefCell<Option<Cache>> = const { RefCell::new(None) };
+        static GLOBAL_CACHE: RefCell<Cache> = const { RefCell::new(Cache::default()) };
     }
 
     pub(super) fn reinit_cache(db: &dyn HirDatabase) {
         GLOBAL_CACHE.with_borrow_mut(|handle| {
             let (db_nonce, revision) = db.nonce_and_revision();
-            match handle {
-                Some(handle) => {
-                    if handle.revision != revision || db_nonce != handle.db_nonce {
-                        *handle = Cache { cache: GlobalCache::default(), revision, db_nonce };
-                    }
-                }
-                None => *handle = Some(Cache { cache: GlobalCache::default(), revision, db_nonce }),
+            if handle.revision != revision || db_nonce != handle.db_nonce {
+                *handle = Cache { cache: GlobalCache::default(), revision, db_nonce };
             }
         })
     }
 
+    #[inline]
     pub(super) fn borrow_assume_valid<'db, T>(
         db: &'db dyn HirDatabase,
         f: impl FnOnce(&mut GlobalCache<DbInterner<'db>>) -> T,
     ) -> T {
         if cfg!(debug_assertions) {
-            let get_state = || {
-                GLOBAL_CACHE.with_borrow(|handle| {
-                    handle.as_ref().map(|handle| (handle.db_nonce, handle.revision))
-                })
-            };
+            let get_state =
+                || GLOBAL_CACHE.with_borrow(|handle| (handle.db_nonce, handle.revision));
             let old_state = get_state();
             reinit_cache(db);
             let new_state = get_state();
@@ -2521,7 +2522,6 @@ mod tls_cache {
         }
 
         GLOBAL_CACHE.with_borrow_mut(|handle| {
-            let handle = handle.as_mut().expect("you assumed the cache is valid!");
             // SAFETY: No idea
             f(unsafe {
                 std::mem::transmute::<
@@ -2537,7 +2537,7 @@ mod tls_cache {
     /// Should be called before getting memory usage estimations, as the solver cache
     /// is per-revision and usually should be excluded from estimations.
     pub fn clear_tls_solver_cache() {
-        GLOBAL_CACHE.with_borrow_mut(|handle| *handle = None);
+        GLOBAL_CACHE.with_borrow_mut(|handle| *handle = Cache::default());
     }
 }
 

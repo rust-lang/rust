@@ -32,7 +32,6 @@ use crate::{
     traits::StoredParamEnvAndCrate,
 };
 
-pub(crate) use self::adt::layout_of_adt_cycle_result;
 pub use self::{adt::layout_of_adt_query, target::target_data_layout_query};
 
 pub(crate) mod adt;
@@ -161,6 +160,7 @@ fn layout_of_simd_ty<'db>(
     Ok(Arc::new(cx.calc.simd_type(e_ly, e_len, repr_packed)?))
 }
 
+#[salsa::tracked(cycle_result = layout_of_ty_cycle_result)]
 pub fn layout_of_ty_query(
     db: &dyn HirDatabase,
     ty: StoredTy,
@@ -503,7 +503,7 @@ pub fn layout_of_ty_query(
     Ok(Arc::new(result))
 }
 
-pub(crate) fn layout_of_ty_cycle_result(
+fn layout_of_ty_cycle_result(
     _: &dyn HirDatabase,
     _: salsa::Id,
     _: StoredTy,

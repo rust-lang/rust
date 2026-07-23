@@ -663,7 +663,7 @@ impl server::Server for Rustc<'_, '_> {
         let mut stream = base.unwrap_or_default();
         for tree in trees {
             for tt in (tree, &mut *self).to_internal() {
-                stream.push_tree(tt);
+                stream.push_tree_with_gluing(tt);
             }
         }
         stream
@@ -676,7 +676,7 @@ impl server::Server for Rustc<'_, '_> {
     ) -> Self::TokenStream {
         let mut stream = base.unwrap_or_default();
         for s in streams {
-            stream.push_stream(s);
+            stream.push_stream_with_gluing(s);
         }
         stream
     }

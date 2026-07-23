@@ -541,7 +541,7 @@ impl CombineAttributeParser for TargetFeatureParser {
         parse_tf_attribute(cx, args)
     }
 
-    fn finalize_check(cx: &FinalizeContext<'_, '_>, attr_span: Span) {
+    fn finalize_check(cx: &FinalizeCheckContext<'_, '_>, attr_span: Span) {
         // `#[target_feature]` is incompatible with lang item functions,
         // except on WASM where calling target-feature functions is safe (see #84988).
         if !cx.sess().target.is_like_wasm && !cx.sess().opts.actually_rustdoc {

@@ -59,7 +59,7 @@ pub(crate) struct RecursionLimitReached<'tcx> {
     #[primary_span]
     pub span: Span,
     pub ty: Ty<'tcx>,
-    pub suggested_limit: rustc_hir::limit::Limit,
+    pub suggested_limit: rustc_data_structures::Limit,
 }
 
 #[derive(Diagnostic)]
@@ -71,7 +71,7 @@ pub(crate) struct RecursionLimitReachedSizeSkeleton<'tcx> {
     #[primary_span]
     pub span: Span,
     pub ty: Ty<'tcx>,
-    pub suggested_limit: rustc_hir::limit::Limit,
+    pub suggested_limit: rustc_data_structures::Limit,
 }
 
 #[derive(Diagnostic)]
@@ -137,7 +137,9 @@ pub(crate) struct MaxNumNodesInValtree {
 
 #[derive(Diagnostic)]
 #[diag("constant {$global_const_id} cannot be used as pattern")]
-#[note("constants that reference mutable or external memory cannot be used as patterns")]
+#[note(
+    "constants that reference mutable or external memory or that contain dangling references cannot be used as patterns"
+)]
 pub(crate) struct InvalidConstInValtree {
     #[primary_span]
     pub span: Span,

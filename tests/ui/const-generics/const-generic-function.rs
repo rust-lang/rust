@@ -13,7 +13,7 @@ const fn baz() -> i32 {
 const FOO: i32 = 3;
 
 fn main() {
-    foo::<baz()>(); //~ ERROR expected type, found function `baz`
+    foo::<baz()>(); //~ ERROR cannot find type `baz` in this scope
     //~^ ERROR unresolved item provided when a constant was expected
     foo::<bar(bar(1, 1), bar(1, 1))>(); //~ ERROR expected type, found `1`
     foo::<bar(1, 1)>(); //~ ERROR expected type, found `1`

@@ -1,5 +1,3 @@
-use std::ops::RangeInclusive;
-
 use rustc_middle::bug;
 use rustc_middle::mir::{self, BasicBlock, CallReturnPlaces, Location, TerminatorEdges};
 
@@ -10,6 +8,13 @@ pub trait Direction {
     const IS_FORWARD: bool;
     const IS_BACKWARD: bool = !Self::IS_FORWARD;
 
+    /// Returns the first statement index for this direction. (0 when going forward and
+    /// `statements.len()` when going backward.)
+    fn first_index(block_data: &mir::BasicBlockData<'_>) -> EffectIndex;
+
+    /// Returns the next index for this direction.
+    fn next_index(idx: EffectIndex) -> EffectIndex;
+
     /// Called by `iterate_to_fixpoint` during initial analysis computation.
     fn apply_effects_in_block<'mir, 'tcx, A>(
         analysis: &A,
@@ -18,19 +23,6 @@ pub trait Direction {
         block: BasicBlock,
         block_data: &'mir mir::BasicBlockData<'tcx>,
         propagate: impl FnMut(BasicBlock, &A::Domain),
-    ) where
-        A: Analysis<'tcx>;
-
-    /// Called by `ResultsCursor` to recompute the domain value for a location
-    /// in a basic block. Applies all effects between the given `EffectIndex`s.
-    ///
-    /// `effects.start()` must precede or equal `effects.end()` in this direction.
-    fn apply_effects_in_range<'tcx, A>(
-        analysis: &A,
-        state: &mut A::Domain,
-        block: BasicBlock,
-        block_data: &mir::BasicBlockData<'tcx>,
-        effects: RangeInclusive<EffectIndex>,
     ) where
         A: Analysis<'tcx>;
 
@@ -52,6 +44,18 @@ pub struct Backward;
 
 impl Direction for Backward {
     const IS_FORWARD: bool = false;
+
+    fn first_index(block_data: &mir::BasicBlockData<'_>) -> EffectIndex {
+        Effect::Early.at_index(block_data.statements.len())
+    }
+
+    /// Returns the next index for this direction.
+    fn next_index(idx: EffectIndex) -> EffectIndex {
+        match idx.effect {
+            Effect::Early => Effect::Primary.at_index(idx.statement_index),
+            Effect::Primary => Effect::Early.at_index(idx.statement_index - 1),
+        }
+    }
 
     fn apply_effects_in_block<'mir, 'tcx, A>(
         analysis: &A,
@@ -128,83 +132,6 @@ impl Direction for Backward {
         }
     }
 
-    fn apply_effects_in_range<'tcx, A>(
-        analysis: &A,
-        state: &mut A::Domain,
-        block: BasicBlock,
-        block_data: &mir::BasicBlockData<'tcx>,
-        effects: RangeInclusive<EffectIndex>,
-    ) where
-        A: Analysis<'tcx>,
-    {
-        let (from, to) = (*effects.start(), *effects.end());
-        let terminator_index = block_data.statements.len();
-
-        assert!(from.statement_index <= terminator_index);
-        assert!(!to.precedes_in_backward_order(from));
-
-        // Handle the statement (or terminator) at `from`.
-
-        let next_effect = match from.effect {
-            // If we need to apply the terminator effect in all or in part, do so now.
-            _ if from.statement_index == terminator_index => {
-                let location = Location { block, statement_index: from.statement_index };
-                let terminator = block_data.terminator();
-
-                if from.effect == Effect::Early {
-                    analysis.apply_early_terminator_effect(state, terminator, location);
-                    if to == Effect::Early.at_index(terminator_index) {
-                        return;
-                    }
-                }
-
-                analysis.apply_primary_terminator_effect(state, terminator, location);
-                if to == Effect::Primary.at_index(terminator_index) {
-                    return;
-                }
-
-                // If `from.statement_index` is `0`, we will have hit one of the earlier comparisons
-                // with `to`.
-                from.statement_index - 1
-            }
-
-            Effect::Primary => {
-                let location = Location { block, statement_index: from.statement_index };
-                let statement = &block_data.statements[from.statement_index];
-
-                analysis.apply_primary_statement_effect(state, statement, location);
-                if to == Effect::Primary.at_index(from.statement_index) {
-                    return;
-                }
-
-                from.statement_index - 1
-            }
-
-            Effect::Early => from.statement_index,
-        };
-
-        // Handle all statements between `first_unapplied_idx` and `to.statement_index`.
-
-        for statement_index in (to.statement_index..next_effect).rev().map(|i| i + 1) {
-            let location = Location { block, statement_index };
-            let statement = &block_data.statements[statement_index];
-            analysis.apply_early_statement_effect(state, statement, location);
-            analysis.apply_primary_statement_effect(state, statement, location);
-        }
-
-        // Handle the statement at `to`.
-
-        let location = Location { block, statement_index: to.statement_index };
-        let statement = &block_data.statements[to.statement_index];
-        analysis.apply_early_statement_effect(state, statement, location);
-
-        if to.effect == Effect::Early {
-            return;
-        }
-
-        analysis.apply_primary_statement_effect(state, statement, location);
-    }
-
     fn visit_results_in_block<'mir, 'tcx, A>(
         analysis: &A,
         state: &mut A::Domain,
@@ -214,8 +141,6 @@ impl Direction for Backward {
     ) where
         A: Analysis<'tcx>,
     {
-        vis.visit_block_end(state);
-
         let loc = Location { block, statement_index: block_data.statements.len() };
         let term = block_data.terminator();
         analysis.apply_early_terminator_effect(state, term, loc);
@@ -230,8 +155,6 @@ impl Direction for Backward {
             analysis.apply_primary_statement_effect(state, stmt, loc);
             vis.visit_after_primary_statement_effect(analysis, state, stmt, loc);
         }
-
-        vis.visit_block_start(state);
     }
 }
 
@@ -240,6 +163,18 @@ pub struct Forward;
 
 impl Direction for Forward {
     const IS_FORWARD: bool = true;
+
+    fn first_index(_block_data: &mir::BasicBlockData<'_>) -> EffectIndex {
+        Effect::Early.at_index(0)
+    }
+
+    /// Returns the next index for this direction.
+    fn next_index(idx: EffectIndex) -> EffectIndex {
+        match idx.effect {
+            Effect::Early => Effect::Primary.at_index(idx.statement_index),
+            Effect::Primary => Effect::Early.at_index(idx.statement_index + 1),
+        }
+    }
 
     fn apply_effects_in_block<'mir, 'tcx, A>(
         analysis: &A,
@@ -310,80 +245,6 @@ impl Direction for Forward {
         }
     }
 
-    fn apply_effects_in_range<'tcx, A>(
-        analysis: &A,
-        state: &mut A::Domain,
-        block: BasicBlock,
-        block_data: &mir::BasicBlockData<'tcx>,
-        effects: RangeInclusive<EffectIndex>,
-    ) where
-        A: Analysis<'tcx>,
-    {
-        let (from, to) = (*effects.start(), *effects.end());
-        let terminator_index = block_data.statements.len();
-
-        assert!(to.statement_index <= terminator_index);
-        assert!(!to.precedes_in_forward_order(from));
-
-        // If we have applied the before affect of the statement or terminator at `from` but not its
-        // after effect, do so now and start the loop below from the next statement.
-
-        let first_unapplied_index = match from.effect {
-            Effect::Early => from.statement_index,
-
-            Effect::Primary if from.statement_index == terminator_index => {
-                debug_assert_eq!(from, to);
-
-                let location = Location { block, statement_index: terminator_index };
-                let terminator = block_data.terminator();
-                analysis.apply_primary_terminator_effect(state, terminator, location);
-                return;
-            }
-
-            Effect::Primary => {
-                let location = Location { block, statement_index: from.statement_index };
-                let statement = &block_data.statements[from.statement_index];
-                analysis.apply_primary_statement_effect(state, statement, location);
-
-                // If we only needed to apply the after effect of the statement at `idx`, we are
-                // done.
-                if from == to {
-                    return;
-                }
-
-                from.statement_index + 1
-            }
-        };
-
-        // Handle all statements between `from` and `to` whose effects must be applied in full.
-
-        for statement_index in first_unapplied_index..to.statement_index {
-            let location = Location { block, statement_index };
-            let statement = &block_data.statements[statement_index];
-            analysis.apply_early_statement_effect(state, statement, location);
-            analysis.apply_primary_statement_effect(state, statement, location);
-        }
-
-        // Handle the statement or terminator at `to`.
-
-        let location = Location { block, statement_index: to.statement_index };
-        if to.statement_index == terminator_index {
-            let terminator = block_data.terminator();
-            analysis.apply_early_terminator_effect(state, terminator, location);
-
-            if to.effect == Effect::Primary {
-                analysis.apply_primary_terminator_effect(state, terminator, location);
-            }
-        } else {
-            let statement = &block_data.statements[to.statement_index];
-            analysis.apply_early_statement_effect(state, statement, location);
-
-            if to.effect == Effect::Primary {
-                analysis.apply_primary_statement_effect(state, statement, location);
-            }
-        }
-    }
-
     fn visit_results_in_block<'mir, 'tcx, A>(
         analysis: &A,
         state: &mut A::Domain,
@@ -393,8 +254,6 @@ impl Direction for Forward {
     ) where
         A: Analysis<'tcx>,
     {
-        vis.visit_block_start(state);
-
         for (statement_index, stmt) in block_data.statements.iter().enumerate() {
             let loc = Location { block, statement_index };
             analysis.apply_early_statement_effect(state, stmt, loc);
@@ -409,7 +268,5 @@ impl Direction for Forward {
         vis.visit_after_early_terminator_effect(analysis, state, term, loc);
         analysis.apply_primary_terminator_effect(state, term, loc);
         vis.visit_after_primary_terminator_effect(analysis, state, term, loc);
-
-        vis.visit_block_end(state);
     }
 }

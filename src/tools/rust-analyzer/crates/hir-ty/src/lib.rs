@@ -106,13 +106,13 @@ pub use autoderef::autoderef;
 pub use infer::{
     Adjust, Adjustment, AutoBorrow, BindingMode, ByRef, ExplicitDropMethodUseKind,
     InferenceDiagnostic, InferenceResult, InferenceTyDiagnosticSource, OverloadedDeref,
-    PointerCast, cast::CastError, could_coerce, could_unify, could_unify_deeply,
+    PointerCast, ReturnKind, cast::CastError, could_coerce, could_unify, could_unify_deeply,
     infer_query_with_inspect,
 };
 pub use lower::{
     FieldType, GenericDefaults, GenericDefaultsRef, GenericPredicates, ImplTraits,
-    LifetimeElisionKind, LoweringMode, TyDefId, TyLoweringContext, TyLoweringInferVarsCtx,
-    TyLoweringResult, ValueTyDefId, diagnostics::*,
+    LifetimeElisionKind, LifetimeLoweringMode, LoweringMode, TyDefId, TyLoweringContext,
+    TyLoweringInferVarsCtx, TyLoweringResult, ValueTyDefId, diagnostics::*,
 };
 pub use next_solver::interner::{attach_db, attach_db_allow_change, with_attached_db};
 pub use target_feature::TargetFeatures;
@@ -221,7 +221,7 @@ pub fn type_or_const_param_idx(db: &dyn HirDatabase, id: TypeOrConstParamId) -> 
 }
 
 pub fn lifetime_param_idx(db: &dyn HirDatabase, id: LifetimeParamId) -> u32 {
-    generics::generics(db, id.parent).lifetime_param_idx(id)
+    generics::generics(db, id.parent).lifetime_param_idx(id, false).0
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash)]

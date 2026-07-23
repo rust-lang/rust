@@ -719,7 +719,8 @@ impl<'a> ExtCtxt<'a> {
         span: Span,
         ident: Ident,
         ty: Box<ast::Ty>,
-        rhs_kind: ast::ConstItemRhsKind,
+        body: Option<Box<Expr>>,
+        kind: ast::ConstItemKind,
     ) -> Box<ast::Item> {
         let defaultness = ast::Defaultness::Implicit;
         self.item(
@@ -732,7 +733,8 @@ impl<'a> ExtCtxt<'a> {
                     // FIXME(generic_const_items): Pass the generics as a parameter.
                     generics: ast::Generics::default(),
                     ty,
-                    rhs_kind,
+                    body,
+                    kind,
                     define_opaque: None,
                 }
                 .into(),
@@ -743,7 +745,7 @@ impl<'a> ExtCtxt<'a> {
     // Builds `#[name]`.
     pub fn attr_word(&self, name: Symbol, span: Span) -> ast::Attribute {
         let g = &self.sess.psess.attr_id_generator;
-        attr::mk_attr_word(g, ast::AttrStyle::Outer, ast::Safety::Default, name, span)
+        attr::mk_attr_word(g, ast::AttrStyle::Outer, name, span)
     }
 
     // Builds `#[name = val]`.
@@ -751,27 +753,13 @@ impl<'a> ExtCtxt<'a> {
     // Note: `span` is used for both the identifier and the value.
     pub fn attr_name_value_str(&self, name: Symbol, val: Symbol, span: Span) -> ast::Attribute {
         let g = &self.sess.psess.attr_id_generator;
-        attr::mk_attr_name_value_str(
-            g,
-            ast::AttrStyle::Outer,
-            ast::Safety::Default,
-            name,
-            val,
-            span,
-        )
+        attr::mk_attr_name_value_str(g, ast::AttrStyle::Outer, name, val, span)
     }
 
     // Builds `#[outer(inner)]`.
     pub fn attr_nested_word(&self, outer: Symbol, inner: Symbol, span: Span) -> ast::Attribute {
         let g = &self.sess.psess.attr_id_generator;
-        attr::mk_attr_nested_word(
-            g,
-            ast::AttrStyle::Outer,
-            ast::Safety::Default,
-            outer,
-            inner,
-            span,
-        )
+        attr::mk_attr_nested_word(g, ast::AttrStyle::Outer, outer, inner, span)
     }
 
     // Builds an attribute fully manually.

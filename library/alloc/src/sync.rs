@@ -4327,7 +4327,6 @@ impl<T: ?Sized, A: Allocator> UniqueArcUninit<T, A> {
     }
 }
 
-#[cfg(not(no_global_oom_handling))]
 impl<T: ?Sized, A: Allocator> Drop for UniqueArcUninit<T, A> {
     fn drop(&mut self) {
         // SAFETY:

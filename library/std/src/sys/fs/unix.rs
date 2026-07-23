@@ -110,16 +110,16 @@ mod runtime_symbols {
     use core::ffi::{c_char, c_int, c_size_t, c_ssize_t, c_void};
 
     unsafe extern "C" {
-        #[lang = "open_fn"]
+        #[rustc_canonical_symbol]
         fn open(pathname: *const c_char, flags: c_int, ...) -> c_int;
 
-        #[lang = "read_fn"]
+        #[rustc_canonical_symbol]
         fn read(fd: c_int, buf: *mut c_void, count: c_size_t) -> c_ssize_t;
 
-        #[lang = "write_fn"]
+        #[rustc_canonical_symbol]
         fn write(fd: c_int, buf: *const c_void, count: c_size_t) -> c_ssize_t;
 
-        #[lang = "close_fn"]
+        #[rustc_canonical_symbol]
         fn close(fd: c_int) -> c_int;
     }
 }
@@ -2079,9 +2079,6 @@ pub fn link(original: &CStr, link: &CStr) -> io::Result<()> {
             target_os = "vxworks",
             target_os = "redox",
             target_os = "espidf",
-            // Android has `linkat` on newer versions, but we happen to know
-            // `link` always has the correct behavior, so it's here as well.
-            target_os = "android",
             // Other misc platforms
             target_os = "horizon",
             target_os = "vita",

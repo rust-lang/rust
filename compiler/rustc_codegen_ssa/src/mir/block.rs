@@ -21,7 +21,7 @@ use rustc_target::callconv::{ArgAbi, ArgAttributes, CastTarget, FnAbi, PassMode}
 use tracing::{debug, info};
 
 use super::operand::OperandRef;
-use super::operand::OperandValue::{self, Immediate, Pair, Ref, ZeroSized};
+use super::operand::OperandValue::{self, Immediate, Pair, Ref, Uninit, ZeroSized};
 use super::place::{PlaceRef, PlaceValue};
 use super::{CachedLlbb, FunctionCx, LocalRef};
 use crate::base::{self, is_call_from_compiler_builtins_to_upstream_monomorphization};
@@ -216,7 +216,13 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         }
 
         let unwind_block = match unwind {
-            mir::UnwindAction::Cleanup(cleanup) => Some(self.llbb_with_cleanup(fx, cleanup)),
+            mir::UnwindAction::Cleanup(cleanup) => {
+                if !fx.nop_landing_pads.contains(cleanup) {
+                    Some(self.llbb_with_cleanup(fx, cleanup))
+                } else {
+                    None
+                }
+            }
             mir::UnwindAction::Continue => None,
             mir::UnwindAction::Unreachable => None,
             mir::UnwindAction::Terminate(reason) => {
@@ -319,7 +325,13 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         mergeable_succ: bool,
     ) -> MergingSucc {
         let unwind_target = match unwind {
-            mir::UnwindAction::Cleanup(cleanup) => Some(self.llbb_with_cleanup(fx, cleanup)),
+            mir::UnwindAction::Cleanup(cleanup) => {
+                if !fx.nop_landing_pads.contains(cleanup) {
+                    Some(self.llbb_with_cleanup(fx, cleanup))
+                } else {
+                    None
+                }
+            }
             mir::UnwindAction::Terminate(reason) => Some(fx.terminate_block(reason, None)),
             mir::UnwindAction::Continue => None,
             mir::UnwindAction::Unreachable => None,
@@ -599,6 +611,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         place_val.llval
                     }
                     ZeroSized => bug!("ZST return value shouldn't be in PassMode::Cast"),
+                    OperandValue::Uninit => {
+                        bug!("uninit return value shouldn't be in PassMode::Cast")
+                    }
                 };
 
                 if self.fn_abi.conv == CanonAbi::Arm(ArmCall::CCmseNonSecureEntry) {
@@ -1788,7 +1803,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         // Force by-ref if we have to load through a cast pointer.
         let (mut llval, align, by_ref) = match op.val {
-            Immediate(_) | Pair(..) => match arg.mode {
+            Immediate(_) | Pair(..) | Uninit => match arg.mode {
                 PassMode::Indirect { attrs, .. } => {
                     // Indirect argument may have higher alignment requirements than the type's
                     // alignment. This can happen, e.g. when passing types with <4 byte alignment
@@ -1808,7 +1823,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     op.store_with_annotation(bx, scratch);
                     (scratch.val.llval, scratch.val.align, true)
                 }
-                PassMode::Direct(_) => (op.immediate(), arg.layout.align.abi, false),
+                PassMode::Direct(_) => {
+                    if let Uninit = op.val {
+                        let ibty = bx.cx().immediate_backend_type(arg.layout);
+                        (bx.cx().const_undef(ibty), arg.layout.align.abi, false)
+                    } else {
+                        (op.immediate(), arg.layout.align.abi, false)
+                    }
+                }
                 PassMode::Ignore | PassMode::Pair(..) => unreachable!("handled above"),
             },
             Ref(op_place_val) => match arg.mode {

@@ -390,7 +390,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         bx.set_var_name(a, &(name.clone() + ".0"));
                         bx.set_var_name(b, &(name.clone() + ".1"));
                     }
-                    OperandValue::ZeroSized => {
+                    OperandValue::ZeroSized | OperandValue::Uninit => {
                         // These never have a value to talk about
                     }
                 },

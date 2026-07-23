@@ -5,5 +5,5 @@ struct Monster {
 
 fn main() {
     let _m = Monster();
-    //~^ ERROR expected function, tuple struct or tuple variant, found struct `Monster`
+    //~^ ERROR cannot find function, tuple struct or tuple variant `Monster` in this scope
 }

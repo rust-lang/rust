@@ -3413,6 +3413,29 @@ pub struct Attribute {
     /// Denotes if the attribute decorates the following construct (outer)
     /// or the construct this attribute is contained within (inner).
     pub style: AttrStyle,
+
+    /// The carets in the examples below show the spans for various cases.
+    /// ```text
+    /// #[foo]                  - A vanilla parsed attribute.
+    /// ^^^^^^                  - Its span covers it all.
+    ///
+    /// /** abc */  /// xyz     - A parsed doc comment.
+    /// ^^^^^^^^^^  ^^^^^^^     - Its span covers the text and comment marker(s).
+    ///                         - The same span is also used if the doc comment is desugared (into
+    ///                           a new normal `#[doc = r"..."]` attribute) by
+    ///                           `desugar_doc_comments` before being passed to a macro (which
+    ///                           is done so that `#[$m:meta]` will match).
+    ///
+    /// #[cfg_attr(pred, foo)]  - A parsed `cfg_attr` attribute.
+    /// ^^^^^^^^^^^^^^^^^^^^^^  - Its span covers it all.
+    ///                  ^^^    - Span of the new replacement attribute (equivalent to `#[foo]`)
+    ///                           created by `cfg_attr` expansion (if `pred` is true).
+    /// ^^^^^^^^^^^^^^^^^^^^^^  - Span of the synthetic `CfgAttrTrace` attribute created by
+    ///                           `cfg_attr` expansion. (`CfgTrace` is derived from `#[cfg(..)]` and
+    ///                           handled similarly.)
+    /// ```
+    /// Finally, for compiler-generated attributes the span is whatever the construction site
+    /// chooses. Usually `DUMMY_SP` or some relevant span from the source code.
     pub span: Span,
 }
 
@@ -3445,6 +3468,7 @@ impl NormalAttr {
                 unsafety: Safety::Default,
                 path: Path::from_ident(ident),
                 args: AttrArgs::Empty,
+                span: ident.span,
             },
             tokens: None,
         }
@@ -3456,6 +3480,15 @@ pub struct AttrItem {
     pub unsafety: Safety,
     pub path: Path,
     pub args: AttrArgs,
+    /// The span of the entire attr item. For parse attrs this excludes `#[`/`]`. E.g.:
+    /// ```ignore (illustrative)
+    /// #[foo(bar)]
+    ///   ^^^^^^^^
+    /// #[unsafe(no_mangle)]
+    ///   ^^^^^^^^^^^^^^^^^
+    /// ```
+    /// For internally constructed spans (`mk_attr_*`) the exact meaning may differ.
+    pub span: Span,
 }
 
 /// Synthetic attributes are inserted by the compiler. They cannot be written in source code, and
@@ -3977,44 +4010,16 @@ pub struct ConstItem {
     pub ident: Ident,
     pub generics: Generics,
     pub ty: Box<Ty>,
-    pub rhs_kind: ConstItemRhsKind,
+    pub body: Option<Box<Expr>>,
+    #[visitable(ignore)]
+    pub kind: ConstItemKind,
     pub define_opaque: Option<ThinVec<(NodeId, Path)>>,
 }
 
-#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
-pub enum ConstItemRhsKind {
-    Body { rhs: Option<Box<Expr>> },
-    TypeConst { rhs: Option<AnonConst> },
-}
-
-impl ConstItemRhsKind {
-    pub fn new_body(rhs: Box<Expr>) -> Self {
-        Self::Body { rhs: Some(rhs) }
-    }
-
-    pub fn span(&self) -> Option<Span> {
-        Some(self.expr()?.span)
-    }
-
-    pub fn expr(&self) -> Option<&Expr> {
-        match self {
-            Self::Body { rhs: Some(body) } => Some(&body),
-            Self::TypeConst { rhs: Some(anon) } => Some(&anon.value),
-            _ => None,
-        }
-    }
-
-    pub fn has_expr(&self) -> bool {
-        match self {
-            Self::Body { rhs: Some(_) } => true,
-            Self::TypeConst { rhs: Some(_) } => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_type_const(&self) -> bool {
-        matches!(self, &Self::TypeConst { .. })
-    }
+#[derive(Clone, Copy, Encodable, Decodable, Debug, PartialEq, Eq)]
+pub enum ConstItemKind {
+    Body,
+    TypeConst,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
@@ -4398,7 +4403,7 @@ mod size_asserts {
     static_assert_size!(MetaItem, 80);
     static_assert_size!(MetaItemKind, 40);
     static_assert_size!(MetaItemLit, 40);
-    static_assert_size!(NormalAttr, 72);
+    static_assert_size!(NormalAttr, 80);
     static_assert_size!(Param, 40);
     static_assert_size!(Pat, 64);
     static_assert_size!(PatKind, 48);

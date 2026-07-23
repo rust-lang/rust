@@ -15,7 +15,7 @@ use crate::data_structures::SsoHashSet;
 use crate::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable};
 use crate::inherent::*;
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
-use crate::{self as ty, DebruijnIndex, Interner, UniverseIndex, Unnormalized};
+use crate::{self as ty, DebruijnIndex, Interner, Region, UniverseIndex, Unnormalized};
 
 /// `Binder` is a binder for higher-ranked lifetimes or types. It is part of the
 /// compiler's representation for things like `for<'a> Fn(&'a isize)`
@@ -23,8 +23,6 @@ use crate::{self as ty, DebruijnIndex, Interner, UniverseIndex, Unnormalized};
 ///
 /// See <https://rustc-dev-guide.rust-lang.org/ty_module/instantiating_binders.html>
 /// for more details.
-///
-/// `Decodable` and `Encodable` are implemented for `Binder<T>` using the `impl_binder_encode_decode!` macro.
 #[derive_where(Clone, Copy, Hash, PartialEq, Debug; I: Interner, T)]
 #[derive(GenericTypeVisitable, Lift_Generic)]
 #[cfg_attr(feature = "nightly", derive(StableHash_NoContext))]
@@ -34,71 +32,6 @@ pub struct Binder<I: Interner, T> {
 }
 
 impl<I: Interner, T: Eq> Eq for Binder<I, T> {}
-
-#[cfg(feature = "nightly")]
-macro_rules! impl_binder_encode_decode {
-    ($($t:ty),+ $(,)?) => {
-        $(
-            impl<I: Interner, E: rustc_serialize::Encoder> rustc_serialize::Encodable<E> for ty::Binder<I, $t>
-            where
-                $t: rustc_serialize::Encodable<E>,
-                I::BoundVarKinds: rustc_serialize::Encodable<E>,
-            {
-                fn encode(&self, e: &mut E) {
-                    self.bound_vars().encode(e);
-                    self.as_ref().skip_binder().encode(e);
-                }
-            }
-            impl<I: Interner, D: rustc_serialize::Decoder> rustc_serialize::Decodable<D> for ty::Binder<I, $t>
-            where
-                $t: TypeVisitable<I> + rustc_serialize::Decodable<D>,
-                I::BoundVarKinds: rustc_serialize::Decodable<D>,
-            {
-                fn decode(decoder: &mut D) -> Self {
-                    let bound_vars = rustc_serialize::Decodable::decode(decoder);
-                    ty::Binder::bind_with_vars(rustc_serialize::Decodable::decode(decoder), bound_vars)
-                }
-            }
-        )*
-    }
-}
-
-#[cfg(feature = "nightly")]
-impl_binder_encode_decode! {
-    ty::FnSig<I>,
-    ty::FnSigTys<I>,
-    ty::TraitPredicate<I>,
-    ty::ExistentialPredicate<I>,
-    ty::TraitRef<I>,
-    ty::ExistentialTraitRef<I>,
-    ty::HostEffectPredicate<I>,
-}
-
-#[cfg(feature = "nightly")]
-impl<T: GenericArgs<I>, I: Interner<GenericArgs = T>, E: rustc_serialize::Encoder>
-    rustc_serialize::Encodable<E> for ty::Binder<I, T>
-where
-    T: rustc_serialize::Encodable<E>,
-    I::BoundVarKinds: rustc_serialize::Encodable<E>,
-{
-    fn encode(&self, e: &mut E) {
-        self.bound_vars().encode(e);
-        self.as_ref().skip_binder().encode(e);
-    }
-}
-
-#[cfg(feature = "nightly")]
-impl<T: GenericArgs<I>, I: Interner<GenericArgs = T>, D: rustc_serialize::Decoder>
-    rustc_serialize::Decodable<D> for ty::Binder<I, T>
-where
-    T: TypeVisitable<I> + rustc_serialize::Decodable<D>,
-    I::BoundVarKinds: rustc_serialize::Decodable<D>,
-{
-    fn decode(decoder: &mut D) -> Self {
-        let bound_vars = rustc_serialize::Decodable::decode(decoder);
-        ty::Binder::bind_with_vars(rustc_serialize::Decodable::decode(decoder), bound_vars)
-    }
-}
 
 impl<I: Interner, T> Binder<I, T>
 where
@@ -347,7 +280,7 @@ impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
         c.super_visit_with(self)
     }
 
-    fn visit_region(&mut self, r: I::Region) -> Self::Result {
+    fn visit_region(&mut self, r: Region<I>) -> Self::Result {
         match r.kind() {
             ty::ReBound(index, br) if index == ty::BoundVarIndexKind::Bound(self.binder_index) => {
                 let idx = br.var().as_usize();
@@ -762,7 +695,7 @@ impl<'a, I: Interner> TypeFolder<I> for ArgFolder<'a, I> {
         t
     }
 
-    fn fold_region(&mut self, r: I::Region) -> I::Region {
+    fn fold_region(&mut self, r: Region<I>) -> Region<I> {
         // Note: This routine only handles regions that are bound on
         // type declarations and other outer declarations, not those
         // bound in *fn types*. Region instantiation of the bound
@@ -900,7 +833,7 @@ impl<'a, I: Interner> ArgFolder<'a, I> {
     fn region_param_expected(
         &self,
         ebr: I::EarlyParamRegion,
-        r: I::Region,
+        r: Region<I>,
         kind: ty::GenericArgKind<I>,
     ) -> ! {
         panic!(
@@ -915,7 +848,7 @@ impl<'a, I: Interner> ArgFolder<'a, I> {
 
     #[cold]
     #[inline(never)]
-    fn region_param_out_of_range(&self, ebr: I::EarlyParamRegion, r: I::Region) -> ! {
+    fn region_param_out_of_range(&self, ebr: I::EarlyParamRegion, r: Region<I>) -> ! {
         panic!(
             "region parameter `{:?}` ({:?}/{}) out of range when instantiating args={:?}",
             ebr,
@@ -976,7 +909,7 @@ impl<'a, I: Interner> ArgFolder<'a, I> {
         }
     }
 
-    fn shift_region_through_binders(&self, region: I::Region) -> I::Region {
+    fn shift_region_through_binders(&self, region: Region<I>) -> Region<I> {
         if self.binders_passed == 0 || !region.has_escaping_bound_vars() {
             region
         } else {
@@ -1149,12 +1082,13 @@ impl<I: Interner> BoundVariableKind<I> {
 }
 
 #[derive_where(Clone, Copy, PartialEq, Eq, Hash; I: Interner)]
-#[derive(GenericTypeVisitable)]
+#[derive(GenericTypeVisitable, Lift_Generic)]
 #[cfg_attr(
     feature = "nightly",
     derive(Encodable_NoContext, StableHash_NoContext, Decodable_NoContext)
 )]
 pub struct BoundRegion<I: Interner> {
+    #[lift(identity)]
     pub var: ty::BoundVar,
     pub kind: BoundRegionKind<I>,
 }

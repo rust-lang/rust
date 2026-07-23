@@ -2,7 +2,7 @@
 //@ edition: 2024
 
 #![allow(incomplete_features)]
-#![feature(min_generic_const_args, adt_const_params)]
+#![feature(min_generic_const_args, macroless_generic_const_args, adt_const_params)]
 
 #[derive(Eq, PartialEq, core::marker::ConstParamTy)]
 struct Foo;

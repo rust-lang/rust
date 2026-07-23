@@ -9,19 +9,19 @@ impl SomeStruct {
     fn some_fn(&some_name) {
         //~^ ERROR expected one of `:`, `@`, or `|`, found `)`
         self
-        //~^ ERROR expected value, found module `self`
+        //~^ ERROR cannot find value `self` in this scope
     }
 
     fn mut_param(mut some_name) {
         //~^ ERROR expected one of `:`, `@`, or `|`, found `)`
         self
-        //~^ ERROR expected value, found module `self`
+        //~^ ERROR cannot find value `self` in this scope
     }
 
     fn type_before_name(String s) {
         //~^ ERROR expected one of `:`, `@`, or `|`, found `s`
         self
-        //~^ ERROR expected value, found module `self`
+        //~^ ERROR cannot find value `self` in this scope
     }
 }
 

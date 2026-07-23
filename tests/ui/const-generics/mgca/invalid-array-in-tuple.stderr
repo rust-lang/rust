@@ -1,5 +1,5 @@
 error: the constant `Bar` is not of type `Foo`
-  --> $DIR/invalid-array-in-tuple.rs:14:32
+  --> $DIR/invalid-array-in-tuple.rs:19:32
    |
 LL |     takes_tuple_with_array::<{ ([Bar], 1) }>();
    |                                ^^^^^^^^^^ expected `Foo`, found `Bar`

@@ -1,5 +1,6 @@
 //@ check-pass
-#![feature(c_variadic)]
+#![feature(custom_inner_attributes)] // for top-level rustfmt::skip
+#![rustfmt::skip]
 #![warn(function_item_references)]
 use std::fmt::Pointer;
 use std::fmt::Formatter;

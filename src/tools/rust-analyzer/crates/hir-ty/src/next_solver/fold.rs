@@ -8,7 +8,8 @@ use rustc_type_ir::{
 use crate::next_solver::{BoundConst, FxIndexMap};
 
 use super::{
-    Binder, BoundRegion, BoundTy, Const, ConstKind, DbInterner, Predicate, Region, Ty, TyKind,
+    Binder, BoundRegion, BoundTy, Const, ConstKind, DbInterner, Predicate, Region, SolverDefId, Ty,
+    TyKind,
 };
 
 /// A delegate used when instantiating bound vars.
@@ -218,5 +219,20 @@ impl<'db> DbInterner<'db> {
         T: TypeFoldable<DbInterner<'db>>,
     {
         self.instantiate_bound_regions(value, |_| Region::new_erased(self)).0
+    }
+
+    /// Replaces any late-bound regions bound in `value` with
+    /// free variants attached to `all_outlive_scope`.
+    pub fn liberate_late_bound_regions<T>(
+        self,
+        all_outlive_scope: SolverDefId,
+        value: Binder<'db, T>,
+    ) -> T
+    where
+        T: TypeFoldable<DbInterner<'db>>,
+    {
+        self.instantiate_bound_regions_uncached(value, |br| {
+            Region::new_late_param(self, all_outlive_scope, br)
+        })
     }
 }

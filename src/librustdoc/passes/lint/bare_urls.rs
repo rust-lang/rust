@@ -111,6 +111,14 @@ fn find_raw_urls(
             url_range.start -= 1;
             url_range.end += 1;
             without_brackets = Some(match_.as_str());
+        } else {
+            // Periods are valid in URLs, but very uncommon as the last character of one, while
+            // being very common as sentence punctuation right after one. Leave any trailing
+            // period out of the link, so that `Visit https://example.com/docs.` is linkified as
+            // `Visit <https://example.com/docs>.`.
+            let trailing_periods =
+                match_.as_str().len() - match_.as_str().trim_end_matches('.').len();
+            url_range.end -= trailing_periods;
         }
         f(cx, "this URL is not a hyperlink", url_range, without_brackets);
     }

@@ -119,17 +119,21 @@ help: expressions must be enclosed in braces to be used as const generic argumen
 LL |     foo::<{ BAR - bar::<i32>() }>();
    |           +                    +
 
-error[E0404]: expected trait, found constant `BAR`
+error[E0404]: cannot find trait `BAR` in this scope
   --> $DIR/const-expression-suggest-missing-braces.rs:11:11
    |
 LL |     foo::<BAR + BAR>();
-   |           ^^^ not a trait
+   |           ^^^ not found in this scope
+   |
+   = note: a constant named `BAR` exists in another namespace
 
-error[E0404]: expected trait, found constant `BAR`
+error[E0404]: cannot find trait `BAR` in this scope
   --> $DIR/const-expression-suggest-missing-braces.rs:11:17
    |
 LL |     foo::<BAR + BAR>();
-   |                 ^^^ not a trait
+   |                 ^^^ not found in this scope
+   |
+   = note: a constant named `BAR` exists in another namespace
 
 error[E0747]: type provided when a constant was expected
   --> $DIR/const-expression-suggest-missing-braces.rs:11:11

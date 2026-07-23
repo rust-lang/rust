@@ -11,7 +11,7 @@ use rustc_type_ir_macros::{
 use crate::inherent::*;
 use crate::upcast::{Upcast, UpcastFrom};
 use crate::visit::TypeVisitableExt as _;
-use crate::{self as ty, Alias, Interner};
+use crate::{self as ty, Alias, Interner, Region};
 
 /// `A: 'region`
 #[derive_where(Clone, Hash, PartialEq, Debug; I: Interner, A)]
@@ -21,7 +21,7 @@ use crate::{self as ty, Alias, Interner};
     feature = "nightly",
     derive(Decodable_NoContext, Encodable_NoContext, StableHash_NoContext)
 )]
-pub struct OutlivesPredicate<I: Interner, A>(pub A, pub I::Region);
+pub struct OutlivesPredicate<I: Interner, A>(pub A, pub Region<I>);
 
 impl<I: Interner, A: Eq> Eq for OutlivesPredicate<I, A> {}
 
@@ -35,7 +35,7 @@ impl<I: Interner, A: Eq> Eq for OutlivesPredicate<I, A> {}
     feature = "nightly",
     derive(Decodable_NoContext, Encodable_NoContext, StableHash_NoContext)
 )]
-pub struct RegionEqPredicate<I: Interner>(pub I::Region, pub I::Region);
+pub struct RegionEqPredicate<I: Interner>(pub Region<I>, pub Region<I>);
 
 impl<I: Interner> RegionEqPredicate<I> {
     /// Decompose `'a == 'b` into `['a: 'b, 'b: 'a]`

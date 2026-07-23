@@ -52,7 +52,8 @@ unsafe extern "Rust" {
 /// Note: while this type is unstable, the functionality it provides can be
 /// accessed through the [free functions in `alloc`](self#functions).
 #[unstable(feature = "allocator_api", issue = "32838")]
-#[derive(Copy, Clone, Default, Debug)]
+#[derive(Copy, Debug)]
+#[derive_const(Clone, Default)]
 // the compiler needs to know when a Box uses the global allocator vs a custom one
 #[lang = "global_alloc_ty"]
 pub struct Global;

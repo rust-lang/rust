@@ -1,7 +1,7 @@
 // Test that we force users to explicitly specify associated constants (via bindings)
 // which reference the `Self` type parameter.
 
-#![feature(min_generic_const_args)]
+#![feature(min_generic_const_args, macroless_generic_const_args)]
 #![expect(incomplete_features)]
 
 trait X: Y<K = { Self::Q }> {

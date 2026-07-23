@@ -298,6 +298,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 builder.update_imm(offset, fst);
                                 builder.update_imm(offset + Size::from_bytes(1), snd)
                             }
+                            OperandValue::Uninit => {
+                                unreachable!("load_operand never produces Uninit")
+                            }
                         }
                     }
                 }
