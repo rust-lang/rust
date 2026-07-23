@@ -96,7 +96,7 @@ pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> EncodedMetadata {
         if tcx.sess.opts.json_artifact_notifications {
             tcx.dcx().emit_artifact_notification(out_filename.as_path(), "metadata");
         }
-        (filename, None)
+        (filename, Some(metadata_tmpdir))
     } else {
         (metadata_filename, Some(metadata_tmpdir))
     };
