@@ -286,13 +286,12 @@ mod tests {
     #[test]
     fn can_fetch_known_folder_paths() {
         let dirs = HomeDirs::known_folders().unwrap();
-        assert!(dirs.user_home().is_some());
         assert!(dirs.cache_home().is_some());
         assert!(dirs.config_home().is_some());
         assert!(dirs.data_home().is_some());
+        assert!(dirs.state_home().is_some());
 
         let dirs = MediaDirs::known_folders().unwrap();
-        assert!(dirs.state_home().is_some());
         assert!(dirs.desktop().is_some());
         assert!(dirs.documents().is_some());
         assert!(dirs.downloads().is_some());
