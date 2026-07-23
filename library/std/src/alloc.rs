@@ -504,4 +504,52 @@ pub mod __default_lib_allocator {
             imp::alloc_zeroed(layout)
         }
     }
+
+    // Default implementations of the token-enabled versions of the `__rust_alloc` etc symbols
+    // (see `src/liballoc/alloc.rs`) when there is no `#[global_allocator]` attribute, for LLVM
+    // AllocToken and heap partitioning support.
+
+    #[rustc_std_internal_symbol]
+    pub unsafe extern "C" fn __rdl_alloc_with_token(
+        size: usize,
+        align: usize,
+        token: usize,
+    ) -> *mut u8 {
+        // SAFETY: see the guarantees expected by `Layout::from_size_align` and
+        // `GlobalAlloc::alloc_with_token`.
+        unsafe {
+            let layout = Layout::from_size_align_unchecked(size, align);
+            imp::alloc_with_token(layout, token)
+        }
+    }
+
+    #[rustc_std_internal_symbol]
+    pub unsafe extern "C" fn __rdl_realloc_with_token(
+        ptr: *mut u8,
+        old_size: usize,
+        align: usize,
+        new_size: usize,
+        token: usize,
+    ) -> *mut u8 {
+        // SAFETY: see the guarantees expected by `Layout::from_size_align` and
+        // `GlobalAlloc::realloc_with_token`.
+        unsafe {
+            let old_layout = Layout::from_size_align_unchecked(old_size, align);
+            imp::realloc_with_token(ptr, old_layout, new_size, token)
+        }
+    }
+
+    #[rustc_std_internal_symbol]
+    pub unsafe extern "C" fn __rdl_alloc_zeroed_with_token(
+        size: usize,
+        align: usize,
+        token: usize,
+    ) -> *mut u8 {
+        // SAFETY: see the guarantees expected by `Layout::from_size_align` and
+        // `GlobalAlloc::alloc_zeroed_with_token`.
+        unsafe {
+            let layout = Layout::from_size_align_unchecked(size, align);
+            imp::alloc_zeroed_with_token(layout, token)
+        }
+    }
 }
