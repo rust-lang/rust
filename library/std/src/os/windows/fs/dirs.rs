@@ -24,7 +24,7 @@ pub impl(self) trait HomeDirsExt: Sized {
     ///
     /// # Errors
     ///
-    /// Errors if `%APPDATA%` or `%LOCALAPPDATA%` are not set or are non-UTF-8.
+    /// Errors if `%APPDATA%` or `%LOCALAPPDATA%` are not set to absolute paths.
     ///
     /// # Implementation-specific behavior
     ///
@@ -151,9 +151,14 @@ pub impl(self) trait MediaDirsExt: Sized {
 #[unstable(feature = "dir_discovery", issue = "157515")]
 impl HomeDirsExt for HomeDirs {
     fn appdata_env() -> io::Result<Self> {
-        let wrap_err = |e: env::VarError| io::Error::new(io::ErrorKind::NotFound, e);
-        let local_app_data = PathBuf::from(env::var("LOCALAPPDATA").map_err(wrap_err)?);
-        let roaming_app_data = PathBuf::from(env::var("APPDATA").map_err(wrap_err)?);
+        let roaming_app_data = env::var_os("APPDATA")
+            .map(PathBuf::from)
+            .filter(|p| p.is_absolute())
+            .ok_or(const_error!(io::ErrorKind::InvalidData, "non-absolute %APPDATA%"))?;
+        let local_app_data = env::var_os("LOCALAPPDATA")
+            .map(PathBuf::from)
+            .filter(|p| p.is_absolute())
+            .ok_or(const_error!(io::ErrorKind::InvalidData, "non-absolute %LOCALAPPDATA%"))?;
 
         // AppData/Local -- system-local, doesn't make sense to sync to another
         // AppData/Roaming -- data that makes sense to sync across machines
