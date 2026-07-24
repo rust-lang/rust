@@ -1,74 +1,64 @@
-//! This is an NFA-based parser, which calls out to the main Rust parser for named non-terminals
-//! (which it commits to fully when it hits one in a grammar). There's a set of current NFA threads
-//! and a set of next ones. Instead of NTs, we have a special case for Kleene star. The big-O, in
-//! pathological cases, is worse than traditional use of NFA or Earley parsing, but it's an easier
-//! fit for Macro-by-Example-style rules.
+//! Parsing macros-by-example invocations.
 //!
-//! (In order to prevent the pathological case, we'd need to lazily construct the resulting
-//! `NamedMatch`es at the very end. It'd be a pain, and require more memory to keep around old
-//! matcher positions, but it would also save overhead)
+//! The MBE macro matcher language allows for some limited ambiguity:
 //!
-//! We don't say this parser uses the Earley algorithm, because it's unnecessarily inaccurate.
-//! The macro parser restricts itself to the features of finite state automata. Earley parsers
-//! can be described as an extension of NFAs with completion rules, prediction rules, and recursion.
-//!
-//! Quick intro to how the parser works:
-//!
-//! A "matcher position" (a.k.a. "position" or "mp") is a dot in the middle of a matcher, usually
-//! written as a `·`. For example `· a $( a )* a b` is one, as is `a $( · a )* a b`.
-//!
-//! The parser walks through the input a token at a time, maintaining a list
-//! of threads consistent with the current position in the input string: `cur_mps`.
-//!
-//! As it processes them, it fills up `eof_mps` with threads that would be valid if
-//! the macro invocation is now over, `bb_mps` with threads that are waiting on
-//! a Rust non-terminal like `$e:expr`, and `next_mps` with threads that are waiting
-//! on a particular token. Most of the logic concerns moving the · through the
-//! repetitions indicated by Kleene stars. The rules for moving the · without
-//! consuming any input are called epsilon transitions. It only advances or calls
-//! out to the real Rust parser when no `cur_mps` threads remain.
-//!
-//! Example:
-//!
-//! ```text, ignore
-//! Start parsing a a a a b against [· a $( a )* a b].
-//!
-//! Remaining input: a a a a b
-//! next: [· a $( a )* a b]
-//!
-//! - - - Advance over an a. - - -
-//!
-//! Remaining input: a a a b
-//! cur: [a · $( a )* a b]
-//! Descend/Skip (first position).
-//! next: [a $( · a )* a b]  [a $( a )* · a b].
-//!
-//! - - - Advance over an a. - - -
-//!
-//! Remaining input: a a b
-//! cur: [a $( a · )* a b]  [a $( a )* a · b]
-//! Follow epsilon transition: Finish/Repeat (first position)
-//! next: [a $( a )* · a b]  [a $( · a )* a b]  [a $( a )* a · b]
-//!
-//! - - - Advance over an a. - - - (this looks exactly like the last step)
-//!
-//! Remaining input: a b
-//! cur: [a $( a · )* a b]  [a $( a )* a · b]
-//! Follow epsilon transition: Finish/Repeat (first position)
-//! next: [a $( a )* · a b]  [a $( · a )* a b]  [a $( a )* a · b]
-//!
-//! - - - Advance over an a. - - - (this looks exactly like the last step)
-//!
-//! Remaining input: b
-//! cur: [a $( a · )* a b]  [a $( a )* a · b]
-//! Follow epsilon transition: Finish/Repeat (first position)
-//! next: [a $( a )* · a b]  [a $( · a )* a b]  [a $( a )* a · b]
-//!
-//! - - - Advance over a b. - - -
-//!
-//! Remaining input: ''
-//! eof: [a $( a )* a b ·]
 //! ```
+//! macro_rules! foo {
+//!     ($(,)? , $(,)?) => {};
+//! }
+//!
+//! foo!(,); // can be parsed unambiguously
+//! //foo!(,,); // fails to compile due to ambiguity
+//! ```
+//!
+//! When a repetition or optional matcher is encountered, the macro parser will not prioritize one
+//! possibility over another (as occurs with e.g. PEG); it will explore all possibilities. If there
+//! are multiple ways to parse the macro invocation, an ambiguity error is raised.
+//!
+//! The possible ways to parse an input can be visualized as a tree, where the root represents the
+//! start of parsing, and the children of each node are the parsing steps that follow from it. For
+//! the above macro, that would look like:
+//!
+//! ```text
+//! start - token ',' - token ',' - token ',' - eof
+//!       |                       \\
+//!       |                         skip ------ eof
+//!       \\
+//!         skip ------ token ',' - token ',' - eof
+//!                               \\
+//!                                 skip ------ eof
+//! ```
+//!
+//! This module implements a depth-first, backtracking traversal of that tree. It maintains a
+//! stack of `MatcherPos`-es (i.e. mps), which represent paths taken through the tree. It will
+//! continuously expand the latest `MatcherPos`, backtracking if the mp has no more children to
+//! explore.
+//!
+//! An important caveat is that meta-variables, e.g. `$e:expr`, require unambiguity to be parsed. No
+//! other `MatcherPos`-es are allowed to match the same tokens as those consumed by a meta-variable;
+//! doing so raises an ambiguity error.
+//!
+//! ```
+//! macro_rules! foo {
+//!     ($(a)? $x:ident b) => {};
+//! }
+//!
+//! foo!(b b); // can be parsed unambiguously
+//! //foo!(a b); // fails to compile due to ambiguity
+//! ```
+//!
+//! In theory, the latter invocation could be parsed unambiguously. But, at the first input position
+//! where a meta-variable needs to be matched (matching `$x` against `a`), another path through the
+//! parse tree is valid (matching `a` in `$(a)?` against `a`), and this is not allowed.
+//!
+//! # Pathological Behavior
+//!
+//! It is possible to construct macros which require an exponential runtime to parse. This is
+//! because we don't deduplicate equivalent mps, or cache parsing results. Pathological macros are
+//! very rare in the real world. While they could be handled in linear time like everything else,
+//! doing so would add unnecessary overhead. We could retain the existing parsing algorithm and
+//! switch to a guaranteed-linear-time alternative for a particular macro invocation if it takes
+//! more than N parsing steps.
 
 use std::borrow::Cow;
 use std::fmt::Display;
