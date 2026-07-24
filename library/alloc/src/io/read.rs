@@ -840,6 +840,10 @@ pub fn default_read_to_end<R: Read + ?Sized>(
         .and_then(|s| s.checked_add(1024)?.checked_next_multiple_of(DEFAULT_BUF_SIZE))
         .unwrap_or(DEFAULT_BUF_SIZE);
 
+    // Tracks whether we have an initialized buffer from previous loop
+    // or not
+    let mut is_init = false;
+
     const PROBE_SIZE: usize = 32;
 
     fn small_probe_read<R: Read + ?Sized>(r: &mut R, buf: &mut Vec<u8>) -> Result<usize> {
@@ -896,18 +900,48 @@ pub fn default_read_to_end<R: Read + ?Sized>(
 
             if read == 0 {
                 return Ok(buf.len() - start_len);
+            } else {
+                is_init = false;
             }
         }
 
         if buf.len() == buf.capacity() {
             // buf is full, need more space
             buf.try_reserve(PROBE_SIZE)?;
+            is_init = false;
         }
 
         let mut spare = buf.spare_capacity_mut();
-        let buf_len = cmp::min(spare.len(), max_read_size);
+        let min = cmp::min(spare.len(), max_read_size);
+        let buf_len = if is_init {
+            if min == spare.len() {
+                min
+            } else {
+                // If we initialized our buffer through max_read_size, just grab
+                // the remainder of the initialized portion of the buffer from
+                // last iteration.
+                //
+                // Otherwise if our remainder is 0, which occurs if the vector has
+                // not been resized but the initialized bytes have been filled,
+                // that means we need to initialize more bytes in the spare buffer.
+                let remainder = spare.len() % max_read_size;
+                if remainder > 0 {
+                    remainder
+                } else {
+                    is_init = false;
+                    min
+                }
+            }
+        } else {
+            min
+        };
         spare = &mut spare[..buf_len];
         let mut read_buf: BorrowedBuf<'_, u8> = spare.into();
+
+        if is_init {
+            // SAFETY: These bytes were initialized but not filled in the previous loop
+            unsafe { read_buf.set_init() };
+        }
 
         // Note that we don't track already initialized bytes here, but this is fine
         // because we explicitly limit the read size
@@ -922,7 +956,7 @@ pub fn default_read_to_end<R: Read + ?Sized>(
         };
 
         let bytes_read = cursor.written();
-        let is_init = read_buf.is_init();
+        is_init = read_buf.is_init();
 
         // SAFETY: BorrowedBuf's invariants mean this much memory is initialized.
         unsafe {
