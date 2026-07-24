@@ -551,17 +551,46 @@ impl<'tcx> PrirodaContext<'tcx> {
             // bytes would make debugger output look more certain than it is.
             ty::Adt(def, _) if def.variants().is_empty() || def.is_union() => self.render_op(op),
 
-            ty::Adt(def, _) if def.is_struct() => {
-                let variant_idx = FIRST_VARIANT;
+            ty::Adt(def, _) => {
+                // Enums need their runtime discriminant and a downcasted layout
+                // view before fields can be projected. Structs use their sole
+                // variant directly. Keep the display name tied to the same choice.
+                let (variant_idx, down, name) = if def.is_enum() {
+                    let variant_idx = match self.ecx.read_discriminant(&op).discard_err() {
+                        Some(variant_idx) => variant_idx,
+                        // FIXME: expose this as an explicit render error when
+                        // Priroda grows structured value states. Falling back to
+                        // bytes keeps today's UI usable but hides why the enum
+                        // could not be source-shaped.
+                        None => return self.render_op(op),
+                    };
+                    let down = match self.ecx.project_downcast(&op, variant_idx).discard_err() {
+                        Some(down) => down,
+                        // FIXME: distinguish invalid/uninitialized discriminants
+                        // from projection bugs in the rendered output once locals
+                        // can carry structured diagnostics.
+                        None => return self.render_op(op),
+                    };
+                    let variant_def = &def.variants()[variant_idx];
+                    (
+                        variant_idx,
+                        down,
+                        format!("{}::{}", self.ecx.tcx.item_name(def.did()), variant_def.name),
+                    )
+                } else {
+                    let variant_idx = FIRST_VARIANT;
+                    let variant_def = &def.variants()[variant_idx];
+                    (variant_idx, op.clone(), variant_def.name.to_string())
+                };
+
                 let variant_def = &def.variants()[variant_idx];
-                let name = variant_def.name.to_string();
 
                 let mut fields = Vec::with_capacity(variant_def.fields.len());
                 for i in 0..variant_def.fields.len() {
                     let field_idx = FieldIdx::from_usize(i);
                     // `project_field` avoids manual offset math and works for both
                     // immediate and memory-backed operands through `Projectable`.
-                    let field_op = match self.ecx.project_field(&op, field_idx).discard_err() {
+                    let field_op = match self.ecx.project_field(&down, field_idx).discard_err() {
                         Some(field_op) => field_op,
                         // FIXME: preserve the successfully rendered fields and
                         // mark only this field as unavailable once the value model
@@ -572,9 +601,9 @@ impl<'tcx> PrirodaContext<'tcx> {
                 }
 
                 // Match Rust constructor spelling:
-                // - `Const`: unit structs, e.g. `UnitStruct`
-                // - `Fn`: tuple structs, e.g. `Pair(a, b)` or `EmptyTuple()`
-                // - `None`: braced structs, including the empty `{}` case
+                // - `Const`: unit structs/variants, e.g. `UnitStruct`, `Enum::Unit`
+                // - `Fn`: tuple structs/variants, e.g. `Pair(a, b)` or `EmptyTuple()`
+                // - `None`: braced structs/variants, including the empty `{}` case
                 match variant_def.ctor_kind() {
                     Some(CtorKind::Const) => name,
                     Some(CtorKind::Fn) => format!("{name}({})", fields.join(", ")),
