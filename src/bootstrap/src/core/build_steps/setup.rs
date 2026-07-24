@@ -18,7 +18,7 @@ use std::{fmt, fs, io};
 use serde_derive::{Deserialize, Serialize};
 use sha2::Digest;
 
-use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
+use crate::core::builder::{Builder, CommandLineStep, RunConfig, ShouldRun};
 use crate::utils::change_tracker::CONFIG_CHANGE_HISTORY;
 use crate::utils::exec::command;
 use crate::utils::helpers::{self, hex_encode};
@@ -104,7 +104,7 @@ impl fmt::Display for Profile {
     }
 }
 
-impl Step for Profile {
+impl CommandLineStep for Profile {
     type Output = ();
 
     fn should_run(mut run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -235,7 +235,7 @@ fn setup_config_toml(path: &Path, profile: Profile, config: &Config) {
 /// Creates a toolchain link for stage1 using `rustup`
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Link;
-impl Step for Link {
+impl CommandLineStep for Link {
     type Output = ();
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -457,7 +457,7 @@ fn prompt_user(prompt: &str) -> io::Result<Option<PromptResult>> {
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Hook;
 
-impl Step for Hook {
+impl CommandLineStep for Hook {
     type Output = ();
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -645,7 +645,7 @@ Select which editor you would like to set up [default: None]: ";
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Editor;
 
-impl Step for Editor {
+impl CommandLineStep for Editor {
     type Output = ();
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {

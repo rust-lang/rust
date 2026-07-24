@@ -8,7 +8,7 @@ use std::{env, fs};
 
 use crate::core::build_steps::dist;
 use crate::core::build_steps::tool::RustcPrivateCompilers;
-use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
+use crate::core::builder::{Builder, CommandLineStep, RunConfig, ShouldRun};
 use crate::core::config::{Config, TargetSelection};
 use crate::utils::exec::command;
 use crate::utils::helpers::t;
@@ -178,7 +178,7 @@ macro_rules! install {
             }
         }
 
-        impl Step for $name {
+        impl CommandLineStep for $name {
             type Output = ();
             const IS_HOST: bool = $IS_HOST;
             $(const $c: bool = true;)*
@@ -319,7 +319,7 @@ pub struct Src {
     stage: u32,
 }
 
-impl Step for Src {
+impl CommandLineStep for Src {
     type Output = ();
     const IS_HOST: bool = true;
 
