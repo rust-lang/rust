@@ -10,10 +10,6 @@
 //@ needs-unwind
 // Reason: unwinding panics is exercised in this test
 
-//@ ignore-i686-pc-windows-gnu
-// Reason: This test doesn't work on 32-bit MinGW as cdylib has its own copy of unwinder
-// so cross-DLL unwinding does not work.
-
 use run_make_support::{run_fail, rustc};
 
 fn main() {

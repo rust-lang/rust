@@ -1,10 +1,4 @@
 //@ ignore-cross-compile
-// gnu ld is confused with intermediate files having multibytes characters in their names:
-// = note: ld.exe: cannot find f0d5ff18d6510ebc-???_???_??????????_?_?????_?_???????.d50c2 \
-// 4c0c4ea93cc-cgu.0.rcgu.o: Invalid argument
-// as this is not something rustc can fix by itself,
-// we just skip the test on windows-gnu for now. Hence:
-//@ ignore-windows-gnu
 
 use run_make_support::{rfs, rustc};
 

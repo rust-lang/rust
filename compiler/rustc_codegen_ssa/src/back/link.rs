@@ -2258,7 +2258,16 @@ fn add_late_link_args(
         || crate_info.dependency_formats.iter().any(|(ty, list)| {
             *ty == crate_type && list.iter().any(|&linkage| linkage == Linkage::Dynamic)
         });
-    if any_dynamic_crate {
+    let (override_static, override_dynamic) = if sess.target.crt_static_respected {
+        // borrowed from https://github.com/rust-lang/rust/blob/40557f6225e337d68c8d4f086557ce54135f5dd9/compiler/rustc_session/src/session.rs#L390
+        let requested_features = sess.opts.cg.target_feature.split(',');
+        let found_negative = requested_features.clone().any(|r| r == "-crt-static");
+        let found_positive = requested_features.clone().any(|r| r == "+crt-static");
+        (found_positive, found_negative)
+    } else {
+        (false, false)
+    };
+    if (any_dynamic_crate && !override_static) || override_dynamic {
         if let Some(args) = sess.target.late_link_args_dynamic.get(&flavor) {
             cmd.verbatim_args(args.iter().map(Deref::deref));
         }

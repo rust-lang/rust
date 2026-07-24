@@ -47,8 +47,7 @@ runners:
     os: windows-11-arm
     <<: *base-job
 
-  - &job-aarch64-linux
-    # Free some disk space to avoid running out of space during the build.
+  - &job-aarch64-linux # Free some disk space to avoid running out of space during the build.
     free_disk: true
     os: ubuntu-24.04-arm
     <<: *base-job
@@ -72,8 +71,7 @@ runners:
     <<: *base-job
 
 envs:
-  production:
-    &production
+  production: &production
     DEPLOY_BUCKET: rust-lang-ci2
     # AWS_SECRET_ACCESS_KEYs are stored in GitHub's secrets storage, named
     # AWS_SECRET_ACCESS_KEY_<keyid>. Including the key id in the name allows to
@@ -107,7 +105,6 @@ jobs:
       CODEGEN_BACKENDS: llvm,cranelift
       DOCKER_SCRIPT: dist.sh
     <<: *job-linux-36c-codebuild
-
 
 # Jobs that run on each push to a pull request (PR).
 #
@@ -711,6 +708,18 @@ auto:
     env:
       SCRIPT: make ci-mingw-bootstrap
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
+    <<: *job-windows
+
+  - name: x86_64-llvm-mingw-1
+    env:
+      SCRIPT: make ci-mingw-x
+      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-llvm
+    <<: *job-windows
+
+  - name: x86_64-llvm-mingw-2
+    env:
+      SCRIPT: make ci-mingw-bootstrap
+      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-llvm
     <<: *job-windows
 
   - name: dist-x86_64-msvc
