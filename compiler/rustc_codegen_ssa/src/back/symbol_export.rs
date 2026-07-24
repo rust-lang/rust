@@ -54,6 +54,11 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> DefIdMap<S
         return Default::default();
     }
 
+    reachable_non_generics_helper(tcx)
+}
+
+/// Exposed separately *without* the "should codegen" check so Miri can access it.
+pub fn reachable_non_generics_helper(tcx: TyCtxt<'_>) -> DefIdMap<SymbolExportInfo> {
     let is_compiler_builtins = tcx.is_compiler_builtins(LOCAL_CRATE);
 
     let mut reachable_non_generics: DefIdMap<_> = tcx
@@ -176,6 +181,13 @@ fn exported_non_generic_symbols_provider_local<'tcx>(
         return &[];
     }
 
+    exported_non_generic_symbols_helper(tcx)
+}
+
+/// Exposed separately *without* the "should codegen" check so Miri can access it.
+pub fn exported_non_generic_symbols_helper<'tcx>(
+    tcx: TyCtxt<'tcx>,
+) -> &'tcx [(ExportedSymbol<'tcx>, SymbolExportInfo)] {
     // FIXME: Sorting this is unnecessary since we are sorting later anyway.
     //        Can we skip the later sorting?
     let sorted = tcx.with_stable_hashing_context(|mut hcx| {
