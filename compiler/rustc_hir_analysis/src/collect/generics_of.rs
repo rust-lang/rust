@@ -140,7 +140,8 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                     //
                     // This has some implications for how we get the predicates available to the anon const
                     // see `explicit_predicates_of` for more information on this
-                    let generics = tcx.generics_of(parent_did);
+                    let parent_def_id = tcx.local_parent(param_id);
+                    let generics = tcx.generics_of(parent_def_id);
                     let param_def_idx = generics.param_def_id_to_index[&param_id.to_def_id()];
                     // In the above example this would be .params[..N#0]
                     let own_params = generics.params_to(param_def_idx as usize, tcx).to_owned();
