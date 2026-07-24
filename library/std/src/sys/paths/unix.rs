@@ -2,7 +2,7 @@
 
 #![allow(unused_imports)] // lots of cfg code here
 
-use libc::{c_char, c_int, c_void};
+use core::ffi::{c_char, c_int, c_void};
 
 use crate::ffi::{CStr, OsStr, OsString};
 use crate::os::unix::prelude::*;
@@ -23,9 +23,9 @@ pub fn getcwd() -> io::Result<PathBuf> {
     let mut buf = Vec::with_capacity(512);
     loop {
         unsafe {
-            let ptr = buf.as_mut_ptr() as *mut libc::c_char;
+            let ptr = buf.as_mut_ptr() as *mut core::ffi::c_char;
             if !libc::getcwd(ptr, buf.capacity()).is_null() {
-                let len = CStr::from_ptr(buf.as_ptr() as *const libc::c_char).to_bytes().len();
+                let len = CStr::from_ptr(buf.as_ptr() as *const core::ffi::c_char).to_bytes().len();
                 buf.set_len(len);
                 buf.shrink_to_fit();
                 return Ok(PathBuf::from(OsString::from_vec(buf)));
@@ -157,7 +157,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
         let mut sz = 0;
         cvt(libc::sysctl(
             mib.as_mut_ptr(),
-            mib.len() as libc::c_uint,
+            mib.len() as core::ffi::c_uint,
             ptr::null_mut(),
             &mut sz,
             ptr::null_mut(),
@@ -169,8 +169,8 @@ pub fn current_exe() -> io::Result<PathBuf> {
         let mut v: Vec<u8> = Vec::with_capacity(sz);
         cvt(libc::sysctl(
             mib.as_mut_ptr(),
-            mib.len() as libc::c_uint,
-            v.as_mut_ptr() as *mut libc::c_void,
+            mib.len() as core::ffi::c_uint,
+            v.as_mut_ptr() as *mut core::ffi::c_void,
             &mut sz,
             ptr::null_mut(),
             0,
@@ -191,7 +191,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
             let mut path_len: usize = 0;
             cvt(libc::sysctl(
                 mib.as_ptr(),
-                mib.len() as libc::c_uint,
+                mib.len() as core::ffi::c_uint,
                 ptr::null_mut(),
                 &mut path_len,
                 ptr::null(),
@@ -206,8 +206,8 @@ pub fn current_exe() -> io::Result<PathBuf> {
             let mut path: Vec<u8> = Vec::with_capacity(path_len);
             cvt(libc::sysctl(
                 mib.as_ptr(),
-                mib.len() as libc::c_uint,
-                path.as_mut_ptr() as *mut libc::c_void,
+                mib.len() as core::ffi::c_uint,
+                path.as_mut_ptr() as *mut core::ffi::c_void,
                 &mut path_len,
                 ptr::null(),
                 0,
@@ -240,12 +240,12 @@ pub fn current_exe() -> io::Result<PathBuf> {
         cvt(libc::sysctl(mib, 4, ptr::null_mut(), &mut argv_size, ptr::null_mut(), 0))?;
 
         // ... allocate a buffer for it ...
-        let argc = argv_size.div_exact(size_of::<*const libc::c_char>()).unwrap();
-        let mut argv = Vec::<*const libc::c_char>::with_capacity(argc);
+        let argc = argv_size.div_exact(size_of::<*const core::ffi::c_char>()).unwrap();
+        let mut argv = Vec::<*const core::ffi::c_char>::with_capacity(argc);
 
         // ... and retrieve the argument array.
         cvt(libc::sysctl(mib, 4, argv.as_mut_ptr() as *mut _, &mut argv_size, ptr::null_mut(), 0))?;
-        let argc = argv_size.div_exact(size_of::<*const libc::c_char>()).unwrap();
+        let argc = argv_size.div_exact(size_of::<*const core::ffi::c_char>()).unwrap();
         argv.set_len(argc);
 
         if argv[0].is_null() {

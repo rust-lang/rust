@@ -1,4 +1,6 @@
-use libc::{c_int, c_void, size_t};
+use core::ffi::{c_int, c_void};
+
+use libc::size_t;
 
 use self::netc::{MSG_PEEK, sockaddr, socklen_t};
 use super::{getsockopt, setsockopt, socket_addr_from_c, socket_addr_to_c};
@@ -88,7 +90,7 @@ pub fn is_interrupted(er: abi::ER) -> bool {
 
 pub fn decode_error_kind(er: abi::ER) -> ErrorKind {
     let errno = netc::SOLID_NET_ERR_BASE - er;
-    match errno as libc::c_int {
+    match errno as core::ffi::c_int {
         libc::ECONNREFUSED => ErrorKind::ConnectionRefused,
         libc::ECONNRESET => ErrorKind::ConnectionReset,
         libc::EPERM | libc::EACCES => ErrorKind::PermissionDenied,

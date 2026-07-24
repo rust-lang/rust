@@ -14,7 +14,7 @@
 //! Regardless this module is effectively delegating to `wasi-libc` to determine
 //! how to do thread management.
 
-use libc::c_int;
+use core::ffi::c_int;
 
 use crate::ptr;
 use crate::sync::atomic::Atomic;
@@ -28,9 +28,9 @@ unsafe extern "C" {
         val: c_int,
         clock: libc::clockid_t,
         at: *const libc::timespec,
-        flags: libc::c_uint,
+        flags: core::ffi::c_uint,
     ) -> c_int;
-    fn __wasilibc_futex_wake(addr: *const c_int, count: c_int, flags: libc::c_uint) -> c_int;
+    fn __wasilibc_futex_wake(addr: *const c_int, count: c_int, flags: core::ffi::c_uint) -> c_int;
 }
 
 pub type Futex = Atomic<Primitive>;

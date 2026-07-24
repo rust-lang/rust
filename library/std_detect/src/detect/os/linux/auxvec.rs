@@ -120,7 +120,7 @@ pub(crate) fn auxv() -> Result<AuxVec, ()> {
 /// Tries to read the `key` from the auxiliary vector by calling the
 /// `getauxval` function. If the function is not linked, this function return `Err`.
 fn getauxval(key: usize) -> Result<usize, ()> {
-    type F = unsafe extern "C" fn(libc::c_ulong) -> libc::c_ulong;
+    type F = unsafe extern "C" fn(core::ffi::c_ulong) -> core::ffi::c_ulong;
     cfg_select! {
         any(
             all(
@@ -141,7 +141,7 @@ fn getauxval(key: usize) -> Result<usize, ()> {
             };
         }
     }
-    Ok(unsafe { ffi_getauxval(key as libc::c_ulong) as usize })
+    Ok(unsafe { ffi_getauxval(key as core::ffi::c_ulong) as usize })
 }
 
 /// Tries to read the auxiliary vector from the `file`. If this fails, this

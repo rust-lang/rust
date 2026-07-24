@@ -2,7 +2,8 @@
 
 #![unstable(feature = "unix_socket_ancillary_data", issue = "76915")]
 
-use crate::ffi::CStr;
+use core::ffi::CStr;
+
 use crate::io;
 use crate::os::unix::net;
 use crate::sys::AsInner;

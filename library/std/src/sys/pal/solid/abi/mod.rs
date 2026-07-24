@@ -1,4 +1,4 @@
-use crate::os::raw::c_int;
+use core::ffi::c_int;
 
 mod fs;
 pub mod sockets;

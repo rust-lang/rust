@@ -8,7 +8,7 @@
 )]
 #![allow(deprecated)]
 
-use crate::os::raw::c_int;
+use core::ffi::c_int;
 
 #[stable(feature = "raw_ext", since = "1.1.0")]
 pub type dev_t = u32;
@@ -23,7 +23,7 @@ pub type pthread_t = c_int;
 pub use self::arch::{blkcnt_t, blksize_t, ino_t, nlink_t, off_t, time_t};
 
 mod arch {
-    use crate::os::raw::c_long;
+    use core::ffi::c_long;
 
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub type blkcnt_t = i64;

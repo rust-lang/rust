@@ -10,9 +10,9 @@ pub fn getcwd() -> io::Result<PathBuf> {
     let mut buf = Vec::with_capacity(512);
     loop {
         unsafe {
-            let ptr = buf.as_mut_ptr() as *mut libc::c_char;
+            let ptr = buf.as_mut_ptr() as *mut core::ffi::c_char;
             if !libc::getcwd(ptr, buf.capacity()).is_null() {
-                let len = CStr::from_ptr(buf.as_ptr() as *const libc::c_char).to_bytes().len();
+                let len = CStr::from_ptr(buf.as_ptr() as *const core::ffi::c_char).to_bytes().len();
                 buf.set_len(len);
                 buf.shrink_to_fit();
                 return Ok(PathBuf::from(OsString::from_vec(buf)));
@@ -34,7 +34,7 @@ pub fn getcwd() -> io::Result<PathBuf> {
 
 pub fn chdir(p: &path::Path) -> io::Result<()> {
     let result = run_path_with_cstr(p, &|p| unsafe { Ok(libc::chdir(p.as_ptr())) })?;
-    match result == (0 as libc::c_int) {
+    match result == (0 as core::ffi::c_int) {
         true => Ok(()),
         false => Err(io::Error::last_os_error()),
     }

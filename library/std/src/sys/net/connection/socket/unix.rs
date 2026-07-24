@@ -1,4 +1,6 @@
-use libc::{MSG_PEEK, c_int, c_void, size_t, sockaddr, socklen_t};
+use core::ffi::{c_int, c_void};
+
+use libc::{MSG_PEEK, size_t, sockaddr, socklen_t};
 
 #[cfg(not(any(target_os = "espidf", target_os = "nuttx")))]
 use crate::ffi::CStr;
@@ -384,7 +386,7 @@ impl Socket {
         Ok(n as usize)
     }
 
-    pub fn set_timeout(&self, dur: Option<Duration>, kind: libc::c_int) -> io::Result<()> {
+    pub fn set_timeout(&self, dur: Option<Duration>, kind: core::ffi::c_int) -> io::Result<()> {
         let timeout = match dur {
             Some(dur) => {
                 if dur.as_secs() == 0 && dur.subsec_nanos() == 0 {
@@ -410,7 +412,7 @@ impl Socket {
         unsafe { setsockopt(self, libc::SOL_SOCKET, kind, timeout) }
     }
 
-    pub fn timeout(&self, kind: libc::c_int) -> io::Result<Option<Duration>> {
+    pub fn timeout(&self, kind: core::ffi::c_int) -> io::Result<Option<Duration>> {
         let raw: libc::timeval = unsafe { getsockopt(self, libc::SOL_SOCKET, kind)? };
         if raw.tv_sec == 0 && raw.tv_usec == 0 {
             Ok(None)
@@ -444,9 +446,11 @@ impl Socket {
     #[cfg(target_os = "cygwin")]
     pub fn set_linger(&self, linger: Option<Duration>) -> io::Result<()> {
         let linger = libc::linger {
-            l_onoff: linger.is_some() as libc::c_ushort,
-            l_linger: cmp::min(linger.unwrap_or_default().as_secs(), libc::c_ushort::MAX as u64)
-                as libc::c_ushort,
+            l_onoff: linger.is_some() as core::ffi::c_ushort,
+            l_linger: cmp::min(
+                linger.unwrap_or_default().as_secs(),
+                core::ffi::c_ushort::MAX as u64,
+            ) as core::ffi::c_ushort,
         };
 
         unsafe { setsockopt(self, libc::SOL_SOCKET, SO_LINGER, linger) }
@@ -506,7 +510,7 @@ impl Socket {
             const AF_NAME_MAX: usize = 16;
             let mut buf = [0; AF_NAME_MAX];
             for (src, dst) in name.to_bytes().iter().zip(&mut buf[..AF_NAME_MAX - 1]) {
-                *dst = *src as libc::c_char;
+                *dst = *src as core::ffi::c_char;
             }
             let mut arg: libc::accept_filter_arg = unsafe { mem::zeroed() };
             arg.af_name = buf;
@@ -550,25 +554,34 @@ impl Socket {
 
     #[cfg(any(target_os = "android", target_os = "linux", target_os = "cygwin"))]
     pub fn set_passcred(&self, passcred: bool) -> io::Result<()> {
-        unsafe { setsockopt(self, libc::SOL_SOCKET, libc::SO_PASSCRED, passcred as libc::c_int) }
+        unsafe {
+            setsockopt(self, libc::SOL_SOCKET, libc::SO_PASSCRED, passcred as core::ffi::c_int)
+        }
     }
 
     #[cfg(any(target_os = "android", target_os = "linux", target_os = "cygwin"))]
     pub fn passcred(&self) -> io::Result<bool> {
-        let passcred: libc::c_int =
+        let passcred: core::ffi::c_int =
             unsafe { getsockopt(self, libc::SOL_SOCKET, libc::SO_PASSCRED)? };
         Ok(passcred != 0)
     }
 
     #[cfg(target_os = "netbsd")]
     pub fn set_local_creds(&self, local_creds: bool) -> io::Result<()> {
-        unsafe { setsockopt(self, 0 as libc::c_int, libc::LOCAL_CREDS, local_creds as libc::c_int) }
+        unsafe {
+            setsockopt(
+                self,
+                0 as core::ffi::c_int,
+                libc::LOCAL_CREDS,
+                local_creds as core::ffi::c_int,
+            )
+        }
     }
 
     #[cfg(target_os = "netbsd")]
     pub fn local_creds(&self) -> io::Result<bool> {
-        let local_creds: libc::c_int =
-            unsafe { getsockopt(self, 0 as libc::c_int, libc::LOCAL_CREDS)? };
+        let local_creds: core::ffi::c_int =
+            unsafe { getsockopt(self, 0 as core::ffi::c_int, libc::LOCAL_CREDS)? };
         Ok(local_creds != 0)
     }
 
@@ -579,27 +592,27 @@ impl Socket {
                 self,
                 libc::AF_LOCAL,
                 libc::LOCAL_CREDS_PERSISTENT,
-                local_creds_persistent as libc::c_int,
+                local_creds_persistent as core::ffi::c_int,
             )
         }
     }
 
     #[cfg(target_os = "freebsd")]
     pub fn local_creds_persistent(&self) -> io::Result<bool> {
-        let local_creds_persistent: libc::c_int =
+        let local_creds_persistent: core::ffi::c_int =
             unsafe { getsockopt(self, libc::AF_LOCAL, libc::LOCAL_CREDS_PERSISTENT)? };
         Ok(local_creds_persistent != 0)
     }
 
     #[cfg(not(any(target_os = "solaris", target_os = "illumos", target_os = "vita")))]
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
-        let mut nonblocking = nonblocking as libc::c_int;
+        let mut nonblocking = nonblocking as core::ffi::c_int;
         cvt(unsafe { libc::ioctl(self.as_raw_fd(), libc::FIONBIO, &mut nonblocking) }).map(drop)
     }
 
     #[cfg(target_os = "vita")]
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
-        let option = nonblocking as libc::c_int;
+        let option = nonblocking as core::ffi::c_int;
         unsafe { setsockopt(self, libc::SOL_SOCKET, libc::SO_NONBLOCK, option) }
     }
 
@@ -618,7 +631,7 @@ impl Socket {
         let option = libc::SO_USER_COOKIE;
         #[cfg(target_os = "openbsd")]
         let option = libc::SO_RTABLE;
-        unsafe { setsockopt(self, libc::SOL_SOCKET, option, mark as libc::c_int) }
+        unsafe { setsockopt(self, libc::SOL_SOCKET, option, mark as core::ffi::c_int) }
     }
 
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {

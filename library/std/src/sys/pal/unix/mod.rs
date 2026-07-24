@@ -256,7 +256,7 @@ where
 
 #[allow(dead_code)] // Not used on all platforms.
 /// Zero means `Ok()`, all other values are treated as raw OS errors. Does not look at `errno`.
-pub fn cvt_nz(error: libc::c_int) -> io::Result<()> {
+pub fn cvt_nz(error: core::ffi::c_int) -> io::Result<()> {
     if error == 0 { Ok(()) } else { Err(io::Error::from_raw_os_error(error)) }
 }
 

@@ -122,7 +122,7 @@ unsafe fn _print_fmt(fmt: &mut fmt::Formatter<'_>, print_fmt: PrintFmt) -> fmt::
                     }
                 });
                 #[cfg(all(target_os = "nto", any(target_env = "nto70", target_env = "nto71")))]
-                if libc::__my_thread_exit as *mut libc::c_void == frame.ip() {
+                if libc::__my_thread_exit as *mut core::ffi::c_void == frame.ip() {
                     if !hit && print {
                         use crate::backtrace_rs::SymbolName;
                         res = bt_fmt.frame().print_raw(

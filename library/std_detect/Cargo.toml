@@ -20,7 +20,7 @@ core = { version = "1.0.0", package = 'rustc-std-workspace-core' }
 alloc = { version = "1.0.0", package = 'rustc-std-workspace-alloc' }
 
 [target.'cfg(not(windows))'.dependencies]
-libc = { version = "0.2.0", default-features = false }
+libc = { version = "0.2.184", default-features = false }
 
 [features]
 std_detect_env_override = []

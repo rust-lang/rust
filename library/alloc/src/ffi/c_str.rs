@@ -75,8 +75,8 @@ use crate::vec::Vec;
 ///
 /// ```ignore (extern-declaration)
 /// # fn main() {
+/// use core::ffi::c_char;
 /// use std::ffi::CString;
-/// use std::os::raw::c_char;
 ///
 /// extern "C" {
 ///     fn my_printer(s: *const c_char);
@@ -237,8 +237,8 @@ impl CString {
     /// # Examples
     ///
     /// ```ignore (extern-declaration)
+    /// use core::ffi::c_char;
     /// use std::ffi::CString;
-    /// use std::os::raw::c_char;
     ///
     /// extern "C" { fn puts(s: *const c_char); }
     ///
@@ -383,8 +383,8 @@ impl CString {
     /// ownership with `from_raw`:
     ///
     /// ```ignore (extern-declaration)
+    /// use core::ffi::c_char;
     /// use std::ffi::CString;
-    /// use std::os::raw::c_char;
     ///
     /// extern "C" {
     ///     fn some_extern_function(s: *mut c_char);
@@ -572,7 +572,8 @@ impl CString {
     /// # Examples
     ///
     /// ```
-    /// use std::ffi::{CString, CStr};
+    /// use core::ffi::CStr;
+    /// use std::ffi::CString;
     ///
     /// let c_string = CString::from(c"foo");
     /// let cstr = c_string.as_c_str();
@@ -1207,7 +1208,8 @@ impl CStr {
     /// # Examples
     ///
     /// ```
-    /// use std::ffi::{CStr, CString};
+    /// use core::ffi::CStr;
+    /// use std::ffi::CString;
     ///
     /// let boxed: Box<CStr> = Box::from(c"foo");
     /// let c_string: CString = c"foo".to_owned();

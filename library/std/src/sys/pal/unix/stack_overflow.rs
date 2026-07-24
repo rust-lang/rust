@@ -4,7 +4,7 @@ pub use self::imp::{cleanup, init};
 use self::imp::{drop_handler, make_handler};
 
 pub struct Handler {
-    data: *mut libc::c_void,
+    data: *mut core::ffi::c_void,
 }
 
 impl Handler {
@@ -99,9 +99,9 @@ mod imp {
     /// Rust doesn't call this, it *gets called*.
     #[forbid(unsafe_op_in_unsafe_fn)]
     unsafe extern "C" fn signal_handler(
-        signum: libc::c_int,
+        signum: core::ffi::c_int,
         info: *mut libc::siginfo_t,
-        _data: *mut libc::c_void,
+        _data: *mut core::ffi::c_void,
     ) {
         // SAFETY: this pointer is provided by the system and will always point to a valid `siginfo_t`.
         let fault_addr = unsafe { (*info).si_addr().addr() };
@@ -143,7 +143,7 @@ mod imp {
     }
 
     static PAGE_SIZE: Atomic<usize> = AtomicUsize::new(0);
-    static MAIN_ALTSTACK: Atomic<*mut libc::c_void> = AtomicPtr::new(ptr::null_mut());
+    static MAIN_ALTSTACK: Atomic<*mut core::ffi::c_void> = AtomicPtr::new(ptr::null_mut());
     static NEED_ALTSTACK: Atomic<bool> = AtomicBool::new(false);
 
     /// # Safety
@@ -182,7 +182,7 @@ mod imp {
 
                 action.sa_flags = SA_SIGINFO | SA_ONSTACK;
                 action.sa_sigaction = signal_handler
-                    as unsafe extern "C" fn(i32, *mut libc::siginfo_t, *mut libc::c_void)
+                    as unsafe extern "C" fn(i32, *mut libc::siginfo_t, *mut core::ffi::c_void)
                     as sighandler_t;
                 // SAFETY: only overriding signals if the default is set
                 unsafe { sigaction(signal, &action, ptr::null_mut()) };
@@ -269,7 +269,7 @@ mod imp {
                 stack = get_stack();
                 sigaltstack(&stack, ptr::null_mut());
             }
-            Handler { data: stack.ss_sp as *mut libc::c_void }
+            Handler { data: stack.ss_sp as *mut core::ffi::c_void }
         } else {
             Handler::null()
         }
@@ -281,7 +281,7 @@ mod imp {
     /// - only when done with our altstack
     /// This disables the alternate signal stack!
     #[forbid(unsafe_op_in_unsafe_fn)]
-    pub unsafe fn drop_handler(data: *mut libc::c_void) {
+    pub unsafe fn drop_handler(data: *mut core::ffi::c_void) {
         if !data.is_null() {
             let sigstack_size = sigstack_size();
             let page_size = PAGE_SIZE.load(Ordering::Relaxed);
@@ -321,21 +321,21 @@ mod imp {
     }
 
     #[cfg(any(target_os = "solaris", target_os = "illumos"))]
-    unsafe fn get_stack_start() -> Option<*mut libc::c_void> {
+    unsafe fn get_stack_start() -> Option<*mut core::ffi::c_void> {
         let mut current_stack: libc::stack_t = crate::mem::zeroed();
         assert_eq!(libc::stack_getbounds(&mut current_stack), 0);
         Some(current_stack.ss_sp)
     }
 
     #[cfg(target_os = "macos")]
-    unsafe fn get_stack_start() -> Option<*mut libc::c_void> {
+    unsafe fn get_stack_start() -> Option<*mut core::ffi::c_void> {
         let th = libc::pthread_self();
         let stackptr = libc::pthread_get_stackaddr_np(th);
         Some(stackptr.map_addr(|addr| addr - libc::pthread_get_stacksize_np(th)))
     }
 
     #[cfg(target_os = "openbsd")]
-    unsafe fn get_stack_start() -> Option<*mut libc::c_void> {
+    unsafe fn get_stack_start() -> Option<*mut core::ffi::c_void> {
         let mut current_stack: libc::stack_t = crate::mem::zeroed();
         assert_eq!(libc::pthread_stackseg_np(libc::pthread_self(), &mut current_stack), 0);
 
@@ -358,7 +358,7 @@ mod imp {
         target_os = "linux",
         target_os = "l4re"
     ))]
-    unsafe fn get_stack_start() -> Option<*mut libc::c_void> {
+    unsafe fn get_stack_start() -> Option<*mut core::ffi::c_void> {
         let mut ret = None;
         let mut attr: mem::MaybeUninit<libc::pthread_attr_t> = mem::MaybeUninit::uninit();
         if !cfg!(target_os = "freebsd") {
@@ -385,7 +385,7 @@ mod imp {
         ret
     }
 
-    fn stack_start_aligned(page_size: usize) -> Option<*mut libc::c_void> {
+    fn stack_start_aligned(page_size: usize) -> Option<*mut core::ffi::c_void> {
         let stackptr = unsafe { get_stack_start()? };
         let stackaddr = stackptr.addr();
 
@@ -597,7 +597,7 @@ mod imp {
                     panic!("there is no guard page");
                 }
             }
-            let mut stackptr = crate::ptr::null_mut::<libc::c_void>();
+            let mut stackptr = crate::ptr::null_mut::<core::ffi::c_void>();
             let mut size = 0;
             assert_eq!(libc::pthread_attr_getstack(attr.as_ptr(), &mut stackptr, &mut size), 0);
 
@@ -657,7 +657,7 @@ mod imp {
         super::Handler::null()
     }
 
-    pub unsafe fn drop_handler(_data: *mut libc::c_void) {}
+    pub unsafe fn drop_handler(_data: *mut core::ffi::c_void) {}
 }
 
 #[cfg(target_os = "cygwin")]
@@ -744,5 +744,5 @@ mod imp {
         super::Handler::null()
     }
 
-    pub unsafe fn drop_handler(_data: *mut libc::c_void) {}
+    pub unsafe fn drop_handler(_data: *mut core::ffi::c_void) {}
 }

@@ -9,7 +9,8 @@
             definitions"
 )]
 
-use crate::os::raw::c_long;
+use core::ffi::c_long;
+
 use crate::os::unix::raw::{gid_t, uid_t};
 
 #[stable(feature = "pthread_t", since = "1.8.0")]

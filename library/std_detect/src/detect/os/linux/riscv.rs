@@ -12,9 +12,9 @@ use crate::detect::{Feature, bit, cache};
 
 // See <https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/include/uapi/linux/prctl.h?h=v6.16>
 // for runtime status query constants.
-const PR_RISCV_V_GET_CONTROL: libc::c_int = 70;
-const PR_RISCV_V_VSTATE_CTRL_ON: libc::c_int = 2;
-const PR_RISCV_V_VSTATE_CTRL_CUR_MASK: libc::c_int = 3;
+const PR_RISCV_V_GET_CONTROL: core::ffi::c_int = 70;
+const PR_RISCV_V_VSTATE_CTRL_ON: core::ffi::c_int = 2;
+const PR_RISCV_V_VSTATE_CTRL_CUR_MASK: core::ffi::c_int = 3;
 
 // See <https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/arch/riscv/include/uapi/asm/hwprobe.h?h=v6.16>
 // for riscv_hwprobe struct and hardware probing constants.
@@ -33,7 +33,7 @@ impl riscv_hwprobe {
 }
 
 #[allow(non_upper_case_globals)]
-const __NR_riscv_hwprobe: libc::c_long = 258;
+const __NR_riscv_hwprobe: core::ffi::c_long = 258;
 
 const RISCV_HWPROBE_KEY_BASE_BEHAVIOR: i64 = 3;
 const RISCV_HWPROBE_BASE_BEHAVIOR_IMA: u64 = 1 << 0;
@@ -117,9 +117,9 @@ fn _riscv_hwprobe(out: &mut [riscv_hwprobe]) -> bool {
         pairs: *mut riscv_hwprobe,
         pair_count: libc::size_t,
         cpu_set_size: libc::size_t,
-        cpus: *mut libc::c_ulong,
-        flags: libc::c_uint,
-    ) -> libc::c_long {
+        cpus: *mut core::ffi::c_ulong,
+        flags: core::ffi::c_uint,
+    ) -> core::ffi::c_long {
         unsafe { libc::syscall(__NR_riscv_hwprobe, pairs, pair_count, cpu_set_size, cpus, flags) }
     }
 

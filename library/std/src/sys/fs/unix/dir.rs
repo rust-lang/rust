@@ -1,4 +1,4 @@
-use libc::{c_int, renameat, unlinkat};
+use libc::{renameat, unlinkat};
 
 cfg_select! {
     not(
@@ -66,8 +66,8 @@ impl Dir {
             | libc::O_DIRECTORY
             | opts.get_access_mode()?
             | opts.get_creation_mode()?
-            | (opts.custom_flags as c_int & !libc::O_ACCMODE);
-        let fd = cvt_r(|| unsafe { open64(path.as_ptr(), flags, opts.mode as c_int) })?;
+            | (opts.custom_flags as core::ffi::c_int & !libc::O_ACCMODE);
+        let fd = cvt_r(|| unsafe { open64(path.as_ptr(), flags, opts.mode as core::ffi::c_int) })?;
         Ok(Self(unsafe { OwnedFd::from_raw_fd(fd) }))
     }
 
@@ -75,9 +75,9 @@ impl Dir {
         let flags = libc::O_CLOEXEC
             | opts.get_access_mode()?
             | opts.get_creation_mode()?
-            | (opts.custom_flags as c_int & !libc::O_ACCMODE);
+            | (opts.custom_flags as core::ffi::c_int & !libc::O_ACCMODE);
         let fd = cvt_r(|| unsafe {
-            openat64(self.0.as_raw_fd(), path.as_ptr(), flags, opts.mode as c_int)
+            openat64(self.0.as_raw_fd(), path.as_ptr(), flags, opts.mode as core::ffi::c_int)
         })?;
         Ok(File(unsafe { FileDesc::from_raw_fd(fd) }))
     }

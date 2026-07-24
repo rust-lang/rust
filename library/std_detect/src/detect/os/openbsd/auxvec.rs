@@ -41,12 +41,16 @@ pub(crate) fn auxv() -> Result<AuxVec, ()> {
 }
 
 /// Tries to read the `key` from the auxiliary vector.
-fn archauxv(key: libc::c_int) -> usize {
-    const OUT_LEN: libc::c_int = core::mem::size_of::<libc::c_ulong>() as libc::c_int;
-    let mut out: libc::c_ulong = 0;
+fn archauxv(key: core::ffi::c_int) -> usize {
+    const OUT_LEN: core::ffi::c_int =
+        core::mem::size_of::<core::ffi::c_ulong>() as core::ffi::c_int;
+    let mut out: core::ffi::c_ulong = 0;
     unsafe {
-        let res =
-            libc::elf_aux_info(key, &mut out as *mut libc::c_ulong as *mut libc::c_void, OUT_LEN);
+        let res = libc::elf_aux_info(
+            key,
+            &mut out as *mut core::ffi::c_ulong as *mut core::ffi::c_void,
+            OUT_LEN,
+        );
         // If elf_aux_info fails, `out` will be left at zero (which is the proper default value).
         debug_assert!(res == 0 || out == 0);
     }

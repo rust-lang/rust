@@ -1,7 +1,9 @@
 //! Motor OS-specific extensions to primitives in the [`std::ffi`] module.
 #![unstable(feature = "motor_ext", issue = "147456")]
 
-use crate::ffi::{OsStr, OsString};
+use core::ffi::OsStr;
+
+use crate::ffi::OsString;
 use crate::sys::{AsInner, IntoInner};
 
 /// Motor OS–specific extensions to [`OsString`].

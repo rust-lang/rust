@@ -11,10 +11,10 @@ use crate::detect::cache;
 
 // Defined in machine/cpu.h.
 // https://github.com/openbsd/src/blob/72ccc03bd11da614f31f7ff76e3f6fce99bc1c79/sys/arch/arm64/include/cpu.h#L25-L40
-const CPU_ID_AA64ISAR0: libc::c_int = 2;
-const CPU_ID_AA64ISAR1: libc::c_int = 3;
-const CPU_ID_AA64MMFR2: libc::c_int = 7;
-const CPU_ID_AA64PFR0: libc::c_int = 8;
+const CPU_ID_AA64ISAR0: core::ffi::c_int = 2;
+const CPU_ID_AA64ISAR1: core::ffi::c_int = 3;
+const CPU_ID_AA64MMFR2: core::ffi::c_int = 7;
+const CPU_ID_AA64PFR0: core::ffi::c_int = 8;
 
 /// Try to read the features from the system registers.
 pub(crate) fn detect_features() -> cache::Initializer {
@@ -35,15 +35,15 @@ pub(crate) fn detect_features() -> cache::Initializer {
 }
 
 #[inline]
-fn sysctl64(mib: &[libc::c_int]) -> Option<u64> {
+fn sysctl64(mib: &[core::ffi::c_int]) -> Option<u64> {
     const OUT_LEN: libc::size_t = core::mem::size_of::<u64>();
     let mut out = MaybeUninit::<u64>::uninit();
     let mut out_len = OUT_LEN;
     let res = unsafe {
         libc::sysctl(
             mib.as_ptr(),
-            mib.len() as libc::c_uint,
-            out.as_mut_ptr() as *mut libc::c_void,
+            mib.len() as core::ffi::c_uint,
+            out.as_mut_ptr() as *mut core::ffi::c_void,
             &mut out_len,
             ptr::null_mut(),
             0,

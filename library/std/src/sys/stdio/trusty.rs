@@ -82,7 +82,7 @@ fn write(fd: i32, buf: &[u8]) -> io::Result<usize> {
 
 fn write_vectored(fd: i32, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
     let iov = bufs.as_ptr() as *const libc::iovec;
-    let len = cmp::min(bufs.len(), libc::c_int::MAX as usize) as libc::c_int;
+    let len = cmp::min(bufs.len(), core::ffi::c_int::MAX as usize) as core::ffi::c_int;
     // SAFETY: syscall, safe arguments.
     let ret = unsafe { libc::writev(fd, iov, len) };
     if ret < 0 {

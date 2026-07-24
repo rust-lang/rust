@@ -1,7 +1,10 @@
+#[cfg(not(target_os = "vxworks"))]
+use core::ffi::c_int;
+
 #[cfg(target_os = "vxworks")]
 use libc::RTP_ID as pid_t;
 #[cfg(not(target_os = "vxworks"))]
-use libc::{c_int, pid_t};
+use libc::pid_t;
 #[cfg(not(any(
     target_os = "vxworks",
     target_os = "l4re",
@@ -22,7 +25,8 @@ use crate::{fmt, mem, sys};
 cfg_select! {
     any(target_os = "nto", target_os = "qnx") => {
         use crate::thread;
-        use libc::{c_char, posix_spawn_file_actions_t, posix_spawnattr_t};
+        use core::ffi::c_char;
+        use libc::{posix_spawn_file_actions_t, posix_spawnattr_t};
         use crate::time::Duration;
         use crate::sync::LazyLock;
         // Get smallest amount of time we can sleep.
@@ -205,7 +209,7 @@ impl Command {
 
         loop {
             let r = libc::fork();
-            if r == -1 as libc::pid_t && errno() as libc::c_int == libc::EBADF {
+            if r == -1 as libc::pid_t && errno() as core::ffi::c_int == libc::EBADF {
                 if delay < get_clock_resolution() {
                     // We cannot sleep this short (it would be longer).
                     // Yield instead.
@@ -396,7 +400,7 @@ impl Command {
         // corrupt our process's environment.
         let mut _reset = None;
         if let Some(envp) = maybe_envp {
-            struct Reset(*const *const libc::c_char);
+            struct Reset(*const *const core::ffi::c_char);
 
             impl Drop for Reset {
                 fn drop(&mut self) {
@@ -480,13 +484,13 @@ impl Command {
 
                 weak!(
                     fn pidfd_spawnp(
-                        pidfd: *mut libc::c_int,
-                        path: *const libc::c_char,
+                        pidfd: *mut core::ffi::c_int,
+                        path: *const core::ffi::c_char,
                         file_actions: *const libc::posix_spawn_file_actions_t,
                         attrp: *const libc::posix_spawnattr_t,
-                        argv: *const *mut libc::c_char,
-                        envp: *const *mut libc::c_char,
-                    ) -> libc::c_int;
+                        argv: *const *mut core::ffi::c_char,
+                        envp: *const *mut core::ffi::c_char,
+                    ) -> core::ffi::c_int;
                 );
 
                 static PIDFD_SUPPORTED: Atomic<u8> = AtomicU8::new(0);
@@ -594,8 +598,8 @@ impl Command {
 
         type PosixSpawnAddChdirFn = unsafe extern "C" fn(
             *mut libc::posix_spawn_file_actions_t,
-            *const libc::c_char,
-        ) -> libc::c_int;
+            *const core::ffi::c_char,
+        ) -> core::ffi::c_int;
 
         /// Get the function pointer for adding a chdir action to a
         /// `posix_spawn_file_actions_t`, if available, assuming a dynamic libc.
@@ -614,15 +618,15 @@ impl Command {
             weak!(
                 fn posix_spawn_file_actions_addchdir_np(
                     file_actions: *mut libc::posix_spawn_file_actions_t,
-                    path: *const libc::c_char,
-                ) -> libc::c_int;
+                    path: *const core::ffi::c_char,
+                ) -> core::ffi::c_int;
             );
 
             weak!(
                 fn posix_spawn_file_actions_addchdir(
                     file_actions: *mut libc::posix_spawn_file_actions_t,
-                    path: *const libc::c_char,
-                ) -> libc::c_int;
+                    path: *const core::ffi::c_char,
+                ) -> core::ffi::c_int;
             );
 
             posix_spawn_file_actions_addchdir_np
@@ -777,7 +781,7 @@ impl Command {
 
             #[cfg(target_os = "linux")]
             if self.get_create_pidfd() && PIDFD_SUPPORTED.load(Ordering::Relaxed) == SPAWN {
-                let mut pidfd: libc::c_int = -1;
+                let mut pidfd: core::ffi::c_int = -1;
                 let spawn_res = pidfd_spawnp.get().unwrap()(
                     &mut pidfd,
                     self.get_program_cstr().as_ptr(),

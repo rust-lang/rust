@@ -11,9 +11,10 @@ pub fn args() -> Args {
 }
 
 mod imp {
+    use core::ffi::{c_uint, c_uint as WaliArgIdx};
+
     use super::Args;
     use crate::ffi::{CString, OsString};
-    use crate::os::raw::{c_uint as WaliArgIdx, c_uint};
     use crate::os::unix::prelude::*;
     use crate::sync::OnceLock;
 

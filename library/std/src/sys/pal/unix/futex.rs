@@ -62,7 +62,7 @@ pub fn futex_wait(futex: &Atomic<u32>, expected: u32, timeout: Option<Duration>)
                     libc::_umtx_op(
                         futex as *const Atomic<u32> as *mut _,
                         libc::UMTX_OP_WAIT_UINT_PRIVATE,
-                        expected as libc::c_ulong,
+                        expected as core::ffi::c_ulong,
                         crate::ptr::without_provenance_mut(umtx_timeout_size),
                         umtx_timeout_ptr as *mut _,
                     )
@@ -140,7 +140,7 @@ pub fn futex_wake_all(futex: &Atomic<u32>) {
         libc::_umtx_op(
             futex as *const Atomic<u32> as *mut _,
             libc::UMTX_OP_WAKE_PRIVATE,
-            i32::MAX as libc::c_ulong,
+            i32::MAX as core::ffi::c_ulong,
             null_mut(),
             null_mut(),
         )
@@ -227,12 +227,13 @@ pub fn futex_wake_all(futex: &Atomic<u32>) {
 
 #[cfg(target_os = "emscripten")]
 unsafe extern "C" {
-    fn emscripten_futex_wake(addr: *const Atomic<u32>, count: libc::c_int) -> libc::c_int;
+    fn emscripten_futex_wake(addr: *const Atomic<u32>, count: core::ffi::c_int)
+    -> core::ffi::c_int;
     fn emscripten_futex_wait(
         addr: *const Atomic<u32>,
-        val: libc::c_uint,
-        max_wait_ms: libc::c_double,
-    ) -> libc::c_int;
+        val: core::ffi::c_uint,
+        max_wait_ms: core::ffi::c_double,
+    ) -> core::ffi::c_int;
 }
 
 #[cfg(target_os = "emscripten")]

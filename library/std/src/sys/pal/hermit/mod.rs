@@ -16,9 +16,9 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 #![allow(missing_docs, nonstandard_style)]
 
+use crate::ffi::c_char;
 use crate::io;
 use crate::os::hermit::hermit_abi;
-use crate::os::raw::c_char;
 use crate::sys::env;
 
 pub mod futex;
