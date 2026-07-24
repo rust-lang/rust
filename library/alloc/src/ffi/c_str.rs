@@ -84,7 +84,7 @@ use crate::vec::Vec;
 ///
 /// // We are certain that our string doesn't have 0 bytes in the middle,
 /// // so we can .expect()
-/// let c_to_print = CString::new("Hello, world!").expect("CString::new failed");
+/// let c_to_print = CString::new("Hello, world!").expect("the provided string should not have a nul byte");
 /// unsafe {
 ///     my_printer(c_to_print.as_ptr());
 /// }
@@ -242,7 +242,7 @@ impl CString {
     ///
     /// extern "C" { fn puts(s: *const c_char); }
     ///
-    /// let to_print = CString::new("Hello!").expect("CString::new failed");
+    /// let to_print = CString::new("Hello!").expect("the provided string should not have a nul byte");
     /// unsafe {
     ///     puts(to_print.as_ptr());
     /// }
@@ -466,12 +466,12 @@ impl CString {
     /// use std::ffi::CString;
     ///
     /// let valid_utf8 = vec![b'f', b'o', b'o'];
-    /// let cstring = CString::new(valid_utf8).expect("CString::new failed");
+    /// let cstring = CString::new(valid_utf8).expect("the provided vector of bytes should not contain a nul byte");
     /// assert_eq!(cstring.into_string().expect("into_string() call failed"), "foo");
     ///
     /// let invalid_utf8 = vec![b'f', 0xff, b'o', b'o'];
-    /// let cstring = CString::new(invalid_utf8).expect("CString::new failed");
-    /// let err = cstring.into_string().err().expect("into_string().err() failed");
+    /// let cstring = CString::new(invalid_utf8).expect("the provided vector of bytes should not contain a nul byte");
+    /// let err = cstring.into_string().err().expect("the CString should be invalid utf8 format");
     /// assert_eq!(err.utf8_error().valid_up_to(), 1);
     /// ```
     #[stable(feature = "cstring_into", since = "1.7.0")]
@@ -577,7 +577,7 @@ impl CString {
     /// let c_string = CString::from(c"foo");
     /// let cstr = c_string.as_c_str();
     /// assert_eq!(cstr,
-    ///            CStr::from_bytes_with_nul(b"foo\0").expect("CStr::from_bytes_with_nul failed"));
+    ///            CStr::from_bytes_with_nul(b"foo\0").expect("the provided byte slice should have one nul byte and only at the last index"));
     /// ```
     #[inline]
     #[must_use]
@@ -660,7 +660,7 @@ impl CString {
     /// use std::ffi::CString;
     /// assert_eq!(
     ///     CString::from_vec_with_nul(b"abc\0".to_vec())
-    ///         .expect("CString::from_vec_with_nul failed"),
+    ///         .expect("the provided vector of bytes should have one nul byte and only at the last index"),
     ///     c"abc".to_owned()
     /// );
     /// ```
