@@ -1,0 +1,102 @@
+error[E0277]: the trait bound `(): Bar` is not satisfied
+  --> $DIR/closure-arg-trailing-semicolon.rs:21:5
+   |
+LL |     bar(|| { 5u8; });
+   |     ^^^^^^^^^----^^^
+   |     |        |  |
+   |     |        |  help: remove this semicolon
+   |     |        this expression has type `u8`, which implements `Bar`
+   |     the trait `Bar` is not implemented for `()`
+   |
+note: required by a bound in `bar`
+  --> $DIR/closure-arg-trailing-semicolon.rs:13:11
+   |
+LL | fn bar<R: Bar>(_: impl Fn() -> R) {}
+   |           ^^^ required by this bound in `bar`
+
+error[E0277]: the trait bound `(): Bar` is not satisfied
+  --> $DIR/closure-arg-trailing-semicolon.rs:25:7
+   |
+LL |     S.run(|| { 5u8; });
+   |       ^^^      ---- help: remove this semicolon
+   |       |        |
+   |       |        this expression has type `u8`, which implements `Bar`
+   |       the trait `Bar` is not implemented for `()`
+   |
+note: required by a bound in `S::run`
+  --> $DIR/closure-arg-trailing-semicolon.rs:17:15
+   |
+LL |     fn run<R: Bar>(&self, _: impl Fn() -> R) {}
+   |               ^^^ required by this bound in `S::run`
+
+error[E0277]: the trait bound `(): Bar` is not satisfied
+  --> $DIR/closure-arg-trailing-semicolon.rs:31:5
+   |
+LL |     let c = || { 5u8; };
+   |                  ---- help: remove this semicolon
+   |                  |
+   |                  this expression has type `u8`, which implements `Bar`
+LL |
+LL |     bar(c);
+   |     ^^^^^^ the trait `Bar` is not implemented for `()`
+   |
+note: required by a bound in `bar`
+  --> $DIR/closure-arg-trailing-semicolon.rs:13:11
+   |
+LL | fn bar<R: Bar>(_: impl Fn() -> R) {}
+   |           ^^^ required by this bound in `bar`
+
+error[E0277]: the trait bound `(): Bar` is not satisfied
+  --> $DIR/closure-arg-trailing-semicolon.rs:35:5
+   |
+LL |     bar(|| { fn why() {} });
+   |     ^^^^^^^^^^^^^^^^^^^^^^^ the trait `Bar` is not implemented for `()`
+   |
+help: the trait `Bar` is implemented for `u8`
+  --> $DIR/closure-arg-trailing-semicolon.rs:8:1
+   |
+LL | impl Bar for u8 {}
+   | ^^^^^^^^^^^^^^^
+note: required by a bound in `bar`
+  --> $DIR/closure-arg-trailing-semicolon.rs:13:11
+   |
+LL | fn bar<R: Bar>(_: impl Fn() -> R) {}
+   |           ^^^ required by this bound in `bar`
+
+error[E0277]: the trait bound `(): Bar` is not satisfied
+  --> $DIR/closure-arg-trailing-semicolon.rs:39:5
+   |
+LL |     bar(|| { "x"; });
+   |     ^^^^^^^^^^^^^^^^ the trait `Bar` is not implemented for `()`
+   |
+help: the trait `Bar` is implemented for `u8`
+  --> $DIR/closure-arg-trailing-semicolon.rs:8:1
+   |
+LL | impl Bar for u8 {}
+   | ^^^^^^^^^^^^^^^
+note: required by a bound in `bar`
+  --> $DIR/closure-arg-trailing-semicolon.rs:13:11
+   |
+LL | fn bar<R: Bar>(_: impl Fn() -> R) {}
+   |           ^^^ required by this bound in `bar`
+
+error[E0277]: the trait bound `(): Bar` is not satisfied
+  --> $DIR/closure-arg-trailing-semicolon.rs:43:5
+   |
+LL |     bar(|| {});
+   |     ^^^^^^^^^^ the trait `Bar` is not implemented for `()`
+   |
+help: the trait `Bar` is implemented for `u8`
+  --> $DIR/closure-arg-trailing-semicolon.rs:8:1
+   |
+LL | impl Bar for u8 {}
+   | ^^^^^^^^^^^^^^^
+note: required by a bound in `bar`
+  --> $DIR/closure-arg-trailing-semicolon.rs:13:11
+   |
+LL | fn bar<R: Bar>(_: impl Fn() -> R) {}
+   |           ^^^ required by this bound in `bar`
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
