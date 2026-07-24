@@ -872,8 +872,8 @@ impl<'a> Linker for GccLinker<'a> {
                 if !symbols.is_empty() {
                     writeln!(f, "  global:")?;
                     for sym in symbols {
-                        debug!("    {};", sym.name);
-                        writeln!(f, "    {};", sym.name)?;
+                        debug!("    \"{}\";", sym.name);
+                        writeln!(f, "    \"{}\";", sym.name)?;
                     }
                 }
                 writeln!(f, "\n  local:\n    *;\n}};")?;
