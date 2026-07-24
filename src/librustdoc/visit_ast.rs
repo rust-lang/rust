@@ -206,7 +206,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         debug!("Going through module {m:?}");
         // Keep track of if there were any private modules in the path.
         let orig_inside_public_path = self.inside_public_path;
-        self.inside_public_path &= self.cx.tcx.local_visibility(def_id).is_public();
+        self.inside_public_path &= self.cx.tcx.local_visibility(def_id).is_public()
+            || self.cx.document_private();
 
         // Reimplementation of `walk_mod` because we need to do it in two passes (explanations in
         // the second loop):
@@ -470,7 +471,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         let tcx = self.cx.tcx;
 
         let def_id = item.owner_id.to_def_id();
-        let is_pub = tcx.visibility(def_id).is_public();
+        let is_pub = tcx.visibility(def_id).is_public() || self.cx.document_private();
 
         if is_pub {
             self.store_path(item.owner_id.to_def_id());
@@ -592,7 +593,10 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         import_id: Option<LocalDefId>,
     ) {
         // If inlining we only want to include public functions.
-        if !self.inlining || self.cx.tcx.visibility(item.owner_id).is_public() {
+        if !self.inlining
+            || self.cx.tcx.visibility(item.owner_id).is_public()
+            || self.cx.document_private()
+        {
             self.modules.last_mut().unwrap().foreigns.push(Foreign { item, renamed, import_id });
         }
     }

@@ -1684,10 +1684,8 @@ fn first_non_private<'tcx>(
                         }
                         if (cx.document_hidden() ||
                             !cx.tcx.is_doc_hidden(use_def_id)) &&
-                            // We never check for "cx.document_private()"
-                            // because if a re-export is not fully public, it's never
-                            // documented.
-                            cx.tcx.local_visibility(local_use_def_id).is_public()
+                            (cx.tcx.local_visibility(local_use_def_id).is_public()
+                                || cx.document_private())
                         {
                             break 'reexps;
                         }
@@ -3109,7 +3107,7 @@ fn clean_extern_crate<'tcx>(
     let crate_def_id = cnum.as_def_id();
     let attrs = cx.tcx.hir_attrs(krate.hir_id());
     let ty_vis = cx.tcx.visibility(krate.owner_id);
-    let please_inline = ty_vis.is_public()
+    let please_inline = (ty_vis.is_public() || cx.document_private())
         && attrs.iter().any(|a| {
             matches!(
             a,
@@ -3197,7 +3195,8 @@ fn clean_use_statement_inner<'tcx>(
     // module, there isn't really a parent module, which makes the results
     // meaningless. In this case, we make sure the answer is `false`.
     let is_visible_from_parent_mod =
-        visibility.is_accessible_from(parent_mod, cx.tcx) && !current_mod.is_top_level_module();
+        visibility.is_accessible_from(parent_mod, cx.tcx)
+            && (!current_mod.is_top_level_module() || !import.vis_span.is_empty());
 
     if pub_underscore && let Some((_, inline_span)) = inline_attr {
         struct_span_code_err!(
@@ -3226,6 +3225,9 @@ fn clean_use_statement_inner<'tcx>(
     // Also check whether imports were asked to be inlined, in case we're trying to re-export a
     // crate in Rust 2018+
     let path = clean_path(path, cx);
+    let should_be_displayed = visibility.is_public()
+        || (cx.document_private() && !import.vis_span.is_empty());
+
     let inner = if kind == hir::UseKind::Glob {
         if !denied {
             let mut visited = DefIdSet::default();
@@ -3240,7 +3242,7 @@ fn clean_use_statement_inner<'tcx>(
                 return items;
             }
         }
-        Import::new_glob(resolve_use_source(cx, path), true)
+        Import::new_glob(resolve_use_source(cx, path), should_be_displayed)
     } else {
         let name = name.unwrap();
         if inline_attr.is_none()
@@ -3269,7 +3271,7 @@ fn clean_use_statement_inner<'tcx>(
             ));
             return items;
         }
-        Import::new_simple(name, resolve_use_source(cx, path), true)
+        Import::new_simple(name, resolve_use_source(cx, path), should_be_displayed)
     };
 
     vec![Item::from_def_id_and_parts(import_def_id.to_def_id(), None, ImportItem(inner), cx.tcx)]
