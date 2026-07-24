@@ -1231,7 +1231,7 @@ enum AddSemicolon {
 
 /// A trait implemented for all `AstFragment` nodes and providing all pieces
 /// of functionality used by `InvocationCollector`.
-trait InvocationCollectorNode: HasAttrs + HasNodeId + Sized {
+trait InvocationCollectorNode: HasAttrs + HasNodeId + Sized + DeclaredIdents {
     type OutputTy = SmallVec<[Self; 1]>;
     type ItemKind = ItemKind;
     const KIND: AstFragmentKind;
@@ -1283,13 +1283,44 @@ trait InvocationCollectorNode: HasAttrs + HasNodeId + Sized {
         collector.cx.dcx().emit_err(RemoveNodeNotSupported { span, descr: Self::descr() });
     }
 
+    fn as_target(&self) -> Target;
+}
+
+pub trait DeclaredIdents {
     /// All of the identifiers (items) declared by this node.
     /// This is an approximation and should only be used for diagnostics.
     fn declared_idents(&self) -> Vec<Ident> {
         vec![]
     }
+}
 
-    fn as_target(&self) -> Target;
+macro_rules! declared_idents {
+    ($($ty:ty),*) => {
+        $(impl DeclaredIdents for $ty {})*
+    };
+}
+
+// Use the default "empty" list of idents for the following:
+declared_idents! {
+    AstNodeWrapper<Box<ast::AssocItem>, TraitItemTag>,
+    AstNodeWrapper<Box<ast::AssocItem>, ImplItemTag>,
+    AstNodeWrapper<Box<ast::AssocItem>, TraitImplItemTag>,
+    Box<ast::ForeignItem>,
+    ast::Variant,
+    ast::WherePredicate,
+    ast::FieldDef,
+    ast::PatField,
+    ast::ExprField,
+    ast::Param,
+    ast::GenericParam,
+    ast::Arm,
+    ast::Stmt,
+    ast::Crate,
+    ast::Ty,
+    ast::Pat,
+    ast::Expr,
+    AstNodeWrapper<Box<ast::Expr>, OptExprTag>,
+    AstNodeWrapper<ast::Expr, MethodReceiverTag>
 }
 
 impl InvocationCollectorNode for Box<ast::Item> {
@@ -1417,6 +1448,12 @@ impl InvocationCollectorNode for Box<ast::Item> {
         res
     }
 
+    fn as_target(&self) -> Target {
+        Target::from_ast_item(self)
+    }
+}
+
+impl DeclaredIdents for Box<ast::Item> {
     fn declared_idents(&self) -> Vec<Ident> {
         if let ItemKind::Use(ut) = &self.kind {
             fn collect_use_tree_leaves(ut: &ast::UseTree, idents: &mut Vec<Ident>) {
@@ -1436,10 +1473,6 @@ impl InvocationCollectorNode for Box<ast::Item> {
         } else {
             self.kind.ident().into_iter().collect()
         }
-    }
-
-    fn as_target(&self) -> Target {
-        Target::from_ast_item(self)
     }
 }
 
