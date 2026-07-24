@@ -227,7 +227,7 @@ fn build_codegen(args: &mut BuildArg) -> Result<(), String> {
     }
     run_command_with_output_and_env(&command, None, Some(&env))?;
 
-    args.config_info.setup(&mut env, false)?;
+    args.config_info.setup(&mut env, false, true)?;
 
     // We voluntarily ignore the error.
     let _ = fs::remove_dir_all("target/out");

@@ -12,6 +12,7 @@ mod prepare;
 mod rust_tools;
 mod rustc_info;
 mod test;
+mod todo;
 mod utils;
 const BUILD_DIR: &str = "build";
 
@@ -45,7 +46,8 @@ Commands:
         clone-gcc : Clones the GCC compiler from a specified source.
         fmt       : Runs rustfmt
         fuzz      : Fuzzes `cg_gcc` using rustlantis
-        abi-test   : Runs the abi-cafe test suite on the codegen, checking for ABI compatibility with LLVM"
+        abi-test   : Runs the abi-cafe test suite on the codegen, checking for ABI compatibility with LLVM
+        check-todo : Checks todo in the project"
     );
 }
 
@@ -61,6 +63,7 @@ pub enum Command {
     Fmt,
     Fuzz,
     AbiTest,
+    CheckTodo,
 }
 
 fn main() {
@@ -80,6 +83,7 @@ fn main() {
         Some("info") => Command::Info,
         Some("clone-gcc") => Command::CloneGcc,
         Some("abi-test") => Command::AbiTest,
+        Some("check-todo") => Command::CheckTodo,
         Some("fmt") => Command::Fmt,
         Some("fuzz") => Command::Fuzz,
         Some("--help") => {
@@ -106,6 +110,7 @@ fn main() {
         Command::Fmt => fmt::run(),
         Command::Fuzz => fuzz::run(),
         Command::AbiTest => abi_test::run(),
+        Command::CheckTodo => todo::run(),
     } {
         eprintln!("Command failed to run: {e}");
         process::exit(1);

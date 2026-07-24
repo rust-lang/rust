@@ -478,6 +478,26 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(
                 new_args.push(variable.get_address(None));
                 args = new_args.into();
             }
+            "__builtin_ia32_2intersectd128"
+            | "__builtin_ia32_2intersectq128"
+            | "__builtin_ia32_2intersectd256"
+            | "__builtin_ia32_2intersectq256"
+            | "__builtin_ia32_2intersectd512"
+            | "__builtin_ia32_2intersectq512" => {
+                let old_args = args.to_vec();
+                let mut new_args = vec![];
+                let arg1_type = gcc_func.get_param_type(0);
+                let first_mask =
+                    builder.current_func().new_local(None, arg1_type, "return_2intersect_arg1");
+                let arg2_type = gcc_func.get_param_type(1);
+                let second_mask =
+                    builder.current_func().new_local(None, arg2_type, "return_2intersect_arg2");
+                new_args.push(first_mask.get_address(None));
+                new_args.push(second_mask.get_address(None));
+                new_args.push(old_args[0]);
+                new_args.push(old_args[1]);
+                args = new_args.into();
+            }
             "__builtin_ia32_vpermt2varqi512_mask"
             | "__builtin_ia32_vpermt2varqi256_mask"
             | "__builtin_ia32_vpermt2varqi128_mask"
@@ -488,6 +508,23 @@ pub fn adjust_intrinsic_arguments<'a, 'b, 'gcc, 'tcx>(
                 let arg4_type = gcc_func.get_param_type(3);
                 let minus_one = builder.context.new_rvalue_from_int(arg4_type, -1);
                 args = vec![new_args[1], new_args[0], new_args[2], minus_one].into();
+            }
+            "__builtin_ia32_fpclassph128_mask"
+            | "__builtin_ia32_fpclassph256_mask"
+            | "__builtin_ia32_fpclassph512_mask"
+            | "__builtin_ia32_fpclasspd128_mask"
+            | "__builtin_ia32_fpclassps128_mask"
+            | "__builtin_ia32_fpclasspd256_mask"
+            | "__builtin_ia32_fpclassps256_mask"
+            | "__builtin_ia32_fpclasspd512_mask"
+            | "__builtin_ia32_fpclassps512_mask"
+            | "__builtin_ia32_vpshufbitqmb128_mask"
+            | "__builtin_ia32_vpshufbitqmb256_mask"
+            | "__builtin_ia32_vpshufbitqmb512_mask" => {
+                let new_args = args.to_vec();
+                let arg3_type = gcc_func.get_param_type(2);
+                let minus_one = builder.context.new_rvalue_from_int(arg3_type, -1);
+                args = vec![new_args[0], new_args[1], minus_one].into();
             }
             "__builtin_ia32_xrstor"
             | "__builtin_ia32_xrstor64"
@@ -840,7 +877,7 @@ pub fn adjust_intrinsic_return_value<'a, 'gcc, 'tcx>(
         "__builtin_ia32_rdrand64_step" => {
             let random_number = args[0].dereference(None).to_rvalue();
             let success_variable =
-                builder.current_func().new_local(None, return_value.get_type(), "success");
+                builder.new_temp(builder.current_func(), None, return_value.get_type());
             builder.llbb().add_assignment(None, success_variable, return_value);
 
             let field1 = builder.context.new_field(None, random_number.get_type(), "random_number");
@@ -852,6 +889,25 @@ pub fn adjust_intrinsic_return_value<'a, 'gcc, 'tcx>(
                 struct_type.as_type(),
                 None,
                 &[random_number, success_variable.to_rvalue()],
+            );
+        }
+        "__builtin_ia32_2intersectd128"
+        | "__builtin_ia32_2intersectq128"
+        | "__builtin_ia32_2intersectd256"
+        | "__builtin_ia32_2intersectq256"
+        | "__builtin_ia32_2intersectd512"
+        | "__builtin_ia32_2intersectq512" => {
+            let first_mask = args[0].dereference(None).to_rvalue();
+            let second_mask = args[1].dereference(None).to_rvalue();
+            let field1 = builder.context.new_field(None, first_mask.get_type(), "first_mask");
+            let field2 = builder.context.new_field(None, second_mask.get_type(), "second_mask");
+            let struct_type =
+                builder.context.new_struct_type(None, "vp2intersect_result", &[field1, field2]);
+            return_value = builder.context.new_struct_constructor(
+                None,
+                struct_type.as_type(),
+                None,
+                &[first_mask, second_mask],
             );
         }
         "fma" => {
@@ -1182,6 +1238,9 @@ pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function
         "llvm.x86.avx512.mask.vpshufbitqmb.512" => "__builtin_ia32_vpshufbitqmb512_mask",
         "llvm.x86.avx512.mask.vpshufbitqmb.256" => "__builtin_ia32_vpshufbitqmb256_mask",
         "llvm.x86.avx512.mask.vpshufbitqmb.128" => "__builtin_ia32_vpshufbitqmb128_mask",
+        "llvm.x86.avx512.vpshufbitqmb.512" => "__builtin_ia32_vpshufbitqmb512_mask",
+        "llvm.x86.avx512.vpshufbitqmb.256" => "__builtin_ia32_vpshufbitqmb256_mask",
+        "llvm.x86.avx512.vpshufbitqmb.128" => "__builtin_ia32_vpshufbitqmb128_mask",
         "llvm.x86.avx512.mask.ucmp.w.512" => "__builtin_ia32_ucmpw512_mask",
         "llvm.x86.avx512.mask.ucmp.w.256" => "__builtin_ia32_ucmpw256_mask",
         "llvm.x86.avx512.mask.ucmp.w.128" => "__builtin_ia32_ucmpw128_mask",
@@ -1339,11 +1398,20 @@ pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function
         "llvm.x86.avx512bf16.cvtne2ps2bf16.128" => "__builtin_ia32_cvtne2ps2bf16_v8bf",
         "llvm.x86.avx512bf16.cvtne2ps2bf16.256" => "__builtin_ia32_cvtne2ps2bf16_v16bf",
         "llvm.x86.avx512bf16.cvtne2ps2bf16.512" => "__builtin_ia32_cvtne2ps2bf16_v32bf",
+        "llvm.x86.vcvtneps2bf16128" => "__builtin_ia32_cvtneps2bf16_v4sf",
+        "llvm.x86.vcvtneps2bf16256" => "__builtin_ia32_cvtneps2bf16_v8sf",
+        "llvm.x86.avx512bf16.mask.cvtneps2bf16.128" => "__builtin_ia32_cvtneps2bf16_v4sf_mask",
         "llvm.x86.avx512bf16.cvtneps2bf16.256" => "__builtin_ia32_cvtneps2bf16_v8sf",
         "llvm.x86.avx512bf16.cvtneps2bf16.512" => "__builtin_ia32_cvtneps2bf16_v16sf",
         "llvm.x86.avx512bf16.dpbf16ps.128" => "__builtin_ia32_dpbf16ps_v4sf",
         "llvm.x86.avx512bf16.dpbf16ps.256" => "__builtin_ia32_dpbf16ps_v8sf",
         "llvm.x86.avx512bf16.dpbf16ps.512" => "__builtin_ia32_dpbf16ps_v16sf",
+        "llvm.x86.avx512.vp2intersect.d.128" => "__builtin_ia32_2intersectd128",
+        "llvm.x86.avx512.vp2intersect.q.128" => "__builtin_ia32_2intersectq128",
+        "llvm.x86.avx512.vp2intersect.d.256" => "__builtin_ia32_2intersectd256",
+        "llvm.x86.avx512.vp2intersect.q.256" => "__builtin_ia32_2intersectq256",
+        "llvm.x86.avx512.vp2intersect.d.512" => "__builtin_ia32_2intersectd512",
+        "llvm.x86.avx512.vp2intersect.q.512" => "__builtin_ia32_2intersectq512",
         "llvm.x86.pclmulqdq.512" => "__builtin_ia32_vpclmulqdq_v8di",
         "llvm.x86.pclmulqdq.256" => "__builtin_ia32_vpclmulqdq_v4di",
         "llvm.x86.avx512.pmulhu.w.512" => "__builtin_ia32_pmulhuw512_mask",
@@ -1577,38 +1645,79 @@ pub fn intrinsic<'gcc, 'tcx>(name: &str, cx: &CodegenCx<'gcc, 'tcx>) -> Function
         "llvm.x86.avx512.uitofp.round.v4f64.v4i64" => "__builtin_ia32_cvtuqq2pd256_mask",
         "llvm.x86.avx512.uitofp.round.v8f32.v8i64" => "__builtin_ia32_cvtuqq2ps512_mask",
         "llvm.x86.avx512.uitofp.round.v4f32.v4i64" => "__builtin_ia32_cvtuqq2ps256_mask",
+        "llvm.x86.avx512fp16.fpclass.ph.128" => "__builtin_ia32_fpclassph128_mask",
+        "llvm.x86.avx512fp16.mask.cmp.ph.128" => "__builtin_ia32_cmpph128_mask",
+        "llvm.x86.avx512fp16.fpclass.ph.256" => "__builtin_ia32_fpclassph256_mask",
+        "llvm.x86.avx512fp16.fpclass.ph.512" => "__builtin_ia32_fpclassph512_mask",
+        "llvm.x86.avx512fp16.mask.cmp.ph.256" => "__builtin_ia32_cmpph256_mask",
+        "llvm.x86.avx512fp16.mask.cmp.ph.512" => "__builtin_ia32_cmpph512_mask_round",
+        "llvm.x86.avx512.fpclass.pd.128" => "__builtin_ia32_fpclasspd128_mask",
+        "llvm.x86.avx512.fpclass.ps.128" => "__builtin_ia32_fpclassps128_mask",
+        "llvm.x86.avx512.fpclass.pd.256" => "__builtin_ia32_fpclasspd256_mask",
+        "llvm.x86.avx512.fpclass.ps.256" => "__builtin_ia32_fpclassps256_mask",
+        "llvm.x86.avx512.fpclass.pd.512" => "__builtin_ia32_fpclasspd512_mask",
+        "llvm.x86.avx512.fpclass.ps.512" => "__builtin_ia32_fpclassps512_mask",
 
         // FIXME: support the tile builtins:
         "llvm.x86.ldtilecfg" => "__builtin_trap",
         "llvm.x86.sttilecfg" => "__builtin_trap",
         "llvm.x86.tileloadd64" => "__builtin_trap",
+        "llvm.x86.tileloadd64.internal" => "__builtin_trap",
         "llvm.x86.tilerelease" => "__builtin_trap",
         "llvm.x86.tilestored64" => "__builtin_trap",
+        "llvm.x86.tilestored64.internal" => "__builtin_trap",
         "llvm.x86.tileloaddrs64" => "__builtin_trap",
+        "llvm.x86.tileloaddrs64.internal" => "__builtin_trap",
         "llvm.x86.tileloaddt164" => "__builtin_trap",
+        "llvm.x86.tileloaddt164.internal" => "__builtin_trap",
         "llvm.x86.tileloaddrst164" => "__builtin_trap",
+        "llvm.x86.tileloaddrst164.internal" => "__builtin_trap",
         "llvm.x86.tilezero" => "__builtin_trap",
+        "llvm.x86.tilezero.internal" => "__builtin_trap",
         "llvm.x86.tilemovrow" => "__builtin_trap",
+        "llvm.x86.tilemovrow.internal" => "__builtin_trap",
         "llvm.x86.tilemovrowi" => "__builtin_trap",
         "llvm.x86.tdpbhf8ps" => "__builtin_trap",
+        "llvm.x86.tdpbhf8ps.internal" => "__builtin_trap",
         "llvm.x86.tdphbf8ps" => "__builtin_trap",
+        "llvm.x86.tdphbf8ps.internal" => "__builtin_trap",
         "llvm.x86.tdpbf8ps" => "__builtin_trap",
+        "llvm.x86.tdpbf8ps.internal" => "__builtin_trap",
         "llvm.x86.tdphf8ps" => "__builtin_trap",
+        "llvm.x86.tdphf8ps.internal" => "__builtin_trap",
         "llvm.x86.tdpbf16ps" => "__builtin_trap",
+        "llvm.x86.tdpbf16ps.internal" => "__builtin_trap",
         "llvm.x86.tdpbssd" => "__builtin_trap",
+        "llvm.x86.tdpbssd.internal" => "__builtin_trap",
         "llvm.x86.tdpbsud" => "__builtin_trap",
+        "llvm.x86.tdpbsud.internal" => "__builtin_trap",
         "llvm.x86.tdpbusd" => "__builtin_trap",
+        "llvm.x86.tdpbusd.internal" => "__builtin_trap",
         "llvm.x86.tdpbuud" => "__builtin_trap",
+        "llvm.x86.tdpbuud.internal" => "__builtin_trap",
         "llvm.x86.tdpfp16ps" => "__builtin_trap",
+        "llvm.x86.tdpfp16ps.internal" => "__builtin_trap",
         "llvm.x86.tmmultf32ps" => "__builtin_trap",
+        "llvm.x86.tmmultf32ps.internal" => "__builtin_trap",
         "llvm.x86.tcvtrowps2phh" => "__builtin_trap",
+        "llvm.x86.tcvtrowps2phh.internal" => "__builtin_trap",
         "llvm.x86.tcvtrowps2phl" => "__builtin_trap",
+        "llvm.x86.tcvtrowps2phl.internal" => "__builtin_trap",
         "llvm.x86.tcvtrowd2ps" => "__builtin_trap",
+        "llvm.x86.tcvtrowd2ps.internal" => "__builtin_trap",
         "llvm.x86.tcvtrowd2psi" => "__builtin_trap",
         "llvm.x86.tcvtrowps2phhi" => "__builtin_trap",
         "llvm.x86.tcvtrowps2phli" => "__builtin_trap",
+        "llvm.x86.tcvtrowps2bf16h" => "__builtin_trap",
+        "llvm.x86.tcvtrowps2bf16h.internal" => "__builtin_trap",
+        "llvm.x86.tcvtrowps2bf16hi" => "__builtin_trap",
+        "llvm.x86.tcvtrowps2bf16l" => "__builtin_trap",
+        "llvm.x86.tcvtrowps2bf16l.internal" => "__builtin_trap",
+        "llvm.x86.tcvtrowps2bf16li" => "__builtin_trap",
         "llvm.x86.tcmmimfp16ps" => "__builtin_trap",
+        "llvm.x86.tcmmimfp16ps.internal" => "__builtin_trap",
         "llvm.x86.tcmmrlfp16ps" => "__builtin_trap",
+        "llvm.x86.tcmmrlfp16ps.internal" => "__builtin_trap",
 
         // NOTE: this file is generated by https://github.com/GuillaumeGomez/llvmint/blob/master/generate_list.py
         _ => map_arch_intrinsic(name),

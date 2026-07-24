@@ -3,6 +3,8 @@
 // Run-time:
 //   status: 0
 
+#![feature(asm_goto_with_outputs)]
+
 #[cfg(target_arch = "x86_64")]
 use std::arch::{asm, global_asm};
 
@@ -30,6 +32,20 @@ pub unsafe fn mem_cpy(dst: *mut u8, src: *const u8, len: usize) {
         inout("rcx") len => _,
         options(preserves_flags, nostack)
     );
+}
+
+#[cfg(target_arch = "x86_64")]
+#[unsafe(no_mangle)]
+pub fn asm_goto_test(mut a: i16) -> i16 {
+    unsafe {
+        std::arch::asm!(
+            "jmp {op}",
+            inout("eax") a,
+            op = label { a = 7; },
+            options(nostack,nomem)
+        );
+        a
+    }
 }
 
 #[cfg(target_arch = "x86_64")]
@@ -190,6 +206,14 @@ fn asm() {
     }
     assert_eq!((x, y), (8, 8));
 
+    // Regression test for <https://github.com/rust-lang/rustc_codegen_gcc/issues/792>
+    // typed pointer inputs to explicit registers need a cast.
+    let mut x = 123_i32;
+    unsafe {
+        asm!("", in("rdi") &mut x, options(nostack, preserves_flags));
+    }
+    assert_eq!(x, 123);
+
     // sysv64 is the default calling convention on unix systems. The rdi register is
     // used to pass arguments in the sysv64 calling convention, so this register will be clobbered
     #[cfg(unix)]
@@ -227,6 +251,8 @@ fn asm() {
             out("r15b") _,
         );
     }
+
+    asm_goto_test(0);
 }
 
 #[cfg(not(target_arch = "x86_64"))]

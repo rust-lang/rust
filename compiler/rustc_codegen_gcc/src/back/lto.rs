@@ -20,6 +20,7 @@
 use std::ffi::CString;
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use gccjit::OutputKind;
 use object::read::archive::ArchiveFile;
@@ -29,14 +30,15 @@ use rustc_codegen_ssa::back::write::{CodegenContext, FatLtoInput, SharedEmitter}
 use rustc_codegen_ssa::traits::*;
 use rustc_codegen_ssa::{CompiledModule, ModuleCodegen, ModuleKind};
 use rustc_data_structures::memmap::Mmap;
-use rustc_data_structures::profiling::SelfProfilerRef;
 use rustc_errors::{DiagCtxt, DiagCtxtHandle};
 use rustc_log::tracing::info;
+use rustc_session::Session;
 use tempfile::{TempDir, tempdir};
 
 use crate::back::write::{codegen, save_temp_bitcode};
 use crate::errors::LtoBitcodeFromRlib;
-use crate::{GccCodegenBackend, GccContext, LtoMode, to_gcc_opt_level};
+use crate::gcc_util::new_context;
+use crate::{GccCodegenBackend, GccContext, LtoMode, SyncContext, to_gcc_opt_level};
 
 struct LtoData {
     // FIXME(antoyo): use symbols_below_threshold.
@@ -102,8 +104,8 @@ fn save_as_file(obj: &[u8], path: &Path) -> Result<(), LtoBitcodeFromRlib> {
 /// Performs fat LTO by merging all modules into a single one and returning it
 /// for further optimization.
 pub(crate) fn run_fat(
+    sess: &Session,
     cgcx: &CodegenContext,
-    prof: &SelfProfilerRef,
     shared_emitter: &SharedEmitter,
     each_linked_rlib_for_lto: &[PathBuf],
     modules: Vec<FatLtoInput<GccCodegenBackend>>,
@@ -114,8 +116,8 @@ pub(crate) fn run_fat(
     /*let symbols_below_threshold =
     lto_data.symbols_below_threshold.iter().map(|c| c.as_ptr()).collect::<Vec<_>>();*/
     fat_lto(
+        sess,
         cgcx,
-        prof,
         dcx,
         modules,
         lto_data.upstream_modules,
@@ -125,15 +127,15 @@ pub(crate) fn run_fat(
 }
 
 fn fat_lto(
+    sess: &Session,
     cgcx: &CodegenContext,
-    prof: &SelfProfilerRef,
     dcx: DiagCtxtHandle<'_>,
     modules: Vec<FatLtoInput<GccCodegenBackend>>,
     mut serialized_modules: Vec<(SerializedModule<ModuleBuffer>, CString)>,
     tmp_path: TempDir,
     //symbols_below_threshold: &[String],
 ) -> CompiledModule {
-    let _timer = prof.generic_activity("GCC_fat_lto_build_monolithic_module");
+    let _timer = sess.prof.generic_activity("GCC_fat_lto_build_monolithic_module");
     info!("going for a fat lto");
 
     // Sort out all our lists of incoming modules into two lists.
@@ -183,17 +185,16 @@ fn fat_lto(
     // module and create a linker with it.
     let mut module: ModuleCodegen<GccContext> = match costliest_module {
         Some((_cost, i)) => in_memory.remove(i),
-        None => {
-            unimplemented!("Incremental");
-            /*assert!(!serialized_modules.is_empty(), "must have at least one serialized module");
-            let (buffer, name) = serialized_modules.remove(0);
-            info!("no in-memory regular modules to choose from, parsing {:?}", name);
-            ModuleCodegen {
-                module_llvm: GccContext::parse(cgcx, &name, buffer.data(), dcx)?,
-                name: name.into_string().unwrap(),
-                kind: ModuleKind::Regular,
-            }*/
-        }
+        None => ModuleCodegen::new_regular(
+            "lto_module".to_string(),
+            GccContext {
+                context: Arc::new(SyncContext::new(new_context(sess))),
+                relocation_model: sess.relocation_model(),
+                lto_supported: true,
+                lto_mode: LtoMode::None,
+                temp_dir: None,
+            },
+        ),
     };
     {
         info!("using {:?} as a base module", module.name);
@@ -220,7 +221,8 @@ fn fat_lto(
         // We add the object files and save in should_combine_object_files that we should combine
         // them into a single object file when compiling later.
         for (bc_decoded, name) in serialized_modules {
-            let _timer = prof
+            let _timer = sess
+                .prof
                 .generic_activity_with_arg_recorder("GCC_fat_lto_link_module", |recorder| {
                     recorder.record_arg(format!("{:?}", name))
                 });
@@ -258,7 +260,7 @@ fn fat_lto(
     // of now.
     module.module_llvm.temp_dir = Some(tmp_path);
 
-    codegen(cgcx, prof, dcx, module, &cgcx.module_config)
+    codegen(cgcx, &sess.prof, dcx, module, &cgcx.module_config)
 }
 
 pub struct ModuleBuffer(PathBuf);

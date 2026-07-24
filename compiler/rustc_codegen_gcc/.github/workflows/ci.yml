@@ -26,7 +26,7 @@ jobs:
           - { gcc: "gcc-15.deb" }
           - { gcc: "gcc-15-without-int128.deb" }
         commands: [
-          "--std-tests",
+          "--std-tests --alloc-tests",
           # FIXME: re-enable asm tests when GCC can emit in the right syntax.
           # "--asm-tests",
           "--test-libcore",
@@ -36,6 +36,7 @@ jobs:
           "--test-successful-rustc --nb-parts 2 --current-part 0",
           "--test-successful-rustc --nb-parts 2 --current-part 1",
           "--projects",
+          "--gcc-asm-tests",
         ]
 
     steps:
@@ -88,6 +89,9 @@ jobs:
     - name: Check formatting
       run: ./y.sh fmt --check
 
+    - name: Check todo
+      run: ./y.sh check-todo
+
     - name: clippy
       run: |
         cargo clippy --all-targets -- -D warnings
@@ -98,6 +102,7 @@ jobs:
       run: |
         ./y.sh build --sysroot
         ./y.sh test --cargo-tests
+        CARGO_TEST_FLAGS="-Zmir-preserve-ub" ./y.sh test --cargo-tests -- mir_preserve_ub_empty_switch
 
     - name: Run y.sh cargo build
       run: |
