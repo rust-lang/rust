@@ -17,3 +17,15 @@ fn no_lookup_host_duplicates() {
         "There should be no duplicate localhost entries"
     );
 }
+
+// #115325: on Apple, `send` rejects a length > `c_int::MAX` with `EINVAL`, so
+// the clamp must not regress to the unbounded `wrlen_t::MAX`.
+#[test]
+fn max_send_len_within_platform_limit() {
+    if cfg!(target_vendor = "apple") {
+        assert_eq!(MAX_SEND_LEN, c_int::MAX as usize);
+    } else {
+        assert_eq!(MAX_SEND_LEN, <wrlen_t>::MAX as usize);
+    }
+    assert_eq!(crate::cmp::min(MAX_SEND_LEN.saturating_add(1), MAX_SEND_LEN), MAX_SEND_LEN);
+}

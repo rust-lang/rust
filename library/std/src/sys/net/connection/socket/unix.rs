@@ -279,7 +279,7 @@ impl Socket {
 
     #[cfg(not(target_os = "wasi"))]
     pub fn send_with_flags(&self, buf: &[u8], flags: c_int) -> io::Result<usize> {
-        let len = cmp::min(buf.len(), <wrlen_t>::MAX as usize) as wrlen_t;
+        let len = cmp::min(buf.len(), super::MAX_SEND_LEN) as wrlen_t;
         let ret = cvt(unsafe {
             libc::send(self.as_raw_fd(), buf.as_ptr() as *const c_void, len, flags)
         })?;
