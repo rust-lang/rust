@@ -132,12 +132,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     is_weak: bool,
                 }
                 let mut symbol_target: Option<SymbolTarget<'tcx>> = None;
-                helpers::iter_exported_symbols(tcx, |cnum, def_id| {
+                helpers::iter_exported_symbols(tcx, |cnum, def_id, _export_info| {
                     let attrs = tcx.codegen_fn_attrs(def_id);
-                    // Skip over imports of items.
-                    if tcx.is_foreign_item(def_id) {
-                        return interp_ok(());
-                    }
                     // Skip over items without an explicitly defined symbol name.
                     if !(attrs.symbol_name.is_some()
                         || attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE)
