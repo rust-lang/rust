@@ -74,6 +74,44 @@ impl RandomState {
             RandomState { k0, k1 }
         })
     }
+
+    /// Constructs a new `RandomState` that is initialized with fixed keys.
+    ///
+    /// There are no guarantees about the returned value other than it being
+    /// deterministic. The returned value may vary across releases.
+    ///
+    /// This constructor is meant for testing purposes, where it is important
+    /// that a program behaves deterministically in order to reproduce test
+    /// failures. Although it is possible to use other deterministic hashers,
+    /// there are libraries which have hash collections with `RandomState`
+    /// hardcoded in their public interface.
+    ///
+    /// # Examples
+    ///
+    /// Rerunning the following program always produces the same output, which
+    /// isn't the case if `s` is created with `RandomState::new`.
+    ///
+    /// ```
+    /// #![feature(deterministic_random_state)]
+    /// use std::collections::HashSet;
+    /// use std::hash::RandomState;
+    ///
+    /// let s = RandomState::deterministic();
+    /// let mut set = HashSet::with_hasher(s);
+    /// set.insert(0);
+    /// set.insert(1);
+    /// for v in set {
+    ///     println!("{v}");
+    /// }
+    /// ```
+    #[inline]
+    #[allow(deprecated)]
+    // rand
+    #[must_use]
+    #[unstable(feature = "deterministic_random_state", issue = "none")]
+    pub fn deterministic() -> RandomState {
+        RandomState { k0: 0, k1: 0 }
+    }
 }
 
 #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
