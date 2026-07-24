@@ -2626,6 +2626,8 @@ options! {
         "align all functions to at least this many bytes. Must be a power of 2"),
     min_recursion_limit: Option<usize> = (None, parse_opt_number, [TRACKED],
         "set a minimum recursion limit (final limit = max(this, recursion_limit_from_crate))"),
+    mips_nan2008: bool = (false, parse_bool, [TRACKED] { TARGET_MODIFIER: MipsNan2008 },
+        "enable the nan2008 target feature (IEEE 754-2008 NaN encoding) on MIPS targets (default: no)"),
     mir_enable_passes: Vec<(String, bool)> = (Vec::new(), parse_list_with_polarity, [TRACKED],
         "use like `-Zmir-enable-passes=+DestinationPropagation,-InstSimplify`. Forces the \
         specified passes to be enabled, overriding all other checks. In particular, this will \
