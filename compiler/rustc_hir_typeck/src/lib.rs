@@ -233,6 +233,7 @@ fn typeck_with_inspect<'tcx>(
         fcx.try_handle_opaque_type_uses_next();
     }
 
+    fcx.check_deferred_closure_method_calls();
     fcx.type_inference_fallback();
 
     // Even though coercion casts provide type hints, we check casts after fallback for
