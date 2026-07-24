@@ -635,35 +635,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     &system_info,
                 )?;
             }
-            // this is only callable from std, which always asks for `ALL_PROCESSOR_GROUPS`
-            "GetActiveProcessorCount" if this.frame_in_std() => {
-                // FIXME: This does not have a direct test (#3179).
-                let [_group_number] = this.check_shim_sig(
-                    shim_sig!(extern "system" fn(u16) -> u32),
-                    link_name,
-                    abi,
-                    args,
-                )?;
-                // Miri does not model processor groups, so report every CPU.
-                this.write_scalar(Scalar::from_u32(this.machine.num_cpus), dest)?;
-            }
-            // this is only callable from std, which ignores the group array and the return value
-            "GetProcessGroupAffinity" if this.frame_in_std() => {
-                // FIXME: This does not have a direct test (#3179).
-                let [_handle, group_count, _group_array] = this.check_shim_sig(
-                    shim_sig!(extern "system" fn(winapi::HANDLE, *mut _, *mut _) -> winapi::BOOL),
-                    link_name,
-                    abi,
-                    args,
-                )?;
-                // Report more than one group so `available_parallelism` takes the
-                // `GetActiveProcessorCount(ALL_PROCESSOR_GROUPS)` path; a single-group
-                // affinity mask cannot hold the up-to-1024 CPUs the num-cpus test uses.
-                let group_count = this.deref_pointer_as(group_count, this.machine.layouts.u16)?;
-                this.write_scalar(Scalar::from_u16(2), &group_count)?;
-                this.write_scalar(Scalar::from_i32(1), dest)?; // TRUE
-            }
-
             // Thread-local storage
             "TlsAlloc" => {
                 // FIXME: This does not have a direct test (#3179).
@@ -1436,6 +1407,41 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 // FIXME: this should return a nonzero value if this call does result in switching to another thread.
                 this.write_null(dest)?;
+            }
+
+            // this is only callable from std, which always asks for `ALL_PROCESSOR_GROUPS`
+            "GetActiveProcessorCount" if this.frame_in_std() => {
+                // FIXME: This does not have a direct test (#3179).
+                let [group_number] = this.check_shim_sig(
+                    shim_sig!(extern "system" fn(u16) -> u32),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+                const ALL_PROCESSOR_GROUPS: u16 = 0xffff;
+                if this.read_scalar(group_number)?.to_u16()? != ALL_PROCESSOR_GROUPS {
+                    throw_unsup_format!(
+                        "GetActiveProcessorCount: only ALL_PROCESSOR_GROUPS is supported"
+                    );
+                }
+                // Miri does not model processor groups, so report every CPU.
+                this.write_scalar(Scalar::from_u32(this.machine.num_cpus), dest)?;
+            }
+            // this is only callable from std, which ignores the group array and the return value
+            "GetProcessGroupAffinity" if this.frame_in_std() => {
+                // FIXME: This does not have a direct test (#3179).
+                let [_handle, group_count, _group_array] = this.check_shim_sig(
+                    shim_sig!(extern "system" fn(winapi::HANDLE, *mut _, *mut _) -> winapi::BOOL),
+                    link_name,
+                    abi,
+                    args,
+                )?;
+                // Report more than one group so `available_parallelism` takes the
+                // `GetActiveProcessorCount(ALL_PROCESSOR_GROUPS)` path, giving Miri
+                // coverage of the multi-group branch.
+                let group_count = this.deref_pointer_as(group_count, this.machine.layouts.u16)?;
+                this.write_scalar(Scalar::from_u16(2), &group_count)?;
+                this.write_scalar(Scalar::from_i32(1), dest)?; // TRUE
             }
 
             _ => return interp_ok(EmulateItemResult::NotSupported),
