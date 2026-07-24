@@ -9,13 +9,13 @@ LL | #[inline()]
    = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/codegen.html#the-inline-attribute>
 help: try changing it to one of the following valid forms of the attribute
    |
+LL - #[inline()]
+LL + #[inline]
+   |
 LL | #[inline(always)]
    |          ++++++
 LL | #[inline(never)]
    |          +++++
-LL - #[inline()]
-LL + #[inline]
-   |
 
 error: aborting due to 1 previous error
 

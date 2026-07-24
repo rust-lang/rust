@@ -10,13 +10,13 @@ LL | #[inline(unknown)]
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[inline(unknown)]
+LL + #[inline]
+   |
+LL - #[inline(unknown)]
 LL + #[inline(always)]
    |
 LL - #[inline(unknown)]
 LL + #[inline(never)]
-   |
-LL - #[inline(unknown)]
-LL + #[inline]
    |
 
 error: aborting due to 1 previous error

@@ -329,12 +329,12 @@ pub fn parse_cfg_attr(
                 Ok(r) => return Some(r),
                 Err(e) => {
                     let suggestions = CFG_ATTR_TEMPLATE.suggestions(
-                        AttrSuggestionStyle::Attribute(cfg_attr.style),
+                        AttrSuggestionStyle::EmbeddedAttribute,
                         cfg_attr.get_normal_item().unsafety,
                         sym::cfg_attr,
                     );
                     e.with_span_suggestions(
-                        cfg_attr.span,
+                        cfg_attr.get_normal_item().span,
                         "must be of the form",
                         suggestions,
                         Applicability::HasPlaceholders,
@@ -366,7 +366,7 @@ pub fn parse_cfg_attr(
                 reason,
                 suggestions: session_diagnostics::AttributeParseErrorSuggestions::CreatedByTemplate(
                     CFG_ATTR_TEMPLATE.suggestions(
-                        AttrSuggestionStyle::Attribute(cfg_attr.style),
+                        AttrSuggestionStyle::EmbeddedAttribute,
                         cfg_attr.get_normal_item().unsafety,
                         sym::cfg_attr,
                     ),

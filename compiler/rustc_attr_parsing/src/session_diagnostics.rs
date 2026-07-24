@@ -604,7 +604,7 @@ impl<'a> AttributeParseError<'a> {
         match &self.suggestions {
             AttributeParseErrorSuggestions::CreatedByTemplate(suggestions) => {
                 diag.span_suggestions(
-                        self.attr_span,
+                        self.inner_span,
                         if suggestions.len() == 1 {
                             "must be of the form".to_string()
                         } else {

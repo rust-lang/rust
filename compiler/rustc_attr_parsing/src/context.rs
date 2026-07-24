@@ -952,11 +952,7 @@ impl<'a, 'f, 'sess: 'f> AttributeDiagnosticContext<'a, 'f, 'sess> {
 
     pub(crate) fn template_suggestions(&self) -> Vec<String> {
         let style = match self.parsed_description {
-            // If the outer and inner spans are equal, we are parsing an embedded attribute
-            ParsedDescription::Attribute if self.attr_span == self.inner_span => {
-                AttrSuggestionStyle::EmbeddedAttribute
-            }
-            ParsedDescription::Attribute => AttrSuggestionStyle::Attribute(self.attr_style),
+            ParsedDescription::Attribute => AttrSuggestionStyle::EmbeddedAttribute,
             ParsedDescription::Macro => AttrSuggestionStyle::Macro,
         };
 
