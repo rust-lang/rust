@@ -39,5 +39,5 @@ ENV RUST_CONFIGURE_ARGS \
 # Tests are still compiled serially at the moment (intended to be changed in follow-ups).
 # Running compiletest only tests for parallel frontend, then the rest without compiletest-only
 # options (i.e. `--parallel-frontend-threads=4 --iteration-count=2`)
-COPY ./scripts/optional-x86_64-gnu-parallel-frontend.sh /scripts/
+COPY ./scripts/x86_64-gnu-parallel-frontend.sh /scripts/
 ENV SCRIPT="Must specify DOCKER_SCRIPT for this image"

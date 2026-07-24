@@ -382,11 +382,9 @@ auto:
   - name: x86_64-gnu
     <<: *job-linux-4c
 
-  - name: optional-x86_64-gnu-parallel-frontend
-    # This test can be flaky, so do not cancel CI if it fails, for now.
-    continue_on_error: true
+  - name: x86_64-gnu-parallel-frontend
     env:
-      DOCKER_SCRIPT: optional-x86_64-gnu-parallel-frontend.sh
+      DOCKER_SCRIPT: x86_64-gnu-parallel-frontend.sh
     <<: *job-linux-4c
 
   # This job ensures commits landing on nightly still pass the full
