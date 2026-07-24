@@ -5,6 +5,7 @@ LL |     println!("{:?}", iter::<_>());
    |                      ^^^^^^^^^ cannot infer type of the type parameter `T` declared on the function `iter`
    |
    = note: the type must implement `Iterator`
+   = note: cannot satisfy `<_ as Iterator>::Item == _`
 note: required by a bound in `iter`
   --> $DIR/runaway-impl-candidate-selection.rs:8:12
    |

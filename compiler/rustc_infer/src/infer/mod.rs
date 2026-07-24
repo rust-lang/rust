@@ -1613,9 +1613,10 @@ impl<'tcx> InferCtxt<'tcx> {
     }
 }
 
-/// Helper for [InferCtxt::ty_or_const_infer_var_changed] (see comment on that), currently
-/// used only for `traits::fulfill`'s list of `stalled_on` inference variables.
-#[derive(Copy, Clone, Debug)]
+/// Helper for [InferCtxt::ty_or_const_infer_var_changed] (see comment on that), used
+/// for `traits::fulfill`'s list of `stalled_on` inference variables and for merging
+/// ambiguity errors caused by the same inference variable during error reporting.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum TyOrConstInferVar {
     /// Equivalent to `ty::Infer(ty::TyVar(_))`.
     Ty(TyVid),

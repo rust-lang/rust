@@ -14,6 +14,7 @@ LL |     x = unconstrained_map();
              where Args: std::marker::Tuple, F: Fn<Args>, A: Allocator, F: ?Sized;
            - impl<F, Args> Fn<Args> for SyncView<F>
              where F: Sync, F: Fn<Args>, Args: std::marker::Tuple;
+   = note: cannot satisfy `<_ as FnOnce<()>>::Output == _`
 note: required by a bound in `unconstrained_map`
   --> $DIR/well-formed-in-relate.rs:21:25
    |

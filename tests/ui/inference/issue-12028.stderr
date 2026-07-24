@@ -5,6 +5,7 @@ LL |         self.input_stream(&mut stream);
    |              ^^^^^^^^^^^^
    |
    = note: cannot satisfy `<_ as StreamHasher>::S == <H as StreamHasher>::S`
+   = note: the type must also implement `StreamHasher`
 help: try using a fully qualified path to specify the expected types
    |
 LL -         self.input_stream(&mut stream);

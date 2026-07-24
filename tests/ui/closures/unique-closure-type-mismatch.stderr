@@ -18,6 +18,9 @@ LL |         1 => |c| c + 1,
    |               ^    - type must be known at this point
    |
    = note: cannot satisfy `<_ as Add<i32>>::Output == _`
+   = note: the type must also implement `Add<i32>`
+   = note: cannot satisfy `<_ as Sub<i32>>::Output == _`
+   = note: the type must also implement `Sub<i32>`
 help: consider giving this closure parameter an explicit type
    |
 LL |         1 => |c: /* Type */| c + 1,

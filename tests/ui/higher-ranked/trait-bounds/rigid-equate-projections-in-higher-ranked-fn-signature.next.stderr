@@ -5,6 +5,7 @@ LL |     let _: for<'a> fn(<_ as Trait<'a>>::Assoc) = foo::<T>();
    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot infer type
    |
    = note: cannot satisfy `for<'a> <_ as Trait<'a>>::Assoc == _`
+   = note: cannot satisfy `for<'a> <_ as Trait<'a>>::Assoc == <T as Trait<'_>>::Assoc`
 
 error: aborting due to 1 previous error
 
