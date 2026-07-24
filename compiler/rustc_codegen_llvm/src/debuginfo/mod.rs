@@ -289,7 +289,7 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
             generics: &ty::Generics,
             args: GenericArgsRef<'tcx>,
         ) -> &'ll DIArray {
-            if args.types().next().is_none() {
+            if args.terms().next().is_none() {
                 return create_DIArray(DIB(cx), &[]);
             }
 
@@ -298,6 +298,7 @@ impl<'ll, 'tcx> DebugInfoBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 let names = get_parameter_names(cx, generics);
                 iter::zip(args, names)
                     .filter_map(|(kind, name)| {
+                        // FIXME: debug info for consts (using `createTemplateValueParameter`?)
                         kind.as_type().map(|ty| {
                             let actual_type = cx.tcx.normalize_erasing_regions(
                                 cx.typing_env(),

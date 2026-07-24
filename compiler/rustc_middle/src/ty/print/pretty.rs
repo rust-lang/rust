@@ -2305,9 +2305,7 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
                         // `Foo<...>`.
                         if let Some(arg) = args.types().next() {
                             if let ty::Adt(_, arg_args) = arg.kind() {
-                                if arg_args.consts().next().is_none()
-                                    && arg_args.types().next().is_none()
-                                {
+                                if arg_args.terms().next().is_none() {
                                     // Single param type with no type or const parameters:
                                     // `Foo<Bar<'a>>`.
                                     true

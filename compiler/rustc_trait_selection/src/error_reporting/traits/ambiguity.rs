@@ -182,17 +182,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     /// share an inference variable into a single diagnostic.
     pub(super) fn ambiguity_term(&self, predicate: ty::Predicate<'tcx>) -> Option<ty::Term<'tcx>> {
         match predicate.kind().skip_binder() {
-            ty::PredicateKind::Clause(ty::ClauseKind::Trait(data)) => data
-                .trait_ref
-                .args
-                .iter()
-                .filter_map(ty::GenericArg::as_term)
-                .find(|term| term.has_non_region_infer()),
+            ty::PredicateKind::Clause(ty::ClauseKind::Trait(data)) => {
+                data.trait_ref.args.terms().find(|term| term.has_non_region_infer())
+            }
             ty::PredicateKind::Clause(ty::ClauseKind::Projection(data)) => data
                 .projection_term
                 .args
-                .iter()
-                .filter_map(ty::GenericArg::as_term)
+                .terms()
                 .chain([data.term])
                 .find(|term| term.has_non_region_infer()),
             ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(term)) => Some(term),
