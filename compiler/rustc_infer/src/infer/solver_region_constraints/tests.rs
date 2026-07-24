@@ -16,7 +16,7 @@ fn ambiguity() -> SolverRegionConstraint<'static> {
 }
 
 #[test]
-fn evaluation_matches_type_ir() {
+fn evaluation_is_span_agnostic() {
     let constraints = [
         ambiguity(),
         and(vec![]),
@@ -29,8 +29,8 @@ fn evaluation_matches_type_ir() {
     ];
 
     for constraint in constraints {
-        let expected = evaluate_solver_constraint(&constraint.without_spans());
-        let actual = constraint.evaluate().without_spans();
+        let expected = evaluate_solver_constraint(&constraint.clone().without_spans());
+        let actual = evaluate_solver_constraint(&constraint).without_spans();
         assert_eq!(actual, expected);
     }
 }
@@ -50,8 +50,9 @@ fn evaluation_preserves_first_ambiguity_span() {
             SolverRegionConstraint::Ambiguity(second),
         ]),
     ] {
-        assert!(
-            matches!(constraint.evaluate(), SolverRegionConstraint::Ambiguity(span) if span == first)
-        );
+        assert!(matches!(
+            evaluate_solver_constraint(&constraint),
+            SolverRegionConstraint::Ambiguity(span) if span == first
+        ));
     }
 }
