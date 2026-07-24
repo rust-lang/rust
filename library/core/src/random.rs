@@ -49,7 +49,10 @@ macro_rules! impl_primitive {
             fn sample(&self, source: &mut (impl Rng + ?Sized)) -> $t {
                 let mut bytes = (0 as $t).to_ne_bytes();
                 source.fill_bytes(&mut bytes);
-                <$t>::from_ne_bytes(bytes)
+                // Always use little-endian for reproducibility. Since the vast majority of code is
+                // mainly or exclusively tested on LE targets, giving different PRNG results for the
+                // same seed on BE targets is a serious portability hazard.
+                <$t>::from_le_bytes(bytes)
             }
         }
     };
