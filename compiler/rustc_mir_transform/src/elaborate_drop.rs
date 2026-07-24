@@ -374,12 +374,7 @@ where
             vec![self.storage_live(fut)],
             TerminatorKind::Call {
                 // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
-                func: Operand::function_handle(
-                    tcx,
-                    async_drop_fn_def_id,
-                    ty::Binder::dummy([drop_ty.into()]),
-                    span,
-                ),
+                func: Operand::function_handle(tcx, async_drop_fn_def_id, &[drop_ty.into()], span),
                 args: [dummy_spanned(drop_arg)].into(),
                 destination: fut.into(),
                 target: Some(succ_yield_loop),
@@ -408,7 +403,7 @@ where
                     tcx,
                     pin_obj_new_unchecked_fn,
                     // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
-                    ty::Binder::dummy([obj_ref_ty.into()]),
+                    &[obj_ref_ty.into()],
                     span,
                 ),
                 args: [dummy_spanned(Operand::Move(obj_ref_place))].into(),
@@ -574,12 +569,7 @@ where
             Vec::new(),
             TerminatorKind::Call {
                 // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
-                func: Operand::function_handle(
-                    tcx,
-                    poll_fn,
-                    ty::Binder::dummy([fut_ty.into()]),
-                    source_info.span,
-                ),
+                func: Operand::function_handle(tcx, poll_fn, &[fut_ty.into()], source_info.span),
                 args: [
                     dummy_spanned(Operand::Move(fut_pin_local.into())),
                     dummy_spanned(Operand::Move(context_ref_local.into())),
@@ -609,10 +599,7 @@ where
                         tcx,
                         get_context_fn,
                         // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
-                        ty::Binder::dummy([
-                            tcx.lifetimes.re_erased.into(),
-                            tcx.lifetimes.re_erased.into(),
-                        ]),
+                        &[tcx.lifetimes.re_erased.into(), tcx.lifetimes.re_erased.into()],
                         source_info.span,
                     ),
                     args: [dummy_spanned(Operand::Move(entry_resume_local.into()))].into(),
@@ -642,7 +629,7 @@ where
                 func: Operand::function_handle(
                     tcx,
                     fut_pin_new_unchecked_fn,
-                    ty::Binder::dummy([fut_ref_ty.into()]),
+                    &[fut_ref_ty.into()],
                     source_info.span,
                 ),
                 args: [dummy_spanned(Operand::Move(fut_ref_local.into()))].into(),
@@ -1266,12 +1253,7 @@ where
             )],
             TerminatorKind::Call {
                 // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
-                func: Operand::function_handle(
-                    tcx,
-                    drop_fn,
-                    ty::Binder::dummy([ty.into()]),
-                    self.source_info.span,
-                ),
+                func: Operand::function_handle(tcx, drop_fn, &[ty.into()], self.source_info.span),
                 args: [dummy_spanned(Operand::Move(Place::from(ref_place)))].into(),
                 destination: unit_temp,
                 target: Some(succ),

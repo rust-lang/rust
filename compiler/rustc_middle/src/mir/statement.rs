@@ -620,11 +620,13 @@ impl<'tcx> Operand<'tcx> {
     pub fn function_handle(
         tcx: TyCtxt<'tcx>,
         def_id: DefId,
-        args: ty::Binder<'tcx, impl IntoIterator<Item = GenericArg<'tcx>>>,
+        args: &[GenericArg<'tcx>],
         span: Span,
     ) -> Self {
-        let ty = Ty::new_fn_def(tcx, def_id, args);
-        Operand::zero_sized_constant(ty, span)
+        Operand::zero_sized_constant(
+            tcx.type_of(def_id).instantiate(tcx, args).skip_norm_wip(),
+            span,
+        )
     }
 
     /// Convenience helper to make a constant that refers to the given `DefId` and args. Since this

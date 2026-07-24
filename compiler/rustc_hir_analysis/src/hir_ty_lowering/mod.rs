@@ -1487,7 +1487,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
                     Ok(ty::Const::zero_sized(
                         tcx,
-                        Ty::new_fn_def(tcx, ctor_def_id, ty::Binder::dummy(args)),
+                        tcx.type_of(ctor_def_id).instantiate(tcx, args).skip_norm_wip(),
                     ))
                 }
                 DefKind::Ctor(ctor_of, CtorKind::Const) => {
@@ -2913,8 +2913,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     &path.segments[generic_segments[0].1],
                 );
 
-                // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
-                ty::Const::zero_sized(tcx, Ty::new_fn_def(tcx, did, ty::Binder::dummy(args)))
+                ty::Const::zero_sized(tcx, tcx.type_of(did).instantiate(tcx, args).skip_norm_wip())
             }
             Res::Def(DefKind::AssocConst { .. }, did) => {
                 let trait_segment = if let [modules @ .., trait_, _item] = path.segments {
@@ -2948,8 +2947,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 );
 
                 if self.tcx().generics_of(did).own_synthetic_params_count() == 0 {
-                    // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
-                    ty::Const::zero_sized(tcx, Ty::new_fn_def(tcx, did, ty::Binder::dummy(args)))
+                    ty::Const::zero_sized(
+                        tcx,
+                        tcx.type_of(did).instantiate(tcx, args).skip_norm_wip(),
+                    )
                 } else {
                     let tcx = self.tcx();
                     let generics = tcx.generics_of(did);
@@ -2969,7 +2970,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
                     ty::Const::zero_sized(
                         tcx,
-                        Ty::new_fn_def(tcx, did, ty::Binder::dummy(args.collect::<Box<_>>())),
+                        tcx.type_of(did)
+                            .instantiate(tcx, &*args.collect::<Box<_>>())
+                            .skip_norm_wip(),
                     )
                 }
             }
