@@ -1,12 +1,12 @@
 # UI Test Suite Categories
 
-This is a high-level summary of the organization of the UI test suite (`tests/ui/`). It is not intended to be *prescriptive*, but instead provide a quick survey of existing groupings.
+This is a high-level summary of the organization of the UI test suite (`tests/ui/`). It is not intended to be _prescriptive_, but instead provide a quick survey of existing groupings.
 
 For now, only immediate subdirectories under `tests/ui/` are described, but these subdirectories can themselves include a `SUMMARY.md` to further describe their own organization and intent, should that be helpful.
 
 ## `tests/ui/abi`
 
-These tests deal with *Application Binary Interfaces* (ABI), mostly relating to function name mangling (and the `#[no_mangle]` attribute), calling conventions, or compiler flags which affect ABI.
+These tests deal with _Application Binary Interfaces_ (ABI), mostly relating to function name mangling (and the `#[no_mangle]` attribute), calling conventions, or compiler flags which affect ABI.
 
 Tests for unsupported ABIs can be made cross-platform by using the `extern "rust-invalid"` ABI, which is considered unsupported on every platform.
 
@@ -212,7 +212,7 @@ See [Conditional compilation | Reference](https://doc.rust-lang.org/reference/co
 
 ## `tests/ui/check-cfg/`: Configuration Checks
 
-Tests for the `--check-cfg` compiler mechanism  for checking cfg configurations, for `#[cfg(..)]` and `cfg!(..)`.
+Tests for the `--check-cfg` compiler mechanism for checking cfg configurations, for `#[cfg(..)]` and `cfg!(..)`.
 
 See [Checking conditional configurations | The rustc book](https://doc.rust-lang.org/rustc/check-cfg.html).
 
@@ -222,7 +222,7 @@ Tests for `#![feature(checked_type_aliases)]`. See [Tracking issue for checked t
 
 ## `tests/ui/closure-expected-type/`: Closure type inference
 
-Tests targeted at how we deduce the types of closure arguments. This process is a result of some heuristics which take into account the *expected type* we have alongside the *actual types* that we get from inputs.
+Tests targeted at how we deduce the types of closure arguments. This process is a result of some heuristics which take into account the _expected type_ we have alongside the _actual types_ that we get from inputs.
 
 **FIXME**: Appears to have significant overlap with `tests/ui/closure_context` and `tests/ui/functions-closures/closure-expected-type`. Needs further investigation.
 
@@ -290,7 +290,7 @@ This directory is actually for the standard library [`std::process::Command`](ht
 
 Some traits' implementation must be compared with their definition, checking for problems such as the implementation having stricter requirements (such as needing to implement `Copy`).
 
-This subdirectory is *not* intended for comparison traits (`PartialEq`, `Eq`, `PartialOrd`, `Ord`).
+This subdirectory is _not_ intended comparison traits (`PartialEq`, `Eq`, `PartialOrd`, `Ord`).
 
 ## `tests/ui/compile-flags/`
 
@@ -704,6 +704,7 @@ This test category revolves around trait objects with `Sized` having illegal ope
 Tests on lifetime elision in impl function signatures. See [Lifetime elision | Nomicon](https://doc.rust-lang.org/nomicon/lifetime-elision.html).
 
 ## `tests/ui/impl-restriction/`
+
 Tests for `#![feature(impl_restriction)]`. See [Tracking issue for restrictions #105077](https://github.com/rust-lang/rust/issues/105077).
 
 ## `tests/ui/impl-trait/`
@@ -877,7 +878,7 @@ Tests on [AST lowering](https://rustc-dev-guide.rust-lang.org/ast-lowering.html)
 
 ## `tests/ui/lto/`
 
-Exercise *Link-Time Optimization* (LTO), involving the flags `-C lto` or `-Z thinlto`.
+Exercise _Link-Time Optimization_ (LTO), involving the flags `-C lto` or `-Z thinlto`.
 
 ## `tests/ui/lub-glb/`: LUB/GLB algorithm update
 
@@ -948,6 +949,7 @@ Tests on moves (destructive moves).
 Broad category of tests on mutability, such as the `mut` keyword, borrowing a value as both immutable and mutable (and the associated error), or adding mutable references to `const` declarations.
 
 ## `tests/ui/mut-restriction/`
+
 Tests for `#![feature(mut_restriction)]`. See [Tracking issue for restrictions #105077](https://github.com/rust-lang/rust/issues/105077).
 
 ## `tests/ui/namespace/`
@@ -1361,7 +1363,7 @@ Tests for supertrait item shadowing (RFC 3624).
 
 ## `tests/ui/svh/`: Strict Version Hash
 
-Tests on the *Strict Version Hash* (SVH, also known as the "crate hash").
+Tests on the _Strict Version Hash_ (SVH, also known as the "crate hash").
 
 See [Strict Version Hash](https://rustc-dev-guide.rust-lang.org/backend/libs-and-metadata.html#strict-version-hash).
 
