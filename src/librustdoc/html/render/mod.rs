@@ -41,7 +41,7 @@ mod write_shared;
 
 use std::borrow::Cow;
 use std::cmp::Ordering;
-use std::collections::VecDeque;
+use std::collections::{BTreeMap, VecDeque};
 use std::fmt::{self, Display as _, Write};
 use std::iter::Peekable;
 use std::path::PathBuf;
@@ -1664,6 +1664,15 @@ fn should_render_item(item: &clean::Item, deref_mut_: bool, tcx: TyCtxt<'_>) -> 
     }
 }
 
+/// `Box` has pass-through impls for `Read`, `Write`, `Iterator`, and `Future` when the
+/// boxed type implements one of those. We don't want to treat every `Box` return
+/// as being notably an `Iterator` (etc), though, so we exempt it. `Pin` has the same
+/// issue, with a pass-through impl for `Future`.
+fn is_notable_trait_passthrough(did: DefId, cx: &Context<'_>) -> bool {
+    let lang_items = cx.tcx().lang_items();
+    Some(did) == lang_items.owned_box() || Some(did) == lang_items.pin_type()
+}
+
 fn notable_traits_button(ty: &clean::Type, cx: &Context<'_>) -> Option<impl fmt::Display> {
     if ty.is_unit() {
         // Very common fast path.
@@ -1672,13 +1681,7 @@ fn notable_traits_button(ty: &clean::Type, cx: &Context<'_>) -> Option<impl fmt:
 
     let did = ty.def_id(cx.cache())?;
 
-    // Box has pass-through impls for Read, Write, Iterator, and Future when the
-    // boxed type implements one of those. We don't want to treat every Box return
-    // as being notably an Iterator (etc), though, so we exempt it. Pin has the same
-    // issue, with a pass-through impl for Future.
-    if Some(did) == cx.tcx().lang_items().owned_box()
-        || Some(did) == cx.tcx().lang_items().pin_type()
-    {
+    if is_notable_trait_passthrough(did, cx) {
         return None;
     }
 
@@ -1788,6 +1791,49 @@ fn notable_traits_json<'a>(tys: impl Iterator<Item = &'a clean::Type>, cx: &Cont
     let mut mp = tys.map(|ty| notable_traits_decl(ty, cx)).collect::<IndexMap<_, _>>();
     mp.sort_unstable_keys();
     serde_json::to_string(&mp).expect("serialize (string, string) -> json object cannot fail")
+}
+
+pub(crate) struct NotableTraitBadge {
+    pub name: String,
+    pub full_path: String,
+    /// Relative URL to the trait page, or `None` if it cannot be linked.
+    pub href: Option<String>,
+}
+
+/// Returns all `#[doc(notable_trait)]` traits that `item` implements, to be
+/// rendered as badges at the top of the item's page.
+pub(crate) fn notable_trait_badges(item: &clean::Item, cx: &Context<'_>) -> Vec<NotableTraitBadge> {
+    let tcx = cx.tcx();
+    if let Some(def_id) = item.def_id()
+        && !is_notable_trait_passthrough(def_id, cx)
+        && let Some(impls) = cx.cache().impls.get(&def_id)
+    {
+        impls
+            .iter()
+            .map(Impl::inner_impl)
+            .filter(|impl_| impl_.polarity == ty::ImplPolarity::Positive)
+            .filter_map(|impl_| {
+                if let Some(trait_) = &impl_.trait_
+                    && let trait_did = trait_.def_id()
+                    && let Some(trait_) = cx.cache().traits.get(&trait_did)
+                    && trait_.is_notable_trait(tcx)
+                {
+                    let name = tcx.item_name(trait_did).to_string();
+                    let (full_path, href) = match href(trait_did, cx) {
+                        Ok(info) => (join_path_syms(&info.rust_path), Some(info.url)),
+                        Err(_) => (tcx.def_path_str(trait_did), None),
+                    };
+                    Some((name.clone(), NotableTraitBadge { name, full_path, href }))
+                } else {
+                    None
+                }
+            })
+            .collect::<BTreeMap<String, NotableTraitBadge>>()
+            .into_values()
+            .collect()
+    } else {
+        Vec::new()
+    }
 }
 
 #[derive(Clone, Copy, Debug)]

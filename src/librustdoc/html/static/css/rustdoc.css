@@ -1646,6 +1646,32 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	font-size: initial;
 }
 
+.notable-trait-badge-container {
+	padding: 0.5rem 0;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+}
+
+.notable-trait-badge {
+	display: flex;
+	align-items: center;
+	width: fit-content;
+	height: 1.5rem;
+	padding: 0 0.5rem;
+	border-radius: 0.75rem;
+	font-size: 1rem;
+	font-weight: normal;
+	color: white;
+}
+
+.notable-trait-badge-0 { background: oklch(0.55 0.21 0); }
+.notable-trait-badge-1 { background: oklch(0.55 0.21 60); }
+.notable-trait-badge-2 { background: oklch(0.55 0.21 120); }
+.notable-trait-badge-3 { background: oklch(0.55 0.21 180); }
+.notable-trait-badge-4 { background: oklch(0.55 0.21 240); }
+.notable-trait-badge-5 { background: oklch(0.55 0.21 300); }
+
 .rightside {
 	padding-left: 12px;
 	float: right;
