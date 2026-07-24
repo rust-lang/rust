@@ -1337,8 +1337,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> hir::BodyId {
         let prev_coroutine_kind = self.coroutine_kind.take();
         let task_context = self.task_context.take();
+        // FIXME(fmease): Audit! Super fragile probably.
+        let in_body = std::mem::replace(&mut self.in_body, true);
         let (parameters, result) = f(self);
         let body_id = self.record_body(parameters, result);
+        self.in_body = in_body;
         self.task_context = task_context;
         self.coroutine_kind = prev_coroutine_kind;
         body_id

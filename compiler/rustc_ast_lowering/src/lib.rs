@@ -168,6 +168,9 @@ struct LoweringContext<'a, 'hir> {
     /// `task_context` local bound to the resume argument of the coroutine.
     task_context: Option<HirId>,
 
+    /// Whether we are in a body.
+    in_body: bool,
+
     /// Used to get the current `fn`'s def span to point to when using `await`
     /// outside of an `async fn`.
     current_item: Option<Span>,
@@ -264,6 +267,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             is_in_dyn_type: false,
             coroutine_kind: None,
             task_context: None,
+            in_body: false,
             current_item: None,
             impl_trait_defs: Vec::new(),
             impl_trait_bounds: Vec::new(),
@@ -3254,15 +3258,25 @@ impl<'hir> LoweringContext<'_, 'hir> {
         hir::Ty { hir_id, kind, span: self.lower_span(span) }
     }
 
+    // FIXME(fmease): Update docs.
     /// Invoked to create the lifetime argument(s) for an elided trait object
     /// bound, like the bound in `Box<dyn Debug>`. This method is not invoked
     /// when the bound is written, even if it is written with `'_` like in
     /// `Box<dyn Debug + '_>`. In those cases, `lower_lifetime` is invoked.
     fn elided_dyn_bound(&mut self, span: Span) -> &'hir hir::Lifetime {
+        let kind = if self.in_body {
+            // FIXME: We DONT necessarily want Infer!! That's the whole issue lol.
+            // During late resolution we in rustc_resolve probably, we need to
+            // resolve `+ '_` just like EPS if we're in a body!!!
+            hir::LifetimeKind::Infer
+        } else {
+            hir::LifetimeKind::ImplicitObjectLifetimeDefault
+        };
+
         let r = hir::Lifetime::new(
             self.next_id(),
             Ident::new(kw::UnderscoreLifetime, self.lower_span(span)),
-            hir::LifetimeKind::ImplicitObjectLifetimeDefault,
+            kind,
             LifetimeSource::Other,
             LifetimeSyntax::Implicit,
         );

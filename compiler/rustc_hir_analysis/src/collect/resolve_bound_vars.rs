@@ -170,6 +170,29 @@ enum Scope<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Scope<'a, 'tcx> {
+    // FIXME(fmease): This is called in a bunch of places that are probably relatively hot.
+    //                Consider tracking this flag as a field in `BoundVarContext` (to be
+    //                updated in `visit_nested_body` but that's a bit ewww)
+    fn in_body(&self) -> bool {
+        let mut scope = self;
+        loop {
+            match *scope {
+                Scope::Root { .. } => return false,
+
+                Scope::Body { .. } => return true,
+
+                Scope::Binder { s, .. }
+                | Scope::ObjectLifetimeDefault { s, .. }
+                | Scope::Opaque { s, .. }
+                | Scope::Supertrait { s, .. }
+                | Scope::TraitRefBoundary { s, .. }
+                | Scope::LateBoundary { s, .. } => {
+                    scope = s;
+                }
+            }
+        }
+    }
+
     // A helper for debugging scopes without printing parent scopes
     fn debug_truncated(&self) -> impl fmt::Debug {
         fmt::from_fn(move |f| match self {
@@ -810,11 +833,12 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
             }
             hir::TyKind::Ref(lifetime_ref, ref mt) => {
                 self.visit_lifetime(lifetime_ref);
-                let scope = Scope::ObjectLifetimeDefault {
-                    lifetime: self.rbv.defs.get(&lifetime_ref.hir_id.local_id).copied(),
-                    s: self.scope,
-                };
-                self.with(scope, |this| this.visit_ty_unambig(mt.ty));
+
+                // NOTE(fmease): Likely hot.
+                self.maybe_with_object_lifetime_default(
+                    |this| this.rbv.defs.get(&lifetime_ref.hir_id.local_id).copied(),
+                    |this| this.visit_ty_unambig(mt.ty),
+                );
             }
             hir::TyKind::TraitAscription(bounds) => {
                 let scope = Scope::TraitRefBoundary { s: self.scope };
@@ -1159,6 +1183,21 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             f(&mut this);
         }
         *self.opaque_capture_errors.borrow_mut() = this.opaque_capture_errors.into_inner();
+    }
+
+    // FIXME(fmease): Temporary.
+    fn maybe_with_object_lifetime_default<L, F>(&mut self, lifetime: L, f: F)
+    where
+        L: FnOnce(&mut Self) -> Option<ResolvedArg>,
+        F: for<'b> FnOnce(&mut BoundVarContext<'b, 'tcx>),
+    {
+        if !self.scope.in_body() {
+            let lifetime = lifetime(self);
+            let scope = Scope::ObjectLifetimeDefault { lifetime, s: self.scope };
+            self.with(scope, f)
+        } else {
+            f(self);
+        }
     }
 
     fn record_late_bound_vars(&mut self, hir_id: HirId, binder: Vec<ty::BoundVariableKind<'tcx>>) {
@@ -1771,46 +1810,46 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         let has_lifetime_args = generic_args.has_lifetime_args();
 
         for constraint in generic_args.constraints {
-            let scope = Scope::ObjectLifetimeDefault {
-                // FIXME: Ideally we would consider the *item bounds* of assoc types when deducing
-                //        the trait object lifetime default for the RHS of assoc type bindings.
-                //        For example, given
-                //
-                //            trait TraitA<'a> { type AssocTy: ?Sized + 'a; }
-                //            trait TraitB { type AssocTy<'a>: ?Sized + 'a; }
-                //
-                //        we would elaborate the `dyn Bound` in `TraitA<'r, AssocTy = dyn Bound>`
-                //        and `TraitB<AssocTy<'r> = dyn Bound>` to `dyn Bound + 'r`.
-                //
-                // FIXME: Moreover, ideally GAT args in bindings could induce
-                //        trait object lifetime defaults. For example, given
-                //
-                //           trait TraitA<'a> { type AssocTy<T: ?Sized + 'a>; }
-                //           trait TraitB { type AssocTy<'a, T: ?Sized + 'a>; }
-                //
-                //        we would elab the `dyn Bound` in `TraitA<'r, AssocTy<dyn Bound> = ()>`
-                //        and `TraitB<AssocTy<'r, dyn Bound> = ()>` to `dyn Bound + 'r`.
-                //
-                // HACK: For now however, if the user passes any lifetime arguments to the trait or
-                //       the (generic) assoc type, we will treat the trait object lifetime default
-                //       as indeterminate thus forcing the user to explicitly specify the lifetime.
-                //
-                //       If the trait or the assoc type have lifetime parameters, it's *possible*
-                //       that they occur in the predicates or item bounds of the assoc type, so we
-                //       conservatively reject such cases to allow us to implement the correct
-                //       behavior in the future (here we assume that the number of arguments equals
-                //       the number of parameters which is fine since a mismatch would get rejected
-                //       later anyway).
-                //
-                //       If the items don't have any lifetime parameters we can safely use `'static`
-                //       since there is no other possibility.
-                lifetime: if has_lifetime_args || constraint.gen_args.has_lifetime_args() {
+            // FIXME: Ideally we would consider the *item bounds* of assoc types when deducing
+            //        the trait object lifetime default for the RHS of assoc type bindings.
+            //        For example, given
+            //
+            //            trait TraitA<'a> { type AssocTy: ?Sized + 'a; }
+            //            trait TraitB { type AssocTy<'a>: ?Sized + 'a; }
+            //
+            //        we would elaborate the `dyn Bound` in `TraitA<'r, AssocTy = dyn Bound>`
+            //        and `TraitB<AssocTy<'r> = dyn Bound>` to `dyn Bound + 'r`.
+            //
+            // FIXME: Moreover, ideally GAT args in bindings could induce
+            //        trait object lifetime defaults. For example, given
+            //
+            //           trait TraitA<'a> { type AssocTy<T: ?Sized + 'a>; }
+            //           trait TraitB { type AssocTy<'a, T: ?Sized + 'a>; }
+            //
+            //        we would elab the `dyn Bound` in `TraitA<'r, AssocTy<dyn Bound> = ()>`
+            //        and `TraitB<AssocTy<'r, dyn Bound> = ()>` to `dyn Bound + 'r`.
+            //
+            // HACK: For now however, if the user passes any lifetime arguments to the trait or
+            //       the (generic) assoc type, we will treat the trait object lifetime default
+            //       as indeterminate thus forcing the user to explicitly specify the lifetime.
+            //
+            //       If the trait or the assoc type have lifetime parameters, it's *possible*
+            //       that they occur in the predicates or item bounds of the assoc type, so we
+            //       conservatively reject such cases to allow us to implement the correct
+            //       behavior in the future (here we assume that the number of arguments equals
+            //       the number of parameters which is fine since a mismatch would get rejected
+            //       later anyway).
+            //
+            //       If the items don't have any lifetime parameters we can safely use `'static`
+            //       since there is no other possibility.
+            let lifetime = |_: &mut _| {
+                if has_lifetime_args || constraint.gen_args.has_lifetime_args() {
                     None
                 } else {
                     Some(ResolvedArg::StaticLifetime)
-                },
-                s: self.scope,
+                }
             };
+
             // If the args are parenthesized, then this must be `feature(return_type_notation)`.
             // In that case, introduce a binder over all of the function's early and late bound vars.
             //
@@ -1856,7 +1895,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                         .span_delayed_bug(constraint.ident.span, "bad return type notation here");
                     vec![]
                 };
-                self.with(scope, |this| {
+                self.maybe_with_object_lifetime_default(lifetime, |this| {
                     let scope = Scope::Supertrait { bound_vars, s: this.scope };
                     this.with(scope, |this| {
                         let (bound_vars, _) = this.poly_trait_ref_binder_info();
@@ -1872,7 +1911,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                     ty::AssocTag::Type,
                 )
                 .map(|(bound_vars, _)| bound_vars);
-                self.with(scope, |this| {
+                self.maybe_with_object_lifetime_default(lifetime, |this| {
                     let scope = Scope::Supertrait {
                         bound_vars: bound_vars.unwrap_or_default(),
                         s: this.scope,
@@ -1880,7 +1919,9 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                     this.with(scope, |this| this.visit_assoc_item_constraint(constraint));
                 });
             } else {
-                self.with(scope, |this| this.visit_assoc_item_constraint(constraint));
+                self.maybe_with_object_lifetime_default(lifetime, |this| {
+                    this.visit_assoc_item_constraint(constraint)
+                });
             }
         }
     }
@@ -1989,35 +2030,14 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         generics: &ty::Generics,
         segments: &[hir::PathSegment<'_>],
     ) -> Vec<Option<ResolvedArg>> {
-        let in_body = {
-            let mut scope = self.scope;
-            loop {
-                match *scope {
-                    Scope::Root { .. } => break false,
-
-                    Scope::Body { .. } => break true,
-
-                    Scope::Binder { s, .. }
-                    | Scope::ObjectLifetimeDefault { s, .. }
-                    | Scope::Opaque { s, .. }
-                    | Scope::Supertrait { s, .. }
-                    | Scope::TraitRefBoundary { s, .. }
-                    | Scope::LateBoundary { s, .. } => {
-                        scope = s;
-                    }
-                }
-            }
-        };
+        if self.scope.in_body() {
+            return Vec::new();
+        }
 
         let set_to_region = |set: ObjectLifetimeDefault| match set {
-            ObjectLifetimeDefault::Empty => {
-                if in_body {
-                    None
-                } else {
-                    Some(ResolvedArg::StaticLifetime)
-                }
+            ObjectLifetimeDefault::Empty | ObjectLifetimeDefault::Static => {
+                Some(ResolvedArg::StaticLifetime)
             }
-            ObjectLifetimeDefault::Static => Some(ResolvedArg::StaticLifetime),
             ObjectLifetimeDefault::Param(param_def_id) => {
                 struct ArgIdx(usize);
 
@@ -2160,11 +2180,8 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         output: Option<&'tcx hir::Ty<'tcx>>,
         in_closure: bool,
     ) {
-        self.with(
-            Scope::ObjectLifetimeDefault {
-                lifetime: Some(ResolvedArg::StaticLifetime),
-                s: self.scope,
-            },
+        self.maybe_with_object_lifetime_default(
+            |_| Some(ResolvedArg::StaticLifetime),
             |this| {
                 for input in inputs {
                     this.visit_ty_unambig(input);
@@ -2174,6 +2191,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 }
             },
         );
+
         if in_closure && let Some(output) = output {
             self.visit_ty_unambig(output);
         }
