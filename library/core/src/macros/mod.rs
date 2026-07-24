@@ -12,6 +12,9 @@ macro_rules! panic {
     };
 }
 
+/// Attribute macro applied to a function to register it as a panic handler.
+///
+/// See also [`core::panic::PanicInfo`](crate::panic::PanicInfo).
 #[macro_export]
 #[rustc_builtin_macro(panic_handler)]
 #[allow_internal_unstable(extern_item_impls)]
