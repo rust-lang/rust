@@ -1444,7 +1444,7 @@ macro_rules! uint_impl {
         /// Strict division on unsigned types is just normal division. There's no
         /// way overflow could ever happen. This function exists so that all
         /// operations are accounted for in the strict operations. Since, for the
-        /// positive integers, all common definitions of division are equal, this
+        /// non-negative integers, Euclidean division matches normal division, this
         /// is exactly equal to `self.strict_div(rhs)`.
         ///
         /// # Panics
@@ -1644,8 +1644,8 @@ macro_rules! uint_impl {
         /// Strict modulo calculation on unsigned types is just the regular
         /// remainder calculation. There's no way overflow could ever happen.
         /// This function exists so that all operations are accounted for in the
-        /// strict operations. Since, for the positive integers, all common
-        /// definitions of division are equal, this is exactly equal to
+        /// strict operations. Since, for the non-negative integers, Euclidean
+        /// division matches normal division, this is exactly equal to
         /// `self.strict_rem(rhs)`.
         ///
         /// # Panics
@@ -2715,11 +2715,10 @@ macro_rules! uint_impl {
 
         /// Wrapping Euclidean division. Computes `self.div_euclid(rhs)`.
         ///
-        /// Wrapped division on unsigned types is just normal division. There's
-        /// no way wrapping could ever happen. This function exists so that all
-        /// operations are accounted for in the wrapping operations. Since, for
-        /// the positive integers, all common definitions of division are equal,
-        /// this is exactly equal to `self.wrapping_div(rhs)`.
+        /// Wrapped Euclidean division on unsigned types is just normal
+        /// division. There's no way wrapping could ever happen. This function
+        /// exists so that all operations are accounted for in the wrapping
+        /// operations.
         ///
         /// # Panics
         ///
@@ -2766,14 +2765,12 @@ macro_rules! uint_impl {
             self % rhs
         }
 
-        /// Wrapping Euclidean modulo. Computes `self.rem_euclid(rhs)`.
+        /// Wrapping Euclidean remainder. Computes `self.rem_euclid(rhs)`.
         ///
-        /// Wrapped modulo calculation on unsigned types is just the regular
-        /// remainder calculation. There's no way wrapping could ever happen.
-        /// This function exists so that all operations are accounted for in the
-        /// wrapping operations. Since, for the positive integers, all common
-        /// definitions of division are equal, this is exactly equal to
-        /// `self.wrapping_rem(rhs)`.
+        /// The wrapped Euclidean remainder on unsigned types is just the
+        /// regular remainder calculation. There's no way wrapping could ever
+        /// happen. This function exists so that all operations are accounted
+        /// for in the wrapping operations.
         ///
         /// # Panics
         ///
@@ -3355,9 +3352,8 @@ macro_rules! uint_impl {
         /// whether an arithmetic overflow would occur. Note that for unsigned
         /// integers overflow never occurs, so the second value is always
         /// `false`.
-        /// Since, for the positive integers, all common
-        /// definitions of division are equal, this
-        /// is exactly equal to `self.overflowing_div(rhs)`.
+        /// Since, for the non-negative integers, Euclidean division matches
+        /// normal division, this is exactly equal to `self.overflowing_div(rhs)`.
         ///
         /// # Panics
         ///
@@ -3410,9 +3406,8 @@ macro_rules! uint_impl {
         /// indicating whether an arithmetic overflow would occur. Note that for
         /// unsigned integers overflow never occurs, so the second value is
         /// always `false`.
-        /// Since, for the positive integers, all common
-        /// definitions of division are equal, this operation
-        /// is exactly equal to `self.overflowing_rem(rhs)`.
+        /// Since, for the non-negative integers, Euclidean division matches
+        /// normal division, this is exactly equal to `self.overflowing_rem(rhs)`.
         ///
         /// # Panics
         ///
@@ -3653,9 +3648,8 @@ macro_rules! uint_impl {
 
         /// Performs Euclidean division.
         ///
-        /// Since, for the positive integers, all common
-        /// definitions of division are equal, this
-        /// is exactly equal to `self / rhs`.
+        /// Since, for the non-negative integers, Euclidean division matches
+        /// normal division, this is exactly equal to `self / rhs`.
         ///
         /// # Panics
         ///
@@ -3680,9 +3674,8 @@ macro_rules! uint_impl {
         /// Calculates the least remainder of `self` when divided by
         /// `rhs`.
         ///
-        /// Since, for the positive integers, all common
-        /// definitions of division are equal, this
-        /// is exactly equal to `self % rhs`.
+        /// Since, for the non-negative integers, Euclidean division matches
+        /// normal division, this is exactly equal to `self % rhs`.
         ///
         /// # Panics
         ///
@@ -3727,7 +3720,36 @@ macro_rules! uint_impl {
             self / rhs
         }
 
+        /// Calculates the least remainder of `self` when divided by
+        /// `rhs`.
+        ///
+        /// Since, for the non-negative integers, flooring division matches
+        /// normal division, this is exactly equal to `self % rhs`.
+        ///
+        /// # Panics
+        ///
+        /// This function will panic if `rhs` is zero.
+        ///
+        /// # Examples
+        ///
+        /// ```
+        /// #![feature(int_roundings)]
+        #[doc = concat!("assert_eq!(7", stringify!($SelfT), ".rem_floor(4), 3);")]
+        /// ```
+        #[unstable(feature = "int_roundings", issue = "88581")]
+        #[must_use = "this returns the result of the operation, \
+                      without modifying the original"]
+        #[inline(always)]
+        #[track_caller]
+        pub const fn rem_floor(self, rhs: Self) -> Self {
+            self % rhs
+        }
+
         /// Calculates the quotient of `self` and `rhs`, rounding the result towards positive infinity.
+        ///
+        /// Note that since the corresponding remainder `rem_ceil` would always
+        /// return negative remainders for positive inputs, it is not implemented for unsigned
+        /// integers.
         ///
         /// # Panics
         ///
