@@ -14,10 +14,6 @@ pub struct NoMangleStruct;
 #[export_name = "NoMangleStruct"]
 fn no_mangle_struct() {}
 
-// `#[no_mangle]` on a generic function can also cause ICEs.
-#[no_mangle]
-fn no_mangle_generic<T>() {}
-
-// Same as `no_mangle_struct()` but for the `no_mangle_generic()` generic function.
-#[export_name = "no_mangle_generic"]
-fn no_mangle_generic2() {}
+// Same as `no_mangle_struct()` but for the `no_mangle_struct()` function.
+#[export_name = "no_mangle_struct"]
+fn no_mangle_alias() {}
