@@ -2,7 +2,7 @@
 
 use rustc_span::{Symbol, sym};
 
-use crate::LangItem;
+use crate::lang_items::LangItem;
 
 macro_rules! weak_lang_items {
     ($($item:ident, $sym:ident;)*) => {

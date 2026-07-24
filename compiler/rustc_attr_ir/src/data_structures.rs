@@ -5,6 +5,7 @@ use std::path::PathBuf;
 pub use ReprAttr::*;
 use rustc_abi::Align;
 pub use rustc_ast::attr::data_structures::*;
+use rustc_ast::attr::version::RustcVersion;
 use rustc_ast::expand::autodiff_attrs::{DiffActivity, DiffMode};
 use rustc_ast::expand::typetree::TypeTree;
 use rustc_ast::token::DocFragmentKind;
@@ -12,7 +13,6 @@ use rustc_ast::{AttrStyle, Path, ast};
 use rustc_data_structures::Limit;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_error_messages::{DiagArgValue, IntoDiagArg};
-use rustc_hir::LangItem;
 use rustc_macros::{Decodable, Encodable, PrintAttribute, StableHash};
 use rustc_span::def_id::DefId;
 use rustc_span::hygiene::Transparency;
@@ -20,10 +20,10 @@ use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol};
 pub use rustc_target::spec::SanitizerSet;
 use thin_vec::ThinVec;
 
-use crate::attrs::diagnostic::*;
-use crate::attrs::pretty_printing::PrintAttribute;
-use crate::{DefaultBodyStability, PartialConstStability, RustcVersion, Stability};
-
+use crate::diagnostic::*;
+use crate::lang_items::LangItem;
+use crate::pretty_printing::PrintAttribute;
+use crate::stability::{DefaultBodyStability, PartialConstStability, Stability};
 #[derive(Copy, Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
 pub enum EiiImplResolution {
     /// Usually, finding the extern item that an EII implementation implements means finding

@@ -1,10 +1,10 @@
 use std::num::NonZero;
 
+use rustc_ast::attr::version::RustcVersion;
 use rustc_macros::{BlobDecodable, Decodable, Encodable, PrintAttribute, StableHash};
 use rustc_span::{ErrorGuaranteed, Symbol, sym};
 
-use crate::RustcVersion;
-use crate::attrs::PrintAttribute;
+use crate::PrintAttribute;
 
 /// The version placeholder that recently stabilized features contain inside the
 /// `since` field of the `#[stable]` attribute.

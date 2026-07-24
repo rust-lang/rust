@@ -6,7 +6,7 @@ macro_rules! arena_types {
         $macro!([
             // HIR types
             [] asm_template: rustc_ast::InlineAsmTemplatePiece,
-            [] attribute: rustc_hir::Attribute,
+            [] attribute: rustc_attr_ir::attr::Attribute,
             [] owner_info: rustc_hir::OwnerInfo<'tcx>,
             [] macro_def: rustc_ast::MacroDef,
             [] delegation_info: rustc_hir::DelegationInfo,
