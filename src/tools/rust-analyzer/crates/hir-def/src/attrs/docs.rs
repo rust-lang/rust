@@ -15,7 +15,7 @@ use base_db::{Crate, SourceDatabase};
 use cfg::CfgOptions;
 use either::Either;
 use hir_expand::{
-    AstId, ExpandTo, HirFileId, InFile,
+    AstId, ExpandTo, HirFileId, InFile, MacroCallId,
     attrs::{AstPathExt, expand_cfg_attr_with_doc_comments},
     mod_path::ModPath,
     span_map::SpanMap,
@@ -25,6 +25,7 @@ use syntax::{
     AstNode, AstToken, SyntaxNode,
     ast::{self, AttrDocCommentIter, IsString},
 };
+use thin_vec::ThinVec;
 use tt::{TextRange, TextSize};
 
 use crate::{macro_call_as_call_id, nameres::MacroSubNs, resolver::Resolver};
@@ -57,6 +58,8 @@ pub struct Docs {
     /// Like `inline_inner_docs_start`, but for `outline_mod`. This can happen only when merging `Docs`
     /// (as outline modules don't have inner attributes).
     outline_inner_docs_start: Option<TextSize>,
+    /// All macro calls in `#[doc = ...]` attributes, recursively.
+    macro_calls: ThinVec<(AstId<ast::MacroCall>, MacroCallId)>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -81,6 +84,25 @@ impl Docs {
     #[inline]
     pub fn into_docs(self) -> String {
         self.docs
+    }
+
+    #[inline]
+    pub fn macro_calls(&self) -> impl Iterator<Item = (AstId<ast::MacroCall>, MacroCallId)> {
+        self.macro_calls.iter().copied()
+    }
+
+    fn is_empty(&self) -> bool {
+        let Self {
+            docs,
+            docs_source_map: _,
+            outline_mod: _,
+            inline_file: _,
+            prefix_len: _,
+            inline_inner_docs_start: _,
+            outline_inner_docs_start: _,
+            macro_calls,
+        } = self;
+        docs.is_empty() && macro_calls.is_empty()
     }
 
     pub fn find_ast_range(
@@ -234,6 +256,7 @@ impl Docs {
                     prefix_len: _,
                     inline_inner_docs_start: _,
                     outline_inner_docs_start: _,
+                    macro_calls: _,
                 } = self.0;
                 // Don't use `String::clear()` here because it's not guaranteed to not do UTF-8-dependent things,
                 // and we may have temporarily broken the string's encoding.
@@ -316,9 +339,11 @@ impl Docs {
             prefix_len: _,
             inline_inner_docs_start: _,
             outline_inner_docs_start: _,
+            macro_calls,
         } = self;
         docs.shrink_to_fit();
         docs_source_map.shrink_to_fit();
+        macro_calls.shrink_to_fit();
     }
 }
 
@@ -335,11 +360,12 @@ struct DocMacroExpander<'db> {
 
 fn expand_doc_expr_via_macro_pipeline<'db>(
     expander: &mut DocMacroExpander<'db>,
+    macro_calls: &mut ThinVec<(AstId<ast::MacroCall>, MacroCallId)>,
     expr: ast::Expr,
 ) -> Option<String> {
     match expr {
         ast::Expr::ParenExpr(paren_expr) => {
-            expand_doc_expr_via_macro_pipeline(expander, paren_expr.expr()?)
+            expand_doc_expr_via_macro_pipeline(expander, macro_calls, paren_expr.expr()?)
         }
         ast::Expr::Literal(literal) => match literal.kind() {
             ast::LiteralKind::String(string) => string.value().ok().map(Into::into),
@@ -347,7 +373,7 @@ fn expand_doc_expr_via_macro_pipeline<'db>(
         },
         ast::Expr::MacroExpr(macro_expr) => {
             let macro_call = macro_expr.macro_call()?;
-            expand_doc_macro_call(expander, macro_call)
+            expand_doc_macro_call(expander, macro_calls, macro_call)
         }
         _ => None,
     }
@@ -355,6 +381,7 @@ fn expand_doc_expr_via_macro_pipeline<'db>(
 
 fn expand_doc_macro_call<'db>(
     expander: &mut DocMacroExpander<'db>,
+    macro_calls: &mut ThinVec<(AstId<ast::MacroCall>, MacroCallId)>,
     macro_call: ast::MacroCall,
 ) -> Option<String> {
     if expander.recursion_depth >= expander.recursion_limit {
@@ -381,6 +408,7 @@ fn expand_doc_macro_call<'db>(
     )
     .ok()?
     .value?;
+    macro_calls.push((ast_id, call_id));
 
     let (parse, span_map) = &call_id.parse_macro_expansion(expander.db).value;
     let expr = parse.clone().cast::<ast::Expr>().map(|parse| parse.tree())?;
@@ -396,7 +424,7 @@ fn expand_doc_macro_call<'db>(
         std::mem::replace(&mut expander.ast_id_map, expansion_file_id.ast_id_map(expander.db));
     expander.recursion_depth += 1;
 
-    let expansion = expand_doc_expr_via_macro_pipeline(expander, expr);
+    let expansion = expand_doc_expr_via_macro_pipeline(expander, macro_calls, expr);
 
     expander.file_id = old_file_id;
     expander.span_map = old_span_map;
@@ -419,7 +447,7 @@ fn extend_with_attrs<'a, 'db>(
     make_resolver: &dyn Fn() -> Resolver<'db>,
 ) {
     // Lazily initialised when we first encounter a `#[doc = macro!()]`.
-    let mut expander: Option<DocMacroExpander<'db>> = None;
+    let mut expander = None;
 
     expand_cfg_attr_with_doc_comments::<_, Infallible>(
         AttrDocCommentIter::from_syntax_node(node).filter(|attr| match attr {
@@ -456,9 +484,11 @@ fn extend_with_attrs<'a, 'db>(
                                         span_map: file_id.span_map(db),
                                     }
                                 });
-                                if let Some(expanded) =
-                                    expand_doc_expr_via_macro_pipeline(exp, value)
-                                {
+                                if let Some(expanded) = expand_doc_expr_via_macro_pipeline(
+                                    exp,
+                                    &mut result.macro_calls,
+                                    value,
+                                ) {
                                     result.extend_with_unmapped_doc_str(&expanded, indent);
                                 }
                             }
@@ -489,6 +519,7 @@ pub(crate) fn extract_docs<'a, 'db>(
         prefix_len: TextSize::new(0),
         inline_inner_docs_start: None,
         outline_inner_docs_start: None,
+        macro_calls: ThinVec::new(),
     };
 
     let mut cfg_options = None;
@@ -548,7 +579,7 @@ pub(crate) fn extract_docs<'a, 'db>(
 
     result.shrink_to_fit();
 
-    if result.docs.is_empty() { None } else { Some(Box::new(result)) }
+    if result.is_empty() { None } else { Some(Box::new(result)) }
 }
 
 #[cfg(test)]
@@ -556,6 +587,7 @@ mod tests {
     use expect_test::expect;
     use hir_expand::InFile;
     use test_fixture::WithFixture;
+    use thin_vec::ThinVec;
     use tt::{TextRange, TextSize};
 
     use crate::test_db::TestDB;
@@ -573,6 +605,7 @@ mod tests {
             prefix_len: TextSize::new(0),
             inline_inner_docs_start: None,
             outline_inner_docs_start: None,
+            macro_calls: ThinVec::new(),
         };
         let mut indent = usize::MAX;
 

@@ -165,7 +165,7 @@ impl AttrsWithOwner {
     #[inline]
     pub fn hir_docs<'db>(&self, db: &'db dyn HirDatabase) -> Option<&'db Docs> {
         match self.owner {
-            AttrsOwner::AttrDef(it) => AttrFlags::docs(db, it).as_deref(),
+            AttrsOwner::AttrDef(it) => AttrFlags::docs(db, it),
             AttrsOwner::Field(it) => AttrFlags::field_docs(db, it),
             AttrsOwner::LifetimeParam(_) | AttrsOwner::TypeOrConstParam(_) | AttrsOwner::Dummy => {
                 None
@@ -194,7 +194,7 @@ pub trait HasAttrs: Sized {
     #[inline]
     fn hir_docs(self, db: &dyn HirDatabase) -> Option<&Docs> {
         match self.attr_id(db) {
-            AttrsOwner::AttrDef(it) => AttrFlags::docs(db, it).as_deref(),
+            AttrsOwner::AttrDef(it) => AttrFlags::docs(db, it),
             AttrsOwner::Field(it) => AttrFlags::field_docs(db, it),
             AttrsOwner::LifetimeParam(_) | AttrsOwner::TypeOrConstParam(_) | AttrsOwner::Dummy => {
                 None

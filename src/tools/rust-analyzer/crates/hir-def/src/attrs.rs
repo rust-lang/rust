@@ -1070,7 +1070,7 @@ impl AttrFlags {
     }
 
     // We LRU this query because it is only used by IDE.
-    #[salsa::tracked(returns(ref), lru = 250)]
+    #[salsa::tracked(returns(as_deref), lru = 250)]
     pub fn docs(db: &dyn SourceDatabase, owner: AttrDefId) -> Option<Box<Docs>> {
         let (source, outer_mod_decl, _extra_crate_attrs, krate) = attrs_source(db, owner);
         let inner_attrs_node = source.value.inner_attributes_node();
@@ -1090,27 +1090,27 @@ impl AttrFlags {
 
     #[inline]
     pub fn field_docs(db: &dyn SourceDatabase, field: FieldId) -> Option<&Docs> {
-        return fields_docs(db, field.parent).get(field.local_id).and_then(|it| it.as_deref());
+        Self::fields_docs(db, field.parent).get(field.local_id).and_then(|it| it.as_deref())
+    }
 
-        // We LRU this query because it is only used by IDE.
-        #[salsa::tracked(returns(ref), lru = 50)]
-        pub fn fields_docs(
-            db: &dyn SourceDatabase,
-            variant: VariantId,
-        ) -> ArenaMap<LocalFieldId, Option<Box<Docs>>> {
-            let krate = variant.module(db).krate(db);
-            collect_field_attrs(db, variant, |cfg_options, field| {
-                self::docs::extract_docs(
-                    db,
-                    krate,
-                    &|| variant.resolver(db),
-                    &|| cfg_options,
-                    field,
-                    None,
-                    None,
-                )
-            })
-        }
+    // We LRU this query because it is only used by IDE.
+    #[salsa::tracked(returns(ref), lru = 50)]
+    pub fn fields_docs(
+        db: &dyn SourceDatabase,
+        variant: VariantId,
+    ) -> ArenaMap<LocalFieldId, Option<Box<Docs>>> {
+        let krate = variant.module(db).krate(db);
+        collect_field_attrs(db, variant, |cfg_options, field| {
+            self::docs::extract_docs(
+                db,
+                krate,
+                &|| variant.resolver(db),
+                &|| cfg_options,
+                field,
+                None,
+                None,
+            )
+        })
     }
 
     #[inline]

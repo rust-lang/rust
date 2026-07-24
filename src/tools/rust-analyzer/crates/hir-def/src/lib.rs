@@ -1103,6 +1103,7 @@ pub enum AttrDefId {
 }
 
 impl_from!(
+    ModuleId,
     AdtId(StructId, EnumId, UnionId),
     EnumVariantId,
     StaticId,

@@ -11891,3 +11891,36 @@ fn foo() { foo$0(); }
         &HoverConfig { documentation: false, ..HOVER_BASE_CONFIG },
     );
 }
+
+#[test]
+fn doc_attr_macro() {
+    check(
+        r#"
+//- minicore: concat
+/// Comment A
+#[macro_export]
+macro_rules! A {
+    () => {
+        "Comment B"
+    };
+}
+#[doc = concat!(A$0!())]
+fn main() {}
+    "#,
+        expect![[r#"
+            *A*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            macro_rules! A
+            ```
+
+            ---
+
+            Comment A
+        "#]],
+    );
+}
