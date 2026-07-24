@@ -206,7 +206,7 @@ note: type in trait
 LL |     fn foo();
    |     ^^^^^^^^^
    = note: expected signature `fn()`
-              found signature `#[target_features] fn()`
+              found signature `#[target_feature(..)] fn()`
 
 error: the feature named `+sse2` is not valid for this target
   --> $DIR/invalid-attribute.rs:117:18

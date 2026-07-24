@@ -555,7 +555,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         };
                         if is_fn_trait && is_target_feature_fn {
                             err.note(
-                                "`#[target_feature]` functions do not implement the `Fn` traits",
+                                "`#[target_feature(..)]` functions do not implement the `Fn` traits",
                             );
                             err.note(
                                 "try casting the function to a `fn` pointer or wrapping it in a closure",
