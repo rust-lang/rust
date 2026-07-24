@@ -27,5 +27,17 @@ LL | //! | `code_with(|arg| arg)` |
    |
    = help: to escape `|` characters in tables, add a `\` before them like `\|`
 
-error: aborting due to 3 previous errors
+error: unused content after last table cell
+  --> $DIR/invalid_markdown_table.rs:36:22
+   |
+LL |     //! | code_with | aaaaa
+   |                      ^^^^^^ this content is discarded
+
+error: unused content after last table cell
+  --> $DIR/invalid_markdown_table.rs:42:16
+   |
+LL |     //! a | b | c
+   |                ^^ this content is discarded
+
+error: aborting due to 5 previous errors
 
