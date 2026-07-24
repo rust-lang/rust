@@ -1,4 +1,4 @@
-// This test ensures that the 2024 edition merged doctest will not use `#[allow(unused)]`.
+// Regression test for the `failed_merged_doctest_compilation` lint.
 
 //@ edition: 2024
 //@ compile-flags:--test
@@ -8,12 +8,9 @@
 //@ normalize-stdout: "compilation took \d+\.\d+s" -> "compilation took $$TIME"
 //@ failure-status: 101
 
-#![allow(rustdoc::failed_merged_doctest_compilation)]
-#![doc(test(attr(allow(unused_variables), deny(warnings))))]
+#![deny(rustdoc::failed_merged_doctest_compilation)] //~ ERROR
 
-/// Example
-///
-/// ```rust,no_run
-/// trait T { fn f(); }
-/// ```
-pub fn f() {}
+//! ```
+//!
+//! let x
+//! ```
