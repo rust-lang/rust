@@ -7,7 +7,7 @@ use rustc_hir::def_id::DefId;
 use rustc_index::IndexVec;
 use rustc_middle::traits::specialization_graph::OverlapMode;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_span::{ErrorGuaranteed, Symbol};
+use rustc_span::{ErrorGuaranteed, Symbol, kw};
 use rustc_trait_selection::traits::{self, SkipLeakCheck};
 use smallvec::SmallVec;
 use tracing::debug;
@@ -34,6 +34,9 @@ rustc_index::newtype_index! {
 }
 
 impl<'tcx> InherentOverlapChecker<'tcx> {
+    fn is_assoc_const_underscore(&self, item: ty::AssocItem) -> bool {
+        matches!(item.kind, ty::AssocKind::Const { .. }) && item.name() == kw::Underscore
+    }
     /// Checks whether any associated items in impls 1 and 2 share the same identifier and
     /// namespace.
     fn impls_have_common_items(
@@ -52,7 +55,11 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
         for &item1 in impl_items1.in_definition_order() {
             let collision = impl_items2
                 .filter_by_name_unhygienic(item1.name())
-                .any(|&item2| self.compare_hygienically(item1, item2));
+                // it's safe to say once an item is assoc const underscore it's definitely no collision
+                .any(|&item2| {
+                    self.compare_hygienically(item1, item2)
+                        && !self.is_assoc_const_underscore(item1)
+                });
 
             if collision {
                 return true;
@@ -75,6 +82,9 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
         let mut seen_items = FxIndexMap::default();
         let mut res = Ok(());
         for impl_item in impl_items.in_definition_order() {
+            if self.is_assoc_const_underscore(*impl_item) {
+                continue;
+            }
             let span = self.tcx.def_span(impl_item.def_id);
             let ident = impl_item.ident(self.tcx);
 
@@ -112,11 +122,17 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
 
         let mut res = Ok(());
         for &item1 in impl_items1.in_definition_order() {
+            if self.is_assoc_const_underscore(item1) {
+                continue;
+            }
             let collision = impl_items2
                 .filter_by_name_unhygienic(item1.name())
                 .find(|&&item2| self.compare_hygienically(item1, item2));
 
             if let Some(item2) = collision {
+                if self.is_assoc_const_underscore(*item2) {
+                    continue;
+                }
                 let name = item1.ident(self.tcx).normalize_to_macros_2_0();
                 let mut err = struct_span_code_err!(
                     self.tcx.dcx(),

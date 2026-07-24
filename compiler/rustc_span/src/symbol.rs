@@ -444,6 +444,7 @@ symbols! {
         assert_zero_valid,
         asserting,
         associated_const_equality,
+        associated_const_underscore,
         associated_consts,
         associated_type_bounds,
         associated_type_defaults,

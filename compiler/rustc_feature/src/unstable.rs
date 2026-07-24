@@ -406,6 +406,8 @@ declare_features! (
     (unstable, asm_goto_with_outputs, "1.85.0", Some(119364)),
     /// Allows the `may_unwind` option in inline assembly.
     (unstable, asm_unwind, "1.58.0", Some(93334)),
+    /// Allows `_` for the name of associated constants.
+    (unstable, associated_const_underscore, "1.98.0", Some(158944)),
     /// Allows associated type defaults.
     (unstable, associated_type_defaults, "1.2.0", Some(29661)),
     /// Allows implementing `AsyncDrop`.
