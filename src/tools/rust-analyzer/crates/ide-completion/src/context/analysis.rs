@@ -794,6 +794,10 @@ fn expected_type_and_name<'db>(
                     }.map(TypeInfo::original);
                     (ty, None)
                 },
+                ast::MatchGuard(it) => {
+                    let ty = it.condition().and_then(|e| sema.type_of_expr(&e)).map(TypeInfo::original);
+                    (ty, None)
+                },
                 ast::IdentPat(it) => {
                     cov_mark::hit!(expected_type_if_let_with_leading_char);
                     cov_mark::hit!(expected_type_match_arm_with_leading_char);
