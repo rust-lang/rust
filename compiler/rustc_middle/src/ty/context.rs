@@ -762,6 +762,8 @@ pub struct GlobalCtxt<'tcx> {
     /// Data layout specification for the current target.
     pub data_layout: TargetDataLayout,
 
+    pub debuginfo_cache: Lock<FxHashMap<(Ty<'tcx>, bool), Arc<String>>>,
+
     /// Stores memory for globals (statics/consts).
     pub(crate) alloc_map: interpret::AllocMap<'tcx>,
 
@@ -975,6 +977,7 @@ impl<'tcx> TyCtxt<'tcx> {
             highest_var_in_clauses_cache: Default::default(),
             clauses_cache: Default::default(),
             data_layout,
+            debuginfo_cache: Default::default(),
             alloc_map: interpret::AllocMap::new(),
             current_gcx,
         });

@@ -12,6 +12,7 @@
 // * `"` is treated as the start of a string.
 
 use std::fmt::Write;
+use std::sync::Arc;
 
 use rustc_abi::Integer;
 use rustc_data_structures::fx::FxHashSet;
@@ -37,13 +38,19 @@ pub fn compute_debuginfo_type_name<'tcx>(
     tcx: TyCtxt<'tcx>,
     t: Ty<'tcx>,
     qualified: bool,
-) -> String {
+) -> Arc<String> {
     let _prof = tcx.prof.generic_activity("compute_debuginfo_type_name");
 
-    let mut result = String::with_capacity(64);
-    let mut visited = FxHashSet::default();
-    push_debuginfo_type_name(tcx, t, qualified, &mut result, &mut visited);
-    result
+    let mut cache = tcx.debuginfo_cache.borrow_mut();
+    cache
+        .entry((t, qualified))
+        .or_insert_with(|| {
+            let mut result = String::with_capacity(64);
+            let mut visited = FxHashSet::default();
+            push_debuginfo_type_name(tcx, t, qualified, &mut result, &mut visited);
+            Arc::new(result)
+        })
+        .clone()
 }
 
 // Pushes the name of the type as it should be stored in debuginfo on the

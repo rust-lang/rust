@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::fmt::{self, Write};
 use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
+use std::sync::Arc;
 use std::{assert_matches, iter, ptr};
 
 use libc::{c_longlong, c_uint};
@@ -1154,7 +1155,7 @@ fn build_struct_type_di_node<'ll, 'tcx>(
 fn build_scalable_vector_di_node<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     unique_type_id: UniqueTypeId<'tcx>,
-    name: String,
+    name: Arc<String>,
     adt_def: AdtDef<'tcx>,
     (element_count, element_ty, number_of_vectors): (u16, Ty<'tcx>, NumScalableVectors),
     layout: Layout<'tcx>,
