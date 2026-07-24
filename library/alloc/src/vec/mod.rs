@@ -1792,8 +1792,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert_eq!(vec, [1, 2]);
     /// ```
     ///
-    /// No truncation occurs when `len` is greater than the vector's current
-    /// length:
+    /// No truncation occurs when `len` is greater than or equal to the
+    /// vector's current length:
     ///
     /// ```
     /// let mut vec = vec![1, 2, 3];
@@ -1819,16 +1819,13 @@ impl<T, A: Allocator> Vec<T, A> {
 
         // This is safe because:
         //
-        // * the slice passed to `drop_in_place` is valid; the `len > self.len`
+        // * the slice passed to `drop_in_place` is valid; the `len >= self.len`
         //   case avoids creating an invalid slice, and
         // * the `len` of the vector is shrunk before calling `drop_in_place`,
         //   such that no value will be dropped twice in case `drop_in_place`
         //   were to panic once (if it panics twice, the program aborts).
         unsafe {
-            // Note: It's intentional that this is `>` and not `>=`.
-            //       Changing it to `>=` has negative performance
-            //       implications in some cases. See #78884 for more.
-            if len > self.len {
+            if len >= self.len {
                 return;
             }
             let remaining_len = self.len - len;
@@ -3198,7 +3195,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// calling the closure `f`. The return values from `f` will end up
     /// in the `Vec` in the order they have been generated.
     ///
-    /// If `new_len` is less than `len`, the `Vec` is simply truncated.
+    /// If `new_len` is less than or equal to `len`, the `Vec` is simply
+    /// truncated.
     ///
     /// This method uses a closure to create new values on every push. If
     /// you'd rather [`Clone`] a given value, use [`Vec::resize`]. If you
@@ -3548,7 +3546,8 @@ impl<T: Clone, A: Allocator> Vec<T, A> {
     ///
     /// If `new_len` is greater than `len`, the `Vec` is extended by the
     /// difference, with each additional slot filled with `value`.
-    /// If `new_len` is less than `len`, the `Vec` is simply truncated.
+    /// If `new_len` is less than or equal to `len`, the `Vec` is simply
+    /// truncated.
     ///
     /// This method requires `T` to implement [`Clone`],
     /// in order to be able to clone the passed value.

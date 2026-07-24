@@ -1436,8 +1436,8 @@ impl<T, A: Allocator> VecDeque<T, A> {
         // Safe because:
         //
         // * Any slice passed to `drop_in_place` is valid; the second case has
-        //   `len <= front.len()` and returning on `len > self.len()` ensures
-        //   `begin <= back.len()` in the first case
+        //   `len <= front.len()` and returning on `len >= self.len()` ensures
+        //   `begin < back.len()` in the first case
         // * The head of the VecDeque is moved before calling `drop_in_place`,
         //   so no value is dropped twice if `drop_in_place` panics
         unsafe {
