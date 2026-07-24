@@ -121,7 +121,7 @@ pub enum RegionConstraint<I: Interner, S = ()> {
     Or(Box<[RegionConstraint<I, S>]>),
 }
 
-/// A solver region constraint together with the span that caused each atomic constraint.
+/// A solver region constraint together with the span that caused each leaf constraint.
 ///
 /// Solver query responses use [`RegionConstraint`] so source locations do not participate in
 /// candidate equality or caching. Spans are attached when responses are applied to an inference
