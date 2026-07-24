@@ -1,0 +1,35 @@
+error[E0038]: the trait `Foo` is not dyn compatible
+  --> $DIR/supertrait-alias-4.rs:20:17
+   |
+LL |     let x: &dyn Foo<_, _, Other = ()> = todo!();
+   |                 ^^^^^^^^^^^^^^^^^^^^^ `Foo` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/supertrait-alias-4.rs:7:10
+   |
+LL |     type Assoc;
+   |          ^^^^^ ...because it has conflicting associated item bounds for Assoc in supertraits
+...
+LL | trait Foo<A, B>: Sup<A, Assoc = A> + Sup<B, Assoc = B> {
+   |       --- this trait is not dyn compatible...
+
+error[E0038]: the trait `Foo` is not dyn compatible
+  --> $DIR/supertrait-alias-4.rs:23:17
+   |
+LL |     let y: &dyn Foo<i32, u32, Other = ()> = x;
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^ `Foo` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $DIR/supertrait-alias-4.rs:7:10
+   |
+LL |     type Assoc;
+   |          ^^^^^ ...because it has conflicting associated item bounds for Assoc in supertraits
+...
+LL | trait Foo<A, B>: Sup<A, Assoc = A> + Sup<B, Assoc = B> {
+   |       --- this trait is not dyn compatible...
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0038`.

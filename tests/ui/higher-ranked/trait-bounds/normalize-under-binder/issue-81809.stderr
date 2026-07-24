@@ -1,0 +1,37 @@
+error[E0038]: the trait `StoreIndex` is not dyn compatible
+  --> $DIR/issue-81809.rs:15:34
+   |
+LL | fn foo(st: &impl StoreIndex) -> &dyn StoreIndex {
+   |                                  ^^^^^^^^^^^^^^ `StoreIndex` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $SRC_DIR/core/src/ops/index.rs:LL:COL
+   |
+   = note: ...because it has conflicting associated item bounds for Output in supertraits
+   |
+  ::: $DIR/issue-81809.rs:13:7
+   |
+LL | trait StoreIndex: Indexer<u8> + Indexer<u16> {}
+   |       ---------- this trait is not dyn compatible...
+
+error[E0038]: the trait `StoreIndex` is not dyn compatible
+  --> $DIR/issue-81809.rs:17:16
+   |
+LL |     st as &dyn StoreIndex
+   |                ^^^^^^^^^^ `StoreIndex` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> $SRC_DIR/core/src/ops/index.rs:LL:COL
+   |
+   = note: ...because it has conflicting associated item bounds for Output in supertraits
+   |
+  ::: $DIR/issue-81809.rs:13:7
+   |
+LL | trait StoreIndex: Indexer<u8> + Indexer<u16> {}
+   |       ---------- this trait is not dyn compatible...
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0038`.

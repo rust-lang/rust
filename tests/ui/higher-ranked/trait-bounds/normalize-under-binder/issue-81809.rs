@@ -1,5 +1,3 @@
-//@ check-pass
-
 pub trait Indexable {
     type Idx;
 }
@@ -15,7 +13,9 @@ pub trait Indexer<T: Indexable>: std::ops::Index<T::Idx, Output = T> {}
 trait StoreIndex: Indexer<u8> + Indexer<u16> {}
 
 fn foo(st: &impl StoreIndex) -> &dyn StoreIndex {
+    //~^ ERROR the trait `StoreIndex` is not dyn compatible
     st as &dyn StoreIndex
+    //~^ ERROR the trait `StoreIndex` is not dyn compatible
 }
 
 fn main() {}
