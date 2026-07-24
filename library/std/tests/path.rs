@@ -2505,9 +2505,11 @@ fn normalize_lexically() {
         assert_eq!(Path::new(a).normalize_lexically().unwrap(), PathBuf::from(b));
     }
 
+    // On error, the partially-normalized path (leading `..` preserved) is returned.
     #[track_caller]
-    fn check_err(a: &str) {
-        assert!(Path::new(a).normalize_lexically().is_err());
+    fn check_err(a: &str, partial: &str) {
+        let err = Path::new(a).normalize_lexically().unwrap_err();
+        assert_eq!(err.into_partial(), PathBuf::from(partial));
     }
 
     // Relative paths
@@ -2519,12 +2521,17 @@ fn normalize_lexically() {
     check_ok("./a/b", "./a/b");
     check_ok("a/../b/c/..", "b");
 
-    check_err("..");
-    check_err("../..");
-    check_err("a/../..");
-    check_err("a/../../b");
-    check_err("a/../../b/c");
-    check_err("a/../b/../..");
+    // Escaping paths return an error carrying the partial normalization.
+    check_err("..", "..");
+    check_err("../..", "../..");
+    check_err("a/../..", "..");
+    check_err("a/../../b", "../b");
+    check_err("a/../../b/c", "../b/c");
+    check_err("a/../b/../..", "..");
+    check_err("../a/b/../c", "../a/c");
+    check_err("./..", "..");
+    check_err("./../a", "../a");
+    check_err("./a/../..", "..");
 
     // Absolute paths pin `..` at the root rather than escaping it.
     #[cfg(unix)]
@@ -2554,9 +2561,10 @@ fn normalize_lexically() {
         check_ok(r"\\?\C:\a\..\..", r"\\?\C:\");
 
         // Drive-relative paths (no `RootDir`) are not absolute, so `..` above
-        // the prefix still escapes the base directory and is an error.
-        check_err(r"C:..");
-        check_err(r"C:a\..\..");
+        // the prefix still escapes the base directory and is an error. The partial
+        // keeps the escaping `..` after the drive prefix (no separator is inserted).
+        check_err(r"C:..", r"C:..");
+        check_err(r"C:a\..\..", r"C:..");
     }
 }
 

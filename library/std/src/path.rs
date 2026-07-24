@@ -2369,10 +2369,47 @@ pub struct StripPrefixError(());
 
 /// An error returned from [`Path::normalize_lexically`] if a `..` parent reference
 /// would escape the path.
+///
+/// The error carries the best-effort partial normalization of the path: all `.` and
+/// `..` components that could be resolved are resolved, with the leading `..` that
+/// escape the base directory preserved. Retrieve it with [`partial`] or [`into_partial`]:
+///
+/// ```
+/// #![feature(normalize_lexically)]
+/// use std::path::Path;
+///
+/// let err = Path::new("a/../../b/c/../d").normalize_lexically().unwrap_err();
+/// assert_eq!(err.partial(), Path::new("../b/d"));
+/// assert_eq!(err.into_partial(), Path::new("../b/d"));
+/// ```
+///
+/// [`partial`]: NormalizeError::partial
+/// [`into_partial`]: NormalizeError::into_partial
 #[unstable(feature = "normalize_lexically", issue = "134694")]
 #[derive(Debug, PartialEq)]
 #[non_exhaustive]
-pub struct NormalizeError;
+pub struct NormalizeError {
+    partial: PathBuf,
+}
+
+#[unstable(feature = "normalize_lexically", issue = "134694")]
+impl NormalizeError {
+    /// Returns the partially-normalized path.
+    ///
+    /// All `.` and `..` components that could be resolved have been resolved; the
+    /// leading `..` components that escape the base directory are preserved.
+    pub fn partial(&self) -> &Path {
+        &self.partial
+    }
+
+    /// Consumes the error, returning the partially-normalized path.
+    ///
+    /// All `.` and `..` components that could be resolved have been resolved; the
+    /// leading `..` components that escape the base directory are preserved.
+    pub fn into_partial(self) -> PathBuf {
+        self.partial
+    }
+}
 
 impl Path {
     // The following (private!) function allows construction of a path from a u8
@@ -3439,6 +3476,9 @@ impl Path {
     /// as `\..` is not considered absolute, but it has a root, so its `..` is pinned
     /// to that root and it will not fail.
     ///
+    /// A partially normalized value can be retrieved by with [`NormalizeError::partial`] or
+    /// [`NormalizeError::into_partial`].
+    ///
     /// # Examples
     ///
     /// ```
@@ -3464,8 +3504,10 @@ impl Path {
     /// let path = Path::new("../relative");
     /// assert!(path.normalize_lexically().is_err());
     ///
-    /// let path = Path::new("relative/../..");
-    /// assert!(path.normalize_lexically().is_err());
+    /// let path = Path::new("relative/../../partially/un/../normalized");
+    /// let result = path.normalize_lexically();
+    /// assert!(result.is_err());
+    /// assert_eq!(Path::new("../partially/normalized"), result.unwrap_err().into_partial());
     ///
     /// let path = Path::new("/../has_root");
     /// assert_eq!(Path::new("/has_root"), path.normalize_lexically().unwrap());
@@ -3479,7 +3521,9 @@ impl Path {
     /// If your operating system behavior diverges you can use [`Component`] directly.
     #[unstable(feature = "normalize_lexically", issue = "134694")]
     pub fn normalize_lexically(&self) -> Result<PathBuf, NormalizeError> {
-        let mut lexical = PathBuf::new();
+        let mut lexical = PathBuf::with_capacity(self.as_os_str().len());
+        let mut escaped = false;
+
         for component in self.components() {
             match component {
                 // Prefix/RootDir only ever occur at the start; keep them as the anchor.
@@ -3493,16 +3537,29 @@ impl Path {
                     }
                 }
                 Component::ParentDir => match lexical.components().next_back() {
+                    // A real directory: cancel it out.
                     Some(Component::Normal(_)) => {
                         lexical.pop();
                     }
+                    // A root pins `..` to itself, so it never escapes.
                     Some(Component::RootDir) => {}
-                    _ => return Err(NormalizeError),
+                    // `./..` resolves to `..`; drop the leading `.` first.
+                    Some(Component::CurDir) => {
+                        lexical.pop();
+                        lexical.push(Component::ParentDir);
+                        escaped = true;
+                    }
+                    // Escapes the base, so keep the leading `..`:
+                    None | Some(Component::ParentDir) | Some(Component::Prefix(_)) => {
+                        lexical.push(Component::ParentDir);
+                        escaped = true;
+                    }
                 },
                 Component::Normal(p) => lexical.push(p),
             }
         }
-        Ok(lexical)
+
+        if escaped { Err(NormalizeError { partial: lexical }) } else { Ok(lexical) }
     }
 
     /// Reads a symbolic link, returning the file that the link points to.
@@ -4082,7 +4139,11 @@ impl Error for StripPrefixError {}
 #[unstable(feature = "normalize_lexically", issue = "134694")]
 impl fmt::Display for NormalizeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str("parent reference `..` points outside of base directory")
+        write!(
+            f,
+            "parent reference `..` points outside of base directory `{}`",
+            self.partial.display()
+        )
     }
 }
 #[unstable(feature = "normalize_lexically", issue = "134694")]
