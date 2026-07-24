@@ -59,6 +59,8 @@ fn main() {
     test_ioctl();
     test_opendir_closedir();
     test_readdir();
+    #[cfg(target_os = "macos")]
+    test_readdir_r();
     #[cfg(target_os = "linux")]
     test_statx_on_file_path();
     #[cfg(target_os = "linux")]
@@ -994,21 +996,53 @@ fn test_readdir() {
         assert!(!dirp.is_null());
         let mut entries = Vec::new();
         loop {
-            cfg_select! {
-                target_os = "macos" => {
-                    // On macos we only support readdir_r as that's what std uses there.
-                    use std::mem::MaybeUninit;
-                    use libc::dirent;
-                    let mut entry: MaybeUninit<dirent> = MaybeUninit::uninit();
-                    let mut result: *mut dirent = std::ptr::null_mut();
-                    let ret = libc::readdir_r(dirp, entry.as_mut_ptr(), &mut result);
-                    assert_eq!(ret, 0);
-                    let entry_ptr = result;
-                }
-                _ => {
-                    let entry_ptr = libc::readdir(dirp);
-                }
+            let entry_ptr = libc::readdir(dirp);
+            if entry_ptr.is_null() {
+                break;
             }
+            let name_ptr = std::ptr::addr_of!((*entry_ptr).d_name) as *const libc::c_char;
+            let name = CStr::from_ptr(name_ptr);
+            let name_str = name.to_string_lossy();
+            entries.push(name_str.into_owned());
+        }
+        assert_eq!(libc::closedir(dirp), 0);
+        entries.sort();
+        assert_eq!(&entries, &[".", "..", "file1.txt", "file2.txt"]);
+    }
+
+    remove_file(&file1).unwrap();
+    remove_file(&file2).unwrap();
+    remove_dir(&dir_path).unwrap();
+}
+
+// We only support `readdir_r` on macOS.
+// (It is deprecated so we don't want to add more support.)
+#[cfg(target_os = "macos")]
+fn test_readdir_r() {
+    use std::fs::{create_dir, remove_dir, write};
+    use std::mem::MaybeUninit;
+
+    let dir_path = utils::prepare_dir("miri_test_libc_readdir_r");
+    create_dir(&dir_path).ok();
+
+    // Create test files
+    let file1 = dir_path.join("file1.txt");
+    let file2 = dir_path.join("file2.txt");
+    write(&file1, b"content1").unwrap();
+    write(&file2, b"content2").unwrap();
+
+    let c_path = CString::new(dir_path.as_os_str().as_bytes()).unwrap();
+
+    unsafe {
+        let dirp = libc::opendir(c_path.as_ptr());
+        assert!(!dirp.is_null());
+        let mut entries = Vec::new();
+        loop {
+            let mut entry: MaybeUninit<libc::dirent> = MaybeUninit::uninit();
+            let mut result: *mut libc::dirent = std::ptr::null_mut();
+            let ret = libc::readdir_r(dirp, entry.as_mut_ptr(), &mut result);
+            assert_eq!(ret, 0);
+            let entry_ptr = result;
             if entry_ptr.is_null() {
                 break;
             }

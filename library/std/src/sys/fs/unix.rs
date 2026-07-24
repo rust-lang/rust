@@ -21,42 +21,6 @@ use libc::dirfd;
 use libc::fstatat as fstatat64;
 #[cfg(any(all(target_os = "linux", not(target_env = "musl")), target_os = "hurd"))]
 use libc::fstatat64;
-#[cfg(any(
-    target_os = "aix",
-    target_os = "android",
-    target_os = "freebsd",
-    target_os = "fuchsia",
-    target_os = "illumos",
-    target_os = "nto",
-    target_os = "qnx",
-    target_os = "redox",
-    target_os = "solaris",
-    target_os = "vita",
-    target_os = "wasi",
-    all(target_os = "linux", target_env = "musl"),
-))]
-use libc::readdir as readdir64;
-#[cfg(not(any(
-    target_os = "aix",
-    target_os = "android",
-    target_os = "freebsd",
-    target_os = "fuchsia",
-    target_os = "hurd",
-    target_os = "illumos",
-    target_os = "l4re",
-    target_os = "linux",
-    target_os = "nto",
-    target_os = "qnx",
-    target_os = "redox",
-    target_os = "solaris",
-    target_os = "vita",
-    target_os = "wasi",
-)))]
-use libc::readdir_r as readdir64_r;
-#[cfg(any(all(target_os = "linux", not(target_env = "musl")), target_os = "hurd"))]
-use libc::readdir64;
-#[cfg(target_os = "l4re")]
-use libc::readdir64_r;
 use libc::{c_int, mode_t};
 #[cfg(target_os = "android")]
 use libc::{
@@ -426,21 +390,6 @@ fn get_path_from_fd(fd: c_int) -> Option<PathBuf> {
     get_path(fd)
 }
 
-#[cfg(any(
-    target_os = "aix",
-    target_os = "android",
-    target_os = "freebsd",
-    target_os = "fuchsia",
-    target_os = "hurd",
-    target_os = "illumos",
-    target_os = "linux",
-    target_os = "nto",
-    target_os = "qnx",
-    target_os = "redox",
-    target_os = "solaris",
-    target_os = "vita",
-    target_os = "wasi",
-))]
 pub struct DirEntry {
     dir: Arc<InnerReadDir>,
     entry: dirent64_min,
@@ -453,53 +402,19 @@ pub struct DirEntry {
 // Define a minimal subset of fields we need from `dirent64`, especially since
 // we're not using the immediate `d_name` on these targets. Keeping this as an
 // `entry` field in `DirEntry` helps reduce the `cfg` boilerplate elsewhere.
-#[cfg(any(
-    target_os = "aix",
-    target_os = "android",
-    target_os = "freebsd",
-    target_os = "fuchsia",
-    target_os = "hurd",
-    target_os = "illumos",
-    target_os = "linux",
-    target_os = "nto",
-    target_os = "qnx",
-    target_os = "redox",
-    target_os = "solaris",
-    target_os = "vita",
-    target_os = "wasi",
-))]
 struct dirent64_min {
     d_ino: u64,
     #[cfg(not(any(
         target_os = "solaris",
         target_os = "illumos",
+        target_os = "haiku",
+        target_os = "vxworks",
         target_os = "aix",
         target_os = "nto",
         target_os = "qnx",
         target_os = "vita",
     )))]
     d_type: u8,
-}
-
-#[cfg(not(any(
-    target_os = "aix",
-    target_os = "android",
-    target_os = "freebsd",
-    target_os = "fuchsia",
-    target_os = "hurd",
-    target_os = "illumos",
-    target_os = "linux",
-    target_os = "nto",
-    target_os = "qnx",
-    target_os = "redox",
-    target_os = "solaris",
-    target_os = "vita",
-    target_os = "wasi",
-)))]
-pub struct DirEntry {
-    dir: Arc<InnerReadDir>,
-    // The full entry includes a fixed-length `d_name`.
-    entry: dirent64,
 }
 
 #[derive(Clone)]
@@ -880,48 +795,87 @@ impl fmt::Debug for ReadDir {
 impl Iterator for ReadDir {
     type Item = io::Result<DirEntry>;
 
-    #[cfg(any(
-        target_os = "aix",
-        target_os = "android",
-        target_os = "freebsd",
-        target_os = "fuchsia",
-        target_os = "hurd",
-        target_os = "illumos",
-        target_os = "linux",
-        target_os = "nto",
-        target_os = "qnx",
-        target_os = "redox",
-        target_os = "solaris",
-        target_os = "vita",
-        target_os = "wasi",
-    ))]
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
-        use crate::sys::io::{errno, set_errno};
-
         if self.end_of_stream {
             return None;
         }
 
         unsafe {
             loop {
-                // As of POSIX.1-2017, readdir() is not required to be thread safe; only
-                // readdir_r() is. However, readdir_r() cannot correctly handle platforms
-                // with unlimited or variable NAME_MAX. Many modern platforms guarantee
-                // thread safety for readdir() as long an individual DIR* is not accessed
-                // concurrently, which is sufficient for Rust.
-                set_errno(0);
-                let entry_ptr: *const dirent64 = readdir64(self.inner.dirp.0);
-                if entry_ptr.is_null() {
-                    // We either encountered an error, or reached the end. Either way,
-                    // the next call to next() should return None.
-                    self.end_of_stream = true;
+                // POSIX.1-2024 formalized what was already guaranteed by a lot
+                // of implementations and required readdir() to be thread-safe as
+                // long as an individual DIR* is not accessed concurrently. Taking
+                // a mutable reference to the `ReadDir` iterator prevents that.
+                // Even POSIX.1-1994 specified that the data in the returned
+                // dirent
+                // > is not overwritten by another call to readdir() on a
+                // > different directory stream.
+                //
+                // and that guarantee together with the requirement that the
+                // underlying syscalls need to be thread-safe because of readdir_r
+                // make it very unlikely for an implementation to be non-conforming.
+                // Nevertheless, there are still some platforms where we either
+                // cannot confirm `readdir` to be thread-safe or know that it
+                // isn't.
+                cfg_select! {
+                    any(
+                        target_os = "espidf", // readdir truly isn't thread-safe.
+                        target_os = "lynxos178",
+                        target_os = "qurt",
+                        target_os = "rtems",
+                        target_os = "vxworks",
+                    ) => {
+                        use crate::mem::MaybeUninit;
 
-                    // To distinguish between errors and end-of-directory, we had to clear
-                    // errno beforehand to check for an error now.
-                    return match errno() {
-                        0 => None,
-                        e => Some(Err(Error::from_raw_os_error(e))),
-                    };
+                        let mut entry = MaybeUninit::uninit();
+                        let mut entry_ptr: *mut dirent64 = ptr::null_mut();
+                        let err = libc::readdir_r(self.inner.dirp.0, entry.as_mut_ptr(), &mut entry_ptr);
+                        if err != 0 {
+                            if entry_ptr.is_null() {
+                                // We encountered an error (which will be returned in this iteration), but
+                                // we also reached the end of the directory stream. The `end_of_stream`
+                                // flag is enabled to make sure that we return `None` in the next iteration
+                                // (instead of looping forever)
+                                self.end_of_stream = true;
+                            }
+                            return Some(Err(Error::from_raw_os_error(err)));
+                        }
+                        if entry_ptr.is_null() {
+                            return None;
+                        }
+
+                        let entry_ptr = entry_ptr.cast_const();
+                    }
+                    _ => {
+                        #[cfg(not(any(
+                            all(target_os = "linux", not(target_env = "musl")),
+                            target_os = "hurd",
+                            target_os = "l4re",
+                        )))]
+                        use libc::readdir as readdir64;
+                        #[cfg(any(
+                            all(target_os = "linux", not(target_env = "musl")),
+                            target_os = "hurd",
+                            target_os = "l4re"
+                        ))]
+                        use libc::readdir64;
+                        use crate::sys::io::{errno, set_errno};
+
+                        set_errno(0);
+                        let entry_ptr: *const dirent64 = readdir64(self.inner.dirp.0);
+                        if entry_ptr.is_null() {
+                            // We either encountered an error, or reached the end. Either way,
+                            // the next call to next() should return None.
+                            self.end_of_stream = true;
+
+                            // To distinguish between errors and end-of-directory, we had to clear
+                            // errno beforehand to check for an error now.
+                            return match errno() {
+                                0 => None,
+                                e => Some(Err(Error::from_raw_os_error(e))),
+                            };
+                        }
+                    }
                 }
 
                 // The dirent64 struct is a weird imaginary thing that isn't ever supposed
@@ -952,75 +906,43 @@ impl Iterator for ReadDir {
                 // When loading from a field, we can skip the `&raw const`; `(*entry_ptr).d_ino` as
                 // a value expression will do the right thing: `byte_offset` to the field and then
                 // only access those bytes.
-                #[cfg(not(target_os = "vita"))]
                 let entry = dirent64_min {
-                    #[cfg(target_os = "freebsd")]
+                    #[cfg(any(
+                        target_os = "dragonfly",
+                        target_os = "freebsd",
+                        target_os = "netbsd",
+                        target_os = "openbsd",
+                    ))]
                     d_ino: (*entry_ptr).d_fileno,
-                    #[cfg(not(target_os = "freebsd"))]
+                    #[cfg(any(target_os = "nuttx", target_os = "vita",))]
+                    d_ino: 0,
+                    #[cfg(not(any(
+                        target_os = "dragonfly",
+                        target_os = "freebsd",
+                        target_os = "netbsd",
+                        target_os = "nuttx",
+                        target_os = "openbsd",
+                        target_os = "vita",
+                    )))]
                     d_ino: (*entry_ptr).d_ino as u64,
                     #[cfg(not(any(
                         target_os = "solaris",
                         target_os = "illumos",
+                        target_os = "haiku",
+                        target_os = "vxworks",
                         target_os = "aix",
                         target_os = "nto",
                         target_os = "qnx",
+                        target_os = "vita",
                     )))]
                     d_type: (*entry_ptr).d_type as u8,
                 };
-
-                #[cfg(target_os = "vita")]
-                let entry = dirent64_min { d_ino: 0u64 };
 
                 return Some(Ok(DirEntry {
                     entry,
                     name: name.to_owned(),
                     dir: Arc::clone(&self.inner),
                 }));
-            }
-        }
-    }
-
-    #[cfg(not(any(
-        target_os = "aix",
-        target_os = "android",
-        target_os = "freebsd",
-        target_os = "fuchsia",
-        target_os = "hurd",
-        target_os = "illumos",
-        target_os = "linux",
-        target_os = "nto",
-        target_os = "qnx",
-        target_os = "redox",
-        target_os = "solaris",
-        target_os = "vita",
-        target_os = "wasi",
-    )))]
-    fn next(&mut self) -> Option<io::Result<DirEntry>> {
-        if self.end_of_stream {
-            return None;
-        }
-
-        unsafe {
-            let mut ret = DirEntry { entry: mem::zeroed(), dir: Arc::clone(&self.inner) };
-            let mut entry_ptr = ptr::null_mut();
-            loop {
-                let err = readdir64_r(self.inner.dirp.0, &mut ret.entry, &mut entry_ptr);
-                if err != 0 {
-                    if entry_ptr.is_null() {
-                        // We encountered an error (which will be returned in this iteration), but
-                        // we also reached the end of the directory stream. The `end_of_stream`
-                        // flag is enabled to make sure that we return `None` in the next iteration
-                        // (instead of looping forever)
-                        self.end_of_stream = true;
-                    }
-                    return Some(Err(Error::from_raw_os_error(err)));
-                }
-                if entry_ptr.is_null() {
-                    return None;
-                }
-                if ret.name_bytes() != b"." && ret.name_bytes() != b".." {
-                    return Some(Ok(ret));
-                }
             }
         }
     }
@@ -1102,7 +1024,7 @@ impl DirEntry {
     ))]
     pub fn metadata(&self) -> io::Result<FileAttr> {
         let fd = cvt(unsafe { dirfd(self.dir.dirp.0) })?;
-        let name = self.name_cstr().as_ptr();
+        let name = self.name.as_ptr();
 
         cfg_has_statx! {
             if let Some(ret) = unsafe { try_statx(
@@ -1172,110 +1094,12 @@ impl DirEntry {
         }
     }
 
-    #[cfg(any(
-        target_os = "aix",
-        target_os = "android",
-        target_os = "cygwin",
-        target_os = "emscripten",
-        target_os = "espidf",
-        target_os = "freebsd",
-        target_os = "fuchsia",
-        target_os = "haiku",
-        target_os = "horizon",
-        target_os = "hurd",
-        target_os = "illumos",
-        target_os = "l4re",
-        target_os = "linux",
-        target_os = "nto",
-        target_os = "qnx",
-        target_os = "redox",
-        target_os = "rtems",
-        target_os = "solaris",
-        target_os = "vita",
-        target_os = "vxworks",
-        target_os = "wasi",
-        target_vendor = "apple",
-    ))]
     pub fn ino(&self) -> u64 {
-        self.entry.d_ino as u64
-    }
-
-    #[cfg(any(target_os = "openbsd", target_os = "netbsd", target_os = "dragonfly"))]
-    pub fn ino(&self) -> u64 {
-        self.entry.d_fileno as u64
-    }
-
-    #[cfg(target_os = "nuttx")]
-    pub fn ino(&self) -> u64 {
-        // Leave this 0 for now, as NuttX does not provide an inode number
-        // in its directory entries.
-        0
-    }
-
-    #[cfg(any(
-        target_os = "netbsd",
-        target_os = "openbsd",
-        target_os = "dragonfly",
-        target_vendor = "apple",
-    ))]
-    fn name_bytes(&self) -> &[u8] {
-        use crate::slice;
-        unsafe {
-            slice::from_raw_parts(
-                self.entry.d_name.as_ptr() as *const u8,
-                self.entry.d_namlen as usize,
-            )
-        }
-    }
-    #[cfg(not(any(
-        target_os = "netbsd",
-        target_os = "openbsd",
-        target_os = "dragonfly",
-        target_vendor = "apple",
-    )))]
-    fn name_bytes(&self) -> &[u8] {
-        self.name_cstr().to_bytes()
-    }
-
-    #[cfg(not(any(
-        target_os = "android",
-        target_os = "freebsd",
-        target_os = "linux",
-        target_os = "solaris",
-        target_os = "illumos",
-        target_os = "fuchsia",
-        target_os = "redox",
-        target_os = "aix",
-        target_os = "nto",
-        target_os = "qnx",
-        target_os = "vita",
-        target_os = "hurd",
-        target_os = "wasi",
-    )))]
-    fn name_cstr(&self) -> &CStr {
-        unsafe { CStr::from_ptr(self.entry.d_name.as_ptr()) }
-    }
-    #[cfg(any(
-        target_os = "android",
-        target_os = "freebsd",
-        target_os = "linux",
-        target_os = "solaris",
-        target_os = "illumos",
-        target_os = "fuchsia",
-        target_os = "redox",
-        target_os = "aix",
-        target_os = "nto",
-        target_os = "qnx",
-        target_os = "vita",
-        target_os = "hurd",
-        target_os = "wasi",
-    ))]
-    fn name_cstr(&self) -> &CStr {
-        &self.name
+        self.entry.d_ino
     }
 
     pub fn file_name_os_str(&self) -> &OsStr {
-        OsStr::from_bytes(self.name_bytes())
+        OsStr::from_bytes(self.name.as_bytes())
     }
 }
 
@@ -2577,24 +2401,23 @@ mod remove_dir_impl {
 
         for child in dir {
             let child = child?;
-            let child_name = child.name_cstr();
             // we need an inner try block, because if one of these
             // directories has already been deleted, then we need to
             // continue the loop, not return ok.
             let result: io::Result<()> = try {
                 match is_dir(&child) {
                     Some(true) => {
-                        remove_dir_all_recursive(Some(fd), child_name)?;
+                        remove_dir_all_recursive(Some(fd), &child.name)?;
                     }
                     Some(false) => {
-                        cvt(unsafe { unlinkat(fd, child_name.as_ptr(), 0) })?;
+                        cvt(unsafe { unlinkat(fd, child.name.as_ptr(), 0) })?;
                     }
                     None => {
                         // POSIX specifies that calling unlink()/unlinkat(..., 0) on a directory can succeed
                         // if the process has the appropriate privileges. This however can causing orphaned
                         // directories requiring an fsck e.g. on Solaris and Illumos. So we try recursing
                         // into it first instead of trying to unlink() it.
-                        remove_dir_all_recursive(Some(fd), child_name)?;
+                        remove_dir_all_recursive(Some(fd), &child.name)?;
                     }
                 }
             };
