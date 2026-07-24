@@ -1,4 +1,4 @@
-error: `-Zsanitizer=address` is incompatible with `-Tsanitizer=memory`
+error: `-Csanitizer=address` is incompatible with `-Tsanitizer=memory`
 
 error: aborting due to 1 previous error
 

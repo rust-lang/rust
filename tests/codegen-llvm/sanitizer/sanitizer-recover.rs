@@ -7,8 +7,8 @@
 //@ no-prefer-dynamic
 //@                   compile-flags: -Cunsafe-allow-abi-mismatch=sanitizer
 //@                   compile-flags: -Ctarget-feature=-crt-static
-//@[ASAN]             compile-flags: -Zsanitizer=address -Copt-level=0
-//@[ASAN-RECOVER]     compile-flags: -Zsanitizer=address -Zsanitizer-recover=address -Copt-level=0
+//@[ASAN]             compile-flags: -Csanitizer=address -Copt-level=0 -Zunstable-options
+//@[ASAN-RECOVER]     compile-flags: -Csanitizer=address -Zsanitizer-recover=address -Copt-level=0
 //@[MSAN]             compile-flags: -Tsanitizer=memory -Zunstable-options
 //@[MSAN-RECOVER]     compile-flags: -Tsanitizer=memory -Zsanitizer-recover=memory
 //@[MSAN-RECOVER]     compile-flags: -Zunstable-options
