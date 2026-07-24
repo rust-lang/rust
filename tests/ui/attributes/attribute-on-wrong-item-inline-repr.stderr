@@ -6,6 +6,14 @@ LL |     #[inline]
    |
    = help: the `inline` attribute can only be applied to functions
 
+error: the `inline` attribute cannot be used on statements
+  --> $DIR/attribute-on-wrong-item-inline-repr.rs:12:7
+   |
+LL |     #[inline(XYZ)]
+   |       ^^^^^^
+   |
+   = help: the `inline` attribute can only be applied to functions
+
 error[E0539]: malformed `inline` attribute input
   --> $DIR/attribute-on-wrong-item-inline-repr.rs:12:7
    |
@@ -26,14 +34,6 @@ LL +     #[inline(never)]
 LL -     #[inline(XYZ)]
 LL +     #[inline]
    |
-
-error: the `inline` attribute cannot be used on statements
-  --> $DIR/attribute-on-wrong-item-inline-repr.rs:12:7
-   |
-LL |     #[inline(XYZ)]
-   |       ^^^^^^
-   |
-   = help: the `inline` attribute can only be applied to functions
 
 error[E0539]: malformed `repr` attribute input
   --> $DIR/attribute-on-wrong-item-inline-repr.rs:17:7
@@ -63,6 +63,14 @@ LL |     #[repr]
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
 
+error: the `inline` attribute cannot be used on expressions
+  --> $DIR/attribute-on-wrong-item-inline-repr.rs:33:7
+   |
+LL |     #[inline(ABC)]
+   |       ^^^^^^
+   |
+   = help: the `inline` attribute can only be applied to functions
+
 error[E0539]: malformed `inline` attribute input
   --> $DIR/attribute-on-wrong-item-inline-repr.rs:33:7
    |
@@ -83,14 +91,6 @@ LL +     #[inline(never)]
 LL -     #[inline(ABC)]
 LL +     #[inline]
    |
-
-error: the `inline` attribute cannot be used on expressions
-  --> $DIR/attribute-on-wrong-item-inline-repr.rs:33:7
-   |
-LL |     #[inline(ABC)]
-   |       ^^^^^^
-   |
-   = help: the `inline` attribute can only be applied to functions
 
 error[E0539]: malformed `repr` attribute input
   --> $DIR/attribute-on-wrong-item-inline-repr.rs:38:16
