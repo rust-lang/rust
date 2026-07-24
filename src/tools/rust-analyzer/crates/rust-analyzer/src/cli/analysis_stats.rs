@@ -794,7 +794,9 @@ impl flags::AnalysisStats {
             bodies
                 .par_iter()
                 .map_with(db.clone(), |snap, &body| {
-                    InferenceResult::of(snap, body);
+                    hir::attach_db(snap, || {
+                        InferenceResult::of(snap, body);
+                    });
                 })
                 .count();
             let _signatures = signatures
