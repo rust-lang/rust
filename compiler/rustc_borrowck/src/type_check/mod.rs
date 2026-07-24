@@ -2467,8 +2467,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         _ => bug!("unexpected deref ty {:?} in {:?}", base_ty, borrowed_place),
                     }
                 }
+                ProjectionElem::PhantomDeref => {
+                    bug!("unexpected PhantomDeref in add_reborrow_constraint")
+                }
                 ProjectionElem::Field(..)
-                | ProjectionElem::PhantomDeref
                 | ProjectionElem::Downcast(..)
                 | ProjectionElem::OpaqueCast(..)
                 | ProjectionElem::Index(..)

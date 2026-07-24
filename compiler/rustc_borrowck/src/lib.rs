@@ -2246,7 +2246,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         for (place_base, elem) in place.iter_projections().rev() {
             match elem {
                 ProjectionElem::Index(_/*operand*/)
-                | ProjectionElem::PhantomDeref
                 | ProjectionElem::OpaqueCast(_)
                 // assigning to P[i] requires P to be valid.
                 | ProjectionElem::ConstantIndex { .. }
@@ -2271,6 +2270,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     // (base initialized; no need to
                     // recur further)
                     break;
+                }
+
+                ProjectionElem::PhantomDeref => {
+                    panic!("we don't allow assignments to PhantomDeref, location {location:?}");
                 }
 
                 ProjectionElem::Subslice { .. } => {
