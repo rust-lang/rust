@@ -1322,6 +1322,12 @@ impl Build {
             base.push("-fno-omit-frame-pointer".into());
         }
 
+        // We remove `static_flag` in cc-rs since it has been deprecated, but
+        // we still need to specify it for musl targets to ensure that the final link is static.
+        if target.contains("musl") {
+            base.push("-static".into());
+        }
+
         if let Some(map_to) = self.debuginfo_map_to(which, RemapScheme::NonCompiler) {
             let map = format!("{}={}", self.src.display(), map_to);
             let cc = self.cc(target);
