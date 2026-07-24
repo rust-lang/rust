@@ -12,6 +12,7 @@ use rustc_trait_selection::traits::{self, FulfillmentError, TraitEngine, TraitEn
 use tracing::instrument;
 
 use super::callee::DeferredCallResolution;
+use super::expr::DeferredClosureMethodCall;
 
 /// Data shared between a "typeck root" and its nested bodies,
 /// e.g. closures defined within the function. For example:
@@ -52,6 +53,8 @@ pub(crate) struct TypeckRootCtxt<'tcx> {
     /// def-id of the closure, so that once we decide, we can easily go
     /// back and process them.
     pub(super) deferred_call_resolutions: RefCell<LocalDefIdMap<Vec<DeferredCallResolution<'tcx>>>>,
+
+    pub(super) deferred_closure_method_calls: RefCell<Vec<DeferredClosureMethodCall<'tcx>>>,
 
     pub(super) deferred_cast_checks: RefCell<Vec<super::cast::CastCheck<'tcx>>>,
 
@@ -95,6 +98,7 @@ impl<'tcx> TypeckRootCtxt<'tcx> {
             checked_opaque_types_storage_entries: Cell::new(None),
             deferred_sized_obligations: RefCell::new(Vec::new()),
             deferred_call_resolutions: RefCell::new(Default::default()),
+            deferred_closure_method_calls: RefCell::new(Vec::new()),
             deferred_cast_checks: RefCell::new(Vec::new()),
             deferred_transmute_checks: RefCell::new(Vec::new()),
             deferred_asm_checks: RefCell::new(Vec::new()),

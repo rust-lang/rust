@@ -198,6 +198,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expectation: Expectation<'tcx>,
         // The expressions for each provided argument
         provided_args: &'tcx [hir::Expr<'tcx>],
+        // Types for arguments which were checked before this call was resolved.
+        prechecked_arg_tys: Option<&[Option<Ty<'tcx>>]>,
         // Whether the function is variadic (e.g. from C)
         c_variadic: bool,
         // Whether all the arguments have been bundled in a tuple (ex: closures), or one has been splatted
@@ -343,10 +345,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // If we are processing first arg of delegation then we could have adjusted it
             // in `execute_delegation_aware_arguments_check`.
-            let checked_ty = self
-                .tcx
-                .hir_opt_delegation_info(self.body_def_id)
-                .and_then(|_| self.typeck_results.borrow().node_type_opt(provided_arg.hir_id))
+            let checked_ty = prechecked_arg_tys
+                .and_then(|tys| tys[idx])
+                .or_else(|| {
+                    self.tcx.hir_opt_delegation_info(self.body_def_id).and_then(|_| {
+                        self.typeck_results.borrow().node_type_opt(provided_arg.hir_id)
+                    })
+                })
                 .unwrap_or_else(|| self.check_expr_with_expectation(provided_arg, expectation));
 
             // 2. Coerce to the most detailed type that could be coerced
@@ -458,9 +463,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err_code = E0060;
         }
 
-        for arg in provided_args.iter().skip(minimum_input_count) {
+        for (idx, arg) in provided_args.iter().enumerate().skip(minimum_input_count) {
             // Make sure we've checked this expr at least once.
-            let arg_ty = self.check_expr(arg);
+            let arg_ty =
+                prechecked_arg_tys.and_then(|tys| tys[idx]).unwrap_or_else(|| self.check_expr(arg));
 
             // If the function is c-style variadic, we skipped a bunch of arguments
             // so we need to check those, and write out the types
