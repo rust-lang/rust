@@ -621,9 +621,9 @@ impl<T> Trait<T> for X {
             TypeError::TargetFeatureCast(def_id) => {
                 let target_spans = find_attr!(tcx, def_id, TargetFeature{attr_span: span, was_forced: false, ..} => *span);
                 diag.note(
-                    "functions with `#[target_feature]` can only be coerced to `unsafe` function pointers"
+                    "functions with `#[target_feature(..)]` can only be coerced to `unsafe` function pointers"
                 );
-                diag.span_labels(target_spans, "`#[target_feature]` added here");
+                diag.span_labels(target_spans, "`#[target_feature(..)]` added here");
             }
             _ => {}
         }
