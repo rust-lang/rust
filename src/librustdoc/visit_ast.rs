@@ -18,6 +18,7 @@ use rustc_span::def_id::{CRATE_DEF_ID, LOCAL_CRATE};
 use rustc_span::symbol::{Symbol, kw};
 use tracing::debug;
 
+use crate::clean::paths::ItemPath;
 use crate::clean::reexport_chain;
 use crate::clean::utils::{inherits_doc_hidden, should_ignore_res};
 use crate::core;
@@ -113,7 +114,7 @@ impl Module<'_> {
 }
 
 // FIXME: Should this be replaced with tcx.def_path_str?
-fn def_id_to_path(tcx: TyCtxt<'_>, did: DefId) -> Vec<Symbol> {
+fn def_id_to_path(tcx: TyCtxt<'_>, did: DefId) -> ItemPath {
     let crate_name = tcx.crate_name(did.krate);
     let relative = tcx.def_path(did).data.into_iter().filter_map(|elem| elem.data.get_opt_name());
     std::iter::once(crate_name).chain(relative).collect()
@@ -125,7 +126,7 @@ pub(crate) struct RustdocVisitor<'a, 'tcx> {
     inlining: bool,
     /// Are the current module and all of its parents public?
     inside_public_path: bool,
-    exact_paths: DefIdMap<Vec<Symbol>>,
+    exact_paths: DefIdMap<ItemPath>,
     modules: Vec<Module<'tcx>>,
     is_importable_from_parent: bool,
     inside_body: bool,
