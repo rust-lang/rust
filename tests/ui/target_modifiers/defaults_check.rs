@@ -5,16 +5,16 @@
 //@ compile-flags: --target i686-unknown-linux-gnu -Cpanic=abort -Zunstable-options
 //@ needs-llvm-components: x86
 
-//@ revisions: ok ok_explicit error
+//@ revisions: ok error_explicit error
 // [ok] no extra compile-flags
-//@[ok_explicit] compile-flags: -Treg-struct-return=false
+//@[error_explicit] compile-flags: -Treg-struct-return=false
 //@[error] compile-flags: -Treg-struct-return=true
 //@[ok] check-pass
-//@[ok_explicit] check-pass
 //@ ignore-backends: gcc
 
 #![feature(no_core)]
-//[error]~^ ERROR mixing `-Treg-struct-return` will cause an ABI mismatch in crate `defaults_check`
+//[error_explicit]~^ ERROR mixing `-Treg-struct-return` will cause an ABI mismatch in crate `defaults_check`
+//[error]~^^ ERROR mixing `-Treg-struct-return` will cause an ABI mismatch in crate `defaults_check`
 #![crate_type = "rlib"]
 #![no_core]
 
