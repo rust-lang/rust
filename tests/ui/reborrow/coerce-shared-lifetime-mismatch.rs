@@ -13,6 +13,7 @@ impl<'a> Reborrow for CustomMarker<'a> {}
 struct StaticMarkerRef<'a>(PhantomData<&'a ()>);
 
 impl<'a> CoerceShared<StaticMarkerRef<'static>> for CustomMarker<'a> {}
+//~^ ERROR
 
 fn method(_a: StaticMarkerRef<'static>) {}
 

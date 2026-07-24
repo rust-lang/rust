@@ -1,0 +1,10 @@
+error: implementing `CoerceShared` requires all target type fields to be accessible from the impl
+  --> $DIR/coerce-shared-foreign-private-tuple-field.rs:18:1
+   |
+LL | impl<'a> CoerceShared<ForeignPtrRef<'a>> for LocalPtrMut<'a> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^-----------------^^^^^^^^^^^^^^^^^^^^^^^^
+   |                       |
+   |                       target type `ForeignPtrRef` has inaccessible reborrow data fields
+
+error: aborting due to 1 previous error
+

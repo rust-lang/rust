@@ -1,0 +1,14 @@
+error: implementing `CoerceShared` requires corresponding fields to match, be reborrowable with `CoerceShared`, or coerce a mutable reference field to a shared reference field
+  --> $DIR/coerce-shared-mut-ref-field-validation.rs:50:5
+   |
+LL |     value: &'a mut &'a (),
+   |     --------------------- source field `value` has type `&'a mut &'a ()`
+...
+LL |     value: &'a &'static (),
+   |     ^^^^^^^^^^^^^^^^^^^^^^ target field `value` has type `&'a &'static ()`
+...
+LL | impl<'a> CoerceShared<RejectedInnerLifetimeRef<'a>> for RejectedInnerLifetimeMut<'a> {}
+   | --------------------------------------------------------------------------------------- required by this `CoerceShared` implementation
+
+error: aborting due to 1 previous error
+

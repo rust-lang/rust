@@ -1,0 +1,24 @@
+error[E0277]: the trait bound `NonCopyZst: Copy` is not satisfied
+  --> $DIR/coerce-shared-omitted-zst-field.rs:17:5
+   |
+LL |     marker: NonCopyZst,
+   |     ^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `NonCopyZst`
+   |
+help: consider annotating `NonCopyZst` with `#[derive(Copy)]`
+   |
+LL + #[derive(Copy)]
+LL | struct NonCopyZst;
+   |
+
+error: implementing `CoerceShared` requires source fields omitted from the target to be `Copy` or `Reborrow`
+  --> $DIR/coerce-shared-omitted-zst-field.rs:17:5
+   |
+LL |     marker: NonCopyZst,
+   |     ^^^^^^^^^^^^^^^^^^ source field `marker` has type `NonCopyZst`
+...
+LL | impl<'a> CoerceShared<Target<'a>> for Source<'a> {}
+   | --------------------------------------------------- required by this `CoerceShared` implementation
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

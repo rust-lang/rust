@@ -1347,11 +1347,126 @@ pub(crate) struct CoerceSharedNotSingleLifetimeParam {
 }
 
 #[derive(Diagnostic)]
-#[diag("implementing `{$trait_name}` does not allow multiple lifetimes or fields to be coerced")]
+#[diag(
+    "implementing `{$trait_name}` requires exactly one lifetime argument in the reborrowed type"
+)]
 pub(crate) struct CoerceSharedMulti {
     #[primary_span]
     pub span: Span,
     pub trait_name: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "implementing `{$trait_name}` requires source and target to use the same reborrow lifetime \
+     argument"
+)]
+pub(crate) struct CoerceSharedLifetimeMismatch {
+    #[primary_span]
+    pub span: Span,
+    #[label("source reborrow lifetime")]
+    pub source_lifetime_span: Option<Span>,
+    #[label("target reborrow lifetime")]
+    pub target_lifetime_span: Option<Span>,
+    pub trait_name: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "implementing `{$trait_name}` requires corresponding fields to match, \
+     be reborrowable with `CoerceShared`, or coerce a mutable reference field \
+     to a shared reference field"
+)]
+pub(crate) struct CoerceSharedFieldMismatch<'tcx> {
+    #[primary_span]
+    #[label("target field `{$target_name}` has type `{$target_ty}`")]
+    pub span: Span,
+    #[label("source field `{$source_name}` has type `{$source_ty}`")]
+    pub source_span: Span,
+    #[label("required by this `CoerceShared` implementation")]
+    pub impl_span: Span,
+    pub source_name: Symbol,
+    pub source_ty: Ty<'tcx>,
+    pub target_name: Symbol,
+    pub target_ty: Ty<'tcx>,
+    pub trait_name: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "implementing `{$trait_name}` requires every target field to have a corresponding source field"
+)]
+pub(crate) struct CoerceSharedMissingField {
+    #[primary_span]
+    #[label("target field `{$field_name}` has no corresponding source field")]
+    pub span: Span,
+    #[label("source type `{$source_ty_name}` does not contain field `{$field_name}`")]
+    pub source_ty_span: Span,
+    pub trait_name: &'static str,
+    pub source_ty_name: Symbol,
+    pub field_name: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "implementing `{$trait_name}` requires source fields omitted from the target to be `Copy` or \
+     `Reborrow`"
+)]
+pub(crate) struct CoerceSharedOmittedSourceFieldNotCopyOrReborrow<'tcx> {
+    #[primary_span]
+    #[label("source field `{$field_name}` has type `{$field_ty}`")]
+    pub span: Span,
+    #[label("required by this `CoerceShared` implementation")]
+    pub impl_span: Span,
+    pub trait_name: &'static str,
+    pub field_name: Symbol,
+    pub field_ty: Ty<'tcx>,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "implementing `{$trait_name}` requires source and target structs to use the same field style"
+)]
+pub(crate) struct CoerceSharedFieldStyleMismatch {
+    #[primary_span]
+    pub span: Span,
+    pub trait_name: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "implementing `{$trait_name}` requires all {$role} type fields to be accessible from the impl"
+)]
+pub(crate) struct CoerceSharedInaccessibleField {
+    #[primary_span]
+    pub span: Span,
+    #[label("{$role} type `{$type_name}` has inaccessible reborrow data fields")]
+    pub type_span: Span,
+    pub trait_name: &'static str,
+    pub role: &'static str,
+    pub type_name: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "implementing `{$trait_name}` currently requires source and target to have at most one \
+     non-ZST reborrow data field"
+)]
+#[note(
+    "this is a temporary restriction until `CoerceShared` lowering supports non-trivially \
+     memcpy-compatible field layouts"
+)]
+pub(crate) struct CoerceSharedMultipleNonZstFields {
+    #[primary_span]
+    #[label("in this `CoerceShared` implementation")]
+    pub span: Span,
+    #[label("source type has {$source_count} non-ZST reborrow data fields")]
+    pub source_ty_span: Span,
+    #[label("target type has {$target_count} non-ZST reborrow data fields")]
+    pub target_ty_span: Span,
+    pub trait_name: &'static str,
+    pub source_count: usize,
+    pub target_count: usize,
 }
 
 #[derive(Diagnostic)]
