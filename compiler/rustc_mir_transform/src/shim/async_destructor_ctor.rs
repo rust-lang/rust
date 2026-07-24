@@ -204,8 +204,23 @@ fn build_adrop_for_coroutine_shim<'tcx>(
     let ty::Coroutine(coroutine_def_id, impl_args) = impl_ty.kind() else {
         bug!("build_adrop_for_coroutine_shim not for coroutine impl type: ({:?})", shim);
     };
+    let ty::Coroutine(_, id_args) = *tcx.type_of(*coroutine_def_id).skip_binder().kind() else {
+        bug!()
+    };
     let source_info = SourceInfo::outermost(span);
-    let body = tcx.optimized_mir(*coroutine_def_id).future_drop_poll().unwrap();
+
+    // If the kind tys differ, we must use the by-move body
+    let def_id = if id_args.as_coroutine().kind_ty() == impl_args.as_coroutine().kind_ty() {
+        *coroutine_def_id
+    } else {
+        assert_eq!(
+            impl_args.as_coroutine().kind_ty().to_opt_closure_kind().unwrap(),
+            ty::ClosureKind::FnOnce
+        );
+
+        tcx.coroutine_by_move_body_def_id(*coroutine_def_id)
+    };
+    let body = tcx.optimized_mir(def_id).future_drop_poll().unwrap();
     let mut body: Body<'tcx> =
         EarlyBinder::bind(tcx, body.clone()).instantiate(tcx, impl_args).skip_norm_wip();
     body.source.instance = ty::InstanceKind::Shim(shim);
