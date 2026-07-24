@@ -4769,7 +4769,7 @@ pub enum RestrictionKind<'hir> {
 /// explicitly to allow unsafe operations.
 #[derive(Copy, Clone, Debug, StableHash, PartialEq, Eq)]
 pub enum HeaderSafety {
-    /// A safe function annotated with `#[target_features]`.
+    /// A safe function annotated with `#[target_feature(..)]`.
     /// The type system treats this function as an unsafe function,
     /// but safety checking will check this enum to treat it as safe
     /// and allowing calling other safe target feature functions with
