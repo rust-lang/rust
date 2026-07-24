@@ -40,7 +40,7 @@ pub enum EiiImplResolution {
 #[derive(Copy, Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
 pub struct EiiImpl {
     pub resolution: EiiImplResolution,
-    pub impl_marked_unsafe: bool,
+    pub impl_unsafe_span: Option<Span>,
     pub span: Span,
     pub inner_span: Span,
     pub is_default: bool,
