@@ -309,8 +309,8 @@ fn compute_symbol_name<'tcx>(
 
     // Offload kernels must omit the stable_crate_id disambiguator because
     // host and device passes have different stable_crate_ids.
-    let is_offload_kernel =
-        tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::OFFLOAD_KERNEL);
+    let is_offload_kernel = tcx.def_kind(def_id).has_codegen_attrs()
+        && tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::OFFLOAD_KERNEL);
     let symbol = if is_offload_kernel {
         v0::mangle(tcx, instance, instantiating_crate, true)
     } else {
