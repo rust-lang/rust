@@ -1,6 +1,6 @@
+use rustc_ast::ast;
 use rustc_ast::token::{Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::{DelimSpan, Spacing, TokenStream, TokenTree};
-use rustc_ast::{AttrItem, ast};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_session::config::Offload;
 use rustc_span::{DUMMY_SP, Ident, Span, sym};
@@ -9,7 +9,12 @@ use thin_vec::thin_vec;
 use crate::diagnostics;
 
 fn compile_for_device(ecx: &mut ExtCtxt<'_>) -> bool {
-    ecx.sess.opts.unstable_opts.offload.contains(&Offload::Device)
+    ecx.sess
+        .opts
+        .unstable_opts
+        .offload
+        .iter()
+        .any(|o| matches!(o, Offload::Device | Offload::DeviceWithManifest(_)))
 }
 
 fn outer_normal_attr(normal: &Box<ast::NormalAttr>, id: ast::AttrId, span: Span) -> ast::Attribute {
@@ -45,7 +50,6 @@ fn extract_fn(
 /// This expands to the host-side function:
 ///
 /// ```
-/// #[unsafe(no_mangle)]
 /// #[inline(never)]
 /// fn foo(_: &[f32], _: &[f32], _: *mut f32) {
 ///     ::core::panicking::panic("not implemented")
@@ -56,7 +60,6 @@ fn extract_fn(
 ///
 /// ```
 /// #[rustc_offload_kernel]
-/// #[unsafe(no_mangle)]
 /// unsafe extern "gpu-kernel" fn foo(a: &[f32], b: &[f32], c: *mut f32) {
 ///     *c = a[0] + b[0];
 /// }
@@ -110,24 +113,9 @@ pub(crate) fn expand_kernel(
         span,
     );
 
-    // unsafe(no_mangle) attr
-    let unsafe_item = AttrItem {
-        unsafety: ast::Safety::Unsafe(span),
-        path: ast::Path::from_ident(Ident::new(sym::no_mangle, span)),
-        args: ast::AttrArgs::Empty,
-        span,
-    };
-
-    let no_mangle_attr = Box::new(ast::NormalAttr { item: unsafe_item, tokens: None });
-    let new_id = ecx.sess.psess.attr_id_generator.mk_attr_id();
-    let unsafe_no_mangle = outer_normal_attr(&no_mangle_attr, new_id, span);
-
     let device_item = {
-        let mut item = ecx.item(
-            span,
-            thin_vec![rustc_offload_kernel, unsafe_no_mangle],
-            ast::ItemKind::Fn(device_fn),
-        );
+        let mut item =
+            ecx.item(span, thin_vec![rustc_offload_kernel.clone()], ast::ItemKind::Fn(device_fn));
         item.vis = vis.clone();
         Annotatable::Item(item)
     };
@@ -187,12 +175,12 @@ pub(crate) fn expand_kernel(
     let new_id = ecx.sess.psess.attr_id_generator.mk_attr_id();
     let inline_never = outer_normal_attr(&inline_never_attr, new_id, span);
 
-    let new_id = ecx.sess.psess.attr_id_generator.mk_attr_id();
-    let unsafe_no_mangle = outer_normal_attr(&no_mangle_attr, new_id, span);
-
     let host_item = {
-        let mut item =
-            ecx.item(span, thin_vec![unsafe_no_mangle, inline_never], ast::ItemKind::Fn(host_fn));
+        let mut item = ecx.item(
+            span,
+            thin_vec![rustc_offload_kernel, inline_never],
+            ast::ItemKind::Fn(host_fn),
+        );
         item.vis = vis.clone();
         Annotatable::Item(item)
     };

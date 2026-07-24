@@ -26,7 +26,9 @@ use rustc_session::config::CrateType;
 use rustc_session::diagnostics::feature_err;
 use rustc_session::lint::builtin::DEPRECATED_LLVM_INTRINSIC;
 use rustc_span::{ErrorGuaranteed, Span, Symbol, sym};
-use rustc_symbol_mangling::{mangle_internal_symbol, symbol_name_for_instance_in_crate};
+use rustc_symbol_mangling::{
+    mangle_internal_symbol, mangle_offload_export, symbol_name_for_instance_in_crate,
+};
 use rustc_target::callconv::PassMode;
 use rustc_target::spec::Arch;
 use tracing::debug;
@@ -1851,7 +1853,7 @@ fn codegen_offload<'ll, 'tcx>(
         _ => panic!("unparsable"),
     };
     let args = get_args_from_tuple(bx, args[4], fn_target);
-    let target_symbol = symbol_name_for_instance_in_crate(tcx, fn_target, LOCAL_CRATE);
+    let target_symbol = mangle_offload_export(tcx, fn_target);
 
     let sig = tcx.fn_sig(fn_target.def_id()).skip_binder();
     let sig = tcx.instantiate_bound_regions_with_erased(sig);

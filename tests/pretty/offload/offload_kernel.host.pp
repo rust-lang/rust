@@ -17,7 +17,7 @@ use ::std::prelude::rust_2015::*;
 
 use std::offload::offload_kernel;
 
-#[unsafe(no_mangle)]
+#[rustc_offload_kernel]
 #[inline(never)]
 fn foo(_: &[f32], _: &[f32], _: *mut f32) {
 

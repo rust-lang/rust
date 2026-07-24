@@ -2,6 +2,7 @@ use std::collections::hash_map::Entry::*;
 
 use rustc_abi::{CanonAbi, X86Call};
 use rustc_ast::expand::allocator::{AllocatorKind, NO_ALLOC_SHIM_IS_UNSTABLE, global_fn_name};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE, LocalDefId};
@@ -17,7 +18,7 @@ use rustc_middle::ty::{
 use rustc_middle::util::Providers;
 use rustc_session::config::CrateType;
 use rustc_span::Span;
-use rustc_symbol_mangling::mangle_internal_symbol;
+use rustc_symbol_mangling::{is_offload_kernel, mangle_internal_symbol};
 use rustc_target::spec::{Arch, Os, TlsModel};
 use tracing::debug;
 
@@ -225,6 +226,51 @@ fn exported_non_generic_symbols_provider_local<'tcx>(
         ));
     }
 
+    let is_device_offload = tcx.sess.opts.unstable_opts.offload.iter().any(|o| {
+        matches!(
+            o,
+            rustc_session::config::Offload::DeviceWithManifest(_)
+                | rustc_session::config::Offload::Device
+        )
+    });
+    if is_device_offload {
+        let crate_items = tcx.hir_crate_items(());
+        let mut seen: rustc_data_structures::fx::FxHashSet<DefId> = symbols
+            .iter()
+            .filter_map(|(s, _)| match s {
+                ExportedSymbol::NonGeneric(d) => Some(*d),
+                _ => None,
+            })
+            .collect();
+
+        let mut try_emit_offload_kernel = |def_id: DefId, seen: &mut FxHashSet<DefId>| {
+            if !matches!(tcx.def_kind(def_id), DefKind::Fn | DefKind::AssocFn) {
+                return;
+            }
+            if !tcx.generics_of(def_id).requires_monomorphization(tcx)
+                && is_offload_kernel(tcx.codegen_fn_attrs(def_id))
+                && seen.insert(def_id)
+            {
+                symbols.push((
+                    ExportedSymbol::NonGeneric(def_id),
+                    SymbolExportInfo {
+                        level: SymbolExportLevel::C,
+                        kind: SymbolExportKind::Text,
+                        used: false,
+                        rustc_std_internal_symbol: false,
+                    },
+                ));
+            }
+        };
+
+        for id in crate_items.free_items() {
+            try_emit_offload_kernel(id.owner_id.to_def_id(), &mut seen);
+        }
+        for id in crate_items.impl_items() {
+            try_emit_offload_kernel(id.owner_id.to_def_id(), &mut seen);
+        }
+    }
+
     // Sort so we get a stable incr. comp. hash.
     symbols.sort_by_cached_key(|s| s.0.symbol_name_for_local_instance(tcx));
 
@@ -241,7 +287,16 @@ fn exported_generic_symbols_provider_local<'tcx>(
 
     let mut symbols: Vec<_> = vec![];
 
-    if tcx.local_crate_exports_generics() {
+    let export_generics = tcx.local_crate_exports_generics();
+    let is_device_offload = tcx.sess.opts.unstable_opts.offload.iter().any(|o| {
+        matches!(
+            o,
+            rustc_session::config::Offload::DeviceWithManifest(_)
+                | rustc_session::config::Offload::Device
+        )
+    });
+
+    if export_generics || is_device_offload {
         use rustc_hir::attrs::Linkage;
         use rustc_middle::mono::{MonoItem, Visibility};
         use rustc_middle::ty::InstanceKind;
@@ -287,6 +342,14 @@ fn exported_generic_symbols_provider_local<'tcx>(
                     })
             };
 
+        let is_offload_instance = |mono_item: &MonoItem<'tcx>| {
+            if let MonoItem::Fn(instance) = mono_item {
+                is_offload_kernel(tcx.codegen_fn_attrs(instance.def_id()))
+            } else {
+                false
+            }
+        };
+
         // The symbols created in this loop are sorted below it
         #[allow(rustc::potential_query_instability)]
         for (mono_item, data) in cgus.iter().flat_map(|cgu| cgu.items().iter()) {
@@ -302,7 +365,9 @@ fn exported_generic_symbols_provider_local<'tcx>(
                 continue;
             }
 
-            if !tcx.sess.opts.share_generics() {
+            let item_is_offload = is_offload_instance(mono_item);
+
+            if !item_is_offload && !tcx.sess.opts.share_generics() {
                 if tcx.codegen_fn_attrs(mono_item.def_id()).inline
                     == rustc_hir::attrs::InlineAttr::Never
                 {
@@ -319,15 +384,22 @@ fn exported_generic_symbols_provider_local<'tcx>(
                 MonoItem::Fn(Instance { def: InstanceKind::Item(def), args }) => {
                     let has_generics = args.non_erasable_generics().next().is_some();
 
-                    let should_export =
-                        has_generics && is_instantiable_downstream(Some(def), &args);
+                    let should_export = if item_is_offload {
+                        has_generics
+                    } else {
+                        has_generics && is_instantiable_downstream(Some(def), &args)
+                    };
 
                     if should_export {
                         let symbol = ExportedSymbol::Generic(def, args);
                         symbols.push((
                             symbol,
                             SymbolExportInfo {
-                                level: SymbolExportLevel::Rust,
+                                level: if item_is_offload {
+                                    SymbolExportLevel::C
+                                } else {
+                                    SymbolExportLevel::Rust
+                                },
                                 kind: SymbolExportKind::Text,
                                 used: false,
                                 rustc_std_internal_symbol: false,
