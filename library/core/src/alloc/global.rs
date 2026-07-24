@@ -19,7 +19,6 @@ use crate::{cmp, ptr};
 ///   method such as `dealloc` or by being
 ///   passed to a reallocation method that returns a non-null pointer.
 ///
-///
 /// # Example
 ///
 /// ```standalone_crate
@@ -85,39 +84,83 @@ use crate::{cmp, ptr};
 /// }
 /// ```
 ///
+/// # The `#[global_allocator]` attribute
+///
+/// As the example above demonstrates, the `#[global_allocator]` attribute can be used to register a
+/// concrete `static` of a type that implements this trait to become *the* global allocator
+/// for the current program. That global allocator can be invoked via the functions [`alloc`],
+/// [`alloc_zeroed`], [`dealloc`], [`realloc`]). Note, however, that invoking those functions is
+/// *not* equivalent to directly invoking the underlying methods on the declared global allocator!
+/// Users of the global allocator cannot assume anything about what the allocator does (even if they know which allocator is being used),
+/// and implementors of the allocator cannot assume anything about what the program does (even if they know how the allocator is being used).
+/// Both can only assume the documented requirements for the respective other party of this contract.
+/// This means:
+///
+/// - Allocation functions may non-deterministically entirely skip the underlying allocator, e.g. if the
+///   compiler can show that this allocation can be replaced by a stack variable. The compiler may
+///   also merge multiple allocation operations into one, as long as it can also adjust all
+///   corresponding deallocation operations accordingly.
+/// - An allocation created by invoking [`alloc`], [`alloc_zeroed`], or [`realloc`] has exactly the
+///   size and minimum alignment defined by `layout`, even if the underlying allocator makes
+///   stronger promises.
+/// - An allocation created by invoking [`alloc`], [`alloc_zeroed`], or [`realloc`] can only be
+///   freed by invoking [`dealloc`] or [`realloc`]. In particular, passing a pointer to such an
+///   allocation directly to the underlying method on [`GlobalAlloc`] is not permitted. Until one of
+///   those functions is called, it is undefined behavior to access the memory that backs this
+///   allocation with any pointer not derived from the return value of this function (e.g., with
+///   internal pointers the allocator might keep around).
+/// - The pointer passed to [`dealloc`] or [`realloc`] must have been obtained by invoking [`alloc`],
+///   [`alloc_zeroed`], or [`realloc`]. In particular, passing a pointer returned by the underlying
+///   methods on [`GlobalAlloc`] is not permitted.
+/// - [`alloc`] de-initializes the contents of the allocation before handing it to the user. So even
+///   if you control the underlying allocator and know that it explicitly initialized this memory,
+///   you cannot rely on it being initialized. For a [`realloc`] that grows an allocation, this
+///   applies to the newly allocated part.
+/// - [`dealloc`] de-initializes the contents of the allocation before handing it to the allocator.
+///   So even if you know that the program previously initialized that memory, the allocator cannot
+///   rely on it being initialized. For a [`realloc`] that shrinks an allocation, this applies to
+///   the part being removed.
+///
+/// [`alloc`]: ../../std/alloc/fn.alloc.html
+/// [`alloc_zeroed`]: ../../std/alloc/fn.alloc_zeroed.html
+/// [`dealloc`]: ../../std/alloc/fn.dealloc.html
+/// [`realloc`]: ../../std/alloc/fn.realloc.html
+///
+/// The first point means that you cannot rely on global allocations actually happening, even if
+/// there are explicit global allocations in the source. The optimizer may detect unused global
+/// allocations that it can either eliminate entirely or move to the stack and thus never invoke the
+/// global allocator. The optimizer may further assume that allocation is infallible, so code that
+/// used to fail due to allocator failures may now suddenly work because the optimizer worked around
+/// the need for an allocation. More concretely, the following code example is unsound, irrespective
+/// of whether your custom allocator allows counting how many allocations have happened.
+///
+/// ```rust,ignore (unsound and has placeholders)
+/// drop(Box::new(42));
+/// let number_of_heap_allocs = /* call private allocator API */;
+/// unsafe { std::hint::assert_unchecked(number_of_heap_allocs > 0); }
+/// ```
+///
+/// Note that the optimizations mentioned above are not the only
+/// optimization that can be applied. You may generally not rely on global allocations
+/// happening if they can be removed without changing program behavior.
+/// Whether allocations happen or not is not part of the program behavior, even if it
+/// could be detected via an allocator that tracks allocations by printing or otherwise
+/// having side effects.
+///
 /// # Safety
 ///
 /// The `GlobalAlloc` trait is an `unsafe` trait for a number of reasons, and
 /// implementors must ensure that they adhere to these contracts:
 ///
+/// * It is undefined behavior for the allocator to read, write, or deallocate any memory that
+///   is *currently allocated*. This memory is owned by the user, the allocator must not touch it.
+///
 /// * It's undefined behavior if global allocators unwind. This restriction may
 ///   be lifted in the future, but currently a panic from any of these
 ///   functions may lead to memory unsafety.
 ///
-/// * `Layout` queries and calculations in general must be correct. Callers of
-///   this trait are allowed to rely on the contracts defined on each method,
-///   and implementors must ensure such contracts remain true.
-///
-/// * You must not rely on allocations actually happening, even if there are explicit
-///   heap allocations in the source. The optimizer may detect unused allocations that it can either
-///   eliminate entirely or move to the stack and thus never invoke the allocator. The
-///   optimizer may further assume that allocation is infallible, so code that used to fail due
-///   to allocator failures may now suddenly work because the optimizer worked around the
-///   need for an allocation. More concretely, the following code example is unsound, irrespective
-///   of whether your custom allocator allows counting how many allocations have happened.
-///
-///   ```rust,ignore (unsound and has placeholders)
-///   drop(Box::new(42));
-///   let number_of_heap_allocs = /* call private allocator API */;
-///   unsafe { std::hint::assert_unchecked(number_of_heap_allocs > 0); }
-///   ```
-///
-///   Note that the optimizations mentioned above are not the only
-///   optimization that can be applied. You may generally not rely on heap allocations
-///   happening if they can be removed without changing program behavior.
-///   Whether allocations happen or not is not part of the program behavior, even if it
-///   could be detected via an allocator that tracks allocations by printing or otherwise
-///   having side effects.
+/// * Callers of this trait are allowed to rely on the contracts defined on each method, and
+///   implementors must ensure such contracts remain true.
 ///
 /// # Re-entrance
 ///
@@ -133,7 +176,7 @@ use crate::{cmp, ptr};
 ///  - [`std::thread_local`],
 ///  - [`std::thread::current`],
 ///  - [`std::thread::park`] and [`std::thread::Thread`]'s [`unpark`] method and
-/// [`Clone`] implementation.
+///    [`Clone`] implementation.
 ///
 /// [`std`]: ../../std/index.html
 /// [`std::sync::Mutex`]: ../../std/sync/struct.Mutex.html
@@ -174,7 +217,7 @@ pub unsafe trait GlobalAlloc {
     ///
     /// Clients wishing to abort computation in response to an
     /// allocation error are encouraged to call the [`handle_alloc_error`] function,
-    /// rather than directly invoking `panic!` or similar.
+    /// rather than directly invoking `panic!` or similar (but note that both may unwind).
     ///
     /// [`handle_alloc_error`]: ../../alloc/alloc/fn.handle_alloc_error.html
     #[stable(feature = "global_alloc", since = "1.28.0")]
