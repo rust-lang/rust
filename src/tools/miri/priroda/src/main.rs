@@ -644,6 +644,34 @@ impl<'tcx> PrirodaContext<'tcx> {
                 }
             }
 
+            ty::Array(_, _) | ty::Slice(_) => {
+                // `project_array_fields` uses the dynamic length for slices. That
+                // avoids the classic mistake of treating slice layout as a fixed
+                // zero-length array.
+                let mut iter = match self.ecx.project_array_fields(&op).discard_err() {
+                    Some(iter) => iter,
+                    // FIXME: when slice metadata is invalid, show that as a slice
+                    // length problem instead of silently falling back to raw bytes.
+                    None => return self.render_op(op),
+                };
+
+                let mut fields = Vec::new();
+                // FIXME: add an output budget/truncation policy before rendering
+                // very large arrays or slices in full.
+                loop {
+                    match iter.next(&self.ecx).discard_err() {
+                        Some(Some((_idx, field_op))) =>
+                            fields.push(self.render_source_shaped_op_inner(field_op, depth + 1)),
+                        Some(None) => break,
+                        // FIXME: keep already-rendered elements and mark the
+                        // failed index once partial render errors are supported.
+                        None => return self.render_op(op),
+                    }
+                }
+
+                format!("[{}]", fields.join(", "))
+            }
+
             // FIXME: consider source-shaped special cases for strings, closures,
             // generators/coroutines, trait objects, and SIMD/vector-like types.
             // Until then these stay on the raw renderer path.

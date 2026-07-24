@@ -12,8 +12,8 @@ Name: tuple_zero, Id: _7, Ty: (), Value: ()
 Name: tuple_one, Id: _8, Ty: (u8,), Value: ([08],)
 Name: tuple_many, Id: _9, Ty: (u8, u16), Value: ([09], [0a 0b])
 Name: array_zero, Id: _10, Ty: [u8; 0], Value: []
-Name: array_one, Id: _11, Ty: [u8; 1], Value: [0c]
-Name: array_many, Id: _12, Ty: [u8; 3], Value: [0d 0e 0f]
+Name: array_one, Id: _11, Ty: [u8; 1], Value: [[0c]]
+Name: array_many, Id: _12, Ty: [u8; 3], Value: [[0d], [0e], [0f]]
 Name: variant_unit, Id: _13, Ty: Variants, Value: Variants::Unit
 Name: variant_tuple, Id: _14, Ty: Variants, Value: Variants::Tuple([10], [11 12])
 Name: variant_single_tuple, Id: _15, Ty: Variants, Value: Variants::SingleTuple([13])
@@ -51,8 +51,8 @@ Name: <none>, Id: _39, Ty: u8, Value: <dead>
 (priroda) Id: _8, Ty: (u8,), Value: ([08],)
 (priroda) Id: _9, Ty: (u8, u16), Value: ([09], [0a 0b])
 (priroda) Id: _10, Ty: [u8; 0], Value: []
-(priroda) Id: _11, Ty: [u8; 1], Value: [0c]
-(priroda) Id: _12, Ty: [u8; 3], Value: [0d 0e 0f]
+(priroda) Id: _11, Ty: [u8; 1], Value: [[0c]]
+(priroda) Id: _12, Ty: [u8; 3], Value: [[0d], [0e], [0f]]
 (priroda) Id: _13, Ty: Variants, Value: Variants::Unit
 (priroda) Id: _14, Ty: Variants, Value: Variants::Tuple([10], [11 12])
 (priroda) Id: _15, Ty: Variants, Value: Variants::SingleTuple([13])

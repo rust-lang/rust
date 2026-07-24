@@ -11,15 +11,15 @@ Name: <none>, Id: _3, Ty: &[u8], Value: <dead>
 (priroda) Hit breakpoint
 {MANIFEST_DIR}/tests/ui/locals_source_slices.rs:8
 (priroda) Name: <none>, Id: _0, Ty: (), Value: <uninit>
-Name: slice, Id: _1, Ty: [u8], Value: [1a]
+Name: slice, Id: _1, Ty: [u8], Value: [[1a]]
 Name: <none>, Id: _2, Ty: &[u8], Value: <dead>
 Name: <none>, Id: _3, Ty: &[u8], Value: <dead>
-(priroda) Id: _1, Ty: [u8], Value: [1a]
+(priroda) Id: _1, Ty: [u8], Value: [[1a]]
 (priroda) Hit breakpoint
 {MANIFEST_DIR}/tests/ui/locals_source_slices.rs:12
 (priroda) Name: <none>, Id: _0, Ty: (), Value: <uninit>
-Name: slice, Id: _1, Ty: [u8], Value: [1b 1c]
+Name: slice, Id: _1, Ty: [u8], Value: [[1b], [1c]]
 Name: <none>, Id: _2, Ty: &[u8], Value: <dead>
 Name: <none>, Id: _3, Ty: &[u8], Value: <dead>
-(priroda) Id: _1, Ty: [u8], Value: [1b 1c]
+(priroda) Id: _1, Ty: [u8], Value: [[1b], [1c]]
 (priroda) quitting

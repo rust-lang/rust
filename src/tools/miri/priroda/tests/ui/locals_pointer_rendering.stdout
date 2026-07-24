@@ -2,13 +2,13 @@
 (priroda) Hit breakpoint
 {MANIFEST_DIR}/tests/ui/locals_pointer_rendering.rs:59
 (priroda) Name: <none>, Id: _0, Ty: (), Value: <uninit>
-Name: target, Id: _1, Ty: [u8; 2], Value: [0a 14]
+Name: target, Id: _1, Ty: [u8; 2], Value: [[0a], [14]]
 Name: pointer_at_offset0, Id: _2, Ty: PointerAtOffset0<'_>, Value: PointerAtOffset0 { ptr: [{ALLOC_PTR}] }
 Name: <none>, Id: _3, Ty: &u8, Value: <dead>
 Name: <none>, Id: _4, Ty: &u8, Value: <dead>
 Name: <none>, Id: _5, Ty: usize, Value: <dead>
 Name: <none>, Id: _6, Ty: bool, Value: true
-Name: pointer_after_bytes, Id: _7, Ty: PointerAfterBytes<'_>, Value: PointerAfterBytes { bytes: [01 02 03], ptr: [{ALLOC_PTR}] }
+Name: pointer_after_bytes, Id: _7, Ty: PointerAfterBytes<'_>, Value: PointerAfterBytes { bytes: [[01], [02], [03]], ptr: [{ALLOC_PTR}] }
 Name: <none>, Id: _8, Ty: [u8; 3], Value: <dead>
 Name: <none>, Id: _9, Ty: &u8, Value: <dead>
 Name: <none>, Id: _10, Ty: &u8, Value: <dead>
@@ -32,7 +32,7 @@ Name: <none>, Id: _27, Ty: &u8, Value: <dead>
 Name: <none>, Id: _28, Ty: usize, Value: <dead>
 Name: <none>, Id: _29, Ty: bool, Value: true
 Name: fixed_addr_ptr, Id: _30, Ty: *const u8, Value: [0x1234[wildcard]]
-Name: short_pointer_bytes, Id: _31, Ty: [u8; 1], Value: [34]
+Name: short_pointer_bytes, Id: _31, Ty: [u8; 1], Value: [[34]]
 Name: bytes, Id: _32, Ty: std::mem::MaybeUninit<[u8; 1]>, Value: <dead>
 Name: <none>, Id: _33, Ty: (), Value: <dead>
 Name: <none>, Id: _34, Ty: *const u8, Value: <dead>
