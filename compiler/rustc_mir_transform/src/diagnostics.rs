@@ -391,3 +391,14 @@ pub(crate) struct ForceInlineJustification {
     pub sym: Symbol,
     pub callee: String,
 }
+
+#[derive(Diagnostic)]
+#[diag("field `{$name}` cannot be mutated outside `{$restriction_path}`")]
+pub(crate) struct MutOfRestrictedField {
+    #[primary_span]
+    pub mut_span: Span,
+    #[label("field restricted here")]
+    pub restriction_span: Span,
+    pub name: Symbol,
+    pub restriction_path: String,
+}
