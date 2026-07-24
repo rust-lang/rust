@@ -184,6 +184,15 @@ pub enum SelectionCandidate<'tcx> {
     TryAsDynCandidate,
 }
 
+impl SelectionCandidate<'_> {
+    pub fn is_impl_candidate(&self) -> bool {
+        matches!(
+            self,
+            SelectionCandidate::AutoImplCandidate | SelectionCandidate::ImplCandidate(..)
+        )
+    }
+}
+
 /// The result of trait evaluation. The order is important
 /// here as the evaluation of a list is the maximum of the
 /// evaluations.

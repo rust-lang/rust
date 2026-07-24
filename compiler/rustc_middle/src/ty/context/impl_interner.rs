@@ -514,6 +514,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.is_default_trait(def_id)
     }
 
+    fn is_implicit_trait(self, def_id: Self::TraitId, including_sized: bool) -> bool {
+        self.is_implicit_trait(def_id, including_sized)
+    }
+
     fn is_sizedness_trait(self, def_id: DefId) -> bool {
         self.is_sizedness_trait(def_id)
     }
