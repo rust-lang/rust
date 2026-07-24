@@ -1676,33 +1676,40 @@ pub fn junction_point(original: &Path, link: &Path) -> io::Result<()> {
         SubstituteNameLength: u16,
         PrintNameOffset: u16,
         PrintNameLength: u16,
-        PathBuffer: [MaybeUninit<u16>; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE as usize],
+        // `MAXIMUM_REPARSE_DATA_BUFFER_SIZE` is a size in bytes, but this is a
+        // buffer of `u16`s, so it holds half as many elements.
+        PathBuffer: [MaybeUninit<u16>; c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE as usize / 2],
     }
-    let data_len = 12 + (abs_path.len() * 2);
-    if data_len > u16::MAX as usize {
-        return Err(io::const_error!(io::ErrorKind::InvalidInput, "`original` path is too long"));
-    }
-    let data_len = data_len as u16;
     let mut header = MountPointBuffer {
         ReparseTag: c::IO_REPARSE_TAG_MOUNT_POINT,
-        ReparseDataLength: data_len,
+        ReparseDataLength: 0, // filled in below
         Reserved: 0,
         SubstituteNameOffset: 0,
         SubstituteNameLength: (abs_path.len() * 2) as u16,
-        PrintNameOffset: ((abs_path.len() + 1) * 2) as u16,
+        PrintNameOffset: (abs_path.len() * 2) as u16,
         PrintNameLength: 0,
-        PathBuffer: [MaybeUninit::uninit(); c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE as usize],
+        PathBuffer: [MaybeUninit::uninit(); c::MAXIMUM_REPARSE_DATA_BUFFER_SIZE as usize / 2],
     };
+    // The substitute name has an explicit length, so it needs no null
+    // terminator. Bounds-check and copy in a single step so an over-long path
+    // fails cleanly instead of overflowing the buffer.
+    let Some(ptr) = header.PathBuffer.get_mut(..abs_path.len()) else {
+        return Err(io::const_error!(io::ErrorKind::InvalidInput, "`original` path is too long"));
+    };
+    ptr.write_copy_of_slice(&abs_path);
+    // Total size of the structure: the fixed header fields followed by the path.
+    let total_len = offset_of!(MountPointBuffer, PathBuffer) + abs_path.len() * 2;
+    // `ReparseDataLength` counts only the bytes after the 8-byte common header
+    // (`ReparseTag`, `ReparseDataLength`, `Reserved`).
+    header.ReparseDataLength =
+        (total_len - offset_of!(MountPointBuffer, SubstituteNameOffset)) as u16;
     unsafe {
-        let ptr = header.PathBuffer.as_mut_ptr();
-        ptr.copy_from(abs_path.as_ptr().cast_uninit(), abs_path.len());
-
         let mut ret = 0;
         cvt(c::DeviceIoControl(
             d.as_raw_handle(),
             c::FSCTL_SET_REPARSE_POINT,
             (&raw const header).cast::<c_void>(),
-            data_len as u32 + 8,
+            total_len as u32,
             ptr::null_mut(),
             0,
             &mut ret,
