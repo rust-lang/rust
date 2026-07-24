@@ -16,4 +16,4 @@ determined to be null or not. See [`is_null`] for more information.
 # Null-unchecked version
 
 If you are sure the pointer can never be null, you can use `as_ref_unchecked` which returns
-`&mut T` instead of `Option<&mut T>`.
+`&T` instead of `Option<&T>`.
