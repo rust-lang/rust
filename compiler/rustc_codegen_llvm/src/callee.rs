@@ -32,7 +32,9 @@ pub(crate) fn get_fn<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, instance: Instance<'t
 
     let fn_abi = cx.fn_abi_of_instance(instance, ty::List::empty());
 
-    let llfn = if let Some(llfn) = cx.get_declared_value(sym) {
+    let llfn = if let Some(llfn) = cx.get_declared_value(sym)
+        && (!cx.tcx.is_codegened_item(instance.def_id()) || !instance.def_id().is_local())
+    {
         llfn
     } else {
         let instance_def_id = instance.def_id();
