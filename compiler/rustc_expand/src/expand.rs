@@ -2272,7 +2272,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                     );
                 }
                 AttrKind::Normal(_) => {}
-                AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace) => {}
+                AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace(_)) => {}
                 AttrKind::DocComment(..) => unreachable!(), // handled above
             }
         }
