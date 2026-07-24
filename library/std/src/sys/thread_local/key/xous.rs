@@ -70,14 +70,14 @@ unsafe extern "Rust" {
 
 #[inline]
 fn tls_ptr_addr() -> *mut *mut u8 {
-    let mut tp: usize;
+    let tp: *mut *mut u8;
     unsafe {
         asm!(
             "mv {}, tp",
             out(reg) tp,
         );
     }
-    core::ptr::with_exposed_provenance_mut::<*mut u8>(tp)
+    tp
 }
 
 /// Creates an area of memory that's unique per thread. This area will
@@ -97,7 +97,7 @@ fn tls_table() -> &'static mut [*mut u8] {
 fn tls_table_slow() -> &'static mut [*mut u8] {
     // If the TP register is `0`, then this thread hasn't initialized
     // its TLS yet. Allocate a new page to store this memory.
-    let tp = unsafe {
+    let tp: &mut [*mut u8] = unsafe {
         map_memory(
             None,
             None,
@@ -108,14 +108,14 @@ fn tls_table_slow() -> &'static mut [*mut u8] {
     };
 
     for val in tp.iter() {
-        assert!(*val as usize == 0);
+        assert!((*val).is_null());
     }
 
     unsafe {
         // Set the thread's `$tp` register
         asm!(
             "mv tp, {}",
-            in(reg) tp.as_mut_ptr() as usize,
+            in(reg) tp.as_mut_ptr(),
         );
     }
     tp
