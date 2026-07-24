@@ -27,20 +27,26 @@ error: tuple constructor with invalid base path
 LL |     accepts_point::<{ UnresolvedIdent(N, N) }>();
    |                       ^^^^^^^^^^^^^^^^^^^^^
 
-error: complex const arguments must be placed inside of a `const` block
+error: function items cannot be used as const args
+  --> $DIR/tuple_ctor_erroneous.rs:34:23
+   |
+LL |     accepts_point::<{ non_ctor(N, N) }>();
+   |                       ^^^^^^^^
+
+error: tuple constructor with invalid base path
   --> $DIR/tuple_ctor_erroneous.rs:34:23
    |
 LL |     accepts_point::<{ non_ctor(N, N) }>();
    |                       ^^^^^^^^^^^^^^
 
 error: tuple constructor with invalid base path
-  --> $DIR/tuple_ctor_erroneous.rs:37:23
+  --> $DIR/tuple_ctor_erroneous.rs:38:23
    |
 LL |     accepts_point::<{ CONST_ITEM(N, N) }>();
    |                       ^^^^^^^^^^^^^^^^
 
 error: the constant `Point` is not of type `Point`
-  --> $DIR/tuple_ctor_erroneous.rs:40:23
+  --> $DIR/tuple_ctor_erroneous.rs:41:23
    |
 LL |     accepts_point::<{ Point }>();
    |                       ^^^^^ expected `Point`, found struct constructor
@@ -52,7 +58,7 @@ LL | fn accepts_point<const P: Point>() {}
    |                  ^^^^^^^^^^^^^^ required by this const generic parameter in `accepts_point`
 
 error: the constant `MyEnum::<u32>::Variant` is not of type `MyEnum<u32>`
-  --> $DIR/tuple_ctor_erroneous.rs:43:22
+  --> $DIR/tuple_ctor_erroneous.rs:44:22
    |
 LL |     accepts_enum::<{ MyEnum::Variant::<u32> }>();
    |                      ^^^^^^^^^^^^^^^^^^^^^^ expected `MyEnum<u32>`, found enum constructor
@@ -63,6 +69,6 @@ note: required by a const generic parameter in `accepts_enum`
 LL | fn accepts_enum<const E: MyEnum<u32>>() {}
    |                 ^^^^^^^^^^^^^^^^^^^^ required by this const generic parameter in `accepts_enum`
 
-error: aborting due to 8 previous errors
+error: aborting due to 9 previous errors
 
 For more information about this error, try `rustc --explain E0425`.

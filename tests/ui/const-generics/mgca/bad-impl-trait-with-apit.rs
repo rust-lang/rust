@@ -6,7 +6,7 @@
 trait Trait {}
 
 impl<'t> Trait for [(); N] {}
-//~^ ERROR the placeholder `_` is not allowed within types on item signatures for implementations
+//~^ ERROR function items cannot be used as const args
 
 fn N(arg: impl Trait) {}
 

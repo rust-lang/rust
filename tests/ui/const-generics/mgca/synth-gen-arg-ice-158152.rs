@@ -4,7 +4,7 @@ trait A<T> {}
 trait Trait<const N: usize> {}
 
 impl A<[usize; fn_item]> for () {}
-//~^ ERROR: the placeholder `_` is not allowed within types on item signatures for implementations
+//~^ ERROR function items cannot be used as const args
 
 fn fn_item(_: impl Trait<usize>) {}
 //~^ ERROR: type provided when a constant was expected
