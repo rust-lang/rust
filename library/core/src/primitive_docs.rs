@@ -1841,9 +1841,19 @@ mod prim_ref {}
 ///   call will be valid ABI-wise. The callee receives the result of transmuting the function pointer
 ///   from `fn()` to `fn(i32)`; that transmutation is itself a well-defined operation, it's just
 ///   almost certainly UB to later call that function pointer.)
-/// - Any two types with size 0 and alignment 1 are ABI-compatible.
-/// - A `repr(transparent)` type `T` is ABI-compatible with its unique non-trivial field, i.e., the
-///   unique field that doesn't have size 0 and alignment 1 (if there is such a field).
+/// - Any two types fulfilling all the following conditions are ABI-compatible;
+///   such types are said to have "trivial ABI":
+///   - It has size 0.
+///   - It has alignment 1.
+///   - One of the following apply:
+///     - It is a `repr(Rust)` (implicitly or explicitly, possibly with additional modifiers such as `packed`) `struct`, `enum`, `union` (regardless of its fields).
+///     - It is a [tuple][prim_tuple] (regardless of its fields, and including [`()`][prim_unit]).
+///     - It is a `repr(transparent)` `struct`, `enum`, or `union`, and all fields have trivial ABI.
+///     - It is an array, and its element type has trivial ABI. (This requirement applies even to arrays of length 0.)
+///     - It is [the never type `!`][prim_never].
+///     - It is a function item type or closure type.
+/// - A `repr(transparent)` type is ABI-compatible with its unique field that does not have trivial ABI
+///   (as defined above), if such a field exists. (Note that if no such field exists, then the `repr(transparent)` type itself has trivial ABI, so the case above applies.)
 /// - `i32` is ABI-compatible with `NonZero<i32>`, and similar for all other integer types.
 /// - If `T` is guaranteed to be subject to the [null pointer
 ///   optimization](option/index.html#representation), and `E` is an enum satisfying the following
