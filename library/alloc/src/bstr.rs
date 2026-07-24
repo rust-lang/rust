@@ -19,7 +19,7 @@ use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
 #[cfg(not(no_rc))]
 use crate::rc::Rc;
-use crate::string::String;
+use crate::string::{FromUtf8Error, String};
 #[cfg(all(not(no_rc), not(no_sync), target_has_atomic = "ptr"))]
 use crate::sync::Arc;
 use crate::vec::Vec;
@@ -60,6 +60,19 @@ impl ByteString {
     #[inline]
     pub(crate) fn as_mut_bytestr(&mut self) -> &mut ByteStr {
         ByteStr::from_bytes_mut(&mut self.0)
+    }
+    /// Try to get a `String` representation of the `&ByteString`, if it is
+    /// valid UTF-8.
+    ///
+    /// This method is named `to_string()` because we want `ByteString` to
+    /// implement `Display`, but the `ToString` trait has a blanket
+    /// implementation for types that implement `Display`, and the trait version
+    /// will use the Unicode replacement character rather than returning a
+    /// `Result` and allowing for the possibility of the content not being UTF-8.
+    #[unstable(feature = "bstr", issue = "134915")]
+    #[rustc_allow_incoherent_impl]
+    pub fn to_string(&self) -> Result<String, FromUtf8Error> {
+        String::from_utf8(self.0.clone())
     }
 }
 
@@ -674,5 +687,21 @@ impl<'a> TryFrom<&'a ByteStr> for String {
     #[inline]
     fn try_from(s: &'a ByteStr) -> Result<Self, Self::Error> {
         Ok(core::str::from_utf8(&s.0)?.into())
+    }
+}
+
+impl ByteStr {
+    /// Try to get a `String` representation of the `&ByteStr`, if it is valid
+    /// UTF-8.
+    ///
+    /// This method is named `to_string()` because we want `ByteStr` to
+    /// implement `Display`, but the `ToString` trait has a blanket
+    /// implementation for types that implement `Display`, and the trait version
+    /// will use the Unicode replacement character rather than returning a
+    /// `Result` and allowing for the possibility of the content not being UTF-8.
+    #[unstable(feature = "bstr", issue = "134915")]
+    #[rustc_allow_incoherent_impl]
+    pub fn to_string(&self) -> Result<String, FromUtf8Error> {
+        String::from_utf8(self.0.to_vec())
     }
 }
