@@ -175,14 +175,28 @@ def register_providers_compatibility():
     register(
         StdSliceSyntheticProvider,
         StdStrSummaryProvider,
-        r"^&(mut )?str$",
+        r"^((&(mut )?)|(\*(const|mut) ))str$",
+    )
+
+    # Box<str> GNU
+    register(
+        StdSliceSyntheticProvider,
+        StdStrSummaryProvider,
+        r"^(alloc::([a-z_]+::)+)Box<str,.*>$",
     )
 
     # str MSVC
     register(
         MSVCStrSyntheticProvider,
         StdStrSummaryProvider,
-        r"^ref(_mut)?\$<str\$>$",
+        r"^((ref(_mut)?)|(ptr_(const|mut)))\$<str\$>$",
+    )
+
+    # Box<str> MSVC
+    register(
+        MSVCStrSyntheticProvider,
+        StdStrSummaryProvider,
+        r"^(alloc::([a-z_]+::)+)Box<str\$,.*>$",
     )
 
     # slice GNU
