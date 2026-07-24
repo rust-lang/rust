@@ -263,6 +263,7 @@ impl<T> PoisonError<T> {
     /// or [`RwLock::read`](crate::sync::RwLock::read).
     ///
     /// This method may panic if std was built with `panic="abort"`.
+    #[doc(auto_cfg = false)]
     #[cfg(panic = "unwind")]
     #[stable(feature = "sync_poison", since = "1.2.0")]
     pub fn new(data: T) -> PoisonError<T> {
@@ -275,6 +276,7 @@ impl<T> PoisonError<T> {
     /// or [`RwLock::read`](crate::sync::RwLock::read).
     ///
     /// This method may panic if std was built with `panic="abort"`.
+    #[doc(auto_cfg = false)]
     #[cfg(not(panic = "unwind"))]
     #[stable(feature = "sync_poison", since = "1.2.0")]
     #[track_caller]
