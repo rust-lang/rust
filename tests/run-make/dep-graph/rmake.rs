@@ -15,4 +15,14 @@ fn main() {
 
     assert!(path("dep-graph.txt").is_file());
     assert!(path("dep-graph.dot").is_file());
+
+    rustc()
+        .input("foo.rs")
+        .incremental(path("incr-fail"))
+        .arg("-Zquery-dep-graph")
+        .arg("-Zdump-dep-graph")
+        .env("RUST_DEP_GRAPH", path("does-not-exist/dep-graph"))
+        .run_fail()
+        .assert_stderr_contains("failed to write dependency graph")
+        .assert_not_ice();
 }

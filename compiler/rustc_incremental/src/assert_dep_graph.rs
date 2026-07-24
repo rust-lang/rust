@@ -35,7 +35,8 @@
 
 use std::env;
 use std::fs::{self, File};
-use std::io::Write;
+use std::io::{self, Write};
+use std::path::PathBuf;
 
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_data_structures::graph::linked_graph::{Direction, INCOMING, NodeIndex, OUTGOING};
@@ -63,7 +64,13 @@ pub(crate) fn assert_dep_graph(tcx: TyCtxt<'_>) {
 
         if tcx.sess.opts.unstable_opts.dump_dep_graph {
             if let Some(graph) = &retained_dep_graph {
-                dump_graph(graph);
+                if let Err((path, err)) = dump_graph(graph) {
+                    tcx.dcx().emit_fatal(diagnostics::WriteNew {
+                        name: "dependency graph",
+                        path,
+                        err,
+                    });
+                }
             }
         }
 
@@ -208,7 +215,7 @@ fn check_paths<'tcx>(
     }
 }
 
-fn dump_graph(graph: &RetainedDepGraph) {
+fn dump_graph(graph: &RetainedDepGraph) -> Result<(), (PathBuf, io::Error)> {
     let path: String = env::var("RUST_DEP_GRAPH").unwrap_or_else(|_| "dep_graph".to_string());
 
     let nodes = match env::var("RUST_DEP_GRAPH_FILTER") {
@@ -226,20 +233,23 @@ fn dump_graph(graph: &RetainedDepGraph) {
 
     {
         // dump a .txt file with just the edges:
-        let txt_path = format!("{path}.txt");
-        let mut file = File::create_buffered(&txt_path).unwrap();
+        let txt_path = PathBuf::from(format!("{path}.txt"));
+        let mut file = File::create_buffered(&txt_path).map_err(|err| (txt_path.clone(), err))?;
         for (source, target) in &edges {
-            write!(file, "{source:?} -> {target:?}\n").unwrap();
+            write!(file, "{source:?} -> {target:?}\n").map_err(|err| (txt_path.clone(), err))?;
         }
     }
 
     {
         // dump a .dot file in graphviz format:
-        let dot_path = format!("{path}.dot");
+        let dot_path = PathBuf::from(format!("{path}.dot"));
         let mut v = Vec::new();
-        dot::render(&GraphvizDepGraph(nodes, edges), &mut v).unwrap();
-        fs::write(dot_path, v).unwrap();
+        dot::render(&GraphvizDepGraph(nodes, edges), &mut v)
+            .expect("writing the dependency graph to a byte buffer cannot fail");
+        fs::write(&dot_path, v).map_err(|err| (dot_path, err))?;
     }
+
+    Ok(())
 }
 
 #[allow(missing_docs)]
