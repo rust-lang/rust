@@ -2769,7 +2769,8 @@ pub fn remove_file<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// directory, etc.
 ///
 /// This function will traverse symbolic links to query information about the
-/// destination file.
+/// destination file. To query metadata about the path itself without following
+/// symbolic links, use [`symlink_metadata`].
 ///
 /// # Platform-specific behavior
 ///
@@ -2786,6 +2787,7 @@ pub fn remove_file<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///
 /// * The user lacks permissions to perform `metadata` call on `path`.
 /// * `path` does not exist.
+/// * `path` is a symbolic link, but the destination file cannot be resolved.
 ///
 /// # Examples
 ///
@@ -2805,6 +2807,11 @@ pub fn metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
 }
 
 /// Queries the metadata about a file without following symlinks.
+///
+/// This function will return the [`Metadata`] of the exact path without
+/// traversing symbolic links to a resolved destination file. Using this function
+/// on a path that is a file or directory (not a symbolic link) will behave the
+/// same as [`metadata`].
 ///
 /// # Platform-specific behavior
 ///
