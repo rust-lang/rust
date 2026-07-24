@@ -182,6 +182,7 @@ fn configure_and_expand(
                 sess.host_filesearch().search_paths(PathKind::Native).map(|p| p.dir.clone()),
             );
             for path in env::split_paths(&old_path) {
+                let path: Arc<Path> = path.into();
                 if !new_path.contains(&path) {
                     new_path.push(path);
                 }
@@ -190,7 +191,10 @@ fn configure_and_expand(
                 env::set_var(
                     "PATH",
                     env::join_paths(
-                        new_path.iter().filter(|p| env::join_paths(iter::once(p)).is_ok()),
+                        new_path
+                            .iter()
+                            .map(|p| p.to_path_buf())
+                            .filter(|p| env::join_paths(iter::once(p)).is_ok()),
                     )
                     .unwrap(),
                 );

@@ -6,17 +6,46 @@ use std::{env, fs};
 use rustc_fs_util::try_canonicalize;
 use rustc_target::spec::Target;
 
-use crate::search_paths::{PathKind, SearchPath};
+use crate::search_paths::{PathKind, SearchFileData, SearchPath};
 
 #[derive(Clone)]
 pub struct FileSearch {
-    cli_search_paths: Vec<SearchPath>,
+    pub cli_search_paths: Vec<SearchPath>,
+    all_files: Vec<SearchFileData>,
     tlib_path: SearchPath,
 }
 
 impl FileSearch {
     pub fn cli_search_paths<'b>(&'b self, kind: PathKind) -> impl Iterator<Item = &'b SearchPath> {
         self.cli_search_paths.iter().filter(move |sp| sp.kind.matches(kind))
+    }
+
+    pub fn search_paths2<'b>(
+        &'b self,
+        prefix: &'b str,
+        suffix: &'b str,
+        kind: PathKind,
+    ) -> Box<dyn Iterator<Item = (String, &'b SearchFileData)> + 'b> {
+        let start = self.all_files.partition_point(|v| *v.file_name_str < *prefix);
+        if start == self.all_files.len() {
+            return Box::new(std::iter::empty());
+        }
+        let end = self.all_files[start..].partition_point(|v| v.file_name_str.starts_with(prefix));
+        let prefixed_items = &self.all_files[start..][..end];
+
+        Box::new(prefixed_items.into_iter().filter_map(move |v| {
+            if !v.kind.matches(kind) {
+                return None;
+            }
+            v.file_name_str.ends_with(suffix).then(|| {
+                (
+                    String::from(
+                        &v.file_name_str[prefix.len()..v.file_name_str.len() - suffix.len()],
+                    ),
+                    v,
+                )
+            })
+        }))
     }
 
     pub fn search_paths<'b>(&'b self, kind: PathKind) -> impl Iterator<Item = &'b SearchPath> {
@@ -27,8 +56,21 @@ impl FileSearch {
     }
 
     pub fn new(cli_search_paths: &[SearchPath], tlib_path: &SearchPath, target: &Target) -> Self {
+        let mut all_files = vec![];
+        for path in cli_search_paths.iter().chain([tlib_path]) {
+            for file in path.files.0.iter() {
+                all_files.push(SearchFileData {
+                    dir: path.dir.clone(),
+                    file_name_str: file.file_name_str.clone(),
+                    kind: path.kind,
+                });
+            }
+        }
+        all_files.sort_unstable_by(|lhs, rhs| lhs.file_name_str.cmp(&rhs.file_name_str));
+
         let this = FileSearch {
             cli_search_paths: cli_search_paths.to_owned(),
+            all_files,
             tlib_path: tlib_path.clone(),
         };
         this.refine(&["lib", &target.staticlib_prefix, &target.dll_prefix])

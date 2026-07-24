@@ -10,40 +10,22 @@ use crate::filesearch::make_target_lib_path;
 #[derive(Clone, Debug)]
 pub struct SearchPath {
     pub kind: PathKind,
-    pub dir: PathBuf,
+    pub dir: Arc<Path>,
     pub files: FilesIndex,
+}
+
+#[derive(Clone, Debug)]
+pub struct SearchFileData {
+    pub dir: Arc<Path>,
+    pub file_name_str: Arc<str>,
+    pub kind: PathKind,
 }
 
 /// [FilesIndex] contains paths that can be efficiently looked up with (prefix, suffix) pairs.
 #[derive(Clone, Debug)]
-pub struct FilesIndex(Vec<SearchPathFile>);
+pub struct FilesIndex(pub Vec<SearchPathFile>);
 
 impl FilesIndex {
-    /// Look up [SearchPathFile] by (prefix, suffix) pair.
-    pub fn query<'s>(
-        &'s self,
-        prefix: &str,
-        suffix: &str,
-    ) -> Option<impl Iterator<Item = (String, &'s SearchPathFile)>> {
-        let start = self.0.partition_point(|v| *v.file_name_str < *prefix);
-        if start == self.0.len() {
-            return None;
-        }
-        let end = self.0[start..].partition_point(|v| v.file_name_str.starts_with(prefix));
-        let prefixed_items = &self.0[start..][..end];
-
-        let ret = prefixed_items.into_iter().filter_map(move |v| {
-            v.file_name_str.ends_with(suffix).then(|| {
-                (
-                    String::from(
-                        &v.file_name_str[prefix.len()..v.file_name_str.len() - suffix.len()],
-                    ),
-                    v,
-                )
-            })
-        });
-        Some(ret)
-    }
     pub fn retain(&mut self, prefixes: &[&str]) {
         self.0.retain(|v| prefixes.iter().any(|prefix| v.file_name_str.starts_with(prefix)));
     }
@@ -61,7 +43,7 @@ impl FilesIndex {
 /// UTF-8, and so a non-UTF-8 filename couldn't be one we're looking for.)
 #[derive(Clone, Debug)]
 pub struct SearchPathFile {
-    file_name_str: Arc<str>,
+    pub file_name_str: Arc<str>,
 }
 
 impl SearchPathFile {
@@ -149,6 +131,6 @@ impl SearchPath {
         };
         files.sort_unstable_by(|lhs, rhs| lhs.file_name_str.cmp(&rhs.file_name_str));
         let files = FilesIndex(files);
-        SearchPath { kind, dir, files }
+        SearchPath { kind, dir: dir.into(), files }
     }
 }

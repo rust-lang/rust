@@ -422,60 +422,52 @@ impl<'a> CrateLocator<'a> {
         // given that `extra_filename` comes from the `-C extra-filename`
         // option and thus can be anything, and the incorrect match will be
         // handled safely in `extract_one`.
-        for search_path in self.filesearch.search_paths(self.path_kind) {
-            debug!("searching {}", search_path.dir.display());
-            let spf = &search_path.files;
-
-            let mut should_check_staticlibs = true;
-            for (prefix, suffix, kind) in [
-                (rlib_prefix.as_str(), rlib_suffix, CrateFlavor::Rlib),
-                (rmeta_prefix.as_str(), rmeta_suffix, CrateFlavor::Rmeta),
-                (dylib_prefix, dylib_suffix, CrateFlavor::Dylib),
-                (interface_prefix, interface_suffix, CrateFlavor::SDylib),
-            ] {
-                if prefix == staticlib_prefix && suffix == staticlib_suffix {
-                    should_check_staticlibs = false;
-                }
-                if let Some(matches) = spf.query(prefix, suffix) {
-                    for (hash, spf) in matches {
-                        let spf_path = spf.path(&search_path.dir);
-                        info!("lib candidate: {}", spf_path.display());
-
-                        let (rlibs, rmetas, dylibs, interfaces) =
-                            candidates.entry(hash).or_default();
-                        {
-                            // As a performance optimisation we canonicalize the path and skip
-                            // ones we've already seen. This allows us to ignore crates
-                            // we know are exactual equal to ones we've already found.
-                            // Going to the same crate through different symlinks does not change the result.
-                            let path =
-                                try_canonicalize(&spf_path).unwrap_or_else(|_| spf_path.clone());
-                            if seen_paths.contains(&path) {
-                                continue;
-                            };
-                            seen_paths.insert(path);
-                        }
-                        // Use the original path (potentially with unresolved symlinks),
-                        // filesystem code should not care, but this is nicer for diagnostics.
-                        match kind {
-                            CrateFlavor::Rlib => rlibs.insert(spf_path),
-                            CrateFlavor::Rmeta => rmetas.insert(spf_path),
-                            CrateFlavor::Dylib => dylibs.insert(spf_path),
-                            CrateFlavor::SDylib => interfaces.insert(spf_path),
-                        };
-                    }
-                }
+        let mut should_check_staticlibs = true;
+        for (prefix, suffix, kind) in [
+            (rlib_prefix.as_str(), rlib_suffix, CrateFlavor::Rlib),
+            (rmeta_prefix.as_str(), rmeta_suffix, CrateFlavor::Rmeta),
+            (dylib_prefix, dylib_suffix, CrateFlavor::Dylib),
+            (interface_prefix, interface_suffix, CrateFlavor::SDylib),
+        ] {
+            if prefix == staticlib_prefix && suffix == staticlib_suffix {
+                should_check_staticlibs = false;
             }
-            if let Some(static_matches) = should_check_staticlibs
-                .then(|| spf.query(staticlib_prefix, staticlib_suffix))
-                .flatten()
-            {
-                for (_, spf) in static_matches {
-                    crate_rejections.via_kind.push(CrateMismatch {
-                        path: spf.path(&search_path.dir),
-                        got: "static".to_string(),
-                    });
+
+            for (hash, spf) in self.filesearch.search_paths2(prefix, suffix, self.path_kind) {
+                let spf_path = spf.dir.join(spf.file_name_str.deref());
+                info!("lib candidate: {}", spf_path.display());
+
+                let (rlibs, rmetas, dylibs, interfaces) = candidates.entry(hash).or_default();
+                {
+                    // As a performance optimisation we canonicalize the path and skip
+                    // ones we've already seen. This allows us to ignore crates
+                    // we know are exactual equal to ones we've already found.
+                    // Going to the same crate through different symlinks does not change the result.
+                    let path = try_canonicalize(&spf_path).unwrap_or_else(|_| spf_path.clone());
+                    if seen_paths.contains(&path) {
+                        continue;
+                    };
+                    seen_paths.insert(path);
                 }
+                // Use the original path (potentially with unresolved symlinks),
+                // filesystem code should not care, but this is nicer for diagnostics.
+                match kind {
+                    CrateFlavor::Rlib => rlibs.insert(spf_path),
+                    CrateFlavor::Rmeta => rmetas.insert(spf_path),
+                    CrateFlavor::Dylib => dylibs.insert(spf_path),
+                    CrateFlavor::SDylib => interfaces.insert(spf_path),
+                };
+            }
+        }
+
+        if should_check_staticlibs {
+            for (_, spf) in
+                self.filesearch.search_paths2(staticlib_prefix, staticlib_suffix, self.path_kind)
+            {
+                crate_rejections.via_kind.push(CrateMismatch {
+                    path: spf.dir.join(spf.file_name_str.deref()),
+                    got: "static".to_string(),
+                });
             }
         }
 
