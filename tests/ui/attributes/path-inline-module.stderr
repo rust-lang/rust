@@ -1,0 +1,51 @@
+warning: unused attribute
+  --> $DIR/path-inline-module.rs:5:1
+   |
+LL | #[path = "foo.rs"]
+   | ^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+   = note: `#[path]` is unused on this inline module
+   = note: requested on the command line with `-W unused-attributes`
+
+warning: unused attribute
+  --> $DIR/path-inline-module.rs:9:5
+   |
+LL |     #![path = "foo.rs"]
+   |     ^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+   = note: `#[path]` is unused on this inline module
+
+warning: unused attribute
+  --> $DIR/path-inline-module.rs:59:1
+   |
+LL | #[path = "auxiliary"]
+   | ^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+   = note: `#[path]` is unused on this inline module
+
+warning: unused attribute
+  --> $DIR/path-inline-module.rs:25:5
+   |
+LL |     #[path = "foo.rs"]
+   |     ^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+   = note: `#[path]` is unused on this inline module
+
+warning: unused attribute
+  --> $DIR/path-inline-module.rs:37:5
+   |
+LL |     #[path = "foo.rs"]
+   |     ^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+   = note: `#[path]` is unused on this inline module
+
+warning: unused attribute
+  --> $DIR/path-inline-module.rs:71:9
+   |
+LL |         #[path = "foo.rs"]
+   |         ^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+   = note: `#[path]` is unused on this inline module
+
+warning: 6 warnings emitted
+
