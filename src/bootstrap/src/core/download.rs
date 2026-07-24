@@ -173,6 +173,30 @@ impl Config {
         );
     }
 
+    pub(crate) fn download_std_json_docs(
+        &self,
+        target: TargetSelection,
+        commit: &str,
+    ) -> Option<PathBuf> {
+        if self.dry_run() {
+            return None;
+        }
+
+        self.do_if_verbose(|| println!("using downloaded std json docs from CI (commit {commit})"));
+
+        let version = self.artifact_version_part(commit);
+        download_component(
+            DownloadContext::from(self),
+            &self.out,
+            DownloadSource::CI,
+            format!("rust-docs-json-{version}-{target}.tar.xz"),
+            "rust-docs-json-preview",
+            // When using DownloadSource::CI, the key is assumed to end with -llvm-assertions
+            &format!("{commit}-{}", self.llvm_assertions),
+            "ci-docs-json",
+        )
+    }
+
     fn download_toolchain(
         &self,
         version: &str,
@@ -784,11 +808,11 @@ fn download_component<'a>(
     prefix: &str,
     key: &str,
     destination: &str,
-) {
+) -> Option<PathBuf> {
     let dwn_ctx = dwn_ctx.as_ref();
 
     if dwn_ctx.exec_ctx.dry_run() {
-        return;
+        return None;
     }
 
     let cache_dst =
@@ -833,8 +857,7 @@ fn download_component<'a>(
         let sha256 = dwn_ctx.stage0_metadata.checksums_sha256.get(&url).expect(&error);
         if tarball.exists() {
             if verify(dwn_ctx.exec_ctx, &tarball, sha256) {
-                unpack(dwn_ctx.exec_ctx, &tarball, &bin_root, prefix);
-                return;
+                return Some(unpack(dwn_ctx.exec_ctx, &tarball, &bin_root, prefix));
             } else {
                 dwn_ctx.exec_ctx.do_if_verbose(|| {
                     println!(
@@ -847,8 +870,7 @@ fn download_component<'a>(
         }
         Some(sha256)
     } else if tarball.exists() {
-        unpack(dwn_ctx.exec_ctx, &tarball, &bin_root, prefix);
-        return;
+        return Some(unpack(dwn_ctx.exec_ctx, &tarball, &bin_root, prefix));
     } else {
         None
     };
@@ -871,7 +893,7 @@ download-rustc = false
         panic!("failed to verify {}", tarball.display());
     }
 
-    unpack(dwn_ctx.exec_ctx, &tarball, &bin_root, prefix);
+    Some(unpack(dwn_ctx.exec_ctx, &tarball, &bin_root, prefix))
 }
 
 pub(crate) fn verify(exec_ctx: &ExecutionContext, path: &Path, expected: &str) -> bool {
@@ -915,7 +937,7 @@ pub(crate) fn verify(exec_ctx: &ExecutionContext, path: &Path, expected: &str) -
     verified
 }
 
-fn unpack(exec_ctx: &ExecutionContext, tarball: &Path, dst: &Path, pattern: &str) {
+fn unpack(exec_ctx: &ExecutionContext, tarball: &Path, dst: &Path, pattern: &str) -> PathBuf {
     eprintln!("extracting {} to {}", tarball.display(), dst.display());
     if !dst.exists() {
         t!(fs::create_dir_all(dst));
@@ -978,6 +1000,7 @@ fn unpack(exec_ctx: &ExecutionContext, tarball: &Path, dst: &Path, pattern: &str
     if dst_dir.exists() {
         t!(fs::remove_dir_all(&dst_dir), format!("failed to remove {}", dst_dir.display()));
     }
+    dst.to_path_buf()
 }
 
 fn download_file<'a>(

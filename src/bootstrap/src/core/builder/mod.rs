@@ -962,6 +962,7 @@ impl<'a> Builder<'a> {
                 test::RunMake,
                 test::RunMakeCargo,
                 test::BuildStd,
+                test::StdSemverCheck,
                 test::IntrinsicTest,
             ),
             Kind::Miri => describe!(test::Crate),
