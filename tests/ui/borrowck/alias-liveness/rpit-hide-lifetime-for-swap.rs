@@ -2,6 +2,8 @@
 //@ ignore-compare-mode-polonius (explicit revisions)
 //@ [edition2015] edition: 2015
 //@ [edition2024] edition: 2024
+//@ [edition2015] compile-flags: -Zpolonius=nll
+//@ [edition2024] compile-flags: -Zpolonius=nll
 //@ [polonius_alpha] edition: 2024
 //@ [polonius_alpha] compile-flags: -Zpolonius=next
 

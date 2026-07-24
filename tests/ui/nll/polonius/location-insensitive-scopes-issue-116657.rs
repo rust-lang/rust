@@ -2,6 +2,7 @@
 // different loan scopes when a member constraint was not ultimately applied.
 
 //@ revisions: nll polonius
+//@ [nll] compile-flags: -Zpolonius=nll
 //@ [polonius] compile-flags: -Zpolonius=next
 
 #![feature(impl_trait_in_assoc_type)]

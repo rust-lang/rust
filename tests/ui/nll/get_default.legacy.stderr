@@ -1,5 +1,5 @@
 error[E0502]: cannot borrow `*map` as mutable because it is also borrowed as immutable
-  --> $DIR/get_default.rs:35:17
+  --> $DIR/get_default.rs:36:17
    |
 LL | fn err(map: &mut Map) -> &String {
    |             - let's call the lifetime of this reference `'1`

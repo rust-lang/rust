@@ -1,5 +1,5 @@
 error[E0499]: cannot borrow `list[_]` as mutable more than once at a time
-  --> $DIR/nll-problem-case-3-issue-124254.rs:30:5
+  --> $DIR/nll-problem-case-3-issue-124254.rs:31:5
    |
 LL | fn find_lowest_or_first_empty_pos(list: &mut [Option<u8>]) -> &mut Option<u8> {
    |                                         - let's call the lifetime of this reference `'1`
@@ -14,7 +14,7 @@ LL |     &mut list[lowest_idx]
    |     ^^^^^^^^^^^^^^^^^^^^^ second mutable borrow occurs here
 
 error[E0503]: cannot use `*list` because it was mutably borrowed
-  --> $DIR/nll-problem-case-3-issue-124254.rs:30:10
+  --> $DIR/nll-problem-case-3-issue-124254.rs:31:10
    |
 LL | fn find_lowest_or_first_empty_pos(list: &mut [Option<u8>]) -> &mut Option<u8> {
    |                                         - let's call the lifetime of this reference `'1`

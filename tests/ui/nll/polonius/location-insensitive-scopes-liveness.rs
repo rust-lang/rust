@@ -6,10 +6,11 @@
 // regions were marked live later, and live loans were not recomputed at this point.
 
 //@ ignore-compare-mode-polonius (explicit revisions)
-//@ revisions: polonius_next polonius
+//@ revisions: nll polonius_next polonius
 //@ check-pass
+//@ [nll] compile-flags: -Zpolonius=nll
 //@ [polonius_next] compile-flags: -Z polonius=next
-//@ [polonius] compile-flags: -Z polonius
+//@ [polonius] compile-flags: -Z polonius=legacy
 
 // minimized from wavefc-cli-3.0.0
 fn repro1() {

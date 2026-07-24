@@ -3426,17 +3426,22 @@ impl PatchableFunctionEntry {
 
 /// `-Zpolonius` values, enabling the borrow checker polonius analysis, and which version: legacy,
 /// or future prototype.
-#[derive(Clone, Copy, PartialEq, Hash, Debug, Default)]
+#[derive(Clone, Copy, PartialEq, Hash, Debug)]
 pub enum Polonius {
-    /// The default value: disabled.
-    #[default]
-    Off,
+    /// Polonius is disabled, only use NLL.
+    NLL,
 
     /// Legacy version, using datalog and the `polonius-engine` crate. Historical value for `-Zpolonius`.
     Legacy,
 
     /// In-tree prototype, extending the NLL infrastructure.
     Next,
+}
+
+impl Default for Polonius {
+    fn default() -> Self {
+        if option_env!("CFG_DEFAULT_POLONIUS_NEXT").is_some() { Self::Next } else { Self::NLL }
+    }
 }
 
 impl Polonius {

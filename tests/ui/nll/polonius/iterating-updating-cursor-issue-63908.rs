@@ -6,6 +6,7 @@
 //@ ignore-compare-mode-polonius (explicit revisions)
 //@ revisions: nll polonius legacy
 //@ [nll] known-bug: #63908
+//@ [nll] compile-flags: -Z polonius=nll
 //@ [polonius] known-bug: #63908
 //@ [polonius] compile-flags: -Z polonius=next
 //@ [legacy] check-pass
