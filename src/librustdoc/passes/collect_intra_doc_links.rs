@@ -27,6 +27,7 @@ use rustc_session::config::CrateType;
 use rustc_session::lint::Lint;
 use rustc_span::BytePos;
 use rustc_span::def_id::ModId;
+use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::symbol::{Ident, Symbol, sym};
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, info, instrument, trace};
@@ -2008,6 +2009,56 @@ fn report_diagnostic(
     );
 }
 
+fn suggest_path_name_typo(
+    collector: &LinkCollector<'_, '_>,
+    diag: &mut Diag<'_, ()>,
+    span: Option<rustc_span::Span>,
+    link_range: &MarkdownLinkRange,
+    dox: &str,
+    module: ModId,
+    unresolved: &str,
+    has_partial_res: bool,
+    disambiguator: Option<Disambiguator>,
+) {
+    if unresolved.chars().count() <= 1 {
+        // there is too many false positives for single character typos
+        return;
+    }
+
+    let tcx = collector.cx.tcx;
+    let lookup = Symbol::intern(unresolved);
+    let children = module.as_local().map_or_else(
+        || tcx.module_children(module.to_def_id()),
+        |local_module| tcx.module_children_local(local_module.to_local_def_id()),
+    );
+    let candidates = children
+        .iter()
+        .filter(|child| {
+            disambiguator.is_none_or(|disambiguator| child.res.matches_ns(disambiguator.ns()))
+        })
+        .map(|child| child.ident.name)
+        .filter(|&name| name != lookup)
+        .collect::<Vec<_>>();
+    let Some(candidate) = find_best_match_for_name(&candidates, lookup, None) else {
+        return;
+    };
+
+    let msg = format!("there's a similarly named item `{candidate}`");
+    if let (Some(span), MarkdownLinkRange::Destination(range)) = (span, link_range) {
+        let link = &dox[range.clone()];
+        // A partial resolution means that the unresolved name follows a resolved parent path.
+        let start = if has_partial_res { link.rfind(unresolved) } else { link.find(unresolved) };
+        if let Some(start) = start {
+            let span = span
+                .with_lo(span.lo() + BytePos(start as u32))
+                .with_hi(span.lo() + BytePos((start + unresolved.len()) as u32));
+            diag.span_suggestion_verbose(span, msg, candidate, Applicability::MaybeIncorrect);
+            return;
+        }
+    }
+    diag.help(msg);
+}
+
 /// Reports a link that failed to resolve.
 ///
 /// This also tries to resolve any intermediate path segments that weren't
@@ -2133,6 +2184,20 @@ fn resolution_failure(
                             diag.span_label(span, note);
                         } else {
                             diag.note(note);
+                        }
+
+                        if !path_is_invalid {
+                            suggest_path_name_typo(
+                                collector,
+                                diag,
+                                sp,
+                                &link_range,
+                                diag_info.dox,
+                                module,
+                                unresolved,
+                                partial_res.is_some(),
+                                disambiguator,
+                            );
                         }
 
                         if !path_str.contains("::") {
