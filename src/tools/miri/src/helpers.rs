@@ -116,34 +116,36 @@ pub fn path_ty_layout<'tcx>(cx: &impl LayoutOf<'tcx>, path: &[&str]) -> TyAndLay
 /// Call `f` for each exported symbol.
 pub fn iter_exported_symbols<'tcx>(
     tcx: TyCtxt<'tcx>,
-    mut f: impl FnMut(CrateNum, DefId) -> InterpResult<'tcx>,
+    mut f: impl FnMut(CrateNum, DefId, /* used */ bool) -> InterpResult<'tcx>,
 ) -> InterpResult<'tcx> {
-    // First, the symbols in the local crate. We can't use `exported_symbols` here as that
-    // skips `#[used]` statics (since `reachable_set` skips them in binary crates).
-    // So we walk all HIR items ourselves instead.
+    // First, the symbols in the local crate. We can't use `exported_symbols` here as that skips
+    // `#[used]` statics (since `reachable_set` does not specifically include them in binary crates,
+    // only in library crates). So we walk all HIR items ourselves instead.
     let crate_items = tcx.hir_crate_items(());
     for def_id in crate_items.definitions() {
-        let exported = tcx.def_kind(def_id).has_codegen_attrs() && {
-            let codegen_attrs = tcx.codegen_fn_attrs(def_id);
-            codegen_attrs.contains_extern_indicator()
-                || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_COMPILER)
-                || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER)
-        };
+        if !tcx.def_kind(def_id).has_codegen_attrs() || tcx.is_foreign_item(def_id) {
+            continue;
+        }
+        let codegen_attrs = tcx.codegen_fn_attrs(def_id);
+        let used = codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_COMPILER)
+            || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER);
+        if !(used || codegen_attrs.contains_extern_indicator()) {
+            continue;
+        }
         // FIXME: `#[no_mangle]` makes no sense on a generic item, but still causes it to be
         // considered "extern". Remove this once `no_mangle_generic_items` is a hard error.
-        let exported_mono = exported && {
+        let mono = {
             let generics = tcx.generics_of(def_id);
             !generics.requires_monomorphization(tcx)
         };
-        if exported_mono {
-            f(LOCAL_CRATE, def_id.into())?;
+        if mono {
+            f(LOCAL_CRATE, def_id.into(), used)?;
         }
     }
 
     // Next, all our dependencies.
-    // `dependency_formats` includes all the transitive information needed to link a crate,
-    // which is what we need here since we need to dig out `exported_symbols` from all transitive
-    // dependencies.
+    // `dependency_formats` includes all the transitive information needed to link a crate, which is
+    // what we need to dig out `exported_symbols` from all transitive dependencies.
     let dependency_formats = tcx.dependency_formats(());
     // Find the dependencies of the executable we are running.
     let dependency_format = dependency_formats
@@ -157,11 +159,12 @@ pub fn iter_exported_symbols<'tcx>(
             continue; // Already handled above
         }
 
-        // We can ignore `_export_info` here: we are a Rust crate, and everything is exported
-        // from a Rust crate.
-        for &(symbol, _export_info) in tcx.exported_non_generic_symbols(cnum) {
-            if let ExportedSymbol::NonGeneric(def_id) = symbol {
-                f(cnum, def_id)?;
+        for &(symbol, export_info) in tcx.exported_non_generic_symbols(cnum) {
+            if let ExportedSymbol::NonGeneric(def_id) = symbol
+                // Sometimes Rust has to re-export FFI imports; skip those.
+                && !tcx.is_foreign_item(def_id)
+            {
+                f(cnum, def_id, export_info.used)?;
             }
         }
     }
@@ -961,8 +964,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         let mut array = vec![];
 
-        iter_exported_symbols(tcx, |_cnum, def_id| {
+        iter_exported_symbols(tcx, |_cnum, def_id, used| {
             let attrs = tcx.codegen_fn_attrs(def_id);
+            if !used {
+                // We don't know if the symbol is actually going to be in the final binary,
+                // so we conservatively skip it.
+                return interp_ok(());
+            }
             let Some(link_section) = attrs.link_section else {
                 return interp_ok(());
             };
