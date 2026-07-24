@@ -21,7 +21,7 @@ pub struct SyntaxMapping {
 
 impl SyntaxMapping {
     /// Like [`SyntaxMapping::upmap_child`] but for syntax elements.
-    pub fn upmap_child_element(
+    pub(super) fn upmap_child_element(
         &self,
         child: &SyntaxElement,
         input_ancestor: &SyntaxNode,
@@ -48,7 +48,7 @@ impl SyntaxMapping {
 
     /// Maps a child node of the input ancestor to the corresponding node in
     /// the output ancestor.
-    pub fn upmap_child(
+    pub(super) fn upmap_child(
         &self,
         child: &SyntaxNode,
         input_ancestor: &SyntaxNode,
@@ -257,7 +257,7 @@ impl SyntaxMappingBuilder {
 }
 
 #[derive(Debug)]
-pub struct MissingMapping(pub SyntaxNode);
+pub(super) struct MissingMapping(pub SyntaxNode);
 
 #[derive(Debug, Clone, Copy)]
 struct MappingEntry {
