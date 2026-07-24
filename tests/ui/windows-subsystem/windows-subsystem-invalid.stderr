@@ -1,8 +1,8 @@
 error[E0539]: malformed `windows_subsystem` attribute input
-  --> $DIR/windows-subsystem-invalid.rs:1:1
+  --> $DIR/windows-subsystem-invalid.rs:1:4
    |
 LL | #![windows_subsystem = "wrong"]
-   | ^^^^^^^^^^^^^^^^^^^^^^^-------^
+   |    ^^^^^^^^^^^^^^^^^^^^-------
    |                        |
    |                        valid arguments are "console" or "windows"
    |

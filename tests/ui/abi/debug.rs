@@ -39,11 +39,11 @@ type TestFnPtr = fn(bool) -> u8; //~ ERROR: fn_abi
 #[rustc_abi(debug)]
 fn test_generic<T>(_x: *const T) {} //~ ERROR: fn_abi
 
-#[rustc_abi(debug)] //~ ERROR: `#[rustc_abi]` attribute cannot be used on constants
+#[rustc_abi(debug)] //~ ERROR: the `rustc_abi` attribute cannot be used on constants
 const C: () = (); //~ ERROR: `#[rustc_abi]` can only be applied to
 
 impl S {
-    #[rustc_abi(debug)] //~ ERROR: `#[rustc_abi]` attribute cannot be used on assoc
+    #[rustc_abi(debug)] //~ ERROR: the `rustc_abi` attribute cannot be used on assoc
     const C: () = (); //~ ERROR: `#[rustc_abi]` can only be applied to
 }
 

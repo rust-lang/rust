@@ -1,8 +1,8 @@
 error[E0539]: malformed `instruction_set` attribute input
-  --> $DIR/instruction-set.rs:21:1
+  --> $DIR/instruction-set.rs:21:3
    |
 LL | #[instruction_set(arm)]
-   | ^^^^^^^^^^^^^^^^^^---^^
+   |   ^^^^^^^^^^^^^^^^---^
    |                   |
    |                   valid arguments are `arm::a32` or `arm::t32`
    |
@@ -20,10 +20,10 @@ LL | #[instruction_set(arm::)]
    |                      ^^ expected identifier
 
 error[E0539]: malformed `instruction_set` attribute input
-  --> $DIR/instruction-set.rs:31:1
+  --> $DIR/instruction-set.rs:31:3
    |
 LL | #[instruction_set(arm::magic)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^-----^^
+   |   ^^^^^^^^^^^^^^^^^^^^^-----^
    |                        |
    |                        valid arguments are `a32` or `t32`
    |

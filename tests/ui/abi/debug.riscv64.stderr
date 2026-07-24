@@ -1,24 +1,24 @@
-error: `#[rustc_abi]` attribute cannot be used on constants
-  --> $DIR/debug.rs:42:1
+error: the `rustc_abi` attribute cannot be used on constants
+  --> $DIR/debug.rs:42:3
    |
 LL | #[rustc_abi(debug)]
-   | ^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^
    |
-   = help: `#[rustc_abi]` can be applied to functions and type aliases
+   = help: the `rustc_abi` attribute can be applied to functions and type aliases
 
-error: `#[rustc_abi]` attribute cannot be used on associated consts
-  --> $DIR/debug.rs:46:5
+error: the `rustc_abi` attribute cannot be used on associated consts
+  --> $DIR/debug.rs:46:7
    |
 LL |     #[rustc_abi(debug)]
-   |     ^^^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^^
    |
-   = help: `#[rustc_abi]` can be applied to functions and type aliases
+   = help: the `rustc_abi` attribute can be applied to functions and type aliases
 
 error[E0539]: malformed `rustc_abi` attribute input
-  --> $DIR/debug.rs:74:1
+  --> $DIR/debug.rs:74:3
    |
 LL | #[rustc_abi("assert_eq")]
-   | ^^^^^^^^^^^-------------^
+   |   ^^^^^^^^^-------------
    |            |
    |            valid arguments are `assert_eq` or `debug`
    |

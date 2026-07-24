@@ -158,6 +158,9 @@ use an error-level lint instead of a fixed error.
   compiler messages are an important learning tool.
 - When talking about the compiler, call it `the compiler`, not `Rust` or `rustc`.
 - Use the [Oxford comma](https://en.wikipedia.org/wiki/Serial_comma) when writing lists of items.
+- When mentioning attributes, use this form whenever possible: "the `inline` attribute".
+  Don't include `#[`/`#![`/`]` delimiters or attribute arguments in the message or the span unless
+  they are relevant.
 
 ### Lint naming
 

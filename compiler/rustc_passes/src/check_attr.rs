@@ -237,7 +237,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             // All of the following attributes have no specific checks.
             // tidy-alphabetical-start
             AttributeKind::AutomaticallyDerived => (),
-            AttributeKind::CfgAttrTrace => (),
+            AttributeKind::CfgAttrTrace(..) => (),
             AttributeKind::CfgTrace(..) => (),
             AttributeKind::CfiEncoding { .. } => (),
             AttributeKind::Cold => (),
@@ -780,22 +780,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         name: item.name(),
                         sig_span: sig.span,
                     });
-                }
-
-                if let Some(impls) = find_attr!(attrs, EiiImpls(impls) => impls) {
-                    let sig = self.tcx.hir_node(hir_id).fn_sig().unwrap();
-                    for i in impls {
-                        let name = match i.resolution {
-                            EiiImplResolution::Macro(def_id) => self.tcx.item_name(def_id),
-                            EiiImplResolution::Known(def_id) => self.tcx.item_name(def_id),
-                            EiiImplResolution::Error(_eg) => continue,
-                        };
-                        self.dcx().emit_err(diagnostics::EiiWithTrackCaller {
-                            attr_span,
-                            name,
-                            sig_span: sig.span,
-                        });
-                    }
                 }
             }
             _ => {}

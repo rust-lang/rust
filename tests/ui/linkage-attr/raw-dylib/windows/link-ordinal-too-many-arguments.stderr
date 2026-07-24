@@ -1,8 +1,8 @@
 error[E0805]: malformed `link_ordinal` attribute input
-  --> $DIR/link-ordinal-too-many-arguments.rs:3:5
+  --> $DIR/link-ordinal-too-many-arguments.rs:3:7
    |
 LL |     #[link_ordinal(3, 4)]
-   |     ^^^^^^^^^^^^^^------^
+   |       ^^^^^^^^^^^^------
    |                   |
    |                   expected a single argument here
    |
@@ -14,10 +14,10 @@ LL +     #[link_ordinal(ordinal)]
    |
 
 error[E0805]: malformed `link_ordinal` attribute input
-  --> $DIR/link-ordinal-too-many-arguments.rs:8:5
+  --> $DIR/link-ordinal-too-many-arguments.rs:8:7
    |
 LL |     #[link_ordinal(3, 4)]
-   |     ^^^^^^^^^^^^^^------^
+   |       ^^^^^^^^^^^^------
    |                   |
    |                   expected a single argument here
    |

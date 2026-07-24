@@ -1,8 +1,8 @@
 error[E0565]: malformed `cold` attribute input
-  --> $DIR/expected-word.rs:1:1
+  --> $DIR/expected-word.rs:1:3
    |
 LL | #[cold = true]
-   | ^^^^^^^------^
+   |   ^^^^^------
    |        |
    |        didn't expect any arguments here
    |

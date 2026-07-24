@@ -2,6 +2,7 @@
 
 use std::iter;
 
+use rustc_ast::attr::data_structures::CfgEntry;
 use rustc_ast::token::{Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::{
     AttrTokenStream, AttrTokenTree, LazyAttrTokenStream, Spacing, TokenTree, WithTokens,
@@ -248,16 +249,15 @@ impl<'a> StripUnconfigured<'a> {
     /// is in the original source file. Gives a compiler error if the syntax of
     /// the attribute is incorrect.
     pub(crate) fn expand_cfg_attr(&self, cfg_attr: &Attribute, recursive: bool) -> Vec<Attribute> {
-        // A synthetic trace attribute left in AST in place of the original `cfg_attr` attribute.
-        // It can later be used by lints or other diagnostics.
-        let trace_attr = cfg_attr.clone().convert_normal_to_synthetic(SyntheticAttr::CfgAttrTrace);
-
         let Some((cfg_predicate, expanded_attrs)) = rustc_attr_parsing::parse_cfg_attr(
             cfg_attr,
             self.sess,
             self.features,
             self.lint_node_id,
         ) else {
+            let trace_attr = cfg_attr.clone().convert_normal_to_synthetic(
+                SyntheticAttr::CfgAttrTrace(CfgEntry::Bool(true, cfg_attr.span)),
+            );
             return vec![trace_attr];
         };
 
@@ -271,7 +271,15 @@ impl<'a> StripUnconfigured<'a> {
             );
         }
 
-        if !attr::eval_config_entry(self.sess, &cfg_predicate).as_bool() {
+        let cfg_eval = attr::eval_config_entry(self.sess, &cfg_predicate).as_bool();
+
+        // A synthetic trace attribute left in AST in place of the original `cfg_attr` attribute.
+        // It can later be used by lints or other diagnostics.
+        let trace_attr = cfg_attr
+            .clone()
+            .convert_normal_to_synthetic(SyntheticAttr::CfgAttrTrace(cfg_predicate));
+
+        if !cfg_eval {
             return vec![trace_attr];
         }
 
@@ -337,6 +345,7 @@ impl<'a> StripUnconfigured<'a> {
                 .to_attr_token_stream(),
         ));
 
+        let attr_item_path_span = attr_item.node.path.span;
         let attr_tokens = Some(LazyAttrTokenStream::new_direct(AttrTokenStream::new(trees)));
         let attr = ast::attr::mk_attr_from_item(
             &self.sess.psess.attr_id_generator,
@@ -346,10 +355,10 @@ impl<'a> StripUnconfigured<'a> {
             attr_item_span,
         );
         if attr.has_name(sym::crate_type) {
-            self.sess.dcx().emit_err(CrateTypeInCfgAttr { span: attr.span });
+            self.sess.dcx().emit_err(CrateTypeInCfgAttr { span: attr_item_path_span });
         }
         if attr.has_name(sym::crate_name) {
-            self.sess.dcx().emit_err(CrateNameInCfgAttr { span: attr.span });
+            self.sess.dcx().emit_err(CrateNameInCfgAttr { span: attr_item_path_span });
         }
         attr
     }

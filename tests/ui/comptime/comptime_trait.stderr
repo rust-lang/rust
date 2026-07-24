@@ -1,26 +1,26 @@
-error: `#[rustc_comptime]` attribute cannot be used on traits
-  --> $DIR/comptime_trait.rs:3:1
+error: the `rustc_comptime` attribute cannot be used on traits
+  --> $DIR/comptime_trait.rs:3:3
    |
 LL | #[rustc_comptime]
-   | ^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^
    |
-   = help: `#[rustc_comptime]` can be applied to functions and inherent impl blocks
+   = help: the `rustc_comptime` attribute can be applied to functions and inherent impl blocks
 
-error: `#[rustc_comptime]` attribute cannot be used on trait impl blocks
-  --> $DIR/comptime_trait.rs:11:1
+error: the `rustc_comptime` attribute cannot be used on trait impl blocks
+  --> $DIR/comptime_trait.rs:11:3
    |
 LL | #[rustc_comptime]
-   | ^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^
    |
-   = help: `#[rustc_comptime]` can be applied to functions and inherent impl blocks
+   = help: the `rustc_comptime` attribute can be applied to functions and inherent impl blocks
 
-error: `#[rustc_comptime]` attribute cannot be used on trait aliases
-  --> $DIR/comptime_trait.rs:22:1
+error: the `rustc_comptime` attribute cannot be used on trait aliases
+  --> $DIR/comptime_trait.rs:22:3
    |
 LL | #[rustc_comptime]
-   | ^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^
    |
-   = help: `#[rustc_comptime]` can be applied to functions and inherent impl blocks
+   = help: the `rustc_comptime` attribute can be applied to functions and inherent impl blocks
 
 error[E0015]: cannot call non-const method `<T as Trait>::method` in constants
   --> $DIR/comptime_trait.rs:28:7

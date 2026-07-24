@@ -35,14 +35,14 @@ LL | #[rustc_unknown]
    |   ^^^^^^^^^^^^^
 
 error[E0658]: use of an internal attribute
-  --> $DIR/feature-gate-rustc-attrs.rs:20:1
+  --> $DIR/feature-gate-rustc-attrs.rs:20:3
    |
 LL | #[rustc_dummy]
-   | ^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^
    |
    = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
-   = note: the `#[rustc_dummy]` attribute is an internal implementation detail that will never be stable
-   = note: the `#[rustc_dummy]` attribute is used for rustc unit tests
+   = note: the `rustc_dummy` attribute is an internal implementation detail that will never be stable
+   = note: the `rustc_dummy` attribute is used for rustc unit tests
 
 error: aborting due to 7 previous errors
 

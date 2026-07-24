@@ -1,8 +1,8 @@
 error[E0805]: malformed `used` attribute input
-  --> $DIR/used_with_multi_args.rs:3:1
+  --> $DIR/used_with_multi_args.rs:3:3
    |
 LL | #[used(compiler, linker)]
-   | ^^^^^^------------------^
+   |   ^^^^------------------
    |       |
    |       expected a single argument here
    |

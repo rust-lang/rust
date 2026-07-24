@@ -665,7 +665,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     fn print_attribute_inline(&mut self, attr: &ast::Attribute, is_inline: bool) -> bool {
         use ast::SyntheticAttr::*;
         match attr.kind {
-            AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace) => {
+            AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace(_)) => {
                 // These are internal synthetic attributes with no syntax, so avoid printing them
                 // to keep the printed code reasonably parse-able.
                 return false;

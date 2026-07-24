@@ -4,53 +4,53 @@ error[E0433]: cannot find module or crate `a` in the crate root
 LL | #[::a]
    |     ^ use of unresolved module or unlinked crate `a`
 
-error: `#[naked]` attribute cannot be used on crates
-  --> $DIR/naked-invalid-attr.rs:5:1
+error: the `naked` attribute cannot be used on crates
+  --> $DIR/naked-invalid-attr.rs:5:11
    |
 LL | #![unsafe(naked)]
-   | ^^^^^^^^^^^^^^^^^
+   |           ^^^^^
    |
-   = help: `#[naked]` can only be applied to functions
+   = help: the `naked` attribute can only be applied to functions
 
-error: `#[naked]` attribute cannot be used on foreign functions
-  --> $DIR/naked-invalid-attr.rs:10:5
+error: the `naked` attribute cannot be used on foreign functions
+  --> $DIR/naked-invalid-attr.rs:10:14
    |
 LL |     #[unsafe(naked)]
-   |     ^^^^^^^^^^^^^^^^
+   |              ^^^^^
    |
-   = help: `#[naked]` can only be applied to functions with a body
+   = help: the `naked` attribute can only be applied to functions with a body
 
-error: `#[naked]` attribute cannot be used on structs
-  --> $DIR/naked-invalid-attr.rs:14:1
+error: the `naked` attribute cannot be used on structs
+  --> $DIR/naked-invalid-attr.rs:14:10
    |
 LL | #[unsafe(naked)]
-   | ^^^^^^^^^^^^^^^^
+   |          ^^^^^
    |
-   = help: `#[naked]` can only be applied to functions
+   = help: the `naked` attribute can only be applied to functions
 
-error: `#[naked]` attribute cannot be used on struct fields
-  --> $DIR/naked-invalid-attr.rs:17:5
+error: the `naked` attribute cannot be used on struct fields
+  --> $DIR/naked-invalid-attr.rs:17:14
    |
 LL |     #[unsafe(naked)]
-   |     ^^^^^^^^^^^^^^^^
+   |              ^^^^^
    |
-   = help: `#[naked]` can only be applied to functions
+   = help: the `naked` attribute can only be applied to functions
 
-error: `#[naked]` attribute cannot be used on required trait methods
-  --> $DIR/naked-invalid-attr.rs:23:5
+error: the `naked` attribute cannot be used on required trait methods
+  --> $DIR/naked-invalid-attr.rs:23:14
    |
 LL |     #[unsafe(naked)]
-   |     ^^^^^^^^^^^^^^^^
+   |              ^^^^^
    |
-   = help: `#[naked]` can only be applied to functions with a body
+   = help: the `naked` attribute can only be applied to functions with a body
 
-error: `#[naked]` attribute cannot be used on closures
-  --> $DIR/naked-invalid-attr.rs:52:5
+error: the `naked` attribute cannot be used on closures
+  --> $DIR/naked-invalid-attr.rs:52:14
    |
 LL |     #[unsafe(naked)]
-   |     ^^^^^^^^^^^^^^^^
+   |              ^^^^^
    |
-   = help: `#[naked]` can be applied to functions and methods
+   = help: the `naked` attribute can be applied to functions and methods
 
 error[E0736]: attribute incompatible with `#[unsafe(naked)]`
   --> $DIR/naked-invalid-attr.rs:57:3

@@ -17,7 +17,7 @@ fn foo4<const X: usize>() {}
 //~^^ ERROR malformed `rustc_legacy_const_generics` attribute input
 fn foo5<const X: usize, const Y: usize, const Z: usize, const W: usize>() {}
 
-#[rustc_legacy_const_generics(0)] //~ ERROR `#[rustc_legacy_const_generics]` attribute cannot be used on structs
+#[rustc_legacy_const_generics(0)] //~ ERROR the `rustc_legacy_const_generics` attribute cannot be used on structs
 struct S;
 
 #[rustc_legacy_const_generics(0usize)]
@@ -26,7 +26,7 @@ struct S;
 fn foo6<const X: usize>() {}
 
 extern "C" {
-    #[rustc_legacy_const_generics(1)] //~ ERROR `#[rustc_legacy_const_generics]` attribute cannot be used on foreign functions
+    #[rustc_legacy_const_generics(1)] //~ ERROR the `rustc_legacy_const_generics` attribute cannot be used on foreign functions
     fn foo7<const X: usize>(); //~ ERROR foreign items may not have const parameters
 }
 
@@ -34,7 +34,7 @@ extern "C" {
 fn foo8<X>() {}
 
 impl S {
-    #[rustc_legacy_const_generics(0)] //~ ERROR `#[rustc_legacy_const_generics]` attribute cannot be used on inherent methods
+    #[rustc_legacy_const_generics(0)] //~ ERROR the `rustc_legacy_const_generics` attribute cannot be used on inherent methods
     fn foo9<const X: usize>() {}
 }
 

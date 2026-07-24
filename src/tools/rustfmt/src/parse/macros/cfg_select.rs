@@ -8,18 +8,18 @@ use rustc_parse::parser::{AllowConstBlockItems, ForceCollect};
 use crate::parse::macros::build_stream_parser;
 use crate::parse::session::ParseSess;
 
-pub(crate) fn parse_cfg_match<'a>(
+pub(crate) fn parse_cfg_select<'a>(
     psess: &'a ParseSess,
     mac: &'a ast::MacCall,
 ) -> Result<Vec<ast::Item>, &'static str> {
-    match catch_unwind(AssertUnwindSafe(|| parse_cfg_match_inner(psess, mac))) {
+    match catch_unwind(AssertUnwindSafe(|| parse_cfg_select_inner(psess, mac))) {
         Ok(Ok(items)) => Ok(items),
         Ok(err @ Err(_)) => err,
-        Err(..) => Err("failed to parse cfg_match!"),
+        Err(..) => Err("failed to parse cfg_select!"),
     }
 }
 
-fn parse_cfg_match_inner<'a>(
+fn parse_cfg_select_inner<'a>(
     psess: &'a ParseSess,
     mac: &'a ast::MacCall,
 ) -> Result<Vec<ast::Item>, &'static str> {
@@ -27,7 +27,7 @@ fn parse_cfg_match_inner<'a>(
     let mut parser = build_stream_parser(psess.inner(), ts);
 
     if parser.token == TokenKind::OpenBrace {
-        return Err("Expression position cfg_match! not yet supported");
+        return Err("Expression position cfg_select! not yet supported");
     }
 
     let mut items = vec![];
@@ -58,7 +58,7 @@ fn parse_cfg_match_inner<'a>(
                     err.cancel();
                     parser.psess.dcx().reset_err_count();
                     return Err(
-                        "Expected item inside cfg_match block, but failed to parse it as an item",
+                        "Expected item inside cfg_select block, but failed to parse it as an item",
                     );
                 }
             };

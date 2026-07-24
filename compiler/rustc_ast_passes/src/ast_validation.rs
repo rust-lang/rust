@@ -525,7 +525,7 @@ impl<'a> AstValidator<'a> {
                         [sym::allow, sym::deny, sym::expect, sym::forbid, sym::splat, sym::warn];
                     !attr.has_any_name(&arr) && rustc_attr_parsing::is_builtin_attr(&normal.item)
                 }
-                AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace) => false,
+                AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace(_)) => false,
                 AttrKind::DocComment(..) => true,
             })
             .for_each(|attr| {
@@ -1202,6 +1202,48 @@ impl<'a> AstValidator<'a> {
         self.visit_vis(vis);
         self.visit_ident(ident);
     }
+
+    // Check EII implementation attributes against an allowlist.
+    fn check_eii_impl_attrs(&self, attrs: &[Attribute], eii_impls: &[EiiImpl]) {
+        if eii_impls.is_empty() {
+            return;
+        }
+
+        let allowed_attrs: &[Symbol] = &[
+            sym::allow,
+            sym::warn,
+            sym::deny,
+            sym::forbid,
+            sym::expect,
+            sym::doc,
+            sym::inline,
+            sym::cold,
+            sym::optimize,
+            sym::coverage,
+            sym::sanitize,
+            sym::must_use,
+            sym::deprecated,
+        ];
+
+        for attr in attrs {
+            let AttrKind::Normal(normal) = &attr.kind else {
+                continue;
+            };
+            if attr.has_any_name(allowed_attrs) {
+                continue;
+            }
+
+            let attr_name = pprust::path_to_string(&normal.item.path);
+            for eii_impl in eii_impls {
+                self.dcx().emit_err(diagnostics::EiiImplAttributeNotSupported {
+                    attr_span: attr.span,
+                    attr_name: &attr_name,
+                    eii_span: eii_impl.span,
+                    eii_name: pprust::path_to_string(&eii_impl.eii_macro_path),
+                });
+            }
+        }
+    }
 }
 
 /// Checks that generic parameters are in the correct order,
@@ -1391,6 +1433,7 @@ impl Visitor<'_> for AstValidator<'_> {
                 for EiiImpl { eii_macro_path, .. } in eii_impls {
                     self.visit_path(eii_macro_path);
                 }
+                self.check_eii_impl_attrs(&item.attrs, eii_impls);
 
                 let is_intrinsic = item.attrs.iter().any(|a| a.has_name(sym::rustc_intrinsic));
                 if body.is_none() && !is_intrinsic && !self.is_sdylib_interface {
@@ -1566,8 +1609,9 @@ impl Visitor<'_> for AstValidator<'_> {
 
                 visit::walk_item(self, item);
             }
-            ItemKind::Static(StaticItem { expr, safety, .. }) => {
+            ItemKind::Static(StaticItem { expr, safety, eii_impls, .. }) => {
                 self.check_item_safety(item.span, *safety);
+                self.check_eii_impl_attrs(&item.attrs, eii_impls);
                 if matches!(safety, Safety::Unsafe(_)) {
                     self.dcx().emit_err(diagnostics::UnsafeStatic { span: item.span });
                 }
