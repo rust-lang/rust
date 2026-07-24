@@ -226,6 +226,7 @@ language_item_table! {
     IndexMut,                sym::index_mut,           index_mut_trait,            Target::Trait,          GenericRequirement::Exact(1);
 
     UnsafeCell,              sym::unsafe_cell,         unsafe_cell_type,           Target::Struct,         GenericRequirement::None;
+    CovariantUnsafeCell,   sym::covariant_unsafe_cell, covariant_unsafe_cell_type, Target::Struct,         GenericRequirement::Exact(1);
     UnsafePinned,            sym::unsafe_pinned,       unsafe_pinned_type,         Target::Struct,         GenericRequirement::None;
 
     VaArgSafe,               sym::va_arg_safe,         va_arg_safe,                Target::Trait,          GenericRequirement::None;
