@@ -67,9 +67,9 @@ pub fn bytes_in_context<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, bytes: &[u8]) ->
             let context = &cx.context;
             let byte_type = context.new_type::<u64>();
             let typ = new_array_type(context, None, byte_type, bytes.len() as u64 / 8);
-            let elements: Vec<_> = bytes
-                .as_chunks::<8>()
-                .0
+            let (arrays, remainder) = bytes.as_chunks::<8>();
+            debug_assert!(remainder.is_empty());
+            let elements: Vec<_> = arrays
                 .iter()
                 .map(|&arr| {
                     context.new_rvalue_from_long(
@@ -94,9 +94,9 @@ pub fn bytes_in_context<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, bytes: &[u8]) ->
             let context = &cx.context;
             let byte_type = context.new_type::<u32>();
             let typ = new_array_type(context, None, byte_type, bytes.len() as u64 / 4);
-            let elements: Vec<_> = bytes
-                .as_chunks::<4>()
-                .0
+            let (arrays, remainder) = bytes.as_chunks::<4>();
+            debug_assert!(remainder.is_empty());
+            let elements: Vec<_> = arrays
                 .iter()
                 .map(|&arr| {
                     context.new_rvalue_from_int(

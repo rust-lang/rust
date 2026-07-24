@@ -70,7 +70,7 @@ pub fn get_fn<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, instance: Instance<'tcx>) 
         cx.linkage.set(FunctionType::Extern);
         let func = cx.declare_fn(sym, fn_abi);
 
-        attributes::from_fn_attrs(cx, func, instance);
+        attributes::from_fn_attrs(cx, func, instance, Some(fn_abi));
 
         #[cfg(feature = "master")]
         {
