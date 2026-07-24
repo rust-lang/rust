@@ -112,8 +112,18 @@ const fn memchr_aligned(x: u8, text: &[u8]) -> Option<usize> {
 }
 
 /// Returns the last index matching the byte `x` in `text`.
+#[inline]
 #[must_use]
 pub fn memrchr(x: u8, text: &[u8]) -> Option<usize> {
+    let result = memrchr_aligned(x, text);
+    if let Some(index) = result {
+        // SAFETY: `memrchr_aligned` only returns the index of a matching byte in `text`.
+        unsafe { crate::hint::assert_unchecked(index < text.len()) };
+    }
+    result
+}
+
+fn memrchr_aligned(x: u8, text: &[u8]) -> Option<usize> {
     // Scan for a single byte value by reading two `usize` words at a time.
     //
     // Split `text` in three parts:
