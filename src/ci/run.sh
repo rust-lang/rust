@@ -243,7 +243,8 @@ SCCACHE_IDLE_TIMEOUT=10800 sccache --start-server || true
 rm -f bootstrap.toml
 
 $SRC/configure $RUST_CONFIGURE_ARGS
-
+echo '[target.x86_64-unknown-linux-musl]' >> bootstrap.toml
+echo 'rustflags = ["-Ctarget-feature=-crt-static", "-Ccodegen-units=1", "-Clto=thin", "-Clinker-plugin-lto", "-Zsanitizer=cfi"]' >> bootstrap.toml
 retry make prepare
 
 # Display the CPU and memory information. This helps us know why the CI timing
