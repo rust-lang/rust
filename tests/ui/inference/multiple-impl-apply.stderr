@@ -18,6 +18,44 @@ help: consider giving `y` an explicit type
 LL |     let y: /* Type */ = x.into();
    |          ++++++++++++
 
-error: aborting due to 1 previous error
+error[E0283]: type annotations needed
+  --> $DIR/multiple-impl-apply.rs:67:29
+   |
+LL |     let _ = n == 42usize as _;
+   |                             ^ cannot infer type
+   |
+note: multiple `impl`s satisfying `u32: PartialEq<_>` found
+  --> $DIR/multiple-impl-apply.rs:52:1
+   |
+LL | impl PartialEq<Value> for u32 {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: and another `impl` found in the `core` crate: `impl PartialEq for u32;`
 
-For more information about this error, try `rustc --explain E0283`.
+error[E0283]: type annotations needed
+  --> $DIR/multiple-impl-apply.rs:72:24
+   |
+LL |     let _ = 42usize as _ == n;
+   |                        ^ cannot infer type
+   |
+note: multiple `impl`s satisfying `_: PartialEq<u32>` found
+  --> $DIR/multiple-impl-apply.rs:58:1
+   |
+LL | impl PartialEq<u32> for Value {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: and another `impl` found in the `core` crate: `impl PartialEq for u32;`
+
+error[E0282]: type annotations needed
+  --> $DIR/multiple-impl-apply.rs:79:17
+   |
+LL |             let _ = 42usize as _;
+   |                 ^              - type must be known at this point
+   |
+help: consider giving this pattern a type
+   |
+LL |             let _: /* Type */ = 42usize as _;
+   |                  ++++++++++++
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0282, E0283.
+For more information about an error, try `rustc --explain E0282`.

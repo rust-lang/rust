@@ -34,6 +34,7 @@ use rustc_errors::{Applicability, Diag, ErrorGuaranteed};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, ExprKind};
 use rustc_infer::infer::DefineOpaqueTypes;
+use rustc_infer::traits::ObligationCauseCode;
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::mir::Mutability;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
@@ -46,6 +47,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
 use rustc_span::{DUMMY_SP, Span, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
+use rustc_trait_selection::traits::{self, ObligationCtxt};
 use tracing::{debug, instrument};
 
 use super::FnCtxt;
@@ -799,7 +801,16 @@ impl<'a, 'tcx> CastCheck<'tcx> {
     pub(crate) fn check(mut self, fcx: &FnCtxt<'a, 'tcx>) {
         let expr_span = self.expr_span_for_type_resolution(fcx);
         self.expr_ty = fcx.structurally_resolve_type(expr_span, self.expr_ty);
-        self.cast_ty = fcx.structurally_resolve_type(self.cast_span, self.cast_ty);
+        self.cast_ty = fcx.resolve_vars_with_obligations(self.cast_ty);
+        if self.cast_ty.is_ty_var() {
+            self.cast_ty = if let Some(guar) = self.try_report_ambiguous_binop_for_infer_cast(fcx) {
+                let err = Ty::new_error(fcx.tcx, guar);
+                fcx.demand_suptype(self.cast_span, err, self.cast_ty);
+                err
+            } else {
+                fcx.type_must_be_known_at_this_point(self.cast_span, self.cast_ty)
+            };
+        }
 
         debug!("check_cast({}, {:?} as {:?})", self.expr.hir_id, self.expr_ty, self.cast_ty);
 
@@ -839,6 +850,62 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             };
         }
     }
+
+    /// Prefer a pending operator ambiguity over a generic `as _` inference failure.
+    #[cold]
+    fn try_report_ambiguous_binop_for_infer_cast(
+        &self,
+        fcx: &FnCtxt<'a, 'tcx>,
+    ) -> Option<ErrorGuaranteed> {
+        let errors: Vec<_> = fcx
+            .fulfillment_cx
+            .borrow()
+            .pending_obligations()
+            .into_iter()
+            .filter_map(|mut obligation| {
+                let predicate = fcx.resolve_vars_if_possible(obligation.predicate);
+                let cast_span = self.cast_span;
+
+                let ObligationCauseCode::BinOp { lhs_hir_id, rhs_hir_id, rhs_span, .. } =
+                    obligation.cause.code()
+                else {
+                    return None;
+                };
+                let lhs_ty = fcx.resolve_vars_if_possible(fcx.node_ty(*lhs_hir_id));
+                let rhs_ty = fcx.resolve_vars_if_possible(fcx.node_ty(*rhs_hir_id));
+
+                if (fcx.tcx.hir_span(*lhs_hir_id).contains(cast_span)
+                    && lhs_ty.contains(self.cast_ty))
+                    || (rhs_span.contains(cast_span) && rhs_ty.contains(self.cast_ty))
+                        && matches!(
+                            predicate.kind().skip_binder(),
+                            ty::PredicateKind::Clause(ty::ClauseKind::Trait(_))
+                        )
+                {
+                    obligation.cause.span = cast_span;
+                    obligation.predicate = predicate;
+
+                    let ocx = ObligationCtxt::new_with_diagnostics(&fcx.infcx);
+                    ocx.register_obligation(obligation);
+                    ocx.evaluate_obligations_error_on_ambiguity().into_iter().find(|error| {
+                        matches!(
+                            error.code,
+                            traits::FulfillmentErrorCode::Ambiguity { overflow: None }
+                        )
+                    })
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        if errors.is_empty() {
+            None
+        } else {
+            Some(fcx.err_ctxt().report_fulfillment_errors(errors))
+        }
+    }
+
     /// Checks a cast, and report an error if one exists. In some cases, this
     /// can return Ok and create type errors in the fcx rather than returning
     /// directly. coercion-cast is handled in check instead of here.
