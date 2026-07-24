@@ -135,6 +135,86 @@ trait UnusedDelimLint {
         is_kw: bool,
     );
 
+    /// Returns whether the outer braces of a single-expression function/method
+    /// argument block can be removed.
+    ///
+    /// In Rust 2024, `{ expr }` can drop tail-expression temporaries before the
+    /// call starts. Removing the block may extend those temporaries, so lint only
+    /// expression forms that are harmless here.
+    fn expr_allows_remove_arg_block(expr: &ast::Expr) -> bool {
+        use ast::ExprKind::*;
+
+        match &expr.peel_parens().kind {
+            Lit(_) | IncludedBytes(_) | Path(..) => true,
+            Unary(_, expr)
+            | Cast(expr, _)
+            | Type(expr, _)
+            | Use(expr, _)
+            | Await(expr, _)
+            | Try(expr)
+            | Move(expr, _)
+            | AddrOf(_, _, expr)
+            | UnsafeBinderCast(_, expr, _) => Self::expr_allows_remove_arg_block(expr),
+            Array(exprs) | Tup(exprs) => {
+                exprs.iter().all(|expr| Self::expr_allows_remove_arg_block(expr))
+            }
+            Binary(_, lhs, rhs) | Assign(lhs, rhs, _) | AssignOp(_, lhs, rhs) => {
+                Self::expr_allows_remove_arg_block(lhs) && Self::expr_allows_remove_arg_block(rhs)
+            }
+            Index(base, index, _) => {
+                Self::expr_allows_remove_arg_block(base)
+                    && Self::expr_allows_remove_arg_block(index)
+            }
+            Range(start, end, _) => {
+                start.as_ref().is_none_or(|expr| Self::expr_allows_remove_arg_block(expr))
+                    && end.as_ref().is_none_or(|expr| Self::expr_allows_remove_arg_block(expr))
+            }
+            Struct(expr) => {
+                expr.fields.iter().all(|field| Self::expr_allows_remove_arg_block(&field.expr))
+                    && match &expr.rest {
+                        ast::StructRest::Base(expr) => Self::expr_allows_remove_arg_block(expr),
+                        ast::StructRest::Rest(_) | ast::StructRest::None => true,
+                        ast::StructRest::NoneWithError(_) => false,
+                    }
+            }
+            Repeat(expr, _) => Self::expr_allows_remove_arg_block(expr),
+            ConstBlock(_)
+            | If(..)
+            | While(..)
+            | ForLoop { .. }
+            | Loop(..)
+            | Match(..)
+            | Closure(_)
+            | Block(..)
+            | Gen(..)
+            | TryBlock(..)
+            | Break(..)
+            | Continue(_)
+            | Ret(_)
+            | InlineAsm(_)
+            | OffsetOf(..)
+            | Yield(_)
+            | Yeet(_)
+            | Paren(_)
+            | Become(_) => true,
+            Call(..) | MethodCall(_) | Let(..) | Field(..) | MacCall(_) | FormatArgs(_) => false,
+            // don't lint for placeholder/error-recovery
+            Underscore | Err(_) | Dummy => false,
+        }
+    }
+
+    /// Returns whether `{ expr }` must be kept in function/method argument
+    /// position to avoid changing temporary lifetime semantics.
+    fn needs_arg_block_to_preserve_temporaries(
+        ctx: UnusedDelimsCtx,
+        arg_block: &ast::Expr,
+        expr: &ast::Expr,
+    ) -> bool {
+        matches!(ctx, UnusedDelimsCtx::FunctionArg | UnusedDelimsCtx::MethodArg)
+            && arg_block.span.edition().at_least_rust_2024()
+            && !Self::expr_allows_remove_arg_block(expr)
+    }
+
     fn is_expr_delims_necessary(
         inner: &ast::Expr,
         ctx: UnusedDelimsCtx,
@@ -1094,6 +1174,7 @@ impl UnusedDelimLint for UnusedBraces {
                 if let [stmt] = inner.stmts.as_slice()
                     && let ast::StmtKind::Expr(ref expr) = stmt.kind
                     && !Self::is_expr_delims_necessary(expr, ctx, followed_by_block)
+                    && !Self::needs_arg_block_to_preserve_temporaries(ctx, value, expr)
                     && (ctx != UnusedDelimsCtx::AnonConst
                         || (matches!(expr.kind, ast::ExprKind::Lit(_))
                             && !expr.span.from_expansion()))

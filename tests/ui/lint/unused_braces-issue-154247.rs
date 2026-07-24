@@ -1,0 +1,167 @@
+//@ edition: 2024
+//@ check-pass
+//@ run-rustfix
+
+#![feature(move_expr)]
+#![warn(unused_braces)]
+
+use std::sync::Mutex;
+
+fn consume(lock: &Mutex<Vec<u8>>, _value: usize) {
+    let _guard = lock.lock().unwrap();
+}
+
+fn consume_int<T>(_: T) {}
+
+fn make_int() -> usize {
+    7
+}
+
+fn static_int_ref() -> &'static usize {
+    &7
+}
+
+struct Point {
+    _x: usize,
+}
+
+struct Pair {
+    _x: usize,
+    _y: usize,
+}
+
+fn make_pair() -> Pair {
+    Pair { _x: 1, _y: 2 }
+}
+
+macro_rules! make_int_macro {
+    () => {
+        make_int()
+    };
+}
+
+struct Lockable(Mutex<Vec<u8>>);
+
+impl Lockable {
+    fn update(&self, _value: usize) {
+        let _guard = self.0.lock().unwrap();
+    }
+
+    fn run(&self) {
+        // These blocks shorten the lifetime of the temporary `MutexGuard`.
+        consume(&self.0, { self.0.lock().unwrap().len() });
+        self.update({ self.0.lock().unwrap().len() });
+        consume_int({ [self.0.lock().unwrap().len()] });
+    }
+}
+
+fn main() {
+    let x = 7;
+
+    consume_int({ 7 });
+    //~^ WARN unnecessary braces
+
+    consume_int({ x });
+    //~^ WARN unnecessary braces
+
+    consume_int({ x as usize });
+    //~^ WARN unnecessary braces
+
+    consume_int({ (x, 7) });
+    //~^ WARN unnecessary braces
+
+    consume_int({ [x, 7] });
+    //~^ WARN unnecessary braces
+
+    consume_int({ !false });
+    //~^ WARN unnecessary braces
+
+    consume_int({ x + 1 });
+    //~^ WARN unnecessary braces
+
+    consume_int({ [x, 7][0] });
+    //~^ WARN unnecessary braces
+
+    consume_int({ 0..x });
+    //~^ WARN unnecessary braces
+
+    consume_int({ const { 7 } });
+    //~^ WARN unnecessary braces
+
+    consume_int({ if x > 0 { x } else { 0 } });
+    //~^ WARN unnecessary braces
+
+    consume_int({ while false {} });
+    //~^ WARN unnecessary braces
+
+    consume_int({ for _ in 0..0 {} });
+    //~^ WARN unnecessary braces
+
+    consume_int({ loop { break x; } });
+    //~^ WARN unnecessary braces
+
+    consume_int({ match x { 0 => 1, _ => x } });
+    //~^ WARN unnecessary braces
+
+    consume_int({ { x } });
+    //~^ WARN unnecessary braces
+    //~| WARN unnecessary braces
+
+    consume_int({ || x });
+    //~^ WARN unnecessary braces
+
+    let mut y = x;
+
+    consume_int({ y += 1 });
+    //~^ WARN unnecessary braces
+
+    consume_int(y);
+
+    consume_int({ y = x });
+    //~^ WARN unnecessary braces
+
+    consume_int(y);
+
+    consume_int({ Point { _x: x } });
+    //~^ WARN unnecessary braces
+
+    consume_int({ [x; 2] });
+    //~^ WARN unnecessary braces
+
+    consume_int({ &x });
+    //~^ WARN unnecessary braces
+
+    let move_expr_closure = || {
+        consume_int({ move(x) });
+        //~^ WARN unnecessary braces
+
+        consume_int({ move(make_int()) });
+    };
+    move_expr_closure();
+
+    Lockable(Mutex::new(vec![1])).update({ 7 });
+    //~^ WARN unnecessary braces
+
+    Lockable(Mutex::new(vec![1])).update({ x as usize });
+    //~^ WARN unnecessary braces
+
+    Lockable(Mutex::new(vec![1])).run();
+
+    // These blocks contain calls, borrows, macros, or projections where removing
+    // the argument block may extend temporaries in Rust 2024.
+    consume_int({ make_int() });
+    consume_int({ make_int() + 1 });
+    consume_int({ String::from("abc").len() });
+    consume_int({ [make_int(), x] });
+    consume_int({ [x, make_int()][0] });
+    consume_int({ 0..make_int() });
+    consume_int({ Point { _x: make_int() } });
+    consume_int({ Pair { _x: x, ..make_pair() } });
+    consume_int({ [make_int(); 2] });
+    consume_int({ make_int_macro!() });
+    consume_int({ format_args!("value") });
+    consume_int({ &*static_int_ref() });
+
+    let point = Point { _x: x };
+    consume_int({ point._x });
+}
