@@ -521,7 +521,10 @@ impl<'a, 'tcx> ty::TypeFolder<TyCtxt<'tcx>> for LowerUniverseFolder<'a, 'tcx> {
         match c.kind() {
             ty::ConstKind::Infer(ty::InferConst::Var(vid)) => {
                 let vid = self.infcx.root_const_var(vid);
-                let universe = self.infcx.try_resolve_const_var(vid).unwrap_err();
+                let universe = match self.infcx.try_resolve_const_var(vid) {
+                    Ok(value) => return value.fold_with(self),
+                    Err(universe) => universe,
+                };
                 if self.for_universe.can_name(universe) {
                     c
                 } else {
