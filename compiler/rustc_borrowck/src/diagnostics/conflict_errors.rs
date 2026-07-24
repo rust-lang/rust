@@ -1880,6 +1880,12 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                     issued_borrow.borrowed_place,
                     &issued_spans,
                 );
+                self.explain_iterator_invalidation_in_for_loop_if_applicable(
+                    &mut err,
+                    &issued_spans,
+                    place,
+                    issued_borrow.borrowed_place,
+                );
                 err
             }
 
@@ -2615,6 +2621,63 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             } else {
                 err.help(msg);
             }
+        }
+    }
+
+    /// Explain iterator invalidation when mutating a collection in a for loop.
+    ///
+    /// For example:
+    /// ```ignore (illustrative)
+    /// let mut values = vec![1, 2, 3];
+    /// for value in &values {
+    ///     values.push(4);
+    /// }
+    /// ```
+    fn explain_iterator_invalidation_in_for_loop_if_applicable(
+        &self,
+        err: &mut Diag<'_>,
+        issued_spans: &UseSpans<'tcx>,
+        place: Place<'tcx>,
+        borrowed_place: Place<'tcx>,
+    ) {
+        let issue_span = issued_spans.args_or_use();
+        let tcx = self.infcx.tcx;
+
+        let Some(body_id) = tcx.hir_node(self.mir_hir_id()).body_id() else { return };
+
+        struct ExprFinder<'hir> {
+            tcx: TyCtxt<'hir>,
+            issue_span: Span,
+            in_for_loop: bool,
+        }
+        impl<'hir> Visitor<'hir> for ExprFinder<'hir> {
+            fn visit_expr(&mut self, ex: &'hir hir::Expr<'hir>) {
+                if let hir::ExprKind::Call(path, [arg]) = ex.kind
+                    && let hir::ExprKind::Path(qpath) = path.kind
+                    && self.tcx.qpath_is_lang_item(qpath, LangItem::IntoIterIntoIter)
+                    && arg.span.contains(self.issue_span)
+                    && ex.span.desugaring_kind() == Some(DesugaringKind::ForLoop)
+                {
+                    self.in_for_loop = true;
+                    return;
+                }
+                hir::intravisit::walk_expr(self, ex);
+            }
+        }
+
+        let mut finder = ExprFinder { tcx, issue_span, in_for_loop: false };
+        finder.visit_expr(tcx.hir_body(body_id).value);
+
+        if finder.in_for_loop && place.local == borrowed_place.local {
+            let place_desc = self.describe_any_place(place.as_ref());
+            err.note(format!(
+                "the for loop borrows {place_desc} immutably for its entire duration, \
+                 preventing modification within the loop body"
+            ));
+            err.help(
+                "consider using an index-based loop instead, or collecting \
+                 modifications into a separate collection",
+            );
         }
     }
 
