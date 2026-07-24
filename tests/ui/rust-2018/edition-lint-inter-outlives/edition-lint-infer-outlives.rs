@@ -802,8 +802,9 @@ where
 }
 
 // https://github.com/rust-lang/rust/issues/105150
+// `T: 'a` is implied by the field, but removing it would change the object lifetime
+// default for `dyn Trait` uses from `'a` to `'static` — the lint must not fire here.
 struct InferredWhereBoundWithInlineBound<'a, T: ?Sized>
-//~^ ERROR outlives requirements can be inferred
     where T: 'a,
 {
     data: &'a T,
