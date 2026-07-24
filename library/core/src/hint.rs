@@ -214,18 +214,28 @@ pub const unsafe fn assert_unchecked(cond: bool) {
 /// Emits a machine instruction to signal the processor that it is running in
 /// a busy-wait spin-loop ("spin lock").
 ///
-/// Upon receiving the spin-loop signal the processor can optimize its behavior by,
-/// for example, saving power or switching hyper-threads.
-///
 /// This function is different from [`thread::yield_now`] which directly
-/// yields to the system's scheduler, whereas `spin_loop` does not interact
-/// with the operating system.
+/// yields to the operating system's scheduler, whereas `spin_loop` does not interact
+/// with the OS and only notifies the CPU itself.
 ///
-/// A common use case for `spin_loop` is implementing bounded optimistic
-/// spinning in a CAS loop in synchronization primitives. To avoid problems
-/// like priority inversion, it is strongly recommended that the spin loop is
-/// terminated after a finite amount of iterations and an appropriate blocking
-/// syscall is made.
+/// [`thread::yield_now`]: ../../std/thread/fn.yield_now.html
+///
+/// Upon receiving the spin-loop signal the processor can optimize its behavior by,
+/// for example, saving power or switching [hardware threads].
+///
+/// [hardware threads]: https://en.wikipedia.org/wiki/Simultaneous_multithreading
+///
+/// Because the operating system is not notified at all, this hint should be used only
+/// when the expected wait time is short, i.e. a few instructions. Additionally, since
+/// this hint is intended to reduce the amount of work done on the current thread, you
+/// should only use it when you're waiting on work from *another* thread to complete,
+/// otherwise, you'll just slow everything down.
+///
+/// If you're not sure how long you'll be waiting for, you can choose to run this hint
+/// for a limited number of iterations before running [`thread::yield_now`] instead to
+/// satisfy this condition. This means that work can proceed quicker than the time it
+/// would take to notify the OS scheduler, but will still yield if the task is taking
+/// a long time.
 ///
 /// **Note**: On platforms that do not support receiving spin-loop hints this
 /// function does not do anything at all.
@@ -263,8 +273,6 @@ pub const unsafe fn assert_unchecked(cond: bool) {
 /// bg_work.join()?;
 /// # Ok::<(), Box<dyn core::any::Any + Send + 'static>>(())
 /// ```
-///
-/// [`thread::yield_now`]: ../../std/thread/fn.yield_now.html
 #[inline(always)]
 #[stable(feature = "renamed_spin_loop", since = "1.49.0")]
 pub fn spin_loop() {
