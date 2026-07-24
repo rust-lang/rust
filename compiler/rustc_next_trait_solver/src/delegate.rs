@@ -26,10 +26,11 @@ pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
         span: <Self::Interner as Interner>::Span,
     ) -> ComputeGoalFastPathOutcome<Self::Interner>;
 
-    fn fresh_var_for_kind_with_span(
+    fn fresh_var_for_kind(
         &self,
         arg: <Self::Interner as Interner>::GenericArg,
         span: <Self::Interner as Interner>::Span,
+        universe: ty::UniverseIndex,
     ) -> <Self::Interner as Interner>::GenericArg;
 
     // FIXME: Uplift the leak check into this crate.

@@ -241,17 +241,18 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         }
     }
 
-    fn fresh_var_for_kind_with_span(
+    fn fresh_var_for_kind(
         &self,
         arg: ty::GenericArg<'tcx>,
         span: Span,
+        universe: ty::UniverseIndex,
     ) -> ty::GenericArg<'tcx> {
         match arg.kind() {
             ty::GenericArgKind::Lifetime(_) => {
-                self.next_region_var(RegionVariableOrigin::Misc(span)).into()
+                self.next_region_var_in_universe(RegionVariableOrigin::Misc(span), universe).into()
             }
-            ty::GenericArgKind::Type(_) => self.next_ty_var(span).into(),
-            ty::GenericArgKind::Const(_) => self.next_const_var(span).into(),
+            ty::GenericArgKind::Type(_) => self.next_ty_var_in_universe(span, universe).into(),
+            ty::GenericArgKind::Const(_) => self.next_const_var_in_universe(span, universe).into(),
         }
     }
 
