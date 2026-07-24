@@ -303,7 +303,9 @@ pub(crate) fn vis_offset(node: &SyntaxNode) -> TextSize {
 }
 
 pub(crate) fn invert_boolean_expression(make: &SyntaxFactory, expr: ast::Expr) -> ast::Expr {
-    invert_special_case(make, &expr).unwrap_or_else(|| make.expr_prefix(T![!], expr).into())
+    invert_special_case(make, &expr).unwrap_or_else(|| {
+        make.expr_prefix(T![!], wrap_paren(expr, make, ExprPrecedence::Prefix)).into()
+    })
 }
 
 fn invert_special_case(make: &SyntaxFactory, expr: &ast::Expr) -> Option<ast::Expr> {
