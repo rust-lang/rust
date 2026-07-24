@@ -85,7 +85,7 @@ pub(crate) struct TypeVariableStorage<'tcx> {
     sub_unification_table: ut::UnificationTableStorage<TyVidSubKey>,
 }
 
-pub(crate) struct TypeVariableTable<'a, 'tcx> {
+pub struct TypeVariableTable<'a, 'tcx> {
     storage: &'a mut TypeVariableStorage<'tcx>,
 
     undo_log: &'a mut InferCtxtUndoLogs<'tcx>,
@@ -116,7 +116,7 @@ pub(crate) struct TypeVariableData {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub(crate) enum TypeVariableValue<'tcx> {
+pub enum TypeVariableValue<'tcx> {
     Known { value: Ty<'tcx> },
     Unknown { universe: ty::UniverseIndex },
 }
@@ -131,7 +131,7 @@ impl<'tcx> TypeVariableValue<'tcx> {
         }
     }
 
-    pub(crate) fn is_unknown(&self) -> bool {
+    pub fn is_unknown(&self) -> bool {
         match *self {
             TypeVariableValue::Unknown { .. } => true,
             TypeVariableValue::Known { .. } => false,
@@ -267,6 +267,22 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
         self.eq_relations().inlined_probe_value(vid)
     }
 
+    /// Retrieves the type to which `vid` has been instantiated, if
+    /// any, along with the root `vid`.
+    pub fn probe_with_root_vid(&mut self, vid: ty::TyVid) -> (ty::TyVid, TypeVariableValue<'tcx>) {
+        self.inlined_probe_with_vid(vid)
+    }
+
+    /// An always-inlined variant of `probe_with_root_vid`, for very hot call sites.
+    #[inline(always)]
+    pub(crate) fn inlined_probe_with_vid(
+        &mut self,
+        vid: ty::TyVid,
+    ) -> (ty::TyVid, TypeVariableValue<'tcx>) {
+        let (id, value) = self.eq_relations().inlined_probe_key_value(vid);
+        (id.vid, value)
+    }
+
     #[inline]
     fn eq_relations(&mut self) -> super::UnificationTable<'_, 'tcx, TyVidEqKey<'tcx>> {
         self.storage.eq_relations.with_log(self.undo_log)
@@ -286,16 +302,13 @@ impl<'tcx> TypeVariableTable<'_, 'tcx> {
         (range.clone(), range.map(|index| self.var_origin(index)).collect())
     }
 
-    /// Returns indices of all variables that are not yet
-    /// instantiated.
-    pub(crate) fn unresolved_variables(&mut self) -> Vec<ty::TyVid> {
+    /// Returns indices of all root variables that are not yet instantiated.
+    pub(crate) fn unresolved_root_variables(&mut self) -> Vec<ty::TyVid> {
         (0..self.num_vars())
-            .filter_map(|i| {
-                let vid = ty::TyVid::from_usize(i);
-                match self.probe(vid) {
-                    TypeVariableValue::Unknown { .. } => Some(vid),
-                    TypeVariableValue::Known { .. } => None,
-                }
+            .map(ty::TyVid::from_usize)
+            .filter(|&vid| {
+                let (root, value) = self.probe_with_root_vid(vid);
+                root == vid && value.is_unknown()
             })
             .collect()
     }
