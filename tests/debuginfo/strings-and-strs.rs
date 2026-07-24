@@ -1,6 +1,5 @@
 //@ min-gdb-version: 15.1
 // LLDB 1800+ tests were not tested in CI, broke, and now are disabled
-//@ ignore-lldb
 
 //@ compile-flags:-g
 //@ disable-gdb-pretty-printers
@@ -38,16 +37,16 @@
 //@ lldb-check:(&str) plain_str = "Hello" { [0] = 'H' [1] = 'e' [2] = 'l' [3] = 'l' [4] = 'o' }
 
 //@ lldb-command:v str_in_struct
-//@ lldb-check:(strings_and_strs::Foo) str_in_struct = { inner = "Hello" { [0] = 'H' [1] = 'e' [2] = 'l' [3] = 'l' [4] = 'o' } }
+//@ lldb-check:(strings_and_strs::Foo) str_in_struct = {inner:"Hello"}
 
 //@ lldb-command:v str_in_tuple
-//@ lldb-check:((&str, &str)) str_in_tuple = ("Hello", "World") { 0 = "Hello" { [0] = 'H' [1] = 'e' [2] = 'l' [3] = 'l' [4] = 'o' } 1 = "World" { [0] = 'W' [1] = 'o' [2] = 'r' [3] = 'l' [4] = 'd' } }
+//@ lldb-check:((&str, &str)) str_in_tuple = ("Hello", "World")
 
 //@ lldb-command:v str_in_rc
 //@ lldb-check:(alloc::rc::Rc<&str, alloc::alloc::Global>) str_in_rc = strong=1, weak=0 { value = "Hello" { [0] = 'H' [1] = 'e' [2] = 'l' [3] = 'l' [4] = 'o' } }
 
 //@ lldb-command:v box_str
-//@ lldb-check:(alloc::boxed::Box<unsigned char[], alloc::alloc::Global>) box_str = { __0 = { pointer = { pointer = { data_ptr = 0x[...] "World" length = 5 } } _marker = } __1 = }
+//@ lldb-check:(alloc::boxed::Box<str, alloc::alloc::Global>) box_str = "World" { [0] = 'W' [1] = 'o' [2] = 'r' [3] = 'l' [4] = 'd' }
 
 //@ lldb-command:v rc_str
 //@ lldb-check:(alloc::rc::Rc<unsigned char[], alloc::alloc::Global>) rc_str = strong=1, weak=0 { value = "World" }

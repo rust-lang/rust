@@ -1,31 +1,31 @@
 from __future__ import annotations
+
 import sys
-from typing import Generator, Dict, List, TYPE_CHECKING, Optional
 from enum import Flag, auto
+from typing import TYPE_CHECKING, Dict, Generator, List, Optional
 
 from lldb import (
     SBData,
     SBError,
-    eBasicTypeLong,
-    eBasicTypeUnsignedLong,
-    eBasicTypeUnsignedChar,
-    eBasicTypeUnsignedShort,
-    eBasicTypeUnsignedLongLong,
-    eBasicTypeSignedChar,
-    eBasicTypeShort,
-    eBasicTypeLongLong,
-    eBasicTypeFloat,
-    eBasicTypeDouble,
-    eBasicTypeHalf,
     eBasicTypeChar32,
+    eBasicTypeDouble,
+    eBasicTypeFloat,
+    eBasicTypeHalf,
+    eBasicTypeLong,
+    eBasicTypeLongLong,
+    eBasicTypeShort,
+    eBasicTypeSignedChar,
+    eBasicTypeUnsignedChar,
+    eBasicTypeUnsignedLong,
+    eBasicTypeUnsignedLongLong,
+    eBasicTypeUnsignedShort,
     eFormatChar,
     eTypeIsInteger,
 )
-
 from rust_types import is_tuple_fields
 
 if TYPE_CHECKING:
-    from lldb import SBValue, SBType, SBTypeStaticField, SBTarget, SBProcess
+    from lldb import SBProcess, SBTarget, SBType, SBTypeStaticField, SBValue
 
 # from lldb.formatters import Logger
 
@@ -564,7 +564,13 @@ class StdStringSyntheticProvider:
 
 
 class MSVCStrSyntheticProvider:
-    __slots__ = ["valobj", "data_ptr", "length"]
+    _name_map: Dict[str, str] = {
+        "ref$<str$>": "&str",
+        "ref_mut$<str$>": "&mut str",
+        "ptr_const$<str$>": "*const str",
+        "ptr_mut$<str$>": "*mut str",
+    }
+    __slots__ = ["data_ptr", "length", "valobj"]
 
     def __init__(self, valobj: SBValue, _dict: LLDBOpaque):
         self.valobj = valobj
@@ -598,10 +604,14 @@ class MSVCStrSyntheticProvider:
         return element
 
     def get_type_name(self):
-        if self.valobj.GetTypeName().startswith("ref_mut"):
-            return "&mut str"
+        name = self.valobj.GetTypeName()
+
+        if (type_name := self._name_map.get(name)) is not None:
+            return type_name
+        elif name.startswith("alloc::boxed::Box<str$"):
+            return "Box<str>"
         else:
-            return "&str"
+            return name
 
 
 def _getVariantName(variant: SBValue) -> str:
