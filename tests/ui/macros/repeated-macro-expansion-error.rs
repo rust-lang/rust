@@ -1,3 +1,4 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/53251
 struct S;
 
 impl S {

@@ -1,3 +1,4 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/43692
 //@ run-pass
 fn main() {
     assert_eq!('\u{10__FFFF}', '\u{10FFFF}');

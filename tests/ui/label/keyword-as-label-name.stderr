@@ -1,5 +1,5 @@
 error: labels cannot use keyword names
-  --> $DIR/issue-46311.rs:2:5
+  --> $DIR/keyword-as-label-name.rs:3:5
    |
 LL |     'break: loop {
    |     ^^^^^^

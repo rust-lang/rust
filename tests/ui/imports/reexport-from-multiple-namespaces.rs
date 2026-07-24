@@ -1,3 +1,4 @@
+//! Regression test for https://github.com/rust-lang/rust/issues/50187
 //@ check-pass
 
 #![feature(decl_macro)]
