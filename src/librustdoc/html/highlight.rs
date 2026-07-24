@@ -33,7 +33,7 @@ pub(crate) struct HrefContext<'a, 'tcx> {
     pub(crate) file_span: Span,
     /// This field is used to know "how far" from the top of the directory we are to link to either
     /// documentation pages or other source pages.
-    pub(crate) root_path: &'a str,
+    pub(crate) jump_to_def_path_depth: usize,
     /// This field is used to calculate precise local URLs.
     pub(crate) current_href: String,
 }
@@ -1396,23 +1396,27 @@ fn generate_link_to_def(
                     LinkFromSrc::Local(span) => {
                         context.href_from_span_relative(*span, &href_context.current_href)
                     }
-                    LinkFromSrc::External(def_id) => {
-                        format::href_with_root_path(*def_id, context, Some(href_context.root_path))
-                            .ok()
-                            .map(|HrefInfo { url, .. }| url)
-                    }
-                    LinkFromSrc::Primitive(prim) => format::href_with_root_path(
-                        PrimitiveType::primitive_locations(context.tcx())[prim],
+                    LinkFromSrc::External(def_id) => format::href_with_jump_to_def_path_depth(
+                        *def_id,
                         context,
-                        Some(href_context.root_path),
+                        Some(href_context.jump_to_def_path_depth),
                     )
                     .ok()
                     .map(|HrefInfo { url, .. }| url),
-                    LinkFromSrc::Doc(def_id) => {
-                        format::href_with_root_path(*def_id, context, Some(href_context.root_path))
-                            .ok()
-                            .map(|HrefInfo { url, .. }| url)
-                    }
+                    LinkFromSrc::Primitive(prim) => format::href_with_jump_to_def_path_depth(
+                        PrimitiveType::primitive_locations(context.tcx())[prim],
+                        context,
+                        Some(href_context.jump_to_def_path_depth),
+                    )
+                    .ok()
+                    .map(|HrefInfo { url, .. }| url),
+                    LinkFromSrc::Doc(def_id) => format::href_with_jump_to_def_path_depth(
+                        *def_id,
+                        context,
+                        Some(href_context.jump_to_def_path_depth),
+                    )
+                    .ok()
+                    .map(|HrefInfo { url, .. }| url),
                 }
             })
     {
