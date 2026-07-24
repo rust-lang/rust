@@ -1698,6 +1698,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
             for field in &variant.fields {
                 self.tables.safety.set(field.did.index, field.safety);
+                record!(
+                    self.tables.mut_restriction[field.did] <- field.mut_restriction
+                );
             }
 
             if let Some((CtorKind::Fn, ctor_def_id)) = variant.ctor {

@@ -835,6 +835,12 @@ fn lower_variant<'tcx>(
             did: f.def_id.to_def_id(),
             name: f.ident.name,
             vis: tcx.visibility(f.def_id),
+            mut_restriction: match f.mut_restriction.kind {
+                hir::RestrictionKind::Unrestricted => ty::RestrictionKind::Unrestricted,
+                hir::RestrictionKind::Restricted(path) => {
+                    ty::RestrictionKind::Restricted(path.res, f.mut_restriction.span)
+                }
+            },
             safety: f.safety,
             value: f.default.map(|v| v.def_id.to_def_id()),
         })
@@ -926,19 +932,16 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
             false,
             is_auto == hir::IsAuto::Yes,
             safety,
-            if let hir::RestrictionKind::Restricted(path) = impl_restriction.kind {
-                ty::trait_def::ImplRestrictionKind::Restricted(path.res, impl_restriction.span)
-            } else {
-                ty::trait_def::ImplRestrictionKind::Unrestricted
+            match impl_restriction.kind {
+                hir::RestrictionKind::Restricted(path) => {
+                    ty::RestrictionKind::Restricted(path.res, impl_restriction.span)
+                }
+                hir::RestrictionKind::Unrestricted => ty::RestrictionKind::Unrestricted,
             },
         ),
-        hir::ItemKind::TraitAlias(constness, ..) => (
-            constness,
-            true,
-            false,
-            hir::Safety::Safe,
-            ty::trait_def::ImplRestrictionKind::Unrestricted,
-        ),
+        hir::ItemKind::TraitAlias(constness, ..) => {
+            (constness, true, false, hir::Safety::Safe, ty::RestrictionKind::Unrestricted)
+        }
         _ => span_bug!(item.span, "trait_def_of_item invoked on non-trait"),
     };
 
