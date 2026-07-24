@@ -385,6 +385,14 @@ impl UdpSocket {
         .map(|res| res[0] as _)?)
     }
 
+    pub fn set_hop_limit_v6(&self, _: u8) -> io::Result<()> {
+        unimpl!();
+    }
+
+    pub fn hop_limit_v6(&self) -> io::Result<u8> {
+        unimpl!();
+    }
+
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
         // this call doesn't have a meaning on our platform, but we can at least not panic if it's used.
         Ok(None)
@@ -417,6 +425,14 @@ impl UdpSocket {
     }
 
     pub fn multicast_ttl_v4(&self) -> io::Result<u32> {
+        unimpl!();
+    }
+
+    pub fn set_multicast_hop_limit_v6(&self, _: u8) -> io::Result<()> {
+        unimpl!();
+    }
+
+    pub fn multicast_hop_limit_v6(&self) -> io::Result<u8> {
         unimpl!();
     }
 
