@@ -37,6 +37,7 @@ impl<T> CovariantUnsafeCell<T> {
     /// ```
     #[unstable(feature = "covariant_unsafe_cell", issue = "159735")]
     #[rustc_const_unstable(feature = "covariant_unsafe_cell", issue = "159735")]
+    #[rustc_const_stable_indirect]
     #[inline(always)]
     pub const fn new(value: T) -> CovariantUnsafeCell<T> {
         CovariantUnsafeCell(UnsafeCell::new(value))
