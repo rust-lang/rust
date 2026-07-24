@@ -211,11 +211,11 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     // - https://github.com/rust-lang/rust/issues/130494
     sym::pin_v2,
 
-    // The `#[splat]` attribute is part of the `splat` experiment
+    // The `#[rustc_splat]` attribute is part of the `splat` experiment
     // that improves the ergonomics of function overloading, tracked in:
     //
     // - https://github.com/rust-lang/rust/issues/153629
-    sym::splat,
+    sym::rustc_splat,
 
     // The `#[unroll]` attribute.
     //

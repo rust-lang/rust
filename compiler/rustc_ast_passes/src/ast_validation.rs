@@ -454,7 +454,7 @@ impl<'a> AstValidator<'a> {
                 let splat_arg_spans: Vec<Span> = arg
                     .attrs
                     .iter()
-                    .filter_map(|attr| attr.has_name(sym::splat).then_some(attr.span))
+                    .filter_map(|attr| attr.has_name(sym::rustc_splat).then_some(attr.span))
                     .collect();
                 if splat_arg_spans.is_empty() {
                     None
@@ -522,7 +522,7 @@ impl<'a> AstValidator<'a> {
             .filter(|attr| match &attr.kind {
                 AttrKind::Normal(normal) => {
                     let arr =
-                        [sym::allow, sym::deny, sym::expect, sym::forbid, sym::splat, sym::warn];
+                        [sym::allow, sym::deny, sym::expect, sym::forbid, sym::rustc_splat, sym::warn];
                     !attr.has_any_name(&arr) && rustc_attr_parsing::is_builtin_attr(&normal.item)
                 }
                 AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace(_)) => false,
