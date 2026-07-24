@@ -26,14 +26,33 @@ LL |     #[repr(simd)]
    = help: the `repr(simd)` attribute can only be applied to structs
    = note: placing this attribute on a macro invocation does nothing even if the macro expands to what would be a valid target for the attribute
 
-error: crate-level attribute should be an inner attribute: add an exclamation mark: `#![register_tool]`
+error[E0658]: `repr(complex)` is experimental
+  --> $DIR/attr-on-mac-call.rs:110:12
+   |
+LL |     #[repr(complex)]
+   |            ^^^^^^^
+   |
+   = note: see issue #154023 <https://github.com/rust-lang/rust/issues/154023> for more information
+   = help: add `#![feature(repr_complex)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: `#[repr(complex)]` attribute cannot be used on macro calls
   --> $DIR/attr-on-mac-call.rs:110:5
+   |
+LL |     #[repr(complex)]
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: `#[repr(complex)]` can only be applied to structs
+   = note: placing this attribute on a macro invocation does nothing even if the macro expands to what would be a valid target for the attribute
+
+error: crate-level attribute should be an inner attribute: add an exclamation mark: `#![register_tool]`
+  --> $DIR/attr-on-mac-call.rs:114:5
    |
 LL |     #[register_tool(xyz)]
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
 note: this attribute does not have an `!`, which means it is applied to this macro call
-  --> $DIR/attr-on-mac-call.rs:112:5
+  --> $DIR/attr-on-mac-call.rs:116:5
    |
 LL |     unreachable!();
    |     ^^^^^^^^^^^^^^
@@ -341,6 +360,6 @@ LL |     #[repr(Rust)]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: placing this attribute on a macro invocation does nothing even if the macro expands to what would be a valid target for the attribute
 
-error: aborting due to 4 previous errors; 30 warnings emitted
+error: aborting due to 6 previous errors; 30 warnings emitted
 
 For more information about this error, try `rustc --explain E0658`.

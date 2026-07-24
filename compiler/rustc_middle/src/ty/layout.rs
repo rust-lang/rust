@@ -1203,6 +1203,10 @@ where
         matches!(this.ty.kind(), ty::Adt(def, _) if def.repr().transparent())
     }
 
+    fn is_complex(this: TyAndLayout<'tcx>) -> bool {
+        matches!(this.ty.kind(), ty::Adt(def, _) if def.repr().complex())
+    }
+
     fn is_scalable_vector(this: TyAndLayout<'tcx>) -> bool {
         this.ty.is_scalable_vector()
     }

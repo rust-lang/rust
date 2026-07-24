@@ -107,6 +107,10 @@ fn main() {
     //~^ ERROR attribute cannot be used on macro calls
     //~| ERROR SIMD types are experimental and possibly buggy
     unreachable!();
+    #[repr(complex)]
+    //~^ ERROR attribute cannot be used on macro calls
+    //~| ERROR `repr(complex)` is experimental
+    unreachable!();
     #[register_tool(xyz)]
     //~^ ERROR crate-level attribute should be an inner attribute
     unreachable!();

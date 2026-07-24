@@ -32,6 +32,7 @@
     f128,
     repr_simd,
     transparent_unions,
+    repr_complex,
     asm_experimental_arch,
     unboxed_closures
 )]
@@ -389,6 +390,18 @@ pub mod hint {
 
         unsafe { black_box(dummy) }
     }
+}
+
+pub mod num {
+    use super::Copy;
+
+    #[repr(complex)]
+    pub struct Complex<T> {
+        pub re: T,
+        pub im: T,
+    }
+
+    impl<T: Copy> Copy for Complex<T> {}
 }
 
 #[lang = "c_void"]

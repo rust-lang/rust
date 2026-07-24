@@ -635,7 +635,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         debug_assert!(matches!(def.adt_kind(), AdtKind::Struct | AdtKind::Union));
         use FfiResult::*;
 
-        if !def.repr().c() && !def.repr().transparent() {
+        if !def.repr().c() && !def.repr().transparent() && !def.repr().complex() {
             return FfiUnsafe {
                 ty,
                 reason: if def.is_struct() {
@@ -654,6 +654,38 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                     ))
                 },
             };
+        }
+
+        // We only guarantee that Complex<{float}> is C-compatible for now.
+        if def.repr().complex()
+            && let Some(field) = def.non_enum_variant().fields.iter().next()
+        {
+            let mut field_ty =
+                maybe_normalize_erasing_regions(self.cx, field.ty(self.cx.tcx, args));
+
+            // Peel off any transparent wrappers.
+            while let ty::Adt(inner, inner_args) = field_ty.kind()
+                && inner.repr().transparent()
+                && let Some(inner_field) =
+                    super::transparent_newtype_field(self.cx.tcx, inner.non_enum_variant())
+            {
+                field_ty = maybe_normalize_erasing_regions(
+                    self.cx,
+                    inner_field.ty(self.cx.tcx, inner_args),
+                );
+            }
+
+            if !field_ty.is_floating_point() {
+                return FfiUnsafe {
+                    ty,
+                    reason: msg!(
+                        "this `repr(complex)` struct only has a C-compatible layout with floating-point fields"
+                    ),
+                    help: Some(msg!(
+                        "only `repr(complex)` structs whose fields are `f16`, `f32`, `f64`, or `f128` have a C-compatible layout"
+                    )),
+                };
+            }
         }
 
         if def.non_enum_variant().field_list_has_applicable_non_exhaustive() {

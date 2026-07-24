@@ -334,6 +334,8 @@ declare_features! (
     (internal, panic_runtime, "1.10.0", Some(32837)),
     /// Allows using pattern types.
     (internal, pattern_types, "1.79.0", Some(123646)),
+    /// Allows `repr(complex)` for defining types that are ABI-compatible with C `_Complex`.
+    (internal, repr_complex, "CURRENT_RUSTC_VERSION", Some(154023)),
     /// Allows `repr(simd)` and importing the various simd intrinsics.
     (internal, repr_simd, "1.4.0", Some(27731)),
     /// Allows using compiler's own crates.
