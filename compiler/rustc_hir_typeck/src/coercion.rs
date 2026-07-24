@@ -54,7 +54,7 @@ use rustc_middle::ty::adjustment::{
     PointerCoercion,
 };
 use rustc_middle::ty::error::TypeError;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
+use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
 use rustc_span::{BytePos, DUMMY_SP, Span};
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::solve::inspect::{self, InferCtxtProofTreeExt, ProofTreeVisitor};
@@ -950,6 +950,21 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         Ok(coerce)
     }
 
+    /// Get the AdtDefs for the reborrowing if they're reborrowable
+    fn reborrow_def(
+        &self,
+        a: Ty<'tcx>,
+        b: Ty<'tcx>,
+    ) -> RelateResult<'tcx, (AdtDef<'tcx>, AdtDef<'tcx>)> {
+        let (ty::Adt(a_def, _), ty::Adt(b_def, b_args)) = (*a.kind(), *b.kind()) else {
+            return Err(TypeError::Mismatch);
+        };
+        match b_args.get(0).map(|r| r.kind()) {
+            Some(ty::GenericArgKind::Lifetime(_)) => Ok((a_def, b_def)),
+            _ => Err(TypeError::Mismatch),
+        }
+    }
+
     /// Applies generic exclusive reborrowing on type implementing `Reborrow`.
     #[instrument(skip(self), level = "trace")]
     fn coerce_reborrow(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CoerceResult<'tcx> {
@@ -957,9 +972,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         debug_assert!(self.shallow_resolve(b) == b);
 
         // We need to make sure the two types are compatible for reborrow.
-        let (ty::Adt(a_def, _), ty::Adt(b_def, _)) = (a.kind(), b.kind()) else {
-            return Err(TypeError::Mismatch);
-        };
+        let (a_def, b_def) = self.reborrow_def(a, b)?;
+
         if a_def.did() == b_def.did() {
             // Reborrow is applicable here
             self.unify_and(
@@ -982,9 +996,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         debug_assert!(self.shallow_resolve(b) == b);
 
         // We need to make sure the two types are compatible for reborrow.
-        let (ty::Adt(a_def, _), ty::Adt(b_def, _)) = (a.kind(), b.kind()) else {
-            return Err(TypeError::Mismatch);
-        };
+        let (a_def, b_def) = self.reborrow_def(a, b)?;
         if a_def.did() == b_def.did() {
             // CoerceShared cannot be T -> T.
             return Err(TypeError::Mismatch);
