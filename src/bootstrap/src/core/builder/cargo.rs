@@ -1310,6 +1310,13 @@ impl Builder<'_> {
         // The libc build script emits check-cfg flags only when this environment variable is set,
         // so this line allows the use of custom libcs.
         cargo.env("LIBC_CHECK_CFG", "1");
+        // The libc crate has a musl version baseline that is much lower than that of the musl
+        // targets in the Rust compiler at the moment. This unfortunately means that features only
+        // supported in newer musl releases like time64 and, for example statx, are not available by
+        // default unless opted into via an environment variable. The version baseline of the Rust
+        // compiler targets is currently 1.2.5, so we can set the variable to get access to statx in
+        // std, amongst other things.
+        cargo.env("RUST_LIBC_UNSTABLE_MUSL_V1_2_3", "1");
 
         let mut lint_flags = Vec::new();
 
