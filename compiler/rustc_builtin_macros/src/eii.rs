@@ -10,10 +10,10 @@ use rustc_span::{ErrorGuaranteed, Ident, Span, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
 use crate::diagnostics::{
-    EiiAttributeNotSupported, EiiExternTargetExpectedList, EiiExternTargetExpectedMacro,
-    EiiExternTargetExpectedUnsafe, EiiMacroExpectedMaxOneArgument, EiiOnlyOnce,
-    EiiSharedMacroInStatementPosition, EiiSharedMacroTarget, EiiStaticArgumentRequired,
-    EiiStaticDefaultApple, EiiStaticMultipleImplementations, EiiStaticMutable,
+    EiiAttributeNotSupported, EiiBothDeclAndImpl, EiiExternTargetExpectedList,
+    EiiExternTargetExpectedMacro, EiiExternTargetExpectedUnsafe, EiiMacroExpectedMaxOneArgument,
+    EiiMultipleImplementations, EiiOnlyOnce, EiiSharedMacroInStatementPosition,
+    EiiSharedMacroTarget, EiiStaticArgumentRequired, EiiStaticDefaultApple, EiiStaticMutable,
 };
 
 /// ```rust
@@ -123,6 +123,22 @@ fn eii_(
             });
             return vec![Annotatable::Item(item)];
         }
+    };
+
+    match kind {
+        ItemKind::Fn(func) => {
+            if func.eii_impl.is_some() {
+                ecx.dcx().emit_err(EiiBothDeclAndImpl { span: eii_attr_span });
+                return vec![Annotatable::Item(item)];
+            }
+        }
+        ItemKind::Static(stat) => {
+            if stat.eii_impl.is_some() {
+                ecx.dcx().emit_err(EiiBothDeclAndImpl { span: eii_attr_span });
+                return vec![Annotatable::Item(item)];
+            }
+        }
+        _ => unreachable!("Target was checked earlier"),
     };
 
     // only clone what we need
@@ -298,7 +314,7 @@ fn generate_default_impl(
         _ => unreachable!("Target was checked earlier"),
     };
 
-    let eii_impl = EiiImpl {
+    let eii_impl = Box::new(EiiImpl {
         node_id: DUMMY_NODE_ID,
         inner_span: macro_name.span,
         eii_macro_path: ast::Path::from_ident(macro_name),
@@ -315,15 +331,17 @@ fn generate_default_impl(
             // NOTE: this is why EIIs can't be used on statements
             vec![Ident::from_str_and_span("self", foreign_item_name.span), foreign_item_name],
         )),
-    };
+    });
 
     let mut item_kind = item_kind.clone();
     match &mut item_kind {
         ItemKind::Fn(func) => {
-            func.eii_impls.push(eii_impl);
+            assert!(func.eii_impl.is_none());
+            func.eii_impl = Some(eii_impl);
         }
         ItemKind::Static(stat) => {
-            stat.eii_impls.push(eii_impl);
+            assert!(stat.eii_impl.is_none());
+            stat.eii_impl = Some(eii_impl);
         }
         _ => unreachable!("Target was checked earlier"),
     };
@@ -579,16 +597,9 @@ pub(crate) fn eii_shared_macro(
         return vec![item];
     };
 
-    let eii_impls = match &mut i.kind {
-        ItemKind::Fn(func) => &mut func.eii_impls,
-        ItemKind::Static(stat) => {
-            if !stat.eii_impls.is_empty() {
-                // Reject multiple implementations on one static item
-                // because it might be unintuitive for libraries defining statics the defined statics may alias
-                ecx.dcx().emit_err(EiiStaticMultipleImplementations { span });
-            }
-            &mut stat.eii_impls
-        }
+    let eii_impl = match &mut i.kind {
+        ItemKind::Fn(func) => &mut func.eii_impl,
+        ItemKind::Static(stat) => &mut stat.eii_impl,
         _ => {
             ecx.dcx()
                 .emit_err(EiiSharedMacroTarget { span, name: path_to_string(&meta_item.path) });
@@ -611,7 +622,10 @@ pub(crate) fn eii_shared_macro(
         return vec![item];
     };
 
-    eii_impls.push(EiiImpl {
+    if eii_impl.is_some() {
+        ecx.dcx().emit_err(EiiMultipleImplementations { span });
+    }
+    *eii_impl = Some(Box::new(EiiImpl {
         node_id: DUMMY_NODE_ID,
         inner_span: meta_item.path.span,
         eii_macro_path: meta_item.path.clone(),
@@ -619,7 +633,7 @@ pub(crate) fn eii_shared_macro(
         span,
         is_default,
         known_eii_macro_resolution: None,
-    });
+    }));
 
     vec![item]
 }
