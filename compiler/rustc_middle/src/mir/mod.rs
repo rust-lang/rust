@@ -250,6 +250,22 @@ pub struct Body<'tcx> {
     /// If this MIR was built for a constant, this will be 0.
     pub arg_count: usize,
 
+    pub arg_count1: usize,
+    pub arg_count2: usize,
+    pub arg_count3: usize,
+    pub arg_count4: usize,
+    pub arg_count5: usize,
+    pub arg_count6: usize,
+    pub arg_count7: usize,
+    pub arg_count8: usize,
+    pub arg_count9: usize,
+    pub arg_count10: usize,
+    pub arg_count11: usize,
+    pub arg_count12: usize,
+    pub arg_count13: usize,
+    pub arg_count14: usize,
+    pub arg_count15: usize,
+
     /// Mark an argument local (which must be a tuple) as getting passed as
     /// its individual components at the LLVM level.
     ///
@@ -371,6 +387,21 @@ impl<'tcx> Body<'tcx> {
             tainted_by_errors,
             coverage_info_hi: None,
             function_coverage_info: None,
+            arg_count1: 0,
+            arg_count2: 0,
+            arg_count3: 0,
+            arg_count4: 0,
+            arg_count5: 0,
+            arg_count6: 0,
+            arg_count7: 0,
+            arg_count8: 0,
+            arg_count9: 0,
+            arg_count10: 0,
+            arg_count11: 0,
+            arg_count12: 0,
+            arg_count13: 0,
+            arg_count14: 0,
+            arg_count15: 0,
         };
         body.is_polymorphic = body.has_non_region_param();
         body
@@ -402,6 +433,22 @@ impl<'tcx> Body<'tcx> {
             tainted_by_errors: None,
             coverage_info_hi: None,
             function_coverage_info: None,
+
+            arg_count1: 0,
+            arg_count2: 0,
+            arg_count3: 0,
+            arg_count4: 0,
+            arg_count5: 0,
+            arg_count6: 0,
+            arg_count7: 0,
+            arg_count8: 0,
+            arg_count9: 0,
+            arg_count10: 0,
+            arg_count11: 0,
+            arg_count12: 0,
+            arg_count13: 0,
+            arg_count14: 0,
+            arg_count15: 0,
         };
         body.is_polymorphic = body.has_non_region_param();
         body
@@ -1732,8 +1779,8 @@ mod size_asserts {
 
     use super::*;
     // tidy-alphabetical-start
-    static_assert_size!(Body<'_>, 272);
     static_assert_size!(BasicBlockData<'_>, 144);
+    static_assert_size!(Body<'_>, 392);
     static_assert_size!(LocalDecl<'_>, 40);
     static_assert_size!(SourceScopeData<'_>, 64);
     static_assert_size!(Statement<'_>, 40);

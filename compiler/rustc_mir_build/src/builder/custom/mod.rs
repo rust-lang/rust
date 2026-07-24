@@ -62,6 +62,22 @@ pub(super) fn build_custom_mir<'tcx>(
         pass_count: 0,
         coverage_info_hi: None,
         function_coverage_info: None,
+
+        arg_count1: 0,
+        arg_count2: 0,
+        arg_count3: 0,
+        arg_count4: 0,
+        arg_count5: 0,
+        arg_count6: 0,
+        arg_count7: 0,
+        arg_count8: 0,
+        arg_count9: 0,
+        arg_count10: 0,
+        arg_count11: 0,
+        arg_count12: 0,
+        arg_count13: 0,
+        arg_count14: 0,
+        arg_count15: 0,
     };
 
     body.local_decls.push(LocalDecl::new(return_ty, return_ty_span));
