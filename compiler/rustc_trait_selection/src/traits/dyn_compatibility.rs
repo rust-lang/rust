@@ -272,7 +272,8 @@ fn predicate_references_self<'tcx>(
         | ty::ClauseKind::TypeOutlives(..)
         | ty::ClauseKind::RegionOutlives(..)
         | ty::ClauseKind::HostEffect(..)
-        | ty::ClauseKind::UnstableFeature(_) => None,
+        | ty::ClauseKind::UnstableFeature(_)
+        | ty::ClauseKind::CoroutineWitnessRegionConstraints(..) => None,
 
         // FIXME(generic_const_exprs): this can mention `Self`
         ty::ClauseKind::ConstEvaluatable(..) => None,
@@ -338,7 +339,8 @@ fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         | ty::ClauseKind::WellFormed(_)
         | ty::ClauseKind::ConstEvaluatable(_)
         | ty::ClauseKind::UnstableFeature(_)
-        | ty::ClauseKind::HostEffect(..) => false,
+        | ty::ClauseKind::HostEffect(..)
+        | ty::ClauseKind::CoroutineWitnessRegionConstraints(..) => false,
     })
 }
 

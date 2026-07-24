@@ -176,8 +176,9 @@ where
                 defining_opaque_types_and_generators
             }
             TypingMode::Coherence
-            | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: _ }
-            | TypingMode::PostBorrowck { defined_opaque_types: _ }
+            | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: _, .. }
+            | TypingMode::BorrowckPendingScc { .. }
+            | TypingMode::PostBorrowck { defined_opaque_types: _, .. }
             | TypingMode::Reflection
             | TypingMode::PostAnalysis
             | TypingMode::Codegen => return Default::default(),
@@ -464,6 +465,9 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                 }
                 ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(_)) => {
                     unreachable!("unexpected higher ranked `UnstableFeature` goal")
+                }
+                ty::PredicateKind::Clause(ty::ClauseKind::CoroutineWitnessRegionConstraints(..)) => {
+                    unreachable!("unexpected higher ranked `CoroutineWitnessRegionConstraints` goal")
                 }
             },
             Some(pred) => match pred {
@@ -836,6 +840,13 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                     } else {
                         ProcessResult::Unchanged
                     }
+                }
+                ty::PredicateKind::Clause(ty::ClauseKind::CoroutineWitnessRegionConstraints(
+                    ..,
+                )) => {
+                    bug!(
+                        "CoroutineWitnessRegionConstraints should not be evaluated in old fulfillment"
+                    )
                 }
             },
         }

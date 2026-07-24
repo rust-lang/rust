@@ -985,6 +985,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                                 | TypingMode::Typeck { .. }
                                 | TypingMode::PostTypeckUntilBorrowck { .. }
                                 | TypingMode::Reflection
+                                | TypingMode::BorrowckPendingScc { .. }
                                 | TypingMode::PostBorrowck { .. } => {
                                     debug!(
                                         assoc_ty = ?selcx.tcx().def_path_str(node_item.item.def_id),

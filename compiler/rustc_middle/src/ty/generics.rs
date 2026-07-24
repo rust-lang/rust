@@ -523,7 +523,8 @@ impl<'tcx> GenericClauses<'tcx> {
                 | ClauseKind::WellFormed(_)
                 | ClauseKind::ConstEvaluatable(_)
                 | ClauseKind::HostEffect(_)
-                | ClauseKind::UnstableFeature(_) => {}
+                | ClauseKind::UnstableFeature(_)
+                | ClauseKind::CoroutineWitnessRegionConstraints(..) => {}
             }
             clause.visit_with(&mut ParamChecker).is_continue()
         })

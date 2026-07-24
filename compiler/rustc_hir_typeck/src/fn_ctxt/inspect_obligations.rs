@@ -79,6 +79,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             | ty::PredicateKind::ConstEquate(..)
             | ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(..))
             | ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(_))
+            | ty::PredicateKind::Clause(ty::ClauseKind::CoroutineWitnessRegionConstraints(..))
             | ty::PredicateKind::Ambiguous => false,
         }
     }

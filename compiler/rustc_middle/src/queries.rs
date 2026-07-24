@@ -1000,6 +1000,14 @@ rustc_queries! {
         desc { "looking up the hidden types stored across await points in a coroutine" }
     }
 
+    query coroutine_witness_scc_data(
+        def_id: DefId,
+    ) -> ty::EarlyBinder<'tcx, ty::Binder<'tcx, mir::CoroutineNllOutlives<'tcx>>> {
+        desc { "NLL-derived region constraints for coroutine witness" }
+        separate_provide_extern
+        feedable
+    }
+
     /// Gets a map with the variances of every item in the local crate.
     ///
     /// <div class="warning">
@@ -1239,10 +1247,11 @@ rustc_queries! {
     /// Borrow-checks the given typeck root, e.g. functions, const/static items,
     /// and its children, e.g. closures, inline consts.
     query mir_borrowck(key: LocalDefId) -> Result<
-        &'tcx FxIndexMap<LocalDefId, ty::DefinitionSiteHiddenType<'tcx>>,
+        &'tcx mir::BorrowCheckResult<'tcx>,
         ErrorGuaranteed
     > {
         desc { "borrow-checking `{}`", tcx.def_path_str(key) }
+        handle_cycle_error
     }
 
     /// Gets a complete map from all types to their inherent impls.

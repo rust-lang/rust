@@ -197,6 +197,7 @@ pub fn clause_obligations<'tcx>(
             wf.add_wf_preds_for_term(ct.into());
         }
         ty::ClauseKind::UnstableFeature(_) => {}
+        ty::ClauseKind::CoroutineWitnessRegionConstraints(..) => {}
     }
 
     wf.normalize(infcx)
@@ -1265,7 +1266,8 @@ pub fn object_region_bounds<'tcx>(
                 | ty::ClauseKind::ConstArgHasType(_, _)
                 | ty::ClauseKind::WellFormed(_)
                 | ty::ClauseKind::UnstableFeature(_)
-                | ty::ClauseKind::ConstEvaluatable(_) => None,
+                | ty::ClauseKind::ConstEvaluatable(_)
+                | ty::ClauseKind::CoroutineWitnessRegionConstraints(..) => None,
             }
         })
         .collect()

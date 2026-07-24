@@ -2294,7 +2294,8 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
                 // regular WF checking
                 ty::ClauseKind::WellFormed(..)
                 // Unstable feature goals cannot be proven in an empty environment so skip them
-                | ty::ClauseKind::UnstableFeature(..) => continue,
+                | ty::ClauseKind::UnstableFeature(..)
+                | ty::ClauseKind::CoroutineWitnessRegionConstraints(..) => continue,
                 _ => {}
             }
 

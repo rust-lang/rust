@@ -3264,7 +3264,29 @@ define_print! {
             ty::ClauseKind::UnstableFeature(symbol) => {
                 write!(p, "feature({symbol}) is enabled")?;
             }
+            ty::ClauseKind::CoroutineWitnessRegionConstraints(def_id, binder) => {
+                write!(p, "the coroutine witness `")?;
+                p.print_def_path(def_id, &[])?;
+                write!(p, "` has region constraints `")?;
+                binder.print(p)?;
+                write!(p, "`")?;
+            }
         }
+    }
+
+    &'tcx ty::List<ty::ArgOutlivesClause<'tcx>> {
+        let mut first = true;
+        for pred in self.iter() {
+            if !first {
+                p.write_str(", ")?;
+            }
+            first = false;
+            pred.print(p)?;
+        }
+    }
+
+    ty::CoroutineRegionConstraints<'tcx> {
+        self.0.print(p)?;
     }
 
     ty::PredicateKind<'tcx> {

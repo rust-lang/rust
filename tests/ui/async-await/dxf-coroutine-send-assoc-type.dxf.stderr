@@ -1,0 +1,24 @@
+error: higher-ranked subtype error
+  --> $DIR/dxf-coroutine-send-assoc-type.rs:73:5
+   |
+LL |     assert_send(my_method(&mut s, &data));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: higher-ranked subtype error
+  --> $DIR/dxf-coroutine-send-assoc-type.rs:73:5
+   |
+LL |     assert_send(my_method(&mut s, &data));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: higher-ranked subtype error
+  --> $DIR/dxf-coroutine-send-assoc-type.rs:73:5
+   |
+LL |     assert_send(my_method(&mut s, &data));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 3 previous errors
+

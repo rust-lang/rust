@@ -89,6 +89,7 @@ where
             tainted: outer.tainted,
             inspect: outer.inspect.take_and_enter_probe(),
             opaque_accesses: AccessedOpaques::default(),
+            coroutine_witness_universes: outer.coroutine_witness_universes.clone(),
         };
         let r = nested.delegate.probe(|| {
             let r = f(&mut nested);

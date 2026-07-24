@@ -185,8 +185,8 @@ impl<'tcx> TaitConstraintLocator<'tcx> {
             }
             DefiningScopeKind::MirBorrowck => match tcx.mir_borrowck(item_def_id) {
                 Err(guar) => self.insert_found(ty::DefinitionSiteHiddenType::new_error(tcx, guar)),
-                Ok(hidden_types) => {
-                    if let Some(&hidden_type) = hidden_types.get(&self.def_id) {
+                Ok(result) => {
+                    if let Some(&hidden_type) = result.opaque_types.get(&self.def_id) {
                         debug!(?hidden_type, "found constraint");
                         self.insert_found(hidden_type);
                     } else if let Err(guar) =
@@ -269,8 +269,8 @@ pub(super) fn find_opaque_ty_constraints_for_rpit<'tcx>(
             }
         }
         DefiningScopeKind::MirBorrowck => match tcx.mir_borrowck(owner_def_id) {
-            Ok(hidden_types) => {
-                if let Some(hidden_ty) = hidden_types.get(&def_id) {
+            Ok(result) => {
+                if let Some(hidden_ty) = result.opaque_types.get(&def_id) {
                     hidden_ty.ty
                 } else {
                     let hir_ty = tcx.type_of_opaque_hir_typeck(def_id);

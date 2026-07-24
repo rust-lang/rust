@@ -839,27 +839,6 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         let value =
             value.fold_with(&mut Resolver::new(self.fcx, span, self.body, true, &mut goals));
 
-        // Ensure that we resolve goals we get from normalizing coroutine interiors,
-        // but we shouldn't expect those goals to need normalizing (or else we'd get
-        // into a somewhat awkward fixpoint situation, and we don't need it anyways).
-        let mut unexpected_goals = vec![];
-        self.typeck_results.coroutine_stalled_predicates.extend(
-            goals
-                .into_iter()
-                .map(|pred| {
-                    self.fcx.resolve_vars_if_possible(pred).fold_with(&mut Resolver::new(
-                        self.fcx,
-                        span,
-                        self.body,
-                        false,
-                        &mut unexpected_goals,
-                    ))
-                })
-                // FIXME: throwing away the param-env :(
-                .map(|goal| (goal.predicate, self.fcx.misc(span.to_span(self.fcx.tcx)))),
-        );
-        assert_eq!(unexpected_goals, vec![]);
-
         assert!(!value.has_infer());
 
         // We may have introduced e.g. `ty::Error`, if inference failed, make sure

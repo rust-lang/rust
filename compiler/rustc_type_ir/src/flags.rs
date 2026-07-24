@@ -441,6 +441,21 @@ impl<I: Interner> FlagComputation<I> {
                 self.add_term(term);
             }
             ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature(_sym)) => {}
+            ty::PredicateKind::Clause(ty::ClauseKind::CoroutineWitnessRegionConstraints(
+                _def_id,
+                binder,
+            )) => {
+                self.bound_computation(binder.0, |computation, assumptions| {
+                    for pred in assumptions.iter() {
+                        match pred.0.kind() {
+                            ty::GenericArgKind::Type(ty) => computation.add_ty(ty),
+                            ty::GenericArgKind::Lifetime(lt) => computation.add_region(lt),
+                            ty::GenericArgKind::Const(ct) => computation.add_const(ct),
+                        }
+                        computation.add_region(pred.1);
+                    }
+                });
+            }
             ty::PredicateKind::Ambiguous => {}
         }
     }

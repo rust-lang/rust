@@ -208,6 +208,16 @@ impl<'tcx> InferCtxt<'tcx> {
         self.inner.borrow_mut().opaque_types().register(opaque_type_key, hidden_ty)
     }
 
+    /// Look up a previously registered hidden type for the given opaque type key.
+    /// Returns `None` if no hidden type has been registered.
+    /// This is a read-only operation — it does not modify storage.
+    pub fn lookup_hidden_type_in_storage(
+        &self,
+        opaque_type_key: &OpaqueTypeKey<'tcx>,
+    ) -> Option<Ty<'tcx>> {
+        self.inner.borrow().opaque_type_storage.get(opaque_type_key)
+    }
+
     /// Insert a hidden type into the opaque type storage, equating it
     /// with any previous entries if necessary.
     ///
@@ -254,7 +264,8 @@ impl<'tcx> InferCtxt<'tcx> {
                     );
                 }
             }
-            ty::TypingMode::PostTypeckUntilBorrowck { .. } => {
+            ty::TypingMode::PostTypeckUntilBorrowck { .. }
+            | ty::TypingMode::BorrowckPendingScc { .. } => {
                 let prev = self
                     .inner
                     .borrow_mut()

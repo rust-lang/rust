@@ -730,7 +730,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     | ty::PredicateKind::Ambiguous
                     | ty::PredicateKind::Clause(ty::ClauseKind::UnstableFeature { .. })
                     | ty::PredicateKind::NormalizesTo { .. }
-                    | ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType { .. }) => {
+                    | ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType { .. })
+                    | ty::PredicateKind::Clause(
+                        ty::ClauseKind::CoroutineWitnessRegionConstraints { .. },
+                    ) => {
                         span_bug!(
                             span,
                             "Unexpected `Predicate` for `SelectionError`: `{:?}`",

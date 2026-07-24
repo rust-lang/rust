@@ -58,6 +58,12 @@ impl<'tcx> OpaqueTypeStorage<'tcx> {
         opaque_types.is_empty() && duplicate_entries.is_empty()
     }
 
+    /// Look up a previously registered hidden type for the given opaque type key.
+    /// Returns `None` if no hidden type has been registered for this key.
+    pub fn get(&self, key: &OpaqueTypeKey<'tcx>) -> Option<Ty<'tcx>> {
+        self.opaque_types.get(key).map(|entry| entry.ty)
+    }
+
     pub(crate) fn take_opaque_types(
         &mut self,
     ) -> impl Iterator<Item = (OpaqueTypeKey<'tcx>, ProvisionalHiddenType<'tcx>)> {

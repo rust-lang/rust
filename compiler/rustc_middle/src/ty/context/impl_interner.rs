@@ -336,6 +336,10 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.assumptions_on_binders()
     }
 
+    fn dxf(self) -> bool {
+        self.dxf()
+    }
+
     fn renormalize_rigid_aliases(self) -> bool {
         self.renormalize_rigid_aliases()
     }
@@ -345,6 +349,65 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         def_id: DefId,
     ) -> ty::EarlyBinder<'tcx, ty::Binder<'tcx, ty::CoroutineWitnessTypes<TyCtxt<'tcx>>>> {
         self.coroutine_hidden_types(def_id)
+    }
+
+    /// Hydrate a coroutine witness binder with NLL-derived assumptions.
+    /// For local def_ids, only call after borrowck has completed.
+    /// For remote (cross-crate) def_ids, safe to call at any time.
+    fn try_hydrate_coroutine_witness_scc(
+        self,
+        def_id: DefId,
+        args: ty::GenericArgsRef<'tcx>,
+        bound: ty::Binder<'tcx, ty::CoroutineWitnessTypes<TyCtxt<'tcx>>>,
+    ) -> ty::Binder<'tcx, ty::CoroutineWitnessTypes<TyCtxt<'tcx>>> {
+        if !self.sess.opts.unstable_opts.dxf {
+            return bound;
+        }
+
+        // For local def_ids, the data was fed during mir_borrowck.
+        // For cross-crate def_ids, the data is decoded from metadata.
+        // Instantiate EarlyBinder with args, then skip the inner Binder
+        // (its bound vars match the witness binder in `bound`).
+        let nll_outlives = self
+            .coroutine_witness_scc_data(def_id)
+            .instantiate(self, args)
+            .skip_norm_wip()
+            .skip_binder();
+
+        if nll_outlives.assumptions.is_empty() {
+            return bound;
+        }
+
+        let bound_vars = bound.bound_vars();
+        let witness = bound.skip_binder();
+        let new_assumptions: Vec<_> =
+            witness.assumptions.iter().chain(nll_outlives.assumptions.iter()).collect();
+        let assumptions = self.mk_outlives(&new_assumptions);
+        ty::Binder::bind_with_vars(
+            ty::CoroutineWitnessTypes { types: witness.types, assumptions },
+            bound_vars,
+        )
+    }
+
+    fn typeck_root_def_id(self, def_id: DefId) -> DefId {
+        self.typeck_root_def_id(def_id)
+    }
+
+    fn typeck_root_def_id_local(self, def_id: LocalDefId) -> LocalDefId {
+        self.typeck_root_def_id_local(def_id)
+    }
+
+    fn ensure_mir_borrowck(self, typeck_root: DefId) -> bool {
+        if let Some(local_id) = typeck_root.as_local() {
+            let _ = self.mir_borrowck(local_id);
+            true
+        } else {
+            false
+        }
+    }
+
+    fn mk_param_env(self, clauses: &[ty::Clause<'tcx>]) -> ty::ParamEnv<'tcx> {
+        ty::ParamEnv::new(self.mk_clauses(clauses))
     }
 
     fn fn_sig(self, def_id: DefId) -> ty::EarlyBinder<'tcx, ty::PolyFnSig<'tcx>> {

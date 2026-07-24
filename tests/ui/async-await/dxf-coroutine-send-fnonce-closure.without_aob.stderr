@@ -1,0 +1,16 @@
+error: higher-ranked subtype error
+  --> $DIR/dxf-coroutine-send-fnonce-closure.rs:43:5
+   |
+LL |     assert_send(foo());
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: higher-ranked subtype error
+  --> $DIR/dxf-coroutine-send-fnonce-closure.rs:43:5
+   |
+LL |     assert_send(foo());
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 2 previous errors
+

@@ -446,7 +446,8 @@ pub(crate) fn clean_clause<'tcx>(
         | ty::ClauseKind::ConstArgHasType(..)
         | ty::ClauseKind::UnstableFeature(..)
         // FIXME(const_trait_impl): We can probably use this `HostEffect` pred to render `~const`.
-        | ty::ClauseKind::HostEffect(_) => None,
+        | ty::ClauseKind::HostEffect(_)
+        | ty::ClauseKind::CoroutineWitnessRegionConstraints(..) => None,
     }
 }
 

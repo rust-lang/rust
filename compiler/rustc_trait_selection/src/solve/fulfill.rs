@@ -6,13 +6,13 @@ use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::{
     FromSolverError, PredicateObligation, PredicateObligations, TraitEngine, TraitErrors,
 };
-use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt, TypingMode};
+use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt};
 use rustc_next_trait_solver::solve::fast_path::compute_goal_fast_path;
 use rustc_next_trait_solver::solve::{
     GoalEvaluation, GoalStalledOn, HasChanged, SolverDelegateEvalExt as _, StalledOnCoroutines,
 };
 use thin_vec::ThinVec;
-use tracing::instrument;
+use tracing::{debug, instrument};
 
 use self::derive_errors::*;
 use super::Certainty;
@@ -187,7 +187,8 @@ where
             // the other case.
             TraitErrors::NoErrors
         } else {
-            TraitErrors::HasErrors(collect_remaining_errors_impl(self, infcx))
+            let errors = collect_remaining_errors_impl(self, infcx);
+            if errors.is_empty() { TraitErrors::NoErrors } else { TraitErrors::HasErrors(errors) }
         }
     }
 
@@ -354,38 +355,37 @@ where
         })
     }
 
+    #[instrument(level = "debug", skip(self, infcx))]
     fn drain_stalled_obligations_for_coroutines(
         &mut self,
         infcx: &InferCtxt<'tcx>,
     ) -> PredicateObligations<'tcx> {
-        let stalled_coroutines = match infcx.typing_mode_raw().assert_not_erased() {
-            TypingMode::Typeck { defining_opaque_types_and_generators } => {
-                defining_opaque_types_and_generators
-            }
-            TypingMode::Coherence
-            | TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: _ }
-            | TypingMode::PostBorrowck { defined_opaque_types: _ }
-            | TypingMode::Reflection
-            | TypingMode::PostAnalysis
-            | TypingMode::Codegen => return Default::default(),
+        let Some(defining_opaque_types_and_generators) =
+            infcx.typing_mode_raw().assert_not_erased().defining_opaque_types_and_generators()
+        else {
+            return Default::default();
         };
+        let stalled_coroutines = defining_opaque_types_and_generators.as_slice();
 
-        if stalled_coroutines.is_empty() {
+        let dxf = infcx.tcx.dxf();
+        debug!(?stalled_coroutines, dxf);
+
+        if stalled_coroutines.is_empty() && !dxf {
             return Default::default();
         }
 
-        self.obligations
-            .drain_pending(|_, stalled_on| {
+        let drained = self
+            .obligations
+            .drain_pending(|_obligation, stalled_on| {
                 stalled_on.as_ref().is_some_and(|s| {
-                    match s.stalled_maybe_info.stalled_on_coroutines {
-                        StalledOnCoroutines::Yes => true,
-                        StalledOnCoroutines::No => false,
-                    }
+                    matches!(s.stalled_maybe_info.stalled_on_coroutines, StalledOnCoroutines::Yes)
                 })
             })
             .into_iter()
             .map(|(o, _)| o)
-            .collect()
+            .collect();
+        debug!(?drained);
+        drained
     }
 }
 
@@ -398,9 +398,18 @@ fn collect_remaining_errors_impl<'tcx, E>(
 where
     E: FromSolverError<'tcx, NextSolverError<'tcx>>,
 {
-    cx.obligations
-        .pending
-        .drain(..)
+    let pending = mem::take(&mut cx.obligations.pending);
+
+    pending
+        .into_iter()
+        .filter(|(_, stalled_on)| {
+            !stalled_on.as_ref().is_some_and(|stalled_on| {
+                matches!(
+                    stalled_on.stalled_maybe_info.stalled_on_coroutines,
+                    StalledOnCoroutines::Yes,
+                )
+            })
+        })
         .map(|(obligation, _)| NextSolverError::Ambiguity(obligation))
         .chain(
             cx.obligations

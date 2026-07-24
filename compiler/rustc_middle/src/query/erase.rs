@@ -235,6 +235,7 @@ impl_erasable_for_types_with_no_type_params! {
     rustc_middle::mono::MonoItemPartitions<'_>,
     rustc_middle::traits::query::MethodAutoderefStepsResult<'_>,
     rustc_middle::ty::AdtDef<'_>,
+    rustc_middle::ty::Binder<'_, rustc_middle::mir::CoroutineNllOutlives<'_>>,
     rustc_middle::ty::AnonConstKind,
     rustc_middle::ty::AssocItem,
     rustc_middle::ty::Asyncness,

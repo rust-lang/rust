@@ -345,6 +345,7 @@ where
                             // Outside of coherence, we treat the associated item as rigid instead.
                             ty::TypingMode::Typeck { .. }
                             | ty::TypingMode::PostTypeckUntilBorrowck { .. }
+                            | ty::TypingMode::BorrowckPendingScc { .. }
                             | ty::TypingMode::PostBorrowck { .. }
                             | ty::TypingMode::PostAnalysis
                             | ty::TypingMode::Reflection

@@ -31,11 +31,7 @@ rustc_arena::declare_arena! {
             rustc_middle::mir::Body<'tcx>
         >,
     typeck_results: rustc_middle::ty::TypeckResults<'tcx>,
-    borrowck_result:
-        rustc_data_structures::fx::FxIndexMap<
-            rustc_hir::def_id::LocalDefId,
-            rustc_middle::ty::DefinitionSiteHiddenType<'tcx>,
-        >,
+    borrowck_result: rustc_middle::mir::BorrowCheckResult<'tcx>,
     resolver: rustc_data_structures::steal::Steal<rustc_middle::ty::ResolverAstLowering<'tcx>>,
     index_ast:
         rustc_index::IndexVec<

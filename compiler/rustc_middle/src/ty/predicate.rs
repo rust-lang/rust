@@ -17,6 +17,7 @@ pub type ExistentialProjection<'tcx> = ir::ExistentialProjection<TyCtxt<'tcx>>;
 pub type TraitPredicate<'tcx> = ir::TraitPredicate<TyCtxt<'tcx>>;
 pub type HostEffectClause<'tcx> = ir::HostEffectClause<TyCtxt<'tcx>>;
 pub type ClauseKind<'tcx> = ir::ClauseKind<TyCtxt<'tcx>>;
+pub type CoroutineRegionConstraints<'tcx> = ir::CoroutineRegionConstraints<TyCtxt<'tcx>>;
 pub type PredicateKind<'tcx> = ir::PredicateKind<TyCtxt<'tcx>>;
 pub type NormalizesTo<'tcx> = ir::NormalizesTo<TyCtxt<'tcx>>;
 pub type CoercePredicate<'tcx> = ir::CoercePredicate<TyCtxt<'tcx>>;

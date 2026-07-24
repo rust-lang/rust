@@ -119,7 +119,23 @@ pub enum TypingMode<I: Interner, S: TypingModeErasedStatus = MayBeErased> {
     /// This is currently only used by the new solver as it results in new
     /// non-universal defining uses of opaque types, which is a breaking change.
     /// See tests/ui/impl-trait/non-defining-use/as-projection-term.rs.
-    PostTypeckUntilBorrowck { defining_opaque_types: I::LocalDefIds },
+    PostTypeckUntilBorrowck { defining_opaque_types: I::LocalDefIds, borrowck_root: I::LocalDefId },
+    /// Used during `check_coroutine_obligations` when `-Zdxf` is active and
+    /// `mir_borrowck` hasn't completed yet. NLL SCC data is pending.
+    /// Coroutine auto-trait goals are stalled as pending obligations in
+    /// `try_stall_coroutine` rather than being evaluated eagerly.
+    /// They will be re-evaluated after `mir_borrowck` captures the facts and
+    /// feeds it to `try_hydrate_coroutine_witness_scc`.
+    ///
+    /// This behaves like `PostTypeckUntilBorrowck` for opaque type handling,
+    /// but additionally stalls coroutine auto-trait goals whose DefId is a
+    /// descendant of `borrowck_root`.
+    BorrowckPendingScc {
+        defining_opaque_types_and_generators: I::LocalDefIds,
+        /// The typeck root currently being borrow-checked.
+        /// Coroutines nested under this root have pending SCC data.
+        borrowck_root: I::LocalDefId,
+    },
     /// Any analysis after borrowck for a given body should be able to use all the
     /// hidden types defined by borrowck, without being able to define any new ones.
     ///
@@ -186,9 +202,19 @@ impl<I: Interner> PartialEq for TypingModeEqWrapper<I> {
                 TypingMode::Typeck { defining_opaque_types_and_generators: r },
             ) => l == r,
             (
-                TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: l },
-                TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: r },
-            ) => l == r,
+                TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: l, borrowck_root: lr },
+                TypingMode::PostTypeckUntilBorrowck { defining_opaque_types: r, borrowck_root: rr },
+            ) => l == r && lr == rr,
+            (
+                TypingMode::BorrowckPendingScc {
+                    defining_opaque_types_and_generators: l,
+                    borrowck_root: lr,
+                },
+                TypingMode::BorrowckPendingScc {
+                    defining_opaque_types_and_generators: r,
+                    borrowck_root: rr,
+                },
+            ) => l == r && lr == rr,
             (
                 TypingMode::PostBorrowck { defined_opaque_types: l },
                 TypingMode::PostBorrowck { defined_opaque_types: r },
@@ -204,6 +230,7 @@ impl<I: Interner> PartialEq for TypingModeEqWrapper<I> {
                 | TypingMode::Reflection
                 | TypingMode::Typeck { .. }
                 | TypingMode::PostTypeckUntilBorrowck { .. }
+                | TypingMode::BorrowckPendingScc { .. }
                 | TypingMode::PostBorrowck { .. }
                 | TypingMode::PostAnalysis
                 | TypingMode::Codegen
@@ -228,6 +255,7 @@ impl<I: Interner, S: TypingModeErasedStatus> TypingMode<I, S> {
             TypingMode::Typeck { .. }
             | TypingMode::PostTypeckUntilBorrowck { .. }
             | TypingMode::Reflection
+            | TypingMode::BorrowckPendingScc { .. }
             | TypingMode::PostBorrowck { .. }
             | TypingMode::PostAnalysis
             | TypingMode::Codegen
@@ -246,6 +274,7 @@ impl<I: Interner, S: TypingModeErasedStatus> TypingMode<I, S> {
             TypingMode::Typeck { .. }
             | TypingMode::PostTypeckUntilBorrowck { .. }
             | TypingMode::Coherence
+            | TypingMode::BorrowckPendingScc { .. }
             | TypingMode::PostBorrowck { .. }
             | TypingMode::PostAnalysis
             | TypingMode::Codegen
@@ -265,9 +294,72 @@ impl<I: Interner, S: TypingModeErasedStatus> TypingMode<I, S> {
             | TypingMode::Typeck { .. }
             | TypingMode::PostTypeckUntilBorrowck { .. }
             | TypingMode::Reflection
+            | TypingMode::BorrowckPendingScc { .. }
             | TypingMode::PostBorrowck { .. }
             | TypingMode::PostAnalysis
             | TypingMode::Codegen => false,
+        }
+    }
+
+    pub fn has_nll_inferred_bounds(&self) -> bool {
+        match self {
+            TypingMode::Coherence
+            | TypingMode::Typeck { .. }
+            | TypingMode::PostTypeckUntilBorrowck { .. }
+            | TypingMode::Reflection
+            | TypingMode::BorrowckPendingScc { .. }
+            | TypingMode::ErasedNotCoherence(_) => false,
+            TypingMode::PostBorrowck { .. } | TypingMode::PostAnalysis | TypingMode::Codegen => {
+                true
+            }
+        }
+    }
+
+    /// Returns `true` if we are in `BorrowckPendingScc` mode, where
+    /// coroutine auto-trait obligations are expected to stall awaiting NLL SCC data.
+    pub fn is_borrowck_pending_scc(&self) -> bool {
+        match self {
+            TypingMode::BorrowckPendingScc { .. } => true,
+            TypingMode::Coherence
+            | TypingMode::Typeck { .. }
+            | TypingMode::PostTypeckUntilBorrowck { .. }
+            | TypingMode::Reflection
+            | TypingMode::PostBorrowck { .. }
+            | TypingMode::PostAnalysis
+            | TypingMode::Codegen
+            | TypingMode::ErasedNotCoherence(_) => false,
+        }
+    }
+
+    /// If in a typing mode that defines opaque types and generators/coroutines (such as `Typeck`
+    /// or `BorrowckPendingScc`), returns the list of defining local def IDs.
+    pub fn defining_opaque_types_and_generators(&self) -> Option<I::LocalDefIds> {
+        match self {
+            &TypingMode::Typeck { defining_opaque_types_and_generators }
+            | &TypingMode::BorrowckPendingScc { defining_opaque_types_and_generators, .. } => {
+                Some(defining_opaque_types_and_generators)
+            }
+            TypingMode::Coherence
+            | TypingMode::PostTypeckUntilBorrowck { .. }
+            | TypingMode::Reflection
+            | TypingMode::PostBorrowck { .. }
+            | TypingMode::PostAnalysis
+            | TypingMode::Codegen
+            | TypingMode::ErasedNotCoherence(_) => None,
+        }
+    }
+
+    pub fn borrowck_root(&self) -> Option<I::LocalDefId> {
+        match self {
+            &TypingMode::PostTypeckUntilBorrowck { borrowck_root, .. }
+            | &TypingMode::BorrowckPendingScc { borrowck_root, .. } => Some(borrowck_root),
+            TypingMode::Coherence
+            | TypingMode::Typeck { .. }
+            | TypingMode::Reflection
+            | TypingMode::PostBorrowck { .. }
+            | TypingMode::PostAnalysis
+            | TypingMode::Codegen
+            | TypingMode::ErasedNotCoherence(_) => None,
         }
     }
 }
@@ -283,9 +375,16 @@ impl<I: Interner> TypingMode<I, MayBeErased> {
             TypingMode::Typeck { defining_opaque_types_and_generators } => {
                 TypingMode::Typeck { defining_opaque_types_and_generators }
             }
-            TypingMode::PostTypeckUntilBorrowck { defining_opaque_types } => {
-                TypingMode::PostTypeckUntilBorrowck { defining_opaque_types }
+            TypingMode::PostTypeckUntilBorrowck { defining_opaque_types, borrowck_root } => {
+                TypingMode::PostTypeckUntilBorrowck { defining_opaque_types, borrowck_root }
             }
+            TypingMode::BorrowckPendingScc {
+                defining_opaque_types_and_generators,
+                borrowck_root,
+            } => TypingMode::BorrowckPendingScc {
+                defining_opaque_types_and_generators,
+                borrowck_root,
+            },
             TypingMode::PostBorrowck { defined_opaque_types } => {
                 TypingMode::PostBorrowck { defined_opaque_types }
             }
@@ -328,8 +427,17 @@ impl<I: Interner> TypingMode<I, CantBeErased> {
         if defining_opaque_types.is_empty() {
             TypingMode::non_body_analysis()
         } else {
-            TypingMode::PostTypeckUntilBorrowck { defining_opaque_types }
+            TypingMode::PostTypeckUntilBorrowck {
+                defining_opaque_types,
+                borrowck_root: body_def_id,
+            }
         }
+    }
+
+    pub fn borrowck_pending_scc(cx: I, borrowck_root: I::LocalDefId) -> TypingMode<I> {
+        let defining_opaque_types_and_generators =
+            cx.opaque_types_and_coroutines_defined_by(borrowck_root);
+        TypingMode::BorrowckPendingScc { defining_opaque_types_and_generators, borrowck_root }
     }
 
     pub fn post_borrowck_analysis(cx: I, body_def_id: I::LocalDefId) -> TypingMode<I> {
@@ -349,9 +457,16 @@ impl<I: Interner> From<TypingMode<I, CantBeErased>> for TypingMode<I, MayBeErase
             TypingMode::Typeck { defining_opaque_types_and_generators } => {
                 TypingMode::Typeck { defining_opaque_types_and_generators }
             }
-            TypingMode::PostTypeckUntilBorrowck { defining_opaque_types } => {
-                TypingMode::PostTypeckUntilBorrowck { defining_opaque_types }
+            TypingMode::PostTypeckUntilBorrowck { defining_opaque_types, borrowck_root } => {
+                TypingMode::PostTypeckUntilBorrowck { defining_opaque_types, borrowck_root }
             }
+            TypingMode::BorrowckPendingScc {
+                defining_opaque_types_and_generators,
+                borrowck_root,
+            } => TypingMode::BorrowckPendingScc {
+                defining_opaque_types_and_generators,
+                borrowck_root,
+            },
             TypingMode::PostBorrowck { defined_opaque_types } => {
                 TypingMode::PostBorrowck { defined_opaque_types }
             }
@@ -552,6 +667,21 @@ pub trait InferCtxtLike: Sized {
         hidden_ty: <Self::Interner as Interner>::Ty,
         span: <Self::Interner as Interner>::Span,
     ) -> Option<<Self::Interner as Interner>::Ty>;
+
+    /// Look up a previously registered hidden type for the given opaque type key.
+    /// Read-only — does not modify storage.
+    fn lookup_hidden_type_in_storage(
+        &self,
+        opaque_type_key: &ty::OpaqueTypeKey<Self::Interner>,
+    ) -> Option<<Self::Interner as Interner>::Ty>;
+
+    /// Look up a previously registered hidden type by DefId.
+    /// Read-only — does not modify storage or allocate.
+    fn lookup_hidden_type_by_def_id(
+        &self,
+        def_id: <Self::Interner as Interner>::LocalDefId,
+    ) -> Option<<Self::Interner as Interner>::Ty>;
+
     fn add_duplicate_opaque_type(
         &self,
         opaque_type_key: ty::OpaqueTypeKey<Self::Interner>,
@@ -600,6 +730,7 @@ where
         | TypingMode::Typeck { .. }
         | TypingMode::PostTypeckUntilBorrowck { .. }
         | TypingMode::Reflection
+        | TypingMode::BorrowckPendingScc { .. }
         | TypingMode::PostBorrowck { .. }
         | TypingMode::PostAnalysis => infcx.cx().features().feature_bound_holds_in_crate(symbol),
         TypingMode::Codegen => true,

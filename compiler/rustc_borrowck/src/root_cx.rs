@@ -42,6 +42,8 @@ pub(super) struct BorrowCheckRootCtxt<'diag, 'tcx: 'diag> {
     collect_region_constraints_results:
         FxIndexMap<LocalDefId, CollectRegionConstraintsResult<'tcx>>,
     propagated_borrowck_results: FxHashMap<LocalDefId, PropagatedBorrowCheckResults<'tcx>>,
+    pub(super) coroutine_nll_constraints:
+        FxIndexMap<LocalDefId, rustc_middle::mir::CoroutineNllOutlives<'tcx>>,
     tainted_by_errors: &'diag Cell<Option<ErrorGuaranteed>>,
     /// This should be `None` during normal compilation. See [`crate::consumers`] for more
     /// information on how this is used.
@@ -62,6 +64,7 @@ impl<'diag, 'tcx> BorrowCheckRootCtxt<'diag, 'tcx> {
             unconstrained_hidden_type_errors: Default::default(),
             collect_region_constraints_results: Default::default(),
             propagated_borrowck_results: Default::default(),
+            coroutine_nll_constraints: Default::default(),
             tainted_by_errors,
             consumer,
         }
@@ -79,6 +82,12 @@ impl<'diag, 'tcx> BorrowCheckRootCtxt<'diag, 'tcx> {
         self.tcx.dcx().taintable_handle(&self.tainted_by_errors)
     }
 
+    pub(super) fn hidden_types(
+        &self,
+    ) -> &FxIndexMap<LocalDefId, ty::DefinitionSiteHiddenType<'tcx>> {
+        &self.hidden_types
+    }
+
     pub(super) fn used_mut_upvars(
         &self,
         nested_body_def_id: LocalDefId,
@@ -88,12 +97,14 @@ impl<'diag, 'tcx> BorrowCheckRootCtxt<'diag, 'tcx> {
 
     pub(super) fn finalize(
         self,
-    ) -> Result<&'tcx FxIndexMap<LocalDefId, ty::DefinitionSiteHiddenType<'tcx>>, ErrorGuaranteed>
-    {
+    ) -> Result<&'tcx rustc_middle::mir::BorrowCheckResult<'tcx>, ErrorGuaranteed> {
         if let Some(guar) = self.tainted_by_errors.get() {
             Err(guar)
         } else {
-            Ok(self.tcx.arena.alloc(self.hidden_types))
+            Ok(self.tcx.arena.alloc(rustc_middle::mir::BorrowCheckResult {
+                opaque_types: self.hidden_types,
+                coroutine_nll_constraints: self.coroutine_nll_constraints,
+            }))
         }
     }
 

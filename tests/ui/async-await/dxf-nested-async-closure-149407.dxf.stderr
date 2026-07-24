@@ -1,0 +1,17 @@
+error[E0477]: the type `{async closure@$DIR/dxf-nested-async-closure-149407.rs:42:16: 42:25}` does not fulfill the required lifetime
+  --> $DIR/dxf-nested-async-closure-149407.rs:41:29
+   |
+LL |     async fn a(&self, b: &B) {
+   |                             ^
+
+error[E0477]: the type `{async closure@$DIR/dxf-nested-async-closure-149407.rs:42:16: 42:25}` does not fulfill the required lifetime
+  --> $DIR/dxf-nested-async-closure-149407.rs:41:29
+   |
+LL |     async fn a(&self, b: &B) {
+   |                             ^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0477`.
