@@ -153,6 +153,7 @@ fn to_selection<'tcx>(
         Certainty::Yes => thin_vec![],
         Certainty::Maybe(_) => cand
             .instantiate_nested_goals(span)
+            .ok()?
             .into_iter()
             .map(|nested| {
                 Obligation::new(
@@ -172,7 +173,7 @@ fn to_selection<'tcx>(
                 // For impl candidates, we do the rematch manually to compute the args.
                 ImplSource::UserDefined(ImplSourceUserDefinedData {
                     impl_def_id,
-                    args: cand.instantiate_impl_args(span),
+                    args: cand.instantiate_impl_args(span).ok()?,
                     nested,
                 })
             }

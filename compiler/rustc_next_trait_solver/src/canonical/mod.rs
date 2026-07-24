@@ -13,6 +13,7 @@ use std::iter;
 
 use canonicalizer::Canonicalizer;
 use rustc_index::IndexVec;
+use rustc_type_ir::error::TypeError;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::relate::{
     self, Relate, RelateResult, TypeRelation, VarianceDiagInfo, relate_args_invariantly,
@@ -27,7 +28,7 @@ use crate::delegate::SolverDelegate;
 use crate::resolve::eager_resolve_vars;
 use crate::solve::{
     CanonicalInput, CanonicalResponse, Certainty, ExternalConstraintsData,
-    ExternalRegionConstraints, Goal, NestedNormalizationGoals, QueryInput, Response,
+    ExternalRegionConstraints, Goal, NestedNormalizationGoals, NoSolution, QueryInput, Response,
     VisibleForLeakCheck, inspect,
 };
 
@@ -103,7 +104,7 @@ pub(super) fn instantiate_and_apply_query_response<D, I>(
     original_values: &[I::GenericArg],
     response: CanonicalResponse<I>,
     span: I::Span,
-) -> (NestedNormalizationGoals<I>, Certainty)
+) -> Result<(NestedNormalizationGoals<I>, Certainty), NoSolution>
 where
     D: SolverDelegate<Interner = I>,
     I: Interner,
@@ -114,7 +115,7 @@ where
     let Response { var_values, external_constraints, certainty } =
         delegate.instantiate_canonical(response, instantiation);
 
-    unify_query_var_values(delegate, param_env, &original_values, var_values, span);
+    unify_query_var_values(delegate, param_env, &original_values, var_values, span)?;
 
     let ExternalConstraintsData { region_constraints, opaque_types, normalization_nested_goals } =
         &*external_constraints;
@@ -139,7 +140,7 @@ where
     };
     register_new_opaque_types(delegate, opaque_types, span);
 
-    (normalization_nested_goals.clone(), certainty)
+    Ok((normalization_nested_goals.clone(), certainty))
 }
 
 /// This returns the canonical variable values to instantiate the bound variables of
@@ -320,10 +321,24 @@ where
             }
 
             (ty::Infer(ty::TyVar(a_vid)), _) => {
+                if !infcx
+                    .universe_of_ty(a_vid)
+                    .unwrap()
+                    .can_name(ty::max_universe_of_non_region_placeholders(infcx, b))
+                {
+                    return Err(TypeError::Mismatch);
+                }
                 infcx.instantiate_ty_var_raw(a_vid, b);
             }
 
             (_, ty::Infer(ty::TyVar(b_vid))) => {
+                if !infcx
+                    .universe_of_ty(b_vid)
+                    .unwrap()
+                    .can_name(ty::max_universe_of_non_region_placeholders(infcx, a))
+                {
+                    return Err(TypeError::Mismatch);
+                }
                 infcx.instantiate_ty_var_raw(b_vid, a);
             }
 
@@ -407,10 +422,24 @@ where
             }
 
             (ty::ConstKind::Infer(ty::InferConst::Var(a_vid)), _) => {
+                if !infcx
+                    .universe_of_ct(a_vid)
+                    .unwrap()
+                    .can_name(ty::max_universe_of_non_region_placeholders(infcx, b))
+                {
+                    return Err(TypeError::Mismatch);
+                }
                 infcx.instantiate_const_var_raw(a_vid, b);
             }
 
             (_, ty::ConstKind::Infer(ty::InferConst::Var(b_vid))) => {
+                if !infcx
+                    .universe_of_ct(b_vid)
+                    .unwrap()
+                    .can_name(ty::max_universe_of_non_region_placeholders(infcx, a))
+                {
+                    return Err(TypeError::Mismatch);
+                }
                 infcx.instantiate_const_var_raw(b_vid, a);
             }
 
@@ -443,10 +472,10 @@ where
 
 /// Unify the `original_values` with the `var_values` returned by the canonical query..
 ///
-/// This assumes that this unification will always succeed. This is the case when
-/// applying a query response right away. However, calling a canonical query, doing any
-/// other kind of trait solving, and only then instantiating the result of the query
-/// can cause the instantiation to fail. This is not supported and we ICE in this case.
+/// This unification can fail if an input inference variable cannot name a placeholder
+/// in the response. Input canonicalization maps all universes to the root universe, so
+/// the query itself cannot detect that mismatch. Treating the response as `NoSolution`
+/// here prevents a higher-ranked placeholder from leaking into the caller.
 ///
 /// We always structurally instantiate aliases. Relating aliases needs to be different
 /// depending on whether the alias is *rigid* or not. We're only really able to tell
@@ -460,16 +489,21 @@ fn unify_query_var_values<D, I>(
     original_values: &[I::GenericArg],
     var_values: CanonicalVarValues<I>,
     span: I::Span,
-) where
+) -> Result<(), NoSolution>
+where
     D: SolverDelegate<Interner = I>,
     I: Interner,
 {
     assert_eq!(original_values.len(), var_values.len());
 
-    for (&orig, response) in iter::zip(original_values, var_values.var_values.iter()) {
-        let mut must_eq = ResponseRelating::new(&**delegate, span);
-        must_eq.relate(orig, response).unwrap();
-    }
+    delegate.commit_if_ok(|| {
+        for (&orig, response) in iter::zip(original_values, var_values.var_values.iter()) {
+            let mut must_eq = ResponseRelating::new(&**delegate, span);
+            must_eq.relate(orig, response).map_err(|_| NoSolution)?;
+        }
+
+        Ok(())
+    })
 }
 
 fn register_region_constraints<D, I>(
@@ -546,7 +580,7 @@ pub fn instantiate_canonical_state<D, I, T>(
     param_env: I::ParamEnv,
     orig_values: &mut Vec<I::GenericArg>,
     state: inspect::CanonicalState<I, T>,
-) -> T
+) -> Result<T, NoSolution>
 where
     D: SolverDelegate<Interner = I>,
     I: Interner,
@@ -565,8 +599,8 @@ where
 
     let inspect::State { var_values, data } = delegate.instantiate_canonical(state, instantiation);
 
-    unify_query_var_values(delegate, param_env, orig_values, var_values, span);
-    data
+    unify_query_var_values(delegate, param_env, orig_values, var_values, span)?;
+    Ok(data)
 }
 
 pub fn response_no_constraints_raw<I: Interner>(
