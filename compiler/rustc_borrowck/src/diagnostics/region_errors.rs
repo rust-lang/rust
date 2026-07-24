@@ -478,14 +478,9 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
         let errci = ErrorConstraintInfo { fr, outlived_fr, category, span };
 
         let mut diag = match (category, fr_is_local, outlived_fr_is_local) {
-            (ConstraintCategory::SolverRegionConstraint(span), _, _) => {
-                let mut d = self.dcx().struct_span_err(
-                    span,
-                    "unsatisfied lifetime constraint from -Zassumptions-on-binders :3",
-                );
-                d.note("meoow :c");
-                d
-            }
+            (ConstraintCategory::SolverRegionConstraint(span), _, _) => self
+                .dcx()
+                .struct_span_err(span, "higher-ranked lifetime bound could not be satisfied"),
             (ConstraintCategory::Return(kind), true, false)
                 if self.regioncx.is_closure_fn_mut(fr) =>
             {

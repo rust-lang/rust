@@ -59,12 +59,13 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
     fn get_solver_region_constraint(
         &self,
     ) -> rustc_type_ir::region_constraint::RegionConstraint<TyCtxt<'tcx>> {
-        self.inner.borrow().solver_region_constraint_storage.get_constraint()
+        self.inner.borrow().solver_region_constraint_storage.get_unspanned_constraint()
     }
 
     fn overwrite_solver_region_constraint(
         &self,
         constraint: rustc_type_ir::region_constraint::RegionConstraint<TyCtxt<'tcx>>,
+        span: Span,
     ) {
         let mut inner = self.inner.borrow_mut();
         use rustc_data_structures::undo_log::UndoLogs;
@@ -72,7 +73,7 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         use crate::infer::UndoLog;
         let old_constraint = inner.solver_region_constraint_storage.get_constraint();
         inner.undo_log.push(UndoLog::OverwriteSolverRegionConstraint { old_constraint });
-        inner.solver_region_constraint_storage.overwrite_solver_region_constraint(constraint);
+        inner.solver_region_constraint_storage.overwrite(constraint, span);
     }
 
     fn universe_of_ty(&self, vid: ty::TyVid) -> Option<ty::UniverseIndex> {
@@ -359,13 +360,14 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
     fn register_solver_region_constraint(
         &self,
         c: rustc_type_ir::region_constraint::RegionConstraint<TyCtxt<'tcx>>,
+        span: Span,
     ) {
         let mut inner = self.inner.borrow_mut();
         use rustc_data_structures::undo_log::UndoLogs;
 
         use crate::infer::UndoLog;
         inner.undo_log.push(UndoLog::PushSolverRegionConstraint);
-        inner.solver_region_constraint_storage.push(c);
+        inner.solver_region_constraint_storage.push(c, span);
     }
 
     fn register_ty_outlives(&self, ty: Ty<'tcx>, r: ty::Region<'tcx>, span: Span) {

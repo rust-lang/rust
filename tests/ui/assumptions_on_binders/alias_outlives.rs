@@ -23,11 +23,22 @@ where
 }
 
 fn borrowck_env_fail<'a, T: AliasHaver>()
-//~^ ERROR: unsatisfied lifetime constraint from -Zassumptions-on-binders
 where
     <T as AliasHaver>::Assoc: 'a,
 {
     let _: ReqTrait<T::Assoc>;
+    //~^ ERROR: higher-ranked lifetime bound could not be satisfied
+}
+
+fn borrowck_multiple_origins_fail<'a, 'b, T: AliasHaver, U: AliasHaver>()
+where
+    <T as AliasHaver>::Assoc: 'a,
+    <U as AliasHaver>::Assoc: 'b,
+{
+    let _: ReqTrait<T::Assoc>;
+    //~^ ERROR: higher-ranked lifetime bound could not be satisfied
+    let _: ReqTrait<U::Assoc>;
+    //~^ ERROR: higher-ranked lifetime bound could not be satisfied
 }
 
 const REGIONCK_ENV_PASS<'a, T: AliasHaver>: ReqTrait<T::Assoc> = todo!()
@@ -35,7 +46,7 @@ where
     <T as AliasHaver>::Assoc: 'static;
 
 const REGIONCK_ENV_FAIL<'a, T: AliasHaver>: ReqTrait<T::Assoc> = todo!()
-//~^ ERROR: unsatisfied lifetime constraint from -Zassumptions-on-binders
+//~^ ERROR: higher-ranked lifetime bound could not be satisfied
 where
     <T as AliasHaver>::Assoc: 'a;
 

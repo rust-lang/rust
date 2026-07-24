@@ -394,6 +394,7 @@ pub trait InferCtxtLike: Sized {
     fn overwrite_solver_region_constraint(
         &self,
         constraint: crate::region_constraint::RegionConstraint<Self::Interner>,
+        span: <Self::Interner as Interner>::Span,
     );
 
     fn universe_of_ty(&self, ty: ty::TyVid) -> Option<ty::UniverseIndex>;
@@ -512,6 +513,7 @@ pub trait InferCtxtLike: Sized {
     fn register_solver_region_constraint(
         &self,
         c: crate::region_constraint::RegionConstraint<Self::Interner>,
+        span: <Self::Interner as Interner>::Span,
     );
 
     fn register_ty_outlives(
