@@ -2546,6 +2546,10 @@ options! {
         "use the given `.prof` file for sample-based profile-guided optimization"),
     profile_use: Option<PathBuf> = (None, parse_opt_pathbuf, [TRACKED],
         "use the given `.profdata` file for profile-guided optimization"),
+    regparm: Option<u32> = (None, parse_opt_number, [TRACKED_UNSTABLE] { TARGET_MODIFIER: Only },
+        "On x86-32 targets, setting this to N causes the compiler to pass N arguments \
+        in registers EAX, EDX, and ECX instead of on the stack for\
+        \"C\", \"cdecl\", and \"stdcall\" fn."),
     #[rustc_lint_opt_deny_field_access("use `Session::relocation_model` instead of this field")]
     relocation_model: Option<RelocModel> = (None, parse_relocation_model, [TRACKED],
         "control generation of position-independent code (PIC) \

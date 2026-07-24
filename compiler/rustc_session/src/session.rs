@@ -1685,7 +1685,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         }
     }
 
-    if let Some(regparm) = sess.opts.target_opts.regparm {
+    if let Some(regparm) = sess.opts.cg.regparm {
         if regparm > 3 {
             sess.dcx().emit_err(diagnostics::UnsupportedRegparm { regparm });
         }
