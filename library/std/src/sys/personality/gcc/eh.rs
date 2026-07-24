@@ -14,7 +14,9 @@
 
 use core::ptr;
 
-use super::DwarfReader;
+use unwind as uw;
+
+use super::dwarf::DwarfReader;
 
 pub const DW_EH_PE_omit: u8 = 0xFF;
 pub const DW_EH_PE_absptr: u8 = 0x00;
@@ -37,11 +39,10 @@ pub const DW_EH_PE_aligned: u8 = 0x50;
 pub const DW_EH_PE_indirect: u8 = 0x80;
 
 #[derive(Copy, Clone)]
-pub struct EHContext<'a> {
-    pub ip: *const u8,                             // Current instruction pointer
-    pub func_start: *const u8,                     // Pointer to the current function
-    pub get_text_start: &'a dyn Fn() -> *const u8, // Get pointer to the code section
-    pub get_data_start: &'a dyn Fn() -> *const u8, // Get pointer to the data section
+pub struct EHContext {
+    pub(crate) ip: *const u8,         // Current instruction pointer
+    pub(crate) func_start: *const u8, // Pointer to the current function
+    pub(crate) raw_context: *mut uw::_Unwind_Context,
 }
 
 /// Landing pad.
@@ -63,7 +64,7 @@ pub enum EHAction {
 pub const USING_SJLJ_EXCEPTIONS: bool =
     cfg!(all(target_vendor = "apple", not(target_os = "watchos"), target_arch = "arm"));
 
-pub unsafe fn find_eh_action(lsda: *const u8, context: &EHContext<'_>) -> Result<EHAction, ()> {
+pub unsafe fn find_eh_action(lsda: *const u8, context: &EHContext) -> Result<EHAction, ()> {
     if lsda.is_null() {
         return Ok(EHAction::None);
     }
@@ -224,7 +225,7 @@ unsafe fn read_encoded_offset(reader: &mut DwarfReader, encoding: u8) -> Result<
 /// [LSB-dwarf-ext]: https://refspecs.linuxfoundation.org/LSB_5.0.0/LSB-Core-generic/LSB-Core-generic/dwarfext.html
 unsafe fn read_encoded_pointer(
     reader: &mut DwarfReader,
-    context: &EHContext<'_>,
+    context: &EHContext,
     encoding: u8,
 ) -> Result<*const u8, ()> {
     if encoding == DW_EH_PE_omit {
@@ -241,8 +242,8 @@ unsafe fn read_encoded_pointer(
             }
             context.func_start
         }
-        DW_EH_PE_textrel => (*context.get_text_start)(),
-        DW_EH_PE_datarel => (*context.get_data_start)(),
+        DW_EH_PE_textrel => unsafe { uw::_Unwind_GetTextRelBase(context.raw_context) },
+        DW_EH_PE_datarel => unsafe { uw::_Unwind_GetDataRelBase(context.raw_context) },
         // aligned means the value is aligned to the size of a pointer
         DW_EH_PE_aligned => {
             reader.ptr = reader.ptr.with_addr(round_up(reader.ptr.addr(), size_of::<*const u8>())?);
