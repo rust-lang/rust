@@ -645,6 +645,7 @@ fn test_codegen_options_tracking_hash() {
     tracked!(debuginfo, DebugInfo::Limited);
     tracked!(dwarf_version, Some(5));
     tracked!(embed_bitcode, false);
+    tracked!(fixed_x18, true);
     tracked!(force_frame_pointers, FramePointer::Always);
     tracked!(force_unwind_tables, Some(true));
     tracked!(indirect_branch_cs_prefix, true);
