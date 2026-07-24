@@ -5,7 +5,7 @@
 
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::traits::ObligationCause;
-use rustc_middle::ty::{Ty, TyCtxt, TypingEnv, Unnormalized, Variance};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypingEnv, Unnormalized, Variance};
 use rustc_trait_selection::traits::ObligationCtxt;
 
 /// Returns whether `src` is a subtype of `dest`, i.e. `src <: dest`.
@@ -43,5 +43,10 @@ pub fn relate_types<'tcx>(
         Ok(()) => {}
         Err(_) => return false,
     };
-    ocx.evaluate_obligations_error_on_ambiguity().is_empty()
+
+    if ocx.evaluate_obligations_error_on_ambiguity().is_empty() {
+        infcx.leak_check(ty::UniverseIndex::ROOT, None).is_ok()
+    } else {
+        false
+    }
 }
