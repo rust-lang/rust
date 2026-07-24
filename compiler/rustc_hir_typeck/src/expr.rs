@@ -1815,7 +1815,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         base_expr: &'tcx hir::StructTailExpr<'tcx>,
     ) -> Ty<'tcx> {
         // Find the relevant variant
-        let (variant, adt_ty) = match self.check_struct_path(qpath, expr.hir_id) {
+        let expected_ty = expected.only_has_type(self);
+        let (variant, adt_ty) = match self.check_struct_path(qpath, expr.hir_id, expected_ty) {
             Ok(data) => data,
             Err(guar) => {
                 self.check_struct_fields_on_error(fields, base_expr);

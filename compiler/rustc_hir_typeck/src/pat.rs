@@ -1504,7 +1504,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         qpath: &hir::QPath<'tcx>,
     ) -> Result<ResolvedPat<'tcx>, ErrorGuaranteed> {
         // Resolve the path and check the definition for errors.
-        let (variant, pat_ty) = self.check_struct_path(qpath, pat.hir_id)?;
+        let (variant, pat_ty) = self.check_struct_path(qpath, pat.hir_id, None)?;
         Ok(ResolvedPat { ty: pat_ty, kind: ResolvedPatKind::Struct { variant } })
     }
 
