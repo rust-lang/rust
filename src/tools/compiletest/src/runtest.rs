@@ -2013,7 +2013,8 @@ impl<'test> TestCx<'test> {
         self.dump_output_file(out, &format!("{}out", revision));
         self.dump_output_file(err, &format!("{}err", revision));
 
-        if !print_output {
+        // Suppress verbose run-make subprocess output, including fences.
+        if !print_output || !self.config.verbose_run_make_subprocess_output {
             return;
         }
 
