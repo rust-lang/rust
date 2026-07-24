@@ -881,7 +881,7 @@ mod doc_attribute {}
 /// Used to enable unstable or experimental compiler features, written as `#![feature(feature_name)]`.
 /// It cannot be used on individual items.
 ///
-/// ```rust,ignore
+/// ```rust,compile_fail
 /// #![feature(staged_api)]
 /// #![stable(feature = "mycrate", since = "1.0.0")]
 ///
