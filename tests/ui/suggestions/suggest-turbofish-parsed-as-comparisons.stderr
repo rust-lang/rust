@@ -1,0 +1,24 @@
+error: can't compare two types
+  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:11:41
+   |
+LL |     let _ = Arc::new(RwLock::new(HashMap<i32, i64>::default()));
+   |                                         ^        ^ these are parsed as "less than" and "greater than"
+   |
+help: you likely intended to write type `HashMap` with type parameters, but type parameters in expression contexts require the use of the "turbofish" `::<>`
+   |
+LL |     let _ = Arc::new(RwLock::new(HashMap::<i32, i64>::default()));
+   |                                         ++
+
+error: can't compare two types
+  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:13:26
+   |
+LL |     let _ = S.foo(HashMap<i32, i64>::default());
+   |                          ^        ^ these are parsed as "less than" and "greater than"
+   |
+help: you likely intended to write type `HashMap` with type parameters, but type parameters in expression contexts require the use of the "turbofish" `::<>`
+   |
+LL |     let _ = S.foo(HashMap::<i32, i64>::default());
+   |                          ++
+
+error: aborting due to 2 previous errors
+
