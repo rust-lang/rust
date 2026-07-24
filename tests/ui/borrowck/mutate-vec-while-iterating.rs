@@ -1,3 +1,5 @@
+// Regression test for https://github.com/rust-lang/rust/issues/159489
+
 fn main() {
     let mut values = vec![1, 2, 3];
 
