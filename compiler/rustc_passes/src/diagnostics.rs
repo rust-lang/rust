@@ -310,10 +310,6 @@ pub(crate) struct DeprecatedAnnotationHasNoEffect {
 }
 
 #[derive(Diagnostic)]
-#[diag("`#[panic_handler]` function required, but not found")]
-pub(crate) struct MissingPanicHandler;
-
-#[derive(Diagnostic)]
 #[diag("unwinding panics are not supported without std")]
 #[help("using nightly cargo, use -Zbuild-std with panic=\"abort\" to avoid unwinding")]
 #[note(
@@ -334,22 +330,12 @@ pub(crate) struct MissingLangItem {
 }
 
 #[derive(Diagnostic)]
-#[diag(
-    "{$name ->
-    [panic_impl] `#[panic_handler]`
-    *[other] `{$name}` lang item
-} function is not allowed to have `#[track_caller]`"
-)]
+#[diag("`{$name}` lang item function is not allowed to have `#[track_caller]`")]
 pub(crate) struct LangItemWithTrackCaller {
     #[primary_span]
     pub attr_span: Span,
     pub name: Symbol,
-    #[label(
-        "{$name ->
-            [panic_impl] `#[panic_handler]`
-            *[other] `{$name}` lang item
-        } function is not allowed to have `#[track_caller]`"
-    )]
+    #[label("`{$name}` lang item function is not allowed to have `#[track_caller]`")]
     pub sig_span: Span,
 }
 

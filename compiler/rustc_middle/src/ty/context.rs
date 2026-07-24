@@ -2822,9 +2822,5 @@ impl<'tcx> TyCtxt<'tcx> {
 pub fn provide(providers: &mut Providers) {
     providers.is_panic_runtime = |tcx, LocalCrate| find_attr!(tcx, crate, PanicRuntime);
     providers.is_compiler_builtins = |tcx, LocalCrate| find_attr!(tcx, crate, CompilerBuiltins);
-    providers.has_panic_handler = |tcx, LocalCrate| {
-        // We want to check if the panic handler was defined in this crate
-        tcx.lang_items().panic_impl().is_some_and(|did| did.is_local())
-    };
     providers.source_span = |tcx, def_id| tcx.untracked.source_span.get(def_id).unwrap_or(DUMMY_SP);
 }

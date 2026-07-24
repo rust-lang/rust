@@ -1,6 +1,8 @@
 //@ dont-check-compiler-stderr
 //@ aux-build:some-panic-impl.rs
 
+//~? ERROR multiple implementations of `#[panic_handler]`
+
 #![feature(lang_items)]
 #![no_std]
 #![no_main]
@@ -11,7 +13,6 @@ use core::panic::PanicInfo;
 
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
-    //~^ ERROR found duplicate lang item `panic_impl`
     loop {}
 }
 

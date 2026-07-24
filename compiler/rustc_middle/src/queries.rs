@@ -1826,10 +1826,6 @@ rustc_queries! {
         desc { "checking if the crate has_alloc_error_handler" }
         separate_provide_extern
     }
-    query has_panic_handler(_: CrateNum) -> bool {
-        desc { "checking if the crate has_panic_handler" }
-        separate_provide_extern
-    }
     query is_profiler_runtime(_: CrateNum) -> bool {
         desc { "checking if a crate is `#![profiler_runtime]`" }
         separate_provide_extern

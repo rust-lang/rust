@@ -8,7 +8,6 @@ use crate::panic::Location;
 /// For the type used by the panic hook mechanism in `std`, see [`std::panic::PanicHookInfo`].
 ///
 /// [`std::panic::PanicHookInfo`]: ../../std/panic/struct.PanicHookInfo.html
-#[lang = "panic_info"]
 #[stable(feature = "panic_hooks", since = "1.10.0")]
 #[derive(Debug)]
 pub struct PanicInfo<'a> {

@@ -1805,12 +1805,7 @@ pub enum ObligationCauseFailureCode {
         #[primary_span]
         span: Span,
     },
-    #[diag(
-        "{$lang_item_name ->
-            [panic_impl] `#[panic_handler]`
-            *[lang_item_name] lang item `{$lang_item_name}`
-        } function has wrong type"
-    , code = E0308)]
+    #[diag("lang item `{$lang_item_name}` function has wrong type", code = E0308)]
     FnLangCorrectType {
         #[primary_span]
         span: Span,

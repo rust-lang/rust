@@ -545,13 +545,9 @@ impl CombineAttributeParser for TargetFeatureParser {
         // `#[target_feature]` is incompatible with lang item functions,
         // except on WASM where calling target-feature functions is safe (see #84988).
         if !cx.sess().target.is_like_wasm && !cx.sess().opts.actually_rustdoc {
-            // `#[panic_handler]` is checked first so it takes priority in the diagnostic.
-            let lang_kind = cx
-                .all_attrs
-                .iter()
-                .find_map(|a| [sym::panic_handler, sym::lang].into_iter().find(|&s| a.word_is(s)));
-            if let Some(kind) = lang_kind {
-                cx.emit_err(TargetFeatureOnLangItem { attr_span, kind, item_span: cx.target_span });
+            let is_lang_item = cx.all_attrs.iter().any(|a| a.word_is(sym::lang));
+            if is_lang_item {
+                cx.emit_err(TargetFeatureOnLangItem { attr_span, item_span: cx.target_span });
             }
         }
     }
