@@ -62,13 +62,7 @@ runners:
   - &job-linux-36c-codebuild
     free_disk: true
     codebuild: true
-    os: codebuild-ubuntu-22-36c-$github.run_id-$github.run_attempt
-    <<: *base-job
-
-  - &job-linux-8c-codebuild
-    free_disk: true
-    codebuild: true
-    os: codebuild-ubuntu-22-8c-$github.run_id-$github.run_attempt
+    os: simulacrum-aws-test-runner-3a47918cf60f4d36fb1c526a04753e0e
     <<: *base-job
 
 envs:

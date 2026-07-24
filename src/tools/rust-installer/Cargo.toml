@@ -16,6 +16,7 @@ rayon = "1.0"
 tar = "0.4.45"
 walkdir = "2"
 xz2 = "0.1.4"
+zstd = { version = "0.13.3", features = ["zstdmt"] }
 
 [dependencies.clap]
 features = ["derive"]

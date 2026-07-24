@@ -15,6 +15,7 @@ fs_extra = "1"
 camino = "1"
 tar = "0.4.45"
 xz = { version = "0.1", package = "xz2" }
+zstd = "0.13.3"
 serde_json = "1"
 glob = "0.3"
 tempfile = "3.5"

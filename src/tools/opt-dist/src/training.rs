@@ -39,7 +39,7 @@ fn init_compiler_benchmarks(
         "--exact-match",
         crates.join(",").as_str(),
         "--jobs",
-        "4",
+        "16",
     ])
     .env("RUSTC", env.rustc_stage_0().as_str())
     .env("RUSTC_BOOTSTRAP", "1")
