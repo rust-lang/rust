@@ -58,7 +58,12 @@ impl<'a> Parser<'a> {
         let attrs = self.parse_outer_attributes()?;
         self.parse_expr_res(Restrictions::empty(), attrs).map(|res| res.0)
     }
-
+    #[inline]
+    pub fn parse_expr_in_let(&mut self) -> PResult<'a, Box<Expr>> {
+        self.current_closure.take();
+        let attrs = self.parse_outer_attributes()?;
+        Ok(self.parse_expr_res(Restrictions::IN_LET, attrs).map(|res| res.0)?)
+    }
     /// Parses an expression, forcing tokens to be collected.
     pub fn parse_expr_force_collect(&mut self) -> PResult<'a, Box<Expr>> {
         self.current_closure.take();
@@ -3875,11 +3880,12 @@ impl<'a> Parser<'a> {
             Option<ErrorGuaranteed>, /* async blocks are forbidden in Rust 2015 */
         ),
     > {
+        let open_span = self.prev_token.span; //{
         let mut fields = ThinVec::new();
         let mut base = ast::StructRest::None;
         let mut recovered_async = None;
         let in_if_guard = self.restrictions.contains(Restrictions::IN_IF_GUARD);
-
+        let in_let = self.restrictions.contains(Restrictions::IN_LET);
         let async_block_err = |e: &mut Diag<'_>, span: Span| {
             diagnostics::AsyncBlockIn2015 { span }.add_to_diag(e);
             diagnostics::HelpUseLatestEdition::new().add_to_diag(e);
@@ -3968,6 +3974,28 @@ impl<'a> Parser<'a> {
                         return Err(e);
                     }
 
+                    if in_let {
+                        // Better diagnostic for `foo { return 42; };`
+                        // We've consumed `foo {` already
+                        let mut snapshot = self.create_snapshot_for_diagnostic();
+                        let might_be_stmt = snapshot.token.is_keyword(kw::Return);
+                        snapshot.consume_block(
+                            exp!(OpenBrace),
+                            exp!(CloseBrace),
+                            super::diagnostics::ConsumeClosingDelim::Yes,
+                        ); //consume to the end of the block, including `}`
+
+                        // make sure the block is at the end by eating a `;`,
+                        // we shouldn't report such diagnostic for `let a = foo{return 43;}+bar;`
+                        // also skip the suggestion if the span cross macro boundaries
+                        if might_be_stmt && snapshot.eat(exp!(Semi)) && pth.span.eq_ctxt(open_span)
+                        {
+                            let span = pth.span.between(open_span);
+                            e.subdiagnostic(diagnostics::MissingElseInLet { span });
+                            self.restore_snapshot(snapshot);
+                            return Err(e);
+                        }
+                    }
                     let guar = e.emit();
                     if pth == kw::Async {
                         recovered_async = Some(guar);

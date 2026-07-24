@@ -123,6 +123,9 @@ bitflags::bitflags! {
         /// expression, but halts parsing the expression when reaching certain
         /// tokens like `=`.
         const IS_PAT            = 1 << 5;
+        /// Used to detect a missing `else` in a let statement.
+        /// e.g. let Some(foo) = bar{return;};
+        const IN_LET            = 1 << 6;
     }
 }
 
