@@ -3432,23 +3432,65 @@ pub fn set_permissions<P: AsRef<Path>>(path: P, perm: Permissions) -> io::Result
     fs_imp::set_permissions(path.as_ref(), perm.0)
 }
 
-/// Set the permissions of a file, unless it is a symlink.
+/// Changes the permissions found on a file or a directory. On certain platforms, if the file
+/// is a symlink, it will change the permissions bits on the symlink itself rather than
+/// the target (e.g. Windows, BSD, MacOS). On other platforms, this results in an error when
+/// attempting to change permissions on a symlink (e.g. Linux).
 ///
-/// Note that the non-final path elements are allowed to be symlinks.
+/// Note that non-final path elements are allowed to be symlinks.
 ///
 /// # Platform-specific behavior
 ///
-/// Currently unimplemented on Windows.
+/// This function currently corresponds to:
+/// * `open` with `O_NOFOLLOW` flag enabled + `fchmod` on WASI
+/// * `fchmodat` function with the flag `AT_SYMLINK_NOFOLLOW` enabled
+///   on Unix platforms
+/// * The flag `FILE_FLAG_OPEN_REPARSE_POINT` is enabled and then the
+///   permissions of the file is set through `SetFileInformationByHandle`
+///   on Windows.
+/// * On all other platforms, the behavior remains the same with
+/// [`fs::set_permissions`].
 ///
-/// On Unix platforms, this results in a [`FilesystemLoop`] error if the last element is a symlink.
+/// [`fs::set_permissions`]: crate::fs::set_permissions
 ///
-/// This behavior may change in the future.
+/// Note that, this [may change in the future][changes].
 ///
-/// [`FilesystemLoop`]: crate::io::ErrorKind::FilesystemLoop
-#[doc(alias = "chmod", alias = "SetFileAttributes")]
+/// [changes]: io#platform-specific-behavior
+///
+/// # Errors
+///
+/// This function will return an error in the following situations, but is not
+/// limited to just these cases:
+///
+/// * `path` does not exist.
+/// * The user lacks the permission to change attributes of the file.
+///
+/// Note: On Linux, this will result in a [`Unsupported`] error
+/// if the final element is a symlink. On BSD-based systems, the
+/// behavior can vary from symlink permission bits changing or
+/// there being no effects on symlinks
+///
+/// [`Unsupported`]: crate::io::ErrorKind::Unsupported
+///
+/// # Examples
+///
+/// ```no_run
+/// #![feature(set_permissions_nofollow)]
+/// use std::fs;
+///
+/// fn main() -> std::io::Result<()> {
+///     let mut perms = fs::symlink_metadata("foo.txt")?.permissions();
+///     perms.set_readonly(true);
+///     // This should result in an error on certain platforms
+///     // or succeed in modifying the permissions of a symlink
+///     fs::set_permissions_nofollow("foo.txt", perms)?;
+///     Ok(())
+/// }
+/// ```
+#[doc(alias = "fchmodat", alias = "SetFileInformationByHandle")]
 #[unstable(feature = "set_permissions_nofollow", issue = "141607")]
 pub fn set_permissions_nofollow<P: AsRef<Path>>(path: P, perm: Permissions) -> io::Result<()> {
-    fs_imp::set_permissions_nofollow(path.as_ref(), perm)
+    fs_imp::set_permissions_nofollow(path.as_ref(), perm.0)
 }
 
 impl DirBuilder {
