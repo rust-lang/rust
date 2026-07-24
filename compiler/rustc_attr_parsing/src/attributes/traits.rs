@@ -53,7 +53,7 @@ pub(crate) struct RustcParenSugarParser;
 impl NoArgsAttributeParser for RustcParenSugarParser {
     const PATH: &[Symbol] = &[sym::rustc_paren_sugar];
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Trait)]);
-    const STABILITY: AttributeStability = unstable!(rustc_attrs);
+    const STABILITY: AttributeStability = unstable!(unboxed_closures);
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcParenSugar;
 }
 

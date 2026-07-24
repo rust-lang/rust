@@ -2,6 +2,10 @@
 
 struct Test;
 
+
+#[rustc_paren_sugar]
+//~^ ERROR the `rustc_paren_sugar` attribute is an experimental feature
+pub trait Fn<Args> {}
 impl FnOnce<(u32, u32)> for Test {
 //~^ ERROR the precise format of `Fn`-family traits' type parameters is subject to change
 //~| ERROR manual implementations of `FnOnce` are experimental

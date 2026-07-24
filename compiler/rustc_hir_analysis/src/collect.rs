@@ -947,9 +947,6 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
     let attrs = tcx.get_all_attrs(def_id);
 
     let paren_sugar = find_attr!(attrs, RustcParenSugar);
-    if paren_sugar && !tcx.features().unboxed_closures() {
-        tcx.dcx().emit_err(diagnostics::ParenSugarAttribute { span: item.span });
-    }
 
     // Only regular traits can be marker.
     let is_marker = !is_alias && find_attr!(attrs, Marker);
