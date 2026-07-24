@@ -16,6 +16,7 @@ use regex::Regex;
 use rustc_arena::TypedArena;
 use rustc_attr_parsing::eval_config_entry;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
+use rustc_data_structures::jobserver;
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_errors::DiagCtxtHandle;
@@ -36,8 +37,8 @@ use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
 use rustc_session::config::{
-    self, CFGuard, CrateType, DebugInfo, InstrumentMcount, LinkerFeaturesCli, OutFileName,
-    OutputFilenames, OutputType, PrintKind, SplitDwarfKind, Strip,
+    self, CFGuard, CrateType, DebugInfo, InstrumentMcount, LinkerFeaturesCli, LinkerJobs,
+    OutFileName, OutputFilenames, OutputType, PrintKind, SplitDwarfKind, Strip,
 };
 use rustc_session::lint::builtin::LINKER_MESSAGES;
 use rustc_session::output::{check_file_is_writeable, invalid_output_for_target, out_filename};
@@ -3138,6 +3139,38 @@ fn add_order_independent_options(
     // OBJECT-FILES-NO, AUDIT-ORDER
     if sess.opts.unstable_opts.ehcont_guard {
         cmd.ehcont_guard();
+    }
+
+    // Only LLD supports controlling parallelism at the moment.
+    if let LinkerJobs::Explicit(limit) = sess.opts.jobs.linker
+        && flavor.uses_lld()
+    {
+        // Try obtaining as many jobserver tokens as possible (within the limit) to run parallel
+        // linking. One token is available implicitly since we are running on the main thread.
+        let client = jobserver::client();
+        let mut tokens = Vec::new();
+        let mut unsupported = false;
+        for _ in 0..limit.get() - 1 {
+            match client.try_acquire() {
+                Ok(Some(token)) => tokens.push(token),
+                Ok(None) => {}
+                Err(e) if e.kind() == io::ErrorKind::Unsupported => {
+                    assert!(tokens.is_empty());
+                    unsupported = true;
+                    break;
+                }
+                Err(_) => bug!("IO error when acquiring jobserver token"),
+            }
+        }
+
+        let prefix = if sess.target.is_like_windows { "/threads:" } else { "--threads=" };
+        // Error on the side of oversubscription if non-blocking token acquiring is unsupported.
+        // Linking is typically the last step in a multi-crate project build,
+        // so the resources should usually be free.
+        let threads = if unsupported { limit.get() } else { 1 + tokens.len() };
+        cmd.link_arg(format!("{prefix}{threads}"));
+        // FIXME: release the tokens after the linker process exists and not immediately.
+        drop(tokens);
     }
 
     add_rpath_args(cmd, sess, crate_info, out_filename);

@@ -1036,15 +1036,6 @@ impl Session {
                 .unwrap_or(self.panic_strategy().unwinds() || self.target.default_uwtable)
     }
 
-    /// Returns the number of threads used for the thread pool.
-    ///
-    /// `None` means thread pool is not used and synchronization is disabled.
-    /// `Some(n)` means synchronization is enabled with `n` worker threads.
-    #[inline]
-    pub fn threads(&self) -> Option<usize> {
-        self.opts.unstable_opts.threads
-    }
-
     /// Returns the number of codegen units that should be used for this
     /// compilation
     pub fn codegen_units(&self) -> CodegenUnits {

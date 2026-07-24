@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::env::consts::{DLL_PREFIX, DLL_SUFFIX};
+use std::num::NonZero;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, OnceLock};
@@ -21,7 +22,7 @@ use rustc_middle::dep_graph::WorkProductMap;
 use rustc_middle::ty::{CurrentGcx, TyCtxt};
 use rustc_query_impl::{CollectActiveJobsKind, collect_active_query_jobs};
 use rustc_session::config::{
-    Cfg, CrateType, OutFileName, OutputFilenames, OutputTypes, Sysroot, host_tuple,
+    Cfg, CrateType, Jobs, OutFileName, OutputFilenames, OutputTypes, Sysroot, host_tuple,
 };
 use rustc_session::{EarlyDiagCtxt, Session, filesearch};
 use rustc_span::edition::Edition;
@@ -175,7 +176,7 @@ fn run_in_thread_with_globals<F: FnOnce(CurrentGcx) -> R + Send, R: Send>(
 pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce(CurrentGcx) -> R + Send, R: Send>(
     thread_builder_diag: &EarlyDiagCtxt,
     edition: Edition,
-    threads: usize,
+    jobs: Jobs,
     extra_symbols: &[&'static str],
     sm_inputs: SourceMapInputs,
     f: F,
@@ -188,9 +189,11 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce(CurrentGcx) -> R + Send,
 
     let thread_stack_size = init_stack_size(thread_builder_diag);
 
-    let registry = sync::Registry::new(std::num::NonZero::new(threads).unwrap());
+    let jobs_frontend = jobs.frontend.or(NonZero::new(1)).unwrap();
+    let registry = sync::Registry::new(jobs_frontend);
 
     let Some(proof) = sync::check_dyn_thread_safe() else {
+        assert_eq!(jobs_frontend.get(), 1);
         return run_in_thread_with_globals(
             thread_stack_size,
             edition,
@@ -215,7 +218,7 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce(CurrentGcx) -> R + Send,
         .thread_name(|_| "rustc".to_string())
         .acquire_thread_handler(move || proxy.acquire_thread())
         .release_thread_handler(move || proxy_.release_thread())
-        .num_threads(threads)
+        .num_threads(jobs_frontend.get())
         .deadlock_handler(move || {
             // On deadlock, creates a new thread and forwards information in thread
             // locals to it. The new thread runs the deadlock handler.
@@ -295,7 +298,7 @@ internal compiler error: query cycle handler thread panicked, aborting process";
                 )
                 .unwrap_or_else(|err| {
                     let mut diag = thread_builder_diag.early_struct_fatal(format!(
-                        "failed to spawn compiler thread pool: could not create {threads} threads ({err})",
+                        "failed to spawn compiler thread pool: could not create {jobs_frontend} threads ({err})",
                     ));
                     diag.help(
                         "try lowering `-Z threads` or checking the operating system's resource limits",
