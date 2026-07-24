@@ -3667,7 +3667,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     /// Gets the `#[diagnostic::on_unknown]` attribute data associated with this `DefId`.
-    fn on_unknown_data(&self, def_id: DefId) -> Option<&Directive> {
+    pub(crate) fn on_unknown_data(&self, def_id: DefId) -> Option<&Directive> {
         match def_id.as_local() {
             Some(local) => Some(self.on_unknown_data.get(&local)?.directive.as_ref()),
             None => find_attr!(self.tcx, def_id, OnUnknown{ directive } => directive)?.as_deref(),
