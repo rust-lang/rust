@@ -165,6 +165,8 @@ struct CollectTrackerAndEmitter<'dcx, 'matcher> {
     /// Tokens seen during parsing.
     tokens: FxHashMap<u32, Token>,
 
+    input_pos_offset: u32,
+
     /// Which arm's failure should we report? (the one furthest along)
     best_failure: Option<BestFailure>,
     root_span: Span,
@@ -219,6 +221,7 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
     }
 
     fn trying_match(&mut self, input_pos: u32, token: &Token, loc_index: u32) {
+        let input_pos = self.input_pos_offset + input_pos;
         let old_token = self.tokens.insert(input_pos, *token);
         debug_assert!(old_token.is_none_or(|t| t == *token));
 
@@ -229,10 +232,15 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
     }
 
     fn matched_one(&mut self, input_pos: u32, loc_index: u32) {
+        let input_pos = self.input_pos_offset + input_pos;
         let m = Match { input_pos, loc_index };
         let match_result =
             self.matches.get_mut(&m).unwrap_or_else(|| bug!("no corresponding `trying_match()`"));
         *match_result = MatchResult::Success;
+    }
+
+    fn reset_input_pos(&mut self, parser: &Parser<'_>) {
+        self.input_pos_offset = parser.approx_token_stream_pos();
     }
 
     fn after_arm(&mut self, result: &NamedParseResult) {
@@ -261,6 +269,7 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
         self.current = None;
         self.matches.clear();
         self.tokens.clear();
+        self.input_pos_offset = 0;
     }
 
     fn failure(&mut self, parser: &Parser<'_>) {
@@ -406,6 +415,7 @@ impl<'dcx> CollectTrackerAndEmitter<'dcx, '_> {
             current: None,
             matches: FxHashMap::default(),
             tokens: FxHashMap::default(),
+            input_pos_offset: 0,
             best_failure: None,
             root_span,
             result: None,

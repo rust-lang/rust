@@ -373,6 +373,8 @@ pub(super) trait Tracker<'matcher> {
     /// [`Parser::nonterminal_may_begin_with()`] returns `true`).
     fn matched_one(&mut self, input_pos: u32, loc_index: u32);
 
+    fn reset_input_pos(&mut self, parser: &Parser<'_>);
+
     /// This is called after an arm has been parsed, either successfully or unsuccessfully. When
     /// this is called, `before_match_loc` was called at least once (with a `MatcherLoc::Eof`).
     fn after_arm(&mut self, result: &NamedParseResult);
@@ -402,16 +404,25 @@ pub(super) trait Tracker<'matcher> {
 pub(super) struct NoopTracker;
 
 impl<'matcher> Tracker<'matcher> for NoopTracker {
+    #[inline]
     fn prepare(&mut self, _which_matcher: WhichMatcher, _matcher: &'matcher [MatcherLoc]) {}
 
+    #[inline]
     fn trying_match(&mut self, _input_pos: u32, _token: &Token, _loc_index: u32) {}
 
+    #[inline]
     fn matched_one(&mut self, _input_pos: u32, _loc_index: u32) {}
 
+    #[inline]
     fn ambiguity(&mut self) {}
 
+    #[inline]
+    fn reset_input_pos(&mut self, _parser: &Parser<'_>) {}
+
+    #[inline]
     fn after_arm(&mut self, _result: &NamedParseResult) {}
 
+    #[inline]
     fn failure(&mut self, _parser: &Parser<'_>) {}
 
     fn description() -> &'static str {
