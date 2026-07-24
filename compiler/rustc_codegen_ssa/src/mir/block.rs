@@ -582,6 +582,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let op = self.codegen_consume(bx, mir::Place::return_place().as_ref());
                 if let Ref(place_val) = op.val {
                     bx.load_from_place(bx.backend_type(op.layout), place_val)
+                } else if let Uninit = op.val {
+                    bx.cx().const_undef(bx.cx().immediate_backend_type(op.layout))
                 } else {
                     op.immediate_or_packed_pair(bx)
                 }
