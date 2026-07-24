@@ -2519,6 +2519,68 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         *path = Path { span: path.span, segments: new_segments };
     }
 
+    fn expand_span_to_surrounding_comma(
+        source_text: &str,
+        ident_start: usize,
+        ident_end: usize,
+    ) -> (usize, usize) {
+        let mut start = ident_start;
+        let end = ident_end;
+
+        // Find the index in `source_text` just after the identifier.
+        let after_ident = &source_text[end..];
+        let mut chars = after_ident.char_indices();
+
+        // Skip whitespace and look for a trailing comma.
+        let mut trailing_comma_end = None;
+        while let Some((off, ch)) = chars.next() {
+            if ch.is_whitespace() {
+                continue;
+            } else if ch == ',' {
+                // Include the comma, then skip any following whitespace.
+                let mut pos = end + off + ch.len_utf8();
+                while let Some((off2, ch2)) = chars.next() {
+                    if ch2.is_whitespace() {
+                        pos = end + off2 + ch2.len_utf8();
+                    } else {
+                        break;
+                    }
+                }
+                trailing_comma_end = Some(pos);
+                break;
+            } else {
+                break;
+            }
+        }
+
+        if let Some(new_end) = trailing_comma_end {
+            return (start, new_end);
+        }
+
+        // No trailing comma. Search backwards for a leading comma.
+        let before_ident = &source_text[..start];
+        let mut rev_chars = before_ident.char_indices().rev();
+        while let Some((off, ch)) = rev_chars.next() {
+            if ch.is_whitespace() {
+                continue;
+            } else if ch == ',' {
+                start = off; // cut from the comma onward, so the comma is removed
+                break;
+            } else {
+                break;
+            }
+        }
+
+        (start, end)
+    }
+
+    fn get_indentation(sm: &SourceMap, span: Span) -> String {
+        let line_span = sm.span_extend_to_line(span.shrink_to_lo());
+        sm.span_to_snippet(line_span)
+            .map(|line| line.chars().take_while(|c| c.is_whitespace()).collect())
+            .unwrap_or_default()
+    }
+
     fn report_privacy_error(&mut self, privacy_error: &PrivacyError<'ra>) {
         let PrivacyError {
             ident,
@@ -2526,6 +2588,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             outermost_res,
             parent_scope,
             single_nested,
+            use_stmt_span,
             dedup_span,
             ref source,
         } = *privacy_error;
@@ -2802,6 +2865,86 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     diagnostics::ImportIdent::Directly { span: dedup_span, ident, path }
                 };
                 err.subdiagnostic(sugg);
+                break;
+            }
+        } else if single_nested
+            && let Some(stmt_span) = use_stmt_span
+            && !shown_candidates
+            && !outermost_res.is_some_and(|(_, outer)| outer.span != ident.span)
+        {
+            sugg_paths.sort_by_key(|(p, reexport)| (p.len(), p[0].name == sym::core, *reexport));
+            for (sugg, reexport) in sugg_paths {
+                if sugg.len() <= 1 {
+                    continue;
+                }
+                let path = join_path_idents(sugg);
+                let Ok(source_text) = self.tcx.sess.source_map().span_to_snippet(stmt_span) else {
+                    continue;
+                };
+
+                let lo_offset = (ident.span.lo() - stmt_span.lo()).0 as usize;
+                let hi_offset = (ident.span.hi() - stmt_span.lo()).0 as usize;
+
+                if lo_offset > source_text.len() || hi_offset > source_text.len() {
+                    continue;
+                }
+
+                let (start, end) =
+                    Self::expand_span_to_surrounding_comma(&source_text, lo_offset, hi_offset);
+
+                let mut replacement = String::new();
+                replacement.push_str(&source_text[..start]);
+                replacement.push_str(&source_text[end..]);
+
+                // If removing the ident leaves an empty group, replace the path entirely
+                if replacement.contains("{}") {
+                    let msg = if reexport {
+                        format!("import `{ident}` through the re-export")
+                    } else {
+                        format!("import `{ident}` directly")
+                    };
+
+                    let line_span = self.tcx.sess.source_map().span_extend_to_line(stmt_span);
+                    let indentation = Self::get_indentation(self.tcx.sess.source_map(), stmt_span);
+                    let suggestion_text = format!("{indentation}use {path};");
+                    err.multipart_suggestion(
+                        msg,
+                        vec![(line_span, suggestion_text)],
+                        Applicability::MachineApplicable,
+                    );
+                    break;
+                }
+
+                // If only one item remains in the group, remove the braces
+                if let Some(open) = replacement.find('{') {
+                    if let Some(close) = replacement.rfind('}') {
+                        let inner = replacement[open + 1..close].trim();
+                        if !inner.contains(',') && !inner.is_empty() {
+                            // Replace `{ident}` with just `ident`
+                            replacement = format!("{}{}", replacement[..open].trim_end(), inner);
+                        }
+                    }
+                }
+
+                let msg = if reexport {
+                    format!("import `{ident}` through the re-export")
+                } else {
+                    format!("import `{ident}` directly")
+                };
+
+                // Calculate the indentation of the original `use` statement to ensure the
+                // suggested import aligns with the existing code.
+                let indentation = Self::get_indentation(self.tcx.sess.source_map(), stmt_span);
+
+                // Insert before the path to avoid duplicating `use`; stmt_span doesn't include the keyword.
+                err.multipart_suggestion(
+                    msg,
+                    vec![
+                        (stmt_span.shrink_to_lo(), format!("{path};\n{indentation}use ")),
+                        (stmt_span, replacement),
+                    ],
+                    Applicability::MachineApplicable,
+                );
                 break;
             }
         }

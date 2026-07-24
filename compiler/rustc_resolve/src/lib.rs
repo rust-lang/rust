@@ -1035,6 +1035,9 @@ struct PrivacyError<'ra> {
     parent_scope: ParentScope<'ra>,
     /// Is the format `use a::{b,c}`?
     single_nested: bool,
+    /// Span of the entire `use` statement, including the `use` keyword.
+    /// Set only when `single_nested` is true.
+    use_stmt_span: Option<Span>,
     source: Option<ast::Expr>,
 }
 
