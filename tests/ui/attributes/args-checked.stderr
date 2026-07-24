@@ -26,13 +26,13 @@ LL - #![test_runner(x(x,y,z))]
 LL + #![test_runner(path)]
    |
 
-error[E0539]: malformed `inline` attribute input
+error[E0565]: malformed `inline` attribute input
   --> $DIR/args-checked.rs:12:3
    |
 LL | #[inline(always = 5)]
    |   ^^^^^^^----------^
    |          |
-   |          valid arguments are `always` or `never`
+   |          didn't expect any arguments here
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/codegen.html#the-inline-attribute>
 help: try changing it to one of the following valid forms of the attribute
@@ -47,13 +47,13 @@ LL - #[inline(always = 5)]
 LL + #[inline]
    |
 
-error[E0539]: malformed `inline` attribute input
+error[E0565]: malformed `inline` attribute input
   --> $DIR/args-checked.rs:14:3
    |
 LL | #[inline(always(x, y, z))]
    |   ^^^^^^^---------------^
    |          |
-   |          valid arguments are `always` or `never`
+   |          didn't expect any arguments here
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/codegen.html#the-inline-attribute>
 help: try changing it to one of the following valid forms of the attribute
