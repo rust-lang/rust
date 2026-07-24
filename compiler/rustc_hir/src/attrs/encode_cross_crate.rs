@@ -188,6 +188,7 @@ impl AttributeKind {
             RustcShouldNotBeCalledOnConstItems => Yes,
             RustcSimdMonomorphizeLaneLimit(..) => Yes, // Affects layout computation, which needs to work cross-crate
             RustcSkipDuringMethodDispatch { .. } => No,
+            RustcSpecializationMarker => No,
             RustcSpecializationTrait => No,
             RustcStdInternalSymbol => No,
             RustcStrictCoherence(..) => Yes,
@@ -195,7 +196,6 @@ impl AttributeKind {
             RustcTestMarker(..) => No,
             RustcThenThisWouldNeed(..) => No,
             RustcTrivialFieldReads => Yes,
-            RustcUnsafeSpecializationMarker => No,
             Sanitize { .. } => No,
             ShouldPanic { .. } => No,
             Splat(..) => Yes,

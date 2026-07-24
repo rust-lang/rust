@@ -1634,6 +1634,9 @@ pub enum AttributeKind {
         boxed_slice: bool,
     },
 
+    /// Represents `#[rustc_specialization_marker]`.
+    RustcSpecializationMarker,
+
     /// Represents `#[rustc_specialization_trait]`.
     RustcSpecializationTrait,
 
@@ -1654,9 +1657,6 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_trivial_field_reads]`
     RustcTrivialFieldReads,
-
-    /// Represents `#[rustc_unsafe_specialization_marker]`.
-    RustcUnsafeSpecializationMarker,
 
     /// Represents `#[sanitize]`
     ///

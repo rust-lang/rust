@@ -8,7 +8,7 @@ trait HasMethod {
     fn method(&self);
 }
 
-#[rustc_unsafe_specialization_marker]
+#[unsafe(rustc_specialization_marker)]
 trait Marker: HasMethod {}
 
 trait Spec {

@@ -3,6 +3,7 @@ use std::mem;
 use rustc_feature::AttributeStability;
 
 use super::prelude::*;
+use crate::AttributeSafety;
 use crate::attributes::{NoArgsAttributeParser, SingleAttributeParser};
 use crate::context::AcceptContext;
 use crate::parser::ArgParser;
@@ -98,12 +99,17 @@ impl NoArgsAttributeParser for RustcSpecializationTraitParser {
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcSpecializationTrait;
 }
 
-pub(crate) struct RustcUnsafeSpecializationMarkerParser;
-impl NoArgsAttributeParser for RustcUnsafeSpecializationMarkerParser {
-    const PATH: &[Symbol] = &[sym::rustc_unsafe_specialization_marker];
+pub(crate) struct RustcSpecializationMarkerParser;
+impl NoArgsAttributeParser for RustcSpecializationMarkerParser {
+    const PATH: &[Symbol] = &[sym::rustc_specialization_marker];
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Trait)]);
     const STABILITY: AttributeStability = unstable!(rustc_attrs);
-    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcUnsafeSpecializationMarker;
+    const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcSpecializationMarker;
+    const SAFETY: AttributeSafety = AttributeSafety::Unsafe {
+        note: "this attribute requires `unsafe` because lifetime constraints from \
+            the implementations of the trait are not considered when specializing",
+        unsafe_since: None,
+    };
 }
 
 // Coherence

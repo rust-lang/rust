@@ -25,7 +25,7 @@ pub unsafe trait TrustedFused {}
 ///
 /// [`Fuse`]: crate::iter::Fuse
 #[stable(feature = "fused", since = "1.26.0")]
-#[rustc_unsafe_specialization_marker]
+#[unsafe(rustc_specialization_marker)]
 // FIXME: this should be a #[marker] and have another blanket impl for T: TrustedFused
 // but that ICEs iter::Fuse specializations.
 #[lang = "fused_iterator"]
@@ -62,7 +62,7 @@ impl<I: FusedIterator + ?Sized> FusedIterator for &mut I {}
 /// This trait must only be implemented when the contract is upheld. Consumers
 /// of this trait must inspect [`Iterator::size_hint()`]’s upper bound.
 #[unstable(feature = "trusted_len", issue = "37572")]
-#[rustc_unsafe_specialization_marker]
+#[unsafe(rustc_specialization_marker)]
 #[rustc_const_unstable(feature = "const_iter", issue = "92476")]
 pub const unsafe trait TrustedLen: [const] Iterator {}
 

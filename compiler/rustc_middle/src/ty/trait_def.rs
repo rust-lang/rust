@@ -91,7 +91,7 @@ pub enum TraitSpecializationKind {
     None,
     /// Specializing on this trait is allowed because it doesn't have any
     /// methods. For example `Sized` or `FusedIterator`.
-    /// Applies to traits with the `rustc_unsafe_specialization_marker`
+    /// Applies to traits with the `rustc_specialization_marker`
     /// attribute.
     Marker,
     /// Specializing on this trait is allowed because all of the impls of this
