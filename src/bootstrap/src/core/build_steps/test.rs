@@ -3763,7 +3763,12 @@ impl Step for Distcheck {
     fn run(self, builder: &Builder<'_>) {
         // Use a temporary directory completely outside the current checkout, to avoid reusing any
         // local source code, built artifacts or configuration by accident
-        let root_dir = std::env::temp_dir().join("distcheck");
+        let root_dir = if builder.config.ci_env.is_running_in_ci() {
+            std::env::var("RUNNER_TEMP").map(PathBuf::from).unwrap_or_else(|_| std::env::temp_dir())
+        } else {
+            std::env::temp_dir()
+        };
+        let root_dir = root_dir.join("distcheck");
 
         distcheck_plain_source_tarball(builder, &root_dir.join("distcheck-rustc-src"));
         distcheck_rust_src(builder, &root_dir.join("distcheck-rust-src"));
