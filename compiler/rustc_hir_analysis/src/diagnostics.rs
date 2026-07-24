@@ -18,6 +18,13 @@ pub(crate) use precise_captures::*;
 pub(crate) mod remove_or_use_generic;
 
 #[derive(Diagnostic)]
+#[diag("complex const arguments must be placed inside of a `const` block")]
+pub(crate) struct ComplexConstArg {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("ambiguous associated {$assoc_kind} `{$assoc_ident}` in bounds of `{$qself}`")]
 pub(crate) struct AmbiguousAssocItem<'a> {
     #[primary_span]
