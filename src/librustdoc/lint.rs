@@ -214,8 +214,8 @@ declare_rustdoc_lint! {
     /// lead to some row cells being ignored. This is a `rustdoc` only lint, see the
     /// documentation in the [rustdoc book].
     ///
-    /// [rustdoc book]: ../../../rustdoc/lints.html#unescaped_pipe_in_table_cell
-    UNESCAPED_PIPE_IN_TABLE_CELL,
+    /// [rustdoc book]: ../../../rustdoc/lints.html#invalid_markdown_table
+    INVALID_MARKDOWN_TABLE,
     Warn,
     "detects unescaped pipe in table rows in doc comments"
 }
@@ -235,7 +235,7 @@ pub(crate) static RUSTDOC_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
         REDUNDANT_EXPLICIT_LINKS,
         BROKEN_FOOTNOTE,
         UNUSED_FOOTNOTE_DEFINITION,
-        UNESCAPED_PIPE_IN_TABLE_CELL,
+        INVALID_MARKDOWN_TABLE,
     ]
 });
 

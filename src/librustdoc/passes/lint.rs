@@ -5,8 +5,8 @@ mod bare_urls;
 mod check_code_block_syntax;
 mod footnotes;
 mod html_tags;
+mod invalid_markdown_table;
 mod redundant_explicit_links;
-mod table_pipe_escape;
 mod unescaped_backticks;
 
 use super::Pass;
@@ -54,7 +54,7 @@ impl DocVisitor<'_> for Linter<'_, '_> {
                 html_tags::visit_item(self.cx, item, hir_id, &dox);
             }
             if may_have_table {
-                table_pipe_escape::visit_item(self.cx, item, hir_id, &dox);
+                invalid_markdown_table::visit_item(self.cx, item, hir_id, &dox);
             }
         }
 
