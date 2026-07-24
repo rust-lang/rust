@@ -21,9 +21,9 @@ use super::error::*;
 use crate::diagnostics::{LongRunning, LongRunningWarn};
 use crate::interpret::{
     self, AllocId, AllocInit, AllocRange, ConstAllocation, CtfeProvenance, FnArg, Frame,
-    GlobalAlloc, ImmTy, InterpCx, InterpResult, OpTy, PlaceTy, Pointer, RangeSet, RetagMode,
-    Scalar, compile_time_machine, ensure_monomorphic_enough, err_inval, interp_ok, throw_exhaust,
-    throw_inval, throw_ub, throw_ub_format, throw_unsup, throw_unsup_format,
+    GlobalAlloc, ImmTy, Immediate, InterpCx, InterpResult, OpTy, PlaceTy, Pointer, RangeSet,
+    RetagMode, Scalar, compile_time_machine, ensure_monomorphic_enough, err_inval, interp_ok,
+    throw_exhaust, throw_inval, throw_ub, throw_ub_format, throw_unsup, throw_unsup_format,
     type_implements_dyn_trait,
 };
 
@@ -712,6 +712,47 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                 ecx.write_scalar(Scalar::from_target_usize(offset, ecx), dest)?;
             }
 
+            sym::field_representing_type_name => {
+                let frt_ty = ecx.read_type_id(&args[0])?;
+
+                let field_name = if let ty::Adt(def, args) = frt_ty.kind()
+                    && let Some(FieldInfo { name, .. }) =
+                        def.field_representing_type_info(ecx.tcx.tcx, args)
+                {
+                    name
+                } else {
+                    span_bug!(ecx.cur_span(), "expected field representing type, got {frt_ty}")
+                };
+                let ptr = ecx.allocate_bytes_dedup(field_name.as_str().as_bytes())?;
+                ecx.write_immediate(
+                    Immediate::ScalarPair(
+                        Scalar::from_pointer(ptr, ecx),
+                        Scalar::from_target_usize(field_name.as_str().len() as u64, ecx),
+                    ),
+                    dest,
+                )?;
+            }
+
+            sym::field_representing_type_offset => {
+                let frt_ty = ecx.read_type_id(&args[0])?;
+
+                let (ty, variant, field) = if let ty::Adt(def, args) = frt_ty.kind()
+                    && let Some(FieldInfo { base, variant_idx, field_idx, .. }) =
+                        def.field_representing_type_info(ecx.tcx.tcx, args)
+                {
+                    (base, variant_idx, field_idx)
+                } else {
+                    span_bug!(ecx.cur_span(), "expected field representing type, got {frt_ty}")
+                };
+                let layout = ecx.layout_of(ty)?;
+                let cx = ty::layout::LayoutCx::new(ecx.tcx.tcx, ecx.typing_env());
+
+                let layout = layout.for_variant(&cx, variant);
+                let offset = layout.fields.offset(field.index()).bytes();
+
+                ecx.write_scalar(Scalar::from_target_usize(offset, ecx), dest)?;
+            }
+
             sym::field_representing_type_actual_type_id => {
                 let frt_ty = ecx.read_type_id(&args[0])?;
 
@@ -724,6 +765,23 @@ impl<'tcx> interpret::Machine<'tcx> for CompileTimeMachine<'tcx> {
                     span_bug!(ecx.cur_span(), "expected field representing type, got {frt_ty}")
                 };
                 ecx.write_type_id(field_ty, dest)?;
+            }
+
+            sym::type_id_generics => {
+                let ty = ecx.read_type_id(&args[0])?;
+                ecx.write_type_id_generics(dest, ty)?;
+            }
+
+            sym::non_exhaustive => {
+                let ty = ecx.read_type_id(&args[0])?;
+
+                let non_exhaustive = if let ty::Adt(def, _) = ty.kind() {
+                    def.is_variant_list_non_exhaustive()
+                } else {
+                    false
+                };
+
+                ecx.write_scalar(Scalar::from_bool(non_exhaustive), dest)?;
             }
 
             _ => {

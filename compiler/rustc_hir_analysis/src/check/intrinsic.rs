@@ -115,6 +115,8 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::fdiv_algebraic
         | sym::field_offset
         | sym::field_representing_type_actual_type_id
+        | sym::field_representing_type_name
+        | sym::field_representing_type_offset
         | sym::floorf16
         | sym::floorf32
         | sym::floorf64
@@ -163,6 +165,7 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::minimumf128
         | sym::mul_with_overflow
         | sym::needs_drop
+        | sym::non_exhaustive
         | sym::offload
         | sym::offset_of
         | sym::overflow_checks
@@ -216,6 +219,7 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::type_id_eq
         | sym::type_id_field_representing_type
         | sym::type_id_fields
+        | sym::type_id_generics
         | sym::type_id_variants
         | sym::type_id_vtable
         | sym::type_name
@@ -349,6 +353,22 @@ pub(crate) fn check_intrinsic_type(
             tcx.type_of(tcx.lang_items().type_struct().unwrap()).no_bound_vars().unwrap(),
         ),
         sym::field_representing_type_actual_type_id => (0, 0, vec![type_id_ty()], type_id_ty()),
+        sym::field_representing_type_name => (0, 0, vec![type_id_ty()], Ty::new_static_str(tcx)),
+        sym::field_representing_type_offset => (0, 0, vec![type_id_ty()], tcx.types.usize),
+        sym::non_exhaustive => (0, 0, vec![type_id_ty()], tcx.types.bool),
+        sym::type_id_generics => (
+            0,
+            0,
+            vec![type_id_ty()],
+            Ty::new_imm_ref(
+                tcx,
+                tcx.lifetimes.re_static,
+                Ty::new_slice(
+                    tcx,
+                    tcx.type_of(tcx.lang_items().type_generic().unwrap()).no_bound_vars().unwrap(),
+                ),
+            ),
+        ),
         sym::offload => (
             3,
             0,

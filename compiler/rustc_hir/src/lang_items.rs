@@ -275,6 +275,7 @@ language_item_table! {
     CVoid,                   sym::c_void,              c_void,                     Target::Enum,           GenericRequirement::None;
 
     Type,                    sym::type_info,           type_struct,                Target::Struct,         GenericRequirement::None;
+    TypeGeneric,             sym::type_info_generic,   type_generic,               Target::Enum,         GenericRequirement::None;
     TypeId,                  sym::type_id,             type_id,                    Target::Struct,         GenericRequirement::None;
 
     // A number of panic-related lang items. The `panic` item corresponds to divide-by-zero and

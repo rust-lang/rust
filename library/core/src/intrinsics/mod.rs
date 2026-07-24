@@ -3168,6 +3168,47 @@ pub fn field_representing_type_actual_type_id(
     panic!("`FieldId::type_id` can only be called at compile-time")
 }
 
+/// Gets the name of the field represented by the [`FieldRepresentingType`]'s `TypeId`.
+///
+/// The more user-friendly version of this intrinsic is [`core::mem::type_info::FieldId::name`].
+///
+/// [`FieldRepresentingType`]: crate::field::FieldRepresentingType
+#[rustc_intrinsic]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_comptime]
+pub fn field_representing_type_name(_frt_type_id: crate::any::TypeId) -> &'static str {
+    panic!("`FieldId::name` can only be called at compile-time")
+}
+
+/// Gets the name of the field represented by the [`FieldRepresentingType`]'s `TypeId`.
+///
+/// The more user-friendly version of this intrinsic is [`core::mem::type_info::FieldId::name`].
+///
+/// [`FieldRepresentingType`]: crate::field::FieldRepresentingType
+#[rustc_intrinsic]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_comptime]
+pub fn field_representing_type_offset(_frt_type_id: crate::any::TypeId) -> usize {
+    panic!("`FieldId::offset` can only be called at compile-time")
+}
+
+/// Checks whether this type is non-exhaustive.
+#[rustc_intrinsic]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_comptime]
+pub fn non_exhaustive(_id: crate::any::TypeId) -> bool {
+    panic!("`TypeId::non_exhaustive` can only be called at compile-time")
+}
+
+/// Returns the list of generic args on this type.
+/// Only meaningful for Adts, closures, ... Everything else returns an empty slice.
+#[rustc_intrinsic]
+#[unstable(feature = "core_intrinsics", issue = "none")]
+#[rustc_comptime]
+pub fn type_id_generics(_id: crate::any::TypeId) -> &'static [crate::mem::type_info::Generic] {
+    panic!("`TypeId::type_id_generics` can only be called at compile-time")
+}
+
 /// Lowers in MIR to `Rvalue::Aggregate` with `AggregateKind::RawPtr`.
 ///
 /// This is used to implement functions like `slice::from_raw_parts_mut` and

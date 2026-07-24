@@ -247,6 +247,7 @@ fn test_enums() {
         assert!(ty.variants[2].fields.len() == 2);
 
         let ty_id = TypeId::of::<E>();
+        assert!(!ty_id.non_exhaustive());
         assert!(ty_id.size() == Some(size_of::<E>()));
         assert!(ty_id.variants() == 3);
         assert!(ty_id.fields(0) == 1);
@@ -255,6 +256,9 @@ fn test_enums() {
         assert!(ty_id.field(0, 0).type_id() == TypeId::of::<u32>());
         assert!(ty_id.field(2, 0).type_id() == TypeId::of::<()>());
         assert!(ty_id.field(2, 1).type_id() == TypeId::of::<&str>());
+        assert!(ty_id.field(2, 1).name() == "b");
+        assert!(ty_id.field(2, 1).offset() == 8);
+        assert!(ty_id.generics().is_empty());
     }
 
     const {
