@@ -401,7 +401,7 @@ impl<'gcc, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     fn get_fn_addr(
         &self,
         instance: Instance<'tcx>,
-        _pointer_auth_schema: Option<&PointerAuthSchema>,
+        _ptrauth_schema: Option<PointerAuthSchema>,
     ) -> RValue<'gcc> {
         let func_name = self.tcx.symbol_name(instance).name;
 

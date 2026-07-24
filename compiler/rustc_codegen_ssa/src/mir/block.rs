@@ -12,6 +12,7 @@ use rustc_hir::attrs::AttributeKind;
 use rustc_hir::lang_items::LangItem;
 use rustc_lint_defs::builtin::TAIL_CALL_TRACK_CALLER;
 use rustc_middle::mir::{self, AssertKind, InlineAsmMacro, SwitchTargets, UnwindTerminateReason};
+use rustc_middle::ptrauth::ptrauth_clone_discriminated_schema_for;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout, ValidityRequirement};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::{self, Instance, Ty, TypeVisitableExt};
@@ -694,12 +695,23 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     virtual_drop,
                 )
             }
-            _ => (
-                false,
-                bx.get_fn_addr(drop_fn, bx.sess().pointer_authentication_functions()),
-                bx.fn_abi_of_instance(drop_fn, ty::List::empty()),
-                drop_fn,
-            ),
+            _ => {
+                let schema = if bx.sess().pointer_authentication_fn_ptr_type_discrimination() {
+                    ptrauth_clone_discriminated_schema_for(
+                        bx.tcx(),
+                        bx.sess().pointer_authentication_functions(),
+                        drop_fn,
+                    )
+                } else {
+                    bx.sess().pointer_authentication_functions().clone()
+                };
+                (
+                    false,
+                    bx.get_fn_addr(drop_fn, schema),
+                    bx.fn_abi_of_instance(drop_fn, ty::List::empty()),
+                    drop_fn,
+                )
+            }
         };
 
         // We generate a null check for the drop_fn. This saves a bunch of relocations being
@@ -1111,14 +1123,18 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             generic_args.no_bound_vars().unwrap(),
                         )
                         .unwrap();
+                        let schema =
+                            if bx.sess().pointer_authentication_fn_ptr_type_discrimination() {
+                                ptrauth_clone_discriminated_schema_for(
+                                    bx.tcx(),
+                                    bx.sess().pointer_authentication_functions(),
+                                    instance,
+                                )
+                            } else {
+                                bx.sess().pointer_authentication_functions().clone()
+                            };
 
-                        (
-                            None,
-                            Some(bx.get_fn_addr(
-                                instance,
-                                bx.sess().pointer_authentication_functions(),
-                            )),
-                        )
+                        (None, Some(bx.get_fn_addr(instance, schema)))
                     }
                     _ => (Some(instance), None),
                 }
@@ -1432,7 +1448,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         let fn_ptr = match (instance, llfn) {
             (Some(instance), None) => {
-                bx.get_fn_addr(instance, bx.sess().pointer_authentication_functions())
+                let schema = if bx.sess().pointer_authentication_fn_ptr_type_discrimination() {
+                    ptrauth_clone_discriminated_schema_for(
+                        bx.tcx(),
+                        bx.sess().pointer_authentication_functions(),
+                        instance,
+                    )
+                } else {
+                    bx.sess().pointer_authentication_functions().clone()
+                };
+
+                bx.get_fn_addr(instance, schema)
             }
             (_, Some(llfn)) => llfn,
             _ => span_bug!(fn_span, "no instance or llfn for call"),
