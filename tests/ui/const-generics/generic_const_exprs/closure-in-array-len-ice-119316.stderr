@@ -1,0 +1,23 @@
+error: overly complex generic constant
+  --> $DIR/closure-in-array-len-ice-119316.rs:7:28
+   |
+LL |     let _data = &mut [0u8; { N + (|| 42)() }];
+   |                            ^^^^^^-------^^^^
+   |                                  |
+   |                                  borrowing is not supported in generic constants
+   |
+   = help: consider moving this anonymous constant into a `const` function
+   = note: this operation may be supported in the future
+
+error[E0015]: cannot call non-const closure in constants
+  --> $DIR/closure-in-array-len-ice-119316.rs:7:34
+   |
+LL |     let _data = &mut [0u8; { N + (|| 42)() }];
+   |                                  ^^^^^^^^^
+   |
+   = note: closures need an RFC before allowed to be called in constants
+   = note: calls in constants are limited to constant functions, tuple structs and tuple variants
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0015`.
