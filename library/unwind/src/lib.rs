@@ -1,6 +1,9 @@
 #![no_std]
 #![unstable(feature = "panic_unwind", issue = "32837")]
+#![feature(core_intrinsics)]
+#![feature(lang_items)]
 #![feature(link_cfg)]
+#![feature(rustc_attrs)]
 #![feature(staged_api)]
 #![cfg_attr(
     target_family = "wasm",
@@ -13,6 +16,8 @@
 // Force libc to be included even if unused. This is required by many platforms.
 #[cfg(not(all(windows, target_env = "msvc")))]
 extern crate libc as _;
+
+mod personality;
 
 cfg_select! {
     target_env = "msvc" => {
