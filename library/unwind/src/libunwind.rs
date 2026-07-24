@@ -10,9 +10,9 @@ pub use unwinding::custom_eh_frame_finder::{
 
 pub use crate::types::*;
 
-pub type _Unwind_Ptr = *const u8;
+pub(crate) type _Unwind_Ptr = *const u8;
 
-pub enum _Unwind_Context {}
+pub(crate) enum _Unwind_Context {}
 
 // FIXME: The `#[link]` attributes on `extern "C"` block marks those symbols declared in
 // the block are reexported in dylib build of std. This is needed when build rustc with
@@ -27,14 +27,14 @@ pub enum _Unwind_Context {}
     link(name = "unwind", kind = "static", modifiers = "-bundle")
 )]
 unsafe extern "C-unwind" {
-    pub fn _Unwind_Resume(exception: *mut _Unwind_Exception) -> !;
+    pub(crate) fn _Unwind_Resume(exception: *mut _Unwind_Exception) -> !;
 }
 unsafe extern "C" {
     pub fn _Unwind_DeleteException(exception: *mut _Unwind_Exception);
-    pub fn _Unwind_GetLanguageSpecificData(ctx: *mut _Unwind_Context) -> *mut c_void;
-    pub fn _Unwind_GetRegionStart(ctx: *mut _Unwind_Context) -> _Unwind_Ptr;
-    pub fn _Unwind_GetTextRelBase(ctx: *mut _Unwind_Context) -> _Unwind_Ptr;
-    pub fn _Unwind_GetDataRelBase(ctx: *mut _Unwind_Context) -> _Unwind_Ptr;
+    pub(crate) fn _Unwind_GetLanguageSpecificData(ctx: *mut _Unwind_Context) -> *mut c_void;
+    pub(crate) fn _Unwind_GetRegionStart(ctx: *mut _Unwind_Context) -> _Unwind_Ptr;
+    pub(crate) fn _Unwind_GetTextRelBase(ctx: *mut _Unwind_Context) -> _Unwind_Ptr;
+    pub(crate) fn _Unwind_GetDataRelBase(ctx: *mut _Unwind_Context) -> _Unwind_Ptr;
 }
 
 cfg_select! {
@@ -43,23 +43,30 @@ cfg_select! {
         //
         // 32-bit ARM on iOS/tvOS/watchOS use either DWARF/Compact unwinding or
         // "setjmp-longjmp" / SjLj unwinding.
-        pub type _Unwind_Action = c_int;
+        pub(crate) type _Unwind_Action = c_int;
 
-        pub const _UA_SEARCH_PHASE: c_int = 1;
-        //pub const _UA_CLEANUP_PHASE: c_int = 2;
-        //pub const _UA_HANDLER_FRAME: c_int = 4;
-        pub const _UA_FORCE_UNWIND: c_int = 8;
-        //pub const _UA_END_OF_STACK: c_int = 16;
+        pub(crate) const _UA_SEARCH_PHASE: c_int = 1;
+        //pub(crate) const _UA_CLEANUP_PHASE: c_int = 2;
+        //pub(crate) const _UA_HANDLER_FRAME: c_int = 4;
+        pub(crate) const _UA_FORCE_UNWIND: c_int = 8;
+        //pub(crate) const _UA_END_OF_STACK: c_int = 16;
 
         #[cfg_attr(
             all(feature = "llvm-libunwind", any(target_os = "fuchsia", target_os = "linux")),
             link(name = "unwind", kind = "static", modifiers = "-bundle")
         )]
         unsafe extern "C" {
-            pub fn _Unwind_GetGR(ctx: *mut _Unwind_Context, reg_index: c_int) -> _Unwind_Word;
-            pub fn _Unwind_SetGR(ctx: *mut _Unwind_Context, reg_index: c_int, value: _Unwind_Word);
-            pub fn _Unwind_SetIP(ctx: *mut _Unwind_Context, value: _Unwind_Word);
-            pub fn _Unwind_GetIPInfo(
+            pub(crate) fn _Unwind_GetGR(
+                ctx: *mut _Unwind_Context,
+                reg_index: c_int,
+            ) -> _Unwind_Word;
+            pub(crate) fn _Unwind_SetGR(
+                ctx: *mut _Unwind_Context,
+                reg_index: c_int,
+                value: _Unwind_Word,
+            );
+            pub(crate) fn _Unwind_SetIP(ctx: *mut _Unwind_Context, value: _Unwind_Word);
+            pub(crate) fn _Unwind_GetIPInfo(
                 ctx: *mut _Unwind_Context,
                 ip_before_insn: *mut c_int,
             ) -> _Unwind_Word;
@@ -69,7 +76,7 @@ cfg_select! {
         // ARM EHABI
         #[repr(C)]
         #[derive(Copy, Clone, PartialEq)]
-        pub enum _Unwind_State {
+        pub(crate) enum _Unwind_State {
             _US_VIRTUAL_UNWIND_FRAME = 0,
             _US_UNWIND_FRAME_STARTING = 1,
             _US_UNWIND_FRAME_RESUME = 2,
@@ -77,7 +84,7 @@ cfg_select! {
             _US_FORCE_UNWIND = 8,
             _US_END_OF_STACK = 16,
         }
-        pub use _Unwind_State::*;
+        pub(crate) use _Unwind_State::*;
 
         #[repr(C)]
         enum _Unwind_VRS_Result {
@@ -105,9 +112,9 @@ cfg_select! {
         }
         use _Unwind_VRS_DataRepresentation::*;
 
-        pub const UNWIND_POINTER_REG: c_int = 12;
-        pub const UNWIND_SP_REG: c_int = 13;
-        pub const UNWIND_IP_REG: c_int = 15;
+        pub(crate) const UNWIND_POINTER_REG: c_int = 12;
+        pub(crate) const UNWIND_SP_REG: c_int = 13;
+        pub(crate) const UNWIND_IP_REG: c_int = 15;
 
         #[cfg_attr(
             all(feature = "llvm-libunwind", any(target_os = "fuchsia", target_os = "linux")),
@@ -133,7 +140,10 @@ cfg_select! {
 
         // On Android or ARM/Linux, these are implemented as macros:
 
-        pub unsafe fn _Unwind_GetGR(ctx: *mut _Unwind_Context, reg_index: c_int) -> _Unwind_Word {
+        pub(crate) unsafe fn _Unwind_GetGR(
+            ctx: *mut _Unwind_Context,
+            reg_index: c_int,
+        ) -> _Unwind_Word {
             let mut val: _Unwind_Word = core::ptr::null();
             unsafe {
                 _Unwind_VRS_Get(
@@ -147,7 +157,7 @@ cfg_select! {
             val
         }
 
-        pub unsafe fn _Unwind_SetGR(
+        pub(crate) unsafe fn _Unwind_SetGR(
             ctx: *mut _Unwind_Context,
             reg_index: c_int,
             value: _Unwind_Word,
@@ -164,7 +174,7 @@ cfg_select! {
             }
         }
 
-        pub unsafe fn _Unwind_SetIP(ctx: *mut _Unwind_Context, value: _Unwind_Word) {
+        pub(crate) unsafe fn _Unwind_SetIP(ctx: *mut _Unwind_Context, value: _Unwind_Word) {
             // Propagate thumb bit to instruction pointer
             let thumb_state = unsafe { _Unwind_GetGR(ctx, UNWIND_IP_REG).addr() & 1 };
             let value = value.map_addr(|v| v | thumb_state);
@@ -173,7 +183,7 @@ cfg_select! {
             }
         }
 
-        pub unsafe fn _Unwind_GetIPInfo(
+        pub(crate) unsafe fn _Unwind_GetIPInfo(
             ctx: *mut _Unwind_Context,
             ip_before_insn: *mut c_int,
         ) -> _Unwind_Word {
@@ -204,11 +214,11 @@ cfg_select! {
     ) => {
         // We declare these as opaque types. This is fine since you just need to
         // pass them to _GCC_specific_handler and forget about them.
-        pub enum EXCEPTION_RECORD {}
-        pub type LPVOID = *mut c_void;
-        pub enum CONTEXT {}
-        pub enum DISPATCHER_CONTEXT {}
-        pub type EXCEPTION_DISPOSITION = c_int;
+        pub(crate) enum EXCEPTION_RECORD {}
+        pub(crate) type LPVOID = *mut c_void;
+        pub(crate) enum CONTEXT {}
+        pub(crate) enum DISPATCHER_CONTEXT {}
+        pub(crate) type EXCEPTION_DISPOSITION = c_int;
         type PersonalityFn = unsafe extern "C" fn(
             version: c_int,
             actions: _Unwind_Action,
@@ -218,7 +228,7 @@ cfg_select! {
         ) -> _Unwind_Reason_Code;
 
         unsafe extern "C" {
-            pub fn _GCC_specific_handler(
+            pub(crate) fn _GCC_specific_handler(
                 exceptionRecord: *mut EXCEPTION_RECORD,
                 establisherFrame: LPVOID,
                 contextRecord: *mut CONTEXT,
