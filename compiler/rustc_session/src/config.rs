@@ -1417,7 +1417,6 @@ fn file_path_mapping(
 
 impl Default for Options {
     fn default() -> Options {
-        let target_opts = TargetOptions::default();
         let unstable_opts = UnstableOptions::default();
 
         // FIXME(Urgau): This is a hack that ideally shouldn't exist, but rustdoc
@@ -1443,7 +1442,6 @@ impl Default for Options {
             target_triple: TargetTuple::from_tuple(host_tuple()),
             test: false,
             incremental: None,
-            target_opts,
             unstable_opts,
             prints: Vec::new(),
             cg: Default::default(),
@@ -1473,8 +1471,7 @@ impl Default for Options {
             color: ColorConfig::Auto,
             logical_env: FxIndexMap::default(),
             verbose: false,
-            mitigation_coverage_map: Default::default(),
-            metadata: Default::default(),
+            collected_options: Default::default(),
         }
     }
 }
@@ -2585,14 +2582,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         .unwrap_or_else(|e| early_dcx.early_fatal(e));
 
     let mut collected_options = Default::default();
-
     let mut unstable_opts = UnstableOptions::build(early_dcx, matches, &mut collected_options);
-    let mut target_opts = TargetOptions::build(early_dcx, matches, &mut collected_options);
-    TargetOptions::require_unstable_options(
-        early_dcx,
-        &collected_options.metadata,
-        unstable_opts.unstable_options,
-    );
 
     if unstable_opts.staticlib_hide_internal_symbols && !crate_types.contains(&CrateType::StaticLib)
     {
@@ -2625,6 +2615,11 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     let output_types = parse_output_types(early_dcx, &unstable_opts, matches);
 
     let mut cg = CodegenOptions::build(early_dcx, matches, &mut collected_options);
+    CodegenOptions::require_unstable_options(
+        early_dcx,
+        &collected_options.metadata,
+        unstable_opts.unstable_options,
+    );
     let (disable_local_thinlto, codegen_units) = should_override_cgus_and_disable_thinlto(
         early_dcx,
         &output_types,
@@ -2901,7 +2896,6 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         target_triple,
         test,
         incremental,
-        target_opts,
         unstable_opts,
         prints,
         cg,
@@ -2931,8 +2925,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         color,
         logical_env,
         verbose,
-        mitigation_coverage_map: collected_options.mitigations,
-        metadata: collected_options.metadata,
+        collected_options,
     }
 }
 
