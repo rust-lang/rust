@@ -1265,6 +1265,10 @@ fn analysis(tcx: TyCtxt<'_>, (): ()) {
             });
         });
     }
+
+    // Cross-crate dead-fn elimination: if requested, walk this crate's MIR now (before
+    // codegen, so it works on `--emit=metadata`) and write per-dependency used-set files.
+    rustc_monomorphize::emit_used_set_if_requested(tcx);
 }
 
 /// Runs the codegen backend, after which the AST and analysis can
