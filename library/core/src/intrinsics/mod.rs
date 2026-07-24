@@ -2591,7 +2591,7 @@ where
 /// macro supports setting attributes for those functions. Both functions are marked as `#[inline]`.
 ///
 /// See [`const_eval_select()`] for the rules and requirements around that intrinsic.
-pub(crate) macro const_eval_select {
+pub macro const_eval_select {
     (
         @capture$([$($binders:tt)*])? { $($arg:ident : $ty:ty = $val:expr),* $(,)? } $( -> $ret:ty )? :
         if const
