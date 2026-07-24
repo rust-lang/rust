@@ -28,16 +28,72 @@ LL | //! | `code_with(|arg| arg)` |
    = help: to escape `|` characters in tables, add a `\` before them like `\|`
 
 error: unused content after last table cell
-  --> $DIR/invalid_markdown_table.rs:36:22
+  --> $DIR/invalid_markdown_table.rs:45:22
    |
 LL |     //! | code_with | aaaaa
    |                      ^^^^^^ this content is discarded
 
 error: unused content after last table cell
-  --> $DIR/invalid_markdown_table.rs:42:16
+  --> $DIR/invalid_markdown_table.rs:51:22
+   |
+LL |     //! | code_with | \|
+   |                      ^^^ this content is discarded
+
+error: unused content after last table cell
+  --> $DIR/invalid_markdown_table.rs:57:22
+   |
+LL |     //! | code_with | \|
+   |                      ^^^^ this content is discarded
+
+error: unused content after last table cell
+  --> $DIR/invalid_markdown_table.rs:63:16
    |
 LL |     //! a | b | c
    |                ^^ this content is discarded
 
-error: aborting due to 5 previous errors
+error: table row has too many columns
+  --> $DIR/invalid_markdown_table.rs:81:13
+   |
+LL |     //!   a | b | c
+   |             ^ any content after this column divider is discarded
+   |
+   = help: to escape `|` characters in tables, add a `\` before them like `\|`
+
+error: table row has too many columns
+  --> $DIR/invalid_markdown_table.rs:83:13
+   |
+LL |     //!   a | b |
+   |             ^ any content after this column divider is discarded
+   |
+   = help: to escape `|` characters in tables, add a `\` before them like `\|`
+
+error: unused content after last table cell
+  --> $DIR/invalid_markdown_table.rs:85:14
+   |
+LL |     //!   a | b
+   |              ^^ this content is discarded
+
+error: table row has too many columns
+  --> $DIR/invalid_markdown_table.rs:95:14
+   |
+LL |     //! |  a | b | c
+   |              ^ any content after this column divider is discarded
+   |
+   = help: to escape `|` characters in tables, add a `\` before them like `\|`
+
+error: table row has too many columns
+  --> $DIR/invalid_markdown_table.rs:97:14
+   |
+LL |     //! |  a | b |
+   |              ^ any content after this column divider is discarded
+   |
+   = help: to escape `|` characters in tables, add a `\` before them like `\|`
+
+error: unused content after last table cell
+  --> $DIR/invalid_markdown_table.rs:99:15
+   |
+LL |     //! |  a | b
+   |               ^^ this content is discarded
+
+error: aborting due to 13 previous errors
 

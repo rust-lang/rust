@@ -27,6 +27,15 @@ mod c {
     //! | col |
     //! | ---- |
     //! | a \| still same cell |
+    //!
+    //! now with double-backslashes;
+    //! yes, it really does work this way,
+    //! but it's *weird* compared to what
+    //! you would naively expect
+    //!
+    //! | col |
+    //! | ---- |
+    //! | a \\| still same cell |
 }
 
 // We check that content after a table row also emits.
@@ -34,6 +43,18 @@ mod d {
     //! | col |
     //! | ---- |
     //! | code_with | aaaaa
+    //~^ ERROR invalid_markdown_table
+    //! blob
+    //!
+    //! | col |
+    //! | ---- |
+    //! | code_with | \|
+    //~^ ERROR invalid_markdown_table
+    //! blob
+    //!
+    //! | col |
+    //! | ---- |
+    //! | code_with | \\|
     //~^ ERROR invalid_markdown_table
     //! blob
     //!
@@ -50,4 +71,33 @@ mod e {
     //! |-|-|
     //! | a |
     //! | b
+}
+
+// Weird corner case where the table ends with a pipe,
+// but doesn't start with it
+mod f {
+    //! one |
+    //! ----|
+    //!   a | b | c
+    //~^ ERROR invalid_markdown_table
+    //!   a | b |
+    //~^ ERROR invalid_markdown_table
+    //!   a | b
+    //~^ ERROR invalid_markdown_table
+    //!   a |
+}
+
+// Weird corner case where the table ends with a pipe,
+// but doesn't start with it
+mod g {
+    //! | one
+    //! |----
+    //! |  a | b | c
+    //~^ ERROR invalid_markdown_table
+    //! |  a | b |
+    //~^ ERROR invalid_markdown_table
+    //! |  a | b
+    //~^ ERROR invalid_markdown_table
+    //! |  a |
+    //! |  a
 }
