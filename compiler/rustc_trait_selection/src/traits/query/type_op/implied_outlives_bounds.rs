@@ -95,6 +95,7 @@ pub fn compute_implied_outlives_bounds_inner<'tcx>(
             continue;
         }
 
+        let arg = ocx.infcx.resolve_vars_if_possible(arg);
         // From the full set of obligations, just filter down to the region relationships.
         for obligation in
             wf::unnormalized_obligations(ocx.infcx, param_env, arg, DUMMY_SP, CRATE_DEF_ID)
