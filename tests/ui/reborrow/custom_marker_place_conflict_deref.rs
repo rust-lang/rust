@@ -10,7 +10,7 @@ impl<'a> Deref for CustomMarker<'a> {
     type Target = ();
 
     fn deref(&self) -> &() {
-        unsafe { std::mem::transmute::<&Self, &()>(self) }
+        &()
     }
 }
 
