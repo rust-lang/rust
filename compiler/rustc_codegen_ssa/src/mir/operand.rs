@@ -5,10 +5,12 @@ use rustc_abi as abi;
 use rustc_abi::{
     Align, BackendRepr, FIRST_VARIANT, FieldIdx, Primitive, Size, TagEncoding, VariantIdx, Variants,
 };
+use rustc_ast::expand::typetree::TypeTree;
 use rustc_hir::LangItem;
 use rustc_middle::mir::interpret::{Pointer, Scalar, alloc_range};
 use rustc_middle::mir::{self, ConstValue};
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
+use rustc_middle::ty::typetree::option_ptr_like_scalar_pair_tts;
 use rustc_middle::ty::{self, Ty};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::{AnnotateMoves, DebugInfo, OptLevel};
@@ -17,9 +19,9 @@ use tracing::{debug, instrument};
 use super::place::{PlaceRef, PlaceValue};
 use super::rvalue::transmute_scalar;
 use super::{FunctionCx, LocalRef};
-use crate::MemFlags;
 use crate::common::IntPredicate;
 use crate::traits::*;
+use crate::MemFlags;
 
 /// The representation of a Rust value. The enum variant is in fact
 /// uniquely determined by the value's type, but is kept as a
@@ -378,8 +380,10 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             debug!("Operand::from_immediate_or_packed_pair: unpacking {:?} @ {:?}", llval, layout);
 
             // Deconstruct the immediate aggregate.
-            let a_llval = bx.extract_value(llval, 0);
-            let b_llval = bx.extract_value(llval, 1);
+            let f1 = option_ptr_like_scalar_pair_tts(bx.tcx(), layout.ty);
+            let f2 = if f1.is_none() { None } else { Some(TypeTree::int(8)) };
+            let a_llval = bx.extract_value(llval, 0, f1);
+            let b_llval = bx.extract_value(llval, 1, f2);
             OperandValue::Pair(a_llval, b_llval)
         } else {
             OperandValue::Immediate(llval)

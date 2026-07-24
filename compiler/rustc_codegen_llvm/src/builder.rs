@@ -2,7 +2,7 @@ use std::borrow::{Borrow, Cow};
 use std::iter;
 use std::ops::Deref;
 
-use rustc_ast::expand::typetree::FncTree;
+use rustc_ast::expand::typetree::{FncTree, TypeTree};
 pub(crate) mod autodiff;
 pub(crate) mod gpu_offload;
 
@@ -636,7 +636,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         let name = format!("llvm.{}{oop_str}.with.overflow", if signed { 's' } else { 'u' });
 
         let res = self.call_intrinsic(name, &[self.type_ix(width)], &[lhs, rhs]);
-        (self.extract_value(res, 0), self.extract_value(res, 1))
+        (self.extract_value(res, 0, None), self.extract_value(res, 1, None))
     }
 
     fn from_immediate(&mut self, val: Self::Value) -> Self::Value {
@@ -1259,9 +1259,19 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn extract_value(&mut self, agg_val: &'ll Value, idx: u64) -> &'ll Value {
+    fn extract_value(&mut self, agg_val: &'ll Value, idx: u64, tt: Option<TypeTree>) -> &'ll Value {
         assert_eq!(idx as c_uint as u64, idx);
-        unsafe { llvm::LLVMBuildExtractValue(self.llbuilder, agg_val, idx as c_uint, UNNAMED) }
+        let extract =
+            unsafe { llvm::LLVMBuildExtractValue(self.llbuilder, agg_val, idx as c_uint, UNNAMED) };
+        if let Some(tt) = tt {
+            let fnc_tree = FncTree { args: vec![], ret: tt };
+            crate::typetree::add_tt(
+                self,
+                extract,
+                fnc_tree,
+            );
+        }
+        extract
     }
 
     fn insert_value(&mut self, agg_val: &'ll Value, elt: &'ll Value, idx: u64) -> &'ll Value {
@@ -1281,7 +1291,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         unsafe {
             llvm::LLVMSetCleanup(landing_pad, llvm::TRUE);
         }
-        (self.extract_value(landing_pad, 0), self.extract_value(landing_pad, 1))
+        (self.extract_value(landing_pad, 0, None), self.extract_value(landing_pad, 1, None))
     }
 
     fn filter_landing_pad(&mut self, pers_fn: &'ll Value) {
@@ -1382,8 +1392,8 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 llvm::FALSE, // SingleThreaded
             );
             llvm::LLVMSetWeak(value, weak.to_llvm_bool());
-            let val = self.extract_value(value, 0);
-            let success = self.extract_value(value, 1);
+            let val = self.extract_value(value, 0, None);
+            let success = self.extract_value(value, 1, None);
             (val, success)
         }
     }

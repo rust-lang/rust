@@ -1,5 +1,7 @@
 use rustc_ast::expand::typetree::{FncTree, Kind, Type, TypeTree};
 use tracing::trace;
+use rustc_hir::LangItem;
+use rustc_span::sym;
 
 use crate::ty::context::TyCtxt;
 use crate::ty::{self, Ty};
@@ -35,6 +37,43 @@ pub fn fnc_typetrees<'tcx>(tcx: TyCtxt<'tcx>, fn_ty: Ty<'tcx>) -> FncTree {
     let f = FncTree { args, ret };
     f
 }
+
+pub fn option_ptr_like_scalar_pair_tts<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<TypeTree> {
+    let ty::Adt(def, args) = ty.kind() else {
+        return None;
+    };
+
+    if !tcx.is_lang_item(def.did(), LangItem::Option) {
+        return None;
+    }
+
+    let inner = args.type_at(0);
+    if !(inner.is_ref() || inner.is_box() || nonnull_inner_ty(tcx, inner).is_some()) {
+        return None;
+    }
+
+    let tt = typetree_from_ty(tcx, inner);
+    //let some_layout = layout.for_variant(bx.cx(), VariantIdx::from_u32(1));
+    //let payload_layout = some_layout.field(bx.cx(), 0);
+    // this will be a slice
+    //let payload_ty = payload_layout.ty;
+    //let tt = rustc_middle::ty::typetree_from_ty(bx.tcx(), field0_ty.unwrap());
+    if tt == TypeTree::new() {
+        return None;
+    }
+    Some(tt)
+}
+
+fn nonnull_inner_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
+    if let ty::Adt(def, args) = ty.kind()
+        && tcx.is_diagnostic_item(sym::NonNull, def.did())
+    {
+        return Some(args.type_at(0));
+    }
+
+    None
+}
+
 
 /// Generate a TypeTree for a specific type.
 /// Mainly a convenience wrapper around the actual implementation.

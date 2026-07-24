@@ -2524,8 +2524,8 @@ pub fn store_cast<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     if let Some(offset_from_start) = cast.rest_offset {
         assert_eq!(cast.prefix.len(), 1);
         assert_eq!(cast.rest.unit.size, cast.rest.total);
-        let first = bx.extract_value(value, 0);
-        let second = bx.extract_value(value, 1);
+        let first = bx.extract_value(value, 0, None);
+        let second = bx.extract_value(value, 1, None);
         bx.store(first, ptr, align);
         let second_ptr = bx.inbounds_ptradd(ptr, bx.const_usize(offset_from_start.bytes()));
         bx.store(second, second_ptr, align.restrict_for_offset(offset_from_start));
