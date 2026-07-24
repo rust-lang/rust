@@ -1990,8 +1990,7 @@ pub fn get_cmd_lint_options(
 
     lint_opts_with_position.sort_by_key(|x| x.0);
     let lint_opts = lint_opts_with_position
-        .iter()
-        .cloned()
+        .into_iter()
         .map(|(_, lint_name, level)| (lint_name, level))
         .collect();
 

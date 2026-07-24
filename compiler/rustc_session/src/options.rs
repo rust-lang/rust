@@ -1018,70 +1018,38 @@ pub mod parse {
 
     /// Use this for any string option that has a static default.
     pub(crate) fn parse_string(slot: &mut String, v: Option<&str>) -> bool {
-        match v {
-            Some(s) => {
-                *slot = s.to_string();
-                true
-            }
-            None => false,
-        }
+        v.inspect(|s| *slot = s.to_string()).is_some()
     }
 
     /// Use this for any string option that lacks a static default.
     pub(crate) fn parse_opt_string(slot: &mut Option<String>, v: Option<&str>) -> bool {
-        match v {
-            Some(s) => {
-                *slot = Some(s.to_string());
-                true
-            }
-            None => false,
-        }
+        v.inspect(|s| *slot = Some(s.to_string())).is_some()
     }
 
     pub(crate) fn parse_opt_pathbuf(slot: &mut Option<PathBuf>, v: Option<&str>) -> bool {
-        match v {
-            Some(s) => {
-                *slot = Some(PathBuf::from(s));
-                true
-            }
-            None => false,
-        }
+        v.inspect(|s| *slot = Some(PathBuf::from(s))).is_some()
     }
 
     pub(crate) fn parse_string_push(slot: &mut Vec<String>, v: Option<&str>) -> bool {
-        match v {
-            Some(s) => {
-                slot.push(s.to_string());
-                true
-            }
-            None => false,
-        }
+        v.inspect(|s| slot.push(s.to_string())).is_some()
     }
 
     pub(crate) fn parse_list(slot: &mut Vec<String>, v: Option<&str>) -> bool {
-        match v {
-            Some(s) => {
-                slot.extend(s.split_whitespace().map(|s| s.to_string()));
-                true
-            }
-            None => false,
-        }
+        v.inspect(|s| slot.extend(s.split_whitespace().map(|s| s.to_string()))).is_some()
     }
 
     pub(crate) fn parse_list_with_polarity(
         slot: &mut Vec<(String, bool)>,
         v: Option<&str>,
     ) -> bool {
-        match v {
-            Some(s) => {
-                for s in s.split(',') {
-                    let Some(pass_name) = s.strip_prefix(&['+', '-'][..]) else { return false };
-                    slot.push((pass_name.to_string(), &s[..1] == "+"));
+        v.is_some_and(|s| {
+            s.split(',').all(|s| {
+                s.starts_with(['+', '-']) && {
+                    slot.push((s[1..].to_string(), &s[..1] == "+"));
+                    true
                 }
-                true
-            }
-            None => false,
-        }
+            })
+        })
     }
 
     pub(crate) fn parse_pointer_authentication_list_with_polarity(
@@ -1148,27 +1116,21 @@ pub mod parse {
     }
 
     pub(crate) fn parse_comma_list(slot: &mut Vec<String>, v: Option<&str>) -> bool {
-        match v {
-            Some(s) => {
-                let mut v: Vec<_> = s.split(',').map(|s| s.to_string()).collect();
-                v.sort_unstable();
-                *slot = v;
-                true
-            }
-            None => false,
-        }
+        v.inspect(|s| {
+            let mut v: Vec<_> = s.split(',').map(|s| s.to_string()).collect();
+            v.sort_unstable();
+            *slot = v;
+        })
+        .is_some()
     }
 
     pub(crate) fn parse_opt_comma_list(slot: &mut Option<Vec<String>>, v: Option<&str>) -> bool {
-        match v {
-            Some(s) => {
-                let mut v: Vec<_> = s.split(',').map(|s| s.to_string()).collect();
-                v.sort_unstable();
-                *slot = Some(v);
-                true
-            }
-            None => false,
-        }
+        v.inspect(|s| {
+            let mut v: Vec<_> = s.split(',').map(|s| s.to_string()).collect();
+            v.sort_unstable();
+            *slot = Some(v);
+        })
+        .is_some()
     }
 
     pub(crate) fn parse_threads(slot: &mut Option<usize>, v: Option<&str>) -> bool {
@@ -1192,13 +1154,7 @@ pub mod parse {
 
     /// Use this for any numeric option that has a static default.
     pub(crate) fn parse_number<T: Copy + FromStr>(slot: &mut T, v: Option<&str>) -> bool {
-        match v.and_then(|s| s.parse().ok()) {
-            Some(i) => {
-                *slot = i;
-                true
-            }
-            None => false,
-        }
+        v.and_then(|s| s.parse().ok()).inspect(|i| *slot = *i).is_some()
     }
 
     /// Use this for any numeric option that lacks a static default.
@@ -1206,13 +1162,7 @@ pub mod parse {
         slot: &mut Option<T>,
         v: Option<&str>,
     ) -> bool {
-        match v {
-            Some(s) => {
-                *slot = s.parse().ok();
-                slot.is_some()
-            }
-            None => false,
-        }
+        v.is_some_and(|s| s.parse().inspect(|s| *slot = Some(*s)).is_ok())
     }
 
     pub(crate) fn parse_frame_pointer(slot: &mut FramePointer, v: Option<&str>) -> bool {
@@ -1310,19 +1260,12 @@ pub mod parse {
     }
 
     pub(crate) fn parse_relro_level(slot: &mut Option<RelroLevel>, v: Option<&str>) -> bool {
-        match v {
-            Some(s) => match s.parse::<RelroLevel>() {
-                Ok(level) => *slot = Some(level),
-                _ => return false,
-            },
-            _ => return false,
-        }
-        true
+        v.is_some_and(|s| s.parse::<RelroLevel>().inspect(|level| *slot = Some(*level)).is_ok())
     }
 
     pub(crate) fn parse_sanitizers(slot: &mut SanitizerSet, v: Option<&str>) -> bool {
-        if let Some(v) = v {
-            for s in v.split(',') {
+        v.is_some_and(|v| {
+            v.split(',').all(|s| {
                 *slot |= match s {
                     "address" => SanitizerSet::ADDRESS,
                     "cfi" => SanitizerSet::CFI,
@@ -1339,12 +1282,10 @@ pub mod parse {
                     "safestack" => SanitizerSet::SAFESTACK,
                     "realtime" => SanitizerSet::REALTIME,
                     _ => return false,
-                }
-            }
-            true
-        } else {
-            false
-        }
+                };
+                true
+            })
+        })
     }
 
     pub(crate) fn parse_sanitizer_memory_track_origins(slot: &mut usize, v: Option<&str>) -> bool {
@@ -1366,12 +1307,12 @@ pub mod parse {
     }
 
     pub(crate) fn parse_strip(slot: &mut Strip, v: Option<&str>) -> bool {
-        match v {
-            Some("none") => *slot = Strip::None,
-            Some("debuginfo") => *slot = Strip::Debuginfo,
-            Some("symbols") => *slot = Strip::Symbols,
+        *slot = match v {
+            Some("none") => Strip::None,
+            Some("debuginfo") => Strip::Debuginfo,
+            Some("symbols") => Strip::Symbols,
             _ => return false,
-        }
+        };
         true
     }
 
@@ -1428,56 +1369,41 @@ pub mod parse {
         slot: &mut DebugInfoCompression,
         v: Option<&str>,
     ) -> bool {
-        match v {
-            Some("none") => *slot = DebugInfoCompression::None,
-            Some("zlib") => *slot = DebugInfoCompression::Zlib,
-            Some("zstd") => *slot = DebugInfoCompression::Zstd,
+        *slot = match v {
+            Some("none") => DebugInfoCompression::None,
+            Some("zlib") => DebugInfoCompression::Zlib,
+            Some("zstd") => DebugInfoCompression::Zstd,
             _ => return false,
         };
         true
     }
 
     pub(crate) fn parse_mir_strip_debuginfo(slot: &mut MirStripDebugInfo, v: Option<&str>) -> bool {
-        match v {
-            Some("none") => *slot = MirStripDebugInfo::None,
-            Some("locals-in-tiny-functions") => *slot = MirStripDebugInfo::LocalsInTinyFunctions,
-            Some("all-locals") => *slot = MirStripDebugInfo::AllLocals,
+        *slot = match v {
+            Some("none") => MirStripDebugInfo::None,
+            Some("locals-in-tiny-functions") => MirStripDebugInfo::LocalsInTinyFunctions,
+            Some("all-locals") => MirStripDebugInfo::AllLocals,
             _ => return false,
         };
         true
     }
 
     pub(crate) fn parse_linker_flavor(slot: &mut Option<LinkerFlavorCli>, v: Option<&str>) -> bool {
-        match v.and_then(|v| LinkerFlavorCli::from_str(v).ok()) {
-            Some(lf) => *slot = Some(lf),
-            _ => return false,
-        }
-        true
+        v.is_some_and(|v| LinkerFlavorCli::from_str(v).inspect(|lf| *slot = Some(*lf)).is_ok())
     }
 
     pub(crate) fn parse_opt_symbol_visibility(
         slot: &mut Option<SymbolVisibility>,
         v: Option<&str>,
     ) -> bool {
-        if let Some(v) = v {
-            if let Ok(vis) = SymbolVisibility::from_str(v) {
-                *slot = Some(vis);
-            } else {
-                return false;
-            }
-        }
-        true
+        v.is_some_and(|v| SymbolVisibility::from_str(v).inspect(|vis| *slot = Some(*vis)).is_ok())
     }
 
     pub(crate) fn parse_unpretty(slot: &mut Option<String>, v: Option<&str>) -> bool {
-        match v {
-            None => false,
-            Some(s) if s.split('=').count() <= 2 => {
-                *slot = Some(s.to_string());
-                true
-            }
-            _ => false,
-        }
+        v.is_some_and(|s| {
+            *slot = (s.split('=').count() <= 2).then(|| s.to_string());
+            slot.is_some()
+        })
     }
 
     pub(crate) fn parse_time_passes_format(slot: &mut TimePassesFormat, v: Option<&str>) -> bool {
@@ -1511,50 +1437,33 @@ pub mod parse {
     }
 
     pub(crate) fn parse_offload(slot: &mut Vec<Offload>, v: Option<&str>) -> bool {
-        let Some(v) = v else {
-            *slot = vec![];
-            return true;
-        };
-        let mut v: Vec<&str> = v.split(",").collect();
+        let mut v: Vec<&str> = v.unwrap_or_default().split(",").collect();
         v.sort_unstable();
-        for &val in v.iter() {
+        v.iter().all(|val| {
             // Split each entry on '=' if it has an argument
             let (key, arg) = match val.split_once('=') {
                 Some((k, a)) => (k, Some(a)),
-                None => (val, None),
+                None => (*val, None),
             };
 
-            let variant = match key {
-                "Host" => {
-                    if let Some(p) = arg {
-                        Offload::Host(p.to_string())
-                    } else {
-                        return false;
-                    }
+            match key {
+                "Host" => arg.inspect(|p| slot.push(Offload::Host(p.to_string()))).is_some(),
+                // Device does not accept a value
+                "Device" if arg.is_none() => {
+                    slot.push(Offload::Device);
+                    true
                 }
-                "Device" => {
-                    if let Some(_) = arg {
-                        // Device does not accept a value
-                        return false;
-                    }
-                    Offload::Device
-                }
-                "Test" => {
-                    if let Some(_) = arg {
-                        // Test does not accept a value
-                        return false;
-                    }
-                    Offload::Test
+                // Test does not accept a value
+                "Test" if arg.is_none() => {
+                    slot.push(Offload::Test);
+                    true
                 }
                 _ => {
                     // FIXME(ZuseZ4): print an error saying which value is not recognized
-                    return false;
+                    false
                 }
-            };
-            slot.push(variant);
-        }
-
-        true
+            }
+        })
     }
 
     pub(crate) fn parse_autodiff(slot: &mut Vec<AutoDiff>, v: Option<&str>) -> bool {
