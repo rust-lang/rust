@@ -1853,11 +1853,21 @@ impl f16 {
     #[unstable(feature = "f16", issue = "116909")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     pub fn div_euclid(self, rhs: f16) -> f16 {
-        let q = (self / rhs).trunc();
-        if self % rhs < 0.0 {
-            return if rhs > 0.0 { q - 1.0 } else { q + 1.0 };
+        // Use floor() directly as the initial guess (Euclidean division
+        // with positive divisor is the same as floor division).
+        let q = (self / rhs).floor();
+        // Compute b * q - a with a single rounding error.
+        let diff = rhs.mul_add(q, -self);
+        if diff > 0.0 { // take care of NaN: NaN > 0.0 is false, keeping the return result.
+            if rhs > 0.0 {
+                // q was one unit too high – move down to the next representable value.
+                q.next_down().floor()
+            } else {
+                q.next_up().ceil()
+            }
+        } else {
+            q
         }
-        q
     }
 
     /// Calculates the least nonnegative remainder of `self` when
