@@ -3,6 +3,7 @@
 // unifying match arms, for example.
 //
 // See also: coercion-never.rs
+//@ reference: coerce.site.tuple
 
 fn main() {
     let _: (&[u8],) = (&[],);

@@ -5,6 +5,7 @@
 // See also coercion-slice.rs
 //
 //@ check-pass
+//@ reference: coerce.site.tuple
 
 fn main() {
     let _: ((),) = (loop {},);
