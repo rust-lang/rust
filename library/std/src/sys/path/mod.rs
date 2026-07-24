@@ -28,8 +28,8 @@ cfg_select! {
         pub use sgx::*;
     }
     target_os = "solid_asp3" => {
-        mod unsupported_backslash;
-        pub use unsupported_backslash::*;
+        mod solid;
+        pub use solid::*;
     }
     target_os = "uefi" => {
         mod uefi;
@@ -40,8 +40,18 @@ cfg_select! {
         mod windows_prefix;
         pub use cygwin::*;
     }
+    target_os = "motor" => {
+        mod common;
+        mod motor;
+        pub use common::*;
+        pub use motor::*;
+    }
+    target_family = "unix" => {
+        mod common;
+        pub use common::*;
+    }
     _ => {
-        mod unix;
-        pub use unix::*;
+        mod common;
+        pub use common::*;
     }
 }

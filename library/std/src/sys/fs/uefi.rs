@@ -263,9 +263,11 @@ impl File {
             return Err(io::const_error!(io::ErrorKind::InvalidInput, "Invalid open options"));
         }
 
-        if opts.create_new && exists(path)? {
+        if opts.create_new && exists(crate::path::absolute(path)?)? {
             return Err(io::const_error!(io::ErrorKind::AlreadyExists, "File already exists"));
         }
+
+        let path = crate::path::absolute(path)?;
 
         let f = uefi_fs::File::from_path(path, opts.mode, 0).map(Self)?;
 
@@ -417,7 +419,7 @@ impl fmt::Debug for File {
 
 pub fn readdir(p: &Path) -> io::Result<ReadDir> {
     let path = crate::path::absolute(p)?;
-    let f = uefi_fs::File::from_path(&path, file::MODE_READ, 0)?;
+    let f = uefi_fs::File::from_path(path, file::MODE_READ, 0)?;
     let file_info = f.file_info()?;
     let file_attr = FileAttr::from_uefi(file_info);
 
@@ -428,7 +430,7 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
     }
 }
 
-pub fn unlink(p: &Path) -> io::Result<()> {
+pub fn unlink(p: PathBuf) -> io::Result<()> {
     let f = uefi_fs::File::from_path(p, file::MODE_READ | file::MODE_WRITE, 0)?;
     let file_info = f.file_info()?;
     let file_attr = FileAttr::from_uefi(file_info);
@@ -448,12 +450,9 @@ pub fn unlink(p: &Path) -> io::Result<()> {
 /// 2. Check that both lie in the same disk.
 /// 3. Construct the target path relative to the current disk root.
 /// 4. Set this target path as the file_name in the file_info structure.
-pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
-    let old_absolute = crate::path::absolute(old)?;
-    let new_absolute = crate::path::absolute(new)?;
-
-    let mut old_components = old_absolute.components();
-    let mut new_components = new_absolute.components();
+pub fn rename(old: PathBuf, new: PathBuf) -> io::Result<()> {
+    let mut old_components = old.components();
+    let mut new_components = new.components();
 
     let Some(old_disk) = old_components.next() else {
         return Err(io::const_error!(io::ErrorKind::InvalidInput, "Old path is not valid"));
@@ -479,22 +478,22 @@ pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
     f.set_file_info(new_info)
 }
 
-pub fn set_perm(p: &Path, perm: FilePermissions) -> io::Result<()> {
+pub fn set_perm(p: PathBuf, perm: FilePermissions) -> io::Result<()> {
     let f = uefi_fs::File::from_path(p, file::MODE_READ | file::MODE_WRITE, 0)?;
     set_perm_inner(&f, perm)
 }
 
-pub fn set_times(p: &Path, times: FileTimes) -> io::Result<()> {
+pub fn set_times(p: PathBuf, times: FileTimes) -> io::Result<()> {
     // UEFI does not support symlinks
     set_times_nofollow(p, times)
 }
 
-pub fn set_times_nofollow(p: &Path, times: FileTimes) -> io::Result<()> {
+pub fn set_times_nofollow(p: PathBuf, times: FileTimes) -> io::Result<()> {
     let f = uefi_fs::File::from_path(p, file::MODE_READ | file::MODE_WRITE, 0)?;
     set_times_inner(&f, times)
 }
 
-pub fn rmdir(p: &Path) -> io::Result<()> {
+pub fn rmdir(p: PathBuf) -> io::Result<()> {
     let f = uefi_fs::File::from_path(p, file::MODE_READ | file::MODE_WRITE, 0)?;
     let file_info = f.file_info()?;
     let file_attr = FileAttr::from_uefi(file_info);
@@ -506,7 +505,7 @@ pub fn rmdir(p: &Path) -> io::Result<()> {
     }
 }
 
-pub fn exists(path: &Path) -> io::Result<bool> {
+pub fn exists(path: PathBuf) -> io::Result<bool> {
     let f = uefi_fs::File::from_path(path, r_efi::protocols::file::MODE_READ, 0);
     match f {
         Ok(_) => Ok(true),
@@ -515,30 +514,30 @@ pub fn exists(path: &Path) -> io::Result<bool> {
     }
 }
 
-pub fn readlink(_p: &Path) -> io::Result<PathBuf> {
+pub fn readlink(_p: PathBuf) -> io::Result<PathBuf> {
     unsupported()
 }
 
-pub fn symlink(_original: &Path, _link: &Path) -> io::Result<()> {
+pub fn symlink(_original: PathBuf, _link: PathBuf) -> io::Result<()> {
     unsupported()
 }
 
-pub fn link(_src: &Path, _dst: &Path) -> io::Result<()> {
+pub fn link(_src: PathBuf, _dst: PathBuf) -> io::Result<()> {
     unsupported()
 }
 
-pub fn stat(p: &Path) -> io::Result<FileAttr> {
+pub fn stat(p: PathBuf) -> io::Result<FileAttr> {
     let f = uefi_fs::File::from_path(p, r_efi::protocols::file::MODE_READ, 0)?;
     let inf = f.file_info()?;
     Ok(FileAttr::from_uefi(inf))
 }
 
-pub fn lstat(p: &Path) -> io::Result<FileAttr> {
+pub fn lstat(p: PathBuf) -> io::Result<FileAttr> {
     stat(p)
 }
 
-pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
-    crate::path::absolute(p)
+pub fn canonicalize(p: PathBuf) -> io::Result<PathBuf> {
+    Ok(p)
 }
 
 fn set_perm_inner(f: &uefi_fs::File, perm: FilePermissions) -> io::Result<()> {
@@ -577,7 +576,7 @@ mod uefi_fs {
     use crate::ffi::OsString;
     use crate::io;
     use crate::os::uefi::ffi::OsStringExt;
-    use crate::path::Path;
+    use crate::path::{Path, PathBuf};
     use crate::ptr::NonNull;
     use crate::sys::pal::helpers::{self, UefiBox};
     use crate::sys::pal::system_time;
@@ -594,14 +593,12 @@ mod uefi_fs {
     unsafe impl Send for File {}
 
     impl File {
-        pub(crate) fn from_path(path: &Path, open_mode: u64, attr: u64) -> io::Result<Self> {
-            let absolute = crate::path::absolute(path)?;
-
-            let p = helpers::OwnedDevicePath::from_text(absolute.as_os_str())?;
+        pub(crate) fn from_path(path: PathBuf, open_mode: u64, attr: u64) -> io::Result<Self> {
+            let p = helpers::OwnedDevicePath::from_text(path.as_os_str())?;
             let (vol, mut path_remaining) = Self::open_volume_from_device_path(p.borrow())?;
 
             let protocol = Self::open(vol, &mut path_remaining, open_mode, attr)?;
-            Ok(Self { protocol, path: absolute })
+            Ok(Self { protocol, path })
         }
 
         /// Open Filesystem volume given a devicepath to the volume, or a file/directory in the

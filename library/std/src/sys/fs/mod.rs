@@ -28,34 +28,33 @@ cfg_select! {
     target_os = "hermit" => {
         mod hermit;
         use hermit as imp;
+        use crate::sys::helpers::run_path_with_cstr as with_native_path;
     }
     target_os = "motor" => {
         mod motor;
         use motor as imp;
+        use crate::sys::path::with_native_path;
     }
     target_os = "solid_asp3" => {
         mod solid;
         use solid as imp;
+        use crate::sys::path::with_native_path;
     }
     target_os = "uefi" => {
         mod uefi;
         use uefi as imp;
+        use crate::sys::path::with_native_path;
     }
     target_os = "vexos" => {
         mod vexos;
         use vexos as imp;
+        use crate::sys::helpers::run_path_with_cstr as with_native_path;
     }
     _ => {
         mod unsupported;
         use unsupported as imp;
+        use unsupported::with_native_path;
     }
-}
-
-// FIXME: Replace this with platform-specific path conversion functions.
-#[cfg(not(any(target_family = "unix", target_os = "windows", target_os = "wasi")))]
-#[inline]
-pub fn with_native_path<T>(path: &Path, f: &dyn Fn(&Path) -> io::Result<T>) -> io::Result<T> {
-    f(path)
 }
 
 pub use imp::{
@@ -157,10 +156,6 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
 }
 
 pub fn exists(path: &Path) -> io::Result<bool> {
-    // FIXME: use with_native_path on all platforms
-    #[cfg(not(windows))]
-    return imp::exists(path);
-    #[cfg(windows)]
     with_native_path(path, &imp::exists)
 }
 

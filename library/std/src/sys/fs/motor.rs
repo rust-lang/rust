@@ -4,7 +4,7 @@ use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, SeekFrom};
 use crate::os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd};
 use crate::path::{Path, PathBuf};
 use crate::sys::fd::FileDesc;
-pub use crate::sys::fs::common::{Dir, exists};
+pub use crate::sys::fs::common::Dir;
 use crate::sys::time::SystemTime;
 use crate::sys::{AsInner, AsInnerMut, FromInner, IntoInner, map_motor_error, unsupported};
 
@@ -297,20 +297,24 @@ impl DirBuilder {
     }
 }
 
-pub fn unlink(path: &Path) -> io::Result<()> {
-    let path = path.to_str().ok_or(io::Error::from(io::ErrorKind::InvalidFilename))?;
+pub fn unlink(path: &str) -> io::Result<()> {
     moto_rt::fs::unlink(path).map_err(map_motor_error)
 }
 
-pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
-    let old = old.to_str().ok_or(io::Error::from(io::ErrorKind::InvalidFilename))?;
-    let new = new.to_str().ok_or(io::Error::from(io::ErrorKind::InvalidFilename))?;
+pub fn rename(old: &str, new: &str) -> io::Result<()> {
     moto_rt::fs::rename(old, new).map_err(map_motor_error)
 }
 
-pub fn rmdir(path: &Path) -> io::Result<()> {
-    let path = path.to_str().ok_or(io::Error::from(io::ErrorKind::InvalidFilename))?;
+pub fn rmdir(path: &str) -> io::Result<()> {
     moto_rt::fs::rmdir(path).map_err(map_motor_error)
+}
+
+pub fn exists(path: &str) -> io::Result<bool> {
+    match stat(path) {
+        Ok(_) => Ok(true),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(false),
+        Err(error) => Err(error),
+    }
 }
 
 pub fn remove_dir_all(path: &Path) -> io::Result<()> {
@@ -318,43 +322,40 @@ pub fn remove_dir_all(path: &Path) -> io::Result<()> {
     moto_rt::fs::rmdir_all(path).map_err(map_motor_error)
 }
 
-pub fn set_perm(path: &Path, perm: FilePermissions) -> io::Result<()> {
-    let path = path.to_str().ok_or(io::Error::from(io::ErrorKind::InvalidFilename))?;
+pub fn set_perm(path: &str, perm: FilePermissions) -> io::Result<()> {
     moto_rt::fs::set_perm(path, perm.rt_perm).map_err(map_motor_error)
 }
 
-pub fn set_times(_p: &Path, _times: FileTimes) -> io::Result<()> {
+pub fn set_times(_p: &str, _times: FileTimes) -> io::Result<()> {
     unsupported()
 }
 
-pub fn set_times_nofollow(_p: &Path, _times: FileTimes) -> io::Result<()> {
+pub fn set_times_nofollow(_p: &str, _times: FileTimes) -> io::Result<()> {
     unsupported()
 }
 
-pub fn readlink(_p: &Path) -> io::Result<PathBuf> {
+pub fn readlink(_p: &str) -> io::Result<PathBuf> {
     unsupported()
 }
 
-pub fn symlink(_original: &Path, _link: &Path) -> io::Result<()> {
+pub fn symlink(_original: &str, _link: &str) -> io::Result<()> {
     unsupported()
 }
 
-pub fn link(_src: &Path, _dst: &Path) -> io::Result<()> {
+pub fn link(_src: &str, _dst: &str) -> io::Result<()> {
     unsupported()
 }
 
-pub fn stat(path: &Path) -> io::Result<FileAttr> {
-    let path = path.to_str().ok_or(io::Error::from(io::ErrorKind::InvalidFilename))?;
+pub fn stat(path: &str) -> io::Result<FileAttr> {
     let inner = moto_rt::fs::stat(path).map_err(map_motor_error)?;
     Ok(FileAttr { inner })
 }
 
-pub fn lstat(path: &Path) -> io::Result<FileAttr> {
+pub fn lstat(path: &str) -> io::Result<FileAttr> {
     stat(path)
 }
 
-pub fn canonicalize(path: &Path) -> io::Result<PathBuf> {
-    let path = path.to_str().ok_or(io::Error::from(io::ErrorKind::InvalidFilename))?;
+pub fn canonicalize(path: &str) -> io::Result<PathBuf> {
     let path = moto_rt::fs::canonicalize(path).map_err(map_motor_error)?;
     Ok(path.into())
 }

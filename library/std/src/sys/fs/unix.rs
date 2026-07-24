@@ -92,7 +92,6 @@ use crate::os::wasi::prelude::*;
 use crate::path::{Path, PathBuf};
 use crate::sync::Arc;
 use crate::sys::fd::FileDesc;
-pub use crate::sys::fs::common::exists;
 use crate::sys::helpers::run_path_with_cstr;
 use crate::sys::time::SystemTime;
 #[cfg(all(target_os = "linux", target_env = "gnu"))]
@@ -2037,6 +2036,14 @@ pub fn set_perm(p: &CStr, perm: FilePermissions) -> io::Result<()> {
 
 pub fn rmdir(p: &CStr) -> io::Result<()> {
     cvt(unsafe { libc::rmdir(p.as_ptr()) }).map(|_| ())
+}
+
+pub fn exists(path: &CStr) -> io::Result<bool> {
+    match stat(path) {
+        Ok(_) => Ok(true),
+        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(false),
+        Err(error) => Err(error),
+    }
 }
 
 pub fn readlink(c_path: &CStr) -> io::Result<PathBuf> {

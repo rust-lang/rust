@@ -8,6 +8,11 @@ pub use crate::sys::fs::common::Dir;
 use crate::sys::time::SystemTime;
 use crate::sys::unsupported;
 
+#[inline]
+pub fn with_native_path<T>(path: &Path, f: &dyn Fn(&Path) -> io::Result<T>) -> io::Result<T> {
+    f(path)
+}
+
 pub struct File(!);
 
 pub struct FileAttr(!);
