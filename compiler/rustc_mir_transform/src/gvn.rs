@@ -1551,6 +1551,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         }
     }
 
+    #[instrument(level = "trace", skip(self), ret)]
     fn simplify_cast(
         &mut self,
         initial_kind: &mut CastKind,
@@ -1606,6 +1607,42 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                 }
             }
 
+            // Field-Access-then-Transmute can just transmute the original value,
+            // so long as the bytes of a value from only from a single field.
+            if let Transmute = kind
+                && let Value::Projection(aggregate_value, ProjectionElem::Field(field_idx, ())) =
+                    self.get(value)
+            {
+                if let Value::Projection(
+                    downcast_value,
+                    ProjectionElem::Downcast(_, _variant_idx),
+                ) = self.get(aggregate_value)
+                {
+                    let downcast_ty = self.ty(downcast_value);
+                    if let Ok(downcast_layout) = self.ecx.layout_of(downcast_ty)
+                        && let Ok(projected_layout) = self.ecx.layout_of(from)
+                        && downcast_layout.size == projected_layout.size
+                    {
+                        from = downcast_ty;
+                        value = downcast_value;
+                        was_updated_this_iteration = true;
+                        if from == to {
+                            return Some(value);
+                        }
+                    }
+                } else if let Some((f_idx, field_ty)) =
+                    self.value_is_all_in_one_field(self.ty(aggregate_value), FIRST_VARIANT)
+                {
+                    assert_eq!(field_idx, f_idx, "{from} -> {field_ty}");
+                    from = self.ty(aggregate_value);
+                    value = aggregate_value;
+                    was_updated_this_iteration = true;
+                    if from == to {
+                        return Some(value);
+                    }
+                }
+            }
+
             // Aggregate-then-Transmute can just transmute the original field value,
             // so long as the bytes of a value from only from a single field.
             if let Transmute = kind
@@ -1616,7 +1653,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
                 from = field_ty;
                 value = field_values[field_idx.as_usize()];
                 was_updated_this_iteration = true;
-                if field_ty == to {
+                if from == to {
                     return Some(value);
                 }
             }
