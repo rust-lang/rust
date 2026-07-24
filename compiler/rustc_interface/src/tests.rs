@@ -16,8 +16,9 @@ use rustc_session::config::{
     InstrumentCoverage, InstrumentMcount, InstrumentXRay, LinkSelfContained, LinkerPluginLto,
     LocationDetail, LtoCli, MirIncludeSpans, NextSolverConfig, Offload, Options, OutFileName,
     OutputType, OutputTypes, PAuthKey, PacRet, Passes, PatchableFunctionEntry, Polonius,
-    ProcMacroExecutionStrategy, Strip, SwitchWithOptPath, SymbolManglingVersion, WasiExecModel,
-    build_configuration, build_session_options, rustc_optgroups,
+    ProcMacroExecutionStrategy, StackProtectorGuard, StackProtectorGuardMode, Strip,
+    SwitchWithOptPath, SymbolManglingVersion, WasiExecModel, build_configuration,
+    build_session_options, rustc_optgroups,
 };
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
@@ -891,6 +892,15 @@ fn test_unstable_options_tracking_hash() {
     tracked!(split_lto_unit, Some(true));
     tracked!(src_hash_algorithm, Some(SourceFileHashAlgorithm::Sha1));
     tracked!(stack_protector, StackProtector::All);
+    tracked!(
+        stack_protector_guard,
+        Some(StackProtectorGuard {
+            mode: Some(StackProtectorGuardMode::Sysreg),
+            offset: Some(0),
+            reg: Some("sp_el0".to_string()),
+            symbol: None,
+        })
+    );
     tracked!(staticlib_hide_internal_symbols, true);
     tracked!(staticlib_rename_internal_symbols, true);
     tracked!(teach, true);

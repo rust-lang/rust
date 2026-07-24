@@ -900,6 +900,8 @@ mod desc {
     pub(crate) const parse_stack_protector: &str =
         "one of (`none` (default), `basic`, `strong`, or `all`)";
     pub(crate) const parse_branch_protection: &str = "a `,` separated combination of `bti`, `gcs`, `pac-ret`, (optionally with `pc`, `b-key`, `leaf` if `pac-ret` is set)";
+    pub(crate) const parse_stack_protector_guard: &str =
+        "one of (`global`, `tls`, `sysreg`), optionally with `offset=N`, `reg=R`, `symbol=S`";
     pub(crate) const parse_proc_macro_execution_strategy: &str =
         "one of supported execution strategies (`same-thread`, or `cross-thread`)";
     pub(crate) const parse_inlining_threshold: &str =
@@ -2040,6 +2042,45 @@ pub mod parse {
         true
     }
 
+    pub(crate) fn parse_stack_protector_guard(
+        slot: &mut Option<StackProtectorGuard>,
+        v: Option<&str>,
+    ) -> bool {
+        match v {
+            Some(s) => {
+                let slot = slot.get_or_insert_default();
+                for opt in s.split(',') {
+                    match opt {
+                        "global" => slot.mode = Some(StackProtectorGuardMode::Global),
+                        "tls" => slot.mode = Some(StackProtectorGuardMode::Tls),
+                        "sysreg" => slot.mode = Some(StackProtectorGuardMode::Sysreg),
+                        s if let Some(value) = s.strip_prefix("offset=") => {
+                            match value.parse::<u32>() {
+                                Ok(n) => slot.offset = Some(n),
+                                Err(_) => return false,
+                            }
+                        }
+                        s if let Some(value) = s.strip_prefix("reg=") => {
+                            if value.is_empty() {
+                                return false;
+                            }
+                            slot.reg = Some(value.to_string());
+                        }
+                        s if let Some(value) = s.strip_prefix("symbol=") => {
+                            if value.is_empty() {
+                                return false;
+                            }
+                            slot.symbol = Some(value.to_string());
+                        }
+                        _ => return false,
+                    }
+                }
+            }
+            _ => return false,
+        }
+        true
+    }
+
     pub(crate) fn parse_collapse_macro_debuginfo(
         slot: &mut CollapseMacroDebuginfo,
         v: Option<&str>,
@@ -2853,6 +2894,8 @@ written to standard error output)"),
     #[rustc_lint_opt_deny_field_access("use `Session::stack_protector` instead of this field")]
     stack_protector: StackProtector = (StackProtector::None, parse_stack_protector, [TRACKED] { MITIGATION: StackProtector },
         "control stack smash protection strategy (`rustc --print stack-protector-strategies` for details)"),
+    stack_protector_guard: Option<StackProtectorGuard> = (None, parse_stack_protector_guard, [TRACKED] { TARGET_MODIFIER: StackProtectorGuard },
+        "stack protector guard settings (`mode[,offset=N][,reg=R][,symbol=S]`; modes: `global`, `tls`, `sysreg`)"),
     staticlib_allow_rdylib_deps: bool = (false, parse_bool, [TRACKED],
         "allow staticlibs to have rust dylib dependencies"),
     staticlib_hide_internal_symbols: bool = (false, parse_bool, [TRACKED],

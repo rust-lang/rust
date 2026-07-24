@@ -1570,6 +1570,57 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         }
     }
 
+    if let Some(ref guard) = sess.opts.unstable_opts.stack_protector_guard {
+        if let Some(ref mode) = guard.mode {
+            let valid: Option<(&[config::StackProtectorGuardMode], &str)> = match sess.target.arch {
+                Arch::X86 | Arch::X86_64 => Some((
+                    &[
+                        config::StackProtectorGuardMode::Tls,
+                        config::StackProtectorGuardMode::Global,
+                    ],
+                    "tls, global",
+                )),
+                Arch::AArch64 => Some((
+                    &[
+                        config::StackProtectorGuardMode::Sysreg,
+                        config::StackProtectorGuardMode::Global,
+                    ],
+                    "sysreg, global",
+                )),
+                Arch::Arm => Some((
+                    &[
+                        config::StackProtectorGuardMode::Tls,
+                        config::StackProtectorGuardMode::Global,
+                    ],
+                    "tls, global",
+                )),
+                Arch::RiscV32 | Arch::RiscV64 => Some((
+                    &[
+                        config::StackProtectorGuardMode::Sysreg,
+                        config::StackProtectorGuardMode::Global,
+                    ],
+                    "sysreg, global",
+                )),
+                _ => None,
+            };
+            match valid {
+                Some((modes, _)) if modes.contains(mode) => {}
+                Some((_, valid_str)) => {
+                    sess.dcx().emit_err(diagnostics::StackProtectorGuardInvalidValue {
+                        arch: sess.target.arch.to_string(),
+                        guard: mode.as_str().to_string(),
+                        valid: valid_str.to_string(),
+                    });
+                }
+                None => {
+                    sess.dcx().emit_err(diagnostics::StackProtectorGuardUnsupportedArch {
+                        arch: sess.target.arch.to_string(),
+                    });
+                }
+            }
+        }
+    }
+
     if sess.opts.unstable_opts.small_data_threshold.is_some() {
         if sess.target.small_data_threshold_support() == SmallDataThresholdSupport::None {
             sess.dcx().emit_warn(diagnostics::SmallDataThresholdNotSupportedForTarget {
