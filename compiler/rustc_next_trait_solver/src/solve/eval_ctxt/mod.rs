@@ -897,11 +897,17 @@ where
         source: GoalSource,
         mut goal: Goal<I, I::Predicate>,
     ) -> Result<(), NoSolutionOrRerunNonErased> {
-        goal.predicate = self.normalize(
-            GoalSource::NormalizeGoal(self.step_kind_for_source(source)),
-            goal.param_env,
-            ty::Unnormalized::new_wip(goal.predicate),
-        )?;
+        if let PredicateKind::Clause(ClauseKind::Projection(_)) =
+            goal.predicate.kind().skip_binder()
+        {
+        } else {
+            goal.predicate = self.normalize(
+                GoalSource::NormalizeGoal(self.step_kind_for_source(source)),
+                goal.param_env,
+                ty::Unnormalized::new_wip(goal.predicate),
+            )?;
+        }
+
         self.inspect.add_goal(self.delegate, self.max_input_universe, source, goal);
 
         if let Some(GoalEvaluation { goal, certainty, has_changed: _, stalled_on }) =
