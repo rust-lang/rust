@@ -32,9 +32,7 @@ fn assert_contains(
     expected_line: u32,
 ) {
     // The formatted frames look like this:
-    // `{ fn: "backtrace_with_baz_in_it", file: ".../tests/ui/backtrace/auxiliary/line-tables-only-helper.rs", line: 5 }`
-    // or this:
-    // `{ fn: "line_tables_only_helper::backtrace_with_baz_in_it<line_tables_only_helper::capture_backtrace::closure_env$0>", file: "...\tests\ui\backtrace\auxiliary\line-tables-only-helper.rs", line: 5 },`
+    // `{ fn: "line_tables_only_helper::backtrace_with_baz_in_it::<line_tables_only_helper::capture_backtrace::{closure#0}>", file: ".../tests/ui/backtrace/auxiliary/line-tables-only-helper.rs", line: 4 },
     // Make sure we match the right part when searching for the function name and line number.
     let expected_line_str = format!("line: {expected_line} ");
     eprintln!("{:#?}", backtrace);
@@ -63,8 +61,8 @@ fn main() {
     // And with #143208 we also lost `bar` in the line tables.
     #[cfg(not(all(target_pointer_width = "32", target_env = "msvc")))]
     {
-        assert_contains(&backtrace, "backtrace_with_foo_in_it", "line-tables-only-helper.rs", 15);
-        assert_contains(&backtrace, "backtrace_with_bar_in_it", "line-tables-only-helper.rs", 10);
+        assert_contains(&backtrace, "backtrace_with_foo_in_it", "line-tables-only-helper.rs", 12);
+        assert_contains(&backtrace, "backtrace_with_bar_in_it", "line-tables-only-helper.rs", 8);
     }
-    assert_contains(&backtrace, "backtrace_with_baz_in_it", "line-tables-only-helper.rs", 5);
+    assert_contains(&backtrace, "backtrace_with_baz_in_it", "line-tables-only-helper.rs", 4);
 }
