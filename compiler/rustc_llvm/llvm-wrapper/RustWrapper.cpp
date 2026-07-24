@@ -1852,6 +1852,13 @@ extern "C" bool LLVMRustIsTargetIntrinsic(unsigned ID) {
   return Intrinsic::isTargetIntrinsic(ID);
 }
 
+extern "C" const char *LLVMRustIntrinsicGetBaseName(unsigned ID,
+                                                    size_t *NameLength) {
+  auto baseName = Intrinsic::getBaseName(ID);
+  *NameLength = baseName.size();
+  return baseName.data();
+}
+
 extern "C" LLVMValueRef LLVMRustConstPtrAuth(LLVMValueRef Ptr, uint32_t Key,
                                              uint64_t Disc,
                                              LLVMValueRef AddrDiversity,

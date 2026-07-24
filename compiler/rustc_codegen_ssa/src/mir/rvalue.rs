@@ -201,7 +201,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     let start = dest.val.llval;
                     let size = bx.const_usize(dest.layout.size.bytes());
 
-                    // Use llvm.memset.p0i8.* to initialize all same byte arrays
+                    // Use llvm.memset.p0.* to initialize all same byte arrays
                     if let Some(int) = bx.cx().const_to_opt_u128(v, false)
                         && let bytes = &int.to_le_bytes()[..cg_elem.layout.size.bytes_usize()]
                         && let Ok(&byte) = bytes.iter().all_equal_value()
@@ -211,7 +211,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         return true;
                     }
 
-                    // Use llvm.memset.p0i8.* to initialize byte arrays
+                    // Use llvm.memset.p0.* to initialize byte arrays
                     let v = bx.from_immediate(v);
                     if bx.cx().val_ty(v) == bx.cx().type_i8() {
                         bx.memset(start, v, size, dest.val.align, MemFlags::empty());

@@ -2,8 +2,8 @@
 
 use std::ffi::{CStr, CString};
 use std::num::NonZero;
-use std::ptr;
 use std::string::FromUtf8Error;
+use std::{ptr, slice};
 
 use libc::c_uint;
 use rustc_abi::{AddressSpace, Align, Size, WrappingRange};
@@ -354,6 +354,12 @@ impl Intrinsic {
         unsafe {
             LLVMGetIntrinsicDeclaration(llmod, self.id, type_params.as_ptr(), type_params.len())
         }
+    }
+
+    pub(crate) fn base_name<'ll>(self) -> &'ll [u8] {
+        let mut length = 0;
+        let ptr = unsafe { LLVMRustIntrinsicGetBaseName(self.id, &mut length) };
+        unsafe { slice::from_raw_parts(ptr.cast(), length) }
     }
 }
 
