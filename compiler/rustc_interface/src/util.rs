@@ -102,8 +102,7 @@ pub(crate) fn check_abi_required_features(sess: &Session) {
     }
 }
 
-pub static STACK_SIZE: OnceLock<usize> = OnceLock::new();
-pub const DEFAULT_STACK_SIZE: usize = 8 * 1024 * 1024;
+pub use rustc_data_structures::stack::{DEFAULT_STACK_SIZE, STACK_SIZE};
 
 fn init_stack_size(early_dcx: &EarlyDiagCtxt) -> usize {
     // Obey the environment setting or default
