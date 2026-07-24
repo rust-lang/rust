@@ -28,8 +28,8 @@ fn is_eligible_for_coverage(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     // expressions from coverage spans in enclosing MIR's, like we do for closures. (That might
     // be tricky if const expressions have no corresponding statements in the enclosing MIR.
     // Closures are carved out by their initial `Assign` statement.)
-    if !tcx.def_kind(def_id).is_fn_like() {
-        trace!("InstrumentCoverage skipped for {def_id:?} (not an fn-like)");
+    if tcx.is_const_fn(def_id) || tcx.is_const_trait_impl(def_id.to_def_id()) {
+        trace!("InstrumentCoverage skipped for {def_id:?} (const context eval)");
         return false;
     }
 
