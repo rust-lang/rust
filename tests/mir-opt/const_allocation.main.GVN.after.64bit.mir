@@ -36,12 +36,12 @@ ALLOC2 (size: 32, align: 8) {
     0x10 │ ╾ALLOC5<imm>╼ 03 00 00 00 00 00 00 00 │ ╾──────╼........
 }
 
-ALLOC4 (size: 3, align: 1) {
-    66 6f 6f                                        │ foo
+ALLOC4 (size: 5, align: 1) {
+    66 6f 6f ff 00                                  │ foo..
 }
 
-ALLOC5 (size: 3, align: 1) {
-    62 61 72                                        │ bar
+ALLOC5 (size: 5, align: 1) {
+    62 61 72 ff 00                                  │ bar..
 }
 
 ALLOC3 (size: 48, align: 8) {
@@ -50,14 +50,14 @@ ALLOC3 (size: 48, align: 8) {
     0x20 │ ╾ALLOC8<imm>╼ 04 00 00 00 00 00 00 00 │ ╾──────╼........
 }
 
-ALLOC6 (size: 3, align: 1) {
-    6d 65 68                                        │ meh
+ALLOC6 (size: 5, align: 1) {
+    6d 65 68 ff 00                                  │ meh..
 }
 
-ALLOC7 (size: 3, align: 1) {
-    6d 6f 70                                        │ mop
+ALLOC7 (size: 5, align: 1) {
+    6d 6f 70 ff 00                                  │ mop..
 }
 
-ALLOC8 (size: 4, align: 1) {
-    6d c3 b6 70                                     │ m..p
+ALLOC8 (size: 6, align: 1) {
+    6d c3 b6 70 ff 00                               │ m..p..
 }
