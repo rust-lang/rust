@@ -139,6 +139,40 @@ fn dont_remove_moved_comparison(a: i8) -> i32 {
     }
 }
 
+// EMIT_MIR if_condition_int.dont_opt_storage_live_after_comparison.SimplifyComparisonIntegral.diff
+// Regression test for https://github.com/rust-lang/rust/issues/158231.
+#[custom_mir(dialect = "runtime")]
+fn dont_opt_storage_live_after_comparison(a: bool) {
+    // CHECK-LABEL: fn dont_opt_storage_live_after_comparison(
+    // CHECK: [[b:_.*]] = copy _1 as u32 (IntToInt);
+    // CHECK: [[cmp:_.*]] = Eq(copy [[b]], const 42_u32);
+    // CHECK: StorageDead([[b]]);
+    // CHECK: StorageLive([[b]]);
+    // CHECK: switchInt(move [[cmp]]) -> [1: [[BB1:bb.*]], otherwise: [[BB2:bb.*]]];
+    mir! {
+        let b: u32;
+        let c: bool;
+        {
+            StorageLive(b);
+            Goto(bb1)
+        }
+        bb1 = {
+            b = a as u32;
+            c = b == 42;
+            StorageDead(b);
+            StorageLive(b);
+            match Move(c) {
+                true => bb1,
+                _ => bb2,
+            }
+        }
+        bb2 = {
+            StorageDead(b);
+            Return()
+        }
+    }
+}
+
 // EMIT_MIR if_condition_int.dont_opt_floats.SimplifyComparisonIntegral.diff
 // test that we do not optimize on floats
 fn dont_opt_floats(a: f32) -> i32 {

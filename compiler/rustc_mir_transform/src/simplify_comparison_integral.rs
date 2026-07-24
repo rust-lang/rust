@@ -3,8 +3,7 @@ use std::iter;
 use rustc_middle::bug;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::{
-    BasicBlock, BinOp, Body, Operand, Place, Rvalue, Statement, StatementKind, SwitchTargets,
-    TerminatorKind,
+    BasicBlock, BinOp, Body, Operand, Place, Rvalue, StatementKind, SwitchTargets, TerminatorKind,
 };
 use rustc_middle::ty::{Ty, TyCtxt};
 use tracing::trace;
@@ -39,8 +38,6 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyComparisonIntegral {
         let ssa = SsaLocals::new(tcx, body, typing_env);
         let helper = OptimizationFinder { body };
         let opts = helper.find_optimizations(&ssa);
-        let mut storage_deads_to_insert = vec![];
-        let mut storage_deads_to_remove: Vec<(usize, BasicBlock)> = vec![];
         for opt in opts {
             trace!("SUCCESS: Applying {:?}", opt);
             // replace terminator with a switchInt that switches on the integer directly
@@ -96,30 +93,6 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyComparisonIntegral {
                 _ => (),
             }
 
-            let terminator = bb.terminator();
-
-            // remove StorageDead (if it exists) being used in the assign of the comparison
-            for (stmt_idx, stmt) in bb.statements.iter().enumerate() {
-                if !matches!(
-                    stmt.kind,
-                    StatementKind::StorageDead(local) if local == opt.to_switch_on.local
-                ) {
-                    continue;
-                }
-                storage_deads_to_remove.push((stmt_idx, opt.bb_idx));
-                // if we have StorageDeads to remove then make sure to insert them at the top of
-                // each target
-                for bb_idx in new_targets.all_targets() {
-                    storage_deads_to_insert.push((
-                        *bb_idx,
-                        Statement::new(
-                            terminator.source_info,
-                            StatementKind::StorageDead(opt.to_switch_on.local),
-                        ),
-                    ));
-                }
-            }
-
             let [bb_cond, bb_otherwise] = match new_targets.all_targets() {
                 [a, b] => [*a, *b],
                 e => bug!("expected 2 switch targets, got: {:?}", e),
@@ -130,14 +103,6 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyComparisonIntegral {
             let terminator = bb.terminator_mut();
             terminator.kind =
                 TerminatorKind::SwitchInt { discr: Operand::Copy(opt.to_switch_on), targets };
-        }
-
-        for (idx, bb_idx) in storage_deads_to_remove {
-            body.basic_blocks_mut()[bb_idx].statements[idx].make_nop(true);
-        }
-
-        for (idx, stmt) in storage_deads_to_insert {
-            body.basic_blocks_mut()[idx].statements.insert(0, stmt);
         }
     }
 
@@ -174,6 +139,20 @@ impl<'tcx> OptimizationFinder<'_, 'tcx> {
                                 Rvalue::BinaryOp(op @ (BinOp::Eq | BinOp::Ne), (left, right)) => {
                                     let (branch_value_scalar, branch_value_ty, to_switch_on) =
                                         find_branch_value_info(left, right, ssa)?;
+
+                                    // The transformation adds a use of `to_switch_on` at the
+                                    // terminator. Both storage markers make the local uninitialized,
+                                    // so either invalidates the value used by the comparison.
+                                    if bb.statements[stmt_idx + 1..].iter().any(|stmt| {
+                                        matches!(
+                                            stmt.kind,
+                                            StatementKind::StorageLive(local)
+                                                | StatementKind::StorageDead(local)
+                                                if local == to_switch_on.local
+                                        )
+                                    }) {
+                                        return None;
+                                    }
 
                                     Some(OptimizationInfo {
                                         bin_op_stmt_idx: stmt_idx,
