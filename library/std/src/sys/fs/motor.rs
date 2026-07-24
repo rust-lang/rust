@@ -1,3 +1,5 @@
+use alloc_crate::borrow::Cow;
+
 use crate::ffi::OsString;
 use crate::hash::Hash;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, SeekFrom};
@@ -377,12 +379,49 @@ impl Drop for ReadDir {
     }
 }
 
-pub fn readdir(path: &Path) -> io::Result<ReadDir> {
-    let path = path.to_str().ok_or(io::Error::from(io::ErrorKind::InvalidFilename))?;
-    Ok(ReadDir {
-        rt_fd: moto_rt::fs::opendir(path).map_err(map_motor_error)?,
-        path: path.to_owned(),
-    })
+/// Specialization trait used to construct a `ReadDir`
+trait ReadDirFromPath<P> {
+    fn from_path(path: P) -> io::Result<ReadDir>;
+}
+
+impl<P: AsRef<Path>> ReadDirFromPath<P> for ReadDir {
+    default fn from_path(path: P) -> io::Result<ReadDir> {
+        let path = path.as_ref().to_str().ok_or(io::Error::from(io::ErrorKind::InvalidFilename))?;
+        Ok(ReadDir {
+            rt_fd: moto_rt::fs::opendir(path).map_err(map_motor_error)?,
+            path: path.to_owned(),
+        })
+    }
+}
+
+/// This constructs a `ReadDir` for all types that can be converted
+/// into `String` without allocating
+macro_rules! impl_read_dir_from_path {
+    ($t:ty) => {
+        impl ReadDirFromPath<$t> for ReadDir {
+            fn from_path(path: $t) -> io::Result<ReadDir> {
+                let path_buf: PathBuf = path.into();
+                let path = path_buf.into_os_string().into_string();
+                match path {
+                    Err(_) => return Err(io::Error::from(io::ErrorKind::InvalidFilename)),
+                    Ok(path) => Ok(ReadDir {
+                        rt_fd: moto_rt::fs::opendir(path).map_err(map_motor_error)?,
+                        path,
+                    }),
+                }
+            }
+        }
+    };
+}
+
+impl_read_dir_from_path!(PathBuf);
+impl_read_dir_from_path!(Box<Path>);
+impl_read_dir_from_path!(Cow<'_, Path>);
+impl_read_dir_from_path!(OsString);
+impl_read_dir_from_path!(String);
+
+pub fn readdir<P: AsRef<Path>>(path: P) -> io::Result<ReadDir> {
+    <ReadDir as ReadDirFromPath<P>>::from_path(path)
 }
 
 impl Iterator for ReadDir {

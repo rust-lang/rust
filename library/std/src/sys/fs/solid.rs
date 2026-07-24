@@ -1,5 +1,7 @@
 #![allow(dead_code)]
 
+use alloc_crate::borrow::Cow;
+
 use crate::ffi::{CStr, CString, OsStr, OsString};
 use crate::fmt;
 use crate::fs::TryLockError;
@@ -146,18 +148,48 @@ impl FileType {
     }
 }
 
-pub fn readdir(p: &Path) -> io::Result<ReadDir> {
+pub fn readdir<P: AsRef<Path>>(p: P) -> io::Result<ReadDir> {
     unsafe {
         let mut dir = MaybeUninit::uninit();
         error::SolidError::err_if_negative(abi::SOLID_FS_OpenDir(
-            cstr(p)?.as_ptr(),
+            cstr(p.as_ref())?.as_ptr(),
             dir.as_mut_ptr(),
         ))
         .map_err(|e| e.as_io_error())?;
-        let inner = Arc::new(InnerReadDir { dirp: dir.assume_init(), root: p.to_owned() });
-        Ok(ReadDir { inner })
+        Ok(<ReadDir as ReadDirFromPath<P>>::from_path(dir.assume_init(), p))
     }
 }
+
+/// Specialization trait used to construct a `ReadDir`
+trait ReadDirFromPath<P> {
+    fn from_path(dirp: abi::S_DIR, path: P) -> Self;
+}
+
+impl<P: AsRef<Path>> ReadDirFromPath<P> for ReadDir {
+    default fn from_path(dirp: abi::S_DIR, path: P) -> Self {
+        let inner = InnerReadDir { dirp, root: path.as_ref().to_path_buf() };
+        ReadDir { inner: Arc::new(inner) }
+    }
+}
+
+/// This constructs a `ReadDir` for all types that can be converted
+/// into `PathBuf` without allocating
+macro_rules! impl_read_dir_from_path {
+    ($t:ty) => {
+        impl ReadDirFromPath<$t> for ReadDir {
+            fn from_path(dirp: abi::S_DIR, path: $t) -> Self {
+                let inner = InnerReadDir { dirp, root: path.into() };
+                ReadDir { inner: Arc::new(inner) }
+            }
+        }
+    };
+}
+
+impl_read_dir_from_path!(PathBuf);
+impl_read_dir_from_path!(Box<Path>);
+impl_read_dir_from_path!(Cow<'_, Path>);
+impl_read_dir_from_path!(OsString);
+impl_read_dir_from_path!(String);
 
 impl fmt::Debug for ReadDir {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
