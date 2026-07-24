@@ -293,6 +293,10 @@ impl io::Read for Stdin {
             bytes_copied += self.incomplete_utf8.read(&mut buf[bytes_copied..]);
             Ok(bytes_copied)
         } else {
+            // Decode into the space after the bytes copied from `incomplete_utf8` (if any), so
+            // they are not overwritten; this also makes `amount` below account for the space
+            // that is actually still available.
+            let buf = &mut buf[bytes_copied..];
             let mut utf16_buf = [MaybeUninit::<u16>::uninit(); MAX_BUFFER_SIZE / 2];
 
             // In the worst case, a UTF-8 string can take 3 bytes for every `u16` of a UTF-16. So
