@@ -409,6 +409,8 @@ impl Step for Llvm {
         // equally well everywhere.
         if builder.llvm_link_shared() {
             cfg.define("LLVM_LINK_LLVM_DYLIB", "ON");
+            // Keep the pre-LLVM23 behavior for now.
+            cfg.define("LLVM_VERSIONED_DYLIB_NAME_ON_DARWIN", "OFF");
         }
 
         if (target.starts_with("csky")
