@@ -518,6 +518,16 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                             return Ok(true);
                         }
 
+                        let is_unnameable_scope =
+                            self.tcx().opt_parent(def_id).is_some_and(|parent| {
+                                self.tcx().opt_item_name(parent) == Some(kw::Underscore)
+                            });
+
+                        if is_unnameable_scope {
+                            self.print_crate_name(cnum)?;
+                            return Ok(true);
+                        }
+
                         // Disable `try_print_trimmed_def_path` behavior within
                         // the `print_def_path` call, to avoid infinite recursion
                         // in cases where the `extern crate foo` has non-trivial
