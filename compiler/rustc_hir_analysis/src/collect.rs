@@ -1600,17 +1600,59 @@ fn rendered_precise_capturing_args<'tcx>(
         return tcx.rendered_precise_capturing_args(opaque_def_id);
     }
 
-    tcx.hir_node_by_def_id(def_id).expect_opaque_ty().bounds.iter().find_map(|bound| match bound {
-        hir::GenericBound::Use(args, ..) => {
-            Some(&*tcx.arena.alloc_from_iter(args.iter().map(|arg| match arg {
-                PreciseCapturingArgKind::Lifetime(_) => {
-                    PreciseCapturingArgKind::Lifetime(arg.name())
+    let opaque = tcx.hir_node_by_def_id(def_id).expect_opaque_ty();
+
+    opaque
+        .bounds
+        .iter()
+        .find_map(|bound| match bound {
+            hir::GenericBound::Use(args, ..) => {
+                Some(&*tcx.arena.alloc_from_iter(args.iter().map(|arg| match arg {
+                    PreciseCapturingArgKind::Lifetime(_) => {
+                        PreciseCapturingArgKind::Lifetime(arg.name())
+                    }
+                    PreciseCapturingArgKind::Param(_) => PreciseCapturingArgKind::Param(arg.name()),
+                })))
+            }
+            _ => None,
+        })
+        .or_else(|| {
+            // FIXME(fmease): Add explainer.
+            // FIXME(fmease): To prevent clutter, hide the synthetic use-bound if it captures all
+            //                all in-scope early & free(!) lifetime(!) params. We know that it has
+            //                to capture all non-lifetime params anyway due to current limitations.
+            //                However, finding "all" uncaptured params will probably be a bit
+            //                expensive.
+            if !resolve_bound_vars::opaque_captures_all_in_scope_lifetimes(opaque) {
+                let variances = tcx.variances_of(def_id);
+                let mut def_id = Some(def_id.to_def_id());
+                let mut captures = Vec::new();
+
+                while let Some(current_def_id) = def_id {
+                    let generics = tcx.generics_of(current_def_id);
+                    def_id = generics.parent;
+
+                    captures.extend(generics.own_params.iter().filter_map(|param| {
+                        if variances[param.index as usize] != ty::Variance::Invariant {
+                            return None;
+                        }
+                        Some(match param.kind {
+                            ty::GenericParamDefKind::Lifetime => {
+                                PreciseCapturingArgKind::Lifetime(param.name)
+                            }
+                            ty::GenericParamDefKind::Type { .. }
+                            | ty::GenericParamDefKind::Const { .. } => {
+                                PreciseCapturingArgKind::Param(param.name)
+                            }
+                        })
+                    }));
                 }
-                PreciseCapturingArgKind::Param(_) => PreciseCapturingArgKind::Param(arg.name()),
-            })))
-        }
-        _ => None,
-    })
+
+                Some(&*tcx.arena.alloc_slice(&captures))
+            } else {
+                None
+            }
+        })
 }
 
 fn const_param_default<'tcx>(

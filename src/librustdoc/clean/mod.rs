@@ -1880,17 +1880,15 @@ fn maybe_expand_private_type_alias<'tcx>(
 }
 
 pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type {
-    use rustc_hir::*;
-
     match ty.kind {
-        TyKind::Never => Primitive(PrimitiveType::Never),
-        TyKind::Ptr(ref m) => RawPointer(m.mutbl, Box::new(clean_ty(m.ty, cx))),
-        TyKind::Ref(l, ref m) => {
+        hir::TyKind::Never => Primitive(PrimitiveType::Never),
+        hir::TyKind::Ptr(ref m) => RawPointer(m.mutbl, Box::new(clean_ty(m.ty, cx))),
+        hir::TyKind::Ref(l, ref m) => {
             let lifetime = if l.is_anonymous() { None } else { Some(clean_lifetime(l, cx)) };
             BorrowedRef { lifetime, mutability: m.mutbl, type_: Box::new(clean_ty(m.ty, cx)) }
         }
-        TyKind::Slice(ty) => Slice(Box::new(clean_ty(ty, cx))),
-        TyKind::Pat(inner_ty, pat) => {
+        hir::TyKind::Slice(ty) => Slice(Box::new(clean_ty(ty, cx))),
+        hir::TyKind::Pat(inner_ty, pat) => {
             // Local HIR pattern types should print the same way as cross-crate inlined ones,
             // so lower to the canonical `rustc_middle::ty::Pattern` representation first.
             let pat = match lower_ty(cx.tcx, ty).kind() {
@@ -1899,7 +1897,7 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
             };
             Type::Pat(Box::new(clean_ty(inner_ty, cx)), pat)
         }
-        TyKind::FieldOf(ty, hir::TyFieldPath { variant, field }) => {
+        hir::TyKind::FieldOf(ty, hir::TyFieldPath { variant, field }) => {
             let field_str = if let Some(variant) = variant {
                 format!("{variant}.{field}")
             } else {
@@ -1907,7 +1905,7 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
             };
             Type::FieldOf(Box::new(clean_ty(ty, cx)), field_str.into())
         }
-        TyKind::Array(ty, const_arg) => {
+        hir::TyKind::Array(ty, const_arg) => {
             // NOTE(min_const_generics): We can't use `const_eval_poly` for constants
             // as we currently do not supply the parent generics to anonymous constants
             // but do allow `ConstKind::Param`.
@@ -1936,12 +1934,47 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
             };
             Array(Box::new(clean_ty(ty, cx)), length.into())
         }
-        TyKind::Tup(tys) => Tuple(tys.iter().map(|ty| clean_ty(ty, cx)).collect()),
-        TyKind::OpaqueDef(ty) => {
-            ImplTrait(ty.bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect())
+        hir::TyKind::Tup(tys) => Tuple(tys.iter().map(|ty| clean_ty(ty, cx)).collect()),
+        hir::TyKind::OpaqueDef(opaque) => {
+            let mut captures_explicitly = false;
+
+            let mut bounds: Vec<_> = opaque
+                .bounds
+                .iter()
+                .filter_map(|bound| {
+                    if let hir::GenericBound::Use(..) = bound {
+                        captures_explicitly = true;
+                    }
+                    clean_generic_bound(bound, cx)
+                })
+                .collect();
+
+            // FIXME(fmease): Doing this unconditionally is probably too expensive.
+            //                Ideally we would only compute the effective use-bound if
+            //                `opaque_captures_all_in_scope_lifetimes(&ty)` but that
+            //                function is compiler-private atm (and I wish it stayed that way).
+            if !captures_explicitly
+                && let Some(args) = cx.tcx.rendered_precise_capturing_args(opaque.def_id)
+            {
+                // FIXME(fmease): Maybe avoid dupe w/ clean_middle_opaque.
+                bounds.push(GenericBound::Use(
+                    args.iter()
+                        .map(|arg| match arg {
+                            hir::PreciseCapturingArgKind::Lifetime(lt) => {
+                                PreciseCapturingArg::Lifetime(Lifetime(*lt))
+                            }
+                            hir::PreciseCapturingArgKind::Param(param) => {
+                                PreciseCapturingArg::Param(*param)
+                            }
+                        })
+                        .collect(),
+                ));
+            }
+
+            ImplTrait(bounds)
         }
-        TyKind::Path(_) => clean_qpath(ty, cx),
-        TyKind::TraitObject(bounds, lifetime) => {
+        hir::TyKind::Path(_) => clean_qpath(ty, cx),
+        hir::TyKind::TraitObject(bounds, lifetime) => {
             let bounds = bounds.iter().map(|bound| clean_poly_trait_ref(bound, cx)).collect();
             let lifetime = if !lifetime.is_elided() {
                 Some(clean_lifetime(lifetime.pointer(), cx))
@@ -1950,8 +1983,8 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
             };
             DynTrait(bounds, lifetime)
         }
-        TyKind::FnPtr(barefn) => BareFunction(Box::new(clean_bare_fn_ty(barefn, cx))),
-        TyKind::UnsafeBinder(unsafe_binder_ty) => {
+        hir::TyKind::FnPtr(barefn) => BareFunction(Box::new(clean_bare_fn_ty(barefn, cx))),
+        hir::TyKind::UnsafeBinder(unsafe_binder_ty) => {
             UnsafeBinder(Box::new(clean_unsafe_binder_ty(unsafe_binder_ty, cx)))
         }
         TyKind::View(ty, _) => {
@@ -1959,10 +1992,10 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
             clean_ty(ty, cx)
         }
         // Rustdoc handles `TyKind::Err`s by turning them into `Type::Infer`s.
-        TyKind::Infer(())
-        | TyKind::Err(_)
-        | TyKind::InferDelegation(..)
-        | TyKind::TraitAscription(_) => Infer,
+        hir::TyKind::Infer(())
+        | hir::TyKind::Err(_)
+        | hir::TyKind::InferDelegation(..)
+        | hir::TyKind::TraitAscription(_) => Infer,
     }
 }
 
