@@ -1,0 +1,8 @@
+error: implementing `CoerceShared` does not allow multiple lifetimes or fields to be coerced
+  --> $DIR/coerce-shared-tuple-phantom-position.rs:59:16
+   |
+LL | impl<'a, T, U> CoerceShared<InterleavedRef<'a, T, U>> for InterleavedMut<'a, T, U> {}
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+

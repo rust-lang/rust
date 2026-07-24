@@ -1214,6 +1214,10 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    query coerce_shared_info(key: LocalDefId) -> Result<(), ErrorGuaranteed> {
+        desc { "computing CoerceShared info for `{}`", tcx.def_path_str(key) }
+    }
+
     query typeck_root(key: LocalDefId) -> &'tcx ty::TypeckResults<'tcx> {
         desc { "type-checking `{}`", tcx.def_path_str(key) }
         cache_on_disk

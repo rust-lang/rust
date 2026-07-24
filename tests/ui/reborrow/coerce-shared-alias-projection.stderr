@@ -1,0 +1,14 @@
+error: implementing `CoerceShared` does not allow multiple lifetimes or fields to be coerced
+  --> $DIR/coerce-shared-alias-projection.rs:65:13
+   |
+LL | impl<'a, T> CoerceShared<OuterAliasRef<'a, T>> for OuterMut<'a, T> {}
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: implementing `CoerceShared` does not allow multiple lifetimes or fields to be coerced
+  --> $DIR/coerce-shared-alias-projection.rs:81:17
+   |
+LL | impl<'a, T: 'a> CoerceShared<OuterProjectionRef<'a, T>> for OuterMut<'a, T> {}
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+

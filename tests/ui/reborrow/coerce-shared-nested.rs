@@ -1,4 +1,5 @@
-//@ known-bug: unknown
+// Invalid nested multi-field `CoerceShared` impls must be rejected without an ICE.
+
 #![feature(reborrow)]
 #![allow(dead_code)]
 
@@ -45,6 +46,7 @@ impl<'a, T> Clone for OuterRef<'a, T> {
 impl<'a, T> Copy for OuterRef<'a, T> {}
 
 impl<'a, T> CoerceShared<OuterRef<'a, T>> for OuterMut<'a, T> {}
+//~^ ERROR implementing `CoerceShared` does not allow multiple lifetimes or fields to be coerced
 
 fn get<'a>(outer: OuterRef<'a, i32>) -> (&'a i32, usize) {
     (outer.inner.value, outer.tag)
