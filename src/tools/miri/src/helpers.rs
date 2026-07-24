@@ -129,13 +129,7 @@ pub fn iter_exported_symbols<'tcx>(
                 || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_COMPILER)
                 || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER)
         };
-        // FIXME: `#[no_mangle]` makes no sense on a generic item, but still causes it to be
-        // considered "extern". Remove this once `no_mangle_generic_items` is a hard error.
-        let exported_mono = exported && {
-            let generics = tcx.generics_of(def_id);
-            !generics.requires_monomorphization(tcx)
-        };
-        if exported_mono {
+        if exported {
             f(LOCAL_CRATE, def_id.into())?;
         }
     }
