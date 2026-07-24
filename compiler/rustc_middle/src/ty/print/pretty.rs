@@ -2708,7 +2708,13 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
 struct RegionFolder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     current_index: ty::DebruijnIndex,
-    region_map: UnordMap<ty::BoundRegion<'tcx>, ty::Region<'tcx>>,
+    /// Regions that have already been named, keyed by the number of binders
+    /// between the binder being named and the region's binder: `0` for regions
+    /// bound by the binder being named (and placeholders), `n > 0` for regions
+    /// escaping through it into the `n`th enclosing binder. Escaping regions
+    /// are recorded only so that repeated occurrences are named consistently;
+    /// they don't belong in this binder's `for<...>` list (#134410).
+    region_map: UnordMap<(u32, ty::BoundRegion<'tcx>), ty::Region<'tcx>>,
     name: &'a mut (
                 dyn FnMut(
         Option<ty::DebruijnIndex>, // Debruijn index of the folded late-bound region
@@ -2748,7 +2754,11 @@ impl<'a, 'tcx> ty::TypeFolder<TyCtxt<'tcx>> for RegionFolder<'a, 'tcx> {
         let name = &mut self.name;
         let region = match r.kind() {
             ty::ReBound(ty::BoundVarIndexKind::Bound(db), br) if db >= self.current_index => {
-                *self.region_map.entry(br).or_insert_with(|| name(Some(db), self.current_index, br))
+                let binder_offset = db.as_u32() - self.current_index.as_u32();
+                *self
+                    .region_map
+                    .entry((binder_offset, br))
+                    .or_insert_with(|| name(Some(db), self.current_index, br))
             }
             ty::RePlaceholder(ty::PlaceholderRegion {
                 bound: ty::BoundRegion { kind, .. },
@@ -2763,7 +2773,7 @@ impl<'a, 'tcx> ty::TypeFolder<TyCtxt<'tcx>> for RegionFolder<'a, 'tcx> {
                         let br = ty::BoundRegion { var: ty::BoundVar::ZERO, kind };
                         *self
                             .region_map
-                            .entry(br)
+                            .entry((0, br))
                             .or_insert_with(|| name(None, self.current_index, br))
                     }
                 }
@@ -2917,6 +2927,17 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
                 start_or_continue(self, mode.start_str(), "");
             }
             start_or_continue(self, "", "> ");
+
+            // Only return the regions that are actually bound by `value`'s binder
+            // (binder offset 0). Regions merely escaping through it are bound by
+            // an enclosing binder and must not show up in the `for<...>` list the
+            // caller builds from this map (#134410, #111365).
+            let region_map = region_map
+                .into_items()
+                .filter_map(|((binder_offset, br), region)| {
+                    (binder_offset == 0).then_some((br, region))
+                })
+                .collect();
 
             (new_value, region_map)
         };
