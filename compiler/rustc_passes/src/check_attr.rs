@@ -291,7 +291,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::Optimize(..) => (),
             AttributeKind::PanicRuntime => (),
             AttributeKind::PatchableFunctionEntry { .. } => (),
-            AttributeKind::Path(..) => (),
+            AttributeKind::Path(_, span) => self.check_path(*span, hir_id),
             AttributeKind::PatternComplexityLimit { .. } => (),
             AttributeKind::PinV2(..) => (),
             AttributeKind::PreludeImport => (),
@@ -409,6 +409,55 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::WindowsSubsystem(..) => (),
             // tidy-alphabetical-end
         }
+    }
+
+    fn check_path(&self, span: Span, hir_id: HirId) {
+        let Node::Item(item) = self.tcx.hir_node(hir_id) else {
+            return;
+        };
+
+        let ItemKind::Mod(_, module) = &item.kind else {
+            return;
+        };
+
+        if !item.span.contains(module.spans.inner_span) {
+            return;
+        }
+
+        let has_out_of_line_child_module = module.item_ids.iter().any(|item_id| {
+            let child = self.tcx.hir_item(*item_id);
+
+            let ItemKind::Mod(_, child_mod) = &child.kind else {
+                return false;
+            };
+
+            !child.span.contains(child_mod.spans.inner_span)
+        });
+
+        if has_out_of_line_child_module {
+            return;
+        }
+
+        let has_child_module_with_path_attr = module.item_ids.iter().any(|item_id| {
+            let child = self.tcx.hir_item(*item_id);
+
+            matches!(child.kind, ItemKind::Mod(..))
+                && find_attr!(self.tcx, child.hir_id(), Path(..))
+        });
+
+        if has_child_module_with_path_attr {
+            return;
+        }
+
+        self.tcx.emit_node_span_lint(
+            UNUSED_ATTRIBUTES,
+            hir_id,
+            span,
+            diagnostics::Unused {
+                attr_span: span,
+                note: diagnostics::UnusedNote::PathOnInlineModule,
+            },
+        );
     }
 
     fn check_rustc_must_implement_one_of(
