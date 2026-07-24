@@ -806,13 +806,13 @@ mod should_panic_attribute {}
 ///
 /// Example:
 ///
-/// ```rust,ignore
+/// ```rust,ignore (foo.rs doesn't exist in this context)
 /// mod foo; // By default `rustc` loads the source from `foo.rs`.
 /// ```
 ///
 /// The `path` attribute overrides this behavior:
 ///
-/// ```rust,ignore
+/// ```rust,ignore (bar.rs doesn't exist in this context)
 /// #[path = "bar.rs"]
 /// mod foo; // Now bar.rs is loaded as foo.
 /// ```
@@ -867,7 +867,7 @@ mod path_attribute {}
 ///
 /// With external files:
 ///
-/// ```rust,ignore
+/// ```rust,ignore (needs an external file to include)
 /// #[doc = include_str!("./quick_tour.md")]
 /// ```
 ///
