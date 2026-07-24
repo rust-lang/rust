@@ -616,6 +616,7 @@ auto:
   # x86_64-msvc is split into two jobs to run tests in parallel.
   - name: x86_64-msvc-1
     env:
+      NEEDS_CDB: true
       RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-sanitizers --enable-profiler
       SCRIPT: make ci-msvc-py
     <<: *job-windows
@@ -629,19 +630,21 @@ auto:
   # i686-msvc is split into two jobs to run tests in parallel.
   - name: i686-msvc-1
     env:
-      RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc  --enable-sanitizers
+      NEEDS_CDB: true
+      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --target=i686-pc-windows-msvc --enable-sanitizers
       SCRIPT: make ci-msvc-py
     <<: *job-windows
 
   - name: i686-msvc-2
     env:
-      RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc --enable-sanitizers
+      RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --target=i686-pc-windows-msvc --enable-sanitizers
       SCRIPT: make ci-msvc-ps1
     <<: *job-windows
 
   # aarch64-msvc is split into two jobs to run tests in parallel.
   - name: aarch64-msvc-1
     env:
+      NEEDS_CDB: true
       RUST_CONFIGURE_ARGS: --build=aarch64-pc-windows-msvc
       SCRIPT: make ci-msvc-py
     <<: *job-windows-aarch64
@@ -730,8 +733,7 @@ auto:
   - name: dist-i686-msvc
     env:
       RUST_CONFIGURE_ARGS: >-
-        --build=i686-pc-windows-msvc
-        --host=i686-pc-windows-msvc
+        --build=x86_64-pc-windows-msvc
         --target=i686-pc-windows-msvc
         --enable-full-tools
         --enable-profiler
