@@ -304,9 +304,21 @@ struct ResolvedPat<'tcx> {
 
 #[derive(Clone, Copy, Debug)]
 enum ResolvedPatKind<'tcx> {
-    Path { res: Res, pat_res: Res, segments: &'tcx [hir::PathSegment<'tcx>] },
-    Struct { variant: &'tcx VariantDef },
-    TupleStruct { res: Res, variant: &'tcx VariantDef },
+    Path {
+        res: Res,
+        pat_res: Res,
+        segments: &'tcx [hir::PathSegment<'tcx>],
+    },
+    Struct {
+        variant: &'tcx VariantDef,
+    },
+    TupleStruct {
+        res: Res,
+        variant: &'tcx VariantDef,
+    },
+    /// A `Type { .. }` pattern, where `Type` is not an ADT variant.
+    /// Lowers to a wildcard pattern in THIR.
+    TypedWild,
 }
 
 impl<'tcx> ResolvedPat<'tcx> {
@@ -410,7 +422,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             PatKind::Expr(PatExpr { kind: PatExprKind::Path(qpath), hir_id, span }) => {
                 Some(self.resolve_pat_path(*hir_id, *span, qpath))
             }
-            PatKind::Struct(ref qpath, ..) => Some(self.resolve_pat_struct(pat, qpath)),
+            PatKind::Struct(ref qpath, fields, rest) => {
+                Some(self.resolve_pat_struct(pat, qpath, fields.is_empty() && rest.is_some()))
+            }
             PatKind::TupleStruct(ref qpath, ..) => Some(self.resolve_pat_tuple_struct(pat, qpath)),
             _ => None,
         };
@@ -630,6 +644,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         expected,
                         pat_info,
                     ),
+                Ok(ResolvedPat { ty, kind: ResolvedPatKind::TypedWild }) => {
+                    debug_assert!(fields.is_empty());
+                    debug_assert!(has_rest_pat.is_some());
+                    match self.demand_eqtype_pat(pat.span, expected, ty, &pat_info.top_info) {
+                        Ok(()) => ty,
+                        Err(guar) => Ty::new_error(self.tcx, guar),
+                    }
+                }
                 Err(guar) => {
                     let ty_err = Ty::new_error(self.tcx, guar);
                     for field in fields {
@@ -1502,10 +1524,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         pat: &'tcx Pat<'tcx>,
         qpath: &hir::QPath<'tcx>,
+        allow_any_type: bool,
     ) -> Result<ResolvedPat<'tcx>, ErrorGuaranteed> {
         // Resolve the path and check the definition for errors.
-        let (variant, pat_ty) = self.check_struct_path(qpath, pat.hir_id)?;
-        Ok(ResolvedPat { ty: pat_ty, kind: ResolvedPatKind::Struct { variant } })
+        let (variant, pat_ty) = self.check_struct_path(qpath, pat.hir_id, allow_any_type)?;
+        let kind = if let Some(variant) = variant {
+            ResolvedPatKind::Struct { variant }
+        } else {
+            ResolvedPatKind::TypedWild
+        };
+        Ok(ResolvedPat { ty: pat_ty, kind })
     }
 
     /// Reject pin-projection through a type that isn't structurally pinnable.

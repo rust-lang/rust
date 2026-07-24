@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/pattern-matching-mix-deref-pattern.rs:33:9
+  --> $DIR/pattern-matching-mix-deref-pattern.rs:32:9
    |
 LL |     let Foo { x, y } = foo.as_mut();
    |         ^^^^^^^^^^^^   ------------ this expression has type `Pin<&mut Foo<T, U>>`
@@ -14,10 +14,11 @@ LL |     let Foo { x, y } = *foo.as_mut();
    |                        +
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-matching-mix-deref-pattern.rs:37:9
+  --> $DIR/pattern-matching-mix-deref-pattern.rs:38:9
    |
 LL |     match foo.as_mut() {
    |           ------------ this expression has type `Pin<&mut Foo<T, U>>`
+LL |
 LL |         Foo { x, y } => {}
    |         ^^^^^^^^^^^^ expected `Pin<&mut Foo<T, U>>`, found `Foo<_, _>`
    |
@@ -29,10 +30,11 @@ LL |     match *foo.as_mut() {
    |           +
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-matching-mix-deref-pattern.rs:45:9
+  --> $DIR/pattern-matching-mix-deref-pattern.rs:44:9
    |
 LL |     let _ = || match foo.as_mut() {
    |                      ------------ this expression has type `Pin<&mut Foo<T, U>>`
+LL |
 LL |         Foo { x, y } => {}
    |         ^^^^^^^^^^^^ expected `Pin<&mut Foo<T, U>>`, found `Foo<_, _>`
    |
@@ -44,7 +46,7 @@ LL |     let _ = || match *foo.as_mut() {
    |                      +
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-matching-mix-deref-pattern.rs:55:9
+  --> $DIR/pattern-matching-mix-deref-pattern.rs:51:9
    |
 LL |     let Foo { x, y } = foo;
    |         ^^^^^^^^^^^^   --- this expression has type `Pin<&Foo<T, U>>`
@@ -59,10 +61,11 @@ LL |     let Foo { x, y } = *foo;
    |                        +
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-matching-mix-deref-pattern.rs:59:9
+  --> $DIR/pattern-matching-mix-deref-pattern.rs:57:9
    |
 LL |     match foo {
    |           --- this expression has type `Pin<&Foo<T, U>>`
+LL |
 LL |         Foo { x, y } => {}
    |         ^^^^^^^^^^^^ expected `Pin<&Foo<T, U>>`, found `Foo<_, _>`
    |
@@ -74,10 +77,11 @@ LL |     match *foo {
    |           +
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-matching-mix-deref-pattern.rs:67:9
+  --> $DIR/pattern-matching-mix-deref-pattern.rs:63:9
    |
 LL |     let _ = || match foo {
    |                      --- this expression has type `Pin<&Foo<T, U>>`
+LL |
 LL |         Foo { x, y } => {}
    |         ^^^^^^^^^^^^ expected `Pin<&Foo<T, U>>`, found `Foo<_, _>`
    |
@@ -89,7 +93,7 @@ LL |     let _ = || match *foo {
    |                      +
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-matching-mix-deref-pattern.rs:77:9
+  --> $DIR/pattern-matching-mix-deref-pattern.rs:70:9
    |
 LL |     let Bar(x, y) = bar.as_mut();
    |         ^^^^^^^^^   ------------ this expression has type `Pin<&mut Bar<T, U>>`
@@ -104,10 +108,11 @@ LL |     let Bar(x, y) = *bar.as_mut();
    |                     +
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-matching-mix-deref-pattern.rs:81:9
+  --> $DIR/pattern-matching-mix-deref-pattern.rs:76:9
    |
 LL |     match bar.as_mut() {
    |           ------------ this expression has type `Pin<&mut Bar<T, U>>`
+LL |
 LL |         Bar(x, y) => {}
    |         ^^^^^^^^^ expected `Pin<&mut Bar<T, U>>`, found `Bar<_, _>`
    |
@@ -119,10 +124,11 @@ LL |     match *bar.as_mut() {
    |           +
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-matching-mix-deref-pattern.rs:89:9
+  --> $DIR/pattern-matching-mix-deref-pattern.rs:82:9
    |
 LL |     let _ = || match bar.as_mut() {
    |                      ------------ this expression has type `Pin<&mut Bar<T, U>>`
+LL |
 LL |         Bar(x, y) => {}
    |         ^^^^^^^^^ expected `Pin<&mut Bar<T, U>>`, found `Bar<_, _>`
    |
@@ -134,7 +140,7 @@ LL |     let _ = || match *bar.as_mut() {
    |                      +
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-matching-mix-deref-pattern.rs:99:9
+  --> $DIR/pattern-matching-mix-deref-pattern.rs:89:9
    |
 LL |     let Bar(x, y) = bar;
    |         ^^^^^^^^^   --- this expression has type `Pin<&Bar<T, U>>`
@@ -149,10 +155,11 @@ LL |     let Bar(x, y) = *bar;
    |                     +
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-matching-mix-deref-pattern.rs:103:9
+  --> $DIR/pattern-matching-mix-deref-pattern.rs:95:9
    |
 LL |     match bar {
    |           --- this expression has type `Pin<&Bar<T, U>>`
+LL |
 LL |         Bar(x, y) => {}
    |         ^^^^^^^^^ expected `Pin<&Bar<T, U>>`, found `Bar<_, _>`
    |
@@ -164,10 +171,11 @@ LL |     match *bar {
    |           +
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-matching-mix-deref-pattern.rs:111:9
+  --> $DIR/pattern-matching-mix-deref-pattern.rs:101:9
    |
 LL |     let _ = || match bar {
    |                      --- this expression has type `Pin<&Bar<T, U>>`
+LL |
 LL |         Bar(x, y) => {}
    |         ^^^^^^^^^ expected `Pin<&Bar<T, U>>`, found `Bar<_, _>`
    |
@@ -179,7 +187,7 @@ LL |     let _ = || match *bar {
    |                      +
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-matching-mix-deref-pattern.rs:121:9
+  --> $DIR/pattern-matching-mix-deref-pattern.rs:108:9
    |
 LL |     let NonPinProject { x } = foo;
    |         ^^^^^^^^^^^^^^^^^^^   --- this expression has type `Pin<&mut NonPinProject<T>>`
@@ -194,7 +202,7 @@ LL |     let NonPinProject { x } = *foo;
    |                               +
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-matching-mix-deref-pattern.rs:125:9
+  --> $DIR/pattern-matching-mix-deref-pattern.rs:113:9
    |
 LL |     let NonPinProject { x } = bar;
    |         ^^^^^^^^^^^^^^^^^^^   --- this expression has type `Pin<&NonPinProject<U>>`
@@ -209,10 +217,11 @@ LL |     let NonPinProject { x } = *bar;
    |                               +
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-matching-mix-deref-pattern.rs:131:9
+  --> $DIR/pattern-matching-mix-deref-pattern.rs:121:9
    |
 LL |     match foo {
    |           --- this expression has type `Pin<&mut NonPinProject<T>>`
+LL |
 LL |         NonPinProject { x } => {}
    |         ^^^^^^^^^^^^^^^^^^^ expected `Pin<&mut NonPinProject<T>>`, found `NonPinProject<_>`
    |
@@ -224,10 +233,11 @@ LL |     match *foo {
    |           +
 
 error[E0308]: mismatched types
-  --> $DIR/pattern-matching-mix-deref-pattern.rs:139:9
+  --> $DIR/pattern-matching-mix-deref-pattern.rs:129:9
    |
 LL |     match bar {
    |           --- this expression has type `Pin<&NonPinProject<U>>`
+LL |
 LL |         NonPinProject { x } => {}
    |         ^^^^^^^^^^^^^^^^^^^ expected `Pin<&NonPinProject<U>>`, found `NonPinProject<_>`
    |

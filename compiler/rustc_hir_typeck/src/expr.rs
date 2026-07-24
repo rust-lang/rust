@@ -1815,13 +1815,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         base_expr: &'tcx hir::StructTailExpr<'tcx>,
     ) -> Ty<'tcx> {
         // Find the relevant variant
-        let (variant, adt_ty) = match self.check_struct_path(qpath, expr.hir_id) {
+        let (variant, adt_ty) = match self.check_struct_path(qpath, expr.hir_id, false) {
             Ok(data) => data,
             Err(guar) => {
                 self.check_struct_fields_on_error(fields, base_expr);
                 return Ty::new_error(self.tcx, guar);
             }
         };
+        // This is safe because we passed `allow_any_type: false`
+        // to `check_struct_path()` above
+        let variant = variant.unwrap();
 
         // Prohibit struct expressions when non-exhaustive flag is set.
         let adt = adt_ty.ty_adt_def().expect("`check_struct_path` returned non-ADT type");

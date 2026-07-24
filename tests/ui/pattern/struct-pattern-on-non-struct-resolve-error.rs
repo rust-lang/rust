@@ -3,7 +3,6 @@
 fn main() {
     if let <Vec<()> as Iterator>::Item { .. } = 1 {
         //~^ ERROR E0658
-        //~| ERROR E0071
         //~| ERROR E0277
         x //~ ERROR E0425
     }

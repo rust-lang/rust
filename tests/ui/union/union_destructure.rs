@@ -31,11 +31,10 @@ fn main() {
     };
 
     let u = Foo { bar: 9 };
-    unsafe {
-        match u {
-            Foo { baz: Pie { .. } } => {}
-        };
-    }
+    match u {
+        Foo { baz: Pie { .. } } => {}
+    };
+
     let u = Foo { bar: 10 };
     unsafe {
         match u {
