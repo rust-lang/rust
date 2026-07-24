@@ -1478,6 +1478,7 @@ fn check_matcher_core<'tt>(
             | TokenTree::MetaVarExpr(..) => {
                 if let TokenTree::MetaVarDecl { kind: NonterminalKind::Guard, .. } = token
                     && !features.macro_guard_matcher()
+                    && is_defined_in_current_crate(node_id)
                 {
                     feature_err(
                         sess,

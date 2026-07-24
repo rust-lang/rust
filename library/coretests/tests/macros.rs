@@ -47,6 +47,19 @@ fn matches_leading_pipe() {
 }
 
 #[test]
+fn matches_if_let_guard() {
+    assert!(matches!(Some(Some(1)), Some(x) if let Some(1) = x));
+    assert!(matches!(Some(Some(Some(1))), Some(x) if let Some(y) = x && let Some(1) = y));
+    assert!(!matches!(Some(Some(Some(1))), Some(x) if let Some(y) = x && let Some(2) = y));
+
+    assert_matches!(Some(Some(1)), Some(x) if let Some(1) = x);
+    assert_matches!(Some(Some(Some(1))), Some(x) if let Some(y) = x && let Some(1) = y);
+
+    debug_assert_matches!(Some(Some(1)), Some(x) if let Some(1) = x);
+    debug_assert_matches!(Some(Some(Some(1))), Some(x) if let Some(y) = x && let Some(1) = y);
+}
+
+#[test]
 fn cfg_select_basic() {
     cfg_select! {
         target_pointer_width = "64" => { fn f0_() -> bool { true }}
