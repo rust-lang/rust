@@ -79,7 +79,7 @@ pub type FxIndexMap<K, V> =
 #[macro_export]
 macro_rules! impl_intern_key {
     ($id:ident, $loc:ident) => {
-        #[salsa_macros::interned(no_lifetime, revisions = usize::MAX)]
+        #[salsa::interned(no_lifetime, revisions = usize::MAX)]
         #[derive(PartialOrd, Ord)]
         pub struct $id {
             #[returns(ref)]
@@ -246,24 +246,24 @@ pub struct LocalRoots {
     pub roots: FxHashSet<SourceRootId>,
 }
 
-#[salsa_macros::input(debug)]
+#[salsa::input(debug)]
 pub struct FileText {
     #[returns(ref)]
     pub text: Arc<str>,
     pub file_id: vfs::FileId,
 }
 
-#[salsa_macros::input(debug)]
+#[salsa::input(debug)]
 pub struct FileSourceRootInput {
     pub source_root_id: SourceRootId,
 }
 
-#[salsa_macros::input(debug)]
+#[salsa::input(debug)]
 pub struct SourceRootInput {
     pub source_root: Arc<SourceRoot>,
 }
 
-#[salsa_macros::db]
+#[salsa::db]
 pub trait SourceDatabase: salsa::Database + std::fmt::Debug {
     /// Text of the file.
     fn file_text(&self, file_id: vfs::FileId) -> FileText;

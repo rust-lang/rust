@@ -346,7 +346,7 @@ fn hir_database_is_dyn_compatible() {
     fn _assert_dyn_compatible(_: &dyn HirDatabase) {}
 }
 
-#[salsa_macros::interned(debug, revisions = usize::MAX)]
+#[salsa::interned(debug, revisions = usize::MAX)]
 #[derive(PartialOrd, Ord)]
 pub struct InternedOpaqueTyId {
     pub loc: ImplTraitId,
@@ -359,7 +359,7 @@ pub struct InternedClosure<'db> {
     pub kind: ClosureKind,
 }
 
-#[salsa_macros::interned(constructor = new_impl, debug, revisions = usize::MAX)]
+#[salsa::interned(constructor = new_impl, debug, revisions = usize::MAX)]
 #[derive(PartialOrd, Ord)]
 pub struct InternedClosureId<'db> {
     pub loc: InternedClosure<'db>,
@@ -387,7 +387,7 @@ impl<'db> InternedClosureId<'db> {
     }
 }
 
-#[salsa_macros::interned(constructor = new_impl, debug, revisions = usize::MAX)]
+#[salsa::interned(constructor = new_impl, debug, revisions = usize::MAX)]
 #[derive(PartialOrd, Ord)]
 pub struct InternedCoroutineId<'db> {
     pub loc: InternedClosure<'db>,
@@ -416,7 +416,7 @@ impl<'db> InternedCoroutineId<'db> {
     }
 }
 
-#[salsa_macros::interned(constructor = new_impl, debug, revisions = usize::MAX)]
+#[salsa::interned(constructor = new_impl, debug, revisions = usize::MAX)]
 #[derive(PartialOrd, Ord)]
 pub struct InternedCoroutineClosureId<'db> {
     pub loc: InternedClosure<'db>,
@@ -460,7 +460,7 @@ pub struct AnonConstLoc {
     pub(crate) allow_using_generic_params: bool,
 }
 
-#[salsa_macros::interned(debug, revisions = usize::MAX, constructor = new_)]
+#[salsa::interned(debug, revisions = usize::MAX, constructor = new_)]
 #[derive(PartialOrd, Ord)]
 pub struct AnonConstId {
     #[returns(ref)]
@@ -530,7 +530,7 @@ impl<'db> AnonConstId<'db> {
 
 /// A constant, which might appears as a const item, an anonymous const block in expressions
 /// or patterns, or as a constant in types with const generics.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa_macros::Supertype)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Supertype)]
 pub enum GeneralConstId<'db> {
     ConstId(ConstId),
     StaticId(StaticId),

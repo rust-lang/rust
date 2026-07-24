@@ -30,7 +30,6 @@ typed-arena = "2.0.2"
 indexmap.workspace = true
 rustc_apfloat = "0.2.3"
 salsa.workspace = true
-salsa-macros.workspace = true
 petgraph.workspace = true
 bitflags.workspace = true
 

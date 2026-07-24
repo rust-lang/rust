@@ -1621,7 +1621,7 @@ pub enum TyDefId {
 }
 impl_from!(BuiltinType, AdtId(StructId, EnumId, UnionId), TypeAliasId for TyDefId);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa_macros::Supertype)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Supertype)]
 pub enum ValueTyDefId {
     FunctionId(FunctionId),
     StructId(StructId),
@@ -1681,7 +1681,7 @@ pub(crate) fn type_for_const<'db>(
 }
 
 /// Build the declared type of a const.
-#[salsa_macros::tracked(returns(ref))]
+#[salsa::tracked(returns(ref))]
 pub(crate) fn type_for_const_with_diagnostics<'db>(
     db: &'db dyn HirDatabase,
     def: ConstId,
@@ -1713,7 +1713,7 @@ pub(crate) fn type_for_static<'db>(
 }
 
 /// Build the declared type of a static.
-#[salsa_macros::tracked(returns(ref))]
+#[salsa::tracked(returns(ref))]
 pub(crate) fn type_for_static_with_diagnostics<'db>(
     db: &'db dyn HirDatabase,
     def: StaticId,
@@ -2736,7 +2736,7 @@ pub(crate) fn generic_defaults(db: &dyn HirDatabase, def: GenericDefId) -> Gener
 /// Resolve the default type params from generics.
 ///
 /// Diagnostics are only returned for this `GenericDefId` (returned defaults include parents).
-#[salsa_macros::tracked(returns(ref), cycle_result = generic_defaults_with_diagnostics_cycle_result)]
+#[salsa::tracked(returns(ref), cycle_result = generic_defaults_with_diagnostics_cycle_result)]
 pub(crate) fn generic_defaults_with_diagnostics<'db>(
     db: &'db dyn HirDatabase,
     def: GenericDefId,
