@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use rustc_ast::token::{self, Token};
 use rustc_ast::tokenstream::TokenStream;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, DiagMessage, pluralize};
 use rustc_hir::attrs::diagnostic::{CustomDiagnostic, Directive, FormatArgs};
 use rustc_macros::Subdiagnostic;
@@ -155,16 +155,16 @@ struct CollectTrackerAndEmitter<'dcx, 'matcher> {
     // FIXME: Factor out a per-arm `Tracker` so that the `Option` is unnecessary.
     current: Option<(WhichMatcher, &'matcher [MatcherLoc])>,
 
-    /// Matches of [`MatcherLoc`]s that successfully consumed input from the parser.
+    /// Matches of [`MatcherLoc`]s.
     ///
-    /// This accumulates all calls to [`Tracker::matched_one()`]. It is used to identify all
-    /// competing matches for ambiguity errors.
-    matches: FxHashSet<SuccessfulMatch>,
+    /// This accumulates all calls to [`Tracker::trying_match()`] and [`Tracker::matched_one()`]. It
+    /// is used to identify all competing matches for ambiguity errors, and relevant match attempts
+    /// for failures.
+    matches: FxHashMap<Match, MatchResult>,
 
     /// Tokens seen during parsing.
     tokens: FxHashMap<u32, Token>,
 
-    remaining_matcher: Option<&'matcher MatcherLoc>,
     /// Which arm's failure should we report? (the one furthest along)
     best_failure: Option<BestFailure>,
     root_span: Span,
@@ -172,7 +172,7 @@ struct CollectTrackerAndEmitter<'dcx, 'matcher> {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-struct SuccessfulMatch {
+struct Match {
     /// The position in the parser.
     ///
     /// As per [`Parser::approx_token_stream_pos()`].
@@ -180,6 +180,12 @@ struct SuccessfulMatch {
 
     /// The index of the [`MatcherLoc`].
     loc_index: u32,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum MatchResult {
+    Success,
+    Failure,
 }
 
 struct BestFailure {
@@ -213,23 +219,21 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
     }
 
     fn trying_match(&mut self, input_pos: u32, token: &Token, loc_index: usize) {
-        let Some((_, matcher)) = self.current else {
-            bug!("`Self::prepare()` was not called to initialize context");
-        };
-        let matcher = &matcher[loc_index];
-
         let old_token = self.tokens.insert(input_pos, *token);
         debug_assert!(old_token.is_none_or(|t| t == *token));
 
-        if self.remaining_matcher.is_none() || *matcher != MatcherLoc::Eof {
-            self.remaining_matcher = Some(matcher);
-        }
+        // Insert failure for now, will be updated in `matched_one()`.
+        let loc_index: u32 = loc_index.try_into().unwrap();
+        let m = Match { input_pos, loc_index };
+        self.matches.entry(m).or_insert(MatchResult::Failure);
     }
 
     fn matched_one(&mut self, input_pos: u32, loc_index: usize) {
         let loc_index: u32 = loc_index.try_into().unwrap();
-        let m = SuccessfulMatch { input_pos, loc_index };
-        self.matches.insert(m);
+        let m = Match { input_pos, loc_index };
+        let match_result =
+            self.matches.get_mut(&m).unwrap_or_else(|| bug!("no corresponding `trying_match()`"));
+        *match_result = MatchResult::Success;
     }
 
     fn after_arm(&mut self, result: &NamedParseResult) {
@@ -261,7 +265,7 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
     }
 
     fn failure(&mut self, parser: &Parser<'_>) {
-        let Some((which_matcher, _)) = self.current else {
+        let Some((which_matcher, matcher)) = self.current else {
             bug!("`Self::prepare()` was not called to initialize context");
         };
 
@@ -284,15 +288,32 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
             .as_ref()
             .is_none_or(|failure| failure.is_better_position(which_matcher, approx_position))
         {
+            // Use the furthest-along non-EOF matcher. If none exists, use an EOF matcher.
+            #[expect(rustc::potential_query_instability, reason = "finding a unique maximum value")]
+            let (&Match { input_pos, loc_index }, &result) = self
+                .matches
+                .iter()
+                .max_by_key(|&(m, _res)| {
+                    // sort EOFs before others to deprioritize them
+                    let eof = match matcher[m.loc_index as usize] {
+                        MatcherLoc::Eof => 0,
+                        _ => 1,
+                    };
+                    (eof, m)
+                })
+                .unwrap_or_else(|| bug!("failure without a `trying_match()` call"));
+            // NOTE: `input_pos` might differ from `approx_position` (it might be a little older,
+            // if there were no non-EOF candidates at the right position), and it might have been
+            // a successful match for the same reason.
+            let _ = (input_pos, result);
+            let matcher = matcher[loc_index as usize].clone();
+
             self.best_failure = Some(BestFailure {
                 token,
                 matcher: which_matcher,
                 position: approx_position,
                 msg,
-                remaining_matcher: self
-                    .remaining_matcher
-                    .expect("must have collected matcher already")
-                    .clone(),
+                remaining_matcher: matcher,
             })
         }
     }
@@ -306,7 +327,11 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
             rustc::potential_query_instability,
             reason = "sorting the results deterministically afterwards"
         )]
-        let mut matches = self.matches.iter().collect::<Vec<_>>();
+        let mut matches = self
+            .matches
+            .iter()
+            .filter_map(|(m, result)| matches!(result, MatchResult::Success).then_some(m))
+            .collect::<Vec<_>>();
         // Sort by input position, then `MatcherLoc` index.
         matches.sort_unstable();
 
@@ -322,10 +347,8 @@ impl<'dcx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'dcx, 'match
             .map(|[a, _]| a.input_pos)
             .unwrap_or_else(|| bug!("no ambiguity detected"));
 
-        let (bb_locs, next_locs) = matches
-            .iter()
-            .filter(|m| m.input_pos == input_pos)
-            .partition::<Vec<&SuccessfulMatch>, _>(|m| {
+        let (bb_locs, next_locs) =
+            matches.iter().filter(|m| m.input_pos == input_pos).partition::<Vec<&Match>, _>(|m| {
                 let loc = &matcher[m.loc_index as usize];
                 matches!(loc, MatcherLoc::MetaVarDecl { .. })
             });
@@ -382,9 +405,8 @@ impl<'dcx> CollectTrackerAndEmitter<'dcx, '_> {
             macro_name,
             dcx,
             current: None,
-            matches: FxHashSet::default(),
+            matches: FxHashMap::default(),
             tokens: FxHashMap::default(),
-            remaining_matcher: None,
             best_failure: None,
             root_span,
             result: None,
