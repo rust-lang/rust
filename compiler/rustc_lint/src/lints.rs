@@ -3026,3 +3026,21 @@ pub(crate) enum Ptr2IntSuggestion<'tcx> {
         cast_span: Span,
     },
 }
+
+pub(crate) enum RestPatternUsedOnStructWithAllPrivateFields {
+    Local(Span),
+    Foreign(Symbol),
+}
+
+impl<'a> Diagnostic<'a, ()> for RestPatternUsedOnStructWithAllPrivateFields {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
+        let mut diag =
+            Diag::new(dcx, level, msg!("crater fail !! problematic pattern detected !!"));
+        match self {
+            Self::Local(span) => diag.span_note(span, msg!("the type is defined here")),
+            Self::Foreign(symbol) => diag.note(format!("the type is defined in crate `{symbol}`")),
+        };
+
+        diag
+    }
+}

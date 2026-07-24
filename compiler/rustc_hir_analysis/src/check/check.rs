@@ -1303,7 +1303,7 @@ fn check_impl_items_against_trait<'tcx>(
         let ty_impl_item = tcx.associated_item(impl_item);
         let ty_trait_item = match ty_impl_item.expect_trait_impl() {
             Ok(trait_item_id) => tcx.associated_item(trait_item_id),
-            Err(ErrorGuaranteed { .. }) => continue,
+            Err(_) => continue,
         };
 
         let res = tcx.ensure_result().compare_impl_item(impl_item.expect_local());

@@ -33,7 +33,7 @@ use rustc_middle::bug;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
-    self, AssocContainer, Ty, TyCtxt, TypeVisitableExt, Unnormalized, Upcast, VariantDef,
+    self, AdtFlags, AssocContainer, Ty, TyCtxt, TypeVisitableExt, Unnormalized, Upcast, VariantDef,
 };
 // hardwired lints from rustc_lint_defs
 pub use rustc_session::lint::builtin::*;
@@ -59,6 +59,7 @@ use crate::lints::{
     BuiltinUngatedAsyncFnTrackCaller, BuiltinUnpermittedTypeInit, BuiltinUnpermittedTypeInitSub,
     BuiltinUnreachablePub, BuiltinUnsafe, BuiltinUnstableFeatures, BuiltinUnusedDocComment,
     BuiltinUnusedDocCommentSub, BuiltinWhileTrue, EqInternalMethodImplemented, InvalidAsmLabel,
+    RestPatternUsedOnStructWithAllPrivateFields,
 };
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 
@@ -3190,6 +3191,89 @@ impl<'tcx> LateLintPass<'tcx> for InternalEqTraitMethodImpls {
                 item.span,
                 EqInternalMethodImplemented,
             );
+        }
+    }
+}
+
+declare_lint! {
+    /// WIP for crater
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// mod inner {
+    ///     pub struct Foo {
+    ///         cant_see_me: i32,
+    ///     }
+    /// }
+    ///
+    /// use inner::Foo;
+    ///
+    /// fn test(foo: Foo) {
+    ///     match foo {
+    ///         Foo { .. } => (),
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Recommended fix
+    ///
+    /// WIP
+    ///
+    /// ### Explanation
+    ///
+    /// WIP
+    pub REST_PATTERN_MATCH_ON_STRUCT_WITH_ALL_PRIVATE_FIELDS,
+    Deny,
+    "WIP for CRATER",
+}
+
+declare_lint_pass!(RestPatternMatchOnStructWithAllPrivateFields => [REST_PATTERN_MATCH_ON_STRUCT_WITH_ALL_PRIVATE_FIELDS]);
+
+impl<'tcx> LateLintPass<'tcx> for RestPatternMatchOnStructWithAllPrivateFields {
+    fn check_pat(&mut self, cx: &LateContext<'tcx>, pat: &'tcx rustc_hir::Pat<'tcx>) {
+        let tcx = cx.tcx;
+        if let PatKind::Struct(ref qpath, [], Some(_)) = pat.kind
+            && cx.typeck_results().tainted_by_errors.is_none()
+        {
+            let adt_def = cx
+                .typeck_results()
+                .pat_ty(pat)
+                .ty_adt_def()
+                .expect("struct pattern type is not an ADT");
+
+            if adt_def.flags().contains(AdtFlags::IS_ENUM) {
+                return;
+            }
+
+            let variant = adt_def.variant_of_res(cx.qpath_res(qpath, pat.hir_id));
+
+            let all_private = if variant.fields.is_empty() {
+                variant.field_list_has_applicable_non_exhaustive()
+            } else {
+                variant.fields.iter().all(|field| {
+                    !field.vis.is_accessible_from(tcx.parent_module(pat.hir_id).to_def_id(), tcx)
+                })
+            };
+
+            if all_private {
+                let def_did = adt_def.did();
+                let decorator = if let Some(def_span) = tcx.hir_span_if_local(def_did) {
+                    RestPatternUsedOnStructWithAllPrivateFields::Local(def_span)
+                } else {
+                    RestPatternUsedOnStructWithAllPrivateFields::Foreign(
+                        tcx.crate_name(def_did.krate),
+                    )
+                };
+
+                cx.emit_span_lint(
+                    REST_PATTERN_MATCH_ON_STRUCT_WITH_ALL_PRIVATE_FIELDS,
+                    pat.span,
+                    decorator,
+                );
+            }
         }
     }
 }
