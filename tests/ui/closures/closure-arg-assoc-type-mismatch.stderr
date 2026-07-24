@@ -1,0 +1,72 @@
+error[E0271]: type mismatch resolving `<S as MyTrait>::Item == ()`
+  --> $DIR/closure-arg-assoc-type-mismatch.rs:24:24
+   |
+LL |     needs_unit_item(|| S);
+   |     --------------- -- ^ type mismatch resolving `<S as MyTrait>::Item == ()`
+   |     |               |
+   |     |               this closure
+   |     required by a bound introduced by this call
+   |
+note: expected this to be `()`
+  --> $DIR/closure-arg-assoc-type-mismatch.rs:13:17
+   |
+LL |     type Item = u32;
+   |                 ^^^
+note: required by a bound in `needs_unit_item`
+  --> $DIR/closure-arg-assoc-type-mismatch.rs:19:24
+   |
+LL | fn needs_unit_item<F: Fn() -> S>(_f: F)
+   |    --------------- required by a bound in this function
+LL | where
+LL |     F::Output: MyTrait<Item = ()>,
+   |                        ^^^^^^^^^ required by this bound in `needs_unit_item`
+
+error[E0271]: type mismatch resolving `<S as MyTrait>::Item == ()`
+  --> $DIR/closure-arg-assoc-type-mismatch.rs:26:26
+   |
+LL |     needs_unit_item(|| { S });
+   |     --------------- --   ^ type mismatch resolving `<S as MyTrait>::Item == ()`
+   |     |               |
+   |     |               this closure
+   |     required by a bound introduced by this call
+   |
+note: expected this to be `()`
+  --> $DIR/closure-arg-assoc-type-mismatch.rs:13:17
+   |
+LL |     type Item = u32;
+   |                 ^^^
+note: required by a bound in `needs_unit_item`
+  --> $DIR/closure-arg-assoc-type-mismatch.rs:19:24
+   |
+LL | fn needs_unit_item<F: Fn() -> S>(_f: F)
+   |    --------------- required by a bound in this function
+LL | where
+LL |     F::Output: MyTrait<Item = ()>,
+   |                        ^^^^^^^^^ required by this bound in `needs_unit_item`
+
+error[E0271]: type mismatch resolving `<S as MyTrait>::Item == ()`
+  --> $DIR/closure-arg-assoc-type-mismatch.rs:29:37
+   |
+LL |     needs_unit_item(|| { let _ = 0; x });
+   |     --------------- --              ^ type mismatch resolving `<S as MyTrait>::Item == ()`
+   |     |               |
+   |     |               this closure
+   |     required by a bound introduced by this call
+   |
+note: expected this to be `()`
+  --> $DIR/closure-arg-assoc-type-mismatch.rs:13:17
+   |
+LL |     type Item = u32;
+   |                 ^^^
+note: required by a bound in `needs_unit_item`
+  --> $DIR/closure-arg-assoc-type-mismatch.rs:19:24
+   |
+LL | fn needs_unit_item<F: Fn() -> S>(_f: F)
+   |    --------------- required by a bound in this function
+LL | where
+LL |     F::Output: MyTrait<Item = ()>,
+   |                        ^^^^^^^^^ required by this bound in `needs_unit_item`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0271`.
