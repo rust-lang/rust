@@ -505,6 +505,45 @@ impl<'tcx> PrirodaContext<'tcx> {
         interp_ok(format!("[{}]", rendered.join(" ")))
     }
 
+    /// Render an evaluated operand using Rust-source-shaped containers with raw leaves.
+    ///
+    /// The operand is produced from live interpreter state, usually via `local_to_op`
+    /// for a whole MIR local or `eval_place_to_op` for a projected debug-info place.
+    ///
+    /// This intentionally does not call user `Debug` / `Display`, and it does not
+    /// try to make every scalar leaf pretty yet. Unsupported cases and leaf values
+    /// fall back to `render_op`, preserving the old raw byte/provenance renderer.
+    ///
+    /// FIXME: teach the leaf renderer about simple Rust scalars (`bool`, integers,
+    /// chars, raw pointers/references) once the source-shaped container output is
+    /// stable enough to stop depending on byte dumps for every field.
+    ///
+    /// FIXME: decide how much dereferencing belongs in this renderer. References
+    /// currently stay as raw pointer leaves; following them may belong in the
+    /// existing `follow` command instead of automatic local rendering.
+    fn render_source_shaped_op(&self, op: OpTy<'tcx>) -> String {
+        self.render_source_shaped_op_inner(op, 0)
+    }
+
+    /// Recursive worker for `render_source_shaped_op`.
+    ///
+    /// The depth limit keeps cyclic/reference-heavy values from making debugger
+    /// output explode once more container kinds are added. At the limit, the raw
+    /// renderer remains the ground truth.
+    ///
+    /// FIXME: replace this fixed recursion limit with a value-size/output-budget
+    /// policy so large acyclic values and deeply nested values degrade more
+    /// predictably.
+    fn render_source_shaped_op_inner(&self, op: OpTy<'tcx>, depth: usize) -> String {
+        const MAX_SOURCE_SHAPE_DEPTH: usize = 8;
+
+        if depth >= MAX_SOURCE_SHAPE_DEPTH {
+            return self.render_op(op);
+        }
+
+        self.render_op(op)
+    }
+
     /// Render an evaluated operand using the same raw representation for
     /// whole locals and projected MIR places.
     fn render_op(&self, op: OpTy<'tcx>) -> String {
@@ -613,7 +652,7 @@ impl<'tcx> PrirodaContext<'tcx> {
                     .ecx
                     .local_to_op(local, None)
                     .expect("this error can only occur in CTFE on generic code");
-                local_desc.value = self.render_op(op);
+                local_desc.value = self.render_source_shaped_op(op);
             }
         };
 
@@ -682,7 +721,7 @@ impl<'tcx> PrirodaContext<'tcx> {
                     let value = self
                         .ecx
                         .eval_place_to_op(*place, None)
-                        .map(|op| self.render_op(op))
+                        .map(|op| self.render_source_shaped_op(op))
                         .unwrap_or_else(|err| {
                             format!("<error: {}>", interpret::format_interp_error(err))
                         });
