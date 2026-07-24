@@ -5,7 +5,7 @@
 use std::hash::{BuildHasher, Hash, Hasher};
 use std::{fmt, str};
 
-use rustc_arena::DroplessArena;
+use rustc_arena::AlignedDroplessArena;
 use rustc_data_structures::fx::FxBuildHasher;
 use rustc_data_structures::hash_table::{Entry, HashTable};
 use rustc_data_structures::stable_hash::{StableCompare, StableHash, StableHashCtxt, StableHasher};
@@ -2802,7 +2802,7 @@ pub(crate) struct Interner(Lock<InternerInner>);
 // `Interner` on the same thread, which makes it easy to mix up `Symbol`s
 // between `Interner`s.
 struct InternerInner {
-    arena: DroplessArena,
+    arena: AlignedDroplessArena<1>,
     indices: HashTable<(&'static [u8], u32)>,
     byte_strs: Vec<&'static [u8]>,
 }

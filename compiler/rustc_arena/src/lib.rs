@@ -598,6 +598,360 @@ impl DroplessArena {
     }
 }
 
+/// A variant of `DroplessArena` that is specialized for a particular minimum
+/// alignment.
+///
+/// The arena keeps `end` aligned to `ALIGN` instead of `DROPLESS_ALIGNMENT`,
+/// which lets the alignment logic for allocations with `align <= ALIGN` be
+/// optimized away by the compiler. It is only correct to use this type when the
+/// alignment required by every allocation never exceeds `ALIGN`.
+pub struct AlignedDroplessArena<const ALIGN: usize> {
+    /// A pointer to the start of the free space.
+    start: Cell<*mut u8>,
+
+    /// A pointer to the end of free space. Allocations proceed downwards from
+    /// here. Kept aligned to `ALIGN`.
+    end: Cell<*mut u8>,
+
+    /// A vector of arena chunks.
+    chunks: RefCell<Vec<ArenaChunk>>,
+}
+
+unsafe impl<const ALIGN: usize> Send for AlignedDroplessArena<ALIGN> {}
+
+impl<const ALIGN: usize> Default for AlignedDroplessArena<ALIGN> {
+    #[inline]
+    fn default() -> AlignedDroplessArena<ALIGN> {
+        // `ALIGN` must be a non-zero power of two so that `align_up`/`align_down`
+        // are well-defined.
+        debug_assert!(ALIGN.is_power_of_two() && ALIGN != 0);
+        AlignedDroplessArena {
+            start: Cell::new(ptr::null_mut()),
+            end: Cell::new(ptr::null_mut()),
+            chunks: Default::default(),
+        }
+    }
+}
+
+impl<const ALIGN: usize> AlignedDroplessArena<ALIGN> {
+    #[inline(never)]
+    #[cold]
+    fn grow(&self, layout: Layout) {
+        // Add some padding so we can align `self.end` while still fitting in a
+        // `layout` allocation.
+        let additional = layout.size() + cmp::max(ALIGN, layout.align()) - 1;
+
+        unsafe {
+            let mut chunks = self.chunks.borrow_mut();
+            let mut new_cap;
+            if let Some(last_chunk) = chunks.last_mut() {
+                new_cap = last_chunk.storage.len().min(HUGE_PAGE / 2);
+                new_cap *= 2;
+            } else {
+                new_cap = PAGE;
+            }
+            new_cap = cmp::max(additional, new_cap);
+
+            let chunk = chunks.push_mut(ArenaChunk::new(align_up(new_cap, PAGE)));
+            self.start.set(chunk.start());
+
+            // Align the end to ALIGN.
+            let end = align_down(chunk.end().addr(), ALIGN);
+
+            debug_assert!(chunk.start().addr() <= end);
+
+            self.end.set(chunk.end().with_addr(end));
+        }
+    }
+
+    #[inline]
+    fn alloc_raw_aligned(&self, layout: Layout) -> *mut u8 {
+        assert!(layout.align() == ALIGN);
+        assert!(layout.size() != 0);
+        debug_assert!(layout.size().is_multiple_of(ALIGN));
+
+        let bytes = layout.size();
+
+        loop {
+            let start = self.start.get().addr();
+            let old_end = self.end.get();
+            let end = old_end.addr();
+
+            if let Some(sub) = end.checked_sub(bytes) {
+                let new_end = sub;
+                if start <= new_end {
+                    let new_end = old_end.with_addr(new_end);
+                    self.end.set(new_end);
+                    return new_end;
+                }
+            }
+
+            self.grow(layout);
+        }
+    }
+
+    #[inline]
+    pub fn alloc_raw(&self, layout: Layout) -> *mut u8 {
+        self.alloc_raw_aligned(layout.pad_to_align())
+    }
+
+    #[inline]
+    pub fn alloc<T>(&self, object: T) -> &mut T {
+        assert!(!mem::needs_drop::<T>());
+        assert!(size_of::<T>() != 0);
+
+        let mem = self.alloc_raw_aligned(Layout::new::<T>()) as *mut T;
+
+        unsafe {
+            ptr::write(mem, object);
+            &mut *mem
+        }
+    }
+
+    #[inline]
+    pub fn alloc_slice<T>(&self, slice: &[T]) -> &mut [T]
+    where
+        T: Copy,
+    {
+        assert!(!mem::needs_drop::<T>());
+        assert!(size_of::<T>() != 0);
+        assert!(!slice.is_empty());
+
+        let mem = self.alloc_raw_aligned(Layout::for_value::<[T]>(slice)) as *mut T;
+
+        unsafe {
+            mem.copy_from_nonoverlapping(slice.as_ptr(), slice.len());
+            slice::from_raw_parts_mut(mem, slice.len())
+        }
+    }
+
+    #[inline]
+    pub fn alloc_str(&self, string: &str) -> &str {
+        let slice = self.alloc_slice(string.as_bytes());
+
+        unsafe { std::str::from_utf8_unchecked(slice) }
+    }
+
+    #[inline]
+    pub fn alloc_from_iter<T, I: IntoIterator<Item = T>>(&self, iter: I) -> &mut [T] {
+        assert!(!mem::needs_drop::<T>());
+        assert!(size_of::<T>() != 0);
+
+        let iter = iter.into_iter();
+        let size_hint = iter.size_hint();
+
+        match size_hint {
+            (min, Some(max)) if min == max => {
+                let len = min;
+
+                if len == 0 {
+                    return &mut [];
+                }
+
+                let mem = self.alloc_raw_aligned(Layout::array::<T>(len).unwrap()) as *mut T;
+                unsafe { self.write_from_iter(iter, len, mem) }
+            }
+            (_, _) => outline(move || self.try_alloc_from_iter(iter.map(Ok::<T, !>)).into_ok()),
+        }
+    }
+
+    #[inline]
+    pub fn try_alloc_from_iter<T, E>(
+        &self,
+        iter: impl IntoIterator<Item = Result<T, E>>,
+    ) -> Result<&mut [T], E> {
+        assert!(!mem::needs_drop::<T>());
+        assert!(size_of::<T>() != 0);
+
+        let vec: Result<SmallVec<[T; 8]>, E> = iter.into_iter().collect();
+        let mut vec = vec?;
+        if vec.is_empty() {
+            return Ok(&mut []);
+        }
+        let len = vec.len();
+        Ok(unsafe {
+            let start_ptr =
+                self.alloc_raw_aligned(Layout::for_value::<[T]>(vec.as_slice())) as *mut T;
+            vec.as_ptr().copy_to_nonoverlapping(start_ptr, len);
+            vec.set_len(0);
+            slice::from_raw_parts_mut(start_ptr, len)
+        })
+    }
+
+    #[inline]
+    unsafe fn write_from_iter<T, I: Iterator<Item = T>>(
+        &self,
+        mut iter: I,
+        len: usize,
+        mem: *mut T,
+    ) -> &mut [T] {
+        let mut i = 0;
+        loop {
+            unsafe {
+                match iter.next() {
+                    Some(value) if i < len => mem.add(i).write(value),
+                    Some(_) | None => {
+                        return slice::from_raw_parts_mut(mem, i);
+                    }
+                }
+            }
+            i += 1;
+        }
+    }
+}
+
+/// A dropless arena that dispatches to an alignment-specialized arena for each
+/// power-of-two alignment from `1` to `usize`'s alignment, falling back to the
+/// plain `DroplessArena` for any higher alignment.
+///
+/// Each specialized arena keeps its `end` pointer aligned to its own alignment,
+/// allowing the alignment arithmetic in the hot allocation path to be optimized
+/// away for the common small alignments (which include every alignment up to
+/// `usize`'s alignment).
+pub struct AlignedDroplessArenas {
+    pub a1: AlignedDroplessArena<1>,
+    pub a2: AlignedDroplessArena<2>,
+    pub a4: AlignedDroplessArena<4>,
+    #[cfg(target_pointer_width = "64")]
+    pub a8: AlignedDroplessArena<8>,
+    pub fallback: DroplessArena,
+}
+
+impl Default for AlignedDroplessArenas {
+    #[inline]
+    fn default() -> AlignedDroplessArenas {
+        AlignedDroplessArenas {
+            a1: Default::default(),
+            a2: Default::default(),
+            a4: Default::default(),
+            #[cfg(target_pointer_width = "64")]
+            a8: Default::default(),
+            fallback: Default::default(),
+        }
+    }
+}
+
+impl AlignedDroplessArenas {
+    /// Allocates raw storage for the given layout, dispatching to the
+    /// alignment-specialized arena that matches `layout.align()`, or to the
+    /// `DroplessArena` fallback when the alignment exceeds `usize`'s alignment.
+    #[inline]
+    pub fn alloc_raw(&self, layout: Layout) -> *mut u8 {
+        match layout.align() {
+            0 => unreachable!("alignment must be non-zero"),
+            1 => self.a1.alloc_raw(layout),
+            2 => self.a2.alloc_raw(layout),
+            4 => self.a4.alloc_raw(layout),
+            #[cfg(target_pointer_width = "64")]
+            8 => self.a8.alloc_raw(layout),
+            _ => self.fallback.alloc_raw(layout),
+        }
+    }
+
+    #[inline]
+    pub fn alloc<T>(&self, object: T) -> &mut T {
+        assert!(!mem::needs_drop::<T>());
+        assert!(size_of::<T>() != 0);
+
+        let mem = self.alloc_raw(Layout::new::<T>()) as *mut T;
+
+        unsafe {
+            ptr::write(mem, object);
+            &mut *mem
+        }
+    }
+
+    #[inline]
+    pub fn alloc_slice<T>(&self, slice: &[T]) -> &mut [T]
+    where
+        T: Copy,
+    {
+        assert!(!mem::needs_drop::<T>());
+        assert!(size_of::<T>() != 0);
+        assert!(!slice.is_empty());
+
+        let mem = self.alloc_raw(Layout::for_value::<[T]>(slice)) as *mut T;
+
+        unsafe {
+            mem.copy_from_nonoverlapping(slice.as_ptr(), slice.len());
+            slice::from_raw_parts_mut(mem, slice.len())
+        }
+    }
+
+    #[inline]
+    pub fn alloc_str(&self, string: &str) -> &str {
+        let slice = self.alloc_slice(string.as_bytes());
+
+        unsafe { std::str::from_utf8_unchecked(slice) }
+    }
+
+    #[inline]
+    pub fn alloc_from_iter<T, I: IntoIterator<Item = T>>(&self, iter: I) -> &mut [T] {
+        assert!(!mem::needs_drop::<T>());
+        assert!(size_of::<T>() != 0);
+
+        let iter = iter.into_iter();
+        let size_hint = iter.size_hint();
+
+        match size_hint {
+            (min, Some(max)) if min == max => {
+                let len = min;
+
+                if len == 0 {
+                    return &mut [];
+                }
+
+                let mem = self.alloc_raw(Layout::array::<T>(len).unwrap()) as *mut T;
+                unsafe { self.write_from_iter(iter, len, mem) }
+            }
+            (_, _) => outline(move || self.try_alloc_from_iter(iter.map(Ok::<T, !>)).into_ok()),
+        }
+    }
+
+    #[inline]
+    unsafe fn write_from_iter<T, I: Iterator<Item = T>>(
+        &self,
+        mut iter: I,
+        len: usize,
+        mem: *mut T,
+    ) -> &mut [T] {
+        let mut i = 0;
+        loop {
+            unsafe {
+                match iter.next() {
+                    Some(value) if i < len => mem.add(i).write(value),
+                    Some(_) | None => {
+                        return slice::from_raw_parts_mut(mem, i);
+                    }
+                }
+            }
+            i += 1;
+        }
+    }
+
+    #[inline]
+    pub fn try_alloc_from_iter<T, E>(
+        &self,
+        iter: impl IntoIterator<Item = Result<T, E>>,
+    ) -> Result<&mut [T], E> {
+        assert!(!mem::needs_drop::<T>());
+        assert!(size_of::<T>() != 0);
+
+        let vec: Result<SmallVec<[T; 8]>, E> = iter.into_iter().collect();
+        let mut vec = vec?;
+        if vec.is_empty() {
+            return Ok(&mut []);
+        }
+        let len = vec.len();
+        Ok(unsafe {
+            let start_ptr = self.alloc_raw(Layout::for_value::<[T]>(vec.as_slice())) as *mut T;
+            vec.as_ptr().copy_to_nonoverlapping(start_ptr, len);
+            vec.set_len(0);
+            slice::from_raw_parts_mut(start_ptr, len)
+        })
+    }
+}
+
 /// Declare an `Arena` containing one dropless arena and many typed arenas (the
 /// types of the typed arenas are specified by the arguments).
 ///
@@ -615,7 +969,7 @@ impl DroplessArena {
 pub macro declare_arena([$($a:tt $name:ident: $ty:ty,)*]) {
     #[derive(Default)]
     pub struct Arena<'tcx> {
-        pub dropless: $crate::DroplessArena,
+        pub dropless: $crate::AlignedDroplessArenas,
         $($name: $crate::TypedArena<$ty>,)*
     }
 

@@ -91,6 +91,7 @@ impl_dyn_send!(
     [crate::sync::RwLock<T> where T: DynSend]
     [crate::tagged_ptr::TaggedRef<'a, P, T> where 'a, P: Sync, T: Send + crate::tagged_ptr::Tag]
     [rustc_arena::TypedArena<T> where T: DynSend]
+    [rustc_arena::AlignedDroplessArena<ALIGN> where const ALIGN: usize]
     [hashbrown::HashTable<T> where T: DynSend]
     [indexmap::IndexSet<V, S> where V: DynSend, S: DynSend]
     [indexmap::IndexMap<K, V, S> where K: DynSend, V: DynSend, S: DynSend]
