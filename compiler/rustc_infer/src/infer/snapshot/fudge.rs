@@ -1,10 +1,11 @@
 use std::fmt::Debug;
 use std::ops::Range;
 
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::{snapshot_vec as sv, unify as ut};
 use rustc_middle::ty::{
-    self, ConstVid, FloatVid, IntVid, RegionVid, Ty, TyCtxt, TyVid, TypeFoldable, TypeFolder,
-    TypeSuperFoldable, TypeVisitableExt,
+    self, ConstVid, FloatVid, InferConst, InferTy, IntVid, RegionVid, Ty, TyCtxt, TyVid,
+    TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
 };
 use tracing::instrument;
 use ut::UnifyKey;
@@ -131,7 +132,13 @@ impl<'tcx> InferCtxt<'tcx> {
         if snapshot_vars.is_empty() {
             value
         } else {
-            value.fold_with(&mut InferenceFudger { infcx: self, snapshot_vars })
+            value.fold_with(&mut InferenceFudger {
+                infcx: self,
+                snapshot_vars,
+                ty_var_map: Default::default(),
+                re_var_map: Default::default(),
+                const_var_map: Default::default(),
+            })
         }
     }
 }
@@ -175,6 +182,9 @@ impl<'tcx> SnapshotVarData<'tcx> {
 struct InferenceFudger<'a, 'tcx> {
     infcx: &'a InferCtxt<'tcx>,
     snapshot_vars: SnapshotVarData<'tcx>,
+    ty_var_map: FxHashMap<InferTy, Ty<'tcx>>,
+    re_var_map: FxHashMap<RegionVid, ty::Region<'tcx>>,
+    const_var_map: FxHashMap<InferConst, ty::Const<'tcx>>,
 }
 
 impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for InferenceFudger<'a, 'tcx> {
@@ -184,7 +194,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for InferenceFudger<'a, 'tcx> {
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
         if let &ty::Infer(infer_ty) = ty.kind() {
-            match infer_ty {
+            *self.ty_var_map.entry(infer_ty).or_insert_with(|| match infer_ty {
                 ty::TyVar(vid) => {
                     if self.snapshot_vars.type_vars.0.contains(&vid) {
                         // This variable was created during the fudging.
@@ -224,7 +234,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for InferenceFudger<'a, 'tcx> {
                 ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_) => {
                     unreachable!("unexpected fresh infcx var")
                 }
-            }
+            })
         } else if ty.has_infer() {
             ty.super_fold_with(self)
         } else {
@@ -234,13 +244,15 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for InferenceFudger<'a, 'tcx> {
 
     fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         if let ty::ReVar(vid) = r.kind() {
-            if self.snapshot_vars.region_vars.0.contains(&vid) {
-                let idx = vid.index() - self.snapshot_vars.region_vars.0.start.index();
-                let origin = self.snapshot_vars.region_vars.1[idx];
-                self.infcx.next_region_var(origin)
-            } else {
-                r
-            }
+            *self.re_var_map.entry(vid).or_insert_with(|| {
+                if self.snapshot_vars.region_vars.0.contains(&vid) {
+                    let idx = vid.index() - self.snapshot_vars.region_vars.0.start.index();
+                    let origin = self.snapshot_vars.region_vars.1[idx];
+                    self.infcx.next_region_var(origin)
+                } else {
+                    r
+                }
+            })
         } else {
             r
         }
@@ -248,7 +260,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for InferenceFudger<'a, 'tcx> {
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
         if let ty::ConstKind::Infer(infer_ct) = ct.kind() {
-            match infer_ct {
+            *self.const_var_map.entry(infer_ct).or_insert_with(|| match infer_ct {
                 ty::InferConst::Var(vid) => {
                     if self.snapshot_vars.const_vars.0.contains(&vid) {
                         let idx = vid.index() - self.snapshot_vars.const_vars.0.start.index();
@@ -261,7 +273,7 @@ impl<'a, 'tcx> TypeFolder<TyCtxt<'tcx>> for InferenceFudger<'a, 'tcx> {
                 ty::InferConst::Fresh(_) => {
                     unreachable!("unexpected fresh infcx var")
                 }
-            }
+            })
         } else if ct.has_infer() {
             ct.super_fold_with(self)
         } else {
