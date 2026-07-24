@@ -318,6 +318,8 @@ impl<'tcx> Validator<'_, 'tcx> {
                     // can only promote static accesses inside statics.
                     && let Some(hir::ConstContext::Static(..)) = self.const_kind
                     && !self.tcx.is_thread_local_static(did)
+                    // Extern statics can never be read by CTFE, even inside a static.
+                    && !self.tcx.is_foreign_item(did)
                 {
                     // Recurse.
                 } else {
