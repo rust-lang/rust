@@ -139,7 +139,7 @@ impl<'a> Parser<'a> {
                     this.parse_block().map(|block| WithTokens::new(block))
                 })?))
             }
-            NonterminalKind::Stmt => match self.parse_stmt(ForceCollect::Yes)? {
+            NonterminalKind::Stmt => match self.parse_stmt_nonterminal(ForceCollect::Yes) {
                 Some(stmt) => Ok(ParseNtResult::Stmt(Box::new(stmt))),
                 None => {
                     Err(self.dcx().create_err(UnexpectedNonterminal::Statement(self.token.span)))

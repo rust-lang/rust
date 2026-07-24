@@ -3331,12 +3331,8 @@ impl<'a> Parser<'a> {
             self.restore_snapshot(pre_pat_snapshot);
             match self.parse_stmt_without_recovery(true, ForceCollect::No, false) {
                 // Consume statements for as long as possible.
-                Ok(Some(stmt)) => {
+                Ok(stmt) => {
                     stmts.push(stmt);
-                }
-                Ok(None) => {
-                    self.restore_snapshot(start_snapshot);
-                    break;
                 }
                 // We couldn't parse either yet another statement missing it's
                 // enclosing block nor the next arm's pattern or closing brace.
