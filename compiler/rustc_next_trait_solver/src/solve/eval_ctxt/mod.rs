@@ -5,7 +5,7 @@ use std::ops::ControlFlow;
 use rustc_macros::StableHash;
 use rustc_type_ir::data_structures::{HashMap, HashSet};
 use rustc_type_ir::inherent::*;
-use rustc_type_ir::region_constraint::RegionConstraint;
+use rustc_type_ir::region_constraint::CanonicalFormRegionConstraint;
 use rustc_type_ir::relate::Relate;
 use rustc_type_ir::relate::solver_relating::RelateExt;
 use rustc_type_ir::search_graph::{CandidateHeadUsages, PathKind};
@@ -1422,7 +1422,7 @@ where
         args
     }
 
-    pub(super) fn register_solver_region_constraint(&self, c: RegionConstraint<I>) {
+    pub(super) fn register_solver_region_constraint(&self, c: CanonicalFormRegionConstraint<I>) {
         self.delegate.register_solver_region_constraint(c);
     }
 
@@ -1757,7 +1757,7 @@ where
             ExternalRegionConstraints::NextGen(if let Certainty::Yes = certainty {
                 self.delegate.get_solver_region_constraint()
             } else {
-                RegionConstraint::new_true()
+                CanonicalFormRegionConstraint::new_true()
             })
         } else {
             ExternalRegionConstraints::Old(if let Certainty::Yes = certainty {

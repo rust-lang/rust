@@ -8,7 +8,8 @@ use rustc_type_ir::outlives::{Component, push_outlives_components};
 #[cfg(not(feature = "nightly"))]
 use rustc_type_ir::region_constraint::TransitiveRelationBuilder;
 use rustc_type_ir::region_constraint::{
-    Assumptions, RegionConstraint, eagerly_handle_placeholders_in_universe, max_universe,
+    And, Assumptions, LeafRegionConstraint, Or, eagerly_handle_placeholders_in_universe,
+    max_universe,
 };
 use rustc_type_ir::{
     AliasTy, Binder, ClauseKind, InferCtxtLike, Interner, OutlivesPredicate, TypeVisitable,
@@ -125,7 +126,7 @@ where
     #[instrument(level = "debug", skip(self), ret)]
     pub(super) fn eagerly_handle_placeholders(&mut self) -> Result<Certainty, NoSolution> {
         let constraint = self.delegate.get_solver_region_constraint();
-        let constraint = rustc_type_ir::region_constraint::evaluate_solver_constraint(&constraint);
+        let constraint = rustc_type_ir::region_constraint::evaluate_solver_constraint(constraint);
 
         let smallest_universe = self.max_input_universe.index();
         let largest_universe = self.delegate.universe().index();
@@ -138,8 +139,8 @@ where
                 eagerly_handle_placeholders_in_universe(&**self.delegate, constraint, u)
             });
 
-        self.delegate.overwrite_solver_region_constraint(constraint.clone().canonical_form());
-        debug!("final constraint={:?}", constraint.clone().canonical_form());
+        debug!("final constraint={:?}", constraint);
+        self.delegate.overwrite_solver_region_constraint(constraint.clone());
 
         if constraint.is_false() {
             Err(NoSolution)
@@ -154,35 +155,28 @@ where
     /// type outlives constraints between the "components" of the type. E.g. `Foo<T, 'a>: 'b`
     /// will be turned into `T: 'b, 'a: 'b`
     #[instrument(level = "debug", skip(self), ret)]
-    pub(in crate::solve) fn destructure_type_outlives(
-        &mut self,
-        ty: I::Ty,
-        r: I::Region,
-    ) -> RegionConstraint<I> {
+    pub(in crate::solve) fn destructure_type_outlives(&mut self, ty: I::Ty, r: I::Region) -> Or<I> {
         let mut components = Default::default();
         push_outlives_components(self.cx(), ty, &mut components);
         self.destructure_components(&components, r)
     }
 
-    fn destructure_components(
-        &mut self,
-        components: &[Component<I>],
-        r: I::Region,
-    ) -> RegionConstraint<I> {
-        RegionConstraint::And(
-            components.into_iter().map(|c| self.destructure_component(c, r)).collect(),
-        )
+    fn destructure_components(&mut self, components: &[Component<I>], r: I::Region) -> Or<I> {
+        components
+            .into_iter()
+            .fold(Or::new_true(), |acc, c| Or::new_and(acc, self.destructure_component(c, r)))
     }
 
-    fn destructure_component(&mut self, c: &Component<I>, r: I::Region) -> RegionConstraint<I> {
+    fn destructure_component(&mut self, c: &Component<I>, r: I::Region) -> Or<I> {
         use Component::*;
+        use LeafRegionConstraint::*;
         match c {
-            Region(c_r) => RegionConstraint::RegionOutlives(*c_r, r),
+            Region(c_r) => Or::new([And::new([RegionOutlives(*c_r, r)])]),
             Placeholder(p) => {
-                RegionConstraint::PlaceholderTyOutlives(Ty::new_placeholder(self.cx(), *p), r)
+                Or::new([And::new([PlaceholderTyOutlives(Ty::new_placeholder(self.cx(), *p), r)])])
             }
             Alias(alias) => self.destructure_alias_outlives(*alias, r),
-            UnresolvedInferenceVariable(_) => RegionConstraint::Ambiguity,
+            UnresolvedInferenceVariable(_) => Or::new([And::new([Ambiguity])]),
             Param(_) => panic!("Params should have been canonicalized to placeholders"),
             EscapingAlias(components) => self.destructure_components(components, r),
         }
@@ -196,18 +190,16 @@ where
     /// 3. env assumptions. we defer handling `Alias<T, 'a>: 'b` via where clauses until
     ///     when exiting the current binder. See [`RegionConstraint::AliasTyOutlivesViaEnv`].
     #[instrument(level = "debug", skip(self), ret)]
-    fn destructure_alias_outlives(
-        &mut self,
-        alias: AliasTy<I>,
-        r: I::Region,
-    ) -> RegionConstraint<I> {
+    fn destructure_alias_outlives(&mut self, alias: AliasTy<I>, r: I::Region) -> Or<I> {
+        use LeafRegionConstraint::*;
+
         let item_bounds =
             rustc_type_ir::outlives::declared_bounds_from_definition(self.cx(), alias)
-                .map(|bound| RegionConstraint::RegionOutlives(bound, r));
-        let item_bound_outlives = RegionConstraint::Or(item_bounds.collect());
+                .map(|bound| And::new([RegionOutlives(bound, r)]));
+        let item_bound_outlives = Or::new(item_bounds);
 
         let where_clause_outlives =
-            RegionConstraint::AliasTyOutlivesViaEnv(Binder::dummy((alias, r)));
+            Or::new([And::new([AliasTyOutlivesViaEnv(Binder::dummy((alias, r)))])]);
 
         let mut components = Default::default();
         rustc_type_ir::outlives::compute_alias_components_recursive(
@@ -217,10 +209,7 @@ where
         );
         let components_outlives = self.destructure_components(&components, r);
 
-        RegionConstraint::Or(Box::new([
-            item_bound_outlives,
-            where_clause_outlives,
-            components_outlives,
-        ]))
+        let assumption_outlives = Or::new_or(item_bound_outlives, where_clause_outlives);
+        Or::new_or(assumption_outlives, components_outlives)
     }
 }

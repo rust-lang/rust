@@ -13,7 +13,7 @@ use rustc_type_ir_macros::{
 use tracing::debug;
 
 use crate::lang_items::SolverTraitLangItem;
-use crate::region_constraint::RegionConstraint;
+use crate::region_constraint::CanonicalFormRegionConstraint;
 use crate::search_graph::PathKind;
 use crate::{
     self as ty, Canonical, CanonicalVarValues, CantBeErased, Interner, TypingMode, Upcast,
@@ -587,14 +587,14 @@ pub enum ExternalRegionConstraints<I: Interner> {
     Old(Vec<(ty::RegionConstraint<I>, VisibleForLeakCheck)>),
     /// new form of region constraints used when `-Zassumptions-on-binders` is enabled.
     /// supports ORs.
-    NextGen(RegionConstraint<I>),
+    NextGen(CanonicalFormRegionConstraint<I>),
 }
 
 impl<I: Interner> ExternalRegionConstraints<I> {
     pub fn is_empty(&self) -> bool {
         match self {
             Self::Old(r) => r.is_empty(),
-            Self::NextGen(r) => r.is_true() || r == &RegionConstraint::new_true().canonical_form(),
+            Self::NextGen(r) => r.is_true(),
         }
     }
 }
@@ -614,7 +614,7 @@ impl<I: Interner> Eq for ExternalConstraintsData<I> {}
 impl<I: Interner> ExternalConstraintsData<I> {
     pub fn new(cx: I) -> Self {
         let region_constraints = match cx.assumptions_on_binders() {
-            true => ExternalRegionConstraints::NextGen(RegionConstraint::new_true()),
+            true => ExternalRegionConstraints::NextGen(CanonicalFormRegionConstraint::new_true()),
             false => ExternalRegionConstraints::Old(vec![]),
         };
 

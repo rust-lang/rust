@@ -362,10 +362,10 @@ pub trait InferCtxtLike: Sized {
     ) -> Option<crate::region_constraint::Assumptions<Self::Interner>>;
     fn get_solver_region_constraint(
         &self,
-    ) -> crate::region_constraint::RegionConstraint<Self::Interner>;
+    ) -> crate::region_constraint::CanonicalFormRegionConstraint<Self::Interner>;
     fn overwrite_solver_region_constraint(
         &self,
-        constraint: crate::region_constraint::RegionConstraint<Self::Interner>,
+        constraint: crate::region_constraint::CanonicalFormRegionConstraint<Self::Interner>,
     );
 
     fn universe_of_ty(&self, ty: ty::TyVid) -> Option<ty::UniverseIndex>;
@@ -480,7 +480,7 @@ pub trait InferCtxtLike: Sized {
 
     fn register_solver_region_constraint(
         &self,
-        c: crate::region_constraint::RegionConstraint<Self::Interner>,
+        c: crate::region_constraint::CanonicalFormRegionConstraint<Self::Interner>,
     );
 
     fn register_ty_outlives(
