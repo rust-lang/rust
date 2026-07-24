@@ -7,12 +7,27 @@
 use crate::io;
 
 pub mod conf;
-#[allow(unused)]
-#[path = "../wasm/atomics/futex.rs"]
-pub mod futex;
 pub mod stack_overflow;
 #[path = "../unix/time.rs"]
 pub mod time;
+
+// The wasi-libc based futex is new enough that it's not present in older
+// wasi-libc builds. For now that means it's only required on wasip3 (which
+// requires a newer wasi-libc anyway). In the future this'll probably switch to
+// unconditionally using `wasilibc_futex` as the implementation for all WASI
+// targets (and switching all synchronization primitives to the futex version).
+cfg_select! {
+    target_env = "p3" => {
+        pub mod wasilibc_futex;
+        pub use wasilibc_futex as futex;
+    }
+    target_feature = "atomics" => {
+        #[allow(unused)]
+        #[path = "../wasm/atomics/futex.rs"]
+        pub mod futex;
+    }
+    _ => {}
+}
 
 #[cfg(not(target_env = "p1"))]
 mod cabi_realloc;
