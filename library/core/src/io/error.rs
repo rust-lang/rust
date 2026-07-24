@@ -534,6 +534,7 @@ impl fmt::Display for Error {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl error::Error for Error {
     #[allow(deprecated)]
+    #[inline]
     fn cause(&self) -> Option<&dyn error::Error> {
         match self.repr.data() {
             ErrorData::Os(..) => None,
@@ -543,6 +544,7 @@ impl error::Error for Error {
         }
     }
 
+    #[inline]
     fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         match self.repr.data() {
             ErrorData::Os(..) => None,
@@ -605,6 +607,7 @@ impl fmt::Debug for Custom {
 
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
 impl Drop for Custom {
+    #[inline]
     fn drop(&mut self) {
         // SAFETY: `Custom::from_raw` ensures this call is safe.
         unsafe {
@@ -631,12 +634,14 @@ impl Custom {
     }
 
     #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+    #[inline]
     pub fn into_raw(self) -> crate::ptr::NonNull<dyn error::Error + Send + Sync> {
         let ptr = self.error;
         core::mem::forget(self);
         ptr
     }
 
+    #[inline]
     fn error_ref(&self) -> &(dyn error::Error + Send + Sync + 'static) {
         // SAFETY:
         // `from_raw` ensures `error` is a valid pointer up to a static lifetime
@@ -644,6 +649,7 @@ impl Custom {
         unsafe { self.error.as_ref() }
     }
 
+    #[inline]
     fn error_mut(&mut self) -> &mut (dyn error::Error + Send + Sync + 'static) {
         // SAFETY:
         // `from_raw` ensures `error` is a valid pointer up to a static lifetime
@@ -668,6 +674,7 @@ unsafe impl Sync for CustomOwner {}
 
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
 impl Drop for CustomOwner {
+    #[inline]
     fn drop(&mut self) {
         // SAFETY: `CustomOwner::from_raw` ensures this call is safe.
         unsafe {
@@ -687,6 +694,7 @@ impl CustomOwner {
     }
 
     #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
+    #[inline]
     pub fn into_raw(self) -> crate::ptr::NonNull<Custom> {
         let ptr = self.0;
         core::mem::forget(self);
