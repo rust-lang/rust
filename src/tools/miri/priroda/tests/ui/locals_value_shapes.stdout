@@ -18,10 +18,10 @@ Name: <none>, Id: _13, Ty: [u8; 2], Value: <uninit>
 Name: <none>, Id: _14, Ty: std::ops::RangeFull, Value: <dead>
 Name: mplace, Id: _15, Ty: Aggregate, Value: Aggregate { byte: [2a], word: [34 12] }
 Name: <none>, Id: _16, Ty: u8, Value: <dead>
-Name: tuple, Id: _17, Ty: (u8, u16), Value: [01 __ 03 02]
+Name: tuple, Id: _17, Ty: (u8, u16), Value: ([01], [03 02])
 Name: tuple_struct, Id: _18, Ty: TupleAggregate, Value: TupleAggregate([04], [06 05])
 Name: array, Id: _19, Ty: [u8; 3], Value: [07 08 09]
-Name: nested, Id: _20, Ty: Nested, Value: Nested { aggregate: Aggregate { byte: [0a], word: [0c 0b] }, tuple: [01 __ 03 02] }
+Name: nested, Id: _20, Ty: Nested, Value: Nested { aggregate: Aggregate { byte: [0a], word: [0c 0b] }, tuple: ([01], [03 02]) }
 Name: <none>, Id: _21, Ty: Aggregate, Value: <dead>
 Name: <none>, Id: _22, Ty: (u8, u16), Value: <dead>
 Name: unit_variant, Id: _23, Ty: Choice, Value: Choice::Unit
@@ -50,10 +50,10 @@ Name: <none>, Id: _41, Ty: &[u8; 2], Value: {&_: &[u8; 2]}
 (priroda) Id: _8, Ty: u8, Value: [33]
 (priroda) Id: _13, Ty: [u8; 2], Value: <uninit>
 (priroda) Id: _15, Ty: Aggregate, Value: Aggregate { byte: [2a], word: [34 12] }
-(priroda) Id: _17, Ty: (u8, u16), Value: [01 __ 03 02]
+(priroda) Id: _17, Ty: (u8, u16), Value: ([01], [03 02])
 (priroda) Id: _18, Ty: TupleAggregate, Value: TupleAggregate([04], [06 05])
 (priroda) Id: _19, Ty: [u8; 3], Value: [07 08 09]
-(priroda) Id: _20, Ty: Nested, Value: Nested { aggregate: Aggregate { byte: [0a], word: [0c 0b] }, tuple: [01 __ 03 02] }
+(priroda) Id: _20, Ty: Nested, Value: Nested { aggregate: Aggregate { byte: [0a], word: [0c 0b] }, tuple: ([01], [03 02]) }
 (priroda) Id: _23, Ty: Choice, Value: Choice::Unit
 (priroda) Id: _24, Ty: Choice, Value: Choice::Tuple([0d], [0f 0e])
 (priroda) Id: _25, Ty: Choice, Value: Choice::Struct { n: [13 12 11 10], ok: [01] }

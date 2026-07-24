@@ -7,7 +7,7 @@
 (priroda) Hit breakpoint
 {MANIFEST_DIR}/tests/ui/locals_corpus_async.rs:31
 (priroda) Name: <none>, Id: _0, Ty: (), Value: <uninit>
-Name: <none>, Id: _1, Ty: (u32, i32), Value: (0x00000005, 0x00000006): (u32, i32)
+Name: <none>, Id: _1, Ty: (u32, i32), Value: (5_u32, 6_i32)
 Name: first, Id: _1.0, Ty: u32, Value: 5_u32
 Name: second, Id: _1.1, Ty: i32, Value: 6_i32
 (priroda) Hit breakpoint

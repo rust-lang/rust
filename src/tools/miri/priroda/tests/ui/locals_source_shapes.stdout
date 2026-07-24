@@ -8,9 +8,9 @@ Name: unit_struct, Id: _3, Ty: UnitStruct, Value: UnitStruct
 Name: tuple_struct, Id: _4, Ty: TupleStruct, Value: TupleStruct([04], [05 06])
 Name: single_tuple_struct, Id: _5, Ty: SingleTupleStruct, Value: SingleTupleStruct([07])
 Name: zero_tuple_struct, Id: _6, Ty: ZeroTupleStruct, Value: ZeroTupleStruct()
-Name: tuple_zero, Id: _7, Ty: (), Value: []
-Name: tuple_one, Id: _8, Ty: (u8,), Value: [08]
-Name: tuple_many, Id: _9, Ty: (u8, u16), Value: [09 __ 0a 0b]
+Name: tuple_zero, Id: _7, Ty: (), Value: ()
+Name: tuple_one, Id: _8, Ty: (u8,), Value: ([08],)
+Name: tuple_many, Id: _9, Ty: (u8, u16), Value: ([09], [0a 0b])
 Name: array_zero, Id: _10, Ty: [u8; 0], Value: []
 Name: array_one, Id: _11, Ty: [u8; 1], Value: [0c]
 Name: array_many, Id: _12, Ty: [u8; 3], Value: [0d 0e 0f]
@@ -47,9 +47,9 @@ Name: <none>, Id: _39, Ty: u8, Value: <dead>
 (priroda) Id: _4, Ty: TupleStruct, Value: TupleStruct([04], [05 06])
 (priroda) Id: _5, Ty: SingleTupleStruct, Value: SingleTupleStruct([07])
 (priroda) Id: _6, Ty: ZeroTupleStruct, Value: ZeroTupleStruct()
-(priroda) Id: _7, Ty: (), Value: []
-(priroda) Id: _8, Ty: (u8,), Value: [08]
-(priroda) Id: _9, Ty: (u8, u16), Value: [09 __ 0a 0b]
+(priroda) Id: _7, Ty: (), Value: ()
+(priroda) Id: _8, Ty: (u8,), Value: ([08],)
+(priroda) Id: _9, Ty: (u8, u16), Value: ([09], [0a 0b])
 (priroda) Id: _10, Ty: [u8; 0], Value: []
 (priroda) Id: _11, Ty: [u8; 1], Value: [0c]
 (priroda) Id: _12, Ty: [u8; 3], Value: [0d 0e 0f]

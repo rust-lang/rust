@@ -621,6 +621,29 @@ impl<'tcx> PrirodaContext<'tcx> {
                 }
             }
 
+            ty::Tuple(args) => {
+                let mut fields = Vec::with_capacity(args.len());
+                for i in 0..args.len() {
+                    // Tuples have no field names in source, so preserve their
+                    // source field order and render children positionally.
+                    let field_op =
+                        match self.ecx.project_field(&op, FieldIdx::from_usize(i)).discard_err() {
+                            Some(field_op) => field_op,
+                            // FIXME: render tuple fields independently so one
+                            // projection failure does not throw away the whole
+                            // source-shaped tuple.
+                            None => return self.render_op(op),
+                        };
+                    fields.push(self.render_source_shaped_op_inner(field_op, depth + 1));
+                }
+
+                if fields.len() == 1 {
+                    format!("({},)", fields[0])
+                } else {
+                    format!("({})", fields.join(", "))
+                }
+            }
+
             // FIXME: consider source-shaped special cases for strings, closures,
             // generators/coroutines, trait objects, and SIMD/vector-like types.
             // Until then these stay on the raw renderer path.
