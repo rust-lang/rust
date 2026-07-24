@@ -69,6 +69,7 @@ use rustc_middle::ty::{
     TyCtxt, TypeVisitableExt, eager_resolve_vars,
 };
 use rustc_span::Span;
+use rustc_type_ir::region_constraint::{self, LeafRegionConstraint};
 use smallvec::smallvec;
 use tracing::{debug, instrument};
 
@@ -142,9 +143,18 @@ impl<'tcx> InferCtxt<'tcx> {
 
     pub fn register_solver_region_constraint(&self, c: SolverRegionConstraint<'tcx>) {
         let mut inner = self.inner.borrow_mut();
-        let previous_was_and = inner.solver_region_constraint_storage.is_and();
-        inner.undo_log.push(UndoLog::PushSolverRegionConstraint { previous_was_and });
-        inner.solver_region_constraint_storage.push(c);
+
+        let old_constraint = inner.solver_region_constraint_storage.get_constraint();
+        let new_constraint = rustc_type_ir::region_constraint::RegionConstraint::build_and(
+            c,
+            old_constraint.clone(),
+        );
+
+        // FIXME(-Zassumptions-on-binders): This is pretty bad for perf, we don't make incremental
+        // changes to the region constraints, instead we just rewrite the entire thing every time
+        // and store the old version.
+        inner.undo_log.push(UndoLog::OverwriteSolverRegionConstraint { old_constraint });
+        inner.solver_region_constraint_storage.overwrite(new_constraint);
     }
 
     pub fn register_type_outlives_constraint(
@@ -238,7 +248,7 @@ impl<'tcx> InferCtxt<'tcx> {
         known_type_outlives: &[PolyTypeOutlivesClause<'tcx>],
         region_outlives: TransitiveRelation<RegionVid>,
     ) {
-        let assumptions = rustc_type_ir::region_constraint::Assumptions::new(
+        let assumptions = region_constraint::Assumptions::new(
             known_type_outlives.into_iter().cloned().collect(),
             region_outlives.maybe_map(|r| Some(Region::new_var(self.tcx, r))).unwrap(),
         );
@@ -256,19 +266,24 @@ impl<'tcx> InferCtxt<'tcx> {
 
         let constraint = self.inner.borrow().solver_region_constraint_storage.get_constraint();
         debug!(?constraint);
-        let constraint =
-            rustc_type_ir::region_constraint::destructure_type_outlives_constraints_in_root(
-                self,
-                constraint,
-                &assumptions,
-            );
+        let constraint = region_constraint::destructure_type_outlives_constraints_in_root(
+            self,
+            constraint,
+            &assumptions,
+        );
         debug!(?constraint);
-        let constraint = rustc_type_ir::region_constraint::evaluate_solver_constraint(&constraint);
+        let constraint = region_constraint::evaluate_solver_constraint(constraint);
         debug!(?constraint);
 
-        let mut constraints = vec![constraint];
-        while let Some(c) = constraints.pop() {
-            use rustc_type_ir::region_constraint::RegionConstraint::*;
+        // FIXME(-Zassumptions-on-binders): actually implement OR as an  OR
+        for c in constraint.and_constraint.0.into_iter().chain(
+            constraint
+                .or_constraint
+                .0
+                .into_iter()
+                .flat_map(|and_constraint| and_constraint.0.into_iter()),
+        ) {
+            use LeafRegionConstraint::*;
 
             match c {
                 Ambiguity(span) => {
@@ -287,9 +302,9 @@ impl<'tcx> InferCtxt<'tcx> {
                         b, a, category,
                     );
                 }
-                // FIXME(-Zassumptions-on-binders): actually implement OR as an  OR
-                And(nested) | Or(nested) => constraints.extend(nested),
-                AliasTyOutlivesViaEnv(..) | PlaceholderTyOutlives(..) => unreachable!(),
+                AliasTyOutlivesViaEnv(..) | PlaceholderTyOutlives(..) => {
+                    unreachable!()
+                }
             }
         }
     }
