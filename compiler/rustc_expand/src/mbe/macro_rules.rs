@@ -19,6 +19,7 @@ use rustc_hir::def::MacroKinds;
 use rustc_hir::find_attr;
 use rustc_lint_defs::builtin::{
     RUST_2021_INCOMPATIBLE_OR_PATTERNS, SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
+    SEMICOLON_IN_EXPRESSIONS_FROM_NON_LOCAL_MACROS,
 };
 use rustc_parse::exp;
 use rustc_parse::parser::{Parser, Recovery};
@@ -55,6 +56,8 @@ pub(crate) struct ParserAnyMacro<'a, 'b> {
     lint_node_id: NodeId,
     is_trailing_mac: bool,
     arm_span: Span,
+    /// Whether or not this macro is defined in the current crate
+    is_local: bool,
     bindings: &'b [MacroRule],
     matched_rule_bindings: &'b [MatcherLoc],
 }
@@ -71,6 +74,7 @@ impl<'a, 'b> ParserAnyMacro<'a, 'b> {
             lint_node_id,
             arm_span,
             is_trailing_mac,
+            is_local,
             bindings,
             matched_rule_bindings,
         } = *self;
@@ -96,8 +100,13 @@ impl<'a, 'b> ParserAnyMacro<'a, 'b> {
         // `macro_rules! m { () => { panic!(); } }` isn't parsed by `.parse_expr()`,
         // but `m!()` is allowed in expression positions (cf. issue #34706).
         if kind == AstFragmentKind::Expr && parser.token == token::Semi {
+            let lint = if is_local {
+                SEMICOLON_IN_EXPRESSIONS_FROM_MACROS
+            } else {
+                SEMICOLON_IN_EXPRESSIONS_FROM_NON_LOCAL_MACROS
+            };
             parser.psess.buffer_lint(
-                SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
+                lint,
                 parser.token.span,
                 lint_node_id,
                 diagnostics::TrailingMacro { is_trailing: is_trailing_mac, name: macro_ident },
@@ -117,6 +126,7 @@ impl<'a, 'b> ParserAnyMacro<'a, 'b> {
         tts: TokenStream,
         site_span: Span,
         arm_span: Span,
+        is_local: bool,
         macro_ident: Ident,
         // bindings and lhs is for diagnostics
         bindings: &'b [MacroRule],
@@ -133,6 +143,7 @@ impl<'a, 'b> ParserAnyMacro<'a, 'b> {
             lint_node_id: cx.current_expansion.lint_node_id,
             is_trailing_mac: cx.current_expansion.is_trailing_mac,
             arm_span,
+            is_local,
             bindings,
             matched_rule_bindings,
         }
@@ -464,12 +475,13 @@ fn expand_macro<'cx, 'a: 'cx>(
                 trace_macros_note(&mut cx.expansions, sp, msg);
             }
 
-            if is_defined_in_current_crate(node_id) {
+            let is_local = is_defined_in_current_crate(node_id);
+            if is_local {
                 cx.resolver.record_macro_rule_usage(node_id, rule_index);
             }
 
             // Let the context choose how to interpret the result. Weird, but useful for X-macros.
-            Box::new(ParserAnyMacro::from_tts(cx, tts, sp, arm_span, name, rules, lhs))
+            Box::new(ParserAnyMacro::from_tts(cx, tts, sp, arm_span, is_local, name, rules, lhs))
         }
         Err(CanRetry::No(guar)) => {
             debug!("Will not retry matching as an error was emitted already");
