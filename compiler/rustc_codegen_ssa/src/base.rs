@@ -4,7 +4,7 @@ use std::time::{Duration, Instant};
 use std::{cmp, iter};
 
 use itertools::Itertools;
-use rustc_abi::FIRST_VARIANT;
+use rustc_abi::{ExternAbi, FIRST_VARIANT};
 use rustc_ast::expand::allocator::{
     ALLOC_ERROR_HANDLER, ALLOCATOR_METHODS, AllocatorKind, AllocatorMethod, AllocatorMethodInput,
     AllocatorTy,
@@ -493,8 +493,18 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         // We want to create the wrapper only when the codegen unit is the primary one
         return None;
     }
-
-    let main_llfn = cx.get_fn_addr(instance, cx.sess().pointer_authentication_functions());
+    // No function pointer signing / type discriminator is needed here. Although `get_fn_addr` is
+    // used to obtain function pointers, both the user's `main` and `LangItem::Start` use the Rust
+    // ABI (currently pointer authentication is only supported for C/System ABI). The same applies
+    // to the logic in `create_entry_fn` further below.
+    assert!(
+        !matches!(
+            cx.tcx().fn_sig(main_def_id).skip_binder().abi(),
+            ExternAbi::C { .. } | ExternAbi::System { .. }
+        ),
+        "entry wrapper assumes Rust ABI"
+    );
+    let main_llfn = cx.get_fn_addr(instance, /* pointer_auth_schema */ None);
 
     let entry_fn = create_entry_fn::<Bx>(cx, main_llfn, main_def_id, entry_type);
     return Some(entry_fn);
@@ -555,8 +565,16 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 cx.tcx().mk_args(&[main_ret_ty.into()]),
                 DUMMY_SP,
             );
-            let start_fn =
-                cx.get_fn_addr(start_instance, cx.sess().pointer_authentication_functions());
+            // Start instance doesn't require signing, as it uses Rust ABI, hence pass `None` to
+            // `get_fn_addr`.
+            assert!(
+                !matches!(
+                    cx.tcx().fn_sig(start_instance.def_id()).skip_binder().abi(),
+                    ExternAbi::C { .. } | ExternAbi::System { .. }
+                ),
+                "LangItem::Start unexpectedly uses the C/System ABI",
+            );
+            let start_fn = cx.get_fn_addr(start_instance, None);
 
             let i8_ty = cx.type_i8();
             let arg_sigpipe = bx.const_u8(sigpipe);

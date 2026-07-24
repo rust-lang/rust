@@ -1843,6 +1843,17 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     fn fptosi_sat(&mut self, val: RValue<'gcc>, dest_ty: Type<'gcc>) -> RValue<'gcc> {
         self.fptoint_sat(true, val, dest_ty)
     }
+
+    fn ptrauth_resign(
+        &mut self,
+        _value: Self::Value,
+        _old_key: u32,
+        _old_discriminator: u64,
+        _new_key: u32,
+        _new_discriminator: u64,
+    ) -> Self::Value {
+        bug!("Resigning of pointers not implemented");
+    }
 }
 
 impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {

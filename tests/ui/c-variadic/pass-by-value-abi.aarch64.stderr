@@ -70,6 +70,7 @@ error: fn_abi_of(take_va_list) = FnAbi {
            fixed_count: 1,
            conv: C,
            can_unwind: false,
+           ptrauth_discriminator: 0,
        }
   --> $DIR/pass-by-value-abi.rs:27:1
    |

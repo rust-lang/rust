@@ -4,10 +4,11 @@ use std::borrow::Borrow;
 
 use libc::{c_char, c_uint};
 use rustc_abi::Primitive::Pointer;
-use rustc_abi::{self as abi, ExternAbi, HasDataLayout as _};
+use rustc_abi::{self as abi, ExternAbi, HasDataLayout as _, Size};
 use rustc_ast::Mutability;
 use rustc_codegen_ssa::common::TypeKind;
 use rustc_codegen_ssa::traits::*;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hash::{StableHash, StableHasher};
 use rustc_hashes::Hash128;
 use rustc_hir::def::DefKind;
@@ -30,11 +31,9 @@ pub(crate) fn maybe_sign_fn_ptr<'ll, 'tcx>(
     cx: &CodegenCx<'ll, '_>,
     instance: Instance<'tcx>,
     llfn: &'ll llvm::Value,
-    schema: &PointerAuthSchema,
+    ptrauth_schema: PointerAuthSchema,
 ) -> &'ll llvm::Value {
-    if cx.tcx.sess.pointer_authentication_functions().is_none() {
-        return llfn;
-    }
+    assert!(cx.tcx.sess.pointer_authentication_functions().is_some());
 
     // Only free functions or methods
     let def_id = instance.def_id();
@@ -54,7 +53,7 @@ pub(crate) fn maybe_sign_fn_ptr<'ll, 'tcx>(
         return llfn;
     }
 
-    let addr_diversity = match schema.is_address_discriminated {
+    let addr_diversity = match ptrauth_schema.is_address_discriminated {
         PointerAuthAddressDiscriminator::HardwareAddress(true) => Some(llfn),
         PointerAuthAddressDiscriminator::HardwareAddress(false) => None,
         PointerAuthAddressDiscriminator::Synthetic(val) => {
@@ -63,7 +62,12 @@ pub(crate) fn maybe_sign_fn_ptr<'ll, 'tcx>(
             Some(unsafe { llvm::LLVMConstIntToPtr(llval, llty) })
         }
     };
-    const_ptr_auth(llfn, schema.key as u32, schema.constant_discriminator as u64, addr_diversity)
+    const_ptr_auth(
+        llfn,
+        ptrauth_schema.key as u32,
+        ptrauth_schema.constant_discriminator as u64,
+        addr_diversity,
+    )
 }
 
 /*
@@ -317,7 +321,8 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
         cv: Scalar,
         layout: abi::Scalar,
         llty: &'ll Type,
-        schema: Option<&PointerAuthSchema>,
+        ptrauth_schema: Option<PointerAuthSchema>,
+        ptrauth_discriminators: Option<&FxHashMap<Size, u64>>,
     ) -> &'ll Value {
         let bitsize = if layout.is_bool() { 1 } else { layout.size(self).bits() };
         match cv {
@@ -352,6 +357,7 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
                                 alloc.inner(),
                                 IsStatic::No,
                                 IsInitOrFini::No,
+                                ptrauth_discriminators,
                             );
                             let alloc = alloc.inner();
                             let value = match alloc.mutability {
@@ -373,7 +379,9 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
                             value
                         }
                     }
-                    GlobalAlloc::Function { instance, .. } => self.get_fn_addr(instance, schema),
+                    GlobalAlloc::Function { instance, .. } => {
+                        self.get_fn_addr(instance, ptrauth_schema)
+                    }
                     GlobalAlloc::VTable(ty, dyn_ty) => {
                         let alloc = self
                             .tcx
@@ -389,6 +397,7 @@ impl<'ll, 'tcx> ConstCodegenMethods for CodegenCx<'ll, 'tcx> {
                             alloc.inner(),
                             IsStatic::No,
                             IsInitOrFini::No,
+                            None,
                         );
                         self.static_addr_of_impl(init, alloc.inner().align, None)
                     }

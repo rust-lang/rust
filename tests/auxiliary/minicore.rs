@@ -113,6 +113,7 @@ impl<T: Copy, const N: usize> Copy for [T; N] {}
 pub struct PhantomData<T: PointeeSized>;
 impl<T: PointeeSized> Copy for PhantomData<T> {}
 
+#[rustc_diagnostic_item = "Option"]
 pub enum Option<T> {
     None,
     Some(T),
@@ -250,11 +251,18 @@ pub trait Add<Rhs = Self> {
     fn add(self, _: Rhs) -> Self::Output;
 }
 
+// Avoid needing to add all of the overflow handling and panic language items
 impl Add<isize> for isize {
     type Output = isize;
 
     fn add(self, other: isize) -> isize {
-        7 // avoid needing to add all of the overflow handling and panic language items
+        7
+    }
+}
+impl Add for i32 {
+    type Output = i32;
+    fn add(self, rhs: i32) -> i32 {
+        7
     }
 }
 
@@ -301,18 +309,30 @@ impl_marker_trait!(
 );
 
 impl Sync for () {}
-
 impl<T, const N: usize> Sync for [T; N] {}
+impl<T: Sync> Sync for Option<T> {}
+impl<T: ?Sized + Sync> Sync for &T {}
+
 // Function pointers are treated as `Sync` to match real `core` behavior.
 //
 // Minicore provides only the minimal set of impls required by tests. Rather
 // than exhaustively covering all possible function pointer signatures,
-// additional impls should be added as needed.
-impl<R> Sync for fn() -> R {}
-impl<R> Sync for extern "C" fn() -> R {}
-impl<R> Sync for unsafe extern "C" fn() -> R {}
-impl<A, R> Sync for extern "C" fn(A) -> R {}
-impl<A, R> Sync for unsafe extern "C" fn(A) -> R {}
+// additional arities should be added as needed.
+macro_rules! impl_sync_for_fn_ptrs {
+    ($(($($T:ident),*)),* $(,)?) => {
+        $(
+            impl<$($T,)* R> Sync for fn($($T),*) -> R {}
+
+            impl<$($T,)* R> Sync for extern "C" fn($($T),*) -> R {}
+            impl<$($T,)* R> Sync for unsafe extern "C" fn($($T),*) -> R {}
+
+            impl<$($T,)* R> Sync for extern "C" fn($($T,)* ...) -> R {}
+            impl<$($T,)* R> Sync for unsafe extern "C" fn($($T,)* ...) -> R {}
+        )*
+    };
+}
+
+impl_sync_for_fn_ptrs!((), (A), (A, B), (A, B, C), (A, B, C, D),);
 
 #[lang = "drop_glue"]
 fn drop_glue<T>(_: &mut T) {}
@@ -349,7 +369,7 @@ pub trait CoerceUnsized<T: PointeeSized> {}
 impl<'a, 'b: 'a, T: PointeeSized + Unsize<U>, U: PointeeSized> CoerceUnsized<&'a U> for &'b T {}
 
 #[lang = "drop"]
-trait Drop {
+pub trait Drop {
     fn drop(&mut self);
 }
 
@@ -360,7 +380,7 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
 pub mod mem {
     #[rustc_nounwind]
     #[rustc_intrinsic]
-    pub unsafe fn transmute<Src, Dst>(src: Src) -> Dst;
+    pub const unsafe fn transmute<Src, Dst>(src: Src) -> Dst;
 
     #[rustc_nounwind]
     #[rustc_intrinsic]
@@ -379,6 +399,15 @@ pub mod ptr {
 
         unsafe { volatile_store(dst, src) };
     }
+
+    #[inline]
+    #[rustc_diagnostic_item = "ptr_read_volatile"]
+    pub unsafe fn read_volatile<T>(src: *const T) -> T {
+        #[rustc_intrinsic]
+        pub unsafe fn volatile_load<T>(src: *const T) -> T;
+
+        unsafe { volatile_load(src) }
+    }
 }
 
 pub mod hint {
@@ -393,9 +422,10 @@ pub mod hint {
 
 #[lang = "c_void"]
 #[repr(u8)]
+#[allow(non_camel_case_types)]
 pub enum c_void {
-    __variant1,
-    __variant2,
+    Variant1,
+    Variant2,
 }
 
 #[rustc_builtin_macro(pattern_type)]

@@ -474,10 +474,12 @@ The following categories are supported (all present in tree):
   * invalid_target_pointer_authentication.rs
   * type_discrimination_not_supported_pointer_authentication.rs
   * incompatible_pauth.rs
+* Unit tests for siphash function:
+  * compiler/rustc_middle/src/ptrauth/llvm_siphash/tests.rs
 
 All tests from `assembly-llvm`, `codegen-llvm`, `codegen-units`, `coverage`,
-`crashes`, `incremental`, `library`, `mir-opt`, `run-make`, `ui` and
-`ui-fulldeps` subsets are expected to pass.
+`crashes`, `incremental`, `library`, `mir-opt`, `run-make`, `rust_middle` `ui`
+and `ui-fulldeps` subsets are expected to pass.
 
 Command to run all passing tests (with tests added by this target explicitly
 named for convenience):
@@ -485,7 +487,7 @@ named for convenience):
 ```sh
 x.py test --target aarch64-unknown-linux-pauthtest --force-rerun assembly-llvm \
   codegen-llvm codegen-units coverage crashes incremental library mir-opt \
-  run-make ui ui-fulldeps \
+  run-make rust_middle ui ui-fulldeps \
   tests/assembly-llvm/pauth-basic.rs \
   tests/codegen-llvm/pauth/pauth-attr-cli-flags.rs \
   tests/codegen-llvm/pauth/pauth-attr-special-funcs.rs \
