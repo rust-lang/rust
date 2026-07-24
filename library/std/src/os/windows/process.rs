@@ -302,6 +302,10 @@ pub impl(self) trait CommandExt {
     /// By default, stdin, stdout, and stderr are inherited from the parent
     /// process.
     ///
+    /// Note that this operation is itself safe, but relies on the correctness of invocations of
+    /// `attribute` and `raw_attribute` in order to be so. This includes but is not limited to
+    /// liveness of allocations, as attributes may have arbitrary requirements imposed by the OS.
+    ///
     /// # Example
     ///
     /// ```
@@ -536,14 +540,19 @@ impl<'a> ProcThreadAttributeListBuilder<'a> {
     /// limit is exceeded, the call to [`Self::finish`] will return an `Error`
     /// indicating that the maximum number of attributes has been exceeded.
     ///
-    /// # Safety Note
+    /// # Safety
     ///
-    /// Remember that improper use of attributes can lead to undefined behavior
-    /// or security vulnerabilities. Always consult the documentation and ensure
-    /// proper attribute values are used.
+    /// This function guarantees the use of a correct length value based on `T`, compared to
+    /// passing it as an explicit argument to `raw_attribute`.
+    /// The lifetime of the reference will also enforce that the value can outlive the list.
+    ///
+    /// Using `attribute` otherwise has the same requirements as `raw_attribute`, especially
+    /// including the arbitrary additional constraints Windows may impose on any attribute.
+    /// These requirements must be satisfied upon initially calling `attribute`,
+    /// even if `spawn_with_attributes` is never called on this list.
     ///
     /// [1]: <https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-updateprocthreadattribute#parameters>
-    pub fn attribute<T>(self, attribute: usize, value: &'a T) -> Self {
+    pub unsafe fn attribute<T>(self, attribute: usize, value: &'a T) -> Self {
         unsafe {
             self.raw_attribute(attribute, ptr::addr_of!(*value).cast::<c_void>(), size_of::<T>())
         }
@@ -560,6 +569,16 @@ impl<'a> ProcThreadAttributeListBuilder<'a> {
     /// and sizes. It is the responsibility of the caller to ensure the value
     /// lives longer than the resulting [`ProcThreadAttributeList`] as well as
     /// the validity of the size parameter.
+    ///
+    /// Using `raw_attribute` does not enforce any requirements the Windows API may impose
+    /// on the value used for an attribute. These may include arbitrary additional constraints.
+    /// These requirements must be satisfied upon initially calling `raw_attribute`,
+    /// even if `spawn_with_attributes` is never called on this list.
+    ///
+    /// Improper use of attributes can lead to undefined behavior or security vulnerabilities.
+    /// Always consult the [Windows documentation][1] and ensure proper attribute values are used.
+    ///
+    /// [1]: <https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-updateprocthreadattribute#parameters>
     ///
     /// # Example
     ///
