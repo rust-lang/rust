@@ -1,5 +1,6 @@
 use crate::clone::TrivialClone;
 use crate::cmp::Ordering;
+use crate::intrinsics::transmute_unchecked;
 use crate::marker::{Destruct, PointeeSized, Unsize};
 use crate::mem::{MaybeUninit, SizedTypeProperties, transmute};
 use crate::num::NonZero;
@@ -1606,6 +1607,29 @@ impl<T> NonNull<[T]> {
         // SAFETY: the caller ensures that `self` is dereferenceable and `index` in-bounds.
         // As a consequence, the resulting pointer cannot be null.
         unsafe { NonNull::new_unchecked(self.as_ptr().get_unchecked_mut(index)) }
+    }
+}
+
+impl<const N: usize, T> NonNull<[T; N]> {
+    /// # Safety
+    ///
+    /// `self` must point to an alive allocaton.
+    #[stable(feature = "array_methods", since = "1.77.0")]
+    #[rustc_const_stable(feature = "const_array_each_ref", since = "1.91.0")]
+    pub const unsafe fn each_nonnull(self) -> [NonNull<T>; N] {
+        let mut buf = [crate::ptr::null_mut::<T>(); N];
+
+        // FIXME(const_trait_impl): We would like to simply use iterators for this (as in the original implementation), but this is not allowed in constant expressions.
+        let mut i = 0;
+        while i < N {
+            // SAFETY: guaranteed by the caller <3
+            buf[i] = unsafe { self.cast::<T>().add(i).as_ptr() };
+
+            i += 1;
+        }
+
+        // SAFETY: `*mut T` has the same layout as `NonNull<T>`, and we've also initialised each pointer as a valid non-null pointer.
+        unsafe { transmute_unchecked(buf) }
     }
 }
 
