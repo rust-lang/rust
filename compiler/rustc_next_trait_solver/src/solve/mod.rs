@@ -68,6 +68,7 @@ fn has_no_inference_or_external_constraints<I: Interner>(
         && normalization_nested_goals.is_empty()
 }
 
+#[instrument(level = "debug")]
 fn has_only_region_constraints<I: Interner>(response: ty::Canonical<I, Response<I>>) -> bool {
     let ExternalConstraintsData {
         region_constraints: _,

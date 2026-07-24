@@ -594,7 +594,7 @@ impl<I: Interner> ExternalRegionConstraints<I> {
     pub fn is_empty(&self) -> bool {
         match self {
             Self::Old(r) => r.is_empty(),
-            Self::NextGen(r) => r.is_true(),
+            Self::NextGen(r) => r.is_true() || r == &RegionConstraint::new_true().canonical_form(),
         }
     }
 }

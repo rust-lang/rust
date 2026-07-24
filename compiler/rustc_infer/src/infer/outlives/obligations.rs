@@ -203,18 +203,82 @@ impl<'tcx> InferCtxt<'tcx> {
         std::mem::take(&mut self.inner.borrow_mut().region_assumptions)
     }
 
+    #[instrument(level = "debug", skip(self, outlives_env, span))]
     pub fn destructure_solver_region_constraints_for_regionck(
         &self,
         outlives_env: &OutlivesEnvironment<'tcx>,
         span: Span,
     ) {
-        let assumptions = rustc_type_ir::region_constraint::Assumptions::new(
-            outlives_env.known_type_outlives().into_iter().cloned().collect(),
-            outlives_env.free_region_map().relation.clone(),
+        let assumptions =
+            rustc_type_ir::region_constraint::Assumptions::new_from_inverse_region_outlives(
+                outlives_env
+                    .region_bound_pairs()
+                    .into_iter()
+                    .map(|outlives| {
+                        ty::Binder::dummy(ty::OutlivesPredicate(
+                            outlives.0.to_ty(self.tcx),
+                            outlives.1,
+                        ))
+                    })
+                    .chain(outlives_env.known_type_outlives().into_iter().cloned())
+                    .collect(),
+                outlives_env.free_region_map().relation.clone(),
+            );
+
+
+        assert!(self.tcx.assumptions_on_binders());
+        assert!(self.next_trait_solver());
+
+        let constraint = self.inner.borrow().solver_region_constraint_storage.get_constraint();
+        debug!(?constraint);
+        // we destructure type outlives' before calling `destructure_solver_region_constraints`
+        // so that we dont get more or constraints made after splitting
+        let constraint =
+            rustc_type_ir::region_constraint::destructure_type_outlives_constraints_in_root(
+                self,
+                constraint,
+                &assumptions,
+            );
+        debug!(?constraint);
+        let (and_constraints, or_constraints) = constraint.split_shared_constraints();
+        debug!(?and_constraints, ?or_constraints);
+
+        self.destructure_solver_region_constraints(
+            rustc_type_ir::region_constraint::RegionConstraint::And(and_constraints.into_boxed_slice()),
+            assumptions.clone(),
+            self,
+            span,
         );
-        self.destructure_solver_region_constraints(assumptions, self, span);
+
+        // FIXME(-Zassumptions-on-binders): ideally we would do this for the `and_constraints` too
+        // but that breaks lexical region resolution. Should investigate what is up with that, I
+        // also wouldn't be surprised if doing *this* instead of passing all the constraints into
+        // `destructure_solver_region_constraints` also breaks lexical region resolution (just in
+        // harder to hit ways).
+        let or_constraints = rustc_type_ir::region_constraint::eagerly_handle_placeholders_in_root(
+            self,
+            or_constraints,
+            &assumptions,
+        );
+
+        if or_constraints.is_false() {
+            let mut diag = self.dcx().struct_span_err(
+                span,
+                "unsatisfied OR lifetime constraint from -Zassumptions-on-binders :3",
+            );
+            diag.note("meoow :c");
+            diag.emit();
+        } else if or_constraints.is_true() {
+            // OK!
+        } else {
+            let mut diag = self.dcx()
+                .struct_span_err(span, "unable to satisfy OR constraints involving placeholders due to unknown implied bounds");
+            diag.note("meowing :c");
+            diag.emit();
+        }
     }
 
+    #[instrument(level = "debug", skip(self, conversion, span))]
     pub fn destructure_solver_region_constraints_for_borrowck(
         &self,
         // this is always ConstraintConversion but lol
@@ -227,12 +291,17 @@ impl<'tcx> InferCtxt<'tcx> {
             known_type_outlives.into_iter().cloned().collect(),
             region_outlives.maybe_map(|r| Some(Region::new_var(self.tcx, r))).unwrap(),
         );
-        self.destructure_solver_region_constraints(assumptions, conversion, span);
+        let constraint = self.inner.borrow().solver_region_constraint_storage.get_constraint();
+        // FIXME(-Zassumptions-on-binders): we should do a similar thing to what we do for regionck
+        // and split out shared requirements from the OR, then handle the leftover OR specially with
+        // something type-test like.
+        self.destructure_solver_region_constraints(constraint, assumptions, conversion, span);
     }
 
     #[instrument(level = "debug", skip(self, conversion))]
     pub fn destructure_solver_region_constraints(
         &self,
+        constraint: rustc_type_ir::region_constraint::RegionConstraint<TyCtxt<'tcx>>,
         assumptions: rustc_type_ir::region_constraint::Assumptions<TyCtxt<'tcx>>,
         mut conversion: impl TypeOutlivesDelegate<'tcx>,
         span: Span,
@@ -243,8 +312,6 @@ impl<'tcx> InferCtxt<'tcx> {
         let origin = SubregionOrigin::SolverRegionConstraint(span);
         let category = origin.to_constraint_category();
 
-        let constraint = self.inner.borrow().solver_region_constraint_storage.get_constraint();
-        debug!(?constraint);
         let constraint =
             rustc_type_ir::region_constraint::destructure_type_outlives_constraints_in_root(
                 self,
@@ -255,13 +322,19 @@ impl<'tcx> InferCtxt<'tcx> {
         let constraint = rustc_type_ir::region_constraint::evaluate_solver_constraint(&constraint);
         debug!(?constraint);
 
-        let mut constraints = vec![constraint];
-        while let Some(c) = constraints.pop() {
+        // FIXME(-Zassumptions-on-binders): are we accidentalyl treating `Or([])` as `true` here lol
+        // FIXME(-Zassumptions-on-binders): actually implement OR as an  OR
+        for c in constraint
+            .canonical_form()
+            .unwrap_or()
+            .into_iter()
+            .flat_map(|and| and.unwrap_and().into_iter())
+        {
             use rustc_type_ir::region_constraint::RegionConstraint::*;
 
             match c {
                 Ambiguity => {
-                    self.dcx().err("unable to satisfy constraints involving placeholders due to unknown implied bounds");
+                    self.dcx().span_err(span, "unable to satisfy constraints involving placeholders due to unknown implied bounds");
                 }
                 RegionOutlives(a, b) => {
                     conversion.push_sub_region_constraint(
@@ -272,9 +345,9 @@ impl<'tcx> InferCtxt<'tcx> {
                         category,
                     );
                 }
-                // FIXME(-Zassumptions-on-binders): actually implement OR as an  OR
-                And(nested) | Or(nested) => constraints.extend(nested),
-                AliasTyOutlivesViaEnv(..) | PlaceholderTyOutlives(..) => unreachable!(),
+                And(..) | Or(..) | AliasTyOutlivesViaEnv(..) | PlaceholderTyOutlives(..) => {
+                    unreachable!()
+                }
             }
         }
     }
