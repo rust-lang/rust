@@ -407,7 +407,7 @@ impl<'a> AstValidator<'a> {
             .filter_map(|(index, arg)| {
                 arg.attrs
                     .iter()
-                    .any(|attr| attr.has_name(sym::splat))
+                    .any(|attr| attr.has_name(sym::rustc_splat))
                     .then_some((u16::try_from(index).unwrap(), arg.span))
             })
             .unzip();
@@ -451,7 +451,7 @@ impl<'a> AstValidator<'a> {
                     sym::deny,
                     sym::expect,
                     sym::forbid,
-                    sym::splat,
+                    sym::rustc_splat,
                     sym::warn,
                 ];
                 !attr.has_any_name(&arr) && rustc_attr_parsing::is_builtin_attr(*attr)
