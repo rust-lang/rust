@@ -528,8 +528,8 @@ fn index_ast<'tcx>(
     impl Indexer<'_, '_> {
         fn insert(&mut self, id: NodeId, node: AstOwner) {
             let def_id = self.owners[&id].def_id;
-            self.index.ensure_contains_elem(def_id, || AstOwner::NonOwner);
-            self.index[def_id] = node;
+            let elem = self.index.ensure_contains_elem(def_id, || AstOwner::NonOwner);
+            *elem = node;
         }
 
         fn make_dummy<K>(

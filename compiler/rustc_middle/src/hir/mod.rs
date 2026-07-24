@@ -444,7 +444,7 @@ impl<'tcx> ProjectedMaybeOwner<'tcx> {
         }
     }
 
-    pub fn unwrap(&'tcx self) -> &'tcx ProjectedOwnerInfo<'tcx> {
+    pub fn unwrap<'a>(&'a self) -> &'a ProjectedOwnerInfo<'tcx> {
         self.as_owner().unwrap_or_else(|| panic!("Not a HIR owner"))
     }
 }

@@ -1837,7 +1837,7 @@ impl<'body, 'a, 'tcx> VnState<'body, 'a, 'tcx> {
         } else if let ty::Adt(adt, args) = ty.kind()
             && adt.is_struct()
             && adt.repr().transparent()
-            && let [single_field] = adt.non_enum_variant().fields.raw.as_slice()
+            && let [single_field] = &adt.non_enum_variant().fields.as_slice().raw
         {
             Some((FieldIdx::ZERO, single_field.ty(self.tcx, args).skip_norm_wip()))
         } else {
