@@ -124,7 +124,6 @@ pub fn run_command_with_output_and_env(
     check_exit_status(input, cwd, exit_status, None, true)
 }
 
-#[cfg(not(unix))]
 pub fn run_command_with_output_and_env_no_err(
     input: &[&dyn AsRef<OsStr>],
     cwd: Option<&Path>,

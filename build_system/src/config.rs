@@ -314,6 +314,7 @@ impl ConfigInfo {
         &mut self,
         env: &mut HashMap<String, String>,
         use_system_gcc: bool,
+        generate_out_dir: bool,
     ) -> Result<(), String> {
         env.insert("CARGO_INCREMENTAL".to_string(), "0".to_string());
 
@@ -444,12 +445,12 @@ impl ConfigInfo {
 
         self.rustc_command = vec![rustc];
         self.rustc_command.extend_from_slice(&rustflags);
-        self.rustc_command.extend_from_slice(&[
-            "-L".to_string(),
-            format!("crate={}", self.cargo_target_dir),
-            "--out-dir".to_string(),
-            self.cargo_target_dir.clone(),
-        ]);
+        self.rustc_command
+            .extend_from_slice(&["-L".to_string(), format!("crate={}", self.cargo_target_dir)]);
+        if generate_out_dir {
+            self.rustc_command
+                .extend_from_slice(&["--out-dir".to_string(), self.cargo_target_dir.clone()]);
+        }
 
         if !env.contains_key("RUSTC_LOG") {
             env.insert("RUSTC_LOG".to_string(), "warn".to_string());
