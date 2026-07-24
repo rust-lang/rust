@@ -492,7 +492,7 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
         to_add.push(uwtable_attr(cx.llcx, sess.opts.unstable_opts.use_sync_unwind));
     }
 
-    if sess.opts.unstable_opts.profile_sample_use.is_some() {
+    if sess.opts.cg.profile_sample_use.is_some() {
         to_add.push(llvm::CreateAttrString(cx.llcx, "use-sample-profile"));
     }
 

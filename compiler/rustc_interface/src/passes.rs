@@ -654,7 +654,7 @@ fn write_out_deps(tcx: TyCtxt<'_>, outputs: &OutputFilenames, out_filenames: &[P
                 checksum_hash_algo,
             ));
         }
-        if let Some(ref profile_sample) = sess.opts.unstable_opts.profile_sample_use {
+        if let Some(ref profile_sample) = sess.opts.cg.profile_sample_use {
             files.extend(hash_iter_files(
                 iter::once(normalize_path(profile_sample.as_path().to_path_buf())),
                 checksum_hash_algo,

@@ -417,7 +417,7 @@ impl<'a> GccLinker<'a> {
             config::OptLevel::Aggressive => "O3",
         };
 
-        if let Some(path) = &self.sess.opts.unstable_opts.profile_sample_use {
+        if let Some(path) = &self.sess.opts.cg.profile_sample_use {
             self.link_arg(&format!("-plugin-opt=sample-profile={}", path.display()));
         };
         let prefix = if self.codegen_backend == "gcc" {
