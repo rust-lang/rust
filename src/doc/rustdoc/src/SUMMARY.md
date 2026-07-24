@@ -16,4 +16,5 @@
 - [Advanced features](advanced-features.md)
 - [Unstable features](unstable-features.md)
 - [Deprecated features](deprecated-features.md)
+- [A Note on Accessibility](accessibility.md)
 - [References](references.md)
