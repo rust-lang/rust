@@ -312,12 +312,12 @@ impl<'a> Parser<'a> {
             return Ok(ty);
         }
 
-        let lo = self.token.span;
         let mut impl_dyn_multi = false;
+        let mut lo = self.token.span;
         let kind = if self.check(exp!(OpenParen)) {
             self.parse_ty_tuple_or_parens(lo, allow_plus)?
-        } else if self.eat(exp!(Bang)) {
-            // Never type `!`
+        } else if self.eat_bang() {
+            lo = self.prev_token.span;
             TyKind::Never
         } else if self.eat(exp!(Star)) {
             self.parse_ty_ptr()?
