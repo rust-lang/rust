@@ -3480,48 +3480,26 @@ impl Path {
     #[unstable(feature = "normalize_lexically", issue = "134694")]
     pub fn normalize_lexically(&self) -> Result<PathBuf, NormalizeError> {
         let mut lexical = PathBuf::new();
-        let mut iter = self.components().peekable();
-        let base_dir_not_root = !self.has_root();
-
-        // Find the root, if any, and add it to the lexical path.
-        // Here we treat the Windows path "C:\" as a single "root" even though
-        // `components` splits it into two: (Prefix, RootDir).
-        let root = match iter.peek() {
-            Some(Component::ParentDir) => return Err(NormalizeError),
-            Some(p @ Component::RootDir) | Some(p @ Component::CurDir) => {
-                lexical.push(p);
-                iter.next();
-                lexical.as_os_str().len()
-            }
-            Some(Component::Prefix(prefix)) => {
-                lexical.push(prefix.as_os_str());
-                iter.next();
-                if let Some(p @ Component::RootDir) = iter.peek() {
-                    lexical.push(p);
-                    iter.next();
-                }
-                lexical.as_os_str().len()
-            }
-            None => return Ok(PathBuf::new()),
-            Some(Component::Normal(_)) => 0,
-        };
-
-        for component in iter {
+        for component in self.components() {
             match component {
-                Component::RootDir => unreachable!(),
-                Component::Prefix(_) => return Err(NormalizeError),
-                Component::CurDir => continue,
-                Component::ParentDir => {
-                    // This ParentDir would take us above the "root".
-                    if lexical.as_os_str().len() == root {
-                        if base_dir_not_root {
-                            return Err(NormalizeError);
-                        }
-                    } else {
-                        lexical.pop();
+                // Prefix/RootDir only ever occur at the start; keep them as the anchor.
+                // push() retains the prefix when pushing a RootDir, so `C:` + `\` => `C:\`.
+                Component::RootDir => lexical.push(component),
+                Component::Prefix(p) => lexical.push(p.as_os_str()),
+                // Preserve a *leading* `.` (so `./a` stays `./a`); drop any later `.`.
+                Component::CurDir => {
+                    if lexical.is_empty() {
+                        lexical.push(component);
                     }
                 }
-                Component::Normal(path) => lexical.push(path),
+                Component::ParentDir => match lexical.components().next_back() {
+                    Some(Component::Normal(_)) => {
+                        lexical.pop();
+                    }
+                    Some(Component::RootDir) => {}
+                    _ => return Err(NormalizeError),
+                },
+                Component::Normal(p) => lexical.push(p),
             }
         }
         Ok(lexical)
