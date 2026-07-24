@@ -1,0 +1,29 @@
+error[E0478]: lifetime bound not satisfied
+  --> $DIR/implied_outlives_bounds_not_resolving_vars_ice.rs:13:11
+   |
+LL | fn bar(_: fn(Foo<for<'b> fn(Foo<fn(&'b ())>::Assoc)>::Assoc)) {}
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0478]: lifetime bound not satisfied
+  --> $DIR/implied_outlives_bounds_not_resolving_vars_ice.rs:13:11
+   |
+LL | fn bar(_: fn(Foo<for<'b> fn(Foo<fn(&'b ())>::Assoc)>::Assoc)) {}
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: higher-ranked subtype error
+  --> $DIR/implied_outlives_bounds_not_resolving_vars_ice.rs:13:1
+   |
+LL | fn bar(_: fn(Foo<for<'b> fn(Foo<fn(&'b ())>::Assoc)>::Assoc)) {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: higher-ranked subtype error
+  --> $DIR/implied_outlives_bounds_not_resolving_vars_ice.rs:13:8
+   |
+LL | fn bar(_: fn(Foo<for<'b> fn(Foo<fn(&'b ())>::Assoc)>::Assoc)) {}
+   |        ^
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0478`.
