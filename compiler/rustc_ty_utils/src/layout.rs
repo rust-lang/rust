@@ -718,6 +718,18 @@ fn layout_of_uncached<'tcx>(
             let discr_range_of_repr =
                 |min, max| abi::Integer::discr_range_of_repr(tcx, ty, &def.repr(), min, max);
 
+            // We shouldn't be computing the layout of discrs that fail typeck
+            if def.is_enum() {
+                for v in def.variants() {
+                    if let ty::VariantDiscr::Explicit(def_id) = v.discr
+                        && let Some(local_did) = def_id.as_local()
+                        && let Some(guar) = tcx.typeck(local_did).tainted_by_errors
+                    {
+                        return Err(error(cx, LayoutError::ReferencesError(guar)));
+                    }
+                }
+            }
+
             let discriminants_iter = || {
                 def.is_enum()
                     .then(|| def.discriminants(tcx).map(|(v, d)| (v, d.val as i128)))
