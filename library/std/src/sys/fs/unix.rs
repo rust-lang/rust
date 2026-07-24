@@ -2012,6 +2012,20 @@ impl fmt::Debug for Mode {
     }
 }
 
+#[cfg(not(target_os = "wasi"))]
+#[derive(Debug, Default, Clone)]
+pub struct ExtraHomeDirs {
+    pub runtime: Option<PathBuf>,
+    pub config_path: Option<OsString>,
+    pub data_path: Option<OsString>,
+}
+
+#[cfg(not(target_os = "wasi"))]
+#[derive(Debug, Default, Clone)]
+pub struct ExtraMediaDirs {
+    pub templates: Option<PathBuf>,
+}
+
 pub fn readdir(path: &Path) -> io::Result<ReadDir> {
     let ptr = run_path_with_cstr(path, &|p| unsafe { Ok(libc::opendir(p.as_ptr())) })?;
     if ptr.is_null() {
