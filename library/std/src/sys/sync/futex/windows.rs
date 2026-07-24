@@ -6,7 +6,7 @@ use core::sync::atomic::{
 };
 use core::time::Duration;
 
-use super::api::{self, WinError};
+use crate::sys::pal::api::{self, WinError};
 use crate::sys::{c, dur2timeout};
 
 /// An atomic for use as a futex that is at least 32-bits but may be larger

@@ -1,4 +1,5 @@
 mod condvar;
+mod futex;
 mod mutex;
 mod once;
 mod once_box;

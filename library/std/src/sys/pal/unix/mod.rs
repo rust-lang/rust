@@ -5,7 +5,6 @@ use crate::io;
 pub mod conf;
 #[cfg(target_os = "fuchsia")]
 pub mod fuchsia;
-pub mod futex;
 pub mod stack_overflow;
 pub mod sync;
 pub mod thread_parking;
