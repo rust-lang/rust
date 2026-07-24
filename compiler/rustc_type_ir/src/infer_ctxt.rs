@@ -344,6 +344,8 @@ pub trait InferCtxtLike: Sized {
         true
     }
 
+    fn enable_next_solver_overflow_fcw(&self) -> bool;
+
     fn disable_trait_solver_fast_paths(&self) -> bool;
 
     fn typing_mode_raw(&self) -> TypingMode<Self::Interner>;
@@ -464,6 +466,8 @@ pub trait InferCtxtLike: Sized {
         T: TypeFoldable<Self::Interner>;
 
     fn probe<T>(&self, probe: impl FnOnce() -> T) -> T;
+
+    fn commit_if_ok<T, E>(&self, f: impl FnOnce() -> Result<T, E>) -> Result<T, E>;
 
     fn sub_regions(
         &self,

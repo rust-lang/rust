@@ -848,6 +848,20 @@ impl Certainty {
             stalled_on_coroutines: StalledOnCoroutines::No,
         })
     }
+
+    pub fn is_yes(&self) -> bool {
+        match self {
+            Certainty::Yes => true,
+            Certainty::Maybe(_) => false,
+        }
+    }
+
+    pub fn is_overflow(&self) -> bool {
+        match self {
+            Certainty::Maybe(MaybeInfo { cause: MaybeCause::Overflow { .. }, .. }) => true,
+            _ => false,
+        }
+    }
 }
 
 /// Why we failed to evaluate a goal.

@@ -87,6 +87,7 @@ pub mod hardwired {
             PRIVATE_INTERFACES,
             PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
             PUB_USE_OF_PRIVATE_EXTERN_CRATE,
+            RECURSION_DEPTH_EXCEEDING_LIMIT,
             REDUNDANT_IMPORTS,
             REDUNDANT_LIFETIMES,
             REFINING_IMPL_TRAIT_INTERNAL,
@@ -5577,5 +5578,62 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #156047),
         report_in_deps: true,
+    };
+}
+
+declare_lint! {
+    /// The `recursion_depth_exceeding_limit` lint detects cases where the compiler does not
+    /// correctly track the recursion depth in obligation evaluation.
+    ///
+    /// ### Example
+    /// ```text
+    /// rustc -Znext-solver example.rs
+    /// ```
+    ///
+    /// ```rust,ignore (requires next solver)
+    /// #![recursion_limit = "8"]
+    /// struct Foo<T> {
+    ///    t: T,
+    ///    opt_t: Option<T>,
+    /// }
+    /// fn require_sync<T: Sync>() {}
+    /// fn main() {
+    ///     require_sync::<Foo<Foo<Foo<Foo<Foo<Foo<()>>>>>>>();
+    /// }
+    /// ```
+    ///
+    /// This will produces:
+    /// ```text
+    /// error[E0275]: overflow evaluating the requirement `Foo<Foo<Foo<Foo<Foo<Foo<()>>>>>>: Sync`
+    ///  --> example.rs:12:20
+    ///   |
+    ///   |     require_sync::<Foo<Foo<Foo<Foo<Foo<Foo<()>>>>>>>();
+    ///   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ///   |
+    ///   = help: consider increasing the recursion limit by adding a `#![recursion_limit = "16"]` attribute to your crate
+    /// note: required by a bound in `require_sync`
+    ///  --> example.rs:9:20
+    ///   |
+    ///   | fn require_sync<T: Sync>() {}
+    ///   |                    ^^^^ required by this bound in `require_sync`
+    /// ```
+    ///
+    /// ### Explanation
+    ///
+    /// The compiler uses a recursion limit in obligation evaluation to avoid hangs.
+    ///
+    /// However, the old trait solver sometimes ignores the recursion depth, whereas
+    /// the new solver correctly tracks it. This reveals cases where overflow should
+    /// have occurred previously.
+    ///
+    /// This is a [future-incompatible] lint to transition this to a hard error in the future.
+    ///
+    /// [future-incompatible]: ../index.md#future-incompatible-lints
+    pub RECURSION_DEPTH_EXCEEDING_LIMIT,
+    Warn,
+    "detects trait solving overflow that only happens with the next solver",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: fcw!(FutureReleaseError #159228),
+        report_in_deps: false,
     };
 }

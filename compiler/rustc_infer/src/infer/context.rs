@@ -25,6 +25,10 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         self.next_trait_solver
     }
 
+    fn enable_next_solver_overflow_fcw(&self) -> bool {
+        self.enable_next_solver_overflow_fcw
+    }
+
     fn disable_trait_solver_fast_paths(&self) -> bool {
         self.disable_trait_solver_fast_paths()
     }
@@ -324,6 +328,10 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
 
     fn probe<T>(&self, probe: impl FnOnce() -> T) -> T {
         self.probe(|_| probe())
+    }
+
+    fn commit_if_ok<T, E>(&self, f: impl FnOnce() -> Result<T, E>) -> Result<T, E> {
+        self.commit_if_ok(|_| f())
     }
 
     fn sub_regions(
