@@ -142,6 +142,17 @@ fn check_unwrap_or_default(
         return false;
     }
 
+    // `Default` for raw pointers is only stable since 1.88.0, so the suggestion would not compile
+    // below that MSRV (#17379). Only reachable under `-Zbuild-std`, hence not covered by our UI
+    // tests against a precompiled `std` — removing this breaks no test, but does bring the false
+    // positive back for build-std users.
+    if let Some(call_expr) = call_expr
+        && cx.typeck_results().expr_ty(call_expr).is_raw_ptr()
+        && !msrv.meets(cx, msrvs::RAW_PTR_DEFAULT)
+    {
+        return false;
+    }
+
     if !expr_type_is_certain(cx, receiver) {
         return false;
     }
