@@ -23,6 +23,6 @@ pub trait MetaSized: PointeeSized {}
 #[lang = "sized"]
 pub trait Sized: MetaSized {}
 
-//[BADFLAGS]~? ERROR incorrect value `leaf` for target option `branch-protection`
-//[BADFLAGSPC]~? ERROR incorrect value `pc` for target option `branch-protection`
+//[BADFLAGS]~? ERROR incorrect value `leaf` for codegen option `branch-protection`
+//[BADFLAGSPC]~? ERROR incorrect value `pc` for codegen option `branch-protection`
 //[BADTARGET]~? ERROR `-Tbranch-protection` is only supported on aarch64

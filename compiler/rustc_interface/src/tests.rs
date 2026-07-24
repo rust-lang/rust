@@ -630,6 +630,14 @@ fn test_codegen_options_tracking_hash() {
 
     // Make sure that changing a [TRACKED] option changes the hash.
     // tidy-alphabetical-start
+    tracked!(
+        branch_protection,
+        Some(BranchProtection {
+            bti: true,
+            pac_ret: Some(PacRet { leaf: true, pc: true, key: PAuthKey::B }),
+            gcs: true,
+        })
+    );
     tracked!(code_model, Some(CodeModel::Large));
     tracked!(collapse_macro_debuginfo, CollapseMacroDebuginfo::Yes);
     tracked!(control_flow_guard, CFGuard::Checks);

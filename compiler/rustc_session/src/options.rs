@@ -2442,6 +2442,9 @@ options! {
     ar: () = ((), parse_ignore, [UNTRACKED],
         "this option has been removed",
         removed: Err),
+    #[rustc_lint_opt_deny_field_access("use `Session::branch_protection` instead of this field")]
+    branch_protection: Option<BranchProtection> = (None, parse_branch_protection, [TRACKED_UNSTABLE] { TARGET_MODIFIER: Only },
+        "set options for branch target identification and pointer authentication on AArch64"),
     #[rustc_lint_opt_deny_field_access("use `Session::code_model` instead of this field")]
     code_model: Option<CodeModel> = (None, parse_code_model, [TRACKED],
         "choose the code model to use (`rustc --print code-models` for details)"),
