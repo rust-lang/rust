@@ -1629,7 +1629,7 @@ rustc_queries! {
     /// You should almost certainly not use this. If you already have an InferCtxt, then
     /// you should also probably have a `ParamEnv` from when it was built. If you don't,
     /// then you should take a `TypingEnv` to ensure that you handle opaque types correctly.
-    query param_env(def_id: DefId) -> ty::ParamEnv<'tcx> {
+    query param_env_of_typeck_root(def_id: DefId) -> ty::ParamEnv<'tcx> {
         desc { "computing normalized predicates of `{}`", tcx.def_path_str(def_id) }
         feedable
     }
@@ -1637,7 +1637,7 @@ rustc_queries! {
     /// Like `param_env`, but returns the `ParamEnv` after all opaque types have been
     /// replaced with their hidden type. This is used in the old trait solver
     /// when in `PostAnalysis` mode and should not be called directly.
-    query param_env_normalized_for_post_analysis(def_id: DefId) -> ty::ParamEnv<'tcx> {
+    query param_env_normalized_for_post_analysis_of_typeck_root(def_id: DefId) -> ty::ParamEnv<'tcx> {
         desc { "computing revealed normalized predicates of `{}`", tcx.def_path_str(def_id) }
     }
 
