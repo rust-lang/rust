@@ -425,6 +425,7 @@ impl<'tcx> Stable<'tcx> for mir::PlaceElem<'tcx> {
         use rustc_middle::mir::ProjectionElem::*;
         match self {
             Deref => crate::mir::ProjectionElem::Deref,
+            PhantomDeref => bug!("Hopefully we don't come here"),
             Field(idx, ty) => {
                 crate::mir::ProjectionElem::Field(idx.stable(tables, cx), ty.stable(tables, cx))
             }

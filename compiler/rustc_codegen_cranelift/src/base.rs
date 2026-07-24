@@ -989,6 +989,7 @@ pub(crate) fn codegen_place<'tcx>(
             PlaceElem::Deref => {
                 cplace = cplace.place_deref(fx);
             }
+            PlaceElem::PhantomDeref => bug!("encountered PhantomDeref in codegen"),
             PlaceElem::OpaqueCast(ty) => bug!("encountered OpaqueCast({ty}) in codegen"),
             PlaceElem::UnwrapUnsafeBinder(ty) => {
                 cplace = cplace.place_transmute_type(fx, fx.monomorphize(ty));

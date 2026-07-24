@@ -296,7 +296,9 @@ impl<'tcx> Validator<'_, 'tcx> {
             | ProjectionElem::UnwrapUnsafeBinder(_) => {}
 
             // Never recurse.
-            ProjectionElem::OpaqueCast(..) | ProjectionElem::Downcast(..) => {
+            ProjectionElem::PhantomDeref
+            | ProjectionElem::OpaqueCast(..)
+            | ProjectionElem::Downcast(..) => {
                 return Err(Unpromotable);
             }
 

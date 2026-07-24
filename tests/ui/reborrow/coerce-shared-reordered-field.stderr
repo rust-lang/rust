@@ -1,5 +1,5 @@
 error: implementing `CoerceShared` does not allow multiple lifetimes or fields to be coerced
-  --> $DIR/coerce-shared-reordered-field.rs:19:10
+  --> $DIR/coerce-shared-reordered-field.rs:21:10
    |
 LL | impl<'a> CoerceShared<ReorderRef<'a>> for ReorderMut<'a> {}
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^

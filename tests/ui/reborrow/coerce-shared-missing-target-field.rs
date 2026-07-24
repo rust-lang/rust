@@ -1,3 +1,5 @@
+//! Test that CoerceShared cannot create a field from thin air.
+
 #![feature(reborrow)]
 
 use std::marker::{CoerceShared, Reborrow};

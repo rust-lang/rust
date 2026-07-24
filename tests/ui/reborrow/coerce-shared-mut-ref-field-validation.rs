@@ -1,5 +1,8 @@
 //@ check-pass
 
+//! Test that CoerceShared can resolve field types through aliases and GATs.
+//! Also test that reference shared coercing does not produce invalid lifetime relations.
+
 #![feature(reborrow)]
 
 use std::marker::{CoerceShared, Reborrow};
@@ -39,6 +42,8 @@ struct InnerLifetimeRef<'a> {
     value: &'a &'a (),
 }
 
+// No error explicitly necessary: &'a mut &'static T -> &'a &'a T is a valid coercion. We might
+// still want to error on it because it's mostly meaningless, though.
 impl<'a> CoerceShared<InnerLifetimeRef<'a>> for InnerLifetimeMut<'a> {}
 
 fn main() {}

@@ -181,6 +181,15 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                 }
             }
 
+            PlaceRef { local: _, projection: [ProjectionElem::PhantomDeref] } => {
+                item_msg = String::new();
+                reason = String::new();
+            }
+            PlaceRef { local: _, projection: [_proj_base @ .., ProjectionElem::PhantomDeref] } => {
+                item_msg = String::new();
+                reason = String::new();
+            }
+
             PlaceRef {
                 local: _,
                 projection:

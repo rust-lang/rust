@@ -1,0 +1,24 @@
+error[E0515]: cannot return reference to temporary value
+  --> $DIR/custom_marker_identity.rs:13:56
+   |
+LL |   fn method<'a>(a: CustomMarker<'a>) -> CustomMarker<'a> {
+   |  ________________________________________________________^
+LL | |
+LL | |     a
+LL | | }
+   | |_^ returns a reference to data owned by the current function
+
+error[E0515]: cannot return value referencing local data `a`
+  --> $DIR/custom_marker_identity.rs:13:56
+   |
+LL |   fn method<'a>(a: CustomMarker<'a>) -> CustomMarker<'a> {
+   |  ________________________________________________________^
+LL | |
+LL | |     a
+   | |     - `a` is borrowed here
+LL | | }
+   | |_^ returns a value referencing data owned by the current function
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0515`.

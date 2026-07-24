@@ -1,3 +1,6 @@
+//! Test that CoerceShared can omit a reborrowed field.
+//! This should eventually pass.
+
 #![feature(reborrow)]
 #![allow(dead_code)]
 

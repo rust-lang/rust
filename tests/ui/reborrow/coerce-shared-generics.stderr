@@ -1,5 +1,5 @@
 error: implementing `CoerceShared` does not allow multiple lifetimes or fields to be coerced
-  --> $DIR/coerce-shared-generics.rs:26:38
+  --> $DIR/coerce-shared-generics.rs:28:38
    |
 LL | impl<'a, T, U: Copy, const N: usize> CoerceShared<BufferRef<'a, T, U, N>>
    |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

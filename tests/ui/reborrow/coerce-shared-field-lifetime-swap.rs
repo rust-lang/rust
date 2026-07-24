@@ -1,3 +1,5 @@
+//! Test that CoerceShared cannot be used to swap 'static and 'a lifetimes around.
+
 #![feature(reborrow)]
 
 use std::marker::{CoerceShared, Reborrow};

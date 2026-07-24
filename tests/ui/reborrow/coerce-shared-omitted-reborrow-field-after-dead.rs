@@ -1,3 +1,7 @@
+//! Test that CoerceShared does not capture an omitted field, and that captured fields do not stay
+//! captured after the local lifetime ends.
+//! This should eventually pass.
+
 #![feature(reborrow)]
 #![allow(dead_code)]
 
@@ -46,6 +50,8 @@ fn main() {
         read(wrapped);
     }
 
-    extra_value = 3;
-    assert_eq!(extra_value, 3);
+    value = 3;
+    assert_eq!(value, 3);
+    extra_value = 4;
+    assert_eq!(extra_value, 4);
 }

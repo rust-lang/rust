@@ -1,5 +1,5 @@
 error: implementing `CoerceShared` does not allow multiple lifetimes or fields to be coerced
-  --> $DIR/coerce-shared-field-lifetime-swap.rs:18:10
+  --> $DIR/coerce-shared-field-lifetime-swap.rs:20:10
    |
 LL | impl<'a> CoerceShared<MyRef<'a>> for MyMut<'a> {}
    |          ^^^^^^^^^^^^^^^^^^^^^^^
