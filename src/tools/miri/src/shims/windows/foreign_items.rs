@@ -635,7 +635,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     &system_info,
                 )?;
             }
-            "GetActiveProcessorCount" => {
+            // this is only callable from std, which always asks for `ALL_PROCESSOR_GROUPS`
+            "GetActiveProcessorCount" if this.frame_in_std() => {
                 // FIXME: This does not have a direct test (#3179).
                 let [_group_number] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(u16) -> u32),
@@ -646,7 +647,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Miri does not model processor groups, so report every CPU.
                 this.write_scalar(Scalar::from_u32(this.machine.num_cpus), dest)?;
             }
-            "GetProcessGroupAffinity" => {
+            // this is only callable from std, which ignores the group array and the return value
+            "GetProcessGroupAffinity" if this.frame_in_std() => {
                 // FIXME: This does not have a direct test (#3179).
                 let [_handle, group_count, _group_array] = this.check_shim_sig(
                     shim_sig!(extern "system" fn(winapi::HANDLE, *mut _, *mut _) -> winapi::BOOL),
