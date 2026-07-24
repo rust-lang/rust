@@ -18,7 +18,8 @@
 //@ ignore-visionos needs the `.dSYM` files to be moved to the device
 //@ needs-unwind
 //@ aux-build: line-tables-only-helper.rs
-
+//@ edition: 2021
+#![feature(backtrace_frames)]
 
 extern crate line_tables_only_helper;
 
@@ -30,13 +31,26 @@ fn assert_contains(
     expected_file: &str,
     expected_line: u32,
 ) {
-    // FIXME(jieyouxu): fix this ugly fragile test when `BacktraceFrame` has accessors like...
-    // `symbols()`.
-    let backtrace = format!("{:#?}", backtrace);
-    eprintln!("{}", backtrace);
-    assert!(backtrace.contains(expected_name), "backtrace does not contain expected name {}", expected_name);
-    assert!(backtrace.contains(expected_file), "backtrace does not contain expected file {}", expected_file);
-    assert!(backtrace.contains(&expected_line.to_string()), "backtrace does not contain expected line {}", expected_line);
+    // The formatted frames look like this:
+    // `{ fn: "baz", file: ".../tests/ui/backtrace/auxiliary/line-tables-only-helper.rs", line: 5 }`
+    // Make sure we match the right part when searching for the function name and line number.
+    let expected_line_str = format!("line: {expected_line} ");
+    let expected_name_str = format!("fn: \"{expected_name}\"");
+    eprintln!("{:#?}", backtrace);
+    for frame in backtrace.frames() {
+        // FIXME: we use string matching. Replace this by getting the actual data out of the frame,
+        // once that is possible.
+        let frame = format!("{:#?}", frame);
+        if frame.contains(&expected_name_str)
+            && frame.contains(expected_file)
+            && frame.contains(&expected_line_str)
+        {
+            return;
+        }
+    }
+    panic!(
+        "backtrace does not contain expected frame with name={expected_name}, file={expected_file}, line={expected_line}"
+    );
 }
 
 fn main() {
@@ -48,7 +62,7 @@ fn main() {
     // And with #143208 we also lost `bar` in the line tables.
     #[cfg(not(all(target_pointer_width = "32", target_env = "msvc")))]
     {
-        assert_contains(&backtrace, "foo", "line-tables-only-helper.rs", 5);
+        assert_contains(&backtrace, "foo", "line-tables-only-helper.rs", 15);
         assert_contains(&backtrace, "bar", "line-tables-only-helper.rs", 10);
     }
     assert_contains(&backtrace, "baz", "line-tables-only-helper.rs", 5);
