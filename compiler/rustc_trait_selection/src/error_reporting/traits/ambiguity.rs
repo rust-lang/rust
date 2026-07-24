@@ -255,12 +255,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 // Pick the first generic parameter that still contains inference variables as the one
                 // we're going to emit an error for. If there are none (see above), fall back to
                 // a more general error.
-                let term = data
-                    .trait_ref
-                    .args
-                    .iter()
-                    .filter_map(ty::GenericArg::as_term)
-                    .find(|s| s.has_non_region_infer());
+                let term = data.trait_ref.args.terms().find(|s| s.has_non_region_infer());
 
                 let mut err = if let Some(term) = term {
                     let candidates: Vec<_> = self
