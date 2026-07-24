@@ -774,6 +774,9 @@ impl Step for Rustdoc {
         if let Some(allocator) = builder.config.override_allocator(target) {
             extra_features.push(allocator.feature_name().to_string());
         }
+        if !builder.config.rust_debug_logging {
+            extra_features.push("max_level_info".to_string())
+        }
 
         let compilers = RustcPrivateCompilers::from_target_compiler(builder, target_compiler);
         let tool_path = builder

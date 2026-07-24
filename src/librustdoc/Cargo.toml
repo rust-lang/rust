@@ -44,6 +44,7 @@ expect-test = "1.4.0"
 
 [features]
 jemalloc = []
+max_level_info = ["tracing/max_level_info", "tracing/release_max_level_info"]
 
 [package.metadata.rust-analyzer]
 rustc_private = true
