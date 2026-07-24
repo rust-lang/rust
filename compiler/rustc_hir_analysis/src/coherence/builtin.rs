@@ -62,7 +62,9 @@ fn visit_implementation_of_drop(checker: &Checker<'_>) -> Result<(), ErrorGuaran
     let tcx = checker.tcx;
     let impl_did = checker.impl_def_id;
     // Destructors only work on local ADT types.
-    match checker.impl_header.trait_ref.instantiate_identity().skip_norm_wip().self_ty().kind() {
+    let self_ty = checker.impl_header.trait_ref.instantiate_identity().skip_norm_wip().self_ty();
+    let self_ty = tcx.expand_free_alias_tys(self_ty);
+    match self_ty.kind() {
         ty::Adt(def, _) if def.did().is_local() => return Ok(()),
         ty::Error(_) => return Ok(()),
         _ => {}
@@ -83,6 +85,7 @@ fn visit_implementation_of_copy(checker: &Checker<'_>) -> Result<(), ErrorGuaran
     debug!("visit_implementation_of_copy: impl_did={:?}", impl_did);
 
     let self_type = impl_header.trait_ref.instantiate_identity().skip_norm_wip().self_ty();
+    let self_type = tcx.expand_free_alias_tys(self_type);
     debug!("visit_implementation_of_copy: self_type={:?} (bound)", self_type);
 
     let param_env = tcx.param_env(impl_did);
