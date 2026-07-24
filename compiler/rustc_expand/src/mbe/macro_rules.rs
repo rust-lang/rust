@@ -355,16 +355,18 @@ pub(super) trait Tracker<'matcher> {
     /// Provide context on the arm that's about to be matched.
     fn prepare(&mut self, which_matcher: WhichMatcher, matcher: &'matcher [MatcherLoc]);
 
-    /// This is called before trying to match next MatcherLoc on the current token.
-    fn before_match_loc(&mut self, parser: &TtParser, matcher: &'matcher MatcherLoc);
+    /// A [`MatcherLoc`] is about to be matched against `token` at `input_pos`.
+    fn trying_match(&mut self, input_pos: u32, token: &Token, loc_index: u32);
 
     /// A [`MatcherLoc`] successfully consumed input from the parser.
     ///
     /// This is called for [`MatcherLoc::Token`] and [`MatcherLoc::SequenceSep`], which consume
-    /// single tokens, when they successfully match [`Parser::token`]. It is also called for
+    /// single tokens, when they successfully match the token at `input_pos`. It is also called for
     /// [`MatcherLoc::MetaVarDecl`] when non-terminal parsing is guaranteed to occur (i.e. after
     /// [`Parser::nonterminal_may_begin_with()`] returns `true`).
-    fn matched_one(&mut self, parser: &Parser<'_>, loc_index: usize);
+    fn matched_one(&mut self, input_pos: u32, loc_index: u32);
+
+    fn reset_input_pos(&mut self, parser: &Parser<'_>);
 
     /// This is called after an arm has been parsed, either successfully or unsuccessfully. When
     /// this is called, `before_match_loc` was called at least once (with a `MatcherLoc::Eof`).
@@ -382,7 +384,7 @@ pub(super) trait Tracker<'matcher> {
     /// An ambiguity error occurred.
     ///
     /// The parser will return [`NamedParseResult::Ambiguity`] after calling this.
-    fn ambiguity(&mut self, parser: &Parser<'_>);
+    fn ambiguity(&mut self);
 
     /// For tracing.
     fn description() -> &'static str;
@@ -395,16 +397,25 @@ pub(super) trait Tracker<'matcher> {
 pub(super) struct NoopTracker;
 
 impl<'matcher> Tracker<'matcher> for NoopTracker {
+    #[inline]
     fn prepare(&mut self, _which_matcher: WhichMatcher, _matcher: &'matcher [MatcherLoc]) {}
 
-    fn before_match_loc(&mut self, _parser: &TtParser, _matcher: &'matcher MatcherLoc) {}
+    #[inline]
+    fn trying_match(&mut self, _input_pos: u32, _token: &Token, _loc_index: u32) {}
 
-    fn matched_one(&mut self, _parser: &Parser<'_>, _loc_index: usize) {}
+    #[inline]
+    fn matched_one(&mut self, _input_pos: u32, _loc_index: u32) {}
 
-    fn ambiguity(&mut self, _parser: &Parser<'_>) {}
+    #[inline]
+    fn ambiguity(&mut self) {}
 
+    #[inline]
+    fn reset_input_pos(&mut self, _parser: &Parser<'_>) {}
+
+    #[inline]
     fn after_arm(&mut self, _result: &NamedParseResult) {}
 
+    #[inline]
     fn failure(&mut self, _parser: &Parser<'_>) {}
 
     fn description() -> &'static str {
