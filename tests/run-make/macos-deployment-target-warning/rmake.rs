@@ -13,6 +13,7 @@ fn main() {
     let ld_prime_obj = r"ld: warning: object file \(.*\) was built for newer '.+' version \(\d+\.\d+\) than being linked \(\d+\.\d+\)";
     let ld64_dylib = r"ld: warning: dylib \(.*\) was built for newer .+ version \(\d+\.\d+\) than being linked \(\d+\.\d+\)";
     let ld_prime_dylib = r"ld: warning: building for [^ ,]+, but linking with dylib '[^']*' which was built for newer version [0-9.]+";
+    let lld_obj = r"ld64\.lld: warning: .+ has version \d+\.\d+(\.\d+)?, which is newer than target minimum of \d+\.\d+(\.\d+)?";
 
     // Test 1: static archive (object file mismatch)
     cc().arg("-c").arg("-mmacosx-version-min=15.5").output("foo.o").input("foo.c").run();
@@ -53,5 +54,25 @@ fn main() {
         .actual_text("(rustc -W linker-info dylib)", &dylib_warnings)
         .normalize(ld64_dylib, "NORMALIZED_DYLIB_DEPLOYMENT_MISMATCH_LINKER_WARNING")
         .normalize(ld_prime_dylib, "NORMALIZED_DYLIB_DEPLOYMENT_MISMATCH_LINKER_WARNING")
+        .run();
+
+    // Test 3: static archive with lld (object file mismatch)
+    let lld_path = std::path::PathBuf::from(std::env::var("LLVM_BIN_DIR").unwrap()).join("lld");
+    let ld64_lld = std::env::current_dir().unwrap().join("ld64.lld");
+    std::os::unix::fs::symlink(&lld_path, &ld64_lld).expect("failed to create ld64.lld symlink");
+
+    let lld_warnings = rustc()
+        .arg("-lstatic=foo")
+        .link_arg("-mmacosx-version-min=11.2")
+        .link_arg(&format!("-fuse-ld={}", ld64_lld.display()))
+        .input("main.rs")
+        .crate_type("bin")
+        .run()
+        .stderr_utf8();
+
+    diff()
+        .expected_file("warnings.txt")
+        .actual_text("(rustc -W linker-info with lld)", &lld_warnings)
+        .normalize(lld_obj, "NORMALIZED_OBJECT_DEPLOYMENT_MISMATCH_LINKER_WARNING")
         .run();
 }
