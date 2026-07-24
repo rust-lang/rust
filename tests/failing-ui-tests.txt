@@ -67,7 +67,6 @@ tests/ui/simd/simd-bitmask-notpow2.rs
 tests/ui/codegen/StackColoring-not-blowup-stack-issue-40883.rs
 tests/ui/numbers-arithmetic/u128-as-f32.rs
 tests/ui/process/nofile-limit.rs
-tests/ui/linking/no-gc-encapsulation-symbols.rs
 tests/ui/panics/unwind-force-no-unwind-tables.rs
 tests/ui/attributes/fn-align-dyn.rs
 tests/ui/linkage-attr/raw-dylib/elf/glibc-x86_64.rs
