@@ -2339,27 +2339,7 @@ pub struct FnSig {
 impl FnSig {
     /// Return a span encompassing the header, or where to insert it if empty.
     pub fn header_span(&self) -> Span {
-        match self.header.ext {
-            Extern::Implicit(span) | Extern::Explicit(_, span) => {
-                return self.span.with_hi(span.hi());
-            }
-            Extern::None => {}
-        }
-
-        match self.header.safety {
-            Safety::Unsafe(span) | Safety::Safe(span) => return self.span.with_hi(span.hi()),
-            Safety::Default => {}
-        };
-
-        if let Some(coroutine_kind) = self.header.coroutine_kind {
-            return self.span.with_hi(coroutine_kind.span().hi());
-        }
-
-        if let Const::Yes(span) = self.header.constness {
-            return self.span.with_hi(span.hi());
-        }
-
-        self.span.shrink_to_lo()
+        self.header.span().unwrap_or(self.span.shrink_to_lo())
     }
 
     /// The span of the header's safety, or where to insert it if empty.
@@ -2382,6 +2362,19 @@ impl FnSig {
     pub fn extern_span(&self) -> Span {
         self.header.ext.span().unwrap_or(self.safety_span().shrink_to_hi())
     }
+
+    pub fn as_borrowed<'a>(&'a self) -> BorrowedFnSig<'a> {
+        BorrowedFnSig { header: self.header, decl: &self.decl, span: self.span }
+    }
+}
+
+/// A borrowed version of `FnSig`, used to share logic between function declarations and function
+/// pointer types.
+#[derive(Clone, Debug)]
+pub struct BorrowedFnSig<'a> {
+    pub header: FnHeader,
+    pub decl: &'a FnDecl,
+    pub span: Span,
 }
 
 /// A constraint on an associated item.
@@ -2485,6 +2478,16 @@ pub struct FnPtrTy {
     /// Span of the `[unsafe] [extern] fn(...) -> ...` part, i.e. everything
     /// after the generic params (if there are any, e.g. `for<'a>`).
     pub decl_span: Span,
+}
+
+impl FnPtrTy {
+    pub fn header(&self) -> FnHeader {
+        FnHeader { constness: Const::No, coroutine_kind: None, safety: self.safety, ext: self.ext }
+    }
+
+    pub fn as_borrowed_fn_sig<'a>(&'a self) -> BorrowedFnSig<'a> {
+        BorrowedFnSig { header: self.header(), decl: &self.decl, span: self.decl_span }
+    }
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
@@ -3835,6 +3838,30 @@ impl FnHeader {
             || coroutine_kind.is_some()
             || matches!(constness, Const::Yes(_))
             || !matches!(ext, Extern::None)
+    }
+
+    pub fn span(&self) -> Option<Span> {
+        let mut spans = smallvec::SmallVec::<[Span; 4]>::new();
+
+        match self.ext {
+            Extern::Implicit(span) | Extern::Explicit(_, span) => spans.push(span),
+            Extern::None => {}
+        }
+
+        match self.safety {
+            Safety::Unsafe(span) | Safety::Safe(span) => spans.push(span),
+            Safety::Default => {}
+        };
+
+        if let Some(coroutine_kind) = self.coroutine_kind {
+            spans.push(coroutine_kind.span());
+        }
+
+        if let Const::Yes(span) = self.constness {
+            spans.push(span)
+        }
+
+        spans.into_iter().reduce(Span::to)
     }
 }
 

@@ -46,6 +46,6 @@ impl S {
     }
 }
 
-type A7 = extern "custom" fn(); //~ ERROR "custom" ABI is experimental
+type A7 = unsafe extern "custom" fn(); //~ ERROR "custom" ABI is experimental
 
 extern "custom" {} //~ ERROR "custom" ABI is experimental
