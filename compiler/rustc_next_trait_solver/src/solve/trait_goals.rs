@@ -244,35 +244,23 @@ where
         // when merging candidates anyways.
         //
         // See tests/ui/impl-trait/auto-trait-leakage/avoid-query-cycle-via-item-bound.rs.
-        if let ty::Alias(is_rigid, ty::AliasTy { kind: ty::Opaque { def_id }, .. }) =
+        if let ty::Alias(is_rigid, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) =
             goal.predicate.self_ty().kind()
         {
             debug_assert!(is_rigid == ty::IsRigid::Yes);
-            if ecx.opaque_accesses.might_rerun() {
-                ecx.opaque_accesses.rerun_always(RerunReason::AutoTraitLeakage)?;
-                return Err(NoSolution.into());
+            structural_traits::consider_auto_trait_candidate_for_opaque_ty(ecx, goal, def_id, args)
+        } else {
+            // We need to make sure to stall any coroutines we are inferring to avoid query cycles.
+            if let Some(cand) = ecx.try_stall_coroutine(goal.predicate.self_ty()) {
+                return cand;
             }
 
-            for item_bound in cx.item_self_bounds(def_id.into()).skip_binder() {
-                if item_bound
-                    .as_trait_clause()
-                    .is_some_and(|b| b.def_id() == goal.predicate.def_id())
-                {
-                    return Err(NoSolution.into());
-                }
-            }
+            ecx.probe_and_evaluate_goal_for_constituent_tys(
+                CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
+                goal,
+                structural_traits::instantiate_constituent_tys_for_auto_trait,
+            )
         }
-
-        // We need to make sure to stall any coroutines we are inferring to avoid query cycles.
-        if let Some(cand) = ecx.try_stall_coroutine(goal.predicate.self_ty()) {
-            return cand;
-        }
-
-        ecx.probe_and_evaluate_goal_for_constituent_tys(
-            CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
-            goal,
-            structural_traits::instantiate_constituent_tys_for_auto_trait,
-        )
     }
 
     fn consider_trait_alias_candidate(
