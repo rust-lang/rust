@@ -2180,7 +2180,7 @@ rustc_queries! {
         feedable
     }
 
-    query inhabited_predicate_adt(key: DefId) -> ty::inhabitedness::InhabitedPredicate<'tcx> {
+    query inhabited_predicate_for_def(key: DefId) -> ty::inhabitedness::InhabitedPredicate<'tcx> {
         desc { "computing the uninhabited predicate of `{:?}`", key }
     }
 
