@@ -1,0 +1,20 @@
+error[E0282]: type annotations needed
+  --> $DIR/closure-method-call-unconstrained.rs:13:24
+   |
+LL |     let _get = |index| array[index].pow(1);
+   |                        ^^^^^^^^^^^^ cannot infer type
+
+error[E0282]: type annotations needed
+  --> $DIR/closure-method-call-unconstrained.rs:18:16
+   |
+LL |     let get = |value| value.get();
+   |                ^^^^^  ----- type must be known at this point
+   |
+help: consider giving this closure parameter an explicit type
+   |
+LL |     let get = |value: /* Type */| value.get();
+   |                     ++++++++++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0282`.
