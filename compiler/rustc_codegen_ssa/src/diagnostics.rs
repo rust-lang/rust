@@ -1120,32 +1120,6 @@ pub struct FailedToGetLayout<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(
-    "dlltool could not create import library with {$dlltool_path} {$dlltool_args}:
-{$stdout}
-{$stderr}"
-)]
-pub(crate) struct DlltoolFailImportLibrary<'a> {
-    pub dlltool_path: Cow<'a, str>,
-    pub dlltool_args: String,
-    pub stdout: Cow<'a, str>,
-    pub stderr: Cow<'a, str>,
-}
-
-#[derive(Diagnostic)]
-#[diag("error writing .DEF file: {$error}")]
-pub(crate) struct ErrorWritingDEFFile {
-    pub error: std::io::Error,
-}
-
-#[derive(Diagnostic)]
-#[diag("error calling dlltool '{$dlltool_path}': {$error}")]
-pub(crate) struct ErrorCallingDllTool<'a> {
-    pub dlltool_path: Cow<'a, str>,
-    pub error: std::io::Error,
-}
-
-#[derive(Diagnostic)]
 #[diag("failed to create remark directory: {$error}")]
 pub(crate) struct ErrorCreatingRemarkDir {
     pub error: std::io::Error,

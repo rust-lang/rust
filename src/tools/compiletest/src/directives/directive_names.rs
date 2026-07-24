@@ -168,7 +168,6 @@ pub(crate) const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "needs-backends",
     "needs-crate-type",
     "needs-deterministic-layouts",
-    "needs-dlltool",
     "needs-dynamic-linking",
     "needs-enzyme",
     "needs-force-clang-based-tests",
