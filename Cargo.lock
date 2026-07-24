@@ -3972,6 +3972,8 @@ dependencies = [
  "rustc_target",
  "serde_json",
  "shlex",
+ "tikv-jemalloc-sys",
+ "tikv-jemallocator",
  "tracing",
  "windows 0.61.3",
 ]
@@ -5681,6 +5683,16 @@ checksum = "cd8aa5b2ab86a2cefa406d889139c162cbb230092f7d1d7cbc1716405d852a3b"
 dependencies = [
  "cc",
  "libc",
+]
+
+[[package]]
+name = "tikv-jemallocator"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0359b4327f954e0567e69fb191cf1436617748813819c94b8cd4a431422d053a"
+dependencies = [
+ "libc",
+ "tikv-jemalloc-sys",
 ]
 
 [[package]]
