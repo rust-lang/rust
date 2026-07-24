@@ -48,6 +48,8 @@ if sys.platform.startswith("linux"):
                 data = file.readline().split()
             if data[0] != "cpu":
                 raise Exception('did not start with "cpu"')
+            if len(data) < 11:
+                raise Exception("Unexpected /proc/stat format")
             self.user = int(data[1])
             self.nice = int(data[2])
             self.system = int(data[3])
@@ -82,11 +84,11 @@ if sys.platform.startswith("linux"):
                 + guest
                 + guest_nice
             )
-            return float(idle) / float(total) * 100
+            return float(idle) / total * 100 if total != 0 else 0.0
 
 elif sys.platform == "win32":
     from ctypes.wintypes import DWORD
-    from ctypes import Structure, windll, WinError, GetLastError, byref
+    from ctypes import Structure, windll, WinError, byref
 
     class FILETIME(Structure):
         _fields_ = [
@@ -104,7 +106,8 @@ elif sys.platform == "win32":
                 byref(user),
             )
 
-            assert success, WinError(GetLastError())[1]
+            if not success:
+                raise WinError()
 
             self.idle = (idle.dwHighDateTime << 32) | idle.dwLowDateTime
             self.kernel = (kernel.dwHighDateTime << 32) | kernel.dwLowDateTime
@@ -114,7 +117,7 @@ elif sys.platform == "win32":
             idle = self.idle - prev.idle
             user = self.user - prev.user
             kernel = self.kernel - prev.kernel
-            return float(idle) / float(user + kernel) * 100
+            return float(idle) / float(user + kernel - idle) * 100 if user + kernel - idle != 0 else 0.0
 
 elif sys.platform == "darwin":
     from ctypes import *
@@ -159,7 +162,8 @@ elif sys.platform == "darwin":
             system = self.system - prev.system
             idle = self.idle - prev.idle
             nice = self.nice - prev.nice
-            return float(idle) / float(user + system + idle + nice) * 100.0
+            total = user + system + idle + nice
+            return float(idle) / total * 100 if total != 0 else 0.0
 
 else:
     print("unknown platform", sys.platform)
@@ -170,7 +174,7 @@ print("Time,Idle")
 while True:
     time.sleep(1)
     next_state = State()
-    now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None).isoformat()
+    now = datetime.datetime.now(datetime.timezone.utc).isoformat()
     idle = next_state.idle_since(cur_state)
     print("%s,%s" % (now, idle))
     sys.stdout.flush()
