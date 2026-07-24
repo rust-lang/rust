@@ -1,5 +1,5 @@
 error[E0502]: cannot borrow `values` as mutable because it is also borrowed as immutable
-  --> $DIR/mutate-vec-while-iterating.rs:6:13
+  --> $DIR/mutate-vec-while-iterating.rs:8:13
    |
 LL |     for value in &values {
    |                  -------

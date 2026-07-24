@@ -12,6 +12,8 @@ LL |
 LL |     drop(cloned_items);
    |          ------------ immutable borrow later used here
    |
+   = note: the for loop borrows `*list` immutably for its entire duration, preventing modification within the loop body
+   = help: consider using an index-based loop instead, or collecting modifications into a separate collection
 help: consider further restricting type parameter `T` with trait `Clone`
    |
 LL | fn foo<T: Default + Clone>(list: &mut Vec<T>) {
