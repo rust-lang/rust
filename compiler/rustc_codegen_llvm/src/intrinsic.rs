@@ -17,7 +17,7 @@ use rustc_codegen_ssa::traits::*;
 use rustc_hir as hir;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_hir::find_attr;
-use rustc_middle::mir::BinOp;
+use rustc_middle::mir::{self, BinOp};
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, LayoutOf};
 use rustc_middle::ty::offload_meta::OffloadMetadata;
 use rustc_middle::ty::{self, GenericArgsRef, Instance, SimdAlign, Ty, TyCtxt, TypingEnv};
@@ -32,6 +32,7 @@ use rustc_target::spec::Arch;
 use tracing::debug;
 
 use crate::abi::FnAbiLlvmExt;
+use crate::attributes;
 use crate::builder::Builder;
 use crate::builder::autodiff::{adjust_activity_to_abi, generate_enzyme_call};
 use crate::builder::gpu_offload::{
@@ -176,6 +177,7 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         &mut self,
         instance: ty::Instance<'tcx>,
         args: &[OperandRef<'tcx, &'ll Value>],
+        _: &[mir::Operand<'tcx>],
         result_layout: ty::layout::TyAndLayout<'tcx>,
         result_place: Option<PlaceValue<&'ll Value>>,
         span: Span,
@@ -905,6 +907,47 @@ impl<'ll, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                 OperandRef::from_immediate_or_packed_pair(self, llval, result_layout).val,
             )
         }
+    }
+
+    fn codegen_target_feature_available_at_call_site(
+        &mut self,
+        rust_feature_name: &str,
+    ) -> &'ll Value {
+        // SSA already returned `true` when this Rust feature is enabled on the current
+        // function. If there is no LLVM mapping, we cannot do any better from here.
+        let Some(llvm_feature) = crate::llvm_util::to_llvm_features(self.sess(), rust_feature_name)
+        else {
+            return self.const_bool(false);
+        };
+
+        // Target features can't be lost by inlining, so early return if it's already present.
+        // SSA should have already done this, but this is most accurate for implied features.
+        let mut llvm_features = llvm_feature.into_iter();
+        let llvm_feature_name = llvm_features.next().unwrap().to_string();
+        let enabled = llvm::FunctionHasTargetFeature(self.cx.tm, self.llfn(), &llvm_feature_name);
+        if enabled {
+            return self.const_bool(true);
+        }
+
+        // If we're not optimizing, we won't run the LLVM pass
+        if self.sess().opts.optimize == rustc_session::config::OptLevel::No {
+            return self.const_bool(false);
+        }
+
+        // Generate the marker to be replaced by the LLVM pass
+        let fn_ty = self.type_func(&[], self.type_i1());
+        let llfn = self.cx.declare_cfn(
+            "rust.target_feature_available_at_call_site",
+            llvm::UnnamedAddr::No,
+            fn_ty,
+        );
+        let nounwind = llvm::AttributeKind::NoUnwind.create_attr(self.cx.llcx);
+        attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &[nounwind]);
+        let call = self.call(fn_ty, None, None, llfn, &[], None, None);
+        let kind = self.cx.get_md_kind_id("rust.target_feature");
+        let feature = self.cx.create_metadata(llvm_feature_name.as_bytes());
+        self.cx.set_metadata_node(call, kind, &[feature]);
+        call
     }
 
     fn codegen_llvm_intrinsic_call(

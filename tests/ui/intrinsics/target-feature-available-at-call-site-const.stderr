@@ -1,0 +1,10 @@
+error: cannot call non-const intrinsic `target_feature_available_at_call_site` in constants
+  --> $DIR/target-feature-available-at-call-site-const.rs:3:23
+   |
+LL | const HAS_FMA: bool = std::intrinsics::simd::target_feature_available_at_call_site!("fma");
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this error originates in the macro `std::intrinsics::simd::target_feature_available_at_call_site` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 1 previous error
+

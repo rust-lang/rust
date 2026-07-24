@@ -1,4 +1,4 @@
-use rustc_middle::ty;
+use rustc_middle::{mir, ty};
 use rustc_span::Span;
 
 use super::BackendTypes;
@@ -26,10 +26,16 @@ pub trait IntrinsicCallBuilderMethods<'tcx>: BackendTypes {
         &mut self,
         instance: ty::Instance<'tcx>,
         args: &[OperandRef<'tcx, Self::Value>],
+        mir_args: &[mir::Operand<'tcx>],
         result_layout: ty::layout::TyAndLayout<'tcx>,
         result_place: Option<PlaceValue<Self::Value>>,
         span: Span,
     ) -> IntrinsicResult<'tcx, Self::Value>;
+
+    fn codegen_target_feature_available_at_call_site(
+        &mut self,
+        llvm_feature_name: &str,
+    ) -> Self::Value;
 
     fn codegen_llvm_intrinsic_call(
         &mut self,

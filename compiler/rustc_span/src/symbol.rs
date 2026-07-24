@@ -2081,6 +2081,7 @@ symbols! {
         target_family,
         target_feature,
         target_feature_11,
+        target_feature_available_at_call_site,
         target_feature_inline_always,
         target_has_atomic,
         target_has_atomic_load_store,

@@ -12,9 +12,11 @@
 #include "llvm/Bitcode/BitcodeWriter.h"
 #include "llvm/Bitcode/BitcodeWriterPass.h"
 #include "llvm/CodeGen/CommandFlags.h"
+#include "llvm/CodeGen/TargetSubtargetInfo.h"
 #include "llvm/IR/AssemblyAnnotationWriter.h"
 #include "llvm/IR/AutoUpgrade.h"
 #include "llvm/IR/LegacyPassManager.h"
+#include "llvm/IR/Metadata.h"
 #include "llvm/IR/PassManager.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/IRPrinter/IRPrintingPasses.h"
@@ -120,6 +122,64 @@ extern "C" bool LLVMRustTargetHasMnemonic(LLVMTargetMachineRef TM,
   }
   return false;
 }
+
+/// During MIR lowering, the target_feature_available_at_call_site intrinsic
+/// is lowered to a marker function call carrying the LLVM feature as a
+/// metadata string argument.
+///
+/// This pass replaces those markers with true or false depending on whether the
+/// feature is enabled in the caller. To be useful, this pass must run after
+/// inlining.
+class TargetFeatureAvailableAtCallSitePass
+    : public PassInfoMixin<TargetFeatureAvailableAtCallSitePass> {
+  TargetMachine *TM;
+
+public:
+  explicit TargetFeatureAvailableAtCallSitePass(TargetMachine *TM) : TM(TM) {}
+
+  PreservedAnalyses run(Module &M, ModuleAnalysisManager &) {
+    Function *MarkerDecl =
+        M.getFunction("rust.target_feature_available_at_call_site");
+    if (MarkerDecl == nullptr)
+      return PreservedAnalyses::all();
+
+    auto FeatureKindID = M.getContext().getMDKindID("rust.target_feature");
+
+    SmallVector<CallInst *> CallsToErase;
+    for (User *U : MarkerDecl->users()) {
+      auto *Call = dyn_cast<CallInst>(U);
+      if (!Call || Call->getCalledFunction() != MarkerDecl)
+        continue;
+
+      auto *FeatureNode = Call->getMetadata(FeatureKindID);
+      auto *FeatureMetadata =
+          FeatureNode && FeatureNode->getNumOperands() == 1
+              ? dyn_cast<MDString>(FeatureNode->getOperand(0))
+              : nullptr;
+      if (FeatureMetadata == nullptr)
+        continue;
+
+      SmallString<64> EnabledFeature("+");
+      EnabledFeature += FeatureMetadata->getString();
+
+      Function *Caller = Call->getFunction();
+      const TargetSubtargetInfo *Subtarget = TM->getSubtargetImpl(*Caller);
+      bool Enabled =
+          Subtarget != nullptr && Subtarget->checkFeatures(EnabledFeature);
+
+      Call->replaceAllUsesWith(ConstantInt::getBool(M.getContext(), Enabled));
+      CallsToErase.push_back(Call);
+    }
+
+    if (CallsToErase.empty())
+      return PreservedAnalyses::all();
+
+    for (CallInst *Call : CallsToErase)
+      Call->eraseFromParent();
+
+    return PreservedAnalyses::none();
+  }
+};
 
 enum class LLVMRustCodeModel {
   Tiny,
@@ -728,7 +788,16 @@ extern "C" LLVMRustResult LLVMRustOptimize(
       PipelineStartEPCallbacks;
   std::vector<std::function<void(ModulePassManager &, OptimizationLevel,
                                  ThinOrFullLTOPhase)>>
+      OptimizerEarlyEPCallbacks;
+  std::vector<std::function<void(ModulePassManager &, OptimizationLevel,
+                                 ThinOrFullLTOPhase)>>
       OptimizerLastEPCallbacks;
+
+  OptimizerEarlyEPCallbacks.push_back([TM](ModulePassManager &MPM,
+                                           OptimizationLevel Level,
+                                           ThinOrFullLTOPhase Phase) {
+    MPM.addPass(TargetFeatureAvailableAtCallSitePass(TM));
+  });
 
   if (!IsLinkerPluginLTO && SanitizerOptions && SanitizerOptions->SanitizeCFI &&
       !NoPrepopulatePasses) {
@@ -867,6 +936,8 @@ extern "C" LLVMRustResult LLVMRustOptimize(
     if (!NoPrepopulatePasses) {
       for (const auto &C : PipelineStartEPCallbacks)
         PB.registerPipelineStartEPCallback(C);
+      for (const auto &C : OptimizerEarlyEPCallbacks)
+        PB.registerOptimizerEarlyEPCallback(C);
       for (const auto &C : OptimizerLastEPCallbacks)
         PB.registerOptimizerLastEPCallback(C);
 
@@ -921,6 +992,8 @@ extern "C" LLVMRustResult LLVMRustOptimize(
       // add the verifier, instrumentation, etc passes if they were requested
       for (const auto &C : PipelineStartEPCallbacks)
         C(MPM, OptLevel);
+      for (const auto &C : OptimizerEarlyEPCallbacks)
+        C(MPM, OptLevel, ThinOrFullLTOPhase::None);
       for (const auto &C : OptimizerLastEPCallbacks)
         C(MPM, OptLevel, ThinOrFullLTOPhase::None);
     }

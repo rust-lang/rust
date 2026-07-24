@@ -1,5 +1,5 @@
 use rustc_abi::{Align, FieldIdx, WrappingRange};
-use rustc_middle::mir::SourceInfo;
+use rustc_middle::mir::{self, SourceInfo};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::OptLevel;
@@ -13,7 +13,7 @@ use crate::common::{AtomicRmwBinOp, SynchronizationScope};
 use crate::diagnostics::InvalidMonomorphization;
 use crate::mir::operand::OperandRefBuilder;
 use crate::traits::*;
-use crate::{MemFlags, meth, size_of_val};
+use crate::{MemFlags, meth, size_of_val, target_features};
 
 fn copy_intrinsic<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
@@ -59,6 +59,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         bx: &mut Bx,
         instance: ty::Instance<'tcx>,
         args: &[OperandRef<'tcx, Bx::Value>],
+        mir_args: &[mir::Operand<'tcx>],
         result_layout: ty::layout::TyAndLayout<'tcx>,
         result_place: Option<PlaceValue<Bx::Value>>,
         source_info: SourceInfo,
@@ -135,6 +136,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 | sym::atomic_fence
                 | sym::atomic_singlethreadfence
                 | sym::caller_location
+                | sym::target_feature_available_at_call_site
                 | sym::return_address => {}
                 _ => {
                     span_bug!(
@@ -596,10 +598,34 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 OperandValue::ZeroSized
             }
 
+            sym::target_feature_available_at_call_site => {
+                match target_features::target_feature_available_at_call_site_intrinsic(
+                    bx.tcx(),
+                    span,
+                    self.instance.def_id(),
+                    fn_args,
+                ) {
+                    target_features::TargetFeatureAvailableAtCallSite::Known(enabled) => {
+                        OperandValue::Immediate(bx.const_bool(enabled))
+                    }
+                    target_features::TargetFeatureAvailableAtCallSite::CheckBackend(feature) => {
+                        OperandValue::Immediate(
+                            bx.codegen_target_feature_available_at_call_site(feature.as_str()),
+                        )
+                    }
+                }
+            }
+
             _ => {
                 // Need to use backend-specific things in the implementation.
-                let result =
-                    bx.codegen_intrinsic_call(instance, args, result_layout, result_place, span);
+                let result = bx.codegen_intrinsic_call(
+                    instance,
+                    args,
+                    mir_args,
+                    result_layout,
+                    result_place,
+                    span,
+                );
                 if let IntrinsicResult::Operand(op) = result {
                     op
                 } else {

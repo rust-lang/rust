@@ -207,6 +207,7 @@ fn intrinsic_operation_unsafety(tcx: TyCtxt<'_>, intrinsic_id: LocalDefId) -> hi
         | sym::sqrtf64
         | sym::sqrtf128
         | sym::sub_with_overflow
+        | sym::target_feature_available_at_call_site
         | sym::three_way_compare
         | sym::truncf16
         | sym::truncf32
@@ -683,6 +684,7 @@ pub(crate) fn check_intrinsic_type(
         sym::black_box => (1, 0, vec![param(0)], param(0)),
 
         sym::is_val_statically_known => (1, 0, vec![param(0)], tcx.types.bool),
+        sym::target_feature_available_at_call_site => (0, 1, Vec::new(), tcx.types.bool),
 
         sym::const_eval_select => (4, 0, vec![param(0), param(1), param(2)], param(3)),
 

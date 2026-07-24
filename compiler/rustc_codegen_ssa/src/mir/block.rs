@@ -1023,13 +1023,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             span_bug!(self.mir.span, "can't directly store to unaligned value");
                         }
 
-                        let args: Vec<_> =
+                        let mir_args: Vec<_> = args.iter().map(|arg| arg.node.clone()).collect();
+                        let codegen_args: Vec<_> =
                             args.iter().map(|arg| self.codegen_operand(bx, &arg.node)).collect();
 
                         let intrinsic_result = self.codegen_intrinsic_call(
                             bx,
                             instance,
-                            &args,
+                            &codegen_args,
+                            &mir_args,
                             result_layout,
                             result_place,
                             source_info,

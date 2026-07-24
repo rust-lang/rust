@@ -36,7 +36,7 @@ use crate::back::write::to_llvm_code_model;
 use crate::builder::gpu_offload::{OffloadGlobals, OffloadKernelGlobals};
 use crate::callee::get_fn;
 use crate::debuginfo::metadata::apply_vcall_visibility_metadata;
-use crate::llvm::{self, Metadata, MetadataKindId, Module, Type, Value};
+use crate::llvm::{self, Metadata, MetadataKindId, Module, TargetMachine, Type, Value};
 use crate::{attributes, common, coverageinfo, debuginfo, llvm_util};
 
 /// `TyCtxt` (and related cache datastructures) can't be move between threads.
@@ -92,6 +92,7 @@ pub(crate) type CodegenCx<'ll, 'tcx> = GenericCx<'ll, FullCx<'ll, 'tcx>>;
 pub(crate) struct FullCx<'ll, 'tcx> {
     pub tcx: TyCtxt<'tcx>,
     pub scx: SimpleCx<'ll>,
+    pub tm: &'ll TargetMachine,
     pub use_dll_storage_attrs: bool,
     pub tls_model: llvm::ThreadLocalMode,
 
@@ -660,6 +661,7 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
             FullCx {
                 tcx,
                 scx: SimpleCx::new(llmod, llcx, tcx.data_layout.pointer_size()),
+                tm: llvm_module.tm.raw(),
                 use_dll_storage_attrs,
                 tls_model,
                 codegen_unit,
