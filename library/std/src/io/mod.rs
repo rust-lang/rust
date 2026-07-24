@@ -314,12 +314,13 @@ pub use alloc_crate::io::{BorrowedBuf, BorrowedCursor};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use alloc_crate::io::{
     BufRead, BufReader, BufWriter, Bytes, Chain, Cursor, Empty, Error, ErrorKind, IntoInnerError,
-    LineWriter, Lines, Read, Repeat, Result, Seek, SeekFrom, Sink, Split, Take, Write, empty,
+    LineWriter, Lines, Read, Repeat, Result, Seek, SeekFrom, Sink, Split, Take, Write, copy, empty,
     repeat, sink,
 };
 #[allow(unused_imports, reason = "only used by certain platforms")]
 pub(crate) use alloc_crate::io::{
-    DEFAULT_BUF_SIZE, default_read_buf, default_read_vectored, default_write_vectored,
+    CopyState, DEFAULT_BUF_SIZE, SpecCopy, default_read_buf, default_read_vectored,
+    default_write_vectored,
 };
 pub(crate) use alloc_crate::io::{
     IoHandle, SpecReadByte, default_read_to_end, default_read_to_string, stream_len_default,
@@ -331,21 +332,20 @@ pub use alloc_crate::io::{IoSlice, IoSliceMut};
 pub use self::pipe::{PipeReader, PipeWriter, pipe};
 #[stable(feature = "is_terminal", since = "1.70.0")]
 pub use self::stdio::IsTerminal;
-pub(crate) use self::stdio::attempt_print_to_stderr;
 #[unstable(feature = "print_internals", issue = "none")]
 #[doc(hidden)]
 pub use self::stdio::{_eprint, _print};
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use self::stdio::{
+    Stderr, StderrLock, Stdin, StdinLock, Stdout, StdoutLock, stderr, stdin, stdout,
+};
+pub(crate) use self::stdio::{attempt_print_to_stderr, cleanup};
 #[unstable(feature = "internal_output_capture", issue = "none")]
 #[doc(no_inline, hidden)]
 pub use self::stdio::{set_output_capture, try_set_output_capture};
-#[stable(feature = "rust1", since = "1.0.0")]
-pub use self::{
-    copy::copy,
-    stdio::{Stderr, StderrLock, Stdin, StdinLock, Stdout, StdoutLock, stderr, stdin, stdout},
-};
 
 mod buffered;
-pub(crate) mod copy;
+mod copy;
 mod cursor;
 mod error;
 mod impls;
@@ -353,5 +353,3 @@ mod pipe;
 pub mod prelude;
 mod stdio;
 mod util;
-
-pub(crate) use stdio::cleanup;
