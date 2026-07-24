@@ -1102,7 +1102,15 @@ impl Step for OmpOffload {
                 cflags.push_all(format!(" -I {inc_dir}"));
             }
 
-            configure_cmake(builder, target, &mut cfg, true, LdFlags::default(), cflags, &[]);
+            // Logic copied from `configure_llvm`
+            // ThinLTO is only available when building with LLVM, enabling LLD is required.
+            // Apple's linker ld64 supports ThinLTO out of the box though, so don't use LLD on Darwin.
+            let mut ldflags = LdFlags::default();
+            if builder.config.llvm_thin_lto && !target.contains("apple") {
+                ldflags.push_all("-fuse-ld=lld");
+            }
+
+            configure_cmake(builder, target, &mut cfg, true, ldflags, cflags, &[]);
 
             // Re-use the same flags as llvm to control the level of debug information
             // generated for offload.
