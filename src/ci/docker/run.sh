@@ -347,6 +347,7 @@ docker \
   --env TOOLSTATE_REPO_ACCESS_TOKEN \
   --env TOOLSTATE_REPO \
   --env TOOLSTATE_PUBLISH \
+  --env RUNNER_TEMP \
   --env RUST_CI_OVERRIDE_RELEASE_CHANNEL \
   --env CI_JOB_NAME="${CI_JOB_NAME-$image}" \
   --env CI_JOB_DOC_URL="${CI_JOB_DOC_URL}" \
