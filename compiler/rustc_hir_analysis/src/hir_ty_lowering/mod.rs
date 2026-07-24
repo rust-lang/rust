@@ -1,3 +1,5 @@
+// ignore-tidy-file-filelength
+
 //! HIR ty lowering: Lowers type-system entities[^1] from the [HIR][hir] to
 //! the [`rustc_middle::ty`] representation.
 //!
@@ -2503,6 +2505,31 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         ty::Const::new_value(tcx, valtree, ty)
     }
 
+    fn try_recover_misrepresented_function_call(
+        &self,
+        hir_self_ty: &'tcx hir::Ty<'tcx>,
+        span: Span,
+    ) -> Option<ErrorGuaranteed> {
+        // Only an enum can host a tuple-variant constructor (`<Option<u32>>::Some(..)`).
+        // For any other self type, a type-relative call is an associated function, not a
+        // constructor, and must be wrapped in `const { ... }`. We catch that here, before
+        // lowering the self type, so a generic struct/union written without its args
+        // (`FieldName::len()`, from `tracing`'s macros) reports this clear error instead
+        // of a spurious E0107 "missing generics" (#157152), and a primitive or foreign
+        // type reports it instead of an opaque downstream resolution error. Enums,
+        // aliases, `Self` and type parameters are let through: each may resolve to an
+        // enum, so they must reach constructor lowering.
+        let self_ty_res = match hir_self_ty.kind {
+            hir::TyKind::Path(hir::QPath::Resolved(_, path)) => path.res,
+            _ => Res::Err,
+        };
+        matches!(
+            self_ty_res,
+            Res::Def(DefKind::Struct | DefKind::Union | DefKind::ForeignTy, _) | Res::PrimTy(_)
+        )
+        .then(|| self.dcx().emit_err(diagnostics::ComplexConstArg { span }))
+    }
+
     fn lower_const_arg_tuple_call(
         &self,
         hir_id: HirId,
@@ -2523,6 +2550,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 self.lower_resolved_const_path(opt_self_ty, path, hir_id)
             }
             hir::QPath::TypeRelative(hir_self_ty, segment) => {
+                if let Some(e) = self.try_recover_misrepresented_function_call(hir_self_ty, span) {
+                    return ty::Const::new_error(tcx, e);
+                }
+
                 let self_ty = self.lower_ty(hir_self_ty);
                 match self.lower_type_relative_const_path(
                     self_ty,
@@ -2556,10 +2587,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 (tcx.adt_def(parent_did), fn_args, parent_did)
             }
             _ => {
-                let e = self.dcx().span_err(
-                    span,
-                    "complex const arguments must be placed inside of a `const` block",
-                );
+                let e = self.dcx().emit_err(diagnostics::ComplexConstArg { span });
                 return Const::new_error(tcx, e);
             }
         };
