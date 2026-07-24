@@ -33,17 +33,7 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
     let mut p = Parser::new_ext(dox, main_body_opts()).into_offset_iter();
 
     while let Some((event, _range)) = p.next() {
-        if let Event::Start(Tag::Table(_)) = event
-            && let Some((Event::Start(Tag::TableHead), _)) = p.next()
-        {
-            let mut expected_cells = 0;
-            while let Some((event, _)) = p.next() {
-                match event {
-                    Event::End(TagEnd::TableCell) => expected_cells += 1,
-                    Event::End(TagEnd::TableHead) => break,
-                    _ => {}
-                }
-            }
+        if Event::Start(Tag::TableRow) == event {
             let mut prev_range = None;
             while let Some((event, range)) = p.next() {
                 match event {
@@ -67,21 +57,20 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
                                 // Seems all good so let's ignore it and continue;.
                                 continue;
                             }
-                            // We now check the number of unescaped `|`.
-                            let row = &dox[range.clone()];
-                            let mut iter = row.chars();
-                            let mut divider_count = 0;
+                            // Check if any pipes appear after the end of the row.
+                            let mut iter = dox[after_last_cell_range.clone()].bytes().peekable();
+                            let mut found_divider = false;
                             while let Some(c) = iter.next() {
-                                if c == '\\' {
+                                // the sequence `\\|` still escapes the pipe because GFM
+                                // processes block structures like tables in its own pass
+                                if c == b'\\' && iter.peek() == Some(&b'|') {
                                     iter.next();
-                                } else if c == '|' {
-                                    divider_count += 1;
+                                } else if c == b'|' {
+                                    found_divider = true;
+                                    break;
                                 }
                             }
-                            // + 1 is to handle the `|` at the end of the table row.
-                            let too_many_pipes = divider_count > expected_cells + 1;
-
-                            if too_many_pipes {
+                            if found_divider {
                                 // Seems like a pipe was not escaped as it should have been.
                                 let last_cell_separator =
                                     Range { start: prev_range.end, end: prev_range.end + 1 };
