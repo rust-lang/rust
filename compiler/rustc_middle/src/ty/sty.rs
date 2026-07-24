@@ -1816,8 +1816,9 @@ impl<'tcx> Ty<'tcx> {
 
             ty::UnsafeBinder(_) => unimplemented!("FIXME(unsafe_binder)"),
 
-            ty::Infer(ty::TyVar(_))
-            | ty::Pat(..)
+            ty::Infer(ty::TyVar(_)) => Ok(tcx.types.unit),
+
+            ty::Pat(..)
             | ty::Bound(..)
             | ty::Placeholder(..)
             | ty::Infer(ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => bug!(
