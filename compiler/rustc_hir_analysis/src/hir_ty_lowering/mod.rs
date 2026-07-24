@@ -2394,7 +2394,8 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             // up as a region variable in mir borrowck. It would also be somewhat concerning if
             // hir typeck was using equality but mir borrowck wound up using subtyping as that could
             // result in a non-infer in hir typeck but a region variable in borrowck.
-            if tcx.features().generic_const_parameter_types()
+            if (tcx.features().generic_const_parameter_types()
+                || tcx.features().min_generic_const_args())
                 && (ty.has_free_regions() || ty.has_erased_regions())
             {
                 let e = self.dcx().span_err(
