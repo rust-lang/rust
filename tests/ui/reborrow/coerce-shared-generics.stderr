@@ -1,5 +1,5 @@
 error: implementing `CoerceShared` currently requires source and target to have at most one non-ZST reborrow data field
-  --> $DIR/coerce-shared-generics.rs:26:1
+  --> $DIR/coerce-shared-generics.rs:28:1
    |
 LL |   impl<'a, T, U: Copy, const N: usize> CoerceShared<BufferRef<'a, T, U, N>>
    |   ^                                                 ---------------------- target type has 2 non-ZST reborrow data fields

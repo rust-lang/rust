@@ -1,5 +1,5 @@
 error: implementing `CoerceShared` requires source and target to use the same reborrow lifetime argument
-  --> $DIR/coerce-shared-lifetime-mismatch.rs:15:10
+  --> $DIR/coerce-shared-lifetime-mismatch.rs:18:10
    |
 LL | impl<'a> CoerceShared<StaticMarkerRef<'static>> for CustomMarker<'a> {}
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-------^^                  -- source reborrow lifetime
@@ -7,7 +7,7 @@ LL | impl<'a> CoerceShared<StaticMarkerRef<'static>> for CustomMarker<'a> {}
    |                                       target reborrow lifetime
 
 error[E0597]: `a` does not live long enough
-  --> $DIR/coerce-shared-lifetime-mismatch.rs:22:12
+  --> $DIR/coerce-shared-lifetime-mismatch.rs:25:12
    |
 LL |     let a = CustomMarker(PhantomData);
    |         - binding `a` declared here

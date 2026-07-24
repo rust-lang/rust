@@ -1,5 +1,5 @@
 error: implementing `CoerceShared` currently requires source and target to have at most one non-ZST reborrow data field
-  --> $DIR/coerce-shared-associated-type-field.rs:27:1
+  --> $DIR/coerce-shared-associated-type-field.rs:30:1
    |
 LL | impl<'a> CoerceShared<MyRef<'a>> for MyMut<'a> {}
    | ^^^^^^^^^^^^^^^^^^^^^^---------^^^^^^---------^^^

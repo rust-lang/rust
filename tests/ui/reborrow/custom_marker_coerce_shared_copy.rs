@@ -1,5 +1,8 @@
 //@ run-pass
 
+//! Test that CoerceShared of custom ZST marker type reborrows the type automatically as shared and
+//! the original stays concurrently usable through shared references.
+
 #![feature(reborrow)]
 use std::marker::{CoerceShared, PhantomData, Reborrow};
 
