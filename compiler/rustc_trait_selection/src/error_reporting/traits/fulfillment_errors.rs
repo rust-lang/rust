@@ -1660,7 +1660,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             };
 
             let mut file = None;
-            let (msg, span, closure_span) = values
+            let (msg, mut span, mut closure_span) = values
                 .and_then(|(predicate, normalized_term, expected_term)| {
                     self.maybe_detailed_projection_msg(
                         obligation.cause.span,
@@ -1681,6 +1681,30 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         None,
                     )
                 });
+
+            // When the obligation comes from a closure arg and the projection isn't FnOnceOutput
+            // (which maybe_detailed_projection_msg handles via self_ty), point at the closure's
+            // return expression and label the closure declaration.
+            if closure_span.is_none()
+                && let ObligationCauseCode::FunctionArg { arg_hir_id, .. } = obligation.cause.code()
+                && let Node::Expr(arg_expr) = self.tcx.hir_node(*arg_hir_id)
+                && let hir::ExprKind::Closure(closure) = arg_expr.kind
+                && closure.kind == hir::ClosureKind::Closure
+            {
+                let body = self.tcx.hir_body(closure.body);
+                let ret_span = match body.value.kind {
+                    hir::ExprKind::Block(hir::Block { expr: Some(expr), .. }, _) => expr.span,
+                    hir::ExprKind::Block(hir::Block { expr: None, stmts: [.., last], .. }, _) => {
+                        last.span
+                    }
+                    _ => body.value.span,
+                };
+                if !closure.fn_decl_span.overlaps(ret_span) {
+                    closure_span = Some(closure.fn_decl_span);
+                    span = ret_span;
+                }
+            }
+
             let mut diag = struct_span_code_err!(self.dcx(), span, E0271, "{msg}");
             *diag.long_ty_path() = file;
             let mut mention_bounds = true;
