@@ -31,7 +31,7 @@ fn box_new(_1: T) -> Box<[T; 1024]> {
 
     bb2: {
         StorageDead(_4);
-        _0 = Box::<MaybeUninit<[T; 1024]>>::assume_init(move _3) -> [return: bb3, unwind: bb5];
+        _0 = Box::<MaybeUninit<[T; 1024]>>::assume_init(move _3) -> [return: bb3, unwind: bb6];
     }
 
     bb3: {

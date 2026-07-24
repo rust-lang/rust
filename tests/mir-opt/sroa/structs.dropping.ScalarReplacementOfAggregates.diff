@@ -23,22 +23,22 @@
           StorageDead(_4);
           StorageDead(_3);
           _1 = move (_2.1: Tag);
-          drop(_1) -> [return: bb1, unwind unreachable];
+          drop(_1) -> [return: bb3, unwind unreachable];
       }
   
       bb1: {
-          drop((_2.0: Tag)) -> [return: bb3, unwind unreachable];
-      }
-  
-      bb2: {
           StorageDead(_2);
           StorageDead(_1);
           _0 = const ();
           return;
       }
   
+      bb2: {
+          drop((_2.2: Tag)) -> [return: bb1, unwind unreachable];
+      }
+  
       bb3: {
-          drop((_2.2: Tag)) -> [return: bb2, unwind unreachable];
+          drop((_2.0: Tag)) -> [return: bb2, unwind unreachable];
       }
   }
   

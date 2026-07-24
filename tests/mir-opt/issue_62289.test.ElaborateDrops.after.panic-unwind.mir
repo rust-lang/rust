@@ -36,7 +36,7 @@ fn test() -> Option<Vec<u32>> {
         StorageLive(_5);
         StorageLive(_6);
         _6 = Option::<u32>::None;
-        _5 = <Option<u32> as Try>::branch(move _6) -> [return: bb2, unwind: bb13];
+        _5 = <Option<u32> as Try>::branch(move _6) -> [return: bb2, unwind: bb12];
     }
 
     bb2: {
@@ -66,54 +66,50 @@ fn test() -> Option<Vec<u32>> {
         _8 = copy ((_5 as Break).0: std::option::Option<std::convert::Infallible>);
         StorageLive(_10);
         _10 = copy _8;
-        _0 = <Option<Vec<u32>> as FromResidual<Option<Infallible>>>::from_residual(move _10) -> [return: bb6, unwind: bb13];
+        _0 = <Option<Vec<u32>> as FromResidual<Option<Infallible>>>::from_residual(move _10) -> [return: bb6, unwind: bb12];
     }
 
     bb6: {
         StorageDead(_10);
         StorageDead(_8);
         StorageDead(_4);
-        drop(_3) -> [return: bb10, unwind: bb14];
+        drop(_3) -> [return: bb9, unwind: bb13];
     }
 
     bb7: {
         StorageDead(_3);
-        _1 = std::boxed::box_assume_init_into_vec_unsafe::<u32, 1>(move _2) -> [return: bb8, unwind: bb12];
+        _1 = std::boxed::box_assume_init_into_vec_unsafe::<u32, 1>(move _2) -> [return: bb8, unwind continue];
     }
 
     bb8: {
         StorageDead(_2);
         _0 = Option::<Vec<u32>>::Some(move _1);
-        goto -> bb9;
+        StorageDead(_1);
+        StorageDead(_5);
+        goto -> bb10;
     }
 
     bb9: {
-        StorageDead(_1);
-        StorageDead(_5);
-        goto -> bb11;
-    }
-
-    bb10: {
         StorageDead(_3);
         StorageDead(_2);
         StorageDead(_1);
         StorageDead(_5);
-        goto -> bb11;
+        goto -> bb10;
     }
 
-    bb11: {
+    bb10: {
         return;
     }
 
+    bb11 (cleanup): {
+        goto -> bb13;
+    }
+
     bb12 (cleanup): {
-        goto -> bb14;
+        drop(_3) -> [return: bb13, unwind terminate(cleanup)];
     }
 
     bb13 (cleanup): {
-        drop(_3) -> [return: bb14, unwind terminate(cleanup)];
-    }
-
-    bb14 (cleanup): {
         resume;
     }
 }

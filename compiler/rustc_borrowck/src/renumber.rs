@@ -1,9 +1,10 @@
-use rustc_index::IndexSlice;
+use rustc_index::{IndexSlice, IndexVec};
 use rustc_infer::infer::NllRegionVariableOrigin;
 use rustc_middle::mir::visit::{MutVisitor, TyContext};
-use rustc_middle::mir::{Body, ConstOperand, Location, Promoted};
+use rustc_middle::mir::*;
 use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, TypeFoldable, fold_regions};
 use rustc_span::Symbol;
+use thin_vec::ThinVec;
 use tracing::{debug, instrument};
 
 use crate::BorrowckInferCtxt;
@@ -21,10 +22,49 @@ pub(crate) fn renumber_mir<'tcx>(
     let mut renumberer = RegionRenumberer { infcx };
 
     for body in promoted.iter_mut() {
+        split_critical_unwind_edges(body);
         renumberer.visit_body_preserves_cfg(body);
     }
 
+    split_critical_unwind_edges(body);
     renumberer.visit_body_preserves_cfg(body);
+}
+
+#[instrument(skip(body), level = "debug")]
+fn split_critical_unwind_edges(body: &mut Body<'_>) {
+    let predecessors: IndexVec<BasicBlock, _> =
+        body.basic_blocks.predecessors().iter().map(|preds| preds.len()).collect();
+    debug!(?predecessors);
+
+    let mut new_blocks = vec![];
+    for bb in predecessors.indices() {
+        let term = body.basic_blocks[bb].terminator();
+        let Some(&UnwindAction::Cleanup(unwind)) = term.unwind() else { continue };
+        if predecessors[unwind] <= 1 {
+            continue;
+        }
+
+        debug!("{bb:?} has critical unwind edge: {unwind:?}");
+        new_blocks.push((bb, unwind));
+    }
+
+    if new_blocks.is_empty() {
+        return;
+    }
+
+    debug!(?new_blocks);
+    let basic_blocks = body.basic_blocks.as_mut();
+    for (bb, target) in new_blocks {
+        let source_info = basic_blocks[bb].terminator().source_info;
+        let terminator = Terminator {
+            source_info,
+            kind: TerminatorKind::Goto { target },
+            attributes: ThinVec::new(),
+        };
+        let new_target = basic_blocks.push(BasicBlockData::new(Some(terminator), true));
+        *basic_blocks[bb].terminator_mut().unwind_mut().unwrap() =
+            UnwindAction::Cleanup(new_target);
+    }
 }
 
 // The fields are used only for debugging output in `sccs_info`.
