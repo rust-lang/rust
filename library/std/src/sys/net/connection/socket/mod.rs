@@ -1,4 +1,5 @@
 #[cfg(test)]
+#[cfg(not(target_os = "l4re"))]
 mod tests;
 
 use crate::ffi::{c_int, c_void};

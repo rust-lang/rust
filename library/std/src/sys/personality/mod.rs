@@ -33,7 +33,7 @@ cfg_select! {
         target_os = "psp",
         target_os = "xous",
         target_os = "solid_asp3",
-        all(target_family = "unix", not(target_os = "espidf"), not(target_os = "l4re"), not(target_os = "nuttx")),
+        all(target_family = "unix", not(target_os = "espidf"), not(target_os = "nuttx")),
         all(target_vendor = "fortanix", target_env = "sgx"),
     ) => {
         mod gcc;

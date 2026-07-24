@@ -157,6 +157,7 @@
         target_os = "xous",
         target_os = "trusty",
         target_os = "hermit",
+        target_os = "l4re",
     ))
 ))]
 mod tests;

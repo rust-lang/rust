@@ -6,6 +6,7 @@
         target_env = "sgx",
         target_os = "xous",
         target_os = "trusty",
+        target_os = "l4re",
     ))
 ))]
 mod tests;

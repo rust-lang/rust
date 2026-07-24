@@ -10,7 +10,7 @@ mod ancillary;
 mod datagram;
 mod listener;
 mod stream;
-#[cfg(all(test, not(target_os = "emscripten")))]
+#[cfg(all(test, not(any(target_os = "emscripten", target_os = "l4re"))))]
 mod tests;
 #[cfg(any(
     target_os = "android",
