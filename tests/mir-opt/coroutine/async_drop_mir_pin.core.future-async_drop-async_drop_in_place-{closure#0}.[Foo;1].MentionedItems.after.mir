@@ -45,7 +45,7 @@ yields ()
 
     bb0: {
         _3 = move (_1.0: &mut [Foo; 1]);
-        goto -> bb44;
+        goto -> bb43;
     }
 
     bb1: {
@@ -261,12 +261,8 @@ yields ()
     }
 
     bb43: {
-        goto -> bb42;
-    }
-
-    bb44: {
         _4 = &raw mut (*_3);
         _5 = move _4 as *mut [Foo] (PointerCoercion(Unsize, Implicit));
-        goto -> bb43;
+        goto -> bb42;
     }
 }

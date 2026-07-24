@@ -108,7 +108,7 @@
 +         _47 = std::future::ResumeTy(move _48);
 +         _46 = copy (_1.0: &mut {async fn body of uninhabited_variant()});
 +         _45 = discriminant((*_46));
-+         switchInt(move _45) -> [0: bb56, 1: bb55, 2: bb54, 3: bb52, 4: bb53, otherwise: bb1];
++         switchInt(move _45) -> [0: bb55, 1: bb54, 2: bb53, 3: bb51, 4: bb52, otherwise: bb1];
       }
   
       bb1: {
@@ -367,7 +367,7 @@
 -         drop(_1) -> [return: bb27, unwind: bb56];
 +         (((*_46) as variant#4).2: bool) = const false;
 +         nop;
-+         goto -> bb50;
++         goto -> bb27;
       }
   
       bb27: {
@@ -572,7 +572,7 @@
 -     bb56 (cleanup): {
 -         resume;
 +     bb45 (cleanup): {
-+         goto -> bb51;
++         goto -> bb50;
       }
   
 -     bb57 (cleanup): {
@@ -609,22 +609,16 @@
 -     bb61 (cleanup): {
 -         StorageDead(_4);
 -         goto -> bb70;
-+     bb50: {
-+         goto -> bb27;
++     bb50 (cleanup): {
++         discriminant((*_46)) = 2;
++         resume;
       }
   
 -     bb62 (cleanup): {
 -         _43 = const false;
 -         StorageDead(_3);
 -         drop(_1) -> [return: bb56, unwind terminate(cleanup)];
-+     bb51 (cleanup): {
-+         discriminant((*_46)) = 2;
-+         resume;
-      }
-  
--     bb63: {
--         drop(_3) -> [return: bb26, unwind: bb55];
-+     bb52: {
++     bb51: {
 +         StorageLive(_4);
 +         StorageLive(_6);
 +         StorageLive(_7);
@@ -634,9 +628,9 @@
 +         goto -> bb11;
       }
   
--     bb64: {
--         switchInt(copy _43) -> [0: bb26, otherwise: bb63];
-+     bb53: {
+-     bb63: {
+-         drop(_3) -> [return: bb26, unwind: bb55];
++     bb52: {
 +         StorageLive(_4);
 +         StorageLive(_24);
 +         StorageLive(_25);
@@ -647,18 +641,22 @@
 +         goto -> bb22;
       }
   
+-     bb64: {
+-         switchInt(copy _43) -> [0: bb26, otherwise: bb63];
++     bb53: {
++         assert(const false, "`async fn` resumed after panicking") -> [success: bb53, unwind continue];
+      }
+  
 -     bb65: {
 -         drop(_3) -> [return: bb35, unwind: bb62];
 +     bb54: {
-+         assert(const false, "`async fn` resumed after panicking") -> [success: bb54, unwind continue];
++         assert(const false, "`async fn` resumed after completion") -> [success: bb54, unwind continue];
       }
   
 -     bb66: {
 -         switchInt(copy _43) -> [0: bb35, otherwise: bb65];
-+     bb55: {
-+         assert(const false, "`async fn` resumed after completion") -> [success: bb55, unwind continue];
-      }
-  
+-     }
+- 
 -     bb67 (cleanup): {
 -         drop(_3) -> [return: bb55, unwind terminate(cleanup)];
 -     }
@@ -673,7 +671,7 @@
 - 
 -     bb70 (cleanup): {
 -         switchInt(copy _43) -> [0: bb62, otherwise: bb69];
-+     bb56: {
++     bb55: {
 +         (((*_46) as variant#4).2: bool) = const false;
 +         nop;
 +         (((*_46) as variant#4).2: bool) = const true;

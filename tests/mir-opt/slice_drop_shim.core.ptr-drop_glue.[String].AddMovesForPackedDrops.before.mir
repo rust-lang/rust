@@ -10,7 +10,7 @@ fn std::ptr::drop_glue(_1: &mut [String]) -> () {
     let mut _7: bool;
 
     bb0: {
-        goto -> bb8;
+        goto -> bb7;
     }
 
     bb1: {
@@ -47,9 +47,5 @@ fn std::ptr::drop_glue(_1: &mut [String]) -> () {
         _2 = PtrMetadata(copy _1);
         _3 = const 0_usize;
         goto -> bb6;
-    }
-
-    bb8: {
-        goto -> bb7;
     }
 }

@@ -462,7 +462,9 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for DropShimElaborator<'a, 'tcx> {
         None
     }
 
-    fn clear_drop_flag(&mut self, _location: Location, _path: Self::Path, _mode: DropFlagMode) {}
+    fn drop_flags_for(&mut self, _path: Self::Path, _mode: DropFlagMode) -> Vec<Place<'tcx>> {
+        Vec::new()
+    }
 
     fn field_subpath(&self, _path: Self::Path, _field: FieldIdx) -> Option<Self::Path> {
         None

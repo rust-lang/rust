@@ -11,6 +11,7 @@ use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
 use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
+use rustc_mir_dataflow::DropFlagState;
 use rustc_span::{DUMMY_SP, dummy_spanned};
 use tracing::{debug, instrument};
 
@@ -107,11 +108,10 @@ pub(crate) trait DropElaborator<'a, 'tcx>: fmt::Debug {
     /// Returns the drop flag of `path` as a MIR `Operand` (or `None` if `path` has no drop flag).
     fn get_drop_flag(&mut self, path: Self::Path) -> Option<Operand<'tcx>>;
 
-    /// Modifies the MIR patch so that the drop flag of `path` (if any) is cleared at `location`.
+    /// Return the drop flag of `path`, if any.
     ///
-    /// If `mode` is deep, drop flags of all child paths should also be cleared by inserting
-    /// additional statements.
-    fn clear_drop_flag(&mut self, location: Location, path: Self::Path, mode: DropFlagMode);
+    /// If `mode` is deep, drop flags of all child paths should be returned.
+    fn drop_flags_for(&mut self, path: Self::Path, mode: DropFlagMode) -> Vec<Place<'tcx>>;
 
     // Subpaths
 
@@ -1586,10 +1586,20 @@ where
             // bother setting it.
             return succ;
         }
-        let block = self.new_block(unwind, TerminatorKind::Goto { target: succ });
-        let block_start = Location { block, statement_index: 0 };
-        self.elaborator.clear_drop_flag(block_start, self.path, mode);
-        block
+        let flags = self.elaborator.drop_flags_for(self.path, mode);
+        let statements: Vec<_> = flags
+            .into_iter()
+            .map(|flag| {
+                self.assign(
+                    flag,
+                    Rvalue::Use(self.constant_bool(DropFlagState::Absent.value()), WithRetag::Yes),
+                )
+            })
+            .collect();
+        if statements.is_empty() {
+            return succ;
+        }
+        self.new_block_with_statements(unwind, statements, TerminatorKind::Goto { target: succ })
     }
 
     #[instrument(level = "debug", skip(self), ret)]
@@ -1681,6 +1691,14 @@ where
             span: self.source_info.span,
             user_ty: None,
             const_: Const::from_usize(self.tcx(), val.into()),
+        }))
+    }
+
+    fn constant_bool(&self, val: bool) -> Operand<'tcx> {
+        Operand::Constant(Box::new(ConstOperand {
+            span: self.source_info.span,
+            user_ty: None,
+            const_: Const::from_bool(self.tcx(), val),
         }))
     }
 
