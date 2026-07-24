@@ -1172,6 +1172,7 @@ symbols! {
         lang,
         lang_items,
         large_assignments,
+        largest_niche,
         last,
         lasx,
         late_bound_turbofishing,
