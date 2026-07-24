@@ -2,7 +2,8 @@
 
 **Tier: 2 (with Host Tools)**
 
-RISC-V targets using the *RV64I* base instruction set with the *G* collection of extensions, as well as the *C* extension.
+Linux GNU libc RISC-V target using the *RV64I* base instruction set with the
+*G* collection of extensions, as well as the *C* extension.
 
 
 ## Target maintainers
@@ -22,10 +23,10 @@ This target requires:
 
 ## Building the target
 
-These targets are distributed through `rustup`, and otherwise require no
+This target is distributed through `rustup`, and otherwise requires no
 special configuration.
 
-If you need to build your own Rust for some reason though, the targets can be
+If you need to build your own Rust for some reason though, the target can be
 enabled in `bootstrap.toml`. For example:
 
 ```toml
@@ -37,10 +38,10 @@ target = ["riscv64gc-unknown-linux-gnu"]
 ## Building Rust programs
 
 
-On a RISC-V host, the `riscv64gc-unknown-linux-gnu` target should be automatically
-installed and used by default.
+On a riscv64gc-unknown-linux-gnu host, the `riscv64gc-unknown-linux-gnu`
+target should be automatically installed and used by default.
 
-On a non-RISC-V host, add the target:
+On all other hosts, add the target:
 
 ```bash
 rustup target add riscv64gc-unknown-linux-gnu
@@ -55,7 +56,7 @@ cargo build --target riscv64gc-unknown-linux-gnu
 
 ## Testing
 
-There are no special requirements for testing and running the targets.
+There are no special requirements for testing and running the target.
 For testing cross builds on the host, please refer to the "Cross-compilation
 toolchains and C code"
 section below.

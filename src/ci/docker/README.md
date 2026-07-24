@@ -462,6 +462,22 @@ For targets: `riscv64-unknown-linux-gnu`
 - C compiler > gcc version = 8.5.0
 - C compiler > C++ = ENABLE -- to cross compile LLVM
 
+### `riscv64-unknown-linux-musl.defconfig`
+
+For targets: `riscv64-unknown-linux-musl`
+
+- Path and misc options > Prefix directory = /x-tools/${CT\_TARGET}
+- Path and misc options > Use a mirror = ENABLE
+- Path and misc options > Base URL = https://ci-mirrors.rust-lang.org/rustc
+- Target options > Target Architecture = riscv
+- Target options > Bitness = 64-bit
+- Operating System > Target OS = linux
+- Operating System > Linux kernel version = 4.20.17
+- Binary utilities > Version of binutils = 2.40
+- C-library > musl version = 1.2.5
+- C compiler > gcc version = 8.5.0
+- C compiler > C++ = ENABLE -- to cross compile LLVM
+
 ### `s390x-linux-gnu.defconfig`
 
 For targets: `s390x-unknown-linux-gnu`

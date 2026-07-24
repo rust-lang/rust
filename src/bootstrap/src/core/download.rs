@@ -481,6 +481,7 @@ pub(crate) fn is_download_ci_available(target_triple: &str, llvm_assertions: boo
         "powerpc64le-unknown-linux-gnu",
         "powerpc64le-unknown-linux-musl",
         "riscv64gc-unknown-linux-gnu",
+        "riscv64gc-unknown-linux-musl",
         "s390x-unknown-linux-gnu",
         "x86_64-apple-darwin",
         "x86_64-pc-windows-gnu",
