@@ -12,6 +12,30 @@ pub trait Rng {
     /// instance, this allows an `Rng` to generate a word at a time and throw part of it away if not
     /// needed.
     fn fill_bytes(&mut self, bytes: &mut [u8]);
+
+    /// Returns a random 32-bit integer.
+    ///
+    /// The default implementation uses `fill_bytes` and interprets those bytes as integer, but this
+    /// is not guaranteed. A `RandomSource` can override this method to behave differently, e.g., it
+    /// may skip parts of its internal buffer to avoid the need for an unaligned load.
+    #[inline]
+    fn next_u32(&mut self) -> u32 {
+        let mut buf = [0; size_of::<u32>()];
+        self.fill_bytes(&mut buf);
+        u32::from_le_bytes(buf)
+    }
+
+    /// Returns a random 64-bit integer.
+    ///
+    /// The default implementation uses `fill_bytes` and interprets those bytes as integer, but this
+    /// is not guaranteed. A `RandomSource` can override this method to behave differently, e.g., it
+    /// may skip parts of its internal buffer to avoid the need for an unaligned load.
+    #[inline]
+    fn next_u64(&mut self) -> u64 {
+        let mut buf = [0; size_of::<u64>()];
+        self.fill_bytes(&mut buf);
+        u64::from_le_bytes(buf)
+    }
 }
 
 /// Implements `Rng` for mutable references to random number generators by
@@ -44,12 +68,19 @@ impl Distribution<bool> for RangeFull {
 }
 
 macro_rules! impl_primitive {
+    ($t:ty, $method:ident) => {
+        impl Distribution<$t> for RangeFull {
+            fn sample(&self, source: &mut (impl RandomSource + ?Sized)) -> $t {
+                source.$method() as $t
+            }
+        }
+    };
     ($t:ty) => {
         impl Distribution<$t> for RangeFull {
             fn sample(&self, source: &mut (impl Rng + ?Sized)) -> $t {
                 let mut bytes = (0 as $t).to_ne_bytes();
                 source.fill_bytes(&mut bytes);
-                <$t>::from_ne_bytes(bytes)
+                <$t>::from_le_bytes(bytes)
             }
         }
     };
@@ -59,10 +90,10 @@ impl_primitive!(u8);
 impl_primitive!(i8);
 impl_primitive!(u16);
 impl_primitive!(i16);
-impl_primitive!(u32);
-impl_primitive!(i32);
-impl_primitive!(u64);
-impl_primitive!(i64);
+impl_primitive!(u32, next_u32);
+impl_primitive!(i32, next_u32);
+impl_primitive!(u64, next_u64);
+impl_primitive!(i64, next_u64);
 impl_primitive!(u128);
 impl_primitive!(i128);
 impl_primitive!(usize);
