@@ -491,15 +491,15 @@ pub fn flag_to_backend_features<'a>(
 pub fn retpoline_features_by_flags(sess: &Session, features: &mut Vec<String>) {
     // -Tretpoline without -Tretpoline-external-thunk enables
     // retpoline-indirect-branches and retpoline-indirect-calls target features
-    let target_opts = &sess.opts.target_opts;
-    if target_opts.retpoline && !target_opts.retpoline_external_thunk {
+    let cg = &sess.opts.cg;
+    if cg.retpoline && !cg.retpoline_external_thunk {
         features.push("+retpoline-indirect-branches".into());
         features.push("+retpoline-indirect-calls".into());
     }
     // -Tretpoline-external-thunk (maybe, with -Tretpoline too) enables
     // retpoline-external-thunk, retpoline-indirect-branches and
     // retpoline-indirect-calls target features
-    if target_opts.retpoline_external_thunk {
+    if cg.retpoline_external_thunk {
         features.push("+retpoline-external-thunk".into());
         features.push("+retpoline-indirect-branches".into());
         features.push("+retpoline-indirect-calls".into());

@@ -2562,6 +2562,11 @@ options! {
         "choose which RELRO level to use"),
     remark: Passes = (Passes::Some(Vec::new()), parse_passes, [UNTRACKED],
         "output remarks for these optimization passes (space separated, or \"all\")"),
+    retpoline: bool = (false, parse_bool, [TRACKED_UNSTABLE] { TARGET_MODIFIER: Only },
+        "enables retpoline-indirect-branches and retpoline-indirect-calls target features (default: no)"),
+    retpoline_external_thunk: bool = (false, parse_bool, [TRACKED_UNSTABLE] { TARGET_MODIFIER: Only },
+        "enables retpoline-external-thunk, retpoline-indirect-branches and retpoline-indirect-calls \
+        target features (default: no)"),
     rpath: bool = (false, parse_bool, [UNTRACKED],
         "set rpath values in libs/exes (default: no)"),
     #[rustc_lint_opt_deny_field_access("use `Session::sanitizers()` instead of this field")]

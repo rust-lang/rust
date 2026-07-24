@@ -671,6 +671,8 @@ fn test_codegen_options_tracking_hash() {
     tracked!(regparm, Some(3));
     tracked!(relocation_model, Some(RelocModel::Pic));
     tracked!(relro_level, Some(RelroLevel::Full));
+    tracked!(retpoline, true);
+    tracked!(retpoline_external_thunk, true);
     tracked!(sanitizer, SanitizerSet::CFI);
     tracked!(sanitizer_cfi_normalize_integers, Some(true));
     tracked!(split_debuginfo, Some(SplitDebuginfo::Packed));

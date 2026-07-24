@@ -2949,8 +2949,8 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     let prints = print_request::collect_print_requests(early_dcx, &mut cg, &unstable_opts, matches);
 
     // -Zretpoline-external-thunk also requires -Zretpoline
-    if target_opts.retpoline_external_thunk {
-        target_opts.retpoline = true;
+    if cg.retpoline_external_thunk {
+        cg.retpoline = true;
     }
 
     let cg = cg;
