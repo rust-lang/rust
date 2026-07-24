@@ -1483,7 +1483,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     // Never recommend deprecated helper attributes.
                 }
                 Scope::MacroRules(macro_rules_scope) => {
-                    if let MacroRulesScope::Def(macro_rules_def) = macro_rules_scope.get() {
+                    if let MacroRulesScope::Def(macro_rules_def) = *macro_rules_scope.read() {
                         let res = macro_rules_def.decl.res();
                         if filter_fn(res) {
                             suggestions.push(TypoSuggestion::new(
