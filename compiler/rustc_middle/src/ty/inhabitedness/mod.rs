@@ -91,11 +91,12 @@ impl<'tcx> VariantDef {
         InhabitedPredicate::all(
             tcx,
             self.fields.iter().map(|field| {
-                let pred = tcx
-                    .type_of(field.did)
-                    .instantiate_identity()
-                    .skip_norm_wip()
-                    .inhabited_predicate(tcx);
+                let field_ty = tcx.normalize_erasing_regions(
+                    TypingEnv::non_body_analysis(tcx, adt.did()),
+                    tcx.type_of(field.did).instantiate_identity(),
+                );
+                let pred = field_ty.inhabited_predicate(tcx);
+
                 if adt.is_enum() {
                     return pred;
                 }
