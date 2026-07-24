@@ -1039,6 +1039,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         qpath: &QPath<'tcx>,
         hir_id: HirId,
+        expected_ty: Option<Ty<'tcx>>,
     ) -> Result<(&'tcx ty::VariantDef, Ty<'tcx>), ErrorGuaranteed> {
         let path_span = qpath.span();
         let (def, ty) = self.finish_resolving_struct_path(qpath, path_span, hir_id);
@@ -1072,8 +1073,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Register type annotation.
             self.write_user_type_annotation_from_args(hir_id, did, args, user_self_ty);
 
-            // Check bounds on type arguments used in the path.
-            self.add_required_obligations_for_hir(path_span, did, args, hir_id);
+            let expected_ty_provides_bounds = expected_ty.is_some_and(|expected_ty| {
+                !expected_ty.has_non_region_infer()
+                    && self.can_eq(self.param_env, expected_ty, ty.normalized)
+            });
+
+            // Avoid duplicating bounds already checked by an equivalent concrete expected type.
+            if !expected_ty_provides_bounds {
+                self.add_required_obligations_for_hir(path_span, did, args, hir_id);
+            }
 
             Ok((variant, ty.normalized))
         } else {

@@ -15,6 +15,10 @@ impl Trait for Struct<bool> {}
 fn main() {
     let _: Struct<u8> = Struct { field: 0 };
     //~^ ERROR the trait bound `Struct<u8>: Trait` is not satisfied
-    //~| ERROR mismatched types
+
+    let _: Struct<_> = Struct { field: false };
+
+    let _: Struct<bool> = Struct::<u8> { field: 0 };
+    //~^ ERROR the trait bound `Struct<u8>: Trait` is not satisfied
     //~| ERROR mismatched types
 }
