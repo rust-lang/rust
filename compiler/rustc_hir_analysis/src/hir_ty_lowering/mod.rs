@@ -2505,11 +2505,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         ty::Const::new_value(tcx, valtree, ty)
     }
 
-    fn error_complex_const_arg(&self, span: Span) -> ErrorGuaranteed {
-        self.dcx()
-            .span_err(span, "complex const arguments must be placed inside of a `const` block")
-    }
-
     fn try_recover_misrepresented_function_call(
         &self,
         hir_self_ty: &'tcx hir::Ty<'tcx>,
@@ -2532,7 +2527,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             self_ty_res,
             Res::Def(DefKind::Struct | DefKind::Union | DefKind::ForeignTy, _) | Res::PrimTy(_)
         )
-        .then(|| self.error_complex_const_arg(span))
+        .then(|| self.dcx().emit_err(diagnostics::ComplexConstArg { span }))
     }
 
     fn lower_const_arg_tuple_call(
@@ -2592,7 +2587,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 (tcx.adt_def(parent_did), fn_args, parent_did)
             }
             _ => {
-                let e = self.error_complex_const_arg(span);
+                let e = self.dcx().emit_err(diagnostics::ComplexConstArg { span });
                 return Const::new_error(tcx, e);
             }
         };
