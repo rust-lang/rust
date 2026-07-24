@@ -1,4 +1,4 @@
-//@ known-bug: unknown
+//@ check-pass
 
 fn higher_ranked_fndef(ctx: &mut ()) {}
 

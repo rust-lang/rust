@@ -1051,7 +1051,26 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             ty::FnPtr(_, b_hdr) if a_sig.safety().is_safe() && b_hdr.safety().is_unsafe() => {
                 let a = self.tcx.safe_to_unsafe_fn_ty(a_sig);
                 let adjust = Adjust::Pointer(PointerCoercion::UnsafeFnPointer);
-                self.unify_and(a, b, [], adjust, ForceLeakCheck::Yes)
+
+                match self.unify_and(a, b, [], adjust.clone(), ForceLeakCheck::Yes) {
+                    ok @ Ok(_) => ok,
+                    Err(_) => {
+                        let inst_sig = ty::Binder::dummy(self.instantiate_binder_with_fresh_vars(
+                            self.cause.span,
+                            BoundRegionConversionTime::HigherRankedType,
+                            a_sig,
+                        ));
+                        let inst_a = Ty::new_fn_ptr(self.tcx, inst_sig);
+                        let unsafe_a = self.tcx.safe_to_unsafe_fn_ty(inst_sig);
+                        self.unify_and(
+                            unsafe_a,
+                            b,
+                            vec![Adjustment { kind: Adjust::Subtype, target: inst_a }],
+                            adjust,
+                            ForceLeakCheck::Yes,
+                        )
+                    }
+                }
             }
             ty::FnPtr(_, _) => match self.unify(a, b, ForceLeakCheck::Yes) {
                 ok @ Ok(_) => ok,
