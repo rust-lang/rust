@@ -172,6 +172,11 @@ pr:
       CODEGEN_BACKENDS: llvm
     <<: *job-linux-4c
 
+  - name: x86_64-gnu-offload
+    env:
+      CODEGEN_BACKENDS: llvm
+    <<: *job-linux-4c
+
 # Jobs that run when you perform a try build (@bors try)
 # These jobs automatically inherit envs.try, to avoid repeating
 # it in each job definition.
