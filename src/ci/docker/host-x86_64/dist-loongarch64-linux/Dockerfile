@@ -3,9 +3,9 @@ FROM ubuntu:22.04
 COPY scripts/cross-apt-packages.sh /scripts/
 RUN sh /scripts/cross-apt-packages.sh
 
-COPY scripts/crosstool-ng.sh /scripts/
+COPY scripts/crosstool-ng-git.sh /scripts/
 COPY scripts/crosstool-ng-sha256-20260705.diff /scripts/
-RUN sh /scripts/crosstool-ng.sh
+RUN sh /scripts/crosstool-ng-git.sh
 
 COPY scripts/rustbuild-setup.sh /scripts/
 RUN sh /scripts/rustbuild-setup.sh
@@ -39,12 +39,24 @@ ENV CC_loongarch64_unknown_none=loongarch64-unknown-linux-gnu-gcc \
     AR_loongarch64_unknown_none_softfloat=loongarch64-unknown-linux-gnu-ar \
     CXX_loongarch64_unknown_none_softfloat=loongarch64-unknown-linux-gnu-g++ \
     CFLAGS_loongarch64_unknown_none_softfloat="-ffreestanding -mabi=lp64s -mfpu=none" \
-    CXXFLAGS_loongarch64_unknown_none_softfloat="-ffreestanding -mabi=lp64s -mfpu=none"
+    CXXFLAGS_loongarch64_unknown_none_softfloat="-ffreestanding -mabi=lp64s -mfpu=none" \
+    CC_loongarch32_unknown_none=loongarch64-unknown-linux-gnu-gcc \
+    AR_loongarch32_unknown_none=loongarch64-unknown-linux-gnu-ar \
+    CXX_loongarch32_unknown_none=loongarch64-unknown-linux-gnu-g++ \
+    CFLAGS_loongarch32_unknown_none="-ffreestanding -march=la32rv1.0 -mabi=ilp32d" \
+    CXXFLAGS_loongarch32_unknown_none="-ffreestanding -march=la32rv1.0 -mabi=ilp32d" \
+    CC_loongarch32_unknown_none_softfloat=loongarch64-unknown-linux-gnu-gcc \
+    AR_loongarch32_unknown_none_softfloat=loongarch64-unknown-linux-gnu-ar \
+    CXX_loongarch32_unknown_none_softfloat=loongarch64-unknown-linux-gnu-g++ \
+    CFLAGS_loongarch32_unknown_none_softfloat="-ffreestanding -march=la32rv1.0 -mabi=ilp32s -mfpu=none" \
+    CXXFLAGS_loongarch32_unknown_none_softfloat="-ffreestanding -march=la32rv1.0 -mabi=ilp32s -mfpu=none"
 
 ENV HOSTS=loongarch64-unknown-linux-gnu
 ENV TARGETS=$HOSTS
 ENV TARGETS=$TARGETS,loongarch64-unknown-none
 ENV TARGETS=$TARGETS,loongarch64-unknown-none-softfloat
+ENV TARGETS=$TARGETS,loongarch32-unknown-none
+ENV TARGETS=$TARGETS,loongarch32-unknown-none-softfloat
 
 ENV RUST_CONFIGURE_ARGS="--enable-extended \
       --enable-full-tools \
