@@ -651,4 +651,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "A new `build.sde` configuration option has been added to support intrinsic-test.",
     },
+    ChangeInfo {
+        change_id: 159455,
+        severity: ChangeSeverity::Warning,
+        summary: "GDB and LLDB are no longer automatically discovered from the environment. If you want to use path discovery for them, you can opt in using `build.gdb = \"discover\"` or `build.lldb = \"discover\"`.",
+    },
 ];

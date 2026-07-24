@@ -11,7 +11,7 @@ use clap::CommandFactory;
 use super::flags::Flags;
 use super::toml::change_id::ChangeIdWrapper;
 use super::toml::rust::parse_codegen_backends;
-use super::{Config, RUSTC_IF_UNCHANGED_ALLOWED_PATHS};
+use super::{Config, DebuggerPath, RUSTC_IF_UNCHANGED_ALLOWED_PATHS};
 use crate::ChangeId;
 use crate::core::build_steps::clippy::{LintConfig, get_clippy_rules_in_order};
 use crate::core::build_steps::llvm::LLVM_INVALIDATION_PATHS;
@@ -111,7 +111,11 @@ fn override_toml() {
         crate::core::config::RustcLto::Fat,
         "setting string value without quotes"
     );
-    assert_eq!(config.gdb, Some("bar".into()), "setting string value with quotes");
+    assert_eq!(
+        config.gdb,
+        Some(DebuggerPath::Path("bar".into())),
+        "setting string value with quotes"
+    );
     assert!(!config.deny_warnings, "setting boolean value");
     assert_eq!(
         config.optimized_compiler_builtins,
