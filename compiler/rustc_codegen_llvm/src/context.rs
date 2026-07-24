@@ -514,7 +514,7 @@ pub(crate) unsafe fn create_module<'ll>(
         );
     }
 
-    if sess.opts.target_opts.indirect_branch_cs_prefix {
+    if sess.opts.cg.indirect_branch_cs_prefix {
         llvm::add_module_flag_u32(
             llmod,
             llvm::ModuleFlagMergeBehavior::Override,

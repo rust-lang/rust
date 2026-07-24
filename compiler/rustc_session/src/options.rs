@@ -2479,6 +2479,8 @@ options! {
     help: bool = (false, parse_no_value, [UNTRACKED], "Print codegen options"),
     incremental: Option<String> = (None, parse_opt_string, [UNTRACKED],
         "enable incremental compilation"),
+    indirect_branch_cs_prefix: bool = (false, parse_bool, [TRACKED_UNSTABLE] { TARGET_MODIFIER: Only },
+        "add `cs` prefix to `call` and `jmp` to indirect thunks (default: no)"),
     inline_threshold: () = ((), parse_ignore, [UNTRACKED],
         "this option has been removed \
         (consider using `-Cllvm-args=--inline-threshold=...`)",
