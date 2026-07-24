@@ -13,6 +13,7 @@ use tracing::instrument;
 
 use super::{HirPlaceholderCollector, ItemCtxt, bad_placeholder};
 use crate::check::wfcheck::check_static_item;
+use crate::diagnostics::ParamInTyOfConstParam;
 use crate::hir_ty_lowering::HirTyLowerer;
 
 mod opaque;
@@ -240,8 +241,19 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::EarlyBinder<'_
         }
 
         Node::GenericParam(param) => match &param.kind {
-            GenericParamKind::Type { default: Some(ty), .. }
-            | GenericParamKind::Const { ty, .. } => icx.lower_ty(ty),
+            GenericParamKind::Type { default: Some(ty), .. } => icx.lower_ty(ty),
+            GenericParamKind::Const { ty, .. } => {
+                let lowered_ty = icx.lower_ty(ty);
+                if !tcx.features().generic_const_parameter_types() && lowered_ty.has_param() {
+                    let guar = tcx
+                        .dcx()
+                        .create_err(ParamInTyOfConstParam { span: ty.span, ty: lowered_ty })
+                        .emit();
+                    Ty::new_error(tcx, guar)
+                } else {
+                    lowered_ty
+                }
+            }
             x => bug!("unexpected non-type Node::GenericParam: {:?}", x),
         },
 

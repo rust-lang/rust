@@ -1284,6 +1284,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ResolutionError::ParamInTyOfConstParam { name } => {
                 self.dcx().create_err(diagnostics::ParamInTyOfConstParam { span, name })
             }
+            ResolutionError::SelfInConstParam => {
+                self.dcx().create_err(diagnostics::SelfInConstGenericTy {
+                    span,
+                    enable_feature: self.tcx().sess.is_nightly_build(),
+                })
+            }
             ResolutionError::ParamInNonTrivialAnonConst { is_gca, name, param_kind: is_type } => {
                 self.dcx().create_err(diagnostics::ParamInNonTrivialAnonConst {
                     span,
@@ -1307,9 +1313,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 ForwardGenericParamBanReason::Default => {
                     self.dcx().create_err(diagnostics::SelfInGenericParamDefault { span })
                 }
-                ForwardGenericParamBanReason::ConstParamTy => {
-                    self.dcx().create_err(diagnostics::SelfInConstGenericTy { span })
-                }
+                ForwardGenericParamBanReason::ConstParamTy => self
+                    .dcx()
+                    .create_err(diagnostics::SelfInConstGenericTy { span, enable_feature: false }),
             },
             ResolutionError::UnreachableLabel { name, definition_span, suggestion } => {
                 let ((sub_suggestion_label, sub_suggestion), sub_unreachable_label) =

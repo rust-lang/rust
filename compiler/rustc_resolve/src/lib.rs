@@ -298,6 +298,8 @@ enum ResolutionError<'ra> {
     // problematic to use *forward declared* parameters when the feature is enabled.
     /// ERROR E0770: the type of const parameters must not depend on other generic parameters.
     ParamInTyOfConstParam { name: Symbol },
+    /// cannot use self in const param
+    SelfInConstParam,
     /// generic parameters must not be used inside const evaluations.
     ///
     /// This error is only emitted when using `min_const_generics`.

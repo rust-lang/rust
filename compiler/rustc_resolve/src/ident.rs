@@ -1595,18 +1595,27 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         }
 
                         RibKind::ConstParamTy => {
-                            if !self.features.generic_const_parameter_types() {
+                            // We check whether Self depends on generics parameters in `fn type_of`
+                            if self.features.generic_const_parameter_types()
+                                || ((self.features.min_adt_const_params()
+                                    || self.features.adt_const_params())
+                                    && matches!(res, Res::SelfTyAlias { .. }))
+                            {
+                                continue;
+                            } else {
                                 if let Some(span) = finalize {
-                                    self.report_error(
-                                        span,
-                                        ResolutionError::ParamInTyOfConstParam {
-                                            name: rib_ident.name,
-                                        },
-                                    );
+                                    if matches!(res, Res::SelfTyAlias { .. }) {
+                                        self.report_error(span, ResolutionError::SelfInConstParam);
+                                    } else {
+                                        self.report_error(
+                                            span,
+                                            ResolutionError::ParamInTyOfConstParam {
+                                                name: rib_ident.name,
+                                            },
+                                        );
+                                    }
                                 }
                                 return Res::Err;
-                            } else {
-                                continue;
                             }
                         }
 
