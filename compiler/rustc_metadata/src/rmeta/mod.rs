@@ -38,7 +38,9 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_serialize::opaque::FileEncoder;
 use rustc_session::config::mitigation_coverage::DeniedPartialMitigation;
-use rustc_session::config::{SymbolManglingVersion, TargetOptions};
+use rustc_session::config::{
+    CodegenOptionsKey, SymbolManglingVersion, TargetModifierValue, UnstableOptionsKey,
+};
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{ExpnIndex, MacroKind, SyntaxContextKey};
 use rustc_span::{self, ExpnData, ExpnHash, ExpnId, Ident, Span, Symbol};
@@ -203,6 +205,12 @@ pub enum ProcMacroKind {
     Bang { name: String },
 }
 
+#[derive(MetadataEncodable, LazyDecodable)]
+pub(crate) struct TargetModifiers {
+    codegen: LazyArray<(CodegenOptionsKey, TargetModifierValue)>,
+    unstable: LazyArray<(UnstableOptionsKey, TargetModifierValue)>,
+}
+
 /// Serialized crate metadata.
 ///
 /// This contains just enough information to determine if we should load the `CrateRoot` or not.
@@ -294,7 +302,7 @@ pub(crate) struct CrateRoot {
 
     source_map: LazyTable<u32, Option<LazyValue<rustc_span::SourceFile>>>,
     denied_partial_mitigations: LazyArray<DeniedPartialMitigation>,
-    target_options: TargetOptions,
+    target_modifiers: TargetModifiers,
 
     compiler_builtins: bool,
     needs_allocator: bool,

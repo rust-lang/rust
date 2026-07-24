@@ -721,6 +721,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let source_map = stat!("source-map", || self.encode_source_map());
         let denied_partial_mitigations = stat!("denied-partial-mitigations", || self
             .encode_enabled_denied_partial_mitigations());
+        let target_modifiers = stat!("target-modifiers", || self.encode_target_modifiers());
 
         let root = stat!("final", || {
             let attrs = tcx.hir_krate_attrs();
@@ -751,7 +752,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 panic_runtime: find_attr!(attrs, PanicRuntime),
                 profiler_runtime: find_attr!(attrs, ProfilerRuntime),
                 symbol_mangling_version: tcx.sess.opts.get_symbol_mangling_version(),
-                target_options: tcx.sess.opts.target_opts.clone(),
+                target_modifiers,
 
                 crate_deps,
                 dylib_dependency_formats,
@@ -2120,6 +2121,40 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         empty_proc_macro!(self);
         let tcx = self.tcx;
         self.lazy_array(tcx.sess.gather_enabled_denied_partial_mitigations())
+    }
+
+    fn encode_target_modifiers(&mut self) -> TargetModifiers {
+        if self.is_proc_macro {
+            return TargetModifiers {
+                codegen: LazyArray::default(),
+                unstable: LazyArray::default(),
+            };
+        }
+
+        let tcx = self.tcx;
+        // JUSTIFICATION: Iteration order doesn't matter
+        #[allow(rustc::potential_query_instability)]
+        let codegen = self.lazy_array(
+            tcx.sess
+                .opts
+                .collected_options
+                .target_modifiers
+                .codegen
+                .iter()
+                .map(|(k, v)| (k.clone(), v.clone())),
+        );
+        // JUSTIFICATION: Iteration order doesn't matter
+        #[allow(rustc::potential_query_instability)]
+        let unstable = self.lazy_array(
+            tcx.sess
+                .opts
+                .collected_options
+                .target_modifiers
+                .unstable
+                .iter()
+                .map(|(k, v)| (k.clone(), v.clone())),
+        );
+        TargetModifiers { codegen, unstable }
     }
 
     fn encode_lib_features(&mut self) -> LazyArray<(Symbol, FeatureStability)> {

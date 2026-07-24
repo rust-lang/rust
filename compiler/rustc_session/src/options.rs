@@ -1,12 +1,12 @@
 use std::collections::BTreeMap;
 use std::num::{IntErrorKind, NonZero};
 use std::path::PathBuf;
-use std::str;
+use std::{fmt, str};
 
 use rustc_abi::Align;
 use rustc_ast::attr::version::RustcVersion;
 use rustc_attr_ir::CollapseMacroDebuginfo;
-use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_data_structures::profiling::TimePassesFormat;
 use rustc_data_structures::stable_hash::StableHasher;
 use rustc_errors::{ColorConfig, TerminalUrl};
@@ -77,7 +77,6 @@ pub struct OptionMetadata {
 #[derive(Clone, Default)]
 pub struct OptionsMetadata {
     pub(crate) codegen: CodegenOptionsMetadata,
-    pub(crate) target: TargetOptionsMetadata,
     pub(crate) unstable: UnstableOptionsMetadata,
 }
 
@@ -100,8 +99,7 @@ macro_rules! top_level_options {
                 $(#[$attr])*
                 pub $opt: $t,
             )*
-            pub mitigation_coverage_map: mitigation_coverage::MitigationCoverageMap,
-            pub metadata: OptionsMetadata,
+            pub collected_options: CollectedOptions,
         }
 
         impl Options {
@@ -196,7 +194,6 @@ top_level_options!(
         /// directory to store intermediate results.
         incremental: Option<PathBuf> [UNTRACKED],
 
-        target_opts: TargetOptions [SUBSTRUCT],
         unstable_opts: UnstableOptions [SUBSTRUCT],
         prints: Vec<PrintRequest> [UNTRACKED],
         cg: CodegenOptions [SUBSTRUCT],
@@ -275,16 +272,169 @@ top_level_options!(
     }
 );
 
-#[derive(Default)]
+/// Enum of types that command-line options can take - eventually stored into cross-crate metadata
+/// instead of a `Box<dyn Any>`.
+#[derive(BlobDecodable, Clone, Encodable, PartialEq)]
+pub enum TargetModifierValue {
+    Bool(bool),
+    U32(u32),
+    Usize(usize),
+    BranchProtection(BranchProtection),
+    Sanitizers(SanitizerSet),
+}
+
+impl fmt::Display for TargetModifierValue {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Bool(_) => write!(f, ""),
+            Self::U32(val) => write!(f, "={val}"),
+            Self::Usize(val) => write!(f, "={val}"),
+            Self::BranchProtection(val) => write!(f, "={val}"),
+            Self::Sanitizers(val) => write!(f, "={val}"),
+        }
+    }
+}
+
+macro_rules! noop_target_modifier_ty {
+    ($($ty:ty => $ctor:expr,)+) => {
+        $(
+            impl From<$ty> for TargetModifierValue {
+                fn from(value: $ty) -> Self {
+                    $ctor(value)
+                }
+            }
+        )+
+    }
+}
+
+noop_target_modifier_ty!(
+    // tidy-alphabetical-start
+    SanitizerSet => Self::Sanitizers,
+    bool => Self::Bool,
+    u32 => Self::U32,
+    usize => Self::Usize,
+    // tidy-alphabetical-end
+);
+
+macro_rules! opt_or_default_target_modifier_ty {
+    ($($ty:ty => $ctor:expr,)+) => {
+        $(
+            impl From<Option<$ty>> for TargetModifierValue {
+                fn from(value: Option<$ty>) -> Self {
+                    $ctor(value.unwrap_or_default())
+                }
+            }
+        )+
+    }
+}
+
+opt_or_default_target_modifier_ty!(
+    // tidy-alphabetical-start
+    BranchProtection => Self::BranchProtection,
+    String => Self::String,
+    bool => Self::Bool,
+    u32 => Self::U32,
+    usize => Self::Usize,
+    // tidy-alphabetical-end
+);
+
+macro_rules! unsupported_target_modifier_ty {
+    ($($ty:ty,)*) => {
+        $(
+            impl From<$ty> for TargetModifierValue {
+                fn from(_: $ty) -> Self {
+                    unimplemented!("type not supported for a target modifier: {}", stringify!($ty))
+                }
+            }
+        )+
+    }
+}
+
+unsupported_target_modifier_ty!(
+    // tidy-alphabetical-start
+    (),
+    AnnotateMoves,
+    CFGuard,
+    CFProtection,
+    CollapseMacroDebuginfo,
+    CoverageOptions,
+    DebugInfo,
+    DebugInfoCompression,
+    DumpMonoStatsFormat,
+    FmtDebug,
+    FramePointer,
+    FunctionReturn,
+    InliningThreshold,
+    InstrumentCoverage,
+    InstrumentMcount,
+    LinkSelfContained,
+    LinkerFeaturesCli,
+    LinkerPluginLto,
+    LocationDetail,
+    LtoCli,
+    MirIncludeSpans,
+    MirStripDebugInfo,
+    NextSolverConfig,
+    OnBrokenPipe,
+    Option<Align>,
+    Option<CodeModel>,
+    Option<CodegenRetagOptions>,
+    Option<IncrementalStateAssertion>,
+    Option<InstrumentXRay>,
+    Option<LinkerFlavorCli>,
+    Option<MergeFunctions>,
+    Option<NonZero<usize>>,
+    Option<PanicStrategy>,
+    Option<PathBuf>,
+    Option<RelocModel>,
+    Option<RelroLevel>,
+    Option<RustcVersion>,
+    Option<SourceFileHashAlgorithm>,
+    Option<SplitDebuginfo>,
+    Option<String>,
+    Option<SymbolManglingVersion>,
+    Option<SymbolVisibility>,
+    Option<TlsModel>,
+    Option<Vec<String>>,
+    Option<WasiExecModel>,
+    Option<u64>,
+    PanicStrategy,
+    Passes,
+    PatchableFunctionEntry,
+    Polonius,
+    ProcMacroExecutionStrategy,
+    SplitDwarfKind,
+    StackProtector,
+    String,
+    Strip,
+    SwitchWithOptPath,
+    TerminalUrl,
+    TimePassesFormat,
+    Vec<(String, bool)>,
+    Vec<(String, u32, String)>,
+    Vec<String>,
+    Vec<crate::config::AutoDiff>,
+    Vec<crate::config::Offload>,
+    // tidy-alphabetical-end
+);
+
+#[derive(Clone, Default)]
+pub struct CollectedTargetModifiers {
+    pub codegen: FxHashMap<CodegenOptionsKey, TargetModifierValue>,
+    pub unstable: FxHashMap<UnstableOptionsKey, TargetModifierValue>,
+}
+
+#[derive(Clone, Default)]
 pub struct CollectedOptions {
     pub mitigations: mitigation_coverage::MitigationCoverageMap,
     pub metadata: OptionsMetadata,
+    pub target_modifiers: CollectedTargetModifiers,
 }
 
 macro_rules! setter_for {
     // the allow/deny-mitigations options use collected/index instead of the cg, since they
     // work across option groups
-    (allow_partial_mitigations, $struct_name:ident, $group_name:ident, $parse:ident) => {
+    (allow_partial_mitigations, $struct_name:ident, $group_name:ident, $key_name:ident, $parse:ident) => {
         pub(super) fn allow_partial_mitigations(
             _cg: &mut super::$struct_name,
             collected: &mut super::CollectedOptions,
@@ -295,7 +445,7 @@ macro_rules! setter_for {
             collected.mitigations.handle_allowdeny_mitigation_option(v, index, true)
         }
     };
-    (deny_partial_mitigations, $struct_name:ident, $group_name:ident, $parse:ident) => {
+    (deny_partial_mitigations, $struct_name:ident, $group_name:ident, $key_name:ident, $parse:ident) => {
         pub(super) fn deny_partial_mitigations(
             _cg: &mut super::$struct_name,
             collected: &mut super::CollectedOptions,
@@ -306,7 +456,7 @@ macro_rules! setter_for {
             collected.mitigations.handle_allowdeny_mitigation_option(v, index, false)
         }
     };
-    ($opt:ident, $struct_name:ident, $group_name:ident, $parse:ident) => {
+    ($opt:ident, $struct_name:ident, $group_name:ident, $key_name:ident, $parse:ident) => {
         pub(super) fn $opt(
             cg: &mut super::$struct_name,
             collected: &mut super::CollectedOptions,
@@ -315,7 +465,14 @@ macro_rules! setter_for {
             is_target_modifier: bool,
         ) -> bool {
             collected.metadata.$group_name.$opt.is_set = v.is_some();
-            super::parse::$parse(&mut redirect_field!(cg.$opt), v, is_target_modifier)
+            let res = super::parse::$parse(&mut redirect_field!(cg.$opt), v, is_target_modifier);
+            if is_target_modifier {
+                let _ = collected
+                    .target_modifiers
+                    .$group_name
+                    .insert(super::$key_name::$opt, redirect_field!(cg.$opt).clone().into());
+            }
+            res
         }
     };
 }
@@ -333,9 +490,11 @@ macro_rules! options {
         $(#[$struct_attr:meta])*
         $struct_name:ident, // e.g. `UnstableOptions`
         $metadata_name: ident, // e.g. `UnstableOptionsMetadata`
+        $key_name: ident, // e.g. `UnstableOptionsKey`
         $opt_descs_var:ident, // e.g. `Z_OPTIONS`
         $opt_mod_name:ident, // e.g. `dbopts`
         $prefix:expr, // e.g. `-Z`
+        $target_modifier_prefix:expr, // e.g. `Some("-T")` or `None`
         $group_name:ident, // e.g. `unstable`
 
         $(
@@ -345,6 +504,7 @@ macro_rules! options {
                 $parse:ident,
                 [$dep_tracking_marker:ident]
                 $( { MITIGATION: $mitigation_variant:ident } )?
+                $( { TARGET_MODIFIER: $target_modifier_filter:ident } )?
                 ,
                 $desc:literal
                 $(, removed: $removed:ident )?
@@ -366,6 +526,25 @@ macro_rules! options {
             $(
                 pub $opt: OptionMetadata,
             )*
+        }
+
+        #[allow(nonstandard_style)]
+        #[derive(BlobDecodable, Copy, Clone, Eq, Encodable, Hash, PartialEq, PartialOrd, Ord)]
+        #[repr(u32)]
+        pub enum $key_name {
+            $(
+                $opt,
+            )*
+        }
+
+        impl fmt::Display for $key_name {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                match self {
+                    $(
+                        Self::$opt => write!(f, "{}", stringify!($opt).replace('_', "-"))
+                    ),*
+                }
+            }
         }
 
         impl Default for $struct_name {
@@ -390,6 +569,7 @@ macro_rules! options {
                     collected_options,
                     $opt_descs_var,
                     $prefix,
+                    $target_modifier_prefix,
                     stringify!($group_name)
                 )
             }
@@ -418,6 +598,87 @@ macro_rules! options {
                 );
                 hasher.finish()
             }
+
+            pub fn require_unstable_options(
+                _early_dcx: &EarlyDiagCtxt,
+                _meta: &OptionsMetadata,
+                _unstable_opts: bool
+            ) {
+                $(
+                   require_unstable_options!(
+                       $opt,
+                       $group_name,
+                       [$dep_tracking_marker],
+                       (_early_dcx, _meta, _unstable_opts)
+                   );
+                )*
+            }
+
+            pub fn is_target_modifier(&self, flag_name: &str) -> bool {
+                let flag_name = flag_name.replace('-', "_").to_string();
+                match $opt_descs_var.iter().find(|opt_desc| opt_desc.name == flag_name) {
+                    Some(OptionDesc { target_modifier_filter: Some(TargetModifierFilter::Never), .. }) => false,
+                    Some(_) => true,
+                    None => false,
+                }
+            }
+
+            pub fn report_mismatched_flags_with_dep(
+                &self,
+                sess: &crate::Session,
+                local_crate: rustc_span::Symbol,
+                extern_opts: CollectedTargetModifiers,
+                extern_crate: rustc_span::Symbol
+            ) {
+                let allowed_flag_mismatches = &sess.opts.cg.unsafe_allow_abi_mismatch;
+                let compare = |local_value: Option<&TargetModifierValue>, extern_value: Option<&TargetModifierValue>, flag_name| {
+                        match (local_value, extern_value) {
+                            (Some(local_value), Some(extern_value)) if local_value != extern_value => {
+                                sess.dcx().emit_err(crate::diagnostics::IncompatibleFlagsMismatched {
+                                    local_crate,
+                                    extern_crate,
+                                    prefix: $prefix,
+                                    target_modifier_prefix: $target_modifier_prefix.expect("mismatch w/out prefix"),
+                                    flag_name,
+                                    local_value: local_value.to_string(),
+                                    extern_value: extern_value.to_string(),
+                                });
+                            },
+                            (None, Some(extern_value)) => {
+                                sess.dcx().emit_err(crate::diagnostics::IncompatibleFlagsUnsetLocally {
+                                    local_crate,
+                                    extern_crate,
+                                    prefix: $prefix,
+                                    target_modifier_prefix: $target_modifier_prefix.expect("mismatch w/out prefix"),
+                                    flag_name,
+                                    extern_value: extern_value.to_string(),
+                                });
+                            },
+                            (Some(local_value), None) => {
+                                sess.dcx().emit_err(crate::diagnostics::IncompatibleFlagsUnsetExternally {
+                                    local_crate,
+                                    extern_crate,
+                                    prefix: $prefix,
+                                    target_modifier_prefix: $target_modifier_prefix.expect("mismatch w/out prefix"),
+                                    flag_name,
+                                    local_value: local_value.to_string(),
+                                });
+                            },
+                            (Some(_), Some(_)) => { /* no-op, matching flag values */ }
+                            (None, None) => { /* no-op, neither flag is passed as a target modifier */ }
+                        }
+                };
+
+                $(
+                    let flag_name = stringify!($opt).replace('_', "-").to_string();
+                    let allowed = allowed_flag_mismatches.contains(&flag_name);
+                    if !allowed {
+                        let local_value = sess.opts.collected_options.target_modifiers.$group_name.get(&$key_name::$opt);
+                        let extern_value = extern_opts.$group_name.get(&$key_name::$opt);
+                        compare(local_value, extern_value, flag_name);
+                    }
+                )*
+            }
         }
 
         pub const $opt_descs_var: OptionDescrs<$struct_name> = &[
@@ -428,6 +689,7 @@ macro_rules! options {
                     type_desc: desc::$parse,
                     desc: $desc,
                     removed: None $( .or(Some(RemovedOption::$removed)) )?,
+                    target_modifier_filter: None $( .or(Some(TargetModifierFilter::$target_modifier_filter)) )?,
                     mitigation: None $( .or(Some(
                         mitigation_coverage::DeniedPartialMitigationKind::$mitigation_variant
                     )))?,
@@ -437,7 +699,7 @@ macro_rules! options {
 
         mod $opt_mod_name {
             $(
-                setter_for!($opt, $struct_name, $group_name, $parse);
+                setter_for!($opt, $struct_name, $group_name, $key_name, $parse);
             )*
         }
     }
@@ -460,178 +722,6 @@ macro_rules! require_unstable_options {
         ($early_dcx:ident, $meta:ident, $unstable_opts:ident)) => {{}};
     ($opt_name:ident, $group_name:ident, [SUBSTRUCT],
         ($early_dcx:ident, $meta:ident, $unstable_opts:ident)) => {{}};
-}
-
-trait TargetModifierOptionValue {
-    fn to_string_for_diag(&self) -> String;
-}
-
-impl TargetModifierOptionValue for bool {
-    fn to_string_for_diag(&self) -> String {
-        self.to_string()
-    }
-}
-
-impl TargetModifierOptionValue for u32 {
-    fn to_string_for_diag(&self) -> String {
-        self.to_string()
-    }
-}
-
-impl TargetModifierOptionValue for Vec<(PointerAuthOption, bool)> {
-    fn to_string_for_diag(&self) -> String {
-        let mut parts = Vec::new();
-        for (opt, pos) in self {
-            let polarity = if *pos { "+" } else { "-" };
-            parts.push(format!("{polarity}{opt}"));
-        }
-        parts.join(",")
-    }
-}
-
-impl TargetModifierOptionValue for String {
-    fn to_string_for_diag(&self) -> String {
-        self.to_string()
-    }
-}
-
-impl TargetModifierOptionValue for BranchProtection {
-    fn to_string_for_diag(&self) -> String {
-        self.to_string()
-    }
-}
-
-impl TargetModifierOptionValue for SanitizerSet {
-    fn to_string_for_diag(&self) -> String {
-        self.to_string()
-    }
-}
-
-impl<T: TargetModifierOptionValue> TargetModifierOptionValue for Option<T> {
-    fn to_string_for_diag(&self) -> String {
-        match self {
-            Some(v) => v.to_string_for_diag(),
-            None => "".to_string(),
-        }
-    }
-}
-
-macro_rules! target_modifier_options {
-    (
-        $struct_name:ident, // e.g. `UnstableOptions`
-        $metadata_name: ident, // e.g. `UnstableOptionsMetadata`
-        $opt_descs_var:ident, // e.g. `Z_OPTIONS`
-        $opt_mod_name:ident, // e.g. `dbopts`
-        $prefix:expr, // e.g. `-Z`
-        $group_name:ident, // e.g. `unstable`
-
-        $(
-            $(#[$attr:meta])*
-            $opt:ident : $t:ty = (
-                $init:expr,
-                $parse:ident,
-                [$dep_tracking_marker:ident],
-                $desc:literal
-                $(, removed: $removed:ident )?
-            ),
-        )*
-    ) => {
-        options! {
-            #[derive(Encodable, BlobDecodable)]
-            $struct_name,
-            $metadata_name,
-            $opt_descs_var,
-            $opt_mod_name,
-            $prefix,
-            $group_name,
-
-            $(
-                $(#[$attr])*
-                $opt : $t = (
-                    $init,
-                    $parse,
-                    [$dep_tracking_marker],
-                    $desc
-                    $(, removed: $removed )?
-                ),
-            )*
-        }
-
-        impl $struct_name {
-            pub fn ls(&self) -> String {
-                let mut out = Vec::new();
-                $(
-                  out.push(format!(
-                      "-{prefix}{opt}={val} [{val:?}]",
-                      prefix=$prefix,
-                      opt=stringify!($opt).replace('_', "-"),
-                      val=self.$opt.to_string_for_diag())
-                  );
-                )*
-                out.join("\n")
-            }
-
-             pub fn require_unstable_options(
-                 early_dcx: &EarlyDiagCtxt,
-                 meta: &OptionsMetadata,
-                 unstable_opts: bool
-             ) {
-                 $(
-                    require_unstable_options!(
-                        $opt,
-                        $group_name,
-                        [$dep_tracking_marker],
-                        (early_dcx, meta, unstable_opts)
-                    );
-                 )*
-             }
-
-            pub fn is_target_modifier(name: &str) -> bool {
-                let name = name.replace('-', "_");
-                match name.as_str() {
-                    $(stringify!($opt))|* => true,
-                    _ => false,
-                }
-            }
-
-            pub fn report_mismatched_flags_with_dep(
-                &self,
-                sess: &crate::Session,
-                local_crate: rustc_span::Symbol,
-                extern_opts: &Self,
-                extern_crate: rustc_span::Symbol
-            ) {
-                let allowed_flag_mismatches = &sess.opts.cg.unsafe_allow_abi_mismatch;
-                $(
-                    let flag_name = stringify!($opt).replace('_', "-").to_string();
-                    let allowed = allowed_flag_mismatches.contains(&flag_name);
-                    if !allowed && self.$opt != extern_opts.$opt {
-                        if sess.opts.metadata.$group_name.$opt.is_set {
-                            // If `self` set and not matching, `extern_opts` might have set `$opt`
-                            // or might not, but the guidance is the same regardless
-                            sess.dcx().emit_err(crate::diagnostics::IncompatibleFlags {
-                                local_crate,
-                                extern_crate,
-                                prefix: $prefix.to_string(),
-                                flag_name,
-                                local_value: self.$opt.to_string_for_diag(),
-                                extern_value: extern_opts.$opt.to_string_for_diag(),
-                            });
-                        } else {
-                            // If `self` unset and not matching, assume `extern_opts` set `$opt`
-                            sess.dcx().emit_err(crate::diagnostics::IncompatibleFlagsUnsetLocally {
-                                local_crate,
-                                extern_crate,
-                                prefix: $prefix.to_string(),
-                                flag_name,
-                                extern_value: extern_opts.$opt.to_string_for_diag(),
-                            });
-                        }
-                    }
-                )*
-            }
-        }
-    }
 }
 
 impl CodegenOptions {
@@ -672,6 +762,13 @@ enum RemovedOption {
     Err,
 }
 
+enum TargetModifierFilter {
+    // Option cannot be passed as a target modifier
+    Never,
+    // Option can only be passed as a target modifier
+    Only,
+}
+
 pub struct OptionDesc<O> {
     name: &'static str,
     setter: OptionSetter<O>,
@@ -680,6 +777,7 @@ pub struct OptionDesc<O> {
     // description for option from options table
     desc: &'static str,
     removed: Option<RemovedOption>,
+    target_modifier_filter: Option<TargetModifierFilter>,
     mitigation: Option<mitigation_coverage::DeniedPartialMitigationKind>,
 }
 
@@ -699,71 +797,98 @@ fn build_options<O: Default>(
     collected_options: &mut CollectedOptions,
     descrs: OptionDescrs<O>,
     prefix: &str,
+    target_modifier_prefix: Option<&str>,
     outputname: &str,
 ) -> O {
     let mut op = O::default();
-    for (index, option) in matches.opt_strs_pos(prefix) {
-        let (key, value) = match option.split_once('=') {
-            None => (option, None),
-            Some((k, v)) => (k.to_string(), Some(v)),
-        };
+    let mut build_with_prefix = |current_prefix: &str, is_target_modifier: bool| {
+        for (index, option) in matches.opt_strs_pos(current_prefix) {
+            let (key, value) = match option.split_once('=') {
+                None => (option, None),
+                Some((k, v)) => (k.to_string(), Some(v)),
+            };
 
-        let option_to_lookup = key.replace('-', "_");
-        match descrs.iter().find(|opt_desc| opt_desc.name == option_to_lookup) {
-            Some(OptionDesc { name: _, setter, type_desc, desc, removed, mitigation }) => {
-                if let Some(removed) = removed {
-                    // deprecation works for prefixed options only
-                    assert!(!prefix.is_empty());
-                    match removed {
-                        RemovedOption::Warn => {
-                            early_dcx.early_warn(format!("`-{prefix} {key}`: {desc}"))
-                        }
-                        RemovedOption::Err => {
-                            early_dcx.early_fatal(format!("`-{prefix} {key}`: {desc}"))
+            let option_to_lookup = key.replace('-', "_");
+            match descrs.iter().find(|opt_desc| opt_desc.name == option_to_lookup) {
+                Some(OptionDesc {
+                    name: _,
+                    setter,
+                    type_desc,
+                    desc,
+                    removed,
+                    mitigation,
+                    target_modifier_filter,
+                }) => {
+                    if let Some(removed) = removed {
+                        // deprecation works for prefixed options only
+                        assert!(!current_prefix.is_empty());
+                        match removed {
+                            RemovedOption::Warn => {
+                                early_dcx.early_warn(format!("`-{current_prefix} {key}`: {desc}"))
+                            }
+                            RemovedOption::Err => {
+                                early_dcx.early_fatal(format!("`-{current_prefix} {key}`: {desc}"))
+                            }
                         }
                     }
-                }
-                if !setter(&mut op, collected_options, value, index, false) {
-                    match value {
-                        None => early_dcx.early_fatal(
-                            format!(
-                                "{outputname} option `{key}` requires {type_desc} (`-{prefix} {key}=<value>`)"
+                    match target_modifier_filter {
+                        Some(TargetModifierFilter::Only) if !is_target_modifier => {
+                            early_dcx.early_fatal(format!("`-{current_prefix} {key}`: can only be passed with `-{}`", target_modifier_prefix.expect("option only allowed with target modifier but substruct does not have a target modifier variant")))
+                        },
+                        Some(TargetModifierFilter::Never) if is_target_modifier => {
+                            early_dcx.early_fatal(format!("`-{current_prefix} {key}`: can only be passed with `-{}`", prefix))
+                        },
+                        _ => (),
+                    }
+                    if !setter(&mut op, collected_options, value, index, is_target_modifier) {
+                        match value {
+                            None => early_dcx.early_fatal(
+                                format!(
+                                    "{outputname} option `{key}` requires {type_desc} (`-{current_prefix} {key}=<value>`)"
+                                ),
                             ),
-                        ),
-                        Some(value) => early_dcx.early_fatal(
-                            format!(
-                                "incorrect value `{value}` for {outputname} option `{key}` - {type_desc} was expected"
+                            Some(value) => early_dcx.early_fatal(
+                                format!(
+                                    "incorrect value `{value}` for {outputname} option `{key}` - {type_desc} was expected"
+                                ),
                             ),
-                        ),
+                        }
+                    }
+                    if let Some(mitigation) = mitigation {
+                        collected_options.mitigations.reset_mitigation(*mitigation, index);
                     }
                 }
-                if let Some(mitigation) = mitigation {
-                    collected_options.mitigations.reset_mitigation(*mitigation, index);
+                None => {
+                    let mut error = early_dcx
+                        .early_struct_fatal(format!("unknown {outputname} option: `{key}`"));
+                    let max_dist = option_to_lookup.chars().count().max(3) / 3;
+                    if let Some(option) = descrs
+                        .iter()
+                        .filter(|option| option.removed.is_none())
+                        .filter_map(|option| {
+                            edit_distance(&option_to_lookup, option.name, max_dist)
+                                .map(|dist| (dist, option))
+                        })
+                        .min_by_key(|(dist, _)| *dist)
+                        .map(|(_, option)| option)
+                    {
+                        let name = option.name.replace('_', "-");
+                        let value =
+                            if option.type_desc == desc::parse_no_value { "" } else { "=<value>" };
+                        error
+                            .help(format!("you might have meant to use `-{prefix} {name}{value}`"));
+                    }
+                    error.emit()
                 }
-            }
-            None => {
-                let mut error =
-                    early_dcx.early_struct_fatal(format!("unknown {outputname} option: `{key}`"));
-                let max_dist = option_to_lookup.chars().count().max(3) / 3;
-                if let Some(option) = descrs
-                    .iter()
-                    .filter(|option| option.removed.is_none())
-                    .filter_map(|option| {
-                        edit_distance(&option_to_lookup, option.name, max_dist)
-                            .map(|dist| (dist, option))
-                    })
-                    .min_by_key(|(dist, _)| *dist)
-                    .map(|(_, option)| option)
-                {
-                    let name = option.name.replace('_', "-");
-                    let value =
-                        if option.type_desc == desc::parse_no_value { "" } else { "=<value>" };
-                    error.help(format!("you might have meant to use `-{prefix} {name}{value}`"));
-                }
-                error.emit()
             }
         }
+    };
+
+    build_with_prefix(prefix, false);
+    if let Some(prefix) = target_modifier_prefix {
+        build_with_prefix(prefix, true);
     }
+
     op
 }
 
@@ -2350,7 +2475,8 @@ pub mod parse {
 }
 
 options! {
-    CodegenOptions, CodegenOptionsMetadata, CG_OPTIONS, cgopts, "C", codegen,
+    CodegenOptions, CodegenOptionsMetadata, CodegenOptionsKey,
+    CG_OPTIONS, cgopts, "C", Some("T"), codegen,
 
     // If you add a new option, please update:
     // - compiler/rustc_interface/src/tests.rs
@@ -2384,7 +2510,7 @@ options! {
         "version of DWARF debug information to emit (default: 2 or 4, depending on platform)"),
     embed_bitcode: bool = (true, parse_bool, [TRACKED],
         "emit bitcode in rlibs (default: yes)"),
-    extra_filename: String = (String::new(), parse_string, [UNTRACKED],
+    extra_filename: String = (String::new(), parse_string, [UNTRACKED] { TARGET_MODIFIER: Never },
         "extra data to put in each output filename"),
     force_frame_pointers: FramePointer = (FramePointer::MayOmit, parse_frame_pointer, [TRACKED],
         "force use of the frame pointers"),
@@ -2503,68 +2629,8 @@ options! {
     // - src/doc/rustc/src/codegen-options/index.md
 }
 
-target_modifier_options! {
-    TargetOptions, TargetOptionsMetadata, T_OPTIONS, topts, "T", target,
-
-    // tidy-alphabetical-start
-    #[rustc_lint_opt_deny_field_access("use `Session::branch_protection` instead of this field")]
-    branch_protection: Option<BranchProtection> = (None, parse_branch_protection, [TRACKED_UNSTABLE],
-        "set options for branch target identification and pointer authentication on AArch64"),
-    fixed_x18: bool = (false, parse_bool, [TRACKED_UNSTABLE],
-        "make the x18 register reserved on AArch64 (default: no)"),
-    indirect_branch_cs_prefix: bool = (false, parse_bool, [TRACKED_UNSTABLE],
-        "add `cs` prefix to `call` and `jmp` to indirect thunks (default: no)"),
-    llvm_target_feature: String = (String::new(), parse_target_feature, [TRACKED_UNSTABLE],
-        "enable/disable LLVM-level target features. \
-        This feature is unsafe and can cause ABI issues and compiler crashes, \
-        because LLVM does not support all target feature combinations."),
-    pointer_authentication: Vec<(PointerAuthOption, bool)> = (
-        Vec::new(),
-        parse_pointer_authentication_list_with_polarity,
-        [TRACKED_UNSTABLE],
-        "A comma-separated list of pointer authentication options, each prefixed with `+` (enable) or `-` (disable). Available options:
-        `aarch64-jump-table-hardening` - enable hardened lowering for jump-table dispatch
-        `auth-traps` - trap immediately on pointer authentication failure
-        `calls` - enable signing and authentication of all indirect calls
-        `elf-got` - enable authentication of pointers from GOT (ELF only)
-        `function-pointer-type-discrimination` - enable type discrimination on C function pointers
-        `indirect-gotos` - enable signing and authentication of indirect goto targets
-        `init-fini` - enable signing of function pointers in init/fini arrays
-        `init-fini-address-discrimination` - enable address discrimination in init/fini arrays
-        `intrinsics` - pointer authentication intrinsics
-        `return-addresses` - enable signing and authentication of return addresses
-        `typeinfo-vt-ptr-discrimination - incorporate type and address discrimination in authenticated vtable pointers for std::type_info
-        `vt-ptr-addr-discrimination - incorporate address discrimination in authenticated vtable pointers
-        `vt-ptr-type-discrimination - incorporate type discrimination in authenticated vtable pointers
-        Example: `-Zpointer-authentication=+calls,-init-fini`."),
-    reg_struct_return: bool = (false, parse_bool, [TRACKED_UNSTABLE],
-        "On x86-32 targets, it overrides the default ABI to return small structs in registers."),
-    regparm: Option<u32> = (None, parse_opt_number, [TRACKED_UNSTABLE],
-        "On x86-32 targets, setting this to N causes the compiler to pass N arguments \
-        in registers EAX, EDX, and ECX instead of on the stack for\
-        \"C\", \"cdecl\", and \"stdcall\" fn."),
-    retpoline: bool = (false, parse_bool, [TRACKED_UNSTABLE],
-        "enables retpoline-indirect-branches and retpoline-indirect-calls target features (default: no)"),
-    retpoline_external_thunk: bool = (false, parse_bool, [TRACKED_UNSTABLE],
-        "enables retpoline-external-thunk, retpoline-indirect-branches and retpoline-indirect-calls \
-        target features (default: no)"),
-    #[rustc_lint_opt_deny_field_access("use `Session::sanitizers()` instead of this field")]
-    sanitizer: SanitizerSet = (SanitizerSet::empty(), parse_sanitizers_target, [TRACKED_UNSTABLE],
-        "use a sanitizer"),
-    sanitizer_cfi_normalize_integers: Option<bool> = (None, parse_opt_bool, [TRACKED_UNSTABLE],
-        "enable normalizing integer types (default: no)"),
-    #[rustc_lint_opt_deny_field_access("use `Session::target_cpu` instead of this field")]
-    target_cpu: Option<String> = (None, parse_opt_string, [TRACKED],
-        "select target processor (`rustc --print target-cpus` for details)"),
-    // tidy-alphabetical-end
-
-    // If you add a new option, please update:
-    // - compiler/rustc_interface/src/tests.rs
-    // - src/doc/rustc/src/target-options/index.md (for stable options)
-}
-
 options! {
-    UnstableOptions, UnstableOptionsMetadata, Z_OPTIONS, dbopts, "Z", unstable,
+    UnstableOptions, UnstableOptionsMetadata, UnstableOptionsKey, Z_OPTIONS, dbopts, "Z", None, unstable,
 
     // If you add a new option, please update:
     // - compiler/rustc_interface/src/tests.rs

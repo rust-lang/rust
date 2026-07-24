@@ -345,20 +345,21 @@ impl CStore {
 
     pub fn report_incompatible_target_modifiers(&self, tcx: TyCtxt<'_>) {
         for flag_name in &tcx.sess.opts.cg.unsafe_allow_abi_mismatch {
-            if !rustc_session::config::TargetOptions::is_target_modifier(flag_name) {
+            if !tcx.sess.opts.cg.is_target_modifier(flag_name) {
                 tcx.dcx().emit_err(diagnostics::UnknownTargetModifierUnsafeAllowed {
                     flag_name: flag_name.clone(),
                 });
             }
         }
+
         for (_, data) in self.iter_crate_data() {
             if data.is_proc_macro_crate() {
                 continue;
             }
-            tcx.sess.opts.target_opts.report_mismatched_flags_with_dep(
+            tcx.sess.opts.cg.report_mismatched_flags_with_dep(
                 tcx.sess,
                 tcx.crate_name(LOCAL_CRATE),
-                data.target_opts(),
+                data.target_modifiers(),
                 data.name(),
             );
         }

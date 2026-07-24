@@ -695,41 +695,6 @@ fn test_top_level_options_tracked_no_crate() {
 }
 
 #[test]
-fn test_target_options_tracking_hash() {
-    let reference = Options::default();
-    let mut opts;
-
-    macro_rules! tracked {
-        ($name: ident, $non_default_value: expr) => {
-            opts = reference.clone();
-            assert_ne!(opts.target_opts.$name, $non_default_value);
-            opts.target_opts.$name = $non_default_value;
-            assert_different_hash(&reference, &opts);
-        };
-    }
-
-    // Make sure that changing a [TRACKED] option changes the hash.
-    // tidy-alphabetical-start
-    tracked!(
-        branch_protection,
-        Some(BranchProtection {
-            bti: true,
-            pac_ret: Some(PacRet { leaf: true, pc: true, key: PAuthKey::B }),
-            gcs: true,
-        })
-    );
-    tracked!(fixed_x18, true);
-    tracked!(indirect_branch_cs_prefix, true);
-    tracked!(reg_struct_return, true);
-    tracked!(regparm, Some(3));
-    tracked!(retpoline, true);
-    tracked!(retpoline_external_thunk, true);
-    tracked!(sanitizer, SanitizerSet::CFI);
-    tracked!(sanitizer_cfi_normalize_integers, Some(true));
-    // tidy-alphabetical-end
-}
-
-#[test]
 fn test_unstable_options_tracking_hash() {
     let reference = Options::default();
     let mut opts = Options::default();

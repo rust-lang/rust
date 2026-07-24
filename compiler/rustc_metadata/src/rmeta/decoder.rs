@@ -31,6 +31,7 @@ use rustc_middle::{bug, implement_ty_decoder};
 use rustc_proc_macro::bridge::client::Client as ProcMacroClient;
 use rustc_serialize::opaque::MemDecoder;
 use rustc_serialize::{Decodable, Decoder};
+use rustc_session::config::CollectedTargetModifiers;
 use rustc_session::config::mitigation_coverage::DeniedPartialMitigation;
 use rustc_span::def_id::ModId;
 use rustc_span::hygiene::HygieneDecodeContext;
@@ -920,9 +921,18 @@ impl MetadataBlob {
 
                     write!(out, "\n")?;
                 }
+                #[allow(rustc::potential_query_instability)] // `FxHashMap` order only for testing
                 "target_modifiers" => {
                     writeln!(out, "=Target modifiers=")?;
-                    writeln!(out, "{}", root.target_options.ls())?;
+                    let cg: FxHashMap<_, _> = root.target_modifiers.codegen.decode(self).collect();
+                    for (key, val) in cg {
+                        writeln!(out, "-T{key}{val}")?;
+                    }
+                    let unstable: FxHashMap<_, _> =
+                        root.target_modifiers.unstable.decode(self).collect();
+                    for (key, val) in unstable {
+                        writeln!(out, "-T{key}{val}")?;
+                    }
                 }
 
                 _ => {
@@ -1982,8 +1992,11 @@ impl CrateMetadata {
         self.root.decode_denied_partial_mitigations(&self.blob).collect()
     }
 
-    pub(crate) fn target_opts(&self) -> &TargetOptions {
-        &self.root.target_options
+    pub(crate) fn target_modifiers(&self) -> CollectedTargetModifiers {
+        CollectedTargetModifiers {
+            codegen: self.root.target_modifiers.codegen.decode(&self.blob).collect(),
+            unstable: self.root.target_modifiers.unstable.decode(&self.blob).collect(),
+        }
     }
 
     /// Keep `new_extern_crate` if it looks better in diagnostics

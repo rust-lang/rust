@@ -8,9 +8,9 @@ use std::{fmt, io};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::DiagCtxtHandle;
 use rustc_session::config::{
-    self, CodegenOptions, CrateType, ErrorOutputType, Externs, Input, JsonUnusedExterns,
-    OutFileName, Sysroot, TargetOptions, UnstableOptions, get_cmd_lint_options, nightly_options,
-    parse_crate_types_from_list, parse_externs, parse_target_triple,
+    self, CodegenOptions, CollectedOptions, CrateType, ErrorOutputType, Externs, Input,
+    JsonUnusedExterns, OutFileName, Sysroot, UnstableOptions, get_cmd_lint_options,
+    nightly_options, parse_crate_types_from_list, parse_externs, parse_target_triple,
 };
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
@@ -88,14 +88,14 @@ pub(crate) struct Options {
     pub(crate) codegen_options: CodegenOptions,
     /// Codegen options strings to hand to the compiler.
     pub(crate) codegen_options_strs: Vec<String>,
-    /// Target options to hand to the compiler.
-    pub(crate) target_opts: TargetOptions,
     /// Target options strings to hand to the compiler.
     pub(crate) target_opts_strs: Vec<String>,
     /// Unstable (`-Z`) options to pass to the compiler.
     pub(crate) unstable_opts: UnstableOptions,
     /// Unstable (`-Z`) options strings to pass to the compiler.
     pub(crate) unstable_opts_strs: Vec<String>,
+    /// Side-table populated during option parsing
+    pub(crate) collected_options: CollectedOptions,
     /// The target used to compile the crate against.
     pub(crate) target: TargetTuple,
     /// Edition used when reading the crate. Defaults to "2015". Also used by default when
@@ -412,10 +412,9 @@ impl Options {
         let mut collected_options = Default::default();
         let codegen_options = CodegenOptions::build(early_dcx, matches, &mut collected_options);
         let unstable_opts = UnstableOptions::build(early_dcx, matches, &mut collected_options);
-        let target_opts = TargetOptions::build(early_dcx, matches, &mut collected_options);
-        TargetOptions::require_unstable_options(
+        CodegenOptions::require_unstable_options(
             early_dcx,
-            &collected_options.metadata,
+            &collected_options,
             #[allow(rustc::bad_opt_access)]
             unstable_opts.unstable_options,
         );
@@ -940,10 +939,10 @@ impl Options {
             check_cfgs,
             codegen_options,
             codegen_options_strs,
-            target_opts,
             target_opts_strs,
             unstable_opts,
             unstable_opts_strs,
+            collected_options,
             target,
             edition,
             sysroot,
