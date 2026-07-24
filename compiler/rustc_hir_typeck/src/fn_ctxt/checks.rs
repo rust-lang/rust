@@ -1160,6 +1160,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Type check the pattern. Override if necessary to avoid knock-on errors.
         self.check_pat_top(decl.pat, decl_ty, ty_span, origin_expr, Some(decl.origin));
         let pat_ty = self.node_ty(decl.pat.hir_id);
+        if decl.ty.is_none()
+            && decl.init.is_none()
+            && !matches!(decl.pat.kind, hir::PatKind::Binding(.., None) | hir::PatKind::Wild)
+        {
+            self.register_wf_obligation(
+                decl_ty.into(),
+                decl.pat.span,
+                ObligationCauseCode::WellFormed(None),
+            );
+        }
         self.overwrite_local_ty_if_err(decl.hir_id, decl.pat, pat_ty);
 
         if let Some(blk) = decl.origin.try_get_else() {
