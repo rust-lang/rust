@@ -52,6 +52,9 @@ pub(crate) struct RlinkCorruptFile<'a> {
 
 #[derive(Diagnostic)]
 #[diag("the compiler unexpectedly panicked. This is a bug")]
+#[note("we would appreciate a bug report with a minimal reproduction at the URL below")]
+#[note("set `RUST_BACKTRACE=1` environment variable to display a backtrace")]
+#[note("try running `cargo clean` and rebuilding; transient failures do sometimes occur")]
 pub(crate) struct Ice;
 
 #[derive(Diagnostic)]

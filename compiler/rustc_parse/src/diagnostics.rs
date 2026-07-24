@@ -1332,6 +1332,7 @@ pub(crate) struct AttrWithoutWherePredicates {
 #[derive(Diagnostic)]
 #[diag("found a documentation comment that doesn't document anything", code = E0585)]
 #[help("doc comments must come before what they document, if a comment was intended use `//`")]
+#[note("if the following item has a syntax error, fix that first — a syntax error can cause this warning to appear even when the doc comment placement is correct")]
 pub(crate) struct DocCommentDoesNotDocumentAnything {
     #[primary_span]
     pub span: Span,
