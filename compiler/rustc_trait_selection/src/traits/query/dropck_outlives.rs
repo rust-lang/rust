@@ -6,6 +6,7 @@ use rustc_span::Span;
 use tracing::{debug, instrument};
 
 use crate::solve::NextSolverError;
+use crate::traits::fulfill::OldSolverError;
 use crate::traits::query::NoSolution;
 use crate::traits::query::normalize::QueryNormalizeExt;
 use crate::traits::{FromSolverError, Normalized, ObligationCause, ObligationCtxt};
@@ -106,7 +107,7 @@ pub fn compute_dropck_outlives_with_errors<'tcx, E>(
     span: Span,
 ) -> Result<DropckOutlivesResult<'tcx>, Vec<E>>
 where
-    E: FromSolverError<'tcx, NextSolverError<'tcx>>,
+    E: FromSolverError<'tcx, NextSolverError<'tcx>> + FromSolverError<'tcx, OldSolverError<'tcx>>,
 {
     let tcx = ocx.infcx.tcx;
     let ParamEnvAnd { param_env, value: DropckOutlives { dropped_ty } } = goal;

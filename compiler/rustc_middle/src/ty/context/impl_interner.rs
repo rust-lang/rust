@@ -691,14 +691,17 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.specializes((impl_def_id, victim_def_id))
     }
 
+    #[inline]
     fn impl_is_default(self, impl_def_id: DefId) -> bool {
         self.defaultness(impl_def_id).is_default()
     }
 
+    #[inline]
     fn impl_trait_ref(self, impl_def_id: DefId) -> ty::EarlyBinder<'tcx, ty::TraitRef<'tcx>> {
         self.impl_trait_ref(impl_def_id)
     }
 
+    #[inline]
     fn impl_polarity(self, impl_def_id: DefId) -> ty::ImplPolarity {
         self.impl_polarity(impl_def_id)
     }
