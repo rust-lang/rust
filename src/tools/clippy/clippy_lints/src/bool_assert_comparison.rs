@@ -103,7 +103,7 @@ impl<'tcx> LateLintPass<'tcx> for BoolAssertComparison {
             _ => return,
         };
 
-        let non_lit_ty = cx.typeck_results().expr_ty(non_lit_expr);
+        let non_lit_ty = cx.typeck_results.expr_ty(non_lit_expr);
 
         if !is_impl_not_trait_with_bool_out(cx, non_lit_ty) {
             // At this point the expression which is not a boolean

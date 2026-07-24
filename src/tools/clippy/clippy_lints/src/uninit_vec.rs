@@ -95,7 +95,7 @@ fn handle_uninit_vec_pair<'tcx>(
     if let Some(vec) = extract_init_or_reserve_target(cx, maybe_init_or_reserve)
         && let Some((set_len_self, call_span)) = extract_set_len_self(cx, maybe_set_len)
         && vec.location.eq_expr(cx, ctxt, set_len_self)
-        && let ty::Ref(_, vec_ty, _) = cx.typeck_results().expr_ty_adjusted(set_len_self).kind()
+        && let ty::Ref(_, vec_ty, _) = cx.typeck_results.expr_ty_adjusted(set_len_self).kind()
         && let ty::Adt(_, args) = vec_ty.kind()
         // `#[allow(...)]` attribute can be set on enclosing unsafe block of `set_len()`
         && !is_lint_allowed(cx, UNINIT_VEC, maybe_set_len.hir_id)
@@ -193,7 +193,7 @@ fn extract_init_or_reserve_target<'tcx>(cx: &LateContext<'tcx>, stmt: &'tcx Stmt
 }
 
 fn is_reserve(cx: &LateContext<'_>, path: &PathSegment<'_>, self_expr: &Expr<'_>) -> bool {
-    cx.typeck_results()
+    cx.typeck_results
         .expr_ty(self_expr)
         .peel_refs()
         .is_diag_item(cx, sym::Vec)
@@ -217,7 +217,7 @@ fn extract_set_len_self<'tcx>(cx: &LateContext<'_>, expr: &'tcx Expr<'_>) -> Opt
     });
     match expr.kind {
         ExprKind::MethodCall(path, self_expr, [arg], _) => {
-            let self_type = cx.typeck_results().expr_ty(self_expr).peel_refs();
+            let self_type = cx.typeck_results.expr_ty(self_expr).peel_refs();
             if self_type.is_diag_item(cx, sym::Vec) && path.ident.name == sym::set_len && !is_integer_literal(arg, 0) {
                 Some((self_expr, expr.span))
             } else {

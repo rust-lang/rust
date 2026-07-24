@@ -79,7 +79,7 @@ impl<'tcx> LateLintPass<'tcx> for FloatLiteral {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
         if let hir::ExprKind::Lit(lit) = expr.kind
             && let LitKind::Float(sym, lit_float_ty) = lit.node
-            && let ty::Float(fty) = *cx.typeck_results().expr_ty(expr).kind()
+            && let ty::Float(fty) = *cx.typeck_results.expr_ty(expr).kind()
         {
             let sym_str = sym.as_str();
             let formatter = FloatFormat::new(sym_str);
@@ -144,7 +144,7 @@ impl<'tcx> LateLintPass<'tcx> for FloatLiteral {
             } else if digits > max as usize && count_digits(&float_str) < digits {
                 if digits >= self.const_literal_digits_threshold
                     && matches!(
-                        get_expr_use_site(cx.tcx, cx.typeck_results(), expr.span.ctxt(), expr).use_node(cx),
+                        get_expr_use_site(cx.tcx, cx.typeck_results, expr.span.ctxt(), expr).use_node(cx),
                         ExprUseNode::ConstStatic(_)
                     )
                 {

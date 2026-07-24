@@ -72,7 +72,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'tcx>], msrv:
             // extraordinary amount of FPs.
             //
             // This isn't necessary in the other two checks, as they must be a pattern already.
-            && cx.typeck_results().expr_ty(local) == cx.typeck_results().expr_ty(pat)
+            && cx.typeck_results.expr_ty(local) == cx.typeck_results.expr_ty(pat)
             // Since we want to lint on both `x == Some(2)` and `Some(2) == x`, we might have to "swap"
             // `local` and `pat`, depending on which side they are.
             && let Some((binding, pat)) = get_pat_binding(cx, local, outer_arm)
@@ -110,7 +110,7 @@ fn check_method_calls<'tcx>(
     if_expr: &Expr<'_>,
     binding: &PatBindingInfo,
 ) {
-    let ty = cx.typeck_results().expr_ty(recv).peel_refs();
+    let ty = cx.typeck_results.expr_ty(recv).peel_refs();
     let slice_like = ty.is_slice() || ty.is_array();
 
     let sugg = if method == sym::is_empty {

@@ -25,11 +25,11 @@ pub(super) fn check<'tcx>(
     if let ExprKind::Closure(&hir::Closure { body: outer_body_id, .. }) = arg.kind
         && let hir::Body { params: [outer_param], value: outer_value, .. } = cx.tcx.hir_body(outer_body_id)
         && let PatKind::Binding(_, outer_param_id, _, None) = outer_param.pat.kind
-        && cx.typeck_results().expr_ty(recv).is_diag_item(cx, sym::Option)
+        && cx.typeck_results.expr_ty(recv).is_diag_item(cx, sym::Option)
         // `b.map(|b| ...)`
         && let ExprKind::MethodCall(method_path, map_recv, [map_arg], _) = peel_blocks(outer_value).kind
         && method_path.ident.name == sym::map
-        && cx.typeck_results().expr_ty(map_recv).is_diag_item(cx, sym::Option)
+        && cx.typeck_results.expr_ty(map_recv).is_diag_item(cx, sym::Option)
         // `b` is not lazy evaluated
         && switch_to_eager_eval(cx, map_recv)
         // `b` does not reference the outer closure parameter `a`.

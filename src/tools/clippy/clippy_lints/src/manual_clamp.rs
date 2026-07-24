@@ -113,8 +113,8 @@ impl<'tcx> ClampSuggestion<'tcx> {
     /// This function will return true if and only if you can demonstrate at compile time that min
     /// is less than max.
     fn min_less_than_max(&self, cx: &LateContext<'tcx>) -> bool {
-        let max_type = cx.typeck_results().expr_ty(self.params.max);
-        let min_type = cx.typeck_results().expr_ty(self.params.min);
+        let max_type = cx.typeck_results.expr_ty(self.params.max);
+        let min_type = cx.typeck_results.expr_ty(self.params.min);
         if max_type != min_type {
             return false;
         }
@@ -315,12 +315,12 @@ fn is_max_min_pattern<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) -> O
             (sym::max, sym::min) => Some((arg_first, arg_second)),
             _ => None,
         }
-        && (cx.typeck_results().expr_ty_adjusted(receiver).is_floating_point()
+        && (cx.typeck_results.expr_ty_adjusted(receiver).is_floating_point()
             || cx.ty_based_def(expr).assoc_fn_parent(cx).is_diag_item(cx, sym::Ord))
-        && (cx.typeck_results().expr_ty_adjusted(input).is_floating_point()
+        && (cx.typeck_results.expr_ty_adjusted(input).is_floating_point()
             || cx.ty_based_def(receiver).assoc_fn_parent(cx).is_diag_item(cx, sym::Ord))
     {
-        let is_float = cx.typeck_results().expr_ty_adjusted(input).is_floating_point();
+        let is_float = cx.typeck_results.expr_ty_adjusted(input).is_floating_point();
         Some(ClampSuggestion {
             params: InputMinMax {
                 input,
@@ -383,7 +383,7 @@ fn is_call_max_min_pattern<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>)
             && let Some(inner_seg) = segment(cx, inner_fn)
             && let Some(outer_seg) = segment(cx, outer_fn)
         {
-            let typeck = cx.typeck_results();
+            let typeck = cx.typeck_results;
             let (input, inner_arg) = match (
                 is_const_evaluatable(cx.tcx, typeck, first),
                 is_const_evaluatable(cx.tcx, typeck, second),
@@ -713,7 +713,7 @@ fn is_clamp_meta_pattern<'tcx>(
         first_expr,
         second_expr,
     ];
-    let clampability = TypeClampability::is_clampable(cx, cx.typeck_results().expr_ty(first_expr))?;
+    let clampability = TypeClampability::is_clampable(cx, cx.typeck_results.expr_ty(first_expr))?;
     let is_float = clampability.is_float();
     if exprs.iter().any(|e| peel_blocks(e).can_have_side_effects()) {
         return None;

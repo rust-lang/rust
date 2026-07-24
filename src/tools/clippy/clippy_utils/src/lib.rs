@@ -171,7 +171,7 @@ pub fn expr_or_init<'a, 'b, 'tcx: 'b>(cx: &LateContext<'tcx>, mut expr: &'a Expr
     while let Some(init) = expr
         .res_local_id()
         .and_then(|id| find_binding_init(cx, id))
-        .filter(|init| cx.typeck_results().expr_adjustments(init).is_empty())
+        .filter(|init| cx.typeck_results.expr_adjustments(init).is_empty())
     {
         expr = init;
     }
@@ -493,7 +493,7 @@ fn projection_stack<'a, 'hir>(
 
 /// Gets the mutability of the custom deref adjustment, if any.
 pub fn expr_custom_deref_adjustment(cx: &LateContext<'_>, e: &Expr<'_>) -> Option<Mutability> {
-    cx.typeck_results()
+    cx.typeck_results
         .expr_adjustments(e)
         .iter()
         .find_map(|a| match a.kind {
@@ -784,7 +784,7 @@ pub fn can_move_expr_to_closure_no_visit<'tcx>(
                 ..
             },
             _,
-        ) if !ignore_locals.contains(local_id) && can_partially_move_ty(cx, cx.typeck_results().node_type(hir_id)) => {
+        ) if !ignore_locals.contains(local_id) && can_partially_move_ty(cx, cx.typeck_results.node_type(hir_id)) => {
             // TODO: check if the local has been partially moved. Assume it has for now.
             false
         },
@@ -831,11 +831,11 @@ pub fn capture_local_usage(cx: &LateContext<'_>, e: &Expr<'_>) -> CaptureKind {
     fn pat_capture_kind(cx: &LateContext<'_>, pat: &Pat<'_>) -> CaptureKind {
         let mut capture = CaptureKind::Ref(Mutability::Not);
         pat.each_binding_or_first(&mut |_, id, span, _| match cx
-            .typeck_results()
+            .typeck_results
             .extract_binding_mode(cx.sess(), id, span)
             .0
         {
-            ByRef::No if !is_copy(cx, cx.typeck_results().node_type(id)) => {
+            ByRef::No if !is_copy(cx, cx.typeck_results.node_type(id)) => {
                 capture = CaptureKind::Value;
             },
             ByRef::Yes(_, Mutability::Mut) if capture != CaptureKind::Value => {
@@ -862,7 +862,7 @@ pub fn capture_local_usage(cx: &LateContext<'_>, e: &Expr<'_>) -> CaptureKind {
             },
             ref adjust @ ..,
         ] = *cx
-            .typeck_results()
+            .typeck_results
             .adjustments()
             .get(child_id)
             .map_or(&[][..], |x| &**x)
@@ -912,7 +912,7 @@ pub fn capture_local_usage(cx: &LateContext<'_>, e: &Expr<'_>) -> CaptureKind {
         }
     }
 
-    if capture == CaptureKind::Value && is_copy(cx, cx.typeck_results().expr_ty(capture_expr_ty)) {
+    if capture == CaptureKind::Value && is_copy(cx, cx.typeck_results.expr_ty(capture_expr_ty)) {
         // Copy types are never automatically captured by value.
         CaptureKind::Ref(Mutability::Not)
     } else {
@@ -949,7 +949,7 @@ pub fn can_move_expr_to_closure<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'
                     }
                 },
                 ExprKind::Closure(closure) => {
-                    for capture in self.cx.typeck_results().closure_min_captures_flattened(closure.def_id) {
+                    for capture in self.cx.typeck_results.closure_min_captures_flattened(closure.def_id) {
                         let local_id = match capture.place.base {
                             PlaceBase::Local(id) => id,
                             PlaceBase::Upvar(var) => var.var_path.hir_id,
@@ -1180,7 +1180,7 @@ pub fn get_enclosing_closure<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Opt
 
 /// Checks whether a local identified by `local_id` is captured as an upvar by the given `closure`.
 pub fn is_upvar_in_closure(cx: &LateContext<'_>, closure: &Closure<'_>, local_id: HirId) -> bool {
-    cx.typeck_results()
+    cx.typeck_results
         .closure_min_captures
         .get(&closure.def_id)
         .is_some_and(|x| x.contains_key(&local_id))
@@ -1195,7 +1195,7 @@ pub fn get_enclosing_loop_or_multi_call_closure<'tcx>(
         match node {
             Node::Expr(e) => match e.kind {
                 ExprKind::Closure { .. }
-                    if let rustc_ty::Closure(_, subs) = cx.typeck_results().expr_ty(e).kind()
+                    if let rustc_ty::Closure(_, subs) = cx.typeck_results.expr_ty(e).kind()
                         && subs.as_closure().kind() == ClosureKind::FnOnce => {},
 
                 // Note: A closure's kind is determined by how it's used, not it's captures.
@@ -1388,7 +1388,7 @@ pub fn is_float_literal(expr: &Expr<'_>, value: f64) -> bool {
 /// See `rustc_middle::ty::adjustment::Adjustment` and `rustc_hir_analysis::check::coercion` for
 /// more information on adjustments and coercions.
 pub fn is_adjusted(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
-    cx.typeck_results().adjustments().get(e.hir_id).is_some()
+    cx.typeck_results.adjustments().get(e.hir_id).is_some()
 }
 
 /// Returns the pre-expansion span if this comes from an expansion of the
@@ -1508,7 +1508,7 @@ pub fn is_refutable(cx: &LateContext<'_>, pat: &Pat<'_>) -> bool {
             is_qpath_refutable(cx, qpath, pat.hir_id) || are_refutable(cx, pats)
         },
         PatKind::Slice(head, middle, tail) => {
-            match &cx.typeck_results().node_type(pat.hir_id).kind() {
+            match &cx.typeck_results.node_type(pat.hir_id).kind() {
                 rustc_ty::Slice(..) => {
                     // [..] is the only irrefutable slice pattern.
                     !head.is_empty() || middle.is_none() || !tail.is_empty()
@@ -1783,7 +1783,7 @@ pub fn is_must_use_func_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
                 None
             }
         },
-        ExprKind::MethodCall(..) => cx.typeck_results().type_dependent_def_id(expr.hir_id),
+        ExprKind::MethodCall(..) => cx.typeck_results.type_dependent_def_id(expr.hir_id),
         _ => None,
     };
 
@@ -1898,7 +1898,7 @@ fn is_body_identity_function<'hir>(cx: &LateContext<'_>, func: &Body<'hir>) -> b
 /// This can be useful when checking patterns in `let` bindings or `match` arms.
 pub fn is_expr_identity_of_pat(cx: &LateContext<'_>, pat: &Pat<'_>, expr: &Expr<'_>, by_hir: bool) -> bool {
     if cx
-        .typeck_results()
+        .typeck_results
         .pat_binding_modes()
         .get(pat.hir_id)
         .is_some_and(|mode| matches!(mode.0, ByRef::Yes(..)))
@@ -1910,11 +1910,11 @@ pub fn is_expr_identity_of_pat(cx: &LateContext<'_>, pat: &Pat<'_>, expr: &Expr<
     }
 
     // NOTE: we're inside a (function) body, so this won't ICE
-    let qpath_res = |qpath, hir| cx.typeck_results().qpath_res(qpath, hir);
+    let qpath_res = |qpath, hir| cx.typeck_results.qpath_res(qpath, hir);
 
     match (pat.kind, expr.kind) {
         (PatKind::Binding(_, id, _, _), _) if by_hir => {
-            expr.res_local_id() == Some(id) && cx.typeck_results().expr_adjustments(expr).is_empty()
+            expr.res_local_id() == Some(id) && cx.typeck_results.expr_adjustments(expr).is_empty()
         },
         (PatKind::Binding(_, _, ident, _), ExprKind::Path(QPath::Resolved(_, path))) => {
             matches!(path.segments, [ segment] if segment.ident.name == ident.name)
@@ -2042,7 +2042,7 @@ pub fn is_expr_final_block_expr(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
 // https://github.com/rust-lang/rust/blob/3ed2a10d173d6c2e0232776af338ca7d080b1cd4/compiler/rustc_hir_typeck/src/expr.rs#L482-L499
 pub fn is_expr_temporary_value(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     !expr.is_place_expr(|base| {
-        cx.typeck_results()
+        cx.typeck_results
             .adjustments()
             .get(base.hir_id)
             .is_some_and(|x| x.iter().any(|adj| matches!(adj.kind, Adjust::Deref(_))))
@@ -2115,7 +2115,7 @@ pub fn fn_def_id_with_node_args<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &Expr<'_>,
 ) -> Option<(DefId, GenericArgsRef<'tcx>)> {
-    let typeck = cx.typeck_results();
+    let typeck = cx.typeck_results;
     match &expr.kind {
         ExprKind::MethodCall(..) => Some((
             typeck.type_dependent_def_id(expr.hir_id)?,
@@ -2148,7 +2148,7 @@ pub fn fn_def_id_with_node_args<'tcx>(
 ///
 /// (As defined in the `is_recursively_primitive_type` function.) Returns `None` otherwise.
 pub fn is_slice_of_primitives(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<String> {
-    let expr_type = cx.typeck_results().expr_ty_adjusted(expr);
+    let expr_type = cx.typeck_results.expr_ty_adjusted(expr);
     let expr_kind = expr_type.kind();
     let is_primitive = match expr_kind {
         rustc_ty::Slice(element_type) => is_recursively_primitive_type(*element_type),
@@ -2315,7 +2315,7 @@ pub fn peel_ref_operators<'hir>(cx: &LateContext<'_>, mut expr: &'hir Expr<'hir>
     loop {
         match expr.kind {
             ExprKind::AddrOf(_, _, e) => expr = e,
-            ExprKind::Unary(UnOp::Deref, e) if cx.typeck_results().expr_ty(e).is_ref() => expr = e,
+            ExprKind::Unary(UnOp::Deref, e) if cx.typeck_results.expr_ty(e).is_ref() => expr = e,
             _ => break,
         }
     }
@@ -2331,7 +2331,7 @@ pub fn get_ref_operators<'hir>(cx: &LateContext<'_>, expr: &'hir Expr<'hir>) -> 
             operators.push(expr);
             Some(e)
         },
-        ExprKind::Unary(UnOp::Deref, e) if cx.typeck_results().expr_ty(e).is_ref() => {
+        ExprKind::Unary(UnOp::Deref, e) if cx.typeck_results.expr_ty(e).is_ref() => {
             operators.push(expr);
             Some(e)
         },
@@ -2645,7 +2645,7 @@ impl<'tcx> ExprUseNode<'tcx> {
                 })
             },
             Self::MethodArg(id, _, i) => {
-                let id = cx.typeck_results().type_dependent_def_id(id)?;
+                let id = cx.typeck_results.type_dependent_def_id(id)?;
                 let sig = cx.tcx.fn_sig(id).skip_binder();
                 Some(DefinedTy::Mir {
                     def_site_def_id: Some(id),
@@ -3067,7 +3067,7 @@ pub fn is_never_expr<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> Option<
                             }
                         },
                         _ => {
-                            self.requires_semi = !self.cx.typeck_results().expr_ty(e).is_never();
+                            self.requires_semi = !self.cx.typeck_results.expr_ty(e).is_never();
                         },
                     }
                 }
@@ -3163,7 +3163,7 @@ pub fn is_never_expr<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> Option<
                 _ => {
                     self.in_final_expr = false;
                     walk_expr(self, e);
-                    self.is_never |= self.cx.typeck_results().expr_ty(e).is_never();
+                    self.is_never |= self.cx.typeck_results.expr_ty(e).is_never();
                 },
             }
         }
@@ -3200,7 +3200,7 @@ pub fn is_never_expr<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> Option<
         }
     }
 
-    if cx.typeck_results().expr_ty(e).is_never() {
+    if cx.typeck_results.expr_ty(e).is_never() {
         Some(RequiresSemi::No)
     } else if let ExprKind::Block(b, _) = e.kind
         && !b.targeted_by_break
@@ -3429,7 +3429,7 @@ pub fn leaks_droppable_temporary_with_limited_lifetime<'tcx>(cx: &LateContext<'t
 /// [coercion sites]: https://doc.rust-lang.org/stable/reference/type-coercions.html#coercion-sites
 pub fn expr_requires_coercion<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -> bool {
     let expr_ty_is_adjusted = cx
-        .typeck_results()
+        .typeck_results
         .expr_adjustments(expr)
         .iter()
         // ignore `NeverToAny` adjustments, such as `panic!` call.
@@ -3468,9 +3468,9 @@ pub fn expr_requires_coercion<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -
         },
         // Struct/union initialization.
         ExprKind::Struct(qpath, _, _) => {
-            let res = cx.typeck_results().qpath_res(qpath, expr.hir_id);
+            let res = cx.typeck_results.qpath_res(qpath, expr.hir_id);
             if let Some((_, v_def)) = adt_and_variant_of_res(cx, res) {
-                let rustc_ty::Adt(_, generic_args) = cx.typeck_results().expr_ty_adjusted(expr).kind() else {
+                let rustc_ty::Adt(_, generic_args) = cx.typeck_results.expr_ty_adjusted(expr).kind() else {
                     // This should never happen, but when it does, not linting is the better option.
                     return true;
                 };
@@ -3639,7 +3639,7 @@ pub fn potential_return_of_enclosing_body(cx: &LateContext<'_>, expr: &Expr<'_>)
 /// Checks if the expression has adjustments that require coercion, for example: dereferencing with
 /// overloaded deref, coercing pointers and `dyn` objects.
 pub fn expr_adjustment_requires_coercion(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    cx.typeck_results().expr_adjustments(expr).iter().any(|adj| {
+    cx.typeck_results.expr_adjustments(expr).iter().any(|adj| {
         matches!(
             adj.kind,
             Adjust::Deref(DerefAdjustKind::Overloaded(_))

@@ -79,7 +79,7 @@ fn has_in_operand_pointer(cx: &LateContext<'_>, asm_op: &InlineAsmOperand<'_>) -
 
     // This checks for raw ptrs, refs and function pointers - the last one
     // also technically counts as reading memory.
-    cx.typeck_results().expr_ty(asm_in_expr).is_any_ptr()
+    cx.typeck_results.expr_ty(asm_in_expr).is_any_ptr()
 }
 
 fn additional_notes(diag: &mut rustc_errors::Diag<'_, ()>) {

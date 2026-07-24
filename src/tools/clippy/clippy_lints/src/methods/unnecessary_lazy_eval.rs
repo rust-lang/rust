@@ -20,9 +20,9 @@ pub(super) fn check<'tcx>(
     simplify_using: &str,
     use_turbofish: bool,
 ) -> bool {
-    let is_option = cx.typeck_results().expr_ty(recv).is_diag_item(cx, sym::Option);
-    let is_result = cx.typeck_results().expr_ty(recv).is_diag_item(cx, sym::Result);
-    let is_bool = cx.typeck_results().expr_ty(recv).is_bool();
+    let is_option = cx.typeck_results.expr_ty(recv).is_diag_item(cx, sym::Option);
+    let is_result = cx.typeck_results.expr_ty(recv).is_diag_item(cx, sym::Result);
+    let is_bool = cx.typeck_results.expr_ty(recv).is_bool();
 
     if (is_option || is_result || is_bool)
         && let hir::ExprKind::Closure(&hir::Closure {

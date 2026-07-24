@@ -26,7 +26,7 @@ pub(super) fn check(
     count: u128,
     msrv: Msrv,
 ) {
-    if count < 2 || !cx.typeck_results().expr_ty_adjusted(self_arg).peel_refs().is_str() {
+    if count < 2 || !cx.typeck_results.expr_ty_adjusted(self_arg).peel_refs().is_str() {
         return;
     }
 
@@ -282,14 +282,14 @@ fn parse_iter_usage<'tcx>(
             let ExprKind::MethodCall(name, _, args, _) = e.kind else {
                 return None;
             };
-            let did = cx.typeck_results().type_dependent_def_id(e.hir_id)?;
+            let did = cx.typeck_results.type_dependent_def_id(e.hir_id)?;
             let iter_id = cx.tcx.get_diagnostic_item(sym::Iterator)?;
 
             match (name.ident.name, args) {
                 (sym::next, []) if cx.tcx.trait_of_assoc(did) == Some(iter_id) => (IterUsageKind::Nth(0), e.span),
                 (sym::next_tuple, []) => {
                     return if paths::ITERTOOLS_NEXT_TUPLE.matches(cx, did)
-                        && let ty::Adt(adt_def, subs) = cx.typeck_results().expr_ty(e).kind()
+                        && let ty::Adt(adt_def, subs) = cx.typeck_results.expr_ty(e).kind()
                         && cx.tcx.is_diagnostic_item(sym::Option, adt_def.did())
                         && let ty::Tuple(subs) = subs.type_at(0).kind()
                         && subs.len() == 2
@@ -311,7 +311,7 @@ fn parse_iter_usage<'tcx>(
                             && let ExprKind::MethodCall(next_name, _, [], _) = next_expr.kind
                             && next_name.ident.name == sym::next
                             && next_expr.span.ctxt() == ctxt
-                            && let Some(next_id) = cx.typeck_results().type_dependent_def_id(next_expr.hir_id)
+                            && let Some(next_id) = cx.typeck_results.type_dependent_def_id(next_expr.hir_id)
                             && cx.tcx.trait_of_assoc(next_id) == Some(iter_id)
                         {
                             next_expr.span
@@ -349,7 +349,7 @@ fn parse_iter_usage<'tcx>(
             ExprKind::MethodCall(name, _, [], _)
                 if name.ident.name == sym::unwrap
                     && cx
-                        .typeck_results()
+                        .typeck_results
                         .type_dependent_def_id(e.hir_id)
                         .opt_parent(cx)
                         .opt_impl_ty(cx)

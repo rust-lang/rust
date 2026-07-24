@@ -220,7 +220,7 @@ impl<'tcx> LateLintPass<'tcx> for StringAdd {
         match e.kind {
             ExprKind::Binary(op, lhs, _)
                 if let BinOpKind::Add = op.node
-                    && cx.typeck_results().expr_ty(lhs).is_lang_item(cx, LangItem::String)
+                    && cx.typeck_results.expr_ty(lhs).is_lang_item(cx, LangItem::String)
                     && let ctxt = e.span.ctxt()
                     && op.span.ctxt() == ctxt
                     && !ctxt.in_external_macro(cx.tcx.sess.source_map()) =>
@@ -243,7 +243,7 @@ impl<'tcx> LateLintPass<'tcx> for StringAdd {
             ExprKind::Assign(lhs, rhs, _)
                 if let ExprKind::Binary(op, add_lhs, _) = rhs.kind
                     && let BinOpKind::Add = op.node
-                    && cx.typeck_results().expr_ty(lhs).is_lang_item(cx, LangItem::String)
+                    && cx.typeck_results.expr_ty(lhs).is_lang_item(cx, LangItem::String)
                     && let ctxt = e.span.ctxt()
                     && SpanlessEq::new(cx).eq_expr(ctxt, lhs, add_lhs)
                     && rhs.span.ctxt() == ctxt
@@ -259,7 +259,7 @@ impl<'tcx> LateLintPass<'tcx> for StringAdd {
                 );
             },
             ExprKind::Index(base, ..)
-                if let ty::Ref(_, ty, _) = *cx.typeck_results().expr_ty_adjusted(base).kind()
+                if let ty::Ref(_, ty, _) = *cx.typeck_results.expr_ty_adjusted(base).kind()
                     && match *ty.kind() {
                         ty::Adt(def, _) => def.is_lang_item(cx, LangItem::String),
                         ty::Str => true,
@@ -403,7 +403,7 @@ impl<'tcx> LateLintPass<'tcx> for StrToString {
 
         if let ExprKind::MethodCall(path, self_arg, [], _) = &expr.kind
             && path.ident.name == sym::to_string
-            && let ty = cx.typeck_results().expr_ty(self_arg)
+            && let ty = cx.typeck_results.expr_ty(self_arg)
             && let ty::Ref(_, ty, ..) = ty.kind()
             && ty.is_str()
         {
@@ -425,7 +425,7 @@ impl<'tcx> LateLintPass<'tcx> for StrToString {
             && args.iter().any(|a| a.hir_id == expr.hir_id)
             && let Res::Def(DefKind::AssocFn, def_id) = expr.res(cx)
             && cx.tcx.is_diagnostic_item(sym::to_string_method, def_id)
-            && let Some(args) = cx.typeck_results().node_args_opt(expr.hir_id)
+            && let Some(args) = cx.typeck_results.node_args_opt(expr.hir_id)
             && args.type_at(0).is_str()
         {
             // Detected `ToString::to_string` passed as an argument (generic: any call or method call)
@@ -444,7 +444,7 @@ impl<'tcx> LateLintPass<'tcx> for StrToString {
 
 impl<'tcx> LateLintPass<'tcx> for TrimSplitWhitespace {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'_>) {
-        let tyckres = cx.typeck_results();
+        let tyckres = cx.typeck_results;
         if let ExprKind::MethodCall(path, split_recv, [], split_ws_span) = expr.kind
             && path.ident.name == sym::split_whitespace
             && let Some(split_ws_def_id) = tyckres.type_dependent_def_id(expr.hir_id)

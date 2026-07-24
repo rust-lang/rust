@@ -42,7 +42,7 @@ impl<'tcx> LateLintPass<'tcx> for NonOctalUnixPermissions {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         match &expr.kind {
             ExprKind::MethodCall(path, func, [param], _) => {
-                if let Some(adt) = cx.typeck_results().expr_ty(func).peel_refs().ty_adt_def()
+                if let Some(adt) = cx.typeck_results.expr_ty(func).peel_refs().ty_adt_def()
                     && matches!(
                         (cx.tcx.get_diagnostic_name(adt.did()), path.ident.name),
                         (Some(sym::FsOpenOptions | sym::DirBuilder), sym::mode)

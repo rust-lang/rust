@@ -16,7 +16,7 @@ pub(super) fn check(
     is_some: bool,
 ) {
     if !cx
-        .typeck_results()
+        .typeck_results
         .expr_ty_adjusted(first_caller)
         .peel_refs()
         .is_slice()

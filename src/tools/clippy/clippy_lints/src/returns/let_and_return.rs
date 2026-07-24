@@ -48,7 +48,7 @@ pub(super) fn check_block<'tcx>(cx: &LateContext<'tcx>, block: &'tcx Block<'_>) 
                     } else {
                         format!("({src})")
                     }
-                } else if !cx.typeck_results().expr_adjustments(retexpr).is_empty() {
+                } else if !cx.typeck_results.expr_adjustments(retexpr).is_empty() {
                     if has_enclosing_paren(&src) {
                         format!("{src} as _")
                     } else {

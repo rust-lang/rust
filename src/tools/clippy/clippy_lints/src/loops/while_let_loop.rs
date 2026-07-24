@@ -91,7 +91,7 @@ fn could_be_while_let<'tcx>(
     inner_expr: Option<&Expr<'_>>,
 ) {
     if has_trailing_exprs
-        && (needs_ordered_drop(cx, cx.typeck_results().expr_ty(let_expr))
+        && (needs_ordered_drop(cx, cx.typeck_results.expr_ty(let_expr))
             || any_temporaries_need_ordered_drop(cx, let_expr))
     {
         // Switching to a `while let` loop will extend the lifetime of some values.

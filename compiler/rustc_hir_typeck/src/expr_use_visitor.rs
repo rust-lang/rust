@@ -234,7 +234,7 @@ impl<'tcx> TypeInformationCtxt<'tcx> for (&LateContext<'tcx>, LocalDefId) {
     type Error = !;
 
     fn typeck_results(&self) -> Self::TypeckResults<'_> {
-        self.0.maybe_typeck_results().expect("expected typeck results")
+        self.0.typeck_results
     }
 
     fn structurally_resolve_type(&self, _span: Span, ty: Ty<'tcx>) -> Ty<'tcx> {

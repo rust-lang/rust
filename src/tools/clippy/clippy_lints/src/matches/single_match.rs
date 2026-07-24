@@ -53,7 +53,7 @@ pub(crate) fn check<'tcx>(
             return;
         };
 
-        let typeck = cx.typeck_results();
+        let typeck = cx.typeck_results;
         if *typeck.expr_ty(ex).peel_refs().kind() != ty::Bool || is_lint_allowed(cx, MATCH_BOOL, ex.hir_id) {
             let mut v = PatVisitor {
                 typeck,
@@ -130,7 +130,7 @@ fn report_single_pattern(
 
     let (pat, pat_ref_count) = peel_hir_pat_refs(arm.pat);
     let (msg, sugg) = if let PatKind::Expr(_) = pat.kind
-        && let (ty, ty_ref_count, _) = peel_and_count_ty_refs(cx.typeck_results().expr_ty(ex))
+        && let (ty, ty_ref_count, _) = peel_and_count_ty_refs(cx.typeck_results.expr_ty(ex))
         && let Some(spe_trait_id) = cx.tcx.lang_items().structural_peq_trait()
         && let Some(pe_trait_id) = cx.tcx.lang_items().eq_trait()
         && (ty.is_integral()

@@ -11,11 +11,11 @@ use super::AS_PTR_CAST_MUT;
 
 pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_expr: &Expr<'_>, cast_to: Ty<'_>) {
     if let ty::RawPtr(ptrty, Mutability::Mut) = cast_to.kind()
-        && let ty::RawPtr(_, Mutability::Not) = cx.typeck_results().node_type(cast_expr.hir_id).kind()
+        && let ty::RawPtr(_, Mutability::Not) = cx.typeck_results.node_type(cast_expr.hir_id).kind()
         && let ExprKind::MethodCall(method_name, receiver, [], _) = cast_expr.peel_blocks().kind
         && method_name.ident.name == sym::as_ptr
         && let Some(as_ptr_did) = cx
-            .typeck_results()
+            .typeck_results
             .type_dependent_def_id(cast_expr.peel_blocks().hir_id)
         && let as_ptr_sig = cx.tcx.fn_sig(as_ptr_did).instantiate_identity().skip_norm_wip()
         && let Some(first_param_ty) = as_ptr_sig.skip_binder().inputs().iter().next()

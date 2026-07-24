@@ -126,7 +126,7 @@ fn find_method_and_type<'tcx>(
             let is_rest = matches!((args, rest.as_opt_usize()), ([], Some(_)));
 
             if is_wildcard || is_rest {
-                let res = cx.typeck_results().qpath_res(qpath, check_pat.hir_id);
+                let res = cx.typeck_results.qpath_res(qpath, check_pat.hir_id);
                 let id = res.opt_def_id().map(|ctor_id| cx.tcx.parent(ctor_id))?;
                 let lang_items = cx.tcx.lang_items();
                 if Some(id) == lang_items.result_ok_variant() {
@@ -188,7 +188,7 @@ fn find_method_sugg_for_if_let<'tcx>(
         PatKind::Ref(inner, _pinnedness, _mutability) => inner,
         _ => let_pat,
     };
-    let op_ty = cx.typeck_results().expr_ty(let_expr);
+    let op_ty = cx.typeck_results.expr_ty(let_expr);
     // Determine which function should be used, and the type contained by the corresponding
     // variant.
     let Some((good_method, inner_ty)) = find_method_and_type(cx, check_pat, op_ty) else {
@@ -450,7 +450,7 @@ enum Item {
 }
 
 fn is_pat_variant(cx: &LateContext<'_>, pat: &Pat<'_>, path: &QPath<'_>, expected_item: Item) -> bool {
-    let Some(id) = cx.typeck_results().qpath_res(path, pat.hir_id).opt_def_id() else {
+    let Some(id) = cx.typeck_results.qpath_res(path, pat.hir_id).opt_def_id() else {
         return false;
     };
 
@@ -461,7 +461,7 @@ fn is_pat_variant(cx: &LateContext<'_>, pat: &Pat<'_>, path: &QPath<'_>, expecte
             .get(expected_lang_item)
             .is_some_and(|expected_id| cx.tcx.parent(id) == expected_id),
         Item::Diag(expected_ty, expected_variant) => {
-            let ty = cx.typeck_results().pat_ty(pat);
+            let ty = cx.typeck_results.pat_ty(pat);
 
             if ty.is_diag_item(cx, expected_ty) {
                 let variant = ty

@@ -138,7 +138,7 @@ fn assert_len_expr<'hir>(
         && let ExprKind::Binary(bin_op, left, right) = &condition.kind
         // check if `then` block has a never type expression
         && let ExprKind::Block(Block { expr: Some(then_expr), .. }, _) = then.kind
-        && cx.typeck_results().expr_ty(then_expr).is_never()
+        && cx.typeck_results.expr_ty(then_expr).is_never()
     {
         (len_comparison(bin_op.node, left, right)?, sym::assert_macro)
     } else if let Some((macro_call, bin_op)) = first_node_macro_backtrace(cx, expr).find_map(|macro_call| {
@@ -160,7 +160,7 @@ fn assert_len_expr<'hir>(
     };
 
     if let ExprKind::MethodCall(method, recv, [], _) = &slice_len.kind
-        && cx.typeck_results().expr_ty_adjusted(recv).peel_refs().is_slice()
+        && cx.typeck_results.expr_ty_adjusted(recv).peel_refs().is_slice()
         && method.ident.name == sym::len
     {
         Some((cmp, asserted_len, recv, macro_call))
@@ -237,7 +237,7 @@ fn upper_index_expr(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<usize> {
 /// Checks if the expression is an index into a slice and adds it to `indexes`
 fn check_index<'hir>(cx: &LateContext<'_>, expr: &'hir Expr<'hir>, map: &mut UnindexMap<u64, Vec<IndexEntry<'hir>>>) {
     if let ExprKind::Index(slice, index_lit, _) = expr.kind
-        && cx.typeck_results().expr_ty_adjusted(slice).peel_refs().is_slice()
+        && cx.typeck_results.expr_ty_adjusted(slice).peel_refs().is_slice()
         && let Some(index) = upper_index_expr(cx, index_lit)
     {
         let hash = hash_expr(cx, slice);

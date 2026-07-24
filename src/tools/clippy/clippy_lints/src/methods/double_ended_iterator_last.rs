@@ -11,13 +11,13 @@ use rustc_span::Span;
 use super::DOUBLE_ENDED_ITERATOR_LAST;
 
 pub(super) fn check(cx: &LateContext<'_>, expr: &'_ Expr<'_>, self_expr: &'_ Expr<'_>, call_span: Span) {
-    let typeck = cx.typeck_results();
+    let typeck = cx.typeck_results;
 
     // if the "last" method is that of Iterator
     if cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::Iterator)
         // if self implements DoubleEndedIterator
         && let Some(deiter_id) = cx.tcx.get_diagnostic_item(sym::DoubleEndedIterator)
-        && let self_type = cx.typeck_results().expr_ty(self_expr)
+        && let self_type = cx.typeck_results.expr_ty(self_expr)
         && implements_trait(cx, self_type.peel_refs(), deiter_id, &[])
         // resolve the method definition
         && let id = typeck.type_dependent_def_id(expr.hir_id).unwrap()
@@ -28,7 +28,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &'_ Expr<'_>, self_expr: &'_ Exp
         && let Some(last_def) = cx.tcx.provided_trait_methods(item).find(|m| m.name() == sym::last)
         // if the resolved method is the same as the provided definition
         && fn_def.def_id() == last_def.def_id
-        && let self_ty = cx.typeck_results().expr_ty(self_expr)
+        && let self_ty = cx.typeck_results.expr_ty(self_expr)
         && !has_non_owning_mutable_access(cx, self_ty)
     {
         let mut sugg = vec![(call_span, String::from("next_back()"))];
@@ -55,7 +55,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &'_ Expr<'_>, self_expr: &'_ Exp
             expr.span,
             "called `Iterator::last` on a `DoubleEndedIterator`; this will needlessly iterate the entire iterator",
             |diag| {
-                let expr_ty = cx.typeck_results().expr_ty(expr);
+                let expr_ty = cx.typeck_results.expr_ty(expr);
                 let droppable_elements = expr_ty.has_significant_drop(cx.tcx, cx.typing_env());
                 diag.multipart_suggestion(
                     "try",

@@ -30,7 +30,7 @@ pub(super) fn check<'tcx>(
     iter_expr: &'tcx Expr<'tcx>,
     call_span: Span,
 ) {
-    let iter_ty = cx.typeck_results().expr_ty(iter_expr);
+    let iter_ty = cx.typeck_results.expr_ty(iter_expr);
     if has_non_owning_mutable_access(cx, iter_ty) {
         return; // don't lint if the iterator has side effects
     }
@@ -44,7 +44,7 @@ pub(super) fn check<'tcx>(
 
             if let ExprKind::MethodCall(name, _, args @ ([] | [_]), _) = parent.kind {
                 app = Applicability::MachineApplicable;
-                let collect_ty = cx.typeck_results().expr_ty(collect_expr);
+                let collect_ty = cx.typeck_results.expr_ty(collect_expr);
 
                 sugg = match name.ident.name {
                     sym::len => {
@@ -61,7 +61,7 @@ pub(super) fn check<'tcx>(
                     },
                     sym::is_empty
                         if is_is_empty_sig(cx, parent.hir_id)
-                            && iterates_same_ty(cx, cx.typeck_results().expr_ty(iter_expr), collect_ty) =>
+                            && iterates_same_ty(cx, cx.typeck_results.expr_ty(iter_expr), collect_ty) =>
                     {
                         "next().is_none()".into()
                     },
@@ -83,7 +83,7 @@ pub(super) fn check<'tcx>(
                     _ => return,
                 };
             } else if let ExprKind::Index(_, index, _) = parent.kind
-                && cx.typeck_results().expr_ty(index).is_usize()
+                && cx.typeck_results.expr_ty(index).is_usize()
             {
                 app = Applicability::MaybeIncorrect;
                 let snip = snippet_with_applicability(cx, index.span, "_", &mut app);
@@ -104,9 +104,9 @@ pub(super) fn check<'tcx>(
         },
         Node::LetStmt(l) => {
             if let PatKind::Binding(BindingMode::NONE | BindingMode::MUT, id, _, None) = l.pat.kind
-                && let ty = cx.typeck_results().expr_ty(collect_expr)
+                && let ty = cx.typeck_results.expr_ty(collect_expr)
                 && let Some(extra_spec) = ty.opt_diag_name(cx).and_then(ExtraFunctionSpec::new)
-                && let iter_ty = cx.typeck_results().expr_ty(iter_expr)
+                && let iter_ty = cx.typeck_results.expr_ty(iter_expr)
                 && let Some(block) = get_enclosing_block(cx, l.hir_id)
                 && let Some((iter_calls, extra_calls)) =
                     detect_iter_and_into_iters(block, id, cx, get_captured_ids(cx, iter_ty), extra_spec)
@@ -232,7 +232,7 @@ fn check_collect_into_intoiterator<'tcx>(
 
 /// Checks if the given method call matches the expected signature of `([&[mut]] self) -> bool`
 fn is_is_empty_sig(cx: &LateContext<'_>, call_id: HirId) -> bool {
-    cx.typeck_results().type_dependent_def_id(call_id).is_some_and(|id| {
+    cx.typeck_results.type_dependent_def_id(call_id).is_some_and(|id| {
         let sig = cx.tcx.fn_sig(id).instantiate_identity().skip_norm_wip().skip_binder();
         sig.inputs().len() == 1 && sig.output().is_bool()
     })
@@ -259,7 +259,7 @@ fn iterates_same_ty<'tcx>(cx: &LateContext<'tcx>, iter_ty: Ty<'tcx>, collect_ty:
 /// Checks if the given method call matches the expected signature of
 /// `([&[mut]] self, &<iter_ty as Iterator>::Item) -> bool`
 fn is_contains_sig(cx: &LateContext<'_>, call_id: HirId, iter_expr: &Expr<'_>) -> bool {
-    let typeck = cx.typeck_results();
+    let typeck = cx.typeck_results;
     if let Some(id) = typeck.type_dependent_def_id(call_id)
         && let sig = cx.tcx.fn_sig(id).instantiate_identity().skip_norm_wip()
         && sig.skip_binder().output().is_bool()
@@ -283,7 +283,7 @@ fn is_contains_sig(cx: &LateContext<'_>, call_id: HirId, iter_expr: &Expr<'_>) -
     {
         item_ty
             == EarlyBinder::bind(cx.tcx, search_ty)
-                .instantiate(cx.tcx, cx.typeck_results().node_args(call_id))
+                .instantiate(cx.tcx, cx.typeck_results.node_args(call_id))
                 .skip_norm_wip()
     } else {
         false
@@ -481,7 +481,7 @@ impl<'tcx> Visitor<'tcx> for IterFunctionVisitor<'_, 'tcx> {
                     .opt_parent(self.cx)
                     .is_diag_item(self.cx, sym::Iterator)
             {
-                self.current_mutably_captured_ids = get_captured_ids(self.cx, self.cx.typeck_results().expr_ty(recv));
+                self.current_mutably_captured_ids = get_captured_ids(self.cx, self.cx.typeck_results.expr_ty(recv));
                 self.visit_expr(recv);
                 return;
             }
@@ -632,7 +632,7 @@ fn check_loop_kind<'tcx>(expr: &Expr<'tcx>) -> Option<LoopKind<'tcx>> {
 impl<'tcx> IterFunctionVisitor<'_, 'tcx> {
     fn visit_block_expr(&mut self, expr: &'tcx Expr<'tcx>, hir_id: Option<HirId>) {
         self.current_statement_hir_id = hir_id;
-        self.current_mutably_captured_ids = get_captured_ids(self.cx, self.cx.typeck_results().expr_ty(expr));
+        self.current_mutably_captured_ids = get_captured_ids(self.cx, self.cx.typeck_results.expr_ty(expr));
         self.visit_expr(expr);
     }
 }

@@ -12,7 +12,7 @@ use clippy_utils::{is_enum_variant_ctor, sym};
 use super::SEEK_FROM_CURRENT;
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, recv: &'tcx Expr<'_>, arg: &'tcx Expr<'_>) {
-    let ty = cx.typeck_results().expr_ty(recv);
+    let ty = cx.typeck_results.expr_ty(recv);
 
     if let Some(def_id) = cx.tcx.get_diagnostic_item(sym::IoSeek)
         && implements_trait(cx, ty, def_id, &[])

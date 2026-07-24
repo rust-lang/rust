@@ -123,7 +123,7 @@ impl<'tcx> LateLintPass<'tcx> for FormatPushString {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         let (recv, arg) = match expr.kind {
             ExprKind::MethodCall(_, recv, [arg], _) => {
-                if let Some(fn_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
+                if let Some(fn_def_id) = cx.typeck_results.type_dependent_def_id(expr.hir_id)
                     && cx.tcx.is_diagnostic_item(sym::string_push_str, fn_def_id)
                 {
                     (recv, arg)
@@ -190,7 +190,7 @@ impl<'tcx> LateLintPass<'tcx> for FormatPushString {
 }
 
 fn is_string(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
-    cx.typeck_results()
+    cx.typeck_results
         .expr_ty(e)
         .peel_refs()
         .is_lang_item(cx, LangItem::String)

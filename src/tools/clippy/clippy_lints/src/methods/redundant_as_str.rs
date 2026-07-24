@@ -14,7 +14,7 @@ pub(super) fn check(
     other_method_span: Span,
 ) {
     if cx
-        .typeck_results()
+        .typeck_results
         .expr_ty(recv)
         .ty_adt_def()
         .is_some_and(|adt| Some(adt.did()) == cx.tcx.lang_items().string())

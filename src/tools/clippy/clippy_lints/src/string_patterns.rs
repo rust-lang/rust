@@ -128,7 +128,7 @@ fn check_single_char_pattern_lint(cx: &LateContext<'_>, arg: &Expr<'_>) {
 }
 
 fn get_char_span<'tcx>(cx: &'_ LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<Span> {
-    if cx.typeck_results().expr_ty_adjusted(expr).is_char()
+    if cx.typeck_results.expr_ty_adjusted(expr).is_char()
         && !expr.span.from_expansion()
         && switch_to_eager_eval(cx, expr)
     {
@@ -235,7 +235,7 @@ impl<'tcx> LateLintPass<'tcx> for StringPatterns {
                 .iter()
                 .find(|(array_method_name, _)| *array_method_name == method_name)
             && let Some(arg) = args.get(pos)
-            && let ty::Ref(_, ty, _) = cx.typeck_results().expr_ty_adjusted(receiver).kind()
+            && let ty::Ref(_, ty, _) = cx.typeck_results.expr_ty_adjusted(receiver).kind()
             && ty.is_str()
         {
             check_single_char_pattern_lint(cx, arg);

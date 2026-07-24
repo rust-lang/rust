@@ -13,7 +13,7 @@ use super::{MATCH_WILDCARD_FOR_SINGLE_VARIANTS, WILDCARD_ENUM_MATCH_ARM};
 
 #[expect(clippy::too_many_lines)]
 pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
-    let ty = cx.typeck_results().expr_ty(ex).peel_refs();
+    let ty = cx.typeck_results.expr_ty(ex).peel_refs();
     let adt_def = match ty.kind() {
         ty::Adt(adt_def, _)
             if adt_def.is_enum() && !matches!(ty.opt_diag_name(cx), Some(sym::Option | sym::Result)) =>

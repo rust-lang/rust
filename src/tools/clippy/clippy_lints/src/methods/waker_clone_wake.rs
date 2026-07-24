@@ -9,7 +9,7 @@ use rustc_lint::LateContext;
 use super::WAKER_CLONE_WAKE;
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, recv: &'tcx Expr<'_>) {
-    let ty = cx.typeck_results().expr_ty(recv);
+    let ty = cx.typeck_results.expr_ty(recv);
 
     if let Some(did) = ty.ty_adt_def()
         && cx.tcx.is_diagnostic_item(sym::Waker, did.did())

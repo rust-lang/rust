@@ -11,7 +11,7 @@ use rustc_span::{Span, sym};
 use super::CLONED_INSTEAD_OF_COPIED;
 
 pub fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, span: Span, msrv: Msrv) {
-    let recv_ty = cx.typeck_results().expr_ty_adjusted(recv);
+    let recv_ty = cx.typeck_results.expr_ty_adjusted(recv);
     let inner_ty = match recv_ty.kind() {
         // `Option<T>` -> `T`
         ty::Adt(adt, subst)

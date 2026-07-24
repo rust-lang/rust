@@ -128,7 +128,7 @@ impl<'tcx> LateLintPass<'tcx> for Symbols {
 
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::Call(func, [arg]) = &expr.kind
-            && let ty::FnDef(def_id, _) = cx.typeck_results().expr_ty(func).kind()
+            && let ty::FnDef(def_id, _) = cx.typeck_results.expr_ty(func).kind()
             && cx.tcx.is_diagnostic_item(sym::SymbolIntern, *def_id)
             && let Some((_, sugg)) = self.expr_suggestion(arg)
         {
@@ -196,7 +196,7 @@ impl<'tcx> LateLintPass<'tcx> for Symbols {
 /// ```
 fn as_str_span(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<Span> {
     if let ExprKind::MethodCall(_, recv, [], _) = expr.kind
-        && let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
+        && let Some(method_def_id) = cx.typeck_results.type_dependent_def_id(expr.hir_id)
         && internal_paths::SYMBOL_AS_STR.matches(cx, method_def_id)
     {
         Some(recv.span.shrink_to_hi().to(expr.span.shrink_to_hi()))

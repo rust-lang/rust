@@ -23,7 +23,7 @@ pub(crate) fn check_if_let<'tcx>(
     else_expr: &'tcx Expr<'_>,
 ) {
     if !span_contains_comment(cx, expr.span)
-        && cx.typeck_results().expr_ty(expr).is_bool()
+        && cx.typeck_results.expr_ty(expr).is_bool()
         && let Some(b0) = find_bool_lit(then_expr)
         && let Some(b1) = find_bool_lit(else_expr)
         && b0 != b1
@@ -40,7 +40,7 @@ pub(crate) fn check_if_let<'tcx>(
         // strip potential borrows (#6503), but only if the type is a reference
         let mut ex_new = let_expr;
         if let ExprKind::AddrOf(BorrowKind::Ref, .., ex_inner) = let_expr.kind
-            && let ty::Ref(..) = cx.typeck_results().expr_ty(ex_inner).kind()
+            && let ty::Ref(..) = cx.typeck_results.expr_ty(ex_inner).kind()
         {
             ex_new = ex_inner;
         }
@@ -72,7 +72,7 @@ pub(super) fn check_match<'tcx>(
     if let Some((last_arm, arms_without_last)) = arms.split_last()
         && let Some((first_arm, middle_arms)) = arms_without_last.split_first()
         && !span_contains_comment(cx, e.span)
-        && cx.typeck_results().expr_ty(e).is_bool()
+        && cx.typeck_results.expr_ty(e).is_bool()
         && let Some(b0) = find_bool_lit(first_arm.body)
         && let Some(b1) = find_bool_lit(last_arm.body)
         && b0 != b1
@@ -172,7 +172,7 @@ pub(super) fn check_match<'tcx>(
         // strip potential borrows (#6503), but only if the type is a reference
         let mut ex_new = scrutinee;
         if let ExprKind::AddrOf(BorrowKind::Ref, .., ex_inner) = scrutinee.kind
-            && let ty::Ref(..) = cx.typeck_results().expr_ty(ex_inner).kind()
+            && let ty::Ref(..) = cx.typeck_results.expr_ty(ex_inner).kind()
         {
             ex_new = ex_inner;
         }

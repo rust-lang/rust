@@ -64,7 +64,7 @@ pub(super) fn check_implicit_cast(cx: &LateContext<'_>, expr: &Expr<'_>) {
         && let Some(fun_def_id) = cx.qpath_res(qpath, fun.hir_id).opt_def_id()
         && let Some(rpk) = raw_parts_kind(cx, fun_def_id)
         && !matches!(get_parent_expr(cx, expr).map(|e| e.kind), Some(ExprKind::Cast(..)))
-        && let [deref, borrow] = cx.typeck_results().expr_adjustments(expr)
+        && let [deref, borrow] = cx.typeck_results.expr_adjustments(expr)
         && matches!(deref.kind, Adjust::Deref(..))
         && let Adjustment {
             kind: Adjust::Borrow(AutoBorrow::RawPtr(..)),

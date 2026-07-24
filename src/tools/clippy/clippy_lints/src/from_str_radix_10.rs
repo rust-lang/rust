@@ -65,7 +65,7 @@ impl<'tcx> LateLintPass<'tcx> for FromStrRadix10 {
             && !is_in_const_context(cx)
         {
             let expr = if let ExprKind::AddrOf(_, _, expr) = &src.kind {
-                let ty = cx.typeck_results().expr_ty(expr);
+                let ty = cx.typeck_results.expr_ty(expr);
                 if is_ty_stringish(cx, ty) { expr } else { &src }
             } else {
                 &src

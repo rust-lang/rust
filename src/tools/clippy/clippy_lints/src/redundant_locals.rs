@@ -67,7 +67,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantLocals {
             // the local does not change the effect of assignments to the binding. see #11290
             && !affects_assignments(cx, mutability, binding_id, local.hir_id)
             // the local does not affect the code's drop behavior
-            && !needs_ordered_drop(cx, cx.typeck_results().expr_ty(expr))
+            && !needs_ordered_drop(cx, cx.typeck_results.expr_ty(expr))
             // the local is user-controlled
             && !local.span.in_external_macro(cx.sess().source_map())
             && !is_from_proc_macro(cx, expr)

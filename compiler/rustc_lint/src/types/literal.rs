@@ -173,7 +173,7 @@ fn report_bin_hex_error(
             ty: t,
         }
     };
-    let sub = get_type_suggestion(cx.typeck_results().node_type(hir_id), val, negative).map(
+    let sub = get_type_suggestion(cx.typeck_results.node_type(hir_id), val, negative).map(
         |suggestion_ty| {
             if let Some(pos) = repr_str.chars().position(|c| c == 'i' || c == 'u') {
                 let (sans_suffix, _) = repr_str.split_at(pos);
@@ -185,7 +185,7 @@ fn report_bin_hex_error(
     );
     let sign_bit_sub = (!negative)
         .then(|| {
-            let ty::Int(int_ty) = cx.typeck_results().node_type(hir_id).kind() else {
+            let ty::Int(int_ty) = cx.typeck_results.node_type(hir_id).kind() else {
                 return None;
             };
 
@@ -300,7 +300,7 @@ fn lint_int_literal<'tcx>(
             .source_map()
             .span_to_snippet(span)
             .unwrap_or_else(|_| if negative { format!("-{v}") } else { v.to_string() });
-        let help = get_type_suggestion(cx.typeck_results().node_type(hir_id), v, negative)
+        let help = get_type_suggestion(cx.typeck_results.node_type(hir_id), v, negative)
             .map(|suggestion_ty| OverflowingIntHelp { suggestion_ty });
 
         cx.emit_span_lint(
@@ -331,7 +331,7 @@ fn lint_uint_literal<'tcx>(
         if let Node::Expr(par_e) = cx.tcx.parent_hir_node(hir_id) {
             match par_e.kind {
                 hir::ExprKind::Cast(..) => {
-                    if let ty::Char = cx.typeck_results().expr_ty(par_e).kind() {
+                    if let ty::Char = cx.typeck_results.expr_ty(par_e).kind() {
                         if lit_val > 0x10FFFF {
                             cx.emit_span_lint(
                                 OVERFLOWING_LITERALS,
@@ -405,7 +405,7 @@ pub(crate) fn lint_literal<'tcx>(
     lit: &hir::Lit,
     surrounding_negation: Option<Span>,
 ) {
-    match *cx.typeck_results().node_type(hir_id).kind() {
+    match *cx.typeck_results.node_type(hir_id).kind() {
         ty::Int(t) => {
             match lit.node {
                 ast::LitKind::Int(v, ast::LitIntType::Signed(_) | ast::LitIntType::Unsuffixed) => {

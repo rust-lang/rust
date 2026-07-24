@@ -137,7 +137,7 @@ impl<'hir> LateLintPass<'hir> for NonStdLazyStatic {
             && let Some(call_def_id) = fn_def_id(cx, expr)
             && self.sugg_map.contains_key(&call_def_id)
             && let ExprKind::Path(qpath) = arg.peel_borrows().kind
-            && let Some(arg_def_id) = cx.typeck_results().qpath_res(&qpath, arg.hir_id).opt_def_id()
+            && let Some(arg_def_id) = cx.typeck_results.qpath_res(&qpath, arg.hir_id).opt_def_id()
             && let Some(lazy_info) = self.lazy_type_defs.get_mut(&arg_def_id)
         {
             lazy_info.calls_span_and_id.insert(callee.span, call_def_id);

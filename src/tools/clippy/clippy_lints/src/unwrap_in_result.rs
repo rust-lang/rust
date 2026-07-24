@@ -199,7 +199,7 @@ fn is_unwrap_or_expect_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<(Op
             },
         )) = func.kind
     {
-        is_option_or_result(cx, cx.typeck_results().node_type(hir_ty.hir_id)).map(|oor| (oor, *name))
+        is_option_or_result(cx, cx.typeck_results.node_type(hir_ty.hir_id)).map(|oor| (oor, *name))
     } else if let ExprKind::MethodCall(
         PathSegment {
             ident: Ident {
@@ -213,7 +213,7 @@ fn is_unwrap_or_expect_call(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<(Op
         _,
     ) = expr.kind
     {
-        is_option_or_result(cx, cx.typeck_results().expr_ty_adjusted(recv)).map(|oor| (oor, *name))
+        is_option_or_result(cx, cx.typeck_results.expr_ty_adjusted(recv)).map(|oor| (oor, *name))
     } else {
         None
     }

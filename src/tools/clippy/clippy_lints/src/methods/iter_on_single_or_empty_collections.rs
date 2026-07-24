@@ -84,7 +84,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, method
                 expr_sig(cx, recv).is_some_and(|fn_sig| is_arg_ty_unified_in_fn(cx, fn_sig, child_id, args, false))
             },
             ExprKind::MethodCall(_name, recv, args, _span) => cx
-                .typeck_results()
+                .typeck_results
                 .type_dependent_def_id(parent.hir_id)
                 .and_then(|def_id| ty_sig(cx, cx.tcx.type_of(def_id).instantiate_identity().skip_norm_wip()))
                 .is_some_and(|fn_sig| {
