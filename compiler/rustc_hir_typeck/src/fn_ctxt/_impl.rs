@@ -41,7 +41,7 @@ use rustc_trait_selection::traits::{
 };
 use tracing::{debug, instrument};
 
-use crate::callee::{self, DeferredCallResolution};
+use crate::callee::{self, DeferredCallResolution, SplatLoweringInfo};
 use crate::diagnostics::{self, CtorIsPrivate};
 use crate::method::{self, MethodCallee};
 use crate::{BreakableCtxt, Diverges, Expectation, FnCtxt, LoweredTy};
@@ -240,7 +240,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn write_splatted_resolution(
         &self,
         hir_id: HirId,
-        r: Result<SplattedDef, ErrorGuaranteed>,
+        r: Result<SplattedDef<'tcx>, ErrorGuaranteed>,
     ) {
         self.typeck_results.borrow_mut().splatted_defs_mut().insert(hir_id, r);
     }
@@ -262,7 +262,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         hir_id: HirId,
         span: Span,
-        callee_def_id: Option<DefId>,
+        fn_id: SplatLoweringInfo<'tcx>,
         callee_generic_args: Option<GenericArgsRef<'tcx>>,
         first_tupled_arg_index: u16,
         tupled_args_count: u16,
@@ -270,16 +270,44 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // FIXME(const_trait_impl): enforce constness using enforce_context_effects() and add
         // _and_enforce_effects to this method's name
 
-        self.write_splatted_resolution(
-            hir_id,
-            Ok(SplattedDef {
-                def_id: callee_def_id,
-                arg_index: first_tupled_arg_index,
-                arg_count: tupled_args_count,
-            }),
-        );
-        if let Some(callee_generic_args) = callee_generic_args {
-            self.write_args(hir_id, callee_generic_args);
+        match fn_id {
+            // We're splatting a FnDef based on its DefId
+            SplatLoweringInfo::FnDef(def_id) => {
+                self.write_splatted_resolution(
+                    hir_id,
+                    Ok(SplattedDef::FnDef {
+                        def_id,
+                        arg_index: first_tupled_arg_index,
+                        arg_count: tupled_args_count,
+                    }),
+                );
+                if let Some(callee_generic_args) = callee_generic_args {
+                    self.write_args(hir_id, callee_generic_args);
+                }
+            }
+            // We're splatting a FnPtr based on its type
+            SplatLoweringInfo::FnPtr(fn_ty) => {
+                // FIXME(splat): do we need to look up both these HirIds?
+                // They can be different (and are different in some UI tests)
+                self.write_splatted_resolution(
+                    hir_id,
+                    Ok(SplattedDef::FnPtr {
+                        fn_ptr_type: fn_ty,
+                        arg_index: first_tupled_arg_index,
+                        arg_count: tupled_args_count,
+                    }),
+                );
+                // FIXME(splat): is this actually populated and used correctly?
+                if let Some(callee_generic_args) = callee_generic_args {
+                    self.write_args(hir_id, callee_generic_args);
+                }
+            }
+            SplatLoweringInfo::Error(guar) => {
+                self.write_splatted_resolution(hir_id, Err(guar));
+                if let Some(callee_generic_args) = callee_generic_args {
+                    self.write_args(hir_id, callee_generic_args);
+                }
+            }
         }
     }
 

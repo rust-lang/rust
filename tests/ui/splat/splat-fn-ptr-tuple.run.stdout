@@ -1,0 +1,10 @@
+tuple_args: 1 2
+tuple_args: 1 2
+tuple_args: 1 2
+tuple_args: 1 2
+tuple_args: 1 2
+tuple_args: 1 2
+splat_non_terminal_arg: 1 2 3.5
+splat_non_terminal_arg: 1 2 3.5
+splat_non_terminal_arg: 1 2 3.5
+splat_non_terminal_arg: 1 2 3.5
