@@ -171,6 +171,18 @@ impl Instance {
         self.kind == InstanceKind::Shim && with(|cx| cx.is_empty_drop_shim(self.def))
     }
 
+    /// Check whether this instance requires a caller location argument.
+    ///
+    /// Functions annotated with `#[track_caller]` have an implicit extra
+    /// `&'static core::panic::Location<'static>` argument appended to their ABI.
+    /// This argument is not present in the MIR body's signature.
+    ///
+    /// When this returns `true`, the instance's `fn_abi()` will have one additional
+    /// argument compared to the MIR body's parameter list.
+    pub fn requires_caller_location(&self) -> bool {
+        with(|cx| cx.instance_requires_caller_location(self.def))
+    }
+
     /// Try to constant evaluate the instance into a constant with the given type.
     ///
     /// This can be used to retrieve a constant that represents an intrinsic return such as
