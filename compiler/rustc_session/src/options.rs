@@ -2471,6 +2471,8 @@ options! {
         "emit bitcode in rlibs (default: yes)"),
     extra_filename: String = (String::new(), parse_string, [UNTRACKED] { TARGET_MODIFIER: Never },
         "extra data to put in each output filename"),
+    fixed_x18: bool = (false, parse_bool, [TRACKED_UNSTABLE] { TARGET_MODIFIER: Only },
+        "make the x18 register reserved on AArch64 (default: no)"),
     force_frame_pointers: FramePointer = (FramePointer::MayOmit, parse_frame_pointer, [TRACKED],
         "force use of the frame pointers"),
     #[rustc_lint_opt_deny_field_access("use `Session::must_emit_unwind_tables` instead of this field")]
