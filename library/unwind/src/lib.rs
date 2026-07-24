@@ -48,6 +48,7 @@ cfg_select! {
         // no unwinder on the system!
         // - os=none ("bare metal" targets)
         // - os=hermit
+        // - os=motor
         // - os=uefi
         // - os=cuda
         // - nvptx64-nvidia-cuda
