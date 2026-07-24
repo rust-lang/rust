@@ -1325,7 +1325,10 @@ impl Build {
         if let Some(map_to) = self.debuginfo_map_to(which, RemapScheme::NonCompiler) {
             let map = format!("{}={}", self.src.display(), map_to);
             let cc = self.cc(target);
-            if cc.ends_with("clang") || cc.ends_with("gcc") {
+            if cc.ends_with("clang")
+                || cc.ends_with("gcc")
+                || cc.file_name().is_some_and(|f| f == "cc")
+            {
                 base.push(format!("-fdebug-prefix-map={map}"));
             } else if cc.ends_with("clang-cl.exe") {
                 base.push("-Xclang".into());
