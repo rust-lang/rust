@@ -1197,7 +1197,12 @@ impl Builder<'_> {
         cargo.env("RUSTC_BOOTSTRAP", "1");
 
         if matches!(mode, Mode::Std) {
-            cargo.arg("-Zno-embed-metadata");
+            // The `-Zembed-metadata` flag was renamed from `-Zno-embed-metadata`.
+            if self.local_rebuild {
+                cargo.arg("-Zembed-metadata=no");
+            } else {
+                cargo.arg("-Zno-embed-metadata");
+            }
         }
 
         if self.config.dump_bootstrap_shims {
