@@ -432,13 +432,10 @@ fn token_name_eq(t1: &Token, t2: &Token) -> bool {
 // Note: the vectors could be created and dropped within `parse_tt`, but to avoid excess
 // allocations we have a single vector for each kind that is cleared and reused repeatedly.
 pub(crate) struct TtParser {
-    /// The set of current mps to be processed. This should be empty by the end of a successful
-    /// execution of `parse_tt_inner`.
-    cur_mps: Vec<MatcherPos>,
-
-    /// The set of newly generated mps. These are used to replenish `cur_mps` in the function
-    /// `parse_tt`.
-    next_mps: Vec<MatcherPos>,
+    /// mps at older input positions that are yet to be explored.
+    ///
+    /// Invariant: `backtrack.iter().is_sorted_by_key(|mp| mp.input_pos)`.
+    backtrack: Vec<MatcherPos>,
 
     /// Previously seen tokens from the parser.
     ///
@@ -466,8 +463,7 @@ pub(crate) struct TtParser {
 impl TtParser {
     pub(super) fn new() -> TtParser {
         TtParser {
-            cur_mps: vec![],
-            next_mps: vec![],
+            backtrack: vec![],
             seen_tokens: vec![],
             empty_matches: Rc::new(vec![]),
             maybe_ambig_mp: None,
@@ -488,13 +484,18 @@ impl TtParser {
         matcher: &'matcher [MatcherLoc],
         track: &mut T,
     ) -> Option<NamedParseResult> {
-        while let Some(mp) = self.cur_mps.pop() {
+        while let Some(mp) = self.backtrack.pop() {
             self.match_one(parser, matcher, mp, track);
+
+            debug_assert!(self.backtrack.iter().is_sorted_by_key(|mp| mp.input_pos));
         }
 
         if let Some(mp) = self.maybe_ambig_mp.take() {
-            if self.found_ambiguity || !self.next_mps.is_empty() {
-                // Something successfully matched at the same position as `mp`.
+            if self.found_ambiguity || parser.approx_token_stream_pos() > mp.input_pos {
+                // Either:
+                // - A second maybe-ambig mp was found, setting `found_ambiguity`
+                // - Something else was parsed successfully, advancing `parser` past `mp`
+                // - `mp` was matched while backtracking
                 track.ambiguity();
                 return Some(Ambiguity);
             }
@@ -502,21 +503,9 @@ impl TtParser {
             return self.process_special(parser, matcher, mp);
         }
 
-        // FIXME: Error messages here could be improved with links to original rules.
-
-        if self.next_mps.is_empty() {
-            // There are no possible next positions: syntax error.
-            track.failure(parser);
-            return Some(Failure);
-        }
-
-        // Dump all possible `next_mps` into `cur_mps` for the next iteration. Then
-        // process the next token.
-        self.cur_mps.append(&mut self.next_mps);
-        self.seen_tokens.push(parser.token);
-        parser.to_mut().bump();
-
-        None
+        // There are no possible next positions: syntax error.
+        track.failure(parser);
+        Some(Failure)
     }
 
     /// Match a single [`MatcherPos`].
@@ -549,19 +538,25 @@ impl TtParser {
                 // Otherwise, this match has failed, there is nothing to do, and hopefully another
                 // mp in `cur_mps` will match.
                 if matches!(t, Token { kind: DocComment(..), .. }) {
-                    mp.idx += 1;
-                    self.cur_mps.push(mp);
+                    // skip
                 } else if token_name_eq(t, token) {
                     track.matched_one(mp.input_pos, mp.idx);
-                    mp.idx += 1;
                     mp.input_pos += 1;
-                    self.next_mps.push(mp);
+                    if mp.input_pos > parser.approx_token_stream_pos() {
+                        self.seen_tokens.push(parser.token);
+                        parser.to_mut().bump();
+                        debug_assert_eq!(mp.input_pos, parser.approx_token_stream_pos());
+                    }
+                } else {
+                    return;
                 }
+                mp.idx += 1;
+                self.backtrack.push(mp);
             }
             MatcherLoc::Delimited => {
                 // Entering the delimiter is trivial.
                 mp.idx += 1;
-                self.cur_mps.push(mp);
+                self.backtrack.push(mp);
             }
             &MatcherLoc::Sequence {
                 op,
@@ -578,7 +573,7 @@ impl TtParser {
                 if matches!(op, KleeneOp::ZeroOrMore | KleeneOp::ZeroOrOne) {
                     // Try zero matches of this sequence, by skipping over it.
                     let idx = idx_first_after.try_into().unwrap();
-                    self.cur_mps.push(MatcherPos {
+                    self.backtrack.push(MatcherPos {
                         idx,
                         input_pos: mp.input_pos,
                         matches: Rc::clone(&mp.matches),
@@ -587,7 +582,7 @@ impl TtParser {
 
                 // Try one or more matches of this sequence, by entering it.
                 mp.idx += 1;
-                self.cur_mps.push(mp);
+                self.backtrack.push(mp);
             }
             &MatcherLoc::SequenceKleeneOpNoSep { op, idx_first } => {
                 // We are past the end of a sequence with no separator. Try ending the sequence. If
@@ -598,12 +593,12 @@ impl TtParser {
                     input_pos: mp.input_pos,
                     matches: Rc::clone(&mp.matches),
                 };
-                self.cur_mps.push(ending_mp);
+                self.backtrack.push(ending_mp);
 
                 if op != KleeneOp::ZeroOrOne {
                     // Try another repetition.
                     mp.idx = idx_first.try_into().unwrap();
-                    self.cur_mps.push(mp);
+                    self.backtrack.push(mp);
                 }
             }
             MatcherLoc::SequenceSep { separator } => {
@@ -615,21 +610,26 @@ impl TtParser {
                     input_pos: mp.input_pos,
                     matches: Rc::clone(&mp.matches),
                 };
-                self.cur_mps.push(ending_mp);
+                self.backtrack.push(ending_mp);
 
                 if token_name_eq(token, separator) {
                     // The separator matches the current token. Advance past it.
                     track.matched_one(mp.input_pos, mp.idx);
                     mp.idx += 1;
                     mp.input_pos += 1;
-                    self.next_mps.push(mp);
+                    if mp.input_pos > parser.approx_token_stream_pos() {
+                        self.seen_tokens.push(parser.token);
+                        parser.to_mut().bump();
+                        debug_assert_eq!(mp.input_pos, parser.approx_token_stream_pos());
+                    }
+                    self.backtrack.push(mp);
                 }
             }
             &MatcherLoc::SequenceKleeneOpAfterSep { idx_first } => {
                 // We are past the sequence separator. This can't be a `?` Kleene op, because they
                 // don't permit separators. Try another repetition.
                 mp.idx = idx_first.try_into().unwrap();
-                self.cur_mps.push(mp);
+                self.backtrack.push(mp);
             }
             &MatcherLoc::MetaVarDecl { kind, .. } => {
                 // Built-in nonterminals never start with these tokens, so we can eliminate them
@@ -657,6 +657,8 @@ impl TtParser {
                 if *token != token::Eof {
                     return;
                 }
+
+                debug_assert_eq!(mp.input_pos, parser.approx_token_stream_pos());
 
                 track.matched_one(mp.input_pos, mp.idx);
 
@@ -690,7 +692,7 @@ impl TtParser {
                 mp.idx += 1;
                 mp.input_pos = parser.approx_token_stream_pos();
                 self.seen_tokens.clear();
-                self.cur_mps.push(mp);
+                self.backtrack.push(mp);
                 None
             }
 
@@ -716,19 +718,15 @@ impl TtParser {
         // `parse_tt_inner` then processes all of these possible matcher positions and produces
         // possible next positions into `next_mps`. After some post-processing, the contents of
         // `next_mps` replenish `cur_mps` and we start over again.
-        self.cur_mps.clear();
+        self.backtrack.clear();
         self.seen_tokens.clear();
-        self.cur_mps.push(MatcherPos {
+        self.backtrack.push(MatcherPos {
             idx: 0,
             input_pos: parser.approx_token_stream_pos(),
             matches: Rc::clone(&self.empty_matches),
         });
 
         loop {
-            assert!(!self.cur_mps.is_empty());
-            self.next_mps.clear();
-
-            // Parse all mps at the current input position, then progress the parser.
             let res = self.parse_tt_inner(parser, matcher, track);
 
             if let Some(res) = res {
