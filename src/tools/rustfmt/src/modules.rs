@@ -167,8 +167,11 @@ impl<'ast, 'psess, 'c> ModResolver<'ast, 'psess> {
         Ok(())
     }
 
-    fn visit_cfg_match(&mut self, item: Cow<'ast, ast::Item>) -> Result<(), ModuleResolutionError> {
-        let mut visitor = visitor::CfgMatchVisitor::new(self.psess);
+    fn visit_cfg_select(
+        &mut self,
+        item: Cow<'ast, ast::Item>,
+    ) -> Result<(), ModuleResolutionError> {
+        let mut visitor = visitor::CfgSelectVisitor::new(self.psess);
         visitor.visit_item(&item);
         for module_item in visitor.mods() {
             if let ast::ItemKind::Mod(_, _, ref sub_mod_kind) = module_item.item.kind {
@@ -197,8 +200,8 @@ impl<'ast, 'psess, 'c> ModResolver<'ast, 'psess> {
                 continue;
             }
 
-            if is_cfg_match(&item) {
-                self.visit_cfg_match(Cow::Owned(*item))?;
+            if is_cfg_select(&item) {
+                self.visit_cfg_select(Cow::Owned(*item))?;
                 continue;
             }
 
@@ -228,8 +231,8 @@ impl<'ast, 'psess, 'c> ModResolver<'ast, 'psess> {
                 self.visit_cfg_if(Cow::Borrowed(item))?;
             }
 
-            if is_cfg_match(item) {
-                self.visit_cfg_match(Cow::Borrowed(item))?;
+            if is_cfg_select(item) {
+                self.visit_cfg_select(Cow::Borrowed(item))?;
             }
 
             if let ast::ItemKind::Mod(_, _, ref sub_mod_kind) = item.kind {
@@ -615,11 +618,11 @@ fn is_cfg_if(item: &ast::Item) -> bool {
     }
 }
 
-fn is_cfg_match(item: &ast::Item) -> bool {
+fn is_cfg_select(item: &ast::Item) -> bool {
     match item.kind {
         ast::ItemKind::MacCall(ref mac) => {
             if let Some(last_segment) = mac.path.segments.last() {
-                if last_segment.ident.name == Symbol::intern("cfg_match") {
+                if last_segment.ident.name == Symbol::intern("cfg_select") {
                     return true;
                 }
             }

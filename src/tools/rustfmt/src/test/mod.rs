@@ -42,8 +42,8 @@ const FILE_SKIP_LIST: &[&str] = &[
     "issue-3253/foo.rs",
     "issue-3253/bar.rs",
     "issue-3253/paths",
-    // This directory is directly tested by format_files_find_new_files_via_cfg_match
-    "cfg_match",
+    // This directory is directly tested by format_files_find_new_files_via_cfg_select
+    "cfg_select",
     // These files and directory are a part of modules defined inside `cfg_attr(..)`.
     "cfg_mod/dir",
     "cfg_mod/bar.rs",
@@ -523,15 +523,15 @@ fn format_files_find_new_files_via_cfg_if() {
 }
 
 #[test]
-fn format_files_find_new_files_via_cfg_match() {
+fn format_files_find_new_files_via_cfg_select() {
     init_log();
     run_test_with(&TestSetting::default(), || {
-        // We load these two files into the same session to test cfg_match!
+        // We load these two files into the same session to test cfg_select!
         // transparent mod discovery, and to ensure that it does not suffer
         // from a similar issue as cfg_if! support did with issue-4656.
         let files = vec![
-            Path::new("tests/source/cfg_match/lib2.rs"),
-            Path::new("tests/source/cfg_match/lib.rs"),
+            Path::new("tests/source/cfg_select/lib2.rs"),
+            Path::new("tests/source/cfg_select/lib.rs"),
         ];
 
         let config = Config::default();
