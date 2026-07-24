@@ -19,7 +19,7 @@ use crate::solve::{
 use crate::visit::{Flags, TypeVisitable};
 use crate::{
     self as ty, BoundRegion, BoundVar, CanonicalParamEnvCacheEntry, DebruijnIndex, Region,
-    RegionKind, TraitRef, search_graph,
+    RegionKind, search_graph,
 };
 
 #[cfg_attr(feature = "nightly", rustc_diagnostic_item = "type_ir_interner")]
@@ -403,7 +403,8 @@ pub trait Interner:
 
     fn for_each_relevant_impl<R: VisitorResult>(
         self,
-        trait_ref: TraitRef<Self>,
+        trait_def_id: Self::DefId,
+        self_ty: Self::Ty,
         f: impl FnMut(Self::ImplId) -> R,
     ) -> R;
     fn for_each_blanket_impl<R: VisitorResult>(
