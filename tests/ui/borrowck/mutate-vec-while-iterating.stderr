@@ -1,0 +1,18 @@
+error[E0502]: cannot borrow `values` as mutable because it is also borrowed as immutable
+  --> $DIR/mutate-vec-while-iterating.rs:6:13
+   |
+LL |     for value in &values {
+   |                  -------
+   |                  |
+   |                  immutable borrow occurs here
+   |                  immutable borrow later used here
+LL |         if *value == 2 {
+LL |             values.push(4);
+   |             ^^^^^^^^^^^^^^ mutable borrow occurs here
+   |
+   = note: the for loop borrows `values` immutably for its entire duration, preventing modification within the loop body
+   = help: consider using an index-based loop instead, or collecting modifications into a separate collection
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0502`.
