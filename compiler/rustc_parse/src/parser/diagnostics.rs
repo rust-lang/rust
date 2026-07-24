@@ -1239,56 +1239,99 @@ impl<'a> Parser<'a> {
 
     /// When writing a turbofish with multiple type parameters missing the leading `::`, we will
     /// encounter a parse error when encountering the first `,`.
+    fn parse_mistyped_turbofish_with_multiple_type_params(
+        &mut self,
+        expr: &Expr,
+    ) -> Option<(Span, Option<Span>)> {
+        let ExprKind::Binary(binop, _, _) = &expr.kind else {
+            return None;
+        };
+        if binop.node != ast::BinOpKind::Lt || !self.eat(exp!(Comma)) {
+            return None;
+        }
+
+        let x =
+            self.parse_seq_to_before_end(exp!(Gt), SeqSep::trailing_allowed(exp!(Comma)), |p| {
+                match p.parse_generic_arg(None)? {
+                    Some(arg) => Ok(arg),
+                    // If we didn't eat a generic arg, then we should error.
+                    None => p.unexpected_any(),
+                }
+            });
+        match x {
+            Ok((_, _, Recovered::No)) if self.eat(exp!(Gt)) => {
+                let recovered_span = match self.parse_expr() {
+                    Ok(_) => Some(self.prev_token.span),
+                    Err(err) => {
+                        err.cancel();
+                        None
+                    }
+                };
+                Some((binop.span.shrink_to_lo(), recovered_span))
+            }
+            Ok((_, _, Recovered::No | Recovered::Yes(_))) => None,
+            Err(err) => {
+                err.cancel();
+                None
+            }
+        }
+    }
+
+    /// Check an entire call argument list for a turbofish that was parsed as separate arguments.
+    ///
+    /// For example, in `f(Foo<T, Bar<U, V>, W>::new())`, normal expression parsing accepts
+    /// `Foo<T` as the first argument. By the time parsing fails in the nested `Bar`, the outer
+    /// turbofish candidate is no longer available. Reparse from the opening parenthesis in a
+    /// diagnostic snapshot so we can suggest adding `::` at the outer `<`.
+    pub(super) fn mistyped_turbofish_in_call_args(&self) -> Option<Span> {
+        let mut snapshot = self.create_snapshot_for_diagnostic();
+        if !snapshot.eat(exp!(OpenParen)) {
+            return None;
+        }
+        if snapshot.token.ident().is_none() || !snapshot.look_ahead(1, |token| token == &token::Lt)
+        {
+            return None;
+        }
+        let expr = match snapshot.parse_expr() {
+            Ok(expr) => expr,
+            Err(err) => {
+                err.cancel();
+                return None;
+            }
+        };
+        snapshot
+            .parse_mistyped_turbofish_with_multiple_type_params(&expr)
+            .and_then(|(span, recovered_span)| recovered_span.map(|_| span))
+    }
+
     pub(super) fn check_mistyped_turbofish_with_multiple_type_params(
         &mut self,
         mut e: Diag<'a>,
         expr: &mut Box<Expr>,
     ) -> PResult<'a, ErrorGuaranteed> {
-        if let ExprKind::Binary(binop, _, _) = &expr.kind
-            && let ast::BinOpKind::Lt = binop.node
-            && self.eat(exp!(Comma))
-        {
-            let x = self.parse_seq_to_before_end(
-                exp!(Gt),
-                SeqSep::trailing_allowed(exp!(Comma)),
-                |p| match p.parse_generic_arg(None)? {
-                    Some(arg) => Ok(arg),
-                    // If we didn't eat a generic arg, then we should error.
-                    None => p.unexpected_any(),
-                },
-            );
-            match x {
-                Ok((_, _, Recovered::No)) => {
-                    if self.eat(exp!(Gt)) {
-                        // We made sense of it. Improve the error message.
-                        e.span_suggestion_verbose(
-                            binop.span.shrink_to_lo(),
-                            msg!("use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments"),
-                            "::",
-                            Applicability::MaybeIncorrect,
-                        );
-                        match self.parse_expr() {
-                            Ok(_) => {
-                                // The subsequent expression is valid. Mark
-                                // `expr` as erroneous and emit `e` now, but
-                                // return `Ok` so parsing can continue.
-                                let guar = e.emit();
-                                *expr = self.mk_expr_err(expr.span.to(self.prev_token.span), guar);
-                                return Ok(guar);
-                            }
-                            Err(err) => {
-                                err.cancel();
-                            }
-                        }
-                    }
-                }
-                Ok((_, _, Recovered::Yes(_))) => {}
-                Err(err) => {
-                    err.cancel();
-                }
-            }
-        }
-        Err(e)
+        let Some((sugg_span, recovered_span)) =
+            self.parse_mistyped_turbofish_with_multiple_type_params(expr)
+        else {
+            return Err(e);
+        };
+
+        // We made sense of it. Improve the error message.
+        e.span_suggestion_verbose(
+            sugg_span,
+            msg!("use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments"),
+            "::",
+            Applicability::MaybeIncorrect,
+        );
+
+        let Some(recovered_span) = recovered_span else {
+            return Err(e);
+        };
+
+        // The subsequent expression is valid. Mark `expr` as erroneous and emit `e` now, but
+        // return `Ok` so parsing can continue.
+        let guar = e.emit();
+        *expr = self.mk_expr_err(expr.span.to(recovered_span), guar);
+        Ok(guar)
     }
 
     /// Suggest add the missing `let` before the identifier in stmt

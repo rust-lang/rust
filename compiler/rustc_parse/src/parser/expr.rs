@@ -19,7 +19,7 @@ use rustc_ast::{
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_errors::{Applicability, Diag, PResult, StashKey, Subdiagnostic};
+use rustc_errors::{Applicability, Diag, PResult, StashKey, Subdiagnostic, msg};
 use rustc_literal_escaper::unescape_char;
 use rustc_session::diagnostics::{ExprParenthesesNeeded, report_lit_error};
 use rustc_session::lint::builtin::BREAK_WITH_LABEL_AND_LOOP;
@@ -1289,6 +1289,20 @@ impl<'a> Parser<'a> {
                 return self.mk_expr(lo.to(self.prev_token.span), self.mk_call(fun, args));
             }
             Err(err) => Err(err),
+        };
+        let seq = match (seq, snapshot.as_ref()) {
+            (Err(mut err), Some((snapshot, _))) => {
+                if let Some(span) = snapshot.mistyped_turbofish_in_call_args() {
+                    err.span_suggestion_verbose(
+                        span,
+                        msg!("use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments"),
+                        "::",
+                        Applicability::MaybeIncorrect,
+                    );
+                }
+                Err(err)
+            }
+            (seq, _) => seq,
         };
         match self.maybe_recover_struct_lit_bad_delims(lo, open_paren, seq, snapshot) {
             Ok(expr) => expr,

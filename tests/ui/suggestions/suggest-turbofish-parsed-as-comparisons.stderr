@@ -1,0 +1,13 @@
+error: expected expression, found `,`
+  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:17:48
+   |
+LL |     let _ = bar(Many<i32, Many<(), i32, (), ()>, i32, i32>::new());
+   |                                                ^ expected expression
+   |
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
+   |
+LL |     let _ = bar(Many::<i32, Many<(), i32, (), ()>, i32, i32>::new());
+   |                     ++
+
+error: aborting due to 1 previous error
+
