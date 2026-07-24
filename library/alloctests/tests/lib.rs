@@ -8,6 +8,7 @@
 #![feature(binary_heap_pop_if)]
 #![feature(casefold)]
 #![feature(const_btree_len)]
+#![feature(const_cmp)]
 #![feature(const_heap)]
 #![feature(const_trait_impl)]
 #![feature(core_intrinsics)]
