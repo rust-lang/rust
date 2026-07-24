@@ -70,8 +70,10 @@ impl SingleAttributeParser for RustcForceInlineParser {
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
     ]);
-    const STABILITY: AttributeStability =
-        unstable!(rustc_attrs, "`#[rustc_force_inline]` forces a free function to be inlined");
+    const STABILITY: AttributeStability = unstable!(
+        rustc_attrs,
+        "the `rustc_force_inline` attribute forces a free function to be inlined"
+    );
     const TEMPLATE: AttributeTemplate = template!(Word, List: &["reason"], NameValueStr: "reason");
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {

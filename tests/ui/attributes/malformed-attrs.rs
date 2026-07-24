@@ -217,7 +217,7 @@ extern crate wloop;
 //~^ ERROR malformed
 #[allow_internal_unsafe = 1]
 //~^ ERROR malformed
-//~| ERROR allow_internal_unsafe side-steps the unsafe_code lint
+//~| ERROR the `allow_internal_unsafe` attribute side-steps the `unsafe_code` lint
 macro_rules! slump {
     () => {}
 }

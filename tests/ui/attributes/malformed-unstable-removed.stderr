@@ -1,8 +1,8 @@
 error[E0539]: malformed `unstable_removed` attribute input
-  --> $DIR/malformed-unstable-removed.rs:3:1
+  --> $DIR/malformed-unstable-removed.rs:3:4
    |
 LL | #![unstable_removed(feature = "old_feature")]
-   | ^^^^^^^^^^^^^^^^^^^-------------------------^
+   |    ^^^^^^^^^^^^^^^^-------------------------
    |                    |
    |                    missing argument `reason = "..."`
    |
@@ -13,10 +13,10 @@ LL + #![unstable_removed(feature = "name", reason = "...", link = "...", since =
    |
 
 error[E0539]: malformed `unstable_removed` attribute input
-  --> $DIR/malformed-unstable-removed.rs:6:1
+  --> $DIR/malformed-unstable-removed.rs:6:4
    |
 LL | #![unstable_removed(invalid = "old_feature")]
-   | ^^^^^^^^^^^^^^^^^^^^-----------------------^^
+   |    ^^^^^^^^^^^^^^^^^-----------------------^
    |                     |
    |                     valid arguments are `feature`, `reason`, `link` or `since`
    |
@@ -27,10 +27,10 @@ LL + #![unstable_removed(feature = "name", reason = "...", link = "...", since =
    |
 
 error[E0565]: malformed `unstable_removed` attribute input
-  --> $DIR/malformed-unstable-removed.rs:9:1
+  --> $DIR/malformed-unstable-removed.rs:9:4
    |
 LL | #![unstable_removed("invalid literal")]
-   | ^^^^^^^^^^^^^^^^^^^^-----------------^^
+   |    ^^^^^^^^^^^^^^^^^-----------------^
    |                     |
    |                     didn't expect a literal here
    |
@@ -41,10 +41,10 @@ LL + #![unstable_removed(feature = "name", reason = "...", link = "...", since =
    |
 
 error[E0539]: malformed `unstable_removed` attribute input
-  --> $DIR/malformed-unstable-removed.rs:12:1
+  --> $DIR/malformed-unstable-removed.rs:12:4
    |
 LL | #![unstable_removed = "invalid literal"]
-   | ^^^^^^^^^^^^^^^^^^^^-------------------^
+   |    ^^^^^^^^^^^^^^^^^-------------------
    |                     |
    |                     expected this to be a list
    |

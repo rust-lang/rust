@@ -345,6 +345,7 @@ impl<'a> StripUnconfigured<'a> {
                 .to_attr_token_stream(),
         ));
 
+        let attr_item_path_span = attr_item.node.path.span;
         let attr_tokens = Some(LazyAttrTokenStream::new_direct(AttrTokenStream::new(trees)));
         let attr = ast::attr::mk_attr_from_item(
             &self.sess.psess.attr_id_generator,
@@ -354,10 +355,10 @@ impl<'a> StripUnconfigured<'a> {
             attr_item_span,
         );
         if attr.has_name(sym::crate_type) {
-            self.sess.dcx().emit_err(CrateTypeInCfgAttr { span: attr.span });
+            self.sess.dcx().emit_err(CrateTypeInCfgAttr { span: attr_item_path_span });
         }
         if attr.has_name(sym::crate_name) {
-            self.sess.dcx().emit_err(CrateNameInCfgAttr { span: attr.span });
+            self.sess.dcx().emit_err(CrateNameInCfgAttr { span: attr_item_path_span });
         }
         attr
     }

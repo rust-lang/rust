@@ -24,7 +24,7 @@ mod ice_155127 {
 
     fn foo() {}
     impl S {
-        #[deprecated] //[ice_155127]~ ERROR: `#[deprecated]` attribute cannot be used on delegations
+        #[deprecated] //[ice_155127]~ ERROR: the `deprecated` attribute cannot be used on delegations
         //[ice_155127]~^ WARN: this was previously accepted by the compiler but is being phased out;
         reuse foo;
     }

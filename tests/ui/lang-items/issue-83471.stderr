@@ -26,37 +26,37 @@ LL | trait Fn {
    |         - this trait has 0 generic arguments
 
 error[E0658]: lang items are subject to change
-  --> $DIR/issue-83471.rs:8:1
+  --> $DIR/issue-83471.rs:8:3
    |
 LL | #[lang = "pointee_sized"]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^
    |
    = help: add `#![feature(lang_items)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: lang items are subject to change
-  --> $DIR/issue-83471.rs:12:1
+  --> $DIR/issue-83471.rs:12:3
    |
 LL | #[lang = "meta_sized"]
-   | ^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^
    |
    = help: add `#![feature(lang_items)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: lang items are subject to change
-  --> $DIR/issue-83471.rs:16:1
+  --> $DIR/issue-83471.rs:16:3
    |
 LL | #[lang = "sized"]
-   | ^^^^^^^^^^^^^^^^^
+   |   ^^^^
    |
    = help: add `#![feature(lang_items)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: lang items are subject to change
-  --> $DIR/issue-83471.rs:20:1
+  --> $DIR/issue-83471.rs:20:3
    |
 LL | #[lang = "fn"]
-   | ^^^^^^^^^^^^^^
+   |   ^^^^
    |
    = help: add `#![feature(lang_items)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date

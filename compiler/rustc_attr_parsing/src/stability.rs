@@ -38,25 +38,25 @@ impl<'sess> AttributeParser<'sess> {
 
         let (explain, default_notes): (String, &[String]) = match gate_name {
             sym::rustc_attrs => ("use of an internal attribute".to_string(), &[
-                format!("the `#[{attr_path}]` attribute is an internal implementation detail that will never be stable"
+                format!("the `{attr_path}` attribute is an internal implementation detail that will never be stable"
             )]),
             sym::staged_api => ("stability attributes may not be used outside of the standard library".to_string(), &[]),
-            sym::custom_mir => ("the `#[custom_mir]` attribute is just used for the Rust test suite".to_string(), &[]),
-            sym::allow_internal_unsafe => ("allow_internal_unsafe side-steps the unsafe_code lint".to_string(), &[]),
-            sym::allow_internal_unstable => ("allow_internal_unstable side-steps feature gating and stability checks".to_string(), &[]),
-            sym::compiler_builtins => ("the `#[compiler_builtins]` attribute is used to identify the `compiler_builtins` crate which contains compiler-rt intrinsics and will never be stable".to_string(), &[]),
+            sym::custom_mir => ("the `custom_mir` attribute is just used for the Rust test suite".to_string(), &[]),
+            sym::allow_internal_unsafe => ("the `allow_internal_unsafe` attribute side-steps the `unsafe_code` lint".to_string(), &[]),
+            sym::allow_internal_unstable => ("the `allow_internal_unstable` attribute side-steps feature gating and stability checks".to_string(), &[]),
+            sym::compiler_builtins => ("the `compiler_builtins` attribute is used to identify the `compiler_builtins` crate which contains compiler-rt intrinsics and will never be stable".to_string(), &[]),
             sym::custom_test_frameworks => ("custom test frameworks are an unstable feature".to_string(), &[]),
             sym::linkage => ("the `linkage` attribute is experimental and not portable across platforms".to_string(), &[]),
-            sym::dropck_eyepatch => ("`may_dangle` has unstable semantics and may be removed in the future".to_string(), &[]),
-            sym::intrinsics => ("the `#[rustc_intrinsic]` attribute is used to declare intrinsics as function items".to_string(), &[]),
+            sym::dropck_eyepatch => ("the `may_dangle` attribute has unstable semantics and may be removed in the future".to_string(), &[]),
+            sym::intrinsics => ("the `rustc_intrinsic` attribute is used to declare intrinsics as function items".to_string(), &[]),
             sym::lang_items => ("lang items are subject to change".to_string(), &[]),
-            sym::prelude_import => ("`#[prelude_import]` is for use by rustc only".to_string(), &[]),
-            sym::profiler_runtime => ("the `#[profiler_runtime]` attribute is used to identify the `profiler_builtins` crate which contains the profiler runtime and will never be stable".to_string(), &[]),
-            sym::thread_local => ("`#[thread_local]` is an experimental feature, and does not currently handle destructors".to_string(), &[]),
-            _ => (format!("the `#[{attr_path}]` attribute is an experimental feature"), &[]),
+            sym::prelude_import => ("the `prelude_import` attribute is for use by rustc only".to_string(), &[]),
+            sym::profiler_runtime => ("the `profiler_runtime` attribute is used to identify the `profiler_builtins` crate which contains the profiler runtime and will never be stable".to_string(), &[]),
+            sym::thread_local => ("the `thread_local` attribute is an experimental feature, and does not currently handle destructors".to_string(), &[]),
+            _ => (format!("the `{attr_path}` attribute is an experimental feature"), &[]),
         };
 
-        let mut diag = feature_err(self.sess, gate_name, attr_span, explain);
+        let mut diag = feature_err(self.sess, gate_name, attr_path.span, explain);
 
         // Remove the suggestion for `#![feature(staged_api)]` as these attributes are currently
         // not usable outside std. If we do ever expose `#[stable]` etc under a different feature

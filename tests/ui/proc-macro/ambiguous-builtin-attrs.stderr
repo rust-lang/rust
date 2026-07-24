@@ -94,21 +94,21 @@ LL | use builtin_attrs::*;
    |     ^^^^^^^^^^^^^^^^
    = help: use `crate::feature` to refer to this attribute macro unambiguously
 
-error: `#[repr(C)]` attribute cannot be used on match arms
-  --> $DIR/ambiguous-builtin-attrs.rs:25:9
+error: the `repr(C)` attribute cannot be used on match arms
+  --> $DIR/ambiguous-builtin-attrs.rs:25:11
    |
 LL |         #[repr(C)]
-   |         ^^^^^^^^^^
+   |           ^^^^^^^
    |
-   = help: `#[repr(C)]` can only be applied to data types
+   = help: the `repr(C)` attribute can only be applied to data types
 
-error: `#[repr(C)]` attribute cannot be used on type parameters
-  --> $DIR/ambiguous-builtin-attrs.rs:21:32
+error: the `repr(C)` attribute cannot be used on type parameters
+  --> $DIR/ambiguous-builtin-attrs.rs:21:34
    |
 LL | fn non_macro_expanded_location<#[repr(C)] T>() {
-   |                                ^^^^^^^^^^
+   |                                  ^^^^^^^
    |
-   = help: `#[repr(C)]` can only be applied to data types
+   = help: the `repr(C)` attribute can only be applied to data types
 
 error: aborting due to 9 previous errors
 

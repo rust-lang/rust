@@ -261,10 +261,8 @@ impl NoArgsAttributeParser for RustcDumpVariancesParser {
         Allow(Target::Struct),
         Allow(Target::Union),
     ]);
-    const STABILITY: AttributeStability = unstable!(
-        rustc_attrs,
-        "the `#[rustc_dump_variances]` attribute is used for rustc unit tests"
-    );
+    const STABILITY: AttributeStability =
+        unstable!(rustc_attrs, "the `rustc_dump_variances` attribute is used for rustc unit tests");
     const CREATE: fn(Span) -> AttributeKind = |_| AttributeKind::RustcDumpVariances;
 }
 
