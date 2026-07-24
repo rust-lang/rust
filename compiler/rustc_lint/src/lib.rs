@@ -697,6 +697,11 @@ fn register_builtins(store: &mut LintStore) {
         "converted into hard error, \
          see <https://github.com/rust-lang/rust/issues/78586> for more information",
     );
+    store.register_removed(
+        "no_mangle_generic_items",
+        "converted into hard error, \
+         generic items must always be mangled",
+    );
 }
 
 fn register_internals(store: &mut LintStore) {

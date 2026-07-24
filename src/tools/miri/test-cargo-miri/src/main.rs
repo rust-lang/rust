@@ -86,13 +86,13 @@ mod test {
                 fn assoc_fn_as_exported_symbol() -> i32;
                 fn make_true() -> bool;
                 fn NoMangleStruct();
-                fn no_mangle_generic();
+                fn no_mangle_struct();
             }
             assert_eq!(unsafe { exported_symbol() }, 123456);
             assert_eq!(unsafe { assoc_fn_as_exported_symbol() }, -123456);
             assert!(unsafe { make_true() });
             unsafe { NoMangleStruct() }
-            unsafe { no_mangle_generic() }
+            unsafe { no_mangle_struct() }
         }
     }
 }

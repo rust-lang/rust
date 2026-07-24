@@ -34,6 +34,8 @@ fn assert_contains(
     // `symbols()`.
     let backtrace = format!("{:#?}", backtrace);
     eprintln!("{}", backtrace);
+    // FIXME: this does not actually test that the given function occurs with the given line,
+    // just that the line and the function independently occur somewhere. Is that intended?!?
     assert!(backtrace.contains(expected_name), "backtrace does not contain expected name {}", expected_name);
     assert!(backtrace.contains(expected_file), "backtrace does not contain expected file {}", expected_file);
     assert!(backtrace.contains(&expected_line.to_string()), "backtrace does not contain expected line {}", expected_line);
@@ -48,8 +50,8 @@ fn main() {
     // And with #143208 we also lost `bar` in the line tables.
     #[cfg(not(all(target_pointer_width = "32", target_env = "msvc")))]
     {
-        assert_contains(&backtrace, "foo", "line-tables-only-helper.rs", 5);
-        assert_contains(&backtrace, "bar", "line-tables-only-helper.rs", 10);
+        assert_contains(&backtrace, "foo", "line-tables-only-helper.rs", 4);
+        assert_contains(&backtrace, "bar", "line-tables-only-helper.rs", 8);
     }
-    assert_contains(&backtrace, "baz", "line-tables-only-helper.rs", 5);
+    assert_contains(&backtrace, "baz", "line-tables-only-helper.rs", 12);
 }
