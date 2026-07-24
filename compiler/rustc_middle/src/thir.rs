@@ -660,6 +660,14 @@ pub struct PatExtra<'tcx> {
     /// the pattern node back to the `DefId` of its original constant.
     pub expanded_const: Option<DefId>,
 
+    /// If present, the original constant value that this array or slice
+    /// pattern node was expanded from by `const_to_pat`.
+    ///
+    /// Match lowering uses this to compare the scrutinee against the original
+    /// constant as a whole via `PartialEq::eq`, rather than element by
+    /// element.
+    pub expanded_const_value: Option<ty::Value<'tcx>>,
+
     /// User-written types that must be preserved into MIR so that they can be
     /// checked.
     pub ascriptions: Vec<Ascription<'tcx>>,

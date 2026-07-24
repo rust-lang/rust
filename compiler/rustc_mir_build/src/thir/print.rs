@@ -703,10 +703,15 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
             return;
         };
 
-        let PatExtra { expanded_const, ascriptions } = extra;
+        let PatExtra { expanded_const, expanded_const_value, ascriptions } = extra;
 
         print_indented!(self, "extra: PatExtra {", depth_lvl);
         print_indented!(self, format_args!("expanded_const: {expanded_const:?}"), depth_lvl + 1);
+        print_indented!(
+            self,
+            format_args!("expanded_const_value: {expanded_const_value:?}"),
+            depth_lvl + 1
+        );
         self.print_list(
             "ascriptions",
             ascriptions,

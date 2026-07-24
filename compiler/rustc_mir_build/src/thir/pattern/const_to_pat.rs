@@ -473,7 +473,15 @@ impl<'tcx> ConstToPat<'tcx> {
             }
         };
 
-        Box::new(Pat { span, ty, kind, extra: None })
+        let mut pat = Box::new(Pat { span, ty, kind, extra: None });
+        if matches!(ty.kind(), ty::Array(..) | ty::Slice(_)) {
+            // Record the original constant value on array and slice nodes, so
+            // that match lowering can compare the scrutinee against the whole
+            // constant at once via `PartialEq::eq`, rather than element by
+            // element.
+            pat.extra.get_or_insert_default().expanded_const_value = Some(value);
+        }
+        pat
     }
 }
 
