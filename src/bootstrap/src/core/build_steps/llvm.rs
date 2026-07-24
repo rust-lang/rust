@@ -941,8 +941,25 @@ pub struct BuiltOmpOffload {
 }
 
 impl BuiltOmpOffload {
-    pub fn offload_paths(&self) -> Vec<PathBuf> {
-        self.offload.clone()
+    pub fn artifact_paths_with_symlink_targets(&self) -> Vec<PathBuf> {
+        let mut paths = self.offload.clone();
+
+        for path in &self.offload {
+            let mut current = path.clone();
+
+            while t!(fs::symlink_metadata(&current)).file_type().is_symlink() {
+                let target = t!(fs::read_link(&current));
+                current = current.parent().unwrap().join(target);
+
+                if paths.contains(&current) {
+                    break;
+                }
+
+                paths.push(current.clone());
+            }
+        }
+
+        paths
     }
 }
 
@@ -997,6 +1014,30 @@ impl Step for OmpOffload {
         files.push(out_dir.join("lib").join("libLLVMOffload").with_extension(lib_ext));
         files.push(out_dir.join("lib").join("libomp").with_extension(lib_ext));
         files.push(out_dir.join("lib").join("libomptarget").with_extension(lib_ext));
+        files.push(
+            out_dir.join("lib").join("amdgcn-amd-amdhsa").join("libompdevice").with_extension("a"),
+        );
+        files.push(
+            out_dir
+                .join("lib")
+                .join("amdgcn-amd-amdhsa")
+                .join("libomptarget-amdgpu")
+                .with_extension("bc"),
+        );
+        files.push(
+            out_dir
+                .join("lib")
+                .join("nvptx64-nvidia-cuda")
+                .join("libompdevice")
+                .with_extension("a"),
+        );
+        files.push(
+            out_dir
+                .join("lib")
+                .join("nvptx64-nvidia-cuda")
+                .join("libomptarget-nvptx")
+                .with_extension("bc"),
+        );
 
         // Offload/OpenMP are just subfolders of LLVM, so we can use the LLVM sha.
         static STAMP_HASH_MEMO: OnceLock<String> = OnceLock::new();
@@ -1063,7 +1104,15 @@ impl Step for OmpOffload {
                 cflags.push_all(format!(" -I {inc_dir}"));
             }
 
-            configure_cmake(builder, target, &mut cfg, true, LdFlags::default(), cflags, &[]);
+            // Logic copied from `configure_llvm`
+            // ThinLTO is only available when building with LLVM, enabling LLD is required.
+            // Apple's linker ld64 supports ThinLTO out of the box though, so don't use LLD on Darwin.
+            let mut ldflags = LdFlags::default();
+            if builder.config.llvm_thin_lto && !target.contains("apple") {
+                ldflags.push_all("-fuse-ld=lld");
+            }
+
+            configure_cmake(builder, target, &mut cfg, true, ldflags, cflags, &[]);
 
             // Re-use the same flags as llvm to control the level of debug information
             // generated for offload.
@@ -1097,6 +1146,7 @@ impl Step for OmpOffload {
                 cfg.define("LLVM_ENABLE_RUNTIMES", "openmp;offload");
             } else {
                 // OpenMP provides some device libraries, so we also compile it for all gpu targets.
+                cfg.define("OPENMP_INSTALL_LIBDIR", Path::new("lib").join(omp_target));
                 cfg.define("LLVM_USE_LINKER", "lld");
                 cfg.define("LLVM_ENABLE_RUNTIMES", "openmp");
                 cfg.define("CMAKE_C_COMPILER_TARGET", omp_target);
