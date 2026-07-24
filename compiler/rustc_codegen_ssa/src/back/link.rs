@@ -1806,39 +1806,68 @@ fn print_native_static_libs(
     all_native_libs: &[NativeLib],
     all_rust_dylibs: &[&Path],
 ) {
-    let mut lib_args: Vec<_> = all_native_libs
-        .iter()
-        .filter(|l| relevant_lib(sess, l))
-        .filter_map(|lib| {
-            let name = lib.name;
-            match lib.kind {
-                NativeLibKind::Static { bundle: Some(false), .. }
-                | NativeLibKind::Dylib { .. }
-                | NativeLibKind::Unspecified => {
-                    let verbatim = lib.verbatim;
-                    if sess.target.is_like_msvc {
-                        let (prefix, suffix) = sess.staticlib_components(verbatim);
-                        Some(format!("{prefix}{name}{suffix}"))
-                    } else if sess.target.linker_flavor.is_gnu() {
-                        Some(format!("-l{}{}", if verbatim { ":" } else { "" }, name))
-                    } else {
-                        Some(format!("-l{name}"))
+    let (linker_path, _) = linker_and_flavor(sess);
+    let self_contained_components =
+        self_contained_components(sess, CrateType::StaticLib, &linker_path);
+
+    let mut lib_args = Vec::new();
+
+    if self_contained_components.intersects(
+        LinkSelfContainedComponents::LIBC
+            | LinkSelfContainedComponents::UNWIND
+            | LinkSelfContainedComponents::MINGW,
+    ) {
+        let self_contained_dir = sess
+            .target_tlib_path
+            .dir
+            .join("self-contained")
+            .into_os_string()
+            .into_string()
+            .expect("non-utf8 component in path");
+
+        if sess.target.is_like_msvc {
+            lib_args.push(format!("/LIBPATH:{self_contained_dir}"));
+        } else {
+            lib_args.push("-L".to_string());
+            lib_args.push(self_contained_dir);
+        }
+    }
+
+    lib_args.extend(
+        all_native_libs
+            .iter()
+            .filter(|l| relevant_lib(sess, l))
+            .filter_map(|lib| {
+                let name = lib.name;
+                match lib.kind {
+                    NativeLibKind::Static { bundle: Some(false), .. }
+                    | NativeLibKind::Dylib { .. }
+                    | NativeLibKind::Unspecified => {
+                        let verbatim = lib.verbatim;
+                        if sess.target.is_like_msvc {
+                            let (prefix, suffix) = sess.staticlib_components(verbatim);
+                            Some(format!("{prefix}{name}{suffix}"))
+                        } else if sess.target.linker_flavor.is_gnu() {
+                            Some(format!("-l{}{}", if verbatim { ":" } else { "" }, name))
+                        } else {
+                            Some(format!("-l{name}"))
+                        }
                     }
+                    NativeLibKind::Framework { .. } => {
+                        // ld-only syntax, since there are no frameworks in MSVC
+                        Some(format!("-framework {name}"))
+                    }
+                    // These are included, no need to print them
+                    NativeLibKind::Static { bundle: None | Some(true), .. }
+                    | NativeLibKind::LinkArg
+                    | NativeLibKind::WasmImportModule
+                    | NativeLibKind::RawDylib { .. } => None,
                 }
-                NativeLibKind::Framework { .. } => {
-                    // ld-only syntax, since there are no frameworks in MSVC
-                    Some(format!("-framework {name}"))
-                }
-                // These are included, no need to print them
-                NativeLibKind::Static { bundle: None | Some(true), .. }
-                | NativeLibKind::LinkArg
-                | NativeLibKind::WasmImportModule
-                | NativeLibKind::RawDylib { .. } => None,
-            }
-        })
-        // deduplication of consecutive repeated libraries, see rust-lang/rust#113209
-        .dedup()
-        .collect();
+            })
+            // deduplication of consecutive repeated libraries, see rust-lang/rust#113209
+            .dedup(),
+    );
+
     for path in all_rust_dylibs {
         // FIXME deduplicate with add_dynamic_crate
 
