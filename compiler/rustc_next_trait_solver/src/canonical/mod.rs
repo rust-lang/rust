@@ -324,7 +324,7 @@ where
                 if !infcx
                     .universe_of_ty(a_vid)
                     .unwrap()
-                    .can_name(ty::max_universe_of_placeholders(infcx, b))
+                    .can_name(ty::max_universe_of_non_region_placeholders(infcx, b))
                 {
                     return Err(TypeError::Mismatch);
                 }
@@ -335,7 +335,7 @@ where
                 if !infcx
                     .universe_of_ty(b_vid)
                     .unwrap()
-                    .can_name(ty::max_universe_of_placeholders(infcx, a))
+                    .can_name(ty::max_universe_of_non_region_placeholders(infcx, a))
                 {
                     return Err(TypeError::Mismatch);
                 }
@@ -425,7 +425,7 @@ where
                 if !infcx
                     .universe_of_ct(a_vid)
                     .unwrap()
-                    .can_name(ty::max_universe_of_placeholders(infcx, b))
+                    .can_name(ty::max_universe_of_non_region_placeholders(infcx, b))
                 {
                     return Err(TypeError::Mismatch);
                 }
@@ -436,7 +436,7 @@ where
                 if !infcx
                     .universe_of_ct(b_vid)
                     .unwrap()
-                    .can_name(ty::max_universe_of_placeholders(infcx, a))
+                    .can_name(ty::max_universe_of_non_region_placeholders(infcx, a))
                 {
                     return Err(TypeError::Mismatch);
                 }

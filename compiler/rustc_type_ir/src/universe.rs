@@ -13,7 +13,7 @@ pub fn max_universe<Infcx: InferCtxtLike<Interner = I>, I: Interner, T: TypeFold
     infcx: &Infcx,
     t: T,
 ) -> UniverseIndex {
-    max_universe_inner::<_, _, _, true, true>(infcx, t)
+    max_universe_inner::<_, _, _, true, true, true>(infcx, t)
 }
 
 /// The largest universe a variable was from in `t`
@@ -25,7 +25,7 @@ pub fn max_universe_of_infer_vars<
     infcx: &Infcx,
     t: T,
 ) -> UniverseIndex {
-    max_universe_inner::<_, _, _, false, true>(infcx, t)
+    max_universe_inner::<_, _, _, false, false, true>(infcx, t)
 }
 
 /// The largest universe a placeholder was from in `t`
@@ -37,24 +37,50 @@ pub fn max_universe_of_placeholders<
     infcx: &Infcx,
     t: T,
 ) -> UniverseIndex {
-    max_universe_inner::<_, _, _, true, false>(infcx, t)
+    max_universe_inner::<_, _, _, true, true, false>(infcx, t)
+}
+
+/// The largest universe a type or const placeholder was from in `t`
+pub fn max_universe_of_non_region_placeholders<
+    Infcx: InferCtxtLike<Interner = I>,
+    I: Interner,
+    T: TypeFoldable<I>,
+>(
+    infcx: &Infcx,
+    t: T,
+) -> UniverseIndex {
+    max_universe_inner::<_, _, _, true, false, false>(infcx, t)
 }
 
 fn max_universe_inner<
     Infcx: InferCtxtLike<Interner = I>,
     I: Interner,
     T: TypeFoldable<I>,
-    const VISIT_PLACEHOLDER: bool,
+    const VISIT_NON_REGION_PLACEHOLDER: bool,
+    const VISIT_REGION_PLACEHOLDER: bool,
     const VISIT_INFER: bool,
 >(
     infcx: &Infcx,
     t: T,
 ) -> UniverseIndex {
-    if !MaxUniverse::<Infcx, I, VISIT_PLACEHOLDER, VISIT_INFER>::needs_visit(&t) {
+    if !MaxUniverse::<
+        Infcx,
+        I,
+        VISIT_NON_REGION_PLACEHOLDER,
+        VISIT_REGION_PLACEHOLDER,
+        VISIT_INFER,
+    >::needs_visit(&t)
+    {
         return UniverseIndex::ROOT;
     }
 
-    let mut visitor = MaxUniverse::<_, _, VISIT_PLACEHOLDER, VISIT_INFER>::new(infcx);
+    let mut visitor = MaxUniverse::<
+        _,
+        _,
+        VISIT_NON_REGION_PLACEHOLDER,
+        VISIT_REGION_PLACEHOLDER,
+        VISIT_INFER,
+    >::new(infcx);
     // FIXME: make this a debug_assert and let callers resolve vars. Then the input only needs to
     // be `TypeVisitable`.
     let t = infcx.resolve_vars_if_possible(t);
@@ -66,7 +92,8 @@ struct MaxUniverse<
     'a,
     Infcx: InferCtxtLike<Interner = I>,
     I: Interner,
-    const VISIT_PLACEHOLDER: bool,
+    const VISIT_NON_REGION_PLACEHOLDER: bool,
+    const VISIT_REGION_PLACEHOLDER: bool,
     const VISIT_INFER: bool,
 > {
     max_universe: UniverseIndex,
@@ -78,9 +105,10 @@ impl<
     'a,
     Infcx: InferCtxtLike<Interner = I>,
     I: Interner,
-    const VISIT_PLACEHOLDER: bool,
+    const VISIT_NON_REGION_PLACEHOLDER: bool,
+    const VISIT_REGION_PLACEHOLDER: bool,
     const VISIT_INFER: bool,
-> MaxUniverse<'a, Infcx, I, VISIT_PLACEHOLDER, VISIT_INFER>
+> MaxUniverse<'a, Infcx, I, VISIT_NON_REGION_PLACEHOLDER, VISIT_REGION_PLACEHOLDER, VISIT_INFER>
 {
     fn new(infcx: &'a Infcx) -> Self {
         MaxUniverse { infcx, max_universe: UniverseIndex::ROOT, cache: Default::default() }
@@ -92,7 +120,8 @@ impl<
 
     #[instrument(ret, level = "debug")]
     fn needs_visit<T: TypeVisitable<I>>(t: &T) -> bool {
-        (VISIT_PLACEHOLDER && t.has_placeholders()) || (VISIT_INFER && t.has_infer())
+        ((VISIT_NON_REGION_PLACEHOLDER || VISIT_REGION_PLACEHOLDER) && t.has_placeholders())
+            || (VISIT_INFER && t.has_infer())
     }
 }
 
@@ -100,9 +129,18 @@ impl<
     'a,
     Infcx: InferCtxtLike<Interner = I>,
     I: Interner,
-    const VISIT_PLACEHOLDER: bool,
+    const VISIT_NON_REGION_PLACEHOLDER: bool,
+    const VISIT_REGION_PLACEHOLDER: bool,
     const VISIT_INFER: bool,
-> TypeVisitor<I> for MaxUniverse<'a, Infcx, I, VISIT_PLACEHOLDER, VISIT_INFER>
+> TypeVisitor<I>
+    for MaxUniverse<
+        'a,
+        Infcx,
+        I,
+        VISIT_NON_REGION_PLACEHOLDER,
+        VISIT_REGION_PLACEHOLDER,
+        VISIT_INFER,
+    >
 {
     type Result = ();
 
@@ -116,7 +154,7 @@ impl<
         }
 
         match t.kind() {
-            TyKind::Placeholder(p) if VISIT_PLACEHOLDER => {
+            TyKind::Placeholder(p) if VISIT_NON_REGION_PLACEHOLDER => {
                 self.max_universe = self.max_universe.max(p.universe)
             }
             TyKind::Infer(InferTy::TyVar(inf)) if VISIT_INFER => {
@@ -136,7 +174,7 @@ impl<
         }
 
         match c.kind() {
-            ConstKind::Placeholder(p) if VISIT_PLACEHOLDER => {
+            ConstKind::Placeholder(p) if VISIT_NON_REGION_PLACEHOLDER => {
                 self.max_universe = self.max_universe.max(p.universe)
             }
             ConstKind::Infer(rustc_type_ir::InferConst::Var(inf)) if VISIT_INFER => {
@@ -150,12 +188,12 @@ impl<
 
     fn visit_region(&mut self, r: Region<I>) {
         match r.kind() {
-            RegionKind::RePlaceholder(p) if VISIT_PLACEHOLDER => {
+            RegionKind::RePlaceholder(p) if VISIT_REGION_PLACEHOLDER => {
                 self.max_universe = self.max_universe.max(p.universe)
             }
             RegionKind::ReVar(var) if VISIT_INFER => {
                 match self.infcx.opportunistic_resolve_lt_var(var).kind() {
-                    RegionKind::RePlaceholder(p) if VISIT_PLACEHOLDER => {
+                    RegionKind::RePlaceholder(p) if VISIT_REGION_PLACEHOLDER => {
                         self.max_universe = self.max_universe.max(p.universe)
                     }
                     RegionKind::ReVar(var) if VISIT_INFER => {
