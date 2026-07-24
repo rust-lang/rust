@@ -28,6 +28,10 @@ fn let_init() -> () {
         _6 = &_7;
         _5 = &(*_6);
         _4 = (const 7_u32, const 12_u64, move _5);
+        goto -> bb1;
+    }
+
+    bb1: {
         StorageDead(_5);
         PlaceMention(_4);
         AscribeUserType(_4, +, UserTypeProjection { base: UserType(1), projs: [] });
@@ -37,18 +41,26 @@ fn let_init() -> () {
         _2 = copy (_4.1: u64);
         StorageLive(_3);
         _3 = copy (_4.2: &char);
+        goto -> bb3;
+    }
+
+    bb2: {
+        FakeRead(ForMatchedPlace(None), _4);
+        unreachable;
+    }
+
+    bb3: {
         StorageDead(_6);
         StorageDead(_4);
         _0 = const ();
+        goto -> bb4;
+    }
+
+    bb4: {
         StorageDead(_3);
         StorageDead(_2);
         StorageDead(_1);
         StorageDead(_7);
         return;
-    }
-
-    bb1: {
-        FakeRead(ForMatchedPlace(None), _4);
-        unreachable;
     }
 }

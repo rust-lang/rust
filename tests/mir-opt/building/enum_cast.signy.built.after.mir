@@ -11,6 +11,10 @@ fn signy(_1: SignedAroundZero) -> i16 {
         _2 = move _1;
         _3 = discriminant(_2);
         _0 = move _3 as i16 (IntToInt);
+        goto -> bb1;
+    }
+
+    bb1: {
         StorageDead(_2);
         return;
     }

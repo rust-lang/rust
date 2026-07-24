@@ -68,6 +68,10 @@ fn match_assoc_const_range() -> () {
     }
 
     bb11: {
+        goto -> bb12;
+    }
+
+    bb12: {
         StorageDead(_1);
         return;
     }

@@ -21,7 +21,7 @@ fn simple(_1: State) -> State {
     }
 
     bb1: {
-        falseUnwind -> [real: bb2, unwind: bb37];
+        falseUnwind -> [real: bb2, unwind: bb39];
     }
 
     bb2: {
@@ -53,7 +53,7 @@ fn simple(_1: State) -> State {
 
     bb8: {
         _2 = const ();
-        goto -> bb36;
+        goto -> bb37;
     }
 
     bb9: {
@@ -77,7 +77,7 @@ fn simple(_1: State) -> State {
     }
 
     bb13: {
-        goto -> bb34;
+        goto -> bb35;
     }
 
     bb14: {
@@ -85,7 +85,7 @@ fn simple(_1: State) -> State {
     }
 
     bb15: {
-        goto -> bb32;
+        goto -> bb33;
     }
 
     bb16: {
@@ -103,7 +103,7 @@ fn simple(_1: State) -> State {
     }
 
     bb19: {
-        goto -> bb33;
+        goto -> bb34;
     }
 
     bb20: {
@@ -130,7 +130,7 @@ fn simple(_1: State) -> State {
     }
 
     bb25: {
-        goto -> bb33;
+        goto -> bb34;
     }
 
     bb26: {
@@ -147,43 +147,51 @@ fn simple(_1: State) -> State {
     }
 
     bb29: {
-        StorageDead(_7);
-        goto -> bb32;
+        goto -> bb30;
     }
 
     bb30: {
-        unreachable;
+        StorageDead(_7);
+        goto -> bb33;
     }
 
     bb31: {
-        goto -> bb32;
+        unreachable;
     }
 
     bb32: {
-        _1 = move _4;
-        goto -> bb35;
+        goto -> bb33;
     }
 
     bb33: {
-        StorageDead(_7);
-        goto -> bb34;
+        _1 = move _4;
+        goto -> bb36;
     }
 
     bb34: {
+        StorageDead(_7);
         goto -> bb35;
     }
 
     bb35: {
-        goto -> bb1;
+        goto -> bb36;
     }
 
     bb36: {
+        goto -> bb1;
+    }
+
+    bb37: {
+        goto -> bb38;
+    }
+
+    bb38: {
         StorageDead(_2);
         _0 = move _1;
         return;
     }
 
-    bb37 (cleanup): {
+    bb39 (cleanup): {
         resume;
     }
 }

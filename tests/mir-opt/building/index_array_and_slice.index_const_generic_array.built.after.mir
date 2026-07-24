@@ -14,18 +14,22 @@ fn index_const_generic_array(_1: &[i32; N], _2: usize) -> &i32 {
         _4 = copy _2;
         FakeRead(ForIndex, (*_1));
         _5 = Lt(copy _4, const N);
-        assert(move _5, "index out of bounds: the length is {} but the index is {}", const N, copy _4) -> [success: bb1, unwind: bb2];
+        assert(move _5, "index out of bounds: the length is {} but the index is {}", const N, copy _4) -> [success: bb1, unwind: bb3];
     }
 
     bb1: {
         _3 = &(*_1)[_4];
         _0 = &(*_3);
+        goto -> bb2;
+    }
+
+    bb2: {
         StorageDead(_4);
         StorageDead(_3);
         return;
     }
 
-    bb2 (cleanup): {
+    bb3 (cleanup): {
         resume;
     }
 }

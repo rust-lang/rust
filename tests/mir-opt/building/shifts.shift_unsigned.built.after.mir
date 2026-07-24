@@ -42,11 +42,15 @@ fn shift_unsigned(_1: u8, _2: i128, _3: u8, _4: u32, _5: u128) -> ([u8; 3], [i12
         StorageLive(_9);
         _9 = copy _3;
         _10 = Lt(copy _9, const 8_u8);
-        assert(move _10, "attempt to shift right by `{}`, which would overflow", copy _9) -> [success: bb1, unwind: bb7];
+        assert(move _10, "attempt to shift right by `{}`, which would overflow", copy _9) -> [success: bb1, unwind: bb16];
     }
 
     bb1: {
         _7 = Shr(move _8, move _9);
+        goto -> bb2;
+    }
+
+    bb2: {
         StorageDead(_9);
         StorageDead(_8);
         StorageLive(_11);
@@ -55,11 +59,15 @@ fn shift_unsigned(_1: u8, _2: i128, _3: u8, _4: u32, _5: u128) -> ([u8; 3], [i12
         StorageLive(_13);
         _13 = copy _4;
         _14 = Lt(copy _13, const 8_u32);
-        assert(move _14, "attempt to shift right by `{}`, which would overflow", copy _13) -> [success: bb2, unwind: bb7];
+        assert(move _14, "attempt to shift right by `{}`, which would overflow", copy _13) -> [success: bb3, unwind: bb16];
     }
 
-    bb2: {
+    bb3: {
         _11 = Shr(move _12, move _13);
+        goto -> bb4;
+    }
+
+    bb4: {
         StorageDead(_13);
         StorageDead(_12);
         StorageLive(_15);
@@ -68,14 +76,22 @@ fn shift_unsigned(_1: u8, _2: i128, _3: u8, _4: u32, _5: u128) -> ([u8; 3], [i12
         StorageLive(_17);
         _17 = copy _5;
         _18 = Lt(copy _17, const 8_u128);
-        assert(move _18, "attempt to shift right by `{}`, which would overflow", copy _17) -> [success: bb3, unwind: bb7];
+        assert(move _18, "attempt to shift right by `{}`, which would overflow", copy _17) -> [success: bb5, unwind: bb16];
     }
 
-    bb3: {
+    bb5: {
         _15 = Shr(move _16, move _17);
+        goto -> bb6;
+    }
+
+    bb6: {
         StorageDead(_17);
         StorageDead(_16);
         _6 = [move _7, move _11, move _15];
+        goto -> bb7;
+    }
+
+    bb7: {
         StorageDead(_15);
         StorageDead(_11);
         StorageDead(_7);
@@ -86,11 +102,15 @@ fn shift_unsigned(_1: u8, _2: i128, _3: u8, _4: u32, _5: u128) -> ([u8; 3], [i12
         StorageLive(_22);
         _22 = copy _3;
         _23 = Lt(copy _22, const 128_u8);
-        assert(move _23, "attempt to shift left by `{}`, which would overflow", copy _22) -> [success: bb4, unwind: bb7];
+        assert(move _23, "attempt to shift left by `{}`, which would overflow", copy _22) -> [success: bb8, unwind: bb16];
     }
 
-    bb4: {
+    bb8: {
         _20 = Shl(move _21, move _22);
+        goto -> bb9;
+    }
+
+    bb9: {
         StorageDead(_22);
         StorageDead(_21);
         StorageLive(_24);
@@ -99,11 +119,15 @@ fn shift_unsigned(_1: u8, _2: i128, _3: u8, _4: u32, _5: u128) -> ([u8; 3], [i12
         StorageLive(_26);
         _26 = copy _4;
         _27 = Lt(copy _26, const 128_u32);
-        assert(move _27, "attempt to shift left by `{}`, which would overflow", copy _26) -> [success: bb5, unwind: bb7];
+        assert(move _27, "attempt to shift left by `{}`, which would overflow", copy _26) -> [success: bb10, unwind: bb16];
     }
 
-    bb5: {
+    bb10: {
         _24 = Shl(move _25, move _26);
+        goto -> bb11;
+    }
+
+    bb11: {
         StorageDead(_26);
         StorageDead(_25);
         StorageLive(_28);
@@ -112,24 +136,36 @@ fn shift_unsigned(_1: u8, _2: i128, _3: u8, _4: u32, _5: u128) -> ([u8; 3], [i12
         StorageLive(_30);
         _30 = copy _5;
         _31 = Lt(copy _30, const 128_u128);
-        assert(move _31, "attempt to shift left by `{}`, which would overflow", copy _30) -> [success: bb6, unwind: bb7];
+        assert(move _31, "attempt to shift left by `{}`, which would overflow", copy _30) -> [success: bb12, unwind: bb16];
     }
 
-    bb6: {
+    bb12: {
         _28 = Shl(move _29, move _30);
+        goto -> bb13;
+    }
+
+    bb13: {
         StorageDead(_30);
         StorageDead(_29);
         _19 = [move _20, move _24, move _28];
+        goto -> bb14;
+    }
+
+    bb14: {
         StorageDead(_28);
         StorageDead(_24);
         StorageDead(_20);
         _0 = (move _6, move _19);
+        goto -> bb15;
+    }
+
+    bb15: {
         StorageDead(_19);
         StorageDead(_6);
         return;
     }
 
-    bb7 (cleanup): {
+    bb16 (cleanup): {
         resume;
     }
 }

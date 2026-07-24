@@ -22,18 +22,30 @@ fn let_init_bindless() -> () {
         _3 = &_4;
         _2 = &(*_3);
         _1 = (const 7_u32, const 12_u64, move _2);
-        StorageDead(_2);
-        PlaceMention(_1);
-        AscribeUserType(_1, +, UserTypeProjection { base: UserType(1), projs: [] });
-        StorageDead(_3);
-        StorageDead(_1);
-        _0 = const ();
-        StorageDead(_4);
-        return;
+        goto -> bb1;
     }
 
     bb1: {
+        StorageDead(_2);
+        PlaceMention(_1);
+        AscribeUserType(_1, +, UserTypeProjection { base: UserType(1), projs: [] });
+        goto -> bb3;
+    }
+
+    bb2: {
         FakeRead(ForMatchedPlace(None), _1);
         unreachable;
+    }
+
+    bb3: {
+        StorageDead(_3);
+        StorageDead(_1);
+        _0 = const ();
+        goto -> bb4;
+    }
+
+    bb4: {
+        StorageDead(_4);
+        return;
     }
 }

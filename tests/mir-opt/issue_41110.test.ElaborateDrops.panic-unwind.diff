@@ -41,20 +41,20 @@
   
       bb2: {
           _2 = move _5;
--         drop(_5) -> [return: bb4, unwind: bb8];
+-         drop(_5) -> [return: bb4, unwind: bb7];
 +         goto -> bb4;
       }
   
       bb3 (cleanup): {
           _2 = move _5;
--         drop(_5) -> [return: bb8, unwind terminate(cleanup)];
-+         goto -> bb8;
+-         drop(_5) -> [return: bb7, unwind terminate(cleanup)];
++         goto -> bb7;
       }
   
       bb4: {
           StorageDead(_5);
           _0 = const ();
-          drop(_2) -> [return: bb5, unwind: bb9];
+          drop(_2) -> [return: bb5, unwind: bb8];
       }
   
       bb5: {
@@ -70,30 +70,25 @@
       }
   
       bb7 (cleanup): {
--         drop(_4) -> [return: bb8, unwind terminate(cleanup)];
+-         drop(_2) -> [return: bb8, unwind terminate(cleanup)];
 +         goto -> bb8;
       }
   
       bb8 (cleanup): {
--         drop(_2) -> [return: bb9, unwind terminate(cleanup)];
-+         goto -> bb9;
+-         drop(_1) -> [return: bb9, unwind terminate(cleanup)];
++         goto -> bb11;
       }
   
       bb9 (cleanup): {
--         drop(_1) -> [return: bb10, unwind terminate(cleanup)];
-+         goto -> bb12;
-      }
-  
-      bb10 (cleanup): {
           resume;
 +     }
 + 
-+     bb11 (cleanup): {
-+         drop(_1) -> [return: bb10, unwind terminate(cleanup)];
++     bb10 (cleanup): {
++         drop(_1) -> [return: bb9, unwind terminate(cleanup)];
 +     }
 + 
-+     bb12 (cleanup): {
-+         switchInt(copy _6) -> [0: bb10, otherwise: bb11];
++     bb11 (cleanup): {
++         switchInt(copy _6) -> [0: bb9, otherwise: bb10];
       }
   }
   

@@ -40,6 +40,10 @@ fn match_assoc_const() -> () {
     }
 
     bb6: {
+        goto -> bb7;
+    }
+
+    bb7: {
         StorageDead(_1);
         return;
     }

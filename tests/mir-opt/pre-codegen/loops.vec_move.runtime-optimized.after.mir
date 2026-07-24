@@ -75,45 +75,45 @@ fn vec_move(_1: Vec<impl Sized>) -> () {
                             scope 30 (inlined MaybeDangling::<Vec<impl Sized>>::as_ref) {
                             }
                         }
-                        scope 31 (inlined Vec::<impl Sized>::len) {
-                            debug self => _33;
-                            let mut _13: bool;
-                            scope 32 {
+                        scope 31 (inlined <ManuallyDrop<Vec<impl Sized>> as Deref>::deref) {
+                            debug self => _36;
+                            scope 32 (inlined MaybeDangling::<Vec<impl Sized>>::as_ref) {
                             }
                         }
-                        scope 33 (inlined std::ptr::mut_ptr::<impl *mut impl Sized>::wrapping_byte_add) {
+                        scope 33 (inlined Vec::<impl Sized>::len) {
+                            debug self => _33;
+                            let mut _13: bool;
+                            scope 34 {
+                            }
+                        }
+                        scope 35 (inlined std::ptr::mut_ptr::<impl *mut impl Sized>::wrapping_byte_add) {
                             debug self => _7;
                             debug count => _12;
                             let mut _14: *mut u8;
                             let mut _18: *mut u8;
                             let mut _19: *const impl Sized;
-                            scope 34 (inlined std::ptr::mut_ptr::<impl *mut impl Sized>::cast::<u8>) {
+                            scope 36 (inlined std::ptr::mut_ptr::<impl *mut impl Sized>::cast::<u8>) {
                                 debug self => _7;
                             }
-                            scope 35 (inlined std::ptr::mut_ptr::<impl *mut u8>::wrapping_add) {
+                            scope 37 (inlined std::ptr::mut_ptr::<impl *mut u8>::wrapping_add) {
                                 debug self => _14;
                                 debug count => _12;
                                 let mut _15: isize;
-                                scope 36 (inlined std::ptr::mut_ptr::<impl *mut u8>::wrapping_offset) {
+                                scope 38 (inlined std::ptr::mut_ptr::<impl *mut u8>::wrapping_offset) {
                                     debug self => _14;
                                     debug count => _15;
                                     let mut _16: *const u8;
                                     let mut _17: *const u8;
                                 }
                             }
-                            scope 37 (inlined std::ptr::mut_ptr::<impl *mut u8>::with_metadata_of::<impl Sized>) {
+                            scope 39 (inlined std::ptr::mut_ptr::<impl *mut u8>::with_metadata_of::<impl Sized>) {
                                 debug self => _18;
                                 debug meta => _19;
-                                scope 38 (inlined std::ptr::metadata::<impl Sized>) {
+                                scope 40 (inlined std::ptr::metadata::<impl Sized>) {
                                     debug ptr => _19;
                                 }
-                                scope 39 (inlined std::ptr::from_raw_parts_mut::<impl Sized, ()>) {
+                                scope 41 (inlined std::ptr::from_raw_parts_mut::<impl Sized, ()>) {
                                 }
-                            }
-                        }
-                        scope 40 (inlined <ManuallyDrop<Vec<impl Sized>> as Deref>::deref) {
-                            debug self => _36;
-                            scope 41 (inlined MaybeDangling::<Vec<impl Sized>>::as_ref) {
                             }
                         }
                         scope 42 (inlined Vec::<impl Sized>::len) {
