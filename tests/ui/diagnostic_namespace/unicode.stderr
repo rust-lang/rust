@@ -1,0 +1,35 @@
+error: positional arguments are not permitted in diagnostic attributes
+  --> $DIR/unicode.rs:4:70
+   |
+LL | #[diagnostic::on_unimplemented(message = " \x00 \u{b123} \\u{b123} {:?}")]
+   |                                                                      ^ remove this format argument
+   |
+   = help: you can print empty braces by escaping them
+note: the lint level is defined here
+  --> $DIR/unicode.rs:2:9
+   |
+LL | #![deny(malformed_diagnostic_format_literals)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: format specifiers are not permitted in diagnostic attributes
+  --> $DIR/unicode.rs:4:70
+   |
+LL | #[diagnostic::on_unimplemented(message = " \x00 \u{b123} \\u{b123} {:?}")]
+   |                                                                      ^^ remove this format specifier
+
+error: positional arguments are not permitted in diagnostic attributes
+  --> $DIR/unicode.rs:7:53
+   |
+LL | #[diagnostic::on_unimplemented(note = "🦀🦀🦀🦀🦀🦀🦀🦀🦀🦀🦀🦀{:?}")]
+   |                                                                 ^ remove this format argument
+   |
+   = help: you can print empty braces by escaping them
+
+error: format specifiers are not permitted in diagnostic attributes
+  --> $DIR/unicode.rs:7:53
+   |
+LL | #[diagnostic::on_unimplemented(note = "🦀🦀🦀🦀🦀🦀🦀🦀🦀🦀🦀🦀{:?}")]
+   |                                                                 ^^ remove this format specifier
+
+error: aborting due to 4 previous errors
+
