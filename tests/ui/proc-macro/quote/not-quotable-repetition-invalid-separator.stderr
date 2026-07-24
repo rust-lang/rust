@@ -1,0 +1,23 @@
+error[E0277]: the trait bound `[{integer}; 3]: ToTokens` is not satisfied
+  --> $DIR/not-quotable-repetition-invalid-separator.rs:9:5
+   |
+LL |     quote! { $($arr) $$ x .. false [] * };
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     the trait `ToTokens` is not implemented for `[{integer}; 3]`
+   |     required by a bound introduced by this call
+   |
+   = help: the following other types implement trait `ToTokens`:
+             &T
+             &mut T
+             Box<T>
+             CString
+             Cow<'_, T>
+             Option<T>
+             Rc<T>
+             bool
+           and 24 others
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.
