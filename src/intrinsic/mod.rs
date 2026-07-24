@@ -8,7 +8,7 @@ use gccjit::{CType, ComparisonOp, Function, FunctionType, RValue, ToRValue, Type
 use rustc_abi::{Align, BackendRepr, HasDataLayout, WrappingRange};
 use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_codegen_ssa::common::IntPredicate;
-use rustc_codegen_ssa::errors::InvalidMonomorphization;
+use rustc_codegen_ssa::diagnostics::InvalidMonomorphization;
 use rustc_codegen_ssa::mir::IntrinsicResult;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::{PlaceRef, PlaceValue};
@@ -604,7 +604,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
 
         for arg in args {
             match arg.val {
-                OperandValue::ZeroSized => {}
+                OperandValue::ZeroSized | OperandValue::Uninit => {}
                 OperandValue::Immediate(_) => call_args.push(arg.immediate()),
                 OperandValue::Pair(a, b) => {
                     call_args.push(a);

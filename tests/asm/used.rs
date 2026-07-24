@@ -4,9 +4,11 @@
 #![feature(used_with_arg)]
 #![crate_type = "lib"]
 
-// CHECK: .section	.rodata._RNvCslVCd7eQSKhE_4used1X,"a"
+// CHECK: .section	.rodata.X,"a"
 #[used(compiler)]
+#[no_mangle]
 pub static X: u32 = 12;
-// CHECK: .section	.rodata._RNvCslVCd7eQSKhE_4used1Y,"aR"
+// CHECK: .section	.rodata.Y,"aR"
 #[used(linker)]
+#[no_mangle]
 pub static Y: u32 = 12;

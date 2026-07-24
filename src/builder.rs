@@ -1091,7 +1091,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         let val = if place.val.llextra.is_some() {
             // FIXME: Merge with the `else` below?
             OperandValue::Ref(place.val)
-        } else if place.layout.is_gcc_immediate() {
+        } else if place.layout.backend_repr.is_scalar_or_simd() {
             let load = self.load(place.layout.gcc_type(self), place.val.llval, place.val.align);
             OperandValue::Immediate(
                 if let abi::BackendRepr::Scalar(ref scalar) = place.layout.backend_repr {
