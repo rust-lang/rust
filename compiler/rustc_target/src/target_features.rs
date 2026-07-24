@@ -1219,7 +1219,7 @@ impl Target {
     /// These features are checked against the target features reported by LLVM based on
     /// `-Ctarget-cpu` and `-Ctarget-features`. Constraint violations result in a warning.
     ///
-    /// We also check features enabled via `#[target_features]` (and here, constraint violations
+    /// We also check features enabled via `#[target_feature(..)]` (and here, constraint violations
     /// emit a hard error), including features enabled indirectly via implications -- but if LLVM
     /// considers more features to be implied than we do, that could bypass this check!
     pub fn abi_required_features(&self) -> FeatureConstraints {
