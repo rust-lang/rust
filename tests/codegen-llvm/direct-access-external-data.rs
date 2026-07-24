@@ -47,3 +47,10 @@ pub fn refer() {
     core::hint::black_box(EXTERNAL);
     core::hint::black_box(WEAK);
 }
+
+// DIRECT: !{{[0-9]+}} = !{i32 7, !"direct-access-external-data", i32 1}
+
+// INDIRECT: !{{[0-9]+}} = !{i32 7, !"direct-access-external-data", i32 0}
+
+// DEFAULT-NOT: direct-access-external-data
+// PIE-NOT: direct-access-external-data
