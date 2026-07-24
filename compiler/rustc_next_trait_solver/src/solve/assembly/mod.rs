@@ -365,6 +365,11 @@ where
         goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased>;
 
+    fn consider_builtin_try_as_dyn_candidate(
+        ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased>;
+
     /// Consider (possibly several) candidates to upcast or unsize a type to another
     /// type, excluding the coercion of a sized type into a `dyn Trait`.
     ///
@@ -483,6 +488,7 @@ where
                     TypingMode::Coherence => true,
                     TypingMode::Typeck { .. }
                     | TypingMode::PostTypeckUntilBorrowck { .. }
+                    | TypingMode::Reflection
                     | TypingMode::PostBorrowck { .. }
                     | TypingMode::PostAnalysis
                     | TypingMode::Codegen
@@ -567,6 +573,14 @@ where
     ) -> Result<(), RerunNonErased> {
         let cx = self.cx();
         let trait_def_id = goal.predicate.trait_def_id(cx);
+
+        // Builtin impls regularly are not `is_fully_generic_for_reflection`, so instead
+        // of trying to handle these manually, we just reject all builtin impls in reflection
+        // mode. We can probably lift this restriction for specific cases, but this is safer.
+        // See `try_as_dyn_builtin_impl` for how just allowing all builtin impls is unsound.
+        if self.typing_mode().is_reflection() {
+            return Ok(());
+        }
 
         // N.B. When assembling built-in candidates for lang items that are also
         // `auto` traits, then the auto trait candidate that is assembled in
@@ -659,6 +673,9 @@ where
                 }
                 Some(SolverTraitLangItem::BikeshedGuaranteedNoDrop) => {
                     G::consider_builtin_bikeshed_guaranteed_no_drop_candidate(self, goal)
+                }
+                Some(SolverTraitLangItem::TryAsDyn) => {
+                    G::consider_builtin_try_as_dyn_candidate(self, goal)
                 }
                 Some(SolverTraitLangItem::Field) => G::consider_builtin_field_candidate(self, goal),
                 _ => Err(NoSolution.into()),
@@ -872,6 +889,14 @@ where
             return;
         }
 
+        // Builtin impls regularly are not `is_fully_generic_for_reflection`, so instead
+        // of trying to handle these manually, we just reject all builtin impls in reflection
+        // mode. We can probably lift this restriction for specific cases, but this is safer.
+        // See `try_as_dyn_builtin_impl` for how just allowing all builtin impls is unsound.
+        if self.typing_mode().is_reflection() {
+            return;
+        }
+
         let self_ty = goal.predicate.self_ty();
         let bounds = match self_ty.kind() {
             ty::Bool
@@ -1066,6 +1091,7 @@ where
             | TypingMode::PostTypeckUntilBorrowck { .. }
             | TypingMode::PostBorrowck { .. }
             | TypingMode::PostAnalysis
+            | TypingMode::Reflection
             | TypingMode::Codegen => vec![],
             TypingMode::ErasedNotCoherence(MayBeErased) => {
                 self.opaque_accesses

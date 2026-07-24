@@ -86,7 +86,7 @@
 - [Debugging bootstrap](./building/bootstrapping/debugging-bootstrap.md)
 - [cfg(bootstrap) in dependencies](./building/bootstrapping/bootstrap-in-dependencies.md)
 
-# High-level Compiler Architecture
+# High-level compiler architecture
 
 - [Prologue](./part-2-intro.md)
 - [Overview of the compiler](./overview.md)
@@ -115,7 +115,7 @@
     - [Autodiff flags](./autodiff/flags.md)
     - [Type Trees](./autodiff/type-trees.md)
 
-# Source Code Representation
+# Source code representation
 
 - [Prologue](./part-3-intro.md)
 - [Syntax and the AST](./syntax-intro.md)
@@ -140,7 +140,7 @@
     - [MIR queries and passes: getting the MIR](./mir/passes.md)
 - [Inline assembly](./asm.md)
 
-# Supporting Infrastructure
+# Supporting infrastructure
 
 - [Command-line arguments](./cli.md)
 - [rustc_driver and rustc_interface](./rustc-driver/intro.md)
@@ -167,8 +167,8 @@
     - [ADTs and Generic Arguments](./ty-module/generic-arguments.md)
     - [Parameter types/consts/regions](./ty-module/param-ty-const-regions.md)
 - [`TypeFolder` and `TypeFoldable`](./ty-fold.md)
-- [Aliases and Normalization](./normalization.md)
-- [Typing/Param Envs](./typing-parameter-envs.md)
+- [Aliases and normalization](./normalization.md)
+- [Typing/Param envs](./typing-parameter-envs.md)
 - [Type inference](./type-inference.md)
 - [Trait solving](./traits/resolution.md)
     - [Higher-ranked trait bounds](./traits/hrtb.md)
@@ -199,7 +199,7 @@
 - [HIR Type checking](./hir-typeck/summary.md)
     - [Coercions](./hir-typeck/coercions.md)
     - [Method lookup](./hir-typeck/method-lookup.md)
-- [Const Generics](./const-generics.md)
+- [Const generics](./const-generics.md)
 - [Opaque types](./opaque-types-type-alias-impl-trait.md)
     - [Inference details](./opaque-types-impl-trait-inference.md)
     - [Return Position Impl Trait In Trait](./return-position-impl-trait-in-trait.md)
@@ -239,18 +239,18 @@
     - [Debugging LLVM](./backend/debugging.md)
     - [Backend Agnostic Codegen](./backend/backend-agnostic.md)
     - [Implicit caller location](./backend/implicit-caller-location.md)
-- [Debug Info](./debuginfo/intro.md)
-    - [Rust Codegen](./debuginfo/rust-codegen.md)
-    - [LLVM Codegen](./debuginfo/llvm-codegen.md)
-    - [Debugger Internals](./debuginfo/debugger-internals.md)
-        - [LLDB Internals](./debuginfo/lldb-internals.md)
-        - [GDB Internals](./debuginfo/gdb-internals.md)
-    - [Debugger Visualizers](./debuginfo/debugger-visualizers.md)
+- [Debug info](./debuginfo/intro.md)
+    - [Rust codegen](./debuginfo/rust-codegen.md)
+    - [LLVM codegen](./debuginfo/llvm-codegen.md)
+    - [Debugger internals](./debuginfo/debugger-internals.md)
+        - [LLDB internals](./debuginfo/lldb-internals.md)
+        - [GDB internals](./debuginfo/gdb-internals.md)
+    - [Debugger visualizers](./debuginfo/debugger-visualizers.md)
         - [LLDB - Python Providers](./debuginfo/lldb-visualizers.md)
         - [GDB - Python Providers](./debuginfo/gdb-visualizers.md)
         - [CDB - Natvis](./debuginfo/natvis-visualizers.md)
     - [Testing](./debuginfo/testing.md)
-    - [(Lecture Notes) Debugging support in the Rust compiler](./debugging-support-in-rustc.md)
+    - [(Lecture notes) Debugging support in the Rust compiler](./debugging-support-in-rustc.md)
 - [Libraries and metadata](./backend/libs-and-metadata.md)
 - [Profile-guided optimization](./profile-guided-optimization.md)
 - [LLVM source-based code coverage](./llvm-coverage-instrumentation.md)

@@ -7,22 +7,18 @@
 //@ ignore-backends: gcc
 
 #![crate_type = "rlib"]
-#![feature(no_core, repr_simd)]
+#![feature(no_core)]
 #![no_core]
 #![allow(non_camel_case_types)]
 
 extern crate minicore;
+use minicore::simd::i64x2;
 use minicore::*;
-
-#[repr(simd)]
-pub struct i64x2([i64; 2]);
-
-impl Copy for i64x2 {}
 
 fn f() {
     let mut x = 0;
     let mut b = 0u8;
-    let mut v = i64x2([0; 2]);
+    let mut v = i64x2::from_array([0; 2]);
     unsafe {
         // Unsupported registers
         asm!("", out("r11") _);
