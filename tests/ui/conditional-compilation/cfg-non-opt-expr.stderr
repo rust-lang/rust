@@ -1,20 +1,38 @@
 error: removing an expression is not supported in this position
-  --> $DIR/cfg-non-opt-expr.rs:5:13
+  --> $DIR/cfg-non-opt-expr.rs:5:17
+   |
+LL |     let _ = 1 + #[cfg(unix)] 2;
+   |                 ^^^^^^^^^^^^
+
+error: removing an expression is not supported in this position
+  --> $DIR/cfg-non-opt-expr.rs:7:17
+   |
+LL |     let _ = 1 + #[cfg(windows)] 2;
+   |                 ^^^^^^^^^^^^^^^
+
+error: removing an expression is not supported in this position
+  --> $DIR/cfg-non-opt-expr.rs:10:17
+   |
+LL |     let _ = 1 + #[cfg(all())] 2;
+   |                 ^^^^^^^^^^^^^
+
+error: removing an expression is not supported in this position
+  --> $DIR/cfg-non-opt-expr.rs:12:13
    |
 LL |     let _ = #[cfg(false)] ();
    |             ^^^^^^^^^^^^^
 
 error: removing an expression is not supported in this position
-  --> $DIR/cfg-non-opt-expr.rs:7:21
+  --> $DIR/cfg-non-opt-expr.rs:14:21
    |
 LL |     let _ = 1 + 2 + #[cfg(false)] 3;
    |                     ^^^^^^^^^^^^^
 
 error: removing an expression is not supported in this position
-  --> $DIR/cfg-non-opt-expr.rs:9:23
+  --> $DIR/cfg-non-opt-expr.rs:16:23
    |
 LL |     let _ = [1, 2, 3][#[cfg(false)] 1];
    |                       ^^^^^^^^^^^^^
 
-error: aborting due to 3 previous errors
+error: aborting due to 6 previous errors
 
