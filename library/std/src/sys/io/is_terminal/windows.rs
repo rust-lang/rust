@@ -1,6 +1,7 @@
 use crate::ffi::c_void;
 use crate::os::windows::io::{AsHandle, AsRawHandle, BorrowedHandle};
 use crate::sys::c;
+use crate::sys::pal::api;
 
 pub fn is_terminal(h: &impl AsHandle) -> bool {
     handle_is_console(h.as_handle())
@@ -18,6 +19,12 @@ fn handle_is_console(handle: BorrowedHandle<'_>) -> bool {
         return true;
     }
 
+    let err = api::get_last_error();
+    if err.code == c::ERROR_ACCESS_DENIED {
+        if unsafe { c::GetFileType(handle.as_raw_handle()) == c::FILE_TYPE_CHAR } {
+            return true;
+        }
+    }
     // Otherwise, we fall back to an msys hack to see if we can detect the presence of a pty.
     msys_tty_on(handle)
 }
