@@ -471,67 +471,64 @@ impl TtParser {
     ) -> NamedParseResult {
         self.backtrack.clear();
         self.seen_tokens.clear();
-        let mut mp = MatcherPos {
-            idx: 0,
-            input_pos: parser.approx_token_stream_pos(),
-            matches: Rc::clone(&self.empty_matches),
-        };
+        let mut mp = MatcherPos { idx: 0, input_pos: 0, matches: Rc::clone(&self.empty_matches) };
 
         loop {
-            if let Some(next_mp) = self.match_one(parser, matcher, mp, track) {
-                mp = next_mp;
-                continue;
-            }
-
-            // Try backtracking to an older mp.
-            if let Some(next_mp) = self.backtrack.pop() {
-                mp = next_mp;
-                continue;
+            match self.match_one(parser, matcher, mp, track) {
+                ControlFlow::Continue(Some(next_mp)) => {
+                    mp = next_mp;
+                    continue;
+                }
+                ControlFlow::Continue(None) => {}
+                ControlFlow::Break(result) => {
+                    std::hint::cold_path();
+                    return result;
+                }
             }
 
             // Check for a matched meta-variable or EOF.
-            if let Some(mamp) = self.maybe_ambig_mp.take() {
-                if self.found_ambiguity || parser.approx_token_stream_pos() > mamp.input_pos {
-                    // Either:
-                    // - A second maybe-ambig mp was found, setting `found_ambiguity`
-                    // - Something else was parsed successfully, advancing `parser` past `mp`
-                    // - `mp` was matched while backtracking
-                    track.ambiguity();
-                    return Ambiguity;
-                }
+            let Some(mamp) = self.maybe_ambig_mp.take() else {
+                // There was no valid way to parse the input.
+                std::hint::cold_path();
+                track.failure(parser);
+                return Failure;
+            };
 
-                match self.process_special(parser, matcher, mamp) {
-                    ControlFlow::Break(result) => return result,
-                    ControlFlow::Continue(next_mp) => {
-                        mp = next_mp;
-                        continue;
-                    }
-                }
+            if self.found_ambiguity || self.seen_tokens.len() > mamp.input_pos as usize {
+                // Either:
+                // - A second maybe-ambig mp was found, setting `found_ambiguity`
+                // - Something else was parsed successfully, advancing `parser` past `mp`
+                // - `mp` was matched while backtracking
+                std::hint::cold_path();
+                track.ambiguity();
+                return Ambiguity;
             }
 
-            // The invocation could not be matched.
-            track.failure(parser);
-            return Failure;
+            match self.process_special(parser, matcher, mamp, track) {
+                ControlFlow::Break(result) => {
+                    std::hint::cold_path();
+                    return result;
+                }
+                ControlFlow::Continue(next_mp) => {
+                    mp = next_mp;
+                    continue;
+                }
+            }
         }
     }
 
     /// Match a single [`MatcherPos`].
-    #[inline(always)] // must be inlined in `parse_tt_inner()`
+    #[inline(always)] // must be inlined in `parse_tt()`
     fn match_one<'matcher, T: Tracker<'matcher>>(
         &mut self,
         parser: &mut Cow<'_, Parser<'_>>,
         matcher: &'matcher [MatcherLoc],
         mut mp: MatcherPos,
         track: &mut T,
-    ) -> Option<MatcherPos> {
+    ) -> ControlFlow<NamedParseResult, Option<MatcherPos>> {
         let matcher_loc = &matcher[mp.idx as usize];
-        // How far from the latest token are we.
-        let age = parser.approx_token_stream_pos() - mp.input_pos;
-        let token = if age == 0 {
-            &parser.token
-        } else {
-            &self.seen_tokens[self.seen_tokens.len() - age as usize]
-        };
+        let input_pos = mp.input_pos as usize;
+        let token = self.seen_tokens.get(input_pos).unwrap_or(&parser.token);
         track.trying_match(mp.input_pos, token, mp.idx);
 
         match matcher_loc {
@@ -545,25 +542,25 @@ impl TtParser {
                 // Otherwise, this match has failed, there is nothing to do, and hopefully another
                 // mp in `cur_mps` will match.
                 if matches!(t, Token { kind: DocComment(..), .. }) {
+                    std::hint::cold_path();
                     // skip
                 } else if token_name_eq(t, token) {
                     track.matched_one(mp.input_pos, mp.idx);
                     mp.input_pos += 1;
-                    if mp.input_pos > parser.approx_token_stream_pos() {
+                    if mp.input_pos as usize > self.seen_tokens.len() {
                         self.seen_tokens.push(parser.token);
                         parser.to_mut().bump();
-                        debug_assert_eq!(mp.input_pos, parser.approx_token_stream_pos());
                     }
                 } else {
-                    return None;
+                    return ControlFlow::Continue(self.backtrack.pop());
                 }
                 mp.idx += 1;
-                Some(mp)
+                ControlFlow::Continue(Some(mp))
             }
             MatcherLoc::Delimited => {
                 // Entering the delimiter is trivial.
                 mp.idx += 1;
-                Some(mp)
+                ControlFlow::Continue(Some(mp))
             }
             &MatcherLoc::Sequence {
                 op,
@@ -589,7 +586,7 @@ impl TtParser {
 
                 // Try one or more matches of this sequence, by entering it.
                 mp.idx += 1;
-                Some(mp)
+                ControlFlow::Continue(Some(mp))
             }
             &MatcherLoc::SequenceKleeneOpNoSep { op, idx_first } => {
                 if op != KleeneOp::ZeroOrOne {
@@ -604,7 +601,7 @@ impl TtParser {
 
                 // Try ending the sequence.
                 mp.idx += 1;
-                Some(mp)
+                ControlFlow::Continue(Some(mp))
             }
             MatcherLoc::SequenceSep { separator } => {
                 // We are past the end of a sequence with a separator but we haven't seen the
@@ -620,29 +617,28 @@ impl TtParser {
                     track.matched_one(mp.input_pos, mp.idx);
                     mp.idx += 1;
                     mp.input_pos += 1;
-                    if mp.input_pos > parser.approx_token_stream_pos() {
+                    if mp.input_pos as usize > self.seen_tokens.len() {
                         self.seen_tokens.push(parser.token);
                         parser.to_mut().bump();
-                        debug_assert_eq!(mp.input_pos, parser.approx_token_stream_pos());
                     }
                     self.backtrack.push(ending_mp);
-                    Some(mp)
+                    ControlFlow::Continue(Some(mp))
                 } else {
-                    Some(ending_mp)
+                    ControlFlow::Continue(Some(ending_mp))
                 }
             }
             &MatcherLoc::SequenceKleeneOpAfterSep { idx_first } => {
                 // We are past the sequence separator. This can't be a `?` Kleene op, because they
                 // don't permit separators. Try another repetition.
                 mp.idx = idx_first.try_into().unwrap();
-                Some(mp)
+                ControlFlow::Continue(Some(mp))
             }
-            &MatcherLoc::MetaVarDecl { kind, .. } => {
+            &MatcherLoc::MetaVarDecl { kind, next_metavar, seq_depth, .. } => {
                 // Built-in nonterminals never start with these tokens, so we can eliminate them
                 // from consideration. We use the span of the metavariable declaration to determine
                 // any edition-specific matching behavior for non-terminals.
                 if !Parser::nonterminal_may_begin_with(kind, token) {
-                    return None;
+                    return ControlFlow::Continue(self.backtrack.pop());
                 }
 
                 // EOF tokens would cause unexpected processing in `match_one()`.
@@ -650,43 +646,68 @@ impl TtParser {
 
                 track.matched_one(mp.input_pos, mp.idx);
 
-                if self.maybe_ambig_mp.is_some() {
+                if self.maybe_ambig_mp.is_some() || input_pos < self.seen_tokens.len() {
+                    std::hint::cold_path();
                     self.found_ambiguity = true;
-                } else {
+                    return ControlFlow::Continue(self.backtrack.pop());
+                } else if let Some(next_mp) = self.backtrack.pop() {
+                    std::hint::cold_path();
                     self.maybe_ambig_mp = Some(mp);
+                    return ControlFlow::Continue(Some(next_mp));
                 }
 
-                None
+                // We use the span of the metavariable declaration to determine any
+                // edition-specific matching behavior for non-terminals.
+                let nt = match parser.to_mut().parse_nonterminal(kind) {
+                    Err(err) => {
+                        std::hint::cold_path();
+                        return ControlFlow::Break(self.nt_parsing_error(matcher_loc, err));
+                    }
+                    Ok(nt) => nt,
+                };
+                mp.push_match(next_metavar, seq_depth, MatchedSingle(nt));
+
+                mp.idx += 1;
+                mp.input_pos = 0;
+                self.seen_tokens.clear();
+                track.reset_input_pos(parser);
+                ControlFlow::Continue(Some(mp))
             }
             MatcherLoc::Eof => {
                 // We are past the matcher's end, and not in a sequence. Try to end things.
                 debug_assert_eq!(mp.idx as usize, matcher.len() - 1);
 
                 if *token != token::Eof {
-                    return None;
+                    return ControlFlow::Continue(self.backtrack.pop());
                 }
-
-                debug_assert_eq!(mp.input_pos, parser.approx_token_stream_pos());
 
                 track.matched_one(mp.input_pos, mp.idx);
 
-                if self.maybe_ambig_mp.is_some() {
+                if self.maybe_ambig_mp.is_some() || input_pos < self.seen_tokens.len() {
+                    std::hint::cold_path();
                     self.found_ambiguity = true;
-                } else {
+                    return ControlFlow::Continue(self.backtrack.pop());
+                } else if let Some(next_mp) = self.backtrack.pop() {
+                    std::hint::cold_path();
                     self.maybe_ambig_mp = Some(mp);
+                    return ControlFlow::Continue(Some(next_mp));
                 }
 
-                None
+                self.seen_tokens.clear();
+                let matches = Rc::unwrap_or_clone(mp.matches).into_iter();
+                ControlFlow::Break(Success(self.nameize(matcher, matches)))
             }
         }
     }
 
     /// Finish processing a matched special [`MatcherPos`].
-    fn process_special(
+    #[cold]
+    fn process_special<'matcher, T: Tracker<'matcher>>(
         &mut self,
         parser: &mut Cow<'_, Parser<'_>>,
-        matcher: &[MatcherLoc],
+        matcher: &'matcher [MatcherLoc],
         mut mp: MatcherPos,
+        track: &mut T,
     ) -> ControlFlow<NamedParseResult, MatcherPos> {
         let matcher_loc = &matcher[mp.idx as usize];
         match matcher_loc {
@@ -700,8 +721,9 @@ impl TtParser {
                 mp.push_match(next_metavar, seq_depth, MatchedSingle(nt));
 
                 mp.idx += 1;
-                mp.input_pos = parser.approx_token_stream_pos();
+                mp.input_pos = 0;
                 self.seen_tokens.clear();
+                track.reset_input_pos(parser);
                 ControlFlow::Continue(mp)
             }
 
