@@ -1,5 +1,5 @@
 use super::once::OnceExclusiveState;
-use crate::cell::UnsafeCell;
+use crate::cell::CovariantUnsafeCell;
 use crate::mem::ManuallyDrop;
 use crate::ops::{Deref, DerefMut};
 use crate::panic::{RefUnwindSafe, UnwindSafe};
@@ -81,7 +81,9 @@ union Data<T, F> {
 pub struct LazyLock<T, F = fn() -> T> {
     // FIXME(nonpoison_once): if possible, switch to nonpoison version once it is available
     once: Once,
-    data: UnsafeCell<Data<T, F>>,
+    // See justification on `core::cell::LazyCell::state` for why this can be covariant in both
+    // `T` and `F`.
+    data: CovariantUnsafeCell<Data<T, F>>,
 }
 
 impl<T, F: FnOnce() -> T> LazyLock<T, F> {
@@ -102,7 +104,10 @@ impl<T, F: FnOnce() -> T> LazyLock<T, F> {
     #[stable(feature = "lazy_cell", since = "1.80.0")]
     #[rustc_const_stable(feature = "lazy_cell", since = "1.80.0")]
     pub const fn new(f: F) -> LazyLock<T, F> {
-        LazyLock { once: Once::new(), data: UnsafeCell::new(Data { f: ManuallyDrop::new(f) }) }
+        LazyLock {
+            once: Once::new(),
+            data: CovariantUnsafeCell::new(Data { f: ManuallyDrop::new(f) }),
+        }
     }
 
     /// Consumes this `LazyLock` returning the stored value.
@@ -245,7 +250,7 @@ impl<T, F: FnOnce() -> T> LazyLock<T, F> {
             }
 
             // SAFETY: `call_once` only runs this closure once, ever.
-            let data = unsafe { &mut *this.data.get() };
+            let data = unsafe { this.data.get().as_mut() };
             let f = unsafe { ManuallyDrop::take(&mut data.f) };
             let value = f();
             data.value = ManuallyDrop::new(value);
@@ -258,7 +263,7 @@ impl<T, F: FnOnce() -> T> LazyLock<T, F> {
         // * the closure was not called, but a previous call initialized `value`.
         // * the closure was not called because the Once is poisoned, which we handled above.
         // So `value` has definitely been initialized and will not be modified again.
-        unsafe { &*(*this.data.get()).value }
+        unsafe { &this.data.get().as_ref().value }
     }
 }
 
@@ -313,7 +318,7 @@ impl<T, F> LazyLock<T, F> {
             // SAFETY:
             // The closure has been run successfully, so `value` has been initialized
             // and will not be modified again.
-            Some(unsafe { &(*this.data.get()).value })
+            Some(unsafe { &this.data.get().as_ref().value })
         } else {
             None
         }
@@ -404,7 +409,7 @@ impl<T, F> From<T> for LazyLock<T, F> {
     fn from(value: T) -> Self {
         LazyLock {
             once: Once::new_complete(),
-            data: UnsafeCell::new(Data { value: ManuallyDrop::new(value) }),
+            data: CovariantUnsafeCell::new(Data { value: ManuallyDrop::new(value) }),
         }
     }
 }
