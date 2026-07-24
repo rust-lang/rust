@@ -2,6 +2,8 @@ warning: unknown and unstable feature specified for `-Ctarget-feature`: `rdrnd`
    |
    = note: it is still passed through to the codegen backend, but use of this feature might be unsound and the behavior of this feature can change in the future
    = help: you might have meant: `rdrand`
+   = note: passing unknown features via `-Ctarget-feature` is deprecated and will become a hard error in a future release
+   = note: use `-Zllvm-target-feature` to pass features directly to the LLVM backend
 
 warning: 1 warning emitted
 

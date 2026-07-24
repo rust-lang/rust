@@ -313,11 +313,13 @@ pub fn cfg_target_feature<'a, const N: usize>(
                         diagnostics::UnknownCTargetFeature {
                             feature: base_feature,
                             rust_feature: diagnostics::PossibleFeature::Some { rust_feature },
+                            future_compat_note: true,
                         }
                     } else {
                         diagnostics::UnknownCTargetFeature {
                             feature: base_feature,
                             rust_feature: diagnostics::PossibleFeature::None,
+                            future_compat_note: true,
                         }
                     };
                     sess.dcx().emit_warn(unknown_feature);

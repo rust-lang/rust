@@ -1224,6 +1224,11 @@ pub(crate) struct UnknownCTargetFeature<'a> {
     pub feature: &'a str,
     #[subdiagnostic]
     pub rust_feature: PossibleFeature<'a>,
+    #[note(
+        "passing unknown features via `-Ctarget-feature` is deprecated and will become a hard error in a future release"
+    )]
+    #[note("use `-Zllvm-target-feature` to pass features directly to the LLVM backend")]
+    pub future_compat_note: bool,
 }
 
 #[derive(Diagnostic)]
