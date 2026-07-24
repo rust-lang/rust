@@ -2550,6 +2550,8 @@ options! {
         "use the given `.prof` file for sample-based profile-guided optimization"),
     profile_use: Option<PathBuf> = (None, parse_opt_pathbuf, [TRACKED],
         "use the given `.profdata` file for profile-guided optimization"),
+    reg_struct_return: bool = (false, parse_bool, [TRACKED_UNSTABLE] { TARGET_MODIFIER: Only },
+        "On x86-32 targets, it overrides the default ABI to return small structs in registers."),
     regparm: Option<u32> = (None, parse_opt_number, [TRACKED_UNSTABLE] { TARGET_MODIFIER: Only },
         "On x86-32 targets, setting this to N causes the compiler to pass N arguments \
         in registers EAX, EDX, and ECX instead of on the stack for\

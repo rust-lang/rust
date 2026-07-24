@@ -1693,7 +1693,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
             sess.dcx().emit_err(diagnostics::UnsupportedRegparmArch);
         }
     }
-    if sess.opts.target_opts.reg_struct_return {
+    if sess.opts.cg.reg_struct_return {
         if sess.target.arch != Arch::X86 {
             sess.dcx().emit_err(diagnostics::UnsupportedRegStructReturnArch);
         }

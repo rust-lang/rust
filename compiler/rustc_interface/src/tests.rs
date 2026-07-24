@@ -668,6 +668,7 @@ fn test_codegen_options_tracking_hash() {
     tracked!(profile_generate, SwitchWithOptPath::Enabled(None));
     tracked!(profile_sample_use, Some(PathBuf::from("abc")));
     tracked!(profile_use, Some(PathBuf::from("abc")));
+    tracked!(reg_struct_return, true);
     tracked!(regparm, Some(3));
     tracked!(relocation_model, Some(RelocModel::Pic));
     tracked!(relro_level, Some(RelroLevel::Full));
