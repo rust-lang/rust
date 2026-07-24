@@ -617,7 +617,7 @@ pub(crate) fn run_pass_manager(
         );
     }
 
-    if cfg!(feature = "llvm_enzyme") && enable_ad && !thin {
+    if enable_ad && !thin {
         let opt_stage = llvm::OptStage::FatLTO;
         let stage = write::AutodiffStage::PostAD;
         if !config.autodiff.contains(&config::AutoDiff::NoPostopt)

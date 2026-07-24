@@ -35,5 +35,4 @@ tracing = "0.1"
 
 [features]
 # tidy-alphabetical-start
-llvm_enzyme = []
 # tidy-alphabetical-end
