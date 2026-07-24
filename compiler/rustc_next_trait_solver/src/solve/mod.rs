@@ -111,7 +111,7 @@ where
 
         if self.cx().assumptions_on_binders() {
             let constraint =
-                rustc_type_ir::region_constraint::RegionConstraint::RegionOutlives(a, b);
+                rustc_type_ir::region_constraint::RegionConstraint::RegionOutlives(a, b, ());
             self.register_solver_region_constraint(constraint);
         } else {
             self.register_region_outlives(a, b, VisibleForLeakCheck::Yes);

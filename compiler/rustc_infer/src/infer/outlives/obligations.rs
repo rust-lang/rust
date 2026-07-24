@@ -239,20 +239,19 @@ impl<'tcx> InferCtxt<'tcx> {
 
         let constraint = self.inner.borrow().solver_region_constraint_storage.get_constraint();
         debug!(?constraint);
-        let constraint = constraint.map_atomic_constraints(&mut |constraint| {
+        let constraint =
             rustc_type_ir::region_constraint::destructure_type_outlives_constraints_in_root(
                 self,
                 constraint,
                 &assumptions,
-            )
-        });
+            );
         debug!(?constraint);
-        let constraint = constraint.evaluate();
+        let constraint = rustc_type_ir::region_constraint::evaluate_solver_constraint(&constraint);
         debug!(?constraint);
 
         let mut constraints = vec![constraint];
         while let Some(c) = constraints.pop() {
-            use crate::infer::SolverRegionConstraint::*;
+            use rustc_type_ir::region_constraint::RegionConstraint::*;
 
             match c {
                 Ambiguity(span) => {

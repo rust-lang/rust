@@ -175,12 +175,12 @@ where
     fn destructure_component(&mut self, c: &Component<I>, r: Region<I>) -> RegionConstraint<I> {
         use Component::*;
         match c {
-            Region(c_r) => RegionConstraint::RegionOutlives(*c_r, r),
+            Region(c_r) => RegionConstraint::RegionOutlives(*c_r, r, ()),
             Placeholder(p) => {
-                RegionConstraint::PlaceholderTyOutlives(Ty::new_placeholder(self.cx(), *p), r)
+                RegionConstraint::PlaceholderTyOutlives(Ty::new_placeholder(self.cx(), *p), r, ())
             }
             Alias(alias) => self.destructure_alias_outlives(*alias, r),
-            UnresolvedInferenceVariable(_) => RegionConstraint::Ambiguity,
+            UnresolvedInferenceVariable(_) => RegionConstraint::Ambiguity(()),
             Param(_) => panic!("Params should have been canonicalized to placeholders"),
             EscapingAlias(components) => self.destructure_components(components, r),
         }
@@ -201,11 +201,11 @@ where
     ) -> RegionConstraint<I> {
         let item_bounds =
             rustc_type_ir::outlives::declared_bounds_from_definition(self.cx(), alias)
-                .map(|bound| RegionConstraint::RegionOutlives(bound, r));
+                .map(|bound| RegionConstraint::RegionOutlives(bound, r, ()));
         let item_bound_outlives = RegionConstraint::Or(item_bounds.collect());
 
         let where_clause_outlives =
-            RegionConstraint::AliasTyOutlivesViaEnv(Binder::dummy((alias, r)));
+            RegionConstraint::AliasTyOutlivesViaEnv(Binder::dummy((alias, r)), ());
 
         let mut components = Default::default();
         rustc_type_ir::outlives::compute_alias_components_recursive(
