@@ -5,6 +5,7 @@ use std::ops::Bound;
 use ast::Label;
 use rustc_ast as ast;
 use rustc_ast::token::{self, Delimiter, InvisibleOrigin, MetaVarKind, TokenKind};
+use rustc_ast::tokenstream::TokenTree;
 use rustc_ast::util::classify::{self, TrailingBrace};
 use rustc_ast::visit::{Visitor, walk_expr};
 use rustc_ast::{
@@ -356,6 +357,14 @@ impl<'a> Parser<'a> {
         } else {
             (None, None, None)
         };
+
+        let init_wrapped = self
+            .tree_look_ahead(2, |tree| match tree {
+                TokenTree::Token(tok, _) => tok.is_keyword(kw::Else),
+                TokenTree::Delimited(..) => false,
+            })
+            .unwrap_or(false);
+
         let init = match (self.parse_initializer(err.is_some()), err) {
             (Ok(init), None) => {
                 // init parsed, ty parsed
@@ -393,6 +402,7 @@ impl<'a> Parser<'a> {
                 return Err(err);
             }
         };
+        let trailing_token = self.prev_token;
         let kind = match init {
             None => LocalKind::Decl,
             Some(init) => {
@@ -404,8 +414,14 @@ impl<'a> Parser<'a> {
                         return Err(self.error_block_no_opening_brace_msg(Cow::from(msg)));
                     }
                     let els = self.parse_block()?;
-                    self.check_let_else_init_bool_expr(&init);
-                    self.check_let_else_init_trailing_brace(&init);
+                    // These checks should also respect invisible delimiter
+                    if !init_wrapped {
+                        self.check_let_else_init_bool_expr(&init);
+                    }
+                    if matches!(trailing_token.kind, TokenKind::CloseBrace) {
+                        self.check_let_else_init_trailing_brace(&init);
+                    }
+
                     LocalKind::InitElse(init, els)
                 } else {
                     LocalKind::Init(init)
