@@ -162,9 +162,9 @@ impl<'ll> OffloadKernelDims<'ll> {
             builder: &mut Builder<'_, 'll, 'tcx>,
             arr: &'ll Value,
         ) -> &'ll Value {
-            let x = builder.extract_value(arr, 0);
-            let y = builder.extract_value(arr, 1);
-            let z = builder.extract_value(arr, 2);
+            let x = builder.extract_value(arr, 0, None);
+            let y = builder.extract_value(arr, 1, None);
+            let z = builder.extract_value(arr, 2, None);
 
             let xy = builder.mul(x, y);
             builder.mul(xy, z)

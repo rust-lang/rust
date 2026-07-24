@@ -5,21 +5,60 @@ use rustc_abi as abi;
 use rustc_abi::{
     Align, BackendRepr, FIRST_VARIANT, FieldIdx, Primitive, Size, TagEncoding, VariantIdx, Variants,
 };
+use rustc_ast::expand::typetree::TypeTree;
 use rustc_hir::LangItem;
 use rustc_middle::mir::interpret::{Pointer, Scalar, alloc_range};
 use rustc_middle::mir::{self, ConstValue};
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
+use rustc_middle::ty::typetree::typetree_from_ty;
 use rustc_middle::ty::{self, Ty};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::{AnnotateMoves, DebugInfo, OptLevel};
+use rustc_span::sym;
 use tracing::{debug, instrument};
 
 use super::place::{PlaceRef, PlaceValue};
 use super::rvalue::transmute_scalar;
 use super::{FunctionCx, LocalRef};
-use crate::MemFlags;
 use crate::common::IntPredicate;
 use crate::traits::*;
+use crate::{MemFlags, TyCtxt};
+
+fn option_ptr_like_scalar_pair_tts<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<TypeTree> {
+    let ty::Adt(def, args) = ty.kind() else {
+        return None;
+    };
+
+    if !tcx.is_lang_item(def.did(), LangItem::Option) {
+        return None;
+    }
+
+    let inner = args.type_at(0);
+    if !(inner.is_ref() || inner.is_box() || nonnull_inner_ty(tcx, inner).is_some()) {
+        return None;
+    }
+
+    let tt = typetree_from_ty(tcx, inner);
+    //let some_layout = layout.for_variant(bx.cx(), VariantIdx::from_u32(1));
+    //let payload_layout = some_layout.field(bx.cx(), 0);
+    // this will be a slice
+    //let payload_ty = payload_layout.ty;
+    //let tt = rustc_middle::ty::typetree_from_ty(bx.tcx(), field0_ty.unwrap());
+    if tt == TypeTree::new() {
+        return None;
+    }
+    Some(tt)
+}
+
+fn nonnull_inner_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
+    if let ty::Adt(def, args) = ty.kind()
+        && tcx.is_diagnostic_item(sym::NonNull, def.did())
+    {
+        return Some(args.type_at(0));
+    }
+
+    None
+}
 
 /// The representation of a Rust value. The enum variant is in fact
 /// uniquely determined by the value's type, but is kept as a
@@ -378,8 +417,10 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
             debug!("Operand::from_immediate_or_packed_pair: unpacking {:?} @ {:?}", llval, layout);
 
             // Deconstruct the immediate aggregate.
-            let a_llval = bx.extract_value(llval, 0);
-            let b_llval = bx.extract_value(llval, 1);
+            let f1 = option_ptr_like_scalar_pair_tts(bx.tcx(), layout.ty);
+            let f2 = if f1.is_none() { None } else { Some(TypeTree::int(8)) };
+            let a_llval = bx.extract_value(llval, 0, f1);
+            let b_llval = bx.extract_value(llval, 1, f2);
             OperandValue::Pair(a_llval, b_llval)
         } else {
             OperandValue::Immediate(llval)

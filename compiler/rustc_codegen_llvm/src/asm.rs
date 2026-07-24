@@ -365,7 +365,7 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     let value = if output_types.len() == 1 {
                         result
                     } else {
-                        self.extract_value(result, op_idx[&idx] as u64)
+                        self.extract_value(result, op_idx[&idx] as u64, None)
                     };
                     let value =
                         llvm_fixup_output(self, value, reg.reg_class(), &place.layout, instance);

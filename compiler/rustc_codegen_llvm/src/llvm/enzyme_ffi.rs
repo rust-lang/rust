@@ -67,6 +67,8 @@ unsafe extern "C" {
     ) -> Option<&Value>;
 
     pub(crate) safe fn LLVMRustIsCall(V: &Value) -> bool;
+    pub(crate) safe fn LLVMRustSupportsEnzymeMD(V: &Value) -> bool;
+    pub(crate) fn LLVMRustSetEnzymeTypeMD(v: &Value, md: &Value);
 }
 
 unsafe extern "C" {
@@ -97,7 +99,7 @@ pub(crate) mod Enzyme_AD {
     use rustc_session::filesearch;
 
     use super::{CConcreteType, CTypeTreeRef, Context};
-    use crate::llvm::{EnzymeTypeTree, LLVMRustVersionMajor};
+    use crate::llvm::{EnzymeTypeTree, LLVMRustVersionMajor, Value};
 
     type EnzymeSetCLBoolFn = unsafe extern "C" fn(*mut c_void, u8);
     type EnzymeSetCLStringFn = unsafe extern "C" fn(*mut c_void, *const c_char);
@@ -115,6 +117,7 @@ pub(crate) mod Enzyme_AD {
         unsafe extern "C" fn(CTypeTreeRef, *const i64, usize, CConcreteType, &Context);
     type EnzymeTypeTreeToStringFn = unsafe extern "C" fn(CTypeTreeRef) -> *const c_char;
     type EnzymeTypeTreeToStringFreeFn = unsafe extern "C" fn(*const c_char);
+    type EnzymeTypeTreeToMDFn = unsafe extern "C" fn(CTypeTreeRef, &Context) -> Option<&Value>;
 
     #[allow(non_snake_case)]
     pub(crate) struct EnzymeWrapper {
@@ -129,6 +132,7 @@ pub(crate) mod Enzyme_AD {
         EnzymeTypeTreeInsertEq: EnzymeTypeTreeInsertEqFn,
         EnzymeTypeTreeToString: EnzymeTypeTreeToStringFn,
         EnzymeTypeTreeToStringFree: EnzymeTypeTreeToStringFreeFn,
+        EnzymeTypeTreeToMD: EnzymeTypeTreeToMDFn,
 
         EnzymePrintPerf: *mut c_void,
         EnzymePrintActivity: *mut c_void,
@@ -302,6 +306,14 @@ pub(crate) mod Enzyme_AD {
             unsafe { (self.EnzymeTypeTreeToStringFree)(ch) }
         }
 
+        pub(crate) fn tree_to_md<'a>(
+            &'a self,
+            tree: *mut EnzymeTypeTree,
+            ctx: &'a Context,
+        ) -> Option<&'a Value> {
+            unsafe { (self.EnzymeTypeTreeToMD)(tree, ctx) }
+        }
+
         pub(crate) fn get_max_type_depth(&self) -> usize {
             unsafe { std::ptr::read::<u32>(self.EnzymeMaxTypeDepth as *const u32) as usize }
         }
@@ -385,6 +397,7 @@ pub(crate) mod Enzyme_AD {
                 EnzymeTypeTreeInsertEq: EnzymeTypeTreeInsertEqFn,
                 EnzymeTypeTreeToString: EnzymeTypeTreeToStringFn,
                 EnzymeTypeTreeToStringFree: EnzymeTypeTreeToStringFreeFn,
+                EnzymeTypeTreeToMD: EnzymeTypeTreeToMDFn,
                 EnzymeSetCLBool: EnzymeSetCLBoolFn,
                 EnzymeSetCLString: EnzymeSetCLStringFn,
             );
@@ -416,6 +429,7 @@ pub(crate) mod Enzyme_AD {
                 EnzymeTypeTreeInsertEq,
                 EnzymeTypeTreeToString,
                 EnzymeTypeTreeToStringFree,
+                EnzymeTypeTreeToMD,
                 EnzymePrintPerf,
                 EnzymePrintActivity,
                 EnzymePrintType,

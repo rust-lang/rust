@@ -2,6 +2,10 @@ use rustc_middle::mir::{self, NonDivergingIntrinsic, StmtDebugInfo};
 use rustc_middle::{bug, span_bug, ty};
 use tracing::instrument;
 
+use rustc_ast::expand::typetree::{TypeTree, FncTree};
+use rustc_middle::ty::typetree::typetree_from_ty;
+
+
 use super::{FunctionCx, LocalRef};
 use crate::mir::retag;
 use crate::traits::*;
@@ -111,7 +115,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let dst = dst_val.immediate();
                 let src = src_val.immediate();
 
-                bx.memcpy(dst, align, src, align, bytes, crate::MemFlags::empty(), None);
+                let tt = typetree_from_ty(bx.tcx(), pointee).add_indirection();
+                dbg!(&tt);
+                let fnc_tree = FncTree {
+                    args: vec![tt.clone(), tt],
+                    ret: TypeTree::new(),
+                };
+
+                bx.memcpy(dst, align, src, align, bytes, crate::MemFlags::empty(), Some(fnc_tree));
             }
             mir::StatementKind::FakeRead(..)
             | mir::StatementKind::AscribeUserType(..)
