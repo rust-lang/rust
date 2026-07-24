@@ -457,7 +457,7 @@ note: the lint level is defined here
    = help: Remove explicit link instead
 ```
 
-## `unescaped_pipe_in_table_cell`
+## `invalid_markdown_table`
 
 This lint is **warn-by-default**. It detects unescaped pipes (`|`) in table rows which
 lead to some row cells being ignored. For example:
@@ -472,15 +472,15 @@ Which will give:
 
 ```text
 error: table row has too many columns
-  --> $DIR/unescaped_pipe_in_table_cell.rs:5:18
+  --> $DIR/foo.rs:5:18
    |
 5  | //! | `code_with(|arg| arg)` |
    |                  ^ help: any content after this column divider is discarded
    |
    = help: to escape `|` characters in tables, add a `\` before them like `\|`
 note: the lint level is defined here
-  --> $DIR/unescaped_pipe_in_table_cell.rs:1:9
+  --> $DIR/foo.rs:1:9
    |
-1  | #![deny(rustdoc::unescaped_pipe_in_table_cell)]
+1  | #![deny(rustdoc::invalid_markdown_table)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ```

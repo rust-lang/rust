@@ -82,7 +82,7 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
                                 &item.attrs.doc_strings,
                             ) {
                                 cx.tcx.emit_node_span_lint(
-                                    crate::lint::UNESCAPED_PIPE_IN_TABLE_CELL,
+                                    crate::lint::INVALID_MARKDOWN_TABLE,
                                     hir_id,
                                     span,
                                     UnescapedPipeInTableCell { span },

@@ -1,18 +1,18 @@
-#![deny(rustdoc::unescaped_pipe_in_table_cell)]
+#![deny(rustdoc::invalid_markdown_table)]
 
 //! | col1 |
 //! | ---- |
 //! | `code_with(|arg| arg)` |
-//~^ ERROR unescaped_pipe_in_table_cell
+//~^ ERROR invalid_markdown_table
 //! | one `|` b |
-//~^ ERROR unescaped_pipe_in_table_cell
+//~^ ERROR invalid_markdown_table
 //!
 // Testing another lint emission on the same doc comment.
 //!
 //! | col1 |
 //! | ---- |
 //! | `code_with(|arg| arg)` |
-//~^ ERROR unescaped_pipe_in_table_cell
+//~^ ERROR invalid_markdown_table
 
 // We check that the extra whitespace characters at the end of the line won't trigger
 // the lint.
