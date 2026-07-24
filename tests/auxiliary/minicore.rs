@@ -118,12 +118,14 @@ pub enum Option<T> {
     Some(T),
 }
 impl<T: Copy> Copy for Option<T> {}
+pub use Option::*;
 
 pub enum Result<T, E> {
     Ok(T),
     Err(E),
 }
 impl<T: Copy, E: Copy> Copy for Result<T, E> {}
+pub use Result::*;
 
 #[lang = "manually_drop"]
 #[repr(transparent)]
