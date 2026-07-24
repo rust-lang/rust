@@ -721,6 +721,7 @@ pub fn provide(providers: &mut Providers) {
         typeck_root,
         used_trait_imports,
         check_transmutes: intrinsicck::check_transmutes,
+        check_offloads: intrinsicck::check_offloads,
         ..*providers
     };
 }

@@ -1133,6 +1133,11 @@ rustc_queries! {
     }
 
     /// Unsafety-check this `LocalDefId`.
+    query check_offloads(key: LocalDefId) -> Result<(), ErrorGuaranteed> {
+        desc { "check offload calls inside `{}`", tcx.def_path_str(key) }
+    }
+
+    /// Unsafety-check this `LocalDefId`.
     query check_unsafety(key: LocalDefId) {
         desc { "unsafety-checking `{}`", tcx.def_path_str(key) }
     }

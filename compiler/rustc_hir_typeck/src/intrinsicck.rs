@@ -140,6 +140,108 @@ fn check_transmute<'tcx>(
     }
 }
 
+fn check_offload<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
+    kernel_ty: Ty<'tcx>,
+    args_ty: Ty<'tcx>,
+    ret_ty: Ty<'tcx>,
+    hir_id: HirId,
+) -> Result<(), ErrorGuaranteed> {
+    let span = tcx.hir_span(hir_id);
+    let ty::FnDef(kernel_def_id, kernel_args) = *kernel_ty.kind() else {
+        let err = tcx
+            .sess
+            .dcx()
+            .struct_span_err(
+                span,
+                format!("expected a function item for the offload kernel, found `{}`", kernel_ty),
+            )
+            .emit();
+        return Err(err);
+    };
+
+    let kernel_sig = tcx.fn_sig(kernel_def_id).instantiate(tcx, kernel_args).skip_norm_wip();
+    let kernel_sig = tcx.instantiate_bound_regions_with_erased(kernel_sig);
+
+    let ty::Tuple(tuple_fields) = *args_ty.kind() else {
+        let err = tcx
+            .sess
+            .dcx()
+            .struct_span_err(
+                span,
+                format!("expected a tuple for the offload arguments, found `{}`", args_ty),
+            )
+            .emit();
+        return Err(err);
+    };
+
+    if kernel_sig.inputs().len() != tuple_fields.len() {
+        let err = tcx
+            .sess
+            .dcx()
+            .struct_span_err(
+                span,
+                format!(
+                    "offload kernel expects {} arguments, but {} arguments were provided",
+                    kernel_sig.inputs().len(),
+                    tuple_fields.len()
+                ),
+            )
+            .emit();
+        return Err(err);
+    }
+
+    let normalize = |ty| {
+        if let Ok(ty) = tcx.try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty)) {
+            ty
+        } else {
+            Ty::new_error_with_message(
+                tcx,
+                span,
+                format!("tried to normalize non-wf type {ty:#?} in check_offload"),
+            )
+        }
+    };
+
+    let mut result = Ok(());
+
+    for (i, (&input_ty, arg_ty)) in kernel_sig.inputs().iter().zip(tuple_fields.iter()).enumerate()
+    {
+        let norm_input_ty = normalize(input_ty);
+        let norm_arg_ty = normalize(arg_ty);
+        if norm_input_ty != norm_arg_ty {
+            let err = tcx
+                .sess
+                .dcx()
+                .struct_span_err(
+                    span,
+                    format!(
+                        "type mismatch in offload kernel argument {}: expected `{}`, found `{}`",
+                        i, norm_input_ty, norm_arg_ty
+                    ),
+                )
+                .emit();
+            result = Err(err);
+        }
+    }
+
+    let norm_kernel_ret = normalize(kernel_sig.output());
+    let norm_offload_ret = normalize(ret_ty);
+    if norm_kernel_ret != norm_offload_ret {
+        let err = tcx.sess.dcx().struct_span_err(
+            span,
+            format!(
+                "offload kernel return type mismatch: kernel returns `{}`, but offload call expects `{}`",
+                norm_kernel_ret, norm_offload_ret
+            )
+        ).emit();
+        result = Err(err);
+    }
+
+    result
+}
+
 pub(crate) fn check_transmutes(tcx: TyCtxt<'_>, owner: LocalDefId) -> Result<(), ErrorGuaranteed> {
     assert!(!tcx.is_typeck_child(owner.to_def_id()));
     let typeck_results = tcx.typeck(owner);
@@ -151,6 +253,21 @@ pub(crate) fn check_transmutes(tcx: TyCtxt<'_>, owner: LocalDefId) -> Result<(),
     let mut result = Ok(());
     for &(from, to, hir_id) in &typeck_results.transmutes_to_check {
         result = result.and(check_transmute(tcx, typing_env, from, to, hir_id));
+    }
+    result
+}
+
+pub(crate) fn check_offloads(tcx: TyCtxt<'_>, owner: LocalDefId) -> Result<(), ErrorGuaranteed> {
+    assert!(!tcx.is_typeck_child(owner.to_def_id()));
+    let typeck_results = tcx.typeck(owner);
+    if let Some(e) = typeck_results.tainted_by_errors {
+        return Err(e);
+    };
+
+    let typing_env = ty::TypingEnv::codegen(tcx, owner);
+    let mut result = Ok(());
+    for &(kernel_ty, args_ty, ret_ty, hir_id) in &typeck_results.offloads_to_check {
+        result = result.and(check_offload(tcx, typing_env, kernel_ty, args_ty, ret_ty, hir_id));
     }
     result
 }

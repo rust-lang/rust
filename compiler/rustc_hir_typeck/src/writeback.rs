@@ -76,6 +76,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         wbcx.visit_user_provided_sigs();
         wbcx.visit_coroutine_interior();
         wbcx.visit_transmutes();
+        wbcx.visit_offloads();
         wbcx.visit_offset_of_container_types();
         wbcx.visit_potentially_region_dependent_goals();
 
@@ -541,6 +542,21 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             let from = self.resolve(from, &span);
             let to = self.resolve(to, &span);
             self.typeck_results.transmutes_to_check.push((from, to, hir_id));
+        }
+    }
+
+    fn visit_offloads(&mut self) {
+        let tcx = self.tcx();
+        let fcx_typeck_results = self.fcx.typeck_results.borrow();
+        assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
+        for &(kernel_ty, args_ty, ret_ty, hir_id) in
+            self.fcx.deferred_offload_checks.borrow().iter()
+        {
+            let span = tcx.hir_span(hir_id);
+            let kernel_ty = self.resolve(kernel_ty, &span);
+            let args_ty = self.resolve(args_ty, &span);
+            let ret_ty = self.resolve(ret_ty, &span);
+            self.typeck_results.offloads_to_check.push((kernel_ty, args_ty, ret_ty, hir_id));
         }
     }
 
