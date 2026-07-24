@@ -149,6 +149,9 @@ macro_rules! cfg_has_statx {
     };
 }
 
+#[cfg(target_os = "linux")]
+pub(crate) use cfg_has_statx;
+
 cfg_has_statx! {{
     #[derive(Clone)]
     pub struct FileAttr {
@@ -157,7 +160,7 @@ cfg_has_statx! {{
     }
 
     #[derive(Clone)]
-    struct StatxExtraFields {
+    pub struct StatxExtraFields {
         // This is needed to check if btime is supported by the filesystem.
         stx_mask: u32,
         stx_btime: libc::statx_timestamp,
@@ -236,40 +239,7 @@ cfg_has_statx! {{
             STATX_SAVED_STATE.store(STATX_STATE::Present as u8, Ordering::Relaxed);
         }
 
-        // We cannot fill `stat64` exhaustively because of private padding fields.
-        let mut stat: stat64 = mem::zeroed();
-        // `c_ulong` on gnu-mips, `dev_t` otherwise
-        stat.st_dev = libc::makedev(buf.stx_dev_major, buf.stx_dev_minor) as _;
-        stat.st_ino = buf.stx_ino as libc::ino64_t;
-        stat.st_nlink = buf.stx_nlink as libc::nlink_t;
-        stat.st_mode = buf.stx_mode as libc::mode_t;
-        stat.st_uid = buf.stx_uid as libc::uid_t;
-        stat.st_gid = buf.stx_gid as libc::gid_t;
-        stat.st_rdev = libc::makedev(buf.stx_rdev_major, buf.stx_rdev_minor) as _;
-        stat.st_size = buf.stx_size as off64_t;
-        stat.st_blksize = buf.stx_blksize as libc::blksize_t;
-        stat.st_blocks = buf.stx_blocks as libc::blkcnt64_t;
-        stat.st_atime = buf.stx_atime.tv_sec as libc::time_t;
-        // `i64` on gnu-x86_64-x32, `c_ulong` otherwise.
-        stat.st_atime_nsec = buf.stx_atime.tv_nsec as _;
-        stat.st_mtime = buf.stx_mtime.tv_sec as libc::time_t;
-        stat.st_mtime_nsec = buf.stx_mtime.tv_nsec as _;
-        stat.st_ctime = buf.stx_ctime.tv_sec as libc::time_t;
-        stat.st_ctime_nsec = buf.stx_ctime.tv_nsec as _;
-
-        let extra = StatxExtraFields {
-            stx_mask: buf.stx_mask,
-            stx_btime: buf.stx_btime,
-            // Store full times to avoid 32-bit `time_t` truncation.
-            #[cfg(target_pointer_width = "32")]
-            stx_atime: buf.stx_atime,
-            #[cfg(target_pointer_width = "32")]
-            stx_ctime: buf.stx_ctime,
-            #[cfg(target_pointer_width = "32")]
-            stx_mtime: buf.stx_mtime,
-        };
-
-        Some(Ok(FileAttr { stat, statx_extra_fields: Some(extra) }))
+        Some(Ok(FileAttr::from_statx(buf)))
     }
 
 } else {
@@ -554,9 +524,63 @@ pub struct DirBuilder {
 struct Mode(mode_t);
 
 cfg_has_statx! {{
+    impl StatxExtraFields {
+        /// Constructs `StatxExtraFields` from a given `libc::statx` struct
+        ///
+        /// SAFETY:
+        /// The caller must take care to provide a `libc::statx` buffer that is
+        /// populated by the statx syscall with the flags `STATX_BASIC_STATS`
+        /// and `STATX_BTIME` enabled
+        pub unsafe fn from_statx(buf: libc::statx) -> Self {
+            StatxExtraFields {
+                stx_mask: buf.stx_mask,
+                stx_btime: buf.stx_btime,
+                // Store full times to avoid 32-bit `time_t` truncation.
+                #[cfg(target_pointer_width = "32")]
+                stx_atime: buf.stx_atime,
+                #[cfg(target_pointer_width = "32")]
+                stx_ctime: buf.stx_ctime,
+                #[cfg(target_pointer_width = "32")]
+                stx_mtime: buf.stx_mtime,
+            }
+        }
+    }
     impl FileAttr {
         fn from_stat64(stat: stat64) -> Self {
             Self { stat, statx_extra_fields: None }
+        }
+
+        /// Constructs `FileAttr` from a given `libc::statx` struct
+        ///
+        /// SAFETY:
+        /// The caller must take care to provide a `libc::statx` buffer that is
+        /// populated by the statx syscall with the flags `STATX_BASIC_STATS`
+        /// and `STATX_BTIME` enabled
+        pub unsafe fn from_statx(buf: libc::statx) -> Self {
+            // We cannot fill `stat64` exhaustively because of private padding fields.
+            let mut stat: libc::stat64 = mem::zeroed();
+            // `c_ulong` on gnu-mips, `dev_t` otherwise
+            stat.st_dev = libc::makedev((buf).stx_dev_major, (buf).stx_dev_minor) as _;
+            stat.st_ino = buf.stx_ino as libc::ino64_t;
+            stat.st_nlink = buf.stx_nlink as libc::nlink_t;
+            stat.st_mode = buf.stx_mode as libc::mode_t;
+            stat.st_uid = buf.stx_uid as libc::uid_t;
+            stat.st_gid = buf.stx_gid as libc::gid_t;
+            stat.st_rdev = libc::makedev(buf.stx_rdev_major, buf.stx_rdev_minor) as _;
+            stat.st_size = buf.stx_size as libc::off64_t;
+            stat.st_blksize = buf.stx_blksize as libc::blksize_t;
+            stat.st_blocks = buf.stx_blocks as libc::blkcnt64_t;
+            stat.st_atime = buf.stx_atime.tv_sec as libc::time_t;
+            // `i64` on gnu-x86_64-x32, `c_ulong` otherwise.
+            stat.st_atime_nsec = buf.stx_atime.tv_nsec as _;
+            stat.st_mtime = buf.stx_mtime.tv_sec as libc::time_t;
+            stat.st_mtime_nsec = buf.stx_mtime.tv_nsec as _;
+            stat.st_ctime = buf.stx_ctime.tv_sec as libc::time_t;
+            stat.st_ctime_nsec = buf.stx_ctime.tv_nsec as _;
+
+            let statx_extra_fields = Some(StatxExtraFields::from_statx(buf));
+
+            Self {stat, statx_extra_fields}
         }
 
         #[cfg(target_pointer_width = "32")]
