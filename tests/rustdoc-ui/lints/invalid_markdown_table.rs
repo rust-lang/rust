@@ -29,10 +29,25 @@ mod c {
     //! | a \| still same cell |
 }
 
-// We check that content after a table row is ignored.
+// We check that content after a table row also emits.
 mod d {
     //! | col |
     //! | ---- |
     //! | code_with | aaaaa
-    //^ the "aaaaa" part will be ignored.
+    //~^ ERROR invalid_markdown_table
+    //! blob
+    //!
+    //! one | two
+    //! -|-
+    //! a | b | c
+    //~^ ERROR invalid_markdown_table
+    //! a |
+}
+
+// More cases that are ignored.
+mod e {
+    //! | one | two |
+    //! |-|-|
+    //! | a |
+    //! | b
 }
