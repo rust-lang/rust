@@ -1605,7 +1605,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         }
     }
 
-    if sess.opts.target_opts.branch_protection.is_some() && sess.target.arch != Arch::AArch64 {
+    if sess.opts.cg.branch_protection.is_some() && sess.target.arch != Arch::AArch64 {
         sess.dcx().emit_err(diagnostics::BranchProtectionRequiresAArch64);
     }
 

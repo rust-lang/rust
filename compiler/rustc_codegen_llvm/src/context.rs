@@ -405,7 +405,7 @@ pub(crate) unsafe fn create_module<'ll>(
         );
     }
 
-    if let Some(BranchProtection { bti, pac_ret, gcs }) = sess.opts.target_opts.branch_protection {
+    if let Some(BranchProtection { bti, pac_ret, gcs }) = sess.opts.cg.branch_protection {
         if sess.target.arch == Arch::AArch64 {
             llvm::add_module_flag_u32(
                 llmod,
