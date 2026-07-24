@@ -25,7 +25,7 @@ pub(crate) struct UnwindContext {
 }
 
 impl UnwindContext {
-    pub(crate) fn new(module: &mut dyn Module, tcx: TyCtxt<'_>, pic_eh_frame: bool) -> Self {
+    pub(crate) fn new(module: &mut dyn Module, eh_personality: &str, pic_eh_frame: bool) -> Self {
         let endian = match module.isa().endianness() {
             Endianness::Little => RunTimeEndian::Little,
             Endianness::Big => RunTimeEndian::Big,
@@ -70,7 +70,7 @@ impl UnwindContext {
                 // FIXME use eh_personality lang item instead
                 let personality = module
                     .declare_function(
-                        &rustc_symbol_mangling::eh_personality_symbol(tcx),
+                        eh_personality,
                         Linkage::Import,
                         &Signature {
                             params: vec![
@@ -89,7 +89,7 @@ impl UnwindContext {
                 // Use indirection here to support PIC the case where rust_eh_personality is defined in
                 // another DSO.
                 let personality_ref = module
-                    .declare_data("DW.ref.rust_eh_personality", Linkage::Local, false, false)
+                    .declare_data(&format!("DW.ref.{eh_personality}"), Linkage::Local, false, false)
                     .unwrap();
 
                 let mut personality_ref_data = DataDescription::new();
