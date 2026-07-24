@@ -2481,13 +2481,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ) -> Const<'tcx> {
         let tcx = self.tcx();
 
-        let elem_ty = match ty.kind() {
-            ty::Array(elem_ty, _) => elem_ty,
+        let (elem_ty, len) = match ty.kind() {
+            ty::Array(elem_ty, len) => (elem_ty, len),
             ty::Error(e) => return Const::new_error(tcx, *e),
             _ => {
                 let e = tcx
                     .dcx()
-                    .span_err(array_expr.span, format!("expected `{}`, found const array", ty));
+                    .span_err(array_expr.span, format!("expected `{ty}`, found const array"));
                 return Const::new_error(tcx, e);
             }
         };
@@ -2497,6 +2497,25 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             .iter()
             .map(|elem| self.lower_const_arg(elem, *elem_ty))
             .collect::<Vec<_>>();
+
+        let len = tcx
+            .try_normalize_erasing_regions(
+                ty::TypingEnv::new(ty::ParamEnv::empty(), TypingMode::non_body_analysis()),
+                Unnormalized::new_wip(*len),
+            )
+            .unwrap_or(*len);
+        if let Some(expected_len) = len.try_to_target_usize(tcx)
+            && expected_len != elems.len() as u64
+        {
+            let e = tcx.dcx().span_err(
+                array_expr.span,
+                format!(
+                    "expected array with {expected_len} elements, found {} elements",
+                    array_expr.elems.len()
+                ),
+            );
+            return Const::new_error(tcx, e);
+        }
 
         let valtree = ty::ValTree::from_branches(tcx, elems);
 
