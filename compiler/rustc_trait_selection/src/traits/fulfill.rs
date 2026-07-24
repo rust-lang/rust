@@ -973,18 +973,8 @@ impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
                     // `<_ as Queryable>::Output == ?0` returns `Holds` with the single nested
                     // obligation `<_ as Queryable>::Output == ?1` where `?1` is merely unioned
                     // with `?0`.
-                    // So, stall until an inference variable in the predicate is constrained.
-                    stalled_on.clear();
-                    stalled_on.extend(args_infer_vars(
-                        &self.selcx,
-                        project_obligation.predicate.map_bound(|pred| pred.projection_term.args),
-                    ));
-                    stalled_on.extend(TyOrConstInferVar::maybe_from_term(
-                        infcx.resolve_vars_if_possible(
-                            project_obligation.predicate.skip_binder().term,
-                        ),
-                    ));
-                    ProcessResult::Unchanged
+                    // Since at this point the code will not compile, error immediately.
+                    ProcessResult::Error(FulfillmentErrorCode::Ambiguity { overflow: None })
                 } else {
                     ProcessResult::Changed(mk_pending(obligation, os))
                 }
