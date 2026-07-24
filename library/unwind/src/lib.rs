@@ -18,6 +18,11 @@ cfg_select! {
     target_env = "msvc" => {
         // Windows MSVC no extra unwinder support needed
     }
+    target_family = "wasm" => {
+        mod types;
+        mod wasm;
+        pub use wasm::*;
+    }
     any(
         target_os = "l4re",
         target_os = "none",
@@ -32,17 +37,11 @@ cfg_select! {
         target_os = "psp",
         target_os = "solid_asp3",
         all(target_vendor = "fortanix", target_env = "sgx"),
-        all(target_os = "wasi", panic = "unwind"),
         target_os = "xous",
     ) => {
         mod libunwind;
         pub use libunwind::*;
         mod types;
-    }
-    target_family = "wasm" => {
-        mod types;
-        mod wasm;
-        pub use wasm::*;
     }
     _ => {
         // no unwinder on the system!
@@ -213,6 +212,10 @@ cfg_select! {
 
 #[cfg(target_os = "hurd")]
 #[link(name = "gcc_s")]
+unsafe extern "C" {}
+
+#[cfg(all(target_os = "wasi", panic = "unwind"))]
+#[link(name = "unwind")]
 unsafe extern "C" {}
 
 #[cfg(all(target_os = "windows", target_env = "gnu", target_abi = "llvm"))]
