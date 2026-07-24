@@ -382,7 +382,6 @@ fn anon_const_type_of<'tcx>(icx: &ItemCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx
 
 fn const_arg_anon_type_of<'tcx>(icx: &ItemCtxt<'tcx>, arg_hir_id: HirId, span: Span) -> Ty<'tcx> {
     use hir::*;
-    use rustc_middle::ty::Ty;
 
     let tcx = icx.tcx;
 
@@ -406,14 +405,83 @@ fn const_arg_anon_type_of<'tcx>(icx: &ItemCtxt<'tcx>, arg_hir_id: HirId, span: S
             icx.lower_ty(ty)
         }
 
+        Node::Expr(Expr { kind: ExprKind::Path(qpath), .. }) => {
+            path_const_arg_anon_type_of(icx, qpath, arg_hir_id)
+                .unwrap_or_else(|| const_arg_anon_type_error(tcx, span))
+        }
+
         // This is not a `bug!` as const arguments in path segments that did not resolve to anything
         // will result in `type_of` never being fed.
-        _ => Ty::new_error_with_message(
-            tcx,
-            span,
-            "`type_of` called on const argument's anon const before the const argument was lowered",
-        ),
+        _ => const_arg_anon_type_error(tcx, span),
     }
+}
+
+fn const_arg_anon_type_error<'tcx>(tcx: TyCtxt<'tcx>, span: Span) -> Ty<'tcx> {
+    Ty::new_error_with_message(
+        tcx,
+        span,
+        "`type_of` called on const argument's anon const before the const argument was lowered",
+    )
+}
+
+fn path_const_arg_anon_type_of<'tcx>(
+    icx: &ItemCtxt<'tcx>,
+    qpath: &hir::QPath<'tcx>,
+    arg_hir_id: HirId,
+) -> Option<Ty<'tcx>> {
+    if let hir::QPath::Resolved(None, path) = qpath {
+        let [segment] = path.segments else { return None };
+        let hir::def::Res::Def(hir::def::DefKind::Fn, def_id) = segment.res else {
+            return None;
+        };
+        expected_const_arg_type(icx.tcx, def_id, segment, arg_hir_id)
+    } else {
+        None
+    }
+}
+
+fn expected_const_arg_type<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+    segment: &hir::PathSegment<'tcx>,
+    arg_hir_id: HirId,
+) -> Option<Ty<'tcx>> {
+    if segment.infer_args {
+        return None;
+    }
+
+    let generic_args = segment.args();
+    if !generic_args.constraints.is_empty()
+        || generic_args.parenthesized != hir::GenericArgsParentheses::No
+    {
+        return None;
+    }
+
+    let [hir::GenericArg::Const(const_arg)] = generic_args.args else { return None };
+    if const_arg.hir_id != arg_hir_id {
+        return None;
+    }
+
+    let generics = tcx.generics_of(def_id);
+    if generics.parent.is_some()
+        || generics.parent_count != 0
+        || generics.has_self
+        || generics.has_late_bound_regions.is_some()
+    {
+        return None;
+    }
+
+    let [param] = generics.own_params.as_slice() else { return None };
+    if !matches!(param.kind, ty::GenericParamDefKind::Const { .. }) {
+        return None;
+    }
+
+    let ty = tcx.type_of(param.def_id).instantiate_identity().skip_norm_wip();
+    (!ty.has_non_region_param()
+        && !ty.has_non_region_infer()
+        && !ty.has_free_regions()
+        && !ty.has_erased_regions())
+    .then_some(ty)
 }
 
 fn infer_placeholder_type<'tcx>(

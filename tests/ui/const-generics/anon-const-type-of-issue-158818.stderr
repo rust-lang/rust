@@ -1,0 +1,12 @@
+error[E0308]: mismatched types
+  --> $DIR/anon-const-type-of-issue-158818.rs:7:21
+   |
+LL |     with_option::<{ async || {} }>();
+   |                     ^^^^^^^^^^^ expected `u32`, found `{async closure@anon-const-type-of-issue-158818.rs:7:21}`
+   |
+   = note: expected type `u32`
+           found closure `{async closure@$DIR/anon-const-type-of-issue-158818.rs:7:21: 7:29}`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.
