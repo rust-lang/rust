@@ -37,6 +37,7 @@ use std::sync::LazyLock;
 
 use pass_manager::{self as pm, Lint, MirLint, MirPass, WithMinOptLevel};
 
+mod bool_chain_opt;
 mod check_pointers;
 mod cost_checker;
 mod cross_crate_inline;
@@ -750,6 +751,7 @@ pub(crate) fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
             // optimizations. This invalidates CFG caches, so avoid putting between
             // `ReferencePropagation` and `GVN` which both use the dominator tree.
             &instsimplify::InstSimplify::AfterSimplifyCfg,
+                &bool_chain_opt::BoolChainOpt,
             // After `InstSimplify-after-simplifycfg` with `-Zub_checks=false`, simplify
             // ```
             // _13 = const false;
