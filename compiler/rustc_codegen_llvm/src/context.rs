@@ -913,7 +913,7 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn get_fn_addr(
         &self,
         instance: Instance<'tcx>,
-        pointer_auth_schema: Option<&PointerAuthSchema>,
+        ptrauth_schema: Option<PointerAuthSchema>,
     ) -> &'ll Value {
         // When pointer authentication metadata is provided, `get_fn_addr` will
         // attempt to sign the pointer using LLVM's `ConstPtrAuth` constant
@@ -928,7 +928,7 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         // <https://github.com/rust-lang/rust/issues/152532>, and comment in
         // builder's `ptrauth_operand_bundle`.
         let llfn = get_fn(self, instance);
-        match pointer_auth_schema {
+        match ptrauth_schema {
             Some(schema) => common::maybe_sign_fn_ptr(self, instance, llfn, schema),
             None => llfn,
         }
