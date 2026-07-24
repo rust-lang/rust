@@ -420,6 +420,8 @@ pub struct Session {
     /// The value is the `DepNodeIndex` of the node encodes the used feature.
     pub used_features: Lock<FxHashMap<Symbol, u32>>,
 
+    /// Frontend stats collected for JSON output.
+    pub frontend_stats: Lock<Vec<(String, usize)>>,
     /// Whether the test harness removed a user-written `#[rustc_main]` attribute
     /// while generating the synthetic test entry point.
     pub removed_rustc_main_attr: AtomicBool,
@@ -1377,6 +1379,7 @@ pub fn build_session(
         thin_lto_supported: true,                  // filled by `run_compiler`
         mir_opt_bisect_eval_count: AtomicUsize::new(0),
         used_features: Lock::default(),
+        frontend_stats: Lock::default(),
         removed_rustc_main_attr: AtomicBool::new(false),
         pointer_auth_config,
     };
