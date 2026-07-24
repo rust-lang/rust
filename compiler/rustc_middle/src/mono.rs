@@ -124,7 +124,7 @@ impl<'tcx> MonoItem<'tcx> {
             MonoItem::Fn(instance) => tcx.symbol_name(instance),
             MonoItem::Static(def_id) => tcx.symbol_name(Instance::mono(tcx, def_id)),
             MonoItem::GlobalAsm(item_id) => {
-                SymbolName::new(tcx, &format!("global_asm_{:?}", item_id.owner_id))
+                tcx.symbol_name(Instance::mono(tcx, item_id.owner_id.to_def_id()))
             }
         }
     }
@@ -349,6 +349,11 @@ pub struct CodegenUnit<'tcx> {
     /// contain something unique to this crate (e.g., a module path)
     /// as well as the crate name and disambiguator.
     name: Symbol,
+
+    /// Symbol name for this CGU. Backend may emit symbols prefixed with this name
+    /// and assume uniqueness.
+    symbol_name: Option<Symbol>,
+
     items: FxIndexMap<MonoItem<'tcx>, MonoItemData>,
     size_estimate: usize,
     primary: bool,
@@ -405,6 +410,7 @@ impl<'tcx> CodegenUnit<'tcx> {
     pub fn new(name: Symbol) -> CodegenUnit<'tcx> {
         CodegenUnit {
             name,
+            symbol_name: None,
             items: Default::default(),
             size_estimate: 0,
             primary: false,
@@ -443,6 +449,14 @@ impl<'tcx> CodegenUnit<'tcx> {
     /// Marks this CGU as the one used to contain code coverage information for dead code.
     pub fn make_code_coverage_dead_code_cgu(&mut self) {
         self.is_code_coverage_dead_code_cgu = true;
+    }
+
+    pub fn symbol_name(&self) -> Symbol {
+        self.symbol_name.expect("CGU symbol name accessed before setting")
+    }
+
+    pub fn set_symbol_name(&mut self, name: Symbol) {
+        self.symbol_name = Some(name);
     }
 
     pub fn mangle_name(human_readable_name: &str) -> BaseNString {

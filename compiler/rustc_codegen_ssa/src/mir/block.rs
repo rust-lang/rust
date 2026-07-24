@@ -11,6 +11,7 @@ use rustc_data_structures::packed::Pu128;
 use rustc_hir::attrs::AttributeKind;
 use rustc_hir::lang_items::LangItem;
 use rustc_lint_defs::builtin::TAIL_CALL_TRACK_CALLER;
+use rustc_middle::mir::interpret::{CTFE_ALLOC_SALT, Scalar};
 use rustc_middle::mir::{self, AssertKind, InlineAsmMacro, SwitchTargets, UnwindTerminateReason};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout, ValidityRequirement};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
@@ -1489,13 +1490,17 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 }
                 mir::InlineAsmOperand::Const { ref value } => {
                     let const_value = self.eval_mir_constant(value);
-                    let string = common::asm_const_to_str(
-                        bx.tcx(),
-                        span,
-                        const_value,
-                        bx.layout_of(value.ty()),
-                    );
-                    InlineAsmOperandRef::Const { string }
+                    let mir::ConstValue::Scalar(scalar) = const_value else {
+                        span_bug!(
+                            span,
+                            "expected Scalar for promoted asm const, but got {:#?}",
+                            const_value
+                        )
+                    };
+                    InlineAsmOperandRef::Const {
+                        value: common::asm_const_ptr_clean(bx.tcx(), scalar),
+                        ty: value.ty(),
+                    }
                 }
                 mir::InlineAsmOperand::SymFn { ref value } => {
                     let const_ = self.monomorphize(value.const_);
@@ -1507,13 +1512,30 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             args.no_bound_vars().unwrap(),
                         )
                         .unwrap();
-                        InlineAsmOperandRef::SymFn { instance }
+
+                        InlineAsmOperandRef::Const {
+                            value: Scalar::from_pointer(
+                                bx.tcx().reserve_and_set_fn_alloc(instance, CTFE_ALLOC_SALT).into(),
+                                bx,
+                            ),
+                            ty: Ty::new_fn_ptr(bx.tcx(), const_.ty().fn_sig(bx.tcx())),
+                        }
                     } else {
                         span_bug!(span, "invalid type for asm sym (fn)");
                     }
                 }
                 mir::InlineAsmOperand::SymStatic { def_id } => {
-                    InlineAsmOperandRef::SymStatic { def_id }
+                    if bx.tcx().is_thread_local_static(def_id) {
+                        InlineAsmOperandRef::SymThreadLocalStatic { def_id }
+                    } else {
+                        InlineAsmOperandRef::Const {
+                            value: Scalar::from_pointer(
+                                bx.tcx().reserve_and_set_static_alloc(def_id).into(),
+                                bx,
+                            ),
+                            ty: bx.tcx().static_ptr_ty(def_id, bx.typing_env()),
+                        }
+                    }
                 }
                 mir::InlineAsmOperand::Label { target_index } => {
                     InlineAsmOperandRef::Label { label: self.llbb(targets[target_index]) }
