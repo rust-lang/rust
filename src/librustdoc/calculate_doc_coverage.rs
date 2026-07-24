@@ -1,6 +1,8 @@
 //! Calculates information used for the --show-coverage flag.
 
 use std::collections::BTreeMap;
+use std::fs::{File, create_dir_all};
+use std::io::{self, BufWriter, Write, stdout};
 use std::ops;
 
 use rustc_hir as hir;
@@ -10,27 +12,39 @@ use rustc_span::{FileName, RemapPathScopeComponents};
 use serde::Serialize;
 use tracing::debug;
 
-use crate::clean;
-use crate::config::OutputFormat;
+use crate::config::{OutputFormat, RenderOptions};
 use crate::core::DocContext;
+use crate::docfs::PathError;
+use crate::error::Error;
 use crate::html::markdown::{ErrorCodes, find_testable_code};
-use crate::passes::Pass;
-use crate::passes::check_doc_test_visibility::{Tests, should_have_doc_example};
+use crate::passes::{Tests, should_have_doc_example};
 use crate::visit::DocVisitor;
+use crate::{clean, try_err};
 
-pub(crate) const CALCULATE_DOC_COVERAGE: Pass = Pass {
-    name: "calculate-doc-coverage",
-    run: Some(calculate_doc_coverage),
-    description: "counts the number of items with and without documentation",
-};
-
-fn calculate_doc_coverage(krate: clean::Crate, ctx: &mut DocContext<'_>) -> clean::Crate {
+pub(crate) fn run(
+    krate: &clean::Crate,
+    ctx: &mut DocContext<'_>,
+    options: &RenderOptions,
+) -> Result<(), Error> {
+    let is_json = ctx.output_format == OutputFormat::CoverageJson;
+    let tcx = ctx.tcx;
     let mut calc = CoverageCalculator { items: Default::default(), ctx };
     calc.visit_crate(&krate);
 
-    calc.print_results();
-
-    krate
+    if options.output_to_stdout {
+        calc.print_results(BufWriter::new(stdout().lock()))
+            .map_err(|error| Error::new(error, "<stdout>"))
+    } else {
+        let out_dir = &options.output;
+        try_err!(create_dir_all(out_dir), out_dir);
+        let name = krate.name(tcx);
+        let mut out_file = out_dir.join(name.as_str());
+        out_file.set_extension(if is_json { "json" } else { "txt" });
+        let buf = try_err!(File::create_buffered(&out_file), out_file);
+        calc.print_results(buf).map_err(|error| Error::new(error, &out_file))?;
+        println!("Generated output into {out_file:?}");
+        Ok(())
+    }
 }
 
 #[derive(Default, Copy, Clone, Serialize, Debug)]
@@ -130,62 +144,66 @@ impl CoverageCalculator<'_, '_> {
         .expect("failed to convert JSON data to string")
     }
 
-    fn print_results(&self) {
+    fn print_results(&self, mut buf: impl Write) -> io::Result<()> {
         let output_format = self.ctx.output_format;
         if output_format == OutputFormat::CoverageJson {
-            println!("{}", self.to_json());
-            return;
+            return writeln!(buf, "{}", self.to_json());
         }
         let mut total = ItemCount::default();
 
-        fn print_table_line() {
-            println!("+-{0:->35}-+-{0:->10}-+-{0:->10}-+-{0:->10}-+-{0:->10}-+", "");
+        fn print_table_line(buf: &mut impl Write) -> io::Result<()> {
+            writeln!(buf, "+-{0:->35}-+-{0:->10}-+-{0:->10}-+-{0:->10}-+-{0:->10}-+", "")
         }
 
         fn print_table_record(
+            buf: &mut impl Write,
             name: &str,
             count: ItemCount,
             percentage: f64,
             examples_percentage: f64,
-        ) {
-            println!(
+        ) -> io::Result<()> {
+            writeln!(
+                buf,
                 "| {name:<35} | {with_docs:>10} | {percentage:>9.1}% | {with_examples:>10} | \
-                {examples_percentage:>9.1}% |",
+                 {examples_percentage:>9.1}% |",
                 with_docs = count.with_docs,
                 with_examples = count.with_examples,
-            );
+            )
         }
 
-        print_table_line();
-        println!(
+        print_table_line(&mut buf)?;
+        writeln!(
+            buf,
             "| {:<35} | {:>10} | {:>10} | {:>10} | {:>10} |",
             "File", "Documented", "Percentage", "Examples", "Percentage",
-        );
-        print_table_line();
+        )?;
+        print_table_line(&mut buf)?;
 
         for (file, &count) in &self.items {
             if let Some(percentage) = count.percentage() {
                 print_table_record(
+                    &mut buf,
                     &limit_filename_len(
                         file.display(RemapPathScopeComponents::COVERAGE).to_string(),
                     ),
                     count,
                     percentage,
                     count.examples_percentage().unwrap_or(0.),
-                );
+                )?;
 
                 total += count;
             }
         }
 
-        print_table_line();
+        print_table_line(&mut buf)?;
         print_table_record(
+            &mut buf,
             "Total",
             total,
             total.percentage().unwrap_or(0.0),
             total.examples_percentage().unwrap_or(0.0),
-        );
-        print_table_line();
+        )?;
+        print_table_line(&mut buf)
     }
 }
 

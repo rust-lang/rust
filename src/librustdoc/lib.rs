@@ -105,6 +105,7 @@ macro_rules! map {
     }}
 }
 
+mod calculate_doc_coverage;
 mod clean;
 mod config;
 mod core;
@@ -955,13 +956,13 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
                 return scrape_examples::run(krate, render_opts, cache, tcx, options, bin_crate);
             }
 
-            cache.crate_version = crate_version;
-
             if show_coverage {
                 // if we ran coverage, bail early, we don't need to also generate docs at this point
                 // (also we didn't load in any of the useful passes)
                 return;
             }
+
+            cache.crate_version = crate_version;
 
             rustc_interface::passes::emit_delayed_lints(tcx);
 
