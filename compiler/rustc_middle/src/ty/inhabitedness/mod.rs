@@ -277,7 +277,8 @@ impl<'tcx> OpsemInhabitedCtx<'tcx> {
             | ty::FnPtr(..)
             | ty::FnDef(..) => true,
             ty::Dynamic(..) => true, // We can't reason about traits, assume they are inhabited
-            ty::Slice(..) => true,   // Slices can always be empty
+            ty::Erased(..) => true, // We can't reason about erased types, assume they are inhabited
+            ty::Slice(..) => true,  // Slices can always be empty
             ty::Never => false,
 
             // Types where we recurse

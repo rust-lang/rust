@@ -293,9 +293,9 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
     {
         match self.variants {
             Variants::Multiple { .. } => true,
-            Variants::Empty => false,
+            Variants::Opaque | Variants::Empty => false,
             Variants::Single { .. } => match &self.fields {
-                FieldsShape::Primitive | FieldsShape::Union(_) => false,
+                FieldsShape::Opaque | FieldsShape::Primitive | FieldsShape::Union(_) => false,
                 FieldsShape::Array { count, .. } => {
                     *count > 0 && self.field(cx, 0).has_variant_dependent_padding(cx)
                 }
