@@ -213,6 +213,24 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         })
     }
 
+    fn unify_hr_fn_ptr(
+        &self,
+        a_sig: ty::PolyFnSig<'tcx>,
+        b: Ty<'tcx>,
+        adjust: Adjust,
+    ) -> CoerceResult<'tcx> {
+        let a_ty = Ty::new_fn_ptr(
+            self.tcx,
+            ty::Binder::dummy(self.instantiate_binder_with_fresh_vars(
+                self.cause.span,
+                BoundRegionConversionTime::HigherRankedType,
+                a_sig,
+            )),
+        );
+
+        self.unify_and(a_ty, b, [], adjust, ForceLeakCheck::Yes)
+    }
+
     /// Unify two types (using sub or lub).
     fn unify(&self, a: Ty<'tcx>, b: Ty<'tcx>, leak_check: ForceLeakCheck) -> CoerceResult<'tcx> {
         self.unify_raw(a, b, leak_check)
@@ -1037,17 +1055,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             }
             ty::FnPtr(_, _) => match self.unify(a, b, ForceLeakCheck::Yes) {
                 ok @ Ok(_) => ok,
-                Err(_) => {
-                    let a_ty = Ty::new_fn_ptr(
-                        self.tcx,
-                        ty::Binder::dummy(self.instantiate_binder_with_fresh_vars(
-                            self.cause.span,
-                            BoundRegionConversionTime::HigherRankedType,
-                            a_sig,
-                        )),
-                    );
-                    self.unify_and(a_ty, b, [], Adjust::Subtype, ForceLeakCheck::Yes)
-                }
+                Err(_) => self.unify_hr_fn_ptr(a_sig, b, Adjust::Subtype),
             },
             _ => self.unify(a, b, ForceLeakCheck::Yes),
         }
@@ -1069,17 +1077,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 let adjust = Adjust::Pointer(PointerCoercion::ReifyFnPointer(b_hdr.safety()));
                 let infer = match self.unify_and(a, b, [], adjust.clone(), ForceLeakCheck::Yes) {
                     Ok(infer) => infer,
-                    Err(_) => {
-                        let a_ty = Ty::new_fn_ptr(
-                            self.tcx,
-                            ty::Binder::dummy(self.instantiate_binder_with_fresh_vars(
-                                self.cause.span,
-                                BoundRegionConversionTime::HigherRankedType,
-                                a_sig,
-                            )),
-                        );
-                        self.unify_and(a_ty, b, [], adjust, ForceLeakCheck::Yes)?
-                    }
+                    Err(_) => self.unify_hr_fn_ptr(a_sig, b, adjust)?,
                 };
                 obligations.extend(infer.obligations);
                 Ok(InferOk { value: infer.value, obligations })
