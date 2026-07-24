@@ -188,7 +188,7 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce(CurrentGcx) -> R + Send,
 
     let thread_stack_size = init_stack_size(thread_builder_diag);
 
-    let registry = sync::Registry::new(std::num::NonZero::new(threads).unwrap());
+    let registry = sync::ComplementaryRegistry::new(std::num::NonZero::new(threads).unwrap());
 
     let Some(proof) = sync::check_dyn_thread_safe() else {
         return run_in_thread_with_globals(
