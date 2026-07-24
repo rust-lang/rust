@@ -256,3 +256,18 @@ mod pin_coerce_unsized {
         assert_eq!(pin_box_struct.as_ref().action(), "MyStruct");
     }
 }
+
+#[allow(unused)]
+fn ensure_box_clone() {
+    fn test<T: ?Sized>()
+    where
+        Box<T>: Clone,
+    {
+    }
+
+    test::<str>();
+    test::<core::ffi::CStr>();
+    test::<std::ffi::OsStr>();
+    test::<std::path::Path>();
+    test::<[String]>();
+}
