@@ -3436,10 +3436,14 @@ impl Path {
         // `components` splits it into two: (Prefix, RootDir).
         let root = match iter.peek() {
             Some(Component::ParentDir) => return Err(NormalizeError),
-            Some(p @ Component::RootDir) | Some(p @ Component::CurDir) => {
+            Some(p @ Component::RootDir) => {
                 lexical.push(p);
                 iter.next();
                 lexical.as_os_str().len()
+            }
+            Some(Component::CurDir) => {
+                iter.next();
+                0
             }
             Some(Component::Prefix(prefix)) => {
                 lexical.push(prefix.as_os_str());
@@ -3470,6 +3474,11 @@ impl Path {
                 Component::Normal(path) => lexical.push(path),
             }
         }
+
+        if lexical.is_empty() {
+            lexical.push(Component::CurDir);
+        }
+
         Ok(lexical)
     }
 

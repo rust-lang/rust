@@ -2511,20 +2511,27 @@ fn normalize_lexically() {
     }
 
     // Relative paths
+    check_ok("", "");
     check_ok("a", "a");
-    check_ok("./a", "./a");
+    check_ok("./a", "a");
+    check_ok(".", ".");
+    check_ok("./", ".");
     check_ok("a/b/c", "a/b/c");
     check_ok("a/././b/./c/.", "a/b/c");
     check_ok("a/../c", "c");
-    check_ok("./a/b", "./a/b");
+    check_ok("./a/b", "a/b");
+    check_ok("./a/..", ".");
+    check_ok("a/..", ".");
     check_ok("a/../b/c/..", "b");
 
     check_err("..");
+    check_err("./..");
     check_err("../..");
     check_err("a/../..");
     check_err("a/../../b");
     check_err("a/../../b/c");
     check_err("a/../b/../..");
+    check_err("./a/../..");
 
     // Check we don't escape the root or prefix
     #[cfg(unix)]
