@@ -15,5 +15,4 @@ pub mod coherence;
 pub mod delegate;
 pub mod normalize;
 pub mod placeholder;
-pub mod resolve;
 pub mod solve;

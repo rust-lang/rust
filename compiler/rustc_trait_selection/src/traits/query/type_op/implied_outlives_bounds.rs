@@ -61,6 +61,8 @@ pub fn compute_implied_outlives_bounds_inner<'tcx>(
         "compute_implied_outlives_bounds assumes region obligations are empty before starting"
     );
 
+    let tcx = ocx.infcx.tcx;
+
     // FIXME: This doesn't seem right. All call sites already normalize `ty`:
     // - `Ty`s from the `DefiningTy` in Borrowck: we have to normalize in the caller
     //      in order to get implied bounds involving any unconstrained region vars
@@ -141,8 +143,8 @@ pub fn compute_implied_outlives_bounds_inner<'tcx>(
                     r_b,
                 ))) => {
                     let mut components = smallvec![];
-                    push_outlives_components(ocx.infcx.tcx, ty_a, &mut components);
-                    outlives_bounds.extend(implied_bounds_from_components(r_b, components))
+                    push_outlives_components(tcx, ty_a, &mut components);
+                    outlives_bounds.extend(implied_bounds_from_components(tcx, r_b, components))
                 }
             }
         }
@@ -159,8 +161,8 @@ pub fn compute_implied_outlives_bounds_inner<'tcx>(
             ocx.infcx.clone_registered_region_obligations()
         {
             let mut components = smallvec![];
-            push_outlives_components(ocx.infcx.tcx, sup_type, &mut components);
-            outlives_bounds.extend(implied_bounds_from_components(sub_region, components));
+            push_outlives_components(tcx, sup_type, &mut components);
+            outlives_bounds.extend(implied_bounds_from_components(tcx, sub_region, components));
         }
     }
 
@@ -197,6 +199,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ContainsBevyParamSet<'tcx> {
 /// `T: 'a` to hold. We get to assume that the caller has validated
 /// those relationships.
 fn implied_bounds_from_components<'tcx>(
+    tcx: TyCtxt<'tcx>,
     sub_region: ty::Region<'tcx>,
     sup_components: SmallVec<[Component<TyCtxt<'tcx>>; 4]>,
 ) -> Vec<OutlivesBound<'tcx>> {
@@ -206,7 +209,11 @@ fn implied_bounds_from_components<'tcx>(
             match component {
                 Component::Region(r) => Some(OutlivesBound::RegionSubRegion(sub_region, r)),
                 Component::Param(p) => Some(OutlivesBound::RegionSubParam(sub_region, p)),
-                Component::Alias(p) => Some(OutlivesBound::RegionSubAlias(sub_region, p)),
+                Component::Alias(is_rigid, p) => {
+                    // We expect them to be already deeply normalized.
+                    debug_assert_eq!(is_rigid, ty::IsRigid::yes_if_next_solver(tcx));
+                    Some(OutlivesBound::RegionSubAlias(sub_region, p))
+                }
                 Component::Placeholder(_p) => {
                     // FIXME(non_lifetime_binders): Placeholders don't currently
                     // imply anything for outlives, though they could easily.

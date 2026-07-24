@@ -4,7 +4,7 @@ use rustc_type_ir::data_structures::ensure_sufficient_stack;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::{
     self as ty, AliasTerm, Binder, FallibleTypeFolder, InferCtxtLike, Interner, TypeFoldable,
-    TypeSuperFoldable, TypeVisitableExt, UniverseIndex,
+    TypeSuperFoldable, TypeVisitableExt, UniverseIndex, eager_resolve_vars,
 };
 use tracing::instrument;
 
@@ -143,8 +143,8 @@ where
 
         if self.cx().renormalize_rigid_aliases() && orig_is_rigid == ty::IsRigid::Yes {
             // find out missing typing env change.
-            let original = crate::resolve::eager_resolve_vars(infcx, original);
-            let normalized = crate::resolve::eager_resolve_vars(infcx, normalized);
+            let original = eager_resolve_vars(infcx, original);
+            let normalized = eager_resolve_vars(infcx, normalized);
             assert_eq!(original, normalized, "rigid alias is further normalized");
         }
         Ok(normalized)
@@ -196,8 +196,8 @@ where
 
         if self.cx().renormalize_rigid_aliases() && orig_is_rigid == ty::IsRigid::Yes {
             // find out missing typing env change.
-            let original = crate::resolve::eager_resolve_vars(infcx, original);
-            let normalized = crate::resolve::eager_resolve_vars(infcx, normalized);
+            let original = eager_resolve_vars(infcx, original);
+            let normalized = eager_resolve_vars(infcx, normalized);
             assert_eq!(original, normalized, "rigid alias is further normalized");
         }
 

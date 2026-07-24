@@ -1,7 +1,7 @@
 use std::collections::hash_map::Entry;
 use std::ops::Deref;
 
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::LangItem;
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_infer::infer::canonical::query_response::make_query_region_constraints;
@@ -16,7 +16,8 @@ use rustc_infer::traits::solve::{
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::traits::solve::Certainty;
 use rustc_middle::ty::{
-    self, MayBeErased, Ty, TyCtxt, TypeFlags, TypeFoldable, TypeVisitableExt, TypingMode,
+    self, MayBeErased, Ty, TyCtxt, TypeFlags, TypeFoldable, TypeSuperVisitable, TypeVisitable,
+    TypeVisitableExt, TypeVisitor, TypingMode,
 };
 use rustc_next_trait_solver::solve::{GoalStalledOn, GoalStalledOnOpaques};
 use rustc_span::{DUMMY_SP, Span};
@@ -84,6 +85,33 @@ fn goal_stalled_on_args_or_nonempty_opaques<'tcx>(
                 previously_succeeded_in_erased: SucceededInErased::No,
             },
         },
+    }
+}
+
+struct CollectNonRegionInfer<'tcx> {
+    infers: Vec<ty::GenericArg<'tcx>>,
+    visited: FxHashSet<Ty<'tcx>>,
+}
+
+impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for CollectNonRegionInfer<'tcx> {
+    fn visit_ty(&mut self, ty: Ty<'tcx>) {
+        if self.visited.contains(&ty) {
+            return;
+        }
+
+        match ty.kind() {
+            ty::Infer(_) => self.infers.push(ty.into()),
+            _ => ty.super_visit_with(self),
+        }
+
+        self.visited.insert(ty);
+    }
+
+    fn visit_const(&mut self, ct: ty::Const<'tcx>) {
+        match ct.kind() {
+            ty::ConstKind::Infer(_) => self.infers.push(ct.into()),
+            _ => ct.super_visit_with(self),
+        }
     }
 }
 
@@ -186,6 +214,21 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
             }
             ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(outlives)) => {
                 if outlives.has_escaping_bound_vars() {
+                    return Outcome::NoFastPath;
+                }
+
+                let ty = self.resolve_vars_if_possible(outlives.0);
+                let mut infer_collector = CollectNonRegionInfer {
+                    infers: Default::default(),
+                    visited: Default::default(),
+                };
+                ty.visit_with(&mut infer_collector);
+                let infers = infer_collector.infers;
+                if !infers.is_empty() {
+                    return goal_stalled_on_args(infers);
+                }
+
+                if ty.has_non_rigid_aliases() {
                     return Outcome::NoFastPath;
                 }
 
