@@ -121,6 +121,7 @@ windows_link::link!("ws2_32.dll" "system" fn WSADuplicateSocketW(s : SOCKET, dwp
 windows_link::link!("ws2_32.dll" "system" fn WSAGetLastError() -> WSA_ERROR);
 windows_link::link!("ws2_32.dll" "system" fn WSARecv(s : SOCKET, lpbuffers : *const WSABUF, dwbuffercount : u32, lpnumberofbytesrecvd : *mut u32, lpflags : *mut u32, lpoverlapped : *mut OVERLAPPED, lpcompletionroutine : LPWSAOVERLAPPED_COMPLETION_ROUTINE) -> i32);
 windows_link::link!("ws2_32.dll" "system" fn WSASend(s : SOCKET, lpbuffers : *const WSABUF, dwbuffercount : u32, lpnumberofbytessent : *mut u32, dwflags : u32, lpoverlapped : *mut OVERLAPPED, lpcompletionroutine : LPWSAOVERLAPPED_COMPLETION_ROUTINE) -> i32);
+windows_link::link!("ws2_32.dll" "system" fn WSASetLastError(ierror : i32));
 windows_link::link!("ws2_32.dll" "system" fn WSASocketW(af : i32, r#type : i32, protocol : i32, lpprotocolinfo : *const WSAPROTOCOL_INFOW, g : u32, dwflags : u32) -> SOCKET);
 windows_link::link!("ws2_32.dll" "system" fn WSAStartup(wversionrequested : u16, lpwsadata : *mut WSADATA) -> i32);
 windows_link::link!("kernel32.dll" "system" fn WaitForMultipleObjects(ncount : u32, lphandles : *const HANDLE, bwaitall : BOOL, dwmilliseconds : u32) -> WAIT_EVENT);
@@ -450,6 +451,7 @@ pub struct CONTEXT_0_0 {
 pub type CONTEXT_FLAGS = u32;
 pub type COPYFILE_FLAGS = u32;
 pub type COPYPROGRESSROUTINE_PROGRESS = u32;
+pub const CP_ACP: u32 = 0u32;
 pub const CP_UTF8: u32 = 65001u32;
 pub const CREATE_ALWAYS: FILE_CREATION_DISPOSITION = 2u32;
 pub const CREATE_BREAKAWAY_FROM_JOB: PROCESS_CREATION_FLAGS = 16777216u32;
