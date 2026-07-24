@@ -1,7 +1,11 @@
 use crate::spec::{Cc, Env, LinkerFlavor, Lld, TargetOptions, base};
 
 pub(crate) fn opts() -> TargetOptions {
-    let mut base = TargetOptions { env: Env::Gnu, ..base::linux::opts() };
+    let mut base = TargetOptions {
+        env: Env::Gnu,
+        static_position_independent_executables: true,
+        ..base::linux::opts()
+    };
 
     // When we're asked to use the `rust-lld` linker by default, set the appropriate lld-using
     // linker flavor, and self-contained linker component.
