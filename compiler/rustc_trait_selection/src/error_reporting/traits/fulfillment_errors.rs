@@ -2466,10 +2466,19 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 };
                 err.span_help(span, msg);
             } else {
+                let mut tuple_max_args = 0_usize;
+                let mut all_types_tuples = true;
                 let candidate_names: Vec<String> = candidates
                     .iter()
                     .map(|(c, _)| {
                         if all_traits_equal {
+                            if all_types_tuples && let ty::Tuple(tys) = c.self_ty().kind() {
+                                if tys.len() > tuple_max_args {
+                                    tuple_max_args = tys.len();
+                                }
+                            } else {
+                                all_types_tuples = false;
+                            }
                             format!(
                                 "\n  {}",
                                 self.tcx.short_string(c.self_ty(), err.long_ty_path())
@@ -2490,6 +2499,22 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         }
                     })
                     .collect();
+
+                let (candidate_names, end) = if all_traits_equal && all_types_tuples {
+                    (
+                        vec![
+                            format!("  {}", candidate_names[0]),
+                            // (T₁, T₂, …, Tₙ)
+                            format!(
+                                "\n  (T\u{2081}, T\u{2082}, …, T\u{2099}) // up to tuples of length {tuple_max_args}"
+                            ),
+                            format!("\n  // Other relevant impls here"),
+                        ],
+                        3,
+                    )
+                } else {
+                    (candidate_names, end)
+                };
                 let msg = if all_types_equal {
                     format!(
                         "`{}` implements trait `{}`",
