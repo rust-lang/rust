@@ -1028,10 +1028,7 @@ struct Candidate<'tcx> {
     /// - After a candidate's subcandidates have been lowered, a copy of any remaining
     ///   or-patterns is added to each leaf subcandidate
     ///   (see [`Builder::test_remaining_match_pairs_after_or`]).
-    ///
-    /// Invariants:
-    /// - All or-patterns ([`TestableCase::Or`]) have been sorted to the end.
-    match_pairs: Vec<MatchPairTree<'tcx>>,
+    match_pairs: MatchPairsQueue<'tcx>,
 
     /// ...and if this is non-empty, one of these subcandidates also has to match...
     ///
@@ -1100,8 +1097,8 @@ impl<'tcx> Candidate<'tcx> {
 
     /// Incorporates an already-simplified [`FlatPat`] into a new candidate.
     fn from_flat_pat(flat_pat: FlatPat<'tcx>, has_guard: bool) -> Self {
-        let mut this = Candidate {
-            match_pairs: flat_pat.match_pairs,
+        Candidate {
+            match_pairs: MatchPairsQueue::new(flat_pat.match_pairs),
             extra_data: flat_pat.extra_data,
             has_guard,
             subcandidates: Vec::new(),
@@ -1109,22 +1106,7 @@ impl<'tcx> Candidate<'tcx> {
             otherwise_block: None,
             pre_binding_block: None,
             false_edge_start_block: None,
-        };
-        this.sort_match_pairs();
-        this
-    }
-
-    /// Restores the invariant that or-patterns must be sorted to the end.
-    fn sort_match_pairs(&mut self) {
-        self.match_pairs.sort_by_key(|pair| matches!(pair.testable_case, TestableCase::Or { .. }));
-    }
-
-    /// Returns whether the first match pair of this candidate is an or-pattern.
-    fn starts_with_or_pattern(&self) -> bool {
-        matches!(
-            &*self.match_pairs,
-            [MatchPairTree { testable_case: TestableCase::Or { .. }, .. }, ..]
-        )
+        }
     }
 
     /// Visit the leaf candidates (those with no subcandidates) contained in
@@ -1148,6 +1130,45 @@ impl<'tcx> Candidate<'tcx> {
             move |c, _| c.subcandidates.iter_mut().rev(),
             |_| {},
         );
+    }
+}
+
+#[derive(Debug)]
+struct MatchPairsQueue<'tcx> {
+    /// Match pairs that can be "tested" directly, because they are not or-patterns.
+    testable_match_pairs: Vec<TestableMatchPairTree<'tcx>>,
+    /// Or-patterns, which must be expanded before their subpatterns can participate in tests.
+    /// These should only be processed after `testable_match_pairs` is empty
+    /// (see [`Self::starts_with_or_pattern`]).
+    or_match_pairs: Vec<OrMatchPairTree<'tcx>>,
+}
+
+impl<'tcx> MatchPairsQueue<'tcx> {
+    fn new(match_pairs: Vec<MatchPairTree<'tcx>>) -> Self {
+        let mut this = MatchPairsQueue { testable_match_pairs: vec![], or_match_pairs: vec![] };
+        this.push_all(match_pairs);
+        this
+    }
+
+    fn push_all(&mut self, match_pairs: impl IntoIterator<Item = MatchPairTree<'tcx>>) {
+        for match_pair in match_pairs {
+            match match_pair {
+                MatchPairTree::Testable { testable_match_pair } => {
+                    self.testable_match_pairs.push(testable_match_pair)
+                }
+                MatchPairTree::Or { or_match_pair } => self.or_match_pairs.push(or_match_pair),
+            }
+        }
+    }
+
+    fn is_empty(&self) -> bool {
+        let MatchPairsQueue { testable_match_pairs, or_match_pairs } = self;
+        testable_match_pairs.is_empty() && or_match_pairs.is_empty()
+    }
+
+    fn starts_with_or_pattern(&self) -> bool {
+        let MatchPairsQueue { testable_match_pairs, or_match_pairs } = self;
+        testable_match_pairs.is_empty() && !or_match_pairs.is_empty()
     }
 }
 
@@ -1211,10 +1232,6 @@ struct Ascription<'tcx> {
 /// Created by [`MatchPairTree`], and then inspected primarily by:
 /// - [`Builder::pick_test_for_match_pair`] (to choose a test)
 /// - [`Builder::choose_bucket_for_candidate`] (to see how the test interacts with a match pair)
-///
-/// Note that or-patterns are not tested directly like the other variants.
-/// Instead they participate in or-pattern expansion, where they are transformed into
-/// subcandidates. See [`Builder::expand_and_match_or_candidates`].
 #[derive(Debug, Clone)]
 enum TestableCase<'tcx> {
     Variant { adt_def: ty::AdtDef<'tcx>, variant_index: VariantIdx },
@@ -1223,7 +1240,6 @@ enum TestableCase<'tcx> {
     Slice { len: u64, op: SliceLenOp },
     Deref { temp: Place<'tcx>, mutability: Mutability },
     Never,
-    Or { pats: Box<[FlatPat<'tcx>]> },
 }
 
 impl<'tcx> TestableCase<'tcx> {
@@ -1261,28 +1277,30 @@ enum PatConstKind {
 /// Each node also has a list of subpairs (possibly empty) that must also match,
 /// and some additional information from the THIR pattern it represents.
 #[derive(Debug, Clone)]
-pub(crate) struct MatchPairTree<'tcx> {
-    /// This place...
-    ///
-    /// ---
-    /// This can be `None` if it referred to a non-captured place in a closure.
-    ///
-    /// Invariant: Can only be `None` when `testable_case` is `Or`.
-    /// Therefore this must be `Some(_)` after or-pattern expansion.
-    place: Option<Place<'tcx>>,
+enum MatchPairTree<'tcx> {
+    Testable { testable_match_pair: TestableMatchPairTree<'tcx> },
+    Or { or_match_pair: OrMatchPairTree<'tcx> },
+}
 
-    /// ... must pass this test...
+#[derive(Debug, Clone)]
+struct TestableMatchPairTree<'tcx> {
+    /// Place to be tested.
+    place: Place<'tcx>,
+    /// Test to perform, and the desired outcome.
     testable_case: TestableCase<'tcx>,
-
-    /// ... and these subpairs must match.
-    ///
-    /// ---
     /// Subpairs typically represent tests that can only be performed after their
     /// parent has succeeded. For example, the pattern `Some(3)` might have an
     /// outer match pair that tests for the variant `Some`, and then a subpair
     /// that tests its field for the value `3`.
-    subpairs: Vec<Self>,
+    subpairs: Vec<MatchPairTree<'tcx>>,
+    /// Span field of the THIR pattern this node was created from.
+    pattern_span: Span,
+}
 
+#[derive(Debug, Clone)]
+struct OrMatchPairTree<'tcx> {
+    /// Subpatterns that are the alternatives of this or-pattern.
+    or_subpats: Box<[FlatPat<'tcx>]>,
     /// Span field of the THIR pattern this node was created from.
     pattern_span: Span,
 }
@@ -1779,7 +1797,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let remainder_start = self.select_matched_candidate(first, start_block);
                 remainder_start.and(remaining)
             }
-            candidates if candidates.iter().any(|candidate| candidate.starts_with_or_pattern()) => {
+            candidates if candidates.iter().any(|c| c.match_pairs.starts_with_or_pattern()) => {
                 // If any candidate starts with an or-pattern, we want to expand or-patterns
                 // before we do any more tests.
                 //
@@ -1882,7 +1900,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             .position(|candidate| {
                 // If a candidate starts with an or-pattern and has more match pairs,
                 // we can expand it, but we must stop expanding _after_ it.
-                candidate.match_pairs.len() > 1 && candidate.starts_with_or_pattern()
+                candidate.match_pairs.starts_with_or_pattern()
+                    && candidate.match_pairs.or_match_pairs.len() > 1
             })
             .map(|pos| pos + 1) // Stop _after_ the found candidate
             .unwrap_or(candidates.len()); // Otherwise, include all candidates
@@ -1893,8 +1912,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // or-patterns are expanded in their parent's relative position.
         let mut expanded_candidates = Vec::new();
         for candidate in candidates_to_expand.iter_mut() {
-            if candidate.starts_with_or_pattern() {
-                let or_match_pair = candidate.match_pairs.remove(0);
+            if candidate.match_pairs.starts_with_or_pattern() {
+                let or_match_pair = candidate.match_pairs.or_match_pairs.remove(0);
                 // Expand the or-pattern into subcandidates.
                 self.create_or_subcandidates(candidate, or_match_pair);
                 // Collect the newly created subcandidates.
@@ -1948,12 +1967,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn create_or_subcandidates(
         &mut self,
         candidate: &mut Candidate<'tcx>,
-        match_pair: MatchPairTree<'tcx>,
+        or_match_pair: OrMatchPairTree<'tcx>,
     ) {
-        let TestableCase::Or { pats } = match_pair.testable_case else { bug!() };
-        debug!("expanding or-pattern: candidate={:#?}\npats={:#?}", candidate, pats);
-        candidate.or_span = Some(match_pair.pattern_span);
-        candidate.subcandidates = pats
+        debug!("expanding or-pattern: candidate={candidate:?}, or_match_pair={or_match_pair:?}");
+        candidate.or_span = Some(or_match_pair.pattern_span);
+        candidate.subcandidates = or_match_pair
+            .or_subpats
             .into_iter()
             .map(|flat_pat| Candidate::from_flat_pat(flat_pat, candidate.has_guard))
             .collect();
@@ -2101,7 +2120,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         scrutinee_span: Span,
         candidate: &mut Candidate<'tcx>,
     ) {
-        if candidate.match_pairs.is_empty() {
+        assert!(candidate.match_pairs.testable_match_pairs.is_empty());
+        if candidate.match_pairs.or_match_pairs.is_empty() {
             return;
         }
 
@@ -2112,14 +2132,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             last_otherwise = leaf_candidate.otherwise_block;
         });
 
-        let remaining_match_pairs = mem::take(&mut candidate.match_pairs);
-        // We're testing match pairs that remained after an `Or`, so the remaining
-        // pairs should all be `Or` too, due to the sorting invariant.
-        debug_assert!(
-            remaining_match_pairs
-                .iter()
-                .all(|match_pair| matches!(match_pair.testable_case, TestableCase::Or { .. }))
-        );
+        let remaining_or_match_pairs = mem::take(&mut candidate.match_pairs.or_match_pairs);
 
         // Visit each leaf candidate within this subtree, add a copy of the remaining
         // match pairs to it, and then recursively lower the rest of the match tree
@@ -2129,7 +2142,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // and removed, so `extend` and assignment are equivalent,
             // but extending can also recycle any existing vector capacity.
             assert!(leaf_candidate.match_pairs.is_empty());
-            leaf_candidate.match_pairs.extend(remaining_match_pairs.iter().cloned());
+            leaf_candidate.match_pairs.or_match_pairs.extend_from_slice(&remaining_or_match_pairs);
 
             let or_start = leaf_candidate.pre_binding_block.unwrap();
             let otherwise =
@@ -2167,13 +2180,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// [`Range`]: TestKind::Range
     fn pick_test(&mut self, candidates: &[&mut Candidate<'tcx>]) -> (Place<'tcx>, Test<'tcx>) {
         // Extract the match-pair from the highest priority candidate
-        let match_pair = &candidates[0].match_pairs[0];
+        let match_pair = &candidates[0].match_pairs.testable_match_pairs[0];
         let test = self.pick_test_for_match_pair(match_pair);
-        // Unwrap is ok after simplification.
-        let match_place = match_pair.place.unwrap();
         debug!(?test, ?match_pair);
 
-        (match_place, test)
+        (match_pair.place, test)
     }
 
     /// This is the most subtle part of the match lowering algorithm. At this point, there are

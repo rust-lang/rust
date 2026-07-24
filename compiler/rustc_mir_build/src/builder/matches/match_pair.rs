@@ -10,7 +10,8 @@ use rustc_span::Span;
 use crate::builder::Builder;
 use crate::builder::expr::as_place::{PlaceBase, PlaceBuilder};
 use crate::builder::matches::{
-    FlatPat, MatchPairTree, PatConstKind, PatternExtraData, SliceLenOp, TestableCase,
+    FlatPat, MatchPairTree, OrMatchPairTree, PatConstKind, PatternExtraData, SliceLenOp,
+    TestableCase, TestableMatchPairTree,
 };
 
 /// For an array or slice pattern's subpatterns (prefix/slice/suffix), returns a list
@@ -142,12 +143,8 @@ fn squash_inter_pat<'tcx>(
             extra_data.bindings.push(super::SubpatternBindings::FromOrPattern);
         }
 
-        match_pairs.push(MatchPairTree {
-            // Or-patterns never need a place during MIR building.
-            place: None,
-            testable_case: TestableCase::Or { pats: or_subpats },
-            subpairs: vec![],
-            pattern_span,
+        match_pairs.push(MatchPairTree::Or {
+            or_match_pair: OrMatchPairTree { or_subpats, pattern_span },
         });
     } else {
         // We're dealing with a node that isn't an or-pattern.
@@ -165,9 +162,14 @@ fn squash_inter_pat<'tcx>(
             // If this match is inside a closure, it's essential that the place
             // we're testing was actually captured! Be sure to keep `ExprUseVisitor`
             // in sync with the refutability checks in this module.
-            assert!(place.is_some());
-            assert!(!matches!(testable_case, TestableCase::Or { .. }));
-            match_pairs.push(MatchPairTree { place, testable_case, subpairs, pattern_span });
+            match_pairs.push(MatchPairTree::Testable {
+                testable_match_pair: TestableMatchPairTree {
+                    place: place.expect("non-or nodes always have a place"),
+                    testable_case,
+                    subpairs,
+                    pattern_span,
+                },
+            })
         } else {
             // This pattern is irrefutable, so it doesn't need its own match-pair node.
             // Just push its refutable subpatterns instead, if any.
