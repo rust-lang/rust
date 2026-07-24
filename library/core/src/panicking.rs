@@ -14,8 +14,7 @@
 //!
 //! ```
 //! #[eii(panic_handler)]
-//! fn panic_handler(pi: &core::panic::PanicInfo<'_>) -> !
-//! # { loop {} }
+//! fn panic_handler(pi: &core::panic::PanicInfo<'_>) -> !;
 //! ```
 //!
 //! This module contains a few other panicking functions, but these are just the
