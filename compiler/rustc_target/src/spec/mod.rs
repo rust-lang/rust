@@ -1232,7 +1232,7 @@ impl SanitizerSet {
 
     pub fn prefix(self) -> Option<&'static str> {
         Some(match self {
-            SanitizerSet::ADDRESS | SanitizerSet::LEAK => "Z",
+            SanitizerSet::ADDRESS | SanitizerSet::LEAK => "C",
             SanitizerSet::CFI
             | SanitizerSet::DATAFLOW
             | SanitizerSet::KCFI

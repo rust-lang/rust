@@ -907,10 +907,8 @@ mod desc {
     pub(crate) const parse_patchable_function_entry: &str = "a comma separated list of (prefix_nops,total_nops,section_name), (prefix_nops,total_nops), or (total_nops). Where prefix_nops <= total_nops where 0 < total_nops <= 255 and prefix_nops <= total_nops";
     pub(crate) const parse_opt_panic_strategy: &str = parse_panic_strategy;
     pub(crate) const parse_relro_level: &str = "one of: `full`, `partial`, or `off`";
-    pub(crate) const parse_sanitizers_all: &str = "comma separated list of sanitizers: `address`, `cfi`, `dataflow`, `hwaddress`, `kcfi`, `kernel-address`, `kernel-hwaddress`, `leak`, `memory`, `memtag`, `safestack`, `shadow-call-stack`, `thread`, or 'realtime'";
-    pub(crate) const parse_sanitizers_target: &str = "comma separated list of sanitizers: `cfi`, `dataflow`, `hwaddress`, `kcfi`, `kernel-address`, `kernel-hwaddress`, `memory`, `memtag`, `safestack`, `shadow-call-stack`, `thread`, or 'realtime'";
-    pub(crate) const parse_sanitizers_other: &str =
-        "comma separated list of sanitizers: `address`, or `leak`";
+    pub(crate) const parse_sanitizers: &str = "comma separated list of sanitizers: `address`, or `leak` with `-C`; and `cfi`, `dataflow`, `hwaddress`, `kcfi`, `kernel-address`, `kernel-hwaddress`, `leak`, `memory`, `memtag`, `safestack`, `shadow-call-stack`, `thread`, or 'realtime' with `-T`";
+    pub(crate) const parse_sanitizers_unfiltered: &str = "comma separated list of sanitizers: `address`, `cfi`, `dataflow`, `hwaddress`, `leak`, `kcfi`, `kernel-address`, `kernel-hwaddress`, `leak`, `memory`, `memtag`, `safestack`, `shadow-call-stack`, `thread`, or 'realtime'";
     pub(crate) const parse_sanitizer_memory_track_origins: &str = "0, 1, or 2";
     pub(crate) const parse_cfguard: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), `checks`, or `nochecks`";
@@ -1408,85 +1406,58 @@ pub mod parse {
         true
     }
 
-    enum SanitizerFilter {
-        All,
-        TargetModifiers,
-        NonTargetModifiers,
+    pub(crate) fn parse_sanitizers(
+        slot: &mut SanitizerSet,
+        v: Option<&str>,
+        is_target_modifier: bool,
+    ) -> bool {
+        parse_sanitizers_with_filter(slot, v, is_target_modifier, true)
     }
 
-    fn parse_sanitizers(slot: &mut SanitizerSet, v: Option<&str>, filter: SanitizerFilter) -> bool {
+    pub(crate) fn parse_sanitizers_unfiltered(
+        slot: &mut SanitizerSet,
+        v: Option<&str>,
+        is_target_modifier: bool,
+    ) -> bool {
+        parse_sanitizers_with_filter(slot, v, is_target_modifier, false)
+    }
+
+    fn parse_sanitizers_with_filter(
+        slot: &mut SanitizerSet,
+        v: Option<&str>,
+        is_target_modifier: bool,
+        with_filter: bool,
+    ) -> bool {
         if let Some(v) = v {
             for s in v.split(',') {
-                match filter {
-                    SanitizerFilter::All => {
-                        *slot |= match s {
-                            "address" => SanitizerSet::ADDRESS,
-                            "cfi" => SanitizerSet::CFI,
-                            "dataflow" => SanitizerSet::DATAFLOW,
-                            "kcfi" => SanitizerSet::KCFI,
-                            "kernel-address" => SanitizerSet::KERNELADDRESS,
-                            "kernel-hwaddress" => SanitizerSet::KERNELHWADDRESS,
-                            "leak" => SanitizerSet::LEAK,
-                            "memory" => SanitizerSet::MEMORY,
-                            "memtag" => SanitizerSet::MEMTAG,
-                            "shadow-call-stack" => SanitizerSet::SHADOWCALLSTACK,
-                            "thread" => SanitizerSet::THREAD,
-                            "hwaddress" => SanitizerSet::HWADDRESS,
-                            "safestack" => SanitizerSet::SAFESTACK,
-                            "realtime" => SanitizerSet::REALTIME,
-                            _ => return false,
-                        }
+                *slot |= match s {
+                    "cfi" if !with_filter || is_target_modifier => SanitizerSet::CFI,
+                    "dataflow" if !with_filter || is_target_modifier => SanitizerSet::DATAFLOW,
+                    "kcfi" if !with_filter || is_target_modifier => SanitizerSet::KCFI,
+                    "kernel-address" if !with_filter || is_target_modifier => {
+                        SanitizerSet::KERNELADDRESS
                     }
-                    SanitizerFilter::TargetModifiers => {
-                        *slot |= match s {
-                            "cfi" => SanitizerSet::CFI,
-                            "dataflow" => SanitizerSet::DATAFLOW,
-                            "kcfi" => SanitizerSet::KCFI,
-                            "kernel-address" => SanitizerSet::KERNELADDRESS,
-                            "kernel-hwaddress" => SanitizerSet::KERNELHWADDRESS,
-                            "memory" => SanitizerSet::MEMORY,
-                            "memtag" => SanitizerSet::MEMTAG,
-                            "shadow-call-stack" => SanitizerSet::SHADOWCALLSTACK,
-                            "thread" => SanitizerSet::THREAD,
-                            "hwaddress" => SanitizerSet::HWADDRESS,
-                            "safestack" => SanitizerSet::SAFESTACK,
-                            "realtime" => SanitizerSet::REALTIME,
-                            _ => return false,
-                        }
+                    "kernel-hwaddress" if !with_filter || is_target_modifier => {
+                        SanitizerSet::KERNELHWADDRESS
                     }
-                    SanitizerFilter::NonTargetModifiers => {
-                        *slot |= match s {
-                            "address" => SanitizerSet::ADDRESS,
-                            "leak" => SanitizerSet::LEAK,
-                            _ => return false,
-                        }
+                    "memory" if !with_filter || is_target_modifier => SanitizerSet::MEMORY,
+                    "memtag" if !with_filter || is_target_modifier => SanitizerSet::MEMTAG,
+                    "shadow-call-stack" if !with_filter || is_target_modifier => {
+                        SanitizerSet::SHADOWCALLSTACK
                     }
+                    "thread" if !with_filter || is_target_modifier => SanitizerSet::THREAD,
+                    "hwaddress" if !with_filter || is_target_modifier => SanitizerSet::HWADDRESS,
+                    "safestack" if !with_filter || is_target_modifier => SanitizerSet::SAFESTACK,
+                    "realtime" if !with_filter || is_target_modifier => SanitizerSet::REALTIME,
+                    "address" if !with_filter || !is_target_modifier => SanitizerSet::ADDRESS,
+                    "leak" if !with_filter || !is_target_modifier => SanitizerSet::LEAK,
+                    _ => return false,
                 }
             }
             true
         } else {
             false
         }
-    }
-
-    pub(crate) fn parse_sanitizers_all(slot: &mut SanitizerSet, v: Option<&str>, _: bool) -> bool {
-        parse_sanitizers(slot, v, SanitizerFilter::All)
-    }
-
-    pub(crate) fn parse_sanitizers_target(
-        slot: &mut SanitizerSet,
-        v: Option<&str>,
-        _: bool,
-    ) -> bool {
-        parse_sanitizers(slot, v, SanitizerFilter::TargetModifiers)
-    }
-
-    pub(crate) fn parse_sanitizers_other(
-        slot: &mut SanitizerSet,
-        v: Option<&str>,
-        _: bool,
-    ) -> bool {
-        parse_sanitizers(slot, v, SanitizerFilter::NonTargetModifiers)
     }
 
     pub(crate) fn parse_sanitizer_memory_track_origins(
@@ -2583,8 +2554,10 @@ options! {
     rpath: bool = (false, parse_bool, [UNTRACKED],
         "set rpath values in libs/exes (default: no)"),
     #[rustc_lint_opt_deny_field_access("use `Session::sanitizers()` instead of this field")]
-    sanitizer: SanitizerSet = (SanitizerSet::empty(), parse_sanitizers_other, [TRACKED_UNSTABLE],
+    sanitizer: SanitizerSet = (SanitizerSet::empty(), parse_sanitizers, [TRACKED_UNSTABLE],
         "use a sanitizer"),
+    sanitizer_cfi_normalize_integers: Option<bool> = (None, parse_opt_bool, [TRACKED_UNSTABLE] { TARGET_MODIFIER: Only },
+        "enable normalizing integer types (default: no)"),
     save_temps: bool = (false, parse_bool, [UNTRACKED],
         "save all temporary output files during compilation (default: no)"),
     soft_float: () = ((), parse_ignore, [UNTRACKED],
@@ -3045,7 +3018,7 @@ written to standard error output)"),
         "enable KCFI arity indicator (default: no)"),
     sanitizer_memory_track_origins: usize = (0, parse_sanitizer_memory_track_origins, [TRACKED],
         "enable origins tracking in MemorySanitizer"),
-    sanitizer_recover: SanitizerSet = (SanitizerSet::empty(), parse_sanitizers_all, [TRACKED],
+    sanitizer_recover: SanitizerSet = (SanitizerSet::empty(), parse_sanitizers_unfiltered, [TRACKED],
         "enable recovery for selected sanitizers"),
     saturating_float_casts: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "make float->int casts UB-free: numbers outside the integer type's range are clipped to \
