@@ -1243,6 +1243,14 @@ pub fn rustc_cargo(
     // <https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler/topic/Internal.20lint.20for.20raw.20.60print!.60.20and.20.60println!.60.3F>.
     cargo.rustflag("-Zon-broken-pipe=kill");
 
+    // /Brepro tells the MSVC linker to omit non-deterministic COFF data
+    // (namely the PE timestamp) from the produced binary. Only applied when
+    // building rustc itself via bootstrap. See discussion:
+    // https://github.com/rust-lang/rust/pull/158873
+    if target.is_msvc() {
+        cargo.rustflag("-Clink-arg=/Brepro");
+    }
+
     // Building with protected visibility reduces the number of dynamic relocations needed, giving
     // us a faster startup time. However GNU ld < 2.40 will error if we try to link a shared object
     // with direct references to protected symbols, so for now we only use protected symbols if
