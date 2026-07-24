@@ -885,6 +885,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::Unary { .. }
             | ExprKind::Binary { .. }
             | ExprKind::Cast { .. }
+            | ExprKind::Subtype { .. }
             | ExprKind::PointerCoercion { .. }
             | ExprKind::Repeat { .. }
             | ExprKind::Array { .. }

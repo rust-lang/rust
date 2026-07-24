@@ -1,4 +1,4 @@
-//@ known-bug: unknown
+//@ check-pass
 
 // Regression test for #67498.
 

@@ -1604,8 +1604,56 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             ),
                         }
                     }
-                    CastKind::Subtype | CastKind::BoxDerefTransmute => {
+                    CastKind::BoxDerefTransmute => {
                         bug!("CastKind::{cast_kind:?} shouldn't exist in borrowck")
+                    }
+                    CastKind::Subtype => {
+                        let src_ty = op.ty(self.body, tcx);
+                        let src_sig = src_ty.fn_sig(tcx);
+
+                        if src_sig.has_bound_regions()
+                            && let ty::FnPtr(target_fn_tys, target_hdr) = *ty.kind()
+                            && let target_sig = target_fn_tys.with(target_hdr)
+                            && let Some(target_sig) = target_sig.no_bound_vars()
+                        {
+                            let src_sig = self.infcx.instantiate_binder_with_fresh_vars(
+                                span,
+                                BoundRegionConversionTime::HigherRankedType,
+                                src_sig,
+                            );
+                            let src_ty = Ty::new_fn_ptr(self.tcx(), ty::Binder::dummy(src_sig));
+                            self.prove_clause(
+                                ty::ClauseKind::WellFormed(src_ty.into()),
+                                location.to_locations(),
+                                ConstraintCategory::Cast {
+                                    is_raw_ptr_dyn_type_cast: false,
+                                    is_implicit_coercion: true,
+                                    unsize_to: None,
+                                },
+                            );
+
+                            let src_ty =
+                                self.normalize(ty::Unnormalized::new_wip(src_ty), location);
+                            if let Err(terr) = self.sub_types(
+                                src_ty,
+                                *ty,
+                                location.to_locations(),
+                                ConstraintCategory::Cast {
+                                    is_raw_ptr_dyn_type_cast: false,
+                                    is_implicit_coercion: true,
+                                    unsize_to: None,
+                                },
+                            ) {
+                                span_mirbug!(
+                                    self,
+                                    rvalue,
+                                    "equating {:?} with {:?} yields {:?}",
+                                    target_sig,
+                                    src_sig,
+                                    terr
+                                );
+                            };
+                        }
                     }
                 }
             }

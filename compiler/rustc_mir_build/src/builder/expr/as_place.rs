@@ -552,6 +552,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::Binary { .. }
             | ExprKind::LogicalOp { .. }
             | ExprKind::Cast { .. }
+            | ExprKind::Subtype { .. }
             | ExprKind::Use { .. }
             | ExprKind::NeverToAny { .. }
             | ExprKind::PointerCoercion { .. }

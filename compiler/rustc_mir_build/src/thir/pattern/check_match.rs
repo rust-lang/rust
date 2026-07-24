@@ -315,6 +315,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             // Casts don't cause a load.
             NeverToAny { source }
             | Cast { source }
+            | Subtype { source }
             | Use { source }
             | PointerCoercion { source, .. }
             | PlaceTypeAscription { source, .. }

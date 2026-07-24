@@ -1,0 +1,32 @@
+error[E0308]: mismatched types
+  --> $DIR/no-coerce-to-non-higher-ranked-fn-ptr.rs:15:5
+   |
+LL | fn reverse(x: fn(&'static ())) -> for<'a> fn(&'a ()) {
+   |                                   ------------------ expected `for<'a> fn(&'a ())` because of return type
+LL |     x
+   |     ^ one type is more general than the other
+   |
+   = note: expected fn pointer `for<'a> fn(&'a ())`
+              found fn pointer `fn(&'static ())`
+
+error[E0308]: mismatched types
+  --> $DIR/no-coerce-to-non-higher-ranked-fn-ptr.rs:9:5
+   |
+LL |     x
+   |     ^ one type is more general than the other
+   |
+   = note: expected struct `Vec<fn(&())>`
+              found struct `Vec<for<'a> fn(&'a ())>`
+
+error[E0308]: mismatched types
+  --> $DIR/no-coerce-to-non-higher-ranked-fn-ptr.rs:21:5
+   |
+LL |     x
+   |     ^ one type is more general than the other
+   |
+   = note: expected struct `Cell<fn(&())>`
+              found struct `Cell<for<'a> fn(&'a ())>`
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

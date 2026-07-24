@@ -44,7 +44,9 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, LangItem};
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_infer::infer::relate::RelateResult;
-use rustc_infer::infer::{DefineOpaqueTypes, InferOk, InferResult, RegionVariableOrigin};
+use rustc_infer::infer::{
+    BoundRegionConversionTime, DefineOpaqueTypes, InferOk, InferResult, RegionVariableOrigin,
+};
 use rustc_infer::traits::{
     MatchExpressionArmCause, Obligation, PredicateObligation, PredicateObligations, SelectionError,
 };
@@ -1033,6 +1035,20 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 let adjust = Adjust::Pointer(PointerCoercion::UnsafeFnPointer);
                 self.unify_and(a, b, [], adjust, ForceLeakCheck::Yes)
             }
+            ty::FnPtr(_, _) => match self.unify(a, b, ForceLeakCheck::Yes) {
+                ok @ Ok(_) => ok,
+                Err(_) => {
+                    let a_ty = Ty::new_fn_ptr(
+                        self.tcx,
+                        ty::Binder::dummy(self.instantiate_binder_with_fresh_vars(
+                            self.cause.span,
+                            BoundRegionConversionTime::HigherRankedType,
+                            a_sig,
+                        )),
+                    );
+                    self.unify_and(a_ty, b, [], Adjust::Subtype, ForceLeakCheck::Yes)
+                }
+            },
             _ => self.unify(a, b, ForceLeakCheck::Yes),
         }
     }

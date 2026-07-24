@@ -301,6 +301,12 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 self.print_expr(*source, depth_lvl + 2);
                 print_indented!(self, "}", depth_lvl);
             }
+            Subtype { source } => {
+                print_indented!(self, "Subtype {", depth_lvl);
+                print_indented!(self, "source:", depth_lvl + 1);
+                self.print_expr(*source, depth_lvl + 2);
+                print_indented!(self, "}", depth_lvl);
+            }
             Use { source } => {
                 print_indented!(self, "Use {", depth_lvl);
                 print_indented!(self, "source:", depth_lvl + 1);

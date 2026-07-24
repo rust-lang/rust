@@ -351,6 +351,9 @@ pub enum ExprKind<'tcx> {
     NeverToAny {
         source: ExprId,
     },
+    Subtype {
+        source: ExprId,
+    },
     /// A pointer coercion. More information can be found in [`PointerCoercion`].
     /// Pointer casts that cannot be done by coercions are represented by [`ExprKind::Cast`].
     PointerCoercion {

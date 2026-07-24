@@ -382,6 +382,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Adjust::Borrow(_) => {
                     // No effects to enforce here.
                 }
+                Adjust::Subtype => {
+                    // No effects to enforce here.
+                }
             }
 
             expr_ty = a.target;
