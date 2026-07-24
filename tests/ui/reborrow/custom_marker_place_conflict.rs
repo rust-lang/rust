@@ -6,7 +6,7 @@ use std::marker::{Reborrow, PhantomData};
 struct CustomMarker<'a>(PhantomData<&'a ()>);
 impl<'a> Reborrow for CustomMarker<'a> {}
 
-fn reborrow(_: CustomMarker) {}
+fn reborrow(_: CustomMarker<'_>) {}
 
 fn main() {
     let a = CustomMarker(PhantomData);
