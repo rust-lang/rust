@@ -169,10 +169,15 @@ impl<'gcc, 'tcx> StaticCodegenMethods for CodegenCx<'gcc, 'tcx> {
             // FIXME(antoyo): set link section.
         }
 
-        if attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER) {
-            self.add_retained_global(global);
-        } else if attrs.flags.contains(CodegenFnAttrFlags::USED_COMPILER) {
+        if attrs.flags.contains(CodegenFnAttrFlags::USED_COMPILER) {
+            // To copy the conditions from the LLVM backend...
+            assert!(!attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER));
             self.add_used_global(global);
+        }
+        if attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER) {
+            // To copy the conditions from the LLVM backend...
+            assert!(!attrs.flags.contains(CodegenFnAttrFlags::USED_COMPILER));
+            self.add_retained_global(global);
         }
     }
 }
