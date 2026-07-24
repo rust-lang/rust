@@ -681,24 +681,28 @@ impl<E: rustc_span::SpanEncoder> rustc_serialize::Encodable<E> for DocAttribute 
     }
 }
 
-/// How to perform collapse macros debug info
-/// if-ext - if macro from different crate (related to callsite code)
-/// | cmd \ attr    | no  | (unspecified) | external | yes |
-/// | no            | no  | no            | no       | no  |
-/// | (unspecified) | no  | no            | if-ext   | yes |
-/// | external      | no  | if-ext        | if-ext   | yes |
-/// | yes           | yes | yes           | yes      | yes |
-#[derive(Copy, Clone, Debug, Hash, PartialEq)]
-#[derive(StableHash, Encodable, Decodable, PrintAttribute)]
-pub enum CollapseMacroDebuginfo {
-    /// Don't collapse debuginfo for the macro
-    No = 0,
-    /// Unspecified value
-    Unspecified = 1,
-    /// Collapse debuginfo if the macro comes from a different crate
-    External = 2,
-    /// Collapse debuginfo for the macro
-    Yes = 3,
+rustc_data_structures::string_enum! {
+    /// How to perform collapse macros debug info
+    /// if-ext - if macro from different crate (related to callsite code)
+    /// | cmd \ attr    | no  | (unspecified) | external | yes |
+    /// | no            | no  | no            | no       | no  |
+    /// | (unspecified) | no  | no            | if-ext   | yes |
+    /// | external      | no  | if-ext        | if-ext   | yes |
+    /// | yes           | yes | yes           | yes      | yes |
+    #[derive(Copy, Clone, Debug, Hash, PartialEq)]
+    #[derive(StableHash, Encodable, Decodable, PrintAttribute)]
+    pub enum CollapseMacroDebuginfo {
+        /// Don't collapse debuginfo for the macro. Reachable only via boolean
+        /// false (`no`, `off`, `false`, etc.).
+        No = 0,
+        /// Unspecified value. Reachable only as the default when the flag is
+        /// not passed; never CLI-settable.
+        Unspecified = 1,
+        /// Collapse debuginfo if the macro comes from a different crate
+        External = 2 => "external",
+        /// Collapse debuginfo for the macro. Reachable only via boolean true.
+        Yes = 3,
+    }
 }
 
 /// Crate type, as specified by `#![crate_type]`

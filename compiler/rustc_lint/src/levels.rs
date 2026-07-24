@@ -619,7 +619,7 @@ where
                 self.sess.dcx().emit_err(OverruledAttribute {
                     span: src.span(),
                     overruled: src.span(),
-                    lint_level: level.as_str(),
+                    lint_level: level.to_str(),
                     lint_source: src.name(),
                     sub,
                 });
@@ -629,7 +629,7 @@ where
                     src.span().into(),
                     OverruledAttributeLint {
                         overruled: src.span(),
-                        lint_level: level.as_str(),
+                        lint_level: level.to_str(),
                         lint_source: src.name(),
                         sub,
                     },
@@ -928,7 +928,7 @@ where
                     UNUSED_ATTRIBUTES,
                     lint_attr_span.into(),
                     IgnoredUnlessCrateSpecified {
-                        level: level_spec.level().as_str(),
+                        level: level_spec.level().to_str(),
                         name: lint_attr_name,
                     },
                 );

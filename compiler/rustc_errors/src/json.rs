@@ -160,7 +160,7 @@ impl Emitter for JsonEmitter {
     }
 
     fn emit_unused_externs(&mut self, lint_level: rustc_lint_defs::Level, unused_externs: &[&str]) {
-        let lint_level = lint_level.as_str();
+        let lint_level = lint_level.to_str();
         let data = UnusedExterns { lint_level, unused_extern_names: unused_externs };
         let result = self.emit(EmitTyped::UnusedExtern(data));
         if let Err(e) = result {
