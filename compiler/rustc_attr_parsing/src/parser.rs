@@ -660,9 +660,8 @@ impl<'a, 'sess> MetaItemListParserContext<'a, 'sess> {
         // don't `uninterpolate` the token to avoid suggesting anything butchered or questionable
         // when macro metavariables are involved.
         let snapshot = self.parser.create_snapshot_for_diagnostic();
-        let stmt = self.parser.parse_stmt_without_recovery(false, ForceCollect::No, false);
-        match stmt {
-            Ok(Some(stmt)) => {
+        match self.parser.parse_stmt_without_recovery(false, ForceCollect::No, false) {
+            Ok(stmt) => {
                 // The user tried to write something like
                 // `#[deprecated(note = concat!("a", "b"))]`.
                 err.descr = stmt.kind.descr().to_string();
@@ -692,7 +691,6 @@ impl<'a, 'sess> MetaItemListParserContext<'a, 'sess> {
                     });
                 }
             }
-            Ok(None) => {}
             Err(e) => {
                 e.cancel();
                 self.parser.restore_snapshot(snapshot);
