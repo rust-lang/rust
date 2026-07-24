@@ -81,12 +81,6 @@ pub struct CStore {
     has_crate_resolve_with_fail: bool,
 }
 
-impl std::fmt::Debug for CStore {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("CStore").finish_non_exhaustive()
-    }
-}
-
 pub enum LoadedMacro {
     MacroDef {
         def: MacroDef,
@@ -108,12 +102,10 @@ enum LoadResult {
     Loaded(Library),
 }
 
-struct CrateDump<'a>(&'a CStore);
-
-impl<'a> std::fmt::Debug for CrateDump<'a> {
+impl std::fmt::Debug for CStore {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(fmt, "resolved crates:")?;
-        for (cnum, data) in self.0.iter_crate_data() {
+        for (cnum, data) in self.iter_crate_data() {
             writeln!(fmt, "  name: {}", data.name())?;
             writeln!(fmt, "  cnum: {cnum}")?;
             writeln!(fmt, "  hash: {}", data.hash())?;
@@ -1296,7 +1288,7 @@ impl CStore {
         self.report_unused_deps_in_crate(tcx, krate);
         self.report_future_incompatible_deps(tcx, krate);
 
-        info!("{:?}", CrateDump(self));
+        info!("{:?}", self);
     }
 
     /// Process an `extern crate foo` AST node.
