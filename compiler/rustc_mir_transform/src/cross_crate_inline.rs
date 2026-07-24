@@ -1,12 +1,12 @@
 use rustc_hir::attrs::InlineAttr;
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::LocalDefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, find_attr};
 use rustc_middle::bug;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{self, GenericArgsRef, Instance, InstanceKind, TyCtxt, Unnormalized};
 use rustc_session::config::{InliningThreshold, OptLevel};
 
 use crate::{inline, pass_manager as pm};
@@ -100,8 +100,15 @@ fn cross_crate_inlinable(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     };
 
     let mir = tcx.optimized_mir(def_id);
-    let mut checker =
-        CostChecker { tcx, callee_body: mir, calls: 0, statements: 0, landing_pads: 0, resumes: 0 };
+    let mut checker = CostChecker {
+        tcx,
+        typing_env: mir.typing_env(tcx),
+        callee_body: mir,
+        calls: 0,
+        statements: 0,
+        landing_pads: 0,
+        resumes: 0,
+    };
     checker.visit_body(mir);
     checker.calls == 0
         && checker.resumes == 0
@@ -120,11 +127,51 @@ fn cross_crate_inlinable(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
 
 struct CostChecker<'b, 'tcx> {
     tcx: TyCtxt<'tcx>,
+    typing_env: ty::TypingEnv<'tcx>,
     callee_body: &'b Body<'tcx>,
     calls: usize,
     statements: usize,
     landing_pads: usize,
     resumes: usize,
+}
+
+impl<'tcx> CostChecker<'_, 'tcx> {
+    fn trait_call_resolves_to_inline_item(
+        &self,
+        def_id: DefId,
+        args: GenericArgsRef<'tcx>,
+    ) -> bool {
+        let tcx = self.tcx;
+        if tcx.trait_of_assoc(def_id).is_none() {
+            return false;
+        }
+
+        let Ok(args) =
+            tcx.try_normalize_erasing_regions(self.typing_env, Unnormalized::new_wip(args))
+        else {
+            return false;
+        };
+        let Ok(Some(instance)) = Instance::try_resolve(tcx, self.typing_env, def_id, args) else {
+            return false;
+        };
+        let InstanceKind::Item(_) = instance.def else {
+            return false;
+        };
+
+        // `#[inline]` is ignored on externally exported functions.
+        let codegen_fn_attrs = tcx.codegen_instance_attrs(instance.def);
+        if codegen_fn_attrs.contains_extern_indicator() {
+            return false;
+        }
+
+        match codegen_fn_attrs.inline {
+            InlineAttr::Always | InlineAttr::Force { .. } => true,
+            // At opt-level 0, an ordinary hint does not make the enclosing body
+            // cross-crate inlinable, even when the MIR inliner was explicitly enabled.
+            InlineAttr::Hint => !matches!(tcx.sess.opts.optimize, OptLevel::No),
+            InlineAttr::None | InlineAttr::Never => false,
+        }
+    }
 }
 
 impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
@@ -155,10 +202,23 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
                 // But there are a handful of intrinsics such as raw_eq that should not block
                 // cross-crate-inlining. Adding a broad exception for all intrinsics benchmarks well
                 // and seems more sustainable than an ever-growing list of intrinsics to ignore.
-                if let Some((fn_def_id, _)) = func.const_fn_def()
-                    && find_attr!(tcx, fn_def_id, RustcIntrinsic)
-                {
-                    return;
+                // Explicitly inline functions already have MIR encoded for downstream crates.
+                // A statically dispatched trait call can hide an inline attribute.
+                // Resolve its selected implementation before charging for the call.
+                // Direct calls and inferred cross-crate inlining remain outside this exception.
+                // Exposing a caller can still increase downstream work,
+                // even when its callee is available.
+                if let Some((fn_def_id, args)) = func.const_fn_def() {
+                    if find_attr!(tcx, fn_def_id, RustcIntrinsic) {
+                        return;
+                    }
+
+                    if self.trait_call_resolves_to_inline_item(fn_def_id, args) {
+                        if let UnwindAction::Cleanup(_) = unwind {
+                            self.landing_pads += 1;
+                        }
+                        return;
+                    }
                 }
                 self.calls += 1;
                 if let UnwindAction::Cleanup(_) = unwind {
