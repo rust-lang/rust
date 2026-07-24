@@ -290,6 +290,7 @@ macro_rules! setter_for {
             collected: &mut super::CollectedOptions,
             v: Option<&str>,
             index: usize,
+            _: bool,
         ) -> bool {
             collected.mitigations.handle_allowdeny_mitigation_option(v, index, true)
         }
@@ -300,6 +301,7 @@ macro_rules! setter_for {
             collected: &mut super::CollectedOptions,
             v: Option<&str>,
             index: usize,
+            _: bool,
         ) -> bool {
             collected.mitigations.handle_allowdeny_mitigation_option(v, index, false)
         }
@@ -310,9 +312,10 @@ macro_rules! setter_for {
             collected: &mut super::CollectedOptions,
             v: Option<&str>,
             _index: usize,
+            is_target_modifier: bool,
         ) -> bool {
             collected.metadata.$group_name.$opt.is_set = v.is_some();
-            super::parse::$parse(&mut redirect_field!(cg.$opt), v)
+            super::parse::$parse(&mut redirect_field!(cg.$opt), v, is_target_modifier)
         }
     };
 }
@@ -653,7 +656,13 @@ macro_rules! redirect_field {
     };
 }
 
-type OptionSetter<O> = fn(&mut O, &mut CollectedOptions, v: Option<&str>, pos: usize) -> bool;
+type OptionSetter<O> = fn(
+    &mut O,
+    &mut CollectedOptions,
+    v: Option<&str>,
+    pos: usize,
+    is_target_modifier: bool,
+) -> bool;
 type OptionDescrs<O> = &'static [OptionDesc<O>];
 
 /// Indicates whether a removed option should warn or error.
@@ -714,7 +723,7 @@ fn build_options<O: Default>(
                         }
                     }
                 }
-                if !setter(&mut op, collected_options, value, index) {
+                if !setter(&mut op, collected_options, value, index, false) {
                     match value {
                         None => early_dcx.early_fatal(
                             format!(
@@ -880,7 +889,7 @@ pub mod parse {
 
     /// Ignore the value. Used for removed options where we don't actually want to store
     /// anything in the session.
-    pub(crate) fn parse_ignore(_slot: &mut (), _v: Option<&str>) -> bool {
+    pub(crate) fn parse_ignore(_slot: &mut (), _v: Option<&str>, _: bool) -> bool {
         true
     }
 
@@ -889,7 +898,7 @@ pub mod parse {
     ///
     /// This style of option is deprecated, and is mainly used by old options
     /// beginning with `no-`.
-    pub(crate) fn parse_no_value(slot: &mut bool, v: Option<&str>) -> bool {
+    pub(crate) fn parse_no_value(slot: &mut bool, v: Option<&str>, _: bool) -> bool {
         match v {
             None => {
                 *slot = true;
@@ -901,7 +910,7 @@ pub mod parse {
     }
 
     /// Use this for any boolean option that has a static default.
-    pub(crate) fn parse_bool(slot: &mut bool, v: Option<&str>) -> bool {
+    pub(crate) fn parse_bool(slot: &mut bool, v: Option<&str>, _: bool) -> bool {
         match v {
             Some("y") | Some("yes") | Some("on") | Some("true") | None => {
                 *slot = true;
@@ -918,7 +927,7 @@ pub mod parse {
     /// Use this for any boolean option that lacks a static default. (The
     /// actions taken when such an option is not specified will depend on
     /// other factors, such as other options, or target options.)
-    pub(crate) fn parse_opt_bool(slot: &mut Option<bool>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_opt_bool(slot: &mut Option<bool>, v: Option<&str>, _: bool) -> bool {
         match v {
             Some("y") | Some("yes") | Some("on") | Some("true") | None => {
                 *slot = Some(true);
@@ -933,7 +942,7 @@ pub mod parse {
     }
 
     /// Parses whether polonius is enabled, and if so, which version.
-    pub(crate) fn parse_polonius(slot: &mut Polonius, v: Option<&str>) -> bool {
+    pub(crate) fn parse_polonius(slot: &mut Polonius, v: Option<&str>, _: bool) -> bool {
         match v {
             Some("legacy") | None => {
                 *slot = Polonius::Legacy;
@@ -951,7 +960,11 @@ pub mod parse {
         }
     }
 
-    pub(crate) fn parse_annotate_moves(slot: &mut AnnotateMoves, v: Option<&str>) -> bool {
+    pub(crate) fn parse_annotate_moves(
+        slot: &mut AnnotateMoves,
+        v: Option<&str>,
+        is_target_modifier: bool,
+    ) -> bool {
         let mut bslot = false;
         let mut nslot = 0u64;
 
@@ -959,7 +972,7 @@ pub mod parse {
             // No value provided: -Z annotate-moves (enable with default limit)
             None => AnnotateMoves::Enabled(None),
             // Explicit boolean value provided: -Z annotate-moves=yes/no
-            s @ Some(_) if parse_bool(&mut bslot, s) => {
+            s @ Some(_) if parse_bool(&mut bslot, s, is_target_modifier) => {
                 if bslot {
                     AnnotateMoves::Enabled(None)
                 } else {
@@ -967,7 +980,9 @@ pub mod parse {
                 }
             }
             // With numeric limit provided: -Z annotate-moves=1234
-            s @ Some(_) if parse_number(&mut nslot, s) => AnnotateMoves::Enabled(Some(nslot)),
+            s @ Some(_) if parse_number(&mut nslot, s, is_target_modifier) => {
+                AnnotateMoves::Enabled(Some(nslot))
+            }
             _ => return false,
         };
 
@@ -975,7 +990,7 @@ pub mod parse {
     }
 
     /// Use this for any string option that has a static default.
-    pub(crate) fn parse_string(slot: &mut String, v: Option<&str>) -> bool {
+    pub(crate) fn parse_string(slot: &mut String, v: Option<&str>, _: bool) -> bool {
         match v {
             Some(s) => {
                 *slot = s.to_string();
@@ -986,7 +1001,7 @@ pub mod parse {
     }
 
     /// Use this for any string option that lacks a static default.
-    pub(crate) fn parse_opt_string(slot: &mut Option<String>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_opt_string(slot: &mut Option<String>, v: Option<&str>, _: bool) -> bool {
         match v {
             Some(s) => {
                 *slot = Some(s.to_string());
@@ -996,7 +1011,7 @@ pub mod parse {
         }
     }
 
-    pub(crate) fn parse_opt_pathbuf(slot: &mut Option<PathBuf>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_opt_pathbuf(slot: &mut Option<PathBuf>, v: Option<&str>, _: bool) -> bool {
         match v {
             Some(s) => {
                 *slot = Some(PathBuf::from(s));
@@ -1006,7 +1021,7 @@ pub mod parse {
         }
     }
 
-    pub(crate) fn parse_string_push(slot: &mut Vec<String>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_string_push(slot: &mut Vec<String>, v: Option<&str>, _: bool) -> bool {
         match v {
             Some(s) => {
                 slot.push(s.to_string());
@@ -1016,7 +1031,7 @@ pub mod parse {
         }
     }
 
-    pub(crate) fn parse_list(slot: &mut Vec<String>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_list(slot: &mut Vec<String>, v: Option<&str>, _: bool) -> bool {
         match v {
             Some(s) => {
                 slot.extend(s.split_whitespace().map(|s| s.to_string()));
@@ -1029,6 +1044,7 @@ pub mod parse {
     pub(crate) fn parse_list_with_polarity(
         slot: &mut Vec<(String, bool)>,
         v: Option<&str>,
+        _: bool,
     ) -> bool {
         match v {
             Some(s) => {
@@ -1045,6 +1061,7 @@ pub mod parse {
     pub(crate) fn parse_pointer_authentication_list_with_polarity(
         slot: &mut Vec<(PointerAuthOption, bool)>,
         v: Option<&str>,
+        _: bool,
     ) -> bool {
         let Some(s) = v else {
             return false;
@@ -1073,7 +1090,7 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_fmt_debug(opt: &mut FmtDebug, v: Option<&str>) -> bool {
+    pub(crate) fn parse_fmt_debug(opt: &mut FmtDebug, v: Option<&str>, _: bool) -> bool {
         *opt = match v {
             Some("full") => FmtDebug::Full,
             Some("shallow") => FmtDebug::Shallow,
@@ -1083,7 +1100,7 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_location_detail(ld: &mut LocationDetail, v: Option<&str>) -> bool {
+    pub(crate) fn parse_location_detail(ld: &mut LocationDetail, v: Option<&str>, _: bool) -> bool {
         if let Some(v) = v {
             ld.line = false;
             ld.file = false;
@@ -1105,7 +1122,7 @@ pub mod parse {
         }
     }
 
-    pub(crate) fn parse_comma_list(slot: &mut Vec<String>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_comma_list(slot: &mut Vec<String>, v: Option<&str>, _: bool) -> bool {
         match v {
             Some(s) => {
                 let mut v: Vec<_> = s.split(',').map(|s| s.to_string()).collect();
@@ -1117,7 +1134,11 @@ pub mod parse {
         }
     }
 
-    pub(crate) fn parse_opt_comma_list(slot: &mut Option<Vec<String>>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_opt_comma_list(
+        slot: &mut Option<Vec<String>>,
+        v: Option<&str>,
+        _: bool,
+    ) -> bool {
         match v {
             Some(s) => {
                 let mut v: Vec<_> = s.split(',').map(|s| s.to_string()).collect();
@@ -1130,7 +1151,7 @@ pub mod parse {
     }
 
     /// Use this for any numeric option that has a static default.
-    pub(crate) fn parse_number<T: Copy + FromStr>(slot: &mut T, v: Option<&str>) -> bool {
+    pub(crate) fn parse_number<T: Copy + FromStr>(slot: &mut T, v: Option<&str>, _: bool) -> bool {
         match v.and_then(|s| s.parse().ok()) {
             Some(i) => {
                 *slot = i;
@@ -1144,6 +1165,7 @@ pub mod parse {
     pub(crate) fn parse_opt_number<T: Copy + FromStr>(
         slot: &mut Option<T>,
         v: Option<&str>,
+        _: bool,
     ) -> bool {
         match v {
             Some(s) => {
@@ -1154,11 +1176,17 @@ pub mod parse {
         }
     }
 
-    pub(crate) fn parse_frame_pointer(slot: &mut FramePointer, v: Option<&str>) -> bool {
+    pub(crate) fn parse_frame_pointer(
+        slot: &mut FramePointer,
+        v: Option<&str>,
+        is_target_modifier: bool,
+    ) -> bool {
         let mut yes = false;
         match v {
-            _ if parse_bool(&mut yes, v) && yes => slot.ratchet(FramePointer::Always),
-            _ if parse_bool(&mut yes, v) => slot.ratchet(FramePointer::MayOmit),
+            _ if parse_bool(&mut yes, v, is_target_modifier) && yes => {
+                slot.ratchet(FramePointer::Always)
+            }
+            _ if parse_bool(&mut yes, v, is_target_modifier) => slot.ratchet(FramePointer::MayOmit),
             Some("always") => slot.ratchet(FramePointer::Always),
             Some("non-leaf") => slot.ratchet(FramePointer::NonLeaf),
             _ => return false,
@@ -1166,7 +1194,11 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_passes(slot: &mut Passes, v: Option<&str>) -> bool {
+    pub(crate) fn parse_passes(
+        slot: &mut Passes,
+        v: Option<&str>,
+        is_target_modifier: bool,
+    ) -> bool {
         match v {
             Some("all") => {
                 *slot = Passes::All;
@@ -1174,7 +1206,7 @@ pub mod parse {
             }
             v => {
                 let mut passes = vec![];
-                if parse_list(&mut passes, v) {
+                if parse_list(&mut passes, v, is_target_modifier) {
                     slot.extend(passes);
                     true
                 } else {
@@ -1187,6 +1219,7 @@ pub mod parse {
     pub(crate) fn parse_opt_panic_strategy(
         slot: &mut Option<PanicStrategy>,
         v: Option<&str>,
+        _: bool,
     ) -> bool {
         match v {
             Some("unwind") => *slot = Some(PanicStrategy::Unwind),
@@ -1197,7 +1230,7 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_panic_strategy(slot: &mut PanicStrategy, v: Option<&str>) -> bool {
+    pub(crate) fn parse_panic_strategy(slot: &mut PanicStrategy, v: Option<&str>, _: bool) -> bool {
         match v {
             Some("unwind") => *slot = PanicStrategy::Unwind,
             Some("abort") => *slot = PanicStrategy::Abort,
@@ -1207,7 +1240,7 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_on_broken_pipe(slot: &mut OnBrokenPipe, v: Option<&str>) -> bool {
+    pub(crate) fn parse_on_broken_pipe(slot: &mut OnBrokenPipe, v: Option<&str>, _: bool) -> bool {
         match v {
             // OnBrokenPipe::Default can't be explicitly specified
             Some("kill") => *slot = OnBrokenPipe::Kill,
@@ -1221,21 +1254,22 @@ pub mod parse {
     pub(crate) fn parse_patchable_function_entry(
         slot: &mut PatchableFunctionEntry,
         v: Option<&str>,
+        is_target_modifier: bool,
     ) -> bool {
         let mut total_nops = 0;
         let mut prefix_nops = 0;
         let mut section = None;
 
-        if !parse_number(&mut total_nops, v) {
+        if !parse_number(&mut total_nops, v, is_target_modifier) {
             let parts: Vec<_> = v.unwrap_or("").split(',').collect();
             if parts.len() < 2 || parts.len() > 3 {
                 return false;
             }
 
-            if !parse_number(&mut total_nops, Some(parts[0])) {
+            if !parse_number(&mut total_nops, Some(parts[0]), is_target_modifier) {
                 return false;
             }
-            if !parse_number(&mut prefix_nops, Some(parts[1])) {
+            if !parse_number(&mut prefix_nops, Some(parts[1]), is_target_modifier) {
                 return false;
             }
             section = parts.get(2).map(|x| x.to_string());
@@ -1248,7 +1282,11 @@ pub mod parse {
         false
     }
 
-    pub(crate) fn parse_relro_level(slot: &mut Option<RelroLevel>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_relro_level(
+        slot: &mut Option<RelroLevel>,
+        v: Option<&str>,
+        _: bool,
+    ) -> bool {
         match v {
             Some(s) => match s.parse::<RelroLevel>() {
                 Ok(level) => *slot = Some(level),
@@ -1320,19 +1358,31 @@ pub mod parse {
         }
     }
 
-    pub(crate) fn parse_sanitizers_all(slot: &mut SanitizerSet, v: Option<&str>) -> bool {
+    pub(crate) fn parse_sanitizers_all(slot: &mut SanitizerSet, v: Option<&str>, _: bool) -> bool {
         parse_sanitizers(slot, v, SanitizerFilter::All)
     }
 
-    pub(crate) fn parse_sanitizers_target(slot: &mut SanitizerSet, v: Option<&str>) -> bool {
+    pub(crate) fn parse_sanitizers_target(
+        slot: &mut SanitizerSet,
+        v: Option<&str>,
+        _: bool,
+    ) -> bool {
         parse_sanitizers(slot, v, SanitizerFilter::TargetModifiers)
     }
 
-    pub(crate) fn parse_sanitizers_other(slot: &mut SanitizerSet, v: Option<&str>) -> bool {
+    pub(crate) fn parse_sanitizers_other(
+        slot: &mut SanitizerSet,
+        v: Option<&str>,
+        _: bool,
+    ) -> bool {
         parse_sanitizers(slot, v, SanitizerFilter::NonTargetModifiers)
     }
 
-    pub(crate) fn parse_sanitizer_memory_track_origins(slot: &mut usize, v: Option<&str>) -> bool {
+    pub(crate) fn parse_sanitizer_memory_track_origins(
+        slot: &mut usize,
+        v: Option<&str>,
+        _: bool,
+    ) -> bool {
         match v {
             Some("2") | None => {
                 *slot = 2;
@@ -1350,7 +1400,7 @@ pub mod parse {
         }
     }
 
-    pub(crate) fn parse_strip(slot: &mut Strip, v: Option<&str>) -> bool {
+    pub(crate) fn parse_strip(slot: &mut Strip, v: Option<&str>, _: bool) -> bool {
         match v {
             Some("none") => *slot = Strip::None,
             Some("debuginfo") => *slot = Strip::Debuginfo,
@@ -1360,10 +1410,14 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_cfguard(slot: &mut CFGuard, v: Option<&str>) -> bool {
+    pub(crate) fn parse_cfguard(
+        slot: &mut CFGuard,
+        v: Option<&str>,
+        is_target_modifier: bool,
+    ) -> bool {
         if v.is_some() {
             let mut bool_arg = None;
-            if parse_opt_bool(&mut bool_arg, v) {
+            if parse_opt_bool(&mut bool_arg, v, is_target_modifier) {
                 *slot = if bool_arg.unwrap() { CFGuard::Checks } else { CFGuard::Disabled };
                 return true;
             }
@@ -1378,10 +1432,14 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_cfprotection(slot: &mut CFProtection, v: Option<&str>) -> bool {
+    pub(crate) fn parse_cfprotection(
+        slot: &mut CFProtection,
+        v: Option<&str>,
+        is_target_modifier: bool,
+    ) -> bool {
         if v.is_some() {
             let mut bool_arg = None;
-            if parse_opt_bool(&mut bool_arg, v) {
+            if parse_opt_bool(&mut bool_arg, v, is_target_modifier) {
                 *slot = if bool_arg.unwrap() { CFProtection::Full } else { CFProtection::None };
                 return true;
             }
@@ -1397,7 +1455,7 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_debuginfo(slot: &mut DebugInfo, v: Option<&str>) -> bool {
+    pub(crate) fn parse_debuginfo(slot: &mut DebugInfo, v: Option<&str>, _: bool) -> bool {
         match v {
             Some("0") | Some("none") => *slot = DebugInfo::None,
             Some("line-directives-only") => *slot = DebugInfo::LineDirectivesOnly,
@@ -1412,6 +1470,7 @@ pub mod parse {
     pub(crate) fn parse_debuginfo_compression(
         slot: &mut DebugInfoCompression,
         v: Option<&str>,
+        _: bool,
     ) -> bool {
         match v {
             Some("none") => *slot = DebugInfoCompression::None,
@@ -1422,7 +1481,11 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_mir_strip_debuginfo(slot: &mut MirStripDebugInfo, v: Option<&str>) -> bool {
+    pub(crate) fn parse_mir_strip_debuginfo(
+        slot: &mut MirStripDebugInfo,
+        v: Option<&str>,
+        _: bool,
+    ) -> bool {
         match v {
             Some("none") => *slot = MirStripDebugInfo::None,
             Some("locals-in-tiny-functions") => *slot = MirStripDebugInfo::LocalsInTinyFunctions,
@@ -1432,7 +1495,11 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_linker_flavor(slot: &mut Option<LinkerFlavorCli>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_linker_flavor(
+        slot: &mut Option<LinkerFlavorCli>,
+        v: Option<&str>,
+        _: bool,
+    ) -> bool {
         match v.and_then(|v| LinkerFlavorCli::from_str(v).ok()) {
             Some(lf) => *slot = Some(lf),
             _ => return false,
@@ -1443,6 +1510,7 @@ pub mod parse {
     pub(crate) fn parse_opt_symbol_visibility(
         slot: &mut Option<SymbolVisibility>,
         v: Option<&str>,
+        _: bool,
     ) -> bool {
         if let Some(v) = v {
             if let Ok(vis) = SymbolVisibility::from_str(v) {
@@ -1454,7 +1522,7 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_unpretty(slot: &mut Option<String>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_unpretty(slot: &mut Option<String>, v: Option<&str>, _: bool) -> bool {
         match v {
             None => false,
             Some(s) if s.split('=').count() <= 2 => {
@@ -1465,7 +1533,11 @@ pub mod parse {
         }
     }
 
-    pub(crate) fn parse_time_passes_format(slot: &mut TimePassesFormat, v: Option<&str>) -> bool {
+    pub(crate) fn parse_time_passes_format(
+        slot: &mut TimePassesFormat,
+        v: Option<&str>,
+        _: bool,
+    ) -> bool {
         match v {
             None => true,
             Some("json") => {
@@ -1480,7 +1552,11 @@ pub mod parse {
         }
     }
 
-    pub(crate) fn parse_dump_mono_stats(slot: &mut DumpMonoStatsFormat, v: Option<&str>) -> bool {
+    pub(crate) fn parse_dump_mono_stats(
+        slot: &mut DumpMonoStatsFormat,
+        v: Option<&str>,
+        _: bool,
+    ) -> bool {
         match v {
             None => true,
             Some("json") => {
@@ -1495,7 +1571,7 @@ pub mod parse {
         }
     }
 
-    pub(crate) fn parse_offload(slot: &mut Vec<Offload>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_offload(slot: &mut Vec<Offload>, v: Option<&str>, _: bool) -> bool {
         let Some(v) = v else {
             *slot = vec![];
             return true;
@@ -1547,7 +1623,7 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_autodiff(slot: &mut Vec<AutoDiff>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_autodiff(slot: &mut Vec<AutoDiff>, v: Option<&str>, _: bool) -> bool {
         let Some(v) = v else {
             *slot = vec![];
             return true;
@@ -1596,10 +1672,11 @@ pub mod parse {
     pub(crate) fn parse_instrument_coverage(
         slot: &mut InstrumentCoverage,
         v: Option<&str>,
+        is_target_modifier: bool,
     ) -> bool {
         if v.is_some() {
             let mut bool_arg = false;
-            if parse_bool(&mut bool_arg, v) {
+            if parse_bool(&mut bool_arg, v, is_target_modifier) {
                 *slot = if bool_arg { InstrumentCoverage::Yes } else { InstrumentCoverage::No };
                 return true;
             }
@@ -1623,6 +1700,7 @@ pub mod parse {
     pub(crate) fn parse_codegen_retag_options(
         slot: &mut Option<CodegenRetagOptions>,
         v: Option<&str>,
+        _: bool,
     ) -> bool {
         let mut no_precise_im = false;
         let mut no_precise_pin = false;
@@ -1643,7 +1721,11 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_coverage_options(slot: &mut CoverageOptions, v: Option<&str>) -> bool {
+    pub(crate) fn parse_coverage_options(
+        slot: &mut CoverageOptions,
+        v: Option<&str>,
+        _: bool,
+    ) -> bool {
         let Some(v) = v else { return true };
 
         for option in v.split(',') {
@@ -1658,10 +1740,14 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_instrument_mcount(slot: &mut InstrumentMcount, v: Option<&str>) -> bool {
+    pub(crate) fn parse_instrument_mcount(
+        slot: &mut InstrumentMcount,
+        v: Option<&str>,
+        is_target_modifier: bool,
+    ) -> bool {
         let mut use_mcount = false;
         let mut opts = InstrumentMcountOpts::default();
-        if parse_bool(&mut use_mcount, v) {
+        if parse_bool(&mut use_mcount, v, is_target_modifier) {
             *slot = if use_mcount {
                 InstrumentMcount::Mcount(opts)
             } else {
@@ -1692,10 +1778,11 @@ pub mod parse {
     pub(crate) fn parse_instrument_xray(
         slot: &mut Option<InstrumentXRay>,
         v: Option<&str>,
+        is_target_modifier: bool,
     ) -> bool {
         if v.is_some() {
             let mut bool_arg = None;
-            if parse_opt_bool(&mut bool_arg, v) {
+            if parse_opt_bool(&mut bool_arg, v, is_target_modifier) {
                 *slot = if bool_arg.unwrap() { Some(InstrumentXRay::default()) } else { None };
                 return true;
             }
@@ -1754,6 +1841,7 @@ pub mod parse {
     pub(crate) fn parse_treat_err_as_bug(
         slot: &mut Option<NonZero<usize>>,
         v: Option<&str>,
+        _: bool,
     ) -> bool {
         match v {
             Some(s) => match s.parse() {
@@ -1773,7 +1861,11 @@ pub mod parse {
         }
     }
 
-    pub(crate) fn parse_next_solver_config(slot: &mut NextSolverConfig, v: Option<&str>) -> bool {
+    pub(crate) fn parse_next_solver_config(
+        slot: &mut NextSolverConfig,
+        v: Option<&str>,
+        _: bool,
+    ) -> bool {
         if let Some(config) = v {
             *slot = match config {
                 "no" => NextSolverConfig { coherence: false, globally: false },
@@ -1788,10 +1880,10 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_lto(slot: &mut LtoCli, v: Option<&str>) -> bool {
+    pub(crate) fn parse_lto(slot: &mut LtoCli, v: Option<&str>, is_target_modifier: bool) -> bool {
         if v.is_some() {
             let mut bool_arg = None;
-            if parse_opt_bool(&mut bool_arg, v) {
+            if parse_opt_bool(&mut bool_arg, v, is_target_modifier) {
                 *slot = if bool_arg.unwrap() { LtoCli::Yes } else { LtoCli::No };
                 return true;
             }
@@ -1806,10 +1898,14 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_linker_plugin_lto(slot: &mut LinkerPluginLto, v: Option<&str>) -> bool {
+    pub(crate) fn parse_linker_plugin_lto(
+        slot: &mut LinkerPluginLto,
+        v: Option<&str>,
+        is_target_modifier: bool,
+    ) -> bool {
         if v.is_some() {
             let mut bool_arg = None;
-            if parse_opt_bool(&mut bool_arg, v) {
+            if parse_opt_bool(&mut bool_arg, v, is_target_modifier) {
                 *slot = if bool_arg.unwrap() {
                     LinkerPluginLto::LinkerPluginAuto
                 } else {
@@ -1829,6 +1925,7 @@ pub mod parse {
     pub(crate) fn parse_switch_with_opt_path(
         slot: &mut SwitchWithOptPath,
         v: Option<&str>,
+        _: bool,
     ) -> bool {
         *slot = match v {
             None => SwitchWithOptPath::Enabled(None),
@@ -1840,6 +1937,7 @@ pub mod parse {
     pub(crate) fn parse_merge_functions(
         slot: &mut Option<MergeFunctions>,
         v: Option<&str>,
+        _: bool,
     ) -> bool {
         match v.and_then(|s| MergeFunctions::from_str(s).ok()) {
             Some(mergefunc) => *slot = Some(mergefunc),
@@ -1848,7 +1946,11 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_relocation_model(slot: &mut Option<RelocModel>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_relocation_model(
+        slot: &mut Option<RelocModel>,
+        v: Option<&str>,
+        _: bool,
+    ) -> bool {
         match v.and_then(|s| RelocModel::from_str(s).ok()) {
             Some(relocation_model) => *slot = Some(relocation_model),
             None if v == Some("default") => *slot = None,
@@ -1857,7 +1959,7 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_code_model(slot: &mut Option<CodeModel>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_code_model(slot: &mut Option<CodeModel>, v: Option<&str>, _: bool) -> bool {
         match v.and_then(|s| CodeModel::from_str(s).ok()) {
             Some(code_model) => *slot = Some(code_model),
             _ => return false,
@@ -1865,7 +1967,7 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_tls_model(slot: &mut Option<TlsModel>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_tls_model(slot: &mut Option<TlsModel>, v: Option<&str>, _: bool) -> bool {
         match v.and_then(|s| TlsModel::from_str(s).ok()) {
             Some(tls_model) => *slot = Some(tls_model),
             _ => return false,
@@ -1873,7 +1975,7 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_terminal_url(slot: &mut TerminalUrl, v: Option<&str>) -> bool {
+    pub(crate) fn parse_terminal_url(slot: &mut TerminalUrl, v: Option<&str>, _: bool) -> bool {
         *slot = match v {
             Some("on" | "" | "yes" | "y") | None => TerminalUrl::Yes,
             Some("off" | "no" | "n") => TerminalUrl::No,
@@ -1886,6 +1988,7 @@ pub mod parse {
     pub(crate) fn parse_symbol_mangling_version(
         slot: &mut Option<SymbolManglingVersion>,
         v: Option<&str>,
+        _: bool,
     ) -> bool {
         *slot = match v {
             Some("legacy") => Some(SymbolManglingVersion::Legacy),
@@ -1899,6 +2002,7 @@ pub mod parse {
     pub(crate) fn parse_src_file_hash(
         slot: &mut Option<SourceFileHashAlgorithm>,
         v: Option<&str>,
+        _: bool,
     ) -> bool {
         match v.and_then(|s| SourceFileHashAlgorithm::from_str(s).ok()) {
             Some(hash_kind) => *slot = Some(hash_kind),
@@ -1910,6 +2014,7 @@ pub mod parse {
     pub(crate) fn parse_cargo_src_file_hash(
         slot: &mut Option<SourceFileHashAlgorithm>,
         v: Option<&str>,
+        _: bool,
     ) -> bool {
         match v.and_then(|s| SourceFileHashAlgorithm::from_str(s).ok()) {
             Some(hash_kind) => {
@@ -1920,7 +2025,7 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_target_feature(slot: &mut String, v: Option<&str>) -> bool {
+    pub(crate) fn parse_target_feature(slot: &mut String, v: Option<&str>, _: bool) -> bool {
         match v {
             Some(s) => {
                 if !slot.is_empty() {
@@ -1933,7 +2038,11 @@ pub mod parse {
         }
     }
 
-    pub(crate) fn parse_link_self_contained(slot: &mut LinkSelfContained, v: Option<&str>) -> bool {
+    pub(crate) fn parse_link_self_contained(
+        slot: &mut LinkSelfContained,
+        v: Option<&str>,
+        _: bool,
+    ) -> bool {
         // Whenever `-C link-self-contained` is passed without a value, it's an opt-in
         // just like `parse_opt_bool`, the historical value of this flag.
         //
@@ -1962,7 +2071,11 @@ pub mod parse {
     }
 
     /// Parse a comma-separated list of enabled and disabled linker features.
-    pub(crate) fn parse_linker_features(slot: &mut LinkerFeaturesCli, v: Option<&str>) -> bool {
+    pub(crate) fn parse_linker_features(
+        slot: &mut LinkerFeaturesCli,
+        v: Option<&str>,
+        _: bool,
+    ) -> bool {
         match v {
             Some(s) => {
                 for feature in s.split(',') {
@@ -1977,7 +2090,11 @@ pub mod parse {
         }
     }
 
-    pub(crate) fn parse_wasi_exec_model(slot: &mut Option<WasiExecModel>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_wasi_exec_model(
+        slot: &mut Option<WasiExecModel>,
+        v: Option<&str>,
+        _: bool,
+    ) -> bool {
         match v {
             Some("command") => *slot = Some(WasiExecModel::Command),
             Some("reactor") => *slot = Some(WasiExecModel::Reactor),
@@ -1989,6 +2106,7 @@ pub mod parse {
     pub(crate) fn parse_split_debuginfo(
         slot: &mut Option<SplitDebuginfo>,
         v: Option<&str>,
+        _: bool,
     ) -> bool {
         match v.and_then(|s| SplitDebuginfo::from_str(s).ok()) {
             Some(e) => *slot = Some(e),
@@ -1997,7 +2115,11 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_split_dwarf_kind(slot: &mut SplitDwarfKind, v: Option<&str>) -> bool {
+    pub(crate) fn parse_split_dwarf_kind(
+        slot: &mut SplitDwarfKind,
+        v: Option<&str>,
+        _: bool,
+    ) -> bool {
         match v.and_then(|s| SplitDwarfKind::from_str(s).ok()) {
             Some(e) => *slot = e,
             _ => return false,
@@ -2005,7 +2127,11 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_stack_protector(slot: &mut StackProtector, v: Option<&str>) -> bool {
+    pub(crate) fn parse_stack_protector(
+        slot: &mut StackProtector,
+        v: Option<&str>,
+        _: bool,
+    ) -> bool {
         match v.and_then(|s| StackProtector::from_str(s).ok()) {
             Some(ssp) => *slot = ssp,
             _ => return false,
@@ -2016,6 +2142,7 @@ pub mod parse {
     pub(crate) fn parse_branch_protection(
         slot: &mut Option<BranchProtection>,
         v: Option<&str>,
+        _: bool,
     ) -> bool {
         match v {
             Some(s) => {
@@ -2055,10 +2182,11 @@ pub mod parse {
     pub(crate) fn parse_collapse_macro_debuginfo(
         slot: &mut CollapseMacroDebuginfo,
         v: Option<&str>,
+        is_target_modifier: bool,
     ) -> bool {
         if v.is_some() {
             let mut bool_arg = None;
-            if parse_opt_bool(&mut bool_arg, v) {
+            if parse_opt_bool(&mut bool_arg, v, is_target_modifier) {
                 *slot = if bool_arg.unwrap() {
                     CollapseMacroDebuginfo::Yes
                 } else {
@@ -2078,6 +2206,7 @@ pub mod parse {
     pub(crate) fn parse_proc_macro_execution_strategy(
         slot: &mut ProcMacroExecutionStrategy,
         v: Option<&str>,
+        _: bool,
     ) -> bool {
         *slot = match v {
             Some("same-thread") => ProcMacroExecutionStrategy::SameThread,
@@ -2087,7 +2216,11 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_inlining_threshold(slot: &mut InliningThreshold, v: Option<&str>) -> bool {
+    pub(crate) fn parse_inlining_threshold(
+        slot: &mut InliningThreshold,
+        v: Option<&str>,
+        _: bool,
+    ) -> bool {
         match v {
             Some("always" | "yes") => {
                 *slot = InliningThreshold::Always;
@@ -2110,6 +2243,7 @@ pub mod parse {
     pub(crate) fn parse_llvm_module_flag(
         slot: &mut Vec<(String, u32, String)>,
         v: Option<&str>,
+        _: bool,
     ) -> bool {
         let elements = v.unwrap_or_default().split(':').collect::<Vec<_>>();
         let [key, md_type, value, behavior] = elements.as_slice() else {
@@ -2134,7 +2268,11 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_function_return(slot: &mut FunctionReturn, v: Option<&str>) -> bool {
+    pub(crate) fn parse_function_return(
+        slot: &mut FunctionReturn,
+        v: Option<&str>,
+        _: bool,
+    ) -> bool {
         match v {
             Some("keep") => *slot = FunctionReturn::Keep,
             Some("thunk-extern") => *slot = FunctionReturn::ThunkExtern,
@@ -2143,11 +2281,15 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_wasm_c_abi(_slot: &mut (), v: Option<&str>) -> bool {
+    pub(crate) fn parse_wasm_c_abi(_slot: &mut (), v: Option<&str>, _: bool) -> bool {
         v == Some("spec")
     }
 
-    pub(crate) fn parse_mir_include_spans(slot: &mut MirIncludeSpans, v: Option<&str>) -> bool {
+    pub(crate) fn parse_mir_include_spans(
+        slot: &mut MirIncludeSpans,
+        v: Option<&str>,
+        _: bool,
+    ) -> bool {
         *slot = match v {
             Some("on" | "yes" | "y" | "true") | None => MirIncludeSpans::On,
             Some("off" | "no" | "n" | "false") => MirIncludeSpans::Off,
@@ -2158,9 +2300,13 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_align(slot: &mut Option<Align>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_align(
+        slot: &mut Option<Align>,
+        v: Option<&str>,
+        is_target_modifier: bool,
+    ) -> bool {
         let mut bytes = 0u64;
-        if !parse_number(&mut bytes, v) {
+        if !parse_number(&mut bytes, v, is_target_modifier) {
             return false;
         }
 
@@ -2176,6 +2322,7 @@ pub mod parse {
     pub(crate) fn parse_assert_incr_state(
         slot: &mut Option<IncrementalStateAssertion>,
         v: Option<&str>,
+        _: bool,
     ) -> bool {
         *slot = match v {
             Some("loaded") => Some(IncrementalStateAssertion::Loaded),
@@ -2185,7 +2332,11 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_rust_version(slot: &mut Option<RustcVersion>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_rust_version(
+        slot: &mut Option<RustcVersion>,
+        v: Option<&str>,
+        _: bool,
+    ) -> bool {
         let Some(v) = v else {
             return false;
         };
