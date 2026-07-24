@@ -63,16 +63,16 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
 
     fn get_solver_region_constraint(
         &self,
-    ) -> rustc_type_ir::region_constraint::RegionConstraint<TyCtxt<'tcx>> {
+    ) -> rustc_type_ir::region_constraint::CanonicalFormRegionConstraint<TyCtxt<'tcx>> {
         self.get_solver_region_constraint().without_spans()
     }
 
     fn overwrite_solver_region_constraint(
         &self,
-        constraint: rustc_type_ir::region_constraint::RegionConstraint<TyCtxt<'tcx>>,
+        constraint: rustc_type_ir::region_constraint::CanonicalFormRegionConstraint<TyCtxt<'tcx>>,
         span: Span,
     ) {
-        self.overwrite_solver_region_constraint(constraint.with_span(span));
+        self.overwrite_solver_region_constraint(constraint.with_spans(span));
     }
 
     fn universe_of_ty(&self, vid: ty::TyVid) -> Option<ty::UniverseIndex> {
@@ -325,10 +325,10 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
 
     fn register_solver_region_constraint(
         &self,
-        c: rustc_type_ir::region_constraint::RegionConstraint<TyCtxt<'tcx>>,
+        c: rustc_type_ir::region_constraint::CanonicalFormRegionConstraint<TyCtxt<'tcx>>,
         span: Span,
     ) {
-        self.register_solver_region_constraint(c.with_span(span));
+        self.register_solver_region_constraint(c.with_spans(span));
     }
 
     fn register_ty_outlives(&self, ty: Ty<'tcx>, r: ty::Region<'tcx>, span: Span) {

@@ -93,8 +93,12 @@ where
         let ty = self.normalize(GoalSource::Misc, goal.param_env, ty::Unnormalized::new_wip(ty))?;
 
         if self.cx().assumptions_on_binders() {
+            use rustc_type_ir::region_constraint::CanonicalFormRegionConstraint;
+
             let constraint = self.destructure_type_outlives(ty, lt);
-            self.register_solver_region_constraint(constraint);
+            self.register_solver_region_constraint(CanonicalFormRegionConstraint::new_from_or(
+                constraint,
+            ));
         } else {
             self.register_ty_outlives(ty, lt);
         }
@@ -119,8 +123,13 @@ where
         let ty::OutlivesClause(a, b) = goal.predicate;
 
         if self.cx().assumptions_on_binders() {
-            let constraint =
-                rustc_type_ir::region_constraint::RegionConstraint::RegionOutlives(a, b, ());
+            use rustc_type_ir::region_constraint::{
+                And, CanonicalFormRegionConstraint, LeafRegionConstraint, Or,
+            };
+
+            let constraint = CanonicalFormRegionConstraint::new_from_or(Or::new([And::new([
+                LeafRegionConstraint::RegionOutlives(a, b, ()),
+            ])]));
             self.register_solver_region_constraint(constraint);
         } else {
             self.register_region_outlives(a, b, VisibleForLeakCheck::Yes);

@@ -45,6 +45,7 @@ use rustc_trait_selection::traits::{
     FulfillmentError, ObligationCtxt, hir_ty_lowering_dyn_compatibility_violations,
 };
 use tracing::{debug, instrument};
+use ty::region_constraint::{And, LeafRegionConstraint, Or};
 
 use crate::check::wfcheck::{TestBinderBody, TestBinderExists, TestBinderForall};
 use crate::diagnostics::{self, ElidedLifetimesAreNotAllowedInDelegations};
@@ -432,19 +433,22 @@ impl<'tcx> ItemCtxt<'tcx> {
         constraint: &hir::TestBinderConstraint<'tcx>,
     ) -> SolverRegionConstraint<'tcx> {
         match constraint {
-            hir::TestBinderConstraint::And { items } => {
-                ty::region_constraint::RegionConstraint::And(
-                    items.iter().map(|i| self.lower_test_binder_constraint(i)).collect(),
-                )
-            }
-            hir::TestBinderConstraint::Or { items } => ty::region_constraint::RegionConstraint::Or(
-                items.iter().map(|i| self.lower_test_binder_constraint(i)).collect(),
-            ),
+            hir::TestBinderConstraint::And { items } => items
+                .into_iter()
+                .map(|item| self.lower_test_binder_constraint(item))
+                .reduce(SolverRegionConstraint::new_and)
+                .unwrap_or(SolverRegionConstraint::new_true()),
+            hir::TestBinderConstraint::Or { items } => items
+                .into_iter()
+                .map(|item| self.lower_test_binder_constraint(item))
+                .reduce(SolverRegionConstraint::new_or)
+                .unwrap_or(SolverRegionConstraint::new_true()),
             hir::TestBinderConstraint::Lifetime { lhs, rhs } => {
                 let span = lhs.ident.span.to(rhs.ident.span);
                 let lhs = self.lowerer().lower_lifetime(lhs, RegionInferReason::RegionPredicate);
                 let rhs = self.lowerer().lower_lifetime(rhs, RegionInferReason::RegionPredicate);
-                ty::region_constraint::RegionConstraint::RegionOutlives(lhs, rhs, span)
+                let leaf = LeafRegionConstraint::RegionOutlives(lhs, rhs, span);
+                SolverRegionConstraint::new_from_or(Or::new([And::new([leaf])]))
             }
             hir::TestBinderConstraint::Type { lhs, rhs } => {
                 let span = lhs.span.to(rhs.ident.span);
@@ -453,7 +457,8 @@ impl<'tcx> ItemCtxt<'tcx> {
                 // note that we cannot check that lhs is a placeholder at this moment, as at this
                 // point it is a bound variable that is not yet instantiated with a placeholder.
                 // instead, we check it when we emit the region constraint.
-                ty::region_constraint::RegionConstraint::PlaceholderTyOutlives(lhs, rhs, span)
+                let leaf = LeafRegionConstraint::PlaceholderTyOutlives(lhs, rhs, span);
+                SolverRegionConstraint::new_from_or(Or::new([And::new([leaf])]))
             }
         }
     }
