@@ -44,25 +44,26 @@ If your change touches compiler behavior, add or update the appropriate `tests/u
 - This code uses third party libraries such as melior, you can find the melior generated dialects for MLIR in .ai/melior-dialect.rs
 - This project also uses triton, if you need to reference the triton documentation in can be found in .ai/specs/triton
 
-<!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:ca08a54f -->
+<!-- BEGIN BEADS INTEGRATION v:2 profile:minimal (br) -->
 ## Beads Issue Tracker
 
-This project uses **bd (beads)** for issue tracking. Run `bd prime` to see full workflow context and commands.
+This project uses **br (beads_rust)** for issue tracking.
+
+**Note:** `br` is non-invasive and never executes git commands. After `br sync --flush-only`, you must manually run `git add .beads/ && git commit`.
 
 ### Quick Reference
 
 ```bash
-bd ready              # Find available work
-bd show <id>          # View issue details
-bd update <id> --claim  # Claim work
-bd close <id>         # Complete work
+br ready              # Find available work
+br show <id>          # View issue details
+br update <id> --claim  # Claim work
+br close <id>         # Complete work
 ```
 
 ### Rules
 
-- Use `bd` for ALL task tracking — do NOT use TodoWrite, TaskCreate, or markdown TODO lists
-- Run `bd prime` for detailed command reference and session close protocol
-- Use `bd remember` for persistent knowledge — do NOT use MEMORY.md files
+- Use `br` for ALL task tracking — do NOT use TodoWrite, TaskCreate, or markdown TODO lists
+- Use `br` comments/labels for persistent knowledge — do NOT use MEMORY.md files
 
 ## Session Completion
 
@@ -76,7 +77,9 @@ bd close <id>         # Complete work
 4. **PUSH TO REMOTE** - This is MANDATORY:
    ```bash
    git pull --rebase
-   bd dolt push
+   br sync --flush-only
+   git add .beads/
+   git commit -m "sync beads"
    git push
    git status  # MUST show "up to date with origin"
    ```

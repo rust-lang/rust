@@ -109,10 +109,8 @@ compile_commands.json
 .clangd
 dialect.rs
 
-# Beads / Dolt files (added by bd init)
-.dolt/
-*.db
-.beads-credential-key
+# Beads (br) files — private beads/ repo, not tracked here
+.beads
 .scratch/
 agent.log
 claude_limit.lock
