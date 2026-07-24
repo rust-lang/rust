@@ -72,6 +72,7 @@
 
 use std::borrow::Cow;
 use std::fmt::Display;
+use std::ops::ControlFlow;
 use std::rc::Rc;
 
 pub(crate) use NamedMatch::*;
@@ -471,43 +472,57 @@ impl TtParser {
         }
     }
 
-    /// Process the matcher positions of `cur_mps` until it is empty. In the process, this will
-    /// produce more mps in `next_mps` and `bb_mps`.
-    ///
-    /// # Returns
-    ///
-    /// `Some(result)` if everything is finished, `None` otherwise. Note that matches are kept
-    /// track of through the mps generated.
-    fn parse_tt_inner<'matcher, T: Tracker<'matcher>>(
+    /// Match the token stream from `parser` against `matcher`.
+    pub(super) fn parse_tt<'matcher, T: Tracker<'matcher>>(
         &mut self,
         parser: &mut Cow<'_, Parser<'_>>,
         matcher: &'matcher [MatcherLoc],
         track: &mut T,
-    ) -> Option<NamedParseResult> {
-        while let Some(mut mp) = self.backtrack.pop() {
-            while let Some(next_mp) = self.match_one(parser, matcher, mp, track) {
+    ) -> NamedParseResult {
+        self.backtrack.clear();
+        self.seen_tokens.clear();
+        let mut mp = MatcherPos {
+            idx: 0,
+            input_pos: parser.approx_token_stream_pos(),
+            matches: Rc::clone(&self.empty_matches),
+        };
+
+        loop {
+            if let Some(next_mp) = self.match_one(parser, matcher, mp, track) {
                 mp = next_mp;
+                continue;
             }
 
-            debug_assert!(self.backtrack.iter().is_sorted_by_key(|mp| mp.input_pos));
-        }
-
-        if let Some(mp) = self.maybe_ambig_mp.take() {
-            if self.found_ambiguity || parser.approx_token_stream_pos() > mp.input_pos {
-                // Either:
-                // - A second maybe-ambig mp was found, setting `found_ambiguity`
-                // - Something else was parsed successfully, advancing `parser` past `mp`
-                // - `mp` was matched while backtracking
-                track.ambiguity();
-                return Some(Ambiguity);
+            // Try backtracking to an older mp.
+            if let Some(next_mp) = self.backtrack.pop() {
+                mp = next_mp;
+                continue;
             }
 
-            return self.process_special(parser, matcher, mp);
-        }
+            // Check for a matched meta-variable or EOF.
+            if let Some(mamp) = self.maybe_ambig_mp.take() {
+                if self.found_ambiguity || parser.approx_token_stream_pos() > mamp.input_pos {
+                    // Either:
+                    // - A second maybe-ambig mp was found, setting `found_ambiguity`
+                    // - Something else was parsed successfully, advancing `parser` past `mp`
+                    // - `mp` was matched while backtracking
+                    track.ambiguity();
+                    return Ambiguity;
+                }
 
-        // There are no possible next positions: syntax error.
-        track.failure(parser);
-        Some(Failure)
+                match self.process_special(parser, matcher, mamp) {
+                    ControlFlow::Break(result) => return result,
+                    ControlFlow::Continue(next_mp) => {
+                        mp = next_mp;
+                        continue;
+                    }
+                }
+            }
+
+            // The invocation could not be matched.
+            track.failure(parser);
+            return Failure;
+        }
     }
 
     /// Match a single [`MatcherPos`].
@@ -682,14 +697,14 @@ impl TtParser {
         parser: &mut Cow<'_, Parser<'_>>,
         matcher: &[MatcherLoc],
         mut mp: MatcherPos,
-    ) -> Option<NamedParseResult> {
+    ) -> ControlFlow<NamedParseResult, MatcherPos> {
         let matcher_loc = &matcher[mp.idx as usize];
         match matcher_loc {
             &MatcherLoc::MetaVarDecl { kind, next_metavar, seq_depth, .. } => {
                 // We use the span of the metavariable declaration to determine any
                 // edition-specific matching behavior for non-terminals.
                 let nt = match parser.to_mut().parse_nonterminal(kind) {
-                    Err(err) => return Some(self.nt_parsing_error(matcher_loc, err)),
+                    Err(err) => return ControlFlow::Break(self.nt_parsing_error(matcher_loc, err)),
                     Ok(nt) => nt,
                 };
                 mp.push_match(next_metavar, seq_depth, MatchedSingle(nt));
@@ -697,46 +712,16 @@ impl TtParser {
                 mp.idx += 1;
                 mp.input_pos = parser.approx_token_stream_pos();
                 self.seen_tokens.clear();
-                self.backtrack.push(mp);
-                None
+                ControlFlow::Continue(mp)
             }
 
             MatcherLoc::Eof => {
                 self.seen_tokens.clear();
                 let matches = Rc::unwrap_or_clone(mp.matches).into_iter();
-                Some(Success(self.nameize(matcher, matches)))
+                ControlFlow::Break(Success(self.nameize(matcher, matches)))
             }
 
             _ => unreachable!(),
-        }
-    }
-
-    /// Match the token stream from `parser` against `matcher`.
-    pub(super) fn parse_tt<'matcher, T: Tracker<'matcher>>(
-        &mut self,
-        parser: &mut Cow<'_, Parser<'_>>,
-        matcher: &'matcher [MatcherLoc],
-        track: &mut T,
-    ) -> NamedParseResult {
-        // A queue of possible matcher positions. We initialize it with the matcher position in
-        // which the "dot" is before the first token of the first token tree in `matcher`.
-        // `parse_tt_inner` then processes all of these possible matcher positions and produces
-        // possible next positions into `next_mps`. After some post-processing, the contents of
-        // `next_mps` replenish `cur_mps` and we start over again.
-        self.backtrack.clear();
-        self.seen_tokens.clear();
-        self.backtrack.push(MatcherPos {
-            idx: 0,
-            input_pos: parser.approx_token_stream_pos(),
-            matches: Rc::clone(&self.empty_matches),
-        });
-
-        loop {
-            let res = self.parse_tt_inner(parser, matcher, track);
-
-            if let Some(res) = res {
-                return res;
-            }
         }
     }
 
