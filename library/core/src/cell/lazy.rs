@@ -1,4 +1,4 @@
-use super::UnsafeCell;
+use crate::cell::CovariantUnsafeCell;
 use crate::hint::unreachable_unchecked;
 use crate::ops::{Deref, DerefMut};
 use crate::{fmt, mem};
@@ -52,7 +52,44 @@ enum State<T, F> {
 /// ```
 #[stable(feature = "lazy_cell", since = "1.80.0")]
 pub struct LazyCell<T, F = fn() -> T> {
-    state: UnsafeCell<State<T, F>>,
+    // It is non-obvious why `LazyCell` can be covariant in both `T` and `F`
+    // (and thus use `CovariantUnsafeCell`)...
+    //
+    // # `F`
+    //
+    // `F` is the easier to explain one; The state only ever transitions *out* of `Uninit(F)`
+    // (to either `Poisoned` or `Init(T)`), and never into it. In other words `F` is only ever
+    // read, not written.
+    //
+    // One could imagine `LazyCell` implemented as
+    // ```
+    // struct {
+    //     state: UnsafeCell<Uninit | Init(T) | Poisoned>,
+    //     f: ManuallyDrop<F>,
+    // }
+    // ```
+    // which would make it "obviously" covariant in `F`.
+    //
+    // **NOTE**: the important invariant here is that we never allow writing `F` through
+    //           `&LazyCell`.
+    //
+    // # `T`
+    //
+    // Why `LazyCell` can be covariant in `T` is even more subtle. We do allow writing `T` through
+    // a `&LazyCell`, which would normally force us to make `LazyCell` invariant in `T`. However,
+    // the only value that we allow writing is one returned by `F`... and we don't allow changing
+    // `F`. So even if a user gets a `&LazyCell<LessrestrictedVersionOfT>`, they cannot write the
+    // `LessrestrictedVersionOfT` through it.
+    //
+    // **NOTE**: the important invariants here are that
+    //           1. `T` can only be written through `&LazyCell<T, F>` by being returned from `F`
+    //           2. `F` cannot be overwritten after `LazyCell` creation
+    //
+    // # Conclusion
+    //
+    // `LazyCell` can be covariant in both `T` and `F`... provided the non-local invariants which
+    // are listed above.
+    state: CovariantUnsafeCell<State<T, F>>,
 }
 
 impl<T, F: FnOnce() -> T> LazyCell<T, F> {
@@ -73,7 +110,7 @@ impl<T, F: FnOnce() -> T> LazyCell<T, F> {
     #[stable(feature = "lazy_cell", since = "1.80.0")]
     #[rustc_const_stable(feature = "lazy_cell", since = "1.80.0")]
     pub const fn new(f: F) -> LazyCell<T, F> {
-        LazyCell { state: UnsafeCell::new(State::Uninit(f)) }
+        LazyCell { state: CovariantUnsafeCell::new(State::Uninit(f)) }
     }
 
     /// Consumes this `LazyCell` returning the stored value.
@@ -141,7 +178,7 @@ impl<T, F: FnOnce() -> T> LazyCell<T, F> {
         // reference lives either until the end of the borrow of `this` (in the
         // initialized case) or is invalidated in `really_init` (in the
         // uninitialized case; `really_init` will create and return a fresh reference).
-        let state = unsafe { &*this.state.get() };
+        let state = unsafe { this.state.get().as_ref() };
         match state {
             State::Init(data) => data,
             // SAFETY: The state is uninitialized.
@@ -231,7 +268,7 @@ impl<T, F: FnOnce() -> T> LazyCell<T, F> {
         // This function is only called when the state is uninitialized,
         // so no references to `state` can exist except for the reference
         // in `force`, which is invalidated here and not accessed again.
-        let state = unsafe { &mut *this.state.get() };
+        let state = unsafe { this.state.get().as_mut() };
         // Temporarily mark the state as poisoned. This prevents reentrant
         // accesses and correctly poisons the cell if the closure panicked.
         let State::Uninit(f) = mem::replace(state, State::Poisoned) else { unreachable!() };
@@ -242,15 +279,15 @@ impl<T, F: FnOnce() -> T> LazyCell<T, F> {
         // If the closure accessed the cell through something like a reentrant
         // mutex, but caught the panic resulting from the state being poisoned,
         // the mutable borrow for `state` will be invalidated, so we need to
-        // go through the `UnsafeCell` pointer here. The state can only be
-        // poisoned at this point, so using `write` to skip the destructor
-        // of `State` should help the optimizer.
+        // go through the `CovariantUnsafeCell` pointer here. The state can
+        // only be poisoned at this point, so using `write` to skip the
+        // destructor of `State` should help the optimizer.
         unsafe { this.state.get().write(State::Init(data)) };
 
         // SAFETY:
         // The previous references were invalidated by the `write` call above,
         // so do a new shared borrow of the state instead.
-        let state = unsafe { &*this.state.get() };
+        let state = unsafe { this.state.get().as_ref() };
         let State::Init(data) = state else { unreachable!() };
         data
     }
@@ -303,7 +340,7 @@ impl<T, F> LazyCell<T, F> {
         // This is sound for the same reason as in `force`: once the state is
         // initialized, it will not be mutably accessed again, so this reference
         // will stay valid for the duration of the borrow to `self`.
-        let state = unsafe { &*this.state.get() };
+        let state = unsafe { this.state.get().as_ref() };
         match state {
             State::Init(data) => Some(data),
             _ => None,
@@ -373,7 +410,7 @@ impl<T, F> From<T> for LazyCell<T, F> {
     /// with the provided value.
     #[inline]
     fn from(value: T) -> Self {
-        Self { state: UnsafeCell::new(State::Init(value)) }
+        Self { state: CovariantUnsafeCell::new(State::Init(value)) }
     }
 }
 
