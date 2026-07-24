@@ -8,7 +8,7 @@ use std::fs;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lock;
-use rustc_hir::def_id::{DefId, DefIndex, LOCAL_CRATE};
+use rustc_hir::def_id::{DefId, DefIndex, LOCAL_CRATE, StableCrateId};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mono::MonoItem;
 use rustc_middle::ty::codec::{TyDecoder, TyEncoder};
@@ -115,7 +115,7 @@ impl<'a, 'tcx> SpanEncoder for OffloadManifestEncoder<'a, 'tcx> {
     }
 
     fn encode_crate_num(&mut self, crate_num: rustc_span::def_id::CrateNum) {
-        crate_num.as_u32().encode(self);
+        self.tcx.stable_crate_id(crate_num).encode(self);
     }
 
     fn encode_def_index(&mut self, def_index: rustc_span::def_id::DefIndex) {
@@ -310,8 +310,8 @@ impl<'a, 'tcx> SpanDecoder for OffloadManifestDecoder<'a, 'tcx> {
     }
 
     fn decode_crate_num(&mut self) -> rustc_span::def_id::CrateNum {
-        let v = self.read_u32();
-        rustc_span::def_id::CrateNum::from_u32(v)
+        let stable_id: StableCrateId = Decodable::decode(self);
+        self.tcx.stable_crate_id_to_crate_num(stable_id)
     }
 
     fn decode_def_id(&mut self) -> rustc_span::def_id::DefId {
@@ -431,17 +431,7 @@ pub(crate) fn read_manifest<'tcx>(
     let mut decoder = OffloadManifestDecoder::new(&data, tcx)
         .map_err(|_| std::io::Error::new(std::io::ErrorKind::InvalidData, "invalid manifest"))?;
 
-    let payload_len = decoder.decoder.len() - decoder.position();
-    if payload_len == 0 {
-        return Ok(Vec::new());
-    }
-
     let instances: Vec<ty::Instance<'tcx>> = Decodable::decode(&mut decoder);
-
-    let instances: Vec<_> = instances
-        .into_iter()
-        .filter(|instance| instance.def_id().krate != rustc_span::def_id::CrateNum::MAX)
-        .collect();
 
     Ok(instances)
 }

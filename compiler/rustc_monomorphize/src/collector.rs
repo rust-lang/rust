@@ -232,7 +232,7 @@ use rustc_middle::ty::{
 use rustc_middle::util::Providers;
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::{DebugInfo, EntryFnType};
-use rustc_span::{DUMMY_SP, Span, Spanned, dummy_spanned, respan};
+use rustc_span::{DUMMY_SP, Span, Spanned, Symbol, dummy_spanned, respan};
 use tracing::{debug, instrument, trace};
 
 use crate::diagnostics::{
@@ -1485,6 +1485,7 @@ fn collect_roots(tcx: TyCtxt<'_>, mode: MonoItemCollectionStrategy) -> Vec<MonoI
     if let Some(manifest_path) = tcx.sess.opts.unstable_opts.offload.iter().find_map(|o| {
         if let rustc_session::config::Offload::DeviceWithManifest(p) = o { Some(p) } else { None }
     }) {
+        tcx.sess.file_depinfo.borrow_mut().insert(Symbol::intern(manifest_path));
         match crate::offload_manifest::read_manifest(std::path::Path::new(manifest_path), tcx) {
             Ok(instances) => {
                 for instance in instances {
