@@ -1,3 +1,7 @@
+//! Test that CoerceShared doesn't capture an omitted field, and that the source's omitted field can
+//! be used as exclusive while the captured field is still captured.
+//! This should eventually pass.
+
 #![feature(reborrow)]
 
 use std::marker::{CoerceShared, Reborrow};

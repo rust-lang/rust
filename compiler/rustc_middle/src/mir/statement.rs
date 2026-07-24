@@ -222,7 +222,9 @@ impl<'tcx> PlaceTy<'tcx> {
                 });
                 PlaceTy::from_ty(ty)
             }
-            ProjectionElem::PhantomDeref => PlaceTy::from_ty(structurally_normalize(self.ty)),
+            ProjectionElem::PhantomDeref => {
+                PlaceTy::from_ty(normalize(Unnormalized::new_wip(self.ty)))
+            }
             ProjectionElem::Index(_) | ProjectionElem::ConstantIndex { .. } => {
                 PlaceTy::from_ty(self.ty.builtin_index().unwrap())
             }

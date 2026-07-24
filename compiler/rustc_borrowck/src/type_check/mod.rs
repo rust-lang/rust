@@ -2533,6 +2533,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
         }
 
+        // FIXME: copy in code from coercion.rs to re-check CoerceShared lifetime relations.
         if mutability.is_not() {
             // FIXME(reborrow): for CoerceShared we need to relate the types manually, field by
             // field. We cannot just attempt to relate `T` and `<T as CoerceShared>::Target` by

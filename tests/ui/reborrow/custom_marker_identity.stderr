@@ -1,5 +1,5 @@
 error[E0515]: cannot return reference to temporary value
-  --> $DIR/custom_marker_identity.rs:9:56
+  --> $DIR/custom_marker_identity.rs:13:56
    |
 LL |   fn method<'a>(a: CustomMarker<'a>) -> CustomMarker<'a> {
    |  ________________________________________________________^
@@ -9,7 +9,7 @@ LL | | }
    | |_^ returns a reference to data owned by the current function
 
 error[E0515]: cannot return value referencing local data `a`
-  --> $DIR/custom_marker_identity.rs:9:56
+  --> $DIR/custom_marker_identity.rs:13:56
    |
 LL |   fn method<'a>(a: CustomMarker<'a>) -> CustomMarker<'a> {
    |  ________________________________________________________^
