@@ -23,13 +23,14 @@ use std::path::PathBuf;
 
 use miri::Immediate::Uninit;
 use miri::{interpret, *};
-use rustc_abi::Size;
+use rustc_abi::{FIRST_VARIANT, FieldIdx, Size};
 use rustc_driver::Compilation;
 use rustc_hir::attrs::CrateType;
+use rustc_hir::def::CtorKind;
 use rustc_interface::interface;
 use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::mir::{self, Local, ProjectionElem, VarDebugInfoContents, VarDebugInfoFragment};
-use rustc_middle::ty::{TyCtxt, TyKind};
+use rustc_middle::ty::{self, TyCtxt, TyKind};
 use rustc_session::EarlyDiagCtxt;
 use rustc_session::config::ErrorOutputType;
 use rustc_span::source_map::SourceMap;
@@ -541,7 +542,61 @@ impl<'tcx> PrirodaContext<'tcx> {
             return self.render_op(op);
         }
 
-        self.render_op(op)
+        match op.layout.ty.kind() {
+            // Empty enums have no active variant to format. Unions do not record
+            // which field is currently active, so choosing one would be misleading.
+            //
+            // FIXME: support unions only with an explicit user-selected field or
+            // another source of active-field information. Guessing from layout
+            // bytes would make debugger output look more certain than it is.
+            ty::Adt(def, _) if def.variants().is_empty() || def.is_union() => self.render_op(op),
+
+            ty::Adt(def, _) if def.is_struct() => {
+                let variant_idx = FIRST_VARIANT;
+                let variant_def = &def.variants()[variant_idx];
+                let name = variant_def.name.to_string();
+
+                let mut fields = Vec::with_capacity(variant_def.fields.len());
+                for i in 0..variant_def.fields.len() {
+                    let field_idx = FieldIdx::from_usize(i);
+                    // `project_field` avoids manual offset math and works for both
+                    // immediate and memory-backed operands through `Projectable`.
+                    let field_op = match self.ecx.project_field(&op, field_idx).discard_err() {
+                        Some(field_op) => field_op,
+                        // FIXME: preserve the successfully rendered fields and
+                        // mark only this field as unavailable once the value model
+                        // can represent partial render failures.
+                        None => return self.render_op(op),
+                    };
+                    fields.push(self.render_source_shaped_op_inner(field_op, depth + 1));
+                }
+
+                // Match Rust constructor spelling:
+                // - `Const`: unit structs, e.g. `UnitStruct`
+                // - `Fn`: tuple structs, e.g. `Pair(a, b)` or `EmptyTuple()`
+                // - `None`: braced structs, including the empty `{}` case
+                match variant_def.ctor_kind() {
+                    Some(CtorKind::Const) => name,
+                    Some(CtorKind::Fn) => format!("{name}({})", fields.join(", ")),
+                    None if fields.is_empty() => format!("{name} {{}}"),
+                    None => {
+                        let fields = variant_def
+                            .fields
+                            .iter()
+                            .zip(fields)
+                            .map(|(field_def, value)| format!("{}: {value}", field_def.name))
+                            .collect::<Vec<_>>()
+                            .join(", ");
+                        format!("{name} {{ {fields} }}")
+                    }
+                }
+            }
+
+            // FIXME: consider source-shaped special cases for strings, closures,
+            // generators/coroutines, trait objects, and SIMD/vector-like types.
+            // Until then these stay on the raw renderer path.
+            _ => self.render_op(op),
+        }
     }
 
     /// Render an evaluated operand using the same raw representation for

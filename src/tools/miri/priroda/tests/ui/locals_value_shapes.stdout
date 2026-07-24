@@ -2,11 +2,11 @@
 (priroda) Hit breakpoint
 {MANIFEST_DIR}/tests/ui/locals_value_shapes.rs:49
 (priroda) Name: <none>, Id: _0, Ty: (), Value: <uninit>
-Name: dead_box, Id: _1, Ty: std::boxed::Box<u8>, Value: [{ALLOC_PTR}]
-Name: consumed, Id: _2, Ty: std::boxed::Box<u8>, Value: [{ALLOC_PTR}]
+Name: dead_box, Id: _1, Ty: std::boxed::Box<u8>, Value: Box(Unique { pointer: NonNull { pointer: [{ALLOC_PTR}] }, _marker: PhantomData }, Global)
+Name: consumed, Id: _2, Ty: std::boxed::Box<u8>, Value: Box(Unique { pointer: NonNull { pointer: [{ALLOC_PTR}] }, _marker: PhantomData }, Global)
 Name: <none>, Id: _3, Ty: (), Value: <dead>
 Name: <none>, Id: _4, Ty: std::boxed::Box<u8>, Value: <dead>
-Name: pointed_box, Id: _5, Ty: std::boxed::Box<u8>, Value: [{ALLOC_PTR}]
+Name: pointed_box, Id: _5, Ty: std::boxed::Box<u8>, Value: Box(Unique { pointer: NonNull { pointer: [{ALLOC_PTR}] }, _marker: PhantomData }, Global)
 Name: pointer_box, Id: _6, Ty: &std::boxed::Box<u8>, Value: {&_: &std::boxed::Box<u8>}
 Name: scalar, Id: _7, Ty: u8, Value: 42_u8
 Name: pointed, Id: _8, Ty: u8, Value: [33]
@@ -16,12 +16,12 @@ Name: <none>, Id: _11, Ty: &[u8], Value: (pointer to {ALLOC_PTR}, 0x000000000000
 Name: <none>, Id: _12, Ty: &[u8; 2], Value: <dead>
 Name: <none>, Id: _13, Ty: [u8; 2], Value: <uninit>
 Name: <none>, Id: _14, Ty: std::ops::RangeFull, Value: <dead>
-Name: mplace, Id: _15, Ty: Aggregate, Value: [34 12 2a __]
+Name: mplace, Id: _15, Ty: Aggregate, Value: Aggregate { byte: [2a], word: [34 12] }
 Name: <none>, Id: _16, Ty: u8, Value: <dead>
 Name: tuple, Id: _17, Ty: (u8, u16), Value: [01 __ 03 02]
-Name: tuple_struct, Id: _18, Ty: TupleAggregate, Value: [06 05 04 __]
+Name: tuple_struct, Id: _18, Ty: TupleAggregate, Value: TupleAggregate([04], [06 05])
 Name: array, Id: _19, Ty: [u8; 3], Value: [07 08 09]
-Name: nested, Id: _20, Ty: Nested, Value: [0c 0b 0a __ 01 __ 03 02]
+Name: nested, Id: _20, Ty: Nested, Value: Nested { aggregate: Aggregate { byte: [0a], word: [0c 0b] }, tuple: [01 __ 03 02] }
 Name: <none>, Id: _21, Ty: Aggregate, Value: <dead>
 Name: <none>, Id: _22, Ty: (u8, u16), Value: <dead>
 Name: unit_variant, Id: _23, Ty: Choice, Value: [00 __ __ __ __ __ __ __]
@@ -45,15 +45,15 @@ Name: <none>, Id: _40, Ty: &Choice, Value: <dead>
 Name: <none>, Id: _41, Ty: &[u8; 2], Value: {&_: &[u8; 2]}
 (priroda) Id: _0, Ty: (), Value: <uninit>
 (priroda) Id: _4, Ty: std::boxed::Box<u8>, Value: <dead>
-(priroda) Id: _5, Ty: std::boxed::Box<u8>, Value: [{ALLOC_PTR}]
+(priroda) Id: _5, Ty: std::boxed::Box<u8>, Value: Box(Unique { pointer: NonNull { pointer: [{ALLOC_PTR}] }, _marker: PhantomData }, Global)
 (priroda) Id: _7, Ty: u8, Value: 42_u8
 (priroda) Id: _8, Ty: u8, Value: [33]
 (priroda) Id: _13, Ty: [u8; 2], Value: <uninit>
-(priroda) Id: _15, Ty: Aggregate, Value: [34 12 2a __]
+(priroda) Id: _15, Ty: Aggregate, Value: Aggregate { byte: [2a], word: [34 12] }
 (priroda) Id: _17, Ty: (u8, u16), Value: [01 __ 03 02]
-(priroda) Id: _18, Ty: TupleAggregate, Value: [06 05 04 __]
+(priroda) Id: _18, Ty: TupleAggregate, Value: TupleAggregate([04], [06 05])
 (priroda) Id: _19, Ty: [u8; 3], Value: [07 08 09]
-(priroda) Id: _20, Ty: Nested, Value: [0c 0b 0a __ 01 __ 03 02]
+(priroda) Id: _20, Ty: Nested, Value: Nested { aggregate: Aggregate { byte: [0a], word: [0c 0b] }, tuple: [01 __ 03 02] }
 (priroda) Id: _23, Ty: Choice, Value: [00 __ __ __ __ __ __ __]
 (priroda) Id: _24, Ty: Choice, Value: [01 0d 0f 0e __ __ __ __]
 (priroda) Id: _25, Ty: Choice, Value: [02 01 __ __ 13 12 11 10]

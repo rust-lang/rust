@@ -2,12 +2,12 @@
 (priroda) Hit breakpoint
 {MANIFEST_DIR}/tests/ui/locals_source_shapes.rs:71
 (priroda) Name: <none>, Id: _0, Ty: (), Value: <uninit>
-Name: named, Id: _1, Ty: Named, Value: [02 03 01 __]
-Name: empty_braced, Id: _2, Ty: EmptyBraced, Value: []
-Name: unit_struct, Id: _3, Ty: UnitStruct, Value: []
-Name: tuple_struct, Id: _4, Ty: TupleStruct, Value: [05 06 04 __]
-Name: single_tuple_struct, Id: _5, Ty: SingleTupleStruct, Value: [07]
-Name: zero_tuple_struct, Id: _6, Ty: ZeroTupleStruct, Value: []
+Name: named, Id: _1, Ty: Named, Value: Named { a: [01], b: [02 03] }
+Name: empty_braced, Id: _2, Ty: EmptyBraced, Value: EmptyBraced {}
+Name: unit_struct, Id: _3, Ty: UnitStruct, Value: UnitStruct
+Name: tuple_struct, Id: _4, Ty: TupleStruct, Value: TupleStruct([04], [05 06])
+Name: single_tuple_struct, Id: _5, Ty: SingleTupleStruct, Value: SingleTupleStruct([07])
+Name: zero_tuple_struct, Id: _6, Ty: ZeroTupleStruct, Value: ZeroTupleStruct()
 Name: tuple_zero, Id: _7, Ty: (), Value: []
 Name: tuple_one, Id: _8, Ty: (u8,), Value: [08]
 Name: tuple_many, Id: _9, Ty: (u8, u16), Value: [09 __ 0a 0b]
@@ -41,12 +41,12 @@ Name: <none>, Id: _36, Ty: &Variants, Value: <dead>
 Name: <none>, Id: _37, Ty: &Variants, Value: <dead>
 Name: <none>, Id: _38, Ty: &RawUnion, Value: <dead>
 Name: <none>, Id: _39, Ty: u8, Value: <dead>
-(priroda) Id: _1, Ty: Named, Value: [02 03 01 __]
-(priroda) Id: _2, Ty: EmptyBraced, Value: []
-(priroda) Id: _3, Ty: UnitStruct, Value: []
-(priroda) Id: _4, Ty: TupleStruct, Value: [05 06 04 __]
-(priroda) Id: _5, Ty: SingleTupleStruct, Value: [07]
-(priroda) Id: _6, Ty: ZeroTupleStruct, Value: []
+(priroda) Id: _1, Ty: Named, Value: Named { a: [01], b: [02 03] }
+(priroda) Id: _2, Ty: EmptyBraced, Value: EmptyBraced {}
+(priroda) Id: _3, Ty: UnitStruct, Value: UnitStruct
+(priroda) Id: _4, Ty: TupleStruct, Value: TupleStruct([04], [05 06])
+(priroda) Id: _5, Ty: SingleTupleStruct, Value: SingleTupleStruct([07])
+(priroda) Id: _6, Ty: ZeroTupleStruct, Value: ZeroTupleStruct()
 (priroda) Id: _7, Ty: (), Value: []
 (priroda) Id: _8, Ty: (u8,), Value: [08]
 (priroda) Id: _9, Ty: (u8, u16), Value: [09 __ 0a 0b]
