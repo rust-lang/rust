@@ -502,6 +502,15 @@ Calculating code examples follows these rules:
   * typedef
 2. If one of the previously listed items has a code example, then it'll be counted.
 
+If you use the `-o` option with it, it will generate the file into the given older name. For example:
+
+```shell
+rustdoc foo.rs --show-coverage -o doc
+```
+
+Will generate a `foo.txt` into the `doc` folder. If the `-o` option isn't passed, it will display
+on stdout.
+
 ### JSON output
 
 When using `--output-format json` with this option, it will display the coverage information in
