@@ -43,7 +43,7 @@ impl<'a> State<'a> {
                 expr,
                 safety,
                 define_opaque,
-                eii_impls,
+                eii_impl,
             }) => self.print_item_const(
                 *ident,
                 Some(*mutability),
@@ -54,7 +54,7 @@ impl<'a> State<'a> {
                 *safety,
                 ast::Defaultness::Implicit,
                 define_opaque.as_deref(),
-                eii_impls,
+                eii_impl.as_deref(),
             ),
             ast::ForeignItemKind::TyAlias(ast::TyAlias {
                 defaultness,
@@ -95,10 +95,10 @@ impl<'a> State<'a> {
         safety: ast::Safety,
         defaultness: ast::Defaultness,
         define_opaque: Option<&[(ast::NodeId, ast::Path)]>,
-        eii_impls: &[EiiImpl],
+        eii_impl: Option<&EiiImpl>,
     ) {
         self.print_define_opaques(define_opaque);
-        for eii_impl in eii_impls {
+        if let Some(eii_impl) = eii_impl {
             self.print_eii_impl(eii_impl);
         }
         let (cb, ib) = self.head("");
@@ -197,7 +197,7 @@ impl<'a> State<'a> {
                 mutability: mutbl,
                 expr: body,
                 define_opaque,
-                eii_impls,
+                eii_impl,
             }) => {
                 self.print_safety(*safety);
                 self.print_item_const(
@@ -210,7 +210,7 @@ impl<'a> State<'a> {
                     ast::Safety::Default,
                     ast::Defaultness::Implicit,
                     define_opaque.as_deref(),
-                    eii_impls,
+                    eii_impl.as_deref(),
                 );
             }
             ast::ItemKind::ConstBlock(ast::ConstBlockItem { id: _, span: _, block }) => {
@@ -243,7 +243,7 @@ impl<'a> State<'a> {
                     ast::Safety::Default,
                     *defaultness,
                     define_opaque.as_deref(),
-                    &[],
+                    None,
                 );
             }
             ast::ItemKind::Fn(func) => {
@@ -632,7 +632,7 @@ impl<'a> State<'a> {
                     ast::Safety::Default,
                     *defaultness,
                     define_opaque.as_deref(),
-                    &[],
+                    None,
                 );
             }
             ast::AssocItemKind::Type(ast::TyAlias {
@@ -732,12 +732,12 @@ impl<'a> State<'a> {
     }
 
     fn print_fn_full(&mut self, vis: &ast::Visibility, attrs: &[ast::Attribute], func: &ast::Fn) {
-        let ast::Fn { defaultness, ident, generics, sig, contract, body, define_opaque, eii_impls } =
+        let ast::Fn { defaultness, ident, generics, sig, contract, body, define_opaque, eii_impl } =
             func;
 
         self.print_define_opaques(define_opaque.as_deref());
 
-        for eii_impl in eii_impls {
+        if let Some(eii_impl) = eii_impl {
             self.print_eii_impl(eii_impl);
         }
 

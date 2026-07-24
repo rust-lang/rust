@@ -13,10 +13,10 @@ use rustc_middle::middle::codegen_fn_attrs::{
 };
 use rustc_middle::mono::Visibility;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::{self as ty, TyCtxt};
+use rustc_middle::ty::{self as ty, Instance, TyCtxt};
 use rustc_session::diagnostics::feature_err;
 use rustc_session::lint;
-use rustc_span::{Span, sym};
+use rustc_span::{Span, Symbol, sym};
 use rustc_target::spec::Os;
 
 use crate::diagnostics;
@@ -93,8 +93,11 @@ fn process_builtin_attrs(
             AttributeKind::LinkSection { name } => codegen_fn_attrs.link_section = Some(*name),
             AttributeKind::NoMangle(attr_span) => {
                 interesting_spans.no_mangle = Some(*attr_span);
-                if tcx.opt_item_name(did.to_def_id()).is_some() {
-                    codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_MANGLE;
+                if let Some(name) = tcx.opt_item_name(did.to_def_id()) {
+                    // Don't override #[link_name] or #[export_name]
+                    if codegen_fn_attrs.symbol_name.is_none() {
+                        codegen_fn_attrs.symbol_name = Some(name);
+                    }
                 } else {
                     tcx.dcx()
                         .span_delayed_bug(*attr_span, "no_mangle should be on a named function");
@@ -225,32 +228,31 @@ fn process_builtin_attrs(
             AttributeKind::RustcEiiForeignItem => {
                 codegen_fn_attrs.flags |= CodegenFnAttrFlags::EXTERNALLY_IMPLEMENTABLE_ITEM;
             }
-            AttributeKind::EiiImpls(impls) => {
-                for i in impls {
-                    let foreign_item = match i.resolution {
-                        EiiImplResolution::Macro(def_id) => {
-                            let Some(extern_item) = find_attr!(tcx, def_id, EiiDeclaration(target) => target.foreign_item
-                            ) else {
-                                tcx.dcx().span_delayed_bug(
-                                    i.span,
-                                    "resolved to something that's not an EII",
-                                );
-                                continue;
-                            };
-                            extern_item
-                        }
-                        EiiImplResolution::Known(def_id) => def_id,
-                        EiiImplResolution::Error(_eg) => continue,
-                    };
+            AttributeKind::EiiImpl(i) => {
+                let foreign_item = match i.resolution {
+                    EiiImplResolution::Macro(def_id) => {
+                        let Some(extern_item) = find_attr!(tcx, def_id, EiiDeclaration(target) => target.foreign_item
+                        ) else {
+                            tcx.dcx().span_delayed_bug(
+                                i.span,
+                                "resolved to something that's not an EII",
+                            );
+                            continue;
+                        };
+                        extern_item
+                    }
+                    EiiImplResolution::Known(def_id) => def_id,
+                    EiiImplResolution::Error(_eg) => continue,
+                };
 
-                    // this is to prevent a bug where a single crate defines both the default and explicit implementation
-                    // for an EII. In that case, both of them may be part of the same final object file. I'm not 100% sure
-                    // what happens, either rustc deduplicates the symbol or llvm, or it's random/order-dependent.
-                    // However, the fact that the default one of has weak linkage isn't considered and you sometimes get that
-                    // the default implementation is used while an explicit implementation is given.
-                    if
-                    // if this is a default impl
-                    i.is_default
+                // this is to prevent a bug where a single crate defines both the default and explicit implementation
+                // for an EII. In that case, both of them may be part of the same final object file. I'm not 100% sure
+                // what happens, either rustc deduplicates the symbol or llvm, or it's random/order-dependent.
+                // However, the fact that the default one of has weak linkage isn't considered and you sometimes get that
+                // the default implementation is used while an explicit implementation is given.
+                if
+                // if this is a default impl
+                i.is_default
                         // iterate over all implementations *in the current crate*
                         // (this is ok since we generate codegen fn attrs in the local crate)
                         // if any of them is *not default* then don't emit the alias.
@@ -258,28 +260,33 @@ fn process_builtin_attrs(
                             let (_, impls) = tcx.externally_implementable_items(LOCAL_CRATE).get(&foreign_item).unwrap_or_else(|| bug!("EII impl should have an entry"));
                             impls.iter().any(|(_, imp)| !imp.is_default)
                         }
-                    {
-                        continue;
-                    }
+                {
+                    continue;
+                }
 
-                    codegen_fn_attrs.foreign_item_symbol_aliases.push((
-                        foreign_item,
-                        if i.is_default { Linkage::WeakAny } else { Linkage::External },
-                        Visibility::Default,
+                if !i.is_default {
+                    // FIXME is tcx.symbol_name() here safe or should we move this to
+                    // rustc_symbol_mangling?
+                    codegen_fn_attrs.symbol_name = Some(Symbol::intern(
+                        tcx.symbol_name(Instance::mono(tcx, foreign_item)).name,
                     ));
-                    codegen_fn_attrs.flags |= CodegenFnAttrFlags::EXTERNALLY_IMPLEMENTABLE_ITEM;
+                } else {
+                    assert!(codegen_fn_attrs.foreign_item_symbol_alias.is_none());
+                    codegen_fn_attrs.foreign_item_symbol_alias =
+                        Some((foreign_item, Linkage::WeakAny, Visibility::Default));
+                }
+                codegen_fn_attrs.flags |= CodegenFnAttrFlags::EXTERNALLY_IMPLEMENTABLE_ITEM;
 
-                    // If the declaration is `#[track_caller]`, derive it onto the implementation
-                    // too. The shim that forwards to this impl (see `add_function_aliases`) takes
-                    // its ABI from the impl's `fn_abi`, so every impl must agree on whether the
-                    // caller-location argument is present, otherwise it would be silently dropped.
-                    if tcx
-                        .codegen_fn_attrs(foreign_item)
-                        .flags
-                        .contains(CodegenFnAttrFlags::TRACK_CALLER)
-                    {
-                        codegen_fn_attrs.flags |= CodegenFnAttrFlags::TRACK_CALLER;
-                    }
+                // If the declaration is `#[track_caller]`, derive it onto the implementation
+                // too. The shim that forwards to this impl (see `add_function_aliases`) takes
+                // its ABI from the impl's `fn_abi`, so every impl must agree on whether the
+                // caller-location argument is present, otherwise it would be silently dropped.
+                if tcx
+                    .codegen_fn_attrs(foreign_item)
+                    .flags
+                    .contains(CodegenFnAttrFlags::TRACK_CALLER)
+                {
+                    codegen_fn_attrs.flags |= CodegenFnAttrFlags::TRACK_CALLER;
                 }
             }
             AttributeKind::ThreadLocal => {
@@ -407,7 +414,7 @@ fn apply_overrides(tcx: TyCtxt<'_>, did: LocalDefId, codegen_fn_attrs: &mut Code
             // import will *still* be mangled despite this.
             //
             // if none of the exceptions apply; apply no_mangle
-            codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_MANGLE;
+            codegen_fn_attrs.symbol_name = Some(tcx.item_name(did));
         }
     }
 }
@@ -540,22 +547,24 @@ fn handle_lang_items(
     // strippable by the linker.
     //
     // Additionally weak lang items have predetermined symbol names.
-    if let Some(lang_item) = lang_item
+    let link_name_override = if let Some(lang_item) = lang_item
         && let Some(link_name) = lang_item.link_name()
     {
         codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL;
-        codegen_fn_attrs.symbol_name = Some(link_name);
-    }
+        Some(link_name)
+    } else {
+        None
+    };
 
-    // error when using no_mangle on a lang item item
+    // error when using no_mangle, or export_name on a lang item item
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)
-        && codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE)
+        && codegen_fn_attrs.symbol_name.is_some()
     {
         let mut err = tcx
             .dcx()
             .struct_span_err(
                 interesting_spans.no_mangle.unwrap_or_default(),
-                "`#[no_mangle]` cannot be used on internal language items",
+                "`#[no_mangle]` and `#[export_name]` cannot be used on internal language items",
             )
             .with_note("Rustc requires this item to have a specific mangled name.")
             .with_span_label(tcx.def_span(did), "should be the internal language item");
@@ -570,6 +579,10 @@ fn handle_lang_items(
                 ))
         }
         err.emit();
+    }
+
+    if let Some(link_name_override) = link_name_override {
+        codegen_fn_attrs.symbol_name = Some(link_name_override);
     }
 }
 

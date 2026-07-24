@@ -1153,9 +1153,7 @@ fn check_item_fn(
 fn check_eiis_fn(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     // does the function have an EiiImpl attribute? that contains the defid of a *macro*
     // that was used to mark the implementation. This is a two step process.
-    for EiiImpl { resolution, span, .. } in
-        find_attr!(tcx, def_id, EiiImpls(impls) => impls).into_flat_iter()
-    {
+    if let Some(EiiImpl { resolution, span, .. }) = find_attr!(tcx, def_id, EiiImpl(i) => i) {
         let (foreign_item, name) = match resolution {
             EiiImplResolution::Macro(def_id) => {
                 // we expect this macro to have the `EiiMacroFor` attribute, that points to a function
@@ -1166,11 +1164,11 @@ fn check_eiis_fn(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                     (foreign_item, tcx.item_name(*def_id))
                 } else {
                     tcx.dcx().span_delayed_bug(*span, "resolved to something that's not an EII");
-                    continue;
+                    return;
                 }
             }
             EiiImplResolution::Known(def_id) => (*def_id, tcx.item_name(*def_id)),
-            EiiImplResolution::Error(_eg) => continue,
+            EiiImplResolution::Error(_eg) => return,
         };
 
         let _ = compare_eii_function_types(tcx, def_id, foreign_item, name, *span);
@@ -1180,9 +1178,7 @@ fn check_eiis_fn(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 fn check_eiis_static<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, ty: Ty<'tcx>) {
     // does the function have an EiiImpl attribute? that contains the defid of a *macro*
     // that was used to mark the implementation. This is a two step process.
-    for EiiImpl { resolution, span, .. } in
-        find_attr!(tcx, def_id, EiiImpls(impls) => impls).into_flat_iter()
-    {
+    if let Some(EiiImpl { resolution, span, .. }) = find_attr!(tcx, def_id, EiiImpl(i) => i) {
         let (foreign_item, name) = match resolution {
             EiiImplResolution::Macro(def_id) => {
                 // we expect this macro to have the `EiiMacroFor` attribute, that points to a function
@@ -1193,11 +1189,11 @@ fn check_eiis_static<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, ty: Ty<'tcx>) 
                     (foreign_item, tcx.item_name(*def_id))
                 } else {
                     tcx.dcx().span_delayed_bug(*span, "resolved to something that's not an EII");
-                    continue;
+                    return;
                 }
             }
             EiiImplResolution::Known(def_id) => (*def_id, tcx.item_name(*def_id)),
-            EiiImplResolution::Error(_eg) => continue,
+            EiiImplResolution::Error(_eg) => return,
         };
 
         let _ = compare_eii_statics(tcx, def_id, ty, foreign_item, name, *span);

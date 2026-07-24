@@ -36,10 +36,6 @@ impl<'tcx> TyCtxt<'tcx> {
         if let InstanceKind::Shim(ShimKind::Reify(_, _)) = instance_kind
             && attrs.flags.contains(CodegenFnAttrFlags::TRACK_CALLER)
         {
-            if attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE) {
-                attrs.to_mut().flags.remove(CodegenFnAttrFlags::NO_MANGLE);
-            }
-
             if attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL) {
                 attrs.to_mut().flags.remove(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL);
             }
@@ -84,7 +80,7 @@ pub struct CodegenFnAttrs {
     /// generate this function under its real name,
     /// but *also* under the same name as this foreign function so that the foreign function has an implementation.
     // FIXME: make "SymbolName<'tcx>"
-    pub foreign_item_symbol_aliases: Vec<(DefId, Linkage, Visibility)>,
+    pub foreign_item_symbol_alias: Option<(DefId, Linkage, Visibility)>,
     /// The `#[link_ordinal = "..."]` attribute, indicating an ordinal an
     /// imported function has in the dynamic library. Note that this must not
     /// be set when `link_name` is set. This is for foreign items with the
@@ -203,9 +199,6 @@ bitflags::bitflags! {
         /// `#[naked]`: an indicator to LLVM that no function prologue/epilogue
         /// should be generated.
         const NAKED                     = 1 << 2;
-        /// `#[no_mangle]`: an indicator that the function's name should be the same
-        /// as its symbol.
-        const NO_MANGLE                 = 1 << 3;
         /// `#[rustc_std_internal_symbol]`: an indicator that this symbol is a
         /// "weird symbol" for the standard library in that it has slightly
         /// different linkage, visibility, and reachability rules.
@@ -263,7 +256,7 @@ impl CodegenFnAttrs {
             symbol_name: None,
             link_ordinal: None,
             target_features: vec![],
-            foreign_item_symbol_aliases: vec![],
+            foreign_item_symbol_alias: None,
             safe_target_features: false,
             linkage: None,
             import_linkage: None,
@@ -290,10 +283,7 @@ impl CodegenFnAttrs {
             return false;
         }
 
-        self.flags.contains(CodegenFnAttrFlags::NO_MANGLE)
-            || self.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)
-            // note: for these we do also set a symbol name so technically also handled by the
-            // condition below. However, I think that regardless these should be treated as extern.
+        self.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)
             || self.flags.contains(CodegenFnAttrFlags::EXTERNALLY_IMPLEMENTABLE_ITEM)
             || self.symbol_name.is_some()
             || match self.linkage {

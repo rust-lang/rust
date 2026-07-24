@@ -1147,7 +1147,7 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
         debug!("(resolving function) entering function");
 
         if let FnKind::Fn(_, _, f) = fn_kind {
-            self.resolve_eii(&f.eii_impls);
+            self.resolve_eii(f.eii_impl.as_deref());
         }
 
         // Create a value rib for the function.
@@ -2940,7 +2940,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             }
 
             ItemKind::Static(ast::StaticItem {
-                ident, ty, expr, define_opaque, eii_impls, ..
+                ident, ty, expr, define_opaque, eii_impl, ..
             }) => {
                 self.with_static_rib(def_kind, |this| {
                     this.with_lifetime_rib(LifetimeRibKind::elided(LifetimeRes::Static), |this| {
@@ -2953,7 +2953,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     }
                 });
                 self.resolve_define_opaques(define_opaque);
-                self.resolve_eii(&eii_impls);
+                self.resolve_eii(eii_impl.as_deref());
             }
 
             ItemKind::Const(ast::ConstItem {
@@ -5568,8 +5568,9 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         }
     }
 
-    fn resolve_eii(&mut self, eii_impls: &[EiiImpl]) {
-        for EiiImpl { node_id, eii_macro_path, known_eii_macro_resolution, .. } in eii_impls {
+    fn resolve_eii(&mut self, eii_impl: Option<&EiiImpl>) {
+        if let Some(EiiImpl { node_id, eii_macro_path, known_eii_macro_resolution, .. }) = eii_impl
+        {
             // See docs on the `known_eii_macro_resolution` field:
             // if we already know the resolution statically, don't bother resolving it.
             if let Some(target) = known_eii_macro_resolution {
