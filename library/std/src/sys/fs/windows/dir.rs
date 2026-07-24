@@ -6,7 +6,7 @@ use crate::os::windows::io::{
     OwnedHandle, RawHandle,
 };
 use crate::path::Path;
-use crate::sys::api::{self, SetFileInformation, UnicodeStrRef, WinError};
+use crate::sys::api::{UnicodeStrRef, WinError};
 use crate::sys::fs::windows::debug_path_handle;
 use crate::sys::fs::{File, FileAttr, OpenOptions};
 use crate::sys::handle::Handle;
@@ -127,16 +127,7 @@ impl Dir {
         let mut opts = OpenOptions::new();
         opts.access_mode(c::DELETE);
         let handle = self.open_file_native(path, &opts, dir)?;
-        let info = c::FILE_DISPOSITION_INFO_EX { Flags: c::FILE_DISPOSITION_FLAG_DELETE };
-        let result = unsafe {
-            c::SetFileInformationByHandle(
-                handle.as_raw_handle(),
-                c::FileDispositionInfoEx,
-                (&info).as_ptr(),
-                size_of::<c::FILE_DISPOSITION_INFO_EX>() as _,
-            )
-        };
-        if result == 0 { Err(api::get_last_error()).io_result() } else { Ok(()) }
+        File::from_inner(handle).delete().io_result()
     }
 
     fn rename_native(&self, from: &[u16], to_dir: &Self, to: &[u16], dir: bool) -> io::Result<()> {
