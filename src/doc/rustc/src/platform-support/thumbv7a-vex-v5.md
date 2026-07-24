@@ -1,10 +1,12 @@
-# `armv7a-vex-v5`
+# `thumbv7a-vex-v5`
 
 **Tier: 3**
 
 Allows compiling user programs for the [VEX V5 Brain](https://www.vexrobotics.com/276-4810.html), a microcontroller for educational and competitive robotics.
 
 Rust support for this target is not affiliated with VEX Robotics or IFI, and does not link against any official VEX SDK.
+
+This target was previously named `armv7a-vex-v5`.
 
 ## Target maintainers
 
@@ -48,7 +50,7 @@ Libraries may access symbols from the active VEX SDK without depending on a spec
 
 ## Building the target
 
-You can build Rust with support for this target by adding it to the `target` list in `bootstrap.toml`, and then running `./x build --target armv7a-vex-v5 compiler`.
+You can build Rust with support for this target by adding it to the `target` list in `bootstrap.toml`, and then running `./x build --target thumbv7a-vex-v5 compiler`.
 
 ## Building Rust programs
 
@@ -113,13 +115,13 @@ This target can be cross-compiled from any host.
 The recommended configuration for compiling compatible C code is to use the [Arm Toolchain for Embedded](https://github.com/arm/arm-toolchain/tree/arm-software/arm-software/embedded#readme) with the following compilation flags:
 
 ```sh
-clang --target=arm-none-eabi -mcpu=cortex-a9 -mfpu=neon -mfloat-abi=hard -fno-pic -fno-exceptions -fno-rtti -funwind-tables
+clang --target=thumbv7a-none-eabihf -mcpu=cortex-a9 -mfpu=neon -fno-pic -fno-exceptions -fno-rtti -funwind-tables
 ```
 
 The following Cargo configuration can be used to link with picolibc (the libc used by the Arm Toolchain for Embedded):
 
 ```toml
-[target.armv7a-vex-v5]
+[target.thumbv7a-vex-v5]
 # We use ARM Clang as a linker because ld.lld by itself doesn't include the
 # multilib logic for resolving static libraries.
 linker = "clang"
@@ -128,7 +130,9 @@ rustflags = [
     # These link flags resolve to this sysroot:
     # `…/arm-none-eabi/armv7a_hard_vfpv3_d16_unaligned`
     # (hard float / VFP version 3 with 16 regs / unaligned access)
-    "-Clink-arg=--target=armv7a-none-eabihf",
+    "-Clink-arg=--target=thumbv7a-none-eabihf",
+    "-Clink-arg=-fno-rtti",
+    "-Clink-arg=-fno-exceptions",
 
     # To disable crt0 and use Rust's _boot implementation
     # (or something custom):

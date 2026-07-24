@@ -322,7 +322,6 @@ target | std | host | notes
 [`armv7-wrs-vxworks-eabihf`](platform-support/vxworks.md) | ✓ |  | Armv7-A for VxWorks
 [`armv7a-kmc-solid_asp3-eabi`](platform-support/kmc-solid.md) | ✓ |  | ARM SOLID with TOPPERS/ASP3
 [`armv7a-kmc-solid_asp3-eabihf`](platform-support/kmc-solid.md) | ✓ |  | ARM SOLID with TOPPERS/ASP3, hardfloat
-[`armv7a-vex-v5`](platform-support/armv7a-vex-v5.md) | ? |  | Armv7-A Cortex-A9 VEX V5 Brain, VEXos
 [`armv7k-apple-watchos`](platform-support/apple-watchos.md) | ✓ |  | Armv7-A Apple WatchOS
 [`armv7s-apple-ios`](platform-support/apple-ios.md) | ✓ |  | Armv7-A Apple-A6 Apple iOS
 [`armv7a-nuttx-eabi`](platform-support/nuttx.md) | ✓ |  | ARMv7-A with NuttX
@@ -435,6 +434,7 @@ target | std | host | notes
 [`thumbv7a-nuttx-eabihf`](platform-support/nuttx.md) | ✓ |  | ARMv7-A with NuttX, hardfloat
 `thumbv7a-pc-windows-msvc` |  |  |
 [`thumbv7a-uwp-windows-msvc`](platform-support/uwp-windows-msvc.md) |  |  |
+[`thumbv7a-vex-v5`](platform-support/thumbv7a-vex-v5.md) | ✓ |  | Armv7-A Cortex-A9 VEX V5 Brain, VEXos
 [`thumbv7em-nuttx-eabi`](platform-support/nuttx.md) | ✓ |  | ARMv7EM with NuttX
 [`thumbv7em-nuttx-eabihf`](platform-support/nuttx.md) | ✓ |  | ARMv7EM with NuttX, hardfloat
 [`thumbv7m-nuttx-eabi`](platform-support/nuttx.md) | ✓ |  | ARMv7M with NuttX
