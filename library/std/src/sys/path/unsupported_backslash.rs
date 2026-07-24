@@ -15,12 +15,10 @@ pub fn parse_prefix(_: &OsStr) -> Option<Prefix<'_>> {
     None
 }
 
-pub const HAS_PREFIXES: bool = true;
-
 pub(crate) fn absolute(_path: &Path) -> io::Result<PathBuf> {
     unsupported()
 }
 
 pub(crate) fn is_absolute(path: &Path) -> bool {
-    path.has_root() && path.prefix().is_some()
+    path.has_root() && path.components().0.prefix().is_some()
 }

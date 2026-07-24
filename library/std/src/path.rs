@@ -93,7 +93,7 @@ use crate::ops::{self, Deref};
 use crate::rc::Rc;
 use crate::str::FromStr;
 use crate::sync::Arc;
-use crate::sys::path::{HAS_PREFIXES, is_sep_byte, is_verbatim_sep, parse_prefix};
+use crate::sys::path as path_imp;
 use crate::{cmp, fmt, fs, io, sys};
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -198,7 +198,7 @@ pub enum Prefix<'a> {
 
 impl<'a> Prefix<'a> {
     #[inline]
-    fn len(&self) -> usize {
+    pub(crate) fn len(&self) -> usize {
         use self::Prefix::*;
         fn os_str_len(s: &OsStr) -> usize {
             s.as_encoded_bytes().len()
@@ -237,16 +237,6 @@ impl<'a> Prefix<'a> {
         use self::Prefix::*;
         matches!(*self, Verbatim(_) | VerbatimDisk(_) | VerbatimUNC(..))
     }
-
-    #[inline]
-    fn is_drive(&self) -> bool {
-        matches!(*self, Prefix::Disk(_))
-    }
-
-    #[inline]
-    fn has_implicit_root(&self) -> bool {
-        !self.is_drive()
-    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -268,7 +258,7 @@ impl<'a> Prefix<'a> {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_path_separators", issue = "153106")]
 pub const fn is_separator(c: char) -> bool {
-    c.is_ascii() && is_sep_byte(c as u8)
+    c.is_ascii() && path_imp::is_sep_byte(c as u8)
 }
 
 /// All path separators recognized on the current platform, represented as [`char`]s; for example,
@@ -323,11 +313,11 @@ where
 // Cross-platform, iterator-independent parsing
 ////////////////////////////////////////////////////////////////////////////////
 
-/// Says whether the first byte after the prefix is a separator.
-fn has_physical_root(s: &[u8], prefix: Option<Prefix<'_>>) -> bool {
-    let path = if let Some(p) = prefix { &s[p.len()..] } else { s };
-    !path.is_empty() && is_sep_byte(path[0])
-}
+// /// Says whether the first byte after the prefix is a separator.
+// fn has_physical_root(s: &[u8], prefix: Option<Prefix<'_>>) -> bool {
+//     let path = if let Some(p) = prefix { &s[p.len()..] } else { s };
+//     !path.is_empty() && is_sep_byte(path[0])
+// }
 
 // basic workhorse for splitting stem and extension
 fn rsplit_file_at_dot(file: &OsStr) -> (Option<&OsStr>, Option<&OsStr>) {
@@ -381,7 +371,7 @@ fn split_file_at_dot(file: &OsStr) -> (&OsStr, Option<&OsStr>) {
 /// Checks whether the string is valid as a file extension, or panics otherwise.
 fn validate_extension(extension: &OsStr) {
     for &b in extension.as_encoded_bytes() {
-        if is_sep_byte(b) {
+        if path_imp::is_sep_byte(b) {
             panic!("extension cannot contain path separators: {extension:?}");
         }
     }
@@ -390,20 +380,6 @@ fn validate_extension(extension: &OsStr) {
 ////////////////////////////////////////////////////////////////////////////////
 // The core iterators
 ////////////////////////////////////////////////////////////////////////////////
-
-/// Component parsing works by a double-ended state machine; the cursors at the
-/// front and back of the path each keep track of what parts of the path have
-/// been consumed so far.
-///
-/// Going front to back, a path is made up of a prefix, a starting
-/// directory component, and a body (of normal components)
-#[derive(Copy, Clone, PartialEq, PartialOrd, Debug)]
-enum State {
-    Prefix = 0,   // c:
-    StartDir = 1, // / or . or nothing
-    Body = 2,     // foo/bar/baz
-    Done = 3,
-}
 
 /// A structure wrapping a Windows path prefix as well as its unparsed string
 /// representation.
@@ -442,10 +418,10 @@ enum State {
 #[derive(Copy, Clone, Eq, Debug)]
 pub struct PrefixComponent<'a> {
     /// The prefix as an unparsed `OsStr` slice.
-    raw: &'a OsStr,
+    pub(crate) raw: &'a OsStr,
 
     /// The parsed prefix data.
-    parsed: Prefix<'a>,
+    pub(crate) parsed: Prefix<'a>,
 }
 
 impl<'a> PrefixComponent<'a> {
@@ -618,23 +594,7 @@ impl AsRef<Path> for Component<'_> {
 #[derive(Clone)]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct Components<'a> {
-    // The path left to parse components from
-    path: &'a [u8],
-
-    // The prefix as it was originally parsed, if any
-    prefix: Option<Prefix<'a>>,
-
-    // true if path *physically* has a root separator; for most Windows
-    // prefixes, it may have a "logical" root separator for the purposes of
-    // normalization, e.g., \\server\share == \\server\share\.
-    has_physical_root: bool,
-
-    // The iterator is double-ended, and these two states keep track of what has
-    // been produced from either end
-    front: State,
-    back: State,
-}
+pub struct Components<'a>(pub(crate) path_imp::Components<'a>);
 
 /// An iterator over the [`Component`]s of a [`Path`], as [`OsStr`] slices.
 ///
@@ -665,51 +625,6 @@ impl fmt::Debug for Components<'_> {
 }
 
 impl<'a> Components<'a> {
-    // how long is the prefix, if any?
-    #[inline]
-    fn prefix_len(&self) -> usize {
-        if !HAS_PREFIXES {
-            return 0;
-        }
-        self.prefix.as_ref().map(Prefix::len).unwrap_or(0)
-    }
-
-    #[inline]
-    fn prefix_verbatim(&self) -> bool {
-        if !HAS_PREFIXES {
-            return false;
-        }
-        self.prefix.as_ref().map(Prefix::is_verbatim).unwrap_or(false)
-    }
-
-    /// how much of the prefix is left from the point of view of iteration?
-    #[inline]
-    fn prefix_remaining(&self) -> usize {
-        if !HAS_PREFIXES {
-            return 0;
-        }
-        if self.front == State::Prefix { self.prefix_len() } else { 0 }
-    }
-
-    // Given the iteration so far, how much of the pre-State::Body path is left?
-    #[inline]
-    fn len_before_body(&self) -> usize {
-        let root = if self.front <= State::StartDir && self.has_physical_root { 1 } else { 0 };
-        let cur_dir = if self.front <= State::StartDir && self.include_cur_dir() { 1 } else { 0 };
-        self.prefix_remaining() + root + cur_dir
-    }
-
-    // is the iteration complete?
-    #[inline]
-    fn finished(&self) -> bool {
-        self.front == State::Done || self.back == State::Done || self.front > self.back
-    }
-
-    #[inline]
-    fn is_sep_byte(&self, b: u8) -> bool {
-        if self.prefix_verbatim() { is_verbatim_sep(b) } else { is_sep_byte(b) }
-    }
-
     /// Extracts a slice corresponding to the portion of the path remaining for iteration.
     ///
     /// # Examples
@@ -725,104 +640,15 @@ impl<'a> Components<'a> {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline]
     pub fn as_path(&self) -> &'a Path {
-        let mut comps = self.clone();
-        if comps.front == State::Body {
-            comps.trim_left();
-        }
-        if comps.back == State::Body {
-            comps.trim_right();
-        }
-        unsafe { Path::from_u8_slice(comps.path) }
+        self.0.as_path()
     }
 
-    /// Is the *original* path rooted?
+    /// This is the canonical implementation of `Path::has_root`
+    #[inline]
     fn has_root(&self) -> bool {
-        if self.has_physical_root {
-            return true;
-        }
-        if HAS_PREFIXES && let Some(p) = self.prefix {
-            if p.has_implicit_root() {
-                return true;
-            }
-        }
-        false
-    }
-
-    /// Should the normalized path include a leading . ?
-    fn include_cur_dir(&self) -> bool {
-        if self.has_root() {
-            return false;
-        }
-        let slice = &self.path[self.prefix_remaining()..];
-        match slice {
-            [b'.'] => true,
-            [b'.', b, ..] => self.is_sep_byte(*b),
-            _ => false,
-        }
-    }
-
-    // parse a given byte sequence following the OsStr encoding into the
-    // corresponding path component
-    unsafe fn parse_single_component<'b>(&self, comp: &'b [u8]) -> Option<Component<'b>> {
-        match comp {
-            b"." if HAS_PREFIXES && self.prefix_verbatim() => Some(Component::CurDir),
-            b"." => None, // . components are normalized away, except at
-            // the beginning of a path, which is treated
-            // separately via `include_cur_dir`
-            b".." => Some(Component::ParentDir),
-            b"" => None,
-            _ => Some(Component::Normal(unsafe { OsStr::from_encoded_bytes_unchecked(comp) })),
-        }
-    }
-
-    // parse a component from the left, saying how many bytes to consume to
-    // remove the component
-    fn parse_next_component(&self) -> (usize, Option<Component<'a>>) {
-        debug_assert!(self.front == State::Body);
-        let (extra, comp) = match self.path.iter().position(|b| self.is_sep_byte(*b)) {
-            None => (0, self.path),
-            Some(i) => (1, &self.path[..i]),
-        };
-        // SAFETY: `comp` is a valid substring, since it is split on a separator.
-        (comp.len() + extra, unsafe { self.parse_single_component(comp) })
-    }
-
-    // parse a component from the right, saying how many bytes to consume to
-    // remove the component
-    fn parse_next_component_back(&self) -> (usize, Option<Component<'a>>) {
-        debug_assert!(self.back == State::Body);
-        let start = self.len_before_body();
-        let (extra, comp) = match self.path[start..].iter().rposition(|b| self.is_sep_byte(*b)) {
-            None => (0, &self.path[start..]),
-            Some(i) => (1, &self.path[start + i + 1..]),
-        };
-        // SAFETY: `comp` is a valid substring, since it is split on a separator.
-        (comp.len() + extra, unsafe { self.parse_single_component(comp) })
-    }
-
-    // trim away repeated separators (i.e., empty components) on the left
-    fn trim_left(&mut self) {
-        while !self.path.is_empty() {
-            let (size, comp) = self.parse_next_component();
-            if comp.is_some() {
-                return;
-            } else {
-                self.path = &self.path[size..];
-            }
-        }
-    }
-
-    // trim away repeated separators (i.e., empty components) on the right
-    fn trim_right(&mut self) {
-        while self.path.len() > self.len_before_body() {
-            let (size, comp) = self.parse_next_component_back();
-            if comp.is_some() {
-                return;
-            } else {
-                self.path = &self.path[..self.path.len() - size];
-            }
-        }
+        self.0.has_root()
     }
 }
 
@@ -920,102 +746,17 @@ impl FusedIterator for Iter<'_> {}
 impl<'a> Iterator for Components<'a> {
     type Item = Component<'a>;
 
+    #[inline]
     fn next(&mut self) -> Option<Component<'a>> {
-        while !self.finished() {
-            match self.front {
-                // most likely case first
-                State::Body if !self.path.is_empty() => {
-                    let (size, comp) = self.parse_next_component();
-                    self.path = &self.path[size..];
-                    if comp.is_some() {
-                        return comp;
-                    }
-                }
-                State::Body => {
-                    self.front = State::Done;
-                }
-                State::StartDir => {
-                    self.front = State::Body;
-                    if self.has_physical_root {
-                        debug_assert!(!self.path.is_empty());
-                        self.path = &self.path[1..];
-                        return Some(Component::RootDir);
-                    } else if HAS_PREFIXES && let Some(p) = self.prefix {
-                        if p.has_implicit_root() && !p.is_verbatim() {
-                            return Some(Component::RootDir);
-                        }
-                    } else if self.include_cur_dir() {
-                        debug_assert!(!self.path.is_empty());
-                        self.path = &self.path[1..];
-                        return Some(Component::CurDir);
-                    }
-                }
-                _ if const { !HAS_PREFIXES } => unreachable!(),
-                State::Prefix if self.prefix_len() == 0 => {
-                    self.front = State::StartDir;
-                }
-                State::Prefix => {
-                    self.front = State::StartDir;
-                    debug_assert!(self.prefix_len() <= self.path.len());
-                    let raw = &self.path[..self.prefix_len()];
-                    self.path = &self.path[self.prefix_len()..];
-                    return Some(Component::Prefix(PrefixComponent {
-                        raw: unsafe { OsStr::from_encoded_bytes_unchecked(raw) },
-                        parsed: self.prefix.unwrap(),
-                    }));
-                }
-                State::Done => unreachable!(),
-            }
-        }
-        None
+        self.0.next()
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> DoubleEndedIterator for Components<'a> {
+    #[inline]
     fn next_back(&mut self) -> Option<Component<'a>> {
-        while !self.finished() {
-            match self.back {
-                State::Body if self.path.len() > self.len_before_body() => {
-                    let (size, comp) = self.parse_next_component_back();
-                    self.path = &self.path[..self.path.len() - size];
-                    if comp.is_some() {
-                        return comp;
-                    }
-                }
-                State::Body => {
-                    self.back = State::StartDir;
-                }
-                State::StartDir => {
-                    self.back = if HAS_PREFIXES { State::Prefix } else { State::Done };
-                    if self.has_physical_root {
-                        self.path = &self.path[..self.path.len() - 1];
-                        return Some(Component::RootDir);
-                    } else if HAS_PREFIXES && let Some(p) = self.prefix {
-                        if p.has_implicit_root() && !p.is_verbatim() {
-                            return Some(Component::RootDir);
-                        }
-                    } else if self.include_cur_dir() {
-                        self.path = &self.path[..self.path.len() - 1];
-                        return Some(Component::CurDir);
-                    }
-                }
-                _ if !HAS_PREFIXES => unreachable!(),
-                State::Prefix if self.prefix_len() > 0 => {
-                    self.back = State::Done;
-                    return Some(Component::Prefix(PrefixComponent {
-                        raw: unsafe { OsStr::from_encoded_bytes_unchecked(self.path) },
-                        parsed: self.prefix.unwrap(),
-                    }));
-                }
-                State::Prefix => {
-                    self.back = State::Done;
-                    return None;
-                }
-                State::Done => unreachable!(),
-            }
-        }
-        None
+        self.0.next_back()
     }
 }
 
@@ -1026,26 +767,7 @@ impl FusedIterator for Components<'_> {}
 impl<'a> PartialEq for Components<'a> {
     #[inline]
     fn eq(&self, other: &Components<'a>) -> bool {
-        let Components { path: _, front: _, back: _, has_physical_root: _, prefix: _ } = self;
-
-        // Fast path for exact matches, e.g. for hashmap lookups.
-        // Don't explicitly compare the prefix or has_physical_root fields since they'll
-        // either be covered by the `path` buffer or are only relevant for `prefix_verbatim()`.
-        if self.path.len() == other.path.len()
-            && self.front == other.front
-            && self.back == State::Body
-            && other.back == State::Body
-            && self.prefix_verbatim() == other.prefix_verbatim()
-        {
-            // possible future improvement: this could bail out earlier if there were a
-            // reverse memcmp/bcmp comparing back to front
-            if self.path == other.path {
-                return true;
-            }
-        }
-
-        // compare back to front since absolute paths often share long prefixes
-        Iterator::eq(self.clone().rev(), other.clone().rev())
+        self.0 == other.0
     }
 }
 
@@ -1056,7 +778,7 @@ impl Eq for Components<'_> {}
 impl<'a> PartialOrd for Components<'a> {
     #[inline]
     fn partial_cmp(&self, other: &Components<'a>) -> Option<cmp::Ordering> {
-        Some(compare_components(self.clone(), other.clone()))
+        Some(path_imp::compare_components(self.0.clone(), other.0.clone()))
     }
 }
 
@@ -1064,40 +786,8 @@ impl<'a> PartialOrd for Components<'a> {
 impl Ord for Components<'_> {
     #[inline]
     fn cmp(&self, other: &Self) -> cmp::Ordering {
-        compare_components(self.clone(), other.clone())
+        path_imp::compare_components(self.0.clone(), other.0.clone())
     }
-}
-
-fn compare_components(mut left: Components<'_>, mut right: Components<'_>) -> cmp::Ordering {
-    // Fast path for long shared prefixes
-    //
-    // - compare raw bytes to find first mismatch
-    // - backtrack to find separator before mismatch to avoid ambiguous parsings of '.' or '..' characters
-    // - if found update state to only do a component-wise comparison on the remainder,
-    //   otherwise do it on the full path
-    //
-    // The fast path isn't taken for paths with a PrefixComponent to avoid backtracking into
-    // the middle of one
-    if left.prefix.is_none() && right.prefix.is_none() && left.front == right.front {
-        // possible future improvement: a [u8]::first_mismatch simd implementation
-        let first_difference = match left.path.iter().zip(right.path).position(|(&a, &b)| a != b) {
-            None if left.path.len() == right.path.len() => return cmp::Ordering::Equal,
-            None => left.path.len().min(right.path.len()),
-            Some(diff) => diff,
-        };
-
-        if let Some(previous_sep) =
-            left.path[..first_difference].iter().rposition(|&b| left.is_sep_byte(b))
-        {
-            let mismatched_component_start = previous_sep + 1;
-            left.path = &left.path[mismatched_component_start..];
-            left.front = State::Body;
-            right.path = &right.path[mismatched_component_start..];
-            right.front = State::Body;
-        }
-    }
-
-    Iterator::cmp(left, right)
 }
 
 /// An iterator over [`Path`] and its ancestors.
@@ -1212,7 +902,7 @@ impl FusedIterator for Ancestors<'_> {}
 #[cfg_attr(not(test), rustc_diagnostic_item = "PathBuf")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct PathBuf {
-    inner: OsString,
+    pub(crate) inner: OsString,
 }
 
 impl PathBuf {
@@ -1335,88 +1025,7 @@ impl PathBuf {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_confusables("append", "put")]
     pub fn push<P: AsRef<Path>>(&mut self, path: P) {
-        self._push(path.as_ref())
-    }
-
-    fn _push(&mut self, path: &Path) {
-        // in general, a separator is needed if the rightmost byte is not a separator
-        let buf = self.inner.as_encoded_bytes();
-        let mut need_sep = buf.last().map(|c| !is_sep_byte(*c)).unwrap_or(false);
-
-        // in the special case of `C:` on Windows, do *not* add a separator
-        let comps = self.components();
-
-        if comps.prefix_len() > 0
-            && comps.prefix_len() == comps.path.len()
-            && comps.prefix.unwrap().is_drive()
-        {
-            need_sep = false
-        }
-
-        let need_clear = if cfg!(target_os = "cygwin") {
-            // If path is absolute and its prefix is none, it is like `/foo`,
-            // and will be handled below.
-            path.prefix().is_some()
-        } else {
-            // On Unix: prefix is always None.
-            path.is_absolute() || path.prefix().is_some()
-        };
-
-        // absolute `path` replaces `self`
-        if need_clear {
-            self.inner.clear();
-
-        // verbatim paths need . and .. removed
-        } else if comps.prefix_verbatim() && !path.inner.is_empty() {
-            let mut buf: Vec<_> = comps.collect();
-            for c in path.components() {
-                match c {
-                    Component::RootDir => {
-                        buf.truncate(1);
-                        buf.push(c);
-                    }
-                    Component::CurDir => (),
-                    Component::ParentDir => {
-                        if let Some(Component::Normal(_)) = buf.last() {
-                            buf.pop();
-                        }
-                    }
-                    _ => buf.push(c),
-                }
-            }
-
-            let mut res = OsString::new();
-            let mut need_sep = false;
-
-            for c in buf {
-                if need_sep && c != Component::RootDir {
-                    res.push(MAIN_SEPARATOR_STR);
-                }
-                res.push(c.as_os_str());
-
-                need_sep = match c {
-                    Component::RootDir => false,
-                    Component::Prefix(prefix) => {
-                        !prefix.parsed.is_drive() && prefix.parsed.len() > 0
-                    }
-                    _ => true,
-                }
-            }
-
-            self.inner = res;
-            return;
-
-        // `path` has a root but no prefix, e.g., `\windows` (Windows only)
-        } else if path.has_root() {
-            let prefix_len = self.components().prefix_remaining();
-            self.inner.truncate(prefix_len);
-
-        // `path` is a pure relative path
-        } else if need_sep {
-            self.inner.push(MAIN_SEPARATOR_STR);
-        }
-
-        self.inner.push(path);
+        path_imp::push(self, path.as_ref())
     }
 
     /// Truncates `self` to [`self.parent`].
@@ -2245,7 +1854,8 @@ impl ToOwned for Path {
 impl PartialEq for PathBuf {
     #[inline]
     fn eq(&self, other: &PathBuf) -> bool {
-        self.components() == other.components()
+        self.as_os_str() == other.as_os_str()
+            || path_imp::eq_components(self.components().0, other.components().0)
     }
 }
 
@@ -2295,7 +1905,7 @@ impl Eq for PathBuf {}
 impl PartialOrd for PathBuf {
     #[inline]
     fn partial_cmp(&self, other: &PathBuf) -> Option<cmp::Ordering> {
-        Some(compare_components(self.components(), other.components()))
+        Some(path_imp::compare_components(self.components().0, other.components().0))
     }
 }
 
@@ -2303,7 +1913,7 @@ impl PartialOrd for PathBuf {
 impl Ord for PathBuf {
     #[inline]
     fn cmp(&self, other: &PathBuf) -> cmp::Ordering {
-        compare_components(self.components(), other.components())
+        path_imp::compare_components(self.components().0, other.components().0)
     }
 }
 
@@ -2377,7 +1987,7 @@ pub struct NormalizeError;
 impl Path {
     // The following (private!) function allows construction of a path from a u8
     // slice, which is only safe when it is known to follow the OsStr encoding.
-    unsafe fn from_u8_slice(s: &[u8]) -> &Path {
+    pub(crate) unsafe fn from_u8_slice(s: &[u8]) -> &Path {
         unsafe { Path::new(OsStr::from_encoded_bytes_unchecked(s)) }
     }
     // The following (private!) function reveals the byte encoding used for OsStr.
@@ -2572,10 +2182,6 @@ impl Path {
     #[inline]
     pub fn is_relative(&self) -> bool {
         !self.is_absolute()
-    }
-
-    pub(crate) fn prefix(&self) -> Option<Prefix<'_>> {
-        self.components().prefix
     }
 
     /// Returns `true` if the `Path` has a root.
@@ -2983,7 +2589,7 @@ impl Path {
     #[must_use]
     #[inline]
     pub fn has_trailing_sep(&self) -> bool {
-        self.as_os_str().as_encoded_bytes().last().copied().is_some_and(is_sep_byte)
+        self.as_os_str().as_encoded_bytes().last().copied().is_some_and(path_imp::is_sep_byte)
     }
 
     /// Ensures that a path has a trailing [separator](MAIN_SEPARATOR),
@@ -3037,7 +2643,7 @@ impl Path {
         if self.has_trailing_sep() && (!self.has_root() || self.parent().is_some()) {
             let mut bytes = self.inner.as_encoded_bytes();
             while let Some((last, init)) = bytes.split_last()
-                && is_sep_byte(*last)
+                && path_imp::is_sep_byte(*last)
             {
                 bytes = init;
             }
@@ -3242,16 +2848,7 @@ impl Path {
     /// [`CurDir`]: Component::CurDir
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn components(&self) -> Components<'_> {
-        let prefix = parse_prefix(self.as_os_str());
-        Components {
-            path: self.as_u8_slice(),
-            prefix,
-            has_physical_root: has_physical_root(self.as_u8_slice(), prefix),
-            // use a platform-specific initial state to avoid one turn of
-            // the state-machine when the platform doesn't have a Prefix.
-            front: const { if HAS_PREFIXES { State::Prefix } else { State::StartDir } },
-            back: State::Body,
-        }
+        Components(path_imp::components(self))
     }
 
     /// Produces an iterator over the path's components viewed as [`OsStr`]
@@ -3754,7 +3351,8 @@ impl fmt::Display for Display<'_> {
 impl PartialEq for Path {
     #[inline]
     fn eq(&self, other: &Path) -> bool {
-        self.components() == other.components()
+        self.as_os_str() == other.as_os_str()
+            || path_imp::eq_components(self.components().0, other.components().0)
     }
 }
 
@@ -3795,7 +3393,7 @@ impl cmp::PartialEq<Path> for String {
 impl Hash for Path {
     fn hash<H: Hasher>(&self, h: &mut H) {
         let bytes = self.as_u8_slice();
-        let (prefix_len, verbatim) = match parse_prefix(&self.inner) {
+        let (prefix_len, verbatim) = match path_imp::parse_prefix(&self.inner) {
             Some(prefix) => {
                 prefix.hash(h);
                 (prefix.len(), prefix.is_verbatim())
@@ -3811,7 +3409,11 @@ impl Hash for Path {
         let mut chunk_bits: usize = 0;
 
         for i in 0..bytes.len() {
-            let is_sep = if verbatim { is_verbatim_sep(bytes[i]) } else { is_sep_byte(bytes[i]) };
+            let is_sep = if verbatim {
+                path_imp::is_verbatim_sep(bytes[i])
+            } else {
+                path_imp::is_sep_byte(bytes[i])
+            };
             if is_sep {
                 if i > component_start {
                     let to_hash = &bytes[component_start..i];
@@ -3829,7 +3431,7 @@ impl Hash for Path {
                 if !verbatim {
                     component_start += match tail {
                         [b'.'] => 1,
-                        [b'.', sep, ..] if is_sep_byte(*sep) => 1,
+                        [b'.', sep, ..] if path_imp::is_sep_byte(*sep) => 1,
                         _ => 0,
                     };
                 }
@@ -3854,7 +3456,7 @@ impl Eq for Path {}
 impl PartialOrd for Path {
     #[inline]
     fn partial_cmp(&self, other: &Path) -> Option<cmp::Ordering> {
-        Some(compare_components(self.components(), other.components()))
+        Some(path_imp::compare_components(self.components().0, other.components().0))
     }
 }
 
@@ -3862,7 +3464,7 @@ impl PartialOrd for Path {
 impl Ord for Path {
     #[inline]
     fn cmp(&self, other: &Path) -> cmp::Ordering {
-        compare_components(self.components(), other.components())
+        path_imp::compare_components(self.components().0, other.components().0)
     }
 }
 
