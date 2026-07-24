@@ -199,8 +199,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             .visible_traits()
             .filter(|trait_def_id| {
                 let viz = tcx.visibility(*trait_def_id);
-                let def_id = self.item_def_id();
-                viz.is_accessible_from(def_id, tcx)
+                viz.is_accessible_from(self.mod_id(), tcx)
             })
             .collect();
 
@@ -569,7 +568,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 .map(|impl_def_id| tcx.impl_trait_header(impl_def_id))
                 .filter(|header| {
                     // Consider only accessible traits
-                    tcx.visibility(trait_def_id).is_accessible_from(self.item_def_id(), tcx)
+                    tcx.visibility(trait_def_id).is_accessible_from(self.mod_id(), tcx)
                         && header.polarity != ty::ImplPolarity::Negative
                 })
                 .map(|header| header.trait_ref.instantiate_identity().skip_norm_wip().self_ty())

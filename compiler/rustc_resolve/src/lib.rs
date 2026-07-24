@@ -2371,7 +2371,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         self.pat_span_map.insert(node, span);
     }
 
-    fn is_accessible_from(&self, vis: Visibility<impl Into<DefId>>, module: Module<'ra>) -> bool {
+    fn is_accessible_from(&self, vis: Visibility<impl Into<ModId>>, module: Module<'ra>) -> bool {
         vis.is_accessible_from(module.nearest_parent_mod(), self.tcx)
     }
 

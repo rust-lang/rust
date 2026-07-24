@@ -2172,7 +2172,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let accessible_unmentioned_fields: Vec<_> = unmentioned_fields
                 .iter()
                 .copied()
-                .filter(|(field, _)| self.is_field_suggestable(field, pat.hir_id, pat.span))
+                .filter(|(field, _)| self.is_field_suggestable(field, pat.span))
                 .collect();
 
             if !has_rest_pat {
@@ -2345,7 +2345,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             );
 
             if let [(field_def, field)] = unmentioned_fields.as_slice()
-                && self.is_field_suggestable(field_def, pat.hir_id, pat.span)
+                && self.is_field_suggestable(field_def, pat.span)
             {
                 let suggested_name =
                     find_best_match_for_name(&[field.name], pat_field.ident.name, None);

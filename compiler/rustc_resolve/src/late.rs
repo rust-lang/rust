@@ -34,6 +34,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_session::config::{CrateType, ResolveDocLinks};
 use rustc_session::diagnostics::feature_err;
 use rustc_session::lint;
+use rustc_span::def_id::ModId;
 use rustc_span::{BytePos, DUMMY_SP, Ident, Span, Spanned, Symbol, kw, respan, sym};
 use smallvec::{SmallVec, smallvec};
 use thin_vec::ThinVec;
@@ -4504,21 +4505,19 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             ast::RestrictionKind::Unrestricted => (),
             ast::RestrictionKind::Restricted { path, id, shorthand: _ } => {
                 self.smart_resolve_path(*id, &None, path, PathSource::Module);
-                if let Some(res) = self.r.partial_res_map[&id].full_res()
-                    && let Some(def_id) = res.opt_def_id()
-                {
-                    if !self.r.is_accessible_from(
-                        Visibility::Restricted(def_id),
+                if let Some(Res::Def(DefKind::Mod, mod_id)) = self.r.partial_res_map[&id].full_res()
+                    && !self.r.is_accessible_from(
+                        Visibility::Restricted(ModId::new_unchecked(mod_id)),
                         self.parent_scope.module,
-                    ) {
-                        self.r
-                            .dcx()
-                            .create_err(crate::diagnostics::RestrictionAncestorOnly {
-                                span: path.span,
-                                kind,
-                            })
-                            .emit();
-                    }
+                    )
+                {
+                    self.r
+                        .dcx()
+                        .create_err(crate::diagnostics::RestrictionAncestorOnly {
+                            span: path.span,
+                            kind,
+                        })
+                        .emit();
                 }
             }
         }

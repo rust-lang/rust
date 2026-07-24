@@ -2280,14 +2280,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    pub(crate) fn is_field_suggestable(
-        &self,
-        field: &ty::FieldDef,
-        hir_id: HirId,
-        span: Span,
-    ) -> bool {
+    pub(crate) fn is_field_suggestable(&self, field: &ty::FieldDef, span: Span) -> bool {
         // The field must be visible in the containing module.
-        field.vis.is_accessible_from(self.tcx.parent_module(hir_id), self.tcx)
+        field.vis.is_accessible_from(self.mod_id, self.tcx)
             // The field must not be unstable.
             && !matches!(
                 self.tcx.eval_stability(field.did, None, rustc_span::DUMMY_SP, None),

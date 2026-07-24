@@ -1236,7 +1236,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let (ctor_kind, ctor_def_id) = adt_def.non_enum_variant().ctor.unwrap();
                     // Check the visibility of the ctor.
                     let vis = tcx.visibility(ctor_def_id);
-                    if !vis.is_accessible_from(tcx.parent_module(hir_id).to_def_id(), tcx) {
+                    if !vis.is_accessible_from(self.mod_id, tcx) {
                         self.dcx()
                             .emit_err(CtorIsPrivate { span, def: tcx.def_path_str(adt_def.did()) });
                     }

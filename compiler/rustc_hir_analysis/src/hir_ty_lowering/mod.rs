@@ -45,7 +45,7 @@ use rustc_middle::ty::{
 use rustc_middle::{bug, span_bug};
 use rustc_session::diagnostics::feature_err;
 use rustc_session::lint::builtin::AMBIGUOUS_ASSOCIATED_ITEMS;
-use rustc_span::def_id::ModId;
+use rustc_span::def_id::{LocalModId, ModId};
 use rustc_span::{DUMMY_SP, Ident, Span, kw, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{self, FulfillmentError};
@@ -136,6 +136,9 @@ pub trait HirTyLowerer<'tcx> {
 
     /// Returns the [`LocalDefId`] of the overarching item whose constituents get lowered.
     fn item_def_id(&self) -> LocalDefId;
+
+    /// Returns the containing module.
+    fn mod_id(&self) -> LocalModId;
 
     /// Returns the region to use when a lifetime is omitted (and not elided).
     fn re_infer(&self, span: Span, reason: RegionInferReason<'_>) -> ty::Region<'tcx>;
@@ -1810,7 +1813,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     ) -> Option<(ty::AssocItem, /*scope*/ ModId)> {
         let tcx = self.tcx();
 
-        let (ident, def_scope) = tcx.adjust_ident_and_get_scope(ident, scope, self.item_def_id());
+        let (ident, def_scope) = tcx.adjust_ident_and_get_scope(ident, scope, self.mod_id());
         // We have already adjusted the item name above, so compare with `.normalize_to_macros_2_0()`
         // instead of calling `filter_by_name_and_kind` which would needlessly normalize the
         // `ident` again and again.
@@ -1875,7 +1878,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         })
                     // Consider only accessible traits
                     && tcx.visibility(*trait_def_id)
-                        .is_accessible_from(self.item_def_id(), tcx)
+                        .is_accessible_from(self.mod_id(), tcx)
                     && tcx.all_impls(*trait_def_id)
                         .any(|impl_def_id| {
                             let header = tcx.impl_trait_header(impl_def_id);
@@ -3415,7 +3418,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
             hir::TyKind::FieldOf(ty, hir::TyFieldPath { variant, field }) => self.lower_field_of(
                 self.lower_ty(ty),
-                self.item_def_id(),
+                self.mod_id(),
                 ty.span,
                 hir_ty.hir_id,
                 *variant,
@@ -3469,7 +3472,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     fn lower_field_of(
         &self,
         ty: Ty<'tcx>,
-        item_def_id: LocalDefId,
+        mod_id: LocalModId,
         ty_span: Span,
         hir_id: HirId,
         variant: Option<Ident>,
@@ -3519,8 +3522,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     }
                     (FIRST_VARIANT, def.non_enum_variant())
                 };
-                let (ident, def_scope) =
-                    tcx.adjust_ident_and_get_scope(field, def.did(), item_def_id);
+                let (ident, def_scope) = tcx.adjust_ident_and_get_scope(field, def.did(), mod_id);
                 if let Some((field_idx, field)) = variant
                     .fields
                     .iter_enumerated()
