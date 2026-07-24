@@ -192,7 +192,7 @@ fn test_variadic() {
 #[test]
 fn test_splat() {
     #[rustfmt::skip]
-    let TypeKind::FnPtr(fn_ptr_ty) = &(const { Type::of::<fn(#[splat] (String, u8))>().kind }) else {
+    let TypeKind::FnPtr(fn_ptr_ty) = &(const { Type::of::<fn(#[arg_splat] (String, u8))>().kind }) else {
         panic!();
     };
     let FnPtr {

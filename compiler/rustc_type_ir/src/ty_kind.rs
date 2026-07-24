@@ -1241,7 +1241,7 @@ impl<I: Interner> fmt::Debug for FnSig<I> {
                 write!(f, ", ")?;
             }
             if Some(i) == fn_sig_kind.splatted().map(usize::from) {
-                write!(f, "#[splat] ")?;
+                write!(f, "#[arg_splat] ")?;
             }
             write!(f, "{ty:?}")?;
         }

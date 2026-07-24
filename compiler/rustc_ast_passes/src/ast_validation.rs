@@ -46,7 +46,7 @@ enum SelfSemantic {
     No,
 }
 
-/// Is `#[splat]` allowed semantically in a function or closure?
+/// Is `#[arg_splat]` allowed semantically in a function or closure?
 /// Only applies to the function kind and header, the parameters are checked elsewhere.
 enum SplatSemantic {
     Yes,
@@ -439,7 +439,7 @@ impl<'a> AstValidator<'a> {
 
     /// Emits an error if a function declaration has more than one splatted argument, with a
     /// C-variadic parameter, or a splat at an unsupported index (for performance).
-    /// Example: `fn foo(#[splat] x: (), #[splat] y: ())` will emit an error.
+    /// Example: `fn foo(#[arg_splat] x: (), #[arg_splat] y: ())` will emit an error.
     fn check_decl_splatting(
         &self,
         fn_decl: &FnDecl,

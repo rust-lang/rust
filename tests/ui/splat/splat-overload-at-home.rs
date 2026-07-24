@@ -1,10 +1,10 @@
 //@ run-pass
 // ignore-tidy-file-linelength
-//! Test using `#[splat]` on some "overloading at home" example code.
+//! Test using `#[arg_splat]` on some "overloading at home" example code.
 //! <https://internals.rust-lang.org/t/pre-pre-rfc-splatting-for-named-arguments-and-function-overloading/24012>
 
 #![allow(incomplete_features)]
-#![feature(splat)]
+#![feature(arg_splat)]
 #![feature(tuple_trait)]
 
 struct Foo;
@@ -23,7 +23,7 @@ impl MethodArgs for (i32, String) {
 }
 
 impl Foo {
-    fn method<T: MethodArgs>(&self, #[splat] args: T) {
+    fn method<T: MethodArgs>(&self, #[arg_splat] args: T) {
         args.call_method(self)
     }
 }

@@ -1,16 +1,16 @@
-error: symbol-name(_ZN14splat_mangling4main66Type$LT$fn$LP$$C$$u20$$u23$$u5b$splat$u5d$$LP$u8$C$u32$RP$$RP$$GT$17hCRATE_HASHE)
+error: symbol-name(_ZN14splat_mangling4main70Type$LT$fn$LP$$C$$u20$$u23$$u5b$arg_splat$u5d$$LP$u8$C$u32$RP$$RP$$GT$17hCRATE_HASHE)
   --> $DIR/splat-mangling.rs:22:5
    |
 LL |     #[rustc_dump_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: demangling(splat_mangling::main::Type<fn(, #[splat](u8,u32))>::hCRATE_HASH)
+error: demangling(splat_mangling::main::Type<fn(, #[arg_splat](u8,u32))>::hCRATE_HASH)
   --> $DIR/splat-mangling.rs:22:5
    |
 LL |     #[rustc_dump_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: demangling-alt(splat_mangling::main::Type<fn(, #[splat](u8,u32))>)
+error: demangling-alt(splat_mangling::main::Type<fn(, #[arg_splat](u8,u32))>)
   --> $DIR/splat-mangling.rs:22:5
    |
 LL |     #[rustc_dump_symbol_name]
@@ -34,19 +34,19 @@ error: demangling-alt(splat_mangling::main::Type<fn((u8,u32))>)
 LL |     #[rustc_dump_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: symbol-name(_ZN14splat_mangling4main77Type$LT$fn$LP$$C$$u20$$u23$$u5b$splat$u5d$$LP$$LP$u8$C$u32$RP$$C$$RP$$RP$$GT$17hCRATE_HASHE)
+error: symbol-name(_ZN14splat_mangling4main81Type$LT$fn$LP$$C$$u20$$u23$$u5b$arg_splat$u5d$$LP$$LP$u8$C$u32$RP$$C$$RP$$RP$$GT$17hCRATE_HASHE)
   --> $DIR/splat-mangling.rs:42:5
    |
 LL |     #[rustc_dump_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: demangling(splat_mangling::main::Type<fn(, #[splat]((u8,u32),))>::hCRATE_HASH)
+error: demangling(splat_mangling::main::Type<fn(, #[arg_splat]((u8,u32),))>::hCRATE_HASH)
   --> $DIR/splat-mangling.rs:42:5
    |
 LL |     #[rustc_dump_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: demangling-alt(splat_mangling::main::Type<fn(, #[splat]((u8,u32),))>)
+error: demangling-alt(splat_mangling::main::Type<fn(, #[arg_splat]((u8,u32),))>)
   --> $DIR/splat-mangling.rs:42:5
    |
 LL |     #[rustc_dump_symbol_name]
@@ -70,19 +70,19 @@ error: demangling-alt(splat_mangling::main::Type<fn(((u8,u32),))>)
 LL |     #[rustc_dump_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: symbol-name(_ZN14splat_mangling4main80Type$LT$$BP$const$u20$fn$LP$$C$$u20$$u23$$u5b$splat$u5d$$LP$u32$C$i8$RP$$RP$$GT$17hCRATE_HASHE)
+error: symbol-name(_ZN14splat_mangling4main84Type$LT$$BP$const$u20$fn$LP$$C$$u20$$u23$$u5b$arg_splat$u5d$$LP$u32$C$i8$RP$$RP$$GT$17hCRATE_HASHE)
   --> $DIR/splat-mangling.rs:62:5
    |
 LL |     #[rustc_dump_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: demangling(splat_mangling::main::Type<*const fn(, #[splat](u32,i8))>::hCRATE_HASH)
+error: demangling(splat_mangling::main::Type<*const fn(, #[arg_splat](u32,i8))>::hCRATE_HASH)
   --> $DIR/splat-mangling.rs:62:5
    |
 LL |     #[rustc_dump_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: demangling-alt(splat_mangling::main::Type<*const fn(, #[splat](u32,i8))>)
+error: demangling-alt(splat_mangling::main::Type<*const fn(, #[arg_splat](u32,i8))>)
   --> $DIR/splat-mangling.rs:62:5
    |
 LL |     #[rustc_dump_symbol_name]
@@ -106,19 +106,19 @@ error: demangling-alt(splat_mangling::main::Type<*const fn((u32,i8))>)
 LL |     #[rustc_dump_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: symbol-name(_ZN14splat_mangling4main72Type$LT$fn$LP$$C$$u20$$u23$$u5b$splat$u5d$$LP$u32$C$i8$RP$$C$f64$RP$$GT$17hCRATE_HASHE)
+error: symbol-name(_ZN14splat_mangling4main76Type$LT$fn$LP$$C$$u20$$u23$$u5b$arg_splat$u5d$$LP$u32$C$i8$RP$$C$f64$RP$$GT$17hCRATE_HASHE)
   --> $DIR/splat-mangling.rs:82:5
    |
 LL |     #[rustc_dump_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: demangling(splat_mangling::main::Type<fn(, #[splat](u32,i8),f64)>::hCRATE_HASH)
+error: demangling(splat_mangling::main::Type<fn(, #[arg_splat](u32,i8),f64)>::hCRATE_HASH)
   --> $DIR/splat-mangling.rs:82:5
    |
 LL |     #[rustc_dump_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: demangling-alt(splat_mangling::main::Type<fn(, #[splat](u32,i8),f64)>)
+error: demangling-alt(splat_mangling::main::Type<fn(, #[arg_splat](u32,i8),f64)>)
   --> $DIR/splat-mangling.rs:82:5
    |
 LL |     #[rustc_dump_symbol_name]

@@ -2278,7 +2278,7 @@ impl<'a> State<'a> {
         let mut i = 0;
         let mut print_arg = |s: &mut Self, ty: Option<&hir::Ty<'_>>| {
             if Some(i) == decl.splatted().map(usize::from) {
-                s.word("#[splat]");
+                s.word("#[arg_splat]");
             }
             if i == 0 && decl.implicit_self().has_implicit_self() {
                 s.print_implicit_self(&decl.implicit_self());

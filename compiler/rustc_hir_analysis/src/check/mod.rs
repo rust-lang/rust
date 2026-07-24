@@ -451,7 +451,7 @@ fn fn_sig_suggestion<'tcx>(
         .iter()
         .enumerate()
         .map(|(i, ty)| {
-            let splat = if splatted_arg_index == Some(i) { "#[splat] " } else { "" };
+            let splat = if splatted_arg_index == Some(i) { "#[arg_splat] " } else { "" };
             let arg_ty = match ty.kind() {
                 ty::Param(_) if assoc.is_method() && i == 0 => "self".to_string(),
                 ty::Ref(reg, ref_ty, mutability) if i == 0 => {

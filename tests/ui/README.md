@@ -1297,7 +1297,7 @@ See [Tracking issue for specialization (RFC 1210) #31844](https://github.com/rus
 
 ## `tests/ui/splat`
 
-Tests for the `#![feature(splat)]` attribute.
+Tests for the `#![feature(arg_splat)]` attribute.
 
 See [Tracking Issue for argument splatting #153629](https://github.com/rust-lang/rust/issues/153629).
 

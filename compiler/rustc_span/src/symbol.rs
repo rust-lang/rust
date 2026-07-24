@@ -2010,7 +2010,7 @@ symbols! {
         specialization,
         speed,
         spirv,
-        splat,
+        splat: "arg_splat",
         splatted_index,
         spotlight,
         sqrtf16,

@@ -7,43 +7,43 @@ LL |     fn tuple_1(_: (u32,)) {}
 note: type in trait
   --> $DIR/splat-non-tuple.rs:17:5
    |
-LL |     fn tuple_1(#[splat] _: (u32,));
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: expected signature `fn(#[splat] (_,))`
+LL |     fn tuple_1(#[arg_splat] _: (u32,));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: expected signature `fn(#[arg_splat] (_,))`
               found signature `fn((_,))`
 
 error[E0277]: cannot use splat attribute; the splatted argument type must be a tuple or unit, not a u32 (u32)
-  --> $DIR/splat-non-tuple.rs:7:30
+  --> $DIR/splat-non-tuple.rs:7:34
    |
-LL | fn primitive_arg(#[splat] x: u32) {}
-   |                              ^^^
+LL | fn primitive_arg(#[arg_splat] x: u32) {}
+   |                                  ^^^
 ...
 LL |     primitive_arg(1u32);
    |     ^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: cannot use splat attribute; the splatted argument type must be a tuple or unit, not a NotATuple (NotATuple)
-  --> $DIR/splat-non-tuple.rs:14:25
+  --> $DIR/splat-non-tuple.rs:14:29
    |
-LL | fn enum_arg(#[splat] y: NotATuple) {}
-   |                         ^^^^^^^^^
+LL | fn enum_arg(#[arg_splat] y: NotATuple) {}
+   |                             ^^^^^^^^^
 ...
 LL |     enum_arg(NotATuple::A(1u32));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: cannot use splat attribute; the splatted argument type must be a tuple or unit, not a Foo (Foo)
-  --> $DIR/splat-non-tuple.rs:25:27
+  --> $DIR/splat-non-tuple.rs:25:31
    |
-LL | fn struct_arg(#[splat] z: Foo) {}
-   |                           ^^^
+LL | fn struct_arg(#[arg_splat] z: Foo) {}
+   |                               ^^^
 ...
 LL |     struct_arg(foo);
    |     ^^^^^^^^^^^^^^^
 
 error[E0277]: cannot use splat attribute; the splatted argument type must be a tuple or unit, not a TupleStruct (TupleStruct)
-  --> $DIR/splat-non-tuple.rs:54:33
+  --> $DIR/splat-non-tuple.rs:54:37
    |
-LL | fn tuple_struct_arg(#[splat] z: TupleStruct) {}
-   |                                 ^^^^^^^^^^^
+LL | fn tuple_struct_arg(#[arg_splat] z: TupleStruct) {}
+   |                                     ^^^^^^^^^^^
 ...
 LL |     tuple_struct_arg(tuple_struct);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

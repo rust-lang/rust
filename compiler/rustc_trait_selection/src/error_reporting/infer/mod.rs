@@ -829,11 +829,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             for (i, (l, r)) in iter::zip(sig1.inputs(), sig2.inputs()).enumerate() {
                 self.push_comma(&mut values.0, &mut values.1, i);
                 if Some(i) == splatted_arg_index1 {
-                    values.0.push("#[splat]", splatted_arg_index1 != splatted_arg_index2);
+                    values.0.push("#[arg_splat]", splatted_arg_index1 != splatted_arg_index2);
                     values.0.push_normal(" ");
                 }
                 if Some(i) == splatted_arg_index2 {
-                    values.1.push("#[splat]", splatted_arg_index1 != splatted_arg_index2);
+                    values.1.push("#[arg_splat]", splatted_arg_index1 != splatted_arg_index2);
                     values.1.push_normal(" ");
                 }
                 let (x1, x2) = self.cmp(*l, *r);

@@ -1,16 +1,16 @@
 //@ run-pass
 //@ check-run-results
-//! Test using `#[splat]` on self arguments of trait methods.
+//! Test using `#[arg_splat]` on self arguments of trait methods.
 
-#![feature(splat)]
+#![feature(arg_splat)]
 #![expect(incomplete_features)]
 
 trait Trait {
-    fn method(#[splat] self: Self);
+    fn method(#[arg_splat] self: Self);
 }
 
 impl Trait for (i32, i64) {
-    fn method(#[splat] self: Self) {
+    fn method(#[arg_splat] self: Self) {
         println!("{self:?}");
     }
 }

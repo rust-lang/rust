@@ -1,15 +1,15 @@
 //! Test casting splatted functions to non-splatted function pointers fails.
 
 #![allow(incomplete_features)]
-#![feature(splat, tuple_trait)]
+#![feature(arg_splat, tuple_trait)]
 
 use std::marker::Tuple;
 
-fn tuple_args(#[splat] (_a, _b): (u32, i8)) {}
+fn tuple_args(#[arg_splat] (_a, _b): (u32, i8)) {}
 
-fn splat_non_terminal_arg(#[splat] (_a, _b): (u32, i8), _c: f64) {}
+fn splat_non_terminal_arg(#[arg_splat] (_a, _b): (u32, i8), _c: f64) {}
 
-fn f<Args: Tuple>(#[splat] args: Args) {}
+fn f<Args: Tuple>(#[arg_splat] args: Args) {}
 
 fn main() {
     // Function pointers

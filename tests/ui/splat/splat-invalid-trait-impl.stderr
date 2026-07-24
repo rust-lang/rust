@@ -1,58 +1,58 @@
 error[E0053]: method `method` has an incompatible type for trait
-  --> $DIR/splat-invalid-trait-impl.rs:14:27
+  --> $DIR/splat-invalid-trait-impl.rs:14:31
    |
-LL |     fn method(#[splat] _: (u32, f32)) {}
-   |                           ^^^^^^^^^^ expected `i8`, found `f32`
+LL |     fn method(#[arg_splat] _: (u32, f32)) {}
+   |                               ^^^^^^^^^^ expected `i8`, found `f32`
    |
 note: type in trait
-  --> $DIR/splat-invalid-trait-impl.rs:6:27
+  --> $DIR/splat-invalid-trait-impl.rs:6:31
    |
-LL |     fn method(#[splat] _: (u32, i8));
-   |                           ^^^^^^^^^
-   = note: expected signature `fn(#[splat] (_, i8))`
-              found signature `fn(#[splat] (_, f32))`
+LL |     fn method(#[arg_splat] _: (u32, i8));
+   |                               ^^^^^^^^^
+   = note: expected signature `fn(#[arg_splat] (_, i8))`
+              found signature `fn(#[arg_splat] (_, f32))`
 help: change the parameter type to match the trait
    |
-LL -     fn method(#[splat] _: (u32, f32)) {}
-LL +     fn method(#[splat] _: (u32, i8)) {}
+LL -     fn method(#[arg_splat] _: (u32, f32)) {}
+LL +     fn method(#[arg_splat] _: (u32, i8)) {}
    |
 
 error[E0053]: method `method` has an incompatible type for trait
-  --> $DIR/splat-invalid-trait-impl.rs:19:27
+  --> $DIR/splat-invalid-trait-impl.rs:19:31
    |
-LL |     fn method(#[splat] _: (f32, i8)) {}
-   |                           ^^^^^^^^^ expected `u32`, found `f32`
+LL |     fn method(#[arg_splat] _: (f32, i8)) {}
+   |                               ^^^^^^^^^ expected `u32`, found `f32`
    |
 note: type in trait
-  --> $DIR/splat-invalid-trait-impl.rs:6:27
+  --> $DIR/splat-invalid-trait-impl.rs:6:31
    |
-LL |     fn method(#[splat] _: (u32, i8));
-   |                           ^^^^^^^^^
-   = note: expected signature `fn(#[splat] (u32, _))`
-              found signature `fn(#[splat] (f32, _))`
+LL |     fn method(#[arg_splat] _: (u32, i8));
+   |                               ^^^^^^^^^
+   = note: expected signature `fn(#[arg_splat] (u32, _))`
+              found signature `fn(#[arg_splat] (f32, _))`
 help: change the parameter type to match the trait
    |
-LL -     fn method(#[splat] _: (f32, i8)) {}
-LL +     fn method(#[splat] _: (u32, i8)) {}
+LL -     fn method(#[arg_splat] _: (f32, i8)) {}
+LL +     fn method(#[arg_splat] _: (u32, i8)) {}
    |
 
 error[E0053]: method `method` has an incompatible type for trait
-  --> $DIR/splat-invalid-trait-impl.rs:24:27
+  --> $DIR/splat-invalid-trait-impl.rs:24:31
    |
-LL |     fn method(#[splat] _: (f32, f64)) {}
-   |                           ^^^^^^^^^^ expected `u32`, found `f32`
+LL |     fn method(#[arg_splat] _: (f32, f64)) {}
+   |                               ^^^^^^^^^^ expected `u32`, found `f32`
    |
 note: type in trait
-  --> $DIR/splat-invalid-trait-impl.rs:6:27
+  --> $DIR/splat-invalid-trait-impl.rs:6:31
    |
-LL |     fn method(#[splat] _: (u32, i8));
-   |                           ^^^^^^^^^
-   = note: expected signature `fn(#[splat] (u32, i8))`
-              found signature `fn(#[splat] (f32, f64))`
+LL |     fn method(#[arg_splat] _: (u32, i8));
+   |                               ^^^^^^^^^
+   = note: expected signature `fn(#[arg_splat] (u32, i8))`
+              found signature `fn(#[arg_splat] (f32, f64))`
 help: change the parameter type to match the trait
    |
-LL -     fn method(#[splat] _: (f32, f64)) {}
-LL +     fn method(#[splat] _: (u32, i8)) {}
+LL -     fn method(#[arg_splat] _: (f32, f64)) {}
+LL +     fn method(#[arg_splat] _: (u32, i8)) {}
    |
 
 error: aborting due to 3 previous errors

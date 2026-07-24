@@ -1,8 +1,8 @@
 error[E0277]: cannot use splat attribute; the splatted argument type must be a tuple or unit, not a Trait(std::convert::AsRef<std::string::String>)
-  --> $DIR/splat-dyn-asref-tuple-fail.rs:12:36
+  --> $DIR/splat-dyn-asref-tuple-fail.rs:12:40
    |
-LL | fn dyn_asref_splat<T>(#[splat] _t: &dyn AsRef<T>)
-   |                                    ^^^^^^^^^^^^^
+LL | fn dyn_asref_splat<T>(#[arg_splat] _t: &dyn AsRef<T>)
+   |                                        ^^^^^^^^^^^^^
 ...
 LL |     dyn_asref_splat::<String>(&s);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -16,35 +16,35 @@ LL |     dyn_asref_splat::<String>(&s);
 note: required by a bound in `dyn_asref_splat`
   --> $DIR/splat-dyn-asref-tuple-fail.rs:18:8
    |
-LL | fn dyn_asref_splat<T>(#[splat] _t: &dyn AsRef<T>)
+LL | fn dyn_asref_splat<T>(#[arg_splat] _t: &dyn AsRef<T>)
    |    --------------- required by a bound in this function
 ...
 LL |     T: std::marker::Tuple,
    |        ^^^^^^^^^^^^^^^^^^ required by this bound in `dyn_asref_splat`
 
 error[E0277]: cannot use splat attribute; the splatted argument type must be a tuple or unit, not a Trait(std::convert::AsRef<_>)
-  --> $DIR/splat-dyn-asref-tuple-fail.rs:12:36
+  --> $DIR/splat-dyn-asref-tuple-fail.rs:12:40
    |
-LL | fn dyn_asref_splat<T>(#[splat] _t: &dyn AsRef<T>)
-   |                                    ^^^^^^^^^^^^^
+LL | fn dyn_asref_splat<T>(#[arg_splat] _t: &dyn AsRef<T>)
+   |                                        ^^^^^^^^^^^^^
 ...
 LL |     dyn_asref_splat(&s);
    |     ^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: cannot use splat attribute; the splatted argument type must be a tuple or unit, not a Trait(std::convert::AsRef<(u8, f32)>)
-  --> $DIR/splat-dyn-asref-tuple-fail.rs:12:36
+  --> $DIR/splat-dyn-asref-tuple-fail.rs:12:40
    |
-LL | fn dyn_asref_splat<T>(#[splat] _t: &dyn AsRef<T>)
-   |                                    ^^^^^^^^^^^^^
+LL | fn dyn_asref_splat<T>(#[arg_splat] _t: &dyn AsRef<T>)
+   |                                        ^^^^^^^^^^^^^
 ...
 LL |     dyn_asref_splat::<(u8, f32)>(&t);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: cannot use splat attribute; the splatted argument type must be a tuple or unit, not a Trait(std::convert::AsRef<_>)
-  --> $DIR/splat-dyn-asref-tuple-fail.rs:12:36
+  --> $DIR/splat-dyn-asref-tuple-fail.rs:12:40
    |
-LL | fn dyn_asref_splat<T>(#[splat] _t: &dyn AsRef<T>)
-   |                                    ^^^^^^^^^^^^^
+LL | fn dyn_asref_splat<T>(#[arg_splat] _t: &dyn AsRef<T>)
+   |                                        ^^^^^^^^^^^^^
 ...
 LL |     dyn_asref_splat(&t);
    |     ^^^^^^^^^^^^^^^^^^^

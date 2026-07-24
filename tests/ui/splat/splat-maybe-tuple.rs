@@ -1,11 +1,11 @@
-//! Test that using `#[splat]` on maybe-tuple generic function arguments is an error,
+//! Test that using `#[arg_splat]` on maybe-tuple generic function arguments is an error,
 //! but only when the generics aren't tuples.
 
 #![allow(incomplete_features)]
-#![feature(splat)]
+#![feature(arg_splat)]
 #![expect(unused)]
 
-fn unbound_generic_arg<T>(#[splat] t: T) {} //~ ERROR cannot use splat attribute; the splatted argument type must be a tuple or unit, not a u32
+fn unbound_generic_arg<T>(#[arg_splat] t: T) {} //~ ERROR cannot use splat attribute; the splatted argument type must be a tuple or unit, not a u32
 
 fn main() {
     unbound_generic_arg();
