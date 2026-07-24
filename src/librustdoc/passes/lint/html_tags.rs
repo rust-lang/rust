@@ -6,7 +6,6 @@ use std::ops::Range;
 use std::str::CharIndices;
 
 use itertools::Itertools as _;
-use rustc_ast::AttrStyle;
 use rustc_ast::attr::AttributeExt;
 use rustc_ast::token::{CommentKind, DocFragmentKind};
 use rustc_hir::HirId;
@@ -171,14 +170,10 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
                         let Some(doc_attr_style) = style_iter.next() &&
                         style_iter.all(|style| style == doc_attr_style)
                     {
-                        let mark = match doc_attr_style {
-                            AttrStyle::Outer => "/// ",
-                            AttrStyle::Inner => "//! ",
-                        };
                         lint.span_suggestion(
                             html_tag_span,
                             "to turn off Markdown parsing, put the tag at the start of the line",
-                            format!("\n{mark}{doc}", doc=&dox[html_tag_range.clone()]),
+                            format!("\n{mark} {doc}", mark=doc_attr_style.line_doc_comment_prefix(), doc=&dox[html_tag_range.clone()]),
                             Applicability::MachineApplicable,
                         );
                     }

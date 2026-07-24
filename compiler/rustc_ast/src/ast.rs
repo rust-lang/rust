@@ -3415,6 +3415,15 @@ pub enum AttrStyle {
     Inner,
 }
 
+impl AttrStyle {
+    pub fn line_doc_comment_prefix(self) -> &'static str {
+        match self {
+            AttrStyle::Outer => "///",
+            AttrStyle::Inner => "//!",
+        }
+    }
+}
+
 /// A list of attributes.
 pub type AttrVec = ThinVec<Attribute>;
 
