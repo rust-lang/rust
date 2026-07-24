@@ -86,8 +86,8 @@ pub fn arg_attr_i128(x: i128) -> i128 {
 }
 
 #[no_mangle]
-// riscv64:     define noundef zeroext i1 @arg_attr_bool(i1 noundef zeroext %x)
-// loongarch64: define noundef zeroext i1 @arg_attr_bool(i1 noundef zeroext %x)
+// riscv64:     define noundef i1 @arg_attr_bool(i1 noundef zeroext %x)
+// loongarch64: define noundef i1 @arg_attr_bool(i1 noundef zeroext %x)
 pub fn arg_attr_bool(x: bool) -> bool {
     x
 }

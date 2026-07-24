@@ -17,7 +17,7 @@ use std::ptr::NonNull;
 
 #[no_mangle]
 fn make_mu_bool(x: bool) -> MU<bool> {
-    // CHECK-LABEL: i8 @make_mu_bool(i1 zeroext %x)
+    // CHECK-LABEL: i8 @make_mu_bool(i1{{( zeroext)?}} %x)
     // CHECK-NEXT: start:
     // CHECK-NEXT: %[[WIDER:.+]] = zext i1 %x to i8
     // CHECK-NEXT: ret i8 %[[WIDER]]
