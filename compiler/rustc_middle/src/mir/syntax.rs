@@ -1256,6 +1256,24 @@ pub enum ProjectionElem<V, T> {
     /// of a place, so it doesn't necessarily constitute a move out of the binder.
     UnwrapUnsafeBinder(T),
 
+    /// A symbolic dereference of a `Reborrow` type that does not contain any `&mut T` fields.
+    ///
+    /// If a type is `Reborrow` and contains a `&mut T` field then reborrowing it reborrows the `T`,
+    /// producing a borrow on an indirect place, producing a value that can be returned from the
+    /// function since it does not capture any local place. If no such field exists, then
+    /// reborrowing the type must dereference the type itself to find an indirect place, but
+    /// generally such types will not implements `Deref`. Therefore, in borrow checking we instead
+    /// perform a "phantom dereference" (named so because the type will usually contain some
+    /// `PhantomData<&'a ()>` or equivalent that captures the lifetime) to access an indeterminate
+    /// indirect place.
+    ///
+    /// FIXME(reborrow): currently this variant is not considered an indirect place for whatever
+    /// reason. This variant makes no sense if that cannot be fixed.
+    ///
+    /// FIXME(reborrow): if the Reborrow traits experiment is rejected, this variant can be removed:
+    /// see the [PR].
+    ///
+    /// [PR]: https://github.com/rust-lang/rust/pull/159103
     PhantomDeref,
 }
 
