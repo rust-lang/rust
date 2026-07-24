@@ -2,7 +2,6 @@
 //@ only-arm
 //@ ignore-thumb (this test uses arm assembly)
 //@ only-eabihf (the assembly below requires float hardware support)
-#![feature(c_variadic_naked_functions)]
 
 // Check that multiple c-variadic calling conventions can be used in the same program.
 //

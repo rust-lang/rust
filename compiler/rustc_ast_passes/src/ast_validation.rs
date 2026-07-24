@@ -957,29 +957,14 @@ impl<'a> AstValidator<'a> {
         dotdotdot_span: Span,
         sig: &FnSig,
     ) {
-        // For naked functions we accept any ABI that is accepted on c-variadic
-        // foreign functions, if the c_variadic_naked_functions feature is enabled.
         if attr::contains_name(attrs, sym::naked) {
             match abi.supports_c_variadic() {
-                CVariadicStatus::Stable if let ExternAbi::C { .. } = abi => {
-                    // With `c_variadic` naked c-variadic `extern "C"` functions are allowed.
-                }
                 CVariadicStatus::Stable => {
-                    // For e.g. aapcs or sysv64 `c_variadic_naked_functions` must also be enabled.
-                    if !self.features.enabled(sym::c_variadic_naked_functions) {
-                        let msg = format!("Naked c-variadic `extern {abi}` functions are unstable");
-                        feature_err(&self.sess, sym::c_variadic_naked_functions, sig.span, msg)
-                            .emit();
-                    }
+                    // For naked functions we accept any ABI that is accepted
+                    // on c-variadic foreign functions.
                 }
                 CVariadicStatus::Unstable { feature } => {
-                    // Some ABIs need additional features.
-                    if !self.features.enabled(sym::c_variadic_naked_functions) {
-                        let msg = format!("Naked c-variadic `extern {abi}` functions are unstable");
-                        feature_err(&self.sess, sym::c_variadic_naked_functions, sig.span, msg)
-                            .emit();
-                    }
-
+                    // Some ABIs need additional features to be enabled.
                     if !self.features.enabled(feature) {
                         let msg = format!(
                             "C-variadic functions with the {abi} calling convention are unstable"
