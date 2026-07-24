@@ -3763,6 +3763,11 @@ pub const fn offload<F, T: crate::marker::Tuple, R>(
     args: T,
 ) -> R;
 
+// TODO(Sa4dUs): add docs
+#[rustc_nounwind]
+#[rustc_intrinsic]
+pub const fn offload_get_num_devices() -> i32;
+
 /// Inform Miri that a given pointer definitely has a certain alignment.
 #[cfg(miri)]
 #[rustc_allow_const_fn_unstable(const_eval_select)]

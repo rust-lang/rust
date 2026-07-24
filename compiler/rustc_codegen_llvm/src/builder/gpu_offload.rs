@@ -197,6 +197,16 @@ fn generate_launcher<'ll>(cx: &CodegenCx<'ll, '_>) -> (&'ll llvm::Value, &'ll ll
     (tgt_decl, tgt_fn_ty)
 }
 
+pub(crate) fn generate_decl<'ll>(cx: &CodegenCx<'ll, '_>) -> (&'ll llvm::Value, &'ll llvm::Type) {
+    let ti32 = cx.type_i32();
+    let tgt_fn_ty = cx.type_func(&[], ti32);
+    let name = "omp_get_num_devices";
+    let tgt_decl = declare_offload_fn(&cx, name, tgt_fn_ty);
+    let nounwind = llvm::AttributeKind::NoUnwind.create_attr(cx.llcx);
+    attributes::apply_to_llfn(tgt_decl, Function, &[nounwind]);
+    (tgt_decl, tgt_fn_ty)
+}
+
 // What is our @1 here? A magic global, used in our data_{begin/update/end}_mapper:
 // @0 = private unnamed_addr constant [23 x i8] c";unknown;unknown;0;0;;\00", align 1
 // @1 = private unnamed_addr constant %struct.ident_t { i32 0, i32 2, i32 0, i32 22, ptr @0 }, align 8
