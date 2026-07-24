@@ -273,6 +273,30 @@ declare_lint! {
 }
 
 declare_lint! {
+    /// The `repeated_reprs` lint detects when the same representation is
+    /// specified more than once in a `#[repr(..)]` attribute.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// #[repr(C)]
+    /// #[repr(C)]
+    /// enum Foo { A }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// While some representations may be specified more than once, the compiler
+    /// will reject repeated uses of some others. For consistency, prefer to
+    /// only specify the representation once.
+    pub REPEATED_REPRS,
+    Warn,
+    "detects repeated representations in `#[repr(..)]` attributes",
+}
+
+declare_lint! {
     /// The `meta_variable_misuse` lint detects possible meta-variable misuse
     /// in macro definitions.
     ///

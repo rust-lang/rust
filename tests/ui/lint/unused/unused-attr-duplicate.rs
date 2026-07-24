@@ -64,8 +64,7 @@ fn t1() {}
 #[must_use = "some message"]
 //~^ ERROR unused attribute
 //~| WARN this was previously accepted
-// No warnings for #[repr], would require more logic.
-#[repr(C)]
+#[repr(C)] //~ WARN `#[repr(..)]` attribute is specified more than once [repeated_reprs]
 #[repr(C)]
 #[non_exhaustive]
 #[non_exhaustive] //~ ERROR unused attribute

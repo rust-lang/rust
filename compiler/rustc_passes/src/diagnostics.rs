@@ -654,6 +654,11 @@ pub(crate) struct TransparentIncompatible {
 }
 
 #[derive(Diagnostic)]
+#[diag("`#[repr(..)]` attribute is specified more than once")]
+#[note("for consistency, only specify the representation once")]
+pub(crate) struct RepeatedRepr;
+
+#[derive(Diagnostic)]
 #[diag("deprecated attribute must be paired with either stable or unstable attribute", code = E0549)]
 pub(crate) struct DeprecatedAttribute {
     #[primary_span]

@@ -1,12 +1,24 @@
+warning: `#[repr(..)]` attribute is specified more than once
+  --> $DIR/issue-100631.rs:4:8
+   |
+LL | #[repr(C)]
+   |        ^
+LL |
+LL | #[repr(C)]
+   |        ^
+   |
+   = note: for consistency, only specify the representation once
+   = note: `#[warn(repeated_reprs)]` on by default
+
 error[E0084]: unsupported representation for zero-variant enum
   --> $DIR/issue-100631.rs:4:8
    |
 LL | #[repr(C)]
    |        ^
-LL | #[repr(C)]
+...
 LL | enum Foo {}
    | -------- zero-variant enum
 
-error: aborting due to 1 previous error
+error: aborting due to 1 previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0084`.
