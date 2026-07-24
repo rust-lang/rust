@@ -475,9 +475,7 @@ impl TtParser {
         track: &mut T,
     ) -> Option<NamedParseResult> {
         while let Some(mp) = self.cur_mps.pop() {
-            if let Some(result) = self.match_one(parser, matcher, mp, track) {
-                return Some(result);
-            }
+            self.match_one(parser, matcher, mp, track);
         }
 
         if let Some(mp) = self.maybe_ambig_mp.take() {
@@ -514,7 +512,7 @@ impl TtParser {
         matcher: &'matcher [MatcherLoc],
         mut mp: MatcherPos,
         track: &mut T,
-    ) -> Option<NamedParseResult> {
+    ) {
         let matcher_loc = &matcher[mp.idx];
         track.trying_match(parser.approx_token_stream_pos(), &parser.token, mp.idx);
         let token = &parser.token;
@@ -609,7 +607,7 @@ impl TtParser {
                 // from consideration. We use the span of the metavariable declaration to determine
                 // any edition-specific matching behavior for non-terminals.
                 if !Parser::nonterminal_may_begin_with(kind, token) {
-                    return None;
+                    return;
                 }
 
                 // EOF tokens would cause unexpected processing in `match_one()`.
@@ -628,7 +626,7 @@ impl TtParser {
                 debug_assert_eq!(mp.idx, matcher.len() - 1);
 
                 if *token != token::Eof {
-                    return None;
+                    return;
                 }
 
                 track.matched_one(parser.approx_token_stream_pos(), mp.idx);
@@ -640,8 +638,6 @@ impl TtParser {
                 }
             }
         }
-
-        None
     }
 
     /// Finish processing a matched special [`MatcherPos`].
