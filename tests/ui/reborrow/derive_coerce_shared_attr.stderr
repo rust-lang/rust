@@ -1,0 +1,45 @@
+error[E0802]: `derive(CoerceShared)` requires exactly one `#[coerce_shared(Target)]` attribute
+  --> $DIR/derive_coerce_shared_attr.rs:5:20
+   |
+LL | #[derive(Reborrow, CoerceShared)]
+   |                    ^^^^^^^^^^^^
+
+error[E0802]: duplicate `#[coerce_shared(Target)]` attribute for `derive(CoerceShared)`
+  --> $DIR/derive_coerce_shared_attr.rs:11:1
+   |
+LL | #[coerce_shared(Target<'a>)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: first `#[coerce_shared(Target)]` attribute is here
+  --> $DIR/derive_coerce_shared_attr.rs:10:1
+   |
+LL | #[coerce_shared(Target<'a>)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0802]: malformed `#[coerce_shared(Target)]` attribute for `derive(CoerceShared)`
+  --> $DIR/derive_coerce_shared_attr.rs:16:1
+   |
+LL | #[coerce_shared]
+   | ^^^^^^^^^^^^^^^^
+   |
+   = note: expected a single target type, for example `#[coerce_shared(Target<'a, T>)]`
+
+error[E0802]: malformed `#[coerce_shared(Target)]` attribute for `derive(CoerceShared)`
+  --> $DIR/derive_coerce_shared_attr.rs:21:1
+   |
+LL | #[coerce_shared()]
+   | ^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected a single target type, for example `#[coerce_shared(Target<'a, T>)]`
+
+error[E0802]: malformed `#[coerce_shared(Target)]` attribute for `derive(CoerceShared)`
+  --> $DIR/derive_coerce_shared_attr.rs:26:1
+   |
+LL | #[coerce_shared(Target<'a>, Target<'a>)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected a single target type, for example `#[coerce_shared(Target<'a, T>)]`
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0802`.

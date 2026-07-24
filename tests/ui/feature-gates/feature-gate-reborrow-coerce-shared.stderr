@@ -1,4 +1,24 @@
 error[E0658]: use of unstable library feature `reborrow`
+  --> $DIR/feature-gate-reborrow-coerce-shared.rs:7:10
+   |
+LL | #[derive(std::marker::Reborrow, std::marker::CoerceShared)]
+   |          ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #145612 <https://github.com/rust-lang/rust/issues/145612> for more information
+   = help: add `#![feature(reborrow)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `reborrow`
+  --> $DIR/feature-gate-reborrow-coerce-shared.rs:7:33
+   |
+LL | #[derive(std::marker::Reborrow, std::marker::CoerceShared)]
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #145612 <https://github.com/rust-lang/rust/issues/145612> for more information
+   = help: add `#![feature(reborrow)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: use of unstable library feature `reborrow`
   --> $DIR/feature-gate-reborrow-coerce-shared.rs:1:5
    |
 LL | use std::marker::CoerceShared;
@@ -8,6 +28,17 @@ LL | use std::marker::CoerceShared;
    = help: add `#![feature(reborrow)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: aborting due to 1 previous error
+error[E0658]: use of unstable library feature `reborrow`
+  --> $DIR/feature-gate-reborrow-coerce-shared.rs:1:5
+   |
+LL | use std::marker::CoerceShared;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #145612 <https://github.com/rust-lang/rust/issues/145612> for more information
+   = help: add `#![feature(reborrow)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0658`.
