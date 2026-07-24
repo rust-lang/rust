@@ -362,7 +362,7 @@ pub static BUILTIN_ATTRIBUTES: &[Symbol] = &[
     sym::rustc_reservation_impl,
     sym::rustc_test_entrypoint_marker,
     sym::rustc_test_marker,
-    sym::rustc_unsafe_specialization_marker,
+    sym::rustc_specialization_marker,
     sym::rustc_specialization_trait,
     sym::rustc_main,
     sym::rustc_skip_during_method_dispatch,

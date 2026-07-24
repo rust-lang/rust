@@ -963,7 +963,7 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
     )
     .unwrap_or([false; 2]);
 
-    let specialization_kind = if find_attr!(attrs, RustcUnsafeSpecializationMarker) {
+    let specialization_kind = if find_attr!(attrs, RustcSpecializationMarker) {
         ty::trait_def::TraitSpecializationKind::Marker
     } else if find_attr!(attrs, RustcSpecializationTrait) {
         ty::trait_def::TraitSpecializationKind::AlwaysApplicable

@@ -55,7 +55,7 @@
 //! `specialization` or `min_specialization` is enabled to implement these
 //! traits.
 //!
-//! ### rustc_unsafe_specialization_marker
+//! ### rustc_specialization_marker
 //!
 //! There are also some specialization on traits with no methods, including the
 //! stable `FusedIterator` trait. We allow marking marker traits with an
