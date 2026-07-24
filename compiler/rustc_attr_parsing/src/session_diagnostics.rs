@@ -403,6 +403,18 @@ pub(crate) struct InvalidTarget {
 
 #[derive(Subdiagnostic)]
 pub(crate) enum InvalidTargetHelp {
+    #[multipart_suggestion(
+        "did you mean to use `#[export_name]`?",
+        applicability = "maybe-incorrect"
+    )]
+    UseExportName {
+        #[suggestion_part(code = "unsafe(")]
+        unsafe_open: Option<Span>,
+        #[suggestion_part(code = "export_name")]
+        name: Span,
+        #[suggestion_part(code = ")")]
+        unsafe_close: Option<Span>,
+    },
     #[help("use `#[rustc_align(...)]` instead")]
     UseRustcAlign,
     #[help("use `#[rustc_align_static(...)]` instead")]
