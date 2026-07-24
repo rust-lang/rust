@@ -1,8 +1,8 @@
 use rustc_hir::{CanonicalSymbols, ForeignItemId, find_attr};
 use rustc_middle::query::{LocalCrate, Providers};
 use rustc_middle::ty::{Instance, List, TyCtxt};
-use rustc_span::Symbol;
 use rustc_span::def_id::{DefId, LOCAL_CRATE};
+use rustc_span::{Symbol, sym};
 
 use crate::diagnostics::DuplicateCanonicalSymbolInCrate;
 
@@ -57,12 +57,15 @@ fn canonical_symbols(tcx: TyCtxt<'_>, _: LocalCrate) -> CanonicalSymbols {
     // Initialize the collector.
     let mut canonical_symbols = CanonicalSymbols::new();
 
-    // Collect canonical symbols in this crate.
-    let crate_items = tcx.hir_crate_items(());
-    for id in crate_items.foreign_items() {
-        observe_item(tcx, &mut canonical_symbols, id);
+    // Optimization: can this crate even define canonical items?
+    // (But do not mark `rustc_attrs` as used while doing so)
+    if tcx.features().enabled_features().contains(&sym::rustc_attrs) {
+        // Collect canonical symbols in this crate.
+        let crate_items = tcx.hir_crate_items(());
+        for id in crate_items.foreign_items() {
+            observe_item(tcx, &mut canonical_symbols, id);
+        }
     }
-
     canonical_symbols
 }
 
