@@ -273,7 +273,8 @@ pub impl(self) trait CommandExt {
     ///
     /// # Example
     ///
-    /// ```
+    #[cfg_attr(windows, doc = "```")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// #![feature(windows_process_extensions_async_pipes)]
     /// use std::os::windows::process::CommandExt;
     /// use std::process::{Command, Stdio};
@@ -304,7 +305,8 @@ pub impl(self) trait CommandExt {
     ///
     /// # Example
     ///
-    /// ```
+    #[cfg_attr(windows, doc = "```")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// #![feature(windows_process_extensions_raw_attribute)]
     /// use std::os::windows::io::AsRawHandle;
     /// use std::os::windows::process::{CommandExt, ProcThreadAttributeList};
@@ -563,8 +565,9 @@ impl<'a> ProcThreadAttributeListBuilder<'a> {
     ///
     /// # Example
     ///
-    #[cfg_attr(target_vendor = "win7", doc = "```no_run")]
-    #[cfg_attr(not(target_vendor = "win7"), doc = "```")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
+    #[cfg_attr(all(windows, target_vendor = "win7"), doc = "```no_run")]
+    #[cfg_attr(all(windows, not(target_vendor = "win7")), doc = "```")]
     /// #![feature(windows_process_extensions_raw_attribute)]
     /// use std::ffi::c_void;
     /// use std::os::windows::process::{CommandExt, ProcThreadAttributeList};

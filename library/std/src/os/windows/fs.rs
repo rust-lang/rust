@@ -31,7 +31,8 @@ pub trait FileExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// use std::io;
     /// use std::fs::File;
     /// use std::os::windows::prelude::*;
@@ -59,7 +60,8 @@ pub trait FileExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// #![feature(core_io_borrowed_buf)]
     /// #![feature(read_buf_at)]
     ///
@@ -104,7 +106,8 @@ pub trait FileExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// use std::fs::File;
     /// use std::os::windows::prelude::*;
     ///
@@ -151,7 +154,8 @@ pub trait OpenOptionsExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// use std::fs::OpenOptions;
     /// use std::os::windows::prelude::*;
     ///
@@ -176,7 +180,8 @@ pub trait OpenOptionsExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// use std::fs::OpenOptions;
     /// use std::os::windows::prelude::*;
     ///
@@ -202,7 +207,8 @@ pub trait OpenOptionsExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// # #![allow(unexpected_cfgs)]
     /// # #[cfg(for_demonstration_only)]
     /// extern crate winapi;
@@ -240,7 +246,8 @@ pub trait OpenOptionsExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// # #![allow(unexpected_cfgs)]
     /// # #[cfg(for_demonstration_only)]
     /// extern crate winapi;
@@ -282,7 +289,8 @@ pub trait OpenOptionsExt {
 
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// # #![allow(unexpected_cfgs)]
     /// # #[cfg(for_demonstration_only)]
     /// extern crate winapi;
@@ -377,7 +385,8 @@ impl OpenOptionsExt2 for OpenOptions {
 ///
 /// # Example
 ///
-/// ```no_run
+#[cfg_attr(windows, doc = "```no_run")]
+#[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
 /// #![feature(windows_permissions_ext)]
 /// use std::fs::Permissions;
 /// use std::os::windows::fs::PermissionsExt;
@@ -440,7 +449,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// use std::io;
     /// use std::fs;
     /// use std::os::windows::prelude::*;
@@ -470,7 +480,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// use std::io;
     /// use std::fs;
     /// use std::os::windows::prelude::*;
@@ -505,7 +516,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// use std::io;
     /// use std::fs;
     /// use std::os::windows::prelude::*;
@@ -538,7 +550,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// use std::io;
     /// use std::fs;
     /// use std::os::windows::prelude::*;
@@ -561,7 +574,8 @@ pub trait MetadataExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// use std::io;
     /// use std::fs;
     /// use std::os::windows::prelude::*;
@@ -700,7 +714,8 @@ impl FileTimesExt for fs::FileTimes {
 ///
 /// # Examples
 ///
-/// ```no_run
+#[cfg_attr(windows, doc = "```no_run")]
+#[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
 /// use std::os::windows::fs;
 ///
 /// fn main() -> std::io::Result<()> {
@@ -739,7 +754,8 @@ pub fn symlink_file<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io:
 ///
 /// # Examples
 ///
-/// ```no_run
+#[cfg_attr(windows, doc = "```no_run")]
+#[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
 /// use std::os::windows::fs;
 ///
 /// fn main() -> std::io::Result<()> {

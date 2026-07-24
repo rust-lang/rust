@@ -6,17 +6,18 @@ use std::sync::Arc;
 
 use proc_macro2::{TokenStream, TokenTree};
 use rustc_attr_parsing::eval_config_entry;
-use rustc_hir::attrs::AttributeKind;
+use rustc_hir::attrs::{AttributeKind, CfgEntry};
 use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
-use rustc_hir::{self as hir, Attribute, CRATE_HIR_ID, intravisit};
+use rustc_hir::{self as hir, CRATE_HIR_ID, intravisit};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
 use rustc_resolve::rustdoc::span_of_fragments;
 use rustc_span::source_map::SourceMap;
-use rustc_span::{BytePos, DUMMY_SP, FileName, Pos, Span};
+use rustc_span::{BytePos, DUMMY_SP, FileName, Pos, Span, sym};
 
 use super::{DocTestVisitor, ScrapedDocTest};
-use crate::clean::{Attributes, CfgInfo, extract_cfg_from_attrs};
+use crate::clean::cfg::Cfg;
+use crate::clean::{Attributes, CfgInfo};
 use crate::html::markdown::{self, CodeLineMapping, ErrorCodes, LangString, MdRelLine};
 
 struct RustCollector {
@@ -118,64 +119,80 @@ impl HirCollector<'_> {
         sp: Span,
         nested: F,
     ) {
-        let ast_attrs = self.tcx.hir_attrs(self.tcx.local_def_id_to_hir_id(def_id));
-        if let Some(ref cfg) =
-            extract_cfg_from_attrs(ast_attrs.iter(), self.tcx, &mut CfgInfo::default())
-            && !eval_config_entry(&self.tcx.sess, cfg.inner()).as_bool()
-        {
-            return;
-        }
+        let hir_attrs = self.tcx.hir_attrs(self.tcx.local_def_id_to_hir_id(def_id));
+
+        let mut cfg_info = CfgInfo::default();
+        let mut found_features = 0;
 
         let source_map = self.tcx.sess.source_map();
         // Try collecting `#[doc(test(attr(...)))]`
         let old_global_crate_attrs_len = self.collector.global_crate_attrs.len();
-        for attr in ast_attrs {
-            let Attribute::Parsed(AttributeKind::Doc(d)) = attr else { continue };
-            for attr_span in &d.test_attrs {
-                // FIXME: This is ugly, remove when `test_attrs` has been ported to new attribute API.
-                if let Ok(snippet) = source_map.span_to_snippet(*attr_span)
-                    && let Ok(stream) = TokenStream::from_str(&snippet)
-                {
-                    let mut iter = stream.into_iter().peekable();
-                    while let Some(token) = iter.next() {
-                        if let TokenTree::Ident(i) = token {
-                            let i = i.to_string();
-                            let peek = iter.peek();
-                            // From this ident, we can have things like:
-                            //
-                            // * Group: `allow(...)`
-                            // * Name/value: `crate_name = "..."`
-                            // * Tokens: `html_no_url`
-                            //
-                            // So we peek next element to know what case we are in.
-                            match peek {
-                                Some(TokenTree::Group(g)) => {
-                                    let g = g.to_string();
-                                    iter.next();
-                                    // Add the additional attributes to the global_crate_attrs vector
-                                    self.collector.global_crate_attrs.push(format!("{i}{g}"));
-                                }
-                                // If next item is `=`, it means it's a name value so we will need
-                                // to get the value as well.
-                                Some(TokenTree::Punct(p)) if p.as_char() == '=' => {
-                                    let p = p.to_string();
-                                    iter.next();
-                                    if let Some(last) = iter.next() {
+        for attr in hir_attrs.iter() {
+            let hir::Attribute::Parsed(attr) = attr else { continue };
+            if let AttributeKind::TargetFeature { features, .. } = attr {
+                for (feature, _) in features {
+                    found_features += 1;
+                    cfg_info.current_cfg &= Cfg(CfgEntry::NameValue {
+                        name: sym::target_feature,
+                        value: Some(*feature),
+                        span: DUMMY_SP,
+                    });
+                }
+            } else if let AttributeKind::Doc(d) = attr {
+                for attr_span in &d.test_attrs {
+                    // FIXME: This is ugly, remove when `test_attrs` has been ported to new attribute API.
+                    if let Ok(snippet) = source_map.span_to_snippet(*attr_span)
+                        && let Ok(stream) = TokenStream::from_str(&snippet)
+                    {
+                        let mut iter = stream.into_iter().peekable();
+                        while let Some(token) = iter.next() {
+                            if let TokenTree::Ident(i) = token {
+                                let i = i.to_string();
+                                let peek = iter.peek();
+                                // From this ident, we can have things like:
+                                //
+                                // * Group: `allow(...)`
+                                // * Name/value: `crate_name = "..."`
+                                // * Tokens: `html_no_url`
+                                //
+                                // So we peek next element to know what case we are in.
+                                match peek {
+                                    Some(TokenTree::Group(g)) => {
+                                        let g = g.to_string();
+                                        iter.next();
                                         // Add the additional attributes to the global_crate_attrs vector
-                                        self.collector
-                                            .global_crate_attrs
-                                            .push(format!("{i}{p}{last}"));
+                                        self.collector.global_crate_attrs.push(format!("{i}{g}"));
                                     }
-                                }
-                                _ => {
-                                    // Add the additional attributes to the global_crate_attrs vector
-                                    self.collector.global_crate_attrs.push(i.to_string());
+                                    // If next item is `=`, it means it's a name value so we will need
+                                    // to get the value as well.
+                                    Some(TokenTree::Punct(p)) if p.as_char() == '=' => {
+                                        let p = p.to_string();
+                                        iter.next();
+                                        if let Some(last) = iter.next() {
+                                            // Add the additional attributes to the global_crate_attrs vector
+                                            self.collector
+                                                .global_crate_attrs
+                                                .push(format!("{i}{p}{last}"));
+                                        }
+                                    }
+                                    _ => {
+                                        // Add the additional attributes to the global_crate_attrs vector
+                                        self.collector.global_crate_attrs.push(i.to_string());
+                                    }
                                 }
                             }
                         }
                     }
                 }
             }
+        }
+
+        // We only look at the `target_feature` attributes as the `cfg` attributes have already been
+        // applied at this point, so no need to take them into account again.
+        if found_features != 0
+            && !eval_config_entry(&self.tcx.sess, &cfg_info.current_cfg.inner()).as_bool()
+        {
+            return;
         }
 
         let mut has_name = false;
@@ -186,7 +203,7 @@ impl HirCollector<'_> {
 
         // The collapse-docs pass won't combine sugared/raw doc attributes, or included files with
         // anything else, this will combine them for us.
-        let attrs = Attributes::from_hir(ast_attrs);
+        let attrs = Attributes::from_hir(hir_attrs);
         if let Some(doc) = attrs.opt_doc_value() {
             let span = span_of_fragments(&attrs.doc_strings).unwrap_or(sp);
             self.collector.position = if span.edition().at_least_rust_2024() {
@@ -194,7 +211,7 @@ impl HirCollector<'_> {
             } else {
                 // this span affects filesystem path resolution,
                 // so we need to keep it the same as it was previously
-                ast_attrs
+                hir_attrs
                     .iter()
                     .find(|attr| attr.doc_str().is_some())
                     .map(|attr| {
