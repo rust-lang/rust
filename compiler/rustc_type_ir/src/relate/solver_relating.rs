@@ -2,6 +2,7 @@ use tracing::{debug, instrument};
 
 use self::combine::{PredicateEmittingRelation, super_combine_consts, super_combine_tys};
 use crate::data_structures::DelayedSet;
+use crate::region_constraint::RegionConstraint;
 use crate::relate::combine::combine_ty_args;
 pub use crate::relate::*;
 use crate::solve::{Goal, VisibleForLeakCheck};
@@ -218,14 +219,40 @@ where
 
     #[instrument(skip(self), level = "trace")]
     fn regions(&mut self, a: Region<I>, b: Region<I>) -> RelateResult<I, Region<I>> {
-        match self.ambient_variance {
-            // Subtype(&'a u8, &'b u8) => Outlives('a: 'b) => SubRegion('b, 'a)
-            ty::Covariant => self.infcx.sub_regions(b, a, VisibleForLeakCheck::Yes, self.span),
-            // Suptype(&'a u8, &'b u8) => Outlives('b: 'a) => SubRegion('a, 'b)
-            ty::Contravariant => self.infcx.sub_regions(a, b, VisibleForLeakCheck::Yes, self.span),
-            ty::Invariant => self.infcx.equate_regions(a, b, VisibleForLeakCheck::Yes, self.span),
-            ty::Bivariant => {
-                unreachable!("Expected bivariance to be handled in relate_with_variance")
+        if self.cx().assumptions_on_binders() {
+            if a == b {
+                return Ok(a);
+            }
+
+            match self.ambient_variance {
+                ty::Covariant => self
+                    .infcx
+                    .register_solver_region_constraint(RegionConstraint::RegionOutlives(a, b)),
+                ty::Contravariant => self
+                    .infcx
+                    .register_solver_region_constraint(RegionConstraint::RegionOutlives(b, a)),
+                ty::Invariant => {
+                    self.infcx
+                        .register_solver_region_constraint(RegionConstraint::RegionOutlives(a, b));
+                    self.infcx
+                        .register_solver_region_constraint(RegionConstraint::RegionOutlives(b, a));
+                }
+                ty::Bivariant => {
+                    unreachable!("Expected bivariance to be handled in relate_with_variance")
+                }
+            }
+        } else {
+            match self.ambient_variance {
+                ty::Covariant => self.infcx.sub_regions(b, a, VisibleForLeakCheck::Yes, self.span),
+                ty::Contravariant => {
+                    self.infcx.sub_regions(a, b, VisibleForLeakCheck::Yes, self.span)
+                }
+                ty::Invariant => {
+                    self.infcx.equate_regions(a, b, VisibleForLeakCheck::Yes, self.span)
+                }
+                ty::Bivariant => {
+                    unreachable!("Expected bivariance to be handled in relate_with_variance")
+                }
             }
         }
 
