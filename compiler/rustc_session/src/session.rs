@@ -1335,9 +1335,18 @@ pub fn build_session(
     });
 
     let asm_arch = if target.allow_asm { InlineAsmArch::from_arch(&target.arch) } else { None };
-    let target_filesearch =
-        filesearch::FileSearch::new(&sopts.search_paths, &target_tlib_path, &target);
-    let host_filesearch = filesearch::FileSearch::new(&sopts.search_paths, &host_tlib_path, &host);
+    let target_filesearch = filesearch::FileSearch::new(
+        &sopts.search_paths,
+        &target_tlib_path,
+        &target,
+        sopts.unstable_opts.implicit_sysroot_deps,
+    );
+    let host_filesearch = filesearch::FileSearch::new(
+        &sopts.search_paths,
+        &host_tlib_path,
+        &host,
+        sopts.unstable_opts.implicit_sysroot_deps,
+    );
 
     let timings = TimingSectionHandler::new(sopts.json_timings);
 
