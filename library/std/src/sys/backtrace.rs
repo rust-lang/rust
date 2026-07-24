@@ -66,12 +66,21 @@ unsafe fn _print_fmt(fmt: &mut fmt::Formatter<'_>, print_fmt: PrintFmt) -> fmt::
     let mut res = Ok(());
     let mut omitted_count: usize = 0;
     let mut first_omit = true;
+    let mut last_sp = core::ptr::null_mut();
+    let mut sp_stuck = false;
     // If we're using a short backtrace, ignore all frames until we're told to start printing.
     let mut print = print_fmt != PrintFmt::Short;
     set_image_base();
     // SAFETY: we roll our own locking in this town
     unsafe {
         backtrace_rs::trace_unsynchronized(|frame| {
+            // Break if the stack pointer does not move (see #135717).
+            // Make sure to skip the first frame to handle the case where the frame pointer is omitted.
+            if frame.sp() == last_sp && !frame.sp().is_null() && idx > 1 {
+                sp_stuck = true;
+                return false;
+            }
+
             if print_fmt == PrintFmt::Short && idx > MAX_NB_FRAMES {
                 return false;
             }
@@ -140,11 +149,15 @@ unsafe fn _print_fmt(fmt: &mut fmt::Formatter<'_>, print_fmt: PrintFmt) -> fmt::
             }
 
             idx += 1;
+            last_sp = frame.sp();
             res.is_ok()
         })
     };
     res?;
     bt_fmt.finish()?;
+    if sp_stuck {
+        writeln!(fmt, "note: stack pointer stuck, further frames are omitted")?;
+    }
     if print_fmt == PrintFmt::Short {
         writeln!(
             fmt,
