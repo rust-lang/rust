@@ -65,5 +65,114 @@ pub use raw::*;
 #[stable(feature = "io_safety", since = "1.63.0")]
 pub use socket::*;
 
+use crate::io::{self, Stderr, StderrLock, Stdin, StdinLock, Stdout, StdoutLock, Write};
+use crate::ptr;
+#[cfg(not(doc))]
+use crate::sys::c;
+
 #[cfg(test)]
 mod tests;
+
+#[unstable(feature = "stdio_swap", issue = "150667", reason = "recently added")]
+pub impl(self) trait StdioExt {
+    /// Sets the stdio console handle to `handle`, or `NULL` if it is `None`.
+    /// The old handle, if any, will not be closed, i.e. it is leaked because
+    /// console handles are shared global resources.
+    ///
+    /// Rust std::io write buffers (if any) are flushed, but other runtimes
+    /// (e.g. C stdio) or libraries that acquire a clone of the file handle
+    /// will not be aware of this change.
+    ///
+    /// ```
+    /// #![feature(stdio_swap)]
+    /// use std::io::{self, Read, Write};
+    /// use std::os::windows::io::StdioExt;
+    ///
+    /// fn main() -> io::Result<()> {
+    ///    let (reader, mut writer) = io::pipe()?;
+    ///    let mut stdin = io::stdin();
+    ///    stdin.set_handle(Some(reader))?;
+    ///    writer.write_all(b"Hello, world!")?;
+    ///    let mut buffer = vec![0; 13];
+    ///    assert_eq!(stdin.read(&mut buffer)?, 13);
+    ///    assert_eq!(&buffer, b"Hello, world!");
+    ///    Ok(())
+    /// }
+    /// ```
+    fn set_handle<T: Into<OwnedHandle>>(&mut self, handle: Option<T>) -> io::Result<()>;
+
+    /// Sets the stdio console handle to `replace_with`. The previous handle is returned, or
+    /// `None` if it was `NULL`.
+    ///
+    /// The returned handle is a `BorrowedHandle<'static>` because console handles are shared global resources
+    /// and may have been obtained by other functions or threads.
+    /// Only if you have ensured that no other part of the program has borrowed this handle you can convert it into
+    /// an `OwnedHandle` and drop that to close it.
+    ///
+    /// Like `set_handle()`, Rust std::io write buffers (if any) are flushed.
+    fn replace_handle<T: Into<OwnedHandle>>(
+        &mut self,
+        replace_with: T,
+    ) -> io::Result<Option<BorrowedHandle<'static>>>;
+
+    /// Sets the stdio console handle to `NULL` and returns the old one
+    ///
+    /// See [`set_handle()`] for additional details.
+    ///
+    /// [`set_handle()`]: StdioExt::set_handle
+    fn take_handle(&mut self) -> io::Result<Option<BorrowedHandle<'static>>>;
+}
+
+macro io_ext_impl($stdio_ty:ty, $stdio_lock_ty:ty, $handle:path, $writer:literal) {
+    #[unstable(feature = "stdio_swap", issue = "150667", reason = "recently added")]
+    impl StdioExt for $stdio_ty {
+        fn set_handle<T: Into<OwnedHandle>>(&mut self, handle: Option<T>) -> io::Result<()> {
+            self.lock().set_handle(handle)
+        }
+
+        fn replace_handle<T: Into<OwnedHandle>>(
+            &mut self,
+            replace_with: T,
+        ) -> io::Result<Option<BorrowedHandle<'static>>> {
+            self.lock().replace_handle(replace_with)
+        }
+
+        fn take_handle(&mut self) -> io::Result<Option<BorrowedHandle<'static>>> {
+            self.lock().take_handle()
+        }
+    }
+
+    #[unstable(feature = "stdio_swap", issue = "150667", reason = "recently added")]
+    impl StdioExt for $stdio_lock_ty {
+        fn set_handle<T: Into<OwnedHandle>>(&mut self, handle: Option<T>) -> io::Result<()> {
+            #[cfg($writer)]
+            self.flush()?;
+            let raw = handle.map(|h| h.into().into_raw_handle()).unwrap_or(ptr::null_mut());
+            unsafe { c::SetStdHandle($handle, raw) };
+            Ok(())
+        }
+
+        fn replace_handle<T: Into<OwnedHandle>>(
+            &mut self,
+            replace_with: T,
+        ) -> io::Result<Option<BorrowedHandle<'static>>> {
+            let old = unsafe { BorrowedHandle::borrow_raw(self.as_raw_handle()) };
+            self.set_handle(Some(replace_with))?;
+            let handle = if old.as_raw_handle().is_null() { None } else { Some(old) };
+            Ok(handle)
+        }
+
+        fn take_handle(&mut self) -> io::Result<Option<BorrowedHandle<'static>>> {
+            let old = unsafe { BorrowedHandle::borrow_raw(self.as_raw_handle()) };
+            #[cfg($writer)]
+            self.flush()?;
+            unsafe { c::SetStdHandle($handle, ptr::null_mut()) };
+            let handle = if old.as_raw_handle().is_null() { None } else { Some(old) };
+            Ok(handle)
+        }
+    }
+}
+
+io_ext_impl!(Stdout, StdoutLock<'_>, c::STD_OUTPUT_HANDLE, true);
+io_ext_impl!(Stdin, StdinLock<'_>, c::STD_INPUT_HANDLE, false);
+io_ext_impl!(Stderr, StderrLock<'_>, c::STD_ERROR_HANDLE, true);
