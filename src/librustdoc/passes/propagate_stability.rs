@@ -12,13 +12,6 @@ use rustc_hir::{Stability, StabilityLevel};
 use crate::clean::{Crate, Item, ItemId, ItemKind};
 use crate::core::DocContext;
 use crate::fold::DocFolder;
-use crate::passes::Pass;
-
-pub(crate) const PROPAGATE_STABILITY: Pass = Pass {
-    name: "propagate-stability",
-    run: Some(propagate_stability),
-    description: "propagates stability to child items",
-};
 
 pub(crate) fn propagate_stability(cr: Crate, cx: &mut DocContext<'_>) -> Crate {
     let crate_stability = cx.tcx.lookup_stability(CRATE_DEF_ID);
