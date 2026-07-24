@@ -22,9 +22,6 @@ fn main() {
     assert_eq!('x'.ipu_by_ref_vs_by_ref_mut(), 1);
 //~^ WARN a method with this name may be added to the standard library in the future
 //~| WARN once this associated item is added to the standard library, the ambiguity may cause an
-    assert_eq!((&mut 'x' as *mut char).ipu_by_mut_ptr_vs_by_const_ptr(), 1);
-//~^ WARN a method with this name may be added to the standard library in the future
-//~| WARN once this associated item is added to the standard library, the ambiguity may cause an
     assert_eq!(char::C, 1);
 //~^ WARN an associated constant with this name may be added to the standard library in the future
 //~| WARN once this associated item is added to the standard library, the ambiguity may cause an

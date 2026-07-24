@@ -411,7 +411,6 @@ symbols! {
         apx_target_feature,
         arbitrary_enum_discriminant,
         arbitrary_self_types,
-        arbitrary_self_types_pointers,
         areg,
         args,
         arith_offset,

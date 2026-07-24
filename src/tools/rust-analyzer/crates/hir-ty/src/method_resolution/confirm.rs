@@ -323,8 +323,7 @@ impl<'a, 'b, 'db> ConfirmContext<'a, 'b, 'db> {
 
         // We don't need to gate this behind arbitrary self types
         // per se, but it does make things a bit more gated.
-        if self.ctx.features.arbitrary_self_types || self.ctx.features.arbitrary_self_types_pointers
-        {
+        if self.ctx.features.arbitrary_self_types {
             autoderef = autoderef.use_receiver_trait();
         }
 

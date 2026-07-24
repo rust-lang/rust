@@ -378,9 +378,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
         // We don't need to gate this behind arbitrary self types
         // per se, but it does make things a bit more gated.
-        if self.tcx.features().arbitrary_self_types()
-            || self.tcx.features().arbitrary_self_types_pointers()
-        {
+        if self.tcx.features().arbitrary_self_types() {
             autoderef = autoderef.use_receiver_trait();
         }
 
