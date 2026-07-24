@@ -192,7 +192,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         self.output_macro_rules_scopes.insert(expansion, output_macro_rules_scope);
 
         let module = parent_scope.module.expect_local();
-        module.unexpanded_invocations.borrow_mut(self).remove(&expansion);
+        module.unexpanded_invocations.borrow_mut().remove(&expansion);
         if let Some(unexpanded_invocations) =
             self.impl_unexpanded_invocations.get_mut(&self.invocation_parent(expansion))
         {

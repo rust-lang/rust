@@ -1263,7 +1263,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
     pub(crate) fn visit_invoc_in_module(&mut self, id: NodeId) -> MacroRulesScopeRef<'ra> {
         let invoc_id = self.visit_invoc(id);
         let module = self.parent_scope.module.expect_local();
-        module.unexpanded_invocations.borrow_mut(self.r).insert(invoc_id);
+        module.unexpanded_invocations.borrow_mut().insert(invoc_id);
         self.r.arenas.alloc_macro_rules_scope(MacroRulesScope::Invocation(invoc_id))
     }
 

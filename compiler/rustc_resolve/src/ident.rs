@@ -1289,7 +1289,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         // Check if one of glob imports can still define the name,
         // if it can then our "no resolution" result is not determined and can be invalidated.
-        for glob_import in module.globs.borrow().iter() {
+        for glob_import in module.globs.borrow(&self).iter() {
             if ignore_import == Some(*glob_import) {
                 continue;
             }
