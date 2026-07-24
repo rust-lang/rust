@@ -2969,6 +2969,69 @@ impl str {
         me.make_ascii_lowercase()
     }
 
+    /// Copies the string from `src` into `self`, using a memcpy.
+    ///
+    /// The length of `src` must be the same as `self`.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if the two string slices have different lengths.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(str_copy_from_str)]
+    /// let src = "Saludos";
+    /// let mut dst = String::from("Grüße, Jürgen");
+    ///
+    /// // Because the string slices have to be the same length,
+    /// // we slice the destination slice from sixteen bytes
+    /// // to seven. It will panic if we don't do this.
+    /// dst[..7].copy_from_str(src);
+    ///
+    /// assert_eq!(src, "Saludos");
+    /// assert_eq!(dst, "Saludos, Jürgen");
+    /// ```
+    ///
+    /// Rust enforces that there can only be one mutable reference with no
+    /// immutable references to a particular piece of data in a particular
+    /// scope. Because of this, attempting to use `copy_from_str` on a
+    /// single string will result in a compile failure:
+    ///
+    /// ```compile_fail
+    /// #![feature(str_copy_from_str)]
+    /// let mut string = String::from("Abcde");
+    ///
+    /// string[..2].copy_from_str(&string[3..]); // compile fail!
+    /// ```
+    ///
+    /// To work around this, we can use [`split_at_mut`] to create two distinct
+    /// sub-slices from a string slice:
+    ///
+    /// ```
+    /// #![feature(str_copy_from_str)]
+    /// let mut string = String::from("Abcde");
+    ///
+    /// {
+    ///     let (left, right) = string.split_at_mut(2);
+    ///     left.copy_from_str(&right[1..]);
+    /// }
+    ///
+    /// assert_eq!(string, "decde");
+    /// ```
+    ///
+    /// [`split_at_mut`]: str::split_at_mut
+    #[doc(alias = "memcpy")]
+    #[inline]
+    #[unstable(feature = "str_copy_from_str", issue = "159841")]
+    #[track_caller]
+    pub fn copy_from_str(&mut self, src: &str) {
+        // SAFETY: `copy_from_slice` panics unless the lengths are equal, and copying same-length
+        // UTF-8 into a `str` keeps it valid UTF-8.
+        let me = unsafe { self.as_bytes_mut() };
+        me.copy_from_slice(src.as_bytes());
+    }
+
     /// Returns a string slice with leading ASCII whitespace removed.
     ///
     /// 'Whitespace' refers to the definition used by

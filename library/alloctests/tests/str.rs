@@ -1109,6 +1109,21 @@ fn test_split_at_boundscheck() {
 }
 
 #[test]
+fn test_copy_from_str() {
+    let src = "Saludos";
+    let mut dst = "Grüße, Jürgen".to_string();
+    dst[..7].copy_from_str(src);
+    assert_eq!(dst, "Saludos, Jürgen");
+}
+
+#[test]
+#[should_panic]
+fn test_copy_from_str_unequal_len() {
+    let mut dst = "hello".to_string();
+    dst.copy_from_str("hi");
+}
+
+#[test]
 fn test_escape_unicode() {
     assert_eq!("abc".escape_unicode().to_string(), "\\u{61}\\u{62}\\u{63}");
     assert_eq!("a c".escape_unicode().to_string(), "\\u{61}\\u{20}\\u{63}");
