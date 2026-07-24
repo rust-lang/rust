@@ -2,7 +2,7 @@ use super::ExitStatus;
 use crate::io;
 use crate::os::fd::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
 use crate::sys::fd::FileDesc;
-use crate::sys::{AsInner, FromInner, IntoInner, cvt};
+use crate::sys::{AsInner, FromInner, IntoInner, cvt, cvt_r};
 
 #[cfg(test)]
 mod tests;
@@ -61,7 +61,7 @@ impl PidFd {
 
     fn waitid(&self, options: libc::c_int) -> io::Result<Option<ExitStatus>> {
         let mut siginfo: libc::siginfo_t = unsafe { crate::mem::zeroed() };
-        let r = cvt(unsafe {
+        let r = cvt_r(|| unsafe {
             libc::waitid(libc::P_PIDFD, self.0.as_raw_fd() as u32, &mut siginfo, options)
         });
         match r {
