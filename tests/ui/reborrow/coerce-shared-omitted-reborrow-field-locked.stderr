@@ -1,5 +1,5 @@
 error: implementing `CoerceShared` does not allow multiple lifetimes or fields to be coerced
-  --> $DIR/coerce-shared-omitted-reborrow-field-locked.rs:30:13
+  --> $DIR/coerce-shared-omitted-reborrow-field-locked.rs:34:13
    |
 LL | impl<'a, T> CoerceShared<OmitRef<'a, T>> for OmitMut<'a, T> {}
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^

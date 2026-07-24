@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `&'a mut T: CoerceShared<&'a u32>` is not satisfied
-  --> $DIR/coerce-shared-field-relations.rs:43:1
+  --> $DIR/coerce-shared-field-relations.rs:50:1
    |
 LL | impl<'a, T> CoerceShared<BadRef<'a, T>> for BadMut<'a, T> {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the nightly-only, unstable trait `CoerceShared<&'a u32>` is not implemented for `&'a mut T`

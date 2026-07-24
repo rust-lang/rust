@@ -1,5 +1,9 @@
 //@ check-fail
 
+//! Check that the result of a Reborrow retains the original lifetime and does not capture local
+//! values, therefore enabling an identity function to compile.
+//! This should eventually pass.
+
 #![feature(reborrow)]
 use std::marker::{Reborrow, PhantomData};
 

@@ -1,5 +1,7 @@
 //@ run-pass
 
+//! Test that Reborrow on a custom ZST marker type reborrows the value automatically.
+
 #![feature(reborrow)]
 use std::marker::{Reborrow, PhantomData};
 

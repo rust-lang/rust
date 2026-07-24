@@ -1,5 +1,7 @@
 //@ run-pass
 
+//! Test that CoerceShared can drop a PhantomData marker field and pass a data reference through.
+
 #![feature(reborrow)]
 #![allow(dead_code)]
 

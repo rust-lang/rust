@@ -1,5 +1,5 @@
 error: implementing `CoerceShared` does not allow multiple lifetimes or fields to be coerced
-  --> $DIR/coerce-shared-missing-target-field.rs:17:13
+  --> $DIR/coerce-shared-missing-target-field.rs:19:13
    |
 LL | impl<'a, T> CoerceShared<MissingSourceRef<'a, T>> for MissingSourceMut<'a, T> {}
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -1,5 +1,5 @@
 error[E0597]: `a` does not live long enough
-  --> $DIR/coerce-shared-lifetime-mismatch.rs:21:12
+  --> $DIR/coerce-shared-lifetime-mismatch.rs:24:12
    |
 LL |     let a = CustomMarker(PhantomData);
    |         - binding `a` declared here
