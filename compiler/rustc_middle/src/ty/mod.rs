@@ -2191,7 +2191,11 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn is_builtin_derived(self, def_id: DefId) -> bool {
         if self.is_automatically_derived(def_id)
             && let Some(def_id) = def_id.as_local()
-            && let outer = self.def_span(def_id).ctxt().outer_expn_data()
+            // Use the def collector's record of which expansion created the definition,
+            // not the definition's span: proc macros can assign arbitrary spans to the
+            // tokens they produce, so span expansion data proves nothing about where an
+            // item actually came from.
+            && let outer = self.expn_that_defined(def_id).expn_data()
             && matches!(outer.kind, ExpnKind::Macro(MacroKind::Derive, _))
             && find_attr!(self, outer.macro_def_id.unwrap(), RustcBuiltinMacro { .. })
         {
