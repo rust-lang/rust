@@ -844,7 +844,7 @@ impl Session {
         self.opts
             .unstable_opts
             .mir_opt_level
-            .unwrap_or_else(|| if self.opts.optimize != OptLevel::No { 2 } else { 1 })
+            .unwrap_or_else(|| if self.opts.optimize != OptLevel::No { 2 } else { 0 })
     }
 
     /// Calculates the flavor of LTO to use for this compilation.
