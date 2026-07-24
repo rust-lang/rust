@@ -1128,7 +1128,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
 impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx, Cx, D> {
     fn expect_and_resolve_type(
         &self,
-        id: HirId,
+        _id: HirId,
         ty: Option<Ty<'tcx>>,
     ) -> Result<Ty<'tcx>, Cx::Error> {
         match ty {
@@ -1138,9 +1138,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 Ok(ty)
             }
             None => {
-                // FIXME: We shouldn't be relying on the infcx being tainted.
-                self.cx.tainted_by_errors()?;
-                bug!("no type for node {} in ExprUseVisitor", self.cx.tcx().hir_id_to_string(id));
+                panic!("yooo look at this");
             }
         }
     }
