@@ -484,8 +484,10 @@ impl TtParser {
         matcher: &'matcher [MatcherLoc],
         track: &mut T,
     ) -> Option<NamedParseResult> {
-        while let Some(mp) = self.backtrack.pop() {
-            self.match_one(parser, matcher, mp, track);
+        while let Some(mut mp) = self.backtrack.pop() {
+            while let Some(next_mp) = self.match_one(parser, matcher, mp, track) {
+                mp = next_mp;
+            }
 
             debug_assert!(self.backtrack.iter().is_sorted_by_key(|mp| mp.input_pos));
         }
@@ -516,7 +518,7 @@ impl TtParser {
         matcher: &'matcher [MatcherLoc],
         mut mp: MatcherPos,
         track: &mut T,
-    ) {
+    ) -> Option<MatcherPos> {
         let matcher_loc = &matcher[mp.idx as usize];
         // How far from the latest token are we.
         let age = parser.approx_token_stream_pos() - mp.input_pos;
@@ -548,15 +550,15 @@ impl TtParser {
                         debug_assert_eq!(mp.input_pos, parser.approx_token_stream_pos());
                     }
                 } else {
-                    return;
+                    return None;
                 }
                 mp.idx += 1;
-                self.backtrack.push(mp);
+                Some(mp)
             }
             MatcherLoc::Delimited => {
                 // Entering the delimiter is trivial.
                 mp.idx += 1;
-                self.backtrack.push(mp);
+                Some(mp)
             }
             &MatcherLoc::Sequence {
                 op,
@@ -582,35 +584,31 @@ impl TtParser {
 
                 // Try one or more matches of this sequence, by entering it.
                 mp.idx += 1;
-                self.backtrack.push(mp);
+                Some(mp)
             }
             &MatcherLoc::SequenceKleeneOpNoSep { op, idx_first } => {
-                // We are past the end of a sequence with no separator. Try ending the sequence. If
-                // that's not possible, `ending_mp` will fail quietly when it is processed next time
-                // around the loop.
-                let ending_mp = MatcherPos {
-                    idx: mp.idx + 1, // +1 skips the Kleene op
-                    input_pos: mp.input_pos,
-                    matches: Rc::clone(&mp.matches),
-                };
-                self.backtrack.push(ending_mp);
-
                 if op != KleeneOp::ZeroOrOne {
                     // Try another repetition.
-                    mp.idx = idx_first.try_into().unwrap();
-                    self.backtrack.push(mp);
+                    let repeating_mp = MatcherPos {
+                        idx: idx_first.try_into().unwrap(),
+                        input_pos: mp.input_pos,
+                        matches: Rc::clone(&mp.matches),
+                    };
+                    self.backtrack.push(repeating_mp);
                 }
+
+                // Try ending the sequence.
+                mp.idx += 1;
+                Some(mp)
             }
             MatcherLoc::SequenceSep { separator } => {
                 // We are past the end of a sequence with a separator but we haven't seen the
-                // separator yet. Try ending the sequence. If that's not possible, `ending_mp` will
-                // fail quietly when it is processed next time around the loop.
+                // separator yet. Try ending the sequence.
                 let ending_mp = MatcherPos {
                     idx: mp.idx + 2, // +2 skips the separator and the Kleene op
                     input_pos: mp.input_pos,
                     matches: Rc::clone(&mp.matches),
                 };
-                self.backtrack.push(ending_mp);
 
                 if token_name_eq(token, separator) {
                     // The separator matches the current token. Advance past it.
@@ -622,21 +620,24 @@ impl TtParser {
                         parser.to_mut().bump();
                         debug_assert_eq!(mp.input_pos, parser.approx_token_stream_pos());
                     }
-                    self.backtrack.push(mp);
+                    self.backtrack.push(ending_mp);
+                    Some(mp)
+                } else {
+                    Some(ending_mp)
                 }
             }
             &MatcherLoc::SequenceKleeneOpAfterSep { idx_first } => {
                 // We are past the sequence separator. This can't be a `?` Kleene op, because they
                 // don't permit separators. Try another repetition.
                 mp.idx = idx_first.try_into().unwrap();
-                self.backtrack.push(mp);
+                Some(mp)
             }
             &MatcherLoc::MetaVarDecl { kind, .. } => {
                 // Built-in nonterminals never start with these tokens, so we can eliminate them
                 // from consideration. We use the span of the metavariable declaration to determine
                 // any edition-specific matching behavior for non-terminals.
                 if !Parser::nonterminal_may_begin_with(kind, token) {
-                    return;
+                    return None;
                 }
 
                 // EOF tokens would cause unexpected processing in `match_one()`.
@@ -649,13 +650,15 @@ impl TtParser {
                 } else {
                     self.maybe_ambig_mp = Some(mp);
                 }
+
+                None
             }
             MatcherLoc::Eof => {
                 // We are past the matcher's end, and not in a sequence. Try to end things.
                 debug_assert_eq!(mp.idx as usize, matcher.len() - 1);
 
                 if *token != token::Eof {
-                    return;
+                    return None;
                 }
 
                 debug_assert_eq!(mp.input_pos, parser.approx_token_stream_pos());
@@ -667,6 +670,8 @@ impl TtParser {
                 } else {
                     self.maybe_ambig_mp = Some(mp);
                 }
+
+                None
             }
         }
     }
