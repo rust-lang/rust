@@ -115,8 +115,12 @@ pub fn rustc_benchmarks(env: &Environment) -> CmdBuilder {
     init_compiler_benchmarks(env, &["Check", "Debug", "Opt"], &["All"], RUSTC_PGO_CRATES)
 }
 
-pub fn rustdoc_benchmarks(env: &Environment) -> CmdBuilder {
+fn rustdoc_benchmarks(env: &Environment) -> CmdBuilder {
     init_compiler_benchmarks(env, &["Doc"], &["Full"], RUSTC_PGO_CRATES)
+}
+
+fn clippy_benchmarks(env: &Environment) -> CmdBuilder {
+    init_compiler_benchmarks(env, &["Clippy"], &["All"], RUSTC_PGO_CRATES)
 }
 
 pub struct LlvmPGOProfile(pub Utf8PathBuf);
@@ -163,6 +167,16 @@ pub fn gather_rustdoc_profiles(
     log::info!("Running benchmarks with PGO instrumented rustdoc");
     gather_pgo_profiles(env, profile_root, "rustdoc", rustdoc_benchmarks(env))
         .map(RustdocPGOProfile)
+}
+
+pub struct ClippyPGOProfile(pub Utf8PathBuf);
+
+pub fn gather_clippy_profiles(
+    env: &Environment,
+    profile_root: &Utf8Path,
+) -> anyhow::Result<ClippyPGOProfile> {
+    log::info!("Running benchmarks with PGO instrumented clippy");
+    gather_pgo_profiles(env, profile_root, "clippy", clippy_benchmarks(env)).map(ClippyPGOProfile)
 }
 
 pub fn gather_pgo_profiles(

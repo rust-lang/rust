@@ -238,6 +238,7 @@ pub struct Config {
     pub rust_pgo: PgoConfig,
     pub rustdoc_pgo: PgoConfig,
     pub cargo_pgo: PgoConfig,
+    pub clippy_pgo: PgoConfig,
 
     pub llvm_libunwind_default: Option<LlvmLibunwind>,
     pub enable_bolt_settings: bool,
@@ -661,8 +662,13 @@ impl Config {
             libgccjit_libs_dir: gcc_libgccjit_libs_dir,
         } = toml_gcc.unwrap_or_default();
 
-        let Pgo { rustc: pgo_rustc, llvm: pgo_llvm, rustdoc: pgo_rustdoc, cargo: pgo_cargo } =
-            toml_pgo.unwrap_or_default();
+        let Pgo {
+            rustc: pgo_rustc,
+            rustdoc: pgo_rustdoc,
+            cargo: pgo_cargo,
+            clippy: pgo_clippy,
+            llvm: pgo_llvm,
+        } = toml_pgo.unwrap_or_default();
 
         // Backcompat: flags have priority over config
         if flags_rust_profile_use.is_some() || flags_rust_profile_generate.is_some() {
@@ -717,6 +723,7 @@ impl Config {
 
         let pgo_rustdoc = init_pgo(pgo_rustdoc, "rustdoc");
         let pgo_cargo = init_pgo(pgo_cargo, "cargo");
+        let pgo_clippy = init_pgo(pgo_clippy, "clippy");
 
         if rust_bootstrap_override_lld.is_some() && rust_bootstrap_override_lld_legacy.is_some() {
             panic!(
@@ -1420,6 +1427,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
             channel,
             ci_env,
             clippy_info,
+            clippy_pgo: pgo_clippy,
             cmd: flags_cmd,
             codegen_tests: rust_codegen_tests.unwrap_or(true),
             color: flags_color,

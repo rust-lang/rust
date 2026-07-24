@@ -10,8 +10,8 @@ use crate::exec::{Bootstrap, cmd};
 use crate::tests::run_tests;
 use crate::timer::Timer;
 use crate::training::{
-    gather_bolt_profiles, gather_llvm_profiles, gather_rustc_profiles, gather_rustdoc_profiles,
-    llvm_benchmarks, rustc_benchmarks,
+    gather_bolt_profiles, gather_clippy_profiles, gather_llvm_profiles, gather_rustc_profiles,
+    gather_rustdoc_profiles, llvm_benchmarks, rustc_benchmarks,
 };
 use crate::utils::artifact_size::print_binary_sizes;
 use crate::utils::io::{copy_directory, reset_directory};
@@ -236,11 +236,13 @@ fn execute_pipeline(
         copy_rustc_perf(env, &rustc_perf_checkout_dir)
     })?;
 
+    let optimize_clippy = !is_fast_try_build();
+
     // Stage 1: Build PGO instrumented rustc
     // We use a normal build of LLVM, because gathering PGO profiles for LLVM and `rustc` at the
     // same time can cause issues, because the host and in-tree LLVM versions can diverge.
-    let (rustc_pgo_profile, rustdoc_pgo_profile) =
-        timer.section("Stage 1 (Rustc + rustdoc PGO)", |stage| {
+    let (rustc_pgo_profile, rustdoc_pgo_profile, clippy_pgo_profile) =
+        timer.section("Stage 1 (Rustc + rustdoc + cargo + clippy PGO)", |stage| {
             let rustc_profile_dir_root = env.artifact_dir().join("rustc-pgo");
 
             stage.section("Build PGO instrumented rustc and LLVM", |section| {
@@ -253,6 +255,9 @@ fn execute_pipeline(
                     .rustc_pgo_instrument(&rustc_profile_dir_root)
                     .cargo_pgo_instrument(&rustc_profile_dir_root)
                     .rustdoc_pgo_instrument(&rustc_profile_dir_root);
+                if optimize_clippy {
+                    builder = builder.with_clippy().clippy_pgo_instrument(&rustc_profile_dir_root);
+                }
 
                 if env.supports_shared_llvm() {
                     // This first LLVM that we build will be thrown away after this stage, and it
@@ -271,6 +276,13 @@ fn execute_pipeline(
             let rustdoc_profile = stage.section("Gather rustdoc profiles", |_| {
                 gather_rustdoc_profiles(env, &rustc_profile_dir_root)
             })?;
+            let clippy_profile = if optimize_clippy {
+                stage.section("Gather clippy profiles", |_| {
+                    Ok(Some(gather_clippy_profiles(env, &rustc_profile_dir_root)?))
+                })?
+            } else {
+                None
+            };
             print_free_disk_space()?;
 
             stage.section("Build PGO optimized rustc", |section| {
@@ -280,6 +292,9 @@ fn execute_pipeline(
                     .rustc_pgo_optimize(&rustc_profile)
                     .cargo_pgo_optimize(&rustc_profile)
                     .rustdoc_pgo_optimize(&rustdoc_profile);
+                if let Some(clippy_profile) = clippy_profile.as_ref() {
+                    cmd = cmd.with_clippy().clippy_pgo_optimize(clippy_profile);
+                }
                 if env.use_bolt() {
                     cmd = cmd.with_rustc_bolt_ldflags();
                 }
@@ -287,7 +302,7 @@ fn execute_pipeline(
                 cmd.run(section)
             })?;
 
-            Ok((rustc_profile, rustdoc_profile))
+            Ok((rustc_profile, rustdoc_profile, clippy_profile))
         })?;
 
     // Stage 2: Gather LLVM PGO profiles
@@ -423,6 +438,9 @@ fn execute_pipeline(
         .rustc_pgo_optimize(&rustc_pgo_profile)
         .cargo_pgo_optimize(&rustc_pgo_profile)
         .rustdoc_pgo_optimize(&rustdoc_pgo_profile);
+    if let Some(clippy_pgo_profile) = clippy_pgo_profile {
+        dist = dist.clippy_pgo_optimize(&clippy_pgo_profile);
+    }
 
     // if LLVM is not built we'll have PGO optimized rustc
     dist = if env.supports_shared_llvm() || !env.build_llvm() {
