@@ -1289,12 +1289,26 @@ where
         &mut self,
         param_env: I::ParamEnv,
         alias_const: ty::AliasConst<I>,
-    ) -> Result<Option<I::Const>, RerunNonErased> {
+    ) -> Result<(Option<I::Const>, Certainty), NoSolutionOrRerunNonErased> {
+        let cx = self.cx();
+        let goal = Goal::new(
+            cx,
+            param_env,
+            ty::ClauseKind::WellFormed(alias_const.to_const(cx, ty::IsRigid::Yes).into()),
+        );
+        self.add_goal(GoalSource::AliasWellFormed, goal)?;
+
+        let certainty = self.try_evaluate_added_goals()?;
+
+        if matches!(certainty, Certainty::Maybe(_)) {
+            return Ok((None, certainty));
+        }
+
         if self.typing_mode().is_erased_not_coherence() {
             match self.opaque_accesses.rerun_always(RerunReason::EvaluateConst)? {}
         }
 
-        Ok(self.delegate.evaluate_const(param_env, alias_const))
+        Ok((self.delegate.evaluate_const(param_env, alias_const), certainty))
     }
 
     pub(super) fn evaluate_const_and_instantiate_projection_term(
@@ -1305,11 +1319,11 @@ where
         alias_const: ty::AliasConst<I>,
     ) -> QueryResultOrRerunNonErased<I> {
         match self.evaluate_const(param_env, alias_const)? {
-            Some(evaluated) => {
+            (Some(evaluated), _) => {
                 self.eq(param_env, expected_term, evaluated.into())?;
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             }
-            None if self.cx().features().generic_const_args() => {
+            (None, certainty) if self.cx().features().generic_const_args() => {
                 // HACK(khyperia): calling `resolve_vars_if_possible` here shouldn't be necessary,
                 // `try_evaluate_const` calls `resolve_vars_if_possible` already. However, we want
                 // to check `has_non_region_infer` against the type with vars resolved (i.e. check
@@ -1331,10 +1345,10 @@ where
                         projection_term.to_term(self.cx(), ty::IsRigid::Yes),
                         expected_term,
                     )?;
-                    self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+                    self.evaluate_added_goals_and_make_canonical_response(certainty)
                 }
             }
-            None => {
+            (None, _) => {
                 // Legacy behavior: always treat as ambiguous
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
             }
