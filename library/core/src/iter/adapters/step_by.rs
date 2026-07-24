@@ -2,6 +2,7 @@ use crate::intrinsics;
 use crate::iter::{TrustedLen, TrustedRandomAccess, from_fn};
 use crate::num::NonZero;
 use crate::ops::{Range, Try};
+use crate::range::RangeIter;
 
 /// An iterator for stepping iterators by a custom amount.
 ///
@@ -579,3 +580,149 @@ spec_int_ranges_r!(u8 u16 u32 usize);
 spec_int_ranges!(u8 u16 usize);
 #[cfg(target_pointer_width = "16")]
 spec_int_ranges_r!(u8 u16 usize);
+
+// The same optimizations as above, applied to StepBy<RangeIter<{integer}>>. RangeIter wraps
+// legacy::Range, so the inner .0.start/.0.end fields serve as the same cursor and countdown.
+macro_rules! spec_int_ranges_new {
+    ($($t:ty)*) => ($(
+        const _: () = assert!(usize::BITS >= <$t>::BITS);
+
+        impl SpecRangeSetup<RangeIter<$t>> for RangeIter<$t> {
+            #[inline]
+            fn setup(mut r: RangeIter<$t>, step: usize) -> RangeIter<$t> {
+                let inner_len = r.size_hint().0;
+                let yield_count = inner_len.div_ceil(step);
+                r.0.end = yield_count as $t;
+                r
+            }
+        }
+
+        unsafe impl StepByImpl<RangeIter<$t>> for StepBy<RangeIter<$t>> {
+            #[inline]
+            fn spec_next(&mut self) -> Option<$t> {
+                let step = <$t>::try_from(self.original_step().get()).unwrap_or(<$t>::MAX);
+                let remaining = self.iter.0.end;
+                if remaining > 0 {
+                    let val = self.iter.0.start;
+                    self.iter.0.start = val.wrapping_add(step);
+                    self.iter.0.end = remaining - 1;
+                    Some(val)
+                } else {
+                    None
+                }
+            }
+
+            #[inline]
+            fn spec_size_hint(&self) -> (usize, Option<usize>) {
+                let remaining = self.iter.0.end as usize;
+                (remaining, Some(remaining))
+            }
+
+            #[inline]
+            fn spec_nth(&mut self, n: usize) -> Option<Self::Item> {
+                self.advance_by(n).ok()?;
+                self.next()
+            }
+
+            #[inline]
+            fn spec_try_fold<Acc, F, R>(&mut self, init: Acc, mut f: F) -> R
+                where
+                    F: FnMut(Acc, Self::Item) -> R,
+                    R: Try<Output = Acc>
+            {
+                let mut accum = init;
+                while let Some(x) = self.next() {
+                    accum = f(accum, x)?;
+                }
+                try { accum }
+            }
+
+            #[inline]
+            fn spec_fold<Acc, F>(self, init: Acc, mut f: F) -> Acc
+                where
+                    F: FnMut(Acc, Self::Item) -> Acc
+            {
+                let step = <$t>::try_from(self.original_step().get()).unwrap_or(<$t>::MAX);
+                let remaining = self.iter.0.end;
+                let mut acc = init;
+                let mut val = self.iter.0.start;
+                for _ in 0..remaining {
+                    acc = f(acc, val);
+                    val = val.wrapping_add(step);
+                }
+                acc
+            }
+        }
+    )*)
+}
+
+macro_rules! spec_int_ranges_new_r {
+    ($($t:ty)*) => ($(
+        const _: () = assert!(usize::BITS >= <$t>::BITS);
+
+        unsafe impl StepByBackImpl<RangeIter<$t>> for StepBy<RangeIter<$t>> {
+            #[inline]
+            fn spec_next_back(&mut self) -> Option<Self::Item> {
+                let step = self.original_step().get() as $t;
+                let remaining = self.iter.0.end;
+                if remaining > 0 {
+                    let start = self.iter.0.start;
+                    self.iter.0.end = remaining - 1;
+                    Some(start + step * (remaining - 1))
+                } else {
+                    None
+                }
+            }
+
+            #[inline]
+            fn spec_nth_back(&mut self, n: usize) -> Option<Self::Item> {
+                if self.advance_back_by(n).is_err() {
+                    return None;
+                }
+                self.next_back()
+            }
+
+            #[inline]
+            fn spec_try_rfold<Acc, F, R>(&mut self, init: Acc, mut f: F) -> R
+            where
+                F: FnMut(Acc, Self::Item) -> R,
+                R: Try<Output = Acc>
+            {
+                let mut accum = init;
+                while let Some(x) = self.next_back() {
+                    accum = f(accum, x)?;
+                }
+                try { accum }
+            }
+
+            #[inline]
+            fn spec_rfold<Acc, F>(mut self, init: Acc, mut f: F) -> Acc
+            where
+                F: FnMut(Acc, Self::Item) -> Acc
+            {
+                let mut accum = init;
+                while let Some(x) = self.next_back() {
+                    accum = f(accum, x);
+                }
+                accum
+            }
+        }
+    )*)
+}
+
+#[cfg(target_pointer_width = "64")]
+spec_int_ranges_new!(u8 u16 u32 u64 usize);
+// RangeIter<u32> and RangeIter<u64> do not implement ExactSizeIterator, so backward
+// specialization is only applicable for types that do: u8, u16, usize.
+#[cfg(target_pointer_width = "64")]
+spec_int_ranges_new_r!(u8 u16 usize);
+
+#[cfg(target_pointer_width = "32")]
+spec_int_ranges_new!(u8 u16 u32 usize);
+#[cfg(target_pointer_width = "32")]
+spec_int_ranges_new_r!(u8 u16 usize);
+
+#[cfg(target_pointer_width = "16")]
+spec_int_ranges_new!(u8 u16 usize);
+#[cfg(target_pointer_width = "16")]
+spec_int_ranges_new_r!(u8 u16 usize);
