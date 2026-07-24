@@ -264,7 +264,7 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
         ) {
             match tag {
                 HtmlOrMarkdownTag::Html(tag, range) => {
-                    if !is_implicitly_self_closing(&tag.to_lowercase()) {
+                    if !is_implicitly_self_closing(&tag.to_ascii_lowercase()) {
                         report_diag(
                             format!("unclosed HTML tag `{tag}`"),
                             range,
@@ -453,9 +453,9 @@ impl TagParser {
     }
 
     fn drop_tag(&mut self, range: Range<usize>, f: &impl Fn(String, &Range<usize>, HtmlDiagMode)) {
-        let tag_name_low = self.tag_name.to_lowercase();
+        let tag_name_low = self.tag_name.to_ascii_lowercase();
         let tag_name_is_match = |tag: &HtmlOrMarkdownTag| match tag {
-            HtmlOrMarkdownTag::Html(name, _span) => name.to_lowercase() == tag_name_low,
+            HtmlOrMarkdownTag::Html(name, _span) => name.to_ascii_lowercase() == tag_name_low,
             HtmlOrMarkdownTag::Markdown(..) => false,
         };
         if let Some(pos) = self.tags.iter().rposition(tag_name_is_match) {
@@ -658,7 +658,7 @@ impl TagParser {
             let valid = ALLOWED_UNCLOSED.contains(&&self.tag_name[..])
                 || self.tags.iter().take(pos + 1).any(|tag| match tag {
                     HtmlOrMarkdownTag::Html(at, _) => {
-                        let at = at.to_lowercase();
+                        let at = at.to_ascii_lowercase();
                         at == "svg" || at == "math"
                     }
                     HtmlOrMarkdownTag::Markdown(..) => false,
