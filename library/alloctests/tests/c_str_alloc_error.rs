@@ -14,7 +14,7 @@
 #![cfg(not(all(miri, windows)))]
 #![feature(alloc_error_hook)]
 
-use std::alloc::{GlobalAlloc, Layout, System, set_alloc_error_hook};
+use std::alloc::{GlobalAlloc, Layout, System, set_alloc_error_hook_unwinding};
 use std::ffi::CString;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -52,7 +52,9 @@ static ALLOC: OneShotFailingAlloc = OneShotFailingAlloc;
 #[test]
 #[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn clone_into_alloc_failure_leaves_target_valid() {
-    set_alloc_error_hook(|_| panic!("alloc error"));
+    unsafe {
+        set_alloc_error_hook_unwinding(|_| panic!("alloc error"));
+    }
 
     let src = CString::new("a fairly long value").unwrap();
     let mut target = CString::new("x").unwrap();
