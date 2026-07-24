@@ -585,6 +585,33 @@ fn test_extract_version_range() {
         extract_version_range("0   - 4.5.6", wrapped_extract),
         Some((Version::new(0, 0, 0), Version::new(4, 5, 6)))
     );
+    // Whitespace around the dash is optional (#159338).
+    assert_eq!(
+        extract_version_range("1.2.3-4.5.6", wrapped_extract),
+        Some((Version::new(1, 2, 3), Version::new(4, 5, 6)))
+    );
+    assert_eq!(
+        extract_version_range("1.2.3- 4.5.6", wrapped_extract),
+        Some((Version::new(1, 2, 3), Version::new(4, 5, 6)))
+    );
+    assert_eq!(
+        extract_version_range("1.2.3 -4.5.6", wrapped_extract),
+        Some((Version::new(1, 2, 3), Version::new(4, 5, 6)))
+    );
+    assert_eq!(
+        extract_version_range("23-99", wrapped_extract),
+        Some((Version::new(23, 0, 0), Version::new(99, 0, 0)))
+    );
+    // Non-numeric suffixes are still a single version, not a range.
+    assert_eq!(
+        extract_version_range("1.2.3-rc1", wrapped_extract),
+        Some((Version::new(1, 2, 3), Version::new(1, 2, 3)))
+    );
+    assert_eq!(
+        extract_version_range("1.2.3-rc1 - 4.5.6", wrapped_extract),
+        Some((Version::new(1, 2, 3), Version::new(4, 5, 6)))
+    );
+    // Incomplete ranges.
     assert_eq!(extract_version_range("1.2.3 -", wrapped_extract), None);
     assert_eq!(extract_version_range("1.2.3 - ", wrapped_extract), None);
     assert_eq!(extract_version_range("- 4.5.6", wrapped_extract), None);

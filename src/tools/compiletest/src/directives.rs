@@ -856,6 +856,10 @@ pub(crate) fn extract_llvm_version_from_binary(binary_path: &str) -> Option<Vers
 ///
 /// If the `<version2>` part is omitted, the second component of the tuple is the same as
 /// `<version1>`.
+///
+/// Whitespace around the range dash is optional, so all of `1.2.3 - 4.5.6`, `1.2.3-4.5.6`,
+/// `1.2.3- 4.5.6`, and `1.2.3 -4.5.6` are accepted. Version suffixes that are not themselves
+/// version numbers (e.g. `1.2.3-rc1`) are still treated as a single version.
 fn extract_version_range<'a, F, VersionTy: Clone>(
     line: &'a str,
     parse: F,
@@ -863,26 +867,46 @@ fn extract_version_range<'a, F, VersionTy: Clone>(
 where
     F: Fn(&'a str) -> Option<VersionTy>,
 {
-    let mut splits = line.splitn(2, "- ").map(str::trim);
-    let min = splits.next().unwrap();
-    if min.ends_with('-') {
+    let line = line.trim();
+
+    if let Some((min, max)) = split_version_range(line) {
+        if min.is_empty() || max.is_empty() {
+            return None;
+        }
+        return Some((parse(min)?, parse(max)?));
+    }
+
+    // Reject dangling dashes that look like incomplete ranges.
+    if line.is_empty() || line.starts_with('-') || line.ends_with('-') {
         return None;
     }
 
-    let max = splits.next();
+    // Single version (possibly with a non-numeric suffix like `1.2.3-rc1`).
+    let ver = parse(line)?;
+    Some((ver.clone(), ver))
+}
 
-    if min.is_empty() {
-        return None;
+/// Splits `line` on a version-range dash, if present.
+///
+/// A range separator is a `-` with a digit immediately before it and a digit immediately after it
+/// once surrounding whitespace is trimmed. This accepts forms with or without spaces around the
+/// dash, while leaving suffixes like `1.2.3-rc1` alone.
+fn split_version_range(line: &str) -> Option<(&str, &str)> {
+    let bytes = line.as_bytes();
+    for (i, &b) in bytes.iter().enumerate() {
+        if b != b'-' {
+            continue;
+        }
+
+        let left = line[..i].trim_end();
+        let right = line[i + 1..].trim_start();
+        if left.as_bytes().last().is_some_and(u8::is_ascii_digit)
+            && right.as_bytes().first().is_some_and(u8::is_ascii_digit)
+        {
+            return Some((left, right));
+        }
     }
-
-    let min = parse(min)?;
-    let max = match max {
-        Some("") => return None,
-        Some(max) => parse(max)?,
-        _ => min.clone(),
-    };
-
-    Some((min, max))
+    None
 }
 
 pub(crate) fn make_test_description(
@@ -1276,7 +1300,8 @@ fn ignore_llvm(config: &Config, line: &DirectiveLine<'_>) -> IgnoreDecision {
         } else if let Some(version_range) =
             config.parse_name_value_directive(line, "ignore-llvm-version")
         {
-            // Syntax is: "ignore-llvm-version: <version1> [- <version2>]"
+            // Syntax is: "ignore-llvm-version: <version1>[-<version2>]"
+            // Whitespace around the range dash is optional.
             let (v_min, v_max) =
                 extract_version_range(&version_range, |s| Some(extract_llvm_version(s)))
                     .unwrap_or_else(|| {
