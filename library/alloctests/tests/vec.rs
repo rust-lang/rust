@@ -1339,6 +1339,25 @@ fn test_from_cow() {
     assert_eq!(Vec::from(Cow::Owned(owned)), vec!["owned", "(vec)"]);
 }
 
+#[test]
+fn test_partial_eq_cow_symmetric() {
+    let v: Vec<i32> = vec![1, 2, 3];
+    let c: Cow<'_, [i32]> = Cow::Borrowed(&[1, 2, 3]);
+
+    assert_eq!(c, v);
+    assert_eq!(v, c);
+
+    let s: &[i32] = &[1, 2, 3];
+    assert_eq!(s, c);
+
+    let mut arr = [1, 2, 3];
+    let ms: &mut [i32] = &mut arr;
+    assert_eq!(ms, c);
+
+    let v2: Vec<i32> = vec![1, 2, 4];
+    assert!(v2 != c);
+}
+
 #[allow(dead_code)]
 fn assert_covariance() {
     fn drain<'new>(d: Drain<'static, &'static str>) -> Drain<'new, &'new str> {
