@@ -1,10 +1,10 @@
 //@ run-pass
-//! Test using `#[splat]` on tuple arguments of const functions.
+//! Test using `#[arg_splat]` on tuple arguments of const functions.
 
 #![allow(incomplete_features)]
-#![feature(splat)]
+#![feature(arg_splat)]
 
-const fn sum(#[splat] (a, b): (u32, u32)) -> u32 {
+const fn sum(#[arg_splat] (a, b): (u32, u32)) -> u32 {
     a + b
 }
 

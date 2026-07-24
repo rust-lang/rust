@@ -1,8 +1,8 @@
 //@ run-pass
-//! Test using `#[splat]` on tuples with generics in various positions.
+//! Test using `#[arg_splat]` on tuples with generics in various positions.
 
 #![allow(incomplete_features)]
-#![feature(splat)]
+#![feature(arg_splat)]
 #![feature(tuple_trait)]
 
 struct Foo<T>(T);
@@ -12,45 +12,45 @@ impl<T> Foo<T> {
         Self(t)
     }
 
-    fn assoc<U>(_u: U, #[splat] _s: ()) {}
+    fn assoc<U>(_u: U, #[arg_splat] _s: ()) {}
 
-    fn method<V>(&self, _v: V, #[splat] _s: (u32, f64)) {}
+    fn method<V>(&self, _v: V, #[arg_splat] _s: (u32, f64)) {}
 
-    fn lifetime<'a>(&self, #[splat] _s: (u32, f64, &'a str)) {}
+    fn lifetime<'a>(&self, #[arg_splat] _s: (u32, f64, &'a str)) {}
 
-    fn const_generic<const N: usize>(&self, #[splat] _s: (u32, f64, [u8; N])) {}
+    fn const_generic<const N: usize>(&self, #[arg_splat] _s: (u32, f64, [u8; N])) {}
 
-    fn generic_in_tuple<U>(&self, #[splat] _s: (U, u32)) {}
+    fn generic_in_tuple<U>(&self, #[arg_splat] _s: (U, u32)) {}
 
-    fn generic_tuple_assoc<U: std::marker::Tuple>(_u: U, #[splat] _s: ()) {}
+    fn generic_tuple_assoc<U: std::marker::Tuple>(_u: U, #[arg_splat] _s: ()) {}
 }
 
 trait BarTrait<T> {
-    fn trait_assoc<W>(w: W, #[splat] _s: ());
+    fn trait_assoc<W>(w: W, #[arg_splat] _s: ());
 
-    fn trait_method<X>(&self, x: X, #[splat] _s: (u32, f64));
+    fn trait_method<X>(&self, x: X, #[arg_splat] _s: (u32, f64));
 
-    fn trait_lifetime<'a>(&self, #[splat] _s: (u32, f64, &'a str)) {}
+    fn trait_lifetime<'a>(&self, #[arg_splat] _s: (u32, f64, &'a str)) {}
 
-    fn trait_const_generic<const N: usize>(&self, #[splat] _s: (u32, f64, [u8; N])) {}
+    fn trait_const_generic<const N: usize>(&self, #[arg_splat] _s: (u32, f64, [u8; N])) {}
 
-    fn trait_generic_in_tuple<U>(&self, #[splat] _s: (T, U)) {}
+    fn trait_generic_in_tuple<U>(&self, #[arg_splat] _s: (T, U)) {}
 
-    fn trait_generic_tuple<U: std::marker::Tuple>(&self, #[splat] _s: U) {}
+    fn trait_generic_tuple<U: std::marker::Tuple>(&self, #[arg_splat] _s: U) {}
 }
 
 impl<T> BarTrait<T> for Foo<T> {
-    fn trait_assoc<W>(_w: W, #[splat] _s: ()) {}
+    fn trait_assoc<W>(_w: W, #[arg_splat] _s: ()) {}
 
-    fn trait_method<X>(&self, _x: X, #[splat] _s: (u32, f64)) {}
+    fn trait_method<X>(&self, _x: X, #[arg_splat] _s: (u32, f64)) {}
 
-    fn trait_lifetime<'a>(&self, #[splat] _s: (u32, f64, &'a str)) {}
+    fn trait_lifetime<'a>(&self, #[arg_splat] _s: (u32, f64, &'a str)) {}
 
-    fn trait_const_generic<const N: usize>(&self, #[splat] _s: (u32, f64, [u8; N])) {}
+    fn trait_const_generic<const N: usize>(&self, #[arg_splat] _s: (u32, f64, [u8; N])) {}
 
-    fn trait_generic_in_tuple<U>(&self, #[splat] _s: (T, U)) {}
+    fn trait_generic_in_tuple<U>(&self, #[arg_splat] _s: (T, U)) {}
 
-    fn trait_generic_tuple<U: std::marker::Tuple>(&self, #[splat] _s: U) {}
+    fn trait_generic_tuple<U: std::marker::Tuple>(&self, #[arg_splat] _s: U) {}
 }
 
 fn main() {

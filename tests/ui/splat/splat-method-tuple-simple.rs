@@ -1,17 +1,17 @@
 //@ run-pass
-//! Test using `#[splat]` on method tuple arguments (with receivers).
+//! Test using `#[arg_splat]` on method tuple arguments (with receivers).
 
 #![allow(incomplete_features)]
-#![feature(splat)]
+#![feature(arg_splat)]
 
 struct Foo;
 
 impl Foo {
-    fn tuple_2(&self, #[splat] (a, _b): (u32, i8)) -> u32 {
+    fn tuple_2(&self, #[arg_splat] (a, _b): (u32, i8)) -> u32 {
         a
     }
 
-    fn tuple_4(&self, #[splat] (a, _b, _c, _d): (u32, i8, (), f32)) -> u32 {
+    fn tuple_4(&self, #[arg_splat] (a, _b, _c, _d): (u32, i8, (), f32)) -> u32 {
         a
     }
 }
@@ -20,7 +20,7 @@ impl Foo {
 struct TupleStruct(u32, i8);
 
 impl TupleStruct {
-    fn tuple_2(&self, #[splat] (a, _b): (u32, i8)) -> u32 {
+    fn tuple_2(&self, #[arg_splat] (a, _b): (u32, i8)) -> u32 {
         a
     }
 }

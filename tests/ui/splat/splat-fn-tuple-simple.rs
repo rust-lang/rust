@@ -1,12 +1,12 @@
 //@ run-pass
-//! Test using `#[splat]` on tuple arguments of simple functions.
+//! Test using `#[arg_splat]` on tuple arguments of simple functions.
 
 #![allow(incomplete_features)]
-#![feature(splat)]
+#![feature(arg_splat)]
 
-fn tuple_args(#[splat] (_a, _b): (u32, i8)) {}
+fn tuple_args(#[arg_splat] (_a, _b): (u32, i8)) {}
 
-fn splat_non_terminal_arg(#[splat] (_a, _b): (u32, i8), _c: f64) {}
+fn splat_non_terminal_arg(#[arg_splat] (_a, _b): (u32, i8), _c: f64) {}
 
 fn main() {
     tuple_args(1, 2);

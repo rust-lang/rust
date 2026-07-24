@@ -1,4 +1,4 @@
-//! Test using `#[splat]` on tuple arguments of pointers to pointers to simple functions.
+//! Test using `#[arg_splat]` on tuple arguments of pointers to pointers to simple functions.
 //! Currently ICEs, but if we fix it, we'll want to know and update this test to pass.
 
 //@ failure-status: 101
@@ -14,18 +14,18 @@
 //@ normalize-stderr: ".*--> .*/splat-fn-ptr-tuple.rs:\d{1,}:\d{1,}.*\n" -> ""
 
 #![allow(incomplete_features)]
-#![feature(splat)]
+#![feature(arg_splat)]
 
-fn tuple_args(#[splat] (_a, _b): (u32, i8)) {}
+fn tuple_args(#[arg_splat] (_a, _b): (u32, i8)) {}
 
-fn splat_non_terminal_arg(#[splat] (_a, _b): (u32, i8), _c: f64) {}
+fn splat_non_terminal_arg(#[arg_splat] (_a, _b): (u32, i8), _c: f64) {}
 
 fn main() {
     // FIXME(splat): not currently supported, can be supported when we no longer require a DefId in
     // MIR lowering
     // FIXME(rustfmt): the attribute gets deleted by rustfmt
     #[rustfmt::skip]
-    let fn_pp: *const fn(#[splat] (u32, i8)) = tuple_args as *const fn(#[splat] (u32, i8));
+    let fn_pp: *const fn(#[arg_splat] (u32, i8)) = tuple_args as *const fn(#[arg_splat] (u32, i8));
     unsafe {
         (*fn_pp)(1, 2); //~ ERROR splatted FnPtr side-tables are not yet implemented
         // The ICE means that code after this line is not fully checked
@@ -33,8 +33,8 @@ fn main() {
     }
 
     #[rustfmt::skip]
-    let fn_pp: *const fn(#[splat] (u32, i8), f64) =
-        splat_non_terminal_arg as *const fn(#[splat] (u32, i8), f64);
+    let fn_pp: *const fn(#[arg_splat] (u32, i8), f64) =
+        splat_non_terminal_arg as *const fn(#[arg_splat] (u32, i8), f64);
     unsafe {
         (*fn_pp)(1, 2, 3.5);
         (*fn_pp)(1u32, 2i8, 3.5f64);

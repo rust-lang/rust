@@ -1,15 +1,15 @@
 //@ run-pass
-//! Test using `#[splat]` on associated function tuple arguments (no receivers).
+//! Test using `#[arg_splat]` on associated function tuple arguments (no receivers).
 
 #![allow(incomplete_features)]
-#![feature(splat)]
+#![feature(arg_splat)]
 
 struct Foo;
 
 impl Foo {
-    fn tuple_1(#[splat] (_a,): (u32,)) {}
+    fn tuple_1(#[arg_splat] (_a,): (u32,)) {}
 
-    fn tuple_3(#[splat] (_a, _b, _c): (u32, i32, i8)) {}
+    fn tuple_3(#[arg_splat] (_a, _b, _c): (u32, i32, i8)) {}
 }
 
 fn main() {

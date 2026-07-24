@@ -1,15 +1,15 @@
 //@ run-pass
-//! Test using `#[splat]` on tuples with generics inside the splatted tuple.
+//! Test using `#[arg_splat]` on tuples with generics inside the splatted tuple.
 #![allow(incomplete_features)]
-#![feature(splat)]
+#![feature(arg_splat)]
 
-fn generic_second<T>(#[splat] _s: (u32, T)) {}
+fn generic_second<T>(#[arg_splat] _s: (u32, T)) {}
 
-fn generic_first<T>(#[splat] _s: (T, u32)) {}
+fn generic_first<T>(#[arg_splat] _s: (T, u32)) {}
 
-fn generic_both<T, U>(#[splat] _s: (T, U)) {}
+fn generic_both<T, U>(#[arg_splat] _s: (T, U)) {}
 
-fn generic_triple<T, U, V>(#[splat] _s: (T, U, V)) {}
+fn generic_triple<T, U, V>(#[arg_splat] _s: (T, U, V)) {}
 
 fn main() {
     generic_second(1u32, 2i8);

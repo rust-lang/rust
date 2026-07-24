@@ -7,11 +7,11 @@
 //@ incremental
 
 #![allow(incomplete_features)]
-#![feature(splat)]
+#![feature(arg_splat)]
 
 fn main() {
     #[rustfmt::skip]
-    let _x: fn(#[splat] (i32,)) = None.unwrap();
+    let _x: fn(#[arg_splat] (i32,)) = None.unwrap();
 
     let x: fn((i32,)) = None.unwrap();
     x((1,));

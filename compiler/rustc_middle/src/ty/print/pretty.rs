@@ -1505,7 +1505,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         let mut input_iter = inputs.iter().copied();
         if let Some(index) = splatted_arg_index {
             self.comma_sep((&mut input_iter).take(usize::from(index)))?;
-            write!(self, ", #[splat]")?;
+            write!(self, ", #[arg_splat]")?;
             self.comma_sep(input_iter)?;
         } else {
             self.comma_sep(input_iter)?;

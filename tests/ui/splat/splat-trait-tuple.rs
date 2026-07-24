@@ -1,31 +1,31 @@
 //@ run-pass
-//! Test using `#[splat]` on trait assoc function/method tuple arguments.
+//! Test using `#[arg_splat]` on trait assoc function/method tuple arguments.
 
 #![allow(incomplete_features)]
-#![feature(splat)]
+#![feature(arg_splat)]
 
 trait FooTrait {
-    fn tuple_1_trait(#[splat] _: (u32,));
+    fn tuple_1_trait(#[arg_splat] _: (u32,));
 
-    fn tuple_2_trait(&self, #[splat] _: (u32, f32));
+    fn tuple_2_trait(&self, #[arg_splat] _: (u32, f32));
 }
 
 struct Foo;
 
 impl FooTrait for Foo {
     // Currently, splat attributes on impls must match traits. This provides better UX.
-    fn tuple_1_trait(#[splat] _: (u32,)) {}
+    fn tuple_1_trait(#[arg_splat] _: (u32,)) {}
 
-    fn tuple_2_trait(&self, #[splat] _: (u32, f32)) {}
+    fn tuple_2_trait(&self, #[arg_splat] _: (u32, f32)) {}
 }
 
 #[expect(dead_code)]
 struct TupleStruct(u32, i8);
 
 impl FooTrait for TupleStruct {
-    fn tuple_1_trait(#[splat] _: (u32,)) {}
+    fn tuple_1_trait(#[arg_splat] _: (u32,)) {}
 
-    fn tuple_2_trait(&self, #[splat] _: (u32, f32)) {}
+    fn tuple_2_trait(&self, #[arg_splat] _: (u32, f32)) {}
 }
 
 fn main() {

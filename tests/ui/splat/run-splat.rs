@@ -1,7 +1,7 @@
 //! Check that splat codegen works for simple cases.
 //@ run-pass
 //@ check-run-results
-#![feature(splat, tuple_trait)]
+#![feature(arg_splat, tuple_trait)]
 #![expect(incomplete_features)]
 
 use std::marker::Tuple;
@@ -13,7 +13,7 @@ trait MethodArgs: Tuple {
 }
 
 impl Foo {
-    fn method(&self, #[splat] args: impl MethodArgs) {
+    fn method(&self, #[arg_splat] args: impl MethodArgs) {
         args.call_method(self)
     }
 }

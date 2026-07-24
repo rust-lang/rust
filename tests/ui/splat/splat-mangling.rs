@@ -11,7 +11,7 @@
 //@ normalize-stderr: "::h([0-9a-f]{16})\)" -> "::hCRATE_HASH)"
 
 #![allow(incomplete_features)]
-#![feature(splat, rustc_attrs)]
+#![feature(arg_splat, rustc_attrs)]
 
 fn main() {
     struct Type<T: ?Sized>(T);
@@ -20,13 +20,13 @@ fn main() {
     #[rustfmt::skip]
     // FIXME(splat, legacy mangling): the first comma is in the wrong place
     #[rustc_dump_symbol_name]
-           //[legacy]~^ ERROR symbol-name(_ZN14splat_mangling4main66Type$LT$fn$LP$$C$$u20$$u23$$u5b$splat$u5d$$LP$u8$C$u32$RP$$RP$$GT
-           //[legacy]~| ERROR demangling(splat_mangling::main::Type<fn(, #[splat](u8,u32))>::
-           //[legacy]~| ERROR demangling-alt(splat_mangling::main::Type<fn(, #[splat](u8,u32))>)
+           //[legacy]~^ ERROR symbol-name(_ZN14splat_mangling4main66Type$LT$fn$LP$$C$$u20$$u23$$u5b$arg_splat$u5d$$LP$u8$C$u32$RP$$RP$$GT
+           //[legacy]~| ERROR demangling(splat_mangling::main::Type<fn(, #[arg_splat](u8,u32))>::
+           //[legacy]~| ERROR demangling-alt(splat_mangling::main::Type<fn(, #[arg_splat](u8,u32))>)
     //[v0,default]~^^^^ ERROR symbol-name(_RMNvCsCRATE_HASH_14splat_mangling4mainINtB<REF>_4TypeFwThmEEuE)
        //[v0,default]~| ERROR demangling(<splat_mangling[
        //[v0,default]~| ERROR demangling-alt(<splat_mangling::main::Type<fn(#[splat] (u8, u32))>>)
-    impl Type<fn(#[splat] (u8, u32))> {}
+    impl Type<fn(#[arg_splat] (u8, u32))> {}
 
     #[rustfmt::skip]
     #[rustc_dump_symbol_name]
@@ -40,13 +40,13 @@ fn main() {
 
     #[rustfmt::skip]
     #[rustc_dump_symbol_name]
-           //[legacy]~^ ERROR symbol-name(_ZN14splat_mangling4main77Type$LT$fn$LP$$C$$u20$$u23$$u5b$splat$u5d$$LP$$LP$u8$C$u32$RP$$C$$RP$$RP$$GT
-           //[legacy]~| ERROR demangling(splat_mangling::main::Type<fn(, #[splat]((u8,u32),))>::
-           //[legacy]~| ERROR demangling-alt(splat_mangling::main::Type<fn(, #[splat]((u8,u32),))>)
+           //[legacy]~^ ERROR symbol-name(_ZN14splat_mangling4main77Type$LT$fn$LP$$C$$u20$$u23$$u5b$arg_splat$u5d$$LP$$LP$u8$C$u32$RP$$C$$RP$$RP$$GT
+           //[legacy]~| ERROR demangling(splat_mangling::main::Type<fn(, #[arg_splat]((u8,u32),))>::
+           //[legacy]~| ERROR demangling-alt(splat_mangling::main::Type<fn(, #[arg_splat]((u8,u32),))>)
     //[v0,default]~^^^^ ERROR symbol-name(_RMs0_NvCsCRATE_HASH_14splat_mangling4mainINtB<REF>_4TypeFwTThmEEEuE)
        //[v0,default]~| ERROR demangling(<splat_mangling[
        //[v0,default]~| ERROR demangling-alt(<splat_mangling::main::Type<fn(#[splat] ((u8, u32),))>>)
-    impl Type<fn(#[splat] ((u8, u32),))> {}
+    impl Type<fn(#[arg_splat] ((u8, u32),))> {}
 
     #[rustfmt::skip]
     #[rustc_dump_symbol_name]
@@ -60,13 +60,13 @@ fn main() {
 
     #[rustfmt::skip]
     #[rustc_dump_symbol_name]
-           //[legacy]~^ ERROR symbol-name(_ZN14splat_mangling4main80Type$LT$$BP$const$u20$fn$LP$$C$$u20$$u23$$u5b$splat$u5d$$LP$u32$C$i8$RP$$RP$$GT
-           //[legacy]~| ERROR demangling(splat_mangling::main::Type<*const fn(, #[splat](u32,i8))>::
-           //[legacy]~| ERROR demangling-alt(splat_mangling::main::Type<*const fn(, #[splat](u32,i8))>)
+           //[legacy]~^ ERROR symbol-name(_ZN14splat_mangling4main80Type$LT$$BP$const$u20$fn$LP$$C$$u20$$u23$$u5b$arg_splat$u5d$$LP$u32$C$i8$RP$$RP$$GT
+           //[legacy]~| ERROR demangling(splat_mangling::main::Type<*const fn(, #[arg_splat](u32,i8))>::
+           //[legacy]~| ERROR demangling-alt(splat_mangling::main::Type<*const fn(, #[arg_splat](u32,i8))>)
     //[v0,default]~^^^^ ERROR symbol-name(_RMs2_NvCsCRATE_HASH_14splat_mangling4mainINtB<REF>_4TypePFwTmaEEuE)
        //[v0,default]~| ERROR demangling(<splat_mangling[
        //[v0,default]~| ERROR demangling-alt(<splat_mangling::main::Type<*const fn(#[splat] (u32, i8))>>)
-    impl Type<*const fn(#[splat] (u32, i8))> {}
+    impl Type<*const fn(#[arg_splat] (u32, i8))> {}
 
     #[rustfmt::skip]
     #[rustc_dump_symbol_name]
@@ -80,13 +80,13 @@ fn main() {
 
     #[rustfmt::skip]
     #[rustc_dump_symbol_name]
-           //[legacy]~^ ERROR symbol-name(_ZN14splat_mangling4main72Type$LT$fn$LP$$C$$u20$$u23$$u5b$splat$u5d$$LP$u32$C$i8$RP$$C$f64$RP$$GT
-           //[legacy]~| ERROR demangling(splat_mangling::main::Type<fn(, #[splat](u32,i8),f64)>::
-           //[legacy]~| ERROR demangling-alt(splat_mangling::main::Type<fn(, #[splat](u32,i8),f64)>)
+           //[legacy]~^ ERROR symbol-name(_ZN14splat_mangling4main72Type$LT$fn$LP$$C$$u20$$u23$$u5b$arg_splat$u5d$$LP$u32$C$i8$RP$$C$f64$RP$$GT
+           //[legacy]~| ERROR demangling(splat_mangling::main::Type<fn(, #[arg_splat](u32,i8),f64)>::
+           //[legacy]~| ERROR demangling-alt(splat_mangling::main::Type<fn(, #[arg_splat](u32,i8),f64)>)
     //[v0,default]~^^^^ ERROR symbol-name(_RMs4_NvCsCRATE_HASH_14splat_mangling4mainINtB<REF>_4TypeFwTmaEdEuE)
        //[v0,default]~| ERROR demangling(<splat_mangling[
        //[v0,default]~| ERROR demangling-alt(<splat_mangling::main::Type<fn(#[splat] (u32, i8), f64)>>)
-    impl Type<fn(#[splat] (u32, i8), f64)> {}
+    impl Type<fn(#[arg_splat] (u32, i8), f64)> {}
 
     #[rustfmt::skip]
     #[rustc_dump_symbol_name]

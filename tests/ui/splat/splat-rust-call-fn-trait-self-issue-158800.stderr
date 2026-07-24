@@ -1,16 +1,16 @@
-error: `#[splat]` is not allowed in the arguments of functions with the `rust-call` ABI
+error: `#[arg_splat]` is not allowed in the arguments of functions with the `rust-call` ABI
   --> $DIR/splat-rust-call-fn-trait-self-issue-158800.rs:10:5
    |
-LL |     extern "rust-call" fn call_once(#[splat] self) {}
-   |     ^^^^^^^^^^^^^^^^^^              ^^^^^^^^
+LL |     extern "rust-call" fn call_once(#[arg_splat] self) {}
+   |     ^^^^^^^^^^^^^^^^^^              ^^^^^^^^^^^^
    |
-   = help: remove `#[splat]` or change the ABI
+   = help: remove `#[arg_splat]` or change the ABI
 
 error: functions with the "rust-call" ABI must take a single non-self tuple argument
-  --> $DIR/splat-rust-call-fn-trait-self-issue-158800.rs:10:46
+  --> $DIR/splat-rust-call-fn-trait-self-issue-158800.rs:10:50
    |
-LL |     extern "rust-call" fn call_once(#[splat] self) {}
-   |                                              ^^^^
+LL |     extern "rust-call" fn call_once(#[arg_splat] self) {}
+   |                                                  ^^^^
 
 error[E0116]: cannot define inherent `impl` for a type outside of the crate where the type is defined
   --> $DIR/splat-rust-call-fn-trait-self-issue-158800.rs:8:1
@@ -22,17 +22,17 @@ LL | impl<T> dyn FnOnce(T) -> () {
    = note: for more details about the orphan rules, see <https://doc.rust-lang.org/reference/items/implementations.html?highlight=orphan#orphan-rules>
 
 error[E0277]: the size for values of type `(dyn FnOnce(T) + 'static)` cannot be known at compilation time
-  --> $DIR/splat-rust-call-fn-trait-self-issue-158800.rs:10:46
+  --> $DIR/splat-rust-call-fn-trait-self-issue-158800.rs:10:50
    |
-LL |     extern "rust-call" fn call_once(#[splat] self) {}
-   |                                              ^^^^ doesn't have a size known at compile-time
+LL |     extern "rust-call" fn call_once(#[arg_splat] self) {}
+   |                                                  ^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `(dyn FnOnce(T) + 'static)`
    = help: unsized fn params are gated as an unstable feature
 help: function arguments must have a statically known size, borrowed types always have a known size
    |
-LL |     extern "rust-call" fn call_once(#[splat] &self) {}
-   |                                              +
+LL |     extern "rust-call" fn call_once(#[arg_splat] &self) {}
+   |                                                  +
 
 error: aborting due to 4 previous errors
 

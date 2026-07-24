@@ -1,11 +1,11 @@
 //@ run-pass
-//! Test using `#[splat]` on tuple trait arguments of generic functions.
+//! Test using `#[arg_splat]` on tuple trait arguments of generic functions.
 
 #![allow(incomplete_features)]
-#![feature(splat)]
+#![feature(arg_splat)]
 #![feature(tuple_trait)]
 
-fn splat_generic_tuple<T: std::marker::Tuple>(#[splat] _t: T) {}
+fn splat_generic_tuple<T: std::marker::Tuple>(#[arg_splat] _t: T) {}
 
 fn main() {
     // Calling with un-splatted arguments might look like it works, but the actual generic type is

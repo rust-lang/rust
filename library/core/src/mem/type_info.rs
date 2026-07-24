@@ -348,7 +348,7 @@ pub struct FnPtr {
     pub is_splatted: bool,
 
     /// The index of the splatted function argument in `inputs`, only valid if `is_splatted` is true.
-    /// e.g. in `fn overload(a: u8, #[splat] b: (f32, usize))` the index is 1, and it can be called
+    /// e.g. in `fn overload(a: u8, #[arg_splat] b: (f32, usize))` the index is 1, and it can be called
     /// as `overload(a, 1.0, 2)`.
     pub splatted_index: u8,
 }

@@ -43,7 +43,7 @@ LL |     const F1: fn((u8, u32)) = f::<(u8, u32)>;
    |               expected because of the type of the constant
    |
    = note: expected fn pointer `fn((_, _))`
-                 found fn item `fn(#[splat] (_, _)) {f::<(u8, u32)>}`
+                 found fn item `fn(#[arg_splat] (_, _)) {f::<(u8, u32)>}`
 
 error: aborting due to 7 previous errors
 

@@ -1,89 +1,89 @@
 error[E0223]: ambiguous associated type
-  --> $DIR/splat-cannot-resolve.rs:23:22
+  --> $DIR/splat-cannot-resolve.rs:23:26
    |
-LL | fn ambig(#[splat] t: Trait::MaybeTup) {}
-   |                      ^^^^^^^^^^^^^^^
+LL | fn ambig(#[arg_splat] t: Trait::MaybeTup) {}
+   |                          ^^^^^^^^^^^^^^^
    |
 help: if there were a type named `Example` that implemented `Trait`, you could use the fully-qualified path
    |
-LL - fn ambig(#[splat] t: Trait::MaybeTup) {}
-LL + fn ambig(#[splat] t: <Example as Trait>::MaybeTup) {}
+LL - fn ambig(#[arg_splat] t: Trait::MaybeTup) {}
+LL + fn ambig(#[arg_splat] t: <Example as Trait>::MaybeTup) {}
    |
 
 error[E0223]: ambiguous associated type
-  --> $DIR/splat-cannot-resolve.rs:28:26
+  --> $DIR/splat-cannot-resolve.rs:28:30
    |
-LL | fn ambig_tup(#[splat] t: Trait::Tup) {}
-   |                          ^^^^^^^^^^
+LL | fn ambig_tup(#[arg_splat] t: Trait::Tup) {}
+   |                              ^^^^^^^^^^
    |
 help: if there were a type named `Example` that implemented `Trait`, you could use the fully-qualified path
    |
-LL - fn ambig_tup(#[splat] t: Trait::Tup) {}
-LL + fn ambig_tup(#[splat] t: <Example as Trait>::Tup) {}
+LL - fn ambig_tup(#[arg_splat] t: Trait::Tup) {}
+LL + fn ambig_tup(#[arg_splat] t: <Example as Trait>::Tup) {}
    |
 
 error[E0720]: cannot resolve opaque type
-  --> $DIR/splat-cannot-resolve.rs:8:37
+  --> $DIR/splat-cannot-resolve.rs:8:41
    |
-LL | fn tuple(#[splat] t: impl Sized) -> impl Sized {
-   |                                     ^^^^^^^^^^
+LL | fn tuple(#[arg_splat] t: impl Sized) -> impl Sized {
+   |                                         ^^^^^^^^^^
 
 error[E0720]: cannot resolve opaque type
-  --> $DIR/splat-cannot-resolve.rs:13:56
+  --> $DIR/splat-cannot-resolve.rs:13:60
    |
-LL | fn tuple_trait(#[splat] t: impl std::marker::Tuple) -> impl std::marker::Tuple {
-   |                                                        ^^^^^^^^^^^^^^^^^^^^^^^
+LL | fn tuple_trait(#[arg_splat] t: impl std::marker::Tuple) -> impl std::marker::Tuple {
+   |                                                            ^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: cannot use splat attribute; the splatted argument type must be a tuple or unit, not a {type error} ({type error})
-  --> $DIR/splat-cannot-resolve.rs:23:22
+  --> $DIR/splat-cannot-resolve.rs:23:26
    |
-LL | fn ambig(#[splat] t: Trait::MaybeTup) {}
-   |                      ^^^^^^^^^^^^^^^
+LL | fn ambig(#[arg_splat] t: Trait::MaybeTup) {}
+   |                          ^^^^^^^^^^^^^^^
 ...
 LL |     ambig();
    |     ^^^^^^^
 
 error[E0277]: cannot use splat attribute; the splatted argument type must be a tuple or unit, not a {type error} ({type error})
-  --> $DIR/splat-cannot-resolve.rs:28:26
+  --> $DIR/splat-cannot-resolve.rs:28:30
    |
-LL | fn ambig_tup(#[splat] t: Trait::Tup) {}
-   |                          ^^^^^^^^^^
+LL | fn ambig_tup(#[arg_splat] t: Trait::Tup) {}
+   |                              ^^^^^^^^^^
 ...
 LL |     ambig_tup();
    |     ^^^^^^^^^^^
 
 error[E0277]: cannot use splat attribute; the splatted argument type must be a tuple or unit, not a {type error} ({type error})
-  --> $DIR/splat-cannot-resolve.rs:23:22
+  --> $DIR/splat-cannot-resolve.rs:23:26
    |
-LL | fn ambig(#[splat] t: Trait::MaybeTup) {}
-   |                      ^^^^^^^^^^^^^^^
+LL | fn ambig(#[arg_splat] t: Trait::MaybeTup) {}
+   |                          ^^^^^^^^^^^^^^^
 ...
 LL |     ambig(1);
    |     ^^^^^^^^
 
 error[E0277]: cannot use splat attribute; the splatted argument type must be a tuple or unit, not a {type error} ({type error})
-  --> $DIR/splat-cannot-resolve.rs:28:26
+  --> $DIR/splat-cannot-resolve.rs:28:30
    |
-LL | fn ambig_tup(#[splat] t: Trait::Tup) {}
-   |                          ^^^^^^^^^^
+LL | fn ambig_tup(#[arg_splat] t: Trait::Tup) {}
+   |                              ^^^^^^^^^^
 ...
 LL |     ambig_tup(1);
    |     ^^^^^^^^^^^^
 
 error[E0277]: cannot use splat attribute; the splatted argument type must be a tuple or unit, not a {type error} ({type error})
-  --> $DIR/splat-cannot-resolve.rs:23:22
+  --> $DIR/splat-cannot-resolve.rs:23:26
    |
-LL | fn ambig(#[splat] t: Trait::MaybeTup) {}
-   |                      ^^^^^^^^^^^^^^^
+LL | fn ambig(#[arg_splat] t: Trait::MaybeTup) {}
+   |                          ^^^^^^^^^^^^^^^
 ...
 LL |     ambig(1, 2.0);
    |     ^^^^^^^^^^^^^
 
 error[E0277]: cannot use splat attribute; the splatted argument type must be a tuple or unit, not a {type error} ({type error})
-  --> $DIR/splat-cannot-resolve.rs:28:26
+  --> $DIR/splat-cannot-resolve.rs:28:30
    |
-LL | fn ambig_tup(#[splat] t: Trait::Tup) {}
-   |                          ^^^^^^^^^^
+LL | fn ambig_tup(#[arg_splat] t: Trait::Tup) {}
+   |                              ^^^^^^^^^^
 ...
 LL |     ambig_tup(1, 2.0);
    |     ^^^^^^^^^^^^^^^^^

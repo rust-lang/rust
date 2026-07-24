@@ -125,46 +125,46 @@ pub(crate) struct FnParamCVarArgsNotLast {
 
 #[derive(Diagnostic)]
 #[diag(
-    "`#[splat]` is only supported on argument index {$max_valid_splatted_arg_index} or less, this `#[splat]` is on index {$first_invalid_splatted_arg_index}"
+    "`#[arg_splat]` is only supported on argument index {$max_valid_splatted_arg_index} or less, this `#[arg_splat]` is on index {$first_invalid_splatted_arg_index}"
 )]
-#[help("remove `#[splat]`, or use it on an argument closer to the start of the argument list")]
+#[help("remove `#[arg_splat]`, or use it on an argument closer to the start of the argument list")]
 pub(crate) struct InvalidSplattedArgs {
     pub max_valid_splatted_arg_index: u16,
 
     pub first_invalid_splatted_arg_index: u16,
 
     #[primary_span]
-    #[label("`#[splat]` is not supported here")]
+    #[label("`#[arg_splat]` is not supported here")]
     pub spans: Vec<Span>,
 }
 
 #[derive(Diagnostic)]
-#[diag("multiple `#[splat]`s are not allowed in the same function argument list")]
-#[help("remove `#[splat]` from all but one argument")]
+#[diag("multiple `#[arg_splat]`s are not allowed in the same function argument list")]
+#[help("remove `#[arg_splat]` from all but one argument")]
 pub(crate) struct DuplicateSplattedArgs {
     #[primary_span]
     pub spans: Vec<Span>,
 }
 
 #[derive(Diagnostic)]
-#[diag("`...` and `#[splat]` are not allowed in the same function argument list")]
-#[help("remove `#[splat]` or remove `...`")]
+#[diag("`...` and `#[arg_splat]` are not allowed in the same function argument list")]
+#[help("remove `#[arg_splat]` or remove `...`")]
 pub(crate) struct CVarArgsAndSplat {
     #[primary_span]
     pub spans: Vec<Span>,
 }
 
 #[derive(Diagnostic)]
-#[diag("`#[splat]` is not allowed on closure arguments")]
-#[help("remove `#[splat]` or turn the closure into a function")]
+#[diag("`#[arg_splat]` is not allowed on closure arguments")]
+#[help("remove `#[arg_splat]` or turn the closure into a function")]
 pub(crate) struct SplatNotAllowedOnClosures {
     #[primary_span]
     pub spans: Vec<Span>,
 }
 
 #[derive(Diagnostic)]
-#[diag("`#[splat]` is not allowed in the arguments of functions with the `{$abi}` ABI")]
-#[help("remove `#[splat]` or change the ABI")]
+#[diag("`#[arg_splat]` is not allowed in the arguments of functions with the `{$abi}` ABI")]
+#[help("remove `#[arg_splat]` or change the ABI")]
 pub(crate) struct SplatNotAllowedOnAbiCall {
     #[primary_span]
     pub spans: Vec<Span>,
