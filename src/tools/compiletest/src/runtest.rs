@@ -1897,7 +1897,7 @@ impl<'test> TestCx<'test> {
             {
                 compiler.arg(format!("-Clinker={linker}"));
             }
-        } else {
+        } else if !custom_target {
             self.maybe_add_external_args(&mut compiler, &self.config.target_rustcflags);
             if compiler_kind == CompilerKind::Rustc
                 && let Some(ref linker) = self.config.target_linker
