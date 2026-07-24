@@ -1336,7 +1336,18 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalModId) {
 
     let module_items = tcx.hir_module_items(module);
 
-    if tcx.crate_types().contains(&CrateType::Executable) {
+    // A library crate compiled with `--test` would be considered as `CrateType::Executable`,
+    // but the public items in it should not be warned as dead code.
+    #[allow(rustc::bad_opt_access)]
+    if tcx.crate_types().contains(&CrateType::Executable)
+        && !(tcx.sess.opts.test
+            && tcx.sess.opts.crate_types.iter().any(|ty| {
+                *ty == CrateType::StaticLib
+                    || *ty == CrateType::Dylib
+                    || *ty == CrateType::Rlib
+                    || *ty == CrateType::ProcMacro
+            }))
+    {
         let is_unused_pub = |def_id: LocalDefId| {
             tcx.effective_visibilities(()).is_public_at_level(def_id, Level::Reachable)
                 && !pre_deferred_seeding.live_symbols.contains(&def_id)
