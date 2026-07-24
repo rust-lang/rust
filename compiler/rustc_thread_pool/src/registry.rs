@@ -162,6 +162,7 @@ static THE_REGISTRY_SET: Once = Once::new();
 /// Starts the worker threads (if that has not already happened). If
 /// initialization has not already occurred, use the default
 /// configuration.
+#[cold]
 pub(super) fn global_registry() -> &'static Arc<Registry> {
     set_global_registry(default_global_registry)
         .or_else(|err| {
@@ -207,42 +208,9 @@ where
     result
 }
 
+#[cold]
 fn default_global_registry() -> Result<Arc<Registry>, ThreadPoolBuildError> {
-    let result = Registry::new(ThreadPoolBuilder::new());
-
-    // If we're running in an environment that doesn't support threads at all, we can fall back to
-    // using the current thread alone. This is crude, and probably won't work for non-blocking
-    // calls like `spawn` or `broadcast_spawn`, but a lot of stuff does work fine.
-    //
-    // Notably, this allows current WebAssembly targets to work even though their threading support
-    // is stubbed out, and we won't have to change anything if they do add real threading.
-    let unsupported = matches!(&result, Err(e) if e.is_unsupported());
-    if unsupported && WorkerThread::current().is_null() {
-        let builder = ThreadPoolBuilder::new().num_threads(1).spawn_handler(|thread| {
-            // Rather than starting a new thread, we're just taking over the current thread
-            // *without* running the main loop, so we can still return from here.
-            // The WorkerThread is leaked, but we never shutdown the global pool anyway.
-            let worker_thread = Box::leak(Box::new(WorkerThread::from(thread)));
-            let registry = &*worker_thread.registry;
-            let index = worker_thread.index;
-
-            unsafe {
-                WorkerThread::set_current(worker_thread);
-
-                // let registry know we are ready to do work
-                Latch::set(&registry.thread_infos[index].primed);
-            }
-
-            Ok(())
-        });
-
-        let fallback_result = Registry::new(builder);
-        if fallback_result.is_ok() {
-            return fallback_result;
-        }
-    }
-
-    result
+    panic!("tried to implicitly initialize a global thread pool registry")
 }
 
 struct Terminator<'a>(&'a Arc<Registry>);
