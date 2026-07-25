@@ -89,19 +89,18 @@ That file contains a detailed description of the algorithm.
 In the value `Pair(Some(0), true)`, `Pair` is called the constructor of the value, and `Some(0)` and
 `true` are its fields.
 Every matchable value can be decomposed in this way.
-Examples of
-constructors are: `Some`, `None`, `(,)` (the 2-tuple constructor), `Foo {..}` (the constructor for
-a struct `Foo`), and `2` (the constructor for the number `2`).
+Examples of constructors are:
+`Some`, `None`, `(,)` (the 2-tuple constructor), `Foo {..}` (the constructor for a struct `Foo`),
+and `2` (the constructor for the number `2`).
 
 Each constructor takes a fixed number of fields; this is called its arity.
-`Pair` and `(,)` have
-arity 2, `Some` has arity 1, `None` and `42` have arity 0. Each type has a known set of
-constructors.
+`Pair` and `(,)` have arity 2, `Some` has arity 1, `None` and `42` have arity 0.
+Each type has a known set of constructors.
 Some types have many constructors (like `u64`) or even an infinitely many (like `&str` and `&[T]`).
 
 Patterns are similar: `Pair(Some(_), _)` has constructor `Pair` and two fields.
-The difference is
-that we get some extra pattern-only constructors, namely: the wildcard `_`, variable bindings,
+The difference is that we get some extra pattern-only constructors, namely:
+the wildcard `_`, variable bindings,
 integer ranges like `0..=10`, and variable-length slices like `[_, .., _]`.
 We treat or-patterns separately.
 
@@ -119,7 +118,7 @@ A few representative examples:
 - `matches!([v0, v1, v2], [p0, .., p1]) := matches!(v0, p0) && matches!(v2, p1)`
 
 This concept is absolutely central to pattern analysis.
-The [`constructor`] module provides functions to extract, list and manipulate constructors.
+The [`constructor`] module provides functions to extract, list, and manipulate constructors.
 This is a useful enough concept that
 variations of it can be found in other places of the compiler, like in the MIR-lowering of a match
 expression and in some clippy lints.
@@ -164,7 +163,7 @@ time.
 ### Usefulness vs reachability in the presence of empty types
 
 This is likely the subtlest aspect of exhaustiveness.
-To be fully precise, a match doesn't operate on a value, it operates on a place.
+To be fully precise, a match doesn't operate on a value; it operates on a place.
 In certain unsafe circumstances, it is possible for a place to not contain valid data for its type.
 This has subtle consequences for empty types.
 Take the following:
@@ -181,8 +180,8 @@ unsafe {
 ```
 
 In this example, `ptr` is a valid pointer pointing to a place with invalid data.
-The `_` pattern
-does not look at the contents of the place `*ptr`, so this code is ok and the arm is taken.
+The `_` pattern does not look at the contents of the place `*ptr`,
+so this code is ok and the arm is taken.
 In other words, despite the place we are inspecting being of type `Void`, there is a reachable arm.
 If the arm had a binding however:
 
