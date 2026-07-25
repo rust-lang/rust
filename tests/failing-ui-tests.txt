@@ -11,7 +11,6 @@ tests/ui/mir/mir_match_guard_let_chains_drop_order.rs
 tests/ui/panic-runtime/abort-link-to-unwinding-crates.rs
 tests/ui/panic-runtime/abort.rs
 tests/ui/panic-runtime/link-to-abort.rs
-tests/ui/parser/unclosed-delimiter-in-dep.rs
 tests/ui/consts/missing_span_in_backtrace.rs
 tests/ui/drop/dynamic-drop.rs
 tests/ui/simd/issue-17170.rs
@@ -24,14 +23,10 @@ tests/ui/panic-runtime/lto-abort.rs
 tests/ui/lto/lto-thin-rustc-loads-linker-plugin.rs
 tests/ui/async-await/deep-futures-are-freeze.rs
 tests/ui/coroutine/resume-after-return.rs
-tests/ui/simd/masked-load-store.rs
 tests/ui/simd/repr_packed.rs
 tests/ui/async-await/in-trait/dont-project-to-specializable-projection.rs
 tests/ui/coroutine/unwind-abort-mix.rs
-tests/ui/consts/issue-miri-1910.rs
 tests/ui/consts/const_cmp_type_id.rs
-tests/ui/consts/issue-94675.rs
-tests/ui/traits/const-traits/const-drop-fail.rs
 tests/ui/runtime/on-broken-pipe/child-processes.rs
 tests/ui/sanitizer/cfi/assoc-ty-lifetime-issue-123053.rs
 tests/ui/sanitizer/cfi/async-closures.rs
@@ -47,7 +42,6 @@ tests/ui/sanitizer/cfi/virtual-auto.rs
 tests/ui/sanitizer/cfi/sized-associated-ty.rs
 tests/ui/sanitizer/cfi/can-reveal-opaques.rs
 tests/ui/sanitizer/kcfi-mangling.rs
-tests/ui/delegation/fn-header.rs
 tests/ui/consts/const-eval/parse_ints.rs
 tests/ui/simd/intrinsic/generic-as.rs
 tests/ui/runtime/rt-explody-panic-payloads.rs
@@ -76,14 +70,10 @@ tests/ui/sanitizer/kcfi/fn-trait-objects.rs
 tests/ui/statics/const_generics.rs
 tests/ui/test-attrs/test-panic-while-printing.rs
 tests/ui/thir-print/offset_of.rs
-tests/ui/iterators/rangefrom-overflow-debug.rs
-tests/ui/iterators/rangefrom-overflow-overflow-checks.rs
 tests/ui/iterators/iter-filter-count-debug-check.rs
 tests/ui/eii/default/call_impl.rs
 tests/ui/asm/x86_64/global_asm_escape.rs
 tests/ui/lto/all-crates.rs
-tests/ui/traits/inheritance/self-in-supertype.rs
-tests/ui/fmt/fmt_debug/shallow.rs
 tests/ui/eii/static/cross_crate_decl.rs
 tests/ui/eii/static/cross_crate_def.rs
 tests/ui/eii/static/same_address.rs

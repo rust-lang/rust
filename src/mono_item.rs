@@ -165,8 +165,10 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             fn_decl.add_attribute(FnAttribute::Visibility(base::visibility_to_gcc(visibility)));
         }
 
-        // FIXME(GuillaumeGomez): Add support for link section for `Function`.
-        // fn_decl.set_link_section(&attrs.link_section);
+        #[cfg(feature = "master")]
+        if let Some(section) = _attrs.link_section {
+            fn_decl.add_attribute(FnAttribute::Section(section.as_str()));
+        }
 
         // FIXME(antoyo): set unique comdat.
         // FIXME(antoyo): use inline attribute from there in linkage.set() above.

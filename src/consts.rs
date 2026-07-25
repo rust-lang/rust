@@ -160,13 +160,20 @@ impl<'gcc, 'tcx> StaticCodegenMethods for CodegenCx<'gcc, 'tcx> {
         }
 
         // Wasm statics with custom link sections get special treatment as they
-        // go into custom sections of the wasm executable.
-        if self.tcx.sess.target.is_like_wasm {
+        // go into custom sections of the wasm executable. The exception to this
+        // is the `.init_array` section which are treated specially by the wasm linker.
+        if self.tcx.sess.target.is_like_wasm
+            && attrs
+                .link_section
+                .map(|link_section| !link_section.as_str().starts_with(".init_array"))
+                .unwrap_or(true)
+        {
             if let Some(_section) = attrs.link_section {
                 unimplemented!();
             }
-        } else {
-            // FIXME(antoyo): set link section.
+        } else if let Some(_section) = attrs.link_section {
+            #[cfg(feature = "master")]
+            global.add_attribute(VarAttribute::Section(_section.as_str()));
         }
 
         if attrs.flags.contains(CodegenFnAttrFlags::USED_COMPILER) {
