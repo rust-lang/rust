@@ -33,21 +33,21 @@ rustc_codegen_gcc build system
 Usage: build_system [command] [options]
 
 Options:
-        --help    : Displays this help message.
+    --help     : Displays this help message.
 
 Commands:
-        cargo     : Executes a cargo command.
-        rustc     : Compiles the program using the GCC compiler.
-        clean     : Cleans the build directory, removing all compiled files and artifacts.
-        prepare   : Prepares the environment for building, including fetching dependencies and setting up configurations.
-        build     : Compiles the project.
-        test      : Runs tests for the project.
-        info      : Displays information about the build environment and project configuration.
-        clone-gcc : Clones the GCC compiler from a specified source.
-        fmt       : Runs rustfmt
-        fuzz      : Fuzzes `cg_gcc` using rustlantis
-        abi-test   : Runs the abi-cafe test suite on the codegen, checking for ABI compatibility with LLVM
-        check-todo : Checks todo in the project"
+    cargo      : Executes a cargo command.
+    rustc      : Compiles the program using the GCC compiler.
+    clean      : Cleans the build directory, removing all compiled files and artifacts.
+    prepare    : Prepares the environment for building, including fetching dependencies and setting up configurations.
+    build      : Compiles the project.
+    test       : Runs tests for the project.
+    info       : Displays information about the build environment and project configuration.
+    clone-gcc  : Clones the GCC compiler from a specified source.
+    fmt        : Runs rustfmt
+    fuzz       : Fuzzes `cg_gcc` using rustlantis
+    abi-test   : Runs the abi-cafe test suite on the codegen, checking for ABI compatibility with LLVM
+    check-todo : Checks todo in the project"
     );
 }
 
@@ -66,6 +66,35 @@ pub enum Command {
     CheckTodo,
 }
 
+impl<'a> From<Option<&'a str>> for Command {
+    fn from(arg: Option<&'a str>) -> Self {
+        match arg {
+            Some("cargo") => Self::Cargo,
+            Some("rustc") => Self::Rustc,
+            Some("clean") => Self::Clean,
+            Some("prepare") => Self::Prepare,
+            Some("build") => Self::Build,
+            Some("test") => Self::Test,
+            Some("info") => Self::Info,
+            Some("clone-gcc") => Self::CloneGcc,
+            Some("abi-test") => Self::AbiTest,
+            Some("check-todo") => Self::CheckTodo,
+            Some("fmt") => Self::Fmt,
+            Some("fuzz") => Self::Fuzz,
+            Some("--help") => {
+                usage();
+                process::exit(0);
+            }
+            Some(flag) if flag.starts_with('-') => arg_error!("Expected command found flag {}", flag),
+            Some(command) => arg_error!("Unknown command {}", command),
+            None => {
+                usage();
+                process::exit(0);
+            }
+        }
+    }
+}
+
 fn main() {
     if env::var("RUST_BACKTRACE").is_err() {
         unsafe {
@@ -73,32 +102,7 @@ fn main() {
         }
     }
 
-    let command = match env::args().nth(1).as_deref() {
-        Some("cargo") => Command::Cargo,
-        Some("rustc") => Command::Rustc,
-        Some("clean") => Command::Clean,
-        Some("prepare") => Command::Prepare,
-        Some("build") => Command::Build,
-        Some("test") => Command::Test,
-        Some("info") => Command::Info,
-        Some("clone-gcc") => Command::CloneGcc,
-        Some("abi-test") => Command::AbiTest,
-        Some("check-todo") => Command::CheckTodo,
-        Some("fmt") => Command::Fmt,
-        Some("fuzz") => Command::Fuzz,
-        Some("--help") => {
-            usage();
-            process::exit(0);
-        }
-        Some(flag) if flag.starts_with('-') => arg_error!("Expected command found flag {}", flag),
-        Some(command) => arg_error!("Unknown command {}", command),
-        None => {
-            usage();
-            process::exit(0);
-        }
-    };
-
-    if let Err(e) = match command {
+    if let Err(e) = match Command::from(env::args().nth(1).as_deref()) {
         Command::Cargo => rust_tools::run_cargo(),
         Command::Rustc => rust_tools::run_rustc(),
         Command::Clean => clean::run(),
