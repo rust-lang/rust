@@ -556,6 +556,37 @@ impl Ipv4Addr {
     #[stable(feature = "ip_bits", since = "1.80.0")]
     pub const BITS: u32 = 32;
 
+    /// Returns `true` if the IPv4 address is within the specified CIDR subnet prefix.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::Ipv4Addr;
+    ///
+    /// let ip = Ipv4Addr::new(192, 168, 1, 50);
+    /// let network = Ipv4Addr::new(192, 168, 1, 0);
+    ///
+    /// assert!(ip.contains_cidr(network, 24));
+    /// assert!(ip.contains_cidr(network, 16));
+    /// assert!(!ip.contains_cidr(network, 30));
+    /// ```
+    #[unstable(feature = "ip", issue = "27709")]
+    #[rustc_const_unstable(feature = "ip", issue = "27709")]
+    #[must_use]
+    #[inline]
+    pub const fn contains_cidr(&self, network: Ipv4Addr, prefix: u8) -> bool {
+        if prefix == 0 {
+            return true;
+        }
+        if prefix > 32 {
+            return false;
+        }
+        let mask = u32::MAX.checked_shl(32 - prefix as u32).unwrap_or(0);
+        let self_bits = u32::from_be_bytes(self.octets());
+        let net_bits = u32::from_be_bytes(network.octets());
+        (self_bits & mask) == (net_bits & mask)
+    }
+
     /// Converts an IPv4 address into a `u32` representation using native byte order.
     ///
     /// Although IPv4 addresses are big-endian, the `u32` value will use the target platform's
@@ -1374,6 +1405,37 @@ impl Ipv6Addr {
     /// ```
     #[stable(feature = "ip_bits", since = "1.80.0")]
     pub const BITS: u32 = 128;
+
+    /// Returns `true` if the IPv6 address is within the specified CIDR subnet prefix.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::net::Ipv6Addr;
+    ///
+    /// let ip: Ipv6Addr = "2001:db8::1".parse().unwrap();
+    /// let network: Ipv6Addr = "2001:db8::".parse().unwrap();
+    ///
+    /// assert!(ip.contains_cidr(network, 32));
+    /// assert!(ip.contains_cidr(network, 64));
+    /// assert!(!ip.contains_cidr(network, 128));
+    /// ```
+    #[unstable(feature = "ip", issue = "27709")]
+    #[rustc_const_unstable(feature = "ip", issue = "27709")]
+    #[must_use]
+    #[inline]
+    pub const fn contains_cidr(&self, network: Ipv6Addr, prefix: u8) -> bool {
+        if prefix == 0 {
+            return true;
+        }
+        if prefix > 128 {
+            return false;
+        }
+        let mask = u128::MAX.checked_shl(128 - prefix as u32).unwrap_or(0);
+        let self_bits = u128::from_be_bytes(self.octets());
+        let net_bits = u128::from_be_bytes(network.octets());
+        (self_bits & mask) == (net_bits & mask)
+    }
 
     /// Converts an IPv6 address into a `u128` representation using native byte order.
     ///
