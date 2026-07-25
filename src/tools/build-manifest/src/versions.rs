@@ -39,24 +39,28 @@ macro_rules! pkg_type {
     }
 }
 
+// This fork renames dist packages: bare "rust-*" becomes "teeny-*", and
+// "rustc*" becomes "teenyc*" (confirmed against actual build/dist output).
+// Entries below that are still upstream-named haven't been built by this
+// fork yet, so their real prefix (if any) is unverified.
 pkg_type! {
-    Rust = "rust",
-    RustSrc = "rust-src",
-    Rustc = "rustc",
-    RustcDev = "rustc-dev",
+    Rust = "teenyc",
+    RustSrc = "teeny-src",
+    Rustc = "teenyc",
+    RustcDev = "teenyc-dev",
     RustcDocs = "rustc-docs",
     ReproducibleArtifacts = "reproducible-artifacts",
     RustMingw = "rust-mingw",
-    RustStd = "rust-std",
+    RustStd = "teeny-std",
     Cargo = "cargo",
-    HtmlDocs = "rust-docs",
+    HtmlDocs = "teeny-docs",
     RustAnalysis = "rust-analysis",
     RustAnalyzer = "rust-analyzer"; preview = true,
     Clippy = "clippy"; preview = true,
     Rustfmt = "rustfmt"; preview = true,
     LlvmTools = "llvm-tools"; preview = true,
     Miri = "miri"; preview = true,
-    JsonDocs = "rust-docs-json"; preview = true,
+    JsonDocs = "teeny-docs-json"; preview = true,
     RustcCodegenCranelift = "rustc-codegen-cranelift"; preview = true,
     LlvmBitcodeLinker = "llvm-bitcode-linker"; preview = true,
 }

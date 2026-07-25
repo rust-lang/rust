@@ -150,7 +150,7 @@ impl Builder {
         self.add_artifacts_to(&mut manifest);
         self.add_profiles_to(&mut manifest);
         self.add_renames_to(&mut manifest);
-        manifest.pkg.insert("rust".to_string(), self.rust_package(&manifest));
+        manifest.pkg.insert(PkgType::Rust.manifest_component_name(), self.rust_package(&manifest));
 
         self.checksums.fill_missing_checksums(&mut manifest);
 
@@ -441,11 +441,12 @@ impl Builder {
     fn write_channel_files(&mut self, channel_name: &str, manifest: &Manifest) {
         self.write(&toml::to_string(&manifest).unwrap(), channel_name, ".toml");
         self.write(&manifest.date, channel_name, "-date.txt");
-        self.write(
-            manifest.pkg["rust"].git_commit_hash.as_ref().unwrap(),
-            channel_name,
-            "-git-commit-hash.txt",
-        );
+        let rust_pkg_name = PkgType::Rust.manifest_component_name();
+        // Builds with `rust.omit-git-hash` set (the default for the "dev" channel,
+        // see bootstrap.toml) don't embed a git-commit-hash file in their tarballs.
+        let git_commit_hash =
+            manifest.pkg[&rust_pkg_name].git_commit_hash.as_deref().unwrap_or("unknown");
+        self.write(git_commit_hash, channel_name, "-git-commit-hash.txt");
     }
 
     fn write(&mut self, contents: &str, channel_name: &str, suffix: &str) {
