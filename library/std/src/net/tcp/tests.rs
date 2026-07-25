@@ -960,10 +960,26 @@ fn connect_timeout_valid() {
 // #115325: writing a buffer larger than `c_int::MAX` bytes used to fail on
 // macOS with `EINVAL`; `write_all` should now transfer it via short sends.
 #[test]
-#[cfg(target_pointer_width = "64")]
-#[ignore = "requires ~2 GiB of memory"]
+#[cfg(all(target_pointer_width = "64", unix))]
 fn write_buffer_larger_than_c_int_max() {
     const LEN: usize = crate::ffi::c_int::MAX as usize + 1;
+
+    // Back the source buffer with a read-only anonymous mmap rather than a 2 GiB
+    // `Vec`. The pages are demand-zero and never written, so they stay mapped to
+    // the shared zero page and the test doesn't actually consume ~2 GiB of
+    // physical memory while `write_all` reads through the buffer.
+    let data = unsafe {
+        let ptr = libc::mmap(
+            crate::ptr::null_mut(),
+            LEN,
+            libc::PROT_READ,
+            libc::MAP_PRIVATE | libc::MAP_ANON,
+            -1,
+            0,
+        );
+        assert_ne!(ptr, libc::MAP_FAILED, "mmap failed: {}", crate::io::Error::last_os_error());
+        crate::slice::from_raw_parts(ptr as *const u8, LEN)
+    };
 
     let listener = t!(TcpListener::bind("127.0.0.1:0"));
     let addr = t!(listener.local_addr());
@@ -982,8 +998,11 @@ fn write_buffer_larger_than_c_int_max() {
     });
 
     let mut stream = t!(TcpStream::connect(addr));
-    let data = vec![0u8; LEN];
-    t!(stream.write_all(&data));
+    t!(stream.write_all(data));
     drop(stream); // signal EOF so the reader loop terminates
     assert_eq!(reader.join().unwrap(), LEN);
+
+    unsafe {
+        assert_eq!(libc::munmap(data.as_ptr() as *mut libc::c_void, LEN), 0);
+    }
 }

@@ -27,5 +27,4 @@ fn max_send_len_within_platform_limit() {
     } else {
         assert_eq!(MAX_SEND_LEN, <wrlen_t>::MAX as usize);
     }
-    assert_eq!(crate::cmp::min(MAX_SEND_LEN.saturating_add(1), MAX_SEND_LEN), MAX_SEND_LEN);
 }
