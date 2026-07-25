@@ -11,6 +11,6 @@ trait MyTrait<const F: fn() -> ()> {}
 fn foo<'a>(x: &'a ()) -> &'a () { x }
 
 impl<T> Maybe<T> for T where T: MyTrait<{ foo }> {}
-//~^ ERROR the constant `foo` is not of type `fn()`
+//~^ ERROR function items cannot be used as const args
 
 fn main() {}

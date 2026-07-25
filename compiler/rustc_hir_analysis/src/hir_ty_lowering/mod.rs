@@ -2938,42 +2938,17 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     .span_err(path.span, "static items cannot be used as const arguments");
                 return Const::new_error(tcx, guar);
             }
-            // FIXME(const_generics): create real const to allow fn items as const paths
-            Res::Def(DefKind::Fn | DefKind::AssocFn, did) => {
-                self.dcx().span_delayed_bug(span, "function items cannot be used as const args");
-                let args = self.lower_generic_args_of_path_segment(
-                    span,
-                    did,
-                    path.segments.last().unwrap(),
-                );
-
-                if self.tcx().generics_of(did).own_synthetic_params_count() == 0 {
-                    // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
-                    ty::Const::zero_sized(tcx, Ty::new_fn_def(tcx, did, ty::Binder::dummy(args)))
-                } else {
-                    let tcx = self.tcx();
-                    let generics = tcx.generics_of(did);
-
-                    // Use infer tys for synthetic params; otherwise the impl header's trait ref may
-                    // contain callee-owned synthetic params and fail when instantiated with impl args.
-                    // See issue #155834
-                    let args = args.iter().enumerate().map(|(index, arg)| {
-                        let param = generics.param_at(index, tcx);
-                        if param.kind.is_synthetic() {
-                            self.ty_infer(Some(param), span).into()
-                        } else {
-                            arg
-                        }
-                    });
-
-                    // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
-                    ty::Const::zero_sized(
-                        tcx,
-                        Ty::new_fn_def(tcx, did, ty::Binder::dummy(args.collect::<Box<_>>())),
-                    )
-                }
+            // FIXME(const_generics): create real consts to allow fn items as const paths.
+            // Lowering these to recovered `FnDef` consts currently interacts poorly with WF
+            // checking: WF of a `FnDef` walks the function signature, so a signature that mentions
+            // the same function item as a const arg can recurse until it overflows/segfaults.
+            Res::Def(DefKind::Fn | DefKind::AssocFn, _) => {
+                let guar = self
+                    .dcx()
+                    .struct_span_err(span, "function items cannot be used as const args")
+                    .emit();
+                Const::new_error(tcx, guar)
             }
-
             // Exhaustive match to be clear about what exactly we're considering to be
             // an invalid Res for a const path.
             res @ (Res::Def(
