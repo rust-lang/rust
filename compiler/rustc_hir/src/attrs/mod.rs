@@ -85,13 +85,13 @@ macro_rules! find_attr {
         'done: {
             for i in $attributes_list {
                 #[allow(unused_imports)]
-                use rustc_hir::attrs::AttributeKind::*;
-                let i: &rustc_hir::Attribute = i;
+                use $crate::attrs::AttributeKind::*;
+                let i: &$crate::Attribute = i;
                 match i {
-                    rustc_hir::Attribute::Parsed($pattern) $(if $guard)? => {
+                    $crate::Attribute::Parsed($pattern) $(if $guard)? => {
                         break 'done Some($e);
                     }
-                    rustc_hir::Attribute::Unparsed(..) => {}
+                    $crate::Attribute::Unparsed(..) => {}
                     // In lint emitting, there's a specific exception for this warning.
                     // It's not usually emitted from inside macros from other crates
                     // (see https://github.com/rust-lang/rust/issues/110613)
