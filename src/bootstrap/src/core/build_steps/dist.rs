@@ -41,7 +41,21 @@ use crate::utils::tarball::{GeneratedTarball, OverlayKind, Tarball};
 use crate::{CodegenBackendKind, Compiler, DependencyType, FileType, LLVM_TOOLS, Mode, trace};
 
 pub fn pkgname(builder: &Builder<'_>, component: &str) -> String {
-    format!("{}-{}", component, builder.rust_package_vers())
+    format!("{}-{}", dist_component_name(component), builder.rust_package_vers())
+}
+
+/// Rebrands a component identifier (e.g. `"rustc"`, `"rust-std"`) for use in dist tarball
+/// filenames only: `rustc` -> `teenyc`, `rust` -> `teeny`. This only affects the produced
+/// filename/package name; the component identifier itself (used for `x.py dist <name>`
+/// aliases and the rust-installer `--component-name`/manifest) is untouched.
+fn dist_component_name(component: &str) -> String {
+    if let Some(rest) = component.strip_prefix("rustc") {
+        format!("teenyc{rest}")
+    } else if let Some(rest) = component.strip_prefix("rust") {
+        format!("teeny{rest}")
+    } else {
+        component.to_string()
+    }
 }
 
 pub(crate) fn distdir(builder: &Builder<'_>) -> PathBuf {
@@ -520,6 +534,16 @@ impl Step for Rustc {
             // Copy rustc binary
             t!(fs::create_dir_all(image.join("bin")));
             builder.cp_link_r(&src.join("bin"), &image.join("bin"));
+
+            // The compiler binary is named `teenyc`, but cargo and rustup's proxies
+            // look for a binary literally named `rustc` in the toolchain's bin dir.
+            // Ship both names so the published toolchain stays usable through cargo.
+            let bin_dir = image.join("bin");
+            builder.copy_link(
+                &bin_dir.join(exe("teenyc", target)),
+                &bin_dir.join(exe("rustc", target)),
+                FileType::Executable,
+            );
 
             // If enabled, copy rustdoc binary
             if builder

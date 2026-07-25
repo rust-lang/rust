@@ -16,6 +16,7 @@ use std::{env, fs};
 
 use build_helper::exit;
 use build_helper::git::PathFreshness;
+use serde_derive::Deserialize;
 
 use crate::core::builder::{Builder, RunConfig, ShouldRun, Step, StepMetadata};
 use crate::core::config::{Config, TargetSelection};
@@ -24,7 +25,7 @@ use crate::utils::exec::command;
 use crate::utils::helpers::{
     self, exe, get_clang_cl_resource_dir, t, unhashed_basename, up_to_date,
 };
-use crate::{CLang, GitRepo, Kind, trace};
+use crate::{CLang, CodegenBackendKind, GitRepo, Kind, trace};
 
 #[derive(Clone)]
 pub struct LlvmResult {
@@ -263,6 +264,26 @@ pub(crate) fn is_ci_llvm_available_for_target(
     true
 }
 
+/// Config for the LLVM build read from `compiler/rustc_llvm/llvm.toml`. This is the source of
+/// truth for which extra LLVM projects and targets the `mlir` codegen backend needs (MLIR/LLD
+/// and a GPU-capable target list, for Triton).
+#[derive(Debug, Default, Deserialize)]
+struct RustcLlvmToml {
+    enabled_projects: Option<String>,
+    enabled_targets: Option<String>,
+}
+
+impl RustcLlvmToml {
+    fn read(builder: &Builder<'_>) -> Self {
+        let path = builder.src.join("compiler/rustc_llvm/llvm.toml");
+        match fs::read_to_string(&path) {
+            Ok(contents) => toml::from_str(&contents)
+                .unwrap_or_else(|e| panic!("failed to parse {}: {e}", path.display())),
+            Err(_) => RustcLlvmToml::default(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Llvm {
     pub target: TargetSelection,
@@ -323,15 +344,25 @@ impl Step for Llvm {
             (true, true) => "RelWithDebInfo",
         };
 
+        // `compiler/rustc_llvm/llvm.toml` is this fork's source of truth for which LLVM
+        // projects and targets the `mlir` codegen backend needs (MLIR/LLD for Triton, plus a
+        // narrower target list than upstream's default since we don't need every backend).
+        let rustc_llvm_toml =
+            if builder.config.enabled_codegen_backends(target).contains(&CodegenBackendKind::Mlir) {
+                Some(RustcLlvmToml::read(builder))
+            } else {
+                None
+            };
+
         // NOTE: remember to also update `bootstrap.example.toml` when changing the
         // defaults!
-        let llvm_targets = match &builder.config.llvm_targets {
-            Some(s) => s,
-            None => {
-                "AArch64;AMDGPU;ARM;BPF;Hexagon;LoongArch;MSP430;Mips;NVPTX;PowerPC;RISCV;\
-                     Sparc;SystemZ;WebAssembly;X86"
-            }
-        };
+        let default_llvm_targets = "AArch64;AMDGPU;ARM;BPF;Hexagon;LoongArch;MSP430;Mips;NVPTX;\
+                                     PowerPC;RISCV;Sparc;SystemZ;WebAssembly;X86";
+        let llvm_targets: &str = rustc_llvm_toml
+            .as_ref()
+            .and_then(|c| c.enabled_targets.as_deref())
+            .or(builder.config.llvm_targets.as_deref())
+            .unwrap_or(default_llvm_targets);
 
         let llvm_exp_targets = match builder.config.llvm_experimental_targets {
             Some(ref s) => s,
@@ -462,6 +493,22 @@ impl Step for Llvm {
 
         if builder.config.llvm_clang {
             enabled_llvm_projects.push("clang");
+        }
+
+        // The `mlir` codegen backend links against MLIR and LLD (via their CMake package
+        // configs, e.g. `lib/cmake/mlir`/`lib/cmake/lld`) to build Triton. Neither is enabled
+        // by bootstrap's LLVM build by default. `compiler/rustc_llvm/llvm.toml` is the source
+        // of truth for which extra LLVM projects this fork needs; fall back to mlir+lld if
+        // that file is missing.
+        if let Some(rustc_llvm_toml) = &rustc_llvm_toml {
+            match &rustc_llvm_toml.enabled_projects {
+                Some(projects) => enabled_llvm_projects
+                    .extend(projects.split(';').filter(|p| !p.is_empty())),
+                None => {
+                    enabled_llvm_projects.push("mlir");
+                    enabled_llvm_projects.push("lld");
+                }
+            }
         }
 
         // We want libxml to be disabled.

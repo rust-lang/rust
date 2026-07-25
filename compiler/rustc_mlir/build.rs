@@ -22,10 +22,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     let llvm = Llvm::new(&root_dir, &target_dir);
     let triton = Triton::new(&root_dir, &target_dir);
 
-    // Use LLVM install_dir for cmake config paths
-    let llvm_build_dir = llvm.out_dir.join("build");
+    // Use LLVM install_dir (the output of `llvm-config --prefix`) for cmake config paths --
+    // it already directly contains `lib/cmake/{llvm,mlir}`, `lib/`, and `include/`.
     let triton_build_dir = triton.out_dir.join("build");
-    let mlir_dir = llvm_build_dir.join("lib/cmake/mlir");
+    let mlir_dir = llvm.install_dir.join("lib/cmake/mlir");
 
     let mlir_wrapper_build_dir = root_dir.join("target/build/mlir-wrapper-build");
 
@@ -40,8 +40,12 @@ fn main() -> Result<(), Box<dyn Error>> {
     config
         .generator("Ninja")
         .out_dir(mlir_wrapper_build_dir)
+        // Don't let a `DESTDIR` inherited from the environment redirect `cmake --install`
+        // out from under the absolute `CMAKE_INSTALL_PREFIX` we set via `out_dir` above --
+        // see the same guard in bootstrap's LLVM build step (build_steps/llvm.rs).
+        .env("DESTDIR", "")
         .define("CMAKE_BUILD_TYPE", "Release")
-        .define("LLVM_DIR", llvm_build_dir.join("lib/cmake/llvm"))
+        .define("LLVM_DIR", llvm.install_dir.join("lib/cmake/llvm"))
         .define("MLIR_DIR", &mlir_dir)
         .define("TRITON_SOURCE_DIR", triton.source_dir())
         .define("TRITON_BUILD_DIR", triton_build_dir);
@@ -63,7 +67,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("cargo:rustc-link-lib=static=mlir-wrapper");
 
     // Link MLIR libraries
-    let mlir_lib_dir = llvm.out_dir.join("build/lib");
+    let mlir_lib_dir = llvm.install_dir.join("lib");
     println!("cargo:rustc-link-search=native={}", mlir_lib_dir.display());
 
     // Link LLVM support libraries
