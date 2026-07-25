@@ -49,7 +49,7 @@ pub(crate) enum Mode {
 }
 
 impl Mode {
-    fn as_str(&self) -> &'static str {
+    fn as_str(self) -> &'static str {
         match self {
             Self::RustcOnUnimplemented => "rustc_on_unimplemented",
             Self::DiagnosticOnUnimplemented => "diagnostic::on_unimplemented",
@@ -61,7 +61,7 @@ impl Mode {
         }
     }
 
-    fn expected_options(&self) -> &'static str {
+    fn expected_options(self) -> &'static str {
         const DEFAULT: &str =
             "at least one of the `message`, `note` and `label` options are expected";
         const DIAGNOSTIC_ON_TYPE_ERROR_EXPECTED_OPTIONS: &str =
@@ -70,16 +70,16 @@ impl Mode {
             Self::RustcOnUnimplemented => {
                 "see <https://rustc-dev-guide.rust-lang.org/diagnostics.html#rustc_on_unimplemented>"
             }
-            Self::DiagnosticOnUnimplemented => DEFAULT,
-            Self::DiagnosticOnConst => DEFAULT,
-            Self::DiagnosticOnMove => DEFAULT,
-            Self::DiagnosticOnUnknown => DEFAULT,
-            Self::DiagnosticOnUnmatchedArgs => DEFAULT,
+            Self::DiagnosticOnUnimplemented
+            | Self::DiagnosticOnConst
+            | Self::DiagnosticOnMove
+            | Self::DiagnosticOnUnknown
+            | Self::DiagnosticOnUnmatchedArgs => DEFAULT,
             Self::DiagnosticOnTypeError => DIAGNOSTIC_ON_TYPE_ERROR_EXPECTED_OPTIONS,
         }
     }
 
-    fn allowed_options(&self) -> &'static str {
+    fn allowed_options(self) -> &'static str {
         const DEFAULT: &str = "only `message`, `note` and `label` are allowed as options";
         const DIAGNOSTIC_ON_TYPE_ERROR_ALLOWED_OPTIONS: &str =
             "only `note` is allowed as option for `diagnostic::on_type_error`";
@@ -87,16 +87,16 @@ impl Mode {
             Self::RustcOnUnimplemented => {
                 "see <https://rustc-dev-guide.rust-lang.org/diagnostics.html#rustc_on_unimplemented>"
             }
-            Self::DiagnosticOnUnimplemented => DEFAULT,
-            Self::DiagnosticOnConst => DEFAULT,
-            Self::DiagnosticOnMove => DEFAULT,
-            Self::DiagnosticOnUnknown => DEFAULT,
-            Self::DiagnosticOnUnmatchedArgs => DEFAULT,
+            Self::DiagnosticOnUnimplemented
+            | Self::DiagnosticOnConst
+            | Self::DiagnosticOnMove
+            | Self::DiagnosticOnUnknown
+            | Self::DiagnosticOnUnmatchedArgs => DEFAULT,
             Self::DiagnosticOnTypeError => DIAGNOSTIC_ON_TYPE_ERROR_ALLOWED_OPTIONS,
         }
     }
 
-    fn allowed_format_arguments(&self) -> &'static str {
+    fn allowed_format_arguments(self) -> &'static str {
         match self {
             Self::RustcOnUnimplemented => {
                 "see <https://rustc-dev-guide.rust-lang.org/diagnostics.html#rustc_on_unimplemented> for allowed format arguments"
@@ -356,12 +356,11 @@ fn parse_directive_items<'p>(
                 if is_root {
                     let items = or_malformed!(item.args().as_list()?);
                     let mut iter = items.mixed();
-                    let filter: &MetaItemOrLitParser = match iter.next() {
-                        Some(c) => c,
-                        None => {
-                            cx.emit_err(InvalidOnClause::Empty { span });
-                            continue;
-                        }
+                    let filter = if let Some(c) = iter.next() {
+                        c
+                    } else {
+                        cx.emit_err(InvalidOnClause::Empty { span });
+                        continue;
                     };
 
                     let filter = parse_filter(filter);
