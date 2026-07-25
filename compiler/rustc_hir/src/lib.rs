@@ -15,8 +15,6 @@
 #![recursion_limit = "256"]
 // tidy-alphabetical-end
 
-extern crate self as rustc_hir;
-
 mod arena;
 pub mod attrs;
 pub mod canonical_symbols;
