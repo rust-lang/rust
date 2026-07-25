@@ -100,7 +100,12 @@ fn encode_query_values_inner<'a, 'tcx, C, V>(
 }
 
 pub(crate) fn verify_query_key_hashes<'tcx>(tcx: TyCtxt<'tcx>) {
-    if tcx.sess.opts.unstable_opts.incremental_verify_ich || cfg!(debug_assertions) {
+    // Check for query key fingerprint collisions (which break incremental
+    // compilation) in debug builds, or under `-Zincremental-verify-ich`.
+    // The flag is ignored in non-incremental builds, where rustc-perf still passes it.
+    if cfg!(debug_assertions)
+        || (tcx.sess.opts.unstable_opts.incremental_verify_ich && tcx.dep_graph.is_fully_enabled())
+    {
         tcx.sess.time("verify_query_key_hashes", || {
             for_each_query_vtable!(ALL, tcx, |query| {
                 verify_query_key_hashes_inner(query, tcx);
