@@ -9,6 +9,10 @@
 #![stable(feature = "core_ffi", since = "1.30.0")]
 #![allow(non_camel_case_types)]
 
+use crate::fmt;
+use crate::panic::RefUnwindSafe;
+#[stable(feature = "c_str_module", since = "1.88.0")]
+pub mod c_str;
 #[doc(inline)]
 #[stable(feature = "core_c_str", since = "1.64.0")]
 pub use self::c_str::CStr;
@@ -18,14 +22,6 @@ pub use self::c_str::FromBytesUntilNulError;
 #[doc(inline)]
 #[stable(feature = "core_c_str", since = "1.64.0")]
 pub use self::c_str::FromBytesWithNulError;
-use crate::fmt;
-
-#[stable(feature = "c_str_module", since = "1.88.0")]
-pub mod c_str;
-
-mod va_list;
-#[stable(feature = "c_variadic", since = "CURRENT_RUSTC_VERSION")]
-pub use self::va_list::{VaArgSafe, VaList};
 
 mod primitives;
 #[stable(feature = "core_ffi_c", since = "1.64.0")]
@@ -36,34 +32,34 @@ pub use self::primitives::{
 #[unstable(feature = "c_size_t", issue = "88345")]
 pub use self::primitives::{c_ptrdiff_t, c_size_t, c_ssize_t};
 
-// N.B., for LLVM to recognize the void pointer type and by extension
-//     functions like malloc(), we need to have it represented as i8* in
-//     LLVM bitcode. The enum used here ensures this and prevents misuse
-//     of the "raw" type by only having private variants. We need two
-//     variants, because the compiler complains about the repr attribute
-//     otherwise and we need at least one variant as otherwise the enum
-//     would be uninhabited and at least dereferencing such pointers would
-//     be UB.
+mod va_list;
+#[stable(feature = "c_variadic", since = "CURRENT_RUSTC_VERSION")]
+pub use self::va_list::{VaArgSafe, VaList};
+
 #[doc = include_str!("c_void.md")]
 #[lang = "c_void"]
-#[repr(u8)]
+#[repr(transparent)]
 #[stable(feature = "core_c_void", since = "1.30.0")]
-pub enum c_void {
-    #[unstable(
-        feature = "c_void_variant",
-        reason = "temporary implementation detail",
-        issue = "none"
-    )]
-    #[doc(hidden)]
-    __variant1,
-    #[unstable(
-        feature = "c_void_variant",
-        reason = "temporary implementation detail",
-        issue = "none"
-    )]
-    #[doc(hidden)]
-    __variant2,
+pub struct c_void {
+    // Using this weird type ensures a size of 1,
+    // while minimizing UB if a user incorrectly tries
+    // to dereference a pointer to `c_void`,
+    // or reborrow it as a reference.
+    #[cfg(not(miri))]
+    _inner: crate::pin::UnsafePinned<crate::mem::MaybeUninit<u8>>,
+
+    // However, if running in Miri,
+    // we want to maximize detection of UB,
+    // so we make `c_void` uninhabited.
+    #[cfg(miri)]
+    _inner: u8,
+    #[cfg(miri)]
+    _uninhabited: !,
 }
+
+// for backward compatibility.
+#[stable(feature = "core_c_void", since = "1.30.0")]
+impl RefUnwindSafe for c_void {}
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for c_void {
