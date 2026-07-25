@@ -1592,6 +1592,18 @@ pub struct EscapeDefault<'a> {
     pub(super) inner: FlatMap<Chars<'a>, char_mod::EscapeDefault, CharEscapeDefault>,
 }
 
+impl<'a> EscapeDefault<'a> {
+    /// Disassembles the iterator into its internal state.
+    /// Used by alloc for an optimized to_string impl.
+    #[unstable(feature = "std_internals", issue = "none")]
+    pub fn into_parts(
+        self,
+    ) -> (Option<impl Iterator<Item = char>>, Option<Chars<'a>>, Option<impl Iterator<Item = char>>)
+    {
+        self.inner.into_parts()
+    }
+}
+
 /// The return type of [`str::escape_unicode`].
 #[stable(feature = "str_escape", since = "1.34.0")]
 #[derive(Clone, Debug)]
