@@ -1475,6 +1475,9 @@ pub const fn fmaf128(a: f128, b: f128, c: f128) -> f128;
 /// and add instructions. It is unspecified whether or not a fused operation
 /// is selected, and that may depend on optimization level and context, for
 /// example.
+///
+/// The stabilized version of this intrinsic is
+/// [`f16::mul_add_relaxed`](../../std/primitive.f16.html#method.mul_add_relaxed)
 #[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
@@ -1491,6 +1494,9 @@ pub const fn fmuladdf16(a: f16, b: f16, c: f16) -> f16 {
 /// and add instructions. It is unspecified whether or not a fused operation
 /// is selected, and that may depend on optimization level and context, for
 /// example.
+///
+/// The stabilized version of this intrinsic is
+/// [`f32::mul_add_relaxed`](../../std/primitive.f32.html#method.mul_add_relaxed)
 #[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
@@ -1507,6 +1513,9 @@ pub const fn fmuladdf32(a: f32, b: f32, c: f32) -> f32 {
 /// and add instructions. It is unspecified whether or not a fused operation
 /// is selected, and that may depend on optimization level and context, for
 /// example.
+///
+/// The stabilized version of this intrinsic is
+/// [`f64::mul_add_relaxed`](../../std/primitive.f64.html#method.mul_add_relaxed)
 #[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
@@ -1523,6 +1532,9 @@ pub const fn fmuladdf64(a: f64, b: f64, c: f64) -> f64 {
 /// and add instructions. It is unspecified whether or not a fused operation
 /// is selected, and that may depend on optimization level and context, for
 /// example.
+///
+/// The stabilized version of this intrinsic is
+/// [`f128::mul_add_relaxed`](../../std/primitive.f128.html#method.mul_add_relaxed)
 #[inline]
 #[rustc_intrinsic]
 #[rustc_nounwind]
