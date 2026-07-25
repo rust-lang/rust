@@ -2,14 +2,14 @@
 // removed regardless of how many whitespace characters it is made of.
 impl Even for Foo {
     const FAIL: &'static str = "";
-    
+
     #[rustfmt::skip]
     fn to_style(&self, template: &str) {}
 }
 
 impl Odd for Foo {
     const FAIL: &'static str = "";
-  
+
     #[rustfmt::skip]
     fn to_style(&self, template: &str) {}
 }
@@ -23,7 +23,7 @@ impl Single for Foo {
 
 impl Tabs for Foo {
     const FAIL: &'static str = "";
-		
+
     #[rustfmt::skip]
     fn to_style(&self, template: &str) {}
 }

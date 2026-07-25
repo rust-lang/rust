@@ -365,8 +365,8 @@ impl<'a> FmtVisitor<'a> {
 
                 status.cur_line += 1;
                 status.line_start = i + 1;
-            } else if c.is_whitespace() && status.last_wspace.is_none() {
-                status.last_wspace = Some(i);
+            } else if c.is_whitespace() {
+                status.last_wspace.get_or_insert(i);
             } else {
                 status.last_wspace = None;
             }
