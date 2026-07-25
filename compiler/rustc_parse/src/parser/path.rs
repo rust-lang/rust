@@ -817,13 +817,13 @@ impl<'a> Parser<'a> {
                     .dcx()
                     .struct_span_err(after_eq.to(before_next), "missing type to the right of `=`");
                 if matches!(self.token.kind, token::Comma | token::Gt) {
-                    err.span_suggestion(
+                    err.span_suggestion_verbose(
                         self.psess.source_map().next_point(eq_span).to(before_next),
                         "to constrain the associated type, add a type after `=`",
                         " TheType",
                         Applicability::HasPlaceholders,
                     );
-                    err.span_suggestion(
+                    err.span_suggestion_verbose(
                         prev_token_span.shrink_to_hi().to(before_next),
                         format!("remove the `=` if `{ident}` is a type"),
                         "",

@@ -1,8 +1,8 @@
-error[E0658]: the `#[unroll]` attribute is an experimental feature
-  --> $DIR/feature-gate-loop-hints.rs:2:5
+error[E0658]: the `unroll` attribute is an experimental feature
+  --> $DIR/feature-gate-loop-hints.rs:2:7
    |
 LL |     #[unroll]
-   |     ^^^^^^^^^
+   |       ^^^^^^
    |
    = note: see issue #156874 <https://github.com/rust-lang/rust/issues/156874> for more information
    = help: add `#![feature(loop_hints)]` to the crate attributes to enable

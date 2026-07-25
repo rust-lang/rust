@@ -4,7 +4,7 @@ use std::fmt::Debug;
 
 use rustc_ast as ast;
 use rustc_ast::NodeId;
-use rustc_data_structures::unord::UnordMap;
+use rustc_data_structures::fx::FxIndexMap;
 use rustc_error_messages::{DiagArgValue, IntoDiagArg};
 use rustc_macros::{Decodable, Encodable, StableHash};
 use rustc_span::Symbol;
@@ -962,4 +962,6 @@ pub enum LifetimeRes {
     ElidedAnchor { start: NodeId, end: NodeId },
 }
 
-pub type DocLinkResMap = UnordMap<(Symbol, Namespace), Option<Res<NodeId>>>;
+// FxIndexMap is necessary because its data ends up in .rmeta files,
+// so its iteration order must be consistent. See #159677 for context.
+pub type DocLinkResMap = FxIndexMap<(Symbol, Namespace), Option<Res<NodeId>>>;

@@ -2933,7 +2933,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 .unwrap_or_else(|guar| Const::new_error(tcx, guar))
             }
             Res::Def(DefKind::Static { .. }, _) => {
-                span_bug!(span, "use of bare `static` ConstArgKind::Path's not yet supported")
+                let guar = self
+                    .dcx()
+                    .span_err(path.span, "static items cannot be used as const arguments");
+                return Const::new_error(tcx, guar);
             }
             // FIXME(const_generics): create real const to allow fn items as const paths
             Res::Def(DefKind::Fn | DefKind::AssocFn, did) => {

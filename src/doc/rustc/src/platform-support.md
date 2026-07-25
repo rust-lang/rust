@@ -105,6 +105,7 @@ target | notes
 [`powerpc64le-unknown-linux-gnu`](platform-support/powerpc64le-unknown-linux-gnu.md) | PPC64LE Linux (kernel 3.10+, glibc 2.17)
 [`powerpc64le-unknown-linux-musl`](platform-support/powerpc64le-unknown-linux-musl.md) | PPC64LE Linux (kernel 4.19+, musl 1.2.5)
 [`riscv64gc-unknown-linux-gnu`](platform-support/riscv64gc-unknown-linux-gnu.md) | RISC-V Linux (kernel 4.20+, glibc 2.29)
+[`riscv64gc-unknown-linux-musl`](platform-support/riscv64gc-unknown-linux-musl.md) | RISC-V Linux (kernel 4.20+, musl 1.2.5)
 [`s390x-unknown-linux-gnu`](platform-support/s390x-unknown-linux-gnu.md) | S390x Linux (kernel 3.2+, glibc 2.17)
 [`x86_64-apple-darwin`](platform-support/apple-darwin.md) | 64-bit macOS (10.12+, Sierra+)
 [`x86_64-pc-windows-gnullvm`](platform-support/windows-gnullvm.md) | 64-bit x86 MinGW (Windows 10+), LLVM ABI
@@ -196,7 +197,6 @@ target | std | notes
 [`riscv32imafc-unknown-none-elf`](platform-support/riscv32-unknown-none-elf.md) | * | Bare RISC-V (RV32IMAFC ISA)
 [`riscv32imc-unknown-none-elf`](platform-support/riscv32-unknown-none-elf.md) | * | Bare RISC-V (RV32IMC ISA)
 [`riscv64a23-unknown-linux-gnu`](platform-support/riscv64a23-unknown-linux-gnu.md) | ✓ | RISC-V Linux (kernel 6.8.0+, glibc 2.39)
-[`riscv64gc-unknown-linux-musl`](platform-support/riscv64gc-unknown-linux-musl.md) | ✓ |RISC-V Linux (kernel 4.20+, musl 1.2.5)
 `riscv64gc-unknown-none-elf` | * | Bare RISC-V (RV64IMAFDC ISA)
 [`riscv64im-unknown-none-elf`](platform-support/riscv64im-unknown-none-elf.md) | * | Bare RISC-V (RV64IM ISA)
 `riscv64imac-unknown-none-elf` | * | Bare RISC-V (RV64IMAC ISA)

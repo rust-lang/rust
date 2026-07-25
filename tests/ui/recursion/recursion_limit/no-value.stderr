@@ -1,8 +1,8 @@
 error[E0539]: malformed `recursion_limit` attribute input
-  --> $DIR/no-value.rs:3:1
+  --> $DIR/no-value.rs:3:4
    |
 LL | #![recursion_limit]
-   | ^^^^^^^^^^^^^^^^^^^
+   |    ^^^^^^^^^^^^^^^
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/attributes/limits.html#the-recursion_limit-attribute>
 help: must be of the form

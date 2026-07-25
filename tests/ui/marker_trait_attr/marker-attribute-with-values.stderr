@@ -1,8 +1,8 @@
 error[E0565]: malformed `marker` attribute input
-  --> $DIR/marker-attribute-with-values.rs:3:1
+  --> $DIR/marker-attribute-with-values.rs:3:3
    |
 LL | #[marker(always)]
-   | ^^^^^^^^--------^
+   |   ^^^^^^--------
    |         |
    |         didn't expect any arguments here
    |
@@ -13,10 +13,10 @@ LL + #[marker]
    |
 
 error[E0565]: malformed `marker` attribute input
-  --> $DIR/marker-attribute-with-values.rs:6:1
+  --> $DIR/marker-attribute-with-values.rs:6:3
    |
 LL | #[marker("never")]
-   | ^^^^^^^^---------^
+   |   ^^^^^^---------
    |         |
    |         didn't expect any arguments here
    |
@@ -27,10 +27,10 @@ LL + #[marker]
    |
 
 error[E0565]: malformed `marker` attribute input
-  --> $DIR/marker-attribute-with-values.rs:9:1
+  --> $DIR/marker-attribute-with-values.rs:9:3
    |
 LL | #[marker(key = "value")]
-   | ^^^^^^^^---------------^
+   |   ^^^^^^---------------
    |         |
    |         didn't expect any arguments here
    |

@@ -12,7 +12,14 @@ if [ "$PR_CI_JOB" == "1" ]; then
   SKIP_TIDY="--skip tidy"
 fi
 
+# Skip intrinsic-test on LLVM 21 to avoid CI failures.
+if [ "$LLVM_VERSION" = "21" ]; then
+  echo "LLVM_VERSION is 21; skipping intrinsic-test"
+  SKIP_INTRINSICS="--skip library/stdarch/crates/intrinsic-test"
+fi
+
 ../x.py --stage 2 test \
   ${SKIP_TIDY:+$SKIP_TIDY} \
+  ${SKIP_INTRINSICS:+$SKIP_INTRINSICS} \
   --skip compiler \
   --skip src

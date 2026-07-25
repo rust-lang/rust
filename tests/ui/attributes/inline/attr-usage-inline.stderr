@@ -1,10 +1,10 @@
-error: `#[inline]` attribute cannot be used on structs
-  --> $DIR/attr-usage-inline.rs:7:1
+error: the `inline` attribute cannot be used on structs
+  --> $DIR/attr-usage-inline.rs:7:3
    |
 LL | #[inline]
-   | ^^^^^^^^^
+   |   ^^^^^^
    |
-   = help: `#[inline]` can only be applied to functions
+   = help: the `inline` attribute can only be applied to functions
 
 error[E0518]: attribute should be applied to function or closure
   --> $DIR/attr-usage-inline.rs:25:1
@@ -12,32 +12,32 @@ error[E0518]: attribute should be applied to function or closure
 LL | #[inline]
    | ^^^^^^^^^ not a function or closure
 
-warning: `#[inline]` attribute cannot be used on struct fields
-  --> $DIR/attr-usage-inline.rs:11:5
+warning: the `inline` attribute cannot be used on struct fields
+  --> $DIR/attr-usage-inline.rs:11:7
    |
 LL |     #[inline]
-   |     ^^^^^^^^^
+   |       ^^^^^^
    |
-   = help: `#[inline]` can only be applied to functions
+   = help: the `inline` attribute can only be applied to functions
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: requested on the command line with `-W unused-attributes`
 
-warning: `#[inline]` attribute cannot be used on macro defs
-  --> $DIR/attr-usage-inline.rs:18:1
+warning: the `inline` attribute cannot be used on macro defs
+  --> $DIR/attr-usage-inline.rs:18:3
    |
 LL | #[inline]
-   | ^^^^^^^^^
+   |   ^^^^^^
    |
-   = help: `#[inline]` can only be applied to functions
+   = help: the `inline` attribute can only be applied to functions
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
-warning: `#[inline]` attribute cannot be used on macro defs
-  --> $DIR/attr-usage-inline.rs:25:1
+warning: the `inline` attribute cannot be used on macro defs
+  --> $DIR/attr-usage-inline.rs:25:3
    |
 LL | #[inline]
-   | ^^^^^^^^^
+   |   ^^^^^^
    |
-   = help: `#[inline]` can only be applied to functions
+   = help: the `inline` attribute can only be applied to functions
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
 
 error: aborting due to 2 previous errors; 3 warnings emitted

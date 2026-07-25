@@ -155,3 +155,6 @@ expression: test --skip=tests
 [Test] test::TestFloatParse
     targets: [x86_64-unknown-linux-gnu]
     - Set({test::src/tools/test-float-parse})
+[Test] test::IntrinsicTest
+    targets: [x86_64-unknown-linux-gnu]
+    - Set({test::library/stdarch/crates/intrinsic-test})

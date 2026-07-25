@@ -190,6 +190,17 @@ pub(crate) struct FnParamForbiddenAttr {
 }
 
 #[derive(Diagnostic)]
+#[diag("`#[{$eii_name}]` is not allowed to have `#[{$attr_name}]`")]
+pub(crate) struct EiiImplAttributeNotSupported<'a> {
+    #[primary_span]
+    pub attr_span: Span,
+    pub attr_name: &'a str,
+    pub eii_name: String,
+    #[label("`#[{$eii_name}]` is not allowed to have `#[{$attr_name}]`")]
+    pub eii_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("`self` parameter is only allowed in associated functions")]
 #[note("associated functions are those in `impl` or `trait` definitions")]
 pub(crate) struct FnParamForbiddenSelf {

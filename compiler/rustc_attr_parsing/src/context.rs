@@ -916,7 +916,7 @@ pub(crate) struct AttributeDiagnosticContext<'a, 'f, 'sess> {
 impl<'a, 'f, 'sess: 'f> AttributeDiagnosticContext<'a, 'f, 'sess> {
     fn emit_parse_error(
         &mut self,
-        span: Span,
+        mut span: Span,
         reason: AttributeParseErrorReason<'_>,
     ) -> ErrorGuaranteed {
         let suggestions = if self.custom_suggestions.is_empty() {
@@ -925,9 +925,16 @@ impl<'a, 'f, 'sess: 'f> AttributeDiagnosticContext<'a, 'f, 'sess> {
             AttributeParseErrorSuggestions::CreatedByParser(mem::take(&mut self.custom_suggestions))
         };
 
+        // If the span is the full attribute (including the `#[`/`]` delimiters) shrink it to
+        // exclude those delimiters, because that's what we want in error messages.
+        if span == self.attr_span {
+            span = self.inner_span;
+        }
+
         self.emit_err(AttributeParseError {
             span,
             attr_span: self.attr_span,
+            inner_span: self.inner_span,
             template: *self.template,
             path: self.attr_path.clone(),
             description: self.parsed_description,

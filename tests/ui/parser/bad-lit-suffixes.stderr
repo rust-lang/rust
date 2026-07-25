@@ -137,10 +137,10 @@ LL | #[must_use = "string"suffix]
    |              ^^^^^^^^^^^^^^ invalid suffix `suffix`
 
 error[E0539]: malformed `must_use` attribute input
-  --> $DIR/bad-lit-suffixes.rs:34:1
+  --> $DIR/bad-lit-suffixes.rs:34:3
    |
 LL | #[must_use = "string"suffix]
-   | ^^^^^^^^^^^^^--------------^
+   |   ^^^^^^^^^^^--------------
    |              |
    |              expected a string literal here
    |

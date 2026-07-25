@@ -1569,6 +1569,8 @@ impl<'a> Parser<'a> {
         }
         Ok(MutRestriction {
             kind: RestrictionKind::Unrestricted,
+            // NOTE: this span is later thrown away
+            //  as a part of FieldDef size optimization.
             span: self.token.span.shrink_to_lo(),
         })
     }
@@ -1800,7 +1802,7 @@ impl<'a> Parser<'a> {
                 format!("the {kind_desc} was parsed as having {op_desc} binary expression"),
             );
 
-            err.span_suggestion(
+            err.span_suggestion_verbose(
                 lhs_end_span,
                 format!("you may have meant to write a `;` to terminate the {kind_desc} earlier"),
                 ";",

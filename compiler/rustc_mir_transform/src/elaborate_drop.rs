@@ -802,6 +802,7 @@ where
                 match self.elaborator.typing_env().typing_mode().assert_not_erased() {
                     ty::TypingMode::PostAnalysis | ty::TypingMode::Codegen => {}
                     ty::TypingMode::Coherence
+                    | ty::TypingMode::Reflection
                     | ty::TypingMode::Typeck { .. }
                     | ty::TypingMode::PostTypeckUntilBorrowck { .. }
                     | ty::TypingMode::PostBorrowck { .. } => {
