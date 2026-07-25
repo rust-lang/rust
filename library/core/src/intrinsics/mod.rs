@@ -55,8 +55,9 @@
 
 use crate::ffi::{VaArgSafe, VaList};
 use crate::marker::{ConstParamTy, DiscriminantKind, PointeeSized, Tuple};
+use crate::mem::SizedTypeProperties;
 use crate::num::imp::libm;
-use crate::{mem, ptr};
+use crate::ptr;
 
 mod bounds;
 pub mod fallback;
@@ -2193,7 +2194,7 @@ pub const fn rotate_left<T: [const] fallback::FunnelShift>(x: T, shift: u32) -> 
     // Make sure to call the intrinsic for `funnel_shl`, not the fallback impl.
     // SAFETY: we modulo `shift` so that the result is definitely less than the size of
     // `T` in bits.
-    unsafe { unchecked_funnel_shl(x, x, shift % (mem::size_of::<T>() as u32 * 8)) }
+    unsafe { unchecked_funnel_shl(x, x, shift % (T::SIZE as u32 * 8)) }
 }
 
 /// Performs rotate right.
@@ -2215,7 +2216,7 @@ pub const fn rotate_right<T: [const] fallback::FunnelShift>(x: T, shift: u32) ->
     // Make sure to call the intrinsic for `funnel_shr`, not the fallback impl.
     // SAFETY: we modulo `shift` so that the result is definitely less than the size of
     // `T` in bits.
-    unsafe { unchecked_funnel_shr(x, x, shift % (mem::size_of::<T>() as u32 * 8)) }
+    unsafe { unchecked_funnel_shr(x, x, shift % (T::SIZE as u32 * 8)) }
 }
 
 /// Wrapping (modular) addition. Computes `a + b`,

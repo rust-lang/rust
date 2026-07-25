@@ -3,6 +3,7 @@
 #![allow(deprecated)] // the types in this module are deprecated
 
 use crate::marker::PhantomData;
+use crate::mem::SizedTypeProperties;
 use crate::{cmp, ptr};
 
 /// An implementation of SipHash 1-3.
@@ -101,12 +102,12 @@ macro_rules! compress {
 /// `$i..$i+size_of::<$int_ty>()`, so that must be in-bounds.
 macro_rules! load_int_le {
     ($buf:expr, $i:expr, $int_ty:ident) => {{
-        debug_assert!($i + size_of::<$int_ty>() <= $buf.len());
+        debug_assert!($i + <$int_ty>::SIZE <= $buf.len());
         let mut data = 0 as $int_ty;
         ptr::copy_nonoverlapping(
             $buf.as_ptr().add($i),
             &mut data as *mut _ as *mut u8,
-            size_of::<$int_ty>(),
+            <$int_ty>::SIZE,
         );
         data.to_le()
     }};

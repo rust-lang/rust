@@ -2,6 +2,7 @@
 
 use super::Utf8Error;
 use crate::intrinsics::const_eval_select;
+use crate::mem::SizedTypeProperties;
 
 /// Returns the initial codepoint accumulator for the first byte.
 /// The first byte is special, only want bottom 5 bits for width 2, 4 bits
@@ -127,7 +128,7 @@ pub(super) const fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
     let mut index = 0;
     let len = v.len();
 
-    const USIZE_BYTES: usize = size_of::<usize>();
+    const USIZE_BYTES: usize = usize::SIZE;
 
     let ascii_block_size = 2 * USIZE_BYTES;
     let blocks_end = if len >= ascii_block_size { len - ascii_block_size + 1 } else { 0 };

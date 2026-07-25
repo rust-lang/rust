@@ -1,6 +1,7 @@
 #![allow(clippy::enum_clike_unportable_variant)]
 
 use crate::marker::MetaSized;
+use crate::mem::SizedTypeProperties;
 use crate::num::NonZero;
 use crate::ub_checks::assert_unsafe_precondition;
 use crate::{cmp, fmt, hash, mem, num};
@@ -22,7 +23,7 @@ pub struct Alignment {
 }
 
 // Alignment is `repr(usize)`, but via extra steps.
-const _: () = assert!(size_of::<Alignment>() == size_of::<usize>());
+const _: () = assert!(Alignment::SIZE == usize::SIZE);
 const _: () = assert!(align_of::<Alignment>() == align_of::<usize>());
 
 fn _alignment_can_be_structurally_matched(a: Alignment) -> bool {

@@ -1,5 +1,6 @@
 /// Definitions of traits for numeric types
 // Implementation based on `num_conv` by jhpratt, under (MIT OR Apache-2.0).
+use crate::mem::SizedTypeProperties;
 
 /// Trait for types that this type can be truncated to
 #[unstable(feature = "num_internals", reason = "internal implementation detail", issue = "none")]
@@ -26,7 +27,7 @@ pub impl(self) const trait WidenTarget<Target> {
 macro_rules! impl_truncate {
     ($($from:ty => $($to:ty),+;)*) => {$($(
         const _: () = assert!(
-            size_of::<$from>() >= size_of::<$to>(),
+            <$from>::SIZE >= <$to>::SIZE,
             concat!(
                 "cannot truncate ",
                 stringify!($from),
@@ -73,7 +74,7 @@ macro_rules! impl_truncate {
 macro_rules! impl_widen {
     ($($from:ty => $($to:ty),+;)*) => {$($(
         const _: () = assert!(
-            size_of::<$from>() <= size_of::<$to>(),
+            <$from>::SIZE <= <$to>::SIZE,
             concat!(
                 "cannot widen ",
                 stringify!($from),

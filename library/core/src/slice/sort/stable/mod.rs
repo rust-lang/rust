@@ -109,7 +109,7 @@ fn driftsort_main<T, F: FnMut(&T, &T) -> bool, BufT: BufGuard<T>>(v: &mut [T], i
     // If min_good_run_len is ever modified, this code must be updated to allocate
     // the correct scratch size for it.
     const MAX_FULL_ALLOC_BYTES: usize = 8_000_000; // 8MB
-    let max_full_alloc = MAX_FULL_ALLOC_BYTES / size_of::<T>();
+    let max_full_alloc = MAX_FULL_ALLOC_BYTES / T::SIZE;
     let len = v.len();
     let alloc_len = cmp::max(
         cmp::max(len - len / 2, cmp::min(len, max_full_alloc)),
@@ -157,7 +157,7 @@ impl<T, const N: usize> AlignedStorage<T, N> {
     }
 
     fn as_uninit_slice_mut(&mut self) -> &mut [MaybeUninit<T>] {
-        let len = N / size_of::<T>();
+        let len = N / T::SIZE;
 
         // SAFETY: `_align` ensures we are correctly aligned.
         unsafe { core::slice::from_raw_parts_mut(self.storage.as_mut_ptr().cast(), len) }

@@ -5,6 +5,7 @@ use core::ascii::EscapeDefault;
 use crate::fmt::{self, Write};
 #[cfg(not(all(target_arch = "loongarch64", target_feature = "lsx")))]
 use crate::intrinsics::const_eval_select;
+use crate::mem::SizedTypeProperties;
 use crate::{ascii, iter, ops};
 
 impl [u8] {
@@ -470,7 +471,7 @@ const fn is_ascii(s: &[u8]) -> bool {
                 (NONASCII_MASK & v) != 0
             }
 
-            const USIZE_SIZE: usize = size_of::<usize>();
+            const USIZE_SIZE: usize = usize::SIZE;
 
             let len = s.len();
             let align_offset = s.as_ptr().align_offset(USIZE_SIZE);
@@ -592,7 +593,7 @@ fn is_ascii_sse2(bytes: &[u8]) -> bool {
 #[inline]
 #[rustc_allow_const_fn_unstable(const_eval_select)]
 const fn is_ascii(bytes: &[u8]) -> bool {
-    const USIZE_SIZE: usize = size_of::<usize>();
+    const USIZE_SIZE: usize = usize::SIZE;
     const NONASCII_MASK: usize = usize::MAX / 255 * 0x80;
 
     const_eval_select!(

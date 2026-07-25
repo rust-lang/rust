@@ -538,7 +538,7 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
         (
             src: *const () = src as *const (),
             dst: *mut () = dst as *mut (),
-            size: usize = size_of::<T>(),
+            size: usize = T::SIZE,
             align: usize = align_of::<T>(),
             count: usize = count,
         ) => {
@@ -1388,7 +1388,7 @@ pub const unsafe fn swap_nonoverlapping<T>(x: *mut T, y: *mut T, count: usize) {
         (
             x: *mut () = x as *mut (),
             y: *mut () = y as *mut (),
-            size: usize = size_of::<T>(),
+            size: usize = T::SIZE,
             align: usize = align_of::<T>(),
             count: usize = count,
         ) => {
@@ -1497,7 +1497,7 @@ unsafe fn swap_nonoverlapping_bytes(x: *mut u8, y: *mut u8, bytes: NonZero<usize
         debug_assert_eq!(i, bytes);
     }
 
-    const CHUNK_SIZE: usize = size_of::<*const ()>();
+    const CHUNK_SIZE: usize = <*const ()>::SIZE;
     let bytes = bytes.get();
 
     let chunks = bytes / CHUNK_SIZE;
@@ -1816,7 +1816,7 @@ pub const unsafe fn read_unaligned<T>(src: *const T) -> T {
     // Always true thanks to the repr, but to demonstrate
     const {
         assert!(mem::offset_of!(Unaligned::<T>, 0) == 0);
-        assert!(size_of::<T>() == size_of::<Unaligned<T>>());
+        assert!(T::SIZE == Unaligned::<T>::SIZE);
     }
 
     let src = src.cast::<Unaligned<T>>();
@@ -2026,7 +2026,7 @@ pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
     // Always true thanks to the repr, but to demonstrate
     const {
         assert!(mem::offset_of!(Unaligned::<T>, 0) == 0);
-        assert!(size_of::<T>() == size_of::<Unaligned<T>>());
+        assert!(T::SIZE == size_of::<Unaligned<T>>());
     }
 
     let dst = dst.cast::<Unaligned<T>>();
@@ -2325,7 +2325,7 @@ pub(crate) unsafe fn align_offset<T: Sized>(p: *const T, a: usize) -> usize {
         inverse & m_minus_one
     }
 
-    let stride = size_of::<T>();
+    let stride = T::SIZE;
 
     let addr: usize = p.addr();
 

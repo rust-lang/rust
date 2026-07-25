@@ -22,12 +22,12 @@ pub(super) const unsafe fn ptr_rotate<T>(left: usize, mid: *mut T, right: usize)
     // `T` is not a zero-sized type, so it's okay to divide by its size.
     if !cfg!(feature = "optimize_for_size")
         // FIXME(const-hack): Use cmp::min when available in const
-        && const_min(left, right) <= size_of::<BufType>() / size_of::<T>()
+        && const_min(left, right) <= BufType::SIZE / T::SIZE
     {
         // SAFETY: guaranteed by the caller
         unsafe { ptr_rotate_memmove(left, mid, right) };
     } else if !cfg!(feature = "optimize_for_size")
-        && ((left + right < 24) || (size_of::<T>() > size_of::<[usize; 4]>()))
+        && ((left + right < 24) || (T::SIZE > <[usize; 4]>::SIZE))
     {
         // SAFETY: guaranteed by the caller
         unsafe { ptr_rotate_gcd(left, mid, right) }

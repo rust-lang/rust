@@ -247,7 +247,7 @@ use self::Ordering::*;
 use crate::cell::UnsafeCell;
 use crate::hint::spin_loop;
 use crate::intrinsics::AtomicOrdering as AO;
-use crate::mem::transmute;
+use crate::mem::{SizedTypeProperties, transmute};
 use crate::{fmt, intrinsics};
 
 #[unstable(
@@ -2205,7 +2205,7 @@ impl<T> AtomicPtr<T> {
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[rustc_should_not_be_called_on_const_items]
     pub fn fetch_ptr_add(&self, val: usize, order: Ordering) -> *mut T {
-        self.fetch_byte_add(val.wrapping_mul(size_of::<T>()), order)
+        self.fetch_byte_add(val.wrapping_mul(T::SIZE), order)
     }
 
     /// Offsets the pointer's address by subtracting `val` (in units of `T`),
@@ -2250,7 +2250,7 @@ impl<T> AtomicPtr<T> {
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     #[rustc_should_not_be_called_on_const_items]
     pub fn fetch_ptr_sub(&self, val: usize, order: Ordering) -> *mut T {
-        self.fetch_byte_sub(val.wrapping_mul(size_of::<T>()), order)
+        self.fetch_byte_sub(val.wrapping_mul(T::SIZE), order)
     }
 
     /// Offsets the pointer's address by adding `val` *bytes*, returning the

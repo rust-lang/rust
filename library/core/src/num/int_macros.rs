@@ -3751,7 +3751,7 @@ macro_rules! int_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        pub const fn to_be_bytes(self) -> [u8; size_of::<Self>()] {
+        pub const fn to_be_bytes(self) -> [u8; Self::SIZE] {
             self.to_be().to_ne_bytes()
         }
 
@@ -3771,7 +3771,7 @@ macro_rules! int_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        pub const fn to_le_bytes(self) -> [u8; size_of::<Self>()] {
+        pub const fn to_le_bytes(self) -> [u8; Self::SIZE] {
             self.to_le().to_ne_bytes()
         }
 
@@ -3808,7 +3808,7 @@ macro_rules! int_impl {
         #[must_use = "this returns the result of the operation, \
                       without modifying the original"]
         #[inline]
-        pub const fn to_ne_bytes(self) -> [u8; size_of::<Self>()] {
+        pub const fn to_ne_bytes(self) -> [u8; Self::SIZE] {
             // SAFETY: integers are plain old datatypes so we can always transmute them to
             // arrays of bytes
             unsafe { mem::transmute(self) }
@@ -3839,7 +3839,7 @@ macro_rules! int_impl {
         #[rustc_const_stable(feature = "const_int_conversion", since = "1.44.0")]
         #[must_use]
         #[inline]
-        pub const fn from_be_bytes(bytes: [u8; size_of::<Self>()]) -> Self {
+        pub const fn from_be_bytes(bytes: [u8; Self::SIZE]) -> Self {
             Self::from_be(Self::from_ne_bytes(bytes))
         }
 
@@ -3868,7 +3868,7 @@ macro_rules! int_impl {
         #[rustc_const_stable(feature = "const_int_conversion", since = "1.44.0")]
         #[must_use]
         #[inline]
-        pub const fn from_le_bytes(bytes: [u8; size_of::<Self>()]) -> Self {
+        pub const fn from_le_bytes(bytes: [u8; Self::SIZE]) -> Self {
             Self::from_le(Self::from_ne_bytes(bytes))
         }
 
@@ -3911,7 +3911,7 @@ macro_rules! int_impl {
         // SAFETY: const sound because integers are plain old datatypes so we can always
         // transmute to them
         #[inline]
-        pub const fn from_ne_bytes(bytes: [u8; size_of::<Self>()]) -> Self {
+        pub const fn from_ne_bytes(bytes: [u8; Self::SIZE]) -> Self {
             // SAFETY: integers are plain old datatypes so we can always transmute to them
             unsafe { mem::transmute(bytes) }
         }

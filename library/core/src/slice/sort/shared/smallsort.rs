@@ -1,6 +1,6 @@
 //! This module contains a variety of sort implementations that are optimized for small lengths.
 
-use crate::mem::{self, ManuallyDrop, MaybeUninit};
+use crate::mem::{self, ManuallyDrop, MaybeUninit, SizedTypeProperties};
 use crate::slice::sort::shared::FreezeMarker;
 use crate::{hint, intrinsics, ptr, slice};
 
@@ -113,7 +113,7 @@ pub(crate) trait UnstableSmallSortFreezeTypeImpl: Sized + FreezeMarker {
 impl<T: FreezeMarker> UnstableSmallSortFreezeTypeImpl for T {
     #[inline(always)]
     default fn small_sort_threshold() -> usize {
-        if (size_of::<T>() * SMALL_SORT_GENERAL_SCRATCH_LEN) <= MAX_STACK_ARRAY_SIZE {
+        if (T::SIZE * SMALL_SORT_GENERAL_SCRATCH_LEN) <= MAX_STACK_ARRAY_SIZE {
             SMALL_SORT_GENERAL_THRESHOLD
         } else {
             SMALL_SORT_FALLBACK_THRESHOLD
@@ -125,7 +125,7 @@ impl<T: FreezeMarker> UnstableSmallSortFreezeTypeImpl for T {
     where
         F: FnMut(&T, &T) -> bool,
     {
-        if (size_of::<T>() * SMALL_SORT_GENERAL_SCRATCH_LEN) <= MAX_STACK_ARRAY_SIZE {
+        if (T::SIZE * SMALL_SORT_GENERAL_SCRATCH_LEN) <= MAX_STACK_ARRAY_SIZE {
             small_sort_general(v, is_less);
         } else {
             small_sort_fallback(v, is_less);
@@ -143,10 +143,10 @@ impl<T: FreezeMarker + CopyMarker> UnstableSmallSortFreezeTypeImpl for T {
     #[inline(always)]
     fn small_sort_threshold() -> usize {
         if has_efficient_in_place_swap::<T>()
-            && (size_of::<T>() * SMALL_SORT_NETWORK_SCRATCH_LEN) <= MAX_STACK_ARRAY_SIZE
+            && (T::SIZE * SMALL_SORT_NETWORK_SCRATCH_LEN) <= MAX_STACK_ARRAY_SIZE
         {
             SMALL_SORT_NETWORK_THRESHOLD
-        } else if (size_of::<T>() * SMALL_SORT_GENERAL_SCRATCH_LEN) <= MAX_STACK_ARRAY_SIZE {
+        } else if (T::SIZE * SMALL_SORT_GENERAL_SCRATCH_LEN) <= MAX_STACK_ARRAY_SIZE {
             SMALL_SORT_GENERAL_THRESHOLD
         } else {
             SMALL_SORT_FALLBACK_THRESHOLD
@@ -159,10 +159,10 @@ impl<T: FreezeMarker + CopyMarker> UnstableSmallSortFreezeTypeImpl for T {
         F: FnMut(&T, &T) -> bool,
     {
         if has_efficient_in_place_swap::<T>()
-            && (size_of::<T>() * SMALL_SORT_NETWORK_SCRATCH_LEN) <= MAX_STACK_ARRAY_SIZE
+            && (T::SIZE * SMALL_SORT_NETWORK_SCRATCH_LEN) <= MAX_STACK_ARRAY_SIZE
         {
             small_sort_network(v, is_less);
-        } else if (size_of::<T>() * SMALL_SORT_GENERAL_SCRATCH_LEN) <= MAX_STACK_ARRAY_SIZE {
+        } else if (T::SIZE * SMALL_SORT_GENERAL_SCRATCH_LEN) <= MAX_STACK_ARRAY_SIZE {
             small_sort_general(v, is_less);
         } else {
             small_sort_fallback(v, is_less);
@@ -238,7 +238,7 @@ fn small_sort_general_with_scratch<T: FreezeMarker, F: FnMut(&T, &T) -> bool>(
     unsafe {
         let scratch_base = scratch.as_mut_ptr() as *mut T;
 
-        let presorted_len = if const { size_of::<T>() <= 16 } && len >= 16 {
+        let presorted_len = if const { T::SIZE <= 16 } && len >= 16 {
             // SAFETY: scratch_base is valid and has enough space.
             sort8_stable(v_base, scratch_base, scratch_base.add(len), is_less);
             sort8_stable(
@@ -857,5 +857,5 @@ fn panic_on_ord_violation() -> ! {
 #[must_use]
 pub(crate) const fn has_efficient_in_place_swap<T>() -> bool {
     // Heuristic that holds true on all tested 64-bit capable architectures.
-    size_of::<T>() <= 8 // size_of::<u64>()
+    T::SIZE <= 8 // u64::SIZE
 }

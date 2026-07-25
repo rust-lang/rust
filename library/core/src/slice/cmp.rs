@@ -419,7 +419,7 @@ macro_rules! impl_slice_contains {
                 fn slice_contains(&self, arr: &[$t]) -> bool {
                     // Make our LANE_COUNT 4x the normal lane count (aiming for 128 bit vectors).
                     // The compiler will nicely unroll it.
-                    const LANE_COUNT: usize = 4 * (128 / (size_of::<$t>() * 8));
+                    const LANE_COUNT: usize = 4 * (128 / (<$t>::SIZE * 8));
                     // SIMD
                     let mut chunks = arr.chunks_exact(LANE_COUNT);
                     for chunk in &mut chunks {

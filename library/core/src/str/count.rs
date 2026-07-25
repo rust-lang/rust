@@ -19,8 +19,9 @@
 //! the term "non-continuation byte" to refer to these bytes in the code.
 
 use core::intrinsics::unlikely;
+use core::mem::SizedTypeProperties;
 
-const USIZE_SIZE: usize = size_of::<usize>();
+const USIZE_SIZE: usize = usize::SIZE;
 const UNROLL_INNER: usize = 4;
 
 #[inline]

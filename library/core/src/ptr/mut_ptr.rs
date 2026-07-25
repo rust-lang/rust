@@ -384,7 +384,7 @@ impl<T: PointeeSized> *mut T {
             (
                 this: *const () = self as *const (),
                 count: isize = count,
-                size: usize = size_of::<T>(),
+                size: usize = T::SIZE,
             ) => runtime_offset_nowrap(this, count, size)
         );
 
@@ -963,7 +963,7 @@ impl<T: PointeeSized> *mut T {
             (
                 this: *const () = self as *const (),
                 count: usize = count,
-                size: usize = size_of::<T>(),
+                size: usize = T::SIZE,
             ) => runtime_add_nowrap(this, count, size)
         );
 
@@ -1041,7 +1041,7 @@ impl<T: PointeeSized> *mut T {
             (
                 this: *const () = self as *const (),
                 count: usize = count,
-                size: usize = size_of::<T>(),
+                size: usize = T::SIZE,
             ) => runtime_sub_nowrap(this, count, size)
         );
 

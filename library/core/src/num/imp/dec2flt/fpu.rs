@@ -22,6 +22,7 @@ pub(super) use fpu_precision::set_precision;
 #[cfg(all(target_arch = "x86", not(target_feature = "sse2")))]
 mod fpu_precision {
     use core::arch::asm;
+    use core::mem::SizedTypeProperties;
 
     /// A structure used to preserve the original value of the FPU control word, so that it can be
     /// restored when the structure is dropped.
@@ -60,7 +61,7 @@ mod fpu_precision {
         let mut cw = 0_u16;
 
         // Compute the value for the Precision Control field that is appropriate for `T`.
-        let cw_precision = match size_of::<T>() {
+        let cw_precision = match T::SIZE {
             4 => 0x0000, // 32 bits
             8 => 0x0200, // 64 bits
             _ => 0x0300, // default, 80 bits

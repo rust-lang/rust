@@ -381,7 +381,7 @@ impl<T: PointeeSized> *const T {
             (
                 this: *const () = self as *const (),
                 count: isize = count,
-                size: usize = size_of::<T>(),
+                size: usize = T::SIZE,
             ) => runtime_offset_nowrap(this, count, size)
         );
 
@@ -617,7 +617,7 @@ impl<T: PointeeSized> *const T {
     where
         T: Sized,
     {
-        let pointee_size = size_of::<T>();
+        let pointee_size = T::SIZE;
         assert!(0 < pointee_size && pointee_size <= isize::MAX as usize);
         // SAFETY: the caller must uphold the safety contract for `ptr_offset_from`.
         unsafe { intrinsics::ptr_offset_from(self, origin) }
@@ -727,7 +727,7 @@ impl<T: PointeeSized> *const T {
             ) => runtime_ptr_ge(this, origin)
         );
 
-        let pointee_size = size_of::<T>();
+        let pointee_size = T::SIZE;
         assert!(0 < pointee_size && pointee_size <= isize::MAX as usize);
         // SAFETY: the caller must uphold the safety contract for `ptr_offset_from_unsigned`.
         unsafe { intrinsics::ptr_offset_from_unsigned(self, origin) }
@@ -863,7 +863,7 @@ impl<T: PointeeSized> *const T {
             (
                 this: *const () = self as *const (),
                 count: usize = count,
-                size: usize = size_of::<T>(),
+                size: usize = T::SIZE,
             ) => runtime_add_nowrap(this, count, size)
         );
 
@@ -941,7 +941,7 @@ impl<T: PointeeSized> *const T {
             (
                 this: *const () = self as *const (),
                 count: usize = count,
-                size: usize = size_of::<T>(),
+                size: usize = T::SIZE,
             ) => runtime_sub_nowrap(this, count, size)
         );
 

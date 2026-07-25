@@ -1,7 +1,7 @@
 //! Integer and floating-point number formatting
 
 use crate::fmt::NumBuffer;
-use crate::mem::MaybeUninit;
+use crate::mem::{MaybeUninit, SizedTypeProperties};
 use crate::num::imp::fmt as numfmt;
 use crate::{fmt, str};
 
@@ -195,7 +195,7 @@ macro_rules! impl_Display {
 
                 // Format per four digits from the lookup table.
                 // Four digits need a 16-bit $Unsigned or wider.
-                while size_of::<Self>() > 1 && remain > 999.try_into().expect("branch is not hit for types that cannot fit 999 (u8)") {
+                while Self::SIZE > 1 && remain > 999.try_into().expect("branch is not hit for types that cannot fit 999 (u8)") {
                     // SAFETY: All of the decimals fit in buf due to MAX_DEC_N
                     // and the while condition ensures at least 4 more decimals.
                     unsafe { core::hint::assert_unchecked(offset >= 4) }

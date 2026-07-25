@@ -3,10 +3,11 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::convert::{BoundedCastFromInt, CheckedCastFromInt};
+use crate::mem::{self, SizedTypeProperties};
 use crate::panic::const_panic;
 use crate::str::FromStr;
 use crate::ub_checks::assert_unsafe_precondition;
-use crate::{ascii, intrinsics, mem};
+use crate::{ascii, intrinsics};
 
 // FIXME(const-hack): Used because the `?` operator is not allowed in a const context.
 macro_rules! try_opt {
@@ -1479,7 +1480,7 @@ impl usize {
     /// Returns an `usize` where every byte is equal to `x`.
     #[inline]
     pub(crate) const fn repeat_u8(x: u8) -> usize {
-        usize::from_ne_bytes([x; size_of::<usize>()])
+        usize::from_ne_bytes([x; usize::SIZE])
     }
 
     /// Returns an `usize` where every byte pair is equal to `x`.
@@ -1487,7 +1488,7 @@ impl usize {
     pub(crate) const fn repeat_u16(x: u16) -> usize {
         let mut r = 0usize;
         let mut i = 0;
-        while i < size_of::<usize>() {
+        while i < usize::SIZE {
             // Use `wrapping_shl` to make it work on targets with 16-bit `usize`
             r = r.wrapping_shl(16) | (x as usize);
             i += 2;
@@ -1568,7 +1569,7 @@ pub enum FpCategory {
 #[inline(always)]
 #[unstable(issue = "none", feature = "std_internals")]
 pub const fn can_not_overflow<T>(radix: u32, is_signed_ty: bool, digits: &[u8]) -> bool {
-    radix <= 16 && digits.len() <= size_of::<T>() * 2 - is_signed_ty as usize
+    radix <= 16 && digits.len() <= T::SIZE * 2 - is_signed_ty as usize
 }
 
 #[cfg_attr(not(panic = "immediate-abort"), inline(never))]

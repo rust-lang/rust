@@ -103,6 +103,7 @@
 //! the time.
 
 use core::marker::PhantomData;
+use core::mem::SizedTypeProperties;
 use core::num::NonZeroUsize;
 use core::ptr::NonNull;
 
@@ -138,7 +139,7 @@ impl Repr {
         // Should only be possible if an allocator handed out a pointer with
         // wrong alignment.
         debug_assert_eq!(p.addr() & TAG_MASK, 0);
-        // Note: We know `TAG_CUSTOM <= size_of::<Custom>()` (static_assert at
+        // Note: We know `TAG_CUSTOM <= Custom::SIZE` (static_assert at
         // end of file), and both the start and end of the expression must be
         // valid without address space wraparound due to `Box`'s semantics.
         //
@@ -302,14 +303,14 @@ macro_rules! static_assert {
 }
 
 // The bitpacking we use requires pointers be exactly 64 bits.
-static_assert!(@usize_eq: size_of::<NonNull<()>>(), 8);
+static_assert!(@usize_eq: NonNull::<()>::SIZE, 8);
 
 // We also require pointers and usize be the same size.
-static_assert!(@usize_eq: size_of::<NonNull<()>>(), size_of::<usize>());
+static_assert!(@usize_eq: NonNull::<()>::SIZE, usize::SIZE);
 
 // `Custom` and `SimpleMessage` need to be thin pointers.
-static_assert!(@usize_eq: size_of::<&'static SimpleMessage>(), 8);
-static_assert!(@usize_eq: size_of::<CustomOwner>(), 8);
+static_assert!(@usize_eq: <&'static SimpleMessage>::SIZE, 8);
+static_assert!(@usize_eq: CustomOwner::SIZE, 8);
 
 static_assert!((TAG_MASK + 1).is_power_of_two());
 // And they must have sufficient alignment.
@@ -330,7 +331,7 @@ static_assert!(@usize_eq: TAG_MASK & TAG_SIMPLE, TAG_SIMPLE);
 // check isn't needed for that one, although the assertion that we don't
 // actually wrap around in that wrapping_add does simplify the safety reasoning
 // elsewhere considerably.
-static_assert!(size_of::<Custom>() >= TAG_CUSTOM);
+static_assert!(Custom::SIZE >= TAG_CUSTOM);
 
 // These two store a payload which is allowed to be zero, so they must be
 // non-zero to preserve the `NonNull`'s range invariant.
@@ -345,7 +346,7 @@ static_assert!(@usize_eq: TAG_SIMPLE_MESSAGE, 0);
 // as it's not `#[repr(transparent)]`/`#[repr(C)]`. We could add that, but
 // the `#[repr()]` would show up in rustdoc, which might be seen as a stable
 // commitment.
-static_assert!(@usize_eq: size_of::<Repr>(), 8);
-static_assert!(@usize_eq: size_of::<Option<Repr>>(), 8);
-static_assert!(@usize_eq: size_of::<Result<(), Repr>>(), 8);
-static_assert!(@usize_eq: size_of::<Result<usize, Repr>>(), 16);
+static_assert!(@usize_eq: Repr::SIZE, 8);
+static_assert!(@usize_eq: Option::<Repr>::SIZE, 8);
+static_assert!(@usize_eq: Result::<(), Repr>::SIZE, 8);
+static_assert!(@usize_eq: Result::<usize, Repr>::SIZE, 16);

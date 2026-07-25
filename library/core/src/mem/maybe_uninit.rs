@@ -1,7 +1,7 @@
 use crate::any::type_name;
 use crate::clone::TrivialClone;
 use crate::marker::Destruct;
-use crate::mem::{ManuallyDrop, transmute_neo};
+use crate::mem::{ManuallyDrop, SizedTypeProperties, transmute_neo};
 use crate::{fmt, intrinsics, ptr, slice};
 
 /// A wrapper type to construct uninitialized instances of `T`.
@@ -1077,9 +1077,7 @@ impl<T> MaybeUninit<T> {
     #[unstable(feature = "maybe_uninit_as_bytes", issue = "93092")]
     pub const fn as_bytes(&self) -> &[MaybeUninit<u8>] {
         // SAFETY: MaybeUninit<u8> is always valid, even for padding bytes
-        unsafe {
-            slice::from_raw_parts(self.as_ptr().cast::<MaybeUninit<u8>>(), super::size_of::<T>())
-        }
+        unsafe { slice::from_raw_parts(self.as_ptr().cast::<MaybeUninit<u8>>(), T::SIZE) }
     }
 
     /// Returns the contents of this `MaybeUninit` as a mutable slice of potentially uninitialized
@@ -1108,12 +1106,7 @@ impl<T> MaybeUninit<T> {
     #[unstable(feature = "maybe_uninit_as_bytes", issue = "93092")]
     pub const fn as_bytes_mut(&mut self) -> &mut [MaybeUninit<u8>] {
         // SAFETY: MaybeUninit<u8> is always valid, even for padding bytes
-        unsafe {
-            slice::from_raw_parts_mut(
-                self.as_mut_ptr().cast::<MaybeUninit<u8>>(),
-                super::size_of::<T>(),
-            )
-        }
+        unsafe { slice::from_raw_parts_mut(self.as_mut_ptr().cast::<MaybeUninit<u8>>(), T::SIZE) }
     }
 }
 

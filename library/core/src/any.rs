@@ -87,8 +87,8 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::intrinsics::{self, type_id, type_id_vtable};
-use crate::mem::transmute;
 use crate::mem::type_info::{TraitImpl, TypeKind};
+use crate::mem::{SizedTypeProperties, transmute};
 use crate::{fmt, hash, ptr};
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -727,7 +727,7 @@ pub struct TypeId {
     /// the TypeId actually is, allowing CTFE and miri to operate based off it.
     /// At runtime all the pointers in the array contain bits of the hash, making
     /// the entire `TypeId` actually just be a `u128` hash of the type.
-    pub(crate) data: [*const (); 16 / size_of::<*const ()>()],
+    pub(crate) data: [*const (); 16 / <*const ()>::SIZE],
 }
 
 // SAFETY: the raw pointer is always an integer

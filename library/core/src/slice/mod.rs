@@ -4465,9 +4465,9 @@ impl<T> [T] {
 
         // Explicitly wrap the function call in a const block so it gets
         // constant-evaluated even in debug mode.
-        let gcd: usize = const { gcd(size_of::<T>(), size_of::<U>()) };
-        let ts: usize = size_of::<U>() / gcd;
-        let us: usize = size_of::<T>() / gcd;
+        let gcd: usize = const { gcd(T::SIZE, U::SIZE) };
+        let ts: usize = U::SIZE / gcd;
+        let us: usize = T::SIZE / gcd;
 
         // Armed with this knowledge, we can find how many `U`s we can fit!
         let us_len = self.len() / ts * us;
@@ -4670,7 +4670,7 @@ impl<T> [T] {
         // These are expected to always match, as vector types are laid out like
         // arrays per <https://llvm.org/docs/LangRef.html#vector-type>, but we
         // might as well double-check since it'll optimize away anyhow.
-        assert_eq!(size_of::<Simd<T, LANES>>(), size_of::<[T; LANES]>());
+        assert_eq!(Simd::<T, LANES>::SIZE, <[T; LANES]>::SIZE);
 
         // SAFETY: The simd types have the same layout as arrays, just with
         // potentially-higher alignment, so the de-facto transmutes are sound.
@@ -4705,7 +4705,7 @@ impl<T> [T] {
         // These are expected to always match, as vector types are laid out like
         // arrays per <https://llvm.org/docs/LangRef.html#vector-type>, but we
         // might as well double-check since it'll optimize away anyhow.
-        assert_eq!(size_of::<Simd<T, LANES>>(), size_of::<[T; LANES]>());
+        assert_eq!(Simd::<T, LANES>::SIZE, <[T; LANES]>::SIZE);
 
         // SAFETY: The simd types have the same layout as arrays, just with
         // potentially-higher alignment, so the de-facto transmutes are sound.
@@ -5279,11 +5279,11 @@ impl<T> [T] {
 
         let byte_offset = elem_start.wrapping_sub(self_start);
 
-        if !byte_offset.is_multiple_of(size_of::<T>()) {
+        if !byte_offset.is_multiple_of(T::SIZE) {
             return None;
         }
 
-        let offset = byte_offset / size_of::<T>();
+        let offset = byte_offset / T::SIZE;
 
         if offset < self.len() { Some(offset) } else { None }
     }
@@ -5333,11 +5333,11 @@ impl<T> [T] {
 
         let byte_start = subslice_start.wrapping_sub(self_start);
 
-        if !byte_start.is_multiple_of(size_of::<T>()) {
+        if !byte_start.is_multiple_of(T::SIZE) {
             return None;
         }
 
-        let start = byte_start / size_of::<T>();
+        let start = byte_start / T::SIZE;
         let end = start.wrapping_add(subslice.len());
 
         if start <= self.len() && end <= self.len() {

@@ -252,7 +252,7 @@
 use crate::cmp::Ordering;
 use crate::fmt::{self, Debug, Display};
 use crate::marker::{Destruct, PhantomData, Unsize};
-use crate::mem::{self, ManuallyDrop};
+use crate::mem::{self, ManuallyDrop, SizedTypeProperties};
 use crate::ops::{self, CoerceUnsized, Deref, DerefMut, DerefPure, DispatchFromDyn};
 use crate::panic::const_panic;
 use crate::pin::PinCoerceUnsized;
@@ -469,7 +469,7 @@ impl<T> Cell<T> {
             let src_usize = src.addr();
             let dst_usize = dst.addr();
             let diff = src_usize.abs_diff(dst_usize);
-            diff >= size_of::<T>()
+            diff >= T::SIZE
         }
 
         if ptr::eq(self, other) {
