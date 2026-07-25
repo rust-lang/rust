@@ -10,11 +10,18 @@ extern "custom" fn must_be_unsafe(a: i64) -> i64 {
     std::arch::naked_asm!("")
 }
 
+type MustbeUnsafe = extern "custom" fn(i64) -> i64;
+//~^ ERROR functions with the "custom" ABI must be unsafe
+//~| ERROR invalid signature for `extern "custom"` function
+
 #[unsafe(naked)]
 unsafe extern "custom" fn no_parameters(a: i64) {
     //~^ ERROR invalid signature for `extern "custom"` function
     std::arch::naked_asm!("")
 }
+
+type NoParameters = unsafe extern "custom" fn(i64);
+//~^ ERROR invalid signature for `extern "custom"` function
 
 #[unsafe(naked)]
 unsafe extern "custom" fn no_return_type() -> i64 {
@@ -22,26 +29,43 @@ unsafe extern "custom" fn no_return_type() -> i64 {
     std::arch::naked_asm!("")
 }
 
-unsafe extern "custom" fn double(a: i64) -> i64 {
+type NoReturnType = unsafe extern "custom" fn() -> i64;
+//~^ ERROR invalid signature for `extern "custom"` function
+
+#[unsafe(naked)]
+unsafe extern "custom" fn no_never_return_type() -> ! {
+    //~^ ERROR invalid signature for `extern "custom"` function
+    std::arch::naked_asm!("")
+}
+
+type NoNeverReturnType = unsafe extern "custom" fn() -> !;
+//~^ ERROR invalid signature for `extern "custom"` function
+
+unsafe extern "custom" fn not_both(a: i64) -> i64 {
     //~^ ERROR items with the "custom" ABI can only be declared externally or defined via naked functions
     //~| ERROR invalid signature for `extern "custom"` function
     unimplemented!()
 }
 
+type NotBoth = unsafe extern "custom" fn(i64) -> i64;
+//~^ ERROR invalid signature for `extern "custom"` function
+
 struct Thing(i64);
 
 impl Thing {
-    unsafe extern "custom" fn is_even(self) -> bool {
+    extern "custom" fn is_even(self) -> bool {
         //~^ ERROR items with the "custom" ABI can only be declared externally or defined via naked functions
         //~| ERROR invalid signature for `extern "custom"` function
+        //~| ERROR functions with the "custom" ABI must be unsafe
         unimplemented!()
     }
 }
 
 trait BitwiseNot {
-    unsafe extern "custom" fn bitwise_not(a: i64) -> i64 {
+    extern "custom" fn bitwise_not(a: i64) -> i64 {
         //~^ ERROR items with the "custom" ABI can only be declared externally or defined via naked functions
         //~| ERROR invalid signature for `extern "custom"` function
+        //~| ERROR functions with the "custom" ABI must be unsafe
         unimplemented!()
     }
 }
@@ -71,19 +95,25 @@ unsafe extern "custom" {
     //~^ ERROR foreign functions with the "custom" ABI cannot be safe
 }
 
+type Safe = safe extern "custom" fn();
+//~^ ERROR function pointers cannot be declared with `safe` safety qualifier
+
 fn caller(f: unsafe extern "custom" fn(i64) -> i64, mut x: i64) -> i64 {
+    //~^ ERROR invalid signature for `extern "custom"` function
     unsafe { f(x) }
     //~^ ERROR functions with the "custom" ABI cannot be called
 }
 
 fn caller_by_ref(f: &unsafe extern "custom" fn(i64) -> i64, mut x: i64) -> i64 {
+    //~^ ERROR invalid signature for `extern "custom"` function
     unsafe { f(x) }
     //~^ ERROR functions with the "custom" ABI cannot be called
 }
 
-type Custom = unsafe extern "custom" fn(i64) -> i64;
+type Alias = unsafe extern "custom" fn(i64) -> i64;
+//~^ ERROR invalid signature for `extern "custom"` function
 
-fn caller_alias(f: Custom, mut x: i64) -> i64 {
+fn caller_alias(f: Alias, mut x: i64) -> i64 {
     unsafe { f(x) }
     //~^ ERROR functions with the "custom" ABI cannot be called
 }
@@ -99,14 +129,14 @@ async unsafe extern "custom" fn no_async_fn() {
     //~| ERROR functions with the "custom" ABI cannot be `async`
 }
 
-fn no_promotion_to_fn_trait(f: unsafe extern "custom" fn()) -> impl Fn()  {
+fn no_promotion_to_fn_trait(f: unsafe extern "custom" fn()) -> impl Fn() {
     //~^ ERROR expected an `Fn()` closure, found `unsafe extern "custom" fn()`
     f
 }
 
 pub fn main() {
     unsafe {
-        assert_eq!(double(21), 42);
+        assert_eq!(not_both(21), 42);
         //~^ ERROR functions with the "custom" ABI cannot be called
 
         assert_eq!(unsafe { increment(41) }, 42);
