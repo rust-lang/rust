@@ -2597,6 +2597,9 @@ options! {
         "a list of module flags to pass to LLVM (space separated)"),
     llvm_plugins: Vec<String> = (Vec::new(), parse_list, [TRACKED],
         "a list LLVM plugins to enable (space separated)"),
+    llvm_target_feature: String = (String::new(), parse_string, [TRACKED] { TARGET_MODIFIER: LlvmTargetFeature },
+        "a comma-separated list of features to pass directly to the LLVM backend (+feat/-feat); \
+        ignored by non-LLVM backends (unstable)"),
     llvm_time_trace: bool = (false, parse_bool, [UNTRACKED],
         "generate JSON tracing data file from LLVM data (default: no)"),
     llvm_writable: bool = (false, parse_bool, [TRACKED],
