@@ -3,6 +3,7 @@
 
 //@ needs-target-std
 
+use run_make_support::assertion_helpers::assert_contains_regex;
 use run_make_support::rfs::{read_to_string, remove_file};
 use run_make_support::{path, rustdoc};
 
@@ -36,8 +37,7 @@ fn check_generate_file(ext: &str, extra_args: &[&str], file_check: &str) {
     let file = format!("doc/foo.{ext}");
     assert!(path(&file).exists());
 
-    let expected = format!("Generated output into {file:?}\n");
-    assert_eq!(out, expected, "Expected {expected:?}, got {out:?}");
+    assert_contains_regex(out, format!("Generated output into \"doc[/\\\\]foo.{ext}\"\n"));
 
     let content = read_to_string(&file);
     assert!(content.starts_with(file_check), "{content:?} doesn't start with {file_check:?}");
