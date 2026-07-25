@@ -1591,21 +1591,30 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     pub(super) fn check_deferred_closure_method_calls(&mut self) {
-        let calls = self.deferred_closure_method_calls.borrow_mut().drain(..).collect::<Vec<_>>();
-        for call in calls {
-            let body_def_id = std::mem::replace(&mut self.body_def_id, call.body_def_id);
-            let receiver_ty = self.resolve_vars_with_obligations(call.receiver_ty);
-            let output_ty = self.confirm_expr_method_call(
-                call.expr,
-                call.segment,
-                call.receiver,
-                receiver_ty,
-                call.args,
-                ExpectHasType(call.output_ty),
-                Some(&call.prechecked_arg_tys),
-            );
-            self.demand_suptype(call.expr.span, call.output_ty, output_ty);
-            self.body_def_id = body_def_id;
+        loop {
+            // Iterate to a fixed point: confirming a method may check a closure argument which
+            // queues more method calls.
+            let calls =
+                self.deferred_closure_method_calls.borrow_mut().drain(..).collect::<Vec<_>>();
+            if calls.is_empty() {
+                break;
+            }
+
+            for call in calls {
+                let body_def_id = std::mem::replace(&mut self.body_def_id, call.body_def_id);
+                let receiver_ty = self.resolve_vars_with_obligations(call.receiver_ty);
+                let output_ty = self.confirm_expr_method_call(
+                    call.expr,
+                    call.segment,
+                    call.receiver,
+                    receiver_ty,
+                    call.args,
+                    ExpectHasType(call.output_ty),
+                    Some(&call.prechecked_arg_tys),
+                );
+                self.demand_suptype(call.expr.span, call.output_ty, output_ty);
+                self.body_def_id = body_def_id;
+            }
         }
     }
 

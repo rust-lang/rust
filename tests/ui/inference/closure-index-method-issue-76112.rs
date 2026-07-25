@@ -15,6 +15,17 @@ impl Add<i32> for Lhs {
     }
 }
 
+#[derive(Copy, Clone)]
+struct Holder;
+
+impl Holder {
+    fn take<F>(self, value: F) -> F {
+        value
+    }
+}
+
+fn expect_usize_to_i64<F: Fn(usize) -> i64>(_: F) {}
+
 fn main() {
     let array: [i64; 1] = [0];
     let get = |index| array[index].pow(1);
@@ -35,4 +46,9 @@ fn main() {
     let add = |rhs| (Lhs + rhs).pow(1);
     let value: i64 = add(2);
     assert_eq!(value, 2);
+
+    // Confirming `take` checks its closure argument, which queues `pow` for a later round.
+    let holders = [Holder];
+    let make_nested = |index| holders[index].take(|inner| array[inner].pow(1));
+    expect_usize_to_i64(make_nested(0));
 }
