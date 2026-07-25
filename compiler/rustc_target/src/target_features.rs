@@ -400,7 +400,7 @@ static AARCH64_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("v9.3a", Unstable(sym::aarch64_ver_target_feature), &["v9.2a", "v8.8a"]),
     ("v9.4a", Unstable(sym::aarch64_ver_target_feature), &["v9.3a", "v8.9a"]),
     ("v9.5a", Unstable(sym::aarch64_ver_target_feature), &["v9.4a"]),
-    ("v9a", Unstable(sym::aarch64_ver_target_feature), &["v8.5a", "sve2"]),
+    ("v9a", Unstable(sym::aarch64_ver_target_feature), &["v8.5a"]),
     // FEAT_VHE
     ("vh", Stable, &[]),
     // FEAT_WFxT
