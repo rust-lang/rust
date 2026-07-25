@@ -1083,7 +1083,7 @@ impl<'tcx> TerminatorKind<'tcx> {
             | CoroutineDrop => vec![],
             Goto { .. } => vec!["".into()],
             SwitchInt { ref targets, .. } => targets
-                .values
+                .all_values()
                 .iter()
                 .map(|&u| Cow::Owned(u.to_string()))
                 .chain(iter::once("otherwise".into()))

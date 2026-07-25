@@ -13,7 +13,7 @@ use rustc_macros::{StableHash, TyDecodable, TyEncodable, TypeFoldable, TypeVisit
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{Span, Spanned, Symbol};
 use rustc_target::asm::InlineAsmRegOrRegClass;
-use smallvec::SmallVec;
+use thin_vec::ThinVec;
 
 use super::{BasicBlock, Const, Local, UserTypeProjection};
 use crate::mir::coverage::CoverageKind;
@@ -974,32 +974,39 @@ pub enum BackwardIncompatibleDropReason {
 }
 
 #[derive(Debug, Clone, TyEncodable, TyDecodable, StableHash, PartialEq)]
-pub struct SwitchTargets {
-    /// Possible values. For each value, the location to branch to is found in
-    /// the corresponding element in the `targets` vector.
-    pub(super) values: SmallVec<[Pu128; 1]>,
+pub enum SwitchTargets {
+    Otherwise(BasicBlock),
+    Single {
+        values: [Pu128; 1],
+        targets: [BasicBlock; 2],
+    },
+    Many {
+        /// Possible values. For each value, the location to branch to is found in
+        /// the corresponding element in the `targets` vector.
+        values: ThinVec<Pu128>,
 
-    /// Possible branch targets. The last element of this vector is used for
-    /// the "otherwise" branch, so `targets.len() == values.len() + 1` always
-    /// holds.
-    //
-    // Note: This invariant is non-obvious and easy to violate. This would be a
-    // more rigorous representation:
-    //
-    //   normal: SmallVec<[(Pu128, BasicBlock); 1]>,
-    //   otherwise: BasicBlock,
-    //
-    // But it's important to have the targets in a sliceable type, because
-    // target slices show up elsewhere. E.g. `TerminatorKind::InlineAsm` has a
-    // boxed slice, and `TerminatorKind::FalseEdge` has a single target that
-    // can be converted to a slice with `slice::from_ref`.
-    //
-    // Why does this matter? In functions like `TerminatorKind::successors` we
-    // return `impl Iterator` and a non-slice-of-targets representation here
-    // causes problems because multiple different concrete iterator types would
-    // be involved and we would need a boxed trait object, which requires an
-    // allocation, which is expensive if done frequently.
-    pub(super) targets: SmallVec<[BasicBlock; 2]>,
+        /// Possible branch targets. The last element of this vector is used for
+        /// the "otherwise" branch, so `targets.len() == values.len() + 1` always
+        /// holds.
+        //
+        // Note: This invariant is non-obvious and easy to violate. This would be a
+        // more rigorous representation:
+        //
+        //   normal: SmallVec<[(Pu128, BasicBlock); 1]>,
+        //   otherwise: BasicBlock,
+        //
+        // But it's important to have the targets in a sliceable type, because
+        // target slices show up elsewhere. E.g. `TerminatorKind::InlineAsm` has a
+        // boxed slice, and `TerminatorKind::FalseEdge` has a single target that
+        // can be converted to a slice with `slice::from_ref`.
+        //
+        // Why does this matter? In functions like `TerminatorKind::successors` we
+        // return `impl Iterator` and a non-slice-of-targets representation here
+        // causes problems because multiple different concrete iterator types would
+        // be involved and we would need a boxed trait object, which requires an
+        // allocation, which is expensive if done frequently.
+        targets: ThinVec<BasicBlock>,
+    },
 }
 
 /// Action to be taken when a stack unwind happens.
@@ -1736,6 +1743,7 @@ mod size_asserts {
     static_assert_size!(PlaceElem<'_>, 24);
     static_assert_size!(Rvalue<'_>, 40);
     static_assert_size!(StatementKind<'_>, 16);
+    static_assert_size!(SwitchTargets, 24);
     static_assert_size!(TerminatorKind<'_>, 80);
     // tidy-alphabetical-end
 }
