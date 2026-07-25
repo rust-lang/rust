@@ -2,10 +2,11 @@ use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fmt::Debug;
 use std::fs;
+use std::io::{BufReader, Read};
 #[cfg(unix)]
 use std::os::unix::process::ExitStatusExt;
 use std::path::{Path, PathBuf};
-use std::process::{Command, ExitStatus, Output};
+use std::process::{Command, ExitStatus, Output, Stdio};
 
 fn exec_command(
     input: &[&dyn AsRef<OsStr>],
@@ -47,7 +48,7 @@ pub(crate) fn get_command_inner(
     command
 }
 
-fn check_exit_status(
+pub(crate) fn check_exit_status(
     input: &[&dyn AsRef<OsStr>],
     cwd: Option<&Path>,
     exit_status: ExitStatus,
@@ -113,6 +114,30 @@ pub fn run_command_with_output(
 ) -> Result<(), String> {
     let exit_status = exec_command(input, cwd, None)?;
     check_exit_status(input, cwd, exit_status, None, true)
+}
+
+pub fn run_command_with_output_and_get_it(
+    input: &[&dyn AsRef<OsStr>],
+    cwd: Option<&Path>,
+) -> Result<(ExitStatus, String), String> {
+    let mut child = get_command_inner(input, cwd, None)
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| command_error(input, &cwd, e))?;
+
+    let stderr = child.stderr.take().expect("Failed to capture stderr");
+    let mut captured = String::new();
+    BufReader::new(stderr).read_to_string(&mut captured).expect("failed to read stderr");
+
+    let status = child.wait().map_err(|e| command_error(input, &cwd, e))?;
+    #[cfg(unix)]
+    {
+        if let Some(signal) = status.signal() {
+            // In case the signal didn't kill the current process.
+            return Err(command_error(input, &cwd, format!("Process received signal {signal}")));
+        }
+    }
+    Ok((status, captured))
 }
 
 pub fn run_command_with_output_and_env(
