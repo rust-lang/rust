@@ -114,25 +114,25 @@ pub trait HirTyCtxt<'hir> {
     fn hir_foreign_item(&self, id: ForeignItemId) -> &'hir ForeignItem<'hir>;
 }
 
-// Used when no tcx is actually available, forcing manual implementation of nested visitors.
+/// Used when no tcx is actually available, forcing manual implementation of nested visitors.
 impl<'hir> HirTyCtxt<'hir> for ! {
     fn hir_node(&self, _: HirId) -> Node<'hir> {
-        unreachable!();
+        *self
     }
     fn hir_body(&self, _: BodyId) -> &'hir Body<'hir> {
-        unreachable!();
+        *self
     }
     fn hir_item(&self, _: ItemId) -> &'hir Item<'hir> {
-        unreachable!();
+        *self
     }
     fn hir_trait_item(&self, _: TraitItemId) -> &'hir TraitItem<'hir> {
-        unreachable!();
+        *self
     }
     fn hir_impl_item(&self, _: ImplItemId) -> &'hir ImplItem<'hir> {
-        unreachable!();
+        *self
     }
     fn hir_foreign_item(&self, _: ForeignItemId) -> &'hir ForeignItem<'hir> {
-        unreachable!();
+        *self
     }
 }
 
