@@ -37,8 +37,9 @@ from name resolution ambiguity in stable code if (1) the stable code has a macro
 which gets re-exported, or (2) or a proc-macro derive helper attribute of the same name.
 
 Typically, the builtin attributes probably has to start out as `#[rustc_foo]` instead of `#[foo]` to
-avoid colliding with user-defined macros and proc-macro helper attributes. Then, prior to
-stabilization, a rename to `#[foo]` should be done separately with a crater run to assess fallout,
+avoid colliding with user-defined macros and proc-macro helper attributes.
+Then, prior to stabilization,
+a rename to `#[foo]` should be done separately with a crater run to assess fallout,
 with a deliberate breakage FCP proposal for T-lang to consider.
 
 Remember also that crater is *not* exhaustive and does not contain all existing stable code.
