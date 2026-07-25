@@ -444,6 +444,23 @@ impl RestrictionKind {
             }
         }
     }
+
+    /// Obtain the stricter restriction between `self` and `rhs`.
+    /// Panics if the restrictions do not reference the same crate.
+    pub fn stricter_of(self, rhs: Self, tcx: TyCtxt<'_>) -> Self {
+        match (self, rhs) {
+            (RestrictionKind::Unrestricted, r) | (r, RestrictionKind::Unrestricted) => r,
+            (
+                RestrictionKind::Restricted(left_did, _),
+                RestrictionKind::Restricted(right_did, _),
+            ) => {
+                if left_did.krate != right_did.krate {
+                    bug!("stricter_of: left and right restriction do not reference the same crate");
+                }
+                if tcx.is_descendant_of(left_did, right_did) { self } else { rhs }
+            }
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Copy, Hash, TyEncodable, TyDecodable, StableHash)]

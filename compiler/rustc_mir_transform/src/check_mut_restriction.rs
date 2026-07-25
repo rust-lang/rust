@@ -81,4 +81,46 @@ impl<'tcx> Visitor<'tcx> for MutRestrictionChecker<'_, 'tcx> {
 
         self.super_place(place, context, location);
     }
+
+    fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
+        if let Rvalue::Aggregate(aggr, _) = rvalue
+            && let AggregateKind::Adt(adt_did, variant_idx, _args, _user_ty, active_field) = &**aggr
+        {
+            let body_did = self.body.source.instance.def_id();
+            let adt = self.tcx.adt_def(*adt_did);
+            let variant = &adt.variants()[*variant_idx];
+
+            if let Some(field_idx) = active_field {
+                // union
+                let field_def = &variant.fields[*field_idx];
+                let mut_restriction = field_def.mut_restriction;
+                if !mut_restriction.is_allowed_in(body_did, self.tcx) {
+                    self.tcx.dcx().emit_err(diagnostics::ConstructionOfTyWithMutRestrictedField {
+                        construction_span: self.mutating_span,
+                        restriction_span: mut_restriction.expect_span(),
+                        name: variant.name,
+                        descr: adt.variant_descr(),
+                        restriction_path: mut_restriction.restriction_path(self.tcx),
+                    });
+                }
+            } else {
+                // struct / enum variant
+                let mut_restriction =
+                    variant.fields.iter().fold(ty::RestrictionKind::Unrestricted, |acc, field| {
+                        acc.stricter_of(field.mut_restriction, self.tcx)
+                    });
+                if !mut_restriction.is_allowed_in(body_did, self.tcx) {
+                    self.tcx.dcx().emit_err(diagnostics::ConstructionOfTyWithMutRestrictedField {
+                        construction_span: self.mutating_span,
+                        restriction_span: mut_restriction.expect_span(),
+                        name: variant.name,
+                        descr: adt.variant_descr(),
+                        restriction_path: mut_restriction.restriction_path(self.tcx),
+                    });
+                }
+            }
+        }
+
+        self.super_rvalue(rvalue, location);
+    }
 }
