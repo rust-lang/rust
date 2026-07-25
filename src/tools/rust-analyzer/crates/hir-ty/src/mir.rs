@@ -994,16 +994,6 @@ pub enum Rvalue {
     /// coroutine lowering, `Coroutine` aggregate kinds are disallowed too.
     Aggregate(AggregateKind, Box<[Operand]>),
 
-    /// Transmutes a `*mut u8` into shallow-initialized `Box<T>`.
-    ///
-    /// This is different from a normal transmute because dataflow analysis will treat the box as
-    /// initialized but its content as uninitialized. Like other pointer casts, this in general
-    /// affects alias analysis.
-    ShallowInitBox(Operand, StoredTy),
-
-    /// NON STANDARD: allocates memory with the type's layout, and shallow init the box with the resulting pointer.
-    ShallowInitBoxWithAlloc(StoredTy),
-
     /// A CopyForDeref is equivalent to a read from a place at the
     /// codegen level, but is treated specially by drop elaboration. When such a read happens, it
     /// is guaranteed (via nature of the mir_opt `Derefer` in rustc_mir_transform/src/deref_separator)
@@ -1101,9 +1091,7 @@ impl MirBody<'_> {
                     StatementKind::Assign(p, r) => {
                         f(p);
                         match r {
-                            Rvalue::ShallowInitBoxWithAlloc(_) => (),
-                            Rvalue::ShallowInitBox(o, _)
-                            | Rvalue::UnaryOp(_, o)
+                            Rvalue::UnaryOp(_, o)
                             | Rvalue::Cast(_, o, _)
                             | Rvalue::Repeat(o, _)
                             | Rvalue::Use(o) => for_operand(o, &mut f),

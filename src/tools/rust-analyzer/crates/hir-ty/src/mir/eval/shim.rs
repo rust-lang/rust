@@ -1415,6 +1415,15 @@ impl<'a, 'db> Evaluator<'a, 'db> {
                 self.write_memory(location_addr, &location)?;
                 destination.write_from_bytes(self, &location_addr.to_bytes()[..ptr_size])
             }
+            "box_new" => {
+                let ty = generic_args.type_at(0);
+                let Some((size, align)) = self.size_align_of(ty, locals)? else {
+                    not_supported!("unsized box initialization");
+                };
+                let addr = self.heap_allocate(size, align)?;
+                self.copy_from_interval(addr, args[0].interval)?;
+                destination.write_from_bytes(self, &addr.to_bytes()[..self.ptr_size()])
+            }
             _ if needs_override => not_supported!("intrinsic {name} is not implemented"),
             _ => return Ok(false),
         }

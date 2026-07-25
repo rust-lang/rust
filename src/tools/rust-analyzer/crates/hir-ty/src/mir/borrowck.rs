@@ -239,9 +239,7 @@ fn moved_out_of_ref<'db>(
         for statement in &block.statements {
             match &statement.kind {
                 StatementKind::Assign(_, r) => match r {
-                    Rvalue::ShallowInitBoxWithAlloc(_) => (),
-                    Rvalue::ShallowInitBox(o, _)
-                    | Rvalue::UnaryOp(_, o)
+                    Rvalue::UnaryOp(_, o)
                     | Rvalue::Cast(_, o, _)
                     | Rvalue::Repeat(o, _)
                     | Rvalue::Use(o) => for_operand(o, statement.span),
@@ -324,9 +322,7 @@ fn partially_moved<'db>(
         for statement in &block.statements {
             match &statement.kind {
                 StatementKind::Assign(_, r) => match r {
-                    Rvalue::ShallowInitBoxWithAlloc(_) => (),
-                    Rvalue::ShallowInitBox(o, _)
-                    | Rvalue::UnaryOp(_, o)
+                    Rvalue::UnaryOp(_, o)
                     | Rvalue::Cast(_, o, _)
                     | Rvalue::Repeat(o, _)
                     | Rvalue::Use(o) => for_operand(o, statement.span),
@@ -636,7 +632,6 @@ fn mutability_of_locals<'db>(
                                 record_usage_for_operand(arg, &mut result);
                             }
                         }
-                        Rvalue::ShallowInitBox(_, _) | Rvalue::ShallowInitBoxWithAlloc(_) => (),
                         Rvalue::ThreadLocalRef(n)
                         | Rvalue::AddressOf(n)
                         | Rvalue::BinaryOp(n)

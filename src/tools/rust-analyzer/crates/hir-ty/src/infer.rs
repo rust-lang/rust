@@ -2629,11 +2629,6 @@ impl<'db> InferenceContext<'db> {
         }
     }
 
-    fn resolve_boxed_box(&self) -> Option<AdtId> {
-        let struct_ = self.lang_items.OwnedBox?;
-        Some(struct_.into())
-    }
-
     fn resolve_range_full(&self) -> Option<AdtId> {
         let struct_ = self.lang_items.RangeFull?;
         Some(struct_.into())

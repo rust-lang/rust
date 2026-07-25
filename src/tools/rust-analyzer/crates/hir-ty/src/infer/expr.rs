@@ -20,7 +20,7 @@ use rustc_ast_ir::Mutability;
 use rustc_hash::FxHashMap;
 use rustc_type_ir::{
     InferTy, Interner,
-    inherent::{GenericArgs as _, IntoKind, Ty as _},
+    inherent::{IntoKind, Ty as _},
 };
 use stdx::never;
 use syntax::ast::RangeOp;
@@ -259,7 +259,6 @@ impl<'db> InferenceContext<'db> {
             | Expr::Await { .. }
             | Expr::Ref { .. }
             | Expr::Range { .. }
-            | Expr::Box { .. }
             | Expr::RecordLit { .. }
             | Expr::Yeet { .. }
             | Expr::Missing
@@ -621,7 +620,6 @@ impl<'db> InferenceContext<'db> {
                 expected,
                 tgt_expr,
             ),
-            &Expr::Box { expr } => self.infer_expr_box(expr, expected),
             Expr::UnaryOp { expr, op } => self.infer_unop_expr(*op, *expr, expected, tgt_expr),
             Expr::BinaryOp { lhs, rhs, op } => match op {
                 Some(BinaryOp::Assignment { op: Some(op) }) => {
@@ -1483,27 +1481,6 @@ impl<'db> InferenceContext<'db> {
         }
 
         self.types.types.never
-    }
-
-    fn infer_expr_box(&mut self, inner_expr: ExprId, expected: &Expectation<'db>) -> Ty<'db> {
-        if let Some(box_id) = self.resolve_boxed_box() {
-            let table = &mut self.table;
-            let inner_exp = expected
-                .to_option(table)
-                .as_ref()
-                .and_then(|e| e.as_adt())
-                .filter(|(e_adt, _)| e_adt == &box_id)
-                .map(|(_, subts)| {
-                    let g = subts.type_at(0);
-                    Expectation::rvalue_hint(self, g)
-                })
-                .unwrap_or_else(Expectation::none);
-
-            let inner_ty = self.infer_expr_inner(inner_expr, &inner_exp, ExprIsRead::Yes);
-            Ty::new_box(self.interner(), inner_ty)
-        } else {
-            self.err_ty()
-        }
     }
 
     fn infer_block(

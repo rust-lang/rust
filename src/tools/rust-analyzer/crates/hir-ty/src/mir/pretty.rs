@@ -490,12 +490,6 @@ impl<'a, 'db> MirPrettyCtx<'a, 'db> {
                 self.place(p);
                 w!(self, ")");
             }
-            Rvalue::ShallowInitBoxWithAlloc(_) => w!(self, "ShallowInitBoxWithAlloc"),
-            Rvalue::ShallowInitBox(op, _) => {
-                w!(self, "ShallowInitBox(");
-                self.operand(op);
-                w!(self, ")");
-            }
             Rvalue::CopyForDeref(p) => {
                 w!(self, "CopyForDeref(");
                 self.place(p);

@@ -648,7 +648,7 @@ impl<'a, 'db, D: Delegate<'db>> ExprUseVisitor<'a, 'db, D> {
                 }
             }
 
-            Expr::Become { expr } | Expr::Await { expr } | Expr::Box { expr } => {
+            Expr::Become { expr } | Expr::Await { expr } => {
                 self.consume_expr(expr)?;
             }
 

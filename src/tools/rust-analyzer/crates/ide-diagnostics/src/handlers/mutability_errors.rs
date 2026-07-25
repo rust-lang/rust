@@ -1096,14 +1096,17 @@ fn x(t: &[u8]) {
 use core::ops::{Deref, DerefMut};
 use core::{marker::Unsize, ops::CoerceUnsized};
 
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub fn box_new<T>(_x: T) -> Box<T>;
+
 #[lang = "owned_box"]
 pub struct Box<T: ?Sized> {
     inner: *mut T,
 }
 impl<T> Box<T> {
     fn new(t: T) -> Self {
-        #[rustc_box]
-        Box::new(t)
+        box_new(t)
     }
 }
 

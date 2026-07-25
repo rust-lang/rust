@@ -1479,14 +1479,6 @@ impl<'a, 'db> Evaluator<'a, 'db> {
                 let size = len * val.len();
                 Owned(val.iter().copied().cycle().take(size).collect())
             }
-            Rvalue::ShallowInitBox(_, _) => not_supported!("shallow init box"),
-            Rvalue::ShallowInitBoxWithAlloc(ty) => {
-                let Some((size, align)) = self.size_align_of(ty.as_ref(), locals)? else {
-                    not_supported!("unsized box initialization");
-                };
-                let addr = self.heap_allocate(size, align)?;
-                Owned(addr.to_bytes().to_vec())
-            }
             Rvalue::CopyForDeref(_) => not_supported!("copy for deref"),
             Rvalue::Aggregate(kind, values) => {
                 let values = values

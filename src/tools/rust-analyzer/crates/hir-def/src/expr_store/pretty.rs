@@ -727,10 +727,6 @@ impl Printer<'_> {
                 }
                 self.print_expr_in(prec, *expr);
             }
-            Expr::Box { expr } => {
-                w!(self, "box ");
-                self.print_expr_in(prec, *expr);
-            }
             Expr::UnaryOp { expr, op } => {
                 let op = match op {
                     ast::UnaryOp::Deref => "*",
