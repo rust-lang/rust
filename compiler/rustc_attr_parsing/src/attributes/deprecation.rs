@@ -24,7 +24,7 @@ fn get(
     if let Some(value_str) = v.value_as_ident() {
         Some(value_str)
     } else {
-        cx.adcx().expected_string_literal(v.value_span, Some(&v.value_as_lit()));
+        cx.adcx().expected_string_literal(v.value_span, Some(v.value_as_lit()));
         None
     }
 }
