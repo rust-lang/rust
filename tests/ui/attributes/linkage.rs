@@ -43,5 +43,5 @@ fn foo() {
 }
 
 #[linkage = "weak"]
-//~^ERROR `const fn` are incompatible with `#[linkage]`
+//~^ERROR `const fn` are incompatible with the `linkage` attribute
 const fn linkage() {}

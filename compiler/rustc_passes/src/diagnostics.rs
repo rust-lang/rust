@@ -1192,11 +1192,11 @@ pub(crate) struct OnTypeErrorNotExactlyOneGeneric {
 }
 
 #[derive(Diagnostic)]
-#[diag("extern mutable statics are incompatible with `#[linkage]`")]
+#[diag("extern mutable statics are incompatible with the `linkage` attribute")]
 #[note(
-    "marking the extern static mutable would allow changing which \
-    symbol the static references rather than make the target of the \
-    symbol mutable"
+    "the `linkage` attribute on extern statics generates a symbol that contains the address of \
+    another static. Making the extern static mutable would allow changing the address, rather \
+    than the static the address is pointing to"
 )]
 pub(crate) struct StaticMutLinkage {
     #[primary_span]
@@ -1204,7 +1204,7 @@ pub(crate) struct StaticMutLinkage {
 }
 
 #[derive(Diagnostic)]
-#[diag("`const fn` are incompatible with `#[linkage]`")]
+#[diag("`const fn` are incompatible with the `linkage` attribute")]
 #[note("`const fn` may be called at compile time, which happens before linking")]
 pub(crate) struct ConstFnLinkage {
     #[primary_span]

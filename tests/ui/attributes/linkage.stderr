@@ -46,7 +46,7 @@ LL |     let _ = #[linkage = "weak"]
    |
    = help: the `linkage` attribute can be applied to foreign functions, foreign statics, functions, methods, and statics
 
-error: `const fn` are incompatible with `#[linkage]`
+error: `const fn` are incompatible with the `linkage` attribute
   --> $DIR/linkage.rs:45:1
    |
 LL | #[linkage = "weak"]
