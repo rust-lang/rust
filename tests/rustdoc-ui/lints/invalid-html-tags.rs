@@ -1,4 +1,5 @@
 #![deny(rustdoc::invalid_html_tags)]
+//~^ NOTE the lint level is defined here
 
 //! <p>💩<p>
 //~^ ERROR unclosed HTML tag `p`
@@ -211,3 +212,98 @@ pub fn no_error_7() {}
 //~^ ERROR Unclosed HTML comment
 //~| ERROR incomplete HTML tag `p`
 pub fn v() {}
+
+/// *Improperly <span> nested* HTML</span>
+//~^ ERROR unopened HTML tag `span`
+//~| NOTE this unopened tag
+//~| NOTE does not match this unclosed tag
+//~| NOTE because of this Markdown emphasis
+pub fn w() {}
+
+/// <span>Improperly *nested </span> HTML*
+//~^ ERROR improperly nested Markdown emphasis
+//~| NOTE because of this HTML `span`
+pub fn x() {}
+
+/// <em>Improperly <span> nested</em> HTML</span>
+//~^ ERROR unopened HTML tag `span`
+//~| NOTE this unopened tag
+//~| NOTE does not match this unclosed tag
+//~| NOTE because of this HTML `em`
+pub fn y() {}
+
+/// Improperly <em> nested
+///
+/// HTML </em> emphasis
+//~^ ERROR unopened HTML tag `em`
+//~| NOTE this unopened tag
+//~^^^^^ NOTE does not match this unclosed tag
+//~^^^^^ NOTE because the Markdown paragraph ends here
+pub fn z() {}
+
+/// <script>
+///
+/// *Improperly <span> nested* HTML</span>
+///
+/// </script>
+pub fn no_error_8() {}
+
+/// <script>
+///
+/// <span>Not actually *Markdown </span> syntax*
+///
+/// </script>
+pub fn no_error_9() {}
+
+/// <script>
+///
+/// <em>Not <span>actually Markdown</em> syntax</span>
+///
+/// </script>
+pub fn no_error_10() {}
+
+/// The Markdown parser <em>takes care</em> of its own syntax
+///
+/// *testing __one two* three__
+pub fn no_error_11() {}
+
+/// <details><summary>Example</summary>
+///
+/// ```console
+/// error
+/// ```
+///
+/// </details>
+pub fn no_error_12() {}
+
+/// Figure 1: an X
+/// <svg viewBox="0 0 10 10">
+/// <path
+///     d="M0 10L10 0M10 10L0 0"
+///     stroke="black"
+/// >
+/// </svg>
+//~^ ERROR unopened HTML tag `svg`
+//~| NOTE this unopened tag
+//~^^^^^^^^ NOTE does not match this unclosed tag
+//~^^^^^ NOTE because the Markdown paragraph is interrupted by this block quote
+pub struct Diagram;
+
+/// |      left        |    right     |
+/// |------------------|--------------|
+/// | <i>`one|two`</i> | `three|four` |
+//~^ ERROR unopened HTML tag `i`
+//~| NOTE this unopened tag
+//~| NOTE does not match this unclosed tag
+//~| NOTE because the Markdown table cell ends here
+pub struct Table1;
+
+/// |  one  | two |
+/// |-------|-----|
+/// | <div> | foo |
+/// </div>
+//~^ ERROR unopened HTML tag `div`
+//~| NOTE this unopened tag
+//~^^^^ NOTE does not match this unclosed tag
+//~^^^^^ NOTE because the Markdown table cell ends here
+pub struct Table2;
