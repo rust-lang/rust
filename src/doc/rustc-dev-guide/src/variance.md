@@ -4,7 +4,7 @@ For a more general background on variance, see the [background] appendix.
 
 [background]: ./appendix/background.html
 
-During type checking we must infer the variance of type and lifetime parameters.
+During type checking, we must infer the variance of type and lifetime parameters.
 The algorithm is taken from Section 4 of the paper ["Taming the
 Wildcards: Combining Definition- and Use-Site Variance"][pldi11] published in
 PLDI'11 and written by Altidor et al., and hereafter referred to as The Paper.
@@ -12,26 +12,23 @@ PLDI'11 and written by Altidor et al., and hereafter referred to as The Paper.
 [pldi11]: https://people.cs.umass.edu/~yannis/variance-extended2011.pdf
 
 This inference is explicitly designed *not* to consider the uses of types within code.
-To determine the variance of type parameters
-defined on type `X`, we only consider the definition of the type `X`
-and the definitions of any types it references.
+To determine the variance of type parameters defined on type `X`,
+we only consider the definition of the type `X` and the definitions of any types it references.
 
 We only infer variance for type parameters found on *data types* like structs and enums.
 In these cases, there is a fairly straightforward explanation for what variance means.
 The variance of the type or lifetime parameters defines whether `T<A>` is a subtype of `T<B>`
-(resp.
-`T<'a>` and `T<'b>`) based on the relationship of `A` and `B` (resp.
-`'a` and `'b`).
+(`T<'a>` and `T<'b>` respectively)
+based on the relationship of `A` and `B` (`'a` and `'b` respectively).
 
-We do not infer variance for type parameters found on traits, functions,
-or impls.
+We do not infer variance for type parameters found on traits, functions, or impls.
 Variance on trait parameters can indeed make sense
 (and we used to compute it) but it is actually rather subtle in
 meaning and not that useful in practice, so we removed it.
 See the [addendum] for some details.
-Variances on function/impl parameters, on the
-other hand, doesn't make sense because these parameters are instantiated and
-then forgotten, they don't persist in types or compiled byproducts.
+Variances on function/impl parameters, on the other hand,
+doesn't make sense because these parameters are instantiated and then forgotten;
+they don't persist in types or compiled byproducts.
 
 [addendum]: #addendum
 
@@ -111,16 +108,16 @@ If I have a struct or enum with where clauses:
 struct Foo<T: Bar> { ... }
 ```
 
-you might wonder whether the variance of `T` with respect to `Bar` affects the
+You might wonder whether the variance of `T` with respect to `Bar` affects the
 variance `T` with respect to `Foo`.
 I claim no.
- The reason: assume that `T` is invariant with respect to `Bar` but covariant with respect to `Foo`.
+The reason: assume that `T` is invariant with respect to `Bar` but covariant with respect to `Foo`.
 And then we have a `Foo<X>` that is upcast to `Foo<Y>`, where `X <: Y`.
 However, while `X : Bar`, `Y : Bar` does not hold.
- In that case, the upcast will be illegal,
+In that case, the upcast will be illegal,
 but not because of a variance failure, but rather because the target type
 `Foo<Y>` is itself just not well-formed.
-Basically we get to assume well-formedness of all types involved before considering variance.
+Basically, we get to assume well-formedness of all types involved before considering variance.
 
 ### Dependency graph management
 
@@ -230,7 +227,7 @@ convertAll::<i32, String>(vector);
 
 Is this legal?
 To put another way, can we apply the `impl` for `Object` to the type `String`?
-The answer is yes, but to see why we have to expand out what will happen:
+The answer is yes, but to see why, we have to expand out what will happen:
 
 - `convertAll` will create a pointer to one of the entries in the
   vector, which will have type `&String`
@@ -252,7 +249,7 @@ In short, we *have* an impl of type:
 V_O = ConvertTo<i32> for Object
 ```
 
-and the function prototype expects an impl of type:
+And the function prototype expects an impl of type:
 
 ```text
 V_S = ConvertTo<i32> for String
@@ -283,7 +280,7 @@ To see why this makes sense, consider what subtyping for a trait reference means
 <T as Trait> <: <U as Trait>
 ```
 
-means that if I know that `T as Trait`, I also know that `U as Trait`.
+It means that if I know that `T as Trait`, I also know that `U as Trait`.
 Moreover, if you think of it as dictionary passing style,
 it means that a dictionary for `<T as Trait>` is safe to use where
 a dictionary for `<U as Trait>` is expected.
