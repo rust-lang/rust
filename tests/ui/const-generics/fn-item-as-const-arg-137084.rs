@@ -7,8 +7,7 @@
 fn a<const b: i32>() {}
 fn d(e: &String) {
     a::<d>
-    //~^ ERROR mismatched types
-    //~| ERROR the constant `d` is not of type `i32`
+    //~^ ERROR function items cannot be used as const args
 }
 
 fn main() {}
