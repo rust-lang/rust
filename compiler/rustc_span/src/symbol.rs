@@ -737,6 +737,7 @@ symbols! {
         cosf64,
         cosf128,
         count,
+        covariant_unsafe_cell,
         coverage,
         coverage_attribute,
         cr,
