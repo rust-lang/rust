@@ -733,9 +733,7 @@ impl<'a, 'db> Evaluator<'a, 'db> {
                 let size = self.size_of_sized(ty, locals, "size_of arg")?;
                 destination.write_from_bytes(self, &size.to_le_bytes()[0..destination.size])
             }
-            // FIXME: `min_align_of` was renamed to `align_of` in Rust 1.89
-            // (https://github.com/rust-lang/rust/pull/142410)
-            "min_align_of" | "align_of" => {
+            "align_of" => {
                 let Some(ty) = generic_args.as_slice().first().and_then(|it| it.ty()) else {
                     return Err(MirEvalError::InternalError(
                         "align_of generic arg is not provided".into(),
@@ -763,9 +761,7 @@ impl<'a, 'db> Evaluator<'a, 'db> {
                     destination.write_from_bytes(self, &size.to_le_bytes())
                 }
             }
-            // FIXME: `min_align_of_val` was renamed to `align_of_val` in Rust 1.89
-            // (https://github.com/rust-lang/rust/pull/142410)
-            "min_align_of_val" | "align_of_val" => {
+            "align_of_val" => {
                 let Some(ty) = generic_args.as_slice().first().and_then(|it| it.ty()) else {
                     return Err(MirEvalError::InternalError(
                         "align_of_val generic arg is not provided".into(),
