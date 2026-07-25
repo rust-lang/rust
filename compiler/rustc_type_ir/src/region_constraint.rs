@@ -356,10 +356,11 @@ impl<I: Interner> RegionConstraint<I> {
                 [or1, rest_ors @ ..] => {
                     let mut choices = vec![];
                     for choice in or1 {
-                        choices.extend(permutations(rest_ors).into_iter().map(|mut and| {
-                            and.push(choice.clone());
-                            and
-                        }));
+                        choices.extend(
+                            permutations(rest_ors)
+                                .into_iter()
+                                .map(|and| std::iter::once(choice.clone()).chain(and).collect()),
+                        );
                     }
                     choices
                 }
