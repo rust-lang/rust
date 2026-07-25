@@ -249,6 +249,7 @@ pub(crate) fn is_ci_llvm_available_for_target(
         ("powerpc64le-unknown-linux-gnu", false),
         ("powerpc64le-unknown-linux-musl", false),
         ("riscv64gc-unknown-linux-gnu", false),
+        ("riscv64gc-unknown-linux-musl", false),
         ("s390x-unknown-linux-gnu", false),
         ("x86_64-pc-windows-gnullvm", false),
         ("x86_64-unknown-freebsd", false),

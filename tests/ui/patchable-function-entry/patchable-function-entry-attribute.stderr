@@ -1,8 +1,8 @@
 error[E0539]: malformed `patchable_function_entry` attribute input
-  --> $DIR/patchable-function-entry-attribute.rs:4:1
+  --> $DIR/patchable-function-entry-attribute.rs:4:3
    |
 LL | #[patchable_function_entry(prefix_nops = 256, entry_nops = 0)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---^^^^^^^^^^^^^^^^^
    |                                          |
    |                                          expected an integer literal in the range of 0..=255
    |
@@ -13,10 +13,10 @@ LL + #[patchable_function_entry(prefix_nops = m, entry_nops = n, section = "sect
    |
 
 error[E0539]: malformed `patchable_function_entry` attribute input
-  --> $DIR/patchable-function-entry-attribute.rs:8:1
+  --> $DIR/patchable-function-entry-attribute.rs:8:3
    |
 LL | #[patchable_function_entry(prefix_nops = "stringvalue", entry_nops = 0)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-------------^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-------------^^^^^^^^^^^^^^^^^
    |                                          |
    |                                          expected an integer literal here
    |
@@ -27,10 +27,10 @@ LL + #[patchable_function_entry(prefix_nops = m, entry_nops = n, section = "sect
    |
 
 error[E0539]: malformed `patchable_function_entry` attribute input
-  --> $DIR/patchable-function-entry-attribute.rs:12:1
+  --> $DIR/patchable-function-entry-attribute.rs:12:3
    |
 LL | #[patchable_function_entry]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected this to be a list
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^ expected this to be a list
    |
 help: must be of the form
    |
@@ -38,10 +38,10 @@ LL | #[patchable_function_entry(prefix_nops = m, entry_nops = n, section = "sect
    |                           ++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 error[E0539]: malformed `patchable_function_entry` attribute input
-  --> $DIR/patchable-function-entry-attribute.rs:16:1
+  --> $DIR/patchable-function-entry-attribute.rs:16:3
    |
 LL | #[patchable_function_entry(prefix_nops = 10, something = 0)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---------^^^^^^
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---------^^^^^
    |                                              |
    |                                              valid arguments are `prefix_nops` or `entry_nops`
    |
@@ -52,10 +52,10 @@ LL + #[patchable_function_entry(prefix_nops = m, entry_nops = n, section = "sect
    |
 
 error[E0539]: malformed `patchable_function_entry` attribute input
-  --> $DIR/patchable-function-entry-attribute.rs:20:1
+  --> $DIR/patchable-function-entry-attribute.rs:20:3
    |
 LL | #[patchable_function_entry()]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^--^
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^--
    |                           |
    |                           expected at least 1 argument here
    |
@@ -65,10 +65,10 @@ LL | #[patchable_function_entry(prefix_nops = m, entry_nops = n, section = "sect
    |                            ++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 error[E0538]: malformed `patchable_function_entry` attribute input
-  --> $DIR/patchable-function-entry-attribute.rs:24:1
+  --> $DIR/patchable-function-entry-attribute.rs:24:3
    |
 LL | #[patchable_function_entry(prefix_nops = 255, prefix_nops = 255)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-----------^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-----------^^^^^^^
    |                                               |
    |                                               found `prefix_nops` used as a key more than once
    |
@@ -79,10 +79,10 @@ LL + #[patchable_function_entry(prefix_nops = m, entry_nops = n, section = "sect
    |
 
 error[E0539]: malformed `patchable_function_entry` attribute input
-  --> $DIR/patchable-function-entry-attribute.rs:28:1
+  --> $DIR/patchable-function-entry-attribute.rs:28:3
    |
 LL | #[patchable_function_entry(section = 255)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---^^
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---^
    |                                      |
    |                                      expected a string literal here
    |
@@ -93,10 +93,10 @@ LL + #[patchable_function_entry(prefix_nops = m, entry_nops = n, section = "sect
    |
 
 error[E0538]: malformed `patchable_function_entry` attribute input
-  --> $DIR/patchable-function-entry-attribute.rs:32:1
+  --> $DIR/patchable-function-entry-attribute.rs:32:3
    |
 LL | #[patchable_function_entry(section = "foo", section = "bar")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-------^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-------^^^^^^^^^
    |                                             |
    |                                             found `section` used as a key more than once
    |

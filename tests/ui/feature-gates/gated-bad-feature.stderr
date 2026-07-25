@@ -7,10 +7,10 @@ LL | #![feature(test_removed_feature)]
    = note: removed in 1.0.0
 
 error[E0565]: malformed `feature` attribute input
-  --> $DIR/gated-bad-feature.rs:1:1
+  --> $DIR/gated-bad-feature.rs:1:4
    |
 LL | #![feature(foo_bar_baz, foo(bar), foo = "baz", foo)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^-----^^^^^^^^^^^^^^^^^^^^
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^-----^^^^^^^^^^^^^^^^^^^
    |                            |
    |                            didn't expect any arguments here
    |
@@ -21,10 +21,10 @@ LL + #![feature(feature1, feature2, ...)]
    |
 
 error[E0565]: malformed `feature` attribute input
-  --> $DIR/gated-bad-feature.rs:1:1
+  --> $DIR/gated-bad-feature.rs:1:4
    |
 LL | #![feature(foo_bar_baz, foo(bar), foo = "baz", foo)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-------^^^^^^^
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-------^^^^^^
    |                                       |
    |                                       didn't expect any arguments here
    |
@@ -35,10 +35,10 @@ LL + #![feature(feature1, feature2, ...)]
    |
 
 error[E0539]: malformed `feature` attribute input
-  --> $DIR/gated-bad-feature.rs:6:1
+  --> $DIR/gated-bad-feature.rs:6:4
    |
 LL | #![feature]
-   | ^^^^^^^^^^^ expected this to be a list
+   |    ^^^^^^^ expected this to be a list
    |
 help: must be of the form
    |
@@ -46,10 +46,10 @@ LL | #![feature(feature1, feature2, ...)]
    |           +++++++++++++++++++++++++
 
 error[E0539]: malformed `feature` attribute input
-  --> $DIR/gated-bad-feature.rs:7:1
+  --> $DIR/gated-bad-feature.rs:7:4
    |
 LL | #![feature = "foo"]
-   | ^^^^^^^^^^^-------^
+   |    ^^^^^^^^-------
    |            |
    |            expected this to be a list
    |

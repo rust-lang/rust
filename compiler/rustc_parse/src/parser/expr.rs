@@ -1697,7 +1697,12 @@ impl<'a> Parser<'a> {
                 // directly adjacent (i.e. '=<')
                 if maybe_eq_tok == TokenKind::Eq && maybe_eq_tok.span.hi() == lt_span.lo() {
                     let eq_lt = maybe_eq_tok.span.to(lt_span);
-                    err.span_suggestion(eq_lt, "did you mean", "<=", Applicability::Unspecified);
+                    err.span_suggestion_verbose(
+                        eq_lt,
+                        "you might have meant to write a \"less than or equal to\" comparison",
+                        "<=",
+                        Applicability::Unspecified,
+                    );
                 }
                 err
             })?;
@@ -2752,7 +2757,7 @@ impl<'a> Parser<'a> {
                             && let maybe_let = self.look_ahead(1, |t| t.clone())
                             && maybe_let.is_keyword(kw::Let)
                         {
-                            err.span_suggestion(
+                            err.span_suggestion_verbose(
                                 self.prev_token.span,
                                 "consider removing this semicolon to parse the `let` as part of the same chain",
                                 "",
@@ -2764,7 +2769,7 @@ impl<'a> Parser<'a> {
                         } else {
                             // Look for usages of '=>' where '>=' might be intended
                             if maybe_fatarrow == token::FatArrow {
-                                err.span_suggestion(
+                                err.span_suggestion_verbose(
                                     maybe_fatarrow.span,
                                     "you might have meant to write a \"greater than or equal to\" comparison",
                                     ">=",
@@ -3378,7 +3383,7 @@ impl<'a> Parser<'a> {
                 if let Err(mut err) = this.expect(exp!(FatArrow)) {
                     // We might have a `=>` -> `=` or `->` typo (issue #89396).
                     if is_almost_fat_arrow {
-                        err.span_suggestion(
+                        err.span_suggestion_verbose(
                             this.token.span,
                             "use a fat arrow to start a match arm",
                             "=>",

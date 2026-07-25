@@ -552,11 +552,10 @@ impl str {
                   without modifying the original"]
     #[unstable(feature = "titlecase", issue = "153892")]
     pub fn word_to_titlecase(&self) -> String {
-        // FIXME: add ASCII fast path
-
         let mut s = String::with_capacity(self.len());
         let mut chars = self.char_indices();
 
+        // The first cased character is title-cased; leading uncased characters pass through.
         'until_first_cased_char: for (_, c) in chars.by_ref() {
             if c.is_cased() {
                 s.extend(c.to_titlecase());
@@ -566,14 +565,23 @@ impl str {
             }
         }
 
-        for (i, c) in chars {
+        // Everything after the first cased character is lower-cased. Use the ASCII fast
+        // path (auto-vectorized) for its ASCII prefix, mirroring `to_lowercase`.
+        let remainder = chars.as_str();
+        let rest_start = self.len() - remainder.len();
+        // SAFETY: `to_ascii_lowercase` preserves ASCII bytes, so the prefix stays valid UTF-8.
+        let (ascii, rest) = unsafe { convert_while_ascii(remainder, u8::to_ascii_lowercase) };
+        s.push_str(&ascii);
+        let prefix_len = rest_start + ascii.len();
+
+        for (i, c) in rest.char_indices() {
             if c == 'Σ' {
                 // Σ maps to σ, except at the end of a word where it maps to ς.
                 // This is the only conditional (contextual) but language-independent mapping
                 // in `SpecialCasing.txt`,
                 // so hard-code it rather than have a generic "condition" mechanism.
                 // See https://github.com/rust-lang/rust/issues/26035
-                let sigma_lowercase = map_uppercase_sigma(self, i);
+                let sigma_lowercase = map_uppercase_sigma(self, prefix_len + i);
                 s.push(sigma_lowercase);
             } else {
                 match conversions::to_lower(c) {

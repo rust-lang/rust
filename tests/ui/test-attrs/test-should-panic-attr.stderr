@@ -1,8 +1,8 @@
 error[E0539]: malformed `should_panic` attribute input
-  --> $DIR/test-should-panic-attr.rs:11:1
+  --> $DIR/test-should-panic-attr.rs:11:3
    |
 LL | #[should_panic(expected)]
-   | ^^^^^^^^^^^^^^^--------^^
+   |   ^^^^^^^^^^^^^--------^
    |                |
    |                expected this to be of the form `expected = "..."`
    |
@@ -19,10 +19,10 @@ LL + #[should_panic]
    |
 
 error[E0539]: malformed `should_panic` attribute input
-  --> $DIR/test-should-panic-attr.rs:20:1
+  --> $DIR/test-should-panic-attr.rs:20:3
    |
 LL | #[should_panic(expect)]
-   | ^^^^^^^^^^^^^^^------^^
+   |   ^^^^^^^^^^^^^------^
    |                |
    |                expected this to be of the form `expected = "..."`
    |
@@ -39,10 +39,10 @@ LL + #[should_panic]
    |
 
 error[E0539]: malformed `should_panic` attribute input
-  --> $DIR/test-should-panic-attr.rs:29:1
+  --> $DIR/test-should-panic-attr.rs:29:3
    |
 LL | #[should_panic(expected(foo, bar))]
-   | ^^^^^^^^^^^^^^^------------------^^
+   |   ^^^^^^^^^^^^^------------------^
    |                |
    |                expected this to be of the form `expected = "..."`
    |
@@ -60,10 +60,10 @@ LL + #[should_panic]
    |
 
 error[E0805]: malformed `should_panic` attribute input
-  --> $DIR/test-should-panic-attr.rs:38:1
+  --> $DIR/test-should-panic-attr.rs:38:3
    |
 LL | #[should_panic(expected = "foo", bar)]
-   | ^^^^^^^^^^^^^^-----------------------^
+   |   ^^^^^^^^^^^^-----------------------
    |               |
    |               expected a single argument here
    |

@@ -2111,6 +2111,7 @@ mod snapshot {
         [test] compiletest-run-make 1 <host>
         [build] rustc 0 <host> -> cargo 1 <host>
         [test] compiletest-run-make-cargo 1 <host>
+        [test] intrinsic-test <host>
         ");
     }
 
@@ -2294,6 +2295,7 @@ mod snapshot {
         [test] compiletest-run-make 2 <host>
         [build] rustc 1 <host> -> cargo 2 <host>
         [test] compiletest-run-make-cargo 2 <host>
+        [test] intrinsic-test <host>
         ");
     }
 

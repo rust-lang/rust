@@ -1,8 +1,8 @@
 error[E0805]: malformed `inline` attribute input
-  --> $DIR/E0540.rs:1:1
+  --> $DIR/E0540.rs:1:3
    |
 LL | #[inline()]
-   | ^^^^^^^^--^
+   |   ^^^^^^--
    |         |
    |         expected an argument here
    |

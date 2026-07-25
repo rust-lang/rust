@@ -1,10 +1,10 @@
-error: `#[inline]` attribute cannot be used on crates
-  --> $DIR/lint_on_root.rs:3:1
+error: the `inline` attribute cannot be used on crates
+  --> $DIR/lint_on_root.rs:3:4
    |
 LL | #![inline = ""]
-   | ^^^^^^^^^^^^^^^
+   |    ^^^^^^
    |
-   = help: `#[inline]` can only be applied to functions
+   = help: the `inline` attribute can only be applied to functions
 
 error: valid forms for the attribute are `#![inline(always)]`, `#![inline(never)]`, and `#![inline]`
   --> $DIR/lint_on_root.rs:3:1

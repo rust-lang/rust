@@ -1,8 +1,8 @@
 error[E0565]: malformed `test_runner` attribute input
-  --> $DIR/args-checked.rs:7:1
+  --> $DIR/args-checked.rs:7:4
    |
 LL | #![test_runner(x = 5)]
-   | ^^^^^^^^^^^^^^^-----^^
+   |    ^^^^^^^^^^^^-----^
    |                |
    |                didn't expect a literal here
    |
@@ -13,10 +13,10 @@ LL + #![test_runner(path)]
    |
 
 error[E0565]: malformed `test_runner` attribute input
-  --> $DIR/args-checked.rs:9:1
+  --> $DIR/args-checked.rs:9:4
    |
 LL | #![test_runner(x(x,y,z))]
-   | ^^^^^^^^^^^^^^^--------^^
+   |    ^^^^^^^^^^^^--------^
    |                |
    |                didn't expect a literal here
    |
@@ -27,10 +27,10 @@ LL + #![test_runner(path)]
    |
 
 error[E0539]: malformed `inline` attribute input
-  --> $DIR/args-checked.rs:12:1
+  --> $DIR/args-checked.rs:12:3
    |
 LL | #[inline(always = 5)]
-   | ^^^^^^^^^----------^^
+   |   ^^^^^^^----------^
    |          |
    |          valid arguments are `always` or `never`
    |
@@ -48,10 +48,10 @@ LL + #[inline]
    |
 
 error[E0539]: malformed `inline` attribute input
-  --> $DIR/args-checked.rs:14:1
+  --> $DIR/args-checked.rs:14:3
    |
 LL | #[inline(always(x, y, z))]
-   | ^^^^^^^^^---------------^^
+   |   ^^^^^^^---------------^
    |          |
    |          valid arguments are `always` or `never`
    |
@@ -69,10 +69,10 @@ LL + #[inline]
    |
 
 error[E0539]: malformed `instruction_set` attribute input
-  --> $DIR/args-checked.rs:16:1
+  --> $DIR/args-checked.rs:16:3
    |
 LL | #[instruction_set(arm::a32 = 5)]
-   | ^^^^^^^^^^^^^^^^^^------------^^
+   |   ^^^^^^^^^^^^^^^^------------^
    |                   |
    |                   valid arguments are `arm::a32` or `arm::t32`
    |
@@ -84,10 +84,10 @@ LL + #[instruction_set(set)]
    |
 
 error[E0539]: malformed `instruction_set` attribute input
-  --> $DIR/args-checked.rs:18:1
+  --> $DIR/args-checked.rs:18:3
    |
 LL | #[instruction_set(arm::a32(x, y, z))]
-   | ^^^^^^^^^^^^^^^^^^-----------------^^
+   |   ^^^^^^^^^^^^^^^^-----------------^
    |                   |
    |                   valid arguments are `arm::a32` or `arm::t32`
    |
@@ -99,10 +99,10 @@ LL + #[instruction_set(set)]
    |
 
 error[E0539]: malformed `optimize` attribute input
-  --> $DIR/args-checked.rs:20:1
+  --> $DIR/args-checked.rs:20:3
    |
 LL | #[optimize(size = 5)]
-   | ^^^^^^^^^^^--------^^
+   |   ^^^^^^^^^--------^
    |            |
    |            valid arguments are `size`, `speed` or `none`
    |
@@ -119,10 +119,10 @@ LL + #[optimize(speed)]
    |
 
 error[E0539]: malformed `optimize` attribute input
-  --> $DIR/args-checked.rs:22:1
+  --> $DIR/args-checked.rs:22:3
    |
 LL | #[optimize(size(x, y, z))]
-   | ^^^^^^^^^^^-------------^^
+   |   ^^^^^^^^^-------------^
    |            |
    |            valid arguments are `size`, `speed` or `none`
    |
@@ -151,10 +151,10 @@ LL | #[optimize(size = 5)]
    | ^^^^^^^^^^^^^^^^^^^^^
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/args-checked.rs:25:1
+  --> $DIR/args-checked.rs:25:3
    |
 LL | #[coverage(off = 5)]
-   | ^^^^^^^^^^^-------^^
+   |   ^^^^^^^^^-------^
    |            |
    |            valid arguments are `on` or `off`
    |
@@ -168,10 +168,10 @@ LL + #[coverage(on)]
    |
 
 error[E0539]: malformed `coverage` attribute input
-  --> $DIR/args-checked.rs:27:1
+  --> $DIR/args-checked.rs:27:3
    |
 LL | #[coverage(off(x, y, z))]
-   | ^^^^^^^^^^^------------^^
+   |   ^^^^^^^^^------------^
    |            |
    |            valid arguments are `on` or `off`
    |
@@ -185,10 +185,10 @@ LL + #[coverage(on)]
    |
 
 error[E0539]: malformed `rustc_abi` attribute input
-  --> $DIR/args-checked.rs:29:1
+  --> $DIR/args-checked.rs:29:3
    |
 LL | #[rustc_abi(debug = 5)]
-   | ^^^^^^^^^^^-----------^
+   |   ^^^^^^^^^-----------
    |            |
    |            valid arguments are `assert_eq` or `debug`
    |
@@ -202,10 +202,10 @@ LL + #[rustc_abi(debug)]
    |
 
 error[E0539]: malformed `rustc_abi` attribute input
-  --> $DIR/args-checked.rs:31:1
+  --> $DIR/args-checked.rs:31:3
    |
 LL | #[rustc_abi(debug(x, y, z))]
-   | ^^^^^^^^^^^----------------^
+   |   ^^^^^^^^^----------------
    |            |
    |            valid arguments are `assert_eq` or `debug`
    |
@@ -231,10 +231,10 @@ LL | #[rustc_allow_const_fn_unstable(x(x, y, z))]
    |                                 ^^^^^^^^^^
 
 error[E0539]: malformed `used` attribute input
-  --> $DIR/args-checked.rs:53:1
+  --> $DIR/args-checked.rs:53:3
    |
 LL | #[used(always = 5)]
-   | ^^^^^^^----------^^
+   |   ^^^^^----------^
    |        |
    |        valid arguments are `compiler` or `linker`
    |
@@ -251,10 +251,10 @@ LL + #[used]
    |
 
 error[E0539]: malformed `used` attribute input
-  --> $DIR/args-checked.rs:55:1
+  --> $DIR/args-checked.rs:55:3
    |
 LL | #[used(always(x, y, z))]
-   | ^^^^^^^---------------^^
+   |   ^^^^^---------------^
    |        |
    |        valid arguments are `compiler` or `linker`
    |
@@ -271,10 +271,10 @@ LL + #[used]
    |
 
 error[E0565]: malformed `rustc_must_implement_one_of` attribute input
-  --> $DIR/args-checked.rs:59:1
+  --> $DIR/args-checked.rs:59:3
    |
 LL | #[rustc_must_implement_one_of(eq = 5, neq)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^------^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^------^^^^^^
    |                               |
    |                               expected a valid identifier here
    |
@@ -285,10 +285,10 @@ LL + #[rustc_must_implement_one_of(function1, function2, ...)]
    |
 
 error[E0565]: malformed `rustc_must_implement_one_of` attribute input
-  --> $DIR/args-checked.rs:61:1
+  --> $DIR/args-checked.rs:61:3
    |
 LL | #[rustc_must_implement_one_of(eq(x, y, z), neq)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-----------^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^-----------^^^^^^
    |                               |
    |                               expected a valid identifier here
    |
@@ -299,18 +299,18 @@ LL + #[rustc_must_implement_one_of(function1, function2, ...)]
    |
 
 error[E0565]: malformed `rustc_dump_layout` attribute input
-  --> $DIR/args-checked.rs:67:1
+  --> $DIR/args-checked.rs:67:3
    |
 LL | #[rustc_dump_layout(debug = 5)]
-   | ^^^^^^^^^^^^^^^^^^^^---------^^
+   |   ^^^^^^^^^^^^^^^^^^---------^
    |                     |
    |                     didn't expect a literal here
 
 error[E0565]: malformed `rustc_dump_layout` attribute input
-  --> $DIR/args-checked.rs:69:1
+  --> $DIR/args-checked.rs:69:3
    |
 LL | #[rustc_dump_layout(debug(x, y, z))]
-   | ^^^^^^^^^^^^^^^^^^^^--------------^^
+   |   ^^^^^^^^^^^^^^^^^^--------------^
    |                     |
    |                     didn't expect a literal here
 

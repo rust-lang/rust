@@ -510,7 +510,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         let defaults = fields
             .iter()
             .enumerate()
-            .filter_map(|(i, field)| field.default.as_ref().map(|_| field_name(i, field).name))
+            .filter_map(|(i, field)| field.default_value().map(|_| field_name(i, field).name))
             .collect();
         self.r.field_names.insert(def_id, field_names);
         self.r.field_defaults.insert(def_id, defaults);

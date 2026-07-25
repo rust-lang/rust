@@ -1841,14 +1841,6 @@ impl PrimitiveType {
             .copied()
     }
 
-    pub(crate) fn all_impls(tcx: TyCtxt<'_>) -> impl Iterator<Item = DefId> {
-        Self::simplified_types()
-            .values()
-            .flatten()
-            .flat_map(move |&simp| tcx.incoherent_impls(simp).iter())
-            .copied()
-    }
-
     pub(crate) fn as_sym(&self) -> Symbol {
         use PrimitiveType::*;
         match self {

@@ -1,10 +1,10 @@
-warning: `#[diagnostic::on_unmatched_args]` attribute cannot be used on structs
-  --> $DIR/report_warning_on_non_macro.rs:4:1
+warning: the `diagnostic::on_unmatched_args` attribute cannot be used on structs
+  --> $DIR/report_warning_on_non_macro.rs:4:3
    |
 LL | #[diagnostic::on_unmatched_args(message = "not allowed here")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[diagnostic::on_unmatched_args]` can only be applied to macro defs
+   = help: the `diagnostic::on_unmatched_args` attribute can only be applied to macro defs
    = note: `#[warn(misplaced_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
 
 warning: 1 warning emitted

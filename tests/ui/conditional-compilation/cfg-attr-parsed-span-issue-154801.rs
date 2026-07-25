@@ -6,6 +6,6 @@ fn main() {
 
 fn inline_case() {
     let _x = 30;
-    #[inline] //~ ERROR `#[inline]` attribute cannot be used on expressions
+    #[inline] //~ ERROR the `inline` attribute cannot be used on expressions
     _x //~ ERROR mismatched types
 }
