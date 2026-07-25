@@ -349,13 +349,13 @@ fn lex_token_trees_for_span(
     span: Span,
 ) -> Option<impl Iterator<Item = TokenTree>> {
     let src = psess.source_map().span_to_snippet(span).ok()?;
-    let stream = unwrap_or_emit_fatal(lexer::lex_token_trees(
-        psess,
-        &src,
-        span.lo(),
-        None,
-        StripTokens::Nothing,
-    ));
+    let stream = match lexer::lex_token_trees(psess, &src, span.lo(), None, StripTokens::Nothing) {
+        Ok(stream) => stream,
+        Err(errs) => {
+            errs.into_iter().for_each(|err| err.cancel());
+            return None;
+        }
+    };
     Some((0..).map_while(move |index| stream.get(index).cloned()))
 }
 
