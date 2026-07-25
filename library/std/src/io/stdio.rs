@@ -95,23 +95,23 @@ const fn stderr_raw() -> StderrRaw {
     StderrRaw(stdio::Stderr::new())
 }
 
+#[cfg(windows)]
 impl StdoutRaw {
-    /// Starts a new lock session: stream state that platforms cache per lock
-    /// session (on Windows, the handle and its console mode) is re-queried at
-    /// the next write, so that changing the process stdio handles (e.g. with
-    /// `SetStdHandle`) between lock sessions keeps working.
+    /// Starts a new lock session: stream state cached per lock session (the
+    /// handle and its console mode) is re-queried at the next write, so that
+    /// changing the process stdio handles (e.g. with `SetStdHandle`) between
+    /// lock sessions keeps working.
     #[inline]
     fn refresh(&mut self) {
-        #[cfg(windows)]
         self.0.refresh();
     }
 }
 
+#[cfg(windows)]
 impl StderrRaw {
     /// See `StdoutRaw::refresh`.
     #[inline]
     fn refresh(&mut self) {
-        #[cfg(windows)]
         self.0.refresh();
     }
 }
@@ -791,12 +791,16 @@ impl Stdout {
         // implementation detail that the underlying `ReentrantMutex` is
         // static.
         let lock = StdoutLock { inner: self.inner.lock() };
-        // A new lock session begins, so let the platform re-query cached
-        // stream state at the next write. Skipped if the cell is already
-        // borrowed (a nested lock during an ongoing write); such a lock is
-        // part of the outer session anyway.
-        if let Ok(mut w) = lock.inner.try_borrow_mut() {
-            w.get_mut().refresh();
+        // A new lock session begins, so let Windows re-query cached stream
+        // state at the next write; other platforms cache nothing, and skip
+        // this entirely so their `lock()` is unchanged. Skipped also if the
+        // cell is already borrowed (a nested lock during an ongoing write);
+        // such a lock is part of the outer session anyway.
+        #[cfg(windows)]
+        {
+            if let Ok(mut w) = lock.inner.try_borrow_mut() {
+                w.get_mut().refresh();
+            }
         }
         lock
     }
@@ -1031,9 +1035,12 @@ impl Stderr {
         // implementation detail that the underlying `ReentrantMutex` is
         // static.
         let lock = StderrLock { inner: self.inner.lock() };
-        // See `Stdout::lock`: a new lock session begins.
-        if let Ok(mut w) = lock.inner.try_borrow_mut() {
-            w.refresh();
+        // See `Stdout::lock`: a new lock session begins (Windows only).
+        #[cfg(windows)]
+        {
+            if let Ok(mut w) = lock.inner.try_borrow_mut() {
+                w.refresh();
+            }
         }
         lock
     }
