@@ -773,17 +773,17 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let (lt1, sig1) = get_lifetimes(sig1);
         let (lt2, sig2) = get_lifetimes(sig2);
 
-        // #[target_features] for<'a> unsafe extern "C" fn(&'a T) -> &'a T
+        // #[target_feature(..)] for<'a> unsafe extern "C" fn(&'a T) -> &'a T
         let mut values =
             (DiagStyledString::normal("".to_string()), DiagStyledString::normal("".to_string()));
 
-        // #[target_features] for<'a> unsafe extern "C" fn(&'a T) -> &'a T
-        // ^^^^^^^^^^^^^^^^^^
+        // #[target_feature(..)] for<'a> unsafe extern "C" fn(&'a T) -> &'a T
+        // ^^^^^^^^^^^^^^^^^^^^^
         let fn_item_prefix_and_safety = |fn_def, sig: ty::FnSig<'_>| match fn_def {
             None => ("", sig.safety().prefix_str()),
             Some((did, _)) => {
                 if self.tcx.codegen_fn_attrs(did).safe_target_features {
-                    ("#[target_features] ", "")
+                    ("#[target_feature(..)] ", "")
                 } else {
                     ("", sig.safety().prefix_str())
                 }
@@ -794,19 +794,19 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         values.0.push(prefix1, prefix1 != prefix2);
         values.1.push(prefix2, prefix1 != prefix2);
 
-        // #[target_features] for<'a> unsafe extern "C" fn(&'a T) -> &'a T
-        //                    ^^^^^^^^
+        // #[target_feature(..)] for<'a> unsafe extern "C" fn(&'a T) -> &'a T
+        //                       ^^^^^^^^
         let lifetime_diff = lt1 != lt2;
         values.0.push(lt1, lifetime_diff);
         values.1.push(lt2, lifetime_diff);
 
-        // #[target_features] for<'a> unsafe extern "C" fn(&'a T) -> &'a T
-        //                            ^^^^^^
+        // #[target_feature(..)] for<'a> unsafe extern "C" fn(&'a T) -> &'a T
+        //                               ^^^^^^
         values.0.push(safety1, safety1 != safety2);
         values.1.push(safety2, safety1 != safety2);
 
-        // #[target_features] for<'a> unsafe extern "C" fn(&'a T) -> &'a T
-        //                                   ^^^^^^^^^^
+        // #[target_feature(..)] for<'a> unsafe extern "C" fn(&'a T) -> &'a T
+        //                                      ^^^^^^^^^^
         if sig1.abi() != ExternAbi::Rust {
             values.0.push(format!("extern {} ", sig1.abi()), sig1.abi() != sig2.abi());
         }
@@ -814,13 +814,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             values.1.push(format!("extern {} ", sig2.abi()), sig1.abi() != sig2.abi());
         }
 
-        // #[target_features] for<'a> unsafe extern "C" fn(&'a T) -> &'a T
-        //                                              ^^^
+        // #[target_feature(..)] for<'a> unsafe extern "C" fn(&'a T) -> &'a T
+        //                                                 ^^^
         values.0.push_normal("fn(");
         values.1.push_normal("fn(");
 
-        // #[target_features] for<'a> unsafe extern "C" fn(&'a T) -> &'a T
-        //                                                 ^^^^^
+        // #[target_feature(..)] for<'a> unsafe extern "C" fn(&'a T) -> &'a T
+        //                                                    ^^^^^
         let len1 = sig1.inputs().len();
         let len2 = sig2.inputs().len();
         let splatted_arg_index1 = sig1.splatted().map(usize::from);
@@ -868,13 +868,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             values.1.push("...", !sig1.c_variadic());
         }
 
-        // #[target_features] for<'a> unsafe extern "C" fn(&'a T) -> &'a T
-        //                                                      ^
+        // #[target_feature(..)] for<'a> unsafe extern "C" fn(&'a T) -> &'a T
+        //                                                         ^
         values.0.push_normal(")");
         values.1.push_normal(")");
 
-        // #[target_features] for<'a> unsafe extern "C" fn(&'a T) -> &'a T
-        //                                                        ^^^^^^^^
+        // #[target_feature(..)] for<'a> unsafe extern "C" fn(&'a T) -> &'a T
+        //                                                           ^^^^^^^^
         let output1 = sig1.output();
         let output2 = sig2.output();
         let (x1, x2) = self.cmp(output1, output2);
