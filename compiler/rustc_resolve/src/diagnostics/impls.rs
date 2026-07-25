@@ -2604,10 +2604,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             decl,
             outermost_res,
             parent_scope,
-            single_nested,
+            root_span,
             dedup_span,
             ref source,
         } = *privacy_error;
+
+        let single_nested = dedup_span != root_span;
 
         let res = decl.res();
         let ctor_fields_span = self.ctor_fields_span(decl);
@@ -2854,19 +2856,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             };
             err.subdiagnostic(note);
         }
-        // The suggestion replaces `dedup_span` with a path reaching the failing ident.
-        // That's valid only when
-        // 1) the failing ident is the imported leaf, otherwise `as` renames and trailing segments
-        //    get dropped, and
-        // 2) the use isn't nested, otherwise `dedup_span` is one ident in `{...}`.
-        //
-        // See issue #156060.
-        let can_replace_use = !shown_candidates
-            && !single_nested
+        // We only offer this suggestion when no other candidates have already been shown to the user.
+        let can_suggest = !shown_candidates
+            // Don't suggest if the outermost resolution points somewhere else already.
             && !outermost_res.is_some_and(|(_, outer)| outer.span != ident.span);
-        if can_replace_use {
-            // We prioritize shorter paths, non-core imports and direct imports over the
-            // alternatives.
+
+        if can_suggest {
+            // We prioritize shorter paths, non-core imports and direct imports over the alternatives.
             sugg_paths.sort_by_key(|(p, reexport)| (p.len(), p[0].name == sym::core, *reexport));
             for (sugg, reexport) in sugg_paths {
                 if sugg.len() <= 1 {
@@ -2875,12 +2871,63 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     continue;
                 }
                 let path = join_path_idents(sugg);
-                let sugg = if reexport {
-                    diagnostics::ImportIdent::ThroughReExport { span: dedup_span, ident, path }
+
+                // Replacing `dedup_span` assumes `ident` is the leaf, not an `as`-renamed binding.
+                if !single_nested {
+                    let sugg = if reexport {
+                        diagnostics::ImportIdent::ThroughReExport { span: dedup_span, ident, path }
+                    } else {
+                        diagnostics::ImportIdent::Directly { span: dedup_span, ident, path }
+                    };
+                    err.subdiagnostic(sugg);
+                    break;
+                }
+
+                // For a grouped import, suggest a standalone `use` for the correct path
+                // and remove the failing item from the existing group.
+                let (found_closing_brace, span_to_remove) =
+                    find_span_of_binding_until_next_binding(self.tcx.sess, ident.span, root_span);
+
+                let msg = if reexport {
+                    format!("import `{ident}` through the re-export")
                 } else {
-                    diagnostics::ImportIdent::Directly { span: dedup_span, ident, path }
+                    format!("import `{ident}` directly")
                 };
-                err.subdiagnostic(sugg);
+
+                let span_to_remove = if found_closing_brace {
+                    match extend_span_to_previous_binding(self.tcx.sess, span_to_remove) {
+                        Some(prev) => prev,
+                        None => {
+                            // Replace the entire statement rather than leaving an empty group.
+                            err.multipart_suggestion(
+                                msg,
+                                vec![(root_span, format!("{path}"))],
+                                Applicability::MachineApplicable,
+                            );
+                            break;
+                        }
+                    }
+                } else {
+                    span_to_remove
+                };
+
+                let indentation =
+                    self.tcx.sess.source_map().indentation_before(root_span).unwrap_or_default();
+
+                // We intentionally insert at `root_span.shrink_to_lo()` instead of a line-level
+                // span. This preserves formatting and surrounding tokens if the `use` statement
+                // is on the same line as other items (e.g. `{ use foo::{bar, baz}; }`).
+                let spans = vec![
+                    (root_span.shrink_to_lo(), format!("{path};\n{indentation}use ")),
+                    (span_to_remove, String::new()),
+                ];
+
+                // Braces are left in place intentionally (e.g. `use foo::{Bar};`). `rustfmt` will
+                // normalize them to `use foo::Bar;` later, and computing byte offsets to strip
+                // them here risks ICEs on multibyte source.
+
+                // Insert before `root_span` to reuse the existing `use`.
+                err.multipart_suggestion(msg, spans, Applicability::MachineApplicable);
                 break;
             }
         }
