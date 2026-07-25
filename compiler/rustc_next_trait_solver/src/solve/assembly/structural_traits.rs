@@ -62,7 +62,8 @@ where
         | ty::Placeholder(..)
         | ty::Alias(ty::IsRigid::No, _)
         | ty::Bound(..)
-        | ty::Infer(_) => {
+        | ty::Infer(_)
+        | ty::Alias(ty::IsRigid::Yes, ty::AliasTy { kind: ty::Opaque { .. }, .. }) => {
             panic!("unexpected type `{ty:?}`")
         }
 
@@ -108,8 +109,6 @@ where
                 .map(Unnormalized::skip_norm_wip)
                 .collect(),
         )),
-        // Opaque types are already handled earlier
-        _ => unreachable!(),
     }
 }
 
@@ -146,17 +145,9 @@ where
         ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
     });
 
-    // If this hidden-type proof would constrain non-region inference,
-    // treating it as a hard success can reveal the hidden type to the
-    // caller. A hard failure can do the same when it depends on caller
-    // bounds. For now, we are very conservative with caller bounds.
-    let param_env_may_leak_hidden_ty = !goal.param_env.caller_bounds().is_empty();
     match candidate {
         Ok(candidate) if has_only_region_constraints(candidate.result) => Ok(candidate),
         Ok(_) => ecx.forced_ambiguity(MaybeInfo::AMBIGUOUS),
-        Err(NoSolutionOrRerunNonErased::NoSolution(_)) if param_env_may_leak_hidden_ty => {
-            ecx.forced_ambiguity(MaybeInfo::AMBIGUOUS)
-        }
         Err(err) => Err(err),
     }
 }
