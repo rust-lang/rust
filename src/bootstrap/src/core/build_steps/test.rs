@@ -2544,7 +2544,7 @@ Please disable assertions with `rust.debug-assertions = false`.
 
             if let Some(debuggers::Gdb { gdb }) = debuggers::discover_gdb(builder, android.as_ref())
             {
-                cmd.arg("--gdb").arg(gdb.as_ref());
+                cmd.arg("--gdb").arg(gdb);
             }
 
             if let Some(debuggers::Lldb { lldb_exe, lldb_version }) =
