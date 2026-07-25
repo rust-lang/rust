@@ -214,7 +214,7 @@ When `--read-doc-meta-dir` is supplied, it runs it in *finalize mode*. No crate 
 passed to rustdoc when it runs in this mode. Multiple `--read-doc-meta-dir` can be passed to
 rustdoc, so your build system can split the state between multiple directories if that helps.
 
-Both `--write-doc-meta-dir` and `--read-doc-meta-dir` can't be supplied at once.
+`--write-doc-meta-dir` and `--read-doc-meta-dir` cannot both be passed to the same rustdoc invocation.
 
 ```console
 $ rustdoc crate1.rs --out-dir=doc
