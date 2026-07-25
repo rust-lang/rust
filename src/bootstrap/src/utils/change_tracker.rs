@@ -651,4 +651,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "A new `build.sde` configuration option has been added to support intrinsic-test.",
     },
+    ChangeInfo {
+        change_id: 159878,
+        severity: ChangeSeverity::Warning,
+        summary: "Obsolete option `build.compiletest-use-stage0-libtest` has no effect and has been removed.",
+    },
 ];
