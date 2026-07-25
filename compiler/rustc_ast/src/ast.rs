@@ -3491,6 +3491,8 @@ pub struct AttrItem {
     pub span: Span,
 }
 
+/// A synthetic attribute.
+///
 /// Synthetic attributes are inserted by the compiler. They cannot be written in source code, and
 /// so cannot be pretty-printed by the AST pretty printer (because its output should be valid Rust
 /// code). They receive special treatment because they must not affect observable language
@@ -3513,7 +3515,7 @@ pub enum SyntheticAttr {
     /// evaluated true or not (or even failed to parse). The `pred` and `attrs` are not recorded
     /// because they are not needed.
     ///
-    /// The attribute is used by some clippy lints.
+    /// The attribute is used by rustdoc to display `doc_cfg` information and by some clippy lints.
     CfgAttrTrace(CfgEntry),
 }
 
