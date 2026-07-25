@@ -25,9 +25,32 @@ macro_rules! arg_error {
     }};
 }
 
-fn usage() {
-    println!(
-        "\
+macro_rules! commands_decl {
+    ($($variant:ident: $doc_name:literal => $doc:literal ,)+) => {
+        enum Command {
+            $($variant),+
+        }
+
+        impl<'a> From<Option<&'a str>> for Command {
+            fn from(arg: Option<&'a str>) -> Self {
+                match arg {
+                    $(Some($doc_name) => Self::$variant,)+
+                    Some("--help") => {
+                        usage();
+                        process::exit(0);
+                    }
+                    Some(flag) if flag.starts_with('-') => arg_error!("Expected command found flag {}", flag),
+                    Some(command) => arg_error!("Unknown command {}", command),
+                    None => {
+                        usage();
+                        process::exit(0);
+                    }
+                }
+            }
+        }
+
+        fn usage() {
+            println!("\
 rustc_codegen_gcc build system
 
 Usage: build_system [command] [options]
@@ -35,64 +58,33 @@ Usage: build_system [command] [options]
 Options:
     --help     : Displays this help message.
 
-Commands:
-    cargo      : Executes a cargo command.
-    rustc      : Compiles the program using the GCC compiler.
-    clean      : Cleans the build directory, removing all compiled files and artifacts.
-    prepare    : Prepares the environment for building, including fetching dependencies and setting up configurations.
-    build      : Compiles the project.
-    test       : Runs tests for the project.
-    info       : Displays information about the build environment and project configuration.
-    clone-gcc  : Clones the GCC compiler from a specified source.
-    fmt        : Runs rustfmt
-    fuzz       : Fuzzes `cg_gcc` using rustlantis
-    abi-test   : Runs the abi-cafe test suite on the codegen, checking for ABI compatibility with LLVM
-    check-todo : Checks todo in the project"
-    );
-}
+Commands:",
+            );
+            let mut commands = vec![$(($doc_name, $doc),)+];
+            let longest = commands.iter().map(|(name, _)| name.len()).max().unwrap();
 
-pub enum Command {
-    Cargo,
-    Clean,
-    CloneGcc,
-    Prepare,
-    Build,
-    Rustc,
-    Test,
-    Info,
-    Fmt,
-    Fuzz,
-    AbiTest,
-    CheckTodo,
-}
-
-impl<'a> From<Option<&'a str>> for Command {
-    fn from(arg: Option<&'a str>) -> Self {
-        match arg {
-            Some("cargo") => Self::Cargo,
-            Some("rustc") => Self::Rustc,
-            Some("clean") => Self::Clean,
-            Some("prepare") => Self::Prepare,
-            Some("build") => Self::Build,
-            Some("test") => Self::Test,
-            Some("info") => Self::Info,
-            Some("clone-gcc") => Self::CloneGcc,
-            Some("abi-test") => Self::AbiTest,
-            Some("check-todo") => Self::CheckTodo,
-            Some("fmt") => Self::Fmt,
-            Some("fuzz") => Self::Fuzz,
-            Some("--help") => {
-                usage();
-                process::exit(0);
-            }
-            Some(flag) if flag.starts_with('-') => arg_error!("Expected command found flag {}", flag),
-            Some(command) => arg_error!("Unknown command {}", command),
-            None => {
-                usage();
-                process::exit(0);
+            commands.sort_unstable_by(|a, b| a.0.cmp(b.0));
+            for (name, doc) in commands {
+                let spacing = std::iter::repeat(' ').take(longest - name.len() + 1).collect::<String>();
+                eprintln!("    {name}{spacing}: {doc}.");
             }
         }
     }
+}
+
+commands_decl! {
+    Cargo: "cargo" => "Executes a cargo command",
+    Clean: "clean" => "Cleans the build directory, removing all compiled files and artifacts",
+    CloneGcc: "clone-gcc" => "Clones the GCC compiler from a specified source",
+    Prepare: "prepare" => "Prepares the environment for building, including fetching dependencies and setting up configurations",
+    Build: "build" => "Compiles the project",
+    Rustc: "rustc" => "Compiles the program using the GCC compiler",
+    Test: "test" => "Runs tests for the project",
+    Info: "info" => "Displays information about the build environment and project configuration",
+    Fmt: "fmt" => "Runs rustfmt",
+    Fuzz: "fuzz" => "Fuzzes `cg_gcc` using `rustlantis`",
+    AbiTest: "abi-test" => "Runs the abi-cafe test suite on the codegen, checking for ABI compatibility with LLVM",
+    CheckTodo: "check-todo" => "Checks todo in the project",
 }
 
 fn main() {
