@@ -1771,7 +1771,7 @@ pub(crate) mod builtin {
     ///
     /// See [the reference] for more info.
     ///
-    /// [the reference]: ../reference/attributes/derive.html
+    /// [the reference]: ../../../reference/attributes/derive.html
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_builtin_macro]
     pub macro derive($item:item) {
