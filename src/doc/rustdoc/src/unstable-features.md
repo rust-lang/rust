@@ -210,7 +210,7 @@ When `--write-doc-meta-dir` is supplied, rustdoc will write the crate's shared m
 that directory. This is an *intermediate mode* where it may write some files to the doc output
 directory, but some features won't work until it is finalized.
 
-When `--read-doc-meta-dir` is supplied, it runs it in *finalize mode*. No crate source code is
+When `--read-doc-meta-dir` is supplied, rustdoc runs in *finalize mode*. No crate source code is
 passed to rustdoc when it runs in this mode. Multiple `--read-doc-meta-dir` can be passed to
 rustdoc, so your build system can split the state between multiple directories if that helps.
 
