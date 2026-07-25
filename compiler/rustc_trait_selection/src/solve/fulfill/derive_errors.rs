@@ -1,8 +1,8 @@
 use std::ops::ControlFlow;
 
-use rustc_hir::attrs::lang_items::LangItem;
+use rustc_hir::attrs::lang_items::{self as hir, LangItem};
 use rustc_infer::infer::InferCtxt;
-use rustc_infer::traits::solve::{CandidateSource, GoalSource, MaybeCause};
+use rustc_infer::traits::solve::{BuiltinImplSource, CandidateSource, GoalSource, MaybeCause};
 use rustc_infer::traits::{
     self, MismatchedProjectionTypes, Obligation, ObligationCause, ObligationCauseCode,
     PredicateObligation, SelectionError,
@@ -248,6 +248,55 @@ impl<'tcx> BestObligation<'tcx> {
         candidates
     }
 
+    fn is_opaque_auto_trait_candidate(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        candidate: &inspect::InspectCandidate<'_, 'tcx>,
+        pred: ty::Predicate<'tcx>,
+    ) -> bool {
+        self.is_builtin_misc_trait_candidate(candidate)
+            && self.is_positive_auto_trait_predicate_with_opaque_self(tcx, pred)
+    }
+
+    fn is_builtin_misc_trait_candidate(
+        &self,
+        candidate: &inspect::InspectCandidate<'_, 'tcx>,
+    ) -> bool {
+        matches!(
+            candidate.kind(),
+            inspect::ProbeKind::TraitCandidate {
+                source: CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
+                result: _,
+            }
+        )
+    }
+
+    fn is_positive_auto_trait_predicate_with_opaque_self(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        pred: ty::Predicate<'tcx>,
+    ) -> bool {
+        let ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_pred)) =
+            pred.kind().skip_binder()
+        else {
+            return false;
+        };
+
+        if trait_pred.polarity != ty::PredicatePolarity::Positive
+            || !tcx.trait_is_auto(trait_pred.def_id())
+        {
+            return false;
+        }
+
+        let ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id, .. }, .. }) =
+            trait_pred.self_ty().kind()
+        else {
+            return false;
+        };
+
+        !matches!(tcx.opaque_ty_origin(*def_id), hir::OpaqueTyOrigin::AsyncFn { .. })
+    }
+
     /// HACK: We walk the nested obligations for a well-formed arg manually,
     /// since there's nontrivial logic in `wf.rs` to set up an obligation cause.
     /// Ideally we'd be able to track this better.
@@ -444,6 +493,13 @@ impl<'tcx> ProofTreeVisitor<'tcx> for BestObligation<'tcx> {
             && tcx.do_not_recommend_impl(impl_def_id)
         {
             trace!("#[diagnostic::do_not_recommend] -> exit");
+            return ControlFlow::Break(self.obligation.clone());
+        }
+
+        // Don't walk into opaque auto trait candidates, as doing so would expose
+        // the opaque's hidden type in diagnostics outside of its defining scope.
+        if self.is_opaque_auto_trait_candidate(tcx, candidate, pred) {
+            trace!("opaque auto trait candidate -> exit");
             return ControlFlow::Break(self.obligation.clone());
         }
 

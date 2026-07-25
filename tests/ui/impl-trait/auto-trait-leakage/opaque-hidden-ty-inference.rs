@@ -23,7 +23,7 @@ where
     // Proving `impl Sized: Unpin` must not constrain `NameMe<T>`
     // to the foreign closure hidden inside `define`.
     let opaque = require_auto(define::<T>());
-    //~^ ERROR type annotations needed
+    //~^ ERROR `impl Sized` cannot be unpinned
     let closure;
     loop {}
     return closure;
