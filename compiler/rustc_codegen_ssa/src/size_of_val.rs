@@ -45,14 +45,37 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         }
         ty::Slice(_) | ty::Str => {
             let unit = layout.field(bx, 0);
-            // The info in this case is the length of the str, so the size is that
-            // times the unit size.
-            (
-                // All slice sizes must fit into `isize`, so this multiplication cannot
-                // wrap -- neither signed nor unsigned.
-                bx.unchecked_sumul(info.unwrap(), bx.const_usize(unit.size.bytes())),
-                bx.const_usize(unit.align.bytes()),
-            )
+            let unit_size = bx.const_usize(unit.size.bytes());
+            // The info is the length metadata, the total size is that times the unit size.
+            let length_meta = info.unwrap();
+
+            let size = match bx.const_to_opt_u128(unit_size, false) {
+                // When the unit size is 1 (like *const [u8]), the `mul nsw nuw` emitted doesn't
+                // help LLVM prove anything about the size, and the mul gets removed.
+                // We help it with an `assume` and not emitting the mul, since it's an identity.
+                Some(1) => {
+                    let size_bound = bx.data_layout().ptr_sized_integer().signed_max() as u128;
+                    bx.assume_integer_range(
+                        length_meta,
+                        bx.type_isize(),
+                        WrappingRange { start: 0, end: size_bound },
+                    );
+                    length_meta
+                }
+                // might as well optimize for 0 while we're here, any length times 0 unit size is 0
+                Some(0) => bx.const_usize(0),
+                // For a unit size of 2 or greater, the `mul nsw nuw` is sufficient for LLVM to
+                // understand the size bounds.
+                Some(2..) | None => {
+                    // All object sizes must fit into `isize`, so this multiplication cannot
+                    // wrap -- neither signed nor unsigned.
+                    bx.unchecked_sumul(length_meta, unit_size)
+                }
+            };
+
+            let align = bx.const_usize(unit.align.bytes());
+
+            (size, align)
         }
         ty::Foreign(_) => {
             // `extern` type. We cannot compute the size, so panic.
