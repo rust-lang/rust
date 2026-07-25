@@ -21,4 +21,11 @@ fn unconstrained_receiver() {
     let _: i32 = get(Value);
 }
 
+fn nested_closure_param_ty_var() {
+    let get = |value: &_| (*value).get();
+    //~^ ERROR type annotations needed
+
+    let _: i32 = get(&Value);
+}
+
 fn main() {}
