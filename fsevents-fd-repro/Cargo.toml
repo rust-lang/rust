@@ -1,0 +1,16 @@
+# Standalone: the rust checkout is a cargo workspace and would otherwise adopt this.
+[workspace]
+
+[package]
+name = "fsevents-fd-repro"
+version = "0.1.0"
+edition = "2021"
+
+# No dependencies on purpose: the point is to show the problem with std plus the
+# system frameworks only.
+[dependencies]
+
+# The IO-safety check that aborts is gated on the caller having debug assertions
+# enabled (library/core/src/ub_checks.rs), so do not turn them off here.
+[profile.release]
+debug-assertions = true
