@@ -42,7 +42,5 @@ fn main() {
         .arg("--write-doc-meta-dir=info/doc.parts/sierra")
         .run();
 
-    htmldocck().arg(&out_dir).arg("tango.rs").run();
-    htmldocck().arg(&out_dir).arg("quebec.rs").run();
     htmldocck().arg(&out_dir).arg("sierra.rs").run();
 }

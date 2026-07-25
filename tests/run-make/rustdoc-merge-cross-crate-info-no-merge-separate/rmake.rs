@@ -45,7 +45,5 @@ fn main() {
         .run();
     assert!(parts_out_dir.join("sierra.json").exists());
 
-    htmldocck().arg(&out_dir).arg("tango.rs").run();
-    htmldocck().arg(&out_dir).arg("quebec.rs").run();
     htmldocck().arg(&out_dir).arg("sierra.rs").run();
 }

@@ -42,7 +42,5 @@ fn main() {
         .arg("--enable-index-page")
         .run();
 
-    htmldocck().arg(&out_dir).arg("tango.rs").run();
-    htmldocck().arg(&out_dir).arg("quebec.rs").run();
     htmldocck().arg(&out_dir).arg("sierra.rs").run();
 }

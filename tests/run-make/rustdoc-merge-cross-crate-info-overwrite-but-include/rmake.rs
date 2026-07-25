@@ -51,7 +51,5 @@ fn main() {
         .run();
     output.assert_stderr_not_contains("error: the compiler unexpectedly panicked. this is a bug.");
 
-    htmldocck().arg(&out_dir).arg("tango.rs").run();
-    htmldocck().arg(&out_dir).arg("quebec.rs").run();
     htmldocck().arg(&out_dir).arg("sierra.rs").run();
 }

@@ -37,5 +37,4 @@ fn main() {
     output.assert_stderr_not_contains("error: the compiler unexpectedly panicked. this is a bug.");
 
     htmldocck().arg(&out_dir).arg("echo.rs").run();
-    htmldocck().arg(&out_dir).arg("foxtrot.rs").run();
 }

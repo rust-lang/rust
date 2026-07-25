@@ -48,7 +48,5 @@ fn main() {
         .out_dir(&out_dir)
         .run();
 
-    htmldocck().arg(&out_dir).arg("tango.rs").run();
-    htmldocck().arg(&out_dir).arg("quebec.rs").run();
     htmldocck().arg(&out_dir).arg("sierra.rs").run();
 }

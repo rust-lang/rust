@@ -1,9 +1,3 @@
-//@ aux-build:tango.rs
-//@ build-aux-docs
-//@ doc-flags:--write-doc-meta-dir=info/doc.parts/sierra
-//@ doc-flags:--enable-index-page
-//@ doc-flags:-Zunstable-options
-
 //@ !has index.html
 //@ has sierra/struct.Sierra.html
 //@ has tango/trait.Tango.html

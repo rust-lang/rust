@@ -1,9 +1,3 @@
-//@ aux-build:tango.rs
-//@ build-aux-docs
-//@ doc-flags:--read-doc-meta-dir=info/doc.parts/tango
-//@ doc-flags:--enable-index-page
-//@ doc-flags:-Zunstable-options
-
 //@ has quebec/struct.Quebec.html
 //@ has sierra/struct.Sierra.html
 //@ has tango/trait.Tango.html
