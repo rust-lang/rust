@@ -1190,3 +1190,23 @@ pub(crate) struct OnTypeErrorMalformedFormatLiterals {
 pub(crate) struct OnTypeErrorNotExactlyOneGeneric {
     pub count: usize,
 }
+
+#[derive(Diagnostic)]
+#[diag("extern mutable statics are incompatible with the `linkage` attribute")]
+#[note(
+    "the `linkage` attribute on extern statics generates a symbol that contains the address of \
+    another static. Making the extern static mutable would allow changing the address, rather \
+    than the static the address is pointing to"
+)]
+pub(crate) struct StaticMutLinkage {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("`const fn` are incompatible with the `linkage` attribute")]
+#[note("`const fn` may be called at compile time, which happens before linking")]
+pub(crate) struct ConstFnLinkage {
+    #[primary_span]
+    pub span: Span,
+}
