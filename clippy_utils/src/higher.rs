@@ -7,8 +7,10 @@ use crate::res::MaybeDef as _;
 use crate::{is_expn_of, sym};
 
 use rustc_ast::ast;
-use rustc_hir as hir;
-use rustc_hir::{Arm, Block, Expr, ExprKind, HirId, LoopSource, MatchSource, Node, Pat, QPath, StructTailExpr};
+use rustc_hir::{
+    self as hir, Arm, Block, Expr, ExprKind, HirId, LetStmt, LocalSource, LoopSource, MatchSource, Node, Pat, QPath,
+    StructTailExpr,
+};
 use rustc_lint::LateContext;
 use rustc_span::{Span, symbol};
 
@@ -488,6 +490,54 @@ impl<'hir> WhileLet<'hir> {
             });
         }
         None
+    }
+}
+
+/// A desugared compound assignment statement, such as in
+/// `(a, b) = expr`.
+pub struct CompoundAssignment<'hir> {
+    /// The individual assignees
+    pub assignees: Vec<&'hir Expr<'hir>>,
+    /// The initializatiojn expression
+    pub init: &'hir Expr<'hir>,
+}
+
+impl<'hir> CompoundAssignment<'hir> {
+    /// Check if `expr` is a block which is an expansion of a compound assignment.
+    #[inline]
+    pub fn hir(expr: &'hir Expr<'_>) -> Option<Self> {
+        // A compound assignment is unsugared into a block which first assigns the RHS subexpressions to
+        // temporaries, then moves those temporaries to the assignment targets. By doing it this
+        // way, and since the moves cannot fail, the compound assignment either succeeds or not take
+        // place at all if, for example, one of the RHS subcomponent diverges.
+        if let ExprKind::Block(
+            Block {
+                stmts: [assign, rest @ ..],
+                expr: None,
+                ..
+            },
+            None,
+        ) = expr.kind
+            && let hir::StmtKind::Let(LetStmt {
+                init: Some(init),
+                source: LocalSource::AssignDesugar,
+                ..
+            }) = assign.kind
+        {
+            let mut assignees = Vec::with_capacity(rest.len());
+            for stmt in rest {
+                if let hir::StmtKind::Expr(expr) = stmt.kind
+                    && let ExprKind::Assign(target, _, _) = expr.kind
+                {
+                    assignees.push(target);
+                } else {
+                    return None;
+                }
+            }
+            Some(CompoundAssignment { assignees, init })
+        } else {
+            None
+        }
     }
 }
 

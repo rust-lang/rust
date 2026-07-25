@@ -110,3 +110,12 @@ mod issue16553 {
     //! ```
     mod blah {}
 }
+
+fn issue17039() {
+    let mut data = [1u8, 2, 3, 4];
+    let mut slice = data.as_mut_slice();
+
+    let parent;
+    // SAFETY: length is within bounds
+    (parent, slice) = unsafe { slice.split_at_mut_unchecked(slice.len() / 2) };
+}
