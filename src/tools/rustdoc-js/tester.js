@@ -539,6 +539,22 @@ async function loadSearchJS(doc_folder, resource_suffix) {
     };
 }
 
+/**
+ * Returns true if `fileName` looks like a proper rustdoc-js test file.
+ *
+ * Mirrors compiletest's `is_test` filtering so editor temp/autosave files
+ * (for example Emacs `.#foo.js`) are not treated as tests.
+ */
+function isTestFile(fileName) {
+    if (!fileName.endsWith(".js")) {
+        return false;
+    }
+
+    // `.`, `#`, and `~` are common temp-file prefixes.
+    const invalidPrefixes = [".", "#", "~"];
+    return !invalidPrefixes.some(prefix => fileName.startsWith(prefix));
+}
+
 function showHelp() {
     console.log("rustdoc-js options:");
     console.log("  --doc-folder [PATH]        : location of the generated doc folder");
@@ -626,7 +642,7 @@ async function main(argv) {
         }
     } else if (opts["test_folder"].length !== 0) {
         for (const file of fs.readdirSync(opts["test_folder"])) {
-            if (!file.endsWith(".js")) {
+            if (!isTestFile(file)) {
                 continue;
             }
             process.stdout.write(`Testing ${file} ... `);
