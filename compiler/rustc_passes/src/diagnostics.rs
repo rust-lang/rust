@@ -515,10 +515,10 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for NoMainErr {
         if self.add_teach_note {
             diag.note(msg!("if you don't know the basics of Rust, you can go look to the Rust Book to get started: https://doc.rust-lang.org/book/"));
         }
+
         diag
     }
 }
-
 pub(crate) struct DuplicateLangItem {
     pub local_span: Option<Span>,
     pub lang_item_name: Symbol,
@@ -1080,6 +1080,16 @@ pub(crate) struct EiiImplRequiresUnsafeSuggestion {
     pub left: Span,
     #[suggestion_part(code = ")")]
     pub right: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("`{$name}` is not unsafe to implement")]
+pub(crate) struct EiiImplCannotBeUnsafe {
+    #[primary_span]
+    pub impl_span: Span,
+    #[label("`unsafe` is not allowed here")]
+    pub unsafe_span: Span,
+    pub name: Symbol,
 }
 
 #[derive(Diagnostic)]
