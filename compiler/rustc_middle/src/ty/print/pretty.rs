@@ -789,7 +789,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     let mut sig =
                         self.tcx().fn_sig(def_id).instantiate(self.tcx(), args).skip_norm_wip();
                     if self.tcx().codegen_fn_attrs(def_id).safe_target_features {
-                        write!(self, "#[target_features] ")?;
+                        write!(self, "#[target_feature(..)] ")?;
                         sig = sig.map_bound(|mut sig| {
                             sig.fn_sig_kind = sig.fn_sig_kind.set_safety(hir::Safety::Safe);
                             sig
