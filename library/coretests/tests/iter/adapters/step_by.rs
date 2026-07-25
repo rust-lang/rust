@@ -294,6 +294,11 @@ fn test_step_by_fold_range_specialization() {
         assert_eq!(r.sum::<usize>(), 6);
     });
 
+    t!((core::range::Range { start: 0usize, end: 5 }).into_iter().step_by(2), r, {
+        assert_eq!(r.next(), Some(0));
+        assert_eq!(r.sum::<usize>(), 6);
+    });
+
     t!((usize::MAX - 6..usize::MAX).step_by(5), r, {
         assert_eq!(r.next(), Some(usize::MAX - 6));
         assert_eq!(r.sum::<usize>(), usize::MAX - 1);
