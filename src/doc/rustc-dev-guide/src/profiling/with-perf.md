@@ -17,8 +17,8 @@ This is a guide for how to profile rustc with [perf](https://perf.wiki.kernel.or
 
 ## Gathering a perf profile
 
-perf is an excellent tool on linux that can be used to gather and analyze all kinds of information.
-Mostly it is used to figure out where a program spends its time.
+perf is an excellent tool on Linux that can be used to gather and analyze all kinds of information.
+It is mostly used to figure out where a program spends its time.
 It can also be used for other sorts of events, though, like cache misses and so forth.
 
 ### The basics
@@ -29,10 +29,10 @@ The basic `perf` command is this:
 perf record -F99 --call-graph dwarf XXX
 ```
 
-The `-F99` tells perf to sample at 99 Hz, which avoids generating too
-much data for longer runs (why 99 Hz you ask?
-It is often chosen because it is unlikely to be in lockstep with other periodic
-activity).
+The `-F99` tells perf to sample at 99 Hz, which avoids generating too much data for longer runs.
+
+> 99 Hz is often chosen because it is unlikely to be in lockstep with other periodic activity.
+
 The `--call-graph dwarf` tells perf to get call-graph information from debuginfo, which is accurate.
 The `XXX` is the command you want to profile.
 So, for example, you might do:
@@ -44,10 +44,9 @@ perf record -F99 --call-graph dwarf cargo +<toolchain> rustc
 to run `cargo` -- here `<toolchain>` should be the name of the toolchain you made in the beginning.
 But there are some things to be aware of:
 
-- You probably don't want to profile the time spend building dependencies.
-  So something like `cargo build; cargo clean -p $C` may be helpful (where `$C` is the crate name)
-    - Though usually I just do `touch src/lib.rs` and rebuild instead.
-      =)
+- You probably don't want to profile the time spent building dependencies.
+  So something like `cargo build; cargo clean --package $crate` may be helpful
+  - Though usually I just do `touch src/lib.rs` and rebuild instead =)
 - You probably don't want incremental messing about with your profile.
   So something like `CARGO_INCREMENTAL=0` can be helpful.
 
@@ -61,12 +60,11 @@ cargo install addr2line --features="bin"
 ### Gathering a perf profile from a `perf.rust-lang.org` test
 
 Often we want to analyze a specific test from `perf.rust-lang.org`.
-The easiest way to do that is to use the [rustc-perf][rustc-perf]
+The easiest way to do that is to use the [rustc-perf]
 benchmarking suite, this approach is described [here](with-rustc-perf.md).
 
 Instead of using the benchmark suite CLI, you can also profile the benchmarks manually.
-First,
-you need to clone the [rustc-perf][rustc-perf] repository:
+First, you need to clone the [rustc-perf] repository:
 
 ```bash
 $ git clone https://github.com/rust-lang/rustc-perf
@@ -118,7 +116,7 @@ For example:
 perf report
 ```
 
-will open up an interactive TUI program.
+This opens up an interactive TUI program.
 In simple cases, that can be helpful.
 For more detailed examination, the [`perf-focus` tool][pf] can be helpful; it is covered below.
 
@@ -185,8 +183,8 @@ The `'{do_mir_borrowck}'` argument is called the **matcher**. It
 specifies the test to be applied on the backtrace.
 In this case, the `{X}` indicates that there must be *some* function on the backtrace
 that meets the regular expression `X`.
-In this case, that regex is
-just the name of the function we want (in fact, it's a subset of the name;
+In this case, that regex is just the name of the function we want
+(in fact, it's a subset of the name;
 the full name includes a bunch of other stuff, like the module path).
 In this mode, perf-focus just prints out the percentage of
 samples where `do_mir_borrowck` was on the stack: in this case, 29%.
@@ -230,17 +228,15 @@ It turns out the answer is "almost never" — only 12 samples fit that
 description (if you ever see *no* samples, that often indicates your query is messed up).
 
 If you're curious, you can find out exactly which samples by using the `--print-match` option.
-This will print out the full backtrace for
-each sample. The `|` at the front of the line indicates the part that
-the regular expression matched.
+This will print out the full backtrace for each sample.
+The `|` at the front of the line indicates the part that the regular expression matched.
 
 ### Example: Where does MIR borrowck spend its time?
 
 Often we want to do more "explorational" queries.
 Like, we know that MIR borrowck is 29% of the time, but where does that time get spent?
 For that, the `--tree-callees` option is often the best tool.
-You usually also want to give `--tree-min-percent` or
-`--tree-max-depth`.
+You usually also want to give `--tree-min-percent` or `--tree-max-depth`.
 The result looks like this:
 
 ```bash
@@ -268,8 +264,8 @@ What happens with `--tree-callees` is that
 - we look at the code that occurs *after* the regex match and try to build up a call tree
 
 The `--tree-min-percent 3` option says "only show me things that take more than 3% of the time".
-Without this, the tree often gets really noisy and includes random stuff like the innards of
-malloc.
+Without this,
+the tree often gets really noisy and includes random stuff like the innards of malloc.
 `--tree-max-depth` can be useful too, it just limits how many levels we print.
 
 For each line, we display the percent of time in that function
