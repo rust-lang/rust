@@ -3,7 +3,7 @@
 **Github Label:** None <br>
 **Ping command:** `@rustbot ping gpu-target`
 
-This notification group deals with linker related issues and their integration within the compiler.
+This notification group deals with linker-related issues and their integration within the compiler.
 
 The group also has an associated Zulip stream ([`#t-compiler/gpgpu-backend`])
 where people can go to ask questions and discuss GPU-related topics and issues.
