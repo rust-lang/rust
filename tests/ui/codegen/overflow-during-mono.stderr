@@ -1,4 +1,4 @@
-error: reached the recursion limit while instantiating `quicksort::<Filter<Filter<Filter<Filter<_, _>, _>, _>, _>, _, i32>`
+error: reached the recursion limit while instantiating `quicksort::<Filter<Filter<_, {closure@...}>, {closure@...}>, _, i32>`
   --> $DIR/overflow-during-mono.rs:16:25
    |
 LL |             let mut v = quicksort(less);
