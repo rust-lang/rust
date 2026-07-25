@@ -600,7 +600,7 @@ fn main() {
             false,
             false,
             expect![[r#"
-                Some Variant FileId(1) 6737..6769 6762..6766
+                Some Variant FileId(1) 6734..6766 6759..6763
 
                 FileId(0) 46..50
             "#]],
