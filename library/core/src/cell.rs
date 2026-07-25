@@ -259,9 +259,12 @@ use crate::pin::PinCoerceUnsized;
 use crate::ptr::{self, NonNull};
 use crate::range;
 
+mod covariant_unsafe_cell;
 mod lazy;
 mod once;
 
+#[unstable(feature = "covariant_unsafe_cell", issue = "159735")]
+pub use covariant_unsafe_cell::CovariantUnsafeCell;
 #[stable(feature = "lazy_cell", since = "1.80.0")]
 pub use lazy::LazyCell;
 #[stable(feature = "once_cell", since = "1.70.0")]
