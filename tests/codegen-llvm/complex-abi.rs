@@ -61,15 +61,13 @@
 //@ [CSKY] compile-flags: --target csky-unknown-linux-gnuabiv2
 //@ [CSKY] needs-llvm-components: csky
 
-//@ revisions: SPARC64
+//@ revisions: SPARC64 SPARC
 //@ [SPARC64] compile-flags: --target sparc64-unknown-linux-gnu
 //@ [SPARC64] needs-llvm-components: sparc
+//@ [SPARC] compile-flags: --target sparc-unknown-linux-gnu
+//@ [SPARC] needs-llvm-components: sparc
 
 // FIXME: the below revisions are deliberately disabled for now.
-
-//  revisions: SPARC
-// [SPARC] compile-flags: --target sparc-unknown-linux-gnu
-// [SPARC] needs-llvm-components: sparc
 
 // revisions: POWERPC POWERPC64LE POWERPC64 AIX
 // [POWERPC] compile-flags: --target powerpc-unknown-linux-gnu
@@ -154,7 +152,7 @@ pub extern "C" fn cplx_f32(x: Complex<f32>) -> Complex<f32> {
     // RISCV64:        define{{.*}} { float, float } @cplx_f32({ float, float } {{.*}})
     // S390X:          define{{.*}} void @cplx_f32(ptr {{.*}} sret([8 x i8]) {{.*}}, ptr {{.*}})
     // SPARC64:        define{{.*}} { float, float } @cplx_f32({ float, float } {{.*}})
-    // SPARC:          define{{.*}} { float, float } @cplx_f32(ptr {{.*}} byval({ float, float }) {{.*}})
+    // SPARC:          define{{.*}} { float, float } @cplx_f32(ptr {{.*}} byval([8 x i8]) {{.*}})
     // WASM32:         define{{.*}} void @cplx_f32(ptr {{.*}} sret([8 x i8]) {{.*}}, ptr {{.*}})
     // WASM64:         define{{.*}} void @cplx_f32(ptr {{.*}} sret([8 x i8]) {{.*}}, ptr {{.*}})
     // WIN32_GNU:      define{{.*}} i64 @cplx_f32(ptr {{.*}} byval([8 x i8]) {{.*}})
@@ -188,7 +186,7 @@ pub extern "C" fn cplx_f64(x: Complex<f64>) -> Complex<f64> {
     // RISCV64:        define{{.*}} { double, double } @cplx_f64({ double, double } {{.*}})
     // S390X:          define{{.*}} void @cplx_f64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}})
     // SPARC64:        define{{.*}} { double, double } @cplx_f64({ double, double } {{.*}})
-    // SPARC:          define{{.*}} { double, double } @cplx_f64(ptr {{.*}} byval({ double, double }) {{.*}})
+    // SPARC:          define{{.*}} { double, double } @cplx_f64(ptr {{.*}} byval([16 x i8]) {{.*}})
     // WASM32:         define{{.*}} void @cplx_f64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}})
     // WASM64:         define{{.*}} void @cplx_f64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}})
     // WIN32_GNU:      define{{.*}} void @cplx_f64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}} byval([16 x i8]) {{.*}})
@@ -203,6 +201,7 @@ pub extern "C" fn cplx_f64(x: Complex<f64>) -> Complex<f64> {
 pub extern "C" fn cplx_f128(x: Complex<f128>) -> Complex<f128> {
     // AARCH64:        define{{.*}} [2 x fp128] {{.*}})
     // I686:           define{{.*}} void @cplx_f128(ptr {{.*}} sret([32 x i8]) {{.*}}, ptr {{.*}} byval([32 x i8]) {{.*}})
+    // SPARC:          define{{.*}} inreg { fp128, fp128 } @cplx_f128(ptr {{.*}} byval([32 x i8]) {{.*}})
     // WASM32:         define{{.*}} void @cplx_f128(ptr {{.*}} sret([32 x i8]) {{.*}}, ptr {{.*}})
     // WASM64:         define{{.*}} void @cplx_f128(ptr {{.*}} sret([32 x i8]) {{.*}}, ptr {{.*}})
     // WIN32_GNU:      define{{.*}} void @cplx_f128(ptr {{.*}} sret([32 x i8]) {{.*}}, ptr {{.*}} byval([32 x i8]) {{.*}})
@@ -236,7 +235,7 @@ pub extern "C" fn cplx_i8(x: Complex<i8>) -> Complex<i8> {
     // RISCV64:        define{{.*}} i64 @cplx_i8(i64{{.*}})
     // S390X:          define{{.*}} void @cplx_i8(ptr {{.*}} sret([2 x i8]) {{.*}}, ptr {{.*}})
     // SPARC64:        define{{.*}} i16 @cplx_i8(i16{{.*}})
-    // SPARC:          define{{.*}} { i8, i8 } @cplx_i8(ptr {{.*}} byval({ i8, i8 }) {{.*}})
+    // SPARC:          define{{.*}} i16 @cplx_i8(i16{{.*}})
     // WASM32:         define{{.*}} void @cplx_i8(ptr {{.*}} sret([2 x i8]) {{.*}}, ptr {{.*}})
     // WASM64:         define{{.*}} void @cplx_i8(ptr {{.*}} sret([2 x i8]) {{.*}}, ptr {{.*}})
     // WIN32_GNU:      define{{.*}} i16 @cplx_i8(ptr {{.*}} byval([2 x i8]) {{.*}})
@@ -270,7 +269,7 @@ pub extern "C" fn cplx_i16(x: Complex<i16>) -> Complex<i16> {
     // RISCV64:        define{{.*}} i64 @cplx_i16(i64{{.*}})
     // S390X:          define{{.*}} void @cplx_i16(ptr {{.*}} sret([4 x i8]) {{.*}}, ptr {{.*}})
     // SPARC64:        define{{.*}} i32 @cplx_i16(i32{{.*}})
-    // SPARC:          define{{.*}} { i16, i16 } @cplx_i16(ptr {{.*}} byval({ i16, i16 }) {{.*}})
+    // SPARC:          define{{.*}} i32 @cplx_i16(i32{{.*}})
     // WASM32:         define{{.*}} void @cplx_i16(ptr {{.*}} sret([4 x i8]) {{.*}}, ptr {{.*}})
     // WASM64:         define{{.*}} void @cplx_i16(ptr {{.*}} sret([4 x i8]) {{.*}}, ptr {{.*}})
     // WIN32_GNU:      define{{.*}} i32 @cplx_i16(ptr {{.*}} byval([4 x i8]) {{.*}})
@@ -304,7 +303,7 @@ pub extern "C" fn cplx_i32(x: Complex<i32>) -> Complex<i32> {
     // RISCV64:        define{{.*}} i64 @cplx_i32(i64 {{.*}})
     // S390X:          define{{.*}} void @cplx_i32(ptr {{.*}} sret([8 x i8]) {{.*}}, ptr {{.*}})
     // SPARC64:        define{{.*}} i64 @cplx_i32(i64 {{.*}})
-    // SPARC:          define{{.*}} { i32, i32 } @cplx_i32(ptr {{.*}} byval({ i32, i32 }) {{.*}})
+    // SPARC:          define{{.*}} i64 @cplx_i32(i64 {{.*}})
     // WASM32:         define{{.*}} void @cplx_i32(ptr {{.*}} sret([8 x i8]) {{.*}}, ptr {{.*}})
     // WASM64:         define{{.*}} void @cplx_i32(ptr {{.*}} sret([8 x i8]) {{.*}}, ptr {{.*}})
     // WIN32_GNU:      define{{.*}} i64 @cplx_i32(ptr {{.*}} byval([8 x i8]) {{.*}})
@@ -338,7 +337,7 @@ pub extern "C" fn cplx_i64(x: Complex<i64>) -> Complex<i64> {
     // RISCV64:        define{{.*}} [2 x i64] @cplx_i64([2 x i64] {{.*}})
     // S390X:          define{{.*}} void @cplx_i64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}})
     // SPARC64:        define { i64, i64 } @cplx_i64({ i64, i64 } {{.*}})
-    // SPARC:          define{{.*}} { i64, i64 } @cplx_i64(ptr {{.*}} byval({ i64, i64 }) {{.*}})
+    // SPARC:          define{{.*}} { i64, i64 } @cplx_i64(ptr {{.*}} byval([16 x i8]) {{.*}})
     // WASM32:         define{{.*}} void @cplx_i64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}})
     // WASM64:         define{{.*}} void @cplx_i64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}})
     // WIN32_GNU:      define{{.*}} void @cplx_i64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}} byval([16 x i8]) {{.*}})
@@ -377,7 +376,7 @@ pub extern "C" fn wrapper_cplx_i64(
     // RISCV64:        define{{.*}} [2 x i64] @wrapper_cplx_i64([2 x i64] {{.*}})
     // S390X:          define{{.*}} void @wrapper_cplx_i64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}})
     // SPARC64:        define { i64, i64 } @wrapper_cplx_i64({ i64, i64 } {{.*}})
-    // SPARC:          define{{.*}} { i64, i64 } @wrapper_cplx_i64(ptr {{.*}} byval({ i64, i64 }) {{.*}})
+    // SPARC:          define{{.*}} { i64, i64 } @wrapper_cplx_i64(ptr {{.*}} byval([16 x i8]) {{.*}})
     // WASM32:         define{{.*}} void @wrapper_cplx_i64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}})
     // WASM64:         define{{.*}} void @wrapper_cplx_i64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}})
     // WIN32_GNU:      define{{.*}} void @wrapper_cplx_i64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}} byval([16 x i8]) {{.*}})
