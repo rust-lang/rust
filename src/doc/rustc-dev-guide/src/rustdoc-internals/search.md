@@ -334,7 +334,7 @@ but unification will reject it later.
 The unification filter ensures that:
 
 * Bag semantics are respected.
-  If you query says `i32, i32`,
+  If your query says `i32, i32`,
   then the function has to mention *two* i32s, not just one.
 * Nesting semantics are respected.
   If your query says `vec<option>`,
