@@ -999,22 +999,6 @@ impl<'a, 'db> MirLowerCtx<'a, 'db> {
                 self.push_assignment(current, place, Rvalue::Ref(bk, p.store()), expr_id.into());
                 Ok(Some(current))
             }
-            Expr::Box { expr } => {
-                let ty = self.expr_ty_after_adjustments(*expr);
-                self.push_assignment(
-                    current,
-                    place,
-                    Rvalue::ShallowInitBoxWithAlloc(ty.store()),
-                    expr_id.into(),
-                );
-                let Some((operand, current)) = self.lower_expr_to_some_operand(*expr, current)?
-                else {
-                    return Ok(None);
-                };
-                let p = place.project(ProjectionElem::Deref);
-                self.push_assignment(current, p, operand.into(), expr_id.into());
-                Ok(Some(current))
-            }
             Expr::Field { .. }
             | Expr::Index { .. }
             | Expr::UnaryOp { op: hir_def::hir::UnaryOp::Deref, .. } => {

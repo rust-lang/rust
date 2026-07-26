@@ -776,7 +776,6 @@ impl ExpressionStore {
             | Expr::Await { expr }
             | Expr::Ref { expr, mutability: _, rawness: _ }
             | Expr::UnaryOp { expr, op: _ }
-            | Expr::Box { expr }
             | Expr::Const(expr) => {
                 visitor.on_expr(*expr);
             }

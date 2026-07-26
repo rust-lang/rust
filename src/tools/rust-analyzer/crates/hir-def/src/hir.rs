@@ -355,9 +355,6 @@ pub enum Expr {
         rawness: Rawness,
         mutability: Mutability,
     },
-    Box {
-        expr: ExprId,
-    },
     UnaryOp {
         expr: ExprId,
         op: UnaryOp,
@@ -432,9 +429,7 @@ impl Expr {
             | Expr::Index { .. }
             | Expr::MethodCall { .. } => ExprPrecedence::Postfix,
 
-            Expr::Box { .. } | Expr::Let { .. } | Expr::UnaryOp { .. } | Expr::Ref { .. } => {
-                ExprPrecedence::Prefix
-            }
+            Expr::Let { .. } | Expr::UnaryOp { .. } | Expr::Ref { .. } => ExprPrecedence::Prefix,
 
             Expr::Cast { .. } => ExprPrecedence::Cast,
 

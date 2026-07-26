@@ -179,9 +179,6 @@ impl<'db> Filler<'db> {
                                 super::AggregateKind::Union(_, _) => (),
                             }
                         }
-                        Rvalue::ShallowInitBox(_, ty) | Rvalue::ShallowInitBoxWithAlloc(ty) => {
-                            self.fill_ty(ty)?;
-                        }
                         Rvalue::Use(op) => {
                             self.fill_operand(op)?;
                         }

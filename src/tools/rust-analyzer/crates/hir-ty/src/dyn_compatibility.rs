@@ -426,15 +426,9 @@ fn receiver_is_dispatchable<'db>(
         return false;
     };
 
-    let meta_sized_did = lang_items.MetaSized;
-
-    // TODO: This is for supporting dyn compatibility for toolchains doesn't contain `MetaSized`
-    // trait. Uncomment and short circuit here once `MINIMUM_SUPPORTED_TOOLCHAIN_VERSION`
-    // become > 1.88.0
-    //
-    // let Some(meta_sized_did) = meta_sized_did else {
-    //     return false;
-    // };
+    let Some(meta_sized_did) = lang_items.MetaSized else {
+        return false;
+    };
 
     // Type `U`
     // FIXME: That seems problematic to fake a generic param like that?
@@ -455,8 +449,8 @@ fn receiver_is_dispatchable<'db>(
         });
         let trait_predicate = TraitRef::new_from_args(interner, trait_.into(), args);
 
-        let meta_sized_predicate = meta_sized_did
-            .map(|did| TraitRef::new(interner, did.into(), [unsized_self_ty]).upcast(interner));
+        let meta_sized_predicate =
+            TraitRef::new(interner, meta_sized_did.into(), [unsized_self_ty]).upcast(interner);
 
         ParamEnv {
             clauses: Clauses::new_from_iter(
@@ -465,7 +459,7 @@ fn receiver_is_dispatchable<'db>(
                     .iter_identity()
                     .map(Unnormalized::skip_norm_wip)
                     .chain([unsize_predicate.upcast(interner), trait_predicate.upcast(interner)])
-                    .chain(meta_sized_predicate),
+                    .chain(std::iter::once(meta_sized_predicate)),
             ),
         }
     };
