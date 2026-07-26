@@ -338,7 +338,8 @@ unsafe fn transize<T, const N: usize>(
 #[allow(unused)]
 #[inline(always)]
 fn zeroing_idxs<const N: usize>(idxs: Simd<u8, N>) -> Simd<u8, N> {
-    use crate::simd::{Select, cmp::SimdPartialOrd};
-    idxs.simd_lt(Simd::splat(N as u8))
-        .select(idxs, Simd::splat(u8::MAX))
+    // Adding this sets the high bit for indices N..=127, while PSHUFB ignores
+    // the other changed bits. The OR preserves the high bit for indices 128..=255.
+    let zeroing_bits = idxs + Simd::splat((127 - N + 1) as u8);
+    idxs | zeroing_bits
 }
