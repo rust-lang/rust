@@ -140,20 +140,20 @@ macro_rules! arena_types {
 arena_types!(rustc_arena::declare_arena);
 
 #[inline]
-fn decode_arena_allocatable<'tcx, D, T>(decoder: &mut D) -> &'tcx T
+fn decode_arena_allocatable<'tcx, D, C, T>(decoder: &mut D) -> &'tcx T
 where
     D: TyDecoder<'tcx>,
-    T: ArenaAllocatable<'tcx> + Decodable<D>,
+    T: ArenaAllocatable<'tcx, C> + Decodable<D>,
 {
     let value: T = Decodable::decode(decoder);
     decoder.interner().arena.alloc(value)
 }
 
 #[inline]
-fn decode_arena_allocatable_slice<'tcx, D, T>(decoder: &mut D) -> &'tcx [T]
+fn decode_arena_allocatable_slice<'tcx, D, C, T>(decoder: &mut D) -> &'tcx [T]
 where
     D: TyDecoder<'tcx>,
-    T: ArenaAllocatable<'tcx> + Decodable<D>,
+    T: ArenaAllocatable<'tcx, C> + Decodable<D>,
 {
     let values: Vec<T> = Decodable::decode(decoder);
     decoder.interner().arena.alloc_from_iter(values)
@@ -187,15 +187,22 @@ macro_rules! impl_ref_decodable_into_arena {
 
 impl_ref_decodable_into_arena! {
     // tidy-alphabetical-start
+    (rustc_middle::middle::exported_symbols::ExportedSymbol<'tcx>, rustc_middle::middle::exported_symbols::SymbolExportInfo),
     rustc_ast::InlineAsmTemplatePiece,
     rustc_ast::tokenstream::TokenStream,
     rustc_data_structures::unord::UnordMap<rustc_span::def_id::DefId, rustc_middle::ty::EarlyBinder<'tcx, Ty<'tcx>>>,
     rustc_data_structures::unord::UnordSet<rustc_span::def_id::LocalDefId>,
     rustc_hir::Attribute,
     rustc_index::IndexVec<rustc_middle::mir::Promoted, rustc_middle::mir::Body<'tcx>>,
+    rustc_middle::middle::deduced_param_attrs::DeducedParamAttrs,
     rustc_middle::mir::Body<'tcx>,
     rustc_middle::traits::ImplSource<'tcx, ()>,
     rustc_middle::traits::specialization_graph::Graph,
     rustc_middle::ty::TypeckResults<'tcx>,
+    rustc_middle::ty::Variance,
+    rustc_span::Ident,
+    rustc_span::Span,
+    rustc_span::def_id::DefId,
+    rustc_span::def_id::LocalDefId,
     // tidy-alphabetical-end
 }

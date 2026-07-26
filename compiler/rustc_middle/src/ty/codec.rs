@@ -481,34 +481,6 @@ macro_rules! __impl_decoder_methods {
     }
 }
 
-macro_rules! impl_arena_copy_decoder {
-    (<$tcx:tt> $($ty:ty,)*) => {
-        $(impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for $ty {
-            #[inline]
-            fn decode(decoder: &mut D) -> &'tcx Self {
-                decoder.interner().arena.alloc(Decodable::decode(decoder))
-            }
-        }
-
-        impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for [$ty] {
-            #[inline]
-            fn decode(decoder: &mut D) -> &'tcx Self {
-                decoder.interner().arena.alloc_from_iter(<Vec<_> as Decodable<D>>::decode(decoder))
-            }
-        })*
-    };
-}
-
-impl_arena_copy_decoder! {<'tcx>
-    Span,
-    rustc_span::Ident,
-    ty::Variance,
-    rustc_span::def_id::DefId,
-    rustc_span::def_id::LocalDefId,
-    (rustc_middle::middle::exported_symbols::ExportedSymbol<'tcx>, rustc_middle::middle::exported_symbols::SymbolExportInfo),
-    rustc_middle::middle::deduced_param_attrs::DeducedParamAttrs,
-}
-
 #[macro_export]
 macro_rules! implement_ty_decoder {
     ($DecoderName:ident <$($typaram:tt),*>) => {
