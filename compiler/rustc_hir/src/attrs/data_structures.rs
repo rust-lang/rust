@@ -12,7 +12,6 @@ use rustc_ast::{AttrStyle, Path, ast};
 use rustc_data_structures::Limit;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_error_messages::{DiagArgValue, IntoDiagArg};
-use rustc_hir::LangItem;
 use rustc_macros::{Decodable, Encodable, PrintAttribute, StableHash};
 use rustc_span::def_id::DefId;
 use rustc_span::hygiene::Transparency;
@@ -22,7 +21,7 @@ use thin_vec::ThinVec;
 
 use crate::attrs::diagnostic::*;
 use crate::attrs::pretty_printing::PrintAttribute;
-use crate::{DefaultBodyStability, PartialConstStability, RustcVersion, Stability};
+use crate::{DefaultBodyStability, LangItem, PartialConstStability, RustcVersion, Stability};
 
 #[derive(Copy, Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
 pub enum EiiImplResolution {
