@@ -125,8 +125,24 @@ impl BorrowedFd<'_> {
         let cmd = libc::F_DUPFD;
 
         // Avoid using file descriptors below 3 as they are used for stdio
-        let fd = cvt(unsafe { libc::fcntl(self.as_raw_fd(), cmd, 3) })?;
-        Ok(unsafe { OwnedFd::from_raw_fd(fd) })
+        let fd = cvt(unsafe { libc::fcntl(self.as_raw_fd(), cmd, 3) });
+
+        // Some older AIX 7.2 versions don't implement F_DUPFD_CLOEXEC and return EINVAL.
+        // Try to fallback to a non-atomic F_DUPFD + FD_CLOEXEC.
+        #[cfg(target_os = "aix")]
+        let fd = match fd {
+            Err(e) if e.raw_os_error() == Some(libc::EINVAL) => {
+                let fd = cvt(unsafe { libc::fcntl(self.as_raw_fd(), libc::F_DUPFD, 3) })?;
+                if let Err(e) = cvt(unsafe { libc::fcntl(fd, libc::F_SETFD, libc::FD_CLOEXEC) }) {
+                    unsafe { libc::close(fd) };
+                    return Err(e);
+                }
+                Ok(fd)
+            }
+            fd => fd,
+        };
+
+        Ok(unsafe { OwnedFd::from_raw_fd(fd?) })
     }
 
     /// Creates a new `OwnedFd` instance that shares the same underlying file
