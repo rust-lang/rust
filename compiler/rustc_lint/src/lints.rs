@@ -840,7 +840,7 @@ pub(crate) enum RedefiningRuntimeSymbolsDiag<'tcx> {
         "invalid definition of the runtime `{$symbol_name}` symbol used by the standard library"
     )]
     #[note(
-        "expected `{$expected_fn_sig}`
+        "expected `{$expected_fn_sig}` (for the current target)
     found    `{$found_fn_sig}`"
     )]
     #[help(
@@ -851,7 +851,7 @@ pub(crate) enum RedefiningRuntimeSymbolsDiag<'tcx> {
         "suspicious definition of the runtime `{$symbol_name}` symbol used by the standard library"
     )]
     #[note(
-        "expected `{$expected_fn_sig}`
+        "expected `{$expected_fn_sig}` (for the current target)
     found    `{$found_fn_sig}`"
     )]
     #[help(
