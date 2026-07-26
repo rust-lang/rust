@@ -11,6 +11,23 @@ use crate::{
 };
 
 #[test]
+fn nested_argument_position_impl_trait_captures_lifetime() {
+    check_no_mismatches(
+        r#"
+//- minicore: iterator
+trait Trait<'a> {}
+
+fn f<'a>(_values: impl IntoIterator<Item = impl Trait<'a>>) {}
+
+fn crash<'a>(expr: &'a (), values: impl IntoIterator<Item = impl Trait<'a>>) -> &'a () {
+    f(values);
+    expr
+}
+"#,
+    );
+}
+
+#[test]
 fn liberating_distinct_late_bound_lifetimes_preserves_identity() {
     let (db, file_id) = TestDB::with_single_file(
         r#"
