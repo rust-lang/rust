@@ -656,4 +656,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Warning,
         summary: "GDB and LLDB are no longer automatically discovered from the environment. If you want to use path discovery for them, you can opt in using `build.gdb = \"discover\"` or `build.lldb = \"discover\"`.",
     },
+    ChangeInfo {
+        change_id: 159878,
+        severity: ChangeSeverity::Warning,
+        summary: "Obsolete option `build.compiletest-use-stage0-libtest` has no effect and has been removed.",
+    },
 ];
