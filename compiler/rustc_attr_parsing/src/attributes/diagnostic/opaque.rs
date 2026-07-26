@@ -45,7 +45,7 @@ impl AttributeParser for OpaqueParser {
         AllowedTargets::AllowListWarnRest(&[Allow(Target::MacroDef)]);
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_>) -> Option<AttributeKind> {
-        if let Some(_) = self.attr_span { Some(AttributeKind::Opaque) } else { None }
+        if self.attr_span.is_some() { Some(AttributeKind::Opaque) } else { None }
     }
 }
 
