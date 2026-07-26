@@ -839,6 +839,10 @@ impl Step for CargoMiri {
             SourceType::Submodule,
             &[],
         );
+        // Run subcrate tests as well.
+        cargo.arg("--workspace");
+        // Some tests need isolation disabled.
+        cargo.env("MIRIFLAGS", "-Zmiri-disable-isolation");
 
         // If we are testing stage 2+ cargo miri, make sure that it works with the in-tree cargo.
         // We want to do this *somewhere* to ensure that Miri + nightly cargo actually works.
