@@ -33,6 +33,7 @@
 #![feature(slice_ptr_get)]
 #![feature(slice_range)]
 #![feature(str_as_str)]
+#![feature(str_copy_from_str)]
 #![feature(strict_provenance_lints)]
 #![feature(string_remove_matches)]
 #![feature(string_replace_in_place)]
