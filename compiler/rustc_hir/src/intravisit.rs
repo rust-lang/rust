@@ -114,70 +114,64 @@ pub trait HirTyCtxt<'hir> {
     fn hir_foreign_item(&self, id: ForeignItemId) -> &'hir ForeignItem<'hir>;
 }
 
-// Used when no tcx is actually available, forcing manual implementation of nested visitors.
+/// Used when no tcx is actually available, forcing manual implementation of nested visitors.
 impl<'hir> HirTyCtxt<'hir> for ! {
     fn hir_node(&self, _: HirId) -> Node<'hir> {
-        unreachable!();
+        *self
     }
     fn hir_body(&self, _: BodyId) -> &'hir Body<'hir> {
-        unreachable!();
+        *self
     }
     fn hir_item(&self, _: ItemId) -> &'hir Item<'hir> {
-        unreachable!();
+        *self
     }
     fn hir_trait_item(&self, _: TraitItemId) -> &'hir TraitItem<'hir> {
-        unreachable!();
+        *self
     }
     fn hir_impl_item(&self, _: ImplItemId) -> &'hir ImplItem<'hir> {
-        unreachable!();
+        *self
     }
     fn hir_foreign_item(&self, _: ForeignItemId) -> &'hir ForeignItem<'hir> {
-        unreachable!();
+        *self
     }
 }
 
-pub mod nested_filter {
-    use super::HirTyCtxt;
+/// Specifies what nested things a visitor wants to visit. By "nested
+/// things", we are referring to bits of HIR that are not directly embedded
+/// within one another but rather indirectly, through a table in the crate.
+/// This is done to control dependencies during incremental compilation: the
+/// non-inline bits of HIR can be tracked and hashed separately.
+///
+/// The most common choice is `OnlyBodies`, which will cause the visitor to
+/// visit fn bodies for fns that it encounters, and closure bodies, but
+/// skip over nested item-like things.
+///
+/// See the [module level documentation](self) for more details on the overall
+/// visit strategy.
+pub trait NestedFilter<'hir> {
+    type MaybeTyCtxt: HirTyCtxt<'hir>;
 
-    /// Specifies what nested things a visitor wants to visit. By "nested
-    /// things", we are referring to bits of HIR that are not directly embedded
-    /// within one another but rather indirectly, through a table in the crate.
-    /// This is done to control dependencies during incremental compilation: the
-    /// non-inline bits of HIR can be tracked and hashed separately.
-    ///
-    /// The most common choice is `OnlyBodies`, which will cause the visitor to
-    /// visit fn bodies for fns that it encounters, and closure bodies, but
-    /// skip over nested item-like things.
-    ///
-    /// See the comments at [`rustc_hir::intravisit`] for more details on the overall
-    /// visit strategy.
-    pub trait NestedFilter<'hir> {
-        type MaybeTyCtxt: HirTyCtxt<'hir>;
-
-        /// Whether the visitor visits nested "item-like" things.
-        /// E.g., item, impl-item.
-        const INTER: bool;
-        /// Whether the visitor visits "intra item-like" things.
-        /// E.g., function body, closure, `AnonConst`
-        const INTRA: bool;
-    }
-
-    /// Do not visit any nested things. When you add a new
-    /// "non-nested" thing, you will want to audit such uses to see if
-    /// they remain valid.
-    ///
-    /// Use this if you are only walking some particular kind of tree
-    /// (i.e., a type, or fn signature) and you don't want to thread a
-    /// `tcx` around.
-    pub struct None(());
-    impl NestedFilter<'_> for None {
-        type MaybeTyCtxt = !;
-        const INTER: bool = false;
-        const INTRA: bool = false;
-    }
+    /// Whether the visitor visits nested "item-like" things.
+    /// E.g., item, impl-item.
+    const INTER: bool;
+    /// Whether the visitor visits "intra item-like" things.
+    /// E.g., function body, closure, `AnonConst`
+    const INTRA: bool;
 }
 
-use nested_filter::NestedFilter;
+/// Do not visit any nested things. When you add a new
+/// "non-nested" thing, you will want to audit such uses to see if
+/// they remain valid.
+///
+/// Use this if you are only walking some particular kind of tree
+/// (i.e., a type, or fn signature) and you don't want to thread a
+/// `tcx` around.
+pub struct IgnoreNested(());
+impl NestedFilter<'_> for IgnoreNested {
+    type MaybeTyCtxt = !;
+    const INTER: bool = false;
+    const INTRA: bool = false;
+}
 
 /// Each method of the Visitor trait is a hook to be potentially
 /// overridden. Each method's default implementation recursively visits
@@ -215,7 +209,7 @@ pub trait Visitor<'v>: Sized {
     /// `visit_nested_XXX` methods. If a new `visit_nested_XXX` variant is
     /// added in the future, it will cause a panic which can be detected
     /// and fixed appropriately.
-    type NestedFilter: NestedFilter<'v> = nested_filter::None;
+    type NestedFilter: NestedFilter<'v> = IgnoreNested;
 
     /// The result type of the `visit_*` methods. Can be either `()`,
     /// or `ControlFlow<T>`.
@@ -226,16 +220,16 @@ pub trait Visitor<'v>: Sized {
     fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
         panic!(
             "maybe_tcx must be implemented or consider using \
-            `type NestedFilter = nested_filter::None` (the default)"
+            `type NestedFilter = Skip` (the default)"
         );
     }
 
     /// Invoked when a nested item is encountered. By default, when
-    /// `Self::NestedFilter` is `nested_filter::None`, this method does
+    /// `Self::NestedFilter` is `Skip`, this method does
     /// nothing. **You probably don't want to override this method** --
     /// instead, override [`Self::NestedFilter`] or use the "shallow" or
     /// "deep" visit patterns described at
-    /// [`rustc_hir::intravisit`]. The only reason to override
+    /// [`intravisit`](self). The only reason to override
     /// this method is if you want a nested pattern but cannot supply a
     /// `TyCtxt`; see `maybe_tcx` for advice.
     fn visit_nested_item(&mut self, id: ItemId) -> Self::Result {
