@@ -96,7 +96,7 @@ impl<'db> Generics<'db> {
                     (id, None)
                 }
             })
-            .chain(self.additional_param.zip(None))
+            .chain(self.additional_param.map(|param| (param, None)))
     }
 }
 

@@ -88,6 +88,24 @@ fn test(a: A<[u8; 2]>, b: B<[u8; 2]>, c: C<[u8; 2]>) {
 }
 
 #[test]
+fn coerce_pointee_derive() {
+    check_no_mismatches(
+        r#"
+//- minicore: coerce_pointee
+use core::marker::CoercePointee;
+
+#[derive(CoercePointee)]
+#[repr(transparent)]
+struct Pointer<T: ?Sized>(*const T);
+
+fn coerce(value: Pointer<[u8; 1]>) -> Pointer<[u8]> {
+    value
+}
+"#,
+    );
+}
+
+#[test]
 fn unsized_from_keeps_type_info() {
     check_types(
         r#"
