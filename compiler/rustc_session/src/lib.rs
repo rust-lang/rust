@@ -4,7 +4,6 @@
 #![feature(const_trait_impl)]
 #![feature(default_field_values)]
 #![feature(iter_intersperse)]
-#![feature(macro_derive)]
 #![feature(macro_metavar_expr)]
 #![feature(option_into_flat_iter)]
 #![feature(rustc_attrs)]
@@ -26,7 +25,6 @@ pub mod utils;
 pub mod config;
 pub mod cstore;
 pub mod filesearch;
-mod macros;
 mod options;
 pub mod output;
 pub mod search_paths;

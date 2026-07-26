@@ -729,7 +729,7 @@ fn print_crate_info(
                         continue;
                     }
                     let level = builder.lint_level_spec(lint).level();
-                    println_info!("{}={}", lint.name_lower(), level.as_str());
+                    println_info!("{}={}", lint.name_lower(), level.to_str());
                 }
             }
             Cfg => {
@@ -1015,7 +1015,7 @@ Available lint options:
             safe_println!(
                 "    {}  {:7.7}  {}",
                 padded(&name),
-                lint.default_level(sess.edition()).as_str(),
+                lint.default_level(sess.edition()).to_str(),
                 lint.desc
             );
         }

@@ -1,15 +1,16 @@
 //! Code for dealing with `--print` requests.
 
-use std::fmt;
+use std::str::FromStr;
 use std::sync::LazyLock;
 
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::string_enum;
 
 use crate::EarlyDiagCtxt;
 use crate::config::{
-    CodegenOptions, OutFileName, UnstableOptions, nightly_options, split_out_file_name,
+    CodegenOptions, OutFileName, UnstableOptions, build_unknown_arg_value_diag, nightly_options,
+    split_out_file_name,
 };
-use crate::macros::AllVariants;
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct PrintRequest {
@@ -18,74 +19,41 @@ pub struct PrintRequest {
     pub arg: Option<String>,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-#[derive(AllVariants)]
-pub enum PrintKind {
-    // tidy-alphabetical-start
-    AllTargetSpecsJson,
-    BackendHasMnemonic,
-    BackendHasZstd,
-    CallingConventions,
-    Cfg,
-    CheckCfg,
-    CodeModels,
-    CrateName,
-    CrateRootLintLevels,
-    DeploymentTarget,
-    FileNames,
-    HostTuple,
-    LinkArgs,
-    NativeStaticLibs,
-    RelocationModels,
-    SplitDebuginfo,
-    StackProtectorStrategies,
-    SupportedCrateTypes,
-    Sysroot,
-    TargetCPUs,
-    TargetFeatures,
-    TargetLibdir,
-    TargetList,
-    TargetSpecJson,
-    TargetSpecJsonSchema,
-    TlsModels,
-    // tidy-alphabetical-end
+string_enum! {
+    #[derive(Copy, Clone, PartialEq, Eq, Debug)]
+    pub enum PrintKind {
+        // tidy-alphabetical-start
+        AllTargetSpecsJson => "all-target-specs-json",
+        BackendHasMnemonic => "backend-has-mnemonic",
+        BackendHasZstd => "backend-has-zstd",
+        CallingConventions => "calling-conventions",
+        Cfg => "cfg",
+        CheckCfg => "check-cfg",
+        CodeModels => "code-models",
+        CrateName => "crate-name",
+        CrateRootLintLevels => "crate-root-lint-levels",
+        DeploymentTarget => "deployment-target",
+        FileNames => "file-names",
+        HostTuple => "host-tuple",
+        LinkArgs => "link-args",
+        NativeStaticLibs => "native-static-libs",
+        RelocationModels => "relocation-models",
+        SplitDebuginfo => "split-debuginfo",
+        StackProtectorStrategies => "stack-protector-strategies",
+        SupportedCrateTypes => "supported-crate-types",
+        Sysroot => "sysroot",
+        TargetCPUs => "target-cpus",
+        TargetFeatures => "target-features",
+        TargetLibdir => "target-libdir",
+        TargetList => "target-list",
+        TargetSpecJson => "target-spec-json",
+        TargetSpecJsonSchema => "target-spec-json-schema",
+        TlsModels => "tls-models",
+        // tidy-alphabetical-end
+    }
 }
 
 impl PrintKind {
-    fn name(self) -> &'static str {
-        use PrintKind::*;
-        match self {
-            // tidy-alphabetical-start
-            AllTargetSpecsJson => "all-target-specs-json",
-            BackendHasMnemonic => "backend-has-mnemonic",
-            BackendHasZstd => "backend-has-zstd",
-            CallingConventions => "calling-conventions",
-            Cfg => "cfg",
-            CheckCfg => "check-cfg",
-            CodeModels => "code-models",
-            CrateName => "crate-name",
-            CrateRootLintLevels => "crate-root-lint-levels",
-            DeploymentTarget => "deployment-target",
-            FileNames => "file-names",
-            HostTuple => "host-tuple",
-            LinkArgs => "link-args",
-            NativeStaticLibs => "native-static-libs",
-            RelocationModels => "relocation-models",
-            SplitDebuginfo => "split-debuginfo",
-            StackProtectorStrategies => "stack-protector-strategies",
-            SupportedCrateTypes => "supported-crate-types",
-            Sysroot => "sysroot",
-            TargetCPUs => "target-cpus",
-            TargetFeatures => "target-features",
-            TargetLibdir => "target-libdir",
-            TargetList => "target-list",
-            TargetSpecJson => "target-spec-json",
-            TargetSpecJsonSchema => "target-spec-json-schema",
-            TlsModels => "tls-models",
-            // tidy-alphabetical-end
-        }
-    }
-
     fn is_stable(self) -> bool {
         use PrintKind::*;
         match self {
@@ -120,21 +88,11 @@ impl PrintKind {
             TargetSpecJsonSchema => false,
         }
     }
-
-    fn from_str(s: &str) -> Option<Self> {
-        Self::ALL_VARIANTS.iter().find(|kind| kind.name() == s).copied()
-    }
-}
-
-impl fmt::Display for PrintKind {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.name().fmt(f)
-    }
 }
 
 pub(crate) static PRINT_HELP: LazyLock<String> = LazyLock::new(|| {
-    let print_kinds =
-        PrintKind::ALL_VARIANTS.iter().map(|kind| kind.name()).collect::<Vec<_>>().join("|");
+    let print_kinds: String =
+        PrintKind::VARIANTS.iter().map(PrintKind::to_str).intersperse("|").collect();
     format!(
         "Compiler information to print on stdout (or to a file)\n\
         INFO may be one of <{print_kinds}>.",
@@ -187,7 +145,7 @@ pub(crate) fn collect_print_requests(
                     for example: `--print=backend-has-mnemonic:RET`",
                 );
             }
-        } else if let Some(print_kind) = PrintKind::from_str(req) {
+        } else if let Ok(print_kind) = PrintKind::from_str(req) {
             check_print_request_stability(early_dcx, unstable_opts, print_kind);
             (print_kind, None)
         } else {
@@ -224,21 +182,21 @@ fn check_print_request_stability(
 }
 
 fn emit_unknown_print_request_help(early_dcx: &EarlyDiagCtxt, req: &str, is_nightly: bool) -> ! {
-    let prints = PrintKind::ALL_VARIANTS
+    let valid: Vec<&str> = PrintKind::VARIANTS
         .iter()
-        // If we're not on nightly, we don't want to print unstable options
         .filter(|kind| is_nightly || kind.is_stable())
-        .map(|kind| format!("`{kind}`"))
-        .collect::<Vec<_>>()
-        .join(", ");
+        .map(|kind| kind.to_str())
+        .collect();
 
-    let mut diag = early_dcx.early_struct_fatal(format!("unknown print request: `{req}`"));
-    diag.help(format!("valid print requests are: {prints}"));
+    let mut diag = build_unknown_arg_value_diag(early_dcx, "print request", req, &valid);
 
     if req == "lints" {
-        diag.help(format!("use `-Whelp` to print a list of lints"));
+        diag.help("use `-Whelp` to print a list of lints");
     }
 
-    diag.help(format!("for more information, see the rustc book: https://doc.rust-lang.org/rustc/command-line-arguments.html#--print-print-compiler-information"));
+    diag.help(
+        "for more information, see the rustc book: \
+         https://doc.rust-lang.org/rustc/command-line-arguments.html#--print-print-compiler-information",
+    );
     diag.emit()
 }

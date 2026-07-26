@@ -16,7 +16,7 @@ use externs::{ExternOpt, split_extern_opt};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::stable_hash::{StableHasher, StableOrd};
 use rustc_errors::emitter::HumanReadableErrorType;
-use rustc_errors::{ColorConfig, DiagCtxtFlags};
+use rustc_errors::{ColorConfig, Diag, DiagCtxtFlags, FatalAbort};
 use rustc_feature::UnstableFeatures;
 use rustc_hashes::Hash64;
 use rustc_macros::{BlobDecodable, Decodable, Encodable, StableHash};
@@ -49,46 +49,53 @@ pub mod sigpipe;
 /// Special CPU name requesting the CPU of the current host.
 pub const NATIVE_CPU: &str = "native";
 
-/// The different settings that the `-C strip` flag can have.
-#[derive(Clone, Copy, PartialEq, Hash, Debug)]
-pub enum Strip {
-    /// Do not strip at all.
-    None,
+rustc_data_structures::string_enum! {
+    /// The different settings that the `-C strip` flag can have.
+    #[derive(Clone, Copy, PartialEq, Hash, Debug)]
+    pub enum Strip {
+        /// Do not strip at all.
+        None => "none",
 
-    /// Strip debuginfo.
-    Debuginfo,
+        /// Strip debuginfo.
+        Debuginfo => "debuginfo",
 
-    /// Strip all symbols.
-    Symbols,
+        /// Strip all symbols.
+        Symbols => "symbols",
+    }
 }
 
-/// The different settings that the `-C control-flow-guard` flag can have.
-#[derive(Clone, Copy, PartialEq, Hash, Debug)]
-pub enum CFGuard {
-    /// Do not emit Control Flow Guard metadata or checks.
-    Disabled,
+rustc_data_structures::string_enum! {
+    /// The different settings that the `-C control-flow-guard` flag can have.
+    #[derive(Clone, Copy, PartialEq, Hash, Debug)]
+    pub enum CFGuard {
+        /// Do not emit Control Flow Guard metadata or checks. Reachable only
+        /// via boolean false (`no`, `off`, `false`, etc.).
+        Disabled,
 
-    /// Emit Control Flow Guard metadata but no checks.
-    NoChecks,
+        /// Emit Control Flow Guard metadata but no checks.
+        NoChecks => "nochecks",
 
-    /// Emit Control Flow Guard metadata and checks.
-    Checks,
+        /// Emit Control Flow Guard metadata and checks.
+        Checks => "checks",
+    }
 }
 
-/// The different settings that the `-Z cf-protection` flag can have.
-#[derive(Clone, Copy, PartialEq, Hash, Debug)]
-pub enum CFProtection {
-    /// Do not enable control-flow protection
-    None,
+rustc_data_structures::string_enum! {
+    /// The different settings that the `-Z cf-protection` flag can have.
+    #[derive(Clone, Copy, PartialEq, Hash, Debug)]
+    pub enum CFProtection {
+        /// Do not enable control-flow protection
+        None => "none",
 
-    /// Emit control-flow protection for branches (enables indirect branch tracking).
-    Branch,
+        /// Emit control-flow protection for branches (enables indirect branch tracking).
+        Branch => "branch",
 
-    /// Emit control-flow protection for returns.
-    Return,
+        /// Emit control-flow protection for returns.
+        Return => "return",
 
-    /// Emit control-flow protection for both branches and returns.
-    Full,
+        /// Emit control-flow protection for both branches and returns.
+        Full => "full",
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Hash, StableHash, Encodable, Decodable)]
@@ -127,30 +134,36 @@ pub enum Lto {
     Fat,
 }
 
-/// The different settings that the `-C lto` flag can have.
-#[derive(Clone, Copy, PartialEq, Hash, Debug)]
-pub enum LtoCli {
-    /// `-C lto=no`
-    No,
-    /// `-C lto=yes`
-    Yes,
-    /// `-C lto`
-    NoParam,
-    /// `-C lto=thin`
-    Thin,
-    /// `-C lto=fat`
-    Fat,
-    /// No `-C lto` flag passed
-    Unspecified,
+rustc_data_structures::string_enum! {
+    /// The different settings that the `-C lto` flag can have.
+    #[derive(Clone, Copy, PartialEq, Hash, Debug)]
+    pub enum LtoCli {
+        /// `-C lto=no`. Reachable only via boolean false.
+        No,
+        /// `-C lto=yes`. Reachable only via boolean true.
+        Yes,
+        /// `-C lto`. Reachable only when the flag is passed with no value.
+        NoParam,
+        /// `-C lto=thin`
+        Thin => "thin",
+        /// `-C lto=fat`
+        Fat => "fat",
+        /// No `-C lto` flag passed.
+        Unspecified,
+    }
 }
 
-/// The different settings that the `-C instrument-coverage` flag can have.
-#[derive(Clone, Copy, PartialEq, Hash, Debug)]
-pub enum InstrumentCoverage {
-    /// `-C instrument-coverage=no` (or `off`, `false` etc.)
-    No,
-    /// `-C instrument-coverage` or `-C instrument-coverage=yes`
-    Yes,
+rustc_data_structures::string_enum! {
+    /// The different settings that the `-C instrument-coverage` flag can have.
+    #[derive(Clone, Copy, PartialEq, Hash, Debug)]
+    pub enum InstrumentCoverage {
+        /// `-C instrument-coverage=no` (or `off`, `false`, `0`, etc.). `"0"`
+        /// is a historical alias retained for backwards compatibility.
+        No => "0",
+        /// `-C instrument-coverage` or `-C instrument-coverage=yes`. `"all"`
+        /// is a historical alias retained for backwards compatibility.
+        Yes => "all",
+    }
 }
 
 /// Individual flag values controlled by `-Zcoverage-options`.
@@ -534,15 +547,17 @@ impl LocationDetail {
     }
 }
 
-/// Values for the `-Z fmt-debug` flag.
-#[derive(Copy, Clone, PartialEq, Hash, Debug)]
-pub enum FmtDebug {
-    /// Derive fully-featured implementation
-    Full,
-    /// Print only type name, without fields
-    Shallow,
-    /// `#[derive(Debug)]` and `{:?}` are no-ops
-    None,
+rustc_data_structures::string_enum! {
+    /// Values for the `-Z fmt-debug` flag.
+    #[derive(Copy, Clone, PartialEq, Hash, Debug)]
+    pub enum FmtDebug {
+        /// Derive fully-featured implementation
+        Full => "full",
+        /// Print only type name, without fields
+        Shallow => "shallow",
+        /// `#[derive(Debug)]` and `{:?}` are no-ops
+        None => "none",
+    }
 }
 
 impl FmtDebug {
@@ -574,27 +589,33 @@ pub enum SymbolManglingVersion {
     Hashed,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Hash)]
-pub enum DebugInfo {
-    None,
-    LineDirectivesOnly,
-    LineTablesOnly,
-    Limited,
-    Full,
+rustc_data_structures::string_enum! {
+    #[derive(Clone, Copy, Debug, PartialEq, Hash)]
+    pub enum DebugInfo {
+        None => "none" | "0",
+        LineDirectivesOnly => "line-directives-only",
+        LineTablesOnly => "line-tables-only",
+        Limited => "limited" | "1",
+        Full => "full" | "2",
+    }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Hash)]
-pub enum DebugInfoCompression {
-    None,
-    Zlib,
-    Zstd,
+rustc_data_structures::string_enum! {
+    #[derive(Clone, Copy, Debug, PartialEq, Hash)]
+    pub enum DebugInfoCompression {
+        None => "none",
+        Zlib => "zlib",
+        Zstd => "zstd",
+    }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Hash)]
-pub enum MirStripDebugInfo {
-    None,
-    LocalsInTinyFunctions,
-    AllLocals,
+rustc_data_structures::string_enum! {
+    #[derive(Clone, Copy, Debug, PartialEq, Hash)]
+    pub enum MirStripDebugInfo {
+        None => "none",
+        LocalsInTinyFunctions => "locals-in-tiny-functions",
+        AllLocals => "all-locals",
+    }
 }
 
 /// Split debug-information is enabled by `-C split-debuginfo`, this enum is only used if split
@@ -1979,7 +2000,7 @@ pub fn get_cmd_lint_options(
     let mut describe_lints = false;
 
     for level in [lint::Allow, lint::Warn, lint::ForceWarn, lint::Deny, lint::Forbid] {
-        for (arg_pos, lint_name) in matches.opt_strs_pos(level.as_str()) {
+        for (arg_pos, lint_name) in matches.opt_strs_pos(level.to_str()) {
             if lint_name == "help" {
                 describe_lints = true;
             } else {
@@ -1996,11 +2017,54 @@ pub fn get_cmd_lint_options(
         .collect();
 
     let lint_cap = matches.opt_str("cap-lints").map(|cap| {
-        lint::Level::from_str(&cap)
-            .unwrap_or_else(|| early_dcx.early_fatal(format!("unknown lint level: `{cap}`")))
+        cap.parse::<lint::Level>()
+            .unwrap_or_else(|()| early_dcx.early_fatal(format!("unknown lint level: `{cap}`")))
     });
 
     (lint_opts, describe_lints, lint_cap)
+}
+
+/// Build a fatal "unknown {label}: ..." diagnostic listing the valid values.
+///
+/// Use this whenever a command-line argument expects one of a fixed set of
+/// string values (typically the `STR_VARIANTS` of an enum declared via
+/// [`rustc_data_structures::string_enum!`]) and the user supplied something
+/// else. The returned [`Diag`] is left un-emitted so the caller can attach
+/// further help notes; call `.emit()` to abort.
+///
+/// `label` is the singular noun phrase for the value (e.g. `"print request"`,
+/// `"lint level"`); the help line pluralises it by appending `"s"`.
+pub fn build_unknown_arg_value_diag<'a>(
+    early_dcx: &'a EarlyDiagCtxt,
+    label: &str,
+    bad_value: &str,
+    valid_values: &[&str],
+) -> Diag<'a, FatalAbort> {
+    let valid = valid_values.iter().map(|v| format!("`{v}`")).collect::<Vec<_>>().join(", ");
+    let mut diag = early_dcx.early_struct_fatal(format!("unknown {label}: `{bad_value}`"));
+    diag.help(format!("valid {label}s are: {valid}"));
+    diag
+}
+
+/// Build a fatal "incorrect value for option" diagnostic listing the valid
+/// values. Used by the `-C`/`-Z` option dispatcher when a parser rejects its
+/// input and the option declared a fixed value vocabulary via `[VALUES: ...]`.
+///
+/// `outputname` is `"codegen"` or `"unstable"`; `key` is the option name
+/// (e.g. `"strip"`).
+pub fn build_unknown_option_value_diag<'a>(
+    early_dcx: &'a EarlyDiagCtxt,
+    outputname: &str,
+    key: &str,
+    bad_value: &str,
+    valid_values: &[&str],
+) -> Diag<'a, FatalAbort> {
+    let valid = valid_values.iter().map(|v| format!("`{v}`")).collect::<Vec<_>>().join(", ");
+    let mut diag = early_dcx.early_struct_fatal(format!(
+        "incorrect value `{bad_value}` for {outputname} option `{key}`"
+    ));
+    diag.help(format!("valid values are: {valid}"));
+    diag
 }
 
 /// Parses the `--color` flag.
@@ -3424,19 +3488,22 @@ impl PatchableFunctionEntry {
     }
 }
 
-/// `-Zpolonius` values, enabling the borrow checker polonius analysis, and which version: legacy,
-/// or future prototype.
-#[derive(Clone, Copy, PartialEq, Hash, Debug, Default)]
-pub enum Polonius {
-    /// The default value: disabled.
-    #[default]
-    Off,
+rustc_data_structures::string_enum! {
+    /// `-Zpolonius` values, enabling the borrow checker polonius analysis, and which version: legacy,
+    /// or future prototype.
+    #[derive(Clone, Copy, PartialEq, Hash, Debug, Default)]
+    pub enum Polonius {
+        /// The default value: disabled. Reachable only as the default when
+        /// `-Zpolonius` is not passed.
+        #[default]
+        Off,
 
-    /// Legacy version, using datalog and the `polonius-engine` crate. Historical value for `-Zpolonius`.
-    Legacy,
+        /// Legacy version, using datalog and the `polonius-engine` crate. Historical value for `-Zpolonius`.
+        Legacy => "legacy",
 
-    /// In-tree prototype, extending the NLL infrastructure.
-    Next,
+        /// In-tree prototype, extending the NLL infrastructure.
+        Next => "next",
+    }
 }
 
 impl Polonius {
@@ -3464,15 +3531,17 @@ impl Default for InliningThreshold {
     }
 }
 
-/// The different settings that the `-Zfunction-return` flag can have.
-#[derive(Clone, Copy, PartialEq, Hash, Debug, Default)]
-pub enum FunctionReturn {
-    /// Keep the function return unmodified.
-    #[default]
-    Keep,
+rustc_data_structures::string_enum! {
+    /// The different settings that the `-Zfunction-return` flag can have.
+    #[derive(Clone, Copy, PartialEq, Hash, Debug, Default)]
+    pub enum FunctionReturn {
+        /// Keep the function return unmodified.
+        #[default]
+        Keep => "keep",
 
-    /// Replace returns with jumps to thunk, without emitting the thunk.
-    ThunkExtern,
+        /// Replace returns with jumps to thunk, without emitting the thunk.
+        ThunkExtern => "thunk-extern",
+    }
 }
 
 /// Whether extra span comments are included when dumping MIR, via the `-Z mir-include-spans` flag.

@@ -504,6 +504,7 @@ macro_rules! options {
                 $init:expr,
                 $parse:ident,
                 [$dep_tracking_marker:ident]
+                $( [ VALUES: $values:expr ] )?
                 $( { TARGET_MODIFIER: $tmod_variant:ident } )?
                 $( { MITIGATION: $mitigation_variant:ident } )?
                 ,
@@ -634,6 +635,7 @@ macro_rules! options {
                     name: stringify!($opt),
                     setter: $optmod::$opt,
                     type_desc: desc::$parse,
+                    valid_values: None $( .or(Some($values)) )?,
                     desc: $desc,
                     removed: None $( .or(Some(RemovedOption::$removed)) )?,
                     tmod: None $( .or(Some(
@@ -691,6 +693,12 @@ pub struct OptionDesc<O> {
     setter: OptionSetter<O>,
     // description for return value/type from mod desc
     type_desc: &'static str,
+    // Fixed set of accepted string values, when the option's parser maps a
+    // closed vocabulary onto an enum (declared via `[VALUES: ...]` in the
+    // `options!` invocation). When set, the dispatcher emits a structured
+    // "incorrect value" diagnostic listing these values instead of the
+    // free-form `type_desc` description.
+    valid_values: Option<&'static [&'static str]>,
     // description for option from options table
     desc: &'static str,
     removed: Option<RemovedOption>,
@@ -725,7 +733,16 @@ fn build_options<O: Default>(
 
         let option_to_lookup = key.replace('-', "_");
         match descrs.iter().find(|opt_desc| opt_desc.name == option_to_lookup) {
-            Some(OptionDesc { name: _, setter, type_desc, desc, removed, tmod, mitigation }) => {
+            Some(OptionDesc {
+                name: _,
+                setter,
+                type_desc,
+                valid_values,
+                desc,
+                removed,
+                tmod,
+                mitigation,
+            }) => {
                 if let Some(removed) = removed {
                     // deprecation works for prefixed options only
                     assert!(!prefix.is_empty());
@@ -745,11 +762,15 @@ fn build_options<O: Default>(
                                 "{outputname} option `{key}` requires {type_desc} (`-{prefix} {key}=<value>`)"
                             ),
                         ),
-                        Some(value) => early_dcx.early_fatal(
-                            format!(
+                        Some(value) => match valid_values {
+                            Some(values) => build_unknown_option_value_diag(
+                                early_dcx, outputname, &key, value, values,
+                            )
+                            .emit(),
+                            None => early_dcx.early_fatal(format!(
                                 "incorrect value `{value}` for {outputname} option `{key}` - {type_desc} was expected"
-                            ),
-                        ),
+                            )),
+                        },
                     }
                 }
                 if let Some(tmod) = *tmod {
@@ -930,6 +951,59 @@ pub mod parse {
         true
     }
 
+    /// Parse a `string_enum!`-style value: write the parsed variant into `slot`
+    /// on success, or return false to let the dispatcher emit the structured
+    /// diagnostic from the option's `[VALUES: ...]` vocabulary.
+    pub(crate) fn parse_string_enum<T: FromStr<Err = ()>>(slot: &mut T, v: Option<&str>) -> bool {
+        match v.map(T::from_str) {
+            Some(Ok(value)) => {
+                *slot = value;
+                true
+            }
+            _ => false,
+        }
+    }
+
+    /// Like [`parse_string_enum`], but also accepts boolean spellings
+    /// (`yes`/`no`/`y`/`n`/`on`/`off`/`true`/`false`) and the no-value case.
+    /// Each of `no_value`, `bool_true`, and `bool_false` is the variant the
+    /// caller wants that input shape to map to, or `None` to reject it.
+    pub(crate) fn parse_string_enum_with_bool<T: FromStr<Err = ()>>(
+        slot: &mut T,
+        v: Option<&str>,
+        no_value: Option<T>,
+        bool_true: Option<T>,
+        bool_false: Option<T>,
+    ) -> bool {
+        if v.is_some() {
+            let mut bool_arg = None;
+            if parse_opt_bool(&mut bool_arg, v) {
+                let mapped = if bool_arg.unwrap() { bool_true } else { bool_false };
+                if let Some(value) = mapped {
+                    *slot = value;
+                    return true;
+                }
+            }
+        }
+        match v {
+            None => {
+                if let Some(value) = no_value {
+                    *slot = value;
+                    true
+                } else {
+                    false
+                }
+            }
+            Some(s) => match s.parse() {
+                Ok(value) => {
+                    *slot = value;
+                    true
+                }
+                Err(()) => false,
+            },
+        }
+    }
+
     /// This is for boolean options that don't take a value, and are true simply
     /// by existing on the command-line.
     ///
@@ -980,17 +1054,7 @@ pub mod parse {
 
     /// Parses whether polonius is enabled, and if so, which version.
     pub(crate) fn parse_polonius(slot: &mut Polonius, v: Option<&str>) -> bool {
-        match v {
-            Some("legacy") | None => {
-                *slot = Polonius::Legacy;
-                true
-            }
-            Some("next") => {
-                *slot = Polonius::Next;
-                true
-            }
-            _ => false,
-        }
+        parse_string_enum_with_bool(slot, v, Some(Polonius::Legacy), None, None)
     }
 
     pub(crate) fn parse_annotate_moves(slot: &mut AnnotateMoves, v: Option<&str>) -> bool {
@@ -1115,14 +1179,8 @@ pub mod parse {
         true
     }
 
-    pub(crate) fn parse_fmt_debug(opt: &mut FmtDebug, v: Option<&str>) -> bool {
-        *opt = match v {
-            Some("full") => FmtDebug::Full,
-            Some("shallow") => FmtDebug::Shallow,
-            Some("none") => FmtDebug::None,
-            _ => return false,
-        };
-        true
+    pub(crate) fn parse_fmt_debug(slot: &mut FmtDebug, v: Option<&str>) -> bool {
+        parse_string_enum(slot, v)
     }
 
     pub(crate) fn parse_location_detail(ld: &mut LocationDetail, v: Option<&str>) -> bool {
@@ -1366,85 +1424,42 @@ pub mod parse {
     }
 
     pub(crate) fn parse_strip(slot: &mut Strip, v: Option<&str>) -> bool {
-        match v {
-            Some("none") => *slot = Strip::None,
-            Some("debuginfo") => *slot = Strip::Debuginfo,
-            Some("symbols") => *slot = Strip::Symbols,
-            _ => return false,
-        }
-        true
+        parse_string_enum(slot, v)
     }
 
     pub(crate) fn parse_cfguard(slot: &mut CFGuard, v: Option<&str>) -> bool {
-        if v.is_some() {
-            let mut bool_arg = None;
-            if parse_opt_bool(&mut bool_arg, v) {
-                *slot = if bool_arg.unwrap() { CFGuard::Checks } else { CFGuard::Disabled };
-                return true;
-            }
-        }
-
-        *slot = match v {
-            None => CFGuard::Checks,
-            Some("checks") => CFGuard::Checks,
-            Some("nochecks") => CFGuard::NoChecks,
-            Some(_) => return false,
-        };
-        true
+        parse_string_enum_with_bool(
+            slot,
+            v,
+            Some(CFGuard::Checks),
+            Some(CFGuard::Checks),
+            Some(CFGuard::Disabled),
+        )
     }
 
     pub(crate) fn parse_cfprotection(slot: &mut CFProtection, v: Option<&str>) -> bool {
-        if v.is_some() {
-            let mut bool_arg = None;
-            if parse_opt_bool(&mut bool_arg, v) {
-                *slot = if bool_arg.unwrap() { CFProtection::Full } else { CFProtection::None };
-                return true;
-            }
-        }
-
-        *slot = match v {
-            None | Some("none") => CFProtection::None,
-            Some("branch") => CFProtection::Branch,
-            Some("return") => CFProtection::Return,
-            Some("full") => CFProtection::Full,
-            Some(_) => return false,
-        };
-        true
+        parse_string_enum_with_bool(
+            slot,
+            v,
+            Some(CFProtection::None),
+            Some(CFProtection::Full),
+            Some(CFProtection::None),
+        )
     }
 
     pub(crate) fn parse_debuginfo(slot: &mut DebugInfo, v: Option<&str>) -> bool {
-        match v {
-            Some("0") | Some("none") => *slot = DebugInfo::None,
-            Some("line-directives-only") => *slot = DebugInfo::LineDirectivesOnly,
-            Some("line-tables-only") => *slot = DebugInfo::LineTablesOnly,
-            Some("1") | Some("limited") => *slot = DebugInfo::Limited,
-            Some("2") | Some("full") => *slot = DebugInfo::Full,
-            _ => return false,
-        }
-        true
+        parse_string_enum(slot, v)
     }
 
     pub(crate) fn parse_debuginfo_compression(
         slot: &mut DebugInfoCompression,
         v: Option<&str>,
     ) -> bool {
-        match v {
-            Some("none") => *slot = DebugInfoCompression::None,
-            Some("zlib") => *slot = DebugInfoCompression::Zlib,
-            Some("zstd") => *slot = DebugInfoCompression::Zstd,
-            _ => return false,
-        };
-        true
+        parse_string_enum(slot, v)
     }
 
     pub(crate) fn parse_mir_strip_debuginfo(slot: &mut MirStripDebugInfo, v: Option<&str>) -> bool {
-        match v {
-            Some("none") => *slot = MirStripDebugInfo::None,
-            Some("locals-in-tiny-functions") => *slot = MirStripDebugInfo::LocalsInTinyFunctions,
-            Some("all-locals") => *slot = MirStripDebugInfo::AllLocals,
-            _ => return false,
-        };
-        true
+        parse_string_enum(slot, v)
     }
 
     pub(crate) fn parse_linker_flavor(slot: &mut Option<LinkerFlavorCli>, v: Option<&str>) -> bool {
@@ -1607,27 +1622,13 @@ pub mod parse {
         slot: &mut InstrumentCoverage,
         v: Option<&str>,
     ) -> bool {
-        if v.is_some() {
-            let mut bool_arg = false;
-            if parse_bool(&mut bool_arg, v) {
-                *slot = if bool_arg { InstrumentCoverage::Yes } else { InstrumentCoverage::No };
-                return true;
-            }
-        }
-
-        let Some(v) = v else {
-            *slot = InstrumentCoverage::Yes;
-            return true;
-        };
-
-        // Parse values that have historically been accepted by stable compilers,
-        // even though they're currently just aliases for boolean values.
-        *slot = match v {
-            "all" => InstrumentCoverage::Yes,
-            "0" => InstrumentCoverage::No,
-            _ => return false,
-        };
-        true
+        parse_string_enum_with_bool(
+            slot,
+            v,
+            Some(InstrumentCoverage::Yes),
+            Some(InstrumentCoverage::Yes),
+            Some(InstrumentCoverage::No),
+        )
     }
 
     pub(crate) fn parse_codegen_retag_options(
@@ -1781,21 +1782,13 @@ pub mod parse {
     }
 
     pub(crate) fn parse_lto(slot: &mut LtoCli, v: Option<&str>) -> bool {
-        if v.is_some() {
-            let mut bool_arg = None;
-            if parse_opt_bool(&mut bool_arg, v) {
-                *slot = if bool_arg.unwrap() { LtoCli::Yes } else { LtoCli::No };
-                return true;
-            }
-        }
-
-        *slot = match v {
-            None => LtoCli::NoParam,
-            Some("thin") => LtoCli::Thin,
-            Some("fat") => LtoCli::Fat,
-            Some(_) => return false,
-        };
-        true
+        parse_string_enum_with_bool(
+            slot,
+            v,
+            Some(LtoCli::NoParam),
+            Some(LtoCli::Yes),
+            Some(LtoCli::No),
+        )
     }
 
     pub(crate) fn parse_linker_plugin_lto(slot: &mut LinkerPluginLto, v: Option<&str>) -> bool {
@@ -2044,23 +2037,13 @@ pub mod parse {
         slot: &mut CollapseMacroDebuginfo,
         v: Option<&str>,
     ) -> bool {
-        if v.is_some() {
-            let mut bool_arg = None;
-            if parse_opt_bool(&mut bool_arg, v) {
-                *slot = if bool_arg.unwrap() {
-                    CollapseMacroDebuginfo::Yes
-                } else {
-                    CollapseMacroDebuginfo::No
-                };
-                return true;
-            }
-        }
-
-        *slot = match v {
-            Some("external") => CollapseMacroDebuginfo::External,
-            _ => return false,
-        };
-        true
+        parse_string_enum_with_bool(
+            slot,
+            v,
+            None,
+            Some(CollapseMacroDebuginfo::Yes),
+            Some(CollapseMacroDebuginfo::No),
+        )
     }
 
     pub(crate) fn parse_proc_macro_execution_strategy(
@@ -2123,12 +2106,7 @@ pub mod parse {
     }
 
     pub(crate) fn parse_function_return(slot: &mut FunctionReturn, v: Option<&str>) -> bool {
-        match v {
-            Some("keep") => *slot = FunctionReturn::Keep,
-            Some("thunk-extern") => *slot = FunctionReturn::ThunkExtern,
-            _ => return false,
-        }
-        true
+        parse_string_enum(slot, v)
     }
 
     pub(crate) fn parse_wasm_c_abi(_slot: &mut (), v: Option<&str>) -> bool {
@@ -2209,7 +2187,7 @@ options! {
         "use Windows Control Flow Guard (default: no)"),
     debug_assertions: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "explicitly enable the `cfg(debug_assertions)` directive"),
-    debuginfo: DebugInfo = (DebugInfo::None, parse_debuginfo, [TRACKED],
+    debuginfo: DebugInfo = (DebugInfo::None, parse_debuginfo, [TRACKED] [VALUES: DebugInfo::ALL_STR_VARIANTS],
         "debug info emission level (0-2, none, line-directives-only, \
         line-tables-only, limited, or full; default: 0)"),
     default_linker_libraries: bool = (false, parse_bool, [UNTRACKED],
@@ -2315,7 +2293,7 @@ options! {
     #[rustc_lint_opt_deny_field_access("use `Session::split_debuginfo` instead of this field")]
     split_debuginfo: Option<SplitDebuginfo> = (None, parse_split_debuginfo, [TRACKED],
         "how to handle split-debuginfo, a platform-specific option"),
-    strip: Strip = (Strip::None, parse_strip, [UNTRACKED],
+    strip: Strip = (Strip::None, parse_strip, [UNTRACKED] [VALUES: Strip::STR_VARIANTS],
         "tell the linker which information to strip (`none` (default), `debuginfo` or `symbols`)"),
     symbol_mangling_version: Option<SymbolManglingVersion> = (None,
         parse_symbol_mangling_version, [TRACKED],
@@ -2413,7 +2391,7 @@ options! {
         "threshold to allow cross crate inlining of functions"),
     debug_info_type_line_numbers: bool = (false, parse_bool, [TRACKED],
         "emit type and line information for additional data types (default: no)"),
-    debuginfo_compression: DebugInfoCompression = (DebugInfoCompression::None, parse_debuginfo_compression, [TRACKED],
+    debuginfo_compression: DebugInfoCompression = (DebugInfoCompression::None, parse_debuginfo_compression, [TRACKED] [VALUES: DebugInfoCompression::STR_VARIANTS],
         "compress debug info sections (none, zlib, zstd, default: none)"),
     debuginfo_for_profiling: bool = (false, parse_bool, [TRACKED],
         "emit discriminators and other data necessary for AutoFDO"),
@@ -2497,7 +2475,7 @@ options! {
     flatten_format_args: bool = (true, parse_bool, [TRACKED],
         "flatten nested format_args!() and literals into a simplified format_args!() call \
         (default: yes)"),
-    fmt_debug: FmtDebug = (FmtDebug::Full, parse_fmt_debug, [TRACKED],
+    fmt_debug: FmtDebug = (FmtDebug::Full, parse_fmt_debug, [TRACKED] [VALUES: FmtDebug::STR_VARIANTS],
         "how detailed `#[derive(Debug)]` should be. `full` prints types recursively, \
         `shallow` prints only type names, `none` prints nothing and disables `{:?}`. (default: `full`)"),
     force_intrinsic_fallback: bool = (false, parse_bool, [TRACKED],
@@ -2505,7 +2483,7 @@ options! {
         the intrinsic in the codegen backend (default: no)."),
     force_unstable_if_unmarked: bool = (false, parse_bool, [TRACKED],
         "force all crates to be `rustc_private` unstable (default: no)"),
-    function_return: FunctionReturn = (FunctionReturn::default(), parse_function_return, [TRACKED],
+    function_return: FunctionReturn = (FunctionReturn::default(), parse_function_return, [TRACKED] [VALUES: FunctionReturn::STR_VARIANTS],
         "replace returns with jumps to `__x86_return_thunk` (default: `keep`)"),
     function_sections: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "whether each function should go in its own section"),
@@ -2643,7 +2621,7 @@ options! {
     mir_preserve_ub: bool = (false, parse_bool, [TRACKED],
         "keep place mention statements and reads in trivial SwitchInt terminators, which are interpreted \
         e.g., by miri; implies -Zmir-opt-level=0 (default: no)"),
-    mir_strip_debuginfo: MirStripDebugInfo = (MirStripDebugInfo::None, parse_mir_strip_debuginfo, [TRACKED],
+    mir_strip_debuginfo: MirStripDebugInfo = (MirStripDebugInfo::None, parse_mir_strip_debuginfo, [TRACKED] [VALUES: MirStripDebugInfo::STR_VARIANTS],
         "Whether to remove some of the MIR debug info from methods.  Default: None"),
     move_size_limit: Option<usize> = (None, parse_opt_number, [TRACKED],
         "the size at which the `large_assignments` lint starts to be emitted"),

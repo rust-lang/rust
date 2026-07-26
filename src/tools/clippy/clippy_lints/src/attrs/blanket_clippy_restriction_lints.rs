@@ -33,7 +33,7 @@ pub(super) fn check_command_line(cx: &EarlyContext<'_>) {
                 |diag| {
                     diag.note(format!(
                         "because of the command line `--{} clippy::restriction`",
-                        level.as_str()
+                        level.to_str()
                     ));
                     diag.help("enable the restriction lints you need individually");
                 },
