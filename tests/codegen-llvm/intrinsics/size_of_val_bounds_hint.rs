@@ -1,4 +1,7 @@
 //@ compile-flags: -Copt-level=3 -Zmerge-functions=disabled
+//@ min-llvm-version: 23
+// in older LLVM, the `assume` call stays around, newer versions are easier to check
+// (but the old versions do still optimize to `ret i1 true`, just with an extra assume)
 
 // Tests that `size_of_val_raw` on a slice with element size of one (*const [u8]) can be proven
 // to have a size of <= isize::MAX by LLVM.
