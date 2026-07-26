@@ -1,7 +1,7 @@
 use super::thread::Thread;
 use crate::cell::Cell;
 use crate::iter;
-use crate::sync::Arc;
+use crate::sync::{Arc, UniqueArc};
 
 crate::thread_local! {
     /// A thread local linked list of spawn hooks.
@@ -95,12 +95,14 @@ where
     G: 'static + Send + FnOnce(),
 {
     SPAWN_HOOKS.with(|h| {
-        let mut hooks = h.take();
-        let next = hooks.first.take();
-        hooks.first = Some(Arc::new(SpawnHook {
+        // Perform all fallible operations before taking the current hooks (see #159923)
+        let mut new_first = UniqueArc::new(SpawnHook {
             hook: Box::new(move |thread| Box::new(hook(thread))),
-            next,
-        }));
+            next: None,
+        });
+        let mut hooks = h.take();
+        new_first.next = hooks.first.take();
+        hooks.first = Some(UniqueArc::into_arc(new_first));
         h.set(hooks);
     });
 }
