@@ -2,6 +2,8 @@
 // Regression test for <https://github.com/rust-lang/rust/issues/158929>.
 
 //@ needs-target-std
+// To not have to deal with windows paths:
+//@ only-linux
 
 use run_make_support::rfs::{read_to_string, remove_file};
 use run_make_support::{path, rustdoc};
