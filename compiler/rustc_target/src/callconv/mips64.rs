@@ -1,6 +1,6 @@
 use arrayvec::ArrayVec;
 use rustc_abi::{
-    BackendRepr, FieldsShape, Float, HasDataLayout, Primitive, Reg, Size, TyAbiInterface,
+    BackendRepr, FieldsShape, Float, HasDataLayout, Primitive, Reg, RegKind, Size, TyAbiInterface,
 };
 
 use crate::callconv::{ArgAbi, ArgAttribute, ArgExtension, CastTarget, FnAbi, PassMode, Uniform};
@@ -55,6 +55,21 @@ where
     let size = ret.layout.size;
     let bits = size.bits();
     if bits <= 128 {
+        if ret.layout.is_complex() {
+            if !ret.layout.is_complex_float() && size <= cx.data_layout().pointer_size() {
+                // Return a Complex<{integer}> packed into a single register when that fits.
+                // We match GCC, not Clang, see https://github.com/llvm/llvm-project/issues/212109.
+                ret.cast_to(Reg { kind: RegKind::Integer, size });
+            } else {
+                // Otherwise pass in 2 registers.
+                let kind =
+                    if ret.layout.is_complex_float() { RegKind::Float } else { RegKind::Integer };
+                let reg = Reg { kind, size: ret.layout.field(cx, 0).size };
+                ret.cast_to(CastTarget::pair(reg, reg));
+            }
+            return;
+        }
+
         // Unlike other architectures which return aggregates in registers, MIPS n64 limits the
         // use of float registers to structures (not unions) containing exactly one or two
         // float fields.
@@ -102,6 +117,20 @@ where
         extend_integer_width_mips(arg, 64);
     } else if arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
         arg.make_indirect();
+    } else if arg.layout.is_complex_float() && size > dl.pointer_size() * 2 {
+        // Complex<f128> is passed in 4 GPRs, but aligned to 16 so may need padding.
+        let reg = Reg { kind: RegKind::Float, size: arg.layout.field(cx, 0).size };
+        arg.cast_to_and_pad_i32(CastTarget::pair(reg, reg), pad_i32);
+    } else if arg.layout.is_complex() && size <= dl.pointer_size() * 2 {
+        if arg.layout.is_complex_float() || size > dl.pointer_size() {
+            // Complex<i64> and Complex<{float}> are passed as 2 separate arguments, which is what
+            // the default `PassMode::Pair` already does.
+        } else {
+            // Cast Complex<i8> into i16, Complex<i16> to i32, etc. The inreg attribute is required
+            // to make the bits land in the right (upper) bits on big endian targets.
+            let cast_target = CastTarget::from(Reg { kind: RegKind::Integer, size });
+            arg.cast_to(cast_target.with_attrs(ArgAttribute::InReg.into()));
+        }
     } else {
         match arg.layout.fields {
             FieldsShape::Primitive => unreachable!(),
