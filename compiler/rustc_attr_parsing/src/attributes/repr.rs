@@ -59,7 +59,7 @@ impl CombineAttributeParser for ReprParser {
                 cx.adcx().expected_identifier(param.span());
                 continue;
             };
-            reprs.extend(parse_repr(cx, &item).map(|r| (r, param.span())));
+            reprs.extend(parse_repr(cx, item).map(|r| (r, param.span())));
         }
         reprs
     }
@@ -144,7 +144,7 @@ fn parse_repr(cx: &mut AcceptContext<'_, '_>, param: &MetaItemParser) -> Option<
         Some(sym::simd) => {
             if cx.features.is_some_and(|feats| !feats.repr_simd()) {
                 feature_err(
-                    &cx.sess(),
+                    cx.sess(),
                     sym::repr_simd,
                     param.span(),
                     "SIMD types are experimental and possibly buggy",

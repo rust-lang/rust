@@ -1,6 +1,7 @@
 #![feature(rustc_private)]
 
 extern crate miri;
+extern crate rustc_abi;
 extern crate rustc_codegen_ssa;
 extern crate rustc_data_structures;
 extern crate rustc_driver;
@@ -16,13 +17,17 @@ extern crate rustc_type_ir;
 
 use std::collections::{HashMap, HashSet};
 use std::io::{self, Write};
+use std::num::NonZeroU64;
+use std::ops::Range;
 use std::path::PathBuf;
 
-use miri::Immediate::{Scalar, ScalarPair, Uninit};
-use miri::*;
+use miri::Immediate::Uninit;
+use miri::{interpret, *};
+use rustc_abi::Size;
 use rustc_driver::Compilation;
 use rustc_hir::attrs::CrateType;
 use rustc_interface::interface;
+use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::mir::{self, Local, ProjectionElem, VarDebugInfoContents, VarDebugInfoFragment};
 use rustc_middle::ty::{TyCtxt, TyKind};
 use rustc_session::EarlyDiagCtxt;
@@ -377,8 +382,23 @@ impl<'tcx> PrirodaContext<'tcx> {
             DebuggerCommand::ListLocals => interp_ok(CommandResult::Locals(self.list_locals())),
             DebuggerCommand::Print(local) =>
                 interp_ok(CommandResult::SingleLocal(self.get_local(local))),
+            DebuggerCommand::Follow(alloc_id, offset) =>
+                self.follow_alloc(alloc_id, offset).map(CommandResult::Memory),
             DebuggerCommand::TerminateSession => interp_ok(CommandResult::TerminateSession),
         }
+    }
+
+    fn follow_alloc(&self, alloc_id: AllocId, offset: usize) -> InterpResult<'tcx, String> {
+        let alloc = self.ecx.get_alloc_raw(alloc_id)?;
+        if offset > alloc.len() {
+            return Err(miri::err_unsup_format!(
+                "allocation offset {offset} is outside {alloc_id}"
+            ))
+            .into();
+        }
+
+        let memory = self.render_alloc_bytes(alloc_id, offset..alloc.len())?;
+        interp_ok(format!("Allocation {alloc_id}+{offset}: {memory}"))
     }
 
     fn get_local(&self, local: usize) -> Option<LocalDesc> {
@@ -397,6 +417,106 @@ impl<'tcx> PrirodaContext<'tcx> {
         };
 
         self.build_local_descs(frame)
+    }
+
+    /// Renders the current byte range of an indirect MIR value.
+    ///
+    /// Initialized bytes are shown in hexadecimal, uninitialized bytes as `??`,
+    /// and complete pointer-sized provenance as pointer markers.
+    fn render_mplace_bytes(&self, mplace: &MPlaceTy<'tcx>) -> InterpResult<'tcx, String> {
+        let size = match self.ecx.size_and_align_of_val(mplace)? {
+            Some((size, _)) => size,
+            None => {
+                // Extern types cannot currently be executed as by-value locals,
+                // so this path cannot yet be covered by a Priroda UI fixture.
+                // FIXME: Add coverage once Priroda supports printing dereferenced places.
+                return interp_ok("<unsupported-unsized>".to_string());
+            }
+        };
+
+        let size = size.bytes_usize();
+        if size == 0 {
+            return interp_ok("[]".to_string());
+        }
+
+        let (alloc_id, offset, _) =
+            self.ecx.ptr_get_alloc_id(mplace.ptr(), size.try_into().unwrap())?;
+        let offset = offset.bytes_usize();
+        let range = offset..offset.strict_add(size);
+
+        self.render_alloc_bytes(alloc_id, range)
+    }
+
+    /// Render a raw allocation range without requiring a typed memory place.
+    ///
+    /// This is also used by the future-facing `follow` command, where we have a
+    /// pointer target but do not yet know the target's type or size.
+    fn render_alloc_bytes(
+        &self,
+        alloc_id: AllocId,
+        range: Range<usize>,
+    ) -> InterpResult<'tcx, String> {
+        let alloc = self.ecx.get_alloc_raw(alloc_id)?;
+
+        let mut rendered = Vec::with_capacity(range.len());
+
+        let ptr_size = self.ecx.tcx.data_layout.pointer_size();
+
+        for chunk in alloc.init_mask().range_as_init_chunks(range.into()) {
+            let chunk_range = chunk.range();
+            let chunk_range = chunk_range.start.bytes_usize()..chunk_range.end.bytes_usize();
+
+            if chunk.is_init() {
+                let ptr_size = ptr_size.bytes_usize();
+                let mut cursor = chunk_range.start;
+
+                while cursor < chunk_range.end {
+                    // Full pointer provenance is rendered as a pointer marker. Bytewise
+                    // provenance fragments are intentionally left as raw bytes here: they do
+                    // not represent a complete pointer-sized value.
+                    if let Some(prov) = alloc.provenance().get_ptr(Size::from_bytes(cursor))
+                        && cursor + ptr_size <= chunk_range.end
+                    {
+                        let bytes = alloc.inspect_with_uninit_and_ptr_outside_interpreter(
+                            cursor..cursor + ptr_size,
+                        );
+                        let offset = read_target_uint(self.ecx.tcx.data_layout.endian, bytes)
+                            .map_err(|err| {
+                                miri::err_unsup_format!("invalid pointer representation: {err}")
+                            })?;
+
+                        let offset = Size::from_bytes(offset);
+                        rendered.push(format!("{:?}", Pointer::new(Some(prov), offset)));
+
+                        cursor += ptr_size;
+                    } else {
+                        let byte = alloc
+                            .inspect_with_uninit_and_ptr_outside_interpreter(cursor..cursor + 1)[0];
+
+                        rendered.push(format!("{byte:02x}"));
+                        cursor += 1;
+                    }
+                }
+            } else {
+                rendered.extend(std::iter::repeat_n("__".to_string(), chunk_range.len()));
+            }
+        }
+
+        interp_ok(format!("[{}]", rendered.join(" ")))
+    }
+
+    /// Render an evaluated operand using the same raw representation for
+    /// whole locals and projected MIR places.
+    fn render_op(&self, op: OpTy<'tcx>) -> String {
+        match op.as_mplace_or_imm() {
+            Either::Right(imm) => format!("{imm}"),
+
+            Either::Left(mplace) =>
+                match self.render_mplace_bytes(&mplace).report_err() {
+                    Ok(bytes) => bytes,
+                    Err(err) => format!("<error: {}>", interpret::format_interp_error(err)),
+                },
+        }
     }
 
     /// Render the source-side path from composite debug info, such as `.field`.
@@ -486,22 +606,14 @@ impl<'tcx> PrirodaContext<'tcx> {
             None => {
                 local_desc.value = "<dead>".to_string();
             }
-            Some(Either::Left(_)) => {
-                local_desc.value = "<indirect>".to_string();
-            }
-            Some(Either::Right(imm)) => {
-                match imm {
-                    Scalar(_) => {
-                        local_desc.value = "<immediate>".to_string();
-                    }
-                    ScalarPair(_, _) => {
-                        local_desc.value = "<immediate-pair>".to_string();
-                    }
+            Some(Either::Right(Uninit)) => local_desc.value = "<uninit>".to_string(),
 
-                    Uninit => {
-                        local_desc.value = "<uninit>".to_string();
-                    }
-                };
+            Some(Either::Left(_) | Either::Right(_)) => {
+                let op = self
+                    .ecx
+                    .local_to_op(local, None)
+                    .expect("this error can only occur in CTFE on generic code");
+                local_desc.value = self.render_op(op);
             }
         };
 
@@ -552,7 +664,8 @@ impl<'tcx> PrirodaContext<'tcx> {
         // and `_slice._extra`, not as two separate locals both named `_slice`.
 
         // Whole-place debug entries enrich the direct storage-local description.
-        // Projected places and constants are handled separately/deferred.
+        // Projected places are evaluated from their original MIR Place and use
+        // the same raw renderer as ordinary locals.
         for var_debug_info in &frame.body().var_debug_info {
             if let VarDebugInfoContents::Place(place) = &var_debug_info.value {
                 if let Some(local_idx) = place.as_local()
@@ -566,6 +679,13 @@ impl<'tcx> PrirodaContext<'tcx> {
                     let storage_projection = Self::render_storage_projection(place.projection);
                     let source_projection =
                         Self::render_source_projection(var_debug_info.composite.as_deref());
+                    let value = self
+                        .ecx
+                        .eval_place_to_op(*place, None)
+                        .map(|op| self.render_op(op))
+                        .unwrap_or_else(|err| {
+                            format!("<error: {}>", interpret::format_interp_error(err))
+                        });
 
                     local_descs.push(LocalDesc {
                         source_name: Some(var_debug_info.name),
@@ -573,8 +693,7 @@ impl<'tcx> PrirodaContext<'tcx> {
                         local: Some(place.local),
                         storage_projection,
                         ty: place.ty(local_decls, self.ecx.tcx.tcx).ty.to_string(),
-                        // FIXME: projection not handled yet.
-                        value: "<unsupported-projection>".to_string(),
+                        value,
                     });
                 }
             }
@@ -592,6 +711,7 @@ enum DebuggerCommand {
     Breakpoint(PathBuf, usize),
     ListLocals,
     Print(usize),
+    Follow(AllocId, usize),
 }
 
 enum BreakpointSetResult {
@@ -605,6 +725,7 @@ enum CommandResult {
     BreakpointResult(BreakpointSetResult),
     Locals(Vec<LocalDesc>),
     SingleLocal(Option<LocalDesc>),
+    Memory(String),
     // FIXME: distinguish terminating the debugger session from disconnecting a
     // frontend and terminating the interpreted program once multiple frontends exist.
     TerminateSession,
@@ -693,6 +814,7 @@ impl Cli {
                             }
                             None => println!("no local for this id"),
                         },
+                    CommandResult::Memory(memory) => println!("{memory}"),
                     CommandResult::TerminateSession => {
                         println!("quitting");
                         return interp_ok(());
@@ -725,6 +847,7 @@ impl Cli {
             "b" | "break" => self.parse_breakpoint(args),
             "l" | "locals" => Some(DebuggerCommand::ListLocals),
             "p" | "print" => self.parse_print_local(args),
+            "f" | "follow" => self.parse_follow(args),
             _ => None,
         }
     }
@@ -756,5 +879,19 @@ impl Cli {
     fn parse_print_local(&self, input: &str) -> Option<DebuggerCommand> {
         let local = input.parse().ok()?;
         Some(DebuggerCommand::Print(local))
+    }
+
+    fn parse_follow(&self, input: &str) -> Option<DebuggerCommand> {
+        let mut parts = input.split_whitespace();
+        let alloc_id = parts.next()?;
+        let offset = parts.next()?;
+        if parts.next().is_some() {
+            return None;
+        }
+
+        let alloc_id = alloc_id.strip_prefix("alloc").unwrap_or(alloc_id).parse().ok()?;
+        let alloc_id = AllocId(NonZeroU64::new(alloc_id)?);
+        let offset = offset.parse().ok()?;
+        Some(DebuggerCommand::Follow(alloc_id, offset))
     }
 }

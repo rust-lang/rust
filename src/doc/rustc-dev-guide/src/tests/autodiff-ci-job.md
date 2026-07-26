@@ -1,8 +1,8 @@
 # Autodiff CI job
 
 The [`optional-x86_64-gnu-autodiff`] job provides continuous test coverage for
-the experimental `autodiff` feature and its integration with LLVM Enzyme. It is
-an optional [auto job](./ci.md#auto-builds), so a failure does not prevent a
+the experimental `autodiff` feature and its integration with LLVM Enzyme.
+It is an optional [auto job](./ci.md#auto-builds), so a failure does not prevent a
 pull request from being merged.
 
 For more context about the feature, see the [autodiff tracking issue] and the
@@ -30,14 +30,13 @@ To run the job locally, run this command from a Rust checkout:
 $ cargo run --manifest-path src/ci/citool/Cargo.toml run-local optional-x86_64-gnu-autodiff
 ```
 
-See [Testing with Docker](./docker.md) for more information about running CI
-jobs locally.
+See [Testing with Docker](./docker.md) for more information about running CI jobs locally.
 
 ## Point of contact
 
 If you have questions or need help with a failure in this job, open a new topic
-in the [autodiff Zulip channel]. For suspected Enzyme backend failures, see the
-[autodiff debugging guide].
+in the [autodiff Zulip channel].
+For suspected Enzyme backend failures, see the [autodiff debugging guide].
 
 [autodiff Zulip channel]: https://rust-lang.zulipchat.com/#narrow/channel/390790-wg-autodiff
 [autodiff debugging guide]: ../autodiff/debugging.md

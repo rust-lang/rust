@@ -509,7 +509,6 @@ pub enum ParsedDescription {
 
 pub(crate) struct AttributeParseError<'a> {
     pub(crate) span: Span,
-    pub(crate) attr_span: Span,
     pub(crate) inner_span: Span,
     pub(crate) template: AttributeTemplate,
     pub(crate) path: AttrPath,
@@ -604,7 +603,7 @@ impl<'a> AttributeParseError<'a> {
         match &self.suggestions {
             AttributeParseErrorSuggestions::CreatedByTemplate(suggestions) => {
                 diag.span_suggestions(
-                        self.attr_span,
+                        self.inner_span,
                         if suggestions.len() == 1 {
                             "must be of the form".to_string()
                         } else {

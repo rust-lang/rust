@@ -50,13 +50,13 @@ impl SingleAttributeParser for InlineParser {
                     }
                     _ => {
                         cx.adcx().expected_specific_argument(l.span(), &[sym::always, sym::never]);
-                        return None;
+                        None
                     }
                 }
             }
             ArgParser::NameValue(_) => {
                 cx.adcx().warn_ill_formed_attribute_input(ILL_FORMED_ATTRIBUTE_INPUT);
-                return None;
+                None
             }
         }
     }

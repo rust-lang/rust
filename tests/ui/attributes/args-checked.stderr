@@ -38,13 +38,13 @@ LL | #[inline(always = 5)]
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[inline(always = 5)]
+LL + #[inline]
+   |
+LL - #[inline(always = 5)]
 LL + #[inline(always)]
    |
 LL - #[inline(always = 5)]
 LL + #[inline(never)]
-   |
-LL - #[inline(always = 5)]
-LL + #[inline]
    |
 
 error[E0539]: malformed `inline` attribute input
@@ -59,13 +59,13 @@ LL | #[inline(always(x, y, z))]
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[inline(always(x, y, z))]
+LL + #[inline]
+   |
+LL - #[inline(always(x, y, z))]
 LL + #[inline(always)]
    |
 LL - #[inline(always(x, y, z))]
 LL + #[inline(never)]
-   |
-LL - #[inline(always(x, y, z))]
-LL + #[inline]
    |
 
 error[E0539]: malformed `instruction_set` attribute input
@@ -241,13 +241,13 @@ LL | #[used(always = 5)]
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[used(always = 5)]
+LL + #[used]
+   |
+LL - #[used(always = 5)]
 LL + #[used(compiler)]
    |
 LL - #[used(always = 5)]
 LL + #[used(linker)]
-   |
-LL - #[used(always = 5)]
-LL + #[used]
    |
 
 error[E0539]: malformed `used` attribute input
@@ -261,13 +261,13 @@ LL | #[used(always(x, y, z))]
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[used(always(x, y, z))]
+LL + #[used]
+   |
+LL - #[used(always(x, y, z))]
 LL + #[used(compiler)]
    |
 LL - #[used(always(x, y, z))]
 LL + #[used(linker)]
-   |
-LL - #[used(always(x, y, z))]
-LL + #[used]
    |
 
 error[E0565]: malformed `rustc_must_implement_one_of` attribute input
@@ -314,21 +314,21 @@ LL | #[rustc_dump_layout(debug(x, y, z))]
    |                     |
    |                     didn't expect a literal here
 
-error: valid forms for the attribute are `#[macro_export(local_inner_macros)]` and `#[macro_export]`
-  --> $DIR/args-checked.rs:37:1
+error: valid forms for the attribute are `macro_export` and `macro_export(local_inner_macros)`
+  --> $DIR/args-checked.rs:37:3
    |
 LL | #[macro_export(local_inner_macros = 5)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
    = note: `#[deny(invalid_macro_export_arguments)]` (part of `#[deny(future_incompatible)]`) on by default
 
-error: valid forms for the attribute are `#[macro_export(local_inner_macros)]` and `#[macro_export]`
-  --> $DIR/args-checked.rs:40:1
+error: valid forms for the attribute are `macro_export` and `macro_export(local_inner_macros)`
+  --> $DIR/args-checked.rs:40:3
    |
 LL | #[macro_export(local_inner_macros(x, y, z))]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
@@ -338,22 +338,22 @@ error: aborting due to 23 previous errors
 Some errors have detailed explanations: E0539, E0565.
 For more information about an error, try `rustc --explain E0539`.
 Future incompatibility report: Future breakage diagnostic:
-error: valid forms for the attribute are `#[macro_export(local_inner_macros)]` and `#[macro_export]`
-  --> $DIR/args-checked.rs:37:1
+error: valid forms for the attribute are `macro_export` and `macro_export(local_inner_macros)`
+  --> $DIR/args-checked.rs:37:3
    |
 LL | #[macro_export(local_inner_macros = 5)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>
    = note: `#[deny(invalid_macro_export_arguments)]` (part of `#[deny(future_incompatible)]`) on by default
 
 Future breakage diagnostic:
-error: valid forms for the attribute are `#[macro_export(local_inner_macros)]` and `#[macro_export]`
-  --> $DIR/args-checked.rs:40:1
+error: valid forms for the attribute are `macro_export` and `macro_export(local_inner_macros)`
+  --> $DIR/args-checked.rs:40:3
    |
 LL | #[macro_export(local_inner_macros(x, y, z))]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #57571 <https://github.com/rust-lang/rust/issues/57571>

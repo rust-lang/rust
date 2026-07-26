@@ -155,7 +155,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         hir::attrs::EiiImpl {
             span: self.lower_span(*span),
             inner_span: self.lower_span(*inner_span),
-            impl_marked_unsafe: self.lower_safety(*impl_safety, hir::Safety::Safe).is_unsafe(),
+            impl_unsafe_span: match *impl_safety {
+                Safety::Unsafe(span) => Some(self.lower_span(span)),
+                Safety::Safe(_) | Safety::Default => None,
+            },
             is_default: *is_default,
             resolution,
         }

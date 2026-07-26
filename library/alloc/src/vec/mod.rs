@@ -3302,8 +3302,9 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert_eq!(&v, &[0, 1, 2]);
     /// ```
     #[stable(feature = "vec_spare_capacity", since = "1.60.0")]
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
     #[inline]
-    pub fn spare_capacity_mut(&mut self) -> &mut [MaybeUninit<T>] {
+    pub const fn spare_capacity_mut(&mut self) -> &mut [MaybeUninit<T>] {
         // Note:
         // This method is not implemented in terms of `split_at_spare_mut`,
         // to prevent invalidation of pointers to the buffer.
@@ -3367,8 +3368,9 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert_eq!(&v, &[1, 1, 2, 4, 8, 12, 16]);
     /// ```
     #[unstable(feature = "vec_split_at_spare", issue = "81944")]
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
     #[inline]
-    pub fn split_at_spare_mut(&mut self) -> (&mut [T], &mut [MaybeUninit<T>]) {
+    pub const fn split_at_spare_mut(&mut self) -> (&mut [T], &mut [MaybeUninit<T>]) {
         // SAFETY:
         // - len is ignored and so never changed
         let (init, spare, _) = unsafe { self.split_at_spare_mut_with_len() };
@@ -3378,7 +3380,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// Safety: changing returned .2 (&mut usize) is considered the same as calling `.set_len(_)`.
     ///
     /// This method provides unique access to all vec parts at once in `extend_from_within`.
-    unsafe fn split_at_spare_mut_with_len(
+    const unsafe fn split_at_spare_mut_with_len(
         &mut self,
     ) -> (&mut [T], &mut [MaybeUninit<T>], &mut usize) {
         let ptr = self.as_mut_ptr();
