@@ -1120,9 +1120,7 @@ pub fn parse_ast_fragment<'a>(
             let mut stmts = SmallVec::new();
             // Won't make progress on a `}`.
             while this.token != token::Eof && this.token != token::CloseBrace {
-                if let Some(stmt) = this.parse_full_stmt(AttemptLocalParseRecovery::Yes)? {
-                    stmts.push(stmt);
-                }
+                stmts.push(this.parse_full_stmt(AttemptLocalParseRecovery::Yes)?);
             }
             AstFragment::Stmts(stmts)
         }
