@@ -99,7 +99,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingConstForFn {
             return;
         }
 
-        if span.in_external_macro(cx.tcx.sess.source_map()) || is_entrypoint_fn(cx, def_id.to_def_id()) {
+        if is_entrypoint_fn(cx, def_id.to_def_id()) {
             return;
         }
 
@@ -151,7 +151,9 @@ impl<'tcx> LateLintPass<'tcx> for MissingConstForFn {
             return;
         }
 
-        if is_from_proc_macro(cx, &(&kind, body, hir_id, span)) {
+        if (span.from_expansion() && span.in_external_macro(cx.tcx.sess.source_map()))
+            || is_from_proc_macro(cx, &(&kind, body, hir_id, span))
+        {
             return;
         }
 

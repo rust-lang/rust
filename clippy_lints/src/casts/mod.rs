@@ -889,11 +889,10 @@ impl Casts {
 
 impl<'tcx> LateLintPass<'tcx> for Casts {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if expr.span.in_external_macro(cx.sess().source_map()) {
-            return;
-        }
-
         if let ExprKind::Cast(cast_from_expr, cast_to_hir) = expr.kind {
+            if expr.span.in_external_macro(cx.sess().source_map()) {
+                return;
+            }
             if is_hir_ty_cfg_dependant(cx, cast_to_hir) {
                 return;
             }

@@ -36,6 +36,7 @@ fn lint_cast_ptr_alignment<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, cast_f
         // when casting from a ZST, we don't know enough to properly lint
         && !from_layout.is_zst()
         && !is_used_as_unaligned(cx, expr)
+        && !expr.span.in_external_macro(cx.tcx.sess.source_map())
     {
         span_lint(
             cx,

@@ -124,14 +124,14 @@ enum LintPoint {
 impl<'tcx> LateLintPass<'tcx> for StdReexports {
     fn check_path(&mut self, cx: &LateContext<'tcx>, path: &Path<'tcx>, _: HirId) {
         if let Res::Def(def_kind, def_id) = path.res
+            && !matches!(def_kind, DefKind::Macro(_))
             && let Some(first_segment) = get_first_segment(path)
+            && let Res::Def(DefKind::Mod, crate_def_id) = first_segment.res
+            && crate_def_id.is_crate_root()
             && is_stable(cx, def_id, self.msrv)
             && !path.span.in_external_macro(cx.sess().source_map())
             && !is_from_proc_macro(cx, &first_segment.ident)
-            && !matches!(def_kind, DefKind::Macro(_))
             && let Some(last_segment) = path.segments.last()
-            && let Res::Def(DefKind::Mod, crate_def_id) = first_segment.res
-            && crate_def_id.is_crate_root()
         {
             let (lint, used_mod, replace_with) = match first_segment.ident.name {
                 sym::std => match cx.tcx.crate_name(def_id.krate) {

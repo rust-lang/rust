@@ -11,9 +11,6 @@ pub(super) fn check(cx: &EarlyContext<'_>, item: &Item, attrs: &[Attribute]) {
     let skip_unused_imports = attrs.iter().any(|attr| attr.has_name(sym::macro_use));
 
     for attr in attrs {
-        if attr.span.in_external_macro(cx.sess().source_map()) {
-            return;
-        }
         if let Some(lint_list) = &attr.meta_item_list()
             && attr.name().is_some_and(is_lint_level)
         {
@@ -72,9 +69,10 @@ pub(super) fn check(cx: &EarlyContext<'_>, item: &Item, attrs: &[Attribute]) {
                     _ => {},
                 }
             }
-            let line_span = first_line_of_span(cx, attr.span);
 
-            if let Some(src) = line_span.get_text(cx)
+            if !attr.span.in_external_macro(cx.sess().source_map())
+                && let line_span = first_line_of_span(cx, attr.span)
+                && let Some(src) = line_span.get_text(cx)
                 && src.contains("#[")
             {
                 #[expect(clippy::collapsible_span_lint_calls)]
