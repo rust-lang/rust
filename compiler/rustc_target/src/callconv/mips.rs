@@ -1,16 +1,43 @@
-use rustc_abi::{HasDataLayout, Size, TyAbiInterface};
+use rustc_abi::{Float, HasDataLayout, Integer, Numeric, Reg, RegKind, Size, TyAbiInterface};
+use rustc_span::bug;
 
-use crate::callconv::{ArgAbi, FnAbi, Reg, Uniform};
+use crate::callconv::{ArgAbi, CastTarget, FnAbi, Uniform};
 
-fn classify_ret<Ty, C>(cx: &C, ret: &mut ArgAbi<'_, Ty>, offset: &mut Size)
+fn classify_ret<'a, Ty, C>(cx: &C, ret: &mut ArgAbi<'a, Ty>, offset: &mut Size)
 where
+    Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,
 {
-    if !ret.layout.is_aggregate() {
-        ret.extend_integer_width_to(32);
-    } else {
+    let dl = cx.data_layout();
+    let size = ret.layout.size;
+
+    // Complex types with unsupported component types are returned as an aggregate.
+    let is_supported_complex_component = |numeric| match numeric {
+        Numeric::Int(Integer::I8 | Integer::I16 | Integer::I32 | Integer::I64, _) => true,
+        Numeric::Int(Integer::I128, _) => false,
+        Numeric::Float(Float::F32 | Float::F64) => true,
+        Numeric::Float(Float::F16 | Float::F128) => false,
+        Numeric::Float(Float::F16B | Float::PpcF128) => bug!("unsupported on mips"),
+    };
+
+    if let Some(component) = ret.layout.complex_number(cx)
+        && is_supported_complex_component(component)
+    {
+        match component {
+            Numeric::Int(Integer::I8 | Integer::I16, _) => {
+                // Pack Complex<{integer}> into a single register if that fits.
+                ret.cast_to(Reg { kind: RegKind::Integer, size });
+            }
+            _ => {
+                let reg = Reg { kind: component.reg_kind(), size: component.size() };
+                ret.cast_to(CastTarget::from(Uniform::new(reg, size)));
+            }
+        }
+    } else if ret.layout.is_aggregate() {
         ret.make_indirect();
-        *offset += cx.data_layout().pointer_size();
+        *offset += dl.pointer_size();
+    } else {
+        ret.extend_integer_width_to(32);
     }
 }
 
