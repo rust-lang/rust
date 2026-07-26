@@ -2,7 +2,7 @@
 (priroda) Hit breakpoint
 {MANIFEST_DIR}/tests/ui/locals_sroa.rs:13
 (priroda) Name: <none>, Id: _0, Ty: (), Value: <uninit>
-Name: s, Id: _1, Ty: &[u8], Value: <immediate-pair>
+Name: s, Id: _1, Ty: &[u8], Value: (pointer to {ALLOC_PTR}, 0x0000000000000002): &[u8]
 Name: <none>, Id: _2, Ty: ExtraSlice<'_>, Value: <uninit>
 Name: <none>, Id: _3, Ty: &[u8], Value: <dead>
 Name: <none>, Id: _4, Ty: u32, Value: <dead>

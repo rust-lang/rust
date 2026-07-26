@@ -766,8 +766,8 @@ fn simd_swizzle() {
 }
 
 fn simd_swizzle_dyn() {
-    // FIXME: needs llvm.neon.tbl2 support, see https://github.com/rust-lang/miri/pull/5219.
-    if cfg!(target_arch = "aarch64") {
+    if cfg!(target_arch = "loongarch64") {
+        // We don't support the required intrinsic here.
         return;
     }
 
