@@ -1567,15 +1567,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         // look for moves of a local variable, like `MOVE(_X)`
         let local_moved = match operand {
-            Operand::Copy(_) | Operand::Constant(_) | Operand::RuntimeChecks(_) => None,
+            Operand::Copy(_) | Operand::Constant(_) | Operand::RuntimeChecks(_) => return,
             Operand::Move(place) => place.as_local(),
         };
 
+        // We have a move of a local. Mark its drop to be skipped when leaving top scope.
+        // If `local` is not dropped by the topmost scope, this is a no-op.
         if let Some(local) = local_moved {
-            // check if we have a Drop for this operand and -- if so
-            // -- add it to the list of moved operands. Note that this
-            // local might not have been an operand created for this
-            // call, it could come from other places too.
             scope.moved_locals.insert(local);
         }
     }
