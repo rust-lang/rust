@@ -83,6 +83,10 @@
 // [NVPTX] compile-flags: --target nvptx64-nvidia-cuda
 // [NVPTX] needs-llvm-components: nvptx
 
+// revisions: AMDGPU
+// [AMDGPU] compile-flags: --target amdgcn-amd-amdhsa -Ctarget-cpu=gfx900
+// [AMDGPU] needs-llvm-components: amdgpu
+
 // revisions: BPF
 // [BPF] compile-flags: --target bpfel-unknown-none
 // [BPF] needs-llvm-components: bpf
