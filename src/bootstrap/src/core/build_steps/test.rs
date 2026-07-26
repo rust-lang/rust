@@ -28,8 +28,8 @@ use crate::core::build_steps::tool::{
 use crate::core::build_steps::toolstate::ToolState;
 use crate::core::build_steps::{compile, dist, llvm};
 use crate::core::builder::{
-    self, Alias, Builder, Compiler, Kind, RunConfig, ShouldRun, Step, StepMetadata,
-    crate_description,
+    self, Alias, Builder, CommandLineStep, Compiler, Kind, RunConfig, ShouldRun, Step,
+    StepMetadata, crate_description,
 };
 use crate::core::config::TargetSelection;
 use crate::core::config::flags::{Subcommand, get_completion, top_level_help};
@@ -54,7 +54,7 @@ pub struct CrateBootstrap {
     host: TargetSelection,
 }
 
-impl Step for CrateBootstrap {
+impl CommandLineStep for CrateBootstrap {
     type Output = ();
     const IS_HOST: bool = true;
 
@@ -123,7 +123,7 @@ pub struct Linkcheck {
     host: TargetSelection,
 }
 
-impl Step for Linkcheck {
+impl CommandLineStep for Linkcheck {
     type Output = ();
     const IS_HOST: bool = true;
 
@@ -222,7 +222,7 @@ pub struct HtmlCheck {
     target: TargetSelection,
 }
 
-impl Step for HtmlCheck {
+impl CommandLineStep for HtmlCheck {
     type Output = ();
     const IS_HOST: bool = true;
 
@@ -275,7 +275,7 @@ pub struct Cargotest {
     host: TargetSelection,
 }
 
-impl Step for Cargotest {
+impl CommandLineStep for Cargotest {
     type Output = ();
     const IS_HOST: bool = true;
 
@@ -352,7 +352,7 @@ impl Cargo {
     const CRATE_PATH: &str = "src/tools/cargo";
 }
 
-impl Step for Cargo {
+impl CommandLineStep for Cargo {
     type Output = ();
     const IS_HOST: bool = true;
 
@@ -454,7 +454,7 @@ pub struct RustAnalyzer {
     compilers: RustcPrivateCompilers,
 }
 
-impl Step for RustAnalyzer {
+impl CommandLineStep for RustAnalyzer {
     type Output = ();
     const IS_HOST: bool = true;
 
@@ -578,7 +578,7 @@ pub struct Rustfmt {
     compilers: RustcPrivateCompilers,
 }
 
-impl Step for Rustfmt {
+impl CommandLineStep for Rustfmt {
     type Output = ();
     const IS_HOST: bool = true;
 
@@ -683,7 +683,7 @@ impl Miri {
     }
 }
 
-impl Step for Miri {
+impl CommandLineStep for Miri {
     type Output = ();
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -801,7 +801,7 @@ pub struct CargoMiri {
     target: TargetSelection,
 }
 
-impl Step for CargoMiri {
+impl CommandLineStep for CargoMiri {
     type Output = ();
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -881,7 +881,7 @@ pub struct CompiletestTest {
     host: TargetSelection,
 }
 
-impl Step for CompiletestTest {
+impl CommandLineStep for CompiletestTest {
     type Output = ();
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -947,7 +947,7 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct StdarchVerify;
 
-impl Step for StdarchVerify {
+impl CommandLineStep for StdarchVerify {
     type Output = ();
     const IS_HOST: bool = true;
 
@@ -1005,7 +1005,7 @@ pub struct IntrinsicTest {
     host: TargetSelection,
 }
 
-impl Step for IntrinsicTest {
+impl CommandLineStep for IntrinsicTest {
     type Output = ();
     const IS_HOST: bool = true;
 
@@ -1164,7 +1164,7 @@ pub struct Clippy {
     compilers: RustcPrivateCompilers,
 }
 
-impl Step for Clippy {
+impl CommandLineStep for Clippy {
     type Output = ();
     const IS_HOST: bool = true;
 
@@ -1281,7 +1281,7 @@ pub struct RustdocTheme {
     test_compiler: Compiler,
 }
 
-impl Step for RustdocTheme {
+impl CommandLineStep for RustdocTheme {
     type Output = ();
     const IS_HOST: bool = true;
 
@@ -1334,7 +1334,7 @@ pub struct RustdocJSStd {
     target: TargetSelection,
 }
 
-impl Step for RustdocJSStd {
+impl CommandLineStep for RustdocJSStd {
     type Output = ();
     const IS_HOST: bool = true;
 
@@ -1411,7 +1411,7 @@ pub struct RustdocJSNotStd {
     pub compiler: Compiler,
 }
 
-impl Step for RustdocJSNotStd {
+impl CommandLineStep for RustdocJSNotStd {
     type Output = ();
     const IS_HOST: bool = true;
 
@@ -1479,7 +1479,7 @@ pub struct RustdocGUI {
     target: TargetSelection,
 }
 
-impl Step for RustdocGUI {
+impl CommandLineStep for RustdocGUI {
     type Output = ();
     const IS_HOST: bool = true;
 
@@ -1584,7 +1584,7 @@ impl Step for RustdocGUI {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Tidy;
 
-impl Step for Tidy {
+impl CommandLineStep for Tidy {
     type Output = ();
     const IS_HOST: bool = true;
 
@@ -1721,7 +1721,7 @@ pub struct CrateRunMakeSupport {
     host: TargetSelection,
 }
 
-impl Step for CrateRunMakeSupport {
+impl CommandLineStep for CrateRunMakeSupport {
     type Output = ();
     const IS_HOST: bool = true;
 
@@ -1767,7 +1767,7 @@ pub struct CrateBuildHelper {
     host: TargetSelection,
 }
 
-impl Step for CrateBuildHelper {
+impl CommandLineStep for CrateBuildHelper {
     type Output = ();
     const IS_HOST: bool = true;
 
@@ -1833,7 +1833,7 @@ macro_rules! test {
             target: TargetSelection,
         }
 
-        impl Step for $name {
+        impl CommandLineStep for $name {
             type Output = ();
             const IS_HOST: bool = (const {
                 #[allow(unused_assignments, unused_mut)]
@@ -1994,7 +1994,7 @@ impl Coverage {
         &[CompiletestMode::CoverageMap, CompiletestMode::CoverageRun];
 }
 
-impl Step for Coverage {
+impl CommandLineStep for Coverage {
     type Output = ();
     /// Compiletest will automatically skip the "coverage-run" tests if necessary.
     const IS_HOST: bool = false;
@@ -2091,7 +2091,7 @@ pub struct MirOpt {
     pub target: TargetSelection,
 }
 
-impl Step for MirOpt {
+impl CommandLineStep for MirOpt {
     type Output = ();
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -2163,10 +2163,6 @@ struct Compiletest {
 
 impl Step for Compiletest {
     type Output = ();
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.never()
-    }
 
     fn run(self, builder: &Builder<'_>) {
         if builder.test_target == TestTarget::DocOnly {
@@ -2888,11 +2884,6 @@ struct BookTest {
 
 impl Step for BookTest {
     type Output = ();
-    const IS_HOST: bool = true;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.never()
-    }
 
     fn run(self, builder: &Builder<'_>) {
         // External docs are different from local because:
@@ -3051,7 +3042,7 @@ macro_rules! test_book {
                 test_compiler: Compiler,
             }
 
-            impl Step for $name {
+            impl CommandLineStep for $name {
                 type Output = ();
                 const IS_HOST: bool = true;
 
@@ -3114,7 +3105,7 @@ pub struct ErrorIndex {
     compilers: RustcPrivateCompilers,
 }
 
-impl Step for ErrorIndex {
+impl CommandLineStep for ErrorIndex {
     type Output = ();
     const IS_HOST: bool = true;
 
@@ -3208,7 +3199,7 @@ pub struct CrateLibrustc {
     crates: Vec<String>,
 }
 
-impl Step for CrateLibrustc {
+impl CommandLineStep for CrateLibrustc {
     type Output = ();
     const IS_HOST: bool = true;
 
@@ -3369,7 +3360,7 @@ pub struct Crate {
     crates: Vec<String>,
 }
 
-impl Step for Crate {
+impl CommandLineStep for Crate {
     type Output = ();
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -3517,7 +3508,7 @@ pub struct CrateRustdoc {
     host: TargetSelection,
 }
 
-impl Step for CrateRustdoc {
+impl CommandLineStep for CrateRustdoc {
     type Output = ();
     const IS_HOST: bool = true;
 
@@ -3622,7 +3613,7 @@ pub struct CrateRustdocJsonTypes {
     target: TargetSelection,
 }
 
-impl Step for CrateRustdocJsonTypes {
+impl CommandLineStep for CrateRustdocJsonTypes {
     type Output = ();
     const IS_HOST: bool = true;
 
@@ -3698,10 +3689,6 @@ pub struct RemoteCopyLibs {
 impl Step for RemoteCopyLibs {
     type Output = ();
 
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.never()
-    }
-
     fn run(self, builder: &Builder<'_>) {
         let build_compiler = self.build_compiler;
         let target = self.target;
@@ -3740,7 +3727,7 @@ impl Step for RemoteCopyLibs {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Distcheck;
 
-impl Step for Distcheck {
+impl CommandLineStep for Distcheck {
     type Output = ();
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -3864,7 +3851,7 @@ fn distcheck_rustc_dev(builder: &Builder<'_>, dir: &Path) {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct BootstrapPy;
 
-impl Step for BootstrapPy {
+impl CommandLineStep for BootstrapPy {
     type Output = ();
     const IS_HOST: bool = true;
 
@@ -3903,7 +3890,7 @@ impl Step for BootstrapPy {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Bootstrap;
 
-impl Step for Bootstrap {
+impl CommandLineStep for Bootstrap {
     type Output = ();
     const IS_HOST: bool = true;
 
@@ -3973,7 +3960,7 @@ pub struct TierCheck {
     test_compiler: Compiler,
 }
 
-impl Step for TierCheck {
+impl CommandLineStep for TierCheck {
     type Output = ();
     const IS_HOST: bool = true;
 
@@ -4025,7 +4012,7 @@ pub struct LintDocs {
     target: TargetSelection,
 }
 
-impl Step for LintDocs {
+impl CommandLineStep for LintDocs {
     type Output = ();
     const IS_HOST: bool = true;
 
@@ -4071,7 +4058,7 @@ impl Step for LintDocs {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RustInstaller;
 
-impl Step for RustInstaller {
+impl CommandLineStep for RustInstaller {
     type Output = ();
     const IS_HOST: bool = true;
 
@@ -4131,7 +4118,7 @@ pub struct TestHelpers {
     pub target: TargetSelection,
 }
 
-impl Step for TestHelpers {
+impl CommandLineStep for TestHelpers {
     type Output = ();
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -4215,7 +4202,7 @@ pub struct CodegenCranelift {
     target: TargetSelection,
 }
 
-impl Step for CodegenCranelift {
+impl CommandLineStep for CodegenCranelift {
     type Output = ();
     const IS_HOST: bool = true;
 
@@ -4336,7 +4323,7 @@ pub struct CodegenGCC {
     target: TargetSelection,
 }
 
-impl Step for CodegenGCC {
+impl CommandLineStep for CodegenGCC {
     type Output = ();
     const IS_HOST: bool = true;
 
@@ -4467,7 +4454,7 @@ pub struct TestFloatParse {
     target: TargetSelection,
 }
 
-impl Step for TestFloatParse {
+impl CommandLineStep for TestFloatParse {
     type Output = ();
     const IS_HOST: bool = true;
 
@@ -4545,7 +4532,7 @@ impl Step for TestFloatParse {
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct CollectLicenseMetadata;
 
-impl Step for CollectLicenseMetadata {
+impl CommandLineStep for CollectLicenseMetadata {
     type Output = PathBuf;
     const IS_HOST: bool = true;
 
@@ -4579,7 +4566,7 @@ pub struct RemoteTestClientTests {
     host: TargetSelection,
 }
 
-impl Step for RemoteTestClientTests {
+impl CommandLineStep for RemoteTestClientTests {
     type Output = ();
     const IS_HOST: bool = true;
 
