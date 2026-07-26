@@ -1015,8 +1015,16 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
                         },
                     )
                 }),
-                config::OutputFormat::IrJson => sess.time("render_json", || {
-                    run_renderer(krate, render_opts, cache, tcx, json::JsonRenderer::init)
+                config::OutputFormat::Ir(irof) => sess.time("render_ir", || {
+                    run_renderer(
+                        krate,
+                        render_opts,
+                        cache,
+                        tcx,
+                        |krate, render_opts, cache, tcx| {
+                            json::JsonRenderer::init(krate, render_opts, cache, tcx, irof)
+                        },
+                    )
                 }),
                 // Already handled above with doctest runners or coverage early return
                 config::OutputFormat::Doctest | config::OutputFormat::CoverageJson => {

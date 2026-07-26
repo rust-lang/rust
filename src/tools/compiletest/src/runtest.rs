@@ -1046,6 +1046,9 @@ impl<'test> TestCx<'test> {
             DocKind::Json => {
                 rustdoc.arg("--output-format").arg("json").arg("-Zunstable-options");
             }
+            DocKind::Postcard => {
+                rustdoc.arg("--output-format").arg("postcard").arg("-Zunstable-options");
+            }
         }
 
         if let Some(ref linker) = self.config.target_linker {
@@ -3082,6 +3085,7 @@ enum CompareOutcome {
 enum DocKind {
     Html,
     Json,
+    Postcard,
 }
 
 impl CompareOutcome {

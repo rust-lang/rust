@@ -12,15 +12,20 @@ impl TestCx<'_> {
             panic!("failed to remove and recreate output directory `{out_dir}`: {e}")
         });
 
-        let proc_res = self.document(&out_dir, DocKind::Json);
+        let run_rustdoc = |doc_kind| {
+            let proc_res = self.document(&out_dir, doc_kind);
+            if !self.config.capture {
+                writeln!(self.stdout, "{}", proc_res.format_info());
+            }
 
-        if !self.config.capture {
-            writeln!(self.stdout, "{}", proc_res.format_info());
-        }
+            if !proc_res.status.success() {
+                self.fatal_proc_rec("rustdoc failed!", &proc_res);
+            }
 
-        if !proc_res.status.success() {
-            self.fatal_proc_rec("rustdoc failed!", &proc_res);
-        }
+            proc_res
+        };
+
+        let proc_res = run_rustdoc(DocKind::Json);
 
         let mut cmd = ArgFileCommand::new(self.config.jsondocck_path.as_ref().unwrap());
         cmd.arg("--doc-dir").arg(&out_dir).arg("--template").arg(&self.testpaths.file);
@@ -28,6 +33,8 @@ impl TestCx<'_> {
 
         if !res.status.success() {
             self.fatal_proc_rec_general("jsondocck failed!", None, &res, || {
+                // FIXME: Include `--output-format=postcard` info here too.
+                // Alternatively, ditch this section altogether, how useful is it?
                 writeln!(self.stdout, "Rustdoc Output:");
                 writeln!(self.stdout, "{}", proc_res.format_info());
             })
@@ -36,8 +43,13 @@ impl TestCx<'_> {
         let mut json_out = out_dir.join(self.testpaths.file.file_stem().unwrap());
         json_out.set_extension("json");
 
+        run_rustdoc(DocKind::Postcard);
+        let mut postcard_out = json_out.clone();
+        postcard_out.set_extension("postcard");
+
         let mut cmd = ArgFileCommand::new(self.config.jsondoclint_path.as_ref().unwrap());
         cmd.arg(&json_out);
+        cmd.arg(&postcard_out);
         let res = self.run_command_to_procres(cmd);
 
         if !res.status.success() {

@@ -34,11 +34,17 @@ pub(crate) enum OutputFormat {
     /// `--output-format=json` without `--show-coverage`.
     ///
     /// JSON description of crate API.
-    IrJson,
+    Ir(IrOutputFormat),
     /// `--output-format=json` with `--show-coverage`.
     CoverageJson,
     Html,
     Doctest,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub(crate) enum IrOutputFormat {
+    Json,
+    Postcard,
 }
 
 /// Either an input crate, markdown file, or nothing (--merge=finalize).
@@ -314,7 +320,7 @@ pub(crate) enum EmitType {
     HtmlStaticFiles,
     HtmlNonStaticFiles,
     // not explicitly nameable by the user for now
-    IrJsonFiles,
+    IrFiles,
     CoverageJsonFiles,
     DepInfo(Option<OutFileName>),
 }
@@ -324,7 +330,7 @@ impl fmt::Display for EmitType {
         f.write_str(match self {
             Self::HtmlStaticFiles => "html-static-files",
             Self::HtmlNonStaticFiles => "html-non-static-files",
-            Self::IrJsonFiles => "ir-json-files",
+            Self::IrFiles => "ir-files",
             Self::CoverageJsonFiles => "coverage-json-files",
             Self::DepInfo(_) => "dep-info",
         })
@@ -469,9 +475,10 @@ impl Options {
                 if show_coverage {
                     OutputFormat::CoverageJson
                 } else {
-                    OutputFormat::IrJson
+                    OutputFormat::Ir(IrOutputFormat::Json)
                 }
             }
+            Some("postcard") => OutputFormat::Ir(IrOutputFormat::Postcard),
             Some("doctest") => OutputFormat::Doctest,
             Some(other) => dcx.fatal(format!("unknown output format `{other}`")),
         };
@@ -492,10 +499,15 @@ impl Options {
             // If `-Zunstable-options` is used, nothing to check after this point.
             (_, false, true) => {}
             (None | Some(OutputFormat::Html), false, _) => {}
-            (Some(OutputFormat::IrJson), false, false) => {
-                dcx.fatal(
-                    "the -Z unstable-options flag must be passed to enable --output-format=json for documentation generation (see https://github.com/rust-lang/rust/issues/76578)",
-                );
+            (Some(OutputFormat::Ir(irof)), false, false) => {
+                let flag = match irof {
+                    IrOutputFormat::Json => "json",
+                    IrOutputFormat::Postcard => "postcard",
+                };
+
+                dcx.fatal(format!(
+                    "the -Z unstable-options flag must be passed to enable --output-format={flag} for documentation generation (see https://github.com/rust-lang/rust/issues/76578)",
+                ));
             }
             (Some(OutputFormat::Doctest), false, false) => {
                 dcx.fatal(
@@ -523,18 +535,19 @@ impl Options {
 
                 match typ {
                     EmitType::DepInfo(_) => match output_format {
-                        OutputFormat::Html | OutputFormat::IrJson | OutputFormat::CoverageJson => {}
+                        OutputFormat::Html | OutputFormat::Ir(_) | OutputFormat::CoverageJson => {}
                         OutputFormat::Doctest => unreachable!(),
                     },
                     EmitType::HtmlStaticFiles | EmitType::HtmlNonStaticFiles => match output_format
                     {
                         OutputFormat::Html => {}
-                        OutputFormat::IrJson | OutputFormat::CoverageJson => dcx.fatal(format!(
+                        OutputFormat::Ir(IrOutputFormat::Json) | OutputFormat::CoverageJson => dcx.fatal(format!(
                             "the `--emit={typ}` flag is not supported with `--output-format=json`",
                         )),
+                        OutputFormat::Ir(IrOutputFormat::Postcard) => dcx.fatal(format!("the `--emit={typ}` flag is not supported with `--output-format=postcard`")),
                         OutputFormat::Doctest => unreachable!(),
                     },
-                    EmitType::IrJsonFiles | EmitType::CoverageJsonFiles => unreachable!(),
+                    EmitType::IrFiles | EmitType::CoverageJsonFiles => unreachable!(),
                 }
 
                 // De-duplicate emit types and the last wins.
@@ -550,7 +563,7 @@ impl Options {
         // will have already been rejected above.
         if emit.is_empty() {
             match output_format {
-                OutputFormat::IrJson => emit.push(EmitType::IrJsonFiles),
+                OutputFormat::Ir(_) => emit.push(EmitType::IrFiles),
                 OutputFormat::CoverageJson => emit.push(EmitType::CoverageJsonFiles),
                 OutputFormat::Html => {
                     emit.push(EmitType::HtmlStaticFiles);

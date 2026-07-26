@@ -28,7 +28,7 @@ use tracing::{debug, trace};
 
 use crate::clean::ItemKind;
 use crate::clean::types::{ExternalCrate, ExternalLocation};
-use crate::config::{EmitType, RenderOptions};
+use crate::config::{EmitType, IrOutputFormat, RenderOptions};
 use crate::docfs::PathError;
 use crate::error::Error;
 use crate::formats::FormatRenderer;
@@ -50,6 +50,7 @@ pub(crate) struct JsonRenderer<'tcx> {
     cache: Rc<Cache>,
     imported_items: DefIdSet,
     id_interner: RefCell<ids::IdInterner>,
+    output_format: IrOutputFormat,
 }
 
 impl<'tcx> JsonRenderer<'tcx> {
@@ -206,6 +207,7 @@ impl<'tcx> JsonRenderer<'tcx> {
         options: RenderOptions,
         cache: Cache,
         tcx: TyCtxt<'tcx>,
+        output_format: IrOutputFormat,
     ) -> Result<(Self, clean::Crate), Error> {
         debug!("Initializing json renderer");
 
@@ -218,6 +220,7 @@ impl<'tcx> JsonRenderer<'tcx> {
                 out_dir: if options.output_to_stdout { None } else { Some(options.output) },
                 cache: Rc::new(cache),
                 imported_items,
+                output_format,
                 id_interner: Default::default(),
             },
             krate,
@@ -228,7 +231,7 @@ impl<'tcx> JsonRenderer<'tcx> {
 impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
     const DESCR: &'static str = "json";
     const RUN_ON_MODULE: bool = false;
-    const NON_STATIC_FILE_EMIT_TYPE: EmitType = EmitType::IrJsonFiles;
+    const NON_STATIC_FILE_EMIT_TYPE: EmitType = EmitType::IrFiles;
 
     type ModuleData = ();
 
@@ -379,36 +382,54 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
             target,
             format_version: types::FORMAT_VERSION,
         };
-        if let Some(ref out_dir) = self.out_dir {
-            try_err!(create_dir_all(out_dir), out_dir);
 
-            let mut p = out_dir.clone();
-            p.push(output_crate.index.get(&output_crate.root).unwrap().name.clone().unwrap());
-            p.set_extension("json");
+        let mut writer_file;
+        let mut writer_stdout;
 
-            serialize_and_write(
-                sess,
-                output_crate,
-                try_err!(File::create_buffered(&p), p),
-                &p.display().to_string(),
-            )
-        } else {
-            serialize_and_write(sess, output_crate, BufWriter::new(stdout().lock()), "<stdout>")
-        }
+        let (writer, name): (&mut dyn Write, String) = match &self.out_dir {
+            Some(out_dir) => {
+                try_err!(create_dir_all(out_dir), out_dir);
+                let mut p = out_dir.clone();
+                p.push(output_crate.index.get(&output_crate.root).unwrap().name.clone().unwrap());
+                p.set_extension(match self.output_format {
+                    IrOutputFormat::Json => "json",
+                    IrOutputFormat::Postcard => "postcard",
+                });
+
+                writer_file = try_err!(File::create_buffered(&p), p);
+                (&mut writer_file, p.display().to_string())
+            }
+            None => {
+                writer_stdout = BufWriter::new(stdout().lock());
+                (&mut writer_stdout, "<stdout>".to_owned())
+            }
+        };
+
+        serialize_and_write(sess, output_crate, self.output_format, writer, &name)
     }
 }
 
-fn serialize_and_write<T: Write>(
+fn serialize_and_write(
     sess: &Session,
     output_crate: types::Crate,
-    mut writer: BufWriter<T>,
+    output_format: IrOutputFormat,
+    mut writer: &mut dyn Write,
     path: &str,
 ) -> Result<(), Error> {
     sess.time("rustdoc_json_serialize_and_write", || {
-        try_err!(
-            serde_json::ser::to_writer(&mut writer, &output_crate).map_err(|e| e.to_string()),
-            path
-        );
+        match output_format {
+            IrOutputFormat::Json => try_err!(
+                serde_json::ser::to_writer(&mut writer, &output_crate).map_err(|e| e.to_string()),
+                path
+            ),
+
+            IrOutputFormat::Postcard => {
+                let values: types::postcard::File =
+                    (types::postcard::MAGIC, types::FORMAT_VERSION, output_crate);
+
+                try_err!(postcard::to_io(&values, &mut writer), path);
+            }
+        }
         try_err!(writer.flush(), path);
         Ok(())
     })

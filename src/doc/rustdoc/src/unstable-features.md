@@ -577,6 +577,15 @@ It can also be used with `--show-coverage`. Take a look at its
 [documentation](#--show-coverage-calculate-the-percentage-of-items-with-documentation) for more
 information.
 
+### postcard
+
+ * Tracking Issue: [#76578](https://github.com/rust-lang/rust/issues/76578)
+
+`--output-format postcard` emits documentation using [Postcard](https://postcard.jamesmunns.com/) as an encoding format.
+This has exactly the same structure as the JSON format, but is a smaller file that's faster to serialize/deserialize.
+
+See the [API docs](https://doc.rust-lang.org/nightly/nightly-rustc/rustdoc_json_types/postcard/index.html) for details.
+
 ### doctest
 
  * Tracking issue: [#134529](https://github.com/rust-lang/rust/issues/134529)

@@ -117,6 +117,39 @@ pub type FxHashMap<K, V> = HashMap<K, V>; // re-export for use in src/librustdoc
 // Latest feature: Make `Stability` work with non-self-describing formats
 pub const FORMAT_VERSION: u32 = 61;
 
+pub mod postcard {
+    //! Support for [Postcard](https://postcard.jamesmunns.com/) output from rustdoc.
+    //!
+    //! This is produced by calling `rustdoc --output-format=postcard`.
+    //!
+    //! This is smaller & faster to read than JSON, as it's a non-self-describing binary format.
+    //!
+    //! The root of the file is [`File`] (not [`crate::Crate`] like for JSON output).
+
+    /// The [magic number](https://en.wikipedia.org/wiki/File_format#Magic_number) identifying
+    /// Rustdoc Postcard files.
+    pub const MAGIC: Magic = *b"\xDC\xDFRustdocIrPostcard\x01\x00";
+
+    /// The structure of a postcard output file.
+    ///
+    /// It contains:
+    /// - The magic constant, which won't change.
+    /// - The format version, which will change between rustdoc versions.
+    ///
+    ///   See [`crate::FORMAT_VERSION`] for details.
+    /// - The information about the crate being documented.
+    ///
+    /// Postcard allows reading these fields from a file one at a time.
+    /// It's recommended to check the magic constant matches before reading the format version
+    /// (to check it's a rustdoc postcard file), and to check the format version matches before
+    /// reading the crate (to check the version of this library you have is compatible with the
+    /// version of rustdoc that wrote the file).
+    pub type File = (Magic, u32, crate::Crate);
+
+    /// The type of the [MAGIC] constant.
+    pub type Magic = [u8; 21];
+}
+
 /// The root of the emitted JSON blob.
 ///
 /// It contains all type/documentation information

@@ -33,7 +33,10 @@ struct JsonOutput {
 #[derive(Parser)]
 struct Cli {
     /// The path to the json file to be linted
-    path: String,
+    json_path: String,
+
+    /// The path of the postcard file to be linted
+    postcard_path: String,
 
     /// Show verbose output
     #[arg(long)]
@@ -43,26 +46,34 @@ struct Cli {
     json_output: Option<String>,
 }
 
-fn main() -> Result<()> {
-    let Cli { path, verbose, json_output } = Cli::parse();
-
+fn input_path(path: &str) -> PathBuf {
     // We convert `-` into `_` for the file name to be sure the JSON path will always be correct.
     let path = Path::new(&path);
     let filename = path.file_name().unwrap().to_str().unwrap().replace('-', "_");
     let parent = path.parent().unwrap();
     let path = parent.join(&filename);
+    path
+}
 
-    let contents = fs::read_to_string(&path)?;
-    let krate: Crate = serde_json::from_str(&contents)?;
+fn main() -> Result<()> {
+    let Cli { json_path, postcard_path, verbose, json_output } = Cli::parse();
+    let json_path = input_path(&json_path);
+    let postcard_path = input_path(&postcard_path);
+
+    let json_contents = fs::read_to_string(&json_path)?;
+
+    let krate: Crate = serde_json::from_str(&json_contents)?;
     assert_eq!(krate.format_version, FORMAT_VERSION);
 
-    let krate_json: Value = serde_json::from_str(&contents)?;
+    check_postcard(&postcard_path, &krate)?;
+
+    let krate_json: Value = serde_json::from_str(&json_contents)?;
 
     let mut validator = validator::Validator::new(&krate, krate_json);
     validator.check_crate();
 
     if let Some(json_output) = json_output {
-        let output = JsonOutput { path: path.clone(), errors: validator.errs.clone() };
+        let output = JsonOutput { path: json_path.clone(), errors: validator.errs.clone() };
         let mut f = BufWriter::new(fs::File::create(json_output)?);
         serde_json::to_writer(&mut f, &output)?;
         f.flush()?;
@@ -108,7 +119,37 @@ fn main() -> Result<()> {
                 ErrorKind::Custom(msg) => eprintln!("{}: {}", err.id.0, msg),
             }
         }
-        bail!("Errors validating json {}", path.display());
+        bail!("Errors validating json {}", json_path.display());
+    }
+
+    Ok(())
+}
+
+fn check_postcard(path: &Path, expected_krate: &Crate) -> Result<()> {
+    let postcard_bytes = fs::read(path)?;
+
+    let (file, rest) =
+        postcard::take_from_bytes::<rustdoc_json_types::postcard::File>(&postcard_bytes)?;
+
+    if !rest.is_empty() {
+        bail!("Postcard file has {} leftover bytes", rest.len());
+    }
+
+    let (magic, format_version, krate) = file;
+
+    let expected_magic = rustdoc_json_types::postcard::MAGIC;
+    if magic != expected_magic {
+        bail!("Postcard file has bad magic value, got {magic:?} but expected {expected_magic:?}");
+    }
+
+    let expected_format_version = rustdoc_json_types::FORMAT_VERSION;
+    if format_version != expected_format_version {
+        bail!(
+            "Postcard file has bad format version, got {format_version} but expected {expected_format_version}"
+        );
+    }
+    if &krate != expected_krate {
+        bail!("Postcard file didn't contain same crate information as json file");
     }
 
     Ok(())

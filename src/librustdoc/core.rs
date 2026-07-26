@@ -145,7 +145,8 @@ impl<'tcx> DocContext<'tcx> {
     ///
     /// If another option like `--show-coverage` is enabled, it will return `false`.
     pub(crate) fn is_json_output(&self) -> bool {
-        self.output_format == OutputFormat::IrJson
+        // FIXME: Rename this method
+        matches!(self.output_format, OutputFormat::Ir(_))
     }
 
     /// If `--document-private-items` was passed to rustdoc.
