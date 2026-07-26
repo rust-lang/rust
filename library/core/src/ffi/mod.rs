@@ -45,19 +45,13 @@ pub struct c_void {
     // while minimizing UB if a user incorrectly tries
     // to dereference a pointer to `c_void`,
     // or reborrow it as a reference.
-    #[cfg(not(miri))]
     _inner: crate::pin::UnsafePinned<crate::mem::MaybeUninit<u8>>,
 
     // However, if running in Miri,
     // we want to maximize detection of UB,
     // so we make `c_void` uninhabited.
     #[cfg(miri)]
-    _inner: u8,
-    #[cfg(miri)]
     _uninhabited: !,
-    // Ensure no `Freeze`, for consistency with `not(miri)`
-    #[cfg(miri)]
-    _nonfreeze: crate::cell::SyncUnsafeCell<()>,
 }
 
 // for backward compatibility.
