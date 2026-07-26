@@ -920,7 +920,7 @@ impl<'a, 'f, 'sess: 'f> AttributeDiagnosticContext<'a, 'f, 'sess> {
         reason: AttributeParseErrorReason<'_>,
     ) -> ErrorGuaranteed {
         let suggestions = if self.custom_suggestions.is_empty() {
-            AttributeParseErrorSuggestions::CreatedByTemplate(self.template_suggestions())
+            AttributeParseErrorSuggestions::CreatedByTemplate(self.suggestions())
         } else {
             AttributeParseErrorSuggestions::CreatedByParser(mem::take(&mut self.custom_suggestions))
         };
@@ -947,15 +947,6 @@ impl<'a, 'f, 'sess: 'f> AttributeDiagnosticContext<'a, 'f, 'sess> {
     pub(crate) fn push_suggestion(&mut self, msg: String, span: Span, code: String) -> &mut Self {
         self.custom_suggestions.push(Suggestion { msg, sp: span, code });
         self
-    }
-
-    pub(crate) fn template_suggestions(&self) -> Vec<String> {
-        let style = match self.parsed_description {
-            ParsedDescription::Attribute => AttrSuggestionStyle::EmbeddedAttribute,
-            ParsedDescription::Macro => AttrSuggestionStyle::Macro,
-        };
-
-        self.template.suggestions(style, self.attr_safety, &self.attr_path)
     }
 }
 
