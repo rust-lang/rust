@@ -3003,3 +3003,16 @@ fn f() {[_; || ()]}
     "#,
     );
 }
+
+#[test]
+fn regression_22795() {
+    check_no_mismatches(
+        r#"
+trait T { fn m(&self); }
+impl T for Self::Self {}
+struct S;
+impl T for S { fn m(&self) {} }
+fn f(s: S) { s.m(); }
+    "#,
+    );
+}
