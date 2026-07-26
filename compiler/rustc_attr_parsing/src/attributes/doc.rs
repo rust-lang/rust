@@ -728,7 +728,7 @@ impl DocParser {
         match args {
             ArgParser::NoArgs => {
                 let suggestions = cx.adcx().suggestions();
-                let span = cx.attr_span;
+                let span = cx.inner_span;
                 cx.emit_lint(
                     rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
                     IllFormedAttributeInput::new(&suggestions, None, None),
