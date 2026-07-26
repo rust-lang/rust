@@ -17,6 +17,8 @@ impl AttributeParser for OnUnmatchedArgsParser {
         AttributeStability::Stable, // Unstable, stability checked manually in the parser
         |this, cx, args| {
             if !cx.features().diagnostic_on_unmatched_args() {
+                // `UnknownDiagnosticAttribute` is emitted in rustc_resolve/macros.rs
+                args.ignore_args();
                 return;
             }
 
