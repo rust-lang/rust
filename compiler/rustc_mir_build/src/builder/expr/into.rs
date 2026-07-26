@@ -4,7 +4,7 @@ use rustc_abi::FieldIdx;
 use rustc_ast::{AsmMacro, InlineAsmOptions};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_data_structures::thin_vec::{thin_vec, ThinVec};
+use rustc_data_structures::thin_vec::{ThinVec, thin_vec};
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::mir::*;
@@ -14,7 +14,7 @@ use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty};
 use rustc_span::{DUMMY_SP, Spanned, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::{debug, instrument};
-use rustc_data_structures::thin_vec::thin_vec;
+
 use crate::builder::expr::category::{Category, RvalueFunc};
 use crate::builder::matches::{DeclareLetBindings, Exhaustive, HasMatchGuard};
 use crate::builder::scope::LintLevel;
@@ -716,8 +716,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 use rustc_middle::{mir, thir};
 
                 let destination_block = this.cfg.start_new_block();
-                let mut targets =
-                    if asm_macro.diverges(options) { thin_vec![] } else { thin_vec![destination_block] };
+                let mut targets = if asm_macro.diverges(options) {
+                    thin_vec![]
+                } else {
+                    thin_vec![destination_block]
+                };
 
                 let operands = operands
                     .into_iter()
