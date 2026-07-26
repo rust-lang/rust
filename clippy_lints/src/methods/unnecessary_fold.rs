@@ -289,15 +289,28 @@ fn check_standard_fold<'tcx>(
     }
 }
 
-/// Folding over an `Option`'s iterator visits zero or one items, which is
-/// `map_or` in disguise: `opt.iter().fold(init, |acc, x| f(acc, x))` is
-/// `opt.as_ref().map_or(init, |x| f(init, x))`.
+/// Checks whether `expr` is a path to a closure parameter.
 ///
-/// The accumulator uses in the closure body are substituted with `init`, so
-/// this only lints when `init` is a literal or a binding of a `Copy` type:
-/// those can be duplicated without changing behavior, keeping the suggestion
-/// machine-applicable. Anything else (a call would be re-evaluated, a
-/// non-`Copy` binding would be moved twice) is not linted at all.
+/// Such a binding cannot be used as the substituted `init`: when folds are
+/// nested, the enclosing closure may be an accumulator this lint removes in
+/// another suggestion, which would leave the copied name unresolved.
+fn is_closure_param(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
+    if let Some(binding_id) = expr.res_local_id() {
+        let mut in_param = false;
+        for (_, node) in cx.tcx.hir_parent_iter(binding_id) {
+            match node {
+                hir::Node::Pat(_) | hir::Node::PatField(_) => {},
+                hir::Node::Param(_) => in_param = true,
+                hir::Node::Expr(parent) => return in_param && matches!(parent.kind, hir::ExprKind::Closure(_)),
+                _ => return false,
+            }
+        }
+    }
+    false
+}
+
+/// Folding over an `Option`'s iterator visits zero/one items.
+/// This is the same as `map_or` if the `init` is `Copy` or a literal.
 fn check_option_fold<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx hir::Expr<'tcx>,
@@ -309,7 +322,7 @@ fn check_option_fold<'tcx>(
     let ctxt = expr.span.ctxt();
     match init.kind {
         hir::ExprKind::Lit(_) => {},
-        hir::ExprKind::Path(_) if is_copy(cx, cx.typeck_results().expr_ty(init)) => {},
+        hir::ExprKind::Path(_) if is_copy(cx, cx.typeck_results().expr_ty(init)) && !is_closure_param(cx, init) => {},
         _ => return,
     }
     if let hir::ExprKind::MethodCall(iter_path, option_expr, [], _) = recv.kind
@@ -323,10 +336,10 @@ fn check_option_fold<'tcx>(
         && let hir::ExprKind::Closure(&hir::Closure { body, .. }) = acc.kind
         && let closure_body = cx.tcx.hir_body(body)
         && let [param_acc, param_item] = closure_body.params
-        // The whole suggestion is spliced from source text, so bail out of
-        // suggesting when any part comes from a different syntax context.
+        // The suggestion rewrites source spans, so bail out when any part
+        // comes from a different syntax context.
         && recv.span.ctxt() == ctxt
-        && closure_body.value.span.ctxt() == ctxt
+        && param_acc.pat.span.ctxt() == ctxt
         && param_item.pat.span.ctxt() == ctxt
     {
         // Collect the accumulator uses to substitute with `init`.
@@ -336,53 +349,45 @@ fn check_option_fold<'tcx>(
             _ => return,
         };
         let mut acc_uses: Vec<Span> = Vec::new();
-        let mut splice_ok = true;
+        let mut acc_uses_ok = true;
         if let Some(acc_id) = acc_id {
             for_each_expr(cx.tcx, closure_body.value, |sub_expr| {
                 if sub_expr.res_local_id() == Some(acc_id) {
                     if sub_expr.span.ctxt() == ctxt {
                         acc_uses.push(sub_expr.span);
                     } else {
-                        splice_ok = false;
+                        acc_uses_ok = false;
                     }
                 }
                 ControlFlow::<()>::Continue(())
             });
         }
-        if !splice_ok {
+        if !acc_uses_ok {
             return;
         }
 
         let mut applicability = Applicability::MachineApplicable;
         let (init_snippet, _) = snippet_with_context(cx, init.span, ctxt, "..", &mut applicability);
-        let body_span = closure_body.value.span;
-        let (body_snippet, _) = snippet_with_context(cx, body_span, ctxt, "..", &mut applicability);
-        let mut body = body_snippet.to_string();
-        let base = body_span.lo();
-        acc_uses.sort();
-        for use_span in acc_uses.iter().rev() {
-            let lo = (use_span.lo() - base).0 as usize;
-            let hi = (use_span.hi() - base).0 as usize;
-            if hi > body.len() || lo > hi {
-                return;
-            }
-            body.replace_range(lo..hi, &init_snippet);
-        }
-        let (item_snippet, _) = snippet_with_context(cx, param_item.pat.span, ctxt, "..", &mut applicability);
 
-        let span = recv.span.with_lo(option_expr.span.hi()).with_hi(expr.span.hi());
+        // `.iter().fold(` -> `.as_ref().map_or(`, drop the accumulator
+        // parameter, and substitute `init` for each use of the accumulator.
+        acc_uses.sort();
+        let mut parts = vec![
+            (
+                recv.span.with_lo(option_expr.span.hi()).with_hi(init.span.lo()),
+                format!(".{adapter}map_or("),
+            ),
+            (param_acc.pat.span.with_hi(param_item.pat.span.lo()), String::new()),
+        ];
+        parts.extend(acc_uses.into_iter().map(|span| (span, init_snippet.to_string())));
+
         span_lint_and_then(
             cx,
             UNNECESSARY_FOLD,
             fold_span.with_hi(expr.span.hi()),
             "this `.fold` can be written more succinctly using another method",
             |diag| {
-                diag.span_suggestion(
-                    span,
-                    "try",
-                    format!(".{adapter}map_or({init_snippet}, |{item_snippet}| {body})"),
-                    applicability,
-                );
+                diag.multipart_suggestion("try", parts, applicability);
             },
         );
     }

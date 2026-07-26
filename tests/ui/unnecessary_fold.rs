@@ -233,6 +233,10 @@ fn option_fold() {
     let _ = Some(1).into_iter().fold(5, |acc, x| acc - x);
     //~^ unnecessary_fold
 
+    // should NOT lint: `acc` is bound by the enclosing fold's closure, and
+    // substituting a closure parameter is not safe when folds are nested
+    let _ = (0..3).fold(0, |acc, x| opt.iter().fold(acc, |a, b| a + b) + x);
+
     // should NOT lint: substituting a call would re-evaluate it
     fn compute() -> i32 {
         42
