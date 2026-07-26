@@ -17,14 +17,17 @@ env:
 
 jobs:
   build:
-    runs-on: ubuntu-24.04
+    runs-on: ${{ matrix.os.image }}
 
     strategy:
       fail-fast: false
       matrix:
+        os:
+          - { image: ubuntu-24.04, asset_name_suffix: "" }
+          - { image: ubuntu-24.04-arm, asset_name_suffix: "-aarch64" }
         libgccjit_version:
-          - { gcc: "gcc-15.deb" }
-          - { gcc: "gcc-15-without-int128.deb" }
+          - { gcc: "gcc-15" }
+          - { gcc: "gcc-15-without-int128" }
         commands: [
           "--std-tests --alloc-tests",
           # FIXME: re-enable asm tests when GCC can emit in the right syntax.
@@ -67,11 +70,11 @@ jobs:
       run: sudo apt-get install libcairo2-dev libpango1.0-dev libfontconfig1-dev libfreetype-dev libharfbuzz-dev libxml2-dev libglib2.0-dev
 
     - name: Download artifact
-      run: curl -LO https://github.com/rust-lang/gcc/releases/latest/download/${{ matrix.libgccjit_version.gcc }}
+      run: curl -LO https://github.com/rust-lang/gcc/releases/latest/download/${{ matrix.libgccjit_version.gcc }}${{ matrix.os.asset_name_suffix }}.deb
 
     - name: Setup path to libgccjit
       run: |
-          sudo dpkg --force-overwrite -i ${{ matrix.libgccjit_version.gcc }}
+          sudo dpkg --force-overwrite -i ${{ matrix.libgccjit_version.gcc }}${{ matrix.os.asset_name_suffix }}.deb
           echo 'gcc-path = "/usr/lib/"' > config.toml
 
     # Some run-make tests fail if we use our forked GCC because it doesn't
