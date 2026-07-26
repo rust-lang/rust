@@ -17,7 +17,6 @@ use rustc_middle::ty::Const;
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::{Span, SpanDecoder, SpanEncoder, Spanned};
 
-use crate::arena::ArenaAllocatable;
 use crate::infer::canonical::{CanonicalVarKind, CanonicalVarKinds};
 use crate::mir::interpret::{AllocId, ConstAllocation, CtfeProvenance};
 use crate::mono::MonoItem;
@@ -204,24 +203,6 @@ impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for ty::ParamEnv<'tcx> {
     fn encode(&self, e: &mut E) {
         self.caller_bounds().encode(e);
     }
-}
-
-#[inline]
-fn decode_arena_allocable<'tcx, D: TyDecoder<'tcx>, T: ArenaAllocatable<'tcx> + Decodable<D>>(
-    decoder: &mut D,
-) -> &'tcx T {
-    decoder.interner().arena.alloc(Decodable::decode(decoder))
-}
-
-#[inline]
-fn decode_arena_allocable_slice<
-    'tcx,
-    D: TyDecoder<'tcx>,
-    T: ArenaAllocatable<'tcx> + Decodable<D>,
->(
-    decoder: &mut D,
-) -> &'tcx [T] {
-    decoder.interner().arena.alloc_from_iter(<Vec<T> as Decodable<D>>::decode(decoder))
 }
 
 impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for Ty<'tcx> {
@@ -499,36 +480,6 @@ macro_rules! __impl_decoder_methods {
         )*
     }
 }
-
-macro_rules! impl_arena_allocatable_decoder {
-    ([]       $name:ident: $ty:ty) => {};
-    ([decode] $name:ident: $ty:ty) => {
-        impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for $ty {
-            #[inline]
-            fn decode(decoder: &mut D) -> &'tcx Self {
-                decode_arena_allocable(decoder)
-            }
-        }
-
-        impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for [$ty] {
-            #[inline]
-            fn decode(decoder: &mut D) -> &'tcx Self {
-                decode_arena_allocable_slice(decoder)
-            }
-        }
-    };
-}
-
-macro_rules! impl_arena_allocatable_decoders {
-    ([$($a:tt $name:ident: $ty:ty,)*]) => {
-        $(
-            impl_arena_allocatable_decoder!($a $name: $ty);
-        )*
-    }
-}
-
-rustc_hir::arena_types!(impl_arena_allocatable_decoders);
-arena_types!(impl_arena_allocatable_decoders);
 
 macro_rules! impl_arena_copy_decoder {
     (<$tcx:tt> $($ty:ty,)*) => {

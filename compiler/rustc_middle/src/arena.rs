@@ -1,3 +1,8 @@
+use rustc_serialize::Decodable;
+
+use crate::ty::Ty;
+use crate::ty::codec::{RefDecodable, TyDecoder};
+
 /// This higher-order macro declares a list of types which can be allocated by `Arena`.
 ///
 /// Specifying the `decode` modifier will add decode impls for `&T` and `&[T]` where `T` is the type
@@ -12,7 +17,7 @@ macro_rules! arena_types {
             [] adt_def: rustc_middle::ty::AdtDefData,
             [] steal_thir: rustc_data_structures::steal::Steal<rustc_middle::thir::Thir<'tcx>>,
             [] steal_mir: rustc_data_structures::steal::Steal<rustc_middle::mir::Body<'tcx>>,
-            [decode] mir: rustc_middle::mir::Body<'tcx>,
+            [] mir: rustc_middle::mir::Body<'tcx>,
             [] steal_promoted:
                 rustc_data_structures::steal::Steal<
                     rustc_index::IndexVec<
@@ -20,12 +25,12 @@ macro_rules! arena_types {
                         rustc_middle::mir::Body<'tcx>
                     >
                 >,
-            [decode] promoted:
+            [] promoted:
                 rustc_index::IndexVec<
                     rustc_middle::mir::Promoted,
                     rustc_middle::mir::Body<'tcx>
                 >,
-            [decode] typeck_results: rustc_middle::ty::TypeckResults<'tcx>,
+            [] typeck_results: rustc_middle::ty::TypeckResults<'tcx>,
             [] borrowck_result: rustc_data_structures::fx::FxIndexMap<
                 rustc_hir::def_id::LocalDefId,
                 rustc_middle::ty::DefinitionSiteHiddenType<'tcx>,
@@ -92,7 +97,7 @@ macro_rules! arena_types {
             [] upvars_mentioned: rustc_data_structures::fx::FxIndexMap<rustc_hir::HirId, rustc_hir::Upvar>,
             [] dyn_compatibility_violations: rustc_middle::traits::DynCompatibilityViolation,
             [] codegen_unit: rustc_middle::mono::CodegenUnit<'tcx>,
-            [decode] attribute: rustc_hir::Attribute,
+            [] attribute: rustc_hir::Attribute,
             [] name_set: rustc_data_structures::unord::UnordSet<rustc_span::Symbol>,
             [] autodiff_item: rustc_hir::attrs::AutoDiffItem,
             [] ordered_name_set: rustc_data_structures::fx::FxIndexSet<rustc_span::Symbol>,
@@ -102,14 +107,14 @@ macro_rules! arena_types {
             // Note that this deliberately duplicates items in the `rustc_hir::arena`,
             // since we need to allocate this type on both the `rustc_hir` arena
             // (during lowering) and the `rustc_middle` arena (for decoding MIR)
-            [decode] asm_template: rustc_ast::InlineAsmTemplatePiece,
-            [decode] used_trait_imports: rustc_data_structures::unord::UnordSet<rustc_hir::def_id::LocalDefId>,
+            [] asm_template: rustc_ast::InlineAsmTemplatePiece,
+            [] used_trait_imports: rustc_data_structures::unord::UnordSet<rustc_hir::def_id::LocalDefId>,
             [] is_late_bound_map: rustc_data_structures::fx::FxIndexSet<rustc_hir::ItemLocalId>,
-            [decode] impl_source: rustc_middle::traits::ImplSource<'tcx, ()>,
+            [] impl_source: rustc_middle::traits::ImplSource<'tcx, ()>,
 
             [] dep_kind_vtable: rustc_middle::dep_graph::DepKindVTable<'tcx>,
 
-            [decode] trait_impl_trait_tys:
+            [] trait_impl_trait_tys:
                 rustc_data_structures::unord::UnordMap<
                     rustc_hir::def_id::DefId,
                     rustc_middle::ty::EarlyBinder<'tcx, rustc_middle::ty::Ty<'tcx>>
@@ -119,10 +124,10 @@ macro_rules! arena_types {
             [] stripped_cfg_items: rustc_hir::attrs::StrippedCfgItem,
             [] mod_child: rustc_middle::metadata::ModChild,
             [] features: rustc_feature::Features,
-            [decode] specialization_graph: rustc_middle::traits::specialization_graph::Graph,
+            [] specialization_graph: rustc_middle::traits::specialization_graph::Graph,
             [] crate_inherent_impls: rustc_middle::ty::CrateInherentImpls,
             [] hir_owner_nodes: rustc_hir::OwnerNodes<'tcx>,
-            [decode] token_stream: rustc_ast::tokenstream::TokenStream,
+            [] token_stream: rustc_ast::tokenstream::TokenStream,
             [] maybe_owner: rustc_middle::hir::ProjectedMaybeOwner<'tcx>,
             [] owner_info: rustc_middle::hir::ProjectedOwnerInfo<'tcx>,
             [] parenting: rustc_hir::def_id::LocalDefIdMap<rustc_hir::ItemLocalId>,
@@ -133,3 +138,64 @@ macro_rules! arena_types {
 }
 
 arena_types!(rustc_arena::declare_arena);
+
+#[inline]
+fn decode_arena_allocatable<'tcx, D, T>(decoder: &mut D) -> &'tcx T
+where
+    D: TyDecoder<'tcx>,
+    T: ArenaAllocatable<'tcx> + Decodable<D>,
+{
+    let value: T = Decodable::decode(decoder);
+    decoder.interner().arena.alloc(value)
+}
+
+#[inline]
+fn decode_arena_allocatable_slice<'tcx, D, T>(decoder: &mut D) -> &'tcx [T]
+where
+    D: TyDecoder<'tcx>,
+    T: ArenaAllocatable<'tcx> + Decodable<D>,
+{
+    let values: Vec<T> = Decodable::decode(decoder);
+    decoder.interner().arena.alloc_from_iter(values)
+}
+
+/// Implements [`RefDecodable`] for `T` (and `[T]`), by decoding to `T` and
+/// then moving the value or values into an arena allocation.
+macro_rules! impl_ref_decodable_into_arena {
+    (
+        $(
+            $ty:ty,
+        )*
+    ) => {
+        $(
+            impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for $ty {
+                #[inline]
+                fn decode(decoder: &mut D) -> &'tcx Self {
+                    decode_arena_allocatable(decoder)
+                }
+            }
+
+            impl<'tcx, D: TyDecoder<'tcx>> RefDecodable<'tcx, D> for [$ty] {
+                #[inline]
+                fn decode(decoder: &mut D) -> &'tcx Self {
+                    decode_arena_allocatable_slice(decoder)
+                }
+            }
+        )*
+    }
+}
+
+impl_ref_decodable_into_arena! {
+    // tidy-alphabetical-start
+    rustc_ast::InlineAsmTemplatePiece,
+    rustc_ast::tokenstream::TokenStream,
+    rustc_data_structures::unord::UnordMap<rustc_span::def_id::DefId, rustc_middle::ty::EarlyBinder<'tcx, Ty<'tcx>>>,
+    rustc_data_structures::unord::UnordSet<rustc_span::def_id::LocalDefId>,
+    rustc_hir::Attribute,
+    rustc_index::IndexVec<rustc_middle::mir::Promoted, rustc_middle::mir::Body<'tcx>>,
+    rustc_middle::mir::Body<'tcx>,
+    rustc_middle::traits::ImplSource<'tcx, ()>,
+    rustc_middle::traits::specialization_graph::Graph,
+    rustc_middle::ty::TypeckResults<'tcx>,
+    // tidy-alphabetical-end
+}
