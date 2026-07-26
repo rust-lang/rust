@@ -1744,6 +1744,6 @@ mod size_asserts {
     static_assert_size!(Rvalue<'_>, 40);
     static_assert_size!(StatementKind<'_>, 16);
     static_assert_size!(SwitchTargets, 24);
-    static_assert_size!(TerminatorKind<'_>, 80);
+    static_assert_size!(TerminatorKind<'_>, 72);
     // tidy-alphabetical-end
 }
