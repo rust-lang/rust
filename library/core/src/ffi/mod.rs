@@ -55,6 +55,9 @@ pub struct c_void {
     _inner: u8,
     #[cfg(miri)]
     _uninhabited: !,
+    // Ensure no `Freeze`, for consistency with `not(miri)`
+    #[cfg(miri)]
+    _nonfreeze: crate::cell::SyncUnsafeCell<()>,
 }
 
 // for backward compatibility.
