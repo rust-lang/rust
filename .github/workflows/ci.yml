@@ -81,6 +81,7 @@ jobs:
     # bundle libstdc++, so we switch to gcc-14 to have a GCC that has
     # libstdc++.
     - name: Set default GCC to gcc-14
+      if: ${{ matrix.os.image == 'ubuntu-24.04' }} # FIXME: this breaks the CI on Aarch64.
       run: sudo update-alternatives --install /usr/bin/cc cc /usr/bin/gcc-14 30
 
     - name: Set env
