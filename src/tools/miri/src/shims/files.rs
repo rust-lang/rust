@@ -227,7 +227,19 @@ pub trait FileDescription: std::fmt::Debug + FileDescriptionExt {
     }
 }
 
-impl FileDescription for io::Stdin {
+#[derive(Debug)]
+struct Stdin {
+    stdin: io::Stdin,
+    watched: ReadinessWatched,
+}
+
+impl Stdin {
+    fn new() -> Self {
+        Self { stdin: io::stdin(), watched: ReadinessWatched::default() }
+    }
+}
+
+impl FileDescription for Stdin {
     fn name(&self) -> &'static str {
         "stdin"
     }
@@ -245,17 +257,39 @@ impl FileDescription for io::Stdin {
             helpers::isolation_abort_error("`read` from stdin")?;
         }
 
-        let mut stdin = &*self;
-        let result = ecx.read_from_host(|buf| stdin.read(buf), len, ptr)?;
+        let result = ecx.read_from_host(|buf| (&mut &self.stdin).read(buf), len, ptr)?;
         finish.call(ecx, result)
     }
 
     fn is_tty(&self, communicate_allowed: bool) -> bool {
-        communicate_allowed && self.is_terminal()
+        communicate_allowed && self.stdin.is_terminal()
+    }
+
+    fn readiness_watched(&self) -> Option<&ReadinessWatched> {
+        Some(&self.watched)
+    }
+
+    fn readiness(&self) -> Readiness {
+        // stdin can always be read (we never return EWOULDBLOCK there) and never be written.
+        let mut readiness = Readiness::EMPTY;
+        readiness.readable = true;
+        readiness
     }
 }
 
-impl FileDescription for io::Stdout {
+#[derive(Debug)]
+struct Stdout {
+    stdout: io::Stdout,
+    watched: ReadinessWatched,
+}
+
+impl Stdout {
+    fn new() -> Self {
+        Self { stdout: io::stdout(), watched: ReadinessWatched::default() }
+    }
+}
+
+impl FileDescription for Stdout {
     fn name(&self) -> &'static str {
         "stdout"
     }
@@ -269,7 +303,7 @@ impl FileDescription for io::Stdout {
         finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
     ) -> InterpResult<'tcx> {
         // We allow writing to stdout even with isolation enabled.
-        let result = ecx.write_to_host(&*self, len, ptr)?;
+        let result = ecx.write_to_host(&self.stdout, len, ptr)?;
         // Stdout is buffered, flush to make sure it appears on the
         // screen.  This is the write() syscall of the interpreted
         // program, we want it to correspond to a write() syscall on
@@ -281,11 +315,34 @@ impl FileDescription for io::Stdout {
     }
 
     fn is_tty(&self, communicate_allowed: bool) -> bool {
-        communicate_allowed && self.is_terminal()
+        communicate_allowed && self.stdout.is_terminal()
+    }
+
+    fn readiness_watched(&self) -> Option<&ReadinessWatched> {
+        Some(&self.watched)
+    }
+
+    fn readiness(&self) -> Readiness {
+        // stdout can always be written (we never return EWOULDBLOCK there) and never be read.
+        let mut readiness = Readiness::EMPTY;
+        readiness.writable = true;
+        readiness
     }
 }
 
-impl FileDescription for io::Stderr {
+#[derive(Debug)]
+struct Stderr {
+    stderr: io::Stderr,
+    watched: ReadinessWatched,
+}
+
+impl Stderr {
+    fn new() -> Self {
+        Self { stderr: io::stderr(), watched: ReadinessWatched::default() }
+    }
+}
+
+impl FileDescription for Stderr {
     fn name(&self) -> &'static str {
         "stderr"
     }
@@ -299,13 +356,65 @@ impl FileDescription for io::Stderr {
         finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
     ) -> InterpResult<'tcx> {
         // We allow writing to stderr even with isolation enabled.
-        let result = ecx.write_to_host(&*self, len, ptr)?;
+        let result = ecx.write_to_host(&self.stderr, len, ptr)?;
         // No need to flush, stderr is not buffered.
         finish.call(ecx, result)
     }
 
     fn is_tty(&self, communicate_allowed: bool) -> bool {
-        communicate_allowed && self.is_terminal()
+        communicate_allowed && self.stderr.is_terminal()
+    }
+
+    fn readiness_watched(&self) -> Option<&ReadinessWatched> {
+        Some(&self.watched)
+    }
+
+    fn readiness(&self) -> Readiness {
+        // stderr can always be written (we never return EWOULDBLOCK there) and never be read.
+        let mut readiness = Readiness::EMPTY;
+        readiness.writable = true;
+        readiness
+    }
+}
+
+/// Like /dev/null
+#[derive(Debug)]
+pub struct NullOutput {
+    watched: ReadinessWatched,
+}
+
+impl NullOutput {
+    fn new() -> Self {
+        Self { watched: ReadinessWatched::default() }
+    }
+}
+
+impl FileDescription for NullOutput {
+    fn name(&self) -> &'static str {
+        "null output"
+    }
+
+    fn write<'tcx>(
+        self: FileDescriptionRef<Self>,
+        _communicate_allowed: bool,
+        _ptr: Pointer,
+        len: usize,
+        ecx: &mut MiriInterpCx<'tcx>,
+        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
+    ) -> InterpResult<'tcx> {
+        // We just don't write anything, but report to the user that we did.
+        finish.call(ecx, Ok(len))
+    }
+
+    fn readiness_watched(&self) -> Option<&ReadinessWatched> {
+        Some(&self.watched)
+    }
+
+    fn readiness(&self) -> Readiness {
+        // null output can always be written (we never return EWOULDBLOCK there) and never be read.
+        let mut readiness = Readiness::EMPTY;
+        readiness.writable = true;
+        readiness
     }
 }
 
@@ -416,28 +525,6 @@ impl FileDescription for DirHandle {
     }
 }
 
-/// Like /dev/null
-#[derive(Debug)]
-pub struct NullOutput;
-
-impl FileDescription for NullOutput {
-    fn name(&self) -> &'static str {
-        "stderr and stdout"
-    }
-
-    fn write<'tcx>(
-        self: FileDescriptionRef<Self>,
-        _communicate_allowed: bool,
-        _ptr: Pointer,
-        len: usize,
-        ecx: &mut MiriInterpCx<'tcx>,
-        finish: DynMachineCallback<'tcx, Result<usize, IoError>>,
-    ) -> InterpResult<'tcx> {
-        // We just don't write anything, but report to the user that we did.
-        finish.call(ecx, Ok(len))
-    }
-}
-
 /// Internal type of a file-descriptor - this is what [`FdTable`] expects
 pub type FdNum = i32;
 
@@ -461,13 +548,13 @@ impl FdTable {
     }
     pub(crate) fn init(mute_stdout_stderr: bool) -> FdTable {
         let mut fds = FdTable::new();
-        fds.insert_new(io::stdin());
+        fds.insert_new(Stdin::new());
         if mute_stdout_stderr {
-            assert_eq!(fds.insert_new(NullOutput), 1);
-            assert_eq!(fds.insert_new(NullOutput), 2);
+            assert_eq!(fds.insert_new(NullOutput::new()), 1);
+            assert_eq!(fds.insert_new(NullOutput::new()), 2);
         } else {
-            assert_eq!(fds.insert_new(io::stdout()), 1);
-            assert_eq!(fds.insert_new(io::stderr()), 2);
+            assert_eq!(fds.insert_new(Stdout::new()), 1);
+            assert_eq!(fds.insert_new(Stderr::new()), 2);
         }
         fds
     }
