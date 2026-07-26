@@ -4,7 +4,7 @@
 
 use rustc_abi::{HasDataLayout, TyAbiInterface};
 
-use crate::callconv::{Align, ArgAbi, FnAbi, Reg, RegKind, Uniform};
+use crate::callconv::{Align, ArgAbi, CastTarget, FnAbi, Reg, RegKind, Uniform};
 use crate::spec::{HasTargetSpec, LlvmAbi, Os};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -58,6 +58,15 @@ where
     }
     if !arg.layout.is_aggregate() {
         arg.extend_integer_width_to(64);
+        return;
+    }
+    if arg.layout.is_complex() {
+        if is_ret {
+            let kind =
+                if arg.layout.is_complex_float() { RegKind::Float } else { RegKind::Integer };
+            let reg = Reg { kind, size: arg.layout.field(cx, 0).size };
+            arg.cast_to(CastTarget::pair(reg, reg));
+        }
         return;
     }
 
