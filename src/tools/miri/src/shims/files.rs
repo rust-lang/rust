@@ -257,6 +257,7 @@ impl FileDescription for Stdin {
             helpers::isolation_abort_error("`read` from stdin")?;
         }
 
+        // FIXME: this can block on the host, halting the entire interpreter.
         let result = ecx.read_from_host(|buf| (&mut &self.stdin).read(buf), len, ptr)?;
         finish.call(ecx, result)
     }
@@ -270,9 +271,11 @@ impl FileDescription for Stdin {
     }
 
     fn readiness(&self) -> Readiness {
-        // stdin can always be read (we never return EWOULDBLOCK there) and never be written.
+        // Stdin is readable (we never return EWOULDBLOCK above) and also writable (since that never
+        // blocks either). This matches what we see on Linux.
         let mut readiness = Readiness::EMPTY;
         readiness.readable = true;
+        readiness.writable = true;
         readiness
     }
 }
