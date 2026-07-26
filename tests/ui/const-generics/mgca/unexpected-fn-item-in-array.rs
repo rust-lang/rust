@@ -5,7 +5,7 @@
 trait A<T> {}
 
 impl A<[usize; fn_item]> for () {}
-//~^ ERROR the constant `fn_item` is not of type `usize`
+//~^ ERROR function items cannot be used as const args
 
 fn fn_item() {}
 
