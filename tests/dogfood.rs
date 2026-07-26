@@ -50,8 +50,9 @@ fn dogfood() {
         }
     }
 
-    assert!(
-        failed_packages.is_empty(),
+    assert_eq!(
+        failed_packages,
+        [] as [&str; 0],
         "Dogfood failed for packages `{}`",
         failed_packages.iter().join(", "),
     );

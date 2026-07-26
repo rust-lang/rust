@@ -116,6 +116,11 @@ Current stable, released 2026-07-09
 * Fold all late lint passes into one statically-combined pass
   [#17124](https://github.com/rust-lang/rust-clippy/pull/17124)
 
+### New Lints
+
+* Added [`assert_is_empty`] to `pedantic`
+  [#17114](https://github.com/rust-lang/rust-clippy/issues/17114)
+
 ## Rust 1.96
 
 Current stable, released 2026-05-28
@@ -6747,6 +6752,7 @@ Released 2018-09-13
 [`as_pointer_underscore`]: https://rust-lang.github.io/rust-clippy/master/index.html#as_pointer_underscore
 [`as_ptr_cast_mut`]: https://rust-lang.github.io/rust-clippy/master/index.html#as_ptr_cast_mut
 [`as_underscore`]: https://rust-lang.github.io/rust-clippy/master/index.html#as_underscore
+[`assert_is_empty`]: https://rust-lang.github.io/rust-clippy/master/index.html#assert_is_empty
 [`assertions_on_constants`]: https://rust-lang.github.io/rust-clippy/master/index.html#assertions_on_constants
 [`assertions_on_result_states`]: https://rust-lang.github.io/rust-clippy/master/index.html#assertions_on_result_states
 [`assign_op_pattern`]: https://rust-lang.github.io/rust-clippy/master/index.html#assign_op_pattern
