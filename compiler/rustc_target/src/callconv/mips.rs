@@ -1,16 +1,32 @@
-use rustc_abi::{HasDataLayout, Size, TyAbiInterface};
+use rustc_abi::{HasDataLayout, Reg, RegKind, Size, TyAbiInterface};
 
-use crate::callconv::{ArgAbi, FnAbi, Reg, Uniform};
+use crate::callconv::{ArgAbi, CastTarget, FnAbi, Uniform};
 
-fn classify_ret<Ty, C>(cx: &C, ret: &mut ArgAbi<'_, Ty>, offset: &mut Size)
+fn classify_ret<'a, Ty, C>(cx: &C, ret: &mut ArgAbi<'a, Ty>, offset: &mut Size)
 where
+    Ty: TyAbiInterface<'a, C> + Copy,
     C: HasDataLayout,
 {
-    if !ret.layout.is_aggregate() {
-        ret.extend_integer_width_to(32);
-    } else {
+    let dl = cx.data_layout();
+    let size = ret.layout.size;
+
+    if ret.layout.is_complex() && size <= dl.pointer_size() * 4 {
+        // Complex<f128> falls through to the aggregate logic below.
+
+        if !ret.layout.is_complex_float() && size <= dl.pointer_size() {
+            // Pack Complex<{integer}> into a single register if that fits.
+            ret.cast_to(Reg { kind: RegKind::Integer, size });
+        } else {
+            let kind =
+                if ret.layout.is_complex_float() { RegKind::Float } else { RegKind::Integer };
+            let reg = Reg { kind, size: ret.layout.field(cx, 0).size };
+            ret.cast_to(CastTarget::pair(reg, reg));
+        }
+    } else if ret.layout.is_aggregate() {
         ret.make_indirect();
-        *offset += cx.data_layout().pointer_size();
+        *offset += dl.pointer_size();
+    } else {
+        ret.extend_integer_width_to(32);
     }
 }
 
