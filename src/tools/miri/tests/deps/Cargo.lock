@@ -33,6 +33,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
 
 [[package]]
+name = "cross-crate-items"
+version = "0.1.0"
+dependencies = [
+ "futures",
+]
+
+[[package]]
 name = "equivalent"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -290,6 +297,7 @@ dependencies = [
 name = "miri-test-deps"
 version = "0.1.0"
 dependencies = [
+ "cross-crate-items",
  "futures",
  "getrandom 0.1.16",
  "getrandom 0.2.17",
