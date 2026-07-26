@@ -32,6 +32,7 @@ core = { path = "../../core", optional = true }
 
 [build-dependencies]
 cc = { version = "1.2", optional = true }
+ar_archive_writer = { version = "0.5.2", optional = true }
 
 [features]
 default = ["arch"]
@@ -42,7 +43,7 @@ arch = []
 
 # Enable compilation of C code in compiler-rt, filling in some more optimized
 # implementations and also filling in unimplemented intrinsics
-c = ["dep:cc"]
+c = ["dep:cc", "dep:ar_archive_writer"]
 
 # Flag this library as the unstable compiler-builtins lib. This must be enabled
 # when using as `std`'s dependency.'
