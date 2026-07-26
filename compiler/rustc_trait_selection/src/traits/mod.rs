@@ -789,6 +789,7 @@ pub fn impossible_predicates<'tcx>(tcx: TyCtxt<'tcx>, predicates: Vec<ty::Clause
     let (infcx, param_env) = tcx
         .infer_ctxt()
         .with_next_trait_solver(true)
+        .enable_next_solver_overflow_fcw(false)
         .build_with_typing_env(ty::TypingEnv::fully_monomorphized());
 
     let ocx = ObligationCtxt::new(&infcx);
@@ -897,6 +898,7 @@ fn is_impossible_associated_item(
         .infer_ctxt()
         .ignoring_regions()
         .with_next_trait_solver(true)
+        .enable_next_solver_overflow_fcw(false)
         .build(TypingMode::Coherence);
     let param_env = ty::ParamEnv::empty();
     let fresh_args = infcx.fresh_args_for_item(tcx.def_span(impl_def_id), impl_def_id);
