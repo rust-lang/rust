@@ -7,7 +7,7 @@ use rustc_ast::visit::{try_visit, walk_list};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::Applicability;
 use rustc_hir::FnRetTy::Return;
-use rustc_hir::intravisit::nested_filter::{self as hir_nested_filter, NestedFilter};
+use rustc_hir::intravisit::{IgnoreNested, NestedFilter};
 use rustc_hir::intravisit::{
     Visitor, VisitorExt, walk_fn_decl, walk_generic_args, walk_generic_param, walk_generics, walk_impl_item_ref,
     walk_param_bound, walk_poly_trait_ref, walk_trait_ref, walk_ty, walk_unambig_ty, walk_where_predicate,
@@ -714,7 +714,7 @@ fn report_extra_trait_object_lifetimes<'tcx>(
     generic_params: &'tcx [GenericParam<'_>],
     trait_ref: &'tcx TraitRef<'tcx>,
 ) {
-    let mut checker = LifetimeChecker::<hir_nested_filter::None>::new(cx, generic_params);
+    let mut checker = LifetimeChecker::<IgnoreNested>::new(cx, generic_params);
 
     for param in generic_params {
         walk_generic_param(&mut checker, param);
@@ -738,7 +738,7 @@ fn report_extra_trait_object_lifetimes<'tcx>(
 }
 
 fn report_extra_lifetimes<'tcx>(cx: &LateContext<'tcx>, func: &'tcx FnDecl<'_>, generics: &'tcx Generics<'_>) {
-    let mut checker = LifetimeChecker::<hir_nested_filter::None>::new(cx, generics.params);
+    let mut checker = LifetimeChecker::<IgnoreNested>::new(cx, generics.params);
 
     walk_generics(&mut checker, generics);
     walk_fn_decl(&mut checker, func);
