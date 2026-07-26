@@ -94,6 +94,9 @@ impl<'tcx, E: TyEncoder<'tcx>> EncodableWithShorthand<'tcx, E> for ty::Predicate
 ///
 /// `Decodable` can still be implemented in cases where `Decodable` is required
 /// by a trait bound.
+///
+/// Implementations of this trait will typically allocate into an arena or interner,
+/// e.g. see `impl_ref_decodable_into_arena!`.
 pub trait RefDecodable<'tcx, D: TyDecoder<'tcx>>: PointeeSized {
     fn decode(d: &mut D) -> &'tcx Self;
 }
