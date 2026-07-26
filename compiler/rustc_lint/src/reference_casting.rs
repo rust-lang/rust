@@ -52,22 +52,15 @@ impl<'tcx> LateLintPass<'tcx> for InvalidReferenceCasting {
             };
 
             if matches!(pat, PatternKind::Borrow { mutbl: Mutability::Mut } | PatternKind::Assign)
-                && let Some(ty_has_interior_mutability) =
-                    is_cast_from_ref_to_mut_ptr(cx, init, &mut peel_casts)
+                && is_invalid_cast_from_ref_to_mut_ptr(cx, init, &mut peel_casts)
             {
                 cx.emit_span_lint(
                     INVALID_REFERENCE_CASTING,
                     expr.span,
                     if pat == PatternKind::Assign {
-                        InvalidReferenceCastingDiag::AssignToRef {
-                            orig_cast,
-                            ty_has_interior_mutability,
-                        }
+                        InvalidReferenceCastingDiag::AssignToRef { orig_cast }
                     } else {
-                        InvalidReferenceCastingDiag::BorrowAsMut {
-                            orig_cast,
-                            ty_has_interior_mutability,
-                        }
+                        InvalidReferenceCastingDiag::BorrowAsMut { orig_cast }
                     },
                 );
             }
@@ -146,41 +139,43 @@ fn borrow_or_assign<'tcx>(
     deref_assign_or_addr_of(e).or_else(|| ptr_write(cx, e))
 }
 
-fn is_cast_from_ref_to_mut_ptr<'tcx>(
+fn is_invalid_cast_from_ref_to_mut_ptr<'tcx>(
     cx: &LateContext<'tcx>,
     orig_expr: &'tcx Expr<'tcx>,
-    mut peel_casts: impl FnMut() -> (&'tcx Expr<'tcx>, bool),
-) -> Option<bool> {
+    mut peel_casts: impl FnMut() -> &'tcx Expr<'tcx>,
+) -> bool {
     let end_ty = cx.typeck_results().node_type(orig_expr.hir_id);
 
     // Bail out early if the end type is **not** a mutable pointer.
     if !matches!(end_ty.kind(), ty::RawPtr(_, Mutability::Mut)) {
-        return None;
+        return false;
     }
 
-    let (e, need_check_freeze) = peel_casts();
-
+    let e = peel_casts();
     let start_ty = cx.typeck_results().node_type(e.hir_id);
+
     if let ty::Ref(_, inner_ty, Mutability::Not) = start_ty.kind() {
-        // If an UnsafeCell method is involved, we need to additionally check the
-        // inner type for the presence of the Freeze trait (ie does NOT contain
-        // an UnsafeCell), since in that case we would incorrectly lint on valid casts.
+        // We need to additionally check the inner type for the presence of the Freeze trait
+        // (ie does NOT contain an UnsafeCell), since in that case we would incorrectly lint
+        // on valid casts (see https://github.com/rust-lang/unsafe-code-guidelines/issues/281).
         //
         // Except on the presence of non concrete skeleton types (ie generics)
         // since there is no way to make it safe for arbitrary types.
+        //
+        // However this does mean we miss out on some cases where the user doesn't go
+        // through an UnsafeCell but there's an UnsafeCell somewhere else in the type.
         let inner_ty_has_interior_mutability =
             !inner_ty.is_freeze(cx.tcx, cx.typing_env()) && inner_ty.has_concrete_skeleton();
-        (!need_check_freeze || !inner_ty_has_interior_mutability)
-            .then_some(inner_ty_has_interior_mutability)
+        !inner_ty_has_interior_mutability
     } else {
-        None
+        false
     }
 }
 
 fn is_cast_to_bigger_memory_layout<'tcx>(
     cx: &LateContext<'tcx>,
     orig_expr: &'tcx Expr<'tcx>,
-    mut peel_casts: impl FnMut() -> (&'tcx Expr<'tcx>, bool),
+    mut peel_casts: impl FnMut() -> &'tcx Expr<'tcx>,
 ) -> Option<(TyAndLayout<'tcx>, TyAndLayout<'tcx>, Expr<'tcx>)> {
     let end_ty = cx.typeck_results().node_type(orig_expr.hir_id);
 
@@ -188,7 +183,7 @@ fn is_cast_to_bigger_memory_layout<'tcx>(
         return None;
     };
 
-    let (e, _) = peel_casts();
+    let e = peel_casts();
     let start_ty = cx.typeck_results().node_type(e.hir_id);
 
     let ty::Ref(_, inner_start_ty, _) = start_ty.kind() else {
