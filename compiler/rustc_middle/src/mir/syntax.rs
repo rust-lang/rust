@@ -959,7 +959,7 @@ pub enum TerminatorKind<'tcx> {
         /// Valid targets for the inline assembly.
         /// The first element is the fallthrough destination, unless
         /// asm_macro == InlineAsmMacro::NakedAsm or InlineAsmOptions::NORETURN is set.
-        targets: Box<[BasicBlock]>,
+        targets: ThinVec<BasicBlock>,
 
         /// Action to be taken if the inline assembly unwinds. This is present
         /// if and only if InlineAsmOptions::MAY_UNWIND is set.

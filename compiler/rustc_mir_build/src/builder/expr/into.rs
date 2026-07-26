@@ -13,7 +13,7 @@ use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty};
 use rustc_span::{DUMMY_SP, Spanned, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::{debug, instrument};
-
+use rustc_data_structures::thin_vec::thin_vec;
 use crate::builder::expr::category::{Category, RvalueFunc};
 use crate::builder::matches::{DeclareLetBindings, Exhaustive, HasMatchGuard};
 use crate::builder::scope::LintLevel;
@@ -716,7 +716,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 let destination_block = this.cfg.start_new_block();
                 let mut targets =
-                    if asm_macro.diverges(options) { vec![] } else { vec![destination_block] };
+                    if asm_macro.diverges(options) { thin_vec![] } else { thin_vec![destination_block] };
 
                 let operands = operands
                     .into_iter()
@@ -804,7 +804,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         operands,
                         options,
                         line_spans,
-                        targets: targets.into_boxed_slice(),
+                        targets,
                         unwind: if options.contains(InlineAsmOptions::MAY_UNWIND) {
                             UnwindAction::Continue
                         } else {
