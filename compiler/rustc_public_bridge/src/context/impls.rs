@@ -490,6 +490,16 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
         ty::Const::zero_sized(self.tcx, ty_internal)
     }
 
+    /// Create a caller location constant from a span.
+    ///
+    /// This produces a `&'static core::panic::Location<'static>` constant,
+    /// which is the implicit extra argument for `#[track_caller]` functions.
+    pub fn span_as_caller_location(&self, span: Span) -> MirConst<'tcx> {
+        let val = self.tcx.span_as_caller_location(span);
+        let ty = self.tcx.caller_location_ty();
+        MirConst::from_value(val, ty)
+    }
+
     /// Create a new constant that represents the given string value.
     pub fn new_const_str(&self, value: &str) -> MirConst<'tcx> {
         let ty = Ty::new_static_str(self.tcx);
@@ -651,6 +661,15 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
     /// Check if this is an empty DropGlue shim.
     pub fn is_empty_drop_shim(&self, instance: ty::Instance<'tcx>) -> bool {
         matches!(instance.def, ty::InstanceKind::Shim(ty::ShimKind::DropGlue(_, None)))
+    }
+
+    /// Check if this instance requires a caller location argument.
+    ///
+    /// Functions with `#[track_caller]` have an implicit extra
+    /// `&'static core::panic::Location<'static>` argument appended to their ABI,
+    /// which is not visible in their MIR body signature.
+    pub fn instance_requires_caller_location(&self, instance: ty::Instance<'tcx>) -> bool {
+        instance.def.requires_caller_location(self.tcx)
     }
 
     /// Convert a non-generic crate item into an instance.
