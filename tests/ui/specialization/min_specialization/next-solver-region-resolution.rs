@@ -22,3 +22,5 @@ where
 }
 
 fn main() {}
+
+//@ ignore-parallel-frontend query cycle
