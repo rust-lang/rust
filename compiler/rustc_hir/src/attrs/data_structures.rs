@@ -370,19 +370,8 @@ pub enum PeImportNameType {
     Undecorated,
 }
 
-#[derive(
-    Copy,
-    Clone,
-    Debug,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    Encodable,
-    Decodable,
-    PrintAttribute
-)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Encodable, Decodable, PrintAttribute)]
 #[derive(StableHash)]
 pub enum NativeLibKind {
     /// Static library (e.g. `libfoo.a` on Linux or `foo.lib` on Windows/MSVC)

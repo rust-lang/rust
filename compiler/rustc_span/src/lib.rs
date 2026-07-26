@@ -2126,10 +2126,8 @@ impl fmt::Debug for SourceFile {
 ///
 /// When `SourceFile`s are exported in crate metadata, the `StableSourceFileId`
 /// is updated to incorporate the `StableCrateId` of the exporting crate.
-#[derive(
-    Debug, Clone, Copy, Hash, PartialEq, Eq, StableHash, Encodable, Decodable, Default, PartialOrd,
-    Ord
-)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Default, Ord)]
+#[derive(StableHash, Encodable, Decodable)]
 pub struct StableSourceFileId(Hash128);
 
 impl StableSourceFileId {
