@@ -12,14 +12,14 @@ use core::ops::{
     Deref, DerefMut, DerefPure, Index, IndexMut, Range, RangeFrom, RangeFull, RangeInclusive,
     RangeTo, RangeToInclusive,
 };
-use core::str::FromStr;
+use core::str::{FromStr, Utf8Error};
 use core::{fmt, hash};
 
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
 #[cfg(not(no_rc))]
 use crate::rc::Rc;
-use crate::string::{FromUtf8Error, String};
+use crate::string::String;
 #[cfg(all(not(no_rc), not(no_sync), target_has_atomic = "ptr"))]
 use crate::sync::Arc;
 use crate::vec::Vec;
@@ -71,8 +71,13 @@ impl ByteString {
     /// `Result` and allowing for the possibility of the content not being UTF-8.
     #[unstable(feature = "bstr", issue = "134915")]
     #[rustc_allow_incoherent_impl]
-    pub fn to_string(&self) -> Result<String, FromUtf8Error> {
-        String::from_utf8(self.0.clone())
+    pub fn to_string(&self) -> Result<String, Utf8Error> {
+        // Avoid allocating a copy of the contents for invalid UTF8
+        if let Err(e) = str::from_utf8(&self.0) {
+            return Err(e);
+        }
+        // SAFETY: we just checked that the contents are valid UTF8
+        Ok(unsafe { String::from_utf8_unchecked(self.0.clone()) })
     }
 }
 
@@ -701,7 +706,12 @@ impl ByteStr {
     /// `Result` and allowing for the possibility of the content not being UTF-8.
     #[unstable(feature = "bstr", issue = "134915")]
     #[rustc_allow_incoherent_impl]
-    pub fn to_string(&self) -> Result<String, FromUtf8Error> {
-        String::from_utf8(self.0.to_vec())
+    pub fn to_string(&self) -> Result<String, Utf8Error> {
+        // Avoid allocating a copy of the contents for invalid UTF8
+        if let Err(e) = str::from_utf8(&self.0) {
+            return Err(e);
+        }
+        // SAFETY: we just checked that the contents are valid UTF8
+        Ok(unsafe { String::from_utf8_unchecked(self.0.to_vec()) })
     }
 }
