@@ -63,6 +63,10 @@
 //@ [WASM64] compile-flags: --target wasm64-unknown-unknown
 //@ [WASM64] needs-llvm-components: webassembly
 
+//@ revisions: CSKY
+//@ [CSKY] compile-flags: --target csky-unknown-linux-gnuabiv2
+//@ [CSKY] needs-llvm-components: csky
+
 // FIXME: the below revisions are deliberately disabled for now.
 
 // revisions: POWERPC POWERPC64LE POWERPC64 AIX
@@ -80,10 +84,6 @@
 // [MIPS64EL] needs-llvm-components: mips
 // [MIPS] compile-flags: --target mips-unknown-linux-gnu
 // [MIPS] needs-llvm-components: mips
-
-// revisions: CSKY
-// [CSKY] compile-flags: --target csky-unknown-linux-gnuabiv2
-// [CSKY] needs-llvm-components: csky
 
 // revisions: NVPTX
 // [NVPTX] compile-flags: --target nvptx64-nvidia-cuda
@@ -137,7 +137,7 @@ pub extern "C" fn cplx_f32(x: Complex<f32>) -> Complex<f32> {
     // LOONGARCH32:    define{{.*}} { float, float } @cplx_f32({ float, float } {{.*}})
     // LOONGARCH64:    define{{.*}} { float, float } @cplx_f32({ float, float } {{.*}})
     // MIPS64EL:       define{{.*}} { float, float } @cplx_f32(float {{.*}}, float {{.*}})
-    // MIPS:           define{{.*}} { float, float } @cplx_f32(i32 {{.*}}, i32 {{.*}})
+    // MIPS:           define{{.*}} { float, float } @cplx_f32([2 x i32] {{.*}})
     // NVPTX:          define{{.*}} { float, float } @cplx_f32(ptr {{.*}} byval({ float, float }) {{.*}})
     // POWERPC64:      define{{.*}} { float, float } @cplx_f32(float {{.*}}, float {{.*}})
     // POWERPC64LE:    define{{.*}} { float, float } @cplx_f32(float {{.*}}, float {{.*}})
@@ -166,7 +166,7 @@ pub extern "C" fn cplx_f64(x: Complex<f64>) -> Complex<f64> {
     // ARM64EC:        define{{.*}} [2 x double] @cplx_f64([2 x double] {{.*}})
     // ARM:            define{{.*}} [2 x double] @cplx_f64([2 x double] {{.*}})
     // BPF:            define{{.*}} void @cplx_f64(ptr {{.*}} sret({ double, double }) {{.*}}, [2 x i64] {{.*}})
-    // CSKY:           define{{.*}} void @cplx_f64(ptr {{.*}} sret({ double, double }) {{.*}}, [4 x i32] {{.*}})
+    // CSKY:           define{{.*}} void @cplx_f64(ptr {{.*}} sret([16 x i8]) {{.*}}, [4 x i32] {{.*}})
     // I686:           define{{.*}} void @cplx_f64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}} byval([16 x i8]) {{.*}})
     // LOONGARCH32:    define{{.*}} { double, double } @cplx_f64({ double, double } {{.*}})
     // LOONGARCH64:    define{{.*}} { double, double } @cplx_f64({ double, double } {{.*}})
@@ -317,7 +317,7 @@ pub extern "C" fn cplx_i64(x: Complex<i64>) -> Complex<i64> {
     // ARM64EC:        define{{.*}} [2 x i64] @cplx_i64([2 x i64] {{.*}})
     // ARM:            define{{.*}} void @cplx_i64(ptr {{.*}} sret([16 x i8]) {{.*}}, [2 x i64] {{.*}})
     // BPF:            define{{.*}} void @cplx_i64(ptr {{.*}} sret({ i64, i64 }) {{.*}}, [2 x i64] {{.*}})
-    // CSKY:           define{{.*}} void @cplx_i64(ptr {{.*}} sret({ i64, i64 }) {{.*}}, [4 x i32] {{.*}})
+    // CSKY:           define{{.*}} void @cplx_i64(ptr {{.*}} sret([16 x i8]) {{.*}}, [4 x i32] {{.*}})
     // I686:           define{{.*}} void @cplx_i64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}} byval([16 x i8]) {{.*}})
     // LOONGARCH32:    define{{.*}} void @cplx_i64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}})
     // LOONGARCH64:    define{{.*}} [2 x i64] @cplx_i64([2 x i64] {{.*}})
