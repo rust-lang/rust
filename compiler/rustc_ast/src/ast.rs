@@ -220,7 +220,7 @@ pub struct PathSegment {
     /// `None` means that no parameter list is supplied (`Path`),
     /// `Some` means that parameter list is supplied (`Path<X, Y>`)
     /// but it can be empty (`Path<>`).
-    /// `P` is used as a size optimization for the common case with no parameters.
+    /// `Box` is used as a size optimization for the common case with no parameters.
     pub args: Option<Box<GenericArgs>>,
 }
 
@@ -557,9 +557,10 @@ pub struct Crate {
     pub is_placeholder: bool,
 }
 
-/// A semantic representation of a meta item. A meta item is a slightly
-/// restricted form of an attribute -- it can only contain expressions in
-/// certain leaf positions, rather than arbitrary token streams -- that is used
+/// A semantic representation of a meta item.
+///
+/// A meta item is a slightly restricted form of an attribute -- it can only contain
+/// expressions in certain leaf positions, rather than arbitrary token streams -- that is used
 /// for most built-in attributes.
 ///
 /// E.g., `#[test]`, `#[derive(..)]`, `#[rustfmt::skip]` or `#[feature = "foo"]`.
@@ -806,6 +807,7 @@ impl ByRef {
 }
 
 /// The mode of a binding (`mut`, `ref mut`, etc).
+///
 /// Used for both the explicit binding annotations given in the HIR for a binding
 /// and the final binding mode that we infer after type inference/match ergonomics.
 /// `.0` is the by-reference mode (`ref`, `ref mut`, or by value),
@@ -1184,7 +1186,9 @@ impl UnOp {
     }
 }
 
-/// A statement. No `attrs` or `tokens` fields because each `StmtKind` variant
+/// A statement.
+///
+/// No `attrs` or `tokens` fields because each `StmtKind` variant
 /// contains an AST node with those fields. (Except for `StmtKind::Empty`,
 /// which never has attrs or tokens)
 #[derive(Clone, Encodable, Decodable, Debug)]
@@ -1375,6 +1379,8 @@ pub enum UnsafeSource {
     UserProvided,
 }
 
+/// An anonymous constant.
+///
 /// A constant (expression) that's not an item or associated item,
 /// but needs its own `DefId` for type-checking, const-eval, etc.
 /// These are usually found nested inside types (e.g., array lengths)
@@ -1962,8 +1968,9 @@ pub enum UnsafeBinderCastKind {
     Unwrap,
 }
 
-/// The explicit `Self` type in a "qualified path". The actual
-/// path, including the trait and the associated item, is stored
+/// The explicit `Self` type in a "qualified path".
+///
+/// The actual path, including the trait and the associated item, is stored
 /// separately. `position` represents the index of the associated
 /// item qualified with this `Self` type.
 ///
@@ -3491,6 +3498,8 @@ pub struct AttrItem {
     pub span: Span,
 }
 
+/// A synthetic attribute.
+///
 /// Synthetic attributes are inserted by the compiler. They cannot be written in source code, and
 /// so cannot be pretty-printed by the AST pretty printer (because its output should be valid Rust
 /// code). They receive special treatment because they must not affect observable language
@@ -3513,7 +3522,7 @@ pub enum SyntheticAttr {
     /// evaluated true or not (or even failed to parse). The `pred` and `attrs` are not recorded
     /// because they are not needed.
     ///
-    /// The attribute is used by some clippy lints.
+    /// The attribute is used by rustdoc to display `doc_cfg` information and by some clippy lints.
     CfgAttrTrace(CfgEntry),
 }
 
