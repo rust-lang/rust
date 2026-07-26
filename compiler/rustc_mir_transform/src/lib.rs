@@ -36,6 +36,7 @@ mod pass_manager;
 use std::sync::LazyLock;
 
 use pass_manager::{self as pm, Lint, MirLint, MirPass, PassPolicy, WithMinOptLevel};
+use rustc_data_structures::thin_vec::ThinVec;
 
 mod check_pointers;
 mod cost_checker;
@@ -312,9 +313,9 @@ fn remap_mir_for_const_eval_select<'tcx>(
     body
 }
 
-fn take_array<T, const N: usize>(b: &mut Box<[T]>) -> Result<[T; N], Box<[T]>> {
-    let b: Box<[T; N]> = std::mem::take(b).try_into()?;
-    Ok(*b)
+fn take_array<T, const N: usize>(b: &mut ThinVec<T>) -> Result<[T; N], Box<[T]>> {
+    let b: [T; N] = std::mem::take(b).try_into()?;
+    Ok(b)
 }
 
 fn is_mir_available(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {

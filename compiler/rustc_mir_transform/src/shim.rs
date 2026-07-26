@@ -1,7 +1,7 @@
 use std::{assert_matches, fmt, iter};
 
 use rustc_abi::{ExternAbi, FIRST_VARIANT, FieldIdx, VariantIdx};
-use rustc_data_structures::thin_vec::ThinVec;
+use rustc_data_structures::thin_vec::{thin_vec, ThinVec};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
@@ -332,7 +332,7 @@ pub fn build_drop_shim<'tcx>(
                     &[ty::GenericArg::from(slice_ty)],
                     span,
                 ),
-                args: Box::new([Spanned { span, node: Operand::Move(Place::from(erased_local)) }]),
+                args: thin_vec![Spanned { span, node: Operand::Move(Place::from(erased_local)) }],
                 destination: Place::from(RETURN_PLACE),
                 target: Some(return_block),
                 unwind: UnwindAction::Continue,

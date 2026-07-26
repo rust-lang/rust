@@ -793,7 +793,7 @@ pub enum TerminatorKind<'tcx> {
         /// reused across function calls without duplicating the contents.
         /// The span for each arg is also included
         /// (e.g. `a` and `b` in `x.foo(a, b)`).
-        args: Box<[Spanned<Operand<'tcx>>]>,
+        args: ThinVec<Spanned<Operand<'tcx>>>,
         /// Where the returned value will be written
         destination: Place<'tcx>,
         /// Where to go after this call returns. If none, the call necessarily diverges.
@@ -830,7 +830,7 @@ pub enum TerminatorKind<'tcx> {
         /// These are owned by the callee, which is free to modify them.
         /// This allows the memory occupied by "by-value" arguments to be
         /// reused across function calls without duplicating the contents.
-        args: Box<[Spanned<Operand<'tcx>>]>,
+        args: ThinVec<Spanned<Operand<'tcx>>>,
         // FIXME(explicit_tail_calls): should we have the span for `become`? is this span accurate? do we need it?
         /// This `Span` is the span of the function, without the dot and receiver
         /// (e.g. `foo(a, b)` in `x.foo(a, b)`

@@ -1,4 +1,5 @@
 use rustc_abi::{FieldIdx, VariantIdx};
+use rustc_data_structures::thin_vec::ThinVec;
 use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
@@ -170,7 +171,7 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
                     .map(|arg|
                         Ok(Spanned { node: self.parse_operand(*arg)?, span: self.thir.exprs[*arg].span  } )
                     )
-                    .collect::<PResult<Box<[_]>>>()?;
+                    .collect::<PResult<ThinVec<_>>>()?;
                 Ok(TerminatorKind::Call {
                     func: fun,
                     args,
@@ -195,7 +196,7 @@ impl<'a, 'tcx> ParseCtxt<'a, 'tcx> {
                     .map(|arg|
                         Ok(Spanned { node: self.parse_operand(*arg)?, span: self.thir.exprs[*arg].span  } )
                     )
-                    .collect::<PResult<Box<[_]>>>()?;
+                    .collect::<PResult<ThinVec<_>>>()?;
                 Ok(TerminatorKind::TailCall {
                     func: fun,
                     args,
