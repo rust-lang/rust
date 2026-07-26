@@ -20,7 +20,7 @@ use melior::Context;
 use melior::ir::{Location, Module};
 use rustc_codegen_ssa::back::write::CodegenContext;
 use rustc_errors::DiagCtxtHandle;
-use rustc_mlir::ffi::{CompileOptions, MlirTritonCompiler};
+use rustc_mlir::ffi::{CompileOptions, MlirTritonCompiler, OptionalI32};
 use rustc_mlir::triton::TritonCompiler;
 
 use crate::mlir::backend::MlirCodegenBackend;
@@ -80,6 +80,76 @@ pub struct MlirModule<'c> {
     pub kernel_metadata: Option<KernelMetadata>,
 }
 
+/// Resolve the PTX ISA version (encoded as `major*10 + minor`, e.g. `82` for
+/// `8.2`) to stamp into the generated PTX's `.version` header.
+///
+/// `$TEENYC_PTX_VERSION` (if set) is an explicit override — set this when you
+/// know the exact CUDA toolkit/driver version of the deployment target (e.g.
+/// `TEENYC_PTX_VERSION=82` for a Jetson Orin Nano on CUDA 12.2). Otherwise
+/// falls back to a conservative default derived from `capability`: the PTX
+/// ISA version introduced alongside the CUDA release that first supported
+/// that SM architecture, so it loads on any driver new enough to run the
+/// hardware at all — but a toolkit/driver newer than that floor can safely
+/// run PTX declaring a *higher* version too, which is why an exact match via
+/// the env var is preferable whenever the real target version is known.
+fn resolve_ptx_version(capability: i32) -> i32 {
+    if let Ok(v) = std::env::var("TEENYC_PTX_VERSION") {
+        if let Ok(parsed) = v.parse::<i32>() {
+            return parsed;
+        }
+    }
+    default_ptx_version_for_capability(capability)
+}
+
+/// Conservative default PTX ISA version per SM architecture (see
+/// [`resolve_ptx_version`]). Values are best-effort based on published
+/// NVIDIA CUDA/PTX-ISA compatibility notes; prefer `$TEENYC_PTX_VERSION`
+/// when the deployment target's exact CUDA version is known.
+fn default_ptx_version_for_capability(capability: i32) -> i32 {
+    match capability {
+        75 => 63,  // Turing:            CUDA 10.0 / PTX ISA 6.3
+        80 => 70,  // Ampere DC:         CUDA 11.0 / PTX ISA 7.0
+        86 => 71,  // Ampere:            CUDA 11.1 / PTX ISA 7.1
+        87 => 74,  // Ampere embedded:   CUDA 11.4 / PTX ISA 7.4 (Jetson Orin)
+        89 => 78,  // Ada Lovelace:      CUDA 11.8 / PTX ISA 7.8
+        90 => 80,  // Hopper:            CUDA 12.0 / PTX ISA 8.0
+        100 => 85, // Blackwell DC:      CUDA 12.8 / PTX ISA 8.5
+        103 => 86, // Blackwell DC Ultra: CUDA 12.9 / PTX ISA 8.6
+        110 => 87, // Blackwell (approx)
+        120 => 86, // Blackwell:         CUDA 12.8 / PTX ISA 8.6 (RTX 50-series)
+        _ => 80,   // unknown architecture: widely-supported baseline
+    }
+}
+
+#[cfg(test)]
+mod ptx_version_tests {
+    use super::*;
+
+    #[test]
+    fn jetson_orin_nano_defaults_below_hopper() {
+        // The bug this guards against: sm_87 (Jetson Orin) must never default
+        // to a PTX ISA version newer than what its CUDA 11.4-era driver
+        // baseline supports, regardless of what capability sm_90+ resolves to.
+        assert!(default_ptx_version_for_capability(87) < default_ptx_version_for_capability(90));
+    }
+
+    #[test]
+    fn env_override_takes_precedence() {
+        // SAFETY: single-threaded test; no other test in this module reads
+        // TEENYC_PTX_VERSION concurrently.
+        unsafe { std::env::set_var("TEENYC_PTX_VERSION", "82") };
+        assert_eq!(resolve_ptx_version(90), 82);
+        unsafe { std::env::remove_var("TEENYC_PTX_VERSION") };
+    }
+
+    #[test]
+    fn invalid_env_override_falls_back_to_default() {
+        unsafe { std::env::set_var("TEENYC_PTX_VERSION", "not-a-number") };
+        assert_eq!(resolve_ptx_version(87), default_ptx_version_for_capability(87));
+        unsafe { std::env::remove_var("TEENYC_PTX_VERSION") };
+    }
+}
+
 unsafe impl<'c> Send for MlirModule<'c> {}
 unsafe impl<'c> Sync for MlirModule<'c> {}
 
@@ -95,7 +165,10 @@ impl<'c> MlirModule<'c> {
 
         let mut options = CompileOptions::default_cuda();
         // Safety: CompileOptionsData is a union; default_cuda() sets the cuda variant.
-        unsafe { options.data.cuda.capability = capability; }
+        unsafe {
+            options.data.cuda.capability = capability;
+            options.data.cuda.ptx_version = OptionalI32::some(resolve_ptx_version(capability));
+        }
         let compiler = TritonCompiler::new(context.to_raw(), "cuda", &options)
             .expect("Failed to create Triton compiler");
 
