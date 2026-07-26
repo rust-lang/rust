@@ -97,6 +97,12 @@
 // [NVPTX] compile-flags: --target nvptx64-nvidia-cuda
 // [NVPTX] needs-llvm-components: nvptx
 
+// revisions: AMDGPU
+// [AMDGPU] compile-flags: --target amdgcn-amd-amdhsa -Ctarget-cpu=gfx900
+// [AMDGPU] needs-llvm-components: amdgpu
+
+// NOTE: BPF cannot codegen sret, which the larger Complex<..> types use.
+// LLVM 23 adds support, see https://github.com/llvm/llvm-project/pull/206876.
 // revisions: BPF
 // [BPF] compile-flags: --target bpfel-unknown-none
 // [BPF] needs-llvm-components: bpf
