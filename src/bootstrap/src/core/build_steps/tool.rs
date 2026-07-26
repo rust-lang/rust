@@ -18,8 +18,8 @@ use crate::core::build_steps::toolstate::ToolState;
 use crate::core::build_steps::{compile, llvm};
 use crate::core::builder;
 use crate::core::builder::{
-    Builder, Cargo as CargoCommand, RunConfig, ShouldRun, Step, StepMetadata, apply_pgo,
-    cargo_profile_var,
+    Builder, Cargo as CargoCommand, CommandLineStep, RunConfig, ShouldRun, Step, StepMetadata,
+    apply_pgo, cargo_profile_var,
 };
 use crate::core::config::{DebuginfoLevel, OverrideAllocator, RustcLto, TargetSelection};
 use crate::utils::exec::{BootstrapCommand, command};
@@ -68,10 +68,6 @@ pub struct ToolBuildResult {
 
 impl Step for ToolBuild {
     type Output = ToolBuildResult;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.never()
-    }
 
     /// Builds a tool in `src/tools`
     ///
@@ -432,7 +428,7 @@ macro_rules! bootstrap_tool {
             pub target: TargetSelection,
         }
 
-        impl Step for $name {
+        impl CommandLineStep for $name {
             type Output = ToolBuildResult;
 
             fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -535,7 +531,7 @@ pub struct RustcPerf {
     pub target: TargetSelection,
 }
 
-impl Step for RustcPerf {
+impl CommandLineStep for RustcPerf {
     /// Path to the built `collector` binary.
     type Output = ToolBuildResult;
 
@@ -596,7 +592,7 @@ impl ErrorIndex {
     }
 }
 
-impl Step for ErrorIndex {
+impl CommandLineStep for ErrorIndex {
     type Output = ToolBuildResult;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -653,7 +649,7 @@ pub struct RemoteTestServer {
     pub target: TargetSelection,
 }
 
-impl Step for RemoteTestServer {
+impl CommandLineStep for RemoteTestServer {
     type Output = ToolBuildResult;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -701,7 +697,7 @@ pub struct Rustdoc {
     pub target_compiler: Compiler,
 }
 
-impl Step for Rustdoc {
+impl CommandLineStep for Rustdoc {
     /// Path to the built rustdoc binary.
     type Output = PathBuf;
 
@@ -828,7 +824,7 @@ impl Cargo {
     }
 }
 
-impl Step for Cargo {
+impl CommandLineStep for Cargo {
     type Output = ToolBuildResult;
     const IS_HOST: bool = true;
 
@@ -906,7 +902,7 @@ impl LldWrapper {
     }
 }
 
-impl Step for LldWrapper {
+impl CommandLineStep for LldWrapper {
     type Output = BuiltLldWrapper;
 
     const IS_HOST: bool = true;
@@ -998,7 +994,7 @@ impl WasmComponentLd {
     }
 }
 
-impl Step for WasmComponentLd {
+impl CommandLineStep for WasmComponentLd {
     type Output = ToolBuildResult;
 
     const IS_HOST: bool = true;
@@ -1052,7 +1048,7 @@ impl RustAnalyzer {
     pub const ALLOW_FEATURES: &'static str = "rustc_private,proc_macro_internals,proc_macro_diagnostic,proc_macro_span,proc_macro_span_shrink,proc_macro_def_site,new_zeroed_alloc";
 }
 
-impl Step for RustAnalyzer {
+impl CommandLineStep for RustAnalyzer {
     type Output = ToolBuildResult;
     const IS_HOST: bool = true;
 
@@ -1106,7 +1102,7 @@ impl RustAnalyzerProcMacroSrv {
     }
 }
 
-impl Step for RustAnalyzerProcMacroSrv {
+impl CommandLineStep for RustAnalyzerProcMacroSrv {
     type Output = ToolBuildResult;
     const IS_HOST: bool = true;
 
@@ -1195,7 +1191,7 @@ impl LlvmBitcodeLinker {
     }
 }
 
-impl Step for LlvmBitcodeLinker {
+impl CommandLineStep for LlvmBitcodeLinker {
     type Output = ToolBuildResult;
     const IS_HOST: bool = true;
 
@@ -1248,15 +1244,6 @@ pub enum LibcxxVersion {
 
 impl Step for LibcxxVersionTool {
     type Output = LibcxxVersion;
-    const IS_HOST: bool = true;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.never()
-    }
-
-    fn is_default_step(_builder: &Builder<'_>) -> bool {
-        false
-    }
 
     fn run(self, builder: &Builder<'_>) -> LibcxxVersion {
         let out_dir = builder.out.join(self.target.to_string()).join("libcxx-version");
@@ -1312,7 +1299,7 @@ impl BuildManifest {
     }
 }
 
-impl Step for BuildManifest {
+impl CommandLineStep for BuildManifest {
     type Output = ToolBuildResult;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -1456,7 +1443,7 @@ macro_rules! tool_rustc_extended {
             }
         }
 
-        impl Step for $name {
+        impl CommandLineStep for $name {
             type Output = ToolBuildResult;
             const IS_HOST: bool = true;
 

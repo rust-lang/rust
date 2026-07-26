@@ -4,4 +4,4 @@ expression: clean
 ---
 [Clean] clean::CleanAll
     targets: [aarch64-unknown-linux-gnu]
-    - Set({})
+    - Set({clean::default})
