@@ -1463,7 +1463,7 @@ pub(crate) fn impl_trait_query<'db>(
         .map(|it| it.value.get(DbInterner::new_no_crate(db)))
 }
 
-#[salsa::tracked(returns(ref))]
+#[salsa::tracked(returns(ref), cycle_result = impl_trait_with_diagnostics_cycle_result)]
 pub(crate) fn impl_trait_with_diagnostics<'db>(
     db: &'db dyn HirDatabase,
     impl_id: ImplId,
@@ -1485,6 +1485,14 @@ pub(crate) fn impl_trait_with_diagnostics<'db>(
     let target_trait = impl_data.target_trait.as_ref()?;
     let trait_ref = ctx.lower_trait_ref(target_trait, self_ty)?;
     Some(TyLoweringResult::from_ctx(StoredEarlyBinder::bind(StoredTraitRef::new(trait_ref)), ctx))
+}
+
+pub(crate) fn impl_trait_with_diagnostics_cycle_result<'db>(
+    _db: &'db dyn HirDatabase,
+    _: salsa::Id,
+    _impl_id: ImplId,
+) -> Option<TyLoweringResult<'db, StoredEarlyBinder<StoredTraitRef>>> {
+    None
 }
 
 impl ImplTraitId {
