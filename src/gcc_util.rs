@@ -157,7 +157,7 @@ pub fn target_cpu(sess: &EarlySession) -> Cow<'_, str> {
     }
 }
 
-pub fn add_baseline_flags<'gcc>(context: &Context<'gcc>, sess: &Session) {
+/*pub fn add_baseline_flags<'gcc>(context: &Context<'gcc>, sess: &Session) {
     if sess.target.features.is_empty() {
         return;
     }
@@ -172,7 +172,7 @@ pub fn add_baseline_flags<'gcc>(context: &Context<'gcc>, sess: &Session) {
         context.add_command_line_option(flag);
         context.add_driver_option(flag);
     }
-}
+}*/
 
 pub fn new_context<'gcc>(sess: &Session) -> Context<'gcc> {
     let context = Context::default();
@@ -274,7 +274,7 @@ pub fn new_context<'gcc>(sess: &Session) -> Context<'gcc> {
         context.add_command_line_option(format!("-march={}", target_cpu));
     }
 
-    add_baseline_flags(&context, sess);
+    // add_baseline_flags(&context, sess);
 
     if sess.opts.unstable_opts.function_sections.unwrap_or(sess.target.function_sections) {
         context.add_command_line_option("-ffunction-sections");
