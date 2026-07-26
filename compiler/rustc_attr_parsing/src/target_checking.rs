@@ -187,16 +187,13 @@ impl<'sess> AttributeParser<'sess> {
         cx: &AcceptContext<'_, '_>,
     ) -> Option<InvalidTargetHelp> {
         match &*cx.attr_path.segments {
-            [sym::link_name]
-                if cx.target == Target::Static
-                    && matches!(cx.attr_safety, Safety::Default | Safety::Unsafe(_)) =>
-            {
+            [sym::link_name] if cx.target == Target::Static => {
+                let needs_unsafe_wrapper = matches!(cx.attr_safety, Safety::Default);
+
                 Some(InvalidTargetHelp::UseExportName {
-                    unsafe_open: matches!(cx.attr_safety, Safety::Default)
-                        .then(|| cx.inner_span.shrink_to_lo()),
+                    unsafe_open: needs_unsafe_wrapper.then(|| cx.inner_span.shrink_to_lo()),
                     name: cx.attr_path.span,
-                    unsafe_close: matches!(cx.attr_safety, Safety::Default)
-                        .then(|| cx.inner_span.shrink_to_hi()),
+                    unsafe_close: needs_unsafe_wrapper.then(|| cx.inner_span.shrink_to_hi()),
                 })
             }
             [sym::repr] if attribute_args == "(align(...))" => match cx.target {
