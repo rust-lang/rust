@@ -475,10 +475,6 @@ fn target_config(sess: &EarlySession, target_info: &SharedTargetInfo) -> TargetC
         sess,
         |feature| to_gcc_features(&sess.target, feature),
         |feature| {
-            // FIXME: we disable Neon for now since we don't support the LLVM intrinsics for it.
-            if feature == "neon" {
-                return false;
-            }
             target_info.cpu_supports(feature)
             // cSpell:disable
             /*
