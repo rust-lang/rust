@@ -75,7 +75,7 @@ use crate::session_diagnostics::{
     ParsedDescription, UnusedDuplicate,
 };
 use crate::target_checking::AllowedTargets;
-use crate::{AttrSuggestionStyle, AttributeParser, AttributeTemplate, EmitAttribute};
+use crate::{AttributeParser, AttributeTemplate, EmitAttribute};
 
 type GroupType = LazyLock<GroupTypeInner>;
 
@@ -1132,12 +1132,7 @@ impl<'a, 'f, 'sess: 'f> AttributeDiagnosticContext<'a, 'f, 'sess> {
     }
 
     pub(crate) fn suggestions(&self) -> Vec<String> {
-        let style = match self.parsed_description {
-            ParsedDescription::Attribute => AttrSuggestionStyle::EmbeddedAttribute,
-            ParsedDescription::Macro => AttrSuggestionStyle::Macro,
-        };
-
-        self.template.suggestions(style, self.attr_safety, &self.attr_path)
+        self.template.suggestions(self.parsed_description, self.attr_safety, &self.attr_path)
     }
     /// Error that a string literal was expected.
     /// You can optionally give the literal you did find (which you found not to be a string literal)

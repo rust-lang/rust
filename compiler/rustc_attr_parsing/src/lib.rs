@@ -119,4 +119,4 @@ pub use context::{OmitDoc, ShouldEmit};
 pub use interface::{AttributeParser, EmitAttribute};
 pub use rustc_parse::parser::Recovery;
 pub use session_diagnostics::ParsedDescription;
-pub use template::{AttrSuggestionStyle, AttributeTemplate};
+pub use template::AttributeTemplate;

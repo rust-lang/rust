@@ -1,6 +1,8 @@
 use rustc_ast::ast::Safety;
 use rustc_span::Symbol;
 
+use crate::ParsedDescription;
+
 /// A template to suggest the correct syntax of an attribute.
 ///
 /// This is not used to *check* attributes. The attribute's parser is responsible for that.
@@ -21,25 +23,16 @@ pub struct AttributeTemplate {
     pub docs: Option<&'static str>,
 }
 
-pub enum AttrSuggestionStyle {
-    /// The suggestion is styled for an attribute embedded into another attribute.
-    /// For example, attributes inside `#[cfg_attr(true, attr(...)]`.
-    EmbeddedAttribute,
-    /// The suggestion is styled for macros that are parsed with attribute parsers.
-    /// For example, the `cfg!(predicate)` macro.
-    Macro,
-}
-
 impl AttributeTemplate {
     pub fn suggestions(
         &self,
-        style: AttrSuggestionStyle,
+        description: ParsedDescription,
         safety: Safety,
         name: impl std::fmt::Display,
     ) -> Vec<String> {
-        let macro_call = match style {
-            AttrSuggestionStyle::Macro => "!",
-            AttrSuggestionStyle::EmbeddedAttribute => "",
+        let macro_call = match description {
+            ParsedDescription::Macro => "!",
+            ParsedDescription::Attribute => "",
         };
 
         let mut suggestions = vec![];
