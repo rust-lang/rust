@@ -57,6 +57,8 @@ pub struct MinIdentChars {
     /// Impl trait functions have special rules are handled in `check_impl_item` since
     /// they have special rules. This is used to signal to `check_pat` the number of parameter
     current_fn_params_remaining: u32,
+    /// Whether to lint idents that have too few chars even when following trait declaration.
+    lint_trait_impl: bool,
 }
 
 impl MinIdentChars {
@@ -65,6 +67,7 @@ impl MinIdentChars {
             allowed_idents_below_min_chars: conf.allowed_idents_below_min_chars.iter().cloned().collect(),
             min_chars_threshold: conf.min_ident_chars_threshold,
             current_fn_params_remaining: 0,
+            lint_trait_impl: conf.min_ident_chars_lint_trait_impl,
         }
     }
 
@@ -175,30 +178,32 @@ impl LateLintPass<'_> for MinIdentChars {
         if self.min_chars_threshold == 0 {
             return;
         }
+        // For trait impls only lint if the parameter names are different from the trait's or if the
+        // `min_ident_chars_lint_trait_impl` config item is active.
         if let ImplItemImplKind::Trait {
             trait_item_def_id: Ok(trait_item),
             ..
         } = i.impl_kind
+            && let ImplItemKind::Fn(_, body) = i.kind
         {
-            // For trait impls only lint if the parameter names are different from the trait's.
-            if let ImplItemKind::Fn(_, body) = i.kind {
-                let mut named_params_count = 0;
-                for (trait_ident, param) in iter::zip(cx.tcx.fn_arg_idents(trait_item), cx.tcx.hir_body(body).params) {
-                    if let PatKind::Binding(_, _, ident, _) = param.pat.kind {
-                        named_params_count += 1;
-                        if trait_ident.is_none_or(|trait_ident| ident.name != trait_ident.name)
-                            && let Some(missing) = self.check_sym(ident.name)
-                        {
-                            self.emit_hir(cx, param.pat.hir_id, ident, missing);
-                        }
+            let mut named_params_count = 0;
+            for (trait_ident, param) in iter::zip(cx.tcx.fn_arg_idents(trait_item), cx.tcx.hir_body(body).params) {
+                if let PatKind::Binding(_, _, ident, _) = param.pat.kind {
+                    named_params_count += 1;
+                    if trait_ident.is_none_or(|trait_ident| ident.name != trait_ident.name || self.lint_trait_impl)
+                        && let Some(missing) = self.check_sym(ident.name)
+                    {
+                        self.emit_hir(cx, param.pat.hir_id, ident, missing);
                     }
                 }
-                // Signal the number of parameters to skip to `check_pat`.
-                // This needs to be added since impl items can technically appear inside
-                // both the function signature and generic predicates.
-                self.current_fn_params_remaining += named_params_count;
             }
-        } else if let Some(missing) = self.check_sym(i.ident.name)
+            // Signal the number of parameters to skip to `check_pat`.
+            // This needs to be added since impl items can technically appear inside
+            // both the function signature and generic predicates.
+            self.current_fn_params_remaining += named_params_count;
+        }
+        if (!matches!(i.impl_kind, ImplItemImplKind::Trait { .. }) || self.lint_trait_impl)
+            && let Some(missing) = self.check_sym(i.ident.name)
             && !(matches!(i.kind, ImplItemKind::Fn(..))
                 && cx.tcx.codegen_fn_attrs(i.owner_id.def_id).contains_extern_indicator())
         {
