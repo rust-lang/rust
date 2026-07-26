@@ -13091,6 +13091,104 @@ pub const fn _mm512_maskz_cvtepu32_ps(k: __mmask16, a: __m512i) -> __m512 {
     }
 }
 
+/// Convert packed unsigned 32-bit integers in a to packed single-precision (32-bit) floating-point elements, and store the results in dst.
+///
+/// Due to an omission by Intel, these intrinsics are not documented in the Intrinsics Guide.
+/// Documentation on them can be found in the [Intel Software Development Manual](https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html).
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512_vl_updates", issue = "158196")]
+#[cfg_attr(test, assert_instr(vcvtudq2ps))]
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_cvtepu32_ps(a: __m256i) -> __m256 {
+    unsafe {
+        let a = a.as_u32x8();
+        transmute::<f32x8, _>(simd_cast(a))
+    }
+}
+
+/// Convert packed unsigned 32-bit integers in a to packed single-precision (32-bit) floating-point elements, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
+///
+/// Due to an omission by Intel, these intrinsics are not documented in the Intrinsics Guide.
+/// Documentation on them can be found in the [Intel Software Development Manual](https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html).
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512_vl_updates", issue = "158196")]
+#[cfg_attr(test, assert_instr(vcvtudq2ps))]
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_mask_cvtepu32_ps(src: __m256, k: __mmask8, a: __m256i) -> __m256 {
+    unsafe {
+        let convert = _mm256_cvtepu32_ps(a).as_f32x8();
+        transmute(simd_select_bitmask(k, convert, src.as_f32x8()))
+    }
+}
+
+/// Convert packed unsigned 32-bit integers in a to packed single-precision (32-bit) floating-point elements, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+///
+/// Due to an omission by Intel, these intrinsics are not documented in the Intrinsics Guide.
+/// Documentation on them can be found in the [Intel Software Development Manual](https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html).
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512_vl_updates", issue = "158196")]
+#[cfg_attr(test, assert_instr(vcvtudq2ps))]
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm256_maskz_cvtepu32_ps(k: __mmask8, a: __m256i) -> __m256 {
+    unsafe {
+        let convert = _mm256_cvtepu32_ps(a).as_f32x8();
+        transmute(simd_select_bitmask(k, convert, f32x8::ZERO))
+    }
+}
+
+/// Convert packed unsigned 32-bit integers in a to packed single-precision (32-bit) floating-point elements, and store the results in dst.
+///
+/// Due to an omission by Intel, these intrinsics are not documented in the Intrinsics Guide.
+/// Documentation on them can be found in the [Intel Software Development Manual](https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html).
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512_vl_updates", issue = "158196")]
+#[cfg_attr(test, assert_instr(vcvtudq2ps))]
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm_cvtepu32_ps(a: __m128i) -> __m128 {
+    unsafe {
+        let a = a.as_u32x4();
+        transmute::<f32x4, _>(simd_cast(a))
+    }
+}
+
+/// Convert packed unsigned 32-bit integers in a to packed single-precision (32-bit) floating-point elements, and store the results in dst using writemask k (elements are copied from src when the corresponding mask bit is not set).
+/// Bits 4 through 7 of k are ignored.
+///
+/// Due to an omission by Intel, these intrinsics are not documented in the Intrinsics Guide.
+/// Documentation on them can be found in the [Intel Software Development Manual](https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html).
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512_vl_updates", issue = "158196")]
+#[cfg_attr(test, assert_instr(vcvtudq2ps))]
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm_mask_cvtepu32_ps(src: __m128, k: __mmask8, a: __m128i) -> __m128 {
+    unsafe {
+        let convert = _mm_cvtepu32_ps(a).as_f32x4();
+        transmute(simd_select_bitmask(k, convert, src.as_f32x4()))
+    }
+}
+
+/// Convert packed unsigned 32-bit integers in a to packed single-precision (32-bit) floating-point elements, and store the results in dst using zeromask k (elements are zeroed out when the corresponding mask bit is not set).
+/// Bits 4 through 7 of k are ignored.
+///
+/// Due to an omission by Intel, these intrinsics are not documented in the Intrinsics Guide.
+/// Documentation on them can be found in the [Intel Software Development Manual](https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html).
+#[inline]
+#[target_feature(enable = "avx512f,avx512vl")]
+#[unstable(feature = "stdarch_x86_avx512_vl_updates", issue = "158196")]
+#[cfg_attr(test, assert_instr(vcvtudq2ps))]
+#[rustc_const_unstable(feature = "stdarch_const_x86", issue = "149298")]
+pub const fn _mm_maskz_cvtepu32_ps(k: __mmask8, a: __m128i) -> __m128 {
+    unsafe {
+        let convert = _mm_cvtepu32_ps(a).as_f32x4();
+        transmute(simd_select_bitmask(k, convert, f32x4::ZERO))
+    }
+}
+
 /// Convert packed unsigned 32-bit integers in a to packed double-precision (64-bit) floating-point elements, and store the results in dst.
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_cvtepu32_pd&expand=1580)
@@ -50034,6 +50132,65 @@ mod tests {
             0., 0., 0., 0., 0., 0., 0., 0., 8., 9., 10., 11., 12., 13., 14., 15.,
         );
         assert_eq_m512(r, e);
+    }
+
+    #[simd_test(enable = "avx512f,avx512vl")]
+    const fn test_mm256_cvtepu32_ps() {
+        let a = _mm256_set_epi32(-1, i32::MIN, 16_777_217, 16_777_216, 4, 3, 2, 1);
+        let r = _mm256_cvtepu32_ps(a);
+        let e = _mm256_set_ps(
+            4_294_967_296.,
+            2_147_483_648.,
+            16_777_216.,
+            16_777_216.,
+            4.,
+            3.,
+            2.,
+            1.,
+        );
+        assert_eq_m256(r, e);
+    }
+
+    #[simd_test(enable = "avx512f,avx512vl")]
+    const fn test_mm256_mask_cvtepu32_ps() {
+        let a = _mm256_set_epi32(-1, i32::MIN, 6, 5, 4, 3, 2, 1);
+        let src = _mm256_set1_ps(-1.);
+        let r = _mm256_mask_cvtepu32_ps(src, 0b10101010, a);
+        let e = _mm256_set_ps(4_294_967_296., -1., 6., -1., 4., -1., 2., -1.);
+        assert_eq_m256(r, e);
+    }
+
+    #[simd_test(enable = "avx512f,avx512vl")]
+    const fn test_mm256_maskz_cvtepu32_ps() {
+        let a = _mm256_set_epi32(-1, i32::MIN, 6, 5, 4, 3, 2, 1);
+        let r = _mm256_maskz_cvtepu32_ps(0b01010101, a);
+        let e = _mm256_set_ps(0., 2_147_483_648., 0., 5., 0., 3., 0., 1.);
+        assert_eq_m256(r, e);
+    }
+
+    #[simd_test(enable = "avx512f,avx512vl")]
+    const fn test_mm_cvtepu32_ps() {
+        let a = _mm_set_epi32(-1, i32::MIN, 1, 0);
+        let r = _mm_cvtepu32_ps(a);
+        let e = _mm_set_ps(4_294_967_296., 2_147_483_648., 1., 0.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f,avx512vl")]
+    const fn test_mm_mask_cvtepu32_ps() {
+        let a = _mm_set_epi32(-1, i32::MIN, 2, 1);
+        let src = _mm_set1_ps(-1.);
+        let r = _mm_mask_cvtepu32_ps(src, 0b11110101, a);
+        let e = _mm_set_ps(-1., 2_147_483_648., -1., 1.);
+        assert_eq_m128(r, e);
+    }
+
+    #[simd_test(enable = "avx512f,avx512vl")]
+    const fn test_mm_maskz_cvtepu32_ps() {
+        let a = _mm_set_epi32(-1, i32::MIN, 2, 1);
+        let r = _mm_maskz_cvtepu32_ps(0b11111010, a);
+        let e = _mm_set_ps(4_294_967_296., 0., 2., 0.);
+        assert_eq_m128(r, e);
     }
 
     #[simd_test(enable = "avx512f")]
