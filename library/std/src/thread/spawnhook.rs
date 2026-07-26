@@ -44,9 +44,11 @@ struct SpawnHook {
 /// In other words, adding a hook has no effect on already running threads (other than the current
 /// thread) and the threads they might spawn in the future.
 ///
-/// Hooks can only be added, not removed.
-///
 /// The hooks will run in reverse order, starting with the most recently added.
+///
+/// Hooks can only be added, not removed.
+/// Note that this does *not* mean that they are guaranteed to run. See [`Builder::no_hooks`].
+/// You cannot rely on a hook running for soundness.
 ///
 /// # Usage
 ///
@@ -88,6 +90,8 @@ struct SpawnHook {
 ///     assert_eq!(X.get(), 123);
 /// }).join().unwrap();
 /// ```
+///
+/// [`Builder::no_hooks`]: crate::thread::Builder::no_hooks
 #[unstable(feature = "thread_spawn_hook", issue = "132951")]
 pub fn add_spawn_hook<F, G>(hook: F)
 where
