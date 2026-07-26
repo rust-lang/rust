@@ -1,10 +1,33 @@
-use rustc_abi::TyAbiInterface;
+use rustc_abi::{Reg, RegKind, TyAbiInterface};
 
-use crate::callconv::{ArgAbi, FnAbi};
+use crate::callconv::{ArgAbi, CastTarget, FnAbi, Uniform};
 use crate::spec::{Env, HasTargetSpec, Os};
 
-fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {
-    if ret.layout.is_aggregate() {
+/// How to cast `Complex<T>` so that we match the GCC ABI.
+fn complex_cast_target<Ty>(arg: &ArgAbi<'_, Ty>) -> CastTarget {
+    let size = arg.layout.size;
+
+    if size.bytes() <= 4 {
+        // Coerce to an integer for `Complex<i8>` and `Complex<i16>`.
+        CastTarget::from(Reg { kind: RegKind::Integer, size })
+    } else if size.bytes() == 8 {
+        // Coerce to a single `i64` for `Complex<f32>` and `Complex<i32>`, which has the correct
+        // register alignment of 8 bytes.
+        CastTarget::from(Reg::i64())
+    } else {
+        // Coerce to an array `[N x i32]` for everything wider. An array of i32 gives the correct
+        // 4-byte register alignment.
+        CastTarget::from(Uniform::new(Reg::i32(), size))
+    }
+}
+
+fn classify_ret<'a, Ty, C>(cx: &C, ret: &mut ArgAbi<'a, Ty>)
+where
+    Ty: TyAbiInterface<'a, C> + Copy,
+{
+    if ret.layout.is_complex_number(cx) {
+        ret.cast_to(complex_cast_target(ret));
+    } else if ret.layout.is_aggregate() {
         ret.make_indirect();
     } else {
         ret.extend_integer_width_to(32);
@@ -25,7 +48,9 @@ where
         }
         return;
     }
-    if arg.layout.pass_indirectly_in_non_rustic_abis(cx) || arg.layout.is_aggregate() {
+    if arg.layout.is_complex_number(cx) {
+        arg.cast_to(complex_cast_target(arg));
+    } else if arg.layout.pass_indirectly_in_non_rustic_abis(cx) || arg.layout.is_aggregate() {
         arg.make_indirect();
     } else {
         arg.extend_integer_width_to(32);
@@ -37,7 +62,7 @@ where
     Ty: TyAbiInterface<'a, C> + Copy,
 {
     if !fn_abi.ret.is_ignore() {
-        classify_ret(&mut fn_abi.ret);
+        classify_ret(cx, &mut fn_abi.ret);
     }
 
     for arg in fn_abi.args.iter_mut() {
