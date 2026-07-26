@@ -25,6 +25,35 @@ For more information on these attributes, see the chapter about [attribute parsi
 
 [attr-parsing-chapter]: ./hir/attribute-parsing.md
 
+### Note on adding new builtin attributes
+
+<div class="warning">
+
+**Warning: Name resolution ambiguity potential when adding new builtin attributes**
+
+Please note that adding **new builtin attributes** (whose name is not reserved, i.e. a new builtin
+attribute whose name does not start with `rustc`), even if *unstable*-gated, can introduce breakage
+from name resolution ambiguity in stable code if (1) the stable code has a macro of the same name
+which gets re-exported, or (2) or a proc-macro derive helper attribute of the same name.
+
+Typically, the builtin attributes probably has to start out as `#[rustc_foo]` instead of `#[foo]` to
+avoid colliding with user-defined macros and proc-macro helper attributes.
+Then, prior to stabilization,
+a rename to `#[foo]` should be done separately with a crater run to assess fallout,
+with a deliberate breakage FCP proposal for T-lang to consider.
+
+Remember also that crater is *not* exhaustive and does not contain all existing stable code.
+
+See:
+- [Built-in attributes are treated differently vs prelude attributes, unstable built-in attributes
+  can name-collide with stable macro, and built-in attributes can break back-compat
+  #134963](https://github.com/rust-lang/rust/issues/134963) and backlinks within this issue,
+  including design discussions on how to fix this kind of breakage hazard.
+- [Broken build after updating: coverage is ambiguous; ambiguous because of a name conflict with a
+  builtin attribute #121157](https://github.com/rust-lang/rust/issues/121157).
+- [Regression: align is ambiguous #143834](https://github.com/rust-lang/rust/issues/143834).
+</div>
+
 ## 'Non-builtin'/'active' attributes
 
 These attributes are defined by a crate - either the standard library, or a proc-macro crate.
