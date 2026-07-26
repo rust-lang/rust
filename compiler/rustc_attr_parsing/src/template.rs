@@ -1,5 +1,4 @@
 use rustc_ast::ast::Safety;
-use rustc_hir::AttrStyle;
 use rustc_span::Symbol;
 
 /// A template to suggest the correct syntax of an attribute.
@@ -23,9 +22,6 @@ pub struct AttributeTemplate {
 }
 
 pub enum AttrSuggestionStyle {
-    /// The suggestion is styled for a normal attribute.
-    /// The `AttrStyle` determines whether this is an inner or outer attribute.
-    Attribute(AttrStyle),
     /// The suggestion is styled for an attribute embedded into another attribute.
     /// For example, attributes inside `#[cfg_attr(true, attr(...)]`.
     EmbeddedAttribute,
@@ -41,11 +37,9 @@ impl AttributeTemplate {
         safety: Safety,
         name: impl std::fmt::Display,
     ) -> Vec<String> {
-        let (start, macro_call, end) = match style {
-            AttrSuggestionStyle::Attribute(AttrStyle::Outer) => ("#[", "", "]"),
-            AttrSuggestionStyle::Attribute(AttrStyle::Inner) => ("#![", "", "]"),
-            AttrSuggestionStyle::Macro => ("", "!", ""),
-            AttrSuggestionStyle::EmbeddedAttribute => ("", "", ""),
+        let macro_call = match style {
+            AttrSuggestionStyle::Macro => "!",
+            AttrSuggestionStyle::EmbeddedAttribute => "",
         };
 
         let mut suggestions = vec![];
@@ -57,25 +51,20 @@ impl AttributeTemplate {
 
         if self.word {
             debug_assert!(macro_call.is_empty(), "Macro suggestions use list style");
-            suggestions.push(format!("{start}{safety_start}{name}{safety_end}{end}"));
+            suggestions.push(format!("{safety_start}{name}{safety_end}"));
         }
         if let Some(descr) = self.list {
             for descr in descr {
-                suggestions.push(format!(
-                    "{start}{safety_start}{name}{macro_call}({descr}){safety_end}{end}"
-                ));
+                suggestions.push(format!("{safety_start}{name}{macro_call}({descr}){safety_end}"));
             }
         }
         suggestions.extend(
-            self.one_of
-                .iter()
-                .map(|&word| format!("{start}{safety_start}{name}({word}){safety_end}{end}")),
+            self.one_of.iter().map(|&word| format!("{safety_start}{name}({word}){safety_end}")),
         );
         if let Some(descr) = self.name_value_str {
             debug_assert!(macro_call.is_empty(), "Macro suggestions use list style");
             for descr in descr {
-                suggestions
-                    .push(format!("{start}{safety_start}{name} = \"{descr}\"{safety_end}{end}"));
+                suggestions.push(format!("{safety_start}{name} = \"{descr}\"{safety_end}"));
             }
         }
         suggestions.sort();
