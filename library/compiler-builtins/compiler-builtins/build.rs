@@ -153,6 +153,7 @@ mod c {
     use std::fs::{self, File};
     use std::io::Write;
     use std::path::{Path, PathBuf};
+    use ar_archive_writer::{ArchiveKind, NewArchiveMember, write_archive_to_stream, DEFAULT_OBJECT_READER};
 
     use super::Config;
 
@@ -558,13 +559,53 @@ mod c {
             sources.extend(&[("__aarch64_have_lse_atomics", cpu_model_src)]);
         }
 
+        let is_clang_cl = build.get_compiler().is_like_clang_cl();
+
         let mut added_sources = HashSet::new();
+        let mut msvc_objs: Vec<(String, PathBuf)> = Vec::new();
+
         for (sym, src) in sources.map.iter() {
             let src = src_dir.join(src);
+
             if !link_against_prebuilt_rt && added_sources.insert(src.clone()) {
+                if cfg.target_env == "msvc" {
+                let stem = src.file_stem().unwrap().to_string_lossy().into_owned();
+
+                let mut per_file_build = build.clone();
+                per_file_build.file(&src);
+
+                if is_clang_cl {
+                    per_file_build.flag("-Xclang");
+                    per_file_build.flag(&format!("-object-file-name={stem}.obj"));
+
+                    per_file_build.flag("-gno-codeview-command-line");
+
+                    if let Some(maps) = env::var_os("RUSTC_DEBUGINFO_MAP")
+                        && let Some(maps_str) = maps.to_str()
+                    {
+                        for map in maps_str.split('\t').filter(|map| !map.is_empty()) {
+                            per_file_build.flag("-Xclang");
+                            per_file_build.flag(&format!("-fdebug-prefix-map={map}"));
+
+                            // __FILE__ and other predefined source-path macros.
+                            per_file_build.flag("-Xclang");
+                            per_file_build.flag(&format!("-fmacro-prefix-map={map}"));
+                        }
+                    }
+                }
+
+                let compiled = per_file_build.compile_intermediates();
+
+                for obj in compiled {
+                    msvc_objs.push((format!("{stem}.obj"), obj));
+                }
+            } else {
                 build.file(&src);
+            }
+
                 println!("cargo:rerun-if-changed={}", src.display());
             }
+
             println!("cargo:rustc-cfg={}=\"optimized-c\"", sym);
         }
 
@@ -585,6 +626,12 @@ mod c {
                     lib.to_str().unwrap()
                 );
             }
+        } else if cfg.target_env == "msvc" {
+            let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
+            build_archive_with_bare_names(&msvc_objs, &out_dir.join("libcompiler-rt.a"));
+
+            println!("cargo:rustc-link-lib=static=compiler-rt");
+            println!("cargo:rustc-link-search=native={}", out_dir.display());
         } else {
             build.compile("libcompiler-rt.a");
         }
@@ -645,5 +692,31 @@ mod c {
                 }
             }
         }
+    }
+    fn build_archive_with_bare_names(objs: &[(String, PathBuf)], out_path: &Path) {
+    let target = env::var("TARGET").unwrap_or_default();
+    let kind = if target.contains("windows-msvc") { ArchiveKind::Coff } else { ArchiveKind::Gnu };
+    let is_ec = Some(target.starts_with("arm64ec"));
+
+    let mut objs = objs.to_vec();
+    objs.sort_by(|a, b| a.0.cmp(&b.0));  // sort by bare name now, not path
+
+    let members: Vec<NewArchiveMember> = objs
+        .iter()
+        .map(|(member_name, obj_path)| {
+            let buf = fs::read(obj_path).expect("failed to read object file");
+            NewArchiveMember {
+                buf: Box::new(buf),
+                object_reader: &DEFAULT_OBJECT_READER,
+                member_name: member_name.clone(),
+                mtime: 0, uid: 0, gid: 0, perms: 0o644,
+            }
+        })
+        .collect();
+
+        let file = File::create(out_path).expect("failed to create archive file");
+        let mut writer = std::io::BufWriter::new(file);
+        write_archive_to_stream(&mut writer, &members, kind, false, is_ec)
+            .expect("failed to write archive");
     }
 }
