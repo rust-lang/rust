@@ -237,6 +237,11 @@ fn option_fold() {
     // substituting a closure parameter is not safe when folds are nested
     let _ = (0..3).fold(0, |acc, x| opt.iter().fold(acc, |a, b| a + b) + x);
 
+    // an option fold nested in a standard fold is still linted when its init
+    // is a literal
+    let _ = (0..3).fold(0, |acc, x| opt.iter().fold(1, |a, b| a + b) + x);
+    //~^ unnecessary_fold
+
     // should NOT lint: substituting a call would re-evaluate it
     fn compute() -> i32 {
         42

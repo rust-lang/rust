@@ -1,5 +1,5 @@
 error: this `.fold` can be written more succinctly using another method
-  --> tests/ui/unnecessary_fold_nested.rs:13:24
+  --> tests/ui/unnecessary_fold_unfixable.rs:13:24
    |
 LL |     let _ = opt.iter().fold(0, |acc, x| opt2.iter().fold(acc, |a, b| a + b) + x);
    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

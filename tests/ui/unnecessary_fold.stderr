@@ -347,5 +347,17 @@ LL -     let _ = Some(1).into_iter().fold(5, |acc, x| acc - x);
 LL +     let _ = Some(1).map_or(5, |x| 5 - x);
    |
 
-error: aborting due to 48 previous errors
+error: this `.fold` can be written more succinctly using another method
+  --> tests/ui/unnecessary_fold.rs:242:48
+   |
+LL |     let _ = (0..3).fold(0, |acc, x| opt.iter().fold(1, |a, b| a + b) + x);
+   |                                                ^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try
+   |
+LL -     let _ = (0..3).fold(0, |acc, x| opt.iter().fold(1, |a, b| a + b) + x);
+LL +     let _ = (0..3).fold(0, |acc, x| opt.as_ref().map_or(1, |b| 1 + b) + x);
+   |
+
+error: aborting due to 49 previous errors
 
