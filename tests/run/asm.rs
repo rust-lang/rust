@@ -252,6 +252,22 @@ fn asm() {
         );
     }
 
+    // Make sure the input value from inout is assigned to the input value
+    unsafe {
+        // Use a very distinctive value unlikely to live in any register.
+        let input: u64 = 0x1234567890ABCDEF;
+        let mut output: u64;
+
+        asm!(
+            "push {1}",
+            "pop   {0}",
+            out(reg) output,
+            inout(reg) input => _,
+        );
+
+        assert_eq!(output, 0x1234567890ABCDEF);
+    }
+
     asm_goto_test(0);
 }
 

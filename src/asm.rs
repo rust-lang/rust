@@ -291,7 +291,9 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                         out_place,
                     });
 
-                    if !readwrite {
+                    if readwrite {
+                        self.llbb().add_assignment(None, tmp_var, in_value.immediate());
+                    } else {
                         let out_gcc_idx = outputs.len() - 1;
                         let constraint = Cow::Owned(out_gcc_idx.to_string());
 
