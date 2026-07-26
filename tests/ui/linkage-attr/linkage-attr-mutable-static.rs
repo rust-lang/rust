@@ -8,7 +8,8 @@
 fn main() {
     #[rustfmt::skip]
     extern "C" {
-        #[linkage = "extern_weak"] //~ ERROR extern mutable statics are not allowed with `#[linkage]`
+        #[linkage = "extern_weak"]
+        //~^ ERROR extern mutable statics are incompatible with the `linkage` attribute
         static mut EXTERN_WEAK: *const u8;
     }
 
