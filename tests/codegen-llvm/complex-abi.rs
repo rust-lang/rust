@@ -81,17 +81,17 @@
 //@ [MIPSEL] compile-flags: --target mipsel-unknown-linux-gnu
 //@ [MIPSEL] needs-llvm-components: mips
 
-// FIXME: the below revisions are deliberately disabled for now.
+//@ revisions: POWERPC POWERPC64LE POWERPC64 AIX
+//@ [POWERPC] compile-flags: --target powerpc-unknown-linux-gnu
+//@ [POWERPC] needs-llvm-components: powerpc
+//@ [POWERPC64LE] compile-flags: --target powerpc64le-unknown-linux-gnu
+//@ [POWERPC64LE] needs-llvm-components: powerpc
+//@ [POWERPC64] compile-flags: --target powerpc64-unknown-linux-gnu
+//@ [POWERPC64] needs-llvm-components: powerpc
+//@ [AIX] compile-flags: --target powerpc64-ibm-aix
+//@ [AIX] needs-llvm-components: powerpc
 
-// revisions: POWERPC POWERPC64LE POWERPC64 AIX
-// [POWERPC] compile-flags: --target powerpc-unknown-linux-gnu
-// [POWERPC] needs-llvm-components: powerpc
-// [POWERPC64LE] compile-flags: --target powerpc64le-unknown-linux-gnu
-// [POWERPC64LE] needs-llvm-components: powerpc
-// [POWERPC64] compile-flags: --target powerpc64-unknown-linux-gnu
-// [POWERPC64] needs-llvm-components: powerpc
-// [AIX] compile-flags: --target powerpc64-ibm-aix
-// [AIX] needs-llvm-components: powerpc
+// FIXME: the below revisions are deliberately disabled for now.
 
 // revisions: NVPTX
 // [NVPTX] compile-flags: --target nvptx64-nvidia-cuda
@@ -157,7 +157,7 @@ pub extern "C" fn cplx_f32(x: Complex<f32>) -> Complex<f32> {
     // NVPTX:          define{{.*}} { float, float } @cplx_f32(ptr {{.*}} byval({ float, float }) {{.*}})
     // POWERPC64:      define{{.*}} { float, float } @cplx_f32(float {{.*}}, float {{.*}})
     // POWERPC64LE:    define{{.*}} { float, float } @cplx_f32(float {{.*}}, float {{.*}})
-    // POWERPC:        define{{.*}} void @cplx_f32(ptr {{.*}} sret({ float, float }) {{.*}}, ptr {{.*}} byval({ float, float }) {{.*}})
+    // POWERPC:        define{{.*}} [2 x i32] @cplx_f32([2 x i32] {{.*}})
     // RISCV32:        define{{.*}} { float, float } @cplx_f32({ float, float } {{.*}})
     // RISCV64:        define{{.*}} { float, float } @cplx_f32({ float, float } {{.*}})
     // S390X:          define{{.*}} void @cplx_f32(ptr {{.*}} sret([8 x i8]) {{.*}}, ptr {{.*}})
@@ -193,7 +193,7 @@ pub extern "C" fn cplx_f64(x: Complex<f64>) -> Complex<f64> {
     // NVPTX:          define{{.*}} { double, double } @cplx_f64(ptr {{.*}} byval({ double, double }) {{.*}})
     // POWERPC64:      define{{.*}} { double, double } @cplx_f64(double {{.*}}, double {{.*}})
     // POWERPC64LE:    define{{.*}} { double, double } @cplx_f64(double {{.*}}, double {{.*}})
-    // POWERPC:        define{{.*}} void @cplx_f64(ptr {{.*}} sret({ double, double }) {{.*}}, ptr {{.*}} byval({ double, double }) {{.*}})
+    // POWERPC:        define{{.*}} [4 x i32] @cplx_f64([4 x i32] {{.*}})
     // RISCV32:        define{{.*}} { double, double } @cplx_f64({ double, double } {{.*}})
     // RISCV64:        define{{.*}} { double, double } @cplx_f64({ double, double } {{.*}})
     // S390X:          define{{.*}} void @cplx_f64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}})
@@ -246,7 +246,7 @@ pub extern "C" fn cplx_i8(x: Complex<i8>) -> Complex<i8> {
     // NVPTX:          define{{.*}} { i8, i8 } @cplx_i8(ptr {{.*}} byval({ i8, i8 }) {{.*}})
     // POWERPC64:      define{{.*}} { i8, i8 } @cplx_i8(i8 {{.*}}, i8 {{.*}})
     // POWERPC64LE:    define{{.*}} { i8, i8 } @cplx_i8(i8 {{.*}}, i8 {{.*}})
-    // POWERPC:        define{{.*}} void @cplx_i8(ptr {{.*}} sret({ i8, i8 }) {{.*}}, ptr {{.*}} byval({ i8, i8 }) {{.*}})
+    // POWERPC:        define{{.*}} i16 @cplx_i8(i16 {{.*}})
     // RISCV32:        define{{.*}} i32 @cplx_i8(i32{{.*}})
     // RISCV64:        define{{.*}} i64 @cplx_i8(i64{{.*}})
     // S390X:          define{{.*}} void @cplx_i8(ptr {{.*}} sret([2 x i8]) {{.*}}, ptr {{.*}})
@@ -282,7 +282,7 @@ pub extern "C" fn cplx_i16(x: Complex<i16>) -> Complex<i16> {
     // NVPTX:          define{{.*}} { i16, i16 } @cplx_i16(ptr {{.*}} byval({ i16, i16 }) {{.*}})
     // POWERPC64:      define{{.*}} { i16, i16 } @cplx_i16(i16 {{.*}}, i16 {{.*}})
     // POWERPC64LE:    define{{.*}} { i16, i16 } @cplx_i16(i16 {{.*}}, i16 {{.*}})
-    // POWERPC:        define{{.*}} void @cplx_i16(ptr {{.*}} sret({ i16, i16 }) {{.*}}, ptr {{.*}} byval({ i16, i16 }) {{.*}})
+    // POWERPC:        define{{.*}} i32 @cplx_i16(i32 {{.*}})
     // RISCV32:        define{{.*}} i32 @cplx_i16(i32 {{.*}})
     // RISCV64:        define{{.*}} i64 @cplx_i16(i64{{.*}})
     // S390X:          define{{.*}} void @cplx_i16(ptr {{.*}} sret([4 x i8]) {{.*}}, ptr {{.*}})
@@ -318,7 +318,7 @@ pub extern "C" fn cplx_i32(x: Complex<i32>) -> Complex<i32> {
     // NVPTX:          define{{.*}} { i32, i32 } @cplx_i32(ptr {{.*}} byval({ i32, i32 }) {{.*}})
     // POWERPC64:      define{{.*}} { i32, i32 } @cplx_i32(i32 {{.*}}, i32 {{.*}})
     // POWERPC64LE:    define{{.*}} { i32, i32 } @cplx_i32(i32 {{.*}}, i32 {{.*}})
-    // POWERPC:        define{{.*}} void @cplx_i32(ptr {{.*}} sret({ i32, i32 }) {{.*}}, ptr {{.*}} byval({ i32, i32 }) {{.*}})
+    // POWERPC:        define{{.*}} [2 x i32] @cplx_i32([2 x i32] {{.*}})
     // RISCV32:        define{{.*}} [2 x i32] @cplx_i32([2 x i32] {{.*}})
     // RISCV64:        define{{.*}} i64 @cplx_i32(i64 {{.*}})
     // S390X:          define{{.*}} void @cplx_i32(ptr {{.*}} sret([8 x i8]) {{.*}}, ptr {{.*}})
@@ -354,7 +354,7 @@ pub extern "C" fn cplx_i64(x: Complex<i64>) -> Complex<i64> {
     // NVPTX:          define{{.*}} { i64, i64 } @cplx_i64(ptr {{.*}} byval({ i64, i64 }) {{.*}})
     // POWERPC64:      define{{.*}} { i64, i64 } @cplx_i64(i64 {{.*}}, i64 {{.*}})
     // POWERPC64LE:    define{{.*}} { i64, i64 } @cplx_i64(i64 {{.*}}, i64 {{.*}})
-    // POWERPC:        define{{.*}} void @cplx_i64(ptr {{.*}} sret({ i64, i64 }) {{.*}}, ptr {{.*}} byval({ i64, i64 }) {{.*}})
+    // POWERPC:        define{{.*}} [4 x i32] @cplx_i64([4 x i32] {{.*}})
     // RISCV32:        define{{.*}} void @cplx_i64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}})
     // RISCV64:        define{{.*}} [2 x i64] @cplx_i64([2 x i64] {{.*}})
     // S390X:          define{{.*}} void @cplx_i64(ptr {{.*}} sret([16 x i8]) {{.*}}, ptr {{.*}})

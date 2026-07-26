@@ -1,10 +1,25 @@
-use rustc_abi::TyAbiInterface;
+use rustc_abi::{Reg, RegKind, TyAbiInterface};
 
-use crate::callconv::{ArgAbi, FnAbi};
+use crate::callconv::{ArgAbi, FnAbi, Uniform};
 use crate::spec::{Env, HasTargetSpec, Os};
 
-fn classify_ret<Ty>(ret: &mut ArgAbi<'_, Ty>) {
-    if ret.layout.is_aggregate() {
+fn classify_complex<Ty>(arg: &mut ArgAbi<'_, Ty>) {
+    // NOTE: we follow GCC, not Clang here, see https://github.com/llvm/llvm-project/pull/208917.
+    let size = arg.layout.size;
+    if size.bytes() <= 4 {
+        arg.cast_to(Reg { kind: RegKind::Integer, size });
+    } else {
+        arg.cast_to(Uniform::new(Reg::i32(), size));
+    }
+}
+
+fn classify_ret<'a, Ty, C>(_cx: &C, ret: &mut ArgAbi<'a, Ty>)
+where
+    Ty: TyAbiInterface<'a, C> + Copy,
+{
+    if ret.layout.is_complex() {
+        classify_complex(ret);
+    } else if ret.layout.is_aggregate() {
         ret.make_indirect();
     } else {
         ret.extend_integer_width_to(32);
@@ -25,7 +40,11 @@ where
         }
         return;
     }
-    if arg.layout.pass_indirectly_in_non_rustic_abis(cx) || arg.layout.is_aggregate() {
+    if arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
+        arg.make_indirect();
+    } else if arg.layout.is_complex() {
+        classify_complex(arg);
+    } else if arg.layout.is_aggregate() {
         arg.make_indirect();
     } else {
         arg.extend_integer_width_to(32);
@@ -37,7 +56,7 @@ where
     Ty: TyAbiInterface<'a, C> + Copy,
 {
     if !fn_abi.ret.is_ignore() {
-        classify_ret(&mut fn_abi.ret);
+        classify_ret(cx, &mut fn_abi.ret);
     }
 
     for arg in fn_abi.args.iter_mut() {
