@@ -5,6 +5,7 @@ import datetime
 import hashlib
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -1204,7 +1205,7 @@ class RustBuild(object):
         elif self.color == "never":
             args.append("--color=never")
         try:
-            args += env["CARGOFLAGS"].split()
+            args += shlex.split(env["CARGOFLAGS"])
         except KeyError:
             pass
 
