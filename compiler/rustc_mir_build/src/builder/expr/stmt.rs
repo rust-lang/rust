@@ -1,10 +1,11 @@
+use rustc_data_structures::thin_vec::ThinVec;
 use rustc_middle::middle::region::{self, TempLifetime};
 use rustc_middle::mir::*;
 use rustc_middle::span_bug;
 use rustc_middle::thir::*;
 use rustc_span::Spanned;
 use tracing::debug;
-use rustc_data_structures::thin_vec::ThinVec;
+
 use crate::builder::scope::{BreakableTarget, LintLevel};
 use crate::builder::{BlockAnd, BlockAndExtension, BlockFrame, Builder};
 
