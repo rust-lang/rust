@@ -3,6 +3,7 @@ use std::{env, process};
 mod abi_test;
 mod build;
 mod clean;
+mod clippy;
 mod clone_gcc;
 mod config;
 mod fmt;
@@ -75,6 +76,7 @@ Commands:",
 commands_decl! {
     Cargo: "cargo" => "Executes a cargo command",
     Clean: "clean" => "Cleans the build directory, removing all compiled files and artifacts",
+    Clippy: "clippy" => "Runs clippy",
     CloneGcc: "clone-gcc" => "Clones the GCC compiler from a specified source",
     Prepare: "prepare" => "Prepares the environment for building, including fetching dependencies and setting up configurations",
     Build: "build" => "Compiles the project",
@@ -106,6 +108,7 @@ fn main() {
         Command::Fmt => fmt::run(),
         Command::Fuzz => fuzz::run(),
         Command::AbiTest => abi_test::run(),
+        Command::Clippy => clippy::run(),
         Command::CheckTodo => todo::run(),
     } {
         eprintln!("Command failed to run: {e}");
