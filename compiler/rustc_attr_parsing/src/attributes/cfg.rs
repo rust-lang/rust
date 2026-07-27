@@ -318,7 +318,7 @@ pub fn parse_cfg_attr(
     sess: &Session,
     features: Option<&Features>,
     lint_node_id: ast::NodeId,
-) -> Option<(CfgEntry, Vec<(WithTokens<AttrItem>, Span)>)> {
+) -> Option<(CfgEntry, Vec<WithTokens<AttrItem>>)> {
     let item = cfg_attr.get_normal_item();
     match &item.args {
         ast::AttrArgs::Delimited(ast::DelimArgs { dspan, delim, tokens }) if !tokens.is_empty() => {
@@ -392,7 +392,7 @@ fn parse_cfg_attr_internal<'a>(
     features: Option<&Features>,
     lint_node_id: ast::NodeId,
     attribute: &Attribute,
-) -> PResult<'a, (CfgEntry, Vec<(WithTokens<ast::AttrItem>, Span)>)> {
+) -> PResult<'a, (CfgEntry, Vec<WithTokens<ast::AttrItem>>)> {
     // Parse cfg predicate
     let pred_start = parser.token.span;
     let meta = MetaItemOrLitParser::parse_single(
@@ -435,9 +435,8 @@ fn parse_cfg_attr_internal<'a>(
     // Presumably, the majority of the time there will only be one attr.
     let mut expanded_attrs = Vec::with_capacity(1);
     while parser.token != token::Eof {
-        let lo = parser.token.span;
         let item = parser.parse_attr_item(ForceCollect::Yes)?;
-        expanded_attrs.push((item, lo.to(parser.prev_token.span)));
+        expanded_attrs.push(item);
         if !parser.eat(exp!(Comma)) {
             break;
         }

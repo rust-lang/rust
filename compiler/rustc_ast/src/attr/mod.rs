@@ -787,7 +787,7 @@ pub fn mk_attr_word(g: &AttrIdGenerator, style: AttrStyle, name: Symbol, span: S
 
     mk_attr_from_item(
         g,
-        AttrItem { unsafety: Safety::Default, path, args, span },
+        AttrItem { unsafety: Safety::Default, path, args, span, from_cfg_attr: false },
         tokens,
         style,
         span,
@@ -834,7 +834,7 @@ pub fn mk_attr_nested_word(
 
     mk_attr_from_item(
         g,
-        AttrItem { unsafety: Safety::Default, path, args: attr_args, span },
+        AttrItem { unsafety: Safety::Default, path, args: attr_args, span, from_cfg_attr: false },
         tokens,
         style,
         span,
@@ -876,7 +876,7 @@ pub fn mk_attr_name_value_str(
 
     mk_attr_from_item(
         g,
-        AttrItem { unsafety: Safety::Default, path, args, span },
+        AttrItem { unsafety: Safety::Default, path, args, span, from_cfg_attr: false },
         tokens,
         style,
         span,

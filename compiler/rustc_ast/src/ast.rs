@@ -3433,7 +3433,7 @@ pub struct Attribute {
     /// or the construct this attribute is contained within (inner).
     pub style: AttrStyle,
 
-    /// The carets in the examples below show the spans for various cases.
+    /// The span covers the full attribute, as shown by the carets in the following examples.
     /// ```text
     /// #[foo]                  - A vanilla parsed attribute.
     /// ^^^^^^                  - Its span covers it all.
@@ -3447,8 +3447,10 @@ pub struct Attribute {
     ///
     /// #[cfg_attr(pred, foo)]  - A parsed `cfg_attr` attribute.
     /// ^^^^^^^^^^^^^^^^^^^^^^  - Its span covers it all.
-    ///                  ^^^    - Span of the new replacement attribute (equivalent to `#[foo]`)
-    ///                           created by `cfg_attr` expansion (if `pred` is true).
+    /// ^^^^^^^^^^^^^^^^^^^^^^  - Span of the new replacement attribute (equivalent to `#[foo]`)
+    ///                           created by `cfg_attr` expansion (if `pred` is true). If multiple
+    ///                           attributes are expanded (e.g. `#[cfg_attr(p, a, b)]` ->
+    ///                           `#[a] #[b]`) they all get the same span.
     /// ^^^^^^^^^^^^^^^^^^^^^^  - Span of the synthetic `CfgAttrTrace` attribute created by
     ///                           `cfg_attr` expansion. (`CfgTrace` is derived from `#[cfg(..)]` and
     ///                           handled similarly.)
@@ -3488,6 +3490,7 @@ impl NormalAttr {
                 path: Path::from_ident(ident),
                 args: AttrArgs::Empty,
                 span: ident.span,
+                from_cfg_attr: false,
             },
             tokens: None,
         }
@@ -3499,15 +3502,22 @@ pub struct AttrItem {
     pub unsafety: Safety,
     pub path: Path,
     pub args: AttrArgs,
-    /// The span of the entire attr item. For parse attrs this excludes `#[`/`]`. E.g.:
+    /// The span of the entire attr item. For parsed attrs this excludes `#[`/`]`. E.g.:
     /// ```ignore (illustrative)
     /// #[foo(bar)]
     ///   ^^^^^^^^
     /// #[unsafe(no_mangle)]
     ///   ^^^^^^^^^^^^^^^^^
     /// ```
+    /// For attributes created by expanding `cfg_attr` this is just the embedded attribute. E.g.:
+    /// ```ignore (illustrative)
+    /// #[cfg_attr(pred, foo)]
+    ///                  ^^^
+    /// ```
     /// For internally constructed spans (`mk_attr_*`) the exact meaning may differ.
     pub span: Span,
+    /// Was this created by expanding a `#[cfg_attr(pred, foo)]` attribute?
+    pub from_cfg_attr: bool,
 }
 
 /// A synthetic attribute.

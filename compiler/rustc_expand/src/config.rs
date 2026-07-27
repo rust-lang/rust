@@ -29,7 +29,7 @@ use rustc_hir::{
 use rustc_parse::parser::Recovery;
 use rustc_session::Session;
 use rustc_session::diagnostics::feature_err;
-use rustc_span::{STDLIB_STABLE_CRATES, Span, Symbol, sym};
+use rustc_span::{STDLIB_STABLE_CRATES, Symbol, sym};
 use tracing::instrument;
 
 use crate::diagnostics::{
@@ -301,7 +301,7 @@ impl<'a> StripUnconfigured<'a> {
     fn expand_cfg_attr_item(
         &self,
         cfg_attr: &Attribute,
-        (attr_item, attr_item_span): (WithTokens<ast::AttrItem>, Span),
+        mut attr_item: WithTokens<ast::AttrItem>,
     ) -> Attribute {
         // Convert `#[cfg_attr(pred, attr)]` to `#[attr]`.
 
@@ -345,6 +345,7 @@ impl<'a> StripUnconfigured<'a> {
                 .to_attr_token_stream(),
         ));
 
+        attr_item.node.from_cfg_attr = true;
         let attr_item_path_span = attr_item.node.path.span;
         let attr_tokens = Some(LazyAttrTokenStream::new_direct(AttrTokenStream::new(trees)));
         let attr = ast::attr::mk_attr_from_item(
@@ -352,7 +353,7 @@ impl<'a> StripUnconfigured<'a> {
             attr_item.node,
             attr_tokens,
             cfg_attr.style,
-            attr_item_span,
+            cfg_attr.span,
         );
         if attr.has_name(sym::crate_type) {
             self.sess.dcx().emit_err(CrateTypeInCfgAttr { span: attr_item_path_span });

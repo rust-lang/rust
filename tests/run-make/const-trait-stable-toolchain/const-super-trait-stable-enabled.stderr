@@ -11,10 +11,10 @@ note: this trait is not `const`, so it cannot have `[const]` trait bounds
   | ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0554]: `#![feature]` may not be used on the NIGHTLY release channel
- --> const-super-trait.rs:1:30
+ --> const-super-trait.rs:1:1
   |
 1 | #![cfg_attr(feature_enabled, feature(const_trait_impl))]
-  |                              ^^^^^^^^^^^^^^^^^^^^^^^^^
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `[const]` can only be applied to `const` traits
  --> const-super-trait.rs:7:12

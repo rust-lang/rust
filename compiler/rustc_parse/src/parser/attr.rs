@@ -346,7 +346,7 @@ impl<'a> Parser<'a> {
             }
             let span = lo.to(this.prev_token.span);
             Ok((
-                WithTokens::new(ast::AttrItem { unsafety, path, args, span }),
+                WithTokens::new(ast::AttrItem { unsafety, path, args, span, from_cfg_attr: false }),
                 Trailing::No,
                 UsePreAttrPos::No,
             ))

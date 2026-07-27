@@ -116,6 +116,7 @@ pub(crate) fn expand_kernel(
         path: ast::Path::from_ident(Ident::new(sym::no_mangle, span)),
         args: ast::AttrArgs::Empty,
         span,
+        from_cfg_attr: false,
     };
 
     let no_mangle_attr = Box::new(ast::NormalAttr { item: unsafe_item, tokens: None });
@@ -181,6 +182,7 @@ pub(crate) fn expand_kernel(
         path: ast::Path::from_ident(Ident::with_dummy_span(sym::inline)),
         args: ast::AttrArgs::Delimited(never_arg),
         span: DUMMY_SP,
+        from_cfg_attr: false,
     };
     let inline_never_attr = Box::new(ast::NormalAttr { item: inline_item, tokens: None });
 

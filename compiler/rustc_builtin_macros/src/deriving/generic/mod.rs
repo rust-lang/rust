@@ -826,6 +826,7 @@ impl<'a> TraitDef<'a> {
                             .collect(),
                         }),
                         span: self.span,
+                        from_cfg_attr: false,
                     },
                     self.span,
                 ),

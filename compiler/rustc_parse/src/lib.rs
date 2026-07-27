@@ -316,6 +316,14 @@ fn fake_token_stream_for_file_mod(
     let attr = attr_to_exclude.expect("file modules must have an attribute to exclude");
     assert_eq!(attr.style, ast::AttrStyle::Inner);
 
+    // If `attr` is from a `cfg_attr`, cutting it out via `attr.span` will also cut out any sibling
+    // attrs expanded from the same `cfg_attr`. Bail out because that would be invalid. (It's also
+    // conceptually reasonable because once `cfg_attr` is involved the AST no longer exactly
+    // matches the original source code.)
+    if attr.get_normal_item().from_cfg_attr {
+        return None;
+    }
+
     let mut body_tts = Vec::new();
     body_tts.extend(lex_token_trees_for_span(psess, spans.inner_span.until(attr.span))?);
     body_tts.extend(lex_token_trees_for_span(

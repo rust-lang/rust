@@ -375,7 +375,6 @@ pub struct AcceptContext<'f, 'sess> {
     /// #[attribute(...)]
     /// ^^^^^^^^^^^^^^^^^ outer span
     /// ```
-    /// For attributes in `cfg_attr`, the outer span and inner spans are equal.
     pub(crate) attr_span: Span,
     /// The inner span of the attribute currently being parsed.
     ///
@@ -1135,6 +1134,7 @@ impl<'a, 'f, 'sess: 'f> AttributeDiagnosticContext<'a, 'f, 'sess> {
     pub(crate) fn suggestions(&self) -> Vec<String> {
         self.template.suggestions(self.parsed_description, self.attr_safety, &self.attr_path)
     }
+
     /// Error that a string literal was expected.
     /// You can optionally give the literal you did find (which you found not to be a string literal)
     /// which can make better errors. For example, if the literal was a byte string it will suggest
