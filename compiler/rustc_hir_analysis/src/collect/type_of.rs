@@ -429,7 +429,7 @@ fn path_const_arg_anon_type_of<'tcx>(
     arg_hir_id: HirId,
 ) -> Option<Ty<'tcx>> {
     if let hir::QPath::Resolved(None, path) = qpath {
-        let [segment] = path.segments else { return None };
+        let segment = path.segments.last()?;
         let hir::def::Res::Def(hir::def::DefKind::Fn, def_id) = segment.res else {
             return None;
         };
