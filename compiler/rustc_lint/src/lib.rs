@@ -222,6 +222,7 @@ late_lint_methods!(
             AsmLabels: AsmLabels,
             AsyncClosureUsage: AsyncClosureUsage,
             AsyncFnInTrait: AsyncFnInTrait,
+            CVoidReferences: CVoidReferences,
             CVoidReturns: CVoidReturns,
             CheckTransmutes: CheckTransmutes,
             DanglingPointers: DanglingPointers,
