@@ -4639,7 +4639,7 @@ pub struct StdSemverCheck {
     commit: String,
 }
 
-impl Step for StdSemverCheck {
+impl CommandLineStep for StdSemverCheck {
     type Output = ();
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
