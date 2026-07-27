@@ -1,3 +1,6 @@
+//@revisions: current next
+//@[next] compile-flags: -Znext-solver=globally
+
 #![warn(clippy::future_not_send)]
 
 use std::cell::Cell;
