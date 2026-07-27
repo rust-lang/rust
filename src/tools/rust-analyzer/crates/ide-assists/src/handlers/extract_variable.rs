@@ -530,7 +530,7 @@ impl Anchor {
     }
 }
 
-fn like_const_value(ctx: &AssistContext<'_, '_>, path_resolution: hir::PathResolution) -> bool {
+fn like_const_value(ctx: &AssistContext<'_, '_>, path_resolution: hir::PathResolution<'_>) -> bool {
     let db = ctx.db();
     let adt_like_const_value = |adt: Option<hir::Adt>| matches!(adt, Some(hir::Adt::Struct(s)) if s.kind(db) == hir::StructKind::Unit);
     match path_resolution {

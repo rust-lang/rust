@@ -41,7 +41,6 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "Alias",
@@ -76,7 +75,6 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "B",
@@ -113,7 +111,6 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "CONST",
@@ -148,7 +145,6 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "CONST_WITH_INNER",
@@ -183,7 +179,6 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "Enum",
@@ -220,7 +215,6 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "ItemLikeMacro",
@@ -257,7 +251,6 @@
                 is_assoc: false,
                 is_import: true,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "Macro",
@@ -294,7 +287,6 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "STATIC",
@@ -329,7 +321,6 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "Struct",
@@ -366,7 +357,6 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "StructFromMacro",
@@ -403,7 +393,6 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "StructInFn",
@@ -442,7 +431,6 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "StructInNamedConst",
@@ -481,7 +469,6 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "StructInUnnamedConst",
@@ -518,7 +505,6 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "StructT",
@@ -555,7 +541,6 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "Trait",
@@ -590,7 +575,6 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "Trait",
@@ -627,7 +611,6 @@
                 is_assoc: false,
                 is_import: true,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "Union",
@@ -664,7 +647,6 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "a_mod",
@@ -699,7 +681,6 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "b_mod",
@@ -734,7 +715,6 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "define_struct",
@@ -771,7 +751,6 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "generic_impl_fn",
@@ -808,7 +787,6 @@
                 is_assoc: true,
                 is_import: false,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "impl_fn",
@@ -845,7 +823,6 @@
                 is_assoc: true,
                 is_import: false,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "macro_rules_macro",
@@ -882,7 +859,6 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "main",
@@ -917,7 +893,6 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "really_define_struct",
@@ -954,7 +929,6 @@
                 is_assoc: false,
                 is_import: true,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "trait_fn",
@@ -991,7 +965,6 @@
                 is_assoc: true,
                 is_import: false,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
         ],
     ),
@@ -1037,7 +1010,6 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
         ],
     ),
@@ -1081,7 +1053,6 @@
                 is_assoc: false,
                 is_import: true,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "IsThisJustATrait",
@@ -1118,7 +1089,6 @@
                 is_assoc: false,
                 is_import: true,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "StructInModB",
@@ -1155,7 +1125,6 @@
                 is_assoc: false,
                 is_import: false,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "SuperItemLikeMacro",
@@ -1192,7 +1161,6 @@
                 is_assoc: false,
                 is_import: true,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
             FileSymbol {
                 name: "ThisStruct",
@@ -1229,7 +1197,6 @@
                 is_assoc: false,
                 is_import: true,
                 do_not_complete: Yes,
-                _marker: PhantomData<&()>,
             },
         ],
     ),

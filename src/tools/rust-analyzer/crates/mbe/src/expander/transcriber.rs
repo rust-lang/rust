@@ -275,7 +275,7 @@ fn expand_subtree(
                     }
                 }
 
-                let res = count(binding, 0, depth.unwrap_or(0));
+                let res = count(binding, 0, *depth);
 
                 builder.push(tt::Leaf::Literal(tt::Literal {
                     text_and_suffix: sym::Integer::get(res),

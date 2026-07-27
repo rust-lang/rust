@@ -838,4 +838,15 @@ use foo::$0;
 ",
         );
     }
+
+    #[test]
+    fn test_merge_with_malformed_colon_path_segment() {
+        check_assist_not_applicable(
+            merge_imports,
+            r"
+use foo::bar;
+use foo::$0:;
+",
+        );
+    }
 }

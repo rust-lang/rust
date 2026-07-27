@@ -407,6 +407,10 @@ fn find_in_sysroot<'db>(
         if matches!(best_choice, Some(Choice { stability: Stable, .. })) {
             return;
         }
+        search(LangCrateOrigin::Alloc, best_choice);
+        if matches!(best_choice, Some(Choice { stability: Stable, .. })) {
+            return;
+        }
         search(LangCrateOrigin::Std, best_choice);
         if matches!(best_choice, Some(Choice { stability: Stable, .. })) {
             return;
@@ -417,6 +421,10 @@ fn find_in_sysroot<'db>(
             return;
         }
         search(LangCrateOrigin::Core, best_choice);
+        if matches!(best_choice, Some(Choice { stability: Stable, .. })) {
+            return;
+        }
+        search(LangCrateOrigin::Alloc, best_choice);
         if matches!(best_choice, Some(Choice { stability: Stable, .. })) {
             return;
         }
@@ -1559,6 +1567,43 @@ pub mod fmt {
 #![no_std]
 
 extern crate alloc;
+
+$0
+
+//- /std.rs crate:std deps:alloc
+
+pub mod sync {
+    pub use alloc::sync::Arc;
+}
+
+//- /zzz.rs crate:alloc
+
+pub mod sync {
+    pub struct Arc;
+}
+            "#,
+            "alloc::sync::Arc",
+            expect![[r#"
+                Plain  (imports ✔): alloc::sync::Arc
+                Plain  (imports ✖): alloc::sync::Arc
+                ByCrate(imports ✔): alloc::sync::Arc
+                ByCrate(imports ✖): alloc::sync::Arc
+                BySelf (imports ✔): alloc::sync::Arc
+                BySelf (imports ✖): alloc::sync::Arc
+            "#]],
+        );
+    }
+
+    #[test]
+    fn prefer_alloc_paths_over_std_with_extern_crate_std() {
+        check_found_path(
+            r#"
+//- /main.rs crate:main deps:alloc,std
+#![no_std]
+
+extern crate alloc;
+
+extern crate std;
 
 $0
 

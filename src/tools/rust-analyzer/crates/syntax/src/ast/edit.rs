@@ -200,7 +200,7 @@ impl ast::IdentPat {
                     if let Some(last) =
                         self.syntax().last_token().filter(|it| it.kind() == WHITESPACE)
                     {
-                        last.detach();
+                        editor.delete(last);
                     }
                 }
             }

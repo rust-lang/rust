@@ -220,13 +220,10 @@ impl GenericParamsCollector {
         );
         let predicate = match (target, bound) {
             (_, TypeBound::Error | TypeBound::Use(_)) => return,
-            (Either::Left(type_ref), bound) => match hrtb_lifetimes {
-                Some(hrtb_lifetimes) => WherePredicate::ForLifetime {
-                    lifetimes: ThinVec::from_iter(hrtb_lifetimes.iter().cloned()),
-                    target: type_ref,
-                    bound,
-                },
-                None => WherePredicate::TypeBound { target: type_ref, bound },
+            (Either::Left(type_ref), bound) => WherePredicate::TypeBound {
+                lifetimes: hrtb_lifetimes.map(|h| ThinVec::from_iter(h.iter().cloned())),
+                target: type_ref,
+                bound,
             },
             (Either::Right(lifetime), TypeBound::Lifetime(bound)) => {
                 WherePredicate::Lifetime { target: lifetime, bound }
@@ -257,8 +254,11 @@ impl GenericParamsCollector {
             }));
             let type_ref = ec.alloc_type_ref(param_id, ptr);
             for bound in impl_trait_bounds {
-                where_predicates
-                    .push(WherePredicate::TypeBound { target: type_ref, bound: bound.clone() });
+                where_predicates.push(WherePredicate::TypeBound {
+                    lifetimes: None,
+                    target: type_ref,
+                    bound: bound.clone(),
+                });
             }
             type_ref
         }

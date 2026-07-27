@@ -901,3 +901,19 @@ fn example() -> Struct {
     "#,
     );
 }
+
+#[test]
+fn never_await() {
+    check_no_mismatches(
+        r#"
+//- minicore: future
+async fn test() -> ! {
+    loop {}
+}
+
+pub async fn test1() -> ! {
+    test().await;
+}
+    "#,
+    );
+}

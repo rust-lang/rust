@@ -47,7 +47,7 @@ use hir_def::{
     TupleFieldId, TupleId, VariantId,
     attrs::AttrFlags,
     expr_store::{Body, ExpressionStore, HygieneId, body::Param, path::Path},
-    hir::{BindingId, ExprId, ExprOrPatId, LabelId, PatId},
+    hir::{BindingId, ExprId, ExprOrPatId, ExprOrPatIdPacked, LabelId, PatId},
     lang_item::LangItems,
     layout::Integer,
     resolver::{HasResolver, ResolveValueResult, Resolver, TypeNs, ValueNs},
@@ -65,6 +65,7 @@ use rustc_type_ir::{
     AliasTyKind, TypeFoldable, TypeVisitableExt,
     inherent::{GenericArgs as _, IntoKind, Ty as _},
 };
+use salsa::Update;
 use smallvec::SmallVec;
 use span::Edition;
 use stdx::never;
@@ -118,7 +119,7 @@ pub use unify::{could_unify, could_unify_deeply};
 use cast::{CastCheck, CastError};
 
 /// The entry point of type inference.
-fn infer_query(db: &dyn HirDatabase, def: DefWithBodyId) -> InferenceResult {
+fn infer_query<'db>(db: &'db dyn HirDatabase, def: DefWithBodyId) -> InferenceResult<'db> {
     infer_query_with_inspect(db, def, None, LoweringMode::Analysis)
 }
 
@@ -127,7 +128,7 @@ pub fn infer_query_with_inspect<'db>(
     def: DefWithBodyId,
     inspect: Option<ObligationInspector<'db>>,
     lowering_mode: LoweringMode,
-) -> InferenceResult {
+) -> InferenceResult<'db> {
     let _p = tracing::info_span!("infer_query").entered();
     let resolver = def.resolver(db);
     let body = Body::of(db, def);
@@ -185,7 +186,11 @@ pub fn infer_query_with_inspect<'db>(
     infer_finalize(ctx)
 }
 
-fn infer_cycle_result(db: &dyn HirDatabase, _: salsa::Id, _: DefWithBodyId) -> InferenceResult {
+fn infer_cycle_result<'db>(
+    db: &'db dyn HirDatabase,
+    _: salsa::Id,
+    _: DefWithBodyId,
+) -> InferenceResult<'db> {
     InferenceResult {
         has_errors: true,
         ..InferenceResult::new(Ty::new_error(DbInterner::new_no_crate(db), ErrorGuaranteed))
@@ -193,7 +198,10 @@ fn infer_cycle_result(db: &dyn HirDatabase, _: salsa::Id, _: DefWithBodyId) -> I
 }
 
 /// Infer types for an anonymous const expression.
-fn infer_anon_const_query(db: &dyn HirDatabase, def: AnonConstId) -> InferenceResult {
+fn infer_anon_const_query<'db>(
+    db: &'db dyn HirDatabase,
+    def: AnonConstId<'db>,
+) -> InferenceResult<'db> {
     let _p = tracing::info_span!("infer_anon_const_query").entered();
     let loc = def.loc(db);
     let store_owner = loc.owner;
@@ -221,18 +229,18 @@ fn infer_anon_const_query(db: &dyn HirDatabase, def: AnonConstId) -> InferenceRe
     infer_finalize(ctx)
 }
 
-fn infer_anon_const_cycle_result(
-    db: &dyn HirDatabase,
+fn infer_anon_const_cycle_result<'db>(
+    db: &'db dyn HirDatabase,
     _: salsa::Id,
-    _: AnonConstId,
-) -> InferenceResult {
+    _: AnonConstId<'db>,
+) -> InferenceResult<'db> {
     InferenceResult {
         has_errors: true,
         ..InferenceResult::new(Ty::new_error(DbInterner::new_no_crate(db), ErrorGuaranteed))
     }
 }
 
-fn infer_finalize(mut ctx: InferenceContext<'_, '_>) -> InferenceResult {
+fn infer_finalize<'db>(mut ctx: InferenceContext<'db>) -> InferenceResult<'db> {
     ctx.handle_opaque_type_uses();
 
     ctx.type_inference_fallback();
@@ -289,7 +297,7 @@ pub enum InferenceTyDiagnosticSource {
 pub enum InferenceDiagnostic {
     NoSuchField {
         #[type_visitable(ignore)]
-        field: ExprOrPatId,
+        field: ExprOrPatIdPacked,
         #[type_visitable(ignore)]
         private: Option<LocalFieldId>,
         #[type_visitable(ignore)]
@@ -320,7 +328,7 @@ pub enum InferenceDiagnostic {
     },
     DuplicateField {
         #[type_visitable(ignore)]
-        field: ExprOrPatId,
+        field: ExprOrPatIdPacked,
         #[type_visitable(ignore)]
         variant: VariantId,
     },
@@ -332,7 +340,7 @@ pub enum InferenceDiagnostic {
     },
     PrivateAssocItem {
         #[type_visitable(ignore)]
-        id: ExprOrPatId,
+        id: ExprOrPatIdPacked,
         #[type_visitable(ignore)]
         item: AssocItemId,
     },
@@ -358,11 +366,11 @@ pub enum InferenceDiagnostic {
     },
     UnresolvedAssocItem {
         #[type_visitable(ignore)]
-        id: ExprOrPatId,
+        id: ExprOrPatIdPacked,
     },
     UnresolvedIdent {
         #[type_visitable(ignore)]
-        id: ExprOrPatId,
+        id: ExprOrPatIdPacked,
     },
     // FIXME: This should be emitted in body lowering
     BreakOutsideOfLoop {
@@ -461,7 +469,7 @@ pub enum InferenceDiagnostic {
     },
     PathDiagnostic {
         #[type_visitable(ignore)]
-        node: ExprOrPatId,
+        node: ExprOrPatIdPacked,
         #[type_visitable(ignore)]
         diag: PathLoweringDiagnostic,
     },
@@ -507,7 +515,7 @@ pub enum InferenceDiagnostic {
     },
     TypeMismatch {
         #[type_visitable(ignore)]
-        node: ExprOrPatId,
+        node: ExprOrPatIdPacked,
         expected: StoredTy,
         found: StoredTy,
     },
@@ -530,6 +538,14 @@ pub enum InferenceDiagnostic {
         #[type_visitable(ignore)]
         kind: ReturnKind,
     },
+    RecordMissingFields {
+        #[type_visitable(ignore)]
+        record: ExprOrPatId,
+        #[type_visitable(ignore)]
+        variant: VariantId,
+        #[type_visitable(ignore)]
+        missed_fields: Vec<LocalFieldId>,
+    },
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -541,7 +557,7 @@ pub enum ReturnKind {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ExplicitDropMethodUseKind {
     MethodCall(ExprId),
-    Path(ExprOrPatId),
+    Path(ExprOrPatIdPacked),
 }
 
 /// Represents coercing a value to a different type of value.
@@ -736,16 +752,16 @@ pub enum PatAdjust {
 /// When you add a field that stores types (including `Substitution` and the like), don't forget
 /// `resolve_completely()`'ing  them in `InferenceContext::resolve_all()`. Inference variables must
 /// not appear in the final inference result.
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub struct InferenceResult {
+#[derive(Clone, PartialEq, Eq, Debug, Update)]
+pub struct InferenceResult<'db> {
     /// For each method call expr, records the function it resolves to.
     method_resolutions: FxHashMap<ExprId, (FunctionId, StoredGenericArgs)>,
     /// For each field access expr, records the field it resolves to.
     field_resolutions: FxHashMap<ExprId, Either<FieldId, TupleFieldId>>,
     /// For each struct literal or pattern, records the variant it resolves to.
-    variant_resolutions: FxHashMap<ExprOrPatId, VariantId>,
+    variant_resolutions: FxHashMap<ExprOrPatIdPacked, VariantId>,
     /// For each associated item record what it resolves to
-    assoc_resolutions: FxHashMap<ExprOrPatId, (CandidateId, StoredGenericArgs)>,
+    assoc_resolutions: FxHashMap<ExprOrPatIdPacked, (CandidateId, StoredGenericArgs)>,
     /// Whenever a tuple field expression access a tuple field, we allocate a tuple id in
     /// [`InferenceContext`] and store the tuples substitution there. This map is the reverse of
     /// that which allows us to resolve a [`TupleFieldId`]s type.
@@ -759,7 +775,7 @@ pub struct InferenceResult {
     pub(crate) type_of_pat: ArenaMap<PatId, StoredTy>,
     pub(crate) type_of_binding: ArenaMap<BindingId, StoredTy>,
     pub(crate) type_of_type_placeholder: FxHashMap<TypeRefId, StoredTy>,
-    pub(crate) type_of_opaque: FxHashMap<InternedOpaqueTyId, StoredTy>,
+    pub(crate) type_of_opaque: FxHashMap<InternedOpaqueTyId<'db>, StoredTy>,
 
     /// Whether there are any type-mismatching errors in the result.
     // FIXME: This isn't as useful as initially thought due to us falling back placeholders to
@@ -769,7 +785,7 @@ pub struct InferenceResult {
     /// During inference this field is empty and [`InferenceContext::diagnostics`] is filled instead.
     diagnostics: ThinVec<InferenceDiagnostic>,
     // FIXME: Remove this, change it to be in `InferenceContext`:
-    nodes_with_type_mismatches: Option<Box<FxHashSet<ExprOrPatId>>>,
+    nodes_with_type_mismatches: Option<Box<FxHashSet<ExprOrPatIdPacked>>>,
 
     /// Interned `Error` type to return references to.
     // FIXME: Remove this.
@@ -801,7 +817,7 @@ pub struct InferenceResult {
 
     pub closures_data: FxHashMap<ExprId, ClosureData>,
 
-    defined_anon_consts: ThinVec<AnonConstId>,
+    defined_anon_consts: ThinVec<AnonConstId<'db>>,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Default)]
@@ -897,9 +913,9 @@ pub struct CaptureSourceStack(CaptureSourceStackRepr);
 
 #[derive(Clone)]
 enum CaptureSourceStackRepr {
-    One(ExprOrPatId),
-    Two([ExprOrPatId; 2]),
-    Many(ThinVec<ExprOrPatId>),
+    One(ExprOrPatIdPacked),
+    Two([ExprOrPatIdPacked; 2]),
+    Many(ThinVec<ExprOrPatIdPacked>),
 }
 
 impl PartialEq for CaptureSourceStack {
@@ -916,10 +932,11 @@ impl std::hash::Hash for CaptureSourceStack {
     }
 }
 
+#[cfg(target_pointer_width = "64")]
 const _: () = assert!(size_of::<CaptureSourceStack>() == 16);
 
 impl Deref for CaptureSourceStack {
-    type Target = [ExprOrPatId];
+    type Target = [ExprOrPatIdPacked];
 
     #[inline]
     fn deref(&self) -> &Self::Target {
@@ -948,16 +965,16 @@ impl CaptureSourceStack {
     }
 
     #[inline]
-    pub(crate) fn from_single(id: ExprOrPatId) -> Self {
+    pub(crate) fn from_single(id: ExprOrPatIdPacked) -> Self {
         Self(CaptureSourceStackRepr::One(id))
     }
 
     #[inline]
-    pub fn final_source(&self) -> ExprOrPatId {
+    pub fn final_source(&self) -> ExprOrPatIdPacked {
         *self.last().expect("should always have a final source")
     }
 
-    pub fn push(&mut self, new_id: ExprOrPatId) {
+    pub fn push(&mut self, new_id: ExprOrPatIdPacked) {
         match &mut self.0 {
             CaptureSourceStackRepr::One(old_id) => {
                 self.0 = CaptureSourceStackRepr::Two([*old_id, new_id])
@@ -1022,24 +1039,32 @@ pub enum UpvarCapture {
 }
 
 #[salsa::tracked]
-impl InferenceResult {
+impl<'db> InferenceResult<'db> {
     #[salsa::tracked(returns(ref), cycle_result = infer_cycle_result)]
-    fn for_body(db: &dyn HirDatabase, def: DefWithBodyId) -> InferenceResult {
+    fn for_body(db: &dyn HirDatabase, def: DefWithBodyId) -> InferenceResult<'_> {
         infer_query(db, def)
     }
+}
 
+#[salsa::tracked]
+impl<'db> InferenceResult<'db> {
     /// Infer types for all const expressions in an item's signature.
     ///
     /// Returns an `InferenceResult` containing type information for array lengths,
     /// const generic arguments, and other const expressions appearing in type
     /// positions within the item's signature.
     #[salsa::tracked(returns(ref), cycle_result = infer_anon_const_cycle_result)]
-    fn for_anon_const(db: &dyn HirDatabase, def: AnonConstId) -> InferenceResult {
+    fn for_anon_const(db: &'db dyn HirDatabase, def: AnonConstId<'db>) -> InferenceResult<'db> {
         infer_anon_const_query(db, def)
     }
+}
 
+impl<'db> InferenceResult<'db> {
     #[inline]
-    pub fn of(db: &dyn HirDatabase, def: impl Into<InferBodyId>) -> &InferenceResult {
+    pub fn of(
+        db: &'db dyn HirDatabase,
+        def: impl Into<InferBodyId<'db>>,
+    ) -> &'db InferenceResult<'db> {
         match def.into() {
             InferBodyId::DefWithBodyId(it) => InferenceResult::for_body(db, it),
             InferBodyId::AnonConstId(it) => InferenceResult::for_anon_const(db, it),
@@ -1047,7 +1072,7 @@ impl InferenceResult {
     }
 }
 
-impl InferenceResult {
+impl<'db> InferenceResult<'db> {
     fn new(error_ty: Ty<'_>) -> Self {
         Self {
             method_resolutions: Default::default(),
@@ -1074,7 +1099,7 @@ impl InferenceResult {
         }
     }
 
-    pub fn method_resolution<'db>(&self, expr: ExprId) -> Option<(FunctionId, GenericArgs<'db>)> {
+    pub fn method_resolution(&self, expr: ExprId) -> Option<(FunctionId, GenericArgs<'db>)> {
         self.method_resolutions.get(&expr).map(|(func, args)| (*func, args.as_ref()))
     }
     pub fn field_resolution(&self, expr: ExprId) -> Option<Either<FieldId, TupleFieldId>> {
@@ -1092,28 +1117,28 @@ impl InferenceResult {
             ExprOrPatId::PatId(id) => self.variant_resolution_for_pat(id),
         }
     }
-    pub fn assoc_resolutions_for_expr<'db>(
+    pub fn assoc_resolutions_for_expr<'a>(
         &self,
         id: ExprId,
-    ) -> Option<(CandidateId, GenericArgs<'db>)> {
+    ) -> Option<(CandidateId, GenericArgs<'a>)> {
         self.assoc_resolutions.get(&id.into()).map(|(assoc, args)| (*assoc, args.as_ref()))
     }
-    pub fn assoc_resolutions_for_pat<'db>(
+    pub fn assoc_resolutions_for_pat<'a>(
         &self,
         id: PatId,
-    ) -> Option<(CandidateId, GenericArgs<'db>)> {
+    ) -> Option<(CandidateId, GenericArgs<'a>)> {
         self.assoc_resolutions.get(&id.into()).map(|(assoc, args)| (*assoc, args.as_ref()))
     }
-    pub fn assoc_resolutions_for_expr_or_pat<'db>(
+    pub fn assoc_resolutions_for_expr_or_pat<'a>(
         &self,
         id: ExprOrPatId,
-    ) -> Option<(CandidateId, GenericArgs<'db>)> {
+    ) -> Option<(CandidateId, GenericArgs<'a>)> {
         match id {
             ExprOrPatId::ExprId(id) => self.assoc_resolutions_for_expr(id),
             ExprOrPatId::PatId(id) => self.assoc_resolutions_for_pat(id),
         }
     }
-    pub fn expr_or_pat_has_type_mismatch(&self, node: ExprOrPatId) -> bool {
+    pub fn expr_or_pat_has_type_mismatch(&self, node: ExprOrPatIdPacked) -> bool {
         self.nodes_with_type_mismatches.as_ref().is_some_and(|it| it.contains(&node))
     }
     pub fn expr_has_type_mismatch(&self, expr: ExprId) -> bool {
@@ -1130,19 +1155,19 @@ impl InferenceResult {
     pub fn has_type_mismatches(&self) -> bool {
         self.nodes_with_type_mismatches.is_some()
     }
-    pub fn placeholder_types<'db>(&self) -> impl Iterator<Item = (TypeRefId, Ty<'db>)> {
+    pub fn placeholder_types<'a>(&self) -> impl Iterator<Item = (TypeRefId, Ty<'a>)> {
         self.type_of_type_placeholder.iter().map(|(&type_ref, ty)| (type_ref, ty.as_ref()))
     }
-    pub fn type_of_type_placeholder<'db>(&self, type_ref: TypeRefId) -> Option<Ty<'db>> {
+    pub fn type_of_type_placeholder<'a>(&self, type_ref: TypeRefId) -> Option<Ty<'a>> {
         self.type_of_type_placeholder.get(&type_ref).map(|ty| ty.as_ref())
     }
-    pub fn type_of_expr_or_pat<'db>(&self, id: ExprOrPatId) -> Option<Ty<'db>> {
+    pub fn type_of_expr_or_pat<'a>(&self, id: ExprOrPatId) -> Option<Ty<'a>> {
         match id {
             ExprOrPatId::ExprId(id) => self.type_of_expr.get(id).map(|it| it.as_ref()),
             ExprOrPatId::PatId(id) => self.type_of_pat.get(id).map(|it| it.as_ref()),
         }
     }
-    pub fn type_of_expr_with_adjust<'db>(&self, id: ExprId) -> Option<Ty<'db>> {
+    pub fn type_of_expr_with_adjust<'a>(&self, id: ExprId) -> Option<Ty<'a>> {
         match self.expr_adjustments.get(&id).and_then(|adjustments| {
             adjustments.iter().rfind(|adj| {
                 // https://github.com/rust-lang/rust/blob/67819923ac8ea353aaa775303f4c3aacbf41d010/compiler/rustc_mir_build/src/thir/cx/expr.rs#L140
@@ -1159,7 +1184,7 @@ impl InferenceResult {
             None => self.type_of_expr.get(id).map(|it| it.as_ref()),
         }
     }
-    pub fn type_of_pat_with_adjust<'db>(&self, id: PatId) -> Ty<'db> {
+    pub fn type_of_pat_with_adjust<'a>(&self, id: PatId) -> Ty<'a> {
         match self.pat_adjustments.get(&id).and_then(|adjustments| adjustments.last()) {
             Some(adjusted) => adjusted.source.as_ref(),
             None => self.pat_ty(id),
@@ -1173,7 +1198,7 @@ impl InferenceResult {
         &self.diagnostics
     }
 
-    pub fn tuple_field_access_type<'db>(&self, id: TupleId) -> Tys<'db> {
+    pub fn tuple_field_access_type<'a>(&self, id: TupleId) -> Tys<'a> {
         self.tuple_field_access_types[id.0 as usize].as_ref()
     }
 
@@ -1190,25 +1215,25 @@ impl InferenceResult {
     }
 
     // This method is consumed by external tools to run rust-analyzer as a library. Don't remove, please.
-    pub fn expression_types<'db>(&self) -> impl Iterator<Item = (ExprId, Ty<'db>)> {
+    pub fn expression_types<'a>(&self) -> impl Iterator<Item = (ExprId, Ty<'a>)> {
         self.type_of_expr.iter().map(|(k, v)| (k, v.as_ref()))
     }
 
     // This method is consumed by external tools to run rust-analyzer as a library. Don't remove, please.
-    pub fn pattern_types<'db>(&self) -> impl Iterator<Item = (PatId, Ty<'db>)> {
+    pub fn pattern_types<'a>(&self) -> impl Iterator<Item = (PatId, Ty<'a>)> {
         self.type_of_pat.iter().map(|(k, v)| (k, v.as_ref()))
     }
 
     // This method is consumed by external tools to run rust-analyzer as a library. Don't remove, please.
-    pub fn binding_types<'db>(&self) -> impl Iterator<Item = (BindingId, Ty<'db>)> {
+    pub fn binding_types<'a>(&self) -> impl Iterator<Item = (BindingId, Ty<'a>)> {
         self.type_of_binding.iter().map(|(k, v)| (k, v.as_ref()))
     }
 
     // This method is consumed by external tools to run rust-analyzer as a library. Don't remove, please.
-    pub fn return_position_impl_trait_types<'db>(
-        &'db self,
-        db: &'db dyn HirDatabase,
-    ) -> impl Iterator<Item = (ImplTraitIdx, Ty<'db>)> {
+    pub fn return_position_impl_trait_types<'a>(
+        &'a self,
+        db: &'a dyn HirDatabase,
+    ) -> impl Iterator<Item = (ImplTraitIdx, Ty<'a>)> {
         self.type_of_opaque.iter().filter_map(move |(&id, ty)| {
             let ImplTraitId::ReturnTypeImplTrait(_, rpit_idx) = id.loc(db) else {
                 return None;
@@ -1217,24 +1242,24 @@ impl InferenceResult {
         })
     }
 
-    pub fn expr_ty<'db>(&self, id: ExprId) -> Ty<'db> {
+    pub fn expr_ty<'a>(&self, id: ExprId) -> Ty<'a> {
         self.type_of_expr.get(id).map_or(self.error_ty.as_ref(), |it| it.as_ref())
     }
 
-    pub fn pat_ty<'db>(&self, id: PatId) -> Ty<'db> {
+    pub fn pat_ty<'a>(&self, id: PatId) -> Ty<'a> {
         self.type_of_pat.get(id).map_or(self.error_ty.as_ref(), |it| it.as_ref())
     }
 
-    pub fn expr_or_pat_ty<'db>(&self, id: ExprOrPatId) -> Ty<'db> {
+    pub fn expr_or_pat_ty<'a>(&self, id: ExprOrPatId) -> Ty<'a> {
         self.type_of_expr_or_pat(id).unwrap_or(self.error_ty.as_ref())
     }
 
-    pub fn binding_ty<'db>(&self, id: BindingId) -> Ty<'db> {
+    pub fn binding_ty<'a>(&self, id: BindingId) -> Ty<'a> {
         self.type_of_binding.get(id).map_or(self.error_ty.as_ref(), |it| it.as_ref())
     }
 
     /// This does not deduplicate, which means you'll get the types once per capture.
-    pub fn closure_captures_tys<'db>(&self, closure: ExprId) -> impl Iterator<Item = Ty<'db>> {
+    pub fn closure_captures_tys<'a>(&self, closure: ExprId) -> impl Iterator<Item = Ty<'a>> {
         self.closures_data[&closure]
             .min_captures
             .values()
@@ -1242,11 +1267,11 @@ impl InferenceResult {
     }
 
     /// Like [`Self::closure_captures_tys()`], but using [`CapturedPlace::captured_ty()`].
-    pub fn closure_captures_captured_tys<'db>(
+    pub fn closure_captures_captured_tys<'a>(
         &self,
-        db: &'db dyn HirDatabase,
+        db: &'a dyn HirDatabase,
         closure: ExprId,
-    ) -> impl Iterator<Item = Ty<'db>> {
+    ) -> impl Iterator<Item = Ty<'a>> {
         self.closures_data[&closure]
             .min_captures
             .values()
@@ -1266,12 +1291,12 @@ enum DerefPatBorrowMode {
 
 /// The inference context contains all information needed during type inference.
 #[derive(Debug)]
-pub(crate) struct InferenceContext<'body, 'db> {
+pub(crate) struct InferenceContext<'db> {
     pub(crate) db: &'db dyn HirDatabase,
-    pub(crate) owner: InferBodyId,
+    pub(crate) owner: InferBodyId<'db>,
     pub(crate) store_owner: ExpressionStoreOwnerId,
     pub(crate) generic_def: GenericDefId,
-    pub(crate) store: &'body ExpressionStore,
+    pub(crate) store: &'db ExpressionStore,
     pub(crate) lowering_mode: LoweringMode,
     /// Generally you should not resolve things via this resolver. Instead create a TyLoweringContext
     /// and resolve the path via its methods. This will ensure proper error reporting.
@@ -1286,7 +1311,7 @@ pub(crate) struct InferenceContext<'body, 'db> {
     pub(crate) features: &'db UnstableFeatures,
     /// The traits in scope, disregarding block modules. This is used for caching purposes.
     traits_in_scope: FxHashSet<TraitId>,
-    pub(crate) result: InferenceResult,
+    pub(crate) result: InferenceResult<'db>,
     tuple_field_accesses_rev:
         IndexSet<Tys<'db>, std::hash::BuildHasherDefault<rustc_hash::FxHasher>>,
     /// The return type of the function being inferred, the closure or async block if we're
@@ -1316,7 +1341,7 @@ pub(crate) struct InferenceContext<'body, 'db> {
     diagnostics: Diagnostics,
     vars_emitted_type_must_be_known_for: FxHashSet<Term<'db>>,
 
-    defined_anon_consts: RefCell<ThinVec<AnonConstId>>,
+    defined_anon_consts: RefCell<ThinVec<AnonConstId<'db>>>,
 }
 
 #[derive(Clone, Debug)]
@@ -1363,13 +1388,13 @@ fn find_continuable<'a, 'db>(
     }
 }
 
-impl<'body, 'db> InferenceContext<'body, 'db> {
+impl<'db> InferenceContext<'db> {
     fn new(
         db: &'db dyn HirDatabase,
-        owner: InferBodyId,
+        owner: InferBodyId<'db>,
         store_owner: ExpressionStoreOwnerId,
         generic_def: GenericDefId,
-        store: &'body ExpressionStore,
+        store: &'db ExpressionStore,
         resolver: Resolver<'db>,
         allow_using_generic_params: bool,
         lowering_mode: LoweringMode,
@@ -1411,7 +1436,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
         }
     }
 
-    fn merge(&mut self, other: &InferenceResult) {
+    fn merge(&mut self, other: &InferenceResult<'db>) {
         let InferenceResult {
             method_resolutions,
             field_resolutions,
@@ -1566,7 +1591,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
     // `InferenceResult` in the middle of inference. See the fixme comment in `consteval::eval_to_const`. If you
     // used this function for another workaround, mention it here. If you really need this function and believe that
     // there is no problem in it being `pub(crate)`, remove this comment.
-    fn resolve_all(self) -> InferenceResult {
+    fn resolve_all(self) -> InferenceResult<'db> {
         let InferenceContext {
             table,
             mut result,
@@ -1699,7 +1724,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
         result
     }
 
-    fn collect_const(&mut self, id: ConstId, data: &ConstSignature) {
+    fn collect_const(&mut self, id: ConstId, data: &'db ConstSignature) {
         let return_ty = self.make_ty(
             data.type_ref,
             &data.store,
@@ -1711,7 +1736,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
         self.return_ty = return_ty;
     }
 
-    fn collect_static(&mut self, id: StaticId, data: &StaticSignature) {
+    fn collect_static(&mut self, id: StaticId, data: &'db StaticSignature) {
         let return_ty = self.make_ty(
             data.type_ref,
             &data.store,
@@ -1878,13 +1903,13 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
         self.result.method_resolutions.insert(expr, (func, subst.store()));
     }
 
-    fn write_variant_resolution(&mut self, id: ExprOrPatId, variant: VariantId) {
+    fn write_variant_resolution(&mut self, id: ExprOrPatIdPacked, variant: VariantId) {
         self.result.variant_resolutions.insert(id, variant);
     }
 
     fn write_assoc_resolution(
         &mut self,
-        id: ExprOrPatId,
+        id: ExprOrPatIdPacked,
         item: CandidateId,
         subs: GenericArgs<'db>,
     ) {
@@ -1920,7 +1945,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
 
     fn with_ty_lowering<R>(
         &mut self,
-        store: &ExpressionStore,
+        store: &'db ExpressionStore,
         types_source: InferenceTyDiagnosticSource,
         store_owner: ExpressionStoreOwnerId,
         lifetime_elision: LifetimeElisionKind<'db>,
@@ -1967,7 +1992,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
     fn make_ty(
         &mut self,
         type_ref: TypeRefId,
-        store: &ExpressionStore,
+        store: &'db ExpressionStore,
         type_source: InferenceTyDiagnosticSource,
         store_owner: ExpressionStoreOwnerId,
         lifetime_elision: LifetimeElisionKind<'db>,
@@ -1994,7 +2019,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
 
     fn identity_args(&self) -> GenericArgs<'db> {
         *self.identity_args.get_or_init(|| {
-            GenericArgs::identity_for_item(self.interner(), self.store_owner.into())
+            GenericArgs::identity_for_item(self.interner(), self.generic_def.into())
         })
     }
 
@@ -2140,14 +2165,18 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
         self.table.resolve_vars_if_possible(t)
     }
 
-    pub(crate) fn structurally_resolve_type(&mut self, node: ExprOrPatId, ty: Ty<'db>) -> Ty<'db> {
+    pub(crate) fn structurally_resolve_type(
+        &mut self,
+        node: ExprOrPatIdPacked,
+        ty: Ty<'db>,
+    ) -> Ty<'db> {
         let result = self.table.try_structurally_resolve_type(node.into(), ty);
         if result.is_ty_var() { self.type_must_be_known_at_this_point(node, ty) } else { result }
     }
 
     pub(crate) fn emit_type_mismatch(
         &mut self,
-        node: ExprOrPatId,
+        node: ExprOrPatIdPacked,
         expected: Ty<'db>,
         found: Ty<'db>,
     ) {
@@ -2162,7 +2191,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
 
     fn demand_eqtype(
         &mut self,
-        id: ExprOrPatId,
+        id: ExprOrPatIdPacked,
         expected: Ty<'db>,
         actual: Ty<'db>,
     ) -> Result<(), ()> {
@@ -2192,7 +2221,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
 
     fn demand_suptype(
         &mut self,
-        id: ExprOrPatId,
+        id: ExprOrPatIdPacked,
         expected: Ty<'db>,
         actual: Ty<'db>,
     ) -> Result<(), ()> {
@@ -2224,7 +2253,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
 
     pub(crate) fn type_must_be_known_at_this_point(
         &mut self,
-        node: ExprOrPatId,
+        node: ExprOrPatIdPacked,
         ty: Ty<'db>,
     ) -> Ty<'db> {
         if self.vars_emitted_type_must_be_known_for.insert(ty.into()) {
@@ -2260,7 +2289,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
 
     fn resolve_variant(
         &mut self,
-        node: ExprOrPatId,
+        node: ExprOrPatIdPacked,
         path: &Path,
         value_ns: bool,
     ) -> (Ty<'db>, Option<VariantId>) {
@@ -2555,7 +2584,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
         };
 
         fn forbid_unresolved_segments<'db>(
-            ctx: &InferenceContext<'_, 'db>,
+            ctx: &InferenceContext<'db>,
             result: (Ty<'db>, Option<VariantId>),
             unresolved: Option<usize>,
         ) -> (Ty<'db>, Option<VariantId>) {
@@ -2570,7 +2599,7 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
 
     fn resolve_variant_on_alias(
         &mut self,
-        node: ExprOrPatId,
+        node: ExprOrPatIdPacked,
         ty: Ty<'db>,
         unresolved: Option<usize>,
         path: &ModPath,
@@ -2606,11 +2635,6 @@ impl<'body, 'db> InferenceContext<'body, 'db> {
                 (self.err_ty(), None)
             }
         }
-    }
-
-    fn resolve_boxed_box(&self) -> Option<AdtId> {
-        let struct_ = self.lang_items.OwnedBox?;
-        Some(struct_.into())
     }
 
     fn resolve_range_full(&self) -> Option<AdtId> {
@@ -2725,7 +2749,7 @@ impl<'db> Expectation<'db> {
     /// which still is useful, because it informs integer literals and the like.
     /// See the test case `test/ui/coerce-expect-unsized.rs` and #20169
     /// for examples of where this comes up,.
-    fn rvalue_hint(ctx: &mut InferenceContext<'_, 'db>, ty: Ty<'db>) -> Self {
+    fn rvalue_hint(ctx: &mut InferenceContext<'db>, ty: Ty<'db>) -> Self {
         match ctx.struct_tail_without_normalization(ty).kind() {
             TyKind::Slice(_) | TyKind::Str | TyKind::Dynamic(..) => {
                 Expectation::RValueLikeUnsized(ty)

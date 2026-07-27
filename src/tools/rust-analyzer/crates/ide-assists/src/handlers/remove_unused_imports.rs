@@ -140,7 +140,7 @@ fn is_path_per_ns_unused_in_scope(
     ctx: &AssistContext<'_, '_>,
     u: &ast::UseTree,
     scope: &mut Vec<SearchScope>,
-    path: &PathResolutionPerNs,
+    path: &PathResolutionPerNs<'_>,
 ) -> bool {
     if let Some(PathResolution::Def(ModuleDef::Trait(ref t))) = path.type_ns {
         if is_trait_unused_in_scope(ctx, u, scope, t) {
@@ -159,7 +159,7 @@ fn is_path_unused_in_scope(
     ctx: &AssistContext<'_, '_>,
     u: &ast::UseTree,
     scope: &mut Vec<SearchScope>,
-    path: &[Option<PathResolution>],
+    path: &[Option<PathResolution<'_>>],
 ) -> bool {
     !path
         .iter()
@@ -182,9 +182,9 @@ fn is_trait_unused_in_scope(
         .any(|(d, rename)| used_once_in_scope(ctx, d, rename, scope))
 }
 
-fn used_once_in_scope(
-    ctx: &AssistContext<'_, '_>,
-    def: Definition,
+fn used_once_in_scope<'db>(
+    ctx: &AssistContext<'_, 'db>,
+    def: Definition<'db>,
     rename: Option<Rename>,
     scopes: &Vec<SearchScope>,
 ) -> bool {
