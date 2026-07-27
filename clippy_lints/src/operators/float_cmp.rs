@@ -4,6 +4,7 @@ use clippy_utils::macros::{find_assert_eq_args, first_node_macro_backtrace, macr
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{parent_item_name, sym};
 use rustc_errors::Applicability;
+use rustc_hir::def_id::DefId;
 use rustc_hir::{BinOpKind, Expr, ExprKind, UnOp};
 use rustc_lint::LateContext;
 use rustc_middle::ty;
@@ -13,10 +14,7 @@ use super::{FLOAT_CMP, FLOAT_CMP_CONST};
 
 pub(crate) fn check_assert<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
     if let Some(macro_call) = first_node_macro_backtrace(cx, e).find(|macro_call| {
-        matches!(
-            cx.tcx.get_diagnostic_name(macro_call.def_id),
-            Some(sym::assert_eq_macro | sym::assert_ne_macro | sym::debug_assert_eq_macro | sym::debug_assert_ne_macro)
-        )
+        is_assert_eq_diag(cx, macro_call.def_id)
     }) && let Some((lhs, rhs, _)) = find_assert_eq_args(cx, e, macro_call.expn)
         && is_float(cx, lhs)
     {
@@ -46,13 +44,15 @@ fn is_float_const(ecx: &ConstEvalCtxt<'_>, expr: &Expr<'_>, ctxt: SyntaxContext)
     }
 }
 
+fn is_assert_eq_diag(cx: &LateContext<'_>, def_id: DefId) -> bool {
+    matches!(
+        cx.tcx.get_diagnostic_name(def_id),
+        Some(sym::assert_eq_macro | sym::assert_ne_macro | sym::debug_assert_eq_macro | sym::debug_assert_ne_macro)
+    )
+}
+
 fn is_inside_assert_eq(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    macro_backtrace(expr.span).any(|mc| {
-        matches!(
-            cx.tcx.get_diagnostic_name(mc.def_id),
-            Some(sym::assert_eq_macro | sym::assert_ne_macro | sym::debug_assert_eq_macro | sym::debug_assert_ne_macro)
-        )
-    })
+    macro_backtrace(expr.span).any(|mc| is_assert_eq_diag(cx, mc.def_id))
 }
 
 pub(crate) fn check<'tcx>(
