@@ -13,8 +13,8 @@ LL | const fn call_indirect<T: [const] Fn()>(t: &T) { t() }
    |                           ^^^^^^^^^^^^ required by this bound in `call_indirect`
 help: make the `impl` of trait `Foo` `const`
    |
-LL | impl const Foo for () {}
-   |      +++++
+LL | const impl Foo for () {}
+   | +++++
 
 error: aborting due to 1 previous error
 

@@ -14,8 +14,8 @@ LL |     Bar.foo();
    |
 help: make the `impl` of trait `Foo` `const`
    |
-LL | impl const Foo for Bar {
-   |      +++++
+LL | const impl Foo for Bar {
+   | +++++
 
 error[E0277]: the trait bound `Bar: const Foo` is not satisfied
   --> $DIR/comptime_impl.rs:31:9
@@ -25,8 +25,8 @@ LL |     Bar.bar();
    |
 help: make the `impl` of trait `Foo` `const`
    |
-LL | impl const Foo for Bar {
-   |      +++++
+LL | const impl Foo for Bar {
+   | +++++
 
 error: aborting due to 3 previous errors
 
