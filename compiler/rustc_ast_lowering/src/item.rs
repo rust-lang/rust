@@ -155,7 +155,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         hir::attrs::EiiImpl {
             span: self.lower_span(*span),
             inner_span: self.lower_span(*inner_span),
-            impl_marked_unsafe: self.lower_safety(*impl_safety, hir::Safety::Safe).is_unsafe(),
+            impl_unsafe_span: match *impl_safety {
+                Safety::Unsafe(span) => Some(self.lower_span(span)),
+                Safety::Safe(_) | Safety::Default => None,
+            },
             is_default: *is_default,
             resolution,
         }
@@ -894,13 +897,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 None => Ident::new(sym::integer(index), self.lower_span(f.span)),
             },
             vis_span: self.lower_span(f.vis.span),
-            mut_restriction: self.lower_mut_restriction(&f.mut_restriction),
+            mut_restriction: self.lower_mut_restriction(f.mut_restriction()),
             default: f
-                .default
-                .as_ref()
+                .default_value()
                 .map(|v| self.lower_anon_const_to_anon_const(v, v.value.span)),
             ty,
-            safety: self.lower_safety(f.safety, hir::Safety::Safe),
+            safety: self.lower_safety(f.safety(), hir::Safety::Safe),
         }
     }
 

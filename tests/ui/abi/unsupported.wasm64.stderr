@@ -157,10 +157,10 @@ LL | extern "cmse-nonsecure-entry" {}
    |        ^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0570]: "custom" is not a supported ABI for the current target
-  --> $DIR/unsupported.rs:146:25
+  --> $DIR/unsupported.rs:146:32
    |
-LL | fn custom_ptr(f: extern "custom" fn()) {
-   |                         ^^^^^^^^
+LL | fn custom_ptr(f: unsafe extern "custom" fn()) {
+   |                                ^^^^^^^^
 
 error[E0570]: "custom" is not a supported ABI for the current target
   --> $DIR/unsupported.rs:150:8

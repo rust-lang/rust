@@ -1,10 +1,10 @@
-error: `#[rustc_comptime]` attribute cannot be used on closures
-  --> $DIR/comptime_closure.rs:4:13
+error: the `rustc_comptime` attribute cannot be used on closures
+  --> $DIR/comptime_closure.rs:4:15
    |
 LL |     let f = #[rustc_comptime]
-   |             ^^^^^^^^^^^^^^^^^
+   |               ^^^^^^^^^^^^^^
    |
-   = help: `#[rustc_comptime]` can be applied to functions, inherent impl blocks, and inherent methods
+   = help: the `rustc_comptime` attribute can be applied to functions, inherent impl blocks, and inherent methods
 
 error[E0015]: cannot call non-const closure in constants
   --> $DIR/comptime_closure.rs:9:5

@@ -565,7 +565,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                         .push((normal.item.path.segments[0].ident, self.parent_scope));
                 }
             }
-            AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace) => {}
+            AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace(_)) => {}
             AttrKind::DocComment(..) => {}
         }
         visit::walk_attribute(self, attr);

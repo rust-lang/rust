@@ -87,6 +87,7 @@ fn layout_of<'tcx>(
         | ty::TypingMode::Typeck { .. }
         | ty::TypingMode::PostTypeckUntilBorrowck { .. }
         | ty::TypingMode::PostBorrowck { .. }
+        | ty::TypingMode::Reflection
         | ty::TypingMode::ErasedNotCoherence(_)
         | ty::TypingMode::PostAnalysis => {}
     }
@@ -552,6 +553,7 @@ fn layout_of_uncached<'tcx>(
                 | ty::TypingMode::Typeck { .. }
                 | ty::TypingMode::PostTypeckUntilBorrowck { .. }
                 | ty::TypingMode::PostBorrowck { .. }
+                | ty::TypingMode::Reflection
                 | ty::TypingMode::ErasedNotCoherence(_)
                 | ty::TypingMode::PostAnalysis => {
                     return Err(error(cx, LayoutError::TooGeneric(ty)));

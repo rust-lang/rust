@@ -400,7 +400,7 @@ static AARCH64_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("v9.3a", Unstable(sym::aarch64_ver_target_feature), &["v9.2a", "v8.8a"]),
     ("v9.4a", Unstable(sym::aarch64_ver_target_feature), &["v9.3a", "v8.9a"]),
     ("v9.5a", Unstable(sym::aarch64_ver_target_feature), &["v9.4a"]),
-    ("v9a", Unstable(sym::aarch64_ver_target_feature), &["v8.5a", "sve2"]),
+    ("v9a", Unstable(sym::aarch64_ver_target_feature), &["v8.5a"]),
     // FEAT_VHE
     ("vh", Stable, &[]),
     // FEAT_WFxT
@@ -1219,7 +1219,7 @@ impl Target {
     /// These features are checked against the target features reported by LLVM based on
     /// `-Ctarget-cpu` and `-Ctarget-features`. Constraint violations result in a warning.
     ///
-    /// We also check features enabled via `#[target_features]` (and here, constraint violations
+    /// We also check features enabled via `#[target_feature(..)]` (and here, constraint violations
     /// emit a hard error), including features enabled indirectly via implications -- but if LLVM
     /// considers more features to be implied than we do, that could bypass this check!
     pub fn abi_required_features(&self) -> FeatureConstraints {

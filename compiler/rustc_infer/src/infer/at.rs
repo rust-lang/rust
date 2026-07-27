@@ -85,6 +85,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 .placeholder_assumptions_for_next_solver
                 .clone(),
             next_trait_solver: self.next_trait_solver,
+            enable_next_solver_overflow_fcw: self.enable_next_solver_overflow_fcw,
             obligation_inspector: self.obligation_inspector.clone(),
         }
     }
@@ -113,6 +114,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 .placeholder_assumptions_for_next_solver
                 .clone(),
             next_trait_solver: self.next_trait_solver,
+            enable_next_solver_overflow_fcw: self.enable_next_solver_overflow_fcw,
             obligation_inspector: self.obligation_inspector.clone(),
         };
         forked.inner.borrow_mut().projection_cache().clear();

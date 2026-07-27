@@ -11,7 +11,7 @@ use std::{env, fmt, fs, time};
 
 use serde_derive::{Deserialize, Serialize};
 
-use crate::core::builder::{Builder, RunConfig, ShouldRun, Step};
+use crate::core::builder::{Builder, CommandLineStep, RunConfig, ShouldRun};
 use crate::utils::helpers::{self, t};
 
 // Each cycle is 42 days long (6 weeks); the last week is 35..=42 then.
@@ -122,7 +122,7 @@ fn check_changed_files(builder: &Builder<'_>, toolstates: &HashMap<Box<str>, Too
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct ToolStateCheck;
 
-impl Step for ToolStateCheck {
+impl CommandLineStep for ToolStateCheck {
     type Output = ();
 
     /// Checks tool state status.

@@ -2344,7 +2344,7 @@ pub fn is_hir_ty_cfg_dependant(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> bool {
     if let TyKind::Path(QPath::Resolved(_, path)) = ty.kind
         && let Res::Def(_, def_id) = path.res
     {
-        return find_attr!(cx.tcx, def_id, CfgTrace(..) | CfgAttrTrace);
+        return find_attr!(cx.tcx, def_id, CfgTrace(..) | CfgAttrTrace(..));
     }
     false
 }

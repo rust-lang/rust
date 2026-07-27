@@ -423,6 +423,8 @@ pub trait Interner:
 
     fn impl_polarity(self, impl_def_id: Self::ImplId) -> ty::ImplPolarity;
 
+    fn is_fully_generic_for_reflection(self, impl_def_id: Self::ImplId) -> bool;
+
     fn trait_is_auto(self, trait_def_id: Self::TraitId) -> bool;
 
     fn trait_is_coinductive(self, trait_def_id: Self::TraitId) -> bool;
@@ -465,7 +467,10 @@ pub trait Interner:
     fn evaluate_root_goal_for_proof_tree_raw(
         self,
         canonical_goal: CanonicalInput<Self>,
+        root_depth: usize,
     ) -> (QueryResult<Self>, Self::Probe);
+
+    fn emit_next_solver_overflow_fcw(self, predicate: Self::Predicate, span: Self::Span);
 
     fn item_name(self, item_index: Self::DefId) -> Self::Symbol;
 
@@ -678,7 +683,7 @@ impl<T, R, E> CollectAndApply<T, R> for Result<T, E> {
 impl<I: Interner> search_graph::Cx for I {
     type Input = CanonicalInput<I>;
     type Result = (QueryResult<I>, AccessedOpaques<I>);
-    type AmbiguityInfo = Certainty;
+    type AmbiguityKind = Certainty;
 
     type DepNodeIndex = I::DepNodeIndex;
     type Tracked<T: Debug + Clone> = I::Tracked<T>;

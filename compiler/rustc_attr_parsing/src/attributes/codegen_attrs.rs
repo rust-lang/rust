@@ -305,7 +305,7 @@ impl AttributeParser for NakedParser {
                 if other_attr.word_is(sym::target_feature) {
                     if !cx.features().naked_functions_target_feature() {
                         feature_err(
-                            &cx.sess(),
+                            cx.sess(),
                             sym::naked_functions_target_feature,
                             other_attr.span(),
                             "`#[target_feature(/* ... */)]` is currently unstable on `#[naked]` functions",
@@ -396,7 +396,7 @@ impl AttributeParser for UsedParser {
                         Some(sym::compiler) => {
                             if !cx.features().used_with_arg() {
                                 feature_err(
-                                    &cx.sess(),
+                                    cx.sess(),
                                     sym::used_with_arg,
                                     cx.attr_span,
                                     "`#[used(compiler)]` is currently unstable",
@@ -408,7 +408,7 @@ impl AttributeParser for UsedParser {
                         Some(sym::linker) => {
                             if !cx.features().used_with_arg() {
                                 feature_err(
-                                    &cx.sess(),
+                                    cx.sess(),
                                     sym::used_with_arg,
                                     cx.attr_span,
                                     "`#[used(linker)]` is currently unstable",
@@ -503,7 +503,7 @@ fn parse_tf_attribute(
         let Some(value_str) = cx.expect_string_literal(value) else {
             return features;
         };
-        for feature in value_str.as_str().split(",") {
+        for feature in value_str.as_str().split(',') {
             features.push((Symbol::intern(feature), item.span()));
         }
     }
@@ -602,7 +602,7 @@ impl SingleAttributeParser for InstrumentFnParser {
     const STABILITY: AttributeStability = unstable!(instrument_fn);
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {
-        let instrument = match args {
+        match args {
             ArgParser::NameValue(nv) => match nv.value_as_str() {
                 Some(sym::on) => Some(AttributeKind::InstrumentFn(InstrumentFnAttr::On)),
                 Some(sym::off) => Some(AttributeKind::InstrumentFn(InstrumentFnAttr::Off)),
@@ -621,8 +621,7 @@ impl SingleAttributeParser for InstrumentFnParser {
                 cx.adcx().expected_specific_argument_strings(span, &[sym::on, sym::off]);
                 None
             }
-        };
-        instrument
+        }
     }
 }
 
@@ -673,14 +672,7 @@ impl SingleAttributeParser for SanitizeParser {
                 let is_on = match value.value_as_str() {
                     Some(sym::on) => true,
                     Some(sym::off) => false,
-                    Some(_) => {
-                        cx.adcx().expected_specific_argument_strings(
-                            value.value_span,
-                            &[sym::on, sym::off],
-                        );
-                        return;
-                    }
-                    None => {
+                    _ => {
                         cx.adcx().expected_specific_argument_strings(
                             value.value_span,
                             &[sym::on, sym::off],
@@ -737,7 +729,6 @@ impl SingleAttributeParser for SanitizeParser {
                             sym::realtime,
                         ],
                     );
-                    continue;
                 }
             }
         }
@@ -809,9 +800,7 @@ impl SingleAttributeParser for PatchableFunctionEntryParser {
         }
 
         for item in meta_item_list.mixed() {
-            let Some((ident, value)) = cx.expect_name_value(item, item.span(), None) else {
-                return None;
-            };
+            let (ident, value) = cx.expect_name_value(item, item.span(), None)?;
 
             let attrib_to_write = match ident.name {
                 sym::prefix_nops => {

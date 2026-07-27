@@ -515,10 +515,10 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for NoMainErr {
         if self.add_teach_note {
             diag.note(msg!("if you don't know the basics of Rust, you can go look to the Rust Book to get started: https://doc.rust-lang.org/book/"));
         }
+
         diag
     }
 }
-
 pub(crate) struct DuplicateLangItem {
     pub local_span: Option<Span>,
     pub lang_item_name: Symbol,
@@ -1083,13 +1083,13 @@ pub(crate) struct EiiImplRequiresUnsafeSuggestion {
 }
 
 #[derive(Diagnostic)]
-#[diag("`#[{$name}]` is not allowed to have `#[track_caller]`")]
-pub(crate) struct EiiWithTrackCaller {
+#[diag("`{$name}` is not unsafe to implement")]
+pub(crate) struct EiiImplCannotBeUnsafe {
     #[primary_span]
-    pub attr_span: Span,
+    pub impl_span: Span,
+    #[label("`unsafe` is not allowed here")]
+    pub unsafe_span: Span,
     pub name: Symbol,
-    #[label("`#[{$name}]` is not allowed to have `#[track_caller]`")]
-    pub sig_span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -1199,4 +1199,24 @@ pub(crate) struct OnTypeErrorMalformedFormatLiterals {
 )]
 pub(crate) struct OnTypeErrorNotExactlyOneGeneric {
     pub count: usize,
+}
+
+#[derive(Diagnostic)]
+#[diag("extern mutable statics are incompatible with the `linkage` attribute")]
+#[note(
+    "the `linkage` attribute on extern statics generates a symbol that contains the address of \
+    another static. Making the extern static mutable would allow changing the address, rather \
+    than the static the address is pointing to"
+)]
+pub(crate) struct StaticMutLinkage {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("`const fn` are incompatible with the `linkage` attribute")]
+#[note("`const fn` may be called at compile time, which happens before linking")]
+pub(crate) struct ConstFnLinkage {
+    #[primary_span]
+    pub span: Span,
 }

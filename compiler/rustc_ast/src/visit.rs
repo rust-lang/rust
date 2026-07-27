@@ -569,6 +569,7 @@ macro_rules! common_visitor_and_walkers {
                 fn visit_expr(Expr);
                 fn visit_expr_field(ExprField);
                 fn visit_field_def(FieldDef);
+                fn visit_field_def_extras(FieldDefExtras);
                 fn visit_fn_decl(FnDecl);
                 fn visit_fn_header(FnHeader);
                 fn visit_fn_ret_ty(FnRetTy);
@@ -1096,6 +1097,7 @@ macro_rules! common_visitor_and_walkers {
             pub fn walk_expr(Expr);
             pub fn walk_expr_field(ExprField);
             pub fn walk_field_def(FieldDef);
+            pub fn walk_field_def_extras(FieldDefExtras);
             pub fn walk_fn_decl(FnDecl);
             pub fn walk_fn_header(FnHeader);
             pub fn walk_fn_ret_ty(FnRetTy);

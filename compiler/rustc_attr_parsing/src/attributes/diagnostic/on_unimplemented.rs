@@ -38,7 +38,7 @@ impl AttributeParser for OnUnimplementedParser {
             template!(List: &[r#"/*opt*/ message = "...", /*opt*/ label = "...", /*opt*/ note = "...""#]),
             unstable!(
                 rustc_attrs,
-                "see `#[diagnostic::on_unimplemented]` for the stable equivalent of this attribute"
+                "see the `diagnostic::on_unimplemented` attribute for the stable equivalent of this attribute"
             ),
             |this, cx, args| {
                 this.parse(cx, args, Mode::RustcOnUnimplemented);

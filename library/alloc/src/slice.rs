@@ -476,8 +476,9 @@ impl<T> [T] {
     /// ```
     #[rustc_allow_incoherent_impl]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_unstable(feature = "const_heap", issue = "79597")]
     #[inline]
-    pub fn into_vec<A: Allocator>(self: Box<Self, A>) -> Vec<T, A> {
+    pub const fn into_vec<A: Allocator>(self: Box<Self, A>) -> Vec<T, A> {
         unsafe {
             let len = self.len();
             let (b, alloc) = Box::into_raw_with_allocator(self);

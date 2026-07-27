@@ -354,6 +354,7 @@ docker \
   --env PR_CI_JOB \
   --env OBJDIR_ON_HOST="$objdir" \
   --env CODEGEN_BACKENDS \
+  --env LLVM_VERSION \
   --env DISABLE_CI_RUSTC_IF_INCOMPATIBLE="$DISABLE_CI_RUSTC_IF_INCOMPATIBLE" \
   --init \
   --rm \

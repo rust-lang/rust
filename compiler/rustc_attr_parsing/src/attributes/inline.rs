@@ -50,13 +50,13 @@ impl SingleAttributeParser for InlineParser {
                     }
                     _ => {
                         cx.adcx().expected_specific_argument(l.span(), &[sym::always, sym::never]);
-                        return None;
+                        None
                     }
                 }
             }
             ArgParser::NameValue(_) => {
                 cx.adcx().warn_ill_formed_attribute_input(ILL_FORMED_ATTRIBUTE_INPUT);
-                return None;
+                None
             }
         }
     }
@@ -70,8 +70,10 @@ impl SingleAttributeParser for RustcForceInlineParser {
         Allow(Target::Fn),
         Allow(Target::Method(MethodKind::Inherent)),
     ]);
-    const STABILITY: AttributeStability =
-        unstable!(rustc_attrs, "`#[rustc_force_inline]` forces a free function to be inlined");
+    const STABILITY: AttributeStability = unstable!(
+        rustc_attrs,
+        "the `rustc_force_inline` attribute forces a free function to be inlined"
+    );
     const TEMPLATE: AttributeTemplate = template!(Word, List: &["reason"], NameValueStr: "reason");
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {

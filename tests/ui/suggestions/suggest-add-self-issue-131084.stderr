@@ -41,10 +41,13 @@ error: expected one of `:`, `@`, or `|`, found `s`
   --> $DIR/suggest-add-self-issue-131084.rs:21:32
    |
 LL |     fn type_before_name(String s) {
-   |                         -------^
-   |                         |      |
-   |                         |      expected one of `:`, `@`, or `|`
-   |                         help: declare the type after the parameter binding: `<identifier>: <type>`
+   |                                ^ expected one of `:`, `@`, or `|`
+   |
+help: declare the type after the parameter binding
+   |
+LL -     fn type_before_name(String s) {
+LL +     fn type_before_name(<identifier>: <type>) {
+   |
 
 error[E0424]: cannot find value `self` in this scope
   --> $DIR/suggest-add-self-issue-131084.rs:11:9

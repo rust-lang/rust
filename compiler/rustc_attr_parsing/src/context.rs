@@ -75,7 +75,7 @@ use crate::session_diagnostics::{
     ParsedDescription, UnusedDuplicate,
 };
 use crate::target_checking::AllowedTargets;
-use crate::{AttrSuggestionStyle, AttributeParser, AttributeTemplate, EmitAttribute};
+use crate::{AttributeParser, AttributeTemplate, EmitAttribute};
 
 type GroupType = LazyLock<GroupTypeInner>;
 
@@ -916,18 +916,24 @@ pub(crate) struct AttributeDiagnosticContext<'a, 'f, 'sess> {
 impl<'a, 'f, 'sess: 'f> AttributeDiagnosticContext<'a, 'f, 'sess> {
     fn emit_parse_error(
         &mut self,
-        span: Span,
+        mut span: Span,
         reason: AttributeParseErrorReason<'_>,
     ) -> ErrorGuaranteed {
         let suggestions = if self.custom_suggestions.is_empty() {
-            AttributeParseErrorSuggestions::CreatedByTemplate(self.template_suggestions())
+            AttributeParseErrorSuggestions::CreatedByTemplate(self.suggestions())
         } else {
             AttributeParseErrorSuggestions::CreatedByParser(mem::take(&mut self.custom_suggestions))
         };
 
+        // If the span is the full attribute (including the `#[`/`]` delimiters) shrink it to
+        // exclude those delimiters, because that's what we want in error messages.
+        if span == self.attr_span {
+            span = self.inner_span;
+        }
+
         self.emit_err(AttributeParseError {
             span,
-            attr_span: self.attr_span,
+            inner_span: self.inner_span,
             template: *self.template,
             path: self.attr_path.clone(),
             description: self.parsed_description,
@@ -941,19 +947,6 @@ impl<'a, 'f, 'sess: 'f> AttributeDiagnosticContext<'a, 'f, 'sess> {
     pub(crate) fn push_suggestion(&mut self, msg: String, span: Span, code: String) -> &mut Self {
         self.custom_suggestions.push(Suggestion { msg, sp: span, code });
         self
-    }
-
-    pub(crate) fn template_suggestions(&self) -> Vec<String> {
-        let style = match self.parsed_description {
-            // If the outer and inner spans are equal, we are parsing an embedded attribute
-            ParsedDescription::Attribute if self.attr_span == self.inner_span => {
-                AttrSuggestionStyle::EmbeddedAttribute
-            }
-            ParsedDescription::Attribute => AttrSuggestionStyle::Attribute(self.attr_style),
-            ParsedDescription::Macro => AttrSuggestionStyle::Macro,
-        };
-
-        self.template.suggestions(style, self.attr_safety, &self.attr_path)
     }
 }
 
@@ -1130,7 +1123,7 @@ impl<'a, 'f, 'sess: 'f> AttributeDiagnosticContext<'a, 'f, 'sess> {
         help: Option<String>,
     ) {
         let suggestions = self.suggestions();
-        let span = self.attr_span;
+        let span = self.inner_span;
         self.emit_lint(
             lint,
             crate::diagnostics::IllFormedAttributeInput::new(&suggestions, None, help.as_deref()),
@@ -1139,16 +1132,7 @@ impl<'a, 'f, 'sess: 'f> AttributeDiagnosticContext<'a, 'f, 'sess> {
     }
 
     pub(crate) fn suggestions(&self) -> Vec<String> {
-        let style = match self.parsed_description {
-            // If the outer and inner spans are equal, we are parsing an embedded attribute
-            ParsedDescription::Attribute if self.attr_span == self.inner_span => {
-                AttrSuggestionStyle::EmbeddedAttribute
-            }
-            ParsedDescription::Attribute => AttrSuggestionStyle::Attribute(self.attr_style),
-            ParsedDescription::Macro => AttrSuggestionStyle::Macro,
-        };
-
-        self.template.suggestions(style, self.attr_safety, &self.attr_path)
+        self.template.suggestions(self.parsed_description, self.attr_safety, &self.attr_path)
     }
     /// Error that a string literal was expected.
     /// You can optionally give the literal you did find (which you found not to be a string literal)

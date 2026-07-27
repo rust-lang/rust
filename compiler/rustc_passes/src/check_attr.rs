@@ -233,11 +233,14 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::OnTypeError { directive, .. } => {
                 self.check_diagnostic_on_type_error(hir_id, directive.as_deref())
             }
+            AttributeKind::Linkage(_linkage, span) => {
+                self.check_linkage(*span, hir_id, target, item)
+            }
 
             // All of the following attributes have no specific checks.
             // tidy-alphabetical-start
             AttributeKind::AutomaticallyDerived => (),
-            AttributeKind::CfgAttrTrace => (),
+            AttributeKind::CfgAttrTrace(..) => (),
             AttributeKind::CfgTrace(..) => (),
             AttributeKind::CfiEncoding { .. } => (),
             AttributeKind::Cold => (),
@@ -268,7 +271,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::LinkName { .. } => (),
             AttributeKind::LinkOrdinal { .. } => (),
             AttributeKind::LinkSection { .. } => (),
-            AttributeKind::Linkage(..) => (),
             AttributeKind::LoopMatch(..) => {}
             AttributeKind::MacroEscape => (),
             AttributeKind::MacroUse { .. } => (),
@@ -473,7 +475,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     fn check_eii_impl(&self, impls: &[EiiImpl], target: Target) {
-        for EiiImpl { span, inner_span, resolution, impl_marked_unsafe, is_default: _ } in impls {
+        for EiiImpl { span, inner_span, resolution, impl_unsafe_span, is_default: _ } in impls {
             match target {
                 Target::Fn | Target::Static => {}
                 _ => {
@@ -481,35 +483,48 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 }
             }
 
-            let needs_unsafe = match resolution {
-                EiiImplResolution::Macro(eii_macro) => {
-                    find_attr!(self.tcx, *eii_macro, EiiDeclaration(EiiDecl { impl_unsafe, .. }) if *impl_unsafe)
-                }
-                EiiImplResolution::Known(foreign_item_did) => {
-                    let foreign_item_did = *foreign_item_did;
-                    self.tcx
-                        .externally_implementable_items(foreign_item_did.krate)
-                        .get(&foreign_item_did)
-                        .map(|(decl, _)| decl.impl_unsafe)
-                        .unwrap_or(false)
-                }
-                EiiImplResolution::Error(_) => false,
+            let impl_unsafe = match resolution {
+                EiiImplResolution::Macro(eii_macro) => find_attr!(
+                    self.tcx,
+                    *eii_macro,
+                    EiiDeclaration(EiiDecl { impl_unsafe, .. }) => *impl_unsafe
+                ),
+                EiiImplResolution::Known(foreign_item_did) => self
+                    .tcx
+                    .externally_implementable_items(foreign_item_did.krate)
+                    .get(foreign_item_did)
+                    .map(|(decl, _)| decl.impl_unsafe),
+                EiiImplResolution::Error(_) => None,
+            };
+            let Some(needs_unsafe) = impl_unsafe else {
+                continue;
             };
 
-            if needs_unsafe && !impl_marked_unsafe {
-                let name = match resolution {
-                    EiiImplResolution::Macro(eii_macro) => self.tcx.item_name(*eii_macro),
-                    EiiImplResolution::Known(def_id) => self.tcx.item_name(*def_id),
-                    EiiImplResolution::Error(_) => unreachable!(),
-                };
-                self.dcx().emit_err(diagnostics::EiiImplRequiresUnsafe {
-                    span: *span,
-                    name,
-                    suggestion: diagnostics::EiiImplRequiresUnsafeSuggestion {
-                        left: inner_span.shrink_to_lo(),
-                        right: inner_span.shrink_to_hi(),
-                    },
-                });
+            let name = match resolution {
+                EiiImplResolution::Macro(eii_macro) => self.tcx.item_name(*eii_macro),
+                EiiImplResolution::Known(def_id) => self.tcx.item_name(*def_id),
+                EiiImplResolution::Error(_) => unreachable!(),
+            };
+
+            match (needs_unsafe, *impl_unsafe_span) {
+                (true, None) => {
+                    self.dcx().emit_err(diagnostics::EiiImplRequiresUnsafe {
+                        span: *span,
+                        name,
+                        suggestion: diagnostics::EiiImplRequiresUnsafeSuggestion {
+                            left: inner_span.shrink_to_lo(),
+                            right: inner_span.shrink_to_hi(),
+                        },
+                    });
+                }
+                (false, Some(unsafe_span)) => {
+                    self.dcx().emit_err(diagnostics::EiiImplCannotBeUnsafe {
+                        impl_span: *span,
+                        unsafe_span,
+                        name,
+                    });
+                }
+                _ => {}
             }
         }
     }
@@ -780,22 +795,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         name: item.name(),
                         sig_span: sig.span,
                     });
-                }
-
-                if let Some(impls) = find_attr!(attrs, EiiImpls(impls) => impls) {
-                    let sig = self.tcx.hir_node(hir_id).fn_sig().unwrap();
-                    for i in impls {
-                        let name = match i.resolution {
-                            EiiImplResolution::Macro(def_id) => self.tcx.item_name(def_id),
-                            EiiImplResolution::Known(def_id) => self.tcx.item_name(def_id),
-                            EiiImplResolution::Error(_eg) => continue,
-                        };
-                        self.dcx().emit_err(diagnostics::EiiWithTrackCaller {
-                            attr_span,
-                            name,
-                            sig_span: sig.span,
-                        });
-                    }
                 }
             }
             _ => {}
@@ -1641,6 +1640,31 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         {
             self.dcx()
                 .emit_err(diagnostics::BothOptimizeNoneAndInline { optimize_span, inline_span });
+        }
+    }
+
+    fn check_linkage(
+        &self,
+        span: Span,
+        hir_id: HirId,
+        target: Target,
+        item: Option<&'tcx Item<'tcx>>,
+    ) {
+        // FIXME(eii) Once eii is no longer so experimental, suggest doing
+        // linkage stuff with externally implementable items instead
+        match target {
+            Target::ForeignStatic
+                if self.tcx.is_mutable_static(hir_id.expect_owner().def_id.into()) =>
+            {
+                self.tcx.dcx().emit_err(diagnostics::StaticMutLinkage { span });
+            }
+            Target::Fn
+                if let Item { kind: ItemKind::Fn { sig, .. }, .. } = item.unwrap()
+                    && matches!(sig.header.constness, Constness::Const { .. }) =>
+            {
+                self.tcx.dcx().emit_err(diagnostics::ConstFnLinkage { span });
+            }
+            _ => {}
         }
     }
 }

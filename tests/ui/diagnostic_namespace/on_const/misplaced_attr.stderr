@@ -13,29 +13,29 @@ note: the lint level is defined here
 LL | #![deny(misplaced_diagnostic_attributes)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: `#[diagnostic::on_const]` attribute cannot be used on structs
-  --> $DIR/misplaced_attr.rs:4:1
+error: the `diagnostic::on_const` attribute cannot be used on structs
+  --> $DIR/misplaced_attr.rs:4:3
    |
 LL | #[diagnostic::on_const(message = "tadaa", note = "boing")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[diagnostic::on_const]` can only be applied to trait impl blocks
+   = help: the `diagnostic::on_const` attribute can only be applied to trait impl blocks
 
-error: `#[diagnostic::on_const]` attribute cannot be used on inherent impl blocks
-  --> $DIR/misplaced_attr.rs:16:1
+error: the `diagnostic::on_const` attribute cannot be used on inherent impl blocks
+  --> $DIR/misplaced_attr.rs:16:3
    |
 LL | #[diagnostic::on_const(message = "tadaa", note = "boing")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[diagnostic::on_const]` can only be applied to trait impl blocks
+   = help: the `diagnostic::on_const` attribute can only be applied to trait impl blocks
 
-error: `#[diagnostic::on_const]` attribute cannot be used on trait methods in impl blocks
-  --> $DIR/misplaced_attr.rs:25:5
+error: the `diagnostic::on_const` attribute cannot be used on trait methods in impl blocks
+  --> $DIR/misplaced_attr.rs:25:7
    |
 LL |     #[diagnostic::on_const(message = "tadaa", note = "boing")]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[diagnostic::on_const]` can only be applied to trait impl blocks
+   = help: the `diagnostic::on_const` attribute can only be applied to trait impl blocks
 
 error: aborting due to 4 previous errors
 

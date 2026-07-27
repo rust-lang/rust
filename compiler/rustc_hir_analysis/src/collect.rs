@@ -85,6 +85,7 @@ pub(crate) fn provide(providers: &mut Providers) {
         adt_def,
         fn_sig,
         impl_trait_header,
+        impl_is_fully_generic_for_reflection,
         coroutine_kind,
         coroutine_for_closure,
         opaque_ty_origin,
@@ -946,9 +947,6 @@ fn trait_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::TraitDef {
     let attrs = tcx.get_all_attrs(def_id);
 
     let paren_sugar = find_attr!(attrs, RustcParenSugar);
-    if paren_sugar && !tcx.features().unboxed_closures() {
-        tcx.dcx().emit_err(diagnostics::ParenSugarAttribute { span: item.span });
-    }
 
     // Only regular traits can be marker.
     let is_marker = !is_alias && find_attr!(attrs, Marker);
@@ -1393,6 +1391,11 @@ pub fn suggest_impl_trait<'tcx>(
         }
     }
     None
+}
+
+fn impl_is_fully_generic_for_reflection(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
+    tcx.impl_trait_header(def_id).is_fully_generic_for_reflection()
+        && tcx.explicit_predicates_of(def_id).is_fully_generic_for_reflection()
 }
 
 fn impl_trait_header(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::ImplTraitHeader<'_> {

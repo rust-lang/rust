@@ -1,48 +1,48 @@
 error[E0539]: malformed `repr` attribute input
-  --> $DIR/invalid_repr_list_help.rs:4:1
+  --> $DIR/invalid_repr_list_help.rs:4:3
    |
 LL | #[repr(uwu)]
-   | ^^^^^^^---^^
+   |   ^^^^^---^
    |        |
    |        valid arguments are `align`, `packed`, `Rust`, `C`, `simd`, `transparent`, `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize` or `usize`
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
 
 error[E0539]: malformed `repr` attribute input
-  --> $DIR/invalid_repr_list_help.rs:7:1
+  --> $DIR/invalid_repr_list_help.rs:7:3
    |
 LL | #[repr(uwu = "a")]
-   | ^^^^^^^---------^^
+   |   ^^^^^---------^
    |        |
    |        valid arguments are `align`, `packed`, `Rust`, `C`, `simd`, `transparent`, `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize` or `usize`
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
 
 error[E0539]: malformed `repr` attribute input
-  --> $DIR/invalid_repr_list_help.rs:10:1
+  --> $DIR/invalid_repr_list_help.rs:10:3
    |
 LL | #[repr(uwu(4))]
-   | ^^^^^^^------^^
+   |   ^^^^^------^
    |        |
    |        valid arguments are `align`, `packed`, `Rust`, `C`, `simd`, `transparent`, `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize` or `usize`
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
 
 error[E0539]: malformed `repr` attribute input
-  --> $DIR/invalid_repr_list_help.rs:15:1
+  --> $DIR/invalid_repr_list_help.rs:15:3
    |
 LL | #[repr(uwu, u8)]
-   | ^^^^^^^---^^^^^^
+   |   ^^^^^---^^^^^
    |        |
    |        valid arguments are `align`, `packed`, `Rust`, `C`, `simd`, `transparent`, `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize` or `usize`
    |
    = note: for more information, visit <https://doc.rust-lang.org/reference/type-layout.html#representations>
 
 error[E0539]: malformed `repr` attribute input
-  --> $DIR/invalid_repr_list_help.rs:20:1
+  --> $DIR/invalid_repr_list_help.rs:20:3
    |
 LL | #[repr(uwu)]
-   | ^^^^^^^---^^
+   |   ^^^^^---^
    |        |
    |        valid arguments are `align`, `packed`, `Rust`, `C`, `simd`, `transparent`, `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize` or `usize`
    |

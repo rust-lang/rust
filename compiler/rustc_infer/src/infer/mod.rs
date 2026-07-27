@@ -338,6 +338,13 @@ pub struct InferCtxt<'tcx> {
 
     next_trait_solver: bool,
 
+    /// We have a `recursion_depth_exceeding_limit` FCW to mitigate breakages
+    /// caused by enabling the next solver globally. But the next solver is
+    /// already used by default in some places so we know they won't have
+    /// additional breakages. We also don't want spurious result in coherence
+    /// checking so we disable the FCW there as well.
+    enable_next_solver_overflow_fcw: bool,
+
     pub obligation_inspector: Cell<Option<ObligationInspector<'tcx>>>,
 }
 
@@ -354,6 +361,7 @@ impl<'tcx> Drop for InferCtxt<'tcx> {
             TypingMode::Coherence
             | TypingMode::Typeck { .. }
             | TypingMode::PostBorrowck { .. }
+            | TypingMode::Reflection
             | TypingMode::PostAnalysis
             | TypingMode::Codegen => {}
             // In erased mode, the opaque type storage is always empty
@@ -578,6 +586,7 @@ pub struct InferCtxtBuilder<'tcx> {
     /// Whether we should use the new trait solver in the local inference context,
     /// which affects things like which solver is used in `predicate_may_hold`.
     next_trait_solver: bool,
+    enable_next_solver_overflow_fcw: bool,
 }
 
 #[extension(pub trait TyCtxtInferExt<'tcx>)]
@@ -589,6 +598,7 @@ impl<'tcx> TyCtxt<'tcx> {
             in_hir_typeck: false,
             skip_leak_check: false,
             next_trait_solver: self.next_trait_solver_globally(),
+            enable_next_solver_overflow_fcw: true,
         }
     }
 }
@@ -596,6 +606,14 @@ impl<'tcx> TyCtxt<'tcx> {
 impl<'tcx> InferCtxtBuilder<'tcx> {
     pub fn with_next_trait_solver(mut self, next_trait_solver: bool) -> Self {
         self.next_trait_solver = next_trait_solver;
+        self
+    }
+
+    pub fn enable_next_solver_overflow_fcw(
+        mut self,
+        enable_next_solver_overflow_fcw: bool,
+    ) -> Self {
+        self.enable_next_solver_overflow_fcw = enable_next_solver_overflow_fcw;
         self
     }
 
@@ -648,6 +666,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
             in_hir_typeck,
             skip_leak_check,
             next_trait_solver,
+            enable_next_solver_overflow_fcw,
         } = *self;
         InferCtxt {
             tcx,
@@ -665,6 +684,7 @@ impl<'tcx> InferCtxtBuilder<'tcx> {
             universe: Cell::new(ty::UniverseIndex::ROOT),
             placeholder_assumptions_for_next_solver: RefCell::new(Default::default()),
             next_trait_solver,
+            enable_next_solver_overflow_fcw,
             obligation_inspector: Cell::new(None),
         }
     }
@@ -1171,6 +1191,7 @@ impl<'tcx> InferCtxt<'tcx> {
             // and post-borrowck analysis mode. We may need to modify its uses
             // to support PostBorrowck in the old solver as well.
             TypingMode::Coherence
+            | TypingMode::Reflection
             | TypingMode::PostBorrowck { .. }
             | TypingMode::PostAnalysis
             | TypingMode::Codegen => false,
@@ -1505,6 +1526,7 @@ impl<'tcx> InferCtxt<'tcx> {
             mode @ (ty::TypingMode::Coherence
             | ty::TypingMode::PostBorrowck { .. }
             | ty::TypingMode::PostAnalysis
+            | ty::TypingMode::Reflection
             | ty::TypingMode::Codegen) => mode,
             ty::TypingMode::ErasedNotCoherence(MayBeErased) => unreachable!(),
         };

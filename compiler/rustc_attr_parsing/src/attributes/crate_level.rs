@@ -127,7 +127,7 @@ impl SingleAttributeParser for PatternComplexityLimitParser {
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Crate)]);
     const STABILITY: AttributeStability = unstable!(
         rustc_attrs,
-        "the `#[pattern_complexity_limit]` attribute is used for rustc unit tests"
+        "the `pattern_complexity_limit` attribute is used for rustc unit tests"
     );
 
     fn convert(cx: &mut AcceptContext<'_, '_>, args: &ArgParser) -> Option<AttributeKind> {

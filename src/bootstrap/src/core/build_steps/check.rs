@@ -13,7 +13,8 @@ use crate::core::build_steps::tool::{
     prepare_tool_cargo,
 };
 use crate::core::builder::{
-    self, Alias, Builder, Cargo, Kind, RunConfig, ShouldRun, Step, StepMetadata, crate_description,
+    self, Alias, Builder, Cargo, CommandLineStep, Kind, RunConfig, ShouldRun, Step, StepMetadata,
+    crate_description,
 };
 use crate::core::config::TargetSelection;
 use crate::utils::build_stamp::{self, BuildStamp};
@@ -36,7 +37,7 @@ impl Std {
     const CRATE_OR_DEPS: &[&str] = &["sysroot", "coretests", "alloctests"];
 }
 
-impl Step for Std {
+impl CommandLineStep for Std {
     type Output = BuildStamp;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
@@ -222,10 +223,6 @@ impl PrepareRustcRmetaSysroot {
 impl Step for PrepareRustcRmetaSysroot {
     type Output = RmetaSysroot;
 
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.never()
-    }
-
     fn run(self, builder: &Builder<'_>) -> Self::Output {
         // Check rustc
         let stamp = builder.ensure(Rustc::from_build_compiler(
@@ -265,10 +262,6 @@ impl PrepareStdRmetaSysroot {
 
 impl Step for PrepareStdRmetaSysroot {
     type Output = RmetaSysroot;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.never()
-    }
 
     fn run(self, builder: &Builder<'_>) -> Self::Output {
         // Check std
@@ -317,7 +310,7 @@ impl Rustc {
     }
 }
 
-impl Step for Rustc {
+impl CommandLineStep for Rustc {
     type Output = BuildStamp;
     const IS_HOST: bool = true;
 
@@ -528,7 +521,7 @@ pub struct CraneliftCodegenBackend {
     target: TargetSelection,
 }
 
-impl Step for CraneliftCodegenBackend {
+impl CommandLineStep for CraneliftCodegenBackend {
     type Output = ();
     const IS_HOST: bool = true;
 
@@ -607,7 +600,7 @@ pub struct GccCodegenBackend {
     target: TargetSelection,
 }
 
-impl Step for GccCodegenBackend {
+impl CommandLineStep for GccCodegenBackend {
     type Output = ();
     const IS_HOST: bool = true;
 
@@ -701,7 +694,7 @@ macro_rules! tool_check_step {
             target: TargetSelection,
         }
 
-        impl Step for $name {
+        impl CommandLineStep for $name {
             type Output = ();
             const IS_HOST: bool = true;
 
