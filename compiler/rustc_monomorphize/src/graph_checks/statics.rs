@@ -14,10 +14,12 @@ use crate::diagnostics;
 struct StaticNodeIdx(usize);
 
 impl Idx for StaticNodeIdx {
+    #[inline]
     fn new(idx: usize) -> Self {
         Self(idx)
     }
 
+    #[inline]
     fn index(self) -> usize {
         self.0
     }

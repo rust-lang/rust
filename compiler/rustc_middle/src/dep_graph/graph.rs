@@ -13,7 +13,7 @@ use rustc_data_structures::stable_hash::{StableHash, StableHasher};
 use rustc_data_structures::sync::{AtomicU64, Lock, WorkerLocal};
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::DiagInner;
-use rustc_index::IndexVec;
+use rustc_index::{IndexSlice, IndexVec};
 use rustc_macros::{Decodable, Encodable};
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder};
 use rustc_session::Session;
@@ -1062,10 +1062,13 @@ impl DepGraph {
         let _prof_timer = tcx.prof.generic_activity("incr_comp_query_cache_promotion");
 
         let data = self.data.as_ref().unwrap();
-        for prev_index in data.colors.values.indices() {
-            match data.colors.get(prev_index) {
+        let nodes = data.previous.nodes();
+        let colors = data.colors.values.as_slice();
+
+        for prev_index in colors.indices() {
+            match DepNodeColorMap::get_from_slice(colors, prev_index) {
                 DepNodeColor::Green(_) => {
-                    let dep_node = data.previous.index_to_node(prev_index);
+                    let dep_node = &nodes[prev_index];
                     if let Some(promote_fn) =
                         tcx.dep_kind_vtable(dep_node.kind).promote_from_disk_fn
                     {
@@ -1365,7 +1368,15 @@ impl DepNodeColorMap {
 
     #[inline]
     pub(super) fn get(&self, index: SerializedDepNodeIndex) -> DepNodeColor {
-        let value = self.values[index].load(Ordering::Acquire);
+        Self::get_from_slice(self.values.as_slice(), index)
+    }
+
+    #[inline]
+    pub(super) fn get_from_slice(
+        values: &IndexSlice<SerializedDepNodeIndex, AtomicU32>,
+        index: SerializedDepNodeIndex,
+    ) -> DepNodeColor {
+        let value = values[index].load(Ordering::Acquire);
         // Green is by far the most common case. Check for that first so we can succeed with a
         // single comparison.
         if value < COMPRESSED_RED {

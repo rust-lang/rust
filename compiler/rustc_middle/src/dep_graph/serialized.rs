@@ -232,6 +232,11 @@ impl SerializedDepGraph {
     }
 
     #[inline]
+    pub fn nodes(&self) -> &IndexSlice<SerializedDepNodeIndex, DepNode> {
+        self.nodes.as_slice()
+    }
+
+    #[inline]
     pub fn node_to_index_opt(&self, dep_node: &DepNode) -> Option<SerializedDepNodeIndex> {
         let kind = self.reverse_index.kinds.get(dep_node.kind.as_usize())?;
         let map = kind.fingerprint_map(
@@ -339,6 +344,10 @@ impl SerializedDepGraph {
         let mut edge_list_data =
             Vec::with_capacity(graph_bytes - node_count * size_of::<SerializedNodeHeader>());
 
+        let node_slice = nodes.as_mut_slice();
+        let value_fingerprints_slice = value_fingerprints.as_mut_slice();
+        let edge_list_indices_slice = edge_list_indices.as_mut_slice();
+
         for _ in 0..node_count {
             // Decode the header for this edge; the header packs together as many of the fixed-size
             // fields as possible to limit the number of times we update decoder state.
@@ -346,12 +355,12 @@ impl SerializedDepGraph {
 
             let index = node_header.index();
 
-            let node = &mut nodes[index];
+            let node = &mut node_slice[index];
             // Make sure there's no duplicate indices in the dep graph.
             assert!(node_header.node().kind != DepKind::Null && node.kind == DepKind::Null);
             *node = node_header.node();
 
-            value_fingerprints[index] = node_header.value_fingerprint();
+            value_fingerprints_slice[index] = node_header.value_fingerprint();
 
             // If the length of this node's edge list is small, the length is stored in the header.
             // If it is not, we fall back to another decoder call.
@@ -367,7 +376,7 @@ impl SerializedDepGraph {
 
             edge_list_data.extend(d.read_raw_bytes(edges_len_bytes));
 
-            edge_list_indices[index] = edges_header;
+            edge_list_indices_slice[index] = edges_header;
         }
 
         // When we access the edge list data, we do a fixed-size read from the edge list data then

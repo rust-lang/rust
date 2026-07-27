@@ -375,28 +375,30 @@ pub(super) fn remove_dead_blocks(body: &mut Body<'_>) {
     let mut used_index = 0;
     let mut kept_unreachable = None;
     let mut deduplicated_unreachable = false;
-    basic_blocks.raw.retain(|bbdata| {
-        let orig_bb = BasicBlock::new(orig_index);
-        if !reachable.contains(orig_bb) {
-            orig_index += 1;
-            return false;
-        }
-
-        let used_bb = BasicBlock::new(used_index);
-        if should_deduplicate_unreachable(bbdata) {
-            let kept_unreachable = *kept_unreachable.get_or_insert(used_bb);
-            if kept_unreachable != used_bb {
-                replacements[orig_index] = kept_unreachable;
-                deduplicated_unreachable = true;
+    basic_blocks.mutate(|raw| {
+        raw.retain(|bbdata| {
+            let orig_bb = BasicBlock::new(orig_index);
+            if !reachable.contains(orig_bb) {
                 orig_index += 1;
                 return false;
             }
-        }
 
-        replacements[orig_index] = used_bb;
-        used_index += 1;
-        orig_index += 1;
-        true
+            let used_bb = BasicBlock::new(used_index);
+            if should_deduplicate_unreachable(bbdata) {
+                let kept_unreachable = *kept_unreachable.get_or_insert(used_bb);
+                if kept_unreachable != used_bb {
+                    replacements[orig_index] = kept_unreachable;
+                    deduplicated_unreachable = true;
+                    orig_index += 1;
+                    return false;
+                }
+            }
+
+            replacements[orig_index] = used_bb;
+            used_index += 1;
+            orig_index += 1;
+            true
+        })
     });
 
     // If we deduplicated unreachable blocks we erase their source_info as we

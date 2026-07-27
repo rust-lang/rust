@@ -60,10 +60,12 @@ impl ThreadId {
 }
 
 impl Idx for ThreadId {
+    #[inline]
     fn new(idx: usize) -> Self {
         ThreadId(u32::try_from(idx).unwrap())
     }
 
+    #[inline]
     fn index(self) -> usize {
         usize::try_from(self.0).unwrap()
     }

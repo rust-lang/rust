@@ -873,7 +873,7 @@ fn codegen_stmt<'tcx>(fx: &mut FunctionCx<'_, '_, 'tcx>, cur_block: Block, stmt:
                 {
                     let ty = to_place_and_rval.1.ty(&fx.mir.local_decls, fx.tcx);
                     let layout = fx.layout_of(fx.monomorphize(ty));
-                    let [data, meta] = &*operands.raw else {
+                    let [data, meta] = &operands.as_slice().raw else {
                         bug!("RawPtr fields: {operands:?}");
                     };
                     let data = codegen_operand(fx, data);

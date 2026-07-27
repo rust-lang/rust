@@ -91,10 +91,12 @@ impl NodeIndex {
 }
 
 impl Idx for NodeIndex {
+    #[inline]
     fn new(idx: usize) -> NodeIndex {
         NodeIndex(idx)
     }
 
+    #[inline]
     fn index(self) -> usize {
         self.0
     }

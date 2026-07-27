@@ -999,7 +999,7 @@ fn inline_call<'tcx, I: Inliner<'tcx>>(
     }
 
     // Insert all of the (mapped) parts of the callee body into the caller.
-    caller_body.local_decls.extend(callee_body.drain_vars_and_temps());
+    callee_body.drain_vars_and_temps_into(&mut caller_body.local_decls);
     caller_body.source_scopes.append(&mut callee_body.source_scopes);
 
     // only "full" debug promises any variable-level information
