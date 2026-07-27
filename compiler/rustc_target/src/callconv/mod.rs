@@ -751,6 +751,24 @@ impl<'a, Ty> FnAbi<'a, Ty> {
                 continue;
             }
 
+            // Always extend `bool` in the Rust ABI
+            let extend_bool = |attrs: &mut ArgAttributes, scalar: Scalar| {
+                if scalar.is_bool() {
+                    attrs.ext(ArgExtension::Zext);
+                }
+            };
+
+            if let PassMode::Direct(attrs) = &mut arg.mode
+                && let BackendRepr::Scalar(scalar) = arg.layout.backend_repr
+            {
+                extend_bool(attrs, scalar);
+            } else if let PassMode::Pair(a_attrs, b_attrs) = &mut arg.mode
+                && let BackendRepr::ScalarPair { a, b, b_offset: _ } = arg.layout.backend_repr
+            {
+                extend_bool(a_attrs, a);
+                extend_bool(b_attrs, b);
+            }
+
             if arg_idx.is_none()
                 && arg.layout.size > Primitive::Pointer(AddressSpace::ZERO).size(cx) * 2
                 && !matches!(
