@@ -2879,6 +2879,10 @@ unsafe impl Allocator for Global {}
 #[fundamental]
 pub struct Box<T: ?Sized, A: Allocator = Global>(T, A);
 
+#[rustc_intrinsic]
+#[rustc_intrinsic_must_be_overridden]
+pub fn box_new<T>(_x: T) -> Box<T>;
+
 impl<T: ?Sized + Unsize<U>, U: ?Sized, A: Allocator> CoerceUnsized<Box<U, A>> for Box<T, A> {}
 
 pub struct Vec<T, A: Allocator = Global>(T, A);
@@ -2895,8 +2899,8 @@ impl<T> [T] {
 }
 
 fn test() {
-    let vec = <[_]>::into_vec(#[rustc_box] Box::new([1i32]));
-    let v: Vec<Box<dyn B>> = <[_]> :: into_vec(#[rustc_box] Box::new([#[rustc_box] Box::new(Astruct)]));
+    let vec = <[_]>::into_vec(box_new([1i32]));
+    let v: Vec<Box<dyn B>> = <[_]> :: into_vec(box_new([box_new(Astruct)]));
 }
 
 trait B{}
@@ -2904,22 +2908,26 @@ struct Astruct;
 impl B for Astruct {}
 "#,
         expect![[r#"
-            639..643 'self': Box<[T], A>
-            672..704 '{     ...     }': Vec<T, A>
-            718..888 '{     ...])); }': ()
-            728..731 'vec': Vec<i32, Global>
-            734..749 '<[_]>::into_vec': fn into_vec<i32, Global>(Box<[i32], Global>) -> Vec<i32, Global>
-            734..780 '<[_]>:...i32]))': Vec<i32, Global>
-            750..779 '#[rust...1i32])': Box<[i32; 1], Global>
-            772..778 '[1i32]': [i32; 1]
-            773..777 '1i32': i32
-            790..791 'v': Vec<Box<dyn B + 'static, Global>, Global>
-            811..828 '<[_]> ...to_vec': fn into_vec<Box<dyn B + '?, Global>, Global>(Box<[Box<dyn B + '?, Global>], Global>) -> Vec<Box<dyn B + '?, Global>, Global>
-            811..885 '<[_]> ...ct)]))': Vec<Box<dyn B + '?, Global>, Global>
-            829..884 '#[rust...uct)])': Box<[Box<dyn B + '?, Global>; 1], Global>
-            851..883 '[#[rus...ruct)]': [Box<dyn B + '?, Global>; 1]
-            852..882 '#[rust...truct)': Box<Astruct, Global>
-            874..881 'Astruct': Astruct
+            428..430 '_x': T
+            733..737 'self': Box<[T], A>
+            766..798 '{     ...     }': Vec<T, A>
+            812..940 '{     ...])); }': ()
+            822..825 'vec': Vec<i32, Global>
+            828..843 '<[_]>::into_vec': fn into_vec<i32, Global>(Box<[i32], Global>) -> Vec<i32, Global>
+            828..860 '<[_]>:...i32]))': Vec<i32, Global>
+            844..851 'box_new': fn box_new<[i32; 1]>([i32; 1]) -> Box<[i32; 1], Global>
+            844..859 'box_new([1i32])': Box<[i32; 1], Global>
+            852..858 '[1i32]': [i32; 1]
+            853..857 '1i32': i32
+            870..871 'v': Vec<Box<dyn B + 'static, Global>, Global>
+            891..908 '<[_]> ...to_vec': fn into_vec<Box<dyn B + '?, Global>, Global>(Box<[Box<dyn B + '?, Global>], Global>) -> Vec<Box<dyn B + '?, Global>, Global>
+            891..937 '<[_]> ...ct)]))': Vec<Box<dyn B + '?, Global>, Global>
+            909..916 'box_new': fn box_new<[Box<dyn B + '?, Global>; 1]>([Box<dyn B + '?, Global>; 1]) -> Box<[Box<dyn B + '?, Global>; 1], Global>
+            909..936 'box_ne...uct)])': Box<[Box<dyn B + '?, Global>; 1], Global>
+            917..935 '[box_n...ruct)]': [Box<dyn B + '?, Global>; 1]
+            918..925 'box_new': fn box_new<Astruct>(Astruct) -> Box<Astruct, Global>
+            918..934 'box_ne...truct)': Box<Astruct, Global>
+            926..933 'Astruct': Astruct
         "#]],
     )
 }
@@ -4357,5 +4365,84 @@ fn check() {
             268..274 'foo_fn': fn foo<'?>(<Foo as Trait<'?>>::Assoc<'?0.0>) -> &'? u32
             277..280 'foo': fn foo<'?>(<Foo as Trait<'?>>::Assoc<'?0.0>) -> &'? u32
         "#]],
+    );
+}
+
+#[test]
+fn hrtb_fn_ptr() {
+    check_infer(
+        r#"
+//- minicore: fn
+
+fn foo<'b>(f: for <'a> fn(&'a u32, &'b u32)) {}
+"#,
+        expect![[r#"
+            12..13 'f': fn(&'_ u32, &'_ u32)
+            46..48 '{}': ()
+        "#]],
+    );
+}
+
+#[test]
+fn hrtb_with_where_predicate() {
+    check_no_mismatches(
+        r#"
+trait Echo<'a> {
+    fn echo(&self, s: &'a str) -> &'a str;
+}
+
+struct Bot;
+
+// Implement Echo<'b> for &'a Bot — independent of both 'a and 'b
+impl<'a, 'b> Echo<'b> for &'a Bot {
+    fn echo(&self, s: &'b str) -> &'b str {
+        s
+    }
+}
+
+fn foo<T>(val: T)
+where
+    for<'a, 'b> &'a T: Echo<'b>,
+{
+    let owned = String::from("  hello ");
+    let v = (&val).echo(&owned));
+}
+"#,
+    );
+}
+
+#[test]
+fn nested() {
+    check_no_mismatches(
+        r#"
+//- minicore: fn
+#![feature(lang_items)]
+#[lang = "owned_box"]
+struct Box<T>(T);
+
+fn execute_nested_closures<F>(f: F)
+where
+    for<'a> F: Fn(&'a str) -> Box<dyn for<'b> Fn(&'b str) + 'a>,
+{
+}
+"#,
+    );
+}
+
+#[test]
+fn diff_nested() {
+    check_no_mismatches(
+        r#"
+//- minicore: fn
+#![feature(lang_items)]
+#[lang = "owned_box"]
+struct Box<T>(T);
+
+fn foo_fn<F>(f: F)
+where
+    F: for<'a> Fn(&'a str) -> Box<dyn for<'b> Fn(&'a &'b str) + 'a>,
+{
+}
+"#,
     );
 }

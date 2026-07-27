@@ -450,7 +450,7 @@ fn hover_ranged(
 pub(crate) fn hover_for_definition(
     sema: &Semantics<'_, RootDatabase>,
     file_id: FileId,
-    def: Definition,
+    def: Definition<'_>,
     subst: Option<GenericSubstitution<'_>>,
     scope_node: &SyntaxNode,
     macro_arm: Option<u32>,
@@ -568,7 +568,7 @@ fn notable_traits<'db>(
 
 fn show_implementations_action(
     sema: &Semantics<'_, RootDatabase>,
-    def: Definition,
+    def: Definition<'_>,
 ) -> Option<HoverAction> {
     fn to_action(nav_target: NavigationTarget) -> HoverAction {
         HoverAction::Implementation(FilePosition {
@@ -590,7 +590,7 @@ fn show_implementations_action(
 
 fn show_fn_references_action(
     sema: &Semantics<'_, RootDatabase>,
-    def: Definition,
+    def: Definition<'_>,
 ) -> Option<HoverAction> {
     match def {
         Definition::Function(it) => {
@@ -607,7 +607,7 @@ fn show_fn_references_action(
 
 fn runnable_action(
     sema: &hir::Semantics<'_, RootDatabase>,
-    def: Definition,
+    def: Definition<'_>,
     file_id: FileId,
 ) -> Option<HoverAction> {
     match def {
@@ -628,7 +628,7 @@ fn runnable_action(
 
 fn goto_type_action_for_def(
     sema: &Semantics<'_, RootDatabase>,
-    def: Definition,
+    def: Definition<'_>,
     notable_traits: &[(hir::Trait, Vec<(Option<hir::Type<'_>>, hir::Name)>)],
     subst_types: Option<Vec<(hir::Symbol, hir::Type<'_>)>>,
     edition: Edition,

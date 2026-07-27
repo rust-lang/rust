@@ -15,7 +15,7 @@ use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext};
 // This diagnostic is triggered when a local variable is not used.
 pub(crate) fn unused_variables(
     ctx: &DiagnosticsContext<'_, '_>,
-    d: &hir::UnusedVariable,
+    d: &hir::UnusedVariable<'_>,
 ) -> Option<Diagnostic> {
     let ast = d.local.primary_source(ctx.sema.db).syntax_ptr();
     if ast.file_id.macro_file().is_some() {

@@ -20,7 +20,7 @@ use crate::{
     },
 };
 
-impl<'a, 'db> InferenceContext<'a, 'db> {
+impl<'db> InferenceContext<'db> {
     /// Checks a `a <op>= b`
     pub(crate) fn infer_assign_op_expr(
         &mut self,

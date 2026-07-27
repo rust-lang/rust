@@ -890,11 +890,11 @@ impl<'a, 'b, 'db> PathLoweringContext<'a, 'b, 'db> {
         )
     }
 
-    pub(super) fn assoc_type_bindings_from_type_bound<'c>(
+    pub(super) fn assoc_type_bindings_from_type_bound(
         mut self,
         trait_ref: TraitRef<'db>,
         span: Span,
-    ) -> Option<impl Iterator<Item = (Clause<'db>, GenericPredicateSource)> + use<'a, 'b, 'c, 'db>>
+    ) -> Option<impl Iterator<Item = (Clause<'db>, GenericPredicateSource)> + use<'a, 'b, 'db>>
     {
         let interner = self.ctx.interner;
         self.current_or_prev_segment.args_and_bindings.map(|args_and_bindings| {
