@@ -194,6 +194,7 @@ where
                     .map(|obligation| NextSolverError::Overflow(obligation)),
             )
             .map(|e| E::from_solver_error(infcx, e))
+            .skip(0)
             .collect()
     }
 
