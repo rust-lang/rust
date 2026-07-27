@@ -2,7 +2,7 @@ use std::ffi::OsStr;
 use std::path::PathBuf;
 use std::process::Command;
 
-use crate::build_sysroot::SysrootConfig;
+use crate::build_sysroot::{SysrootConfig, SysrootKind};
 use crate::path::{Dirs, RelPath};
 use crate::prepare::{GitRepo, apply_patches};
 use crate::rustc_info::get_default_sysroot;
@@ -282,7 +282,7 @@ pub(crate) fn run_tests(
     if config::get_bool("testsuite.no_sysroot") && !skip_tests.contains(&"testsuite.no_sysroot") {
         let target_compiler = build_sysroot::build_sysroot(
             dirs,
-            sysroot_config,
+            &SysrootConfig { sysroot_kind: SysrootKind::None, ..*sysroot_config },
             cg_clif_dylib,
             bootstrap_host_compiler,
             rustup_toolchain_name,
