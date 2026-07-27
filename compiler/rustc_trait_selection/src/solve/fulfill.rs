@@ -183,6 +183,7 @@ where
     }
 
     fn collect_remaining_errors(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E> {
+        #[allow(clippy::iter_skip_zero)]
         self.obligations
             .pending
             .drain(..)
@@ -194,6 +195,12 @@ where
                     .map(|obligation| NextSolverError::Overflow(obligation)),
             )
             .map(|e| E::from_solver_error(infcx, e))
+            // Skip doesn't implement TrustedLen, so we use it to
+            // avoid Vec::from_iter specialization that seems
+            // to optimize poorly in combination with ThinVec::drain
+            // on this particular sequence.
+            // See https://github.com/rust-lang/rust/pull/160073
+            .skip(0)
             .collect()
     }
 
