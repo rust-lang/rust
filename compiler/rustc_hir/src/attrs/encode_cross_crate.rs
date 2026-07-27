@@ -21,7 +21,7 @@ impl AttributeKind {
             AllowInternalUnsafe(..) => Yes,
             AllowInternalUnstable(..) => Yes,
             AutomaticallyDerived => Yes,
-            CfgAttrTrace => Yes,
+            CfgAttrTrace(..) => Yes,
             CfgTrace(..) => Yes,
             CfiEncoding { .. } => Yes,
             Cold => No,

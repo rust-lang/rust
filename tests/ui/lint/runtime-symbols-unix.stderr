@@ -4,7 +4,7 @@ error: invalid definition of the runtime `open` symbol used by the standard libr
 LL |     pub fn open() {}
    |     ^^^^^^^^^^^^^
    |
-   = note: expected `unsafe extern "C" fn(*const U8, i32, ...) -> i32`
+   = note: expected `unsafe extern "C" fn(*const U8, i32, ...) -> i32` (for the current target)
            found    `fn()`
    = help: either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = "open")]`, or `#[link_name = "open"]`
    = note: `#[deny(invalid_runtime_symbol_definitions)]` on by default
@@ -15,7 +15,7 @@ error: invalid definition of the runtime `read` symbol used by the standard libr
 LL |         pub fn read();
    |         ^^^^^^^^^^^^^^
    |
-   = note: expected `unsafe extern "C" fn(i32, *mut c_void, usize) -> isize`
+   = note: expected `unsafe extern "C" fn(i32, *mut c_void, usize) -> isize` (for the current target)
            found    `unsafe extern "C" fn()`
    = help: either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = "read")]`, or `#[link_name = "read"]`
 
@@ -25,7 +25,7 @@ error: invalid definition of the runtime `write` symbol used by the standard lib
 LL |         pub fn write();
    |         ^^^^^^^^^^^^^^^
    |
-   = note: expected `unsafe extern "C" fn(i32, *const c_void, usize) -> isize`
+   = note: expected `unsafe extern "C" fn(i32, *const c_void, usize) -> isize` (for the current target)
            found    `unsafe extern "C" fn()`
    = help: either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = "write")]`, or `#[link_name = "write"]`
 
@@ -35,7 +35,7 @@ error: invalid definition of the runtime `close` symbol used by the standard lib
 LL |     pub static close: () = ();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: expected `unsafe extern "C" fn(i32) -> i32`
+   = note: expected `unsafe extern "C" fn(i32) -> i32` (for the current target)
            found    `()`
    = help: either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = "close")]`, or `#[link_name = "close"]`
 
@@ -45,7 +45,7 @@ error: invalid definition of the runtime `malloc` symbol used by the standard li
 LL |         pub fn malloc();
    |         ^^^^^^^^^^^^^^^^
    |
-   = note: expected `unsafe extern "C" fn(usize) -> *mut c_void`
+   = note: expected `unsafe extern "C" fn(usize) -> *mut c_void` (for the current target)
            found    `unsafe extern "C" fn()`
    = help: either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = "malloc")]`, or `#[link_name = "malloc"]`
 
@@ -55,7 +55,7 @@ error: invalid definition of the runtime `realloc` symbol used by the standard l
 LL |         pub fn realloc();
    |         ^^^^^^^^^^^^^^^^^
    |
-   = note: expected `unsafe extern "C" fn(*mut c_void, usize) -> *mut c_void`
+   = note: expected `unsafe extern "C" fn(*mut c_void, usize) -> *mut c_void` (for the current target)
            found    `unsafe extern "C" fn()`
    = help: either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = "realloc")]`, or `#[link_name = "realloc"]`
 
@@ -65,7 +65,7 @@ error: invalid definition of the runtime `free` symbol used by the standard libr
 LL |         pub fn free();
    |         ^^^^^^^^^^^^^^
    |
-   = note: expected `unsafe extern "C" fn(*mut c_void)`
+   = note: expected `unsafe extern "C" fn(*mut c_void)` (for the current target)
            found    `unsafe extern "C" fn()`
    = help: either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = "free")]`, or `#[link_name = "free"]`
 
@@ -75,7 +75,7 @@ error: invalid definition of the runtime `exit` symbol used by the standard libr
 LL |         pub fn exit();
    |         ^^^^^^^^^^^^^^
    |
-   = note: expected `unsafe extern "C" fn(i32) -> !`
+   = note: expected `unsafe extern "C" fn(i32) -> !` (for the current target)
            found    `unsafe extern "C" fn()`
    = help: either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = "exit")]`, or `#[link_name = "exit"]`
 
@@ -85,7 +85,7 @@ warning: suspicious definition of the runtime `open` symbol used by the standard
 LL |         pub fn open(path: *const U8, oflag: usize, ...) -> c_int;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: expected `unsafe extern "C" fn(*const U8, i32, ...) -> i32`
+   = note: expected `unsafe extern "C" fn(*const U8, i32, ...) -> i32` (for the current target)
            found    `unsafe extern "C" fn(*const U8, usize, ...) -> i32`
    = help: either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = "open")]`, or `#[link_name = "open"]`
    = help: allow this lint if the signature is compatible
@@ -97,7 +97,7 @@ warning: suspicious definition of the runtime `free` symbol used by the standard
 LL |         pub fn free(ptr: *const U8);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: expected `unsafe extern "C" fn(*mut c_void)`
+   = note: expected `unsafe extern "C" fn(*mut c_void)` (for the current target)
            found    `unsafe extern "C" fn(*const U8)`
    = help: either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = "free")]`, or `#[link_name = "free"]`
    = help: allow this lint if the signature is compatible
@@ -108,7 +108,7 @@ warning: suspicious definition of the runtime `exit` symbol used by the standard
 LL |         pub fn exit(code: f32) -> !;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: expected `unsafe extern "C" fn(i32) -> !`
+   = note: expected `unsafe extern "C" fn(i32) -> !` (for the current target)
            found    `unsafe extern "C" fn(f32) -> !`
    = help: either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = "exit")]`, or `#[link_name = "exit"]`
    = help: allow this lint if the signature is compatible
@@ -119,7 +119,7 @@ warning: suspicious definition of the runtime `exit` symbol used by the standard
 LL |         pub static exit2: Option<unsafe extern "C" fn(f32) -> !>;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: expected `unsafe extern "C" fn(i32) -> !`
+   = note: expected `unsafe extern "C" fn(i32) -> !` (for the current target)
            found    `unsafe extern "C" fn(f32) -> !`
    = help: either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = "exit")]`, or `#[link_name = "exit"]`
    = help: allow this lint if the signature is compatible
@@ -130,7 +130,7 @@ warning: suspicious definition of the runtime `exit` symbol used by the standard
 LL |         pub fn exit3(code: i32) -> i32;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: expected `unsafe extern "C" fn(i32) -> !`
+   = note: expected `unsafe extern "C" fn(i32) -> !` (for the current target)
            found    `unsafe extern "C" fn(i32) -> i32`
    = help: either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = "exit")]`, or `#[link_name = "exit"]`
    = help: allow this lint if the signature is compatible
@@ -141,7 +141,7 @@ warning: suspicious definition of the runtime `exit` symbol used by the standard
 LL |         pub fn exit4(code: i32);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: expected `unsafe extern "C" fn(i32) -> !`
+   = note: expected `unsafe extern "C" fn(i32) -> !` (for the current target)
            found    `unsafe extern "C" fn(i32)`
    = help: either fix the signature or remove any attributes like `#[unsafe(no_mangle)]`, `#[unsafe(export_name = "exit")]`, or `#[link_name = "exit"]`
    = help: allow this lint if the signature is compatible

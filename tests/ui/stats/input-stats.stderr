@@ -33,13 +33,13 @@ ast-stats - Trait                    320 (NN.N%)             4
 ast-stats AssocItem                288 (NN.N%)             4            72
 ast-stats - Fn                       144 (NN.N%)             2
 ast-stats - Type                     144 (NN.N%)             2
-ast-stats FieldDef                 240 (NN.N%)             2           120
 ast-stats Variant                  192 (NN.N%)             2            96
 ast-stats Stmt                     160 (NN.N%)             5            32
 ast-stats - Let                       32 (NN.N%)             1
 ast-stats - Semi                      32 (NN.N%)             1
 ast-stats - Expr                      96 (NN.N%)             3
 ast-stats Param                    160 (NN.N%)             4            40
+ast-stats FieldDef                 160 (NN.N%)             2            80
 ast-stats Block                    144 (NN.N%)             6            24
 ast-stats Attribute                128 (NN.N%)             4            32
 ast-stats - DocComment                32 (NN.N%)             1
@@ -58,7 +58,7 @@ ast-stats GenericArgs               40 (NN.N%)             1            40
 ast-stats - AngleBracketed            40 (NN.N%)             1
 ast-stats Crate                     40 (NN.N%)             1            40
 ast-stats ----------------------------------------------------------------
-ast-stats Total                  6_952                   126
+ast-stats Total                  6_872                   126
 ast-stats ================================================================
 hir-stats ================================================================
 hir-stats HIR STATS: input_stats

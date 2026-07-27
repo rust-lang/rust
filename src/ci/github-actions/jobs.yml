@@ -140,11 +140,13 @@ pr:
   - name: aarch64-gnu-llvm-21-1
     env:
       IMAGE: aarch64-gnu-llvm-21
+      LLVM_VERSION: "21"
       DOCKER_SCRIPT: stage_2_test_set1.sh
     <<: *job-aarch64-linux
   - name: aarch64-gnu-llvm-21-2
     env:
       IMAGE: aarch64-gnu-llvm-21
+      LLVM_VERSION: "21"
       DOCKER_SCRIPT: stage_2_test_set2.sh
     <<: *job-aarch64-linux
   - name: x86_64-gnu-tools
@@ -270,7 +272,10 @@ auto:
   - name: dist-powerpc64le-linux-musl
     <<: *job-linux-4c
 
-  - name: dist-riscv64-linux
+  - name: dist-riscv64-linux-gnu
+    <<: *job-linux-4c
+
+  - name: dist-riscv64-linux-musl
     <<: *job-linux-4c
 
   - name: dist-s390x-linux
@@ -414,6 +419,7 @@ auto:
     env:
       RUST_BACKTRACE: 1
       IMAGE: x86_64-gnu-llvm-21
+      LLVM_VERSION: "21"
       DOCKER_SCRIPT: stage_2_test_set2.sh
     <<: *job-linux-4c
 
@@ -422,6 +428,7 @@ auto:
     env:
       RUST_BACKTRACE: 1
       IMAGE: x86_64-gnu-llvm-21
+      LLVM_VERSION: "21"
       DOCKER_SCRIPT: x86_64-gnu-llvm2.sh
     <<: *job-linux-4c
 
@@ -430,6 +437,7 @@ auto:
     env:
       RUST_BACKTRACE: 1
       IMAGE: x86_64-gnu-llvm-21
+      LLVM_VERSION: "21"
       DOCKER_SCRIPT: x86_64-gnu-llvm3.sh
     <<: *job-linux-4c
 
@@ -467,6 +475,11 @@ auto:
     <<: *job-linux-4c
 
   - name: x86_64-gnu-miri
+    <<: *job-linux-4c
+
+  - name: optional-x86_64-gnu-autodiff
+    continue_on_error: true
+    doc_url: https://rustc-dev-guide.rust-lang.org/tests/autodiff-ci-job.html
     <<: *job-linux-4c
 
   ####################

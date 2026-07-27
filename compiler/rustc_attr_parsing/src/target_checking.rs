@@ -129,7 +129,20 @@ impl<'sess> AttributeParser<'sess> {
         let is_diagnostic_attr = cx.attr_path.segments[0] == sym::diagnostic;
 
         let diag = InvalidTarget {
-            span: cx.attr_span,
+            span: if attribute_args.is_empty() {
+                // Example: for the attribute `#[inline]`, name+attribute_args gives "inline",
+                // and the path span covers `inline` which is just what we want.
+                cx.attr_path.span
+            } else {
+                // Example 1: for the attribute `#[repr(C)]`, name+attribute_args gives
+                // "repr(C)", and the inner span covers `repr(C)` which is just what we want.
+                //
+                // Example 2: for the attribute `#[repr(C, packed)]`, name+attribute_args gives
+                // "repr(C)", and the inner span covers `repr(C, packed)` which doesn't match
+                // exactly but is as close as we can get.
+                cx.inner_span
+            },
+            attr_span: cx.attr_span,
             name: cx.attr_path.clone(),
             target: cx.target.plural_name(),
             only: if only { "only " } else { "" },

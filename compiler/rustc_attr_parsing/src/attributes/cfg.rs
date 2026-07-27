@@ -27,8 +27,7 @@ use crate::session_diagnostics::{
     ParsedDescription,
 };
 use crate::{
-    AttrSuggestionStyle, AttributeParser, AttributeTemplate, check_cfg, parse_version,
-    session_diagnostics, template,
+    AttributeParser, AttributeTemplate, check_cfg, parse_version, session_diagnostics, template,
 };
 
 pub const CFG_TEMPLATE: AttributeTemplate = template!(
@@ -329,12 +328,12 @@ pub fn parse_cfg_attr(
                 Ok(r) => return Some(r),
                 Err(e) => {
                     let suggestions = CFG_ATTR_TEMPLATE.suggestions(
-                        AttrSuggestionStyle::Attribute(cfg_attr.style),
+                        ParsedDescription::Attribute,
                         cfg_attr.get_normal_item().unsafety,
                         sym::cfg_attr,
                     );
                     e.with_span_suggestions(
-                        cfg_attr.span,
+                        cfg_attr.get_normal_item().span,
                         "must be of the form",
                         suggestions,
                         Applicability::HasPlaceholders,
@@ -353,19 +352,19 @@ pub fn parse_cfg_attr(
             {
                 (dspan.entire(), AttributeParseErrorReason::ExpectedAtLeastOneArgument)
             } else {
-                (cfg_attr.span, AttributeParseErrorReason::ExpectedList)
+                (cfg_attr.get_normal_item().span, AttributeParseErrorReason::ExpectedList)
             };
 
             sess.dcx().emit_err(AttributeParseError {
                 span,
-                attr_span: cfg_attr.span,
+                inner_span: cfg_attr.get_normal_item().span,
                 template: CFG_ATTR_TEMPLATE,
                 path: AttrPath::from_ast(&cfg_attr.get_normal_item().path, identity),
                 description: ParsedDescription::Attribute,
                 reason,
                 suggestions: session_diagnostics::AttributeParseErrorSuggestions::CreatedByTemplate(
                     CFG_ATTR_TEMPLATE.suggestions(
-                        AttrSuggestionStyle::Attribute(cfg_attr.style),
+                        ParsedDescription::Attribute,
                         cfg_attr.get_normal_item().unsafety,
                         sym::cfg_attr,
                     ),

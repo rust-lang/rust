@@ -10,6 +10,7 @@ impl Blah for Garlic {
         self.0 * 21
     }
 }
+unsafe impl Send for Garlic {}
 
 #[test]
 fn test_implements_trait() {

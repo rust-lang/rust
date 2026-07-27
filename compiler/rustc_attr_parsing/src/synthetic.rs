@@ -15,9 +15,7 @@ pub(crate) struct SyntheticAttrState {
     cfg_trace: ThinVec<(CfgEntry, Span)>,
 
     /// Attribute state for `SyntheticAttr::CfgAttrTrace` attributes.
-    /// The arguments of these attributes is no longer relevant for any later passes, only their
-    /// presence. So we discard the arguments here.
-    cfg_attr_trace: bool,
+    cfg_attr_trace: ThinVec<(CfgEntry, Span)>,
 }
 
 impl SyntheticAttrState {
@@ -33,8 +31,10 @@ impl SyntheticAttrState {
                 cfg.lower_spans(lower_span);
                 self.cfg_trace.push((cfg, attr_span));
             }
-            SyntheticAttr::CfgAttrTrace => {
-                self.cfg_attr_trace = true;
+            SyntheticAttr::CfgAttrTrace(cfg) => {
+                let mut cfg = cfg.clone();
+                cfg.lower_spans(lower_span);
+                self.cfg_attr_trace.push((cfg, attr_span));
             }
         }
     }
@@ -43,8 +43,8 @@ impl SyntheticAttrState {
         if !self.cfg_trace.is_empty() {
             attributes.push(Attribute::Parsed(AttributeKind::CfgTrace(self.cfg_trace)));
         }
-        if self.cfg_attr_trace {
-            attributes.push(Attribute::Parsed(AttributeKind::CfgAttrTrace));
+        if !self.cfg_attr_trace.is_empty() {
+            attributes.push(Attribute::Parsed(AttributeKind::CfgAttrTrace(self.cfg_attr_trace)));
         }
     }
 }

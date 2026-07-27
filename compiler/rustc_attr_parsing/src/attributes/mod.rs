@@ -247,7 +247,7 @@ impl OnDuplicate {
                     this: unused,
                     other: used,
                     name: Symbol::intern(
-                        &P::PATH.into_iter().map(|i| i.to_string()).collect::<Vec<_>>().join(".."),
+                        &P::PATH.iter().map(|i| i.to_string()).collect::<Vec<_>>().join(".."),
                     ),
                 });
             }

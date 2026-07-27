@@ -190,6 +190,17 @@ pub(crate) struct FnParamForbiddenAttr {
 }
 
 #[derive(Diagnostic)]
+#[diag("`#[{$eii_name}]` is not allowed to have `#[{$attr_name}]`")]
+pub(crate) struct EiiImplAttributeNotSupported<'a> {
+    #[primary_span]
+    pub attr_span: Span,
+    pub attr_name: &'a str,
+    pub eii_name: String,
+    #[label("`#[{$eii_name}]` is not allowed to have `#[{$attr_name}]`")]
+    pub eii_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("`self` parameter is only allowed in associated functions")]
 #[note("associated functions are those in `impl` or `trait` definitions")]
 pub(crate) struct FnParamForbiddenSelf {
@@ -371,6 +382,13 @@ pub(crate) struct InvalidSafetyOnItem {
 pub(crate) struct InvalidSafetyOnFnPtr {
     #[primary_span]
     pub span: Span,
+    #[suggestion(
+        "remove the `safe` qualifier",
+        code = "",
+        applicability = "machine-applicable",
+        style = "verbose"
+    )]
+    pub safe_span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -1104,11 +1122,11 @@ pub(crate) struct AbiMustNotHaveParametersOrReturnType {
     #[suggestion(
         "remove the parameters and return type",
         applicability = "maybe-incorrect",
-        code = "{padding}fn {symbol}()",
+        code = "{padding}fn{symbol}()",
         style = "verbose"
     )]
     pub suggestion_span: Span,
-    pub symbol: Symbol,
+    pub symbol: String,
     pub padding: &'static str,
 }
 

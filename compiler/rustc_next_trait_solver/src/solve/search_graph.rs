@@ -70,6 +70,7 @@ where
                 }
                 TypingMode::Typeck { .. }
                 | TypingMode::PostTypeckUntilBorrowck { .. }
+                | TypingMode::Reflection
                 | TypingMode::PostBorrowck { .. }
                 | TypingMode::PostAnalysis
                 | TypingMode::Codegen
@@ -106,6 +107,7 @@ where
         response_no_constraints(cx, input, Certainty::overflow(true))
     }
 
+    const FIXPOINT_OVERFLOW_AMBIGUITY_KIND: Certainty = Certainty::overflow(false);
     fn fixpoint_overflow_result(
         cx: I,
         input: CanonicalInput<I>,
@@ -123,14 +125,6 @@ where
                 None
             }
         })
-    }
-
-    fn propagate_ambiguity(
-        cx: I,
-        for_input: CanonicalInput<I>,
-        certainty: Certainty,
-    ) -> (QueryResult<I>, AccessedOpaques<I>) {
-        response_no_constraints(cx, for_input, certainty)
     }
 
     fn compute_goal(

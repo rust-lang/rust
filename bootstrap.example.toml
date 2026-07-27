@@ -343,10 +343,12 @@
 
 # The path to (or name of) the GDB executable to use. This is only used for
 # executing the debuginfo test suite.
+# Set this to "discover" to automatically discover GDB from the environment.
 #build.gdb = "gdb"
 
 # The path to (or name of) the LLDB executable to use. This is only used for
 # executing the debuginfo test suite.
+# Set this to "discover" to automatically discover LLDB from the environment.
 #build.lldb = "lldb"
 
 # The node.js executable to use. Note that this is only used for the emscripten

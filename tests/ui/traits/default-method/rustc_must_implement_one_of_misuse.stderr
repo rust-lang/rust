@@ -1,8 +1,8 @@
 error[E0539]: malformed `rustc_must_implement_one_of` attribute input
-  --> $DIR/rustc_must_implement_one_of_misuse.rs:14:1
+  --> $DIR/rustc_must_implement_one_of_misuse.rs:14:3
    |
 LL | #[rustc_must_implement_one_of(a)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---^
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^---
    |                              |
    |                              expected 2 or more items
    |
@@ -13,31 +13,31 @@ LL + #[rustc_must_implement_one_of(function1, function2, ...)]
    |
 
 error[E0539]: malformed `rustc_must_implement_one_of` attribute input
-  --> $DIR/rustc_must_implement_one_of_misuse.rs:20:1
+  --> $DIR/rustc_must_implement_one_of_misuse.rs:20:3
    |
 LL | #[rustc_must_implement_one_of]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected this to be a list
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected this to be a list
    |
 help: must be of the form
    |
 LL | #[rustc_must_implement_one_of(function1, function2, ...)]
    |                              +++++++++++++++++++++++++++
 
-error: `#[rustc_must_implement_one_of]` attribute cannot be used on functions
-  --> $DIR/rustc_must_implement_one_of_misuse.rs:38:1
+error: the `rustc_must_implement_one_of` attribute cannot be used on functions
+  --> $DIR/rustc_must_implement_one_of_misuse.rs:38:3
    |
 LL | #[rustc_must_implement_one_of(abc, xyz)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[rustc_must_implement_one_of]` can only be applied to traits
+   = help: the `rustc_must_implement_one_of` attribute can only be applied to traits
 
-error: `#[rustc_must_implement_one_of]` attribute cannot be used on structs
-  --> $DIR/rustc_must_implement_one_of_misuse.rs:42:1
+error: the `rustc_must_implement_one_of` attribute cannot be used on structs
+  --> $DIR/rustc_must_implement_one_of_misuse.rs:42:3
    |
 LL | #[rustc_must_implement_one_of(abc, xyz)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: `#[rustc_must_implement_one_of]` can only be applied to traits
+   = help: the `rustc_must_implement_one_of` attribute can only be applied to traits
 
 error: function not found in this trait
   --> $DIR/rustc_must_implement_one_of_misuse.rs:3:31

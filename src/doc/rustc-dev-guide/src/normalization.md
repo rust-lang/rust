@@ -1,4 +1,4 @@
-# Aliases and Normalization
+# Aliases and normalization
 
 ## Aliases
 
@@ -17,7 +17,7 @@ so this chapter mostly discusses things in the context of types (even though the
 [`TyKind::Alias`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_type_ir/enum.TyKind.html#variant.Alias
 [`AliasTyKind`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_type_ir/enum.AliasTyKind.html
 
-### Rigid, Ambiguous and Unnormalized Aliases
+### Rigid, ambiguous and unnormalized aliases
 
 Aliases can either be "rigid", "ambiguous", or simply unnormalized.
 
@@ -68,7 +68,7 @@ only it just hasn't been done yet.
 
 It is worth noting that Free and Inherent aliases cannot be rigid or ambiguous as naming them also implies having resolved the definition of the alias, which specifies the underlying type of the alias.
 
-### Diverging Aliases
+### Diverging aliases
 
 An alias is considered to "diverge" if its definition does not specify an underlying non-alias type to normalize to.
 A concrete example of diverging aliases:
@@ -126,11 +126,11 @@ fn main() {
 In this example, we only encounter an error from the diverging alias during codegen of `foo::<()>`.
 If the call to `foo` is removed, then no compilation error will be emitted.
 
-### Opaque Types
+### Opaque types
 
 Opaque types are a relatively special kind of alias, and are covered in [their own chapter](opaque-types-type-alias-impl-trait.md).
 
-### Const Aliases
+### Const aliases
 
 Unlike type aliases, const aliases are not represented directly in the type system.
 Instead, const aliases are always an anonymous body containing a path expression to a const item.
@@ -157,7 +157,7 @@ fn bar() {
 This is likely to change as const generics functionality is improved.
 For example, `feature(associated_const_equality)` and `feature(min_generic_const_args)` both require handling const aliases similarly to types (without an anonymous constant wrapping all const args).
 
-## What is Normalization
+## What is normalization
 
 ### Structural vs deep normalization
 

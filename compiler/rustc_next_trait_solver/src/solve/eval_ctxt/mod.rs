@@ -246,10 +246,10 @@ where
             return Ok(res);
         }
 
-        let result = EvalCtxt::enter_root(self, self.cx().recursion_limit(), span, |ecx| {
-            // Fast paths handled above
+        let mut result = EvalCtxt::enter_root(self, self.cx().recursion_limit(), span, |ecx| {
             ecx.evaluate_goal_no_fast_paths(GoalSource::Misc, goal)
         });
+        maybe_evaluate_root_goal_with_higher_recursion_limit(self, goal, span, &mut result);
 
         match result {
             Ok(i) => Ok(i),
@@ -302,7 +302,132 @@ where
         goal: Goal<I, I::Predicate>,
         span: I::Span,
     ) -> (Result<NestedNormalizationGoals<I>, NoSolution>, inspect::GoalEvaluation<I>) {
-        evaluate_root_goal_for_proof_tree(self, goal, span)
+        let mut result =
+            evaluate_root_goal_for_proof_tree(self, goal, span, self.cx().recursion_limit());
+        maybe_evaluate_root_goal_for_proof_tree_with_higher_recursion_limit(
+            self,
+            goal,
+            span,
+            &mut result,
+        );
+        result
+    }
+}
+
+/// The old solver doesn't check depth requirement when looking up cache while the next solver
+/// does so. Thus the next solver is more prone to overflow.
+/// To mitigate breakages, we re-evaluate the overflowed goal with doubled recursion limit
+/// and emit a FCW if it succeeds.
+/// See the doc comment on `RECURSION_DEPTH_EXCEEDING_LIMIT` and #159228 for more details.
+fn maybe_evaluate_root_goal_with_higher_recursion_limit<D, I>(
+    delegate: &D,
+    goal: Goal<I, I::Predicate>,
+    span: I::Span,
+    initial_result: &mut Result<GoalEvaluation<I>, NoSolutionOrRerunNonErased>,
+) where
+    D: SolverDelegate<Interner = I>,
+    I: Interner,
+{
+    if !delegate.enable_next_solver_overflow_fcw() {
+        return;
+    }
+
+    let predicate = match initial_result {
+        Err(_) => return,
+        Ok(goal_evaluation) if !goal_evaluation.certainty.is_overflow() => return,
+        Ok(goal_evaluation) => goal_evaluation.goal.predicate,
+    };
+
+    // Some goals no longer overflow after the stalled infers are resolved.
+    // Thus we don't have to rerun eagerly here.
+    let has_stalled_infers = match predicate.kind().skip_binder() {
+        ty::PredicateKind::Clause(ty::ClauseKind::Projection(projection)) => {
+            projection.projection_term.has_non_region_infer()
+        }
+        _ => predicate.has_non_region_infer(),
+    };
+    if has_stalled_infers {
+        return;
+    }
+
+    let rerun_result = delegate.commit_if_ok(|| {
+        let rerun_result =
+            EvalCtxt::enter_root(delegate, delegate.cx().recursion_limit() * 2, span, |ecx| {
+                ecx.evaluate_goal_no_fast_paths(GoalSource::Misc, goal)
+            });
+        if let Ok(goal_evaluation) = &rerun_result
+            && goal_evaluation.certainty.is_yes()
+        {
+            Ok(rerun_result)
+        } else {
+            Err(())
+        }
+    });
+    if let Ok(rerun_result) = rerun_result {
+        delegate.cx().emit_next_solver_overflow_fcw(predicate, span);
+        *initial_result = rerun_result;
+    }
+}
+
+/// The old solver doesn't check depth requirement when looking up cache while the next solver
+/// does so. Thus the next solver is more prone to overflow.
+/// To mitigate breakages, we re-evaluate the overflowed goal with doubled recursion limit
+/// and emit a FCW if it succeeds.
+/// See the doc comment on `RECURSION_DEPTH_EXCEEDING_LIMIT` and #159228 for more details.
+fn maybe_evaluate_root_goal_for_proof_tree_with_higher_recursion_limit<D, I>(
+    delegate: &D,
+    goal: Goal<I, I::Predicate>,
+    span: I::Span,
+    initial_result: &mut (
+        Result<NestedNormalizationGoals<I>, NoSolution>,
+        inspect::GoalEvaluation<I>,
+    ),
+) where
+    D: SolverDelegate<Interner = I>,
+    I: Interner,
+{
+    if !delegate.enable_next_solver_overflow_fcw() {
+        return;
+    }
+
+    let goal_evaluation = &initial_result.1;
+    match goal_evaluation.result {
+        Err(_) => return,
+        Ok(response) if !response.value.certainty.is_overflow() => return,
+        Ok(_) => {}
+    }
+
+    // Some goals no longer overflow after the stalled infers are resolved.
+    // Thus we don't have to rerun eagerly here.
+    let predicate: I::Predicate = goal_evaluation.uncanonicalized_goal.predicate;
+    let has_stalled_infers = match predicate.kind().skip_binder() {
+        ty::PredicateKind::Clause(ty::ClauseKind::Projection(projection)) => {
+            projection.projection_term.has_non_region_infer()
+        }
+        _ => predicate.has_non_region_infer(),
+    };
+    if has_stalled_infers {
+        return;
+    }
+
+    let rerun_result = delegate.commit_if_ok(|| {
+        let (new_result, new_goal_evaluation) = evaluate_root_goal_for_proof_tree(
+            delegate,
+            goal,
+            span,
+            delegate.cx().recursion_limit() * 2,
+        );
+        if let Ok(response) = &new_goal_evaluation.result
+            && response.value.certainty.is_yes()
+        {
+            Ok((new_result, new_goal_evaluation))
+        } else {
+            Err(())
+        }
+    });
+    if let Ok(rerun_result) = rerun_result {
+        delegate.cx().emit_next_solver_overflow_fcw(predicate, span);
+        *initial_result = rerun_result;
     }
 }
 
@@ -338,18 +463,12 @@ where
                 // We currently only consider a cycle coinductive if it steps
                 // into a where-clause of a coinductive trait.
                 CurrentGoalKind::CoinductiveTrait => PathKind::Coinductive,
-                // While normalizing via an impl does step into a where-clause of
-                // an impl, accessing the associated item immediately steps out of
-                // it again. This means cycles/recursive calls are not guarded
-                // by impls used for normalization.
-                //
-                // See tests/ui/traits/next-solver/cycles/normalizes-to-is-not-productive.rs
-                // for how this can go wrong.
-                CurrentGoalKind::ProjectionComputeAssocTermCandidate => PathKind::Inductive,
                 // We probably want to make all traits coinductive in the future,
                 // so we treat cycles involving where-clauses of not-yet coinductive
                 // traits as ambiguous for now.
-                CurrentGoalKind::Misc => PathKind::Unknown,
+                CurrentGoalKind::Misc | CurrentGoalKind::ProjectionComputeAssocTermCandidate => {
+                    PathKind::Unknown
+                }
             },
             // Relating types is always unproductive. If we were to map proof trees to
             // corecursive functions as explained in #136824, relating types never
@@ -566,28 +685,34 @@ where
         .entered();
 
         let (result, orig_values, canonical_goal, succeeded_in_erased) = 'retry_canonicalize: {
-            let skip_erased_attempt = if typing_mode.is_coherence() {
-                true
-            } else {
-                let mut skip = false;
-                if opaque_types.iter().any(|(_, ty)| ty.is_ty_var())
-                    && let PredicateKind::Clause(ClauseKind::Trait(..)) =
+            let skip_erased_attempt = match typing_mode {
+                TypingMode::Reflection | TypingMode::Coherence => true,
+                TypingMode::Typeck { .. }
+                | TypingMode::PostTypeckUntilBorrowck { .. }
+                | TypingMode::PostBorrowck { .. }
+                | TypingMode::Codegen
+                | TypingMode::PostAnalysis
+                | TypingMode::ErasedNotCoherence(_) => {
+                    let mut skip = false;
+                    if opaque_types.iter().any(|(_, ty)| ty.is_ty_var())
+                        && let PredicateKind::Clause(ClauseKind::Trait(..)) =
+                            goal.predicate.kind().skip_binder()
+                    {
+                        skip = true;
+                    }
+
+                    if let PredicateKind::Clause(ClauseKind::Trait(tr)) =
                         goal.predicate.kind().skip_binder()
-                {
-                    skip = true;
-                }
+                        && tr.self_ty().has_coroutines()
+                        && self.cx().trait_is_auto(tr.trait_ref.def_id)
+                    {
+                        // FIXME(#155443): this doesn't make a difference now, but with eager normalization
+                        // it likely will.
+                        // skip_erased_attempt = true;
+                    }
 
-                if let PredicateKind::Clause(ClauseKind::Trait(tr)) =
-                    goal.predicate.kind().skip_binder()
-                    && tr.self_ty().has_coroutines()
-                    && self.cx().trait_is_auto(tr.trait_ref.def_id)
-                {
-                    // FIXME(#155443): this doesn't make a difference now, but with eager normalization
-                    // it likely will.
-                    // skip_erased_attempt = true;
+                    skip
                 }
-
-                skip
             };
 
             if skip_erased_attempt {
@@ -1649,9 +1774,10 @@ fn should_rerun_after_erased_canonicalization<I: Interner>(
         // =============================
         (RerunCondition::Always, _) => RerunDecision::Yes,
         // =============================
-        (RerunCondition::OpaqueInStorage(..), TypingMode::PostAnalysis | TypingMode::Codegen) => {
-            RerunDecision::Yes
-        }
+        (
+            RerunCondition::OpaqueInStorage(..),
+            TypingMode::PostAnalysis | TypingMode::Codegen | TypingMode::Reflection,
+        ) => RerunDecision::Yes,
         (
             RerunCondition::OpaqueInStorage(defids),
             TypingMode::PostBorrowck { defined_opaque_types: opaques }
@@ -1667,12 +1793,13 @@ fn should_rerun_after_erased_canonicalization<I: Interner>(
             TypingMode::PostBorrowck { .. }
             | TypingMode::PostAnalysis
             | TypingMode::Codegen
+            | TypingMode::Reflection
             | TypingMode::PostTypeckUntilBorrowck { .. },
         ) => RerunDecision::No,
         // =============================
         (
             RerunCondition::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(_),
-            TypingMode::PostAnalysis | TypingMode::Codegen,
+            TypingMode::PostAnalysis | TypingMode::Codegen | TypingMode::Reflection,
         ) => RerunDecision::Yes,
         (
             RerunCondition::OpaqueInStorageOrAnyOpaqueHasInferAsHidden(defids),
@@ -1701,11 +1828,12 @@ pub fn evaluate_root_goal_for_proof_tree_raw_provider<
 >(
     cx: I,
     canonical_goal: CanonicalInput<I>,
+    root_depth: usize,
 ) -> (QueryResult<I>, I::Probe) {
     let mut inspect = inspect::ProofTreeBuilder::new();
     let (canonical_result, accessed_opaques) = SearchGraph::<D>::evaluate_root_goal_for_proof_tree(
         cx,
-        cx.recursion_limit(),
+        root_depth,
         canonical_goal,
         &mut inspect,
     );
@@ -1723,6 +1851,7 @@ pub(super) fn evaluate_root_goal_for_proof_tree<D: SolverDelegate<Interner = I>,
     delegate: &D,
     goal: Goal<I, I::Predicate>,
     origin_span: I::Span,
+    root_depth: usize,
 ) -> (Result<NestedNormalizationGoals<I>, NoSolution>, inspect::GoalEvaluation<I>) {
     let opaque_types = delegate.clone_opaque_types_lookup_table();
     let (goal, opaque_types) = eager_resolve_vars(&**delegate, (goal, opaque_types));
@@ -1732,7 +1861,7 @@ pub(super) fn evaluate_root_goal_for_proof_tree<D: SolverDelegate<Interner = I>,
         canonicalize_goal(delegate, goal, &opaque_types, typing_mode.into());
 
     let (canonical_result, final_revision) =
-        delegate.cx().evaluate_root_goal_for_proof_tree_raw(canonical_goal);
+        delegate.cx().evaluate_root_goal_for_proof_tree_raw(canonical_goal, root_depth);
 
     let proof_tree = inspect::GoalEvaluation {
         uncanonicalized_goal: goal,

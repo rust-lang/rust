@@ -525,7 +525,7 @@ impl<'a> AstValidator<'a> {
                         [sym::allow, sym::deny, sym::expect, sym::forbid, sym::splat, sym::warn];
                     !attr.has_any_name(&arr) && rustc_attr_parsing::is_builtin_attr(&normal.item)
                 }
-                AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace) => false,
+                AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace(_)) => false,
                 AttrKind::DocComment(..) => true,
             })
             .for_each(|attr| {
@@ -546,7 +546,13 @@ impl<'a> AstValidator<'a> {
     }
 
     /// Check that the signature of this function does not violate the constraints of its ABI.
-    fn check_extern_fn_signature(&self, abi: ExternAbi, ctxt: FnCtxt, ident: &Ident, sig: &FnSig) {
+    fn check_extern_fn_signature(
+        &self,
+        abi: ExternAbi,
+        ctxt: FnCtxt,
+        opt_function_name: Option<&Ident>, // None for function pointers
+        sig: &BorrowedFnSig<'_>,
+    ) {
         match AbiMap::from_target(&self.sess.target).canonize_abi(abi, false) {
             AbiMapping::Direct(canon_abi) | AbiMapping::Deprecated(canon_abi) => {
                 match canon_abi {
@@ -569,13 +575,13 @@ impl<'a> AstValidator<'a> {
 
                     CanonAbi::Custom => {
                         // An `extern "custom"` function must be unsafe.
-                        self.reject_safe_fn(abi, ctxt, sig);
+                        self.reject_safe_fn(abi, ctxt, sig, opt_function_name.is_none());
 
                         // An `extern "custom"` function cannot be `async` and/or `gen`.
                         self.reject_coroutine(abi, sig);
 
                         // An `extern "custom"` function must have type `fn()`.
-                        self.reject_params_or_return(abi, ident, sig);
+                        self.reject_params_or_return(abi, opt_function_name, sig);
                     }
 
                     CanonAbi::Interrupt(interrupt_kind) => {
@@ -600,7 +606,7 @@ impl<'a> AstValidator<'a> {
                             self.reject_return(abi, sig);
                         } else {
                             // An `extern "interrupt"` function must have type `fn()`.
-                            self.reject_params_or_return(abi, ident, sig);
+                            self.reject_params_or_return(abi, opt_function_name, sig);
                         }
                     }
                 }
@@ -609,18 +615,27 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn reject_safe_fn(&self, abi: ExternAbi, ctxt: FnCtxt, sig: &FnSig) {
+    fn reject_safe_fn(
+        &self,
+        abi: ExternAbi,
+        ctxt: FnCtxt,
+        sig: &BorrowedFnSig<'_>,
+        is_fn_ptr: bool,
+    ) {
         let dcx = self.dcx();
 
         match sig.header.safety {
             Safety::Unsafe(_) => { /* all good */ }
             Safety::Safe(safe_span) => {
-                let source_map = self.sess.psess.source_map();
-                let safe_span = source_map.span_until_non_whitespace(safe_span.to(sig.span));
-                dcx.emit_err(diagnostics::AbiCustomSafeForeignFunction {
-                    span: sig.span,
-                    safe_span,
-                });
+                // Function pointers already error when `safe` is used.
+                if !is_fn_ptr {
+                    let source_map = self.sess.psess.source_map();
+                    let safe_span = source_map.span_until_non_whitespace(safe_span.to(sig.span));
+                    dcx.emit_err(diagnostics::AbiCustomSafeForeignFunction {
+                        span: sig.span,
+                        safe_span,
+                    });
+                }
             }
             Safety::Default => match ctxt {
                 FnCtxt::Foreign => { /* all good */ }
@@ -635,7 +650,7 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn reject_coroutine(&self, abi: ExternAbi, sig: &FnSig) {
+    fn reject_coroutine(&self, abi: ExternAbi, sig: &BorrowedFnSig<'_>) {
         if let Some(coroutine_kind) = sig.header.coroutine_kind {
             let coroutine_kind_span = self
                 .sess
@@ -652,7 +667,7 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn reject_return(&self, abi: ExternAbi, sig: &FnSig) {
+    fn reject_return(&self, abi: ExternAbi, sig: &BorrowedFnSig<'_>) {
         if let FnRetTy::Ty(ref ret_ty) = sig.decl.output
             && match &ret_ty.kind {
                 TyKind::Never => false,
@@ -664,29 +679,41 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    fn reject_params_or_return(&self, abi: ExternAbi, ident: &Ident, sig: &FnSig) {
+    fn reject_params_or_return(
+        &self,
+        abi: ExternAbi,
+        opt_function_name: Option<&Ident>, // None for function pointers
+        sig: &BorrowedFnSig<'_>,
+    ) {
         let mut spans: Vec<_> = sig.decl.inputs.iter().map(|p| p.span).collect();
+
+        let allowed_return = |ret_ty: &Ty| match &ret_ty.kind {
+            TyKind::Never if abi != ExternAbi::Custom => true,
+            TyKind::Tup(tup) if tup.is_empty() => true,
+            _ => false,
+        };
+
         if let FnRetTy::Ty(ref ret_ty) = sig.decl.output
-            && match &ret_ty.kind {
-                TyKind::Never => false,
-                TyKind::Tup(tup) if tup.is_empty() => false,
-                _ => true,
-            }
+            && !allowed_return(ret_ty)
         {
             spans.push(ret_ty.span);
         }
 
         if !spans.is_empty() {
-            let header_span = sig.header_span();
+            let header_span = sig.header.span().unwrap_or(sig.span.shrink_to_lo());
             let suggestion_span = header_span.shrink_to_hi().to(sig.decl.output.span());
             let padding = if header_span.is_empty() { "" } else { " " };
 
             self.dcx().emit_err(diagnostics::AbiMustNotHaveParametersOrReturnType {
                 spans,
-                symbol: ident.name,
+                abi,
+
                 suggestion_span,
                 padding,
-                abi,
+                symbol: match opt_function_name {
+                    Some(ident) => format!(" {}", ident.name),
+                    None => String::new(),
+                },
             });
         }
     }
@@ -717,8 +744,12 @@ impl<'a> AstValidator<'a> {
     }
 
     fn check_fn_ptr_safety(&self, span: Span, safety: Safety) {
-        if matches!(safety, Safety::Safe(_)) {
-            self.dcx().emit_err(diagnostics::InvalidSafetyOnFnPtr { span });
+        if let Safety::Safe(safe_span) = safety {
+            let remove_span = self.sess.source_map().span_until_non_whitespace(span);
+            self.dcx().emit_err(diagnostics::InvalidSafetyOnFnPtr {
+                span: safe_span,
+                safe_span: remove_span,
+            });
         }
     }
 
@@ -1138,6 +1169,24 @@ impl<'a> AstValidator<'a> {
                 if let Extern::Implicit(extern_span) = bfty.ext {
                     self.handle_missing_abi(extern_span, ty.id);
                 }
+
+                let ext = match bfty.ext {
+                    Extern::None => None,
+                    Extern::Implicit(_) => Some(ExternAbi::FALLBACK),
+                    Extern::Explicit(str_lit, _) => {
+                        ExternAbi::from_str(str_lit.symbol.as_str()).ok()
+                    }
+                };
+
+                // Some ABIs impose special restrictions on the signature.
+                if let Some(extern_abi) = ext {
+                    self.check_extern_fn_signature(
+                        extern_abi,
+                        FnCtxt::Free,
+                        None,
+                        &bfty.as_borrowed_fn_sig(),
+                    );
+                }
             }
             TyKind::TraitObject(bounds, ..) => {
                 let mut any_lifetime_bounds = false;
@@ -1201,6 +1250,48 @@ impl<'a> AstValidator<'a> {
         walk_list!(self, visit_attribute, attrs);
         self.visit_vis(vis);
         self.visit_ident(ident);
+    }
+
+    // Check EII implementation attributes against an allowlist.
+    fn check_eii_impl_attrs(&self, attrs: &[Attribute], eii_impls: &[EiiImpl]) {
+        if eii_impls.is_empty() {
+            return;
+        }
+
+        let allowed_attrs: &[Symbol] = &[
+            sym::allow,
+            sym::warn,
+            sym::deny,
+            sym::forbid,
+            sym::expect,
+            sym::doc,
+            sym::inline,
+            sym::cold,
+            sym::optimize,
+            sym::coverage,
+            sym::sanitize,
+            sym::must_use,
+            sym::deprecated,
+        ];
+
+        for attr in attrs {
+            let AttrKind::Normal(normal) = &attr.kind else {
+                continue;
+            };
+            if attr.has_any_name(allowed_attrs) {
+                continue;
+            }
+
+            let attr_name = pprust::path_to_string(&normal.item.path);
+            for eii_impl in eii_impls {
+                self.dcx().emit_err(diagnostics::EiiImplAttributeNotSupported {
+                    attr_span: attr.span,
+                    attr_name: &attr_name,
+                    eii_span: eii_impl.span,
+                    eii_name: pprust::path_to_string(&eii_impl.eii_macro_path),
+                });
+            }
+        }
     }
 }
 
@@ -1391,6 +1482,7 @@ impl Visitor<'_> for AstValidator<'_> {
                 for EiiImpl { eii_macro_path, .. } in eii_impls {
                     self.visit_path(eii_macro_path);
                 }
+                self.check_eii_impl_attrs(&item.attrs, eii_impls);
 
                 let is_intrinsic = item.attrs.iter().any(|a| a.has_name(sym::rustc_intrinsic));
                 if body.is_none() && !is_intrinsic && !self.is_sdylib_interface {
@@ -1566,8 +1658,9 @@ impl Visitor<'_> for AstValidator<'_> {
 
                 visit::walk_item(self, item);
             }
-            ItemKind::Static(StaticItem { expr, safety, .. }) => {
+            ItemKind::Static(StaticItem { expr, safety, eii_impls, .. }) => {
                 self.check_item_safety(item.span, *safety);
+                self.check_eii_impl_attrs(&item.attrs, eii_impls);
                 if matches!(safety, Safety::Unsafe(_)) {
                     self.dcx().emit_err(diagnostics::UnsafeStatic { span: item.span });
                 }
@@ -1620,8 +1713,8 @@ impl Visitor<'_> for AstValidator<'_> {
                 self.check_extern_fn_signature(
                     self.extern_mod_abi.unwrap_or(ExternAbi::FALLBACK),
                     FnCtxt::Foreign,
-                    ident,
-                    sig,
+                    Some(ident),
+                    &sig.as_borrowed(),
                 );
 
                 if let Some(attr) = attr::find_by_name(fi.attrs(), sym::track_caller)
@@ -1826,7 +1919,12 @@ impl Visitor<'_> for AstValidator<'_> {
 
             if let Some((extern_abi, extern_abi_span)) = ext {
                 // Some ABIs impose special restrictions on the signature.
-                self.check_extern_fn_signature(extern_abi, ctxt, &fun.ident, &fun.sig);
+                self.check_extern_fn_signature(
+                    extern_abi,
+                    ctxt,
+                    Some(&fun.ident),
+                    &fun.sig.as_borrowed(),
+                );
 
                 // #[track_caller] can only be used with the rust ABI.
                 if let Some(attr) = attr::find_by_name(attrs, sym::track_caller)

@@ -1,50 +1,50 @@
-error: `#[repr(C)]` attribute cannot be used on functions
-  --> $DIR/naked-with-invalid-repr-attr.rs:10:1
+error: the `repr(C)` attribute cannot be used on functions
+  --> $DIR/naked-with-invalid-repr-attr.rs:10:3
    |
 LL | #[repr(C)]
-   | ^^^^^^^^^^
+   |   ^^^^^^^
    |
-   = help: `#[repr(C)]` can only be applied to data types
+   = help: the `repr(C)` attribute can only be applied to data types
 
-error: `#[repr(transparent)]` attribute cannot be used on functions
-  --> $DIR/naked-with-invalid-repr-attr.rs:17:1
+error: the `repr(transparent)` attribute cannot be used on functions
+  --> $DIR/naked-with-invalid-repr-attr.rs:17:3
    |
 LL | #[repr(transparent)]
-   | ^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^
    |
-   = help: `#[repr(transparent)]` can only be applied to data types
+   = help: the `repr(transparent)` attribute can only be applied to data types
 
-error: `#[repr(C)]` attribute cannot be used on functions
-  --> $DIR/naked-with-invalid-repr-attr.rs:24:1
+error: the `repr(C)` attribute cannot be used on functions
+  --> $DIR/naked-with-invalid-repr-attr.rs:24:3
    |
 LL | #[repr(C)]
-   | ^^^^^^^^^^
+   |   ^^^^^^^
    |
-   = help: `#[repr(C)]` can only be applied to data types
+   = help: the `repr(C)` attribute can only be applied to data types
 
-error: `#[repr(C)]` attribute cannot be used on functions
-  --> $DIR/naked-with-invalid-repr-attr.rs:33:1
+error: the `repr(C)` attribute cannot be used on functions
+  --> $DIR/naked-with-invalid-repr-attr.rs:33:3
    |
 LL | #[repr(C, packed)]
-   | ^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^
    |
-   = help: `#[repr(C)]` can only be applied to data types
+   = help: the `repr(C)` attribute can only be applied to data types
 
-error: `#[repr(packed)]` attribute cannot be used on functions
-  --> $DIR/naked-with-invalid-repr-attr.rs:33:1
+error: the `repr(packed)` attribute cannot be used on functions
+  --> $DIR/naked-with-invalid-repr-attr.rs:33:3
    |
 LL | #[repr(C, packed)]
-   | ^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^
    |
-   = help: `#[repr(packed)]` can only be applied to data types
+   = help: the `repr(packed)` attribute can only be applied to data types
 
-error: `#[repr(u8)]` attribute cannot be used on functions
-  --> $DIR/naked-with-invalid-repr-attr.rs:41:1
+error: the `repr(u8)` attribute cannot be used on functions
+  --> $DIR/naked-with-invalid-repr-attr.rs:41:3
    |
 LL | #[repr(u8)]
-   | ^^^^^^^^^^^
+   |   ^^^^^^^^
    |
-   = help: `#[repr(u8)]` can only be applied to enums
+   = help: the `repr(u8)` attribute can only be applied to enums
 
 error: aborting due to 6 previous errors
 

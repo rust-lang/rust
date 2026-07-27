@@ -20,7 +20,7 @@ rustup +nightly component add enzyme
 
 Older rustup versions are not aware of this component, so if you run into issues try updating rustup itself:
 ```console
-rustup update
+rustup self update
 rustup +nightly component add enzyme
 ```
 

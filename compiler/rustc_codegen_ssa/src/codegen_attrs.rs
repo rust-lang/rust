@@ -1,7 +1,7 @@
 use rustc_abi::{Align, ExternAbi};
 use rustc_hir::attrs::{
     AttributeKind, EiiImplResolution, InlineAttr, InstrumentFnAttr as HirInstrumentFnAttr, Linkage,
-    RtsanSetting, UsedBy,
+    OptimizeAttr, RtsanSetting, UsedBy,
 };
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId};
@@ -198,16 +198,10 @@ fn process_builtin_attrs(
                     codegen_fn_attrs.import_linkage = linkage;
 
                     if tcx.is_mutable_static(did.into()) {
-                        let mut diag = tcx.dcx().struct_span_err(
+                        tcx.dcx().span_delayed_bug(
                             *span,
-                            "extern mutable statics are not allowed with `#[linkage]`",
+                            "`extern { #[linkage] static mut ...` is checked in check_attr}",
                         );
-                        diag.note(
-                            "marking the extern static mutable would allow changing which \
-                            symbol the static references rather than make the target of the \
-                            symbol mutable",
-                        );
-                        diag.emit();
                     }
                 } else {
                     codegen_fn_attrs.linkage = linkage;
@@ -367,6 +361,17 @@ fn apply_overrides(tcx: TyCtxt<'_>, did: LocalDefId, codegen_fn_attrs: &mut Code
             codegen_fn_attrs
                 .target_features
                 .extend(tcx.codegen_fn_attrs(owner_id).target_features.iter().copied());
+        }
+    }
+
+    // Closures inherit `#[optimize]` annotations.
+    if tcx.is_closure_like(did.to_def_id()) {
+        let owner_id = tcx.parent(did.to_def_id());
+        if tcx.def_kind(owner_id).has_codegen_attrs() {
+            let owner_attrs = tcx.codegen_fn_attrs(owner_id);
+            if codegen_fn_attrs.optimize == OptimizeAttr::Default {
+                codegen_fn_attrs.optimize = owner_attrs.optimize;
+            }
         }
     }
 

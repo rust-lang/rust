@@ -13,7 +13,7 @@
 //~| ERROR reached the recursion limit while instantiating `<VirtualWrapper<_, 1> as MyTrait>::virtualize`
 
 //@ build-fail
-//@ compile-flags: --diagnostic-width=100 -Zwrite-long-types-to-disk=yes
+//@ compile-flags: --diagnostic-width=100 -Zwrite-long-types-to-disk=yes -Awarnings
 
 // Regression test for #114484: This used to ICE during monomorphization, because we treated
 // `<VirtualWrapper<...> as Pointee>::Metadata` as a rigid projection after reaching the recursion
