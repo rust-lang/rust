@@ -468,12 +468,19 @@ impl Rewrite for PatField {
                     self.pat.rewrite_result(context, nested_shape)?
                 )
             };
+
+            let combine_shape = if context.config.style_edition() >= StyleEdition::Edition2027 {
+                shape
+            } else {
+                nested_shape
+            };
+
             combine_strs_with_missing_comments(
                 context,
                 &attrs_str,
                 &pat_and_id_str,
                 mk_sp(hi_pos, self.pat.span.lo()),
-                nested_shape,
+                combine_shape,
                 false,
             )
         }
