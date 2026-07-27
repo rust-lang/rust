@@ -172,6 +172,8 @@ rm tests/ui/process/println-with-broken-pipe.rs # same
 rm -r tests/run-make/extern-fn-explicit-align # argument alignment not yet supported
 rm -r tests/run-make/panic-abort-eh_frame # .eh_frame emitted with panic=abort
 rm -r tests/run-make/used-proc-macro # doesn't work on arm64 for some reason
+rm tests/ui/asm/asm-const-ptr-mir-inline.rs # const sym in inline asm gives ICE
+rm tests/ui/asm/const-refs-to-static.rs # same
 
 # bugs in the test suite
 # ======================
