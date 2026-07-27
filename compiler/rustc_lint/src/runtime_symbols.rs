@@ -1,5 +1,6 @@
+use rustc_hir::attrs::CanonicalSymbol;
 use rustc_hir::def_id::LocalDefId;
-use rustc_hir::{self as hir, CanonicalSymbol, FnSig, ForeignItemKind};
+use rustc_hir::{self as hir, FnSig, ForeignItemKind};
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_middle::ty::{self, Instance, PolyFnSig, Ty};
 use rustc_session::{declare_lint, declare_lint_pass};
