@@ -36,6 +36,7 @@ must_use_candidate = "allow"
 option_if_let_else = "allow"
 
 borrow_as_ptr = "warn"
+elidable_lifetime_names = "warn"
 manual_assert = "warn"
 manual_assert_eq = "warn"
 manual_let_else = "warn"

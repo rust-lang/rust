@@ -4271,7 +4271,7 @@ impl<'a, K, V, S, A: Allocator> VacantEntry<'a, K, V, S, A> {
     }
 }
 
-impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator> EntryRef<'a, 'b, K, Q, V, S, A> {
+impl<'a, K, Q: ?Sized, V, S, A: Allocator> EntryRef<'a, '_, K, Q, V, S, A> {
     /// Sets the value of the entry, and returns an `OccupiedEntry`.
     ///
     /// # Examples
@@ -4465,7 +4465,7 @@ impl<'a, 'b, K, Q: ?Sized, V, S, A: Allocator> EntryRef<'a, 'b, K, Q, V, S, A> {
     }
 }
 
-impl<'a, 'b, K, Q: ?Sized, V: Default, S, A: Allocator> EntryRef<'a, 'b, K, Q, V, S, A> {
+impl<'a, K, Q: ?Sized, V: Default, S, A: Allocator> EntryRef<'a, '_, K, Q, V, S, A> {
     /// Ensures a value is in the entry by inserting the default value if empty,
     /// and returns a mutable reference to the value in the entry.
     ///
