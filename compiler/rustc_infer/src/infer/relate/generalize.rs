@@ -752,7 +752,7 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for Generalizer<'_, 'tcx> {
                 // Hack: Fall back to old behavior if GCE is enabled (it used to just be the Yes
                 // path), as doing this new No path breaks some GCE things. I expect GCE to be
                 // ripped out soon so this shouldn't matter soon.
-                if !tcx.features().generic_const_exprs() {
+                if self.infcx.next_trait_solver() || !tcx.features().generic_const_exprs() {
                     self.generalize_alias_term(alias_const.into()).map(|v| v.expect_const())
                 } else {
                     let ty::AliasConst { kind, args, .. } = alias_const;
