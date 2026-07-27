@@ -234,6 +234,13 @@ fn place_components_conflict<'tcx>(
                     return false;
                 }
 
+                (ProjectionElem::PhantomDeref, _, Shallow(None)) => {
+                    // e.g., a reborrow of `x.y` while we shallowly access `x.y` or some prefix
+                    // thereof - the shallow access cannot invalidate the reborrowed copy.
+                    debug!("borrow_conflicts_with_place: shallow access behind reborrow");
+                    return false;
+                }
+
                 (ProjectionElem::Field { .. }, ty::Adt(def, _), AccessDepth::Drop) => {
                     // Drop can read/write arbitrary projections, so places
                     // conflict regardless of further projections.
@@ -508,12 +515,6 @@ fn place_projection_conflict<'tcx>(
         }
         (ProjectionElem::Subslice { .. }, ProjectionElem::Subslice { .. }) => {
             debug!("place_element_conflict: DISJOINT-OR-EQ-SLICE-SUBSLICES");
-            Overlap::EqualOrDisjoint
-        }
-        (ProjectionElem::PhantomDeref, ProjectionElem::Field(idx, _))
-        | (ProjectionElem::Field(idx, _), ProjectionElem::PhantomDeref) => {
-            eprintln!("idx: {idx:?}");
-            debug!("place_element_conflict: DISJOINT-OR-EQ-PHANTOM-DEREF-FIELD");
             Overlap::EqualOrDisjoint
         }
         (

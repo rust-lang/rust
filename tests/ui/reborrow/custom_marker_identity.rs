@@ -1,4 +1,4 @@
-//@ check-fail
+//@ check-pass
 
 //! Check that the result of a Reborrow retains the original lifetime and does not capture local
 //! values, therefore enabling an identity function to compile.
@@ -10,8 +10,7 @@ use std::marker::{Reborrow, PhantomData};
 struct CustomMarker<'a>(PhantomData<&'a ()>);
 impl<'a> Reborrow for CustomMarker<'a> {}
 
-fn method<'a>(a: CustomMarker<'a>) -> CustomMarker<'a> { //~ERROR cannot return reference to temporary value
-    //~^ ERROR cannot return value referencing local data `a`
+fn method<'a>(a: CustomMarker<'a>) -> CustomMarker<'a> {
     a
 }
 
