@@ -716,7 +716,7 @@ pub(crate) enum BuiltinSpecialModuleNameUsed {
     Main,
 }
 
-// c_void_return.rs
+// c_void.rs
 #[derive(Diagnostic)]
 #[diag("`c_void` should not be used as a return type")]
 #[help("returning `()` in Rust is equivalent to returning `void` in C")]
@@ -729,7 +729,7 @@ pub(crate) struct CVoidReturn {
     pub suggestion: Span,
 }
 
-// c_void_return.rs
+// c_void.rs
 #[derive(Diagnostic)]
 #[diag("declarations returning `c_void` are not compatible with C functions returning `void`")]
 #[help("returning `()` in Rust is equivalent to returning `void` in C")]
@@ -742,6 +742,15 @@ pub(crate) struct ExternCVoidReturn {
     )]
     pub suggestion: Span,
 }
+
+// c_void.rs
+#[derive(Diagnostic)]
+#[diag("`c_void` should not be used as the referent of an `&` or `&mut` reference")]
+#[help("use a raw pointer, or a reference to `()`, instead")]
+#[note(
+    "for legacy reasons, Rust considers `c_void` to have size 1, so references to it can cause Undefined Behavior"
+)]
+pub(crate) struct CVoidReference;
 
 // deref_into_dyn_supertrait.rs
 #[derive(Diagnostic)]
