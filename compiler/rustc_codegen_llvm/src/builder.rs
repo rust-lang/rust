@@ -461,7 +461,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         funclet: Option<&Funclet<'ll>>,
         instance: Option<Instance<'tcx>>,
     ) -> &'ll Value {
-        // If this function returns indirectly(`PassMode::Indirect`),
+        // If this function returns indirectly (`PassMode::Indirect`),
         // the `return_slot` should be the first argument.
         let args = match return_slot {
             ReturnSlot::Direct => args.to_vec(),
@@ -1478,7 +1478,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         funclet: Option<&Funclet<'ll>>,
         callee_instance: Option<Instance<'tcx>>,
     ) -> &'ll Value {
-        // If this function returns indirectly(`PassMode::Indirect`),
+        // If this function returns indirectly (`PassMode::Indirect`),
         // the `return_slot` should be the first argument.
         let args = match return_slot {
             ReturnSlot::Direct => args.to_vec(),
