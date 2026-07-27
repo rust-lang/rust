@@ -7,3 +7,5 @@ fn with_option<const O: u32>() {
     crate::with_option::<{ async || {} }>();
     //~^ ERROR mismatched types
 }
+
+//@ normalize-stderr: "found `\{async closure@[^`]*\}`" -> "found `{async closure@...}`"
