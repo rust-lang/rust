@@ -645,7 +645,7 @@ impl<'tcx> LateContext<'tcx> {
             && self.tcx.use_typing_mode_post_typeck_until_borrowck()
         {
             let def_id = self.tcx.hir_enclosing_body_owner(body_id.hir_id);
-            TypingMode::borrowck(self.tcx, def_id)
+            TypingMode::post_borrowck_analysis(self.tcx, def_id)
         } else {
             TypingMode::non_body_analysis()
         }
