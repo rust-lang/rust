@@ -162,7 +162,16 @@ where
     let prev_universe = delegate.universe();
     let universes_created_in_query = response.max_universe.index();
     for _ in 0..universes_created_in_query {
-        delegate.create_next_universe();
+        let new_universe = delegate.create_next_universe();
+        if delegate.cx().assumptions_on_binders() {
+            // Region constraints involving query-created placeholders were handled inside
+            // the query. However, the placeholders can still escape in other response
+            // fields, such as opaque type constraints, so track their recreated universes.
+            delegate.insert_placeholder_assumptions(
+                new_universe,
+                Some(rustc_type_ir::region_constraint::Assumptions::empty()),
+            );
+        }
     }
 
     let var_values = response.value.var_values();
