@@ -949,12 +949,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     }
                 } else if let Some(impl_did) = impl_did.as_local()
                     && let item = self.tcx.hir_expect_item(impl_did)
-                    && let hir::ItemKind::Impl(item) = item.kind
-                    && let Some(of_trait) = item.of_trait
+                    && let hir::ItemKind::Impl(impl_) = item.kind
+                    && impl_.of_trait.is_some()
                 {
                     // trait is const, impl is local and not const
                     diag.span_suggestion_verbose(
-                        of_trait.trait_ref.path.span.shrink_to_lo(),
+                        item.span.shrink_to_lo(),
                         format!("make the `impl` of trait `{trait_name}` `const`"),
                         "const ".to_string(),
                         Applicability::MaybeIncorrect,
