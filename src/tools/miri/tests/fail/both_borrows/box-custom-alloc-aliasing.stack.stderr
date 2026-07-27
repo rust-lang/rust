@@ -6,7 +6,7 @@ LL |         let thread_id = ptr::read(ptr::addr_of!((*their_bin).thread_id));
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
-help: <TAG> was created by a Unique retag at offsets [RANGE]
+help: <TAG> was created by a SharedReadWrite retag at offsets [RANGE]
   --> tests/fail/both_borrows/box-custom-alloc-aliasing.rs:LL:CC
    |
 LL |     (Box::new_in([t], a) as Box<[T], A>).into_vec()
