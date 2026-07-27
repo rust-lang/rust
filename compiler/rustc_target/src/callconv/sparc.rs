@@ -23,12 +23,15 @@ where
             _ => unreachable!("complex component must be scalar"),
         };
 
+        let size = ret.layout.size;
         let mut cast = CastTarget::pair(reg, reg);
 
         // long double _Complex is special in that it should be marked as inreg.
         // See Clang `SparcV8ABIInfo::classifyReturnType`.
         if is_long_double {
             cast.attrs.set(ArgAttribute::InReg);
+        } else if !ret.layout.is_complex_float() && size <= Size::from_bytes(8) {
+            cast = CastTarget::from(Reg { kind: RegKind::Integer, size });
         }
         ret.cast_to(cast);
     } else if ret.layout.is_aggregate() {
@@ -59,9 +62,11 @@ where
     let align = arg.layout.align.abi.max(dl.i32_align).min(dl.i64_align);
 
     if arg.layout.is_complex() {
-        // Like clang, `_Complex` is passed on the stack, occupying `size` bytes there (rather than
-        // the single pointer-sized slot that `make_indirect` arguments use).
-        arg.pass_by_stack_offset(None);
+        if !arg.layout.is_complex_float() && size <= Size::from_bytes(8) {
+            arg.cast_to(Reg { kind: RegKind::Integer, size });
+        } else {
+            arg.pass_by_stack_offset(None);
+        }
     } else if arg.layout.is_aggregate() {
         let pad_i32 = !offset.is_aligned(align);
         arg.cast_to_and_pad_i32(Uniform::new(Reg::i32(), size), pad_i32);
