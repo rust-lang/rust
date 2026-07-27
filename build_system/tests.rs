@@ -456,6 +456,7 @@ impl<'a> TestRunner<'a> {
             cmd.arg("-Cpanic=abort");
         }
         cmd.arg("--check-cfg=cfg(jit)");
+        cmd.arg("--check-cfg=cfg(target_has_reliable_f128)");
         cmd.arg("--edition=2024");
         cmd.args(args);
         cmd
