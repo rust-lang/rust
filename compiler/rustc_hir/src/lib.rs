@@ -22,9 +22,7 @@ pub mod def;
 pub mod def_path_hash_map;
 pub mod definitions;
 pub mod diagnostic_items;
-pub use rustc_span::def_id;
 mod hir;
-pub use rustc_hir_id::{self as hir_id, *};
 pub mod intravisit;
 pub mod lang_items;
 pub mod lints;
@@ -42,6 +40,8 @@ pub use canonical_symbols::{CanonicalSymbol, CanonicalSymbols};
 pub use hir::*;
 pub use lang_items::{LangItem, LanguageItems};
 pub use rustc_ast::attr::version::*;
+pub use rustc_hir_id::*;
+pub use rustc_span::def_id;
 pub use stability::*;
 pub use target::{MethodKind, Target};
 
