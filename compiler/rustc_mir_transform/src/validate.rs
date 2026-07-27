@@ -653,15 +653,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         location: Location,
     ) {
         match elem {
-            ProjectionElem::Deref
-                if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) =>
-            {
-                let base_ty = place_ref.ty(&self.body.local_decls, self.tcx).ty;
-
-                if base_ty.is_box() {
-                    self.fail(location, format!("{base_ty} dereferenced after ElaborateBoxDerefs"))
-                }
-            }
+            // Miri needs `Deref` on `Box` to stay intact for proper UB checking,
+            // so we cannot reject it here even though codegen does not support such `Deref`.
             ProjectionElem::Field(f, ty) => {
                 let parent_ty = place_ref.ty(&self.body.local_decls, self.tcx);
                 let fail_out_of_bounds = |this: &mut Self, location| {
