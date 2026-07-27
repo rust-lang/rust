@@ -59,25 +59,21 @@ impl<'tcx> MaybePlacesSwitchIntData<'tcx> {
                 {
                     match enum_place.ty(body, tcx).ty.kind() {
                         ty::Adt(enum_def, _) => {
-                            // The value of each discriminant, in AdtDef order.
-                            let discriminant_vals: SmallVec<[u128; 4]> =
-                                enum_def.discriminants(tcx).map(|(_, discr)| discr.val).collect();
-                            let mut i = 0;
-
                             // For each value in the SwitchInt, find the VariantIdx for the variant
                             // with that value. This works because `discriminant_vals` and
                             // `targets.all_values()` are guaranteed to list variants in the same
-                            // order. (If that ever changes we will get out-of-bounds panics here.)
+                            // AdtDef order. (If that ever changes the `expect` will panic.)
+                            let mut discriminants = enum_def.discriminants(tcx);
                             let variants = targets
                                 .all_values()
                                 .iter()
                                 .map(|value| {
-                                    loop {
-                                        if discriminant_vals[i] == value.get() {
-                                            return VariantIdx::new(i);
-                                        }
-                                        i += 1;
-                                    }
+                                    // On each call to this closure `find` only consumes part of
+                                    // the `discriminants` iterator.
+                                    discriminants
+                                        .find(|(_, discr)| discr.val == value.get())
+                                        .expect("SwitchInt vals should match a variant")
+                                        .0
                                 })
                                 .collect();
 
@@ -232,7 +228,6 @@ pub struct MaybeUninitializedPlaces<'a, 'tcx> {
     move_data: &'a MoveData<'tcx>,
 
     mark_inactive_variants_as_uninit: bool,
-    include_inactive_in_otherwise: bool,
     skip_unreachable_unwind: DenseBitSet<mir::BasicBlock>,
 }
 
@@ -243,7 +238,6 @@ impl<'a, 'tcx> MaybeUninitializedPlaces<'a, 'tcx> {
             body,
             move_data,
             mark_inactive_variants_as_uninit: false,
-            include_inactive_in_otherwise: false,
             skip_unreachable_unwind: DenseBitSet::new_empty(body.basic_blocks.len()),
         }
     }
@@ -255,13 +249,6 @@ impl<'a, 'tcx> MaybeUninitializedPlaces<'a, 'tcx> {
     /// checker, where this information gets propagated along `FakeEdge`s.
     pub fn mark_inactive_variants_as_uninit(mut self) -> Self {
         self.mark_inactive_variants_as_uninit = true;
-        self
-    }
-
-    /// Ensures definitely inactive variants are included in the set of uninitialized places for
-    /// blocks reached through an `otherwise` edge.
-    pub fn include_inactive_in_otherwise(mut self) -> Self {
-        self.include_inactive_in_otherwise = true;
         self
     }
 
@@ -589,10 +576,7 @@ impl<'tcx> Analysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
             SwitchTargetIndex::Normal(target_idx) => {
                 InactiveVariants::Active(data.variants[target_idx])
             }
-            SwitchTargetIndex::Otherwise if self.include_inactive_in_otherwise => {
-                InactiveVariants::Inactives(data.variants.clone())
-            }
-            _ => return,
+            SwitchTargetIndex::Otherwise => InactiveVariants::Inactives(data.variants.clone()),
         };
 
         // Mark all move paths that correspond to variants other than this one as maybe
@@ -658,10 +642,9 @@ impl<'tcx> Analysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
         terminator: &'mir mir::Terminator<'tcx>,
         location: Location,
     ) -> TerminatorEdges<'mir, 'tcx> {
-        let (body, move_data) = (self.body, self.move_data());
-        let term = body[location.block].terminator();
+        let move_data = self.move_data();
         let init_loc_map = &move_data.init_loc_map;
-        debug!(?term);
+        debug!(?terminator);
         debug!("initializes move_indexes {:?}", init_loc_map[location]);
         state.gen_all(
             init_loc_map[location]

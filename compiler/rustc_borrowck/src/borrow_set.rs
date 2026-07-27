@@ -217,7 +217,7 @@ impl LocalsStateAtExit {
                 HasStorageDead(DenseBitSet::new_empty(body.local_decls.len()));
             has_storage_dead.visit_body(body);
             let mut has_storage_dead_or_moved = has_storage_dead.0;
-            for move_out in &move_data.moves {
+            for move_out in &move_data.move_outs {
                 has_storage_dead_or_moved.insert(move_data.base_local(move_out.path));
             }
             LocalsStateAtExit::SomeAreInvalidated { has_storage_dead_or_moved }
