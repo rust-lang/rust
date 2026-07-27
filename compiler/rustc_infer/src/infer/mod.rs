@@ -355,7 +355,7 @@ impl<'tcx> Drop for InferCtxt<'tcx> {
 
         // No need for the drop bomb when we're in `TypingMode::PostTypeckUntilBorrowck`, and the `InferCtxt`
         // doesn't consider regions. This is okay since after typeck, the only reason we care about opaques is
-        // in relation to regions. In some places *after* typeck that aren't borrowck, like in lints we use
+        // in relation to regions. In some places *after* typeck that aren't borrowck, we use
         // `TypingMode::PostTypeckUntilBorrowck` to prevent defining opaque types and we simply don't care about regions.
         match self.typing_mode_raw() {
             TypingMode::Coherence
