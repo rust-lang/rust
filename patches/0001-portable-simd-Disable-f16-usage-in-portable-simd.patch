@@ -1,4 +1,4 @@
-From 2aa88b261ffb51d3f18a4b9d3b79232d7445e5f3 Mon Sep 17 00:00:00 2001
+From 3532bdfd8521c84c50c9566941e7be5a7ec53e15 Mon Sep 17 00:00:00 2001
 From: bjorn3 <17426603+bjorn3@users.noreply.github.com>
 Date: Thu, 16 Apr 2026 17:29:02 +0200
 Subject: [PATCH] Disable f16 usage in portable-simd
@@ -7,20 +7,24 @@ It is currently broken on x86_64-pc-windows-gnu
 ---
  Cargo.toml                             |  8 ++------
  crates/core_simd/src/alias.rs          | 10 ----------
- crates/core_simd/src/cast.rs           |  3 ---
+ crates/core_simd/src/cast.rs           |  2 --
  crates/core_simd/src/lib.rs            |  1 -
  crates/core_simd/src/ops.rs            |  2 +-
  crates/core_simd/src/ops/unary.rs      |  2 --
  crates/core_simd/src/simd/cmp/eq.rs    |  2 +-
  crates/core_simd/src/simd/cmp/ord.rs   |  2 +-
  crates/core_simd/src/simd/num/float.rs |  2 +-
- crates/core_simd/src/vector.rs         |  7 -------
- crates/core_simd/tests/f16_ops.rs      | 10 ----------
- crates/std_float/src/lib.rs            |  9 ---------
+ crates/core_simd/src/simd/prelude.rs   |  4 ----
+ crates/core_simd/src/vector.rs         |  5 -----
+ crates/core_simd/src/vendor/arm.rs     |  4 ----
+ crates/core_simd/tests/f16_ops.rs      | 13 -------------
+ crates/std_float/src/lib.rs            |  8 --------
+ crates/std_float/tests/float.rs        |  2 --
+ crates/test_helpers/src/approxeq.rs    |  2 +-
  crates/test_helpers/src/biteq.rs       |  2 +-
  crates/test_helpers/src/lib.rs         |  2 --
  crates/test_helpers/src/subnormals.rs  |  2 +-
- 15 files changed, 8 insertions(+), 56 deletions(-)
+ 19 files changed, 9 insertions(+), 66 deletions(-)
  delete mode 100644 crates/core_simd/tests/f16_ops.rs
 
 diff --git a/Cargo.toml b/Cargo.toml
@@ -67,21 +71,20 @@ index 6dcfcb6..23f121c 100644
          f32x1 1
          f32x2 2
 diff --git a/crates/core_simd/src/cast.rs b/crates/core_simd/src/cast.rs
-index 69dc7ba..1c3592f 100644
+index 81187ae..d7cde25 100644
 --- a/crates/core_simd/src/cast.rs
 +++ b/crates/core_simd/src/cast.rs
-@@ -44,9 +44,6 @@ impl SimdCast for u64 {}
- unsafe impl Sealed for usize {}
- impl SimdCast for usize {}
+@@ -28,8 +28,6 @@ unsafe impl SimdCast for u64 {}
  // Safety: primitive number types can be cast to other primitive number types
--unsafe impl Sealed for f16 {}
--impl SimdCast for f16 {}
+ unsafe impl SimdCast for usize {}
+ // Safety: primitive number types can be cast to other primitive number types
+-unsafe impl SimdCast for f16 {}
 -// Safety: primitive number types can be cast to other primitive number types
- unsafe impl Sealed for f32 {}
- impl SimdCast for f32 {}
+ unsafe impl SimdCast for f32 {}
  // Safety: primitive number types can be cast to other primitive number types
+ unsafe impl SimdCast for f64 {}
 diff --git a/crates/core_simd/src/lib.rs b/crates/core_simd/src/lib.rs
-index 413a886..115be44 100644
+index e59b286..de8ae76 100644
 --- a/crates/core_simd/src/lib.rs
 +++ b/crates/core_simd/src/lib.rs
 @@ -1,7 +1,6 @@
@@ -91,7 +94,7 @@ index 413a886..115be44 100644
 -    f16,
      core_intrinsics,
      decl_macro,
-     repr_simd,
+     impl_restriction,
 diff --git a/crates/core_simd/src/ops.rs b/crates/core_simd/src/ops.rs
 index c0a06ed..eb6601f 100644
 --- a/crates/core_simd/src/ops.rs
@@ -145,10 +148,10 @@ index 5a4e74c..5672fbb 100644
  macro_rules! impl_mask {
      { $($integer:ty),* } => {
 diff --git a/crates/core_simd/src/simd/num/float.rs b/crates/core_simd/src/simd/num/float.rs
-index 510f4c9..175cbce 100644
+index 142740a..a93728e 100644
 --- a/crates/core_simd/src/simd/num/float.rs
 +++ b/crates/core_simd/src/simd/num/float.rs
-@@ -444,4 +444,4 @@ macro_rules! impl_trait {
+@@ -441,4 +441,4 @@ macro_rules! impl_trait {
      }
  }
  
@@ -170,31 +173,53 @@ index 51b8def..6e93f16 100644
  #[doc(no_inline)]
  pub use super::{f32x1, f32x2, f32x4, f32x8, f32x16, f32x32, f32x64};
 diff --git a/crates/core_simd/src/vector.rs b/crates/core_simd/src/vector.rs
-index fbef69f..c8e0b8c 100644
+index 55de9da..30b9b68 100644
 --- a/crates/core_simd/src/vector.rs
 +++ b/crates/core_simd/src/vector.rs
-@@ -1146,13 +1146,6 @@ unsafe impl SimdElement for isize {
+@@ -1121,11 +1121,6 @@ unsafe impl SimdElement for isize {
      type Mask = isize;
  }
  
--impl Sealed for f16 {}
--
 -// Safety: f16 is a valid SIMD element type, and is supported by this API
 -unsafe impl SimdElement for f16 {
 -    type Mask = i16;
 -}
 -
- impl Sealed for f32 {}
- 
  // Safety: f32 is a valid SIMD element type, and is supported by this API
+ unsafe impl SimdElement for f32 {
+     type Mask = i32;
+diff --git a/crates/core_simd/src/vendor/arm.rs b/crates/core_simd/src/vendor/arm.rs
+index d2f4ffd..91c8103 100644
+--- a/crates/core_simd/src/vendor/arm.rs
++++ b/crates/core_simd/src/vendor/arm.rs
+@@ -41,8 +41,6 @@ mod neon {
+     from_transmute! { unsafe i16x8 => int16x8_t }
+     from_transmute! { unsafe u16x4 => poly16x4_t }
+     from_transmute! { unsafe u16x8 => poly16x8_t }
+-    from_transmute! { unsafe f16x4 => float16x4_t }
+-    from_transmute! { unsafe f16x8 => float16x8_t }
+ 
+     from_transmute! { unsafe u32x2 => uint32x2_t }
+     from_transmute! { unsafe u32x4 => uint32x4_t }
+@@ -71,8 +69,6 @@ mod neon {
+     tuple!(u16, uint16x8x2_t, uint16x8x3_t, uint16x8x4_t);
+     tuple!(u16, poly16x4x2_t, poly16x4x3_t, poly16x4x4_t);
+     tuple!(u16, poly16x8x2_t, poly16x8x3_t, poly16x8x4_t);
+-    tuple!(f16, float16x4x2_t, float16x4x3_t, float16x4x4_t);
+-    tuple!(f16, float16x8x2_t, float16x8x3_t, float16x8x4_t);
+ 
+     tuple!(i32, int32x2x2_t, int32x2x3_t, int32x2x4_t);
+     tuple!(i32, int32x4x2_t, int32x4x3_t, int32x4x4_t);
 diff --git a/crates/core_simd/tests/f16_ops.rs b/crates/core_simd/tests/f16_ops.rs
 deleted file mode 100644
-index f89bdf4..0000000
+index 03e239b..0000000
 --- a/crates/core_simd/tests/f16_ops.rs
 +++ /dev/null
-@@ -1,10 +0,0 @@
+@@ -1,13 +0,0 @@
 -#![feature(portable_simd)]
 -#![feature(f16)]
+-#![expect(internal_features)]
+-#![feature(cfg_target_has_reliable_f16_f128)]
 -
 -#[macro_use]
 -mod ops_macros;
@@ -202,9 +227,10 @@ index f89bdf4..0000000
 -// FIXME: some f16 operations cause rustc to hang on wasm simd
 -// https://github.com/llvm/llvm-project/issues/189251
 -#[cfg(not(all(target_arch = "wasm32", target_feature = "simd128")))]
+-#[cfg(target_has_reliable_f16_math)]
 -impl_float_tests! { f16, i16 }
 diff --git a/crates/std_float/src/lib.rs b/crates/std_float/src/lib.rs
-index ff35254..acc1bfc 100644
+index d9499e5..f133c61 100644
 --- a/crates/std_float/src/lib.rs
 +++ b/crates/std_float/src/lib.rs
 @@ -2,7 +2,6 @@
@@ -212,16 +238,12 @@ index ff35254..acc1bfc 100644
      feature(core_intrinsics),
      feature(portable_simd),
 -    feature(f16),
+     feature(impl_restriction),
      allow(internal_features)
  )]
- #[cfg(not(feature = "as_crate"))]
-@@ -170,17 +169,9 @@ pub trait StdFloat: Sealed + Sized {
+@@ -160,13 +159,6 @@ pub impl(self) trait StdFloat: Sized {
      fn fract(self) -> Self;
  }
- 
--impl<const N: usize> Sealed for Simd<f16, N> {}
- impl<const N: usize> Sealed for Simd<f32, N> {}
- impl<const N: usize> Sealed for Simd<f64, N> {}
  
 -impl<const N: usize> StdFloat for Simd<f16, N> {
 -    #[inline]
@@ -233,6 +255,36 @@ index ff35254..acc1bfc 100644
  impl<const N: usize> StdFloat for Simd<f32, N> {
      #[inline]
      fn fract(self) -> Self {
+diff --git a/crates/std_float/tests/float.rs b/crates/std_float/tests/float.rs
+index d4d8a90..f97e112 100644
+--- a/crates/std_float/tests/float.rs
++++ b/crates/std_float/tests/float.rs
+@@ -1,5 +1,4 @@
+ #![feature(portable_simd)]
+-#![feature(f16)]
+ 
+ macro_rules! unary_test {
+     { $scalar:tt, $($func:tt),+ } => {
+@@ -87,6 +86,5 @@ macro_rules! impl_tests {
+     }
+ }
+ 
+-impl_tests! { f16 }
+ impl_tests! { f32 }
+ impl_tests! { f64 }
+diff --git a/crates/test_helpers/src/approxeq.rs b/crates/test_helpers/src/approxeq.rs
+index b868e09..d9a0553 100644
+--- a/crates/test_helpers/src/approxeq.rs
++++ b/crates/test_helpers/src/approxeq.rs
+@@ -60,7 +60,7 @@ macro_rules! impl_float_approxeq {
+     };
+ }
+ 
+-impl_float_approxeq! { f16, f32, f64 }
++impl_float_approxeq! { f32, f64 }
+ 
+ impl<T: ApproxEq, const N: usize> ApproxEq for [T; N] {
+     fn approxeq(&self, other: &Self, ulps: i64) -> bool {
 diff --git a/crates/test_helpers/src/biteq.rs b/crates/test_helpers/src/biteq.rs
 index 36761e3..cbc20cd 100644
 --- a/crates/test_helpers/src/biteq.rs
@@ -247,7 +299,7 @@ index 36761e3..cbc20cd 100644
  impl<T> BitEq for *const T {
      fn biteq(&self, other: &Self) -> bool {
 diff --git a/crates/test_helpers/src/lib.rs b/crates/test_helpers/src/lib.rs
-index 82adb06..4b03674 100644
+index 6661b0c..1dee109 100644
 --- a/crates/test_helpers/src/lib.rs
 +++ b/crates/test_helpers/src/lib.rs
 @@ -1,4 +1,3 @@
@@ -277,5 +329,5 @@ index 44dfbb3..b5f19ba 100644
  
  /// AltiVec should flush subnormal inputs to zero, but QEMU seems to only flush outputs.
 -- 
-2.53.0
+2.54.0
 
