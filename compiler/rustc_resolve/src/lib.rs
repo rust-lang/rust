@@ -2838,10 +2838,9 @@ use rustc_data_structures::sync::{RwLock as CacheCell, RwLock as CacheRefCell};
 ///
 /// We hope one day to not have to do this :D
 mod ref_mut {
-    use std::cell::{Cell, UnsafeCell};
+    use std::cell::{BorrowMutError, Cell, Ref, RefCell, RefMut};
     use std::marker::PhantomData;
     use std::ops::Deref;
-    use std::ptr::NonNull;
     use std::{fmt, mem, ops};
 
     use rustc_data_structures::sync::{DynSend, DynSync};
@@ -2997,84 +2996,34 @@ mod ref_mut {
         }
     }
 
-    const UNUSED: isize = 0;
+    pub(crate) enum CmRef<'b, T> {
+        /// A "speculative" reference that is not tracked, assuming correct usage of
+        /// `Resolver::assert_speculative`.
+        Speculative(&'b T),
 
-    pub(crate) struct CmRef<'b, T: 'b> {
-        // Same as `std::cell::Ref`.
-        // NB: we use a pointer instead of `&'b T` to avoid `noalias` violations, because a
-        // `Ref` argument doesn't hold immutability for its whole scope, only until it drops.
-        // `NonNull` is also covariant over `T`, just like we would have with `&T`.
-        value: NonNull<T>,
-        borrow: Option<&'b Cell<isize>>,
-    }
-
-    impl<'b, T: 'b> Drop for CmRef<'b, T> {
-        fn drop(&mut self) {
-            let Some(borrow) = self.borrow else {
-                std::hint::cold_path();
-                return;
-            };
-            borrow.update(|b| {
-                debug_assert!(b > UNUSED, "`CmRefCell` is not borrowed but a `CmRef` exists");
-                b - 1
-            });
-        }
+        /// Normal runtime borrow checking using `RefCell` semantics. Only used when not
+        /// in speculative resolution.
+        Normal(Ref<'b, T>),
     }
 
     impl<'b, T: 'b> ops::Deref for CmRef<'b, T> {
         type Target = T;
 
         fn deref(&self) -> &Self::Target {
-            unsafe { self.value.as_ref() }
+            match self {
+                CmRef::Speculative(r) => r,
+                CmRef::Normal(r) => r.deref(),
+            }
         }
     }
 
-    // When implementing `Clone`, also update `Drop` impl.
-    pub(crate) struct CmRefMut<'b, T> {
-        // Same as `std::cell::RefMut`.
-        // NB: we use a pointer instead of `&'b mut T` to avoid `noalias` violations, because a
-        // `RefMut` argument doesn't hold exclusivity for its whole scope, only until it drops.
-        value: NonNull<T>,
-        borrow: &'b Cell<isize>,
-        // `NonNull<T>` is covariant over `T`, so introduce invariance.
-        marker: PhantomData<&'b mut T>,
-    }
-
-    impl<'b, T> Drop for CmRefMut<'b, T> {
-        fn drop(&mut self) {
-            self.borrow.update(|b| {
-                debug_assert!(
-                    b == UNUSED - 1,
-                    "`CmRefCell` is not borrowed but a `CmRefMut` exists"
-                );
-                UNUSED // we do not impl `Clone` for `CmRefMut` so this is fine
-            });
-        }
-    }
-
-    impl<'b, T> ops::Deref for CmRefMut<'b, T> {
-        type Target = T;
-
-        fn deref(&self) -> &T {
-            // SAFETY: This type is proof that we have an exclusive reference to `T`, which can
-            // be turned into a shared reference.
-            unsafe { self.value.as_ref() }
-        }
-    }
-
-    impl<'b, T> ops::DerefMut for CmRefMut<'b, T> {
-        fn deref_mut(&mut self) -> &mut T {
-            // SAFETY: This type is proof that we have an exclusive reference to `T`.
-            unsafe { self.value.as_mut() }
-        }
-    }
-
-    // Soundness depends entirely on proper usage of the `assert_speculative` field in the `Resolver`.
+    // Soundness depends entirely on proper usage of the `assert_speculative` field in the
+    // `Resolver`. This means that whenever we hold a `CmRef::Normal` or `cell::RefMut` and
+    // flip the switch on `assert_speculative` we also drop these borrows.
     /// A wrapper around `RefCell` semantics that only allows writes (mutable borrows) based on a condition in the resolver.
     #[derive(Default)]
     pub(crate) struct CmRefCell<T> {
-        borrow: Cell<isize>,
-        value: UnsafeCell<T>,
+        inner: RefCell<T>,
     }
 
     // SAFETY: `CmRefCell<T>` is `Sync` only because every path borrows first checks
@@ -3085,11 +3034,11 @@ mod ref_mut {
 
     impl<T> CmRefCell<T> {
         pub(crate) fn new(value: T) -> CmRefCell<T> {
-            CmRefCell { borrow: Cell::new(UNUSED), value: UnsafeCell::new(value) }
+            CmRefCell { inner: RefCell::new(value) }
         }
 
         #[track_caller]
-        pub(crate) fn borrow_mut<'ra, 'tcx>(&self, r: &Resolver<'ra, 'tcx>) -> CmRefMut<'_, T> {
+        pub(crate) fn borrow_mut<'ra, 'tcx>(&self, r: &Resolver<'ra, 'tcx>) -> RefMut<'_, T> {
             self.try_borrow_mut(r).expect("`CmRefCell` is already borrowed")
         }
 
@@ -3097,39 +3046,31 @@ mod ref_mut {
         pub(crate) fn try_borrow_mut<'ra, 'tcx>(
             &self,
             r: &Resolver<'ra, 'tcx>,
-        ) -> Result<CmRefMut<'_, T>, ()> {
+        ) -> Result<RefMut<'_, T>, BorrowMutError> {
             if r.assert_speculative {
                 panic!("not allowed to mutably borrow a `CmRefCell` during speculative resolution");
             }
-            // The safety comment of the `DynSync` impl permits this.
-            match self.borrow.get() {
-                UNUSED => {
-                    self.borrow.replace(UNUSED - 1);
-                    let value = unsafe { NonNull::new_unchecked(self.value.get()) };
-                    Ok(CmRefMut { value, borrow: &self.borrow, marker: PhantomData })
-                }
-                _ => Err(()),
-            }
+            self.inner.try_borrow_mut()
         }
 
         #[track_caller]
         pub(crate) fn borrow<'ra, 'tcx>(&self, r: &Resolver<'ra, 'tcx>) -> CmRef<'_, T> {
-            let value = unsafe { NonNull::new_unchecked(self.value.get()) };
-
-            // Only actually track borrows when not in speculative resolution.
-            let borrow = (!r.assert_speculative).then(|| {
-                // The safety comment of the `DynSync` impl permits this.
-                let b = self.borrow.get().wrapping_add(1);
-                if b <= UNUSED {
-                    // - `b` was smaller then UNUSED
-                    // - or `b` wrapped around and we can't track more than `isize::MAX` borrows.
-                    panic!("`CmRefCell` already mutably borrowed")
-                } else {
-                    self.borrow.replace(b);
-                    &self.borrow
-                }
-            });
-            return CmRef { value, borrow };
+            if r.assert_speculative {
+                // SAFETY: We rely on the fact that we can't mutably borrow during speculative resolution.
+                //
+                // We do get a "special protection" if we ever mutably borrowed this `CmRefCell`,
+                // then switch to `assert_speculative = true` and try this borrow, it will fail.
+                //
+                // NB: The other way does not have this "protection", which makes me question this all.
+                // (see comment above `CmRefCell`).
+                CmRef::Speculative(unsafe {
+                    self.inner
+                        .try_borrow_unguarded()
+                        .expect("Mutably borrowed during speculative resolution")
+                })
+            } else {
+                CmRef::Normal(self.inner.borrow())
+            }
         }
     }
 
