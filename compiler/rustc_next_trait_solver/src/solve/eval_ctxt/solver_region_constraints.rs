@@ -179,7 +179,8 @@ where
             Placeholder(p) => {
                 RegionConstraint::PlaceholderTyOutlives(Ty::new_placeholder(self.cx(), *p), r)
             }
-            Alias(alias) => self.destructure_alias_outlives(*alias, r),
+            // The alias is either rigid or ambiguous in which case we'll return with ambiguity.
+            Alias(_, alias) => self.destructure_alias_outlives(*alias, r),
             UnresolvedInferenceVariable(_) => RegionConstraint::Ambiguity,
             Param(_) => panic!("Params should have been canonicalized to placeholders"),
             EscapingAlias(components) => self.destructure_components(components, r),

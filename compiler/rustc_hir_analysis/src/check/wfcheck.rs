@@ -31,7 +31,7 @@ use rustc_session::diagnostics::feature_err;
 use rustc_span::{DUMMY_SP, Span, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::regions::{
-    InferCtxtRegionExt, OutlivesEnvironmentBuildExt, region_known_to_outlive, ty_known_to_outlive,
+    OutlivesEnvironmentBuildExt, region_known_to_outlive, ty_known_to_outlive,
 };
 use rustc_trait_selection::traits::misc::{
     ConstParamTyImplementationError, type_allowed_to_implement_const_param_ty,
