@@ -1105,7 +1105,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg_attr(not(test), rustc_diagnostic_item = "vecdeque_reserve")]
     pub fn reserve(&mut self, additional: usize) {
-        let new_cap = self.len.checked_add(additional).expect("length should not overflow usize");
+        let new_cap = self.len.checked_add(additional).expect("capacity overflow");
         let old_cap = self.capacity();
 
         if new_cap > old_cap {
@@ -2732,7 +2732,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     #[stable(feature = "append", since = "1.4.0")]
     pub fn append(&mut self, other: &mut Self) {
         if T::IS_ZST {
-            self.len = self.len.checked_add(other.len).expect("length should not overflow usize");
+            self.len = self.len.checked_add(other.len).expect("capacity overflow");
             other.len = 0;
             other.head = WrappedIndex::zero();
             return;
@@ -3871,7 +3871,7 @@ impl<T, A: Allocator> Index<usize> for VecDeque<T, A> {
 
     #[inline]
     fn index(&self, index: usize) -> &T {
-        self.get(index).expect("index should be within bounds")
+        self.get(index).expect("out of bounds access")
     }
 }
 
@@ -3879,7 +3879,7 @@ impl<T, A: Allocator> Index<usize> for VecDeque<T, A> {
 impl<T, A: Allocator> IndexMut<usize> for VecDeque<T, A> {
     #[inline]
     fn index_mut(&mut self, index: usize) -> &mut T {
-        self.get_mut(index).expect("index should be within bounds")
+        self.get_mut(index).expect("out of bounds access")
     }
 }
 
