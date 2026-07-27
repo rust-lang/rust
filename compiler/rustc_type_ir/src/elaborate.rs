@@ -274,11 +274,11 @@ fn elaborate_component_to_clause<I: Interner>(
 
         Component::UnresolvedInferenceVariable(_) => None,
 
-        Component::Alias(alias_ty) => {
+        Component::Alias(is_rigid, alias_ty) => {
             // We might end up here if we have `Foo<<Bar as Baz>::Assoc>: 'a`.
             // With this, we can deduce that `<Bar as Baz>::Assoc: 'a`.
             Some(ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(
-                alias_ty.to_ty(cx, ty::IsRigid::No),
+                alias_ty.to_ty(cx, is_rigid),
                 outlives_region,
             )))
         }
@@ -415,9 +415,9 @@ pub fn elaborate_outlives_assumptions<I: Interner>(
                             collected.insert(ty::OutlivesPredicate(ty.into(), r2));
                         }
 
-                        Component::Alias(alias_ty) => {
+                        Component::Alias(is_rigid, alias_ty) => {
                             collected.insert(ty::OutlivesPredicate(
-                                alias_ty.to_ty(cx, ty::IsRigid::No).into(),
+                                alias_ty.to_ty(cx, is_rigid).into(),
                                 r2,
                             ));
                         }

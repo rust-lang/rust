@@ -282,7 +282,7 @@ fn ensure_impl_predicates_are_implied_by_item_defn<'tcx>(
     // reference the params from the ADT instead of from the impl which is bad UX. To resolve
     // this we "rename" the ADT's params to be the impl's params which should not affect behaviour.
     let impl_adt_ty = Ty::new_adt(tcx, tcx.adt_def(adt_def_id), adt_to_impl_args);
-    let adt_env = ty::EarlyBinder::bind(tcx, tcx.param_env(adt_def_id))
+    let adt_env = ty::EarlyBinder::bind_unchecked(tcx.param_env(adt_def_id))
         .instantiate(tcx, adt_to_impl_args)
         .skip_norm_wip();
 
