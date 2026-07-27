@@ -37,7 +37,8 @@ impl TypeId {
     /// It can only be called at compile time.
     #[unstable(feature = "type_info", issue = "146922")]
     #[rustc_const_unstable(feature = "type_info", issue = "146922")]
-    pub const fn info(self) -> Type {
+    #[rustc_comptime]
+    pub fn info(self) -> Type {
         type_of(self)
     }
 }
