@@ -13,9 +13,9 @@ use rustc_span::SyntaxContext;
 use super::{FLOAT_CMP, FLOAT_CMP_CONST};
 
 pub(crate) fn check_assert<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
-    if let Some(macro_call) = first_node_macro_backtrace(cx, e).find(|macro_call| {
-        is_assert_eq_diag(cx, macro_call.def_id)
-    }) && let Some((lhs, rhs, _)) = find_assert_eq_args(cx, e, macro_call.expn)
+    if let Some(macro_call) =
+        first_node_macro_backtrace(cx, e).find(|macro_call| is_assert_eq_diag(cx, macro_call.def_id))
+        && let Some((lhs, rhs, _)) = find_assert_eq_args(cx, e, macro_call.expn)
         && is_float(cx, lhs)
     {
         let ecx = ConstEvalCtxt::new(cx);
