@@ -12,6 +12,20 @@ help: use mutable method
 LL |     for (_k, v) in map.iter_mut() {
    |                            ++++
 
-error: aborting due to 1 previous error
+error[E0594]: cannot assign to `v.v`, which is behind a `&` reference
+  --> $DIR/suggest-mut-method-for-loop-hashmap.rs:31:9
+   |
+LL |     for (_k, v) in x {
+   |                    - this iterator yields `&` references
+LL |
+LL |         v.v += 1;
+   |         ^^^^^^^^ `v` is a `&` reference, so it cannot be written to
+   |
+help: use mutable method
+   |
+LL |     let x = map.iter_mut();
+   |                     ++++
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0594`.
