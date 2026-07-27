@@ -319,7 +319,8 @@ pub fn parse_cfg_attr(
     features: Option<&Features>,
     lint_node_id: ast::NodeId,
 ) -> Option<(CfgEntry, Vec<(WithTokens<AttrItem>, Span)>)> {
-    match &cfg_attr.get_normal_item().args {
+    let item = cfg_attr.get_normal_item();
+    match &item.args {
         ast::AttrArgs::Delimited(ast::DelimArgs { dspan, delim, tokens }) if !tokens.is_empty() => {
             check_cfg_attr_bad_delim(&sess.psess, *dspan, *delim);
             match parse_in(&sess.psess, tokens.clone(), "`cfg_attr` input", |p| {
@@ -329,11 +330,11 @@ pub fn parse_cfg_attr(
                 Err(e) => {
                     let suggestions = CFG_ATTR_TEMPLATE.suggestions(
                         ParsedDescription::Attribute,
-                        cfg_attr.get_normal_item().unsafety,
+                        item.unsafety,
                         sym::cfg_attr,
                     );
                     e.with_span_suggestions(
-                        cfg_attr.get_normal_item().span,
+                        item.span,
                         "must be of the form",
                         suggestions,
                         Applicability::HasPlaceholders,
@@ -347,25 +348,24 @@ pub fn parse_cfg_attr(
             }
         }
         _ => {
-            let (span, reason) = if let ast::AttrArgs::Delimited(ast::DelimArgs { dspan, .. }) =
-                cfg_attr.get_normal_item().args
-            {
-                (dspan.entire(), AttributeParseErrorReason::ExpectedAtLeastOneArgument)
-            } else {
-                (cfg_attr.get_normal_item().span, AttributeParseErrorReason::ExpectedList)
-            };
+            let (span, reason) =
+                if let ast::AttrArgs::Delimited(ast::DelimArgs { dspan, .. }) = item.args {
+                    (dspan.entire(), AttributeParseErrorReason::ExpectedAtLeastOneArgument)
+                } else {
+                    (item.span, AttributeParseErrorReason::ExpectedList)
+                };
 
             sess.dcx().emit_err(AttributeParseError {
                 span,
-                inner_span: cfg_attr.get_normal_item().span,
+                inner_span: item.span,
                 template: CFG_ATTR_TEMPLATE,
-                path: AttrPath::from_ast(&cfg_attr.get_normal_item().path, identity),
+                path: AttrPath::from_ast(&item.path, identity),
                 description: ParsedDescription::Attribute,
                 reason,
                 suggestions: session_diagnostics::AttributeParseErrorSuggestions::CreatedByTemplate(
                     CFG_ATTR_TEMPLATE.suggestions(
                         ParsedDescription::Attribute,
-                        cfg_attr.get_normal_item().unsafety,
+                        item.unsafety,
                         sym::cfg_attr,
                     ),
                 ),
@@ -402,13 +402,14 @@ fn parse_cfg_attr_internal<'a>(
     )?;
     let pred_span = pred_start.with_hi(parser.token.span.hi());
 
+    let item = attribute.get_normal_item();
     let cfg_predicate = AttributeParser::parse_single_args(
         sess,
         attribute.span,
-        attribute.get_normal_item().span,
+        item.span,
         attribute.style,
         AttrPath { segments: attribute.path().into_boxed_slice(), span: attribute.span },
-        Some(attribute.get_normal_item().unsafety),
+        Some(item.unsafety),
         AttributeSafety::Normal,
         ParsedDescription::Attribute,
         pred_span,
