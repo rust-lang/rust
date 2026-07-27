@@ -13,20 +13,16 @@
       }
   
       bb1: {
-+         StorageDead(_2);
           goto -> bb2;
       }
   
       bb2: {
           _3 = Eq(copy _2, const 123_u32);
--         StorageDead(_2);
--         switchInt(move _3) -> [1: bb1, otherwise: bb3];
-+         nop;
-+         switchInt(copy _2) -> [123: bb1, otherwise: bb3];
+          StorageDead(_2);
+          switchInt(move _3) -> [1: bb1, otherwise: bb3];
       }
   
       bb3: {
-+         StorageDead(_2);
           return;
       }
   }
