@@ -1153,7 +1153,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     ///
     ///     Ok(output)
     /// }
-    /// # process_data(&[1, 2, 3]).expect("why is the test harness OOMing on 12 bytes?");
+    /// # process_data(&[1, 2, 3]).expect("reserving capacity for 12 bytes should never fail");
     /// ```
     #[stable(feature = "try_reserve", since = "1.57.0")]
     pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), TryReserveError> {
@@ -1201,7 +1201,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     ///
     ///     Ok(output)
     /// }
-    /// # process_data(&[1, 2, 3]).expect("why is the test harness OOMing on 12 bytes?");
+    /// # process_data(&[1, 2, 3]).expect("reserving capacity for 12 bytes should never fail");
     /// ```
     #[stable(feature = "try_reserve", since = "1.57.0")]
     pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
@@ -3871,7 +3871,7 @@ impl<T, A: Allocator> Index<usize> for VecDeque<T, A> {
 
     #[inline]
     fn index(&self, index: usize) -> &T {
-        self.get(index).expect("Out of bounds access")
+        self.get(index).expect("out of bounds access")
     }
 }
 
@@ -3879,7 +3879,7 @@ impl<T, A: Allocator> Index<usize> for VecDeque<T, A> {
 impl<T, A: Allocator> IndexMut<usize> for VecDeque<T, A> {
     #[inline]
     fn index_mut(&mut self, index: usize) -> &mut T {
-        self.get_mut(index).expect("Out of bounds access")
+        self.get_mut(index).expect("out of bounds access")
     }
 }
 
