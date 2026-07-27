@@ -1,6 +1,6 @@
 // Ensure `memchr` communicates that a returned index is in bounds.
 //@ compile-flags: -Copt-level=3 -Zinline-mir=false
-//@ only-64bit
+//@ only-x86_64
 
 #![crate_type = "lib"]
 #![feature(slice_internals)]
