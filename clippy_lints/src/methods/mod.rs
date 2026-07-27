@@ -94,6 +94,7 @@ mod open_options;
 mod option_as_ref_cloned;
 mod option_as_ref_deref;
 mod option_map_or_none;
+mod option_zip_none;
 mod or_fun_call;
 mod or_then_unwrap;
 mod path_buf_push_overwrite;
@@ -2981,6 +2982,28 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks for calls of the form `Option::zip(_, None)` or `Option::zip(None, _)`.
+    ///
+    /// ### Why is this bad?
+    /// `Option::zip` with `None` always returns `None`.
+    ///
+    /// ### Example
+    /// ```ignore
+    /// let foo = Some(5);
+    /// foo.zip(None);
+    /// ```
+    /// Use instead:
+    /// ```ignore
+    /// None
+    /// ```
+    #[clippy::version = "1.99.0"]
+    pub OPTION_ZIP_NONE,
+    suspicious,
+    "calling `.zip(None)` on an `Option` always returns `None`"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Checks for calls to `.or(foo(..))`, `.unwrap_or(foo(..))`,
     /// `.or_insert(foo(..))` etc., and suggests to use `.or_else(|| foo(..))`,
     /// `.unwrap_or_else(|| foo(..))`, `.unwrap_or_default()` or `.or_default()`
@@ -5019,6 +5042,7 @@ impl_lint_pass!(Methods => [
     OPTION_AS_REF_DEREF,
     OPTION_FILTER_MAP,
     OPTION_MAP_OR_NONE,
+    OPTION_ZIP_NONE,
     OR_FUN_CALL,
     OR_THEN_UNWRAP,
     PATH_BUF_PUSH_OVERWRITE,
@@ -5173,6 +5197,7 @@ impl<'tcx> LateLintPass<'tcx> for Methods {
                     &self.unwrap_allowed_ids,
                     &self.unwrap_allowed_aliases,
                 );
+                option_zip_none::check_call(cx, expr, func, args);
             },
             ExprKind::MethodCall(..) => {
                 self.check_methods(cx, expr);
@@ -5995,6 +6020,9 @@ impl Methods {
                         &self.unwrap_allowed_aliases,
                         unwrap_expect_used::Variant::Unwrap,
                     );
+                },
+                (sym::zip, [arg]) => {
+                    option_zip_none::check_method(cx, expr, recv, arg);
                 },
                 _ => {},
             }

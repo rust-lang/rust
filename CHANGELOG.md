@@ -7310,6 +7310,7 @@ Released 2018-09-13
 [`option_map_unwrap_or_else`]: https://rust-lang.github.io/rust-clippy/main/index.html#option_map_unwrap_or_else
 [`option_option`]: https://rust-lang.github.io/rust-clippy/main/index.html#option_option
 [`option_unwrap_used`]: https://rust-lang.github.io/rust-clippy/main/index.html#option_unwrap_used
+[`option_zip_none`]: https://rust-lang.github.io/rust-clippy/main/index.html#option_zip_none
 [`or_fun_call`]: https://rust-lang.github.io/rust-clippy/main/index.html#or_fun_call
 [`or_then_unwrap`]: https://rust-lang.github.io/rust-clippy/main/index.html#or_then_unwrap
 [`out_of_bounds_indexing`]: https://rust-lang.github.io/rust-clippy/main/index.html#out_of_bounds_indexing
