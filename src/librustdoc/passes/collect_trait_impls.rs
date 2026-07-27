@@ -9,6 +9,7 @@ use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::{Attribute, find_attr};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::kw;
+use tracing::debug;
 
 use super::Pass;
 use crate::clean::*;
@@ -50,24 +51,28 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
         let _prof_timer = tcx.sess.prof.generic_activity("build_extern_trait_impls");
         for &cnum in tcx.crates(()) {
             for &impl_def_id in tcx.trait_impls_in_crate(cnum) {
-                let opt_trait_ref = tcx.impl_opt_trait_ref(impl_def_id);
-                if opt_trait_ref.is_some_and(|trait_ref| {
-                    crate_items.contains(&ItemId::DefId(trait_ref.def_id()))
-                        || Some(trait_ref.def_id()) == tcx.lang_items().deref_trait()
-                        || tcx.is_doc_notable_trait(trait_ref.def_id())
-                }) {
+                let trait_ref = tcx.impl_trait_ref(impl_def_id);
+                debug!("considering extern trait impl {trait_ref:?}");
+                if crate_items.contains(&ItemId::DefId(trait_ref.def_id()))
+                    || Some(trait_ref.def_id()) == tcx.lang_items().deref_trait()
+                    || tcx.is_doc_notable_trait(trait_ref.def_id())
+                {
+                    debug!("-> inlining due to trait");
                     cx.with_param_env(impl_def_id, |cx| {
                         inline::build_impl(cx, impl_def_id, None, &mut new_items_external);
                     });
                 } else {
                     let self_ty = tcx.type_of(impl_def_id).instantiate_identity().skip_norm_wip();
+                    debug!(?self_ty);
                     let self_ty_head = SelfTyHead::of(ty::Binder::dummy(self_ty), tcx, impl_def_id);
+                    debug!(?self_ty_head);
                     let keep_impl = match self_ty_head {
                         SelfTyHead::Generic => true,
                         SelfTyHead::Item(def_id) => crate_items.contains(&ItemId::DefId(def_id)),
                         SelfTyHead::Primitive | SelfTyHead::Other => false,
                     };
                     if keep_impl {
+                        debug!("-> inlining due to self ty");
                         cx.with_param_env(impl_def_id, |cx| {
                             inline::build_impl(cx, impl_def_id, None, &mut new_items_external);
                         });
@@ -159,6 +164,7 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
     krate
 }
 
+#[derive(Debug)]
 enum SelfTyHead {
     Generic,
     Primitive,
@@ -216,11 +222,8 @@ impl SelfTyHead {
             }
 
             ty::Alias(_, alias_ty @ ty::AliasTy { kind: ty::Projection { def_id }, .. }) => {
-                if tcx.is_impl_trait_in_trait(def_id) {
-                    Self::Other
-                } else {
-                    Self::of(bound_ty.rebind(alias_ty.self_ty()), tcx, parent)
-                }
+                debug_assert!(!tcx.is_impl_trait_in_trait(def_id));
+                Self::of(bound_ty.rebind(alias_ty.self_ty()), tcx, parent)
             }
 
             ty::Alias(_, alias_ty @ ty::AliasTy { kind: ty::Inherent { .. }, .. }) => {
