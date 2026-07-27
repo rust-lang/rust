@@ -108,7 +108,7 @@ impl LateLintPass<'_> for DurationSuboptimalUnits {
                         (arg.span, promoted_value.to_string()),
                     ];
                     diag.multipart_suggestion(
-                        format!("try using {promoted_constructor}"),
+                        format!("try using `Duration::{promoted_constructor}`"),
                         suggestions,
                         Applicability::MachineApplicable,
                     );
