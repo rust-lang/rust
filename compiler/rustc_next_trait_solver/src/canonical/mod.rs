@@ -19,12 +19,11 @@ use rustc_type_ir::relate::{
 };
 use rustc_type_ir::{
     self as ty, Canonical, CanonicalVarKind, CanonicalVarValues, InferCtxtLike, Interner, Region,
-    TypeFoldable, TypingMode, TypingModeEqWrapper,
+    TypeFoldable, TypingMode, TypingModeEqWrapper, eager_resolve_vars,
 };
 use tracing::instrument;
 
 use crate::delegate::SolverDelegate;
-use crate::resolve::eager_resolve_vars;
 use crate::solve::{
     CanonicalInput, CanonicalResponse, Certainty, ExternalConstraintsData,
     ExternalRegionConstraints, Goal, NestedNormalizationGoals, QueryInput, Response,

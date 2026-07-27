@@ -355,6 +355,14 @@ impl<I: Interner, T: TypeVisitable<I>> EarlyBinder<I, T> {
 }
 
 impl<I: Interner, T> EarlyBinder<I, T> {
+    /// Use `bind/bind_iter/bind_no_rigid_aliases` instead.
+    /// Don't use this unless you know what you're doing.
+    pub fn bind_unchecked(value: T) -> EarlyBinder<I, T> {
+        EarlyBinder { value, _tcx: PhantomData }
+    }
+}
+
+impl<I: Interner, T> EarlyBinder<I, T> {
     pub fn as_ref(&self) -> EarlyBinder<I, &T> {
         EarlyBinder { value: &self.value, _tcx: PhantomData }
     }
