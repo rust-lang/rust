@@ -677,7 +677,7 @@ struct ModuleData<'ra> {
     underscore_disambiguator: CmCell<u32>,
 
     /// Macro invocations that can expand into items in this module.
-    unexpanded_invocations: CacheRefCell<FxHashSet<LocalExpnId>>,
+    unexpanded_invocations: CmRefCell<FxHashSet<LocalExpnId>>,
 
     /// Whether `#[no_implicit_prelude]` is active.
     no_implicit_prelude: bool,
@@ -770,8 +770,8 @@ impl<'ra> ModuleData<'ra> {
         self.kind.is_local()
     }
 
-    fn has_unexpanded_invocations(&self) -> bool {
-        !self.unexpanded_invocations.borrow().is_empty()
+    fn has_unexpanded_invocations<'tcx>(&self, r: &Resolver<'ra, 'tcx>) -> bool {
+        !self.unexpanded_invocations.borrow(r).is_empty()
     }
 
     fn res(&self) -> Option<Res> {
@@ -1259,10 +1259,11 @@ impl<'ra> DeclData<'ra> {
     /// the declaration may not be as "determined" as we think.
     /// FIXME: relationship between this function and similar `NameResolution::determined_decl`
     /// is unclear.
-    fn determined(&self) -> bool {
+    fn determined<'tcx>(&self, r: &Resolver<'ra, 'tcx>) -> bool {
         match &self.kind {
             DeclKind::Import { source_decl, import, .. } if import.is_glob() => {
-                !import.parent_scope.module.has_unexpanded_invocations() && source_decl.determined()
+                !import.parent_scope.module.has_unexpanded_invocations(r)
+                    && source_decl.determined(r)
             }
             _ => true,
         }
@@ -2818,6 +2819,24 @@ type CmResolver<'r, 'ra, 'tcx> = ref_mut::RefOrMut<'r, Resolver<'ra, 'tcx>>;
 // parallel name resolution.
 use rustc_data_structures::sync::{RwLock as CacheCell, RwLock as CacheRefCell};
 
+/// The [`Resolver`] has different resolution phases, which share most of the resolution logic.
+/// Some of these phases mutate the resolver (`&mut Resolver`) during the resolution together with.
+/// However we are implementing import resolution (one of these phases), often referred to as
+/// "speculative resolution", to a parallel algorithm, which requires 2 things to change:
+///     - A `&Resolver`, because cannot mutate any fields in it.
+///     - Some fields with interior mutability may not be changed during import resolution, as
+///       this can conflict with other in process resolutions (so locks are not the solution).
+///       But these fields do require interior mutability during the other phases.
+///
+/// Because refactoring the entire name resolution code to be split into "immutable" and "mutable"
+/// logic, we opted for a more "developer friendly" and very unsafe approach using data structures
+/// that are immutable during import resolution. This module is the collection of 3 data structures
+/// that offer use the above 2 points:
+///     - a `RefOrMut<'a, T>` smart pointer that gates a `&'a mut T` through a flag
+///       (i.e. are we in import res?).
+///     - `CmCell` and `CmRefCell`, which are condiotionally mutable through a flag.
+///
+/// We hope one day to not have to do this :D
 mod ref_mut {
     use std::cell::{Cell, UnsafeCell};
     use std::marker::PhantomData;
@@ -2836,6 +2855,7 @@ mod ref_mut {
         // a `&mut T`.
         p: *mut T,
         mutable: bool,
+        // `RefOrMut` technically holds a `&'a mut T`
         _marker: PhantomData<&'a mut T>,
     }
 
@@ -2882,12 +2902,9 @@ mod ref_mut {
         /// `T: DynSync`. However, this is only safe if this `RefOrMut` is used as a
         /// shared reference:
         ///
-        /// - If the resulting `RefOrMut` may ever be accessed from, or sent to, more than
-        ///   one thread, it **must** be constructed with `mutable = false`, and must only
-        ///   ever be used to obtain shared (`&T`) access for its entire lifetime.
-        /// - `mutable = true` is only sound if this value is guaranteed to remain on a
-        ///   single thread for its entire lifetime, since doing so permits exclusive
-        ///   (`&mut T`) access to be taken through it.
+        /// If the resulting `RefOrMut` may ever be accessed from, or sent to, more than
+        /// one thread, it **must** be constructed with `mutable = false`, and therefore can
+        /// only ever be used to obtain shared access (`&T`) for its entire lifetime.
         ///
         /// Violating this is undefined behavior.
         pub(crate) unsafe fn new(p: &'a mut T, mutable: bool) -> Self {
@@ -2928,7 +2945,6 @@ mod ref_mut {
     }
 
     /// A wrapper around a [`Cell`] that only allows mutation based on a condition in the resolver.
-    ///
     #[derive(Default)]
     pub(crate) struct CmCell<T>(Cell<T>);
 
@@ -3013,23 +3029,20 @@ mod ref_mut {
         }
     }
 
+    // When implementing `Clone`, also update `Drop` impl.
     pub(crate) struct CmRefMut<'b, T> {
-        // Same as `std::cell::Ref`.
+        // Same as `std::cell::RefMut`.
         // NB: we use a pointer instead of `&'b mut T` to avoid `noalias` violations, because a
         // `RefMut` argument doesn't hold exclusivity for its whole scope, only until it drops.
         value: NonNull<T>,
-        borrow: Option<&'b Cell<isize>>,
+        borrow: &'b Cell<isize>,
         // `NonNull<T>` is covariant over `T`, so introduce invariance.
         marker: PhantomData<&'b mut T>,
     }
 
     impl<'b, T> Drop for CmRefMut<'b, T> {
         fn drop(&mut self) {
-            let Some(borrow) = self.borrow else {
-                std::hint::cold_path();
-                return;
-            };
-            borrow.update(|b| {
+            self.borrow.update(|b| {
                 debug_assert!(
                     b == UNUSED - 1,
                     "`CmRefCell` is not borrowed but a `CmRefMut` exists"
@@ -3043,7 +3056,7 @@ mod ref_mut {
         type Target = T;
 
         fn deref(&self) -> &T {
-            // This type is proof that we have an exclusive reference to `T`, which can
+            // SAFETY: This type is proof that we have an exclusive reference to `T`, which can
             // be turned into a shared reference.
             unsafe { self.value.as_ref() }
         }
@@ -3051,11 +3064,12 @@ mod ref_mut {
 
     impl<'b, T> ops::DerefMut for CmRefMut<'b, T> {
         fn deref_mut(&mut self) -> &mut T {
-            // This type is proof that we have an exclusive reference to `T`.
+            // SAFETY: This type is proof that we have an exclusive reference to `T`.
             unsafe { self.value.as_mut() }
         }
     }
 
+    // Soundness depends entirely on proper usage of the `assert_speculative` field in the `Resolver`.
     /// A wrapper around `RefCell` semantics that only allows writes (mutable borrows) based on a condition in the resolver.
     #[derive(Default)]
     pub(crate) struct CmRefCell<T> {
@@ -3087,11 +3101,12 @@ mod ref_mut {
             if r.assert_speculative {
                 panic!("not allowed to mutably borrow a `CmRefCell` during speculative resolution");
             }
+            // The safety comment of the `DynSync` impl permits this.
             match self.borrow.get() {
                 UNUSED => {
                     self.borrow.replace(UNUSED - 1);
                     let value = unsafe { NonNull::new_unchecked(self.value.get()) };
-                    Ok(CmRefMut { value, borrow: Some(&self.borrow), marker: PhantomData })
+                    Ok(CmRefMut { value, borrow: &self.borrow, marker: PhantomData })
                 }
                 _ => Err(()),
             }
@@ -3100,7 +3115,10 @@ mod ref_mut {
         #[track_caller]
         pub(crate) fn borrow<'ra, 'tcx>(&self, r: &Resolver<'ra, 'tcx>) -> CmRef<'_, T> {
             let value = unsafe { NonNull::new_unchecked(self.value.get()) };
+
+            // Only actually track borrows when not in speculative resolution.
             let borrow = (!r.assert_speculative).then(|| {
+                // The safety comment of the `DynSync` impl permits this.
                 let b = self.borrow.get().wrapping_add(1);
                 if b <= UNUSED {
                     // - `b` was smaller then UNUSED
