@@ -202,7 +202,7 @@ where
         let mut errors = Vec::new();
         loop {
             let mut any_changed = false;
-            for (mut obligation, stalled_on) in self.obligations.drain_pending(|_, _| true) {
+            for (mut obligation, stalled_on) in mem::take(&mut self.obligations.pending) {
                 let goal = obligation.as_goal();
                 let delegate = <&SolverDelegate<'tcx>>::from(infcx);
 
