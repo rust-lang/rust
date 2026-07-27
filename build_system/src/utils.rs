@@ -443,6 +443,34 @@ pub fn get_sysroot_dir() -> PathBuf {
     Path::new(crate::BUILD_DIR).join("build_sysroot")
 }
 
+pub fn run_tool_and_install_it_if_not_present(cmd: &[&dyn AsRef<OsStr>]) -> Result<(), String> {
+    let (exit_status, stderr) = run_command_with_output_and_get_it(cmd, Some(Path::new(".")))?;
+    if exit_status.success() {
+        return Ok(());
+    }
+    let mut iter = stderr.split('\n');
+    if let Some(line) = iter.next()
+        && line.contains("is not installed for the toolchain")
+        && let Some(line) = iter.next()
+        && line.contains("run `rustup component add")
+        && let Some(cmd) = line.split('`').nth(1)
+        && let Some(tool_name) = cmd.rsplit(' ').next()
+    {
+        println!("`{tool_name}` is not installed for this toolchain, installing it...");
+        // A weird round-about way to get a `&&str` so I can get a `&dyn AsRef<OsStr>` but
+        // as long as it works...
+        let cmd = cmd.split(' ').collect::<Vec<_>>();
+        let cmd = cmd.iter().map(|s: &&str| s as &dyn AsRef<OsStr>).collect::<Vec<_>>();
+        run_command_with_output(cmd.as_slice(), Some(Path::new(".")))?;
+    } else {
+        // If the component is installed, then it's something else. In this case we fail like we
+        // should have and let the user handles the error.
+        return check_exit_status(cmd, Some(Path::new(".")), exit_status, None, true);
+    }
+    // We retry the command...
+    run_command_with_output(cmd, Some(Path::new(".")))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
