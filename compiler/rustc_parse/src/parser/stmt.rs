@@ -54,6 +54,8 @@ impl<'a> Parser<'a> {
         force_collect: ForceCollect,
         force_full_expr: bool,
     ) -> PResult<'a, Stmt> {
+        self.current_closure.take();
+
         let pre_attr_pos = self.collect_pos();
         let attrs = self.parse_outer_attributes()?;
         let lo = self.token.span;
