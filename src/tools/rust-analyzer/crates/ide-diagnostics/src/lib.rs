@@ -129,9 +129,11 @@ use ide_db::{
     rename::RenameConfig,
     source_change::SourceChange,
 };
+use smallvec::{SmallVec, smallvec};
 use syntax::{
     AstPtr, Edition, SmolStr, SyntaxNode, SyntaxNodePtr, TextRange,
     ast::{self, AstNode},
+    format_smolstr,
 };
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -141,6 +143,7 @@ pub enum DiagnosticCode {
     RustcLint(&'static str),
     Clippy(&'static str),
     Ra(&'static str, Severity),
+    RaLint(&'static str, Severity),
 }
 
 impl DiagnosticCode {
@@ -158,7 +161,7 @@ impl DiagnosticCode {
             DiagnosticCode::Clippy(e) => {
                 format!("https://rust-lang.github.io/rust-clippy/master/#/{e}")
             }
-            DiagnosticCode::Ra(e, _) => {
+            DiagnosticCode::Ra(e, _) | DiagnosticCode::RaLint(e, _) => {
                 format!("https://rust-analyzer.github.io/book/diagnostics.html#{e}")
             }
         }
@@ -169,7 +172,8 @@ impl DiagnosticCode {
             DiagnosticCode::RustcHardError(r)
             | DiagnosticCode::RustcLint(r)
             | DiagnosticCode::Clippy(r)
-            | DiagnosticCode::Ra(r, _) => r,
+            | DiagnosticCode::Ra(r, _)
+            | DiagnosticCode::RaLint(r, _) => r,
             DiagnosticCode::SyntaxError => "syntax-error",
         }
     }
@@ -206,7 +210,7 @@ impl Diagnostic {
                 // FIXME: We can make this configurable, and if the user uses `cargo clippy` on flycheck, we can
                 // make it normal warning.
                 DiagnosticCode::Clippy(_) => Severity::WeakWarning,
-                DiagnosticCode::Ra(_, s) => s,
+                DiagnosticCode::Ra(_, s) | DiagnosticCode::RaLint(_, s) => s,
             },
             unused: false,
             experimental: true,
@@ -573,7 +577,14 @@ pub fn semantic_diagnostics(
 
     let mut lints = res
         .iter_mut()
-        .filter(|it| matches!(it.code, DiagnosticCode::Clippy(_) | DiagnosticCode::RustcLint(_)))
+        .filter(|it| {
+            matches!(
+                it.code,
+                DiagnosticCode::Clippy(_)
+                    | DiagnosticCode::RustcLint(_)
+                    | DiagnosticCode::RaLint(..)
+            )
+        })
         .filter_map(|it| Some((it.main_node(&ctx.sema)?, it)))
         .collect::<Vec<_>>();
 
@@ -646,7 +657,7 @@ fn handle_diag_from_macros(
 
 struct BuiltLint {
     lint: &'static Lint,
-    groups: Vec<&'static str>,
+    groups: SmallVec<[SmolStr; 5]>,
 }
 
 static RUSTC_LINTS: LazyLock<FxHashMap<&str, BuiltLint>> =
@@ -667,12 +678,17 @@ fn build_lints_map(
 ) -> FxHashMap<&'static str, BuiltLint> {
     let mut map_with_prefixes: FxHashMap<_, _> = lints
         .iter()
-        .map(|lint| (lint.label, BuiltLint { lint, groups: vec![lint.label, "__RA_EVERY_LINT"] }))
+        .map(|lint| {
+            (
+                lint.label,
+                BuiltLint { lint, groups: smallvec![lint.label.into(), "__RA_EVERY_LINT".into()] },
+            )
+        })
         .collect();
     for g in lint_group {
         let mut add_children = |label: &'static str| {
             for child in g.children {
-                map_with_prefixes.get_mut(child).unwrap().groups.push(label);
+                map_with_prefixes.get_mut(child).unwrap().groups.push(label.into());
             }
         };
         add_children(g.lint.label);
@@ -693,12 +709,15 @@ fn handle_lints(
     edition: Edition,
 ) {
     for (node, diag) in diagnostics {
-        let lint = match diag.code {
-            DiagnosticCode::RustcLint(lint) => RUSTC_LINTS[lint].lint,
-            DiagnosticCode::Clippy(lint) => CLIPPY_LINTS[lint].lint,
-            _ => panic!("non-lint passed to `handle_lints()`"),
+        let default_severity = 'find_severity: {
+            let lint = match diag.code {
+                DiagnosticCode::RustcLint(lint) => RUSTC_LINTS[lint].lint,
+                DiagnosticCode::Clippy(lint) => CLIPPY_LINTS[lint].lint,
+                DiagnosticCode::RaLint(_, severity) => break 'find_severity severity,
+                _ => panic!("non-lint passed to `handle_lints()`"),
+            };
+            default_lint_severity(lint, edition)
         };
-        let default_severity = default_lint_severity(lint, edition);
         if !(default_severity == Severity::Allow && diag.severity == Severity::WeakWarning) {
             diag.severity = default_severity;
         }
@@ -798,13 +817,13 @@ fn lint_attrs(
 
 #[derive(Debug)]
 struct LintGroups {
-    groups: &'static [&'static str],
+    groups: SmallVec<[SmolStr; 5]>,
     inside_warnings: bool,
 }
 
 impl LintGroups {
     fn contains(&self, group: &str) -> bool {
-        self.groups.contains(&group) || (self.inside_warnings && group == "warnings")
+        self.groups.iter().any(|g| g == group) || (self.inside_warnings && group == "warnings")
     }
 }
 
@@ -813,12 +832,15 @@ fn lint_groups(lint: &DiagnosticCode, edition: Edition) -> LintGroups {
         DiagnosticCode::RustcLint(name) => {
             let lint = &RUSTC_LINTS[name];
             let inside_warnings = default_lint_severity(lint.lint, edition) == Severity::Warning;
-            (&lint.groups, inside_warnings)
+            (lint.groups.clone(), inside_warnings)
         }
         DiagnosticCode::Clippy(name) => {
             let lint = &CLIPPY_LINTS[name];
             let inside_warnings = default_lint_severity(lint.lint, edition) == Severity::Warning;
-            (&lint.groups, inside_warnings)
+            (lint.groups.clone(), inside_warnings)
+        }
+        DiagnosticCode::RaLint(name, severity) => {
+            (smallvec![format_smolstr!("rust_analyzer::{name}")], *severity == Severity::Warning)
         }
         _ => panic!("non-lint passed to `handle_lints()`"),
     };
