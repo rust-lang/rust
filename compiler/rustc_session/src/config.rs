@@ -2806,7 +2806,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     let mut cg = CodegenOptions::build(early_dcx, matches, &mut collected_options);
     CodegenOptions::require_unstable_options(
         early_dcx,
-        &collected_options.metadata,
+        &collected_options,
         unstable_opts.unstable_options,
     );
     let (disable_local_thinlto, codegen_units) = should_override_cgus_and_disable_thinlto(
