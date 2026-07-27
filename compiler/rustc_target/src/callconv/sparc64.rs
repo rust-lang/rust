@@ -1,7 +1,7 @@
 use arrayvec::ArrayVec;
 use rustc_abi::{
-    Align, BackendRepr, FieldsShape, Float, HasDataLayout, Primitive, Reg, Size, TyAbiInterface,
-    TyAndLayout, Variants,
+    Align, BackendRepr, FieldsShape, Float, HasDataLayout, Primitive, Reg, RegKind, Size,
+    TyAbiInterface, TyAndLayout, Variants,
 };
 
 use crate::callconv::{ArgAbi, ArgAttribute, CastTarget, FnAbi, Uniform};
@@ -142,6 +142,13 @@ fn classify_arg<'a, Ty, C>(
     }
 
     *total_double_word_count = start_double_word_count + double_word_count;
+
+    // Clang treats `_Complex` like a struct, GCC like a big scalar. That changes how the bits get
+    // packed. We follow GCC here. See also https://github.com/llvm/llvm-project/pull/212340.
+    if arg.layout.is_complex() && !arg.layout.is_complex_float() && total < Size::from_bytes(8) {
+        arg.cast_to(Reg { kind: RegKind::Integer, size: total });
+        return;
+    }
 
     const ARGUMENT_REGISTERS: usize = 8;
 
