@@ -494,7 +494,10 @@ impl<'tcx> PlaceRef<'tcx> {
     pub fn local_or_deref_local(&self) -> Option<Local> {
         match *self {
             PlaceRef { local, projection: [] }
-            | PlaceRef { local, projection: [ProjectionElem::Deref] } => Some(local),
+            | PlaceRef {
+                local,
+                projection: [ProjectionElem::Deref | ProjectionElem::PhantomDeref],
+            } => Some(local),
             _ => None,
         }
     }

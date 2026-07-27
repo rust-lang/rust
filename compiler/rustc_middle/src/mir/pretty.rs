@@ -1352,8 +1352,7 @@ fn pre_fmt_projection(projection: &[PlaceElem<'_>], fmt: &mut Formatter<'_>) -> 
         match elem {
             ProjectionElem::OpaqueCast(_)
             | ProjectionElem::Downcast(_, _)
-            | ProjectionElem::Field(_, _)
-            | ProjectionElem::PhantomDeref => {
+            | ProjectionElem::Field(_, _) => {
                 write!(fmt, "(")?;
             }
             ProjectionElem::Deref => {
@@ -1364,6 +1363,9 @@ fn pre_fmt_projection(projection: &[PlaceElem<'_>], fmt: &mut Formatter<'_>) -> 
             | ProjectionElem::Subslice { .. } => {}
             ProjectionElem::UnwrapUnsafeBinder(_) => {
                 write!(fmt, "unwrap_binder!(")?;
+            }
+            ProjectionElem::PhantomDeref => {
+                write!(fmt, "reborrow!(")?;
             }
         }
     }

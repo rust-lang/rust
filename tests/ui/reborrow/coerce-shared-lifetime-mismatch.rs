@@ -14,7 +14,6 @@ impl<'a> Reborrow for CustomMarker<'a> {}
 #[derive(Clone, Copy)]
 struct StaticMarkerRef<'a>(PhantomData<&'a ()>);
 
-// Should error: for two types with only one lifetime each, both should use the same lifetime.
 impl<'a> CoerceShared<StaticMarkerRef<'static>> for CustomMarker<'a> {}
 //~^ ERROR
 
@@ -23,5 +22,4 @@ fn method(_a: StaticMarkerRef<'static>) {}
 fn main() {
     let a = CustomMarker(PhantomData);
     method(a);
-    //~^ ERROR
 }
