@@ -146,7 +146,7 @@ mod prim_bool {}
 ///
 /// ```ignore (hypothetical-example)
 /// loop {
-///     let (client, request) = get_request().expect("disconnected");
+///     let (client, request) = get_request().expect("server should stay connected");
 ///     let response = request.process();
 ///     response.send(client);
 /// }
