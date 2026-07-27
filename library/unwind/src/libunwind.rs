@@ -165,11 +165,9 @@ cfg_select! {
         pub unsafe fn _Unwind_GetIPInfo(ctx: *mut _Unwind_Context,
                                         ip_before_insn: *mut c_int)
                                         -> _Unwind_Word {
-            unsafe {
-                *ip_before_insn = 0;
-                let val = unsafe { _Unwind_GetGR(ctx, UNWIND_IP_REG) };
-                val.map_addr(|v| v & !1)
-            }
+            unsafe { *ip_before_insn = 0 };
+            let val = unsafe { _Unwind_GetGR(ctx, UNWIND_IP_REG) };
+            val.map_addr(|v| v & !1)
         }
     }
 }
