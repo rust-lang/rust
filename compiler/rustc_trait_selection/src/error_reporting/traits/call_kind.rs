@@ -30,6 +30,17 @@ pub enum CallDesugaringKind {
 }
 
 impl CallDesugaringKind {
+    pub fn name(&self) -> &'static str {
+        match self {
+            CallDesugaringKind::ForLoopIntoIter => "`for` loop",
+            CallDesugaringKind::ForLoopNext => "`for` loop",
+            CallDesugaringKind::QuestionBranch => "question mark operator",
+            CallDesugaringKind::QuestionFromResidual => "question mark operator",
+            CallDesugaringKind::TryBlockFromOutput => "try block",
+            CallDesugaringKind::Await => "`await`",
+        }
+    }
+
     pub fn trait_def_id(self, tcx: TyCtxt<'_>) -> DefId {
         match self {
             Self::ForLoopIntoIter => tcx.get_diagnostic_item(sym::IntoIterator).unwrap(),

@@ -393,6 +393,22 @@ pub(crate) enum CaptureReasonLabel<'a> {
         "{$place_name} {$is_partial ->
             [true] partially moved
             *[false] moved
+        } due to usage in the question mark {$is_loop_message ->
+            [true] operator, in previous iteration of loop
+            *[false] operator
+        }"
+    )]
+    QuestionMark {
+        #[primary_span]
+        fn_call_span: Span,
+        place_name: &'a str,
+        is_partial: bool,
+        is_loop_message: bool,
+    },
+    #[label(
+        "{$place_name} {$is_partial ->
+            [true] partially moved
+            *[false] moved
         } due to this implicit call to {$is_loop_message ->
             [true] `.into_iter()`, in previous iteration of loop
             *[false] `.into_iter()`
@@ -493,6 +509,17 @@ pub(crate) enum CaptureReasonNote {
     },
     #[note("`{$func}` takes ownership of the receiver `self`, which moves {$place_name}")]
     FuncTakeSelf {
+        func: String,
+        place_name: String,
+        #[primary_span]
+        span: Span,
+    },
+    #[note(
+        "the {$desugar_name} is expanded into a call to `{$func}`, which takes ownership of the \
+         receiver `self`, which moves {$place_name}"
+    )]
+    DesugaringFuncTakeSelf {
+        desugar_name: &'static str,
         func: String,
         place_name: String,
         #[primary_span]

@@ -1375,11 +1375,20 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                         );
 
                         let func = tcx.def_path_str(method_did);
-                        err.subdiagnostic(CaptureReasonNote::FuncTakeSelf {
-                            func,
-                            place_name: place_name.clone(),
-                            span: self_arg.span,
-                        });
+                        if let Some((kind, _)) = desugaring {
+                            err.subdiagnostic(CaptureReasonNote::DesugaringFuncTakeSelf {
+                                func,
+                                desugar_name: kind.name(),
+                                place_name: place_name.clone(),
+                                span: self_arg.span,
+                            });
+                        } else {
+                            err.subdiagnostic(CaptureReasonNote::FuncTakeSelf {
+                                func,
+                                place_name: place_name.clone(),
+                                span: self_arg.span,
+                            });
+                        }
                     }
                     let parent_did = tcx.parent(method_did);
                     let parent_self_ty =
@@ -1451,20 +1460,31 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                             }
                         }
                     } else {
-                        if let Some((CallDesugaringKind::Await, _)) = desugaring {
-                            err.subdiagnostic(CaptureReasonLabel::Await {
-                                fn_call_span,
-                                place_name: &place_name,
-                                is_partial,
-                                is_loop_message,
-                            });
-                        } else {
-                            err.subdiagnostic(CaptureReasonLabel::MethodCall {
-                                fn_call_span,
-                                place_name: &place_name,
-                                is_partial,
-                                is_loop_message,
-                            });
+                        match desugaring {
+                            Some((CallDesugaringKind::Await, _)) => {
+                                err.subdiagnostic(CaptureReasonLabel::Await {
+                                    fn_call_span,
+                                    place_name: &place_name,
+                                    is_partial,
+                                    is_loop_message,
+                                });
+                            }
+                            Some((CallDesugaringKind::QuestionBranch, _)) => {
+                                err.subdiagnostic(CaptureReasonLabel::QuestionMark {
+                                    fn_call_span,
+                                    place_name: &place_name,
+                                    is_partial,
+                                    is_loop_message,
+                                });
+                            }
+                            _ => {
+                                err.subdiagnostic(CaptureReasonLabel::MethodCall {
+                                    fn_call_span,
+                                    place_name: &place_name,
+                                    is_partial,
+                                    is_loop_message,
+                                });
+                            }
                         }
                         // Erase and shadow everything that could be passed to the new infcx.
                         let ty = moved_place.ty(self.body, tcx).ty;
