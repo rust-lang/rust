@@ -8,6 +8,7 @@ use rustc_macros::{Decodable_NoContext, Encodable_NoContext, StableHash_NoContex
 use rustc_type_ir_macros::{
     GenericTypeVisitable, Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic,
 };
+use thin_vec::ThinVec;
 
 use crate::data_structures::HashMap;
 use crate::inherent::*;
@@ -366,7 +367,7 @@ impl<I: Interner> Index<ty::BoundVar> for CanonicalVarValues<I> {
 #[derive_where(Clone, Debug; I: Interner)]
 pub struct CanonicalParamEnvCacheEntry<I: Interner> {
     pub param_env: I::ParamEnv,
-    pub variables: Vec<I::GenericArg>,
+    pub variables: ThinVec<I::GenericArg>,
     pub variable_lookup_table: HashMap<I::GenericArg, usize>,
     pub var_kinds: Vec<CanonicalVarKind<I>>,
 }

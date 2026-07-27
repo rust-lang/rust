@@ -398,3 +398,16 @@ impl<'tcx> FromSolverError<'tcx, NextSolverError<'tcx>> for ScrubbedTraitError<'
         }
     }
 }
+
+// Some types are used a lot. Make sure they don't unintentionally get bigger.
+#[cfg(target_pointer_width = "64")]
+mod size_asserts {
+    use rustc_data_structures::static_assert_size;
+
+    use super::*;
+    // tidy-alphabetical-start
+    // Before #160005 this pair was greater than 128 bytes, which triggered the use of (slow)
+    // `memcpy` for moving elements of `PendingObligations`.
+    static_assert_size!((PredicateObligation<'_>, Option<GoalStalledOn<TyCtxt<'_>>>), 104);
+    // tidy-alphabetical-end
+}
