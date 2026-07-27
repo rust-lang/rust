@@ -216,7 +216,7 @@ impl<'db> MemoryMap<'db> {
     }
 }
 
-/// Return an index of a parameter in the generic type parameter list by it's id.
+/// Returns the index of a parameter in the generic type parameter list by its id.
 pub fn type_or_const_param_idx(db: &dyn HirDatabase, id: TypeOrConstParamId) -> u32 {
     generics::generics(db, id.parent).type_or_const_param_idx(id)
 }
