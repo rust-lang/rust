@@ -5,7 +5,7 @@ use std::{fmt, str};
 
 use rustc_abi::Align;
 use rustc_ast::attr::version::RustcVersion;
-use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::profiling::TimePassesFormat;
 use rustc_data_structures::stable_hash::StableHasher;
 use rustc_errors::{ColorConfig, TerminalUrl};
@@ -66,19 +66,6 @@ macro_rules! hash_substruct {
 }
 
 pub mod mitigation_coverage;
-
-/// Metadata associated with an option
-#[derive(Clone, Default)]
-pub struct OptionMetadata {
-    /// Was this option set by the user?
-    pub(crate) is_set: bool,
-}
-
-#[derive(Clone, Default)]
-pub struct OptionsMetadata {
-    pub(crate) codegen: CodegenOptionsMetadata,
-    pub(crate) unstable: UnstableOptionsMetadata,
-}
 
 macro_rules! top_level_options {
     (
@@ -426,9 +413,15 @@ pub struct CollectedTargetModifiers {
 }
 
 #[derive(Clone, Default)]
+pub struct CollectedIsSet {
+    pub codegen: FxHashSet<CodegenOptionsKey>,
+    pub unstable: FxHashSet<UnstableOptionsKey>,
+}
+
+#[derive(Clone, Default)]
 pub struct CollectedOptions {
     pub mitigations: mitigation_coverage::MitigationCoverageMap,
-    pub metadata: OptionsMetadata,
+    pub is_set: CollectedIsSet,
     pub target_modifiers: CollectedTargetModifiers,
 }
 
@@ -465,7 +458,7 @@ macro_rules! setter_for {
             _index: usize,
             is_target_modifier: bool,
         ) -> bool {
-            collected.metadata.$group_name.$opt.is_set = v.is_some();
+            collected.is_set.$group_name.insert(super::$key_name::$opt);
             let res = super::parse::$parse(&mut redirect_field!(cg.$opt), v, is_target_modifier);
             if is_target_modifier {
                 let _ = collected
@@ -490,7 +483,6 @@ macro_rules! options {
     (
         $(#[$struct_attr:meta])*
         $struct_name:ident, // e.g. `UnstableOptions`
-        $metadata_name: ident, // e.g. `UnstableOptionsMetadata`
         $key_name: ident, // e.g. `UnstableOptionsKey`
         $opt_descs_var:ident, // e.g. `Z_OPTIONS`
         $opt_mod_name:ident, // e.g. `dbopts`
@@ -519,13 +511,6 @@ macro_rules! options {
             $(
                 $(#[$attr])*
                 pub $opt: $t,
-            )*
-        }
-
-        #[derive(Clone, Default)]
-        pub struct $metadata_name {
-            $(
-                pub $opt: OptionMetadata,
             )*
         }
 
@@ -602,15 +587,16 @@ macro_rules! options {
 
             pub fn require_unstable_options(
                 _early_dcx: &EarlyDiagCtxt,
-                _meta: &OptionsMetadata,
+                _collected_options: &CollectedOptions,
                 _unstable_opts: bool
             ) {
                 $(
                    require_unstable_options!(
                        $opt,
                        $group_name,
+                       $key_name,
                        [$dep_tracking_marker],
-                       (_early_dcx, _meta, _unstable_opts)
+                       (_early_dcx, _collected_options, _unstable_opts)
                    );
                 )*
             }
@@ -711,22 +697,22 @@ macro_rules! options {
 }
 
 macro_rules! require_unstable_options {
-    ($opt_name:ident, $group_name:ident, [UNTRACKED],
-        ($early_dcx:ident, $meta:ident, $unstable_opts:ident)) => {{}};
-    ($opt_name:ident, $group_name:ident, [TRACKED],
-        ($early_dcx:ident, $meta:ident, $unstable_opts:ident)) => {{}};
-    ($opt_name:ident, $group_name:ident, [TRACKED_UNSTABLE],
-        ($early_dcx:ident, $meta:ident, $unstable_opts:ident)) => {{
-        if $meta.$group_name.$opt_name.is_set && !$unstable_opts {
+    ($opt:ident, $group_name:ident, $key_name:ident, [UNTRACKED],
+        ($early_dcx:ident, $collected_options:ident, $unstable_opts:ident)) => {{}};
+    ($opt:ident, $group_name:ident, $key_name:ident, [TRACKED],
+        ($early_dcx:ident, $collected_options:ident, $unstable_opts:ident)) => {{}};
+    ($opt:ident, $group_name:ident, $key_name:ident, [TRACKED_UNSTABLE],
+        ($early_dcx:ident, $collected_options:ident, $unstable_opts:ident)) => {{
+        if $collected_options.is_set.$group_name.contains(&$key_name::$opt) && !$unstable_opts {
             $early_dcx
-                .early_err(format!("`-T{}` requires `-Zunstable-options`", stringify!($opt_name)))
+                .early_err(format!("`-T{}` requires `-Zunstable-options`", stringify!($opt)))
                 .raise_fatal();
         }
     }};
-    ($opt_name:ident, $group_name:ident, [TRACKED_NO_CRATE_HASH],
-        ($early_dcx:ident, $meta:ident, $unstable_opts:ident)) => {{}};
-    ($opt_name:ident, $group_name:ident, [SUBSTRUCT],
-        ($early_dcx:ident, $meta:ident, $unstable_opts:ident)) => {{}};
+    ($opt:ident, $group_name:ident, $key_name:ident, [TRACKED_NO_CRATE_HASH],
+        ($early_dcx:ident, $collected_options:ident, $unstable_opts:ident)) => {{}};
+    ($opt:ident, $group_name:ident, $key_name:ident, [SUBSTRUCT],
+        ($early_dcx:ident, $collected_options:ident, $unstable_opts:ident)) => {{}};
 }
 
 
@@ -2472,8 +2458,7 @@ pub mod parse {
 }
 
 options! {
-    CodegenOptions, CodegenOptionsMetadata, CodegenOptionsKey,
-    CG_OPTIONS, cgopts, "C", Some("T"), codegen,
+    CodegenOptions, CodegenOptionsKey, CG_OPTIONS, cgopts, "C", Some("T"), codegen,
 
     // If you add a new option, please update:
     // - compiler/rustc_interface/src/tests.rs
@@ -2622,7 +2607,7 @@ options! {
 }
 
 options! {
-    UnstableOptions, UnstableOptionsMetadata, UnstableOptionsKey, Z_OPTIONS, dbopts, "Z", None, unstable,
+    UnstableOptions, UnstableOptionsKey, Z_OPTIONS, dbopts, "Z", None, unstable,
 
     // If you add a new option, please update:
     // - compiler/rustc_interface/src/tests.rs
