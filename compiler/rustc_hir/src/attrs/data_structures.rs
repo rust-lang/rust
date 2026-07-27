@@ -5,6 +5,7 @@ use std::path::PathBuf;
 pub use ReprAttr::*;
 use rustc_abi::Align;
 pub use rustc_ast::attr::data_structures::*;
+pub use rustc_ast::attr::version::RustcVersion;
 use rustc_ast::expand::autodiff_attrs::{DiffActivity, DiffMode};
 use rustc_ast::expand::typetree::TypeTree;
 use rustc_ast::token::DocFragmentKind;
@@ -21,7 +22,7 @@ use thin_vec::ThinVec;
 
 use crate::attrs::diagnostic::*;
 use crate::attrs::pretty_printing::PrintAttribute;
-use crate::{DefaultBodyStability, LangItem, PartialConstStability, RustcVersion, Stability};
+use crate::{DefaultBodyStability, LangItem, PartialConstStability, Stability};
 
 #[derive(Copy, Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
 pub enum EiiImplResolution {

@@ -39,7 +39,6 @@ pub use canonical_symbols::{CanonicalSymbol, CanonicalSymbols};
 #[doc(no_inline)]
 pub use hir::*;
 pub use lang_items::{LangItem, LanguageItems};
-pub use rustc_ast::attr::version::*;
 pub use rustc_hir_id::*;
 pub use rustc_span::def_id;
 pub use stability::*;
