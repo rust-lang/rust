@@ -1563,7 +1563,7 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     /// Attempts to map the node out of macro expanded files.
-    /// This only work for attribute expansions, as other ones do not have nodes as input.
+    /// This only works for attribute expansions, as other ones do not have nodes as input.
     pub fn original_ast_node<N: AstNode>(&self, node: N) -> Option<N> {
         self.wrap_node_infile(node).original_ast_node_rooted(self.db).map(
             |InRealFile { file_id, value }| {
@@ -1574,7 +1574,7 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     /// Attempts to map the node out of macro expanded files.
-    /// This only work for attribute expansions, as other ones do not have nodes as input.
+    /// This only works for attribute expansions, as other ones do not have nodes as input.
     pub fn original_syntax_node_rooted(&self, node: &SyntaxNode) -> Option<SyntaxNode> {
         let InFile { file_id, .. } = self.find_file(node);
         InFile::new(file_id, node).original_syntax_node_rooted(self.db).map(

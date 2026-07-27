@@ -1,8 +1,8 @@
 //! `AstIdMap` allows to create stable IDs for "large" syntax nodes like items
 //! and macro calls.
 //!
-//! Specifically, it enumerates all items in a file and uses position of a an
-//! item as an ID. That way, id's don't change unless the set of items itself
+//! Specifically, it enumerates all items in a file and uses the position of an
+//! item as an ID. That way, IDs don't change unless the set of items itself
 //! changes.
 //!
 //! These IDs are tricky. If one of them invalidates, its interned ID invalidates,

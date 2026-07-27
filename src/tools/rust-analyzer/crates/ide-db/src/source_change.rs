@@ -1,5 +1,5 @@
-//! This modules defines type to represent changes to the source code, that flow
-//! from the server to the client.
+//! This module defines types that represent changes to source code flowing from
+//! the server to the client.
 //!
 //! It can be viewed as a dual for [`Change`][vfs::Change].
 
