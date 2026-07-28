@@ -14,7 +14,7 @@ mod proc_macro_derive2 {
     //~^ ERROR attribute cannot be used on
 
     #[proc_macro_derive(Test)] fn f() { }
-    //~^ ERROR the `#[proc_macro_derive]` attribute is only usable with crates of the `proc-macro`
+    //~^ ERROR the `proc_macro_derive` attribute is only usable with crates of the `proc-macro`
 
     #[proc_macro_derive(Test)] struct S;
     //~^ ERROR attribute cannot be used on
