@@ -9,6 +9,17 @@
     // (still gated by dashboard approval for now)
     ":maintainLockFilesMonthly",
   ],
+  // Cargo manifests in this repository use unstable features.
+  "env": {
+    "RUSTC_BOOTSTRAP": "1"
+  },
+  // The compiler and rustbook workspaces have path dependencies in these
+  // submodules.
+  "cloneSubmodules": true,
+  "cloneSubmodulesFilter": [
+    "src/doc/book",
+    "src/doc/reference"
+  ],
   // Require manual approval from the Dependency Dashboard before opening PRs
   "dependencyDashboardApproval": true,
   // Renovate shouldn't update a PR if it is in the bors merge queue.
@@ -18,6 +29,22 @@
       // No dashboard approval necessary for GitHub Actions updates
       "matchManagers": ["github-actions"],
       "dependencyDashboardApproval": false
+    },
+    {
+      // Only maintain the Cargo lockfiles managed by update-lockfile.sh.
+      "matchManagers": ["cargo"],
+      "matchUpdateTypes": ["lockFileMaintenance"],
+      "enabled": false
+    },
+    {
+      "matchManagers": ["cargo"],
+      "matchUpdateTypes": ["lockFileMaintenance"],
+      "matchFileNames": [
+        "Cargo.toml",
+        "library/Cargo.toml",
+        "src/tools/rustbook/Cargo.toml"
+      ],
+      "enabled": true
     }
   ],
   // Don't manage dependencies inside subtrees. They are updated upstream and
