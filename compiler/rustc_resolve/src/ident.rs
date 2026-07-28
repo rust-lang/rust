@@ -1897,6 +1897,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 "this `super` would go above the crate root".to_string(),
                                 None,
                                 None,
+                                None,
                             )
                         },
                     );
@@ -1973,7 +1974,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 "can only be used in path start position".to_string(),
                             )
                         };
-                        (message, label, None, None)
+                        (message, label, None, None, None)
                     },
                 );
             }
@@ -2130,7 +2131,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                 } else {
                                     None
                                 };
-                                (message, label, None, note)
+                                (message, label, None, note, None)
                             },
                         );
                     }
@@ -2155,7 +2156,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         module_had_parse_errors,
                         module,
                         || {
-                            let (message, label, suggestion) =
+                            let (message, label, suggestion, help) =
                                 this.get_mut().report_path_resolution_error(
                                     path,
                                     opt_ns,
@@ -2168,7 +2169,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                     ident,
                                     diag_metadata,
                                 );
-                            (message, label, suggestion, None)
+                            (message, label, suggestion, None, help)
                         },
                     );
                 }

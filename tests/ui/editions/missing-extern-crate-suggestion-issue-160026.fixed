@@ -5,6 +5,7 @@
 //@ aux-crate: dep=missing-extern-crate-suggestion-issue-160026.rs
 //@ run-rustfix
 
+extern crate dep;
 pub use dep::item;
 //~^ ERROR unresolved import `dep`
 
