@@ -641,7 +641,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // Unlike all the other GC helpers where we check if an `AllocId` is found in the interpreter or
         // is live, here all the IDs in the map are for dead allocations so we don't
         // need to check for liveness.
-        #[allow(rustc::potential_query_instability)] // Only used from Miri, not queries.
         self.memory.dead_alloc_map.retain(|id, _| reachable_allocs.contains(id));
     }
 }
