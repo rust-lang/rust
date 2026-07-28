@@ -569,13 +569,15 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                     self.r.per_ns(|this, ns| {
                         let key = BindingKey::new(IdentKey::new(target), ns);
                         this.resolution_or_default(current_module.to_module(), key, target.span)
-                            .borrow_mut(this)
+                            .borrow_mut_with_token(this.cm_token())
                             .single_imports
                             .insert(import);
                     });
                 }
             }
-            ImportKind::Glob { .. } => current_module.globs.borrow_mut(self.r).push(import),
+            ImportKind::Glob { .. } => {
+                current_module.globs.borrow_mut_with_token(self.r.cm_token()).push(import)
+            }
             _ => unreachable!(),
         }
     }
@@ -1263,7 +1265,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
     pub(crate) fn visit_invoc_in_module(&mut self, id: NodeId) -> MacroRulesScopeRef<'ra> {
         let invoc_id = self.visit_invoc(id);
         let module = self.parent_scope.module.expect_local();
-        module.unexpanded_invocations.borrow_mut(self.r).insert(invoc_id);
+        module.unexpanded_invocations.borrow_mut_with_token(self.r.cm_token()).insert(invoc_id);
         self.r.arenas.alloc_macro_rules_scope(MacroRulesScope::Invocation(invoc_id))
     }
 

@@ -810,10 +810,13 @@ impl<'ra> Module<'ra> {
         resolver: &mut R,
         mut f: impl FnMut(&mut R, IdentKey, Span, Namespace, Decl<'ra>),
     ) {
-        for (key, name_resolution) in
-            resolver.as_mut().resolutions(self).borrow(resolver.as_mut()).iter()
+        for (key, name_resolution) in resolver
+            .as_mut()
+            .resolutions(self)
+            .borrow_with_token(resolver.as_mut().cm_token())
+            .iter()
         {
-            let name_resolution = name_resolution.borrow(resolver.as_mut());
+            let name_resolution = name_resolution.borrow_with_token(resolver.as_mut().cm_token());
             if let Some(decl) = name_resolution.best_decl() {
                 f(resolver, key.ident, name_resolution.orig_ident_span, key.ns, decl);
             }
@@ -2135,7 +2138,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         found_traits: &mut Vec<TraitCandidate<'tcx>>,
     ) {
         module.ensure_traits(self);
-        let traits = module.traits.borrow(self);
+        let traits = module.traits.borrow_with_token(self.cm_token());
         for &(trait_name, trait_binding, trait_module, lint_ambiguous) in
             traits.as_ref().unwrap().iter()
         {
@@ -2913,6 +2916,23 @@ mod ref_mut {
         }
     }
 
+    /// A proof token that allows `CmCell` and `CmRefCell` to "mutate" anything underlying
+    /// without checking `assert_speculative`. Only a `&mut Resolver` can construct a token.
+    mod token {
+        use std::marker::PhantomData;
+
+        // Tie borrow of `&mut Resolver` to token.
+        pub(crate) struct CmToken<'r>(PhantomData<&'r mut ()>);
+
+        impl<'ra, 'tcx> crate::Resolver<'ra, 'tcx> {
+            // Require a `&mut Resolver` (that does not mutably things).
+            // Would conflict if other borrows are live, view types would be handy :).
+            pub(crate) fn cm_token(&mut self) -> CmToken<'_> {
+                CmToken(PhantomData)
+            }
+        }
+    }
+
     /// A wrapper around a [`Cell`] that only allows mutation based on a condition in the resolver.
     #[derive(Default)]
     pub(crate) struct CmCell<T>(Cell<T>);
@@ -2958,6 +2978,10 @@ mod ref_mut {
             if r.assert_speculative {
                 panic!("not allowed to mutate a `CmCell` during speculative resolution")
             }
+            self.0.set(val);
+        }
+
+        pub(crate) fn set_with_token<'r>(&self, val: T, _: token::CmToken<'r>) {
             self.0.set(val);
         }
 
@@ -3024,6 +3048,26 @@ mod ref_mut {
         }
 
         #[track_caller]
+        pub(crate) fn borrow_mut_with_token<'r>(&self, t: token::CmToken<'r>) -> RefMut<'_, T> {
+            self.try_borrow_mut_with_token(t).expect("`CmRefCell` is already borrowed")
+        }
+
+        #[track_caller]
+        pub(crate) fn try_borrow_mut_with_token<'r>(
+            &self,
+            _: token::CmToken<'r>,
+        ) -> Result<RefMut<'_, T>, BorrowMutError> {
+            // We do not have to check `assert_speculative` because we have a mutable resolver as a "token"
+            self.inner.try_borrow_mut()
+        }
+
+        pub(crate) fn borrow_with_token<'r>(&self, _: token::CmToken<'r>) -> Ref<'_, T> {
+            // Token allows us to borrow without checking `assert_speculative`
+            self.inner.borrow()
+        }
+
+        #[track_caller]
+        /// If you have access to a `&mut Resolver` use `CmRefCell::borrow_with_token`.
         pub(crate) fn borrow<'ra, 'tcx>(&self, r: &Resolver<'ra, 'tcx>) -> CmRef<'_, T> {
             if r.assert_speculative {
                 // SAFETY: We rely on the fact that we can't mutably borrow during speculative resolution.

@@ -686,7 +686,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             let resolution = &mut *self
                 .resolution_or_default(module.to_module(), key, orig_ident_span)
                 .0
-                .borrow_mut(self);
+                .borrow_mut_with_token(self.cm_token());
             let old_decl = resolution.determined_decl();
             let old_vis = old_decl.map(|d| d.vis());
 
@@ -701,7 +701,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
         };
 
-        let Ok(glob_importers) = module.glob_importers.try_borrow_mut(self) else {
+        let Ok(glob_importers) = module.glob_importers.try_borrow_mut_with_token(self.cm_token())
+        else {
             return t;
         };
 
@@ -810,14 +811,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             let Some(ImportResolution { imported_module, .. }) = resolution else {
                 continue;
             };
-            import.imported_module.set(Some(*imported_module), self);
+            import.imported_module.set_with_token(Some(*imported_module), self.cm_token());
 
             if import.is_glob()
                 && let ModuleOrUniformRoot::Module(module) = imported_module
                 && import.parent_scope.module != *module
                 && module.is_local()
             {
-                module.glob_importers.borrow_mut(self).push(import);
+                module.glob_importers.borrow_mut_with_token(self.cm_token()).push(import);
             }
         }
 
@@ -854,7 +855,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                     ns,
                                     import_decl,
                                 );
-                                decls[ns].set(PendingDecl::Ready(Some(import_decl)), this);
+                                decls[ns].set_with_token(
+                                    PendingDecl::Ready(Some(import_decl)),
+                                    this.cm_token(),
+                                );
                             }
                             PendingDecl::Ready(None) => {
                                 // Don't remove underscores from `single_imports`, they were never added.
@@ -869,7 +873,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                         },
                                     );
                                 }
-                                decls[ns].set(PendingDecl::Ready(None), this);
+                                decls[ns].set_with_token(PendingDecl::Ready(None), this.cm_token());
                             }
                             PendingDecl::Pending => {}
                         }
@@ -1488,7 +1492,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 let names = match module {
                     ModuleOrUniformRoot::Module(module) => {
                         self.resolutions(module)
-                            .borrow(self)
+                            .borrow_with_token(self.cm_token())
                             .iter()
                             .filter_map(|(BindingKey { ident: i, .. }, resolution)| {
                                 if i.name == ident.name {
@@ -1498,7 +1502,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                     return None;
                                 } // `use _` is never valid
 
-                                let resolution = resolution.borrow(self);
+                                let resolution = resolution.borrow_with_token(self.cm_token());
                                 if let Some(name_binding) = resolution.best_decl() {
                                     match name_binding.kind {
                                         DeclKind::Import { source_decl, .. } => {
