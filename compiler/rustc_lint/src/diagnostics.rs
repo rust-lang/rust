@@ -733,7 +733,7 @@ pub(crate) struct CVoidReturn {
 #[derive(Diagnostic)]
 #[diag("declarations returning `c_void` are not compatible with C functions returning `void`")]
 #[help("returning `()` in Rust is equivalent to returning `void` in C")]
-#[note("`c_void` is only used through raw pointers for compatibility with `void` pointers")]
+#[note("`c_void` is only used through raw pointers, for compatibility with `void` pointers")]
 pub(crate) struct ExternCVoidReturn {
     #[suggestion(
         "remove the return type to implicitly return `()`",
@@ -751,6 +751,21 @@ pub(crate) struct ExternCVoidReturn {
     "for legacy reasons, Rust considers `c_void` to have size 1, so references to it can cause Undefined Behavior"
 )]
 pub(crate) struct CVoidReference;
+
+// c_void.rs
+#[derive(Diagnostic)]
+#[diag("`static` items should not have type `c_void`")]
+#[help("for a `static` used only for its address, use `()` instead")]
+#[note("`c_void` is only used through raw pointers, for compatibility with C `void` pointers")]
+pub(crate) struct CVoidStatic {
+    #[suggestion("use `()` instead", code = "()", applicability = "maybe-incorrect")]
+    pub suggestion: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("`const` items should not have type `c_void`")]
+#[note("`c_void` is only used through raw pointers, for compatibility with C `void` pointers")]
+pub(crate) struct CVoidConst;
 
 // deref_into_dyn_supertrait.rs
 #[derive(Diagnostic)]

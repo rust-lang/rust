@@ -22,7 +22,7 @@ LL |     fn baz() -> c_void;
    |             help: remove the return type to implicitly return `()`
    |
    = help: returning `()` in Rust is equivalent to returning `void` in C
-   = note: `c_void` is only used through raw pointers for compatibility with `void` pointers
+   = note: `c_void` is only used through raw pointers, for compatibility with `void` pointers
 
 error: `c_void` should not be used as a return type
   --> $DIR/c-void-returns.rs:28:22
@@ -34,5 +34,15 @@ LL | type Xyzzy = fn() -> c_void;
    |
    = help: returning `()` in Rust is equivalent to returning `void` in C
 
-error: aborting due to 3 previous errors
+error: `c_void` should not be used as a return type
+  --> $DIR/c-void-returns.rs:31:17
+   |
+LL |     fn foo() -> c_void;
+   |             ----^^^^^^
+   |             |
+   |             help: remove the return type to implicitly return `()`
+   |
+   = help: returning `()` in Rust is equivalent to returning `void` in C
+
+error: aborting due to 4 previous errors
 
