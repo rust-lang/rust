@@ -1,5 +1,5 @@
 error: generic args in this position require the turbofish syntax
-  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:15:17
+  --> $DIR/suggest-turbofish-parsed-as-comparisons.rs:17:17
    |
 LL |     let _ = bar(Many<i32, Many<(), i32, S, S>, i32, i32>::new());
    |                 ^^^^^^^^
