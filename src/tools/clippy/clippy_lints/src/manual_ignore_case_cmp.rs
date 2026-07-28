@@ -53,7 +53,7 @@ fn get_ascii_type<'a>(cx: &LateContext<'a>, kind: rustc_hir::ExprKind<'_>) -> Op
             sym::to_ascii_uppercase => false,
             _ => return None,
         };
-        let ty_raw = cx.typeck_results().expr_ty(expr);
+        let ty_raw = cx.typeck_results.expr_ty(expr);
         let ty = ty_raw.peel_refs();
         if needs_ref_to_cmp(cx, ty)
             || ty.is_str()

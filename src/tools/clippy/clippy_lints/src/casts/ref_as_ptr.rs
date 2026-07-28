@@ -16,8 +16,8 @@ pub(super) fn check<'tcx>(
     cast_to_hir_ty: &Ty<'_>,
 ) {
     let (cast_from, cast_to) = (
-        cx.typeck_results().expr_ty(cast_expr),
-        cx.typeck_results().expr_ty(expr),
+        cx.typeck_results.expr_ty(cast_expr),
+        cx.typeck_results.expr_ty(expr),
     );
 
     if matches!(cast_from.kind(), ty::Ref(..))
@@ -27,7 +27,7 @@ pub(super) fn check<'tcx>(
         if let ExprKind::AddrOf(_, _, addr_inner) = cast_expr.kind
             && is_expr_temporary_value(cx, addr_inner)
             && matches!(
-                get_expr_use_site(cx.tcx, cx.typeck_results(), expr.span.ctxt(), expr).use_node(cx),
+                get_expr_use_site(cx.tcx, cx.typeck_results, expr.span.ctxt(), expr).use_node(cx),
                 ExprUseNode::LetStmt(_) | ExprUseNode::ConstStatic(_)
             )
         {

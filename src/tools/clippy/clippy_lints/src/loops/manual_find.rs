@@ -54,7 +54,7 @@ pub(super) fn check<'tcx>(
                 )[..],
             );
         }
-        let ty = cx.typeck_results().expr_ty(inner_ret);
+        let ty = cx.typeck_results.expr_ty(inner_ret);
         if cx
             .tcx
             .lang_items()
@@ -84,7 +84,7 @@ pub(super) fn check<'tcx>(
         }
 
         // If the return type requires adjustments, we need to add a `.map` after the iterator
-        let inner_ret_adjust = cx.typeck_results().expr_adjustments(inner_ret);
+        let inner_ret_adjust = cx.typeck_results.expr_adjustments(inner_ret);
         if !inner_ret_adjust.is_empty() {
             snippet.push_str(".map(|v| v as _)");
         }

@@ -160,7 +160,7 @@ fn check_node_with_body(
     body: Option<&Body<'_>>,
 ) {
     if has_attr(cx, hir_id) {
-        let typeck_results = body.map_or_else(|| cx.typeck_results(), |body| cx.tcx.typeck_body(body.id()));
+        let typeck_results = body.map_or_else(|| cx.typeck_results, |body| cx.tcx.typeck_body(body.id()));
         f(&PrintVisitor::new(cx, typeck_results));
         println!("{{");
         println!("    // report your lint here");

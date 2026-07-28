@@ -11,7 +11,7 @@ use rustc_span::Symbol;
 use super::ITER_COUNT;
 
 pub(crate) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>, recv: &'tcx Expr<'tcx>, iter_method: Symbol) {
-    let ty = cx.typeck_results().expr_ty(recv);
+    let ty = cx.typeck_results.expr_ty(recv);
     let caller_type = match ty.opt_diag_name(cx) {
         _ if derefs_to_slice(cx, recv, ty).is_some() => "slice",
         Some(sym::Vec) => "Vec",

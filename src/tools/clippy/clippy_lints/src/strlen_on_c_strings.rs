@@ -59,7 +59,7 @@ impl<'tcx> LateLintPass<'tcx> for StrlenOnCStrings {
             && let ExprKind::MethodCall(path, self_arg, [], _) = recv.kind
             && !recv.span.from_expansion()
             && path.ident.name == sym::as_ptr
-            && let typeck = cx.typeck_results()
+            && let typeck = cx.typeck_results
             && typeck
                 .expr_ty_adjusted(self_arg)
                 .peel_refs()

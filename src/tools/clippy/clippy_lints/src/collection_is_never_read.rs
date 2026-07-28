@@ -57,7 +57,7 @@ impl<'tcx> LateLintPass<'tcx> for CollectionIsNeverRead {
 }
 
 fn match_acceptable_type(cx: &LateContext<'_>, local: &LetStmt<'_>) -> bool {
-    let ty = cx.typeck_results().pat_ty(local.pat);
+    let ty = cx.typeck_results.pat_ty(local.pat);
     matches!(
         ty.opt_diag_name(cx),
         Some(
@@ -108,7 +108,7 @@ fn has_no_read_access<'tcx, T: Visitable<'tcx>>(cx: &LateContext<'tcx>, id: HirI
         if let Node::Expr(parent) = cx.tcx.parent_hir_node(expr.hir_id)
             && let ExprKind::MethodCall(_, receiver, args, _) = parent.kind
             && receiver.res_local_id() == Some(id)
-            && let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(parent.hir_id)
+            && let Some(method_def_id) = cx.typeck_results.type_dependent_def_id(parent.hir_id)
             && !method_def_id.is_local()
         {
             // If this "official" method takes closures,
@@ -142,7 +142,7 @@ fn has_no_read_access<'tcx, T: Visitable<'tcx>>(cx: &LateContext<'tcx>, id: HirI
             //
             // let y = x.clear();
             // println!("{:?}", x.clear());
-            if cx.typeck_results().expr_ty(parent).is_unit() {
+            if cx.typeck_results.expr_ty(parent).is_unit() {
                 return ControlFlow::Continue(());
             }
         }

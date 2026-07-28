@@ -15,7 +15,7 @@ pub(super) fn check<'tcx>(
     left: &'tcx Expr<'_>,
     right: &'tcx Expr<'_>,
 ) {
-    let tck = cx.typeck_results();
+    let tck = cx.typeck_results;
     match op {
         BinOpKind::Mul | BinOpKind::BitAnd => {
             check_op(cx, tck, left, right, e);

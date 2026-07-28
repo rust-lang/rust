@@ -112,7 +112,7 @@ fn check_map(cx: &LateContext<'_>, map: &Expr<'_>, span: Span, msrv: Msrv) {
 fn check_as_ref(cx: &LateContext<'_>, expr: &Expr<'_>, span: Span, msrv: Msrv) {
     if let ExprKind::MethodCall(seg, callee, [], _) = expr.kind
         && seg.ident.name == sym::as_ref
-        && cx.typeck_results().expr_ty(callee).is_diag_item(cx, sym::Option)
+        && cx.typeck_results.expr_ty(callee).is_diag_item(cx, sym::Option)
         && msrv.meets(
             cx,
             if clippy_utils::is_in_const_context(cx) {

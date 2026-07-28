@@ -76,7 +76,7 @@ impl VecPushSearcher {
             let Some(parent) = get_parent_expr(cx, e) else {
                 return ControlFlow::Continue(());
             };
-            let adjusted_ty = cx.typeck_results().expr_ty_adjusted(e);
+            let adjusted_ty = cx.typeck_results.expr_ty_adjusted(e);
             let adjusted_mut = adjusted_ty.ref_mutability().unwrap_or(Mutability::Not);
             needs_mut |= adjusted_mut == Mutability::Mut;
             match parent.kind {
@@ -95,7 +95,7 @@ impl VecPushSearcher {
                             break;
                         }
                     }
-                    needs_mut |= cx.typeck_results().expr_ty_adjusted(last_place).ref_mutability()
+                    needs_mut |= cx.typeck_results.expr_ty_adjusted(last_place).ref_mutability()
                         == Some(Mutability::Mut)
                         || get_parent_expr(cx, last_place)
                             .is_some_and(|e| matches!(e.kind, ExprKind::AddrOf(_, Mutability::Mut, _)));

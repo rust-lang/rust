@@ -17,8 +17,8 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, op: BinOpKind, lhs: &
     let mut applicability = Applicability::MachineApplicable;
 
     if op == BinOpKind::Div
-        && check_int_ty_and_feature(cx, cx.typeck_results().expr_ty(lhs))
-        && check_int_ty_and_feature(cx, cx.typeck_results().expr_ty(rhs))
+        && check_int_ty_and_feature(cx, cx.typeck_results.expr_ty(lhs))
+        && check_int_ty_and_feature(cx, cx.typeck_results.expr_ty(rhs))
         && msrv.meets(cx, msrvs::DIV_CEIL)
     {
         let ctxt = expr.span.ctxt();
@@ -76,7 +76,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, op: BinOpKind, lhs: &
             },
             ExprKind::MethodCall(method, receiver, [next_multiple_of_arg], _)
                 if method.ident.name == sym::next_multiple_of
-                    && check_int_ty(cx.typeck_results().expr_ty(receiver))
+                    && check_int_ty(cx.typeck_results.expr_ty(receiver))
                     && SpanlessEq::new(cx).eq_expr(ctxt, next_multiple_of_arg, rhs) =>
             {
                 // x.next_multiple_of(Y) / Y
@@ -147,8 +147,8 @@ fn build_suggestion(
 ) {
     let ctxt = expr.span.ctxt();
     let dividend_sugg = Sugg::hir_with_context(cx, lhs, ctxt, "..", applicability).maybe_paren();
-    let rhs_ty = cx.typeck_results().expr_ty(rhs);
-    let type_suffix = if cx.typeck_results().expr_ty(lhs).is_numeric()
+    let rhs_ty = cx.typeck_results.expr_ty(rhs);
+    let type_suffix = if cx.typeck_results.expr_ty(lhs).is_numeric()
         && matches!(
             lhs.kind,
             ExprKind::Lit(Spanned {

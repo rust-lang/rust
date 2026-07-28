@@ -13,7 +13,7 @@ use super::CLONE_ON_COPY;
 /// Checks for the `CLONE_ON_COPY` lint.
 pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>) {
     if cx
-        .typeck_results()
+        .typeck_results
         .type_dependent_def_id(expr.hir_id)
         .and_then(|id| cx.tcx.trait_of_assoc(id))
         .zip(cx.tcx.lang_items().clone_trait())
@@ -21,12 +21,12 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>) 
     {
         return;
     }
-    let arg_adjustments = cx.typeck_results().expr_adjustments(receiver);
+    let arg_adjustments = cx.typeck_results.expr_adjustments(receiver);
     let arg_ty = arg_adjustments
         .last()
-        .map_or_else(|| cx.typeck_results().expr_ty(receiver), |a| a.target);
+        .map_or_else(|| cx.typeck_results.expr_ty(receiver), |a| a.target);
 
-    let ty = cx.typeck_results().expr_ty(expr);
+    let ty = cx.typeck_results.expr_ty(expr);
     if let ty::Ref(_, inner, _) = arg_ty.kind()
         && let ty::Ref(..) = inner.kind()
     {
@@ -40,7 +40,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>) 
                 ExprKind::AddrOf(..) => return,
                 // (*x).func() is useless, x.clone().func() can work in case func borrows self
                 ExprKind::MethodCall(_, self_arg, ..)
-                    if expr.hir_id == self_arg.hir_id && ty != cx.typeck_results().expr_ty_adjusted(expr) =>
+                    if expr.hir_id == self_arg.hir_id && ty != cx.typeck_results.expr_ty_adjusted(expr) =>
                 {
                     return;
                 },

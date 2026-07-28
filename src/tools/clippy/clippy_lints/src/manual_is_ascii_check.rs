@@ -121,7 +121,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualIsAsciiCheck {
                 span: _,
             }) = higher::Range::hir(cx, receiver)
             && let RangeLimits::Closed = range_ty.limits()
-            && !matches!(cx.typeck_results().expr_ty(arg).peel_refs().kind(), ty::Param(_))
+            && !matches!(cx.typeck_results.expr_ty(arg).peel_refs().kind(), ty::Param(_))
         {
             let arg = peel_ref_operators(cx, arg);
             let range = check_expr_range(start, end);
@@ -141,7 +141,7 @@ fn get_ty_sugg<'tcx>(cx: &LateContext<'tcx>, arg: &Expr<'_>) -> Option<(Span, Ty
         // `ty_span` and `span` are the same for inferred type, thus a type suggestion must be given
         && ty_span == span
     {
-        let arg_type = cx.typeck_results().expr_ty(arg);
+        let arg_type = cx.typeck_results.expr_ty(arg);
         return Some((*ty_span, arg_type));
     }
     None

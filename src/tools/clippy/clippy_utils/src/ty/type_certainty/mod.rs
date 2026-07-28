@@ -54,7 +54,7 @@ fn expr_type_certainty(cx: &LateContext<'_>, expr: &Expr<'_>, in_arg: bool) -> C
             // Even if `receiver_type_certainty` is `Certain(Some(..))`, the `Self` type in the method
             // identified by `type_dependent_def_id(..)` can differ. This can happen as a result of a `deref`,
             // for example. So update the `DefId` in `receiver_type_certainty` (if any).
-            if let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
+            if let Some(method_def_id) = cx.typeck_results.type_dependent_def_id(expr.hir_id)
                 && let Some(self_ty_def_id) = adt_def_id(self_ty(cx, method_def_id))
             {
                 receiver_type_certainty = receiver_type_certainty.with_def_id(self_ty_def_id);
@@ -113,7 +113,7 @@ fn expr_type_certainty(cx: &LateContext<'_>, expr: &Expr<'_>, in_arg: bool) -> C
         _ => Certainty::Uncertain,
     };
 
-    let expr_ty = cx.typeck_results().expr_ty(expr);
+    let expr_ty = cx.typeck_results.expr_ty(expr);
     if let Some(def_id) = adt_def_id(expr_ty) {
         certainty.with_def_id(def_id)
     } else {
@@ -320,14 +320,14 @@ fn update_res(
 fn type_is_inferable_from_arguments(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     let Some(callee_def_id) = (match expr.kind {
         ExprKind::Call(callee, _) => {
-            let callee_ty = cx.typeck_results().expr_ty(callee);
+            let callee_ty = cx.typeck_results.expr_ty(callee);
             if let ty::FnDef(callee_def_id, _) = callee_ty.kind() {
                 Some(*callee_def_id)
             } else {
                 None
             }
         },
-        ExprKind::MethodCall(_, _, _, _) => cx.typeck_results().type_dependent_def_id(expr.hir_id),
+        ExprKind::MethodCall(_, _, _, _) => cx.typeck_results.type_dependent_def_id(expr.hir_id),
         _ => None,
     }) else {
         return false;

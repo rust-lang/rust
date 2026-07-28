@@ -15,7 +15,7 @@ pub(crate) fn check<'tcx>(cx: &LateContext<'tcx>, ex: &Expr<'tcx>, arms: &[Arm<'
         return;
     }
 
-    let ex_ty = cx.typeck_results().expr_ty(ex).peel_refs();
+    let ex_ty = cx.typeck_results.expr_ty(ex).peel_refs();
     if ex_ty.is_diag_item(cx, sym::Result) {
         for arm in arms {
             if let PatKind::TupleStruct(ref path, inner, _) = arm.pat.kind {

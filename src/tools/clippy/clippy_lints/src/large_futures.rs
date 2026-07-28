@@ -61,7 +61,7 @@ impl<'tcx> LateLintPass<'tcx> for LargeFuture {
             && let ExprKind::Path(qpath) = func.kind
             && cx.tcx.qpath_is_lang_item(qpath, LangItem::IntoFutureIntoFuture)
             && !expr.span.from_expansion()
-            && let ty = cx.typeck_results().expr_ty(arg)
+            && let ty = cx.typeck_results.expr_ty(arg)
             && let Some(future_trait_def_id) = cx.tcx.lang_items().future_trait()
             && implements_trait(cx, ty, future_trait_def_id, &[])
             && let Ok(layout) = cx

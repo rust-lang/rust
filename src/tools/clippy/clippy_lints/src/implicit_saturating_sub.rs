@@ -130,7 +130,7 @@ fn check_manual_check<'tcx>(
     else_block: &Expr<'tcx>,
     msrv: Msrv,
 ) {
-    let ty = cx.typeck_results().expr_ty(left_hand);
+    let ty = cx.typeck_results.expr_ty(left_hand);
     if ty.is_numeric() && !ty.is_signed() {
         match condition.node {
             BinOpKind::Gt | BinOpKind::Ge => check_gt(
@@ -255,7 +255,7 @@ fn check_subtraction(
                             let get_snippet = |span: Span| {
                                 let (snippet, _) =
                                     snippet_with_context(cx, span, expr_span_ctxt, "..", &mut applicability);
-                                let big_expr_ty = cx.typeck_results().expr_ty(big_expr);
+                                let big_expr_ty = cx.typeck_results.expr_ty(big_expr);
                                 Cow::Owned(format!("{snippet}_{big_expr_ty}"))
                             };
                             Sugg::hir_from_snippet(cx, big_expr, get_snippet)
@@ -338,7 +338,7 @@ fn check_with_condition<'tcx>(
         };
 
         // Check if the variable in the condition statement is an integer
-        if !cx.typeck_results().expr_ty(cond_var).is_integral() {
+        if !cx.typeck_results.expr_ty(cond_var).is_integral() {
             return;
         }
 
@@ -348,7 +348,7 @@ fn check_with_condition<'tcx>(
             ExprKind::Lit(cond_lit) => {
                 // Check if the constant is zero
                 if let LitKind::Int(Pu128(0), _) = cond_lit.node {
-                    if cx.typeck_results().expr_ty(cond_left).is_signed() {
+                    if cx.typeck_results.expr_ty(cond_left).is_signed() {
                     } else {
                         print_lint_and_sugg(cx, var_name, expr);
                     }
@@ -356,7 +356,7 @@ fn check_with_condition<'tcx>(
             },
             ExprKind::Path(QPath::TypeRelative(_, name)) => {
                 if name.ident.name == sym::MIN
-                    && let Some(const_id) = cx.typeck_results().type_dependent_def_id(cond_num_val.hir_id)
+                    && let Some(const_id) = cx.typeck_results.type_dependent_def_id(cond_num_val.hir_id)
                     && let Some(impl_id) = cx.tcx.inherent_impl_of_assoc(const_id)
                     && cx
                         .tcx
@@ -371,7 +371,7 @@ fn check_with_condition<'tcx>(
             ExprKind::Call(func, []) => {
                 if let ExprKind::Path(QPath::TypeRelative(_, name)) = func.kind
                     && name.ident.name == sym::min_value
-                    && let Some(func_id) = cx.typeck_results().type_dependent_def_id(func.hir_id)
+                    && let Some(func_id) = cx.typeck_results.type_dependent_def_id(func.hir_id)
                     && let Some(impl_id) = cx.tcx.inherent_impl_of_assoc(func_id)
                     && cx
                         .tcx

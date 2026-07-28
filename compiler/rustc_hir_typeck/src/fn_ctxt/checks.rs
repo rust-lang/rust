@@ -1899,7 +1899,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 let typeck = self.typeck_results.borrow();
                 for (rcvr, args) in call_finder.calls {
-                    if rcvr.hir_id.owner == typeck.hir_owner
+                    if Some(rcvr.hir_id.owner) == typeck.hir_owner
                         && let Some(rcvr_ty) = typeck.node_type_opt(rcvr.hir_id)
                         && let ty::Closure(call_def_id, _) = rcvr_ty.kind()
                         && def_id == *call_def_id

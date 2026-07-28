@@ -100,7 +100,7 @@ pub(super) fn check<'tcx>(
     // lint if `find()` is called by `String` or `&str`
     else if search_method == sym::find {
         let is_string_or_str_slice = |e| {
-            let self_ty = cx.typeck_results().expr_ty(e).peel_refs();
+            let self_ty = cx.typeck_results.expr_ty(e).peel_refs();
             if self_ty.is_lang_item(cx, hir::LangItem::String) {
                 true
             } else {

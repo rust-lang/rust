@@ -70,7 +70,7 @@ use crate::ty::{
     GenericArgs, GenericArgsRef, GenericParamDefKind, List, ListWithCachedTypeInfo, ParamConst,
     Pattern, PatternKind, PolyExistentialPredicate, PolyFnSig, Predicate, PredicateKind,
     PredicatePolarity, Region, RegionKind, ReprOptions, TraitObjectVisitor, Ty, TyKind, TyVid,
-    ValTree, ValTreeKind, Visibility,
+    TypeckResults, ValTree, ValTreeKind, Visibility,
 };
 
 impl<'tcx> rustc_type_ir::inherent::DefId<TyCtxt<'tcx>> for DefId {
@@ -725,6 +725,12 @@ pub struct GlobalCtxt<'tcx> {
     /// Common consts, pre-interned for your convenience.
     pub consts: CommonConsts<'tcx>,
 
+    /// The dummy ownerless typeck results. All attempts to lookup a HIR node in any of
+    /// the contained tables will panic.
+    ///
+    /// FIXME: This cannot be a static as the lifetime argument is invariant.
+    pub dummy_typeck_results: &'tcx TypeckResults<'tcx>,
+
     /// Hooks to be able to register functions in other crates that can then still
     /// be called from rustc_middle.
     pub(crate) hooks: crate::hooks::Providers,
@@ -949,6 +955,7 @@ impl<'tcx> TyCtxt<'tcx> {
         let common_types = CommonTypes::new(&interners);
         let common_lifetimes = CommonLifetimes::new(&interners);
         let common_consts = CommonConsts::new(&interners, &common_types);
+        let dummy_typeck_results = arena.alloc(TypeckResults::dummy());
 
         let gcx = gcx_cell.get_or_init(|| GlobalCtxt {
             sess,
@@ -963,6 +970,7 @@ impl<'tcx> TyCtxt<'tcx> {
             types: common_types,
             lifetimes: common_lifetimes,
             consts: common_consts,
+            dummy_typeck_results,
             untracked,
             query_system,
             dep_kind_vtables,

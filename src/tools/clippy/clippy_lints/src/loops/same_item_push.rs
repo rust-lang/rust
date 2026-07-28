@@ -56,7 +56,7 @@ pub(super) fn check<'tcx>(
     walk_expr(&mut same_item_push_visitor, body);
     if same_item_push_visitor.should_lint()
         && let Some((vec, pushed_item, ctxt)) = same_item_push_visitor.vec_push
-        && let vec_ty = cx.typeck_results().expr_ty(vec)
+        && let vec_ty = cx.typeck_results.expr_ty(vec)
         && let ty = vec_ty.walk().nth(1).unwrap().expect_ty()
         && cx
             .tcx
@@ -187,7 +187,7 @@ fn get_vec_push<'tcx>(
             && let ExprKind::MethodCall(path, self_expr, [pushed_item], _) = &semi_stmt.kind
             // Check that the method being called is push() on a Vec
             && path.ident.name == sym::push
-            && cx.typeck_results().expr_ty(self_expr).is_diag_item(cx, sym::Vec)
+            && cx.typeck_results.expr_ty(self_expr).is_diag_item(cx, sym::Vec)
     {
         return Some((self_expr, pushed_item, semi_stmt.span.ctxt()));
     }

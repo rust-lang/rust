@@ -80,7 +80,7 @@ pub fn check_fn(cx: &LateContext<'_>, kind: FnKind<'_>, decl: &FnDecl<'_>, body:
 
     let mut used_field = None;
     let mut correct_field = None;
-    let typeck_results = cx.typeck_results();
+    let typeck_results = cx.typeck_results;
     for adjusted_type in iter::once(typeck_results.expr_ty(self_data))
         .chain(typeck_results.expr_adjustments(self_data).iter().map(|adj| adj.target))
     {

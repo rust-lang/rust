@@ -41,10 +41,13 @@ pub use type_certainty::expr_type_is_certain;
 
 /// Lower a [`hir::Ty`] to a [`rustc_middle::ty::Ty`].
 pub fn ty_from_hir_ty<'tcx>(cx: &LateContext<'tcx>, hir_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
-    cx.maybe_typeck_results()
-        .filter(|results| results.hir_owner == hir_ty.hir_id.owner)
-        .and_then(|results| results.node_type_opt(hir_ty.hir_id))
-        .unwrap_or_else(|| lower_ty(cx.tcx, hir_ty))
+    if cx.typeck_results.hir_owner == Some(hir_ty.hir_id.owner)
+        && let Some(ty) = cx.typeck_results.node_type_opt(hir_ty.hir_id)
+    {
+        ty
+    } else {
+        lower_ty(cx.tcx, hir_ty)
+    }
 }
 
 /// Checks if the given type implements copy.
@@ -702,7 +705,7 @@ pub fn expr_sig<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'_>) -> Option<ExprFnS
             Some(id),
         ))
     } else {
-        ty_sig(cx, cx.typeck_results().expr_ty_adjusted(expr).peel_refs())
+        ty_sig(cx, cx.typeck_results.expr_ty_adjusted(expr).peel_refs())
     }
 }
 

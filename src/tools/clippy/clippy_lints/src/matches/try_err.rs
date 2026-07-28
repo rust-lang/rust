@@ -45,7 +45,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, scrutine
             expr.span,
             "returning an `Err(_)` with the `?` operator",
             |diag| {
-                let expr_err_ty = cx.typeck_results().expr_ty(err_arg);
+                let expr_err_ty = cx.typeck_results.expr_ty(err_arg);
                 let span = hygiene::walk_chain(err_arg.span, try_arg.span.ctxt());
                 let mut applicability = Applicability::MachineApplicable;
                 let origin_snippet = snippet_with_applicability(cx, span, "_", &mut applicability);
@@ -70,7 +70,7 @@ fn find_return_type<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx ExprKind<'_>) -> O
     if let ExprKind::Match(_, arms, MatchSource::TryDesugar(_)) = expr {
         for arm in *arms {
             if let ExprKind::Ret(Some(ret)) = arm.body.kind {
-                return Some(cx.typeck_results().expr_ty(ret));
+                return Some(cx.typeck_results.expr_ty(ret));
             }
         }
     }

@@ -169,7 +169,7 @@ impl<'tcx> Visitor<'tcx> for NumericFallbackVisitor<'_, 'tcx> {
             },
 
             ExprKind::MethodCall(_, receiver, args, _) => {
-                if let Some(def_id) = self.cx.typeck_results().type_dependent_def_id(expr.hir_id) {
+                if let Some(def_id) = self.cx.typeck_results.type_dependent_def_id(expr.hir_id) {
                     let fn_sig = self
                         .cx
                         .tcx
@@ -187,7 +187,7 @@ impl<'tcx> Visitor<'tcx> for NumericFallbackVisitor<'_, 'tcx> {
             },
 
             ExprKind::Struct(_, fields, base) => {
-                let ty = self.cx.typeck_results().expr_ty(expr);
+                let ty = self.cx.typeck_results.expr_ty(expr);
                 if let Some(adt_def) = ty.ty_adt_def()
                     && adt_def.is_struct()
                     && let Some(variant) = adt_def.variants().iter().next()
@@ -219,7 +219,7 @@ impl<'tcx> Visitor<'tcx> for NumericFallbackVisitor<'_, 'tcx> {
             },
 
             ExprKind::Lit(lit) => {
-                let ty = self.cx.typeck_results().expr_ty(expr);
+                let ty = self.cx.typeck_results.expr_ty(expr);
                 self.check_lit(*lit, ty, expr.hir_id);
                 return;
             },
@@ -237,7 +237,7 @@ impl<'tcx> Visitor<'tcx> for NumericFallbackVisitor<'_, 'tcx> {
             ..
         }) = pat.kind
         {
-            let ty = self.cx.typeck_results().node_type(hir_id);
+            let ty = self.cx.typeck_results.node_type(hir_id);
             self.check_lit(lit, ty, hir_id);
             return;
         }
@@ -258,7 +258,7 @@ impl<'tcx> Visitor<'tcx> for NumericFallbackVisitor<'_, 'tcx> {
 }
 
 fn fn_sig_opt<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Option<PolyFnSig<'tcx>> {
-    let node_ty = cx.typeck_results().node_type_opt(hir_id)?;
+    let node_ty = cx.typeck_results.node_type_opt(hir_id)?;
     // We can't use `Ty::fn_sig` because it automatically performs args, this may result in FNs.
     match node_ty.kind() {
         ty::FnDef(def_id, _) => Some(cx.tcx.fn_sig(*def_id).instantiate_identity().skip_norm_wip()),

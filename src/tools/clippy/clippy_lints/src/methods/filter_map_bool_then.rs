@@ -27,7 +27,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, arg: &
         && let param_ty = cx.tcx.liberate_late_bound_regions(
             closure.def_id.to_def_id(),
             Binder::bind_with_vars(
-                cx.typeck_results().node_type(param_ty.hir_id),
+                cx.typeck_results.node_type(param_ty.hir_id),
                 cx.tcx.late_bound_vars(cx.tcx.local_def_id_to_hir_id(closure.def_id)),
             ),
         )
@@ -35,11 +35,11 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, arg: &
         && let ExprKind::MethodCall(_, recv, [then_arg], _) = value.kind
         && let ExprKind::Closure(then_closure) = then_arg.kind
         && let then_body = peel_blocks(cx.tcx.hir_body(then_closure.body).value)
-        && let Some(def_id) = cx.typeck_results().type_dependent_def_id(value.hir_id)
+        && let Some(def_id) = cx.typeck_results.type_dependent_def_id(value.hir_id)
         && cx.tcx.is_diagnostic_item(sym::bool_then, def_id)
         && !is_from_proc_macro(cx, expr)
         // Count the number of derefs needed to get to the bool because we need those in the suggestion
-        && let needed_derefs = cx.typeck_results().expr_adjustments(recv)
+        && let needed_derefs = cx.typeck_results.expr_adjustments(recv)
             .iter()
             .filter(|adj| matches!(adj.kind, Adjust::Deref(_)))
             .count()

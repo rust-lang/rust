@@ -90,7 +90,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
             && !is_update_syntax_base(cx, expr)
             // Detect and ignore <Foo as Default>::default() because these calls do explicitly name the type.
             && let QPath::Resolved(None, _path) = qpath
-            && let expr_ty = cx.typeck_results().expr_ty(expr)
+            && let expr_ty = cx.typeck_results.expr_ty(expr)
             && let ty::Adt(def, ..) = expr_ty.kind()
             && !is_from_proc_macro(cx, expr)
         {
@@ -129,7 +129,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
                 && let PatKind::Binding(_, binding_id, ident, _) = local.pat.kind
                 // only when assigning `... = Default::default()`
                 && is_expr_default(cx, expr)
-                && let binding_type = cx.typeck_results().node_type(binding_id)
+                && let binding_type = cx.typeck_results.node_type(binding_id)
                 && let ty::Adt(adt, args) = *binding_type.kind()
                 && adt.is_struct()
                 && let variant = adt.non_enum_variant()

@@ -151,7 +151,7 @@ fn is_cast_from_ref_to_mut_ptr<'tcx>(
     orig_expr: &'tcx Expr<'tcx>,
     mut peel_casts: impl FnMut() -> (&'tcx Expr<'tcx>, bool),
 ) -> Option<bool> {
-    let end_ty = cx.typeck_results().node_type(orig_expr.hir_id);
+    let end_ty = cx.typeck_results.node_type(orig_expr.hir_id);
 
     // Bail out early if the end type is **not** a mutable pointer.
     if !matches!(end_ty.kind(), ty::RawPtr(_, Mutability::Mut)) {
@@ -160,7 +160,7 @@ fn is_cast_from_ref_to_mut_ptr<'tcx>(
 
     let (e, need_check_freeze) = peel_casts();
 
-    let start_ty = cx.typeck_results().node_type(e.hir_id);
+    let start_ty = cx.typeck_results.node_type(e.hir_id);
     if let ty::Ref(_, inner_ty, Mutability::Not) = start_ty.kind() {
         // If an UnsafeCell method is involved, we need to additionally check the
         // inner type for the presence of the Freeze trait (ie does NOT contain
@@ -182,14 +182,14 @@ fn is_cast_to_bigger_memory_layout<'tcx>(
     orig_expr: &'tcx Expr<'tcx>,
     mut peel_casts: impl FnMut() -> (&'tcx Expr<'tcx>, bool),
 ) -> Option<(TyAndLayout<'tcx>, TyAndLayout<'tcx>, Expr<'tcx>)> {
-    let end_ty = cx.typeck_results().node_type(orig_expr.hir_id);
+    let end_ty = cx.typeck_results.node_type(orig_expr.hir_id);
 
     let ty::RawPtr(inner_end_ty, _) = end_ty.kind() else {
         return None;
     };
 
     let (e, _) = peel_casts();
-    let start_ty = cx.typeck_results().node_type(e.hir_id);
+    let start_ty = cx.typeck_results.node_type(e.hir_id);
 
     let ty::Ref(_, inner_start_ty, _) = start_ty.kind() else {
         return None;
@@ -209,7 +209,7 @@ fn is_cast_to_bigger_memory_layout<'tcx>(
         return None;
     }
 
-    let alloc_ty = cx.typeck_results().node_type(e_alloc.hir_id);
+    let alloc_ty = cx.typeck_results.node_type(e_alloc.hir_id);
 
     // if we do not find it we bail out, as this may not be UB
     // see https://github.com/rust-lang/unsafe-code-guidelines/issues/256

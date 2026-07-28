@@ -98,7 +98,7 @@ impl<'tcx> LateLintPass<'tcx> for StaticMutRefs {
             }
             hir::ExprKind::MethodCall(_, e, _, _)
                 if let Some(static_mut) = path_is_static_mut(e, expr.span)
-                    && let typeck = cx.typeck_results()
+                    && let typeck = cx.typeck_results
                     && let Some(method_def_id) = typeck.type_dependent_def_id(expr.hir_id)
                     && let inputs =
                         cx.tcx.fn_sig(method_def_id).skip_binder().inputs().skip_binder()

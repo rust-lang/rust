@@ -18,7 +18,7 @@ use super::MANUAL_INSPECT;
 pub(crate) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, arg: &Expr<'_>, name: Symbol, name_span: Span, msrv: Msrv) {
     if let ExprKind::Closure(c) = arg.kind
         && matches!(c.kind, ClosureKind::Closure)
-        && let typeck = cx.typeck_results()
+        && let typeck = cx.typeck_results
         && let Some(fn_def) = typeck.type_dependent_def(expr.hir_id)
         && (fn_def.opt_parent(cx).is_diag_item(cx, sym::Iterator)
             || ((fn_def.opt_parent(cx).opt_impl_ty(cx).is_diag_item(cx, sym::Option)
@@ -210,7 +210,7 @@ enum UseKind<'tcx> {
 
 /// Checks how the value is used, and whether it was used in the same `SyntaxContext`.
 fn check_use<'tcx>(cx: &LateContext<'tcx>, ctxt: SyntaxContext, e: &'tcx Expr<'_>) -> (UseKind<'tcx>, bool) {
-    let use_cx = get_expr_use_site(cx.tcx, cx.typeck_results(), ctxt, e);
+    let use_cx = get_expr_use_site(cx.tcx, cx.typeck_results, ctxt, e);
     if use_cx
         .adjustments
         .first()

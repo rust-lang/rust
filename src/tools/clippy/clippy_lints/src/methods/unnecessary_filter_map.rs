@@ -43,7 +43,7 @@ pub(super) fn check<'tcx>(
                 ControlFlow::Continue(Descend::Yes)
             }
         });
-        let in_ty = cx.typeck_results().node_type(body.params[0].hir_id);
+        let in_ty = cx.typeck_results.node_type(body.params[0].hir_id);
         let sugg = if !found_filtering {
             // Check if the closure is .filter_map(|x| Some(x))
             if kind.is_filter_map()
@@ -63,7 +63,7 @@ pub(super) fn check<'tcx>(
                 Kind::FindMap => "map(..).next()",
             }
         } else if !found_mapping && !mutates_arg && (!clone_or_copy_needed || is_copy(cx, in_ty)) {
-            let ty = cx.typeck_results().expr_ty(body.value);
+            let ty = cx.typeck_results.expr_ty(body.value);
             if option_arg_ty(cx, ty).is_some_and(|t| t == in_ty) {
                 match kind {
                     Kind::FilterMap => "filter(..)",
@@ -133,7 +133,7 @@ fn check_expression<'tcx>(cx: &LateContext<'tcx>, arg_id: hir::HirId, expr: &'tc
         },
         hir::ExprKind::MethodCall(segment, recv, [arg], _)
             if segment.ident.name == sym::then_some
-                && cx.typeck_results().expr_ty(recv).is_bool()
+                && cx.typeck_results.expr_ty(recv).is_bool()
                 && arg.res_local_id() == Some(arg_id) =>
         {
             // bool.then_some(arg_id)

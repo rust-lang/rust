@@ -398,7 +398,7 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &Body<'tcx>, args: &[
                     // If the expression's type gets adjusted down to the deref type, we might as
                     // well have started with that deref type -- the lint should fire
                     let deref_ty = args.deref_ty.ty(self.cx);
-                    let adjusted_ty = self.cx.typeck_results().expr_ty_adjusted(e).peel_refs();
+                    let adjusted_ty = self.cx.typeck_results.expr_ty_adjusted(e).peel_refs();
                     if adjusted_ty == deref_ty {
                         return;
                     }

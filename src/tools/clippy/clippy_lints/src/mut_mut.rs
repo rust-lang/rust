@@ -79,7 +79,7 @@ impl<'tcx> LateLintPass<'tcx> for MutMut {
                         },
                     );
                 }
-            } else if let ty::Ref(_, ty, Mutability::Mut) = *cx.typeck_results().expr_ty(base).kind()
+            } else if let ty::Ref(_, ty, Mutability::Mut) = *cx.typeck_results.expr_ty(base).kind()
                 && ty.peel_refs().is_sized(cx.tcx, cx.typing_env())
                 && !ctxt.in_external_macro(cx.tcx.sess.source_map())
                 // Don't lint on the explicit borrow in for-loop desugarings.

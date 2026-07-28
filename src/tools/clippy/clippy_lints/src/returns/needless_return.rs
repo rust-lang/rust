@@ -222,7 +222,7 @@ fn check_final_expr<'tcx>(
         // note, if without else is going to be a type checking error anyways
         // (except for unit type functions) so we don't match it
         ExprKind::Match(_, arms, MatchSource::Normal) => {
-            let match_ty = cx.typeck_results().expr_ty(peeled_drop_expr);
+            let match_ty = cx.typeck_results.expr_ty(peeled_drop_expr);
             for arm in *arms {
                 check_final_expr(cx, arm.body, semi_spans.clone(), RetReplacement::Unit, Some(match_ty));
             }

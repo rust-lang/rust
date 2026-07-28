@@ -52,7 +52,7 @@ declare_lint_pass!(NeedlessUpdate => [NEEDLESS_UPDATE]);
 impl<'tcx> LateLintPass<'tcx> for NeedlessUpdate {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::Struct(_, fields, StructTailExpr::Base(base)) = expr.kind {
-            let ty = cx.typeck_results().expr_ty(expr);
+            let ty = cx.typeck_results.expr_ty(expr);
             if let ty::Adt(def, _) = ty.kind()
                 && fields.len() == def.non_enum_variant().fields.len()
                 && !def.variant(0_usize.into()).is_field_list_non_exhaustive()

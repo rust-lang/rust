@@ -20,7 +20,7 @@ pub(super) fn check_cast_method(cx: &LateContext<'_>, expr: &Expr<'_>) {
         // There probably is no obvious reason to do this, just to be consistent with `as` cases.
         && !is_hir_ty_cfg_dependant(cx, cast_to.as_unambig_ty())
     {
-        let (cast_from, cast_to) = (cx.typeck_results().expr_ty(self_arg), cx.typeck_results().expr_ty(expr));
+        let (cast_from, cast_to) = (cx.typeck_results.expr_ty(self_arg), cx.typeck_results.expr_ty(expr));
         lint_cast_ptr_alignment(cx, expr, cast_from, cast_to);
     }
 }
@@ -57,7 +57,7 @@ fn is_used_as_unaligned(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
     match parent.kind {
         ExprKind::MethodCall(name, self_arg, ..) if self_arg.hir_id == e.hir_id => {
             if matches!(name.ident.name, sym::read_unaligned | sym::write_unaligned)
-                && let Some(def_id) = cx.typeck_results().type_dependent_def_id(parent.hir_id)
+                && let Some(def_id) = cx.typeck_results.type_dependent_def_id(parent.hir_id)
                 && let Some(def_id) = cx.tcx.impl_of_assoc(def_id)
                 && cx
                     .tcx

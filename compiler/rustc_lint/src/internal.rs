@@ -167,7 +167,7 @@ fn get_callee_span_generic_args_and_args<'tcx>(
     expr: &'tcx Expr<'tcx>,
 ) -> Option<(DefId, Span, GenericArgsRef<'tcx>, Option<&'tcx Expr<'tcx>>, &'tcx [Expr<'tcx>])> {
     if let ExprKind::Call(callee, args) = expr.kind
-        && let callee_ty = cx.typeck_results().expr_ty(callee)
+        && let callee_ty = cx.typeck_results.expr_ty(callee)
         && let ty::FnDef(callee_def_id, generic_args) = callee_ty.kind()
     {
         return Some((
@@ -179,9 +179,9 @@ fn get_callee_span_generic_args_and_args<'tcx>(
         ));
     }
     if let ExprKind::MethodCall(segment, recv, args, _) = expr.kind
-        && let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
+        && let Some(method_def_id) = cx.typeck_results.type_dependent_def_id(expr.hir_id)
     {
-        let generic_args = cx.typeck_results().node_args(expr.hir_id);
+        let generic_args = cx.typeck_results.node_args(expr.hir_id);
         return Some((method_def_id, segment.ident.span, generic_args, Some(recv), args));
     }
     None
@@ -387,7 +387,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeIr {
         let res_def_id = match expr.kind {
             hir::ExprKind::Path(hir::QPath::Resolved(_, path)) => path.res.opt_def_id(),
             hir::ExprKind::Path(hir::QPath::TypeRelative(..)) | hir::ExprKind::MethodCall(..) => {
-                cx.typeck_results().type_dependent_def_id(expr.hir_id)
+                cx.typeck_results.type_dependent_def_id(expr.hir_id)
             }
             _ => return,
         };
@@ -513,7 +513,7 @@ declare_lint_pass!(BadOptAccess => [BAD_OPT_ACCESS]);
 impl LateLintPass<'_> for BadOptAccess {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &hir::Expr<'_>) {
         let hir::ExprKind::Field(base, target) = expr.kind else { return };
-        let Some(adt_def) = cx.typeck_results().expr_ty(base).ty_adt_def() else { return };
+        let Some(adt_def) = cx.typeck_results.expr_ty(base).ty_adt_def() else { return };
         // Skip types without `#[rustc_lint_opt_ty]` - only so that the rest of the lint can be
         // avoided.
         if !find_attr!(cx.tcx, adt_def.did(), RustcLintOptTy) {
@@ -561,7 +561,7 @@ impl<'tcx> LateLintPass<'tcx> for SpanUseEqCtxt {
 fn is_span_ctxt_call(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> bool {
     match &expr.kind {
         hir::ExprKind::MethodCall(..) => cx
-            .typeck_results()
+            .typeck_results
             .type_dependent_def_id(expr.hir_id)
             .is_some_and(|call_did| cx.tcx.is_diagnostic_item(sym::SpanCtxt, call_did)),
 
@@ -734,7 +734,7 @@ declare_tool_lint! {
 declare_lint_pass!(RustcMustMatchExhaustively => [RUSTC_MUST_MATCH_EXHAUSTIVELY]);
 
 fn is_rustc_must_match_exhaustively(cx: &LateContext<'_>, id: HirId) -> Option<Span> {
-    let res = cx.typeck_results();
+    let res = cx.typeck_results;
 
     let ty = res.node_type(id);
 

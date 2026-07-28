@@ -187,7 +187,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, recv: 
     if expr.span.from_expansion() {
         return;
     }
-    let expected_ret_ty = cx.typeck_results().expr_ty(expr);
+    let expected_ret_ty = cx.typeck_results.expr_ty(expr);
     let (variant, checked_span, unchecked_sugg, unchecked_full_path, unchecked_def_id) = match recv.kind {
         // Construct `Variant::Fn(_)`, if applicable. This is necessary for us to handle
         // functions like `std::str::from_utf8_unchecked`.
@@ -240,7 +240,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, recv: 
         // ... And now the latter ^^
         ExprKind::MethodCall(segment, _, _, _)
             if let checked_ident = segment.ident
-                && let Some(checked_def_id) = cx.typeck_results().type_dependent_def_id(recv.hir_id)
+                && let Some(checked_def_id) = cx.typeck_results.type_dependent_def_id(recv.hir_id)
                 && let Some((unchecked, unchecked_ident)) =
                     find_unchecked_sibling_method(cx, checked_def_id, checked_ident)
                 && same_functions_modulo_safety(cx, checked_def_id, unchecked.def_id, expected_ret_ty) =>

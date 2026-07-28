@@ -20,8 +20,8 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>], expr:
         } else {
             None
         }
-        && let output_ty = cx.typeck_results().expr_ty(expr)
-        && let input_ty = cx.typeck_results().expr_ty(ex)
+        && let output_ty = cx.typeck_results.expr_ty(expr)
+        && let input_ty = cx.typeck_results.expr_ty(ex)
         && let Some(input_ty) = option_arg_ty(cx, input_ty)
         && let Some(output_ty) = option_arg_ty(cx, output_ty)
         && let ty::Ref(_, output_ty, output_mutbl) = *output_ty.kind()

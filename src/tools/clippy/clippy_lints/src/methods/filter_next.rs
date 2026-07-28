@@ -31,7 +31,7 @@ pub(super) fn check(
     if !cx
         .tcx
         .get_diagnostic_item(required_trait)
-        .is_some_and(|id| implements_trait(cx, cx.typeck_results().expr_ty(recv), id, &[]))
+        .is_some_and(|id| implements_trait(cx, cx.typeck_results.expr_ty(recv), id, &[]))
     {
         return;
     }

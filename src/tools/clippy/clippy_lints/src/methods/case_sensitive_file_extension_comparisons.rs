@@ -28,7 +28,7 @@ pub(super) fn check<'tcx>(
         return;
     }
 
-    if let Some(method_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
+    if let Some(method_id) = cx.typeck_results.type_dependent_def_id(expr.hir_id)
         && let Some(impl_id) = cx.tcx.impl_of_assoc(method_id)
         && cx.tcx.type_of(impl_id).instantiate_identity().skip_norm_wip().is_str()
         && let ExprKind::Lit(Spanned {
@@ -41,7 +41,7 @@ pub(super) fn check<'tcx>(
         && (ext_str.chars().skip(1).all(|c| c.is_uppercase() || c.is_ascii_digit())
             || ext_str.chars().skip(1).all(|c| c.is_lowercase() || c.is_ascii_digit()))
         && !ext_str.chars().skip(1).all(|c| c.is_ascii_digit())
-        && let recv_ty = cx.typeck_results().expr_ty(recv).peel_refs()
+        && let recv_ty = cx.typeck_results.expr_ty(recv).peel_refs()
         && (recv_ty.is_str() || recv_ty.is_lang_item(cx, LangItem::String))
     {
         span_lint_and_then(
@@ -52,7 +52,7 @@ pub(super) fn check<'tcx>(
             |diag| {
                 diag.help("consider using a case-insensitive comparison instead");
                 if let Some(recv_source) = recv.span.get_text(cx) {
-                    let recv_source = if cx.typeck_results().expr_ty(recv).is_ref() {
+                    let recv_source = if cx.typeck_results.expr_ty(recv).is_ref() {
                         recv_source.to_owned()
                     } else {
                         format!("&{recv_source}")

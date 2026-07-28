@@ -507,7 +507,7 @@ pub fn eval_int(cx: &LateContext<'_>, e: &Expr<'_>) -> Option<FullInt> {
         {
             Some(FullInt::S(val.0.cast_signed().wrapping_neg()))
         },
-        _ if let ty = cx.typeck_results().expr_ty(e)
+        _ if let ty = cx.typeck_results.expr_ty(e)
             && let ty::Int(_) | ty::Uint(_) = *ty.kind() =>
         {
             ConstEvalCtxt::new(cx).eval(e).and_then(|x| x.int_value(cx.tcx, ty))
@@ -536,7 +536,7 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
         Self {
             tcx: cx.tcx,
             typing_env: cx.typing_env(),
-            typeck: cx.typeck_results(),
+            typeck: cx.typeck_results,
             source: Cell::new(ConstantSource::Local),
             ctxt: Cell::new(SyntaxContext::root()),
         }
@@ -888,12 +888,11 @@ impl<'tcx> ConstEvalCtxt<'tcx> {
         let args = self.typeck.node_args(id);
 
         if !args.is_empty() {
-            let owner_def_id = self.typeck.hir_owner.def_id.to_def_id();
-            let identity_args = ty::GenericArgs::identity_for_item(self.tcx, owner_def_id);
+            let identity_args = ty::GenericArgs::identity_for_item(self.tcx, id.owner.def_id);
             // Don't try to fully evaluate consts inside code whose bounds can't be satisfied.
             if self
                 .tcx
-                .instantiate_and_check_impossible_predicates((owner_def_id, identity_args))
+                .instantiate_and_check_impossible_predicates((id.owner.def_id.into(), identity_args))
             {
                 return None;
             }

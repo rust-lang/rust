@@ -9,7 +9,7 @@ use rustc_span::sym;
 use super::UNIT_HASH;
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, recv: &'tcx Expr<'_>, arg: &'tcx Expr<'_>) {
-    if cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::Hash) && cx.typeck_results().expr_ty(recv).is_unit() {
+    if cx.ty_based_def(expr).opt_parent(cx).is_diag_item(cx, sym::Hash) && cx.typeck_results.expr_ty(recv).is_unit() {
         span_lint_and_then(
             cx,
             UNIT_HASH,

@@ -42,7 +42,7 @@ fn should_run_lint(cx: &LateContext<'_>, e: &hir::Expr<'_>, method_parent_id: De
 }
 
 pub(super) fn check(cx: &LateContext<'_>, e: &hir::Expr<'_>, recv: &hir::Expr<'_>, arg: &hir::Expr<'_>, msrv: Msrv) {
-    if let Some(parent_id) = cx.typeck_results().type_dependent_def_id(e.hir_id).opt_parent(cx)
+    if let Some(parent_id) = cx.typeck_results.type_dependent_def_id(e.hir_id).opt_parent(cx)
         && should_run_lint(cx, e, parent_id)
     {
         match arg.kind {
@@ -61,21 +61,21 @@ pub(super) fn check(cx: &LateContext<'_>, e: &hir::Expr<'_>, recv: &hir::Expr<'_
                         match closure_expr.kind {
                             hir::ExprKind::Unary(hir::UnOp::Deref, inner) => {
                                 if ident_eq(name, inner)
-                                    && let ty::Ref(.., Mutability::Not) = cx.typeck_results().expr_ty(inner).kind()
+                                    && let ty::Ref(.., Mutability::Not) = cx.typeck_results.expr_ty(inner).kind()
                                 {
                                     lint_explicit_closure(cx, e.span, recv.span, true, msrv);
                                 }
                             },
                             hir::ExprKind::MethodCall(method, obj, [], _) => {
                                 if ident_eq(name, obj) && method.ident.name == sym::clone
-                                && let Some(fn_id) = cx.typeck_results().type_dependent_def_id(closure_expr.hir_id)
+                                && let Some(fn_id) = cx.typeck_results.type_dependent_def_id(closure_expr.hir_id)
                                 && let Some(trait_id) = cx.tcx.trait_of_assoc(fn_id)
                                 && cx.tcx.lang_items().clone_trait() == Some(trait_id)
                                 // no autoderefs
-                                && !cx.typeck_results().expr_adjustments(obj).iter()
+                                && !cx.typeck_results.expr_adjustments(obj).iter()
                                     .any(|a| matches!(a.kind, Adjust::Deref(DerefAdjustKind::Overloaded(..))))
                                 {
-                                    let obj_ty = cx.typeck_results().expr_ty(obj);
+                                    let obj_ty = cx.typeck_results.expr_ty(obj);
                                     if let ty::Ref(_, ty, mutability) = obj_ty.kind() {
                                         if matches!(mutability, Mutability::Not) {
                                             let copy = is_copy(cx, *ty);
@@ -116,11 +116,11 @@ fn handle_path(
         && cx.tcx.lang_items().get(LangItem::CloneFn) == Some(path_def_id)
         // The `copied` and `cloned` methods are only available on `&T` and `&mut T` in `Option`
         // and `Result`.
-        && let ty::Adt(_, args) = cx.typeck_results().expr_ty(recv).kind()
+        && let ty::Adt(_, args) = cx.typeck_results.expr_ty(recv).kind()
         && let args = args.as_slice()
         && let Some(ty) = args.iter().find_map(|generic_arg| generic_arg.as_type())
         && let ty::Ref(_, ty, Mutability::Not) = ty.kind()
-        && let ty::FnDef(_, lst) = cx.typeck_results().expr_ty(arg).kind()
+        && let ty::FnDef(_, lst) = cx.typeck_results.expr_ty(arg).kind()
         && lst.iter().all(|l| l.no_bound_vars().unwrap().as_type() == Some(*ty))
         && !should_call_clone_as_function(cx, *ty)
     {

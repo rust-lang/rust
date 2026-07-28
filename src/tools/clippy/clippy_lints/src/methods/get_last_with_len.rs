@@ -30,7 +30,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, arg:
         && SpanlessEq::new(cx).eq_expr(expr.span.ctxt(), recv, lhs_recv)
         && !recv.can_have_side_effects()
     {
-        let method = match cx.typeck_results().expr_ty_adjusted(recv).peel_refs().kind() {
+        let method = match cx.typeck_results.expr_ty_adjusted(recv).peel_refs().kind() {
             ty::Adt(def, _) if cx.tcx.is_diagnostic_item(sym::VecDeque, def.did()) => "back",
             ty::Slice(_) => "last",
             _ => return,

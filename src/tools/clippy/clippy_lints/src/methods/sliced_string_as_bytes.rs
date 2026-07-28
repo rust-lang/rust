@@ -16,7 +16,7 @@ fn is_bounded_range_literal(cx: &LateContext<'_>, index: &Expr<'_>) -> bool {
 pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>) {
     if let ExprKind::Index(indexed, index, _) = recv.kind
         && is_bounded_range_literal(cx, index)
-        && let ty = cx.typeck_results().expr_ty(indexed).peel_refs()
+        && let ty = cx.typeck_results.expr_ty(indexed).peel_refs()
         && (ty.is_str() || ty.is_lang_item(cx, LangItem::String))
     {
         let mut applicability = Applicability::MaybeIncorrect;

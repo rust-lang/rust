@@ -40,8 +40,8 @@ pub(crate) fn check<'tcx>(
         && matches!(sym, sym::f16_epsilon | sym::f32_epsilon | sym::f64_epsilon | sym::f128_epsilon)
 
         // values of the subtractions on the left hand side are of the type float
-        && let t_val_l = cx.typeck_results().expr_ty(val_l)
-        && let t_val_r = cx.typeck_results().expr_ty(val_r)
+        && let t_val_l = cx.typeck_results.expr_ty(val_l)
+        && let t_val_r = cx.typeck_results.expr_ty(val_r)
         && let ty::Float(_) = t_val_l.kind()
         && let ty::Float(_) = t_val_r.kind()
     {

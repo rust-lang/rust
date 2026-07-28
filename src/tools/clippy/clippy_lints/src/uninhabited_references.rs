@@ -41,7 +41,7 @@ impl LateLintPass<'_> for UninhabitedReferences {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &'_ Expr<'_>) {
         if let ExprKind::Unary(UnOp::Deref, _) = expr.kind
             && cx
-                .typeck_results()
+                .typeck_results
                 .expr_ty_adjusted(expr)
                 .is_privately_uninhabited(cx.tcx, cx.typing_env())
             && !expr.span.in_external_macro(cx.tcx.sess.source_map())

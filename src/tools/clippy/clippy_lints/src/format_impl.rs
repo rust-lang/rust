@@ -160,7 +160,7 @@ impl FormatImplExpr<'_, '_> {
             // separately)
             && self
                 .cx
-                .typeck_results()
+                .typeck_results
                 .type_dependent_def_id(self.expr.hir_id)
                 .opt_parent(self.cx)
                 .is_diag_item(self.cx, sym::ToString)

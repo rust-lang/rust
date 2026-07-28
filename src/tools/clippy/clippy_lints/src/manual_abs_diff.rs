@@ -102,8 +102,8 @@ impl ManualAbsDiff {
         let is_duration =
             |ty: Ty<'_>| ty.is_diag_item(cx, sym::Duration) && self.msrv.meets(cx, msrvs::DURATION_ABS_DIFF);
 
-        let a_ty = cx.typeck_results().expr_ty(a).peel_refs();
-        let (b_ty, b_n_refs, _) = peel_and_count_ty_refs(cx.typeck_results().expr_ty(b));
+        let a_ty = cx.typeck_results.expr_ty(a).peel_refs();
+        let (b_ty, b_n_refs, _) = peel_and_count_ty_refs(cx.typeck_results.expr_ty(b));
 
         (a_ty == b_ty && (is_int(a_ty) || is_duration(a_ty))).then_some((a_ty, b_n_refs))
     }
@@ -127,7 +127,7 @@ fn is_sub_expr(
         let unsigned = Ty::new_uint(cx.tcx, ty.to_unsigned());
 
         return if let ExprKind::Cast(expr, cast_ty) = expr.kind
-            && cx.typeck_results().node_type(cast_ty.hir_id) == unsigned
+            && cx.typeck_results.node_type(cast_ty.hir_id) == unsigned
         {
             is_sub_expr(cx, expr, expected_a, expected_b, unsigned)
         } else {

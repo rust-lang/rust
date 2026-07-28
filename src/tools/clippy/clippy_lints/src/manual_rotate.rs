@@ -77,7 +77,7 @@ impl LateLintPass<'_> for ManualRotate {
             && l_shift_dir != r_shift_dir
             && let ctxt = expr.span.ctxt()
             && clippy_utils::eq_expr_value(cx, ctxt, l_expr, r_expr)
-            && let Some(bit_width) = match cx.typeck_results().expr_ty(expr).kind() {
+            && let Some(bit_width) = match cx.typeck_results.expr_ty(expr).kind() {
                 ty::Int(itype) => itype.bit_width(),
                 ty::Uint(itype) => itype.bit_width(),
                 _ => return,

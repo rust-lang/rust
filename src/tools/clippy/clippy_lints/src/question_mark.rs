@@ -128,7 +128,7 @@ fn check_let_some_else_return_none(cx: &LateContext<'_>, stmt: &Stmt<'_>) {
     /// or `(&some_struct.opt)?` since the first one has different semantics and the later does
     /// not implements `Try`.
     fn init_expr_can_use_question_mark(cx: &LateContext<'_>, init_expr: &Expr<'_>) -> bool {
-        let init_ty = cx.typeck_results().expr_ty_adjusted(init_expr);
+        let init_ty = cx.typeck_results.expr_ty_adjusted(init_expr);
         cx.tcx
             .lang_items()
             .try_trait()
@@ -290,7 +290,7 @@ fn check_is_none_or_err_and_early_return<'tcx>(cx: &LateContext<'tcx>, expr: &Ex
     if let Some(higher::If { cond, then, r#else }) = higher::If::hir(expr)
         && !is_else_clause(cx.tcx, expr)
         && let ExprKind::MethodCall(segment, caller, [], _) = &cond.kind
-        && let caller_ty = cx.typeck_results().expr_ty(caller)
+        && let caller_ty = cx.typeck_results.expr_ty(caller)
         && let if_block = IfBlockType::IfIs(caller, caller_ty, segment.ident.name, then)
         && (is_early_return(sym::Option, cx, &if_block) || is_early_return(sym::Result, cx, &if_block))
     {
@@ -327,7 +327,7 @@ enum TryMode {
 }
 
 fn find_try_mode<'tcx>(cx: &LateContext<'tcx>, scrutinee: &Expr<'tcx>) -> Option<TryMode> {
-    let scrutinee_ty = cx.typeck_results().expr_ty_adjusted(scrutinee).peel_refs();
+    let scrutinee_ty = cx.typeck_results.expr_ty_adjusted(scrutinee).peel_refs();
     let ty::Adt(scrutinee_adt_def, _) = scrutinee_ty.kind() else {
         return None;
     };
@@ -525,7 +525,7 @@ fn check_if_let_some_or_err_and_early_return<'tcx>(cx: &LateContext<'tcx>, expr:
         && let PatKind::TupleStruct(ref path1, [field], ddpos) = let_pat.kind
         && ddpos.as_opt_usize().is_none()
         && let PatKind::Binding(BindingMode(by_ref, _), bind_id, ident, None) = field.kind
-        && let caller_ty = cx.typeck_results().expr_ty(let_expr)
+        && let caller_ty = cx.typeck_results.expr_ty(let_expr)
         && let if_block = IfBlockType::IfLet(
             cx.qpath_res(path1, let_pat.hir_id),
             caller_ty,
@@ -564,7 +564,7 @@ fn check_if_let_some_or_err_and_early_return<'tcx>(cx: &LateContext<'tcx>, expr:
                 let receiver_str = snippet_with_applicability(cx, let_expr.span, "..", &mut applicability);
                 if !is_option_early_return || peel_blocks(if_then).res_local_id() == Some(bind_id) {
                     let parent = cx.tcx.parent_hir_node(expr.hir_id);
-                    let requires_semi = matches!(parent, Node::Stmt(_)) || cx.typeck_results().expr_ty(expr).is_unit();
+                    let requires_semi = matches!(parent, Node::Stmt(_)) || cx.typeck_results.expr_ty(expr).is_unit();
                     let method_call_str = match by_ref {
                         ByRef::Yes(_, Mutability::Mut) => ".as_mut()",
                         ByRef::Yes(_, Mutability::Not) => ".as_ref()",

@@ -22,7 +22,7 @@ pub(super) fn check(
 ) {
     let same_mutability = |m| (is_mut && m == &hir::Mutability::Mut) || (!is_mut && m == &hir::Mutability::Not);
 
-    let option_ty = cx.typeck_results().expr_ty(as_ref_recv);
+    let option_ty = cx.typeck_results.expr_ty(as_ref_recv);
     if !option_ty.is_diag_item(cx, sym::Option) {
         return;
     }
@@ -53,7 +53,7 @@ pub(super) fn check(
                 hir::ExprKind::MethodCall(_, receiver, [], _) => {
                     if receiver.res_local_id() == Some(closure_body.params[0].pat.hir_id)
                         && let adj = cx
-                            .typeck_results()
+                            .typeck_results
                             .expr_adjustments(receiver)
                             .iter()
                             .map(|x| &x.kind)
@@ -62,7 +62,7 @@ pub(super) fn check(
                             ty::adjustment::Adjust::Deref(ty::adjustment::DerefAdjustKind::Builtin),
                             ty::adjustment::Adjust::Borrow(_),
                         ] = *adj
-                        && let method_did = cx.typeck_results().type_dependent_def_id(closure_expr.hir_id).unwrap()
+                        && let method_did = cx.typeck_results.type_dependent_def_id(closure_expr.hir_id).unwrap()
                         && let Some(method_name) = cx.tcx.get_diagnostic_name(method_did)
                     {
                         matches!(method_name, sym::deref_method | sym::deref_mut_method)

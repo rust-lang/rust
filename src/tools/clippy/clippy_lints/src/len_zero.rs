@@ -344,5 +344,5 @@ fn has_is_empty(cx: &LateContext<'_>, expr: &Expr<'_>, msrv: Msrv) -> bool {
         }
     }
 
-    ty_has_is_empty(cx, cx.typeck_results().expr_ty(expr).peel_refs(), 0, msrv)
+    ty_has_is_empty(cx, cx.typeck_results.expr_ty(expr).peel_refs(), 0, msrv)
 }

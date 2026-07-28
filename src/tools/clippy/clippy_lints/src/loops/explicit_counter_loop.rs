@@ -40,7 +40,7 @@ pub(super) fn check<'tcx>(
         let Some((name, ty, initializer)) = initialize_visitor.get_result() else {
             continue;
         };
-        if !cx.typeck_results().expr_ty(initializer).is_integral() {
+        if !cx.typeck_results.expr_ty(initializer).is_integral() {
             continue;
         }
 

@@ -22,7 +22,7 @@ pub(super) fn check<'tcx>(
     };
 
     // Check for a bitwise op compared to a constant.
-    let typeck = cx.typeck_results();
+    let typeck = cx.typeck_results;
     let ecx = ConstEvalCtxt::new(cx);
     let ctxt = e.span.ctxt();
     let Some((cmp_op, bit_op, bit_lhs, bit_rhs, cmp_val)) = try_maybe_swap(

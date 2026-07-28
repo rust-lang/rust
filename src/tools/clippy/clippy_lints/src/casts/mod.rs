@@ -898,8 +898,8 @@ impl<'tcx> LateLintPass<'tcx> for Casts {
                 return;
             }
             let (cast_from, cast_to) = (
-                cx.typeck_results().expr_ty(cast_from_expr),
-                cx.typeck_results().expr_ty(expr),
+                cx.typeck_results.expr_ty(cast_from_expr),
+                cx.typeck_results.expr_ty(expr),
             );
 
             if !expr.span.from_expansion() && unnecessary_cast::check(cx, expr, cast_from_expr, cast_from, cast_to) {
