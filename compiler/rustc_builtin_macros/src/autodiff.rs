@@ -358,14 +358,13 @@ mod llvm_enzyme {
             delim: ast::token::Delimiter::Parenthesis,
             tokens: TokenStream::from_iter(ts2),
         };
-        let inline_item = ast::AttrItem {
-            unsafety: ast::Safety::Default,
-            path: ast::Path::from_ident(Ident::with_dummy_span(sym::inline)),
-            args: ast::AttrArgs::Delimited(never_arg),
-            span: DUMMY_SP,
-            from_cfg_attr: false,
-        };
-        let inline_never_attr = Box::new(ast::NormalAttr { item: inline_item, tokens: None });
+        let inline_item = ast::AttrItem::new(
+            ast::Safety::Default,
+            ast::Path::from_ident(Ident::with_dummy_span(sym::inline)),
+            ast::AttrArgs::Delimited(never_arg),
+            DUMMY_SP,
+        );
+        let inline_never_attr = Box::new(ast::NormalAttr::new(inline_item));
         let new_id = ecx.sess.psess.attr_id_generator.mk_attr_id();
         let attr = outer_normal_attr(&rustc_ad_attr, new_id, span);
         let new_id = ecx.sess.psess.attr_id_generator.mk_attr_id();

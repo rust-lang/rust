@@ -804,10 +804,10 @@ impl<'a> TraitDef<'a> {
         if self.is_const && self.is_staged_api_crate {
             attrs.push(
                 cx.attr_nested(
-                    rustc_ast::AttrItem {
-                        unsafety: Safety::Default,
-                        path: rustc_const_unstable,
-                        args: AttrArgs::Delimited(DelimArgs {
+                    rustc_ast::AttrItem::new(
+                        Safety::Default,
+                        rustc_const_unstable,
+                        AttrArgs::Delimited(DelimArgs {
                             dspan: DelimSpan::from_single(self.span),
                             delim: rustc_ast::token::Delimiter::Parenthesis,
                             tokens: [
@@ -825,9 +825,8 @@ impl<'a> TraitDef<'a> {
                             })
                             .collect(),
                         }),
-                        span: self.span,
-                        from_cfg_attr: false,
-                    },
+                        self.span,
+                    ),
                     self.span,
                 ),
             )

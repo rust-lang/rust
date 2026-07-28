@@ -3477,22 +3477,21 @@ pub enum AttrKind {
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct NormalAttr {
     pub item: AttrItem,
-    // Tokens for the full attribute, e.g. `#[foo]`, `#![bar]`. (Compare this with
-    // `ParseNtResult::Meta`; `expand_cfg_attr_item` is where the two cases interact.)
-    pub tokens: Option<LazyAttrTokenStream>,
 }
 
 impl NormalAttr {
+    pub fn new(item: AttrItem) -> Self {
+        Self { item }
+    }
+
     pub fn from_ident(ident: Ident) -> Self {
         Self {
-            item: AttrItem {
-                unsafety: Safety::Default,
-                path: Path::from_ident(ident),
-                args: AttrArgs::Empty,
-                span: ident.span,
-                from_cfg_attr: false,
-            },
-            tokens: None,
+            item: AttrItem::new(
+                Safety::Default,
+                Path::from_ident(ident),
+                AttrArgs::Empty,
+                ident.span,
+            ),
         }
     }
 }
@@ -3518,6 +3517,10 @@ pub struct AttrItem {
     pub span: Span,
     /// Was this created by expanding a `#[cfg_attr(pred, foo)]` attribute?
     pub from_cfg_attr: bool,
+    /// When we synthesize tokens for the attribute, can we derive precise spans for the delimiter
+    /// tokens (`#`, `!` (if present), and `[`/`]`) from `span`? This is the case for parsed
+    /// attributes with no extraneous whitespace, e.g. yes for `#[foo]` but no for `# [ foo ]`.
+    pub use_precise_delim_token_spans: bool,
 }
 
 /// A synthetic attribute.
@@ -3546,18 +3549,6 @@ pub enum SyntheticAttr {
     ///
     /// The attribute is used by rustdoc to display `doc_cfg` information and by some clippy lints.
     CfgAttrTrace(CfgEntry),
-}
-
-impl AttrItem {
-    pub fn is_valid_for_outer_style(&self) -> bool {
-        self.path == sym::cfg_attr
-            || self.path == sym::cfg
-            || self.path == sym::forbid
-            || self.path == sym::warn
-            || self.path == sym::allow
-            || self.path == sym::deny
-            || self.path == sym::expect
-    }
 }
 
 /// `TraitRef`s appear in impls.
@@ -4488,7 +4479,7 @@ mod size_asserts {
     static_assert_size!(MetaItem, 80);
     static_assert_size!(MetaItemKind, 40);
     static_assert_size!(MetaItemLit, 40);
-    static_assert_size!(NormalAttr, 80);
+    static_assert_size!(NormalAttr, 72);
     static_assert_size!(Param, 40);
     static_assert_size!(Pat, 64);
     static_assert_size!(PatKind, 48);

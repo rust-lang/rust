@@ -7,7 +7,7 @@ use std::fmt::Debug;
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use rustc_index::bit_set::GrowableBitSet;
-use rustc_span::{Ident, Span, Symbol, sym};
+use rustc_span::{BytePos, DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use smallvec::{SmallVec, smallvec};
 use thin_vec::{ThinVec, thin_vec};
 
@@ -20,8 +20,7 @@ use crate::token::{
     self, CommentKind, Delimiter, DocFragmentKind, InvisibleOrigin, MetaVarKind, Token,
 };
 use crate::tokenstream::{
-    AttrTokenStream, AttrTokenTree, DelimSpacing, DelimSpan, LazyAttrTokenStream, Spacing,
-    TokenStream, TokenStreamIter, TokenTree,
+    DelimSpacing, DelimSpan, Spacing, TokenStream, TokenStreamIter, TokenTree,
 };
 use crate::util::comments;
 use crate::util::literal::escape_string_symbol;
@@ -291,18 +290,64 @@ impl Attribute {
         }
     }
 
+    /// Synthesizes token trees for the attribute, rather than using an
+    /// `Option<LazyAttrTokenStream>` as is done for many other AST nodes. This works well for
+    /// attributes because (a) they have a rigid micro-grammar, and (b) we record tokens for the
+    /// internal pieces in the interesting cases (e.g. in `AttrArgs` within `AttrItem::args`.)
     pub fn token_trees(&self) -> Vec<TokenTree> {
-        match self.kind {
-            AttrKind::Normal(ref normal) => normal
-                .tokens
-                .as_ref()
-                .unwrap_or_else(|| panic!("attribute is missing tokens: {self:?}"))
-                .to_attr_token_stream()
-                .to_token_trees(),
+        match &self.kind {
+            AttrKind::Normal(normal) => {
+                let prefix_len: u32 = match self.style {
+                    AttrStyle::Outer => 1, // `#`
+                    AttrStyle::Inner => 2, // `#!`
+                };
+
+                // If the attribute is in the standard parsed `#[..]` or `#![..]` form we can use
+                // simple offset arithmetic to create precise sub-spans for the delimiter tokens.
+                // Otherwise, every token gets the same span, that of the entire attribute.
+                //
+                // See the code that sets `use_precise_delim_token_spans` in `parse_attribute` for
+                // more details.
+                let span = self.span;
+                let (pound_span, bang_span, dspan) = if normal.item.use_precise_delim_token_spans {
+                    assert_ne!(span, DUMMY_SP);
+                    let lo = span.lo();
+                    (
+                        span.with_hi(lo + BytePos(1)),
+                        span.with_lo(lo + BytePos(1)).with_hi(lo + BytePos(2)),
+                        DelimSpan::from_pair(
+                            span.with_lo(lo + BytePos(prefix_len))
+                                .with_hi(lo + BytePos(prefix_len + 1)),
+                            span.with_lo(span.hi() - BytePos(1)),
+                        ),
+                    )
+                } else {
+                    (span, span, DelimSpan::from_single(span))
+                };
+
+                let delimited = TokenTree::Delimited(
+                    dspan,
+                    DelimSpacing::new(Spacing::JointHidden, Spacing::Alone),
+                    Delimiter::Bracket,
+                    TokenStream::new(normal.item.token_trees()),
+                );
+
+                let trees = match self.style {
+                    AttrStyle::Outer => {
+                        vec![TokenTree::token_joint_hidden(token::Pound, pound_span), delimited]
+                    }
+                    AttrStyle::Inner => vec![
+                        TokenTree::token_joint(token::Pound, pound_span),
+                        TokenTree::token_joint_hidden(token::Bang, bang_span),
+                        delimited,
+                    ],
+                };
+                trees
+            }
             // Empty tokens here ensures synthetic attributes are invisible to proc macros.
             AttrKind::Synthetic(..) => vec![],
             AttrKind::DocComment(comment_kind, data) => vec![TokenTree::token_alone(
-                token::DocComment(comment_kind, self.style, data),
+                token::DocComment(*comment_kind, self.style, *data),
                 self.span,
             )],
         }
@@ -338,6 +383,27 @@ impl Attribute {
 }
 
 impl AttrItem {
+    pub fn new(unsafety: Safety, path: Path, args: AttrArgs, span: Span) -> AttrItem {
+        AttrItem {
+            unsafety,
+            path,
+            args,
+            span,
+            from_cfg_attr: false,
+            use_precise_delim_token_spans: false,
+        }
+    }
+
+    pub fn is_valid_for_outer_style(&self) -> bool {
+        self.path == sym::cfg_attr
+            || self.path == sym::cfg
+            || self.path == sym::forbid
+            || self.path == sym::warn
+            || self.path == sym::allow
+            || self.path == sym::deny
+            || self.path == sym::expect
+    }
+
     pub fn name(&self) -> Option<Symbol> {
         if let [seg] = &*self.path.segments { Some(seg.ident.name) } else { None }
     }
@@ -405,6 +471,82 @@ impl AttrItem {
 
     pub fn meta_kind(&self) -> Option<MetaItemKind> {
         MetaItemKind::from_attr_args(&self.args)
+    }
+
+    /// Synthesizes token trees for the attr item. See `Attribute::token_trees` for more details.
+    fn token_trees(&self) -> Vec<TokenTree> {
+        let mut trees = vec![];
+
+        let num_segs = self.path.segments.len();
+        for (i, seg) in self.path.segments.iter().enumerate() {
+            if i > 0 {
+                // `::` separator spans are not recorded in the AST. Assume the separator span is
+                // the full space between path segments. In the rare case that whitespace is
+                // present (e.g. "rustfmt :: skip") the span will be slightly imprecise.
+                let sep_span = self.path.segments[i - 1].ident.span.between(seg.ident.span);
+                trees.push(TokenTree::token_joint_hidden(token::PathSep, sep_span));
+            }
+
+            // A leading `::` is represented by a `PathRoot` segment; the `PathSep` emitted above
+            // on the next loop iteration covers it.
+            if seg.ident.name != kw::PathRoot {
+                let spacing = if i + 1 < num_segs {
+                    Spacing::Joint // followed by `::`
+                } else {
+                    match &self.args {
+                        AttrArgs::Delimited(_) => Spacing::JointHidden, // followed by `(`/`[`/`{`
+                        AttrArgs::Empty | AttrArgs::Eq { .. } => Spacing::Alone,
+                    }
+                };
+                trees.push(TokenTree::Token(Token::from_ast_ident(seg.ident), spacing));
+            }
+        }
+
+        match &self.args {
+            AttrArgs::Empty => {}
+            AttrArgs::Delimited(DelimArgs { dspan, delim, tokens }) => {
+                trees.push(TokenTree::Delimited(
+                    *dspan,
+                    DelimSpacing::new(Spacing::JointHidden, Spacing::Alone),
+                    *delim,
+                    tokens.clone(),
+                ));
+            }
+            AttrArgs::Eq { eq_span, expr } => {
+                trees.push(TokenTree::token_alone(token::Eq, *eq_span));
+                if expr.tokens.is_some() {
+                    // Parsed attributes, e.g. from `parse_attr_args` which force collects tokens.
+                    trees.extend(TokenStream::from_ast(expr).iter().cloned());
+                } else if let ExprKind::Lit(lit) = expr.kind {
+                    // Builtin attributes, e.g. from `mk_attr_name_value_str`.
+                    trees.push(TokenTree::token_alone(token::Literal(lit), expr.span));
+                } else {
+                    panic!("attribute value expression has no tokens: {expr:?}");
+                }
+            }
+        }
+
+        let safety_kw = match self.unsafety {
+            Safety::Default => None,
+            Safety::Unsafe(span) => Some((kw::Unsafe, span)),
+            Safety::Safe(span) => Some((kw::Safe, span)),
+        };
+        if let Some((kw, kw_span)) = safety_kw {
+            vec![
+                TokenTree::Token(
+                    Token::from_ast_ident(Ident::new(kw, kw_span)),
+                    Spacing::JointHidden,
+                ),
+                TokenTree::Delimited(
+                    DelimSpan::from_single(self.span),
+                    DelimSpacing::new(Spacing::JointHidden, Spacing::Alone),
+                    Delimiter::Parenthesis,
+                    TokenStream::new(trees),
+                ),
+            ]
+        } else {
+            trees
+        }
     }
 }
 
@@ -734,40 +876,15 @@ pub fn mk_doc_comment(
 pub fn mk_attr_from_item(
     g: &AttrIdGenerator,
     item: AttrItem,
-    tokens: Option<LazyAttrTokenStream>,
     style: AttrStyle,
     span: Span,
 ) -> Attribute {
     Attribute {
-        kind: AttrKind::Normal(Box::new(NormalAttr { item, tokens })),
+        kind: AttrKind::Normal(Box::new(NormalAttr { item })),
         id: g.mk_attr_id(),
         style,
         span,
     }
-}
-
-fn mk_attr_tokens(
-    style: AttrStyle,
-    item_tokens: AttrTokenStream,
-    span: Span,
-) -> LazyAttrTokenStream {
-    let mut tokens = match style {
-        AttrStyle::Outer => {
-            vec![AttrTokenTree::Token(Token::new(token::Pound, span), Spacing::JointHidden)]
-        }
-        AttrStyle::Inner => vec![
-            AttrTokenTree::Token(Token::new(token::Pound, span), Spacing::Joint),
-            AttrTokenTree::Token(Token::new(token::Bang, span), Spacing::JointHidden),
-        ],
-    };
-    tokens.push(AttrTokenTree::Delimited(
-        DelimSpan::from_single(span),
-        DelimSpacing::new(Spacing::JointHidden, Spacing::Alone),
-        Delimiter::Bracket,
-        item_tokens,
-    ));
-
-    LazyAttrTokenStream::new_direct(AttrTokenStream::new(tokens))
 }
 
 // `span` is used for the `Attribute` and everything within it (except for any span within
@@ -776,22 +893,7 @@ pub fn mk_attr_word(g: &AttrIdGenerator, style: AttrStyle, name: Symbol, span: S
     let path = Path::from_ident(Ident::new(name, span));
     let args = AttrArgs::Empty;
 
-    let tokens = Some(mk_attr_tokens(
-        style,
-        AttrTokenStream::new(vec![AttrTokenTree::Token(
-            Token::from_ast_ident(Ident::new(name, span)),
-            Spacing::Alone,
-        )]),
-        span,
-    ));
-
-    mk_attr_from_item(
-        g,
-        AttrItem { unsafety: Safety::Default, path, args, span, from_cfg_attr: false },
-        tokens,
-        style,
-        span,
-    )
+    mk_attr_from_item(g, AttrItem::new(Safety::Default, path, args, span), style, span)
 }
 
 // `span` is used for the `Attribute` and everything within it (except for any span within
@@ -815,30 +917,7 @@ pub fn mk_attr_nested_word(
         tokens: inner_tokens,
     });
 
-    let tokens = Some(mk_attr_tokens(
-        style,
-        AttrTokenStream::new(vec![
-            AttrTokenTree::Token(Token::from_ast_ident(Ident::new(outer, span)), Spacing::Alone),
-            AttrTokenTree::Delimited(
-                DelimSpan::from_single(span),
-                DelimSpacing::new(Spacing::JointHidden, Spacing::Alone),
-                Delimiter::Parenthesis,
-                AttrTokenStream::new(vec![AttrTokenTree::Token(
-                    Token::from_ast_ident(Ident::new(inner, span)),
-                    Spacing::Alone,
-                )]),
-            ),
-        ]),
-        span,
-    ));
-
-    mk_attr_from_item(
-        g,
-        AttrItem { unsafety: Safety::Default, path, args: attr_args, span, from_cfg_attr: false },
-        tokens,
-        style,
-        span,
-    )
+    mk_attr_from_item(g, AttrItem::new(Safety::Default, path, attr_args, span), style, span)
 }
 
 // `span` is used for the `Attribute` and everything within it (except for any span within
@@ -861,26 +940,7 @@ pub fn mk_attr_name_value_str(
     let path = Path::from_ident(Ident::new(name, span));
     let args = AttrArgs::Eq { eq_span: span, expr };
 
-    let tokens = Some(mk_attr_tokens(
-        style,
-        AttrTokenStream::new(vec![
-            AttrTokenTree::Token(Token::from_ast_ident(Ident::new(name, span)), Spacing::Alone),
-            AttrTokenTree::Token(Token::new(token::Eq, span), Spacing::Alone),
-            AttrTokenTree::Token(
-                Token::new(token::TokenKind::lit(lit.kind, lit.symbol, lit.suffix), span),
-                Spacing::Alone,
-            ),
-        ]),
-        span,
-    ));
-
-    mk_attr_from_item(
-        g,
-        AttrItem { unsafety: Safety::Default, path, args, span, from_cfg_attr: false },
-        tokens,
-        style,
-        span,
-    )
+    mk_attr_from_item(g, AttrItem::new(Safety::Default, path, args, span), style, span)
 }
 
 pub fn filter_by_name(attrs: &[Attribute], name: Symbol) -> impl Iterator<Item = &Attribute> {

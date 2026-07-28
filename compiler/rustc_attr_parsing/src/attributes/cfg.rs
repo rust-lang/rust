@@ -1,7 +1,7 @@
 use std::convert::identity;
 
 use rustc_ast::token::Delimiter;
-use rustc_ast::tokenstream::{DelimSpan, WithTokens};
+use rustc_ast::tokenstream::DelimSpan;
 use rustc_ast::{AttrItem, Attribute, LitKind, ast, token};
 use rustc_errors::{Applicability, Diagnostic, PResult, msg};
 use rustc_feature::{Features, GatedCfg, find_gated_cfg};
@@ -318,7 +318,7 @@ pub fn parse_cfg_attr(
     sess: &Session,
     features: Option<&Features>,
     lint_node_id: ast::NodeId,
-) -> Option<(CfgEntry, Vec<WithTokens<AttrItem>>)> {
+) -> Option<(CfgEntry, Vec<AttrItem>)> {
     let item = cfg_attr.get_normal_item();
     match &item.args {
         ast::AttrArgs::Delimited(ast::DelimArgs { dspan, delim, tokens }) if !tokens.is_empty() => {
@@ -392,7 +392,7 @@ fn parse_cfg_attr_internal<'a>(
     features: Option<&Features>,
     lint_node_id: ast::NodeId,
     attribute: &Attribute,
-) -> PResult<'a, (CfgEntry, Vec<WithTokens<ast::AttrItem>>)> {
+) -> PResult<'a, (CfgEntry, Vec<ast::AttrItem>)> {
     // Parse cfg predicate
     let pred_start = parser.token.span;
     let meta = MetaItemOrLitParser::parse_single(
@@ -435,8 +435,9 @@ fn parse_cfg_attr_internal<'a>(
     // Presumably, the majority of the time there will only be one attr.
     let mut expanded_attrs = Vec::with_capacity(1);
     while parser.token != token::Eof {
-        let item = parser.parse_attr_item(ForceCollect::Yes)?;
-        expanded_attrs.push(item);
+        let item = parser.parse_attr_item(ForceCollect::No)?;
+        assert!(item.tokens.is_none());
+        expanded_attrs.push(item.node);
         if !parser.eat(exp!(Comma)) {
             break;
         }

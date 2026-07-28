@@ -3,10 +3,8 @@
 use std::iter;
 
 use rustc_ast::attr::data_structures::CfgEntry;
-use rustc_ast::token::{Delimiter, Token, TokenKind};
-use rustc_ast::tokenstream::{
-    AttrTokenStream, AttrTokenTree, LazyAttrTokenStream, Spacing, TokenTree, WithTokens,
-};
+use rustc_ast::token::Token;
+use rustc_ast::tokenstream::{AttrTokenStream, AttrTokenTree, LazyAttrTokenStream};
 use rustc_ast::{
     self as ast, AttrStyle, Attribute, HasAttrs, HasTokens, MetaItem, MetaItemInner, NodeId,
     SyntheticAttr,
@@ -301,57 +299,16 @@ impl<'a> StripUnconfigured<'a> {
     fn expand_cfg_attr_item(
         &self,
         cfg_attr: &Attribute,
-        mut attr_item: WithTokens<ast::AttrItem>,
+        mut attr_item: ast::AttrItem,
     ) -> Attribute {
         // Convert `#[cfg_attr(pred, attr)]` to `#[attr]`.
-
-        // Use the `#` from `#[cfg_attr(pred, attr)]` in the result `#[attr]`.
-        let mut orig_trees = cfg_attr.token_trees().into_iter();
-        let Some(TokenTree::Token(pound_token @ Token { kind: TokenKind::Pound, .. }, _)) =
-            orig_trees.next()
-        else {
-            panic!("Bad tokens for attribute {cfg_attr:?}");
-        };
-
-        // For inner attributes, we do the same thing for the `!` in `#![attr]`.
-        let mut trees = if cfg_attr.style == AttrStyle::Inner {
-            let Some(TokenTree::Token(bang_token @ Token { kind: TokenKind::Bang, .. }, _)) =
-                orig_trees.next()
-            else {
-                panic!("Bad tokens for attribute {cfg_attr:?}");
-            };
-            vec![
-                AttrTokenTree::Token(pound_token, Spacing::Joint),
-                AttrTokenTree::Token(bang_token, Spacing::JointHidden),
-            ]
-        } else {
-            vec![AttrTokenTree::Token(pound_token, Spacing::JointHidden)]
-        };
-
-        // And the same thing for the `[`/`]` delimiters in `#[attr]`.
-        let Some(TokenTree::Delimited(delim_span, delim_spacing, Delimiter::Bracket, _)) =
-            orig_trees.next()
-        else {
-            panic!("Bad tokens for attribute {cfg_attr:?}");
-        };
-        trees.push(AttrTokenTree::Delimited(
-            delim_span,
-            delim_spacing,
-            Delimiter::Bracket,
-            attr_item
-                .tokens
-                .as_ref()
-                .unwrap_or_else(|| panic!("Missing tokens for {:?}", attr_item.node))
-                .to_attr_token_stream(),
-        ));
-
-        attr_item.node.from_cfg_attr = true;
-        let attr_item_path_span = attr_item.node.path.span;
-        let attr_tokens = Some(LazyAttrTokenStream::new_direct(AttrTokenStream::new(trees)));
+        attr_item.from_cfg_attr = true;
+        attr_item.use_precise_delim_token_spans =
+            cfg_attr.get_normal_item().use_precise_delim_token_spans;
+        let attr_item_path_span = attr_item.path.span;
         let attr = ast::attr::mk_attr_from_item(
             &self.sess.psess.attr_id_generator,
-            attr_item.node,
-            attr_tokens,
+            attr_item,
             cfg_attr.style,
             cfg_attr.span,
         );

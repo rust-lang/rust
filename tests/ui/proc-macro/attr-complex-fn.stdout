@@ -151,22 +151,22 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
             Punct {
                 ch: '#',
                 spacing: Joint,
-                span: $DIR/attr-complex-fn.rs:23:5: 23:6 (#0),
+                span: $DIR/attr-complex-fn.rs:23:5: 23:21 (#0),
             },
             Punct {
                 ch: '!',
                 spacing: Alone,
-                span: $DIR/attr-complex-fn.rs:23:6: 23:7 (#0),
+                span: $DIR/attr-complex-fn.rs:23:5: 23:21 (#0),
             },
             Group {
                 delimiter: Bracket,
                 stream: TokenStream [
                     Ident {
                         ident: "rustc_dummy",
-                        span: $DIR/attr-complex-fn.rs:23:8: 23:19 (#0),
+                        span: $DIR/attr-complex-fn.rs:23:9: 23:20 (#0),
                     },
                 ],
-                span: $DIR/attr-complex-fn.rs:23:7: 23:20 (#0),
+                span: $DIR/attr-complex-fn.rs:23:5: 23:21 (#0),
             },
         ],
         span: $DIR/attr-complex-fn.rs:21:41: 24:2 (#0),

@@ -111,15 +111,14 @@ pub(crate) fn expand_kernel(
     );
 
     // unsafe(no_mangle) attr
-    let unsafe_item = AttrItem {
-        unsafety: ast::Safety::Unsafe(span),
-        path: ast::Path::from_ident(Ident::new(sym::no_mangle, span)),
-        args: ast::AttrArgs::Empty,
+    let unsafe_item = AttrItem::new(
+        ast::Safety::Unsafe(span),
+        ast::Path::from_ident(Ident::new(sym::no_mangle, span)),
+        ast::AttrArgs::Empty,
         span,
-        from_cfg_attr: false,
-    };
+    );
 
-    let no_mangle_attr = Box::new(ast::NormalAttr { item: unsafe_item, tokens: None });
+    let no_mangle_attr = Box::new(ast::NormalAttr::new(unsafe_item));
     let new_id = ecx.sess.psess.attr_id_generator.mk_attr_id();
     let unsafe_no_mangle = outer_normal_attr(&no_mangle_attr, new_id, span);
 
@@ -177,14 +176,13 @@ pub(crate) fn expand_kernel(
         tokens: TokenStream::from_iter(ts),
     };
 
-    let inline_item = ast::AttrItem {
-        unsafety: ast::Safety::Default,
-        path: ast::Path::from_ident(Ident::with_dummy_span(sym::inline)),
-        args: ast::AttrArgs::Delimited(never_arg),
-        span: DUMMY_SP,
-        from_cfg_attr: false,
-    };
-    let inline_never_attr = Box::new(ast::NormalAttr { item: inline_item, tokens: None });
+    let inline_item = ast::AttrItem::new(
+        ast::Safety::Default,
+        ast::Path::from_ident(Ident::with_dummy_span(sym::inline)),
+        ast::AttrArgs::Delimited(never_arg),
+        DUMMY_SP,
+    );
+    let inline_never_attr = Box::new(ast::NormalAttr::new(inline_item));
 
     let new_id = ecx.sess.psess.attr_id_generator.mk_attr_id();
     let inline_never = outer_normal_attr(&inline_never_attr, new_id, span);

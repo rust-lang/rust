@@ -20,7 +20,7 @@ fn foo<T: MyTrait<MyStruct<{ true }>>>() {}
 
 impl<T> MyTrait<T> for MyStruct<{true}> {
     #![print_attr]
-    #![rustc_dummy]
+    # ![rustc_dummy] // whitespace cause imprecise spans for `#`/`!`/`[`/`]` in token synthesis
 }
 
 fn main() {}
