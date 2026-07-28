@@ -782,13 +782,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             let mut imports_to_resolve = mem::take(&mut self.indeterminate_imports);
 
             self.assert_speculative = true;
-            let cm_resolver = self.cm();
-
             rustc_data_structures::sync::par_for_each_slice(
                 &mut imports_to_resolve,
                 |(import, resolution, indeterminate_count)| {
-                    (*resolution, *indeterminate_count) =
-                        cm_resolver.reborrow_ref().resolve_import(*import);
+                    (*resolution, *indeterminate_count) = self.cm_const().resolve_import(*import);
                 },
             );
             self.assert_speculative = false;

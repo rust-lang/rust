@@ -2013,9 +2013,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// Currently only dependent on `assert_speculative`, if `assert_speculative` is false,
     /// the resolver will allow mutation; otherwise, it will be immutable.
     fn cm(&mut self) -> CmResolver<'_, 'ra, 'tcx> {
-        // SAFETY: we know that `assert_speculative` is true whenever we are using the
-        // resolver in a multi-threaded context, so this is safe.
-        unsafe { CmResolver::new(self, !self.assert_speculative) }
+        CmResolver::new(self, !self.assert_speculative)
+    }
+
+    /// Returns a `CmResolver` that is not mutable.
+    fn cm_const(&self) -> CmResolver<'_, 'ra, 'tcx> {
+        CmResolver::new_const(self)
     }
 
     /// Runs the function on each namespace.
@@ -2843,13 +2846,13 @@ mod ref_mut {
     use std::ops::Deref;
     use std::{fmt, mem, ops};
 
-    use rustc_data_structures::sync::{DynSend, DynSync};
+    use rustc_data_structures::sync::DynSync;
 
     use crate::Resolver;
 
     /// A wrapper around a mutable reference that conditionally allows mutable access.
     pub(crate) struct RefOrMut<'a, T> {
-        // We keep a raw pointer because it makes `reborrow_ref` possible. It is always safe to
+        // We keep a raw pointer because it makes `new_const` possible. It is always safe to
         // cast this to a `&T` because `RefOrMut` is only created through `new` which takes
         // a `&mut T`.
         p: *mut T,
@@ -2857,22 +2860,6 @@ mod ref_mut {
         // `RefOrMut` technically holds a `&'a mut T`
         _marker: PhantomData<&'a mut T>,
     }
-
-    // SAFETY: `RefOrMut` can only be constructed via `RefOrMut::new`, which is `unsafe`.
-    // Its safety contract requires the caller to guarantee that any instance which might be
-    // observed from more than one thread is constructed with `mutable = false`.
-    //
-    // Given that contract holds:
-    // - `DynSync`: a shared `RefOrMut` only ever yields `&T`, so letting multiple threads
-    //   read through it concurrently is just ordinary shared-reference aliasing; no
-    //   thread can obtain `&mut T` through it, so there is no data race to worry about.
-    // - `DynSend`: sending a shared `RefOrMut` to another thread only transfers the ability
-    //   to take `&T` there too, which is equally sound. A mutable `RefOrMut` is never actually
-    //   moved across threads in practice, because the contract of `new` forbids it.
-    //
-    // Thus, these `impl`s rely entirely on safe usage of `RefOrMut::new`.
-    unsafe impl<'a, T: DynSync> DynSync for RefOrMut<'a, T> {}
-    unsafe impl<'a, T: DynSync> DynSend for RefOrMut<'a, T> {}
 
     impl<'a, T> Deref for RefOrMut<'a, T> {
         type Target = T;
@@ -2894,29 +2881,12 @@ mod ref_mut {
         /// Constructs a new `RefOrMut` from an exclusive reference, choosing up front
         /// whether it will be used as an exclusive (`&mut T`) or a shared (`&T`), done
         /// via `mutable`.
-        ///
-        /// # Safety
-        ///
-        /// `RefOrMut<'a, T>`  implements `DynSync` and `DynSend`, for any
-        /// `T: DynSync`. However, this is only safe if this `RefOrMut` is used as a
-        /// shared reference:
-        ///
-        /// If the resulting `RefOrMut` may ever be accessed from, or sent to, more than
-        /// one thread, it **must** be constructed with `mutable = false`, and therefore can
-        /// only ever be used to obtain shared access (`&T`) for its entire lifetime.
-        ///
-        /// Violating this is undefined behavior.
-        pub(crate) unsafe fn new(p: &'a mut T, mutable: bool) -> Self {
+        pub(crate) fn new(p: &'a mut T, mutable: bool) -> Self {
             RefOrMut { p, mutable, _marker: PhantomData }
         }
 
-        pub(crate) fn reborrow_ref(&self) -> RefOrMut<'_, T> {
-            assert!(
-                !self.mutable,
-                "Tried to reborrow a mutable `RefOrMut` through shared reference."
-            );
-            // Safe because of contract in `RefOrMut::new`.
-            RefOrMut { p: self.p, mutable: self.mutable, _marker: PhantomData }
+        pub(crate) fn new_const(p: &'a T) -> Self {
+            RefOrMut { p: p as *const _ as *mut _, mutable: false, _marker: PhantomData }
         }
 
         /// This is needed because this wraps a `&mut T` and is therefore not `Copy`.
