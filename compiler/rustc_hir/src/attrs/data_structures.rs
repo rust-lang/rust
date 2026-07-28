@@ -1219,6 +1219,7 @@ pub enum AttributeKind {
 
     /// Represents `#[diagnostic::on_const]`.
     OnConst {
+        /// The attribute path span.
         span: Span,
         /// None if the directive was malformed in some way.
         directive: Option<Box<Directive>>,
@@ -1394,7 +1395,8 @@ pub enum AttributeKind {
     /// Represents `#[rustc_const_stable]` and `#[rustc_const_unstable]`.
     RustcConstStability {
         stability: PartialConstStability,
-        /// Span of the `#[rustc_const_stable(...)]` or `#[rustc_const_unstable(...)]` attribute
+        /// Path span of the `#[rustc_const_stable(...)]` or `#[rustc_const_unstable(...)]`
+        /// attribute.
         span: Span,
     },
 
