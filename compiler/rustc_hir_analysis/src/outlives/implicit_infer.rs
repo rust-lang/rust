@@ -255,23 +255,22 @@ fn check_explicit_predicates<'tcx>(
     explicit_map: &mut ExplicitPredicatesMap<'tcx>,
     ignore_preds_refing_self: IgnorePredicatesReferencingSelf,
 ) {
-    let explicit_predicates = explicit_map.explicit_predicates_of(tcx, def_id);
+    let explicit_clauses = explicit_map.explicit_clauses_of(tcx, def_id);
 
-    for (&predicate @ ty::OutlivesPredicate(arg, _), &span) in
-        explicit_predicates.as_ref().skip_binder()
+    for (&clause @ ty::OutlivesPredicate(arg, _), &span) in explicit_clauses.as_ref().skip_binder()
     {
-        debug!(?predicate);
+        debug!(?clause);
 
         if let IgnorePredicatesReferencingSelf::Yes = ignore_preds_refing_self
             && arg.walk().any(|arg| arg == tcx.types.self_param.into())
         {
-            debug!("ignoring predicate since it references `Self`");
+            debug!("ignoring clause since it references `Self`");
             continue;
         }
 
-        let predicate @ ty::OutlivesPredicate(arg, region) =
-            explicit_predicates.rebind(predicate).instantiate(tcx, args).skip_norm_wip();
-        debug!(?predicate);
+        let clause @ ty::OutlivesPredicate(arg, region) =
+            explicit_clauses.rebind(clause).instantiate(tcx, args).skip_norm_wip();
+        debug!(?clause);
 
         insert_outlives_predicate(tcx, arg, region, span, required_predicates);
     }

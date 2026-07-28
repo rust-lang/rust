@@ -14,22 +14,22 @@ impl<'tcx> ExplicitPredicatesMap<'tcx> {
         ExplicitPredicatesMap { map: FxIndexMap::default() }
     }
 
-    pub(crate) fn explicit_predicates_of(
+    pub(crate) fn explicit_clauses_of(
         &mut self,
         tcx: TyCtxt<'tcx>,
         def_id: DefId,
     ) -> &ty::EarlyBinder<'tcx, RequiredPredicates<'tcx>> {
         self.map.entry(def_id).or_insert_with(|| {
-            let predicates = if def_id.is_local() {
-                tcx.explicit_predicates_of(def_id)
+            let gen_clauses = if def_id.is_local() {
+                tcx.explicit_clauses_of(def_id)
             } else {
-                tcx.predicates_of(def_id)
+                tcx.clauses_of(def_id)
             };
             let mut required_predicates = RequiredPredicates::default();
 
-            // process predicates and convert to `RequiredPredicates` entry, see below
-            for &(predicate, span) in predicates.predicates {
-                match predicate.kind().skip_binder() {
+            // Process clauses and convert to `RequiredPredicates` entry, see below.
+            for &(clause, span) in gen_clauses.clauses {
+                match clause.kind().skip_binder() {
                     ty::ClauseKind::TypeOutlives(OutlivesPredicate(ty, reg)) => {
                         insert_outlives_predicate(
                             tcx,

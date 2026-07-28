@@ -2884,11 +2884,11 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         // obligation will normalize to `<$0 as Iterator>::Item = $1` and
         // `$1: Copy`, so we must ensure the obligations are emitted in
         // that order.
-        let predicates = tcx.predicates_of(def_id);
-        assert_eq!(predicates.parent, None);
-        let predicates = predicates.instantiate_own(tcx, args);
-        let mut obligations = PredicateObligations::with_capacity(predicates.len());
-        for (index, (predicate, span)) in predicates.into_iter().enumerate() {
+        let clauses = tcx.clauses_of(def_id);
+        assert_eq!(clauses.parent, None);
+        let clauses = clauses.instantiate_own(tcx, args);
+        let mut obligations = PredicateObligations::with_capacity(clauses.len());
+        for (index, (clause, span)) in clauses.into_iter().enumerate() {
             let cause = if tcx.is_lang_item(parent_trait_pred.def_id(), LangItem::CoerceUnsized) {
                 cause.clone()
             } else {
@@ -2896,7 +2896,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                     ObligationCauseCode::ImplDerived(Box::new(ImplDerivedCause {
                         derived,
                         impl_or_alias_def_id: def_id,
-                        impl_def_predicate_index: Some(index),
+                        impl_def_clause_index: Some(index),
                         span,
                     }))
                 })
@@ -2906,7 +2906,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 param_env,
                 cause.clone(),
                 recursion_depth,
-                predicate,
+                clause,
                 &mut obligations,
             );
             obligations.push(Obligation {
