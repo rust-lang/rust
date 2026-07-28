@@ -1677,6 +1677,15 @@ impl<'v> RootCollector<'_, 'v> {
             && match self.strategy {
                 MonoItemCollectionStrategy::Eager => {
                     !matches!(self.tcx.codegen_fn_attrs(def_id).inline, InlineAttr::Force { .. })
+                    // comptime fns can't be codegenned, so we need to prevent collecting them even
+                    // with link-dead-code. Lazy mode prevents them by them not showing up in
+                    // `is_reachable_non_generic` (and `entry_fn` can't be comptime).
+                    && match self.tcx.def_kind(def_id) {
+                        DefKind::Fn | DefKind::AssocFn => {
+                            self.tcx.constness(def_id) != hir::Constness::Const { always: true }
+                        }
+                        _ => true,
+                    }
                 }
                 MonoItemCollectionStrategy::Lazy => {
                     self.entry_fn.and_then(|(id, _)| id.as_local()) == Some(def_id)

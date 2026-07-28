@@ -335,12 +335,12 @@ fn get_fn_params<'db>(
     Some(params)
 }
 
-fn inline(
-    sema: &Semantics<'_, RootDatabase>,
+fn inline<'db>(
+    sema: &Semantics<'db, RootDatabase>,
     function_def_file_id: EditionedFileId,
     function: hir::Function,
     fn_body: &ast::BlockExpr,
-    params: &[(ast::Pat, Option<ast::Type>, hir::Param<'_>)],
+    params: &[(ast::Pat, Option<ast::Type>, hir::Param<'db>)],
     CallInfo { node, arguments, generic_arg_list, krate }: &CallInfo,
     file_editor: &SyntaxEditor,
 ) -> ast::Expr {

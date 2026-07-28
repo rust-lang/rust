@@ -37,7 +37,7 @@ use super::{LookupTable, NewTypesKey, TermSearchCtx};
 /// depend on the current state of `lookup`_
 pub(super) fn trivial<'a, 'lt, 'db, DB: HirDatabase>(
     ctx: &'a TermSearchCtx<'_, 'db, DB>,
-    defs: &'a FxHashSet<ScopeDef>,
+    defs: &'a FxHashSet<ScopeDef<'db>>,
     lookup: &'lt mut LookupTable<'db>,
 ) -> impl Iterator<Item = Expr<'db>> + use<'a, 'db, 'lt, DB> {
     let db = ctx.sema.db;
@@ -102,7 +102,7 @@ pub(super) fn trivial<'a, 'lt, 'db, DB: HirDatabase>(
 /// depend on the current state of `lookup`_
 pub(super) fn assoc_const<'a, 'lt, 'db, DB: HirDatabase>(
     ctx: &'a TermSearchCtx<'_, 'db, DB>,
-    defs: &'a FxHashSet<ScopeDef>,
+    defs: &'a FxHashSet<ScopeDef<'db>>,
     lookup: &'lt mut LookupTable<'db>,
 ) -> impl Iterator<Item = Expr<'db>> + use<'a, 'db, 'lt, DB> {
     let db = ctx.sema.db;
@@ -150,7 +150,7 @@ pub(super) fn assoc_const<'a, 'lt, 'db, DB: HirDatabase>(
 /// * `should_continue` - Function that indicates when to stop iterating
 pub(super) fn data_constructor<'a, 'lt, 'db, DB: HirDatabase>(
     ctx: &'a TermSearchCtx<'_, 'db, DB>,
-    _defs: &'a FxHashSet<ScopeDef>,
+    _defs: &'a FxHashSet<ScopeDef<'db>>,
     lookup: &'lt mut LookupTable<'db>,
     should_continue: &'a dyn std::ops::Fn() -> bool,
 ) -> impl Iterator<Item = Expr<'db>> + use<'a, 'db, 'lt, DB> {
@@ -303,7 +303,7 @@ pub(super) fn data_constructor<'a, 'lt, 'db, DB: HirDatabase>(
 /// * `should_continue` - Function that indicates when to stop iterating
 pub(super) fn free_function<'a, 'lt, 'db, DB: HirDatabase>(
     ctx: &'a TermSearchCtx<'_, 'db, DB>,
-    defs: &'a FxHashSet<ScopeDef>,
+    defs: &'a FxHashSet<ScopeDef<'db>>,
     lookup: &'lt mut LookupTable<'db>,
     should_continue: &'a dyn std::ops::Fn() -> bool,
 ) -> impl Iterator<Item = Expr<'db>> + use<'a, 'db, 'lt, DB> {
@@ -440,7 +440,7 @@ pub(super) fn free_function<'a, 'lt, 'db, DB: HirDatabase>(
 /// * `should_continue` - Function that indicates when to stop iterating
 pub(super) fn impl_method<'a, 'lt, 'db, DB: HirDatabase>(
     ctx: &'a TermSearchCtx<'_, 'db, DB>,
-    _defs: &'a FxHashSet<ScopeDef>,
+    _defs: &'a FxHashSet<ScopeDef<'db>>,
     lookup: &'lt mut LookupTable<'db>,
     should_continue: &'a dyn std::ops::Fn() -> bool,
 ) -> impl Iterator<Item = Expr<'db>> + use<'a, 'db, 'lt, DB> {
@@ -561,7 +561,7 @@ pub(super) fn impl_method<'a, 'lt, 'db, DB: HirDatabase>(
 /// * `should_continue` - Function that indicates when to stop iterating
 pub(super) fn struct_projection<'a, 'lt, 'db, DB: HirDatabase>(
     ctx: &'a TermSearchCtx<'_, 'db, DB>,
-    _defs: &'a FxHashSet<ScopeDef>,
+    _defs: &'a FxHashSet<ScopeDef<'db>>,
     lookup: &'lt mut LookupTable<'db>,
     should_continue: &'a dyn std::ops::Fn() -> bool,
 ) -> impl Iterator<Item = Expr<'db>> + use<'a, 'db, 'lt, DB> {
@@ -605,7 +605,7 @@ pub(super) fn struct_projection<'a, 'lt, 'db, DB: HirDatabase>(
 /// * `lookup` - Lookup table for types
 pub(super) fn famous_types<'a, 'lt, 'db, DB: HirDatabase>(
     ctx: &'a TermSearchCtx<'_, 'db, DB>,
-    _defs: &'a FxHashSet<ScopeDef>,
+    _defs: &'a FxHashSet<ScopeDef<'db>>,
     lookup: &'lt mut LookupTable<'db>,
 ) -> impl Iterator<Item = Expr<'db>> + use<'a, 'db, 'lt, DB> {
     let db = ctx.sema.db;
@@ -637,7 +637,7 @@ pub(super) fn famous_types<'a, 'lt, 'db, DB: HirDatabase>(
 /// * `should_continue` - Function that indicates when to stop iterating
 pub(super) fn impl_static_method<'a, 'lt, 'db, DB: HirDatabase>(
     ctx: &'a TermSearchCtx<'_, 'db, DB>,
-    _defs: &'a FxHashSet<ScopeDef>,
+    _defs: &'a FxHashSet<ScopeDef<'db>>,
     lookup: &'lt mut LookupTable<'db>,
     should_continue: &'a dyn std::ops::Fn() -> bool,
 ) -> impl Iterator<Item = Expr<'db>> + use<'a, 'db, 'lt, DB> {
@@ -745,7 +745,7 @@ pub(super) fn impl_static_method<'a, 'lt, 'db, DB: HirDatabase>(
 /// * `should_continue` - Function that indicates when to stop iterating
 pub(super) fn make_tuple<'a, 'lt, 'db, DB: HirDatabase>(
     ctx: &'a TermSearchCtx<'_, 'db, DB>,
-    _defs: &'a FxHashSet<ScopeDef>,
+    _defs: &'a FxHashSet<ScopeDef<'db>>,
     lookup: &'lt mut LookupTable<'db>,
     should_continue: &'a dyn std::ops::Fn() -> bool,
 ) -> impl Iterator<Item = Expr<'db>> + use<'a, 'db, 'lt, DB> {

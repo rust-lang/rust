@@ -2461,8 +2461,7 @@ impl<'db> HirDisplayWithExpressionStore<'db> for TypeRefId {
                                 .where_predicates()
                                 .iter()
                                 .filter_map(|it| match it {
-                                    WherePredicate::TypeBound { target, bound }
-                                    | WherePredicate::ForLifetime { lifetimes: _, target, bound }
+                                    WherePredicate::TypeBound { lifetimes: _, target, bound }
                                         if matches!(
                                             store[*target],
                                             TypeRef::TypeParam(t) if t == *param
@@ -2522,6 +2521,14 @@ impl<'db> HirDisplayWithExpressionStore<'db> for TypeRefId {
                 write!(f, "]")?;
             }
             TypeRef::Fn(fn_) => {
+                if let Some(binder) = &fn_.binder {
+                    let edition = f.edition();
+                    write!(
+                        f,
+                        "for<{}> ",
+                        binder.iter().map(|it| it.display(f.db, edition)).format(", ")
+                    )?;
+                }
                 if fn_.is_unsafe {
                     write!(f, "unsafe ")?;
                 }

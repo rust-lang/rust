@@ -767,10 +767,6 @@ impl FetchMetadata {
         let mut using_lockfile_copy = false;
         if let Some(lockfile_copy) = &lockfile_copy {
             match lockfile_copy.usage {
-                LockfileUsage::WithFlag => {
-                    other_options.push("--lockfile-path".to_owned());
-                    other_options.push(lockfile_copy.path.to_string());
-                }
                 LockfileUsage::WithEnvVarUnstable => {
                     other_options.push("-Zlockfile-path".to_owned());
                     command.env("CARGO_RESOLVER_LOCKFILE_PATH", lockfile_copy.path.as_os_str());

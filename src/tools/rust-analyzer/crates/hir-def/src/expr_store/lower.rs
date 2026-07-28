@@ -26,7 +26,7 @@ use stdx::never;
 use syntax::{
     AstNode, AstPtr, SyntaxNodePtr,
     ast::{
-        self, ArrayExprKind, AstChildren, BlockExpr, HasArgList, HasAttrs, HasGenericArgs,
+        self, ArrayExprKind, AstChildren, BlockExpr, ForBinder, HasArgList, HasGenericArgs,
         HasGenericParams, HasLoopBody, HasName, HasTypeBounds, IsString, RangeItem,
         SlicePatComponents,
     },
@@ -465,6 +465,8 @@ pub struct ExprCollector<'db> {
 
     is_lowering_coroutine: bool,
 
+    for_type_binder: Option<ThinVec<Name>>,
+
     /// Legacy (`macro_rules!`) macros can have multiple definitions and shadow each other,
     /// and we need to find the current definition. So we track the number of definitions we saw.
     current_block_legacy_macro_defs_count: FxHashMap<Name, usize>,
@@ -636,6 +638,7 @@ impl<'db> ExprCollector<'db> {
             krate,
             name_generator_index: 0,
             named_lifetime_store: NamedLifetimeStore::default(),
+            for_type_binder: None,
         };
         result.store.inference_roots = Some(SmallVec::new());
         result
@@ -758,16 +761,23 @@ impl<'db> ExprCollector<'db> {
 
                 let abi = inner.abi().map(lower_abi).unwrap_or(ExternAbi::Rust);
                 params.push((None, ret_ty));
+
+                let binder = self.for_type_binder.take().map(|b| b.into());
                 TypeRef::Fn(Box::new(FnType {
                     is_varargs,
                     is_unsafe: inner.unsafe_token().is_some(),
                     abi,
                     params: params.into_boxed_slice(),
+                    binder,
                 }))
             }
             // for types are close enough for our purposes to the inner type for now...
             ast::Type::ForType(inner) => {
-                return self.lower_type_ref_opt(inner.ty(), impl_trait_lower_fn);
+                let binder = self.lower_for_binder_opt(inner.for_binder());
+                let old_for_binder = self.for_type_binder.replace(binder);
+                let ty = self.lower_type_ref_opt(inner.ty(), impl_trait_lower_fn);
+                self.for_type_binder = old_for_binder;
+                return ty;
             }
             ast::Type::ImplTraitType(inner) => {
                 if self.outer_impl_trait {
@@ -1245,13 +1255,7 @@ impl<'db> ExprCollector<'db> {
         let Some(kind) = node.kind() else { return TypeBound::Error };
         match kind {
             ast::TypeBoundKind::PathType(binder, path_type) => {
-                let binder = match binder.and_then(|it| it.generic_param_list()) {
-                    Some(gpl) => gpl
-                        .lifetime_params()
-                        .flat_map(|lp| lp.lifetime().map(|lt| Name::new_lifetime(&lt.text())))
-                        .collect(),
-                    None => ThinVec::default(),
-                };
+                let binder = self.lower_for_binder_opt(binder);
                 let m = match node.question_mark_token() {
                     Some(_) => TraitBoundModifier::Maybe,
                     None => TraitBoundModifier::None,
@@ -1283,6 +1287,20 @@ impl<'db> ExprCollector<'db> {
         }
     }
 
+    fn lower_for_binder_opt(&mut self, binder: Option<ForBinder>) -> ThinVec<Name> {
+        binder.map(|b| self.lower_for_binder(b)).unwrap_or_default()
+    }
+
+    fn lower_for_binder(&mut self, binder: ForBinder) -> ThinVec<Name> {
+        match binder.generic_param_list() {
+            Some(gpl) => gpl
+                .lifetime_params()
+                .flat_map(|lp| lp.lifetime().map(|lt| Name::new_lifetime(&lt.text())))
+                .collect(),
+            None => ThinVec::default(),
+        }
+    }
+
     fn lower_const_arg_opt(&mut self, arg: Option<ast::ConstArg>) -> ConstRef {
         ConstRef {
             expr: self.with_fresh_binding_expr_root(|this| {
@@ -1310,10 +1328,10 @@ impl<'db> ExprCollector<'db> {
 
     /// Returns `None` if and only if the expression is `#[cfg]`d out.
     fn maybe_collect_expr(&mut self, expr: ast::Expr) -> Option<ExprId> {
-        let syntax_ptr = AstPtr::new(&expr);
         if !self.check_cfg(&expr) {
             return None;
         }
+        let syntax_ptr = AstPtr::new(&expr);
 
         // FIXME: Move some of these arms out into separate methods for clarity
         Some(match expr {
@@ -1442,23 +1460,13 @@ impl<'db> ExprCollector<'db> {
             ast::Expr::WhileExpr(e) => self.collect_while_loop(syntax_ptr, e),
             ast::Expr::ForExpr(e) => self.collect_for_loop(syntax_ptr, e),
             ast::Expr::CallExpr(e) => {
-                // FIXME(MINIMUM_SUPPORTED_TOOLCHAIN_VERSION): Remove this once we drop support for <1.86, https://github.com/rust-lang/rust/commit/ac9cb908ac4301dfc25e7a2edee574320022ae2c
-                let is_rustc_box = {
-                    let attrs = e.attrs();
-                    attrs.filter_map(|it| it.as_simple_atom()).any(|it| it == "rustc_box")
-                };
-                if is_rustc_box {
-                    let expr = self.collect_expr_opt(e.arg_list().and_then(|it| it.args().next()));
-                    self.alloc_expr(Expr::Box { expr }, syntax_ptr)
+                let callee = self.collect_expr_opt(e.expr());
+                let args = if let Some(arg_list) = e.arg_list() {
+                    arg_list.args().filter_map(|e| self.maybe_collect_expr(e)).collect()
                 } else {
-                    let callee = self.collect_expr_opt(e.expr());
-                    let args = if let Some(arg_list) = e.arg_list() {
-                        arg_list.args().filter_map(|e| self.maybe_collect_expr(e)).collect()
-                    } else {
-                        Box::default()
-                    };
-                    self.alloc_expr(Expr::Call { callee, args }, syntax_ptr)
-                }
+                    Box::default()
+                };
+                self.alloc_expr(Expr::Call { callee, args }, syntax_ptr)
             }
             ast::Expr::MethodCallExpr(e) => {
                 let receiver = self.collect_expr_opt(e.receiver());
@@ -1589,7 +1597,7 @@ impl<'db> ExprCollector<'db> {
                     };
                     Expr::RecordLit { path, fields, spread }
                 } else {
-                    Expr::RecordLit { path, fields: Box::default(), spread: RecordSpread::None }
+                    Expr::RecordLit { path, fields: ThinVec::default(), spread: RecordSpread::None }
                 };
 
                 self.alloc_expr(record_lit, syntax_ptr)

@@ -314,7 +314,11 @@ impl<'db> InferenceTable<'db> {
     }
 
     /// Create a `GenericArgs` full of infer vars for `def`.
-    pub(crate) fn fresh_args_for_item(&self, span: Span, def: SolverDefId) -> GenericArgs<'db> {
+    pub(crate) fn fresh_args_for_item(
+        &self,
+        span: Span,
+        def: SolverDefId<'db>,
+    ) -> GenericArgs<'db> {
         self.infer_ctxt.fresh_args_for_item(span, def)
     }
 

@@ -828,7 +828,9 @@ fn split_prefix(
         }
     } else {
         let suffix_segments: Vec<_> = path.segments().skip(prefix.segments().count()).collect();
-        if suffix_segments.is_empty() {
+        if suffix_segments.is_empty()
+            || suffix_segments.iter().any(|segment| segment.kind().is_none())
+        {
             return None;
         }
         let suffix_path = make.path_from_segments(suffix_segments, false);

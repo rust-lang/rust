@@ -47,7 +47,7 @@ struct ClosureSignatures<'db> {
     liberated_sig: FnSig<'db>,
 }
 
-impl<'db> InferenceContext<'_, 'db> {
+impl<'db> InferenceContext<'db> {
     fn poll_option_ty(&mut self, item_ty: Ty<'db>) -> Ty<'db> {
         let interner = self.interner();
 

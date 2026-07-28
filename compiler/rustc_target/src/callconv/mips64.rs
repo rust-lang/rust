@@ -3,7 +3,7 @@ use rustc_abi::{
     BackendRepr, FieldsShape, Float, HasDataLayout, Primitive, Reg, Size, TyAbiInterface,
 };
 
-use crate::callconv::{ArgAbi, ArgExtension, CastTarget, FnAbi, PassMode, Uniform};
+use crate::callconv::{ArgAbi, ArgAttribute, ArgExtension, CastTarget, FnAbi, PassMode, Uniform};
 
 fn extend_integer_width_mips<Ty>(arg: &mut ArgAbi<'_, Ty>, bits: u64) {
     // Always sign extend u32 values on 64-bit mips
@@ -27,8 +27,15 @@ where
 {
     match ret.layout.field(cx, i).backend_repr {
         BackendRepr::Scalar(scalar) => match scalar.primitive() {
-            Primitive::Float(Float::F32) => Some(Reg::f32()),
-            Primitive::Float(Float::F64) => Some(Reg::f64()),
+            Primitive::Float(float) => {
+                match float {
+                    // C does not have the f16 type
+                    Float::F16 => None,
+                    Float::F32 => Some(Reg::f32()),
+                    Float::F64 => Some(Reg::f64()),
+                    Float::F128 => Some(Reg::f128()),
+                }
+            }
             _ => None,
         },
         _ => None,
@@ -55,14 +62,17 @@ where
         if let FieldsShape::Arbitrary { .. } = ret.layout.fields {
             if ret.layout.fields.count() == 1 {
                 if let Some(reg) = float_reg(cx, ret, 0) {
-                    ret.cast_to(reg);
+                    // The inreg attribute forces LLVM to return a struct containing a f128 in
+                    // $f0 and $f1 rather than $f0 and $f2, see:
+                    // https://github.com/llvm/llvm-project/blob/a81db64570f94c2ca8ac0f598c0b5bba1a7ae59e/llvm/lib/Target/Mips/MipsCallingConv.td#L48-L51
+                    ret.cast_to_with_attrs(reg, ArgAttribute::InReg.into());
                     return;
                 }
             } else if ret.layout.fields.count() == 2
                 && let Some(reg0) = float_reg(cx, ret, 0)
                 && let Some(reg1) = float_reg(cx, ret, 1)
             {
-                ret.cast_to(CastTarget::pair(reg0, reg1));
+                ret.cast_to_with_attrs(CastTarget::pair(reg0, reg1), ArgAttribute::InReg.into());
                 return;
             }
         }

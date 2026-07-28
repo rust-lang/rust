@@ -13,9 +13,7 @@ use rustc_middle::ty::layout::{
 use rustc_middle::ty::{self, InstanceKind, ShimKind, Ty, TyCtxt, Unnormalized};
 use rustc_span::DUMMY_SP;
 use rustc_span::def_id::DefId;
-use rustc_target::callconv::{
-    AbiMap, ArgAbi, ArgAttribute, ArgAttributes, ArgExtension, FnAbi, PassMode,
-};
+use rustc_target::callconv::{AbiMap, ArgAbi, ArgAttribute, ArgAttributes, FnAbi, PassMode};
 use tracing::debug;
 
 pub(crate) fn provide(providers: &mut Providers) {
@@ -330,13 +328,6 @@ fn arg_attrs_for_rust_scalar<'tcx>(
     determined_fn_def_id: Option<DefId>,
 ) -> ArgAttributes {
     let mut attrs = ArgAttributes::new();
-
-    // Booleans are always a noundef i1 that needs to be zero-extended.
-    if scalar.is_bool() {
-        attrs.ext(ArgExtension::Zext);
-        attrs.set(ArgAttribute::NoUndef);
-        return attrs;
-    }
 
     if !scalar.is_uninit_valid() {
         attrs.set(ArgAttribute::NoUndef);

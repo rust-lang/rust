@@ -21,6 +21,7 @@ use libc_utils::{errno_check, errno_result};
 fn main() {
     test_dup();
     test_dup_stdout_stderr();
+    test_fcntl_getfd();
     test_canonicalize_too_long();
     test_rename();
     test_ftruncate::<libc::off_t>(libc::ftruncate);
@@ -308,6 +309,13 @@ fn test_dup() {
         let third_len = third_len as usize;
         assert_eq!(third_buf[..third_len], remaining_bytes[..third_len]);
     }
+}
+
+fn test_fcntl_getfd() {
+    // This should succeed for FDs that exist and fail for those that do not.
+    let _success = errno_result(unsafe { libc::fcntl(0, libc::F_GETFD) }).unwrap();
+    let err = errno_result(unsafe { libc::fcntl(1337, libc::F_GETFD) }).unwrap_err();
+    assert_eq!(err.raw_os_error().unwrap(), libc::EBADF);
 }
 
 fn test_canonicalize_too_long() {

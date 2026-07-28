@@ -17,7 +17,7 @@ use rustc_type_ir::solve::{
 use rustc_type_ir::{
     self as ty, CanonicalVarValues, ClauseKind, InferCtxtLike, Interner, MayBeErased,
     OpaqueTypeKey, PredicateKind, Region, TypeFoldable, TypeSuperVisitable, TypeVisitable,
-    TypeVisitableExt, TypeVisitor, TypingMode,
+    TypeVisitableExt, TypeVisitor, TypingMode, eager_resolve_vars,
 };
 use tracing::{Level, debug, instrument, trace, warn};
 
@@ -30,7 +30,6 @@ use crate::coherence;
 use crate::delegate::SolverDelegate;
 use crate::normalize::{NormalizationFolder, NormalizationWasAmbiguous};
 use crate::placeholder::BoundVarReplacer;
-use crate::resolve::eager_resolve_vars;
 use crate::solve::eval_ctxt::fast_path::{
     RerunStalled, compute_goal_fast_path, rerunning_stalled_goal_may_make_progress,
 };

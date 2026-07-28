@@ -138,7 +138,7 @@ pub fn file_item_tree(db: &dyn SourceDatabase, file_id: HirFileId, krate: Crate)
     }
 }
 
-#[salsa_macros::tracked(returns(ref))]
+#[salsa::tracked(returns(ref))]
 fn file_item_tree_query(
     db: &dyn SourceDatabase,
     file_id: HirFileId,
@@ -197,7 +197,7 @@ fn file_item_tree_query(
     }
 }
 
-#[salsa_macros::tracked(returns(ref))]
+#[salsa::tracked(returns(ref))]
 pub(crate) fn block_item_tree_query(
     db: &dyn SourceDatabase,
     block: BlockId,

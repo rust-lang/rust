@@ -2241,13 +2241,13 @@ fn tuple_struct_constructor_as_fn_trait() {
     check_types(
         r#"
 //- minicore: fn
-struct S(u32, u64);
+struct S<T, U>(T, U);
 
-fn takes_fn<F: Fn(u32, u64) -> S>(f: F) -> S { f(1, 2) }
+fn takes_fn<F: Fn(u32, u64) -> S<u32, u64>>(f: F) -> S<u32, u64> { f(1, 2) }
 
 fn test() {
     takes_fn(S);
-  //^^^^^^^^^^^ S
+  //^^^^^^^^^^^ S<u32, u64>
 }
 "#,
     );
@@ -2258,13 +2258,13 @@ fn enum_variant_constructor_as_fn_trait() {
     check_types(
         r#"
 //- minicore: fn
-enum E { A(u32) }
+enum E<T> { A(T) }
 
-fn takes_fn<F: Fn(u32) -> E>(f: F) -> E { f(1) }
+fn takes_fn<F: Fn(u32) -> E<u32>>(f: F) -> E<u32> { f(1) }
 
 fn test() {
     takes_fn(E::A);
-  //^^^^^^^^^^^^^^ E
+  //^^^^^^^^^^^^^^ E<u32>
 }
 "#,
     );
@@ -5337,5 +5337,43 @@ fn foo() {
     let v = read(&p);
 }
 "#,
+    );
+}
+
+#[test]
+fn hrtb_impl_trait() {
+    check_infer(
+        r#"
+trait Trait<'a> {}
+
+struct Foo;
+
+impl<'a> Trait<'a> for Bot {}
+
+fn impl_fn(val: impl for<'a> Trait<'a>) {}
+"#,
+        expect![[r#"
+            75..78 'val': impl Trait<'?0.0> + ?Sized
+            104..106 '{}': ()
+        "#]],
+    );
+}
+
+#[test]
+fn hrtb_dyn_trait() {
+    check_infer(
+        r#"
+trait Trait<'a, 'b> {}
+
+struct Foo;
+
+impl<'a, 'b> Trait<'a, 'b> for Foo {}
+
+fn run_dyn<'b>(val: &dyn for<'a> Trait<'a, 'b>) {}
+"#,
+        expect![[r#"
+            91..94 'val': &'? (dyn Trait<'_, '_> + 'static)
+            124..126 '{}': ()
+        "#]],
     );
 }

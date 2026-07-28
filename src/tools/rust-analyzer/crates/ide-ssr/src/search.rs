@@ -17,8 +17,8 @@ use syntax::{AstNode, SyntaxKind, SyntaxNode, ast};
 /// and as a pattern. In each, the usages of `foo::Bar` are the same and we'd like to avoid finding
 /// them more than once.
 #[derive(Default)]
-pub(crate) struct UsageCache {
-    usages: Vec<(Definition, UsageSearchResult)>,
+pub(crate) struct UsageCache<'db> {
+    usages: Vec<(Definition<'db>, UsageSearchResult)>,
 }
 
 impl<'db> MatchFinder<'db> {
@@ -28,7 +28,7 @@ impl<'db> MatchFinder<'db> {
     pub(crate) fn find_matches_for_rule(
         &self,
         rule: &ResolvedRule<'db>,
-        usage_cache: &mut UsageCache,
+        usage_cache: &mut UsageCache<'db>,
         matches_out: &mut Vec<Match>,
     ) {
         if rule.pattern.contains_self {
@@ -51,11 +51,11 @@ impl<'db> MatchFinder<'db> {
         &self,
         rule: &ResolvedRule<'db>,
         pattern: &ResolvedPattern<'db>,
-        usage_cache: &mut UsageCache,
+        usage_cache: &mut UsageCache<'db>,
         matches_out: &mut Vec<Match>,
     ) {
         if let Some(resolved_path) = pick_path_for_usages(pattern) {
-            let definition: Definition = resolved_path.resolution.into();
+            let definition: Definition<'db> = resolved_path.resolution.into();
             for file_range in self.find_usages(usage_cache, definition).file_ranges() {
                 for node_to_match in self.find_nodes_to_match(resolved_path, file_range) {
                     if !is_search_permitted_ancestors(&node_to_match) {
@@ -70,7 +70,7 @@ impl<'db> MatchFinder<'db> {
 
     fn find_nodes_to_match(
         &self,
-        resolved_path: &ResolvedPath,
+        resolved_path: &ResolvedPath<'db>,
         file_range: FileRange,
     ) -> Vec<SyntaxNode> {
         let file = self.sema.parse(file_range.file_id);
@@ -112,8 +112,8 @@ impl<'db> MatchFinder<'db> {
 
     fn find_usages<'a>(
         &self,
-        usage_cache: &'a mut UsageCache,
-        definition: Definition,
+        usage_cache: &'a mut UsageCache<'db>,
+        definition: Definition<'db>,
     ) -> &'a UsageSearchResult {
         // Logically if a lookup succeeds we should just return it. Unfortunately returning it would
         // extend the lifetime of the borrow, then we wouldn't be able to do the insertion on a
@@ -252,8 +252,8 @@ fn is_search_permitted(node: &SyntaxNode) -> bool {
     node.kind() != SyntaxKind::USE
 }
 
-impl UsageCache {
-    fn find(&mut self, definition: &Definition) -> Option<&UsageSearchResult> {
+impl<'db> UsageCache<'db> {
+    fn find(&mut self, definition: &Definition<'db>) -> Option<&UsageSearchResult> {
         // We expect a very small number of cache entries (generally 1), so a linear scan should be
         // fast enough and avoids the need to implement Hash for Definition.
         for (d, refs) in &self.usages {
@@ -268,7 +268,9 @@ impl UsageCache {
 /// Returns a path that's suitable for path resolution. We exclude builtin types, since they aren't
 /// something that we can find references to. We then somewhat arbitrarily pick the path that is the
 /// longest as this is hopefully more likely to be less common, making it faster to find.
-fn pick_path_for_usages<'a>(pattern: &'a ResolvedPattern<'_>) -> Option<&'a ResolvedPath> {
+fn pick_path_for_usages<'a, 'db>(
+    pattern: &'a ResolvedPattern<'db>,
+) -> Option<&'a ResolvedPath<'db>> {
     // FIXME: Take the scope of the resolved path into account. e.g. if there are any paths that are
     // private to the current module, then we definitely would want to pick them over say a path
     // from std. Possibly we should go further than this and intersect the search scopes for all

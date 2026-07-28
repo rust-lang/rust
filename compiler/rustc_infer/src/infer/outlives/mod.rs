@@ -3,14 +3,14 @@
 use std::iter;
 
 use rustc_data_structures::undo_log::UndoLogs;
-use rustc_middle::traits::query::{NoSolution, OutlivesBound};
+use rustc_middle::traits::query::OutlivesBound;
 use rustc_middle::ty;
 use rustc_span::Span;
 use tracing::instrument;
 
 use self::env::OutlivesEnvironment;
 use super::region_constraints::{RegionConstraintData, UndoLog};
-use super::{InferCtxt, RegionResolutionError, SubregionOrigin};
+use super::{InferCtxt, RegionResolutionError};
 use crate::infer::free_regions::RegionRelations;
 use crate::infer::lexical_region_resolve;
 use crate::infer::region_constraints::ConstraintKind;
@@ -38,25 +38,15 @@ impl<'tcx> InferCtxt<'tcx> {
     /// done -- or the compiler will panic -- but it is legal to use
     /// `resolve_vars_if_possible` as well as `fully_resolve`.
     ///
-    /// If you are in a crate that has access to `rustc_trait_selection`,
-    /// then it's probably better to use `resolve_regions`,
-    /// which knows how to normalize registered region obligations.
+    /// Don't call this directly unless you know what you're doing.
+    /// You probably want to use `resolve_regions` instead.
     #[must_use]
-    pub fn resolve_regions_with_normalize(
+    pub fn resolve_regions_with_outlives_env(
         &self,
         outlives_env: &OutlivesEnvironment<'tcx>,
-        deeply_normalize_ty: impl Fn(
-            ty::PolyTypeOutlivesPredicate<'tcx>,
-            SubregionOrigin<'tcx>,
-        ) -> Result<ty::PolyTypeOutlivesPredicate<'tcx>, NoSolution>,
         span: Span,
     ) -> Vec<RegionResolutionError<'tcx>> {
-        match self.process_registered_region_obligations(outlives_env, deeply_normalize_ty, span) {
-            Ok(()) => {}
-            Err((clause, origin)) => {
-                return vec![RegionResolutionError::CannotNormalize(clause, origin)];
-            }
-        };
+        self.process_registered_region_obligations(outlives_env, span);
 
         let mut storage = {
             let mut inner = self.inner.borrow_mut();

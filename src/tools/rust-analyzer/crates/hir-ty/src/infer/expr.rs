@@ -7,9 +7,9 @@ use hir_def::{
     AdtId, FieldId, TupleFieldId, TupleId, VariantId,
     expr_store::path::{GenericArgs as HirGenericArgs, Path},
     hir::{
-        Array, AsmOperand, AsmOptions, BinaryOp, BindingAnnotation, Expr, ExprId, ExprOrPatId,
-        InlineAsmKind, LabelId, LoopSource, Pat, PatId, RecordLitField, RecordSpread, Statement,
-        UnaryOp,
+        Array, AsmOperand, AsmOptions, BinaryOp, BindingAnnotation, Expr, ExprId,
+        ExprOrPatIdPacked, InlineAsmKind, LabelId, LoopSource, Pat, PatId, RecordLitField,
+        RecordSpread, Statement, UnaryOp,
     },
     resolver::ValueNs,
     signatures::VariantFields,
@@ -20,7 +20,7 @@ use rustc_ast_ir::Mutability;
 use rustc_hash::FxHashMap;
 use rustc_type_ir::{
     InferTy, Interner,
-    inherent::{GenericArgs as _, IntoKind, Ty as _},
+    inherent::{IntoKind, Ty as _},
 };
 use stdx::never;
 use syntax::ast::RangeOp;
@@ -53,7 +53,7 @@ pub(crate) enum ExprIsRead {
     No,
 }
 
-impl<'db> InferenceContext<'_, 'db> {
+impl<'db> InferenceContext<'db> {
     pub(crate) fn infer_expr(
         &mut self,
         tgt_expr: ExprId,
@@ -143,29 +143,22 @@ impl<'db> InferenceContext<'_, 'db> {
         expr: ExprId,
         is_read: ExprIsRead,
     ) -> bool {
-        // rustc does the place expr check first, but since we are feeding
-        // readness of the `expr` as a given value, we just can short-circuit
-        // the place expr check if it's true(see codes and comments below)
-        if is_read == ExprIsRead::Yes {
-            return true;
-        }
-
-        // We only care about place exprs. Anything else returns an immediate
-        // which would constitute a read. We don't care about distinguishing
-        // "syntactic" place exprs since if the base of a field projection is
-        // not a place then it would've been UB to read from it anyways since
-        // that constitutes a read.
-        if !self.is_syntactic_place_expr(expr) {
-            return true;
-        }
-
         // rustc queries parent hir node of `expr` here and determine whether
         // the current `expr` is read of value per its parent.
         // But since we don't have hir node, we cannot follow such "bottom-up"
         // method.
         // So, we pass down such readness from the parent expression through the
         // recursive `infer_expr*` calls in a "top-down" manner.
+        // rustc does the place expr check first, but since we are feeding
+        // readness of the `expr` as a given value, we just can short-circuit
+        // the place expr check if it's true(see codes and comments below)
         is_read == ExprIsRead::Yes
+            // We only care about place exprs. Anything else returns an immediate
+            // which would constitute a read. We don't care about distinguishing
+            // "syntactic" place exprs since if the base of a field projection is
+            // not a place then it would've been UB to read from it anyways since
+            // that constitutes a read.
+            || !self.is_syntactic_place_expr(expr)
     }
 
     /// Whether this pattern constitutes a read of value of the scrutinee that
@@ -266,7 +259,6 @@ impl<'db> InferenceContext<'_, 'db> {
             | Expr::Await { .. }
             | Expr::Ref { .. }
             | Expr::Range { .. }
-            | Expr::Box { .. }
             | Expr::RecordLit { .. }
             | Expr::Yeet { .. }
             | Expr::Missing
@@ -628,7 +620,6 @@ impl<'db> InferenceContext<'_, 'db> {
                 expected,
                 tgt_expr,
             ),
-            &Expr::Box { expr } => self.infer_expr_box(expr, expected),
             Expr::UnaryOp { expr, op } => self.infer_unop_expr(*op, *expr, expected, tgt_expr),
             Expr::BinaryOp { lhs, rhs, op } => match op {
                 Some(BinaryOp::Assignment { op: Some(op) }) => {
@@ -904,7 +895,7 @@ impl<'db> InferenceContext<'_, 'db> {
         };
         let ty = self.insert_type_vars_shallow(ty);
         self.write_expr_ty(tgt_expr, ty);
-        if self.shallow_resolve(ty).is_never()
+        if self.table.resolve_vars_with_obligations(ty).is_never()
             && self.expr_guaranteed_to_constitute_read_for_never(tgt_expr, is_read)
         {
             // Any expression that produces a value of type `!` must have diverged
@@ -969,8 +960,10 @@ impl<'db> InferenceContext<'_, 'db> {
             return self.types.types.error;
         };
         self.table.register_bound(awaitee_ty, into_future, ObligationCause::new(expr));
-        // Do not eagerly normalize.
-        Ty::new_projection(self.interner(), into_future_output.into(), [awaitee_ty])
+        self.table.try_structurally_resolve_type(
+            expr.into(),
+            Ty::new_projection(self.interner(), into_future_output.into(), [awaitee_ty]),
+        )
     }
 
     fn infer_record_expr(
@@ -1279,7 +1272,7 @@ impl<'db> InferenceContext<'_, 'db> {
         }
     }
 
-    fn infer_expr_path(&mut self, path: &Path, id: ExprOrPatId, scope_id: ExprId) -> Ty<'db> {
+    fn infer_expr_path(&mut self, path: &Path, id: ExprOrPatIdPacked, scope_id: ExprId) -> Ty<'db> {
         let g = self.resolver.update_to_inner_scope(self.db, self.store_owner, scope_id);
         let ty = match self.infer_path(path, id) {
             Some((_, ty)) => ty,
@@ -1488,27 +1481,6 @@ impl<'db> InferenceContext<'_, 'db> {
         }
 
         self.types.types.never
-    }
-
-    fn infer_expr_box(&mut self, inner_expr: ExprId, expected: &Expectation<'db>) -> Ty<'db> {
-        if let Some(box_id) = self.resolve_boxed_box() {
-            let table = &mut self.table;
-            let inner_exp = expected
-                .to_option(table)
-                .as_ref()
-                .and_then(|e| e.as_adt())
-                .filter(|(e_adt, _)| e_adt == &box_id)
-                .map(|(_, subts)| {
-                    let g = subts.type_at(0);
-                    Expectation::rvalue_hint(self, g)
-                })
-                .unwrap_or_else(Expectation::none);
-
-            let inner_ty = self.infer_expr_inner(inner_expr, &inner_exp, ExprIsRead::Yes);
-            Ty::new_box(self.interner(), inner_ty)
-        } else {
-            self.err_ty()
-        }
     }
 
     fn infer_block(
@@ -2102,7 +2074,7 @@ impl<'db> InferenceContext<'_, 'db> {
         // We introduce a helper function to demand that a given argument satisfy a given input
         // This is more complicated than just checking type equality, as arguments could be coerced
         // This version writes those types back so further type checking uses the narrowed types
-        let demand_compatible = |this: &mut InferenceContext<'_, 'db>, idx| {
+        let demand_compatible = |this: &mut InferenceContext<'db>, idx| {
             let formal_input_ty: Ty<'db> = formal_input_tys[idx];
             let expected_input_ty: Ty<'db> = expected_input_tys[idx];
             let provided_arg = provided_args[idx];

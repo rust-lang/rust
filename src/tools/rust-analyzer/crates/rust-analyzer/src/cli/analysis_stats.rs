@@ -753,10 +753,7 @@ impl flags::AnalysisStats {
             };
             if verbosity.is_spammy() {
                 let full_name = module
-                    .path_to_root(db)
-                    .into_iter()
-                    .rev()
-                    .filter_map(|it| it.name(db))
+                    .path_segments(db)
                     .chain(Some(body.name(db).unwrap_or_else(Name::missing)))
                     .map(|it| it.display(db, Edition::LATEST).to_string())
                     .join("::");
@@ -797,7 +794,9 @@ impl flags::AnalysisStats {
             bodies
                 .par_iter()
                 .map_with(db.clone(), |snap, &body| {
-                    InferenceResult::of(snap, body);
+                    hir::attach_db(snap, || {
+                        InferenceResult::of(snap, body);
+                    });
                 })
                 .count();
             let _signatures = signatures
@@ -1487,10 +1486,7 @@ fn full_name(db: &RootDatabase, name: impl Fn() -> Option<Name>, module: hir::Mo
         .into_iter()
         .chain(
             module
-                .path_to_root(db)
-                .into_iter()
-                .filter_map(|it| it.name(db))
-                .rev()
+                .path_segments(db)
                 .chain(Some(name().unwrap_or_else(Name::missing)))
                 .map(|it| it.display(db, Edition::LATEST).to_string()),
         )
