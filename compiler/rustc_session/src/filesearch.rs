@@ -21,10 +21,10 @@ impl FileSearch {
     }
 
     pub fn search_paths<'b>(&'b self, kind: PathKind) -> impl Iterator<Item = &'b SearchPath> {
-        //If the crate is `PathKind::Crate` (a top level dependency)
-        //and `-Z implicit-sysroot-deps=false`, then don't include the sysroot in the search paths.
-        let maybe_tlib = (self.use_implicit_sysroot_deps || !kind.matches(PathKind::Crate))
-            .then_some(&self.tlib_path);
+        // If the crate is `PathKind::Crate` (a top level dependency)
+        // and `-Z implicit-sysroot-deps=false`, then don't include the sysroot in the search paths.
+        let exclude_sysroot = kind.matches(PathKind::Crate) && !self.use_implicit_sysroot_deps;
+        let maybe_tlib = (!exclude_sysroot).then_some(&self.tlib_path);
 
         self.cli_search_paths
             .iter()

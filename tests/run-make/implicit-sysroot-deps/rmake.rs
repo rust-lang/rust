@@ -1,5 +1,8 @@
 use run_make_support::rfs::create_dir_all;
-use run_make_support::{rustc, target};
+use run_make_support::{rust_lib_name, rustc, target};
+
+// Tests `-Zimplicit-sysroot-deps=false` with arbitrary crates passed via `--extern`
+// See `tests/ui/crate-loading` for tests with the standard library
 
 fn main() {
     // Create test sysroot
@@ -18,7 +21,7 @@ fn main() {
     rustc()
         .input("foo.rs")
         .crate_type("lib")
-        .extern_("bar", "libbar.rlib")
+        .extern_("bar", rust_lib_name("bar"))
         .sysroot("./testsysroot")
         .arg("-Zimplicit-sysroot-deps=false")
         .run();
@@ -30,5 +33,6 @@ fn main() {
         .crate_type("lib")
         .sysroot("./testsysroot")
         .arg("-Zimplicit-sysroot-deps=false")
-        .run_fail();
+        .run_fail()
+        .assert_stderr_contains("can't find crate for `baz`");
 }
