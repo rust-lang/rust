@@ -5,9 +5,20 @@ use self::generic::generic_copy;
 #[doc(hidden)]
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
 pub use self::specialization::SpecCopy;
-use self::specialization::specialized_copy;
+use self::specialization::SpecCopyInner;
 use crate::io::{Read, Result, Write};
 
+/// Used as a part of [copy specialization](SpecCopy) to communicate how many bytes
+/// were copied, and whether copying is done.
+///
+/// * [`Ended(n)`](CopyState::Ended) indicates copying completed, moving a total
+///   of `n` bytes.
+/// * [`Fallback(n)`](CopyState::Fallback) indicates copying is _might_ not be
+///   complete, and so far `n` bytes have been copied using specialization.
+///   The remaining must be copied using a fallback implementation.
+///
+/// If a particular `Read` and `Write` combination do not implement a specialized
+/// copy routine, the specialized function will return `Fallback(0)`.
 #[derive(Debug)]
 #[doc(hidden)]
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
@@ -70,7 +81,7 @@ where
     R: Read,
     W: Write,
 {
-    match specialized_copy(reader, writer)? {
+    match SpecCopyInner::copy(reader, writer)? {
         CopyState::Ended(copied) => Ok(copied),
         CopyState::Fallback(copied) => {
             generic_copy(reader, writer).map(|additional| copied + additional)

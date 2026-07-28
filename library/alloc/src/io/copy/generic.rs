@@ -1,4 +1,3 @@
-use core::cmp;
 use core::mem::MaybeUninit;
 
 #[cfg(not(no_global_oom_handling))]
@@ -13,26 +12,46 @@ use crate::{alloc::Allocator, io::IoSlice};
 
 /// The userspace read-write-loop implementation of `io::copy` that is used when
 /// OS-specific specializations for copy offloading are not available or not applicable.
+///
+/// This function is able to perform a mild amount of specialization based on
+/// the size of the `reader` and `writer` buffers, if they have any.
+///
+/// * If `reader`'s buffer is large enough ([`>=DEFAULT_BUF_SIZE`](DEFAULT_BUF_SIZE)),
+///   _and_ it is larger than `writer`'s buffer, copying will be controlled by `R`.
+/// * Otherwise, copying will be controlled by `writer`.
+///
+/// Currently, `[u8]`, `Vec<u8>`, `VecDeque<u8>`, `BufReader<T>` and `BufWriter<T>`
+/// are specialized with.
 pub(super) fn generic_copy<R: ?Sized, W: ?Sized>(reader: &mut R, writer: &mut W) -> Result<u64>
 where
     R: Read,
     W: Write,
 {
-    let read_buf = BufferedReaderSpec::buffer_size(reader);
-    let write_buf = BufferedWriterSpec::buffer_size(writer);
+    let read_priority = BufferedReaderSpec::buffer_priority(reader);
+    let write_priority = BufferedWriterSpec::buffer_priority(writer);
 
-    if read_buf >= DEFAULT_BUF_SIZE && read_buf >= write_buf {
+    if read_priority >= DEFAULT_BUF_SIZE && read_priority >= write_priority {
         return BufferedReaderSpec::copy_to(reader, writer);
     }
 
     BufferedWriterSpec::copy_from(writer, reader)
 }
 
-/// Specialization of the read-write loop that reuses the internal
-/// buffer of a BufReader. If there's no buffer then the writer side
+/// This is used by [`generic_copy`] to decide whether to use [`BufferedReaderSpec::copy_to`]
+/// or [`BufferedWriterSpec::copy_from`].
+type BufferPriority = usize;
+
+/// Unbuffered readers and writers have the lowest priority.
+const UNBUFFERED: BufferPriority = BufferPriority::MIN;
+
+/// Readers and writers with their entire contents have the highest priority.
+const IN_MEMORY: BufferPriority = BufferPriority::MAX;
+
+/// Specialization of the read-write loop in [`generic_copy`] that reuses the
+/// internal buffer of a [`BufReader`]. If there's no buffer then the writer side
 /// should be used instead.
 trait BufferedReaderSpec {
-    fn buffer_size(&self) -> usize;
+    fn buffer_priority(&self) -> BufferPriority;
 
     fn copy_to(&mut self, to: &mut (impl Write + ?Sized)) -> Result<u64>;
 }
@@ -43,8 +62,8 @@ where
     T: ?Sized,
 {
     #[inline]
-    default fn buffer_size(&self) -> usize {
-        0
+    default fn buffer_priority(&self) -> BufferPriority {
+        UNBUFFERED
     }
 
     default fn copy_to(&mut self, _to: &mut (impl Write + ?Sized)) -> Result<u64> {
@@ -53,10 +72,8 @@ where
 }
 
 impl BufferedReaderSpec for &[u8] {
-    fn buffer_size(&self) -> usize {
-        // prefer this specialization since the source "buffer" is all we'll ever need,
-        // even if it's small
-        usize::MAX
+    fn buffer_priority(&self) -> BufferPriority {
+        IN_MEMORY
     }
 
     fn copy_to(&mut self, to: &mut (impl Write + ?Sized)) -> Result<u64> {
@@ -69,10 +86,8 @@ impl BufferedReaderSpec for &[u8] {
 
 #[cfg(not(no_global_oom_handling))]
 impl<A: Allocator> BufferedReaderSpec for VecDeque<u8, A> {
-    fn buffer_size(&self) -> usize {
-        // prefer this specialization since the source "buffer" is all we'll ever need,
-        // even if it's small
-        usize::MAX
+    fn buffer_priority(&self) -> BufferPriority {
+        IN_MEMORY
     }
 
     fn copy_to(&mut self, to: &mut (impl Write + ?Sized)) -> Result<u64> {
@@ -90,7 +105,7 @@ where
     Self: Read,
     I: ?Sized,
 {
-    fn buffer_size(&self) -> usize {
+    fn buffer_priority(&self) -> BufferPriority {
         self.capacity()
     }
 
@@ -124,32 +139,36 @@ where
     }
 }
 
-/// Specialization of the read-write loop that either uses a stack buffer
-/// or reuses the internal buffer of a BufWriter
+/// Specialization of the read-write loop in `generic_copy` that either uses a
+/// stack buffer or reuses the internal buffer of a [`BufWriter`].
 trait BufferedWriterSpec: Write {
-    fn buffer_size(&self) -> usize;
+    fn buffer_priority(&self) -> BufferPriority;
 
     fn copy_from<R: Read + ?Sized>(&mut self, reader: &mut R) -> Result<u64>;
 }
 
 impl<W: Write + ?Sized> BufferedWriterSpec for W {
     #[inline]
-    default fn buffer_size(&self) -> usize {
-        0
+    default fn buffer_priority(&self) -> BufferPriority {
+        UNBUFFERED
     }
 
     default fn copy_from<R: Read + ?Sized>(&mut self, reader: &mut R) -> Result<u64> {
+        // Unlike `BufferedReaderSpec::copy_to`, this _will_ be called as the fallback
+        // when both the reader and writer provide no specialization.
         stack_buffer_copy(reader, self)
     }
 }
 
 impl<I: Write + ?Sized> BufferedWriterSpec for BufWriter<I> {
-    fn buffer_size(&self) -> usize {
+    fn buffer_priority(&self) -> BufferPriority {
         self.capacity()
     }
 
     fn copy_from<R: Read + ?Sized>(&mut self, reader: &mut R) -> Result<u64> {
         if self.capacity() < DEFAULT_BUF_SIZE {
+            // Since neither this buffer nor the reader's buffer are large enough,
+            // fall back to the unspecialized implementation.
             return stack_buffer_copy(reader, self);
         }
 
@@ -198,8 +217,8 @@ impl<I: Write + ?Sized> BufferedWriterSpec for BufWriter<I> {
 }
 
 impl BufferedWriterSpec for Vec<u8> {
-    fn buffer_size(&self) -> usize {
-        cmp::max(DEFAULT_BUF_SIZE, self.capacity() - self.len())
+    fn buffer_priority(&self) -> BufferPriority {
+        self.capacity() - self.len()
     }
 
     fn copy_from<R: Read + ?Sized>(&mut self, reader: &mut R) -> Result<u64> {
@@ -207,6 +226,7 @@ impl BufferedWriterSpec for Vec<u8> {
     }
 }
 
+/// Copies from `reader` to `writer` using a stack-allocated buffer (a fixed sized array).
 fn stack_buffer_copy<R: Read + ?Sized, W: Write + ?Sized>(
     reader: &mut R,
     writer: &mut W,
