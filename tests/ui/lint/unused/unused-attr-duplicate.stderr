@@ -16,7 +16,7 @@ note: the lint level is defined here
 LL | #![deny(unused_attributes)]
    |         ^^^^^^^^^^^^^^^^^
 
-warning: attribute is specified more than once
+warning: representation attribute is specified more than once
   --> $DIR/unused-attr-duplicate.rs:67:8
    |
 LL | #[repr(C)]
@@ -24,7 +24,7 @@ LL | #[repr(C)]
 LL | #[repr(C)]
    |        ^
    |
-   = note: will become a hard error soon. todo: wording
+   = note: for consistency, only specify the representation once
    = note: `#[warn(repeated_reprs)]` on by default
 
 error: unused attribute
