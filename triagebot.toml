@@ -1160,7 +1160,7 @@ cc = [
 ]
 
 [mentions."src/tools/cargo"]
-cc = ["@ehuss"]
+cc = ["@weihanglo"]
 
 [mentions."src/tools/clippy"]
 message = """
@@ -1713,7 +1713,7 @@ dep-bumps = [
 "/tests/ui" =                                            ["compiler"]
 "/tests/ui-fulldeps" =                                   ["compiler"]
 "/src/tools/build-manifest" =                            ["bootstrap"]
-"/src/tools/cargo" =                                     ["@ehuss"]
+"/src/tools/cargo" =                                     ["@weihanglo"]
 "/src/tools/compiletest" =                               ["bootstrap", "@wesleywiser", "@oli-obk", "@jieyouxu"]
 "/src/tools/linkchecker" =                               ["@ehuss"]
 "/src/tools/opt-dist" =                                  ["@kobzol"]
