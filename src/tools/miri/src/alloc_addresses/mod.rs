@@ -379,7 +379,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             ProvenanceMode::Permissive => {}
         }
 
-        // We do *not* look up the `AllocId` here! This is a `ptr as usize` cast, and it is
+        // We do *not* look up the `AllocId` here! This is a `usize as ptr` cast, and it is
         // completely legal to do a cast and then `wrapping_offset` to another allocation and only
         // *then* do a memory access. So the allocation that the pointer happens to point to on a
         // cast is fairly irrelevant. Instead we generate this as a "wildcard" pointer, such that
