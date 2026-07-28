@@ -1806,7 +1806,7 @@ impl char {
     /// [normalization]: https://www.unicode.org/faq/normalization.html
     #[must_use = "this returns the case-folded character as a new iterator, \
                   without modifying the original"]
-    #[unstable(feature = "casefold", issue = "154742")]
+    #[unstable(feature = "casefold", issue = "157000")]
     #[inline]
     pub fn to_casefold_unnormalized(self) -> ToCasefold {
         ToCasefold(CaseMappingIter::new(conversions::to_casefold(self)))
