@@ -1119,6 +1119,7 @@ rustdoc-toolbar {
 	flex-direction: row;
 	flex-wrap: nowrap;
 	min-height: 60px;
+	height: fit-content;
 }
 
 .docblock code, .item-table dd code,
