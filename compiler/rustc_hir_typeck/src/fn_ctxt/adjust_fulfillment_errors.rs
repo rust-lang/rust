@@ -14,9 +14,9 @@ use rustc_trait_selection::traits;
 use crate::FnCtxt;
 
 enum ClauseFlavor {
-    /// Predicate comes from `predicates_of`.
+    /// Clause comes from `clauses_of`.
     Where,
-    /// Predicate comes from `const_conditions`.
+    /// Clause comes from `const_conditions`.
     Const,
 }
 
@@ -54,17 +54,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => return false,
         };
 
-        let uninstantiated_pred = match flavor {
+        let uninstantiated_clause = match flavor {
             ClauseFlavor::Where
-                if let Some(pred) = self
+                if let Some(clause) = self
                     .tcx
-                    .predicates_of(def_id)
+                    .clauses_of(def_id)
                     .instantiate_identity(self.tcx)
-                    .predicates
+                    .clauses
                     .into_iter()
                     .nth(idx) =>
             {
-                pred
+                clause
             }
             ClauseFlavor::Const
                 if let Some((pred, _)) = self
@@ -81,7 +81,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let generics = self.tcx.generics_of(def_id);
         let (predicate_args, predicate_self_type_to_point_at) =
-            match uninstantiated_pred.kind().skip_binder() {
+            match uninstantiated_clause.kind().skip_binder() {
                 ty::ClauseKind::Trait(pred) => {
                     (pred.trait_ref.args.to_vec(), Some(pred.self_ty().into()))
                 }
@@ -831,19 +831,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // We only really care about the `Self` type itself, which we extract from the ref.
         let impl_self_ty: Ty<'tcx> = impl_trait_self_ref.self_ty();
 
-        let impl_predicates: ty::GenericPredicates<'tcx> =
-            self.tcx.predicates_of(obligation.impl_or_alias_def_id);
-        let Some(impl_predicate_index) = obligation.impl_def_predicate_index else {
+        let impl_clauses: ty::GenericClauses<'tcx> =
+            self.tcx.clauses_of(obligation.impl_or_alias_def_id);
+        let Some(impl_clause_index) = obligation.impl_def_clause_index else {
             // We don't have the index, so we can only guess.
             return Err(expr);
         };
 
-        if impl_predicate_index >= impl_predicates.predicates.len() {
-            // This shouldn't happen, but since this is only a diagnostic improvement, avoid breaking things.
+        if impl_clause_index >= impl_clauses.clauses.len() {
+            // This shouldn't happen, but since this is only a diagnostic improvement, avoid
+            // breaking things.
             return Err(expr);
         }
 
-        match impl_predicates.predicates[impl_predicate_index].0.kind().skip_binder() {
+        match impl_clauses.clauses[impl_clause_index].0.kind().skip_binder() {
             ty::ClauseKind::Trait(broken_trait) => {
                 // ...
                 self.blame_specific_part_of_expr_corresponding_to_generic_param(

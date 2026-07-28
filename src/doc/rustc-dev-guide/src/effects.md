@@ -9,22 +9,22 @@ Because `[const] Tr`, or rather `Maybe` bounds
 apply differently based on whichever contexts they are in, they have different
 behavior than normal bounds.
 Where normal trait bounds on a function such as
-`T: Tr` are collected within the [`predicates_of`] query to be proven when a
+`T: Tr` are collected within the [`clauses_of`] query to be proven when a
 function is called and to be assumed within the function, bounds such as
 `T: [const] Tr` will behave as a normal trait bound and add `T: Tr` to the result
-from `predicates_of`, but also adds a `HostEffectPredicate` to the [`const_conditions`] query.
+from `clauses_of`, but also adds a `HostEffectPredicate` to the [`const_conditions`] query.
 
 On the other hand, `T: const Tr` bounds do not change meaning across contexts,
 therefore they will result in `HostEffect(T: Tr, const)` being added to
-`predicates_of`, and not `const_conditions`.
+`clauses_of`, and not `const_conditions`.
 
 [`HostEffectPredicate`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_type_ir/predicate/struct.HostEffectPredicate.html
-[`predicates_of`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.predicates_of
+[`clauses_of`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.clauses_of
 [`const_conditions`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.const_conditions
 
 ## The `const_conditions` query
 
-`predicates_of` represents a set of predicates that need to be proven to use an item.
+`clauses_of` represents a set of clauses that need to be proven to use an item.
 For example, to use `foo` in the example below:
 
 ```rust

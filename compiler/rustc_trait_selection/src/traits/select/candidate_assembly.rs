@@ -665,8 +665,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return false;
         };
 
-        for &(predicate, _) in self.tcx().predicates_of(impl_def_id).predicates {
-            let ty::ClauseKind::Trait(pred) = predicate.kind().skip_binder() else { continue };
+        for &(clause, _) in self.tcx().clauses_of(impl_def_id).clauses {
+            let ty::ClauseKind::Trait(pred) = clause.kind().skip_binder() else { continue };
             if fn_ptr_trait != pred.trait_ref.def_id {
                 continue;
             }

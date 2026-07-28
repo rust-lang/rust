@@ -388,42 +388,42 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.item_non_self_bounds(def_id).map_bound(IntoIterator::into_iter)
     }
 
-    fn predicates_of(
+    fn clauses_of(
         self,
         def_id: DefId,
     ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = ty::Clause<'tcx>>> {
         ty::EarlyBinder::bind_iter(
-            self.predicates_of(def_id)
+            self.clauses_of(def_id)
                 .instantiate_identity(self)
-                .predicates
+                .clauses
                 .into_iter()
                 .map(Unnormalized::skip_normalization),
         )
     }
 
-    fn own_predicates_of(
+    fn own_clauses_of(
         self,
         def_id: DefId,
     ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = ty::Clause<'tcx>>> {
         ty::EarlyBinder::bind_iter(
-            self.predicates_of(def_id)
+            self.clauses_of(def_id)
                 .instantiate_own_identity()
                 .map(|(clause, _)| clause.skip_normalization()),
         )
     }
 
-    fn explicit_super_predicates_of(
+    fn explicit_super_clauses_of(
         self,
         def_id: DefId,
     ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = (ty::Clause<'tcx>, Span)>> {
-        self.explicit_super_predicates_of(def_id).map_bound(|preds| preds.into_iter().copied())
+        self.explicit_super_clauses_of(def_id).map_bound(|preds| preds.into_iter().copied())
     }
 
-    fn explicit_implied_predicates_of(
+    fn explicit_implied_clauses_of(
         self,
         def_id: DefId,
     ) -> ty::EarlyBinder<'tcx, impl IntoIterator<Item = (ty::Clause<'tcx>, Span)>> {
-        self.explicit_implied_predicates_of(def_id).map_bound(|preds| preds.into_iter().copied())
+        self.explicit_implied_clauses_of(def_id).map_bound(|preds| preds.into_iter().copied())
     }
 
     fn impl_super_outlives(

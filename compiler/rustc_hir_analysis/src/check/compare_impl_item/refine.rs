@@ -139,13 +139,13 @@ pub(crate) fn check_refining_return_position_impl_trait_in_trait<'tcx>(
         pairs.push((trait_projection, impl_opaque));
     }
 
-    let hybrid_preds = tcx
-        .predicates_of(impl_def_id)
+    let hybrid_clauses = tcx
+        .clauses_of(impl_def_id)
         .instantiate_identity(tcx)
         .into_iter()
-        .chain(tcx.predicates_of(trait_m.def_id).instantiate_own(tcx, trait_m_to_impl_m_args))
+        .chain(tcx.clauses_of(trait_m.def_id).instantiate_own(tcx, trait_m_to_impl_m_args))
         .map(|(clause, _)| clause.skip_norm_wip());
-    let param_env = ty::ParamEnv::new(tcx.mk_clauses_from_iter(hybrid_preds));
+    let param_env = ty::ParamEnv::new(tcx.mk_clauses_from_iter(hybrid_clauses));
     let param_env = normalize_param_env_or_error(tcx, param_env, ObligationCause::dummy());
 
     let ref infcx = tcx.infer_ctxt().build(TypingMode::non_body_analysis());

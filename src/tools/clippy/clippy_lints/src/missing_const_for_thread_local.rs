@@ -4,7 +4,7 @@ use clippy_utils::macros::macro_backtrace;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::qualify_min_const_fn::is_min_const_fn;
 use clippy_utils::source::snippet;
-use clippy_utils::{fn_has_unsatisfiable_preds, peel_blocks, sym};
+use clippy_utils::{fn_has_unsatisfiable_clauses, peel_blocks, sym};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, intravisit};
 use rustc_lint::{LateContext, LateLintPass};
@@ -90,7 +90,7 @@ fn is_unreachable(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 #[inline]
 fn initializer_can_be_made_const(cx: &LateContext<'_>, defid: rustc_span::def_id::DefId, msrv: Msrv) -> bool {
     // Building MIR for `fn`s with unsatisfiable preds results in ICE.
-    if !fn_has_unsatisfiable_preds(cx, defid)
+    if !fn_has_unsatisfiable_clauses(cx, defid)
         && let mir = cx.tcx.optimized_mir(defid)
         && let Ok(()) = is_min_const_fn(cx, mir, msrv)
     {

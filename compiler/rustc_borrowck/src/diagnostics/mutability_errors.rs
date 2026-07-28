@@ -1210,19 +1210,17 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                     return false;
                 };
 
-                tcx.predicates_of(callee_def_id)
-                    .instantiate(tcx, generic_args)
-                    .predicates
-                    .iter()
-                    .any(|predicate| {
-                        predicate.as_trait_clause().is_some_and(|trait_pred| {
+                tcx.clauses_of(callee_def_id).instantiate(tcx, generic_args).clauses.iter().any(
+                    |clause| {
+                        clause.as_trait_clause().is_some_and(|trait_pred| {
                             trait_pred.polarity() == ty::PredicatePolarity::Positive
                                 && tcx.fn_trait_kind_from_def_id(trait_pred.def_id())
                                     == Some(ty::ClosureKind::Fn)
                                 && trait_pred.self_ty().skip_binder().peel_refs()
                                     == input_ty.peel_refs()
                         })
-                    })
+                    },
+                )
             };
 
         // If the HIR node is a function or method call, get the DefId

@@ -177,18 +177,18 @@ pub enum TraitQueryMode {
 }
 
 /// Creates predicate obligations from the generic bounds.
-#[instrument(level = "debug", skip(cause, param_env, normalize_predicate))]
+#[instrument(level = "debug", skip(cause, param_env, normalize_clause))]
 pub fn predicates_for_generics<'tcx>(
     cause: impl Fn(usize, Span) -> ObligationCause<'tcx>,
-    mut normalize_predicate: impl FnMut(Unnormalized<'tcx, Clause<'tcx>>) -> Clause<'tcx>,
+    mut normalize_clause: impl FnMut(Unnormalized<'tcx, Clause<'tcx>>) -> Clause<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    generic_bounds: ty::InstantiatedPredicates<'tcx>,
+    generic_bounds: ty::InstantiatedClauses<'tcx>,
 ) -> impl Iterator<Item = PredicateObligation<'tcx>> {
     generic_bounds.into_iter().enumerate().map(move |(idx, (clause, span))| Obligation {
         cause: cause(idx, span),
         recursion_depth: 0,
         param_env,
-        predicate: normalize_predicate(clause).as_predicate(),
+        predicate: normalize_clause(clause).as_predicate(),
     })
 }
 
@@ -270,11 +270,11 @@ fn set_projection_term_to_non_rigid<'tcx>(
 }
 
 #[instrument(level = "debug", skip(tcx, elaborated_env))]
-fn do_normalize_predicates<'tcx>(
+fn do_normalize_clauses<'tcx>(
     tcx: TyCtxt<'tcx>,
     cause: ObligationCause<'tcx>,
     elaborated_env: ty::ParamEnv<'tcx>,
-    predicates: Vec<ty::Clause<'tcx>>,
+    clauses: Vec<ty::Clause<'tcx>>,
 ) -> Result<Vec<ty::Clause<'tcx>>, ErrorGuaranteed> {
     // FIXME. We should really... do something with these region
     // obligations. But this call just continues the older
@@ -303,24 +303,24 @@ fn do_normalize_predicates<'tcx>(
     } else {
         elaborated_env
     };
-    let predicates = ocx.normalize(&cause, elaborated_env, Unnormalized::new_wip(predicates));
-    let predicates = if tcx.next_trait_solver_globally() {
+    let clauses = ocx.normalize(&cause, elaborated_env, Unnormalized::new_wip(clauses));
+    let clauses = if tcx.next_trait_solver_globally() {
         if !tcx.disable_param_env_normalization_hack() {
-            let predicates: Vec<_> = set_projection_term_to_non_rigid(tcx, predicates).collect();
+            let clauses: Vec<_> = set_projection_term_to_non_rigid(tcx, clauses).collect();
             // FIXME(type_alias_impl_trait): opaque types in param env might be
             // in defining scope but we're using non body analysis here.
             // So the rigidness marker is wrong.
-            ty::set_opaques_to_non_rigid(tcx, predicates).skip_norm_wip()
+            ty::set_opaques_to_non_rigid(tcx, clauses).skip_norm_wip()
         } else {
             // Param env is used in different typing modes but itself
             // is normalized in `non_body_analysis`.
             // That not only makes the rigidness of opaques types wrong,
             // other aliases can be indirectly affected as well.
             // So we conservatively set everything to be non-rigid.
-            ty::set_aliases_to_non_rigid(tcx, predicates).skip_norm_wip()
+            ty::set_aliases_to_non_rigid(tcx, clauses).skip_norm_wip()
         }
     } else {
-        predicates
+        clauses
     };
 
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
@@ -329,7 +329,7 @@ fn do_normalize_predicates<'tcx>(
         return Err(reported);
     }
 
-    debug!("do_normalize_predicates: normalized predicates = {:?}", predicates);
+    debug!("do_normalize_clauses: normalized clauses = {:?}", clauses);
 
     // We can use the `elaborated_env` here; the region code only
     // cares about declarations like `'a: 'b`.
@@ -347,8 +347,8 @@ fn do_normalize_predicates<'tcx>(
     // This is required by trait-system-refactor-initiative#166. The new solver encounters
     // this more frequently as we entirely ignore outlives predicates with the old solver.
     let _errors = infcx.resolve_regions(cause.body_def_id, elaborated_env, []);
-    match infcx.fully_resolve(predicates) {
-        Ok(predicates) => Ok(predicates),
+    match infcx.fully_resolve(clauses) {
+        Ok(clauses) => Ok(clauses),
         Err(fixup_err) => {
             // If we encounter a fixup error, it means that some type
             // variable wound up unconstrained. That can happen for
@@ -385,7 +385,7 @@ pub fn normalize_param_env_or_error<'tcx>(
     // parameter environments once for every fn as it goes,
     // and errors will get reported then; so outside of type inference we
     // can be sure that no errors should occur.
-    let mut predicates: Vec<_> = util::elaborate(
+    let mut clauses: Vec<_> = util::elaborate(
         tcx,
         unnormalized_env.caller_bounds().into_iter().map(|clause| {
             if tcx.features().generic_const_exprs() || tcx.next_trait_solver_globally() {
@@ -458,9 +458,9 @@ pub fn normalize_param_env_or_error<'tcx>(
     )
     .collect();
 
-    debug!("normalize_param_env_or_error: elaborated-predicates={:?}", predicates);
+    debug!("normalize_param_env_or_error: elaborated-clauses={:?}", clauses);
 
-    let elaborated_env = ty::ParamEnv::new(tcx.mk_clauses(&predicates));
+    let elaborated_env = ty::ParamEnv::new(tcx.mk_clauses(&clauses));
     if !elaborated_env.has_aliases() {
         return elaborated_env;
     }
@@ -483,44 +483,43 @@ pub fn normalize_param_env_or_error<'tcx>(
     //
     // This works fairly well because trait matching does not actually care about param-env
     // TypeOutlives predicates - these are normally used by regionck.
-    let outlives_predicates: Vec<_> = predicates
-        .extract_if(.., |predicate| {
-            matches!(predicate.kind().skip_binder(), ty::ClauseKind::TypeOutlives(..))
+    let outlives_clauses: Vec<_> = clauses
+        .extract_if(.., |clause| {
+            matches!(clause.kind().skip_binder(), ty::ClauseKind::TypeOutlives(..))
         })
         .collect();
 
     debug!(
         "normalize_param_env_or_error: predicates=(non-outlives={:?}, outlives={:?})",
-        predicates, outlives_predicates
+        clauses, outlives_clauses
     );
-    let Ok(non_outlives_predicates) =
-        do_normalize_predicates(tcx, cause.clone(), elaborated_env, predicates)
+    let Ok(non_outlives_clauses) =
+        do_normalize_clauses(tcx, cause.clone(), elaborated_env, clauses)
     else {
         // An unnormalized env is better than nothing.
-        debug!("normalize_param_env_or_error: errored resolving non-outlives predicates");
+        debug!("normalize_param_env_or_error: errored resolving non-outlives clauses");
         return elaborated_env;
     };
 
-    debug!("normalize_param_env_or_error: non-outlives predicates={:?}", non_outlives_predicates);
+    debug!("normalize_param_env_or_error: non-outlives clauses={:?}", non_outlives_clauses);
 
     // Not sure whether it is better to include the unnormalized TypeOutlives predicates
     // here. I believe they should not matter, because we are ignoring TypeOutlives param-env
     // predicates here anyway. Keeping them here anyway because it seems safer.
-    let outlives_env = non_outlives_predicates.iter().chain(&outlives_predicates).cloned();
+    let outlives_env = non_outlives_clauses.iter().chain(&outlives_clauses).cloned();
     let outlives_env = ty::ParamEnv::new(tcx.mk_clauses_from_iter(outlives_env));
-    let Ok(outlives_predicates) =
-        do_normalize_predicates(tcx, cause, outlives_env, outlives_predicates)
+    let Ok(outlives_clauses) = do_normalize_clauses(tcx, cause, outlives_env, outlives_clauses)
     else {
         // An unnormalized env is better than nothing.
-        debug!("normalize_param_env_or_error: errored resolving outlives predicates");
+        debug!("normalize_param_env_or_error: errored resolving outlives clauses");
         return elaborated_env;
     };
-    debug!("normalize_param_env_or_error: outlives predicates={:?}", outlives_predicates);
+    debug!("normalize_param_env_or_error: outlives clauses={:?}", outlives_clauses);
 
-    let mut predicates = non_outlives_predicates;
-    predicates.extend(outlives_predicates);
-    debug!("normalize_param_env_or_error: final predicates={:?}", predicates);
-    ty::ParamEnv::new(tcx.mk_clauses(&predicates))
+    let mut clauses = non_outlives_clauses;
+    clauses.extend(outlives_clauses);
+    debug!("normalize_param_env_or_error: final clauses={:?}", clauses);
+    ty::ParamEnv::new(tcx.mk_clauses(&clauses))
 }
 
 #[derive(Debug)]
@@ -780,12 +779,12 @@ fn replace_param_and_infer_args_with_placeholder<'tcx>(
     args.fold_with(&mut ReplaceParamAndInferWithPlaceholder { tcx, idx: ty::BoundVar::ZERO })
 }
 
-/// Normalizes the predicates and checks whether they hold in an empty environment. If this
+/// Normalizes the clauses and checks whether they hold in an empty environment. If this
 /// returns true, then either normalize encountered an error or one of the predicates did not
 /// hold. Used when creating vtables to check for unsatisfiable methods. This should not be
 /// used during analysis.
-pub fn impossible_predicates<'tcx>(tcx: TyCtxt<'tcx>, predicates: Vec<ty::Clause<'tcx>>) -> bool {
-    debug!("impossible_predicates(predicates={:?})", predicates);
+pub fn impossible_clauses<'tcx>(tcx: TyCtxt<'tcx>, clauses: Vec<ty::Clause<'tcx>>) -> bool {
+    debug!("impossible_clauses(clauses={:?})", clauses);
     let (infcx, param_env) = tcx
         .infer_ctxt()
         .with_next_trait_solver(true)
@@ -793,10 +792,10 @@ pub fn impossible_predicates<'tcx>(tcx: TyCtxt<'tcx>, predicates: Vec<ty::Clause
         .build_with_typing_env(ty::TypingEnv::fully_monomorphized());
 
     let ocx = ObligationCtxt::new(&infcx);
-    let predicates =
-        ocx.normalize(&ObligationCause::dummy(), param_env, Unnormalized::new_wip(predicates));
-    for predicate in predicates {
-        let obligation = Obligation::new(tcx, ObligationCause::dummy(), param_env, predicate);
+    let clauses =
+        ocx.normalize(&ObligationCause::dummy(), param_env, Unnormalized::new_wip(clauses));
+    for clause in clauses {
+        let obligation = Obligation::new(tcx, ObligationCause::dummy(), param_env, clause);
         ocx.register_obligation(obligation);
     }
 
@@ -814,16 +813,16 @@ pub fn impossible_predicates<'tcx>(tcx: TyCtxt<'tcx>, predicates: Vec<ty::Clause
     false
 }
 
-fn instantiate_and_check_impossible_predicates<'tcx>(
+fn instantiate_and_check_impossible_clauses<'tcx>(
     tcx: TyCtxt<'tcx>,
     key: (DefId, GenericArgsRef<'tcx>),
 ) -> bool {
-    debug!("instantiate_and_check_impossible_predicates(key={:?})", key);
+    debug!("instantiate_and_check_impossible_clauses(key={:?})", key);
 
-    let mut predicates: Vec<_> = tcx
-        .predicates_of(key.0)
+    let mut clauses: Vec<_> = tcx
+        .clauses_of(key.0)
         .instantiate(tcx, key.1)
-        .predicates
+        .clauses
         .into_iter()
         .map(Unnormalized::skip_norm_wip)
         .collect();
@@ -832,13 +831,13 @@ fn instantiate_and_check_impossible_predicates<'tcx>(
     // associated items.
     if let Some(trait_def_id) = tcx.trait_of_assoc(key.0) {
         let trait_ref = ty::TraitRef::from_assoc(tcx, trait_def_id, key.1);
-        predicates.push(trait_ref.upcast(tcx));
+        clauses.push(trait_ref.upcast(tcx));
     }
 
-    predicates.retain(|predicate| !predicate.has_param());
-    let result = impossible_predicates(tcx, predicates);
+    clauses.retain(|clause| !clause.has_param());
+    let result = impossible_clauses(tcx, clauses);
 
-    debug!("instantiate_and_check_impossible_predicates(key={:?}) = {:?}", key, result);
+    debug!("instantiate_and_check_impossible_clauses(key={:?}) = {:?}", key, result);
     result
 }
 
@@ -888,7 +887,7 @@ fn is_impossible_associated_item(
     }
 
     let generics = tcx.generics_of(trait_item_def_id);
-    let predicates = tcx.predicates_of(trait_item_def_id);
+    let gen_clauses = tcx.clauses_of(trait_item_def_id);
 
     // Be conservative in cases where we have `W<T: ?Sized>` and a method like `Self: Sized`,
     // since that method *may* have some substitutions where the predicates hold.
@@ -907,13 +906,13 @@ fn is_impossible_associated_item(
         tcx.impl_trait_ref(impl_def_id).instantiate(tcx, fresh_args).skip_norm_wip();
 
     let mut visitor = ReferencesOnlyParentGenerics { tcx, generics, trait_item_def_id };
-    let predicates_for_trait = predicates.predicates.iter().filter_map(|(pred, span)| {
-        pred.visit_with(&mut visitor).is_continue().then(|| {
+    let predicates_for_trait = gen_clauses.clauses.iter().filter_map(|(clause, span)| {
+        clause.visit_with(&mut visitor).is_continue().then(|| {
             Obligation::new(
                 tcx,
                 ObligationCause::dummy_with_span(*span),
                 param_env,
-                ty::EarlyBinder::bind(tcx, *pred)
+                ty::EarlyBinder::bind(tcx, *clause)
                     .instantiate(tcx, impl_trait_ref.args)
                     .skip_norm_wip(),
             )
@@ -932,7 +931,7 @@ pub fn provide(providers: &mut Providers) {
         specialization_graph_of: specialize::specialization_graph_provider,
         specializes: specialize::specializes,
         specialization_enabled_in: specialize::specialization_enabled_in,
-        instantiate_and_check_impossible_predicates,
+        instantiate_and_check_impossible_clauses,
         is_impossible_associated_item,
         live_args_for_alias_from_outlives_bounds:
             outlives_for_liveness::live_args_for_alias_from_outlives_bounds,

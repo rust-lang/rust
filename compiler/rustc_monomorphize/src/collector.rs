@@ -1548,7 +1548,7 @@ impl<'v> RootCollector<'_, 'v> {
 
                     // This type is impossible to instantiate, so we should not try to
                     // generate a `drop_glue` instance for it.
-                    if self.tcx.instantiate_and_check_impossible_predicates((
+                    if self.tcx.instantiate_and_check_impossible_clauses((
                         id.owner_id.to_def_id(),
                         id_args,
                     )) {
@@ -1800,8 +1800,8 @@ fn create_mono_items_for_default_impls<'tcx>(
     // Even though this impl has no type or const generic parameters, because we don't
     // consider higher-ranked predicates such as `for<'a> &'a mut [u8]: Copy` to
     // be trivially false. We must now check that the impl has no impossible-to-satisfy
-    // predicates.
-    if tcx.instantiate_and_check_impossible_predicates((item.owner_id.to_def_id(), impl_args)) {
+    // clauses.
+    if tcx.instantiate_and_check_impossible_clauses((item.owner_id.to_def_id(), impl_args)) {
         return;
     }
 

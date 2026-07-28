@@ -219,10 +219,10 @@ where
         // FIXME: We don't need these, since these are the type's own WF obligations.
         ecx.add_goals(
             GoalSource::AliasWellFormed,
-            cx.own_predicates_of(goal.predicate.alias.expect_projection_def_id().into())
+            cx.own_clauses_of(goal.predicate.alias.expect_projection_def_id().into())
                 .iter_instantiated(cx, goal.predicate.alias.args)
                 .map(Unnormalized::skip_norm_wip)
-                .map(|pred| goal.with(cx, pred)),
+                .map(|clause| goal.with(cx, clause)),
         )?;
 
         then(ecx)
@@ -285,10 +285,10 @@ where
             ecx.eq(goal.param_env, goal_trait_ref, impl_trait_ref)?;
 
             let where_clause_bounds = cx
-                .predicates_of(impl_def_id.into())
+                .clauses_of(impl_def_id.into())
                 .iter_instantiated(cx, impl_args)
                 .map(Unnormalized::skip_norm_wip)
-                .map(|pred| goal.with(cx, pred));
+                .map(|clause| goal.with(cx, clause));
             ecx.add_goals(GoalSource::ImplWhereBound, where_clause_bounds)?;
 
             // Bail if the nested goals don't hold here. This is to avoid unnecessarily
@@ -302,10 +302,10 @@ where
             // see tests/ui/generic-associated-types/must-prove-where-clauses-on-norm.rs.
             ecx.add_goals(
                 GoalSource::AliasWellFormed,
-                cx.own_predicates_of(alias_def_id.into())
+                cx.own_clauses_of(alias_def_id.into())
                     .iter_instantiated(cx, goal.predicate.alias.args)
                     .map(Unnormalized::skip_norm_wip)
-                    .map(|pred| goal.with(cx, pred)),
+                    .map(|clause| goal.with(cx, clause)),
             )?;
 
             let error_response = |ecx: &mut EvalCtxt<'_, D>, guar| {
@@ -1119,10 +1119,10 @@ where
             // target impl's params.
             self.add_goals(
                 GoalSource::Misc,
-                cx.predicates_of(target_container_def_id)
+                cx.clauses_of(target_container_def_id)
                     .iter_instantiated(cx, target_args)
                     .map(Unnormalized::skip_norm_wip)
-                    .map(|pred| goal.with(cx, pred)),
+                    .map(|clause| goal.with(cx, clause)),
             )?;
             goal.predicate.alias.args.rebase_onto(cx, impl_trait_ref.def_id.into(), target_args)
         })

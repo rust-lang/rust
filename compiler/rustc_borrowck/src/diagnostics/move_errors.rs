@@ -643,26 +643,26 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
         let closure_hir_id = tcx.local_def_id_to_hir_id(def_id.expect_local());
         let hir::Node::Expr(parent) = tcx.parent_hir_node(closure_hir_id) else { return None };
 
-        let predicates = match parent.kind {
+        let gen_clauses = match parent.kind {
             hir::ExprKind::Call(callee, _) => {
                 let ty = typeck_result.node_type_opt(callee.hir_id)?;
                 let ty::FnDef(fn_def_id, args) = *ty.kind() else { return None };
-                tcx.predicates_of(fn_def_id).instantiate(tcx, args.no_bound_vars().unwrap())
+                tcx.clauses_of(fn_def_id).instantiate(tcx, args.no_bound_vars().unwrap())
             }
             hir::ExprKind::MethodCall(..) => {
                 let (_, method) = typeck_result.type_dependent_def(parent.hir_id)?;
                 let args = typeck_result.node_args(parent.hir_id);
-                tcx.predicates_of(method).instantiate(tcx, args)
+                tcx.clauses_of(method).instantiate(tcx, args)
             }
             _ => return None,
         };
 
         // Check whether one of the where-bounds requires the closure to impl `Fn[Mut]`
         // or `AsyncFn[Mut]`.
-        for (pred, span) in predicates.predicates.iter().zip(predicates.spans.iter()) {
-            let pred = pred.skip_norm_wip();
+        for (clause, span) in gen_clauses.clauses.iter().zip(gen_clauses.spans.iter()) {
+            let clause = clause.skip_norm_wip();
             let dominated_by_fn_trait = self
-                .closure_clause_kind(pred, def_id, asyncness)
+                .closure_clause_kind(clause, def_id, asyncness)
                 .is_some_and(|kind| matches!(kind, ty::ClosureKind::Fn | ty::ClosureKind::FnMut));
             if dominated_by_fn_trait {
                 // Found `<TyOfCapturingClosure as FnMut>` or

@@ -87,8 +87,8 @@ pub trait DefIdVisitor<'tcx> {
     fn visit_trait(&mut self, trait_ref: TraitRef<'tcx>) -> Self::Result {
         self.skeleton().visit_trait(trait_ref)
     }
-    fn visit_predicates(&mut self, predicates: ty::GenericPredicates<'tcx>) -> Self::Result {
-        self.skeleton().visit_clauses(predicates.predicates)
+    fn visit_gen_clauses(&mut self, gen_clauses: ty::GenericClauses<'tcx>) -> Self::Result {
+        self.skeleton().visit_clauses(gen_clauses.clauses)
     }
     fn visit_clauses(&mut self, clauses: &[(ty::Clause<'tcx>, Span)]) -> Self::Result {
         self.skeleton().visit_clauses(clauses)
@@ -563,7 +563,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
         let def_id = item.def_id.expect_local();
         let tcx = self.tcx;
         let mut reach = self.reach(def_id, item_ev);
-        reach.generics().predicates();
+        reach.generics().clauses();
         if assoc_has_type_of(tcx, item) {
             reach.ty();
         }
@@ -590,12 +590,12 @@ impl<'tcx> EmbargoVisitor<'tcx> {
             | DefKind::Fn
             | DefKind::TyAlias => {
                 if let Some(item_ev) = item_ev {
-                    self.reach(def_id, item_ev).generics().predicates().ty();
+                    self.reach(def_id, item_ev).generics().clauses().ty();
                 }
             }
             DefKind::Trait => {
                 if let Some(item_ev) = item_ev {
-                    self.reach(def_id, item_ev).generics().predicates();
+                    self.reach(def_id, item_ev).generics().clauses();
 
                     for assoc_item in self.tcx.associated_items(def_id).in_definition_order() {
                         let def_id = assoc_item.def_id.expect_local();
@@ -607,7 +607,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
             }
             DefKind::TraitAlias => {
                 if let Some(item_ev) = item_ev {
-                    self.reach(def_id, item_ev).generics().predicates();
+                    self.reach(def_id, item_ev).generics().clauses();
                 }
             }
             DefKind::Impl { of_trait } => {
@@ -632,7 +632,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
 
                 {
                     let mut reach = self.reach(def_id, item_ev);
-                    reach.generics().predicates().ty();
+                    reach.generics().clauses().ty();
                     if of_trait {
                         reach.trait_ref();
                     }
@@ -651,7 +651,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
             }
             DefKind::Enum => {
                 if let Some(item_ev) = item_ev {
-                    self.reach(def_id, item_ev).generics().predicates();
+                    self.reach(def_id, item_ev).generics().clauses();
                 }
                 let def = self.tcx.adt_def(def_id);
                 for variant in def.variants() {
@@ -683,7 +683,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
             DefKind::Struct | DefKind::Union => {
                 let def = self.tcx.adt_def(def_id).non_enum_variant();
                 if let Some(item_ev) = item_ev {
-                    self.reach(def_id, item_ev).generics().predicates();
+                    self.reach(def_id, item_ev).generics().clauses();
                     for field in &def.fields {
                         let field = field.did.expect_local();
                         self.update(field, item_ev, Level::Reachable);
@@ -740,8 +740,8 @@ impl ReachEverythingInTheInterfaceVisitor<'_, '_> {
         self
     }
 
-    fn predicates(&mut self) -> &mut Self {
-        self.visit_predicates(self.ev.tcx.explicit_predicates_of(self.item_def_id));
+    fn clauses(&mut self) -> &mut Self {
+        self.visit_gen_clauses(self.ev.tcx.explicit_clauses_of(self.item_def_id));
         self
     }
 
@@ -1377,15 +1377,15 @@ impl SearchInterfaceForPrivateItemsVisitor<'_> {
         self
     }
 
-    fn predicates(&mut self) -> &mut Self {
+    fn clauses(&mut self) -> &mut Self {
         self.in_primary_interface = false;
-        // N.B., we use `explicit_predicates_of` and not `predicates_of`
+        // N.B., we use `explicit_clauses_of` and not `clauses_of`
         // because we don't want to report privacy errors due to where
         // clauses that the compiler inferred. We only want to
         // consider the ones that the user wrote. This is important
         // for the inferred outlives rules; see
         // `tests/ui/rfc-2093-infer-outlives/privacy.rs`.
-        let _ = self.visit_predicates(self.tcx.explicit_predicates_of(self.item_def_id));
+        let _ = self.visit_gen_clauses(self.tcx.explicit_clauses_of(self.item_def_id));
         self
     }
 
@@ -1584,7 +1584,7 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'_, 'tcx> {
 
         let is_assoc_ty = item.is_type();
         check.hard_error = is_assoc_ty;
-        check.generics().predicates();
+        check.generics().clauses();
         if assoc_has_type_of(self.tcx, item) {
             check.ty();
         }
@@ -1612,7 +1612,7 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'_, 'tcx> {
                 if let DefKind::TyAlias = def_kind {
                     self.check_unnameable(def_id, effective_vis);
                 }
-                self.check(def_id, item_visibility, effective_vis).generics().predicates().ty();
+                self.check(def_id, item_visibility, effective_vis).generics().clauses().ty();
             }
             DefKind::OpaqueTy => {
                 // `ty()` for opaque types is the underlying type,
@@ -1622,18 +1622,18 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'_, 'tcx> {
             DefKind::Trait => {
                 self.check_unnameable(def_id, effective_vis);
 
-                self.check(def_id, item_visibility, effective_vis).generics().predicates();
+                self.check(def_id, item_visibility, effective_vis).generics().clauses();
 
                 for assoc_item in tcx.associated_items(id.owner_id).in_definition_order() {
                     self.check_assoc_item(assoc_item, item_visibility, effective_vis);
                 }
             }
             DefKind::TraitAlias => {
-                self.check(def_id, item_visibility, effective_vis).generics().predicates();
+                self.check(def_id, item_visibility, effective_vis).generics().clauses();
             }
             DefKind::Enum => {
                 self.check_unnameable(def_id, effective_vis);
-                self.check(def_id, item_visibility, effective_vis).generics().predicates();
+                self.check(def_id, item_visibility, effective_vis).generics().clauses();
 
                 let adt = tcx.adt_def(id.owner_id);
                 for field in adt.all_fields() {
@@ -1643,7 +1643,7 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'_, 'tcx> {
             // Subitems of structs and unions have their own publicity.
             DefKind::Struct | DefKind::Union => {
                 self.check_unnameable(def_id, effective_vis);
-                self.check(def_id, item_visibility, effective_vis).generics().predicates();
+                self.check(def_id, item_visibility, effective_vis).generics().clauses();
 
                 let adt = tcx.adt_def(id.owner_id);
                 for field in adt.all_fields() {
@@ -1683,10 +1683,10 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'_, 'tcx> {
 
                 let mut check = self.check(def_id, impl_vis, Some(impl_ev));
 
-                // Generics and predicates of trait impls are intentionally not checked
+                // Generics and clauses of trait impls are intentionally not checked
                 // for private components (#90586).
                 if !of_trait {
-                    check.generics().predicates();
+                    check.generics().clauses();
                 }
 
                 // Skip checking private components in associated types, due to lack of full
@@ -1729,7 +1729,7 @@ impl<'tcx> PrivateItemsInPublicInterfacesChecker<'_, 'tcx> {
             self.check_unnameable(def_id, effective_vis);
         }
 
-        self.check(def_id, item_visibility, effective_vis).generics().predicates().ty();
+        self.check(def_id, item_visibility, effective_vis).generics().clauses().ty();
     }
 }
 
@@ -1825,11 +1825,7 @@ fn effective_visibilities(tcx: TyCtxt<'_>, (): ()) -> &EffectiveVisibilities {
                 // in the reachability pass (`middle/reachable.rs`). Types are marked as link-time
                 // reachable if they are returned via `impl Trait`, even from private functions.
                 let pub_ev = EffectiveVisibility::from_vis(ty::Visibility::Public);
-                visitor
-                    .reach_through_impl_trait(opaque.def_id, pub_ev)
-                    .generics()
-                    .predicates()
-                    .ty();
+                visitor.reach_through_impl_trait(opaque.def_id, pub_ev).generics().clauses().ty();
             }
         }
 
