@@ -3016,3 +3016,15 @@ fn f(s: S) { s.m(); }
     "#,
     );
 }
+
+#[test]
+fn regression_22799() {
+    check_no_mismatches(
+        r#"
+struct S;
+fn f() {
+    <S as S>::S;
+}
+    "#,
+    );
+}
