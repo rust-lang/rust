@@ -1466,12 +1466,12 @@ impl TraitDecl {
         with(|cx| cx.generics_of(self.def_id.0))
     }
 
-    pub fn predicates_of(&self) -> GenericPredicates {
-        with(|cx| cx.predicates_of(self.def_id.0))
+    pub fn clauses_of(&self) -> GenericClauses {
+        with(|cx| cx.clauses_of(self.def_id.0))
     }
 
-    pub fn explicit_predicates_of(&self) -> GenericPredicates {
-        with(|cx| cx.explicit_predicates_of(self.def_id.0))
+    pub fn explicit_clauses_of(&self) -> GenericClauses {
+        with(|cx| cx.explicit_clauses_of(self.def_id.0))
     }
 }
 
@@ -1550,9 +1550,9 @@ pub struct GenericParamDef {
     pub kind: GenericParamDefKind,
 }
 
-pub struct GenericPredicates {
+pub struct GenericClauses {
     pub parent: Option<TraitDef>,
-    pub predicates: Vec<(PredicateKind, Span)>,
+    pub clauses: Vec<(ClauseKind, Span)>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]

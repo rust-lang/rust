@@ -2875,49 +2875,50 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         cause: &ObligationCauseCode<'tcx>,
         err: &mut Diag<'_>,
     ) {
-        // First, look for an `WhereClauseInExpr`, which means we can get
+        // First, look for a `WhereClauseInExpr`, which means we can get
         // the uninstantiated predicate list of the called function. And check
         // that the predicate that we failed to satisfy is a `Fn`-like trait.
         if let ObligationCauseCode::WhereClauseInExpr(def_id, _, _, idx) = *cause
-            && let predicates = self.tcx.predicates_of(def_id).instantiate_identity(self.tcx)
-            && let Some(pred) = predicates.predicates.get(idx).map(|p| p.as_ref().skip_norm_wip())
-            && let ty::ClauseKind::Trait(trait_pred) = pred.kind().skip_binder()
+            && let gen_clauses = self.tcx.clauses_of(def_id).instantiate_identity(self.tcx)
+            && let Some(clause) = gen_clauses.clauses.get(idx).map(|c| c.as_ref().skip_norm_wip())
+            && let ty::ClauseKind::Trait(trait_pred) = clause.kind().skip_binder()
             && self.tcx.is_fn_trait(trait_pred.def_id())
         {
             let expected_self =
-                self.tcx.anonymize_bound_vars(pred.kind().rebind(trait_pred.self_ty()));
+                self.tcx.anonymize_bound_vars(clause.kind().rebind(trait_pred.self_ty()));
             let expected_args =
-                self.tcx.anonymize_bound_vars(pred.kind().rebind(trait_pred.trait_ref.args));
+                self.tcx.anonymize_bound_vars(clause.kind().rebind(trait_pred.trait_ref.args));
 
-            // Find another predicate whose self-type is equal to the expected self type,
+            // Find another clause whose self-type is equal to the expected self type,
             // but whose args don't match.
-            let other_pred = predicates.into_iter().enumerate().find(|&(other_idx, (pred, _))| {
-                let pred = pred.skip_norm_wip();
-                match pred.kind().skip_binder() {
-                    ty::ClauseKind::Trait(trait_pred)
-                        if self.tcx.is_fn_trait(trait_pred.def_id())
+            let other_clause =
+                gen_clauses.into_iter().enumerate().find(|&(other_idx, (clause, _))| {
+                    let clause = clause.skip_norm_wip();
+                    match clause.kind().skip_binder() {
+                        ty::ClauseKind::Trait(trait_pred)
+                            if self.tcx.is_fn_trait(trait_pred.def_id())
                             && other_idx != idx
                             // Make sure that the self type matches
                             // (i.e. constraining this closure)
                             && expected_self
                                 == self.tcx.anonymize_bound_vars(
-                                    pred.kind().rebind(trait_pred.self_ty()),
+                                    clause.kind().rebind(trait_pred.self_ty()),
                                 )
                             // But the args don't match (i.e. incompatible args)
                             && expected_args
                                 != self.tcx.anonymize_bound_vars(
-                                    pred.kind().rebind(trait_pred.trait_ref.args),
+                                    clause.kind().rebind(trait_pred.trait_ref.args),
                                 ) =>
-                    {
-                        true
+                        {
+                            true
+                        }
+                        _ => false,
                     }
-                    _ => false,
-                }
-            });
+                });
             // If we found one, then it's very likely the cause of the error.
-            if let Some((_, (_, other_pred_span))) = other_pred {
+            if let Some((_, (_, other_clause_span))) = other_clause {
                 err.span_note(
-                    other_pred_span,
+                    other_clause_span,
                     "closure inferred to have a different signature due to this bound",
                 );
             }
@@ -4897,9 +4898,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             let mut type_diffs = vec![];
             if let ObligationCauseCode::WhereClauseInExpr(def_id, _, _, idx) = *parent_code
                 && let Some(node_args) = typeck_results.node_args_opt(call_hir_id)
-                && let where_clauses =
-                    self.tcx.predicates_of(def_id).instantiate(self.tcx, node_args)
-                && let Some(where_pred) = where_clauses.predicates.get(idx)
+                && let where_clauses = self.tcx.clauses_of(def_id).instantiate(self.tcx, node_args)
+                && let Some(where_pred) = where_clauses.clauses.get(idx)
             {
                 let where_pred = where_pred.as_ref().skip_norm_wip();
                 if let Some(where_pred) = where_pred.as_trait_clause()

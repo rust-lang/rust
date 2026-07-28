@@ -425,19 +425,19 @@ fn clean_where_predicate<'tcx>(
     })
 }
 
-pub(crate) fn clean_predicate<'tcx>(
-    predicate: ty::Clause<'tcx>,
+pub(crate) fn clean_clause<'tcx>(
+    clause: ty::Clause<'tcx>,
     cx: &mut DocContext<'tcx>,
 ) -> Option<WherePredicate> {
-    let bound_predicate = predicate.kind();
-    match bound_predicate.skip_binder() {
-        ty::ClauseKind::Trait(pred) => clean_poly_trait_predicate(bound_predicate.rebind(pred), cx),
+    let bound_clause = clause.kind();
+    match bound_clause.skip_binder() {
+        ty::ClauseKind::Trait(pred) => clean_poly_trait_predicate(bound_clause.rebind(pred), cx),
         ty::ClauseKind::RegionOutlives(pred) => Some(clean_region_outlives_predicate(pred, cx.tcx)),
         ty::ClauseKind::TypeOutlives(pred) => {
-            Some(clean_type_outlives_predicate(bound_predicate.rebind(pred), cx))
+            Some(clean_type_outlives_predicate(bound_clause.rebind(pred), cx))
         }
         ty::ClauseKind::Projection(pred) => {
-            Some(clean_projection_predicate(bound_predicate.rebind(pred), cx))
+            Some(clean_projection_predicate(bound_clause.rebind(pred), cx))
         }
         // FIXME(generic_const_exprs): should this do something?
         ty::ClauseKind::ConstEvaluatable(..)
@@ -855,13 +855,13 @@ pub(crate) fn clean_generics<'tcx>(
 }
 
 fn clean_ty_generics<'tcx>(cx: &mut DocContext<'tcx>, def_id: DefId) -> Generics {
-    clean_ty_generics_inner(cx, cx.tcx.generics_of(def_id), cx.tcx.explicit_predicates_of(def_id))
+    clean_ty_generics_inner(cx, cx.tcx.generics_of(def_id), cx.tcx.explicit_clauses_of(def_id))
 }
 
 fn clean_ty_generics_inner<'tcx>(
     cx: &mut DocContext<'tcx>,
     gens: &ty::Generics,
-    preds: ty::GenericPredicates<'tcx>,
+    gen_clauses: ty::GenericClauses<'tcx>,
 ) -> Generics {
     // Don't populate `cx.impl_trait_bounds` before cleaning where clauses,
     // since `clean_predicate` would consume them.
@@ -892,14 +892,14 @@ fn clean_ty_generics_inner<'tcx>(
     let mut impl_trait_proj =
         FxHashMap::<u32, Vec<(DefId, PathSegment, ty::Binder<'_, ty::Term<'_>>)>>::default();
 
-    let where_predicates = preds
-        .predicates
+    let where_clauses = gen_clauses
+        .clauses
         .iter()
-        .flat_map(|(pred, _)| {
+        .flat_map(|(clause, _)| {
             let mut proj_pred = None;
             let param_idx = {
-                let bound_p = pred.kind();
-                match bound_p.skip_binder() {
+                let bound_c = clause.kind();
+                match bound_c.skip_binder() {
                     ty::ClauseKind::Trait(pred) if let ty::Param(param) = pred.self_ty().kind() => {
                         Some(param.index)
                     }
@@ -911,7 +911,7 @@ fn clean_ty_generics_inner<'tcx>(
                     ty::ClauseKind::Projection(p)
                         if let ty::Param(param) = p.projection_term.self_ty().kind() =>
                     {
-                        proj_pred = Some(bound_p.rebind(p));
+                        proj_pred = Some(bound_c.rebind(p));
                         Some(param.index)
                     }
                     _ => None,
@@ -921,9 +921,9 @@ fn clean_ty_generics_inner<'tcx>(
             if let Some(param_idx) = param_idx
                 && let Some(bounds) = impl_trait.get_mut(&param_idx)
             {
-                let pred = clean_predicate(*pred, cx)?;
+                let clause = clean_clause(*clause, cx)?;
 
-                bounds.extend(pred.get_bounds().into_iter().flatten().cloned());
+                bounds.extend(clause.get_bounds().into_iter().flatten().cloned());
 
                 if let Some(pred) = proj_pred {
                     let lhs = clean_projection(pred.map_bound(|p| p.projection_term), cx, None);
@@ -937,7 +937,7 @@ fn clean_ty_generics_inner<'tcx>(
                 return None;
             }
 
-            Some(pred)
+            Some(clause)
         })
         .collect::<Vec<_>>();
 
@@ -980,8 +980,7 @@ fn clean_ty_generics_inner<'tcx>(
 
     // Now that `cx.impl_trait_bounds` is populated, we can process
     // remaining predicates which could contain `impl Trait`.
-    let where_predicates =
-        where_predicates.into_iter().flat_map(|p| clean_predicate(*p, cx)).collect();
+    let where_predicates = where_clauses.into_iter().flat_map(|c| clean_clause(*c, cx)).collect();
 
     let mut generics = Generics { params, where_predicates };
     simplify::sizedness_bounds(cx, &mut generics);
@@ -1469,18 +1468,18 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
                 }
             }
 
-            let mut predicates = tcx.explicit_predicates_of(assoc_item.def_id).predicates;
+            let mut clauses = tcx.explicit_clauses_of(assoc_item.def_id).clauses;
             if let ty::AssocContainer::Trait = assoc_item.container {
                 let bounds = tcx
                     .explicit_item_bounds(assoc_item.def_id)
                     .iter_identity_copied()
                     .map(Unnormalized::skip_norm_wip);
-                predicates = tcx.arena.alloc_from_iter(bounds.chain(predicates.iter().copied()));
+                clauses = tcx.arena.alloc_from_iter(bounds.chain(clauses.iter().copied()));
             }
             let mut generics = clean_ty_generics_inner(
                 cx,
                 tcx.generics_of(assoc_item.def_id),
-                ty::GenericPredicates { parent: None, predicates },
+                ty::GenericClauses { parent: None, clauses },
             );
             simplify::move_bounds_to_generic_parameters(&mut generics);
 

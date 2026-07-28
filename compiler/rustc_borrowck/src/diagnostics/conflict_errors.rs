@@ -671,7 +671,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
     ) -> Option<ty::Mutability> {
         let tcx = self.infcx.tcx;
         let sig = tcx.fn_sig(callee_did).instantiate_identity().skip_binder();
-        let clauses = tcx.predicates_of(callee_did);
+        let clauses = tcx.clauses_of(callee_did);
 
         let generic_args = match call_expr.kind {
             // For method calls, generic arguments are attached to the call node.
@@ -688,7 +688,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
 
         // First, is there at least one method on one of `param`'s trait bounds?
         // This keeps us from suggesting borrowing the argument to `mem::drop`, e.g.
-        if !clauses.instantiate_identity(tcx).predicates.iter().any(|clause| {
+        if !clauses.instantiate_identity(tcx).clauses.iter().any(|clause| {
             clause.as_trait_clause().is_some_and(|tc| {
                 tc.self_ty().skip_binder().is_param(param.index)
                     && tc.polarity() == ty::PredicatePolarity::Positive
@@ -738,8 +738,8 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                 return false;
             }
 
-            // Test the callee's predicates, substituting in `ref_ty` for the moved argument type.
-            clauses.instantiate(tcx, new_args).predicates.iter().all(|clause| {
+            // Test the callee's clauses, substituting in `ref_ty` for the moved argument type.
+            clauses.instantiate(tcx, new_args).clauses.iter().all(|clause| {
                 // Normalize before testing to see through type aliases and projections.
                 let normalized = tcx
                     .try_normalize_erasing_regions(

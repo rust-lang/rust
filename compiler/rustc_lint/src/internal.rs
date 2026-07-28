@@ -129,19 +129,22 @@ fn has_unstable_into_iter_predicate<'tcx>(
     let Some(into_iter_fn_def_id) = cx.tcx.lang_items().into_iter_fn() else {
         return false;
     };
-    let predicates = cx.tcx.predicates_of(callee_def_id).instantiate(cx.tcx, generic_args);
-    for (predicate, _) in predicates {
-        let Some(trait_pred) = predicate.as_trait_clause() else {
+    let clauses = cx.tcx.clauses_of(callee_def_id).instantiate(cx.tcx, generic_args);
+    for (clause, _) in clauses {
+        let Some(trait_clause) = clause.as_trait_clause() else {
             continue;
         };
-        if trait_pred.def_id() != into_iterator_def_id
-            || trait_pred.polarity() != PredicatePolarity::Positive
+        if trait_clause.def_id() != into_iterator_def_id
+            || trait_clause.polarity() != PredicatePolarity::Positive
         {
             continue;
         }
         // `IntoIterator::into_iter` has no additional method args.
-        let into_iter_fn_args =
-            cx.tcx.instantiate_bound_regions_with_erased(trait_pred.skip_norm_wip()).trait_ref.args;
+        let into_iter_fn_args = cx
+            .tcx
+            .instantiate_bound_regions_with_erased(trait_clause.skip_norm_wip())
+            .trait_ref
+            .args;
         let Ok(Some(instance)) = ty::Instance::try_resolve(
             cx.tcx,
             cx.typing_env(),

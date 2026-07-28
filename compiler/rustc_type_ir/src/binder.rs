@@ -666,7 +666,7 @@ impl<I: Interner, T: TypeFoldable<I>> ty::EarlyBinder<I, T> {
         // is unnecessary. We may want to track explicitly whether `EarlyBinder`
         // contains something that has been normalized already.
         // Also do that for other types who have `instantiate_identity` method,
-        // e.g., `GenericPredicates` and `ConstConditions`.
+        // e.g., `GenericClauses` and `ConstConditions`.
         //
         // This is annoying, as e.g. `type_of` for opaque types is normalized,
         // while `type_of` for free type aliases is not.

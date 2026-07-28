@@ -3,7 +3,7 @@ use clippy_utils::mir::{LocalUsage, PossibleBorrowerMap, visit_local_usage};
 use clippy_utils::res::MaybeDef;
 use clippy_utils::source::SpanExt;
 use clippy_utils::ty::{has_drop, is_copy, peel_and_count_ty_refs};
-use clippy_utils::{fn_has_unsatisfiable_preds, sym};
+use clippy_utils::{fn_has_unsatisfiable_clauses, sym};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, FnDecl, LangItem, def_id};
@@ -74,7 +74,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
         def_id: LocalDefId,
     ) {
         // Building MIR for `fn`s with unsatisfiable preds results in ICE.
-        if fn_has_unsatisfiable_preds(cx, def_id.to_def_id()) {
+        if fn_has_unsatisfiable_clauses(cx, def_id.to_def_id()) {
             return;
         }
 

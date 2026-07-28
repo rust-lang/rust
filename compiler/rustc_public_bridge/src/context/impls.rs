@@ -214,31 +214,22 @@ impl<'tcx, B: Bridge> CompilerCtxt<'tcx, B> {
         self.tcx.generics_of(def_id)
     }
 
-    pub fn predicates_of(
-        &self,
-        def_id: DefId,
-    ) -> (Option<DefId>, Vec<(ty::PredicateKind<'tcx>, Span)>) {
-        let ty::GenericPredicates { parent, predicates } = self.tcx.predicates_of(def_id);
+    pub fn clauses_of(&self, def_id: DefId) -> (Option<DefId>, Vec<(ty::ClauseKind<'tcx>, Span)>) {
+        let ty::GenericClauses { parent, clauses } = self.tcx.clauses_of(def_id);
         (
             parent,
-            predicates
-                .iter()
-                .map(|(clause, span)| (clause.as_predicate().kind().skip_binder(), *span))
-                .collect(),
+            clauses.iter().map(|(clause, span)| (clause.kind().skip_binder(), *span)).collect(),
         )
     }
 
-    pub fn explicit_predicates_of(
+    pub fn explicit_clauses_of(
         &self,
         def_id: DefId,
-    ) -> (Option<DefId>, Vec<(ty::PredicateKind<'tcx>, Span)>) {
-        let ty::GenericPredicates { parent, predicates } = self.tcx.explicit_predicates_of(def_id);
+    ) -> (Option<DefId>, Vec<(ty::ClauseKind<'tcx>, Span)>) {
+        let ty::GenericClauses { parent, clauses } = self.tcx.explicit_clauses_of(def_id);
         (
             parent,
-            predicates
-                .iter()
-                .map(|(clause, span)| (clause.as_predicate().kind().skip_binder(), *span))
-                .collect(),
+            clauses.iter().map(|(clause, span)| (clause.kind().skip_binder(), *span)).collect(),
         )
     }
 

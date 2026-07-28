@@ -320,22 +320,22 @@ pub trait Interner:
         def_id: Self::DefId,
     ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>>;
 
-    fn predicates_of(
+    fn clauses_of(
         self,
         def_id: Self::DefId,
     ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>>;
 
-    fn own_predicates_of(
+    fn own_clauses_of(
         self,
         def_id: Self::DefId,
     ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = Self::Clause>>;
 
-    fn explicit_super_predicates_of(
+    fn explicit_super_clauses_of(
         self,
         def_id: Self::TraitId,
     ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = (Self::Clause, Self::Span)>>;
 
-    fn explicit_implied_predicates_of(
+    fn explicit_implied_clauses_of(
         self,
         def_id: Self::DefId,
     ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = (Self::Clause, Self::Span)>>;
