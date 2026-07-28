@@ -264,7 +264,7 @@ error: fn_abi_of(test_generic) = FnAbi {
 LL | fn test_generic<T>(_x: *const T) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: `#[rustc_abi]` can only be applied to function items, type aliases, and associated functions
+error: the `rustc_abi` attribute can only be applied to function items, type aliases, and associated functions
   --> $DIR/debug.rs:43:1
    |
 LL | const C: () = ();
@@ -845,7 +845,7 @@ LL | type TestAbiEqNonsense = (fn((str, str)), fn((str, str)));
    = help: the trait `Sized` is not implemented for `str`
    = note: only the last element of a tuple may have a dynamically sized type
 
-error: `#[rustc_abi]` can only be applied to function items, type aliases, and associated functions
+error: the `rustc_abi` attribute can only be applied to function items, type aliases, and associated functions
   --> $DIR/debug.rs:47:5
    |
 LL |     const C: () = ();
