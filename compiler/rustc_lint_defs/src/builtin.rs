@@ -2298,7 +2298,43 @@ declare_lint! {
     ///
     /// See [RFC 2093] for more details.
     ///
+    /// > [!NOTE]
+    /// > This lint intentionally doesn't get emitted for explicit outlives-bounds on type
+    /// > parameters that aren't bounded by `Sized` (unless they're higher-ranked) since unlike
+    /// > implicit outlives-bounds these may affect the implicit lifetime bound of trait object
+    /// > types that are passed as arguments to the overarching struct, enum or union.
+    /// >
+    /// > Rephrased, they participate in [trait object lifetime defaulting][TOLD].
+    /// >
+    /// > Consider the following piece of code where removing bound `T: 'a` would lead to a lifetime
+    /// > error in function `scope`:
+    /// >
+    /// > ```rust,no_run
+    /// > struct Ref<'a, T: ?Sized + 'a>(&'a T);
+    /// >
+    /// > fn scope() {
+    /// >     let buf = String::new();
+    /// >     let str = buf.as_str();
+    /// >     render(Ref(&str));
+    /// > }
+    /// >
+    /// > fn render(_: Ref<dyn std::fmt::Display>) {}
+    /// > ```
+    /// >
+    /// > Due to the explicit outlives-bound the function `render` above is equivalent to:
+    /// >
+    /// > ```rust,ignore (incomplete)
+    /// > fn render<'r>(_: Ref<'r, dyn std::fmt::Display + 'r>) {}
+    /// > ```
+    /// >
+    /// > If it wasn't for that explicit bound then the function would mean the following instead:
+    /// >
+    /// > ```rust,ignore (incomplete)
+    /// > fn render<'r>(_: Ref<'r, dyn std::fmt::Display + 'static>) {}
+    /// > ```
+    ///
     /// [RFC 2093]: https://github.com/rust-lang/rfcs/blob/master/text/2093-infer-outlives.md
+    /// [TOLD]: https://doc.rust-lang.org/reference/lifetime-elision.html#default-trait-object-lifetimes
     pub EXPLICIT_OUTLIVES_REQUIREMENTS,
     Allow,
     "outlives requirements can be inferred"
