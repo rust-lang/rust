@@ -1,8 +1,8 @@
-error: `#[diagnostic::on_const]` can only be applied to non-const trait implementations
-  --> $DIR/misplaced_attr.rs:8:1
+error: the `diagnostic::on_const` attribute can only be applied to non-const trait implementations
+  --> $DIR/misplaced_attr.rs:8:3
    |
 LL | #[diagnostic::on_const(message = "tadaa", note = "boing")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^^^^
 LL |
 LL | const impl PartialEq for Foo {
    | ---------------------------- this is a const trait implementation
