@@ -47,6 +47,7 @@
 #![allow(nonstandard_style)]
 
 use alloc::boxed::Box;
+use alloc::panicking::PanicPayload;
 use core::any::Any;
 use core::ffi::{c_int, c_uint, c_void};
 use core::mem::ManuallyDrop;
@@ -298,8 +299,8 @@ cfg_select! {
    }
 }
 
-pub(crate) unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
-    unsafe { throw_exception(Some(data)) }
+pub(crate) fn panic(data: &mut dyn PanicPayload) -> u32 {
+    unsafe { throw_exception(Some(data.take_box())) }
 }
 
 unsafe fn throw_exception(data: Option<Box<dyn Any + Send>>) -> ! {
