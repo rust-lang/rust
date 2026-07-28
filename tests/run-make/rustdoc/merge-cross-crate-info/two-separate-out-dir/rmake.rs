@@ -3,9 +3,6 @@
 use run_make_support::{cwd, htmldocck, path, rust_lib_name, rustc, rustdoc};
 
 fn main() {
-    let merged_dir = path("merged");
-    let parts_out_dir = path("parts");
-    let lib_dir = path("lib");
     let out_dir = path("out");
     let alt_out_dir = path("alt-out");
 
@@ -27,14 +24,13 @@ fn main() {
         .arg("--write-doc-meta-dir=info/doc.parts/echo")
         .run();
 
-    let output = rustdoc()
+    rustdoc()
         .arg("-Zunstable-options")
         .out_dir(&out_dir)
         .arg("--read-doc-meta-dir=info/doc.parts/echo")
         .arg("--read-doc-meta-dir=info/doc.parts/foxtrot")
         .arg("--enable-index-page")
         .run();
-    output.assert_stderr_not_contains("error: the compiler unexpectedly panicked. this is a bug.");
 
     htmldocck().arg(&out_dir).arg("echo.rs").run();
 }

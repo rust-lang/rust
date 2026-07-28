@@ -3,9 +3,6 @@
 use run_make_support::{cwd, htmldocck, path, rust_lib_name, rustc, rustdoc};
 
 fn main() {
-    let merged_dir = path("merged");
-    let parts_out_dir = path("parts");
-    let lib_dir = path("lib");
     let out_dir = path("out");
 
     rustc().input("quebec.rs").crate_name("quebec").crate_type("rlib").run();

@@ -15,13 +15,12 @@ fn main() {
         .run();
     assert!(parts_out_dir.join("quebec.json").exists());
 
-    let output = rustdoc()
+    rustdoc()
         .arg("-Zunstable-options")
         .out_dir(&out_dir)
         .arg(format!("--read-doc-meta-dir={}", parts_out_dir.display()))
         .arg("--enable-index-page")
         .run();
-    output.assert_stderr_not_contains("error: the compiler unexpectedly panicked. this is a bug.");
 
     htmldocck().arg(&out_dir).arg("quebec.rs").run();
 }

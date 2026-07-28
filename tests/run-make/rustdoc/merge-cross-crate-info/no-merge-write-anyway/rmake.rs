@@ -3,9 +3,6 @@
 use run_make_support::{cwd, htmldocck, path, rfs, rust_lib_name, rustc, rustdoc};
 
 fn main() {
-    let merged_dir = path("merged");
-    let parts_out_dir = path("parts");
-    let lib_dir = path("lib");
     let out_dir = path("out");
 
     rustc().input("quebec.rs").crate_name("quebec").crate_type("rlib").run();
@@ -14,7 +11,9 @@ fn main() {
         .crate_name("quebec")
         .out_dir(&out_dir)
         .arg("-Zunstable-options")
-        .arg("--write-doc-meta-dir=parts-wrong")
+        // all these invocations of rustdoc write the parts,
+        // but none of them ever reads them
+        .arg("--write-doc-meta-dir=parts-unused")
         .run();
 
     rustc()
@@ -29,7 +28,7 @@ fn main() {
         .extern_("quebec", rust_lib_name("quebec"))
         .out_dir(&out_dir)
         .arg("-Zunstable-options")
-        .arg("--write-doc-meta-dir=parts-wrong")
+        .arg("--write-doc-meta-dir=parts-unused")
         .run();
 
     rustdoc()
@@ -39,7 +38,7 @@ fn main() {
         .library_search_path(cwd())
         .out_dir(&out_dir)
         .arg("-Zunstable-options")
-        .arg("--write-doc-meta-dir=parts-wrong")
+        .arg("--write-doc-meta-dir=parts-unused")
         .run();
 
     htmldocck().arg(&out_dir).arg("sierra.rs").run();
