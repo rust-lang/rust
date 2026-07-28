@@ -820,7 +820,7 @@ unsafe fn write_quad(buf: &mut [MaybeUninit<u8>], offset: usize, quad: u64) {
     // SAFETY: These are this function's caller-provided invariants.
     unsafe {
         core::hint::assert_unchecked(quad < 10_000);
-        core::hint::assert_unchecked(offset <= buf.len() - 4);
+        core::hint::assert_unchecked(offset + 4 <= buf.len());
     }
 
     // For the documented range, ceil(2^19 / 100) gives an exact quotiet.
@@ -851,7 +851,7 @@ fn enc_16lsd<const OFFSET: usize>(buf: &mut [MaybeUninit<u8>], n: u64) {
     // and every used `OFFSET` specialization reserves sixteen bytes in `buf`.
     unsafe {
         core::hint::assert_unchecked(n < 10_000_000_000_000_000);
-        core::hint::assert_unchecked(OFFSET <= buf.len() - 16);
+        core::hint::assert_unchecked(OFFSET + 16 <= buf.len());
     }
 
     // Peel four digits at a time from right to left (12345678 -> 1234 | 5678).
