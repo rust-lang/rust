@@ -30,6 +30,7 @@ use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
+use rustc_session::Session;
 use rustc_span::Symbol;
 use rustc_span::def_id::DefId;
 use serde::de::DeserializeOwned;
@@ -112,7 +113,7 @@ pub(crate) fn write_shared(
             &cx.shared.resource_suffix,
             cx.info.include_sources,
             &cx.shared.layout,
-            cx.shared.tcx,
+            cx.sess(),
         )?;
     }
 
@@ -132,7 +133,7 @@ pub(crate) fn write_not_crate_specific(
     resource_suffix: &str,
     include_sources: bool,
     layout: &layout::Layout,
-    tcx: TyCtxt<'_>,
+    sess: &Session,
 ) -> Result<(), Error> {
     write_rendered_cross_crate_info(crates, dst, opt, include_sources, resource_suffix)?;
     write_resources(dst, opt, style_files, css_file_extension, resource_suffix)?;
@@ -141,11 +142,8 @@ pub(crate) fn write_not_crate_specific(
             let mut md_opts = opt.clone();
             md_opts.output = dst.to_path_buf();
             md_opts.external_html = layout.external_html.clone();
-            let file = try_err!(tcx.sess.source_map().load_file(&index_page), &index_page);
-            try_err!(
-                crate::markdown::render_and_write(file, md_opts, tcx.sess.edition()),
-                &index_page
-            );
+            let file = try_err!(sess.source_map().load_file(&index_page), &index_page);
+            try_err!(crate::markdown::render_and_write(file, md_opts, sess.edition()), &index_page);
         }
         None if opt.enable_index_page => {
             write_rendered_cci::<CratesIndexPart, _>(

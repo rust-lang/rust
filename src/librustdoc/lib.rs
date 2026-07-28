@@ -773,50 +773,41 @@ fn run_renderer<
 /// we can run rustdoc without a crate root in the `--merge=finalize` mode. Cross-crate info files
 /// discovered via `--read-doc-meta-dir` are combined and written to the doc root.
 fn run_merge_finalize(
-    opt: config::RenderOptions,
+    render_options: config::RenderOptions,
     compiler: &interface::Compiler,
 ) -> Result<(), error::Error> {
     assert!(
-        opt.should_merge.write_rendered_cci,
+        render_options.should_merge.write_rendered_cci,
         "config.rs only allows us to return InputMode::NoInputMergeFinalize if --merge=finalize"
     );
     assert!(
-        !opt.should_merge.read_rendered_cci,
+        !render_options.should_merge.read_rendered_cci,
         "config.rs only allows us to return InputMode::NoInputMergeFinalize if --merge=finalize"
     );
-    let crates = html::render::CrateInfo::read_many(&opt.include_parts_dir)?;
-    let include_sources = !opt.html_no_source;
+    let crates = html::render::CrateInfo::read_many(&render_options.include_parts_dir)?;
+    let include_sources = !render_options.html_no_source;
 
-    let krate = ast::Crate {
-        attrs: Default::default(),
-        items: Default::default(),
-        spans: Default::default(),
-        id: ast::DUMMY_NODE_ID,
-        is_placeholder: false,
-    };
-    rustc_interface::create_and_enter_global_ctxt(compiler, krate, |tcx| {
-        html::render::write_not_crate_specific(
-            &crates,
-            &opt.output,
-            &opt,
-            &opt.themes,
-            opt.extension_css.as_deref(),
-            &opt.resource_suffix,
-            include_sources,
-            &crate::html::layout::Layout {
-                logo: String::new(),
-                favicon: String::new(),
-                external_html: opt.external_html.clone(),
-                default_settings: opt.default_settings.clone(),
-                krate: String::new(),
-                krate_version: String::new(),
-                css_file_extension: opt.extension_css.clone(),
-                scrape_examples_extension: false,
-            },
-            tcx,
-        )?;
-        Ok(())
-    })
+    html::render::write_not_crate_specific(
+        &crates,
+        &render_options.output,
+        &render_options,
+        &render_options.themes,
+        render_options.extension_css.as_deref(),
+        &render_options.resource_suffix,
+        include_sources,
+        &crate::html::layout::Layout {
+            logo: String::new(),
+            favicon: String::new(),
+            external_html: render_options.external_html.clone(),
+            default_settings: render_options.default_settings.clone(),
+            krate: String::new(),
+            krate_version: String::new(),
+            css_file_extension: render_options.extension_css.clone(),
+            scrape_examples_extension: false,
+        },
+        &compiler.sess,
+    )?;
+    Ok(())
 }
 
 fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
