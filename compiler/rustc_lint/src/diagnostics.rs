@@ -767,6 +767,13 @@ pub(crate) struct CVoidStatic {
 #[note("`c_void` is only used through raw pointers, for compatibility with C `void` pointers")]
 pub(crate) struct CVoidConst;
 
+// c_void.rs
+#[derive(Diagnostic)]
+#[diag("`c_void` should not be used directly as the type of a function parameter")]
+#[help("did you mean `*mut c_void` or `*const c_void`?")]
+#[note("`c_void` is only used through raw pointers, for compatibility with `void` pointers")]
+pub(crate) struct CVoidParameter;
+
 // deref_into_dyn_supertrait.rs
 #[derive(Diagnostic)]
 #[diag("this `Deref` implementation is covered by an implicit supertrait coercion")]
