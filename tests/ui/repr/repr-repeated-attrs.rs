@@ -19,7 +19,7 @@ struct SeveralRustReprs(u8);
 #[repr(C, C, C)]
 struct SeveralC(u8);
 
-#[repr(u8, u8)]
+#[repr(u8, u8)] //~ WARN representation attribute is specified more than once
 //~^ ERROR conflicting representation hints
 //~| WARN this was previously accepted
 enum SeveralPrimitiveRerprs {
@@ -34,7 +34,7 @@ enum SeveralCAndPrims {
     Variant(u8),
 }
 
-#[repr(Rust, u8, u8)]
+#[repr(Rust, u8, u8)] //~ WARN representation attribute is specified more than once
 //~^ ERROR conflicting representation hints
 //~^^ ERROR conflicting representation hints
 //~| WARN this was previously accepted
@@ -42,8 +42,9 @@ enum RustAndPrimDisallowed {
     Variant(u8),
 }
 
-#[repr(u8, u8)] //~ ERROR conflicting representation hints
-//~^ WARN this was previously accepted
+#[repr(u8, u8)] //~ WARN representation attribute is specified more than once
+//~^ ERROR conflicting representation hints
+//~| WARN this was previously accepted
 #[repr(u16)]
 enum ConflictingPrimReprs {
     Variant,
