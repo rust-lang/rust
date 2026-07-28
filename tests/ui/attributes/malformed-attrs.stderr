@@ -108,23 +108,23 @@ LL | #[forbid(lint1, lint2, ...)]
 LL | #[forbid(lint1, lint2, lint3, reason = "...")]
    |         +++++++++++++++++++++++++++++++++++++
 
-error: the `#[proc_macro]` attribute is only usable with crates of the `proc-macro` crate type
-  --> $DIR/malformed-attrs.rs:106:1
+error: the `proc_macro` attribute is only usable with crates of the `proc-macro` crate type
+  --> $DIR/malformed-attrs.rs:106:3
    |
 LL | #[proc_macro = 18]
-   | ^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^
 
-error: the `#[proc_macro_attribute]` attribute is only usable with crates of the `proc-macro` crate type
-  --> $DIR/malformed-attrs.rs:123:1
+error: the `proc_macro_attribute` attribute is only usable with crates of the `proc-macro` crate type
+  --> $DIR/malformed-attrs.rs:123:3
    |
 LL | #[proc_macro_attribute = 19]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^^^^
 
-error: the `#[proc_macro_derive]` attribute is only usable with crates of the `proc-macro` crate type
-  --> $DIR/malformed-attrs.rs:130:1
+error: the `proc_macro_derive` attribute is only usable with crates of the `proc-macro` crate type
+  --> $DIR/malformed-attrs.rs:130:3
    |
 LL | #[proc_macro_derive]
-   | ^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^
 
 error[E0539]: malformed `windows_subsystem` attribute input
   --> $DIR/malformed-attrs.rs:26:4
