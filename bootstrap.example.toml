@@ -351,6 +351,10 @@
 # Set this to "discover" to automatically discover LLDB from the environment.
 #build.lldb = "lldb"
 
+# The path to (or name of) the Intel SDE executable, used to run the
+# intrinsic-test suite for x86 target features the host CPU may not support.
+#build.sde = "sde64"
+
 # The node.js executable to use. Note that this is only used for the emscripten
 # target when running tests, otherwise this can be omitted.
 #build.nodejs = "node"
