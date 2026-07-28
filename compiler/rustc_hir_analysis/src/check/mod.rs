@@ -289,18 +289,29 @@ fn missing_items_err(tcx: TyCtxt<'_>, impl_def_id: LocalDefId, missing_items: &[
 
 fn missing_items_must_implement_one_of_err(
     tcx: TyCtxt<'_>,
-    impl_span: Span,
-    missing_items: &[Ident],
+    impl_def_id: LocalDefId,
+    missing_items: impl Iterator<Item = Symbol>,
     annotation_span: Option<Span>,
-) {
-    let missing_items_msg =
-        missing_items.iter().map(Ident::to_string).collect::<Vec<_>>().join("`, `");
+) -> ErrorGuaranteed {
+    // Look up the associated items so we can use them to emit better errors.
+    let trait_def_id = tcx.impl_trait_id(impl_def_id);
+    let assoc_items = tcx.associated_items(trait_def_id);
+    let missing_items = missing_items
+        .flat_map(|s| assoc_items.filter_by_name_unhygienic_and_kind(s, ty::AssocTag::Fn))
+        .cloned()
+        .collect::<Vec<_>>();
+
+    let (missing_items_msg, missing_trait_item, missing_trait_item_none, missing_trait_item_label) =
+        missing_items_suggestions(tcx, impl_def_id, &missing_items);
 
     tcx.dcx().emit_err(diagnostics::MissingOneOfTraitItem {
-        span: impl_span,
+        span: tcx.def_span(impl_def_id),
         note: annotation_span,
         missing_items_msg,
-    });
+        missing_trait_item_label,
+        missing_trait_item,
+        missing_trait_item_none,
+    })
 }
 
 fn default_body_is_unstable(

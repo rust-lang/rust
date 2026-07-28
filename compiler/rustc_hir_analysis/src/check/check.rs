@@ -1441,13 +1441,8 @@ fn check_impl_items_against_trait<'tcx>(
 
         if let Some(missing_items) = must_implement_one_of {
             let attr_span = find_attr!(tcx, trait_ref.def_id, RustcMustImplementOneOf {attr_span, ..} => *attr_span);
-
-            missing_items_must_implement_one_of_err(
-                tcx,
-                tcx.def_span(impl_id),
-                missing_items,
-                attr_span,
-            );
+            let missing_items = missing_items.into_iter().map(|i| i.name);
+            missing_items_must_implement_one_of_err(tcx, impl_id, missing_items, attr_span);
         }
     }
 }

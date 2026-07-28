@@ -16,6 +16,7 @@ use rustc_span::sym;
 use rustc_trait_selection::regions::InferCtxtRegionExt;
 use rustc_trait_selection::traits::{self, ObligationCtxt};
 
+use crate::check::missing_items_must_implement_one_of_err;
 use crate::diagnostics;
 use crate::hir::def_id::{DefId, LocalDefId};
 
@@ -394,11 +395,12 @@ fn check_drop_xor_pin_drop<'tcx>(
     match (drop_span, pin_drop_span) {
         (None, None) => {
             if tcx.features().pin_ergonomics() {
-                return Err(tcx.dcx().emit_err(crate::diagnostics::MissingOneOfTraitItem {
-                    span: tcx.def_span(drop_impl_did),
-                    note: None,
-                    missing_items_msg: "drop`, `pin_drop".to_string(),
-                }));
+                return Err(missing_items_must_implement_one_of_err(
+                    tcx,
+                    drop_impl_did,
+                    [sym::drop, sym::pin_drop].into_iter(),
+                    None,
+                ));
             } else {
                 return Err(tcx
                     .dcx()
