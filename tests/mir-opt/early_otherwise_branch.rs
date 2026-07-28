@@ -220,6 +220,44 @@ fn same_place_move_copy(pair: (i32, i32)) {
     }
 }
 
+// The parent switch has already evaluated `*p` before any reachable `otherwise` target.
+// CHECK-LABEL: fn same_place_deref(
+// CHECK: [[CMP:_.*]] = Ne(copy (*_1), copy (*_1));
+// CHECK: switchInt(move [[CMP]]) -> [
+#[custom_mir(dialect = "runtime")]
+fn same_place_deref(p: *const u64) {
+    mir! {
+        {
+            match *p {
+                1 => bb1,
+                2 => bb2,
+                _ => bb3,
+            }
+        }
+        bb1 = {
+            match *p {
+                1 => bb4,
+                _ => bb3,
+            }
+        }
+        bb2 = {
+            match *p {
+                2 => bb5,
+                _ => bb3,
+            }
+        }
+        bb3 = {
+            Return()
+        }
+        bb4 = {
+            Return()
+        }
+        bb5 = {
+            Return()
+        }
+    }
+}
+
 // EMIT_MIR early_otherwise_branch.target_self.EarlyOtherwiseBranch.diff
 #[custom_mir(dialect = "runtime")]
 fn target_self(val: i32) {

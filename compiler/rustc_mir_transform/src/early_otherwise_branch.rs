@@ -292,7 +292,7 @@ fn evaluate_candidate<'tcx>(
         };
 
         // A reachable parent `otherwise` path skips the child switch. Reading a distinct
-        // place here would therefore be speculative and may introduce UB.
+        // place here would therefore be speculative and may introduce UB (#159591).
         if !otherwise_is_empty_unreachable && parent_discr.place() != Some(*child_place) {
             return None;
         }
@@ -372,25 +372,6 @@ fn verify_candidate_branch<'tcx>(
         // For <https://github.com/rust-lang/rust/issues/95162>, we adopt a conservative approach and
         // consider only the `otherwise` branch has no statements and an unreachable terminator.
         if need_hoist_discriminant {
-            return false;
-        }
-        // For <https://github.com/rust-lang/rust/issues/159591>:
-        // ```
-        // bb0: {
-        //     switchInt(copy _1) -> [1: bb1, 2: bb2, otherwise: bb5];
-        // }
-        // bb1: {
-        //     switchInt(copy (*_2)) -> [1: bb3, otherwise: bb5];
-        // }
-        // bb2: {
-        //     switchInt(copy (*_2)) -> [2: bb4, otherwise: bb5];
-        // }
-        // ```
-        // We cannot hoist the dereference of `_2` to `bb0`,
-        // because execution can reach `bb5` without dereferencing `_2`.
-        if let Some(place) = switch_op.place()
-            && !place.is_stable_offset()
-        {
             return false;
         }
     }
