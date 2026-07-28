@@ -596,12 +596,13 @@ pub(crate) struct GenericArgsOnOverriddenImpl {
 }
 
 #[derive(Diagnostic)]
-#[diag("const `impl` for trait `{$trait_name}` which is not `const`")]
+#[diag("{$constness} `impl` for trait `{$trait_name}` which is not `const`")]
 pub(crate) struct ConstImplForNonConstTrait {
     #[primary_span]
     #[label("this trait is not `const`")]
     pub trait_ref_span: Span,
     pub trait_name: String,
+    pub constness: String,
     #[suggestion(
         "{$suggestion_pre}mark `{$trait_name}` as `const` to allow it to have `const` implementations",
         applicability = "machine-applicable",

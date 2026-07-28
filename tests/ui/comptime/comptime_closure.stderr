@@ -1,10 +1,8 @@
-error: the `rustc_comptime` attribute cannot be used on closures
-  --> $DIR/comptime_closure.rs:4:15
+error: only functions, trait impls, and methods may be comptime
+  --> $DIR/comptime_closure.rs:4:13
    |
-LL |     let f = #[rustc_comptime]
-   |               ^^^^^^^^^^^^^^
-   |
-   = help: the `rustc_comptime` attribute can be applied to functions, inherent impl blocks, and inherent methods
+LL |     let f = #[comptime]
+   |             ^^^^^^^^^^^
 
 error[E0015]: cannot call non-const closure in constants
   --> $DIR/comptime_closure.rs:9:5

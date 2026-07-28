@@ -677,12 +677,7 @@ fn write_mir_sig(tcx: TyCtxt<'_>, body: &Body<'_>, w: &mut dyn io::Write) -> io:
     trace!("write_mir_sig: {:?}", body.source.instance);
     let def_id = body.source.def_id();
     let kind = tcx.def_kind(def_id);
-    let is_function = match kind {
-        DefKind::Fn | DefKind::AssocFn | DefKind::Ctor(..) | DefKind::SyntheticCoroutineBody => {
-            true
-        }
-        _ => tcx.is_closure_like(def_id),
-    };
+    let is_function = kind.is_fn_like();
     match (kind, body.source.promoted) {
         (_, Some(_)) => write!(w, "const ")?, // promoteds are the closest to consts
         (DefKind::Const { .. } | DefKind::AssocConst { .. }, _) => write!(w, "const ")?,

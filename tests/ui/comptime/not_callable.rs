@@ -1,6 +1,6 @@
-#![feature(rustc_attrs, const_trait_impl)]
+#![feature(comptime, const_trait_impl)]
 
-#[rustc_comptime]
+#[comptime]
 fn foo() {}
 
 fn main() {
@@ -15,7 +15,7 @@ const fn bar() {
     foo(); //~ ERROR: comptime fns can only be called at compile time
 }
 
-#[rustc_comptime]
+#[comptime]
 fn baz() {
     // Ok
     foo();

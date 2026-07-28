@@ -130,6 +130,8 @@ pub(crate) fn format_constness(constness: ast::Const) -> &'static str {
     match constness {
         ast::Const::Yes(..) => "const ",
         ast::Const::No => "",
+        // FIXME(comptime): need actual syntax
+        ast::Const::Always(_) => "",
     }
 }
 

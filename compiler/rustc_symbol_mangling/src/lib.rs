@@ -258,17 +258,11 @@ fn compute_symbol_name<'tcx>(
     // codegen units) then this symbol may become an exported (but hidden
     // visibility) symbol. This means that multiple crates may do the same
     // and we want to be sure to avoid any symbol conflicts here.
-    let is_globally_shared_function = matches!(
-        def_kind,
-        DefKind::Fn
-            | DefKind::AssocFn
-            | DefKind::Closure
-            | DefKind::SyntheticCoroutineBody
-            | DefKind::Ctor(..)
-    ) && matches!(
-        MonoItem::Fn(instance).instantiation_mode(tcx),
-        InstantiationMode::GloballyShared { may_conflict: true }
-    );
+    let is_globally_shared_function = def_kind.is_fn_like()
+        && matches!(
+            MonoItem::Fn(instance).instantiation_mode(tcx),
+            InstantiationMode::GloballyShared { may_conflict: true }
+        );
 
     // If this is an instance of a generic function, we also hash in
     // the ID of the instantiating crate. This avoids symbol conflicts

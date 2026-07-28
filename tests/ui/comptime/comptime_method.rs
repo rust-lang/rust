@@ -1,8 +1,8 @@
-#![feature(rustc_attrs)]
+#![feature(comptime)]
 
 struct Bar;
 
-#[rustc_comptime]
+#[comptime]
 impl Bar {
     fn boo(&self) {}
 }

@@ -55,8 +55,8 @@ LL | struct MyType<'a>(Cell<Option<&'unpinned mut MyType<'a>>>, Pin);
    |        ^^^^^^
 help: provide the argument
    |
-LL |     let mut unpinned = MyType(Cell::new(None), /* value */);
-   |                                              +++++++++++++
+LL |     let mut unpinned = MyType(Cell::new(None), /* arg1 */);
+   |                                              ++++++++++++
 
 error: aborting due to 5 previous errors
 
