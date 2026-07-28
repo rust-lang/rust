@@ -993,10 +993,6 @@ pub(crate) enum InvalidReferenceCastingDiag<'tcx> {
     BorrowAsMut {
         #[label("casting happened here")]
         orig_cast: Option<Span>,
-        #[note(
-            "even for types with interior mutability, the only legal way to obtain a mutable pointer from a shared reference is through `UnsafeCell::get`"
-        )]
-        ty_has_interior_mutability: bool,
     },
     #[diag("assigning to `&T` is undefined behavior, consider using an `UnsafeCell`")]
     #[note(
@@ -1005,10 +1001,6 @@ pub(crate) enum InvalidReferenceCastingDiag<'tcx> {
     AssignToRef {
         #[label("casting happened here")]
         orig_cast: Option<Span>,
-        #[note(
-            "even for types with interior mutability, the only legal way to obtain a mutable pointer from a shared reference is through `UnsafeCell::get`"
-        )]
-        ty_has_interior_mutability: bool,
     },
     #[diag(
         "casting references to a bigger memory layout than the backing allocation is undefined behavior, even if the reference is unused"
