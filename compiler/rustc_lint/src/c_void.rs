@@ -8,7 +8,7 @@ use rustc_middle::ty;
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::Span;
 
-use crate::diagnostics::{CVoidReference, CVoidReturn, ExternCVoidReturn};
+use crate::diagnostics::{CVoidConst, CVoidReference, CVoidReturn, CVoidStatic, ExternCVoidReturn};
 use crate::{LateContext, LateLintPass, LintContext};
 
 fn is_c_void(cx: &LateContext<'_>, ty: hir::Ty<'_>) -> bool {
@@ -84,6 +84,12 @@ impl<'tcx> LateLintPass<'tcx> for CVoidReturns {
         }
     }
 
+    fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::TraitItem<'tcx>) {
+        if let hir::TraitItemKind::Fn(sig, ..) = item.kind {
+            check_decl_for_c_void_return(cx, sig.decl, false);
+        }
+    }
+
     fn check_ty(&mut self, cx: &LateContext<'tcx>, ty: &'tcx hir::Ty<'tcx, hir::AmbigArg>) {
         if let hir::TyKind::FnPtr(fn_ptr_ty) = ty.kind {
             check_decl_for_c_void_return(cx, fn_ptr_ty.decl, fn_ptr_ty.abi != ExternAbi::Rust);
@@ -143,6 +149,71 @@ impl<'tcx> LateLintPass<'tcx> for CVoidReferences {
             && is_c_void(cx, *pointee_ty)
         {
             cx.emit_span_lint(C_VOID_REFERENCES, ty.span, CVoidReference);
+        }
+    }
+}
+
+declare_lint! {
+    /// The `c_void_statics` lint detects the use of [`core::ffi::c_void`] as the type of a `static` or `const` item.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// use std::ffi::c_void;
+    ///
+    /// unsafe extern "C" {
+    ///     static FOO: c_void;
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// `c_void` is designed for use through a [`raw pointer`], equivalent to C's `void*` type.
+    /// For historical reasons, Rust considers it to have size 1. For a `static` item used
+    /// only for its address, the correct type is [`()`].
+    ///
+    /// [`core::ffi::c_void`]: https://doc.rust-lang.org/core/ffi/enum.c_void.html
+    /// [`raw pointer`]: https://doc.rust-lang.org/core/primitive.pointer.html
+    /// [`()`]: https://doc.rust-lang.org/core/primitive.unit.html
+    pub C_VOID_STATICS,
+    Warn,
+    "detects use of `c_void` as the type of a `static` or `const` item"
+}
+
+declare_lint_pass!(CVoidStatics => [C_VOID_STATICS]);
+
+impl<'tcx> LateLintPass<'tcx> for CVoidStatics {
+    fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx rustc_hir::Item<'tcx>) {
+        match item.kind {
+            hir::ItemKind::Static(_mut, _name, ty, _) if is_c_void(cx, *ty) => {
+                cx.emit_span_lint(C_VOID_STATICS, item.span, CVoidStatic { suggestion: ty.span })
+            }
+            hir::ItemKind::Const(_name, _generics, ty, _) if is_c_void(cx, *ty) => {
+                cx.emit_span_lint(C_VOID_STATICS, item.span, CVoidConst)
+            }
+            _ => (),
+        }
+    }
+
+    fn check_foreign_item(
+        &mut self,
+        cx: &LateContext<'tcx>,
+        item: &'tcx rustc_hir::ForeignItem<'tcx>,
+    ) {
+        if let hir::ForeignItemKind::Static(ty, ..) = item.kind
+            && is_c_void(cx, *ty)
+        {
+            cx.emit_span_lint(C_VOID_STATICS, item.span, CVoidStatic { suggestion: ty.span })
+        }
+    }
+
+    fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx rustc_hir::TraitItem<'tcx>) {
+        if let hir::TraitItemKind::Const(ty, ..) = item.kind
+            && is_c_void(cx, *ty)
+        {
+            cx.emit_span_lint(C_VOID_STATICS, item.span, CVoidConst)
         }
     }
 }

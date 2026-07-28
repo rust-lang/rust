@@ -752,6 +752,21 @@ pub(crate) struct ExternCVoidReturn {
 )]
 pub(crate) struct CVoidReference;
 
+// c_void.rs
+#[derive(Diagnostic)]
+#[diag("`static` items should not have type `c_void`")]
+#[help("for a `static` used only for its address, use `()` instead")]
+#[note("`c_void` is only used through raw pointers, for compatibility with C `void` pointers")]
+pub(crate) struct CVoidStatic {
+    #[suggestion("use `()` instead", code = "()", applicability = "maybe-incorrect")]
+    pub suggestion: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag("`const` items should not have type `c_void`")]
+#[note("`c_void` is only used through raw pointers, for compatibility with C `void` pointers")]
+pub(crate) struct CVoidConst;
+
 // deref_into_dyn_supertrait.rs
 #[derive(Diagnostic)]
 #[diag("this `Deref` implementation is covered by an implicit supertrait coercion")]
