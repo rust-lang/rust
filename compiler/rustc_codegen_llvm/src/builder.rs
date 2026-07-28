@@ -703,12 +703,16 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         ty: &'ll Type,
         ptr: &'ll Value,
         order: rustc_middle::ty::AtomicOrdering,
+        volatile: bool,
         size: Size,
     ) -> &'ll Value {
         unsafe {
             let load = llvm::LLVMBuildLoad2(self.llbuilder, ty, ptr, UNNAMED);
             // Set atomic ordering
             llvm::LLVMSetOrdering(load, AtomicOrdering::from_generic(order));
+            if volatile {
+                llvm::LLVMSetVolatile(load, llvm::TRUE);
+            }
             // LLVM requires the alignment of atomic loads to be at least the size of the type.
             llvm::LLVMSetAlignment(load, size.bytes() as c_uint);
             load
@@ -930,6 +934,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         val: &'ll Value,
         ptr: &'ll Value,
         order: rustc_middle::ty::AtomicOrdering,
+        volatile: bool,
         size: Size,
     ) {
         debug!("Store {:?} -> {:?}", val, ptr);
@@ -938,6 +943,9 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
             let store = llvm::LLVMBuildStore(self.llbuilder, val, ptr);
             // Set atomic ordering
             llvm::LLVMSetOrdering(store, AtomicOrdering::from_generic(order));
+            if volatile {
+                llvm::LLVMSetVolatile(store, llvm::TRUE);
+            }
             // LLVM requires the alignment of atomic stores to be at least the size of the type.
             llvm::LLVMSetAlignment(store, size.bytes() as c_uint);
         }

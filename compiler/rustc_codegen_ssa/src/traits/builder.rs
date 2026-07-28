@@ -250,6 +250,7 @@ pub trait BuilderMethods<'a, 'tcx>:
         ty: Self::Type,
         ptr: Self::Value,
         order: AtomicOrdering,
+        volatile: bool,
         size: Size,
     ) -> Self::Value;
     fn load_from_place(&mut self, ty: Self::Type, place: PlaceValue<Self::Value>) -> Self::Value {
@@ -330,6 +331,7 @@ pub trait BuilderMethods<'a, 'tcx>:
         val: Self::Value,
         ptr: Self::Value,
         order: AtomicOrdering,
+        volatile: bool,
         size: Size,
     );
 
