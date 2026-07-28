@@ -141,18 +141,18 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    pub(super) fn normalize_and_prove_instantiated_predicates(
+    pub(super) fn normalize_and_prove_instantiated_clauses(
         &mut self,
         // Keep this parameter for now, in case we start using
         // it in `ConstraintCategory` at some point.
         _def_id: DefId,
-        instantiated_predicates: ty::InstantiatedPredicates<'tcx>,
+        instantiated_clauses: ty::InstantiatedClauses<'tcx>,
         locations: Locations,
     ) {
-        for (predicate, span) in instantiated_predicates {
-            debug!(?span, ?predicate);
+        for (clause, span) in instantiated_clauses {
+            debug!(?span, ?clause);
             let category = ConstraintCategory::Predicate(span);
-            let clause = self.normalize_with_category(predicate, locations, category);
+            let clause = self.normalize_with_category(clause, locations, category);
             self.prove_clause(clause, locations, category);
         }
     }

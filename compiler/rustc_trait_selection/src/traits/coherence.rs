@@ -211,7 +211,7 @@ fn fresh_impl_header<'tcx>(
         trait_ref: is_of_trait
             .then(|| tcx.impl_trait_ref(impl_def_id).instantiate(tcx, impl_args).skip_norm_wip()),
         predicates: tcx
-            .predicates_of(impl_def_id)
+            .clauses_of(impl_def_id)
             .instantiate(tcx, impl_args)
             .iter()
             .map(|(c, _)| c.skip_norm_wip().as_predicate())
@@ -551,7 +551,7 @@ fn impl_intersection_has_negative_obligation(
 
     util::elaborate(
         tcx,
-        tcx.predicates_of(impl2_def_id)
+        tcx.clauses_of(impl2_def_id)
             .instantiate(tcx, impl2_header.impl_args)
             .into_iter()
             .map(|(c, s)| (c.skip_norm_wip(), s)),

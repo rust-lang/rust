@@ -40,7 +40,7 @@ pub struct Unnormalized<I: Interner, T> {
 
 impl<I: Interner, T> Unnormalized<I, T> {
     /// Should only be used in limited situations where you produce an potentially
-    /// unnormalized value, like in (Early)Binder/GenericPredicates instantiation.
+    /// unnormalized value, like in (Early)Binder/GenericClauses instantiation.
     pub fn new(value: T) -> Unnormalized<I, T> {
         Unnormalized { value, _tcx: PhantomData }
     }

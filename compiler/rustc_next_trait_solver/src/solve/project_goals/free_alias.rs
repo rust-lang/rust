@@ -25,10 +25,10 @@ where
         // Check where clauses
         self.add_goals(
             GoalSource::Misc,
-            cx.predicates_of(free_alias.expect_free_def_id().into())
+            cx.clauses_of(free_alias.expect_free_def_id().into())
                 .iter_instantiated(cx, free_alias.args)
                 .map(Unnormalized::skip_norm_wip)
-                .map(|pred| goal.with(cx, pred)),
+                .map(|clause| goal.with(cx, clause)),
         )?;
 
         let actual = match free_alias.kind {

@@ -3,7 +3,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{Closure, Expr, ExprKind, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
-use rustc_middle::ty::{ClauseKind, GenericPredicates, ProjectionPredicate, TraitPredicate};
+use rustc_middle::ty::{ClauseKind, GenericClauses, ProjectionPredicate, TraitPredicate};
 use rustc_session::declare_lint_pass;
 use rustc_span::{BytePos, Span, Symbol, sym};
 
@@ -36,19 +36,18 @@ declare_clippy_lint! {
 
 declare_lint_pass!(UnitReturnExpectingOrd => [UNIT_RETURN_EXPECTING_ORD]);
 
-// For each
 fn get_trait_predicates_for_trait_ids<'tcx>(
     cx: &LateContext<'tcx>,
-    generics: GenericPredicates<'tcx>,
+    generics: GenericClauses<'tcx>,
     trait_ids: &[Option<DefId>], // At least 2 ids
 ) -> [Vec<TraitPredicate<'tcx>>; 3] {
     debug_assert!(trait_ids.len() >= 2);
     let mut preds = [Vec::new(), Vec::new(), Vec::new()];
-    for (pred, _) in generics.predicates {
-        if let ClauseKind::Trait(poly_trait_pred) = pred.kind().skip_binder() {
+    for (clause, _) in generics.clauses {
+        if let ClauseKind::Trait(poly_trait_pred) = clause.kind().skip_binder() {
             let trait_pred = cx
                 .tcx
-                .instantiate_bound_regions_with_erased(pred.kind().rebind(poly_trait_pred));
+                .instantiate_bound_regions_with_erased(clause.kind().rebind(poly_trait_pred));
             for (i, tid) in trait_ids.iter().enumerate() {
                 if let Some(tid) = tid
                     && *tid == trait_pred.trait_ref.def_id
@@ -63,14 +62,14 @@ fn get_trait_predicates_for_trait_ids<'tcx>(
 
 fn get_projection_pred<'tcx>(
     cx: &LateContext<'tcx>,
-    generics: GenericPredicates<'tcx>,
+    generics: GenericClauses<'tcx>,
     trait_pred: TraitPredicate<'tcx>,
 ) -> Option<ProjectionPredicate<'tcx>> {
-    generics.predicates.iter().find_map(|(proj_pred, _)| {
-        if let ClauseKind::Projection(pred) = proj_pred.kind().skip_binder() {
+    generics.clauses.iter().find_map(|(clause, _)| {
+        if let ClauseKind::Projection(pred) = clause.kind().skip_binder() {
             let projection_pred = cx
                 .tcx
-                .instantiate_bound_regions_with_erased(proj_pred.kind().rebind(pred));
+                .instantiate_bound_regions_with_erased(clause.kind().rebind(pred));
             if projection_pred.projection_term.args == trait_pred.trait_ref.args {
                 return Some(projection_pred);
             }
@@ -90,7 +89,7 @@ fn get_args_to_check<'tcx>(
     let mut args_to_check = Vec::new();
     if let Some(def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) {
         let fn_sig = cx.tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip();
-        let generics = cx.tcx.predicates_of(def_id);
+        let generics = cx.tcx.clauses_of(def_id);
         let [fn_mut_preds, ord_preds, partial_ord_preds] =
             get_trait_predicates_for_trait_ids(cx, generics, &[Some(fn_mut_trait), ord_trait, partial_ord_trait]);
         if fn_mut_preds.is_empty() {

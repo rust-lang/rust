@@ -154,7 +154,7 @@ declare_passes! {
     // Made public so that `mir_drops_elaborated_and_const_checked` can be overridden
     // by custom rustc drivers, running all the steps by themselves. See #114628.
     pub mod inline : Inline, ForceInline;
-    mod impossible_predicates : ImpossiblePredicates;
+    mod impossible_clauses : ImpossibleClauses;
     mod instsimplify : InstSimplify { BeforeInline, AfterSimplifyCfg };
     mod jump_threading : JumpThreading;
     mod known_panics_lint : KnownPanicsLint;
@@ -631,7 +631,7 @@ pub fn run_analysis_to_runtime_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
 /// After this series of passes, no lifetime analysis based on borrowing can be done.
 fn run_analysis_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let passes: &[&dyn MirPass<'tcx>] = &[
-        &impossible_predicates::ImpossiblePredicates,
+        &impossible_clauses::ImpossibleClauses,
         &cleanup_post_borrowck::CleanupPostBorrowck,
         &remove_noop_landing_pads::RemoveNoopLandingPads,
         &simplify::SimplifyCfg::PostAnalysis,

@@ -45,7 +45,7 @@ const BASE_FN: &[&str] = &[
     // Callers will depend on the signature of these items, so we better test
     label_strs::fn_sig,
     label_strs::generics_of,
-    label_strs::predicates_of,
+    label_strs::clauses_of,
     label_strs::type_of,
     // And a big part of compilation (that we eventually want to cache) is type inference
     // information:
@@ -71,7 +71,7 @@ const BASE_MIR: &[&str] = &[label_strs::optimized_mir, label_strs::promoted_mir]
 /// Note that changing the type of a field does not change the type of the struct or enum, but
 /// adding/removing fields or changing a fields name or visibility does.
 const BASE_STRUCT: &[&str] =
-    &[label_strs::generics_of, label_strs::predicates_of, label_strs::type_of];
+    &[label_strs::generics_of, label_strs::clauses_of, label_strs::type_of];
 
 /// Trait definition `DepNode`s.
 /// Extra `DepNode`s for functions and methods.
@@ -105,7 +105,7 @@ const LABELS_HIR_ONLY: &[&[&str]] = &[BASE_HIR];
 /// Impl `DepNode`s.
 const LABELS_TRAIT: &[&[&str]] = &[
     BASE_HIR,
-    &[label_strs::associated_item_def_ids, label_strs::predicates_of, label_strs::generics_of],
+    &[label_strs::associated_item_def_ids, label_strs::clauses_of, label_strs::generics_of],
 ];
 
 /// Impl `DepNode`s.

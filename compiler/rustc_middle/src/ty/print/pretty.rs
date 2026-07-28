@@ -869,9 +869,9 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             ty::Placeholder(placeholder) => placeholder.print(self)?,
             ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => {
                 // We use verbose printing in 'NO_QUERIES' mode, to
-                // avoid needing to call `predicates_of`. This should
+                // avoid needing to call `clauses_of`. This should
                 // only affect certain debug messages (e.g. messages printed
-                // from `rustc_middle::ty` during the computation of `tcx.predicates_of`),
+                // from `rustc_middle::ty` during the computation of `tcx.clauses_of`),
                 // and should have no effect on any compiler output.
                 // [Unless `-Zverbose-internals` is used, e.g. in the output of
                 // `tests/ui/nll/ty-outlives/impl-trait-captures.rs`, for
