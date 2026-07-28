@@ -61,7 +61,7 @@ unsafe extern "Rust" {
     /// `PanicPayload` lazily performs allocation only when needed (this avoids
     /// allocations when using the "abort" panic runtime).
     #[rustc_std_internal_symbol]
-    fn __rust_start_panic(payload: &mut dyn PanicPayload) -> u32;
+    safe fn __rust_start_panic(payload: &mut dyn PanicPayload) -> u32;
 }
 
 /// This function is called by the panic runtime if FFI code catches a Rust
@@ -626,7 +626,7 @@ pub fn panic_handler(info: &core::panic::PanicInfo<'_>) -> ! {
         }
     }
 
-    unsafe impl PanicPayload for FormatStringPayload<'_> {
+    impl PanicPayload for FormatStringPayload<'_> {
         fn take_box(&mut self) -> Box<dyn Any + Send> {
             // We do two allocations here, unfortunately. But (a) they're required with the current
             // scheme, and (b) we don't handle panic + OOM properly anyway (see comment in
@@ -652,7 +652,7 @@ pub fn panic_handler(info: &core::panic::PanicInfo<'_>) -> ! {
 
     struct StaticStrPayload(&'static str);
 
-    unsafe impl PanicPayload for StaticStrPayload {
+    impl PanicPayload for StaticStrPayload {
         fn take_box(&mut self) -> Box<dyn Any + Send> {
             Box::new(self.0)
         }
@@ -714,7 +714,7 @@ pub const fn begin_panic<M: Any + Send>(msg: M) -> ! {
         inner: Option<A>,
     }
 
-    unsafe impl<A: Send + 'static> PanicPayload for Payload<A> {
+    impl<A: Send + 'static> PanicPayload for Payload<A> {
         fn take_box(&mut self) -> Box<dyn Any + Send> {
             // Note that this should be the only allocation performed in this code path. Currently
             // this means that panic!() on OOM will invoke this code path, but then again we're not
@@ -856,7 +856,7 @@ pub fn resume_unwind(payload: Box<dyn Any + Send>) -> ! {
 
     struct RewrapBox(Box<dyn Any + Send>);
 
-    unsafe impl PanicPayload for RewrapBox {
+    impl PanicPayload for RewrapBox {
         fn take_box(&mut self) -> Box<dyn Any + Send> {
             mem::replace(&mut self.0, Box::new(()))
         }
@@ -881,7 +881,7 @@ pub fn resume_unwind(payload: Box<dyn Any + Send>) -> ! {
 #[cfg_attr(not(test), rustc_std_internal_symbol)]
 #[cfg(not(panic = "immediate-abort"))]
 fn rust_panic(msg: &mut dyn PanicPayload) -> ! {
-    let code = unsafe { __rust_start_panic(msg) };
+    let code = __rust_start_panic(msg);
     rtabort!("failed to initiate panic, error {code}")
 }
 

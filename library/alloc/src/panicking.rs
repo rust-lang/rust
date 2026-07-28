@@ -9,7 +9,7 @@ use crate::boxed::Box;
 /// An internal trait used by std to pass data from std to `panic_unwind` and
 /// other panic runtimes. Not intended to be stabilized any time soon, do not
 /// use.
-pub unsafe trait PanicPayload: Display {
+pub trait PanicPayload: Display {
     /// Take full ownership of the contents.
     ///
     /// After this method got called, only some dummy default value is left in `self`.
