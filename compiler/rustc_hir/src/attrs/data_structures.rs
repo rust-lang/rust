@@ -1217,6 +1217,7 @@ pub enum AttributeKind {
 
     /// Represents `#[diagnostic::on_const]`.
     OnConst {
+        /// The attribute path span.
         span: Span,
         /// None if the directive was malformed in some way.
         directive: Option<Box<Directive>>,
