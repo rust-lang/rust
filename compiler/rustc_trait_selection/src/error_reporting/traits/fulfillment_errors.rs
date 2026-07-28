@@ -2155,7 +2155,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
                     ocx.register_obligations(
                         self.tcx
-                            .predicates_of(single.impl_def_id)
+                            .clauses_of(single.impl_def_id)
                             .instantiate(self.tcx, impl_args)
                             .into_iter()
                             .map(|(clause, _)| {
@@ -2357,7 +2357,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                     }
                                     ocx.register_obligations(
                                         self.tcx
-                                            .predicates_of(def_id)
+                                            .clauses_of(def_id)
                                             .instantiate(self.tcx, impl_args)
                                             .into_iter()
                                             .map(|(clause, span)| {
@@ -2373,7 +2373,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 })
                             };
                             let failing_obligations =
-                                if !self.tcx.predicates_of(def_id).predicates.is_empty() {
+                                if !self.tcx.clauses_of(def_id).clauses.is_empty() {
                                     self.probe(|_| evaluate_obligations())
                                 } else {
                                     Vec::new()

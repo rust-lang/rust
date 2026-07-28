@@ -559,23 +559,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // `#[rustc_evaluate_where_clauses]` trigger special output
                 // to let us test the trait evaluation system.
                 if self.has_rustc_attrs && find_attr!(self.tcx, def_id, RustcEvaluateWhereClauses) {
-                    let predicates = self.tcx.predicates_of(def_id);
-                    let predicates = predicates.instantiate(self.tcx, args);
-                    for (predicate, predicate_span) in predicates {
-                        let predicate = predicate.skip_norm_wip();
+                    let clauses = self.tcx.clauses_of(def_id);
+                    let clauses = clauses.instantiate(self.tcx, args);
+                    for (clause, clause_span) in clauses {
+                        let clause = clause.skip_norm_wip();
                         let obligation = Obligation::new(
                             self.tcx,
                             ObligationCause::dummy_with_span(callee_expr.span),
                             self.param_env,
-                            predicate,
+                            clause,
                         );
                         let result = self.evaluate_obligation(&obligation);
                         self.dcx()
                             .struct_span_err(
                                 callee_expr.span,
-                                format!("evaluate({predicate:?}) = {result:?}"),
+                                format!("evaluate({clause:?}) = {result:?}"),
                             )
-                            .with_span_label(predicate_span, "predicate")
+                            .with_span_label(clause_span, "predicate")
                             .emit();
                     }
                 }

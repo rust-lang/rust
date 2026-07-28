@@ -846,11 +846,11 @@ impl<'tcx> TermKind<'tcx> {
 
 /// Represents the bounds declared on a particular set of type
 /// parameters. Should eventually be generalized into a flag list of
-/// where-clauses. You can obtain an `InstantiatedPredicates` list from a
-/// `GenericPredicates` by using the `instantiate` method. Note that this method
-/// reflects an important semantic invariant of `InstantiatedPredicates`: while
-/// the `GenericPredicates` are expressed in terms of the bound type
-/// parameters of the impl/trait/whatever, an `InstantiatedPredicates` instance
+/// where-clauses. You can obtain an `InstantiatedClauses` list from a
+/// `GenericClauses` by using the `instantiate` method. Note that this method
+/// reflects an important semantic invariant of `InstantiatedClauses`: while
+/// the `GenericClauses` are expressed in terms of the bound type
+/// parameters of the impl/trait/whatever, an `InstantiatedClauses` instance
 /// represented a set of bounds for some particular instantiation,
 /// meaning that the generic parameters have been instantiated with
 /// their values.
@@ -859,23 +859,23 @@ impl<'tcx> TermKind<'tcx> {
 /// ```ignore (illustrative)
 /// struct Foo<T, U: Bar<T>> { ... }
 /// ```
-/// Here, the `GenericPredicates` for `Foo` would contain a list of bounds like
+/// Here, the `GenericClauses` for `Foo` would contain a list of bounds like
 /// `[[], [U:Bar<T>]]`. Now if there were some particular reference
-/// like `Foo<isize,usize>`, then the `InstantiatedPredicates` would be `[[],
+/// like `Foo<isize,usize>`, then the `InstantiatedClauses` would be `[[],
 /// [usize:Bar<isize>]]`.
 #[derive(Clone, Debug)]
-pub struct InstantiatedPredicates<'tcx> {
-    pub predicates: Vec<Unnormalized<'tcx, Clause<'tcx>>>,
+pub struct InstantiatedClauses<'tcx> {
+    pub clauses: Vec<Unnormalized<'tcx, Clause<'tcx>>>,
     pub spans: Vec<Span>,
 }
 
-impl<'tcx> InstantiatedPredicates<'tcx> {
-    pub fn empty() -> InstantiatedPredicates<'tcx> {
-        InstantiatedPredicates { predicates: vec![], spans: vec![] }
+impl<'tcx> InstantiatedClauses<'tcx> {
+    pub fn empty() -> InstantiatedClauses<'tcx> {
+        InstantiatedClauses { clauses: vec![], spans: vec![] }
     }
 
     pub fn is_empty(&self) -> bool {
-        self.predicates.is_empty()
+        self.clauses.is_empty()
     }
 
     pub fn iter(&self) -> <&Self as IntoIterator>::IntoIter {
@@ -883,7 +883,7 @@ impl<'tcx> InstantiatedPredicates<'tcx> {
     }
 }
 
-impl<'tcx> IntoIterator for InstantiatedPredicates<'tcx> {
+impl<'tcx> IntoIterator for InstantiatedClauses<'tcx> {
     type Item = (Unnormalized<'tcx, Clause<'tcx>>, Span);
 
     type IntoIter = std::iter::Zip<
@@ -892,12 +892,12 @@ impl<'tcx> IntoIterator for InstantiatedPredicates<'tcx> {
     >;
 
     fn into_iter(self) -> Self::IntoIter {
-        debug_assert_eq!(self.predicates.len(), self.spans.len());
-        std::iter::zip(self.predicates, self.spans)
+        debug_assert_eq!(self.clauses.len(), self.spans.len());
+        std::iter::zip(self.clauses, self.spans)
     }
 }
 
-impl<'a, 'tcx> IntoIterator for &'a InstantiatedPredicates<'tcx> {
+impl<'a, 'tcx> IntoIterator for &'a InstantiatedClauses<'tcx> {
     type Item = (Unnormalized<'tcx, Clause<'tcx>>, Span);
 
     type IntoIter = std::iter::Zip<
@@ -906,8 +906,8 @@ impl<'a, 'tcx> IntoIterator for &'a InstantiatedPredicates<'tcx> {
     >;
 
     fn into_iter(self) -> Self::IntoIter {
-        debug_assert_eq!(self.predicates.len(), self.spans.len());
-        std::iter::zip(self.predicates.iter().copied(), self.spans.iter().copied())
+        debug_assert_eq!(self.clauses.len(), self.spans.len());
+        std::iter::zip(self.clauses.iter().copied(), self.spans.iter().copied())
     }
 }
 

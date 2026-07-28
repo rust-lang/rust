@@ -134,9 +134,9 @@ fn adt_sizedness_constraint<'tcx>(
     // perf hack: if there is a `constraint_ty: {Meta,}Sized` bound, then we know
     // that the type is sized and do not need to check it on the impl.
     let sizedness_trait_def_id = sizedness.require_lang_item(tcx);
-    let predicates = tcx.predicates_of(def.did()).predicates;
-    if predicates.iter().any(|(p, _)| {
-        p.as_trait_clause().is_some_and(|trait_pred| {
+    let clauses = tcx.clauses_of(def.did()).clauses;
+    if clauses.iter().any(|(c, _)| {
+        c.as_trait_clause().is_some_and(|trait_pred| {
             trait_pred.def_id() == sizedness_trait_def_id
                 && trait_pred.self_ty().skip_binder() == constraint_ty
         })
@@ -153,9 +153,8 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
         return tcx.param_env(tcx.typeck_root_def_id(def_id));
     }
     // Compute the bounds on Self and the type parameters.
-    let ty::InstantiatedPredicates { predicates, .. } =
-        tcx.predicates_of(def_id).instantiate_identity(tcx);
-    let mut predicates: Vec<_> = predicates.into_iter().map(Unnormalized::skip_norm_wip).collect();
+    let ty::InstantiatedClauses { clauses, .. } = tcx.clauses_of(def_id).instantiate_identity(tcx);
+    let mut clauses: Vec<_> = clauses.into_iter().map(Unnormalized::skip_norm_wip).collect();
 
     // Finally, we have to normalize the bounds in the environment, in
     // case they contain any associated type projections. This process
@@ -180,7 +179,7 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
             tcx,
             fn_def_id: def_id,
             bound_vars: sig.bound_vars(),
-            predicates: &mut predicates,
+            clauses: &mut clauses,
             seen: FxHashSet::default(),
             depth: ty::INNERMOST,
         });
@@ -189,7 +188,7 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
     // We extend the param-env of our item with the const conditions of the item,
     // since we're allowed to assume `[const]` bounds hold within the item itself.
     if tcx.is_conditionally_const(def_id) {
-        predicates.extend(tcx.const_conditions(def_id).instantiate_identity(tcx).into_iter().map(
+        clauses.extend(tcx.const_conditions(def_id).instantiate_identity(tcx).into_iter().map(
             |(trait_ref, _)| {
                 trait_ref.to_host_effect_clause(tcx, ty::BoundConstness::Maybe).skip_norm_wip()
             },
@@ -198,7 +197,7 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
 
     let local_did = def_id.as_local().unwrap_or(CRATE_DEF_ID);
 
-    let unnormalized_env = ty::ParamEnv::new(tcx.mk_clauses(&predicates));
+    let unnormalized_env = ty::ParamEnv::new(tcx.mk_clauses(&clauses));
 
     let cause = traits::ObligationCause::misc(tcx.def_span(def_id), local_did);
     traits::normalize_param_env_or_error(tcx, unnormalized_env, cause)
@@ -210,7 +209,7 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
 /// its corresponding opaque within the body of a default-body trait method.
 struct ImplTraitInTraitFinder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    predicates: &'a mut Vec<ty::Clause<'tcx>>,
+    clauses: &'a mut Vec<ty::Clause<'tcx>>,
     fn_def_id: DefId,
     bound_vars: &'tcx ty::List<ty::BoundVariableKind<'tcx>>,
     seen: FxHashSet<DefId>,
@@ -261,7 +260,7 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
                 .instantiate(self.tcx, shifted_alias_ty.args)
                 .skip_norm_wip();
 
-            self.predicates.push(
+            self.clauses.push(
                 ty::Binder::bind_with_vars(
                     ty::ProjectionPredicate {
                         projection_term: shifted_alias_ty.projection_to_alias_ty().into(),

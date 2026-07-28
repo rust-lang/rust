@@ -1489,7 +1489,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 
                         if self.infcx.type_is_sized_modulo_regions(self.infcx.param_env, dst.ty) {
                             // Wide to thin ptr cast. This may even occur in an env with
-                            // impossible predicates, such as `where dyn Trait: Sized`.
+                            // impossible clauses, such as `where dyn Trait: Sized`.
                             // In this case, we don't want to fall into the case below,
                             // since the types may not actually be equatable, but it's
                             // fine to perform this operation in an impossible env.
@@ -1722,10 +1722,10 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         && tcx.anon_const_kind(def_id) == ty::AnonConstKind::NonTypeSystemInline
                     {
                         let def_id = def_id.expect_local();
-                        let predicates = self.prove_closure_bounds(tcx, def_id, uv.args, location);
-                        self.normalize_and_prove_instantiated_predicates(
+                        let clauses = self.prove_closure_bounds(tcx, def_id, uv.args, location);
+                        self.normalize_and_prove_instantiated_clauses(
                             def_id.to_def_id(),
-                            predicates,
+                            clauses,
                             location.to_locations(),
                         );
                     }
@@ -1840,10 +1840,10 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 
             if let ty::FnDef(def_id, args) = *constant.const_.ty().kind() {
                 let args = args.no_bound_vars().unwrap();
-                let instantiated_predicates = tcx.predicates_of(def_id).instantiate(tcx, args);
-                self.normalize_and_prove_instantiated_predicates(
+                let instantiated_clauses = tcx.clauses_of(def_id).instantiate(tcx, args);
+                self.normalize_and_prove_instantiated_clauses(
                     def_id,
-                    instantiated_predicates,
+                    instantiated_clauses,
                     locations,
                 );
 
@@ -2603,9 +2603,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             aggregate_kind, location
         );
 
-        let (def_id, instantiated_predicates) = match *aggregate_kind {
+        let (def_id, instantiated_clauses) = match *aggregate_kind {
             AggregateKind::Adt(adt_did, _, args, _, _) => {
-                (adt_did, tcx.predicates_of(adt_did).instantiate(tcx, args))
+                (adt_did, tcx.clauses_of(adt_did).instantiate(tcx, args))
             }
 
             // For closures, we have some **extra requirements** we
@@ -2634,13 +2634,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
 
             AggregateKind::Array(_) | AggregateKind::Tuple | AggregateKind::RawPtr(..) => {
-                (CRATE_DEF_ID.to_def_id(), ty::InstantiatedPredicates::empty())
+                (CRATE_DEF_ID.to_def_id(), ty::InstantiatedClauses::empty())
             }
         };
 
-        self.normalize_and_prove_instantiated_predicates(
+        self.normalize_and_prove_instantiated_clauses(
             def_id,
-            instantiated_predicates,
+            instantiated_clauses,
             location.to_locations(),
         );
     }
@@ -2651,7 +2651,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         def_id: LocalDefId,
         args: GenericArgsRef<'tcx>,
         location: Location,
-    ) -> ty::InstantiatedPredicates<'tcx> {
+    ) -> ty::InstantiatedClauses<'tcx> {
         let root_def_id = self.root_cx.root_def_id();
         // We will have to handle propagated closure requirements for this closure,
         // but need to defer this until the nested body has been fully borrow checked.
@@ -2695,7 +2695,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             );
         }
 
-        tcx.predicates_of(def_id).instantiate(tcx, args)
+        tcx.clauses_of(def_id).instantiate(tcx, args)
     }
 }
 

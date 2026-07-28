@@ -567,9 +567,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        let mut clauses = CollectClauses { clauses: vec![], fcx: self };
-        clauses.visit_ty_unambig(hir_ty);
-        self.tcx.mk_clauses(&clauses.clauses)
+        let mut collect_clauses = CollectClauses { clauses: vec![], fcx: self };
+        collect_clauses.visit_ty_unambig(hir_ty);
+        self.tcx.mk_clauses(&collect_clauses.clauses)
     }
 
     #[instrument(level = "debug", skip_all)]
@@ -1470,11 +1470,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         let param_env = self.param_env;
 
-        let bounds = self.tcx.predicates_of(def_id).instantiate(self.tcx, args);
+        let bounds = self.tcx.clauses_of(def_id).instantiate(self.tcx, args);
 
         for obligation in traits::predicates_for_generics(
-            |idx, predicate_span| self.cause(span, code(idx, predicate_span)),
-            |pred| self.normalize(span, pred),
+            |idx, clause_span| self.cause(span, code(idx, clause_span)),
+            |clause| self.normalize(span, clause),
             param_env,
             bounds,
         ) {

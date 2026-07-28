@@ -1,7 +1,7 @@
-- // MIR for `impossible_predicate` before ImpossiblePredicates
-+ // MIR for `impossible_predicate` after ImpossiblePredicates
+- // MIR for `impossible_clause` before ImpossibleClauses
++ // MIR for `impossible_clause` after ImpossibleClauses
   
-  fn impossible_predicate(_1: &mut i32) -> (&mut i32, &mut i32) {
+  fn impossible_clause(_1: &mut i32) -> (&mut i32, &mut i32) {
 -     debug x => _1;
       let mut _0: (&mut i32, &mut i32);
 -     let _2: &mut i32;

@@ -242,7 +242,7 @@ impl_erasable_for_types_with_no_type_params! {
     rustc_middle::ty::ClosureTypeInfo<'_>,
     rustc_middle::ty::Const<'_>,
     rustc_middle::ty::ConstConditions<'_>,
-    rustc_middle::ty::GenericPredicates<'_>,
+    rustc_middle::ty::GenericClauses<'_>,
     rustc_middle::ty::ImplTraitHeader<'_>,
     rustc_middle::ty::ParamEnv<'_>,
     rustc_middle::ty::SymbolName<'_>,
