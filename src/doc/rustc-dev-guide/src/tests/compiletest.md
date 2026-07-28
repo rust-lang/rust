@@ -216,9 +216,14 @@ A simple example of a test using `rustc_clean` is the [hello_world test].
 
 ### Debuginfo tests
 
-The tests in [`tests/debuginfo`] test debuginfo generation.
-They build a program, launch a debugger, and issue commands to the debugger.
-A single test can work with cdb, gdb, and lldb.
+>[!IMPORTANT]
+> As of [#159455](https://github.com/rust-lang/rust/pull/159455) These tests were made
+> opt-in. For further context, see:
+> [Stabilizing the state of the debuginfo test suite](https://github.com/rust-lang/compiler-team/issues/1012)
+
+The tests in [`tests/debuginfo`] test how debuginfo is interpreted by the supported debuggers, and
+confirm our visualizers still work as expected. They build a program, launch a debugger, and issue
+commands to the debugger. A single test can work with cdb, gdb, and lldb.
 
 Most tests should have the `//@ compile-flags: -g` directive or something
 similar to generate the appropriate debuginfo.
@@ -228,20 +233,16 @@ To set a breakpoint on a line, add a `// #break` comment on the line.
 The debuginfo tests consist of a series of debugger commands along with
 "check" lines which specify output that is expected from the debugger.
 
-The commands are comments of the form `// $DEBUGGER-command:$COMMAND` where
+The commands are comments of the form `//@ $DEBUGGER-command:$COMMAND` where
 `$DEBUGGER` is the debugger being used and `$COMMAND` is the debugger command to execute.
 
 The debugger values can be:
 
 - `cdb`
 - `gdb`
-- `gdbg` — GDB without Rust support (versions older than 7.11)
-- `gdbr` — GDB with Rust support
 - `lldb`
-- `lldbg` — LLDB without Rust support
-- `lldbr` — LLDB with Rust support (this no longer exists)
 
-The command to check the output are of the form `// $DEBUGGER-check:$OUTPUT`
+The command to check the output are of the form `//@ $DEBUGGER-check:$OUTPUT`
 where `$OUTPUT` is the output to expect.
 
 For example, the following will build the test, start the debugger, set a
@@ -262,6 +263,35 @@ fn main() {
 fn b() {}
 ```
 
+Additionally, there is a special command, `//@ $DEBUGGER-repr:$VAR_NAME` intended to verify
+variables (and their visualizers) with more granularity than can be achieved with simple string
+comparison. This directive should be preferred over the `-command`/`-check` whenever possible.
+
+> [!NOTE]
+> At time of writing (July 2026) this command is limited to LLDB, with an implementation coming soon
+> for GDB. There are not firm plans to port the logic to CDB.
+
+This command effectivly desugars into:
+
+```
+//@ $DEBUGGER-command:repr $VAR_NAME
+//@ $DEBUGGER-check:$VAR_NAME ok
+```
+
+The `repr $VAR_NAME` command is intercepted by special logic that uses the debuggers' API to inspect
+data that isn't reflected in the variable's printed output. The variable in memory is compared
+against input data stored in
+`tests/debuginfo/<test_name>/input/<debugger>_input/<target_group>.json` and
+provides detailed error messages on failure.
+
+> [!IMPORTANT]
+> `-repr` directives **are** compatible with the `--bless` option, unlike `-command`/`-check`.
+> `--bless`-ing a file with `-repr` commands will automatically create/update the appropriate
+> target's input data file.
+
+The implementation details of this command are further described in
+[the Testing section of the Debug Info chapter](../debuginfo/testing.md).
+
 The following [directives](directives.md) are available to disable a test based on
 the debugger currently being used:
 
@@ -272,7 +302,11 @@ the debugger currently being used:
   to the given version
 - `ignore-gdb-version: 7.11.90 - 8.0.9` — ignores the test if the version of
   gdb is in a range (inclusive)
-- `min-lldb-version: 310` — ignores the test if the version of lldb is below the given version
+- `min-apple-lldb-version: 1703.0.236.21`/`min-llvm-lldb-version: 21.1.0` — ignores the test if the
+  version of lldb is below the given version.
+  Note: Apple's fork of LLDB (distributed with Xcode) uses a different versioning scheme that is not
+  easily mappable to LLVM's LLDB version numbers. As such, the version gates are specified by
+  vendor. Further info on manually checking version equivalence is available [here](../debuginfo/testing.md#lldb-versioning)
 - `rust-lldb` — ignores the test if lldb is not contain the Rust plugin.
   NOTE: The "Rust" version of LLDB doesn't exist anymore, so this will always be ignored.
   This should probably be removed.
