@@ -103,6 +103,9 @@ use tracing::debug;
 
 use self::compare_impl_item::collect_return_position_impl_trait_in_trait_tys;
 use self::region::region_scope_tree;
+use crate::diagnostics::{
+    MissingTraitItemLabel, MissingTraitItemSuggestion, MissingTraitItemSuggestionNone,
+};
 use crate::{check_c_variadic_abi, diagnostics};
 
 /// Adds query implementations to the [Providers] vtable, see [`rustc_middle::query`]
@@ -218,7 +221,16 @@ fn impl_suggestion_span(tcx: TyCtxt<'_>, impl_def_id: LocalDefId) -> Span {
     }
 }
 
-fn missing_items_err(tcx: TyCtxt<'_>, impl_def_id: LocalDefId, missing_items: &[ty::AssocItem]) {
+fn missing_items_suggestions(
+    tcx: TyCtxt<'_>,
+    impl_def_id: LocalDefId,
+    missing_items: &[ty::AssocItem],
+) -> (
+    String,
+    Vec<MissingTraitItemSuggestion>,
+    Vec<MissingTraitItemSuggestionNone>,
+    Vec<MissingTraitItemLabel>,
+) {
     let missing_items =
         missing_items.iter().filter(|trait_item| !trait_item.is_impl_trait_in_trait());
 
@@ -258,6 +270,13 @@ fn missing_items_err(tcx: TyCtxt<'_>, impl_def_id: LocalDefId, missing_items: &[
             })
         }
     }
+
+    (missing_items_msg, missing_trait_item, missing_trait_item_none, missing_trait_item_label)
+}
+
+fn missing_items_err(tcx: TyCtxt<'_>, impl_def_id: LocalDefId, missing_items: &[ty::AssocItem]) {
+    let (missing_items_msg, missing_trait_item, missing_trait_item_none, missing_trait_item_label) =
+        missing_items_suggestions(tcx, impl_def_id, missing_items);
 
     tcx.dcx().emit_err(diagnostics::MissingTraitItem {
         span: tcx.span_of_impl(impl_def_id.to_def_id()).unwrap(),
