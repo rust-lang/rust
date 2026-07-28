@@ -5,6 +5,7 @@ use std::path::PathBuf;
 pub use ReprAttr::*;
 use rustc_abi::Align;
 pub use rustc_ast::attr::data_structures::*;
+pub use rustc_ast::attr::version::RustcVersion;
 use rustc_ast::expand::autodiff_attrs::{DiffActivity, DiffMode};
 use rustc_ast::expand::typetree::TypeTree;
 use rustc_ast::token::DocFragmentKind;
@@ -19,9 +20,10 @@ use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol};
 pub use rustc_target::spec::SanitizerSet;
 use thin_vec::ThinVec;
 
+pub use crate::attrs::canonical_symbols::{CanonicalSymbol, CanonicalSymbols};
 use crate::attrs::diagnostic::*;
 use crate::attrs::pretty_printing::PrintAttribute;
-use crate::{DefaultBodyStability, LangItem, PartialConstStability, RustcVersion, Stability};
+use crate::{DefaultBodyStability, LangItem, PartialConstStability, Stability};
 
 #[derive(Copy, Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
 pub enum EiiImplResolution {
@@ -1575,6 +1577,9 @@ pub enum AttributeKind {
 
     /// Represents `#[rustc_offload_kernel]`
     RustcOffloadKernel,
+
+    /// Represents `#[rustc_panics_when_zero]` (used for linting).
+    RustcPanicsWhenZero,
 
     /// Represents `#[rustc_paren_sugar]`.
     RustcParenSugar,

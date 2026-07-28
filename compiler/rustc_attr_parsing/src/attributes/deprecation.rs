@@ -1,7 +1,7 @@
 use rustc_ast::LitKind;
 use rustc_feature::AttributeStability;
-use rustc_hir::attrs::{DeprecatedSince, Deprecation};
-use rustc_hir::{RustcVersion, VERSION_PLACEHOLDER};
+use rustc_hir::VERSION_PLACEHOLDER;
+use rustc_hir::attrs::{DeprecatedSince, Deprecation, RustcVersion};
 
 use super::prelude::*;
 use super::util::parse_version;

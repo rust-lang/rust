@@ -80,34 +80,38 @@ impl<'tcx> BorrowSet<'tcx> {
         }
     }
 
-    // Public method to support Aquascope.
+    // Public method to support Aquascope and Creusot.
     /// Iterate through all BorrowData in the BorrowSet.
     pub fn iter(&self) -> impl Iterator<Item = &BorrowData<'tcx>> {
         self.borrows.iter()
     }
 
-    // The following functions are not depended upon by outside consumers.
-    pub(crate) fn locals_state_at_exit(&self) -> &LocalsStateAtExit {
+    // Public method to support Creusot.
+    pub fn locals_state_at_exit(&self) -> &LocalsStateAtExit {
         &self.locals_state_at_exit
     }
 
-    pub(crate) fn len(&self) -> usize {
+    // Public method to support Creusot.
+    pub fn len(&self) -> usize {
         self.borrows.len()
     }
 
-    pub(crate) fn iter_enumerated(&self) -> impl Iterator<Item = (BorrowIndex, &BorrowData<'tcx>)> {
+    pub fn iter_enumerated(&self) -> impl Iterator<Item = (BorrowIndex, &BorrowData<'tcx>)> {
         self.borrows.iter_enumerated()
     }
 
-    pub(crate) fn activations_at_location(&self, location: &Location) -> &[BorrowIndex] {
+    // Public method to support Creusot.
+    pub fn activations_at_location(&self, location: &Location) -> &[BorrowIndex] {
         self.activation_map.get(&location).map_or(&[], |activations| &activations[..])
     }
 
-    pub(crate) fn borrows_at_location(&self, location: &Location) -> Option<&[BorrowIndex]> {
+    // Public method to support Creusot.
+    pub fn borrows_at_location(&self, location: &Location) -> Option<&[BorrowIndex]> {
         self.location_map.get(location).map(|v| v.as_slice())
     }
 
-    pub(crate) fn borrows_on_local(&self, local: Local) -> Option<&IndexSet<BorrowIndex>> {
+    // Public method to support Creusot.
+    pub fn borrows_on_local(&self, local: Local) -> Option<&IndexSet<BorrowIndex>> {
         self.local_map.get(&local)
     }
 }
