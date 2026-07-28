@@ -867,9 +867,7 @@ fn enc_16lsd<const OFFSET: usize>(buf: &mut [MaybeUninit<u8>], n: u64) {
         // non-overlapping four-byte regions proven in bounds above.
         unsafe {
             write_quad(
-                buf.get_unchecked_mut(
-                    OFFSET + quad_index * 4..OFFSET + (quad_index + 1) * 4,
-                ),
+                buf.get_unchecked_mut(OFFSET + quad_index * 4..OFFSET + (quad_index + 1) * 4),
                 quad,
             );
         }
