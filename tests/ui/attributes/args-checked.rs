@@ -1,5 +1,4 @@
 #![feature(rustc_attrs)]
-#![feature(optimize_attribute)]
 #![feature(coverage_attribute)]
 #![feature(custom_test_frameworks)]
 #![allow(unused_attributes)]
