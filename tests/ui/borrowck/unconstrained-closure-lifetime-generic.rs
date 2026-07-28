@@ -12,6 +12,7 @@ impl Foo {
         //~| ERROR the parameter type `impl for<'a> Fn(&'a usize) -> Box<I>` may not live long enough
         //~| ERROR the parameter type `impl for<'a> Fn(&'a usize) -> Box<I>` may not live long enough
         //~| ERROR the parameter type `impl for<'a> Fn(&'a usize) -> Box<I>` may not live long enough
+        //~| ERROR the parameter type `impl for<'a> Fn(&'a usize) -> Box<I>` may not live long enough
         //~| ERROR the parameter type `I` may not live long enough
         //~| ERROR the parameter type `I` may not live long enough
         //~| ERROR the parameter type `I` may not live long enough

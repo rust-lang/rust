@@ -121,5 +121,20 @@ help: consider adding an explicit type annotation to the closure's argument
 LL |     A(B(C::new(D::new(move |st: &mut V| f(st)))))
    |                               ++++++++
 
-error: aborting due to 10 previous errors
+error[E0310]: the parameter type `V` may not live long enough
+  --> $DIR/ice-106874.rs:8:23
+   |
+LL |     A(B(C::new(D::new(move |st| f(st)))))
+   |                       ^^^^^^^^^^^^^^^
+   |                       |
+   |                       the parameter type `V` must be valid for the static lifetime...
+   |                       ...so that the type `V` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | pub fn func<V: 'static, F: Fn(&mut V)>(f: F) -> A<impl X> {
+   |              +++++++++
 
+error: aborting due to 11 previous errors
+
+For more information about this error, try `rustc --explain E0310`.
