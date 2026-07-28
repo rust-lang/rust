@@ -1165,6 +1165,10 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                                         .type_of(field_def.did)
                                         .instantiate(tcx, args)
                                         .skip_norm_wip();
+                                    // Lifetimes stored in valtree constants are erased, so avoid
+                                    // relating those erased regions with the field's original
+                                    // regions during well-formedness checking.
+                                    let field_ty = tcx.erase_and_anonymize_regions(field_ty);
                                     let predicate = ty::PredicateKind::Clause(
                                         ty::ClauseKind::ConstArgHasType(field_val, field_ty),
                                     );
