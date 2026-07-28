@@ -76,7 +76,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
         }
 
-        self.add_default_traits(
+        self.add_implicit_bounds(
             &mut user_written_bounds,
             dummy_self,
             &hir_bounds
@@ -85,7 +85,28 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 .collect::<Vec<_>>(),
             ImpliedBoundsContext::AssociatedTypeOrImplTrait,
             span,
+            false,
         );
+        // self.add_implicit_move_bound(
+        //     &mut user_written_bounds,
+        //     dummy_self,
+        //     &hir_bounds
+        //         .iter()
+        //         .map(|&trait_ref| hir::GenericBound::Trait(trait_ref))
+        //         .collect::<Vec<_>>(),
+        //     ImpliedBoundsContext::AssociatedTypeOrImplTrait,
+        //     span,
+        // );
+        // self.add_default_traits(
+        //     &mut user_written_bounds,
+        //     dummy_self,
+        //     &hir_bounds
+        //         .iter()
+        //         .map(|&trait_ref| hir::GenericBound::Trait(trait_ref))
+        //         .collect::<Vec<_>>(),
+        //     ImpliedBoundsContext::AssociatedTypeOrImplTrait,
+        //     span,
+        // );
 
         let (mut elaborated_trait_bounds, elaborated_projection_bounds) =
             traits::expand_trait_aliases(tcx, user_written_bounds.iter().copied());

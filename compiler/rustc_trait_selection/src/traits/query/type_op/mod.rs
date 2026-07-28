@@ -2,7 +2,7 @@ use std::fmt;
 
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::LocalDefId;
-use rustc_infer::traits::PredicateObligations;
+use rustc_infer::traits::{PredicateObligations, ScrubbedTraitError};
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::{ParamEnvAnd, TyCtxt, TypeFoldable};
 use rustc_span::Span;
@@ -179,15 +179,20 @@ where
         // we sometimes end up with `Opaque<'a> = Opaque<'b>` instead of an actual hidden type. In that case we don't register a
         // hidden type but just equate the lifetimes. Thus we need to scrape the region constraints even though we're also manually
         // collecting region constraints via `region_constraints`.
-        let (mut output, _) =
-            scrape_region_constraints(infcx, root_def_id, "fully_perform", span, |ocx| {
+        let (mut output, _) = scrape_region_constraints::<_, _, ScrubbedTraitError<'_>>(
+            infcx,
+            root_def_id,
+            "fully_perform",
+            span,
+            |ocx| {
                 let (output, ei, obligations, _) =
                     Q::fully_perform_into(self, infcx, &mut region_constraints, span)?;
                 error_info = ei;
 
                 ocx.register_obligations(obligations);
                 Ok(output)
-            })?;
+            },
+        )?;
         output.error_info = error_info;
         if let Some(QueryRegionConstraints { constraints, assumptions }) = output.constraints {
             region_constraints.constraints.extend(constraints.iter().cloned());
