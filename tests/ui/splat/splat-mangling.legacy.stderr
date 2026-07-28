@@ -1,146 +1,326 @@
-error: symbol-name(_ZN14splat_mangling4main72Type$LT$fn$LP$$C$$u20$$u23$$u5b$rustc_splat$u5d$$LP$u8$C$u32$RP$$RP$$GT$17hCRATE_HASHE)
-  --> $DIR/splat-mangling.rs:22:5
+error: symbol-name(_ZN14splat_mangling4main69Type$LT$fn$LP$$u23$$u5b$rustc_splat$u5d$$u20$$LP$u8$C$u32$RP$$RP$$GT$17hCRATE_HASHE)
+  --> $DIR/splat-mangling.rs:23:5
    |
 LL |     #[rustc_dump_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: demangling(splat_mangling::main::Type<fn(, #[rustc_splat](u8,u32))>::hCRATE_HASH)
-  --> $DIR/splat-mangling.rs:22:5
+error: demangling(splat_mangling::main::Type<fn(#[rustc_splat] (u8,u32))>::hCRATE_HASH)
+  --> $DIR/splat-mangling.rs:23:5
    |
 LL |     #[rustc_dump_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: demangling-alt(splat_mangling::main::Type<fn(, #[rustc_splat](u8,u32))>)
-  --> $DIR/splat-mangling.rs:22:5
+error: demangling-alt(splat_mangling::main::Type<fn(#[rustc_splat] (u8,u32))>)
+  --> $DIR/splat-mangling.rs:23:5
    |
 LL |     #[rustc_dump_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: symbol-name(_ZN14splat_mangling4main38Type$LT$fn$LP$$LP$u8$C$u32$RP$$RP$$GT$17hCRATE_HASHE)
-  --> $DIR/splat-mangling.rs:32:5
+  --> $DIR/splat-mangling.rs:33:5
    |
 LL |     #[rustc_dump_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: demangling(splat_mangling::main::Type<fn((u8,u32))>::hCRATE_HASH)
-  --> $DIR/splat-mangling.rs:32:5
+  --> $DIR/splat-mangling.rs:33:5
    |
 LL |     #[rustc_dump_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: demangling-alt(splat_mangling::main::Type<fn((u8,u32))>)
-  --> $DIR/splat-mangling.rs:32:5
+  --> $DIR/splat-mangling.rs:33:5
    |
 LL |     #[rustc_dump_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: symbol-name(_ZN14splat_mangling4main83Type$LT$fn$LP$$C$$u20$$u23$$u5b$rustc_splat$u5d$$LP$$LP$u8$C$u32$RP$$C$$RP$$RP$$GT$17hCRATE_HASHE)
-  --> $DIR/splat-mangling.rs:42:5
+error: symbol-name(_ZN14splat_mangling4main80Type$LT$fn$LP$$u23$$u5b$rustc_splat$u5d$$u20$$LP$$LP$u8$C$u32$RP$$C$$RP$$RP$$GT$17hCRATE_HASHE)
+  --> $DIR/splat-mangling.rs:43:5
    |
 LL |     #[rustc_dump_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: demangling(splat_mangling::main::Type<fn(, #[rustc_splat]((u8,u32),))>::hCRATE_HASH)
-  --> $DIR/splat-mangling.rs:42:5
+error: demangling(splat_mangling::main::Type<fn(#[rustc_splat] ((u8,u32),))>::hCRATE_HASH)
+  --> $DIR/splat-mangling.rs:43:5
    |
 LL |     #[rustc_dump_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: demangling-alt(splat_mangling::main::Type<fn(, #[rustc_splat]((u8,u32),))>)
-  --> $DIR/splat-mangling.rs:42:5
+error: demangling-alt(splat_mangling::main::Type<fn(#[rustc_splat] ((u8,u32),))>)
+  --> $DIR/splat-mangling.rs:43:5
    |
 LL |     #[rustc_dump_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: symbol-name(_ZN14splat_mangling4main49Type$LT$fn$LP$$LP$$LP$u8$C$u32$RP$$C$$RP$$RP$$GT$17hCRATE_HASHE)
-  --> $DIR/splat-mangling.rs:52:5
+  --> $DIR/splat-mangling.rs:53:5
    |
 LL |     #[rustc_dump_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: demangling(splat_mangling::main::Type<fn(((u8,u32),))>::hCRATE_HASH)
-  --> $DIR/splat-mangling.rs:52:5
+  --> $DIR/splat-mangling.rs:53:5
    |
 LL |     #[rustc_dump_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: demangling-alt(splat_mangling::main::Type<fn(((u8,u32),))>)
-  --> $DIR/splat-mangling.rs:52:5
+  --> $DIR/splat-mangling.rs:53:5
    |
 LL |     #[rustc_dump_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: symbol-name(_ZN14splat_mangling4main86Type$LT$$BP$const$u20$fn$LP$$C$$u20$$u23$$u5b$rustc_splat$u5d$$LP$u32$C$i8$RP$$RP$$GT$17hCRATE_HASHE)
-  --> $DIR/splat-mangling.rs:62:5
+error: symbol-name(_ZN14splat_mangling4main83Type$LT$$BP$const$u20$fn$LP$$u23$$u5b$rustc_splat$u5d$$u20$$LP$u32$C$i8$RP$$RP$$GT$17hCRATE_HASHE)
+  --> $DIR/splat-mangling.rs:63:5
    |
 LL |     #[rustc_dump_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: demangling(splat_mangling::main::Type<*const fn(, #[rustc_splat](u32,i8))>::hCRATE_HASH)
-  --> $DIR/splat-mangling.rs:62:5
+error: demangling(splat_mangling::main::Type<*const fn(#[rustc_splat] (u32,i8))>::hCRATE_HASH)
+  --> $DIR/splat-mangling.rs:63:5
    |
 LL |     #[rustc_dump_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: demangling-alt(splat_mangling::main::Type<*const fn(, #[rustc_splat](u32,i8))>)
-  --> $DIR/splat-mangling.rs:62:5
+error: demangling-alt(splat_mangling::main::Type<*const fn(#[rustc_splat] (u32,i8))>)
+  --> $DIR/splat-mangling.rs:63:5
    |
 LL |     #[rustc_dump_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: symbol-name(_ZN14splat_mangling4main52Type$LT$$BP$const$u20$fn$LP$$LP$u32$C$i8$RP$$RP$$GT$17hCRATE_HASHE)
-  --> $DIR/splat-mangling.rs:72:5
+  --> $DIR/splat-mangling.rs:73:5
    |
 LL |     #[rustc_dump_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: demangling(splat_mangling::main::Type<*const fn((u32,i8))>::hCRATE_HASH)
-  --> $DIR/splat-mangling.rs:72:5
+  --> $DIR/splat-mangling.rs:73:5
    |
 LL |     #[rustc_dump_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: demangling-alt(splat_mangling::main::Type<*const fn((u32,i8))>)
-  --> $DIR/splat-mangling.rs:72:5
+  --> $DIR/splat-mangling.rs:73:5
    |
 LL |     #[rustc_dump_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: symbol-name(_ZN14splat_mangling4main78Type$LT$fn$LP$$C$$u20$$u23$$u5b$rustc_splat$u5d$$LP$u32$C$i8$RP$$C$f64$RP$$GT$17hCRATE_HASHE)
-  --> $DIR/splat-mangling.rs:82:5
+error: symbol-name(_ZN14splat_mangling4main75Type$LT$fn$LP$$u23$$u5b$rustc_splat$u5d$$u20$$LP$u32$C$i8$RP$$C$f64$RP$$GT$17hCRATE_HASHE)
+  --> $DIR/splat-mangling.rs:84:5
    |
 LL |     #[rustc_dump_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: demangling(splat_mangling::main::Type<fn(, #[rustc_splat](u32,i8),f64)>::hCRATE_HASH)
-  --> $DIR/splat-mangling.rs:82:5
+error: demangling(splat_mangling::main::Type<fn(#[rustc_splat] (u32,i8),f64)>::hCRATE_HASH)
+  --> $DIR/splat-mangling.rs:84:5
    |
 LL |     #[rustc_dump_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: demangling-alt(splat_mangling::main::Type<fn(, #[rustc_splat](u32,i8),f64)>)
-  --> $DIR/splat-mangling.rs:82:5
+error: demangling-alt(splat_mangling::main::Type<fn(#[rustc_splat] (u32,i8),f64)>)
+  --> $DIR/splat-mangling.rs:84:5
    |
 LL |     #[rustc_dump_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: symbol-name(_ZN14splat_mangling4main44Type$LT$fn$LP$$LP$u32$C$i8$RP$$C$f64$RP$$GT$17hCRATE_HASHE)
-  --> $DIR/splat-mangling.rs:92:5
+  --> $DIR/splat-mangling.rs:94:5
    |
 LL |     #[rustc_dump_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: demangling(splat_mangling::main::Type<fn((u32,i8),f64)>::hCRATE_HASH)
-  --> $DIR/splat-mangling.rs:92:5
+  --> $DIR/splat-mangling.rs:94:5
    |
 LL |     #[rustc_dump_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: demangling-alt(splat_mangling::main::Type<fn((u32,i8),f64)>)
-  --> $DIR/splat-mangling.rs:92:5
+  --> $DIR/splat-mangling.rs:94:5
    |
 LL |     #[rustc_dump_symbol_name]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 24 previous errors
+error: symbol-name(_ZN14splat_mangling4main90Type$LT$$BP$mut$u20$fn$LP$u32$C$i8$C$$u23$$u5b$rustc_splat$u5d$$u20$$LP$f64$C$$RP$$RP$$GT$17hCRATE_HASHE)
+  --> $DIR/splat-mangling.rs:105:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(splat_mangling::main::Type<*mut fn(u32,i8,#[rustc_splat] (f64,))>::hCRATE_HASH)
+  --> $DIR/splat-mangling.rs:105:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(splat_mangling::main::Type<*mut fn(u32,i8,#[rustc_splat] (f64,))>)
+  --> $DIR/splat-mangling.rs:105:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_ZN14splat_mangling4main59Type$LT$$BP$mut$u20$fn$LP$u32$C$i8$C$$LP$f64$C$$RP$$RP$$GT$17hCRATE_HASHE)
+  --> $DIR/splat-mangling.rs:115:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(splat_mangling::main::Type<*mut fn(u32,i8,(f64,))>::hCRATE_HASH)
+  --> $DIR/splat-mangling.rs:115:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(splat_mangling::main::Type<*mut fn(u32,i8,(f64,))>)
+  --> $DIR/splat-mangling.rs:115:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_ZN14splat_mangling4main93Type$LT$$RF$fn$LP$u32$C$$u23$$u5b$rustc_splat$u5d$$u20$$LP$i8$C$f32$C$usize$RP$$C$f64$RP$$GT$17hCRATE_HASHE)
+  --> $DIR/splat-mangling.rs:126:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(splat_mangling::main::Type<&fn(u32,#[rustc_splat] (i8,f32,usize),f64)>::hCRATE_HASH)
+  --> $DIR/splat-mangling.rs:126:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(splat_mangling::main::Type<&fn(u32,#[rustc_splat] (i8,f32,usize),f64)>)
+  --> $DIR/splat-mangling.rs:126:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_ZN14splat_mangling4main62Type$LT$$RF$fn$LP$u32$C$$LP$i8$C$f32$C$usize$RP$$C$f64$RP$$GT$17hCRATE_HASHE)
+  --> $DIR/splat-mangling.rs:136:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(splat_mangling::main::Type<&fn(u32,(i8,f32,usize),f64)>::hCRATE_HASH)
+  --> $DIR/splat-mangling.rs:136:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(splat_mangling::main::Type<&fn(u32,(i8,f32,usize),f64)>)
+  --> $DIR/splat-mangling.rs:136:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_ZN14splat_mangling4main85Type$LT$$RF$mut$u20$fn$LP$u32$C$$u23$$u5b$rustc_splat$u5d$$u20$$LP$$RP$$C$f64$RP$$GT$17hCRATE_HASHE)
+  --> $DIR/splat-mangling.rs:146:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(splat_mangling::main::Type<&mut fn(u32,#[rustc_splat] (),f64)>::hCRATE_HASH)
+  --> $DIR/splat-mangling.rs:146:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(splat_mangling::main::Type<&mut fn(u32,#[rustc_splat] (),f64)>)
+  --> $DIR/splat-mangling.rs:146:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_ZN14splat_mangling4main54Type$LT$$RF$mut$u20$fn$LP$u32$C$$LP$$RP$$C$f64$RP$$GT$17hCRATE_HASHE)
+  --> $DIR/splat-mangling.rs:156:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(splat_mangling::main::Type<&mut fn(u32,(),f64)>::hCRATE_HASH)
+  --> $DIR/splat-mangling.rs:156:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(splat_mangling::main::Type<&mut fn(u32,(),f64)>)
+  --> $DIR/splat-mangling.rs:156:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_ZN14splat_mangling4main152Type$LT$alloc..boxed..Box$LT$fn$LP$u32$C$$u23$$u5b$rustc_splat$u5d$$u20$$LP$fn$LP$$u23$$u5b$rustc_splat$u5d$$u20$$LP$$RP$$RP$$C$i8$RP$$C$f64$RP$$GT$$GT$17hCRATE_HASHE)
+  --> $DIR/splat-mangling.rs:167:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(splat_mangling::main::Type<alloc::boxed::Box<fn(u32,#[rustc_splat] (fn(#[rustc_splat] ()),i8),f64)>>::hCRATE_HASH)
+  --> $DIR/splat-mangling.rs:167:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(splat_mangling::main::Type<alloc::boxed::Box<fn(u32,#[rustc_splat] (fn(#[rustc_splat] ()),i8),f64)>>)
+  --> $DIR/splat-mangling.rs:167:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_ZN14splat_mangling4main121Type$LT$alloc..boxed..Box$LT$fn$LP$u32$C$$LP$fn$LP$$u23$$u5b$rustc_splat$u5d$$u20$$LP$$RP$$RP$$C$i8$RP$$C$f64$RP$$GT$$GT$17hCRATE_HASHE)
+  --> $DIR/splat-mangling.rs:177:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(splat_mangling::main::Type<alloc::boxed::Box<fn(u32,(fn(#[rustc_splat] ()),i8),f64)>>::hCRATE_HASH)
+  --> $DIR/splat-mangling.rs:177:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(splat_mangling::main::Type<alloc::boxed::Box<fn(u32,(fn(#[rustc_splat] ()),i8),f64)>>)
+  --> $DIR/splat-mangling.rs:177:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_ZN14splat_mangling4main121Type$LT$alloc..boxed..Box$LT$fn$LP$u32$C$$u23$$u5b$rustc_splat$u5d$$u20$$LP$fn$LP$$LP$$RP$$RP$$C$i8$RP$$C$f64$RP$$GT$$GT$17hCRATE_HASHE)
+  --> $DIR/splat-mangling.rs:187:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(splat_mangling::main::Type<alloc::boxed::Box<fn(u32,#[rustc_splat] (fn(()),i8),f64)>>::hCRATE_HASH)
+  --> $DIR/splat-mangling.rs:187:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(splat_mangling::main::Type<alloc::boxed::Box<fn(u32,#[rustc_splat] (fn(()),i8),f64)>>)
+  --> $DIR/splat-mangling.rs:187:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_ZN14splat_mangling4main90Type$LT$alloc..boxed..Box$LT$fn$LP$u32$C$$LP$fn$LP$$LP$$RP$$RP$$C$i8$RP$$C$f64$RP$$GT$$GT$17hCRATE_HASHE)
+  --> $DIR/splat-mangling.rs:197:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(splat_mangling::main::Type<alloc::boxed::Box<fn(u32,(fn(()),i8),f64)>>::hCRATE_HASH)
+  --> $DIR/splat-mangling.rs:197:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(splat_mangling::main::Type<alloc::boxed::Box<fn(u32,(fn(()),i8),f64)>>)
+  --> $DIR/splat-mangling.rs:197:5
+   |
+LL |     #[rustc_dump_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 54 previous errors
 
