@@ -331,7 +331,7 @@ pub fn build_drop_shim<'tcx>(
                 func: Operand::function_handle(
                     tcx,
                     def_id,
-                    ty::Binder::dummy([ty::GenericArg::from(slice_ty)]),
+                    &[ty::GenericArg::from(slice_ty)],
                     span,
                 ),
                 args: Box::new([Spanned { span, node: Operand::Move(Place::from(erased_local)) }]),
@@ -625,7 +625,7 @@ impl<'tcx> CloneShimBuilder<'tcx> {
 
         // `func == Clone::clone(&ty) -> ty`
         // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
-        let func_ty = Ty::new_fn_def(tcx, self.def_id, ty::Binder::dummy([ty]));
+        let func_ty = tcx.type_of(self.def_id).instantiate(tcx, &[ty.into()]).skip_norm_wip();
         let func = Operand::Constant(Box::new(ConstOperand {
             span: self.span,
             user_ty: None,
