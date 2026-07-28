@@ -57,17 +57,9 @@ use rustc_span::{DUMMY_SP, ExpnId, ExpnKind, Ident, Span, Symbol};
 use rustc_target::callconv::FnAbi;
 pub use rustc_type_ir::data_structures::{DelayedMap, DelayedSet};
 pub use rustc_type_ir::fast_reject::DeepRejectCtxt;
-#[allow(
-    hidden_glob_reexports,
-    rustc::usage_of_type_ir_inherent,
-    rustc::non_glob_import_of_type_ir_inherent
-)]
-use rustc_type_ir::inherent;
 pub use rustc_type_ir::relate::VarianceDiagInfo;
 pub use rustc_type_ir::solve::{CandidatePreferenceMode, SizedTraitKind, VisibleForLeakCheck};
 pub use rustc_type_ir::*;
-#[allow(hidden_glob_reexports, unused_imports)]
-use rustc_type_ir::{InferCtxtLike, Interner};
 use tracing::{debug, instrument};
 pub use vtable::*;
 
