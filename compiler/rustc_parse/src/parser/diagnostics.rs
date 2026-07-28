@@ -32,15 +32,15 @@ use crate::diagnostics::{
     ComparisonOperatorsCannotBeChained, ComparisonOperatorsCannotBeChainedSugg,
     DocCommentDoesNotDocumentAnything, DocCommentOnParamType, DoubleColonInBound,
     ExpectedIdentifier, ExpectedSemi, ExpectedSemiSugg, FoundPathInGenerics,
-    GenericParamsWithoutAngleBrackets, GenericParamsWithoutAngleBracketsSugg,
-    HelpIdentifierStartsWithNumber, HelpUseLatestEdition, InInTypo, IncorrectAwait,
-    IncorrectSemicolon, IncorrectUseOfAwait, IncorrectUseOfUse, MisspelledKw,
-    PatternMethodParamWithoutBody, QuestionMarkInType, QuestionMarkInTypeSugg, SelfParamNotFirst,
-    StructLiteralBodyWithoutPath, StructLiteralBodyWithoutPathSugg, SuggAddMissingLetStmt,
-    SuggEscapeIdentifier, SuggRemoveComma, SuggestBindTypeParameter, SuggestIntroduceTypeParameter,
-    TernaryOperator, TernaryOperatorSuggestion, UnexpectedConstInGenericParam,
-    UnexpectedConstParamDeclaration, UnexpectedConstParamDeclarationSugg, UnmatchedAngleBrackets,
-    UseEqInstead, WrapType,
+    GenericArgsInExprRequireTurbofishSyntax, GenericParamsWithoutAngleBrackets,
+    GenericParamsWithoutAngleBracketsSugg, HelpIdentifierStartsWithNumber, HelpUseLatestEdition,
+    InInTypo, IncorrectAwait, IncorrectSemicolon, IncorrectUseOfAwait, IncorrectUseOfUse,
+    MisspelledKw, PatternMethodParamWithoutBody, QuestionMarkInType, QuestionMarkInTypeSugg,
+    SelfParamNotFirst, StructLiteralBodyWithoutPath, StructLiteralBodyWithoutPathSugg,
+    SuggAddMissingLetStmt, SuggEscapeIdentifier, SuggRemoveComma, SuggestBindTypeParameter,
+    SuggestIntroduceTypeParameter, TernaryOperator, TernaryOperatorSuggestion,
+    UnexpectedConstInGenericParam, UnexpectedConstParamDeclaration,
+    UnexpectedConstParamDeclarationSugg, UnmatchedAngleBrackets, UseEqInstead, WrapType,
 };
 use crate::exp;
 use crate::parser::FnContext;
@@ -1289,6 +1289,62 @@ impl<'a> Parser<'a> {
             }
         }
         Err(e)
+    }
+
+    pub(super) fn recover_fn_call_arg_missing_turbofish(&mut self, expr: Box<Expr>) -> Box<Expr> {
+        if let ExprKind::Binary(binop, _, _) = &expr.kind
+            && let ast::BinOpKind::Lt = binop.node
+        {
+            let binop_span = binop.span;
+
+            let snapshot = self.create_snapshot_for_diagnostic();
+            if !self.eat(exp!(Comma)) {
+                return expr;
+            }
+
+            let generic_args_ok = match self.parse_seq_to_before_end(
+                exp!(Gt),
+                SeqSep::trailing_allowed(exp!(Comma)),
+                |p| match p.parse_generic_arg(None)? {
+                    Some(arg) => Ok(arg),
+                    // If we didn't eat a generic arg, then we should error.
+                    None => p.unexpected_any(),
+                },
+            ) {
+                Ok((_, _, Recovered::No)) => true,
+                Ok((_, _, Recovered::Yes(_))) => false,
+                Err(err) => {
+                    err.cancel();
+                    false
+                }
+            };
+            let recovered = generic_args_ok
+                && self.eat(exp!(Gt))
+                && match self.token.kind {
+                    token::PathSep => {
+                        self.bump();
+                        match self.parse_expr() {
+                            Ok(_) => true,
+                            Err(err) => {
+                                err.cancel();
+                                false
+                            }
+                        }
+                    }
+                    token::OpenParen => self.consume_fn_args().is_ok(),
+                    _ => false,
+                };
+            if !recovered {
+                self.restore_snapshot(snapshot);
+                return expr;
+            }
+            let guar = self.dcx().emit_err(GenericArgsInExprRequireTurbofishSyntax {
+                span: expr.span,
+                suggest_turbofish: binop_span.shrink_to_lo(),
+            });
+            return self.mk_expr_err(expr.span.to(self.prev_token.span), guar);
+        }
+        expr
     }
 
     /// Suggest add the missing `let` before the identifier in stmt

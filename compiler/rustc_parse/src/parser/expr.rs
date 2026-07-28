@@ -109,8 +109,11 @@ impl<'a> Parser<'a> {
 
     /// Parses a sequence of expressions delimited by parentheses.
     fn parse_expr_paren_seq(&mut self) -> PResult<'a, ThinVec<Box<Expr>>> {
-        self.parse_paren_comma_seq(|p| p.parse_expr_catch_underscore(Restrictions::empty()))
-            .map(|(r, _)| r)
+        self.parse_paren_comma_seq(|p| {
+            let expr = p.parse_expr_catch_underscore(Restrictions::empty())?;
+            Ok(p.recover_fn_call_arg_missing_turbofish(expr))
+        })
+        .map(|(r, _)| r)
     }
 
     /// Parses an expression, subject to the given restrictions.
