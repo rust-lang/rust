@@ -823,12 +823,9 @@ unsafe fn write_quad(buf: &mut [MaybeUninit<u8>], offset: usize, quad: u64) {
         core::hint::assert_unchecked(offset + 4 <= buf.len());
     }
 
-    // For the documented range, ceil(2^19 / 100) gives an exact quotiet.
-    const DIV100_SHIFT: u32 = 19;
-    const DIV100_RECIPROCAL: u32 = (1 << DIV100_SHIFT) / 100 + 1;
-
     let quad = quad as u32;
-    let high = (quad * DIV100_RECIPROCAL) >> DIV100_SHIFT;
+    // Note: this is equivalent to `quad / 100`, but contains no division instructions
+    let high = (quad * const { (1 << 19) / 100 + 1 }) >> 19;
     let low = quad - high * 100;
     let high = high as usize;
     let low = low as usize;
