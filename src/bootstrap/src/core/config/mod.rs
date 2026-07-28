@@ -253,12 +253,18 @@ impl<'de> Deserialize<'de> for CompilerBuiltins {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum OverrideAllocator {
+    System,
     Jemalloc,
 }
 
 impl OverrideAllocator {
     pub fn feature_name(self) -> &'static str {
         match self {
+            OverrideAllocator::System => {
+                panic!(
+                    "OverrideAllocator::feature_name() should not be called for System allocator"
+                )
+            }
             OverrideAllocator::Jemalloc => "jemalloc",
         }
     }
@@ -271,8 +277,9 @@ impl<'de> Deserialize<'de> for OverrideAllocator {
     {
         let name = String::deserialize(deserializer)?;
         match name.as_str() {
+            "system" => Ok(Self::System),
             "jemalloc" => Ok(Self::Jemalloc),
-            other => Err(serde::de::Error::unknown_variant(other, &["jemalloc"])),
+            other => Err(serde::de::Error::unknown_variant(other, &["system", "jemalloc"])),
         }
     }
 }

@@ -1956,11 +1956,12 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
         self.enabled_codegen_backends(target).first().unwrap()
     }
 
-    pub fn override_allocator(&self, target: TargetSelection) -> Option<OverrideAllocator> {
+    pub fn override_allocator(&self, target: TargetSelection) -> OverrideAllocator {
         self.target_config
             .get(&target)
             .and_then(|cfg| cfg.override_allocator)
             .or(self.override_allocator)
+            .unwrap_or(OverrideAllocator::System)
     }
 
     pub fn rpath_enabled(&self, target: TargetSelection) -> bool {
@@ -2056,33 +2057,36 @@ impl AsRef<ExecutionContext> for Config {
 /// Reconciles the deprecated `jemalloc` boolean option with the new
 /// `override-allocator` option.
 ///
-/// Emits a warning if `jemalloc` is present and errors out if it is set but
-/// `override-allocator` is not `jemalloc`. The allocator is overridden if
-/// either option is set.
+/// Emits a warning if `jemalloc` is set, and an error if *both* `jemalloc` and `override-allocator` are set.
 fn reconcile_jemalloc(
     jemalloc: Option<bool>,
     override_allocator: Option<OverrideAllocator>,
     section: &str,
 ) -> Option<OverrideAllocator> {
-    if let Some(jemalloc) = jemalloc {
-        println!(
-            "WARNING: The `{section}.jemalloc` option is deprecated. \
-             Use `{section}.override-allocator` instead.",
-        );
-        if jemalloc && override_allocator.is_some_and(|a| a != OverrideAllocator::Jemalloc) {
-            panic!(
-                "ERROR: `{section}.jemalloc` is set but `{section}.override-allocator` is \
-                 not `jemalloc` ({:?}). Remove the deprecated `jemalloc` option or set \
-                 `override-allocator = \"jemalloc\"`.",
-                override_allocator,
+    match (jemalloc, override_allocator) {
+        (None, None) => None,
+        (None, Some(allocator)) => Some(allocator),
+        (Some(true), None) => {
+            println!(
+                "WARNING: The `jemalloc` option is deprecated. \
+                 Please use `{section}.override-allocator = \"jemalloc\"` instead of `{section}.jemalloc = true`",
             );
+            Some(OverrideAllocator::Jemalloc)
+        }
+        (Some(false), None) => {
+            println!(
+                "WARNING: The `jemalloc` option is deprecated. \
+                 Please use `{section}.override-allocator = \"system\"` instead of `{section}.jemalloc = false`",
+            );
+            Some(OverrideAllocator::System)
+        }
+        _ => {
+            panic!(
+                "ERROR: `{section}.jemalloc` and `{section}.override-allocator` are both set. \
+                 Please remove the outdated `{section}.jemalloc` directive."
+            )
         }
     }
-    override_allocator.or(if jemalloc == Some(true) {
-        Some(OverrideAllocator::Jemalloc)
-    } else {
-        None
-    })
 }
 
 fn compute_src_directory(src_dir: Option<PathBuf>, exec_ctx: &ExecutionContext) -> Option<PathBuf> {

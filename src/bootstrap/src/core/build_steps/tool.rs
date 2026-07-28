@@ -241,7 +241,7 @@ pub fn prepare_tool_cargo(
     cargo.env("LZMA_API_STATIC", "1");
 
     // See also the "JEMALLOC_SYS_WITH_LG_PAGE" setting in the compile build step.
-    if let Some(OverrideAllocator::Jemalloc) = builder.config.override_allocator(target)
+    if builder.config.override_allocator(target) == OverrideAllocator::Jemalloc
         && env::var_os("JEMALLOC_SYS_WITH_LG_PAGE").is_none()
     {
         // Build jemalloc on AArch64 with support for page sizes up to 64K
@@ -767,7 +767,8 @@ impl CommandLineStep for Rustdoc {
         // to build rustdoc.
         //
         let mut extra_features = Vec::new();
-        if let Some(allocator) = builder.config.override_allocator(target) {
+        let allocator = builder.config.override_allocator(target);
+        if allocator != OverrideAllocator::System {
             extra_features.push(allocator.feature_name().to_string());
         }
         if !builder.config.rust_debug_logging {
@@ -1585,7 +1586,8 @@ tool_rustc_extended!(Clippy {
     stable: true,
     add_bins_to_sysroot: ["clippy-driver"],
     add_features: |builder, target, features| {
-        if let Some(allocator) = builder.config.override_allocator(target) {
+        let allocator = builder.config.override_allocator(target);
+        if allocator != OverrideAllocator::System {
             features.push(allocator.feature_name().to_string());
         }
     }
@@ -1596,7 +1598,8 @@ tool_rustc_extended!(Miri {
     stable: false,
     add_bins_to_sysroot: ["miri"],
     add_features: |builder, target, features| {
-        if let Some(allocator) = builder.config.override_allocator(target) {
+        let allocator = builder.config.override_allocator(target);
+        if allocator != OverrideAllocator::System {
             features.push(allocator.feature_name().to_string());
         }
     },
