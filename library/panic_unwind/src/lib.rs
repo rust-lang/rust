@@ -28,8 +28,8 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
 use alloc::boxed::Box;
+use alloc::panicking::PanicPayload;
 use core::any::Any;
-use core::panic::PanicPayload;
 
 cfg_select! {
     any(
@@ -80,17 +80,14 @@ unsafe extern "C" {
 }
 
 #[rustc_std_internal_symbol]
-pub unsafe fn __rust_panic_cleanup(payload: *mut u8) -> *mut (dyn Any + Send + 'static) {
-    unsafe { Box::into_raw(imp::cleanup(payload)) }
+pub unsafe fn __rust_panic_cleanup(payload: *mut u8) -> Box<dyn Any + Send + 'static> {
+    unsafe { imp::cleanup(payload) }
 }
 
 // Entry point for raising an exception, just delegates to the platform-specific
 // implementation.
 #[rustc_std_internal_symbol]
 pub unsafe fn __rust_start_panic(payload: &mut dyn PanicPayload) -> u32 {
-    unsafe {
-        let payload = Box::from_raw(payload.take_box());
-
-        imp::panic(payload)
-    }
+    let payload = payload.take_box();
+    unsafe { imp::panic(payload) }
 }

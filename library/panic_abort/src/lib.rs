@@ -19,11 +19,12 @@ mod android;
 #[cfg(target_os = "zkvm")]
 mod zkvm;
 
+use alloc::boxed::Box;
+use alloc::panicking::PanicPayload;
 use core::any::Any;
-use core::panic::PanicPayload;
 
 #[rustc_std_internal_symbol]
-pub unsafe fn __rust_panic_cleanup(_: *mut u8) -> *mut (dyn Any + Send + 'static) {
+pub unsafe fn __rust_panic_cleanup(_: *mut u8) -> Box<dyn Any + Send + 'static> {
     unreachable!()
 }
 

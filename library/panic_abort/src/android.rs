@@ -1,6 +1,6 @@
+use alloc::panicking::PanicPayload;
 use alloc::string::String;
 use core::mem::transmute;
-use core::panic::PanicPayload;
 use core::ptr::copy_nonoverlapping;
 
 const ANDROID_SET_ABORT_MESSAGE: &[u8] = b"android_set_abort_message\0";

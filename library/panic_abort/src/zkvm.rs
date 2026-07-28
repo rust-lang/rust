@@ -1,5 +1,5 @@
+use alloc::panicking::PanicPayload;
 use alloc::string::String;
-use core::panic::PanicPayload;
 
 // Forward the abort message to zkVM's sys_panic. This is implemented by RISC Zero's
 // platform crate which exposes system calls specifically for the zkVM.

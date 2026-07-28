@@ -9,7 +9,8 @@
 
 #![deny(unsafe_op_in_unsafe_fn)]
 
-use core::panic::{Location, PanicPayload};
+use alloc::panicking::PanicPayload;
+use core::panic::Location;
 
 // make sure to use the stderr output configured
 // by libtest in the real copy of std
@@ -55,7 +56,7 @@ pub static EMPTY_PANIC: fn(&'static str) -> ! =
 // hook up these functions, but it is not this day!
 unsafe extern "Rust" {
     #[rustc_std_internal_symbol]
-    fn __rust_panic_cleanup(payload: *mut u8) -> *mut (dyn Any + Send + 'static);
+    fn __rust_panic_cleanup(payload: *mut u8) -> Box<dyn Any + Send + 'static>;
 
     /// `PanicPayload` lazily performs allocation only when needed (this avoids
     /// allocations when using the "abort" panic runtime).
@@ -556,7 +557,7 @@ pub unsafe fn catch_unwind<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<dyn Any +
         // the panic handler `__rust_panic_cleanup`. As such we can only
         // assume it returns the correct thing for `Box::from_raw` to work
         // without undefined behavior.
-        let obj = unsafe { Box::from_raw(__rust_panic_cleanup(payload)) };
+        let obj = unsafe { __rust_panic_cleanup(payload) };
         panic_count::decrease();
         obj
     }
@@ -626,12 +627,12 @@ pub fn panic_handler(info: &core::panic::PanicInfo<'_>) -> ! {
     }
 
     unsafe impl PanicPayload for FormatStringPayload<'_> {
-        fn take_box(&mut self) -> *mut (dyn Any + Send) {
+        fn take_box(&mut self) -> Box<dyn Any + Send> {
             // We do two allocations here, unfortunately. But (a) they're required with the current
             // scheme, and (b) we don't handle panic + OOM properly anyway (see comment in
             // begin_panic below).
             let contents = mem::take(self.fill());
-            Box::into_raw(Box::new(contents))
+            Box::new(contents)
         }
 
         fn get(&mut self) -> &(dyn Any + Send) {
@@ -652,8 +653,8 @@ pub fn panic_handler(info: &core::panic::PanicInfo<'_>) -> ! {
     struct StaticStrPayload(&'static str);
 
     unsafe impl PanicPayload for StaticStrPayload {
-        fn take_box(&mut self) -> *mut (dyn Any + Send) {
-            Box::into_raw(Box::new(self.0))
+        fn take_box(&mut self) -> Box<dyn Any + Send> {
+            Box::new(self.0)
         }
 
         fn get(&mut self) -> &(dyn Any + Send) {
@@ -714,17 +715,16 @@ pub const fn begin_panic<M: Any + Send>(msg: M) -> ! {
     }
 
     unsafe impl<A: Send + 'static> PanicPayload for Payload<A> {
-        fn take_box(&mut self) -> *mut (dyn Any + Send) {
+        fn take_box(&mut self) -> Box<dyn Any + Send> {
             // Note that this should be the only allocation performed in this code path. Currently
             // this means that panic!() on OOM will invoke this code path, but then again we're not
             // really ready for panic on OOM anyway. If we do start doing this, then we should
             // propagate this allocation to be performed in the parent of this thread instead of the
             // thread that's panicking.
-            let data = match self.inner.take() {
+            match self.inner.take() {
                 Some(a) => Box::new(a) as Box<dyn Any + Send>,
                 None => process::abort(),
-            };
-            Box::into_raw(data)
+            }
         }
 
         fn get(&mut self) -> &(dyn Any + Send) {
@@ -857,8 +857,8 @@ pub fn resume_unwind(payload: Box<dyn Any + Send>) -> ! {
     struct RewrapBox(Box<dyn Any + Send>);
 
     unsafe impl PanicPayload for RewrapBox {
-        fn take_box(&mut self) -> *mut (dyn Any + Send) {
-            Box::into_raw(mem::replace(&mut self.0, Box::new(())))
+        fn take_box(&mut self) -> Box<dyn Any + Send> {
+            mem::replace(&mut self.0, Box::new(()))
         }
 
         fn get(&mut self) -> &(dyn Any + Send) {
