@@ -8,6 +8,7 @@ mod tests;
     target_os = "l4re",
     target_os = "android",
     target_os = "hurd",
+    target_os = "vxworks",
 )))]
 use libc::off_t as off64_t;
 #[cfg(any(
@@ -28,6 +29,8 @@ cfg_select! {
         // #[cfg(gnu_file_offset_bits64)].
         use libc::pread64;
     }
+    // VxWorks has no `pread`; `read_at` and `read_buf_at` return `Unsupported`.
+    target_os = "vxworks" => {}
     _ => {
         use libc::pread as pread64;
     }
@@ -167,15 +170,23 @@ impl FileDesc {
     }
 
     pub fn read_at(&self, buf: &mut [u8], offset: u64) -> io::Result<usize> {
-        cvt(unsafe {
-            pread64(
-                self.as_raw_fd(),
-                buf.as_mut_ptr() as *mut libc::c_void,
-                cmp::min(buf.len(), READ_LIMIT),
-                offset as off64_t, // EINVAL if offset + count overflows
-            )
-        })
-        .map(|n| n as usize)
+        cfg_select! {
+            target_os = "vxworks" => {
+                let (_, _) = (buf, offset);
+                Err(io::const_error!(io::ErrorKind::Unsupported, "pread not supported by vxworks"))
+            }
+            _ => {
+                cvt(unsafe {
+                    pread64(
+                        self.as_raw_fd(),
+                        buf.as_mut_ptr() as *mut libc::c_void,
+                        cmp::min(buf.len(), READ_LIMIT),
+                        offset as off64_t, // EINVAL if offset + count overflows
+                    )
+                })
+                .map(|n| n as usize)
+            }
+        }
     }
 
     pub fn read_buf(&self, mut cursor: BorrowedCursor<'_, u8>) -> io::Result<()> {
@@ -195,22 +206,31 @@ impl FileDesc {
         Ok(())
     }
 
-    pub fn read_buf_at(&self, mut cursor: BorrowedCursor<'_, u8>, offset: u64) -> io::Result<()> {
-        // SAFETY: `cursor.as_mut()` starts with `cursor.capacity()` writable bytes
-        let ret = cvt(unsafe {
-            pread64(
-                self.as_raw_fd(),
-                cursor.as_mut().as_mut_ptr().cast::<libc::c_void>(),
-                cmp::min(cursor.capacity(), READ_LIMIT),
-                offset as off64_t, // EINVAL if offset + count overflows
-            )
-        })?;
+    pub fn read_buf_at(&self, cursor: BorrowedCursor<'_, u8>, offset: u64) -> io::Result<()> {
+        cfg_select! {
+            target_os = "vxworks" => {
+                let (_, _) = (cursor, offset);
+                Err(io::const_error!(io::ErrorKind::Unsupported, "pread not supported by vxworks"))
+            }
+            _ => {
+                let mut cursor = cursor;
+                // SAFETY: `cursor.as_mut()` starts with `cursor.capacity()` writable bytes
+                let ret = cvt(unsafe {
+                    pread64(
+                        self.as_raw_fd(),
+                        cursor.as_mut().as_mut_ptr().cast::<libc::c_void>(),
+                        cmp::min(cursor.capacity(), READ_LIMIT),
+                        offset as off64_t, // EINVAL if offset + count overflows
+                    )
+                })?;
 
-        // SAFETY: `ret` bytes were written to the initialized portion of the buffer
-        unsafe {
-            cursor.advance(ret as usize);
+                // SAFETY: `ret` bytes were written to the initialized portion of the buffer
+                unsafe {
+                    cursor.advance(ret as usize);
+                }
+                Ok(())
+            }
         }
-        Ok(())
     }
 
     #[cfg(any(
@@ -398,27 +418,35 @@ impl FileDesc {
     }
 
     pub fn write_at(&self, buf: &[u8], offset: u64) -> io::Result<usize> {
-        #[cfg(not(any(
-            all(target_os = "linux", not(target_env = "musl")),
-            target_os = "android",
-            target_os = "hurd"
-        )))]
-        use libc::pwrite as pwrite64;
-        #[cfg(any(
-            all(target_os = "linux", not(target_env = "musl")),
-            target_os = "android",
-            target_os = "hurd"
-        ))]
-        use libc::pwrite64;
+        cfg_select! {
+            target_os = "vxworks" => {
+                let (_, _) = (buf, offset);
+                Err(io::const_error!(io::ErrorKind::Unsupported, "pwrite not supported by vxworks"))
+            }
+            _ => {
+                #[cfg(not(any(
+                    all(target_os = "linux", not(target_env = "musl")),
+                    target_os = "android",
+                    target_os = "hurd"
+                )))]
+                use libc::pwrite as pwrite64;
+                #[cfg(any(
+                    all(target_os = "linux", not(target_env = "musl")),
+                    target_os = "android",
+                    target_os = "hurd"
+                ))]
+                use libc::pwrite64;
 
-        unsafe {
-            cvt(pwrite64(
-                self.as_raw_fd(),
-                buf.as_ptr() as *const libc::c_void,
-                cmp::min(buf.len(), READ_LIMIT),
-                offset as off64_t,
-            ))
-            .map(|n| n as usize)
+                unsafe {
+                    cvt(pwrite64(
+                        self.as_raw_fd(),
+                        buf.as_ptr() as *const libc::c_void,
+                        cmp::min(buf.len(), READ_LIMIT),
+                        offset as off64_t,
+                    ))
+                    .map(|n| n as usize)
+                }
+            }
         }
     }
 
