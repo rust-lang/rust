@@ -290,6 +290,13 @@ fn evaluate_candidate<'tcx>(
         let Operand::Copy(child_place) = child_discr else {
             return None;
         };
+
+        // A reachable parent `otherwise` path skips the child switch. Reading a distinct
+        // place here would therefore be speculative and may introduce UB.
+        if !otherwise_is_empty_unreachable && parent_discr.place() != Some(*child_place) {
+            return None;
+        }
+
         *child_place
     };
     let destination = if otherwise_is_empty_unreachable {

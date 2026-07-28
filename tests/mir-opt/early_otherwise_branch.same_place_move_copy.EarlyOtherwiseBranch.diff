@@ -1,0 +1,28 @@
+- // MIR for `same_place_move_copy` before EarlyOtherwiseBranch
++ // MIR for `same_place_move_copy` after EarlyOtherwiseBranch
+  
+  fn same_place_move_copy(_1: (i32, i32)) -> () {
+      let mut _0: ();
++     let mut _2: bool;
+  
+      bb0: {
+-         switchInt(move (_1.0: i32)) -> [0: bb1, otherwise: bb3];
++         _2 = Ne(copy (_1.0: i32), copy (_1.0: i32));
++         switchInt(move _2) -> [0: bb3, otherwise: bb2];
+      }
+  
+      bb1: {
+-         switchInt(copy (_1.0: i32)) -> [0: bb2, otherwise: bb3];
++         return;
+      }
+  
+      bb2: {
+          return;
+      }
+  
+      bb3: {
+-         return;
++         switchInt(copy (_1.0: i32)) -> [0: bb1, otherwise: bb2];
+      }
+  }
+  

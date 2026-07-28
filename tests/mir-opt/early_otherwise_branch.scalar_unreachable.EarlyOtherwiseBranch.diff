@@ -1,0 +1,48 @@
+- // MIR for `scalar_unreachable` before EarlyOtherwiseBranch
++ // MIR for `scalar_unreachable` after EarlyOtherwiseBranch
+  
+  fn scalar_unreachable(_1: u32, _2: u32) -> u32 {
+      let mut _0: u32;
++     let mut _3: bool;
+  
+      bb0: {
+-         switchInt(copy _1) -> [1: bb1, 2: bb2, otherwise: bb6];
++         _3 = Ne(copy _1, copy _2);
++         switchInt(move _3) -> [0: bb5, otherwise: bb3];
+      }
+  
+      bb1: {
+-         switchInt(copy _2) -> [1: bb3, otherwise: bb5];
+-     }
+- 
+-     bb2: {
+-         switchInt(copy _2) -> [2: bb4, otherwise: bb5];
+-     }
+- 
+-     bb3: {
+          _0 = const 1_u32;
+          return;
+      }
+  
+-     bb4: {
++     bb2: {
+          _0 = const 2_u32;
+          return;
+      }
+  
+-     bb5: {
++     bb3: {
+          _0 = const 0_u32;
+          return;
+      }
+  
+-     bb6: {
++     bb4: {
+          unreachable;
++     }
++ 
++     bb5: {
++         switchInt(copy _1) -> [1: bb1, 2: bb2, otherwise: bb4];
+      }
+  }
+  

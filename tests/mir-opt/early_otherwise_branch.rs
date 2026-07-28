@@ -84,11 +84,14 @@ fn opt4(x: Option2<u32>, y: Option2<u32>) -> u32 {
 
 // EMIT_MIR early_otherwise_branch.opt5.EarlyOtherwiseBranch.diff
 fn opt5(x: u32, y: u32) -> u32 {
+    // The reachable wildcard can be selected without reading the second tuple field.
     // CHECK-LABEL: fn opt5(
-    // CHECK: let mut [[CMP_LOCAL:_.*]]: bool;
+    // CHECK: let mut [[PAIR:_.*]]: (u32, u32);
     // CHECK: bb0: {
-    // CHECK: [[CMP_LOCAL]] = Ne(
-    // CHECK: switchInt(move [[CMP_LOCAL]]) -> [
+    // CHECK-NOT: copy ([[PAIR]].1: u32)
+    // CHECK-NOT: move ([[PAIR]].1: u32)
+    // CHECK-NOT: bb{{[0-9]+}}:
+    // CHECK: switchInt(copy ([[PAIR]].0: u32)) -> [
     // CHECK-NEXT: }
     match (x, y) {
         (1, 1) => 4,
@@ -125,6 +128,95 @@ fn opt5_failed_type(x: u32, y: u64) -> u32 {
         (2, 2) => 5,
         (3, 3) => 6,
         _ => 0,
+    }
+}
+
+// EMIT_MIR early_otherwise_branch.scalar_unreachable.EarlyOtherwiseBranch.diff
+#[custom_mir(dialect = "runtime")]
+fn scalar_unreachable(x: u32, y: u32) -> u32 {
+    // CHECK-LABEL: fn scalar_unreachable(
+    // CHECK-SAME: [[X:_.*]]: u32, [[Y:_.*]]: u32) -> u32 {
+    // CHECK: let mut [[CMP:_.*]]: bool;
+    // CHECK: bb0: {
+    // CHECK-NEXT: [[CMP]] = Ne(copy [[X]], copy [[Y]]);
+    // CHECK-NEXT: switchInt(move [[CMP]]) -> [
+    // CHECK-NEXT: }
+    mir! {
+        {
+            match x {
+                1 => bb1,
+                2 => bb2,
+                _ => bbu,
+            }
+        }
+
+        bb1 = {
+            match y {
+                1 => bb3,
+                _ => bb5,
+            }
+        }
+
+        bb2 = {
+            match y {
+                2 => bb4,
+                _ => bb5,
+            }
+        }
+
+        bb3 = {
+            RET = 1;
+            Return()
+        }
+
+        bb4 = {
+            RET = 2;
+            Return()
+        }
+
+        bb5 = {
+            RET = 0;
+            Return()
+        }
+
+        bbu = {
+            Unreachable()
+        }
+    }
+}
+
+// EMIT_MIR early_otherwise_branch.same_place_move_copy.EarlyOtherwiseBranch.diff
+#[custom_mir(dialect = "runtime")]
+fn same_place_move_copy(pair: (i32, i32)) {
+    // CHECK-LABEL: fn same_place_move_copy(
+    // CHECK-SAME: [[PAIR:_.*]]: (i32, i32)) -> () {
+    // CHECK: let mut [[CMP:_.*]]: bool;
+    // CHECK: bb0: {
+    // CHECK-NEXT: [[CMP]] = Ne(copy ([[PAIR]].0: i32), copy ([[PAIR]].0: i32));
+    // CHECK-NEXT: switchInt(move [[CMP]]) -> [
+    // CHECK-NEXT: }
+    mir! {
+        {
+            match Move(pair.0) {
+                0 => bb1,
+                _ => bb3,
+            }
+        }
+
+        bb1 = {
+            match pair.0 {
+                0 => bb2,
+                _ => bb3,
+            }
+        }
+
+        bb2 = {
+            Return()
+        }
+
+        bb3 = {
+            Return()
+        }
     }
 }
 
