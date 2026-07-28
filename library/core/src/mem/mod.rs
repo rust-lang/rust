@@ -420,7 +420,9 @@ pub const fn size_of_val<T: ?Sized>(val: &T) -> usize {
 ///
 /// # Safety
 ///
-/// This function is only safe to call if the following conditions hold:
+/// This function is safe to call if the pointer is safe to reborrow as `&T`
+/// (in which case you could also call [`size_of_val`]).
+/// Otherwise, the following conditions must hold:
 ///
 /// - If `T` is `Sized`, this function is always safe to call.
 /// - If the unsized tail of `T` is:
@@ -593,7 +595,9 @@ pub const fn align_of_val<T: ?Sized>(val: &T) -> usize {
 ///
 /// # Safety
 ///
-/// This function is only safe to call if the following conditions hold:
+/// This function is safe to call if the pointer is safe to reborrow as `&T`
+/// (in which case you could also call [`align_of_val`]).
+/// Otherwise, the following conditions must hold:
 ///
 /// - If `T` is `Sized`, this function is always safe to call.
 /// - If the unsized tail of `T` is:
