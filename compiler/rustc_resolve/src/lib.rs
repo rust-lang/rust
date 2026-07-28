@@ -1992,14 +1992,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     /// Returns a conditionally mutable resolver that cannot be mutated.
     fn cm(&self) -> CmResolver<'_, 'ra, 'tcx> {
-        CmResolver::from_ref(self)
+        CmResolver::Ref(self)
     }
 
     /// Returns a conditionally mutable resolver that can be mutated.
     /// Will panic if the `assert_speculative` field is true.
     fn cm_mut(&mut self) -> CmResolver<'_, 'ra, 'tcx> {
-        assert!(!self.assert_speculative);
-        CmResolver::from_mut(self)
+        assert!(!self.assert_speculative, "can't mutably borrow speculative resolver");
+        CmResolver::Mut(self)
     }
 
     /// Runs the function on each namespace.
@@ -2793,7 +2793,7 @@ pub fn provide(providers: &mut Providers) {
 ///
 /// `Cm` stands for "conditionally mutable".
 ///
-/// Prefer constructing it through [`Resolver::cm`] to ensure correctness.
+/// Prefer constructing it through `Resolver::cm(_mut)` to ensure correctness.
 type CmResolver<'r, 'ra, 'tcx> = ref_mut::RefOrMut<'r, Resolver<'ra, 'tcx>>;
 
 // FIXME: These are cells for caches that can be populated even during speculative resolution,
@@ -2804,64 +2804,52 @@ use std::cell::{Cell as CacheCell, RefCell as CacheRefCell};
 mod ref_mut {
     use std::cell::{BorrowMutError, Cell, Ref, RefCell, RefMut};
     use std::fmt;
-    use std::marker::PhantomData;
     use std::ops::Deref;
 
     use crate::Resolver;
 
-    /// A wrapper around a mutable reference that conditionally allows mutable access.
-    pub(crate) struct RefOrMut<'a, T> {
-        // We keep a raw pointer because it makes `reborrow_ref` possible. It is always safe to
-        // cast this to a `&T` because `RefOrMut` is only created through `new` which takes
-        // a `&mut T`.
-        p: *mut T,
-        mutable: bool,
-        _marker: PhantomData<&'a mut T>,
+    /// A reference type that conditionally allows mutable access.
+    pub(crate) enum RefOrMut<'a, T> {
+        Ref(&'a T),
+        Mut(&'a mut T),
     }
 
     impl<'a, T> Deref for RefOrMut<'a, T> {
         type Target = T;
 
         fn deref(&self) -> &Self::Target {
-            // SAFETY: `RefOrMUt` is only constructable through a `&mut T`.
-            unsafe { self.p.as_ref_unchecked() }
+            match self {
+                RefOrMut::Ref(r) => r,
+                RefOrMut::Mut(r) => r,
+            }
         }
     }
 
     impl<'a, T> AsRef<T> for RefOrMut<'a, T> {
         fn as_ref(&self) -> &T {
-            // SAFETY: `RefOrMUt` is only constructable through a `&mut T`.
-            unsafe { self.p.as_ref_unchecked() }
+            &*self
         }
     }
 
     impl<'a, T> RefOrMut<'a, T> {
-        pub(crate) fn from_ref(r: &'a T) -> Self {
-            RefOrMut { p: r as *const T as *mut T, mutable: false, _marker: PhantomData }
-        }
-
-        pub(crate) fn from_mut(r: &'a mut T) -> Self {
-            RefOrMut { p: r as *mut T, mutable: true, _marker: PhantomData }
-        }
-
-        /// This is needed because this wraps a `&mut T` and is therefore not `Copy`.
+        /// This is needed because the type may allow mutable access and is therefore not `Copy`.
         pub(crate) fn reborrow(&mut self) -> RefOrMut<'_, T> {
-            RefOrMut { p: self.p, mutable: self.mutable, _marker: PhantomData }
+            match self {
+                RefOrMut::Ref(r) => RefOrMut::Ref(r),
+                RefOrMut::Mut(r) => RefOrMut::Mut(r),
+            }
         }
 
         /// Returns a mutable reference to the inner value if allowed.
         ///
         /// # Panics
         ///
-        /// Panics if the `mutable` flag is false.
+        /// Panics if the wrapped reference is immutable.
         #[track_caller]
         pub(crate) fn get_mut(&mut self) -> &mut T {
-            match self.mutable {
-                false => panic!("can't mutably borrow speculative resolver"),
-                // SAFETY:
-                // - `RefOrMut` is only constructable through a `&mut T` and we
-                //   have tested that it may indeed be used as a `&mut T` in this match.
-                true => unsafe { self.p.as_mut_unchecked() },
+            match self {
+                RefOrMut::Ref(_) => panic!("can't mutably borrow an immutable reference"),
+                RefOrMut::Mut(r) => r,
             }
         }
     }
