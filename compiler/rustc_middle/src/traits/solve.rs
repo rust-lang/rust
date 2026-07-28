@@ -96,3 +96,14 @@ impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for ExternalConstraints<'tcx> {
         normalization_nested_goals.visit_with(visitor)
     }
 }
+
+// Some types are used a lot. Make sure they don't unintentionally get bigger.
+#[cfg(target_pointer_width = "64")]
+mod size_asserts {
+    use rustc_data_structures::static_assert_size;
+
+    use super::*;
+    // tidy-alphabetical-start
+    static_assert_size!(GoalStalledOn<'_>, 56);
+    // tidy-alphabetical-end
+}

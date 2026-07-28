@@ -6,6 +6,7 @@ use rustc_type_ir::{
     Interner, PlaceholderConst, PlaceholderType, Region, TypeFlags, TypeFoldable, TypeFolder,
     TypeSuperFoldable, TypeVisitableExt,
 };
+use thin_vec::ThinVec;
 
 use crate::delegate::SolverDelegate;
 
@@ -65,7 +66,7 @@ pub(super) struct Canonicalizer<'a, D: SolverDelegate<Interner = I>, I: Interner
     canonicalize_mode: CanonicalizeMode,
 
     // Mutable fields.
-    variables: Vec<I::GenericArg>,
+    variables: ThinVec<I::GenericArg>,
     var_kinds: Vec<CanonicalVarKind<I>>,
     variable_lookup_table: HashMap<I::GenericArg, usize>,
     /// Maps each `sub_unification_table_root_var` to the index of the first
@@ -91,10 +92,10 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
             delegate,
             canonicalize_mode: CanonicalizeMode::Response { max_input_universe },
 
-            variables: Vec::new(),
+            variables: Default::default(),
             variable_lookup_table: Default::default(),
             sub_root_lookup_table: Default::default(),
-            var_kinds: Vec::new(),
+            var_kinds: Default::default(),
 
             cache: Default::default(),
         };
@@ -113,10 +114,14 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
     fn canonicalize_param_env(
         delegate: &'a D,
         param_env: I::ParamEnv,
-    ) -> (I::ParamEnv, Vec<I::GenericArg>, Vec<CanonicalVarKind<I>>, HashMap<I::GenericArg, usize>)
-    {
+    ) -> (
+        I::ParamEnv,
+        ThinVec<I::GenericArg>,
+        Vec<CanonicalVarKind<I>>,
+        HashMap<I::GenericArg, usize>,
+    ) {
         if !param_env.has_type_flags(NEEDS_CANONICAL) {
-            return (param_env, Vec::new(), Vec::new(), Default::default());
+            return (param_env, ThinVec::new(), Vec::new(), Default::default());
         }
 
         // Check whether we can use the global cache for this param_env. As we only use
@@ -134,10 +139,10 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
                         delegate,
                         canonicalize_mode: CanonicalizeMode::Input(CanonicalizeInputKind::ParamEnv),
 
-                        variables: Vec::new(),
+                        variables: Default::default(),
                         variable_lookup_table: Default::default(),
                         sub_root_lookup_table: Default::default(),
-                        var_kinds: Vec::new(),
+                        var_kinds: Default::default(),
 
                         cache: Default::default(),
                     };
@@ -159,7 +164,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
                     // FIXME(nnethercote): for reasons I don't understand, this `new`+`extend`
                     // combination is faster than `variables.clone()`, because it somehow avoids
                     // some allocations.
-                    let mut variables = Vec::new();
+                    let mut variables = ThinVec::new();
                     variables.extend(cache_variables.iter().copied());
                     (param_env, variables, var_kinds.clone(), variable_lookup_table.clone())
                 },
@@ -169,10 +174,10 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
                 delegate,
                 canonicalize_mode: CanonicalizeMode::Input(CanonicalizeInputKind::ParamEnv),
 
-                variables: Vec::new(),
+                variables: Default::default(),
                 variable_lookup_table: Default::default(),
                 sub_root_lookup_table: Default::default(),
-                var_kinds: Vec::new(),
+                var_kinds: Default::default(),
 
                 cache: Default::default(),
             };
@@ -198,7 +203,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
     pub(super) fn canonicalize_input<P: TypeFoldable<I>>(
         delegate: &'a D,
         input: QueryInput<I, P>,
-    ) -> (Vec<I::GenericArg>, ty::Canonical<I, QueryInput<I, P>>) {
+    ) -> (ThinVec<I::GenericArg>, ty::Canonical<I, QueryInput<I, P>>) {
         // First canonicalize the `param_env` while keeping `'static`
         let (param_env, variables, var_kinds, variable_lookup_table) =
             Canonicalizer::canonicalize_param_env(delegate, input.goal.param_env);
@@ -280,7 +285,7 @@ impl<'a, D: SolverDelegate<Interner = I>, I: Interner> Canonicalizer<'a, D, I> {
         ty::BoundVar::from(idx)
     }
 
-    fn finalize(self) -> (ty::UniverseIndex, Vec<I::GenericArg>, I::CanonicalVarKinds) {
+    fn finalize(self) -> (ty::UniverseIndex, ThinVec<I::GenericArg>, I::CanonicalVarKinds) {
         let mut var_kinds = self.var_kinds;
         // See the rustc-dev-guide section about how we deal with universes
         // during canonicalization in the new solver.
