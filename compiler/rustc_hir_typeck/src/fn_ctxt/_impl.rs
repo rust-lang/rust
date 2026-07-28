@@ -283,16 +283,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.write_args(hir_id, callee_generic_args);
                 }
             }
-            // FIXME(splat): handle FnPtrs
-            SplatLoweringInfo::NotAFnDef(_) => {
+            // We're splatting a FnPtr based on its type
+            SplatLoweringInfo::FnPtr(fn_ty) => {
+                // FIXME(splat): do we need to look up both these HirIds?
+                // They can be different (and are different in some UI tests)
                 self.write_splatted_resolution(
                     hir_id,
-                    Ok(SplattedDef::NotAFnDef {
-                        not_yet_implemented: std::marker::PhantomData,
+                    Ok(SplattedDef::FnPtr {
+                        fn_ptr_type: fn_ty,
                         arg_index: first_tupled_arg_index,
                         arg_count: tupled_args_count,
                     }),
                 );
+                // FIXME(splat): is this actually populated and used correctly?
+                if let Some(callee_generic_args) = callee_generic_args {
+                    self.write_args(hir_id, callee_generic_args);
+                }
+            }
+            SplatLoweringInfo::Error(guar) => {
+                self.write_splatted_resolution(hir_id, Err(guar));
+                if let Some(callee_generic_args) = callee_generic_args {
+                    self.write_args(hir_id, callee_generic_args);
+                }
             }
         }
     }

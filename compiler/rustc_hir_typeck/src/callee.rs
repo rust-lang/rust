@@ -37,8 +37,10 @@ pub(crate) enum SplatLoweringInfo<'tcx> {
     /// The DefId of the FnDef being called, used to look up the function type.
     /// Also used during argument suggestion for non-splatted function calls.
     FnDef(DefId),
-    /// FIXME(splat): Stub for non-FnDef
-    NotAFnDef(std::marker::PhantomData<&'tcx ()>),
+    /// The type of the FnPtr being called.
+    FnPtr(Ty<'tcx>),
+    /// Type resolution errored.
+    Error(ErrorGuaranteed),
 }
 
 /// Checks that it is legal to call methods of the trait corresponding
@@ -613,7 +615,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Splatted FnDefs use the DefId to look up the type, FnPtrs need it directly
         let fn_id = match def_id {
             Some(x) => SplatLoweringInfo::FnDef(x),
-            None => SplatLoweringInfo::NotAFnDef(std::marker::PhantomData),
+            None => SplatLoweringInfo::FnPtr(callee_ty),
         };
 
         self.check_argument_types_maybe_method_like(

@@ -1372,8 +1372,34 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 };
                 (callee_expr.ty, self.thir.exprs.push(callee_expr))
             }
-            (SplattedDef::NotAFnDef { not_yet_implemented: _, .. }, _) => {
-                span_bug!(call_expr.span, "splatted FnPtr side-tables are not yet implemented");
+
+            // We're calling a function via a FnPtr and its type
+            // FIXME(splat): do we need to populate and apply user_provided_types() ?
+            (SplattedDef::FnPtr { fn_ptr_type, arg_index, arg_count }, Some(fn_expression)) => {
+                debug!(
+                    "splatted_callee FnPtr: fn_ty={:?} arg_index={:?} arg_count={:?}",
+                    fn_ptr_type, arg_index, arg_count,
+                );
+
+                if !fn_ptr_type.is_fn() {
+                    span_bug!(
+                        call_expr.span,
+                        "splatted FnPtr side-tables were not populated correctly, non-fn type received: {:?}",
+                        fn_ptr_type
+                    )
+                }
+
+                // Pass through the FnPtr type and the mirrored function path
+                (fn_ptr_type, self.mirror_expr(fn_expression))
+            }
+            // FnPtrs must have a function expression (and they never have method receivers)
+            (SplattedDef::FnPtr { .. }, None) => {
+                span_bug!(
+                    call_expr.span,
+                    "convert_splatted_callee: FnPtr without fn expression (or with receiver) is invalid: splatted_def={:?}, receiver_or_func={:?}",
+                    splatted_def,
+                    receiver_or_func,
+                );
             }
         };
 

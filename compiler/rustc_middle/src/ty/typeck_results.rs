@@ -614,9 +614,10 @@ pub enum SplattedDef<'tcx> {
         arg_count: u16,
     },
 
-    /// FIXME(splat): handle FnPtrs
-    NotAFnDef {
-        not_yet_implemented: std::marker::PhantomData<&'tcx ()>,
+    /// A resolved FnPtr Call.
+    FnPtr {
+        /// The resolved type of the FnPtr.
+        fn_ptr_type: Ty<'tcx>,
 
         /// The index of the first argument in the callee's splatted tuple, and the index of the
         /// splatted tuple argument in the caller.
@@ -631,21 +632,28 @@ impl<'tcx> SplattedDef<'tcx> {
     pub fn def_id(&self) -> Option<DefId> {
         match self {
             SplattedDef::FnDef { def_id, .. } => Some(*def_id),
-            SplattedDef::NotAFnDef { .. } => None,
+            SplattedDef::FnPtr { .. } => None,
+        }
+    }
+
+    pub fn fn_ptr_type(&self) -> Option<Ty<'tcx>> {
+        match self {
+            SplattedDef::FnDef { .. } => None,
+            SplattedDef::FnPtr { fn_ptr_type, .. } => Some(*fn_ptr_type),
         }
     }
 
     pub fn arg_index(&self) -> u16 {
         match self {
             SplattedDef::FnDef { arg_index, .. } => *arg_index,
-            SplattedDef::NotAFnDef { arg_index, .. } => *arg_index,
+            SplattedDef::FnPtr { arg_index, .. } => *arg_index,
         }
     }
 
     pub fn arg_count(&self) -> u16 {
         match self {
             SplattedDef::FnDef { arg_count, .. } => *arg_count,
-            SplattedDef::NotAFnDef { arg_count, .. } => *arg_count,
+            SplattedDef::FnPtr { arg_count, .. } => *arg_count,
         }
     }
 }

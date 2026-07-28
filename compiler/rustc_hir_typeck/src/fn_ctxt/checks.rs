@@ -3513,6 +3513,8 @@ impl<'a, 'tcx> CallCtxt<'a, 'tcx> {
             format!("/* {} */", arg.name)
         } else {
             // FIXME(FnPtr, splat): What suggestions are needed for FnPtrs?
+            // SplatLoweringInfo::FnPtr(Ty) and SplatLoweringInfo::Error currently fall through to
+            // this placeholder
             "/* value */".to_string()
         }
     }

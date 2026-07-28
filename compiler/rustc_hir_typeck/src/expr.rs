@@ -1511,7 +1511,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     args,
                     false,
                     TupleArgumentsFlag::DontTupleArguments,
-                    SplatLoweringInfo::NotAFnDef(std::marker::PhantomData),
+                    SplatLoweringInfo::Error(guar),
                     Some(GenericArgsRef::default()),
                 );
 
