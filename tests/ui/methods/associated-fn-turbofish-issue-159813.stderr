@@ -1,19 +1,19 @@
 error[E0599]: no method named `kind` found for enum `Option<T>` in the current scope
-  --> $DIR/issue-159813.rs:13:11
+  --> $DIR/associated-fn-turbofish-issue-159813.rs:15:12
    |
-LL |     value.kind();
-   |           ^^^^ this is an associated function, not a method
+LL |     _value.kind();
+   |            ^^^^ this is an associated function, not a method
    |
    = note: found the following associated functions; to be used as methods, functions must have a `self` parameter
 note: the candidate is defined in the trait `Kind`
-  --> $DIR/issue-159813.rs:4:5
+  --> $DIR/associated-fn-turbofish-issue-159813.rs:6:5
    |
 LL |     fn kind();
    |     ^^^^^^^^^^
 help: use associated function syntax instead
    |
-LL -     value.kind();
-LL +     Option<i32>::kind();
+LL -     _value.kind();
+LL +     Option::<i32>::kind();
    |
 
 error: aborting due to 1 previous error
