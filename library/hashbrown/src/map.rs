@@ -6523,7 +6523,7 @@ mod test_map {
     }
 
     unsafe impl Allocator for MyAlloc {
-        fn allocate(&self, layout: Layout) -> std::result::Result<NonNull<[u8]>, AllocError> {
+        fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
             let g = Global;
             g.allocate(layout)
         }
