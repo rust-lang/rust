@@ -56,7 +56,7 @@ impl<'tcx> crate::MirPass<'tcx> for InstrumentCoverage {
     }
 
     fn is_required(&self) -> bool {
-        false
+        true
     }
 }
 

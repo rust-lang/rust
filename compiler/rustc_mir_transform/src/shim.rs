@@ -119,7 +119,6 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, shim: ty::ShimKind<'tcx>) -> Body<'tcx> {
                         &add_call_guards::CriticalCallEdges,
                     ],
                     Some(MirPhase::Runtime(RuntimePhase::Optimized)),
-                    pm::Optimizations::Allowed,
                 );
 
                 return body;
@@ -143,7 +142,6 @@ fn make_shim<'tcx>(tcx: TyCtxt<'tcx>, shim: ty::ShimKind<'tcx>) -> Body<'tcx> {
                     &add_call_guards::CriticalCallEdges,
                 ],
                 Some(MirPhase::Runtime(RuntimePhase::PostCleanup)),
-                pm::Optimizations::Allowed,
             );
             run_optimization_passes(tcx, &mut body);
             debug!("make_shim({:?}) = {:?}", shim, body);

@@ -37,7 +37,6 @@ pub(super) fn build_async_destructor_ctor_shim<'tcx>(
             &add_call_guards::CriticalCallEdges,
         ],
         None,
-        pm::Optimizations::Allowed,
     );
     body
 }
