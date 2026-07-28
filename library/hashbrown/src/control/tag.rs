@@ -34,10 +34,10 @@ impl Tag {
     #[inline]
     pub(crate) const fn full(hash: u64) -> Tag {
         // Constant for function that grabs the top 7 bits of the hash.
-        const MIN_HASH_LEN: usize = if mem::size_of::<usize>() < mem::size_of::<u64>() {
-            mem::size_of::<usize>()
+        const MIN_HASH_LEN: usize = if size_of::<usize>() < size_of::<u64>() {
+            size_of::<usize>()
         } else {
-            mem::size_of::<u64>()
+            size_of::<u64>()
         };
 
         // Grab the top 7 bits of the hash. While the hash is normally a full 64-bit

@@ -3031,7 +3031,7 @@ mod test_set {
     fn test_allocation_info() {
         assert_eq!(HashSet::<()>::new().allocation_size(), 0);
         assert_eq!(HashSet::<u32>::new().allocation_size(), 0);
-        assert!(HashSet::<u32>::with_capacity(1).allocation_size() > core::mem::size_of::<u32>());
+        assert!(HashSet::<u32>::with_capacity(1).allocation_size() > size_of::<u32>());
     }
 
     #[test]
