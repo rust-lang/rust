@@ -1389,7 +1389,8 @@ pub enum AttributeKind {
     /// Represents `#[rustc_const_stable]` and `#[rustc_const_unstable]`.
     RustcConstStability {
         stability: PartialConstStability,
-        /// Span of the `#[rustc_const_stable(...)]` or `#[rustc_const_unstable(...)]` attribute
+        /// Path span of the `#[rustc_const_stable(...)]` or `#[rustc_const_unstable(...)]`
+        /// attribute.
         span: Span,
     },
 

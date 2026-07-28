@@ -810,13 +810,13 @@ pub(crate) struct MissingConstErr {
 
 #[derive(Diagnostic)]
 #[diag(
-    "attribute `#[rustc_const_stable]` can only be applied to functions that are declared `#[stable]`"
+    "the `rustc_const_stable` attribute can only be applied to functions marked with the `stable` attribute"
 )]
 pub(crate) struct ConstStableNotStable {
     #[primary_span]
     pub fn_sig_span: Span,
     #[label("attribute specified here")]
-    pub const_span: Span,
+    pub path_span: Span,
 }
 
 #[derive(Diagnostic)]
