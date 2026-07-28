@@ -5,12 +5,12 @@ LL |     for entry in fs::read_dir(".")? {
    |         ----- move occurs because `entry` has type `Result<DirEntry, std::io::Error>`, which does not implement the `Copy` trait
 LL |
 LL |         let file_type = entry?.file_type()?;
-   |                         ------ `entry` moved due to usage in the question mark operator
+   |                         ------ `entry` moved due to the question mark operator
 ...
 LL |             dbg!(entry?.file_name());
    |                  ^^^^^ value used here after move
    |
-note: the question mark operator is expanded into a call to `branch`, which takes ownership of the receiver `self`, which moves `entry`
+note: the question mark operator is desugared into a call to `std::ops::Try::branch`, which takes ownership of the receiver `self`, which moves `entry`
   --> $SRC_DIR/core/src/ops/try_trait.rs:LL:COL
 help: you could `clone` the value and consume it, if the following trait bounds could be satisfied: `DirEntry: Clone` and `std::io::Error: Clone`
    |

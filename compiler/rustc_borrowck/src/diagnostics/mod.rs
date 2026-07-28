@@ -18,7 +18,7 @@ use rustc_middle::mir::{
     LocalKind, Location, Operand, Place, PlaceRef, PlaceTy, ProjectionElem, Rvalue, Statement,
     StatementKind, Terminator, TerminatorKind, VarDebugInfoContents, find_self_call,
 };
-use rustc_middle::ty::print::Print;
+use rustc_middle::ty::print::{Print, with_no_trimmed_paths};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_mir_dataflow::move_paths::{InitLocation, LookupResult, MoveOutIndex};
@@ -1374,7 +1374,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                             &move_spans,
                         );
 
-                        let func = tcx.def_path_str(method_did);
+                        let func = with_no_trimmed_paths!(tcx.def_path_str(method_did));
                         if let Some((kind, _)) = desugaring {
                             err.subdiagnostic(CaptureReasonNote::DesugaringFuncTakeSelf {
                                 func,

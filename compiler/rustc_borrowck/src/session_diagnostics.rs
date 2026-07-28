@@ -393,7 +393,7 @@ pub(crate) enum CaptureReasonLabel<'a> {
         "{$place_name} {$is_partial ->
             [true] partially moved
             *[false] moved
-        } due to usage in the question mark {$is_loop_message ->
+        } due to the question mark {$is_loop_message ->
             [true] operator, in previous iteration of loop
             *[false] operator
         }"
@@ -515,7 +515,7 @@ pub(crate) enum CaptureReasonNote {
         span: Span,
     },
     #[note(
-        "the {$desugar_name} is expanded into a call to `{$func}`, which takes ownership of the \
+        "the {$desugar_name} is desugared into a call to `{$func}`, which takes ownership of the \
          receiver `self`, which moves {$place_name}"
     )]
     DesugaringFuncTakeSelf {

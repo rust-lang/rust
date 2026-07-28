@@ -10,7 +10,7 @@ LL |     for await i in iter {
 LL |     for await i in iter {
    |                    ^^^^ value used here after move
    |
-note: `into_async_iter` takes ownership of the receiver `self`, which moves `iter`
+note: `std::async_iter::IntoAsyncIterator::into_async_iter` takes ownership of the receiver `self`, which moves `iter`
   --> $SRC_DIR/core/src/async_iter/async_iter.rs:LL:COL
 help: you can `clone` the value and consume it, but this might not be your desired behavior
    |
