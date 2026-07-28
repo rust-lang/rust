@@ -1,0 +1,21 @@
+error[E0425]: cannot find type `void` in this scope
+  --> $DIR/return-void.rs:3:17
+   |
+LL | pub fn foo() -> void {}
+   |                 ^^^^ functions with no return value use `()`
+   |
+help: omit the return type to return `()` implicitly
+   |
+LL - pub fn foo() -> void {}
+LL + pub fn foo() {}
+   |
+
+error[E0425]: cannot find type `void` in this scope
+  --> $DIR/return-void.rs:5:15
+   |
+LL | pub fn bar(v: void) {}
+   |               ^^^^ not found in this scope
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0425`.
