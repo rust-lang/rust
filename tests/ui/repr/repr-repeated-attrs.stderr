@@ -1,3 +1,15 @@
+warning: `#[repr(..)]` attribute is specified more than once
+  --> $DIR/repr-repeated-attrs.rs:3:8
+   |
+LL | #[repr(transparent, transparent)]
+   |        ^^^^^^^^^^^  ^^^^^^^^^^^
+LL |
+LL | #[repr(transparent)]
+   |        ^^^^^^^^^^^
+   |
+   = note: for consistency, only specify the representation once
+   = note: `#[warn(repeated_reprs)]` on by default
+
 error[E0692]: transparent struct cannot have other repr hints
   --> $DIR/repr-repeated-attrs.rs:3:8
    |
@@ -6,6 +18,17 @@ LL | #[repr(transparent, transparent)]
 LL |
 LL | #[repr(transparent)]
    |        ^^^^^^^^^^^
+
+warning: `#[repr(..)]` attribute is specified more than once
+  --> $DIR/repr-repeated-attrs.rs:8:8
+   |
+LL | #[repr(transparent)]
+   |        ^^^^^^^^^^^
+LL |
+LL | #[repr(transparent)]
+   |        ^^^^^^^^^^^
+   |
+   = note: for consistency, only specify the representation once
 
 error[E0692]: transparent struct cannot have other repr hints
   --> $DIR/repr-repeated-attrs.rs:8:8
@@ -16,16 +39,15 @@ LL |
 LL | #[repr(transparent)]
    |        ^^^^^^^^^^^
 
-warning: representation attribute is specified more than once
+warning: `#[repr(..)]` attribute is specified more than once
   --> $DIR/repr-repeated-attrs.rs:13:8
    |
 LL | #[repr(Rust, Rust)]
    |        ^^^^  ^^^^
    |
    = note: for consistency, only specify the representation once
-   = note: `#[warn(repeated_reprs)]` on by default
 
-warning: representation attribute is specified more than once
+warning: `#[repr(..)]` attribute is specified more than once
   --> $DIR/repr-repeated-attrs.rs:17:8
    |
 LL | #[repr(C, C)]
@@ -33,6 +55,14 @@ LL | #[repr(C, C)]
 LL |
 LL | #[repr(C, C, C)]
    |        ^  ^  ^
+   |
+   = note: for consistency, only specify the representation once
+
+warning: `#[repr(..)]` attribute is specified more than once
+  --> $DIR/repr-repeated-attrs.rs:22:8
+   |
+LL | #[repr(u8, u8)]
+   |        ^^  ^^
    |
    = note: for consistency, only specify the representation once
 
@@ -46,11 +76,14 @@ LL | #[repr(u8, u8)]
    = note: for more information, see issue #68585 <https://github.com/rust-lang/rust/issues/68585>
    = note: `#[deny(conflicting_repr_hints)]` (part of `#[deny(future_incompatible)]`) on by default
 
-warning: representation attribute is specified more than once
-  --> $DIR/repr-repeated-attrs.rs:22:8
+warning: `#[repr(..)]` attribute is specified more than once
+  --> $DIR/repr-repeated-attrs.rs:29:8
    |
-LL | #[repr(u8, u8)]
-   |        ^^  ^^
+LL | #[repr(C, C, u8)]
+   |        ^  ^  ^^
+...
+LL | #[repr(C, u8, u8)]
+   |        ^  ^^  ^^
    |
    = note: for consistency, only specify the representation once
 
@@ -66,14 +99,11 @@ LL | #[repr(C, u8, u8)]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #68585 <https://github.com/rust-lang/rust/issues/68585>
 
-warning: representation attribute is specified more than once
-  --> $DIR/repr-repeated-attrs.rs:29:8
+warning: `#[repr(..)]` attribute is specified more than once
+  --> $DIR/repr-repeated-attrs.rs:37:14
    |
-LL | #[repr(C, C, u8)]
-   |        ^  ^  ^^
-...
-LL | #[repr(C, u8, u8)]
-   |        ^  ^^  ^^
+LL | #[repr(Rust, u8, u8)]
+   |              ^^  ^^
    |
    = note: for consistency, only specify the representation once
 
@@ -92,11 +122,11 @@ LL | #[repr(Rust, u8, u8)]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #68585 <https://github.com/rust-lang/rust/issues/68585>
 
-warning: representation attribute is specified more than once
-  --> $DIR/repr-repeated-attrs.rs:37:8
+warning: `#[repr(..)]` attribute is specified more than once
+  --> $DIR/repr-repeated-attrs.rs:45:8
    |
-LL | #[repr(Rust, u8, u8)]
-   |        ^^^^  ^^  ^^
+LL | #[repr(u8, u8)]
+   |        ^^  ^^
    |
    = note: for consistency, only specify the representation once
 
@@ -111,17 +141,6 @@ LL | #[repr(u16)]
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #68585 <https://github.com/rust-lang/rust/issues/68585>
-
-warning: representation attribute is specified more than once
-  --> $DIR/repr-repeated-attrs.rs:45:8
-   |
-LL | #[repr(u8, u8)]
-   |        ^^  ^^
-...
-LL | #[repr(u16)]
-   |        ^^^
-   |
-   = note: for consistency, only specify the representation once
 
 error[E0566]: conflicting representation hints
   --> $DIR/repr-repeated-attrs.rs:53:8
@@ -132,6 +151,14 @@ LL | #[repr(C, u8)]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #68585 <https://github.com/rust-lang/rust/issues/68585>
 
+warning: `#[repr(..)]` attribute is specified more than once
+  --> $DIR/repr-repeated-attrs.rs:61:8
+   |
+LL | #[repr(C, C, u8, u8, u8)]
+   |        ^  ^  ^^  ^^  ^^
+   |
+   = note: for consistency, only specify the representation once
+
 error[E0566]: conflicting representation hints
   --> $DIR/repr-repeated-attrs.rs:61:8
    |
@@ -141,15 +168,7 @@ LL | #[repr(C, C, u8, u8, u8)]
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #68585 <https://github.com/rust-lang/rust/issues/68585>
 
-warning: representation attribute is specified more than once
-  --> $DIR/repr-repeated-attrs.rs:61:8
-   |
-LL | #[repr(C, C, u8, u8, u8)]
-   |        ^  ^  ^^  ^^  ^^
-   |
-   = note: for consistency, only specify the representation once
-
-error: aborting due to 9 previous errors; 7 warnings emitted
+error: aborting due to 9 previous errors; 9 warnings emitted
 
 Some errors have detailed explanations: E0566, E0692.
 For more information about an error, try `rustc --explain E0566`.

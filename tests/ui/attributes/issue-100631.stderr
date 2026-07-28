@@ -1,4 +1,4 @@
-warning: representation attribute is specified more than once
+warning: `#[repr(..)]` attribute is specified more than once
   --> $DIR/issue-100631.rs:4:8
    |
 LL | #[repr(C)]
