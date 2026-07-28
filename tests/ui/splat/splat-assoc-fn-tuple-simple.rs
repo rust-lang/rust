@@ -13,10 +13,6 @@ impl Foo {
 }
 
 fn main() {
-    // FIXME(splat): should splatted functions be callable with tupled and un-tupled arguments?
-    // Add a tupled test for each call if they are.
-    //Foo::tuple_1((1u32,));
-
     Foo::tuple_1(1u32);
     Foo::tuple_3(1u32, 2i32, 3i8);
 }

@@ -30,12 +30,6 @@ impl Foo {
 
 fn main() {
     let foo = Foo;
-
-    // FIXME(splat): should splatted functions be callable with tupled and un-tupled arguments?
-    // Add a tupled test for each call if they are.
-    //foo.method(());
-    //foo.method((42i32,));
-
     // Generic tuple trait implementers work without explicit tuple type parameters.
     foo.method::<()>();
     foo.method();

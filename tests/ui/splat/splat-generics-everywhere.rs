@@ -54,10 +54,6 @@ impl<T> BarTrait<T> for Foo<T> {
 }
 
 fn main() {
-    // FIXME(splat): should splatted functions be callable with tupled and un-tupled arguments?
-    // Add a tupled test for each call if they are.
-    //Foo::<i64>::assoc(("u",));
-
     Foo::<f32>::assoc("u");
     Foo::<f32>::trait_assoc("w");
 
