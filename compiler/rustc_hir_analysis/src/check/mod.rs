@@ -203,22 +203,9 @@ pub(super) fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDef
     }
 }
 
-fn missing_items_err(
-    tcx: TyCtxt<'_>,
-    impl_def_id: LocalDefId,
-    missing_items: &[ty::AssocItem],
-    full_impl_span: Span,
-) {
-    let missing_items =
-        missing_items.iter().filter(|trait_item| !trait_item.is_impl_trait_in_trait());
-
-    let missing_items_msg = missing_items
-        .clone()
-        .map(|trait_item| trait_item.name().to_string())
-        .collect::<Vec<_>>()
-        .join("`, `");
-
-    let sugg_sp = if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(full_impl_span)
+fn impl_suggestion_span(tcx: TyCtxt<'_>, impl_def_id: LocalDefId) -> Span {
+    let full_impl_span = tcx.hir_span_with_body(tcx.local_def_id_to_hir_id(impl_def_id));
+    if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(full_impl_span)
         && snippet.ends_with("}")
     {
         // `Span` before impl block closing brace.
@@ -228,7 +215,20 @@ fn missing_items_err(
         full_impl_span.with_lo(hi).with_hi(hi)
     } else {
         full_impl_span.shrink_to_hi()
-    };
+    }
+}
+
+fn missing_items_err(tcx: TyCtxt<'_>, impl_def_id: LocalDefId, missing_items: &[ty::AssocItem]) {
+    let missing_items =
+        missing_items.iter().filter(|trait_item| !trait_item.is_impl_trait_in_trait());
+
+    let missing_items_msg = missing_items
+        .clone()
+        .map(|trait_item| trait_item.name().to_string())
+        .collect::<Vec<_>>()
+        .join("`, `");
+
+    let sugg_sp = impl_suggestion_span(tcx, impl_def_id);
 
     // Obtain the level of indentation ending in `sugg_sp`.
     let padding = tcx.sess.source_map().indentation_before(sugg_sp).unwrap_or_else(String::new);
