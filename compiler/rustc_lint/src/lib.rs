@@ -274,6 +274,7 @@ late_lint_methods!(
             ImplicitProvenanceCasts: ImplicitProvenanceCasts,
             CVoidReturns: CVoidReturns,
             CVoidReferences: CVoidReferences,
+            CVoidStatics: CVoidStatics,
         ]
     ]
 );

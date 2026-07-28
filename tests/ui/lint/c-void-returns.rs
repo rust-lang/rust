@@ -27,4 +27,8 @@ unsafe extern "C" {
 
 type Xyzzy = fn() -> c_void; //~ ERROR c_void
 
+trait Trait {
+    fn foo() -> c_void; //~ ERROR c_void
+}
+
 fn main() {}
