@@ -49,7 +49,7 @@ pub fn expand_trait_aliases<'tcx>(
             ty::ClauseKind::Trait(trait_pred) => {
                 if tcx.is_trait_alias(trait_pred.def_id()) {
                     queue.extend(
-                        tcx.explicit_super_predicates_of(trait_pred.def_id())
+                        tcx.explicit_super_clauses_of(trait_pred.def_id())
                             .iter_identity_copied()
                             .map(Unnormalized::skip_norm_wip)
                             .map(|(super_clause, span)| {

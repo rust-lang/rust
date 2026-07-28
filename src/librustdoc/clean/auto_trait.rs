@@ -10,7 +10,7 @@ use rustc_trait_selection::traits::auto_trait::{self, RegionTarget};
 use tracing::{debug, instrument};
 
 use crate::clean::{
-    self, Lifetime, clean_generic_param_def, clean_middle_ty, clean_predicate,
+    self, Lifetime, clean_clause, clean_generic_param_def, clean_middle_ty,
     clean_trait_ref_with_constraints, clean_ty_generics_inner, simplify,
 };
 use crate::core::DocContext;
@@ -104,7 +104,7 @@ fn synthesize_auto_trait_impl<'tcx>(
             let mut generics = clean_ty_generics_inner(
                 cx,
                 tcx.generics_of(item_def_id),
-                ty::GenericPredicates::default(),
+                ty::GenericClauses::default(),
             );
             generics.where_predicates.clear();
 
@@ -200,7 +200,7 @@ fn clean_param_env<'tcx>(
                     }
                 })
             })
-            .flat_map(|clause| clean_predicate(clause, cx))
+            .flat_map(|clause| clean_clause(clause, cx))
             .chain(clean_region_outlives_constraints(&region_data, generics))
             .collect()
     });

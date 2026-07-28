@@ -1219,6 +1219,7 @@ pub enum AttributeKind {
 
     /// Represents `#[diagnostic::on_const]`.
     OnConst {
+        /// The attribute path span.
         span: Span,
         /// None if the directive was malformed in some way.
         directive: Option<Box<Directive>>,
@@ -1306,8 +1307,11 @@ pub enum AttributeKind {
     /// Represents `#[reexport_test_harness_main]`
     ReexportTestHarnessMain(Symbol),
 
-    /// Represents `#[register_tool]`
-    RegisterTool(ThinVec<Ident>),
+    /// Represents `#[register_attribute_tool]`, `#[register_lint_tool]` and `#[register_tool]`
+    RegisterTool {
+        attr_tools: ThinVec<Ident>,
+        lint_tools: ThinVec<Ident>,
+    },
 
     /// Represents [`#[repr]`](https://doc.rust-lang.org/stable/reference/type-layout.html#representations).
     Repr {
@@ -1391,7 +1395,8 @@ pub enum AttributeKind {
     /// Represents `#[rustc_const_stable]` and `#[rustc_const_unstable]`.
     RustcConstStability {
         stability: PartialConstStability,
-        /// Span of the `#[rustc_const_stable(...)]` or `#[rustc_const_unstable(...)]` attribute
+        /// Path span of the `#[rustc_const_stable(...)]` or `#[rustc_const_unstable(...)]`
+        /// attribute.
         span: Span,
     },
 

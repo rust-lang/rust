@@ -35,7 +35,7 @@ impl ChangeMethodNameTrait for Foo {
 #[cfg(not(any(bpass1,bpass4)))]
 #[rustc_clean(except="hir_owner,associated_item_def_ids", cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(except="hir_owner,associated_item_def_ids,predicates_of", cfg="bpass5")]
+#[rustc_clean(except="hir_owner,associated_item_def_ids,clauses_of", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 pub trait ChangeMethodNameTrait {
     #[rustc_clean(cfg="bpass3")]
@@ -333,7 +333,7 @@ impl ChangeHasValueTrait for Foo {
 #[cfg(not(any(bpass1,bpass4)))]
 #[rustc_clean(cfg="bpass2")]
 #[rustc_clean(cfg="bpass3")]
-#[rustc_clean(except="hir_owner,predicates_of", cfg="bpass5")]
+#[rustc_clean(except="hir_owner,clauses_of", cfg="bpass5")]
 #[rustc_clean(cfg="bpass6")]
 pub trait ChangeHasValueTrait {
     #[rustc_clean(except="hir_owner", cfg="bpass2")]

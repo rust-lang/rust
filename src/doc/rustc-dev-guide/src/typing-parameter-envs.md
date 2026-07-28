@@ -20,7 +20,7 @@ whereas different `ParamEnv`s can be used on a per-goal basis.
 
 The [`ParamEnv`][penv] is a list of in-scope where-clauses,
 it typically corresponds to a specific item's where clauses.
-Some clauses are not explicitly written but are instead implicitly added in the [`predicates_of`][predicates_of] query,
+Some clauses are not explicitly written but are instead implicitly added in the [`clauses_of`][clauses_of] query,
 such as `ConstArgHasType` or (some) implied bounds.
 
 In most cases `ParamEnv`s are initially created via the [`param_env` query][query] which returns a `ParamEnv` derived from the provided item's where clauses.
@@ -75,7 +75,7 @@ fn foo2<T>(a: T) {
 }
 ```
 
-[predicates_of]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_analysis/collect/predicates_of/fn.predicates_of.html
+[clauses_of]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_analysis/collect/clauses_of/fn.clauses_of.html
 [method_pred_entailment]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_analysis/check/compare_impl_item/fn.compare_method_predicate_entailment.html
 [query]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.param_env
 [normalization]: normalization.md

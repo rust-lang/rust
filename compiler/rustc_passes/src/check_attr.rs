@@ -52,7 +52,9 @@ use rustc_trait_selection::traits::ObligationCtxt;
 use crate::diagnostics;
 
 #[derive(Diagnostic)]
-#[diag("`#[diagnostic::on_const]` can only be applied to non-const trait implementations")]
+#[diag(
+    "the `diagnostic::on_const` attribute can only be applied to non-const trait implementations"
+)]
 struct DiagnosticOnConstOnlyForNonConstTraitImpls {
     #[label("this is a const trait implementation")]
     item_span: Span,
@@ -300,7 +302,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::ProfilerRuntime => (),
             AttributeKind::RecursionLimit { .. } => (),
             AttributeKind::ReexportTestHarnessMain(..) => (),
-            AttributeKind::RegisterTool(..) => (),
+            AttributeKind::RegisterTool { .. } => (),
             // handled below this loop and elsewhere
             AttributeKind::Repr { .. } => (),
             AttributeKind::RustcAbi { .. } => (),
@@ -569,7 +571,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     /// Checks if `#[diagnostic::on_const]` is applied to a on-const trait impl
     fn check_diagnostic_on_const(
         &self,
-        attr_span: Span,
+        attr_path_span: Span,
         hir_id: HirId,
         target: Target,
         item: Option<&'tcx Item<'tcx>>,
@@ -609,7 +611,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     self.tcx.emit_node_span_lint(
                         MISPLACED_DIAGNOSTIC_ATTRIBUTES,
                         hir_id,
-                        attr_span,
+                        attr_path_span,
                         DiagnosticOnConstOnlyForNonConstTraitImpls { item_span },
                     );
                     return;

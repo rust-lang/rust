@@ -74,15 +74,15 @@ pub fn compute_applicable_impls_for_diagnostics<'tcx>(
 
             if !ignore_predicates_of_impls {
                 let obligations = tcx
-                    .predicates_of(impl_def_id)
+                    .clauses_of(impl_def_id)
                     .instantiate(tcx, impl_args)
                     .into_iter()
-                    .map(|(predicate, _)| {
+                    .map(|(clause, _)| {
                         Obligation::new(
                             tcx,
                             ObligationCause::dummy(),
                             param_env,
-                            predicate.skip_norm_wip(),
+                            clause.skip_norm_wip(),
                         )
                     })
                     // Kinda hacky, but let's just throw away obligations that overflow.
@@ -147,15 +147,15 @@ pub fn compute_applicable_impls_for_diagnostics<'tcx>(
     // If our `body_def_id` has been set (and isn't just from a dummy obligation cause),
     // then try to look for a param-env clause that would apply. The way we compute
     // this is somewhat manual, since we need the spans, so we elaborate this directly
-    // from `predicates_of` rather than actually looking at the param-env which
+    // from `clauses_of` rather than actually looking at the param-env which
     // otherwise would be more appropriate.
     let body_def_id = obligation.cause.body_def_id;
     if body_def_id != CRATE_DEF_ID {
-        let predicates = tcx.predicates_of(body_def_id.to_def_id()).instantiate_identity(tcx);
-        for (pred, span) in
-            elaborate(tcx, predicates.into_iter().map(|(c, s)| (c.skip_norm_wip(), s)))
+        let clauses = tcx.clauses_of(body_def_id.to_def_id()).instantiate_identity(tcx);
+        for (clause, span) in
+            elaborate(tcx, clauses.into_iter().map(|(c, s)| (c.skip_norm_wip(), s)))
         {
-            let kind = pred.kind();
+            let kind = clause.kind();
             if let ty::ClauseKind::Trait(trait_pred) = kind.skip_binder()
                 && param_env_candidate_may_apply(kind.rebind(trait_pred))
             {

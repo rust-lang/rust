@@ -1636,14 +1636,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // and point at that.
                         let instantiated = self
                             .tcx
-                            .explicit_predicates_of(self.body_def_id)
+                            .explicit_clauses_of(self.body_def_id)
                             .instantiate_identity(self.tcx);
                         // FIXME(compiler-errors): This could be problematic if something has two
                         // fn-like predicates with different args, but callable types really never
                         // do that, so it's OK.
-                        for (predicate, span) in instantiated {
+                        for (clause, span) in instantiated {
                             if let ty::ClauseKind::Trait(pred) =
-                                predicate.skip_norm_wip().kind().skip_binder()
+                                clause.skip_norm_wip().kind().skip_binder()
                                 && pred.self_ty().peel_refs() == callee_ty
                                 && self.tcx.is_fn_trait(pred.def_id())
                             {

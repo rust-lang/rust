@@ -45,7 +45,7 @@ struct StructWithDropAndLt<'a> {
     x: &'a i32,
 }
 
-// Make sure we don't ICE when checking impossible predicates for the struct.
+// Make sure we don't ICE when checking impossible clauses for the struct.
 // Regression test for <https://github.com/rust-lang/rust/issues/135515>.
 //~ MONO_ITEM fn std::ptr::drop_glue::<StructWithLtAndPredicate<'_>> - shim(Some(StructWithLtAndPredicate<'_>))
 struct StructWithLtAndPredicate<'a: 'a> {

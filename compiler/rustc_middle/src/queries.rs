@@ -150,10 +150,16 @@ rustc_queries! {
         desc { "triggering a delayed bug for testing incremental" }
     }
 
-    /// Collects the list of all tools registered using `#![register_tool]`.
-    query registered_tools(_: ()) -> &'tcx ty::RegisteredTools {
+    /// Collects the list of all tools registered using `#![register_tool]` or `#![register_attribute_tool]`.
+    query registered_attr_tools(_: ()) -> &'tcx ty::RegisteredTools {
         arena_cache
-        desc { "compute registered tools for crate" }
+        desc { "compute registered attribute tools for crate" }
+    }
+
+    /// Collects the list of all tools registered using `#![register_tool]` or `#![register_lint_tool]`.
+    query registered_lint_tools(_: ()) -> &'tcx ty::RegisteredTools {
+        arena_cache
+        desc { "compute registered lint tools for crate" }
     }
 
     query early_lint_checks(_: ()) {
@@ -413,15 +419,15 @@ rustc_queries! {
         feedable
     }
 
-    /// Returns the (elaborated) *predicates* of the definition given by `DefId`
+    /// Returns the (elaborated) *clauses* of the definition given by `DefId`
     /// that must be proven true at usage sites (and which can be assumed at definition site).
     ///
-    /// This is almost always *the* "predicates query" that you want.
+    /// This is almost always *the* predicates/clauses query that you want.
     ///
     /// **Tip**: You can use `#[rustc_dump_predicates]` on an item to basically print
     /// the result of this query for use in UI tests or for debugging purposes.
-    query predicates_of(key: DefId) -> ty::GenericPredicates<'tcx> {
-        desc { "computing predicates of `{}`", tcx.def_path_str(key) }
+    query clauses_of(key: DefId) -> ty::GenericClauses<'tcx> {
+        desc { "computing clauses of `{}`", tcx.def_path_str(key) }
     }
 
     query opaque_types_defined_by(
@@ -764,9 +770,9 @@ rustc_queries! {
         desc { "getting wasm import module map" }
     }
 
-    /// Returns the explicitly user-written *predicates and bounds* of the trait given by `DefId`.
+    /// Returns the explicitly user-written *clauses and bounds* of the trait given by `DefId`.
     ///
-    /// Traits are unusual, because predicates on associated types are
+    /// Traits are unusual, because clauses on associated types are
     /// converted into bounds on that type for backwards compatibility:
     ///
     /// ```
@@ -779,22 +785,22 @@ rustc_queries! {
     /// trait X { type U: Copy; }
     /// ```
     ///
-    /// [`Self::explicit_predicates_of`] and [`Self::explicit_item_bounds`] will
-    /// then take the appropriate subsets of the predicates here.
+    /// [`Self::explicit_clauses_of`] and [`Self::explicit_item_bounds`] will
+    /// then take the appropriate subsets of the clauses here.
     ///
     /// # Panics
     ///
     /// This query will panic if the given definition is not a trait.
-    query trait_explicit_predicates_and_bounds(key: LocalDefId) -> ty::GenericPredicates<'tcx> {
-        desc { "computing explicit predicates of trait `{}`", tcx.def_path_str(key) }
+    query trait_explicit_clauses_and_bounds(key: LocalDefId) -> ty::GenericClauses<'tcx> {
+        desc { "computing explicit clauses of trait `{}`", tcx.def_path_str(key) }
     }
 
-    /// Returns the explicitly user-written *predicates* of the definition given by `DefId`
+    /// Returns the explicitly user-written *clauses* of the definition given by `DefId`
     /// that must be proven true at usage sites (and which can be assumed at definition site).
     ///
-    /// You should probably use [`TyCtxt::predicates_of`] unless you're looking for
-    /// predicates with explicit spans for diagnostics purposes.
-    query explicit_predicates_of(key: DefId) -> ty::GenericPredicates<'tcx> {
+    /// You should probably use [`TyCtxt::clauses_of`] unless you're looking for
+    /// clauses with explicit spans for diagnostics purposes.
+    query explicit_clauses_of(key: DefId) -> ty::GenericClauses<'tcx> {
         desc { "computing explicit predicates of `{}`", tcx.def_path_str(key) }
         cache_on_disk
         separate_provide_extern
@@ -814,27 +820,27 @@ rustc_queries! {
         feedable
     }
 
-    /// Returns the explicitly user-written *super-predicates* of the trait given by `DefId`.
+    /// Returns the explicitly user-written *super-clauses* of the trait given by `DefId`.
     ///
-    /// These predicates are unelaborated and consequently don't contain transitive super-predicates.
+    /// These clauses are unelaborated and consequently don't contain transitive super-clauses.
     ///
-    /// This is a subset of the full list of predicates. We store these in a separate map
+    /// This is a subset of the full list of clauses. We store these in a separate map
     /// because we must evaluate them even during type conversion, often before the full
-    /// predicates are available (note that super-predicates must not be cyclic).
-    query explicit_super_predicates_of(key: DefId) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
-        desc { "computing the super predicates of `{}`", tcx.def_path_str(key) }
+    /// clauses are available (note that super-clauses must not be cyclic).
+    query explicit_super_clauses_of(key: DefId) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
+        desc { "computing the super clauses of `{}`", tcx.def_path_str(key) }
         cache_on_disk
         separate_provide_extern
     }
 
-    /// The predicates of the trait that are implied during elaboration.
+    /// The clauses of the trait that are implied during elaboration.
     ///
-    /// This is a superset of the super-predicates of the trait, but a subset of the predicates
-    /// of the trait. For regular traits, this includes all super-predicates and their
+    /// This is a superset of the super-clauses of the trait, but a subset of the clauses
+    /// of the trait. For regular traits, this includes all super-clauses and their
     /// associated type bounds. For trait aliases, currently, this includes all of the
-    /// predicates of the trait alias.
-    query explicit_implied_predicates_of(key: DefId) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
-        desc { "computing the implied predicates of `{}`", tcx.def_path_str(key) }
+    /// clauses of the trait alias.
+    query explicit_implied_clauses_of(key: DefId) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
+        desc { "computing the implied clauses of `{}`", tcx.def_path_str(key) }
         cache_on_disk
         separate_provide_extern
     }
@@ -854,7 +860,7 @@ rustc_queries! {
     /// Compute the conditions that need to hold for a conditionally-const item to be const.
     /// That is, compute the set of `[const]` where clauses for a given item.
     ///
-    /// This can be thought of as the `[const]` equivalent of `predicates_of`. These are the
+    /// This can be thought of as the `[const]` equivalent of `clauses_of`. These are the
     /// predicates that need to be proven at usage sites, and can be assumed at definition.
     ///
     /// This query also computes the `[const]` where clauses for associated types, which are
@@ -883,9 +889,9 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    /// To avoid cycles within the predicates of a single item we compute
-    /// per-type-parameter predicates for resolving `T::AssocTy`.
-    query type_param_predicates(
+    /// To avoid cycles within the clauses of a single item we compute
+    /// per-type-parameter clauses for resolving `T::AssocTy`.
+    query type_param_clauses(
         key: (LocalDefId, LocalDefId, rustc_span::Ident)
     ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
         desc { "computing the bounds for type parameter `{}`", tcx.hir_ty_param_name(key.1) }
@@ -2602,9 +2608,9 @@ rustc_queries! {
         desc { "normalizing `{:?}`", goal.canonical.value.value.value.skip_normalization() }
     }
 
-    query instantiate_and_check_impossible_predicates(key: (DefId, GenericArgsRef<'tcx>)) -> bool {
+    query instantiate_and_check_impossible_clauses(key: (DefId, GenericArgsRef<'tcx>)) -> bool {
         desc {
-            "checking impossible instantiated predicates: `{}`",
+            "checking impossible instantiated clauses: `{}`",
             tcx.def_path_str(key.0)
         }
     }

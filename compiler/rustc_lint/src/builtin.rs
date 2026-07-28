@@ -243,7 +243,7 @@ impl EarlyLintPass for UnsafeCode {
 
             ast::ItemKind::MacroDef(..) => {
                 if let Some(hir::Attribute::Parsed(AttributeKind::AllowInternalUnsafe(span))) =
-                    AttributeParser::parse_limited(
+                    AttributeParser::parse_limited_sym(
                         cx.builder.sess(),
                         &it.attrs,
                         &[sym::allow_internal_unsafe],
@@ -1450,9 +1450,9 @@ impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
         use rustc_middle::ty::ClauseKind;
 
         if cx.tcx.features().trivial_bounds() {
-            let predicates = cx.tcx.predicates_of(item.owner_id);
-            for &(predicate, span) in predicates.predicates {
-                let predicate_kind_name = match predicate.kind().skip_binder() {
+            let gen_clauses = cx.tcx.clauses_of(item.owner_id);
+            for &(clause, span) in gen_clauses.clauses {
+                let clause_kind_name = match clause.kind().skip_binder() {
                     ClauseKind::Trait(..) => "trait",
                     ClauseKind::TypeOutlives(..) | ClauseKind::RegionOutlives(..) => "lifetime",
 
@@ -1469,11 +1469,11 @@ impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
                     // Users don't write this directly, only via another trait ref.
                     | ty::ClauseKind::HostEffect(..) => continue,
                 };
-                if predicate.is_global() {
+                if clause.is_global() {
                     cx.emit_span_lint(
                         TRIVIAL_BOUNDS,
                         span,
-                        BuiltinTrivialBounds { predicate_kind_name, predicate },
+                        BuiltinTrivialBounds { clause_kind_name, clause },
                     );
                 }
             }
