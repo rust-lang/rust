@@ -2,9 +2,14 @@
 #![crate_name = "foo"]
 
 #[doc(notable_trait)]
-pub trait Labeled {}
+pub trait Neg {}
+#[doc(notable_trait)]
+pub trait Pos {}
 
 // A negative impl must not produce a badge.
-//@ count 'foo/struct.Neg.html' '//div[@class="notable-trait-badge-container"]' 0
-pub struct Neg;
-impl !Labeled for Neg {}
+//@ has 'foo/struct.T.html'
+//@ count - '//div[@class="notable-trait-badge-container"]/a' 1
+//@ has - '//div[@class="notable-trait-badge-container"]/a[@href="trait.Pos.html"]' 'Pos'
+pub struct T;
+impl !Neg for T {}
+impl Pos for T {}
