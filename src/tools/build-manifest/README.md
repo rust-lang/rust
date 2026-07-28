@@ -37,3 +37,17 @@ Then, you can generate the manifest and all the packages from `build/dist` to
 mkdir -p build/manifest
 cargo +nightly run --release -p build-manifest build/dist build/manifest 1970-01-01 http://example.com nightly
 ```
+
+The final argument is `channel`: it must match how `rust.channel` was set for the build that
+produced the tarballs in the dist directory (`stable`/`beta`/`nightly`, or anything else is
+treated like `dev`), since it's used to work out each tarball's expected filename.
+
+An optional 6th argument, `release_name`, controls what the published/installable name is
+(i.e. `channel-rust-<release_name>.toml`, and what a user passes to
+`rustup toolchain install --dist-server <url> <release_name>`). It defaults to `channel` when
+omitted. This lets a channel's *version resolution* stay accurate (e.g. `stable`) while the
+*published name* is something else entirely (e.g. this fork's `stable-teenyc`):
+
+```sh
+cargo +nightly run --release -p build-manifest build/dist build/manifest 1970-01-01 http://example.com stable stable-teenyc
+```

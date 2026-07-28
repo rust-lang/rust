@@ -45,17 +45,27 @@ pub fn pkgname(builder: &Builder<'_>, component: &str) -> String {
 }
 
 /// Rebrands a component identifier (e.g. `"rustc"`, `"rust-std"`) for use in dist tarball
-/// filenames only: `rustc` -> `teenyc`, `rust` -> `teeny`. This only affects the produced
-/// filename/package name; the component identifier itself (used for `x.py dist <name>`
-/// aliases and the rust-installer `--component-name`/manifest) is untouched.
+/// filenames only: `rustc`/`rustc-*` -> `teenyc`/`teenyc-*`, `rust`/`rust-*` -> `teeny`/`teeny-*`.
+/// This only affects the produced filename/package name; the component identifier itself (used
+/// for `x.py dist <name>` aliases and the rust-installer `--component-name`/manifest) is
+/// untouched.
+///
+/// The prefix match requires a `-` boundary (or an exact match) so that tool names which merely
+/// start with the letters "rust" but aren't hyphenated (`rustfmt`) aren't accidentally mangled
+/// into e.g. `teenyfmt`. Hyphenated components (`rust-analyzer`, `rustc-docs`, ...) do match and
+/// are rebranded, since upstream itself treats the hyphen as the component-name boundary.
 fn dist_component_name(component: &str) -> String {
-    if let Some(rest) = component.strip_prefix("rustc") {
-        format!("teenyc{rest}")
-    } else if let Some(rest) = component.strip_prefix("rust") {
-        format!("teeny{rest}")
-    } else {
-        component.to_string()
+    if let Some(rest) = component.strip_prefix("rustc")
+        && (rest.is_empty() || rest.starts_with('-'))
+    {
+        return format!("teenyc{rest}");
     }
+    if let Some(rest) = component.strip_prefix("rust")
+        && (rest.is_empty() || rest.starts_with('-'))
+    {
+        return format!("teeny{rest}");
+    }
+    component.to_string()
 }
 
 pub(crate) fn distdir(builder: &Builder<'_>) -> PathBuf {

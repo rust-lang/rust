@@ -58,6 +58,13 @@ struct Builder {
     output: PathBuf,
     s3_address: String,
     date: String,
+    /// The name this release is published/installed under (e.g. what a user passes to
+    /// `rustup toolchain install --dist-server <url> <name>`). Defaults to `channel` when not
+    /// given explicitly. Kept distinct from `channel` because `channel` also drives version
+    /// resolution (see `Versions::archive_name`) and must match how the dist tarballs were
+    /// actually named by bootstrap's `rust.channel`, whereas the release name is purely
+    /// cosmetic/branding and can be arbitrary (e.g. this fork's "stable-teenyc").
+    release_name: String,
 }
 
 fn main() {
@@ -77,6 +84,7 @@ fn main() {
     let date = args.next().unwrap();
     let s3_address = args.next().unwrap();
     let channel = args.next().unwrap();
+    let release_name = args.next().unwrap_or_else(|| channel.clone());
 
     Builder {
         versions: Versions::new(&channel, &input).unwrap(),
@@ -87,6 +95,7 @@ fn main() {
         output,
         s3_address,
         date,
+        release_name,
     }
     .build();
 }
@@ -96,7 +105,7 @@ impl Builder {
         let manifest = self.build_manifest();
 
         let channel = self.versions.channel().to_string();
-        self.write_channel_files(&channel, &manifest);
+        self.write_channel_files(&self.release_name.clone(), &manifest);
         if channel == "stable" {
             // channel-rust-1.XX.YY.toml
             let rust_version = self.versions.rustc_version().to_string();

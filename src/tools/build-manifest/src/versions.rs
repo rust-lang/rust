@@ -39,29 +39,29 @@ macro_rules! pkg_type {
     }
 }
 
-// This fork renames dist packages: bare "rust-*" becomes "teeny-*", and
-// "rustc*" becomes "teenyc*" (confirmed against actual build/dist output).
-// Entries below that are still upstream-named haven't been built by this
-// fork yet, so their real prefix (if any) is unverified.
+// This fork renames dist packages: "rust"/"rust-*" becomes "teeny"/"teeny-*", and
+// "rustc"/"rustc-*" becomes "teenyc"/"teenyc-*" (see `dist_component_name` in
+// build_steps/dist.rs). Tools whose name merely starts with the letters "rust" without a
+// hyphen boundary (rustfmt) are NOT renamed, matching that same boundary rule.
 pkg_type! {
-    Rust = "teenyc",
+    Rust = "teeny",
     RustSrc = "teeny-src",
     Rustc = "teenyc",
     RustcDev = "teenyc-dev",
-    RustcDocs = "rustc-docs",
+    RustcDocs = "teenyc-docs",
     ReproducibleArtifacts = "reproducible-artifacts",
-    RustMingw = "rust-mingw",
+    RustMingw = "teeny-mingw",
     RustStd = "teeny-std",
     Cargo = "cargo",
     HtmlDocs = "teeny-docs",
-    RustAnalysis = "rust-analysis",
-    RustAnalyzer = "rust-analyzer"; preview = true,
+    RustAnalysis = "teeny-analysis",
+    RustAnalyzer = "teeny-analyzer"; preview = true,
     Clippy = "clippy"; preview = true,
     Rustfmt = "rustfmt"; preview = true,
     LlvmTools = "llvm-tools"; preview = true,
     Miri = "miri"; preview = true,
     JsonDocs = "teeny-docs-json"; preview = true,
-    RustcCodegenCranelift = "rustc-codegen-cranelift"; preview = true,
+    RustcCodegenCranelift = "teenyc-codegen-cranelift"; preview = true,
     LlvmBitcodeLinker = "llvm-bitcode-linker"; preview = true,
 }
 
@@ -174,9 +174,17 @@ impl Versions {
         match self.versions.get(package) {
             Some(version) => Ok(version.clone()),
             None => {
-                let version_info = self.load_version_from_tarball(package)?;
+                let mut version_info = self.load_version_from_tarball(package)?;
                 if *package == PkgType::Rust && version_info.version.is_none() {
-                    panic!("missing version info for toolchain");
+                    // The combined "rust" bundle tarball (rustc+cargo+std+docs+...) is only
+                    // produced when `build.extended = true`; this fork's default dist doesn't
+                    // build it. Fall back to the compiler tarball instead, which every dist
+                    // configuration produces and which carries an identical version/
+                    // git-commit-hash overlay (see `Tarball::new`'s default `OverlayKind::Rust`).
+                    version_info = self.load_version_from_tarball(&PkgType::Rustc)?;
+                    if version_info.version.is_none() {
+                        panic!("missing version info for toolchain");
+                    }
                 }
                 self.versions.insert(package.clone(), version_info.clone());
                 Ok(version_info)
