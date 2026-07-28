@@ -43,9 +43,9 @@ fn is_arg_ty_unified_in_fn<'tcx>(
 
     fn_sig
         .predicates_id()
-        .map(|def_id| cx.tcx.predicates_of(def_id))
+        .map(|def_id| cx.tcx.clauses_of(def_id))
         .is_some_and(|generics| {
-            generics.predicates.iter().any(|(clause, _)| {
+            generics.clauses.iter().any(|(clause, _)| {
                 clause
                     .as_projection_clause()
                     .and_then(|p| p.map_bound(|p| p.term.as_type()).transpose())
