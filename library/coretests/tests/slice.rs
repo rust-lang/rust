@@ -1782,6 +1782,17 @@ pub mod memchr {
     }
 
     #[test]
+    fn each_alignment() {
+        let mut data = [1u8; 64];
+        let needle = 2;
+        let pos = 40;
+        data[pos] = needle;
+        for start in 0..16 {
+            assert_eq!(Some(pos - start), memchr(needle, &data[start..]));
+        }
+    }
+
+    #[test]
     fn matches_one_reversed() {
         assert_eq!(Some(0), memrchr(b'a', b"a"));
     }
