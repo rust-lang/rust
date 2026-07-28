@@ -15,11 +15,11 @@ pub mod outlives_bounds;
 pub mod outlives_for_liveness;
 pub mod project;
 pub mod query;
-#[allow(hidden_glob_reexports)]
+#[expect(hidden_glob_reexports)]
 mod select;
 pub mod specialize;
 mod structural_normalize;
-#[allow(hidden_glob_reexports)]
+#[expect(hidden_glob_reexports)]
 mod util;
 pub mod vtable;
 pub mod wf;

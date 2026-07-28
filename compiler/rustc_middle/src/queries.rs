@@ -43,8 +43,6 @@
 //!
 //! For more details, see the [rustc-dev-guide](https://rustc-dev-guide.rust-lang.org/query.html).
 
-#![allow(unused_parens)]
-
 use std::ffi::OsStr;
 use std::path::PathBuf;
 use std::sync::Arc;

@@ -162,7 +162,7 @@ mod opaque_types;
 mod predicate;
 mod region;
 mod structural_impls;
-#[allow(hidden_glob_reexports)]
+#[expect(hidden_glob_reexports)]
 mod sty;
 mod typeck_results;
 mod visit;
@@ -1928,7 +1928,7 @@ impl<'tcx> TyCtxt<'tcx> {
         did: impl Into<DefId>,
         attr: Symbol,
     ) -> impl Iterator<Item = &'tcx hir::Attribute> {
-        #[allow(deprecated)]
+        #[expect(deprecated)]
         self.get_all_attrs(did).iter().filter(move |a: &&hir::Attribute| a.has_name(attr))
     }
 

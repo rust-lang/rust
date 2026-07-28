@@ -526,7 +526,6 @@ impl InitMaskMaterialized {
             None
         }
 
-        #[cfg_attr(not(debug_assertions), allow(dead_code))]
         fn find_bit_slow(
             init_mask: &InitMaskMaterialized,
             start: Size,
