@@ -2,6 +2,7 @@
 //@ edition:2024
 //@ run-pass
 //@ needs-threads
+//@ needs-unwind
 
 #![feature(alloc_error_hook, thread_spawn_hook)]
 
