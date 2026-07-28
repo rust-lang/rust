@@ -194,168 +194,6 @@ fn main() {
 }
 
 #[test]
-fn desugar_builtin_format_args_before_1_89_0() {
-    pretty_print(
-        r#"
-//- minicore: fmt_before_1_89_0
-fn main() {
-    let are = "are";
-    let count = 10;
-    builtin#format_args("\u{1b}hello {count:02} {} friends, we {are:?} {0}{last}", "fancy", orphan = (), last = "!");
-}
-"#,
-        expect![[r#"
-        fn main() {
-            let are = "are";
-            let count = 10;
-            builtin#lang(Arguments::new_v1_formatted)(
-                &[
-                    "\u{1b}hello ", " ", " friends, we ", " ", "",
-                ],
-                &[
-                    builtin#lang(Argument::new_display)(
-                        &count,
-                    ), builtin#lang(Argument::new_display)(
-                        &"fancy",
-                    ), builtin#lang(Argument::new_debug)(
-                        &are,
-                    ), builtin#lang(Argument::new_display)(
-                        &"!",
-                    ),
-                ],
-                &[
-                    builtin#lang(Placeholder::new)(
-                        0usize,
-                        ' ',
-                        builtin#lang(Alignment::Unknown),
-                        8u32,
-                        builtin#lang(Count::Implied),
-                        builtin#lang(Count::Is)(
-                            2,
-                        ),
-                    ), builtin#lang(Placeholder::new)(
-                        1usize,
-                        ' ',
-                        builtin#lang(Alignment::Unknown),
-                        0u32,
-                        builtin#lang(Count::Implied),
-                        builtin#lang(Count::Implied),
-                    ), builtin#lang(Placeholder::new)(
-                        2usize,
-                        ' ',
-                        builtin#lang(Alignment::Unknown),
-                        0u32,
-                        builtin#lang(Count::Implied),
-                        builtin#lang(Count::Implied),
-                    ), builtin#lang(Placeholder::new)(
-                        1usize,
-                        ' ',
-                        builtin#lang(Alignment::Unknown),
-                        0u32,
-                        builtin#lang(Count::Implied),
-                        builtin#lang(Count::Implied),
-                    ), builtin#lang(Placeholder::new)(
-                        3usize,
-                        ' ',
-                        builtin#lang(Alignment::Unknown),
-                        0u32,
-                        builtin#lang(Count::Implied),
-                        builtin#lang(Count::Implied),
-                    ),
-                ],
-                {
-                    ();
-                    unsafe {
-                        builtin#lang(UnsafeArg::new)()
-                    }
-                },
-            );
-        }"#]],
-    )
-}
-
-#[test]
-fn desugar_builtin_format_args_before_1_93_0() {
-    pretty_print(
-        r#"
-//- minicore: fmt_before_1_93_0
-fn main() {
-    let are = "are";
-    let count = 10;
-    builtin#format_args("\u{1b}hello {count:02} {} friends, we {are:?} {0}{last}", "fancy", orphan = (), last = "!");
-}
-"#,
-        expect![[r#"
-        fn main() {
-            let are = "are";
-            let count = 10;
-            {
-                let <ra@gennew>0 = (&"fancy", &(), &"!", &count, &are, );
-                let <ra@gennew>0 = [
-                    builtin#lang(Argument::new_display)(
-                        <ra@gennew>0.3,
-                    ), builtin#lang(Argument::new_display)(
-                        <ra@gennew>0.0,
-                    ), builtin#lang(Argument::new_debug)(
-                        <ra@gennew>0.4,
-                    ), builtin#lang(Argument::new_display)(
-                        <ra@gennew>0.2,
-                    ),
-                ];
-                unsafe {
-                    builtin#lang(Arguments::new_v1_formatted)(
-                        &[
-                            "\u{1b}hello ", " ", " friends, we ", " ", "",
-                        ],
-                        &<ra@gennew>0,
-                        &[
-                            builtin#lang(Placeholder::new)(
-                                0usize,
-                                ' ',
-                                builtin#lang(Alignment::Unknown),
-                                8u32,
-                                builtin#lang(Count::Implied),
-                                builtin#lang(Count::Is)(
-                                    2,
-                                ),
-                            ), builtin#lang(Placeholder::new)(
-                                1usize,
-                                ' ',
-                                builtin#lang(Alignment::Unknown),
-                                0u32,
-                                builtin#lang(Count::Implied),
-                                builtin#lang(Count::Implied),
-                            ), builtin#lang(Placeholder::new)(
-                                2usize,
-                                ' ',
-                                builtin#lang(Alignment::Unknown),
-                                0u32,
-                                builtin#lang(Count::Implied),
-                                builtin#lang(Count::Implied),
-                            ), builtin#lang(Placeholder::new)(
-                                1usize,
-                                ' ',
-                                builtin#lang(Alignment::Unknown),
-                                0u32,
-                                builtin#lang(Count::Implied),
-                                builtin#lang(Count::Implied),
-                            ), builtin#lang(Placeholder::new)(
-                                3usize,
-                                ' ',
-                                builtin#lang(Alignment::Unknown),
-                                0u32,
-                                builtin#lang(Count::Implied),
-                                builtin#lang(Count::Implied),
-                            ),
-                        ],
-                    )
-                }
-            };
-        }"#]],
-    )
-}
-
-#[test]
 fn desugar_builtin_format_args() {
     pretty_print(
         r#"
@@ -464,7 +302,7 @@ impl SsrError {
 fn regression_10300() {
     pretty_print(
         r#"
-//- minicore: concat, panic, fmt_before_1_89_0
+//- minicore: concat, panic, fmt
 mod private {
     pub use core::concat;
 }
@@ -480,22 +318,15 @@ fn f(a: i32, b: u32) -> String {
 }
 "#,
         expect![[r#"
-        fn f(a, b) {
-            {
-                core::panicking::panic_fmt(
-                    builtin#lang(Arguments::new_v1_formatted)(
-                        &[
+            fn f(a, b) {
+                {
+                    core::panicking::panic_fmt(
+                        builtin#lang(Arguments::from_str)(
                             "cc",
-                        ],
-                        &[],
-                        &[],
-                        unsafe {
-                            builtin#lang(UnsafeArg::new)()
-                        },
-                    ),
-                );
-            };
-        }"#]],
+                        ),
+                    );
+                };
+            }"#]],
     )
 }
 

@@ -45,4 +45,3 @@ pub use error::errno_location;
 pub use error::set_errno;
 pub use error::{decode_error_kind, errno, error_string, is_interrupted};
 pub use is_terminal::is_terminal;
-pub use kernel_copy::{CopyState, kernel_copy};

@@ -22,7 +22,7 @@ extern crate ra_ap_rustc_type_ir as rustc_type_ir;
 /// Any toolchain less than this version will likely not work with rust-analyzer built from this revision.
 pub const MINIMUM_SUPPORTED_TOOLCHAIN_VERSION: semver::Version = semver::Version {
     major: 1,
-    minor: 78,
+    minor: 94,
     patch: 0,
     pre: semver::Prerelease::EMPTY,
     build: semver::BuildMetadata::EMPTY,
@@ -38,6 +38,7 @@ mod line_index;
 mod main_loop;
 mod mem_docs;
 mod op_queue;
+mod priming_scope;
 mod reload;
 mod target_spec;
 mod task_pool;

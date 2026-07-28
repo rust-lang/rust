@@ -178,7 +178,7 @@ pub(super) struct SourceToDefCtx<'db, 'cache> {
     pub(super) cache: &'cache mut SourceToDefCache<'db>,
 }
 
-impl SourceToDefCtx<'_, '_> {
+impl<'db> SourceToDefCtx<'db, '_> {
     pub(super) fn file_to_def(&mut self, file: FileId) -> &SmallVec<[ModuleId; 1]> {
         let _p = tracing::info_span!("SourceToDefCtx::file_to_def").entered();
         self.cache.file_to_def_cache.entry(file).or_insert_with(|| {
@@ -347,15 +347,17 @@ impl SourceToDefCtx<'_, '_> {
     pub(super) fn bind_pat_to_def(
         &mut self,
         src: InFile<&ast::IdentPat>,
-        semantics: &SemanticsImpl<'_>,
-    ) -> Option<crate::Local> {
+        semantics: &SemanticsImpl<'db>,
+    ) -> Option<crate::Local<'db>> {
         let container = self.find_container(src.syntax_ref())?.as_expression_store_owner()?;
         let (store, source_map) = ExpressionStore::with_source_map(self.db, container);
         let src = src.cloned().map(ast::Pat::from);
         let pat_id = source_map.node_pat(src.as_ref())?;
         // the pattern could resolve to a constant, verify that this is not the case
-        if let crate::Pat::Bind { id, .. } = store[pat_id.as_pat()?] {
-            let parent_infer = semantics.infer_body_for_expr_or_pat(container, store, pat_id)?;
+        let pat_id = pat_id.as_pat()?;
+        if let crate::Pat::Bind { id, .. } = store[pat_id] {
+            let parent_infer =
+                semantics.infer_body_for_expr_or_pat(container, store, pat_id.into())?;
             Some(crate::Local { parent: container, parent_infer, binding_id: id })
         } else {
             None

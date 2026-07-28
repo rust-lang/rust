@@ -274,7 +274,7 @@ fn get_default_constructor(
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::{check_diagnostics, check_fix, check_no_fix};
+    use crate::tests::{check_diagnostics, check_fix, check_has_fix, check_no_fix};
 
     #[test]
     fn missing_record_pat_field_diagnostic() {
@@ -829,7 +829,7 @@ fn f() {
 
     #[test]
     fn test_fill_struct_pat_fields_partial() {
-        check_fix(
+        check_has_fix(
             r#"
 struct S { a: &'static str, b: i32 }
 

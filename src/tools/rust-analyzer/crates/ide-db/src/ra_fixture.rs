@@ -3,6 +3,7 @@
 use std::hash::{BuildHasher, Hash};
 
 use hir::{CfgExpr, FilePositionWrapper, FileRangeWrapper, Semantics, Symbol};
+use itertools::Itertools;
 use smallvec::SmallVec;
 use span::{TextRange, TextSize};
 use syntax::{
@@ -96,9 +97,13 @@ impl RaFixtureAnalysis {
         let active_parameter = ActiveParameter::at_token(sema, expanded.syntax().clone())?;
         let has_rust_fixture_attr = active_parameter.attrs().is_some_and(|attrs| {
             attrs.filter_map(|attr| attr.as_simple_path()).any(|path| {
-                path.segments()
-                    .zip(["rust_analyzer", "rust_fixture"])
-                    .all(|(seg, name)| seg.name_ref().map_or(false, |nr| nr.text() == name))
+                let Some([Some(segment1), Some(segment2)]) =
+                    path.segments().map(|seg| seg.name_ref()).collect_array()
+                else {
+                    return false;
+                };
+                segment1.text_non_mutable() == "rust_analyzer"
+                    && segment2.text_non_mutable() == "rust_fixture"
             })
         });
         if !has_rust_fixture_attr {

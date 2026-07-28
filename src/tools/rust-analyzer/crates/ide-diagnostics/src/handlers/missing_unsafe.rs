@@ -676,17 +676,6 @@ fn main() {
         // Checks that we don't place orphan arguments for formatting under an unsafe block.
         check_diagnostics(
             r#"
-//- minicore: fmt_before_1_89_0
-fn foo() {
-    let p = 0xDEADBEEF as *const i32;
-    format_args!("", *p);
-                  // ^^ error: dereference of raw pointer is unsafe and requires an unsafe function or block
-}
-        "#,
-        );
-
-        check_diagnostics(
-            r#"
 //- minicore: fmt
 fn foo() {
     let p = 0xDEADBEEF as *const i32;

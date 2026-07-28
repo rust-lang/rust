@@ -908,7 +908,7 @@ fn test_sockopt_rcvtimeo() {
 /// the operation is finished, even when the socket file _descriptor_ gets
 /// closed in the mean time.
 fn test_unblock_after_socket_close() {
-    // MacOS behaves different (`read` errors with EBADFD when the file description is closed)
+    // MacOS behaves different (`read` errors with EBADF when the file description is closed)
     // so we skip the test when we are run on a native macOS target.
     if cfg!(not(miri)) && cfg!(target_os = "macos") {
         return;

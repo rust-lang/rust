@@ -96,14 +96,8 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         &self,
         alias_ty: ty::AliasTy<'tcx>,
     ) -> Vec<ty::PolyTypeOutlivesPredicate<'tcx>> {
-        // FIXME(#155345): Region handling should generally only
-        // deal with rigid aliases, making sure we do so correctly
-        // everywhere is effort, so we're just using `No` everywhere
-        // for now. This should change soon.
         let erased_alias_ty = self.tcx.erase_and_anonymize_regions(
-            ty::set_aliases_to_non_rigid(self.tcx, alias_ty)
-                .skip_norm_wip()
-                .to_ty(self.tcx, ty::IsRigid::No),
+            alias_ty.to_ty(self.tcx, ty::IsRigid::yes_if_next_solver(self.tcx)),
         );
         self.declared_generic_bounds_from_env_for_erased_ty(erased_alias_ty)
     }
@@ -168,7 +162,8 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
             Component::Placeholder(placeholder_ty) => {
                 self.param_or_placeholder_bound(Ty::new_placeholder(self.tcx, placeholder_ty))
             }
-            Component::Alias(alias_ty) => self.alias_bound(alias_ty),
+            // `type_must_outlive` already asserted that it's rigid in the next solver.
+            Component::Alias(_, alias_ty) => self.alias_bound(alias_ty),
             Component::EscapingAlias(ref components) => self.bound_from_components(components),
             Component::UnresolvedInferenceVariable(v) => {
                 // Ignore this, we presume it will yield an error later, since
@@ -245,20 +240,14 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
                 // And therefore we can safely use structural equality for alias types.
                 (GenericKind::Param(p1), ty::Param(p2)) if p1 == p2 => {}
                 (GenericKind::Placeholder(p1), ty::Placeholder(p2)) if p1 == p2 => {}
-                // FIXME(#155345): We probably want to assert that the rhs is rigid.
-                (GenericKind::Alias(a1), ty::Alias(_, a2)) if a1.kind == a2.kind => {}
+                (GenericKind::Alias(a1), ty::Alias(is_rigid, a2)) if a1.kind == a2.kind => {
+                    debug_assert_eq!(*is_rigid, ty::IsRigid::yes_if_next_solver(self.tcx));
+                }
                 _ => return None,
             }
 
             let p_ty = p.to_ty(tcx);
-            // FIXME(#155345): Region handling should generally only
-            // deal with rigid aliases, making sure we do so correctly
-            // everywhere is effort, so we're just using `No` everywhere
-            // for now. This should change soon.
-            let erased_p_ty = self.tcx.erase_and_anonymize_regions(
-                ty::set_aliases_to_non_rigid(self.tcx, p_ty).skip_norm_wip(),
-            );
-            let erased_ty = ty::set_aliases_to_non_rigid(self.tcx, erased_ty).skip_norm_wip();
+            let erased_p_ty = self.tcx.erase_and_anonymize_regions(p_ty);
             (erased_p_ty == erased_ty).then_some(ty::Binder::dummy(ty::OutlivesPredicate(p_ty, r)))
         }));
 

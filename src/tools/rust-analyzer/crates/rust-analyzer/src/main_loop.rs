@@ -647,14 +647,15 @@ impl GlobalState {
     }
 
     fn prime_caches(&mut self, cause: String) {
-        tracing::debug!(%cause, "will prime caches");
+        let scope = self.compute_priming_scope();
+        tracing::debug!(%cause, scope_size = scope.len(), "will prime caches");
         let num_worker_threads = self.config.prime_caches_num_threads();
 
         self.task_pool.handle.spawn_with_sender(ThreadIntent::Worker, {
             let analysis = AssertUnwindSafe(self.snapshot().analysis);
             move |sender| {
                 sender.send(Task::PrimeCaches(PrimeCachesProgress::Begin)).unwrap();
-                let res = analysis.parallel_prime_caches(num_worker_threads, |progress| {
+                let res = analysis.parallel_prime_caches(&scope, num_worker_threads, |progress| {
                     let report = PrimeCachesProgress::Report(progress);
                     sender.send(Task::PrimeCaches(report)).unwrap();
                 });

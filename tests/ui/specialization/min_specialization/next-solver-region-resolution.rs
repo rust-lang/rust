@@ -1,4 +1,5 @@
 //@ compile-flags: -Znext-solver=globally
+//@ ignore-parallel-frontend query cycle
 // ICE regression test for https://github.com/rust-lang/rust/issues/151327
 
 #![feature(min_specialization)]

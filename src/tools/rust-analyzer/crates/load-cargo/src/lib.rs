@@ -197,7 +197,8 @@ pub fn load_workspace_into_db(
     );
 
     if load_config.prefill_caches {
-        prime_caches::parallel_prime_caches(db, load_config.num_worker_threads, &|_| ());
+        let all = ide_db::base_db::all_crates(db);
+        prime_caches::parallel_prime_caches(db, &all, load_config.num_worker_threads, &|_| ());
     }
 
     Ok((vfs, proc_macro_server.and_then(Result::ok)))

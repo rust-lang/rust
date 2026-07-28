@@ -114,7 +114,7 @@ pub fn drop_flag_effects_for_location<'tcx, F>(
     debug!("drop_flag_effects_for_location({:?})", loc);
 
     // first, move out of the RHS
-    for mi in &move_data.loc_map[loc] {
+    for mi in &move_data.move_out_loc_map[loc] {
         let path = mi.move_path_index(move_data);
         debug!("moving out of path {:?}", move_data.move_paths[path]);
 

@@ -5,12 +5,13 @@ use la_arena::{Arena, ArenaMap, Idx, IdxRange, RawIdx};
 
 use crate::{
     BlockId, DefWithBodyId, ExpressionStoreOwnerId, GenericDefId, VariantId,
-    expr_store::{Body, ExpressionStore, HygieneId, body::Param},
+    expr_store::{Body, ExpressionStore, HygieneId, StoreVisitor, body::Param},
     hir::{
         Array, Binding, BindingId, Expr, ExprId, Item, LabelId, Pat, PatId, Statement,
         generics::GenericParams,
     },
     signatures::VariantFields,
+    type_ref::TypeRefId,
 };
 
 pub type ScopeId = Idx<ScopeData>;
@@ -46,11 +47,16 @@ impl ScopeEntry {
 #[derive(Debug, PartialEq, Eq)]
 pub struct ScopeData {
     parent: Option<ScopeId>,
-    block: Option<BlockId>,
-    label: Option<(LabelId, Name)>,
-    // FIXME: We can compress this with an enum for this and `label`/`block` if memory usage matters.
-    macro_def: Option<Box<MacroDefId>>,
+    kind: ScopeKind,
     entries: IdxRange<ScopeEntry>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum ScopeKind {
+    None,
+    Block { id: BlockId, label: Option<LabelId> },
+    Label(LabelId),
+    MacroDef(Box<MacroDefId>),
 }
 
 #[salsa::tracked]
@@ -100,18 +106,28 @@ impl ExprScopes {
 
     /// If `scope` refers to a block expression scope, returns the corresponding `BlockId`.
     pub fn block(&self, scope: ScopeId) -> Option<BlockId> {
-        self.scopes[scope].block
+        match self.scopes[scope].kind {
+            ScopeKind::Block { id, label: _ } => Some(id),
+            ScopeKind::None | ScopeKind::Label(_) | ScopeKind::MacroDef(_) => None,
+        }
     }
 
     /// If `scope` refers to a macro def scope, returns the corresponding `MacroId`.
     #[allow(clippy::borrowed_box)] // If we return `&MacroDefId` we need to move it, this way we just clone the `Box`.
     pub fn macro_def(&self, scope: ScopeId) -> Option<&Box<MacroDefId>> {
-        self.scopes[scope].macro_def.as_ref()
+        match &self.scopes[scope].kind {
+            ScopeKind::MacroDef(macro_def) => Some(macro_def),
+            ScopeKind::None | ScopeKind::Block { id: _, label: _ } | ScopeKind::Label(_) => None,
+        }
     }
 
     /// If `scope` refers to a labeled expression scope, returns the corresponding `Label`.
-    pub fn label(&self, scope: ScopeId) -> Option<(LabelId, Name)> {
-        self.scopes[scope].label.clone()
+    pub fn label(&self, scope: ScopeId) -> Option<LabelId> {
+        match &self.scopes[scope].kind {
+            &ScopeKind::Block { id: _, label } => label,
+            &ScopeKind::Label(label) => Some(label),
+            ScopeKind::None | ScopeKind::MacroDef(_) => None,
+        }
     }
 
     /// Returns the scopes in ascending order.
@@ -174,9 +190,7 @@ impl ExprScopes {
     fn root_scope(&mut self) -> ScopeId {
         self.scopes.alloc(ScopeData {
             parent: None,
-            block: None,
-            label: None,
-            macro_def: None,
+            kind: ScopeKind::None,
             entries: empty_entries(self.scope_entries.len()),
         })
     }
@@ -184,19 +198,19 @@ impl ExprScopes {
     fn new_scope(&mut self, parent: ScopeId) -> ScopeId {
         self.scopes.alloc(ScopeData {
             parent: Some(parent),
-            block: None,
-            label: None,
-            macro_def: None,
+            kind: ScopeKind::None,
             entries: empty_entries(self.scope_entries.len()),
         })
     }
 
-    fn new_labeled_scope(&mut self, parent: ScopeId, label: Option<(LabelId, Name)>) -> ScopeId {
+    fn new_labeled_scope(&mut self, parent: ScopeId, label: Option<LabelId>) -> ScopeId {
+        let kind = match label {
+            Some(label) => ScopeKind::Label(label),
+            None => ScopeKind::None,
+        };
         self.scopes.alloc(ScopeData {
             parent: Some(parent),
-            block: None,
-            label,
-            macro_def: None,
+            kind,
             entries: empty_entries(self.scope_entries.len()),
         })
     }
@@ -205,13 +219,16 @@ impl ExprScopes {
         &mut self,
         parent: ScopeId,
         block: Option<BlockId>,
-        label: Option<(LabelId, Name)>,
+        label: Option<LabelId>,
     ) -> ScopeId {
+        let kind = match (block, label) {
+            (Some(id), label) => ScopeKind::Block { id, label },
+            (None, Some(label)) => ScopeKind::Label(label),
+            (None, None) => ScopeKind::None,
+        };
         self.scopes.alloc(ScopeData {
             parent: Some(parent),
-            block,
-            label,
-            macro_def: None,
+            kind,
             entries: empty_entries(self.scope_entries.len()),
         })
     }
@@ -219,9 +236,7 @@ impl ExprScopes {
     fn new_macro_def_scope(&mut self, parent: ScopeId, macro_id: Box<MacroDefId>) -> ScopeId {
         self.scopes.alloc(ScopeData {
             parent: Some(parent),
-            block: None,
-            label: None,
-            macro_def: Some(macro_id),
+            kind: ScopeKind::MacroDef(macro_id),
             entries: empty_entries(self.scope_entries.len()),
         })
     }
@@ -260,6 +275,42 @@ impl ExprScopes {
     }
 }
 
+struct ExprScopeVisitor<'a> {
+    store: &'a ExpressionStore,
+    scopes: &'a mut ExprScopes,
+    scope: &'a mut ScopeId,
+    const_scope: &'a mut ScopeId,
+}
+
+impl StoreVisitor for ExprScopeVisitor<'_> {
+    fn on_expr(&mut self, expr: ExprId) {
+        compute_expr_scopes(expr, self.store, self.scopes, self.scope, self.const_scope);
+    }
+
+    fn on_anon_const_expr(&mut self, expr: ExprId) {
+        let mut scope = *self.const_scope;
+        compute_expr_scopes(expr, self.store, self.scopes, &mut scope, self.const_scope);
+    }
+
+    fn on_pat(&mut self, pat: PatId) {
+        self.store.visit_pat_children(pat, &mut *self);
+    }
+
+    fn on_type(&mut self, ty: TypeRefId) {
+        self.store.visit_type_ref_children(ty, &mut *self);
+    }
+}
+
+fn compute_type_scopes(
+    ty: TypeRefId,
+    store: &ExpressionStore,
+    scopes: &mut ExprScopes,
+    const_scope: &mut ScopeId,
+) {
+    let mut scope = *const_scope;
+    ExprScopeVisitor { store, scopes, scope: &mut scope, const_scope }.on_type(ty);
+}
+
 fn compute_block_scopes(
     statements: &[Statement],
     tail: Option<ExprId>,
@@ -270,7 +321,10 @@ fn compute_block_scopes(
 ) {
     for stmt in statements {
         match stmt {
-            Statement::Let { pat, initializer, else_branch, .. } => {
+            Statement::Let { pat, initializer, else_branch, type_ref } => {
+                if let Some(type_ref) = type_ref {
+                    compute_type_scopes(*type_ref, store, scopes, const_scope);
+                }
                 if let Some(expr) = initializer {
                     compute_expr_scopes(*expr, store, scopes, scope, const_scope);
                 }
@@ -303,8 +357,6 @@ fn compute_expr_scopes(
     scope: &mut ScopeId,
     const_scope: &mut ScopeId,
 ) {
-    let make_label = |label: Option<LabelId>| label.map(|label| (label, store[label].name.clone()));
-
     let compute_expr_scopes =
         |scopes: &mut ExprScopes, expr: ExprId, scope: &mut ScopeId, const_scope: &mut ScopeId| {
             compute_expr_scopes(expr, store, scopes, scope, const_scope)
@@ -316,7 +368,7 @@ fn compute_expr_scopes(
                         scopes: &mut ExprScopes,
                         scope: &mut ScopeId,
                         const_scope: &mut ScopeId| {
-        let mut scope = scopes.new_block_scope(*scope, id, make_label(label));
+        let mut scope = scopes.new_block_scope(*scope, id, label);
         let mut const_scope = if id.is_some() {
             scopes.new_block_scope(*const_scope, id, None)
         } else {
@@ -347,10 +399,24 @@ fn compute_expr_scopes(
             handle_block(*id, statements, *tail, None, scopes, scope, const_scope);
         }
         Expr::Loop { body: body_expr, label, source: _ } => {
-            let mut scope = scopes.new_labeled_scope(*scope, make_label(*label));
+            let mut scope = scopes.new_labeled_scope(*scope, *label);
             compute_expr_scopes(scopes, *body_expr, &mut scope, const_scope);
         }
-        Expr::Closure { args, body: body_expr, .. } => {
+        Expr::Closure {
+            args,
+            arg_types,
+            ret_type,
+            body: body_expr,
+            capture_by: _,
+            closure_kind: _,
+        } => {
+            arg_types
+                .iter()
+                .flatten()
+                .for_each(|type_ref| compute_type_scopes(*type_ref, store, scopes, const_scope));
+            if let Some(type_ref) = ret_type {
+                compute_type_scopes(*type_ref, store, scopes, const_scope);
+            }
             let mut scope = scopes.new_scope(*scope);
             args.iter().for_each(|arg| scopes.add_pat_bindings(store, scope, *arg));
             compute_expr_scopes(scopes, *body_expr, &mut scope, const_scope);
@@ -380,7 +446,9 @@ fn compute_expr_scopes(
             *scope = scopes.new_scope(*scope);
             scopes.add_pat_bindings(store, *scope, pat);
         }
-        _ => store.walk_child_exprs(expr, |e| compute_expr_scopes(scopes, e, scope, const_scope)),
+        _ => {
+            store.visit_expr_children(expr, ExprScopeVisitor { store, scopes, scope, const_scope })
+        }
     };
 }
 
@@ -450,6 +518,19 @@ mod tests {
             .join("\n");
         let expected = expected.join("\n");
         assert_eq_text!(&expected, &actual);
+    }
+
+    #[test]
+    fn type_anon_const_scope() {
+        do_check(
+            r#"
+fn f(param: usize) {
+    let local = 0;
+    let _: [(); $0] = [];
+}
+"#,
+            &["param"],
+        );
     }
 
     #[test]

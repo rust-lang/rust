@@ -1243,6 +1243,9 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                 }
             } else if j == 0 {
                 err.span_label(binding_span, "data moved here");
+            } else if j == 5 && binds_to.len() > 6 && !self.infcx.tcx.sess.opts.verbose {
+                err.note(format!("...and {} other places", binds_to.len() - 5));
+                break;
             } else {
                 err.span_label(binding_span, "...and here");
             }
