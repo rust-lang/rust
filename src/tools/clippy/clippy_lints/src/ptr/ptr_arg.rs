@@ -6,11 +6,10 @@ use clippy_utils::{VEC_METHODS_SHADOWING_SLICE_METHODS, get_expr_use_or_unificat
 use hir::LifetimeKind;
 use rustc_abi::ExternAbi;
 use rustc_errors::Applicability;
-use rustc_hir::hir_id::{HirId, HirIdMap};
 use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{
-    self as hir, AnonConst, BindingMode, Body, Expr, ExprKind, FnSig, GenericArg, Lifetime, Mutability, Node, OwnerId,
-    Param, PatKind, QPath, TyKind,
+    self as hir, AnonConst, BindingMode, Body, Expr, ExprKind, FnSig, GenericArg, HirId, HirIdMap,
+    Lifetime, Mutability, Node, OwnerId, Param, PatKind, QPath, TyKind,
 };
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{Obligation, ObligationCause};

@@ -2,7 +2,6 @@
 use std::fmt;
 use std::fmt::Debug;
 
-pub use rustc_ast::attr::data_structures::*;
 use rustc_macros::{Decodable, Encodable, PrintAttribute, StableHash};
 use rustc_span::{DesugaringKind, Span, Symbol, kw};
 use thin_vec::ThinVec;

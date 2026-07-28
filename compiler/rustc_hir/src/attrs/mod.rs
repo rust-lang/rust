@@ -8,6 +8,7 @@ pub use data_structures::*;
 pub use encode_cross_crate::EncodeCrossCrate;
 pub use pretty_printing::PrintAttribute;
 
+mod canonical_symbols;
 mod data_structures;
 pub mod diagnostic;
 mod encode_cross_crate;

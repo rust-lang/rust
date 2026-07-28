@@ -90,16 +90,17 @@ use rustc_hir::attrs::CfgEntry;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModId};
 use rustc_hir::definitions::{DefPath, DefPathData};
-use rustc_hir::hir_id::{HirIdMap, HirIdSet};
 use rustc_hir::intravisit::{Visitor, walk_expr};
 use rustc_hir::{
-    self as hir, AnonConst, Arm, BindingMode, Block, BlockCheckMode, Body, ByRef, CRATE_HIR_ID, Closure, ConstArg,
-    ConstArgKind, CoroutineDesugaring, CoroutineKind, CoroutineSource, Destination, Expr, ExprField, ExprKind,
-    FieldDef, FnDecl, FnRetTy, GenericArg, GenericArgs, HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind, LangItem,
-    LetStmt, MatchSource, Mutability, Node, OwnerId, OwnerNode, Param, Pat, PatExpr, PatExprKind, PatKind, Path,
-    PathSegment, QPath, Stmt, StmtKind, TraitFn, TraitItem, TraitItemKind, TraitRef, TyKind, UnOp, Variant, def,
-    find_attr,
+    self as hir, AnonConst, Arm, BindingMode, Block, BlockCheckMode, Body, ByRef, CRATE_HIR_ID,
+    Closure, ConstArg, ConstArgKind, CoroutineDesugaring, CoroutineKind, CoroutineSource,
+    Destination, Expr, ExprField, ExprKind, FieldDef, FnDecl, FnRetTy, GenericArg, GenericArgs,
+    HirId, HirIdMap, HirIdSet, Impl, ImplItem, ImplItemKind, Item, ItemKind, LangItem, LetStmt,
+    MatchSource, Mutability, Node, OwnerId, OwnerNode, Param, Pat, PatExpr, PatExprKind, PatKind,
+    Path, PathSegment, QPath, Stmt, StmtKind, TraitFn, TraitItem, TraitItemKind, TraitRef, TyKind,
+    UnOp, Variant, def, find_attr,
 };
+
 use rustc_lexer::{FrontmatterAllowed, TokenKind, tokenize};
 use rustc_lint::{LateContext, Level, Lint, LintContext};
 use rustc_middle::hir::nested_filter;
