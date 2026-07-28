@@ -210,7 +210,7 @@ impl AttributeParser for ConstStabilityParser {
                 {
                     this.stability = Some((
                         PartialConstStability { level, feature, promotable: false },
-                        cx.attr_span,
+                        cx.attr_path.span,
                     ));
                 }
             },
@@ -225,7 +225,7 @@ impl AttributeParser for ConstStabilityParser {
                 {
                     this.stability = Some((
                         PartialConstStability { level, feature, promotable: false },
-                        cx.attr_span,
+                        cx.attr_path.span,
                     ));
                 }
             },

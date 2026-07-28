@@ -1036,7 +1036,7 @@ pub(crate) struct TakesNoArguments<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag("the `#[{$path}]` attribute is only usable with crates of the `proc-macro` crate type")]
+#[diag("the `{$path}` attribute is only usable with crates of the `proc-macro` crate type")]
 pub(crate) struct AttributeOnlyUsableWithCrateType<'a> {
     #[primary_span]
     pub span: Span,

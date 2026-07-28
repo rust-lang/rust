@@ -5,7 +5,7 @@ use crate::attributes::diagnostic::*;
 use crate::attributes::prelude::*;
 #[derive(Default)]
 pub(crate) struct OnConstParser {
-    span: Option<Span>,
+    path_span: Option<Span>,
     directive: Option<(Span, Directive)>,
 }
 
@@ -21,8 +21,8 @@ impl AttributeParser for OnConstParser {
                 return;
             }
 
-            let span = cx.attr_span;
-            this.span = Some(span);
+            let path_span = cx.attr_path.span;
+            this.path_span = Some(path_span);
 
             let mode = Mode::DiagnosticOnConst;
 
@@ -31,7 +31,7 @@ impl AttributeParser for OnConstParser {
             let Some(directive) = parse_directive_items(cx, mode, items.mixed(), true) else {
                 return;
             };
-            merge_directives(cx, &mut this.directive, (span, directive));
+            merge_directives(cx, &mut this.directive, (path_span, directive));
         },
     )];
 
@@ -44,8 +44,11 @@ impl AttributeParser for OnConstParser {
     ]);
 
     fn finalize(self, _cx: &FinalizeContext<'_, '_>) -> Option<AttributeKind> {
-        if let Some(span) = self.span {
-            Some(AttributeKind::OnConst { span, directive: self.directive.map(|d| Box::new(d.1)) })
+        if let Some(path_span) = self.path_span {
+            Some(AttributeKind::OnConst {
+                span: path_span,
+                directive: self.directive.map(|d| Box::new(d.1)),
+            })
         } else {
             None
         }
