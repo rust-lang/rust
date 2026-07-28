@@ -321,7 +321,7 @@ fn borrowck_collect_region_constraints<'tcx>(
     def: LocalDefId,
 ) -> CollectRegionConstraintsResult<'tcx> {
     let tcx = root_cx.tcx;
-    let infcx = BorrowckInferCtxt::new(tcx, def, root_cx.root_def_id());
+    let infcx = BorrowckInferCtxt::new(tcx, root_cx.root_def_id());
     let (input_body, promoted) = tcx.mir_promoted(def);
     let input_body: &Body<'_> = &input_body.borrow();
     let input_promoted: &IndexSlice<_, _> = &promoted.borrow();
@@ -653,14 +653,14 @@ pub(crate) struct BorrowckInferCtxt<'tcx> {
 }
 
 impl<'tcx> BorrowckInferCtxt<'tcx> {
-    pub(crate) fn new(tcx: TyCtxt<'tcx>, def_id: LocalDefId, root_def_id: LocalDefId) -> Self {
+    pub(crate) fn new(tcx: TyCtxt<'tcx>, root_def_id: LocalDefId) -> Self {
         let typing_mode = if tcx.use_typing_mode_post_typeck_until_borrowck() {
-            TypingMode::borrowck(tcx, def_id)
+            TypingMode::borrowck(tcx, root_def_id)
         } else {
-            TypingMode::analysis_in_body(tcx, def_id)
+            TypingMode::analysis_in_body(tcx, root_def_id)
         };
         let infcx = tcx.infer_ctxt().build(typing_mode);
-        let param_env = tcx.param_env(def_id);
+        let param_env = tcx.param_env(root_def_id);
         BorrowckInferCtxt {
             infcx,
             root_def_id,

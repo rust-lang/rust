@@ -317,13 +317,9 @@ fn opaque_types_defined_by<'tcx>(
     tcx: TyCtxt<'tcx>,
     item: LocalDefId,
 ) -> &'tcx ty::List<LocalDefId> {
-    // Closures and coroutines are type checked with their parent
-    // Note that we also support `SyntheticCoroutineBody` since we create
-    // a MIR body for the def kind, and some MIR passes (like promotion)
-    // may require doing analysis using its typing env.
-    if tcx.is_typeck_child(item.to_def_id()) {
-        return tcx.opaque_types_defined_by(tcx.local_parent(item));
-    }
+    // Closures and coroutines should load the opaque types defined
+    // by their their parent.
+    assert!(!tcx.is_typeck_child(item.to_def_id()));
     let kind = tcx.def_kind(item);
     trace!(?kind);
     let mut collector = OpaqueTypeCollector::new(tcx, item);

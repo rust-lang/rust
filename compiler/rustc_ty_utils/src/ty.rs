@@ -148,10 +148,8 @@ fn adt_sizedness_constraint<'tcx>(
 }
 
 /// See `ParamEnv` struct definition for details.
-fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
-    if tcx.is_typeck_child(def_id) {
-        return tcx.param_env(tcx.typeck_root_def_id(def_id));
-    }
+fn param_env_of_typeck_root(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
+    assert!(!tcx.is_typeck_child(def_id));
     // Compute the bounds on Self and the type parameters.
     let ty::InstantiatedPredicates { predicates, .. } =
         tcx.predicates_of(def_id).instantiate_identity(tcx);
@@ -290,8 +288,11 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for ImplTraitInTraitFinder<'_, 'tcx> {
     }
 }
 
-fn param_env_normalized_for_post_analysis(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
-    tcx.param_env(def_id).with_normalized(tcx)
+fn param_env_normalized_for_post_analysis_of_typeck_root(
+    tcx: TyCtxt<'_>,
+    def_id: DefId,
+) -> ty::ParamEnv<'_> {
+    tcx.param_env_of_typeck_root(def_id).with_normalized(tcx)
 }
 
 /// Check if a function is async.
@@ -402,8 +403,8 @@ pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers {
         asyncness,
         adt_sizedness_constraint,
-        param_env,
-        param_env_normalized_for_post_analysis,
+        param_env_of_typeck_root,
+        param_env_normalized_for_post_analysis_of_typeck_root,
         defaultness,
         unsizing_params_for_adt,
         impl_self_is_guaranteed_unsized,

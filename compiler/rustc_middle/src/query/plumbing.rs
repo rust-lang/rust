@@ -7,7 +7,7 @@ use rustc_data_structures::hash_table::HashTable;
 use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::sync::{AtomicU64, Lock, WorkerLocal};
 use rustc_errors::Diag;
-use rustc_hir::def_id::LocalDefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_span::Span;
 
 use crate::dep_graph::{DepKind, DepNodeIndex, QuerySideEffect, SerializedDepNodeIndex};
@@ -211,6 +211,19 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn typeck(self, def_id: impl IntoQueryKey<LocalDefId>) -> &'tcx ty::TypeckResults<'tcx> {
         self.typeck_root(
             self.typeck_root_def_id(def_id.into_query_key().to_def_id()).expect_local(),
+        )
+    }
+
+    pub fn param_env(self, def_id: impl IntoQueryKey<DefId>) -> ty::ParamEnv<'tcx> {
+        self.param_env_of_typeck_root(self.typeck_root_def_id(def_id.into_query_key()))
+    }
+
+    pub fn param_env_normalized_for_post_analysis(
+        self,
+        def_id: impl IntoQueryKey<DefId>,
+    ) -> ty::ParamEnv<'tcx> {
+        self.param_env_normalized_for_post_analysis_of_typeck_root(
+            self.typeck_root_def_id(def_id.into_query_key()),
         )
     }
 
