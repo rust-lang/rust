@@ -29,7 +29,7 @@ use rustc_index::bit_set::DenseBitSet;
 use rustc_type_ir::{
     AliasTy, BoundVar, CoroutineWitnessTypes, DebruijnIndex, EarlyBinder, FlagComputation, Flags,
     FnSigKind, GenericArgKind, GenericTypeVisitable, ImplPolarity, InferTy, Interner, TraitRef,
-    TypeFlags, TypeVisitableExt, Upcast, Variance,
+    TypeFlags, TypeVisitableExt, Upcast, Variance, VisitorResult,
     elaborate::elaborate,
     error::TypeError,
     fast_reject,
@@ -54,6 +54,7 @@ use crate::{
         TraitAssocTyId, TraitIdWrapper, TypeAliasIdWrapper, UnevaluatedConst, Unnormalized,
         util::{explicit_item_bounds, explicit_item_self_bounds},
     },
+    ret,
 };
 
 use super::{
@@ -1601,12 +1602,12 @@ impl<'db> Interner for DbInterner<'db> {
         def_id.0.trait_items(self.db()).associated_types().map(|id| id.into())
     }
 
-    fn for_each_relevant_impl(
+    fn for_each_relevant_impl<R: VisitorResult>(
         self,
         trait_def_id: Self::TraitId,
         self_ty: Self::Ty,
-        mut f: impl FnMut(Self::ImplId),
-    ) {
+        mut f: impl FnMut(Self::ImplId) -> R,
+    ) -> R {
         let krate = self.krate.expect("trait solving requires setting `DbInterner::krate`");
         let trait_block = trait_def_id.0.loc(self.db).container.block(self.db);
         let mut consider_impls_for_simplified_type = |simp: SimplifiedType<'_>| {
@@ -1641,13 +1642,14 @@ impl<'db> Interner for DbInterner<'db> {
                     let (regular_impls, builtin_derive_impls) =
                         impls.for_trait_and_self_ty(trait_def_id.0, &simp);
                     for &impl_ in regular_impls {
-                        f(impl_.into());
+                        ret!(f(impl_.into()));
                     }
                     for &impl_ in builtin_derive_impls {
-                        f(impl_.into());
+                        ret!(f(impl_.into()));
                     }
+                    R::output()
                 },
-            );
+            )
         };
 
         match self_ty.kind() {
@@ -1676,7 +1678,7 @@ impl<'db> Interner for DbInterner<'db> {
                 let simp =
                     fast_reject::simplify_type(self, self_ty, fast_reject::TreatParams::AsRigid)
                         .unwrap();
-                consider_impls_for_simplified_type(simp);
+                ret!(consider_impls_for_simplified_type(simp));
             }
 
             // HACK: For integer and float variables we have to manually look at all impls
@@ -1704,7 +1706,7 @@ impl<'db> Interner for DbInterner<'db> {
                     SimplifiedType::Uint(Usize),
                 ];
                 for simp in possible_integers {
-                    consider_impls_for_simplified_type(simp);
+                    ret!(consider_impls_for_simplified_type(simp));
                 }
             }
 
@@ -1719,7 +1721,7 @@ impl<'db> Interner for DbInterner<'db> {
                 ];
 
                 for simp in possible_floats {
-                    consider_impls_for_simplified_type(simp);
+                    ret!(consider_impls_for_simplified_type(simp));
                 }
             }
 
@@ -1748,15 +1750,22 @@ impl<'db> Interner for DbInterner<'db> {
         self.for_each_blanket_impl(trait_def_id, f)
     }
 
-    fn for_each_blanket_impl(self, trait_def_id: Self::TraitId, mut f: impl FnMut(Self::ImplId)) {
-        let Some(krate) = self.krate else { return };
+    fn for_each_blanket_impl<R: VisitorResult>(
+        self,
+        trait_def_id: Self::TraitId,
+        mut f: impl FnMut(Self::ImplId) -> R,
+    ) -> R {
+        let Some(krate) = self.krate else {
+            return R::output();
+        };
         let block = trait_def_id.0.loc(self.db).container.block(self.db);
 
         TraitImpls::for_each_crate_and_block(self.db, krate, block, &mut |impls| {
             for &impl_ in impls.blanket_impls(trait_def_id.0) {
-                f(impl_.into());
+                ret!(f(impl_.into()));
             }
-        });
+            R::output()
+        })
     }
 
     fn has_item_definition(self, _def_id: Self::ImplOrTraitAssocTermId) -> bool {
