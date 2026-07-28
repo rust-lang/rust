@@ -405,7 +405,7 @@ pub(crate) struct AbiNe {
 
 #[derive(Diagnostic)]
 #[diag(
-    "`#[rustc_abi]` can only be applied to function items, type aliases, and associated functions"
+    "the `rustc_abi` attribute can only be applied to function items, type aliases, and associated functions"
 )]
 pub(crate) struct AbiInvalidAttribute {
     #[primary_span]
