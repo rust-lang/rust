@@ -6,7 +6,7 @@ use serde::{Deserialize, Deserializer};
 
 use crate::core::config::toml::TomlConfig;
 use crate::core::config::{
-    CompressDebuginfo, DebuginfoLevel, Merge, OverrideAllocator, ReplaceOpt, StringOrBool,
+    Allocator, CompressDebuginfo, DebuginfoLevel, Merge, ReplaceOpt, StringOrBool,
 };
 use crate::{BTreeSet, CodegenBackendKind, HashSet, PathBuf, TargetSelection, define_config, exit};
 
@@ -57,7 +57,7 @@ define_config! {
         verify_llvm_ir: Option<bool> = "verify-llvm-ir",
         thin_lto_import_instr_limit: Option<u32> = "thin-lto-import-instr-limit",
         remap_debuginfo: Option<bool> = "remap-debuginfo",
-        override_allocator: Option<OverrideAllocator> = "override-allocator",
+        allocator: Option<Allocator> = "allocator",
         // FIXME: Remove this option in Q1 2027
         jemalloc: Option<bool> = "jemalloc",
         test_compare_mode: Option<bool> = "test-compare-mode",
@@ -333,7 +333,7 @@ pub fn check_incompatible_options_for_ci_rustc(
         stack_protector,
         strip,
         jemalloc,
-        override_allocator,
+        allocator,
         rpath,
         channel,
         default_linker,
@@ -403,7 +403,7 @@ pub fn check_incompatible_options_for_ci_rustc(
     err!(current_rust_config.llvm_tools, llvm_tools, "rust");
     err!(current_rust_config.llvm_bitcode_linker, llvm_bitcode_linker, "rust");
     err!(current_rust_config.jemalloc, jemalloc, "rust");
-    err!(current_rust_config.override_allocator, override_allocator, "rust");
+    err!(current_rust_config.allocator, allocator, "rust");
     err!(current_rust_config.default_linker, default_linker, "rust");
     err!(current_rust_config.stack_protector, stack_protector, "rust");
     err!(current_rust_config.std_features, std_features, "rust");

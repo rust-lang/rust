@@ -252,25 +252,23 @@ impl<'de> Deserialize<'de> for CompilerBuiltins {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum OverrideAllocator {
+pub enum Allocator {
     System,
     Jemalloc,
 }
 
-impl OverrideAllocator {
+impl Allocator {
     pub fn feature_name(self) -> &'static str {
         match self {
-            OverrideAllocator::System => {
-                panic!(
-                    "OverrideAllocator::feature_name() should not be called for System allocator"
-                )
+            Allocator::System => {
+                panic!("Allocator::feature_name() should not be called for System allocator")
             }
-            OverrideAllocator::Jemalloc => "jemalloc",
+            Allocator::Jemalloc => "jemalloc",
         }
     }
 }
 
-impl<'de> Deserialize<'de> for OverrideAllocator {
+impl<'de> Deserialize<'de> for Allocator {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,

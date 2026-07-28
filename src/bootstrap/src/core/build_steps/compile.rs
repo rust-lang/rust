@@ -28,7 +28,7 @@ use crate::core::builder::{
 };
 use crate::core::config::toml::target::DefaultLinuxLinkerOverride;
 use crate::core::config::{
-    CompilerBuiltins, DebuginfoLevel, LlvmLibunwind, OverrideAllocator, RustcLto, TargetSelection,
+    Allocator, CompilerBuiltins, DebuginfoLevel, LlvmLibunwind, RustcLto, TargetSelection,
 };
 use crate::utils::build_stamp;
 use crate::utils::build_stamp::BuildStamp;
@@ -1392,7 +1392,7 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
     }
 
     // See also the "JEMALLOC_SYS_WITH_LG_PAGE" setting in the tool build step.
-    if builder.config.override_allocator(target) == OverrideAllocator::Jemalloc
+    if builder.config.allocator(target) == Allocator::Jemalloc
         && env::var_os("JEMALLOC_SYS_WITH_LG_PAGE").is_none()
     {
         // Build jemalloc on AArch64 with support for page sizes up to 64K
