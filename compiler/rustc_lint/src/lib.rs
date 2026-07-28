@@ -272,7 +272,7 @@ late_lint_methods!(
             LifetimeSyntax: LifetimeSyntax,
             InternalEqTraitMethodImpls: InternalEqTraitMethodImpls,
             ImplicitProvenanceCasts: ImplicitProvenanceCasts,
-            CVoidReturns: CVoidReturns,
+            CVoidParamsAndReturns: CVoidParamsAndReturns,
             CVoidReferences: CVoidReferences,
             CVoidStatics: CVoidStatics,
         ]

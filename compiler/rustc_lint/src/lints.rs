@@ -614,6 +614,13 @@ pub(crate) enum BuiltinSpecialModuleNameUsed {
 
 // c_void.rs
 #[derive(Diagnostic)]
+#[diag("`c_void` should not be used directly as the type of a function parameter")]
+#[help("did you mean `*mut c_void` or `*const c_void`?")]
+#[note("`c_void` is only used through raw pointers, for compatibility with `void` pointers")]
+pub(crate) struct CVoidParameter;
+
+// c_void.rs
+#[derive(Diagnostic)]
 #[diag("`c_void` should not be used as a return type")]
 #[help("returning `()` in Rust is equivalent to returning `void` in C")]
 pub(crate) struct CVoidReturn {
