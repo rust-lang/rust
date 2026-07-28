@@ -225,6 +225,7 @@ late_lint_methods!(
             AsyncFnInTrait: AsyncFnInTrait,
             CVoidReferences: CVoidReferences,
             CVoidReturns: CVoidReturns,
+            CVoidStatics: CVoidStatics,
             CheckTransmutes: CheckTransmutes,
             DanglingPointers: DanglingPointers,
             DefaultCouldBeDerived: DefaultCouldBeDerived,
