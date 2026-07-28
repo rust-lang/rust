@@ -16,7 +16,7 @@ edition = "2021"
 rust-version = "1.67"
 
 [dev-dependencies]
-# FIXME(msrv): switch to `no-panic.workspace` when possible
+# FIXME(msrv>=1.85): switch to `no-panic.workspace`
 no-panic = "0.1.36"
 
 [features]
