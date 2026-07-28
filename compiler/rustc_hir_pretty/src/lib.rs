@@ -1465,7 +1465,7 @@ impl<'a> State<'a> {
         self.commasep(Consistent, &args, |s, arg| match *arg {
             AsmArg::Template(ref template) => s.print_string(template, ast::StrStyle::Cooked),
             AsmArg::Operand(op) => match *op {
-                hir::InlineAsmOperand::In { reg, expr } => {
+                hir::InlineAsmOperand::In { reg, expr, .. } => {
                     s.word("in");
                     s.popen();
                     s.word(format!("{reg}"));
@@ -1473,7 +1473,7 @@ impl<'a> State<'a> {
                     s.space();
                     s.print_expr(expr);
                 }
-                hir::InlineAsmOperand::Out { reg, late, ref expr } => {
+                hir::InlineAsmOperand::Out { reg, late, ref expr, .. } => {
                     s.word(if late { "lateout" } else { "out" });
                     s.popen();
                     s.word(format!("{reg}"));
@@ -1484,7 +1484,7 @@ impl<'a> State<'a> {
                         None => s.word("_"),
                     }
                 }
-                hir::InlineAsmOperand::InOut { reg, late, expr } => {
+                hir::InlineAsmOperand::InOut { reg, late, expr, .. } => {
                     s.word(if late { "inlateout" } else { "inout" });
                     s.popen();
                     s.word(format!("{reg}"));
@@ -1492,7 +1492,7 @@ impl<'a> State<'a> {
                     s.space();
                     s.print_expr(expr);
                 }
-                hir::InlineAsmOperand::SplitInOut { reg, late, in_expr, ref out_expr } => {
+                hir::InlineAsmOperand::SplitInOut { reg, late, in_expr, ref out_expr, .. } => {
                     s.word(if late { "inlateout" } else { "inout" });
                     s.popen();
                     s.word(format!("{reg}"));

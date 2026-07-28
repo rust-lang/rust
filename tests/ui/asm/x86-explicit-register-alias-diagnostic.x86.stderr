@@ -16,13 +16,13 @@ error: cannot use register `zmm15`: register is only available on x86_64
 LL |         asm!("", lateout("zmm15") _);
    |                  ^^^^^^^^^^^^^^^^^^
 
-error: cannot use register `zmm16`: register is only available on x86_64
+error: cannot use register `xmm16`: register is only available on x86_64
   --> $DIR/x86-explicit-register-alias-diagnostic.rs:36:18
    |
 LL |         asm!("", lateout("xmm16") _);
    |                  ^^^^^^^^^^^^^^^^^^
 
-error: cannot use register `zmm16`: register is only available on x86_64
+error: cannot use register `ymm16`: register is only available on x86_64
   --> $DIR/x86-explicit-register-alias-diagnostic.rs:38:18
    |
 LL |         asm!("", lateout("ymm16") _);
@@ -34,13 +34,13 @@ error: cannot use register `zmm16`: register is only available on x86_64
 LL |         asm!("", lateout("zmm16") _);
    |                  ^^^^^^^^^^^^^^^^^^
 
-error: cannot use register `zmm31`: register is only available on x86_64
+error: cannot use register `xmm31`: register is only available on x86_64
   --> $DIR/x86-explicit-register-alias-diagnostic.rs:44:18
    |
 LL |         asm!("", lateout("xmm31") _);
    |                  ^^^^^^^^^^^^^^^^^^
 
-error: cannot use register `zmm31`: register is only available on x86_64
+error: cannot use register `ymm31`: register is only available on x86_64
   --> $DIR/x86-explicit-register-alias-diagnostic.rs:46:18
    |
 LL |         asm!("", lateout("ymm31") _);
