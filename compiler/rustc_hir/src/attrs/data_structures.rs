@@ -1306,8 +1306,11 @@ pub enum AttributeKind {
     /// Represents `#[reexport_test_harness_main]`
     ReexportTestHarnessMain(Symbol),
 
-    /// Represents `#[register_tool]`
-    RegisterTool(ThinVec<Ident>),
+    /// Represents `#[register_attribute_tool]`, `#[register_lint_tool]` and `#[register_tool]`
+    RegisterTool {
+        attr_tools: ThinVec<Ident>,
+        lint_tools: ThinVec<Ident>,
+    },
 
     /// Represents [`#[repr]`](https://doc.rust-lang.org/stable/reference/type-layout.html#representations).
     Repr {
