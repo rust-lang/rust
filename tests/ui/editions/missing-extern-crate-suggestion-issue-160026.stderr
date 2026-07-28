@@ -1,13 +1,14 @@
 error[E0432]: unresolved import `dep`
-  --> $DIR/missing-extern-crate-suggestion-issue-160026.rs:7:9
+  --> $DIR/missing-extern-crate-suggestion-issue-160026.rs:8:9
    |
 LL | pub use dep::item;
    |         ^^^ use of unresolved module or unlinked crate `dep`
    |
-help: you might be missing a crate named `dep`, add it to your project and import it in your code
+help: `extern crate` is required on Rust 2015
    |
 LL + extern crate dep;
    |
+   = help: consider upgrading to a newer edition (latest is 2024) to avoid needing `extern crate`
 
 error: aborting due to 1 previous error
 

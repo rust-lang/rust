@@ -4,10 +4,11 @@ error[E0432]: unresolved import `extern_prelude`
 LL |     use extern_prelude::S;
    |         ^^^^^^^^^^^^^^ use of unresolved module or unlinked crate `extern_prelude`
    |
-help: you might be missing a crate named `extern_prelude`, add it to your project and import it in your code
+help: `extern crate` is required on Rust 2015
    |
 LL + extern crate extern_prelude;
    |
+   = help: consider upgrading to a newer edition (latest is 2024) to avoid needing `extern crate`
 
 error[E0433]: cannot find module or crate `extern_prelude` in the crate root
   --> $DIR/extern-prelude-fail.rs:9:15
@@ -15,10 +16,11 @@ error[E0433]: cannot find module or crate `extern_prelude` in the crate root
 LL |     let s = ::extern_prelude::S;
    |               ^^^^^^^^^^^^^^ use of unresolved module or unlinked crate `extern_prelude`
    |
-help: you might be missing a crate named `extern_prelude`, add it to your project and import it in your code
+help: `extern crate` is required on Rust 2015
    |
 LL + extern crate extern_prelude;
    |
+   = help: consider upgrading to a newer edition (latest is 2024) to avoid needing `extern crate`
 
 error: aborting due to 2 previous errors
 
