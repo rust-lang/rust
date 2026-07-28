@@ -1,5 +1,5 @@
 warning: this lint expectation is unfulfilled
-  --> $DIR/derive-expect-issue-150553-3.rs:7:10
+  --> $DIR/derive-expect-issue-150553-6.rs:36:10
    |
 LL | #[expect(unexpected_cfgs)]
    |          ^^^^^^^^^^^^^^^

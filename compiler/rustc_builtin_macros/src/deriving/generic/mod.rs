@@ -532,7 +532,15 @@ impl<'a> TraitDef<'a> {
                     _ => unreachable!(),
                 };
                 // Keep the lint attributes of the previous item to control how the
-                // generated implementations are linted
+                // generated implementations are linted.
+                //
+                // `#[expect]` is deliberately not copied here: `#[cfg]`/`#[cfg_attr]`
+                // processing re-parses the derive input from tokens, which does not
+                // preserve attribute ids, so a copied `#[expect]` would register a
+                // second, never-fulfilled expectation (see #152289 and its revert
+                // #153055). Instead, the expectations of the derived-from item are
+                // shared with the generated impls at lint-level time, see
+                // `inherit_derive_expectations` in `rustc_lint::levels`.
                 let mut attrs = newitem.attrs.clone();
                 attrs.extend(
                     item.attrs
