@@ -1513,8 +1513,18 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         let splatted_arg_index = splatted.map(usize::from);
         let mut input_iter = inputs.iter().copied();
         if let Some(index) = splatted_arg_index {
-            self.comma_sep((&mut input_iter).take(usize::from(index)))?;
-            write!(self, ", #[rustc_splat]")?;
+            self.comma_sep((&mut input_iter).take(index))?;
+            // Splitting the comma-separated list can miss a comma, but we only need that comma if
+            // there are arguments before the splat.
+            // FIXME(splat): if splatting becomes part of the type, we can remove this hack
+            if index > 0 {
+                if self.comma_sep_has_space() {
+                    write!(self, ", ")?;
+                } else {
+                    write!(self, ",")?;
+                }
+            }
+            write!(self, "#[rustc_splat] ")?;
             self.comma_sep(input_iter)?;
         } else {
             self.comma_sep(input_iter)?;
