@@ -814,7 +814,7 @@ pub(crate) enum InvalidOnClause {
 pub(crate) struct DupesNotAllowed;
 
 #[derive(Diagnostic)]
-#[diag("usage of the unsafe `#[{$attr_path}]` attribute")]
+#[diag("usage of the unsafe `{$attr_path}` attribute")]
 #[note("{$note}")]
 pub(crate) struct UnsafeAttribute {
     pub attr_path: AttrPath,

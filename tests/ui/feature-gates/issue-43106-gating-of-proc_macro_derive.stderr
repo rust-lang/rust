@@ -1,8 +1,8 @@
-error: the `#[proc_macro_derive]` attribute is only usable with crates of the `proc-macro` crate type
-  --> $DIR/issue-43106-gating-of-proc_macro_derive.rs:16:5
+error: the `proc_macro_derive` attribute is only usable with crates of the `proc-macro` crate type
+  --> $DIR/issue-43106-gating-of-proc_macro_derive.rs:16:7
    |
 LL |     #[proc_macro_derive(Test)] fn f() { }
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^^^^^^^^^^
 
 error: the `proc_macro_derive` attribute cannot be used on modules
   --> $DIR/issue-43106-gating-of-proc_macro_derive.rs:5:3

@@ -23,29 +23,29 @@ help: escape `unsafe` to use it as an identifier
 LL | #[unsafe(allow(r#unsafe(dead_code)))]
    |                ++
 
-error: the `#[proc_macro]` attribute is only usable with crates of the `proc-macro` crate type
-  --> $DIR/proc-unsafe-attributes.rs:1:1
+error: the `proc_macro` attribute is only usable with crates of the `proc-macro` crate type
+  --> $DIR/proc-unsafe-attributes.rs:1:10
    |
 LL | #[unsafe(proc_macro)]
-   | ^^^^^^^^^^^^^^^^^^^^^
+   |          ^^^^^^^^^^
 
-error: the `#[proc_macro_derive]` attribute is only usable with crates of the `proc-macro` crate type
-  --> $DIR/proc-unsafe-attributes.rs:7:1
+error: the `proc_macro_derive` attribute is only usable with crates of the `proc-macro` crate type
+  --> $DIR/proc-unsafe-attributes.rs:7:10
    |
 LL | #[unsafe(proc_macro_derive(Foo))]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |          ^^^^^^^^^^^^^^^^^
 
-error: the `#[proc_macro_derive]` attribute is only usable with crates of the `proc-macro` crate type
-  --> $DIR/proc-unsafe-attributes.rs:12:1
+error: the `proc_macro_derive` attribute is only usable with crates of the `proc-macro` crate type
+  --> $DIR/proc-unsafe-attributes.rs:12:3
    |
 LL | #[proc_macro_derive(unsafe(Foo))]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |   ^^^^^^^^^^^^^^^^^
 
-error: the `#[proc_macro_attribute]` attribute is only usable with crates of the `proc-macro` crate type
-  --> $DIR/proc-unsafe-attributes.rs:18:1
+error: the `proc_macro_attribute` attribute is only usable with crates of the `proc-macro` crate type
+  --> $DIR/proc-unsafe-attributes.rs:18:10
    |
 LL | #[unsafe(proc_macro_attribute)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |          ^^^^^^^^^^^^^^^^^^^^
 
 error[E0452]: malformed lint attribute input
   --> $DIR/proc-unsafe-attributes.rs:27:16
