@@ -711,6 +711,9 @@ impl Builder<'_> {
         }
 
         if cmd_kind == Kind::Doc {
+            // Will be stabilized soon -> let's dogfood it.
+            // No effect on doc output but massive doc-generation time improvements.
+            cargo.arg("-Zrustdoc-mergeable-info");
             let my_out = match mode {
                 // This is the intended out directory for compiler documentation.
                 Mode::Rustc | Mode::ToolRustcPrivate | Mode::ToolBootstrap | Mode::ToolTarget => {
