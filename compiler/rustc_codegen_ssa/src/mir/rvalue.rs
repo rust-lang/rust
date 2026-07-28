@@ -91,6 +91,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         true
     }
 
+    fn is_entirely_uninit_const(&self, operand: &mir::Operand<'tcx>) -> bool {
+        let mir::Operand::Constant(const_op) = operand else { return false };
+        self.eval_mir_constant(const_op).all_bytes_uninit(self.cx.tcx())
+    }
+
     #[instrument(level = "trace", skip(self, bx))]
     pub(crate) fn codegen_rvalue(
         &mut self,
@@ -100,11 +105,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ) {
         match *rvalue {
             mir::Rvalue::Use(ref operand, with_retag) => {
-                if let mir::Operand::Constant(const_op) = operand {
-                    let val = self.eval_mir_constant(&const_op);
-                    if val.all_bytes_uninit(self.cx.tcx()) {
-                        return;
-                    }
+                if self.is_entirely_uninit_const(operand) {
+                    return;
                 }
                 let cg_operand = self.codegen_operand(bx, operand);
                 // Crucially, we do *not* use `OperandValue::Ref` for types with
@@ -196,19 +198,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                 // When the element is a const with all bytes uninit, emit a single memset that
                 // writes undef to the entire destination.
-                if let mir::Operand::Constant(const_op) = elem {
-                    let val = self.eval_mir_constant(const_op);
-                    if val.all_bytes_uninit(self.cx.tcx()) {
-                        let size = bx.const_usize(dest.layout.size.bytes());
-                        bx.memset(
-                            dest.val.llval,
-                            bx.const_undef(bx.type_i8()),
-                            size,
-                            dest.val.align,
-                            MemFlags::empty(),
-                        );
-                        return;
-                    }
+                if self.is_entirely_uninit_const(elem) {
+                    let size = bx.const_usize(dest.layout.size.bytes());
+                    bx.memset(
+                        dest.val.llval,
+                        bx.const_undef(bx.type_i8()),
+                        size,
+                        dest.val.align,
+                        MemFlags::empty(),
+                    );
+                    return;
                 }
 
                 let cg_elem = self.codegen_operand(bx, elem);
@@ -270,6 +269,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     assert_eq!(operands.len(), 1);
                 }
                 for (i, operand) in operands.iter_enumerated() {
+                    // Do not generate stores for entirely uninit constant fields, for the same
+                    // reason as in `Rvalue::Use` above.
+                    if self.is_entirely_uninit_const(operand) {
+                        continue;
+                    }
                     let op = self.codegen_operand(bx, operand);
                     // Do not generate stores and GEPis for zero-sized fields.
                     if !op.layout.is_zst() {
