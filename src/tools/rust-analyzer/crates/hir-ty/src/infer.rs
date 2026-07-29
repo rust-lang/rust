@@ -410,6 +410,11 @@ pub enum InferenceDiagnostic {
         expected: usize,
         #[type_visitable(ignore)]
         found: usize,
+        /// True when the call goes through the `Fn`/`FnMut`/`FnOnce` trait
+        /// (i.e. arguments were bundled into a tuple). Determines whether the
+        /// diagnostic surface uses E0057 (Fn-trait call) or E0061 (regular call).
+        #[type_visitable(ignore)]
+        is_fn_trait_call: bool,
     },
     MismatchedTupleStructPatArgCount {
         #[type_visitable(ignore)]
