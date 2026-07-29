@@ -17,7 +17,7 @@ use super::{
     throw_ub_format,
 };
 use crate::enter_trace_span;
-use crate::interpret::Writeable;
+use crate::interpret::{Projectable, Writeable};
 
 impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     pub fn cast(
@@ -133,7 +133,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 }
             }
 
-            CastKind::Transmute | CastKind::Subtype => {
+            CastKind::Transmute | CastKind::Subtype | CastKind::BoxDerefTransmute => {
                 assert!(src.layout.is_sized());
                 assert!(dest.layout.is_sized());
                 assert_eq!(cast_ty, dest.layout.ty); // we otherwise ignore `cast_ty` enirely...
@@ -145,6 +145,16 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         src = src.layout.ty,
                         dest = dest.layout.ty,
                     );
+                }
+
+                if matches!(cast_kind, CastKind::BoxDerefTransmute) {
+                    // Do the extra UB checking by making the input an actual `Box<T>` pointer
+                    // and dereferencing it.
+                    let ptr = self.read_immediate(src)?;
+                    let pointee_ty = cast_ty.builtin_deref(true).unwrap();
+                    let box_ty = Ty::new_box(*self.tcx, pointee_ty);
+                    let ptr = ptr.transmute(self.layout_of(box_ty)?, self)?;
+                    self.deref_pointer(&ptr)?;
                 }
 
                 self.copy_op_allow_transmute(src, dest)?;

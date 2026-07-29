@@ -12,6 +12,9 @@ use super::{InterpCx, MPlaceTy, Machine, Projectable, interp_ok, throw_inval};
 
 /// How to traverse a value and what to do when we are at the leaves.
 pub trait ValueVisitor<'tcx, M: Machine<'tcx>>: Sized {
+    // The `From<MPlaceTy>` rules out `ImmTy`... we could use a `TryFrom` instead since the only
+    // case we need this is visiting something unsized which cannot happen when visiting an `ImmTy`.
+    // But so far this was just not needed.
     type V: Projectable<'tcx, M::Provenance> + From<MPlaceTy<'tcx, M::Provenance>>;
 
     /// The visitor must have an `InterpCx` in it.

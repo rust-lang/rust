@@ -191,8 +191,6 @@ pub const MIRI_DEFAULT_ARGS: &[&str] = &[
     // Disable passes that add checks for language UB -- we get better diagnostics if
     // we let Miri do these checks.
     "-Zmir-enable-passes=-CheckAlignment,-CheckNull,-CheckEnums",
-    // Disable `ElaborateBoxDerefs` as that hides UB from dereferencing invalid `Box`es.
-    "-Zmir-enable-passes=-ElaborateBoxDerefs",
     // FIXME: Disable some passes to make higher opt levels also work.
     // - ReferencePropagation is incompatible with SB's ref-to-raw castb behavior.
     //   The fix here is to ditch SB and use TB instead but we're not yet ready for that.
