@@ -249,7 +249,7 @@ const impl<'f> Clone for VaList<'f> {
     /// Clone the [`VaList`], producing a second independent cursor into the variable argument list.
     ///
     /// Corresponds to `va_copy` in C.
-    #[inline] // Avoid codegen when not used to help backends that don't support VaList.
+    #[inline]
     fn clone(&self) -> Self {
         // We only implement Clone and not Copy because some future target might not be able to
         // implement Copy (e.g. because it allocates). For the same reason we use an intrinsic
@@ -265,7 +265,7 @@ const impl<'f> Drop for VaList<'f> {
     /// Drop the [`VaList`].
     ///
     /// Corresponds to `va_end` in C.
-    #[inline] // Avoid codegen when not used to help backends that don't support VaList.
+    #[inline]
     fn drop(&mut self) {
         // Call the rust `va_end` intrinsic, which is a no-op and does not map to LLVM `va_end`.
         // The rust intrinsic exists as a hook for Miri to check for UB.
