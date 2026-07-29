@@ -9,7 +9,7 @@
 //@[sparc] compile-flags: --target sparc-unknown-none-elf
 //@[sparc] needs-llvm-components: sparc
 //
-//@[avr] compile-flags: --target avr-none -Ctarget-cpu=atmega328p
+//@[avr] compile-flags: --target avr-none -Ttarget-cpu=atmega328p
 //@[avr] needs-llvm-components: avr
 //
 //@[m68k] compile-flags: --target m68k-unknown-none-elf -Ctarget-cpu=M68020

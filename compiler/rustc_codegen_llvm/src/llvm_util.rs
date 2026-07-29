@@ -627,7 +627,7 @@ fn handle_native(cpu_name: &str) -> &str {
 }
 
 pub(crate) fn target_cpu(sess: &Session) -> &str {
-    let cpu_name = sess.opts.cg.target_cpu.as_deref().unwrap_or_else(|| &sess.target.cpu);
+    let cpu_name = sess.target_cpu().unwrap_or_else(|| &sess.target.cpu);
     handle_native(cpu_name)
 }
 
@@ -679,8 +679,8 @@ pub(crate) fn global_llvm_features(sess: &Session, for_cfg: bool) -> Vec<String>
     let mut features = vec![];
 
     // -Ctarget-cpu=native
-    match sess.opts.cg.target_cpu {
-        Some(ref s) if s == NATIVE_CPU => {
+    match sess.target_cpu() {
+        Some(s) if s == NATIVE_CPU => {
             // We have already figured out the actual CPU name with `LLVMRustGetHostCPUName` and set
             // that for LLVM, so the features implied by that CPU name will be available everywhere.
             // However, that is not sufficient: e.g. `skylake` alone is not sufficient to tell if

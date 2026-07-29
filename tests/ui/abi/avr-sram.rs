@@ -1,10 +1,10 @@
 //@ revisions: has_sram no_sram disable_sram
 //@ build-pass
-//@[has_sram] compile-flags: --target avr-none -C target-cpu=atmega328p
+//@[has_sram] compile-flags: --target avr-none -T target-cpu=atmega328p
 //@[has_sram] needs-llvm-components: avr
-//@[no_sram] compile-flags: --target avr-none -C target-cpu=attiny11
+//@[no_sram] compile-flags: --target avr-none -T target-cpu=attiny11
 //@[no_sram] needs-llvm-components: avr
-//@[disable_sram] compile-flags: --target avr-none -C target-cpu=atmega328p -C target-feature=-sram
+//@[disable_sram] compile-flags: --target avr-none -T target-cpu=atmega328p -C target-feature=-sram
 //@[disable_sram] needs-llvm-components: avr
 //@ ignore-backends: gcc
 //[no_sram,disable_sram]~? WARN target feature `sram` must be enabled

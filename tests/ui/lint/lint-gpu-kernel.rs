@@ -6,7 +6,7 @@
 //@ revisions: amdgpu nvptx
 //@ add-minicore
 //@ edition: 2024
-//@[amdgpu] compile-flags: --target amdgcn-amd-amdhsa -Ctarget-cpu=gfx900
+//@[amdgpu] compile-flags: --target amdgcn-amd-amdhsa -Ttarget-cpu=gfx900
 //@[amdgpu] needs-llvm-components: amdgpu
 //@[nvptx]  compile-flags: --target nvptx64-nvidia-cuda
 //@[nvptx] needs-llvm-components: nvptx

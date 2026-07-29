@@ -71,14 +71,14 @@ pub mod mitigation_coverage;
 #[derive(Clone, Default)]
 pub struct OptionMetadata {
     /// Was this option set by the user?
-    is_set: bool,
+    pub(crate) is_set: bool,
 }
 
 #[derive(Clone, Default)]
 pub struct OptionsMetadata {
-    codegen: CodegenOptionsMetadata,
-    target: TargetOptionsMetadata,
-    unstable: UnstableOptionsMetadata,
+    pub(crate) codegen: CodegenOptionsMetadata,
+    pub(crate) target: TargetOptionsMetadata,
+    pub(crate) unstable: UnstableOptionsMetadata,
 }
 
 macro_rules! top_level_options {
@@ -2337,6 +2337,7 @@ options! {
     symbol_mangling_version: Option<SymbolManglingVersion> = (None,
         parse_symbol_mangling_version, [TRACKED],
         "which mangling version to use for symbol names ('legacy', 'v0' (default), or 'hashed')"),
+    #[rustc_lint_opt_deny_field_access("use `Session::target_cpu` instead of this field")]
     target_cpu: Option<String> = (None, parse_opt_string, [TRACKED],
         "select target processor (`rustc --print target-cpus` for details)"),
     target_feature: String = (String::new(), parse_target_feature, [TRACKED],
@@ -2397,6 +2398,9 @@ target_modifier_options! {
         "use a sanitizer"),
     sanitizer_cfi_normalize_integers: Option<bool> = (None, parse_opt_bool, [TRACKED_UNSTABLE],
         "enable normalizing integer types (default: no)"),
+    #[rustc_lint_opt_deny_field_access("use `Session::target_cpu` instead of this field")]
+    target_cpu: Option<String> = (None, parse_opt_string, [TRACKED],
+        "select target processor (`rustc --print target-cpus` for details)"),
     // tidy-alphabetical-end
 
     // If you add a new option, please update:

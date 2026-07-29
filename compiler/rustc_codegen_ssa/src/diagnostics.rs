@@ -530,7 +530,7 @@ pub(crate) struct CheckInstalledVisualStudio;
 pub(crate) struct InsufficientVSCodeProduct;
 
 #[derive(Diagnostic)]
-#[diag("target requires explicitly specifying a cpu with `-C target-cpu`")]
+#[diag("target requires explicitly specifying a cpu with `-T target-cpu`")]
 pub(crate) struct CpuRequired;
 
 #[derive(Diagnostic)]

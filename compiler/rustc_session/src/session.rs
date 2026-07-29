@@ -586,6 +586,20 @@ impl Session {
         &self.opts.unstable_opts.coverage_options
     }
 
+    // JUSTIFICATION: defn of wrapper around `target_cpu`
+    #[allow(rustc::bad_opt_access)]
+    pub fn target_cpu(&self) -> Option<&str> {
+        // `opts.target_opts.target_cpu` can have a value set so that default values of `target-cpu`
+        // match across crates, but the rest of the compiler expects this function to only return
+        // a value if it was explicitly set
+        let target_value = if self.opts.metadata.target.target_cpu.is_set {
+            self.opts.target_opts.target_cpu.as_deref()
+        } else {
+            None
+        };
+        target_value.or(self.opts.cg.target_cpu.as_deref())
+    }
+
     pub fn is_sanitizer_cfi_enabled(&self) -> bool {
         self.sanitizers().contains(SanitizerSet::CFI)
     }
@@ -1255,7 +1269,7 @@ fn default_emitter(sopts: &config::Options, source_map: Arc<SourceMap>) -> Box<D
 // JUSTIFICATION: literally session construction
 #[allow(rustc::bad_opt_access)]
 pub fn build_session(
-    sopts: config::Options,
+    mut sopts: config::Options,
     io: CompilerIO,
     driver_lint_caps: FxHashMap<lint::LintId, lint::Level>,
     target: Target,
@@ -1295,6 +1309,14 @@ pub fn build_session(
             });
     for warning in target_warnings.warning_messages() {
         dcx.handle().warn(warning)
+    }
+
+    // If the target requires `target-opt` be a target modifier then it is desirable that the
+    // default for the option be compatible with an explicitly set `-Ttarget-cpu`, but because the
+    // `-Ttarget-cpu` default cannot be set in `options!` (it's target-specific, unsurprisingly),
+    // the default needs to be written here so it is in cross-crate metadata.
+    if target.requires_consistent_cpu && !sopts.metadata.target.target_cpu.is_set {
+        sopts.target_opts.target_cpu = Some(target.cpu.to_string());
     }
 
     let self_profiler = if let SwitchWithOptPath::Enabled(ref d) = sopts.unstable_opts.self_profile
@@ -1444,6 +1466,12 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         sess.dcx().emit_warn(diagnostics::PointerAuthenticationNotSupportedForTarget {
             target_triple: &sess.opts.target_triple,
         });
+    }
+
+    if sess.target.requires_consistent_cpu && sess.opts.metadata.codegen.target_cpu.is_set {
+        sess.dcx().emit_err(diagnostics::TargetCpuNeedsTargetModifierOpt);
+    } else if !sess.target.requires_consistent_cpu && sess.opts.metadata.target.target_cpu.is_set {
+        sess.dcx().emit_err(diagnostics::TargetCpuNeedsCodegenOpt);
     }
 
     // Make sure that any given profiling data actually exists so LLVM can't

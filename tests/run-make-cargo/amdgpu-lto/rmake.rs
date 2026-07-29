@@ -22,7 +22,7 @@ fn main() {
             "--target",
             "amdgcn-amd-amdhsa",
         ])
-        .env("RUSTFLAGS", "-Ctarget-cpu=gfx900")
+        .env("RUSTFLAGS", "-Ttarget-cpu=gfx900 -Zunstable-options")
         .env("CARGO_TARGET_DIR", &target_dir)
         .run();
 }

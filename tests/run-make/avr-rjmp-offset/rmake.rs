@@ -18,7 +18,12 @@
 use run_make_support::{llvm_objdump, path, rustc, rustc_minicore};
 
 fn main() {
-    rustc_minicore().target("avr-none").target_cpu("avr").output("libminicore.rlib").run();
+    rustc_minicore()
+        .target("avr-none")
+        .arg("-Ttarget-cpu=avr")
+        .arg("-Zunstable-options")
+        .output("libminicore.rlib")
+        .run();
 
     rustc()
         .input("avr-rjmp-offsets.rs")
@@ -29,7 +34,8 @@ fn main() {
         // time being let's tell rustc to emit binary that's compatible with the
         // target CPU that lld defaults to, i.e. just `avr` (that's simply the
         // minimal common instruction set across all AVRs)
-        .target_cpu("avr")
+        .arg("-Ttarget-cpu=avr")
+        .arg("-Zunstable-options")
         // normally one links with `avr-gcc`, but this is not available in CI,
         // hence this test diverges from the default behavior to enable linking
         // at all, which is necessary for the test (to resolve the labels). To

@@ -2,7 +2,7 @@
 //@ assembly-output: emit-asm
 // ignore-tidy-linelength
 //@ revisions: amdgcn_amd_amdhsa
-//@ [amdgcn_amd_amdhsa] compile-flags: --target amdgcn-amd-amdhsa -Ctarget-cpu=gfx900
+//@ [amdgcn_amd_amdhsa] compile-flags: --target amdgcn-amd-amdhsa -Ttarget-cpu=gfx900
 //@ [amdgcn_amd_amdhsa] needs-llvm-components: amdgpu
 
 // Sanity-check that each target can produce assembly code.

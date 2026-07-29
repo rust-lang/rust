@@ -49,7 +49,7 @@
 //@[bpfel] needs-llvm-components: bpf
 //
 //@ revisions: avr
-//@[avr] compile-flags: --target avr-none -Ctarget-cpu=atmega328
+//@[avr] compile-flags: --target avr-none -Ttarget-cpu=atmega328
 //@[avr] needs-llvm-components: avr
 //
 //@ revisions: msp430

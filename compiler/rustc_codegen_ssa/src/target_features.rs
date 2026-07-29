@@ -433,7 +433,7 @@ pub fn target_spec_to_backend_features<'a>(
     // sm_70, sm_72 and sm_75 defaults to PTX ISA versions with major version 6, while sm_80 default to 7.0
     if sess.target.arch == Arch::Nvptx64
         && matches!(
-            sess.opts.cg.target_cpu.as_deref(),
+            sess.target_cpu().as_deref(),
             None | Some("sm_70") | Some("sm_72") | Some("sm_75")
         )
     {

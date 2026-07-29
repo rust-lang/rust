@@ -1,9 +1,9 @@
-// Check that an implicit default `-Ctarget-cpu` and an explicit default
-// `-Ctarget-cpu` compare equal.
+// Check that an implicit default `-Ttarget-cpu` and an explicit default
+// `-Ttarget-cpu` compare equal.
 //
-// NVPTX requires consistent `-Ctarget-cpu` values across crates, but it does
+// NVPTX requires consistent `-Ttarget-cpu` values across crates, but it does
 // not require the CPU to be specified explicitly. Therefore, compiling one crate
-// without `-Ctarget-cpu` and another crate with the target's default CPU
+// without `-Ttarget-cpu` and another crate with the target's default CPU
 // explicitly specified must be accepted.
 //
 // The mismatch revisions additionally check that an implicit or explicit default
@@ -18,13 +18,11 @@
 
 //@ revisions: implicit_default explicit_default implicit_mismatch explicit_mismatch
 //@[implicit_default] check-pass
-//@[explicit_default] compile-flags: -Ctarget-cpu=sm_70
+//@[explicit_default] compile-flags: -Ttarget-cpu=sm_70
 //@[explicit_default] check-pass
-//@[explicit_mismatch] compile-flags: -Ctarget-cpu=sm_70
+//@[explicit_mismatch] compile-flags: -Ttarget-cpu=sm_70
 
 #![feature(no_core)]
-//[implicit_mismatch]~? ERROR mixing `-Ctarget-cpu` will cause an ABI mismatch
-//[explicit_mismatch]~? ERROR mixing `-Ctarget-cpu` will cause an ABI mismatch
 #![crate_type = "rlib"]
 #![no_core]
 
@@ -36,3 +34,6 @@ extern crate target_cpu_default_explicit;
 
 #[cfg(any(implicit_mismatch, explicit_mismatch))]
 extern crate target_cpu_non_default;
+
+//[implicit_mismatch]~? ERROR mixing `-Ttarget-cpu` will cause an ABI mismatch
+//[explicit_mismatch]~? ERROR mixing `-Ttarget-cpu` will cause an ABI mismatch
