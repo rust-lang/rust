@@ -19,7 +19,7 @@
 #![no_main]
 #![no_core]
 
-//[empty]~? ERROR incorrect value `` for target option `pointer-authentication`
-//[unprefixed]~? ERROR incorrect value `auth-traps` for target option `pointer-authentication`
-//[all_unknown]~? ERROR incorrect value `+I,+do,-not,-exist` for target option `pointer-authentication`
-//[mixed]~? ERROR incorrect value `+elf-got,-imaginary` for target option `pointer-authentication`
+//[empty]~? ERROR incorrect value `` for codegen option `pointer-authentication`
+//[unprefixed]~? ERROR incorrect value `auth-traps` for codegen option `pointer-authentication`
+//[all_unknown]~? ERROR incorrect value `+I,+do,-not,-exist` for codegen option `pointer-authentication`
+//[mixed]~? ERROR incorrect value `+elf-got,-imaginary` for codegen option `pointer-authentication`
