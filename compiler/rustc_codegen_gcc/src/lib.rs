@@ -59,7 +59,7 @@ mod context;
 mod coverageinfo;
 mod debuginfo;
 mod declare;
-mod errors;
+mod diagnostics;
 mod gcc_util;
 mod int;
 mod intrinsic;

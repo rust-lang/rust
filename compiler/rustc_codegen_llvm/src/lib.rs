@@ -59,7 +59,7 @@ mod context;
 mod coverageinfo;
 mod debuginfo;
 mod declare;
-mod errors;
+mod diagnostics;
 mod intrinsic;
 mod llvm;
 mod llvm_util;
@@ -233,10 +233,11 @@ impl CodegenBackend for LlvmCodegenBackend {
                 match llvm::EnzymeWrapper::get_or_init(&sess.opts.sysroot) {
                     Ok(_) => {}
                     Err(llvm::EnzymeLibraryError::NotFound { err }) => {
-                        sess.dcx().emit_fatal(crate::errors::AutoDiffComponentMissing { err });
+                        sess.dcx().emit_fatal(crate::diagnostics::AutoDiffComponentMissing { err });
                     }
                     Err(llvm::EnzymeLibraryError::LoadFailed { err }) => {
-                        sess.dcx().emit_fatal(crate::errors::AutoDiffComponentUnavailable { err });
+                        sess.dcx()
+                            .emit_fatal(crate::diagnostics::AutoDiffComponentUnavailable { err });
                     }
                 }
                 enable_autodiff_settings(&sess.opts.unstable_opts.autodiff);
