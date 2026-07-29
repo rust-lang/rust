@@ -393,7 +393,7 @@ pub(crate) struct PointerAuthenticationTypeDiscriminationNotSupportedForTarget<'
 
 #[derive(Diagnostic)]
 #[diag(
-    "`-Z pointer-authentication` is not supported for target {$target_triple} and will be ignored"
+    "`-T pointer-authentication` is not supported for target {$target_triple} and will be ignored"
 )]
 pub(crate) struct PointerAuthenticationNotSupportedForTarget<'a> {
     pub(crate) target_triple: &'a TargetTuple,

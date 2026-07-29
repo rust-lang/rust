@@ -475,6 +475,23 @@ impl TargetModifierOptionValue for u32 {
     }
 }
 
+impl TargetModifierOptionValue for Vec<(PointerAuthOption, bool)> {
+    fn to_string_for_diag(&self) -> String {
+        let mut parts = Vec::new();
+        for (opt, pos) in self {
+            let polarity = if *pos { "+" } else { "-" };
+            parts.push(format!("{polarity}{opt}"));
+        }
+        parts.join(",")
+    }
+}
+
+impl TargetModifierOptionValue for String {
+    fn to_string_for_diag(&self) -> String {
+        self.to_string()
+    }
+}
+
 impl TargetModifierOptionValue for BranchProtection {
     fn to_string_for_diag(&self) -> String {
         self.to_string()
@@ -2345,6 +2362,25 @@ target_modifier_options! {
         "make the x18 register reserved on AArch64 (default: no)"),
     indirect_branch_cs_prefix: bool = (false, parse_bool, [TRACKED_UNSTABLE],
         "add `cs` prefix to `call` and `jmp` to indirect thunks (default: no)"),
+    pointer_authentication: Vec<(PointerAuthOption, bool)> = (
+        Vec::new(),
+        parse_pointer_authentication_list_with_polarity,
+        [TRACKED_UNSTABLE],
+        "A comma-separated list of pointer authentication options, each prefixed with `+` (enable) or `-` (disable). Available options:
+        `aarch64-jump-table-hardening` - enable hardened lowering for jump-table dispatch
+        `auth-traps` - trap immediately on pointer authentication failure
+        `calls` - enable signing and authentication of all indirect calls
+        `elf-got` - enable authentication of pointers from GOT (ELF only)
+        `function-pointer-type-discrimination` - enable type discrimination on C function pointers
+        `indirect-gotos` - enable signing and authentication of indirect goto targets
+        `init-fini` - enable signing of function pointers in init/fini arrays
+        `init-fini-address-discrimination` - enable address discrimination in init/fini arrays
+        `intrinsics` - pointer authentication intrinsics
+        `return-addresses` - enable signing and authentication of return addresses
+        `typeinfo-vt-ptr-discrimination - incorporate type and address discrimination in authenticated vtable pointers for std::type_info
+        `vt-ptr-addr-discrimination - incorporate address discrimination in authenticated vtable pointers
+        `vt-ptr-type-discrimination - incorporate type discrimination in authenticated vtable pointers
+        Example: `-Zpointer-authentication=+calls,-init-fini`."),
     reg_struct_return: bool = (false, parse_bool, [TRACKED_UNSTABLE],
         "On x86-32 targets, it overrides the default ABI to return small structs in registers."),
     regparm: Option<u32> = (None, parse_opt_number, [TRACKED_UNSTABLE],
@@ -2740,25 +2776,6 @@ options! {
         "whether to use the PLT when calling into shared libraries;
         only has effect for PIC code on systems with ELF binaries
         (default: PLT is disabled if full relro is enabled on x86_64)"),
-    pointer_authentication: Vec<(PointerAuthOption, bool)> = (
-        Vec::new(),
-        parse_pointer_authentication_list_with_polarity,
-        [TRACKED],
-        "A comma-separated list of pointer authentication options, each prefixed with `+` (enable) or `-` (disable). Available options:
-        `aarch64-jump-table-hardening` - enable hardened lowering for jump-table dispatch
-        `auth-traps` - trap immediately on pointer authentication failure
-        `calls` - enable signing and authentication of all indirect calls
-        `elf-got` - enable authentication of pointers from GOT (ELF only)
-        `function-pointer-type-discrimination` - enable type discrimination on C function pointers
-        `indirect-gotos` - enable signing and authentication of indirect goto targets
-        `init-fini` - enable signing of function pointers in init/fini arrays
-        `init-fini-address-discrimination` - enable address discrimination in init/fini arrays
-        `intrinsics` - pointer authentication intrinsics
-        `return-addresses` - enable signing and authentication of return addresses
-        `typeinfo-vt-ptr-discrimination - incorporate type and address discrimination in authenticated vtable pointers for std::type_info
-        `vt-ptr-addr-discrimination - incorporate address discrimination in authenticated vtable pointers
-        `vt-ptr-type-discrimination - incorporate type discrimination in authenticated vtable pointers
-        Example: `-Zpointer-authentication=+calls,-init-fini`."),
     polonius: Polonius = (Polonius::default(), parse_polonius, [TRACKED],
         "enable polonius-based borrow-checker (default: no)"),
     pre_link_arg: (/* redirected to pre_link_args */) = ((), parse_string_push, [UNTRACKED],
