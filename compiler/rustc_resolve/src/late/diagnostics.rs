@@ -669,11 +669,10 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         path: &[Segment],
         following_seg: Option<&Segment>,
         span: Span,
-        source: PathSource<'_, 'ast, 'ra>,
+        mut source: PathSource<'_, 'ast, 'ra>,
         res: Option<Res>,
         qself: Option<&QSelf>,
     ) -> (Diag<'tcx>, Vec<ImportSuggestion>) {
-        debug!(?res, ?source);
         let cross_namespace_res = res.filter(|res| !res.matches_ns(source.namespace()));
         let could_be_expr = res.is_some_and(|res| self.could_be_expr(res, span));
         let base_error = self.make_base_error(
@@ -687,6 +686,14 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         let code = source.error_code(res.is_some());
         let mut err = self.r.dcx().struct_span_err(base_error.span, base_error.msg.clone());
         err.code(code);
+
+        if self.diag_metadata.currently_processing_generic_args
+            && let PathSource::Type = source
+            && let [segment] = path
+            && !segment.has_generic_args
+        {
+            source = PathSource::TypeParam;
+        }
 
         if let Some(res) = cross_namespace_res {
             err.note(format!(
@@ -1303,19 +1310,13 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     fn suggest_typo(
         &mut self,
         err: &mut Diag<'_>,
-        mut source: PathSource<'_, 'ast, 'ra>,
+        source: PathSource<'_, 'ast, 'ra>,
         path: &[Segment],
         following_seg: Option<&Segment>,
         span: Span,
         base_error: &BaseError,
         suggested_candidates: FxHashSet<String>,
     ) -> bool {
-        if self.diag_metadata.currently_processing_generic_args
-            && matches!(source, PathSource::Type)
-        {
-            source = PathSource::TypeParam;
-        }
-
         let is_expected = &|res| source.is_expected(res);
         let ident_span = path.last().map_or(span, |ident| ident.ident.span);
 
