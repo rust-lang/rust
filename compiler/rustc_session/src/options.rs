@@ -266,6 +266,7 @@ pub enum TargetModifierValue {
     Bool(bool),
     U32(u32),
     Usize(usize),
+    String(String),
     BranchProtection(BranchProtection),
     Sanitizers(SanitizerSet),
 }
@@ -276,6 +277,7 @@ impl fmt::Display for TargetModifierValue {
             Self::Bool(_) => write!(f, ""),
             Self::U32(val) => write!(f, "={val}"),
             Self::Usize(val) => write!(f, "={val}"),
+            Self::String(val) => write!(f, "={val}"),
             Self::BranchProtection(val) => write!(f, "={val}"),
             Self::Sanitizers(val) => write!(f, "={val}"),
         }
@@ -297,6 +299,7 @@ macro_rules! noop_target_modifier_ty {
 noop_target_modifier_ty!(
     // tidy-alphabetical-start
     SanitizerSet => Self::Sanitizers,
+    String => Self::String,
     bool => Self::Bool,
     u32 => Self::U32,
     usize => Self::Usize,
@@ -378,7 +381,6 @@ unsupported_target_modifier_ty!(
     Option<RustcVersion>,
     Option<SourceFileHashAlgorithm>,
     Option<SplitDebuginfo>,
-    Option<String>,
     Option<SymbolManglingVersion>,
     Option<SymbolVisibility>,
     Option<TlsModel>,
@@ -392,7 +394,6 @@ unsupported_target_modifier_ty!(
     ProcMacroExecutionStrategy,
     SplitDwarfKind,
     StackProtector,
-    String,
     Strip,
     SwitchWithOptPath,
     TerminalUrl,
@@ -2590,7 +2591,6 @@ options! {
     symbol_mangling_version: Option<SymbolManglingVersion> = (None,
         parse_symbol_mangling_version, [TRACKED],
         "which mangling version to use for symbol names ('legacy', 'v0' (default), or 'hashed')"),
-    #[rustc_lint_opt_deny_field_access("use `Session::target_cpu` instead of this field")]
     target_cpu: Option<String> = (None, parse_opt_string, [TRACKED],
         "select target processor (`rustc --print target-cpus` for details)"),
     target_feature: String = (String::new(), parse_target_feature, [TRACKED],

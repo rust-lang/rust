@@ -206,7 +206,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
 
     fn target_cpu(&self, sess: &Session) -> String {
         // FIXME handle `-Ctarget-cpu=native`
-        match sess.target_cpu() {
+        match sess.opts.cg.target_cpu {
             Some(ref name) => name,
             None => sess.target.cpu.as_ref(),
         }
@@ -339,7 +339,7 @@ fn build_isa(sess: &Session, jit: bool) -> Arc<dyn TargetIsa + 'static> {
 
     let flags = settings::Flags::new(flags_builder);
 
-    let isa_builder = match sess.target_cpu().as_deref() {
+    let isa_builder = match sess.opts.cg.target_cpu.as_deref() {
         Some(NATIVE_CPU) => cranelift_native::builder_with_options(true).unwrap(),
         Some(value) => {
             let mut builder =

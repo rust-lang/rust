@@ -368,7 +368,7 @@ pub(super) fn elf_e_flags(architecture: Architecture, sess: &Session) -> u32 {
         Architecture::Avr => {
             // Resolve the ISA revision and set
             // the appropriate EF_AVR_ARCH flag.
-            if let Some(ref cpu) = sess.target_cpu() {
+            if let Some(ref cpu) = sess.opts.cg.target_cpu {
                 ef_avr_arch(cpu)
             } else {
                 sess.dcx().emit_fatal(diagnostics::CpuRequired)

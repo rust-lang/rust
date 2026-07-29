@@ -813,7 +813,3 @@ pub(crate) struct IncompatibleFlagsUnsetExternally {
 #[derive(Diagnostic)]
 #[diag("`target-cpu` must be set with `-Ttarget-cpu` for this target")]
 pub(crate) struct TargetCpuNeedsTargetModifierOpt;
-
-#[derive(Diagnostic)]
-#[diag("`target-cpu` must be set with `-Ctarget-cpu` for this target")]
-pub(crate) struct TargetCpuNeedsCodegenOpt;

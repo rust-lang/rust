@@ -35,9 +35,10 @@ use rustc_target::spec::{
 use crate::code_stats::CodeStats;
 pub use crate::code_stats::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use crate::config::{
-    self, BranchProtection, Cfg, CheckCfg, CoverageLevel, CoverageOptions, CrateType, DebugInfo,
-    ErrorOutputType, FunctionReturn, Input, InstrumentCoverage, InstrumentMcount, NATIVE_CPU,
-    OptLevel, OutFileName, OutputType, PAuthKey, PointerAuthOption, SwitchWithOptPath,
+    self, BranchProtection, Cfg, CheckCfg, CodegenOptionsKey, CoverageLevel, CoverageOptions,
+    CrateType, DebugInfo, ErrorOutputType, FunctionReturn, Input, InstrumentCoverage,
+    InstrumentMcount, NATIVE_CPU, OptLevel, OutFileName, OutputType, PAuthKey, PointerAuthOption,
+    SwitchWithOptPath,
 };
 use crate::filesearch::FileSearch;
 use crate::lint::LintId;
@@ -584,20 +585,6 @@ impl Session {
     /// need separate accessors.
     pub fn coverage_options(&self) -> &CoverageOptions {
         &self.opts.unstable_opts.coverage_options
-    }
-
-    // JUSTIFICATION: defn of wrapper around `target_cpu`
-    #[allow(rustc::bad_opt_access)]
-    pub fn target_cpu(&self) -> Option<&str> {
-        // `opts.target_opts.target_cpu` can have a value set so that default values of `target-cpu`
-        // match across crates, but the rest of the compiler expects this function to only return
-        // a value if it was explicitly set
-        let target_value = if self.opts.metadata.target.target_cpu.is_set {
-            self.opts.target_opts.target_cpu.as_deref()
-        } else {
-            None
-        };
-        target_value.or(self.opts.cg.target_cpu.as_deref())
     }
 
     pub fn is_sanitizer_cfi_enabled(&self) -> bool {
@@ -1313,8 +1300,13 @@ pub fn build_session(
     // default for the option be compatible with an explicitly set `-Ttarget-cpu`, but because the
     // `-Ttarget-cpu` default cannot be set in `options!` (it's target-specific, unsurprisingly),
     // the default needs to be written here so it is in cross-crate metadata.
-    if target.requires_consistent_cpu && !sopts.metadata.target.target_cpu.is_set {
-        sopts.target_opts.target_cpu = Some(target.cpu.to_string());
+    let target_cpu_set =
+        sopts.collected_options.is_set.codegen.contains(&CodegenOptionsKey::target_cpu);
+    if target.requires_consistent_cpu && !target_cpu_set {
+        sopts.collected_options.target_modifiers.codegen.insert(
+            CodegenOptionsKey::target_cpu,
+            config::TargetModifierValue::String(target.cpu.to_string()),
+        );
     }
 
     let self_profiler = if let SwitchWithOptPath::Enabled(ref d) = sopts.unstable_opts.self_profile
@@ -1466,10 +1458,16 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         });
     }
 
-    if sess.target.requires_consistent_cpu && sess.opts.metadata.codegen.target_cpu.is_set {
+    let target_cpu_set =
+        sess.opts.collected_options.is_set.codegen.contains(&CodegenOptionsKey::target_cpu);
+    let target_cpu_set_as_modifier = sess
+        .opts
+        .collected_options
+        .target_modifiers
+        .codegen
+        .contains_key(&CodegenOptionsKey::target_cpu);
+    if sess.target.requires_consistent_cpu && target_cpu_set && !target_cpu_set_as_modifier {
         sess.dcx().emit_err(diagnostics::TargetCpuNeedsTargetModifierOpt);
-    } else if !sess.target.requires_consistent_cpu && sess.opts.metadata.target.target_cpu.is_set {
-        sess.dcx().emit_err(diagnostics::TargetCpuNeedsCodegenOpt);
     }
 
     // Make sure that any given profiling data actually exists so LLVM can't

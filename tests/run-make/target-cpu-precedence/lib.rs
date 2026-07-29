@@ -34,4 +34,4 @@ pub fn foo() {
 }
 // The value reconstructed from crate metadata must be identical.
 // CHECK-LABEL: =Target modifiers=
-// CHECK-LABEL: -Ttarget-cpu=sm_80 ["sm_80"]
+// CHECK-LABEL: -Ttarget-cpu=sm_80
