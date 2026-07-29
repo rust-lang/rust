@@ -1,0 +1,49 @@
+From 61246af14448350fbe8272dea9c98624c5fd5ab1 Mon Sep 17 00:00:00 2001
+From: Folkert de Vries <folkert@folkertdev.nl>
+Date: Wed, 29 Jul 2026 15:28:16 +0200
+Subject: [PATCH] gate `std_float` f16 tests
+
+---
+ crates/std_float/Cargo.toml     | 8 ++++++++
+ crates/std_float/tests/float.rs | 3 +++
+ 2 files changed, 11 insertions(+)
+
+diff --git a/crates/std_float/Cargo.toml b/crates/std_float/Cargo.toml
+index 0896094e..08360a45 100644
+--- a/crates/std_float/Cargo.toml
++++ b/crates/std_float/Cargo.toml
+@@ -18,3 +18,11 @@ wasm-bindgen-test = "0.3"
+ [features]
+ default = ["as_crate"]
+ as_crate = []
++
++[lints.rust.unexpected_cfgs]
++level = "warn"
++check-cfg = [
++    # Internal features aren't marked known config by default, we use these to
++    # gate tests.
++    'cfg(target_has_reliable_f16_math)',
++]
+diff --git a/crates/std_float/tests/float.rs b/crates/std_float/tests/float.rs
+index d4d8a909..0ba08aa7 100644
+--- a/crates/std_float/tests/float.rs
++++ b/crates/std_float/tests/float.rs
+@@ -1,5 +1,7 @@
+ #![feature(portable_simd)]
+ #![feature(f16)]
++#![allow(internal_features)]
++#![feature(cfg_target_has_reliable_f16_f128)]
+ 
+ macro_rules! unary_test {
+     { $scalar:tt, $($func:tt),+ } => {
+@@ -87,6 +89,7 @@ macro_rules! impl_tests {
+     }
+ }
+ 
++#[cfg(target_has_reliable_f16_math)]
+ impl_tests! { f16 }
+ impl_tests! { f32 }
+ impl_tests! { f64 }
+-- 
+2.43.0
+
