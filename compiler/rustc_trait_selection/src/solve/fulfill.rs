@@ -182,26 +182,15 @@ where
         }
     }
 
+    #[inline]
     fn collect_remaining_errors(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E> {
-        #[allow(clippy::iter_skip_zero)]
-        self.obligations
-            .pending
-            .drain(..)
-            .map(|(obligation, _)| NextSolverError::Ambiguity(obligation))
-            .chain(
-                self.obligations
-                    .overflowed
-                    .drain(..)
-                    .map(|obligation| NextSolverError::Overflow(obligation)),
-            )
-            .map(|e| E::from_solver_error(infcx, e))
-            // Skip doesn't implement TrustedLen, so we use it to
-            // avoid Vec::from_iter specialization that seems
-            // to optimize poorly in combination with ThinVec::drain
-            // on this particular sequence.
-            // See https://github.com/rust-lang/rust/pull/160073
-            .skip(0)
-            .collect()
+        if self.obligations.pending.is_empty() && self.obligations.overflowed.is_empty() {
+            // Typically in more than 99.9% of cases this condition is true, therefore we outline
+            // the other case.
+            return Vec::new();
+        } else {
+            collect_remaining_errors_impl(self, infcx)
+        }
     }
 
     fn try_evaluate_obligations(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E> {
@@ -371,6 +360,29 @@ where
             .map(|(o, _)| o)
             .collect()
     }
+}
+
+#[cold]
+#[inline(never)]
+fn collect_remaining_errors_impl<'tcx, E>(
+    cx: &mut FulfillmentCtxt<'tcx, E>,
+    infcx: &InferCtxt<'tcx>,
+) -> Vec<E>
+where
+    E: FromSolverError<'tcx, NextSolverError<'tcx>>,
+{
+    cx.obligations
+        .pending
+        .drain(..)
+        .map(|(obligation, _)| NextSolverError::Ambiguity(obligation))
+        .chain(
+            cx.obligations
+                .overflowed
+                .drain(..)
+                .map(|obligation| NextSolverError::Overflow(obligation)),
+        )
+        .map(|e| E::from_solver_error(infcx, e))
+        .collect()
 }
 
 pub enum NextSolverError<'tcx> {
