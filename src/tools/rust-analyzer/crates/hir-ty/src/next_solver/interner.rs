@@ -265,6 +265,35 @@ macro_rules! impl_foldable_for_interned_slice {
 }
 pub(crate) use impl_foldable_for_interned_slice;
 
+macro_rules! impl_foldable_for_stored_type {
+    ($name:ident) => {
+        impl<'db> ::rustc_type_ir::TypeVisitable<DbInterner<'db>> for $name {
+            fn visit_with<V: rustc_type_ir::TypeVisitor<DbInterner<'db>>>(
+                &self,
+                visitor: &mut V,
+            ) -> V::Result {
+                self.as_ref().visit_with(visitor)
+            }
+        }
+
+        impl<'db> rustc_type_ir::TypeFoldable<DbInterner<'db>> for $name {
+            fn try_fold_with<F: rustc_type_ir::FallibleTypeFolder<DbInterner<'db>>>(
+                self,
+                folder: &mut F,
+            ) -> Result<Self, F::Error> {
+                Ok(self.as_ref().try_fold_with(folder)?.store())
+            }
+            fn fold_with<F: rustc_type_ir::TypeFolder<DbInterner<'db>>>(
+                self,
+                folder: &mut F,
+            ) -> Self {
+                self.as_ref().fold_with(folder).store()
+            }
+        }
+    };
+}
+pub(crate) use impl_foldable_for_stored_type;
+
 macro_rules! impl_stored_interned {
     ( $storage:ident, $name:ident, $stored_name:ident $(,)? ) => {
         #[derive(Clone, PartialEq, Eq, Hash)]
