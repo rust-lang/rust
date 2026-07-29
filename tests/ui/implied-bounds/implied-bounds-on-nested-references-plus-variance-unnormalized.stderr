@@ -1,9 +1,20 @@
-error[E0605]: non-primitive cast: `for<'a> fn(&'a str) -> <&&'a () as ToArg<&str>>::Arg {extend_inner::<'_>}` as `fn(&str) -> &str`
+error: lifetime may not live long enough
+  --> $DIR/implied-bounds-on-nested-references-plus-variance-unnormalized.rs:13:5
+   |
+LL | fn extend<'a, 'b>(x: &'a str) -> &'b str {
+   |           -- lifetime `'a` defined here
+LL |     (extend_inner as fn(_) -> _)(x)
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cast requires that `'a` must outlive `'static`
+
+error[E0308]: mismatched types
   --> $DIR/implied-bounds-on-nested-references-plus-variance-unnormalized.rs:13:5
    |
 LL |     (extend_inner as fn(_) -> _)(x)
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid cast
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected fn pointer `fn(&_) -> &_`
+              found fn pointer `for<'a> fn(&'a _) -> &_`
 
-error: aborting due to 1 previous error
+error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0605`.
+For more information about this error, try `rustc --explain E0308`.

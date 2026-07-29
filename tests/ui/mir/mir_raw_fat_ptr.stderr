@@ -2,37 +2,19 @@ error[E0308]: mismatched types
   --> $DIR/mir_raw_fat_ptr.rs:143:25
    |
 LL |     assert_inorder(buf, compare_foo);
-   |     --------------      ^^^^^^^^^^^ one type is more general than the other
-   |     |
-   |     arguments to this function are incorrect
+   |                         ^^^^^^^^^^^ one type is more general than the other
    |
    = note: expected fn pointer `fn(*const dyn Foo, *const dyn Foo) -> ComparisonResults`
-                 found fn item `for<'a> fn(*const (dyn Foo + 'a), *const (dyn Foo + 'a)) -> ComparisonResults {compare_foo}`
-note: function defined here
-  --> $DIR/mir_raw_fat_ptr.rs:84:4
-   |
-LL | fn assert_inorder<T: Copy>(a: &[T],
-   |    ^^^^^^^^^^^^^^
-LL |                            compare: fn(T, T) -> ComparisonResults) {
-   |                            --------------------------------------
+              found fn pointer `for<'a> fn(*const (dyn Foo + 'a), *const (dyn Foo + 'a)) -> ComparisonResults`
 
 error[E0308]: mismatched types
   --> $DIR/mir_raw_fat_ptr.rs:197:25
    |
 LL |     assert_inorder(buf, compare_foo);
-   |     --------------      ^^^^^^^^^^^ one type is more general than the other
-   |     |
-   |     arguments to this function are incorrect
+   |                         ^^^^^^^^^^^ one type is more general than the other
    |
    = note: expected fn pointer `fn(*const dyn Foo, *const dyn Foo) -> ComparisonResults`
-                 found fn item `for<'a> fn(*const (dyn Foo + 'a), *const (dyn Foo + 'a)) -> ComparisonResults {compare_foo}`
-note: function defined here
-  --> $DIR/mir_raw_fat_ptr.rs:84:4
-   |
-LL | fn assert_inorder<T: Copy>(a: &[T],
-   |    ^^^^^^^^^^^^^^
-LL |                            compare: fn(T, T) -> ComparisonResults) {
-   |                            --------------------------------------
+              found fn pointer `for<'a> fn(*const (dyn Foo + 'a), *const (dyn Foo + 'a)) -> ComparisonResults`
 
 error: aborting due to 2 previous errors
 

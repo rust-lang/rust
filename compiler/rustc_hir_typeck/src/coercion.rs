@@ -1067,11 +1067,22 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 let a = Ty::new_fn_ptr(self.tcx, a_sig);
 
                 let adjust = Adjust::Pointer(PointerCoercion::ReifyFnPointer(b_hdr.safety()));
-                let InferOk { value, obligations: o2 } =
-                    self.unify_and(a, b, [], adjust, ForceLeakCheck::Yes)?;
-
-                obligations.extend(o2);
-                Ok(InferOk { value, obligations })
+                let infer = match self.unify_and(a, b, [], adjust.clone(), ForceLeakCheck::Yes) {
+                    Ok(infer) => infer,
+                    Err(_) => {
+                        let a_ty = Ty::new_fn_ptr(
+                            self.tcx,
+                            ty::Binder::dummy(self.instantiate_binder_with_fresh_vars(
+                                self.cause.span,
+                                BoundRegionConversionTime::HigherRankedType,
+                                a_sig,
+                            )),
+                        );
+                        self.unify_and(a_ty, b, [], adjust, ForceLeakCheck::Yes)?
+                    }
+                };
+                obligations.extend(infer.obligations);
+                Ok(InferOk { value: infer.value, obligations })
             }
             _ => self.unify(a, b, ForceLeakCheck::No),
         }

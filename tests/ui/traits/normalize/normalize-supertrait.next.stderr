@@ -2,23 +2,19 @@ error[E0308]: mismatched types
   --> $DIR/normalize-supertrait.rs:38:20
    |
 LL |     let x: fn(_) = f::<()>;
-   |            -----   ^^^^^^^ one type is more general than the other
-   |            |
-   |            expected due to this
+   |                    ^^^^^^^ one type is more general than the other
    |
-   = note: expected fn pointer `fn(_)`
-                 found fn item `for<'a> fn(&'a (dyn Derived<()> + 'a)) {f::<()>}`
+   = note: expected fn pointer `fn(&dyn Derived<()>)`
+              found fn pointer `for<'a> fn(&'a (dyn Derived<()> + 'a))`
 
 error[E0308]: mismatched types
   --> $DIR/normalize-supertrait.rs:39:20
    |
 LL |     let x: fn(_) = f::<i32>;
-   |            -----   ^^^^^^^^ one type is more general than the other
-   |            |
-   |            expected due to this
+   |                    ^^^^^^^^ one type is more general than the other
    |
-   = note: expected fn pointer `fn(_)`
-                 found fn item `for<'a> fn(&'a (dyn Derived<i32> + 'a)) {f::<i32>}`
+   = note: expected fn pointer `fn(&dyn Derived<i32>)`
+              found fn pointer `for<'a> fn(&'a (dyn Derived<i32> + 'a))`
 
 error: aborting due to 2 previous errors
 

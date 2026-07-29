@@ -40,18 +40,25 @@ LL |     f: &id,
    = note: `fn(&Foo<'2>) -> &Foo<'2> {id::<&Foo<'2>>}` must implement `FnOnce<(&'a Foo<'1>,)>`, for any lifetime `'1`...
    = note: ...but it actually implements `FnOnce<(&Foo<'2>,)>`, for some specific lifetime `'2`
 
-error[E0605]: non-primitive cast: `for<'a> fn(&'a [u8]) -> Option<u8> {baz}` as `fn(&[u8]) -> Option<u8>`
+error[E0308]: mismatched types
   --> $DIR/rfc1623-2.rs:79:45
    |
 LL | static STATIC_BAZ: &'static Baz<'static> = &(baz as Baz);
-   |                                             ^^^^^^^^^^^^ invalid cast
+   |                                             ^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected fn pointer `fn(&_) -> Option<_>`
+              found fn pointer `for<'a> fn(&'a _) -> Option<_>`
 
-error[E0605]: non-primitive cast: `for<'a> fn(&'a [u8]) -> Option<u8> {baz}` as `fn(&[u8]) -> Option<u8>`
+error[E0308]: mismatched types
   --> $DIR/rfc1623-2.rs:80:43
    |
 LL | const CONST_BAZ: &'static Baz<'static> = &(baz as Baz);
-   |                                           ^^^^^^^^^^^^ invalid cast
+   |                                           ^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected fn pointer `fn(&_) -> Option<_>`
+              found fn pointer `for<'a> fn(&'a _) -> Option<_>`
 
 error: aborting due to 7 previous errors
 
-For more information about this error, try `rustc --explain E0605`.
+Some errors have detailed explanations: E0308, E0605.
+For more information about an error, try `rustc --explain E0308`.

@@ -1,19 +1,21 @@
 error[E0308]: mismatched types
+  --> $DIR/binary-op-on-fn-ptr-eq.rs:10:13
+   |
+LL |     let x = foo as fn(&'static str);
+   |             ^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected fn pointer `fn(&_)`
+              found fn pointer `for<'a> fn(&'a _)`
+
+error[E0308]: mismatched types
   --> $DIR/binary-op-on-fn-ptr-eq.rs:11:18
    |
 LL |     let _ = x == foo;
    |                  ^^^ one type is more general than the other
    |
    = note: expected fn pointer `fn(&_)`
-                 found fn item `for<'a> fn(&'a _) {foo}`
-
-error[E0605]: non-primitive cast: `for<'a> fn(&'a str) {foo}` as `fn(&'static str)`
-  --> $DIR/binary-op-on-fn-ptr-eq.rs:10:13
-   |
-LL |     let x = foo as fn(&'static str);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^ invalid cast
+              found fn pointer `for<'a> fn(&'a _)`
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0308, E0605.
-For more information about an error, try `rustc --explain E0308`.
+For more information about this error, try `rustc --explain E0308`.

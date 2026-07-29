@@ -1,15 +1,32 @@
-error[E0605]: non-primitive cast: `for<'a> unsafe extern "C" fn(&'a S, ...) -> i32 {S::method_ref}` as `unsafe extern "C" fn(&S, ...) -> i32`
+error[E0308]: mismatched types
   --> $DIR/inherent-method.rs:40:20
    |
 LL |         assert_eq!((S::method_ref as Method<_>)(&S(100), 32), 132);
-   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid cast
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected fn pointer `unsafe extern "C" fn(&S, ...) -> _`
+              found fn pointer `for<'a> unsafe extern "C" fn(&'a S, ...) -> _`
 
-error[E0605]: non-primitive cast: `for<'a> unsafe extern "C" fn(&'a mut S, ...) -> i32 {S::method_mut}` as `unsafe extern "C" fn(&mut S, ...) -> i32`
+error[E0308]: mismatched types
   --> $DIR/inherent-method.rs:41:20
    |
 LL |         assert_eq!((S::method_mut as Method<_>)(&mut S(100), 32), 132);
-   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid cast
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected fn pointer `unsafe extern "C" fn(&mut S, ...) -> _`
+              found fn pointer `for<'a> unsafe extern "C" fn(&'a mut S, ...) -> _`
 
-error: aborting due to 2 previous errors
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/inherent-method.rs:41:54
+   |
+LL |         assert_eq!((S::method_mut as Method<_>)(&mut S(100), 32), 132);
+   |         ---------------------------------------------^^^^^^-----------
+   |         |          |                                 |
+   |         |          |                                 creates a temporary value which is freed while still in use
+   |         |          cast requires that borrow lasts for `'static`
+   |         temporary value is freed at the end of this statement
 
-For more information about this error, try `rustc --explain E0605`.
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0308, E0716.
+For more information about an error, try `rustc --explain E0308`.

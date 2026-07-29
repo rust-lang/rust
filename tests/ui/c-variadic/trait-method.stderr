@@ -1,15 +1,32 @@
-error[E0605]: non-primitive cast: `for<'a> unsafe extern "C" fn(&'a Struct, ...) -> i32 {<Struct as Trait>::trait_method_ref}` as `unsafe extern "C" fn(&Struct, ...) -> i32`
+error[E0308]: mismatched types
   --> $DIR/trait-method.rs:69:20
    |
 LL |         assert_eq!((Struct::trait_method_ref as Method<_>)(&Struct(100), 32), 132);
-   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid cast
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected fn pointer `unsafe extern "C" fn(&Struct, ...) -> _`
+              found fn pointer `for<'a> unsafe extern "C" fn(&'a Struct, ...) -> _`
 
-error[E0605]: non-primitive cast: `for<'a> unsafe extern "C" fn(&'a mut Struct, ...) -> i32 {<Struct as Trait>::trait_method_mut}` as `unsafe extern "C" fn(&mut Struct, ...) -> i32`
+error[E0308]: mismatched types
   --> $DIR/trait-method.rs:70:20
    |
 LL |         assert_eq!((Struct::trait_method_mut as Method<_>)(&mut Struct(100), 32), 132);
-   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ invalid cast
+   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
+   |
+   = note: expected fn pointer `unsafe extern "C" fn(&mut Struct, ...) -> _`
+              found fn pointer `for<'a> unsafe extern "C" fn(&'a mut Struct, ...) -> _`
 
-error: aborting due to 2 previous errors
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/trait-method.rs:70:65
+   |
+LL |         assert_eq!((Struct::trait_method_mut as Method<_>)(&mut Struct(100), 32), 132);
+   |         --------------------------------------------------------^^^^^^^^^^^-----------
+   |         |          |                                            |
+   |         |          |                                            creates a temporary value which is freed while still in use
+   |         |          cast requires that borrow lasts for `'static`
+   |         temporary value is freed at the end of this statement
 
-For more information about this error, try `rustc --explain E0605`.
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0308, E0716.
+For more information about an error, try `rustc --explain E0308`.
