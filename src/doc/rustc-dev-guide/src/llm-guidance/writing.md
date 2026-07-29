@@ -70,21 +70,26 @@ Untested LLM PRs will not be merged.
 Mass renames or rewrites should *strongly* prefer using a proper syntax rewrite tool, such as [`ast-grep`].
 You may use an LLM for generating the instructions for that tool, but you should be very cautious about performing the rewrite directly with an LLM.
 
-Work in small steps.
-Run tests after every meaningful change, so you know where you first went wrong.
-Do not write all your code at once; that will make it very hard to know what broke.
-Ideally, commit your changes in [small atomic commits] as you go.
+Consider [performance] as you write.
+
+[performance]: ../contributing.md#performance
+
+Think before adding dependencies;
+consult our [guidance for new dependencies][crates-io].
+
+[crates-io]: ../crates-io.md
 
 Verify your understanding against the existing code, documentation, and tests.
 You can get better advice from your LLM by telling *it* to read the relevant materials.
 Do not rely on the LLM as a source of truth.
 
-[small atomic commits]: https://github.blog/developer-skills/github/write-better-commits-build-better-projects/#%e2%9a%9b%ef%b8%8f-resize-and-stabilize-the-commits
-
 ### Write maintainable code
 
 Treat generated code as a *draft*, not a final product.
-Follow the [correctness conventions](../conventions.md#cc).
+Follow our [correctness and maintainability conventions](../conventions.md#cc).
+
+Avoid unnecessary abstractions and compatibility layers.
+Rustc does not have a stable API; you do not need to preserve backwards compatibility for internal compiler APIs.
 
 ### Before opening a PR
 

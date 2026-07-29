@@ -141,15 +141,15 @@ if foo {
 
 If you want to leave a note in the codebase, use `// FIXME` instead.
 
-### Follow the style of surrounding code.
+### Follow the style of surrounding code
 
 Use existing helpers and avoid duplicating logic or validation.
 
-### Represent data in [one normalized place](https://react.dev/learn/choosing-the-state-structure)
+### [Avoid duplicated sources of truth](https://react.dev/learn/choosing-the-state-structure)
 
 Trying to keep data in sync between two different places is a code smell.
 
-### Make invalid states unrepresentable
+### Use types to enforce invariants
 
 When practical, [make invalid states unrepresentable](https://kentcdodds.com/blog/make-impossible-states-impossible), [not just checked at construction time](https://lexi-lambda.github.io/blog/2020/11/01/names-are-not-type-safety/).
 
@@ -160,10 +160,15 @@ It's ok to go into detail about non-obvious bugs.
 
 [mit-comment-style]: https://mitcommlab.mit.edu/broad/commkit/coding-and-comment-style/
 
-### Preserve existing behavior.
+### Preserve existing behavior
 
 Consider platform differences and error cases.
 Look for relevant tests that exercise the edge cases.
+
+### Work in small steps
+
+Work in small, independently testable steps.
+Run the relevant tests after every meaningful change, so you know where you first went wrong.
 
 <a id="cio"></a>
 
@@ -183,10 +188,12 @@ you rename a method, then put that rename into its own commit, along
 with the renames of all the uses.
 
 **More commits is usually better.** If you are doing a large change,
-it's almost always better to break it up into smaller steps that can be independently understood.
+it's almost always better to break it up into smaller steps that can be [independently understood][atomic commits].
 The one thing to be aware of is that if
 you introduce some code following one strategy, then change it
 dramatically (versus adding to it) in a later commit, that 'back-and-forth' can be confusing.
+
+[atomic commits]: https://github.blog/developer-skills/github/write-better-commits-build-better-projects/#%e2%9a%9b%ef%b8%8f-resize-and-stabilize-the-commits
 
 **Format liberally.** While only the final commit of a PR must be correctly
 formatted, it is both easier to review and less noisy to format each commit
