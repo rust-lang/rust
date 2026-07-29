@@ -190,17 +190,19 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         assoc_name: Symbol,
     ) -> Option<DefId> {
         let module = self.r.get_module(trait_def_id)?;
-        self.r.resolutions(module).borrow().iter().find_map(|(key, resolution)| {
-            if key.ident.name != assoc_name {
-                return None;
-            }
-            let resolution = resolution.borrow();
-            let binding = resolution.best_decl()?;
-            match binding.res() {
-                Res::Def(DefKind::AssocTy, def_id) => Some(def_id),
-                _ => None,
-            }
-        })
+        self.r.resolutions(module).borrow_mut_with_token(self.r.cm_token()).iter().find_map(
+            |(key, resolution)| {
+                if key.ident.name != assoc_name {
+                    return None;
+                }
+                let resolution = resolution.borrow_with_token(self.r.cm_token());
+                let binding = resolution.best_decl()?;
+                match binding.res() {
+                    Res::Def(DefKind::AssocTy, def_id) => Some(def_id),
+                    _ => None,
+                }
+            },
+        )
     }
 
     /// This does best-effort work to generate suggestions for associated types.
@@ -648,7 +650,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                             && self
                                 .r
                                 .resolutions(module)
-                                .borrow()
+                                .borrow_with_token(self.r.cm_token())
                                 .iter()
                                 .any(|(key, _r)| key.ident.name == following_seg.ident.name)
                     } else {
@@ -1164,9 +1166,11 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
 
     fn lookup_doc_alias_name(&mut self, path: &[Segment], ns: Namespace) -> Option<(DefId, Ident)> {
         let find_doc_alias_name = |r: &mut Resolver<'ra, '_>, m: Module<'ra>, item_name: Symbol| {
-            for resolution in r.resolutions(m).borrow().values() {
-                let Some(did) =
-                    resolution.borrow().best_decl().and_then(|binding| binding.res().opt_def_id())
+            for resolution in r.resolutions(m).borrow_with_token(r.cm_token()).values() {
+                let Some(did) = resolution
+                    .borrow_with_token(r.cm_token())
+                    .best_decl()
+                    .and_then(|binding| binding.res().opt_def_id())
                 else {
                     continue;
                 };
@@ -1904,10 +1908,10 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 let targets: Vec<_> = self
                     .r
                     .resolutions(module)
-                    .borrow()
+                    .borrow_with_token(self.r.cm_token())
                     .iter()
                     .filter_map(|(key, resolution)| {
-                        let resolution = resolution.borrow();
+                        let resolution = resolution.borrow_with_token(self.r.cm_token());
                         resolution.best_decl().map(|binding| binding.res()).and_then(|res| {
                             if filter_fn(res) {
                                 Some((key.ident.name, resolution.orig_ident_span, res))
@@ -2767,9 +2771,13 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         let targets = self
             .r
             .resolutions(*module)
-            .borrow()
+            .borrow_mut_with_token(self.r.cm_token())
             .iter()
-            .filter_map(|(key, res)| res.borrow().best_decl().map(|binding| (key, binding.res())))
+            .filter_map(|(key, res)| {
+                res.borrow_with_token(self.r.cm_token())
+                    .best_decl()
+                    .map(|binding| (key, binding.res()))
+            })
             .filter(|(_, res)| match (kind, res) {
                 (AssocItemKind::Const(..), Res::Def(DefKind::AssocConst { .. }, _)) => true,
                 (AssocItemKind::Fn(_), Res::Def(DefKind::AssocFn, _)) => true,
@@ -2970,7 +2978,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     let module = self.r.expect_module(def_id);
                     self.r
                         .resolutions(module)
-                        .borrow()
+                        .borrow_with_token(self.r.cm_token())
                         .iter()
                         .any(|(key, _)| key.ident.name == following_seg.ident.name)
                 }

@@ -142,11 +142,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     // used to avoid long scope chains, see the comments on `MacroRulesScopeRef`.
                     // As another consequence of this optimization visitors never observe invocation
                     // scopes for macros that were already expanded.
-                    let mut scope = macro_rules_scope.get();
+                    let mut scope = *macro_rules_scope.borrow();
                     while let MacroRulesScope::Invocation(invoc_id) = scope {
                         if let Some(next) = self.output_macro_rules_scopes.get(&invoc_id) {
-                            scope = next.get();
-                            macro_rules_scope.set(scope);
+                            scope = *next.borrow();
+                            *macro_rules_scope.borrow_mut() = scope;
                         } else {
                             break;
                         }
@@ -187,7 +187,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     }
                 }
                 Scope::DeriveHelpersCompat => Scope::MacroRules(parent_scope.macro_rules),
-                Scope::MacroRules(macro_rules_scope) => match macro_rules_scope.get() {
+                Scope::MacroRules(macro_rules_scope) => match *macro_rules_scope.read() {
                     MacroRulesScope::Def(binding) => {
                         Scope::MacroRules(binding.parent_macro_rules_scope)
                     }
@@ -592,7 +592,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 }
                 result
             }
-            Scope::MacroRules(macro_rules_scope) => match macro_rules_scope.get() {
+            Scope::MacroRules(macro_rules_scope) => match *macro_rules_scope.read() {
                 MacroRulesScope::Def(macro_rules_def) if ident == macro_rules_def.ident => {
                     Ok(macro_rules_def.decl)
                 }
@@ -714,7 +714,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
             Scope::MacroUsePrelude => match self.macro_use_prelude.get(&ident.name).cloned() {
                 Some(decl) => Ok(decl),
-                None => Err(Determinacy::determined(!self.graph_root.has_unexpanded_invocations())),
+                None => {
+                    Err(Determinacy::determined(!self.graph_root.has_unexpanded_invocations(&self)))
+                }
             },
             Scope::BuiltinAttrs => match self.builtin_attr_decls.get(&ident.name) {
                 Some(decl) => Ok(*decl),
@@ -727,9 +729,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     finalize.is_some(),
                 ) {
                     Some(decl) => Ok(decl),
-                    None => {
-                        Err(Determinacy::determined(!self.graph_root.has_unexpanded_invocations()))
-                    }
+                    None => Err(Determinacy::determined(
+                        !self.graph_root.has_unexpanded_invocations(&self),
+                    )),
                 }
             }
             Scope::ExternPreludeFlags => {
@@ -1158,7 +1160,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         if let Some(finalize) = finalize {
             // finalize implies that the module is fully expanded
-            assert!(!module.has_unexpanded_invocations());
+            assert!(!module.has_unexpanded_invocations(&self));
             return self.get_mut().finalize_module_binding(
                 ident,
                 orig_ident_span,
@@ -1195,7 +1197,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
 
         // Check if one of unexpanded macros can still define the name.
-        if module.has_unexpanded_invocations() {
+        if module.has_unexpanded_invocations(&self) {
             return Err(ControlFlow::Continue(Undetermined));
         }
 
@@ -1224,7 +1226,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         if let Some(finalize) = finalize {
             // finalize implies that the module is fully expanded
-            assert!(!module.has_unexpanded_invocations());
+            assert!(!module.has_unexpanded_invocations(&self));
             return self.get_mut().finalize_module_binding(
                 ident,
                 orig_ident_span,
@@ -1268,7 +1270,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // and prohibit access to macro-expanded `macro_export` macros instead (unless restricted
         // shadowing is enabled, see `macro_expanded_macro_export_errors`).
         if let Some(binding) = binding {
-            return if binding.determined() || ns == MacroNS || shadowing == Shadowing::Restricted {
+            return if binding.determined(&self)
+                || ns == MacroNS
+                || shadowing == Shadowing::Restricted
+            {
                 let accessible = self.is_accessible_from(binding.vis(), parent_scope.module);
                 if accessible { Ok(binding) } else { Err(ControlFlow::Break(Determined)) }
             } else {
@@ -1283,13 +1288,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // scopes we return `Undetermined` with `ControlFlow::Continue`.
         // Check if one of unexpanded macros can still define the name,
         // if it can then our "no resolution" result is not determined and can be invalidated.
-        if module.has_unexpanded_invocations() {
+        if module.has_unexpanded_invocations(&self) {
             return Err(ControlFlow::Continue(Undetermined));
         }
 
         // Check if one of glob imports can still define the name,
         // if it can then our "no resolution" result is not determined and can be invalidated.
-        for glob_import in module.globs.borrow().iter() {
+        for glob_import in module.globs.borrow(&self).iter() {
             if ignore_import == Some(*glob_import) {
                 continue;
             }

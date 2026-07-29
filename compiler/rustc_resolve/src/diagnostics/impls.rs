@@ -1483,7 +1483,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     // Never recommend deprecated helper attributes.
                 }
                 Scope::MacroRules(macro_rules_scope) => {
-                    if let MacroRulesScope::Def(macro_rules_def) = macro_rules_scope.get() {
+                    if let MacroRulesScope::Def(macro_rules_def) = *macro_rules_scope.read() {
                         let res = macro_rules_def.decl.res();
                         if filter_fn(res) {
                             suggestions.push(TypoSuggestion::new(
@@ -1870,11 +1870,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 // If so, we have to disambiguate the potential import suggestions by making
                 // the paths *global* (i.e., by prefixing them with `::`).
                 let needs_disambiguation =
-                    self.resolutions(parent_scope.module).borrow().iter().any(
+                    self.resolutions(parent_scope.module).borrow(self).iter().any(
                         |(key, name_resolution)| {
                             if key.ns == TypeNS
                                 && key.ident == *ident
-                                && let Some(decl) = name_resolution.borrow().best_decl()
+                                && let Some(decl) = name_resolution.borrow(self).best_decl()
                             {
                                 match decl.res() {
                                     // No disambiguation needed if the identically named item we
@@ -3605,7 +3605,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 let mut res = false;
                 let m = r.expect_module(parent_module);
                 if m.is_local() {
-                    for importer in m.glob_importers.borrow().iter() {
+                    for importer in m.glob_importers.borrow(r).iter() {
                         if let Some(next_parent_module) = importer.parent_scope.module.opt_def_id()
                         {
                             if next_parent_module == module

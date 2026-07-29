@@ -5,7 +5,6 @@
 //! unexpanded macros in the fragment are visited and registered.
 //! Imports are also considered items and placed into modules here, but not resolved yet.
 
-use std::cell::RefMut;
 use std::sync::Arc;
 
 use rustc_ast::visit::{self, AssocCtxt, Visitor, WalkItemKind};
@@ -16,6 +15,7 @@ use rustc_ast::{
 };
 use rustc_attr_parsing::AttributeParser;
 use rustc_data_structures::fx::FxIndexMap;
+use rustc_data_structures::sync::WriteGuard;
 use rustc_expand::base::{ResolverExpand, SyntaxExtension, SyntaxExtensionKind};
 use rustc_hir::Attribute;
 use rustc_hir::attrs::{AttributeKind, MacroUseArgs};
@@ -134,7 +134,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     fn get_extern_module_with_lock(
         &self,
         def_id: DefId,
-        map_lock: &mut RefMut<'_, FxIndexMap<DefId, ExternModule<'ra>>>,
+        map_lock: &mut WriteGuard<'_, FxIndexMap<DefId, ExternModule<'ra>>>,
     ) -> Option<ExternModule<'ra>> {
         if let module @ Some(..) = map_lock.get(&def_id) {
             return module.copied();
@@ -569,13 +569,15 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                     self.r.per_ns(|this, ns| {
                         let key = BindingKey::new(IdentKey::new(target), ns);
                         this.resolution_or_default(current_module.to_module(), key, target.span)
-                            .borrow_mut(this)
+                            .borrow_mut_with_token(this.cm_token())
                             .single_imports
                             .insert(import);
                     });
                 }
             }
-            ImportKind::Glob { .. } => current_module.globs.borrow_mut(self.r).push(import),
+            ImportKind::Glob { .. } => {
+                current_module.globs.borrow_mut_with_token(self.r.cm_token()).push(import)
+            }
             _ => unreachable!(),
         }
     }
@@ -1263,7 +1265,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
     pub(crate) fn visit_invoc_in_module(&mut self, id: NodeId) -> MacroRulesScopeRef<'ra> {
         let invoc_id = self.visit_invoc(id);
         let module = self.parent_scope.module.expect_local();
-        module.unexpanded_invocations.borrow_mut(self.r).insert(invoc_id);
+        module.unexpanded_invocations.borrow_mut_with_token(self.r.cm_token()).insert(invoc_id);
         self.r.arenas.alloc_macro_rules_scope(MacroRulesScope::Invocation(invoc_id))
     }
 

@@ -21,10 +21,9 @@
 #![recursion_limit = "256"]
 // tidy-alphabetical-end
 
-use std::cell::Ref;
 use std::collections::BTreeSet;
 use std::ops::ControlFlow;
-use std::sync::{Arc, Once};
+use std::sync::{Arc, OnceLock};
 use std::{fmt, mem};
 
 use diagnostics::{ParamKindInEnumDiscriminant, ParamKindInNonTrivialAnonConst};
@@ -81,7 +80,7 @@ use crate::diagnostics::impls::{
     ImportSuggestion, LabelSuggestion, OnUnknownData, StructCtor, Suggestion,
 };
 use crate::imports::{ImportResolution, NameResolutionRef};
-use crate::ref_mut::{CmCell, CmRefCell};
+use crate::ref_mut::{CmCell, CmRef, CmRefCell};
 
 mod build_reduced_graph;
 mod check_unused;
@@ -633,7 +632,25 @@ impl BindingKey {
     }
 }
 
-type Resolutions<'ra> = CmRefCell<FxIndexMap<BindingKey, NameResolutionRef<'ra>>>;
+type ResolutionTable<'ra> = CmRefCell<FxIndexMap<BindingKey, NameResolutionRef<'ra>>>;
+
+type ExternResolutions<'ra> = OnceLock<ResolutionTable<'ra>>;
+type LocalResolutions<'ra> = ResolutionTable<'ra>;
+
+enum Resolutions<'ra> {
+    Local(LocalResolutions<'ra>),
+    Extern(ExternResolutions<'ra>),
+}
+
+impl<'ra> Resolutions<'ra> {
+    fn new(local: bool) -> Self {
+        if local {
+            Resolutions::Local(Default::default())
+        } else {
+            Resolutions::Extern(Default::default())
+        }
+    }
+}
 
 /// One node in the tree of modules.
 ///
@@ -655,8 +672,7 @@ struct ModuleData<'ra> {
     /// Mapping between names and their (possibly in-progress) resolutions in this module.
     /// Resolutions in modules from other crates are not populated until accessed.
     lazy_resolutions: Resolutions<'ra>,
-    /// True if this is a module from other crate that needs to be populated on access.
-    populate_on_access: Once,
+
     /// Used to disambiguate underscore items (`const _: T = ...`) in the module.
     underscore_disambiguator: CmCell<u32>,
 
@@ -710,6 +726,7 @@ impl<'ra> ModuleData<'ra> {
         vis: Visibility<ModId>,
         arenas: &'ra ResolverArenas<'ra>,
     ) -> Self {
+        let lazy_resolutions = Resolutions::new(kind.is_local());
         let self_decl = match kind {
             ModuleKind::Def(def_kind, def_id, ..) => {
                 let expn_id = expansion.as_local().unwrap_or(LocalExpnId::ROOT);
@@ -720,8 +737,7 @@ impl<'ra> ModuleData<'ra> {
         ModuleData {
             parent,
             kind,
-            lazy_resolutions: Default::default(),
-            populate_on_access: Once::new(),
+            lazy_resolutions,
             underscore_disambiguator: CmCell::new(0),
             unexpanded_invocations: Default::default(),
             no_implicit_prelude,
@@ -754,8 +770,8 @@ impl<'ra> ModuleData<'ra> {
         self.kind.is_local()
     }
 
-    fn has_unexpanded_invocations(&self) -> bool {
-        !self.unexpanded_invocations.borrow().is_empty()
+    fn has_unexpanded_invocations<'tcx>(&self, r: &Resolver<'ra, 'tcx>) -> bool {
+        !self.unexpanded_invocations.borrow(r).is_empty()
     }
 
     fn res(&self) -> Option<Res> {
@@ -779,8 +795,10 @@ impl<'ra> Module<'ra> {
         resolver: &R,
         mut f: impl FnMut(&R, IdentKey, Span, Namespace, Decl<'ra>),
     ) {
-        for (key, name_resolution) in resolver.as_ref().resolutions(self).borrow().iter() {
-            let name_resolution = name_resolution.borrow();
+        for (key, name_resolution) in
+            resolver.as_ref().resolutions(self).borrow(resolver.as_ref()).iter()
+        {
+            let name_resolution = name_resolution.borrow(resolver.as_ref());
             if let Some(decl) = name_resolution.best_decl() {
                 f(resolver, key.ident, name_resolution.orig_ident_span, key.ns, decl);
             }
@@ -792,8 +810,13 @@ impl<'ra> Module<'ra> {
         resolver: &mut R,
         mut f: impl FnMut(&mut R, IdentKey, Span, Namespace, Decl<'ra>),
     ) {
-        for (key, name_resolution) in resolver.as_mut().resolutions(self).borrow().iter() {
-            let name_resolution = name_resolution.borrow();
+        for (key, name_resolution) in resolver
+            .as_mut()
+            .resolutions(self)
+            .borrow_with_token(resolver.as_mut().cm_token())
+            .iter()
+        {
+            let name_resolution = name_resolution.borrow_with_token(resolver.as_mut().cm_token());
             if let Some(decl) = name_resolution.best_decl() {
                 f(resolver, key.ident, name_resolution.orig_ident_span, key.ns, decl);
             }
@@ -1239,10 +1262,11 @@ impl<'ra> DeclData<'ra> {
     /// the declaration may not be as "determined" as we think.
     /// FIXME: relationship between this function and similar `NameResolution::determined_decl`
     /// is unclear.
-    fn determined(&self) -> bool {
+    fn determined<'tcx>(&self, r: &Resolver<'ra, 'tcx>) -> bool {
         match &self.kind {
             DeclKind::Import { source_decl, import, .. } if import.is_glob() => {
-                !import.parent_scope.module.has_unexpanded_invocations() && source_decl.determined()
+                !import.parent_scope.module.has_unexpanded_invocations(r)
+                    && source_decl.determined(r)
             }
             _ => true,
         }
@@ -1998,6 +2022,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         CmResolver::new(self, !self.assert_speculative)
     }
 
+    /// Returns a `CmResolver` that is not mutable.
+    fn cm_const(&self) -> CmResolver<'_, 'ra, 'tcx> {
+        CmResolver::new_const(self)
+    }
+
     /// Runs the function on each namespace.
     fn per_ns<F: FnMut(&mut Self, Namespace)>(&mut self, mut f: F) {
         f(self, TypeNS);
@@ -2112,7 +2141,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         found_traits: &mut Vec<TraitCandidate<'tcx>>,
     ) {
         module.ensure_traits(self);
-        let traits = module.traits.borrow();
+        let traits = module.traits.borrow_with_token(self.cm_token());
         for &(trait_name, trait_binding, trait_module, lint_ambiguous) in
             traits.as_ref().unwrap().iter()
         {
@@ -2137,7 +2166,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         match (trait_module, assoc_item) {
             (Some(trait_module), Some((name, ns))) => self
                 .resolutions(trait_module)
-                .borrow()
+                .borrow(self)
                 .iter()
                 .any(|(key, _name_resolution)| key.ns == ns && key.ident.name == name),
             _ => true,
@@ -2162,23 +2191,24 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         self.tcx.hir_arena.alloc_slice(&import_ids)
     }
 
-    fn resolutions(&self, module: Module<'ra>) -> &'ra Resolutions<'ra> {
-        if !module.is_local() {
-            // as long as 1 thread is building this external table, all other threads will wait
-            module.populate_on_access.call_once(|| {
-                *module.lazy_resolutions.borrow_mut_unchecked() =
-                    self.build_reduced_graph_external(module.expect_extern());
-            });
+    fn resolutions(&self, module: Module<'ra>) -> &'ra ResolutionTable<'ra> {
+        match &module.0.0.lazy_resolutions {
+            Resolutions::Extern(extern_res) => {
+                // Only 1 thread will actually build the table
+                extern_res.get_or_init(|| {
+                    CmRefCell::new(self.build_reduced_graph_external(module.expect_extern()))
+                })
+            }
+            Resolutions::Local(local_res) => local_res,
         }
-        &module.0.0.lazy_resolutions
     }
 
     fn resolution(
         &self,
         module: Module<'ra>,
         key: BindingKey,
-    ) -> Option<Ref<'ra, NameResolution<'ra>>> {
-        self.resolutions(module).borrow().get(&key).map(|resolution| resolution.0.borrow())
+    ) -> Option<CmRef<'ra, NameResolution<'ra>>> {
+        self.resolutions(module).borrow(self).get(&key).map(|resolution| resolution.0.borrow(self))
     }
 
     #[track_caller]
@@ -2419,7 +2449,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     ) -> Option<Decl<'ra>> {
         let entry = self.extern_prelude.get(&ident);
         entry.and_then(|entry| entry.flag_decl.as_ref()).and_then(|flag_decl| {
-            let (pending_decl, finalized, is_open) = flag_decl.get();
+            let (pending_decl, finalized, is_open) = *flag_decl.read();
             let decl = match pending_decl {
                 PendingDecl::Ready(decl) => {
                     if finalize && !finalized && !is_open {
@@ -2454,7 +2484,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     }
                 }
             };
-            flag_decl.set((PendingDecl::Ready(decl), finalize || finalized, is_open));
+            *flag_decl.write() = (PendingDecl::Ready(decl), finalize || finalized, is_open);
             decl.or_else(|| finalize.then_some(self.dummy_decl))
         })
     }
@@ -2797,23 +2827,44 @@ type CmResolver<'r, 'ra, 'tcx> = ref_mut::RefOrMut<'r, Resolver<'ra, 'tcx>>;
 // FIXME: These are cells for caches that can be populated even during speculative resolution,
 // and should be replaced with mutexes, atomics, or other synchronized data when migrating to
 // parallel name resolution.
-use std::cell::{Cell as CacheCell, RefCell as CacheRefCell};
+use rustc_data_structures::sync::{RwLock as CacheCell, RwLock as CacheRefCell};
 
+/// The [`Resolver`] has different resolution phases, which share most of the resolution logic.
+/// Some of these phases mutate the resolver (`&mut Resolver`) during the resolution together with.
+/// However we are implementing import resolution (one of these phases), often referred to as
+/// "speculative resolution", to a parallel algorithm, which requires 2 things to change:
+///     - A `&Resolver`, because cannot mutate any fields in it.
+///     - Some fields with interior mutability may not be changed during import resolution, as
+///       this can conflict with other in process resolutions (so locks are not the solution).
+///       But these fields do require interior mutability during the other phases.
+///
+/// Because refactoring the entire name resolution code to be split into "immutable" and "mutable"
+/// logic, we opted for a more "developer friendly" and very unsafe approach using data structures
+/// that are immutable during import resolution. This module is the collection of 3 data structures
+/// that offer use the above 2 points:
+///     - a `RefOrMut<'a, T>` smart pointer that gates a `&'a mut T` through a flag
+///       (i.e. are we in import res?).
+///     - `CmCell` and `CmRefCell`, which are condiotionally mutable through a flag.
+///
+/// We hope one day to not have to do this :D
 mod ref_mut {
     use std::cell::{BorrowMutError, Cell, Ref, RefCell, RefMut};
-    use std::fmt;
     use std::marker::PhantomData;
     use std::ops::Deref;
+    use std::{fmt, mem, ops};
+
+    use rustc_data_structures::sync::DynSync;
 
     use crate::Resolver;
 
     /// A wrapper around a mutable reference that conditionally allows mutable access.
     pub(crate) struct RefOrMut<'a, T> {
-        // We keep a raw pointer because it makes `reborrow_ref` possible. It is always safe to
+        // We keep a raw pointer because it makes `new_const` possible. It is always safe to
         // cast this to a `&T` because `RefOrMut` is only created through `new` which takes
         // a `&mut T`.
         p: *mut T,
         mutable: bool,
+        // `RefOrMut` technically holds a `&'a mut T`
         _marker: PhantomData<&'a mut T>,
     }
 
@@ -2834,16 +2885,15 @@ mod ref_mut {
     }
 
     impl<'a, T> RefOrMut<'a, T> {
+        /// Constructs a new `RefOrMut` from an exclusive reference, choosing up front
+        /// whether it will be used as an exclusive (`&mut T`) or a shared (`&T`), done
+        /// via `mutable`.
         pub(crate) fn new(p: &'a mut T, mutable: bool) -> Self {
             RefOrMut { p, mutable, _marker: PhantomData }
         }
 
-        pub(crate) fn reborrow_ref(&self) -> RefOrMut<'_, T> {
-            assert!(
-                !self.mutable,
-                "Tried to reborrow a mutable `RefOrMut` through shared reference."
-            );
-            RefOrMut { p: self.p, mutable: self.mutable, _marker: PhantomData }
+        pub(crate) fn new_const(p: &'a T) -> Self {
+            RefOrMut { p: p as *const _ as *mut _, mutable: false, _marker: PhantomData }
         }
 
         /// This is needed because this wraps a `&mut T` and is therefore not `Copy`.
@@ -2863,7 +2913,26 @@ mod ref_mut {
                 // SAFETY:
                 // - `RefOrMut` is only constructable through a `&mut T` and we
                 //   have tested that it may indeed be used as a `&mut T` in this match.
+                // - `RefOrMut::new` also guarantees that this exclusive reference is never
+                //   obtained from multiple threads.
                 true => unsafe { self.p.as_mut_unchecked() },
+            }
+        }
+    }
+
+    /// A proof token that allows `CmCell` and `CmRefCell` to "mutate" anything underlying
+    /// without checking `assert_speculative`. Only a `&mut Resolver` can construct a token.
+    mod token {
+        use std::marker::PhantomData;
+
+        // Tie borrow of `&mut Resolver` to token.
+        pub(crate) struct CmToken<'r>(PhantomData<&'r mut ()>);
+
+        impl<'ra, 'tcx> crate::Resolver<'ra, 'tcx> {
+            // Require a `&mut Resolver` (that does not mutably things).
+            // Would conflict if other borrows are live, view types would be handy :).
+            pub(crate) fn cm_token(&mut self) -> CmToken<'_> {
+                CmToken(PhantomData)
             }
         }
     }
@@ -2871,6 +2940,12 @@ mod ref_mut {
     /// A wrapper around a [`Cell`] that only allows mutation based on a condition in the resolver.
     #[derive(Default)]
     pub(crate) struct CmCell<T>(Cell<T>);
+
+    // SAFETY: `CmCell<T>` is `Sync` only because every path that can call `Cell::set`
+    // (i.e. `CmCell::set`, and `update`, which is built on top of it) first checks
+    // `r.assert_speculative` and panics if it's set, refusing to mutate. Soundness
+    // therefore depends on proper usage of the `assert_speculative` field in the `Resolver`.
+    unsafe impl<T: DynSync> DynSync for CmCell<T> {}
 
     impl<T: Copy + fmt::Debug> fmt::Debug for CmCell<T> {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -2910,33 +2985,59 @@ mod ref_mut {
             self.0.set(val);
         }
 
+        pub(crate) fn set_with_token<'r>(&self, val: T, _: token::CmToken<'r>) {
+            self.0.set(val);
+        }
+
         pub(crate) fn into_inner(self) -> T {
             self.0.into_inner()
         }
     }
 
-    /// A wrapper around a [`RefCell`] that only allows writes (mutable borrows) based on a condition in the resolver.
+    pub(crate) enum CmRef<'b, T> {
+        /// A "speculative" reference that is not tracked, assuming correct usage of
+        /// `Resolver::assert_speculative`.
+        Speculative(&'b T),
+
+        /// Normal runtime borrow checking using `RefCell` semantics. Only used when not
+        /// in speculative resolution.
+        Normal(Ref<'b, T>),
+    }
+
+    impl<'b, T: 'b> ops::Deref for CmRef<'b, T> {
+        type Target = T;
+
+        fn deref(&self) -> &Self::Target {
+            match self {
+                CmRef::Speculative(r) => r,
+                CmRef::Normal(r) => r.deref(),
+            }
+        }
+    }
+
+    // Soundness depends entirely on proper usage of the `assert_speculative` field in the
+    // `Resolver`. This means that whenever we hold a `CmRef::Normal` or `cell::RefMut` and
+    // flip the switch on `assert_speculative` we also drop these borrows.
+    /// A wrapper around `RefCell` semantics that only allows writes (mutable borrows) based on a condition in the resolver.
     #[derive(Default)]
-    pub(crate) struct CmRefCell<T>(RefCell<T>);
+    pub(crate) struct CmRefCell<T> {
+        inner: RefCell<T>,
+    }
+
+    // SAFETY: `CmRefCell<T>` is `Sync` only because every path borrows first checks
+    // `r.assert_speculative` and panics if it's set, refusing to mutate anything underlying,
+    // including any borrow counters.
+    // Soundness therefore depends entirely on proper usage of the `assert_speculative` field in the `Resolver`.
+    unsafe impl<T: DynSync> DynSync for CmRefCell<T> {}
 
     impl<T> CmRefCell<T> {
         pub(crate) fn new(value: T) -> CmRefCell<T> {
-            CmRefCell(RefCell::new(value))
-        }
-
-        #[track_caller]
-        // FIXME: this should be eliminated in the process of migration
-        // to parallel name resolution.
-        pub(crate) fn borrow_mut_unchecked(&self) -> RefMut<'_, T> {
-            self.0.borrow_mut()
+            CmRefCell { inner: RefCell::new(value) }
         }
 
         #[track_caller]
         pub(crate) fn borrow_mut<'ra, 'tcx>(&self, r: &Resolver<'ra, 'tcx>) -> RefMut<'_, T> {
-            if r.assert_speculative {
-                panic!("not allowed to mutably borrow a `CmRefCell` during speculative resolution");
-            }
-            self.0.borrow_mut()
+            self.try_borrow_mut(r).expect("`CmRefCell` is already borrowed")
         }
 
         #[track_caller]
@@ -2947,21 +3048,53 @@ mod ref_mut {
             if r.assert_speculative {
                 panic!("not allowed to mutably borrow a `CmRefCell` during speculative resolution");
             }
-            self.0.try_borrow_mut()
+            self.inner.try_borrow_mut()
         }
 
         #[track_caller]
-        pub(crate) fn borrow(&self) -> Ref<'_, T> {
-            self.0.borrow()
+        pub(crate) fn borrow_mut_with_token<'r>(&self, t: token::CmToken<'r>) -> RefMut<'_, T> {
+            self.try_borrow_mut_with_token(t).expect("`CmRefCell` is already borrowed")
+        }
+
+        #[track_caller]
+        pub(crate) fn try_borrow_mut_with_token<'r>(
+            &self,
+            _: token::CmToken<'r>,
+        ) -> Result<RefMut<'_, T>, BorrowMutError> {
+            // We do not have to check `assert_speculative` because we have a mutable resolver as a "token"
+            self.inner.try_borrow_mut()
+        }
+
+        pub(crate) fn borrow_with_token<'r>(&self, _: token::CmToken<'r>) -> Ref<'_, T> {
+            // Token allows us to borrow without checking `assert_speculative`
+            self.inner.borrow()
+        }
+
+        #[track_caller]
+        /// If you have access to a `&mut Resolver` use `CmRefCell::borrow_with_token`.
+        pub(crate) fn borrow<'ra, 'tcx>(&self, r: &Resolver<'ra, 'tcx>) -> CmRef<'_, T> {
+            if r.assert_speculative {
+                // SAFETY: We rely on the fact that we can't mutably borrow during speculative resolution.
+                //
+                // We do get a "special protection" if we ever mutably borrowed this `CmRefCell`,
+                // then switch to `assert_speculative = true` and try this borrow, it will fail.
+                //
+                // NB: The other way does not have this "protection", which makes me question this all.
+                // (see comment above `CmRefCell`).
+                CmRef::Speculative(unsafe {
+                    self.inner
+                        .try_borrow_unguarded()
+                        .expect("Mutably borrowed during speculative resolution")
+                })
+            } else {
+                CmRef::Normal(self.inner.borrow())
+            }
         }
     }
 
     impl<T: Default> CmRefCell<T> {
         pub(crate) fn take<'ra, 'tcx>(&self, r: &Resolver<'ra, 'tcx>) -> T {
-            if r.assert_speculative {
-                panic!("not allowed to mutate a CmRefCell during speculative resolution");
-            }
-            self.0.take()
+            mem::take(&mut *self.borrow_mut(r))
         }
     }
 }
