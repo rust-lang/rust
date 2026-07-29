@@ -215,4 +215,3 @@ expression: test
 [Test] test::IntrinsicTest
     targets: [x86_64-unknown-linux-gnu]
     - Set({test::intrinsic-test})
-    - Set({test::library/stdarch/crates/intrinsic-test})

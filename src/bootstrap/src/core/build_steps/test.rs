@@ -1010,7 +1010,7 @@ impl Step for IntrinsicTest {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("library/stdarch/crates/intrinsic-test").alias("intrinsic-test")
+        run.alias("intrinsic-test")
     }
 
     fn is_default_step(_builder: &Builder<'_>) -> bool {
