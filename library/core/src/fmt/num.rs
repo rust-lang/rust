@@ -666,7 +666,9 @@ impl u128 {
             (mod_1e16, U128_MAX_DEC_N)
         } else {
             // Write digits at buf[23..39].
-            enc_16lsd::<{ U128_MAX_DEC_N - 16 }>(buf, mod_1e16);
+            //
+            // SAFETY: `mod_1e16 < 1e16` (remainder), and `U128_MAX_DEC_N - 16 + 16 == buf.len()`.
+            unsafe { enc_16lsd::<{ U128_MAX_DEC_N - 16 }>(buf, mod_1e16) };
 
             // Take another 16 decimals.
             let (quot2, mod2) = div_rem_1e16(quot_1e16);
@@ -674,7 +676,10 @@ impl u128 {
                 (mod2, U128_MAX_DEC_N - 16)
             } else {
                 // Write digits at buf[7..23].
-                enc_16lsd::<{ U128_MAX_DEC_N - 32 }>(buf, mod2);
+                //
+                // SAFETY: `mod2 < 1e16` (remainder), and `U128_MAX_DEC_N - 32 + 16 <= buf.len()`.
+                unsafe { enc_16lsd::<{ U128_MAX_DEC_N - 32 }>(buf, mod2) };
+
                 // Quot2 has at most 7 decimals remaining after two 1e16 divisions.
                 (quot2 as u64, U128_MAX_DEC_N - 32)
             }
@@ -843,7 +848,7 @@ unsafe fn write_quad(buf: &mut [MaybeUninit<u8>], quad: u64) {
 
 /// Encodes the 16 least-significant decimals of n into `buf[OFFSET .. OFFSET +
 /// 16 ]`.
-fn enc_16lsd<const OFFSET: usize>(buf: &mut [MaybeUninit<u8>], n: u64) {
+unsafe fn enc_16lsd<const OFFSET: usize>(buf: &mut [MaybeUninit<u8>], n: u64) {
     // SAFETY: Every caller passes a remainder produced by division by 10^16,
     // and every used `OFFSET` specialization reserves sixteen bytes in `buf`.
     unsafe {
