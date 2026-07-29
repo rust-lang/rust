@@ -62,7 +62,7 @@ where
             arg.pass_by_stack_offset(None);
         }
     } else if arg.layout.is_aggregate() {
-        let pad_i32 = !offset.is_aligned(align);
+        let pad_i32 = u8::from(!offset.is_aligned(align));
         arg.cast_to_and_pad_i32(Uniform::new(Reg::i32(), size), pad_i32);
     } else {
         arg.extend_integer_width_to(32);

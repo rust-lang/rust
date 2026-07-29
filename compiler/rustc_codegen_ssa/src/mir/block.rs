@@ -1936,9 +1936,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ) {
         match arg.mode {
             PassMode::Ignore => return,
-            PassMode::Cast { pad_i32: true, .. } => {
+            PassMode::Cast { pad_i32, .. } => {
                 // Fill padding with undef value, where applicable.
-                llargs.push(bx.const_undef(bx.reg_backend_type(&Reg::i32())));
+                let undef = bx.const_undef(bx.reg_backend_type(&Reg::i32()));
+                llargs.extend(std::iter::repeat_n(undef, usize::from(pad_i32)));
             }
             PassMode::Pair(..) => match op.val {
                 Pair(a, b) => {

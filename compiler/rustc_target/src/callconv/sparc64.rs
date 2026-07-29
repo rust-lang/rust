@@ -197,7 +197,7 @@ fn classify_arg<'a, Ty, C>(
         _ => CastTarget::prefixed(regs, Uniform::new(Reg::i8(), Size::ZERO)),
     };
 
-    arg.cast_to_and_pad_i32(cast_target.with_attrs(attrs.into()), pad);
+    arg.cast_to_and_pad_i32(cast_target.with_attrs(attrs.into()), u8::from(pad));
 }
 
 pub(crate) fn compute_abi_info<'a, Ty, C>(cx: &C, fn_abi: &mut FnAbi<'a, Ty>)
