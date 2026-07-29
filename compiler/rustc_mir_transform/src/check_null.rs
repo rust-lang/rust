@@ -12,6 +12,7 @@ pub(super) struct CheckNull;
 
 impl<'tcx> crate::MirPass<'tcx> for CheckNull {
     fn policy(&self, sess: &Session) -> PassPolicy {
+        // When UB checks are enabled this is part of their semantics, not an optimization.
         PassPolicy::optional_non_optimization(sess.ub_checks())
     }
 

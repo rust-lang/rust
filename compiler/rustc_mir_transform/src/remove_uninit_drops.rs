@@ -67,7 +67,8 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveUninitDrops {
     }
 
     fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
-        PassPolicy::optional_non_optimization(true)
+        // Const checking relies on uninitialized drops being removed before drop elaboration.
+        PassPolicy::Required
     }
 }
 

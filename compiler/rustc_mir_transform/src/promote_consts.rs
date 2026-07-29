@@ -65,7 +65,8 @@ impl<'tcx> crate::MirPass<'tcx> for PromoteTemps<'tcx> {
     }
 
     fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
-        PassPolicy::optional_non_optimization(true)
+        // Implements promotion by extracting eligible values into separate constant MIR bodies.
+        PassPolicy::Required
     }
 }
 

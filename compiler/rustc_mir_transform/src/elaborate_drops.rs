@@ -89,7 +89,8 @@ impl<'tcx> crate::MirPass<'tcx> for ElaborateDrops {
     }
 
     fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
-        PassPolicy::optional_non_optimization(true)
+        // Implements MIR drop semantics.
+        PassPolicy::Required
     }
 }
 

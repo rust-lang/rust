@@ -71,7 +71,8 @@ impl<'tcx> crate::MirPass<'tcx> for AddMovesForPackedDrops {
     }
 
     fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
-        PassPolicy::optional_non_optimization(true)
+        // Implements part of MIR semantics by making implicit packed-drop handling explicit.
+        PassPolicy::Required
     }
 }
 

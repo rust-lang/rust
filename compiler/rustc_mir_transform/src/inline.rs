@@ -78,6 +78,7 @@ impl ForceInline {
 
 impl<'tcx> crate::MirPass<'tcx> for ForceInline {
     fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
+        // Forced inlining is part of MIR semantics.
         PassPolicy::Required
     }
 

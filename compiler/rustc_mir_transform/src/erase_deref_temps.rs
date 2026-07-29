@@ -40,6 +40,7 @@ impl<'tcx> crate::MirPass<'tcx> for EraseDerefTemps {
     }
 
     fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
-        PassPolicy::optional_non_optimization(true)
+        // Later MIR stages assume that CopyForDeref is gone.
+        PassPolicy::Required
     }
 }

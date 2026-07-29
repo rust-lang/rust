@@ -130,7 +130,9 @@ impl<'tcx> crate::MirPass<'tcx> for AddCallGuards {
     }
 
     fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
-        PassPolicy::optional_non_optimization(true)
+        // Breaks critical edges so codegen can place edge-specific actions without affecting
+        // other control-flow edges.
+        PassPolicy::Required
     }
 }
 

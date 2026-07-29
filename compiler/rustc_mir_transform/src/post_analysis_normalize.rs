@@ -19,7 +19,8 @@ impl<'tcx> crate::MirPass<'tcx> for PostAnalysisNormalize {
     }
 
     fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
-        PassPolicy::optional_non_optimization(true)
+        // Reveals opaque types and normalizes MIR while transitioning to the runtime dialect.
+        PassPolicy::Required
     }
 }
 

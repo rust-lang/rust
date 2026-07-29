@@ -21,7 +21,7 @@ pub(super) struct ReorderBasicBlocks;
 
 impl<'tcx> crate::MirPass<'tcx> for ReorderBasicBlocks {
     fn policy(&self, _session: &Session) -> PassPolicy {
-        PassPolicy::optimization(false)
+        PassPolicy::optional_non_optimization(false)
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -49,7 +49,7 @@ pub(super) struct ReorderLocals;
 
 impl<'tcx> crate::MirPass<'tcx> for ReorderLocals {
     fn policy(&self, _session: &Session) -> PassPolicy {
-        PassPolicy::optimization(false)
+        PassPolicy::optional_non_optimization(false)
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {

@@ -163,6 +163,7 @@ impl<'tcx> crate::MirPass<'tcx> for ElaborateBoxDerefs {
     }
 
     fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
-        PassPolicy::optional_non_optimization(true)
+        // Implements Box dereference semantics so backends and Miri do not have to handle them.
+        PassPolicy::Required
     }
 }

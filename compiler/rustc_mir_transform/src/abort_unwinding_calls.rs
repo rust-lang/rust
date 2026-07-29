@@ -141,6 +141,8 @@ impl<'tcx> crate::MirPass<'tcx> for AbortUnwindingCalls {
     }
 
     fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
-        PassPolicy::optional_non_optimization(true)
+        // Implements part of MIR semantics, turning effectively implicit aborts into explicit
+        // ones.
+        PassPolicy::Required
     }
 }

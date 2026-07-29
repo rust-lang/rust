@@ -115,6 +115,7 @@ impl<'tcx> MirPass<'tcx> for ImpossibleClauses {
     }
 
     fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
+        // This can only replace code proven unreachable with immediate UB, so it cannot remove UB.
         PassPolicy::optional_non_optimization(true)
     }
 }

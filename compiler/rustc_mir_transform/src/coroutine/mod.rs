@@ -1220,7 +1220,8 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
     }
 
     fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
-        PassPolicy::optional_non_optimization(true)
+        // Implements coroutine semantics by lowering the coroutine body to a state machine.
+        PassPolicy::Required
     }
 }
 

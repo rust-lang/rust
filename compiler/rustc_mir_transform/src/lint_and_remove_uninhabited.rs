@@ -84,7 +84,9 @@ impl<'tcx> crate::MirPass<'tcx> for LintAndRemoveUninhabited {
     }
 
     fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
-        PassPolicy::optional_non_optimization(true)
+        // Removing visibly uninhabited return edges determines the control flow seen by MIR checks.
+        // Cannot remove UB: removing the return edge would *introduce* UB if the call actually returned.
+        PassPolicy::Required
     }
 }
 

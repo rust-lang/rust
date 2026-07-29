@@ -88,6 +88,7 @@ impl<'tcx> crate::MirPass<'tcx> for CleanupPostBorrowck {
     }
 
     fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
-        PassPolicy::optional_non_optimization(true)
+        // Removes administrative MIR instructions that later passes must never see.
+        PassPolicy::Required
     }
 }

@@ -21,7 +21,7 @@ impl<'tcx> crate::MirPass<'tcx> for MentionedItems {
         // potentially skip it in opt-level 0 if we are sure that opt-level will never *remove* uses
         // of anything, but that still seems fragile. Furthermore, even debug builds use level 1, so
         // special-casing level 0 is just not worth it.
-        PassPolicy::optional_non_optimization(true)
+        PassPolicy::Required
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut mir::Body<'tcx>) {

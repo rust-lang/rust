@@ -67,6 +67,7 @@ impl<'tcx> crate::MirPass<'tcx> for Subtyper {
     }
 
     fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
-        PassPolicy::optional_non_optimization(true)
+        // Later MIR phases expect all subtyping to be explicit.
+        PassPolicy::Required
     }
 }
