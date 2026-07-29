@@ -34,6 +34,7 @@ pub mod hardwired {
             CONFLICTING_REPR_HINTS,
             CONST_EVALUATABLE_UNCHECKED,
             CONST_ITEM_MUTATION,
+            C_VOID_VALUES,
             DEAD_CODE,
             DEAD_CODE_PUB_IN_BINARY,
             DEPENDENCY_ON_UNIT_NEVER_TYPE_FALLBACK,
@@ -1478,6 +1479,64 @@ declare_lint! {
     pub CONST_ITEM_MUTATION,
     Warn,
     "detects attempts to mutate a `const` item",
+}
+
+declare_lint! {
+    /// The `c_void_references` lint detects the use of [`core::ffi::c_void`] as the referent of an `&` or `&mut` reference.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// use std::ffi::c_void;
+    ///
+    /// fn foo(v: &c_void) {
+    ///     // ....
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// `c_void` is designed for use through a [`raw pointer`], equivalent to C's `void*` type.
+    /// However, for historical reasons, Rust considers it to have size 1, and so using it via
+    /// a Rust reference can easily cause Undefined Behavior.
+    ///
+    /// [`core::ffi::c_void`]: https://doc.rust-lang.org/core/ffi/enum.c_void.html
+    /// [`raw pointer`]: https://doc.rust-lang.org/core/primitive.pointer.html
+    /// [`()`]: https://doc.rust-lang.org/core/primitive.unit.html
+    pub C_VOID_REFERENCES,
+    Warn,
+    "detects use of `c_void` as the referent of a Rust reference type"
+}
+
+declare_lint! {
+    /// The `c_void_values` lint detects the use of values of type [`core::ffi::c_void`]
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// use std::ffi::c_void;
+    ///
+    /// fn foo(v: *const c_void) {
+    ///     let val = unsafe { v.read() };
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// `c_void` is designed for use through a [`raw pointer`], equivalent to C's `void*` type.
+    /// However, for historical reasons, Rust considers it to have size 1, and so using it directly
+    /// via a value can easily cause Undefined Behavior.
+    ///
+    /// [`core::ffi::c_void`]: https://doc.rust-lang.org/core/ffi/enum.c_void.html
+    /// [`raw pointer`]: https://doc.rust-lang.org/core/primitive.pointer.html
+    /// [`()`]: https://doc.rust-lang.org/core/primitive.unit.html
+    pub C_VOID_VALUES,
+    Warn,
+    "detects use of `c_void` as the referent of a Rust reference type"
 }
 
 declare_lint! {

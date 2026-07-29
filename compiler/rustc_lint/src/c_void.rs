@@ -5,6 +5,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::intravisit::FnKind;
 use rustc_middle::ty;
+use rustc_session::lint::builtin::C_VOID_REFERENCES;
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::Span;
 
@@ -147,35 +148,6 @@ fn check_fn_decl_for_c_void(cx: &LateContext<'_>, decl: &hir::FnDecl<'_>, is_ext
             cx.emit_span_lint(C_VOID_PARAMETERS, param_ty.span, CVoidParameter);
         }
     }
-}
-
-declare_lint! {
-    /// The `c_void_references` lint detects the use of [`core::ffi::c_void`] as the referent of an `&` or `&mut` reference.
-    ///
-    /// ### Example
-    ///
-    /// ```rust
-    /// use std::ffi::c_void;
-    ///
-    /// fn foo(v: &c_void) {
-    ///     // ....
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// `c_void` is designed for use through a [`raw pointer`], equivalent to C's `void*` type.
-    /// However, for historical reasons, Rust considers it to have size 1, and so using it via
-    /// a Rust reference can easily cause Undefined Behavior.
-    ///
-    /// [`core::ffi::c_void`]: https://doc.rust-lang.org/core/ffi/enum.c_void.html
-    /// [`raw pointer`]: https://doc.rust-lang.org/core/primitive.pointer.html
-    /// [`()`]: https://doc.rust-lang.org/core/primitive.unit.html
-    pub C_VOID_REFERENCES,
-    Warn,
-    "detects use of `c_void` as the referent of a Rust reference type"
 }
 
 declare_lint_pass!(CVoidReferences => [C_VOID_REFERENCES]);

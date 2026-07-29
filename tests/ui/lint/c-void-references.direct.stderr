@@ -1,4 +1,37 @@
 error: `c_void` should not be used as the referent of an `&` or `&mut` reference
+  --> $DIR/c-void-references.rs:38:22
+   |
+LL |     let _ = unsafe { &*raw };
+   |                      ^^^^^
+   |
+   = help: use `&raw const` or `&raw mut` instead, to create a raw pointer
+   = note: for legacy reasons, Rust considers `c_void` to have size 1, so references to it can cause Undefined Behavior
+note: the lint level is defined here
+  --> $DIR/c-void-references.rs:4:9
+   |
+LL | #![deny(c_void_references)]
+   |         ^^^^^^^^^^^^^^^^^
+
+error: `c_void` should not be used as the referent of an `&` or `&mut` reference
+  --> $DIR/c-void-references.rs:38:22
+   |
+LL |     let _ = unsafe { &*raw };
+   |                      ^^^^^
+   |
+   = help: use `&raw const` or `&raw mut` instead, to create a raw pointer
+   = note: for legacy reasons, Rust considers `c_void` to have size 1, so references to it can cause Undefined Behavior
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: `c_void` should not be used as the referent of an `&` or `&mut` reference
+  --> $DIR/c-void-references.rs:49:9
+   |
+LL |         do_stuff_helper(raw);
+   |         ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: use `&raw const` or `&raw mut` instead, to create a raw pointer
+   = note: for legacy reasons, Rust considers `c_void` to have size 1, so references to it can cause Undefined Behavior
+
+error: `c_void` should not be used as the referent of an `&` or `&mut` reference
   --> $DIR/c-void-references.rs:17:13
    |
 LL | fn bar() -> &'static mut c_void {
@@ -6,11 +39,6 @@ LL | fn bar() -> &'static mut c_void {
    |
    = help: use a raw pointer, or a reference to `()`, instead
    = note: for legacy reasons, Rust considers `c_void` to have size 1, so references to it can cause Undefined Behavior
-note: the lint level is defined here
-  --> $DIR/c-void-references.rs:4:9
-   |
-LL | #![deny(c_void_references)]
-   |         ^^^^^^^^^^^^^^^^^
 
 error: `c_void` should not be used as the referent of an `&` or `&mut` reference
   --> $DIR/c-void-references.rs:22:20
@@ -40,16 +68,7 @@ LL | type Boo<'a> = &'a c_void;
    = note: for legacy reasons, Rust considers `c_void` to have size 1, so references to it can cause Undefined Behavior
 
 error: `c_void` should not be used as the referent of an `&` or `&mut` reference
-  --> $DIR/c-void-references.rs:32:12
-   |
-LL |     let _: &'static c_void = panic!();
-   |            ^^^^^^^^^^^^^^^
-   |
-   = help: use a raw pointer, or a reference to `()`, instead
-   = note: for legacy reasons, Rust considers `c_void` to have size 1, so references to it can cause Undefined Behavior
-
-error: `c_void` should not be used as the referent of an `&` or `&mut` reference
-  --> $DIR/c-void-references.rs:38:20
+  --> $DIR/c-void-references.rs:34:20
    |
 LL | impl<'a> Trait for &'a c_void {}
    |                    ^^^^^^^^^^
@@ -57,5 +76,14 @@ LL | impl<'a> Trait for &'a c_void {}
    = help: use a raw pointer, or a reference to `()`, instead
    = note: for legacy reasons, Rust considers `c_void` to have size 1, so references to it can cause Undefined Behavior
 
-error: aborting due to 6 previous errors
+error: `c_void` should not be used as the referent of an `&` or `&mut` reference
+  --> $DIR/c-void-references.rs:55:12
+   |
+LL |     let _: &'static c_void = panic!();
+   |            ^^^^^^^^^^^^^^^
+   |
+   = help: use a raw pointer, or a reference to `()`, instead
+   = note: for legacy reasons, Rust considers `c_void` to have size 1, so references to it can cause Undefined Behavior
+
+error: aborting due to 9 previous errors
 
