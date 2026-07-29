@@ -150,6 +150,7 @@ pub(crate) fn check_transmutes(tcx: TyCtxt<'_>, owner: LocalDefId) -> Result<(),
     let typing_env = ty::TypingEnv::codegen(tcx, owner);
     let mut result = Ok(());
     for &(from, to, hir_id) in &typeck_results.transmutes_to_check {
+        let (to, from) = ty::set_aliases_to_non_rigid(tcx, (to, from)).skip_normalization();
         result = result.and(check_transmute(tcx, typing_env, from, to, hir_id));
     }
     result
