@@ -10,6 +10,7 @@ use rustc_ast as ast;
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
+use rustc_data_structures::thin_vec::ThinVec;
 use rustc_data_structures::unord::UnordMap;
 use rustc_errors::codes::*;
 use rustc_errors::{
@@ -1042,7 +1043,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn point_at_return_for_opaque_ty_error(
         &self,
-        errors: &mut Vec<traits::FulfillmentError<'tcx>>,
+        errors: &mut ThinVec<traits::FulfillmentError<'tcx>>,
         hir_id: HirId,
         span: Span,
         return_expr_ty: Ty<'tcx>,
@@ -1870,7 +1871,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.fudge_inference_if_ok(|| {
                 let ocx = ObligationCtxt::new(self);
                 ocx.sup(&self.misc(path_span), self.param_env, expected, adt_ty)?;
-                if !ocx.try_evaluate_obligations().is_empty() {
+                if !ocx.try_evaluate_obligations().no_errors() {
                     return Err(TypeError::Mismatch);
                 }
                 Ok(self.resolve_vars_if_possible(adt_ty))
@@ -3616,14 +3617,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // Bail if we have ambiguity errors, which we can't report in a useful way.
             let ambiguity_errors = ocx.evaluate_obligations_error_on_ambiguity();
-            if true_errors.is_empty() && !ambiguity_errors.is_empty() {
+            if true_errors.no_errors() && ambiguity_errors.has_errors() {
                 return Err(NoSolution);
             }
 
             // There should be at least one error reported. If not, we
             // will still delay a span bug in `report_fulfillment_errors`.
             Ok::<_, NoSolution>((
-                self.err_ctxt().report_fulfillment_errors(true_errors),
+                self.err_ctxt().report_fulfillment_errors(true_errors.into_thin_vec()),
                 impl_trait_ref.args.type_at(1),
                 element_ty,
             ))
@@ -3631,7 +3632,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         .ok()
     }
 
-    fn point_at_index(&self, errors: &mut Vec<traits::FulfillmentError<'tcx>>, span: Span) {
+    fn point_at_index(&self, errors: &mut ThinVec<traits::FulfillmentError<'tcx>>, span: Span) {
         let mut seen_preds = FxHashSet::default();
         // We re-sort here so that the outer most root obligations comes first, as we have the
         // subsequent weird logic to identify *every* relevant obligation for proper deduplication

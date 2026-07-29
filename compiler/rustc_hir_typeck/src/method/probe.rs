@@ -2003,7 +2003,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             if self.next_trait_solver() {
                 ocx.register_obligations(instantiate_self_ty_obligations.iter().cloned());
                 let errors = ocx.try_evaluate_obligations();
-                if !errors.is_empty() {
+                if !errors.no_errors() {
                     unreachable!("unexpected autoderef error {errors:?}");
                 }
             }
@@ -2331,7 +2331,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     };
                     let ocx = ObligationCtxt::new(self);
                     let self_ty = ocx.register_infer_ok_obligations(ok);
-                    if !ocx.try_evaluate_obligations().is_empty() {
+                    if !ocx.try_evaluate_obligations().no_errors() {
                         debug!("failed to prove instantiate self_ty obligations");
                         return false;
                     }

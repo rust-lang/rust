@@ -10,7 +10,7 @@ use rustc_hir::attrs::ReprAttr::ReprPacked;
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::{LangItem, Node, find_attr, intravisit};
 use rustc_infer::infer::{RegionVariableOrigin, TyCtxtInferExt};
-use rustc_infer::traits::{Obligation, ObligationCauseCode, WellFormedLoc};
+use rustc_infer::traits::{Obligation, ObligationCauseCode, TraitErrors, WellFormedLoc};
 use rustc_lint_defs::builtin::UNSUPPORTED_CALLING_CONVENTIONS;
 use rustc_macros::Diagnostic;
 use rustc_middle::hir::nested_filter;
@@ -409,7 +409,7 @@ fn check_opaque_meets_bounds<'tcx>(
     // Check that all obligations are satisfied by the implementation's
     // version.
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
-    if !errors.is_empty() {
+    if let TraitErrors::HasErrors(errors) = errors {
         let guar = infcx.err_ctxt().report_fulfillment_errors(errors);
         return Err(guar);
     }
@@ -2292,7 +2292,7 @@ pub(super) fn check_coroutine_obligations(
 
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
     debug!(?errors);
-    if !errors.is_empty() {
+    if let TraitErrors::HasErrors(errors) = errors {
         return Err(infcx.err_ctxt().report_fulfillment_errors(errors));
     }
 
@@ -2336,5 +2336,9 @@ pub(super) fn check_potentially_region_dependent_goals<'tcx>(
 
     let errors = ocx.evaluate_obligations_error_on_ambiguity();
     debug!(?errors);
-    if errors.is_empty() { Ok(()) } else { Err(infcx.err_ctxt().report_fulfillment_errors(errors)) }
+    if let TraitErrors::HasErrors(errors) = errors {
+        Err(infcx.err_ctxt().report_fulfillment_errors(errors))
+    } else {
+        Ok(())
+    }
 }

@@ -9,6 +9,7 @@ use std::cell::{Cell, RefCell};
 use std::ops::Deref;
 
 pub(crate) use inspect_obligations::UseSubtyping;
+use rustc_data_structures::thin_vec::{ThinVec, thin_vec};
 use rustc_errors::DiagCtxtHandle;
 use rustc_hir::attrs::{DivergingBlockBehavior, DivergingFallbackBehavior};
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -17,7 +18,7 @@ use rustc_hir_analysis::hir_ty_lowering::{
     HirTyLowerer, InherentAssocCandidate, RegionInferReason,
 };
 use rustc_infer::infer::{self, RegionVariableOrigin};
-use rustc_infer::traits::{DynCompatibilityViolation, Obligation};
+use rustc_infer::traits::{DynCompatibilityViolation, Obligation, TraitErrors};
 use rustc_middle::ty::{
     self, CantBeErased, Const, Flags, Ty, TyCtxt, TypeVisitableExt, TypingMode, Unnormalized,
 };
@@ -322,10 +323,10 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
         span: Span,
         self_ty: Ty<'tcx>,
         candidates: Vec<InherentAssocCandidate>,
-    ) -> (Vec<InherentAssocCandidate>, Vec<FulfillmentError<'tcx>>) {
+    ) -> (Vec<InherentAssocCandidate>, ThinVec<FulfillmentError<'tcx>>) {
         let tcx = self.tcx();
         let infcx = &self.infcx;
-        let mut fulfillment_errors = vec![];
+        let mut fulfillment_errors = thin_vec![];
 
         let mut filter_iat_candidate = |self_ty, impl_| {
             let ocx = ObligationCtxt::new_with_diagnostics(self);
@@ -354,8 +355,8 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
             );
             ocx.register_obligations(impl_obligations);
 
-            let mut errors = ocx.try_evaluate_obligations();
-            if !errors.is_empty() {
+            let errors = ocx.try_evaluate_obligations();
+            if let TraitErrors::HasErrors(mut errors) = errors {
                 fulfillment_errors.append(&mut errors);
                 return false;
             }

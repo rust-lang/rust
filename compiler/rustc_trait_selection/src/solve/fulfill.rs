@@ -4,7 +4,7 @@ use std::mem;
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::{
-    FromSolverError, PredicateObligation, PredicateObligations, TraitEngine,
+    FromSolverError, PredicateObligation, PredicateObligations, TraitEngine, TraitErrors,
 };
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt, TypingMode};
 use rustc_next_trait_solver::solve::fast_path::compute_goal_fast_path;
@@ -183,19 +183,19 @@ where
     }
 
     #[inline]
-    fn collect_remaining_errors(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E> {
+    fn collect_remaining_errors(&mut self, infcx: &InferCtxt<'tcx>) -> TraitErrors<E> {
         if self.obligations.pending.is_empty() && self.obligations.overflowed.is_empty() {
             // Typically in more than 99.9% of cases this condition is true, therefore we outline
             // the other case.
-            return Vec::new();
+            TraitErrors::NoErrors
         } else {
-            collect_remaining_errors_impl(self, infcx)
+            TraitErrors::HasErrors(collect_remaining_errors_impl(self, infcx))
         }
     }
 
-    fn try_evaluate_obligations(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<E> {
+    fn try_evaluate_obligations(&mut self, infcx: &InferCtxt<'tcx>) -> TraitErrors<E> {
         assert_eq!(self.usable_in_snapshot, infcx.num_open_snapshots());
-        let mut errors = Vec::new();
+        let mut errors = TraitErrors::NoErrors;
         loop {
             let mut any_changed = false;
             for (mut obligation, stalled_on) in mem::take(&mut self.obligations.pending) {
@@ -367,7 +367,7 @@ where
 fn collect_remaining_errors_impl<'tcx, E>(
     cx: &mut FulfillmentCtxt<'tcx, E>,
     infcx: &InferCtxt<'tcx>,
-) -> Vec<E>
+) -> ThinVec<E>
 where
     E: FromSolverError<'tcx, NextSolverError<'tcx>>,
 {

@@ -15,7 +15,7 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir::{AmbigArg, ItemKind, find_attr};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
-use rustc_infer::traits::PredicateObligations;
+use rustc_infer::traits::{PredicateObligations, TraitErrors};
 use rustc_lint_defs::builtin::SHADOWING_SUPERTRAIT_ITEMS;
 use rustc_macros::Diagnostic;
 use rustc_middle::mir::interpret::ErrorHandled;
@@ -178,7 +178,7 @@ where
     f(&mut wfcx)?;
 
     let errors = wfcx.evaluate_obligations_error_on_ambiguity();
-    if !errors.is_empty() {
+    if let TraitErrors::HasErrors(errors) = errors {
         return Err(infcx.err_ctxt().report_fulfillment_errors(errors));
     }
 
@@ -1884,7 +1884,7 @@ fn receiver_is_valid<'tcx>(
     if let Ok(()) = wfcx.infcx.commit_if_ok(|_| {
         let ocx = ObligationCtxt::new(wfcx.infcx);
         ocx.eq(&cause, wfcx.param_env, self_ty, receiver_ty)?;
-        if ocx.evaluate_obligations_error_on_ambiguity().is_empty() {
+        if ocx.evaluate_obligations_error_on_ambiguity().no_errors() {
             Ok(())
         } else {
             Err(NoSolution)
@@ -1923,7 +1923,7 @@ fn receiver_is_valid<'tcx>(
         if let Ok(()) = wfcx.infcx.commit_if_ok(|_| {
             let ocx = ObligationCtxt::new(wfcx.infcx);
             ocx.eq(&cause, wfcx.param_env, self_ty, potential_self_ty)?;
-            if ocx.evaluate_obligations_error_on_ambiguity().is_empty() {
+            if ocx.evaluate_obligations_error_on_ambiguity().no_errors() {
                 Ok(())
             } else {
                 Err(NoSolution)

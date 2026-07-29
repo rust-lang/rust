@@ -23,6 +23,7 @@ use rustc_middle::ty::print::{PrintTraitRefExt as _, with_no_trimmed_paths};
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt as _};
 use rustc_session::cstore::{ExternCrate, ExternCrateSource};
 use rustc_span::{DesugaringKind, ErrorGuaranteed, ExpnKind, Span};
+use thin_vec::ThinVec;
 use tracing::{info, instrument};
 
 pub use self::overflow::*;
@@ -140,7 +141,7 @@ pub enum DefIdOrName {
 impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
     pub fn report_fulfillment_errors(
         &self,
-        mut errors: Vec<FulfillmentError<'tcx>>,
+        mut errors: ThinVec<FulfillmentError<'tcx>>,
     ) -> ErrorGuaranteed {
         #[derive(Debug)]
         struct ErrorDescriptor<'tcx> {

@@ -416,7 +416,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
         }));
 
         let errors = ocx.evaluate_obligations_error_on_ambiguity();
-        if errors.is_empty() {
+        if errors.no_errors() {
             Some(ConstConditionsHold::Yes)
         } else {
             tcx.dcx()

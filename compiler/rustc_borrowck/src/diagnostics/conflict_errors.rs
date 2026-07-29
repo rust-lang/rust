@@ -16,6 +16,7 @@ use rustc_hir::{
     CoroutineDesugaring, CoroutineKind, CoroutineSource, LangItem, PatField, find_attr,
 };
 use rustc_index::bit_set::DenseBitSet;
+use rustc_infer::traits::TraitErrors;
 use rustc_middle::bug;
 use rustc_middle::hir::nested_filter::OnlyBodies;
 use rustc_middle::mir::{
@@ -1462,7 +1463,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             let cause = ObligationCause::misc(expr.span, self.mir_def_id());
             ocx.register_bound(cause, self.infcx.param_env, ty, clone_trait);
             let errors = ocx.evaluate_obligations_error_on_ambiguity();
-            if !errors.is_empty()
+            if let TraitErrors::HasErrors(errors) = errors
                 && errors.iter().all(|error| {
                     match error.obligation.predicate.as_clause().and_then(|c| c.as_trait_clause()) {
                         Some(clause) => match clause.self_ty().skip_binder().kind() {

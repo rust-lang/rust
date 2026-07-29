@@ -1534,9 +1534,9 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                             ) && !has_sugg
                             {
                                 let skip_for_simple_clone =
-                                    has_deref && !has_overloaded_deref && errors.is_empty();
+                                    has_deref && !has_overloaded_deref && errors.no_errors();
                                 if !skip_for_simple_clone {
-                                    let msg = match &errors[..] {
+                                    let msg = match errors.as_slice() {
                                         [] => "you can `clone` the value and consume it, but \
                                                this might not be your desired behavior"
                                             .to_string(),
@@ -1553,7 +1553,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                                                  the following trait bounds could be satisfied: \
                                                  {}",
                                                 listify(
-                                                    &errors,
+                                                    errors.as_slice(),
                                                     |e: &FulfillmentError<'tcx>| format!(
                                                         "`{}`",
                                                         e.obligation.predicate
@@ -1569,7 +1569,7 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                                         Applicability::MaybeIncorrect,
                                     );
 
-                                    suggested_cloning = errors.is_empty();
+                                    suggested_cloning = errors.no_errors();
 
                                     for error in errors {
                                         if let FulfillmentErrorCode::Select(

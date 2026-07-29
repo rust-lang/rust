@@ -181,7 +181,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 Ok(InferOk { value, obligations }) if self.next_trait_solver() => {
                     let ocx = ObligationCtxt::new(self);
                     ocx.register_obligations(obligations);
-                    if ocx.try_evaluate_obligations().is_empty() {
+                    if ocx.try_evaluate_obligations().no_errors() {
                         Ok(InferOk { value, obligations: ocx.into_pending_obligations() })
                     } else {
                         Err(TypeError::Mismatch)
@@ -1002,7 +1002,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         let ocx = ObligationCtxt::new(&self.infcx);
         ocx.register_obligation(obligation);
         let errs = ocx.evaluate_obligations_error_on_ambiguity();
-        if errs.is_empty() {
+        if errs.no_errors() {
             Ok(InferOk {
                 value: (
                     vec![Adjustment {
@@ -1181,7 +1181,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return false;
             };
             ocx.register_obligations(ok.obligations);
-            ocx.try_evaluate_obligations().is_empty()
+            ocx.try_evaluate_obligations().no_errors()
         })
     }
 
@@ -1354,7 +1354,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let result = if self.next_trait_solver() {
                         let ocx = ObligationCtxt::new(self);
                         let value = ocx.lub(cause, self.param_env, prev_ty, new_ty)?;
-                        if ocx.try_evaluate_obligations().is_empty() {
+                        if ocx.try_evaluate_obligations().no_errors() {
                             Ok(InferOk { value, obligations: ocx.into_pending_obligations() })
                         } else {
                             Err(TypeError::Mismatch)
@@ -1950,7 +1950,7 @@ impl<'tcx> CoerceMany<'tcx> {
                             ))
                         }),
                 );
-                ocx.try_evaluate_obligations().is_empty()
+                ocx.try_evaluate_obligations().no_errors()
             })
         };
 

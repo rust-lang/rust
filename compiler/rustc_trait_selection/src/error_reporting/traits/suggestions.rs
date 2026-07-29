@@ -5553,7 +5553,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 param_env,
                 projection,
             ));
-            if ocx.try_evaluate_obligations().is_empty()
+            if ocx.try_evaluate_obligations().no_errors()
                 && let ty = self.resolve_vars_if_possible(ty)
                 && !ty.is_ty_var()
             {
@@ -5886,7 +5886,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         pred,
                     ));
                 });
-                if !ocx.try_evaluate_obligations().is_empty() {
+                if !ocx.try_evaluate_obligations().no_errors() {
                     // encountered errors.
                     return;
                 }
