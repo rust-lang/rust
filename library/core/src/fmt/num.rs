@@ -693,11 +693,11 @@ impl u128 {
             let quad = remain % 1_00_00;
             remain /= 1_00_00;
 
-            write_quad(
-                // SAFETY: `offset >= 4` was asserted above.
-                unsafe { buf.get_unchecked_mut(offset..offset + 4) },
-                quad,
-            );
+            // SAFETY: quad is a remainder modulo 10_000. The offset checks
+            // above reserve exactly four bytes in buf.
+            unsafe {
+                write_quad(buf.get_unchecked_mut(offset..offset + 4), quad);
+            }
         }
 
         // Format per two digits from the lookup table.
@@ -814,8 +814,12 @@ impl i128 {
 }
 
 /// Writes `quad` as exactly four digits (for example: `42` becomes `"0042"`).
+///
+/// # Safety
+///
+/// `quad` must be below 10_000 and `buf` must contain exactly four bytes.
 #[inline(always)]
-fn write_quad(buf: &mut [MaybeUninit<u8>], quad: u64) {
+unsafe fn write_quad(buf: &mut [MaybeUninit<u8>], quad: u64) {
     // SAFETY: These are this function's caller-provided invariants.
     unsafe {
         core::hint::assert_unchecked(quad < 10_000);
@@ -855,20 +859,20 @@ fn enc_16lsd<const OFFSET: usize>(buf: &mut [MaybeUninit<u8>], n: u64) {
         let quad = remain % 1_00_00;
         remain /= 1_00_00;
 
-        write_quad(
-            // SAFETY: `OFFSET + 16 <= buf.len()` and `quad_index < 4`, so this range is within `buf`.
-            unsafe {
-                buf.get_unchecked_mut(OFFSET + quad_index * 4..OFFSET + (quad_index + 1) * 4)
-            },
-            quad,
-        );
+        // SAFETY: `OFFSET + quad_index * 4` starts one of the four
+        // non-overlapping four-byte regions proven in bounds above.
+        unsafe {
+            write_quad(
+                buf.get_unchecked_mut(OFFSET + quad_index * 4..OFFSET + (quad_index + 1) * 4),
+                quad,
+            );
+        }
     }
 
-    write_quad(
-        // SAFETY: `OFFSET + 16 <= buf.len()` was asserted above.
-        unsafe { buf.get_unchecked_mut(OFFSET..OFFSET + 4) },
-        remain,
-    );
+    // SAFETY: OFFSET starts the first four-byte region proven in bounds above.
+    unsafe {
+        write_quad(buf.get_unchecked_mut(OFFSET..OFFSET + 4), remain);
+    }
 }
 
 /// Euclidean division plus remainder with constant 1E16 basically consumes 16
