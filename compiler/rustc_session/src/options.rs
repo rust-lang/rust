@@ -269,6 +269,7 @@ pub enum TargetModifierValue {
     String(String),
     BranchProtection(BranchProtection),
     Sanitizers(SanitizerSet),
+    PointerAuthentication(Vec<(PointerAuthOption, bool)>),
 }
 
 impl fmt::Display for TargetModifierValue {
@@ -280,6 +281,14 @@ impl fmt::Display for TargetModifierValue {
             Self::String(val) => write!(f, "={val}"),
             Self::BranchProtection(val) => write!(f, "={val}"),
             Self::Sanitizers(val) => write!(f, "={val}"),
+            Self::PointerAuthentication(vals) => {
+                let mut parts = Vec::new();
+                for (opt, pos) in vals {
+                    let polarity = if *pos { "+" } else { "-" };
+                    parts.push(format!("{polarity}{opt}"));
+                }
+                write!(f, "={}", parts.join(","))
+            }
         }
     }
 }
@@ -300,6 +309,7 @@ noop_target_modifier_ty!(
     // tidy-alphabetical-start
     SanitizerSet => Self::Sanitizers,
     String => Self::String,
+    Vec<(PointerAuthOption, bool)> => Self::PointerAuthentication,
     bool => Self::Bool,
     u32 => Self::U32,
     usize => Self::Usize,
@@ -2542,6 +2552,25 @@ options! {
         "panic strategy to compile crate with"),
     passes: Vec<String> = (Vec::new(), parse_list, [TRACKED],
         "a list of extra LLVM passes to run (space separated)"),
+    pointer_authentication: Vec<(PointerAuthOption, bool)> = (
+        Vec::new(),
+        parse_pointer_authentication_list_with_polarity,
+        [TRACKED_UNSTABLE] { TARGET_MODIFIER: Only },
+        "A comma-separated list of pointer authentication options, each prefixed with `+` (enable) or `-` (disable). Available options:
+        `aarch64-jump-table-hardening` - enable hardened lowering for jump-table dispatch
+        `auth-traps` - trap immediately on pointer authentication failure
+        `calls` - enable signing and authentication of all indirect calls
+        `elf-got` - enable authentication of pointers from GOT (ELF only)
+        `function-pointer-type-discrimination` - enable type discrimination on C function pointers
+        `indirect-gotos` - enable signing and authentication of indirect goto targets
+        `init-fini` - enable signing of function pointers in init/fini arrays
+        `init-fini-address-discrimination` - enable address discrimination in init/fini arrays
+        `intrinsics` - pointer authentication intrinsics
+        `return-addresses` - enable signing and authentication of return addresses
+        `typeinfo-vt-ptr-discrimination - incorporate type and address discrimination in authenticated vtable pointers for std::type_info
+        `vt-ptr-addr-discrimination - incorporate address discrimination in authenticated vtable pointers
+        `vt-ptr-type-discrimination - incorporate type discrimination in authenticated vtable pointers
+        Example: `-Zpointer-authentication=+calls,-init-fini`."),
     prefer_dynamic: bool = (false, parse_bool, [TRACKED],
         "prefer dynamic linking to static linking (default: no)"),
     profile_generate: SwitchWithOptPath = (SwitchWithOptPath::Disabled,

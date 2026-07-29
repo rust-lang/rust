@@ -1370,7 +1370,7 @@ pub fn build_session(
     let timings = TimingSectionHandler::new(sopts.json_timings);
 
     let pointer_auth_config: Option<PointerAuthConfig> =
-        PointerAuthConfig::from_raw(&sopts.target_opts.pointer_authentication, &target);
+        PointerAuthConfig::from_raw(&sopts.cg.pointer_authentication, &target);
 
     let sess = Session {
         target,
@@ -1450,9 +1450,7 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
         );
     }
 
-    if sess.target.cfg_abi != CfgAbi::Pauthtest
-        && !sess.opts.target_opts.pointer_authentication.is_empty()
-    {
+    if sess.target.cfg_abi != CfgAbi::Pauthtest && !sess.opts.cg.pointer_authentication.is_empty() {
         sess.dcx().emit_warn(diagnostics::PointerAuthenticationNotSupportedForTarget {
             target_triple: &sess.opts.target_triple,
         });
