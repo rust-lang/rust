@@ -189,6 +189,21 @@ optional:
     env:
       IMAGE: pr-check-1
     <<: *job-linux-4c
+  - name: dist-x86_64-linux-ec2
+    os: ec2-ubuntu26.04-c8a.12xlarge-x64-linux-$github.run_id-$github.run_attempt
+    free_disk: true
+    env:
+      IMAGE: dist-x86_64-linux
+      CODEGEN_BACKENDS: llvm,cranelift
+      DOCKER_SCRIPT: dist.sh
+  - name: dist-x86_64-linux-ec2-quick
+    os: ec2-ubuntu26.04-c8a.12xlarge-x64-linux-$github.run_id-$github.run_attempt
+    free_disk: true
+    env:
+      IMAGE: dist-x86_64-linux
+      CODEGEN_BACKENDS: llvm,cranelift
+      DOCKER_SCRIPT: dist.sh
+      DIST_TRY_BUILD: 1
 
 # Main CI jobs that have to be green to merge a commit into the default branch.
 #
