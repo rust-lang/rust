@@ -929,6 +929,13 @@ impl<'a> AstValidator<'a> {
         match fn_ctxt {
             FnCtxt::Foreign => return,
             FnCtxt::Free | FnCtxt::Assoc(_) => {
+                // Reject `...` without a pattern post-expansion. The varargs_without_pattern
+                // FCW is already triggered pre-expansion.
+                if let PatKind::Missing = variadic_param.pat.kind {
+                    self.dcx()
+                        .emit_err(diagnostics::VarargsWithoutPattern { span: variadic_param.span });
+                }
+
                 match self.sess.target.supports_c_variadic_definitions() {
                     CVariadicStatus::NotSupported => {
                         self.dcx().emit_err(diagnostics::CVariadicNotSupported {
