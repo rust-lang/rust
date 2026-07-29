@@ -406,10 +406,12 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                 }
                 PassMode::Indirect { attrs: _, meta_attrs: None, on_stack: _ } => cx.type_ptr(),
                 PassMode::Cast { cast, pad_i32 } => {
-                    // add padding
-                    if *pad_i32 {
-                        llargument_tys.push(Reg::i32().llvm_type(cx));
-                    }
+                    // Add padding.
+                    llargument_tys.extend(std::iter::repeat_n(
+                        Reg::i32().llvm_type(cx),
+                        usize::from(*pad_i32),
+                    ));
+
                     // Compute the LLVM type we use for this function from the cast type.
                     // We assume here that ABI-compatible Rust types have the same cast type.
                     cast.llvm_type(cx)
@@ -581,7 +583,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     }
                 }
                 PassMode::Cast { cast, pad_i32 } => {
-                    if *pad_i32 {
+                    for _ in 0..*pad_i32 {
                         apply(&ArgAttributes::new());
                     }
                     apply(&cast.attrs);
@@ -667,7 +669,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     apply(bx.cx, b);
                 }
                 PassMode::Cast { cast, pad_i32 } => {
-                    if *pad_i32 {
+                    for _ in 0..*pad_i32 {
                         apply(bx.cx, &ArgAttributes::new());
                     }
                     apply(bx.cx, &cast.attrs);
