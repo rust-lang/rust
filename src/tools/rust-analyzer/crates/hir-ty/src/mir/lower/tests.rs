@@ -150,3 +150,31 @@ fn caller(path: &PathBuf) {
     "#,
     );
 }
+
+#[test]
+fn borrowck_hrtb_closure_argument_does_not_panic() {
+    check_borrowck(
+        r#"
+//- minicore: fn, copy
+enum Res<T, E> {
+    Ok(T),
+    Err(E),
+}
+
+struct S;
+
+impl S {
+    fn set<F>(&mut self, _: F)
+    where
+        F: for<'a> Fn(&mut (), &'a [u8]) -> Res<(), ()>,
+    {
+    }
+}
+
+fn main() {
+    let mut s = S;
+    s.set(|_, _| Res::Err(()));
+}
+    "#,
+    );
+}
