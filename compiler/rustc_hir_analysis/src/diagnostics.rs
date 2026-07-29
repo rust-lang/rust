@@ -966,6 +966,12 @@ pub(crate) struct MissingOneOfTraitItem {
     pub span: Span,
     #[note("required because of this annotation")]
     pub note: Option<Span>,
+    #[subdiagnostic]
+    pub missing_trait_item_label: Vec<MissingTraitItemLabel>,
+    #[subdiagnostic]
+    pub missing_trait_item: Vec<MissingTraitItemSuggestion>,
+    #[subdiagnostic]
+    pub missing_trait_item_none: Vec<MissingTraitItemSuggestionNone>,
     pub missing_items_msg: String,
 }
 
