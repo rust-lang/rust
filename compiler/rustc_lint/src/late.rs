@@ -337,17 +337,6 @@ pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx> + 'tcx>(
     mod_id: LocalModId,
     builtin_lints: T,
 ) {
-    let context = LateContext {
-        tcx,
-        enclosing_body: None,
-        cached_typeck_results: Cell::new(None),
-        param_env: ty::ParamEnv::empty(),
-        effective_visibilities: tcx.effective_visibilities(()),
-        last_node_with_lint_attrs: tcx.local_def_id_to_hir_id(mod_id),
-        generics: None,
-        only_module: true,
-    };
-
     let skippable_lints = tcx.skippable_lints(());
 
     // Note: `passes` is often empty. In that case, it's faster to run
@@ -362,23 +351,33 @@ pub fn late_lint_mod<'tcx, T: LateLintPass<'tcx> + 'tcx>(
     let builtin_lints_must_run = is_lint_pass_required(skippable_lints, &builtin_lints.get_lints());
     if passes.is_empty() {
         if builtin_lints_must_run {
-            late_lint_mod_inner(tcx, mod_id, context, builtin_lints);
+            late_lint_mod_inner(tcx, mod_id, builtin_lints);
         }
     } else {
         if builtin_lints_must_run {
             passes.push(Box::new(builtin_lints) as Box<dyn LateLintPass<'tcx>>);
         }
         let pass = RuntimeCombinedLateLintPass { passes };
-        late_lint_mod_inner(tcx, mod_id, context, pass);
+        late_lint_mod_inner(tcx, mod_id, pass);
     }
 }
 
 fn late_lint_mod_inner<'tcx, T: LateLintPass<'tcx>>(
     tcx: TyCtxt<'tcx>,
     mod_id: LocalModId,
-    context: LateContext<'tcx>,
     pass: T,
 ) {
+    let context = LateContext {
+        tcx,
+        enclosing_body: None,
+        cached_typeck_results: Cell::new(None),
+        param_env: ty::ParamEnv::empty(),
+        effective_visibilities: tcx.effective_visibilities(()),
+        last_node_with_lint_attrs: tcx.local_def_id_to_hir_id(mod_id),
+        generics: None,
+        only_module: true,
+    };
+
     let mut cx = LateContextAndPass { context, pass };
 
     let (module, _span, hir_id) = tcx.hir_get_module(mod_id);
