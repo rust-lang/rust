@@ -41,7 +41,8 @@ fn main() {
 
     // Function pointers
     #[rustfmt::skip]
-    let fn_ptr: *const fn(#[rustc_splat] (u32, i8)) = tuple_args as *const fn(#[rustc_splat] (u32, i8));
+    let fn_ptr: *const fn(#[rustc_splat] (u32, i8)) =
+        tuple_args as *const fn(#[rustc_splat] (u32, i8));
     (*fn_ptr)(1, 2);
     (*fn_ptr)(1u32, 2i8);
 
