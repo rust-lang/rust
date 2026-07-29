@@ -244,6 +244,22 @@ impl ShallowLintLevelMap {
 }
 
 impl TyCtxt<'_> {
+    /// Return whether the code to produce this lint can be skipped.
+    pub fn lint_should_be_skipped(self, lint: &'static Lint) -> bool {
+        if lint.eval_always {
+            return false;
+        }
+
+        // Lints that show up in future-compat reports must always be run.
+        if let Some(fut) = lint.future_incompatible
+            && fut.report_in_deps
+        {
+            return false;
+        }
+
+        self.skippable_lints(()).contains(&LintId::of(lint))
+    }
+
     /// Fetch and return the user-visible lint level spec for the given lint at the given HirId.
     pub fn lint_level_spec_at_node(self, lint: &'static Lint, id: HirId) -> StableLevelSpec {
         self.shallow_lint_levels_on(id.owner).lint_level_spec_at_node(self, LintId::of(lint), id)

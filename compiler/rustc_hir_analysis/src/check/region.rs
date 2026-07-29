@@ -146,10 +146,7 @@ fn resolve_block<'tcx>(
             let edition = blk.span.edition();
             let terminating = edition.at_least_rust_2024();
             if !terminating
-                && !visitor
-                    .tcx
-                    .skippable_lints(())
-                    .contains(&lint::LintId::of(lint::builtin::TAIL_EXPR_DROP_ORDER))
+                && !visitor.tcx.lint_should_be_skipped(lint::builtin::TAIL_EXPR_DROP_ORDER)
             {
                 // If this temporary scope will be changing once the codebase adopts Rust 2024,
                 // and we are linting about possible semantic changes that would result,
