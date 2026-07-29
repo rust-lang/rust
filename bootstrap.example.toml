@@ -547,7 +547,7 @@
 # Link the compiler and LLVM against the specified allocator instead of the default libc allocator.
 # This option is only tested on Linux and OSX. It can also be configured per-target in the
 # [target.<tuple>] section.
-# Possible options: "jemalloc"
+# Possible options: "system" (default), "jemalloc"
 #build.allocator = "jemalloc"
 
 # =============================================================================
