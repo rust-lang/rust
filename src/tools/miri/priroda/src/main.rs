@@ -46,6 +46,7 @@ fn main() {
     rustc_driver::init_rustc_env_logger(&early_dcx);
 
     let mut args: Vec<String> = std::env::args().collect();
+    let frontend = Frontend::parse_from_args(&mut args);
 
     args.splice(1..1, miri::MIRI_DEFAULT_ARGS.iter().map(ToString::to_string));
 
@@ -55,15 +56,48 @@ fn main() {
         args.push(find_sysroot());
     }
     // FIXME: handle the same `-Z` flags that Miri accepts.
-    rustc_driver::run_compiler(&args, &mut PrirodaCompilerCalls::new());
+    rustc_driver::run_compiler(&args, &mut PrirodaCompilerCalls::new(frontend));
 }
 
-struct PrirodaCompilerCalls;
+/// Frontend selected by Priroda-specific CLI flags.
+#[derive(Clone, Copy)]
+enum Frontend {
+    Cli,
+    Dap,
+}
+
+impl Frontend {
+    /// Remove Priroda-only flags before forwarding the remaining arguments to rustc.
+    fn parse_from_args(args: &mut Vec<String>) -> Self {
+        let mut frontend = Frontend::Cli;
+        let mut rustc_args = Vec::with_capacity(args.len());
+        let mut parsing_priroda_args = true;
+
+        for (idx, arg) in args.drain(..).enumerate() {
+            if idx != 0 && parsing_priroda_args && arg == "--dap" {
+                frontend = Frontend::Dap;
+                continue;
+            }
+
+            if arg == "--" {
+                parsing_priroda_args = false;
+            }
+
+            rustc_args.push(arg);
+        }
+
+        *args = rustc_args;
+        frontend
+    }
+}
+
+struct PrirodaCompilerCalls {
+    frontend: Frontend,
+}
 
 impl PrirodaCompilerCalls {
-    // FIXME: remove this constructor if PrirodaCompilerCalls remains a unit struct.
-    fn new() -> Self {
-        Self
+    fn new(frontend: Frontend) -> Self {
+        Self { frontend }
     }
 }
 
@@ -80,8 +114,16 @@ impl rustc_driver::Callbacks for PrirodaCompilerCalls {
         let ecx = create_ecx(tcx);
 
         let mut session = PrirodaContext::new(ecx);
-        let cli = Cli {};
-        let result = cli.run_cli_loop(&mut session);
+        let result = match self.frontend {
+            Frontend::Cli => {
+                let cli = Cli {};
+                cli.run_cli_loop(&mut session)
+            }
+            Frontend::Dap => {
+                let dap = Dap {};
+                dap.run_dap_loop(&mut session)
+            }
+        };
 
         match result.report_err() {
             Ok(()) => {}
@@ -1073,5 +1115,14 @@ impl Cli {
         let alloc_id = AllocId(NonZeroU64::new(alloc_id)?);
         let offset = offset.parse().ok()?;
         Some(DebuggerCommand::Follow(alloc_id, offset))
+    }
+}
+
+struct Dap;
+
+impl Dap {
+    pub fn run_dap_loop<'tcx>(&self, _session: &mut PrirodaContext<'tcx>) -> InterpResult<'tcx> {
+        // FIXME: implement DAP framing and request dispatch on top of PrirodaContext.
+        interp_ok(())
     }
 }
