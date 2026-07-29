@@ -1653,6 +1653,44 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         let imm_ref_self_ty_satisfies_pred = mk_result(trait_pred_and_imm_ref);
         let mut_ref_self_ty_satisfies_pred = mk_result(trait_pred_and_mut_ref);
 
+        let mut point_at_relevant_args =
+            |pred_ty: Ty<'tcx>, args_and_inputs: Vec<(hir::Expr<'_>, Ty<'tcx>)>| {
+                let Some(typeck_results) = &self.typeck_results else { return false };
+
+                let erased_self_ty =
+                    self.tcx.instantiate_bound_regions_with_erased(poly_trait_pred.self_ty());
+                let mut spans = vec![];
+                for (arg, input) in args_and_inputs {
+                    let Some(arg_ty) = typeck_results.expr_ty_adjusted_opt(&arg) else { continue };
+                    let pred_has_arg_type = self.infcx.can_eq(param_env, arg_ty, erased_self_ty);
+                    let arg_is_type_param = self.infcx.can_eq(param_env, pred_ty, input);
+                    if pred_has_arg_type && arg_is_type_param {
+                        err.span_label(
+                            arg.span,
+                            format!("`{arg_ty}` doesn't satisfy the trait bound"),
+                        );
+                        spans.push(arg.span);
+                    }
+                }
+                let this = pluralize!("this", spans.len());
+                if !spans.is_empty() {
+                    if imm_ref_self_ty_satisfies_pred {
+                        err.multipart_suggestion(
+                            format!("consider borrowing {this} argument"),
+                            spans.iter().map(|sp| (sp.shrink_to_lo(), "&".into())).collect(),
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                    if mut_ref_self_ty_satisfies_pred {
+                        err.multipart_suggestion(
+                            format!("consider mutably borrowing {this} argument"),
+                            spans.iter().map(|sp| (sp.shrink_to_lo(), "&mut ".into())).collect(),
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                }
+                !spans.is_empty()
+            };
         let code = match obligation.cause.code() {
             ObligationCauseCode::FunctionArg { parent_code, .. } => parent_code,
             // FIXME(compiler-errors): This is kind of a mess, but required for obligations
@@ -1726,12 +1764,11 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         // If we didn't return early here, we would instead suggest `&&str::from("")`.
                         return false;
                     } else if let hir::ExprKind::Call(_, args) = expr.kind {
-                        if let Some(typeck_results) = &self.typeck_results
-                            && let Some(pred) = self
+                        if let Some(pred) = self
                                 .tcx
-                                .predicates_of(*def_id)
+                                .clauses_of(*def_id)
                                 .instantiate_identity(self.tcx)
-                                .predicates
+                                .clauses
                                 .into_iter()
                                 .nth(*idx)
                             && let Some(pred) = pred.as_trait_clause()
@@ -1745,48 +1782,13 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             let fn_sig = self.tcx.instantiate_bound_regions_with_erased(
                                 self.tcx.fn_sig(*def_id).instantiate_identity().skip_norm_wip(),
                             );
-
-                            let mut spans = vec![];
-                            for (arg, input) in args.into_iter().zip(fn_sig.inputs()) {
-                                if let Some(arg_ty) = typeck_results.expr_ty_adjusted_opt(arg) {
-                                    let ty = self.tcx.instantiate_bound_regions_with_erased(
-                                        poly_trait_pred.self_ty(),
-                                    );
-                                    let pred_has_arg_type =
-                                        self.infcx.can_eq(param_env, arg_ty, ty);
-                                    let arg_is_type_param =
-                                        self.infcx.can_eq(param_env, pred_ty, *input);
-                                    if pred_has_arg_type && arg_is_type_param {
-                                        err.span_label(
-                                            arg.span,
-                                            format!("`{arg_ty}` doesn't satisfy the trait bound"),
-                                        );
-                                        spans.push(arg.span);
-                                    }
-                                }
-                            }
-                            let this = pluralize!("this", spans.len());
-                            if !spans.is_empty() {
-                                if imm_ref_self_ty_satisfies_pred {
-                                    err.multipart_suggestion(
-                                        format!("consider borrowing {this} argument"),
-                                        spans
-                                            .iter()
-                                            .map(|sp| (sp.shrink_to_lo(), "&".into()))
-                                            .collect(),
-                                        Applicability::MaybeIncorrect,
-                                    );
-                                }
-                                if mut_ref_self_ty_satisfies_pred {
-                                    err.multipart_suggestion(
-                                        format!("consider mutably borrowing {this} argument"),
-                                        spans
-                                            .iter()
-                                            .map(|sp| (sp.shrink_to_lo(), "&mut ".into()))
-                                            .collect(),
-                                        Applicability::MaybeIncorrect,
-                                    );
-                                }
+                            if point_at_relevant_args(
+                                pred_ty,
+                                args.into_iter()
+                                    .zip(fn_sig.inputs())
+                                    .map(|(e, t)| (*e, *t))
+                                    .collect(),
+                            ) {
                                 return false;
                             }
                         }
@@ -1794,15 +1796,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }
                 c
             }
-            ObligationCauseCode::WhereClauseInExpr(def_id, _, hir_id, idx)
+            c @ ObligationCauseCode::WhereClauseInExpr(def_id, _, hir_id, idx)
                 if let hir::Node::Expr(expr) = self.tcx.hir_node(*hir_id)
                     && let hir::ExprKind::MethodCall(_segment, rcvr, args, ..) = expr.kind
-                    && let Some(typeck_results) = &self.typeck_results
                     && let Some(pred) = self
                         .tcx
-                        .predicates_of(*def_id)
+                        .clauses_of(*def_id)
                         .instantiate_identity(self.tcx)
-                        .predicates
+                        .clauses
                         .into_iter()
                         .nth(*idx)
                     && let Some(pred) = pred.as_trait_clause()
@@ -1810,47 +1811,24 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     // `instantiate_bound_regions_with_erased`. Avoid suggesting for now.
                     && !self.tcx.features().non_lifetime_binders() =>
             {
-                // We've got a method call where likely one of the arguments didn't meet a bound.
-                let pred_ty =
-                    self.tcx.instantiate_bound_regions_with_erased(pred.self_ty().skip_norm_wip());
                 let fn_sig = self.tcx.instantiate_bound_regions_with_erased(
                     self.tcx.fn_sig(*def_id).instantiate_identity().skip_norm_wip(),
                 );
-
-                let mut spans = vec![];
-                for (arg, input) in [rcvr].into_iter().chain(args.into_iter()).zip(fn_sig.inputs())
-                {
-                    let Some(arg_ty) = typeck_results.expr_ty_adjusted_opt(arg) else { continue };
-                    let ty =
-                        self.tcx.instantiate_bound_regions_with_erased(poly_trait_pred.self_ty());
-                    let pred_has_arg_type = self.infcx.can_eq(param_env, arg_ty, ty);
-                    let arg_is_type_param = self.infcx.can_eq(param_env, pred_ty, *input);
-                    if pred_has_arg_type && arg_is_type_param {
-                        err.span_label(
-                            arg.span,
-                            format!("`{arg_ty}` doesn't satisfy the trait bound"),
-                        );
-                        spans.push(arg.span);
-                    }
+                // We've got a method call where likely one of the arguments didn't meet a bound.
+                let pred_ty =
+                    self.tcx.instantiate_bound_regions_with_erased(pred.self_ty().skip_norm_wip());
+                if point_at_relevant_args(
+                    pred_ty,
+                    [rcvr]
+                        .into_iter()
+                        .chain(args.into_iter())
+                        .zip(fn_sig.inputs())
+                        .map(|(e, t)| (*e, *t))
+                        .collect(),
+                ) {
+                    return false;
                 }
-                let this = pluralize!("this", spans.len());
-                if !spans.is_empty() {
-                    if imm_ref_self_ty_satisfies_pred {
-                        err.multipart_suggestion(
-                            format!("consider borrowing {this} argument"),
-                            spans.iter().map(|sp| (sp.shrink_to_lo(), "&".into())).collect(),
-                            Applicability::MaybeIncorrect,
-                        );
-                    }
-                    if mut_ref_self_ty_satisfies_pred {
-                        err.multipart_suggestion(
-                            format!("consider mutably borrowing {this} argument"),
-                            spans.iter().map(|sp| (sp.shrink_to_lo(), "&mut ".into())).collect(),
-                            Applicability::MaybeIncorrect,
-                        );
-                    }
-                }
-                return false;
+                c
             }
             c if matches!(
                 span.ctxt().outer_expn_data().kind,
