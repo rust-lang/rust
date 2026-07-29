@@ -38,6 +38,7 @@ macro_rules! location {
 #[rustfmt::skip]
 const LICENSES: &[&str] = &[
     // tidy-alphabetical-start
+    "(MIT OR Apache-2.0) AND MIT",
     "0BSD OR MIT OR Apache-2.0",                           // adler2 license
     "Apache-2.0 / MIT",
     "Apache-2.0 OR ISC OR MIT",
