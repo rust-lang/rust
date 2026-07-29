@@ -6523,7 +6523,7 @@ mod test_map {
     }
 
     unsafe impl Allocator for MyAlloc {
-        fn allocate(&self, layout: Layout) -> std::result::Result<NonNull<[u8]>, AllocError> {
+        fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
             let g = Global;
             g.allocate(layout)
         }
@@ -6896,9 +6896,7 @@ mod test_map {
     fn test_allocation_info() {
         assert_eq!(HashMap::<(), ()>::new().allocation_size(), 0);
         assert_eq!(HashMap::<u32, u32>::new().allocation_size(), 0);
-        assert!(
-            HashMap::<u32, u32>::with_capacity(1).allocation_size() > core::mem::size_of::<u32>()
-        );
+        assert!(HashMap::<u32, u32>::with_capacity(1).allocation_size() > size_of::<u32>());
     }
 }
 
@@ -6996,11 +6994,11 @@ mod test_map_with_mmap_allocations {
         let mut map: HashMap<usize, (), _, _> = HashMap::with_capacity_in(1, alloc);
 
         // Size of an element plus its control byte.
-        let rough_bucket_size = core::mem::size_of::<(usize, ())>() + 1;
+        let rough_bucket_size = size_of::<(usize, ())>() + 1;
 
         // Accounting for some misc. padding that's likely in the allocation
         // due to rounding to group width, etc.
-        let overhead = 3 * core::mem::size_of::<usize>();
+        let overhead = 3 * size_of::<usize>();
         let num_buckets = (alloc.page_size - overhead) / rough_bucket_size;
         // Buckets are always powers of 2.
         let min_elems = prev_pow2(num_buckets);

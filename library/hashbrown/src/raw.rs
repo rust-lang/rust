@@ -49,7 +49,7 @@ impl Fallibility {
 }
 
 trait SizedTypeProperties: Sized {
-    const IS_ZERO_SIZED: bool = mem::size_of::<Self>() == 0;
+    const IS_ZERO_SIZED: bool = size_of::<Self>() == 0;
     const NEEDS_DROP: bool = mem::needs_drop::<Self>();
 }
 
@@ -274,7 +274,7 @@ impl<T> Bucket<T> {
     ///
     /// # Safety
     ///
-    /// If `mem::size_of::<T>() != 0`, then the safety rules are directly derived
+    /// If `size_of::<T>() != 0`, then the safety rules are directly derived
     /// from the safety rules for [`<*mut T>::sub`] method of `*mut T` and the safety
     /// rules of [`NonNull::new_unchecked`] function.
     ///
@@ -293,14 +293,14 @@ impl<T> Bucket<T> {
     ///   must be no greater than the number returned by the function
     ///   [`RawTable::num_buckets`] or [`RawTableInner::num_buckets`].
     ///
-    /// If `mem::size_of::<T>() == 0`, then the only requirement is that the
+    /// If `size_of::<T>() == 0`, then the only requirement is that the
     /// `index` must not be greater than `RawTableInner.bucket_mask`, i.e.
     /// `index <= RawTableInner.bucket_mask` or, in other words, `(index + 1)`
     /// must be no greater than the number returned by the function
     /// [`RawTable::num_buckets`] or [`RawTableInner::num_buckets`].
     #[inline]
     unsafe fn from_base_index(base: NonNull<T>, index: usize) -> Self {
-        // If mem::size_of::<T>() != 0 then return a pointer to an `element` in
+        // If size_of::<T>() != 0 then return a pointer to an `element` in
         // the data part of the table (we start counting from "0", so that
         // in the expression T[last], the "last" index actually one less than the
         // "buckets" number in the table, i.e. "last = RawTableInner.bucket_mask"):
@@ -336,7 +336,7 @@ impl<T> Bucket<T> {
     /// Calculates the index of a [`Bucket`] as distance between two pointers
     /// (convenience for `base.as_ptr().offset_from(self.ptr.as_ptr()) as usize`).
     /// The returned value is in units of T: the distance in bytes divided by
-    /// [`core::mem::size_of::<T>()`].
+    /// [`size_of::<T>()`].
     ///
     /// If the `T` is a ZST, then we return the index of the element in
     /// the table so that `erase` works properly (return `self.ptr.as_ptr() as usize - 1`).
@@ -345,7 +345,7 @@ impl<T> Bucket<T> {
     ///
     /// # Safety
     ///
-    /// If `mem::size_of::<T>() != 0`, then the safety rules are directly derived
+    /// If `size_of::<T>() != 0`, then the safety rules are directly derived
     /// from the safety rules for [`<*const T>::offset_from`] method of `*const T`.
     ///
     /// Thus, in order to uphold the safety contracts for [`<*const T>::offset_from`]
@@ -362,16 +362,16 @@ impl<T> Bucket<T> {
     /// * both `self` and `base` must be created from the same [`RawTable`]
     ///   (or [`RawTableInner`]).
     ///
-    /// If `mem::size_of::<T>() == 0`, this function is always safe.
+    /// If `size_of::<T>() == 0`, this function is always safe.
     #[inline]
     unsafe fn to_base_index(&self, base: NonNull<T>) -> usize {
-        // If mem::size_of::<T>() != 0 then return an index under which we used to store the
+        // If size_of::<T>() != 0 then return an index under which we used to store the
         // `element` in the data part of the table (we start counting from "0", so
         // that in the expression T[last], the "last" index actually is one less than the
         // "buckets" number in the table, i.e. "last = RawTableInner.bucket_mask").
         // For example for 5th element in table calculation is performed like this:
         //
-        //                        mem::size_of::<T>()
+        //                        size_of::<T>()
         //                          |
         //                          |         `self = from_base_index(base, 5)` that returns pointer
         //                          |         that points here in the data part of the table
@@ -383,7 +383,7 @@ impl<T> Bucket<T> {
         //                                      \__________  __________/
         //                                                 \/
         //                                     `bucket.to_base_index(base)` = 5
-        //                                     (base.as_ptr() as usize - self.ptr.as_ptr() as usize) / mem::size_of::<T>()
+        //                                     (base.as_ptr() as usize - self.ptr.as_ptr() as usize) / size_of::<T>()
         //
         // where: T0...Tlast - our stored data; C0...Clast - control bytes or metadata for data.
         if T::IS_ZERO_SIZED {
@@ -413,7 +413,7 @@ impl<T> Bucket<T> {
         if T::IS_ZERO_SIZED {
             // Just return an arbitrary ZST pointer which is properly aligned
             // invalid pointer is good enough for ZST
-            ptr::without_provenance_mut(mem::align_of::<T>())
+            ptr::without_provenance_mut(align_of::<T>())
         } else {
             unsafe { self.ptr.as_ptr().sub(1) }
         }
@@ -436,7 +436,7 @@ impl<T> Bucket<T> {
     ///
     /// # Safety
     ///
-    /// If `mem::size_of::<T>() != 0`, then the safety rules are directly derived
+    /// If `size_of::<T>() != 0`, then the safety rules are directly derived
     /// from the safety rules for [`<*mut T>::sub`] method of `*mut T` and safety
     /// rules of [`NonNull::new_unchecked`] function.
     ///
@@ -452,7 +452,7 @@ impl<T> Bucket<T> {
     ///   words, `self.to_base_index() + offset + 1` must be no greater than the number returned
     ///   by the function [`RawTable::num_buckets`] or [`RawTableInner::num_buckets`].
     ///
-    /// If `mem::size_of::<T>() == 0`, then the only requirement is that the
+    /// If `size_of::<T>() == 0`, then the only requirement is that the
     /// `self.to_base_index() + offset` must not be greater than `RawTableInner.bucket_mask`,
     /// i.e. `(self.to_base_index() + offset) <= RawTableInner.bucket_mask` or, in other words,
     /// `self.to_base_index() + offset + 1` must be no greater than the number returned by the
@@ -718,7 +718,7 @@ impl<T, A: Allocator> RawTable<T, A> {
     ///
     /// # Safety
     ///
-    /// If `mem::size_of::<T>() != 0`, then the caller of this function must observe the
+    /// If `size_of::<T>() != 0`, then the caller of this function must observe the
     /// following safety rules:
     ///
     /// * The table must already be allocated;
@@ -729,14 +729,14 @@ impl<T, A: Allocator> RawTable<T, A> {
     /// It is safe to call this function with index of zero (`index == 0`) on a table that has
     /// not been allocated, but using the returned [`Bucket`] results in [`undefined behavior`].
     ///
-    /// If `mem::size_of::<T>() == 0`, then the only requirement is that the `index` must
+    /// If `size_of::<T>() == 0`, then the only requirement is that the `index` must
     /// not be greater than the number returned by the [`RawTable::num_buckets`] function, i.e.
     /// `(index + 1) <= self.num_buckets()`.
     ///
     /// [`undefined behavior`]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[inline]
     pub(crate) unsafe fn bucket(&self, index: usize) -> Bucket<T> {
-        // If mem::size_of::<T>() != 0 then return a pointer to the `element` in the `data part` of the table
+        // If size_of::<T>() != 0 then return a pointer to the `element` in the `data part` of the table
         // (we start counting from "0", so that in the expression T[n], the "n" index actually one less than
         // the "buckets" number of our `RawTable`, i.e. "n = RawTable::num_buckets() - 1"):
         //
@@ -1508,7 +1508,7 @@ impl RawTableInner {
 /// Find the previous power of 2. If it's already a power of 2, it's unchanged.
 /// Passing zero is undefined behavior.
 pub(crate) fn prev_pow2(z: usize) -> usize {
-    let shift = mem::size_of::<usize>() * 8 - 1;
+    let shift = usize::BITS as usize - 1;
     1 << (shift - (z.leading_zeros() as usize))
 }
 
@@ -2291,7 +2291,7 @@ impl RawTableInner {
     ///
     /// # Safety
     ///
-    /// If `mem::size_of::<T>() != 0`, then the safety rules are directly derived from the
+    /// If `size_of::<T>() != 0`, then the safety rules are directly derived from the
     /// safety rules of the [`Bucket::from_base_index`] function. Therefore, when calling
     /// this function, the following safety rules must be observed:
     ///
@@ -2306,12 +2306,12 @@ impl RawTableInner {
     /// It is safe to call this function with index of zero (`index == 0`) on a table that has
     /// not been allocated, but using the returned [`Bucket`] results in [`undefined behavior`].
     ///
-    /// If `mem::size_of::<T>() == 0`, then the only requirement is that the `index` must
+    /// If `size_of::<T>() == 0`, then the only requirement is that the `index` must
     /// not be greater than the number returned by the [`RawTable::num_buckets`] function, i.e.
     /// `(index + 1) <= self.num_buckets()`.
     ///
     /// ```none
-    /// If mem::size_of::<T>() != 0 then return a pointer to the `element` in the `data part` of the table
+    /// If size_of::<T>() != 0 then return a pointer to the `element` in the `data part` of the table
     /// (we start counting from "0", so that in the expression T[n], the "n" index actually one less than
     /// the "buckets" number of our `RawTableInner`, i.e. "n = RawTableInner::num_buckets() - 1"):
     ///
@@ -2363,11 +2363,11 @@ impl RawTableInner {
     /// * The `size_of` must be equal to the size of the elements stored in the table;
     ///
     /// ```none
-    /// If mem::size_of::<T>() != 0 then return a pointer to the `element` in the `data part` of the table
+    /// If size_of::<T>() != 0 then return a pointer to the `element` in the `data part` of the table
     /// (we start counting from "0", so that in the expression T[n], the "n" index actually one less than
     /// the "buckets" number of our `RawTableInner`, i.e. "n = RawTableInner::num_buckets() - 1"):
     ///
-    ///           `table.bucket_ptr(3, mem::size_of::<T>())` returns a pointer that points here in the
+    ///           `table.bucket_ptr(3, size_of::<T>())` returns a pointer that points here in the
     ///           `data` part of the `RawTableInner`, i.e. to the start of T3
     ///                  |
     ///                  |               `base = table.data_end::<u8>()` points here
@@ -4366,7 +4366,7 @@ mod test_map {
         fn test_t<T>() {
             let raw_table: RawTable<T> = RawTable::with_capacity(1);
             let actual_buckets = raw_table.num_buckets();
-            let min_buckets = Group::WIDTH / core::mem::size_of::<T>();
+            let min_buckets = Group::WIDTH / size_of::<T>();
             assert!(
                 actual_buckets >= min_buckets,
                 "expected at least {min_buckets} buckets, got {actual_buckets} buckets"
@@ -4384,7 +4384,7 @@ mod test_map {
         unsafe {
             table.table.rehash_in_place(
                 &|table, index| hasher(table.bucket::<T>(index).as_ref()),
-                mem::size_of::<T>(),
+                size_of::<T>(),
                 if mem::needs_drop::<T>() {
                     Some(|ptr| ptr::drop_in_place(ptr.cast::<T>()))
                 } else {
@@ -4507,7 +4507,7 @@ mod test_map {
         }
 
         unsafe impl Allocator for MyAlloc {
-            fn allocate(&self, layout: Layout) -> std::result::Result<NonNull<[u8]>, AllocError> {
+            fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
                 let g = Global;
                 g.allocate(layout)
             }

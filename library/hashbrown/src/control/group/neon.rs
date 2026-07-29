@@ -1,6 +1,5 @@
 use super::super::{BitMask, Tag};
 use core::arch::aarch64 as neon;
-use core::mem;
 use core::num::NonZeroU64;
 
 pub(crate) type BitMaskWord = u64;
@@ -18,7 +17,7 @@ pub(crate) struct Group(neon::uint8x8_t);
 #[expect(clippy::use_self)]
 impl Group {
     /// Number of bytes in the group.
-    pub(crate) const WIDTH: usize = mem::size_of::<Self>();
+    pub(crate) const WIDTH: usize = size_of::<Self>();
 
     /// Returns a full group of empty tags, suitable for use as the initial
     /// value for an empty hash table.
@@ -45,18 +44,18 @@ impl Group {
     }
 
     /// Loads a group of tags starting at the given address, which must be
-    /// aligned to `mem::align_of::<Group>()`.
+    /// aligned to `align_of::<Group>()`.
     #[inline]
     pub(crate) unsafe fn load_aligned(ptr: *const Tag) -> Self {
-        debug_assert_eq!(ptr.align_offset(mem::align_of::<Self>()), 0);
+        debug_assert_eq!(ptr.align_offset(align_of::<Self>()), 0);
         unsafe { Group(neon::vld1_u8(ptr.cast())) }
     }
 
     /// Stores the group of tags to the given address, which must be
-    /// aligned to `mem::align_of::<Group>()`.
+    /// aligned to `align_of::<Group>()`.
     #[inline]
     pub(crate) unsafe fn store_aligned(self, ptr: *mut Tag) {
-        debug_assert_eq!(ptr.align_offset(mem::align_of::<Self>()), 0);
+        debug_assert_eq!(ptr.align_offset(align_of::<Self>()), 0);
         unsafe {
             neon::vst1_u8(ptr.cast(), self.0);
         }
