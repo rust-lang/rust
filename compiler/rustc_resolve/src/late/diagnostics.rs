@@ -2067,7 +2067,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     }
 
     fn update_err_for_private_tuple_struct_fields(
-        &mut self,
+        &self,
         err: &mut Diag<'_>,
         source: &PathSource<'_, '_, '_>,
         def_id: DefId,
@@ -2177,7 +2177,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             }
         };
 
-        let bad_struct_syntax_suggestion = |this: &mut Self, err: &mut Diag<'_>, def_id: DefId| {
+        let bad_struct_syntax_suggestion = |this: &Self, err: &mut Diag<'_>, def_id: DefId| {
             let (followed_by_brace, closing_brace) = this.followed_by_brace(span);
 
             match source {
@@ -2629,7 +2629,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     }
 
     fn suggest_alternative_construction_methods(
-        &mut self,
+        &self,
         def_id: DefId,
         err: &mut Diag<'_>,
         path_span: Span,
@@ -2784,7 +2784,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
     }
 
     fn lookup_assoc_candidate<FilterFn>(
-        &mut self,
+        &self,
         ident: Ident,
         ns: Namespace,
         filter_fn: FilterFn,
