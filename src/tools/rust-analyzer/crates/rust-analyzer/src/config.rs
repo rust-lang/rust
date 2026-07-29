@@ -2908,6 +2908,7 @@ enum SnippetScopeDef {
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 #[serde(default)]
+#[serde(try_from = "SnippetDefRepr")]
 pub(crate) struct SnippetDef {
     #[serde(with = "single_or_array")]
     #[serde(skip_serializing_if = "Vec::is_empty")]
@@ -2929,6 +2930,46 @@ pub(crate) struct SnippetDef {
     description: Option<String>,
 
     scope: SnippetScopeDef,
+}
+
+/// Plain deserialization target for [`SnippetDef`]. Both the client JSON
+/// config and `rust-analyzer.toml` configs deserialize a `SnippetDef` per
+/// map entry, so validating the field combination here (via `TryFrom`)
+/// covers both config sources instead of only one.
+#[derive(Deserialize, Default)]
+#[serde(default)]
+struct SnippetDefRepr {
+    #[serde(with = "single_or_array")]
+    prefix: Vec<String>,
+    #[serde(with = "single_or_array")]
+    postfix: Vec<String>,
+    #[serde(with = "single_or_array")]
+    body: Vec<String>,
+    #[serde(with = "single_or_array")]
+    requires: Vec<String>,
+    description: Option<String>,
+    scope: SnippetScopeDef,
+}
+
+impl TryFrom<SnippetDefRepr> for SnippetDef {
+    type Error = String;
+
+    fn try_from(repr: SnippetDefRepr) -> Result<Self, Self::Error> {
+        if repr.scope == SnippetScopeDef::Item && !repr.postfix.is_empty() {
+            return Err(
+                "'postfix' is not supported together with '\"scope\": \"item\"'; postfix snippets are not supported in item scope"
+                    .to_owned(),
+            );
+        }
+        Ok(SnippetDef {
+            prefix: repr.prefix,
+            postfix: repr.postfix,
+            body: repr.body,
+            requires: repr.requires,
+            description: repr.description,
+            scope: repr.scope,
+        })
+    }
 }
 
 mod single_or_array {
@@ -4427,5 +4468,31 @@ mod tests {
             } if target_dir_config.target_dir(None).map(Cow::into_owned)
                 == Some(Utf8PathBuf::from("other_folder"))
         ));
+    }
+    #[test]
+    fn postfix_snippet_item_scope_is_invalid() {
+        let mut config =
+            Config::new(AbsPathBuf::assert(project_root()), Default::default(), vec![], None);
+        let mut change = ConfigChange::default();
+        change.change_client_config(serde_json::json!({
+            "completion":{
+                "snippets": {
+                    "custom":{
+                        "foo": {
+                            "postfix": "foo",
+                            "body": "foo",
+                            "scope": "item"
+                        }
+                    }
+                }
+            }
+        }));
+        let errors;
+        (config, errors, _) = config.apply_change(change);
+        assert!(!errors.0.is_empty(), "expected a config error for postfix+item scope");
+        assert!(
+            config.snippets.iter().all(|s| s.postfix_triggers.iter().all(|t| &**t != "foo")),
+            "invalid snippet should not have been registered"
+        );
     }
 }
