@@ -282,6 +282,8 @@ enum ResolutionError<'ra> {
         suggestion: &'static str,
         current: &'static str,
         type_span: Option<Span>,
+        /// Type ascription to suggest when `type_span` is present (e.g. `usize` or `/* Type */`).
+        type_name: &'static str,
     },
     /// Error E0530: `X` bindings cannot shadow `Y`s.
     BindingShadowsSomethingUnacceptable {

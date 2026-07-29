@@ -78,7 +78,28 @@ enum AnonConstKind {
     EnumDiscriminant,
     FieldDefaultValue,
     InlineConst,
+    /// Array type length, e.g. `[T; N]`.
+    ArrayLength,
     ConstArg(IsRepeatExpr),
+}
+
+/// Type ascription to suggest when turning a `let` binding into a `const`
+/// because it was used in a constant context without an existing type annotation.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub(crate) enum NonConstantTypeSuggestion {
+    /// Suggest `: /* Type */`.
+    Placeholder,
+    /// Suggest `: usize` (array lengths and repeat counts).
+    Usize,
+}
+
+impl NonConstantTypeSuggestion {
+    pub(crate) fn as_str(self) -> &'static str {
+        match self {
+            Self::Placeholder => "/* Type */",
+            Self::Usize => "usize",
+        }
+    }
 }
 
 impl PatternSource {
@@ -214,7 +235,10 @@ pub(crate) enum RibKind<'ra> {
     ///
     /// The item may reference generic parameters in trivial constant expressions.
     /// All other constants aren't allowed to use generic params at all.
-    ConstantItem(ConstantHasGenerics, Option<(Ident, ConstantItemKind)>),
+    ///
+    /// The third field is used when suggesting that a `let` binding used in this
+    /// constant context should become a `const`, to pick a sensible type ascription.
+    ConstantItem(ConstantHasGenerics, Option<(Ident, ConstantItemKind)>, NonConstantTypeSuggestion),
 
     /// We passed through a module item.
     Module(LocalModule<'ra>),
@@ -1038,7 +1062,7 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
             }
             TyKind::Array(element_ty, length) => {
                 self.visit_ty(element_ty);
-                self.resolve_anon_const(length, AnonConstKind::ConstArg(IsRepeatExpr::No));
+                self.resolve_anon_const(length, AnonConstKind::ArrayLength);
             }
             _ => visit::walk_ty(self, ty),
         }
@@ -3021,6 +3045,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                                     IsRepeatExpr::No,
                                     ConstantHasGenerics::Yes,
                                     Some((ConstBlockItem::IDENT, ConstantItemKind::Const)),
+                                    NonConstantTypeSuggestion::Placeholder,
                                     |this| this.resolve_labeled_block(None, block.id, block),
                                 )
                             },
@@ -3295,21 +3320,30 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         is_repeat: IsRepeatExpr,
         may_use_generics: ConstantHasGenerics,
         item: Option<(Ident, ConstantItemKind)>,
+        type_suggestion: NonConstantTypeSuggestion,
         f: impl FnOnce(&mut Self),
     ) {
         let f = |this: &mut Self| {
-            this.with_rib(ValueNS, RibKind::ConstantItem(may_use_generics, item), |this| {
-                this.with_rib(
-                    TypeNS,
-                    RibKind::ConstantItem(
-                        may_use_generics.force_yes_if(is_repeat == IsRepeatExpr::Yes),
-                        item,
-                    ),
-                    |this| {
-                        this.with_label_rib(RibKind::ConstantItem(may_use_generics, item), f);
-                    },
-                )
-            })
+            this.with_rib(
+                ValueNS,
+                RibKind::ConstantItem(may_use_generics, item, type_suggestion),
+                |this| {
+                    this.with_rib(
+                        TypeNS,
+                        RibKind::ConstantItem(
+                            may_use_generics.force_yes_if(is_repeat == IsRepeatExpr::Yes),
+                            item,
+                            type_suggestion,
+                        ),
+                        |this| {
+                            this.with_label_rib(
+                                RibKind::ConstantItem(may_use_generics, item, type_suggestion),
+                                f,
+                            );
+                        },
+                    )
+                },
+            )
         };
 
         if let ConstantHasGenerics::No(cause) = may_use_generics {
@@ -3864,9 +3898,13 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
     fn resolve_static_body(&mut self, expr: &'ast Expr, item: Option<(Ident, ConstantItemKind)>) {
         self.with_lifetime_rib(LifetimeRibKind::elided(LifetimeRes::Infer), |this| {
-            this.with_constant_rib(IsRepeatExpr::No, ConstantHasGenerics::Yes, item, |this| {
-                this.visit_expr(expr)
-            });
+            this.with_constant_rib(
+                IsRepeatExpr::No,
+                ConstantHasGenerics::Yes,
+                item,
+                NonConstantTypeSuggestion::Placeholder,
+                |this| this.visit_expr(expr),
+            );
         })
     }
 
@@ -3877,9 +3915,13 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     ) {
         if let Some(body) = body {
             self.with_lifetime_rib(LifetimeRibKind::elided(LifetimeRes::Infer), |this| {
-                this.with_constant_rib(IsRepeatExpr::No, ConstantHasGenerics::Yes, item, |this| {
-                    this.visit_expr(body)
-                })
+                this.with_constant_rib(
+                    IsRepeatExpr::No,
+                    ConstantHasGenerics::Yes,
+                    item,
+                    NonConstantTypeSuggestion::Placeholder,
+                    |this| this.visit_expr(body),
+                )
             })
         }
     }
@@ -5152,13 +5194,20 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             _ => IsRepeatExpr::No,
         };
 
+        let type_suggestion = match anon_const_kind {
+            AnonConstKind::ArrayLength | AnonConstKind::ConstArg(IsRepeatExpr::Yes) => {
+                NonConstantTypeSuggestion::Usize
+            }
+            _ => NonConstantTypeSuggestion::Placeholder,
+        };
+
         let may_use_generics = match anon_const_kind {
             AnonConstKind::EnumDiscriminant => {
                 ConstantHasGenerics::No(NoConstantGenericsReason::IsEnumDiscriminant)
             }
             AnonConstKind::FieldDefaultValue => ConstantHasGenerics::Yes,
             AnonConstKind::InlineConst => ConstantHasGenerics::Yes,
-            AnonConstKind::ConstArg(_) => {
+            AnonConstKind::ArrayLength | AnonConstKind::ConstArg(_) => {
                 if self.r.features.generic_const_exprs()
                     || self.r.features.min_generic_const_args()
                     || is_trivial_const_arg
@@ -5170,7 +5219,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             }
         };
 
-        self.with_constant_rib(is_repeat_expr, may_use_generics, None, |this| {
+        self.with_constant_rib(is_repeat_expr, may_use_generics, None, type_suggestion, |this| {
             this.with_lifetime_rib(LifetimeRibKind::elided(LifetimeRes::Infer), |this| {
                 resolve_expr(this);
             });

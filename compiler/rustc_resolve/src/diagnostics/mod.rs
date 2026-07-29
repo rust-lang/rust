@@ -298,8 +298,9 @@ pub(crate) struct AttemptToUseNonConstantValueInConstantWithSuggestion<'a> {
     #[suggestion_part(code = "{suggestion} ")]
     pub(crate) span: Span,
     pub(crate) suggestion: &'a str,
-    #[suggestion_part(code = ": /* Type */")]
+    #[suggestion_part(code = ": {type_name}")]
     pub(crate) type_span: Option<Span>,
+    pub(crate) type_name: &'a str,
     pub(crate) current: &'a str,
 }
 
