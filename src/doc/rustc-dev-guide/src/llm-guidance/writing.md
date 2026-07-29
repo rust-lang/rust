@@ -84,22 +84,7 @@ Do not rely on the LLM as a source of truth.
 ### Write maintainable code
 
 Treat generated code as a *draft*, not a final product.
-
-Follow the style of surrounding code.
-Use existing helpers and avoid duplicating logic or validation.
-
-Represent data in [one normalized place](https://react.dev/learn/choosing-the-state-structure);
-trying to keep data in sync between two different places is a code smell.
-
-When practical, [make invalid states unrepresentable](https://kentcdodds.com/blog/make-impossible-states-impossible), [not just checked at construction time](https://lexi-lambda.github.io/blog/2020/11/01/names-are-not-type-safety/).
-
-[Write comments that say *why*][mit-comment-style] you have done a thing, not *what* you have done.
-It's ok to go into detail about non-obvious bugs.
-
-[mit-comment-style]: https://mitcommlab.mit.edu/broad/commkit/coding-and-comment-style/
-
-Preserve existing behavior.
-Consider platform differences and error cases.
+Follow the [correctness conventions](../conventions.md#cc).
 
 ### Before opening a PR
 
