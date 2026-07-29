@@ -2300,7 +2300,6 @@ symbols! {
         va_copy,
         va_end,
         va_list,
-        va_start,
         val,
         validity,
         value,
