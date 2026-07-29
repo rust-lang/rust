@@ -407,20 +407,17 @@ impl PathSet {
         PathSet::Set(set)
     }
 
-    fn has(&self, needle: &Path, module: Kind) -> bool {
+    fn has(&self, needle: &Path) -> bool {
         match self {
-            PathSet::Set(set) => set.iter().any(|p| Self::check(p, needle, module)),
-            PathSet::Suite(suite) => Self::check(suite, needle, module),
+            PathSet::Set(set) => set.iter().any(|p| Self::check(p, needle)),
+            PathSet::Suite(suite) => Self::check(suite, needle),
         }
     }
 
     // internal use only
-    fn check(p: &TaskPath, needle: &Path, module: Kind) -> bool {
-        let check_path = || {
-            // This order is important for retro-compatibility, as `starts_with` was introduced later.
-            p.path.ends_with(needle) || p.path.starts_with(needle)
-        };
-        if let Some(p_kind) = &p.kind { check_path() && *p_kind == module } else { check_path() }
+    fn check(p: &TaskPath, needle: &Path) -> bool {
+        // This order is important for retro-compatibility, as `starts_with` was introduced later.
+        p.path.ends_with(needle) || p.path.starts_with(needle)
     }
 
     /// Return all `TaskPath`s in `Self` that contain any of the `needles`, removing the
@@ -429,11 +426,11 @@ impl PathSet {
     /// This is used for `StepDescription::krate`, which passes all matching crates at once to
     /// `Step::make_run`, rather than calling it many times with a single crate.
     /// See `tests.rs` for examples.
-    fn intersection_removing_matches(&self, needles: &mut [CLIStepPath], module: Kind) -> PathSet {
+    fn intersection_removing_matches(&self, needles: &mut [CLIStepPath]) -> PathSet {
         let mut check = |p| {
             let mut result = false;
             for n in needles.iter_mut() {
-                let matched = Self::check(p, &n.path, module);
+                let matched = Self::check(p, &n.path);
                 if matched {
                     n.will_be_executed = true;
                     result = true;
@@ -504,7 +501,7 @@ impl CommandLineStepDescription {
     }
 
     fn is_excluded(&self, builder: &Builder<'_>, pathset: &PathSet) -> bool {
-        if builder.config.skip.iter().any(|e| pathset.has(e, builder.kind)) {
+        if builder.config.skip.iter().any(|e| pathset.has(e)) {
             if !matches!(builder.config.get_dry_run(), DryRun::SelfCheck) {
                 println!("Skipping {pathset:?} because it is excluded");
             }
@@ -648,14 +645,10 @@ impl<'a> ShouldRun<'a> {
     ///
     /// The reason we return PathSet instead of PathBuf is to allow for aliases that mean the same thing
     /// (for now, just `all_krates` and `paths`, but we may want to add an `aliases` function in the future?)
-    fn pathset_for_paths_removing_matches(
-        &self,
-        paths: &mut [CLIStepPath],
-        kind: Kind,
-    ) -> Vec<PathSet> {
+    fn pathset_for_paths_removing_matches(&self, paths: &mut [CLIStepPath]) -> Vec<PathSet> {
         let mut sets = vec![];
         for pathset in &self.paths {
-            let subset = pathset.intersection_removing_matches(paths, kind);
+            let subset = pathset.intersection_removing_matches(paths);
             if subset != PathSet::empty() {
                 sets.push(subset);
             }
@@ -1740,7 +1733,7 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
         let should_run = (desc.should_run)(ShouldRun::new(self, desc.kind));
 
         for path in &self.paths {
-            if should_run.paths.iter().any(|s| s.has(path, desc.kind))
+            if should_run.paths.iter().any(|s| s.has(path))
                 && !desc.is_excluded(
                     self,
                     &PathSet::Suite(TaskPath { path: path.clone(), kind: Some(desc.kind) }),
