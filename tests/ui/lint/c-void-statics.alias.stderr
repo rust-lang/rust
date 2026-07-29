@@ -1,5 +1,5 @@
 error: `const` items should not have type `c_void`
-  --> $DIR/c-void-statics.rs:12:1
+  --> $DIR/c-void-statics.rs:13:1
    |
 LL | const FOO: c_void = unsafe { std::mem::transmute(0u8) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -12,7 +12,7 @@ LL | #![deny(c_void_statics)]
    |         ^^^^^^^^^^^^^^
 
 error: `static` items should not have type `c_void`
-  --> $DIR/c-void-statics.rs:14:1
+  --> $DIR/c-void-statics.rs:15:1
    |
 LL | static BAR: c_void = unsafe { std::mem::transmute(0u8) };
    | ^^^^^^^^^^^^------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -23,7 +23,7 @@ LL | static BAR: c_void = unsafe { std::mem::transmute(0u8) };
    = note: `c_void` is only used through raw pointers, for compatibility with C `void` pointers
 
 error: `static` items should not have type `c_void`
-  --> $DIR/c-void-statics.rs:18:5
+  --> $DIR/c-void-statics.rs:19:5
    |
 LL |     safe static BAZ: c_void;
    |     ^^^^^^^^^^^^^^^^^------^
@@ -34,7 +34,7 @@ LL |     safe static BAZ: c_void;
    = note: `c_void` is only used through raw pointers, for compatibility with C `void` pointers
 
 error: `const` items should not have type `c_void`
-  --> $DIR/c-void-statics.rs:23:5
+  --> $DIR/c-void-statics.rs:24:5
    |
 LL |     const FOO: c_void;
    |     ^^^^^^^^^^^^^^^^^^
