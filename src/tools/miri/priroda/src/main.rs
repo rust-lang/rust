@@ -920,84 +920,92 @@ impl Cli {
             }
 
             if let Some(command) = self.parse_command(&input) {
-                match session.run_command(command)? {
-                    CommandResult::ExecutionStopped(result) => {
-                        if matches!(result, StepResult::Breakpoint) {
-                            println!("Hit breakpoint");
-                        }
-                        self.print_location(session);
-                    }
-                    CommandResult::BreakpointResult(res) =>
-                        match res {
-                            BreakpointSetResult::Added(path, line) =>
-                                println!("breakpoint added: {}:{}", path.display(), line),
-
-                            BreakpointSetResult::Duplicate => println!("Duplicate breakpoint"),
-                        },
-                    CommandResult::Locals(locals_desc) =>
-                        if locals_desc.is_empty() {
-                            println!("no locals");
-                        } else {
-                            for local_desc in &locals_desc {
-                                let source_projection = local_desc
-                                    .source_projection
-                                    .as_ref()
-                                    .map(|fields| {
-                                        fields
-                                            .iter()
-                                            .map(|field| field.to_string())
-                                            .collect::<String>()
-                                    })
-                                    .unwrap_or_default();
-
-                                let name = local_desc
-                                    .source_name
-                                    .map_or_else(|| "<none>".to_string(), |name| name.to_string());
-
-                                let display_name = format!("{name}{source_projection}");
-
-                                let local_id = local_desc.local.map_or_else(
-                                    || "<none>".to_string(),
-                                    |local_idx| format!("_{}", local_idx.index()),
-                                );
-
-                                let storage_projection = local_desc
-                                    .storage_projection
-                                    .iter()
-                                    .map(StorageProj::render)
-                                    .collect::<String>();
-
-                                let display_local_id = format!("{local_id}{storage_projection}");
-                                println!(
-                                    "Name: {}, Id: {}, Ty: {}, Value: {}",
-                                    display_name, display_local_id, local_desc.ty, local_desc.value
-                                );
-                            }
-                        },
-                    CommandResult::SingleLocal(local_desc) =>
-                        match local_desc {
-                            Some(local_desc) => {
-                                println!(
-                                    "Id: _{}, Ty: {}, Value: {}",
-                                    local_desc.local.unwrap().index(),
-                                    local_desc.ty,
-                                    local_desc.value
-                                );
-                            }
-                            None => println!("no local for this id"),
-                        },
-                    CommandResult::Memory(memory) => println!("{memory}"),
-                    CommandResult::TerminateSession => {
-                        println!("quitting");
-                        return interp_ok(());
-                    }
-                }
+                let command_res = session.run_command(command)?;
+                if !Self::print_command_result(command_res, session)? {
+                    return interp_ok(());
+                };
             } else {
                 println!("no command");
             }
 
             io::stdout().flush().unwrap();
         }
+    }
+
+    fn print_command_result<'tcx>(
+        command_res: CommandResult,
+        session: &PrirodaContext<'tcx>,
+    ) -> InterpResult<'tcx, bool> {
+        match command_res {
+            CommandResult::ExecutionStopped(result) => {
+                if matches!(result, StepResult::Breakpoint) {
+                    println!("Hit breakpoint");
+                }
+                Self::print_location(session);
+            }
+            CommandResult::BreakpointResult(res) =>
+                match res {
+                    BreakpointSetResult::Added(path, line) =>
+                        println!("breakpoint added: {}:{}", path.display(), line),
+
+                    BreakpointSetResult::Duplicate => println!("Duplicate breakpoint"),
+                },
+            CommandResult::Locals(locals_desc) =>
+                if locals_desc.is_empty() {
+                    println!("no locals");
+                } else {
+                    for local_desc in &locals_desc {
+                        let source_projection = local_desc
+                            .source_projection
+                            .as_ref()
+                            .map(|fields| {
+                                fields.iter().map(|field| field.to_string()).collect::<String>()
+                            })
+                            .unwrap_or_default();
+
+                        let name = local_desc
+                            .source_name
+                            .map_or_else(|| "<none>".to_string(), |name| name.to_string());
+
+                        let display_name = format!("{name}{source_projection}");
+
+                        let local_id = local_desc.local.map_or_else(
+                            || "<none>".to_string(),
+                            |local_idx| format!("_{}", local_idx.index()),
+                        );
+
+                        let storage_projection = local_desc
+                            .storage_projection
+                            .iter()
+                            .map(StorageProj::render)
+                            .collect::<String>();
+
+                        let display_local_id = format!("{local_id}{storage_projection}");
+                        println!(
+                            "Name: {}, Id: {}, Ty: {}, Value: {}",
+                            display_name, display_local_id, local_desc.ty, local_desc.value
+                        );
+                    }
+                },
+            CommandResult::SingleLocal(local_desc) =>
+                match local_desc {
+                    Some(local_desc) => {
+                        println!(
+                            "Id: _{}, Ty: {}, Value: {}",
+                            local_desc.local.unwrap().index(),
+                            local_desc.ty,
+                            local_desc.value
+                        );
+                    }
+                    None => println!("no local for this id"),
+                },
+            CommandResult::Memory(memory) => println!("{memory}"),
+            CommandResult::TerminateSession => {
+                println!("quitting");
+                return interp_ok(false);
+            }
+        }
+        interp_ok(true)
     }
 
     fn parse_command(&self, input: &str) -> Option<DebuggerCommand> {
@@ -1024,7 +1032,7 @@ impl Cli {
         }
     }
 
-    fn print_location(&self, session: &PrirodaContext) {
+    fn print_location(session: &PrirodaContext) {
         match &session.current_location {
             Some(location) =>
                 if let Some(path) = session.local_path(location) {
