@@ -15,6 +15,7 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_mir_dataflow::fmt::DebugWithContext;
 use rustc_mir_dataflow::{Analysis, Backward, ResultsCursor};
 use rustc_session::lint;
+use rustc_session::lint::builtin::{UNUSED_ASSIGNMENTS, UNUSED_VARIABLES};
 use rustc_span::Span;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::symbol::{Symbol, kw, sym};
@@ -1074,7 +1075,7 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
                     diagnostics::UnusedVariableSugg::TryPrefix { spans: vec![def_span], name, typo }
                 };
                 tcx.emit_node_span_lint(
-                    lint::builtin::UNUSED_VARIABLES,
+                    UNUSED_VARIABLES,
                     hir_id,
                     def_span,
                     diagnostics::UnusedVariable {
@@ -1124,7 +1125,7 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
 
                 let typo = maybe_suggest_typo();
                 tcx.emit_node_span_lint(
-                    lint::builtin::UNUSED_VARIABLES,
+                    UNUSED_VARIABLES,
                     hir_id,
                     def_span,
                     diagnostics::UnusedVarAssignedOnly { name, typo },
@@ -1166,7 +1167,7 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
             };
 
             tcx.emit_node_span_lint(
-                lint::builtin::UNUSED_VARIABLES,
+                UNUSED_VARIABLES,
                 hir_id,
                 spans,
                 diagnostics::UnusedVariable {
@@ -1258,20 +1259,20 @@ impl<'a, 'tcx> AssignmentResult<'a, 'tcx> {
                             if suggestion.is_none() && is_direct { overwrite } else { None };
                         let help = suggestion.is_none() && overwrite.is_none();
                         tcx.emit_node_span_lint(
-                            lint::builtin::UNUSED_ASSIGNMENTS,
+                            UNUSED_ASSIGNMENTS,
                             hir_id,
                             source_info.span,
                             diagnostics::UnusedAssign { name, overwrite, help, suggestion },
                         )
                     }
                     AccessKind::Param => tcx.emit_node_span_lint(
-                        lint::builtin::UNUSED_ASSIGNMENTS,
+                        UNUSED_ASSIGNMENTS,
                         hir_id,
                         source_info.span,
                         diagnostics::UnusedAssignPassed { name },
                     ),
                     AccessKind::Capture => tcx.emit_node_span_lint(
-                        lint::builtin::UNUSED_ASSIGNMENTS,
+                        UNUSED_ASSIGNMENTS,
                         hir_id,
                         decl_span,
                         diagnostics::UnusedCaptureMaybeCaptureRef { name },
