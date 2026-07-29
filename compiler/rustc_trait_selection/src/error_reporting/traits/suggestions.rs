@@ -5,7 +5,6 @@ use std::path::PathBuf;
 use std::{debug_assert_matches, iter};
 
 use itertools::{EitherOrBoth, Itertools};
-use rustc_abi::ExternAbi;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::codes::*;
@@ -5032,7 +5031,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 ..
             } = fn_ty.fn_sig(tcx).skip_binder()
             // FIXME(splat): this might need to change if the Fn* traits start using/supporting splat
-            && fn_sig.abi() == ExternAbi::Rust
+            && fn_sig.abi().is_fn_trait_compatible()
             && !fn_sig.c_variadic()
             && fn_sig.safety() == hir::Safety::Safe
 
