@@ -1,4 +1,4 @@
-//@ known-bug: unknown
+//@ build-pass
 
 // This used to fail MIR validation due to the types on both sides of
 // an assignment not being equal.

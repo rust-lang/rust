@@ -1,4 +1,4 @@
-//@ known-bug: unknown
+//@ run-pass
 //@ ignore-wasm32 aligning functions is not currently supported on wasm (#143368)
 //@ ignore-backends: gcc
 

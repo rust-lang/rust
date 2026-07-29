@@ -1,9 +1,9 @@
-//@ known-bug: unknown
 // Regression test for #77653
 // When monomorphizing `f` we need to prove `dyn Derived<()>: Base<()>`. This
 // requires us to normalize the `Base<<() as Proj>::S>` to `Base<()>` when
 // comparing the supertrait `Derived<()>` to the expected trait.
 
+//@ build-pass
 //@ revisions: current next
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver

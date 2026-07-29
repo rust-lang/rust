@@ -1,4 +1,4 @@
-//@ known-bug: unknown
+//@ run-pass
 //@ ignore-backends: gcc
 
 #[repr(transparent)]

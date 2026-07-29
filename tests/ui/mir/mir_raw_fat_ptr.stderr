@@ -1,21 +1,12 @@
-error[E0308]: mismatched types
-  --> $DIR/mir_raw_fat_ptr.rs:143:25
+warning: method `foo` is never used
+  --> $DIR/mir_raw_fat_ptr.rs:100:16
    |
-LL |     assert_inorder(buf, compare_foo);
-   |                         ^^^^^^^^^^^ one type is more general than the other
+LL | trait Foo { fn foo(&self) -> usize; }
+   |       ---      ^^^
+   |       |
+   |       method in this trait
    |
-   = note: expected fn pointer `fn(*const dyn Foo, *const dyn Foo) -> ComparisonResults`
-              found fn pointer `for<'a> fn(*const (dyn Foo + 'a), *const (dyn Foo + 'a)) -> ComparisonResults`
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
 
-error[E0308]: mismatched types
-  --> $DIR/mir_raw_fat_ptr.rs:197:25
-   |
-LL |     assert_inorder(buf, compare_foo);
-   |                         ^^^^^^^^^^^ one type is more general than the other
-   |
-   = note: expected fn pointer `fn(*const dyn Foo, *const dyn Foo) -> ComparisonResults`
-              found fn pointer `for<'a> fn(*const (dyn Foo + 'a), *const (dyn Foo + 'a)) -> ComparisonResults`
+warning: 1 warning emitted
 
-error: aborting due to 2 previous errors
-
-For more information about this error, try `rustc --explain E0308`.

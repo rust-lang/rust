@@ -1080,12 +1080,13 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             && let target_sig = target_fn_tys.with(target_hdr)
                             && let Some(target_sig) = target_sig.no_bound_vars()
                         {
-                            let src_sig = self.infcx.instantiate_binder_with_fresh_vars(
-                                span,
-                                BoundRegionConversionTime::HigherRankedType,
-                                src_sig,
-                            );
-                            let src_ty = Ty::new_fn_ptr(self.tcx(), ty::Binder::dummy(src_sig));
+                            src_sig =
+                                ty::Binder::dummy(self.infcx.instantiate_binder_with_fresh_vars(
+                                    span,
+                                    BoundRegionConversionTime::HigherRankedType,
+                                    src_sig,
+                                ));
+                            let src_ty = Ty::new_fn_ptr(self.tcx(), src_sig);
                             self.prove_clause(
                                 ty::ClauseKind::WellFormed(src_ty.into()),
                                 location.to_locations(),
