@@ -34,9 +34,9 @@ As before, you can use an LLM to review your work, but not to write it from scra
 If you don't know what counts as soundness-critical, discuss it with your reviewer.
 
 **Write your own PR description and comments**.
+We want to hear from you, not from your agent.
 LLM-created PR descriptions are banned.
 LLM-created Github comments are banned.
-We want to hear from you, not from your agent.
 
 ## Guidelines
 
@@ -54,7 +54,7 @@ For example:
 
 - Search for related issues and PRs.
 - Find relevant code, tests, git history, and Zulip discussion.
-- If this is a cross-cutting change, consult the "cross-cutting" section of [the contributing docs](./contributing.md#pull-requests).
+- If this is a cross-cutting change, consult the "cross-cutting" section of [the contributing docs](../contributing.md#pull-requests).
 - [Make the smallest change that fixes the problem][small-cls].
   Do not combine it with unrelated refactors or cleanups.
 
@@ -63,7 +63,7 @@ For example:
 ### While working
 
 When fixing a bug, verify that your test fails before and succeeds after your change.
-Consult [adding new tests](./tests/adding.md) and [best practices](./tests/best-practices.md) for test procedures.
+Consult [adding new tests](../tests/adding.md) and [best practices](../tests/best-practices.md) for test procedures.
 Tests are absolutely required; either existing tests or new tests you write.
 Untested LLM PRs will not be merged.
 
@@ -96,13 +96,13 @@ Remove outdated or prototyping code and debugging.
 Re-read the whole diff, *not* just your conversation with the agent.
 Your reviewer is going to see your code, not your conversation.
 
-[Run tests](tests/running.md) to verify your change works.
+[Run tests](../tests/running.md) to verify your change works.
 Do NOT report which UI tests you ran in the PR description;
 that's noise, since CI will run them anyway.
 If you did manual testing or benchmarking, do report that,
 but note that all LLM PRs must have automated tests.
 
-[Review diagnostic snapshots](tests/adding.md#step-4-review-the-output);
+[Review diagnostic snapshots](../tests/adding.md#step-4-review-the-output);
 don't simply `--bless` them away.
 
 We recommend using a different model for adversarial local review before publishing your changes.
@@ -148,4 +148,4 @@ We don't care which model you used, but we do care whether you used the LLM to i
 
 > 🤖 Generated with Claude Code
 
-> Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>
+> `Co-Authored-By: Claude Opus 4.6 (1M context) <noreply@anthropic.com>`
