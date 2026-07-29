@@ -1632,7 +1632,7 @@ impl fmt::Display for BranchProtection {
     }
 }
 
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialOrd, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialOrd, PartialEq, Encodable, BlobDecodable)]
 pub enum PointerAuthOption {
     // See <compiler/rustc_session/src/options.rs> and Clang's command line reference:
     // <https://clang.llvm.org/docs/ClangCommandLineReference.html#cmdoption-clang-fptrauth-auth-traps>
@@ -1671,6 +1671,28 @@ impl PointerAuthOption {
             "vt-ptr-addr-discrimination" => Some(Self::VTPtrAddrDisc),
             "vt-ptr-type-discrimination" => Some(Self::VTPtrTypeDisc),
             _ => None,
+        }
+    }
+}
+
+impl fmt::Display for PointerAuthOption {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Aarch64JumpTableHardening => write!(f, "aarch64-jump-table-hardening"),
+            Self::AuthTraps => write!(f, "auth-traps"),
+            Self::Calls => write!(f, "calls"),
+            Self::ElfGot => write!(f, "elf-got"),
+            Self::FunctionPointerTypeDiscrimination => {
+                write!(f, "function-pointer-type-discrimination")
+            }
+            Self::IndirectGotos => write!(f, "indirect-gotos"),
+            Self::InitFini => write!(f, "init-fini"),
+            Self::InitFiniAddressDiscrimination => write!(f, "init-fini-address-discrimination"),
+            Self::Intrinsics => write!(f, "intrinsics"),
+            Self::ReturnAddresses => write!(f, "return-addresses"),
+            Self::TypeInfoVTPtrDisc => write!(f, "typeinfo-vt-ptr-discrimination"),
+            Self::VTPtrAddrDisc => write!(f, "vt-ptr-addr-discrimination"),
+            Self::VTPtrTypeDisc => write!(f, "vt-ptr-type-discrimination"),
         }
     }
 }
