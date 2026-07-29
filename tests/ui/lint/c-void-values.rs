@@ -1,8 +1,8 @@
 //@ revisions: direct alias
 
 #![allow(unused)]
-#![deny(c_void_statics)]
-#![allow(c_void_values)]
+#![deny(c_void_values)]
+#![allow(c_void_statics)]
 
 #[cfg(direct)]
 use std::ffi::c_void;
@@ -15,13 +15,8 @@ const FOO: c_void = unsafe { std::mem::transmute(0u8) };
 static BAR: c_void = unsafe { std::mem::transmute(0u8) };
 //~^ ERROR c_void
 
-unsafe extern "C" {
-    safe static BAZ: c_void;
-    //~^ ERROR c_void
-}
-
-trait Trait {
-    const FOO: c_void;
+fn foo(r: *mut c_void) {
+    unsafe { r.read() };
     //~^ ERROR c_void
 }
 

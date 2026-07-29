@@ -28,12 +28,30 @@ fn quux(_: &c_void) {} //~ ERROR c_void
 
 type Boo<'a> = &'a c_void;
 //~^ ERROR c_void
-fn main() {
-    let _: &'static c_void = panic!();
-    //~^ ERROR c_void
-}
 
 trait Trait {}
 
 impl<'a> Trait for &'a c_void {}
 //~^ ERROR c_void
+
+fn do_stuff(raw: *mut c_void) {
+    let _ = unsafe { &*raw };
+    //~^ ERROR c_void
+    //~| ERROR c_void
+}
+
+unsafe fn do_stuff_helper<'a, T>(raw: *mut T) -> &'a T {
+    unsafe { &*raw }
+}
+
+fn do_stuff_2(raw: *mut c_void) {
+    unsafe {
+        do_stuff_helper(raw);
+        //~^ ERROR c_void
+    }
+}
+
+fn main() {
+    let _: &'static c_void = panic!();
+    //~^ ERROR c_void
+}
