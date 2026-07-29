@@ -30,12 +30,6 @@ impl FooTrait for TupleStruct {
 
 fn main() {
     let foo = Foo;
-
-    // FIXME(splat): should splatted functions be callable with tupled and un-tupled arguments?
-    // Add a tupled test for each call if they are.
-    //Foo::tuple_1_trait((1u32,));
-    //foo.tuple_2_trait((1, 3.5));
-
     Foo::tuple_1_trait(1u32);
     foo.tuple_2_trait(1, 3.5);
 
