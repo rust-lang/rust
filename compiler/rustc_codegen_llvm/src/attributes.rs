@@ -530,9 +530,7 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
         to_add.extend(sanitize_attrs(cx, tcx, codegen_fn_attrs.sanitizers));
 
         // For non-naked functions, set branch protection attributes on aarch64.
-        if let Some(BranchProtection { bti, pac_ret, gcs }) =
-            sess.opts.unstable_opts.branch_protection
-        {
+        if let Some(BranchProtection { bti, pac_ret, gcs }) = sess.branch_protection() {
             assert!(sess.target.arch == Arch::AArch64);
             if bti {
                 to_add.push(llvm::CreateAttrString(cx.llcx, "branch-target-enforcement"));
