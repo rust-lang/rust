@@ -2300,10 +2300,12 @@ declare_lint! {
     ///
     /// See [RFC 2093] for more details.
     ///
-    /// > [!WARNING]
-    /// > Implicit lifetime bounds are not semantically equivalent to explicit ones since the latter
-    /// > may affect the implicit lifetime bound of trait object types that are passed as arguments
-    /// > to the overarching struct, enum or union.
+    /// > [!NOTE]
+    /// > This lint intentionally doesn't get emitted for explicit outlives-bounds on type
+    /// > parameters that aren't bounded by `Sized` (unless they're higher-ranked) since unlike
+    /// > implicit outlives-bounds these may affect the implicit lifetime bound of trait object
+    /// > types that are passed as arguments to the overarching struct, enum or union.
+    /// >
     /// > Rephrased, they participate in [trait object lifetime defaulting][TOLD].
     /// >
     /// > Consider the following piece of code where removing bound `T: 'a` would lead to a lifetime
@@ -2321,9 +2323,17 @@ declare_lint! {
     /// > fn render(_: Ref<dyn std::fmt::Display>) {}
     /// > ```
     /// >
-    /// > Consequently, removing explicit outlives-bounds on type parameters of publicly reachable types
-    /// > constitutes a **breaking change** if the lifetime refers to a lifetime parameter and
-    /// > the type parameter is not bounded by `Sized` (thereby admitting trait object types).
+    /// > Due to the explicit outlives-bound the function `render` above is equivalent to:
+    /// >
+    /// > ```rust,ignore (incomplete)
+    /// > fn render<'r>(_: Ref<'r, dyn std::fmt::Display + 'r>) {}
+    /// > ```
+    /// >
+    /// > If it wasn't for that explicit bound then the function would mean the following instead:
+    /// >
+    /// > ```rust,ignore (incomplete)
+    /// > fn render<'r>(_: Ref<'r, dyn std::fmt::Display + 'static>) {}
+    /// > ```
     ///
     /// [RFC 2093]: https://github.com/rust-lang/rfcs/blob/master/text/2093-infer-outlives.md
     /// [TOLD]: https://doc.rust-lang.org/reference/lifetime-elision.html#default-trait-object-lifetimes
