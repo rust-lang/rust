@@ -53,6 +53,29 @@ pub(crate) fn build_sysroot(
         CodegenBackend::Builtin(name) => CodegenBackend::Builtin(name.clone()),
     };
 
+    let host = build_sysroot_for_target(
+        dirs,
+        bootstrap_host_compiler.clone(),
+        &cg_clif_dylib_path,
+        config,
+    );
+    host.install_into_sysroot(dist_dir);
+
+    if !is_native {
+        build_sysroot_for_target(
+            dirs,
+            {
+                let mut bootstrap_target_compiler = bootstrap_host_compiler.clone();
+                bootstrap_target_compiler.target = target_tuple.clone();
+                bootstrap_target_compiler.set_cross_linker_and_runner();
+                bootstrap_target_compiler
+            },
+            &cg_clif_dylib_path,
+            config,
+        )
+        .install_into_sysroot(dist_dir);
+    }
+
     // Build and copy rustc and cargo wrappers
     let wrapper_base_name = get_file_name(&bootstrap_host_compiler.rustc, "____", "bin");
     for wrapper in ["rustc-clif", "rustdoc-clif", "cargo-clif"] {
@@ -87,29 +110,6 @@ pub(crate) fn build_sysroot(
         }
         spawn_and_wait(build_cargo_wrapper_cmd);
         try_hard_link(wrapper_path, dist_dir.join("bin").join(wrapper_name));
-    }
-
-    let host = build_sysroot_for_target(
-        dirs,
-        bootstrap_host_compiler.clone(),
-        &cg_clif_dylib_path,
-        config,
-    );
-    host.install_into_sysroot(dist_dir);
-
-    if !is_native {
-        build_sysroot_for_target(
-            dirs,
-            {
-                let mut bootstrap_target_compiler = bootstrap_host_compiler.clone();
-                bootstrap_target_compiler.target = target_tuple.clone();
-                bootstrap_target_compiler.set_cross_linker_and_runner();
-                bootstrap_target_compiler
-            },
-            &cg_clif_dylib_path,
-            config,
-        )
-        .install_into_sysroot(dist_dir);
     }
 
     let mut target_compiler = Compiler {
