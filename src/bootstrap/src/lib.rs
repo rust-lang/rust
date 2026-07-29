@@ -848,10 +848,6 @@ impl Build {
             features.insert("compiler-builtins-mem");
         }
 
-        if self.config.llvm_enzyme {
-            features.insert("llvm_enzyme");
-        }
-
         features.into_iter().collect::<Vec<_>>().join(" ")
     }
 
@@ -873,9 +869,6 @@ impl Build {
         }
         if (self.config.llvm_enabled(target) || kind == Kind::Check) && check("llvm") {
             features.push("llvm");
-        }
-        if self.config.llvm_enzyme {
-            features.push("llvm_enzyme");
         }
         if self.config.llvm_offload {
             features.push("llvm_offload");
