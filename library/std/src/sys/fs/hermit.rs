@@ -1,6 +1,7 @@
-use crate::ffi::{CStr, OsStr, OsString, c_char};
+use crate::ffi::{CStr, OsStr, OsString};
 use crate::fs::TryLockError;
 use crate::io::{self, BorrowedCursor, Error, ErrorKind, IoSlice, IoSliceMut, SeekFrom};
+use crate::mem::MaybeUninit;
 use crate::os::hermit::ffi::OsStringExt;
 use crate::os::hermit::hermit_abi::{
     self, DT_DIR, DT_LNK, DT_REG, DT_UNKNOWN, O_APPEND, O_CREAT, O_DIRECTORY, O_EXCL, O_RDONLY,
@@ -12,9 +13,10 @@ use crate::sync::Arc;
 use crate::sys::fd::FileDesc;
 pub use crate::sys::fs::common::{Dir, copy, exists};
 use crate::sys::helpers::run_path_with_cstr;
+use crate::sys::io::DEFAULT_BUF_SIZE;
 use crate::sys::time::SystemTime;
 use crate::sys::{AsInner, AsInnerMut, FromInner, IntoInner, cvt, unsupported, unsupported_err};
-use crate::{fmt, mem};
+use crate::{cmp, fmt, mem, slice};
 
 #[derive(Debug)]
 pub struct File(FileDesc);
@@ -33,29 +35,75 @@ impl FileAttr {
 // all DirEntry's will have a reference to this struct
 struct InnerReadDir {
     root: PathBuf,
-    dir: Vec<u8>,
-}
-
-impl InnerReadDir {
-    pub fn new(root: PathBuf, dir: Vec<u8>) -> Self {
-        Self { root, dir }
-    }
 }
 
 pub struct ReadDir {
     inner: Arc<InnerReadDir>,
-    pos: usize,
+    fd: FileDesc,
+    buf: GetdentsBuffer,
 }
 
-impl ReadDir {
-    fn new(inner: InnerReadDir) -> Self {
-        Self { inner: Arc::new(inner), pos: 0 }
+/// A buffer containing [`dirent64`]s, filled with [`getdents64`].
+///
+/// This struct is roughly modeled after the `BufReader`'s `Buffer`.
+struct GetdentsBuffer {
+    // The buffer.
+    buf: Box<[MaybeUninit<dirent64>]>,
+    // The current seek offset into `buf`, must always be <= `filled`.
+    pos: usize,
+    // Each call to `fill_buf` sets `filled` to indicate how many bytes at the start of `buf` are
+    // initialized with bytes from a read.
+    filled: usize,
+}
+
+impl GetdentsBuffer {
+    /// Creates a new buffer with at least `capacity` bytes for use with dirent.
+    fn with_capacity(capacity: usize) -> Self {
+        let buf = Box::new_uninit_slice(capacity.div_ceil(size_of::<dirent64>()));
+        Self { buf, pos: 0, filled: 0 }
+    }
+
+    fn buffer(&self) -> &[u8] {
+        // SAFETY: self.pos and self.filled are valid, and self.filled >= self.pos, and
+        // that region is initialized because those are all invariants of this type.
+        unsafe {
+            let ptr = self.buf.as_ptr().cast::<MaybeUninit<u8>>().add(self.pos);
+            slice::from_raw_parts(ptr, self.filled - self.pos).assume_init_ref()
+        }
+    }
+
+    fn consume(&mut self, amt: usize) {
+        self.pos = cmp::min(self.pos + amt, self.filled);
+    }
+
+    fn fill_buf(&mut self, fd: BorrowedFd<'_>) -> io::Result<&[u8]> {
+        // If we've reached the end of our internal buffer then we need to fetch
+        // some more data from the reader.
+        // Branch using `>=` instead of the more correct `==`
+        // to tell the compiler that the pos..cap slice is always valid.
+        if self.pos >= self.filled {
+            debug_assert!(self.pos == self.filled);
+
+            let result = unsafe {
+                cvt(hermit_abi::getdents64(
+                    fd.as_raw_fd(),
+                    self.buf.as_mut_ptr().cast(),
+                    self.buf.len() * size_of::<dirent64>(),
+                ))
+            };
+
+            self.pos = 0;
+            self.filled = 0;
+
+            self.filled = result? as usize;
+        }
+
+        Ok(self.buffer())
     }
 }
 
 pub struct DirEntry {
-    /// path to the entry
-    root: PathBuf,
+    dir: Arc<InnerReadDir>,
     /// 64-bit inode number
     ino: u64,
     /// File type
@@ -185,48 +233,59 @@ impl Iterator for ReadDir {
     type Item = io::Result<DirEntry>;
 
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
-        let mut counter: usize = 0;
-        let mut offset: usize = 0;
-
-        // loop over all directory entries and search the entry for the current position
         loop {
-            // leave function, if the loop reaches the of the buffer (with all entries)
-            if offset >= self.inner.dir.len() {
+            let buf = match self.buf.fill_buf(self.fd.as_fd()) {
+                Ok(buf) => buf,
+                Err(err) => return Some(Err(err)),
+            };
+
+            if buf.len() == 0 {
+                // No more entries left.
                 return None;
             }
 
-            let dir = unsafe { &*(self.inner.dir.as_ptr().add(offset) as *const dirent64) };
+            let entry_ptr = buf.as_ptr().cast::<dirent64>();
 
-            if counter == self.pos {
-                self.pos += 1;
+            // The dirent64 struct is a weird imaginary thing that isn't ever supposed
+            // to be worked with by value. Its trailing d_name field is declared
+            // variously as [c_char; 256] or [c_char; 1] on different systems but
+            // either way that size is meaningless; only the offset of d_name is
+            // meaningful. The dirent64 pointers that libc returns from getdents64 are
+            // allowed to point to allocations smaller _or_ LARGER than implied by the
+            // definition of the struct.
+            //
+            // As such, we need to be even more careful with dirent64 than if its
+            // contents were "simply" partially initialized data.
+            //
+            // Like for uninitialized contents, converting entry_ptr to `&dirent64`
+            // would not be legal. However, we can use `&raw const (*entry_ptr).d_name`
+            // to refer the fields individually, because that operation is equivalent
+            // to `byte_offset` and thus does not require the full extent of `*entry_ptr`
+            // to be in bounds of the same allocation, only the offset of the field
+            // being referenced.
 
-                // After dirent64, the file name is stored. d_reclen represents the length of the dirent64
-                // plus the length of the file name. Consequently, file name has a size of d_reclen minus
-                // the size of dirent64. The file name is always a C string and terminated by `\0`.
-                // Consequently, we are able to ignore the last byte.
-                let name_bytes =
-                    unsafe { CStr::from_ptr(&dir.d_name as *const _ as *const c_char).to_bytes() };
-                let entry = DirEntry {
-                    root: self.inner.root.clone(),
-                    ino: dir.d_ino,
-                    type_: dir.d_type,
-                    name: OsString::from_vec(name_bytes.to_vec()),
-                };
+            self.buf.consume(usize::from(unsafe { (*entry_ptr).d_reclen }));
 
-                return Some(Ok(entry));
+            // d_name is guaranteed to be null-terminated.
+            let name = unsafe { CStr::from_ptr((&raw const (*entry_ptr).d_name).cast()) };
+            let name_bytes = name.to_bytes();
+            if name_bytes == b"." || name_bytes == b".." {
+                continue;
             }
 
-            counter += 1;
-
-            // move to the next dirent64, which is directly stored after the previous one
-            offset = offset + usize::from(dir.d_reclen);
+            return Some(Ok(DirEntry {
+                dir: Arc::clone(&self.inner),
+                ino: unsafe { (*entry_ptr).d_ino },
+                type_: unsafe { (*entry_ptr).d_type },
+                name: OsString::from_vec(name_bytes.to_vec()),
+            }));
         }
     }
 }
 
 impl DirEntry {
     pub fn path(&self) -> PathBuf {
-        self.root.join(self.file_name_os_str())
+        self.dir.root.join(self.file_name_os_str())
     }
 
     pub fn file_name(&self) -> OsString {
@@ -342,7 +401,7 @@ impl File {
         }
 
         let fd = unsafe { cvt(hermit_abi::open(path.as_ptr(), flags, mode))? };
-        Ok(File(unsafe { FileDesc::from_raw_fd(fd as i32) }))
+        Ok(File(unsafe { FileDesc::from_raw_fd(fd) }))
     }
 
     pub fn file_attr(&self) -> io::Result<FileAttr> {
@@ -516,42 +575,14 @@ pub fn readdir(path: &Path) -> io::Result<ReadDir> {
     let fd_raw = run_path_with_cstr(path, &|path| {
         cvt(unsafe { hermit_abi::open(path.as_ptr(), O_RDONLY | O_DIRECTORY, 0) })
     })?;
-    let fd = unsafe { FileDesc::from_raw_fd(fd_raw as i32) };
+    let fd = unsafe { FileDesc::from_raw_fd(fd_raw) };
+
     let root = path.to_path_buf();
+    let inner = Arc::new(InnerReadDir { root });
+    let buf_size = usize::max(DEFAULT_BUF_SIZE, size_of::<dirent64>());
+    let buf = GetdentsBuffer::with_capacity(buf_size);
 
-    // read all director entries
-    let mut vec: Vec<u8> = Vec::new();
-    let mut sz = 512;
-    loop {
-        // reserve memory to receive all directory entries
-        vec.resize(sz, 0);
-
-        let readlen = unsafe {
-            hermit_abi::getdents64(fd.as_raw_fd(), vec.as_mut_ptr() as *mut dirent64, sz)
-        };
-        if readlen > 0 {
-            // shrink down to the minimal size
-            vec.resize(readlen.try_into().unwrap(), 0);
-            break;
-        }
-
-        // if the buffer is too small, getdents64 returns EINVAL
-        // otherwise, getdents64 returns an error number
-        if readlen != (-hermit_abi::errno::EINVAL).into() {
-            return Err(Error::from_raw_os_error(readlen.try_into().unwrap()));
-        }
-
-        // we don't have enough memory => try to increase the vector size
-        sz = sz * 2;
-
-        // 1 MB for directory entries should be enough
-        // stop here to avoid an endless loop
-        if sz > 0x100000 {
-            return Err(Error::from(ErrorKind::Uncategorized));
-        }
-    }
-
-    Ok(ReadDir::new(InnerReadDir::new(root, vec)))
+    Ok(ReadDir { inner, fd, buf })
 }
 
 pub fn unlink(path: &Path) -> io::Result<()> {
