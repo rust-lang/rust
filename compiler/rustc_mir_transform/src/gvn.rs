@@ -2122,7 +2122,16 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, '_, 'tcx> {
             // `local` as reusable if we have an exact type match.
             && self.local_decls[local].ty == rvalue_ty
         {
-            let value = value.unwrap_or_else(|| self.new_opaque(rvalue_ty));
+            // A borrowed mutable-reference local has a distinct retag. Treating it as equivalent
+            // to its source would allow individual uses to be replaced without replacing the
+            // borrow, which can introduce UB.
+            let value = if rvalue_ty.ref_mutability() == Some(Mutability::Mut)
+                && self.ssa.borrowed_locals().contains(local)
+            {
+                self.new_opaque(rvalue_ty)
+            } else {
+                value.unwrap_or_else(|| self.new_opaque(rvalue_ty))
+            };
             self.assign(local, value);
         }
     }
