@@ -799,6 +799,7 @@ pub enum RustcDumpLayoutKind {
     BackendRepr,
     Debug,
     HomogenousAggregate,
+    LargestNiche,
     Size,
 }
 

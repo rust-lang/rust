@@ -141,6 +141,12 @@ nav.sub {
 	--scrape-example-code-wrapper-background-end: rgba(255, 255, 255, 0);
 	--sidebar-resizer-hover: hsl(207, 90%, 66%);
 	--sidebar-resizer-active: hsl(207, 90%, 54%);
+	--notable-badge-pink: oklch(0.88 0.21 0);
+	--notable-badge-red: oklch(0.88 0.21 40);
+	--notable-badge-orange: oklch(0.88 0.21 70);
+	--notable-badge-green: oklch(0.88 0.21 150);
+	--notable-badge-blue: oklch(0.88 0.21 240);
+	--notable-badge-violet: oklch(0.88 0.21 300);
 }
 /* End theme: light */
 
@@ -252,6 +258,12 @@ nav.sub {
 		--scrape-example-code-wrapper-background-end: rgba(53, 53, 53, 0);
 		--sidebar-resizer-hover: hsl(207, 30%, 54%);
 		--sidebar-resizer-active: hsl(207, 90%, 54%);
+		--notable-badge-pink: oklch(0.55 0.21 0);
+		--notable-badge-red: oklch(0.55 0.21 40);
+		--notable-badge-orange: oklch(0.55 0.21 70);
+		--notable-badge-green: oklch(0.55 0.21 150);
+		--notable-badge-blue: oklch(0.55 0.21 240);
+		--notable-badge-violet: oklch(0.55 0.21 300);
 	}
 /* End theme: dark */
 }

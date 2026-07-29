@@ -828,6 +828,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(function_sections, Some(false));
     tracked!(hint_mostly_unused, true);
     tracked!(human_readable_cgu_names, true);
+    tracked!(implicit_sysroot_deps, false);
     tracked!(incremental_ignore_spans, true);
     tracked!(indirect_branch_cs_prefix, true);
     tracked!(inline_mir, Some(true));
