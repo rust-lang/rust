@@ -626,28 +626,38 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             }
 
             Rvalue::Cast(
-                CastKind::PointerCoercion(
+                CastKind::IntToInt
+                | CastKind::FloatToInt
+                | CastKind::FloatToFloat
+                | CastKind::IntToFloat
+                | CastKind::PtrToPtr
+                | CastKind::FnPtrToPtr
+                | CastKind::Transmute
+                | CastKind::BoxDerefTransmute
+                | CastKind::PointerCoercion(
                     PointerCoercion::MutToConstPointer
                     | PointerCoercion::ArrayToPointer
                     | PointerCoercion::UnsafeFnPointer
                     | PointerCoercion::ClosureFnPointer(_)
-                    | PointerCoercion::ReifyFnPointer(_),
+                    | PointerCoercion::ReifyFnPointer(_)
+                    | PointerCoercion::Unsize,
                     _,
                 ),
                 _,
                 _,
             ) => {
-                // These are all okay; they only change the type, not the data.
+                // Operations that are fully supported by const-eval.
             }
-
+            // Special checks for special casts
             Rvalue::Cast(CastKind::PointerExposeProvenance, _, _) => {
                 self.check_op(ops::RawPtrToIntCast);
             }
             Rvalue::Cast(CastKind::PointerWithExposedProvenance, _, _) => {
                 // Since no pointer can ever get exposed (rejected above), this is easy to support.
             }
-
-            Rvalue::Cast(_, _, _) => {}
+            Rvalue::Cast(kind @ CastKind::Subtype, _, _) => {
+                span_bug!(self.span, "invalid CastKind for this MIR phase: {kind:?}");
+            }
 
             Rvalue::UnaryOp(op, operand) => {
                 let ty = operand.ty(self.body, self.tcx);
