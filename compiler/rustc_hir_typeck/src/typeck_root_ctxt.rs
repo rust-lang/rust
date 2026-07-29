@@ -57,6 +57,8 @@ pub(crate) struct TypeckRootCtxt<'tcx> {
 
     pub(super) deferred_transmute_checks: RefCell<Vec<(Ty<'tcx>, Ty<'tcx>, HirId)>>,
 
+    pub(super) deferred_offload_checks: RefCell<Vec<(Ty<'tcx>, Ty<'tcx>, Ty<'tcx>, HirId)>>,
+
     pub(super) deferred_asm_checks: RefCell<Vec<(&'tcx hir::InlineAsm<'tcx>, HirId)>>,
 
     pub(super) deferred_repeat_expr_checks:
@@ -97,6 +99,7 @@ impl<'tcx> TypeckRootCtxt<'tcx> {
             deferred_call_resolutions: RefCell::new(Default::default()),
             deferred_cast_checks: RefCell::new(Vec::new()),
             deferred_transmute_checks: RefCell::new(Vec::new()),
+            deferred_offload_checks: RefCell::new(Vec::new()),
             deferred_asm_checks: RefCell::new(Vec::new()),
             deferred_repeat_expr_checks: RefCell::new(Vec::new()),
             diverging_type_vars: RefCell::new(Default::default()),
