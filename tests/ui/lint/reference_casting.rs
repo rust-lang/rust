@@ -92,6 +92,30 @@ unsafe fn ref_to_mut() {
         //~^ ERROR casting `&T` to `&mut T` is undefined behavior
     }
 
+    unsafe fn cast_option<T>(ptr: &Option<T>) -> &mut T {
+        let t = ptr as *const Option<T> as *mut T;
+        unsafe { &mut *t }
+        //~^ ERROR casting `&T` to `&mut T` is undefined behavior
+    }
+
+    unsafe fn cast_option_unsafe<T>(ptr: &Option<UnsafeCell<T>>) -> &mut T {
+        let t = ptr as *const Option<UnsafeCell<T>> as *mut T;
+        unsafe { &mut *t }
+        //~^ ERROR casting `&T` to `&mut T` is undefined behavior
+    }
+
+    unsafe fn cast_tuple<T>(ptr: &(T, UnsafeCell<T>)) -> &mut T {
+        let t = ptr as *const (T, UnsafeCell<T>) as *mut T;
+        unsafe { &mut *t }
+        //~^ ERROR casting `&T` to `&mut T` is undefined behavior
+    }
+
+    unsafe fn cast_slice<T>(ptr: &[T]) -> &mut [T] {
+        let t = ptr as *const _ as *mut [T];
+        unsafe { &mut *t }
+        //~^ ERROR casting `&T` to `&mut T` is undefined behavior
+    }
+
     unsafe fn cast_fake<T>(ptr: &FakeUnsafeCell<T>) -> &mut T {
         let t = ptr as *const FakeUnsafeCell<T> as *mut T;
         unsafe { &mut *t }
@@ -345,6 +369,11 @@ unsafe fn no_warn() {
 
     unsafe fn cast<T>(ptr: &MyUnsafeCell<T>) -> &mut T {
         let t = ptr as *const MyUnsafeCell<T> as *mut T;
+        unsafe { &mut *t }
+    }
+
+    unsafe fn cast_slice<T>(ptr: &[std::cell::UnsafeCell<T>]) -> &mut [T] {
+        let t = ptr as *const _ as *mut [T];
         unsafe { &mut *t }
     }
 }
