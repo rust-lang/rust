@@ -1,5 +1,5 @@
 error: compiler/rustc_mir_build/src/thir/cx/expr.rs:LL:CC: splatted FnPtr side-tables are not yet implemented
-  --> $DIR/splat-fn-ptr-ptr-tuple.rs:30:9
+  --> $DIR/splat-fn-ptr-ptr-tuple.rs:31:9
    |
 LL |         (*fn_pp)(1, 2);
    |         ^^^^^^^^^^^^^^

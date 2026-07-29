@@ -25,7 +25,8 @@ fn main() {
     // MIR lowering
     // FIXME(rustfmt): the attribute gets deleted by rustfmt
     #[rustfmt::skip]
-    let fn_pp: *const fn(#[rustc_splat] (u32, i8)) = tuple_args as *const fn(#[rustc_splat] (u32, i8));
+    let fn_pp: *const fn(#[rustc_splat] (u32, i8))
+        = tuple_args as *const fn(#[rustc_splat] (u32, i8));
     unsafe {
         (*fn_pp)(1, 2); //~ ERROR splatted FnPtr side-tables are not yet implemented
         // The ICE means that code after this line is not fully checked
