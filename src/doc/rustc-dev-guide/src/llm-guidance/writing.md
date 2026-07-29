@@ -16,6 +16,8 @@ Keep in mind this quote:
 
 ## Rules
 
+### Before you write code
+
 Before anything else, find a reviewer who volunteers to review your PR.
 If you do not know where to find a reviewer, ask in [#llm-mentoring] on Zulip.
 Your first message should say:
@@ -25,13 +27,20 @@ Your first message should say:
 - (optional) ideas you have so far for a solution
 - (optional) how you expect to test your solution
 
-Disclose your use of LLMs, following the disclosure guidelines below.
-Write the disclosure yourself.
-You may use an LLM to privately review a disclosure you have written, but not to draft or rewrite it.
+Mentors are here to help.
+Talking to them early helps you avoid wasted work.
+
+### While working
 
 Write your own doc-comments, `// SAFETY` comments, diagnostic wording, and soundness-critical code.
 As before, you can use an LLM to review your work, but not to write it from scratch.
 If you don't know what counts as soundness-critical, discuss it with your reviewer.
+
+### When opening a PR
+
+Disclose your use of LLMs, following the disclosure guidelines below.
+Write the disclosure yourself.
+You may use an LLM to privately review a disclosure you have written, but not to draft or rewrite it.
 
 **Write your own PR description and comments**.
 We want to hear from you, not from your agent.
