@@ -11,7 +11,8 @@ If the two conflict, Forge is canonical.
 ### Rules
 
 Before anything else, you **must** find a reviewer who volunteers to review your PR.
-LLM PRs without an assigned reviewer will be closed.
+LLM-created PRs without an assigned reviewer will be closed.
+If you do not know where to find a reviewer, see [#llm-mentoring] on Zulip.
 
 Disclose your use of LLMs, following the disclosure guidelines below.
 Write the disclosure yourself.
@@ -27,6 +28,8 @@ We want to hear from you, not from your agent.
 
 ### Guidelines
 
+#### Before you write code
+
 Start with one PR at a time.
 We understand it's easy to be excited about contributing to Rust, but your PRs are not only a gift but a responsibility for the reviewers.
 Go slow.
@@ -34,14 +37,32 @@ Go slow.
 Avoid E-easy and E-mentor issues.
 Those are intended for people to get familiar with the project, not for LLMs.
 
+#### While working
+
+When fixing a bug, reproduce the bug *before* fixing it.
+Write a test that fails, fix the bug, then verify the test now succeeds.
+Otherwise, you don't know that you were testing the right thing.
+
 Mass renames or rewrites should *strongly* prefer using a proper syntax rewrite tool, such as [`ast-grep`].
 You may use an LLM for generating the instructions for that tool, but you should be very cautious about performing the rewrite directly with an LLM.
 
-Read the documentation. Strive for quality. Review your own PR before opening it:
+#### Before opening a PR
+
+Review your own PR before opening it:
 Does it make sense? Can you tell what the goal of the PR is? Does it achieve that goal?
+
+Run tests to verify your change works.
+Do NOT report which tests you ran in the PR description;
+that's useless to us, since CI will run them anyway.
+
+You must review diagnostic snapshots; don't simply `--bless` them away.
 
 We recommend using a different model for adversarial local review before publishing your changes.
 This does not replace human self-review.
+
+You must understand and be able to explain your own change and its edge cases.
+Asking the LLM can be a starting point but is not sufficient.
+You are responsible for your own code; you cannot disclaim responsibility to your agent.
 
 [`ast-grep`]: https://astgrep.com/
 
@@ -92,7 +113,7 @@ The following areas are currently banned:
 
 ### Guidelines
 
-Point people to [#llm-mentoring](https://rust-lang.zulipchat.com/#narrow/channel/606558-llm-mentoring/) liberally.
+Point people to [#llm-mentoring] liberally.
 Deal with low-quality PRs by closing the PR and asking the author to follow the policy.
 Deal with borderline PRs by asking the author to do work that shows they're paying attention; it's ok to ask for that work before you've put much time into review yourself.
 For example, ask them to reproduce the bug, explain the change in their own
