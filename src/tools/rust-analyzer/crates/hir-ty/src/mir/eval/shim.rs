@@ -1012,6 +1012,43 @@ impl<'a, 'db> Evaluator<'a, 'db> {
                 let dst = Interval { addr: dst, size };
                 dst.write_from_interval(self, src)
             }
+            "slice_get_unchecked" => {
+                let [slice_ptr, index] = args else {
+                    return Err(MirEvalError::InternalError(
+                        "slice_get_unchecked args are not provided".into(),
+                    ));
+                };
+                let Some(ty) = generic_args.as_slice().get(2).and_then(|it| it.ty()) else {
+                    return Err(MirEvalError::InternalError(
+                        "slice_get_unchecked item type is not provided".into(),
+                    ));
+                };
+                let slice_ptr = slice_ptr.get(self)?;
+                let ptr_size = self.ptr_size();
+                let Some(data) = slice_ptr.get(..ptr_size) else {
+                    return Err(MirEvalError::InternalError(
+                        "slice_get_unchecked slice pointer is too small".into(),
+                    ));
+                };
+                let Some(len) = slice_ptr.get(ptr_size..2 * ptr_size) else {
+                    return Err(MirEvalError::InternalError(
+                        "slice_get_unchecked slice metadata is missing".into(),
+                    ));
+                };
+                let slice_ptr = Address::from_bytes(data)?;
+                let len = from_bytes!(usize, len);
+                let index = from_bytes!(usize, index.get(self)?);
+                if index >= len {
+                    return Err(MirEvalError::UndefinedBehavior(format!(
+                        "slice_get_unchecked index {index} is out of bounds for slice of length {len}"
+                    )));
+                }
+                let size = self.size_of_sized(ty, locals, "slice_get_unchecked item type")?;
+                let offset = index* size;
+                let addr = slice_ptr.to_usize() + offset;
+                let addr = Address::from_usize(addr);
+                destination.write_from_bytes(self, &addr.to_bytes()[..destination.size])
+            }
             "offset" | "arith_offset" => {
                 let [ptr, offset] = args else {
                     return Err(MirEvalError::InternalError("offset args are not provided".into()));
