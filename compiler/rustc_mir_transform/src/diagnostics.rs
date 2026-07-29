@@ -76,6 +76,22 @@ pub(crate) struct UnalignedPackedRef {
 }
 
 #[derive(Diagnostic)]
+#[diag("`c_void` should not be used as the referent of an `&` or `&mut` reference")]
+#[help("use `&raw const` or `&raw mut` instead, to create a raw pointer")]
+#[note(
+    "for legacy reasons, Rust considers `c_void` to have size 1, so references to it can cause Undefined Behavior"
+)]
+pub(crate) struct CVoidRef;
+
+#[derive(Diagnostic)]
+#[diag("`c_void` should not be used by value")]
+#[note(
+    "for legacy reasons, Rust considers `c_void` to have size 1, so this can cause Undefined Behavior"
+)]
+#[note("`c_void` is only used through raw pointers, for compatibility with `void` pointers")]
+pub(crate) struct CVoidValue;
+
+#[derive(Diagnostic)]
 #[diag("MIR pass `{$name}` is unknown and will be ignored")]
 pub(crate) struct UnknownPassName<'a> {
     pub(crate) name: &'a str,
