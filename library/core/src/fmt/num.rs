@@ -838,7 +838,7 @@ unsafe fn write_quad(buf: &mut [MaybeUninit<u8>], quad: u64) {
     // pairs are disjoint from it because `DECIMAL_PAIRS` is static RO storage.
     unsafe {
         let pairs = DECIMAL_PAIRS.as_ptr();
-        let dst = buf.as_mut_ptr().cast::<u8>();
+        let dst = buf.as_mut_ptr().cast_init();
 
         core::ptr::copy_nonoverlapping(pairs.add(high * 2), dst, 2);
         core::ptr::copy_nonoverlapping(pairs.add(low * 2), dst.add(2), 2);
