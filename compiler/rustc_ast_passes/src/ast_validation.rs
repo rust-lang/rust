@@ -521,8 +521,14 @@ impl<'a> AstValidator<'a> {
             .flat_map(|i| i.attrs.as_ref())
             .filter(|attr| match &attr.kind {
                 AttrKind::Normal(normal) => {
-                    let arr =
-                        [sym::allow, sym::deny, sym::expect, sym::forbid, sym::rustc_splat, sym::warn];
+                    let arr = [
+                        sym::allow,
+                        sym::deny,
+                        sym::expect,
+                        sym::forbid,
+                        sym::rustc_splat,
+                        sym::warn,
+                    ];
                     !attr.has_any_name(&arr) && rustc_attr_parsing::is_builtin_attr(&normal.item)
                 }
                 AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace(_)) => false,

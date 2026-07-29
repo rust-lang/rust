@@ -10,6 +10,7 @@ pub(crate) struct SplatParser;
 impl NoArgsAttributeParser for SplatParser {
     const PATH: &[Symbol] = &[sym::rustc_splat];
     const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[Allow(Target::Param)]);
-    const STABILITY: AttributeStability = unstable!(splat, "the `rustc_splat` attribute is experimental");
+    const STABILITY: AttributeStability =
+        unstable!(splat, "the `rustc_splat` attribute is experimental");
     const CREATE: fn(Span) -> AttributeKind = AttributeKind::Splat;
 }
