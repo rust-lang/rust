@@ -782,7 +782,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// This takes the error provided, combines it with the span and any additional spans inside the
     /// error and emits it.
     pub(crate) fn report_error(
-        &mut self,
+        &self,
         span: Span,
         resolution_error: ResolutionError<'ra>,
     ) -> ErrorGuaranteed {
@@ -790,7 +790,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     pub(crate) fn into_struct_error(
-        &mut self,
+        &self,
         span: Span,
         resolution_error: ResolutionError<'ra>,
     ) -> Diag<'_> {
@@ -1459,7 +1459,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     pub(crate) fn add_scope_set_candidates(
-        &mut self,
+        &self,
         suggestions: &mut Vec<TypoSuggestion>,
         scope_set: ScopeSet<'ra>,
         ps: &ParentScope<'ra>,
@@ -1560,7 +1560,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     /// Lookup typo candidate in scope for a macro or import.
     fn early_lookup_typo_candidate(
-        &mut self,
+        &self,
         scope_set: ScopeSet<'ra>,
         parent_scope: &ParentScope<'ra>,
         ident: Ident,
@@ -1828,7 +1828,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// N.B., the method does not look into imports, but this is not a problem,
     /// since we report the definitions (thus, the de-aliased imports).
     pub(crate) fn lookup_import_candidates<FilterFn>(
-        &mut self,
+        &self,
         lookup_ident: Ident,
         namespace: Namespace,
         parent_scope: &ParentScope<'ra>,
@@ -3310,7 +3310,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// ```
     #[instrument(level = "debug", skip(self, parent_scope))]
     fn make_missing_self_suggestion(
-        &mut self,
+        &self,
         mut path: Vec<Segment>,
         parent_scope: &ParentScope<'ra>,
     ) -> Option<(Vec<Segment>, Option<String>)> {
@@ -3330,7 +3330,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// ```
     #[instrument(level = "debug", skip(self, parent_scope))]
     fn make_missing_crate_suggestion(
-        &mut self,
+        &self,
         mut path: Vec<Segment>,
         parent_scope: &ParentScope<'ra>,
     ) -> Option<(Vec<Segment>, Option<String>)> {
@@ -3362,7 +3362,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// ```
     #[instrument(level = "debug", skip(self, parent_scope))]
     fn make_missing_super_suggestion(
-        &mut self,
+        &self,
         mut path: Vec<Segment>,
         parent_scope: &ParentScope<'ra>,
     ) -> Option<(Vec<Segment>, Option<String>)> {
@@ -3385,7 +3385,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// name as the first part of path.
     #[instrument(level = "debug", skip(self, parent_scope))]
     fn make_external_crate_suggestion(
-        &mut self,
+        &self,
         mut path: Vec<Segment>,
         parent_scope: &ParentScope<'ra>,
     ) -> Option<(Vec<Segment>, Option<String>)> {
