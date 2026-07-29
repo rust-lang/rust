@@ -24,7 +24,7 @@
 use std::cell::Ref;
 use std::collections::BTreeSet;
 use std::ops::ControlFlow;
-use std::sync::{Arc, Once};
+use std::sync::{Arc, OnceLock};
 use std::{fmt, mem};
 
 use diagnostics::{ParamKindInEnumDiscriminant, ParamKindInNonTrivialAnonConst};
@@ -633,7 +633,22 @@ impl BindingKey {
     }
 }
 
-type Resolutions<'ra> = CmRefCell<FxIndexMap<BindingKey, NameResolutionRef<'ra>>>;
+type ResolutionTable<'ra> = FxIndexMap<BindingKey, NameResolutionRef<'ra>>;
+
+enum Resolutions<'ra> {
+    Local(CmRefCell<ResolutionTable<'ra>>),
+    Extern(OnceLock<CmRefCell<ResolutionTable<'ra>>>),
+}
+
+impl<'ra> Resolutions<'ra> {
+    fn new(local: bool) -> Self {
+        if local {
+            Resolutions::Local(Default::default())
+        } else {
+            Resolutions::Extern(Default::default())
+        }
+    }
+}
 
 /// One node in the tree of modules.
 ///
@@ -655,8 +670,6 @@ struct ModuleData<'ra> {
     /// Mapping between names and their (possibly in-progress) resolutions in this module.
     /// Resolutions in modules from other crates are not populated until accessed.
     lazy_resolutions: Resolutions<'ra>,
-    /// True if this is a module from other crate that needs to be populated on access.
-    populate_on_access: Once,
     /// Used to disambiguate underscore items (`const _: T = ...`) in the module.
     underscore_disambiguator: CmCell<u32>,
 
@@ -710,6 +723,7 @@ impl<'ra> ModuleData<'ra> {
         vis: Visibility<ModId>,
         arenas: &'ra ResolverArenas<'ra>,
     ) -> Self {
+        let lazy_resolutions = Resolutions::new(kind.is_local());
         let self_decl = match kind {
             ModuleKind::Def(def_kind, def_id, ..) => {
                 let expn_id = expansion.as_local().unwrap_or(LocalExpnId::ROOT);
@@ -720,8 +734,7 @@ impl<'ra> ModuleData<'ra> {
         ModuleData {
             parent,
             kind,
-            lazy_resolutions: Default::default(),
-            populate_on_access: Once::new(),
+            lazy_resolutions,
             underscore_disambiguator: CmCell::new(0),
             unexpanded_invocations: Default::default(),
             no_implicit_prelude,
@@ -2164,15 +2177,16 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         self.tcx.hir_arena.alloc_slice(&import_ids)
     }
 
-    fn resolutions(&self, module: Module<'ra>) -> &'ra Resolutions<'ra> {
-        if !module.is_local() {
-            // as long as 1 thread is building this external table, all other threads will wait
-            module.populate_on_access.call_once(|| {
-                *module.lazy_resolutions.borrow_mut_unchecked() =
-                    self.build_reduced_graph_external(module.expect_extern());
-            });
+    fn resolutions(&self, module: Module<'ra>) -> &'ra CmRefCell<ResolutionTable<'ra>> {
+        match &module.0.0.lazy_resolutions {
+            Resolutions::Local(local_res) => local_res,
+            Resolutions::Extern(extern_res) => {
+                // as long as 1 thread is building this external table, all other threads will wait
+                extern_res.get_or_init(|| {
+                    CmRefCell::new(self.build_reduced_graph_external(module.expect_extern()))
+                })
+            }
         }
-        &module.0.0.lazy_resolutions
     }
 
     fn resolution(
@@ -2908,13 +2922,6 @@ mod ref_mut {
     impl<T> CmRefCell<T> {
         pub(crate) fn new(value: T) -> CmRefCell<T> {
             CmRefCell(RefCell::new(value))
-        }
-
-        #[track_caller]
-        // FIXME: this should be eliminated in the process of migration
-        // to parallel name resolution.
-        pub(crate) fn borrow_mut_unchecked(&self) -> RefMut<'_, T> {
-            self.0.borrow_mut()
         }
 
         #[track_caller]
