@@ -1,0 +1,40 @@
+error[E0277]: the trait bound `(): Bar` is not satisfied
+  --> $DIR/closure-trailing-semicolon-impl-trait-issue-54771.rs:10:5
+   |
+LL | /     bar(|| {
+LL | |         5u8;
+   | |         ---- help: remove this semicolon
+   | |         |
+   | |         this expression has type `u8`, which implements `Bar`
+LL | |     });
+   | |______^ the trait `Bar` is not implemented for `()`
+   |
+note: required by a bound in `bar`
+  --> $DIR/closure-trailing-semicolon-impl-trait-issue-54771.rs:7:11
+   |
+LL | fn bar<R: Bar>(_: impl Fn() -> R) {}
+   |           ^^^ required by this bound in `bar`
+
+error[E0277]: the trait bound `(): Bar` is not satisfied
+  --> $DIR/closure-trailing-semicolon-impl-trait-issue-54771.rs:14:5
+   |
+LL | /     bar(|| {
+LL | |         5u8;
+LL | |         ()
+LL | |     });
+   | |______^ the trait `Bar` is not implemented for `()`
+   |
+help: the trait `Bar` is implemented for `u8`
+  --> $DIR/closure-trailing-semicolon-impl-trait-issue-54771.rs:5:1
+   |
+LL | impl Bar for u8 {}
+   | ^^^^^^^^^^^^^^^
+note: required by a bound in `bar`
+  --> $DIR/closure-trailing-semicolon-impl-trait-issue-54771.rs:7:11
+   |
+LL | fn bar<R: Bar>(_: impl Fn() -> R) {}
+   |           ^^^ required by this bound in `bar`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

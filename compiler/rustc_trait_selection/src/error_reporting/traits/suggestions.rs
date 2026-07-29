@@ -2420,38 +2420,97 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         span: Span,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> bool {
+        if !trait_pred.self_ty().skip_binder().is_unit() {
+            return false;
+        }
+
+        let Some(typeck_results) = &self.typeck_results else {
+            return false;
+        };
+
+        let find_candidate = |blk: &'tcx hir::Block<'tcx>| {
+            if blk.expr.is_some() {
+                return None;
+            }
+            let [.., stmt] = blk.stmts else {
+                return None;
+            };
+            let hir::StmtKind::Semi(expr) = stmt.kind else {
+                return None;
+            };
+            let ty = typeck_results.expr_ty_opt(expr)?;
+            let new_obligation = self.mk_trait_obligation_with_new_self_ty(
+                obligation.param_env,
+                trait_pred.map_bound(|trait_pred| (trait_pred, ty)),
+            );
+            self.predicate_may_hold(&new_obligation).then_some((stmt, expr, ty))
+        };
+
         let node = self.tcx.hir_node_by_def_id(obligation.cause.body_def_id);
-        if let hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn {sig, body: body_id, .. }, .. }) = node
+        let mut candidate = if let hir::Node::Item(hir::Item {
+            kind: hir::ItemKind::Fn { sig, body: body_id, .. },
+            ..
+        }) = node
             && let hir::ExprKind::Block(blk, _) = &self.tcx.hir_body(*body_id).value.kind
             && sig.decl.output.span().overlaps(span)
             && blk.expr.is_none()
-            && trait_pred.self_ty().skip_binder().is_unit()
-            && let Some(stmt) = blk.stmts.last()
-            && let hir::StmtKind::Semi(expr) = stmt.kind
-            // Only suggest this if the expression behind the semicolon implements the predicate
-            && let Some(typeck_results) = &self.typeck_results
-            && let Some(ty) = typeck_results.expr_ty_opt(expr)
-            && self.predicate_may_hold(&self.mk_trait_obligation_with_new_self_ty(
-                obligation.param_env, trait_pred.map_bound(|trait_pred| (trait_pred, ty))
-            ))
         {
-            err.span_label(
-                expr.span,
-                format!(
-                    "this expression has type `{}`, which implements `{}`",
-                    ty,
-                    trait_pred.print_modifiers_and_trait_path()
-                ),
-            );
-            err.span_suggestion(
-                self.tcx.sess.source_map().end_point(stmt.span),
-                "remove this semicolon",
-                "",
-                Applicability::MachineApplicable,
-            );
-            return true;
+            find_candidate(blk)
+        } else {
+            None
+        };
+
+        if candidate.is_none() {
+            // A failed bound on a closure's inferred return type points at the outer call. Recover
+            // that call so we can inspect the closure body that produced `()`.
+            let Some(body) = self.tcx.hir_maybe_body_owned_by(obligation.cause.body_def_id) else {
+                return false;
+            };
+            let mut expr_finder = FindExprBySpan::new(span, self.tcx);
+            expr_finder.visit_expr(body.value);
+            let Some(call_expr) = expr_finder.result else {
+                return false;
+            };
+            let args = match call_expr.kind {
+                hir::ExprKind::Call(_, args) | hir::ExprKind::MethodCall(_, _, args, _) => args,
+                _ => return false,
+            };
+            let mut candidates = args.iter().filter_map(|arg| {
+                let hir::ExprKind::Closure(closure) = arg.kind else {
+                    return None;
+                };
+                let hir::ExprKind::Block(blk, _) = self.tcx.hir_body(closure.body).value.kind
+                else {
+                    return None;
+                };
+                find_candidate(blk)
+            });
+            // With multiple plausible closure arguments we cannot tell which one introduced the
+            // failing bound, so avoid suggesting an edit to the wrong closure.
+            candidate = candidates.next();
+            if candidates.next().is_some() {
+                return false;
+            }
         }
-        false
+
+        let Some((stmt, expr, ty)) = candidate else {
+            return false;
+        };
+        err.span_label(
+            expr.span,
+            format!(
+                "this expression has type `{}`, which implements `{}`",
+                ty,
+                trait_pred.print_modifiers_and_trait_path()
+            ),
+        );
+        err.span_suggestion(
+            self.tcx.sess.source_map().end_point(stmt.span),
+            "remove this semicolon",
+            "",
+            Applicability::MachineApplicable,
+        );
+        true
     }
 
     pub(super) fn suggest_borrow_for_unsized_closure_return<G: EmissionGuarantee>(
