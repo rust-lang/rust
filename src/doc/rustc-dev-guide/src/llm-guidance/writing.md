@@ -55,8 +55,10 @@ For example:
 - Search for related issues and PRs.
 - Find relevant code, tests, git history, and Zulip discussion.
 - If this is a cross-cutting change, consult the "cross-cutting" section of [the contributing docs](./contributing.md#pull-requests).
-- Make the smallest change that fixes the problem.
+- [Make the smallest change that fixes the problem][small-cls].
   Do not combine it with unrelated refactors or cleanups.
+
+[small-cls]: https://google.github.io/eng-practices/review/developer/small-cls.html
 
 ### While working
 
@@ -91,8 +93,10 @@ trying to keep data in sync between two different places is a code smell.
 
 When practical, [make invalid states unrepresentable](https://kentcdodds.com/blog/make-impossible-states-impossible), [not just checked at construction time](https://lexi-lambda.github.io/blog/2020/11/01/names-are-not-type-safety/).
 
-Write comments that say *why* you have done a thing, not *what* you have done.
+[Write comments that say *why*][mit-comment-style] you have done a thing, not *what* you have done.
 It's ok to go into detail about non-obvious bugs.
+
+[mit-comment-style]: https://mitcommlab.mit.edu/broad/commkit/coding-and-comment-style/
 
 Preserve existing behavior.
 Consider platform differences and error cases.
