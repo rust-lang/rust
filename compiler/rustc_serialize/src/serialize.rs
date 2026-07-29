@@ -332,14 +332,14 @@ impl<D: Decoder, T: Decodable<D>> Decodable<D> for Vec<T> {
 
 impl<S: Encoder, T: Encodable<S>, const N: usize> Encodable<S> for [T; N] {
     fn encode(&self, s: &mut S) {
-        self.as_slice().encode(s);
+        for e in self {
+            e.encode(s);
+        }
     }
 }
 
 impl<D: Decoder, T: Decodable<D>, const N: usize> Decodable<D> for [T; N] {
     fn decode(d: &mut D) -> [T; N] {
-        let len = d.read_usize();
-        assert!(len == N);
         std::array::from_fn(move |_| Decodable::decode(d))
     }
 }
