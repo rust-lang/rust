@@ -1,6 +1,6 @@
 use rustc_ast as ast;
 use rustc_ast::token::{self, MetaVarKind};
-use rustc_ast::tokenstream::{ParserRange, WithTokens};
+use rustc_ast::tokenstream::ParserRange;
 use rustc_ast::{Attribute, attr};
 use rustc_errors::codes::*;
 use rustc_errors::{Diag, PResult, msg};
@@ -10,7 +10,6 @@ use tracing::debug;
 
 use super::{
     AllowConstBlockItems, AttrWrapper, Capturing, FnParseMode, ForceCollect, Parser, PathStyle,
-    Trailing, UsePreAttrPos,
 };
 use crate::parser::FnContext;
 use crate::{diagnostics, exp};
@@ -149,14 +148,7 @@ impl<'a> Parser<'a> {
         bracket_res?;
         let open_span = self.prev_token.span;
 
-        let attr_item = self.parse_attr_item(ForceCollect::No)?;
-        // `attr_item` will never have tokens: within `parse_attr_item`, `collect_tokens`
-        // attaches tokens only if:
-        // - `ForceCollect::Yes` is passed (not true), or
-        // - attributes on the parsed node require tokens (not true, because attr items can't
-        //   have attributes of their own, hence the empty `HasAttrs` impl for `AttrItem`).
-        assert!(attr_item.tokens.is_none());
-        let mut attr_item = attr_item.node;
+        let mut attr_item = self.parse_attr_item()?;
 
         self.expect(exp!(CloseBracket))?;
         let close_span = self.prev_token.span;
@@ -339,41 +331,31 @@ impl<'a> Parser<'a> {
     ///     PATH
     ///     PATH `=` UNSUFFIXED_LIT
     /// The delimiters or `=` are still put into the resulting token stream.
-    pub fn parse_attr_item(
-        &mut self,
-        force_collect: ForceCollect,
-    ) -> PResult<'a, WithTokens<ast::AttrItem>> {
+    pub fn parse_attr_item(&mut self) -> PResult<'a, ast::AttrItem> {
         if let Some(item) = self.eat_metavar_seq_with_matcher(
             |mv_kind| matches!(mv_kind, MetaVarKind::Meta { .. }),
-            |this| this.parse_attr_item(force_collect),
+            |this| this.parse_attr_item(),
         ) {
             return Ok(item);
         }
 
-        // Attr items don't have attributes.
-        self.collect_tokens(None, AttrWrapper::empty(), force_collect, |this, _empty_attrs| {
-            let lo = this.token.span;
-            let is_unsafe = this.eat_keyword(exp!(Unsafe));
-            let unsafety = if is_unsafe {
-                let unsafe_span = this.prev_token.span;
-                this.expect(exp!(OpenParen))?;
-                ast::Safety::Unsafe(unsafe_span)
-            } else {
-                ast::Safety::Default
-            };
+        let lo = self.token.span;
+        let is_unsafe = self.eat_keyword(exp!(Unsafe));
+        let unsafety = if is_unsafe {
+            let unsafe_span = self.prev_token.span;
+            self.expect(exp!(OpenParen))?;
+            ast::Safety::Unsafe(unsafe_span)
+        } else {
+            ast::Safety::Default
+        };
 
-            let path = this.parse_path(PathStyle::Mod)?;
-            let args = this.parse_attr_args()?;
-            if is_unsafe {
-                this.expect(exp!(CloseParen))?;
-            }
-            let span = lo.to(this.prev_token.span);
-            Ok((
-                WithTokens::new(ast::AttrItem::new(unsafety, path, args, span)),
-                Trailing::No,
-                UsePreAttrPos::No,
-            ))
-        })
+        let path = self.parse_path(PathStyle::Mod)?;
+        let args = self.parse_attr_args()?;
+        if is_unsafe {
+            self.expect(exp!(CloseParen))?;
+        }
+        let span = lo.to(self.prev_token.span);
+        Ok(ast::AttrItem::new(unsafety, path, args, span))
     }
 
     /// Parses attributes that appear after the opening of an item. These should
@@ -457,10 +439,9 @@ impl<'a> Parser<'a> {
             return if has_meta_form {
                 let attr_item = self
                     .eat_metavar_seq(MetaVarKind::Meta { has_meta_form: true }, |this| {
-                        this.parse_attr_item(ForceCollect::No)
+                        this.parse_attr_item()
                     })
-                    .unwrap()
-                    .node;
+                    .unwrap();
                 Ok(attr_item.meta(attr_item.path.span).unwrap())
             } else {
                 self.unexpected_any()

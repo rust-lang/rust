@@ -17,7 +17,7 @@ use crate::ast::{
     PathSegment, Safety, SyntheticAttr,
 };
 use crate::token::{
-    self, CommentKind, Delimiter, DocFragmentKind, InvisibleOrigin, MetaVarKind, Token,
+    self, CommentKind, Delimiter, DocFragmentKind, IdentIsRaw, InvisibleOrigin, MetaVarKind, Token,
 };
 use crate::tokenstream::{
     DelimSpacing, DelimSpan, Spacing, TokenStream, TokenStreamIter, TokenTree,
@@ -474,7 +474,7 @@ impl AttrItem {
     }
 
     /// Synthesizes token trees for the attr item. See `Attribute::token_trees` for more details.
-    fn token_trees(&self) -> Vec<TokenTree> {
+    pub fn token_trees(&self) -> Vec<TokenTree> {
         let mut trees = vec![];
 
         let num_segs = self.path.segments.len();
@@ -534,7 +534,7 @@ impl AttrItem {
         if let Some((kw, kw_span)) = safety_kw {
             vec![
                 TokenTree::Token(
-                    Token::from_ast_ident(Ident::new(kw, kw_span)),
+                    Token::new(token::Ident(kw, IdentIsRaw::No), kw_span),
                     Spacing::JointHidden,
                 ),
                 TokenTree::Delimited(

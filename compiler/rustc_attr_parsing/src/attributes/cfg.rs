@@ -7,7 +7,7 @@ use rustc_errors::{Applicability, Diagnostic, PResult, msg};
 use rustc_feature::{Features, GatedCfg, find_gated_cfg};
 use rustc_hir::attrs::{CfgEntry, RustcVersion};
 use rustc_hir::{AttrPath, Target};
-use rustc_parse::parser::{ForceCollect, Parser, Recovery};
+use rustc_parse::parser::{Parser, Recovery};
 use rustc_parse::{exp, parse_in};
 use rustc_session::Session;
 use rustc_session::config::ExpectedValues;
@@ -435,9 +435,8 @@ fn parse_cfg_attr_internal<'a>(
     // Presumably, the majority of the time there will only be one attr.
     let mut expanded_attrs = Vec::with_capacity(1);
     while parser.token != token::Eof {
-        let item = parser.parse_attr_item(ForceCollect::No)?;
-        assert!(item.tokens.is_none());
-        expanded_attrs.push(item.node);
+        let item = parser.parse_attr_item()?;
+        expanded_attrs.push(item);
         if !parser.eat(exp!(Comma)) {
             break;
         }
