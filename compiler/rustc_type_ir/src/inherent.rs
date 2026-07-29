@@ -463,8 +463,8 @@ pub trait Predicate<I: Interner<Predicate = Self>>:
     + UpcastFrom<I, ty::Binder<I, ty::TraitRef<I>>>
     + UpcastFrom<I, ty::TraitPredicate<I>>
     + UpcastFrom<I, ty::ProjectionPredicate<I>>
-    + UpcastFrom<I, ty::OutlivesPredicate<I, I::Ty>>
-    + UpcastFrom<I, ty::OutlivesPredicate<I, Region<I>>>
+    + UpcastFrom<I, ty::OutlivesClause<I, I::Ty>>
+    + UpcastFrom<I, ty::OutlivesClause<I, Region<I>>>
     + IntoKind<Kind = ty::Binder<I, ty::PredicateKind<I>>>
     + Elaboratable<I>
 {
@@ -511,7 +511,7 @@ pub trait Clause<I: Interner<Clause = Self>>:
 {
     fn as_predicate(self) -> I::Predicate;
 
-    fn as_type_outlives_clause(self) -> Option<ty::Binder<I, ty::OutlivesPredicate<I, I::Ty>>> {
+    fn as_type_outlives_clause(self) -> Option<ty::Binder<I, ty::OutlivesClause<I, I::Ty>>> {
         self.kind()
             .map_bound(|clause| {
                 if let ty::ClauseKind::TypeOutlives(outlives) = clause {

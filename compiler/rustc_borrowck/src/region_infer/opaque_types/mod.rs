@@ -531,7 +531,7 @@ pub(crate) fn apply_definition_site_hidden_types<'tcx>(
     body: &Body<'tcx>,
     universal_regions: &UniversalRegions<'tcx>,
     region_bound_pairs: &RegionBoundPairs<'tcx>,
-    known_type_outlives_obligations: &[ty::PolyTypeOutlivesPredicate<'tcx>],
+    known_type_outlives_obligations: &[ty::PolyTypeOutlivesClause<'tcx>],
     constraints: &mut MirTypeckRegionConstraints<'tcx>,
     hidden_types: &mut FxIndexMap<LocalDefId, ty::DefinitionSiteHiddenType<'tcx>>,
     opaque_types: &[(OpaqueTypeKey<'tcx>, ProvisionalHiddenType<'tcx>)],

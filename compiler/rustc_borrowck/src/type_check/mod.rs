@@ -239,7 +239,7 @@ struct TypeChecker<'a, 'tcx> {
     /// all of the promoted items.
     user_type_annotations: &'a CanonicalUserTypeAnnotations<'tcx>,
     region_bound_pairs: &'a RegionBoundPairs<'tcx>,
-    known_type_outlives_obligations: &'a [ty::PolyTypeOutlivesPredicate<'tcx>],
+    known_type_outlives_obligations: &'a [ty::PolyTypeOutlivesClause<'tcx>],
     reported_errors: FxIndexSet<(Ty<'tcx>, Span)>,
     universal_regions: &'a UniversalRegions<'tcx>,
     location_table: &'a PoloniusLocationTable,
@@ -257,7 +257,7 @@ pub(crate) struct MirTypeckResults<'tcx> {
     pub(crate) constraints: MirTypeckRegionConstraints<'tcx>,
     pub(crate) universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
     pub(crate) region_bound_pairs: Frozen<RegionBoundPairs<'tcx>>,
-    pub(crate) known_type_outlives_obligations: Frozen<Vec<ty::PolyTypeOutlivesPredicate<'tcx>>>,
+    pub(crate) known_type_outlives_obligations: Frozen<Vec<ty::PolyTypeOutlivesClause<'tcx>>>,
     pub(crate) deferred_closure_requirements: DeferredClosureRequirements<'tcx>,
     pub(crate) polonius_context: Option<PoloniusContext>,
 }

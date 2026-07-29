@@ -20,7 +20,7 @@ impl Proj for MyField {
     type Assoc = u8;
 }
 
-// While wf-checking the global bounds of `fn foo`, elaborating this outlives predicate triggered a
+// While wf-checking the global bounds of `fn foo`, elaborating this outlives clause triggered a
 // cycle in the search graph along a particular probe path, which was not an actual solution.
 // That cycle then resulted in a forced false-positive ambiguity due to a performance hack in the
 // search graph and then ended up floundering the root goal evaluation.

@@ -198,7 +198,7 @@ RPITITs begin by copying the predicates of the method that defined it,
 both on the trait and impl side.
 
 Additionally, we install "bidirectional outlives" predicates.
-Specifically, we add region-outlives predicates in both directions for
+Specifically, we add region-outlives clauses in both directions for
 each captured early-bound lifetime that constrains it to be equal to the
 duplicated early-bound lifetime that results from lowering. This is best
 illustrated in an example:

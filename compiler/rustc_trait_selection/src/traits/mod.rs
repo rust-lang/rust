@@ -343,7 +343,7 @@ fn do_normalize_clauses<'tcx>(
     // support for implied bounds on binders.
     //
     // This is required by trait-system-refactor-initiative#166. The new solver encounters
-    // this more frequently as we entirely ignore outlives predicates with the old solver.
+    // this more frequently as we entirely ignore outlives clauses with the old solver.
     let _errors = infcx.resolve_regions(cause.body_def_id, elaborated_env, []);
     match infcx.fully_resolve(clauses) {
         Ok(clauses) => Ok(clauses),

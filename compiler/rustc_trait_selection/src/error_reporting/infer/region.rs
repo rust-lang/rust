@@ -452,7 +452,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     for (clause, span) in
                         self.tcx.clauses_of(def_id).instantiate_identity(self.tcx).into_iter()
                     {
-                        if let ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(a, b)) =
+                        if let ty::ClauseKind::TypeOutlives(ty::OutlivesClause(a, b)) =
                             clause.kind().skip_binder()
                             && let ty::Param(param) = a.kind()
                             && param.name == kw::SelfUpper

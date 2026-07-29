@@ -215,7 +215,7 @@ fn variance_of_opaque(
                 }
                 term.visit_with(&mut collector);
             }
-            ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(_, region)) => {
+            ty::ClauseKind::TypeOutlives(ty::OutlivesClause(_, region)) => {
                 region.visit_with(&mut collector);
             }
             _ => {

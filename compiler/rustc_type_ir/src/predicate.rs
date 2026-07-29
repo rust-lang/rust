@@ -21,9 +21,9 @@ use crate::{self as ty, Alias, Interner, Region};
     feature = "nightly",
     derive(Decodable_NoContext, Encodable_NoContext, StableHash_NoContext)
 )]
-pub struct OutlivesPredicate<I: Interner, A>(pub A, pub Region<I>);
+pub struct OutlivesClause<I: Interner, A>(pub A, pub Region<I>);
 
-impl<I: Interner, A: Eq> Eq for OutlivesPredicate<I, A> {}
+impl<I: Interner, A: Eq> Eq for OutlivesClause<I, A> {}
 
 /// `'a == 'b`.
 /// For the rationale behind having this instead of a pair of bidirectional
@@ -39,8 +39,8 @@ pub struct RegionEqPredicate<I: Interner>(pub Region<I>, pub Region<I>);
 
 impl<I: Interner> RegionEqPredicate<I> {
     /// Decompose `'a == 'b` into `['a: 'b, 'b: 'a]`
-    pub fn into_bidirectional_outlives(self) -> [OutlivesPredicate<I, I::GenericArg>; 2] {
-        [OutlivesPredicate(self.0.into(), self.1), OutlivesPredicate(self.1.into(), self.0)]
+    pub fn into_bidirectional_outlives(self) -> [OutlivesClause<I, I::GenericArg>; 2] {
+        [OutlivesClause(self.0.into(), self.1), OutlivesClause(self.1.into(), self.0)]
     }
 }
 
@@ -51,12 +51,12 @@ impl<I: Interner> RegionEqPredicate<I> {
     derive(Decodable_NoContext, Encodable_NoContext, StableHash_NoContext)
 )]
 pub enum RegionConstraint<I: Interner> {
-    Outlives(OutlivesPredicate<I, I::GenericArg>),
+    Outlives(OutlivesClause<I, I::GenericArg>),
     Eq(RegionEqPredicate<I>),
 }
 
-impl<I: Interner> From<OutlivesPredicate<I, I::GenericArg>> for RegionConstraint<I> {
-    fn from(value: OutlivesPredicate<I, I::GenericArg>) -> Self {
+impl<I: Interner> From<OutlivesClause<I, I::GenericArg>> for RegionConstraint<I> {
+    fn from(value: OutlivesClause<I, I::GenericArg>) -> Self {
         RegionConstraint::Outlives(value)
     }
 }
@@ -80,7 +80,7 @@ impl<I: Interner> RegionConstraint<I> {
 
     /// If `self` is an eq constraint, iterate through its decomposed bidirectional outlives
     /// bounds and if not, just iterate once for the outlives bound itself.
-    pub fn iter_outlives(self) -> impl Iterator<Item = OutlivesPredicate<I, I::GenericArg>> {
+    pub fn iter_outlives(self) -> impl Iterator<Item = OutlivesClause<I, I::GenericArg>> {
         match self {
             RegionConstraint::Outlives(outlives) => iter::once(outlives).chain(None),
             RegionConstraint::Eq(eq) => {

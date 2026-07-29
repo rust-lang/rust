@@ -1885,7 +1885,7 @@ impl ExplicitOutlivesRequirements {
 
         inferred_outlives
             .filter_map(|(clause, _)| match clause.kind().skip_binder() {
-                ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(a, b)) => match a.kind() {
+                ty::ClauseKind::RegionOutlives(ty::OutlivesClause(a, b)) => match a.kind() {
                     ty::ReEarlyParam(ebr)
                         if item_generics.region_param(ebr, tcx).def_id == lifetime.to_def_id() =>
                     {
@@ -1904,7 +1904,7 @@ impl ExplicitOutlivesRequirements {
     ) -> Vec<ty::Region<'tcx>> {
         inferred_outlives
             .filter_map(|(clause, _)| match clause.kind().skip_binder() {
-                ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(a, b)) => {
+                ty::ClauseKind::TypeOutlives(ty::OutlivesClause(a, b)) => {
                     a.is_param(index).then_some(b)
                 }
                 _ => None,

@@ -319,7 +319,7 @@ fn gather_explicit_clauses_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generi
                         }
                     };
                     let clause =
-                        ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(r1, r2)).upcast(tcx);
+                        ty::ClauseKind::RegionOutlives(ty::OutlivesClause(r1, r2)).upcast(tcx);
                     (clause, span)
                 }))
             }
@@ -389,12 +389,12 @@ fn compute_bidirectional_outlives_clauses<'tcx>(
             );
             let span = tcx.def_span(param.def_id);
             clauses.push((
-                ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(orig_lifetime, dup_lifetime))
+                ty::ClauseKind::RegionOutlives(ty::OutlivesClause(orig_lifetime, dup_lifetime))
                     .upcast(tcx),
                 span,
             ));
             clauses.push((
-                ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(dup_lifetime, orig_lifetime))
+                ty::ClauseKind::RegionOutlives(ty::OutlivesClause(dup_lifetime, orig_lifetime))
                     .upcast(tcx),
                 span,
             ));
