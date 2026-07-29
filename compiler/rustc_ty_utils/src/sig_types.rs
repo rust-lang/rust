@@ -34,8 +34,8 @@ pub fn walk_types<'tcx, V: SpannedTypeVisitor<'tcx>>(
                 visitor.visit(ty.span, tcx.type_of(item).instantiate_identity().skip_norm_wip())
             );
         }
-        for (pred, span) in tcx.explicit_clauses_of(item).instantiate_identity(tcx) {
-            try_visit!(visitor.visit(span, pred.skip_norm_wip()));
+        for (clause, span) in tcx.explicit_clauses_of(item).instantiate_identity(tcx) {
+            try_visit!(visitor.visit(span, clause.skip_norm_wip()));
         }
         V::Result::output()
     };

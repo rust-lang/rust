@@ -126,7 +126,7 @@ fn relate_mir_and_user_args<'tcx>(
 
     ocx.eq(&cause, param_env, mir_ty, ty)?;
 
-    // Prove the predicates coming along with `def_id`.
+    // Prove the clauses coming along with `def_id`.
     //
     // Also, normalize the `instantiated_clauses`
     // because otherwise we wind up with duplicate "type

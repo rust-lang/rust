@@ -616,7 +616,7 @@ fn is_uninit_value_valid_for_ty_fallback<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'t
     }
 }
 
-/// Gets an iterator over all predicates which apply to the given item.
+/// Gets an iterator over all clauses which apply to the given item.
 pub fn all_clauses_of(tcx: TyCtxt<'_>, id: DefId) -> impl Iterator<Item = &(ty::Clause<'_>, Span)> {
     let mut next_id = Some(id);
     iter::from_fn(move || {
@@ -719,7 +719,10 @@ pub fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'t
             Some(ExprFnSig::Closure(decl, subs.as_closure().sig()))
         },
         ty::FnDef(id, subs) => Some(ExprFnSig::Sig(
-            cx.tcx.fn_sig(id).instantiate(cx.tcx, subs.no_bound_vars().unwrap()).skip_norm_wip(),
+            cx.tcx
+                .fn_sig(id)
+                .instantiate(cx.tcx, subs.no_bound_vars().unwrap())
+                .skip_norm_wip(),
             Some(id),
         )),
         ty::Alias(
