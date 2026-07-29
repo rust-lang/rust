@@ -692,11 +692,12 @@ impl u128 {
 
             let quad = remain % 1_00_00;
             remain /= 1_00_00;
-            // SAFETY: quad is a remainder modulo 10_000. The offset checks
-            // above reserve exactly four bytes in buf.
-            unsafe {
-                write_quad(buf.get_unchecked_mut(offset..offset + 4), quad);
-            }
+
+            write_quad(
+                // SAFETY: `offset >= 4` was asserted above.
+                unsafe { buf.get_unchecked_mut(offset..offset + 4) },
+                quad,
+            );
         }
 
         // Format per two digits from the lookup table.
@@ -813,12 +814,8 @@ impl i128 {
 }
 
 /// Writes `quad` as exactly four digits (for example: `42` becomes `"0042"`).
-///
-/// # Safety
-///
-/// `quad` must be below 10_000 and `buf` must contain exactly four bytes.
 #[inline(always)]
-unsafe fn write_quad(buf: &mut [MaybeUninit<u8>], quad: u64) {
+fn write_quad(buf: &mut [MaybeUninit<u8>], quad: u64) {
     // SAFETY: These are this function's caller-provided invariants.
     unsafe {
         core::hint::assert_unchecked(quad < 10_000);
@@ -834,15 +831,10 @@ unsafe fn write_quad(buf: &mut [MaybeUninit<u8>], quad: u64) {
     let low = low as usize;
 
     // SAFETY: `high` and `low` are below 100 because `quad` is below 10_000.
-    // The destination has four bytes by the precondition, and the two source
-    // pairs are disjoint from it because `DECIMAL_PAIRS` is static RO storage.
-    unsafe {
-        let pairs = DECIMAL_PAIRS.as_ptr();
-        let dst = buf.as_mut_ptr().cast_init();
+    unsafe { core::hint::assert_unchecked(high < 100 && low < 100) }
 
-        core::ptr::copy_nonoverlapping(pairs.add(high * 2), dst, 2);
-        core::ptr::copy_nonoverlapping(pairs.add(low * 2), dst.add(2), 2);
-    }
+    buf[0..2].write_copy_of_slice(&DECIMAL_PAIRS[high * 2..high * 2 + 2]);
+    buf[2..4].write_copy_of_slice(&DECIMAL_PAIRS[low * 2..low * 2 + 2]);
 }
 
 /// Encodes the 16 least-significant decimals of n into `buf[OFFSET .. OFFSET +
@@ -863,20 +855,20 @@ fn enc_16lsd<const OFFSET: usize>(buf: &mut [MaybeUninit<u8>], n: u64) {
         let quad = remain % 1_00_00;
         remain /= 1_00_00;
 
-        // SAFETY: `OFFSET + quad_index * 4` starts one of the four
-        // non-overlapping four-byte regions proven in bounds above.
-        unsafe {
-            write_quad(
-                buf.get_unchecked_mut(OFFSET + quad_index * 4..OFFSET + (quad_index + 1) * 4),
-                quad,
-            );
-        }
+        write_quad(
+            // SAFETY: `OFFSET + 16 <= buf.len()` and `quad_index < 4`, so this range is within `buf`.
+            unsafe {
+                buf.get_unchecked_mut(OFFSET + quad_index * 4..OFFSET + (quad_index + 1) * 4)
+            },
+            quad,
+        );
     }
 
-    // SAFETY: OFFSET starts the first four-byte region proven in bounds above.
-    unsafe {
-        write_quad(buf.get_unchecked_mut(OFFSET..OFFSET + 4), remain);
-    }
+    write_quad(
+        // SAFETY: `OFFSET + 16 <= buf.len()` was asserted above.
+        unsafe { buf.get_unchecked_mut(OFFSET..OFFSET + 4) },
+        remain,
+    );
 }
 
 /// Euclidean division plus remainder with constant 1E16 basically consumes 16
