@@ -545,7 +545,7 @@ impl TraitSignature {
         let attrs = AttrFlags::query(db, id.into());
         let source = loc.source(db);
         if source.value.auto_token().is_some() {
-            flags.insert(TraitFlags::AUTO);
+            flags.insert(TraitFlags::AUTO | TraitFlags::COINDUCTIVE);
         }
         if source.value.unsafe_token().is_some() {
             flags.insert(TraitFlags::UNSAFE);
