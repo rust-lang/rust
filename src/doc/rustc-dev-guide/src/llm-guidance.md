@@ -8,18 +8,35 @@ If the two conflict, Forge is canonical.
 
 ## Writing LLM-created code
 
+LLMs are a valuable tool, but one that is easy to misuse.
+The main risks are **overwhelming volume** and **lack of understanding**.
+When writing your PR, keep in mind that there is a person on the other end who needs to review and understand your change.
+Help us out by making your change small, targeted, and easy to review.
+
+Keep in mind this quote:
+
+> Programs must be written for people to read, and only incidentally for machines to execute.
+> — Harold Abelson and Gerald Jay Sussman, [*Structure and Interpretation of Computer Programs*][sicp]
+
+[sicp]: https://web.mit.edu/6.001/6.037/sicp.pdf
+
 ### Rules
 
-Before anything else, you **must** find a reviewer who volunteers to review your PR.
-LLM-created PRs without an assigned reviewer will be closed.
-If you do not know where to find a reviewer, see [#llm-mentoring] on Zulip.
+Before anything else, find a reviewer who volunteers to review your PR.
+If you do not know where to find a reviewer, ask in [#llm-mentoring] on Zulip.
+Your first message should say:
+
+- your relevant experience, so we can find an issue that's suitable for you
+- which problem (or kind of problem) you want to work on
+- (optional) ideas you have so far for a solution
+- (optional) how you expect to test your solution
 
 Disclose your use of LLMs, following the disclosure guidelines below.
 Write the disclosure yourself.
 You may use an LLM to privately review a disclosure you have written, but not to draft or rewrite it.
 
-You may *not* use an LLM to write doc-comments, `// SAFETY` comments, diagnostic wording, or soundness-critical code.
-Write them yourself instead.
+Write your own doc-comments, `// SAFETY` comments, diagnostic wording, and soundness-critical code.
+As before, you can use an LLM to review your work, but not to write it from scratch.
 If you don't know what counts as soundness-critical, discuss it with your reviewer.
 
 **Write your own PR description and comments**.
@@ -32,11 +49,11 @@ We want to hear from you, not from your agent.
 #### Before you write code
 
 Start with one PR at a time.
-We understand it's easy to be excited about contributing to Rust, but your PRs are not only a gift but a responsibility for the reviewers.
+Your PRs are not only a gift but a responsibility for reviewers.
 Go slow.
 
-Avoid E-easy and E-mentor issues.
-Those are intended for people to get familiar with the project, not for LLMs.
+Do not use an LLM for `E-easy` issues; those are meant for you to write the code yourself.
+Ask first before working on an `E-mentor` issue; mentors may not want to work with LLM-generated code.
 
 Determine whether this is a *useful* and *well-scoped* change.
 For example:
@@ -63,22 +80,24 @@ Review your own PR before opening it:
 Does it make sense? Can you tell what the goal of the PR is? Does it achieve that goal?
 
 [Run tests](tests/running.md) to verify your change works.
-Do NOT report which tests you ran in the PR description;
-that's useless to us, since CI will run them anyway.
+Do NOT report which UI tests you ran in the PR description;
+that's noise, since CI will run them anyway.
+If you did manual testing or benchmarking, do report that,
+but note that all LLM PRs must have automated tests.
 
-You must [review diagnostic snapshots](tests/adding.md#step-4-review-the-output);
+[Review diagnostic snapshots](tests/adding.md#step-4-review-the-output);
 don't simply `--bless` them away.
 
 We recommend using a different model for adversarial local review before publishing your changes.
-This does not replace human self-review.
+You're still responsible for reviewing your own changes yourself.
 
 #### Understand your own change
 
-You must understand and be able to explain your own change and its edge cases.
-Asking the LLM can be a starting point but is not sufficient.
-You are responsible for your own code; you cannot disclaim responsibility to your agent.
+We want you to understand and be able to explain your own change and its edge cases.
+Asking the LLM can be a starting point but it's not the same as explaining it yourself.
 
-Some questions that you should be able to answer:
+Try explaining your change to yourself before opening the PR.
+For example, ask yourself:
 
 - What is the original bug? When does it happen? How severe is it? What causes it?
 - Why is this the right fix? Are there other fixes possible? What are their advantages or disadvantages?
@@ -86,6 +105,9 @@ Some questions that you should be able to answer:
 - What behavior is *unchanged*? What test establishes that?
 - Why does your test trigger the bug?
 - What are you still not certain about?
+
+It's ok to be uncertain and to ask for help.
+We would much rather help you because you're not sure than have you guess wrong and then have to reverse-engineer where you went wrong.
 
 [`ast-grep`]: https://astgrep.com/
 
@@ -138,7 +160,7 @@ The following areas are currently banned:
 
 Point people to [#llm-mentoring] liberally.
 Deal with low-quality PRs by closing the PR and asking the author to follow the policy.
-Deal with borderline PRs by asking the author to do work that shows they're paying attention; it's ok to ask for that work before you've put much time into review yourself.
+Deal with borderline PRs by asking the author to put in the work themselves rather than offloading it to you.
 For example, ask them to reproduce the bug, explain the change in their own
 words, identify relevant edge cases, or add or justify tests.
 
