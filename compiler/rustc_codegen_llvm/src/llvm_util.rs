@@ -21,7 +21,7 @@ use rustc_target::spec::{
 use smallvec::{SmallVec, smallvec};
 
 use crate::back::write::create_informational_target_machine;
-use crate::{errors, llvm};
+use crate::{diagnostics, llvm};
 
 static INIT: Once = Once::new();
 
@@ -636,7 +636,8 @@ fn llvm_features_by_flags(sess: &Session, features: &mut Vec<String>) {
     // -Zfixed-x18
     if sess.opts.unstable_opts.fixed_x18 {
         if sess.target.arch != Arch::AArch64 {
-            sess.dcx().emit_fatal(errors::FixedX18InvalidArch { arch: sess.target.arch.desc() });
+            sess.dcx()
+                .emit_fatal(diagnostics::FixedX18InvalidArch { arch: sess.target.arch.desc() });
         } else {
             features.push("+reserve-x18".into());
         }
