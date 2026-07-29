@@ -1,12 +1,19 @@
+# Reviewing with LLMs
+
 ## Using an LLM to review code
 
 - If a more reliable tool, such as a linter or formatter, already exists for the language you're writing, we strongly suggest using that tool instead of or in addition to the LLM.
 - Configure LLM review tools to reduce false positives and excessive focus on trivialities, as these are common, exhausting failure modes.
-- Wherever possible, ask an LLM to *generate a linter*, which you then tell it to run.
+- Wherever possible, ask an LLM to *generate or configure a linter*, which you then tell it to run.
   This both saves on token costs, and allows people who are not using an LLM to run the analysis.
+  For example, if you have a codebase-specific wrapper around command spawning,
+  rather than getting an LLM to look for places where you should use the wrapper,
+  [configure clippy to disallow `Command::new`][disallowed-methods].
 - LLMs sometimes prefer LLM-generated output, particularly output from the same
   model. Treat LLM review as advisory, and do not rely on the model that
   produced a change as its only reviewer.
+
+[disallowed-methods]: https://doc.rust-lang.org/clippy/lint_configuration.html#disallowed-methods
 
 ## Reviewing LLM-created code
 
