@@ -549,14 +549,14 @@ pub fn normalize_inherent_projection<'a, 'b, 'tcx>(
 
     // Register the obligations arising from the impl and from the associated type itself.
     let def_id = alias_term.expect_inherent_def_id();
-    let predicates = tcx.predicates_of(def_id).instantiate(tcx, args);
-    for (predicate, span) in predicates {
-        let predicate = normalize_with_depth_to(
+    let clauses = tcx.clauses_of(def_id).instantiate(tcx, args);
+    for (clause, span) in clauses {
+        let clause = normalize_with_depth_to(
             selcx,
             param_env,
             cause.clone(),
             depth + 1,
-            predicate,
+            clause,
             obligations,
         );
 
@@ -570,13 +570,7 @@ pub fn normalize_inherent_projection<'a, 'b, 'tcx>(
             ObligationCauseCode::WhereClause(def_id, span),
         );
 
-        obligations.push(Obligation::with_depth(
-            tcx,
-            nested_cause,
-            depth + 1,
-            param_env,
-            predicate,
-        ));
+        obligations.push(Obligation::with_depth(tcx, nested_cause, depth + 1, param_env, clause));
     }
 
     let term = if alias_term.kind.is_type() {
@@ -2031,7 +2025,7 @@ fn confirm_impl_candidate<'cx, 'tcx>(
 
     // This means that the impl is missing a definition for the
     // associated type. This is either because the associate item
-    // has impossible-to-satisfy predicates (since those were
+    // has impossible-to-satisfy clauses (since those were
     // allowed in <https://github.com/rust-lang/rust/pull/135480>),
     // or because the impl is literally missing the definition.
     if !assoc_term.item.defaultness(tcx).has_value() {
@@ -2114,14 +2108,14 @@ fn assoc_term_own_obligations<'cx, 'tcx>(
 ) {
     let tcx = selcx.tcx();
     let def_id = obligation.predicate.expect_projection_def_id();
-    let predicates = tcx.predicates_of(def_id).instantiate_own(tcx, obligation.predicate.args);
-    for (predicate, span) in predicates {
+    let clauses = tcx.clauses_of(def_id).instantiate_own(tcx, obligation.predicate.args);
+    for (clause, span) in clauses {
         let normalized = normalize_with_depth_to(
             selcx,
             obligation.param_env,
             obligation.cause.clone(),
             obligation.recursion_depth + 1,
-            predicate,
+            clause,
             nested,
         );
 

@@ -44,6 +44,7 @@ pub mod hardwired {
             DEPRECATED_WHERE_CLAUSE_LOCATION,
             DUPLICATE_FEATURES,
             DUPLICATE_MACRO_ATTRIBUTES,
+            DUPLICATE_TOOLS,
             ELIDED_LIFETIMES_IN_PATHS,
             EXPLICIT_BUILTIN_CFGS_IN_FLAGS,
             EXPORTED_PRIVATE_DEPENDENCIES,
@@ -2300,10 +2301,12 @@ declare_lint! {
     ///
     /// See [RFC 2093] for more details.
     ///
-    /// > [!WARNING]
-    /// > Implicit lifetime bounds are not semantically equivalent to explicit ones since the latter
-    /// > may affect the implicit lifetime bound of trait object types that are passed as arguments
-    /// > to the overarching struct, enum or union.
+    /// > [!NOTE]
+    /// > This lint intentionally doesn't get emitted for explicit outlives-bounds on type
+    /// > parameters that aren't bounded by `Sized` (unless they're higher-ranked) since unlike
+    /// > implicit outlives-bounds these may affect the implicit lifetime bound of trait object
+    /// > types that are passed as arguments to the overarching struct, enum or union.
+    /// >
     /// > Rephrased, they participate in [trait object lifetime defaulting][TOLD].
     /// >
     /// > Consider the following piece of code where removing bound `T: 'a` would lead to a lifetime
@@ -2321,9 +2324,17 @@ declare_lint! {
     /// > fn render(_: Ref<dyn std::fmt::Display>) {}
     /// > ```
     /// >
-    /// > Consequently, removing explicit outlives-bounds on type parameters of publicly reachable types
-    /// > constitutes a **breaking change** if the lifetime refers to a lifetime parameter and
-    /// > the type parameter is not bounded by `Sized` (thereby admitting trait object types).
+    /// > Due to the explicit outlives-bound the function `render` above is equivalent to:
+    /// >
+    /// > ```rust,ignore (incomplete)
+    /// > fn render<'r>(_: Ref<'r, dyn std::fmt::Display + 'r>) {}
+    /// > ```
+    /// >
+    /// > If it wasn't for that explicit bound then the function would mean the following instead:
+    /// >
+    /// > ```rust,ignore (incomplete)
+    /// > fn render<'r>(_: Ref<'r, dyn std::fmt::Display + 'static>) {}
+    /// > ```
     ///
     /// [RFC 2093]: https://github.com/rust-lang/rfcs/blob/master/text/2093-infer-outlives.md
     /// [TOLD]: https://doc.rust-lang.org/reference/lifetime-elision.html#default-trait-object-lifetimes
@@ -5701,4 +5712,30 @@ declare_lint! {
         reason: fcw!(FutureReleaseError #159228),
         report_in_deps: false,
     };
+}
+
+declare_lint! {
+    /// The `duplicate_tools` lint detects duplicate tools found in crate-level
+    /// [`register_tool` attributes] (including `register_attribute_tool` or `register_lint_tool`).
+    ///
+    /// [`register_tool` attributes]: https://doc.rust-lang.org/nightly/unstable-book/language-features/register-tool.html
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![feature(register_tool)]
+    /// #![register_tool(foo)]
+    /// #![register_tool(foo)]
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Enabling a tool more than once is a no-op.
+    /// To avoid this warning, remove the second `register_tool()` attribute.
+    pub DUPLICATE_TOOLS,
+    Deny,
+    "duplicate tools found in crate-level `#[register_tools]` directives",
+    @feature_gate = register_tool;
 }

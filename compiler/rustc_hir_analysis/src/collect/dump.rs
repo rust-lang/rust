@@ -45,23 +45,23 @@ pub(crate) fn opaque_hidden_types(tcx: TyCtxt<'_>) {
     }
 }
 
-pub(crate) fn predicates_and_item_bounds(tcx: TyCtxt<'_>) {
+pub(crate) fn clauses_and_item_bounds(tcx: TyCtxt<'_>) {
     for id in tcx.hir_crate_items(()).owners() {
         #[expect(deprecated)] // we don't want to unnecessarily retrieve the attrs twice in a row.
         let attrs = tcx.get_all_attrs(id);
 
         if find_attr!(attrs, RustcDumpPredicates) {
-            let preds = tcx
-                .predicates_of(id)
+            let clauses = tcx
+                .clauses_of(id)
                 .instantiate_identity(tcx)
-                .predicates
+                .clauses
                 .into_iter()
                 .map(Unnormalized::skip_norm_wip);
             let span = tcx.def_span(id);
 
             let mut diag = tcx.dcx().struct_span_err(span, sym::rustc_dump_predicates.as_str());
-            for pred in preds {
-                diag.note(format!("{pred:?}"));
+            for clause in clauses {
+                diag.note(format!("{clause:?}"));
             }
             diag.emit();
         }

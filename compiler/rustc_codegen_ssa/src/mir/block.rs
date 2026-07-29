@@ -23,7 +23,7 @@ use rustc_target::callconv::{ArgAbi, ArgAttributes, CastTarget, FnAbi, PassMode}
 use tracing::{debug, info};
 
 use super::operand::OperandRef;
-use super::operand::OperandValue::{self, Immediate, Pair, Ref, Uninit, ZeroSized};
+use super::operand::OperandValue::{self, Immediate, Pair, Ref, ZeroSized};
 use super::place::{PlaceRef, PlaceValue};
 use super::{CachedLlbb, FunctionCx, LocalRef};
 use crate::base::{self, is_call_from_compiler_builtins_to_upstream_monomorphization};
@@ -581,10 +581,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
             PassMode::Direct(_) | PassMode::Pair(..) => {
                 let op = self.codegen_consume(bx, mir::Place::return_place().as_ref());
-                match op.val {
-                    Ref(place_val) => bx.load_from_place(bx.backend_type(op.layout), place_val),
-                    Uninit => bx.cx().const_undef(bx.cx().immediate_backend_type(op.layout)),
-                    _ => op.immediate_or_packed_pair(bx),
+                if let Ref(place_val) = op.val {
+                    bx.load_from_place(bx.backend_type(op.layout), place_val)
+                } else {
+                    op.immediate_or_packed_pair(bx)
                 }
             }
 
@@ -613,9 +613,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         place_val.llval
                     }
                     ZeroSized => bug!("ZST return value shouldn't be in PassMode::Cast"),
-                    OperandValue::Uninit => {
-                        bug!("uninit return value shouldn't be in PassMode::Cast")
-                    }
                 };
 
                 if self.fn_abi.conv == CanonAbi::Arm(ArmCall::CCmseNonSecureEntry) {
@@ -1964,7 +1961,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         // Force by-ref if we have to load through a cast pointer.
         let (mut llval, align, by_ref) = match op.val {
-            Immediate(_) | Pair(..) | Uninit => match arg.mode {
+            Immediate(_) | Pair(..) => match arg.mode {
                 PassMode::Indirect { attrs, .. } => {
                     // Indirect argument may have higher alignment requirements than the type's
                     // alignment. This can happen, e.g. when passing types with <4 byte alignment
@@ -1984,14 +1981,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     op.store_with_annotation(bx, scratch);
                     (scratch.val.llval, scratch.val.align, true)
                 }
-                PassMode::Direct(_) => {
-                    if let Uninit = op.val {
-                        let ibty = bx.cx().immediate_backend_type(arg.layout);
-                        (bx.cx().const_undef(ibty), arg.layout.align.abi, false)
-                    } else {
-                        (op.immediate(), arg.layout.align.abi, false)
-                    }
-                }
+                PassMode::Direct(_) => (op.immediate(), arg.layout.align.abi, false),
                 PassMode::Ignore | PassMode::Pair(..) => unreachable!("handled above"),
             },
             Ref(op_place_val) => match arg.mode {

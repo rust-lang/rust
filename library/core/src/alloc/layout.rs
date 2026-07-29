@@ -226,7 +226,9 @@ impl Layout {
     ///
     /// # Safety
     ///
-    /// This function is only safe to call if the following conditions hold:
+    /// This function is safe to call if the pointer is safe to reborrow as `&T`
+    /// (in which case you could also call [`for_value`][Self::for_value]).
+    /// Otherwise, the following conditions must hold:
     ///
     /// - If `T` is `Sized`, this function is always safe to call.
     /// - If the unsized tail of `T` is:

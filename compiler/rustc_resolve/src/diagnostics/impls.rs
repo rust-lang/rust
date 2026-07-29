@@ -1526,10 +1526,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     }));
                 }
                 Scope::ExternPreludeFlags => {}
-                Scope::ToolPrelude => {
+                Scope::ToolAttributePrelude => {
                     let res = Res::NonMacroAttr(NonMacroAttrKind::Tool);
                     suggestions.extend(
-                        this.registered_tools
+                        this.registered_attr_tools
                             .iter()
                             .map(|ident| TypoSuggestion::new(ident.name, ident.span, res)),
                     );
@@ -3667,7 +3667,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     /// Gets the `#[diagnostic::on_unknown]` attribute data associated with this `DefId`.
-    fn on_unknown_data(&self, def_id: DefId) -> Option<&Directive> {
+    pub(crate) fn on_unknown_data(&self, def_id: DefId) -> Option<&Directive> {
         match def_id.as_local() {
             Some(local) => Some(self.on_unknown_data.get(&local)?.directive.as_ref()),
             None => find_attr!(self.tcx, def_id, OnUnknown{ directive } => directive)?.as_deref(),
@@ -4214,7 +4214,7 @@ impl OnUnknownData {
     ) -> Option<OnUnknownData> {
         if r.features.diagnostic_on_unknown()
             && let Some(Attribute::Parsed(AttributeKind::OnUnknown { directive, .. })) =
-                AttributeParser::parse_limited(
+                AttributeParser::parse_limited_sym(
                     r.tcx.sess,
                     attrs,
                     &[sym::diagnostic, sym::on_unknown],

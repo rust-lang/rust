@@ -105,7 +105,7 @@
 //~| WARN previously accepted
 #[proc_macro = 18]
 //~^ ERROR malformed
-//~| ERROR the `#[proc_macro]` attribute is only usable with crates of the `proc-macro` crate type
+//~| ERROR the `proc_macro` attribute is only usable with crates of the `proc-macro` crate type
 #[cfg]
 //~^ ERROR malformed
 #[cfg_attr]
@@ -122,14 +122,14 @@ fn test() {
 
 #[proc_macro_attribute = 19]
 //~^ ERROR malformed
-//~| ERROR the `#[proc_macro_attribute]` attribute is only usable with crates of the `proc-macro` crate type
+//~| ERROR the `proc_macro_attribute` attribute is only usable with crates of the `proc-macro` crate type
 #[must_use = 1]
 //~^ ERROR malformed
 fn test2() { }
 
 #[proc_macro_derive]
 //~^ ERROR malformed `proc_macro_derive` attribute
-//~| ERROR the `#[proc_macro_derive]` attribute is only usable with crates of the `proc-macro` crate type
+//~| ERROR the `proc_macro_derive` attribute is only usable with crates of the `proc-macro` crate type
 pub fn test3() {}
 
 #[must_not_suspend()]

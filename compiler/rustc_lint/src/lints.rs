@@ -384,12 +384,10 @@ impl<'a> Diagnostic<'a, ()> for BuiltinTypeAliasBounds<'_> {
 }
 
 #[derive(Diagnostic)]
-#[diag(
-    "{$predicate_kind_name} bound {$predicate} does not depend on any type or lifetime parameters"
-)]
+#[diag("{$clause_kind_name} bound {$clause} does not depend on any type or lifetime parameters")]
 pub(crate) struct BuiltinTrivialBounds<'a> {
-    pub predicate_kind_name: &'a str,
-    pub predicate: Clause<'a>,
+    pub clause_kind_name: &'a str,
+    pub clause: Clause<'a>,
 }
 
 #[derive(Diagnostic)]
@@ -993,10 +991,6 @@ pub(crate) enum InvalidReferenceCastingDiag<'tcx> {
     BorrowAsMut {
         #[label("casting happened here")]
         orig_cast: Option<Span>,
-        #[note(
-            "even for types with interior mutability, the only legal way to obtain a mutable pointer from a shared reference is through `UnsafeCell::get`"
-        )]
-        ty_has_interior_mutability: bool,
     },
     #[diag("assigning to `&T` is undefined behavior, consider using an `UnsafeCell`")]
     #[note(
@@ -1005,10 +999,6 @@ pub(crate) enum InvalidReferenceCastingDiag<'tcx> {
     AssignToRef {
         #[label("casting happened here")]
         orig_cast: Option<Span>,
-        #[note(
-            "even for types with interior mutability, the only legal way to obtain a mutable pointer from a shared reference is through `UnsafeCell::get`"
-        )]
-        ty_has_interior_mutability: bool,
     },
     #[diag(
         "casting references to a bigger memory layout than the backing allocation is undefined behavior, even if the reference is unused"
@@ -1888,7 +1878,7 @@ pub(crate) struct RedundantSemicolonsSuggestion {
 
 // traits.rs
 pub(crate) struct DropTraitConstraintsDiag<'a> {
-    pub predicate: Clause<'a>,
+    pub clause: Clause<'a>,
     pub tcx: TyCtxt<'a>,
     pub def_id: DefId,
 }
@@ -1896,8 +1886,8 @@ pub(crate) struct DropTraitConstraintsDiag<'a> {
 // Needed for def_path_str
 impl<'a> Diagnostic<'a, ()> for DropTraitConstraintsDiag<'_> {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, ()> {
-        Diag::new(dcx, level, msg!("bounds on `{$predicate}` are most likely incorrect, consider instead using `{$needs_drop}` to detect whether a type can be trivially dropped"))
-            .with_arg("predicate", self.predicate)
+        Diag::new(dcx, level, msg!("bounds on `{$clause}` are most likely incorrect, consider instead using `{$needs_drop}` to detect whether a type can be trivially dropped"))
+            .with_arg("clause", self.clause)
             .with_arg("needs_drop", self.tcx.def_path_str(self.def_id))
     }
 }

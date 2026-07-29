@@ -291,7 +291,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             attribute_parser: AttributeParser::new(
                 tcx.sess,
                 tcx.features(),
-                tcx.registered_tools(()),
+                tcx.registered_attr_tools(()),
                 ShouldEmit::ErrorsAndLints { recovery: Recovery::Allowed },
             ),
             delayed_lints: Vec::new(),

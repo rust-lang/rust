@@ -1167,17 +1167,17 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
             }
         });
 
-        let preds = tcx.predicates_of(method_def_id).instantiate(tcx, args);
+        let clauses = tcx.clauses_of(method_def_id).instantiate(tcx, args);
 
         let ocx = ObligationCtxt::new(&self.infcx);
-        ocx.register_obligations(preds.iter().map(|(pred, span)| {
-            trace!(?pred);
+        ocx.register_obligations(clauses.iter().map(|(clause, span)| {
+            trace!(?clause);
             Obligation::misc(
                 tcx,
                 span,
                 self.mir_def_id(),
                 self.infcx.param_env,
-                pred.skip_norm_wip(),
+                clause.skip_norm_wip(),
             )
         }));
 

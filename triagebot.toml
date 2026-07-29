@@ -1160,7 +1160,7 @@ cc = [
 ]
 
 [mentions."src/tools/cargo"]
-cc = ["@ehuss"]
+cc = ["@weihanglo"]
 
 [mentions."src/tools/clippy"]
 message = """
@@ -1417,7 +1417,7 @@ message = """If the Unicode version changes are intentional,
 it should also be updated in the reference at
 https://github.com/rust-lang/reference/blob/HEAD/src/identifiers.md.
 """
-cc = ["@ehuss"]
+cc = ["@rust-lang/lang-docs"]
 
 [mentions."src/doc/rustc-dev-guide"]
 message = """
@@ -1551,7 +1551,6 @@ infra-ci = [
     "@jieyouxu",
 ]
 docs = [
-    "@ehuss",
     "@GuillaumeGomez",
 ]
 codegen = [
@@ -1674,13 +1673,13 @@ dep-bumps = [
 "/src/bootstrap" =                                       ["bootstrap"]
 "/src/ci" =                                              ["infra-ci"]
 "/src/doc" =                                             ["docs"]
-"/src/doc/book" =                                        ["@ehuss"]
-"/src/doc/edition-guide" =                               ["@ehuss"]
-"/src/doc/embedded-book" =                               ["@ehuss"]
-"/src/doc/nomicon" =                                     ["@ehuss"]
-"/src/doc/reference" =                                   ["@ehuss"]
-"/src/doc/rust-by-example" =                             ["@ehuss"]
-"/src/doc/rustc" =                                       ["compiler", "@ehuss"]
+"/src/doc/book" =                                        ["lang-docs"]
+"/src/doc/edition-guide" =                               ["lang-docs"]
+"/src/doc/embedded-book" =                               ["lang-docs"]
+"/src/doc/nomicon" =                                     ["lang-docs"]
+"/src/doc/reference" =                                   ["lang-docs"]
+"/src/doc/rust-by-example" =                             ["lang-docs"]
+"/src/doc/rustc" =                                       ["compiler"]
 "/src/doc/rustc-dev-guide" =                             ["compiler"]
 "/src/doc/rustdoc" =                                     ["rustdoc"]
 "/src/doc/style-guide" =                                 ["style-team"]
@@ -1713,13 +1712,13 @@ dep-bumps = [
 "/tests/ui" =                                            ["compiler"]
 "/tests/ui-fulldeps" =                                   ["compiler"]
 "/src/tools/build-manifest" =                            ["bootstrap"]
-"/src/tools/cargo" =                                     ["@ehuss"]
+"/src/tools/cargo" =                                     ["@weihanglo"]
 "/src/tools/compiletest" =                               ["bootstrap", "@wesleywiser", "@oli-obk", "@jieyouxu"]
-"/src/tools/linkchecker" =                               ["@ehuss"]
+"/src/tools/linkchecker" =                               ["lang-docs"]
 "/src/tools/opt-dist" =                                  ["@kobzol"]
 "/src/tools/run-make-support" =                          ["@jieyouxu"]
 "/src/tools/rust-installer" =                            ["bootstrap"]
-"/src/tools/rustbook" =                                  ["@ehuss"]
+"/src/tools/rustbook" =                                  ["lang-docs"]
 "/src/tools/rustdoc" =                                   ["rustdoc"]
 "/src/tools/rustdoc-js" =                                ["rustdoc"]
 "/src/tools/rustdoc-themes" =                            ["rustdoc"]

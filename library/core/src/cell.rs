@@ -2236,7 +2236,6 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 /// /// # Safety
 /// /// The caller must not call `get_mut_unchecked` again (on any alias of `ptr`) for the duration
 /// /// of the lifetime of the returned reference.
-/// # #[allow(invalid_reference_casting)] // FIXME should the lint really fire here?
 /// unsafe fn get_mut_unchecked<T>(ptr: &UnsafeCell<T>) -> &mut T {
 ///   let t = ptr as *const UnsafeCell<T> as *mut T;
 ///   unsafe { &mut *t }

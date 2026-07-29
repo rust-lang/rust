@@ -154,7 +154,7 @@ declare_passes! {
     // Made public so that `mir_drops_elaborated_and_const_checked` can be overridden
     // by custom rustc drivers, running all the steps by themselves. See #114628.
     pub mod inline : Inline, ForceInline;
-    mod impossible_predicates : ImpossiblePredicates;
+    mod impossible_clauses : ImpossibleClauses;
     mod instsimplify : InstSimplify { BeforeInline, AfterSimplifyCfg };
     mod jump_threading : JumpThreading;
     mod known_panics_lint : KnownPanicsLint;
@@ -422,7 +422,6 @@ fn mir_built(tcx: TyCtxt<'_>, def: LocalDefId) -> &Steal<Body<'_>> {
             &Lint(sanity_check::SanityCheck),
         ],
         None,
-        pm::Optimizations::Allowed,
     );
     tcx.alloc_steal_mir(body)
 }
@@ -479,7 +478,6 @@ fn mir_promoted(
         &mut body,
         &[&promote_pass, &simplify::SimplifyCfg::PromoteConsts, &coverage::InstrumentCoverage],
         Some(MirPhase::Analysis(AnalysisPhase::Initial)),
-        pm::Optimizations::Allowed,
     );
 
     lint_tail_expr_drop_order::run_lint(tcx, def, &body);
@@ -526,7 +524,7 @@ fn inner_mir_for_ctfe(tcx: TyCtxt<'_>, def: LocalDefId) -> Body<'_> {
     } else {
         &[&ctfe_limit::CtfeLimit]
     };
-    pm::run_passes(tcx, &mut body, passes, None, pm::Optimizations::Allowed);
+    pm::run_passes(tcx, &mut body, passes, None);
 
     body
 }
@@ -613,7 +611,6 @@ pub fn run_analysis_to_runtime_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
                 &Lint(post_drop_elaboration::CheckLiveDrops),
             ],
             None,
-            pm::Optimizations::Allowed,
         );
     }
 
@@ -631,20 +628,14 @@ pub fn run_analysis_to_runtime_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
 /// After this series of passes, no lifetime analysis based on borrowing can be done.
 fn run_analysis_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let passes: &[&dyn MirPass<'tcx>] = &[
-        &impossible_predicates::ImpossiblePredicates,
+        &impossible_clauses::ImpossibleClauses,
         &cleanup_post_borrowck::CleanupPostBorrowck,
         &remove_noop_landing_pads::RemoveNoopLandingPads,
         &simplify::SimplifyCfg::PostAnalysis,
         &deref_separator::Derefer,
     ];
 
-    pm::run_passes(
-        tcx,
-        body,
-        passes,
-        Some(MirPhase::Analysis(AnalysisPhase::PostCleanup)),
-        pm::Optimizations::Allowed,
-    );
+    pm::run_passes(tcx, body, passes, Some(MirPhase::Analysis(AnalysisPhase::PostCleanup)));
 }
 
 /// Returns the sequence of passes that lowers analysis to runtime MIR.
@@ -682,13 +673,7 @@ fn run_runtime_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         &simplify::SimplifyCfg::PreOptimizations,
     ];
 
-    pm::run_passes(
-        tcx,
-        body,
-        passes,
-        Some(MirPhase::Runtime(RuntimePhase::PostCleanup)),
-        pm::Optimizations::Allowed,
-    );
+    pm::run_passes(tcx, body, passes, Some(MirPhase::Runtime(RuntimePhase::PostCleanup)));
 
     // Clear this by anticipation. Optimizations and runtime MIR have no reason to look
     // into this information, which is meant for borrowck diagnostics.
@@ -701,15 +686,6 @@ pub(crate) fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
     fn o1<T>(x: T) -> WithMinOptLevel<T> {
         WithMinOptLevel(1, x)
     }
-
-    let def_id = body.source.def_id();
-    let optimizations = if tcx.def_kind(def_id).has_codegen_attrs()
-        && tcx.codegen_fn_attrs(def_id).optimize.do_not_optimize()
-    {
-        pm::Optimizations::Suppressed
-    } else {
-        pm::Optimizations::Allowed
-    };
 
     // The main optimizations that we do on MIR.
     pm::run_passes(
@@ -793,7 +769,6 @@ pub(crate) fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
             &prettify::ReorderLocals,
         ],
         Some(MirPhase::Runtime(RuntimePhase::Optimized)),
-        optimizations,
     );
 }
 

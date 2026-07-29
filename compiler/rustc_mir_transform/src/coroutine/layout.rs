@@ -93,12 +93,10 @@ pub(super) fn locals_live_across_suspend_points<'tcx>(
 
     // Calculate the MIR locals that have been previously borrowed (even if they are still active).
     let borrowed_locals = MaybeBorrowedLocals.iterate_to_fixpoint(tcx, body, Some("coroutine"));
-    let borrowed_locals_cursor1 = ResultsCursor::new_borrowing(body, &borrowed_locals);
-    let mut borrowed_locals_cursor2 = ResultsCursor::new_borrowing(body, &borrowed_locals);
 
     // Calculate the MIR locals that we need to keep storage around for.
     let requires_storage =
-        MaybeRequiresStorage::new(borrowed_locals_cursor1).iterate_to_fixpoint(tcx, body, None);
+        MaybeRequiresStorage::new(body, &borrowed_locals).iterate_to_fixpoint(tcx, body, None);
     let mut requires_storage_cursor = ResultsCursor::new_borrowing(body, &requires_storage);
 
     // Calculate the liveness of MIR locals ignoring borrows.
@@ -109,6 +107,7 @@ pub(super) fn locals_live_across_suspend_points<'tcx>(
     let mut live_locals_at_suspension_points = Vec::new();
     let mut source_info_at_suspension_points = Vec::new();
     let mut live_locals_at_any_suspension_point = DenseBitSet::new_empty(body.local_decls.len());
+    let mut borrowed_locals_cursor = ResultsCursor::new_owning(body, borrowed_locals);
 
     for (block, data) in body.basic_blocks.iter_enumerated() {
         let TerminatorKind::Yield { .. } = data.terminator().kind else { continue };
@@ -129,8 +128,8 @@ pub(super) fn locals_live_across_suspend_points<'tcx>(
             // If a borrow is converted to a raw reference, we must also assume that it lives
             // forever. Note that the final liveness is still bounded by the storage liveness
             // of the local, which happens using the `intersect` operation below.
-            borrowed_locals_cursor2.seek_before_primary_effect(loc);
-            live_locals.union(borrowed_locals_cursor2.get());
+            borrowed_locals_cursor.seek_before_primary_effect(loc);
+            live_locals.union(borrowed_locals_cursor.get());
         }
 
         // Store the storage liveness for later use so we can restore the state
@@ -236,7 +235,7 @@ fn compute_storage_conflicts<'mir, 'tcx>(
     body: &'mir Body<'tcx>,
     saved_locals: &'mir CoroutineSavedLocals,
     always_live_locals: DenseBitSet<Local>,
-    results: &Results<'tcx, MaybeRequiresStorage<'mir, 'tcx>>,
+    results: &Results<'tcx, MaybeRequiresStorage>,
 ) -> BitMatrix<CoroutineSavedLocal, CoroutineSavedLocal> {
     assert_eq!(body.local_decls.len(), saved_locals.domain_size());
 
@@ -294,12 +293,10 @@ struct StorageConflictVisitor<'a, 'tcx> {
     eligible_storage_live: DenseBitSet<Local>,
 }
 
-impl<'a, 'tcx> ResultsVisitor<'tcx, MaybeRequiresStorage<'a, 'tcx>>
-    for StorageConflictVisitor<'a, 'tcx>
-{
+impl<'a, 'tcx> ResultsVisitor<'tcx, MaybeRequiresStorage> for StorageConflictVisitor<'a, 'tcx> {
     fn visit_after_early_statement_effect(
         &mut self,
-        _analysis: &MaybeRequiresStorage<'a, 'tcx>,
+        _analysis: &MaybeRequiresStorage,
         state: &DenseBitSet<Local>,
         _statement: &Statement<'tcx>,
         loc: Location,
@@ -309,7 +306,7 @@ impl<'a, 'tcx> ResultsVisitor<'tcx, MaybeRequiresStorage<'a, 'tcx>>
 
     fn visit_after_early_terminator_effect(
         &mut self,
-        _analysis: &MaybeRequiresStorage<'a, 'tcx>,
+        _analysis: &MaybeRequiresStorage,
         state: &DenseBitSet<Local>,
         _terminator: &Terminator<'tcx>,
         loc: Location,

@@ -37,7 +37,6 @@ pub(super) fn build_async_destructor_ctor_shim<'tcx>(
             &add_call_guards::CriticalCallEdges,
         ],
         None,
-        pm::Optimizations::Allowed,
     );
     body
 }
@@ -372,12 +371,7 @@ fn build_adrop_for_adrop_shim<'tcx>(
             source_info,
             kind: TerminatorKind::Call {
                 // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
-                func: Operand::function_handle(
-                    tcx,
-                    pin_fn,
-                    ty::Binder::dummy([cor_ref.into()]),
-                    span,
-                ),
+                func: Operand::function_handle(tcx, pin_fn, &[cor_ref.into()], span),
                 args: [dummy_spanned(Operand::Move(cor_ref_place))].into(),
                 destination: cor_pin_place,
                 target: Some(call_bb),
@@ -399,12 +393,7 @@ fn build_adrop_for_adrop_shim<'tcx>(
             source_info,
             kind: TerminatorKind::Call {
                 // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
-                func: Operand::function_handle(
-                    tcx,
-                    poll_fn,
-                    ty::Binder::dummy([impl_ty.into()]),
-                    span,
-                ),
+                func: Operand::function_handle(tcx, poll_fn, &[impl_ty.into()], span),
                 args: [
                     dummy_spanned(Operand::Move(cor_pin_place)),
                     dummy_spanned(Operand::Move(resume_ctx)),

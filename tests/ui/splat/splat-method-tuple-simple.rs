@@ -27,11 +27,6 @@ impl TupleStruct {
 
 fn main() {
     let foo = Foo;
-
-    // FIXME(splat): should splatted functions be callable with tupled and un-tupled arguments?
-    // Add a tupled test for each call if they are.
-    //foo.tuple_2((1, 2));
-
     foo.tuple_2(1u32, 2i8);
     foo.tuple_4(1u32, 2i8, (), 3f32);
 

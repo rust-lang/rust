@@ -948,6 +948,7 @@ fn should_encode_attrs(def_kind: DefKind) -> bool {
         | DefKind::AssocConst { .. }
         | DefKind::Macro(_)
         | DefKind::Field
+        | DefKind::ConstParam
         | DefKind::Impl { .. } => true,
         // Encoding attrs for `Use` items allows `#[doc(hidden)]` on re-exports
         // to be read cross-crate, which is needed for diagnostic path selection
@@ -960,7 +961,6 @@ fn should_encode_attrs(def_kind: DefKind) -> bool {
         DefKind::Closure => true,
         DefKind::SyntheticCoroutineBody => false,
         DefKind::TyParam
-        | DefKind::ConstParam
         | DefKind::Ctor(..)
         | DefKind::ExternCrate
         | DefKind::ForeignMod
@@ -1481,7 +1481,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             if should_encode_generics(def_kind) {
                 let g = tcx.generics_of(def_id);
                 record!(self.tables.generics_of[def_id] <- g);
-                record!(self.tables.explicit_predicates_of[def_id] <- self.tcx.explicit_predicates_of(def_id));
+                record!(self.tables.explicit_clauses_of[def_id] <- self.tcx.explicit_clauses_of(def_id));
                 let inferred_outlives = self.tcx.inferred_outlives_of(def_id);
                 record_defaulted_array!(self.tables.inferred_outlives_of[def_id] <- inferred_outlives);
 
@@ -1516,10 +1516,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             if let DefKind::Trait = def_kind {
                 record!(self.tables.trait_def[def_id] <- self.tcx.trait_def(def_id));
-                record_defaulted_array!(self.tables.explicit_super_predicates_of[def_id] <-
-                    self.tcx.explicit_super_predicates_of(def_id).skip_binder());
-                record_defaulted_array!(self.tables.explicit_implied_predicates_of[def_id] <-
-                    self.tcx.explicit_implied_predicates_of(def_id).skip_binder());
+                record_defaulted_array!(self.tables.explicit_super_clauses_of[def_id] <-
+                    self.tcx.explicit_super_clauses_of(def_id).skip_binder());
+                record_defaulted_array!(self.tables.explicit_implied_clauses_of[def_id] <-
+                    self.tcx.explicit_implied_clauses_of(def_id).skip_binder());
                 let module_children = self.tcx.module_children_local(local_id);
                 record_array!(self.tables.module_children_non_reexports[def_id] <-
                     module_children.iter().map(|child| child.res.def_id().index));
@@ -1530,10 +1530,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             if let DefKind::TraitAlias = def_kind {
                 record!(self.tables.trait_def[def_id] <- self.tcx.trait_def(def_id));
-                record_defaulted_array!(self.tables.explicit_super_predicates_of[def_id] <-
-                    self.tcx.explicit_super_predicates_of(def_id).skip_binder());
-                record_defaulted_array!(self.tables.explicit_implied_predicates_of[def_id] <-
-                    self.tcx.explicit_implied_predicates_of(def_id).skip_binder());
+                record_defaulted_array!(self.tables.explicit_super_clauses_of[def_id] <-
+                    self.tcx.explicit_super_clauses_of(def_id).skip_binder());
+                record_defaulted_array!(self.tables.explicit_implied_clauses_of[def_id] <-
+                    self.tcx.explicit_implied_clauses_of(def_id).skip_binder());
             }
             if let DefKind::Trait | DefKind::Impl { .. } = def_kind {
                 let associated_item_def_ids = self.tcx.associated_item_def_ids(def_id);

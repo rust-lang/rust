@@ -243,7 +243,7 @@ impl EarlyLintPass for UnsafeCode {
 
             ast::ItemKind::MacroDef(..) => {
                 if let Some(hir::Attribute::Parsed(AttributeKind::AllowInternalUnsafe(span))) =
-                    AttributeParser::parse_limited(
+                    AttributeParser::parse_limited_sym(
                         cx.builder.sess(),
                         &it.attrs,
                         &[sym::allow_internal_unsafe],
@@ -1450,9 +1450,9 @@ impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
         use rustc_middle::ty::ClauseKind;
 
         if cx.tcx.features().trivial_bounds() {
-            let predicates = cx.tcx.predicates_of(item.owner_id);
-            for &(predicate, span) in predicates.predicates {
-                let predicate_kind_name = match predicate.kind().skip_binder() {
+            let gen_clauses = cx.tcx.clauses_of(item.owner_id);
+            for &(clause, span) in gen_clauses.clauses {
+                let clause_kind_name = match clause.kind().skip_binder() {
                     ClauseKind::Trait(..) => "trait",
                     ClauseKind::TypeOutlives(..) | ClauseKind::RegionOutlives(..) => "lifetime",
 
@@ -1469,11 +1469,11 @@ impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
                     // Users don't write this directly, only via another trait ref.
                     | ty::ClauseKind::HostEffect(..) => continue,
                 };
-                if predicate.is_global() {
+                if clause.is_global() {
                     cx.emit_span_lint(
                         TRIVIAL_BOUNDS,
                         span,
-                        BuiltinTrivialBounds { predicate_kind_name, predicate },
+                        BuiltinTrivialBounds { clause_kind_name, clause },
                     );
                 }
             }
@@ -2070,6 +2070,24 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                                         continue;
                                     };
                                     let index = ty_generics.param_def_id_to_index[&def_id];
+                                    // Removing a `T: 'r` outlives bound can silently change
+                                    // the object lifetime default for `Struct<'r, dyn Trait>`
+                                    // (RFC 599): the explicit bound sets the default to `'r`,
+                                    // so removing it may change it to `'static` (or cause an
+                                    // ambiguity error if there is no unique default). Only
+                                    // suppress the lint for non-higher-ranked predicates when
+                                    // T is not `Sized` (i.e. can hold trait object types).
+                                    // Higher-ranked predicates (`for<'x> T: 'r`) are excluded
+                                    // from RFC 599 object lifetime defaulting and are always
+                                    // safe to remove.
+                                    if predicate.bound_generic_params.is_empty() {
+                                        let ty_param = &ty_generics.own_params[index as usize];
+                                        let param_ty =
+                                            Ty::new_param(cx.tcx, ty_param.index, ty_param.name);
+                                        if !param_ty.is_sized(cx.tcx, cx.typing_env()) {
+                                            continue;
+                                        }
+                                    }
                                     (
                                         Self::lifetimes_outliving_type(
                                             // don't warn if the inferred span actually came from the predicate we're looking at

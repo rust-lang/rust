@@ -191,7 +191,7 @@ fn satisfied_from_param_env<'tcx>(
                 // with its own `ConstEvaluatable` bound in the param env which we will visit separately.
                 //
                 // If we start allowing directly writing `ConstKind::Expr` without an intermediate anon const
-                // this will be incorrect. It might be worth investigating making `predicates_of` elaborate
+                // this will be incorrect. It might be worth investigating making `clauses_of` elaborate
                 // all of the `ConstEvaluatable` bounds rather than having a visitor here.
             }
         }

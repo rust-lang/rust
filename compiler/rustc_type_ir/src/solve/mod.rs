@@ -10,6 +10,7 @@ use rustc_macros::{Decodable_NoContext, Encodable_NoContext, StableHash, StableH
 use rustc_type_ir_macros::{
     GenericTypeVisitable, Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic,
 };
+use thin_vec::ThinVec;
 use tracing::debug;
 
 use crate::lang_items::SolverTraitLangItem;
@@ -982,8 +983,10 @@ pub enum GoalStalledOnOpaques<I: Interner> {
 /// The conditions that must change for a goal to warrant
 #[derive_where(Clone, Debug; I: Interner)]
 pub struct GoalStalledOn<I: Interner> {
-    pub stalled_vars: Vec<I::GenericArg>,
-    pub sub_roots: Vec<TyVid>,
+    // `ThinVec` is important for performance. See #160005.
+    pub stalled_vars: ThinVec<I::GenericArg>,
+    // `ThinVec` is important for performance. See #160005.
+    pub sub_roots: ThinVec<TyVid>,
     /// The certainty that will be returned on subsequent evaluations if this
     /// goal remains stalled.
     pub stalled_certainty: Certainty,

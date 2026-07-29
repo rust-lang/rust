@@ -19,7 +19,7 @@ use crate::target::{MachineInfo, MachineSize};
 use crate::ty::{
     AdtDef, AdtKind, Allocation, AssocItem, Asyncness, ClosureDef, ClosureKind, Constness,
     CoroutineDef, Discr, FieldDef, FloatTy, FnDef, ForeignDef, ForeignItemKind, ForeignModule,
-    ForeignModuleDef, GenericArgs, GenericPredicates, Generics, ImplDef, ImplTrait, IntrinsicDef,
+    ForeignModuleDef, GenericArgs, GenericClauses, Generics, ImplDef, ImplTrait, IntrinsicDef,
     LineInfo, MirConst, PolyFnSig, RigidTy, Span, TraitDecl, TraitDef, TraitRef, Ty, TyConst,
     TyConstId, TyKind, UintTy, VariantDef, VariantIdx, VtblEntry,
 };
@@ -218,13 +218,13 @@ impl<'tcx> CompilerInterface<'tcx> {
         })
     }
 
-    pub(crate) fn predicates_of(&self, def_id: DefId) -> GenericPredicates {
+    pub(crate) fn clauses_of(&self, def_id: DefId) -> GenericClauses {
         self.with_cx(|tables, cx| {
             let did = tables[def_id];
-            let (parent, kinds) = cx.predicates_of(did);
-            crate::ty::GenericPredicates {
+            let (parent, kinds) = cx.clauses_of(did);
+            crate::ty::GenericClauses {
                 parent: parent.map(|did| tables.trait_def(did)),
-                predicates: kinds
+                clauses: kinds
                     .iter()
                     .map(|(kind, span)| (kind.stable(tables, cx), span.stable(tables, cx)))
                     .collect(),
@@ -232,13 +232,13 @@ impl<'tcx> CompilerInterface<'tcx> {
         })
     }
 
-    pub(crate) fn explicit_predicates_of(&self, def_id: DefId) -> GenericPredicates {
+    pub(crate) fn explicit_clauses_of(&self, def_id: DefId) -> GenericClauses {
         self.with_cx(|tables, cx| {
             let did = tables[def_id];
-            let (parent, kinds) = cx.explicit_predicates_of(did);
-            crate::ty::GenericPredicates {
+            let (parent, kinds) = cx.explicit_clauses_of(did);
+            crate::ty::GenericClauses {
                 parent: parent.map(|did| tables.trait_def(did)),
-                predicates: kinds
+                clauses: kinds
                     .iter()
                     .map(|(kind, span)| (kind.stable(tables, cx), span.stable(tables, cx)))
                     .collect(),

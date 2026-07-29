@@ -96,13 +96,13 @@ pub(crate) fn expand_test(
 
 pub(crate) fn expand_bench(
     cx: &mut ExtCtxt<'_>,
-    attr_sp: Span,
+    attr_path_sp: Span,
     meta_item: &ast::MetaItem,
     item: Annotatable,
 ) -> Vec<Annotatable> {
     check_builtin_macro_attribute(cx, meta_item, sym::bench);
     warn_on_duplicate_attribute(cx, &item, sym::bench);
-    expand_test_or_bench(cx, attr_sp, item, true)
+    expand_test_or_bench(cx, attr_path_sp, item, true)
 }
 
 pub(crate) fn expand_test_or_bench(
@@ -413,7 +413,7 @@ pub(crate) fn expand_test_or_bench(
 fn not_testable_error(cx: &ExtCtxt<'_>, is_bench: bool, attr_sp: Span, item: Option<&ast::Item>) {
     let dcx = cx.dcx();
     let name = if is_bench { "bench" } else { "test" };
-    let msg = format!("the `#[{name}]` attribute may only be used on a free function");
+    let msg = format!("the `{name}` attribute may only be used on a free function");
     let level = match item.map(|i| &i.kind) {
         // These were a warning before #92959 and need to continue being that to avoid breaking
         // stable user code (#94508).
@@ -432,7 +432,7 @@ fn not_testable_error(cx: &ExtCtxt<'_>, is_bench: bool, attr_sp: Span, item: Opt
             ),
         );
     }
-    err.span_label(attr_sp, format!("the `#[{name}]` macro causes a function to be run as a test and has no effect on non-functions"));
+    err.span_label(attr_sp, format!("the `{name}` attribute causes a function to be run as a test and has no effect on non-functions"));
 
     if !is_bench {
         err.with_span_suggestion(attr_sp,
@@ -486,7 +486,7 @@ fn should_ignore_message(i: &ast::Item) -> Option<Symbol> {
 
 fn should_panic(cx: &ExtCtxt<'_>, i: &ast::Item) -> ShouldPanic {
     if let Some(Attribute::Parsed(AttributeKind::ShouldPanic { reason, .. })) =
-        AttributeParser::parse_limited(cx.sess, &i.attrs, &[sym::should_panic])
+        AttributeParser::parse_limited_sym(cx.sess, &i.attrs, &[sym::should_panic])
     {
         ShouldPanic::Yes(reason)
     } else {
