@@ -718,13 +718,13 @@ pub fn codegen_crate<
     backend: B,
     tcx: TyCtxt<'_>,
 ) -> OngoingCodegen<B> {
-    if tcx.sess.target.need_explicit_cpu && tcx.sess.target_cpu().is_none() {
+    if tcx.sess.target.need_explicit_cpu && tcx.sess.opts.cg.target_cpu.is_none() {
         // The target has no default cpu, but none is set explicitly
         tcx.dcx().emit_fatal(diagnostics::CpuRequired);
     }
 
-    if let Some(target_cpu) = &tcx.sess.target_cpu()
-        && tcx.sess.target.unsupported_cpus.contains(&(*target_cpu).into())
+    if let Some(target_cpu) = &tcx.sess.opts.cg.target_cpu
+        && tcx.sess.target.unsupported_cpus.contains(&target_cpu.into())
     {
         // The target cpu is explicitly listed as an unsupported cpu
         tcx.dcx().emit_fatal(diagnostics::CpuUnsupported { target_cpu: target_cpu.to_string() });
