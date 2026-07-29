@@ -164,6 +164,8 @@ where
     for _ in 0..universes_created_in_query {
         let new_universe = delegate.create_next_universe();
         if delegate.cx().assumptions_on_binders() {
+            // FIXME(-Zassumptions-on-binders): Remove this temporary workaround once
+            // opaque types no longer escape query responses with query-created placeholders.
             // Region constraints involving query-created placeholders were handled inside
             // the query. However, the placeholders can still escape in other response
             // fields, such as opaque type constraints, so track their recreated universes.
