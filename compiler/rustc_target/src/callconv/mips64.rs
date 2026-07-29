@@ -5,6 +5,8 @@ use rustc_abi::{
 
 use crate::callconv::{ArgAbi, ArgAttribute, ArgExtension, CastTarget, FnAbi, PassMode, Uniform};
 
+const NUM_ARG_SLOTS: u64 = 8;
+
 fn extend_integer_width_mips<Ty>(arg: &mut ArgAbi<'_, Ty>, bits: u64) {
     // Always sign extend u32 values on 64-bit mips
     if let BackendRepr::Scalar(scalar) = arg.layout.backend_repr
@@ -122,9 +124,23 @@ where
         let reg = Reg { kind: RegKind::Float, size: arg.layout.field(cx, 0).size };
         arg.cast_to_and_pad_i32(CastTarget::pair(reg, reg), pad_i32);
     } else if arg.layout.is_complex() && size <= dl.pointer_size() * 2 {
-        if arg.layout.is_complex_float() || size > dl.pointer_size() {
-            // Complex<i64> and Complex<{float}> are passed as 2 separate arguments, which is what
-            // the default `PassMode::Pair` already does.
+        let slot = dl.pointer_size();
+        let curr_offset = offset.align_to(align);
+
+        if arg.layout.is_complex_float() {
+            // Only pass a Complex<f32>/Complex<f64> in FPRs when two argument slots are free,
+            // otherwise pack it into GPRs (or the stack) like an integer of the same size.
+            if curr_offset.bytes() / slot.bytes() + 2 <= NUM_ARG_SLOTS {
+                // The default `PassMode::Pair` already passes one component per register. Both
+                // components claim a slot, even for a Complex<f32> which could fit into one slot.
+                *offset = curr_offset + slot * 2;
+                return;
+            }
+
+            arg.cast_to_and_pad_i32(Uniform::new(Reg::i64(), size), pad_i32);
+        } else if size > slot {
+            // Complex<i64> is passed as 2 separate arguments, which is what the default
+            // `PassMode::Pair` already does.
         } else {
             // Cast Complex<i8> into i16, Complex<i16> to i32, etc. The inreg attribute is required
             // to make the bits land in the right (upper) bits on big endian targets.
