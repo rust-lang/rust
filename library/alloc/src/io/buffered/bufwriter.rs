@@ -490,6 +490,10 @@ impl<W: ?Sized + Write> BufWriter<W> {
 /// # Example
 ///
 /// ```
+/// # // This test requires unwinding to work.
+/// # // Disable it when unwinding isn't available.
+/// # #[cfg(panic = "unwind")]
+/// # fn main() {
 /// use std::io::{self, BufWriter, Write};
 /// use std::panic::{catch_unwind, AssertUnwindSafe};
 ///
@@ -508,6 +512,9 @@ impl<W: ?Sized + Write> BufWriter<W> {
 /// let (recovered_writer, buffered_data) = stream.into_parts();
 /// assert!(matches!(recovered_writer, PanickingWriter));
 /// assert_eq!(buffered_data.unwrap_err().into_inner(), b"some data");
+/// # }
+/// # #[cfg(not(panic = "unwind"))]
+/// # fn main() {}
 /// ```
 pub struct WriterPanicked {
     buf: Vec<u8>,
