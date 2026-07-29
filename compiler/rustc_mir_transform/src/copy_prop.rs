@@ -6,6 +6,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::{Analysis, ResultsCursor};
 use tracing::{debug, instrument};
 
+use crate::PassPolicy;
 use crate::ssa::{MaybeUninitializedLocals, SsaLocals};
 
 /// Unify locals that copy each other.
@@ -21,8 +22,8 @@ use crate::ssa::{MaybeUninitializedLocals, SsaLocals};
 pub(super) struct CopyProp;
 
 impl<'tcx> crate::MirPass<'tcx> for CopyProp {
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() >= 1
+    fn policy(&self, sess: &rustc_session::Session) -> PassPolicy {
+        PassPolicy::optimization(sess.mir_opt_level() >= 1)
     }
 
     #[instrument(level = "trace", skip(self, tcx, body))]
@@ -94,10 +95,6 @@ impl<'tcx> crate::MirPass<'tcx> for CopyProp {
             .visit_body_preserves_cfg(body);
 
         crate::simplify::remove_unused_definitions(body);
-    }
-
-    fn is_required(&self) -> bool {
-        false
     }
 }
 

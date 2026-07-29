@@ -35,7 +35,7 @@ mod pass_manager;
 
 use std::sync::LazyLock;
 
-use pass_manager::{self as pm, Lint, MirLint, MirPass, WithMinOptLevel};
+use pass_manager::{self as pm, Lint, MirLint, MirPass, PassPolicy, WithMinOptLevel};
 
 mod check_pointers;
 mod cost_checker;

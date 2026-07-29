@@ -3,6 +3,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::builtin::UNREACHABLE_CODE;
 
+use crate::PassPolicy;
 use crate::diagnostics::UnreachableDueToUninhabited;
 
 /// Lint unreachable code due to uninhabited values from function calls,
@@ -82,8 +83,8 @@ impl<'tcx> crate::MirPass<'tcx> for LintAndRemoveUninhabited {
         }
     }
 
-    fn is_required(&self) -> bool {
-        true
+    fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
+        PassPolicy::optional_non_optimization(true)
     }
 }
 

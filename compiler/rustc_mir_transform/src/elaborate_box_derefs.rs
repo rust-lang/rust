@@ -8,6 +8,7 @@ use rustc_middle::mir::*;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{self, PatternKind, Ty, TyCtxt};
 
+use crate::PassPolicy;
 use crate::patch::MirPatch;
 
 /// Constructs the types used when accessing a Box's pointer
@@ -161,7 +162,7 @@ impl<'tcx> crate::MirPass<'tcx> for ElaborateBoxDerefs {
         }
     }
 
-    fn is_required(&self) -> bool {
-        true
+    fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
+        PassPolicy::optional_non_optimization(true)
     }
 }
