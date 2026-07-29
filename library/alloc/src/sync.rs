@@ -1779,8 +1779,7 @@ impl<T: ?Sized> Arc<T> {
     /// The pointer must have been obtained through `Arc::into_raw` and must satisfy the
     /// same layout requirements specified in [`Arc::from_raw_in`][from_raw_in].
     /// The associated `Arc` instance must be valid (i.e. the strong count must be at
-    /// least 1) for the duration of this method, and `ptr` must point to a block of memory
-    /// allocated by the global allocator.
+    /// least 1) for the duration of this method.
     ///
     /// Using this method correctly also requires extra care: another thread can change the
     /// strong count at any time, including between calling this method and acting on the
