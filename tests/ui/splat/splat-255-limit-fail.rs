@@ -1,5 +1,5 @@
 // ignore-tidy-file-linelength
-//! Test `#[splat]` fails over the 255th argument index (or higher).
+//! Test `#[rustc_splat]` fails over the 255th argument index (or higher).
 //! FIXME(splat): The 255 argument limit is a temporary performance hack.
 
 #![allow(incomplete_features)]
@@ -47,7 +47,7 @@ fn s_255_terminal(
     _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A,
     _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A,
     _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A,
-    #[splat] (_a, _b): (u32, i8), //~ ERROR `#[splat]` is only supported on argument index 254 or less, this `#[splat]` is on index 255
+    #[rustc_splat] (_a, _b): (u32, i8), //~ ERROR `#[rustc_splat]` is only supported on argument index 254 or less, this `#[rustc_splat]` is on index 255
 ) {}
 
 #[rustfmt::skip]
@@ -68,7 +68,7 @@ fn s_256_terminal(
     _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A,
     _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A,
     _: A,
-    #[splat] (_a, _b): (u32, i8), //~ ERROR `#[splat]` is only supported on argument index 254 or less, this `#[splat]` is on index 256
+    #[rustc_splat] (_a, _b): (u32, i8), //~ ERROR `#[rustc_splat]` is only supported on argument index 254 or less, this `#[rustc_splat]` is on index 256
 ) {}
 
 #[rustfmt::skip]
@@ -88,7 +88,7 @@ fn s_255_non_terminal(
     _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A,
     _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A,
     _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A,
-    #[splat] (_a, _b): (u32, i8), //~ ERROR `#[splat]` is only supported on argument index 254 or less, this `#[splat]` is on index 255
+    #[rustc_splat] (_a, _b): (u32, i8), //~ ERROR `#[rustc_splat]` is only supported on argument index 254 or less, this `#[rustc_splat]` is on index 255
     _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A,
 ) {}
 
@@ -110,12 +110,12 @@ fn s_256_non_terminal(
     _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A,
     _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A, _: A,
     _: A,
-    #[splat] (_a, _b): (u32, i8), //~ ERROR `#[splat]` is only supported on argument index 254 or less, this `#[splat]` is on index 256
+    #[rustc_splat] (_a, _b): (u32, i8), //~ ERROR `#[rustc_splat]` is only supported on argument index 254 or less, this `#[rustc_splat]` is on index 256
     _: A,
 ) {}
 
 // It's only the splatted index that's constrained to 255, not the argument count of the caller or callee.
-fn more_than_255_splatted_args(#[splat] _t: Tuple256) {}
+fn more_than_255_splatted_args(#[rustc_splat] _t: Tuple256) {}
 
 fn main() {
     let a = ();
