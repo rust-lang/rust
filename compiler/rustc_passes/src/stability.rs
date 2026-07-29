@@ -397,11 +397,11 @@ impl<'tcx> MissingStabilityAnnotations<'tcx> {
             && let Some(fn_sig) = fn_sig
             && const_stab.is_const_stable()
             && !stab.is_some_and(|s| s.is_stable())
-            && let Some(const_span) = find_attr_span!(RustcConstStability)
+            && let Some(path_span) = find_attr_span!(RustcConstStability)
         {
             self.tcx.dcx().emit_err(diagnostics::ConstStableNotStable {
                 fn_sig_span: fn_sig.span,
-                const_span,
+                path_span,
             });
         }
 

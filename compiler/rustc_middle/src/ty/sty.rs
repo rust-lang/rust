@@ -725,6 +725,7 @@ impl<'tcx> Ty<'tcx> {
         T::collect_and_apply(iter, |ts| Ty::new_tup(tcx, ts))
     }
 
+    /// Prefer using the [TyCtxt::type_of] query over this, that makes it easier to get all the pieces correct
     #[inline]
     pub fn new_fn_def(
         tcx: TyCtxt<'tcx>,

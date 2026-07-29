@@ -3561,8 +3561,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Register the impl's predicates. One of these predicates
             // must be unsatisfied, or else we wouldn't have gotten here
             // in the first place.
-            let unnormalized_predicates =
-                self.tcx.predicates_of(impl_def_id).instantiate(self.tcx, impl_args);
+            let unnormalized_clauses =
+                self.tcx.clauses_of(impl_def_id).instantiate(self.tcx, impl_args);
             ocx.register_obligations(traits::predicates_for_generics(
                 |idx, span| {
                     cause.clone().derived_cause(
@@ -3574,15 +3574,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             ObligationCauseCode::ImplDerived(Box::new(traits::ImplDerivedCause {
                                 derived,
                                 impl_or_alias_def_id: impl_def_id,
-                                impl_def_predicate_index: Some(idx),
+                                impl_def_clause_index: Some(idx),
                                 span,
                             }))
                         },
                     )
                 },
-                |pred| ocx.normalize(&cause, self.param_env, pred),
+                |clause| ocx.normalize(&cause, self.param_env, clause),
                 self.param_env,
-                unnormalized_predicates,
+                unnormalized_clauses,
             ));
 
             // Normalize the output type, which we can use later on as the

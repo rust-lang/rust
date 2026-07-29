@@ -185,7 +185,9 @@ where
 /// [required]: MirPass::is_required
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(crate) enum Optimizations {
+    /// The current function has `#[optimize(none)]`.
     Suppressed,
+    /// Normal optimizations may run.
     Allowed,
 }
 
@@ -197,7 +199,7 @@ pub(super) fn run_passes_no_validate<'tcx>(
     passes: &[&dyn MirPass<'tcx>],
     phase_change: Option<MirPhase>,
 ) {
-    run_passes_inner(tcx, body, passes, phase_change, false, Optimizations::Allowed);
+    run_passes_inner(tcx, body, passes, phase_change, false);
 }
 
 /// The optional `phase_change` is applied after executing all the passes, if present
@@ -206,9 +208,8 @@ pub(super) fn run_passes<'tcx>(
     body: &mut Body<'tcx>,
     passes: &[&dyn MirPass<'tcx>],
     phase_change: Option<MirPhase>,
-    optimizations: Optimizations,
 ) {
-    run_passes_inner(tcx, body, passes, phase_change, true, optimizations);
+    run_passes_inner(tcx, body, passes, phase_change, true);
 }
 
 pub(super) fn should_run_pass<'tcx, P>(
@@ -245,7 +246,6 @@ fn run_passes_inner<'tcx>(
     passes: &[&dyn MirPass<'tcx>],
     phase_change: Option<MirPhase>,
     validate_each: bool,
-    optimizations: Optimizations,
 ) {
     let overridden_passes = &tcx.sess.opts.unstable_opts.mir_enable_passes;
     trace!(?overridden_passes);
@@ -286,6 +286,15 @@ fn run_passes_inner<'tcx>(
     if !body.should_skip() {
         let validate = validate_each & tcx.sess.opts.unstable_opts.validate_mir;
         let lint = tcx.sess.opts.unstable_opts.lint_mir;
+
+        let def_id = body.source.def_id();
+        let optimizations = if tcx.def_kind(def_id).has_codegen_attrs()
+            && tcx.codegen_fn_attrs(def_id).optimize.do_not_optimize()
+        {
+            Optimizations::Suppressed
+        } else {
+            Optimizations::Allowed
+        };
 
         for pass in passes {
             let pass_name = pass.name();

@@ -324,19 +324,19 @@ fn default_body_is_unstable(
     err.emit();
 }
 
-/// Re-sugar `ty::GenericPredicates` in a way suitable to be used in structured suggestions.
-fn bounds_from_generic_predicates<'tcx>(
+/// Re-sugar `ty::GenericClauses` in a way suitable to be used in structured suggestions.
+fn bounds_from_generic_clauses<'tcx>(
     tcx: TyCtxt<'tcx>,
-    predicates: impl IntoIterator<Item = (ty::Clause<'tcx>, Span)>,
+    clauses: impl IntoIterator<Item = (ty::Clause<'tcx>, Span)>,
     assoc: ty::AssocItem,
 ) -> (String, String) {
     let mut types: FxIndexMap<Ty<'tcx>, Vec<DefId>> = FxIndexMap::default();
     let mut regions: FxIndexMap<Region<'tcx>, Vec<Region<'tcx>>> = FxIndexMap::default();
     let mut projections = vec![];
-    for (predicate, _) in predicates {
-        debug!("predicate {:?}", predicate);
-        let bound_predicate = predicate.kind();
-        match bound_predicate.skip_binder() {
+    for (clause, _) in clauses {
+        debug!("clause {:?}", clause);
+        let bound_clause = clause.kind();
+        match bound_clause.skip_binder() {
             ty::ClauseKind::Trait(trait_predicate) => {
                 let entry = types.entry(trait_predicate.self_ty()).or_default();
                 let def_id = trait_predicate.def_id();
@@ -346,7 +346,7 @@ fn bounds_from_generic_predicates<'tcx>(
                 }
             }
             ty::ClauseKind::Projection(projection_pred) => {
-                projections.push(bound_predicate.rebind(projection_pred));
+                projections.push(bound_clause.rebind(projection_pred));
             }
             ty::ClauseKind::RegionOutlives(OutlivesPredicate(a, b)) => {
                 regions.entry(a).or_default().push(b);
@@ -442,7 +442,7 @@ fn fn_sig_suggestion<'tcx>(
     tcx: TyCtxt<'tcx>,
     sig: ty::FnSig<'tcx>,
     ident: Ident,
-    predicates: impl IntoIterator<Item = (ty::Clause<'tcx>, Span)>,
+    clauses: impl IntoIterator<Item = (ty::Clause<'tcx>, Span)>,
     assoc: ty::AssocItem,
 ) -> String {
     let splatted_arg_index = sig.splatted().map(usize::from);
@@ -502,7 +502,7 @@ fn fn_sig_suggestion<'tcx>(
     let output = if !output.is_unit() { format!(" -> {output}") } else { String::new() };
 
     let safety = sig.safety().prefix_str();
-    let (generics, where_clauses) = bounds_from_generic_predicates(tcx, predicates, assoc);
+    let (generics, where_clauses) = bounds_from_generic_clauses(tcx, clauses, assoc);
 
     // FIXME: this is not entirely correct, as the lifetimes from borrowed params will
     // not be present in the `fn` definition, nor will we account for renamed
@@ -535,15 +535,15 @@ fn suggestion_signature<'tcx>(
                 tcx.fn_sig(assoc.def_id).instantiate(tcx, args).skip_norm_wip(),
             ),
             assoc.ident(tcx),
-            tcx.predicates_of(assoc.def_id)
+            tcx.clauses_of(assoc.def_id)
                 .instantiate_own(tcx, args)
                 .map(|(c, s)| (c.skip_norm_wip(), s)),
             assoc,
         ),
         ty::AssocKind::Type { .. } => {
-            let (generics, where_clauses) = bounds_from_generic_predicates(
+            let (generics, where_clauses) = bounds_from_generic_clauses(
                 tcx,
-                tcx.predicates_of(assoc.def_id)
+                tcx.clauses_of(assoc.def_id)
                     .instantiate_own(tcx, args)
                     .map(|(c, s)| (c.skip_norm_wip(), s)),
                 assoc,

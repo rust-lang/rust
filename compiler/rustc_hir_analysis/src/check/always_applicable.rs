@@ -293,7 +293,7 @@ fn ensure_impl_predicates_are_implied_by_item_defn<'tcx>(
     ocx.eq(&ObligationCause::dummy_with_span(impl_span), adt_env, fresh_adt_ty, impl_adt_ty)
         .expect("equating fully generic trait ref should never fail");
 
-    for (clause, span) in tcx.predicates_of(impl_def_id).instantiate(tcx, fresh_impl_args) {
+    for (clause, span) in tcx.clauses_of(impl_def_id).instantiate(tcx, fresh_impl_args) {
         let normalize_cause = traits::ObligationCause::misc(span, impl_def_id);
         let pred = ocx.normalize(&normalize_cause, adt_env, clause);
         let cause = traits::ObligationCause::new(

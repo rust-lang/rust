@@ -115,7 +115,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         debug!("rcvr_args={rcvr_args:?}, all_args={all_args:?}");
 
         // Create the final signature for the method, replacing late-bound regions.
-        let (method_sig, method_predicates) = self.instantiate_method_sig(pick, all_args);
+        let (method_sig, method_clauses) = self.instantiate_method_sig(pick, all_args);
 
         // If there is a `Self: Sized` bound and `Self` is a trait object, it is possible that
         // something which derefs to `Self` actually implements the trait and the caller
@@ -127,8 +127,8 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // appropriate hint suggesting to import the trait.
         let filler_args = rcvr_args
             .extend_to(self.tcx, pick.item.def_id, |def, _| self.tcx.mk_param_from_def(def));
-        let illegal_sized_bound = self.predicates_require_illegal_sized_bound(
-            self.tcx.predicates_of(pick.item.def_id).instantiate(self.tcx, filler_args),
+        let illegal_sized_bound = self.clauses_require_illegal_sized_bound(
+            self.tcx.clauses_of(pick.item.def_id).instantiate(self.tcx, filler_args),
         );
 
         // Unify the (adjusted) self type with what the method expects.
@@ -140,8 +140,8 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         let method_sig_rcvr =
             self.normalize(self.span, Unnormalized::new_wip(method_sig.inputs()[0]));
         debug!(
-            "confirm: self_ty={:?} method_sig_rcvr={:?} method_sig={:?} method_predicates={:?}",
-            self_ty, method_sig_rcvr, method_sig, method_predicates
+            "confirm: self_ty={:?} method_sig_rcvr={:?} method_sig={:?} method_clauses={:?}",
+            self_ty, method_sig_rcvr, method_sig, method_clauses
         );
         self.unify_receivers(self_ty, method_sig_rcvr, pick);
 
@@ -160,7 +160,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // We won't add these if we encountered an illegal sized bound, so that we can use
         // a custom error in that case.
         if illegal_sized_bound.is_none() {
-            self.add_obligations(method_sig, all_args, method_predicates, pick.item.def_id);
+            self.add_obligations(method_sig, all_args, method_clauses, pick.item.def_id);
         }
 
         // Create the final `MethodCallee`.
@@ -595,16 +595,16 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         &mut self,
         pick: &probe::Pick<'tcx>,
         all_args: GenericArgsRef<'tcx>,
-    ) -> (ty::FnSig<'tcx>, ty::InstantiatedPredicates<'tcx>) {
+    ) -> (ty::FnSig<'tcx>, ty::InstantiatedClauses<'tcx>) {
         debug!("instantiate_method_sig(pick={:?}, all_args={:?})", pick, all_args);
 
         // Instantiate the bounds on the method with the
         // type/early-bound-regions instantiations performed. There can
         // be no late-bound regions appearing here.
         let def_id = pick.item.def_id;
-        let method_predicates = self.tcx.predicates_of(def_id).instantiate(self.tcx, all_args);
+        let method_clauses = self.tcx.clauses_of(def_id).instantiate(self.tcx, all_args);
 
-        debug!("method_predicates after instantiation = {:?}", method_predicates);
+        debug!("method_clauses after instantiation = {:?}", method_clauses);
 
         let sig = self.tcx.fn_sig(def_id).instantiate(self.tcx, all_args).skip_norm_wip();
         debug!("type scheme instantiated, sig={:?}", sig);
@@ -612,22 +612,22 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         let sig = self.instantiate_binder_with_fresh_vars(sig);
         debug!("late-bound lifetimes from method instantiated, sig={:?}", sig);
 
-        (sig, method_predicates)
+        (sig, method_clauses)
     }
 
     fn add_obligations(
         &mut self,
         sig: ty::FnSig<'tcx>,
         all_args: GenericArgsRef<'tcx>,
-        method_predicates: ty::InstantiatedPredicates<'tcx>,
+        method_clauses: ty::InstantiatedClauses<'tcx>,
         def_id: DefId,
     ) {
         debug!(
-            "add_obligations: sig={:?} all_args={:?} method_predicates={:?} def_id={:?}",
-            sig, all_args, method_predicates, def_id
+            "add_obligations: sig={:?} all_args={:?} method_clauses={:?} def_id={:?}",
+            sig, all_args, method_clauses, def_id
         );
 
-        // FIXME: could replace with the following, but we already calculated `method_predicates`,
+        // FIXME: could replace with the following, but we already calculated `method_clauses`,
         // so we just call `predicates_for_generics` directly to avoid redoing work.
         // `self.add_required_obligations(self.span, def_id, &all_args);`
         for obligation in traits::predicates_for_generics(
@@ -640,9 +640,9 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 );
                 self.cause(self.span, code)
             },
-            |pred| self.normalize(self.call_expr.span, pred),
+            |clause| self.normalize(self.call_expr.span, clause),
             self.param_env,
-            method_predicates,
+            method_clauses,
         ) {
             self.register_predicate(obligation);
         }
@@ -666,22 +666,24 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
     ///////////////////////////////////////////////////////////////////////////
     // MISCELLANY
 
-    fn predicates_require_illegal_sized_bound(
+    fn clauses_require_illegal_sized_bound(
         &self,
-        predicates: ty::InstantiatedPredicates<'tcx>,
+        inst_clauses: ty::InstantiatedClauses<'tcx>,
     ) -> Option<Span> {
         let sized_def_id = self.tcx.lang_items().sized_trait()?;
 
         traits::elaborate(
             self.tcx,
-            predicates.predicates.iter().copied().map(Unnormalized::skip_norm_wip),
+            inst_clauses.clauses.iter().copied().map(Unnormalized::skip_norm_wip),
         )
         // We don't care about regions here.
-        .filter_map(|pred| match pred.kind().skip_binder() {
+        .filter_map(|clause| match clause.kind().skip_binder() {
             ty::ClauseKind::Trait(trait_pred) if trait_pred.def_id() == sized_def_id => {
-                let span = predicates
+                let span = inst_clauses
                     .iter()
-                    .find_map(|(p, span)| if p.skip_norm_wip() == pred { Some(span) } else { None })
+                    .find_map(
+                        |(c, span)| if c.skip_norm_wip() == clause { Some(span) } else { None },
+                    )
                     .unwrap_or(DUMMY_SP);
                 Some((trait_pred, span))
             }

@@ -1405,7 +1405,7 @@ pub(super) fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, def_id:
     let infcx = wfcx.infcx;
     let tcx = wfcx.tcx();
 
-    let predicates = tcx.predicates_of(def_id.to_def_id());
+    let gen_clauses = tcx.clauses_of(def_id.to_def_id());
     let generics = tcx.generics_of(def_id);
 
     // Check that concrete defaults are well-formed. See test `type-check-defaults.rs`.
@@ -1472,10 +1472,10 @@ pub(super) fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, def_id:
         }
     }
 
-    // Check that trait predicates are WF when params are instantiated with their defaults.
-    // We don't want to overly constrain the predicates that may be written but we want to
+    // Check that trait clauses are WF when params are instantiated with their defaults.
+    // We don't want to overly constrain the clauses that may be written but we want to
     // catch cases where a default my never be applied such as `struct Foo<T: Copy = String>`.
-    // Therefore we check if a predicate which contains a single type param
+    // Therefore we check if a clause which contains a single type param
     // with a concrete default is WF with that default instantiated.
     // For more examples see tests `defaults-well-formedness.rs` and `type-check-defaults.rs`.
     //
@@ -1493,11 +1493,11 @@ pub(super) fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, def_id:
         tcx.mk_param_from_def(param)
     });
 
-    // Now we build the instantiated predicates.
-    let default_obligations = predicates
-        .predicates
+    // Now we build the instantiated clauses.
+    let default_obligations = gen_clauses
+        .clauses
         .iter()
-        .flat_map(|&(pred, sp)| {
+        .flat_map(|&(clause, sp)| {
             #[derive(Default)]
             struct CountParams {
                 params: FxHashSet<u32>,
@@ -1523,52 +1523,52 @@ pub(super) fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, def_id:
                 }
             }
             let mut param_count = CountParams::default();
-            let has_region = pred.visit_with(&mut param_count).is_break();
-            let instantiated_pred = ty::EarlyBinder::bind(tcx, pred).instantiate(tcx, args);
+            let has_region = clause.visit_with(&mut param_count).is_break();
+            let instantiated_clause = ty::EarlyBinder::bind(tcx, clause).instantiate(tcx, args);
             // Don't check non-defaulted params, dependent defaults (including lifetimes)
-            // or preds with multiple params.
-            if instantiated_pred.skip_normalization().has_non_region_param()
+            // or clauses with multiple params.
+            if instantiated_clause.skip_normalization().has_non_region_param()
                 || param_count.params.len() > 1
                 || has_region
             {
                 None
-            } else if predicates
-                .predicates
+            } else if gen_clauses
+                .clauses
                 .iter()
-                .any(|&(p, _)| Unnormalized::new_wip(p) == instantiated_pred)
+                .any(|&(p, _)| Unnormalized::new_wip(p) == instantiated_clause)
             {
-                // Avoid duplication of predicates that contain no parameters, for example.
+                // Avoid duplication of clauses that contain no parameters, for example.
                 None
             } else {
-                Some((instantiated_pred, sp))
+                Some((instantiated_clause, sp))
             }
         })
-        .map(|(pred, sp)| {
+        .map(|(clause, sp)| {
             // Convert each of those into an obligation. So if you have
             // something like `struct Foo<T: Copy = String>`, we would
-            // take that predicate `T: Copy`, instantiated with `String: Copy`
+            // take that clause `T: Copy`, instantiated with `String: Copy`
             // (actually that happens in the previous `flat_map` call),
             // and then try to prove it (in this case, we'll fail).
             //
-            // Note the subtle difference from how we handle `predicates`
-            // below: there, we are not trying to prove those predicates
+            // Note the subtle difference from how we handle `gen_clauses`
+            // below: there, we are not trying to prove those clauses
             // to be *true* but merely *well-formed*.
-            let pred = wfcx.normalize(sp, None, pred);
+            let clause = wfcx.normalize(sp, None, clause);
             let cause = traits::ObligationCause::new(
                 sp,
                 wfcx.body_def_id,
                 ObligationCauseCode::WhereClause(def_id.to_def_id(), sp),
             );
-            Obligation::new(tcx, cause, wfcx.param_env, pred)
+            Obligation::new(tcx, cause, wfcx.param_env, clause)
         });
 
-    let predicates = predicates.instantiate_identity(tcx);
+    let gen_clauses = gen_clauses.instantiate_identity(tcx);
 
-    let assoc_const_obligations: Vec<_> = predicates
-        .predicates
+    let assoc_const_obligations: Vec<_> = gen_clauses
+        .clauses
         .iter()
         .copied()
-        .zip(predicates.spans.iter().copied())
+        .zip(gen_clauses.spans.iter().copied())
         .filter_map(|(clause, sp)| {
             let clause = clause.skip_norm_wip();
             let proj = clause.as_projection_clause()?;
@@ -1592,8 +1592,8 @@ pub(super) fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, def_id:
         })
         .collect();
 
-    assert_eq!(predicates.predicates.len(), predicates.spans.len());
-    let wf_obligations = predicates.into_iter().flat_map(|(p, sp)| {
+    assert_eq!(gen_clauses.clauses.len(), gen_clauses.spans.len());
+    let wf_obligations = gen_clauses.into_iter().flat_map(|(p, sp)| {
         traits::wf::clause_obligations(
             infcx,
             wfcx.param_env,
@@ -1996,8 +1996,8 @@ pub(super) fn check_variances_for_type_defn<'tcx>(tcx: TyCtxt<'tcx>, def_id: Loc
         kind => span_bug!(tcx.def_span(def_id), "cannot compute the variances of {kind:?}"),
     }
 
-    let ty_predicates = tcx.predicates_of(def_id);
-    assert_eq!(ty_predicates.parent, None);
+    let ty_clauses = tcx.clauses_of(def_id);
+    assert_eq!(ty_clauses.parent, None);
     let variances = tcx.variances_of(def_id);
 
     let mut constrained_parameters: FxHashSet<_> = variances
@@ -2007,7 +2007,7 @@ pub(super) fn check_variances_for_type_defn<'tcx>(tcx: TyCtxt<'tcx>, def_id: Loc
         .map(|(index, _)| Parameter(index as u32))
         .collect();
 
-    identify_constrained_generic_params(tcx, ty_predicates, None, &mut constrained_parameters);
+    identify_constrained_generic_params(tcx, ty_clauses, None, &mut constrained_parameters);
 
     // Lazily calculated because it is only needed in case of an error.
     let explicitly_bounded_params = LazyCell::new(|| {
@@ -2287,12 +2287,12 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
         let mut span = tcx.def_span(self.body_def_id);
         let empty_env = ty::ParamEnv::empty();
 
-        let predicates_with_span = tcx.predicates_of(self.body_def_id).predicates.iter().copied();
+        let clauses_with_span = tcx.clauses_of(self.body_def_id).clauses.iter().copied();
         // Check elaborated bounds.
-        let implied_obligations = traits::elaborate(tcx, predicates_with_span);
+        let implied_obligations = traits::elaborate(tcx, clauses_with_span);
 
-        for (pred, obligation_span) in implied_obligations {
-            match pred.kind().skip_binder() {
+        for (clause, obligation_span) in implied_obligations {
+            match clause.kind().skip_binder() {
                 // We lower empty bounds like `Vec<dyn Copy>:` as
                 // `WellFormed(Vec<dyn Copy>)`, which will later get checked by
                 // regular WF checking
@@ -2303,8 +2303,8 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
             }
 
             // Match the existing behavior.
-            if pred.is_global() && !pred.has_type_flags(TypeFlags::HAS_BINDER_VARS) {
-                let pred = self.normalize(span, None, Unnormalized::new_wip(pred));
+            if clause.is_global() && !clause.has_type_flags(TypeFlags::HAS_BINDER_VARS) {
+                let clause = self.normalize(span, None, Unnormalized::new_wip(clause));
 
                 // only use the span of the predicate clause (#90869)
                 let hir_node = tcx.hir_node_by_def_id(self.body_def_id);
@@ -2325,7 +2325,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
                         ObligationCauseCode::TrivialBound,
                     ),
                     empty_env,
-                    pred,
+                    clause,
                 );
                 self.ocx.register_obligation(obligation);
             }

@@ -100,7 +100,7 @@ impl<'a> CollectProcMacros<'a> {
         attr: &'a ast::Attribute,
     ) {
         let Some(rustc_hir::Attribute::Parsed(AttributeKind::ProcMacroDerive { .. })) =
-            AttributeParser::parse_limited(
+            AttributeParser::parse_limited_sym(
                 self.session,
                 slice::from_ref(attr),
                 &[sym::proc_macro_derive],
@@ -230,9 +230,10 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
         }
 
         if !self.is_proc_macro_crate {
+            let path = &attr.get_normal_item().path;
             self.dcx
                 .create_err(diagnostics::AttributeOnlyUsableWithCrateType {
-                    span: attr.span,
+                    span: path.span,
                     path: &pprust::path_to_string(&attr.get_normal_item().path),
                 })
                 .emit();

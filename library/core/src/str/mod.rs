@@ -2904,7 +2904,7 @@ impl str {
     /// ```
     ///
     /// [normalization]: https://www.unicode.org/faq/normalization.html
-    #[unstable(feature = "casefold", issue = "154742")]
+    #[unstable(feature = "casefold", issue = "157000")]
     #[must_use]
     #[inline]
     pub fn eq_ignore_case_unnormalized(&self, other: &str) -> bool {

@@ -8,7 +8,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::thin_vec::ThinVec;
 use rustc_hir as hir;
 use rustc_hir::attrs::{
-    self, DeprecatedSince, DocAttribute, DocCfgHideShow, DocInline, HideOrShow,
+    self, DeprecatedSince, DocAttribute, DocCfgHideShow, DocInline, HideOrShow, RustcVersion,
 };
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::DefId;
@@ -242,7 +242,7 @@ impl FromClean<hir::Stability> for Stability {
             hir::StabilityLevel::Stable { since, .. } => StabilityLevel::Stable {
                 since: match since {
                     hir::StableSince::Version(since) => Some(since.to_string()),
-                    hir::StableSince::Current => Some(hir::RustcVersion::CURRENT.to_string()),
+                    hir::StableSince::Current => Some(RustcVersion::CURRENT.to_string()),
                     // Match rustdoc HTML: malformed stable-since values are omitted.
                     hir::StableSince::Err(_) => None,
                 },
@@ -260,7 +260,7 @@ impl FromClean<hir::ConstStability> for Stability {
             hir::StabilityLevel::Stable { since, .. } => StabilityLevel::Stable {
                 since: match since {
                     hir::StableSince::Version(since) => Some(since.to_string()),
-                    hir::StableSince::Current => Some(hir::RustcVersion::CURRENT.to_string()),
+                    hir::StableSince::Current => Some(RustcVersion::CURRENT.to_string()),
                     // Match rustdoc HTML: malformed stable-since values are omitted.
                     hir::StableSince::Err(_) => None,
                 },

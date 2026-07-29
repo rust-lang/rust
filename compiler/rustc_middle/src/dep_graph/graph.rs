@@ -178,12 +178,12 @@ impl DepGraph {
         prev_work_products: WorkProductMap,
         encoder: FileEncoder<'static>,
     ) -> DepGraph {
-        let prev_graph_node_count = prev_graph.node_count();
+        let prev_index_space_len = prev_graph.index_space_len();
 
         let current =
-            CurrentDepGraph::new(session, prev_graph_node_count, encoder, Arc::clone(&prev_graph));
+            CurrentDepGraph::new(session, prev_index_space_len, encoder, Arc::clone(&prev_graph));
 
-        let colors = DepNodeColorMap::new(prev_graph_node_count);
+        let colors = DepNodeColorMap::new(prev_index_space_len);
 
         // Instantiate a node with zero dependencies only once for anonymous queries.
         let _green_node_index = current.alloc_new_node(
@@ -202,7 +202,7 @@ impl DepGraph {
             Fingerprint::ZERO,
         );
         assert_eq!(red_node_index, DepNodeIndex::FOREVER_RED_NODE);
-        if prev_graph_node_count > 0 {
+        if prev_index_space_len > 0 {
             let prev_index =
                 const { SerializedDepNodeIndex::from_u32(DepNodeIndex::FOREVER_RED_NODE.as_u32()) };
             let result = colors.try_set_color(prev_index, DesiredColor::Red);
@@ -1199,7 +1199,7 @@ pub(super) struct CurrentDepGraph {
 impl CurrentDepGraph {
     fn new(
         session: &Session,
-        prev_graph_node_count: usize,
+        prev_index_space_len: usize,
         encoder: FileEncoder<'static>,
         previous: Arc<SerializedDepGraph>,
     ) -> Self {
@@ -1216,10 +1216,10 @@ impl CurrentDepGraph {
             Err(_) => None,
         };
 
-        let new_node_count_estimate = 102 * prev_graph_node_count / 100 + 200;
+        let new_node_count_estimate = 102 * previous.live_node_count() / 100 + 200;
 
         CurrentDepGraph {
-            encoder: GraphEncoder::new(session, encoder, prev_graph_node_count, previous),
+            encoder: GraphEncoder::new(session, encoder, prev_index_space_len, previous),
             anon_node_to_index: ShardedHashMap::with_capacity(
                 // FIXME: The count estimate is off as anon nodes are only a portion of the nodes.
                 new_node_count_estimate / sharded::shards(),

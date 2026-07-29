@@ -533,12 +533,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let clone_trait = this.tcx.require_lang_item(LangItem::Clone, span);
                     let clone_fn = this.tcx.associated_item_def_ids(clone_trait)[0];
                     // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
-                    let func = Operand::function_handle(
-                        this.tcx,
-                        clone_fn,
-                        ty::Binder::dummy([ty.into()]),
-                        expr_span,
-                    );
+                    let func =
+                        Operand::function_handle(this.tcx, clone_fn, &[ty.into()], expr_span);
                     let ref_ty = Ty::new_imm_ref(this.tcx, this.tcx.lifetimes.re_erased, ty);
                     let ref_place = this.temp(ref_ty, span);
                     this.cfg.push_assign(
