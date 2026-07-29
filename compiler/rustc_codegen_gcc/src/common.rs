@@ -116,7 +116,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             Mutability::Mut => {
                 self.static_addr_of_mut(const_alloc_to_gcc(self, alloc), alloc.inner().align, None)
             }
-            _ => self.static_addr_of(alloc, None),
+            _ => self.static_addr_of(alloc, None, None),
         };
         if !self.sess().fewer_names() {
             // FIXME(antoyo): set value name.
