@@ -6990,6 +6990,7 @@ Released 2018-09-13
 [`box_vec`]: https://clippy.rust-lang.org/main/index.html#box_vec
 [`boxed_local`]: https://clippy.rust-lang.org/main/index.html#boxed_local
 [`branches_sharing_code`]: https://clippy.rust-lang.org/main/index.html#branches_sharing_code
+[`bufreader_stdin`]: https://clippy.rust-lang.org/main/index.html#bufreader_stdin
 [`builtin_type_shadow`]: https://clippy.rust-lang.org/main/index.html#builtin_type_shadow
 [`by_ref_peekable_peek`]: https://clippy.rust-lang.org/main/index.html#by_ref_peekable_peek
 [`byte_char_slices`]: https://clippy.rust-lang.org/main/index.html#byte_char_slices
