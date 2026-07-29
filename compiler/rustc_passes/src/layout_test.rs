@@ -85,6 +85,9 @@ fn dump_layout_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId, kinds: &[RustcDumpLa
                             ty_layout.homogeneous_aggregate(&UnwrapLayoutCx { tcx, typing_env });
                         format!("homogeneous_aggregate: {data:?}")
                     }
+                    RustcDumpLayoutKind::LargestNiche => {
+                        format!("largest_niche: {:?}", ty_layout.largest_niche)
+                    }
                     RustcDumpLayoutKind::Size => format!("size: {:?}", ty_layout.size),
                 };
                 tcx.dcx().span_err(span, message);

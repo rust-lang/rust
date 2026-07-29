@@ -1,7 +1,6 @@
-use std::collections::BTreeSet;
 use std::fmt::{self, Write};
 use std::ops::Deref;
-use std::range::RangeInclusive;
+use std::range::{RangeFrom, RangeInclusive, RangeToInclusive};
 use std::{cmp, iter};
 
 use rustc_hashes::Hash64;
@@ -349,8 +348,8 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         variants: &IndexSlice<VariantIdx, IndexVec<FieldIdx, F>>,
         is_enum: bool,
         is_special_no_niche: bool,
-        discr_range_of_repr: impl Fn(i128, i128) -> (Integer, bool),
-        discriminants: impl Iterator<Item = (VariantIdx, i128)>,
+        discr_range_of_repr: impl Fn(RangeFrom<i128>, RangeToInclusive<u128>) -> (Integer, bool),
+        discriminants: impl Iterator<Item = (VariantIdx, u128)>,
         always_sized: bool,
     ) -> LayoutCalculatorResult<FieldIdx, VariantIdx, F> {
         let (present_first, present_second) = {
@@ -582,8 +581,8 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         &self,
         repr: &ReprOptions,
         variants: &IndexSlice<VariantIdx, IndexVec<FieldIdx, F>>,
-        discr_range_of_repr: impl Fn(i128, i128) -> (Integer, bool),
-        discriminants: impl Iterator<Item = (VariantIdx, i128)>,
+        discr_range_of_repr: impl Fn(RangeFrom<i128>, RangeToInclusive<u128>) -> (Integer, bool),
+        discriminants: impl Iterator<Item = (VariantIdx, u128)>,
     ) -> LayoutCalculatorResult<FieldIdx, VariantIdx, F> {
         let dl = self.cx.data_layout();
         // bail if the enum has an incoherent repr that cannot be computed
@@ -755,63 +754,36 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         let niche_filling_layout = calculate_niche_filling_layout();
 
         let discr_type = repr.discr_type();
-        let discr_int = Integer::from_attr(dl, discr_type);
-        // Because we can only represent one range of valid values, we'll look for the
-        // largest range of invalid values and pick everything else as the range of valid
-        // values.
+        let discr_size = Integer::from_attr(dl, discr_type).size();
 
-        // First we need to sort the possible discriminant values so that we can look for the largest gap:
-        let valid_discriminants: BTreeSet<i128> = discriminants
+        let necessary_discriminants: Vec<u128> = discriminants
             .filter(|&(i, _)| repr.c() || variants[i].iter().all(|f| !f.is_uninhabited()))
-            .map(|(_, val)| {
-                if discr_type.is_signed() {
-                    // sign extend the raw representation to be an i128
-                    // FIXME: do this at the discriminant iterator creation sites
-                    discr_int.size().sign_extend(val as u128)
-                } else {
-                    val
-                }
-            })
+            .map(|(_, val)| val)
             .collect();
-        trace!(?valid_discriminants);
-        let discriminants = valid_discriminants.iter().copied();
-        //let next_discriminants = discriminants.clone().cycle().skip(1);
-        let next_discriminants =
-            discriminants.clone().chain(valid_discriminants.first().copied()).skip(1);
-        // Iterate over pairs of each discriminant together with the next one.
-        // Since they were sorted, we can now compute the niche sizes and pick the largest.
-        let discriminants = discriminants.zip(next_discriminants);
-        let largest_niche = discriminants.max_by_key(|&(start, end)| {
-            trace!(?start, ?end);
-            // If this is a wraparound range, the niche size is `MAX - abs(diff)`, as the diff between
-            // the two end points is actually the size of the valid discriminants.
-            let dist = if start > end {
-                // Overflow can happen for 128 bit discriminants if `end` is negative.
-                // But in that case casting to `u128` still gets us the right value,
-                // as the distance must be positive if the lhs of the subtraction is larger than the rhs.
-                let dist = start.wrapping_sub(end);
-                if discr_type.is_signed() {
-                    discr_int.signed_max().wrapping_sub(dist) as u128
-                } else {
-                    discr_int.size().unsigned_int_max() - dist as u128
-                }
-            } else {
-                // Overflow can happen for 128 bit discriminants if `start` is negative.
-                // But in that case casting to `u128` still gets us the right value,
-                // as the distance must be positive if the lhs of the subtraction is larger than the rhs.
-                end.wrapping_sub(start) as u128
-            };
-            trace!(?dist);
-            dist
-        });
-        trace!(?largest_niche);
 
-        // `max` is the last valid discriminant before the largest niche
-        // `min` is the first valid discriminant after the largest niche
-        let (max, min) = largest_niche
+        // When picking the integer to use, we respect how the discriminants were written
+        // in the original rust code, rather than looking only at the bit pattern.
+        let (min_negative, max_positive): (i128, u128) = if discr_type.is_signed() {
+            necessary_discriminants.iter().copied().map(|val| discr_size.sign_extend(val)).fold(
+                (0_i128, 0_u128),
+                |(min, max), val| {
+                    if let Ok(val) = u128::try_from(val) {
+                        (min, max.max(val))
+                    } else {
+                        (min.min(val), max)
+                    }
+                },
+            )
+        } else {
             // We might have no inhabited variants, so pretend there's at least one.
-            .unwrap_or((0, 0));
-        let (min_ity, signed) = discr_range_of_repr(min, max); //Integer::discr_range_of_repr(tcx, ty, &repr, min, max);
+            (0, necessary_discriminants.iter().copied().max().unwrap_or(0))
+        };
+        trace!(?min_negative, ?max_positive);
+
+        let (min_ity, signed) = discr_range_of_repr(
+            RangeFrom { start: min_negative },
+            RangeToInclusive { last: max_positive },
+        ); //Integer::discr_range_of_repr(tcx, ty, &repr, min, max);
 
         let mut align = dl.aggregate_align;
         let mut max_repr_align = repr.align;
@@ -929,13 +901,16 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             }
         }
 
-        let tag_mask = ity.size().unsigned_int_max();
+        let tag_valid_range = {
+            let tag_size = ity.size();
+            let tags = necessary_discriminants.into_iter().map(|d| tag_size.truncate(d));
+            WrappingRange::smallest_range_containing(tags, tag_size)
+                // We might have no inhabited variants, so pretend there's at least one.
+                .unwrap_or(WrappingRange { start: 0, end: 0 })
+        };
         let tag = Scalar::Initialized {
             value: Primitive::Int(ity, signed),
-            valid_range: WrappingRange {
-                start: (min as u128 & tag_mask),
-                end: (max as u128 & tag_mask),
-            },
+            valid_range: tag_valid_range,
         };
         let mut abi = BackendRepr::Memory { sized: true };
 
