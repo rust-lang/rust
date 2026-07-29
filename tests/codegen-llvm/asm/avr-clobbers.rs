@@ -1,6 +1,6 @@
 //@ add-minicore
 //@ assembly-output: emit-asm
-//@ compile-flags: --target avr-none -C target-cpu=atmega328p
+//@ compile-flags: --target avr-none -T target-cpu=atmega328p
 //@ needs-llvm-components: avr
 
 #![crate_type = "rlib"]

@@ -2,7 +2,7 @@
 
 //@ add-minicore
 //@ revisions: amdgpu nvptx
-//@ [amdgpu] compile-flags: --crate-type=rlib --target=amdgcn-amd-amdhsa -Ctarget-cpu=gfx900
+//@ [amdgpu] compile-flags: --crate-type=rlib --target=amdgcn-amd-amdhsa -Ttarget-cpu=gfx900
 //@ [amdgpu] needs-llvm-components: amdgpu
 //@ [nvptx] compile-flags: --crate-type=rlib --target=nvptx64-nvidia-cuda
 //@ [nvptx] needs-llvm-components: nvptx

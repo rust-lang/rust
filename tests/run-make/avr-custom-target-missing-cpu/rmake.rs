@@ -12,5 +12,5 @@ fn main() {
         .target("avr-custom-missing-cpu.json")
         .crate_type("lib")
         .run_fail()
-        .assert_stderr_contains("target requires explicitly specifying a cpu with `-C target-cpu`");
+        .assert_stderr_contains("target requires explicitly specifying a cpu with `-T target-cpu`");
 }

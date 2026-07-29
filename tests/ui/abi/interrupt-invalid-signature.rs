@@ -19,7 +19,7 @@ This test uses `cfg` because it is not testing whether these ABIs work on the pl
 //@ [riscv64] needs-llvm-components: riscv
 //@ [riscv64] compile-flags: --target=riscv64gc-unknown-none-elf --crate-type=rlib
 //@ [avr] needs-llvm-components: avr
-//@ [avr] compile-flags: --target=avr-none -C target-cpu=atmega328p --crate-type=rlib
+//@ [avr] compile-flags: --target=avr-none -T target-cpu=atmega328p --crate-type=rlib
 //@ [msp430] needs-llvm-components: msp430
 //@ [msp430] compile-flags: --target=msp430-none-elf --crate-type=rlib
 //@ ignore-backends: gcc

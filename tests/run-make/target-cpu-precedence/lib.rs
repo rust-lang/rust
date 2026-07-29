@@ -24,7 +24,7 @@ pub trait MetaSized: PointeeSized {}
 pub trait Sized: MetaSized {}
 
 // Capture the effective CPU from LLVM IR. This also verifies that the second
-// `-Ctarget-cpu` argument took precedence.
+// `-Ttarget-cpu` argument took precedence.
 // CHECK-LABEL: target triple = "nvptx64-nvidia-cuda"
 // CHECK-LABEL: define {{.*}} @foo() {{.*}} #0
 // CHECK-LABEL: attributes #0 = {{.*}} "target-cpu"="sm_80" {{.*}}
@@ -34,4 +34,4 @@ pub fn foo() {
 }
 // The value reconstructed from crate metadata must be identical.
 // CHECK-LABEL: =Target modifiers=
-// CHECK-LABEL: -Ctarget-cpu=sm_80 [Some("sm_80")]
+// CHECK-LABEL: -Ttarget-cpu=sm_80 ["sm_80"]

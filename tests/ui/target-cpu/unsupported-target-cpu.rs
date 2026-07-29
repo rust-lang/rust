@@ -2,7 +2,7 @@
 
 //@ revisions: nvptx-sm60
 
-//@[nvptx-sm60] compile-flags: --target=nvptx64-nvidia-cuda --crate-type=rlib -Ctarget-cpu=sm_60
+//@[nvptx-sm60] compile-flags: --target=nvptx64-nvidia-cuda --crate-type=rlib -Ttarget-cpu=sm_60
 //@[nvptx-sm60] needs-llvm-components: nvptx
 //@[nvptx-sm60] build-fail
 //@ ignore-backends: gcc

@@ -1,6 +1,6 @@
 // Check that pointers are casted to addrspace(0) before they are used
 
-//@ compile-flags: --crate-type=rlib --target=amdgcn-amd-amdhsa -Ctarget-cpu=gfx900 -O
+//@ compile-flags: --crate-type=rlib --target=amdgcn-amd-amdhsa -Ttarget-cpu=gfx900 -O
 //@ needs-llvm-components: amdgpu
 //@ add-minicore
 //@ revisions: LLVM21 LLVM22
