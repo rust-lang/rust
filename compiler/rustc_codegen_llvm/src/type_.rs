@@ -64,8 +64,8 @@ impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
         llvm::LLVMIntTypeInContext(self.llcx(), num_bits as c_uint)
     }
 
-    pub(crate) fn type_vector(&self, ty: &'ll Type, len: u64) -> &'ll Type {
-        unsafe { llvm::LLVMVectorType(ty, len as c_uint) }
+    pub(crate) fn type_vector(&self, ty: &'ll Type, count: u64) -> &'ll Type {
+        unsafe { llvm::LLVMVectorType(ty, count as c_uint) }
     }
 
     pub(crate) fn type_scalable_vector(&self, ty: &'ll Type, count: u64) -> &'ll Type {
