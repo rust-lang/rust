@@ -13,13 +13,10 @@ use crate::cli::{flags, progress_report::ProgressReport};
 
 impl flags::Diagnostics {
     pub fn run(self) -> anyhow::Result<()> {
-        const STACK_SIZE: usize = 1024 * 1024 * 8;
-
         let handle = stdx::thread::Builder::new(
             stdx::thread::ThreadIntent::LatencySensitive,
             "BIG_STACK_THREAD",
         )
-        .stack_size(STACK_SIZE)
         .spawn(|| self.run_())
         .unwrap();
 
