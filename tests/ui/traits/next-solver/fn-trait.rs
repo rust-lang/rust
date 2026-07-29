@@ -20,9 +20,7 @@ fn main() {
     require_fn(f as unsafe fn() -> i32);
     //~^ ERROR: expected an `Fn()` closure, found `unsafe fn() -> i32`
     require_fn(g);
-    //~^ ERROR: expected an `Fn()` closure, found `extern "C" fn() -> i32 {g}`
     require_fn(g as extern "C" fn() -> i32);
-    //~^ ERROR: expected an `Fn()` closure, found `extern "C" fn() -> i32`
     require_fn(h);
     //~^ ERROR: expected an `Fn()` closure, found `unsafe fn() -> i32 {h}`
 }
