@@ -1,12 +1,14 @@
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_feature::AttributeStability;
 use rustc_hir::attrs::{CrateType, WindowsSubsystemKind};
-use rustc_session::lint::builtin::UNKNOWN_CRATE_TYPES;
+use rustc_session::lint::builtin::{DUPLICATE_TOOLS, UNKNOWN_CRATE_TYPES};
 use rustc_span::Symbol;
 use rustc_span::edit_distance::find_best_match_for_name_with_substrings;
 
 use super::prelude::*;
-use crate::diagnostics::{ToolReserved, UnknownCrateTypes, UnknownCrateTypesSuggestion};
+use crate::diagnostics::{
+    DuplicateTool, ToolReserved, UnknownCrateTypes, UnknownCrateTypesSuggestion,
+};
 
 pub(crate) struct CrateNameParser;
 
@@ -363,8 +365,18 @@ fn parse_register_tool(
             continue;
         }
 
+        let mut lint_emitted = false;
         for tools in tools.iter_mut() {
-            tools.insert(ident);
+            if let Some(old_ident) = tools.replace(ident)
+                && !lint_emitted
+            {
+                lint_emitted = true;
+                cx.emit_lint(
+                    DUPLICATE_TOOLS,
+                    DuplicateTool { span: ident.span, tool: ident, old_ident_span: old_ident.span },
+                    ident.span,
+                );
+            }
         }
     }
 }
