@@ -679,14 +679,9 @@ fn set_get_permissions_nofollows_symlink() {
         ) => {
             assert_eq!(result.unwrap(), ());
             let metadata0 = check!(fs::symlink_metadata(&symlink_name));
-            // So seems like BSD-based systems trying to set permissions
-            // on symlinks could lead to no effect, so we should expect
-            // there being no change to BSD-based systems.
+            // On these systems, it's confirmed the symlink itself is marked readonly
             // https://superuser.com/questions/1099634/change-permissions-symbolic-link-mac-os
-            #[cfg(windows)]
             assert!(metadata0.permissions().readonly());
-            #[cfg(not(windows))]
-            assert!(!metadata0.permissions().readonly());
 
             // Reset the read-only bit under Windows 7: avoids the
             // `TempDir::drop` from crashing on a permission denial when

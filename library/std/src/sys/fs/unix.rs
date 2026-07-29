@@ -1902,9 +1902,17 @@ pub fn set_perm_nofollow(p: &CStr, perm: FilePermissions) -> io::Result<()> {
             let os_str = OsStr::from_bytes(bytes);
             options.open(Path::new(os_str))?.set_permissions(Permissions::from_inner(perm))
         }
-        all(target_os = "linux", not(any(target_os = "espidf", target_os = "horizon"))) => {
+        all(any(target_os = "linux", target_os = "macos", target_os = "freebsd", target_os = "openbsd", target_os = "netbsd", target_os = "dragonfly", target_os = "android"), not(any(target_os = "espidf", target_os = "horizon"))) => {
             cvt_r(|| unsafe {
                 libc::fchmodat(libc::AT_FDCWD, p.as_ptr(), perm.mode, libc::AT_SYMLINK_NOFOLLOW)
+            })
+            .map(|_| ())
+        },
+        _ => {
+            // These platforms do not have `AT_SYMLINK_NOFOLLOW` but support fchmodat,
+            // so no flag is set for fchmodat.
+            cvt_r(|| unsafe {
+                libc::fchmodat(libc::AT_FDCWD, p.as_ptr(), perm.mode, 0)
             })
             .map(|_| ())
         }

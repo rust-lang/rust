@@ -3470,17 +3470,12 @@ pub fn set_permissions<P: AsRef<Path>>(path: P, perm: Permissions) -> io::Result
 ///
 /// # Platform-specific behavior
 ///
-/// This function currently corresponds to:
-/// * `open` with `O_NOFOLLOW` flag enabled + `fchmod` on WASI
-/// * `fchmodat` function with the flag `AT_SYMLINK_NOFOLLOW` enabled
-///   on Unix platforms
-/// * The flag `FILE_FLAG_OPEN_REPARSE_POINT` is enabled and then the
-///   permissions of the file is set through `SetFileInformationByHandle`
-///   on Windows.
-/// * On all other platforms, the behavior remains the same with
-/// [`fs::set_permissions`].
-///
-/// [`fs::set_permissions`]: crate::fs::set_permissions
+/// This function currently corresponds to the following underlying operations:
+/// * WASI: `open` with `O_NOFOLLOW` followed by `fchmod`.
+/// * Unix: `fchmodat` with `AT_SYMLINK_NOFOLLOW` (or no flag is set if `AT_SYMLINK_NOFOLLOW` does
+///   not exist on a specific Unix-based platform)
+/// * Windows: `CreateFileW` with `FILE_FLAG_OPEN_REPARSE_POINT` followed
+///   by `SetFileInformationByHandle`.
 ///
 /// Note that, this [may change in the future][changes].
 ///
@@ -3496,8 +3491,8 @@ pub fn set_permissions<P: AsRef<Path>>(path: P, perm: Permissions) -> io::Result
 ///
 /// Note: On Linux, this will result in a [`Unsupported`] error
 /// if the final element is a symlink. On BSD-based systems, the
-/// behavior can vary from symlink permission bits changing or
-/// there being no effects on symlinks
+/// behavior in this case can vary: the operation may have no effect at all
+/// or it may change the permission bits of the symlink itself.
 ///
 /// [`Unsupported`]: crate::io::ErrorKind::Unsupported
 ///
@@ -3510,8 +3505,9 @@ pub fn set_permissions<P: AsRef<Path>>(path: P, perm: Permissions) -> io::Result
 /// fn main() -> std::io::Result<()> {
 ///     let mut perms = fs::symlink_metadata("foo.txt")?.permissions();
 ///     perms.set_readonly(true);
-///     // This should result in an error on certain platforms
-///     // or succeed in modifying the permissions of a symlink
+///     // This should result in an error on certain platforms,
+///     // succeed in modifying the permissions of a symlink,
+///     // or do nothing at all.
 ///     fs::set_permissions_nofollow("foo.txt", perms)?;
 ///     Ok(())
 /// }
