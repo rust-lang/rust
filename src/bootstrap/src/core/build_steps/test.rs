@@ -1016,7 +1016,7 @@ impl CommandLineStep for IntrinsicTest {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("library/stdarch/crates/intrinsic-test")
+        run.alias("intrinsic-test")
     }
 
     fn is_default_step(_builder: &Builder<'_>) -> bool {
@@ -1113,7 +1113,7 @@ impl CommandLineStep for IntrinsicTest {
         for skip in &skip_file {
             cmd.arg("--skip").arg(skip);
         }
-        cmd.arg("--sample-percentage").arg("10");
+        cmd.arg("--sample-percentage").arg("100");
         cmd.arg("--cc-arg-style").arg("gcc");
         cmd.env("CC", builder.cc(host));
         cmd.env("CFLAGS", cflags);
