@@ -398,7 +398,7 @@ impl<'a> AstValidator<'a> {
 
     /// Emits an error if a function declaration has more than one splatted argument, with a
     /// C-variadic parameter, or a splat at an unsupported index (for performance).
-    /// Example: `fn foo(#[splat] x: (), #[splat] y: ())` will emit an error.
+    /// Example: `fn foo(#[rustc_splat] x: (), #[rustc_splat] y: ())` will emit an error.
     fn check_decl_splatting(&self, fn_decl: &FnDecl, c_variadic_span: Option<Span>) {
         let (splatted_arg_indexes, mut splatted_spans): (Vec<u16>, Vec<Span>) = fn_decl
             .inputs
