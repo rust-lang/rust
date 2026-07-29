@@ -1,7 +1,5 @@
-// This test makes sure that the injected panic runtime can be loaded both from
-// `-L crate=` and `-L dependency=` paths.
-//
-// The need for `-L dependency=` paths comes from RFC 3874 (build-std=always).
+// This test makes sure that the injected panic runtime can be loaded from
+// `-L dependency=` paths as per RFC 3874 (build-std=always).
 //
 // Note: We have two possible panic runtime crates: the built one and the one from
 // the sysroot. Sysroot lookup is disabled via the `--sysroot=` override to verify
@@ -16,7 +14,7 @@ fn main() {
     rustc().input("core.rs").panic("abort").sysroot("./no_exists").run();
 
     // Compile `panic_abort` into a separate directory to prevent it from being
-    // found via `-L .`.
+    // found via `-L .`
     rustc()
         .input("panic_abort.rs")
         .panic("abort")
@@ -33,7 +31,7 @@ fn main() {
         .run();
 
     // Compile the final artifact. The panic runtime cannot be located without the
-    // `-L{crate/dependency}=` option.
+    // `-Ldependency=` option.
     rustc()
         .input("lib.rs")
         .arg("-Cpanic=abort")
@@ -41,14 +39,16 @@ fn main() {
         .run_fail()
         .assert_stderr_contains("can't find crate for `panic_abort`");
 
-    // Compile the final artifact. The panic runtime can be located via
-    // `-Lcrate=` paths.
+    // Compile the final artifact. The panic runtime cannot be located via
+    // `-Lcrate=` paths (This means that the panic runtime is not direct
+    // dependency).
     rustc()
         .input("lib.rs")
         .arg("-Cpanic=abort")
         .sysroot("./no_exists")
         .library_search_path(format!("crate={}", path("panic_abort").display()))
-        .run();
+        .run_fail()
+        .assert_stderr_contains("can't find crate for `panic_abort`");
 
     // Compile the final artifact. The panic runtime can be located via
     // `-Ldependency=` paths.
@@ -57,6 +57,5 @@ fn main() {
         .arg("-Cpanic=abort")
         .sysroot("./no_exists")
         .library_search_path(format!("dependency={}", path("panic_abort").display()))
-        .run_fail()
-        .assert_stderr_contains("can't find crate for `panic_abort`");
+        .run();
 }
