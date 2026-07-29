@@ -3463,7 +3463,7 @@ pub struct Attribute {
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub enum AttrKind {
     /// A normal attribute.
-    Normal(Box<NormalAttr>),
+    Normal(Box<AttrItem>),
 
     /// A synthetic attribute inserted by the compiler.
     Synthetic(Box<SyntheticAttr>),
@@ -3472,28 +3472,6 @@ pub enum AttrKind {
     /// Doc attributes (e.g. `#[doc="..."]`) are represented with the `Normal`
     /// variant (which is much less compact and thus more expensive).
     DocComment(CommentKind, Symbol),
-}
-
-#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
-pub struct NormalAttr {
-    pub item: AttrItem,
-}
-
-impl NormalAttr {
-    pub fn new(item: AttrItem) -> Self {
-        Self { item }
-    }
-
-    pub fn from_ident(ident: Ident) -> Self {
-        Self {
-            item: AttrItem::new(
-                Safety::Default,
-                Path::from_ident(ident),
-                AttrArgs::Empty,
-                ident.span,
-            ),
-        }
-    }
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
@@ -4453,6 +4431,7 @@ mod size_asserts {
     // tidy-alphabetical-start
     static_assert_size!(AssocItem, 72);
     static_assert_size!(AssocItemKind, 16);
+    static_assert_size!(AttrItem, 72);
     static_assert_size!(AttrKind, 16);
     static_assert_size!(Attribute, 32);
     static_assert_size!(Block, 24);
@@ -4479,7 +4458,6 @@ mod size_asserts {
     static_assert_size!(MetaItem, 80);
     static_assert_size!(MetaItemKind, 40);
     static_assert_size!(MetaItemLit, 40);
-    static_assert_size!(NormalAttr, 72);
     static_assert_size!(Param, 40);
     static_assert_size!(Pat, 64);
     static_assert_size!(PatKind, 48);

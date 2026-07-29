@@ -559,10 +559,8 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
         let orig_in_attr = mem::replace(&mut self.invocation_parent.in_attr, true);
         match &attr.kind {
             AttrKind::Normal(normal) => {
-                if attr::is_builtin_attr(&normal.item) {
-                    self.r
-                        .builtin_attrs
-                        .push((normal.item.path.segments[0].ident, self.parent_scope));
+                if attr::is_builtin_attr(normal) {
+                    self.r.builtin_attrs.push((normal.path.segments[0].ident, self.parent_scope));
                 }
             }
             AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace(_)) => {}

@@ -754,7 +754,7 @@ fn warn_if_doc(cx: &EarlyContext<'_>, node_span: Span, node_kind: &str, attrs: &
     while let Some(attr) = attrs.next() {
         let (is_doc_comment, is_doc_attribute) = match &attr.kind {
             AttrKind::DocComment(..) => (true, false),
-            AttrKind::Normal(normal) if normal.item.path == sym::doc => (true, true),
+            AttrKind::Normal(normal) if normal.path == sym::doc => (true, true),
             _ => (false, false),
         };
         if is_doc_comment {

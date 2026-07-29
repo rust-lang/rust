@@ -995,7 +995,7 @@ fn eq_attr(l: &Attribute, r: &Attribute) -> bool {
     l.style == r.style
         && match (&l.kind, &r.kind) {
             (DocComment(l1, l2), DocComment(r1, r2)) => l1 == r1 && l2 == r2,
-            (Normal(l), Normal(r)) => eq_path(&l.item.path, &r.item.path) && eq_attr_args(&l.item.args, &r.item.args),
+            (Normal(l), Normal(r)) => eq_path(&l.path, &r.path) && eq_attr_args(&l.args, &r.args),
             (Synthetic(..), _) | (_, Synthetic(..)) => unreachable!(),
             _ => false,
         }

@@ -411,7 +411,7 @@ fn needs_tokens(attrs: &[ast::Attribute]) -> bool {
     // Tokens are needed if...
     attrs.iter().any(|attr| match &attr.kind {
         AttrKind::Normal(normal) => {
-            match normal.item.name() {
+            match normal.name() {
                 // ... a multi-segment attribute is present, e.g. `rustfmt::skip`.
                 None => true,
                 // ... `cfg_attr` or a single-segment non-builtin attribute is present, e.g.

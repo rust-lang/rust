@@ -459,7 +459,6 @@ macro_rules! common_visitor_and_walkers {
             ModKind,
             ModSpans,
             MutTy,
-            NormalAttr,
             Parens,
             ParenthesizedArgs,
             PatFieldsRest,

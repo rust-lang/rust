@@ -2253,7 +2253,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
 
             match &attr.kind {
                 AttrKind::Normal(normal)
-                    if rustc_attr_parsing::is_builtin_attr(&normal.item)
+                    if rustc_attr_parsing::is_builtin_attr(normal)
                         && !AttributeParser::is_parsed_attribute(&attr.path()) =>
                 {
                     let attr_name = attr.name().unwrap();

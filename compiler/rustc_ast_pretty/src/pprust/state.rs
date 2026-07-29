@@ -682,7 +682,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                     ast::AttrStyle::Inner => self.word("#!["),
                     ast::AttrStyle::Outer => self.word("#["),
                 }
-                self.print_attr_item(&normal.item, attr.span);
+                self.print_attr_item(&normal, attr.span);
                 self.word("]");
             }
             ast::AttrKind::Synthetic(..) => unreachable!(), // due to early return above

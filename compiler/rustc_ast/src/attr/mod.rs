@@ -13,8 +13,8 @@ use thin_vec::{ThinVec, thin_vec};
 
 use crate::ast::{
     AttrArgs, AttrId, AttrItem, AttrKind, AttrStyle, AttrVec, Attribute, DUMMY_NODE_ID, DelimArgs,
-    Expr, ExprKind, LitKind, MetaItem, MetaItemInner, MetaItemKind, MetaItemLit, NormalAttr, Path,
-    PathSegment, Safety, SyntheticAttr,
+    Expr, ExprKind, LitKind, MetaItem, MetaItemInner, MetaItemKind, MetaItemLit, Path, PathSegment,
+    Safety, SyntheticAttr,
 };
 use crate::token::{
     self, CommentKind, Delimiter, DocFragmentKind, IdentIsRaw, InvisibleOrigin, MetaVarKind, Token,
@@ -60,7 +60,7 @@ impl AttrIdGenerator {
 impl Attribute {
     pub fn get_normal_item(&self) -> &AttrItem {
         match &self.kind {
-            AttrKind::Normal(normal) => &normal.item,
+            AttrKind::Normal(normal) => &normal,
             AttrKind::Synthetic(..) | AttrKind::DocComment(..) => unreachable!(),
         }
     }
@@ -82,7 +82,7 @@ impl AttributeExt for Attribute {
 
     fn value_span(&self) -> Option<Span> {
         match &self.kind {
-            AttrKind::Normal(normal) => match &normal.item.args {
+            AttrKind::Normal(normal) => match &normal.args {
                 AttrArgs::Eq { expr, .. } => Some(expr.span),
                 _ => None,
             },
@@ -104,7 +104,7 @@ impl AttributeExt for Attribute {
     fn name(&self) -> Option<Symbol> {
         use SyntheticAttr::*;
         match &self.kind {
-            AttrKind::Normal(normal) => normal.item.name(),
+            AttrKind::Normal(normal) => normal.name(),
             AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace(_)) => None,
             AttrKind::DocComment(..) => None,
         }
@@ -114,7 +114,7 @@ impl AttributeExt for Attribute {
         use SyntheticAttr::*;
         match &self.kind {
             AttrKind::Normal(normal) => {
-                Some(normal.item.path.segments.iter().map(|i| i.ident.name).collect())
+                Some(normal.path.segments.iter().map(|i| i.ident.name).collect())
             }
             AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace(_)) => None,
             AttrKind::DocComment(_, _) => None,
@@ -123,7 +123,7 @@ impl AttributeExt for Attribute {
 
     fn path_span(&self) -> Option<Span> {
         match &self.kind {
-            AttrKind::Normal(attr) => Some(attr.item.path.span),
+            AttrKind::Normal(attr) => Some(attr.path.span),
             AttrKind::Synthetic(..) => unreachable!(),
             AttrKind::DocComment(_, _) => None,
         }
@@ -132,9 +132,8 @@ impl AttributeExt for Attribute {
     fn path_matches(&self, name: &[Symbol]) -> bool {
         match &self.kind {
             AttrKind::Normal(normal) => {
-                normal.item.path.segments.len() == name.len()
+                normal.path.segments.len() == name.len()
                     && normal
-                        .item
                         .path
                         .segments
                         .iter()
@@ -151,7 +150,7 @@ impl AttributeExt for Attribute {
 
     fn is_word(&self) -> bool {
         match &self.kind {
-            AttrKind::Normal(normal) => matches!(normal.item.args, AttrArgs::Empty),
+            AttrKind::Normal(normal) => matches!(normal.args, AttrArgs::Empty),
             AttrKind::Synthetic(..) => unreachable!(),
             AttrKind::DocComment(..) => false,
         }
@@ -166,7 +165,7 @@ impl AttributeExt for Attribute {
     /// ```
     fn meta_item_list(&self) -> Option<ThinVec<MetaItemInner>> {
         match &self.kind {
-            AttrKind::Normal(normal) => normal.item.meta_item_list(),
+            AttrKind::Normal(normal) => normal.meta_item_list(),
             AttrKind::Synthetic(..) | AttrKind::DocComment(..) => None,
         }
     }
@@ -188,7 +187,7 @@ impl AttributeExt for Attribute {
     /// ```
     fn value_str(&self) -> Option<Symbol> {
         match &self.kind {
-            AttrKind::Normal(normal) => normal.item.value_str(),
+            AttrKind::Normal(normal) => normal.value_str(),
             AttrKind::Synthetic(..) => unreachable!(),
             AttrKind::DocComment(..) => None,
         }
@@ -203,9 +202,9 @@ impl AttributeExt for Attribute {
         match &self.kind {
             AttrKind::DocComment(kind, data) => Some((*data, DocFragmentKind::Sugared(*kind))),
             AttrKind::Normal(normal)
-                if normal.item.path == sym::doc
-                    && let Some(value) = normal.item.value_str()
-                    && let Some(value_span) = normal.item.value_span() =>
+                if normal.path == sym::doc
+                    && let Some(value) = normal.value_str()
+                    && let Some(value_span) = normal.value_span() =>
             {
                 Some((value, DocFragmentKind::Raw(value_span)))
             }
@@ -220,7 +219,7 @@ impl AttributeExt for Attribute {
     fn doc_str(&self) -> Option<Symbol> {
         match &self.kind {
             AttrKind::DocComment(.., data) => Some(*data),
-            AttrKind::Normal(normal) if normal.item.path == sym::doc => normal.item.value_str(),
+            AttrKind::Normal(normal) if normal.path == sym::doc => normal.value_str(),
             _ => None,
         }
     }
@@ -228,9 +227,7 @@ impl AttributeExt for Attribute {
     fn doc_resolution_scope(&self) -> Option<AttrStyle> {
         match &self.kind {
             AttrKind::DocComment(..) => Some(self.style),
-            AttrKind::Normal(normal)
-                if normal.item.path == sym::doc && normal.item.value_str().is_some() =>
-            {
+            AttrKind::Normal(normal) if normal.path == sym::doc && normal.value_str().is_some() => {
                 Some(self.style)
             }
             _ => None,
@@ -277,14 +274,14 @@ impl Attribute {
     /// Extracts the MetaItem from inside this Attribute.
     pub fn meta(&self) -> Option<MetaItem> {
         match &self.kind {
-            AttrKind::Normal(normal) => normal.item.meta(self.span),
+            AttrKind::Normal(normal) => normal.meta(self.span),
             AttrKind::Synthetic(..) | AttrKind::DocComment(..) => None,
         }
     }
 
     pub fn meta_kind(&self) -> Option<MetaItemKind> {
         match &self.kind {
-            AttrKind::Normal(normal) => normal.item.meta_kind(),
+            AttrKind::Normal(normal) => normal.meta_kind(),
             AttrKind::Synthetic(..) => unreachable!(),
             AttrKind::DocComment(..) => None,
         }
@@ -309,7 +306,7 @@ impl Attribute {
                 // See the code that sets `use_precise_delim_token_spans` in `parse_attribute` for
                 // more details.
                 let span = self.span;
-                let (pound_span, bang_span, dspan) = if normal.item.use_precise_delim_token_spans {
+                let (pound_span, bang_span, dspan) = if normal.use_precise_delim_token_spans {
                     assert_ne!(span, DUMMY_SP);
                     let lo = span.lo();
                     (
@@ -329,7 +326,7 @@ impl Attribute {
                     dspan,
                     DelimSpacing::new(Spacing::JointHidden, Spacing::Alone),
                     Delimiter::Bracket,
-                    TokenStream::new(normal.item.token_trees()),
+                    TokenStream::new(normal.token_trees()),
                 );
 
                 let trees = match self.style {
@@ -355,16 +352,14 @@ impl Attribute {
 
     pub fn deprecation_note(&self) -> Option<Ident> {
         match &self.kind {
-            AttrKind::Normal(normal) if normal.item.path == sym::deprecated => {
-                let meta = &normal.item;
-
+            AttrKind::Normal(normal) if normal.path == sym::deprecated => {
                 // #[deprecated = "..."]
-                if let Some(s) = meta.value_str() {
-                    return Some(Ident { name: s, span: meta.span });
+                if let Some(s) = normal.value_str() {
+                    return Some(Ident { name: s, span: normal.span });
                 }
 
                 // #[deprecated(note = "...")]
-                if let Some(list) = meta.meta_item_list() {
+                if let Some(list) = normal.meta_item_list() {
                     for nested in list {
                         if let Some(mi) = nested.meta_item()
                             && mi.path == sym::note
@@ -392,6 +387,10 @@ impl AttrItem {
             from_cfg_attr: false,
             use_precise_delim_token_spans: false,
         }
+    }
+
+    pub fn from_ident(ident: Ident) -> Self {
+        AttrItem::new(Safety::Default, Path::from_ident(ident), AttrArgs::Empty, ident.span)
     }
 
     pub fn is_valid_for_outer_style(&self) -> bool {
@@ -879,12 +878,7 @@ pub fn mk_attr_from_item(
     style: AttrStyle,
     span: Span,
 ) -> Attribute {
-    Attribute {
-        kind: AttrKind::Normal(Box::new(NormalAttr { item })),
-        id: g.mk_attr_id(),
-        style,
-        span,
-    }
+    Attribute { kind: AttrKind::Normal(Box::new(item)), id: g.mk_attr_id(), style, span }
 }
 
 // `span` is used for the `Attribute` and everything within it (except for any span within

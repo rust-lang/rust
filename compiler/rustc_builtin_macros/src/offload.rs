@@ -12,7 +12,7 @@ fn compile_for_device(ecx: &mut ExtCtxt<'_>) -> bool {
     ecx.sess.opts.unstable_opts.offload.contains(&Offload::Device)
 }
 
-fn outer_normal_attr(normal: &Box<ast::NormalAttr>, id: ast::AttrId, span: Span) -> ast::Attribute {
+fn outer_normal_attr(normal: &Box<ast::AttrItem>, id: ast::AttrId, span: Span) -> ast::Attribute {
     let style = ast::AttrStyle::Outer;
     let kind = ast::AttrKind::Normal(normal.clone());
     ast::Attribute { kind, id, style, span }
@@ -103,7 +103,7 @@ pub(crate) fn expand_kernel(
 
     // rustc_offload_kernel attr
     let rustc_offload_kernel_attr =
-        Box::new(ast::NormalAttr::from_ident(Ident::with_dummy_span(sym::rustc_offload_kernel)));
+        Box::new(ast::AttrItem::from_ident(Ident::with_dummy_span(sym::rustc_offload_kernel)));
     let rustc_offload_kernel = outer_normal_attr(
         &rustc_offload_kernel_attr,
         ecx.sess.psess.attr_id_generator.mk_attr_id(),
@@ -111,14 +111,13 @@ pub(crate) fn expand_kernel(
     );
 
     // unsafe(no_mangle) attr
-    let unsafe_item = AttrItem::new(
+    let no_mangle_attr = Box::new(AttrItem::new(
         ast::Safety::Unsafe(span),
         ast::Path::from_ident(Ident::new(sym::no_mangle, span)),
         ast::AttrArgs::Empty,
         span,
-    );
+    ));
 
-    let no_mangle_attr = Box::new(ast::NormalAttr::new(unsafe_item));
     let new_id = ecx.sess.psess.attr_id_generator.mk_attr_id();
     let unsafe_no_mangle = outer_normal_attr(&no_mangle_attr, new_id, span);
 
@@ -176,13 +175,12 @@ pub(crate) fn expand_kernel(
         tokens: TokenStream::from_iter(ts),
     };
 
-    let inline_item = ast::AttrItem::new(
+    let inline_never_attr = Box::new(ast::AttrItem::new(
         ast::Safety::Default,
         ast::Path::from_ident(Ident::with_dummy_span(sym::inline)),
         ast::AttrArgs::Delimited(never_arg),
         DUMMY_SP,
-    );
-    let inline_never_attr = Box::new(ast::NormalAttr::new(inline_item));
+    ));
 
     let new_id = ecx.sess.psess.attr_id_generator.mk_attr_id();
     let inline_never = outer_normal_attr(&inline_never_attr, new_id, span);

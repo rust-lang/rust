@@ -11,7 +11,7 @@ pub fn check(cx: &EarlyContext<'_>, attrs: &[Attribute]) {
         if !attr.span.from_expansion()
             && let AttrKind::Normal(ref normal) = attr.kind
             && attr.doc_str().is_some()
-            && let AttrArgs::Eq { expr: meta, .. } = &normal.item.args
+            && let AttrArgs::Eq { expr: meta, .. } = &normal.args
             && !attr.span.contains(meta.span)
             // Since the `include_str` is already expanded at this point, we can only take the
             // whole attribute snippet and then modify for our suggestion.
