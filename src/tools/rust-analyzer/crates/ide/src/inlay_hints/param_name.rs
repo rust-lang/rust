@@ -295,6 +295,7 @@ pub(super) fn is_argument_similar_to_param_name(
     debug_assert!(!param_name.is_empty());
     let param_name = param_name.split('_');
     let argument = argument.iter().flat_map(|it| it.text_non_mutable().split('_'));
+    let argument = argument.map(|it| it.strip_prefix("r#").unwrap_or(it));
 
     let prefix_match = zip(argument.clone(), param_name.clone())
         .all(|(arg, param)| arg.eq_ignore_ascii_case(param));
@@ -710,9 +711,12 @@ fn main() {
     let param_eter2 = 0;
     bar(param_eter2);
       //^^^^^^^^^^^ param_eter
+    let r#loop = true;
     let loop_level = 0;
     far(loop_level);
     faz(loop_level);
+    far(r#loop);
+    faz(r#loop);
 
     non_ident_pat((0, 0));
 
