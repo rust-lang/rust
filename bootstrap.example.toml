@@ -866,8 +866,8 @@
 #rust.override-allocator = "jemalloc"
 
 # Deprecated alias for `rust.override-allocator`. Setting this to `true` is
-# equivalent to `rust.override-allocator = "jemalloc"`. If both are set, they
-# must agree.
+# equivalent to `rust.override-allocator = "jemalloc"`. Both cannot be set in the same section
+# (`rust` or `target.[target]`)
 #rust.jemalloc = false
 
 # Run tests in various test suites with the "nll compare mode" in addition to
