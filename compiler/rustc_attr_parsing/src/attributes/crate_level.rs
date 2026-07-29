@@ -352,6 +352,10 @@ fn parse_register_tool(
             cx.adcx().expected_identifier(path.span());
             continue;
         };
+        if !ident.name.can_be_raw() {
+            cx.adcx().expected_identifier(path.span());
+            continue;
+        }
 
         if ident.name == sym::rustc {
             cx.should_emit
