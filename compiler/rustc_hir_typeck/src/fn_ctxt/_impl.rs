@@ -1589,8 +1589,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ctxt = {
             let mut enclosing_breakables = self.enclosing_breakables.borrow_mut();
             debug_assert!(enclosing_breakables.stack.len() == index + 1);
-            // FIXME(#120456) - is `swap_remove` correct?
-            enclosing_breakables.by_id.swap_remove(&id).expect("missing breakable context");
+            enclosing_breakables.by_id.shift_remove(&id).expect("missing breakable context");
             enclosing_breakables.stack.pop().expect("missing breakable context")
         };
         (ctxt, result)

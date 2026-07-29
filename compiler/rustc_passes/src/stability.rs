@@ -992,9 +992,8 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
     // available as we'd like it to be.
     // FIXME: only remove `libc` when `stdbuild` is enabled.
     // FIXME: remove special casing for `test`.
-    // FIXME(#120456) - is `swap_remove` correct?
-    remaining_lib_features.swap_remove(&sym::libc);
-    remaining_lib_features.swap_remove(&sym::test);
+    remaining_lib_features.shift_remove(&sym::libc);
+    remaining_lib_features.shift_remove(&sym::test);
 
     /// For each feature in `defined_features`..
     ///
@@ -1035,8 +1034,7 @@ pub fn check_unused_or_stable_features(tcx: TyCtxt<'_>) {
                     unnecessary_stable_feature_lint(tcx, *span, feature, since);
                 }
             }
-            // FIXME(#120456) - is `swap_remove` correct?
-            remaining_lib_features.swap_remove(&feature);
+            remaining_lib_features.shift_remove(&feature);
 
             // `feature` is the feature doing the implying, but `implied_by` is the feature with
             // the attribute that establishes this relationship. `implied_by` is guaranteed to be a

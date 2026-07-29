@@ -39,8 +39,7 @@ impl<'db> OpaqueTypeStorage<'db> {
         if let Some(prev) = prev {
             *self.opaque_types.get_mut(&key).unwrap() = prev;
         } else {
-            // FIXME(#120456) - is `swap_remove` correct?
-            match self.opaque_types.swap_remove(&key) {
+            match self.opaque_types.shift_remove(&key) {
                 None => {
                     panic!("reverted opaque type inference that was never registered: {key:?}")
                 }

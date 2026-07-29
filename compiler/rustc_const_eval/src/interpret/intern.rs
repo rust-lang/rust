@@ -109,8 +109,7 @@ fn intern_shallow<'tcx, M: CompileTimeMachine<'tcx>>(
 ) -> Result<impl Iterator<Item = CtfeProvenance> + 'tcx, InternError> {
     trace!("intern_shallow {:?}", alloc_id);
     // remove allocation
-    // FIXME(#120456) - is `swap_remove` correct?
-    let Some((kind, mut alloc)) = ecx.memory.alloc_map.swap_remove(&alloc_id) else {
+    let Some((kind, mut alloc)) = ecx.memory.alloc_map.shift_remove(&alloc_id) else {
         return Err(InternError::DanglingPointer);
     };
 

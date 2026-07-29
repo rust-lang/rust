@@ -173,8 +173,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
     }
 
     pub(crate) fn get_buffered_mut_error(&mut self, span: Span) -> Option<(Diag<'diag>, usize)> {
-        // FIXME(#120456) - is `swap_remove` correct?
-        self.diags_buffer.buffered_mut_errors.swap_remove(&span)
+        self.diags_buffer.buffered_mut_errors.shift_remove(&span)
     }
 
     pub(crate) fn buffer_mut_error(&mut self, span: Span, diag: Diag<'diag>, count: usize) {

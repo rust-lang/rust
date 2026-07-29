@@ -138,8 +138,7 @@ fn asm_target_features(tcx: TyCtxt<'_>, did: DefId) -> &FxIndexSet<Symbol> {
         match attrs.instruction_set {
             None => {}
             Some(InstructionSetAttr::ArmA32) => {
-                // FIXME(#120456) - is `swap_remove` correct?
-                target_features.swap_remove(&sym::thumb_mode);
+                target_features.shift_remove(&sym::thumb_mode);
             }
             Some(InstructionSetAttr::ArmT32) => {
                 target_features.insert(sym::thumb_mode);
