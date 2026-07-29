@@ -220,11 +220,7 @@ pub fn benchmark<F>(
             TestResult::TrBench(bs)
         }
         Ok(Ok(None)) => {
-            // iter not called, so no data.
-            // FIXME: error in this case?
-            let samples: &mut [f64] = &mut [0.0_f64; 1];
-            let bs = BenchSamples { ns_iter_summ: stats::Summary::new(samples), mb_s: 0 };
-            TestResult::TrBench(bs)
+            TestResult::TrFailedMsg("benchmark function did not call Bencher::iter".into())
         }
         Err(_) => TestResult::TrFailed,
         Ok(Err(_)) => TestResult::TrFailed,

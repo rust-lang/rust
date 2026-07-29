@@ -74,6 +74,12 @@ pub fn run_with_args(name: &str, args: &[&str]) -> CompletedProcess {
     run_common(name, Some(args)).run()
 }
 
+/// Run a built binary with one or more argument(s) and make sure it fails.
+#[track_caller]
+pub fn run_fail_with_args(name: &str, args: &[&str]) -> CompletedProcess {
+    run_common(name, Some(args)).run_fail()
+}
+
 /// Run a built binary and make sure it fails.
 #[track_caller]
 pub fn run_fail(name: &str) -> CompletedProcess {

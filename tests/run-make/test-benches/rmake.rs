@@ -10,13 +10,13 @@
 //@ needs-unwind
 // Reason: #[bench] and -Zpanic-abort-tests can't be combined
 
-use run_make_support::{run, run_with_args, rustc};
+use run_make_support::{run, run_fail_with_args, run_with_args, rustc};
 
 fn main() {
     // Smoke-test that #[bench] isn't entirely broken.
     rustc().arg("--test").input("smokebench.rs").opt().run();
-    run_with_args("smokebench", &["--bench"]);
-    run_with_args("smokebench", &["--bench", "noiter"]);
+    run_fail_with_args("smokebench", &["--bench"]);
+    run_fail_with_args("smokebench", &["--bench", "noiter"]);
     run_with_args("smokebench", &["--bench", "yesiter"]);
     run("smokebench");
 }

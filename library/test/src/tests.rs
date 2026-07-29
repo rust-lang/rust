@@ -786,7 +786,10 @@ fn test_bench_no_iter() {
     };
 
     crate::bench::benchmark(TestId(0), desc, tx, true, f);
-    rx.recv().unwrap();
+    assert_eq!(
+        rx.recv().unwrap().result,
+        TrFailedMsg("benchmark function did not call Bencher::iter".to_string())
+    );
 }
 
 #[test]
