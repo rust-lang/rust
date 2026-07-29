@@ -214,7 +214,7 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
         }
     }),
     TestCase::custom("test.graviola", &|runner| {
-        let (arch, _) = runner.target_compiler.triple.split_once('-').unwrap();
+        let (arch, _) = runner.target_compiler.target.split_once('-').unwrap();
 
         if !["aarch64", "x86_64"].contains(&arch) {
             eprintln!("Skipping `graviola` tests: unsupported target");
@@ -274,7 +274,7 @@ pub(crate) fn run_tests(
     cg_clif_dylib: &CodegenBackend,
     bootstrap_host_compiler: &Compiler,
     rustup_toolchain_name: Option<&str>,
-    target_triple: String,
+    target_tuple: String,
 ) {
     let stdlib_source =
         get_default_sysroot(&bootstrap_host_compiler.rustc).join("lib/rustlib/src/rust");
@@ -287,7 +287,7 @@ pub(crate) fn run_tests(
             cg_clif_dylib,
             bootstrap_host_compiler,
             rustup_toolchain_name,
-            target_triple.clone(),
+            target_tuple.clone(),
         );
 
         let runner = TestRunner::new(
@@ -296,7 +296,7 @@ pub(crate) fn run_tests(
             use_unstable_features,
             sysroot_config.panic_unwind_support,
             skip_tests,
-            bootstrap_host_compiler.triple == target_triple,
+            bootstrap_host_compiler.target == target_tuple,
             stdlib_source.clone(),
         );
 
@@ -320,7 +320,7 @@ pub(crate) fn run_tests(
             cg_clif_dylib,
             bootstrap_host_compiler,
             rustup_toolchain_name,
-            target_triple.clone(),
+            target_tuple.clone(),
         );
 
         let mut runner = TestRunner::new(
@@ -329,7 +329,7 @@ pub(crate) fn run_tests(
             use_unstable_features,
             sysroot_config.panic_unwind_support,
             skip_tests,
-            bootstrap_host_compiler.triple == target_triple,
+            bootstrap_host_compiler.target == target_tuple,
             stdlib_source,
         );
 
@@ -374,7 +374,7 @@ impl<'a> TestRunner<'a> {
         target_compiler.rustdocflags.extend(rustflags_from_env("RUSTDOCFLAGS"));
 
         let jit_supported =
-            use_unstable_features && is_native && !target_compiler.triple.contains("windows");
+            use_unstable_features && is_native && !target_compiler.target.contains("windows");
 
         Self {
             is_native,
@@ -452,7 +452,7 @@ impl<'a> TestRunner<'a> {
         cmd.arg(BUILD_EXAMPLE_OUT_DIR.to_path(&self.dirs));
         cmd.arg("-Cdebuginfo=2");
         cmd.arg("--target");
-        cmd.arg(&self.target_compiler.triple);
+        cmd.arg(&self.target_compiler.target);
         if !self.panic_unwind_support {
             cmd.arg("-Cpanic=abort");
         }

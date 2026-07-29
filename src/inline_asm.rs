@@ -527,7 +527,7 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
     }
 
     fn generate_asm_wrapper(&self, asm_name: &str) -> String {
-        let binary_format = crate::target_triple(self.tcx.sess).binary_format;
+        let binary_format = crate::target_tuple(self.tcx.sess).binary_format;
 
         let mut generated_asm = String::new();
         match binary_format {
