@@ -18,7 +18,8 @@ Disclose your use of LLMs, following the disclosure guidelines below.
 Write the disclosure yourself.
 You may use an LLM to privately review a disclosure you have written, but not to draft or rewrite it.
 
-You may *not* use an LLM to write doc-comments, `// SAFETY` comments, diagnostics, or soundness-critical code.
+You may *not* use an LLM to write doc-comments, `// SAFETY` comments, diagnostic wording, or soundness-critical code.
+Write them yourself instead.
 If you don't know what counts as soundness-critical, discuss it with your reviewer.
 
 **Write your own PR description and comments**.
@@ -37,11 +38,21 @@ Go slow.
 Avoid E-easy and E-mentor issues.
 Those are intended for people to get familiar with the project, not for LLMs.
 
+Determine whether this is a *useful* and *well-scoped* change.
+For example:
+
+- Search for related issues and PRs.
+- Find relevant code, tests, git history, and Zulip discussion.
+- If this is a cross-cutting change, consult the "cross-cutting" section of [the contributing docs](./contributing.md#pull-requests).
+- Make the smallest change that fixes the problem.
+  Do not combine it with unrelated refactors or cleanups.
+
 #### While working
 
-When fixing a bug, reproduce the bug *before* fixing it.
-Write a test that fails, fix the bug, then verify the test now succeeds.
-Otherwise, you don't know that you were testing the right thing.
+When fixing a bug, verify that your test fails before and succeeds after your change.
+Consult [adding new tests](./tests/adding.md) and [best practices](./tests/best-practices.md) for test procedures.
+Tests are absolutely required; either existing tests or new tests you write.
+Untested LLM PRs will not be merged.
 
 Mass renames or rewrites should *strongly* prefer using a proper syntax rewrite tool, such as [`ast-grep`].
 You may use an LLM for generating the instructions for that tool, but you should be very cautious about performing the rewrite directly with an LLM.
@@ -51,18 +62,30 @@ You may use an LLM for generating the instructions for that tool, but you should
 Review your own PR before opening it:
 Does it make sense? Can you tell what the goal of the PR is? Does it achieve that goal?
 
-Run tests to verify your change works.
+[Run tests](tests/running.md) to verify your change works.
 Do NOT report which tests you ran in the PR description;
 that's useless to us, since CI will run them anyway.
 
-You must review diagnostic snapshots; don't simply `--bless` them away.
+You must [review diagnostic snapshots](tests/adding.md#step-4-review-the-output);
+don't simply `--bless` them away.
 
 We recommend using a different model for adversarial local review before publishing your changes.
 This does not replace human self-review.
 
+#### Understand your own change
+
 You must understand and be able to explain your own change and its edge cases.
 Asking the LLM can be a starting point but is not sufficient.
 You are responsible for your own code; you cannot disclaim responsibility to your agent.
+
+Some questions that you should be able to answer:
+
+- What is the original bug? When does it happen? How severe is it? What causes it?
+- Why is this the right fix? Are there other fixes possible? What are their advantages or disadvantages?
+- Are there any edge cases? Does your code handle them?
+- What behavior is *unchanged*? What test establishes that?
+- Why does your test trigger the bug?
+- What are you still not certain about?
 
 [`ast-grep`]: https://astgrep.com/
 
@@ -107,7 +130,7 @@ That means it is **your responsibility** to check whether an `ai-assisted` PR to
 You may request that the author redo it without LLM-generated code, in which case this section doesn't apply.
 
 The following areas are currently banned:
-- Code that affects soundness. If the author is not obviously experienced in the domain, you are required to close the PR.
+- Code that affects soundness. If the author is not an org member who is experienced in the domain, you are required to close the PR.
 - Diagnostics. All user-facing diagnostics must be human-written.
 - Docs. All public doc-comments, and all `SAFETY` comments, must be human-written.
 
