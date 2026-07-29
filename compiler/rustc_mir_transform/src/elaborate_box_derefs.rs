@@ -72,7 +72,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for ElaborateBoxDerefVisitor<'a, 'tcx> {
                 location,
                 Place::from(ptr_local),
                 Rvalue::Cast(
-                    CastKind::Transmute,
+                    CastKind::BoxDerefTransmute,
                     Operand::Copy(
                         Place::from(place.local)
                             .project_deeper(&build_projection(unique_ty, nonnull_ty), tcx),

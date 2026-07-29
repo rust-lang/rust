@@ -653,8 +653,15 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         location: Location,
     ) {
         match elem {
-            // Miri needs `Deref` on `Box` to stay intact for proper UB checking,
-            // so we cannot reject it here even though codegen does not support such `Deref`.
+            ProjectionElem::Deref
+                if self.body.phase >= MirPhase::Runtime(RuntimePhase::Initial) =>
+            {
+                let base_ty = place_ref.ty(&self.body.local_decls, self.tcx).ty;
+
+                if base_ty.is_box() {
+                    self.fail(location, format!("{base_ty} dereferenced after ElaborateBoxDerefs"))
+                }
+            }
             ProjectionElem::Field(f, ty) => {
                 let parent_ty = place_ref.ty(&self.body.local_decls, self.tcx);
                 let fail_out_of_bounds = |this: &mut Self, location| {
@@ -1379,7 +1386,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             );
                         }
                     }
-                    CastKind::Transmute => {
+                    CastKind::Transmute | CastKind::BoxDerefTransmute => {
                         // Unlike `mem::transmute`, a MIR `Transmute` is well-formed
                         // for any two `Sized` types, just potentially UB to run.
 
@@ -1408,6 +1415,17 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                                 location,
                                 format!("Cannot transmute to non-`Sized` type {target_type:?}"),
                             );
+                        }
+
+                        if matches!(kind, CastKind::BoxDerefTransmute) {
+                            if !target_type.is_raw_ptr() {
+                                self.fail(
+                                    location,
+                                    format!(
+                                        "Cannot BoxDerefTransmute to non-pointer type {target_type}"
+                                    ),
+                                );
+                            }
                         }
                     }
                     CastKind::Subtype => {

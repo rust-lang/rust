@@ -469,15 +469,12 @@ where
         &self,
         src: &impl Projectable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
-        let src_ty = src.layout().ty;
-        // Obtain the actual pointer we are deref'ing.
-        let val = if src_ty.is_box() {
-            // Project to where we have an actual pointer.
-            let (raw_ptr, _alloc) = self.project_to_ptr_in_box(src)?;
-            self.read_immediate(&raw_ptr)?
-        } else {
-            self.read_immediate(src)?
-        };
+        let ptr_ty = src.layout().ty;
+        if !(ptr_ty.is_ref() || ptr_ty.is_raw_ptr() || ptr_ty.is_box_global(*self.tcx)) {
+            bug!("dereferencing {}", src.layout().ty);
+        }
+
+        let val = self.read_immediate(src)?;
         // Construct a place for that pointer.
         trace!("deref to {} on {:?}", val.layout.ty, *val);
         let mplace = self.imm_ptr_to_mplace(&val)?;
@@ -487,12 +484,10 @@ where
         // implicitly, e.g. when we call `to_bool()` on a Boolean.
         // But here, we do need to specifically check for metadata validity, null, alignment, and
         // dereferenceability, or they will not be checked anywhere at all.
-        // (We do *not* currently check the allocator, if there is any. Basically we are saying that
-        // `Box<T, A>` is a library type where the pointer field is a language-primitive `box T`.)
         // This duplicates some of the logic in the validity check, but so far we found no
         // good way to share that logic.
-        if src_ty.is_ref() || src_ty.is_box() {
-            let kind = if src_ty.is_ref() { "reference" } else { "box" };
+        if ptr_ty.is_ref() || ptr_ty.is_box() {
+            let kind = if ptr_ty.is_ref() { "reference" } else { "box" };
 
             // Null check.
             let scalar_ptr = Scalar::from_maybe_pointer(mplace.ptr(), self);
@@ -518,7 +513,7 @@ where
                 )
             })?;
         } else {
-            assert!(src_ty.is_raw_ptr());
+            assert!(ptr_ty.is_raw_ptr());
             // For raw pointers, the validity invariant is pretty weak, but we do require the vtable
             // to make sense, so we do have to check that if there is one.
             if mplace.layout.is_unsized() {
@@ -889,8 +884,13 @@ where
         self.copy_op_inner(src, dest, /* allow_transmute */ false)
     }
 
-    /// Copies the data from an operand to a place.
-    /// `allow_transmute` indicates whether the layouts may disagree.
+    /// Perform a typed copy of the data from an operand to a place.
+    ///
+    /// `allow_transmute` indicates whether the layouts may disagree. In that case there are
+    /// technically *two* typed copies: `src` is a not-yet-loaded value, so we're doing a typed copy
+    /// at `src` type from there to some intermediate storage. And then we're doing a second typed
+    /// copy at `dest` type from that intermediate storage to `dest`. As an optimization, we only
+    /// make a single direct copy here, but we still have to ensure the data is valid at both types.
     #[inline(always)]
     #[instrument(skip(self), level = "trace")]
     fn copy_op_inner(
@@ -899,11 +899,6 @@ where
         dest: &impl Writeable<'tcx, M::Provenance>,
         allow_transmute: bool,
     ) -> InterpResult<'tcx> {
-        // These are technically *two* typed copies: `src` is a not-yet-loaded value,
-        // so we're doing a typed copy at `src` type from there to some intermediate storage.
-        // And then we're doing a second typed copy at `dest` type from that intermediate storage to
-        // `dest`. But as an optimization, we only make a single direct copy here.
-
         // Do the actual copy.
         self.copy_op_no_validate(src, dest, allow_transmute)?;
 
@@ -932,10 +927,10 @@ where
         interp_ok(())
     }
 
-    /// Copies the data from an operand to a place.
+    /// Perform an untyped copy of the data from an operand to a place.
+    /// You are responsible for validating that things get copied at the right type.
+    ///
     /// `allow_transmute` indicates whether the layouts may disagree.
-    /// Also, if you use this you are responsible for validating that things get copied at the
-    /// right type.
     #[instrument(skip(self), level = "trace")]
     pub(super) fn copy_op_no_validate(
         &mut self,
