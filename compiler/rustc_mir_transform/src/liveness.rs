@@ -14,7 +14,7 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_mir_dataflow::fmt::DebugWithContext;
 use rustc_mir_dataflow::{Analysis, Backward, ResultsCursor};
-use rustc_session::lint;
+use rustc_session::lint::LintId;
 use rustc_session::lint::builtin::{UNUSED_ASSIGNMENTS, UNUSED_VARIABLES};
 use rustc_span::Span;
 use rustc_span::edit_distance::find_best_match_for_name;
@@ -54,6 +54,13 @@ struct Access {
 
 #[tracing::instrument(level = "debug", skip(tcx), ret)]
 pub(crate) fn check_liveness<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> DenseBitSet<FieldIdx> {
+    let skippable_lints = tcx.skippable_lints(());
+    if skippable_lints.contains(&LintId::of(UNUSED_ASSIGNMENTS))
+        && skippable_lints.contains(&LintId::of(UNUSED_VARIABLES))
+    {
+        return DenseBitSet::new_empty(0);
+    }
+
     // Don't run on synthetic MIR, as that will ICE trying to access HIR.
     if tcx.is_synthetic_mir(def_id) {
         return DenseBitSet::new_empty(0);
