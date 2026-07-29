@@ -307,6 +307,12 @@ impl<'a, 'tcx> ThirPrinter<'a, 'tcx> {
                 self.print_expr(*source, depth_lvl + 2);
                 print_indented!(self, "}", depth_lvl);
             }
+            PlaceOpaqueCast { source } => {
+                print_indented!(self, "PlaceOpaqueCast {", depth_lvl);
+                print_indented!(self, "source:", depth_lvl + 1);
+                self.print_expr(*source, depth_lvl + 2);
+                print_indented!(self, "}", depth_lvl);
+            }
             NeverToAny { source } => {
                 print_indented!(self, "NeverToAny {", depth_lvl);
                 print_indented!(self, "source:", depth_lvl + 1);

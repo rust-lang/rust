@@ -316,6 +316,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             NeverToAny { source }
             | Cast { source }
             | Use { source }
+            | PlaceOpaqueCast { source }
             | PointerCoercion { source, .. }
             | PlaceTypeAscription { source, .. }
             | ValueTypeAscription { source, .. }

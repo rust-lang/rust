@@ -347,6 +347,10 @@ pub enum ExprKind<'tcx> {
     Use {
         source: ExprId,
     },
+    /// A compiler-generated opaque cast that preserves place semantics.
+    PlaceOpaqueCast {
+        source: ExprId,
+    },
     /// A coercion from `!` to any type.
     NeverToAny {
         source: ExprId,

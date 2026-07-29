@@ -407,6 +407,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::InlineAsm { .. }
             | ExprKind::PlaceTypeAscription { .. }
             | ExprKind::ValueTypeAscription { .. }
+            | ExprKind::PlaceOpaqueCast { .. }
             | ExprKind::PlaceUnwrapUnsafeBinder { .. }
             | ExprKind::ValueUnwrapUnsafeBinder { .. } => {
                 // these do not have corresponding `Rvalue` variants,
@@ -709,9 +710,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         };
 
+        let has_opaque_cast = arg_place_builder
+            .projection()
+            .iter()
+            .any(|elem| matches!(elem, ProjectionElem::OpaqueCast(_)));
+
         let borrow_kind = match mutability {
-            Mutability::Not => BorrowKind::Mut { kind: MutBorrowKind::ClosureCapture },
-            Mutability::Mut => BorrowKind::Mut { kind: MutBorrowKind::Default },
+            // `ClosureCapture` assumes that the mutation which caused the capture
+            // is checked separately. For a capture through an opaque cast, this
+            // borrow may be the only mutable use, so let borrowck validate it.
+            Mutability::Not if !has_opaque_cast => {
+                BorrowKind::Mut { kind: MutBorrowKind::ClosureCapture }
+            }
+            Mutability::Not | Mutability::Mut => BorrowKind::Mut { kind: MutBorrowKind::Default },
         };
 
         let arg_place = arg_place_builder.to_place(this);

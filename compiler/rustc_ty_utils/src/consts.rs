@@ -205,6 +205,7 @@ fn recurse_build<'tcx>(
         // we dont permit let stmts so `VarRef` and `UpvarRef` cant happen
         ExprKind::VarRef { .. }
         | ExprKind::UpvarRef { .. }
+        | ExprKind::PlaceOpaqueCast { .. }
         | ExprKind::StaticRef { .. }
         | ExprKind::ThreadLocalRef(_) => {
             error(GenericConstantTooComplexSub::OperationNotSupported(node.span))?
@@ -273,6 +274,7 @@ impl<'a, 'tcx> IsThirPolymorphic<'a, 'tcx> {
             | thir::ExprKind::Unary { .. }
             | thir::ExprKind::Cast { .. }
             | thir::ExprKind::Use { .. }
+            | thir::ExprKind::PlaceOpaqueCast { .. }
             | thir::ExprKind::NeverToAny { .. }
             | thir::ExprKind::PointerCoercion { .. }
             | thir::ExprKind::Loop { .. }

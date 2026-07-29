@@ -347,7 +347,8 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             | ExprKind::VarRef { .. }
             | ExprKind::UpvarRef { .. }
             | ExprKind::Scope { .. }
-            | ExprKind::Cast { .. } => {}
+            | ExprKind::Cast { .. }
+            | ExprKind::PlaceOpaqueCast { .. } => {}
 
             ExprKind::RawBorrow { .. }
             | ExprKind::Adt { .. }

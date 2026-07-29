@@ -544,6 +544,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 block.and(PlaceBuilder::from(temp).project(PlaceElem::UnwrapUnsafeBinder(expr.ty)))
             }
 
+            ExprKind::PlaceOpaqueCast { source } => {
+                let place_builder = unpack!(
+                    block = this.expr_as_place(
+                        block,
+                        source,
+                        mutability,
+                        fake_borrow_temps,
+                    )
+                );
+                block.and(place_builder.project(PlaceElem::OpaqueCast(expr.ty)))
+            }
+
             ExprKind::Array { .. }
             | ExprKind::Tuple { .. }
             | ExprKind::Adt { .. }

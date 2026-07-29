@@ -1561,7 +1561,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                     name: field,
                 },
                 HirProjectionKind::OpaqueCast => {
-                    ExprKind::Use { source: self.thir.exprs.push(captured_place_expr) }
+                    ExprKind::PlaceOpaqueCast { source: self.thir.exprs.push(captured_place_expr) }
                 }
                 HirProjectionKind::UnwrapUnsafeBinder => ExprKind::PlaceUnwrapUnsafeBinder {
                     source: self.thir.exprs.push(captured_place_expr),

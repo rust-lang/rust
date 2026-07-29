@@ -42,6 +42,7 @@ impl Category {
             | ExprKind::VarRef { .. }
             | ExprKind::PlaceTypeAscription { .. }
             | ExprKind::ValueTypeAscription { .. }
+            | ExprKind::PlaceOpaqueCast { .. }
             | ExprKind::PlaceUnwrapUnsafeBinder { .. }
             | ExprKind::ValueUnwrapUnsafeBinder { .. } => Some(Category::Place),
 

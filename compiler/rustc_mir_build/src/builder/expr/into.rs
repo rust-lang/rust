@@ -840,6 +840,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::UpvarRef { .. }
             | ExprKind::PlaceTypeAscription { .. }
             | ExprKind::ValueTypeAscription { .. }
+            | ExprKind::PlaceOpaqueCast { .. }
             | ExprKind::PlaceUnwrapUnsafeBinder { .. }
             | ExprKind::ValueUnwrapUnsafeBinder { .. } => {
                 debug_assert!(Category::of(&expr.kind) == Some(Category::Place));
