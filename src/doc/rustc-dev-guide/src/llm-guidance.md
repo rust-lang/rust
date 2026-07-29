@@ -10,8 +10,9 @@ If the two conflict, Forge is canonical.
 
 LLMs are a valuable tool, but one that is easy to misuse.
 The main risks are **overwhelming volume** and **lack of understanding**.
-When writing your PR, keep in mind that there is a person on the other end who needs to review and understand your change.
-Help us out by making your change small, targeted, and easy to review.
+When writing your PR, keep in mind that there is a person on the other end who needs to review and understand your change,
+and that other people in the project will need to read your code for years to come.
+Help us out by making your change small, targeted, and high-quality.
 
 Keep in mind this quote:
 
@@ -49,7 +50,7 @@ We want to hear from you, not from your agent.
 #### Before you write code
 
 Start with one PR at a time.
-Your PRs are not only a gift but a responsibility for reviewers.
+Keep your changes small enough that you and your reviewer can understand every part of them.
 Go slow.
 
 Do not use an LLM for `E-easy` issues; those are meant for you to write the code yourself.
@@ -74,10 +75,44 @@ Untested LLM PRs will not be merged.
 Mass renames or rewrites should *strongly* prefer using a proper syntax rewrite tool, such as [`ast-grep`].
 You may use an LLM for generating the instructions for that tool, but you should be very cautious about performing the rewrite directly with an LLM.
 
+Work in small steps.
+Run tests after every meaningful change, so you know where you first went wrong.
+Do not write all your code at once; that will make it very hard to know what broke.
+Ideally, commit your changes in [small atomic commits] as you go.
+
+Verify your understanding against the existing code, documentation, and tests.
+You can get better advice from your LLM by telling *it* to read the relevant materials.
+Do not rely on the LLM as a source of truth.
+
+[small atomic commits](https://github.blog/developer-skills/github/write-better-commits-build-better-projects/#%e2%9a%9b%ef%b8%8f-resize-and-stabilize-the-commits)
+
+#### Write maintainable code
+
+Treat generated code as a *draft*, not a final product.
+
+Follow the style of surrounding code.
+Use existing helpers and avoid duplicating logic or validation.
+
+Represent data in [one normalized place](https://react.dev/learn/choosing-the-state-structure);
+trying to keep data in sync between two different places is a code smell.
+
+When practical, [make invalid states unrepresentable](https://kentcdodds.com/blog/make-impossible-states-impossible), [not just checked at construction time](https://lexi-lambda.github.io/blog/2020/11/01/names-are-not-type-safety/).
+
+Write comments that say *why* you have done a thing, not *what* you have done.
+It's ok to go into detail about non-obvious bugs.
+
+Preserve existing behavior.
+Consider platform differences and error cases.
+
 #### Before opening a PR
 
 Review your own PR before opening it:
 Does it make sense? Can you tell what the goal of the PR is? Does it achieve that goal?
+
+Remove outdated or prototyping code and debugging.
+
+Re-read the whole diff, *not* just your conversation with the agent.
+Your reviewer is going to see your code, not your conversation.
 
 [Run tests](tests/running.md) to verify your change works.
 Do NOT report which UI tests you ran in the PR description;
@@ -102,6 +137,8 @@ For example, ask yourself:
 - What is the original bug? When does it happen? How severe is it? What causes it?
 - Why is this the right fix? Are there other fixes possible? What are their advantages or disadvantages?
 - Are there any edge cases? Does your code handle them?
+- Does the code have existing [invariants](https://brooker.co.za/blog/2023/07/28/ds-testing.html)?
+  Did you preserve those invariants?
 - What behavior is *unchanged*? What test establishes that?
 - Why does your test trigger the bug?
 - What are you still not certain about?
