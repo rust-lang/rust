@@ -1,9 +1,12 @@
 use arrayvec::ArrayVec;
 use rustc_abi::{
-    BackendRepr, FieldsShape, Float, HasDataLayout, Primitive, Reg, RegKind, Size, TyAbiInterface,
+    BackendRepr, FieldsShape, Float, HasDataLayout, Numeric, Primitive, Reg, RegKind, Size,
+    TyAbiInterface,
 };
 
 use crate::callconv::{ArgAbi, ArgAttribute, ArgExtension, CastTarget, FnAbi, PassMode, Uniform};
+
+const NUM_ARG_SLOTS: u64 = 8;
 
 fn extend_integer_width_mips<Ty>(arg: &mut ArgAbi<'_, Ty>, bits: u64) {
     // Always sign extend u32 values on 64-bit mips
@@ -55,16 +58,14 @@ where
     let size = ret.layout.size;
     let bits = size.bits();
     if bits <= 128 {
-        if ret.layout.is_complex() {
-            if !ret.layout.is_complex_float() && size <= cx.data_layout().pointer_size() {
+        if let Some(component) = ret.layout.complex_number(cx) {
+            if matches!(component, Numeric::Int(..)) && size <= cx.data_layout().pointer_size() {
                 // Return a Complex<{integer}> packed into a single register when that fits.
                 // We match GCC, not Clang, see https://github.com/llvm/llvm-project/issues/212109.
                 ret.cast_to(Reg { kind: RegKind::Integer, size });
             } else {
                 // Otherwise pass in 2 registers.
-                let kind =
-                    if ret.layout.is_complex_float() { RegKind::Float } else { RegKind::Integer };
-                let reg = Reg { kind, size: ret.layout.field(cx, 0).size };
+                let reg = Reg { kind: component.reg_kind(), size: component.size() };
                 ret.cast_to(CastTarget::pair(reg, reg));
             }
             return;
@@ -117,14 +118,28 @@ where
         extend_integer_width_mips(arg, 64);
     } else if arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
         arg.make_indirect();
-    } else if arg.layout.is_complex_float() && size > dl.pointer_size() * 2 {
+    } else if arg.layout.complex_float(cx).is_some() && size > dl.pointer_size() * 2 {
         // Complex<f128> is passed in 4 GPRs, but aligned to 16 so may need padding.
         let reg = Reg { kind: RegKind::Float, size: arg.layout.field(cx, 0).size };
         arg.cast_to_and_pad_i32(CastTarget::pair(reg, reg), pad_i32);
-    } else if arg.layout.is_complex() && size <= dl.pointer_size() * 2 {
-        if arg.layout.is_complex_float() || size > dl.pointer_size() {
-            // Complex<i64> and Complex<{float}> are passed as 2 separate arguments, which is what
-            // the default `PassMode::Pair` already does.
+    } else if arg.layout.is_complex_number(cx) && size <= dl.pointer_size() * 2 {
+        let slot = dl.pointer_size();
+        let curr_offset = offset.align_to(align);
+
+        if arg.layout.complex_float(cx).is_some() {
+            // Only pass a Complex<f32>/Complex<f64> in FPRs when two argument slots are free,
+            // otherwise pack it into GPRs (or the stack) like an integer of the same size.
+            if curr_offset.bytes() / slot.bytes() + 2 <= NUM_ARG_SLOTS {
+                // The default `PassMode::Pair` already passes one component per register. Both
+                // components claim a slot, even for a Complex<f32> which could fit into one slot.
+                *offset = curr_offset + slot * 2;
+                return;
+            }
+
+            arg.cast_to_and_pad_i32(Uniform::new(Reg::i64(), size), pad_i32);
+        } else if size > slot {
+            // Complex<i64> is passed as 2 separate arguments, which is what the default
+            // `PassMode::Pair` already does.
         } else {
             // Cast Complex<i8> into i16, Complex<i16> to i32, etc. The inreg attribute is required
             // to make the bits land in the right (upper) bits on big endian targets.
