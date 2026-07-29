@@ -621,7 +621,7 @@ pub macro declare_arena(
     // This allows values of non-copy type $ty to be allocated in the arena.
     // The field names must be distinct, but have no further significance.
     $(
-        [] $name:ident: $ty:ty,
+        $name:ident: $ty:ty,
     )*
 ) {
     #[derive(Default)]

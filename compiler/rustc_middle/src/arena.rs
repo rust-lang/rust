@@ -11,33 +11,33 @@ use crate::ty::{Ty, TyCtxt};
 // `impl_ref_decodable_into_arena!`.
 
 rustc_arena::declare_arena! {
-    [] layout: rustc_abi::LayoutData<rustc_abi::FieldIdx, rustc_abi::VariantIdx>,
-    [] proxy_coroutine_layout: rustc_middle::mir::CoroutineLayout<'tcx>,
-    [] fn_abi: rustc_target::callconv::FnAbi<'tcx, Ty<'tcx>>,
-    [] adt_def: rustc_middle::ty::AdtDefData,
-    [] steal_thir: rustc_data_structures::steal::Steal<rustc_middle::thir::Thir<'tcx>>,
-    [] steal_mir: rustc_data_structures::steal::Steal<rustc_middle::mir::Body<'tcx>>,
-    [] mir: rustc_middle::mir::Body<'tcx>,
-    [] steal_promoted:
+    layout: rustc_abi::LayoutData<rustc_abi::FieldIdx, rustc_abi::VariantIdx>,
+    proxy_coroutine_layout: rustc_middle::mir::CoroutineLayout<'tcx>,
+    fn_abi: rustc_target::callconv::FnAbi<'tcx, Ty<'tcx>>,
+    adt_def: rustc_middle::ty::AdtDefData,
+    steal_thir: rustc_data_structures::steal::Steal<rustc_middle::thir::Thir<'tcx>>,
+    steal_mir: rustc_data_structures::steal::Steal<rustc_middle::mir::Body<'tcx>>,
+    mir: rustc_middle::mir::Body<'tcx>,
+    steal_promoted:
         rustc_data_structures::steal::Steal<
             rustc_index::IndexVec<
                 rustc_middle::mir::Promoted,
                 rustc_middle::mir::Body<'tcx>
             >
         >,
-    [] promoted:
+    promoted:
         rustc_index::IndexVec<
             rustc_middle::mir::Promoted,
             rustc_middle::mir::Body<'tcx>
         >,
-    [] typeck_results: rustc_middle::ty::TypeckResults<'tcx>,
-    [] borrowck_result:
+    typeck_results: rustc_middle::ty::TypeckResults<'tcx>,
+    borrowck_result:
         rustc_data_structures::fx::FxIndexMap<
             rustc_hir::def_id::LocalDefId,
             rustc_middle::ty::DefinitionSiteHiddenType<'tcx>,
         >,
-    [] resolver: rustc_data_structures::steal::Steal<rustc_middle::ty::ResolverAstLowering<'tcx>>,
-    [] index_ast:
+    resolver: rustc_data_structures::steal::Steal<rustc_middle::ty::ResolverAstLowering<'tcx>>,
+    index_ast:
         rustc_index::IndexVec<
             rustc_span::def_id::LocalDefId,
             rustc_data_structures::steal::Steal<(
@@ -45,96 +45,96 @@ rustc_arena::declare_arena! {
                 rustc_ast::AstOwner
             )>
         >,
-    [] crate_alone: rustc_data_structures::steal::Steal<rustc_ast::Crate>,
-    [] crate_for_resolver: rustc_data_structures::steal::Steal<(rustc_ast::Crate, rustc_ast::AttrVec)>,
-    [] resolutions: rustc_middle::ty::ResolverGlobalCtxt,
-    [] const_allocs: rustc_middle::mir::interpret::Allocation,
-    [] region_scope_tree: rustc_middle::middle::region::ScopeTree,
+    crate_alone: rustc_data_structures::steal::Steal<rustc_ast::Crate>,
+    crate_for_resolver: rustc_data_structures::steal::Steal<(rustc_ast::Crate, rustc_ast::AttrVec)>,
+    resolutions: rustc_middle::ty::ResolverGlobalCtxt,
+    const_allocs: rustc_middle::mir::interpret::Allocation,
+    region_scope_tree: rustc_middle::middle::region::ScopeTree,
     // Required for the incremental on-disk cache
-    [] mir_keys: rustc_hir::def_id::DefIdSet,
-    [] dropck_outlives:
+    mir_keys: rustc_hir::def_id::DefIdSet,
+    dropck_outlives:
         rustc_middle::infer::canonical::Canonical<'tcx,
             rustc_middle::infer::canonical::QueryResponse<'tcx,
                 rustc_middle::traits::query::DropckOutlivesResult<'tcx>
             >
         >,
-    [] normalize_canonicalized_projection:
+    normalize_canonicalized_projection:
         rustc_middle::infer::canonical::Canonical<'tcx,
             rustc_middle::infer::canonical::QueryResponse<'tcx,
                 rustc_middle::traits::query::NormalizationResult<'tcx>
             >
         >,
-    [] implied_outlives_bounds:
+    implied_outlives_bounds:
         rustc_middle::infer::canonical::Canonical<'tcx,
             rustc_middle::infer::canonical::QueryResponse<'tcx,
                 Vec<rustc_middle::traits::query::OutlivesBound<'tcx>>
             >
         >,
-    [] dtorck_constraint: rustc_middle::traits::query::DropckConstraint<'tcx>,
-    [] candidate_step: rustc_middle::traits::query::CandidateStep<'tcx>,
-    [] autoderef_bad_ty: rustc_middle::traits::query::MethodAutoderefBadTy<'tcx>,
-    [] query_region_constraints: rustc_middle::infer::canonical::QueryRegionConstraints<'tcx>,
-    [] type_op_subtype:
+    dtorck_constraint: rustc_middle::traits::query::DropckConstraint<'tcx>,
+    candidate_step: rustc_middle::traits::query::CandidateStep<'tcx>,
+    autoderef_bad_ty: rustc_middle::traits::query::MethodAutoderefBadTy<'tcx>,
+    query_region_constraints: rustc_middle::infer::canonical::QueryRegionConstraints<'tcx>,
+    type_op_subtype:
         rustc_middle::infer::canonical::Canonical<'tcx,
             rustc_middle::infer::canonical::QueryResponse<'tcx, ()>
         >,
-    [] type_op_normalize_poly_fn_sig:
+    type_op_normalize_poly_fn_sig:
         rustc_middle::infer::canonical::Canonical<'tcx,
             rustc_middle::infer::canonical::QueryResponse<'tcx, rustc_middle::ty::PolyFnSig<'tcx>>
         >,
-    [] type_op_normalize_fn_sig:
+    type_op_normalize_fn_sig:
         rustc_middle::infer::canonical::Canonical<'tcx,
             rustc_middle::infer::canonical::QueryResponse<'tcx, rustc_middle::ty::FnSig<'tcx>>
         >,
-    [] type_op_normalize_clause:
+    type_op_normalize_clause:
         rustc_middle::infer::canonical::Canonical<'tcx,
             rustc_middle::infer::canonical::QueryResponse<'tcx, rustc_middle::ty::Clause<'tcx>>
         >,
-    [] type_op_normalize_ty:
+    type_op_normalize_ty:
         rustc_middle::infer::canonical::Canonical<'tcx,
             rustc_middle::infer::canonical::QueryResponse<'tcx, Ty<'tcx>>
         >,
-    [] inspect_probe: rustc_middle::traits::solve::inspect::Probe<TyCtxt<'tcx>>,
-    [] effective_visibilities: rustc_middle::middle::privacy::EffectiveVisibilities,
-    [] upvars_mentioned: rustc_data_structures::fx::FxIndexMap<rustc_hir::HirId, rustc_hir::Upvar>,
-    [] dyn_compatibility_violations: rustc_middle::traits::DynCompatibilityViolation,
-    [] codegen_unit: rustc_middle::mono::CodegenUnit<'tcx>,
-    [] attribute: rustc_hir::Attribute,
-    [] name_set: rustc_data_structures::unord::UnordSet<rustc_span::Symbol>,
-    [] autodiff_item: rustc_hir::attrs::AutoDiffItem,
-    [] ordered_name_set: rustc_data_structures::fx::FxIndexSet<rustc_span::Symbol>,
-    [] stable_order_of_exportable_impls:
+    inspect_probe: rustc_middle::traits::solve::inspect::Probe<TyCtxt<'tcx>>,
+    effective_visibilities: rustc_middle::middle::privacy::EffectiveVisibilities,
+    upvars_mentioned: rustc_data_structures::fx::FxIndexMap<rustc_hir::HirId, rustc_hir::Upvar>,
+    dyn_compatibility_violations: rustc_middle::traits::DynCompatibilityViolation,
+    codegen_unit: rustc_middle::mono::CodegenUnit<'tcx>,
+    attribute: rustc_hir::Attribute,
+    name_set: rustc_data_structures::unord::UnordSet<rustc_span::Symbol>,
+    autodiff_item: rustc_hir::attrs::AutoDiffItem,
+    ordered_name_set: rustc_data_structures::fx::FxIndexSet<rustc_span::Symbol>,
+    stable_order_of_exportable_impls:
         rustc_data_structures::fx::FxIndexMap<rustc_hir::def_id::DefId, usize>,
 
     // Note that this deliberately duplicates items in the `rustc_hir::arena`,
     // since we need to allocate this type on both the `rustc_hir` arena
     // (during lowering) and the `rustc_middle` arena (for decoding MIR)
-    [] asm_template: rustc_ast::InlineAsmTemplatePiece,
-    [] used_trait_imports: rustc_data_structures::unord::UnordSet<rustc_hir::def_id::LocalDefId>,
-    [] is_late_bound_map: rustc_data_structures::fx::FxIndexSet<rustc_hir::ItemLocalId>,
-    [] impl_source: rustc_middle::traits::ImplSource<'tcx, ()>,
+    asm_template: rustc_ast::InlineAsmTemplatePiece,
+    used_trait_imports: rustc_data_structures::unord::UnordSet<rustc_hir::def_id::LocalDefId>,
+    is_late_bound_map: rustc_data_structures::fx::FxIndexSet<rustc_hir::ItemLocalId>,
+    impl_source: rustc_middle::traits::ImplSource<'tcx, ()>,
 
-    [] dep_kind_vtable: rustc_middle::dep_graph::DepKindVTable<'tcx>,
+    dep_kind_vtable: rustc_middle::dep_graph::DepKindVTable<'tcx>,
 
-    [] trait_impl_trait_tys:
+    trait_impl_trait_tys:
         rustc_data_structures::unord::UnordMap<
             rustc_hir::def_id::DefId,
             rustc_middle::ty::EarlyBinder<'tcx, Ty<'tcx>>
         >,
-    [] external_constraints: rustc_middle::traits::solve::ExternalConstraintsData<TyCtxt<'tcx>>,
-    [] doc_link_resolutions: rustc_hir::def::DocLinkResMap,
-    [] stripped_cfg_items: rustc_hir::attrs::StrippedCfgItem,
-    [] mod_child: rustc_middle::metadata::ModChild,
-    [] features: rustc_feature::Features,
-    [] specialization_graph: rustc_middle::traits::specialization_graph::Graph,
-    [] crate_inherent_impls: rustc_middle::ty::CrateInherentImpls,
-    [] hir_owner_nodes: rustc_hir::OwnerNodes<'tcx>,
-    [] token_stream: rustc_ast::tokenstream::TokenStream,
-    [] maybe_owner: rustc_middle::hir::ProjectedMaybeOwner<'tcx>,
-    [] owner_info: rustc_middle::hir::ProjectedOwnerInfo<'tcx>,
-    [] parenting: rustc_hir::def_id::LocalDefIdMap<rustc_hir::ItemLocalId>,
-    [] trait_candidates: rustc_hir::ItemLocalMap<&'tcx [rustc_hir::TraitCandidate<'tcx>]>,
-    [] delayed_lints: rustc_data_structures::steal::Steal<rustc_hir::lints::DelayedLints>,
+    external_constraints: rustc_middle::traits::solve::ExternalConstraintsData<TyCtxt<'tcx>>,
+    doc_link_resolutions: rustc_hir::def::DocLinkResMap,
+    stripped_cfg_items: rustc_hir::attrs::StrippedCfgItem,
+    mod_child: rustc_middle::metadata::ModChild,
+    features: rustc_feature::Features,
+    specialization_graph: rustc_middle::traits::specialization_graph::Graph,
+    crate_inherent_impls: rustc_middle::ty::CrateInherentImpls,
+    hir_owner_nodes: rustc_hir::OwnerNodes<'tcx>,
+    token_stream: rustc_ast::tokenstream::TokenStream,
+    maybe_owner: rustc_middle::hir::ProjectedMaybeOwner<'tcx>,
+    owner_info: rustc_middle::hir::ProjectedOwnerInfo<'tcx>,
+    parenting: rustc_hir::def_id::LocalDefIdMap<rustc_hir::ItemLocalId>,
+    trait_candidates: rustc_hir::ItemLocalMap<&'tcx [rustc_hir::TraitCandidate<'tcx>]>,
+    delayed_lints: rustc_data_structures::steal::Steal<rustc_hir::lints::DelayedLints>,
 }
 
 #[inline]
