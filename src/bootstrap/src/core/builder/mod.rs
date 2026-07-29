@@ -361,14 +361,10 @@ struct CommandLineStepDescription {
 #[derive(Clone, PartialOrd, Ord, PartialEq, Eq)]
 pub struct TaskPath {
     pub path: PathBuf,
-    pub kind: Option<Kind>,
 }
 
 impl Debug for TaskPath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let Some(kind) = &self.kind {
-            write!(f, "{}::", kind.as_str())?;
-        }
         write!(f, "{}", self.path.display())
     }
 }
@@ -401,9 +397,9 @@ impl PathSet {
         PathSet::Set(BTreeSet::new())
     }
 
-    fn one<P: Into<PathBuf>>(path: P, kind: Kind) -> PathSet {
+    fn one<P: Into<PathBuf>>(path: P) -> PathSet {
         let mut set = BTreeSet::new();
-        set.insert(TaskPath { path: path.into(), kind: Some(kind) });
+        set.insert(TaskPath { path: path.into() });
         PathSet::Set(set)
     }
 
@@ -568,7 +564,7 @@ impl<'a> ShouldRun<'a> {
             }
 
             let path = krate.local_path(self.builder);
-            self.paths.insert(PathSet::one(path, self.kind));
+            self.paths.insert(PathSet::one(path));
         }
         self
     }
@@ -582,9 +578,7 @@ impl<'a> ShouldRun<'a> {
             self.kind == Kind::Setup || !self.builder.src.join(alias).exists(),
             "use `builder.path()` for real paths: {alias}"
         );
-        self.paths.insert(PathSet::Set(
-            std::iter::once(TaskPath { path: alias.into(), kind: Some(self.kind) }).collect(),
-        ));
+        self.paths.insert(PathSet::Set(std::iter::once(TaskPath { path: alias.into() }).collect()));
         self
     }
 
@@ -607,7 +601,7 @@ impl<'a> ShouldRun<'a> {
     pub fn path(mut self, path: &str) -> Self {
         self.assert_valid_path(path);
 
-        let task = TaskPath { path: path.into(), kind: Some(self.kind) };
+        let task = TaskPath { path: path.into() };
         self.paths.insert(PathSet::Set(BTreeSet::from_iter([task])));
         self
     }
@@ -617,7 +611,7 @@ impl<'a> ShouldRun<'a> {
         let mut set = BTreeSet::new();
         for path in paths {
             self.assert_valid_path(path);
-            set.insert(TaskPath { path: (*path).into(), kind: Some(self.kind) });
+            set.insert(TaskPath { path: (*path).into() });
         }
         self.paths.insert(PathSet::Set(set));
         self
@@ -632,7 +626,7 @@ impl<'a> ShouldRun<'a> {
     }
 
     pub fn suite_path(mut self, suite: &str) -> Self {
-        self.paths.insert(PathSet::Suite(TaskPath { path: suite.into(), kind: Some(self.kind) }));
+        self.paths.insert(PathSet::Suite(TaskPath { path: suite.into() }));
         self
     }
 
@@ -1735,10 +1729,7 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
 
         for path in &self.paths {
             if should_run.paths.iter().any(|s| s.has(path))
-                && !desc.is_excluded(
-                    self,
-                    &PathSet::Suite(TaskPath { path: path.clone(), kind: Some(desc.kind) }),
-                )
+                && !desc.is_excluded(self, &PathSet::Suite(TaskPath { path: path.clone() }))
             {
                 return true;
             }
