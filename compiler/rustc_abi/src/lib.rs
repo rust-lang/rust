@@ -73,7 +73,7 @@ pub use extern_abi::CVariadicStatus;
 pub use extern_abi::{ExternAbi, all_names};
 pub use layout::{FIRST_VARIANT, FieldIdx, LayoutCalculator, LayoutCalculatorError, VariantIdx};
 #[cfg(feature = "nightly")]
-pub use layout::{Layout, TyAbiInterface, TyAndLayout};
+pub use layout::{Layout, PackCoroutineLayout, TyAbiInterface, TyAndLayout};
 
 #[derive(Clone, Copy, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "nightly", derive(Encodable_NoContext, Decodable_NoContext, StableHash))]

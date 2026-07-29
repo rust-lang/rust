@@ -968,14 +968,19 @@ where
 
                 ty::Coroutine(def_id, args) => match this.variants {
                     Variants::Empty => unreachable!(),
-                    Variants::Single { index } => TyMaybeWithLayout::Ty(
-                        args.as_coroutine()
+                    Variants::Single { index } => {
+                        let mut state_tys = args
+                            .as_coroutine()
                             .state_tys(def_id, tcx)
                             .nth(index.as_usize())
-                            .unwrap()
-                            .nth(i)
-                            .unwrap(),
-                    ),
+                            .unwrap();
+                        if let Some(ty) = state_tys.nth(i) {
+                            TyMaybeWithLayout::Ty(ty)
+                        } else {
+                            // Field is not in the variant; it may be an upvar
+                            TyMaybeWithLayout::Ty(args.as_coroutine().upvar_tys()[i])
+                        }
+                    }
                     Variants::Multiple { tag, tag_field, .. } => {
                         if FieldIdx::from_usize(i) == tag_field {
                             TyMaybeWithLayout::TyAndLayout(tag_layout(tag))

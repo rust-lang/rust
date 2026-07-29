@@ -7,6 +7,7 @@ use rustc_errors::ErrorGuaranteed;
 use rustc_index::IndexVec;
 use rustc_index::bit_set::BitMatrix;
 use rustc_macros::{StableHash, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
+use rustc_session::config::PackCoroutineLayout;
 use rustc_span::{Span, Symbol};
 
 use super::{ConstValue, SourceInfo};
@@ -19,8 +20,17 @@ rustc_index::newtype_index! {
     pub struct CoroutineSavedLocal {}
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
-#[derive(TyEncodable, TyDecodable, StableHash, TypeFoldable, TypeVisitable)]
+#[derive(
+    Clone,
+    Debug,
+    PartialEq,
+    Eq,
+    TyEncodable,
+    TyDecodable,
+    StableHash,
+    TypeFoldable,
+    TypeVisitable
+)]
 pub struct CoroutineSavedTy<'tcx> {
     pub ty: Ty<'tcx>,
     /// Source info corresponding to the local in the original MIR body.
@@ -32,8 +42,7 @@ pub struct CoroutineSavedTy<'tcx> {
 }
 
 /// The layout of coroutine state.
-#[derive(Clone, PartialEq, Eq)]
-#[derive(TyEncodable, TyDecodable, StableHash, TypeFoldable, TypeVisitable)]
+#[derive(Clone, PartialEq, Eq, TyEncodable, TyDecodable, StableHash, TypeFoldable, TypeVisitable)]
 pub struct CoroutineLayout<'tcx> {
     /// The type of every local stored inside the coroutine.
     pub field_tys: IndexVec<CoroutineSavedLocal, CoroutineSavedTy<'tcx>>,
@@ -52,6 +61,29 @@ pub struct CoroutineLayout<'tcx> {
     #[type_foldable(identity)]
     #[type_visitable(ignore)]
     pub storage_conflicts: BitMatrix<CoroutineSavedLocal, CoroutineSavedLocal>,
+
+    /// This map `A -> B` allows later MIR passes, error reporters
+    /// and layout calculator to relate saved locals `A` sourced from upvars
+    /// and locals `B` that upvars are moved into.
+    ///
+    /// For instance, an upvar `_1.0` is assigned saved local `_s12`,
+    /// see notation of [`CoroutineSavedLocal`], in the UNRESUMED state and
+    /// further moved into the internal saved local `_s13`.
+    /// This map, therefore, establishes the mapping from `_s12` to `_s13`,
+    /// so that their memory layout within the coroutine should be overlapped.
+    #[type_foldable(identity)]
+    #[type_visitable(ignore)]
+    pub relocated_upvars: IndexVec<CoroutineSavedLocal, Option<CoroutineSavedLocal>>,
+
+    /// Coroutine layout packing
+    #[type_foldable(identity)]
+    #[type_visitable(ignore)]
+    pub pack: PackCoroutineLayout,
+}
+
+impl<'tcx> CoroutineLayout<'tcx> {
+    /// The initial state of a coroutine
+    pub const UNRESUMED: VariantIdx = VariantIdx::ZERO;
 }
 
 impl Debug for CoroutineLayout<'_> {
@@ -77,6 +109,7 @@ impl Debug for CoroutineLayout<'_> {
                 map.finish()
             })
             .field("storage_conflicts", &self.storage_conflicts)
+            .field("relocated_upvars", &self.relocated_upvars.debug_map_view())
             .finish()
     }
 }
@@ -98,8 +131,19 @@ pub struct ConstQualifs {
 /// order of the category, thereby influencing diagnostic output.
 ///
 /// See also `rustc_const_eval::borrow_check::constraints`.
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-#[derive(TyEncodable, TyDecodable, StableHash, TypeVisitable, TypeFoldable)]
+#[derive(
+    Copy,
+    Clone,
+    Debug,
+    Eq,
+    PartialEq,
+    Hash,
+    TyEncodable,
+    TyDecodable,
+    StableHash,
+    TypeVisitable,
+    TypeFoldable
+)]
 pub enum ConstraintCategory<'tcx> {
     Return(ReturnConstraint),
     Yield,
@@ -156,15 +200,37 @@ pub enum ConstraintCategory<'tcx> {
     SolverRegionConstraint(Span),
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-#[derive(TyEncodable, TyDecodable, StableHash, TypeVisitable, TypeFoldable)]
+#[derive(
+    Copy,
+    Clone,
+    Debug,
+    Eq,
+    PartialEq,
+    Hash,
+    TyEncodable,
+    TyDecodable,
+    StableHash,
+    TypeVisitable,
+    TypeFoldable
+)]
 pub enum ReturnConstraint {
     Normal,
     ClosureUpvar(FieldIdx),
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
-#[derive(TyEncodable, TyDecodable, StableHash, TypeVisitable, TypeFoldable)]
+#[derive(
+    Copy,
+    Clone,
+    Debug,
+    Eq,
+    PartialEq,
+    Hash,
+    TyEncodable,
+    TyDecodable,
+    StableHash,
+    TypeVisitable,
+    TypeFoldable
+)]
 pub enum AnnotationSource {
     Ascription,
     Declaration,
