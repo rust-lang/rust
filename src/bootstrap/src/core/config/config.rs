@@ -538,6 +538,7 @@ impl Config {
             exclude: build_exclude,
             compiletest_allow_stage0: build_compiletest_allow_stage0,
             sde: build_sde,
+            allocator: build_allocator,
         } = toml_build.unwrap_or_default();
 
         let Install {
@@ -590,7 +591,6 @@ impl Config {
             thin_lto_import_instr_limit: rust_thin_lto_import_instr_limit,
             parallel_frontend_threads: rust_parallel_frontend_threads,
             remap_debuginfo: rust_remap_debuginfo,
-            allocator: rust_allocator,
             jemalloc: rust_jemalloc,
             test_compare_mode: rust_test_compare_mode,
             llvm_libunwind: rust_llvm_libunwind,
@@ -1051,6 +1051,7 @@ impl Config {
                     target_jemalloc,
                     target_allocator,
                     &format!("target.{triple}"),
+                    &format!("target.{triple}"),
                 );
                 if let Some(backends) = target_codegen_backends {
                     target.codegen_backends =
@@ -1396,7 +1397,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
 
         Config {
             // tidy-alphabetical-start
-            allocator: reconcile_jemalloc(rust_jemalloc, rust_allocator, "rust"),
+            allocator: reconcile_jemalloc(rust_jemalloc, build_allocator, "rust", "build"),
             android_ndk: build_android_ndk,
             backtrace: rust_backtrace.unwrap_or(true),
             backtrace_on_ice: rust_backtrace_on_ice.unwrap_or(false),
@@ -2061,7 +2062,8 @@ impl AsRef<ExecutionContext> for Config {
 fn reconcile_jemalloc(
     jemalloc: Option<bool>,
     allocator: Option<Allocator>,
-    section: &str,
+    jemalloc_section: &str,
+    allocator_section: &str,
 ) -> Option<Allocator> {
     match (jemalloc, allocator) {
         (None, None) => None,
@@ -2069,21 +2071,21 @@ fn reconcile_jemalloc(
         (Some(true), None) => {
             println!(
                 "WARNING: The `jemalloc` option is deprecated. \
-                 Please use `{section}.allocator = \"jemalloc\"` instead of `{section}.jemalloc = true`",
+                 Please use `{allocator_section}.allocator = \"jemalloc\"` instead of `{jemalloc_section}.jemalloc = true`",
             );
             Some(Allocator::Jemalloc)
         }
         (Some(false), None) => {
             println!(
                 "WARNING: The `jemalloc` option is deprecated. \
-                 Please use `{section}.allocator = \"system\"` instead of `{section}.jemalloc = false`",
+                 Please use `{allocator_section}.allocator = \"system\"` instead of `{jemalloc_section}.jemalloc = false`",
             );
             Some(Allocator::System)
         }
         _ => {
             panic!(
-                "ERROR: `{section}.jemalloc` and `{section}.allocator` are both set. \
-                 Please remove the outdated `{section}.jemalloc` directive."
+                "ERROR: `{jemalloc_section}.jemalloc` and `{allocator_section}.allocator` are both set. \
+                 Please remove the outdated `{jemalloc_section}.jemalloc` directive."
             )
         }
     }

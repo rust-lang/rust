@@ -544,6 +544,12 @@
 # For example, exclude = ["tests/ui", "src/tools/tidy"].
 #build.exclude = []
 
+# Link the compiler and LLVM against the specified allocator instead of the default libc allocator.
+# This option is only tested on Linux and OSX. It can also be configured per-target in the
+# [target.<tuple>] section.
+# Possible options: "jemalloc"
+#build.allocator = "jemalloc"
+
 # =============================================================================
 # General install configuration options
 # =============================================================================
@@ -859,14 +865,8 @@
 # Useful for reproducible builds. Generally only set for releases
 #rust.remap-debuginfo = false
 
-# Link the compiler and LLVM against the specified allocator instead of the default libc allocator.
-# This option is only tested on Linux and OSX. It can also be configured per-target in the
-# [target.<tuple>] section.
-# Possible options: "jemalloc"
-#rust.allocator = "jemalloc"
-
-# Deprecated alias for `rust.allocator`. Setting this to `true` is
-# equivalent to `rust.allocator = "jemalloc"`. Both cannot be set in the same section
+# Deprecated alias for `build.allocator`. Setting this to `true` is
+# equivalent to `build.allocator = "jemalloc"`. Both cannot be set in the same section
 # (`rust` or `target.[target]`)
 #rust.jemalloc = false
 
@@ -1177,8 +1177,8 @@
 #optimized-compiler-builtins = build.optimized-compiler-builtins (bool or path)
 
 # Link the compiler and LLVM against the specified allocator instead of the default libc allocator.
-# This overrides the global `rust.allocator` option. See that option for more info.
-#allocator = rust.allocator (string)
+# This overrides the global `build.allocator` option. See that option for more info.
+#allocator = build.allocator (string)
 
 # Deprecated alias for `allocator`. See `rust.jemalloc` for more info.
 #jemalloc = rust.jemalloc (bool)
