@@ -1,7 +1,7 @@
 use std::hash::Hash;
 use std::mem::ManuallyDrop;
 
-use rustc_data_structures::fingerprint::Fingerprint;
+use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
 use rustc_data_structures::hash_table::{Entry, HashTable};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::sync::{DynSend, DynSync};
@@ -490,12 +490,21 @@ fn execute_job_incr<'tcx, C: QueryCache>(
 /// specified, re-hash results from the cache and make sure that they have the
 /// expected fingerprint.
 ///
-/// If not, we still seek to verify a subset of fingerprints loaded from disk.
-/// Re-hashing results is fairly expensive, so we can't currently afford to
-/// verify every hash. This subset should still give us some coverage of
-/// potential bugs.
-pub(crate) fn should_verify_loaded_value(tcx: TyCtxt<'_>, prev_fingerprint: Fingerprint) -> bool {
-    prev_fingerprint.split().1.as_u64().is_multiple_of(32)
+/// If not, we still verify a subset: re-hashing is too expensive to do for
+/// every value. The subset rotates with the session count, covering the whole
+/// cache every 32 sessions, and is deterministic so that a verification
+/// failure reproduces on retry.
+///
+/// `to_smaller_hash` mixes both fingerprint halves because neither half is
+/// evenly distributed on its own (`DefPathHash` keys share the
+/// `StableCrateId`, `HirId` keys contain a sequential id).
+pub(crate) fn should_verify_loaded_value(
+    tcx: TyCtxt<'_>,
+    dep_graph_data: &DepGraphData,
+    key_fingerprint: PackedFingerprint,
+) -> bool {
+    let hash = Fingerprint::from(key_fingerprint).to_smaller_hash().as_u64();
+    hash % 32 == dep_graph_data.session_count() % 32
         || tcx.sess.opts.unstable_opts.incremental_verify_ich
 }
 
@@ -532,8 +541,7 @@ fn load_from_disk_or_invoke_provider_green<'tcx, C: QueryCache>(
                 dep_graph_data.mark_debug_loaded_from_disk(*dep_node)
             }
 
-            let prev_fingerprint = dep_graph_data.prev_value_fingerprint_of(prev_index);
-            let verify = should_verify_loaded_value(tcx, prev_fingerprint);
+            let verify = should_verify_loaded_value(tcx, dep_graph_data, dep_node.key_fingerprint);
 
             (value, verify)
         }

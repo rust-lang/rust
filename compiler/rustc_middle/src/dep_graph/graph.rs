@@ -705,6 +705,15 @@ impl DepGraphData {
         self.previous.value_fingerprint_for_index(prev_index)
     }
 
+    /// The number of incremental sessions in this graph's lineage, from
+    /// [`SerializedDepGraph::session_count`]. Advances by one per successful
+    /// session; a failed session does not commit a graph, so a re-run sees
+    /// the same count.
+    #[inline]
+    pub fn session_count(&self) -> u64 {
+        self.previous.session_count()
+    }
+
     #[inline]
     pub(crate) fn prev_node_of(&self, prev_index: SerializedDepNodeIndex) -> &DepNode {
         self.previous.index_to_node(prev_index)
