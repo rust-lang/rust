@@ -632,6 +632,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.deferred_transmute_checks.borrow_mut().push((*from, to, expr.hir_id));
             }
             if tcx.is_intrinsic(did, sym::offload) {
+                let args = args.skip_binder();
                 let f = args.type_at(0);
                 let t = args.type_at(1);
                 let r = args.type_at(2);

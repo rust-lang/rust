@@ -161,7 +161,8 @@ fn check_offload<'tcx>(
         return Err(err);
     };
 
-    let kernel_sig = tcx.fn_sig(kernel_def_id).instantiate(tcx, kernel_args).skip_norm_wip();
+    let kernel_sig =
+        tcx.fn_sig(kernel_def_id).instantiate(tcx, kernel_args.skip_binder()).skip_norm_wip();
     let kernel_sig = tcx.instantiate_bound_regions_with_erased(kernel_sig);
 
     let ty::Tuple(tuple_fields) = *args_ty.kind() else {
