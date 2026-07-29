@@ -126,7 +126,10 @@ fn skippable_lints(tcx: TyCtxt<'_>, (): ()) -> UnordSet<LintId> {
             // Lints that show up in future-compat reports must always be run.
             let has_future_breakage =
                 lint.future_incompatible.is_some_and(|fut| fut.report_in_deps);
-            !has_future_breakage && !lint.eval_always
+            // `-Zfuture-incompat-test` forces non-allow lints to report as future-compat
+            let test = tcx.sess.opts.unstable_opts.future_incompat_test
+                && lint.default_level != Level::Allow;
+            !has_future_breakage && !test && !lint.eval_always
         })
         .filter(|lint| {
             let level_spec =
