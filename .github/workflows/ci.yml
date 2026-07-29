@@ -59,7 +59,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: [x86_64-pc-windows-msvc, i686-pc-windows-msvc, x86_64-unknown-linux-gnu]
+        target: [x86_64-pc-windows-msvc, x86_64-pc-windows-gnu, i686-pc-windows-msvc, x86_64-unknown-linux-gnu]
         # `default` means we use the default target config for the target,
         # `native` means we run with `-Ctarget-cpu=native`, and anything else is
         # an arg to `-Ctarget-feature`
