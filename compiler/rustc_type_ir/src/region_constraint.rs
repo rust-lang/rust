@@ -51,9 +51,10 @@ use crate::inherent::*;
 use crate::relate::{Relate, RelateResult, TypeRelation, VarianceDiagInfo};
 use crate::{
     AliasTy, Binder, BoundRegion, BoundVar, BoundVariableKind, DebruijnIndex, FallibleTypeFolder,
-    InferCtxtLike, Interner, IsRigid, OutlivesPredicate, Region, RegionKind, TyKind, TypeFoldable,
-    TypeFolder, TypeVisitable, TypeVisitor, TypingMode, UniverseIndex, Variance, VisitorResult,
-    max_universe, set_aliases_to_non_rigid, try_visit, walk_visitable_list,
+    GenericTypeVisitable, InferCtxtLike, Interner, IsRigid, OutlivesPredicate, Region, RegionKind,
+    TyKind, TypeFoldable, TypeFolder, TypeVisitable, TypeVisitor, TypingMode, UniverseIndex,
+    Variance, VisitorResult, max_universe, set_aliases_to_non_rigid, try_visit,
+    walk_visitable_list,
 };
 
 #[derive_where(Clone, Debug; I: Interner)]
@@ -91,6 +92,7 @@ impl<I: Interner> Assumptions<I> {
 }
 
 #[derive_where(Clone, Hash, PartialEq, Debug; I: Interner)]
+#[derive(GenericTypeVisitable)]
 pub enum RegionConstraint<I: Interner> {
     Ambiguity,
     RegionOutlives(Region<I>, Region<I>),
