@@ -14,9 +14,9 @@ use rustc_middle::mir::interpret::{
     read_target_uint,
 };
 use rustc_middle::mono::MonoItem;
-use rustc_middle::ptrauth::ptrauth_compute_fn_ptr_type_discriminator_for;
+use rustc_middle::ptrauth::ptrauth_collect_fn_ptr_discriminators;
 use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf};
-use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
+use rustc_middle::ty::{self, Instance};
 use rustc_middle::{bug, span_bug};
 use rustc_span::Symbol;
 use rustc_target::spec::Arch;
@@ -38,128 +38,6 @@ pub(crate) enum IsStatic {
 pub(crate) enum IsInitOrFini {
     Yes,
     No,
-}
-
-/// Recursively walks a type layout and records the offsets of all extern "C"
-/// function pointer fields together with their computed type discriminators.
-///
-/// Traversal currently supports:
-/// - references
-/// - direct function pointers
-/// - structs
-/// - tuples
-/// - arrays
-///
-/// Offsets are accumulated relative to the containing object.
-fn collect_fn_ptr_discriminators<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    typing_env: ty::TypingEnv<'tcx>,
-    ty: Ty<'tcx>,
-) -> FxHashMap<Size, u64> {
-    let mut map = FxHashMap::default();
-
-    collect_fn_ptr_discriminators_inner(tcx, typing_env, ty, Size::ZERO, &mut map);
-
-    map
-}
-
-fn collect_fn_ptr_discriminators_inner<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    typing_env: ty::TypingEnv<'tcx>,
-    ty: Ty<'tcx>,
-    base_offset: Size,
-    map: &mut FxHashMap<Size, u64>,
-) {
-    // Direct function pointer.
-    if let Some(disc) = ptrauth_compute_fn_ptr_type_discriminator_for(tcx, ty) {
-        map.insert(base_offset, disc.into());
-
-        return;
-    }
-
-    match ty.kind() {
-        ty::Ref(_, pointee, _) => {
-            collect_fn_ptr_discriminators_inner(tcx, typing_env, *pointee, base_offset, map);
-        }
-        ty::Adt(def, args) if def.is_struct() => {
-            let Ok(layout) = tcx.layout_of(typing_env.as_query_input(ty)) else {
-                return;
-            };
-
-            let variant = def.non_enum_variant();
-
-            for (idx, field_def) in variant.fields.iter_enumerated() {
-                let field_ty = tcx.normalize_erasing_regions(typing_env, field_def.ty(tcx, args));
-
-                let field_offset = layout.fields.offset(idx.into());
-
-                collect_fn_ptr_discriminators_inner(
-                    tcx,
-                    typing_env,
-                    field_ty,
-                    base_offset + field_offset,
-                    map,
-                );
-            }
-        }
-        ty::Tuple(fields) => {
-            let Ok(layout) = tcx.layout_of(typing_env.as_query_input(ty)) else {
-                return;
-            };
-
-            for (idx, field_ty) in fields.iter().enumerate() {
-                let field_offset = layout.fields.offset(idx);
-
-                collect_fn_ptr_discriminators_inner(
-                    tcx,
-                    typing_env,
-                    field_ty,
-                    base_offset + field_offset,
-                    map,
-                );
-            }
-        }
-        ty::Array(elem_ty, len) => {
-            let count = match len.try_to_target_usize(tcx) {
-                Some(v) => v,
-                None => return,
-            };
-
-            let Ok(elem_layout) = tcx.layout_of(typing_env.as_query_input(*elem_ty)) else {
-                return;
-            };
-
-            let stride = elem_layout.size;
-
-            // Collect discriminator of one element, so we don't have to recompute it for all the
-            // elements in the array.
-            let mut elem_map = FxHashMap::default();
-
-            collect_fn_ptr_discriminators_inner(
-                tcx,
-                typing_env,
-                *elem_ty,
-                Size::ZERO,
-                &mut elem_map,
-            );
-
-            // SAFETY: We immediately collect into a Vec and sort by offset.
-            // The HashMap iteration order is irrelevant and must not affect determinism.
-            #[allow(rustc::potential_query_instability)]
-            let mut entries: Vec<(Size, u64)> = elem_map.into_iter().collect();
-            entries.sort_unstable_by_key(|(offset, _)| *offset);
-
-            // Replicate for every array slot.
-            for i in 0..count {
-                let elem_base = base_offset + stride * i;
-
-                for (inner_offset, discr) in entries.iter().copied() {
-                    map.insert(elem_base + inner_offset, discr);
-                }
-            }
-        }
-        _ => {}
-    }
 }
 
 pub(crate) fn const_alloc_to_llvm<'ll>(
@@ -301,7 +179,7 @@ fn codegen_static_initializer<'ll, 'tcx>(
         let instance = Instance::mono(cx.tcx, def_id);
         let ty = instance.ty(cx.tcx, cx.typing_env());
 
-        Some(collect_fn_ptr_discriminators(cx.tcx, cx.typing_env(), ty))
+        Some(ptrauth_collect_fn_ptr_discriminators(cx.tcx, cx.typing_env(), ty))
     } else {
         None
     };
@@ -989,16 +867,21 @@ impl<'ll> StaticCodegenMethods for CodegenCx<'ll, '_> {
     ///
     /// The pointer will always be in the default address space. If global variables default to a
     /// different address space, an addrspacecast is inserted.
-    fn static_addr_of(&self, alloc: ConstAllocation<'_>, kind: Option<&str>) -> &'ll Value {
+    fn static_addr_of(
+        &self,
+        alloc: ConstAllocation<'_>,
+        kind: Option<&str>,
+        ptrauth_discriminators: Option<&FxHashMap<Size, u64>>,
+    ) -> &'ll Value {
         // FIXME: should we cache `const_alloc_to_llvm` to avoid repeating this for the
         // same `ConstAllocation`?
-        // FIXME(jchlanda): Add support for pointer authentication type discrimination.
-        // `static_addr_of` only receives a `ConstAllocation`, so it does not have the type
-        // information needed to compute function pointer type discriminators. We'll likely need
-        // to either compute the discriminator map at callers that still know the Rust type, or
-        // extend this API to accept the required type information. See
-        // `codegen_static_initializer` for an example of how the discriminator map is computed.
-        let cv = const_alloc_to_llvm(self, alloc.inner(), IsStatic::No, IsInitOrFini::No, None);
+        let cv = const_alloc_to_llvm(
+            self,
+            alloc.inner(),
+            IsStatic::No,
+            IsInitOrFini::No,
+            ptrauth_discriminators,
+        );
 
         let gv = self.static_addr_of_impl(cv, alloc.inner().align, kind);
         // static_addr_of_impl returns the bare global variable, which might not be in the default
