@@ -22,7 +22,7 @@ use rustc_target::asm::*;
 use crate::builder::Builder;
 use crate::callee::get_fn;
 use crate::context::CodegenCx;
-use crate::errors::{NulBytesInAsm, UnwindingInlineAsm};
+use crate::diagnostics::{NulBytesInAsm, UnwindingInlineAsm};
 use crate::type_of::LayoutGccExt;
 
 // Rust asm! and GCC Extended Asm semantics differ substantially.
