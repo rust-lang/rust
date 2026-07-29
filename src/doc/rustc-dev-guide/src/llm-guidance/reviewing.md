@@ -28,7 +28,22 @@ You may request that the author redo it without LLM-generated code, in which cas
 The following areas are currently banned:
 - Code that affects soundness. If the author is not an org member who is experienced in the domain, you are required to close the PR.
 - Diagnostics. All user-facing diagnostics must be human-written.
-- Docs. All public doc-comments, and all `SAFETY` comments, must be human-written.
+- Docs. All public doc-comments, and all `// SAFETY` comments, must be human-written.
+
+"Code that affects soundness" is both broader and narrower than it sounds.
+It's broader because almost all of the compiler is relevant to soundness;
+it's narrower because there's quite a lot of rust-lang/rust that isn't the compiler
+(library, bootstrap, compiletest, rustdoc, CI, ...).
+
+If in doubt, we suggest this criteria:
+Do not allow LLM-generated code for parts of the compiler where [wrong code does not look wrong][joel-wrong].
+Ultimately, this is up to your judgement as a reviewer.
+
+[joel-wrong]: https://www.joelonsoftware.com/2005/05/11/making-wrong-code-look-wrong/
+
+You are still expected to respect your [r+ rights](../compiler-team.html#r-rights).
+Please do not merge PRs unless you are confident in that part of that code,
+even if the maintainer does not wish to review LLM PRs.
 
 ### Guidelines
 
@@ -47,10 +62,14 @@ If you see a PR that is "obviously" LLM-created without disclosing that use, you
 
 We suggest using the following wording:
 
-> This PR appears to be LLM-generated without disclosing use of an LLM,
-> so I am going to close this PR.
-> You are welcome to open additional PRs as long as they follow our [policy][forge-page].
-> For more information, see [#llm-mentoring] on Zulip.
+```markdown
+This PR appears to be LLM-generated without disclosing use of an LLM, so I am going to close this PR.
+You are welcome to open additional PRs as long as they follow our [policy][forge-page].
+For more information, see [#llm-mentoring] on Zulip.
+
+[#llm-mentoring]: https://rust-lang.zulipchat.com/join/rlfvpemsaacs3pfi6kwqnqjb/
+[forge-page]: https://forge.rust-lang.org/policies/llm-usage.html
+```
 
 Examples of "obvious" LLM tells are:
 - PR descriptions that are completely wrong/don't match the code.
@@ -67,10 +86,15 @@ If the author deleted the question without answering it, you can close the PR, n
 
 If the PR discloses use, but does not assign a reviewer following the [experiment guidelines], you can close it similarly:
 
-> You've opened an LLM-generated PR, but it's in the normal review queue, which breaks our [policy][experiment guidelines].
-> I am going to close this PR.
-> Please do not re-open it until you find a project member who has volunteered to review it.
-> For more information, see [#llm-mentoring] on Zulip.
+```markdown
+You've opened an LLM-generated PR, but it's in the normal review queue, which breaks our [policy][experiment guidelines].
+I am going to close this PR.
+Please do not re-open it until you find a project member who has volunteered to review it.
+For more information, see [#llm-mentoring] on Zulip.
+
+[#llm-mentoring]: https://rust-lang.zulipchat.com/join/rlfvpemsaacs3pfi6kwqnqjb/
+[forge-page]: https://forge.rust-lang.org/policies/llm-usage.html
+```
 
 #### Missing tests, low-quality, or not self-reviewed
 
