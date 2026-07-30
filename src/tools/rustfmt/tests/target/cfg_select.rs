@@ -126,76 +126,40 @@ core::cfg_select![
 fn expression_position() {
     // cfg_select arms with block
     println!(cfg_select! {
-        unix => {
-            "unix"
-        }
-        windows => {
-            "windows"
-        }
-        _ => {
-            "not " + "windows" + "or" + "unix"
-        }
+        unix => "unix",
+        windows => "windows",
+        _ => "not " + "windows" + "or" + "unix",
     });
 
     println!(std::cfg_select! {
-        unix => {
-            "unix"
-        }
-        windows => {
-            "windows"
-        }
-        _ => {
-            "not " + "windows" + "or" + "unix"
-        }
+        unix => "unix",
+        windows => "windows",
+        _ => "not " + "windows" + "or" + "unix",
     });
 
     println!(core::cfg_select! {
-        unix => {
-            "unix"
-        }
-        windows => {
-            "windows"
-        }
-        _ => {
-            "not " + "windows" + "or" + "unix"
-        }
+        unix => "unix",
+        windows => "windows",
+        _ => "not " + "windows" + "or" + "unix",
     });
 
     // cfg_select arms with block and trailing commas
     println!(cfg_select! {
-        unix => {
-            "unix"
-        }
-        windows => {
-            "windows"
-        }
-        _ => {
-            "not " + "windows" + "or" + "unix"
-        }
+        unix => "unix",
+        windows => "windows",
+        _ => "not " + "windows" + "or" + "unix",
     });
 
     println!(std::cfg_select! {
-        unix => {
-            "unix"
-        }
-        windows => {
-            "windows"
-        }
-        _ => {
-            "not " + "windows" + "or" + "unix"
-        }
+        unix => "unix",
+        windows => "windows",
+        _ => "not " + "windows" + "or" + "unix",
     });
 
     println!(core::cfg_select! {
-        unix => {
-            "unix"
-        }
-        windows => {
-            "windows"
-        }
-        _ => {
-            "not " + "windows" + "or" + "unix"
-        }
+        unix => "unix",
+        windows => "windows",
+        _ => "not " + "windows" + "or" + "unix",
     });
 
     // cfg_select arms without block
@@ -219,32 +183,20 @@ fn expression_position() {
 
     // cfg_select arms with and without blocks
     println!(cfg_select! {
-        unix => {
-            "unix"
-        }
-        windows => {
-            "windows"
-        }
+        unix => "unix",
+        windows => "windows",
         _ => "not windows or unix",
     });
 
     println!(std::cfg_select! {
-        unix => {
-            "unix"
-        }
-        windows => {
-            "windows"
-        }
+        unix => "unix",
+        windows => "windows",
         _ => "not windows or unix",
     });
 
     println!(core::cfg_select! {
-        unix => {
-            "unix"
-        }
-        windows => {
-            "windows"
-        }
+        unix => "unix",
+        windows => "windows",
         _ => "not windows or unix",
     });
 }
@@ -307,15 +259,9 @@ core::cfg_select! {
 
 // trailing comments on the last line are a little buggy and always wrap back up
 cfg_select! {
-    windows => {
-        "windows"
-    }
-    unix => {
-        "unix"
-    }
-    _ => {
-        "none"
-    } // FIXME. Prevent wrapping back up to the next line
+    windows => "windows",
+    unix => "unix",
+    _ => "none", // FIXME. Prevent wrapping back up to the next line
 }
 
 cfg_select! {
@@ -592,76 +538,40 @@ mod nested {
     fn expression_position() {
         // cfg_select arms with block
         println!(cfg_select! {
-            unix => {
-                "unix"
-            }
-            windows => {
-                "windows"
-            }
-            _ => {
-                "not " + "windows" + "or" + "unix"
-            }
+            unix => "unix",
+            windows => "windows",
+            _ => "not " + "windows" + "or" + "unix",
         });
 
         println!(std::cfg_select! {
-            unix => {
-                "unix"
-            }
-            windows => {
-                "windows"
-            }
-            _ => {
-                "not " + "windows" + "or" + "unix"
-            }
+            unix => "unix",
+            windows => "windows",
+            _ => "not " + "windows" + "or" + "unix",
         });
 
         println!(core::cfg_select! {
-            unix => {
-                "unix"
-            }
-            windows => {
-                "windows"
-            }
-            _ => {
-                "not " + "windows" + "or" + "unix"
-            }
+            unix => "unix",
+            windows => "windows",
+            _ => "not " + "windows" + "or" + "unix",
         });
 
         // cfg_select arms with block and trailing commas
         println!(cfg_select! {
-            unix => {
-                "unix"
-            }
-            windows => {
-                "windows"
-            }
-            _ => {
-                "not " + "windows" + "or" + "unix"
-            }
+            unix => "unix",
+            windows => "windows",
+            _ => "not " + "windows" + "or" + "unix",
         });
 
         println!(std::cfg_select! {
-            unix => {
-                "unix"
-            }
-            windows => {
-                "windows"
-            }
-            _ => {
-                "not " + "windows" + "or" + "unix"
-            }
+            unix => "unix",
+            windows => "windows",
+            _ => "not " + "windows" + "or" + "unix",
         });
 
         println!(core::cfg_select! {
-            unix => {
-                "unix"
-            }
-            windows => {
-                "windows"
-            }
-            _ => {
-                "not " + "windows" + "or" + "unix"
-            }
+            unix => "unix",
+            windows => "windows",
+            _ => "not " + "windows" + "or" + "unix",
         });
 
         // cfg_select arms without block
@@ -685,32 +595,20 @@ mod nested {
 
         // cfg_select arms with and without blocks
         println!(cfg_select! {
-            unix => {
-                "unix"
-            }
-            windows => {
-                "windows"
-            }
+            unix => "unix",
+            windows => "windows",
             _ => "not windows or unix",
         });
 
         println!(std::cfg_select! {
-            unix => {
-                "unix"
-            }
-            windows => {
-                "windows"
-            }
+            unix => "unix",
+            windows => "windows",
             _ => "not windows or unix",
         });
 
         println!(core::cfg_select! {
-            unix => {
-                "unix"
-            }
-            windows => {
-                "windows"
-            }
+            unix => "unix",
+            windows => "windows",
             _ => "not windows or unix",
         });
     }
@@ -773,15 +671,9 @@ mod nested {
 
     // trailing comments on the last line are a little buggy and always wrap back up
     cfg_select! {
-        windows => {
-            "windows"
-        }
-        unix => {
-            "unix"
-        }
-        _ => {
-            "none"
-        } // FIXME. Prevent wrapping back up to the next line
+        windows => "windows",
+        unix => "unix",
+        _ => "none", // FIXME. Prevent wrapping back up to the next line
     }
 
     cfg_select! {
@@ -995,9 +887,7 @@ pub const fn midpoint(self, other: f32) -> f32 {
             all(target_arch = "arm", target_feature = "vfp2"),
             target_arch = "wasm32",
             target_arch = "wasm64",
-        ) => {
-            ((self as f64 + other as f64) / 2.0) as f32
-        }
+        ) => ((self as f64 + other as f64) / 2.0) as f32,
         _ => {
             const HI: f32 = f32::MAX / 2.;
 
@@ -1074,31 +964,29 @@ fn arm_rhs_expr_3() -> i32 {
     cfg_select! {
         any(true) => 1,
         any(false) => 2,
-        any(true) => {
-            42
-        }
-        any(true) => {
-            42
-        }
+        any(true) => 42,
+        any(true) => 42,
         any(false) => -1 as i32,
         any(true) => 2 + 2,
         any(false) => "",
-        any(true) =>
+        any(true) => {
             if true {
                 42
             } else {
                 84
-            },
-        any(false) =>
+            }
+        }
+        any(false) => {
             if true {
                 42
             } else {
                 84
-            },
+            }
+        }
         any(true) => return 42,
         any(false) => loop {},
         any(true) => (1, 2),
-        any(false) => (1, 2,),
+        any(false) => (1, 2),
         any(true) => todo!(),
         any(false) => println!("hello"),
     }
@@ -1118,9 +1006,7 @@ fn expand_to_statements() -> i32 {
 }
 
 type ExpandToType = cfg_select! {
-    unix => {
-        u32
-    }
+    unix => u32,
     _ => i32,
 };
 
