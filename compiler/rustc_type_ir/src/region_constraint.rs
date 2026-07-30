@@ -51,9 +51,10 @@ use crate::inherent::*;
 use crate::relate::{Relate, RelateResult, TypeRelation, VarianceDiagInfo};
 use crate::{
     AliasTy, Binder, BoundRegion, BoundVar, BoundVariableKind, DebruijnIndex, FallibleTypeFolder,
-    InferCtxtLike, Interner, IsRigid, OutlivesPredicate, Region, RegionKind, TyKind, TypeFoldable,
-    TypeFolder, TypeVisitable, TypeVisitor, TypingMode, UniverseIndex, Variance, VisitorResult,
-    max_universe, set_aliases_to_non_rigid,
+    GenericTypeVisitable, InferCtxtLike, Interner, IsRigid, OutlivesPredicate, Region, RegionKind,
+    TyKind, TypeFoldable, TypeFolder, TypeVisitable, TypeVisitor, TypingMode, UniverseIndex,
+    Variance, VisitorResult, max_universe, set_aliases_to_non_rigid, try_visit,
+    walk_visitable_list,
 };
 
 #[derive_where(Clone, Debug; I: Interner)]
@@ -91,6 +92,7 @@ impl<I: Interner> Assumptions<I> {
 }
 
 #[derive_where(Clone, Hash, PartialEq, Debug; I: Interner)]
+#[derive(GenericTypeVisitable)]
 pub enum RegionConstraint<I: Interner> {
     Ambiguity,
     RegionOutlives(Region<I>, Region<I>),
@@ -219,44 +221,26 @@ impl<I: Interner> TypeFoldable<I> for RegionConstraint<I> {
 
 impl<I: Interner> TypeVisitable<I> for RegionConstraint<I> {
     fn visit_with<F: TypeVisitor<I>>(&self, f: &mut F) -> F::Result {
-        use core::ops::ControlFlow::*;
-
         use RegionConstraint::*;
 
         match self {
             Ambiguity => (),
             RegionOutlives(a, b) => {
-                if let b @ Break(_) = a.visit_with(f).branch() {
-                    return F::Result::from_branch(b);
-                };
-                if let b @ Break(_) = b.visit_with(f).branch() {
-                    return F::Result::from_branch(b);
-                };
+                try_visit!(a.visit_with(f));
+                try_visit!(b.visit_with(f));
             }
             AliasTyOutlivesViaEnv(outlives) => {
-                return outlives.visit_with(f);
+                try_visit!(outlives.visit_with(f));
             }
             PlaceholderTyOutlives(a, b) => {
-                if let b @ Break(_) = a.visit_with(f).branch() {
-                    return F::Result::from_branch(b);
-                };
-                if let b @ Break(_) = b.visit_with(f).branch() {
-                    return F::Result::from_branch(b);
-                };
+                try_visit!(a.visit_with(f));
+                try_visit!(b.visit_with(f));
             }
             And(and) => {
-                for a in and {
-                    if let b @ Break(_) = a.visit_with(f).branch() {
-                        return F::Result::from_branch(b);
-                    };
-                }
+                walk_visitable_list!(f, and);
             }
             Or(or) => {
-                for a in or {
-                    if let b @ Break(_) = a.visit_with(f).branch() {
-                        return F::Result::from_branch(b);
-                    };
-                }
+                walk_visitable_list!(f, or);
             }
         };
 
