@@ -1,4 +1,4 @@
-//! Test error cases for `#[splat]` "overloading at home" example code.
+//! Test error cases for `#[rustc_splat]` "overloading at home" example code.
 //! Splatted calls that don't match any registered MethodArgs impl should fail.
 #![allow(incomplete_features)]
 #![feature(splat)]
@@ -23,7 +23,7 @@ impl MethodArgs for (i32, String) {
 }
 
 impl Foo {
-    fn method<T: MethodArgs>(&self, #[splat] args: T) {
+    fn method<T: MethodArgs>(&self, #[rustc_splat] args: T) {
         args.call_method(self)
     }
 }

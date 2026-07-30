@@ -1,4 +1,4 @@
-//! Test that `#[splat]` on `&dyn AsRef<T>` where `T: Tuple` is an error.
+//! Test that `#[rustc_splat]` on `&dyn AsRef<T>` where `T: Tuple` is an error.
 
 #![allow(incomplete_features)]
 #![feature(splat)]
@@ -9,7 +9,7 @@
 
 // FIXME(splat): Some errors are reported on the callee, but they would be more ergonomic on the
 // caller as well
-fn dyn_asref_splat<T>(#[splat] _t: &dyn AsRef<T>)
+fn dyn_asref_splat<T>(#[rustc_splat] _t: &dyn AsRef<T>)
 //~^ ERROR cannot use splat attribute; the splatted argument type must be a tuple or unit, not a
 //~| ERROR cannot use splat attribute; the splatted argument type must be a tuple or unit, not a
 //~| ERROR cannot use splat attribute; the splatted argument type must be a tuple or unit, not a

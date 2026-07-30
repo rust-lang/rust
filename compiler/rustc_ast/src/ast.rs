@@ -3071,7 +3071,7 @@ impl FnDecl {
             } else {
                 arg.attrs
                     .iter()
-                    .any(|attr| attr.has_name(sym::splat))
+                    .any(|attr| attr.has_name(sym::rustc_splat))
                     .then_some(u8::try_from(index).unwrap())
             }
         })
