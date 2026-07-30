@@ -16,6 +16,7 @@
 #![feature(mut_restriction)]
 #![feature(never_patterns)]
 #![feature(specialization)]
+#![feature(stmt_expr_attributes)]
 #![feature(trait_alias)]
 #![feature(try_blocks)]
 #![feature(yeet_expr)]

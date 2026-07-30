@@ -139,6 +139,22 @@ impl<'a> Parser<'a> {
         self.parse_expr_assoc_rest(min_prec, false, lhs)
     }
 
+    pub(super) fn gate_ambiguous_attributes(&self, expr: &Expr) {
+        for attr in &expr.attrs {
+            if attr.style == AttrStyle::Outer {
+                self.psess.gated_spans.gate(sym::stmt_expr_attributes, attr.span);
+            }
+        }
+    }
+
+    fn gate_ambiguous_attributes_soft(&self, expr: &Expr) {
+        for attr in &expr.attrs {
+            if attr.style == AttrStyle::Outer {
+                self.psess.gated_spans.gate(sym::stmt_expr_attributes_soft, attr.span);
+            }
+        }
+    }
+
     /// Parses the rest of an associative expression (i.e. the part after the lhs) with operators
     /// of at least `min_prec` precedence. The `bool` in the return value indicates if something
     /// was actually parsed.
@@ -212,6 +228,8 @@ impl<'a> Parser<'a> {
                 }
                 AssocOp::Assign => {
                     let (rhs, span) = finish_parsing_bin_op(self)?;
+                    self.gate_ambiguous_attributes_soft(&lhs);
+                    self.gate_ambiguous_attributes(&rhs);
                     self.mk_expr(span, ExprKind::Assign(lhs, rhs, op.span))
                 }
                 AssocOp::Cast => self.parse_assoc_op_cast(lhs, lhs_span, op.span)?,
@@ -500,6 +518,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, Box<Expr>> {
         let mk_expr = |this: &mut Self, rhs: Box<Ty>| {
             let span = this.mk_expr_sp(&lhs, lhs_span, op_span, rhs.span);
+            this.gate_ambiguous_attributes_soft(&lhs);
             this.mk_expr(span, ExprKind::Cast(lhs, rhs))
         };
 
@@ -639,6 +658,7 @@ impl<'a> Parser<'a> {
             self.expected_token_types.insert(TokenType::KwConst);
         }
 
+        self.gate_ambiguous_attributes(&expr);
         Ok((span, ExprKind::AddrOf(borrow_kind, mutbl, expr)))
     }
 
@@ -2573,6 +2593,7 @@ impl<'a> Parser<'a> {
         }
         let expr = self.parse_expr_assoc(Bound::Excluded(prec_let_scrutinee_needs_par()))?;
         let span = lo.to(expr.span);
+        self.gate_ambiguous_attributes(&expr);
         Ok(self.mk_expr(span, ExprKind::Let(Box::new(pat), expr, span, recovered)))
     }
 
@@ -3302,6 +3323,7 @@ impl<'a> Parser<'a> {
 
         CondChecker::new(self, LetChainsPolicy::AlwaysAllowed).visit_expr(&mut cond);
 
+        self.gate_ambiguous_attributes(&cond);
         let guard = Guard { cond: *cond, span_with_leading_if: leading_if_span.to(cond_span) };
         Ok(Box::new(guard))
     }
@@ -3894,6 +3916,8 @@ impl<'a> Parser<'a> {
     }
 
     fn mk_assign_op(&self, assign_op: AssignOp, lhs: Box<Expr>, rhs: Box<Expr>) -> ExprKind {
+        self.gate_ambiguous_attributes(&lhs);
+        self.gate_ambiguous_attributes(&rhs);
         ExprKind::AssignOp(assign_op, lhs, rhs)
     }
 
@@ -3907,15 +3931,24 @@ impl<'a> Parser<'a> {
             let guar = self.inclusive_range_with_incorrect_end();
             ExprKind::Err(guar)
         } else {
+            if let Some(expr) = &start {
+                self.gate_ambiguous_attributes(&expr);
+            }
+            if let Some(expr) = &end {
+                self.gate_ambiguous_attributes(&expr);
+            }
             ExprKind::Range(start, end, limits)
         }
     }
 
     fn mk_unary(&self, unop: UnOp, expr: Box<Expr>) -> ExprKind {
+        self.gate_ambiguous_attributes(&expr);
         ExprKind::Unary(unop, expr)
     }
 
     fn mk_binary(&self, binop: BinOp, lhs: Box<Expr>, rhs: Box<Expr>) -> ExprKind {
+        self.gate_ambiguous_attributes(&lhs);
+        self.gate_ambiguous_attributes(&rhs);
         ExprKind::Binary(binop, lhs, rhs)
     }
 

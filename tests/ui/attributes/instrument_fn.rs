@@ -12,7 +12,7 @@ impl F {
     #[instrument_fn = "off"]
     fn no_instrument_fn(self, x: u32) -> u32 {
         #[instrument_fn = "off"] //~ ERROR attribute cannot be used on
-        //~^ ERROR attributes on expressions are experimental
+        //~^ ERROR ambiguous expression attributes are unstable
         x * 2
     }
 }
