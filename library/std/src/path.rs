@@ -3150,27 +3150,38 @@ impl Path {
     }
 
     fn _with_extension(&self, extension: &OsStr) -> PathBuf {
-        let self_len = self.as_os_str().len();
+        validate_extension(extension);
+
         let self_bytes = self.as_os_str().as_encoded_bytes();
 
-        let (new_capacity, slice_to_copy) = match self.extension() {
-            None => {
-                // Enough capacity for the extension and the dot
-                let capacity = self_len + extension.len() + 1;
-                let whole_path = self_bytes;
-                (capacity, whole_path)
-            }
-            Some(previous_extension) => {
-                let capacity = self_len + extension.len() - previous_extension.len();
-                let path_till_dot = &self_bytes[..self_len - previous_extension.len()];
-                (capacity, path_till_dot)
+        // Like `set_extension`, keep everything up to and including the file
+        // stem and replace the rest. A path with no file stem has no extension
+        // to set, and is copied unchanged.
+        let (slice_to_copy, set_extension) = match self.file_stem() {
+            None => (self_bytes, false),
+            Some(file_stem) => {
+                let file_stem = file_stem.as_encoded_bytes();
+                let end_file_stem = file_stem[file_stem.len()..].as_ptr().addr();
+                let start = self_bytes.as_ptr().addr();
+                (&self_bytes[..end_file_stem.wrapping_sub(start)], true)
             }
         };
+
+        let add_dot_and_extension = set_extension && !extension.is_empty();
+        let new_capacity =
+            slice_to_copy.len() + if add_dot_and_extension { extension.len() + 1 } else { 0 };
 
         let mut new_path = PathBuf::with_capacity(new_capacity);
         // SAFETY: The path is empty, so cannot have surrogate halves.
         unsafe { new_path.inner.extend_from_slice_unchecked(slice_to_copy) };
-        new_path.set_extension(extension);
+
+        if add_dot_and_extension {
+            new_path.inner.push(".");
+            // SAFETY: Since a UTF-8 string was just pushed, it is not possible
+            // for the buffer to end with a surrogate half.
+            unsafe { new_path.inner.extend_from_slice_unchecked(extension.as_encoded_bytes()) };
+        }
+
         new_path
     }
 

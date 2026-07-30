@@ -1886,6 +1886,13 @@ pub fn test_set_extension() {
     tfe!("..", "foo", "..", false);
     tfe!("foo/..", "bar", "foo/..", false);
     tfe!("/", "foo", "/", false);
+
+    // file names with leading dots keep them
+    tfe!("..foo", "txt", "..txt", true);
+    tfe!("..foo", "", ".", true);
+    tfe!("...foo", "txt", "...txt", true);
+    tfe!("bar/..foo", "txt", "bar/..txt", true);
+    tfe!("/bar/..foo", "txt", "/bar/..txt", true);
 }
 
 #[test]
@@ -1947,6 +1954,13 @@ pub fn test_with_extension() {
     twe!("..", "foo", "..");
     twe!("foo/..", "bar", "foo/..");
     twe!("/", "foo", "/");
+
+    // file names with leading dots keep them
+    twe!("..foo", "txt", "..txt");
+    twe!("..foo", "", ".");
+    twe!("...foo", "txt", "...txt");
+    twe!("bar/..foo", "txt", "bar/..txt");
+    twe!("/bar/..foo", "txt", "/bar/..txt");
 
     // New extension is smaller than file name
     twe!("aaa_aaa_aaa", "bbb_bbb", "aaa_aaa_aaa.bbb_bbb");
