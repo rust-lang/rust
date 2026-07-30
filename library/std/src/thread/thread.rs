@@ -4,7 +4,7 @@ use crate::alloc::System;
 use crate::ffi::CStr;
 use crate::fmt;
 use crate::pin::Pin;
-use crate::sync::Arc;
+use crate::sync::{Arc, OnceLock};
 use crate::sys::sync::Parker;
 use crate::sys::thread as imp;
 use crate::time::Duration;
@@ -41,59 +41,6 @@ mod thread_name_string {
 
 use thread_name_string::ThreadNameString;
 
-// The handle of a spawned thread exists before the thread does, so the thread
-// stores its own id once it starts running, hence the atomic. 0 means "not known".
-//
-// Of the platform calls behind `current_os_id`, only Apple's yields a `uint64_t`,
-// and every Apple target has 64-bit atomics, so `usize` loses nothing on the
-// second arm.
-cfg_select! {
-    target_has_atomic = "64" => {
-        use crate::sync::atomic::{Atomic, AtomicU64, Ordering::Relaxed};
-
-        struct OsId(Atomic<u64>);
-
-        impl OsId {
-            const fn unknown() -> Self {
-                Self(AtomicU64::new(0))
-            }
-
-            fn get(&self) -> Option<u64> {
-                match self.0.load(Relaxed) {
-                    0 => None,
-                    id => Some(id),
-                }
-            }
-
-            fn set(&self, id: u64) {
-                self.0.store(id, Relaxed);
-            }
-        }
-    }
-    _ => {
-        use crate::sync::atomic::{Atomic, AtomicUsize, Ordering::Relaxed};
-
-        struct OsId(Atomic<usize>);
-
-        impl OsId {
-            const fn unknown() -> Self {
-                Self(AtomicUsize::new(0))
-            }
-
-            fn get(&self) -> Option<u64> {
-                match self.0.load(Relaxed) {
-                    0 => None,
-                    id => Some(id as u64),
-                }
-            }
-
-            fn set(&self, id: u64) {
-                self.0.store(id as usize, Relaxed);
-            }
-        }
-    }
-}
-
 /// The internal representation of a `Thread` handle
 ///
 /// We explicitly set the alignment for our guarantee in Thread::into_raw. This
@@ -103,7 +50,7 @@ cfg_select! {
 struct Inner {
     name: Option<ThreadNameString>,
     id: ThreadId,
-    os_id: OsId,
+    os_id: OnceLock<u64>,
     parker: Parker,
 }
 
@@ -158,7 +105,7 @@ impl Thread {
             let ptr = Arc::get_mut_unchecked(&mut arc).as_mut_ptr();
             (&raw mut (*ptr).name).write(name);
             (&raw mut (*ptr).id).write(id);
-            (&raw mut (*ptr).os_id).write(OsId::unknown());
+            (&raw mut (*ptr).os_id).write(OnceLock::new());
             Parker::new_in_place(&raw mut (*ptr).parker);
             Pin::new_unchecked(arc.assume_init())
         };
@@ -173,7 +120,7 @@ impl Thread {
     /// already exists by then.
     pub(crate) fn set_os_id_to_current(&self) {
         if let Some(os_id) = imp::current_os_id() {
-            self.inner.os_id.set(os_id);
+            let _ = self.inner.os_id.set(os_id);
         }
     }
 
@@ -274,10 +221,10 @@ impl Thread {
     /// Gets the id the operating system gave this thread, if it has one that can
     /// be read.
     ///
-    /// This is the id `ps`, `top`, a debugger or a crash log shows, unlike
-    /// [`ThreadId`], which is internal to Rust and unrelated to it. `None` means
-    /// the platform has no such id or offers no way to read it, or that the
-    /// thread has not started running yet.
+    /// This is the id that shows up in tools like `ps` and `top`, debuggers and
+    /// crash logs, unlike [`ThreadId`], which has no guaranteed relationship to
+    /// it. `None` means the platform has no such id or offers no way to read it,
+    /// or that the thread has not started running yet.
     ///
     /// The operating system may hand the same id to a later thread once this one
     /// exits, so it does not name a thread uniquely over the life of the
@@ -297,7 +244,7 @@ impl Thread {
     #[unstable(feature = "thread_os_id", issue = "160215")]
     #[must_use]
     pub fn os_id(&self) -> Option<u64> {
-        self.inner.os_id.get()
+        self.inner.os_id.get().copied()
     }
 
     /// Gets the thread's name.
