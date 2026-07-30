@@ -3,6 +3,8 @@
 //@ has index.html '//ul[@class="all-items"]//a[@href="quebec/index.html"]' 'quebec'
 //@ has index.html '//ul[@class="all-items"]//a[@href="sierra/index.html"]' 'sierra'
 //@ has index.html '//ul[@class="all-items"]//a[@href="tango/index.html"]' 'tango'
+//@ has help.html
+//@ has settings.html
 //@ has sierra/struct.Sierra.html
 //@ hasraw trait.impl/tango/trait.Tango.js 'struct.Sierra.html'
 //@ hasraw search.index/name/*.js 'Tango'

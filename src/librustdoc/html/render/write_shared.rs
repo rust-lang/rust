@@ -50,10 +50,12 @@ use crate::html::render::ordered_json::{EscapedJson, OrderedJson};
 use crate::html::render::print_item::compare_names;
 use crate::html::render::search_index::{SerializedSearchIndex, build_index};
 use crate::html::render::sorted_template::{self, FileFormat, SortedTemplate};
-use crate::html::render::{AssocItemLink, ImplRenderingParameters, StylePath};
+use crate::html::render::{
+    AssocItemLink, ImplRenderingParameters, StylePath, scrape_examples_help,
+};
 use crate::html::static_files::{self, suffix_path};
 use crate::visit::DocVisitor;
-use crate::{try_err, try_none};
+use crate::{DOC_RUST_LANG_ORG_VERSION, try_err, try_none};
 
 pub(crate) fn write_shared(
     cx: &mut Context<'_>,
@@ -137,6 +139,7 @@ pub(crate) fn write_not_crate_specific(
 ) -> Result<(), Error> {
     write_rendered_cross_crate_info(crates, dst, opt, include_sources, resource_suffix)?;
     write_resources(dst, opt, style_files, css_file_extension, resource_suffix)?;
+    // index.html
     match &opt.index_page {
         Some(index_page) if opt.enable_index_page => {
             let mut md_opts = opt.clone();
@@ -154,6 +157,138 @@ pub(crate) fn write_not_crate_specific(
             )?;
         }
         _ => {} // they don't want an index page
+    }
+
+    if opt.emit.contains(&EmitType::HtmlNonStaticFiles) {
+        // Standalone pages for the Settings and Help popovers.
+        //
+        // Normally, these are pure DHTML popovers, but, for user convenience,
+        // the buttons that open them are links to these HTML files, which use the same JavaScript
+        // to populate the page. That way, you can open a new tab, or add a browser bookmark,
+        // that points at the page.
+        let settings_file = dst.join("settings.html");
+        let help_file = dst.join("help.html");
+        let scrape_examples_help_file = dst.join("scrape-examples-help.html");
+
+        let mut root_path = dst.to_str().expect("invalid path").to_owned();
+        if !root_path.ends_with('/') {
+            root_path.push('/');
+        }
+
+        let page = layout::Page {
+            title: "Settings",
+            short_title: "Settings",
+            css_class: "mod sys",
+            root_path: "./",
+            static_root_path: opt.static_root_path.as_deref(),
+            description: "Settings of Rustdoc",
+            resource_suffix: &opt.resource_suffix,
+            rust_logo: true,
+        };
+        let sidebar = "<h2 class=\"location\">Settings</h2><div class=\"sidebar-elems\"></div>";
+        let v = layout::render(
+            &layout,
+            &page,
+            sidebar,
+            fmt::from_fn(|buf| {
+                write!(
+                    buf,
+                    "<div class=\"main-heading\">\
+                        <h1>Rustdoc settings</h1>\
+                        <span class=\"out-of-band\">\
+                            <a id=\"back\" href=\"javascript:void(0)\" onclick=\"history.back();\">\
+                            Back\
+                        </a>\
+                        </span>\
+                        </div>\
+                        <noscript>\
+                        <section>\
+                            You need to enable JavaScript be able to update your settings.\
+                        </section>\
+                        </noscript>\
+                        <script defer src=\"{static_root_path}{settings_js}\"></script>",
+                    static_root_path = page.get_static_root_path(),
+                    settings_js = static_files::STATIC_FILES.settings_js,
+                )?;
+                // Pre-load all theme CSS files, so that switching feels seamless.
+                //
+                // When loading settings.html as a popover, the equivalent HTML is
+                // generated in main.js.
+                for file in style_files {
+                    if let Ok(theme) = file.basename() {
+                        write!(
+                            buf,
+                            "<link rel=\"preload\" href=\"{root_path}{theme}{suffix}.css\" \
+                                as=\"style\">",
+                            root_path = page.static_root_path.unwrap_or(""),
+                            suffix = page.resource_suffix,
+                        )?;
+                    }
+                }
+                Ok(())
+            }),
+            &style_files,
+        );
+        let mut file = try_err!(File::create_buffered(&settings_file), &settings_file);
+        try_err!(write!(file, "{v}"), &settings_file);
+        try_err!(file.flush(), &settings_file);
+
+        let page = layout::Page {
+            title: "Help",
+            short_title: "Help",
+            css_class: "mod sys",
+            root_path: "./",
+            static_root_path: opt.static_root_path.as_deref(),
+            description: "Documentation for Rustdoc",
+            resource_suffix: &opt.resource_suffix,
+            rust_logo: true,
+        };
+        let sidebar = "<h2 class=\"location\">Help</h2><div class=\"sidebar-elems\"></div>";
+        let v = layout::render(
+            &layout,
+            &page,
+            sidebar,
+            format_args!(
+                "<div class=\"main-heading\">\
+                    <h1>Rustdoc help</h1>\
+                    <span class=\"out-of-band\">\
+                        <a id=\"back\" href=\"javascript:void(0)\" onclick=\"history.back();\">\
+                        Back\
+                    </a>\
+                    </span>\
+                    </div>\
+                    <noscript>\
+                    <section>\
+                        <p>You need to enable JavaScript to use keyboard commands or search.</p>\
+                        <p>For more information, browse the <a href=\"{DOC_RUST_LANG_ORG_VERSION}/rustdoc/\">rustdoc handbook</a>.</p>\
+                    </section>\
+                    </noscript>",
+            ),
+            &style_files,
+        );
+        let mut file = try_err!(File::create_buffered(&help_file), &help_file);
+        try_err!(write!(file, "{v}"), &help_file);
+        try_err!(file.flush(), &help_file);
+
+        if layout.scrape_examples_extension {
+            let page = layout::Page {
+                title: "About scraped examples",
+                short_title: "About scraped examples",
+                css_class: "mod sys",
+                root_path: "./",
+                static_root_path: opt.static_root_path.as_deref(),
+                description: "How the scraped examples feature works in Rustdoc",
+                resource_suffix: &opt.resource_suffix,
+                rust_logo: true,
+            };
+            let v = layout::render(&layout, &page, "", scrape_examples_help(), &style_files);
+            let mut file = try_err!(
+                File::create_buffered(&scrape_examples_help_file),
+                &scrape_examples_help_file
+            );
+            try_err!(write!(file, "{v}"), &scrape_examples_help_file);
+            try_err!(file.flush(), &scrape_examples_help_file);
+        }
     }
     Ok(())
 }

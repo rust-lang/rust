@@ -5,6 +5,8 @@
 //@ has index.html '//ul[@class="all-items"]//a[@href="romeo/index.html"]' 'romeo'
 //@ has index.html '//ul[@class="all-items"]//a[@href="sierra/index.html"]' 'sierra'
 //@ has index.html '//ul[@class="all-items"]//a[@href="tango/index.html"]' 'tango'
+//@ has help.html
+//@ has settings.html
 //@ !has quebec/struct.Quebec.html
 //@ !has romeo/type.Romeo.html
 //@ !has sierra/struct.Sierra.html

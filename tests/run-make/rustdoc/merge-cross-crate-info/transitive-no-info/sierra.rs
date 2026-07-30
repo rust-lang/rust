@@ -1,4 +1,6 @@
 //@ !has index.html
+//@ !has help.html
+//@ !has settings.html
 //@ has sierra/struct.Sierra.html
 //@ has tango/trait.Tango.html
 //@ hasraw sierra/struct.Sierra.html 'Tango'

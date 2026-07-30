@@ -3,6 +3,8 @@
 //@ has index.html '//ul[@class="all-items"]//a[@href="quebec/index.html"]' 'quebec'
 //@ has index.html '//ul[@class="all-items"]//a[@href="sierra/index.html"]' 'sierra'
 //@ has index.html '//ul[@class="all-items"]//a[@href="tango/index.html"]' 'tango'
+//@ has help.html
+//@ has settings.html
 //@ has quebec/struct.Quebec.html
 //@ has sierra/struct.Sierra.html
 //@ has tango/trait.Tango.html
