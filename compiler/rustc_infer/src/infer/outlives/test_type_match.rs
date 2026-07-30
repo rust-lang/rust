@@ -44,9 +44,6 @@ pub fn extract_verify_if_eq<'tcx>(
     assert!(!verify_if_eq_b.has_escaping_bound_vars());
     let mut m = MatchAgainstHigherRankedOutlives::new(tcx);
     let verify_if_eq = verify_if_eq_b.skip_binder();
-    debug_assert!(
-        !tcx.next_trait_solver_globally() || !(verify_if_eq.ty, test_ty).has_non_rigid_aliases()
-    );
     m.relate(verify_if_eq.ty, test_ty).ok()?;
 
     if let ty::RegionKind::ReBound(index_kind, br) = verify_if_eq.bound.kind() {
@@ -198,6 +195,13 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for MatchAgainstHigherRankedOutlives<'tcx>
             self.no_match()
         } else if pattern == value {
             Ok(pattern)
+        } else if let (ty::Alias(_, pattern_alias), ty::Alias(_, value_alias)) =
+            (*pattern.kind(), *value.kind())
+        {
+            // Rigidness is normalization state. This matcher only needs to know
+            // whether both sides are the same alias shape.
+            self.relate(pattern_alias, value_alias)?;
+            Ok(pattern)
         } else {
             relate::structurally_relate_tys(self, pattern, value)
         }
@@ -210,6 +214,13 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for MatchAgainstHigherRankedOutlives<'tcx>
         value: ty::Const<'tcx>,
     ) -> RelateResult<'tcx, ty::Const<'tcx>> {
         if pattern == value {
+            Ok(pattern)
+        } else if let (
+            ty::ConstKind::Alias(_, pattern_alias),
+            ty::ConstKind::Alias(_, value_alias),
+        ) = (pattern.kind(), value.kind())
+        {
+            self.relate(pattern_alias, value_alias)?;
             Ok(pattern)
         } else {
             relate::structurally_relate_consts(self, pattern, value)

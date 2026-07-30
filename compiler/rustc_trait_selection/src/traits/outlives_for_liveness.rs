@@ -41,20 +41,12 @@ pub(crate) fn live_args_for_alias_from_outlives_bounds<'tcx>(
     tracing::debug!(?bounds);
     let alias_ty = Ty::new_alias(
         tcx,
-        ty::IsRigid::yes_if_next_solver(tcx),
+        ty::IsRigid::No,
         ty::AliasTy::new_from_args(tcx, kind, self_identity_args),
     );
     let outlives_regions: Vec<_> = bounds
         .iter()
         .filter_map(|clause| {
-            // This liveness computation uses a syntactic matcher, not normalization.
-            // In the next solver, aliases that cannot normalize further are represented
-            // as rigid, so put item bounds in the same form before matching them.
-            let clause = if tcx.next_trait_solver_globally() {
-                ty::set_aliases_to_rigid(tcx, clause)
-            } else {
-                clause
-            };
             let outlives = clause.as_type_outlives_clause()?;
             if let Some(outlives) = outlives.no_bound_vars()
                 && outlives.0 == alias_ty
@@ -347,17 +339,9 @@ pub(crate) fn args_known_to_outlive_non_opaque_params<'tcx>(
 fn live_args_for_outlives_clause<'tcx>(
     tcx: TyCtxt<'tcx>,
     alias_def_id: DefId,
-    mut ty: Ty<'tcx>,
-    mut outlives: ty::Binder<'tcx, ty::TypeOutlivesClause<'tcx>>,
+    ty: Ty<'tcx>,
+    outlives: ty::Binder<'tcx, ty::TypeOutlivesClause<'tcx>>,
 ) -> Option<FxIndexSet<ty::EarlyBinder<'tcx, ty::GenericArg<'tcx>>>> {
-    // This liveness computation uses a syntactic matcher, not normalization.
-    // In the next solver, aliases that cannot normalize further are represented
-    // as rigid, so put the clause and matched type in the same form first.
-    if tcx.next_trait_solver_globally() {
-        ty = ty::set_aliases_to_rigid(tcx, ty);
-        outlives = ty::set_aliases_to_rigid(tcx, outlives);
-    }
-
     // N.B. it's okay to skip the binder here (and in the rest of the function),
     // because all variables under binders do not escape
     let ty::Alias(_, ty::AliasTy { kind: clause_alias_kind, args: clause_args, .. }) =
