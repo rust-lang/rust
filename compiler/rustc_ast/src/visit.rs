@@ -467,6 +467,7 @@ macro_rules! common_visitor_and_walkers {
             RangeEnd,
             RangeSyntax,
             Recovered,
+            RescopeKind,
             RestrictionKind,
             Safety,
             StaticItem,
@@ -1074,6 +1075,8 @@ macro_rules! common_visitor_and_walkers {
                     visit_visitable!($($mut)? vis, kind, expr, ty),
                 ExprKind::DirectConstArg(expr) =>
                     visit_visitable!($($mut)? vis, expr),
+                ExprKind::Rescope(kind, label, expr) =>
+                    visit_visitable!($($mut)? vis, kind, label, expr),
                 ExprKind::Err(_guar) => {}
                 ExprKind::Dummy => {}
             }

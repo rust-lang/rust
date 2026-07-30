@@ -158,6 +158,9 @@ pub use crate::macros::builtin::type_ascribe;
 )]
 pub use crate::macros::builtin::deref;
 
+#[unstable(feature = "super_let", issue = "139076")]
+pub use crate::macros::builtin::{scope, extend};
+
 #[unstable(
     feature = "type_alias_impl_trait",
     issue = "63063",

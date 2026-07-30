@@ -1621,6 +1621,7 @@ impl Expr {
             | ExprKind::While(..)
             | ExprKind::Yield(YieldKind::Postfix(..))
             | ExprKind::DirectConstArg(..)
+            | ExprKind::Rescope(..)
             | ExprKind::Err(_)
             | ExprKind::Dummy => prefix_attrs_precedence(&self.attrs),
         }
@@ -1920,6 +1921,9 @@ pub enum ExprKind {
     /// An mGCA `direct_const_arg!()` expression.
     DirectConstArg(Box<Expr>),
 
+    /// `scope!('l => e)` or `extend!('l => e)`.
+    Rescope(RescopeKind, Label, Box<Expr>),
+
     /// Placeholder for an expression that wasn't syntactically well formed in some way.
     Err(ErrorGuaranteed),
 
@@ -1966,6 +1970,13 @@ pub enum UnsafeBinderCastKind {
     Wrap,
     // e.g. `unsafe<'a> &'a i32` -> `&i32`
     Unwrap,
+}
+
+/// Differentiates between the re-scoping constructs `scope!` and `extend!`
+#[derive(Clone, Copy, Encodable, Decodable, Debug, PartialEq, Eq, StableHash, Walkable)]
+pub enum RescopeKind {
+    Scope,
+    Extend,
 }
 
 /// The explicit `Self` type in a "qualified path".
