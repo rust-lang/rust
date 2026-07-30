@@ -76,7 +76,7 @@ fn check_validity_requirement_strict<'tcx>(
     // option this is fine, but if this is ever meant to be stable we should probably add
     // a "fast mode" to validation.
     with_no_trimmed_paths!(
-        cx.validate_operand(
+        cx.validate_place(
             &allocated.into(),
             /*recursive*/ false,
             /*reset_provenance_and_padding*/ false,
@@ -200,7 +200,7 @@ pub(crate) fn validate_scalar_in_layout<'tcx>(
 
     cx.write_scalar(scalar, &allocated).unwrap();
 
-    cx.validate_operand(
+    cx.validate_place(
         &allocated.into(),
         /*recursive*/ false,
         /*reset_provenance_and_padding*/ false,

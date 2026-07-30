@@ -1117,7 +1117,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // ourselves. This value is now in `left.` The one that started out in `left` already got
         // validated by the copy above.
         if M::enforce_validity(self, left.layout) {
-            self.validate_operand(
+            self.validate_place(
                 &left.clone().into(),
                 M::enforce_validity_recursively(self, left.layout),
                 /*reset_provenance_and_padding*/ true,
