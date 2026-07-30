@@ -313,7 +313,7 @@ const impl<'f> Drop for VaList<'f> {
 // meantime.
 #[lang = "va_arg_safe"]
 #[stable(feature = "c_variadic", since = "CURRENT_RUSTC_VERSION")]
-pub impl(self) unsafe trait VaArgSafe: Copy {}
+pub impl(self) unsafe trait VaArgSafe {}
 
 crate::cfg_select! {
     any(target_arch = "avr", target_arch = "msp430") => {
@@ -458,6 +458,10 @@ impl<'f> VaList<'f> {
     /// - The actual type of the argument `U` is compatible with `T` (as defined below).
     /// - If `U` and `T` are both integer types, then the value passed by the caller must be
     /// representable in both types.
+    /// - If `T` is not [`Copy`], then it must not have already been read using `next_arg`
+    /// on a [`clone`][VaList::clone]d copy of this `VaList`.
+    /// (Currently, all types implementing [`VaArgSafe`] also implement [`Copy`],
+    /// but this may change in the future.)
     ///
     /// Types `T` and `U` are compatible when:
     ///
