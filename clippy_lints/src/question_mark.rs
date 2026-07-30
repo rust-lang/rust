@@ -11,8 +11,8 @@ use clippy_utils::ty::{implements_trait, is_copy};
 use clippy_utils::usage::local_used_after_expr;
 use clippy_utils::{
     eq_expr_value, fn_def_id_with_node_args, higher, is_else_clause, is_in_const_context, is_lint_allowed,
-    pat_and_expr_can_be_question_mark, peel_blocks, peel_blocks_with_stmt, span_contains_cfg, span_contains_comment,
-    sym,
+    is_none_expr, is_none_pattern, pat_and_expr_can_be_question_mark, peel_blocks, peel_blocks_with_stmt,
+    span_contains_cfg, span_contains_comment, sym,
 };
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::{self, OptionNone, OptionSome, ResultErr, ResultOk};
@@ -420,10 +420,10 @@ fn check_arm_is_none_or_err<'tcx>(cx: &LateContext<'tcx>, mode: TryMode, arm: &A
         },
         TryMode::Option => {
             // Check the pat is `None`
-            if arm.pat.res(cx).ctor_parent(cx).is_lang_item(cx, OptionNone)
+            if is_none_pattern(cx, arm.pat)
                 // Check `=> return None`
                 && let ExprKind::Ret(Some(ret_expr)) = arm_body.kind
-                && ret_expr.res(cx).ctor_parent(cx).is_lang_item(cx, OptionNone)
+                && is_none_expr(cx, ret_expr)
                 && !ret_expr.span.from_expansion()
             {
                 true
