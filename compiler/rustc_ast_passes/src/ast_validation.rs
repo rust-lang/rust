@@ -523,7 +523,7 @@ impl<'a> AstValidator<'a> {
                 AttrKind::Normal(normal) => {
                     let arr =
                         [sym::allow, sym::deny, sym::expect, sym::forbid, sym::splat, sym::warn];
-                    !attr.has_any_name(&arr) && rustc_attr_parsing::is_builtin_attr(&normal.item)
+                    !attr.has_any_name(&arr) && rustc_attr_parsing::is_builtin_attr(normal)
                 }
                 AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace(_)) => false,
                 AttrKind::DocComment(..) => true,
@@ -1282,7 +1282,7 @@ impl<'a> AstValidator<'a> {
                 continue;
             }
 
-            let attr_name = pprust::path_to_string(&normal.item.path);
+            let attr_name = pprust::path_to_string(&normal.path);
             for eii_impl in eii_impls {
                 self.dcx().emit_err(diagnostics::EiiImplAttributeNotSupported {
                     attr_span: attr.span,

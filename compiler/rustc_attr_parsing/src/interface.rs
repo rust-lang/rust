@@ -363,17 +363,17 @@ impl<'sess> AttributeParser<'sess> {
                     synthetic_attr_state.accept_synthetic_attr(attr_span, lower_span, synthetic);
                 }
                 ast::AttrKind::Normal(n) => {
-                    attr_paths.push(PathParser(&n.item.path));
-                    let attr_path = AttrPath::from_ast(&n.item.path, lower_span);
+                    attr_paths.push(PathParser(&n.path));
+                    let attr_path = AttrPath::from_ast(&n.path, lower_span);
                     let parts =
-                        n.item.path.segments.iter().map(|seg| seg.ident.name).collect::<Vec<_>>();
-                    let inner_span = lower_span(n.item.span);
+                        n.path.segments.iter().map(|seg| seg.ident.name).collect::<Vec<_>>();
+                    let inner_span = lower_span(n.span);
 
                     if let Some(accept) = ATTRIBUTE_PARSERS.accepters.get(parts.as_slice()) {
                         self.check_attribute_safety(
                             &attr_path,
                             inner_span,
-                            n.item.unsafety,
+                            n.unsafety,
                             accept.safety,
                             &mut emit_lint,
                         );
@@ -383,7 +383,7 @@ impl<'sess> AttributeParser<'sess> {
                         }
 
                         let Some(args) = ArgParser::from_attr_args(
-                            &n.item.args,
+                            &n.args,
                             &parts,
                             &self.sess.psess,
                             self.should_emit,
@@ -437,7 +437,7 @@ impl<'sess> AttributeParser<'sess> {
                             attr_style: attr.style,
                             parsed_description: ParsedDescription::Attribute,
                             template: &accept.template,
-                            attr_safety: n.item.unsafety,
+                            attr_safety: n.unsafety,
                             attr_path: attr_path.clone(),
                             #[cfg(debug_assertions)]
                             has_target_been_checked: false,
@@ -454,7 +454,7 @@ impl<'sess> AttributeParser<'sess> {
                     } else {
                         let attr = AttrItem {
                             path: attr_path.clone(),
-                            args: self.lower_attr_args(&n.item.args, lower_span),
+                            args: self.lower_attr_args(&n.args, lower_span),
                             id: HashIgnoredAttrId { attr_id: attr.id },
                             style: attr.style,
                             span: attr_span,
@@ -463,7 +463,7 @@ impl<'sess> AttributeParser<'sess> {
                         self.check_attribute_safety(
                             &attr_path,
                             inner_span,
-                            n.item.unsafety,
+                            n.unsafety,
                             AttributeSafety::Normal,
                             &mut emit_lint,
                         );

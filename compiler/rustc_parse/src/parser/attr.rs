@@ -1,6 +1,6 @@
 use rustc_ast as ast;
 use rustc_ast::token::{self, MetaVarKind};
-use rustc_ast::tokenstream::{ParserRange, WithTokens};
+use rustc_ast::tokenstream::ParserRange;
 use rustc_ast::{Attribute, attr};
 use rustc_errors::codes::*;
 use rustc_errors::{Diag, PResult, msg};
@@ -10,7 +10,6 @@ use tracing::debug;
 
 use super::{
     AllowConstBlockItems, AttrWrapper, Capturing, FnParseMode, ForceCollect, Parser, PathStyle,
-    Trailing, UsePreAttrPos,
 };
 use crate::parser::FnContext;
 use crate::{diagnostics, exp};
@@ -122,60 +121,76 @@ impl<'a> Parser<'a> {
             inner_parse_policy, self.token
         );
         let lo = self.token.span;
-        // Attributes can't have attributes of their own [Editor's note: not with that attitude]
-        self.collect_tokens_no_attrs(|this| {
-            let pound_hi = this.token.span.hi();
-            assert!(this.eat(exp!(Pound)), "parse_attribute called in non-attribute position");
+        assert!(self.eat(exp!(Pound)), "parse_attribute called in non-attribute position");
 
-            let not_lo = this.token.span.lo();
-            let style =
-                if this.eat(exp!(Bang)) { ast::AttrStyle::Inner } else { ast::AttrStyle::Outer };
+        let not_lo = self.token.span.lo();
+        let (style, bang_span) = if self.eat(exp!(Bang)) {
+            (ast::AttrStyle::Inner, Some(self.prev_token.span))
+        } else {
+            (ast::AttrStyle::Outer, None)
+        };
 
-            let mut bracket_res = this.expect(exp!(OpenBracket));
-            // If `#!` is not followed by `[`
-            if let Err(err) = &mut bracket_res
-                && style == ast::AttrStyle::Inner
-                && pound_hi == not_lo
-            {
-                err.note(
-                    "the token sequence `#!` here looks like the start of \
-                    a shebang interpreter directive but it is not",
-                );
-                err.help(
-                    "if you meant this to be a shebang interpreter directive, \
-                    move it to the very start of the file",
-                );
-            }
-            bracket_res?;
+        let mut bracket_res = self.expect(exp!(OpenBracket));
+        // If `#!` is not followed by `[`
+        if let Err(err) = &mut bracket_res
+            && style == ast::AttrStyle::Inner
+            && lo.hi() == not_lo
+        {
+            err.note(
+                "the token sequence `#!` here looks like the start of \
+                a shebang interpreter directive but it is not",
+            );
+            err.help(
+                "if you meant this to be a shebang interpreter directive, \
+                move it to the very start of the file",
+            );
+        }
+        bracket_res?;
+        let open_span = self.prev_token.span;
 
-            let attr_item = this.parse_attr_item(ForceCollect::No)?;
-            // `attr_item` will never have tokens: within `parse_attr_item`, `collect_tokens`
-            // attaches tokens only if:
-            // - `ForceCollect::Yes` is passed (not true), or
-            // - attributes on the parsed node require tokens (not true, because attr items can't
-            //   have attributes of their own, hence the empty `HasAttrs` impl for `AttrItem`).
-            assert!(attr_item.tokens.is_none());
+        let mut attr_item = self.parse_attr_item()?;
 
-            this.expect(exp!(CloseBracket))?;
-            let attr_sp = lo.to(this.prev_token.span);
+        self.expect(exp!(CloseBracket))?;
+        let close_span = self.prev_token.span;
+        let attr_sp = lo.to(self.prev_token.span);
 
-            // Emit error if inner attribute is encountered and forbidden.
-            if style == ast::AttrStyle::Inner {
-                this.error_on_forbidden_inner_attr(
-                    attr_sp,
-                    inner_parse_policy,
-                    attr_item.node.is_valid_for_outer_style(),
-                );
-            }
-
-            Ok(attr::mk_attr_from_item(
-                &self.psess.attr_id_generator,
-                attr_item.node,
-                None,
-                style,
+        // Emit error if inner attribute is encountered and forbidden.
+        if style == ast::AttrStyle::Inner {
+            self.error_on_forbidden_inner_attr(
                 attr_sp,
-            ))
-        })
+                inner_parse_policy,
+                attr_item.is_valid_for_outer_style(),
+            );
+        }
+
+        // Determine if the parsed attribute has the "standard form" of `#[..]` or `#![..]`.
+        // - If so, `Attribute::token_trees` can perfectly reconstruct the spans of the
+        //   `#`/`!`/`[`/`]` tokens with byte arithmetic on `Attribute::span`.
+        // - If not, `Attribute::token_trees` will give those tokens less precise spans.
+        //
+        // Cases that aren't "standard form" include the following.
+        // - Parsed attributes with any additional whitespace (e.g. `# ! [ foo ]`).
+        // - `doc` attributes desugared from doc comments in `macro_rules!` arguments, where every
+        //   token gets the whole comment's span.
+        // - When the tokens have mismatched syntax contexts (e.g. `#[$meta]`).
+        // - Attributes produced by `cfg_attr` expansion.
+        // - Compiler-generated attributes.
+        let prefix_len: u32 = match style {
+            ast::AttrStyle::Outer => 1, // `#`
+            ast::AttrStyle::Inner => 2, // `#!`
+        };
+        let attr_lo = attr_sp.lo();
+        attr_item.use_precise_delim_token_spans = lo == attr_sp.with_hi(attr_lo + BytePos(1))
+            && bang_span.is_none_or(|bang_span| {
+                bang_span == attr_sp.with_lo(attr_lo + BytePos(1)).with_hi(attr_lo + BytePos(2))
+            })
+            && open_span
+                == attr_sp
+                    .with_lo(attr_lo + BytePos(prefix_len))
+                    .with_hi(attr_lo + BytePos(prefix_len + 1))
+            && close_span == attr_sp.with_lo(attr_sp.hi() - BytePos(1));
+
+        Ok(attr::mk_attr_from_item(&self.psess.attr_id_generator, attr_item, style, attr_sp))
     }
 
     fn annotate_following_item_if_applicable(
@@ -316,41 +331,31 @@ impl<'a> Parser<'a> {
     ///     PATH
     ///     PATH `=` UNSUFFIXED_LIT
     /// The delimiters or `=` are still put into the resulting token stream.
-    pub fn parse_attr_item(
-        &mut self,
-        force_collect: ForceCollect,
-    ) -> PResult<'a, WithTokens<ast::AttrItem>> {
+    pub fn parse_attr_item(&mut self) -> PResult<'a, ast::AttrItem> {
         if let Some(item) = self.eat_metavar_seq_with_matcher(
             |mv_kind| matches!(mv_kind, MetaVarKind::Meta { .. }),
-            |this| this.parse_attr_item(force_collect),
+            |this| this.parse_attr_item(),
         ) {
             return Ok(item);
         }
 
-        // Attr items don't have attributes.
-        self.collect_tokens(None, AttrWrapper::empty(), force_collect, |this, _empty_attrs| {
-            let lo = this.token.span;
-            let is_unsafe = this.eat_keyword(exp!(Unsafe));
-            let unsafety = if is_unsafe {
-                let unsafe_span = this.prev_token.span;
-                this.expect(exp!(OpenParen))?;
-                ast::Safety::Unsafe(unsafe_span)
-            } else {
-                ast::Safety::Default
-            };
+        let lo = self.token.span;
+        let is_unsafe = self.eat_keyword(exp!(Unsafe));
+        let unsafety = if is_unsafe {
+            let unsafe_span = self.prev_token.span;
+            self.expect(exp!(OpenParen))?;
+            ast::Safety::Unsafe(unsafe_span)
+        } else {
+            ast::Safety::Default
+        };
 
-            let path = this.parse_path(PathStyle::Mod)?;
-            let args = this.parse_attr_args()?;
-            if is_unsafe {
-                this.expect(exp!(CloseParen))?;
-            }
-            let span = lo.to(this.prev_token.span);
-            Ok((
-                WithTokens::new(ast::AttrItem { unsafety, path, args, span }),
-                Trailing::No,
-                UsePreAttrPos::No,
-            ))
-        })
+        let path = self.parse_path(PathStyle::Mod)?;
+        let args = self.parse_attr_args()?;
+        if is_unsafe {
+            self.expect(exp!(CloseParen))?;
+        }
+        let span = lo.to(self.prev_token.span);
+        Ok(ast::AttrItem::new(unsafety, path, args, span))
     }
 
     /// Parses attributes that appear after the opening of an item. These should
@@ -434,10 +439,9 @@ impl<'a> Parser<'a> {
             return if has_meta_form {
                 let attr_item = self
                     .eat_metavar_seq(MetaVarKind::Meta { has_meta_form: true }, |this| {
-                        this.parse_attr_item(ForceCollect::No)
+                        this.parse_attr_item()
                     })
-                    .unwrap()
-                    .node;
+                    .unwrap();
                 Ok(attr_item.meta(attr_item.path.span).unwrap())
             } else {
                 self.unexpected_any()

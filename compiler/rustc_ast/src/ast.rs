@@ -3433,7 +3433,7 @@ pub struct Attribute {
     /// or the construct this attribute is contained within (inner).
     pub style: AttrStyle,
 
-    /// The carets in the examples below show the spans for various cases.
+    /// The span covers the full attribute, as shown by the carets in the following examples.
     /// ```text
     /// #[foo]                  - A vanilla parsed attribute.
     /// ^^^^^^                  - Its span covers it all.
@@ -3447,8 +3447,10 @@ pub struct Attribute {
     ///
     /// #[cfg_attr(pred, foo)]  - A parsed `cfg_attr` attribute.
     /// ^^^^^^^^^^^^^^^^^^^^^^  - Its span covers it all.
-    ///                  ^^^    - Span of the new replacement attribute (equivalent to `#[foo]`)
-    ///                           created by `cfg_attr` expansion (if `pred` is true).
+    /// ^^^^^^^^^^^^^^^^^^^^^^  - Span of the new replacement attribute (equivalent to `#[foo]`)
+    ///                           created by `cfg_attr` expansion (if `pred` is true). If multiple
+    ///                           attributes are expanded (e.g. `#[cfg_attr(p, a, b)]` ->
+    ///                           `#[a] #[b]`) they all get the same span.
     /// ^^^^^^^^^^^^^^^^^^^^^^  - Span of the synthetic `CfgAttrTrace` attribute created by
     ///                           `cfg_attr` expansion. (`CfgTrace` is derived from `#[cfg(..)]` and
     ///                           handled similarly.)
@@ -3461,7 +3463,7 @@ pub struct Attribute {
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub enum AttrKind {
     /// A normal attribute.
-    Normal(Box<NormalAttr>),
+    Normal(Box<AttrItem>),
 
     /// A synthetic attribute inserted by the compiler.
     Synthetic(Box<SyntheticAttr>),
@@ -3473,41 +3475,30 @@ pub enum AttrKind {
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Walkable)]
-pub struct NormalAttr {
-    pub item: AttrItem,
-    // Tokens for the full attribute, e.g. `#[foo]`, `#![bar]`. (Compare this with
-    // `ParseNtResult::Meta`; `expand_cfg_attr_item` is where the two cases interact.)
-    pub tokens: Option<LazyAttrTokenStream>,
-}
-
-impl NormalAttr {
-    pub fn from_ident(ident: Ident) -> Self {
-        Self {
-            item: AttrItem {
-                unsafety: Safety::Default,
-                path: Path::from_ident(ident),
-                args: AttrArgs::Empty,
-                span: ident.span,
-            },
-            tokens: None,
-        }
-    }
-}
-
-#[derive(Clone, Encodable, Decodable, Debug, Walkable)]
 pub struct AttrItem {
     pub unsafety: Safety,
     pub path: Path,
     pub args: AttrArgs,
-    /// The span of the entire attr item. For parse attrs this excludes `#[`/`]`. E.g.:
+    /// The span of the entire attr item. For parsed attrs this excludes `#[`/`]`. E.g.:
     /// ```ignore (illustrative)
     /// #[foo(bar)]
     ///   ^^^^^^^^
     /// #[unsafe(no_mangle)]
     ///   ^^^^^^^^^^^^^^^^^
     /// ```
+    /// For attributes created by expanding `cfg_attr` this is just the embedded attribute. E.g.:
+    /// ```ignore (illustrative)
+    /// #[cfg_attr(pred, foo)]
+    ///                  ^^^
+    /// ```
     /// For internally constructed spans (`mk_attr_*`) the exact meaning may differ.
     pub span: Span,
+    /// Was this created by expanding a `#[cfg_attr(pred, foo)]` attribute?
+    pub from_cfg_attr: bool,
+    /// When we synthesize tokens for the attribute, can we derive precise spans for the delimiter
+    /// tokens (`#`, `!` (if present), and `[`/`]`) from `span`? This is the case for parsed
+    /// attributes with no extraneous whitespace, e.g. yes for `#[foo]` but no for `# [ foo ]`.
+    pub use_precise_delim_token_spans: bool,
 }
 
 /// A synthetic attribute.
@@ -3536,18 +3527,6 @@ pub enum SyntheticAttr {
     ///
     /// The attribute is used by rustdoc to display `doc_cfg` information and by some clippy lints.
     CfgAttrTrace(CfgEntry),
-}
-
-impl AttrItem {
-    pub fn is_valid_for_outer_style(&self) -> bool {
-        self.path == sym::cfg_attr
-            || self.path == sym::cfg
-            || self.path == sym::forbid
-            || self.path == sym::warn
-            || self.path == sym::allow
-            || self.path == sym::deny
-            || self.path == sym::expect
-    }
 }
 
 /// `TraitRef`s appear in impls.
@@ -4452,6 +4431,7 @@ mod size_asserts {
     // tidy-alphabetical-start
     static_assert_size!(AssocItem, 72);
     static_assert_size!(AssocItemKind, 16);
+    static_assert_size!(AttrItem, 72);
     static_assert_size!(AttrKind, 16);
     static_assert_size!(Attribute, 32);
     static_assert_size!(Block, 24);
@@ -4478,7 +4458,6 @@ mod size_asserts {
     static_assert_size!(MetaItem, 80);
     static_assert_size!(MetaItemKind, 40);
     static_assert_size!(MetaItemLit, 40);
-    static_assert_size!(NormalAttr, 80);
     static_assert_size!(Param, 40);
     static_assert_size!(Pat, 64);
     static_assert_size!(PatKind, 48);

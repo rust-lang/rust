@@ -7,9 +7,9 @@ use std::marker::PhantomData;
 
 use crate::tokenstream::{LazyAttrTokenStream, WithTokens};
 use crate::{
-    Arm, AssocItem, AttrItem, AttrKind, AttrVec, Attribute, Block, Crate, Expr, ExprField,
-    FieldDef, ForeignItem, GenericParam, Item, NodeId, Param, Pat, PatField, Path, Stmt, StmtKind,
-    Ty, Variant, Visibility, WherePredicate,
+    Arm, AssocItem, AttrVec, Attribute, Block, Crate, Expr, ExprField, FieldDef, ForeignItem,
+    GenericParam, Item, NodeId, Param, Pat, PatField, Path, Stmt, StmtKind, Ty, Variant,
+    Visibility, WherePredicate,
 };
 
 /// A trait for AST nodes having an ID.
@@ -166,21 +166,6 @@ impl HasTokens for Stmt {
     }
 }
 
-impl HasTokens for Attribute {
-    fn tokens(&self) -> Option<&LazyAttrTokenStream> {
-        match &self.kind {
-            AttrKind::Normal(normal) => normal.tokens.as_ref(),
-            AttrKind::Synthetic(..) | AttrKind::DocComment(..) => unreachable!(),
-        }
-    }
-    fn tokens_mut(&mut self) -> Option<&mut Option<LazyAttrTokenStream>> {
-        Some(match &mut self.kind {
-            AttrKind::Normal(normal) => &mut normal.tokens,
-            AttrKind::Synthetic(..) | AttrKind::DocComment(..) => unreachable!(),
-        })
-    }
-}
-
 /// A trait for AST nodes having (or not having) attributes.
 pub trait HasAttrs {
     /// This is `true` if this `HasAttrs` might support 'custom' (proc-macro) inner
@@ -247,7 +232,7 @@ impl_has_attrs!(
     Variant,
     WherePredicate,
 );
-impl_has_attrs_none!(Attribute, AttrItem, Block, Pat, Path, Ty, Visibility);
+impl_has_attrs_none!(Block, Pat, Path, Ty, Visibility);
 
 impl<T: HasAttrs> HasAttrs for WithTokens<T> {
     const SUPPORTS_CUSTOM_INNER_ATTRS: bool = T::SUPPORTS_CUSTOM_INNER_ATTRS;

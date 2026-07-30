@@ -1,0 +1,78 @@
+error: multiple `deprecated` attributes
+  --> $DIR/cfg-attr-duplicate-attrs.rs:11:1
+   |
+LL | #[deprecated]
+   | ^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/cfg-attr-duplicate-attrs.rs:10:1
+   |
+LL | #[deprecated]
+   | ^^^^^^^^^^^^^
+
+error: multiple `deprecated` attributes
+  --> $DIR/cfg-attr-duplicate-attrs.rs:22:1
+   |
+LL | #[cfg_attr(true, deprecated)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/cfg-attr-duplicate-attrs.rs:21:1
+   |
+LL | #[deprecated]
+   | ^^^^^^^^^^^^^
+
+error: multiple `deprecated` attributes
+  --> $DIR/cfg-attr-duplicate-attrs.rs:28:1
+   |
+LL | #[cfg_attr(true, inline, deprecated)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/cfg-attr-duplicate-attrs.rs:27:1
+   |
+LL | #[deprecated]
+   | ^^^^^^^^^^^^^
+
+warning: unused attribute
+  --> $DIR/cfg-attr-duplicate-attrs.rs:5:1
+   |
+LL | #[inline]
+   | ^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/cfg-attr-duplicate-attrs.rs:4:1
+   |
+LL | #[inline]
+   | ^^^^^^^^^
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: requested on the command line with `-W unused-attributes`
+
+warning: unused attribute
+  --> $DIR/cfg-attr-duplicate-attrs.rs:16:1
+   |
+LL | #[cfg_attr(true, inline)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/cfg-attr-duplicate-attrs.rs:15:1
+   |
+LL | #[inline]
+   | ^^^^^^^^^
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+
+warning: unused attribute
+  --> $DIR/cfg-attr-duplicate-attrs.rs:28:1
+   |
+LL | #[cfg_attr(true, inline, deprecated)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove this attribute
+   |
+note: attribute also specified here
+  --> $DIR/cfg-attr-duplicate-attrs.rs:26:1
+   |
+LL | #[inline]
+   | ^^^^^^^^^
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+
+error: aborting due to 3 previous errors; 3 warnings emitted
+

@@ -34,7 +34,7 @@ fn parse_cfg_select_inner<'a>(
 
     while parser.token.kind != TokenKind::Eof {
         if !parser.eat_keyword(exp!(Underscore)) {
-            parser.parse_attr_item(ForceCollect::No).map_err(|e| {
+            parser.parse_attr_item().map_err(|e| {
                 e.cancel();
                 "Failed to parse attr item"
             })?;

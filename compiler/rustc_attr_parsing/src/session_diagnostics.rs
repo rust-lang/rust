@@ -287,7 +287,7 @@ pub(crate) struct UnknownVersionLiteral {
 #[diag("multiple `{$name}` attributes")]
 pub(crate) struct UnusedMultiple {
     #[primary_span]
-    #[suggestion("remove this attribute", code = "", applicability = "machine-applicable")]
+    #[suggestion("remove this attribute", code = "", applicability = "maybe-incorrect")]
     pub this: Span,
     #[note("attribute also specified here")]
     pub other: Span,
@@ -1113,7 +1113,7 @@ pub(crate) struct AdditionalCommaSuggestion {
 #[derive(Diagnostic)]
 #[diag("unused attribute")]
 pub(crate) struct UnusedDuplicate {
-    #[suggestion("remove this attribute", code = "", applicability = "machine-applicable")]
+    #[suggestion("remove this attribute", code = "", applicability = "maybe-incorrect")]
     pub this: Span,
     #[note("attribute also specified here")]
     pub other: Span,

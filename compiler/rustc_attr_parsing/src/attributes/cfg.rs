@@ -1,13 +1,13 @@
 use std::convert::identity;
 
 use rustc_ast::token::Delimiter;
-use rustc_ast::tokenstream::{DelimSpan, WithTokens};
+use rustc_ast::tokenstream::DelimSpan;
 use rustc_ast::{AttrItem, Attribute, LitKind, ast, token};
 use rustc_errors::{Applicability, Diagnostic, PResult, msg};
 use rustc_feature::{Features, GatedCfg, find_gated_cfg};
 use rustc_hir::attrs::{CfgEntry, RustcVersion};
 use rustc_hir::{AttrPath, Target};
-use rustc_parse::parser::{ForceCollect, Parser, Recovery};
+use rustc_parse::parser::{Parser, Recovery};
 use rustc_parse::{exp, parse_in};
 use rustc_session::Session;
 use rustc_session::config::ExpectedValues;
@@ -318,8 +318,9 @@ pub fn parse_cfg_attr(
     sess: &Session,
     features: Option<&Features>,
     lint_node_id: ast::NodeId,
-) -> Option<(CfgEntry, Vec<(WithTokens<AttrItem>, Span)>)> {
-    match &cfg_attr.get_normal_item().args {
+) -> Option<(CfgEntry, Vec<AttrItem>)> {
+    let item = cfg_attr.get_normal_item();
+    match &item.args {
         ast::AttrArgs::Delimited(ast::DelimArgs { dspan, delim, tokens }) if !tokens.is_empty() => {
             check_cfg_attr_bad_delim(&sess.psess, *dspan, *delim);
             match parse_in(&sess.psess, tokens.clone(), "`cfg_attr` input", |p| {
@@ -329,11 +330,11 @@ pub fn parse_cfg_attr(
                 Err(e) => {
                     let suggestions = CFG_ATTR_TEMPLATE.suggestions(
                         ParsedDescription::Attribute,
-                        cfg_attr.get_normal_item().unsafety,
+                        item.unsafety,
                         sym::cfg_attr,
                     );
                     e.with_span_suggestions(
-                        cfg_attr.get_normal_item().span,
+                        item.span,
                         "must be of the form",
                         suggestions,
                         Applicability::HasPlaceholders,
@@ -347,25 +348,24 @@ pub fn parse_cfg_attr(
             }
         }
         _ => {
-            let (span, reason) = if let ast::AttrArgs::Delimited(ast::DelimArgs { dspan, .. }) =
-                cfg_attr.get_normal_item().args
-            {
-                (dspan.entire(), AttributeParseErrorReason::ExpectedAtLeastOneArgument)
-            } else {
-                (cfg_attr.get_normal_item().span, AttributeParseErrorReason::ExpectedList)
-            };
+            let (span, reason) =
+                if let ast::AttrArgs::Delimited(ast::DelimArgs { dspan, .. }) = item.args {
+                    (dspan.entire(), AttributeParseErrorReason::ExpectedAtLeastOneArgument)
+                } else {
+                    (item.span, AttributeParseErrorReason::ExpectedList)
+                };
 
             sess.dcx().emit_err(AttributeParseError {
                 span,
-                inner_span: cfg_attr.get_normal_item().span,
+                inner_span: item.span,
                 template: CFG_ATTR_TEMPLATE,
-                path: AttrPath::from_ast(&cfg_attr.get_normal_item().path, identity),
+                path: AttrPath::from_ast(&item.path, identity),
                 description: ParsedDescription::Attribute,
                 reason,
                 suggestions: session_diagnostics::AttributeParseErrorSuggestions::CreatedByTemplate(
                     CFG_ATTR_TEMPLATE.suggestions(
                         ParsedDescription::Attribute,
-                        cfg_attr.get_normal_item().unsafety,
+                        item.unsafety,
                         sym::cfg_attr,
                     ),
                 ),
@@ -392,7 +392,7 @@ fn parse_cfg_attr_internal<'a>(
     features: Option<&Features>,
     lint_node_id: ast::NodeId,
     attribute: &Attribute,
-) -> PResult<'a, (CfgEntry, Vec<(WithTokens<ast::AttrItem>, Span)>)> {
+) -> PResult<'a, (CfgEntry, Vec<ast::AttrItem>)> {
     // Parse cfg predicate
     let pred_start = parser.token.span;
     let meta = MetaItemOrLitParser::parse_single(
@@ -402,13 +402,14 @@ fn parse_cfg_attr_internal<'a>(
     )?;
     let pred_span = pred_start.with_hi(parser.token.span.hi());
 
+    let item = attribute.get_normal_item();
     let cfg_predicate = AttributeParser::parse_single_args(
         sess,
         attribute.span,
-        attribute.get_normal_item().span,
+        item.span,
         attribute.style,
         AttrPath { segments: attribute.path().into_boxed_slice(), span: attribute.span },
-        Some(attribute.get_normal_item().unsafety),
+        Some(item.unsafety),
         AttributeSafety::Normal,
         ParsedDescription::Attribute,
         pred_span,
@@ -434,9 +435,8 @@ fn parse_cfg_attr_internal<'a>(
     // Presumably, the majority of the time there will only be one attr.
     let mut expanded_attrs = Vec::with_capacity(1);
     while parser.token != token::Eof {
-        let lo = parser.token.span;
-        let item = parser.parse_attr_item(ForceCollect::Yes)?;
-        expanded_attrs.push((item, lo.to(parser.prev_token.span)));
+        let item = parser.parse_attr_item()?;
+        expanded_attrs.push(item);
         if !parser.eat(exp!(Comma)) {
             break;
         }

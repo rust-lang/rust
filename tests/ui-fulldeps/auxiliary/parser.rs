@@ -51,33 +51,6 @@ impl MutVisitor for Normalize {
 
     fn visit_attribute(&mut self, attr: &mut Attribute) {
         attr.id = AttrId::from_u32(0);
-        if let AttrKind::Normal(normal_attr) = &mut attr.kind {
-            if let Some(tokens) = &mut normal_attr.tokens {
-                let mut stream = tokens.to_attr_token_stream();
-                normalize_attr_token_stream(&mut stream);
-                *tokens = LazyAttrTokenStream::new_direct(stream);
-            }
-        }
         mut_visit::walk_attribute(self, attr);
-    }
-}
-
-fn normalize_attr_token_stream(stream: &mut AttrTokenStream) {
-    Arc::make_mut(&mut stream.0)
-        .iter_mut()
-        .for_each(normalize_attr_token_tree);
-}
-
-fn normalize_attr_token_tree(token: &mut AttrTokenTree) {
-    match token {
-        AttrTokenTree::Token(token, _spacing) => {
-            Normalize.visit_span(&mut token.span);
-        }
-        AttrTokenTree::Delimited(dspan, _spacing, _delim, stream) => {
-            normalize_attr_token_stream(stream);
-            Normalize.visit_span(&mut dspan.open);
-            Normalize.visit_span(&mut dspan.close);
-        }
-        AttrTokenTree::AttrsTarget(_) => unimplemented!("AttrTokenTree::AttrsTarget"),
     }
 }
