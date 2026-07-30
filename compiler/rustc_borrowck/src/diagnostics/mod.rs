@@ -1409,17 +1409,20 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                             var_span: var_span.shrink_to_hi(),
                         });
                     }
-                    if let Some((CallDesugaringKind::ForLoopIntoIter, _)) = desugaring {
+                    if let Some((
+                        kind @ (CallDesugaringKind::ForLoopIntoIter
+                        | CallDesugaringKind::ForLoopIntoAsyncIter),
+                        _,
+                    )) = desugaring
+                    {
                         let ty = moved_place.ty(self.body, tcx).ty;
-                        let suggest = match tcx.get_diagnostic_item(sym::IntoIterator) {
-                            Some(def_id) => type_known_to_meet_bound_modulo_regions(
-                                self.infcx,
-                                self.infcx.param_env,
-                                Ty::new_imm_ref(tcx, tcx.lifetimes.re_erased, ty),
-                                def_id,
-                            ),
-                            _ => false,
-                        };
+                        let def_id = kind.trait_def_id(tcx);
+                        let suggest = type_known_to_meet_bound_modulo_regions(
+                            self.infcx,
+                            self.infcx.param_env,
+                            Ty::new_imm_ref(tcx, tcx.lifetimes.re_erased, ty),
+                            def_id,
+                        );
                         if suggest {
                             err.subdiagnostic(CaptureReasonSuggest::IterateSlice {
                                 ty,
@@ -1427,12 +1430,25 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                             });
                         }
 
-                        err.subdiagnostic(CaptureReasonLabel::ImplicitCall {
-                            fn_call_span,
-                            place_name: &place_name,
-                            is_partial,
-                            is_loop_message,
-                        });
+                        match kind {
+                            CallDesugaringKind::ForLoopIntoIter => {
+                                err.subdiagnostic(CaptureReasonLabel::ImplicitCall {
+                                    fn_call_span,
+                                    place_name: &place_name,
+                                    is_partial,
+                                    is_loop_message,
+                                });
+                            }
+                            CallDesugaringKind::ForLoopIntoAsyncIter => {
+                                err.subdiagnostic(CaptureReasonLabel::ImplicitAsyncCall {
+                                    fn_call_span,
+                                    place_name: &place_name,
+                                    is_partial,
+                                    is_loop_message,
+                                });
+                            }
+                            _ => {}
+                        }
                         // If the moved place was a `&mut` ref, then we can
                         // suggest to reborrow it where it was moved, so it
                         // will still be valid by the time we get to the usage.

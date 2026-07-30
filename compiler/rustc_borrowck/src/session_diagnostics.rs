@@ -425,6 +425,22 @@ pub(crate) enum CaptureReasonLabel<'a> {
         "{$place_name} {$is_partial ->
             [true] partially moved
             *[false] moved
+        } due to this implicit call to {$is_loop_message ->
+            [true] `.into_async_iter()`, in previous iteration of loop
+            *[false] `.into_async_iter()`
+        }"
+    )]
+    ImplicitAsyncCall {
+        #[primary_span]
+        fn_call_span: Span,
+        place_name: &'a str,
+        is_partial: bool,
+        is_loop_message: bool,
+    },
+    #[label(
+        "{$place_name} {$is_partial ->
+            [true] partially moved
+            *[false] moved
         } due to this method {$is_loop_message ->
             [true] call, in previous iteration of loop
             *[false] call
