@@ -279,7 +279,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         res,
                     ))
                 };
-                match self.cm().resolve_path(
+                match self.cm_mut().resolve_path(
                     &segments,
                     None,
                     parent_scope,
