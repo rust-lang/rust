@@ -544,6 +544,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }),
             ),
 
+            ExprKind::Rescope(_kind, _label, _expr) => {
+                todo!()
+            }
+
             ExprKind::Dummy => {
                 span_bug!(e.span, "lowered ExprKind::Dummy")
             }

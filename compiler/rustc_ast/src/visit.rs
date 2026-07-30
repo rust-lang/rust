@@ -552,6 +552,7 @@ macro_rules! common_visitor_and_walkers {
             RangeLimits,
             RangeSyntax,
             Recovered,
+            RescopeKind,
             RestrictionKind,
             Safety,
             StaticItem,
@@ -1115,6 +1116,8 @@ macro_rules! common_visitor_and_walkers {
                     visit_visitable!(vis, kind, expr, ty),
                 ExprKind::GcaMacro(expr) =>
                     visit_visitable!(vis, expr),
+                ExprKind::Rescope(kind, label, expr) =>
+                    visit_visitable!(vis, kind, label, expr),
                 ExprKind::Err(_guar) => {}
                 ExprKind::Dummy => {}
             }
