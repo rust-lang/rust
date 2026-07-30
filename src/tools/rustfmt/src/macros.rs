@@ -261,6 +261,12 @@ fn rewrite_macro_inner(
         }
     }
 
+    // If we're falling through to default macro handling check that the context is correct
+    debug_assert!(
+        context.inside_macro(),
+        "expect `context.inside_macro() == true`"
+    );
+
     let ParsedMacroArgs {
         args: arg_vec,
         vec_with_semi,
@@ -1602,8 +1608,7 @@ fn format_cfg_select(
     // The code that flattens match arms will refuse to do so if it's inside a macro. Mostly
     // this is done to prevent rustfmt from removing tokens in the context of a macro, but in
     // this case it should be fine since we know that each `cfg_select!` arm must be a valid expr.
-    let rewrite_context = context.clone();
-    rewrite_context.leave_macro();
+    context.leave_macro();
 
     let items = itemize_list(
         context.snippet_provider,
@@ -1621,7 +1626,7 @@ fn format_cfg_select(
             };
 
             crate::matches::rewrite_match_body(
-                &rewrite_context,
+                context,
                 &arm.expr,
                 &predicate_str,
                 nested_shape,
