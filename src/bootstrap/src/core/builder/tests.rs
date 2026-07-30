@@ -1941,6 +1941,8 @@ mod snapshot {
         [test] compiletest-coverage 1 <host>
         [build] rustc 1 <host> -> std 1 <host>
         [test] compiletest-mir-opt 1 <host>
+        [build] rustc 1 <host> -> std 1 <host-synthetic-miropt-abort>
+        [test] compiletest-mir-opt 1 <host-synthetic-miropt-abort>
         [test] compiletest-codegen-llvm 1 <host>
         [test] compiletest-codegen-units 1 <host>
         [test] compiletest-assembly-llvm 1 <host>
@@ -2122,6 +2124,9 @@ mod snapshot {
         [test] compiletest-coverage 2 <host>
         [build] rustc 2 <host> -> std 2 <host>
         [test] compiletest-mir-opt 2 <host>
+        [build] rustc 1 <host> -> std 1 <host-synthetic-miropt-abort>
+        [build] rustc 2 <host> -> std 2 <host-synthetic-miropt-abort>
+        [test] compiletest-mir-opt 2 <host-synthetic-miropt-abort>
         [test] compiletest-codegen-llvm 2 <host>
         [test] compiletest-codegen-units 2 <host>
         [test] compiletest-assembly-llvm 2 <host>
@@ -3184,7 +3189,7 @@ fn render_metadata(metadata: &StepMetadata, config: &RenderConfig) -> String {
 }
 
 fn normalize_target(target: TargetSelection, config: &RenderConfig) -> String {
-    let mut target = target.to_string();
+    let mut target = target.triple.to_string();
     if config.normalize_host {
         target = target.replace(&host_target(), "host");
     }
