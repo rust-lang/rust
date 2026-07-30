@@ -135,12 +135,11 @@ impl SyntaxMapping {
                 SyntaxElement::Node(node) => node.clone(),
                 SyntaxElement::Token(token) => token.parent().unwrap(),
             };
-            let Some(input_ancestor) =
-                node.ancestors().find(|ancestor| self.upmap_node_single(ancestor).is_some())
-            else {
+            let Some((input_ancestor, output_ancestor)) = node.ancestors().find_map(|ancestor| {
+                self.upmap_node_single(&ancestor).map(|output_ancestor| (ancestor, output_ancestor))
+            }) else {
                 return current;
             };
-            let output_ancestor = self.upmap_node_single(&input_ancestor).unwrap();
             current = self
                 .upmap_child_element(&current, &input_ancestor, &output_ancestor.parent().unwrap())
                 .expect("the nearest mapped ancestor must map its descendants");

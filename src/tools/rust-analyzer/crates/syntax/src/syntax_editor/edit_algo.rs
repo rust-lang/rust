@@ -200,6 +200,9 @@ impl EditPlan {
     }
 
     /// Checks that replacement at the same tree depth do not overlap
+    ///
+    /// `changes` is sorted by range start, so overlap is a single comparison against the
+    /// last range at that key, and `insert` can throw away the range it evicts.
     fn replacements_are_disjoint(
         changes: &[Change],
         mut node_depth: impl FnMut(SyntaxNode) -> usize,
