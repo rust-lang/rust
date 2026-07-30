@@ -5,13 +5,13 @@ use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 
-use crate::simplify;
+use crate::{PassPolicy, simplify};
 
 pub(super) struct MultipleReturnTerminators;
 
 impl<'tcx> crate::MirPass<'tcx> for MultipleReturnTerminators {
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() >= 4
+    fn policy(&self, sess: &rustc_session::Session) -> PassPolicy {
+        PassPolicy::optimization(sess.mir_opt_level() >= 4)
     }
 
     fn run_pass(&self, _: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -33,9 +33,5 @@ impl<'tcx> crate::MirPass<'tcx> for MultipleReturnTerminators {
         }
 
         simplify::remove_dead_blocks(body)
-    }
-
-    fn is_required(&self) -> bool {
-        false
     }
 }

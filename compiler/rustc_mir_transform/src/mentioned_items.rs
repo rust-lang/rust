@@ -5,6 +5,8 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_session::Session;
 use rustc_span::Spanned;
 
+use crate::PassPolicy;
+
 pub(super) struct MentionedItems;
 
 struct MentionedItemsVisitor<'a, 'tcx> {
@@ -14,22 +16,18 @@ struct MentionedItemsVisitor<'a, 'tcx> {
 }
 
 impl<'tcx> crate::MirPass<'tcx> for MentionedItems {
-    fn is_enabled(&self, _sess: &Session) -> bool {
+    fn policy(&self, _sess: &Session) -> PassPolicy {
         // If this pass is skipped the collector assume that nothing got mentioned! We could
         // potentially skip it in opt-level 0 if we are sure that opt-level will never *remove* uses
         // of anything, but that still seems fragile. Furthermore, even debug builds use level 1, so
         // special-casing level 0 is just not worth it.
-        true
+        PassPolicy::Required
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut mir::Body<'tcx>) {
         let mut visitor = MentionedItemsVisitor { tcx, body, mentioned_items: Vec::new() };
         visitor.visit_body(body);
         body.set_mentioned_items(visitor.mentioned_items);
-    }
-
-    fn is_required(&self) -> bool {
-        true
     }
 }
 

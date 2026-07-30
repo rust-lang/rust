@@ -32,6 +32,7 @@ use rustc_span::def_id::DefId;
 use rustc_trait_selection::traits;
 use tracing::trace;
 
+use crate::PassPolicy;
 use crate::pass_manager::MirPass;
 
 fn is_structurally_unsized<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
@@ -113,7 +114,8 @@ impl<'tcx> MirPass<'tcx> for ImpossibleClauses {
         }
     }
 
-    fn is_required(&self) -> bool {
-        true
+    fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
+        // This can only replace code proven unreachable with immediate UB, so it cannot remove UB.
+        PassPolicy::optional_non_optimization(true)
     }
 }

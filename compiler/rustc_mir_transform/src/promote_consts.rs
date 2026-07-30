@@ -27,6 +27,8 @@ use rustc_middle::{bug, mir, span_bug};
 use rustc_span::{Span, Spanned};
 use tracing::{debug, instrument};
 
+use crate::PassPolicy;
+
 /// A `MirPass` for promotion.
 ///
 /// Promotion is the extraction of promotable temps into separate MIR bodies so they can have
@@ -62,8 +64,9 @@ impl<'tcx> crate::MirPass<'tcx> for PromoteTemps<'tcx> {
         self.promoted_fragments.set(promoted);
     }
 
-    fn is_required(&self) -> bool {
-        true
+    fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
+        // Implements promotion by extracting eligible values into separate constant MIR bodies.
+        PassPolicy::Required
     }
 }
 

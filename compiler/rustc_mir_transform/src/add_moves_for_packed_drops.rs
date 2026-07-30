@@ -4,7 +4,7 @@ use rustc_middle::ty::{self, TyCtxt};
 use tracing::debug;
 
 use crate::patch::MirPatch;
-use crate::util;
+use crate::{PassPolicy, util};
 
 /// This pass moves values being dropped that are within a packed
 /// struct to a separate local before dropping them, to ensure that
@@ -70,8 +70,9 @@ impl<'tcx> crate::MirPass<'tcx> for AddMovesForPackedDrops {
         patch.apply(body);
     }
 
-    fn is_required(&self) -> bool {
-        true
+    fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
+        // Implements part of MIR semantics by making implicit packed-drop handling explicit.
+        PassPolicy::Required
     }
 }
 
