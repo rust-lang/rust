@@ -1,3 +1,7 @@
+//! See [`cfg_select!` reference](
+//! https://doc.rust-lang.org/nightly/reference/conditional-compilation.html#the-cfg_select-macro
+//! ) for grammar.
+
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
 use rustc_ast::ast;
@@ -86,8 +90,11 @@ fn parse_items_from_cfg_select_inner<'a>(
     Ok(items)
 }
 
+/// LHS predicate of a `cfg_select!` arm.
 pub(crate) enum CfgSelectFormatPredicate {
+    /// Example: the `unix` in `unix => {}`. Notably, outer or inner attributes are not permitted.
     Cfg(ast::MetaItemInner),
+    /// `_` in `_ => {}`.
     Wildcard(Span),
 }
 
@@ -100,10 +107,16 @@ impl Spanned for CfgSelectFormatPredicate {
     }
 }
 
+/// Each `$predicate => $production` arm in `cfg_select!`.
 pub(crate) struct CfgSelectArm {
+    /// The `$predicate` part.
     pub(crate) predicate: CfgSelectFormatPredicate,
+    /// Span of `=>`.
     pub(crate) arrow: Token,
+    /// The RHS `$production` expression.
     pub(crate) expr: Box<ast::Expr>,
+    /// `cfg_select!` arms `$production`s can be optionally `,` terminated, like `match` arms.
+    /// The `,` is not needed when `$production` is itself braced `{}`.
     pub(crate) trailing_comma: Option<Span>,
 }
 
