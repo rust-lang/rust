@@ -1,12 +1,18 @@
 // ignore-tidy-file-linelength
 #![feature(complex_numbers, f128)]
 #![allow(improper_ctypes)]
+#![allow(unused_features)]
 #![deny(dead_code)]
 
 use std::ffi::*;
 use std::num::Complex;
 
 fn main() {
+    sqrt();
+    #[cfg(not(target_family = "wasm"))]
+    mul();
+    #[cfg(not(target_family = "wasm"))]
+    div();
     pass_simple();
     aligned_int();
     aligned_float();
@@ -22,6 +28,100 @@ type c_longdouble = cfg_select! {
     target_arch = "aarch64" => f128,
     _ => (),
 };
+
+fn sqrt() {
+    unsafe extern "C" {
+        safe fn csqrtf(_: Complex<c_float>) -> Complex<c_float>;
+        safe fn csqrt(_: Complex<c_double>) -> Complex<c_double>;
+        #[cfg(target_arch = "aarch64")]
+        safe fn csqrtl(_: Complex<c_longdouble>) -> Complex<c_longdouble>;
+    }
+
+    let c = Complex::new(-1.0, 0.0);
+    assert_eq!(csqrtf(c), Complex::new(0.0, 1.0));
+
+    let c = Complex::new(-1.0, 0.0);
+    assert_eq!(csqrt(c), Complex::new(0.0, 1.0));
+
+    #[cfg(target_arch = "aarch64")]
+    {
+        let c = Complex::new(-1.0, 0.0);
+        assert_eq!(csqrtl(c), Complex::new(0.0, 1.0));
+    }
+}
+
+#[cfg(not(target_family = "wasm"))]
+fn mul() {
+    unsafe extern "C" {
+        safe fn __mulsc3(a: c_float, b: c_float, c: c_float, d: c_float) -> Complex<c_float>;
+        safe fn __muldc3(a: c_double, b: c_double, c: c_double, d: c_double) -> Complex<c_double>;
+        #[cfg(target_arch = "aarch64")]
+        safe fn __multc3(
+            a: c_longdouble,
+            b: c_longdouble,
+            c: c_longdouble,
+            d: c_longdouble,
+        ) -> Complex<c_longdouble>;
+    }
+
+    assert_eq!(__mulsc3(1.0, 2.0, 3.0, 4.0), Complex::new(-5.0, 10.0));
+    assert_eq!(__muldc3(1.0, 2.0, 3.0, 4.0), Complex::new(-5.0, 10.0));
+
+    #[cfg(target_arch = "aarch64")]
+    assert_eq!(__multc3(1.0, 2.0, 3.0, 4.0), Complex::new(-5.0, 10.0));
+
+    // The naive algorithm would return NaN + NaNi for these inputs, but the libcall handles it.
+    assert_eq!(
+        __mulsc3(1.0, 0.0, c_float::INFINITY, c_float::INFINITY),
+        Complex::new(c_float::INFINITY, c_float::INFINITY)
+    );
+    assert_eq!(
+        __muldc3(1.0, 0.0, c_double::INFINITY, c_double::INFINITY),
+        Complex::new(c_double::INFINITY, c_double::INFINITY)
+    );
+
+    #[cfg(target_arch = "aarch64")]
+    assert_eq!(
+        __multc3(1.0, 0.0, c_longdouble::INFINITY, c_longdouble::INFINITY),
+        Complex::new(c_longdouble::INFINITY, c_longdouble::INFINITY)
+    );
+}
+
+#[cfg(not(target_family = "wasm"))]
+fn div() {
+    unsafe extern "C" {
+        safe fn __divsc3(a: c_float, b: c_float, c: c_float, d: c_float) -> Complex<c_float>;
+        safe fn __divdc3(a: c_double, b: c_double, c: c_double, d: c_double) -> Complex<c_double>;
+        #[cfg(target_arch = "aarch64")]
+        safe fn __divtc3(
+            a: c_longdouble,
+            b: c_longdouble,
+            c: c_longdouble,
+            d: c_longdouble,
+        ) -> Complex<c_longdouble>;
+    }
+
+    assert_eq!(__divsc3(2.0, 11.0, 2.0, 1.0), Complex::new(3.0, 4.0));
+    assert_eq!(__divdc3(2.0, 11.0, 2.0, 1.0), Complex::new(3.0, 4.0));
+
+    #[cfg(target_arch = "aarch64")]
+    assert_eq!(__divtc3(2.0, 11.0, 2.0, 1.0), Complex::new(3.0, 4.0));
+
+    assert_eq!(
+        __divsc3(c_float::INFINITY, 0.0, 1.0, 1.0),
+        Complex::new(c_float::INFINITY, c_float::NEG_INFINITY)
+    );
+    assert_eq!(
+        __divdc3(c_double::INFINITY, 0.0, 1.0, 1.0),
+        Complex::new(c_double::INFINITY, c_double::NEG_INFINITY)
+    );
+
+    #[cfg(target_arch = "aarch64")]
+    assert_eq!(
+        __divtc3(c_longdouble::INFINITY, 0.0, 1.0, 1.0),
+        Complex::new(c_longdouble::INFINITY, c_longdouble::NEG_INFINITY)
+    );
+}
 
 fn pass_simple() {
     #[rustfmt::skip]
