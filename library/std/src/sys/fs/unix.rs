@@ -1885,36 +1885,36 @@ pub fn set_perm(p: &CStr, perm: FilePermissions) -> io::Result<()> {
 }
 
 pub fn set_perm_nofollow(p: &CStr, perm: FilePermissions) -> io::Result<()> {
-    // ESP-IDF and Horizon do not support O_NOFOLLOW, so we skip setting it.
-    // Their filesystems do not have symbolic links, so no special handling is required.
     cfg_select! {
-        // wasm32-wasip1 targets do not support fchmodat, so we fall down to
-        // open + fchmod
-        target_os = "wasi" => {
-            use crate::fs::{OpenOptions, Permissions};
-            use crate::os::wasi::ffi::OsStrExt;
-            use crate::os::wasi::fs::OpenOptionsExt;
-
-            let mut options = OpenOptions::new();
-            options.custom_flags(libc::O_NOFOLLOW);
-
-            let bytes = p.to_bytes();
-            let os_str = OsStr::from_bytes(bytes);
-            options.open(Path::new(os_str))?.set_permissions(Permissions::from_inner(perm))
-        }
-        all(any(target_os = "linux", target_os = "macos", target_os = "freebsd", target_os = "openbsd", target_os = "netbsd", target_os = "dragonfly", target_os = "android"), not(any(target_os = "espidf", target_os = "horizon"))) => {
+        any(target_os = "linux", target_os = "macos", target_os = "freebsd", target_os = "openbsd", target_os = "netbsd", target_os = "dragonfly", target_os = "android") => {
             cvt_r(|| unsafe {
                 libc::fchmodat(libc::AT_FDCWD, p.as_ptr(), perm.mode, libc::AT_SYMLINK_NOFOLLOW)
             })
             .map(|_| ())
         },
+        // Not all targets support fchmodat, so we fall back to
+        // open + fchmod.
         _ => {
-            // These platforms do not have `AT_SYMLINK_NOFOLLOW` but support fchmodat,
-            // so no flag is set for fchmodat.
-            cvt_r(|| unsafe {
-                libc::fchmodat(libc::AT_FDCWD, p.as_ptr(), perm.mode, 0)
-            })
-            .map(|_| ())
+            use crate::fs::OpenOptions;
+            use crate::fs::Permissions;
+            let mut options = OpenOptions::new();
+            // ESP-IDF and Horizon do not support O_NOFOLLOW, so we skip setting it.
+            // Their filesystems do not have symbolic links, so no special handling is required.
+            #[cfg(not(any(target_os = "espidf", target_os = "horizon")))]
+            {
+                #[cfg(target_os = "wasi")]
+                use crate::os::wasi::fs::OpenOptionsExt;
+                #[cfg(not(target_os = "wasi"))]
+                use crate::os::unix::fs::OpenOptionsExt;
+                options.custom_flags(libc::O_NOFOLLOW);
+            }
+
+            // SAFETY: Since this function is called with `with_native_path`
+            // and that successfully converted the `&Path` to a `CString`, it
+            // should be safe to slice away the nul byte from `&CStr` and convert
+            // it back to a `&Path`.
+            let path = unsafe { Path::from_u8_slice(p.to_bytes()) };
+            options.open(path)?.set_permissions(Permissions::from_inner(perm))
         }
         _ => cvt_r(|| unsafe { libc::fchmodat(libc::AT_FDCWD, p.as_ptr(), perm.mode, 0) }).map(|_| ()),
     }

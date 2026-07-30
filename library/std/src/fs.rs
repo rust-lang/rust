@@ -3471,15 +3471,18 @@ pub fn set_permissions<P: AsRef<Path>>(path: P, perm: Permissions) -> io::Result
 /// # Platform-specific behavior
 ///
 /// This function currently corresponds to the following underlying operations:
-/// * WASI: `open` with `O_NOFOLLOW` followed by `fchmod`.
-/// * Unix: `fchmodat` with `AT_SYMLINK_NOFOLLOW` (or no flag is set if `AT_SYMLINK_NOFOLLOW` does
-///   not exist on a specific Unix-based platform)
+/// * Linux, BSD-based platforms, Android: `fchmodat` with `AT_SYMLINK_NOFOLLOW`.
+/// * Other Unix-based platforms with symlinks: `open` with `O_NOFOLLOW` followed by behavior
+///   denoted in [`fs::set_permissions`].
+/// * Other Unix-based platforms without symlinks: `open` with followed by behavior
+///   denoted in [`fs::set_permissions`].
 /// * Windows: `CreateFileW` with `FILE_FLAG_OPEN_REPARSE_POINT` followed
 ///   by `SetFileInformationByHandle`.
 ///
 /// Note that, this [may change in the future][changes].
 ///
 /// [changes]: io#platform-specific-behavior
+/// [`fs::set_permissions`]: crate::fs::set_permissions
 ///
 /// # Errors
 ///
@@ -3489,12 +3492,13 @@ pub fn set_permissions<P: AsRef<Path>>(path: P, perm: Permissions) -> io::Result
 /// * `path` does not exist.
 /// * The user lacks the permission to change attributes of the file.
 ///
-/// Note: On Linux, this will result in a [`Unsupported`] error
-/// if the final element is a symlink. On BSD-based systems, the
-/// behavior in this case can vary: the operation may have no effect at all
-/// or it may change the permission bits of the symlink itself.
+/// Note: On Linux, this will result in an [`Unsupported`] error
+/// if the final element is a symlink. On other Unix-based platforms
+/// with symlinks (non-BSD-based), this will result in an [`InvalidInput`]
+/// error.
 ///
 /// [`Unsupported`]: crate::io::ErrorKind::Unsupported
+/// [`InvalidInput`]: crate::io::ErrorKind::InvalidInput
 ///
 /// # Examples
 ///
@@ -3505,9 +3509,8 @@ pub fn set_permissions<P: AsRef<Path>>(path: P, perm: Permissions) -> io::Result
 /// fn main() -> std::io::Result<()> {
 ///     let mut perms = fs::symlink_metadata("foo.txt")?.permissions();
 ///     perms.set_readonly(true);
-///     // This should result in an error on certain platforms,
-///     // succeed in modifying the permissions of a symlink,
-///     // or do nothing at all.
+///     // This should result in an error on certain platforms or
+///     // succeed in modifying the permissions of a symlink
 ///     fs::set_permissions_nofollow("foo.txt", perms)?;
 ///     Ok(())
 /// }
