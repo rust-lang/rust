@@ -2330,6 +2330,7 @@ pub struct LayoutData<FieldIdx: Idx, VariantIdx: Idx> {
     /// transmuted to `Foo<U>` we aim to create probalistically distinct seeds so that Foo can choose
     /// to reorder its fields based on that information. The current implementation is a conservative
     /// approximation of this goal.
+    // TODO: making randomization_seed an Option is maybe hacky?
     pub randomization_seed: Option<Hash64>,
 }
 
@@ -2347,18 +2348,6 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
     /// Returns `true` if this is an uninhabited type
     pub fn is_uninhabited(&self) -> bool {
         self.uninhabited
-    }
-
-    // TODO: get rid of this, and instead put the needed fields in ParamLayout
-    // and convert to<->from that type where needed
-    pub fn make_opaque(&self) -> Self {
-        Self {
-            fields: FieldsShape::Opaque,
-            variants: Variants::Opaque,
-            // TODO: making randomization_seed an Option is hacky
-            randomization_seed: None,
-            ..self.clone()
-        }
     }
 }
 

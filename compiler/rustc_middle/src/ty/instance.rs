@@ -1,6 +1,7 @@
 use std::ops::ControlFlow;
 use std::{assert_matches, fmt};
 
+use rustc_abi::{Layout, LayoutData};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
@@ -1033,9 +1034,7 @@ impl<'tcx> Instance<'tcx> {
                             // (causes issues with comparing layout inhabitedness w/ opsem inhabitedness)
                             && !layout.uninhabited
                         {
-                            let seedless_layout_data = layout.make_opaque();
-                            let seedless_layout = tcx.mk_layout(seedless_layout_data);
-                            let param_layout = ty::ParamLayout(seedless_layout);
+                            let param_layout = make_param_layout(tcx, layout);
                             let erased_ty = tcx.mk_ty_from_kind(ty::Erased(param_layout));
                             erased_ty.into()
                         } else {
@@ -1047,6 +1046,22 @@ impl<'tcx> Instance<'tcx> {
             ));
         Self { def: self.def, args }
     }
+}
+
+fn make_param_layout<'tcx>(tcx: TyCtxt<'tcx>, layout: Layout<'tcx>) -> ty::ParamLayout<'tcx> {
+    let LayoutData {
+        fields: _,
+        variants: _,
+        backend_repr,
+        largest_niche,
+        uninhabited: _,
+        align: rustc_abi::AbiAlign { abi: align },
+        size,
+        max_repr_align: _,
+        unadjusted_abi_align: _,
+        randomization_seed: _,
+    } = *layout.0.0;
+    tcx.mk_param_layout(ty::ParamLayoutData { backend_repr, largest_niche, align, size })
 }
 
 #[instrument(level = "debug", ret, skip(tcx))]

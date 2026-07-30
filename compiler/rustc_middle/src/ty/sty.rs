@@ -7,12 +7,19 @@ use std::debug_assert_matches;
 use std::ops::{ControlFlow, Range};
 
 use hir::def::{CtorKind, DefKind};
-use rustc_abi::{FIRST_VARIANT, FieldIdx, Layout, NumScalableVectors, ScalableElt, VariantIdx};
+use rustc_abi::{
+    Align, BackendRepr, FIRST_VARIANT, FieldIdx, Niche, NumScalableVectors, ScalableElt, Size,
+    VariantIdx,
+};
+use rustc_data_structures::intern::Interned;
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::LangItem;
 use rustc_hir::def_id::DefId;
-use rustc_macros::{Lift, StableHash, TyDecodable, TyEncodable, TypeFoldable, extension};
+use rustc_macros::{
+    Decodable_NoContext, Encodable_NoContext, StableHash, TyDecodable, TyEncodable, TypeFoldable,
+    extension,
+};
 use rustc_span::{DUMMY_SP, Span, Symbol, kw, sym};
 use rustc_type_ir::TyKind::*;
 use rustc_type_ir::solve::SizedTraitKind;
@@ -365,8 +372,16 @@ impl ParamConst {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, StableHash, Lift)]
-pub struct ParamLayout<'tcx>(pub Layout<'tcx>);
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, StableHash)]
+pub struct ParamLayout<'tcx>(pub Interned<'tcx, ParamLayoutData>);
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash, StableHash, Encodable_NoContext, Decodable_NoContext)]
+pub struct ParamLayoutData {
+    pub backend_repr: BackendRepr,
+    pub largest_niche: Option<Niche>,
+    pub align: Align,
+    pub size: Size,
+}
 
 /// Constructors for `Ty`
 impl<'tcx> Ty<'tcx> {

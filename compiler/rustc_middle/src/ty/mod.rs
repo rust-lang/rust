@@ -109,9 +109,9 @@ pub use self::sty::{
     Alias, AliasTy, AliasTyKind, Article, Binder, BoundConst, BoundRegion, BoundRegionKind,
     BoundTy, BoundTyKind, BoundVariableKind, CanonicalPolyFnSig, CoroutineArgsExt, EarlyBinder,
     FnSig, FnSigKind, FreeAliasTy, InherentAliasTy, InlineConstArgs, InlineConstArgsParts,
-    OpaqueAliasTy, ParamConst, ParamLayout, ParamTy, PlaceholderConst, PlaceholderRegion,
-    PlaceholderType, PolyFnSig, ProjectionAliasTy, TyKind, TypeAndMut, TypingMode,
-    TypingModeEqWrapper, Unnormalized, UpvarArgs,
+    OpaqueAliasTy, ParamConst, ParamLayout, ParamLayoutData, ParamTy, PlaceholderConst,
+    PlaceholderRegion, PlaceholderType, PolyFnSig, ProjectionAliasTy, TyKind, TypeAndMut,
+    TypingMode, TypingModeEqWrapper, Unnormalized, UpvarArgs,
 };
 pub use self::trait_def::TraitDef;
 pub use self::typeck_results::{

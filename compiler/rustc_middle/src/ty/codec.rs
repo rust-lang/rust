@@ -299,8 +299,8 @@ impl<'tcx, S: TyEncoder<'tcx>> Encodable<S> for ty::ParamLayout<'tcx> {
 
 impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for ty::ParamLayout<'tcx> {
     fn decode(decoder: &mut D) -> Self {
-        let data = rustc_abi::LayoutData::decode(decoder);
-        Self(decoder.interner().mk_layout(data))
+        let data = ty::ParamLayoutData::decode(decoder);
+        decoder.interner().mk_param_layout(data)
     }
 }
 
