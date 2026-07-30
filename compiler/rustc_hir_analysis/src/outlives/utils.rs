@@ -11,6 +11,7 @@ pub(crate) type RequiredPredicates<'tcx> = FxIndexMap<ty::ArgOutlivesPredicate<'
 
 /// Given a requirement `T: 'a` or `'b: 'a`, deduce the
 /// outlives_component and add it to `required_predicates`
+// FIXME: change this function's signature and docs to mention clauses instead of predicates
 pub(crate) fn insert_outlives_predicate<'tcx>(
     tcx: TyCtxt<'tcx>,
     arg: GenericArg<'tcx>,

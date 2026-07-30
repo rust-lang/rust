@@ -7,7 +7,7 @@
 //! in the outlives bounds of `Struct`. While this is trivially provable, privacy
 //! only sees `Foo` and `Trait` and determines that `Foo` is private and then errors.
 //! So now we invoke `explicit_clauses_of` to make sure we only care about user-written
-//! predicates.
+//! clauses.
 
 //@ check-pass
 
