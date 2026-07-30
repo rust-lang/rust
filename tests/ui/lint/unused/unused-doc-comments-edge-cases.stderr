@@ -8,12 +8,22 @@ error[E0658]: attributes on expressions are experimental
   --> $DIR/unused-doc-comments-edge-cases.rs:23:5
    |
 LL |     /// useless doc comment
-   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
    = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
    = help: `///` is used for outer documentation comments; for a plain comment, use `//`
+
+error[E0658]: attributes on some expressions are unstable
+  --> $DIR/unused-doc-comments-edge-cases.rs:23:5
+   |
+LL |     /// useless doc comment
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #15701 <https://github.com/rust-lang/rust/issues/15701> for more information
+   = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error: unused doc comment
   --> $DIR/unused-doc-comments-edge-cases.rs:6:9
@@ -35,7 +45,7 @@ error: unused doc comment
   --> $DIR/unused-doc-comments-edge-cases.rs:23:5
    |
 LL |     /// useless doc comment
-   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 ...
 LL |     num == 3
    |     --- rustdoc does not generate documentation for expressions
@@ -112,7 +122,7 @@ help: you might have meant to return this value
 LL |         return true;
    |         ++++++     +
 
-error: aborting due to 10 previous errors
+error: aborting due to 11 previous errors
 
 Some errors have detailed explanations: E0308, E0658.
 For more information about an error, try `rustc --explain E0308`.
