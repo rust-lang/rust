@@ -91,7 +91,7 @@ fn open_link_no_reparse(
 
     let result = unsafe {
         let mut object = c::OBJECT_ATTRIBUTES {
-            ObjectName: path.as_ptr(),
+            ObjectName: path.as_ptr().cast_mut(),
             RootDirectory: parent.as_raw_handle(),
             Attributes: ATTRIBUTES.load(Ordering::Relaxed),
             ..c::OBJECT_ATTRIBUTES::with_length()

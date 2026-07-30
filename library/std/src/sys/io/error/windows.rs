@@ -40,7 +40,6 @@ pub fn decode_error_kind(errno: i32) -> io::ErrorKind {
         | c::ERROR_RESOURCE_CALL_TIMED_OUT
         | c::ERROR_CTX_MODEM_RESPONSE_TIMEOUT
         | c::ERROR_CTX_CLIENT_QUERY_TIMEOUT
-        | c::FRS_ERR_SYSVOL_POPULATE_TIMEOUT
         | c::ERROR_DS_TIMELIMIT_EXCEEDED
         | c::DNS_ERROR_RECORD_TIMED_OUT
         | c::ERROR_IPSEC_IKE_TIMED_OUT
