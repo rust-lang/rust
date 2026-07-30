@@ -42,12 +42,13 @@ fn get_none<'tcx>(cx: &LateContext<'_>, arm: &Arm<'tcx>, allow_wildcard: bool) -
         && cx.tcx.lang_items().get(LangItem::OptionNone) == Some(def_id)
     {
         Some(arm.body)
-    } else if let PatKind::TupleStruct(QPath::Resolved(_, path), _, _)= arm.pat.kind
-        && let Some(def_id) = path.res.opt_def_id()
-        // Since it comes from a pattern binding, we need to get the parent to actually match
-        // against it.
-        && let Some(def_id) = cx.tcx.opt_parent(def_id)
-        && cx.tcx.lang_items().get(LangItem::ResultErr) == Some(def_id)
+    } else if let PatKind::TupleStruct(QPath::Resolved(_, path), _, _) = arm.pat.kind
+        && (path.res)
+            .opt_def_id()
+            // Since it comes from a pattern binding, we need to get the parent to actually match
+            // against it.
+            .opt_parent(cx)
+            .is_lang_item(cx, LangItem::ResultErr)
     {
         Some(arm.body)
     } else if let PatKind::Wild = arm.pat.kind

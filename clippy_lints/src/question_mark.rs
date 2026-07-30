@@ -223,11 +223,13 @@ fn is_early_return(smbl: Symbol, cx: &LateContext<'_>, if_block: &IfBlockType<'_
                         // We only need to check `if let Some(x) = option` not `if let None = option`,
                         // because the later one will be suggested as `if option.is_none()` thus causing conflict.
                         res.ctor_parent(cx).is_lang_item(cx, OptionSome)
-                            && matches!(if_else, Some(inner) if expr_return_none_or_err(smbl, cx, inner, let_expr, None))
+                            && if_else.is_some_and(|inner| expr_return_none_or_err(smbl, cx, inner, let_expr, None))
                     },
                     sym::Result => {
                         (res.ctor_parent(cx).is_lang_item(cx, ResultOk)
-                            && matches!(if_else, Some(inner) if expr_return_none_or_err(smbl, cx, inner, let_expr, Some(let_pat_sym))))
+                            && if_else.is_some_and(|inner| {
+                                expr_return_none_or_err(smbl, cx, inner, let_expr, Some(let_pat_sym))
+                            }))
                             || res.ctor_parent(cx).is_lang_item(cx, ResultErr)
                                 && expr_return_none_or_err(smbl, cx, if_then, let_expr, Some(let_pat_sym))
                                 && if_else.is_none()
