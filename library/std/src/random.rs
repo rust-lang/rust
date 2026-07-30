@@ -73,7 +73,7 @@ impl Rng for SystemRng {
 
 /// Generates a random value from a distribution, using the default random source.
 ///
-/// This is a convenience function for `dist.sample(&mut SystemRng)` and will sample according to
+/// This is a convenience function for `dist.sample(SystemRng)` and will sample according to
 /// the same distribution as the underlying [`Distribution`] trait implementation. See [`SystemRng`]
 /// for more information about how randomness is sourced.
 ///
@@ -98,5 +98,5 @@ impl Rng for SystemRng {
 /// [version 4/variant 1 UUID]: https://en.wikipedia.org/wiki/Universally_unique_identifier#Version_4_(random)
 #[unstable(feature = "random", issue = "130703")]
 pub fn random<T>(dist: impl Distribution<T>) -> T {
-    dist.sample(&mut SystemRng)
+    dist.sample(SystemRng)
 }

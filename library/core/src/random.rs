@@ -27,18 +27,18 @@ impl<'a, R: Rng + ?Sized> Rng for &'a mut R {
 #[unstable(feature = "random", issue = "130703")]
 pub trait Distribution<T> {
     /// Samples a random value from the distribution, using the specified random source.
-    fn sample(&self, source: &mut (impl Rng + ?Sized)) -> T;
+    fn sample(&self, rng: impl Rng) -> T;
 }
 
 impl<T, DT: Distribution<T>> Distribution<T> for &DT {
-    fn sample(&self, source: &mut (impl Rng + ?Sized)) -> T {
-        (*self).sample(source)
+    fn sample(&self, rng: impl Rng) -> T {
+        (*self).sample(rng)
     }
 }
 
 impl Distribution<bool> for RangeFull {
-    fn sample(&self, source: &mut (impl Rng + ?Sized)) -> bool {
-        let byte: u8 = RangeFull.sample(source);
+    fn sample(&self, rng: impl Rng) -> bool {
+        let byte: u8 = RangeFull.sample(rng);
         byte & 1 == 1
     }
 }
@@ -46,9 +46,9 @@ impl Distribution<bool> for RangeFull {
 macro_rules! impl_full {
     ($t:ty) => {
         impl Distribution<$t> for RangeFull {
-            fn sample(&self, source: &mut (impl Rng + ?Sized)) -> $t {
+            fn sample(&self, mut rng: impl Rng) -> $t {
                 let mut bytes = (0 as $t).to_ne_bytes();
-                source.fill_bytes(&mut bytes);
+                rng.fill_bytes(&mut bytes);
                 <$t>::from_ne_bytes(bytes)
             }
         }
@@ -86,16 +86,16 @@ macro_rules! lemire_sample {
         // ACM Trans. Model. Comput. Simul. 29, 1, Article 3 (January 2019), 12 pages.
         // https://doi.org/10.1145/3230636
         // spellchecker:on
-        fn $name(bound: $ty, source: &mut (impl Rng + ?Sized)) -> $ty {
+        fn $name(bound: $ty, mut rng: impl Rng) -> $ty {
             debug_assert_ne!(bound, 0);
 
-            let sample: $ty = (..).sample(source);
+            let sample: $ty = (..).sample(&mut rng);
 
             let (mut l, mut res) = sample.carrying_mul(bound, 0);
             if l < bound {
                 let t = bound.wrapping_neg() % bound;
                 while l < t {
-                    let sample: $ty = (..).sample(source);
+                    let sample: $ty = (..).sample(&mut rng);
                     (l, res) = sample.carrying_mul(bound, 0);
                 }
             }
@@ -142,7 +142,7 @@ macro_rules! impl_range {
             /// use std::random::{Distribution, SystemRng};
             /// use std::range::RangeInclusive;
             ///
-            /// let roll = RangeInclusive::from(1..=20).sample(&mut SystemRng);
+            /// let roll = RangeInclusive::from(1..=20).sample(SystemRng);
             /// assert!(1 <= roll && roll <= 20);
             /// if roll == 20 {
             ///     println!("Wow! You achieve writing a sound linked list.");
@@ -151,7 +151,7 @@ macro_rules! impl_range {
             /// }
             /// ```
             #[inline]
-            fn sample(&self, source: &mut (impl Rng + ?Sized)) -> $unsigned {
+            fn sample(&self, rng: impl Rng) -> $unsigned {
                 if self.start > self.last {
                     empty_range();
                 }
@@ -163,14 +163,14 @@ macro_rules! impl_range {
                 let Some(bound) = (self.last - self.start).checked_add(1) else {
                     // Overflow can only occur for Self::MIN..=Self::MAX, meaning
                     // the range is effectively unbounded.
-                    return RangeFull.sample(source);
+                    return RangeFull.sample(rng);
                 };
 
                 let offset = if bound.is_power_of_two() {
-                    let sample: $unsigned = RangeFull.sample(source);
+                    let sample: $unsigned = RangeFull.sample(rng);
                     sample & (bound - 1)
                 } else {
-                    $bounded(bound as $base, source) as $unsigned
+                    $bounded(bound as $base, rng) as $unsigned
                 };
 
                 self.start + offset
@@ -207,7 +207,7 @@ macro_rules! impl_range {
             /// use std::random::{Distribution, SystemRng};
             /// use std::range::RangeInclusive;
             ///
-            /// let roll = RangeInclusive::from(1..=20).sample(&mut SystemRng);
+            /// let roll = RangeInclusive::from(1..=20).sample(SystemRng);
             /// assert!(1 <= roll && roll <= 20);
             /// if roll == 20 {
             ///     println!("Wow! You achieve writing a sound linked list.");
@@ -216,7 +216,7 @@ macro_rules! impl_range {
             /// }
             /// ```
             #[inline]
-            fn sample(&self, source: &mut (impl Rng + ?Sized)) -> $signed {
+            fn sample(&self, rng: impl Rng) -> $signed {
                 if self.start > self.last {
                     empty_range();
                 }
@@ -229,14 +229,14 @@ macro_rules! impl_range {
                 else {
                     // Overflow can only occur for Self::MIN..=Self::MAX, meaning
                     // the range is effectively unbounded.
-                    return RangeFull.sample(source);
+                    return RangeFull.sample(rng);
                 };
 
                 let offset = if bound.is_power_of_two() {
-                    let sample: $unsigned = RangeFull.sample(source);
+                    let sample: $unsigned = RangeFull.sample(rng);
                     sample & (bound - 1)
                 } else {
-                    $bounded(bound as $base, source) as $unsigned
+                    $bounded(bound as $base, rng) as $unsigned
                 };
 
                 self.start.wrapping_add_unsigned(offset)
