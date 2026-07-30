@@ -1120,7 +1120,10 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 debug!("coerce_closure_to_fn(a={:?}, b={:?}, pty={:?})", a, b, pointer_ty);
 
                 let adjust = Adjust::Pointer(PointerCoercion::ClosureFnPointer(safety));
-                self.unify_and(pointer_ty, b, [], adjust, ForceLeakCheck::No)
+                match self.unify_and(pointer_ty, b, [], adjust.clone(), ForceLeakCheck::No) {
+                    ok @ Ok(_) => ok,
+                    Err(_) => self.unify_hr_fn_ptr(closure_sig, b, adjust),
+                }
             }
             _ => self.unify(a, b, ForceLeakCheck::No),
         }

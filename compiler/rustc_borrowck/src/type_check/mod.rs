@@ -1170,8 +1170,24 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             ty::Closure(_, args) => args.as_closure().sig(),
                             _ => bug!(),
                         };
+
                         let ty_fn_ptr_from =
                             Ty::new_fn_ptr(tcx, tcx.signature_unclosure(sig, safety));
+
+                        let ty_fn_ptr_from = if let ty::FnPtr(sig_tys, hdr) = *ty_fn_ptr_from.kind()
+                            && sig_tys.with(hdr).has_bound_regions()
+                            && let ty::FnPtr(target_sig_tys, target_hdr) = *ty.kind()
+                            && target_sig_tys.with(target_hdr).no_bound_vars().is_some()
+                        {
+                            let src_sig = self.infcx.instantiate_binder_with_fresh_vars(
+                                span,
+                                BoundRegionConversionTime::HigherRankedType,
+                                sig_tys.with(hdr),
+                            );
+                            Ty::new_fn_ptr(tcx, ty::Binder::dummy(src_sig))
+                        } else {
+                            ty_fn_ptr_from
+                        };
 
                         let is_implicit_coercion = coercion_source == CoercionSource::Implicit;
                         if let Err(terr) = self.sub_types(
