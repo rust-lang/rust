@@ -77,3 +77,13 @@ auto_build_failed = [
     "-S-waiting-on-crater",
     "-S-waiting-on-team",
 ]
+
+[ec2_runners]
+runner_group_id = 8
+label_prefix = "ec2"
+region = "us-east-2"
+images = {
+    "ubuntu26.04" = "/aws/service/canonical/ubuntu/server/26.04/stable/current/amd64/hvm/ebs-gp3/ami-id"
+}
+jit_runner = "organization"
+allowed_instances = ["c8a.12xlarge"]
