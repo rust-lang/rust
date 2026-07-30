@@ -1861,6 +1861,7 @@ symbols! {
         rustc_simd_monomorphize_lane_limit,
         rustc_skip_during_method_dispatch,
         rustc_specialization_trait,
+        rustc_splat,
         rustc_std_internal_symbol,
         rustc_strict_coherence,
         rustc_test_entrypoint_marker,
