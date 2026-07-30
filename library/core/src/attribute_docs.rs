@@ -581,3 +581,62 @@ mod proc_macro_attribute {}
 ///
 /// [the `link_section` attribute]: ../reference/abi.html#the-link_section-attribute
 mod link_section_attribute {}
+
+#[doc(attribute = "target_feature")]
+//
+/// Enables extra CPU instructions for a single function.
+///
+/// A program is compiled for a baseline CPU, so instructions that only newer CPUs support go
+/// unused even when the machine running the program has them. `#[target_feature(enable = "...")]`
+/// compiles one function with extra features turned on while the rest of the crate keeps the
+/// baseline. The `-C target-feature` and `-C target-cpu` compiler flags enable features for the
+/// whole crate instead, which raises the minimum CPU the binary runs on.
+///
+/// The usual shape is to ask the CPU what it supports at run time, dispatch into the specialized
+/// function, and keep a fallback for everything else:
+///
+/// ```
+/// # #[cfg(target_arch = "x86_64")] {
+/// #[target_feature(enable = "avx2")]
+/// fn sum_avx2(xs: &[u32]) -> u32 {
+///     // The compiler may use AVX2 instructions in here.
+///     xs.iter().sum()
+/// }
+///
+/// fn sum(xs: &[u32]) -> u32 {
+///     if is_x86_feature_detected!("avx2") {
+///         // SAFETY: the CPU was just checked for AVX2 support.
+///         unsafe { sum_avx2(xs) }
+///     } else {
+///         xs.iter().sum()
+///     }
+/// }
+///
+/// assert_eq!(sum(&[1, 2, 3]), 6);
+/// # }
+/// ```
+///
+/// The standard library provides a detection macro for each architecture, such as
+/// [`is_x86_feature_detected`] and [`is_aarch64_feature_detected`].
+///
+/// Calling a `#[target_feature]` function on a CPU without the features is undefined behavior, so
+/// the call needs an `unsafe` block. The exception is a caller that enables the same features
+/// itself: there the compiler already knows the instructions are available, so the call is safe.
+/// Closures written inside such a function inherit its features.
+///
+/// The attribute does not combine with [`inline(always)`], since inlining the body into a caller
+/// that lacks the features would be unsound. The function does not implement the `Fn` traits and
+/// only coerces to an `unsafe fn` pointer, so pass a closure that calls it instead. It is also not
+/// allowed on `main` or on a safe trait method.
+///
+/// The value of `enable` is a comma-separated list of feature names. Names are specific to an
+/// architecture, and one that is not valid for the target is an error. Some are still unstable and
+/// need a nightly feature gate.
+///
+/// For more information, see the Reference on [the `target_feature` attribute].
+///
+/// [`is_x86_feature_detected`]: ../std/arch/macro.is_x86_feature_detected.html
+/// [`is_aarch64_feature_detected`]: ../std/arch/macro.is_aarch64_feature_detected.html
+/// [`inline(always)`]: ./attribute.inline.html
+/// [the `target_feature` attribute]: ../reference/attributes/codegen.html#the-target_feature-attribute
+mod target_feature_attribute {}
