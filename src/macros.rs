@@ -248,7 +248,7 @@ fn rewrite_macro_inner(
     }
 
     if macro_name.ends_with("cfg_select!") {
-        match format_cfg_select(&macro_name, style, context, shape, ts.clone(), mac.span()) {
+        match format_cfg_select(context, shape, mac.span(), &macro_name, style, ts.clone()) {
             Ok(rw) => return Ok(rw),
             Err(err) => match err {
                 // We will move on to parsing macro args just like other macros
@@ -1548,12 +1548,12 @@ fn rewrite_macro_with_items(
 }
 
 fn format_cfg_select(
-    name: &str,
-    delim_token: Delimiter,
     context: &RewriteContext<'_>,
     shape: Shape,
-    ts: TokenStream,
     span: Span,
+    name: &str,
+    delim_token: Delimiter,
+    ts: TokenStream,
 ) -> RewriteResult {
     let mut rewrite = String::with_capacity((span.hi() - span.lo()).to_usize() * 2);
     rewrite.push_str(name);
