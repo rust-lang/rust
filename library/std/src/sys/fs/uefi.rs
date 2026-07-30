@@ -415,9 +415,8 @@ impl fmt::Debug for File {
     }
 }
 
-pub fn readdir(p: &Path) -> io::Result<ReadDir> {
-    let path = crate::path::absolute(p)?;
-    let f = uefi_fs::File::from_path(&path, file::MODE_READ, 0)?;
+pub fn readdir<P: AsRef<Path>>(p: P) -> io::Result<ReadDir> {
+    let f = uefi_fs::File::from_path(p.as_ref(), file::MODE_READ, 0)?;
     let file_info = f.file_info()?;
     let file_attr = FileAttr::from_uefi(file_info);
 
