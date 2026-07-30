@@ -8,7 +8,11 @@ fn short_test_name() {}
 fn this_is_a_really_long_test_name() {}
 
 #[bench]
-fn short_bench_name(b: &mut test::Bencher) {}
+fn short_bench_name(b: &mut test::Bencher) {
+    b.iter(|| {});
+}
 
 #[bench]
-fn this_is_a_really_long_bench_name(b: &mut test::Bencher) {}
+fn this_is_a_really_long_bench_name(b: &mut test::Bencher) {
+    b.iter(|| {});
+}
