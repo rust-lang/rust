@@ -1,4 +1,3 @@
-//@ known-bug: unknown
 // Test that we give a note when the old LUB/GLB algorithm would have
 // succeeded but the new code (which is stricter) gives an error.
 
@@ -8,6 +7,8 @@ fn foo(x: &dyn for<'a, 'b> Foo<&'a u8, &'b u8>, y: &dyn for<'a> Foo<&'a u8, &'a 
     let z = match 22 {
         0 => x,
         _ => y,
+        //~^ ERROR mismatched types
+        //~| ERROR mismatched types
     };
 }
 

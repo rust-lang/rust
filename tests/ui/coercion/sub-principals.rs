@@ -1,6 +1,5 @@
+//@ check-pass
 //@ revisions: current next
-//@[next] check-pass
-//@[current] known-bug: unknown
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@[next] compile-flags: -Znext-solver
 

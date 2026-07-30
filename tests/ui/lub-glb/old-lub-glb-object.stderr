@@ -1,41 +1,22 @@
 error[E0308]: mismatched types
-  --> $DIR/old-lub-glb-object.rs:10:14
+  --> $DIR/old-lub-glb-object.rs:9:14
    |
 LL |         _ => y,
    |              ^ one type is more general than the other
    |
-   = note: expected trait object `dyn for<'a, 'b> Foo<&'a u8, &'b u8>`
-              found trait object `dyn for<'a> Foo<&'a u8, &'a u8>`
+   = note: expected existential trait ref `for<'a, 'b> Foo<&'a u8, &'b u8>`
+              found existential trait ref `Foo<&u8, &u8>`
 
 error[E0308]: mismatched types
-  --> $DIR/old-lub-glb-object.rs:10:14
+  --> $DIR/old-lub-glb-object.rs:9:14
    |
 LL |         _ => y,
    |              ^ one type is more general than the other
    |
-   = note: expected trait object `dyn for<'a, 'b> Foo<&'a u8, &'b u8>`
-              found trait object `dyn for<'a> Foo<&'a u8, &'a u8>`
+   = note: expected existential trait ref `for<'a, 'b> Foo<&'a u8, &'b u8>`
+              found existential trait ref `Foo<&u8, &u8>`
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error[E0308]: mismatched types
-  --> $DIR/old-lub-glb-object.rs:17:14
-   |
-LL |         0 => x as &dyn for<'a> Foo<&'a u8, &'a u8>,
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
-   |
-   = note: expected trait object `dyn for<'a> Foo<&'a u8, &'a u8>`
-              found trait object `dyn for<'a, 'b> Foo<&'a u8, &'b u8>`
-
-error[E0308]: mismatched types
-  --> $DIR/old-lub-glb-object.rs:17:14
-   |
-LL |         0 => x as &dyn for<'a> Foo<&'a u8, &'a u8>,
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ one type is more general than the other
-   |
-   = note: expected trait object `dyn for<'a> Foo<&'a u8, &'a u8>`
-              found trait object `dyn for<'a, 'b> Foo<&'a u8, &'b u8>`
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: aborting due to 4 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0308`.
