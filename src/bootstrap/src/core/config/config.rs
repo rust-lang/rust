@@ -240,6 +240,8 @@ pub struct Config {
     pub rustdoc_pgo: PgoConfig,
     pub cargo_pgo: PgoConfig,
 
+    pub stdlib_semver_baseline: Option<String>,
+
     pub llvm_libunwind_default: Option<LlvmLibunwind>,
     pub enable_bolt_settings: bool,
 
@@ -610,6 +612,7 @@ impl Config {
             std_features: rust_std_features,
             break_on_ice: rust_break_on_ice,
             rustflags: rust_rustflags,
+            stdlib_semver_baseline: rust_stdlib_semver_baseline,
         } = toml_rust.unwrap_or_default();
 
         let Llvm {
@@ -1594,6 +1597,7 @@ NOTE: Please add `--stage 2` to your command line, or if you're sure you want to
                 .or(rust_rustc_debug_assertions)
                 .unwrap_or(rust_debug == Some(true)),
             stderr_is_tty: std::io::stderr().is_terminal(),
+            stdlib_semver_baseline: rust_stdlib_semver_baseline,
             stdout_is_tty: std::io::stdout().is_terminal(),
             submodules: build_submodules,
             sysconfdir: install_sysconfdir.map(PathBuf::from),

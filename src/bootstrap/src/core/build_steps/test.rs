@@ -4630,6 +4630,9 @@ fn check_if_cargo_semver_checks_is_installed(builder: &Builder<'_>) -> bool {
 /// Run cargo-semver-checks on the standard library and compare its API
 /// versus a previous baseline, using rustdoc JSON data.
 ///
+/// The baseline commit can be configured using `rust.stdlib-semver-baseline`.
+/// If unset, the first upstream parent commit will be used.
+///
 /// Fails if a semver-breaking change is detected.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct StdSemverCheck {
@@ -4651,19 +4654,22 @@ impl CommandLineStep for StdSemverCheck {
             panic!("cargo-semver-checks was not found, please install it");
         }
 
-        let baseline_commit = match get_closest_upstream_commit(
-            Some(&run.builder.config.src),
-            &run.builder.config.git_config(),
-            run.builder.config.ci_env,
-        ) {
-            Ok(Some(commit)) => commit,
-            Ok(None) => {
-                panic!("No baseline parent commit found for std-semver-check");
-            }
-            Err(error) => {
-                panic!("Cannot get baseline parent commit for std-semver-check: {error:?}");
-            }
-        };
+        let baseline_commit =
+            run.builder.config.stdlib_semver_baseline.clone().unwrap_or_else(|| {
+                match get_closest_upstream_commit(
+                    Some(&run.builder.config.src),
+                    &run.builder.config.git_config(),
+                    run.builder.config.ci_env,
+                ) {
+                    Ok(Some(commit)) => commit,
+                    Ok(None) => {
+                        panic!("No baseline parent commit found for std-semver-check");
+                    }
+                    Err(error) => {
+                        panic!("Cannot get baseline parent commit for std-semver-check: {error:?}");
+                    }
+                }
+            });
 
         run.builder.ensure(Self {
             build_compiler: run.builder.compiler_for_std(run.builder.top_stage),
