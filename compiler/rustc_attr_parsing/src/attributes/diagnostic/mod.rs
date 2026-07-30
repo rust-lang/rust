@@ -8,7 +8,8 @@ use rustc_parse_format::{
     Argument, FormatSpec, ParseError, ParseMode, Parser, Piece as RpfPiece, Position,
 };
 use rustc_session::lint::builtin::{
-    MALFORMED_DIAGNOSTIC_ATTRIBUTES, MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
+    MALFORMED_DIAGNOSTIC_ATTRIBUTES, MALFORMED_DIAGNOSTIC_FILTERS,
+    MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
 };
 use rustc_span::{Ident, InnerSpan, Span, Symbol, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
@@ -128,7 +129,7 @@ fn merge_directives(
     later: (Span, Directive),
 ) {
     if let Some((_, first)) = first {
-        let Directive { is_rustc_attr, filters, message, label, notes, .. } = later.1;
+        let Directive { is_rustc_attr, filters, message, label, notes, parent_label } = later.1;
 
         // Evaluation visits every filter before the root directive. Appending filters and notes
         // preserves their source order across separate attribute occurrences.
@@ -137,6 +138,22 @@ fn merge_directives(
         merge(cx, &mut first.message, message, sym::message);
         merge(cx, &mut first.label, label, sym::label);
         first.notes.extend(notes);
+
+        if let Some(parent_label) = parent_label {
+            if let Some(first_parent_label) = &first.parent_label {
+                cx.emit_lint(
+                    MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                    IgnoredDiagnosticOption {
+                        first_span: first_parent_label.span,
+                        later_span: parent_label.span,
+                        option_name: sym::parent_label,
+                    },
+                    parent_label.span,
+                );
+            } else {
+                first.parent_label = Some(parent_label);
+            }
+        }
     } else {
         *first = Some(later);
     }
@@ -360,7 +377,11 @@ fn parse_directive_items<'p>(
                     let filter = if let Some(c) = iter.next() {
                         c
                     } else {
-                        cx.emit_err(InvalidOnClause::Empty { span });
+                        cx.emit_lint(
+                            MALFORMED_DIAGNOSTIC_FILTERS,
+                            InvalidOnClause::Empty { span },
+                            span,
+                        );
                         continue;
                     };
 
@@ -379,7 +400,7 @@ fn parse_directive_items<'p>(
                             filters.push((filter, directive));
                         }
                         Err(e) => {
-                            cx.emit_err(e);
+                            cx.emit_lint(MALFORMED_DIAGNOSTIC_FILTERS, e, span);
                         }
                     }
                 } else {
