@@ -219,16 +219,37 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         b: Ty<'tcx>,
         adjust: Adjust,
     ) -> CoerceResult<'tcx> {
-        let a_ty = Ty::new_fn_ptr(
-            self.tcx,
-            ty::Binder::dummy(self.instantiate_binder_with_fresh_vars(
-                self.cause.span,
-                BoundRegionConversionTime::HigherRankedType,
-                a_sig,
-            )),
-        );
+        debug!("unify_hr_fn_ptr(a_sig: {:?}, b: {:?}, adjust: {:?})", a_sig, b, adjust);
 
-        self.unify_and(a_ty, b, [], adjust, ForceLeakCheck::Yes)
+        let ty::FnPtr(b_sig_tys, b_hdr) = b.kind() else {
+            span_bug!(
+                self.cause.span,
+                "unify_hr_fn_ptr: expected a function pointer target, found {b:?}"
+            );
+        };
+
+        let b_sig = b_sig_tys.with(*b_hdr);
+
+        self.commit_if_ok(|snapshot| {
+            let outer_universe = self.infcx.universe();
+
+            let InferOk { value: (), obligations } = self.infcx.enter_forall(b_sig, |b_sig| {
+                let a_sig = self.instantiate_binder_with_fresh_vars(
+                    self.cause.span,
+                    BoundRegionConversionTime::HigherRankedType,
+                    a_sig,
+                );
+
+                let a_ty = Ty::new_fn_ptr(self.tcx, ty::Binder::dummy(a_sig));
+                let b_ty = Ty::new_fn_ptr(self.tcx, ty::Binder::dummy(b_sig));
+
+                self.at(&self.cause, self.fcx.param_env).sup(DefineOpaqueTypes::Yes, b_ty, a_ty)
+            })?;
+
+            self.leak_check(outer_universe, Some(snapshot))?;
+
+            success(vec![Adjustment { kind: adjust, target: b }], b, obligations)
+        })
     }
 
     /// Unify two types (using sub or lub).

@@ -1,26 +1,21 @@
+error: lifetime may not live long enough
+  --> $DIR/escaping-bounds.rs:19:38
+   |
+LL | fn test<'b, T: Foo>() {
+   |         -- lifetime `'b` defined here
+LL |     let y: MentionsLifetimeAndType<'_, for<'a> fn(<T as Foo>::Assoc<'a, 'b>)> =
+LL |         MentionsLifetimeAndType(&(), foo);
+   |                                      ^^^ coercion requires that `'b` must outlive `'static`
+
 error[E0308]: mismatched types
   --> $DIR/escaping-bounds.rs:19:38
    |
 LL |         MentionsLifetimeAndType(&(), foo);
-   |         -----------------------      ^^^ one type is more general than the other
-   |         |
-   |         arguments to this struct are incorrect
+   |                                      ^^^ one type is more general than the other
    |
-   = note: expected fn pointer `for<'a> fn(<T as Foo>::Assoc<'a, 'b>)`
-                 found fn item `for<'a, 'b> fn(<_ as Foo>::Assoc<'a, 'b>) {foo::<_>}`
-help: the type constructed contains `for<'a, 'b> fn(<_ as Foo>::Assoc<'a, 'b>) {foo::<_>}` due to the type of the argument passed
-  --> $DIR/escaping-bounds.rs:19:9
-   |
-LL |         MentionsLifetimeAndType(&(), foo);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---^
-   |                                      |
-   |                                      this argument influences the type of `MentionsLifetimeAndType`
-note: tuple struct defined here
-  --> $DIR/escaping-bounds.rs:13:8
-   |
-LL | struct MentionsLifetimeAndType<'a, T>(&'a (), T);
-   |        ^^^^^^^^^^^^^^^^^^^^^^^
+   = note: expected fn pointer `for<'a> fn(<_ as Foo>::Assoc<'a, '_>)`
+              found fn pointer `for<'a, 'b> fn(<_ as Foo>::Assoc<'a, 'b>)`
 
-error: aborting due to 1 previous error
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0308`.

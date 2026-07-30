@@ -1,4 +1,4 @@
-//@ known-bug: unknown
+//@ check-pass
 // Check that higher ranked subtyping correctly works when using
 // placeholder patterns.
 fn hr_subtype<'c>(f: for<'a, 'b> fn(&'a (), &'b ())) {

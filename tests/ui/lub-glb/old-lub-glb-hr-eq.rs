@@ -1,4 +1,5 @@
-//@ known-bug: unknown
+//@ check-pass
+
 // Test that we give a note when the old LUB/GLB algorithm would have
 // succeeded but the new code (which requires equality) gives an
 // error. However, now that we handle subtyping correctly, we no

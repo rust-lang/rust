@@ -1,5 +1,5 @@
-//@ known-bug: unknown
 //@ compile-flags: -Znext-solver
+//@ check-pass
 
 // With #119106 generalization now results in `AliasRelate` if the generalized
 // alias contains an inference variable which is not nameable.
