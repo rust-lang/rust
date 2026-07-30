@@ -310,13 +310,17 @@ pub fn check_incompatible_options_for_ci_rustc(
         ))?;
 
         let profiler = &ci_cfg.profiler;
-        err!(current_cfg.profiler, profiler, "build");
+        err!(current_cfg.profiler, profiler, format!("target.{host_str}"));
 
         let optimized_compiler_builtins = &ci_cfg.optimized_compiler_builtins;
-        err!(current_cfg.optimized_compiler_builtins, optimized_compiler_builtins, "build");
+        err!(
+            current_cfg.optimized_compiler_builtins,
+            optimized_compiler_builtins,
+            format!("target.{host_str}")
+        );
 
-        err!(current_cfg.allocator, &ci_cfg.allocator, "build");
-        err!(current_cfg.jemalloc, &ci_cfg.jemalloc, "build");
+        err!(current_cfg.allocator, &ci_cfg.allocator, format!("target.{host_str}"));
+        err!(current_cfg.jemalloc, &ci_cfg.jemalloc, format!("target.{host_str}"));
     }
 
     let (Some(current_rust_config), Some(ci_rust_config)) =
