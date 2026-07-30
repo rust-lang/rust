@@ -246,7 +246,9 @@ pub(crate) fn current_or_unnamed() -> Thread {
             (*current).clone()
         }
     } else if current == DESTROYED {
-        Thread::new(id::get_or_init(), None)
+        let thread = Thread::new(id::get_or_init(), None);
+        thread.set_os_id_to_current();
+        thread
     } else {
         init_current(current)
     }
@@ -292,6 +294,7 @@ fn init_current(current: *mut ()) -> Thread {
         // If the thread ID was initialized already, use it.
         let id = id::get_or_init();
         let thread = Thread::new(id, None);
+        thread.set_os_id_to_current();
 
         // Make sure that `crate::rt::thread_cleanup` will be run, which will
         // call `drop_current`.
