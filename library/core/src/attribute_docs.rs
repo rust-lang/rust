@@ -626,8 +626,7 @@ mod link_section_attribute {}
 ///
 /// The attribute does not combine with [`inline(always)`], since inlining the body into a caller
 /// that lacks the features would be unsound. The function does not implement the `Fn` traits and
-/// only coerces to an `unsafe fn` pointer, so pass a closure that calls it instead. It is also not
-/// allowed on `main` or on a safe trait method.
+/// only coerces to an `unsafe fn` pointer, so pass a closure that calls it instead.
 ///
 /// The value of `enable` is a comma-separated list of feature names. Names are specific to an
 /// architecture, and one that is not valid for the target is an error. Some are still unstable and
