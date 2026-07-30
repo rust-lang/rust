@@ -125,8 +125,9 @@ fn prepare_vtable_segments_inner<'tcx, T>(
                 .explicit_super_clauses_of(inner_most_trait_ref.def_id)
                 .iter_identity_copied()
                 .map(Unnormalized::skip_norm_wip)
-                .filter_map(move |(pred, _)| {
-                    pred.instantiate_supertrait(tcx, ty::Binder::dummy(inner_most_trait_ref))
+                .filter_map(move |(clause, _)| {
+                    clause
+                        .instantiate_supertrait(tcx, ty::Binder::dummy(inner_most_trait_ref))
                         .as_trait_clause()
                 })
                 .map(move |pred| {

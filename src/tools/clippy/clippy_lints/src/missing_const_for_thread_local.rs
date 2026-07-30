@@ -89,7 +89,7 @@ fn is_unreachable(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 
 #[inline]
 fn initializer_can_be_made_const(cx: &LateContext<'_>, defid: rustc_span::def_id::DefId, msrv: Msrv) -> bool {
-    // Building MIR for `fn`s with unsatisfiable preds results in ICE.
+    // Building MIR for `fn`s with unsatisfiable clauses results in ICE.
     if !fn_has_unsatisfiable_clauses(cx, defid)
         && let mir = cx.tcx.optimized_mir(defid)
         && let Ok(()) = is_min_const_fn(cx, mir, msrv)
