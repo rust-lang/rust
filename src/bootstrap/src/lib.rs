@@ -34,9 +34,7 @@ use utils::exec::ExecutionContext;
 
 use crate::core::builder;
 use crate::core::builder::Kind;
-use crate::core::config::{
-    Allocator, BootstrapOverrideLld, DryRun, LlvmLibunwind, TargetSelection, flags,
-};
+use crate::core::config::{BootstrapOverrideLld, DryRun, LlvmLibunwind, TargetSelection, flags};
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{self, dir_is_empty, exe, libdir, set_file_times, split_debuginfo};
 
@@ -864,9 +862,11 @@ impl Build {
             crates.is_empty() || possible_features_by_crates.contains(feature)
         };
         let mut features = vec![];
-        let allocator = self.config.allocator(target);
-        if allocator != Allocator::System && check(allocator.feature_name()) {
-            features.push(allocator.feature_name());
+
+        if let Some(allocator_feature_name) = self.config.allocator(target).feature_name()
+            && check(allocator_feature_name)
+        {
+            features.push(allocator_feature_name);
         }
         if (self.config.llvm_enabled(target) || kind == Kind::Check) && check("llvm") {
             features.push("llvm");

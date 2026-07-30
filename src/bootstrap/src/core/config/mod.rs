@@ -258,12 +258,10 @@ pub enum Allocator {
 }
 
 impl Allocator {
-    pub fn feature_name(self) -> &'static str {
+    pub fn feature_name(self) -> Option<&'static str> {
         match self {
-            Allocator::System => {
-                panic!("Allocator::feature_name() should not be called for System allocator")
-            }
-            Allocator::Jemalloc => "jemalloc",
+            Allocator::System => None,
+            Allocator::Jemalloc => Some("jemalloc"),
         }
     }
 }
