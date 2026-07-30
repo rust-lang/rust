@@ -297,6 +297,10 @@ trait PerByteTracking<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
         layout: TyAndLayout<'tcx>,
         imprecise: bool,
     ) {
+        if layout.is_zst() {
+            return;
+        }
+
         if Self::excludes(bx, layout.ty) {
             return;
         }
