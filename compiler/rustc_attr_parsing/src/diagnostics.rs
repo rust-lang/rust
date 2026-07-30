@@ -808,12 +808,6 @@ pub(crate) enum InvalidOnClause {
 }
 
 #[derive(Diagnostic)]
-#[diag(
-    "using multiple `rustc_on_unimplemented` (or mixing it with `diagnostic::on_unimplemented`) is not supported"
-)]
-pub(crate) struct DupesNotAllowed;
-
-#[derive(Diagnostic)]
 #[diag("usage of the unsafe `{$attr_path}` attribute")]
 #[note("{$note}")]
 pub(crate) struct UnsafeAttribute {

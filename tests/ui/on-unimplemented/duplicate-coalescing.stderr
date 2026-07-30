@@ -1,13 +1,3 @@
-error: using multiple `rustc_on_unimplemented` (or mixing it with `diagnostic::on_unimplemented`) is not supported
-
-error: using multiple `rustc_on_unimplemented` (or mixing it with `diagnostic::on_unimplemented`) is not supported
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: using multiple `rustc_on_unimplemented` (or mixing it with `diagnostic::on_unimplemented`) is not supported
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
 warning: `message` is ignored due to previous definition of `message`
   --> $DIR/duplicate-coalescing.rs:22:5
    |
@@ -23,9 +13,11 @@ error[E0277]: i32 filter message
   --> $DIR/duplicate-coalescing.rs:45:13
    |
 LL |     let _: <i32 as Coalesced>::Output;
-   |             ^^^ the trait `Coalesced` is not implemented for `i32`
+   |             ^^^ later filter label
    |
+   = help: the trait `Coalesced` is not implemented for `i32`
    = note: first filter note
+   = note: second filter note
    = note: first root note
    = note: second root note
 help: this trait has no implementations, consider adding one
@@ -38,8 +30,10 @@ error[E0277]: fallback message
   --> $DIR/duplicate-coalescing.rs:53:13
    |
 LL |     let _: <u32 as Coalesced>::Output;
-   |             ^^^ the trait `Coalesced` is not implemented for `u32`
+   |             ^^^ later filter label
    |
+   = help: the trait `Coalesced` is not implemented for `u32`
+   = note: second filter note
    = note: first root note
    = note: second root note
 help: this trait has no implementations, consider adding one
@@ -74,6 +68,6 @@ help: this trait has no implementations, consider adding one
 LL | trait InternalFirst {
    | ^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 7 previous errors; 1 warning emitted
+error: aborting due to 4 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0277`.

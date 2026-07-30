@@ -15,9 +15,8 @@ use thin_vec::{ThinVec, thin_vec};
 
 use crate::context::AcceptContext;
 use crate::diagnostics::{
-    DupesNotAllowed, FormatWarning, IgnoredDiagnosticOption, InvalidOnClause,
-    MalFormedDiagnosticAttributeLint, MissingOptionsForDiagnosticAttribute,
-    NonMetaItemDiagnosticAttribute, WrappedParserError,
+    FormatWarning, IgnoredDiagnosticOption, InvalidOnClause, MalFormedDiagnosticAttributeLint,
+    MissingOptionsForDiagnosticAttribute, NonMetaItemDiagnosticAttribute, WrappedParserError,
 };
 use crate::parser::{ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItemParser};
 
@@ -129,13 +128,15 @@ fn merge_directives(
     later: (Span, Directive),
 ) {
     if let Some((_, first)) = first {
-        if first.is_rustc_attr || later.1.is_rustc_attr {
-            cx.emit_err(DupesNotAllowed);
-        }
+        let Directive { is_rustc_attr, filters, message, label, notes, .. } = later.1;
 
-        merge(cx, &mut first.message, later.1.message, sym::message);
-        merge(cx, &mut first.label, later.1.label, sym::label);
-        first.notes.extend(later.1.notes);
+        // Evaluation visits every filter before the root directive. Appending filters and notes
+        // preserves their source order across separate attribute occurrences.
+        first.is_rustc_attr |= is_rustc_attr;
+        first.filters.extend(filters);
+        merge(cx, &mut first.message, message, sym::message);
+        merge(cx, &mut first.label, label, sym::label);
+        first.notes.extend(notes);
     } else {
         *first = Some(later);
     }
@@ -215,7 +216,7 @@ fn parse_directive_items<'p>(
     let mut message: Option<(Span, _)> = None;
     let mut label: Option<(Span, _)> = None;
     let mut notes = ThinVec::new();
-    let mut parent_label = None;
+    let mut parent_label: Option<FormatString> = None;
     let mut filters = ThinVec::new();
 
     for item in items {
@@ -346,10 +347,10 @@ fn parse_directive_items<'p>(
             }
             (Mode::RustcOnUnimplemented, sym::parent_label) => {
                 let value = or_malformed!(value?);
-                if parent_label.is_none() {
-                    parent_label = Some(parse_format(value));
+                if let Some(parent_label) = &parent_label {
+                    duplicate!(name, parent_label.span)
                 } else {
-                    duplicate!(name, span)
+                    parent_label = Some(parse_format(value));
                 }
             }
             (Mode::RustcOnUnimplemented, sym::on) => {
