@@ -12,7 +12,7 @@ trait MethodArgs: Tuple {
 }
 
 impl Foo {
-    fn method(&self, #[splat] args: impl MethodArgs) -> String {
+    fn method(&self, #[rustc_splat] args: impl MethodArgs) -> String {
         args.call_method(self)
     }
 }

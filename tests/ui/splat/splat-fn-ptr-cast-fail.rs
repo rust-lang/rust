@@ -5,11 +5,11 @@
 
 use std::marker::Tuple;
 
-fn tuple_args(#[splat] (_a, _b): (u32, i8)) {}
+fn tuple_args(#[rustc_splat] (_a, _b): (u32, i8)) {}
 
-fn splat_non_terminal_arg(#[splat] (_a, _b): (u32, i8), _c: f64) {}
+fn splat_non_terminal_arg(#[rustc_splat] (_a, _b): (u32, i8), _c: f64) {}
 
-fn f<Args: Tuple>(#[splat] args: Args) {}
+fn f<Args: Tuple>(#[rustc_splat] args: Args) {}
 
 fn main() {
     // Function pointers
