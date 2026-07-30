@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::hash::Hash;
+use std::sync::Arc;
 
 use rustc_ast::expand::allocator::AllocatorMethod;
 use rustc_data_structures::sync::{DynSend, DynSync};
@@ -15,6 +16,7 @@ use rustc_span::Symbol;
 use super::CodegenObject;
 use crate::back::archive::ArArchiveBuilderBuilder;
 use crate::back::link::link_binary;
+use crate::back::write::ModuleConfig;
 use crate::{CompiledModules, CrateInfo, ModuleCodegen, TargetConfig};
 
 pub trait BackendTypes {
@@ -176,5 +178,6 @@ pub trait ExtraBackendMethods: Send + Sync + DynSend + DynSync {
         &self,
         tcx: TyCtxt<'_>,
         cgu_name: Symbol,
+        module_config: Arc<ModuleConfig>,
     ) -> (ModuleCodegen<Self::Module>, u64);
 }
