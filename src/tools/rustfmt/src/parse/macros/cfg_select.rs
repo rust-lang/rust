@@ -169,7 +169,8 @@ pub(crate) fn parse_cfg_select_arms(
             CfgSelectFormatPredicate::Cfg(meta_item)
         };
 
-        if let Err(_) = parser.expect(exp!(FatArrow)) {
+        if let Err(e) = parser.expect(exp!(FatArrow)) {
+            e.cancel();
             debug!("Expected to find a `=>` after cfg_selec! predicate.");
             return None;
         };
