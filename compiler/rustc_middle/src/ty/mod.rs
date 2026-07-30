@@ -103,7 +103,7 @@ pub use self::predicate::{
 };
 pub use self::region::{
     EarlyParamRegion, LateParamRegion, LateParamRegionKind, Region, RegionExt, RegionKind,
-    RegionUtilitiesExt, RegionVid,
+    RegionVid,
 };
 pub use self::sty::{
     Alias, AliasTy, AliasTyKind, Article, Binder, BoundConst, BoundRegion, BoundRegionKind,

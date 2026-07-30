@@ -11,9 +11,8 @@ use rustc_macros::extension;
 use rustc_middle::mir::{Body, ConstraintCategory};
 use rustc_middle::ty::{
     self, DefiningScopeKind, DefinitionSiteHiddenType, FallibleTypeFolder, Flags, GenericArg,
-    GenericArgsRef, OpaqueTypeKey, ProvisionalHiddenType, Region, RegionExt, RegionUtilitiesExt,
-    RegionVid, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeVisitableExt, Unnormalized,
-    fold_regions,
+    GenericArgsRef, OpaqueTypeKey, ProvisionalHiddenType, Region, RegionExt, RegionVid, Ty, TyCtxt,
+    TypeFoldable, TypeSuperFoldable, TypeVisitableExt, Unnormalized, fold_regions,
 };
 use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_span::Span;
