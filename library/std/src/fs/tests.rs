@@ -942,6 +942,10 @@ fn recursive_mkdir_slash() {
 }
 
 #[test]
+#[cfg_attr(
+    target_os = "l4re",
+    ignore = "Path '.' in the file system root can not be resolved in L4Re"
+)]
 fn recursive_mkdir_dot() {
     check!(fs::create_dir_all(Path::new(".")));
 }
@@ -2078,6 +2082,7 @@ fn rename_directory() {
 }
 
 #[test]
+#[cfg_attr(target_os = "l4re", ignore = "futimens")]
 fn test_file_times() {
     #[cfg(target_vendor = "apple")]
     use crate::os::darwin::fs::FileTimesExt;
@@ -2106,7 +2111,8 @@ fn test_file_times() {
                     target_os = "android",
                     target_os = "redox",
                     target_os = "espidf",
-                    target_os = "horizon"
+                    target_os = "horizon",
+                    target_os = "l4re",
                 ))
             )
         )))]

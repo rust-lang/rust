@@ -98,10 +98,6 @@ pub(crate) struct Ld64UnimplementedModifier;
 pub(crate) struct LinkerUnsupportedModifier;
 
 #[derive(Diagnostic)]
-#[diag("exporting symbols not implemented yet for L4Bender")]
-pub(crate) struct L4BenderExportingSymbolsUnimplemented;
-
-#[derive(Diagnostic)]
 #[diag("error enumerating natvis directory: {$error}")]
 pub(crate) struct NoNatvisDirectory {
     pub error: Error,
