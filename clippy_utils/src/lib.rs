@@ -121,7 +121,7 @@ use visitors::{Visitable, for_each_unconsumed_temporary};
 use crate::ast_utils::unordered_over;
 use crate::higher::Range;
 use crate::msrvs::Msrv;
-use crate::res::{MaybeDef as _, MaybeQPath as _, MaybeResPath as _};
+use crate::res::{MaybeDef as _, MaybeResPath as _};
 use crate::source::HasSourceMap;
 use crate::ty::{adt_and_variant_of_res, can_partially_move_ty, expr_sig, is_copy, is_recursively_primitive_type};
 use crate::visitors::for_each_expr_without_closures;
@@ -299,13 +299,13 @@ pub fn is_lang_item_or_ctor(cx: &LateContext<'_>, did: DefId, item: LangItem) ->
 
 /// Checks is `expr` is `None`
 pub fn is_none_expr(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    expr.res(cx).ctor_parent(cx).is_lang_item(cx, OptionNone)
+    expr.basic_res().ctor_parent(cx).is_lang_item(cx, OptionNone)
 }
 
 /// If `expr` is `Some(inner)`, returns `inner`
 pub fn as_some_expr<'tcx>(cx: &LateContext<'_>, expr: &'tcx Expr<'tcx>) -> Option<&'tcx Expr<'tcx>> {
     if let ExprKind::Call(e, [arg]) = expr.kind
-        && e.res(cx).ctor_parent(cx).is_lang_item(cx, OptionSome)
+        && e.basic_res().ctor_parent(cx).is_lang_item(cx, OptionSome)
     {
         Some(arg)
     } else {
