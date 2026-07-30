@@ -381,8 +381,16 @@ fn anon_const_type_of<'tcx>(icx: &ItemCtxt<'tcx>, def_id: LocalDefId) -> Ty<'tcx
 
 fn const_arg_anon_type_of<'tcx>(icx: &ItemCtxt<'tcx>, arg_hir_id: HirId, span: Span) -> Ty<'tcx> {
     use hir::*;
+    use rustc_middle::ty::Ty;
 
     let tcx = icx.tcx;
+    let type_error = || {
+        Ty::new_error_with_message(
+            tcx,
+            span,
+            "`type_of` called on const argument's anon const before the const argument was lowered",
+        )
+    };
 
     match tcx.parent_hir_node(arg_hir_id) {
         // Array length const arguments do not have `type_of` fed as there is never a corresponding
@@ -405,22 +413,13 @@ fn const_arg_anon_type_of<'tcx>(icx: &ItemCtxt<'tcx>, arg_hir_id: HirId, span: S
         }
 
         Node::Expr(Expr { kind: ExprKind::Path(qpath), .. }) => {
-            path_const_arg_anon_type_of(icx, qpath, arg_hir_id)
-                .unwrap_or_else(|| const_arg_anon_type_error(tcx, span))
+            path_const_arg_anon_type_of(icx, qpath, arg_hir_id).unwrap_or_else(type_error)
         }
 
         // This is not a `bug!` as const arguments in path segments that did not resolve to anything
         // will result in `type_of` never being fed.
-        _ => const_arg_anon_type_error(tcx, span),
+        _ => type_error(),
     }
-}
-
-fn const_arg_anon_type_error<'tcx>(tcx: TyCtxt<'tcx>, span: Span) -> Ty<'tcx> {
-    Ty::new_error_with_message(
-        tcx,
-        span,
-        "`type_of` called on const argument's anon const before the const argument was lowered",
-    )
 }
 
 fn path_const_arg_anon_type_of<'tcx>(
