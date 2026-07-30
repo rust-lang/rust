@@ -172,6 +172,7 @@ impl<'a> Sugg<'a> {
             | ExprKind::Use(..)
             | ExprKind::Err(_)
             | ExprKind::UnsafeBinderCast(..)
+            | ExprKind::Rescope(..)
             | ExprKind::Match(_, _,
                 MatchSource::AwaitDesugar | MatchSource::TryDesugar(_) | MatchSource::FormatArgs
             ) => Sugg::NonParen(get_snippet(expr.span)),

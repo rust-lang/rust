@@ -9,8 +9,8 @@ fn main() {
     extend!(); //~ ERROR: expected a label
     scope!(a => ());  //~ ERROR: expected a label
     extend!(a => ()); //~ ERROR: expected a label
-    scope!('a => ());  //~ ERROR: FIXME: rescoping operators are not implemented
-    extend!('a => ()); //~ ERROR: FIXME: rescoping operators are not implemented
+    scope!('a => ());  //~ ERROR: use of undeclared label `'a`
+    extend!('a => ()); //~ ERROR: use of undeclared label `'a`
     'a: {
         scope!('a);  //~ ERROR: expected `=>`, found `)`
         extend!('a); //~ ERROR: expected `=>`, found `)`

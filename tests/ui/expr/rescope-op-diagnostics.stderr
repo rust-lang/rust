@@ -58,17 +58,18 @@ LL |         extend!('a =>);
    |         expected expression
    |         in this macro invocation
 
-error: FIXME: rescoping operators are not implemented
-  --> $DIR/rescope-op-diagnostics.rs:12:5
+error[E0426]: use of undeclared label `'a`
+  --> $DIR/rescope-op-diagnostics.rs:12:12
    |
 LL |     scope!('a => ());
-   |     ^^^^^^^^^^^^^^^^
+   |            ^^ undeclared label `'a`
 
-error: FIXME: rescoping operators are not implemented
-  --> $DIR/rescope-op-diagnostics.rs:13:5
+error[E0426]: use of undeclared label `'a`
+  --> $DIR/rescope-op-diagnostics.rs:13:13
    |
 LL |     extend!('a => ());
-   |     ^^^^^^^^^^^^^^^^^
+   |             ^^ undeclared label `'a`
 
 error: aborting due to 10 previous errors
 
+For more information about this error, try `rustc --explain E0426`.

@@ -321,6 +321,11 @@ mod expressions {
 
 
 
+
+
+
+
+
         // ...
 
 
@@ -386,7 +391,7 @@ mod expressions {
     /// ExprKind::Rescope
     fn expr_rescope() {
         use std::temporary_rescoping::{scope,extend,};
-        'a: { let expr; (/*ERROR*/); (/*ERROR*/); }
+        'a: { let expr; scope!('a => expr); extend!('a => expr); }
     }
 }
 mod items {

@@ -1,5 +1,7 @@
 // Ensure that we don't allow taking the address of temporary values
-#![feature(type_ascription)]
+#![feature(type_ascription, temporary_rescoping)]
+
+use std::temporary_rescoping::{scope, extend};
 
 const FOUR: u64 = 4;
 
@@ -28,4 +30,11 @@ fn main() {
 
     let ascribe_field_ref = &raw const type_ascribe!(PAIR.0, i32);  //~ ERROR cannot take address
     let ascribe_index_ref = &raw mut type_ascribe!(ARRAY[0], i32);  //~ ERROR cannot take address
+
+    'a: {
+        let ref_scope = &raw const scope!('a => 2);                 //~ ERROR cannot take address
+        let mut_ref_scope = &raw mut scope!('a => 3);               //~ ERROR cannot take address
+        let ref_extend = &raw const extend!('a => PAIR.0);          //~ ERROR cannot take address
+        let mut_ref_extend = &raw mut extend!('a => ARRAY[0]);      //~ ERROR cannot take address
+    }
 }

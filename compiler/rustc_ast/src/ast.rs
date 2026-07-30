@@ -1960,7 +1960,7 @@ pub enum UnsafeBinderCastKind {
 }
 
 /// Differentiates between the temporary re-scoping operators `scope!` and `extend!`
-#[derive(Clone, Copy, Encodable, Decodable, Debug, PartialEq, Eq, StableHash, Walkable)]
+#[derive(Clone, Copy, Encodable, Decodable, Debug, PartialEq, Eq, Hash, StableHash, Walkable)]
 pub enum RescopeKind {
     Scope,
     Extend,

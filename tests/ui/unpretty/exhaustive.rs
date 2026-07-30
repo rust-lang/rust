@@ -422,8 +422,8 @@ mod expressions {
         use std::temporary_rescoping::{scope, extend};
         'a: {
             let expr;
-            scope!('a => expr);  //[hir]~ ERROR FIXME: rescoping operators are not implemented
-            extend!('a => expr); //[hir]~ ERROR FIXME: rescoping operators are not implemented
+            scope!('a => expr);
+            extend!('a => expr);
         }
     }
 }

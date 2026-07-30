@@ -1,0 +1,174 @@
+DefId(0:6 ~ temporary_rescoping[d169]::main):
+params: [
+]
+body:
+    Expr {
+        ty: ()
+        temp_scope_id: 15
+        span: $DIR/temporary-rescoping.rs:10:11: 15:2 (#0)
+        kind: 
+            Scope {
+                region_scope: Node(15)
+                hir_id: HirId(DefId(0:6 ~ temporary_rescoping[d169]::main).15)
+                value:
+                    Expr {
+                        ty: ()
+                        temp_scope_id: 15
+                        span: $DIR/temporary-rescoping.rs:10:11: 15:2 (#0)
+                        kind: 
+                            Block {
+                                targeted_by_break: false
+                                span: $DIR/temporary-rescoping.rs:10:11: 15:2 (#0)
+                                region_scope: Node(1)
+                                safety_mode: Safe
+                                stmts: [
+                                    Stmt {
+                                        kind: Let {
+                                            remainder_scope: Remainder { block: 1, first_statement_index: 0}
+                                            init_scope: Node(2)
+                                            pattern: 
+                                                Pat {
+                                                    ty: ()
+                                                    span: $DIR/temporary-rescoping.rs:11:9: 11:10 (#0)
+                                                    kind: PatKind {
+                                                        Wild
+                                                    }
+                                                }
+                                            ,
+                                            initializer: Some(
+                                                Expr {
+                                                    ty: ()
+                                                    temp_scope_id: 3
+                                                    span: $DIR/temporary-rescoping.rs:11:13: 14:6 (#0)
+                                                    kind: 
+                                                        Scope {
+                                                            region_scope: Node(3)
+                                                            hir_id: HirId(DefId(0:6 ~ temporary_rescoping[d169]::main).3)
+                                                            value:
+                                                                Expr {
+                                                                    ty: ()
+                                                                    temp_scope_id: 3
+                                                                    span: $DIR/temporary-rescoping.rs:11:13: 14:6 (#0)
+                                                                    kind: 
+                                                                        Block {
+                                                                            targeted_by_break: true
+                                                                            span: $DIR/temporary-rescoping.rs:11:13: 14:6 (#0)
+                                                                            region_scope: Node(4)
+                                                                            safety_mode: Safe
+                                                                            stmts: [
+                                                                                Stmt {
+                                                                                    kind: Expr {
+                                                                                        scope: Node(8)
+                                                                                        expr:
+                                                                                            Expr {
+                                                                                                ty: &'{erased} ()
+                                                                                                temp_scope_id: 5
+                                                                                                span: $DIR/temporary-rescoping.rs:12:9: 12:26 (#0)
+                                                                                                kind: 
+                                                                                                    Scope {
+                                                                                                        region_scope: Node(5)
+                                                                                                        hir_id: HirId(DefId(0:6 ~ temporary_rescoping[d169]::main).5)
+                                                                                                        value:
+                                                                                                            Expr {
+                                                                                                                ty: &'{erased} ()
+                                                                                                                temp_scope_id: 5
+                                                                                                                span: $DIR/temporary-rescoping.rs:12:9: 12:26 (#0)
+                                                                                                                kind: 
+                                                                                                                    Borrow (
+                                                                                                                        borrow_kind: Shared
+                                                                                                                        arg:
+                                                                                                                            Expr {
+                                                                                                                                ty: ()
+                                                                                                                                temp_scope_id: 7
+                                                                                                                                span: $DIR/temporary-rescoping.rs:12:23: 12:25 (#0)
+                                                                                                                                kind: 
+                                                                                                                                    Scope {
+                                                                                                                                        region_scope: Node(7)
+                                                                                                                                        hir_id: HirId(DefId(0:6 ~ temporary_rescoping[d169]::main).7)
+                                                                                                                                        value:
+                                                                                                                                            Expr {
+                                                                                                                                                ty: ()
+                                                                                                                                                temp_scope_id: 7
+                                                                                                                                                span: $DIR/temporary-rescoping.rs:12:23: 12:25 (#0)
+                                                                                                                                                kind: 
+                                                                                                                                                    Tuple {
+                                                                                                                                                        fields: [
+                                                                                                                                                        ]
+                                                                                                                                                    }
+                                                                                                                                            }
+                                                                                                                                    }
+                                                                                                                            }
+                                                                                                                    )
+                                                                                                            }
+                                                                                                    }
+                                                                                            }
+                                                                                    }
+                                                                                }
+                                                                                Stmt {
+                                                                                    kind: Expr {
+                                                                                        scope: Node(12)
+                                                                                        expr:
+                                                                                            Expr {
+                                                                                                ty: &'{erased} ()
+                                                                                                temp_scope_id: 9
+                                                                                                span: $DIR/temporary-rescoping.rs:13:9: 13:27 (#0)
+                                                                                                kind: 
+                                                                                                    Scope {
+                                                                                                        region_scope: Node(9)
+                                                                                                        hir_id: HirId(DefId(0:6 ~ temporary_rescoping[d169]::main).9)
+                                                                                                        value:
+                                                                                                            Expr {
+                                                                                                                ty: &'{erased} ()
+                                                                                                                temp_scope_id: 9
+                                                                                                                span: $DIR/temporary-rescoping.rs:13:9: 13:27 (#0)
+                                                                                                                kind: 
+                                                                                                                    Borrow (
+                                                                                                                        borrow_kind: Shared
+                                                                                                                        arg:
+                                                                                                                            Expr {
+                                                                                                                                ty: ()
+                                                                                                                                temp_scope_id: 11
+                                                                                                                                span: $DIR/temporary-rescoping.rs:13:24: 13:26 (#0)
+                                                                                                                                kind: 
+                                                                                                                                    Scope {
+                                                                                                                                        region_scope: Node(11)
+                                                                                                                                        hir_id: HirId(DefId(0:6 ~ temporary_rescoping[d169]::main).11)
+                                                                                                                                        value:
+                                                                                                                                            Expr {
+                                                                                                                                                ty: ()
+                                                                                                                                                temp_scope_id: 11
+                                                                                                                                                span: $DIR/temporary-rescoping.rs:13:24: 13:26 (#0)
+                                                                                                                                                kind: 
+                                                                                                                                                    Tuple {
+                                                                                                                                                        fields: [
+                                                                                                                                                        ]
+                                                                                                                                                    }
+                                                                                                                                            }
+                                                                                                                                    }
+                                                                                                                            }
+                                                                                                                    )
+                                                                                                            }
+                                                                                                    }
+                                                                                            }
+                                                                                    }
+                                                                                }
+                                                                            ]
+                                                                            expr: []
+                                                                        }
+                                                                }
+                                                        }
+                                                }
+                                            )
+                                            else_block: None
+                                            hir_id: HirId(DefId(0:6 ~ temporary_rescoping[d169]::main).13)
+                                            span: $DIR/temporary-rescoping.rs:11:5: 14:6 (#0)
+                                        }
+                                    }
+                                ]
+                                expr: []
+                            }
+                    }
+            }
+    }
+
+
