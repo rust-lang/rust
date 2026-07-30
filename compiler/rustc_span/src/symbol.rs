@@ -1636,6 +1636,8 @@ symbols! {
         ptr_const_is_null,
         ptr_copy,
         ptr_copy_nonoverlapping,
+        ptr_drop_in_place,
+        ptr_drop_in_place_self,
         ptr_from_ref,
         ptr_guaranteed_cmp,
         ptr_is_null,

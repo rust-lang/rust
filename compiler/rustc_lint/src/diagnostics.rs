@@ -987,6 +987,38 @@ pub(crate) struct DropCopyDiag<'a> {
 }
 
 #[derive(Diagnostic)]
+#[diag(
+    "calls to {$from_fn ->
+        [true] `std::ptr::drop_in_place`
+        *[false] `drop_in_place`
+    } with a pointer to a reference instead of a pointer to an owned value does nothing"
+)]
+pub(crate) struct DropInPlaceRefDiag<'a> {
+    pub from_fn: bool,
+    pub arg_ty: Ty<'a>,
+    #[label("argument has type `{$arg_ty}`")]
+    pub label: Span,
+    #[subdiagnostic]
+    pub sugg: UseLetUnderscoreIgnoreSuggestion,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "calls to {$from_fn ->
+        [true] `std::ptr::drop_in_place`
+        *[false] `drop_in_place`
+    } with a pointer to a value that implements `Copy` does nothing"
+)]
+pub(crate) struct DropInPlaceCopyDiag<'a> {
+    pub from_fn: bool,
+    pub arg_ty: Ty<'a>,
+    #[label("argument has type `{$arg_ty}`")]
+    pub label: Span,
+    #[subdiagnostic]
+    pub sugg: UseLetUnderscoreIgnoreSuggestion,
+}
+
+#[derive(Diagnostic)]
 #[diag("calls to `std::mem::forget` with a reference instead of an owned value does nothing")]
 pub(crate) struct ForgetRefDiag<'a> {
     pub arg_ty: Ty<'a>,

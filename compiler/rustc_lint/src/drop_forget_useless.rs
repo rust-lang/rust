@@ -4,14 +4,16 @@ use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::sym;
 
 use crate::diagnostics::{
-    DropCopyDiag, DropRefDiag, ForgetCopyDiag, ForgetRefDiag, UndroppedManuallyDropsDiag,
-    UndroppedManuallyDropsSuggestion, UseLetUnderscoreIgnoreSuggestion,
+    DropCopyDiag, DropInPlaceCopyDiag, DropInPlaceRefDiag, DropRefDiag, ForgetCopyDiag,
+    ForgetRefDiag, UndroppedManuallyDropsDiag, UndroppedManuallyDropsSuggestion,
+    UseLetUnderscoreIgnoreSuggestion,
 };
 use crate::{LateContext, LateLintPass, LintContext};
 
 declare_lint! {
-    /// The `dropping_references` lint checks for calls to `std::mem::drop` with a reference
-    /// instead of an owned value.
+    /// The `dropping_references` lint checks for calls to `std::mem::drop`
+    /// and `std::ptr::drop_in_place` where the dropped type is a reference instead of
+    /// an owned value.
     ///
     /// ### Example
     ///
@@ -34,7 +36,7 @@ declare_lint! {
     /// is likely what was intended.
     pub DROPPING_REFERENCES,
     Warn,
-    "calls to `std::mem::drop` with a reference instead of an owned value"
+    "calls to `drop` and `drop_in_place` where the dropped type is a reference instead of an owned value"
 }
 
 declare_lint! {
@@ -61,8 +63,8 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `dropping_copy_types` lint checks for calls to `std::mem::drop` with a value
-    /// that derives the Copy trait.
+    /// The `dropping_copy_types` lint checks for calls to `std::mem::drop`
+    /// and `std::ptr::drop_in_place` where the dropped value implements the `Copy` trait.
     ///
     /// ### Example
     ///
@@ -81,7 +83,7 @@ declare_lint! {
     /// value will be copied and moved into the function on invocation.
     pub DROPPING_COPY_TYPES,
     Warn,
-    "calls to `std::mem::drop` with a value that implements Copy"
+    "calls to `drop` and `drop_in_place` where the dropped value implements Copy"
 }
 
 declare_lint! {
@@ -138,14 +140,25 @@ declare_lint_pass!(DropForgetUseless => [DROPPING_REFERENCES, FORGETTING_REFEREN
 
 impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
-        if let ExprKind::Call(path, [arg]) = expr.kind
-            && let ExprKind::Path(ref qpath) = path.kind
-            && let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id()
-            && let Some(fn_name) = cx.tcx.get_diagnostic_name(def_id)
+        let (fn_did, arg) = match expr.kind {
+            // matching on `function(<receiver>, ...)`
+            ExprKind::Call(path, [arg]) if let ExprKind::Path(ref qpath) = path.kind => {
+                (cx.qpath_res(qpath, path.hir_id).opt_def_id(), arg)
+            }
+            // matching on `<receiver>.method(..)`
+            ExprKind::MethodCall(_, arg, _, _) => {
+                (cx.typeck_results().type_dependent_def_id(expr.hir_id), arg)
+            }
+            _ => return,
+        };
+
+        if let Some(fn_did) = fn_did
+            && let Some(fn_name) = cx.tcx.get_diagnostic_name(fn_did)
         {
             let arg_ty = cx.typeck_results().expr_ty(arg);
             let is_copy = cx.type_is_copy_modulo_regions(arg_ty);
             let drop_is_single_call_in_arm = is_single_call_in_arm(cx, arg, expr);
+
             let let_underscore_ignore_sugg = || {
                 if let Some((_, node)) = cx.tcx.hir_parent_iter(expr.hir_id).nth(0)
                     && let Node::Stmt(stmt) = node
@@ -161,12 +174,29 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
                     UseLetUnderscoreIgnoreSuggestion::Note
                 }
             };
+
             match fn_name {
                 sym::mem_drop if arg_ty.is_ref() && !drop_is_single_call_in_arm => {
                     cx.emit_span_lint(
                         DROPPING_REFERENCES,
                         expr.span,
                         DropRefDiag { arg_ty, label: arg.span, sugg: let_underscore_ignore_sugg() },
+                    );
+                }
+                sym::ptr_drop_in_place | sym::ptr_drop_in_place_self
+                    if let &ty::RawPtr(inner_ty, _mutbl) = arg_ty.kind()
+                        && inner_ty.is_ref()
+                        && !drop_is_single_call_in_arm =>
+                {
+                    cx.emit_span_lint(
+                        DROPPING_REFERENCES,
+                        expr.span,
+                        DropInPlaceRefDiag {
+                            arg_ty,
+                            label: arg.span,
+                            sugg: let_underscore_ignore_sugg(),
+                            from_fn: fn_name == sym::ptr_drop_in_place,
+                        },
                     );
                 }
                 sym::mem_forget if arg_ty.is_ref() => {
@@ -188,6 +218,22 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
                             arg_ty,
                             label: arg.span,
                             sugg: let_underscore_ignore_sugg(),
+                        },
+                    );
+                }
+                sym::ptr_drop_in_place | sym::ptr_drop_in_place_self
+                    if let &ty::RawPtr(inner_ty, _mutbl) = arg_ty.kind()
+                        && cx.type_is_copy_modulo_regions(inner_ty)
+                        && !drop_is_single_call_in_arm =>
+                {
+                    cx.emit_span_lint(
+                        DROPPING_COPY_TYPES,
+                        expr.span,
+                        DropInPlaceCopyDiag {
+                            arg_ty,
+                            label: arg.span,
+                            sugg: let_underscore_ignore_sugg(),
+                            from_fn: fn_name == sym::ptr_drop_in_place,
                         },
                     );
                 }
