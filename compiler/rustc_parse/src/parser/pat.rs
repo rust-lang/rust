@@ -117,6 +117,7 @@ impl<'a> Parser<'a> {
                 let leading_if_span = self.prev_token.span;
                 let cond = self.parse_expr()?;
                 let cond_span = cond.span;
+                self.suspicious_attribute(&cond, "Guard::cond pat");
                 Box::new(Guard { cond: *cond, span_with_leading_if: leading_if_span.to(cond_span) })
             };
 
@@ -798,6 +799,7 @@ impl<'a> Parser<'a> {
             if let Some(re) = self.parse_range_end() {
                 self.parse_pat_range_begin_with(const_expr, re)?
             } else {
+                self.suspicious_attribute(&const_expr, "PatKind::Expr const_block");
                 PatKind::Expr(const_expr)
             }
         } else if self.is_builtin() {
@@ -1216,6 +1218,10 @@ impl<'a> Parser<'a> {
             }
             None
         };
+        self.suspicious_attribute(&begin, "PatKind::Range lhs");
+        if let Some(expr) = &end {
+            self.suspicious_attribute(&expr, "PatKind::Range rhs");
+        }
         Ok(PatKind::Range(Some(begin), end, re))
     }
 
@@ -1257,6 +1263,7 @@ impl<'a> Parser<'a> {
             *syn = RangeSyntax::DotDotEq;
             self.dcx().emit_err(DotDotDotRangeToPatternNotAllowed { span: re.span });
         }
+        self.suspicious_attribute(&end, "PatKind::Range end");
         Ok(PatKind::Range(None, Some(end), re))
     }
 
