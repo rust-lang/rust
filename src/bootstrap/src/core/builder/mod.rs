@@ -1171,7 +1171,28 @@ impl<'a> Builder<'a> {
 
     /// Run all default documentation steps to build documentation.
     pub fn run_default_doc_steps(&self) {
-        self.run_step_descriptions(&Builder::get_step_descriptions(Kind::Doc), &[]);
+        // It's important that we don't just call `run_step_descriptions` here,
+        // because that would cause `--skip` handling for actual command-line
+        // arguments to inappropriately skip these steps.
+        //
+        // This function is nevertheless a bit of a hack, to work around the
+        // fact that we don't have a good way to simulate `./x doc` without
+        // also simulating parts of command-line selector handling.
+
+        for desc in &Builder::get_step_descriptions(Kind::Doc) {
+            if !(desc.is_default_step_fn)(self) {
+                continue;
+            }
+
+            let should_run = (desc.should_run)(ShouldRun::new(self, Kind::Doc));
+            let default_pathsets = should_run.default_pathsets();
+
+            let targets = if desc.is_host { &self.hosts } else { &self.targets };
+            for &target in targets {
+                let run = RunConfig { builder: self, target, paths: default_pathsets.clone() };
+                (desc.make_run)(run);
+            }
+        }
     }
 
     pub fn doc_rust_lang_org_channel(&self) -> String {
