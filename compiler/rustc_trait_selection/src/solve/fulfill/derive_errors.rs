@@ -1,6 +1,6 @@
 use std::ops::ControlFlow;
 
-use rustc_hir::attrs::lang_items::{self as hir, LangItem};
+use rustc_hir::attrs::lang_items::LangItem;
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::traits::solve::{BuiltinImplSource, CandidateSource, GoalSource, MaybeCause};
 use rustc_infer::traits::{
@@ -288,13 +288,13 @@ impl<'tcx> BestObligation<'tcx> {
             return false;
         }
 
-        let ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id, .. }, .. }) =
+        let ty::Alias(ty::IsRigid::Yes, ty::AliasTy { kind: ty::Opaque { def_id, .. }, .. }) =
             trait_pred.self_ty().kind()
         else {
             return false;
         };
 
-        !matches!(tcx.opaque_ty_origin(*def_id), hir::OpaqueTyOrigin::AsyncFn { .. })
+        !matches!(tcx.opaque_ty_origin(*def_id), rustc_hir::OpaqueTyOrigin::AsyncFn { .. })
     }
 
     /// HACK: We walk the nested obligations for a well-formed arg manually,

@@ -249,7 +249,7 @@ where
             goal.predicate.self_ty().kind()
         {
             debug_assert!(is_rigid == ty::IsRigid::Yes);
-            structural_traits::consider_auto_trait_candidate_for_opaque_ty(ecx, goal, def_id, args)
+            ecx.consider_auto_trait_candidate_for_opaque_ty(goal, def_id, args)
         } else {
             // We need to make sure to stall any coroutines we are inferring to avoid query cycles.
             if let Some(cand) = ecx.try_stall_coroutine(goal.predicate.self_ty()) {
@@ -1274,6 +1274,42 @@ where
         )?;
         self.probe_builtin_trait_candidate(BuiltinImplSource::Misc)
             .enter(|ecx| ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes))
+    }
+
+    fn consider_auto_trait_candidate_for_opaque_ty(
+        &mut self,
+        goal: Goal<I, TraitPredicate<I>>,
+        def_id: I::OpaqueTyId,
+        args: I::GenericArgs,
+    ) -> Result<Candidate<I>, NoSolutionOrRerunNonErased> {
+        let cx = self.cx();
+        let source = CandidateSource::BuiltinImpl(BuiltinImplSource::Misc);
+        if self.opaque_accesses.might_rerun() {
+            return match self.opaque_accesses.rerun_always(RerunReason::AutoTraitLeakage) {
+                Err(e) => Err(e.into()),
+            };
+        }
+
+        for item_bound in cx.item_self_bounds(def_id.into()).skip_binder() {
+            if item_bound.as_trait_clause().is_some_and(|b| b.def_id() == goal.predicate.def_id()) {
+                return Err(NoSolution.into());
+            }
+        }
+
+        let candidate = self.probe_trait_candidate(source).enter(|ecx| {
+            let hidden_ty = cx.type_of(def_id.into()).instantiate(cx, args).skip_norm_wip();
+            ecx.add_goal(
+                GoalSource::ImplWhereBound,
+                goal.with(cx, goal.predicate.with_replaced_self_ty(cx, hidden_ty)),
+            )?;
+            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+        });
+
+        match candidate {
+            Ok(candidate) if has_only_region_constraints(candidate.result) => Ok(candidate),
+            Ok(_) => self.forced_ambiguity(MaybeInfo::AMBIGUOUS),
+            Err(err) => Err(err),
+        }
     }
 
     // Return `Some` if there is an impl (built-in or user provided) that may

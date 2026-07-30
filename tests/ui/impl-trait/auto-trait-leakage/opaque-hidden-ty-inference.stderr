@@ -1,5 +1,5 @@
 error[E0277]: `impl Sized` cannot be unpinned
-  --> $DIR/opaque-hidden-ty-inference.rs:25:31
+  --> $DIR/opaque-hidden-ty-inference.rs:30:31
    |
 LL |     let opaque = require_auto(define::<T>());
    |                  ------------ ^^^^^^^^^^^^^ the trait `Unpin` is not implemented for `impl Sized`
@@ -9,7 +9,7 @@ LL |     let opaque = require_auto(define::<T>());
    = note: consider using the `pin!` macro
            consider using `Box::pin` if you need to access the pinned value outside of the current scope
 note: required by a bound in `require_auto`
-  --> $DIR/opaque-hidden-ty-inference.rs:12:20
+  --> $DIR/opaque-hidden-ty-inference.rs:17:20
    |
 LL | fn require_auto<T: Unpin>(x: T) -> T {
    |                    ^^^^^ required by this bound in `require_auto`

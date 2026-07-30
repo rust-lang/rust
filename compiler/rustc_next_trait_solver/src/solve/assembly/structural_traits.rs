@@ -5,21 +5,17 @@ use derive_where::derive_where;
 use rustc_type_ir::data_structures::HashMap;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::{SolverProjectionLangItem, SolverTraitLangItem};
+use rustc_type_ir::solve::SizedTraitKind;
 use rustc_type_ir::solve::inspect::ProbeKind;
-use rustc_type_ir::solve::{MaybeInfo, NoSolutionOrRerunNonErased, RerunReason, SizedTraitKind};
 use rustc_type_ir::{
-    self as ty, Binder, FallibleTypeFolder, Interner, Movability, Mutability, Region,
-    TraitPredicate, TypeFoldable, TypeSuperFoldable, Unnormalized, Upcast as _, elaborate,
+    self as ty, Binder, FallibleTypeFolder, Interner, Movability, Mutability, Region, TypeFoldable,
+    TypeSuperFoldable, Unnormalized, Upcast as _, elaborate,
 };
 use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
 use tracing::instrument;
 
-use super::Candidate;
 use crate::delegate::SolverDelegate;
-use crate::solve::{
-    AdtDestructorKind, BuiltinImplSource, CandidateSource, Certainty, EvalCtxt, Goal, GoalSource,
-    NoSolution, has_only_region_constraints,
-};
+use crate::solve::{AdtDestructorKind, EvalCtxt, Goal, NoSolution};
 
 // Calculates the constituent types of a type for `auto trait` purposes.
 #[instrument(level = "trace", skip(ecx), ret)]
@@ -109,46 +105,6 @@ where
                 .map(Unnormalized::skip_norm_wip)
                 .collect(),
         )),
-    }
-}
-
-pub(in crate::solve) fn consider_auto_trait_candidate_for_opaque_ty<D, I>(
-    ecx: &mut EvalCtxt<'_, D>,
-    goal: Goal<I, TraitPredicate<I>>,
-    def_id: I::OpaqueTyId,
-    args: I::GenericArgs,
-) -> Result<Candidate<I>, NoSolutionOrRerunNonErased>
-where
-    D: SolverDelegate<Interner = I>,
-    I: Interner,
-{
-    let cx = ecx.cx();
-    let source = CandidateSource::BuiltinImpl(BuiltinImplSource::Misc);
-    if ecx.opaque_accesses.might_rerun() {
-        return match ecx.opaque_accesses.rerun_always(RerunReason::AutoTraitLeakage) {
-            Err(e) => Err(e.into()),
-        };
-    }
-
-    for item_bound in cx.item_self_bounds(def_id.into()).skip_binder() {
-        if item_bound.as_trait_clause().is_some_and(|b| b.def_id() == goal.predicate.def_id()) {
-            return Err(NoSolution.into());
-        }
-    }
-
-    let candidate = ecx.probe_trait_candidate(source).enter(|ecx| {
-        let hidden_ty = cx.type_of(def_id.into()).instantiate(cx, args).skip_norm_wip();
-        ecx.add_goal(
-            GoalSource::ImplWhereBound,
-            goal.with(cx, goal.predicate.with_replaced_self_ty(cx, hidden_ty)),
-        )?;
-        ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
-    });
-
-    match candidate {
-        Ok(candidate) if has_only_region_constraints(candidate.result) => Ok(candidate),
-        Ok(_) => ecx.forced_ambiguity(MaybeInfo::AMBIGUOUS),
-        Err(err) => Err(err),
     }
 }
 
