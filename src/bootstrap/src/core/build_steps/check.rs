@@ -88,7 +88,7 @@ impl CommandLineStep for Std {
             Mode::Std,
             SourceType::InTree,
             target,
-            builder.config.cmd.kind(),
+            builder.kind,
         );
 
         std_cargo(builder, target, &mut cargo, &self.crates);
@@ -98,7 +98,7 @@ impl CommandLineStep for Std {
         }
 
         let _guard = builder.msg(
-            builder.config.cmd.kind(),
+            builder.kind,
             format_args!("library artifacts{}", crate_description(&self.crates)),
             Mode::Std,
             build_compiler,
