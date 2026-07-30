@@ -4,7 +4,7 @@
 //@ revisions: amdgpu nvptx
 //
 //@ [amdgpu] needs-llvm-components: amdgpu
-//@ [amdgpu] compile-flags: --target amdgcn-amd-amdhsa -Ctarget-cpu=gfx900 --crate-type=rlib
+//@ [amdgpu] compile-flags: --target amdgcn-amd-amdhsa -Ttarget-cpu=gfx900 --crate-type=rlib
 //@ [nvptx] needs-llvm-components: nvptx
 //@ [nvptx] compile-flags: --target nvptx64-nvidia-cuda --crate-type=rlib
 #![no_core]

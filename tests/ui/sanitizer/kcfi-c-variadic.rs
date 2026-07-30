@@ -1,6 +1,7 @@
 //@ needs-sanitizer-kcfi
 //@ no-prefer-dynamic
-//@ compile-flags: -Zsanitizer=kcfi -Cpanic=abort -Cunsafe-allow-abi-mismatch=sanitizer
+//@ compile-flags: -Tsanitizer=kcfi -Cpanic=abort -Cunsafe-allow-abi-mismatch=sanitizer
+//@ compile-flags: -Zunstable-options
 //@ ignore-backends: gcc
 //@ run-pass
 

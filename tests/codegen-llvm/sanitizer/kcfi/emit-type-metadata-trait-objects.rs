@@ -8,7 +8,8 @@
 //@ [aarch64v8r] needs-llvm-components: aarch64
 //@ [x86_64] compile-flags: --target x86_64-unknown-none
 //@ [x86_64] needs-llvm-components: x86
-//@ compile-flags: -Cno-prepopulate-passes -Zsanitizer=kcfi -Copt-level=0
+//@ compile-flags: -Cno-prepopulate-passes -Tsanitizer=kcfi -Copt-level=0
+//@ compile-flags: -Zunstable-options
 
 #![crate_type = "lib"]
 #![feature(arbitrary_self_types, no_core, lang_items)]

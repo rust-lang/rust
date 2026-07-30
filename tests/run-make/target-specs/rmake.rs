@@ -93,7 +93,7 @@ fn main() {
         .input("foo.rs")
         .target("require-explicit-cpu")
         .crate_type("lib")
-        .arg("-Ctarget-cpu=generic")
+        .arg("-Ttarget-cpu=generic")
         .run();
     rustc().arg("-Zunstable-options").target("require-explicit-cpu").print("target-cpus").run();
 }

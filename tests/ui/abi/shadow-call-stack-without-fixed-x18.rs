@@ -1,4 +1,4 @@
-//@ compile-flags: --target aarch64-unknown-none -Zsanitizer=shadow-call-stack
+//@ compile-flags: --target aarch64-unknown-none -Tsanitizer=shadow-call-stack -Zunstable-options
 //@ dont-check-compiler-stderr
 //@ needs-llvm-components: aarch64
 //@ ignore-backends: gcc

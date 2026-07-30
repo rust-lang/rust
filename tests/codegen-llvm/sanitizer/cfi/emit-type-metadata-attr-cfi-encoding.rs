@@ -1,7 +1,8 @@
 // Verifies that user-defined CFI encoding for types are emitted.
 //
 //@ needs-sanitizer-cfi
-//@ compile-flags: -Clto -Cno-prepopulate-passes -Ctarget-feature=-crt-static -Zsanitizer=cfi -Copt-level=0 -C unsafe-allow-abi-mismatch=sanitizer
+//@ compile-flags: -Clto -Cno-prepopulate-passes -Ctarget-feature=-crt-static -Tsanitizer=cfi -Copt-level=0 -C unsafe-allow-abi-mismatch=sanitizer
+//@ compile-flags: -Zunstable-options
 
 #![crate_type = "lib"]
 #![feature(cfi_encoding, extern_types)]

@@ -17,11 +17,11 @@ So we test that they error in essentially all of the same places.
 //@ [riscv64] needs-llvm-components: riscv
 //@ [riscv64] compile-flags: --target=riscv64gc-unknown-none-elf --crate-type=rlib
 //@ [avr] needs-llvm-components: avr
-//@ [avr] compile-flags: --target=avr-none -C target-cpu=atmega328p --crate-type=rlib
+//@ [avr] compile-flags: --target=avr-none -T target-cpu=atmega328p --crate-type=rlib
 //@ [msp430] needs-llvm-components: msp430
 //@ [msp430] compile-flags: --target=msp430-none-elf --crate-type=rlib
 //@ [amdgpu] needs-llvm-components: amdgpu
-//@ [amdgpu] compile-flags: --target amdgcn-amd-amdhsa -Ctarget-cpu=gfx900 --crate-type=rlib
+//@ [amdgpu] compile-flags: --target amdgcn-amd-amdhsa -Ttarget-cpu=gfx900 --crate-type=rlib
 //@ [nvptx] needs-llvm-components: nvptx
 //@ [nvptx] compile-flags: --target nvptx64-nvidia-cuda --crate-type=rlib
 //@ ignore-backends: gcc

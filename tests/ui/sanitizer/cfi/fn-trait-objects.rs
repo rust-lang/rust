@@ -4,7 +4,7 @@
 //@ needs-sanitizer-cfi
 //@ only-linux
 //@ ignore-backends: gcc
-//@ compile-flags: -Ctarget-feature=-crt-static -Ccodegen-units=1 -Clto -Cprefer-dynamic=off -Copt-level=0 -Zsanitizer=cfi -Cunsafe-allow-abi-mismatch=sanitizer --test
+//@ compile-flags: -Ctarget-feature=-crt-static -Ccodegen-units=1 -Clto -Cprefer-dynamic=off -Copt-level=0 -Tsanitizer=cfi -Cunsafe-allow-abi-mismatch=sanitizer -Zunstable-options --test
 //@ run-pass
 
 #![feature(fn_traits)]

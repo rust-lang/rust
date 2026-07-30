@@ -15,7 +15,8 @@ fn main() {
         .emit("metadata")
         .sysroot("/dev/null")
         .target("aarch64-unknown-none-softfloat")
-        .arg("-Zfixed-x18")
+        .arg("-Tfixed-x18")
+        .arg("-Zunstable-options")
         .run();
 
     rustdoc()
@@ -23,7 +24,8 @@ fn main() {
         .crate_type("rlib")
         .extern_("d", "libd.rmeta")
         .target("aarch64-unknown-none-softfloat")
-        .arg("-Zfixed-x18")
+        .arg("-Tfixed-x18")
+        .arg("-Zunstable-options")
         .run();
 
     rustdoc()
@@ -31,7 +33,8 @@ fn main() {
         .crate_type("rlib")
         .extern_("d", "libd.rmeta")
         .target("aarch64-unknown-none-softfloat")
-        .arg("-Zfixed-x18")
+        .arg("-Tfixed-x18")
+        .arg("-Zunstable-options")
         .arg("--test")
         .run();
 
@@ -41,7 +44,8 @@ fn main() {
         .crate_type("rlib")
         .extern_("d", "libd.rmeta")
         .target("aarch64-unknown-none-softfloat")
-        .arg("-Zfixed-x18")
+        .arg("-Tfixed-x18")
+        .arg("-Zunstable-options")
         .arg("--test")
         .run();
 
@@ -53,7 +57,7 @@ fn main() {
         .target("aarch64-unknown-none-softfloat")
         .arg("--test")
         .run_fail()
-        .assert_stderr_contains("mixing `-Zfixed-x18` will cause an ABI mismatch");
+        .assert_stderr_contains("mixing `-Tfixed-x18` will cause an ABI mismatch");
 
     // rustdoc --test -Cunsafe-allow-abi-mismatch=... ignores the mismatch
     rustdoc()

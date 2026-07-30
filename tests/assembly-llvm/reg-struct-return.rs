@@ -7,9 +7,9 @@
 //!   `-Zreg-struct-return` is activated
 //@ add-minicore
 //@ assembly-output: emit-asm
-//@ compile-flags: -O --target=i686-unknown-linux-gnu -Crelocation-model=static
+//@ compile-flags: -O --target=i686-unknown-linux-gnu -Crelocation-model=static -Zunstable-options
 //@ revisions: WITH WITHOUT
-//@[WITH] compile-flags: -Zreg-struct-return
+//@[WITH] compile-flags: -Treg-struct-return
 //@ needs-llvm-components: x86
 
 #![feature(no_core)]

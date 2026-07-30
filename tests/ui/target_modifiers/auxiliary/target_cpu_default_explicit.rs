@@ -1,5 +1,5 @@
 //@ no-prefer-dynamic
-//@ compile-flags: --target nvptx64-nvidia-cuda -Ctarget-cpu=sm_70
+//@ compile-flags: --target nvptx64-nvidia-cuda -Ttarget-cpu=sm_70
 //@ needs-llvm-components: nvptx
 //@ ignore-backends: gcc
 

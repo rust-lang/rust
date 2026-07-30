@@ -227,7 +227,9 @@ impl Options {
             .all_denied_partial_mitigations()
             .filter(|mitigation| mitigation.allowed_by_default_at(edition))
             .collect();
-        for (kind, MitigationStatus { index: _, allowed }) in &self.mitigation_coverage_map.map {
+        for (kind, MitigationStatus { index: _, allowed }) in
+            &self.collected_options.mitigations.map
+        {
             match allowed {
                 Some(true) => {
                     result.insert(*kind);

@@ -10,7 +10,7 @@ use std::hash::Hash;
 use std::path::{Path, PathBuf};
 use std::str::{self, FromStr};
 use std::sync::LazyLock;
-use std::{cmp, fs, iter};
+use std::{cmp, fmt, fs, iter};
 
 use externs::{ExternOpt, split_extern_opt};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
@@ -1471,8 +1471,7 @@ impl Default for Options {
             color: ColorConfig::Auto,
             logical_env: FxIndexMap::default(),
             verbose: false,
-            target_modifiers: BTreeMap::default(),
-            mitigation_coverage_map: Default::default(),
+            collected_options: Default::default(),
         }
     }
 }
@@ -1585,27 +1584,52 @@ impl Passes {
     }
 }
 
-#[derive(Clone, Copy, Hash, Debug, PartialEq)]
+#[derive(Clone, Copy, Hash, Debug, PartialEq, Encodable, BlobDecodable)]
 pub enum PAuthKey {
     A,
     B,
 }
 
-#[derive(Clone, Copy, Hash, Debug, PartialEq)]
+#[derive(Clone, Copy, Hash, Debug, PartialEq, Encodable, BlobDecodable)]
 pub struct PacRet {
     pub leaf: bool,
     pub pc: bool,
     pub key: PAuthKey,
 }
 
-#[derive(Clone, Copy, Hash, Debug, PartialEq, Default)]
+#[derive(Clone, Copy, Hash, Debug, PartialEq, Default, Encodable, BlobDecodable)]
 pub struct BranchProtection {
     pub bti: bool,
     pub pac_ret: Option<PacRet>,
     pub gcs: bool,
 }
 
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialOrd, PartialEq)]
+impl fmt::Display for BranchProtection {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut parts = Vec::new();
+        if self.bti {
+            parts.push("bti");
+        }
+        if let Some(pac_ret) = self.pac_ret {
+            parts.push("pac-ret");
+            if pac_ret.leaf {
+                parts.push("leaf");
+            }
+            if pac_ret.pc {
+                parts.push("pc");
+            }
+            if matches!(pac_ret.key, PAuthKey::B) {
+                parts.push("b-key");
+            }
+        }
+        if self.gcs {
+            parts.push("gcs");
+        }
+        write!(f, "{}", parts.join(","))
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialOrd, PartialEq, Encodable, BlobDecodable)]
 pub enum PointerAuthOption {
     // See <compiler/rustc_session/src/options.rs> and Clang's command line reference:
     // <https://clang.llvm.org/docs/ClangCommandLineReference.html#cmdoption-clang-fptrauth-auth-traps>
@@ -1626,6 +1650,7 @@ pub enum PointerAuthOption {
     VTPtrTypeDisc,
     // tidy-alphabetical-end
 }
+
 impl PointerAuthOption {
     pub fn parse(s: &str) -> Option<Self> {
         match s {
@@ -1643,6 +1668,28 @@ impl PointerAuthOption {
             "vt-ptr-addr-discrimination" => Some(Self::VTPtrAddrDisc),
             "vt-ptr-type-discrimination" => Some(Self::VTPtrTypeDisc),
             _ => None,
+        }
+    }
+}
+
+impl fmt::Display for PointerAuthOption {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Aarch64JumpTableHardening => write!(f, "aarch64-jump-table-hardening"),
+            Self::AuthTraps => write!(f, "auth-traps"),
+            Self::Calls => write!(f, "calls"),
+            Self::ElfGot => write!(f, "elf-got"),
+            Self::FunctionPointerTypeDiscrimination => {
+                write!(f, "function-pointer-type-discrimination")
+            }
+            Self::IndirectGotos => write!(f, "indirect-gotos"),
+            Self::InitFini => write!(f, "init-fini"),
+            Self::InitFiniAddressDiscrimination => write!(f, "init-fini-address-discrimination"),
+            Self::Intrinsics => write!(f, "intrinsics"),
+            Self::ReturnAddresses => write!(f, "return-addresses"),
+            Self::TypeInfoVTPtrDisc => write!(f, "typeinfo-vt-ptr-discrimination"),
+            Self::VTPtrAddrDisc => write!(f, "vt-ptr-addr-discrimination"),
+            Self::VTPtrTypeDisc => write!(f, "vt-ptr-type-discrimination"),
         }
     }
 }
@@ -1900,6 +1947,14 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
             "<LEVEL>",
         ),
         opt(Stable, Multi, "C", "codegen", "Set a codegen option", "<OPT>[=<VALUE>]"),
+        opt(
+            Stable,
+            Multi,
+            "T",
+            "target-modifier",
+            "Set a target modifier option",
+            "<OPT>[=<VALUE>]",
+        ),
         opt(Stable, Flag, "V", "version", "Print version info and exit", ""),
         opt(Stable, Flag, "v", "verbose", "Use verbose output", ""),
     ];
@@ -2527,7 +2582,6 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         .unwrap_or_else(|e| early_dcx.early_fatal(e));
 
     let mut collected_options = Default::default();
-
     let mut unstable_opts = UnstableOptions::build(early_dcx, matches, &mut collected_options);
 
     if unstable_opts.staticlib_hide_internal_symbols && !crate_types.contains(&CrateType::StaticLib)
@@ -2561,6 +2615,11 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     let output_types = parse_output_types(early_dcx, &unstable_opts, matches);
 
     let mut cg = CodegenOptions::build(early_dcx, matches, &mut collected_options);
+    CodegenOptions::require_unstable_options(
+        early_dcx,
+        &collected_options,
+        unstable_opts.unstable_options,
+    );
     let (disable_local_thinlto, codegen_units) = should_override_cgus_and_disable_thinlto(
         early_dcx,
         &output_types,
@@ -2705,12 +2764,8 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     let prints = print_request::collect_print_requests(early_dcx, &mut cg, &unstable_opts, matches);
 
     // -Zretpoline-external-thunk also requires -Zretpoline
-    if unstable_opts.retpoline_external_thunk {
-        unstable_opts.retpoline = true;
-        collected_options.target_modifiers.insert(
-            OptionsTargetModifiers::UnstableOptions(UnstableOptionsTargetModifiers::Retpoline),
-            "true".to_string(),
-        );
+    if cg.retpoline_external_thunk {
+        cg.retpoline = true;
     }
 
     let cg = cg;
@@ -2870,8 +2925,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         color,
         logical_env,
         verbose,
-        target_modifiers: collected_options.target_modifiers,
-        mitigation_coverage_map: collected_options.mitigations,
+        collected_options,
     }
 }
 

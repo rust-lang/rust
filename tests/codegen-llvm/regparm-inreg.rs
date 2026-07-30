@@ -3,14 +3,15 @@
 // x86 only.
 
 //@ add-minicore
-//@ compile-flags: --target i686-unknown-linux-gnu -Cno-prepopulate-passes -Copt-level=3 -Ctarget-feature=+avx
+//@ compile-flags: --target i686-unknown-linux-gnu -Cno-prepopulate-passes -Copt-level=3
+//@ compile-flags: -Ctarget-feature=+avx -Zunstable-options
 //@ needs-llvm-components: x86
 
 //@ revisions:regparm0 regparm1 regparm2 regparm3
-//@[regparm0] compile-flags: -Zregparm=0
-//@[regparm1] compile-flags: -Zregparm=1
-//@[regparm2] compile-flags: -Zregparm=2
-//@[regparm3] compile-flags: -Zregparm=3
+//@[regparm0] compile-flags: -Tregparm=0
+//@[regparm1] compile-flags: -Tregparm=1
+//@[regparm2] compile-flags: -Tregparm=2
+//@[regparm3] compile-flags: -Tregparm=3
 
 #![crate_type = "lib"]
 #![no_core]

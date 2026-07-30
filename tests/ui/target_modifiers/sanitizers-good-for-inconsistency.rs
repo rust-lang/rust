@@ -8,8 +8,8 @@
 //@ aux-build:no-sanitizers.rs
 //@ compile-flags: -Cpanic=abort -C target-feature=-crt-static
 
-//@[wrong_address_san] compile-flags: -Zsanitizer=address
-//@[wrong_leak_san] compile-flags: -Zsanitizer=leak
+//@[wrong_address_san] compile-flags: -Csanitizer=address -Zunstable-options
+//@[wrong_leak_san] compile-flags: -Csanitizer=leak -Zunstable-options
 //@ check-pass
 
 #![feature(no_core)]

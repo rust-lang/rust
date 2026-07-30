@@ -727,7 +727,7 @@ pub fn codegen_crate<
         && tcx.sess.target.unsupported_cpus.contains(&target_cpu.into())
     {
         // The target cpu is explicitly listed as an unsupported cpu
-        tcx.dcx().emit_fatal(diagnostics::CpuUnsupported { target_cpu: target_cpu.clone() });
+        tcx.dcx().emit_fatal(diagnostics::CpuUnsupported { target_cpu: target_cpu.to_string() });
     }
 
     let cgu_name_builder = &mut CodegenUnitNameBuilder::new(tcx);

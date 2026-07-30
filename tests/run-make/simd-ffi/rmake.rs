@@ -64,7 +64,7 @@ fn main() {
         } else if target.starts_with("mips") {
             "+msa,+fp64"
         } else if target.starts_with("amdgcn") {
-            cmd.arg("-Ctarget-cpu=gfx900");
+            cmd.arg("-Ttarget-cpu=gfx900");
             ""
         } else {
             panic!("missing target_feature case for {target}");

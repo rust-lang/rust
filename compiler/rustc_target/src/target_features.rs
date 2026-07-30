@@ -311,7 +311,7 @@ static AARCH64_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("rdm", Stable, &["neon"]),
     (
         "reserve-x18",
-        Forbidden { reason: "use `-Zfixed-x18` compiler flag instead", hard_error: false },
+        Forbidden { reason: "use `-Tfixed-x18` compiler flag instead", hard_error: false },
         &[],
     ),
     // FEAT_SB

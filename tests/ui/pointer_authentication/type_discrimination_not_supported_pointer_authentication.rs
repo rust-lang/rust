@@ -2,7 +2,7 @@
 //@ check-fail
 //@ needs-llvm-components: aarch64
 
-//@ compile-flags: -Zpointer-authentication=+function-pointer-type-discrimination --crate-type=lib --target aarch64-unknown-linux-pauthtest
+//@ compile-flags: -Zunstable-options -Tpointer-authentication=+function-pointer-type-discrimination --crate-type=lib --target aarch64-unknown-linux-pauthtest
 
 #![feature(no_core)]
 #![no_std]

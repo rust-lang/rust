@@ -1,10 +1,10 @@
 //@ aux-build:wrong_regparm_and_ret.rs
-//@ compile-flags: --target i686-unknown-linux-gnu
+//@ compile-flags: --target i686-unknown-linux-gnu -Zunstable-options
 //@ needs-llvm-components: x86
 
 //@ revisions:two_allowed unknown_allowed
 //@[two_allowed] compile-flags: -Cunsafe-allow-abi-mismatch=regparm,reg-struct-return
-//@[unknown_allowed] compile-flags: -Cunsafe-allow-abi-mismatch=unknown_flag -Zregparm=2 -Zreg-struct-return=true
+//@[unknown_allowed] compile-flags: -Cunsafe-allow-abi-mismatch=unknown_flag -Tregparm=2 -Treg-struct-return=true
 //@[two_allowed] check-pass
 //@ ignore-backends: gcc
 

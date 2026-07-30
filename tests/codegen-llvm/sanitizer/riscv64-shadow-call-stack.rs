@@ -1,5 +1,6 @@
 //@ add-minicore
-//@ compile-flags: --target riscv64imac-unknown-none-elf -Zsanitizer=shadow-call-stack
+//@ compile-flags: --target riscv64imac-unknown-none-elf -Tsanitizer=shadow-call-stack
+//@ compile-flags: -Zunstable-options
 //@ needs-llvm-components: riscv
 
 #![allow(internal_features)]

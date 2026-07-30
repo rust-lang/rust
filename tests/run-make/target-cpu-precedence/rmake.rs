@@ -15,8 +15,8 @@ fn main() {
         .input("lib.rs")
         .crate_name("target_cpu_precedence")
         .target(TARGET)
-        .target_cpu(FIRST_CPU)
-        .target_cpu(LAST_CPU)
+        .arg(format!("-Ttarget-cpu={FIRST_CPU}"))
+        .arg(format!("-Ttarget-cpu={LAST_CPU}"))
         .emit("llvm-ir=output.ll,metadata=output.rmeta")
         .run();
 

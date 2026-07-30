@@ -1,11 +1,12 @@
-// Verifies that `-Zsanitizer-cfi-normalize-integers` requires `-Zsanitizer=cfi` or
-// `-Zsanitizer=kcfi`
+// Verifies that `-Tsanitizer-cfi-normalize-integers` requires `-Tsanitizer=cfi` or
+// `-Tsanitizer=kcfi`
 //
 //@ needs-sanitizer-cfi
-//@ compile-flags: -Clto -Cno-prepopulate-passes -Ctarget-feature=-crt-static -Zsanitizer-cfi-normalize-integers
+//@ compile-flags: -Clto -Cno-prepopulate-passes -Ctarget-feature=-crt-static
+//@ compile-flags: -Tsanitizer-cfi-normalize-integers -Zunstable-options
 
 #![feature(no_core)]
 #![no_core]
 #![no_main]
 
-//~? ERROR `-Zsanitizer-cfi-normalize-integers` requires `-Zsanitizer=cfi` or `-Zsanitizer=kcfi`
+//~? ERROR `-Tsanitizer-cfi-normalize-integers` requires `-Tsanitizer=cfi` or `-Tsanitizer=kcfi`

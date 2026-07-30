@@ -1,4 +1,4 @@
-//@ compile-flags: -Z sanitizer=kernel-hwaddress --target x86_64-unknown-none
+//@ compile-flags: -Tsanitizer=kernel-hwaddress --target x86_64-unknown-none -Zunstable-options
 //@ needs-llvm-components: x86
 //@ ignore-backends: gcc
 
