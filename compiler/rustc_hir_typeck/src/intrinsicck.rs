@@ -70,13 +70,13 @@ fn skeleton_string<'tcx>(
 fn check_transmute<'tcx>(
     tcx: TyCtxt<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
-    from: Ty<'tcx>,
-    to: Ty<'tcx>,
+    from: Unnormalized<'tcx, Ty<'tcx>>,
+    to: Unnormalized<'tcx, Ty<'tcx>>,
     hir_id: HirId,
 ) -> Result<(), ErrorGuaranteed> {
     let span = tcx.hir_span(hir_id);
     let normalize = |ty| {
-        if let Ok(ty) = tcx.try_normalize_erasing_regions(typing_env, Unnormalized::new_wip(ty)) {
+        if let Ok(ty) = tcx.try_normalize_erasing_regions(typing_env, ty) {
             ty
         } else {
             Ty::new_error_with_message(
@@ -253,6 +253,7 @@ pub(crate) fn check_transmutes(tcx: TyCtxt<'_>, owner: LocalDefId) -> Result<(),
     let typing_env = ty::TypingEnv::codegen(tcx, owner);
     let mut result = Ok(());
     for &(from, to, hir_id) in &typeck_results.transmutes_to_check {
+        let (to, from) = ty::set_aliases_to_non_rigid(tcx, (to, from)).unzip();
         result = result.and(check_transmute(tcx, typing_env, from, to, hir_id));
     }
     result
