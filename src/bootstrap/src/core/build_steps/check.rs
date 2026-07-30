@@ -18,7 +18,7 @@ use crate::core::builder::{
 };
 use crate::core::config::TargetSelection;
 use crate::utils::build_stamp::{self, BuildStamp};
-use crate::{CodegenBackendKind, Compiler, Mode, Subcommand, t};
+use crate::{CodegenBackendKind, Compiler, Mode, t};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Std {
@@ -92,7 +92,7 @@ impl CommandLineStep for Std {
         );
 
         std_cargo(builder, target, &mut cargo, &self.crates);
-        if matches!(builder.config.cmd, Subcommand::Fix) {
+        if builder.kind == Kind::Fix {
             // By default, cargo tries to fix all targets. Tell it not to fix tests until we've added `test` to the sysroot.
             cargo.arg("--lib");
         }

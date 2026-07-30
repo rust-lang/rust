@@ -310,6 +310,7 @@ pub enum Subcommand {
         #[arg(global = true, short = 'F', action = clap::ArgAction::Append, value_name = "LINT")]
         forbid: Vec<String>,
     },
+
     /// Run cargo fix
     #[command(long_about = "\n
     Arguments:
@@ -317,7 +318,14 @@ pub enum Subcommand {
         and/or artifacts to run `cargo fix` against. For example:
             ./x.py fix library/core
             ./x.py fix library/core library/proc_macro")]
-    Fix,
+    Fix {
+        /// Pass `--allow-dirty` to `cargo fix`, allowing it to run even if the
+        /// current git checkout has uncommitted changes.
+        #[arg(long)]
+        allow_dirty: bool,
+    },
+
+    /// Run rustfmt
     #[command(
         name = "fmt",
         long_about = "\n
@@ -327,7 +335,6 @@ pub enum Subcommand {
             ./x.py fmt
             ./x.py fmt --check"
     )]
-    /// Run rustfmt
     Format {
         /// check formatting instead of applying
         #[arg(long)]
