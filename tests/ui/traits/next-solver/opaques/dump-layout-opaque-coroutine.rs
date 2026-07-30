@@ -1,3 +1,5 @@
+//@ revisions: old next
+//@[next] compile-flags: -Znext-solver
 //@ edition: 2024
 
 // Regression test for the second example in

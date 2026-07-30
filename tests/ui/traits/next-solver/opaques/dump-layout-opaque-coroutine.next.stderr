@@ -1,5 +1,5 @@
 error: size: Size(1 bytes)
-  --> $DIR/dump-layout-opaque-coroutine.rs:17:1
+  --> $DIR/dump-layout-opaque-coroutine.rs:19:1
    |
 LL | type Foo = impl Sized;
    | ^^^^^^^^
