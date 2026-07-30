@@ -1029,6 +1029,9 @@ impl<'tcx> Instance<'tcx> {
                             && !ty.needs_drop(tcx, ty::TypingEnv::fully_monomorphized())
                             // FIXME: track metadata layout in ParamLayout to relax this
                             && layout.is_sized()
+                            // FIXME: figure out how to handle uninhabited types -- should they be erased?
+                            // (causes issues with comparing layout inhabitedness w/ opsem inhabitedness)
+                            && !layout.uninhabited
                         {
                             let seedless_layout_data = layout.make_opaque();
                             let seedless_layout = tcx.mk_layout(seedless_layout_data);
