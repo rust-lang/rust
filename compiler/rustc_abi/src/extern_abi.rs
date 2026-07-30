@@ -371,6 +371,8 @@ impl ExternAbi {
         }
     }
 
+    /// Returns whether safe functions with this ABI implement the `Fn` traits.
+    /// `false` only for uncallable or internal ABIs.
     pub fn is_fn_trait_compatible(self) -> bool {
         match self {
             ExternAbi::C { .. }
