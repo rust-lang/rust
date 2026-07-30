@@ -1598,6 +1598,13 @@ fn format_cfg_select(
 
     let last_arm = arms.last();
 
+    // We have to fib a little here and update the context to remove the `inside_macro` state.
+    // The code that flattens match arms will refuse to do so if it's inside a macro. Mostly
+    // this is done to prevent rustfmt from removing tokens in the context of a macro, but in
+    // this case it should be fine since we know that each `cfg_select!` arm must be a valid expr.
+    let rewrite_context = context.clone();
+    rewrite_context.leave_macro();
+
     let items = itemize_list(
         context.snippet_provider,
         arms.iter(),
@@ -1614,7 +1621,7 @@ fn format_cfg_select(
             };
 
             crate::matches::rewrite_match_body(
-                context,
+                &rewrite_context,
                 &arm.expr,
                 &predicate_str,
                 nested_shape,
