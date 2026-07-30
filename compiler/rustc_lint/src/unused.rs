@@ -198,6 +198,8 @@ trait UnusedDelimLint {
             | Paren(_)
             | Become(_) => true,
             Call(..) | MethodCall(_) | Let(..) | Field(..) | MacCall(_) | FormatArgs(_) => false,
+            // FIXME(temporary_rescoping): we can be more precise
+            Rescope(..) => false,
             // `gca!()` is invalid in function/method argument position.
             Gca(_) => false,
             // don't lint for placeholder/error-recovery
