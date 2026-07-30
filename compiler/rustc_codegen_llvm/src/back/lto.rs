@@ -28,7 +28,7 @@ use crate::back::write::{
     self, CodegenDiagnosticsStage, DiagnosticHandlers, bitcode_section_name, codegen,
     save_temp_bitcode,
 };
-use crate::errors::{LlvmError, LtoBitcodeFromRlib};
+use crate::diagnostics::{LlvmError, LtoBitcodeFromRlib};
 use crate::llvm::{self, build_string};
 use crate::{LlvmCodegenBackend, ModuleLlvm};
 
