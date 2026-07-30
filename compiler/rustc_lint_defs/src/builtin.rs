@@ -66,6 +66,7 @@ pub mod hardwired {
             LEGACY_DERIVE_HELPERS,
             LINKER_INFO,
             LINKER_MESSAGES,
+            LINKER_STATIC_ARCHIVE_ORDER,
             LONG_RUNNING_CONST_EVAL,
             MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
             MACRO_USE_EXTERN_CRATE,
@@ -4087,6 +4088,44 @@ declare_lint! {
     pub LINKER_INFO,
     Allow,
     "linker warnings known to be informational-only and not indicative of a problem"
+}
+
+declare_lint! {
+    /// The `linker_static_archive_order` lint detects when a static archive (`.a`/`.o`) passed via
+    /// `-Clink-arg` is placed *before* a dynamic library that it references, which can cause the
+    /// dynamic library to be dropped under `--as-needed` with linkers that resolve symbols strictly
+    /// left-to-right (such as GNU `ld.bfd`).
+    ///
+    /// ### Example
+    ///
+    /// ```rust,ignore (needs CLI args, platform-specific)
+    /// // libfoo.a references symbols from libm.so; built with the GNU `ld.bfd` linker:
+    /// // rustc -Clink-arg=/path/to/libfoo.a -Clink-arg=-lm foo.rs
+    /// fn main() {}
+    /// ```
+    ///
+    /// rustc appends `-Clink-arg` arguments after its own native libraries, so `-lm` lands after
+    /// `libfoo.a`. With `--as-needed`, GNU `ld.bfd` sees that nothing references `-lm` at the point
+    /// it appears (the reference lives inside `libfoo.a` to the left), so `-lm` is dropped, leading
+    /// to unresolved symbols. `lld` tolerates this because it back-references, masking the problem;
+    /// the lint still fires there so the latent issue surfaces before a switch back to `ld.bfd`.
+    ///
+    /// ### Explanation
+    ///
+    /// This lint flags the combination so users can use `-l static=` to place the archive with the
+    /// other native libraries. It is allowed by default because rustc cannot, without symbol
+    /// resolution, know whether the archive actually back-references the later dynamic library. See
+    /// this issue for more details:
+    /// <https://github.com/rust-lang/rust/issues/154975>.
+    pub LINKER_STATIC_ARCHIVE_ORDER,
+    Allow,
+    "static archive passed via `-Clink-arg` may be ordered before a dynamic library it references, \
+     which `--as-needed` linkers such as GNU `ld.bfd` can then drop",
+    // The lint is heuristic: rustc can't know whether a back-reference actually exists, so the
+    // diagnostic may fire on link orders that link successfully. Prevent `-D warnings` from
+    // turning a possible false positive into a hard error. `-D linker-static-archive-order` still
+    // applies.
+    ignore_deny_warnings
 }
 
 declare_lint! {
