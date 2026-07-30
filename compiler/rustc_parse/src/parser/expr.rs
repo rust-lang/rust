@@ -15,7 +15,7 @@ use rustc_ast::{
     self as ast, AnonConst, Arm, AssignOp, AssignOpKind, AttrStyle, AttrVec, BinOp, BinOpKind,
     BlockCheckMode, CaptureBy, ClosureBinder, CoroutineKind, DUMMY_NODE_ID, Expr, ExprField,
     ExprKind, FnDecl, FnRetTy, ForLoop, Guard, Label, MacCall, MetaItemLit, Movability, Param,
-    RangeLimits, StmtKind, Ty, TyKind, UnOp, UnsafeBinderCastKind, YieldKind,
+    RangeLimits, RescopeKind, StmtKind, Ty, TyKind, UnOp, UnsafeBinderCastKind, YieldKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_errors::{Applicability, Diag, PResult, StashKey, Subdiagnostic};
@@ -1277,6 +1277,10 @@ impl<'a> Parser<'a> {
                 this.parse_expr_unsafe_binder_cast(lo, UnsafeBinderCastKind::Wrap)
             } else if this.eat_forced_keyword_noexpect(kw::UnwrapBinder) {
                 this.parse_expr_unsafe_binder_cast(lo, UnsafeBinderCastKind::Unwrap)
+            } else if this.eat_forced_keyword_noexpect(kw::RescopeScope) {
+                this.parse_expr_rescope(lo, RescopeKind::Scope)
+            } else if this.eat_forced_keyword_noexpect(kw::RescopeExtend) {
+                this.parse_expr_rescope(lo, RescopeKind::Extend)
             } else if this.token_uninterpolated_span().at_least_rust_2018() {
                 // `Span::at_least_rust_2018()` is somewhat expensive; don't get it repeatedly.
                 let at_async = this.check_keyword(exp!(Async));
@@ -1790,6 +1794,26 @@ impl<'a> Parser<'a> {
         self.expect(exp!(CloseParen))?;
         self.psess.gated_spans.gate(sym::internal_syntax, lo.to(self.token.span));
         Ok(self.mk_expr(span, ExprKind::UnsafeBinderCast(kind, expr, ty)))
+    }
+
+    /// Used in parsing `k#rescope_scope('label => expr)` and `k#rescope_extend('label => expr)`.
+    fn parse_expr_rescope(&mut self, lo: Span, kind: RescopeKind) -> PResult<'a, Box<Expr>> {
+        // FIXME(temporary_rescoping): we may be able to recover identifiers into labels here, or
+        // generally provide better diagnostics
+        self.expect(exp!(OpenParen))?;
+        let Some(label) = self.eat_label() else {
+            let err =
+                self.dcx().create_err(crate::diagnostics::ExpectedLabel { span: self.token.span });
+            return Err(err);
+        };
+        self.expect(exp!(FatArrow))?;
+        let expr = self.parse_expr()?;
+        let span = lo.to(self.token.span);
+        // FIXME: Odd not to include the closing paren (contrary to the leading one etc.) but
+        //        it actually "improves" diagnostics slightly by not pointing into the wrapper macros.
+        self.expect(exp!(CloseParen))?;
+        self.psess.gated_spans.gate(sym::internal_syntax, lo.to(self.token.span));
+        Ok(self.mk_expr(span, ExprKind::Rescope(kind, label, expr)))
     }
 
     /// Returns a string literal if the next token is a string literal.
@@ -4067,7 +4091,8 @@ impl MutVisitor for CondChecker<'_> {
             | ExprKind::Call(_, _)
             | ExprKind::MethodCall(_)
             | ExprKind::Tup(_)
-            | ExprKind::Paren(_) => {
+            | ExprKind::Paren(_)
+            | ExprKind::Rescope(_, _, _) => {
                 let forbid_let_reason = self.forbid_let_reason;
                 self.forbid_let_reason =
                     Some(crate::diagnostics::ForbiddenLetReason::OtherForbidden);

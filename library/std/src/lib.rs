@@ -764,6 +764,8 @@ pub use core::gca;
 pub use core::matches;
 #[stable(feature = "core_primitive", since = "1.43.0")]
 pub use core::primitive;
+#[unstable(feature = "temporary_rescoping", issue = "139076")]
+pub use core::temporary_rescoping;
 #[stable(feature = "todo_macro", since = "1.40.0")]
 pub use core::todo;
 // Re-export built-in macros defined through core.
