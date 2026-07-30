@@ -288,7 +288,7 @@ impl<'tcx> BestObligation<'tcx> {
             return false;
         }
 
-        let ty::Alias(_, ty::AliasTy { kind: ty::Opaque { def_id, .. }, .. }) =
+        let ty::Alias(ty::IsRigid::Yes, ty::AliasTy { kind: ty::Opaque { def_id, .. }, .. }) =
             trait_pred.self_ty().kind()
         else {
             return false;
