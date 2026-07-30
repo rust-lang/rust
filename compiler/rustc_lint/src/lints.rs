@@ -924,6 +924,14 @@ pub(crate) struct UndroppedManuallyDropsSuggestion {
     pub end_span: Span,
 }
 
+#[derive(Diagnostic)]
+#[diag("calls to `std::ptr::drop_in_place` with a pointer to a Copy type does nothing")]
+pub(crate) struct CopyDropInPlaceDiag<'a> {
+    pub arg_ty: Ty<'a>,
+    #[label("argument has type `{$arg_ty}`")]
+    pub label: Span,
+}
+
 // invalid_from_utf8.rs
 #[derive(Diagnostic)]
 pub(crate) enum InvalidFromUtf8Diag {

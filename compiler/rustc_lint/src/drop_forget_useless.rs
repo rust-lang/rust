@@ -4,8 +4,8 @@ use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::sym;
 
 use crate::lints::{
-    DropCopyDiag, DropRefDiag, ForgetCopyDiag, ForgetRefDiag, UndroppedManuallyDropsDiag,
-    UndroppedManuallyDropsSuggestion, UseLetUnderscoreIgnoreSuggestion,
+    CopyDropInPlaceDiag, DropCopyDiag, DropRefDiag, ForgetCopyDiag, ForgetRefDiag,
+    UndroppedManuallyDropsDiag, UndroppedManuallyDropsSuggestion, UseLetUnderscoreIgnoreSuggestion,
 };
 use crate::{LateContext, LateLintPass, LintContext};
 
@@ -134,7 +134,32 @@ declare_lint! {
     "calls to `std::mem::drop` with `std::mem::ManuallyDrop` instead of it's inner value"
 }
 
-declare_lint_pass!(DropForgetUseless => [DROPPING_REFERENCES, FORGETTING_REFERENCES, DROPPING_COPY_TYPES, FORGETTING_COPY_TYPES, UNDROPPED_MANUALLY_DROPS]);
+declare_lint! {
+    /// The `copy_drop_in_place` lint checks for calls to `std::ptr::drop_in_place` with
+    /// a pointer that points to a type that derives the Copy trait.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// let mut x = 0u8;
+    /// let y = &mut x as *mut _;
+    /// unsafe {
+    ///    std::ptr::drop_in_place(y);
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    /// Types that implement Copy do not have a destructor so calling
+    /// `std::ptr::drop_in_place` on a pointer to a type that implements Copy
+    /// won't do anything.
+    pub COPY_DROP_IN_PLACE,
+    Warn,
+    "calls to `std::ptr::drop_in_place` with a pointer to a value that implements Copy"
+}
+
+declare_lint_pass!(DropForgetUseless => [DROPPING_REFERENCES, FORGETTING_REFERENCES, DROPPING_COPY_TYPES, FORGETTING_COPY_TYPES, UNDROPPED_MANUALLY_DROPS,COPY_DROP_IN_PLACE]);
 
 impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
@@ -217,6 +242,16 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
                                 end_span: arg.span.shrink_to_hi(),
                             },
                         },
+                    );
+                }
+                sym::ptr_drop_in_place
+                    if let ty::RawPtr(inner, ty::Mutability::Mut) = arg_ty.kind()
+                        && cx.type_is_copy_modulo_regions(*inner) =>
+                {
+                    cx.emit_span_lint(
+                        COPY_DROP_IN_PLACE,
+                        expr.span,
+                        CopyDropInPlaceDiag { arg_ty, label: arg.span },
                     );
                 }
                 _ => return,

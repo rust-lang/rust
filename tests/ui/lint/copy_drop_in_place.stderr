@@ -1,0 +1,16 @@
+error: calls to `std::ptr::drop_in_place` with a pointer to a Copy type does nothing
+  --> $DIR/copy_drop_in_place.rs:9:9
+   |
+LL |         std::ptr::drop_in_place(y);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^-^
+   |                                 |
+   |                                 argument has type `*mut u8`
+   |
+note: the lint level is defined here
+  --> $DIR/copy_drop_in_place.rs:3:8
+   |
+LL | #[deny(copy_drop_in_place)]
+   |        ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
