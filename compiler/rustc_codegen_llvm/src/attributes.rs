@@ -16,7 +16,7 @@ use rustc_target::spec::{Arch, FramePointer, SanitizerSet, StackProbeType, Stack
 use smallvec::SmallVec;
 
 use crate::context::SimpleCx;
-use crate::errors::{PackedStackBackchainNeedsSoftfloat, SanitizerMemtagRequiresMte};
+use crate::diagnostics::{PackedStackBackchainNeedsSoftfloat, SanitizerMemtagRequiresMte};
 use crate::llvm::AttributePlace::Function;
 use crate::llvm::{
     self, AllocKindFlags, Attribute, AttributeKind, AttributePlace, MemoryEffects, Value,

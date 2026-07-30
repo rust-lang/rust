@@ -613,7 +613,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         invoc_in_mod_inert_attr: Option<LocalDefId>,
         suggestion_span: Option<Span>,
     ) -> Result<(&'ra Arc<SyntaxExtension>, Res), Indeterminate> {
-        let (ext, res) = match self.cm().resolve_macro_or_delegation_path(
+        let (ext, res) = match self.cm_mut().resolve_macro_or_delegation_path(
             path,
             kind,
             parent_scope,
@@ -966,7 +966,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             for seg in &mut path {
                 seg.id = None;
             }
-            match self.cm().resolve_path(
+            match self.cm_mut().resolve_path(
                 &path,
                 Some(ns),
                 &parent_scope,
@@ -1063,7 +1063,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         let macro_resolutions = self.single_segment_macro_resolutions.take(self);
         for (ident, kind, parent_scope, initial_binding, sugg_span) in macro_resolutions {
-            match self.cm().resolve_ident_in_scope_set(
+            match self.cm_mut().resolve_ident_in_scope_set(
                 ident,
                 ScopeSet::Macro(kind),
                 &parent_scope,
@@ -1117,7 +1117,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         let builtin_attrs = mem::take(&mut self.builtin_attrs);
         for (ident, parent_scope) in builtin_attrs {
-            let _ = self.cm().resolve_ident_in_scope_set(
+            let _ = self.cm_mut().resolve_ident_in_scope_set(
                 ident,
                 ScopeSet::Macro(MacroKind::Attr),
                 &parent_scope,
@@ -1295,7 +1295,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     }
 
     fn path_accessible(
-        &mut self,
+        &self,
         expn_id: LocalExpnId,
         path: &ast::Path,
         namespaces: &[Namespace],

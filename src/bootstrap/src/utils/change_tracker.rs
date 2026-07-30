@@ -661,4 +661,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Warning,
         summary: "Obsolete option `build.compiletest-use-stage0-libtest` has no effect and has been removed.",
     },
+    ChangeInfo {
+        change_id: 160142,
+        severity: ChangeSeverity::Warning,
+        summary: "The `rust.use-lld` option has been removed. Use `rust.bootstrap-override-lld` instead.",
+    },
 ];

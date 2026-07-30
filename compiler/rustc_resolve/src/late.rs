@@ -1581,7 +1581,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         finalize: Option<Finalize>,
         source: PathSource<'_, 'ast, 'ra>,
     ) -> PathResult<'ra> {
-        self.r.cm().resolve_path_with_ribs(
+        self.r.cm_mut().resolve_path_with_ribs(
             path,
             opt_ns,
             &self.parent_scope,

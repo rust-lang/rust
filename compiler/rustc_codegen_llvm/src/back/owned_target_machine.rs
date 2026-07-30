@@ -4,7 +4,7 @@ use std::ptr::NonNull;
 
 use rustc_data_structures::small_c_str::SmallCStr;
 
-use crate::errors::LlvmError;
+use crate::diagnostics::LlvmError;
 use crate::llvm;
 
 /// Responsible for safely creating and disposing llvm::TargetMachine via ffi functions.

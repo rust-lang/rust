@@ -39,7 +39,7 @@ use crate::builder::gpu_offload::{
 };
 use crate::context::CodegenCx;
 use crate::declare::declare_raw_fn;
-use crate::errors::{
+use crate::diagnostics::{
     AutoDiffWithoutEnable, AutoDiffWithoutLto, IntrinsicSignatureMismatch, IntrinsicWrongArch,
     OffloadWithoutEnable, OffloadWithoutFatLTO, UnknownIntrinsic,
 };

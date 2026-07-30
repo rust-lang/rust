@@ -346,7 +346,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     diag_metadata,
                 )));
             } else if let RibKind::Block(Some(module)) = rib.kind
-                && let Ok(binding) = self.cm().resolve_ident_in_scope_set(
+                && let Ok(binding) = self.cm_mut().resolve_ident_in_scope_set(
                     ident,
                     ScopeSet::Module(ns, module.to_module()),
                     parent_scope,
@@ -362,7 +362,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 let parent_scope = &ParentScope { module: module.to_module(), ..*parent_scope };
                 let finalize = finalize.map(|f| Finalize { stage: Stage::Late, ..f });
                 return self
-                    .cm()
+                    .cm_mut()
                     .resolve_ident_in_scope_set(
                         orig_ident,
                         ScopeSet::All(ns),
@@ -1457,7 +1457,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// Validate a local resolution (from ribs).
     #[instrument(level = "debug", skip(self, all_ribs))]
     fn validate_res_from_ribs(
-        &mut self,
+        &self,
         rib_index: usize,
         rib_ident: Ident,
         res: Res,

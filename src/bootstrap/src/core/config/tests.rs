@@ -252,16 +252,6 @@ fn rust_lld() {
         parse("rust.bootstrap-override-lld = false").bootstrap_override_lld,
         BootstrapOverrideLld::None
     ));
-
-    // Also check the legacy options
-    assert!(matches!(
-        parse("rust.use-lld = true").bootstrap_override_lld,
-        BootstrapOverrideLld::External
-    ));
-    assert!(matches!(
-        parse("rust.use-lld = false").bootstrap_override_lld,
-        BootstrapOverrideLld::None
-    ));
 }
 
 #[test]

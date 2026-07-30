@@ -103,6 +103,9 @@ use tracing::debug;
 
 use self::compare_impl_item::collect_return_position_impl_trait_in_trait_tys;
 use self::region::region_scope_tree;
+use crate::diagnostics::{
+    MissingTraitItemLabel, MissingTraitItemSuggestion, MissingTraitItemSuggestionNone,
+};
 use crate::{check_c_variadic_abi, diagnostics};
 
 /// Adds query implementations to the [Providers] vtable, see [`rustc_middle::query`]
@@ -203,11 +206,30 @@ pub(super) fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDef
     }
 }
 
-fn missing_items_err(
+fn impl_suggestion_span(tcx: TyCtxt<'_>, impl_def_id: LocalDefId) -> Span {
+    let full_impl_span = tcx.hir_span_with_body(tcx.local_def_id_to_hir_id(impl_def_id));
+    if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(full_impl_span)
+        && snippet.ends_with("}")
+    {
+        // `Span` before impl block closing brace.
+        let hi = full_impl_span.hi() - BytePos(1);
+        // Point at the place right before the closing brace of the relevant `impl` to suggest
+        // adding the associated item at the end of its body.
+        full_impl_span.with_lo(hi).with_hi(hi)
+    } else {
+        full_impl_span.shrink_to_hi()
+    }
+}
+
+fn missing_items_suggestions(
     tcx: TyCtxt<'_>,
     impl_def_id: LocalDefId,
     missing_items: &[ty::AssocItem],
-    full_impl_span: Span,
+) -> (
+    String,
+    Vec<MissingTraitItemSuggestion>,
+    Vec<MissingTraitItemSuggestionNone>,
+    Vec<MissingTraitItemLabel>,
 ) {
     let missing_items =
         missing_items.iter().filter(|trait_item| !trait_item.is_impl_trait_in_trait());
@@ -218,17 +240,7 @@ fn missing_items_err(
         .collect::<Vec<_>>()
         .join("`, `");
 
-    let sugg_sp = if let Ok(snippet) = tcx.sess.source_map().span_to_snippet(full_impl_span)
-        && snippet.ends_with("}")
-    {
-        // `Span` before impl block closing brace.
-        let hi = full_impl_span.hi() - BytePos(1);
-        // Point at the place right before the closing brace of the relevant `impl` to suggest
-        // adding the associated item at the end of its body.
-        full_impl_span.with_lo(hi).with_hi(hi)
-    } else {
-        full_impl_span.shrink_to_hi()
-    };
+    let sugg_sp = impl_suggestion_span(tcx, impl_def_id);
 
     // Obtain the level of indentation ending in `sugg_sp`.
     let padding = tcx.sess.source_map().indentation_before(sugg_sp).unwrap_or_else(String::new);
@@ -259,6 +271,13 @@ fn missing_items_err(
         }
     }
 
+    (missing_items_msg, missing_trait_item, missing_trait_item_none, missing_trait_item_label)
+}
+
+fn missing_items_err(tcx: TyCtxt<'_>, impl_def_id: LocalDefId, missing_items: &[ty::AssocItem]) {
+    let (missing_items_msg, missing_trait_item, missing_trait_item_none, missing_trait_item_label) =
+        missing_items_suggestions(tcx, impl_def_id, missing_items);
+
     tcx.dcx().emit_err(diagnostics::MissingTraitItem {
         span: tcx.span_of_impl(impl_def_id.to_def_id()).unwrap(),
         missing_items_msg,
@@ -270,18 +289,29 @@ fn missing_items_err(
 
 fn missing_items_must_implement_one_of_err(
     tcx: TyCtxt<'_>,
-    impl_span: Span,
-    missing_items: &[Ident],
+    impl_def_id: LocalDefId,
+    missing_items: impl Iterator<Item = Symbol>,
     annotation_span: Option<Span>,
-) {
-    let missing_items_msg =
-        missing_items.iter().map(Ident::to_string).collect::<Vec<_>>().join("`, `");
+) -> ErrorGuaranteed {
+    // Look up the associated items so we can use them to emit better errors.
+    let trait_def_id = tcx.impl_trait_id(impl_def_id);
+    let assoc_items = tcx.associated_items(trait_def_id);
+    let missing_items = missing_items
+        .flat_map(|s| assoc_items.filter_by_name_unhygienic_and_kind(s, ty::AssocTag::Fn))
+        .cloned()
+        .collect::<Vec<_>>();
+
+    let (missing_items_msg, missing_trait_item, missing_trait_item_none, missing_trait_item_label) =
+        missing_items_suggestions(tcx, impl_def_id, &missing_items);
 
     tcx.dcx().emit_err(diagnostics::MissingOneOfTraitItem {
-        span: impl_span,
+        span: tcx.def_span(impl_def_id),
         note: annotation_span,
         missing_items_msg,
-    });
+        missing_trait_item_label,
+        missing_trait_item,
+        missing_trait_item_none,
+    })
 }
 
 fn default_body_is_unstable(

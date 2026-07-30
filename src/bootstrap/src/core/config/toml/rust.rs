@@ -51,8 +51,6 @@ define_config! {
         llvm_bitcode_linker: Option<bool> = "llvm-bitcode-linker",
         lld: Option<bool> = "lld",
         bootstrap_override_lld: Option<BootstrapOverrideLld> = "bootstrap-override-lld",
-        // FIXME: Remove this option in Spring 2026
-        bootstrap_override_lld_legacy: Option<BootstrapOverrideLld> = "use-lld",
         llvm_tools: Option<bool> = "llvm-tools",
         deny_warnings: Option<bool> = "deny-warnings",
         backtrace_on_ice: Option<bool> = "backtrace-on-ice",
@@ -385,7 +383,6 @@ pub fn check_incompatible_options_for_ci_rustc(
         break_on_ice: _,
         parallel_frontend_threads: _,
         bootstrap_override_lld: _,
-        bootstrap_override_lld_legacy: _,
         rustflags: _,
     } = ci_rust_config;
 
