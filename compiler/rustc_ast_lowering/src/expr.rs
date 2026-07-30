@@ -487,8 +487,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     }),
                 ),
 
-                ExprKind::Rescope(_kind, _label, _expr) => {
-                    todo!()
+                ExprKind::Rescope(kind, label, expr) => {
+                    if let Some(target_id) = self.label_target_id(e.id) {
+                        let target = hir::RescopeTarget { label: *label, target_id };
+                        hir::ExprKind::Rescope(*kind, target, self.lower_expr(expr))
+                    } else {
+                        // FIXME(super_let): we could recover here to at least do type-checking
+                        let guar = self.dcx().span_err(label.ident.span, "label not found");
+                        hir::ExprKind::Err(guar)
+                    }
                 }
 
                 ExprKind::Dummy => {
@@ -1553,17 +1560,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
         Some(Label { ident: self.lower_ident(label.ident) })
     }
 
+    fn label_target_id(&mut self, source: NodeId) -> Option<HirId> {
+        let target_id = self.owner.get_label_res(source)?;
+        let local_id = self.ident_and_label_to_local_id[&target_id];
+        Some(HirId { owner: self.current_hir_id_owner, local_id })
+    }
+
     fn lower_loop_destination(&mut self, destination: Option<(NodeId, Label)>) -> hir::Destination {
         let target_id = match destination {
-            Some((id, _)) => {
-                if let Some(loop_id) = self.owner.get_label_res(id) {
-                    let local_id = self.ident_and_label_to_local_id[&loop_id];
-                    let loop_hir_id = HirId { owner: self.current_hir_id_owner, local_id };
-                    Ok(loop_hir_id)
-                } else {
-                    Err(hir::LoopIdError::UnresolvedLabel)
-                }
-            }
+            Some((id, _)) => self.label_target_id(id).ok_or(hir::LoopIdError::UnresolvedLabel),
             None => {
                 self.loop_scope.map(|id| Ok(id)).unwrap_or(Err(hir::LoopIdError::OutsideLoopScope))
             }

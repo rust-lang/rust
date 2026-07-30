@@ -14,7 +14,7 @@ use rustc_ast::{
 pub use rustc_ast::{
     AssignOp, AssignOpKind, AttrId, AttrStyle, BinOp, BinOpKind, BindingMode, BorrowKind,
     BoundConstness, BoundPolarity, ByRef, CaptureBy, DelimArgs, ImplPolarity, IsAuto,
-    MetaItemInner, MetaItemLit, Movability, Mutability, Pinnedness, UnOp,
+    MetaItemInner, MetaItemLit, Movability, Mutability, Pinnedness, RescopeKind, UnOp,
 };
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxIndexSet;
@@ -2617,6 +2617,7 @@ impl Expr<'_> {
             | ExprKind::OffsetOf(..)
             | ExprKind::Path(..)
             | ExprKind::Repeat(..)
+            | ExprKind::Rescope(..)
             | ExprKind::Struct(..)
             | ExprKind::Tup(_)
             | ExprKind::Type(..)
@@ -2649,10 +2650,10 @@ impl Expr<'_> {
             // Type ascription inherits its place expression kind from its
             // operand. See:
             // https://github.com/rust-lang/rfcs/blob/master/text/0803-type-ascription.md#type-ascription-and-temporaries
-            ExprKind::Type(ref e, _) => e.is_place_expr(allow_projections_from),
-
-            // Unsafe binder cast preserves place-ness of the sub-expression.
-            ExprKind::UnsafeBinderCast(_, e, _) => e.is_place_expr(allow_projections_from),
+            // The same applies to unsafe binder casts and re-scoping expressions.
+            ExprKind::Type(e, _)
+            | ExprKind::UnsafeBinderCast(_, e, _)
+            | ExprKind::Rescope(_, _, e) => e.is_place_expr(allow_projections_from),
 
             ExprKind::Unary(UnOp::Deref, _) => true,
 
@@ -2757,7 +2758,8 @@ impl Expr<'_> {
             | ExprKind::Index(base, _, _)
             | ExprKind::AddrOf(.., base)
             | ExprKind::Cast(base, _)
-            | ExprKind::UnsafeBinderCast(_, base, _) => {
+            | ExprKind::UnsafeBinderCast(_, base, _)
+            | ExprKind::Rescope(_, _, base) => {
                 // This isn't exactly true for `Index` and all `Unary`, but we are using this
                 // method exclusively for diagnostics and there's a *cultural* pressure against
                 // them being used only for its side-effects.
@@ -3051,6 +3053,9 @@ pub enum ExprKind<'hir> {
     /// e.g. `unsafe<'a> &'a i32` <=> `&i32`.
     UnsafeBinderCast(UnsafeBinderCastKind, &'hir Expr<'hir>, Option<&'hir Ty<'hir>>),
 
+    /// `scope!('l => e)` or `extend!('l => e)`.
+    Rescope(RescopeKind, RescopeTarget, &'hir Expr<'hir>),
+
     /// A placeholder for an expression that wasn't syntactically well formed in some way.
     Err(rustc_span::ErrorGuaranteed),
 }
@@ -3221,6 +3226,12 @@ pub struct Destination {
     /// These errors are caught and then reported during the diagnostics pass in
     /// `librustc_passes/loops.rs`
     pub target_id: Result<HirId, LoopIdError>,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, StableHash)]
+pub struct RescopeTarget {
+    pub label: Label,
+    pub target_id: HirId,
 }
 
 /// The yield kind that caused an `ExprKind::Yield`.

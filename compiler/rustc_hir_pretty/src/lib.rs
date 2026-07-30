@@ -1778,6 +1778,18 @@ impl<'a> State<'a> {
                 self.word_space("yield");
                 self.print_expr_cond_paren(expr, self.precedence(expr) < ExprPrecedence::Jump);
             }
+            hir::ExprKind::Rescope(kind, target, expr) => {
+                match kind {
+                    hir::RescopeKind::Scope => self.word("scope!("),
+                    hir::RescopeKind::Extend => self.word("extend!("),
+                }
+                self.print_ident(target.label.ident);
+                self.space();
+                self.word("=>");
+                self.space();
+                self.print_expr(expr);
+                self.word(")");
+            }
             hir::ExprKind::Err(_) => {
                 self.popen();
                 self.word("/*ERROR*/");

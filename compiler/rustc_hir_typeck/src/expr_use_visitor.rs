@@ -402,6 +402,10 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 self.walk_expr(subexpr)?;
             }
 
+            hir::ExprKind::Rescope(_, _, subexpr) => {
+                self.walk_expr(subexpr)?;
+            }
+
             hir::ExprKind::Unary(hir::UnOp::Deref, base) => {
                 // *base
                 self.walk_expr(base)?;
@@ -1351,8 +1355,8 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 self.cat_res(expr.hir_id, expr.span, expr_ty, res)
             }
 
-            // type ascription doesn't affect the place-ness of the subexpression.
-            hir::ExprKind::Type(e, _) => self.cat_expr(e),
+            // type ascription and re-scoping don't affect the place-ness of the subexpression.
+            hir::ExprKind::Type(e, _) | hir::ExprKind::Rescope(_, _, e) => self.cat_expr(e),
 
             hir::ExprKind::UnsafeBinderCast(UnsafeBinderCastKind::Unwrap, e, _) => {
                 let base = self.cat_expr(e)?;
