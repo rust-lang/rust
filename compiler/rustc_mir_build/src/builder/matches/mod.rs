@@ -575,6 +575,36 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         initializer_id: ExprId,
     ) -> BlockAnd<()> {
         match irrefutable_pat.kind {
+            // Optimize `let _ = ...` to peel off side-effect-free coercions.
+            PatKind::Wild => {
+                let mut initializer_id = initializer_id;
+                // Peel off reborrows (Borrow(Deref(arg))) and Use/Scope coercions that don't have side effects.
+                loop {
+                    let init = &self.thir[initializer_id];
+                    match init.kind {
+                        ExprKind::Borrow { arg: deref_arg, .. } => {
+                            let deref_init = &self.thir[deref_arg];
+                            if let ExprKind::Deref { arg: inner_arg } = deref_init.kind {
+                                initializer_id = inner_arg;
+                            } else {
+                                break;
+                            }
+                        }
+                        ExprKind::Cast { source: arg } | ExprKind::Use { source: arg } => {
+                            initializer_id = arg;
+                        }
+                        ExprKind::Scope { value, .. } => {
+                            initializer_id = value;
+                        }
+                        _ => break,
+                    }
+                }
+                let initializer = &self.thir[initializer_id];
+                let place_builder =
+                    unpack!(block = self.lower_scrutinee(block, initializer_id, initializer.span));
+                self.place_into_pattern(block, irrefutable_pat, place_builder, true)
+            }
+
             // Optimize `let x = ...` and `let x: T = ...` to write directly into `x`,
             // and then require that `T == typeof(x)` if present.
             PatKind::Binding { mode: BindingMode(ByRef::No, _), var, subpattern: None, .. } => {
