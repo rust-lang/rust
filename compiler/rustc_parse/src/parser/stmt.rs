@@ -168,10 +168,11 @@ impl<'a> Parser<'a> {
             // Do not attempt to parse an expression if we're done here.
             self.error_outer_attrs(attrs)?;
             self.mk_stmt(lo, StmtKind::Empty)
-        } else if self.token == token::CloseBrace {
-            self.error_outer_attrs(attrs)?;
-            self.dcx().span_bug(self.token.span, "don't parse a statement if you see `}`");
         } else {
+            if self.token == token::CloseBrace {
+                self.error_outer_attrs(attrs.clone())?;
+            }
+
             // Remainder are line-expr stmts. This is similar to the `parse_stmt_path_start` case
             // above.
             let restrictions =
