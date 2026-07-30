@@ -29,7 +29,7 @@ use crate::expr::{RhsAssignKind, rewrite_array, rewrite_assign_rhs};
 use crate::header::{HeaderPart, format_header};
 use crate::lists::{ListFormatting, itemize_list, write_list};
 use crate::overflow;
-use crate::parse::macros::cfg_select::{CfgSelectFormatPredicate, parse_cfg_select};
+use crate::parse::macros::cfg_select::{CfgSelectFormatPredicate, parse_cfg_select_arms};
 use crate::parse::macros::lazy_static::parse_lazy_static;
 use crate::parse::macros::{ParsedMacroArgs, parse_expr, parse_macro_args};
 use crate::rewrite::{
@@ -1572,7 +1572,7 @@ fn format_cfg_select(
     };
 
     let arms =
-        parse_cfg_select(context.psess, ts).macro_error(MacroErrorKind::ParseFailure, span)?;
+        parse_cfg_select_arms(context.psess, ts).macro_error(MacroErrorKind::ParseFailure, span)?;
 
     if arms.is_empty() {
         let lo = context.snippet_provider.span_after(span, opening_delim);

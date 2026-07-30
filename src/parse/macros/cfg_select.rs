@@ -151,7 +151,10 @@ impl std::fmt::Debug for CfgSelectArm {
 
 // FIXME(ytmimi) would be nice if rustfmt didn't need to implement parsing logic on its own
 // and could instead just call rustc_attr_parsing::parse_cfg_select, but this is fine for now.
-pub(crate) fn parse_cfg_select(psess: &ParseSess, ts: TokenStream) -> Option<Vec<CfgSelectArm>> {
+pub(crate) fn parse_cfg_select_arms(
+    psess: &ParseSess,
+    ts: TokenStream,
+) -> Option<Vec<CfgSelectArm>> {
     let mut cfg_select_predicates = vec![];
     let mut parser = build_stream_parser(psess.inner(), ts);
 
