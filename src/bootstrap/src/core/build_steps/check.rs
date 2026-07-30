@@ -327,7 +327,7 @@ impl CommandLineStep for Rustc {
         run.builder.ensure(Rustc::new(run.builder, run.target, crates));
     }
 
-    /// Check the compiler.
+    /// Run `cargo check` (or `cargo fix`) on one or more compiler crates.
     ///
     /// This will check the compiler for a particular stage of the build using
     /// the `compiler` targeting the `target` architecture. The artifacts
@@ -344,7 +344,7 @@ impl CommandLineStep for Rustc {
             Mode::Rustc,
             SourceType::InTree,
             target,
-            Kind::Check,
+            builder.kind,
         );
 
         rustc_cargo(builder, &mut cargo, target, &build_compiler, &self.crates);
@@ -358,7 +358,7 @@ impl CommandLineStep for Rustc {
         }
 
         let _guard = builder.msg(
-            Kind::Check,
+            builder.kind,
             format_args!("compiler artifacts{}", crate_description(&self.crates)),
             Mode::Rustc,
             self.build_compiler.build_compiler(),
