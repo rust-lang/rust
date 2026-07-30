@@ -587,6 +587,3 @@ fn sum_many_f64(b: &mut Bencher) {
         v.sum();
     })
 }
-
-#[bench]
-fn no_iter(_: &mut Bencher) {}
