@@ -1,6 +1,5 @@
 use std::num::NonZero;
 
-use rustc_errors::ErrorGuaranteed;
 use rustc_feature::{ACCEPTED_LANG_FEATURES, AttributeStability};
 use rustc_hir::attrs::UnstableRemovedFeature;
 use rustc_hir::target::GenericParamKind;
@@ -348,7 +347,7 @@ pub(crate) fn parse_stability(
             let level = StabilityLevel::Stable { since, allowed_through_unstable_modules: None };
             Some((feature, level))
         }
-        Err(ErrorGuaranteed { .. }) => None,
+        Err(_) => None,
     }
 }
 
@@ -452,7 +451,7 @@ pub(crate) fn parse_unstability(
             };
             Some((feature, level))
         }
-        (Err(ErrorGuaranteed { .. }), _) | (_, Err(ErrorGuaranteed { .. })) => None,
+        (Err(_), _) | (_, Err(_)) => None,
     }
 }
 

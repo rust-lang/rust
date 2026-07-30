@@ -10,7 +10,7 @@ use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::{HasMoveData, MoveData, MovePathIndex};
 use rustc_mir_dataflow::points::{DenseLocationMap, PointIndex};
 use rustc_mir_dataflow::{Analysis, ResultsCursor};
-use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
+use rustc_span::{DUMMY_SP, Span};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::traits::ObligationCtxt;
 use rustc_trait_selection::traits::outlives_for_liveness::FreeRegionsVisitor;
@@ -644,7 +644,7 @@ impl<'tcx> LivenessContext<'_, '_, 'tcx> {
             Ok(TypeOpOutput { output, constraints, .. }) => {
                 DropData { dropck_result: output, region_constraint_data: constraints }
             }
-            Err(ErrorGuaranteed { .. }) => {
+            Err(_) => {
                 // We don't run dropck on HIR, and dropck looks inside fields of
                 // types, so there's no guarantee that it succeeds. We also
                 // can't rely on the `ErrorGuaranteed` from `fully_perform` here

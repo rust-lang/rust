@@ -273,6 +273,7 @@ late_lint_methods!(
             InternalEqTraitMethodImpls: InternalEqTraitMethodImpls,
             ImplicitProvenanceCasts: ImplicitProvenanceCasts,
             CVoidReturns: CVoidReturns,
+            RestPatternMatchOnStructWithAllPrivateFields: RestPatternMatchOnStructWithAllPrivateFields,
         ]
     ]
 );

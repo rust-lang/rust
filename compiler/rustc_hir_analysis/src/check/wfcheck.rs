@@ -2059,7 +2059,7 @@ pub(super) fn check_variances_for_type_defn<'tcx>(tcx: TyCtxt<'tcx>, def_id: Loc
         }
 
         // Look for `ErrorGuaranteed` deeply within this type.
-        if let ControlFlow::Break(ErrorGuaranteed { .. }) = tcx
+        if let ControlFlow::Break(_) = tcx
             .type_of(def_id)
             .instantiate_identity()
             .skip_norm_wip()
