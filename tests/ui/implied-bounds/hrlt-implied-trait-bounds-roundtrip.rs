@@ -1,4 +1,3 @@
-//@ check-pass
 struct Foo<'a>(&'a ())
 where
     (): Trait<'a>;
@@ -26,10 +25,11 @@ fn main() {
     // If `could_use_implied_bounds` were to use implied bounds,
     // keeping 'a late-bound, then we could assign that function
     // to this variable.
-    let bar: for<'a> fn(Foo<'a>, &'a ()) = bar;
+    let bar: for<'a> fn(Foo<'a>, &'a ()) = bar; //~ ERROR higher-ranked subtype error
 
     // In this case, the subtyping relation here would be unsound,
     // allowing us to transmute lifetimes. This currently compiles
     // because we incorrectly deal with implied bounds inside of binders.
-    let _bar: for<'a, 'b> fn(Foo<'a>, &'b ()) = bar;
+    let _bar: for<'a, 'b> fn(Foo<'a>, &'b ()) = bar; //~ ERROR higher-ranked subtype error
+    //~| ERROR higher-ranked subtype error
 }

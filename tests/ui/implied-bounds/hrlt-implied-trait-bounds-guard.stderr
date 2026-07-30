@@ -1,5 +1,5 @@
 error[E0623]: lifetime mismatch
-  --> $DIR/hrlt-implied-trait-bounds-guard.rs:30:29
+  --> $DIR/hrlt-implied-trait-bounds-guard.rs:29:29
    |
 LL | fn badboi<'in_, 'out, T>(x: Foo<'in_, 'out, T>, sadness: &'in_ T) -> &'out T {
    |                             ^^^^^^^^^^^^^^^^^^                       -------
@@ -8,7 +8,7 @@ LL | fn badboi<'in_, 'out, T>(x: Foo<'in_, 'out, T>, sadness: &'in_ T) -> &'out 
    |                             ...but data from `x` is returned here
 
 error[E0623]: lifetime mismatch
-  --> $DIR/hrlt-implied-trait-bounds-guard.rs:34:30
+  --> $DIR/hrlt-implied-trait-bounds-guard.rs:35:30
    |
 LL | fn badboi2<'in_, 'out, T>(x: Foo<'in_, 'out, T>, sadness: &'in_ T) {
    |                              ^^^^^^^^^^^^^^^^^^
@@ -17,7 +17,7 @@ LL | fn badboi2<'in_, 'out, T>(x: Foo<'in_, 'out, T>, sadness: &'in_ T) {
    |                              ...but data with one lifetime flows into the other here
 
 error[E0623]: lifetime mismatch
-  --> $DIR/hrlt-implied-trait-bounds-guard.rs:38:30
+  --> $DIR/hrlt-implied-trait-bounds-guard.rs:41:30
    |
 LL | fn badboi3<'in_, 'out, T>(a: Foo<'in_, 'out, (&'in_ T, &'out T)>, sadness: &'in_ T) {
    |                              ^^^^^^^^^^^^^^^^^-------^^-------^^
@@ -32,35 +32,53 @@ LL | fn badboi<'in_, 'out, T>(x: Foo<'in_, 'out, T>, sadness: &'in_ T) -> &'out 
    |           ----  ---- lifetime `'out` defined here
    |           |
    |           lifetime `'in_` defined here
+LL |
 LL |     sadness.cast()
    |     ^^^^^^^^^^^^^^ function was supposed to return data with lifetime `'out` but it is returning data with lifetime `'in_`
    |
    = help: consider adding the following bound: `'in_: 'out`
 
 error: lifetime may not live long enough
-  --> $DIR/hrlt-implied-trait-bounds-guard.rs:35:12
+  --> $DIR/hrlt-implied-trait-bounds-guard.rs:37:12
    |
 LL | fn badboi2<'in_, 'out, T>(x: Foo<'in_, 'out, T>, sadness: &'in_ T) {
    |            ----  ---- lifetime `'out` defined here
    |            |
    |            lifetime `'in_` defined here
+LL |
 LL |     let _: &'out T = sadness.cast();
    |            ^^^^^^^ type annotation requires that `'in_` must outlive `'out`
    |
    = help: consider adding the following bound: `'in_: 'out`
 
 error: lifetime may not live long enough
-  --> $DIR/hrlt-implied-trait-bounds-guard.rs:39:12
+  --> $DIR/hrlt-implied-trait-bounds-guard.rs:43:12
    |
 LL | fn badboi3<'in_, 'out, T>(a: Foo<'in_, 'out, (&'in_ T, &'out T)>, sadness: &'in_ T) {
    |            ----  ---- lifetime `'out` defined here
    |            |
    |            lifetime `'in_` defined here
+LL |
 LL |     let _: &'out T = sadness.cast();
    |            ^^^^^^^ type annotation requires that `'in_` must outlive `'out`
    |
    = help: consider adding the following bound: `'in_: 'out`
 
-error: aborting due to 6 previous errors
+error: higher-ranked subtype error
+  --> $DIR/hrlt-implied-trait-bounds-guard.rs:48:73
+   |
+LL |     let x: for<'in_, 'out> fn(Foo<'in_, 'out, T>, &'in_ T) -> &'out T = badboi;
+   |                                                                         ^^^^^^
+
+error: lifetime may not live long enough
+  --> $DIR/hrlt-implied-trait-bounds-guard.rs:49:71
+   |
+LL | fn bad<'short, T>(value: &'short T) -> &'static T {
+   |        ------ lifetime `'short` defined here
+LL |     let x: for<'in_, 'out> fn(Foo<'in_, 'out, T>, &'in_ T) -> &'out T = badboi;
+LL |     let x: for<'out> fn(Foo<'short, 'out, T>, &'short T) -> &'out T = x;
+   |                                                                       ^ coercion requires that `'short` must outlive `'static`
+
+error: aborting due to 8 previous errors
 
 For more information about this error, try `rustc --explain E0623`.
