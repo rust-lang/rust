@@ -1094,3 +1094,11 @@ std::cfg_select! {
         }
     ],
 }
+
+// Doesn't parse as expected so this is handled by the default macro handling
+cfg_select!(A + B + C);
+cfg_select![A + B + C];
+// rustfmt doesn't format macros with brace delimiters
+cfg_select! {
+    A   +    B    +     C
+}
