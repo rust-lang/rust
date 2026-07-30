@@ -902,13 +902,13 @@ impl<'a> Parser<'a> {
                 err
             })?;
         if !self.expr_is_valid_const_arg(&expr) {
-            self.dcx().emit_err(ConstGenericWithoutBraces {
+            return Err(self.dcx().create_err(ConstGenericWithoutBraces {
                 span: expr.span,
                 sugg: ConstGenericWithoutBracesSugg {
                     left: expr.span.shrink_to_lo(),
                     right: expr.span.shrink_to_hi(),
                 },
-            });
+            }));
         }
 
         Ok(expr)
