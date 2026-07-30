@@ -153,7 +153,7 @@ We don't care which model you used, but we do care whether you used the LLM to i
 
 > LLM disclosure: I wrote the three commits by hand after viewing profiling data. I used an LLM to review the commits before submitting. The LLM identified that `ImplString::is_negative` was no longer used, so I removed that field by hand.
 
-> Created with the help of Claude Code, which:
+> Created with the help of an LLM, which:
 > - traced the missing cache hits to the unconditional `return(pass)` by inspecting Fastly vs CloudFront headers,
 > - reviewed the git history to understand why the snippet was added, and
 > - made the VCL change.
