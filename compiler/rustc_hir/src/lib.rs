@@ -42,4 +42,4 @@ pub use rustc_span::def_id;
 pub use stability::*;
 pub use target::{MethodKind, Target};
 
-arena_types!(rustc_arena::declare_arena);
+pub use crate::arena::Arena;
