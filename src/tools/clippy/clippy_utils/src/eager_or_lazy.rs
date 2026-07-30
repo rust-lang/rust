@@ -379,7 +379,8 @@ impl<'tcx> Visitor<'tcx> for ExprEagernessVisitor<'tcx> {
             | ExprKind::Repeat(..)
             | ExprKind::Block(Block { stmts: [], .. }, _)
             | ExprKind::OffsetOf(..)
-            | ExprKind::UnsafeBinderCast(..) => (),
+            | ExprKind::UnsafeBinderCast(..)
+            | ExprKind::Rescope(..) => (),
 
             // Assignment might be to a local defined earlier, so don't eagerly evaluate.
             // Blocks with multiple statements might be expensive, so don't eagerly evaluate.

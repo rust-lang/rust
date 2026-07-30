@@ -716,6 +716,10 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
             ExprKind::UnsafeBinderCast(..) => {
                 unimplemented!("unsafe binders are not implemented yet");
             },
+            ExprKind::Rescope(..) => {
+                // FIXME(super_let): implement this
+                unimplemented!("rescoping operators are not implemented yet");
+            },
         }
     }
 

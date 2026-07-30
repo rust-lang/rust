@@ -421,8 +421,8 @@ mod expressions {
     fn expr_rescope() {
         'a: {
             let expr;
-            scope!('a => expr);  //[hir]~ ERROR FIXME: rescoping operators are not implemented
-            extend!('a => expr); //[hir]~ ERROR FIXME: rescoping operators are not implemented
+            scope!('a => expr);
+            extend!('a => expr);
         }
     }
 }

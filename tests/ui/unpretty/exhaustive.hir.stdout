@@ -321,6 +321,11 @@ mod expressions {
 
 
 
+
+
+
+
+
         // ...
 
 
@@ -384,7 +389,9 @@ mod expressions {
         };
     }
     /// ExprKind::Rescope
-    fn expr_rescope() { 'a: { let expr; (/*ERROR*/); (/*ERROR*/); } }
+    fn expr_rescope() {
+        'a: { let expr; scope!('a => expr); extend!('a => expr); }
+    }
 }
 mod items {
     /// ItemKind::ExternCrate

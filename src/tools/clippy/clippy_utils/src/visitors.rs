@@ -707,6 +707,7 @@ pub fn for_each_unconsumed_temporary<'tcx, B>(
             | ExprKind::Field(e, _)
             | ExprKind::Unary(UnOp::Deref, e)
             | ExprKind::Match(e, ..)
+            | ExprKind::Rescope(_, _, e)
             | ExprKind::Let(&LetExpr { init: e, .. }) => {
                 helper(typeck, false, e, f)?;
             },
@@ -763,6 +764,7 @@ pub fn for_each_unconsumed_temporary<'tcx, B>(
             },
 
             // Either drops temporaries, jumps out of the current expression, or has no sub expression.
+            // FIXME(super_let): re-scoping operators can make temporaries live past these
             ExprKind::DropTemps(_)
             | ExprKind::Ret(_)
             | ExprKind::Become(_)
