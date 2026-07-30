@@ -321,6 +321,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
             | ExprKind::Become(_)
             | ExprKind::Yield(_)
             | ExprKind::GcaMacro(_)
+            | ExprKind::Rescope(_, _, _)
             | ExprKind::UnsafeBinderCast(..) => {}
         }
     }

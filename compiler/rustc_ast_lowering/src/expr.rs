@@ -532,6 +532,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 }),
             ),
 
+            ExprKind::Rescope(_kind, _label, _expr) => {
+                // FIXME(super_let): lower to HIR
+                let guar =
+                    self.dcx().span_err(e.span, "FIXME: rescoping operators are not implemented");
+                hir::ExprKind::Err(guar)
+            }
+
             ExprKind::Dummy => {
                 span_bug!(e.span, "lowered ExprKind::Dummy")
             }

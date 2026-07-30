@@ -22,6 +22,7 @@
 #![feature(pattern_types)]
 #![feature(prelude_import)]
 #![feature(specialization)]
+#![feature(super_let)]
 #![feature(trace_macros)]
 #![feature(trait_alias)]
 #![feature(try_blocks)]
@@ -414,6 +415,15 @@ mod expressions {
         let expr;
         format_args!("");
         format_args!("{}", expr);
+    }
+
+    /// ExprKind::Rescope
+    fn expr_rescope() {
+        'a: {
+            let expr;
+            scope!('a => expr);  //[hir]~ ERROR FIXME: rescoping operators are not implemented
+            extend!('a => expr); //[hir]~ ERROR FIXME: rescoping operators are not implemented
+        }
     }
 }
 
