@@ -24,10 +24,9 @@ fn configure_with_args(cmd: &[&str], host: &[&str], target: &[&str]) -> Config {
 }
 
 fn run_build(paths: &[PathBuf], config: Config) -> Cache {
-    let kind = config.cmd.kind();
     let build = Build::new(config);
     let builder = Builder::new(&build);
-    builder.run_step_descriptions(&Builder::get_step_descriptions(kind), paths);
+    builder.run_step_descriptions(&Builder::get_step_descriptions(builder.kind), paths);
     builder.cache
 }
 
@@ -3232,10 +3231,10 @@ impl ConfigBuilder {
     fn run(self) -> Cache {
         let config = self.create_config();
 
-        let kind = config.cmd.kind();
         let build = Build::new(config);
         let builder = Builder::new(&build);
-        builder.run_step_descriptions(&Builder::get_step_descriptions(kind), &builder.paths);
+        builder
+            .run_step_descriptions(&Builder::get_step_descriptions(builder.kind), &builder.paths);
         builder.cache
     }
 
