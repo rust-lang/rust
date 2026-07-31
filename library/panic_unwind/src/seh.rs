@@ -222,29 +222,20 @@ unsafe fn throw_exception(data: Option<Box<dyn Any + Send>>) -> ! {
         };
     }
 
-    #[cfg(target_arch = "x86")]
-    macro_rules! load_throw_info {
-        () => {
-            "lea {}, [2f]"
-        };
-    }
-    #[cfg(target_arch = "x86_64")]
-    macro_rules! load_throw_info {
-        () => {
-            "lea {}, [rip + 2f]"
-        };
-    }
-    #[cfg(any(target_arch = "arm", target_arch = "aarch64", target_arch = "arm64ec"))]
-    macro_rules! load_throw_info {
-        () => {
-            "adr {}, 2f"
-        };
-    }
-
     let throw_info: *const u8;
     unsafe {
         core::arch::asm!(
-            load_throw_info!(),       // let throw_info = &THROW_INFO;
+            cfg_select! { // let throw_info = &THROW_INFO;
+                target_arch = "x86" => {
+                    "lea {}, [2f]"
+                }
+                target_arch = "x86_64" => {
+                    "lea {}, [rip + 2f]"
+                }
+                any(target_arch = "arm", target_arch = "aarch64", target_arch = "arm64ec") => {
+                    "adr {}, 2f"
+                }
+            },
             ".pushsection .rdata,\"dr\"",
             ".p2align 2",
             "2:",                     // static THROW_INFO = _ThrowInfo {
