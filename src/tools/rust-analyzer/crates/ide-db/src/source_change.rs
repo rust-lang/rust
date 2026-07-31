@@ -68,7 +68,7 @@ impl SourceChange {
 
     /// Inserts a [`TextEdit`] and potentially a [`SnippetEdit`] for the given [`FileId`].
     /// This properly handles merging existing edits for a file if some already exist.
-    pub fn insert_source_and_snippet_edit(
+    fn insert_source_and_snippet_edit(
         &mut self,
         file_id: impl Into<FileId>,
         edit: TextEdit,
@@ -105,7 +105,7 @@ impl SourceChange {
 
     pub fn merge(mut self, other: SourceChange) -> SourceChange {
         self.extend(other.source_file_edits);
-        self.extend(other.file_system_edits);
+        self.file_system_edits.extend(other.file_system_edits);
         self.is_snippet |= other.is_snippet;
         self
     }
@@ -125,25 +125,6 @@ impl Extend<(FileId, (TextEdit, Option<SnippetEdit>))> for SourceChange {
         iter.into_iter().for_each(|(file_id, (edit, snippet_edit))| {
             self.insert_source_and_snippet_edit(file_id, edit, snippet_edit)
         });
-    }
-}
-
-impl Extend<FileSystemEdit> for SourceChange {
-    fn extend<T: IntoIterator<Item = FileSystemEdit>>(&mut self, iter: T) {
-        iter.into_iter().for_each(|edit| self.push_file_system_edit(edit));
-    }
-}
-
-impl From<IntMap<FileId, TextEdit>> for SourceChange {
-    fn from(source_file_edits: IntMap<FileId, TextEdit>) -> SourceChange {
-        let source_file_edits =
-            source_file_edits.into_iter().map(|(file_id, edit)| (file_id, (edit, None))).collect();
-        SourceChange {
-            source_file_edits,
-            file_system_edits: Vec::new(),
-            is_snippet: false,
-            ..SourceChange::default()
-        }
     }
 }
 
@@ -222,15 +203,15 @@ impl SnippetEdit {
 }
 
 pub struct SourceChangeBuilder {
-    pub edit: TextEditBuilder,
+    edit: TextEditBuilder,
     pub file_id: FileId,
     pub source_change: SourceChange,
     pub command: Option<Command>,
 
     /// Keeps track of all edits performed on each file
-    pub file_editors: FxHashMap<FileId, SyntaxEditor>,
+    file_editors: FxHashMap<FileId, SyntaxEditor>,
     /// Keeps track of which annotations correspond to which snippets
-    pub snippet_annotations: Vec<(AnnotationSnippet, SyntaxAnnotation)>,
+    snippet_annotations: Vec<(AnnotationSnippet, SyntaxAnnotation)>,
 }
 
 impl SourceChangeBuilder {
@@ -379,7 +360,7 @@ impl SourceChangeBuilder {
                 .is_err()
         );
 
-        mem::take(&mut self.source_change)
+        self.source_change
     }
 }
 
@@ -415,10 +396,10 @@ pub enum Snippet {
     PlaceholderGroup(Vec<TextRange>),
 }
 
-pub enum AnnotationSnippet {
+enum AnnotationSnippet {
     /// Place a tabstop before an element
     Before,
-    /// Place a tabstop before an element
+    /// Place a tabstop after an element
     After,
     /// Place a placeholder snippet in place of the element(s)
     Over,
