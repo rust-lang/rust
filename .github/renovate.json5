@@ -5,9 +5,8 @@
     "github>rust-lang/renovate:actions",
     // Open a PR to migrate the config when Renovate deprecates syntax
     ":configMigration",
-    // Refresh lock files on the first day of each month
-    // (still gated by dashboard approval for now)
-    ":maintainLockFilesMonthly",
+    // Refresh lock files weekly
+    ":maintainLockFilesWeekly",
   ],
   // Cargo manifests in this repository use unstable features.
   "env": {
@@ -28,6 +27,11 @@
     {
       // No dashboard approval necessary for GitHub Actions updates
       "matchManagers": ["github-actions"],
+      "dependencyDashboardApproval": false
+    },
+    {
+      // No dashboard approval necessary for lock file maintenance
+      "matchUpdateTypes": ["lockFileMaintenance"],
       "dependencyDashboardApproval": false
     },
     {
