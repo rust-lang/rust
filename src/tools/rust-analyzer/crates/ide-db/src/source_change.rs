@@ -15,7 +15,7 @@ use rustc_hash::FxHashMap;
 use span::FileId;
 use stdx::never;
 use syntax::{
-    AstNode, SyntaxElement, SyntaxNode, SyntaxToken, TextRange, TextSize,
+    AstNode, SyntaxNode, TextRange, TextSize,
     syntax_editor::{SyntaxAnnotation, SyntaxEditor},
 };
 
@@ -231,15 +231,6 @@ pub struct SourceChangeBuilder {
     pub file_editors: FxHashMap<FileId, SyntaxEditor>,
     /// Keeps track of which annotations correspond to which snippets
     pub snippet_annotations: Vec<(AnnotationSnippet, SyntaxAnnotation)>,
-
-    /// Keeps track of where to place snippets
-    pub snippet_builder: Option<SnippetBuilder>,
-}
-
-#[derive(Default)]
-pub struct SnippetBuilder {
-    /// Where to place snippets at
-    places: Vec<PlaceSnippet>,
 }
 
 impl SourceChangeBuilder {
@@ -251,7 +242,6 @@ impl SourceChangeBuilder {
             command: None,
             file_editors: FxHashMap::default(),
             snippet_annotations: vec![],
-            snippet_builder: None,
         }
     }
 
@@ -329,15 +319,9 @@ impl SourceChangeBuilder {
         }
 
         // Apply mutable edits
-        let snippet_edit = self.snippet_builder.take().map(|builder| {
-            SnippetEdit::new(
-                builder.places.into_iter().flat_map(PlaceSnippet::finalize_position).collect(),
-            )
-        });
-
         let edit = mem::take(&mut self.edit).finish();
-        if !edit.is_empty() || snippet_edit.is_some() {
-            self.source_change.insert_source_and_snippet_edit(self.file_id, edit, snippet_edit);
+        if !edit.is_empty() {
+            self.source_change.insert_source_edit(self.file_id, edit);
         }
     }
 
@@ -438,23 +422,4 @@ pub enum AnnotationSnippet {
     After,
     /// Place a placeholder snippet in place of the element(s)
     Over,
-}
-
-enum PlaceSnippet {
-    /// Place a tabstop before an element
-    Before(SyntaxElement),
-    /// Place a tabstop before an element
-    After(SyntaxElement),
-    /// Place a placeholder snippet in place of the element
-    Over(SyntaxElement),
-}
-
-impl PlaceSnippet {
-    fn finalize_position(self) -> Vec<Snippet> {
-        match self {
-            PlaceSnippet::Before(it) => vec![Snippet::Tabstop(it.text_range().start())],
-            PlaceSnippet::After(it) => vec![Snippet::Tabstop(it.text_range().end())],
-            PlaceSnippet::Over(it) => vec![Snippet::Placeholder(it.text_range())],
-        }
-    }
 }
