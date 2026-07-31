@@ -248,6 +248,9 @@ struct Args {
     /// Run tests with optimizations enabled.
     #[arg(long)]
     optimize_tests: bool,
+    /// Pass `--disable-minification` to rustdoc when generating docs for tests.
+    #[arg(long)]
+    disable_minification: bool,
     /// Run tests verbosely, showing all output.
     #[arg(long)]
     verbose: bool,
@@ -436,6 +439,7 @@ pub(crate) fn parse_config(args: Vec<String>) -> Config {
         host_rustcflags: args.host_rustcflags,
         target_rustcflags: args.target_rustcflags,
         optimize_tests: args.optimize_tests,
+        disable_minification: args.disable_minification,
         rust_randomized_layout: args.rust_randomized_layout,
         target: args.target,
         host: args.host,

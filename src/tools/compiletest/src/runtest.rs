@@ -1044,8 +1044,16 @@ impl<'test> TestCx<'test> {
         match kind {
             DocKind::Html => {}
             DocKind::Json => {
-                rustdoc.arg("--output-format").arg("json").arg("-Zunstable-options");
+                rustdoc.arg("--output-format").arg("json");
             }
+        }
+
+        // Both JSON output and `--disable-minification` are unstable rustdoc options.
+        if matches!(kind, DocKind::Json) || self.config.disable_minification {
+            rustdoc.arg("-Zunstable-options");
+        }
+        if self.config.disable_minification {
+            rustdoc.arg("--disable-minification");
         }
 
         if let Some(ref linker) = self.config.target_linker {
@@ -1575,6 +1583,11 @@ impl<'test> TestCx<'test> {
             }
         };
         compiler.arg(input_file);
+
+        // `--disable-minification` is an unstable rustdoc option.
+        if compiler_kind == CompilerKind::Rustdoc && self.config.disable_minification {
+            compiler.arg("-Zunstable-options").arg("--disable-minification");
+        }
 
         // Use a single thread for efficiency and a deterministic error message order
         compiler.arg("-Zthreads=1");
