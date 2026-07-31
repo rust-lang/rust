@@ -368,7 +368,7 @@ fn customizable_type_visitable_derive(
     });
     s.bind_with(|_| synstructure::BindStyle::Move);
 
-    s.bound_impl(
+    s.unsafe_bound_impl(
         quote!(::rustc_type_ir::GenericTypeVisitable<__V>),
         quote! {
             fn generic_visit_with(
