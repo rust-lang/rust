@@ -35,12 +35,10 @@ mod pass_manager;
 
 use std::sync::LazyLock;
 
-use pass_manager::{self as pm, Lint, MirLint, MirPass, WithMinOptLevel};
-/// BoolChainOpt: Detects pure chains of `&&` and prepares transformation to `BitAnd`.
-/// Issue de rastreamento: #157945
+use pass_manager::{self as pm, Lint, MirLint, MirPass, PassPolicy, WithMinOptLevel};
 
 /// BoolChainOpt: Detects pure chains of `&&` and prepares transformation to `BitAnd`.
-/// Issue de rastreamento: #157945
+/// Tracking issue: #157945
 mod bool_chain_opt;
 mod check_pointers;
 mod cost_checker;
@@ -731,7 +729,7 @@ pub(crate) fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
             // optimizations. This invalidates CFG caches, so avoid putting between
             // `ReferencePropagation` and `GVN` which both use the dominator tree.
             &instsimplify::InstSimplify::AfterSimplifyCfg,
-            // Detects pure `Detecta cadeias `&&` puras após a simplificação do CFG para que as formasDetecta cadeias `&&` puras após a simplificação do CFG para que as formas` chains after CFG simplification so that the forms
+            // Detects pure `&&` chains after CFG simplification so that the forms
             // `SwitchInt` are stable; runs at optimization level 2 to avoid
             // changes in unoptimized builds.
             &pm::WithMinOptLevel::new(&bool_chain_opt::BoolChainOpt, 2),
@@ -743,16 +741,6 @@ pub(crate) fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'
             // ```
             // to unreachable to eliminate the call to help later passes.
             // This invalidates CFG caches also.
-            &instsimplify::InstSimplify::AfterSimplifyCfg,
-            // Detects pure `Detecta cadeias `&&` puras após a simplificação do CFG para que as formasDetecta cadeias `&&` puras após a simplificação do CFG para que as formas` chains after CFG simplification so that the forms
-            // `SwitchInt` are stable; runs at optimization level 2 to avoid
-            // changes in unoptimized builds.
-            &pm::WithMinOptLevel::new(&bool_chain_opt::BoolChainOpt, 2),
-            // Detects pure `&&` chains after CFG simplification so that `SwitchInt`
-            // forms are stable; runs at optimization level 2 to avoid changes in
-            // unoptimized builds.
-            &pm::WithMinOptLevel::new(2),
-            // After `InstSimplify-after-simplifycfg` with `-Zub_checks=false`,
             &o1(simplify_branches::SimplifyConstCondition::AfterInstSimplify),
             &ref_prop::ReferencePropagation,
             &sroa::ScalarReplacementOfAggregates,

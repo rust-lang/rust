@@ -1,9 +1,10 @@
 //! Folds chains of `&&` over pure boolean expressions into `BitAnd` BinOps,
 //! eliminating the phi nodes that LLVM cannot optimize away.
 
-use crate::MirPass;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};
+
+use crate::MirPass;
 
 pub(crate) struct BoolChainOpt;
 
