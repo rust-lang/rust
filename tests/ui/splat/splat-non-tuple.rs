@@ -4,14 +4,14 @@
 #![feature(splat)]
 #![expect(unused)]
 
-fn primitive_arg(#[rustc_splat] x: u32) {} //~ ERROR cannot use splat attribute; the splatted argument type must be a tuple or unit, not a u32
+fn primitive_arg(#[rustc_splat] x: u32) {} //~ ERROR cannot use `rustc_splat` attribute; the splatted argument type must be a tuple or unit, not a u32
 
 enum NotATuple {
     A(u32),
     B(i8),
 }
 
-fn enum_arg(#[rustc_splat] y: NotATuple) {} //~ ERROR cannot use splat attribute; the splatted argument type must be a tuple or unit, not a NotATuple
+fn enum_arg(#[rustc_splat] y: NotATuple) {} //~ ERROR cannot use `rustc_splat` attribute; the splatted argument type must be a tuple or unit, not a NotATuple
 
 trait FooTrait {
     fn tuple_1(#[rustc_splat] _: (u32,)); //~ NOTE type in trait
@@ -22,10 +22,10 @@ trait FooTrait {
 
 struct Foo;
 
-fn struct_arg(#[rustc_splat] z: Foo) {} //~ ERROR cannot use splat attribute; the splatted argument type must be a tuple or unit, not a Foo
+fn struct_arg(#[rustc_splat] z: Foo) {} //~ ERROR cannot use `rustc_splat` attribute; the splatted argument type must be a tuple or unit, not a Foo
 
 impl Foo {
-    // FIXME(splat): ERROR cannot use splat attribute; the splatted argument type must be a tuple
+    // FIXME(splat): ERROR cannot use `rustc_splat` attribute; the splatted argument type must be a tuple
     fn tuple_2_self(
         #[rustc_splat] self,
         (a, b): (u32, i8),
@@ -41,7 +41,7 @@ impl FooTrait for Foo {
     //~| NOTE expected signature `fn(#[rustc_splat] (_,))`
     //~| NOTE found signature `fn((_,))`
 
-    // FIXME(splat): ERROR cannot use splat attribute; the splatted argument type must be a tuple
+    // FIXME(splat): ERROR cannot use `rustc_splat` attribute; the splatted argument type must be a tuple
     fn tuple_4(
         #[rustc_splat] self,
         _: (u32, i8, (), f32),
@@ -51,10 +51,10 @@ impl FooTrait for Foo {
 
 struct TupleStruct(u32, i8);
 
-fn tuple_struct_arg(#[rustc_splat] z: TupleStruct) {} //~ ERROR cannot use splat attribute; the splatted argument type must be a tuple or unit, not a TupleStruct
+fn tuple_struct_arg(#[rustc_splat] z: TupleStruct) {} //~ ERROR cannot use `rustc_splat` attribute; the splatted argument type must be a tuple or unit, not a TupleStruct
 
 impl TupleStruct {
-    // FIXME(splat): ERROR cannot use splat attribute; the splatted argument type must be a tuple
+    // FIXME(splat): ERROR cannot use `rustc_splat` attribute; the splatted argument type must be a tuple
     fn tuple_2(
         #[rustc_splat] self,
         (a, b): (f32, f64),
@@ -66,7 +66,7 @@ impl TupleStruct {
 impl FooTrait for TupleStruct {
     fn tuple_1(#[rustc_splat] _: (u32,)) {}
 
-    // FIXME(splat): ERROR cannot use splat attribute; the splatted argument type must be a tuple
+    // FIXME(splat): ERROR cannot use `rustc_splat` attribute; the splatted argument type must be a tuple
     fn tuple_4(
         #[rustc_splat] self,
         _: (u32, i8, (), f32),

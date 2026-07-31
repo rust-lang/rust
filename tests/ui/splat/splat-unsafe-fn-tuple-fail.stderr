@@ -9,7 +9,7 @@ LL |     #[rustc_splat] (_c, _d): (u32, i8),
    |
    = help: remove `#[rustc_splat]` from all but one argument
 
-error[E0277]: cannot use splat attribute; the splatted argument type must be a tuple or unit, not a u32 (u32)
+error[E0277]: cannot use `rustc_splat` attribute; the splatted argument type must be a tuple or unit, not a u32 (u32)
   --> $DIR/splat-unsafe-fn-tuple-fail.rs:6:48
    |
 LL | unsafe fn unsafe_wrong_type(#[rustc_splat] _x: u32) {}
