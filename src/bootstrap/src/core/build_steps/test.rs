@@ -3519,7 +3519,7 @@ impl CommandLineStep for CrateRustdoc {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.selectors(&["src/librustdoc", "src/tools/rustdoc"])
+        run.multi_path(&["src/librustdoc", "src/tools/rustdoc"])
     }
 
     fn is_default_step(_builder: &Builder<'_>) -> bool {
