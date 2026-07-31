@@ -113,6 +113,34 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
                 bx.memcpy(dst, align, src, align, bytes, crate::MemFlags::empty(), None);
             }
+            mir::StatementKind::Intrinsic(NonDivergingIntrinsic::CodeviewAnnotation(
+                ref operands,
+            )) => {
+                if operands.is_empty() {
+                    bug!("expected at least one operand in codeview annotation");
+                }
+
+                let strings = operands
+                    .iter()
+                    .map(|op| {
+                        if let mir::Operand::Constant(c) = op {
+                            let val = self.eval_mir_constant(c);
+                            let mir::ConstValue::Slice { alloc_id, meta } = val else {
+                                bug!("`CodeviewAnnotation` operand is not a `ConstValue::Slice`");
+                            };
+                            bx.tcx()
+                                .global_alloc(alloc_id)
+                                .unwrap_memory()
+                                .inner()
+                                .inspect_with_uninit_and_ptr_outside_interpreter(0..meta as usize)
+                        } else {
+                            bug!("`CodeviewAnnotation` operand is not a constant");
+                        }
+                    })
+                    .collect::<Vec<_>>();
+
+                bx.codeview_annotation(&strings);
+            }
             mir::StatementKind::FakeRead(..)
             | mir::StatementKind::AscribeUserType(..)
             | mir::StatementKind::ConstEvalCounter
