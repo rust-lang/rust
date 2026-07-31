@@ -1928,8 +1928,13 @@ pub(crate) fn rewrite_field(
         let expr = field.expr.rewrite_result(context, expr_shape);
         let is_lit = matches!(field.expr.kind, ast::ExprKind::Lit(_));
         match expr {
+            // A macro can give `Field: value` its own meaning, so shortening `a: a` to `a` may
+            // change what it expands to. In `winnow::seq!` the result no longer compiles.
             Ok(ref e)
-                if !is_lit && e.as_str() == name && context.config.use_field_init_shorthand() =>
+                if !is_lit
+                    && e.as_str() == name
+                    && context.config.use_field_init_shorthand()
+                    && !context.inside_macro() =>
             {
                 Ok(attrs_str + name)
             }
