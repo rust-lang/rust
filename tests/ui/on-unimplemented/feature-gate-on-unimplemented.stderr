@@ -1,5 +1,15 @@
+warning: unknown lint: `malformed_diagnostic_filters`
+  --> $DIR/feature-gate-on-unimplemented.rs:3:10
+   |
+LL | #![allow(malformed_diagnostic_filters)]
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the `malformed_diagnostic_filters` lint is unstable
+   = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
+   = note: `#[warn(unknown_lints)]` on by default
+
 error[E0658]: use of an internal attribute
-  --> $DIR/feature-gate-on-unimplemented.rs:3:3
+  --> $DIR/feature-gate-on-unimplemented.rs:9:3
    |
 LL | #[rustc_on_unimplemented(label = "test error `{Self}` with `{Bar}`")]
    |   ^^^^^^^^^^^^^^^^^^^^^^
@@ -8,6 +18,6 @@ LL | #[rustc_on_unimplemented(label = "test error `{Self}` with `{Bar}`")]
    = note: the `rustc_on_unimplemented` attribute is an internal implementation detail that will never be stable
    = note: see the `diagnostic::on_unimplemented` attribute for the stable equivalent of this attribute
 
-error: aborting due to 1 previous error
+error: aborting due to 1 previous error; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0658`.
