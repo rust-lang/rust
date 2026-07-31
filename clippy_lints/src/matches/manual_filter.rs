@@ -1,12 +1,11 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::res::{MaybeDef as _, MaybeQPath as _, MaybeResPath as _};
+use clippy_utils::res::{MaybeDef as _, MaybeResPath as _};
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_copy;
 use clippy_utils::visitors::contains_unsafe_block;
 use clippy_utils::{as_some_expr, span_contains_comment};
 use rustc_errors::Applicability;
-use rustc_hir::LangItem::OptionNone;
 use rustc_hir::{Arm, Expr, ExprKind, HirId, Pat, PatKind};
 use rustc_lint::LateContext;
 use rustc_span::{Span, SyntaxContext, sym};
@@ -74,10 +73,7 @@ fn is_some_expr(cx: &LateContext<'_>, target: HirId, ctxt: SyntaxContext, expr: 
 }
 
 fn is_none_expr(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    if let Some(inner_expr) = peels_blocks_incl_unsafe_opt(expr) {
-        return inner_expr.res(cx).ctor_parent(cx).is_lang_item(cx, OptionNone);
-    }
-    false
+    peels_blocks_incl_unsafe_opt(expr).is_some_and(|inner_expr| clippy_utils::is_none_expr(cx, inner_expr))
 }
 
 // given the closure: `|<pattern>| <expr>`
