@@ -1,3 +1,4 @@
+// rustfmt-style_edition: 2027
 // rustfmt-fn_params_layout: Vertical
 // Function arguments density
 

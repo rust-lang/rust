@@ -1,3 +1,4 @@
+// rustfmt-style_edition: 2027
 // rustfmt-fn_params_layout: Vertical
 // Function arguments density
 
@@ -45,28 +46,28 @@ trait Lorem {
     }
 
     fn long_param_name(
-        lorem_ipsum_dolor_sit_amet_consectetur_adipiscing_elit_sed_do_eiusmod: Tempor
+        lorem_ipsum_dolor_sit_amet_consectetur_adipiscing_elit_sed_do_eiusmod: Tempor,
     );
 
     fn long_param_type(
-        lorem: IpsumDolorSitAmetConsecteturAdipiscingElitSedDoEiusmodTemporIncididuntUtLabore
+        lorem: IpsumDolorSitAmetConsecteturAdipiscingElitSedDoEiusmodTemporIncididuntUtLabore,
     );
 
     fn long_return_type(
-        lorem: Lorem
+        lorem: Lorem,
     ) -> IpsumDolorSitAmetConsecteturAdipiscingElitSedDoEiusmodTemporIncididuntUtLabore;
 
     fn lorem_ipsum_dolor_sit_amet_consectetur_adipiscing_elit_sed_do_eiusmod_tempor_incididunt(
-        lorem: Lorem
+        lorem: Lorem,
     );
 
     fn lorem<T: IpsumDolorSitAmetConsecteturAdipiscingElitSedDoEiusmodTemporIncididuntUtLaboreEt>(
-        t: T
+        t: T,
     );
 
     fn lorem<
         T: IpsumDolorSitAmetConsecteturAdipiscingElitSedDoEiusmodTemporIncididuntUtLaboreEtDolore,
     >(
-        t: T
+        t: T,
     );
 }
