@@ -375,12 +375,6 @@ impl SourceChangeBuilder {
         self.command = Some(Command::Rename);
     }
 
-    /// Adds a tabstop snippet to place the cursor before `node`
-    pub fn add_tabstop_before(&mut self, _cap: SnippetCap, node: impl AstNode) {
-        assert!(node.syntax().parent().is_some());
-        self.add_snippet(PlaceSnippet::Before(node.syntax().clone().into()));
-    }
-
     fn add_snippet(&mut self, snippet: PlaceSnippet) {
         let snippet_builder = self.snippet_builder.get_or_insert(SnippetBuilder { places: vec![] });
         snippet_builder.places.push(snippet);
