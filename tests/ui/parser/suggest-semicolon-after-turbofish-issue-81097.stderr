@@ -1,5 +1,5 @@
 error: expected `;` or `]`, found `,`
-  --> $DIR/issue-81097.rs:5:15
+  --> $DIR/suggest-semicolon-after-turbofish-issue-81097.rs:5:15
    |
 LL |     drop::<[(), 0]>([]);
    |               ^ expected `;` or `]`
