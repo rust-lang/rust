@@ -231,11 +231,17 @@ impl<R, G> Coroutine<R> for Exclusive<G>
 where
     G: Coroutine<R> + ?Sized,
 {
-    type Yield = G::Yield;
+    type Yield<'a>
+        = G::Yield<'a>
+    where
+        Self: 'a;
     type Return = G::Return;
 
     #[inline]
-    fn resume(self: Pin<&mut Self>, arg: R) -> CoroutineState<Self::Yield, Self::Return> {
+    fn resume<'a>(
+        self: Pin<&'a mut Self>,
+        arg: R,
+    ) -> CoroutineState<Self::Yield<'a>, Self::Return> {
         G::resume(self.get_pin_mut(), arg)
     }
 }

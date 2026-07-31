@@ -2351,11 +2351,17 @@ impl<T: ?Sized, A: Allocator> Unpin for Box<T, A> {}
 
 #[unstable(feature = "coroutine_trait", issue = "43122")]
 impl<G: ?Sized + Coroutine<R> + Unpin, R, A: Allocator> Coroutine<R> for Box<G, A> {
-    type Yield = G::Yield;
+    type Yield<'a>
+        = G::Yield<'a>
+    where
+        Self: 'a;
     type Return = G::Return;
 
-    fn resume(mut self: Pin<&mut Self>, arg: R) -> CoroutineState<Self::Yield, Self::Return> {
-        G::resume(Pin::new(&mut *self), arg)
+    fn resume<'a>(
+        self: Pin<&'a mut Self>,
+        arg: R,
+    ) -> CoroutineState<Self::Yield<'a>, Self::Return> {
+        G::resume(Pin::new(&mut **self.get_mut()), arg)
     }
 }
 
@@ -2364,11 +2370,17 @@ impl<G: ?Sized + Coroutine<R>, R, A: Allocator> Coroutine<R> for Pin<Box<G, A>>
 where
     A: 'static,
 {
-    type Yield = G::Yield;
+    type Yield<'a>
+        = G::Yield<'a>
+    where
+        Self: 'a;
     type Return = G::Return;
 
-    fn resume(mut self: Pin<&mut Self>, arg: R) -> CoroutineState<Self::Yield, Self::Return> {
-        G::resume((*self).as_mut(), arg)
+    fn resume<'a>(
+        self: Pin<&'a mut Self>,
+        arg: R,
+    ) -> CoroutineState<Self::Yield<'a>, Self::Return> {
+        G::resume(self.get_mut().as_mut(), arg)
     }
 }
 

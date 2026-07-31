@@ -78,7 +78,9 @@ pub trait Coroutine<R = ()> {
     /// For example an iterator-as-a-coroutine would likely have this type as
     /// `T`, the type being iterated over.
     #[lang = "coroutine_yield"]
-    type Yield;
+    type Yield<'a>
+    where
+        Self: 'a;
 
     /// The type of value this coroutine returns.
     ///
@@ -116,25 +118,38 @@ pub trait Coroutine<R = ()> {
     /// guaranteed to panic on resuming after `Complete`, this is not guaranteed
     /// for all implementations of the `Coroutine` trait.
     #[lang = "coroutine_resume"]
-    fn resume(self: Pin<&mut Self>, arg: R) -> CoroutineState<Self::Yield, Self::Return>;
+    fn resume<'a>(self: Pin<&'a mut Self>, arg: R)
+    -> CoroutineState<Self::Yield<'a>, Self::Return>;
 }
 
 #[unstable(feature = "coroutine_trait", issue = "43122")]
 impl<G: ?Sized + Coroutine<R>, R> Coroutine<R> for Pin<&mut G> {
-    type Yield = G::Yield;
+    type Yield<'a>
+        = G::Yield<'a>
+    where
+        Self: 'a;
     type Return = G::Return;
 
-    fn resume(mut self: Pin<&mut Self>, arg: R) -> CoroutineState<Self::Yield, Self::Return> {
-        G::resume((*self).as_mut(), arg)
+    fn resume<'a>(
+        self: Pin<&'a mut Self>,
+        arg: R,
+    ) -> CoroutineState<Self::Yield<'a>, Self::Return> {
+        G::resume(self.get_mut().as_mut(), arg)
     }
 }
 
 #[unstable(feature = "coroutine_trait", issue = "43122")]
 impl<G: ?Sized + Coroutine<R> + Unpin, R> Coroutine<R> for &mut G {
-    type Yield = G::Yield;
+    type Yield<'a>
+        = G::Yield<'a>
+    where
+        Self: 'a;
     type Return = G::Return;
 
-    fn resume(mut self: Pin<&mut Self>, arg: R) -> CoroutineState<Self::Yield, Self::Return> {
-        G::resume(Pin::new(&mut *self), arg)
+    fn resume<'a>(
+        self: Pin<&'a mut Self>,
+        arg: R,
+    ) -> CoroutineState<Self::Yield<'a>, Self::Return> {
+        G::resume(Pin::new(&mut **self.get_mut()), arg)
     }
 }
