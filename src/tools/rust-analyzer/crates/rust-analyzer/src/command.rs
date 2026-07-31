@@ -174,7 +174,7 @@ impl<T: Sized + Send + 'static> CommandHandle<T> {
         let mut child = child
             .spawn()
             .map(JodGroupChild)
-            .with_context(|| "Failed to spawn command: {child:?}")?;
+            .with_context(|| format!("Failed to spawn command: {child:?}"))?;
 
         let stdout = child.0.stdout().take().unwrap();
         let stderr = child.0.stderr().take().unwrap();
