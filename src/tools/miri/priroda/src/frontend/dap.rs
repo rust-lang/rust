@@ -1,7 +1,7 @@
 use std::io::{self, BufReader, BufWriter};
 
 use emmy_dap_types::prelude::types::Capabilities;
-use emmy_dap_types::prelude::{Command, Request, ResponseBody, Server};
+use emmy_dap_types::prelude::{Command, Event, Request, ResponseBody, Server};
 use miri::{InterpResult, interp_ok};
 
 use crate::debugger::PrirodaContext;
@@ -68,8 +68,15 @@ impl DapSession {
         match &request.command {
             Command::Initialize(_) =>
                 self.handle_initialize(request).map(|()| DispatchOutcome::Continue),
+            Command::Launch(_) => self.handle_launch(request).map(|()| DispatchOutcome::Continue),
             _ => self.handle_unsupported_request(request).map(|()| DispatchOutcome::Exit),
         }
+    }
+
+    /// FIXME: connect launch arguments to Priroda's session model.
+    fn handle_launch(&mut self, request: Request) -> ServerResult {
+        let response = request.success(ResponseBody::Launch);
+        self.server.respond(response)
     }
 
     /// FIXME: grow capabilities as Priroda adds DAP features.
@@ -80,7 +87,8 @@ impl DapSession {
             supports_configuration_done_request: Some(true),
             ..Capabilities::default()
         }));
-        self.server.respond(response)
+        self.server.respond(response)?;
+        self.server.send_event(Event::Initialized)
     }
 
     fn handle_unsupported_request(&mut self, request: Request) -> ServerResult {
