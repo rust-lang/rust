@@ -381,12 +381,6 @@ impl SourceChangeBuilder {
         self.add_snippet(PlaceSnippet::Before(node.syntax().clone().into()));
     }
 
-    /// Adds a snippet to move the cursor selected over `node`
-    pub fn add_placeholder_snippet(&mut self, _cap: SnippetCap, node: impl AstNode) {
-        assert!(node.syntax().parent().is_some());
-        self.add_snippet(PlaceSnippet::Over(node.syntax().clone().into()))
-    }
-
     fn add_snippet(&mut self, snippet: PlaceSnippet) {
         let snippet_builder = self.snippet_builder.get_or_insert(SnippetBuilder { places: vec![] });
         snippet_builder.places.push(snippet);
