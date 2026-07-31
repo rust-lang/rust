@@ -313,7 +313,7 @@ fn remap_mir_for_const_eval_select<'tcx>(
     body
 }
 
-fn take_array<T, const N: usize>(b: &mut ThinVec<T>) -> Result<[T; N], Box<[T]>> {
+fn take_array<T, const N: usize>(b: &mut ThinVec<T>) -> Result<[T; N], ThinVec<T>> {
     let b: [T; N] = std::mem::take(b).try_into()?;
     Ok(b)
 }
