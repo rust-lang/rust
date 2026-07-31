@@ -4,8 +4,7 @@ use rustc_type_ir as ir;
 pub use rustc_type_ir::solve::*;
 
 use crate::ty::{
-    self, FallibleTypeFolder, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeVisitable, TypeVisitor,
-    try_visit,
+    self, FallibleTypeFolder, Ty, TyCtxt, TypeFoldable, TypeVisitable, TypeVisitor, try_visit,
 };
 
 pub type Goal<'tcx, P> = ir::solve::Goal<TyCtxt<'tcx>, P>;
@@ -65,21 +64,6 @@ impl<'tcx> TypeFoldable<TyCtxt<'tcx>> for ExternalConstraints<'tcx> {
                 .clone()
                 .try_fold_with(folder)?,
         }))
-    }
-
-    fn fold_with<F: TypeFolder<TyCtxt<'tcx>>>(self, folder: &mut F) -> Self {
-        // Perf testing has found that this check is slightly faster than
-        // folding and re-interning an empty `ExternalConstraintsData`.
-        // See: <https://github.com/rust-lang/rust/pull/142430>.
-        if self.is_empty() {
-            return self;
-        }
-
-        TypeFolder::cx(folder).mk_external_constraints(ExternalConstraintsData {
-            region_constraints: self.region_constraints.clone().fold_with(folder),
-            opaque_types: self.opaque_types.iter().map(|opaque| opaque.fold_with(folder)).collect(),
-            normalization_nested_goals: self.normalization_nested_goals.clone().fold_with(folder),
-        })
     }
 }
 

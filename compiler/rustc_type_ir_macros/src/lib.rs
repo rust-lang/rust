@@ -131,22 +131,6 @@ fn type_foldable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::Toke
         })
     });
 
-    let body_fold = s.each_variant(|vi| {
-        let bindings = vi.bindings();
-        vi.construct(|_, index| {
-            let bind = &bindings[index];
-
-            // retain value of fields with #[type_foldable(identity)]
-            if has_ignore_attr(&bind.ast().attrs, "type_foldable", "identity") {
-                bind.to_token_stream()
-            } else {
-                quote! {
-                    ::rustc_type_ir::TypeFoldable::fold_with(#bind, __folder)
-                }
-            }
-        })
-    });
-
     // We filter fields which get ignored and don't require them to implement
     // `TypeFoldable`. We do so after generating `body_fold` as we still need
     // to generate code for them.
@@ -163,13 +147,6 @@ fn type_foldable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::Toke
                 __folder: &mut __F
             ) -> Result<Self, __F::Error> {
                 Ok(match self { #body_try_fold })
-            }
-
-            fn fold_with<__F: ::rustc_type_ir::TypeFolder<I>>(
-                self,
-                __folder: &mut __F
-            ) -> Self {
-                match self { #body_fold }
             }
         },
     )
