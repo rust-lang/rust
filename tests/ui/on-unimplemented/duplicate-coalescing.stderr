@@ -10,7 +10,7 @@ LL |     message = "ignored fallback message",
    = note: `#[warn(malformed_diagnostic_attributes)]` (part of `#[warn(unknown_or_malformed_diagnostic_attributes)]`) on by default
 
 error[E0277]: i32 filter message
-  --> $DIR/duplicate-coalescing.rs:45:13
+  --> $DIR/duplicate-coalescing.rs:48:13
    |
 LL |     let _: <i32 as Coalesced>::Output;
    |             ^^^ later filter label
@@ -27,7 +27,7 @@ LL | trait Coalesced {
    | ^^^^^^^^^^^^^^^
 
 error[E0277]: fallback message
-  --> $DIR/duplicate-coalescing.rs:53:13
+  --> $DIR/duplicate-coalescing.rs:56:13
    |
 LL |     let _: <u32 as Coalesced>::Output;
    |             ^^^ later filter label
@@ -43,7 +43,7 @@ LL | trait Coalesced {
    | ^^^^^^^^^^^^^^^
 
 error[E0277]: stable message
-  --> $DIR/duplicate-coalescing.rs:60:13
+  --> $DIR/duplicate-coalescing.rs:63:13
    |
 LL |     let _: <() as StableFirst>::Output;
    |             ^^ internal label
@@ -55,19 +55,32 @@ help: this trait has no implementations, consider adding one
 LL | trait StableFirst {
    | ^^^^^^^^^^^^^^^^^
 
+error[E0277]: internal filter message
+  --> $DIR/duplicate-coalescing.rs:67:13
+   |
+LL |     let _: <i32 as InternalFirst>::Output;
+   |             ^^^ stable label
+   |
+   = help: the trait `InternalFirst` is not implemented for `i32`
+help: this trait has no implementations, consider adding one
+  --> $DIR/duplicate-coalescing.rs:43:1
+   |
+LL | trait InternalFirst {
+   | ^^^^^^^^^^^^^^^^^^^
+
 error[E0277]: internal message
-  --> $DIR/duplicate-coalescing.rs:64:13
+  --> $DIR/duplicate-coalescing.rs:71:13
    |
 LL |     let _: <() as InternalFirst>::Output;
    |             ^^ stable label
    |
    = help: the trait `InternalFirst` is not implemented for `()`
 help: this trait has no implementations, consider adding one
-  --> $DIR/duplicate-coalescing.rs:40:1
+  --> $DIR/duplicate-coalescing.rs:43:1
    |
 LL | trait InternalFirst {
    | ^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 4 previous errors; 1 warning emitted
+error: aborting due to 5 previous errors; 1 warning emitted
 
 For more information about this error, try `rustc --explain E0277`.

@@ -35,7 +35,10 @@ trait StableFirst {
     type Output;
 }
 
-#[rustc_on_unimplemented(message = "internal message")]
+#[rustc_on_unimplemented(
+    on(Self = "i32", message = "internal filter message"),
+    message = "internal message"
+)]
 #[diagnostic::on_unimplemented(label = "stable label")]
 trait InternalFirst {
     type Output;
@@ -60,6 +63,10 @@ fn main() {
     let _: <() as StableFirst>::Output;
     //~^ ERROR stable message
     //~| NOTE internal label
+
+    let _: <i32 as InternalFirst>::Output;
+    //~^ ERROR internal filter message
+    //~| NOTE stable label
 
     let _: <() as InternalFirst>::Output;
     //~^ ERROR internal message

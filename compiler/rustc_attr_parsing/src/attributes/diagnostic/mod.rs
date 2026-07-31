@@ -131,29 +131,12 @@ fn merge_directives(
     if let Some((_, first)) = first {
         let Directive { is_rustc_attr, filters, message, label, notes, parent_label } = later.1;
 
-        // Evaluation visits every filter before the root directive. Appending filters and notes
-        // preserves their source order across separate attribute occurrences.
         first.is_rustc_attr |= is_rustc_attr;
         first.filters.extend(filters);
         merge(cx, &mut first.message, message, sym::message);
         merge(cx, &mut first.label, label, sym::label);
         first.notes.extend(notes);
-
-        if let Some(parent_label) = parent_label {
-            if let Some(first_parent_label) = &first.parent_label {
-                cx.emit_lint(
-                    MALFORMED_DIAGNOSTIC_ATTRIBUTES,
-                    IgnoredDiagnosticOption {
-                        first_span: first_parent_label.span,
-                        later_span: parent_label.span,
-                        option_name: sym::parent_label,
-                    },
-                    parent_label.span,
-                );
-            } else {
-                first.parent_label = Some(parent_label);
-            }
-        }
+        merge(cx, &mut first.parent_label, parent_label, sym::parent_label);
     } else {
         *first = Some(later);
     }
@@ -233,7 +216,7 @@ fn parse_directive_items<'p>(
     let mut message: Option<(Span, _)> = None;
     let mut label: Option<(Span, _)> = None;
     let mut notes = ThinVec::new();
-    let mut parent_label: Option<FormatString> = None;
+    let mut parent_label: Option<(Span, FormatString)> = None;
     let mut filters = ThinVec::new();
 
     for item in items {
@@ -365,9 +348,10 @@ fn parse_directive_items<'p>(
             (Mode::RustcOnUnimplemented, sym::parent_label) => {
                 let value = or_malformed!(value?);
                 if let Some(parent_label) = &parent_label {
-                    duplicate!(name, parent_label.span)
+                    duplicate!(name, parent_label.0)
                 } else {
-                    parent_label = Some(parse_format(value));
+                    let format = parse_format(value);
+                    parent_label = Some((format.span, format));
                 }
             }
             (Mode::RustcOnUnimplemented, sym::on) => {
