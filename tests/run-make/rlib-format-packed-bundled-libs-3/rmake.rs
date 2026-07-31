@@ -16,6 +16,7 @@ use run_make_support::{
 //@ only-linux
 // Reason: differences in the native lib compilation process causes differences
 // in the --print link-args output
+// FIXME: The test actually passes on windows-gnu, enable it there.
 
 fn main() {
     build_native_static_lib("native_dep_1");
@@ -77,8 +78,10 @@ fn main() {
         .stdout_utf8();
 
     let re = regex::Regex::new(
-"--whole-archive.*native_dep_1.*--whole-archive.*lnative_dep_2.*no-whole-archive.*lnative_dep_4"
-    ).unwrap();
+        "--whole-archive.*native_dep_1.*--whole-archive.*libnative_dep_2.a\
+                                .*no-whole-archive.*libnative_dep_4.a",
+    )
+    .unwrap();
 
     assert!(re.is_match(&out));
 }

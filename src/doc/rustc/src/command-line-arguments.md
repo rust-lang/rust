@@ -82,6 +82,12 @@ The name used in a `link` attribute may be overridden using the form `-l
 ATTR_NAME:LINK_NAME` where `ATTR_NAME` is the name in the `link` attribute,
 and `LINK_NAME` is the name of the actual library that will be linked.
 
+The compiler may attempt to search for the library in native library search directories
+(controlled by `-L`), and pass it to linker by full path if the search is successful.
+Otherwise the library will be passed to linker by name, so it can perform its own search.
+In some cases this enables use of alternative library naming schemes or `+verbatim` modifier
+even if they are not natively supported by linker.
+
 [link-attribute]: ../reference/items/external-blocks.html#the-link-attribute
 
 ### Linking modifiers: `whole-archive`
