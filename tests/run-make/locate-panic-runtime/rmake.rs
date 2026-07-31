@@ -4,6 +4,8 @@
 // Note: We have two possible panic runtime crates: the built one and the one from
 // the sysroot. Sysroot lookup is disabled via the `--sysroot=` override to verify
 // that we can load the correct one.
+//
+// `--emit=llvm-ir` is used to avoid running the linker.
 
 use run_make_support::{path, rfs, rust_lib_name, rustc};
 
@@ -36,6 +38,7 @@ fn main() {
         .input("lib.rs")
         .arg("-Cpanic=abort")
         .sysroot("./no_exists")
+        .emit("llvm-ir")
         .run_fail()
         .assert_stderr_contains("can't find crate for `panic_abort`");
 
@@ -47,6 +50,7 @@ fn main() {
         .arg("-Cpanic=abort")
         .sysroot("./no_exists")
         .library_search_path(format!("crate={}", path("panic_abort").display()))
+        .emit("llvm-ir")
         .run_fail()
         .assert_stderr_contains("can't find crate for `panic_abort`");
 
@@ -57,5 +61,6 @@ fn main() {
         .arg("-Cpanic=abort")
         .sysroot("./no_exists")
         .library_search_path(format!("dependency={}", path("panic_abort").display()))
+        .emit("llvm-ir")
         .run();
 }
