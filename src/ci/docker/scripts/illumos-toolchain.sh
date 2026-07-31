@@ -41,8 +41,8 @@ export PATH="$PREFIX/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 # enabled in all of the static libraries we intend to include in output
 # binaries.
 #
-GCC_VERSION='8.4.0'
-GCC_SUM='e30a6e52d10e1f27ed55104ad233c30bd1e99cfb5ff98ab022dc941edd1b2dd4'
+GCC_VERSION='10.1.0'
+GCC_SUM='b6898a23844b656f1b68691c5c012036c2e694ac4b53a8918d4712ad876e7ea2'
 GCC_BASE="gcc-$GCC_VERSION"
 GCC_TAR="gcc-$GCC_VERSION.tar.xz"
 GCC_URL="https://ftp.gnu.org/gnu/gcc/$GCC_BASE/$GCC_TAR"
