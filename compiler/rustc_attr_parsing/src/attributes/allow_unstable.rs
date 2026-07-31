@@ -2,6 +2,7 @@ use std::iter;
 
 use rustc_feature::AttributeStability;
 
+use super::macro_attrs::check_macro_only;
 use super::prelude::*;
 use crate::session_diagnostics;
 
@@ -27,6 +28,10 @@ impl CombineAttributeParser for AllowInternalUnstableParser {
         parse_unstable(cx, args, <Self as CombineAttributeParser>::PATH[0])
             .into_iter()
             .zip(iter::repeat(cx.attr_span))
+    }
+
+    fn finalize_check(cx: &FinalizeCheckContext<'_, '_>, attr_span: Span) {
+        check_macro_only(cx, attr_span);
     }
 }
 
