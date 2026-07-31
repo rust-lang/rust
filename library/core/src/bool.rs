@@ -140,7 +140,6 @@ impl bool {
     /// # Examples
     ///
     /// ```
-    /// #![feature(bool_toggle)]
     /// let mut boolean = false;
     ///
     /// boolean.toggle();
@@ -152,7 +151,7 @@ impl bool {
     ///
     /// [`true`]: ../std/keyword.true.html
     /// [`false`]: ../std/keyword.false.html
-    #[unstable(feature = "bool_toggle", issue = "159298")]
+    #[stable(feature = "bool_toggle", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub const fn toggle(&mut self) {
         *self = !*self;
