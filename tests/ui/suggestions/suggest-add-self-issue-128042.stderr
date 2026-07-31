@@ -15,8 +15,8 @@ LL |         self.state = 1;
    = note: a module named `self` exists in another namespace
 help: add a `self` receiver parameter to make the associated `fn` a method
    |
-LL |     fn oof(&self, *mut Self) {
-   |            ++++++
+LL |     fn oof(&mut self, *mut Self) {
+   |            ++++++++++
 
 error: aborting due to 2 previous errors
 

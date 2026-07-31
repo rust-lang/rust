@@ -756,7 +756,9 @@ pub(crate) struct DiagMetadata<'ast> {
     /// Used to detect possible `if let` written without `let` and to provide structured suggestion.
     in_if_condition: Option<&'ast Expr>,
 
-    /// Used to detect possible new binding written without `let` and to provide structured suggestion.
+    /// The assignment whose left-hand side is currently
+    /// being visited, so a name resolved while this is
+    /// set is being written to rather than read.
     in_assignment: Option<&'ast Expr>,
     is_assign_rhs: bool,
 
@@ -5317,7 +5319,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 self.resolve_expr(elem, Some(expr));
                 self.visit_expr(idx);
             }
-            ExprKind::Assign(ref lhs, ref rhs, _) => {
+            ExprKind::Assign(ref lhs, ref rhs, _) | ExprKind::AssignOp(_, ref lhs, ref rhs) => {
                 if !self.diag_metadata.is_assign_rhs {
                     self.diag_metadata.in_assignment = Some(expr);
                 }
