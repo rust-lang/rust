@@ -152,6 +152,7 @@ impl bool {
     /// [`true`]: ../std/keyword.true.html
     /// [`false`]: ../std/keyword.false.html
     #[stable(feature = "bool_toggle", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "bool_toggle", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub const fn toggle(&mut self) {
         *self = !*self;
