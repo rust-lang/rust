@@ -16,6 +16,7 @@ use regex::Regex;
 use rustc_arena::TypedArena;
 use rustc_attr_parsing::eval_config_entry;
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
+use rustc_data_structures::jobserver;
 use rustc_data_structures::memmap::Mmap;
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_errors::DiagCtxtHandle;
@@ -24,11 +25,8 @@ use rustc_hir::attrs::NativeLibKind;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_lint_defs::builtin::LINKER_INFO;
 use rustc_macros::Diagnostic;
+use rustc_metadata::EncodedMetadata;
 use rustc_metadata::fs::{METADATA_FILENAME, copy_to_stdout, emit_wrapper_file};
-use rustc_metadata::{
-    EncodedMetadata, NativeLibSearchFallback, find_native_static_library,
-    walk_native_lib_search_dirs,
-};
 use rustc_middle::bug;
 use rustc_middle::error::DuplicateEiiImpls;
 use rustc_middle::lint::emit_lint_base;
@@ -36,8 +34,8 @@ use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
 use rustc_session::config::{
-    self, CFGuard, CrateType, DebugInfo, InstrumentMcount, LinkerFeaturesCli, OutFileName,
-    OutputFilenames, OutputType, PrintKind, SplitDwarfKind, Strip,
+    self, CFGuard, CrateType, DebugInfo, InstrumentMcount, LinkerFeaturesCli, LinkerJobs,
+    OutFileName, OutputFilenames, OutputType, PrintKind, SplitDwarfKind, Strip,
 };
 use rustc_session::lint::builtin::LINKER_MESSAGES;
 use rustc_session::output::{check_file_is_writeable, invalid_output_for_target, out_filename};
@@ -133,6 +131,173 @@ fn check_externally_implementable_item_linkage(sess: &Session, crate_info: &Crat
             });
         }
     }
+}
+
+/// The fallback directories are passed to linker, but not used when rustc does the search,
+/// because in the latter case the set of fallback directories cannot always be determined
+/// consistently at the moment.
+struct NativeLibSearchFallback<'a> {
+    self_contained_components: LinkSelfContainedComponents,
+    apple_sdk_root: Option<&'a Path>,
+}
+
+fn walk_native_lib_search_dirs<R>(
+    sess: &Session,
+    fallback: Option<NativeLibSearchFallback<'_>>,
+    mut f: impl FnMut(&Path, bool /*is_framework*/) -> ControlFlow<R>,
+) -> ControlFlow<R> {
+    // Library search paths explicitly supplied by user (`-L` on the command line).
+    for search_path in sess.target_filesearch().cli_search_paths(PathKind::Native) {
+        f(&search_path.dir, false)?;
+    }
+    for search_path in sess.target_filesearch().cli_search_paths(PathKind::Framework) {
+        // Frameworks are looked up strictly in framework-specific paths.
+        if search_path.kind != PathKind::All {
+            f(&search_path.dir, true)?;
+        }
+    }
+
+    let Some(NativeLibSearchFallback { self_contained_components, apple_sdk_root }) = fallback
+    else {
+        return ControlFlow::Continue(());
+    };
+
+    // The toolchain ships some native library components and self-contained linking was enabled.
+    // Add the self-contained library directory to search paths.
+    if self_contained_components.intersects(
+        LinkSelfContainedComponents::LIBC
+            | LinkSelfContainedComponents::UNWIND
+            | LinkSelfContainedComponents::MINGW,
+    ) {
+        f(&sess.target_tlib_path.dir.join("self-contained"), false)?;
+    }
+
+    let has_shared_llvm_apple_darwin =
+        sess.target.is_like_darwin && sess.target_tlib_path.dir.join("libLLVM.dylib").exists();
+
+    // Toolchains for some targets may ship `libunwind.a`, but place it into the main sysroot
+    // library directory instead of the self-contained directories.
+    // Sanitizer libraries have the same issue and are also linked by name on Apple targets.
+    // The targets here should be in sync with `copy_third_party_objects` in bootstrap.
+    // On Apple targets, shared LLVM is linked by name, so when `libLLVM.dylib` is
+    // present in the target libdir, add that directory to the linker search path.
+    // FIXME: implement `-Clink-self-contained=+/-unwind,+/-sanitizers`, move the shipped libunwind
+    // and sanitizers to self-contained directory, and stop adding this search path.
+    // FIXME: On AIX this also has the side-effect of making the list of library search paths
+    // non-empty, which is needed or the linker may decide to record the LIBPATH env, if
+    // defined, as the search path instead of appending the default search paths.
+    if sess.target.cfg_abi == CfgAbi::Fortanix
+        || sess.target.os == Os::Linux
+        || sess.target.os == Os::Fuchsia
+        || sess.target.is_like_aix
+        || sess.target.is_like_darwin
+            && (!sess.sanitizers().is_empty() || has_shared_llvm_apple_darwin)
+        || sess.target.os == Os::Windows
+            && sess.target.env == Env::Gnu
+            && sess.target.cfg_abi == CfgAbi::Llvm
+    {
+        f(&sess.target_tlib_path.dir, false)?;
+    }
+
+    // Mac Catalyst uses the macOS SDK, but to link to iOS-specific frameworks
+    // we must have the support library stubs in the library search path (#121430).
+    if let Some(sdk_root) = apple_sdk_root
+        && sess.target.env == Env::MacAbi
+    {
+        f(&sdk_root.join("System/iOSSupport/usr/lib"), false)?;
+        f(&sdk_root.join("System/iOSSupport/System/Library/Frameworks"), true)?;
+    }
+
+    ControlFlow::Continue(())
+}
+
+pub(super) fn try_find_native_static_library(
+    sess: &Session,
+    name: &str,
+    verbatim: bool,
+) -> Option<PathBuf> {
+    let default = sess.staticlib_components(verbatim);
+    let formats = if verbatim {
+        vec![default]
+    } else {
+        // On Windows, static libraries sometimes show up as libfoo.a and other
+        // times show up as foo.lib
+        let unix = ("lib", ".a");
+        if default == unix { vec![default] } else { vec![default, unix] }
+    };
+
+    walk_native_lib_search_dirs(sess, None, |dir, is_framework| {
+        if !is_framework {
+            for (prefix, suffix) in &formats {
+                let test = dir.join(format!("{prefix}{name}{suffix}"));
+                if test.exists() {
+                    return ControlFlow::Break(test);
+                }
+            }
+        }
+        ControlFlow::Continue(())
+    })
+    .break_value()
+}
+
+pub(super) fn try_find_native_dynamic_library(
+    sess: &Session,
+    name: &str,
+    verbatim: bool,
+) -> Option<PathBuf> {
+    let default = sess.staticlib_components(verbatim);
+    let formats = if verbatim {
+        vec![default]
+    } else {
+        // While the official naming convention for MSVC import libraries
+        // is foo.lib, Meson follows the libfoo.dll.a convention to
+        // disambiguate .a for static libraries
+        let meson = ("lib", ".dll.a");
+        // and MinGW uses .a altogether
+        let mingw = ("lib", ".a");
+        vec![default, meson, mingw]
+    };
+
+    walk_native_lib_search_dirs(sess, None, |dir, is_framework| {
+        if !is_framework {
+            for (prefix, suffix) in &formats {
+                let test = dir.join(format!("{prefix}{name}{suffix}"));
+                if test.exists() {
+                    return ControlFlow::Break(test);
+                }
+            }
+        }
+        ControlFlow::Continue(())
+    })
+    .break_value()
+}
+
+pub(super) fn find_native_static_library(name: &str, verbatim: bool, sess: &Session) -> PathBuf {
+    try_find_native_static_library(sess, name, verbatim).unwrap_or_else(|| {
+        sess.dcx().emit_fatal(diagnostics::MissingNativeLibrary::new(name, verbatim))
+    })
+}
+
+/// If `lib` is a static library that is bundled into the rlib as a packed archive, returns the
+/// file name of that archive. Returns `None` for libraries that are instead unpacked into loose
+/// object files, or not bundled at all.
+fn find_bundled_library(
+    lib: &NativeLib,
+    sess: &Session,
+    crate_types: &[CrateType],
+) -> Option<Symbol> {
+    if let NativeLibKind::Static { bundle: Some(true) | None, whole_archive, .. } = lib.kind
+        && crate_types.iter().any(|t| matches!(t, &CrateType::Rlib | CrateType::StaticLib))
+        && (sess.opts.unstable_opts.packed_bundled_libs
+            || lib.cfg.is_some()
+            || whole_archive == Some(true))
+    {
+        return find_native_static_library(lib.name.as_str(), lib.verbatim, sess)
+            .file_name()
+            .and_then(|s| s.to_str())
+            .map(Symbol::intern);
+    }
+    None
 }
 
 /// Performs the linkage portion of the compilation phase. This will generate all
@@ -372,28 +537,6 @@ pub fn each_linked_rlib(
         }
     }
     Ok(())
-}
-
-/// If `lib` is a static library that is bundled into the rlib as a packed archive, returns the
-/// file name of that archive. Returns `None` for libraries that are instead unpacked into loose
-/// object files, or not bundled at all.
-fn find_bundled_library(
-    lib: &NativeLib,
-    sess: &Session,
-    crate_types: &[CrateType],
-) -> Option<Symbol> {
-    if let NativeLibKind::Static { bundle: Some(true) | None, whole_archive, .. } = lib.kind
-        && crate_types.iter().any(|t| matches!(t, &CrateType::Rlib | CrateType::StaticLib))
-        && (sess.opts.unstable_opts.packed_bundled_libs
-            || lib.cfg.is_some()
-            || whole_archive == Some(true))
-    {
-        return find_native_static_library(lib.name.as_str(), lib.verbatim, sess)
-            .file_name()
-            .and_then(|s| s.to_str())
-            .map(Symbol::intern);
-    }
-    None
 }
 
 /// Create an 'rlib'.
@@ -1085,7 +1228,7 @@ fn link_natively(
         should_archive.then(|| tmpdir.join(out_filename.file_name().unwrap()).with_extension("so"));
     let temp_filename = archive_member.as_deref().unwrap_or(out_filename);
 
-    let mut cmd = linker_with_args(
+    let (mut cmd, jobserver_tokens) = linker_with_args(
         &linker_path,
         flavor,
         sess,
@@ -1241,6 +1384,9 @@ fn link_natively(
 
         break;
     }
+
+    // Finished running linker, release the tokens.
+    drop(jobserver_tokens);
 
     match prog {
         Ok(prog) => {
@@ -2742,7 +2888,7 @@ fn linker_with_args(
     metadata: &EncodedMetadata,
     self_contained_components: LinkSelfContainedComponents,
     codegen_backend: &'static str,
-) -> Command {
+) -> (Command, Vec<jobserver::Acquired>) {
     let self_contained_crt_objects = self_contained_components.is_crt_objects_enabled();
     let cmd = &mut *super::linker::get_linker(
         sess,
@@ -3018,7 +3164,38 @@ fn linker_with_args(
     // to it and remove the option. Currently the last holdout is wasm32-unknown-emscripten.
     add_post_link_args(cmd, sess, flavor);
 
-    cmd.take_cmd()
+    // Only LLD supports controlling parallelism at the moment.
+    let mut tokens = Vec::new();
+    if let LinkerJobs::Explicit(limit) = sess.opts.jobs.linker
+        && flavor.uses_lld()
+    {
+        // Try obtaining as many jobserver tokens as possible (within the limit) to run parallel
+        // linking. One token is available implicitly since we are running on the main thread.
+        let client = jobserver::client();
+
+        let mut unsupported = false;
+        for _ in 0..limit.get() - 1 {
+            match client.try_acquire() {
+                Ok(Some(token)) => tokens.push(token),
+                Ok(None) => {}
+                Err(e) if e.kind() == io::ErrorKind::Unsupported => {
+                    assert!(tokens.is_empty());
+                    unsupported = true;
+                    break;
+                }
+                Err(e) => bug!("IO error when acquiring jobserver token: {e}"),
+            }
+        }
+
+        let prefix = if sess.target.is_like_windows { "/threads:" } else { "--threads=" };
+        // Error on the side of oversubscription if non-blocking token acquiring is unsupported.
+        // Linking is typically the last step in a multi-crate project build,
+        // so the resources should usually be free.
+        let threads = if unsupported { limit.get() } else { 1 + tokens.len() };
+        cmd.link_arg(format!("{prefix}{threads}"));
+    }
+
+    (cmd.take_cmd(), tokens)
 }
 
 fn add_order_independent_options(

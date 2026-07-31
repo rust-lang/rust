@@ -1,4 +1,4 @@
-error[E0277]: cannot use splat attribute; the splatted argument type must be a tuple or unit, not a u32 (u32)
+error[E0277]: cannot use `rustc_splat` attribute; the splatted argument type must be a tuple or unit, not a u32 (u32)
   --> $DIR/splat-maybe-tuple.rs:8:45
    |
 LL | fn unbound_generic_arg<T>(#[rustc_splat] t: T) {}

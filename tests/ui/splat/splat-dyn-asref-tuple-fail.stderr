@@ -1,4 +1,4 @@
-error[E0277]: cannot use splat attribute; the splatted argument type must be a tuple or unit, not a Trait(std::convert::AsRef<std::string::String>)
+error[E0277]: cannot use `rustc_splat` attribute; the splatted argument type must be a tuple or unit, not a Trait(std::convert::AsRef<std::string::String>)
   --> $DIR/splat-dyn-asref-tuple-fail.rs:12:42
    |
 LL | fn dyn_asref_splat<T>(#[rustc_splat] _t: &dyn AsRef<T>)
@@ -22,7 +22,7 @@ LL | fn dyn_asref_splat<T>(#[rustc_splat] _t: &dyn AsRef<T>)
 LL |     T: std::marker::Tuple,
    |        ^^^^^^^^^^^^^^^^^^ required by this bound in `dyn_asref_splat`
 
-error[E0277]: cannot use splat attribute; the splatted argument type must be a tuple or unit, not a Trait(std::convert::AsRef<_>)
+error[E0277]: cannot use `rustc_splat` attribute; the splatted argument type must be a tuple or unit, not a Trait(std::convert::AsRef<_>)
   --> $DIR/splat-dyn-asref-tuple-fail.rs:12:42
    |
 LL | fn dyn_asref_splat<T>(#[rustc_splat] _t: &dyn AsRef<T>)
@@ -31,7 +31,7 @@ LL | fn dyn_asref_splat<T>(#[rustc_splat] _t: &dyn AsRef<T>)
 LL |     dyn_asref_splat(&s);
    |     ^^^^^^^^^^^^^^^^^^^
 
-error[E0277]: cannot use splat attribute; the splatted argument type must be a tuple or unit, not a Trait(std::convert::AsRef<(u8, f32)>)
+error[E0277]: cannot use `rustc_splat` attribute; the splatted argument type must be a tuple or unit, not a Trait(std::convert::AsRef<(u8, f32)>)
   --> $DIR/splat-dyn-asref-tuple-fail.rs:12:42
    |
 LL | fn dyn_asref_splat<T>(#[rustc_splat] _t: &dyn AsRef<T>)
@@ -40,7 +40,7 @@ LL | fn dyn_asref_splat<T>(#[rustc_splat] _t: &dyn AsRef<T>)
 LL |     dyn_asref_splat::<(u8, f32)>(&t);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0277]: cannot use splat attribute; the splatted argument type must be a tuple or unit, not a Trait(std::convert::AsRef<_>)
+error[E0277]: cannot use `rustc_splat` attribute; the splatted argument type must be a tuple or unit, not a Trait(std::convert::AsRef<_>)
   --> $DIR/splat-dyn-asref-tuple-fail.rs:12:42
    |
 LL | fn dyn_asref_splat<T>(#[rustc_splat] _t: &dyn AsRef<T>)

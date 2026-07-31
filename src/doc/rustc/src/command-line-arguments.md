@@ -481,6 +481,60 @@ with `--error-format=json`.
 
 See [the JSON chapter] for more detail.
 
+<a id="option-jobs"></a>
+## `-j`/`--jobs`, `--jobs-frontend`, `--jobs-backend`, `--jobs-linker`: limit parallelism
+
+These flags specify the maximum number of parallel jobs used by the compiler, or its specific parts.
+
+All the options accept a number from 0 to 255, or `sync`.
+- `0` is equivalent to the number of available logical CPUs.
+- `sync` is equivalent to `1`, but with synchronization overhead enabled (for benchmarking).
+
+`jobs` is the common upper limit on everything,
+more specific `jobs-*` options cannot specify larger values.
+
+### Frontend parallelism
+
+Parallelism used by compilation stages from lexing to generation of backend IR (e.g. LLVM IR).
+
+- If `jobs-frontend` is passed, then it is used as the limit,
+- otherwise if `jobs` is passed, then it is used as the limit,
+- otherwise `1` is used as the limit (parallelism is disabled), this default may change.
+
+In any case the parallelism here may be additionally limited dynamically by jobserver
+passed from a higher level build system like cargo.
+
+### Backend parallelism
+
+Parallelism used by compilation stages converting backend IR to object files.
+
+- If `jobs-backend` is passed, then it is used as the limit,
+- otherwise if `jobs` is passed, then it is used as the limit,
+- otherwise `32` is used as the limit or there's no limit in case of an inherited jobserver,
+  this default may change.
+
+In any case the parallelism here may be additionally limited dynamically by jobserver
+passed from a higher level build system like cargo.
+
+Note: the backend parallelism limit may currently work incorrectly if `jobs-frontend` or `jobs`
+have larger value than `jobs-backend`, or if the inherited jobserver can give a larger number
+of tokens.
+
+### Linker parallelism
+
+Parallelism used by linker when combining object files into a final binary.
+
+- If `jobs-linker` is passed, then it is used as the limit,
+- otherwise if `jobs` is passed, then it is used as the limit,
+- otherwise no options are passed to the linker and its default behavior is used,
+  this default may change.
+
+Note: this option is best effort, if the linker doesn't support parallelism,
+we cannot enable it, and if the linker uses parallelism by default and doesn't allow limiting it,
+then we cannot limit it.
+
+Currently only LLD supports controlling parallelism.
+
 <a id="at-path"></a>
 ## `@path`: load command-line flags from a path
 

@@ -3008,7 +3008,7 @@ impl Param {
                 }),
             ),
             SelfKind::Pinned(lt, mutbl) => (
-                mutbl,
+                Mutability::Not,
                 Box::new(Ty {
                     id: DUMMY_NODE_ID,
                     kind: TyKind::PinnedRef(lt, MutTy { ty: infer_ty, mutbl }),

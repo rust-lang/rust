@@ -24,7 +24,7 @@ use smallvec::SmallVec;
 use super::*;
 use crate::mir::interpret::{AllocRange, GlobalAlloc, Pointer, Provenance, Scalar};
 use crate::query::{IntoQueryKey, Providers};
-use crate::ty::region::{RegionExt, RegionUtilitiesExt};
+use crate::ty::region::RegionExt;
 use crate::ty::{
     ConstInt, Expr, GenericArgKind, ParamConst, ScalarInt, Term, TermKind, TraitPredicate,
     TypeFoldable, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
@@ -3126,18 +3126,20 @@ pub struct PrintClosureAsImpl<'tcx> {
 
 macro_rules! forward_display_to_print {
     ($($ty:ty),+) => {
-        // Some of the $ty arguments may not actually use 'tcx
-        $(#[allow(unused_lifetimes)] impl<'tcx> fmt::Display for $ty {
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                ty::tls::with(|tcx| {
-                    let mut p = FmtPrinter::new(tcx, Namespace::TypeNS);
-                    tcx.lift(*self)
-                        .print(&mut p)?;
-                    f.write_str(&p.into_buffer())?;
-                    Ok(())
-                })
+        $(
+            #[allow(unused_lifetimes, reason = "not all `$ty` have a 'tcx")]
+            impl<'tcx> fmt::Display for $ty {
+                fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                    ty::tls::with(|tcx| {
+                        let mut p = FmtPrinter::new(tcx, Namespace::TypeNS);
+                        tcx.lift(*self)
+                            .print(&mut p)?;
+                        f.write_str(&p.into_buffer())?;
+                        Ok(())
+                    })
+                }
             }
-        })+
+        )+
     };
 }
 

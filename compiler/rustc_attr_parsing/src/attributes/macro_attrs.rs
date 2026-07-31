@@ -1,8 +1,10 @@
 use rustc_feature::AttributeStability;
 use rustc_hir::attrs::{CollapseMacroDebuginfo, MacroUseArgs};
+use rustc_hir::find_attr;
 use rustc_session::lint::builtin::INVALID_MACRO_EXPORT_ARGUMENTS;
 
 use super::prelude::*;
+use crate::session_diagnostics::MacroOnlyAttribute;
 
 pub(crate) struct MacroEscapeParser;
 impl NoArgsAttributeParser for MacroEscapeParser {
@@ -113,6 +115,17 @@ impl AttributeParser for MacroUseParser {
     }
 }
 
+/// `#[allow_internal_unsafe]` and `#[allow_internal_unstable]` may only be applied to macros.
+/// Applying them to a function is only allowed if that function is a procedural macro, i.e. it
+/// also carries `#[proc_macro]`, `#[proc_macro_attribute]`, or `#[proc_macro_derive]`.
+pub(crate) fn check_macro_only(cx: &FinalizeCheckContext<'_, '_>, attr_span: Span) {
+    if cx.target == Target::Fn
+        && !find_attr!(cx.parsed_attrs, ProcMacro | ProcMacroAttribute | ProcMacroDerive { .. })
+    {
+        cx.emit_err(MacroOnlyAttribute { attr_span, span: cx.target_span });
+    }
+}
+
 pub(crate) struct AllowInternalUnsafeParser;
 
 impl NoArgsAttributeParser for AllowInternalUnsafeParser {
@@ -126,6 +139,10 @@ impl NoArgsAttributeParser for AllowInternalUnsafeParser {
     ]);
     const STABILITY: AttributeStability = unstable!(allow_internal_unsafe);
     const CREATE: fn(Span) -> AttributeKind = |span| AttributeKind::AllowInternalUnsafe(span);
+
+    fn finalize_check(cx: &FinalizeCheckContext<'_, '_>, attr_span: Span) {
+        check_macro_only(cx, attr_span);
+    }
 }
 
 pub(crate) struct MacroExportParser;

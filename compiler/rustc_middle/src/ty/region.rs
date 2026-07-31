@@ -86,11 +86,7 @@ impl<'tcx> Region<'tcx> {
             ty::ReError(reported) => Region::new_error(tcx, reported),
         }
     }
-}
 
-/// Region utilities
-#[extension(pub trait RegionUtilitiesExt<'tcx>)]
-impl<'tcx> Region<'tcx> {
     fn get_name(self, tcx: TyCtxt<'tcx>) -> Option<Symbol> {
         match self.kind() {
             ty::ReEarlyParam(ebr) => ebr.is_named().then_some(ebr.name),
@@ -124,60 +120,10 @@ impl<'tcx> Region<'tcx> {
     }
 
     #[inline]
-    fn is_error(self) -> bool {
-        matches!(self.kind(), ty::ReError(_))
-    }
-
-    #[inline]
-    fn is_static(self) -> bool {
-        matches!(self.kind(), ty::ReStatic)
-    }
-
-    #[inline]
-    fn is_erased(self) -> bool {
-        matches!(self.kind(), ty::ReErased)
-    }
-
-    #[inline]
-    fn is_placeholder(self) -> bool {
-        matches!(self.kind(), ty::RePlaceholder(..))
-    }
-
-    #[inline]
     fn bound_at_or_above_binder(self, index: ty::DebruijnIndex) -> bool {
         match self.kind() {
             ty::ReBound(ty::BoundVarIndexKind::Bound(debruijn), _) => debruijn >= index,
             _ => false,
-        }
-    }
-
-    /// True for free regions other than `'static`.
-    fn is_param(self) -> bool {
-        matches!(self.kind(), ty::ReEarlyParam(_) | ty::ReLateParam(_))
-    }
-
-    /// True for free region in the current context.
-    ///
-    /// This is the case for `'static` and param regions.
-    fn is_free(self) -> bool {
-        match self.kind() {
-            ty::ReStatic | ty::ReEarlyParam(..) | ty::ReLateParam(..) => true,
-            ty::ReVar(..)
-            | ty::RePlaceholder(..)
-            | ty::ReBound(..)
-            | ty::ReErased
-            | ty::ReError(..) => false,
-        }
-    }
-
-    fn is_var(self) -> bool {
-        matches!(self.kind(), ty::ReVar(_))
-    }
-
-    fn as_var(self) -> RegionVid {
-        match self.kind() {
-            ty::ReVar(vid) => vid,
-            _ => bug!("expected region {:?} to be of kind ReVar", self),
         }
     }
 

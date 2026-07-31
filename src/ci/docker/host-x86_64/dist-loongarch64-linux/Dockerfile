@@ -51,7 +51,7 @@ ENV RUST_CONFIGURE_ARGS="--enable-extended \
       --enable-profiler \
       --enable-sanitizers \
       --disable-docs \
-      --set rust.override-allocator=jemalloc \
+      --set build.allocator=jemalloc \
       --set rust.lto=thin \
       --set rust.codegen-units=1"
 
