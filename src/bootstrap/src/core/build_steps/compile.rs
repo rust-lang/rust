@@ -1806,10 +1806,7 @@ fn write_codegen_backend_stamp(
         return stamp;
     }
 
-    let mut files = files.into_iter().filter(|f| {
-        let filename = f.file_name().unwrap().to_str().unwrap();
-        is_dylib(f) && filename.contains("rustc_codegen_")
-    });
+    let mut files = files.into_iter().filter(|f| looks_like_codegen_backend(Path::new(f)));
     let codegen_backend = match files.next() {
         Some(f) => f,
         None => panic!("no dylibs built for codegen backend?"),
@@ -1822,6 +1819,11 @@ fn write_codegen_backend_stamp(
     stamp = stamp.add_stamp(codegen_backend);
     t!(stamp.write());
     stamp
+}
+
+pub fn looks_like_codegen_backend(path: &Path) -> bool {
+    is_dylib(path)
+        && path.file_name().and_then(|p| p.to_str()).is_some_and(|n| n.contains("rustc_codegen_"))
 }
 
 /// Creates the `codegen-backends` folder for a compiler that's about to be
