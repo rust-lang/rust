@@ -5,9 +5,7 @@ use build_helper::ci::CiEnv;
 use serde::{Deserialize, Deserializer};
 
 use crate::core::config::toml::TomlConfig;
-use crate::core::config::{
-    CompressDebuginfo, DebuginfoLevel, Merge, OverrideAllocator, ReplaceOpt, StringOrBool,
-};
+use crate::core::config::{CompressDebuginfo, DebuginfoLevel, Merge, ReplaceOpt, StringOrBool};
 use crate::{BTreeSet, CodegenBackendKind, HashSet, PathBuf, TargetSelection, define_config, exit};
 
 define_config! {
@@ -57,7 +55,6 @@ define_config! {
         verify_llvm_ir: Option<bool> = "verify-llvm-ir",
         thin_lto_import_instr_limit: Option<u32> = "thin-lto-import-instr-limit",
         remap_debuginfo: Option<bool> = "remap-debuginfo",
-        override_allocator: Option<OverrideAllocator> = "override-allocator",
         // FIXME: Remove this option in Q1 2027
         jemalloc: Option<bool> = "jemalloc",
         test_compare_mode: Option<bool> = "test-compare-mode",
@@ -297,6 +294,10 @@ pub fn check_incompatible_options_for_ci_rustc(
         ci_config_toml.build.as_ref().and_then(|b| b.optimized_compiler_builtins.clone());
     err!(current_optimized_compiler_builtins, optimized_compiler_builtins, "build");
 
+    let current_allocator = current_config_toml.build.as_ref().and_then(|b| b.allocator);
+    let allocator = ci_config_toml.build.as_ref().and_then(|b| b.allocator);
+    err!(current_allocator, allocator, "build");
+
     // We always build the in-tree compiler on cross targets, so we only care
     // about the host target here.
     let host_str = host.to_string();
@@ -309,10 +310,17 @@ pub fn check_incompatible_options_for_ci_rustc(
         ))?;
 
         let profiler = &ci_cfg.profiler;
-        err!(current_cfg.profiler, profiler, "build");
+        err!(current_cfg.profiler, profiler, format!("target.{host_str}"));
 
         let optimized_compiler_builtins = &ci_cfg.optimized_compiler_builtins;
-        err!(current_cfg.optimized_compiler_builtins, optimized_compiler_builtins, "build");
+        err!(
+            current_cfg.optimized_compiler_builtins,
+            optimized_compiler_builtins,
+            format!("target.{host_str}")
+        );
+
+        err!(current_cfg.allocator, &ci_cfg.allocator, format!("target.{host_str}"));
+        err!(current_cfg.jemalloc, &ci_cfg.jemalloc, format!("target.{host_str}"));
     }
 
     let (Some(current_rust_config), Some(ci_rust_config)) =
@@ -333,7 +341,6 @@ pub fn check_incompatible_options_for_ci_rustc(
         stack_protector,
         strip,
         jemalloc,
-        override_allocator,
         rpath,
         channel,
         default_linker,
@@ -403,7 +410,6 @@ pub fn check_incompatible_options_for_ci_rustc(
     err!(current_rust_config.llvm_tools, llvm_tools, "rust");
     err!(current_rust_config.llvm_bitcode_linker, llvm_bitcode_linker, "rust");
     err!(current_rust_config.jemalloc, jemalloc, "rust");
-    err!(current_rust_config.override_allocator, override_allocator, "rust");
     err!(current_rust_config.default_linker, default_linker, "rust");
     err!(current_rust_config.stack_protector, stack_protector, "rust");
     err!(current_rust_config.std_features, std_features, "rust");

@@ -666,4 +666,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Warning,
         summary: "The `rust.use-lld` option has been removed. Use `rust.bootstrap-override-lld` instead.",
     },
+    ChangeInfo {
+        change_id: 160100,
+        severity: ChangeSeverity::Warning,
+        summary: "The `override-allocator` option has been renamed: The global setting is now `build.allocator` and the per-target setting is `target.<target>.allocator`. It can now be set to 'system' to explicitly request the system allocator.",
+    },
 ];
