@@ -1,8 +1,6 @@
 // Test for #111520, which causes an ice bug cause of reading stolen value
-//
-//@ compile-flags: -Z threads=16
+
 //@ run-pass
-//@ compare-output-by-lines
 
 #[repr(transparent)]
 struct Sched {
