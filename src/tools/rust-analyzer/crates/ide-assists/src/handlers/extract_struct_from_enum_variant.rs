@@ -241,7 +241,7 @@ fn tag_generics_in_variant(ty: &ast::Type, generics: &mut [(ast::GenericParam, b
                     if matches!(token.kind(), T![lifetime_ident]) =>
                 {
                     if let Some(lt) = lt.lifetime()
-                        && lt.text().as_str() == token.text()
+                        && lt.text() == token.text()
                     {
                         *tag = true;
                         tagged_one = true;
@@ -250,18 +250,15 @@ fn tag_generics_in_variant(ty: &ast::Type, generics: &mut [(ast::GenericParam, b
                 }
                 param if matches!(token.kind(), T![ident]) => {
                     if match param {
-                        ast::GenericParam::ConstParam(konst) => konst
-                            .name()
-                            .map(|name| name.text().as_str() == token.text())
-                            .unwrap_or_default(),
-                        ast::GenericParam::TypeParam(ty) => ty
-                            .name()
-                            .map(|name| name.text().as_str() == token.text())
-                            .unwrap_or_default(),
-                        ast::GenericParam::LifetimeParam(lt) => lt
-                            .lifetime()
-                            .map(|lt| lt.text().as_str() == token.text())
-                            .unwrap_or_default(),
+                        ast::GenericParam::ConstParam(konst) => {
+                            konst.name().map(|name| name.text() == token.text()).unwrap_or_default()
+                        }
+                        ast::GenericParam::TypeParam(ty) => {
+                            ty.name().map(|name| name.text() == token.text()).unwrap_or_default()
+                        }
+                        ast::GenericParam::LifetimeParam(lt) => {
+                            lt.lifetime().map(|lt| lt.text() == token.text()).unwrap_or_default()
+                        }
                     } {
                         *tag = true;
                         tagged_one = true;

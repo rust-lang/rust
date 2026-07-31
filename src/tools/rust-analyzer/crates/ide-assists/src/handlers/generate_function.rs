@@ -67,7 +67,7 @@ fn gen_fn(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
         return None;
     }
 
-    let fn_name = &*name_ref.text();
+    let fn_name = name_ref.text();
     let TargetInfo { target_module, adt_info, target, file } =
         fn_target_info(ctx, path, &call, fn_name)?;
 
@@ -159,7 +159,7 @@ fn gen_method(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Option<()> {
     let (impl_, file) = if let Some(impl_) = cursor_impl {
         (Some(impl_), ctx.vfs_file_id())
     } else {
-        get_adt_source(ctx, &adt, fn_name.text().as_str())?
+        get_adt_source(ctx, &adt, fn_name.text())?
     };
     let target = get_method_target(ctx, &impl_, &adt)?;
 

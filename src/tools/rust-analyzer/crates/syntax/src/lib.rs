@@ -30,7 +30,6 @@ mod syntax_error;
 mod syntax_node;
 #[cfg(test)]
 mod tests;
-mod token_text;
 mod validation;
 
 pub mod algo;
@@ -54,7 +53,6 @@ pub use crate::{
         PreorderWithTokens, RustLanguage, SyntaxElement, SyntaxElementChildren, SyntaxNode,
         SyntaxNodeChildren, SyntaxToken, SyntaxTreeBuilder,
     },
-    token_text::TokenText,
 };
 pub use parser::{Edition, SyntaxKind, T};
 pub use rowan::{

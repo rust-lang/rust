@@ -344,7 +344,7 @@ fn invert_special_case(make: &SyntaxFactory, expr: &ast::Expr) -> Option<ast::Ex
             let method = mce.name_ref()?;
             let arg_list = mce.arg_list()?;
 
-            let method = match method.text().as_str() {
+            let method = match method.text() {
                 "is_some" => "is_none",
                 "is_none" => "is_some",
                 "is_ok" => "is_err",

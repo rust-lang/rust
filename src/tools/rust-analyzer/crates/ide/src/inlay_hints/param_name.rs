@@ -294,7 +294,7 @@ pub(super) fn is_argument_similar_to_param_name(
     debug_assert!(!argument.is_empty());
     debug_assert!(!param_name.is_empty());
     let param_name = param_name.split('_');
-    let argument = argument.iter().flat_map(|it| it.text_non_mutable().split('_'));
+    let argument = argument.iter().flat_map(|it| it.text().split('_'));
     let argument = argument.map(|it| it.strip_prefix("r#").unwrap_or(it));
 
     let prefix_match = zip(argument.clone(), param_name.clone())
@@ -313,7 +313,7 @@ pub(super) fn get_segment_representation(
             let receiver =
                 method_call_expr.receiver().and_then(|expr| get_segment_representation(&expr));
             let name_ref = method_call_expr.name_ref()?;
-            if INSIGNIFICANT_METHOD_NAMES.contains(&name_ref.text().as_str()) {
+            if INSIGNIFICANT_METHOD_NAMES.contains(&name_ref.text()) {
                 return receiver;
             }
             Some(Either::Left(match receiver {

@@ -381,8 +381,8 @@ fn impl_ast_id(
         let self_ty_name = type_as_name(node.self_ty());
         let trait_name = type_as_name(node.trait_());
         let data = ImplFileAstId {
-            self_ty_name: self_ty_name.as_ref().map(|it| it.text_non_mutable()),
-            trait_name: trait_name.as_ref().map(|it| it.text_non_mutable()),
+            self_ty_name: self_ty_name.as_ref().map(|it| it.text()),
+            trait_name: trait_name.as_ref().map(|it| it.text()),
         };
         Some(index_map.new_id(ErasedFileAstIdKind::Impl, data))
     } else {
@@ -473,7 +473,7 @@ macro_rules! register_has_name_ast_id {
                     $(
                         ast::$ident(node) => {
                             let name = node.$name_method();
-                            let name = name.as_ref().map_or("", |it| it.text_non_mutable());
+                            let name = name.as_ref().map_or("", |it| it.text());
                             let result = ErasedHasNameFileAstId {
                                 name,
                             };
@@ -519,7 +519,7 @@ macro_rules! register_assoc_item_ast_id {
                     $(
                         ast::$ident(node) => {
                             let name = $name_callback(node);
-                            let name = name.as_ref().map_or("", |it| it.text_non_mutable());
+                            let name = name.as_ref().map_or("", |it| it.text());
                             let properties = ErasedHasNameFileAstId {
                                 name,
                             };

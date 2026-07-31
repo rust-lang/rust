@@ -4,14 +4,11 @@ use ide_db::{
     RootDatabase, famous_defs::FamousDefs, helpers::mod_path_to_ast_with_factory,
     imports::import_assets::item_for_path_search,
 };
-use syntax::syntax_editor::{Position, SyntaxEditor};
-use syntax::{
-    TokenText,
-    ast::{
-        self, AstNode, HasAttrs, HasGenericParams, HasName, edit::AstNodeEdit,
-        syntax_factory::SyntaxFactory,
-    },
+use syntax::ast::{
+    self, AstNode, HasAttrs, HasGenericParams, HasName, edit::AstNodeEdit,
+    syntax_factory::SyntaxFactory,
 };
+use syntax::syntax_editor::{Position, SyntaxEditor};
 
 use crate::{
     AssistId,
@@ -71,8 +68,7 @@ pub(crate) fn generate_single_field_struct_from(
         return None;
     }
 
-    let main_field_name =
-        names.as_ref().map_or(TokenText::borrowed("value"), |names| names[main_field_i].text());
+    let main_field_name = names.as_ref().map_or("value", |names| names[main_field_i].text());
     let main_field_ty = types[main_field_i].clone();
 
     acc.add(
@@ -161,7 +157,7 @@ pub(crate) fn generate_single_field_struct_from(
 fn make_adt_constructor(
     names: Option<&[ast::Name]>,
     constructors: Vec<Option<ast::Expr>>,
-    main_field_name: &TokenText<'_>,
+    main_field_name: &str,
     make: &SyntaxFactory,
 ) -> ast::Expr {
     if let Some(names) = names {

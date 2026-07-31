@@ -412,7 +412,7 @@ fn name_to_token(
     })?;
     let span = token_map.span_at(name.syntax().text_range().start());
 
-    let name_token = tt::Ident::new(name.text().as_ref(), span);
+    let name_token = tt::Ident::new(name.text(), span);
     Ok(name_token)
 }
 
