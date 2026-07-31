@@ -1,7 +1,7 @@
 mod raw_dylib;
 
 use std::collections::BTreeSet;
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::fs::{File, OpenOptions, read};
 use std::io::{BufReader, BufWriter, Write};
 use std::ops::{ControlFlow, Deref};
@@ -1617,7 +1617,7 @@ fn link_sanitizer_runtime(
     fn find_sanitizer_runtime(sess: &Session, filename: &str) -> PathBuf {
         let path = sess.target_tlib_path.dir.join(filename);
         if path.exists() {
-            sess.target_tlib_path.dir.clone()
+            sess.target_tlib_path.dir.to_path_buf()
         } else {
             filesearch::make_target_lib_path(
                 &sess.opts.sysroot.default,
@@ -1914,10 +1914,10 @@ fn get_object_file_path(sess: &Session, name: &str, self_contained: bool) -> Pat
             return file_path;
         }
     }
-    for search_path in sess.target_filesearch().search_paths(PathKind::Native) {
-        let file_path = search_path.dir.join(name);
-        if file_path.exists() {
-            return file_path;
+
+    for (_, path) in sess.target_filesearch().get_file_candidates(name, "", PathKind::Native) {
+        if path.file_name().map_or(false, |n| n == OsStr::new(name)) && path.exists() {
+            return path;
         }
     }
     PathBuf::from(name)
@@ -3475,12 +3475,12 @@ fn add_upstream_native_libraries(
 fn rehome_sysroot_lib_dir(sess: &Session, lib_dir: &Path) -> PathBuf {
     let sysroot_lib_path = &sess.target_tlib_path.dir;
     let canonical_sysroot_lib_path =
-        { try_canonicalize(sysroot_lib_path).unwrap_or_else(|_| sysroot_lib_path.clone()) };
+        { try_canonicalize(sysroot_lib_path).unwrap_or_else(|_| sysroot_lib_path.to_path_buf()) };
 
     let canonical_lib_dir = try_canonicalize(lib_dir).unwrap_or_else(|_| lib_dir.to_path_buf());
     if canonical_lib_dir == canonical_sysroot_lib_path {
         // This path already had `fix_windows_verbatim_for_gcc()` applied if needed.
-        sysroot_lib_path.clone()
+        sysroot_lib_path.to_path_buf()
     } else {
         fix_windows_verbatim_for_gcc(lib_dir)
     }
