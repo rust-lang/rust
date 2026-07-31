@@ -1,5 +1,5 @@
 error[E0053]: method `tuple_1` has an incompatible type for trait
-  --> $DIR/splat-non-tuple.rs:38:5
+  --> $DIR/splat-non-tuple.rs:39:5
    |
 LL |     fn tuple_1(_: (u32,)) {}
    |     ^^^^^^^^^^^^^^^^^^^^^ expected fn with arg 0 splatted, found fn with no splatted arg
@@ -40,7 +40,7 @@ LL |     struct_arg(foo);
    |     ^^^^^^^^^^^^^^^
 
 error[E0277]: cannot use `rustc_splat` attribute; the splatted argument type must be a tuple or unit, not a TupleStruct (TupleStruct)
-  --> $DIR/splat-non-tuple.rs:54:39
+  --> $DIR/splat-non-tuple.rs:56:39
    |
 LL | fn tuple_struct_arg(#[rustc_splat] z: TupleStruct) {}
    |                                       ^^^^^^^^^^^
