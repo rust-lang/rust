@@ -892,15 +892,13 @@ impl<'a> Parser<'a> {
     /// wrapped in braces.
     pub(super) fn parse_unambiguous_unbraced_const_arg(&mut self) -> PResult<'a, Box<Expr>> {
         let start = self.token.span;
-        let attrs = self.parse_outer_attributes()?;
-        let (expr, _) =
-            self.parse_expr_res(Restrictions::CONST_EXPR, attrs).map_err(|mut err| {
-                err.span_label(
-                    start.shrink_to_lo(),
-                    "while parsing a const generic argument starting here",
-                );
-                err
-            })?;
+        let expr = self.parse_expr_res(Restrictions::CONST_EXPR).map_err(|mut err| {
+            err.span_label(
+                start.shrink_to_lo(),
+                "while parsing a const generic argument starting here",
+            );
+            err
+        })?;
         if !self.expr_is_valid_const_arg(&expr) {
             return Err(self.dcx().create_err(ConstGenericWithoutBraces {
                 span: expr.span,
@@ -990,9 +988,8 @@ impl<'a> Parser<'a> {
             // Fall back by trying to parse a const-expr expression. If we successfully do so,
             // then we should report an error that it needs to be wrapped in braces.
             let snapshot = self.create_snapshot_for_diagnostic();
-            let attrs = self.parse_outer_attributes()?;
-            match self.parse_expr_res(Restrictions::CONST_EXPR, attrs) {
-                Ok((expr, _)) => {
+            match self.parse_expr_res(Restrictions::CONST_EXPR) {
+                Ok(expr) => {
                     return Ok(Some(self.dummy_const_arg_needs_braces(
                         self.dcx().struct_span_err(expr.span, "invalid const generic expression"),
                         expr.span,
