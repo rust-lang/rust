@@ -15,7 +15,7 @@ use tracing::instrument;
 
 pub use self::cargo::{Cargo, apply_pgo, cargo_profile_var};
 pub use crate::Compiler;
-use crate::core::build_steps::compile::{Std, StdLink};
+use crate::core::build_steps::compile::{Std, StdLink, looks_like_codegen_backend};
 use crate::core::build_steps::tool::RustcPrivateCompilers;
 use crate::core::build_steps::{
     check, clean, clippy, compile, dist, doc, gcc, install, llvm, run, setup, test, tool, vendor,
@@ -1467,6 +1467,7 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
             .into_iter()
             .flatten()
             .filter_map(Result::ok)
+            .filter(|path| looks_like_codegen_backend(&path.path()))
             .map(|entry| entry.path())
     }
 
