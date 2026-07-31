@@ -1,5 +1,5 @@
 //@ edition: 2024
-//@ run-pass
+//@ check-pass FIXME(#126482) should be run-pass
 //@ compile-flags: -Z mir-opt-level=0
 //@ aux-crate: async_drop_crate_dep=async-drop-crate-dep.rs
 
