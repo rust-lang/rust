@@ -8,6 +8,7 @@
 
 use std::mem;
 
+use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::LocalDefId;
@@ -58,6 +59,11 @@ struct ScopeResolutionVisitor<'tcx> {
     scope_tree: ScopeTree,
 
     cx: Context,
+
+    /// Tracks labeled expressions in extending positions. If the expression at `'l` is in an
+    /// extending context, the `e` in `extend!('l => e)` is too, using the same scope for
+    /// lifetime-extended temporaries.
+    extending_labels: FxHashMap<hir::ItemLocalId, ExtendedScope>,
 }
 
 /// Records the lifetime of a local variable as `cx.var_parent`
@@ -271,13 +277,61 @@ fn resolve_stmt<'tcx>(visitor: &mut ScopeResolutionVisitor<'tcx>, stmt: &'tcx hi
     }
 }
 
+fn resolve_rescopes<'tcx>(
+    visitor: &mut ScopeResolutionVisitor<'tcx>,
+    mut expr: &'tcx hir::Expr<'tcx>,
+) -> &'tcx hir::Expr<'tcx> {
+    while let hir::ExprKind::Rescope(kind, target, oprnd) = &expr.kind {
+        match kind {
+            // `scope!('l => oprnd)`: the parent scope of `oprnd` is the scope of the expr at `'l`
+            hir::RescopeKind::Scope => {
+                // FIXME(super_let): if we allow labels on non-blocks for convenience, we'll need to
+                // be careful with labled re-scoping operators
+                visitor.cx.parent =
+                    Some(Scope { local_id: target.target_id.local_id, data: ScopeData::Node });
+                // Don't implicitly lifetime-extend through `scope!`.
+                visitor.cx.extended_parent = None;
+            }
+            // `extend!('l => oprnd)`: the extended parent of `oprnd` is that of the expr at `'l`
+            hir::RescopeKind::Extend => {
+                // This sets the scope of temporaries borrowed with `&` to be the same as they would
+                // be at `'l`. As such, if `'l` wasn't recorded as "extending", we use the temporary
+                // scope enclosing it.
+                visitor.cx.extended_parent =
+                    visitor.extending_labels.get(&target.target_id.local_id).copied().or_else(
+                        || {
+                            Some(ExtendedScope(Some(
+                                visitor
+                                    .scope_tree
+                                    .default_temporary_scope(Scope {
+                                        local_id: target.target_id.local_id,
+                                        data: ScopeData::Node,
+                                    })
+                                    .0,
+                            )))
+                        },
+                    );
+            }
+        }
+        expr = oprnd;
+    }
+    expr
+}
+
 #[tracing::instrument(level = "debug", skip(visitor))]
 fn resolve_expr<'tcx>(
     visitor: &mut ScopeResolutionVisitor<'tcx>,
     expr: &'tcx hir::Expr<'tcx>,
-    node_info: NodeInfo,
+    mut node_info: NodeInfo,
 ) {
     let prev_cx = visitor.cx;
+    // Re-scoping operators don't have scopes of their own. We don't create `ScopeTree` nodes for
+    // them so we can't mistakenly take their temporary scopes instead of their operands'.
+    if matches!(expr.kind, hir::ExprKind::Rescope(..)) {
+        // `resolve_rescopes` will set `visitor.cx.extending_parent`. Keep whatever it does.
+        node_info.extending = true;
+    }
+    let expr = resolve_rescopes(visitor, expr);
     visitor.enter_node_scope(expr.hir_id.local_id, node_info);
 
     // Expressions matching the `E&` grammar are marked as "extending". Temporaries borrowed within
@@ -296,6 +350,9 @@ fn resolve_expr<'tcx>(
     //        | E& as ...
     match expr.kind {
         hir::ExprKind::AddrOf(_, _, subexpr) => {
+            // Resolve rescopes on `subexpr` first, so that `&extend!('l => value)` lifetime-extends
+            // `value` to the extended parent recorded at `'l`.
+            let subexpr = resolve_rescopes(visitor, subexpr);
             if let Some(ExtendedScope(lifetime)) = visitor.cx.extended_parent {
                 record_subexpr_extended_temp_scopes(&mut visitor.scope_tree, subexpr, lifetime);
             }
@@ -457,7 +514,21 @@ fn resolve_expr<'tcx>(
             visitor.cx = expr_cx;
         }
 
-        hir::ExprKind::Loop(body, _, _, _) => {
+        hir::ExprKind::Block(block, opt_label) => {
+            if opt_label.is_some()
+                && let Some(extended_parent) = visitor.cx.extended_parent
+            {
+                visitor.extending_labels.insert(block.hir_id.local_id, extended_parent);
+            }
+            visitor.visit_block(block);
+        }
+
+        hir::ExprKind::Loop(body, opt_label, _, _) => {
+            if opt_label.is_some()
+                && let Some(extended_parent) = visitor.cx.extended_parent
+            {
+                visitor.extending_labels.insert(expr.hir_id.local_id, extended_parent);
+            }
             resolve_block(visitor, body, NodeInfo { drop_temps: true, extending: false });
         }
 
@@ -465,6 +536,10 @@ fn resolve_expr<'tcx>(
             // `DropTemps(expr)` does not denote a conditional scope.
             // Rather, we want to achieve the same behavior as `{ let _t = expr; _t }`.
             resolve_expr(visitor, expr, NodeInfo { drop_temps: true, extending: false });
+        }
+
+        hir::ExprKind::Rescope(..) => {
+            unreachable!("temporary scopes for re-scoping operators are handled specially")
         }
 
         _ => intravisit::walk_expr(visitor, expr),
@@ -855,6 +930,7 @@ pub(crate) fn region_scope_tree(tcx: TyCtxt<'_>, def_id: LocalDefId) -> &ScopeTr
             tcx,
             scope_tree: ScopeTree::default(),
             cx: Context { parent: None, var_parent: None, extended_parent: None },
+            extending_labels: Default::default(),
         };
 
         visitor.scope_tree.root_body = Some(body.value.hir_id);
