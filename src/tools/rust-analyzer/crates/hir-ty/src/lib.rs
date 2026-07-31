@@ -111,9 +111,9 @@ pub use infer::{
     infer_query_with_inspect,
 };
 pub use lower::{
-    FieldType, GenericDefaults, GenericDefaultsRef, GenericPredicates, ImplTraits,
-    LifetimeElisionKind, LifetimeLoweringMode, LoweringMode, TyDefId, TyLoweringContext,
-    TyLoweringInferVarsCtx, TyLoweringResult, ValueTyDefId, diagnostics::*,
+    FieldType, GenericDefaults, GenericDefaultsRef, GenericPredicates, LifetimeElisionKind,
+    LifetimeLoweringMode, LoweringMode, TyDefId, TyLoweringContext, TyLoweringInferVarsCtx,
+    TyLoweringResult, ValueTyDefId, diagnostics::*,
 };
 pub use next_solver::interner::{attach_db, attach_db_allow_change, with_attached_db};
 pub use target_feature::TargetFeatures;
