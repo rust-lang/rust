@@ -330,8 +330,8 @@ target | std | host | notes
 [`avr-none`](platform-support/avr-none.md) | * |  | AVR; requires `-Zbuild-std=core` and `-Ctarget-cpu=...`
 `bpfeb-unknown-none` | * |  | BPF (big endian)
 `bpfel-unknown-none` | * |  | BPF (little endian)
-`csky-unknown-linux-gnuabiv2` | ✓ |  | C-SKY abiv2 Linux (little endian)
-`csky-unknown-linux-gnuabiv2hf` | ✓ |  | C-SKY abiv2 Linux, hardfloat (little endian)
+[`csky-unknown-linux-gnuabiv2`](platform-support/csky-unknown-linux-gnuabiv2.md) | ✓ |  | C-SKY abiv2 Linux (little endian)
+[`csky-unknown-linux-gnuabiv2hf`](platform-support/csky-unknown-linux-gnuabiv2.md) | ✓ |  | C-SKY abiv2 Linux, hardfloat (little endian)
 [`hexagon-unknown-linux-musl`](platform-support/hexagon-unknown-linux-musl.md) | ✓ |  | Hexagon Linux with musl 1.2.5
 [`hexagon-unknown-none-elf`](platform-support/hexagon-unknown-none-elf.md)| * |  | Bare Hexagon (v60+, HVX)
 [`hexagon-unknown-qurt`](platform-support/hexagon-unknown-qurt.md)| * |  | Hexagon QuRT
