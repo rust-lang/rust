@@ -789,10 +789,9 @@ impl MetadataBlob {
                     )?;
                     writeln!(
                         out,
-                        "compiler_builtins {} needs_allocator {} needs_panic_runtime {} no_builtins {} panic_runtime {} profiler_runtime {}",
+                        "compiler_builtins {} needs_allocator {} no_builtins {} panic_runtime {} profiler_runtime {}",
                         root.compiler_builtins,
                         root.needs_allocator,
-                        root.needs_panic_runtime,
                         root.no_builtins,
                         root.panic_runtime,
                         root.profiler_runtime
@@ -2035,10 +2034,6 @@ impl CrateMetadata {
 
     pub(crate) fn required_panic_strategy(&self) -> Option<PanicStrategy> {
         self.root.required_panic_strategy
-    }
-
-    pub(crate) fn needs_panic_runtime(&self) -> bool {
-        self.root.needs_panic_runtime
     }
 
     pub(crate) fn is_private_dep(&self) -> bool {
