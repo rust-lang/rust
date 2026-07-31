@@ -1647,6 +1647,31 @@ impl PointerAuthOption {
     }
 }
 
+#[derive(Clone, Copy, Hash, Debug, PartialEq)]
+pub enum StackProtectorGuardMode {
+    Global,
+    Tls,
+    Sysreg,
+}
+
+impl StackProtectorGuardMode {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Global => "global",
+            Self::Tls => "tls",
+            Self::Sysreg => "sysreg",
+        }
+    }
+}
+
+#[derive(Clone, Hash, Debug, PartialEq, Default)]
+pub struct StackProtectorGuard {
+    pub mode: Option<StackProtectorGuardMode>,
+    pub offset: Option<u32>,
+    pub reg: Option<String>,
+    pub symbol: Option<String>,
+}
+
 pub fn build_configuration(sess: &Session, mut user_cfg: Cfg) -> Cfg {
     // First disallow some configuration given on the command line
     cfg::disallow_cfgs(sess, &user_cfg);
@@ -3144,8 +3169,8 @@ pub(crate) mod dep_tracking {
         FunctionReturn, InliningThreshold, InstrumentCoverage, InstrumentMcount, InstrumentXRay,
         LinkerPluginLto, LocationDetail, LtoCli, MirStripDebugInfo, NextSolverConfig, Offload,
         OptLevel, OutFileName, OutputType, OutputTypes, PatchableFunctionEntry, PointerAuthOption,
-        Polonius, ResolveDocLinks, SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath,
-        SymbolManglingVersion, WasiExecModel,
+        Polonius, ResolveDocLinks, SourceFileHashAlgorithm, SplitDwarfKind, StackProtectorGuard,
+        StackProtectorGuardMode, SwitchWithOptPath, SymbolManglingVersion, WasiExecModel,
     };
     use crate::lint;
     use crate::utils::NativeLib;
@@ -3243,6 +3268,8 @@ pub(crate) mod dep_tracking {
         LocationDetail,
         FmtDebug,
         BranchProtection,
+        StackProtectorGuard,
+        StackProtectorGuardMode,
         LanguageIdentifier,
         NextSolverConfig,
         PatchableFunctionEntry,
