@@ -3,7 +3,7 @@
 //!
 //! These methods should only do simple, shallow tasks related to the syntax of the node itself.
 
-use std::{borrow::Cow, fmt, iter::successors};
+use std::{fmt, iter::successors};
 
 use itertools::Itertools;
 use parser::SyntaxKind;
@@ -31,15 +31,9 @@ impl ast::Name {
     pub fn text(&self) -> TokenText<'_> {
         text_of_first_token(self.syntax())
     }
-    pub fn text_non_mutable(&self) -> &str {
-        fn first_token(green_ref: &GreenNodeData) -> &GreenTokenData {
-            green_ref.children().next().and_then(NodeOrToken::into_token).unwrap()
-        }
 
-        match self.syntax().green() {
-            Cow::Borrowed(green_ref) => first_token(green_ref).text(),
-            Cow::Owned(_) => unreachable!(),
-        }
+    pub fn text_non_mutable(&self) -> &str {
+        first_token(self.syntax().green()).text()
     }
 }
 
@@ -47,15 +41,9 @@ impl ast::NameRef {
     pub fn text(&self) -> TokenText<'_> {
         text_of_first_token(self.syntax())
     }
-    pub fn text_non_mutable(&self) -> &str {
-        fn first_token(green_ref: &GreenNodeData) -> &GreenTokenData {
-            green_ref.children().next().and_then(NodeOrToken::into_token).unwrap()
-        }
 
-        match self.syntax().green() {
-            Cow::Borrowed(green_ref) => first_token(green_ref).text(),
-            Cow::Owned(_) => unreachable!(),
-        }
+    pub fn text_non_mutable(&self) -> &str {
+        first_token(self.syntax().green()).text()
     }
 
     pub fn as_tuple_field(&self) -> Option<usize> {
@@ -67,15 +55,12 @@ impl ast::NameRef {
     }
 }
 
-fn text_of_first_token(node: &SyntaxNode) -> TokenText<'_> {
-    fn first_token(green_ref: &GreenNodeData) -> &GreenTokenData {
-        green_ref.children().next().and_then(NodeOrToken::into_token).unwrap()
-    }
+fn first_token(green_ref: &GreenNodeData) -> &GreenTokenData {
+    green_ref.children().next().and_then(NodeOrToken::into_token).unwrap()
+}
 
-    match node.green() {
-        Cow::Borrowed(green_ref) => TokenText::borrowed(first_token(green_ref).text()),
-        Cow::Owned(green) => TokenText::owned(first_token(&green).to_owned()),
-    }
+fn text_of_first_token(node: &SyntaxNode) -> TokenText<'_> {
+    TokenText::borrowed(first_token(node.green()).text())
 }
 
 fn into_comma(it: NodeOrToken<SyntaxNode, SyntaxToken>) -> Option<SyntaxToken> {
