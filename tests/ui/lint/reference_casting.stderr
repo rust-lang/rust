@@ -1,5 +1,5 @@
 error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:17:16
+  --> $DIR/reference_casting.rs:32:16
    |
 LL |     let _num = &mut *(num as *const i32 as *mut i32);
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL |     let _num = &mut *(num as *const i32 as *mut i32);
    = note: `#[deny(invalid_reference_casting)]` on by default
 
 error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:19:16
+  --> $DIR/reference_casting.rs:34:16
    |
 LL |     let _num = &mut *(num as *const i32).cast_mut();
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -16,7 +16,7 @@ LL |     let _num = &mut *(num as *const i32).cast_mut();
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:21:16
+  --> $DIR/reference_casting.rs:36:16
    |
 LL |     let _num = &mut *std::ptr::from_ref(num).cast_mut();
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -24,7 +24,7 @@ LL |     let _num = &mut *std::ptr::from_ref(num).cast_mut();
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:23:16
+  --> $DIR/reference_casting.rs:38:16
    |
 LL |     let _num = &mut *std::ptr::from_ref({ num }).cast_mut();
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -32,7 +32,7 @@ LL |     let _num = &mut *std::ptr::from_ref({ num }).cast_mut();
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:25:16
+  --> $DIR/reference_casting.rs:40:16
    |
 LL |     let _num = &mut *{ std::ptr::from_ref(num) }.cast_mut();
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -40,7 +40,7 @@ LL |     let _num = &mut *{ std::ptr::from_ref(num) }.cast_mut();
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:27:16
+  --> $DIR/reference_casting.rs:42:16
    |
 LL |     let _num = &mut *(std::ptr::from_ref({ num }) as *mut i32);
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -48,7 +48,7 @@ LL |     let _num = &mut *(std::ptr::from_ref({ num }) as *mut i32);
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:29:16
+  --> $DIR/reference_casting.rs:44:16
    |
 LL |     let _num = &mut *(num as *const i32).cast::<i32>().cast_mut();
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -56,7 +56,7 @@ LL |     let _num = &mut *(num as *const i32).cast::<i32>().cast_mut();
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:31:16
+  --> $DIR/reference_casting.rs:46:16
    |
 LL |     let _num = &mut *(num as *const i32).cast::<i32>().cast_mut().cast_const().cast_mut();
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -64,7 +64,7 @@ LL |     let _num = &mut *(num as *const i32).cast::<i32>().cast_mut().cast_cons
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:33:16
+  --> $DIR/reference_casting.rs:48:16
    |
 LL |     let _num = &mut *(std::ptr::from_ref(static_u8()) as *mut i8);
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -72,7 +72,7 @@ LL |     let _num = &mut *(std::ptr::from_ref(static_u8()) as *mut i8);
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:35:16
+  --> $DIR/reference_casting.rs:50:16
    |
 LL |     let _num = &mut *std::mem::transmute::<_, *mut i32>(num);
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -80,7 +80,7 @@ LL |     let _num = &mut *std::mem::transmute::<_, *mut i32>(num);
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:37:16
+  --> $DIR/reference_casting.rs:52:16
    |
 LL |     let _num = &mut *(std::mem::transmute::<_, *mut i32>(num) as *mut i32);
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -88,7 +88,7 @@ LL |     let _num = &mut *(std::mem::transmute::<_, *mut i32>(num) as *mut i32);
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:39:16
+  --> $DIR/reference_casting.rs:54:16
    |
 LL |       let _num = &mut *std::cell::UnsafeCell::raw_get(
    |  ________________^
@@ -100,7 +100,7 @@ LL | |     );
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:45:16
+  --> $DIR/reference_casting.rs:60:16
    |
 LL |     let deferred = num as *const i32 as *mut i32;
    |                    ----------------------------- casting happened here
@@ -110,7 +110,7 @@ LL |     let _num = &mut *deferred;
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:48:16
+  --> $DIR/reference_casting.rs:63:16
    |
 LL |     let deferred = (std::ptr::from_ref(num) as *const i32 as *const i32).cast_mut() as *mut i32;
    |                    ---------------------------------------------------------------------------- casting happened here
@@ -120,7 +120,7 @@ LL |     let _num = &mut *deferred;
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:51:16
+  --> $DIR/reference_casting.rs:66:16
    |
 LL |     let deferred = (std::ptr::from_ref(num) as *const i32 as *const i32).cast_mut() as *mut i32;
    |                    ---------------------------------------------------------------------------- casting happened here
@@ -131,7 +131,7 @@ LL |     let _num = &mut *deferred_rebind;
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:53:16
+  --> $DIR/reference_casting.rs:68:16
    |
 LL |     let _num = &mut *(num as *const _ as usize as *mut i32);
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -139,7 +139,7 @@ LL |     let _num = &mut *(num as *const _ as usize as *mut i32);
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:55:16
+  --> $DIR/reference_casting.rs:70:16
    |
 LL |     let _num = &mut *(std::mem::transmute::<_, *mut _>(num as *const i32) as *mut i32);
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -147,7 +147,7 @@ LL |     let _num = &mut *(std::mem::transmute::<_, *mut _>(num as *const i32) a
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:62:16
+  --> $DIR/reference_casting.rs:77:16
    |
 LL |     let num = NUM as *const i32 as *mut i32;
    |               ----------------------------- casting happened here
@@ -158,7 +158,7 @@ LL |     let _num = &mut *num;
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:66:9
+  --> $DIR/reference_casting.rs:81:9
    |
 LL |         &mut *((this as *const _) as *mut _)
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -166,7 +166,7 @@ LL |         &mut *((this as *const _) as *mut _)
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:71:18
+  --> $DIR/reference_casting.rs:86:18
    |
 LL |         unsafe { &mut *std::cell::UnsafeCell::raw_get(x as *const _ as *const _) }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -174,15 +174,65 @@ LL |         unsafe { &mut *std::cell::UnsafeCell::raw_get(x as *const _ as *con
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:76:18
+  --> $DIR/reference_casting.rs:91:18
    |
 LL |         unsafe { &mut *std::cell::UnsafeCell::raw_get(x as *const _ as *const _) }
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
+error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
+  --> $DIR/reference_casting.rs:97:18
+   |
+LL |         let t = ptr as *const Option<T> as *mut T;
+   |                 --------------------------------- casting happened here
+LL |         unsafe { &mut *t }
+   |                  ^^^^^^^
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
+
+error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
+  --> $DIR/reference_casting.rs:103:18
+   |
+LL |         let t = ptr as *const Option<UnsafeCell<T>> as *mut T;
+   |                 --------------------------------------------- casting happened here
+LL |         unsafe { &mut *t }
+   |                  ^^^^^^^
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
+
+error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
+  --> $DIR/reference_casting.rs:109:18
+   |
+LL |         let t = ptr as *const (T, UnsafeCell<T>) as *mut T;
+   |                 ------------------------------------------ casting happened here
+LL |         unsafe { &mut *t }
+   |                  ^^^^^^^
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
+
+error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
+  --> $DIR/reference_casting.rs:115:18
+   |
+LL |         let t = ptr as *const _ as *mut [T];
+   |                 --------------------------- casting happened here
+LL |         unsafe { &mut *t }
+   |                  ^^^^^^^
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
+
+error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
+  --> $DIR/reference_casting.rs:121:18
+   |
+LL |         let t = ptr as *const FakeUnsafeCell<T> as *mut T;
+   |                 ----------------------------------------- casting happened here
+LL |         unsafe { &mut *t }
+   |                  ^^^^^^^
+   |
+   = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
+
 error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:86:5
+  --> $DIR/reference_casting.rs:131:5
    |
 LL |     *(a as *const _ as *mut _) = String::from("Replaced");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -190,7 +240,7 @@ LL |     *(a as *const _ as *mut _) = String::from("Replaced");
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:88:5
+  --> $DIR/reference_casting.rs:133:5
    |
 LL |     *(a as *const _ as *mut String) += " world";
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -198,7 +248,7 @@ LL |     *(a as *const _ as *mut String) += " world";
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:90:5
+  --> $DIR/reference_casting.rs:135:5
    |
 LL |     *std::ptr::from_ref(num).cast_mut() += 1;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -206,7 +256,7 @@ LL |     *std::ptr::from_ref(num).cast_mut() += 1;
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:92:5
+  --> $DIR/reference_casting.rs:137:5
    |
 LL |     *std::ptr::from_ref({ num }).cast_mut() += 1;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -214,7 +264,7 @@ LL |     *std::ptr::from_ref({ num }).cast_mut() += 1;
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:94:5
+  --> $DIR/reference_casting.rs:139:5
    |
 LL |     *{ std::ptr::from_ref(num) }.cast_mut() += 1;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -222,7 +272,7 @@ LL |     *{ std::ptr::from_ref(num) }.cast_mut() += 1;
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:96:5
+  --> $DIR/reference_casting.rs:141:5
    |
 LL |     *(std::ptr::from_ref({ num }) as *mut i32) += 1;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -230,7 +280,7 @@ LL |     *(std::ptr::from_ref({ num }) as *mut i32) += 1;
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:98:5
+  --> $DIR/reference_casting.rs:143:5
    |
 LL |     *std::mem::transmute::<_, *mut i32>(num) += 1;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -238,7 +288,7 @@ LL |     *std::mem::transmute::<_, *mut i32>(num) += 1;
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:100:5
+  --> $DIR/reference_casting.rs:145:5
    |
 LL |     *(std::mem::transmute::<_, *mut i32>(num) as *mut i32) += 1;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -246,7 +296,7 @@ LL |     *(std::mem::transmute::<_, *mut i32>(num) as *mut i32) += 1;
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:102:5
+  --> $DIR/reference_casting.rs:147:5
    |
 LL | /     std::ptr::write(
 LL | |
@@ -258,7 +308,7 @@ LL | |     );
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:109:5
+  --> $DIR/reference_casting.rs:154:5
    |
 LL |     let value = num as *const i32 as *mut i32;
    |                 ----------------------------- casting happened here
@@ -268,7 +318,7 @@ LL |     *value = 1;
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:113:5
+  --> $DIR/reference_casting.rs:158:5
    |
 LL |     let value = value as *mut i32;
    |                 ----------------- casting happened here
@@ -278,7 +328,7 @@ LL |     *value = 1;
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:116:5
+  --> $DIR/reference_casting.rs:161:5
    |
 LL |     let value = num as *const i32 as *mut i32;
    |                 ----------------------------- casting happened here
@@ -288,7 +338,7 @@ LL |     *value = 1;
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:119:5
+  --> $DIR/reference_casting.rs:164:5
    |
 LL |     let value = num as *const i32 as *mut i32;
    |                 ----------------------------- casting happened here
@@ -299,7 +349,7 @@ LL |     *value_rebind = 1;
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:121:5
+  --> $DIR/reference_casting.rs:166:5
    |
 LL |     *(num as *const i32).cast::<i32>().cast_mut() = 2;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -307,7 +357,7 @@ LL |     *(num as *const i32).cast::<i32>().cast_mut() = 2;
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:123:5
+  --> $DIR/reference_casting.rs:168:5
    |
 LL |     *(num as *const _ as usize as *mut i32) = 2;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -315,7 +365,7 @@ LL |     *(num as *const _ as usize as *mut i32) = 2;
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:125:5
+  --> $DIR/reference_casting.rs:170:5
    |
 LL |     let value = num as *const i32 as *mut i32;
    |                 ----------------------------- casting happened here
@@ -326,7 +376,7 @@ LL |     std::ptr::write(value, 2);
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:127:5
+  --> $DIR/reference_casting.rs:172:5
    |
 LL |     let value = num as *const i32 as *mut i32;
    |                 ----------------------------- casting happened here
@@ -337,7 +387,7 @@ LL |     std::ptr::write_unaligned(value, 2);
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:129:5
+  --> $DIR/reference_casting.rs:174:5
    |
 LL |     let value = num as *const i32 as *mut i32;
    |                 ----------------------------- casting happened here
@@ -348,7 +398,7 @@ LL |     std::ptr::write_volatile(value, 2);
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: assigning to `&T` is undefined behavior, consider using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:133:9
+  --> $DIR/reference_casting.rs:178:9
    |
 LL |         *(this as *const _ as *mut _) = a;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -356,7 +406,7 @@ LL |         *(this as *const _ as *mut _) = a;
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: casting references to a bigger memory layout than the backing allocation is undefined behavior, even if the reference is unused
-  --> $DIR/reference_casting.rs:155:20
+  --> $DIR/reference_casting.rs:200:20
    |
 LL |         let num = &mut 3i32;
    |                        ---- backing allocation comes from here
@@ -367,7 +417,7 @@ LL |         let _num = &*(num as *const i32 as *const i64);
    = note: casting from `i32` (4 bytes) to `i64` (8 bytes)
 
 error: casting references to a bigger memory layout than the backing allocation is undefined behavior, even if the reference is unused
-  --> $DIR/reference_casting.rs:157:20
+  --> $DIR/reference_casting.rs:202:20
    |
 LL |         let num = &mut 3i32;
    |                        ---- backing allocation comes from here
@@ -378,7 +428,7 @@ LL |         let _num = &mut *(num as *mut i32 as *mut i64);
    = note: casting from `i32` (4 bytes) to `i64` (8 bytes)
 
 error: casting references to a bigger memory layout than the backing allocation is undefined behavior, even if the reference is unused
-  --> $DIR/reference_casting.rs:159:20
+  --> $DIR/reference_casting.rs:204:20
    |
 LL |         let num = &mut 3i32;
    |                        ---- backing allocation comes from here
@@ -389,7 +439,7 @@ LL |         let _num = &mut *(num as *mut i32 as *mut I64);
    = note: casting from `i32` (4 bytes) to `I64` (16 bytes)
 
 error: casting references to a bigger memory layout than the backing allocation is undefined behavior, even if the reference is unused
-  --> $DIR/reference_casting.rs:161:9
+  --> $DIR/reference_casting.rs:206:9
    |
 LL |         let num = &mut 3i32;
    |                        ---- backing allocation comes from here
@@ -400,7 +450,7 @@ LL |         std::ptr::write(num as *mut i32 as *mut i64, 2);
    = note: casting from `i32` (4 bytes) to `i64` (8 bytes)
 
 error: casting references to a bigger memory layout than the backing allocation is undefined behavior, even if the reference is unused
-  --> $DIR/reference_casting.rs:170:20
+  --> $DIR/reference_casting.rs:215:20
    |
 LL |         let num = &mut [0i32; 3];
    |                        --------- backing allocation comes from here
@@ -411,7 +461,7 @@ LL |         let _num = &mut *(num as *mut _ as *mut [i64; 2]);
    = note: casting from `[i32; 3]` (12 bytes) to `[i64; 2]` (16 bytes)
 
 error: casting references to a bigger memory layout than the backing allocation is undefined behavior, even if the reference is unused
-  --> $DIR/reference_casting.rs:172:9
+  --> $DIR/reference_casting.rs:217:9
    |
 LL |         let num = &mut [0i32; 3];
    |                        --------- backing allocation comes from here
@@ -422,7 +472,7 @@ LL |         std::ptr::write_unaligned(num as *mut _ as *mut [i32; 4], [0, 0, 1,
    = note: casting from `[i32; 3]` (12 bytes) to `[i32; 4]` (16 bytes)
 
 error: casting references to a bigger memory layout than the backing allocation is undefined behavior, even if the reference is unused
-  --> $DIR/reference_casting.rs:182:20
+  --> $DIR/reference_casting.rs:227:20
    |
 LL |         let num = &mut [0i32; 3] as &mut [i32];
    |                        --------- backing allocation comes from here
@@ -433,7 +483,7 @@ LL |         let _num = &mut *(num as *mut _ as *mut i128);
    = note: casting from `[i32; 3]` (12 bytes) to `i128` (16 bytes)
 
 error: casting references to a bigger memory layout than the backing allocation is undefined behavior, even if the reference is unused
-  --> $DIR/reference_casting.rs:184:20
+  --> $DIR/reference_casting.rs:229:20
    |
 LL |         let num = &mut [0i32; 3] as &mut [i32];
    |                        --------- backing allocation comes from here
@@ -444,7 +494,7 @@ LL |         let _num = &mut *(num as *mut _ as *mut [i64; 4]);
    = note: casting from `[i32; 3]` (12 bytes) to `[i64; 4]` (32 bytes)
 
 error: casting `&T` to `&mut T` is undefined behavior, even if the reference is unused, consider instead using an `UnsafeCell`
-  --> $DIR/reference_casting.rs:194:20
+  --> $DIR/reference_casting.rs:239:20
    |
 LL |         let _num = &mut *(&mat3 as *const _ as *mut [[i64; 3]; 3]);
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -452,7 +502,7 @@ LL |         let _num = &mut *(&mat3 as *const _ as *mut [[i64; 3]; 3]);
    = note: for more information, visit <https://doc.rust-lang.org/book/ch15-05-interior-mutability.html>
 
 error: casting references to a bigger memory layout than the backing allocation is undefined behavior, even if the reference is unused
-  --> $DIR/reference_casting.rs:194:20
+  --> $DIR/reference_casting.rs:239:20
    |
 LL |         let _num = &mut *(&mat3 as *const _ as *mut [[i64; 3]; 3]);
    |                    ^^^^^^^^----^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -462,7 +512,7 @@ LL |         let _num = &mut *(&mat3 as *const _ as *mut [[i64; 3]; 3]);
    = note: casting from `Mat3<i32>` (36 bytes) to `[[i64; 3]; 3]` (72 bytes)
 
 error: casting references to a bigger memory layout than the backing allocation is undefined behavior, even if the reference is unused
-  --> $DIR/reference_casting.rs:197:20
+  --> $DIR/reference_casting.rs:242:20
    |
 LL |         let _num = &*(&mat3 as *const _ as *mut [[i64; 3]; 3]);
    |                    ^^^^----^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -472,7 +522,7 @@ LL |         let _num = &*(&mat3 as *const _ as *mut [[i64; 3]; 3]);
    = note: casting from `Mat3<i32>` (36 bytes) to `[[i64; 3]; 3]` (72 bytes)
 
 error: casting references to a bigger memory layout than the backing allocation is undefined behavior, even if the reference is unused
-  --> $DIR/reference_casting.rs:206:38
+  --> $DIR/reference_casting.rs:251:38
    |
 LL |         let w: *mut [u16; 2] = &mut l as *mut [u8; 2] as *mut _;
    |                                --------------------------------
@@ -485,7 +535,7 @@ LL |         let w: *mut [u16] = unsafe { &mut *w };
    = note: casting from `[u8; 2]` (2 bytes) to `[u16; 2]` (4 bytes)
 
 error: casting references to a bigger memory layout than the backing allocation is undefined behavior, even if the reference is unused
-  --> $DIR/reference_casting.rs:216:20
+  --> $DIR/reference_casting.rs:261:20
    |
 LL |         let _num = &*(&num as *const i32 as *const i64);
    |                    ^^^^---^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -495,7 +545,7 @@ LL |         let _num = &*(&num as *const i32 as *const i64);
    = note: casting from `[i32; 1]` (4 bytes) to `i64` (8 bytes)
 
 error: casting references to a bigger memory layout than the backing allocation is undefined behavior, even if the reference is unused
-  --> $DIR/reference_casting.rs:218:20
+  --> $DIR/reference_casting.rs:263:20
    |
 LL |         let _num = &*(&foo() as *const i32 as *const i64);
    |                    ^^^^-----^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -505,7 +555,7 @@ LL |         let _num = &*(&foo() as *const i32 as *const i64);
    = note: casting from `[i32; 1]` (4 bytes) to `i64` (8 bytes)
 
 error: casting references to a bigger memory layout than the backing allocation is undefined behavior, even if the reference is unused
-  --> $DIR/reference_casting.rs:238:20
+  --> $DIR/reference_casting.rs:283:20
    |
 LL |         let _num = &*(&num as *const i32 as *const i64);
    |                    ^^^^---^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -514,5 +564,5 @@ LL |         let _num = &*(&num as *const i32 as *const i64);
    |
    = note: casting from `i32` (4 bytes) to `i64` (8 bytes)
 
-error: aborting due to 55 previous errors
+error: aborting due to 60 previous errors
 

@@ -1,7 +1,7 @@
 use rustc_ast::Mutability;
 use rustc_hir::{Expr, ExprKind, UnOp};
-use rustc_middle::ty;
 use rustc_middle::ty::layout::{LayoutOf as _, TyAndLayout};
+use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::sym;
 
@@ -155,17 +155,19 @@ fn is_invalid_cast_from_ref_to_mut_ptr<'tcx>(
     let start_ty = cx.typeck_results().node_type(e.hir_id);
 
     if let ty::Ref(_, inner_ty, Mutability::Not) = start_ty.kind() {
-        // We need to additionally check the inner type for the presence of the Freeze trait
-        // (ie does NOT contain an UnsafeCell), since in that case we would incorrectly lint
-        // on valid casts (see https://github.com/rust-lang/unsafe-code-guidelines/issues/281).
+        // We need to additionally check the inner type for the presence of `UnsafeCell`
+        // as those would "punches a hole" in the immutability requirement of `&`.
         //
-        // Except on the presence of non concrete skeleton types (ie generics)
-        // since there is no way to make it safe for arbitrary types.
+        // The `UnsafeCell`s must recursively covered all the fields (modulo ZSTs).
         //
-        // However this does mean we miss out on some cases where the user doesn't go
-        // through an UnsafeCell but there's an UnsafeCell somewhere else in the type.
+        // Not checking it would lead us to incorrectly lint on valid casts
+        // (see https://github.com/rust-lang/unsafe-code-guidelines/issues/281).
+        //
+        // For optimization purpose we first check that the type has no generics
+        // (as it's impossible to make it safe).
         let inner_ty_has_interior_mutability =
-            !inner_ty.is_freeze(cx.tcx, cx.typing_env()) && inner_ty.has_concrete_skeleton();
+            inner_ty.has_concrete_skeleton() && is_ty_fully_unsafe_celled(cx, *inner_ty);
+
         !inner_ty_has_interior_mutability
     } else {
         false
@@ -230,4 +232,92 @@ fn is_cast_to_bigger_memory_layout<'tcx>(
     } else {
         None
     }
+}
+
+/// Checks that a `Ty` fully covered by one or more `UnsafeCell`.
+///
+/// This checks excludes ZST and `PhantomData`.
+///
+/// This check is an approximation and can return `false` for spurious reasons,
+/// but `true` is dependable.
+// Ideally we would check the layout for this information, but alas it doesn't have such information.
+fn is_ty_fully_unsafe_celled<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
+    fn inner<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, depth: usize) -> bool {
+        // Did we reach the recursion limit? Yes, bail-out.
+        if depth >= cx.tcx.recursion_limit().0 {
+            return false;
+        }
+
+        // Is this an `UnsafeCell` or `PhantomData`?
+        if ty.is_unsafe_cell() || ty.is_phantom_data() {
+            return true;
+        }
+
+        // Is this an ZSTs? Yes, consider them covered.
+        if let Ok(layout) = cx.layout_of(ty) {
+            if layout.is_zst() {
+                return true;
+            }
+        }
+
+        // Check that the inner fields/types are them-selves covered by an `UnsafeCell`.
+        match ty.kind() {
+            ty::Adt(def, args) => {
+                // Is this an enum? Yes, bail-out.
+                if def.is_enum() {
+                    return false;
+                }
+
+                let variant = def.non_enum_variant();
+
+                // Empty struct and union are trivially covered
+                if variant.fields.is_empty() {
+                    return true;
+                }
+
+                variant.fields.iter().all(|field| {
+                    let field_ty = field.ty(cx.tcx, args).skip_norm_wip();
+                    inner(cx, field_ty, depth + 1)
+                })
+            }
+
+            ty::Tuple(fields) => fields.iter().all(|field_ty| inner(cx, field_ty, depth + 1)),
+
+            ty::Array(elem_ty, _) | ty::Slice(elem_ty) | ty::Pat(elem_ty, _) => {
+                inner(cx, *elem_ty, depth + 1)
+            }
+
+            // Primitive, slices, references, pointers and closures are not
+            // covered by an `UnsafeCell`
+            ty::Char
+            | ty::Bool
+            | ty::Int(..)
+            | ty::Uint(..)
+            | ty::Float(..)
+            | ty::Str
+            | ty::Never
+            | ty::RawPtr(..)
+            | ty::Ref(..)
+            | ty::FnDef(..)
+            | ty::FnPtr(..)
+            | ty::Closure(..)
+            | ty::CoroutineClosure(..)
+            | ty::Coroutine(..)
+            | ty::CoroutineWitness(..) => false,
+
+            ty::Foreign(_)
+            | ty::Dynamic(..)
+            | ty::Alias(..)
+            | ty::Param(_)
+            | ty::Bound(..)
+            | ty::Placeholder(..)
+            | ty::Infer(_)
+            | ty::Error(_) => false,
+
+            // FIXME: How to handle unsafe binders?
+            ty::UnsafeBinder(_) => false,
+        }
+    }
+
+    inner(cx, ty, 0)
 }
