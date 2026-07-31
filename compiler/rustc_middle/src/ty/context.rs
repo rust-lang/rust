@@ -1736,9 +1736,7 @@ nop_list_lift! { args; GenericArg<'a> => GenericArg<'tcx> }
 
 macro_rules! sty_debug_print {
     ($fmt: expr, $ctxt: expr, $($variant: ident),*) => {{
-        // Curious inner module to allow variant names to be used as
-        // variable names.
-        #[allow(non_snake_case)]
+        #[allow(non_snake_case, reason = "we're using variant names as local variables")]
         mod inner {
             use crate::ty::{self, TyCtxt};
             use crate::ty::context::InternedInSet;
