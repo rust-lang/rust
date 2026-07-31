@@ -1076,20 +1076,54 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 match self.unify_and(a, b, [], adjust.clone(), ForceLeakCheck::Yes) {
                     ok @ Ok(_) => ok,
                     Err(_) => {
-                        let inst_sig = ty::Binder::dummy(self.instantiate_binder_with_fresh_vars(
-                            self.cause.span,
-                            BoundRegionConversionTime::HigherRankedType,
-                            a_sig,
-                        ));
-                        let inst_a = Ty::new_fn_ptr(self.tcx, inst_sig);
-                        let unsafe_a = self.tcx.safe_to_unsafe_fn_ty(inst_sig);
-                        self.unify_and(
-                            unsafe_a,
-                            b,
-                            vec![Adjustment { kind: Adjust::Subtype, target: inst_a }],
-                            adjust,
-                            ForceLeakCheck::Yes,
-                        )
+                        let ty::FnPtr(b_sig_tys, b_hdr) = b.kind() else {
+                            span_bug!(
+                                self.cause.span,
+                                "coerce_from_fn_pointer: expected a function pointer target, found {b:?}"
+                            );
+                        };
+                        let b_sig = b_sig_tys.with(*b_hdr);
+
+                        let safe_b = Ty::new_fn_ptr(
+                            self.tcx,
+                            b_sig.map_bound(|sig| ty::FnSig {
+                                fn_sig_kind: sig.fn_sig_kind.set_safety(hir::Safety::Safe),
+                                ..sig
+                            }),
+                        );
+
+                        self.commit_if_ok(|snapshot| {
+                            let outer_universe = self.infcx.universe();
+
+                            let InferOk { value: (), obligations } =
+                                self.infcx.enter_forall(b_sig, |b_sig| {
+                                    let a_sig =
+                                        ty::Binder::dummy(self.instantiate_binder_with_fresh_vars(
+                                            self.cause.span,
+                                            BoundRegionConversionTime::HigherRankedType,
+                                            a_sig,
+                                        ));
+                                    let unsafe_a = self.tcx.safe_to_unsafe_fn_ty(a_sig);
+                                    let b_ty = Ty::new_fn_ptr(self.tcx, ty::Binder::dummy(b_sig));
+
+                                    self.at(&self.cause, self.fcx.param_env).sup(
+                                        DefineOpaqueTypes::Yes,
+                                        b_ty,
+                                        unsafe_a,
+                                    )
+                                })?;
+
+                            self.leak_check(outer_universe, Some(snapshot))?;
+
+                            success(
+                                vec![
+                                    Adjustment { kind: Adjust::Subtype, target: safe_b },
+                                    Adjustment { kind: adjust, target: b },
+                                ],
+                                b,
+                                obligations,
+                            )
+                        })
                     }
                 }
             }
