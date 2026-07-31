@@ -4,7 +4,7 @@ use super::UnstableFeatures;
 fn rustc_bootstrap_parsing() {
     let is_bootstrap = |env: &str, krate: Option<&str>| {
         matches!(
-            UnstableFeatures::from_environment_value(krate, Ok(env.to_string())),
+            UnstableFeatures::from_environment_value(krate, Ok(env.to_string()), false),
             UnstableFeatures::Cheat
         )
     };
@@ -23,10 +23,22 @@ fn rustc_bootstrap_parsing() {
     // `RUSTC_BOOTSTRAP=0` is not recognized.
     assert!(!is_bootstrap("0", None));
 
+    let is_bootstrap = |env: &str, krate: Option<&str>, input_in_sysroot: bool| {
+        matches!(
+            UnstableFeatures::from_environment_value(krate, Ok(env.to_string()), input_in_sysroot),
+            UnstableFeatures::Cheat
+        )
+    };
+    // Whether RUSTC_BOOTSTRAP is set or unset, when input_in_sysroot is_bootstrap should be true
+    assert!(is_bootstrap("1", None, true));
+    assert!(is_bootstrap("0", None, true));
+    // Even when input_in_sysroot, disabling RUSTC_BOOTSTRAP is honoured.
+    assert!(!is_bootstrap("-1", None, true));
+
     // `RUSTC_BOOTSTRAP=-1` is force-stable, no unstable features allowed.
     let is_force_stable = |krate: Option<&str>| {
         matches!(
-            UnstableFeatures::from_environment_value(krate, Ok("-1".to_string())),
+            UnstableFeatures::from_environment_value(krate, Ok("-1".to_string()), false),
             UnstableFeatures::Disallow
         )
     };

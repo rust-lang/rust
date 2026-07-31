@@ -48,12 +48,20 @@ pub enum UnstableFeatures {
 }
 
 impl UnstableFeatures {
+    /// This takes into account `RUSTC_BOOTSTRAP` and whether the input is in the sysroot.
+    ///
+    /// If `krate` is [`Some`], then setting `RUSTC_BOOTSTRAP=krate` will enable the nightly
+    /// features. Otherwise, only `RUSTC_BOOTSTRAP=1` or `input_in_sysroot` will work.
+    pub fn from_environment_check_in_sysroot(krate: Option<&str>, input_in_sysroot: bool) -> Self {
+        Self::from_environment_value(krate, std::env::var("RUSTC_BOOTSTRAP"), input_in_sysroot)
+    }
+
     /// This takes into account `RUSTC_BOOTSTRAP`.
     ///
     /// If `krate` is [`Some`], then setting `RUSTC_BOOTSTRAP=krate` will enable the nightly
     /// features. Otherwise, only `RUSTC_BOOTSTRAP=1` will work.
     pub fn from_environment(krate: Option<&str>) -> Self {
-        Self::from_environment_value(krate, std::env::var("RUSTC_BOOTSTRAP"))
+        Self::from_environment_value(krate, std::env::var("RUSTC_BOOTSTRAP"), false)
     }
 
     /// Avoid unsafe `std::env::set_var()` by allowing tests to inject
@@ -62,10 +70,8 @@ impl UnstableFeatures {
     fn from_environment_value(
         krate: Option<&str>,
         env_var_rustc_bootstrap: Result<String, std::env::VarError>,
+        input_in_sysroot: bool,
     ) -> Self {
-        // `true` if this is a feature-staged build, i.e., on the beta or stable channel.
-        let disable_unstable_features =
-            option_env!("CFG_DISABLE_UNSTABLE_FEATURES").is_some_and(|s| s != "0");
         // Returns whether `krate` should be counted as unstable
         let is_unstable_crate =
             |var: &str| krate.is_some_and(|name| var.split(',').any(|new_krate| new_krate == name));
@@ -80,6 +86,14 @@ impl UnstableFeatures {
                 _ => {}
             }
         }
+
+        if input_in_sysroot {
+            return UnstableFeatures::Cheat;
+        }
+
+        // `true` if this is a feature-staged build, i.e., on the beta or stable channel.
+        let disable_unstable_features =
+            option_env!("CFG_DISABLE_UNSTABLE_FEATURES").is_some_and(|s| s != "0");
 
         if disable_unstable_features { UnstableFeatures::Disallow } else { UnstableFeatures::Allow }
     }
