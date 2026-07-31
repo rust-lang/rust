@@ -252,6 +252,14 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         })
     }
 
+    /// Whether a fn-pointer coercion involves a higher-ranked binder (source or
+    /// target). If neither is higher-ranked, the `unify_hr_fn_ptr` fallback is a
+    /// no-op re-relate of the same types.
+    fn coercion_is_higher_ranked(&self, a_sig: ty::PolyFnSig<'tcx>, b: Ty<'tcx>) -> bool {
+        a_sig.has_bound_regions()
+            || matches!(*b.kind(), ty::FnPtr(tys, hdr) if tys.with(hdr).has_bound_regions())
+    }
+
     /// Unify two types (using sub or lub).
     fn unify(&self, a: Ty<'tcx>, b: Ty<'tcx>, leak_check: ForceLeakCheck) -> CoerceResult<'tcx> {
         self.unify_raw(a, b, leak_check)
@@ -1075,7 +1083,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
                 match self.unify_and(a, b, [], adjust.clone(), ForceLeakCheck::Yes) {
                     ok @ Ok(_) => ok,
-                    Err(_) => {
+                    Err(_) if self.coercion_is_higher_ranked(a_sig, b) => {
                         let ty::FnPtr(b_sig_tys, b_hdr) = b.kind() else {
                             span_bug!(
                                 self.cause.span,
@@ -1125,11 +1133,15 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                             )
                         })
                     }
+                    Err(err) => Err(err),
                 }
             }
             ty::FnPtr(_, _) => match self.unify(a, b, ForceLeakCheck::Yes) {
                 ok @ Ok(_) => ok,
-                Err(_) => self.unify_hr_fn_ptr(a_sig, b, Adjust::Subtype),
+                Err(_) if self.coercion_is_higher_ranked(a_sig, b) => {
+                    self.unify_hr_fn_ptr(a_sig, b, Adjust::Subtype)
+                }
+                Err(err) => Err(err),
             },
             _ => self.unify(a, b, ForceLeakCheck::Yes),
         }
@@ -1151,7 +1163,10 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 let adjust = Adjust::Pointer(PointerCoercion::ReifyFnPointer(b_hdr.safety()));
                 let infer = match self.unify_and(a, b, [], adjust.clone(), ForceLeakCheck::Yes) {
                     Ok(infer) => infer,
-                    Err(_) => self.unify_hr_fn_ptr(a_sig, b, adjust)?,
+                    Err(_) if self.coercion_is_higher_ranked(a_sig, b) => {
+                        self.unify_hr_fn_ptr(a_sig, b, adjust)?
+                    }
+                    Err(err) => return Err(err),
                 };
                 obligations.extend(infer.obligations);
                 Ok(InferOk { value: infer.value, obligations })
@@ -1177,7 +1192,10 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 let adjust = Adjust::Pointer(PointerCoercion::ClosureFnPointer(safety));
                 match self.unify_and(pointer_ty, b, [], adjust.clone(), ForceLeakCheck::No) {
                     ok @ Ok(_) => ok,
-                    Err(_) => self.unify_hr_fn_ptr(closure_sig, b, adjust),
+                    Err(_) if self.coercion_is_higher_ranked(closure_sig, b) => {
+                        self.unify_hr_fn_ptr(closure_sig, b, adjust)
+                    }
+                    Err(err) => Err(err),
                 }
             }
             _ => self.unify(a, b, ForceLeakCheck::No),
