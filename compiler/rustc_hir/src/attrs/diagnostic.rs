@@ -18,7 +18,7 @@ pub struct Directive {
     pub message: Option<(Span, FormatString)>,
     pub label: Option<(Span, FormatString)>,
     pub notes: ThinVec<FormatString>,
-    pub parent_label: Option<FormatString>,
+    pub parent_label: Option<(Span, FormatString)>,
 }
 
 impl Directive {
@@ -44,7 +44,7 @@ impl Directive {
             note.visit_params(visit);
         }
 
-        if let Some(parent_label) = &self.parent_label {
+        if let Some((_, parent_label)) = &self.parent_label {
             parent_label.visit_params(visit);
         }
     }
@@ -99,7 +99,7 @@ impl CustomDiagnostic {
             self.label = di.label.as_ref().map(|l| l.1.format(args));
         }
         if self.parent_label.is_none() {
-            self.parent_label = di.parent_label.as_ref().map(|p| p.format(args));
+            self.parent_label = di.parent_label.as_ref().map(|p| p.1.format(args));
         }
 
         self.notes.extend(di.notes.iter().map(|n| n.format(args)))

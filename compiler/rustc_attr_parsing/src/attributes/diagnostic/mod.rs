@@ -8,16 +8,16 @@ use rustc_parse_format::{
     Argument, FormatSpec, ParseError, ParseMode, Parser, Piece as RpfPiece, Position,
 };
 use rustc_session::lint::builtin::{
-    MALFORMED_DIAGNOSTIC_ATTRIBUTES, MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
+    MALFORMED_DIAGNOSTIC_ATTRIBUTES, MALFORMED_DIAGNOSTIC_FILTERS,
+    MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
 };
 use rustc_span::{Ident, InnerSpan, Span, Symbol, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 
 use crate::context::AcceptContext;
 use crate::diagnostics::{
-    DupesNotAllowed, FormatWarning, IgnoredDiagnosticOption, InvalidOnClause,
-    MalFormedDiagnosticAttributeLint, MissingOptionsForDiagnosticAttribute,
-    NonMetaItemDiagnosticAttribute, WrappedParserError,
+    FormatWarning, IgnoredDiagnosticOption, InvalidOnClause, MalFormedDiagnosticAttributeLint,
+    MissingOptionsForDiagnosticAttribute, NonMetaItemDiagnosticAttribute, WrappedParserError,
 };
 use crate::parser::{ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItemParser};
 
@@ -129,13 +129,14 @@ fn merge_directives(
     later: (Span, Directive),
 ) {
     if let Some((_, first)) = first {
-        if first.is_rustc_attr || later.1.is_rustc_attr {
-            cx.emit_err(DupesNotAllowed);
-        }
+        let Directive { is_rustc_attr, filters, message, label, notes, parent_label } = later.1;
 
-        merge(cx, &mut first.message, later.1.message, sym::message);
-        merge(cx, &mut first.label, later.1.label, sym::label);
-        first.notes.extend(later.1.notes);
+        first.is_rustc_attr |= is_rustc_attr;
+        first.filters.extend(filters);
+        merge(cx, &mut first.message, message, sym::message);
+        merge(cx, &mut first.label, label, sym::label);
+        first.notes.extend(notes);
+        merge(cx, &mut first.parent_label, parent_label, sym::parent_label);
     } else {
         *first = Some(later);
     }
@@ -215,7 +216,7 @@ fn parse_directive_items<'p>(
     let mut message: Option<(Span, _)> = None;
     let mut label: Option<(Span, _)> = None;
     let mut notes = ThinVec::new();
-    let mut parent_label = None;
+    let mut parent_label: Option<(Span, FormatString)> = None;
     let mut filters = ThinVec::new();
 
     for item in items {
@@ -346,10 +347,11 @@ fn parse_directive_items<'p>(
             }
             (Mode::RustcOnUnimplemented, sym::parent_label) => {
                 let value = or_malformed!(value?);
-                if parent_label.is_none() {
-                    parent_label = Some(parse_format(value));
+                if let Some(parent_label) = &parent_label {
+                    duplicate!(name, parent_label.0)
                 } else {
-                    duplicate!(name, span)
+                    let format = parse_format(value);
+                    parent_label = Some((format.span, format));
                 }
             }
             (Mode::RustcOnUnimplemented, sym::on) => {
@@ -359,7 +361,11 @@ fn parse_directive_items<'p>(
                     let filter = if let Some(c) = iter.next() {
                         c
                     } else {
-                        cx.emit_err(InvalidOnClause::Empty { span });
+                        cx.emit_lint(
+                            MALFORMED_DIAGNOSTIC_FILTERS,
+                            InvalidOnClause::Empty { span },
+                            span,
+                        );
                         continue;
                     };
 
@@ -378,7 +384,7 @@ fn parse_directive_items<'p>(
                             filters.push((filter, directive));
                         }
                         Err(e) => {
-                            cx.emit_err(e);
+                            cx.emit_lint(MALFORMED_DIAGNOSTIC_FILTERS, e, span);
                         }
                     }
                 } else {

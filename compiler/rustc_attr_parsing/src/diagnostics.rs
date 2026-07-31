@@ -1,4 +1,4 @@
-use rustc_errors::{Applicability, DiagArgValue, E0232, E0264, MultiSpan};
+use rustc_errors::{Applicability, DiagArgValue, E0264, MultiSpan};
 use rustc_hir::AttrPath;
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Ident, Span, Symbol};
@@ -764,39 +764,39 @@ pub(crate) mod unexpected_cfg_value {
 
 #[derive(Diagnostic)]
 pub(crate) enum InvalidOnClause {
-    #[diag("empty `on`-clause in `#[rustc_on_unimplemented]`", code = E0232)]
+    #[diag("empty `on`-clause in `#[rustc_on_unimplemented]`")]
     Empty {
         #[primary_span]
         #[label("empty `on`-clause here")]
         span: Span,
     },
-    #[diag("expected a single predicate in `not(..)`", code = E0232)]
+    #[diag("expected a single predicate in `not(..)`")]
     ExpectedOnePredInNot {
         #[primary_span]
         #[label("unexpected quantity of predicates here")]
         span: Span,
     },
-    #[diag("literals inside `on`-clauses are not supported", code = E0232)]
+    #[diag("literals inside `on`-clauses are not supported")]
     UnsupportedLiteral {
         #[primary_span]
         #[label("unexpected literal here")]
         span: Span,
     },
-    #[diag("expected an identifier inside this `on`-clause", code = E0232)]
+    #[diag("expected an identifier inside this `on`-clause")]
     ExpectedIdentifier {
         #[primary_span]
         #[label("expected an identifier here, not `{$path}`")]
         span: Span,
         path: AttrPath,
     },
-    #[diag("this predicate is invalid", code = E0232)]
+    #[diag("this predicate is invalid")]
     InvalidPredicate {
         #[primary_span]
         #[label("expected one of `any`, `all` or `not` here, not `{$invalid_pred}`")]
         span: Span,
         invalid_pred: Symbol,
     },
-    #[diag("invalid flag in `on`-clause", code = E0232)]
+    #[diag("invalid flag in `on`-clause")]
     InvalidFlag {
         #[primary_span]
         #[label(
@@ -806,12 +806,6 @@ pub(crate) enum InvalidOnClause {
         invalid_flag: Symbol,
     },
 }
-
-#[derive(Diagnostic)]
-#[diag(
-    "using multiple `rustc_on_unimplemented` (or mixing it with `diagnostic::on_unimplemented`) is not supported"
-)]
-pub(crate) struct DupesNotAllowed;
 
 #[derive(Diagnostic)]
 #[diag("usage of the unsafe `{$attr_path}` attribute")]
