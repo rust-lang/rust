@@ -7,7 +7,9 @@ use rustc_infer::traits::{
     FromSolverError, PredicateObligation, PredicateObligations, TraitEngine,
 };
 use rustc_middle::ty::{self, TyCtxt, TypeVisitableExt, TypingMode};
-use rustc_next_trait_solver::solve::fast_path::compute_goal_fast_path;
+use rustc_next_trait_solver::solve::fast_path::{
+    RerunStalled, compute_goal_fast_path, rerunning_stalled_goal_may_make_progress,
+};
 use rustc_next_trait_solver::solve::{
     GoalEvaluation, GoalStalledOn, HasChanged, MaybeInfo, SolverDelegateEvalExt as _,
     StalledOnCoroutines,
@@ -213,61 +215,92 @@ where
                 let goal = obligation.as_goal();
                 let delegate = <&SolverDelegate<'tcx>>::from(infcx);
 
-                let result = delegate.evaluate_root_goal(goal, obligation.cause.span, stalled_on);
-                self.inspect_evaluated_obligation(infcx, &obligation, &result);
-                let GoalEvaluation { goal, certainty, has_changed, stalled_on } = match result {
-                    Ok(result) => result,
-                    Err(NoSolution) => {
-                        errors.push(E::from_solver_error(
-                            infcx,
-                            NextSolverError::TrueError(obligation),
-                        ));
-                        continue;
+                match rerunning_stalled_goal_may_make_progress(&**delegate, stalled_on.as_ref()) {
+                    RerunStalled::WontMakeProgress(_) => {
+                        self.obligations.register(obligation, stalled_on)
                     }
-                };
+                    RerunStalled::MayMakeProgress => {
+                        let cold = #[inline(never)]
+                        #[cold]
+                        || {
+                            let result = delegate.evaluate_root_goal(
+                                goal,
+                                obligation.cause.span,
+                                stalled_on,
+                            );
+                            self.inspect_evaluated_obligation(infcx, &obligation, &result);
+                            let GoalEvaluation { goal, certainty, has_changed, stalled_on } =
+                                match result {
+                                    Ok(result) => result,
+                                    Err(NoSolution) => {
+                                        errors.push(E::from_solver_error(
+                                            infcx,
+                                            NextSolverError::TrueError(obligation),
+                                        ));
+                                        return Ok(());
+                                    }
+                                };
 
-                // We've resolved the goal in `evaluate_root_goal`, avoid redoing this work
-                // in the next iteration. This does not resolve the inference variables
-                // constrained by evaluating the goal.
-                obligation.predicate = goal.predicate;
-                if has_changed == HasChanged::Yes {
-                    // We increment the recursion depth here to track the number of times
-                    // this goal has resulted in inference progress. This doesn't precisely
-                    // model the way that we track recursion depth in the old solver due
-                    // to the fact that we only process root obligations, but it is a good
-                    // approximation and should only result in fulfillment overflow in
-                    // pathological cases.
-                    obligation.recursion_depth += 1;
+                            // We've resolved the goal in `evaluate_root_goal`, avoid redoing this work
+                            // in the next iteration. This does not resolve the inference variables
+                            // constrained by evaluating the goal.
+                            obligation.predicate = goal.predicate;
+                            if has_changed == HasChanged::Yes {
+                                // We increment the recursion depth here to track the number of times
+                                // this goal has resulted in inference progress. This doesn't precisely
+                                // model the way that we track recursion depth in the old solver due
+                                // to the fact that we only process root obligations, but it is a good
+                                // approximation and should only result in fulfillment overflow in
+                                // pathological cases.
+                                obligation.recursion_depth += 1;
 
-                    if !infcx.tcx.recursion_limit().value_within_limit(obligation.recursion_depth) {
-                        self.obligations.on_fulfillment_overflow(infcx);
-                        // Only return true errors that we have accumulated while processing.
-                        return errors;
-                    } else {
-                        any_changed = true;
-                    }
-                }
+                                if !infcx
+                                    .tcx
+                                    .recursion_limit()
+                                    .value_within_limit(obligation.recursion_depth)
+                                {
+                                    self.obligations.on_fulfillment_overflow(infcx);
+                                    // Only return true errors that we have accumulated while processing.
+                                    return Err(());
+                                } else {
+                                    any_changed = true;
+                                }
+                            }
 
-                match certainty {
-                    Certainty::Yes => {
-                        // Goals may depend on structural identity. Region uniquification at the
-                        // start of MIR borrowck may cause things to no longer be so, potentially
-                        // causing an ICE.
-                        //
-                        // While we uniquify root goals in HIR this does not handle cases where
-                        // regions are hidden inside of a type or const inference variable.
-                        //
-                        // FIXME(-Znext-solver): This does not handle inference variables hidden
-                        // inside of an opaque type, e.g. if there's `Opaque = (?x, ?x)` in the
-                        // storage, we can also rely on structural identity of `?x` even if we
-                        // later uniquify it in MIR borrowck.
-                        if infcx.in_hir_typeck
-                            && (obligation.has_non_region_infer() || obligation.has_free_regions())
-                        {
-                            infcx.push_hir_typeck_potentially_region_dependent_goal(obligation);
+                            match certainty {
+                                Certainty::Yes => {
+                                    // Goals may depend on structural identity. Region uniquification at the
+                                    // start of MIR borrowck may cause things to no longer be so, potentially
+                                    // causing an ICE.
+                                    //
+                                    // While we uniquify root goals in HIR this does not handle cases where
+                                    // regions are hidden inside of a type or const inference variable.
+                                    //
+                                    // FIXME(-Znext-solver): This does not handle inference variables hidden
+                                    // inside of an opaque type, e.g. if there's `Opaque = (?x, ?x)` in the
+                                    // storage, we can also rely on structural identity of `?x` even if we
+                                    // later uniquify it in MIR borrowck.
+                                    if infcx.in_hir_typeck
+                                        && (obligation.has_non_region_infer()
+                                            || obligation.has_free_regions())
+                                    {
+                                        infcx.push_hir_typeck_potentially_region_dependent_goal(
+                                            obligation,
+                                        );
+                                    }
+                                }
+                                Certainty::Maybe(_) => {
+                                    self.obligations.register(obligation, stalled_on)
+                                }
+                            }
+
+                            Ok(())
+                        };
+                        match cold() {
+                            Ok(()) => {}
+                            Err(()) => return errors,
                         }
                     }
-                    Certainty::Maybe(_) => self.obligations.register(obligation, stalled_on),
                 }
             }
 

@@ -20,6 +20,7 @@
 #![feature(never_type)]
 #![feature(option_into_flat_iter)]
 #![feature(try_blocks)]
+#![feature(stmt_expr_attributes)]
 #![feature(unwrap_infallible)]
 #![feature(yeet_expr)]
 #![recursion_limit = "512"] // For rustdoc
