@@ -8,9 +8,9 @@ use either::Either;
 use rustc_abi::{FIRST_VARIANT, FieldIdx};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_index::IndexSlice;
-use rustc_middle::ty::{self, FnSig, Instance, Ty};
+use rustc_middle::ty::{self, Instance, Ty};
 use rustc_middle::{bug, mir, span_bug};
-use rustc_span::{Span, Spanned};
+use rustc_span::Spanned;
 use rustc_target::callconv::FnAbi;
 use tracing::field::Empty;
 use tracing::{info, instrument, trace};
@@ -19,13 +19,14 @@ use super::{
     EnteredTraceSpan, FnArg, FnVal, ImmTy, Immediate, InterpCx, InterpResult, Machine,
     MemPlaceMeta, PlaceTy, Projectable, RetagMode, interp_ok, throw_ub, throw_unsup_format,
 };
-use crate::interpret::OpTy;
 use crate::{enter_trace_span, util};
 
 struct EvaluatedCalleeAndArgs<'tcx, M: Machine<'tcx>> {
-    func: OpTy<'tcx, M::Provenance>,
     callee: FnVal<'tcx, M::ExtraFnVal>,
     args: Vec<FnArg<'tcx, M::Provenance>>,
+    fn_sig: ty::FnSig<'tcx>,
+    /// None if LLVM intrinsic
+    fn_abi: Option<&'tcx FnAbi<'tcx, Ty<'tcx>>>,
     /// True if the function is marked as `#[track_caller]` ([`ty::InstanceKind::requires_caller_location`])
     with_caller_location: bool,
 }
@@ -467,31 +468,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             .map(|arg| self.eval_fn_call_argument(&arg.node, move_definitely_disjoint))
             .collect::<InterpResult<'tcx, Vec<_>>>()?;
 
-        let (callee, with_caller_location) = match *func.layout.ty.kind() {
-            ty::FnPtr(..) => {
-                let fn_ptr = self.read_pointer(&func)?;
-                let fn_val = self.get_ptr_fn(fn_ptr)?;
-                (fn_val, false)
-            }
-            ty::FnDef(def_id, args) => {
-                let instance = self.resolve(def_id, args.no_bound_vars().unwrap())?;
-                (FnVal::Instance(instance), instance.def.requires_caller_location(*self.tcx))
-            }
-            _ => {
-                span_bug!(terminator.source_info.span, "invalid callee of type {}", func.layout.ty)
-            }
-        };
-
-        interp_ok(EvaluatedCalleeAndArgs { func, callee, args, with_caller_location })
-    }
-
-    fn get_fn_abi(
-        &self,
-        func: &OpTy<'tcx, M::Provenance>,
-        callee: &FnVal<'tcx, M::ExtraFnVal>,
-        args: &[FnArg<'tcx, M::Provenance>],
-        span: Span,
-    ) -> InterpResult<'tcx, (FnSig<'tcx>, &'tcx FnAbi<'tcx, Ty<'tcx>>)> {
         let fn_sig_binder = {
             let _trace = enter_trace_span!(M, "fn_sig", ty = ?func.layout.ty.kind());
             func.layout.ty.fn_sig(*self.tcx)
@@ -501,18 +477,30 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let extra_args =
             self.tcx.mk_type_list_from_iter(extra_args.iter().map(|arg| arg.layout().ty));
 
-        let fn_abi = match *func.layout.ty.kind() {
-            ty::FnPtr(..) => self.fn_abi_of_fn_ptr(fn_sig_binder, extra_args)?,
-            ty::FnDef(..) => {
-                let FnVal::Instance(instance) = *callee else { unreachable!() };
-                self.fn_abi_of_instance_no_deduced_attrs(instance, extra_args)?
+        let (callee, fn_abi, with_caller_location) = match *func.layout.ty.kind() {
+            ty::FnPtr(..) => {
+                let fn_ptr = self.read_pointer(&func)?;
+                let fn_val = self.get_ptr_fn(fn_ptr)?;
+                (fn_val, Some(self.fn_abi_of_fn_ptr(fn_sig_binder, extra_args)?), false)
+            }
+            ty::FnDef(def_id, args) => {
+                let instance = self.resolve(def_id, args.no_bound_vars().unwrap())?;
+                // Don't compute FnAbi for LLVM intrinsics. Trying to that would panic.
+                let has_fn_abi = !matches!(instance.def, ty::InstanceKind::LlvmIntrinsic(_));
+                (
+                    FnVal::Instance(instance),
+                    has_fn_abi
+                        .then(|| self.fn_abi_of_instance_no_deduced_attrs(instance, extra_args))
+                        .transpose()?,
+                    instance.def.requires_caller_location(*self.tcx),
+                )
             }
             _ => {
-                span_bug!(span, "invalid callee of type {}", func.layout.ty)
+                span_bug!(terminator.source_info.span, "invalid callee of type {}", func.layout.ty)
             }
         };
 
-        interp_ok((fn_sig, fn_abi))
+        interp_ok(EvaluatedCalleeAndArgs { callee, args, fn_sig, fn_abi, with_caller_location })
     }
 
     fn eval_terminator(&mut self, terminator: &mir::Terminator<'tcx>) -> InterpResult<'tcx> {
@@ -571,16 +559,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                 // Evaluation order consistent with assignment: destination first.
                 let dest_place = self.eval_place(destination)?;
-                let EvaluatedCalleeAndArgs { func, callee, args, with_caller_location } =
+                let EvaluatedCalleeAndArgs { callee, args, fn_sig, fn_abi, with_caller_location } =
                     self.eval_callee_and_args(terminator, func, args, &destination)?;
-
-                let _trace = enter_trace_span!(
-                    M,
-                    step::init_fn_call,
-                    tracing_separate_thread = Empty,
-                    ?callee
-                )
-                .or_if_tracing_disabled(|| trace!("init_fn_call: {:#?}", callee));
 
                 match callee {
                     FnVal::Instance(
@@ -597,9 +577,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                         )?;
                     }
                     _ => {
-                        let (fn_sig, fn_abi) =
-                            self.get_fn_abi(&func, &callee, &args, terminator.source_info.span)?;
-
+                        let fn_abi = fn_abi.expect("FnAbi should have been computed for this call");
                         self.init_fn_call(
                             callee,
                             (fn_sig.abi(), fn_abi),
@@ -625,10 +603,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             TailCall { ref func, ref args, fn_span: _ } => {
                 let old_frame_idx = self.frame_idx();
 
-                let EvaluatedCalleeAndArgs { func, callee, args, with_caller_location } =
+                let EvaluatedCalleeAndArgs { callee, args, fn_sig, fn_abi, with_caller_location } =
                     self.eval_callee_and_args(terminator, func, args, &mir::Place::return_place())?;
-                let (fn_sig, fn_abi) =
-                    self.get_fn_abi(&func, &callee, &args, terminator.source_info.span)?;
+                let fn_abi = fn_abi.expect("FnAbi should have been computed for this call");
 
                 self.init_fn_tail_call(
                     callee,
