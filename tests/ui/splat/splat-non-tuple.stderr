@@ -1,5 +1,5 @@
 error[E0053]: method `tuple_1` has an incompatible type for trait
-  --> $DIR/splat-non-tuple.rs:38:5
+  --> $DIR/splat-non-tuple.rs:39:5
    |
 LL |     fn tuple_1(_: (u32,)) {}
    |     ^^^^^^^^^^^^^^^^^^^^^ expected fn with arg 0 splatted, found fn with no splatted arg
@@ -12,7 +12,7 @@ LL |     fn tuple_1(#[rustc_splat] _: (u32,));
    = note: expected signature `fn(#[rustc_splat] (_,))`
               found signature `fn((_,))`
 
-error[E0277]: cannot use splat attribute; the splatted argument type must be a tuple or unit, not a u32 (u32)
+error[E0277]: cannot use `rustc_splat` attribute; the splatted argument type must be a tuple or unit, not a u32 (u32)
   --> $DIR/splat-non-tuple.rs:7:36
    |
 LL | fn primitive_arg(#[rustc_splat] x: u32) {}
@@ -21,7 +21,7 @@ LL | fn primitive_arg(#[rustc_splat] x: u32) {}
 LL |     primitive_arg(1u32);
    |     ^^^^^^^^^^^^^^^^^^^
 
-error[E0277]: cannot use splat attribute; the splatted argument type must be a tuple or unit, not a NotATuple (NotATuple)
+error[E0277]: cannot use `rustc_splat` attribute; the splatted argument type must be a tuple or unit, not a NotATuple (NotATuple)
   --> $DIR/splat-non-tuple.rs:14:31
    |
 LL | fn enum_arg(#[rustc_splat] y: NotATuple) {}
@@ -30,7 +30,7 @@ LL | fn enum_arg(#[rustc_splat] y: NotATuple) {}
 LL |     enum_arg(NotATuple::A(1u32));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0277]: cannot use splat attribute; the splatted argument type must be a tuple or unit, not a Foo (Foo)
+error[E0277]: cannot use `rustc_splat` attribute; the splatted argument type must be a tuple or unit, not a Foo (Foo)
   --> $DIR/splat-non-tuple.rs:25:33
    |
 LL | fn struct_arg(#[rustc_splat] z: Foo) {}
@@ -39,8 +39,8 @@ LL | fn struct_arg(#[rustc_splat] z: Foo) {}
 LL |     struct_arg(foo);
    |     ^^^^^^^^^^^^^^^
 
-error[E0277]: cannot use splat attribute; the splatted argument type must be a tuple or unit, not a TupleStruct (TupleStruct)
-  --> $DIR/splat-non-tuple.rs:54:39
+error[E0277]: cannot use `rustc_splat` attribute; the splatted argument type must be a tuple or unit, not a TupleStruct (TupleStruct)
+  --> $DIR/splat-non-tuple.rs:56:39
    |
 LL | fn tuple_struct_arg(#[rustc_splat] z: TupleStruct) {}
    |                                       ^^^^^^^^^^^

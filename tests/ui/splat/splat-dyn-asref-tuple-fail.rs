@@ -10,10 +10,10 @@
 // FIXME(splat): Some errors are reported on the callee, but they would be more ergonomic on the
 // caller as well
 fn dyn_asref_splat<T>(#[rustc_splat] _t: &dyn AsRef<T>)
-//~^ ERROR cannot use splat attribute; the splatted argument type must be a tuple or unit, not a
-//~| ERROR cannot use splat attribute; the splatted argument type must be a tuple or unit, not a
-//~| ERROR cannot use splat attribute; the splatted argument type must be a tuple or unit, not a
-//~| ERROR cannot use splat attribute; the splatted argument type must be a tuple or unit, not a
+//~^ ERROR cannot use `rustc_splat` attribute; the splatted argument type must be a tuple or unit, not a
+//~| ERROR cannot use `rustc_splat` attribute; the splatted argument type must be a tuple or unit, not a
+//~| ERROR cannot use `rustc_splat` attribute; the splatted argument type must be a tuple or unit, not a
+//~| ERROR cannot use `rustc_splat` attribute; the splatted argument type must be a tuple or unit, not a
 where
     T: std::marker::Tuple,
 {

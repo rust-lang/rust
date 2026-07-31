@@ -34,7 +34,7 @@ error[E0720]: cannot resolve opaque type
 LL | fn tuple_trait(#[rustc_splat] t: impl std::marker::Tuple) -> impl std::marker::Tuple {
    |                                                              ^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0277]: cannot use splat attribute; the splatted argument type must be a tuple or unit, not a {type error} ({type error})
+error[E0277]: cannot use `rustc_splat` attribute; the splatted argument type must be a tuple or unit, not a {type error} ({type error})
   --> $DIR/splat-cannot-resolve.rs:23:28
    |
 LL | fn ambig(#[rustc_splat] t: Trait::MaybeTup) {}
@@ -43,7 +43,7 @@ LL | fn ambig(#[rustc_splat] t: Trait::MaybeTup) {}
 LL |     ambig();
    |     ^^^^^^^
 
-error[E0277]: cannot use splat attribute; the splatted argument type must be a tuple or unit, not a {type error} ({type error})
+error[E0277]: cannot use `rustc_splat` attribute; the splatted argument type must be a tuple or unit, not a {type error} ({type error})
   --> $DIR/splat-cannot-resolve.rs:28:32
    |
 LL | fn ambig_tup(#[rustc_splat] t: Trait::Tup) {}
@@ -52,7 +52,7 @@ LL | fn ambig_tup(#[rustc_splat] t: Trait::Tup) {}
 LL |     ambig_tup();
    |     ^^^^^^^^^^^
 
-error[E0277]: cannot use splat attribute; the splatted argument type must be a tuple or unit, not a {type error} ({type error})
+error[E0277]: cannot use `rustc_splat` attribute; the splatted argument type must be a tuple or unit, not a {type error} ({type error})
   --> $DIR/splat-cannot-resolve.rs:23:28
    |
 LL | fn ambig(#[rustc_splat] t: Trait::MaybeTup) {}
@@ -61,7 +61,7 @@ LL | fn ambig(#[rustc_splat] t: Trait::MaybeTup) {}
 LL |     ambig(1);
    |     ^^^^^^^^
 
-error[E0277]: cannot use splat attribute; the splatted argument type must be a tuple or unit, not a {type error} ({type error})
+error[E0277]: cannot use `rustc_splat` attribute; the splatted argument type must be a tuple or unit, not a {type error} ({type error})
   --> $DIR/splat-cannot-resolve.rs:28:32
    |
 LL | fn ambig_tup(#[rustc_splat] t: Trait::Tup) {}
@@ -70,7 +70,7 @@ LL | fn ambig_tup(#[rustc_splat] t: Trait::Tup) {}
 LL |     ambig_tup(1);
    |     ^^^^^^^^^^^^
 
-error[E0277]: cannot use splat attribute; the splatted argument type must be a tuple or unit, not a {type error} ({type error})
+error[E0277]: cannot use `rustc_splat` attribute; the splatted argument type must be a tuple or unit, not a {type error} ({type error})
   --> $DIR/splat-cannot-resolve.rs:23:28
    |
 LL | fn ambig(#[rustc_splat] t: Trait::MaybeTup) {}
@@ -79,7 +79,7 @@ LL | fn ambig(#[rustc_splat] t: Trait::MaybeTup) {}
 LL |     ambig(1, 2.0);
    |     ^^^^^^^^^^^^^
 
-error[E0277]: cannot use splat attribute; the splatted argument type must be a tuple or unit, not a {type error} ({type error})
+error[E0277]: cannot use `rustc_splat` attribute; the splatted argument type must be a tuple or unit, not a {type error} ({type error})
   --> $DIR/splat-cannot-resolve.rs:28:32
    |
 LL | fn ambig_tup(#[rustc_splat] t: Trait::Tup) {}
