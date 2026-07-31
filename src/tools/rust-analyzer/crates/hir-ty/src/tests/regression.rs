@@ -3028,3 +3028,38 @@ fn f() {
     "#,
     );
 }
+
+#[test]
+fn braced_const_path() {
+    check_types(
+        r#"
+//- minicore: default, builtin_impls
+trait ToNum {
+    type Num;
+}
+trait Bar {
+    type Ty;
+}
+struct Gen<const B: bool>;
+struct Int<const B: bool>;
+
+impl<const B: bool> ToNum for Gen<{ B }> {
+    type Num = Int<B>;
+}
+
+impl Bar for Int<true> {
+    type Ty = i32;
+}
+impl Bar for Int<false> {
+    type Ty = f32;
+}
+
+type A = <<Gen<true> as ToNum>::Num as Bar>::Ty;
+
+fn main() {
+    let x = A::default();
+     // ^ i32
+}
+    "#,
+    );
+}

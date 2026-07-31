@@ -9508,7 +9508,7 @@ pub fn f(x$0: impl Tr<{ 0 }>) {}
             *x*
 
             ```rust
-            x: impl Tr<{const}> + ?Sized
+            x: impl Tr<0> + ?Sized
             ```
 
             ---
