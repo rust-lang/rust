@@ -77,9 +77,9 @@ struct Exception {
 // Currently the definition of this type [1] is a little hairy, and the main
 // oddity (and difference from the online article) is that on 32-bit the
 // pointers are pointers but on 64-bit the pointers are expressed as 32-bit
-// offsets from the `__ImageBase` symbol. It's not currently possible to create
-// a offset that is `__ImageBase` relative in Rust code, so this is done using
-// assembly with the `@IMGREL` relocation.
+// offsets from the image base. It's not currently possible to create a relative
+// offset in const Rust code, so this is done using assembly with the `@IMGREL`
+// relocation.
 //
 // The maze of type definitions also closely follows what LLVM emits for this
 // sort of operation. For example, if you compile this C++ code on MSVC and emit
@@ -133,10 +133,6 @@ unsafe extern "C" {
     // that we construct below.
     #[link_name = "\x01??_7type_info@@6B@"]
     static TYPE_INFO_VTABLE: u8;
-
-    static THROW_INFO: u8;
-    static CATCHABLE_TYPE_ARRAY: u8;
-    static CATCHABLE_TYPE: u8;
 }
 
 // This type descriptor is only used when throwing an exception. The catch part
@@ -149,94 +145,6 @@ static TYPE_DESCRIPTOR: _TypeDescriptor = _TypeDescriptor {
     spare: core::ptr::null_mut(),
     name: TYPE_NAME,
 };
-
-#[cfg(target_arch = "x86")]
-macro_rules! imgrel {
-    ($s:literal) => {
-        concat!(".long ", $s, "\n")
-    };
-}
-#[cfg(any(target_arch = "x86_64", target_arch = "arm", target_arch = "aarch64"))]
-macro_rules! imgrel {
-    ($s:literal) => {
-        concat!(".long ", $s, "@IMGREL\n")
-    };
-}
-
-// equivalent to
-// ```
-// static THROW_INFO: _ThrowInfo = _ThrowInfo {
-//     attributes: 0,
-//     pmfnUnwind: exception_cleanup,
-//     pForwardCompat: ptr::null_mut(),
-//     pCatchableTypeArray: &CATCHABLE_TYPE_ARRAY,
-// };
-// ```
-core::arch::global_asm!(
-    concat!(
-        ".section .rdata,\"dr\"\n",
-        ".p2align 2\n",
-        ".globl {throw_info}\n",
-        "{throw_info}:\n",
-        ".long 0\n",                       // attributes
-        imgrel!("{cleanup}"),              // pmfnUnwind
-        ".long 0\n",                       // pForwardCompat
-        imgrel!("{catchable_type_array}"), // pCatchableTypeArray
-    ),
-    throw_info = sym THROW_INFO,
-    cleanup = sym exception_cleanup,
-    catchable_type_array = sym CATCHABLE_TYPE_ARRAY,
-);
-
-// equivalent to
-// ```
-// static CATCHABLE_TYPE_ARRAY: _CatchableTypeArray = _CatchableTypeArray {
-//     nCatchableTypes: 1,
-//     arrayOfCatchableTypes: [&CATCHABLE_TYPE],
-// };
-// ```
-core::arch::global_asm!(
-    concat!(
-        ".section .rdata,\"dr\"\n",
-        ".p2align 2\n",
-        ".globl {catchable_type_array}\n",
-        "{catchable_type_array}:\n",
-        ".long 1\n",                 // nCatchableTypes
-        imgrel!("{catchable_type}"), // arrayOfCatchableTypes[0]
-    ),
-    catchable_type_array = sym CATCHABLE_TYPE_ARRAY,
-    catchable_type = sym CATCHABLE_TYPE,
-);
-
-// equivalent to
-// ```
-// static CATCHABLE_TYPE: _CatchableType = _CatchableType {
-//     properties: 0,
-//     pType: &TYPE_DESCRIPTOR,
-//     thisDisplacement: _PMD { mdisp: 0, pdisp: -1, vdisp: 0 },
-//     sizeOrOffset: size_of::<Exception>(),
-//     copyFunction: exception_copy,
-// };
-// ```
-core::arch::global_asm!(
-    concat!(
-        ".section .rdata,\"dr\"\n",
-        ".p2align 2\n",
-        ".globl {catchable_type}\n",
-        "{catchable_type}:\n",
-        ".long 0\n",               // properties
-        imgrel!("{type_desc}"),    // pType
-        ".long 0\n",               // thisDisplacement.mdisp
-        ".long -1\n",              // thisDisplacement.pdisp
-        ".long 0\n",               // thisDisplacement.vdisp
-        ".long {exception_size}\n",// sizeOrOffset
-        imgrel!("{copy}"),         // copyFunction
-    ),
-    catchable_type = sym CATCHABLE_TYPE,
-    type_desc = sym TYPE_DESCRIPTOR,
-    exception_size = const size_of::<Exception>(),
-    copy = sym exception_copy,
-);
 
 // Destructor used if the C++ code decides to capture the exception and drop it
 // without propagating it. The catch part of the try intrinsic will set the
@@ -301,8 +209,73 @@ unsafe fn throw_exception(data: Option<Box<dyn Any + Send>>) -> ! {
         fn _CxxThrowException(pExceptionObject: *mut c_void, pThrowInfo: *const u8) -> !;
     }
 
+    #[cfg(target_arch = "x86")]
+    macro_rules! imgrel {
+        ($s:literal) => {
+            concat!(".long ", $s)
+        };
+    }
+    #[cfg(not(target_arch = "x86"))]
+    macro_rules! imgrel {
+        ($s:literal) => {
+            concat!(".long ", $s, "@IMGREL")
+        };
+    }
+
+    #[cfg(target_arch = "x86")]
+    macro_rules! load_throw_info {
+        () => {
+            "lea {}, [2f]"
+        };
+    }
+    #[cfg(target_arch = "x86_64")]
+    macro_rules! load_throw_info {
+        () => {
+            "lea {}, [rip + 2f]"
+        };
+    }
+    #[cfg(any(target_arch = "arm", target_arch = "aarch64", target_arch = "arm64ec"))]
+    macro_rules! load_throw_info {
+        () => {
+            "adr {}, 2f"
+        };
+    }
+
+    let throw_info: *const u8;
     unsafe {
-        _CxxThrowException((&raw mut exception).cast(), &raw const THROW_INFO);
+        core::arch::asm!(
+            load_throw_info!(),       // let throw_info = &THROW_INFO;
+            ".pushsection .rdata,\"dr\"",
+            ".p2align 2",
+            "2:",                     // static THROW_INFO = _ThrowInfo {
+            ".long 0",                //     attributes: 0,
+            imgrel!("{cleanup}"),     //     pmfnUnwind: exception_cleanup,
+            ".long 0",                //     pForwardCompat: ptr::null_mut(),
+            imgrel!("3f"),            //     pCatchableTypeArray: &CATCHABLE_TYPE_ARRAY,
+                                      // }
+            "3:",                     // static CATCHABLE_TYPE_ARRAY = _CatchableTypeArray {
+            ".long 1",                //     nCatchableTypes: 1,
+            imgrel!("4f"),            //     arrayOfCatchableTypes: [&CATCHABLE_TYPE],
+                                      // }
+            "4:",                     // static CATCHABLE_TYPE = _CatchableType {
+            ".long 0",                //     properties: 0,
+            imgrel!("{type_desc}"),   //     pType: &TYPE_DESCRIPTOR,
+                                      //     thisDisplacement: _PMD {
+            ".long 0",                //         mdisp: 0,
+            ".long -1",               //         pdisp: -1,
+            ".long 0",                //         vdisp: 0,
+                                      //     }
+            ".long {exception_size}", //     sizeOrOffset: size_of::<Exception>(),
+            imgrel!("{copy}"),        //     copyFunction: exception_copy,
+            ".popsection",            // }
+            out(reg) throw_info,
+            cleanup = sym exception_cleanup,
+            type_desc = sym TYPE_DESCRIPTOR,
+            exception_size = const size_of::<Exception>(),
+            copy = sym exception_copy,
+            options(readonly, nostack),
+        );
+        _CxxThrowException((&raw mut exception).cast(), throw_info);
     }
 }
 
