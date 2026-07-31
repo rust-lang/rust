@@ -1717,6 +1717,7 @@ impl<'tcx> Ty<'tcx> {
     /// Returns the type of the discriminant of this type.
     pub fn discriminant_ty(self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match self.kind() {
+            // It is somewhat guaranteed that view types
             ty::Adt(adt, _) if adt.is_enum() => adt.repr().discr_type().to_ty(tcx),
             ty::Coroutine(_, args) => args.as_coroutine().discr_ty(tcx),
 
@@ -1757,6 +1758,8 @@ impl<'tcx> Ty<'tcx> {
             | ty::CoroutineWitness(..)
             | ty::Never
             | ty::Tuple(_)
+            | ty::View(_, _, _)
+            | ty::ViewInfer(_, _, _)
             | ty::Error(_)
             | ty::Infer(IntVar(_) | FloatVar(_)) => tcx.types.u8,
 
@@ -1799,7 +1802,8 @@ impl<'tcx> Ty<'tcx> {
             ty::Foreign(..) => Ok(tcx.types.unit),
             // If returned by `struct_tail_raw` this is a unit struct
             // without any fields, or not a struct, and therefore is Sized.
-            ty::Adt(..) => Ok(tcx.types.unit),
+            // FIXME(scrabsha): try to update comment above.
+            ty::Adt(..) | ty::View(..) | ty::ViewInfer(..) => Ok(tcx.types.unit),
             // If returned by `struct_tail_raw` this is the empty tuple,
             // a.k.a. unit type, which is Sized
             ty::Tuple(..) => Ok(tcx.types.unit),
@@ -1999,9 +2003,11 @@ impl<'tcx> Ty<'tcx> {
 
             ty::Tuple(tys) => tys.last().is_none_or(|ty| ty.has_trivial_sizedness(tcx, sizedness)),
 
-            ty::Adt(def, args) => def.sizedness_constraint(tcx, sizedness).is_none_or(|ty| {
-                ty.instantiate(tcx, args).skip_norm_wip().has_trivial_sizedness(tcx, sizedness)
-            }),
+            ty::Adt(def, args) | ty::View(def, args, _) | ty::ViewInfer(def, args, _) => {
+                def.sizedness_constraint(tcx, sizedness).is_none_or(|ty| {
+                    ty.instantiate(tcx, args).skip_norm_wip().has_trivial_sizedness(tcx, sizedness)
+                })
+            }
 
             ty::Alias(..) | ty::Param(_) | ty::Placeholder(..) | ty::Bound(..) => false,
 
@@ -2059,7 +2065,11 @@ impl<'tcx> Ty<'tcx> {
             ty::Coroutine(..) | ty::CoroutineWitness(..) => false,
 
             // Might be, but not "trivial" so just giving the safe answer.
-            ty::Adt(..) | ty::Closure(..) | ty::CoroutineClosure(..) => false,
+            ty::Adt(..)
+            | ty::View(..)
+            | ty::ViewInfer(..)
+            | ty::Closure(..)
+            | ty::CoroutineClosure(..) => false,
 
             ty::UnsafeBinder(_) => false,
 
@@ -2114,6 +2124,8 @@ impl<'tcx> Ty<'tcx> {
             | ty::Coroutine(..)
             | ty::CoroutineWitness(..)
             | ty::Alias(..)
+            | ty::View(..)
+            | ty::ViewInfer(..)
             | ty::Error(_) => false,
         }
     }

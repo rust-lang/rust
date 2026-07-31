@@ -2194,7 +2194,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
             let ty = clean_middle_ty(inner.into(), cx, None, None);
             UnsafeBinder(Box::new(UnsafeBinderTy { generic_params, ty }))
         }
-        ty::Adt(def, args) => {
+        ty::Adt(def, args) | ty::View(def, args, _) | ty::ViewInfer(def, args, _) => {
             let did = def.did();
             let kind = match def.adt_kind() {
                 AdtKind::Struct => ItemType::Struct,

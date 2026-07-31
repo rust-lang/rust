@@ -102,7 +102,9 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
 
                             variant
                         }
-                        ty::Adt(adt_def, generics) => {
+                        ty::Adt(adt_def, generics)
+                        | ty::View(adt_def, generics, _)
+                        | ty::ViewInfer(adt_def, generics, _) => {
                             self.write_adt_type_info(&field_dest, (ty, *adt_def), generics)?
                         }
                         ty::Bool => {

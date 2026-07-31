@@ -258,7 +258,9 @@ where
                     // Check for a `Drop` impl and whether this is a union or
                     // `ManuallyDrop`. If it's a struct or enum without a `Drop`
                     // impl then check whether the field types need `Drop`.
-                    ty::Adt(adt_def, args) => {
+                    ty::Adt(adt_def, args)
+                    | ty::View(adt_def, args, _)
+                    | ty::ViewInfer(adt_def, args, _) => {
                         let tys = match (self.adt_components)(adt_def, args) {
                             Err(AlwaysRequiresDrop) => {
                                 return Some(self.always_drop_component(ty));

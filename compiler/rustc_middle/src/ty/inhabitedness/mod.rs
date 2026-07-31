@@ -311,7 +311,7 @@ impl<'tcx> OpsemInhabitedCtx<'tcx> {
                 let base = tcx.instantiate_bound_regions_with_erased((*base).into());
                 self.is_inhabited_ty(base)
             }
-            ty::Adt(..) => self.is_inhabited_adt_ty(ty),
+            ty::Adt(..) | ty::View(..) | ty::ViewInfer(..) => self.is_inhabited_adt_ty(ty),
 
             ty::Error(_error_guaranteed) => {
                 // We have a token proving there was an error, so we can return a dummy value.

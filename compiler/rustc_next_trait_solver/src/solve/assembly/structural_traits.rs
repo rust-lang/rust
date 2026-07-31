@@ -98,12 +98,14 @@ where
         // For `PhantomData<T>`, we pass `T`.
         ty::Adt(def, args) if def.is_phantom_data() => Ok(ty::Binder::dummy(vec![args.type_at(0)])),
 
-        ty::Adt(def, args) => Ok(ty::Binder::dummy(
-            def.all_field_tys(cx)
-                .iter_instantiated(cx, args)
-                .map(Unnormalized::skip_norm_wip)
-                .collect(),
-        )),
+        ty::Adt(def, args) | ty::View(def, args, _) | ty::ViewInfer(def, args, _) => {
+            Ok(ty::Binder::dummy(
+                def.all_field_tys(cx)
+                    .iter_instantiated(cx, args)
+                    .map(Unnormalized::skip_norm_wip)
+                    .collect(),
+            ))
+        }
 
         ty::Alias(ty::IsRigid::Yes, ty::AliasTy { kind: ty::Opaque { def_id }, args, .. }) => {
             // We can resolve the `impl Trait` to its concrete type,
@@ -185,7 +187,7 @@ where
         //   In this case, the builtin impl will have no nested subgoals. This is a
         //   "best effort" optimization and `{meta,pointee,}sized_constraint` may return `Some`,
         //   even if the ADT is {meta,pointee,}sized for all possible args.
-        ty::Adt(def, args) => {
+        ty::Adt(def, args) | ty::View(def, args, _) | ty::ViewInfer(def, args, _) => {
             if let Some(crit) = def.sizedness_constraint(ecx.cx(), sizedness) {
                 Ok(ty::Binder::dummy(vec![crit.instantiate(ecx.cx(), args).skip_norm_wip()]))
             } else {
@@ -232,6 +234,8 @@ where
         | ty::Adt(_, _)
         | ty::Alias(ty::IsRigid::Yes, _)
         | ty::Param(_)
+        | ty::View(_, _, _)
+        | ty::ViewInfer(_, _, _)
         | ty::Placeholder(..) => Err(NoSolution),
 
         // impl Copy/Clone for (T1, T2, .., Tn) where T1: Copy/Clone, T2: Copy/Clone, .. Tn: Copy/Clone
@@ -409,6 +413,8 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_callable<I: Intern
         | ty::Param(_)
         | ty::Placeholder(..)
         | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
+        | ty::View(_, _, _)
+        | ty::ViewInfer(_, _, _)
         | ty::Error(_) => Err(NoSolution),
 
         ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))
@@ -585,6 +591,8 @@ pub(in crate::solve) fn extract_tupled_inputs_and_output_from_async_callable<I: 
         | ty::Param(_)
         | ty::Placeholder(..)
         | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
+        | ty::View(_, _, _)
+        | ty::ViewInfer(_, _, _)
         | ty::Error(_) => Err(NoSolution),
 
         ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_))
@@ -755,6 +763,8 @@ pub(in crate::solve) fn extract_fn_def_from_const_callable<I: Interner>(
         | ty::Param(_)
         | ty::Placeholder(..)
         | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
+        | ty::View(_, _, _)
+        | ty::ViewInfer(_, _, _)
         | ty::Error(_)
         | ty::UnsafeBinder(_) => return Err(NoSolution),
 
@@ -766,6 +776,7 @@ pub(in crate::solve) fn extract_fn_def_from_const_callable<I: Interner>(
     }
 }
 
+// FIXME(scrabsha): comment below.
 // NOTE: Keep this in sync with `evaluate_host_effect_for_destruct_goal` in
 // the old solver, for as long as that exists.
 pub(in crate::solve) fn const_conditions_for_destruct<I: Interner>(
@@ -780,7 +791,7 @@ pub(in crate::solve) fn const_conditions_for_destruct<I: Interner>(
 
         // An ADT is `[const] Destruct` only if all of the fields are,
         // *and* if there is a `Drop` impl, that `Drop` impl is also `[const]`.
-        ty::Adt(adt_def, args) => {
+        ty::Adt(adt_def, args) | ty::View(adt_def, args, _) | ty::ViewInfer(adt_def, args, _) => {
             let mut const_conditions: Vec<_> = adt_def
                 .all_field_tys(cx)
                 .iter_instantiated(cx, args)
