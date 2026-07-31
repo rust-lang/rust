@@ -190,7 +190,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         assoc_name: Symbol,
     ) -> Option<DefId> {
         let module = self.r.get_module(trait_def_id)?;
-        self.r.resolutions(module).borrow().iter().find_map(|(key, resolution)| {
+        self.r.resolutions(module).iter().find_map(|(key, resolution)| {
             if key.ident.name != assoc_name {
                 return None;
             }
@@ -648,7 +648,6 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                             && self
                                 .r
                                 .resolutions(module)
-                                .borrow()
                                 .iter()
                                 .any(|(key, _r)| key.ident.name == following_seg.ident.name)
                     } else {
@@ -1164,7 +1163,7 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
 
     fn lookup_doc_alias_name(&mut self, path: &[Segment], ns: Namespace) -> Option<(DefId, Ident)> {
         let find_doc_alias_name = |r: &mut Resolver<'ra, '_>, m: Module<'ra>, item_name: Symbol| {
-            for resolution in r.resolutions(m).borrow().values() {
+            for resolution in r.resolutions(m).values() {
                 let Some(did) =
                     resolution.borrow().best_decl().and_then(|binding| binding.res().opt_def_id())
                 else {
@@ -1904,7 +1903,6 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 let targets: Vec<_> = self
                     .r
                     .resolutions(module)
-                    .borrow()
                     .iter()
                     .filter_map(|(key, resolution)| {
                         let resolution = resolution.borrow();
@@ -2767,7 +2765,6 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         let targets = self
             .r
             .resolutions(*module)
-            .borrow()
             .iter()
             .filter_map(|(key, res)| res.borrow().best_decl().map(|binding| (key, binding.res())))
             .filter(|(_, res)| match (kind, res) {
@@ -2970,7 +2967,6 @@ impl<'ast, 'ra, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     let module = self.r.expect_module(def_id);
                     self.r
                         .resolutions(module)
-                        .borrow()
                         .iter()
                         .any(|(key, _)| key.ident.name == following_seg.ident.name)
                 }

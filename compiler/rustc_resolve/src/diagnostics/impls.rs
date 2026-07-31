@@ -1870,24 +1870,22 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 // If so, we have to disambiguate the potential import suggestions by making
                 // the paths *global* (i.e., by prefixing them with `::`).
                 let needs_disambiguation =
-                    self.resolutions(parent_scope.module).borrow().iter().any(
-                        |(key, name_resolution)| {
-                            if key.ns == TypeNS
-                                && key.ident == *ident
-                                && let Some(decl) = name_resolution.borrow().best_decl()
-                            {
-                                match decl.res() {
-                                    // No disambiguation needed if the identically named item we
-                                    // found in scope actually refers to the crate in question.
-                                    Res::Def(_, def_id) => def_id != crate_def_id,
-                                    Res::PrimTy(_) => true,
-                                    _ => false,
-                                }
-                            } else {
-                                false
+                    self.resolutions(parent_scope.module).iter().any(|(key, name_resolution)| {
+                        if key.ns == TypeNS
+                            && key.ident == *ident
+                            && let Some(decl) = name_resolution.borrow().best_decl()
+                        {
+                            match decl.res() {
+                                // No disambiguation needed if the identically named item we
+                                // found in scope actually refers to the crate in question.
+                                Res::Def(_, def_id) => def_id != crate_def_id,
+                                Res::PrimTy(_) => true,
+                                _ => false,
                             }
-                        },
-                    );
+                        } else {
+                            false
+                        }
+                    });
                 let mut crate_path = ThinVec::new();
                 if needs_disambiguation {
                     crate_path.push(ast::PathSegment::path_root(rustc_span::DUMMY_SP));
