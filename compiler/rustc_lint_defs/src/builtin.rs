@@ -69,6 +69,7 @@ pub mod hardwired {
             MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
             MACRO_USE_EXTERN_CRATE,
             MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+            MALFORMED_DIAGNOSTIC_FILTERS,
             MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
             META_VARIABLE_MISUSE,
             METHOD_CALL_ON_DIVERGING_INFER_VAR,
@@ -4550,6 +4551,35 @@ declare_lint! {
     pub MALFORMED_DIAGNOSTIC_FORMAT_LITERALS,
     Warn,
     "detects diagnostic attribute with malformed diagnostic format literals",
+}
+
+declare_lint! {
+    /// The `malformed_diagnostic_filters` lint detects malformed filters in diagnostic
+    /// attributes.
+    ///
+    /// ### Example
+    ///
+    // FIXME(bootstrap): Use a regular Rust doc code block after stage 0 emits
+    // `malformed_diagnostic_filters` instead of E0232 for this example.
+    #[cfg_attr(bootstrap, doc = "```rust,ignore (stage 0 emits E0232)")]
+    #[cfg_attr(not(bootstrap), doc = "```rust")]
+    /// #![feature(rustc_attrs)]
+    /// #![allow(internal_features)]
+    ///
+    /// #[rustc_on_unimplemented(on(invalid, message = "unused"))]
+    /// trait Trait {}
+    #[doc = "```"]
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// A `rustc_on_unimplemented` filter must use a supported flag, a name-value predicate,
+    /// or the `all`, `any`, and `not` predicate operators. Invalid filters are ignored.
+    pub MALFORMED_DIAGNOSTIC_FILTERS,
+    Warn,
+    "detects malformed filters in diagnostic attributes",
+    @feature_gate = rustc_attrs;
 }
 
 declare_lint! {
