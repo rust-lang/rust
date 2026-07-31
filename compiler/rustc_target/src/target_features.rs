@@ -1291,7 +1291,9 @@ impl Target {
                         // `x87` and all other FPU features so those do not matter.
                         // Note that this one requirement is the entire implementation of the ABI!
                         // LLVM handles the rest.
-                        FeatureConstraints { required: &["soft-float"], incompatible: &[] }
+                        // We mark "sse" as incompatible since LLVM likes to crash when both
+                        // "soft-float" and "sse" are enabled.
+                        FeatureConstraints { required: &["soft-float"], incompatible: &["sse"] }
                     }
                     _ => unreachable!(),
                 }
@@ -1312,7 +1314,9 @@ impl Target {
                         // `x87` and all other FPU features so those do not matter.
                         // Note that this one requirement is the entire implementation of the ABI!
                         // LLVM handles the rest.
-                        FeatureConstraints { required: &["soft-float"], incompatible: &[] }
+                        // We mark "sse" as incompatible since LLVM likes to crash when both
+                        // "soft-float" and "sse" are enabled.
+                        FeatureConstraints { required: &["soft-float"], incompatible: &["sse"] }
                     }
                     _ => unreachable!(),
                 }
