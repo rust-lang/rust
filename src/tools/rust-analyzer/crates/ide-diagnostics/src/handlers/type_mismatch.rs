@@ -1813,4 +1813,29 @@ fn main() {
 "#,
         );
     }
+
+    #[test]
+    fn regression_21668() {
+        check_diagnostics(
+            r#"
+mod std {
+    pub enum Ordering { Less }
+}
+pub use std::*;
+
+pub mod evil {
+    pub struct Ordering(pub i32);
+}
+
+pub mod oblivious {
+    use crate::Ordering;
+
+    pub fn what() -> Ordering {
+        Ordering(2)
+    }
+}
+pub use evil::Ordering;
+"#,
+        );
+    }
 }
