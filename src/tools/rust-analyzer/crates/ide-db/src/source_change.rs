@@ -375,12 +375,6 @@ impl SourceChangeBuilder {
         self.command = Some(Command::Rename);
     }
 
-    fn add_snippet(&mut self, snippet: PlaceSnippet) {
-        let snippet_builder = self.snippet_builder.get_or_insert(SnippetBuilder { places: vec![] });
-        snippet_builder.places.push(snippet);
-        self.source_change.is_snippet = true;
-    }
-
     fn add_snippet_annotation(&mut self, kind: AnnotationSnippet) -> SyntaxAnnotation {
         let annotation = SyntaxAnnotation::default();
         self.snippet_annotations.push((kind, annotation));
