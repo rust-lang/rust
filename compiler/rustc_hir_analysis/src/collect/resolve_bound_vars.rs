@@ -1842,13 +1842,26 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                             .iter()
                             .map(|param| generic_param_def_as_bound_arg(param)),
                     );
-                    bound_vars.extend(
+                    // `resolve_bound_vars` is computed per HIR owner. `visit_early_late`
+                    // records this associated function's binder before walking its signature,
+                    // so reuse that in-progress binder instead of recursively querying `fn_sig`.
+                    let fn_bound_vars = if assoc_fn.def_id == constraint.hir_id.owner.to_def_id() {
+                        let fn_hir_id =
+                            self.tcx.local_def_id_to_hir_id(assoc_fn.def_id.expect_local());
+                        self.rbv
+                            .late_bound_vars
+                            .get(&fn_hir_id.local_id)
+                            .expect("late-bound vars for the current function were not recorded")
+                            .clone()
+                    } else {
                         self.tcx
                             .fn_sig(assoc_fn.def_id)
                             .instantiate_identity()
                             .skip_norm_wip()
-                            .bound_vars(),
-                    );
+                            .bound_vars()
+                            .to_vec()
+                    };
+                    bound_vars.extend(fn_bound_vars);
                     bound_vars
                 } else {
                     self.tcx

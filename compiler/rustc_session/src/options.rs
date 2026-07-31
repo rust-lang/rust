@@ -2016,6 +2016,10 @@ pub mod parse {
                     match opt {
                         "bti" => slot.bti = true,
                         "pac-ret" if slot.pac_ret.is_none() => {
+                            // Note: some targets only support certain keys (Windows on Arm only
+                            // supports Key B) and this possible discrepancy is handled by the
+                            // session's `branch_protection` accessor, when we have both the target
+                            // tuple and branch protection information available.
                             slot.pac_ret = Some(PacRet { leaf: false, pc: false, key: PAuthKey::A })
                         }
                         "leaf" => match slot.pac_ret.as_mut() {
@@ -2385,6 +2389,7 @@ options! {
         (default: no)"),
     box_noalias: bool = (true, parse_bool, [TRACKED],
         "emit noalias metadata for box (default: yes)"),
+    #[rustc_lint_opt_deny_field_access("use `Session::branch_protection` instead of this field")]
     branch_protection: Option<BranchProtection> = (None, parse_branch_protection, [TRACKED] { TARGET_MODIFIER: BranchProtection },
         "set options for branch target identification and pointer authentication on AArch64"),
     build_sdylib_interface: bool = (false, parse_bool, [UNTRACKED],

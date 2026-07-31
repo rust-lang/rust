@@ -14,6 +14,7 @@ use rustc_mir_dataflow::{
 use rustc_span::Span;
 use tracing::{debug, instrument};
 
+use crate::PassPolicy;
 use crate::elaborate_drop::{DropElaborator, DropFlagMode, DropStyle, Unwind, elaborate_drop};
 use crate::patch::MirPatch;
 
@@ -87,8 +88,9 @@ impl<'tcx> crate::MirPass<'tcx> for ElaborateDrops {
         elaborate_patch.apply(body);
     }
 
-    fn is_required(&self) -> bool {
-        true
+    fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
+        // Implements MIR drop semantics.
+        PassPolicy::Required
     }
 }
 

@@ -6,6 +6,7 @@ use rustc_middle::ty::{Ty, TyCtxt};
 use tracing::trace;
 
 use super::simplify::simplify_cfg;
+use crate::PassPolicy;
 use crate::patch::MirPatch;
 
 /// This pass optimizes something like
@@ -94,8 +95,8 @@ use crate::patch::MirPatch;
 pub(super) struct EarlyOtherwiseBranch;
 
 impl<'tcx> crate::MirPass<'tcx> for EarlyOtherwiseBranch {
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() >= 2
+    fn policy(&self, sess: &rustc_session::Session) -> PassPolicy {
+        PassPolicy::optimization(sess.mir_opt_level() >= 2)
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -197,10 +198,6 @@ impl<'tcx> crate::MirPass<'tcx> for EarlyOtherwiseBranch {
         if should_cleanup {
             simplify_cfg(tcx, body);
         }
-    }
-
-    fn is_required(&self) -> bool {
-        false
     }
 }
 

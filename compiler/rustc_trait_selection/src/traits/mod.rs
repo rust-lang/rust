@@ -482,7 +482,7 @@ pub fn normalize_param_env_or_error<'tcx>(
     // then we normalize the `TypeOutlives` bounds inside the normalized parameter environment.
     //
     // This works fairly well because trait matching does not actually care about param-env
-    // TypeOutlives predicates - these are normally used by regionck.
+    // TypeOutlives clauses - these are normally used by regionck.
     let outlives_clauses: Vec<_> = clauses
         .extract_if(.., |clause| {
             matches!(clause.kind().skip_binder(), ty::ClauseKind::TypeOutlives(..))
@@ -490,7 +490,7 @@ pub fn normalize_param_env_or_error<'tcx>(
         .collect();
 
     debug!(
-        "normalize_param_env_or_error: predicates=(non-outlives={:?}, outlives={:?})",
+        "normalize_param_env_or_error: clauses=(non-outlives={:?}, outlives={:?})",
         clauses, outlives_clauses
     );
     let Ok(non_outlives_clauses) =
@@ -503,9 +503,9 @@ pub fn normalize_param_env_or_error<'tcx>(
 
     debug!("normalize_param_env_or_error: non-outlives clauses={:?}", non_outlives_clauses);
 
-    // Not sure whether it is better to include the unnormalized TypeOutlives predicates
+    // Not sure whether it is better to include the unnormalized TypeOutlives clauses
     // here. I believe they should not matter, because we are ignoring TypeOutlives param-env
-    // predicates here anyway. Keeping them here anyway because it seems safer.
+    // clauses here anyway. Keeping them here anyway because it seems safer.
     let outlives_env = non_outlives_clauses.iter().chain(&outlives_clauses).cloned();
     let outlives_env = ty::ParamEnv::new(tcx.mk_clauses_from_iter(outlives_env));
     let Ok(outlives_clauses) = do_normalize_clauses(tcx, cause, outlives_env, outlives_clauses)
@@ -780,7 +780,7 @@ fn replace_param_and_infer_args_with_placeholder<'tcx>(
 }
 
 /// Normalizes the clauses and checks whether they hold in an empty environment. If this
-/// returns true, then either normalize encountered an error or one of the predicates did not
+/// returns true, then either normalize encountered an error or one of the clauses did not
 /// hold. Used when creating vtables to check for unsatisfiable methods. This should not be
 /// used during analysis.
 pub fn impossible_clauses<'tcx>(tcx: TyCtxt<'tcx>, clauses: Vec<ty::Clause<'tcx>>) -> bool {

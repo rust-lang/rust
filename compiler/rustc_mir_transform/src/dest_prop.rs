@@ -149,11 +149,13 @@ use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_mir_dataflow::{Analysis, EntryStates, GenKill};
 use tracing::{debug, trace};
 
+use crate::PassPolicy;
+
 pub(super) struct DestinationPropagation;
 
 impl<'tcx> crate::MirPass<'tcx> for DestinationPropagation {
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() >= 2
+    fn policy(&self, sess: &rustc_session::Session) -> PassPolicy {
+        PassPolicy::optimization(sess.mir_opt_level() >= 2)
     }
 
     #[tracing::instrument(level = "trace", skip(self, tcx, body))]
@@ -231,10 +233,6 @@ impl<'tcx> crate::MirPass<'tcx> for DestinationPropagation {
         }
 
         apply_merges(body, tcx, relevant, merged_locals);
-    }
-
-    fn is_required(&self) -> bool {
-        false
     }
 }
 

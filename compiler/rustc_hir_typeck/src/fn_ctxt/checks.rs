@@ -18,6 +18,7 @@ use rustc_index::IndexVec;
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferOk, TypeTrace};
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::error::TypeError;
+use rustc_middle::ty::print::with_forced_trimmed_paths;
 use rustc_middle::ty::{self, IsSuggestable, Ty, TyCtxt, TypeVisitableExt, Unnormalized};
 use rustc_middle::{bug, span_bug};
 use rustc_session::Session;
@@ -3489,7 +3490,7 @@ impl<'a, 'tcx> CallCtxt<'a, 'tcx> {
         if ty.is_unit() {
             "()".to_string()
         } else if ty.is_suggestable(self.tcx, false) {
-            format!("/* {ty} */")
+            with_forced_trimmed_paths!(format!("/* {ty} */"))
         } else if let Some(fn_def_id) = self.fn_def_id
             && self.tcx.def_kind(fn_def_id).is_fn_like()
             && let self_implicit =

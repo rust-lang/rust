@@ -3,6 +3,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Instance, TyCtxt};
 use tracing::{debug, instrument};
 
+use crate::PassPolicy;
 use crate::patch::MirPatch;
 
 /// A pass that removes noop landing pads and replaces jumps to them with
@@ -11,8 +12,10 @@ use crate::patch::MirPatch;
 pub(super) struct RemoveNoopLandingPads;
 
 impl<'tcx> crate::MirPass<'tcx> for RemoveNoopLandingPads {
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.panic_strategy().unwinds()
+    fn policy(&self, sess: &rustc_session::Session) -> PassPolicy {
+        // FIXME: isn't this an optimization? Or is the LLVM code so terrible we want this even with
+        // "no" optimizations?
+        PassPolicy::optional_non_optimization(sess.panic_strategy().unwinds())
     }
 
     #[instrument(level = "debug", skip(self, _tcx, body))]
@@ -65,10 +68,6 @@ impl<'tcx> crate::MirPass<'tcx> for RemoveNoopLandingPads {
                 }
             });
         }
-    }
-
-    fn is_required(&self) -> bool {
-        true
     }
 }
 

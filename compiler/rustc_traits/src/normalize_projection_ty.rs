@@ -102,12 +102,12 @@ fn normalize_canonicalized_free_alias<'tcx>(
         |ocx, ParamEnvAnd { param_env, value: goal }| {
             let def_id = goal.expect_free_def_id();
             let obligations =
-                tcx.clauses_of(def_id).instantiate_own(tcx, goal.args).map(|(predicate, span)| {
+                tcx.clauses_of(def_id).instantiate_own(tcx, goal.args).map(|(clause, span)| {
                     traits::Obligation::new(
                         tcx,
                         ObligationCause::dummy_with_span(span),
                         param_env,
-                        predicate.skip_norm_wip(),
+                        clause.skip_norm_wip(),
                     )
                 });
             ocx.register_obligations(obligations);

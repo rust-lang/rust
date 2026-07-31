@@ -1,5 +1,8 @@
 #![feature(portable_simd)]
 #![feature(f16)]
+#![feature(cfg_target_has_reliable_f16_f128)]
+#![allow(internal_features)]
+#![allow(unused_features)]
 
 macro_rules! unary_test {
     { $scalar:tt, $($func:tt),+ } => {
@@ -87,6 +90,7 @@ macro_rules! impl_tests {
     }
 }
 
+#[cfg(target_has_reliable_f16_math)]
 impl_tests! { f16 }
 impl_tests! { f32 }
 impl_tests! { f64 }

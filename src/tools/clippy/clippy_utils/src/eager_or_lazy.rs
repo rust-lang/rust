@@ -78,7 +78,7 @@ fn fn_eagerness(tcx: TyCtxt<'_>, fn_id: DefId, name: Symbol, have_one_arg: bool)
                     .kind(),
                 ty::Param(_)
             )
-        }) && all_clauses_of(tcx, fn_id).all(|(pred, _)| match pred.kind().skip_binder() {
+        }) && all_clauses_of(tcx, fn_id).all(|(clause, _)| match clause.kind().skip_binder() {
             ty::ClauseKind::Trait(pred) => tcx.trait_def(pred.trait_ref.def_id).is_marker,
             _ => true,
         }) && subs.types().all(|x| matches!(x.peel_refs().kind(), ty::Param(_)))

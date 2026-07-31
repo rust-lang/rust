@@ -147,7 +147,7 @@ impl<'tcx> LateLintPass<'tcx> for LargeStackFrames {
         local_def_id: LocalDefId,
     ) {
         let def_id = local_def_id.to_def_id();
-        // Building MIR for `fn`s with unsatisfiable preds results in ICE.
+        // Building MIR for `fn`s with unsatisfiable clauses results in ICE.
         if fn_has_unsatisfiable_clauses(cx, def_id) {
             return;
         }

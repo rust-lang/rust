@@ -8,6 +8,7 @@ use rustc_middle::mir::{
 use rustc_middle::ty::{Ty, TyCtxt};
 use tracing::trace;
 
+use crate::PassPolicy;
 use crate::ssa::SsaLocals;
 
 /// Pass to convert `if` conditions on integrals into switches on the integral.
@@ -26,8 +27,8 @@ use crate::ssa::SsaLocals;
 pub(super) struct SimplifyComparisonIntegral;
 
 impl<'tcx> crate::MirPass<'tcx> for SimplifyComparisonIntegral {
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() > 1
+    fn policy(&self, sess: &rustc_session::Session) -> PassPolicy {
+        PassPolicy::optimization(sess.mir_opt_level() > 1)
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -103,10 +104,6 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyComparisonIntegral {
             terminator.kind =
                 TerminatorKind::SwitchInt { discr: Operand::Copy(opt.to_switch_on), targets };
         }
-    }
-
-    fn is_required(&self) -> bool {
-        false
     }
 }
 

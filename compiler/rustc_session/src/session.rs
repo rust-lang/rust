@@ -36,9 +36,9 @@ use rustc_target::spec::{
 use crate::code_stats::CodeStats;
 pub use crate::code_stats::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use crate::config::{
-    self, Cfg, CheckCfg, CoverageLevel, CoverageOptions, CrateType, DebugInfo, ErrorOutputType,
-    FunctionReturn, Input, InstrumentCoverage, InstrumentMcount, NATIVE_CPU, OptLevel, OutFileName,
-    OutputType, PointerAuthOption, SwitchWithOptPath,
+    self, BranchProtection, Cfg, CheckCfg, CoverageLevel, CoverageOptions, CrateType, DebugInfo,
+    ErrorOutputType, FunctionReturn, Input, InstrumentCoverage, InstrumentMcount, NATIVE_CPU,
+    OptLevel, OutFileName, OutputType, PAuthKey, PointerAuthOption, SwitchWithOptPath,
 };
 use crate::filesearch::FileSearch;
 use crate::lint::LintId;
@@ -997,6 +997,30 @@ impl Session {
         } else {
             StackProtector::None
         }
+    }
+
+    /// Returns the `-Zbranch-protection` info. Note that it is adjusted to the current target, e.g.
+    /// some targets only support certain Pointer Authentication Code keys.
+    ///
+    /// Accessing the session's unstable `branch_protection` option fields directly is linted
+    /// against.
+    pub fn branch_protection(&self) -> Option<BranchProtection> {
+        let mut bp = self.opts.unstable_opts.branch_protection;
+
+        if let Some(bp) = bp.as_mut() {
+            // Windows on Arm only supports PAC Key B for return address signing, as shown in
+            // https://github.com/llvm/llvm-project/pull/203989. We parse the CLI flags for branch
+            // protection and target separately though, so we adjust this possible discrepancy here.
+            if self.target.os == Os::Windows && self.target.arch == Arch::AArch64 {
+                if let Some(pac_ret) = bp.pac_ret.as_mut()
+                    && pac_ret.key == PAuthKey::A
+                {
+                    pac_ret.key = PAuthKey::B;
+                }
+            }
+        }
+
+        bp
     }
 
     pub fn must_emit_unwind_tables(&self) -> bool {
