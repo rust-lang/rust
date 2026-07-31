@@ -386,7 +386,7 @@ impl SourceChangeBuilder {
         assert!(token.parent().is_some());
         self.add_snippet(PlaceSnippet::Before(token.into()));
     }
-    
+
     /// Adds a snippet to move the cursor selected over `node`
     pub fn add_placeholder_snippet(&mut self, _cap: SnippetCap, node: impl AstNode) {
         assert!(node.syntax().parent().is_some());
