@@ -185,6 +185,24 @@ where
     let assumed_wf_types = wfcx.ocx.assumed_wf_types_and_report_errors(param_env, body_def_id)?;
     debug!(?assumed_wf_types);
 
+    // Parameter environment normalization reports an error and falls back to the
+    // unnormalized environment when normalization fails. Do not pass such an
+    // environment to region checking with the next trait solver.
+    if infcx.next_trait_solver()
+        && param_env.caller_bounds().iter().any(|clause| {
+            clause
+                .as_type_outlives_clause()
+                .is_some_and(|type_outlives| type_outlives.has_non_rigid_aliases())
+        })
+    {
+        return Err(tcx.dcx().has_errors().unwrap_or_else(|| {
+            tcx.dcx().span_delayed_bug(
+                tcx.def_span(body_def_id),
+                "unnormalized type-outlives predicate in parameter environment",
+            )
+        }));
+    }
+
     let infcx_compat = infcx.fork();
 
     // We specifically want to *disable* the implied bounds hack, first,
