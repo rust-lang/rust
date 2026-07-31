@@ -16,6 +16,7 @@ use rustc_session::diagnostics::ExprParenthesesNeeded;
 use rustc_span::{BytePos, ErrorGuaranteed, Ident, Span, Spanned, kw, respan, sym};
 use thin_vec::{ThinVec, thin_vec};
 
+use super::diagnostics::SnapshotParser;
 use super::{ForceCollect, Parser, PathStyle, Restrictions, Trailing, UsePreAttrPos};
 use crate::diagnostics::{
     self, AmbiguousRangePattern, AtDotDotInStructPattern, AtInStructPattern,
@@ -746,7 +747,7 @@ impl<'a> Parser<'a> {
         let pat = if self.check(exp!(And)) || self.token == token::AndAnd {
             self.parse_pat_deref(expected)?
         } else if self.check(exp!(OpenParen)) {
-            self.parse_pat_tuple_or_parens()?
+            self.parse_pat_tuple_or_parens(syntax_loc)?
         } else if self.check(exp!(OpenBracket)) {
             // Parse `[pat, pat,...]` as a slice pattern.
             let (pats, _) =
@@ -1006,17 +1007,37 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse a tuple or parenthesis pattern.
-    fn parse_pat_tuple_or_parens(&mut self) -> PResult<'a, PatKind> {
+    fn parse_pat_tuple_or_parens(
+        &mut self,
+        syntax_loc: Option<PatternLocation>,
+    ) -> PResult<'a, PatKind> {
         let open_paren = self.token.span;
 
-        let (fields, trailing_comma) = self.parse_paren_comma_seq(|p| {
+        // In a `let` binding the pattern can be followed by a type and does not
+        // require one, so a tuple pattern with inline element types such as
+        // `(a: bool, b: u8)` can be cleanly recovered by suggesting the types be
+        // written as a tuple type after the pattern. When that recovery is
+        // possible, snapshot the parser first so that we can retry on failure.
+        let recover_type_ascription =
+            self.may_recover() && matches!(syntax_loc, Some(PatternLocation::LetBinding));
+        let snapshot = recover_type_ascription.then(|| self.create_snapshot_for_diagnostic());
+
+        let (fields, trailing_comma) = match self.parse_paren_comma_seq(|p| {
             p.parse_pat_allow_top_guard(
                 None,
                 RecoverComma::No,
                 RecoverColon::No,
                 CommaRecoveryMode::LikelyTuple,
             )
-        })?;
+        }) {
+            Ok(fields) => fields,
+            Err(err) => match snapshot {
+                Some(snapshot) => {
+                    return self.maybe_recover_tuple_pat_type_ascription(err, snapshot, open_paren);
+                }
+                None => return Err(err),
+            },
+        };
 
         // Here, `(pat,)` is a tuple pattern.
         // For backward compatibility, `(..)` is a tuple pattern as well.
@@ -1069,6 +1090,96 @@ impl<'a> Parser<'a> {
         Ok(match self.maybe_recover_trailing_expr(open_paren.to(self.prev_token.span), false) {
             None => pat,
             Some((guar, _)) => PatKind::Err(guar),
+        })
+    }
+
+    /// Try to recover from a tuple pattern whose elements carry inline type
+    /// annotations, e.g. `let (a: bool, b: u8) = ...;`. This is invalid syntax;
+    /// the type of each element has to be written together as a tuple type after
+    /// the pattern, i.e. `let (a, b): (bool, u8) = ...;`.
+    ///
+    /// On a successful recovery this emits `err` with a suggestion and returns
+    /// the pattern with the type annotations stripped off so that parsing can
+    /// continue. If the input does not look like this mistake, the original
+    /// error is returned unchanged.
+    fn maybe_recover_tuple_pat_type_ascription(
+        &mut self,
+        mut err: Diag<'a>,
+        snapshot: SnapshotParser<'a>,
+        open_paren: Span,
+    ) -> PResult<'a, PatKind> {
+        self.restore_snapshot(snapshot);
+
+        // Reparse the sequence, this time allowing an optional `: <ty>` after
+        // each element pattern.
+        let seq = self.parse_paren_comma_seq(|p| {
+            let pat = p.parse_pat_allow_top_guard(
+                None,
+                RecoverComma::No,
+                RecoverColon::No,
+                CommaRecoveryMode::LikelyTuple,
+            )?;
+            let ty_span = if p.eat(exp!(Colon)) { Some(p.parse_ty()?.span) } else { None };
+            Ok((pat, ty_span))
+        });
+
+        // Only recover when the reparse succeeds and at least one element had a
+        // type annotation. Otherwise this is some other error, so report the
+        // original one.
+        let (elems, trailing_comma) = match seq {
+            Ok((elems, trailing_comma)) if elems.iter().any(|(_, ty)| ty.is_some()) => {
+                (elems, trailing_comma)
+            }
+            Ok(_) => return Err(err),
+            Err(inner) => {
+                inner.cancel();
+                return Err(err);
+            }
+        };
+
+        let close_paren = self.prev_token.span;
+
+        // Build the suggested `(pats): (tys)` replacement from the source
+        // snippets. Elements without an annotation get an inferred `_` type.
+        let mut pats = Vec::with_capacity(elems.len());
+        let mut tys = Vec::with_capacity(elems.len());
+        for (pat, ty_span) in &elems {
+            let Ok(pat_snippet) = self.span_to_snippet(pat.span) else {
+                return Err(err);
+            };
+            pats.push(pat_snippet);
+            match ty_span {
+                Some(ty_span) => {
+                    let Ok(ty_snippet) = self.span_to_snippet(*ty_span) else {
+                        return Err(err);
+                    };
+                    tys.push(ty_snippet);
+                }
+                None => tys.push("_".to_string()),
+            }
+        }
+
+        // A single-element tuple needs a trailing comma to stay a tuple.
+        let trailing = if elems.len() == 1 { "," } else { "" };
+        let suggestion = format!("({}{trailing}): ({}{trailing})", pats.join(", "), tys.join(", "));
+
+        err.span_suggestion_verbose(
+            open_paren.to(close_paren),
+            "to annotate the types of a tuple's elements, write them as a tuple type after the \
+             pattern",
+            suggestion,
+            Applicability::MaybeIncorrect,
+        );
+        err.emit();
+
+        // Continue parsing with the type annotations stripped off.
+        let fields: ThinVec<Pat> = elems.into_iter().map(|(pat, _)| pat).collect();
+        let paren_pattern =
+            fields.len() == 1 && matches!(trailing_comma, Trailing::No) && !fields[0].is_rest();
+        Ok(if paren_pattern {
+            PatKind::Paren(Box::new(fields.into_iter().next().unwrap()))
+        } else {
+            PatKind::Tuple(fields)
         })
     }
 
