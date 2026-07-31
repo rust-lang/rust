@@ -117,6 +117,7 @@ impl LintLevelSets {
 fn skippable_lints(tcx: TyCtxt<'_>, (): ()) -> UnordSet<LintId> {
     let store = unerased_lint_store(&tcx.sess);
     let root_map = tcx.shallow_lint_levels_on(hir::CRATE_OWNER_ID);
+    let lint_cap_allow = tcx.sess.opts.lint_cap == Some(Level::Allow);
 
     let mut skippable: FxHashSet<LintId> = store
         .get_lints()
@@ -125,13 +126,18 @@ fn skippable_lints(tcx: TyCtxt<'_>, (): ()) -> UnordSet<LintId> {
             // Lints that show up in future-compat reports must always be run.
             let has_future_breakage =
                 lint.future_incompatible.is_some_and(|fut| fut.report_in_deps);
-            !has_future_breakage && !lint.eval_always
+            // `-Zfuture-incompat-test` forces non-allow lints to report as future-compat
+            let test = tcx.sess.opts.unstable_opts.future_incompat_test
+                && lint.default_level != Level::Allow;
+            !has_future_breakage && !test && !lint.eval_always
         })
         .filter(|lint| {
             let level_spec =
                 root_map.lint_level_spec_at_node(tcx, LintId::of(lint), hir::CRATE_HIR_ID);
-            // Only include lints that are allowed at crate root or by default.
-            level_spec.is_allow()
+            let level = level_spec.level();
+            // Only include lints that are allowed at crate root, or by capping, or by default.
+            level == Level::Allow
+                || (lint_cap_allow && matches!(level, Level::Warn | Level::Deny | Level::Forbid))
                 || (matches!(level_spec.src, LintLevelSource::Default)
                     && lint.default_level(tcx.sess.edition()) == Level::Allow)
         })
@@ -144,8 +150,12 @@ fn skippable_lints(tcx: TyCtxt<'_>, (): ()) -> UnordSet<LintId> {
         // All lints that appear with a non-allow level must be run.
         for (_, specs) in map.specs.iter() {
             for (lint, level_spec) in specs.iter() {
-                if !level_spec.is_allow() {
-                    skippable.remove(lint);
+                match level_spec.level() {
+                    Level::Allow => {}
+                    Level::Warn | Level::Deny | Level::Forbid if lint_cap_allow => {}
+                    _ => {
+                        skippable.remove(lint);
+                    }
                 }
             }
         }

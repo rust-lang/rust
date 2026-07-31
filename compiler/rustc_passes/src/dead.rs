@@ -23,7 +23,7 @@ use rustc_middle::ty::{self, AssocTag, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::CrateType;
 use rustc_session::lint::builtin::{DEAD_CODE, DEAD_CODE_PUB_IN_BINARY};
-use rustc_session::lint::{self, Lint, StableLintExpectationId};
+use rustc_session::lint::{self, Lint, LintId, StableLintExpectationId};
 use rustc_span::{Symbol, kw};
 
 use crate::diagnostics::{
@@ -1328,6 +1328,14 @@ impl<'tcx> DeadVisitor<'tcx> {
 }
 
 fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalModId) {
+    let skippable_lints = tcx.skippable_lints(());
+    let is_exec = tcx.crate_types().contains(&CrateType::Executable);
+    if (!is_exec || skippable_lints.contains(&LintId::of(DEAD_CODE_PUB_IN_BINARY)))
+        && skippable_lints.contains(&LintId::of(DEAD_CODE))
+    {
+        return;
+    }
+
     let Ok(DeadCodeLivenessSummary { pre_deferred_seeding, final_result }) =
         tcx.live_symbols_and_ignored_derived_traits(()).as_ref()
     else {
@@ -1336,7 +1344,7 @@ fn check_mod_deathness(tcx: TyCtxt<'_>, module: LocalModId) {
 
     let module_items = tcx.hir_module_items(module);
 
-    if tcx.crate_types().contains(&CrateType::Executable) {
+    if is_exec {
         let is_unused_pub = |def_id: LocalDefId| {
             tcx.effective_visibilities(()).is_public_at_level(def_id, Level::Reachable)
                 && !pre_deferred_seeding.live_symbols.contains(&def_id)
