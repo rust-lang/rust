@@ -190,10 +190,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::Inline(kind, attr_span) => {
                 self.check_inline(hir_id, *attr_span, kind, target)
             }
-            AttributeKind::AllowInternalUnsafe(attr_span)
-            | AttributeKind::AllowInternalUnstable(.., attr_span) => {
-                self.check_macro_only_attr(*attr_span, span, target, attrs)
-            }
             AttributeKind::RustcAllowConstFnUnstable(_, first_span) => {
                 self.check_rustc_allow_const_fn_unstable(hir_id, *first_span, span, target)
             }
@@ -241,6 +237,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
             // All of the following attributes have no specific checks.
             // tidy-alphabetical-start
+            AttributeKind::AllowInternalUnsafe(..) => (),
+            AttributeKind::AllowInternalUnstable(..) => (),
             AttributeKind::AutomaticallyDerived => (),
             AttributeKind::CfgAttrTrace(..) => (),
             AttributeKind::CfgTrace(..) => (),
@@ -1286,31 +1284,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 hint_spans.collect::<Vec<Span>>(),
                 diagnostics::ReprConflictingLint,
             );
-        }
-    }
-
-    /// Outputs an error for attributes that can only be applied to macros, such as
-    /// `#[allow_internal_unsafe]` and `#[allow_internal_unstable]`.
-    /// (Allows proc_macro functions)
-    // FIXME(jdonszelmann): if possible, move to attr parsing
-    fn check_macro_only_attr(
-        &self,
-        attr_span: Span,
-        span: Span,
-        target: Target,
-        attrs: &[Attribute],
-    ) {
-        match target {
-            Target::Fn => {
-                for attr in attrs {
-                    if attr.is_proc_macro_attr() {
-                        // return on proc macros
-                        return;
-                    }
-                }
-                self.tcx.dcx().emit_err(diagnostics::MacroOnlyAttribute { attr_span, span });
-            }
-            _ => {}
         }
     }
 

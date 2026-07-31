@@ -30,6 +30,15 @@ pub(crate) struct RustcPubTransparent {
 }
 
 #[derive(Diagnostic)]
+#[diag("attribute should be applied to a macro")]
+pub(crate) struct MacroOnlyAttribute {
+    #[primary_span]
+    pub attr_span: Span,
+    #[label("not a macro")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("{$attr_str} attribute cannot have empty value")]
 pub(crate) struct DocAliasEmpty<'a> {
     #[primary_span]
