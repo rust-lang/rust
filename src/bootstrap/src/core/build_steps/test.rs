@@ -4617,7 +4617,7 @@ impl CommandLineStep for RemoteTestClientTests {
 }
 
 fn check_if_cargo_semver_checks_is_installed(builder: &Builder<'_>) -> bool {
-    command("cargo")
+    command(&builder.initial_cargo)
         .allow_failure()
         .arg("semver-checks")
         .arg("--version")
@@ -4693,7 +4693,7 @@ impl CommandLineStep for StdSemverCheck {
 
         for library in ["core", "alloc", "std"] {
             println!("Checking semver compatibility of {library}");
-            let mut cmd = command("cargo");
+            let mut cmd = command(&builder.initial_cargo);
             cmd.arg("semver-checks")
                 .arg("-Z")
                 .arg("unstable-options")
