@@ -69,6 +69,8 @@ impl DapSession {
             Command::Initialize(_) =>
                 self.handle_initialize(request).map(|()| DispatchOutcome::Continue),
             Command::Launch(_) => self.handle_launch(request).map(|()| DispatchOutcome::Continue),
+            Command::ConfigurationDone =>
+                self.handle_configuration_done(request).map(|()| DispatchOutcome::Continue),
             _ => self.handle_unsupported_request(request).map(|()| DispatchOutcome::Exit),
         }
     }
@@ -76,6 +78,11 @@ impl DapSession {
     /// FIXME: connect launch arguments to Priroda's session model.
     fn handle_launch(&mut self, request: Request) -> ServerResult {
         let response = request.success(ResponseBody::Launch);
+        self.server.respond(response)
+    }
+
+    fn handle_configuration_done(&mut self, request: Request) -> ServerResult {
+        let response = request.success(ResponseBody::ConfigurationDone);
         self.server.respond(response)
     }
 
