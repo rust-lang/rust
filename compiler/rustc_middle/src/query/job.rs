@@ -4,6 +4,7 @@ use std::num::NonZero;
 use std::sync::Arc;
 
 use parking_lot::{Condvar, Mutex};
+use rustc_data_structures::sync::collect;
 use rustc_span::Span;
 
 use crate::query::Cycle;
@@ -93,6 +94,7 @@ impl<'tcx> QueryLatch<'tcx> {
         // If this detects a deadlock and the deadlock handler wants to resume this thread
         // we have to be in the `wait` call. This is ensured by the deadlock handler
         // getting the self.info lock.
+        collect::release();
         rustc_thread_pool::mark_blocked_and_wait(|| {
             waiter.condvar.wait(&mut waiters_guard);
             // Release the lock before we potentially block when acquiring jobserver token.

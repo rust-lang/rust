@@ -1746,6 +1746,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "horde"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a61c061cf5c6363cbd605c6907dc1bf95a90e2d1da0461264b2395e0c47cb41f"
+dependencies = [
+ "parking_lot",
+]
+
+[[package]]
 name = "html-checker"
 version = "0.1.0"
 dependencies = [
@@ -3904,6 +3913,7 @@ dependencies = [
  "elsa",
  "ena",
  "hashbrown 0.17.0",
+ "horde",
  "indexmap",
  "jobserver",
  "libc",
