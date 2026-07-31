@@ -388,7 +388,6 @@ fn activate_panic_runtime(tcx: TyCtxt<'_>, list: &mut DependencyList) {
         }
         if tcx.crate_name(cnum) == desired_name {
             activated = Some(cnum);
-            break;
         }
     }
     if let Some(activated) = activated {

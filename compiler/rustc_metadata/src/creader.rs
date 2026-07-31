@@ -993,7 +993,7 @@ impl CStore {
             }
 
             // Sanity check the panic strategy is indeed what we thought it was.
-            // Note: Both `panic_unwind` and `panic_abort` might be compiler with
+            // Note: Both `panic_unwind` and `panic_abort` might be compiled with
             // `ImmediateAbort` strategy.
             if cdata.required_panic_strategy() != Some(PanicStrategy::ImmediateAbort)
                 && cdata.required_panic_strategy() != Some(desired_strategy)
