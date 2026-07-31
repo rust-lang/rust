@@ -1,0 +1,11 @@
+error: `let` statements are not allowed outside of functions or const blocks
+  --> $DIR/suggest-static-for-global-var-mut.rs:1:1
+   |
+LL | let mut _data = vec![1,2,3];
+   | ^^^
+   |
+   = note: `let` cannot be used to define global variables
+   = help: consider using `static` and a `Mutex` instead of `let mut`
+
+error: aborting due to 1 previous error
+

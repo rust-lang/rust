@@ -24,6 +24,7 @@ pub use diagnostics::AttemptLocalParseRecovery;
 // Public to use it for custom `if` expressions in rustfmt forks like https://github.com/tucant/rustfmt
 pub use expr::LetChainsPolicy;
 pub(crate) use function::{FnContext, FnParseMode, FrontMatterParsingMode, IsDotDotDot};
+pub use item::StmtWouldBeAllowed;
 pub use pat::{CommaRecoveryMode, RecoverColon, RecoverComma};
 pub use path::PathStyle;
 use rustc_ast::token::{

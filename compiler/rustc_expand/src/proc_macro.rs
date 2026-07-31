@@ -3,7 +3,7 @@ use rustc_ast::tokenstream::TokenStream;
 use rustc_data_structures::profiling::TimingGuard;
 use rustc_errors::ErrorGuaranteed;
 use rustc_middle::ty::{self, TyCtxt};
-use rustc_parse::parser::{AllowConstBlockItems, ForceCollect, Parser};
+use rustc_parse::parser::{AllowConstBlockItems, ForceCollect, Parser, StmtWouldBeAllowed};
 use rustc_proc_macro as pm;
 use rustc_session::Session;
 use rustc_session::config::ProcMacroExecutionStrategy;
@@ -138,6 +138,7 @@ impl MultiItemModifier for DeriveProcMacro {
             match parser.parse_item(
                 ForceCollect::No,
                 if is_stmt { AllowConstBlockItems::No } else { AllowConstBlockItems::Yes },
+                StmtWouldBeAllowed::NoOrUnknown,
             ) {
                 Ok(None) => break,
                 Ok(Some(item)) => {
