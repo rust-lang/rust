@@ -90,7 +90,7 @@ mod tests;
 
 pub mod tlv;
 
-pub use worker_local::WorkerLocal;
+pub use worker_local::{ComplementaryRegistry, WorkerLocal};
 
 pub use self::broadcast::{BroadcastContext, broadcast, spawn_broadcast};
 pub use self::join::{join, join_context};
