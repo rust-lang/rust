@@ -1,11 +1,13 @@
 use std::io::{self, BufReader, BufWriter};
 
-use emmy_dap_types::prelude::types::Capabilities;
+use emmy_dap_types::prelude::responses::ThreadsResponse;
+use emmy_dap_types::prelude::types::{Capabilities, Thread};
 use emmy_dap_types::prelude::{Command, Event, Request, ResponseBody, Server};
 use miri::{InterpResult, interp_ok};
 
 use crate::debugger::PrirodaContext;
 
+const THREAD_ID: i64 = 1;
 const MAX_REQUEST_COUNT: usize = 128;
 type ServerResult<T = ()> = Result<T, emmy_dap_types::errors::ServerError>;
 
@@ -71,6 +73,7 @@ impl DapSession {
             Command::Launch(_) => self.handle_launch(request).map(|()| DispatchOutcome::Continue),
             Command::ConfigurationDone =>
                 self.handle_configuration_done(request).map(|()| DispatchOutcome::Continue),
+            Command::Threads => self.handle_threads(request).map(|()| DispatchOutcome::Continue),
             _ => self.handle_unsupported_request(request).map(|()| DispatchOutcome::Exit),
         }
     }
@@ -83,6 +86,15 @@ impl DapSession {
 
     fn handle_configuration_done(&mut self, request: Request) -> ServerResult {
         let response = request.success(ResponseBody::ConfigurationDone);
+        self.server.respond(response)
+    }
+
+    /// FIXME: replace this with Miri thread state once Priroda exposes a
+    /// frontend-facing thread model.
+    fn handle_threads(&mut self, request: Request) -> ServerResult {
+        let response = request.success(ResponseBody::Threads(ThreadsResponse {
+            threads: vec![Thread { id: THREAD_ID, name: "main".to_string() }],
+        }));
         self.server.respond(response)
     }
 
