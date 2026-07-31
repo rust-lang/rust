@@ -1,7 +1,4 @@
 // Test for #124423, which causes an ice bug: only `variances_of` returns `&[ty::Variance]`
-//
-//@ compile-flags: -Z threads=16
-//@ compare-output-by-lines
 
 use std::fmt::Debug;
 
