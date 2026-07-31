@@ -942,6 +942,7 @@ bidirectional_lang_item_map! {
 // tidy-alphabetical-start
     DynMetadata,
     Option,
+    OwnedBox,
     Poll,
 // tidy-alphabetical-end
 }
