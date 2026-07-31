@@ -1,8 +1,6 @@
-//@ compile-flags: -Zthreads=16
-
 // original issue: https://github.com/rust-lang/rust/issues/129112
 // Previously, the "next" solver asserted that each successful solution is only obtained once.
-// This test exhibits a repro that, with next-solver + -Zthreads, triggered that old assert.
+// This test exhibits a repro that, with next-solver + parallel frontend, triggered that old assert.
 // In the presence of multithreaded solving, it's possible to concurrently evaluate things twice,
 // which leads to replacing already-solved solutions in the global solution cache!
 // We assume this is fine if we check to make sure they are solved the same way each time.
