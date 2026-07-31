@@ -11,7 +11,7 @@ use crate::intern::Interned;
 use crate::relate::{Relate, RelateResult, TypeRelation};
 use crate::{
     BoundRegion, BoundRegionKind, BoundVar, BoundVarIndexKind, DebruijnIndex, FallibleTypeFolder,
-    Flags, Interner, PlaceholderRegion, RegionKind, TypeFlags, TypeFoldable, TypeFolder,
+    Flags, Interner, PlaceholderRegion, RegionKind, RegionVid, TypeFlags, TypeFoldable, TypeFolder,
     TypeVisitable, TypeVisitor,
 };
 
@@ -52,6 +52,58 @@ impl<I: Interner> Region<I> {
     #[inline]
     pub fn is_bound(self) -> bool {
         matches!(self.0.get(), RegionKind::ReBound(..))
+    }
+
+    #[inline]
+    pub fn is_error(self) -> bool {
+        matches!(self.kind(), RegionKind::ReError(_))
+    }
+
+    #[inline]
+    pub fn is_static(self) -> bool {
+        matches!(self.kind(), RegionKind::ReStatic)
+    }
+
+    #[inline]
+    pub fn is_erased(self) -> bool {
+        matches!(self.kind(), RegionKind::ReErased)
+    }
+
+    #[inline]
+    pub fn is_placeholder(self) -> bool {
+        matches!(self.kind(), RegionKind::RePlaceholder(..))
+    }
+
+    /// True for free regions other than `'static`.
+    pub fn is_param(self) -> bool {
+        matches!(self.kind(), RegionKind::ReEarlyParam(_) | RegionKind::ReLateParam(_))
+    }
+
+    /// True for free region in the current context.
+    ///
+    /// This is the case for `'static` and param regions.
+    pub fn is_free(self) -> bool {
+        match self.kind() {
+            RegionKind::ReStatic | RegionKind::ReEarlyParam(..) | RegionKind::ReLateParam(..) => {
+                true
+            }
+            RegionKind::ReVar(..)
+            | RegionKind::RePlaceholder(..)
+            | RegionKind::ReBound(..)
+            | RegionKind::ReErased
+            | RegionKind::ReError(..) => false,
+        }
+    }
+
+    pub fn is_var(self) -> bool {
+        matches!(self.kind(), RegionKind::ReVar(_))
+    }
+
+    pub fn as_var(self) -> RegionVid {
+        match self.kind() {
+            RegionKind::ReVar(vid) => vid,
+            _ => panic!("expected region {:?} to be of kind ReVar", self),
+        }
     }
 
     // FIXME this should be made private and instead accessed via the
