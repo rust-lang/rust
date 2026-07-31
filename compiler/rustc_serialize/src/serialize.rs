@@ -338,7 +338,9 @@ impl<S: Encoder, T: Encodable<S>, const N: usize> Encodable<S> for [T; N] {
 
 impl<D: Decoder, T: Decodable<D>, const N: usize> Decodable<D> for [T; N] {
     fn decode(d: &mut D) -> [T; N] {
-        SmallVec::<[T; N]>::decode(d).into_inner().ok().expect("invalid array length")
+        let len = d.read_usize();
+        assert!(len == N);
+        std::array::from_fn(move |_| Decodable::decode(d))
     }
 }
 
