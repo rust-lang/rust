@@ -751,7 +751,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         spans,
                         // FIXME(splat): add a new error code before stabilization
                         E0277,
-                        "cannot use splat attribute; the splatted argument type \
+                        "cannot use `rustc_splat` attribute; the splatted argument type \
                         must be a tuple or unit, not a {:?} ({:?})",
                         tuple_type.kind(),
                         self.structurally_resolve_type(

@@ -5,7 +5,7 @@
 #![feature(splat)]
 
 async fn async_wrong_type(#[rustc_splat] _x: u32) {}
-//~^ ERROR cannot use splat attribute; the splatted argument type must be a tuple or unit, not a u32
+//~^ ERROR cannot use `rustc_splat` attribute; the splatted argument type must be a tuple or unit, not a u32
 
 async fn async_multi_splat(
     #[rustc_splat] (_a, _b): (u32, i8),
