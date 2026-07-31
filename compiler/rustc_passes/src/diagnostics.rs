@@ -216,15 +216,6 @@ pub(crate) struct ReprConflicting {
 pub(crate) struct ReprConflictingLint;
 
 #[derive(Diagnostic)]
-#[diag("attribute should be applied to a macro")]
-pub(crate) struct MacroOnlyAttribute {
-    #[primary_span]
-    pub attr_span: Span,
-    #[label("not a macro")]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("couldn't read {$file}: {$error}")]
 pub(crate) struct DebugVisualizerUnreadable<'a> {
     #[primary_span]
