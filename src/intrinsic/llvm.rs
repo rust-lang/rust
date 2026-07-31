@@ -1,5 +1,7 @@
 use std::borrow::Cow;
 
+#[cfg(feature = "master")]
+use gccjit::TypeAttribute;
 use gccjit::{CType, Context, Field, Function, FunctionPtrType, RValue, ToRValue, Type};
 use rustc_codegen_ssa::traits::BuilderMethods;
 
@@ -23,7 +25,7 @@ fn encode_key_128_type<'a, 'gcc, 'tcx>(
         &[field1, field2, field3, field4, field5, field6, field7],
     );
     #[cfg(feature = "master")]
-    encode_type.as_type().set_packed();
+    encode_type.as_type().add_attribute(TypeAttribute::Packed);
     (encode_type.as_type(), field1, field2)
 }
 
@@ -45,7 +47,7 @@ fn encode_key_256_type<'a, 'gcc, 'tcx>(
         &[field1, field2, field3, field4, field5, field6, field7, field8],
     );
     #[cfg(feature = "master")]
-    encode_type.as_type().set_packed();
+    encode_type.as_type().add_attribute(TypeAttribute::Packed);
     (encode_type.as_type(), field1, field2)
 }
 
@@ -58,7 +60,7 @@ fn aes_output_type<'a, 'gcc, 'tcx>(
     let aes_output_type = builder.context.new_struct_type(None, "AesOutput", &[field1, field2]);
     let typ = aes_output_type.as_type();
     #[cfg(feature = "master")]
-    typ.set_packed();
+    typ.add_attribute(TypeAttribute::Packed);
     (typ, field1, field2)
 }
 
@@ -81,7 +83,7 @@ fn wide_aes_output_type<'a, 'gcc, 'tcx>(
         &[field1, field2, field3, field4, field5, field6, field7, field8, field9],
     );
     #[cfg(feature = "master")]
-    aes_output_type.as_type().set_packed();
+    aes_output_type.as_type().add_attribute(TypeAttribute::Packed);
     (aes_output_type.as_type(), field1, field2)
 }
 
