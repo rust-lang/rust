@@ -11,7 +11,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Deserializer};
 
 use crate::core::config::toml::ReplaceOpt;
-use crate::core::config::{CompilerBuiltins, DebuggerPath, Merge, StringOrBool};
+use crate::core::config::{Allocator, CompilerBuiltins, DebuggerPath, Merge, StringOrBool};
 use crate::{HashSet, PathBuf, define_config, exit};
 
 define_config! {
@@ -77,6 +77,7 @@ define_config! {
         exclude: Option<Vec<PathBuf>> = "exclude",
         record_failed_tests_path: Option<String> = "record_failed_tests_path",
         sde: Option<String> = "sde",
+        allocator: Option<Allocator> = "allocator",
     }
 }
 

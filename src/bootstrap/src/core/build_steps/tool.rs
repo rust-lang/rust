@@ -21,7 +21,7 @@ use crate::core::builder::{
     Builder, Cargo as CargoCommand, CommandLineStep, RunConfig, ShouldRun, Step, StepMetadata,
     apply_pgo, cargo_profile_var,
 };
-use crate::core::config::{DebuginfoLevel, OverrideAllocator, RustcLto, TargetSelection};
+use crate::core::config::{Allocator, DebuginfoLevel, RustcLto, TargetSelection};
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{add_dylib_path, exe, t};
 use crate::{Compiler, FileType, Kind, Mode};
@@ -241,7 +241,7 @@ pub fn prepare_tool_cargo(
     cargo.env("LZMA_API_STATIC", "1");
 
     // See also the "JEMALLOC_SYS_WITH_LG_PAGE" setting in the compile build step.
-    if let Some(OverrideAllocator::Jemalloc) = builder.config.override_allocator(target)
+    if builder.config.allocator(target) == Allocator::Jemalloc
         && env::var_os("JEMALLOC_SYS_WITH_LG_PAGE").is_none()
     {
         // Build jemalloc on AArch64 with support for page sizes up to 64K
@@ -767,8 +767,8 @@ impl CommandLineStep for Rustdoc {
         // to build rustdoc.
         //
         let mut extra_features = Vec::new();
-        if let Some(allocator) = builder.config.override_allocator(target) {
-            extra_features.push(allocator.feature_name().to_string());
+        if let Some(allocator_feature_name) = builder.config.allocator(target).feature_name() {
+            extra_features.push(allocator_feature_name.to_string());
         }
         if !builder.config.rust_debug_logging {
             extra_features.push("max_level_info".to_string())
@@ -1585,8 +1585,8 @@ tool_rustc_extended!(Clippy {
     stable: true,
     add_bins_to_sysroot: ["clippy-driver"],
     add_features: |builder, target, features| {
-        if let Some(allocator) = builder.config.override_allocator(target) {
-            features.push(allocator.feature_name().to_string());
+        if let Some(allocator_feature_name) = builder.config.allocator(target).feature_name() {
+            features.push(allocator_feature_name.to_string());
         }
     }
 });
@@ -1596,8 +1596,8 @@ tool_rustc_extended!(Miri {
     stable: false,
     add_bins_to_sysroot: ["miri"],
     add_features: |builder, target, features| {
-        if let Some(allocator) = builder.config.override_allocator(target) {
-            features.push(allocator.feature_name().to_string());
+        if let Some(allocator_feature_name) = builder.config.allocator(target).feature_name() {
+            features.push(allocator_feature_name.to_string());
         }
     },
     // Always compile also tests when building miri. Otherwise feature unification can cause rebuilds between building and testing miri.
