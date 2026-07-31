@@ -15,7 +15,6 @@ decl_derive!(
 decl_derive!(
     [Lift_Generic, attributes(lift)] => lift_derive
 );
-#[cfg(not(feature = "nightly"))]
 decl_derive!(
     [GenericTypeVisitable] => customizable_type_visitable_derive
 );
@@ -353,7 +352,6 @@ fn transform_type_parameters(
     TransformedTy { ty, generic_parameter_bounds: visitor.generic_parameter_bounds }
 }
 
-#[cfg(not(feature = "nightly"))]
 fn customizable_type_visitable_derive(
     mut s: synstructure::Structure<'_>,
 ) -> proc_macro2::TokenStream {
@@ -381,10 +379,4 @@ fn customizable_type_visitable_derive(
             }
         },
     )
-}
-
-#[cfg(feature = "nightly")]
-#[proc_macro_derive(GenericTypeVisitable)]
-pub fn customizable_type_visitable_derive(_: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    proc_macro::TokenStream::new()
 }
