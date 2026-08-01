@@ -594,6 +594,37 @@ impl<'tcx> Analysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
 /// We use a mixed bitset to avoid paying too high a memory footprint.
 pub type EverInitializedPlacesDomain = MixedBitSet<InitIndex>;
 
+impl<'a, 'tcx> EverInitializedPlaces<'a, 'tcx> {
+    /// Insert `init` into the ever-init set only if no initialization of the
+    /// **same move path** is already present.
+    ///
+    /// Borrowck queries only whether a local/path has *any* reaching init
+    /// (`is_local_ever_initialized`), and illegal-reassignment diagnostics need
+    /// *a* prior `InitIndex` for span reconstruction — not every assignment
+    /// site. Recording additional `InitIndex` facts for a path that is already
+    /// ever-initialized grows lattice height and forces extra fixpoint visits
+    /// on cyclic MIR (many sequential `loop`/`await` reassignments) without
+    /// changing the Boolean ever-init predicate.
+    ///
+    /// `StorageDead` still kills all inits of the path, so re-initialization
+    /// after dead storage inserts a fresh first fact as before.
+    #[inline]
+    fn gen_if_path_not_ever_init(
+        &self,
+        state: &mut EverInitializedPlacesDomain,
+        init: InitIndex,
+    ) {
+        let move_data = self.move_data();
+        let path = move_data.inits[init].path;
+        let already = move_data.init_path_map[path]
+            .iter()
+            .any(|&other| state.contains(other));
+        if !already {
+            state.gen_(init);
+        }
+    }
+}
+
 impl<'tcx> Analysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
     type Domain = EverInitializedPlacesDomain;
 
@@ -623,7 +654,9 @@ impl<'tcx> Analysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
         let rev_lookup = &move_data.rev_lookup;
 
         debug!("initializes move_indexes {:?}", init_loc_map[location]);
-        state.gen_all(init_loc_map[location].iter().copied());
+        for &init in &init_loc_map[location] {
+            self.gen_if_path_not_ever_init(state, init);
+        }
 
         if let mir::StatementKind::StorageDead(local) = stmt.kind
             // End inits for StorageDead, so that an immutable variable can
@@ -646,14 +679,11 @@ impl<'tcx> Analysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
         let init_loc_map = &move_data.init_loc_map;
         debug!(?terminator);
         debug!("initializes move_indexes {:?}", init_loc_map[location]);
-        state.gen_all(
-            init_loc_map[location]
-                .iter()
-                .filter(|init_index| {
-                    move_data.inits[**init_index].kind != InitKind::NonPanicPathOnly
-                })
-                .copied(),
-        );
+        for &init_index in &init_loc_map[location] {
+            if move_data.inits[init_index].kind != InitKind::NonPanicPathOnly {
+                self.gen_if_path_not_ever_init(state, init_index);
+            }
+        }
         terminator.edges()
     }
 
@@ -667,8 +697,8 @@ impl<'tcx> Analysis<'tcx> for EverInitializedPlaces<'_, 'tcx> {
         let init_loc_map = &move_data.init_loc_map;
 
         let call_loc = self.body.terminator_loc(block);
-        for init_index in &init_loc_map[call_loc] {
-            state.gen_(*init_index);
+        for &init_index in &init_loc_map[call_loc] {
+            self.gen_if_path_not_ever_init(state, init_index);
         }
     }
 }
