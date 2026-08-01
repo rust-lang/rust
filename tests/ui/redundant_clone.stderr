@@ -180,5 +180,29 @@ note: this value is dropped without further use
 LL |     foo(&x.clone(), move || {
    |          ^
 
-error: aborting due to 15 previous errors
+error: redundant clone
+  --> tests/ui/redundant_clone.rs:323:34
+   |
+LL |             let _: String = value.clone();
+   |                                  ^^^^^^^^ help: remove this
+   |
+note: this value is dropped without further use
+  --> tests/ui/redundant_clone.rs:323:29
+   |
+LL |             let _: String = value.clone();
+   |                             ^^^^^
+
+error: redundant clone
+  --> tests/ui/redundant_clone.rs:336:32
+   |
+LL |         let _ = identity!(value.clone());
+   |                                ^^^^^^^^ help: remove this
+   |
+note: this value is dropped without further use
+  --> tests/ui/redundant_clone.rs:336:27
+   |
+LL |         let _ = identity!(value.clone());
+   |                           ^^^^^
+
+error: aborting due to 17 previous errors
 

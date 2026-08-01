@@ -291,3 +291,49 @@ mod issue13900 {
         }
     }
 }
+
+mod hir_prefilter {
+    use std::ffi::{OsStr, OsString};
+    use std::path::{Path, PathBuf};
+
+    fn qualified_and_aliased_calls() {
+        let value = String::from("qualified clone");
+        let _ = Clone::clone(&value);
+
+        let value = String::from("qualified to_owned");
+        let _ = ToOwned::to_owned(&value);
+
+        let value = String::from("qualified to_string");
+        let _ = ToString::to_string(&value);
+
+        let value = PathBuf::from("qualified to_path_buf");
+        let _ = Path::to_path_buf(&value);
+
+        let value = OsString::from("qualified to_os_string");
+        let _ = OsStr::to_os_string(&value);
+
+        let value = String::from("aliased clone");
+        let clone = <String as Clone>::clone;
+        let _ = clone(&value);
+    }
+
+    fn nested_closure() {
+        let _ = || {
+            let value = String::from("closure");
+            let _: String = value.clone();
+            //~^ redundant_clone
+        };
+    }
+
+    macro_rules! identity {
+        ($expression:expr) => {
+            $expression
+        };
+    }
+
+    fn macro_expression() {
+        let value = String::from("macro");
+        let _ = identity!(value.clone());
+        //~^ redundant_clone
+    }
+}

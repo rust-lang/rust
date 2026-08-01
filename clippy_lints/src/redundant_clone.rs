@@ -3,16 +3,18 @@ use clippy_utils::mir::{LocalUsage, PossibleBorrowerMap, visit_local_usage};
 use clippy_utils::res::MaybeDef as _;
 use clippy_utils::source::SpanExt as _;
 use clippy_utils::ty::{has_drop, is_copy, peel_and_count_ty_refs};
+use clippy_utils::visitors::for_each_expr_without_closures;
 use clippy_utils::{fn_has_unsatisfiable_clauses, sym};
 use rustc_errors::Applicability;
 use rustc_hir::attrs::lang_items::LangItem;
 use rustc_hir::intravisit::FnKind;
-use rustc_hir::{Body, FnDecl, def_id};
+use rustc_hir::{Body, ExprKind, FnDecl, def_id};
 use rustc_lint::{LateContext, LateLintPass, declare_lint_pass};
 use rustc_middle::mir;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{BytePos, Span};
+use std::ops::ControlFlow;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -60,12 +62,16 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
         cx: &LateContext<'tcx>,
         _: FnKind<'tcx>,
         _: &'tcx FnDecl<'_>,
-        _: &'tcx Body<'_>,
+        body: &'tcx Body<'_>,
         _: Span,
         def_id: LocalDefId,
     ) {
-        // Building MIR for `fn`s with unsatisfiable clauses results in ICE.
-        if fn_has_unsatisfiable_clauses(cx, def_id.to_def_id()) {
+        // Avoid building optimized MIR for functions that cannot contain a redundant clone.
+        // Nested closures have their own `check_fn` callbacks and must be checked separately.
+        if !contains_clone_like_call(body)
+            // Building MIR for `fn`s with unsatisfiable clauses results in ICE.
+            || fn_has_unsatisfiable_clauses(cx, def_id.to_def_id())
+        {
             return;
         }
 
@@ -242,6 +248,22 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
             }
         }
     }
+}
+
+fn contains_clone_like_call(body: &Body<'_>) -> bool {
+    for_each_expr_without_closures(body, |expr| {
+        if let ExprKind::MethodCall(method, ..) = expr.kind
+            && matches!(
+                method.ident.name,
+                sym::clone | sym::to_owned | sym::to_string | sym::to_path_buf | sym::to_os_string
+            )
+        {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
+        }
+    })
+    .is_some()
 }
 
 /// If `kind` is `y = func(x: &T)` where `T: !Copy`, returns `(DefId of func, x, T, y)`.
