@@ -581,3 +581,55 @@ mod proc_macro_attribute {}
 ///
 /// [the `link_section` attribute]: ../reference/abi.html#the-link_section-attribute
 mod link_section_attribute {}
+
+#[doc(attribute = "non_exhaustive")]
+//
+/// Indicates that a type might have more fields or variants added in the future.
+///
+/// Placing `#[non_exhaustive]` on a struct or enum tells code in other crates not to assume
+/// the definition is complete. This lets a library add new fields or variants without breaking
+/// existing code.
+///
+/// On an enum, code outside the defining crate must include a wildcard arm when matching:
+///
+/// ```rust,ignore (cross-crate effect only)
+/// // in crate `errors`:
+/// #[non_exhaustive]
+/// pub enum ConnectionError {
+///     Refused,
+///     Timeout,
+/// }
+///
+/// // in another crate:
+/// use errors::ConnectionError;
+///
+/// match error {
+///     ConnectionError::Refused => println!("connection refused"),
+///     ConnectionError::Timeout => println!("timed out"),
+///     _ => println!("other error"), // required because of #[non_exhaustive]
+/// }
+/// ```
+///
+/// On a struct, code outside the defining crate cannot construct instances using struct literal
+/// syntax:
+///
+/// ```rust,ignore (cross-crate effect only)
+/// // in crate `config`:
+/// #[non_exhaustive]
+/// pub struct Config {
+///     pub width: u32,
+///     pub height: u32,
+/// }
+///
+/// // in another crate:
+/// use config::Config;
+///
+/// let c = Config { width: 800, height: 600 }; // ERROR: cannot construct
+/// ```
+///
+/// Inside the defining crate, exhaustive matching and direct construction are still allowed.
+///
+/// For more information, see the Reference on [the `non_exhaustive` attribute].
+///
+/// [the `non_exhaustive` attribute]: ../reference/attributes/type_system.html#the-non_exhaustive-attribute
+mod non_exhaustive_attribute {}
