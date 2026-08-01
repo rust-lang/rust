@@ -630,10 +630,17 @@ impl GetOptsOptions {
             options.emit_mode = Some(emit_mode_from_emit_str(emit_str)?);
         }
 
-        if options.check && options.inline_config.contains_key("emit_mode") {
-            return Err(format_err!(
-                "Invalid to use `--config=emit_mode=<mode>` and `--check`"
-            ));
+        if options.inline_config.contains_key("emit_mode") {
+            if options.check {
+                return Err(format_err!(
+                    "Invalid to use `--config=emit_mode=<mode>` and `--check`"
+                ));
+            }
+            if options.emit_mode.is_some() {
+                return Err(format_err!(
+                    "Invalid to use `--config=emit_mode=<mode>` and `--emit`"
+                ));
+            }
         }
 
         if let Some(ref edition_str) = matches.opt_str("edition") {
@@ -833,15 +840,34 @@ mod test {
     }
 
     #[test]
-    fn check_rejects_emit_mode_from_inline_config() {
-        // Regression for #6999: `--check` is non-mutating, so an `emit_mode`
-        // supplied through `--config` (which could otherwise write the file in
-        // place) is rejected, just like `--emit` is.
-        let opts = make_opts();
-        let matches = opts
-            .parse(["--check", "--config", "emit_mode=Files"])
-            .unwrap();
-        assert!(GetOptsOptions::from_matches(&matches).is_err());
+    fn emit_mode_from_inline_config_is_rejected() {
+        // Regression for #6999.
+        let emit_modes = [
+            "Files",
+            "Stdout",
+            "Coverage",
+            "Checkstyle",
+            "Json",
+            "ModifiedLines",
+            "Diff",
+        ];
+        for mode in emit_modes {
+            let config = format!("emit_mode={mode}");
+
+            let matches = make_opts().parse(["--check", "--config", &config]).unwrap();
+            assert!(
+                GetOptsOptions::from_matches(&matches).is_err(),
+                "`--check` with `--config={config}` should be rejected"
+            );
+
+            let matches = make_opts()
+                .parse(["--emit", "stdout", "--config", &config])
+                .unwrap();
+            assert!(
+                GetOptsOptions::from_matches(&matches).is_err(),
+                "`--emit` with `--config={config}` should be rejected"
+            );
+        }
     }
 
     #[nightly_only_test]
