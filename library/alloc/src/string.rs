@@ -1659,7 +1659,7 @@ impl String {
         impl Drop for PanicGuard<'_> {
             fn drop(&mut self) {
                 debug_assert!(self.write <= self.s.len());
-                debug_assert!(self.s.is_char_boundary(self.write));
+                debug_assert!(str::from_utf8(&self.s.vec[..self.write]).is_ok());
                 // SAFETY: Restore the string length to the number of bytes written so far.
                 unsafe { self.s.vec.set_len(self.write) }
             }
@@ -1677,6 +1677,7 @@ impl String {
 
         // Slow path: at least one character is going to be removed.
         let mut g = PanicGuard { s: self, write };
+        let ptr = g.s.vec.as_mut_ptr();
         while read < len {
             // SAFETY: `g.read` is in bound because `g.read` < `len`, so taking
             // a slice with `len` is safe.
@@ -1686,7 +1687,6 @@ impl String {
                 // SAFETY: `g.read` is in bound because `g.write` <= `g.read` - `ch_len`,
                 // so taking a slice with `ch_len` is safe.
                 unsafe {
-                    let ptr = g.s.vec.as_mut_ptr();
                     ptr::copy(ptr.add(read), ptr.add(g.write), ch_len);
                 }
                 g.write += ch_len;
