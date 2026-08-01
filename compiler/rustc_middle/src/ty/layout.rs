@@ -196,8 +196,6 @@ pub const WIDE_PTR_ADDR: usize = 0;
 /// - For a slice, this is the length.
 pub const WIDE_PTR_EXTRA: usize = 1;
 
-pub const MAX_SIMD_LANES: u64 = rustc_abi::MAX_SIMD_LANES;
-
 /// Used in `check_validity_requirement` to indicate the kind of initialization
 /// that is checked to be valid
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, StableHash)]
@@ -239,7 +237,7 @@ pub enum SimdLayoutError {
     ZeroLength,
     /// The vector has more lanes than supported or permitted by
     /// #\[rustc_simd_monomorphize_lane_limit\].
-    TooManyLanes(u64),
+    TooManyLanes(Limit),
 }
 
 #[derive(Copy, Clone, Debug, StableHash, TyEncodable, TyDecodable)]

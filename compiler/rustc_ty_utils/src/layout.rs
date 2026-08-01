@@ -9,6 +9,7 @@ use rustc_abi::{
     LayoutCalculatorError, LayoutData, Niche, ReprOptions, Scalar, Size, StructKind, TagEncoding,
     VariantIdx, Variants, WrappingRange,
 };
+use rustc_data_structures::Limit;
 use rustc_hashes::Hash64;
 use rustc_hir as hir;
 use rustc_hir::find_attr;
@@ -156,7 +157,7 @@ fn map_error<'tcx>(
         }
         LayoutCalculatorError::OversizedSimdType { max_lanes } => {
             // Can't be caught in typeck if the array length is generic.
-            LayoutError::InvalidSimd { ty, kind: SimdLayoutError::TooManyLanes(max_lanes) }
+            LayoutError::InvalidSimd { ty, kind: SimdLayoutError::TooManyLanes(Limit(max_lanes)) }
         }
         LayoutCalculatorError::NonPrimitiveSimdType(field) => {
             // This error isn't caught in typeck, e.g., if
@@ -678,9 +679,7 @@ fn layout_of_uncached<'tcx>(
                     return Err(map_error(
                         &cx,
                         ty,
-                        rustc_abi::LayoutCalculatorError::OversizedSimdType {
-                            max_lanes: limit.0 as u64,
-                        },
+                        rustc_abi::LayoutCalculatorError::OversizedSimdType { max_lanes: limit.0 },
                     ));
                 }
             }
