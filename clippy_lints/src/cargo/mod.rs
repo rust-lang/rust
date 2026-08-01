@@ -17,7 +17,7 @@ use rustc_span::DUMMY_SP;
 declare_clippy_lint! {
     /// ### What it does
     /// Checks to see if all common metadata is defined in
-    /// `Cargo.toml`. See: https://rust-lang-nursery.github.io/api-guidelines/documentation.html#cargotoml-includes-all-common-metadata-c-metadata
+    /// `Cargo.toml`. See: <https://rust-lang.github.io/api-guidelines/documentation.html#cargotoml-includes-all-common-metadata-c-metadata>
     ///
     /// ### Why is this bad?
     /// It will be more difficult for users to discover the

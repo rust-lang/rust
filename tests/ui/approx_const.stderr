@@ -184,8 +184,40 @@ LL |     let almost_tau = 6.28;
    |
    = help: consider using the constant directly
 
+error: approximate value of `f{32, 64}::consts::EULER_GAMMA` found
+  --> tests/ui/approx_const.rs:110:26
+   |
+LL |     let my_euler_gamma = 0.577215664901533;
+   |                          ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using the constant directly
+
+error: approximate value of `f{32, 64}::consts::EULER_GAMMA` found
+  --> tests/ui/approx_const.rs:113:30
+   |
+LL |     let almost_euler_gamma = 0.5772;
+   |                              ^^^^^^
+   |
+   = help: consider using the constant directly
+
+error: approximate value of `f{32, 64}::consts::GOLDEN_RATIO` found
+  --> tests/ui/approx_const.rs:118:28
+   |
+LL |     let my_golden_ration = 1.618033988749895;
+   |                            ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using the constant directly
+
+error: approximate value of `f{32, 64}::consts::GOLDEN_RATIO` found
+  --> tests/ui/approx_const.rs:121:32
+   |
+LL |     let almost_golden_ration = 1.6180;
+   |                                ^^^^^^
+   |
+   = help: consider using the constant directly
+
 error: approximate value of `f{32, 64}::consts::PI` found
-  --> tests/ui/approx_const.rs:112:18
+  --> tests/ui/approx_const.rs:128:18
    |
 LL |     let x: f64 = 3.1415926535897932384626433832;
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -193,7 +225,7 @@ LL |     let x: f64 = 3.1415926535897932384626433832;
    = help: consider using the constant directly
 
 error: approximate value of `f{32, 64}::consts::PI` found
-  --> tests/ui/approx_const.rs:116:18
+  --> tests/ui/approx_const.rs:132:18
    |
 LL |     let _: f64 = 003.14159265358979311599796346854418516159057617187500;
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -201,7 +233,7 @@ LL |     let _: f64 = 003.14159265358979311599796346854418516159057617187500;
    = help: consider using the constant directly
 
 error: approximate value of `f{32, 64}::consts::FRAC_1_SQRT_2` found
-  --> tests/ui/approx_const.rs:119:32
+  --> tests/ui/approx_const.rs:135:32
    |
 LL |     let almost_frac_1_sqrt_2 = 00.70711;
    |                                ^^^^^^^^
@@ -209,12 +241,12 @@ LL |     let almost_frac_1_sqrt_2 = 00.70711;
    = help: consider using the constant directly
 
 error: approximate value of `f{32, 64}::consts::FRAC_1_SQRT_2` found
-  --> tests/ui/approx_const.rs:122:32
+  --> tests/ui/approx_const.rs:138:32
    |
 LL |     let almost_frac_1_sqrt_2 = 00.707_11;
    |                                ^^^^^^^^^
    |
    = help: consider using the constant directly
 
-error: aborting due to 27 previous errors
+error: aborting due to 31 previous errors
 

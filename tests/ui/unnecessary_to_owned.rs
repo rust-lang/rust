@@ -1,13 +1,11 @@
-#![allow(
+#![warn(clippy::redundant_clone, clippy::unnecessary_to_owned)]
+#![expect(
     clippy::manual_async_fn,
     clippy::needless_borrow,
     clippy::needless_borrows_for_generic_args,
-    clippy::needless_lifetimes,
     clippy::owned_cow,
-    clippy::ptr_arg,
-    clippy::uninlined_format_args
+    clippy::ptr_arg
 )]
-#![warn(clippy::unnecessary_to_owned, clippy::redundant_clone)]
 
 use std::borrow::Cow;
 use std::ffi::{CStr, CString, OsStr, OsString};
@@ -44,7 +42,6 @@ impl X {
     }
 }
 
-#[allow(dead_code)]
 #[derive(Clone)]
 enum FileType {
     Account,
@@ -312,7 +309,6 @@ fn require_string(_: &String) {}
 
 // https://github.com/rust-lang/rust-clippy/issues/8507
 mod issue_8507 {
-    #![allow(dead_code)]
 
     struct Opaque<P>(P);
 
@@ -362,7 +358,6 @@ mod issue_8507 {
 
 // https://github.com/rust-lang/rust-clippy/issues/8759
 mod issue_8759 {
-    #![allow(dead_code)]
 
     #[derive(Default)]
     struct View {}
@@ -393,7 +388,6 @@ mod issue_8759 {
 }
 
 mod issue_8759_variant {
-    #![allow(dead_code)]
 
     #[derive(Clone, Default)]
     struct View {}
@@ -417,7 +411,6 @@ mod issue_8759_variant {
 }
 
 mod issue_9317 {
-    #![allow(dead_code)]
 
     struct Bytes {}
 
@@ -446,7 +439,6 @@ mod issue_9317 {
 }
 
 mod issue_9351 {
-    #![allow(dead_code)]
 
     use std::ops::Deref;
     use std::path::{Path, PathBuf};
@@ -507,7 +499,6 @@ mod issue_9351 {
 }
 
 mod issue_9504 {
-    #![allow(dead_code)]
 
     async fn foo<S: AsRef<str>>(_: S) {}
     async fn bar() {
@@ -516,7 +507,6 @@ mod issue_9504 {
 }
 
 mod issue_9771a {
-    #![allow(dead_code)]
 
     use std::marker::PhantomData;
 
@@ -534,7 +524,6 @@ mod issue_9771a {
 }
 
 mod issue_9771b {
-    #![allow(dead_code)]
 
     pub struct Key<K: AsRef<[u8]>>(K);
 
@@ -548,7 +537,6 @@ mod issue_9771b {
 // The ICE is triggered by the call to `to_owned` on this line:
 // https://github.com/oxigraph/rio/blob/66635b9ff8e5423e58932353fa40d6e64e4820f7/testsuite/src/parser_evaluator.rs#L116
 mod issue_10021 {
-    #![allow(unused)]
 
     pub struct Iri<T>(T);
 
@@ -565,7 +553,6 @@ mod issue_10021 {
 }
 
 mod issue_10033 {
-    #![allow(dead_code)]
     use std::fmt::Display;
     use std::ops::Deref;
 

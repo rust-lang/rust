@@ -3,16 +3,16 @@ use crate::types::{
     DisallowedPath, DisallowedPathWithoutReplacement, InherentImplLintScope, MacroMatcher, MatchLintBehaviour,
     PubUnderscoreFieldsBehaviour, Rename, SourceItemOrdering, SourceItemOrderingCategory,
     SourceItemOrderingModuleItemGroupings, SourceItemOrderingModuleItemKind, SourceItemOrderingTraitAssocItemKind,
-    SourceItemOrderingTraitAssocItemKinds, SourceItemOrderingWithinModuleItemGroupings,
+    SourceItemOrderingTraitAssocItemKinds, SourceItemOrderingWithinModuleItemGroupings, TraitImplItemOrder,
 };
 use clippy_utils::msrvs::Msrv;
-use itertools::Itertools;
+use itertools::Itertools as _;
 use rustc_errors::Applicability;
 use rustc_session::Session;
 use rustc_span::edit_distance::edit_distance;
-use rustc_span::{BytePos, Pos, SourceFile, Span, SyntaxContext};
-use serde::de::{IgnoredAny, IntoDeserializer, MapAccess, Visitor};
-use serde::{Deserialize, Deserializer, Serialize};
+use rustc_span::{BytePos, Pos as _, SourceFile, Span, SyntaxContext};
+use serde::de::{IgnoredAny, IntoDeserializer as _, MapAccess, Visitor};
+use serde::{Deserialize, Deserializer as _, Serialize as _};
 use std::collections::HashMap;
 use std::fmt::{Debug, Display, Formatter};
 use std::ops::Range;
@@ -756,6 +756,9 @@ define_Conf! {
     /// The maximum number of bounds a trait can have to be linted
     #[lints(type_repetition_in_bounds)]
     max_trait_bounds: u64 = 3,
+    /// Whether to lint idents that have too few chars even when following trait declaration.
+    #[lints(min_ident_chars)]
+    min_ident_chars_lint_trait_impl: bool = false,
     /// Minimum chars an ident can have, anything below or equal to this will be linted.
     #[lints(min_ident_chars)]
     min_ident_chars_threshold: u64 = 1,
@@ -796,6 +799,7 @@ define_Conf! {
         filter_map_next,
         from_over_into,
         if_then_some_else_none,
+        implicit_saturating_sub,
         index_refutable_slice,
         inefficient_to_string,
         io_other_error,
@@ -840,6 +844,7 @@ define_Conf! {
         missing_const_for_fn,
         needless_borrow,
         non_std_lazy_statics,
+        nonnull_unchecked_on_box_ptr,
         option_as_ref_deref,
         or_fun_call,
         ptr_as_ptr,
@@ -917,6 +922,23 @@ define_Conf! {
     /// The order of associated items in traits.
     #[lints(arbitrary_source_item_ordering)]
     trait_assoc_item_kinds_order: SourceItemOrderingTraitAssocItemKinds = DEFAULT_TRAIT_ASSOC_ITEM_KINDS_ORDER.into(),
+    /// The required ordering of associated items in trait impls: purely alphabetical,
+    /// following the trait definition order, or accepting either.
+    ///
+    /// Note that the trait definition order may change between versions of the
+    /// crate defining the trait without being considered a breaking change.
+    ///
+    /// Examples:
+    /// When using trait definition item ordering:
+    /// ```toml
+    /// trait-impl-item-order = "trait_item_ordering"
+    /// ```
+    /// When using trait definition item ordering and alphabetical for fallbacks:
+    /// ```toml
+    /// trait-impl-item-order = "alphabetical_or_trait_item_ordering"
+    /// ```
+    #[lints(arbitrary_source_item_ordering)]
+    trait_impl_item_order: TraitImplItemOrder = TraitImplItemOrder::Alphabetical,
     /// The maximum size (in bytes) to consider a `Copy` type for passing by value instead of by
     /// reference.
     #[default_text = "target_pointer_width"]
@@ -1160,7 +1182,7 @@ impl serde::de::Error for FieldError {
     fn unknown_field(field: &str, expected: &'static [&'static str]) -> Self {
         // List the available fields sorted and at least one per line, more if `CLIPPY_TERMINAL_WIDTH` is
         // set and allows it.
-        use fmt::Write;
+        use fmt::Write as _;
 
         let metadata = get_configuration_metadata();
         let deprecated = metadata

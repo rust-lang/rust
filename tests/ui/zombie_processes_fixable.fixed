@@ -1,5 +1,5 @@
 #![warn(clippy::zombie_processes)]
-#![allow(clippy::needless_return)]
+#![expect(clippy::needless_return)]
 
 use std::process::{Child, Command};
 

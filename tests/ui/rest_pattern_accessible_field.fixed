@@ -1,0 +1,108 @@
+//@aux-build:proc_macros.rs
+//@aux-build:non-exhaustive-struct.rs
+#![warn(clippy::rest_pattern_accessible_field)]
+#![warn(clippy::unneeded_wildcard_pattern)]
+
+use non_exhaustive_struct::{NonExhaustiveStruct, NonExhaustiveStructNoPrivateFields};
+
+struct S {
+    a: u8,
+    b: u8,
+    c: u8,
+}
+
+#[derive(Default)]
+#[non_exhaustive]
+struct LocalNonExhaustive {
+    field: i32,
+}
+
+enum E {
+    A { a1: u8, a2: u8 },
+    B { b1: u8, b2: u8 },
+    C {},
+}
+
+mod m {
+    #[derive(Default)]
+    pub struct Sm {
+        pub a: u8,
+        pub(crate) b: u8,
+        c: u8,
+    }
+}
+
+fn main() {
+    let s = S { a: 1, b: 2, c: 3 };
+
+    let S { a, b, c: _ } = s;
+    //~^ rest_pattern_accessible_field
+
+    let S { c, a: _, b: _ } = s;
+    //~^ rest_pattern_accessible_field
+
+    let S { a, b, c, .. } = s;
+
+    S { a: _, b: _, c: _ } = S { a: 1, b: 2, c: 3 };
+    //~^ rest_pattern_accessible_field
+
+    let e = E::A { a1: 1, a2: 2 };
+
+    match e {
+        E::A { a1, a2 } => (),
+        E::B { b1: _, b2: _ } => (),
+        //~^ rest_pattern_accessible_field
+        E::C { .. } => (),
+    }
+
+    match e {
+        E::A { a1: _, a2: _ } => (),
+        E::B { b1: _, b2: _ } => (),
+        //~^ rest_pattern_accessible_field
+        E::C {} => (),
+    }
+
+    proc_macros::external! {
+        let s1 = S { a: 1, b: 2, c: 3 };
+        let S { a, b, .. } = s1;
+    }
+
+    proc_macros::with_span! {
+        span
+        let s2 = S { a: 1, b: 2, c: 3 };
+        let S { a, b, .. } = s2;
+    }
+
+    let ne = NonExhaustiveStruct::default();
+    let NonExhaustiveStruct { field1: _, field2: _, .. } = ne;
+    //~^ rest_pattern_accessible_field
+
+    let ne = NonExhaustiveStruct::default();
+    let NonExhaustiveStruct {
+        field1: _, field2: _, ..
+    } = ne;
+
+    let ne = NonExhaustiveStructNoPrivateFields::default();
+    let NonExhaustiveStructNoPrivateFields { field: _, .. } = ne;
+    //~^ rest_pattern_accessible_field
+
+    let ne = NonExhaustiveStructNoPrivateFields::default();
+    let NonExhaustiveStructNoPrivateFields { field: _, .. } = ne;
+
+    let ne = LocalNonExhaustive::default();
+    let LocalNonExhaustive { field: _ } = ne;
+
+    let ne = LocalNonExhaustive::default();
+    let LocalNonExhaustive { field: _, .. } = ne;
+
+    let ne = LocalNonExhaustive::default();
+    let LocalNonExhaustive { field: _ } = ne;
+    //~^ rest_pattern_accessible_field
+
+    use m::Sm;
+
+    let Sm { a: _, b: _, .. } = Sm::default();
+    //~^ rest_pattern_accessible_field
+
+    let Sm { a: _, b: _, .. } = Sm::default();
+}

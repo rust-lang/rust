@@ -3,12 +3,12 @@ use clippy_utils::consts::{ConstEvalCtxt, Constant};
 use clippy_utils::diagnostics::{span_lint_and_then, span_lint_hir_and_then};
 use clippy_utils::higher::If;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::{MaybeDef, MaybeResPath, MaybeTypeckRes};
+use clippy_utils::res::{MaybeDef as _, MaybeResPath as _, MaybeTypeckRes as _};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::visitors::is_const_evaluatable;
-use clippy_utils::{eq_expr_value, is_in_const_context, peel_blocks, peel_blocks_with_stmt, sym};
-use itertools::Itertools;
+use clippy_utils::{eq_expr_value, is_in_const_context, is_integer_literal, peel_blocks, peel_blocks_with_stmt, sym};
+use itertools::Itertools as _;
 use rustc_errors::{Applicability, Diag};
 use rustc_hir::def::Res;
 use rustc_hir::{Arm, BinOpKind, Block, Expr, ExprKind, HirId, PatKind, PathSegment, PrimTy, QPath, StmtKind};
@@ -718,6 +718,9 @@ fn is_clamp_meta_pattern<'tcx>(
     if exprs.iter().any(|e| peel_blocks(e).can_have_side_effects()) {
         return None;
     }
+    let first_bin = try_normalize_unsigned_eq_to_ord(cx, first_bin, first_expr).unwrap_or(*first_bin);
+    let second_bin = try_normalize_unsigned_eq_to_ord(cx, second_bin, second_expr).unwrap_or(*second_bin);
+    let (first_bin, second_bin) = (&first_bin, &second_bin);
     if !(is_ord_op(first_bin.op) && is_ord_op(second_bin.op)) {
         return None;
     }
@@ -769,6 +772,47 @@ fn block_stmt_with_last<'tcx>(block: &'tcx Block<'tcx>) -> impl Iterator<Item = 
 
 fn is_ord_op(op: BinOpKind) -> bool {
     matches!(op, BinOpKind::Ge | BinOpKind::Gt | BinOpKind::Le | BinOpKind::Lt)
+}
+
+/// For unsigned integer types, `x == 0` is equivalent to `x < 1`. This normalizes such `==`
+/// comparisons to `<` when the result expression evaluates to 1, enabling clamp detection for
+/// patterns like:
+///
+/// ```ignore
+/// if x == 0 { x = 1; } else if x > y { x = y; }
+/// ```
+fn try_normalize_unsigned_eq_to_ord<'tcx>(
+    cx: &LateContext<'tcx>,
+    bin: &BinaryOp<'tcx>,
+    result_expr: &'tcx Expr<'tcx>,
+) -> Option<BinaryOp<'tcx>> {
+    if bin.op != BinOpKind::Eq {
+        return None;
+    }
+
+    // both sides of the expression have the same type, so checking either of them is sufficient
+    if !matches!(cx.typeck_results().expr_ty(bin.left).kind(), rustc_middle::ty::Uint(_)) {
+        return None;
+    }
+
+    // Handles both `x == 0` and the Yoda notation `0 == x`.
+    let input = if is_integer_literal(bin.right, 0) {
+        bin.left
+    } else if is_integer_literal(bin.left, 0) {
+        bin.right
+    } else {
+        return None;
+    };
+
+    if is_integer_literal(result_expr, 1) {
+        Some(BinaryOp {
+            op: BinOpKind::Lt,
+            left: input,
+            right: result_expr,
+        })
+    } else {
+        None
+    }
 }
 
 /// Really similar to Cow, but doesn't have a `Clone` requirement.

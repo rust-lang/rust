@@ -2,7 +2,7 @@ use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::matching_root_macro_call;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::MaybeResPath;
+use clippy_utils::res::MaybeResPath as _;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::{higher, is_in_const_context, peel_ref_operators, sym};
 use rustc_ast::LitKind::{Byte, Char};

@@ -104,7 +104,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitSaturatingSub {
             // Check if the conditional expression is a binary operation
             && let ExprKind::Binary(ref cond_op, cond_left, cond_right) = cond.kind
         {
-            check_with_condition(cx, expr, cond_op.node, cond_left, cond_right, then);
+            check_with_condition(cx, expr, cond_op.node, cond_left, cond_right, then, self.msrv);
         } else if let Some(higher::If {
             cond,
             then: if_block,
@@ -309,6 +309,7 @@ fn check_with_condition<'tcx>(
     cond_left: &Expr<'tcx>,
     cond_right: &Expr<'tcx>,
     then: &Expr<'tcx>,
+    msrv: Msrv,
 ) {
     // Ensure that the binary operator is >, !=, or <
     if (BinOpKind::Ne == cond_op || BinOpKind::Gt == cond_op || BinOpKind::Lt == cond_op)
@@ -339,6 +340,10 @@ fn check_with_condition<'tcx>(
 
         // Check if the variable in the condition statement is an integer
         if !cx.typeck_results().expr_ty(cond_var).is_integral() {
+            return;
+        }
+
+        if is_in_const_context(cx) && !msrv.meets(cx, msrvs::SATURATING_SUB_CONST) {
             return;
         }
 

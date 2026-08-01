@@ -3,13 +3,13 @@ use clippy_utils::consts::ConstEvalCtxt;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_from_proc_macro;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::MaybeResPath;
-use clippy_utils::source::SpanExt;
+use clippy_utils::res::MaybeResPath as _;
+use clippy_utils::source::SpanExt as _;
 use rustc_errors::Applicability;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{BinOpKind, Constness, Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass, Lint, LintContext};
+use rustc_lint::{LateContext, LateLintPass, Lint, LintContext as _};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::impl_lint_pass;
 

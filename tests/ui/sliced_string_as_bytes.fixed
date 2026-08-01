@@ -1,4 +1,3 @@
-#![allow(unused)]
 #![warn(clippy::sliced_string_as_bytes)]
 
 use std::ops::{Index, Range};

@@ -2,7 +2,7 @@ use arrayvec::ArrayVec;
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::res::MaybeResPath;
+use clippy_utils::res::MaybeResPath as _;
 use clippy_utils::visitors::{Visitable, for_each_expr};
 use clippy_utils::{SpanlessEq, is_from_proc_macro};
 use core::ops::ControlFlow::{Break, Continue};

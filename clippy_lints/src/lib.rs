@@ -69,6 +69,7 @@ mod arbitrary_source_item_ordering;
 mod arc_with_non_send_sync;
 mod as_conversions;
 mod asm_syntax;
+mod assert_is_empty;
 mod assertions_on_constants;
 mod assertions_on_result_states;
 mod assigning_clones;
@@ -76,6 +77,7 @@ mod async_yields_async;
 mod attrs;
 mod await_holding_invalid;
 mod bit_width;
+mod block_scrutinee;
 mod blocks_in_conditions;
 mod bool_assert_comparison;
 mod bool_comparison;
@@ -103,6 +105,7 @@ mod default_constructed_unit_structs;
 mod default_instead_of_iter_empty;
 mod default_numeric_fallback;
 mod default_union_representation;
+mod definition_in_module_root;
 mod dereference;
 mod derivable_impls;
 mod derive;
@@ -281,6 +284,7 @@ mod non_octal_unix_permissions;
 mod non_send_fields_in_send_ty;
 mod non_std_lazy_statics;
 mod non_zero_suggestions;
+mod nonnull_unchecked_on_box_ptr;
 mod nonstandard_macro_braces;
 mod octal_escapes;
 mod only_used_in_recursion;
@@ -326,6 +330,7 @@ mod regex;
 mod repeat_vec_with_capacity;
 mod replace_box;
 mod reserve_after_initialization;
+mod rest_when_destructuring_struct;
 mod return_self_not_must_use;
 mod returns;
 mod same_length_and_capacity;
@@ -415,7 +420,7 @@ mod zombie_processes;
 use clippy_config::{Conf, get_configuration_metadata, sanitize_explanation};
 use clippy_utils::macros::FormatArgsStorage;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_lint::{Lint, is_lint_pass_required};
+use rustc_lint::is_lint_pass_required;
 use rustc_middle::ty::TyCtxt;
 use utils::attr_collector::AttrStorage;
 
@@ -456,6 +461,9 @@ pub fn register_lint_passes(store: &mut rustc_lint::LintStore, conf: &'static Co
     // Due to the architecture of the compiler, currently `cfg_attr` attributes on crate
     // level (i.e `#![cfg_attr(...)]`) will still be expanded even when using a pre-expansion pass.
     store.register_pre_expansion_lint_pass(Box::new(move || Box::new(attrs::EarlyAttributes::new(conf))));
+    store.register_pre_expansion_lint_pass(Box::new(move || {
+        Box::new(nonstandard_macro_braces::MacroBraces::new(conf))
+    }));
 
     let format_args_storage = FormatArgsStorage::default();
     let attr_storage = AttrStorage::default();
@@ -537,6 +545,7 @@ rustc_lint::early_lint_methods!(
         CfgNotTest: cfg_not_test::CfgNotTest = cfg_not_test::CfgNotTest,
         EmptyLineAfter: empty_line_after::EmptyLineAfter = empty_line_after::EmptyLineAfter::new(),
         InlineTraitBounds: inline_trait_bounds::InlineTraitBounds = inline_trait_bounds::InlineTraitBounds::default(),
+        DefinitionInModuleRoot: definition_in_module_root::DefinitionInModuleRoot = definition_in_module_root::DefinitionInModuleRoot::default(),
         // add early passes here, used by `cargo dev new_lint`
     ]]
 );
@@ -566,6 +575,7 @@ rustc_lint::late_lint_methods!(
         UnnecessaryMutPassed: unnecessary_mut_passed::UnnecessaryMutPassed = unnecessary_mut_passed::UnnecessaryMutPassed,
         SignificantDropTightening: significant_drop_tightening::SignificantDropTightening<'tcx> = <significant_drop_tightening::SignificantDropTightening<'_>>::default(),
         LenZero: len_zero::LenZero = len_zero::LenZero::new(conf),
+        AssertIsEmpty: assert_is_empty::AssertIsEmpty = assert_is_empty::AssertIsEmpty,
         LenWithoutIsEmpty: len_without_is_empty::LenWithoutIsEmpty = len_without_is_empty::LenWithoutIsEmpty,
         Attributes: attrs::Attributes = attrs::Attributes::new(conf),
         BlocksInConditions: blocks_in_conditions::BlocksInConditions = blocks_in_conditions::BlocksInConditions,
@@ -859,6 +869,9 @@ rustc_lint::late_lint_methods!(
         WithCapacityZero: with_capacity_zero::WithCapacityZero = with_capacity_zero::WithCapacityZero,
         RefPatterns: ref_patterns::RefPatterns = ref_patterns::RefPatterns,
         RedundantElse: redundant_else::RedundantElse = redundant_else::RedundantElse,
+        RestWhenDestructuringStruct: rest_when_destructuring_struct::RestWhenDestructuringStruct = rest_when_destructuring_struct::RestWhenDestructuringStruct,
+        BlockScrutinee: block_scrutinee::BlockScrutinee = block_scrutinee::BlockScrutinee,
+        NonnullUncheckedOnBoxPtr: nonnull_unchecked_on_box_ptr::NonnullUncheckedOnBoxPtr = nonnull_unchecked_on_box_ptr::NonnullUncheckedOnBoxPtr::new(conf),
         // add late passes here, used by `cargo dev new_lint`
     ]]
 );

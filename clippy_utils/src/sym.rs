@@ -364,6 +364,7 @@ generate! {
     into_bytes,
     into_ok,
     into_owned,
+    into_raw,
     intrinsics_unaligned_volatile_load,
     intrinsics_unaligned_volatile_store,
     io,

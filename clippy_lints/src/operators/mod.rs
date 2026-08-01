@@ -1048,6 +1048,7 @@ impl Operators {
 impl<'tcx> LateLintPass<'tcx> for Operators {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         eq_op::check_assert(cx, e);
+        float_cmp::check_assert(cx, e);
         match e.kind {
             ExprKind::Binary(op, lhs, rhs) => {
                 if !e.span.from_expansion() {
