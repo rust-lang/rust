@@ -3063,3 +3063,34 @@ fn main() {
     "#,
     );
 }
+
+#[test]
+fn regression_22820() {
+    check_no_mismatches(
+        r#"
+//- minicore: copy
+trait MyTrait: Copy {
+    const ASSOC: usize;
+}
+
+const fn output<T: MyTrait>(_: T) -> usize {
+    <T as MyTrait>::ASSOC
+}
+
+const fn yeet() -> impl Clone {
+    let x = [0u8; output(yeet())];
+}
+    "#,
+    );
+}
+
+#[test]
+fn rpit_function_with_non_trivial_anon_const() {
+    check_no_mismatches(
+        r#"
+fn f() -> impl Sized {
+    let x = [0u8; 1 + 2];
+}
+    "#,
+    );
+}
