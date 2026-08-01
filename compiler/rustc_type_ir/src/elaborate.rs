@@ -165,8 +165,8 @@ impl<I: Interner, O: Elaboratable<I>> Elaborator<I, O> {
                         )
                     };
 
-                // Get predicates implied by the trait, or only super predicates if we only care
-                // about self predicates.
+                // Get clauses implied by the trait, or only super clauses if we only care
+                // about self clauses.
                 match self.mode {
                     Filter::All => self.extend_deduped(
                         cx.explicit_implied_clauses_of(data.def_id().into())

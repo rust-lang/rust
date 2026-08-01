@@ -79,6 +79,52 @@ const fn simplify_pass_type_name(name: &'static str) -> &'static str {
     }
 }
 
+/// Rules outlining when this pass may be overridden or suppressed.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub(crate) enum PassPolicy {
+    /// This pass implements a mandatory lowering step, either to implement parts of the MIR semantics
+    /// or to bring MIR into a shape that is easier to deal with for later passes/codegen.
+    /// Passes using this cannot be disabled via any means. They must not remove any UB, as they will
+    /// run in Miri. They must also come with a comment justifying why they must always run.
+    Required,
+    /// An optional pass that may be configured by `-Zmir-enable-passes`.
+    Optional {
+        /// Whether this pass should be enabled by default in this session in the absence of
+        /// an explicit `-Zmir-enable-passes` or `#[optimize(none)]`.
+        generally_enabled: bool,
+        /// Whether this is an optimization pass. `#[optimize(none)]` only disables optimization
+        /// passes.
+        /// A pass may be optional without being an optimization pass,
+        /// e.g. if it just adds extra debug checks that one can turn off.
+        optimization: bool,
+    },
+}
+
+impl PassPolicy {
+    fn and_enabled(self, enabled: bool) -> Self {
+        match self {
+            PassPolicy::Required => PassPolicy::Required,
+            PassPolicy::Optional { generally_enabled: enabled_by_default, optimization } => {
+                PassPolicy::Optional {
+                    generally_enabled: enabled_by_default && enabled,
+                    optimization,
+                }
+            }
+        }
+    }
+
+    /// Create a [`PassPolicy::Optional`] that is not an optimization,
+    /// enabled by default under the given condition.
+    pub(crate) fn optional_non_optimization(condition: bool) -> Self {
+        Self::Optional { generally_enabled: condition, optimization: false }
+    }
+
+    /// Create a [`PassPolicy::Optional`] optimization, enabled by default under the given condition.
+    pub(crate) fn optimization(condition: bool) -> Self {
+        Self::Optional { generally_enabled: condition, optimization: true }
+    }
+}
+
 /// A streamlined trait that you can implement to create a pass; the
 /// pass will be named after the type, and it will consist of a main
 /// loop that goes over each available MIR and applies `run_pass`.
@@ -91,27 +137,14 @@ pub(super) trait MirPass<'tcx> {
         to_profiler_name(self.name())
     }
 
-    /// Returns `true` if this pass is enabled with the current combination of compiler flags.
-    fn is_enabled(&self, _sess: &Session) -> bool {
-        true
-    }
-
-    /// Returns `true` if this pass can be overridden by `-Zenable-mir-passes`. This should be
-    /// true for basically every pass other than those that are necessary for correctness.
-    fn can_be_overridden(&self) -> bool {
-        true
-    }
+    /// Describes how this pass is enabled and which mechanisms may disable it.
+    fn policy(&self, sess: &Session) -> PassPolicy;
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>);
 
     fn is_mir_dump_enabled(&self) -> bool {
         true
     }
-
-    /// Returns `true` if this pass must be run (i.e. it is required for soundness).
-    /// For passes which are strictly optimizations, this should return `false`.
-    /// If this is `false`, `#[optimize(none)]` will disable the pass.
-    fn is_required(&self) -> bool;
 }
 
 /// Just like `MirPass`, except it cannot mutate `Body`, and MIR dumping is
@@ -119,10 +152,6 @@ pub(super) trait MirPass<'tcx> {
 pub(super) trait MirLint<'tcx> {
     fn name(&self) -> &'static str {
         const { simplify_pass_type_name(std::any::type_name::<Self>()) }
-    }
-
-    fn is_enabled(&self, _sess: &Session) -> bool {
-        true
     }
 
     fn run_lint(&self, tcx: TyCtxt<'tcx>, body: &Body<'tcx>);
@@ -140,10 +169,6 @@ where
         self.0.name()
     }
 
-    fn is_enabled(&self, sess: &Session) -> bool {
-        self.0.is_enabled(sess)
-    }
-
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         self.0.run_lint(tcx, body)
     }
@@ -152,8 +177,8 @@ where
         false
     }
 
-    fn is_required(&self) -> bool {
-        true
+    fn policy(&self, _sess: &Session) -> PassPolicy {
+        PassPolicy::optional_non_optimization(true)
     }
 }
 
@@ -167,22 +192,18 @@ where
         self.1.name()
     }
 
-    fn is_enabled(&self, sess: &Session) -> bool {
-        sess.mir_opt_level() >= self.0 as usize
-    }
-
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         self.1.run_pass(tcx, body)
     }
 
-    fn is_required(&self) -> bool {
-        self.1.is_required()
+    fn policy(&self, sess: &Session) -> PassPolicy {
+        self.1.policy(sess).and_enabled(sess.mir_opt_level() >= self.0 as usize)
     }
 }
 
-/// Whether to allow non-[required] optimizations
+/// Whether to allow [optimization passes].
 ///
-/// [required]: MirPass::is_required
+/// [optimization passes]: PassPolicy::Optional::optimization
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(crate) enum Optimizations {
     /// The current function has `#[optimize(none)]`.
@@ -221,23 +242,34 @@ where
     P: MirPass<'tcx> + ?Sized,
 {
     let name = pass.name();
+    let pass_override = || {
+        tcx.sess
+            .opts
+            .unstable_opts
+            .mir_enable_passes
+            .iter()
+            .rev()
+            .find_map(|(name_, polarity)| if name == name_ { Some(*polarity) } else { None })
+    };
 
-    if !pass.can_be_overridden() {
-        return pass.is_enabled(tcx.sess);
+    match pass.policy(tcx.sess) {
+        PassPolicy::Required => true,
+        PassPolicy::Optional { generally_enabled: enabled_by_default, optimization } => {
+            if let Some(o) = pass_override() {
+                trace!(
+                    pass = %name,
+                    "{} as requested by flag",
+                    if o { "Running" } else { "Not running" }
+                );
+                o
+            } else if optimization && optimizations == Optimizations::Suppressed {
+                trace!(pass = %name, "Not running as requested by `#[optimize(none)]`");
+                false
+            } else {
+                enabled_by_default
+            }
+        }
     }
-
-    let overridden_passes = &tcx.sess.opts.unstable_opts.mir_enable_passes;
-    let overridden =
-        overridden_passes.iter().rev().find(|(s, _)| s == &*name).map(|(_name, polarity)| {
-            trace!(
-                pass = %name,
-                "{} as requested by flag",
-                if *polarity { "Running" } else { "Not running" },
-            );
-            *polarity
-        });
-    let suppressed = !pass.is_required() && matches!(optimizations, Optimizations::Suppressed);
-    overridden.unwrap_or_else(|| !suppressed && pass.is_enabled(tcx.sess))
 }
 
 fn run_passes_inner<'tcx>(

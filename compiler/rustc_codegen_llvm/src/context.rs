@@ -238,7 +238,7 @@ pub(crate) unsafe fn create_module<'ll>(
                 .expect("got a non-UTF8 data-layout from LLVM");
 
         if target_data_layout != llvm_data_layout {
-            tcx.dcx().emit_err(crate::errors::MismatchedDataLayout {
+            tcx.dcx().emit_err(crate::diagnostics::MismatchedDataLayout {
                 rustc_target: sess.opts.target_triple.to_string().as_str(),
                 rustc_layout: target_data_layout.as_str(),
                 llvm_target: sess.target.llvm_target.borrow(),
@@ -405,8 +405,7 @@ pub(crate) unsafe fn create_module<'ll>(
         );
     }
 
-    if let Some(BranchProtection { bti, pac_ret, gcs }) = sess.opts.unstable_opts.branch_protection
-    {
+    if let Some(BranchProtection { bti, pac_ret, gcs }) = sess.branch_protection() {
         if sess.target.arch == Arch::AArch64 {
             llvm::add_module_flag_u32(
                 llmod,
@@ -420,7 +419,11 @@ pub(crate) unsafe fn create_module<'ll>(
                 "sign-return-address",
                 pac_ret.is_some().into(),
             );
-            let pac_opts = pac_ret.unwrap_or(PacRet { leaf: false, pc: false, key: PAuthKey::A });
+            let pac_opts = pac_ret.unwrap_or_else(|| {
+                // Windows on Arm only supports PAC key B.
+                let key = if sess.target.os == Os::Windows { PAuthKey::B } else { PAuthKey::A };
+                PacRet { leaf: false, pc: false, key }
+            });
             llvm::add_module_flag_u32(
                 llmod,
                 llvm::ModuleFlagMergeBehavior::Min,

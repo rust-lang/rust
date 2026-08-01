@@ -848,10 +848,6 @@ impl Build {
             features.insert("compiler-builtins-mem");
         }
 
-        if self.config.llvm_enzyme {
-            features.insert("llvm_enzyme");
-        }
-
         features.into_iter().collect::<Vec<_>>().join(" ")
     }
 
@@ -866,16 +862,14 @@ impl Build {
             crates.is_empty() || possible_features_by_crates.contains(feature)
         };
         let mut features = vec![];
-        if let Some(allocator) = self.config.override_allocator(target)
-            && check(allocator.feature_name())
+
+        if let Some(allocator_feature_name) = self.config.allocator(target).feature_name()
+            && check(allocator_feature_name)
         {
-            features.push(allocator.feature_name());
+            features.push(allocator_feature_name);
         }
         if (self.config.llvm_enabled(target) || kind == Kind::Check) && check("llvm") {
             features.push("llvm");
-        }
-        if self.config.llvm_enzyme {
-            features.push("llvm_enzyme");
         }
         if self.config.llvm_offload {
             features.push("llvm_offload");

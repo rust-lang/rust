@@ -1006,6 +1006,7 @@ fn test_readdir() {
                 target_os = "macos" => {
                     // On macos we only support readdir_r as that's what std uses there.
                     use std::mem::MaybeUninit;
+
                     use libc::dirent;
                     let mut entry: MaybeUninit<dirent> = MaybeUninit::uninit();
                     let mut result: *mut dirent = std::ptr::null_mut();

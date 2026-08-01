@@ -756,7 +756,7 @@ fn test_unstable_options_tracking_hash() {
     untracked!(span_debug, true);
     untracked!(span_free_formats, true);
     untracked!(temps_dir, Some(String::from("abc")));
-    untracked!(threads, Some(99));
+    untracked!(threads, Some(String::from("99")));
     untracked!(time_llvm_passes, true);
     untracked!(time_passes, true);
     untracked!(time_passes_format, TimePassesFormat::Json);
@@ -828,6 +828,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(function_sections, Some(false));
     tracked!(hint_mostly_unused, true);
     tracked!(human_readable_cgu_names, true);
+    tracked!(implicit_sysroot_deps, false);
     tracked!(incremental_ignore_spans, true);
     tracked!(indirect_branch_cs_prefix, true);
     tracked!(inline_mir, Some(true));

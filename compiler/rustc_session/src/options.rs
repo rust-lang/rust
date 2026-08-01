@@ -433,10 +433,9 @@ top_level_options!(
         /// The (potentially remapped) working directory
         #[rustc_lint_opt_deny_field_access("use `SourceMap::working_dir` instead of this field")]
         working_dir: RealFileName [TRACKED],
-
         color: ColorConfig [UNTRACKED],
-
         verbose: bool [TRACKED_NO_CRATE_HASH],
+        jobs: Jobs [UNTRACKED],
     }
 );
 
@@ -827,7 +826,6 @@ mod desc {
     pub(crate) const parse_number: &str = "a number";
     pub(crate) const parse_opt_number: &str = parse_number;
     pub(crate) const parse_frame_pointer: &str = "one of `true`/`yes`/`on`, `false`/`no`/`off`, or (with -Zunstable-options) `non-leaf` or `always`";
-    pub(crate) const parse_threads: &str = "a number or `sync`";
     pub(crate) const parse_time_passes_format: &str = "`text` (default) or `json`";
     pub(crate) const parse_passes: &str = "a space-separated list of passes, or `all`";
     pub(crate) const parse_panic_strategy: &str = "either `unwind`, `abort`, or `immediate-abort`";
@@ -922,7 +920,6 @@ pub mod parse {
     use std::str::FromStr;
 
     pub(crate) use super::*;
-    pub(crate) const MAX_THREADS_CAP: usize = 256;
 
     /// Ignore the value. Used for removed options where we don't actually want to store
     /// anything in the session.
@@ -1169,25 +1166,6 @@ pub mod parse {
             }
             None => false,
         }
-    }
-
-    pub(crate) fn parse_threads(slot: &mut Option<usize>, v: Option<&str>) -> bool {
-        let Some(s) = v else { return false };
-        if s == "sync" {
-            // Enable synchronization despite only using one thread.
-            *slot = Some(1);
-            return true;
-        }
-        let n = match s.parse().ok() {
-            Some(0) => std::thread::available_parallelism().map_or(1, NonZero::<usize>::get),
-            Some(i) => i,
-            None => return false,
-        };
-        // We want to cap the number of threads here to avoid large numbers like 999999 and compiler panics.
-        // This solution was suggested here https://github.com/rust-lang/rust/issues/117638#issuecomment-1800925067
-        let n = n.min(MAX_THREADS_CAP);
-        *slot = (n > 1).then_some(n); // Enable synchronization if we're using more than one thread.
-        true
     }
 
     /// Use this for any numeric option that has a static default.
@@ -2016,6 +1994,10 @@ pub mod parse {
                     match opt {
                         "bti" => slot.bti = true,
                         "pac-ret" if slot.pac_ret.is_none() => {
+                            // Note: some targets only support certain keys (Windows on Arm only
+                            // supports Key B) and this possible discrepancy is handled by the
+                            // session's `branch_protection` accessor, when we have both the target
+                            // tuple and branch protection information available.
                             slot.pac_ret = Some(PacRet { leaf: false, pc: false, key: PAuthKey::A })
                         }
                         "leaf" => match slot.pac_ret.as_mut() {
@@ -2385,6 +2367,7 @@ options! {
         (default: no)"),
     box_noalias: bool = (true, parse_bool, [TRACKED],
         "emit noalias metadata for box (default: yes)"),
+    #[rustc_lint_opt_deny_field_access("use `Session::branch_protection` instead of this field")]
     branch_protection: Option<BranchProtection> = (None, parse_branch_protection, [TRACKED] { TARGET_MODIFIER: BranchProtection },
         "set options for branch target identification and pointer authentication on AArch64"),
     build_sdylib_interface: bool = (false, parse_bool, [UNTRACKED],
@@ -2531,6 +2514,8 @@ options! {
         "display unnamed regions as `'<id>`, using a non-ident unique id (default: no)"),
     ignore_directory_in_diagnostics_source_blocks: Vec<String> = (Vec::new(), parse_string_push, [UNTRACKED],
         "do not display the source code block in diagnostics for files in the directory"),
+    implicit_sysroot_deps: bool = (true, parse_bool, [TRACKED],
+        "allows rust to search sysroot for a crate's dependencies (default: yes)"),
     incremental_ignore_spans: bool = (false, parse_bool, [TRACKED],
         "ignore spans during ICH computation -- used for testing (default: no)"),
     incremental_info: bool = (false, parse_bool, [UNTRACKED],
@@ -2668,7 +2653,7 @@ options! {
     no_link: bool = (false, parse_no_value, [TRACKED],
         "compile without linking"),
     no_parallel_backend: bool = (false, parse_no_value, [UNTRACKED],
-        "run LLVM in non-parallel mode (while keeping codegen-units and ThinLTO)"),
+        "use `--jobs-backend=1` instead"),
     no_profiler_runtime: bool = (false, parse_no_value, [TRACKED],
         "prevent automatic injection of the profiler_builtins crate"),
     no_steal_thir: bool = (false, parse_bool, [UNTRACKED],
@@ -2793,6 +2778,10 @@ written to standard error output)"),
         "enable generalizing pointer types (default: no)"),
     sanitizer_cfi_normalize_integers: Option<bool> = (None, parse_opt_bool, [TRACKED] { TARGET_MODIFIER: SanitizerCfiNormalizeIntegers },
         "enable normalizing integer types (default: no)"),
+    sanitizer_cfi_diag: Option<bool> = (None, parse_opt_bool, [TRACKED],
+        "enable CFI diagnostics (default: no)"),
+    sanitizer_cfi_recover: Option<bool> = (None, parse_opt_bool, [TRACKED],
+        "enable CFI recovery (default: no)"),
     sanitizer_dataflow_abilist: Vec<String> = (Vec::new(), parse_comma_list, [TRACKED],
         "additional ABI list files that control how shadow parameters are passed (comma separated)"),
     sanitizer_kcfi_arity: Option<bool> = (None, parse_opt_bool, [TRACKED],
@@ -2873,13 +2862,8 @@ written to standard error output)"),
     #[rustc_lint_opt_deny_field_access("use `Session::lto` instead of this field")]
     thinlto: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "enable ThinLTO when possible"),
-    /// We default to None here since we want to behave like
-    /// a sequential compiler for now. This'll likely be adjusted
-    /// in the future. Note that -Zthreads=0 is the way to get
-    /// the num_cpus behavior.
-    #[rustc_lint_opt_deny_field_access("use `Session::threads` instead of this field")]
-    threads: Option<usize> = (None, parse_threads, [UNTRACKED],
-        "use a thread pool with N threads"),
+    threads: Option<String> = (None, parse_opt_string, [UNTRACKED],
+        "use `--jobs-frontend` instead"),
     time_llvm_passes: bool = (false, parse_bool, [UNTRACKED],
         "measure time of each LLVM pass (default: no)"),
     time_passes: bool = (false, parse_bool, [UNTRACKED],

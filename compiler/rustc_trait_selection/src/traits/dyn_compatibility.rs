@@ -40,7 +40,7 @@ pub fn hir_ty_lowering_dyn_compatibility_violations(
 ) -> Vec<DynCompatibilityViolation> {
     debug_assert!(tcx.generics_of(trait_def_id).has_self);
     elaborate::supertrait_def_ids(tcx, trait_def_id)
-        .map(|def_id| predicates_reference_self(tcx, def_id, true))
+        .map(|def_id| clauses_reference_self(tcx, def_id, true))
         .filter(|spans| !spans.is_empty())
         .map(DynCompatibilityViolation::SupertraitSelf)
         .collect()
@@ -98,7 +98,7 @@ fn dyn_compatibility_violations_for_trait(
         violations.push(DynCompatibilityViolation::ExplicitlyDynIncompatible([span].into()));
     }
 
-    let spans = predicates_reference_self(tcx, trait_def_id, false);
+    let spans = clauses_reference_self(tcx, trait_def_id, false);
     if !spans.is_empty() {
         violations.push(DynCompatibilityViolation::SupertraitSelf(spans));
     }
@@ -106,11 +106,11 @@ fn dyn_compatibility_violations_for_trait(
     if !spans.is_empty() {
         violations.push(DynCompatibilityViolation::SupertraitSelf(spans));
     }
-    let spans = super_predicates_have_non_lifetime_binders(tcx, trait_def_id);
+    let spans = super_clauses_have_non_lifetime_binders(tcx, trait_def_id);
     if !spans.is_empty() {
         violations.push(DynCompatibilityViolation::SupertraitNonLifetimeBinder(spans));
     }
-    let spans = super_predicates_are_unconditionally_const(tcx, trait_def_id);
+    let spans = super_clauses_are_unconditionally_const(tcx, trait_def_id);
     if !spans.is_empty() {
         violations.push(DynCompatibilityViolation::SupertraitConst(spans));
     }
@@ -168,7 +168,7 @@ fn get_sized_bounds(tcx: TyCtxt<'_>, trait_def_id: DefId) -> SmallVec<[Span; 1]>
         .unwrap_or_else(SmallVec::new)
 }
 
-fn predicates_reference_self(
+fn clauses_reference_self(
     tcx: TyCtxt<'_>,
     trait_def_id: DefId,
     supertraits_only: bool,
@@ -183,7 +183,7 @@ fn predicates_reference_self(
         .iter()
         .map(|&(clause, sp)| (clause.instantiate_supertrait(tcx, trait_ref), sp))
         .filter_map(|(clause, sp)| {
-            // Super predicates cannot allow self projections, since they're
+            // Super clauses cannot allow self projections, since they're
             // impossible to make into existential bounds without eager resolution
             // or something.
             // e.g. `trait A: B<Item = Self::Assoc>`.
@@ -278,29 +278,29 @@ fn predicate_references_self<'tcx>(
     }
 }
 
-fn super_predicates_have_non_lifetime_binders(
+fn super_clauses_have_non_lifetime_binders(
     tcx: TyCtxt<'_>,
     trait_def_id: DefId,
 ) -> SmallVec<[Span; 1]> {
     tcx.explicit_super_clauses_of(trait_def_id)
         .iter_identity_copied()
         .map(Unnormalized::skip_norm_wip)
-        .filter_map(|(pred, span)| pred.has_non_region_bound_vars().then_some(span))
+        .filter_map(|(clause, span)| clause.has_non_region_bound_vars().then_some(span))
         .collect()
 }
 
 /// Checks for `const Trait` supertraits. We're okay with `[const] Trait`,
 /// supertraits since for a non-const instantiation of that trait, the
 /// conditionally-const supertrait is also not required to be const.
-fn super_predicates_are_unconditionally_const(
+fn super_clauses_are_unconditionally_const(
     tcx: TyCtxt<'_>,
     trait_def_id: DefId,
 ) -> SmallVec<[Span; 1]> {
     tcx.explicit_super_clauses_of(trait_def_id)
         .iter_identity_copied()
         .map(Unnormalized::skip_norm_wip)
-        .filter_map(|(pred, span)| {
-            if let ty::ClauseKind::HostEffect(_) = pred.kind().skip_binder() {
+        .filter_map(|(clause, span)| {
+            if let ty::ClauseKind::HostEffect(_) = clause.kind().skip_binder() {
                 Some(span)
             } else {
                 None
@@ -326,7 +326,7 @@ fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         .into_iter()
         .map(Unnormalized::skip_norm_wip)
         .collect();
-    elaborate(tcx, clauses).any(|pred| match pred.kind().skip_binder() {
+    elaborate(tcx, clauses).any(|clause| match clause.kind().skip_binder() {
         ty::ClauseKind::Trait(ref trait_pred) => {
             trait_pred.def_id() == sized_def_id && trait_pred.self_ty().is_param(0)
         }
@@ -726,9 +726,9 @@ fn receiver_is_dispatchable<'tcx>(
 
         let meta_sized_predicate = {
             let meta_sized_did = tcx.require_lang_item(LangItem::MetaSized, DUMMY_SP);
-            ty::TraitRef::new(tcx, meta_sized_did, [unsized_self_ty]).upcast(tcx)
+            ty::TraitRef::new(tcx, meta_sized_did, [unsized_self_ty])
         };
-        clauses.push(meta_sized_predicate);
+        clauses.push(meta_sized_predicate.upcast(tcx));
 
         normalize_param_env_or_error(
             tcx,

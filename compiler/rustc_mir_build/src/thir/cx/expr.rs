@@ -374,7 +374,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
             hir::ExprKind::MethodCall(segment, receiver, args, fn_span) => {
                 if self.typeck_results.is_splatted_call(expr) {
                     // The callee has a splatted tuple argument.
-                    // rewrite `receiver.f(a, u, v)` into `receiver.f(a, #[splat] (u, v))`
+                    // rewrite `receiver.f(a, u, v)` into `receiver.f(a, #[rustc_splat] (u, v))`
                     self.convert_splatted_callee(expr, fn_span, args, Some(receiver))
                 } else {
                     // Rewrite a.b(c) into UFCS form like Trait::b(a, c)
@@ -424,7 +424,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                     }
                 } else if self.typeck_results.is_splatted_call(expr) {
                     // The callee has a splatted tuple argument.
-                    // rewrite `f(a, u, v)` into `f(a, #[splat] (u, v))`
+                    // rewrite `f(a, u, v)` into `f(a, #[rustc_splat] (u, v))`
                     self.convert_splatted_callee(expr, fun.span, args, None)
                 } else {
                     // Tuple-like ADTs are represented as ExprKind::Call. We convert them here.
@@ -1282,7 +1282,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
     }
 
     /// The callee has a splatted tuple argument.
-    /// Rewrite a splatted call `receiver.f(a, u, v)` into `receiver.f(a, #[splat] (u, v))`.
+    /// Rewrite a splatted call `receiver.f(a, u, v)` into `receiver.f(a, #[rustc_splat] (u, v))`.
     /// The receiver is optional.
     fn convert_splatted_callee(
         &mut self,
@@ -1298,7 +1298,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
         let tupled_arg_index = usize::from(tupled_arg_index);
         let tupled_args_count = usize::from(tupled_args_count);
 
-        // Splatting an empty tuple is permitted: `a.f() -> Trait::f(a, #[splat] ())`.
+        // Splatting an empty tuple is permitted: `a.f() -> Trait::f(a, #[rustc_splat] ())`.
         // In that case, the tupled arg index is one past the end of the args.
         if tupled_arg_index + tupled_args_count > args.len() {
             span_bug!(

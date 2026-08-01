@@ -13,6 +13,8 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::{env, fs, iter};
 
+use build_helper::git::get_closest_upstream_commit;
+
 use crate::core::build_steps::compile::{ArtifactKeepMode, Std, run_cargo};
 use crate::core::build_steps::doc::{DocumentationFormat, prepare_doc_compiler};
 use crate::core::build_steps::gcc::{Gcc, GccTargetPair, add_cg_gcc_cargo_flags};
@@ -1014,7 +1016,7 @@ impl CommandLineStep for IntrinsicTest {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("library/stdarch/crates/intrinsic-test")
+        run.alias("intrinsic-test")
     }
 
     fn is_default_step(_builder: &Builder<'_>) -> bool {
@@ -1111,7 +1113,7 @@ impl CommandLineStep for IntrinsicTest {
         for skip in &skip_file {
             cmd.arg("--skip").arg(skip);
         }
-        cmd.arg("--sample-percentage").arg("10");
+        cmd.arg("--sample-percentage").arg("100");
         cmd.arg("--cc-arg-style").arg("gcc");
         cmd.env("CC", builder.cc(host));
         cmd.env("CFLAGS", cflags);
@@ -4611,5 +4613,92 @@ impl CommandLineStep for RemoteTestClientTests {
             builder,
             record_failed_tests,
         );
+    }
+}
+
+fn check_if_cargo_semver_checks_is_installed(builder: &Builder<'_>) -> bool {
+    command("cargo")
+        .allow_failure()
+        .arg("semver-checks")
+        .arg("--version")
+        // Cache the output to avoid running this command more than once (per builder).
+        .cached()
+        .run_capture_stdout(builder)
+        .is_success()
+}
+
+/// Run cargo-semver-checks on the standard library and compare its API
+/// versus a previous baseline, using rustdoc JSON data.
+///
+/// Fails if a semver-breaking change is detected.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct StdSemverCheck {
+    build_compiler: Compiler,
+    target: TargetSelection,
+    /// The baseline commit that we are comparing the local stdlib API against.
+    commit: String,
+}
+
+impl CommandLineStep for StdSemverCheck {
+    type Output = ();
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("std-semver-check")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        if !check_if_cargo_semver_checks_is_installed(run.builder) {
+            panic!("cargo-semver-checks was not found, please install it");
+        }
+
+        let baseline_commit = match get_closest_upstream_commit(
+            Some(&run.builder.config.src),
+            &run.builder.config.git_config(),
+            run.builder.config.ci_env,
+        ) {
+            Ok(Some(commit)) => commit,
+            Ok(None) => {
+                panic!("No baseline parent commit found for std-semver-check");
+            }
+            Err(error) => {
+                panic!("Cannot get baseline parent commit for std-semver-check: {error:?}");
+            }
+        };
+
+        run.builder.ensure(Self {
+            build_compiler: run.builder.compiler_for_std(run.builder.top_stage),
+            target: run.target,
+            commit: baseline_commit,
+        });
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        let Some(docs_dir) = builder.config.download_std_json_docs(self.target, &self.commit)
+        else {
+            return;
+        };
+
+        let directory = builder.ensure(crate::core::build_steps::doc::Std::from_build_compiler(
+            self.build_compiler,
+            self.target,
+            DocumentationFormat::Json,
+        ));
+        let baseline_dir = docs_dir.join("share").join("doc").join("rust").join("json");
+
+        for library in ["core", "alloc", "std"] {
+            println!("Checking semver compatibility of {library}");
+            let mut cmd = command("cargo");
+            cmd.arg("semver-checks")
+                .arg("-Z")
+                .arg("unstable-options")
+                .arg("--stability-aware")
+                .arg("--release-type")
+                .arg("minor")
+                .arg("--current-rustdoc")
+                .arg(directory.join(format!("{library}.json")))
+                .arg("--baseline-rustdoc")
+                .arg(baseline_dir.join(format!("{library}.json")));
+            cmd.run(builder);
+        }
     }
 }

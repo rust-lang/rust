@@ -626,7 +626,7 @@ where
         if M::enforce_validity(self, dest.layout()) {
             // Data got changed, better make sure it matches the type!
             // Also needed to reset padding.
-            self.validate_operand(
+            self.validate_place(
                 &dest.to_place(),
                 M::enforce_validity_recursively(self, dest.layout()),
                 /*reset_provenance_and_padding*/ true,
@@ -858,13 +858,13 @@ where
             // shared reference.
             // But if the types are identical, that is strictly redundant so we only do one pass.
             if src.layout().ty != dest.layout().ty {
-                self.validate_operand(
+                self.validate_place(
                     &dest.transmute(src.layout(), self)?,
                     M::enforce_validity_recursively(self, src.layout()),
                     /*reset_provenance_and_padding*/ true,
                 )?;
             }
-            self.validate_operand(
+            self.validate_place(
                 &dest,
                 M::enforce_validity_recursively(self, dest.layout()),
                 /*reset_provenance_and_padding*/ true,

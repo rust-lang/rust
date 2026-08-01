@@ -13,21 +13,22 @@
 // CHECK: define{{( dso_local)?}} void @main()
 // CHECK-NOT: define
 // CHECK: %addr = alloca i64, align 8
-// CHECK: store double 4.200000e+01, ptr [[TMP:%[^,]+]], align 8
-// CHECK: [[VAL:%[0-9]+]] = load double, ptr [[TMP]], align 8
-// CHECK: store double [[VAL]], ptr %addr, align 8
-// CHECK: %1 = getelementptr inbounds nuw i8, ptr %.offload_baseptrs, i64 8
-// CHECK-NEXT: store double [[VAL]], ptr %1, align 8
-// CHECK-NEXT: %2 = getelementptr inbounds nuw i8, ptr %.offload_ptrs, i64 8
-// CHECK-NEXT: store ptr %addr, ptr %2, align 8
+// CHECK: store float 4.200000e+01, ptr [[TMP:%[^,]+]], align 4
+// CHECK: [[VAL:%[0-9]+]] = load i32, ptr [[TMP]], align 4
+// CHECK: [[VAL_I64:%[0-9]+]] = zext i32 [[VAL]] to i64
+// CHECK: store i64 [[VAL_I64]], ptr %addr, align 8
+// CHECK: [[REG_GEP1:%[^,]+]] = getelementptr inbounds nuw i8, ptr %.offload_baseptrs, i64 8
+// CHECK-NEXT: store i64 [[VAL_I64]], ptr [[REG_GEP1]], align 8
+// CHECK-NEXT: [[REG_GEP2:%[^,]+]] = getelementptr inbounds nuw i8, ptr %.offload_ptrs, i64 8
+// CHECK-NEXT: store ptr %addr, ptr [[REG_GEP2]], align 8
 // CHECK-NEXT: call void @__tgt_target_data_begin_mapper
 
 #[unsafe(no_mangle)]
 fn main() {
-    let mut x = 0.0;
-    let k = core::hint::black_box(42.0);
+    let mut x = 0.0f32;
+    let k = core::hint::black_box(42.0f32);
 
-    core::intrinsics::offload::<_, _, ()>(foo, [1, 1, 1], [1, 1, 1], 0, (&mut x, k));
+    core::intrinsics::offload::<_, _, ()>(foo, [1, 1, 1], [1, 1, 1], 0, (&mut x as *mut f32, k));
 }
 
 unsafe extern "C" {

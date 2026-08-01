@@ -16,7 +16,7 @@ use rustc_target::spec::{Arch, FramePointer, SanitizerSet, StackProbeType, Stack
 use smallvec::SmallVec;
 
 use crate::context::SimpleCx;
-use crate::errors::{PackedStackBackchainNeedsSoftfloat, SanitizerMemtagRequiresMte};
+use crate::diagnostics::{PackedStackBackchainNeedsSoftfloat, SanitizerMemtagRequiresMte};
 use crate::llvm::AttributePlace::Function;
 use crate::llvm::{
     self, AllocKindFlags, Attribute, AttributeKind, AttributePlace, MemoryEffects, Value,
@@ -530,9 +530,7 @@ pub(crate) fn llfn_attrs_from_instance<'ll, 'tcx>(
         to_add.extend(sanitize_attrs(cx, tcx, codegen_fn_attrs.sanitizers));
 
         // For non-naked functions, set branch protection attributes on aarch64.
-        if let Some(BranchProtection { bti, pac_ret, gcs }) =
-            sess.opts.unstable_opts.branch_protection
-        {
+        if let Some(BranchProtection { bti, pac_ret, gcs }) = sess.branch_protection() {
             assert!(sess.target.arch == Arch::AArch64);
             if bti {
                 to_add.push(llvm::CreateAttrString(cx.llcx, "branch-target-enforcement"));

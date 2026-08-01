@@ -544,6 +544,12 @@
 # For example, exclude = ["tests/ui", "src/tools/tidy"].
 #build.exclude = []
 
+# Link the compiler and LLVM against the specified allocator instead of the default libc allocator.
+# This option is only tested on Linux and OSX. It can also be configured per-target in the
+# [target.<tuple>] section.
+# Possible options: "system" (default), "jemalloc"
+#build.allocator = "jemalloc"
+
 # =============================================================================
 # General install configuration options
 # =============================================================================
@@ -859,15 +865,9 @@
 # Useful for reproducible builds. Generally only set for releases
 #rust.remap-debuginfo = false
 
-# Link the compiler and LLVM against the specified allocator instead of the default libc allocator.
-# This option is only tested on Linux and OSX. It can also be configured per-target in the
-# [target.<tuple>] section.
-# Possible options: "jemalloc"
-#rust.override-allocator = "jemalloc"
-
-# Deprecated alias for `rust.override-allocator`. Setting this to `true` is
-# equivalent to `rust.override-allocator = "jemalloc"`. If both are set, they
-# must agree.
+# Deprecated alias for `build.allocator`. Setting this to `true` is
+# equivalent to `build.allocator = "jemalloc"`. Both cannot be set in the same section
+# (`rust` or `target.[target]`)
 #rust.jemalloc = false
 
 # Run tests in various test suites with the "nll compare mode" in addition to
@@ -1177,10 +1177,10 @@
 #optimized-compiler-builtins = build.optimized-compiler-builtins (bool or path)
 
 # Link the compiler and LLVM against the specified allocator instead of the default libc allocator.
-# This overrides the global `rust.override-allocator` option. See that option for more info.
-#override-allocator = rust.override-allocator (string)
+# This overrides the global `build.allocator` option. See that option for more info.
+#allocator = build.allocator (string)
 
-# Deprecated alias for `override-allocator`. See `rust.jemalloc` for more info.
+# Deprecated alias for `allocator`. See `rust.jemalloc` for more info.
 #jemalloc = rust.jemalloc (bool)
 
 # The linker configuration that will *override* the default linker used for Linux

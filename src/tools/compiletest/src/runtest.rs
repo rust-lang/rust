@@ -1576,9 +1576,6 @@ impl<'test> TestCx<'test> {
         };
         compiler.arg(input_file);
 
-        // Use a single thread for efficiency and a deterministic error message order
-        compiler.arg("-Zthreads=1");
-
         // Hide libstd sources from ui tests to make sure we generate the stderr
         // output that users will see.
         // Without this, we may be producing good diagnostics in-tree but users

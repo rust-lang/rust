@@ -40,6 +40,10 @@ fn escape_body_text_with_wbr() {
     assert_eq!(&E("ṼẽçÑñéå").to_string(), "Ṽẽç<wbr>Ññéå");
     assert_eq!(&E("V\u{0300}e\u{0300}c\u{0300}D\u{0300}e\u{0300}q\u{0300}u\u{0300}e\u{0300}u\u{0300}e\u{0300}").to_string(), "V\u{0300}e\u{0300}c\u{0300}<wbr>D\u{0300}e\u{0300}q\u{0300}u\u{0300}e\u{0300}u\u{0300}e\u{0300}");
     assert_eq!(&E("LPFNACCESSIBLEOBJECTFROMWINDOW").to_string(), "LPFNACCESSIBLEOBJECTFROMWINDOW");
+    // clusters where the `_` or `:` is not the first byte (UAX#29 GB9b `Prepend`)
+    assert_eq!(&E("abc\u{0D4E}_defgh").to_string(), "abc\u{0D4E}_<wbr>defgh");
+    assert_eq!(&E("abc\u{0605}:defgh").to_string(), "abc\u{0605}:<wbr>defgh");
+    assert_eq!(&E("first_\u{0300}second").to_string(), "first_\u{0300}<wbr>second");
 }
 // property test
 #[test]

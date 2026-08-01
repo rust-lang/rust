@@ -190,10 +190,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::Inline(kind, attr_span) => {
                 self.check_inline(hir_id, *attr_span, kind, target)
             }
-            AttributeKind::AllowInternalUnsafe(attr_span)
-            | AttributeKind::AllowInternalUnstable(.., attr_span) => {
-                self.check_macro_only_attr(*attr_span, span, target, attrs)
-            }
             AttributeKind::RustcAllowConstFnUnstable(_, first_span) => {
                 self.check_rustc_allow_const_fn_unstable(hir_id, *first_span, span, target)
             }
@@ -241,6 +237,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
             // All of the following attributes have no specific checks.
             // tidy-alphabetical-start
+            AttributeKind::AllowInternalUnsafe(..) => (),
+            AttributeKind::AllowInternalUnstable(..) => (),
             AttributeKind::AutomaticallyDerived => (),
             AttributeKind::CfgAttrTrace(..) => (),
             AttributeKind::CfgTrace(..) => (),
@@ -1289,31 +1287,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    /// Outputs an error for attributes that can only be applied to macros, such as
-    /// `#[allow_internal_unsafe]` and `#[allow_internal_unstable]`.
-    /// (Allows proc_macro functions)
-    // FIXME(jdonszelmann): if possible, move to attr parsing
-    fn check_macro_only_attr(
-        &self,
-        attr_span: Span,
-        span: Span,
-        target: Target,
-        attrs: &[Attribute],
-    ) {
-        match target {
-            Target::Fn => {
-                for attr in attrs {
-                    if attr.is_proc_macro_attr() {
-                        // return on proc macros
-                        return;
-                    }
-                }
-                self.tcx.dcx().emit_err(diagnostics::MacroOnlyAttribute { attr_span, span });
-            }
-            _ => {}
-        }
-    }
-
     /// Outputs an error for `#[allow_internal_unstable]` which can only be applied to macros.
     /// (Allows proc_macro functions)
     fn check_rustc_allow_const_fn_unstable(
@@ -1690,7 +1663,7 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
             }
         }
 
-        let target = Target::from_item(item);
+        let target = Target::from(item);
         self.check_attributes(item.hir_id(), item.span, target, Some(item));
         intravisit::walk_item(self, item)
     }
@@ -1706,13 +1679,13 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
     }
 
     fn visit_generic_param(&mut self, generic_param: &'tcx hir::GenericParam<'tcx>) {
-        let target = Target::from_generic_param(generic_param);
+        let target = Target::from(generic_param);
         self.check_attributes(generic_param.hir_id, generic_param.span, target, None);
         intravisit::walk_generic_param(self, generic_param)
     }
 
     fn visit_trait_item(&mut self, trait_item: &'tcx TraitItem<'tcx>) {
-        let target = Target::from_trait_item(trait_item);
+        let target = Target::from(trait_item);
         self.check_attributes(trait_item.hir_id(), trait_item.span, target, None);
         intravisit::walk_trait_item(self, trait_item)
     }
@@ -1728,7 +1701,7 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
     }
 
     fn visit_foreign_item(&mut self, f_item: &'tcx ForeignItem<'tcx>) {
-        let target = Target::from_foreign_item(f_item);
+        let target = Target::from(f_item);
         self.check_attributes(f_item.hir_id(), f_item.span, target, None);
         intravisit::walk_foreign_item(self, f_item)
     }

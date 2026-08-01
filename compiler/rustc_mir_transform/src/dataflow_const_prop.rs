@@ -26,6 +26,8 @@ use rustc_mir_dataflow::{Analysis, ResultsVisitor, visit_reachable_results};
 use rustc_span::DUMMY_SP;
 use tracing::{debug, debug_span, instrument};
 
+use crate::PassPolicy;
+
 // These constants are somewhat random guesses and have not been optimized.
 // If `tcx.sess.mir_opt_level() >= 4`, we ignore the limits (this can become very expensive).
 const BLOCK_LIMIT: usize = 100;
@@ -34,8 +36,8 @@ const PLACE_LIMIT: usize = 100;
 pub(super) struct DataflowConstProp;
 
 impl<'tcx> crate::MirPass<'tcx> for DataflowConstProp {
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() >= 3
+    fn policy(&self, sess: &rustc_session::Session) -> PassPolicy {
+        PassPolicy::optimization(sess.mir_opt_level() >= 3)
     }
 
     #[instrument(skip_all level = "debug")]
@@ -73,10 +75,6 @@ impl<'tcx> crate::MirPass<'tcx> for DataflowConstProp {
         debug_span!("collect").in_scope(|| visit_reachable_results(body, &const_, &mut visitor));
         let mut patch = visitor.patch;
         debug_span!("patch").in_scope(|| patch.visit_body_preserves_cfg(body));
-    }
-
-    fn is_required(&self) -> bool {
-        false
     }
 }
 
