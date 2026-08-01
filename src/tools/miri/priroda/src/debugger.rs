@@ -100,6 +100,8 @@ enum ResumeMode {
     ///
     /// Take `Option` because some cases current state has no mapped to source code location
     SourceLine(Option<(PathBuf, usize)>),
+    /// Stop at the first mapped source location from a user-relevant frame.
+    FirstUserSourceLocation,
     /// Continue until reaching a breakpoint.
     Continue,
 }
@@ -150,6 +152,10 @@ impl<'tcx> PrirodaContext<'tcx> {
     }
     fn step(&mut self) -> InterpResult<'tcx, StepResult> {
         self.resume(ResumeMode::SourceLine(self.current_source_position()))
+    }
+
+    pub(super) fn stop_at_first_user_location(&mut self) -> InterpResult<'tcx, StepResult> {
+        self.resume(ResumeMode::FirstUserSourceLocation)
     }
 
     /// Continue execution until reaching a breakpoint or propagating termination.
@@ -210,9 +216,24 @@ impl<'tcx> PrirodaContext<'tcx> {
                     }
                 }
 
-                ResumeMode::MirInstruction | ResumeMode::Continue => {}
+                ResumeMode::FirstUserSourceLocation
+                    if self.current_location.is_some() && self.has_user_relevant_frame() =>
+                {
+                    return interp_ok(StepResult::Step);
+                }
+
+                ResumeMode::MirInstruction
+                | ResumeMode::FirstUserSourceLocation
+                | ResumeMode::Continue => {}
             }
         }
+    }
+
+    fn has_user_relevant_frame(&self) -> bool {
+        // Walk the whole stack, not just the top frame: during interpreter
+        // startup the user's `main` can sit under Miri-internal frames that
+        // have no source span, so checking only `last()` would miss it.
+        self.ecx.active_thread_stack().iter().any(|frame| frame.extra.user_relevance == u8::MAX)
     }
 
     /// Advance Miri by one interpreter-loop transition.
