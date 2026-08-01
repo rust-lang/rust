@@ -84,6 +84,7 @@ use rustc_hir::intravisit::Visitor;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_infer::infer::{self, TyCtxtInferExt as _};
 use rustc_infer::traits::ObligationCause;
+use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::print::with_types_for_signature;
@@ -104,6 +105,7 @@ use self::compare_impl_item::collect_return_position_impl_trait_in_trait_tys;
 use self::region::region_scope_tree;
 use crate::diagnostics::{
     MissingTraitItemLabel, MissingTraitItemSuggestion, MissingTraitItemSuggestionNone,
+    MissingTraitItemSuggestionUnstable,
 };
 use crate::{check_c_variadic_abi, diagnostics};
 
@@ -228,6 +230,7 @@ fn missing_items_suggestions(
     String,
     Vec<MissingTraitItemSuggestion>,
     Vec<MissingTraitItemSuggestionNone>,
+    Vec<MissingTraitItemSuggestionUnstable>,
     Vec<MissingTraitItemLabel>,
 ) {
     let missing_items =
@@ -243,8 +246,12 @@ fn missing_items_suggestions(
 
     // Obtain the level of indentation ending in `sugg_sp`.
     let padding = tcx.sess.source_map().indentation_before(sugg_sp).unwrap_or_else(String::new);
-    let (mut missing_trait_item, mut missing_trait_item_none, mut missing_trait_item_label) =
-        (Vec::new(), Vec::new(), Vec::new());
+    let (
+        mut missing_trait_item,
+        mut missing_trait_item_none,
+        mut missing_trait_item_unstable,
+        mut missing_trait_item_label,
+    ) = (Vec::new(), Vec::new(), Vec::new(), Vec::new());
 
     for &trait_item in missing_items {
         let snippet = with_types_for_signature!(suggestion_signature(
@@ -262,20 +269,42 @@ fn missing_items_suggestions(
                 snippet,
             });
         } else {
-            missing_trait_item_none.push(diagnostics::MissingTraitItemSuggestionNone {
-                span: sugg_sp,
-                code,
-                snippet,
-            })
+            if let EvalResult::Deny { feature, .. } =
+                tcx.eval_stability(trait_item.def_id, None, sugg_sp, None)
+            {
+                missing_trait_item_unstable.push(diagnostics::MissingTraitItemSuggestionUnstable {
+                    span: sugg_sp,
+                    code,
+                    snippet,
+                    feature,
+                });
+            } else {
+                missing_trait_item_none.push(diagnostics::MissingTraitItemSuggestionNone {
+                    span: sugg_sp,
+                    code,
+                    snippet,
+                });
+            }
         }
     }
 
-    (missing_items_msg, missing_trait_item, missing_trait_item_none, missing_trait_item_label)
+    (
+        missing_items_msg,
+        missing_trait_item,
+        missing_trait_item_none,
+        missing_trait_item_unstable,
+        missing_trait_item_label,
+    )
 }
 
 fn missing_items_err(tcx: TyCtxt<'_>, impl_def_id: LocalDefId, missing_items: &[ty::AssocItem]) {
-    let (missing_items_msg, missing_trait_item, missing_trait_item_none, missing_trait_item_label) =
-        missing_items_suggestions(tcx, impl_def_id, missing_items);
+    let (
+        missing_items_msg,
+        missing_trait_item,
+        missing_trait_item_none,
+        missing_trait_item_unstable,
+        missing_trait_item_label,
+    ) = missing_items_suggestions(tcx, impl_def_id, missing_items);
 
     tcx.dcx().emit_err(diagnostics::MissingTraitItem {
         span: tcx.span_of_impl(impl_def_id.to_def_id()).unwrap(),
@@ -283,6 +312,7 @@ fn missing_items_err(tcx: TyCtxt<'_>, impl_def_id: LocalDefId, missing_items: &[
         missing_trait_item_label,
         missing_trait_item,
         missing_trait_item_none,
+        missing_trait_item_unstable,
     });
 }
 
@@ -300,8 +330,13 @@ fn missing_items_must_implement_one_of_err(
         .cloned()
         .collect::<Vec<_>>();
 
-    let (missing_items_msg, missing_trait_item, missing_trait_item_none, missing_trait_item_label) =
-        missing_items_suggestions(tcx, impl_def_id, &missing_items);
+    let (
+        missing_items_msg,
+        missing_trait_item,
+        missing_trait_item_none,
+        missing_trait_item_unstable,
+        missing_trait_item_label,
+    ) = missing_items_suggestions(tcx, impl_def_id, &missing_items);
 
     tcx.dcx().emit_err(diagnostics::MissingOneOfTraitItem {
         span: tcx.def_span(impl_def_id),
@@ -309,6 +344,7 @@ fn missing_items_must_implement_one_of_err(
         missing_items_msg,
         missing_trait_item_label,
         missing_trait_item,
+        missing_trait_item_unstable,
         missing_trait_item_none,
     })
 }
