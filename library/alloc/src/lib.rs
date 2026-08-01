@@ -202,6 +202,7 @@
 #![feature(decl_macro)]
 #![feature(dropck_eyepatch)]
 #![feature(fundamental)]
+#![feature(impl_restriction)]
 #![feature(intrinsics)]
 #![feature(lang_items)]
 #![feature(min_specialization)]
