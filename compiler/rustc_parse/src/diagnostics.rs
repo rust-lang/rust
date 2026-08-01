@@ -1843,7 +1843,7 @@ pub(crate) struct AttributeOnEmptyType {
 }
 
 #[derive(Diagnostic)]
-#[diag("patterns aren't allowed in methods without bodies", code = E0642)]
+#[diag("patterns aren't allowed in {$target}", code = E0642)]
 pub(crate) struct PatternMethodParamWithoutBody {
     #[primary_span]
     #[suggestion(
@@ -1853,6 +1853,7 @@ pub(crate) struct PatternMethodParamWithoutBody {
         style = "verbose"
     )]
     pub span: Span,
+    pub target: &'static str,
 }
 
 #[derive(Diagnostic)]
