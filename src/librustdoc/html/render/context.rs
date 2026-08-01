@@ -663,10 +663,6 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         let crate_name = self.tcx().crate_name(LOCAL_CRATE);
         let final_file = self.dst.join(crate_name.as_str()).join("all.html");
 
-        let mut root_path = self.dst.to_str().expect("invalid path").to_owned();
-        if !root_path.ends_with('/') {
-            root_path.push('/');
-        }
         let shared = &self.shared;
         let page = layout::Page {
             title: "List of all items in this crate",

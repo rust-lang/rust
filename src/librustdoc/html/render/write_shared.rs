@@ -170,11 +170,6 @@ pub(crate) fn write_not_crate_specific(
         let help_file = dst.join("help.html");
         let scrape_examples_help_file = dst.join("scrape-examples-help.html");
 
-        let mut root_path = dst.to_str().expect("invalid path").to_owned();
-        if !root_path.ends_with('/') {
-            root_path.push('/');
-        }
-
         let page = layout::Page {
             title: "Settings",
             short_title: "Settings",
