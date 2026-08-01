@@ -1,0 +1,59 @@
+error: missing `#[derive(GenericTypeVisitable)]` on a type which implements `TypeVisitable`
+  --> $DIR/missing-generic-type-visitable-derive.rs:18:1
+   |
+LL | struct DerivesRegular;
+   | ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `GenericTypeVisitable` is rust-analyzer's version of `TypeVisitable`; it should be implemented whenever the latter is
+   = help: mark the type with `#[derive(GenericTypeVisitable)]`
+note: the lint level is defined here
+  --> $DIR/missing-generic-type-visitable-derive.rs:5:9
+   |
+LL | #![deny(rustc::missing_generic_type_visitable_derive)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: missing `#[derive(GenericTypeVisitable)]` on a type which implements `TypeVisitable`
+  --> $DIR/missing-generic-type-visitable-derive.rs:22:1
+   |
+LL | struct ImplsRegular;
+   | ^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: mark the type with `#[derive(GenericTypeVisitable)]`
+
+error: missing `#[derive(GenericTypeVisitable)]` on a type which implements `TypeVisitable`
+  --> $DIR/missing-generic-type-visitable-derive.rs:34:1
+   |
+LL | enum EnumDerivesRegular {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: mark the type with `#[derive(GenericTypeVisitable)]`
+
+error: missing `#[derive(GenericTypeVisitable)]` on a type which implements `TypeVisitable`
+  --> $DIR/missing-generic-type-visitable-derive.rs:40:1
+   |
+LL | struct GenericOverIDerivesRegular<I: Interner>(I::Clause);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: mark the type with `#[derive(GenericTypeVisitable)]`
+
+error: missing `#[derive(GenericTypeVisitable)]` on a type which implements `TypeVisitable`
+  --> $DIR/missing-generic-type-visitable-derive.rs:53:1
+   |
+LL | struct GenericOverTDerivesRegular<T>([T; 67]);
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: mark the type with `#[derive(GenericTypeVisitable)]`
+
+error: missing `#[derive(GenericTypeVisitable)]` on a type which implements `TypeVisitable`
+  --> $DIR/missing-generic-type-visitable-derive.rs:125:1
+   |
+LL | / struct FieldDoesntImplGeneric {
+LL | |
+LL | |     field: ImplsRegular,
+LL | | }
+   | |_^
+   |
+   = help: mark the type with `#[derive(GenericTypeVisitable)]`
+
+error: aborting due to 6 previous errors
+

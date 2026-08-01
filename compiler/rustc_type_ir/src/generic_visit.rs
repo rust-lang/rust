@@ -26,6 +26,7 @@ use crate::Interner;
 ///
 /// Therefore, it is advised to instead derive this using the derive
 /// macro located in `rustc_macros`.
+#[cfg_attr(feature = "nightly", rustc_diagnostic_item = "GenericTypeVisitable")]
 pub unsafe trait GenericTypeVisitable<V> {
     fn generic_visit_with(&self, visitor: &mut V);
 }

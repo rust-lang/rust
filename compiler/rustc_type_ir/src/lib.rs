@@ -26,6 +26,12 @@
 #![allow(rustc::usage_of_type_ir_inherent)]
 #![allow(rustc::usage_of_type_ir_traits)]
 #![cfg_attr(feature = "nightly", allow(internal_features))]
+// TODO: I did this because otherwise I'd get an `unknown_lints` warning while building stage 1 rustc.
+// Is this the right way to do things? Should I add a FIXME to remove this in.. the next beta or something?
+#![cfg_attr(
+    feature = "nightly",
+    cfg_attr(not(bootstrap), deny(rustc::missing_generic_type_visitable_derive))
+)]
 #![cfg_attr(feature = "nightly", feature(associated_type_defaults, rustc_attrs, negative_impls))]
 // tidy-alphabetical-end
 
