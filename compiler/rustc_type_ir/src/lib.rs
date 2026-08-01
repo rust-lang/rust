@@ -27,6 +27,12 @@
 #![allow(rustc::usage_of_type_ir_traits)]
 #![cfg_attr(feature = "nightly", allow(internal_features))]
 #![cfg_attr(feature = "nightly", feature(associated_type_defaults, rustc_attrs, negative_impls))]
+// NOTE: the outer `cfg_attr` is only there so that r-a doesn't see the nightly-only `bootstrap`
+// in the inner `cfg_attr`. When the latter is removed, the former can be removed as well.
+#![cfg_attr(
+    feature = "nightly",
+    cfg_attr(not(bootstrap), deny(rustc::missing_generic_type_visitable_derive))
+)]
 // tidy-alphabetical-end
 
 extern crate self as rustc_type_ir;
