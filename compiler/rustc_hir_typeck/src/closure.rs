@@ -63,7 +63,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn check_expr_closure(
         &self,
         closure: &hir::Closure<'tcx>,
-        expr_hir_id: hir::HirId,
         expr_span: Span,
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
@@ -286,21 +285,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         };
 
-        let is_let_initializer = matches!(
-            tcx.parent_hir_node(expr_hir_id),
-            hir::Node::LetStmt(hir::LetStmt { init: Some(init), .. })
-                if init.hir_id == expr_hir_id
-        );
-        let is_in_regular_closure = matches!(
-            tcx.hir_node_by_def_id(self.body_def_id),
-            hir::Node::Expr(hir::Expr {
-                kind: hir::ExprKind::Closure(hir::Closure { kind: hir::ClosureKind::Closure, .. }),
-                ..
-            })
-        );
-        let should_defer = matches!(closure.kind, hir::ClosureKind::Closure)
-            && liberated_sig.inputs().iter().any(|ty| ty.has_non_region_infer())
-            && (is_let_initializer || is_in_regular_closure);
+        // The surrounding expression may still constrain unresolved closure inputs. Keep the body
+        // pending until the closure reaches a use that cannot wait, or until its parent body ends.
+        let has_unresolved_input = liberated_sig
+            .inputs()
+            .iter()
+            .any(|&ty| self.resolve_vars_if_possible(ty).has_non_region_infer());
+        let should_defer =
+            matches!(closure.kind, hir::ClosureKind::Closure) && has_unresolved_input;
         if should_defer {
             self.deferred_closure_bodies.borrow_mut().push(DeferredClosureBody {
                 parent_def_id: self.body_def_id,
@@ -360,7 +352,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .any(|body| body.closure.def_id == closure_def_id)
     }
 
-    pub(super) fn check_deferred_closure_body_for_arg_if_inputs_resolved(&self, ty: Ty<'tcx>) {
+    pub(super) fn check_deferred_closure_body_for_arg_if_ready(
+        &self,
+        ty: Ty<'tcx>,
+        call_output: Ty<'tcx>,
+    ) {
         let ty = self.resolve_vars_if_possible(ty);
         let ty::Closure(def_id, _) = ty.kind() else { return };
         let Some(closure_def_id) = def_id.as_local() else { return };
@@ -373,7 +369,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let Some(inputs) = inputs else { return };
         // A partially known structural type, such as `(Vec<?T>, usize)`, is enough to guide body
         // checking. A bare type variable may still be constrained by the parent later.
-        if inputs.into_iter().all(|ty| !self.resolve_vars_with_obligations(ty).is_ty_var()) {
+        let unresolved_inputs: Vec<_> = inputs
+            .into_iter()
+            .map(|ty| self.resolve_vars_with_obligations(ty))
+            .filter(|ty| ty.is_ty_var())
+            .collect();
+        let call_output = self.resolve_vars_if_possible(call_output);
+        // The parent can only add direct constraints if the call carries the closure or one of
+        // these variables into its output. Otherwise this call consumes the closure and its body
+        // must be checked before those variables are used downstream.
+        let closure_or_input_escapes_call = call_output.contains(ty)
+            || unresolved_inputs.iter().any(|ty| call_output.contains(*ty));
+        if unresolved_inputs.is_empty() || !closure_or_input_escapes_call {
             self.check_deferred_closure_body(closure_def_id);
         }
     }

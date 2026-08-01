@@ -9,16 +9,20 @@ LL | fn select<F, I>(filter: F) -> Select<F, I> {}
    = note: expected struct `Select<F, I>`
            found unit type `()`
 
-error[E0282]: type annotations needed
-  --> $DIR/dont-suggest-path-names.rs:11:23
+error[E0282]: type annotations needed for `Select<{closure@$DIR/dont-suggest-path-names.rs:11:22: 11:25}, _>`
+  --> $DIR/dont-suggest-path-names.rs:11:9
    |
-LL |     let lit = select(|x| match x {
-   |                       ^        - type must be known at this point
+LL |       let lit = select(|x| match x {
+   |  _________^^^___-
+LL | |
+LL | |         _ => (),
+LL | |     });
+   | |______- type must be known at this point
    |
-help: consider giving this closure parameter an explicit type
+help: consider giving `lit` an explicit type, where the type for type parameter `I` is specified
    |
-LL |     let lit = select(|x: /* Type */| match x {
-   |                        ++++++++++++
+LL |     let lit: Select<fn(_), I> = select(|x| match x {
+   |            ++++++++++++++++++
 
 error: aborting due to 2 previous errors
 

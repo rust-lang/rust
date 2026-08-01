@@ -6,7 +6,9 @@ type Bar = impl FnOnce(&'static str) -> usize;
 #[define_opaque(Foo)]
 fn foo() -> Foo {
     if true {
-        |s| s.len() //~ ERROR type annotations needed
+        |s| s.len()
+        //~^ ERROR implementation of `FnOnce` is not general enough
+        //~| ERROR implementation of `FnOnce` is not general enough
     } else {
         panic!()
     }
@@ -15,7 +17,7 @@ fn foo() -> Foo {
 #[define_opaque(Bar)]
 fn bar() -> Bar {
     if true {
-        |s| s.len() //~ ERROR type annotations needed
+        |s| s.len()
     } else {
         panic!()
     }
@@ -23,14 +25,16 @@ fn bar() -> Bar {
 
 fn foo2() -> impl for<'a> FnOnce(&'a str) -> usize {
     if true {
-        |s| s.len() //~ ERROR type annotations needed
+        |s| s.len()
+        //~^ ERROR implementation of `FnOnce` is not general enough
+        //~| ERROR implementation of `FnOnce` is not general enough
     } else {
         panic!()
     }
 }
 fn bar2() -> impl FnOnce(&'static str) -> usize {
     if true {
-        |s| s.len() //~ ERROR type annotations needed
+        |s| s.len()
     } else {
         panic!()
     }

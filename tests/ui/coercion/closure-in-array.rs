@@ -3,5 +3,6 @@ fn foo<F: FnOnce(&str) -> usize, const N: usize>(x: [F; N]) {}
 
 fn main() {
     foo([|s| s.len()])
-    //~^ ERROR: type annotations needed
+    //~^ ERROR implementation of `FnOnce` is not general enough
+    //~| ERROR implementation of `FnOnce` is not general enough
 }

@@ -17,7 +17,7 @@ impl<'a, T> Foo<'a> for Wrap<T> where T: Fn(&'a i32) {}
 fn main() {
     needs_foo(|x| {
         //[current]~^ ERROR implementation of `Foo` is not general enough
-        //[next]~^^ ERROR type annotations needed
+        //[next]~^^ ERROR the trait bound
         x.to_string();
     });
 }

@@ -364,9 +364,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ExprKind::Match(discrim, arms, match_src) => {
                 self.check_expr_match(expr, discrim, arms, expected, match_src)
             }
-            ExprKind::Closure(closure) => {
-                self.check_expr_closure(closure, expr.hir_id, expr.span, expected)
-            }
+            ExprKind::Closure(closure) => self.check_expr_closure(closure, expr.span, expected),
             ExprKind::Block(body, _) => self.check_expr_block(body, expected),
             ExprKind::Call(callee, args) => self.check_expr_call(expr, callee, args, expected),
             ExprKind::Use(used_expr, _) => self.check_expr_use(used_expr, expected),

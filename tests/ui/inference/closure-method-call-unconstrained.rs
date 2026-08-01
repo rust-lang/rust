@@ -44,4 +44,14 @@ fn deferred_body_still_runs_late_checks() {
     //~^ ERROR the trait bound `String: Copy` is not satisfied
 }
 
+fn take_getter<F: FnOnce(Value) -> i32>(_: F) {}
+
+fn value_argument_is_a_body_checking_boundary() {
+    let get = |value| value.get();
+    //~^ ERROR type annotations needed
+
+    // Passing an existing closure as a value checks its body before this `FnOnce` bound is used.
+    take_getter(get);
+}
+
 fn main() {}
