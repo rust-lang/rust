@@ -1,0 +1,13 @@
+Content-Length: 143
+
+{"seq":1,"type":"response","request_seq":1,"success":true,"command":"initialize","body":{"supportsConfigurationDoneRequest":true},"error":null}Content-Length: 46
+
+{"seq":2,"type":"event","event":"initialized"}Content-Length: 90
+
+{"seq":3,"type":"response","request_seq":2,"success":true,"command":"launch","error":null}Content-Length: 101
+
+{"seq":4,"type":"response","request_seq":3,"success":true,"command":"configurationDone","error":null}Content-Length: 135
+
+{"seq":5,"type":"response","request_seq":4,"success":true,"command":"threads","body":{"threads":[{"id":1,"name":"main"}]},"error":null}Content-Length: 136
+
+{"seq":6,"type":"response","request_seq":5,"success":true,"command":"stackTrace","body":{"stackFrames":[],"totalFrames":0},"error":null}

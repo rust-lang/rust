@@ -1,6 +1,6 @@
 use std::io::{self, BufReader, BufWriter};
 
-use emmy_dap_types::prelude::responses::ThreadsResponse;
+use emmy_dap_types::prelude::responses::{StackTraceResponse, ThreadsResponse};
 use emmy_dap_types::prelude::types::{Capabilities, Thread};
 use emmy_dap_types::prelude::{Command, Event, Request, ResponseBody, Server};
 use miri::{InterpResult, interp_ok};
@@ -74,6 +74,8 @@ impl DapSession {
             Command::ConfigurationDone =>
                 self.handle_configuration_done(request).map(|()| DispatchOutcome::Continue),
             Command::Threads => self.handle_threads(request).map(|()| DispatchOutcome::Continue),
+            Command::StackTrace(_) =>
+                self.handle_stack_trace(request).map(|()| DispatchOutcome::Continue),
             _ => self.handle_unsupported_request(request).map(|()| DispatchOutcome::Exit),
         }
     }
@@ -94,6 +96,15 @@ impl DapSession {
     fn handle_threads(&mut self, request: Request) -> ServerResult {
         let response = request.success(ResponseBody::Threads(ThreadsResponse {
             threads: vec![Thread { id: THREAD_ID, name: "main".to_string() }],
+        }));
+        self.server.respond(response)
+    }
+
+    /// FIXME: report real frames once Priroda exposes a frontend-facing stack model.
+    fn handle_stack_trace(&mut self, request: Request) -> ServerResult {
+        let response = request.success(ResponseBody::StackTrace(StackTraceResponse {
+            stack_frames: Vec::new(),
+            total_frames: Some(0),
         }));
         self.server.respond(response)
     }
