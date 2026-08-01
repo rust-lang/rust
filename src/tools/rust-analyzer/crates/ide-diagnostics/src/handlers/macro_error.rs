@@ -328,13 +328,6 @@ fn it_works() {
         );
     }
 
-    // A macro that expands to an item re-invoking the macro produces an infinite tree of nested
-    // items: the expansion depth counters reset at every body and every block boundary, so the
-    // recursion limit never trips and walking the tree overflows the stack. rustc rejects this
-    // program with "recursion limit reached while expanding `test!`".
-    //
-    // `recursion_limit` is lowered so the test stays cheap. Note the `cfg!(test)` cap in
-    // `Expander::new` does not apply here — hir-def is a dependency, not the crate under test.
     #[test]
     fn no_stack_overflow_for_recursive_macro() {
         check_diagnostics(
@@ -354,8 +347,6 @@ mod tests {
         );
     }
 
-    // The same shape reached through `#[macro_export]` and `$crate`, as in the issue — the
-    // expansion chain then runs through a different macro definition path.
     #[test]
     fn no_stack_overflow_for_recursive_exported_macro() {
         check_diagnostics(

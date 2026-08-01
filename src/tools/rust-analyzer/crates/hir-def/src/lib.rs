@@ -111,21 +111,12 @@ pub(crate) struct ExpandProcAttrMacros {
 
 /// How many macro expansions separate `file` from the real file it ultimately originates from.
 ///
-/// rustc enforces `#![recursion_limit]` over a single eager expansion pass, so its budget
-/// naturally covers the whole chain — a macro recursing through a function body is rejected with
-/// "recursion limit reached while expanding". We expand lazily instead, and both `Expander` and
-/// `DefCollector` start counting from zero for every body and every block. A macro expanding to
-/// an item that invokes the macro again therefore advances neither counter past one, never trips
-/// the limit, and builds an infinite tree of nested items. Seeding those counters from here
-/// restores rustc's semantics.
+/// Used to seed the expansion depth counters, which otherwise restart for every body and every
+/// block and so never bound a macro that recurses through them.
 ///
 /// The walk stops once the depth exceeds `cap`, as callers only compare it against their
-/// recursion limit. That keeps this O(`cap`) rather than O(chain length).
-pub(crate) fn macro_expansion_depth(
-    db: &dyn SourceDatabase,
-    mut file: HirFileId,
-    cap: usize,
-) -> usize {
+/// recursion limit.
+pub(crate) fn macro_expansion_depth(db: &dyn SourceDatabase, mut file: HirFileId, cap: u32) -> u32 {
     let mut depth = 0;
     while let Some(macro_call) = file.macro_file() {
         depth += 1;

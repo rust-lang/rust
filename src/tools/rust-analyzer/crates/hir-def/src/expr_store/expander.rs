@@ -24,12 +24,9 @@ pub(super) struct Expander<'db> {
     span_map: SpanMap<'db>,
     current_file_id: HirFileId,
     ast_id_map: &'db AstIdMap,
-    /// Counts from the depth `current_file_id` already sits at, so that the budget is shared by
-    /// the whole expansion chain rather than restarting for every body.
-    ///
     /// `recursion_depth == u32::MAX` indicates that the recursion limit has been reached.
     recursion_depth: u32,
-    recursion_limit: usize,
+    recursion_limit: u32,
 }
 
 impl<'db> Expander<'db> {
@@ -38,7 +35,7 @@ impl<'db> Expander<'db> {
         current_file_id: HirFileId,
         def_map: &'db DefMap,
     ) -> Expander<'db> {
-        let recursion_limit = def_map.recursion_limit() as usize;
+        let recursion_limit = def_map.recursion_limit();
         let recursion_limit = if cfg!(test) {
             // Without this, `body::tests::your_stack_belongs_to_me` stack-overflows in debug
             std::cmp::min(32, recursion_limit)
@@ -47,7 +44,7 @@ impl<'db> Expander<'db> {
         };
         Expander {
             current_file_id,
-            recursion_depth: macro_expansion_depth(db, current_file_id, recursion_limit) as u32,
+            recursion_depth: macro_expansion_depth(db, current_file_id, recursion_limit),
             recursion_limit,
             span_map: current_file_id.span_map(db),
             ast_id_map: current_file_id.ast_id_map(db),
@@ -183,7 +180,7 @@ impl<'db> Expander<'db> {
         let Some(call_id) = value else {
             return ExpandResult { value: None, err };
         };
-        if self.recursion_depth as usize > self.recursion_limit {
+        if self.recursion_depth > self.recursion_limit {
             self.recursion_depth = u32::MAX;
             cov_mark::hit!(your_stack_belongs_to_me);
             return ExpandResult::only_err(ExpandError::new(

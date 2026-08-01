@@ -186,7 +186,7 @@ struct ImportDirective {
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct MacroDirective<'db> {
     module_id: ModuleId,
-    depth: usize,
+    depth: u32,
     kind: MacroDirectiveKind<'db>,
     container: ItemContainerId,
 }
@@ -221,7 +221,7 @@ struct DeferredBuiltinDerive {
     call_id: MacroCallId,
     derive: BuiltinDeriveExpander,
     module_id: ModuleId,
-    depth: usize,
+    depth: u32,
     container: ItemContainerId,
     derive_attr_id: AttrId,
     derive_index: u32,
@@ -402,11 +402,8 @@ impl<'db> DefCollector<'db> {
             // A block `DefMap` is collected from scratch, but it may itself live inside a macro
             // expansion. Continue that chain's budget instead of restarting it, or a macro
             // expanding to an item that invokes the macro again never reaches the limit.
-            let macro_depth = macro_expansion_depth(
-                self.db,
-                tree_id.file_id(),
-                self.def_map.recursion_limit() as usize,
-            );
+            let macro_depth =
+                macro_expansion_depth(self.db, tree_id.file_id(), self.def_map.recursion_limit());
             ModCollector {
                 def_collector: self,
                 macro_depth,
@@ -1711,11 +1708,11 @@ impl<'db> DefCollector<'db> {
         &mut self,
         module_id: ModuleId,
         macro_call_id: MacroCallId,
-        depth: usize,
+        depth: u32,
         container: ItemContainerId,
         attr_macro_item: Option<AstId<ast::Item>>,
     ) {
-        if depth > self.def_map.recursion_limit() as usize {
+        if depth > self.def_map.recursion_limit() {
             cov_mark::hit!(macro_expansion_overflow);
             tracing::warn!("macro expansion is too deep");
             return;
@@ -1872,7 +1869,7 @@ impl<'db> DefCollector<'db> {
 /// Walks a single module, populating defs, imports and macros
 struct ModCollector<'a, 'db> {
     def_collector: &'a mut DefCollector<'db>,
-    macro_depth: usize,
+    macro_depth: u32,
     module_id: ModuleId,
     tree_id: TreeId,
     item_tree: &'db ItemTree,
