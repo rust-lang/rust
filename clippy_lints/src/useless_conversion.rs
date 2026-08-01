@@ -90,8 +90,8 @@ fn into_iter_bound<'tcx>(
 ) -> Option<Span> {
     let mut into_iter_span = None;
 
-    for (pred, span) in cx.tcx.explicit_predicates_of(fn_did).predicates {
-        if let ty::ClauseKind::Trait(tr) = pred.kind().skip_binder()
+    for (clause, span) in cx.tcx.explicit_clauses_of(fn_did).clauses {
+        if let ty::ClauseKind::Trait(tr) = clause.kind().skip_binder()
             && tr.self_ty().is_param(param_index)
         {
             if tr.def_id() == into_iter_did {

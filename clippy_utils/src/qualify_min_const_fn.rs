@@ -6,8 +6,9 @@
 use crate::msrvs::{self, Msrv};
 use hir::LangItem;
 use rustc_const_eval::check_consts::ConstCx;
+use rustc_hir::attrs::RustcVersion;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, HirId, RustcVersion, StableSince};
+use rustc_hir::{self as hir, HirId, StableSince};
 use rustc_infer::infer::TyCtxtInferExt as _;
 use rustc_infer::traits::Obligation;
 use rustc_lint::LateContext;

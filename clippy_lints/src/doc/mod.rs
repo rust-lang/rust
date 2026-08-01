@@ -346,12 +346,14 @@ declare_clippy_lint! {
     /// /// Returns a random number
     /// ///
     /// /// It was chosen by a fair dice roll
+    /// # fn foo() {}
     /// ```
     /// Use instead:
     /// ```no_run
     /// /// Returns a random number.
     /// ///
     /// /// It was chosen by a fair dice roll.
+    /// # fn foo() {}
     /// ```
     ///
     /// ### Terminal punctuation marks
