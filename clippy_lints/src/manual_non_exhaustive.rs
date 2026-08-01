@@ -72,7 +72,7 @@ pub struct ManualNonExhaustive {
 impl ManualNonExhaustive {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
-            msrv: conf.msrv,
+            msrv: conf.msrv.into(),
             constructed_enum_variants: FxHashSet::default(),
             potential_enums: Vec::new(),
         }

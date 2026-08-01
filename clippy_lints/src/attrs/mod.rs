@@ -506,7 +506,7 @@ pub struct Attributes {
 
 impl Attributes {
     pub fn new(conf: &'static Conf) -> Self {
-        Self { msrv: conf.msrv }
+        Self { msrv: conf.msrv.into() }
     }
 }
 
@@ -548,9 +548,7 @@ pub struct EarlyAttributes {
 
 impl EarlyAttributes {
     pub fn new(conf: &'static Conf) -> Self {
-        Self {
-            msrv: MsrvStack::new(conf.msrv),
-        }
+        Self { msrv: conf.msrv.into() }
     }
 }
 
@@ -570,9 +568,7 @@ pub struct PostExpansionEarlyAttributes {
 
 impl PostExpansionEarlyAttributes {
     pub fn new(conf: &'static Conf) -> Self {
-        Self {
-            msrv: MsrvStack::new(conf.msrv),
-        }
+        Self { msrv: conf.msrv.into() }
     }
 }
 

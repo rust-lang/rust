@@ -1,5 +1,5 @@
 #[rustfmt::skip]
-//@error-in-other-file: error reading Clippy's configuration file: data did not match any variant of untagged enum DisallowedPathEnum
+//@error-in-other-file: unknown key
 fn main() {
     panic!();
 }

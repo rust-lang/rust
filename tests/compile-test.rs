@@ -6,7 +6,7 @@ use askama::Template;
 use askama::filters::Safe;
 use cargo_metadata::Message;
 use cargo_metadata::diagnostic::{Applicability, Diagnostic};
-use clippy_config::ClippyConfiguration;
+use clippy_config::ConfMetadata;
 use clippy_lints::declared_lints::LINTS;
 use clippy_lints::deprecated_lints::{DEPRECATED, DEPRECATED_VERSION, RENAMED};
 use declare_clippy_lint::LintInfo;
@@ -541,7 +541,7 @@ impl DiagnosticCollector {
                 }
             }
 
-            let configs = clippy_config::get_configuration_metadata();
+            let configs = clippy_config::Conf::get_metadata();
             let mut metadata: Vec<LintMetadata> = LINTS
                 .iter()
                 .map(|lint| LintMetadata::new(lint, &applicabilities, &configs))
@@ -613,7 +613,7 @@ struct LintMetadata {
 }
 
 impl LintMetadata {
-    fn new(lint: &LintInfo, applicabilities: &HashMap<String, Applicability>, configs: &[ClippyConfiguration]) -> Self {
+    fn new(lint: &LintInfo, applicabilities: &HashMap<String, Applicability>, configs: &[ConfMetadata]) -> Self {
         let name = lint.name_lower();
         let applicability = applicabilities
             .get(&name)

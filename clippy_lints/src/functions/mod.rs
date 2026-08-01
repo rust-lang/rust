@@ -531,7 +531,7 @@ impl Functions {
                 .iter()
                 .flat_map(|p| lookup_path_str(tcx, PathNS::Type, p))
                 .collect(),
-            msrv: conf.msrv,
+            msrv: conf.msrv.into(),
         }
     }
 }

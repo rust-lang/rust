@@ -67,7 +67,7 @@ pub struct UseSelf {
 impl UseSelf {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
-            msrv: conf.msrv,
+            msrv: conf.msrv.into(),
             stack: Vec::new(),
             recursive_self_in_type_definitions: conf.recursive_self_in_type_definitions,
         }

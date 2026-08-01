@@ -71,7 +71,7 @@ pub struct QuestionMark {
 impl QuestionMark {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
-            msrv: conf.msrv,
+            msrv: conf.msrv.into(),
             matches_behaviour: conf.matches_for_let_else,
             try_block_depth_stack: Vec::new(),
             inferred_ret_closure_stack: 0,

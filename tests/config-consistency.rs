@@ -18,7 +18,7 @@ fn config_consistency() {
         .iter()
         .map(|lint_info| lint_info.lint.name.strip_prefix("clippy::").unwrap().to_lowercase())
         .collect();
-    for conf in clippy_config::get_configuration_metadata() {
+    for conf in clippy_config::Conf::get_metadata() {
         for lint in conf.lints {
             assert!(
                 lint_names.contains(*lint),

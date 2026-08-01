@@ -1040,7 +1040,7 @@ impl Operators {
             arithmetic_context: numeric_arithmetic::Context::default(),
             verbose_bit_mask_threshold: conf.verbose_bit_mask_threshold,
             modulo_arithmetic_allow_comparison_to_zero: conf.allow_comparison_to_zero,
-            msrv: conf.msrv,
+            msrv: conf.msrv.into(),
         }
     }
 }

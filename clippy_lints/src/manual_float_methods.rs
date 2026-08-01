@@ -93,7 +93,7 @@ pub struct ManualFloatMethods {
 
 impl ManualFloatMethods {
     pub fn new(conf: &'static Conf) -> Self {
-        Self { msrv: conf.msrv }
+        Self { msrv: conf.msrv.into() }
     }
 }
 

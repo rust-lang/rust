@@ -89,7 +89,7 @@ pub struct CollapsibleIf {
 impl CollapsibleIf {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
-            msrv: conf.msrv,
+            msrv: conf.msrv.into(),
             lint_commented_code: conf.lint_commented_code,
         }
     }

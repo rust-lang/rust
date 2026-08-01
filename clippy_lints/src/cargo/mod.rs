@@ -223,14 +223,14 @@ impl_lint_pass!(Cargo => [
 ]);
 
 pub struct Cargo {
-    allowed_duplicate_crates: FxHashSet<String>,
+    allowed_duplicate_crates: &'static FxHashSet<String>,
     ignore_publish: bool,
 }
 
 impl Cargo {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
-            allowed_duplicate_crates: conf.allowed_duplicate_crates.iter().cloned().collect(),
+            allowed_duplicate_crates: &conf.allowed_duplicate_crates,
             ignore_publish: conf.cargo_ignore_publish,
         }
     }
@@ -272,7 +272,7 @@ impl LateLintPass<'_> for Cargo {
         {
             match MetadataCommand::new().exec() {
                 Ok(metadata) => {
-                    multiple_crate_versions::check(cx, &metadata, &self.allowed_duplicate_crates);
+                    multiple_crate_versions::check(cx, &metadata, self.allowed_duplicate_crates);
                 },
                 Err(e) => {
                     for lint in WITH_DEPS_LINTS {
