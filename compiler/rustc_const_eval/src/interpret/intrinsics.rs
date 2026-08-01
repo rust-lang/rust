@@ -2,6 +2,7 @@
 //! looking at their MIR. Intrinsics/functions supported here are shared by CTFE
 //! and miri.
 
+mod atomic;
 mod simd;
 
 use std::assert_matches;
@@ -20,9 +21,9 @@ use tracing::trace;
 use super::memory::MemoryKind;
 use super::util::ensure_monomorphic_enough;
 use super::{
-    AllocId, CheckInAllocMsg, ImmTy, InterpCx, InterpResult, Machine, OpTy, PlaceTy, Pointer,
-    PointerArithmetic, Projectable, Provenance, Scalar, err_ub_format, err_unsup_format, interp_ok,
-    throw_inval, throw_ub, throw_ub_format,
+    AllocId, AtomicRmwOp, CheckInAllocMsg, ImmTy, Immediate, InterpCx, InterpResult, Machine, OpTy,
+    PlaceTy, Pointer, PointerArithmetic, Projectable, Provenance, Scalar, err_ub_format,
+    err_unsup_format, interp_ok, throw_inval, throw_ub, throw_ub_format,
 };
 use crate::interpret::{MPlaceTy, Writeable};
 
@@ -177,6 +178,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         let instance_args = instance.args;
         let intrinsic_name = self.tcx.item_name(instance.def_id());
 
+        if intrinsic_name.as_str().starts_with("atomic_") {
+            return self.eval_atomic_intrinsic(intrinsic_name, instance_args, args, dest, ret);
+        }
         if intrinsic_name.as_str().starts_with("simd_") {
             return self.eval_simd_intrinsic(intrinsic_name, instance_args, args, dest, ret);
         }

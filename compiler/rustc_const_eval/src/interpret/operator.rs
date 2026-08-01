@@ -10,6 +10,19 @@ use tracing::trace;
 
 use super::{ImmTy, InterpCx, Machine, MemPlaceMeta, interp_ok, throw_ub};
 
+/// Describes an atomic RMW operation.
+pub enum AtomicRmwOp {
+    MirOp {
+        op: mir::BinOp,
+        /// Indicates whether the result of the operation should be negated (`UnOp::Not`, must be a
+        /// boolean/integer-typed operation).
+        neg: bool,
+    },
+    Max,
+    Min,
+    Swap,
+}
+
 impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     fn three_way_compare<T: Ord>(&self, lhs: T, rhs: T) -> ImmTy<'tcx, M::Provenance> {
         let res = Ord::cmp(&lhs, &rhs);
@@ -503,5 +516,28 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 bug!("Unexpected unary op argument {val:?}")
             }
         }
+    }
+
+    pub fn atomic_rmw_op(
+        &self,
+        op: AtomicRmwOp,
+        left: &ImmTy<'tcx, M::Provenance>,
+        right: &ImmTy<'tcx, M::Provenance>,
+    ) -> InterpResult<'tcx, ImmTy<'tcx, M::Provenance>> {
+        interp_ok(match op {
+            AtomicRmwOp::MirOp { op, neg } => {
+                let val = self.binary_op(op, &left, right)?;
+                if neg { self.unary_op(mir::UnOp::Not, &val)? } else { val }
+            }
+            AtomicRmwOp::Max => {
+                let lt = self.binary_op(mir::BinOp::Lt, &left, right)?.to_scalar().to_bool()?;
+                if lt { right } else { &left }.clone()
+            }
+            AtomicRmwOp::Min => {
+                let lt = self.binary_op(mir::BinOp::Lt, &left, right)?.to_scalar().to_bool()?;
+                if lt { &left } else { right }.clone()
+            }
+            AtomicRmwOp::Swap => right.clone(),
+        })
     }
 }
