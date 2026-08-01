@@ -1076,7 +1076,7 @@ pub(super) fn const_conditions<'tcx>(
         },
         // While associated types are not really const, we do allow them to have `[const]`
         // bounds and where clauses. `const_conditions` is responsible for gathering
-        // these up so we can check them in `compare_type_predicate_entailment`, and
+        // these up so we can check them in `compare_type_clause_entailment`, and
         // in `HostEffect` goal computation.
         Node::TraitItem(item) => match item.kind {
             hir::TraitItemKind::Fn(_, _) | hir::TraitItemKind::Type(_, _) => {
