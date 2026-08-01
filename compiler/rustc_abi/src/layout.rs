@@ -1,4 +1,5 @@
 use std::fmt::{self, Write};
+use std::num::NonZero;
 use std::ops::Deref;
 use std::range::{RangeFrom, RangeInclusive, RangeToInclusive};
 use std::{cmp, iter};
@@ -9,8 +10,8 @@ use rustc_index::bit_set::BitMatrix;
 use tracing::{debug, trace};
 
 use crate::{
-    AbiAlign, Align, BackendRepr, FieldsShape, HasDataLayout, IndexSlice, IndexVec, Integer,
-    LayoutData, Niche, NonZeroUsize, NumScalableVectors, Primitive, ReprOptions, Scalar, Size,
+    AbiAlign, Align, BackendLaneCount, BackendRepr, FieldsShape, HasDataLayout, IndexSlice,
+    IndexVec, Integer, LayoutData, Niche, NumScalableVectors, Primitive, ReprOptions, Scalar, Size,
     StructKind, TagEncoding, TargetDataLayout, VariantLayout, Variants, WrappingRange,
 };
 
@@ -127,7 +128,7 @@ pub enum LayoutCalculatorError<F> {
     ZeroLengthSimdType,
 
     /// The length of an SIMD type exceeds the maximum number of lanes
-    OversizedSimdType { max_lanes: u64 },
+    OversizedSimdType { max_lanes: usize },
 
     /// An element type of an SIMD type isn't a primitive
     NonPrimitiveSimdType(F),
@@ -495,7 +496,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             },
         };
 
-        let Some(union_field_count) = NonZeroUsize::new(only_variant.len()) else {
+        let Some(union_field_count) = NonZero::new(only_variant.len()) else {
             return Err(LayoutCalculatorError::EmptyUnion);
         };
 
@@ -1476,19 +1477,17 @@ where
     F: AsRef<LayoutData<FieldIdx, VariantIdx>> + fmt::Debug,
 {
     let elt = element.as_ref();
-    if count == 0 {
-        return Err(LayoutCalculatorError::ZeroLengthSimdType);
-    } else if count > crate::MAX_SIMD_LANES {
-        return Err(LayoutCalculatorError::OversizedSimdType { max_lanes: crate::MAX_SIMD_LANES });
-    }
+    let count = BackendLaneCount::new(count)?;
 
     let BackendRepr::Scalar(element) = elt.backend_repr else {
         return Err(LayoutCalculatorError::NonPrimitiveSimdType(element));
     };
 
     // Compute the size and alignment of the vector
-    let size =
-        elt.size.checked_mul(count, dl).ok_or_else(|| LayoutCalculatorError::SizeOverflow)?;
+    let size = elt
+        .size
+        .checked_mul(count.as_u64(), dl)
+        .ok_or_else(|| LayoutCalculatorError::SizeOverflow)?;
     let (repr, size, align) = match kind {
         SimdVectorKind::Scalable(number_of_vectors) => (
             BackendRepr::SimdScalableVector { element, count, number_of_vectors },
@@ -1521,6 +1520,6 @@ where
         align: AbiAlign::new(align),
         max_repr_align: None,
         unadjusted_abi_align: elt.align.abi,
-        randomization_seed: elt.randomization_seed.wrapping_add(Hash64::new(count)),
+        randomization_seed: elt.randomization_seed.wrapping_add(Hash64::new(count.as_u64())),
     })
 }
