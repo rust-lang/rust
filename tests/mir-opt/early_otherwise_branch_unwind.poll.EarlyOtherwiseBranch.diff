@@ -69,12 +69,12 @@
           goto -> bb15;
       }
   
-      bb9 (cleanup): {
-          resume;
+      bb9: {
+          return;
       }
   
-      bb10: {
-          return;
+      bb10 (cleanup): {
+          resume;
       }
   
       bb11: {
@@ -83,7 +83,7 @@
   
       bb12: {
           _7 = const false;
-          goto -> bb10;
+          goto -> bb9;
       }
   
       bb13: {
@@ -96,15 +96,15 @@
       }
   
       bb15: {
-          switchInt(copy _4) -> [0: bb11, otherwise: bb10];
+          switchInt(copy _4) -> [0: bb11, otherwise: bb9];
       }
   
       bb16 (cleanup): {
-          goto -> bb9;
+          goto -> bb10;
       }
   
       bb17 (cleanup): {
-          switchInt(copy _4) -> [0: bb16, otherwise: bb9];
+          switchInt(copy _4) -> [0: bb16, otherwise: bb10];
       }
   }
   
