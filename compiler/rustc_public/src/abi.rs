@@ -8,7 +8,7 @@ use crate::compiler_interface::with;
 use crate::mir::FieldIdx;
 use crate::target::{MachineInfo, MachineSize as Size};
 use crate::ty::{Align, Ty, VariantIdx, index_impl};
-use crate::{Error, Opaque, ThreadLocalIndex, error};
+use crate::{Error, ThreadLocalIndex, error};
 
 /// A function ABI definition.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
@@ -19,9 +19,11 @@ pub struct FnAbi {
     /// The expected return type.
     pub ret: ArgAbi,
 
-    /// The count of non-variadic arguments.
+    /// The count of declared arguments (excluding variadic and implicit arguments).
     ///
-    /// Should only be different from `args.len()` when a function is a C variadic function.
+    /// This may be less than `args.len()` for C variadic functions (which have
+    /// additional variadic arguments) or `#[track_caller]` functions (which have
+    /// an implicit caller location argument).
     pub fixed_count: u32,
 
     /// The ABI convention.
@@ -40,24 +42,166 @@ pub struct ArgAbi {
 }
 
 /// How a function argument should be passed in to the target function.
+///
+/// The pass mode is determined by the platform's calling convention and the
+/// argument's type layout. The same Rust type may use different pass modes
+/// on different targets or when register availability changes.
+///
+/// Note: for the Rust ABI, pass modes may not correspond to any valid C
+/// calling convention (e.g., using more return registers than the platform
+/// C ABI allows). Further processing may be needed depending on the target.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
 pub enum PassMode {
     /// Ignore the argument.
     ///
-    /// The argument is either uninhabited or a ZST.
+    /// The argument is either uninhabited or a ZST (zero-sized type).
     Ignore,
-    /// Pass the argument directly.
+    /// Pass the argument directly in a single register.
     ///
-    /// The argument has a layout abi of `Scalar` or `Vector`.
-    Direct(Opaque),
-    /// Pass a pair's elements directly in two arguments.
+    /// Used for primitive types and small values that fit in one register.
+    Direct(ArgAttributes),
+    /// Pass the argument directly in two registers.
     ///
-    /// The argument has a layout abi of `ScalarPair`.
-    Pair(Opaque, Opaque),
-    /// Pass the argument after casting it.
-    Cast { pad_i32: bool, cast: Opaque },
-    /// Pass the argument indirectly via a hidden pointer.
-    Indirect { attrs: Opaque, meta_attrs: Opaque, on_stack: bool },
+    /// Used for types represented as a pair of values (e.g., a fat pointer
+    /// consisting of a data pointer and a length/vtable pointer).
+    Pair(ArgAttributes, ArgAttributes),
+    /// Pass the argument after reinterpreting it as a different register layout.
+    ///
+    /// Used for aggregates (structs, tuples) that the platform ABI passes in
+    /// registers. The argument's bytes are reinterpreted as the register
+    /// sequence described by [`CastTarget`]. See its documentation for details.
+    Cast { pad_i32: bool, cast: CastTarget },
+    /// Pass the argument indirectly via a pointer.
+    ///
+    /// The caller places the value in memory and passes a pointer to it.
+    /// When `on_stack` is true, the value is placed at a fixed stack offset
+    /// rather than passed as a regular pointer argument.
+    Indirect {
+        attrs: ArgAttributes,
+        /// Attributes for the metadata pointer (vtable or length) of unsized arguments.
+        /// Only present for unsized types (e.g., `dyn Trait`, `[T]`).
+        meta_attrs: Option<ArgAttributes>,
+        on_stack: bool,
+    },
+}
+
+/// Attributes of a function argument that affect its ABI.
+///
+/// Not all internal compiler attributes are exposed here, as some are
+/// LLVM-specific optimization hints. The internal representation is kept
+/// private so it can be expanded in the future.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
+pub struct ArgAttributes {
+    pub(crate) arg_ext: ArgExtension,
+    pub(crate) pointee_size: Size,
+    pub(crate) pointee_align: Option<Align>,
+}
+
+impl ArgAttributes {
+    /// Return how this argument should be extended when passed in a register.
+    ///
+    /// Relevant for integer arguments smaller than the register width.
+    pub fn arg_extension(&self) -> ArgExtension {
+        self.arg_ext
+    }
+
+    /// Return the minimum alignment of the pointee, if applicable.
+    ///
+    /// This is relevant for `PassMode::Indirect` arguments where the pointer
+    /// must satisfy a particular alignment.
+    pub fn pointee_align(&self) -> Option<Align> {
+        self.pointee_align
+    }
+
+    /// Return the minimum dereferenceable size of the pointee, if known.
+    pub fn pointee_size(&self) -> Size {
+        self.pointee_size
+    }
+}
+
+/// How a small integer argument should be extended to fill a register.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize)]
+pub enum ArgExtension {
+    /// No extension required.
+    None,
+    /// Zero-extend to the register width.
+    Zext,
+    /// Sign-extend to the register width.
+    Sext,
+}
+
+/// Describes the ABI type that an argument is transmuted to for `PassMode::Cast`.
+///
+/// When an argument is "cast," its raw bytes are reinterpreted as a sequence of
+/// register-sized values for passing. This struct describes that target layout:
+///
+/// 1. The `prefix` registers are laid out first, like fields of a `repr(C)` struct
+///    (i.e., with alignment padding between them).
+/// 2. After the prefix, `rest.unit` is repeated enough times to cover `rest.total`,
+///    starting at `rest_offset` (or immediately after the prefix if `None`).
+///
+/// For example, on x86_64 a `struct { i32, f64 }` might be cast to a prefix of
+/// `[Reg::i64()]` followed by a rest of `Reg::f64()` — placing the first 8 bytes
+/// in an integer register and the second 8 bytes in a floating-point register.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
+pub struct CastTarget {
+    /// Leading registers of potentially different types, laid out with `repr(C)` padding.
+    pub prefix: Vec<Reg>,
+    /// The byte offset where `rest` begins, if explicitly set.
+    /// When `None`, `rest` starts immediately after the prefix.
+    pub rest_offset: Option<Size>,
+    /// The repeated trailing register type filling the remainder of the value.
+    pub rest: Uniform,
+}
+
+impl CastTarget {
+    /// Return the total size of the ABI type this argument is cast to.
+    pub fn size(&self) -> Size {
+        let prefix_size: usize = self.prefix.iter().map(|r| r.size.bits()).sum();
+        Size::from_bits(prefix_size + self.rest.total.bits())
+    }
+}
+
+/// A sequence of registers of the same kind used to pass an argument.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
+pub struct Uniform {
+    /// The type of register used.
+    pub unit: Reg,
+    /// The total size of the argument, which can be:
+    /// * equal to `unit.size` (one scalar/vector),
+    /// * a multiple of `unit.size` (an array of scalar/vectors),
+    /// * if `unit.kind` is `Integer`, the last element can be shorter, i.e., `{ i64, i64, i32 }`
+    ///   for 64-bit integers with a total size of 20 bytes. When the argument is actually passed,
+    ///   this size will be rounded up to the nearest multiple of `unit.size`.
+    pub total: Size,
+    /// Whether the argument is consecutive: either all values are passed in registers, or all on
+    /// the stack with no additional padding between elements.
+    pub is_consecutive: bool,
+}
+
+impl Uniform {
+    /// Return the number of registers needed to cover `total`.
+    pub fn reg_count(&self) -> usize {
+        if self.unit.size.bits() == 0 {
+            return 0;
+        }
+        (self.total.bits() + self.unit.size.bits() - 1) / self.unit.size.bits()
+    }
+}
+
+/// A register type used in ABI calling conventions.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
+pub struct Reg {
+    pub kind: RegKind,
+    pub size: Size,
+}
+
+/// The kind of a register used in calling conventions.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
+pub enum RegKind {
+    Integer,
+    Float,
+    Vector,
 }
 
 /// The layout of a type, alongside the type itself.
@@ -67,7 +211,7 @@ pub struct TyAndLayout {
     pub layout: Layout,
 }
 
-/// The layout of a type in memory.
+/// The layout of a type, including its size, alignment, field offsets, and backend representation.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
 pub struct LayoutShape {
     /// The fields location within the layout
@@ -81,8 +225,8 @@ pub struct LayoutShape {
     /// must be taken into account.
     pub variants: VariantsShape,
 
-    /// The `abi` defines how this data is passed between functions.
-    pub abi: ValueAbi,
+    /// A hint for how backends should represent this type: as a scalar, vector, or aggregate.
+    pub value_repr: ValueRepr,
 
     /// The ABI mandated alignment in bytes.
     pub abi_align: Align,
@@ -95,12 +239,12 @@ impl LayoutShape {
     /// Returns `true` if the layout corresponds to an unsized type.
     #[inline]
     pub fn is_unsized(&self) -> bool {
-        self.abi.is_unsized()
+        self.value_repr.is_unsized()
     }
 
     #[inline]
     pub fn is_sized(&self) -> bool {
-        !self.abi.is_unsized()
+        !self.value_repr.is_unsized()
     }
 
     /// Returns `true` if the type is sized and a 1-ZST (meaning it has size 0 and alignment 1).
@@ -119,7 +263,7 @@ impl Layout {
     }
 }
 
-/// Describes how the fields of a type are shaped in memory.
+/// Describes the number and position of fields within a type's layout.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
 pub enum FieldsShape {
     /// Scalar primitives and `!`, which never have fields.
@@ -232,49 +376,54 @@ pub enum TagEncoding {
     },
 }
 
-/// How many scalable vectors are in a `ValueAbi::ScalableVector`?
+/// The number of scalable vectors in a [`ValueRepr::ScalableVector`].
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
 pub struct NumScalableVectors(pub(crate) u8);
 
-/// Describes how values of the type are passed by target ABIs,
-/// in terms of categories of C types there are ABI rules for.
+/// A hint for how backends should represent values of this type.
+///
+/// Distinguishes between types representable as scalars, pairs of scalars,
+/// SIMD vectors, or aggregates.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize)]
-pub enum ValueAbi {
+pub enum ValueRepr {
     Scalar(Scalar),
     ScalarPair {
         a: Scalar,
         b: Scalar,
         b_offset: Size,
     },
+    /// A fixed-length SIMD vector.
     Vector {
         element: Scalar,
         count: u64,
     },
+    /// A scalable SIMD vector (e.g., ARM SVE).
     ScalableVector {
         element: Scalar,
         count: u64,
         number_of_vectors: NumScalableVectors,
     },
+    /// The type is not representable as a scalar or vector (e.g., aggregates, unsized types).
     Aggregate {
         /// If true, the size is exact, otherwise it's only a lower bound.
         sized: bool,
     },
 }
 
-impl ValueAbi {
+impl ValueRepr {
     /// Returns `true` if the layout corresponds to an unsized type.
     pub fn is_unsized(&self) -> bool {
         match *self {
-            ValueAbi::Scalar(_)
-            | ValueAbi::ScalarPair { .. }
-            | ValueAbi::Vector { .. }
+            ValueRepr::Scalar(_)
+            | ValueRepr::ScalarPair { .. }
+            | ValueRepr::Vector { .. }
             // FIXME(rustc_scalable_vector): Scalable vectors are `Sized` while the
             // `sized_hierarchy` feature is not yet fully implemented. After `sized_hierarchy` is
             // fully implemented, scalable vectors will remain `Sized`, they just won't be
             // `const Sized` - whether `is_unsized` continues to return `false` at that point will
             // need to be revisited and will depend on what `is_unsized` is used for.
-            | ValueAbi::ScalableVector { .. } => false,
-            ValueAbi::Aggregate { sized } => !sized,
+            | ValueRepr::ScalableVector { .. } => false,
+            ValueRepr::Aggregate { sized } => !sized,
         }
     }
 }
@@ -291,9 +440,8 @@ pub enum Scalar {
     },
     Union {
         /// Unions never have niches, so there is no `valid_range`.
-        /// Even for unions, we need to use the correct registers for the kind of
-        /// values inside the union, so we keep the `Primitive` type around.
-        /// It is also used to compute the size of the scalar.
+        /// The `Primitive` type is kept to inform the backend representation
+        /// and to compute the size of the scalar.
         value: Primitive,
     },
 }
@@ -309,23 +457,18 @@ impl Scalar {
     }
 }
 
-/// Fundamental unit of memory access and layout.
+/// A primitive scalar type: integer, float, or pointer.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Serialize)]
 pub enum Primitive {
-    /// The `bool` is the signedness of the `Integer` type.
+    /// An integer type with a given length and signedness.
     ///
-    /// One would think we would not care about such details this low down,
-    /// but some ABIs are described in terms of C types and ISAs where the
-    /// integer arithmetic is done on {sign,zero}-extended registers, e.g.
-    /// a negative integer passed by zero-extension will appear positive in
-    /// the callee, and most operations on it will produce the wrong values.
-    Int {
-        length: IntegerLength,
-        signed: bool,
-    },
-    Float {
-        length: FloatLength,
-    },
+    /// Signedness matters because some calling conventions require small integers
+    /// to be sign-extended or zero-extended when passed, and using the wrong
+    /// extension produces incorrect values in the callee.
+    Int { length: IntegerLength, signed: bool },
+    /// A floating-point type with a given length.
+    Float { length: FloatLength },
+    /// A pointer in the given address space.
     Pointer(AddressSpace),
 }
 
