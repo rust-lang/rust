@@ -1,7 +1,7 @@
 use std::ffi::OsStr;
 use std::path::Path;
 
-use crate::utils::{run_command_with_output, walk_dir};
+use crate::utils::{run_command_with_output, run_tool_and_install_it_if_not_present, walk_dir};
 
 fn show_usage() {
     println!(
@@ -31,8 +31,9 @@ pub fn run() -> Result<(), String> {
     let cmd: &[&dyn AsRef<OsStr>] =
         if check { &[&"cargo", &"fmt", &"--check"] } else { &[&"cargo", &"fmt"] };
 
-    run_command_with_output(cmd, Some(Path::new(".")))?;
+    run_tool_and_install_it_if_not_present(cmd)?;
     run_command_with_output(cmd, Some(Path::new("build_system")))?;
+    run_command_with_output(cmd, Some(Path::new("build_system/asm-tester")))?;
 
     run_rustfmt_recursively("tests/run", check)
 }
