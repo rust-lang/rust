@@ -19,6 +19,9 @@
 #![doc(html_logo_url = 2)]
 //~^ ERROR
 //~| WARN
+#![doc(html_logo_url(dark = "https://example.com/logo-dark.png"))]
+//~^ ERROR
+//~| HELP
 #![doc(html_playground_url = 3)]
 //~^ ERROR
 //~| WARN

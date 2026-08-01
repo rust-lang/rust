@@ -575,6 +575,17 @@ pub struct CfgHideShow {
     pub values: FxIndexMap<Symbol, DocCfgHideShow>,
 }
 
+/// Logos used in the generated docs, with an optional distinct one for dark themes.
+///
+/// The light logo is always set; the dark one falls back to the light one when absent.
+#[derive(Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
+pub struct LogoUrls {
+    /// Light theme logo.
+    pub light: Symbol,
+    /// Dark and ayu themes logo; falls back to `light` when absent.
+    pub dark: Option<Symbol>,
+}
+
 #[derive(Clone, Debug, Default, StableHash, Decodable, PrintAttribute)]
 pub struct DocAttribute {
     pub first_span: Span,
@@ -601,7 +612,7 @@ pub struct DocAttribute {
 
     // valid on crate
     pub html_favicon_url: Option<(Symbol, Span)>,
-    pub html_logo_url: Option<(Symbol, Span)>,
+    pub html_logo_url: Option<(LogoUrls, Span)>,
     pub html_playground_url: Option<(Symbol, Span)>,
     pub html_root_url: Option<(Symbol, Span)>,
     pub html_no_source: Option<Span>,

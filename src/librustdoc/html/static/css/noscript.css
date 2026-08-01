@@ -144,6 +144,8 @@ nav.sub {
 }
 /* End theme: light */
 
+/* No-JS fallback: show the dark logo when the system prefers a dark theme. */
+
 @media (prefers-color-scheme: dark) {
 	/* Begin theme: dark */
 	:root, :root:not([data-theme]) {
@@ -252,6 +254,17 @@ nav.sub {
 		--scrape-example-code-wrapper-background-end: rgba(53, 53, 53, 0);
 		--sidebar-resizer-hover: hsl(207, 30%, 54%);
 		--sidebar-resizer-active: hsl(207, 90%, 54%);
+	}
+
+	/* Only swap the logo for crates that provide a dark one. */
+	:root .logo-container.has-dark-logo .logo-light,
+	:root:not([data-theme]) .logo-container.has-dark-logo .logo-light {
+		display: none;
+	}
+
+	:root .logo-container.has-dark-logo .logo-dark,
+	:root:not([data-theme]) .logo-container.has-dark-logo .logo-dark {
+		display: inline;
 	}
 /* End theme: dark */
 }

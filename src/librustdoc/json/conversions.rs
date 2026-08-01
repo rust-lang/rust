@@ -1221,7 +1221,24 @@ fn maybe_from_hir_attr(attr: &hir::Attribute, item_id: ItemId, tcx: TyCtxt<'_>) 
             toggle_attr(&mut ret, "notable_trait", notable_trait);
             toggle_attr(&mut ret, "search_unbox", search_unbox);
             name_value_attr(&mut ret, "html_favicon_url", html_favicon_url);
-            name_value_attr(&mut ret, "html_logo_url", html_logo_url);
+            if let Some((urls, _)) = html_logo_url {
+                // `{:?}` escapes the URL and adds surrounding quotes.
+                match &urls.dark {
+                    None => {
+                        ret.push(Attribute::Other(format!(
+                            "#[doc(html_logo_url = {:?})]",
+                            urls.light.as_str()
+                        )));
+                    }
+                    Some(dark) => {
+                        ret.push(Attribute::Other(format!(
+                            "#[doc(html_logo_url(light = {:?}, dark = {:?}))]",
+                            urls.light.as_str(),
+                            dark.as_str()
+                        )));
+                    }
+                }
+            }
             name_value_attr(&mut ret, "html_playground_url", html_playground_url);
             name_value_attr(&mut ret, "html_root_url", html_root_url);
             toggle_attr(&mut ret, "html_no_source", html_no_source);

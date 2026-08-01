@@ -82,11 +82,14 @@
         {% if page.css_class != "src" %}
         <div class="sidebar-crate">
             {% if !layout.logo.is_empty() || page.rust_logo %}
-            <a class="logo-container" href="{{page.root_path|safe}}{{display_krate_with_trailing_slash|safe}}index.html">
+            <a class="{% if !layout.logo_dark.is_empty() %}logo-container has-dark-logo{% else %}logo-container{% endif %}" href="{{page.root_path|safe}}{{display_krate_with_trailing_slash|safe}}index.html">
                 {% if page.rust_logo %}
                     <img class="rust-logo" src="{{static_root_path|safe}}{{files.rust_logo_svg}}" alt="logo">
                 {% else if !layout.logo.is_empty() %}
-                    <img src="{{layout.logo}}" alt="logo">
+                    <img class="logo-light" src="{{layout.logo}}" alt="logo">
+                    {% if !layout.logo_dark.is_empty() %}
+                    <img class="logo-dark" src="{{layout.logo_dark}}" alt="logo">
+                    {% endif %}
                 {% endif %}
             </a>
             {% endif %}

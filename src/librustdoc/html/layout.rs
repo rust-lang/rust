@@ -12,7 +12,10 @@ use crate::html::render::{StylePath, ensure_trailing_slash};
 mod tests;
 
 pub(crate) struct Layout {
+    /// Light theme logo.
     pub(crate) logo: String,
+    /// Dark and ayu themes logo; falls back to `logo` when empty.
+    pub(crate) logo_dark: String,
     pub(crate) favicon: String,
     pub(crate) external_html: ExternalHtml,
     pub(crate) default_settings: FxIndexMap<String, String>,
