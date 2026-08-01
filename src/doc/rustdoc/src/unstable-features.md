@@ -228,6 +228,8 @@ rd_("fcrate1fcrate2")
 To delay shared-data merging until the end of a build, so that you only have to perform O(crates)
 work, use `--write-doc-meta-dir` on every crate, and the last will use `--read-doc-meta-dir`.
 
+You can use separate metadata directories:
+
 ```console
 $ rustdoc +nightly crate1.rs --write-doc-meta-dir=crate1.d -Zunstable-options
 $ cat doc/search.index/crateNames/*
@@ -236,6 +238,20 @@ $ rustdoc +nightly crate2.rs --write-doc-meta-dir=crate2.d -Zunstable-options
 $ cat doc/search.index/crateNames/*
 cat: 'doc/search.index/crateNames/*': No such file or directory
 $ rustdoc +nightly --read-doc-meta-dir=crate1.d --read-doc-meta-dir=crate2.d -Zunstable-options
+$ cat doc/search.index/crateNames/*
+rd_("fcrate1fcrate2")
+```
+
+Or you can use a single metadata directory for all of the crates:
+
+```console
+$ rustdoc +nightly crate1.rs --write-doc-meta-dir=meta.d -Zunstable-options
+$ cat doc/search.index/crateNames/*
+cat: 'doc/search.index/crateNames/*': No such file or directory
+$ rustdoc +nightly crate2.rs --write-doc-meta-dir=meta.d -Zunstable-options
+$ cat doc/search.index/crateNames/*
+cat: 'doc/search.index/crateNames/*': No such file or directory
+$ rustdoc +nightly --read-doc-meta-dir=meta.d -Zunstable-options
 $ cat doc/search.index/crateNames/*
 rd_("fcrate1fcrate2")
 ```
