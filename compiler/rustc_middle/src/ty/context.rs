@@ -161,6 +161,9 @@ pub struct CtxtInterners<'tcx> {
     valtree: InternedSet<'tcx, ty::ValTreeKind<TyCtxt<'tcx>>>,
     patterns: InternedSet<'tcx, List<ty::Pattern<'tcx>>>,
     outlives: InternedSet<'tcx, List<ty::ArgOutlivesPredicate<'tcx>>>,
+
+    // for fast paths
+    deref_place_elem: &'tcx List<PlaceElem<'tcx>>,
 }
 
 impl<'tcx> CtxtInterners<'tcx> {
@@ -168,6 +171,14 @@ impl<'tcx> CtxtInterners<'tcx> {
         // Default interner size - this value has been chosen empirically, and may need to be
         // adjusted as the compiler evolves.
         const N: usize = 2048;
+
+        let place_elems: InternedSet<'tcx, List<PlaceElem<'tcx>>> = InternedSet::with_capacity(N * 2);
+        let v = [PlaceElem::Deref].as_slice();
+
+        let deref_place_elem = place_elems.intern_ref(v, || {
+            InternedInSet(List::from_arena(&*arena, (), v))
+        }).0;
+
         CtxtInterners {
             arena,
             // The factors have been chosen by @FractalFir based on observed interner sizes, and
@@ -184,7 +195,7 @@ impl<'tcx> CtxtInterners<'tcx> {
             predicate: InternedSet::with_capacity(N),
             clauses: InternedSet::with_capacity(N),
             projs: InternedSet::with_capacity(N * 4),
-            place_elems: InternedSet::with_capacity(N * 2),
+            place_elems,
             const_: InternedSet::with_capacity(N * 2),
             pat: InternedSet::with_capacity(N),
             const_allocation: InternedSet::with_capacity(N),
@@ -199,6 +210,8 @@ impl<'tcx> CtxtInterners<'tcx> {
             valtree: InternedSet::with_capacity(N),
             patterns: InternedSet::with_capacity(N),
             outlives: InternedSet::with_capacity(N),
+
+            deref_place_elem
         }
     }
 
@@ -2015,7 +2028,7 @@ slice_interners!(
     canonical_var_kinds: pub mk_canonical_var_kinds(CanonicalVarKind<'tcx>),
     poly_existential_predicates: intern_poly_existential_predicates(PolyExistentialPredicate<'tcx>),
     projs: pub mk_projs(ProjectionKind),
-    place_elems: pub mk_place_elems(PlaceElem<'tcx>),
+    place_elems: pub mk_place_elems_inner(PlaceElem<'tcx>),
     bound_variable_kinds: pub mk_bound_variable_kinds(ty::BoundVariableKind<'tcx>),
     fields: pub mk_fields(FieldIdx),
     local_def_ids: intern_local_def_ids(LocalDefId),
@@ -2026,6 +2039,13 @@ slice_interners!(
 );
 
 impl<'tcx> TyCtxt<'tcx> {
+    pub fn mk_place_elems(self, v: &[PlaceElem<'tcx>]) -> &'tcx List<PlaceElem<'tcx>> {
+        if let &[PlaceElem::Deref] = v {
+            return self.interners.deref_place_elem
+        }
+        self.mk_place_elems_inner(v)
+    }
+
     /// Given a `fn` sig, returns an equivalent `unsafe fn` type;
     /// that is, a `fn` type that is equivalent in every way for being
     /// unsafe.
