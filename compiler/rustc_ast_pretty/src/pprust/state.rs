@@ -10,14 +10,13 @@ use std::borrow::Cow;
 use std::sync::Arc;
 
 use rustc_ast::attr::AttrIdGenerator;
-use rustc_ast::token::{self, CommentKind, Delimiter, DocFragmentKind, Token, TokenKind};
 use rustc_ast::tokenstream::{Spacing, TokenStream, TokenTree};
 use rustc_ast::util::classify;
 use rustc_ast::util::comments::{Comment, CommentStyle};
 use rustc_ast::{
     self as ast, AttrArgs, AttrKind, BindingMode, BlockCheckMode, ByRef, DelimArgs, GenericArg,
     GenericBound, InlineAsmOperand, InlineAsmOptions, InlineAsmRegOrRegClass,
-    InlineAsmTemplatePiece, PatKind, RangeEnd, RangeSyntax, SelfKind, Term, attr,
+    InlineAsmTemplatePiece, PatKind, RangeEnd, RangeSyntax, SelfKind, Term, attr, token as tk,
 };
 use rustc_span::edition::Edition;
 use rustc_span::source_map::SourceMap;
@@ -327,18 +326,14 @@ fn print_crate_inner<'a>(
 /// E.g. `ident` + `where` would merge into `identwhere`.
 fn idents_would_merge(tt1: &TokenTree, tt2: &TokenTree) -> bool {
     fn is_ident_like(tt: &TokenTree) -> bool {
-        matches!(
-            tt,
-            TokenTree::Token(Token { kind: token::Ident(..) | token::NtIdent(..), .. }, _,)
-        )
+        matches!(tt, TokenTree::Token(tk::Token { kind: tk::Ident(..) | tk::NtIdent(..), .. }, _,))
     }
     is_ident_like(tt1) && is_ident_like(tt2)
 }
 
 fn space_between(tt1: &TokenTree, tt2: &TokenTree) -> bool {
-    use Delimiter::*;
     use TokenTree::{Delimited as Del, Token as Tok};
-    use token::*;
+    use tk::Delimiter::{Bracket, Parenthesis};
 
     fn is_punct(tt: &TokenTree) -> bool {
         matches!(tt, TokenTree::Token(tok, _) if tok.is_punct())
@@ -349,58 +344,64 @@ fn space_between(tt1: &TokenTree, tt2: &TokenTree) -> bool {
     // this match.
     match (tt1, tt2) {
         // No space after line doc comments.
-        (Tok(Token { kind: DocComment(CommentKind::Line, ..), .. }, _), _) => false,
+        (Tok(tk::Token { kind: tk::DocComment(tk::CommentKind::Line, ..), .. }, _), _) => false,
 
         // `.` + NON-PUNCT: `x.y`, `tup.0`
-        (Tok(Token { kind: Dot, .. }, _), tt2) if !is_punct(tt2) => false,
+        (Tok(tk::Token { kind: tk::Dot, .. }, _), tt2) if !is_punct(tt2) => false,
 
         // `$` + IDENT: `$e`
-        (Tok(Token { kind: Dollar, .. }, _), Tok(Token { kind: Ident(..), .. }, _)) => false,
+        (
+            Tok(tk::Token { kind: tk::Dollar, .. }, _),
+            Tok(tk::Token { kind: tk::Ident(..), .. }, _),
+        ) => false,
 
         // NON-PUNCT + `,`: `foo,`
         // NON-PUNCT + `;`: `x = 3;`, `[T; 3]`
         // NON-PUNCT + `.`: `x.y`, `tup.0`
-        (tt1, Tok(Token { kind: Comma | Semi | Dot, .. }, _)) if !is_punct(tt1) => false,
+        (tt1, Tok(tk::Token { kind: tk::Comma | tk::Semi | tk::Dot, .. }, _)) if !is_punct(tt1) => {
+            false
+        }
 
         // IDENT + `!`: `println!()`, but `if !x { ... }` needs a space after the `if`
-        (Tok(Token { kind: Ident(sym, is_raw), span }, _), Tok(Token { kind: Bang, .. }, _))
-            if !Ident::new(*sym, *span).is_reserved() || matches!(is_raw, IdentIsRaw::Yes) =>
-        {
+        (
+            Tok(tk::Token { kind: tk::Ident(sym, is_raw), span }, _),
+            Tok(tk::Token { kind: tk::Bang, .. }, _),
+        ) if !Ident::new(*sym, *span).is_reserved() || matches!(is_raw, tk::IdentIsRaw::Yes) => {
             false
         }
 
         // IDENT|`fn`|`Self`|`pub` + `(`: `f(3)`, `fn(x: u8)`, `Self()`, `pub(crate)`,
         //      but `let (a, b) = (1, 2)` needs a space after the `let`
-        (Tok(Token { kind: Ident(sym, is_raw), span }, _), Del(_, _, Parenthesis, _))
+        (Tok(tk::Token { kind: tk::Ident(sym, is_raw), span }, _), Del(_, _, Parenthesis, _))
             if !Ident::new(*sym, *span).is_reserved()
                 || *sym == kw::Fn
                 || *sym == kw::SelfUpper
                 || *sym == kw::Pub
-                || matches!(is_raw, IdentIsRaw::Yes) =>
+                || matches!(is_raw, tk::IdentIsRaw::Yes) =>
         {
             false
         }
 
         // `#` + `[`: `#[attr]`
-        (Tok(Token { kind: Pound, .. }, _), Del(_, _, Bracket, _)) => false,
+        (Tok(tk::Token { kind: tk::Pound, .. }, _), Del(_, _, Bracket, _)) => false,
 
         _ => true,
     }
 }
 
 pub fn doc_comment_to_string(
-    fragment_kind: DocFragmentKind,
+    fragment_kind: tk::DocFragmentKind,
     attr_style: ast::AttrStyle,
     data: Symbol,
 ) -> String {
     match fragment_kind {
-        DocFragmentKind::Sugared(comment_kind) => match (comment_kind, attr_style) {
-            (CommentKind::Line, ast::AttrStyle::Outer) => format!("///{data}"),
-            (CommentKind::Line, ast::AttrStyle::Inner) => format!("//!{data}"),
-            (CommentKind::Block, ast::AttrStyle::Outer) => format!("/**{data}*/"),
-            (CommentKind::Block, ast::AttrStyle::Inner) => format!("/*!{data}*/"),
+        tk::DocFragmentKind::Sugared(comment_kind) => match (comment_kind, attr_style) {
+            (tk::CommentKind::Line, ast::AttrStyle::Outer) => format!("///{data}"),
+            (tk::CommentKind::Line, ast::AttrStyle::Inner) => format!("//!{data}"),
+            (tk::CommentKind::Block, ast::AttrStyle::Outer) => format!("/**{data}*/"),
+            (tk::CommentKind::Block, ast::AttrStyle::Inner) => format!("/*!{data}*/"),
         },
-        DocFragmentKind::Raw(_) => {
+        tk::DocFragmentKind::Raw(_) => {
             format!(
                 "#{}[doc = {:?}]",
                 if attr_style == ast::AttrStyle::Inner { "!" } else { "" },
@@ -410,24 +411,24 @@ pub fn doc_comment_to_string(
     }
 }
 
-fn literal_to_string(lit: token::Lit) -> String {
-    let token::Lit { kind, symbol, suffix } = lit;
+fn literal_to_string(lit: tk::Lit) -> String {
+    let tk::Lit { kind, symbol, suffix } = lit;
     let mut out = match kind {
-        token::Byte => format!("b'{symbol}'"),
-        token::Char => format!("'{symbol}'"),
-        token::Str => format!("\"{symbol}\""),
-        token::StrRaw(n) => {
+        tk::Byte => format!("b'{symbol}'"),
+        tk::Char => format!("'{symbol}'"),
+        tk::Str => format!("\"{symbol}\""),
+        tk::StrRaw(n) => {
             format!("r{delim}\"{string}\"{delim}", delim = "#".repeat(n as usize), string = symbol)
         }
-        token::ByteStr => format!("b\"{symbol}\""),
-        token::ByteStrRaw(n) => {
+        tk::ByteStr => format!("b\"{symbol}\""),
+        tk::ByteStrRaw(n) => {
             format!("br{delim}\"{string}\"{delim}", delim = "#".repeat(n as usize), string = symbol)
         }
-        token::CStr => format!("c\"{symbol}\""),
-        token::CStrRaw(n) => {
+        tk::CStr => format!("c\"{symbol}\""),
+        tk::CStrRaw(n) => {
             format!("cr{delim}\"{symbol}\"{delim}", delim = "#".repeat(n as usize))
         }
-        token::Integer | token::Float | token::Bool | token::Err(_) => symbol.to_string(),
+        tk::Integer | tk::Float | tk::Bool | tk::Err(_) => symbol.to_string(),
     };
 
     if let Some(suffix) = suffix {
@@ -688,7 +689,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             ast::AttrKind::Synthetic(..) => unreachable!(), // due to early return above
             ast::AttrKind::DocComment(comment_kind, data) => {
                 self.word(doc_comment_to_string(
-                    DocFragmentKind::Sugared(*comment_kind),
+                    tk::DocFragmentKind::Sugared(*comment_kind),
                     attr.style,
                     *data,
                 ));
@@ -751,21 +752,21 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                 // Emit hygiene annotations for identity-bearing tokens,
                 // matching how print_ident() and print_lifetime() call ann_post().
                 match token.kind {
-                    token::Ident(name, _) => {
+                    tk::Ident(name, _) => {
                         self.ann_post(Ident::new(name, token.span));
                     }
-                    token::NtIdent(ident, _) => {
+                    tk::NtIdent(ident, _) => {
                         self.ann_post(ident);
                     }
-                    token::Lifetime(name, _) => {
+                    tk::Lifetime(name, _) => {
                         self.ann_post(Ident::new(name, token.span));
                     }
-                    token::NtLifetime(ident, _) => {
+                    tk::NtLifetime(ident, _) => {
                         self.ann_post(ident);
                     }
                     _ => {}
                 }
-                if let token::DocComment(..) = token.kind {
+                if let tk::DocComment(..) = token.kind {
                     self.hardbreak()
                 }
                 *spacing
@@ -807,7 +808,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     // `,` is better printed as `x,` than `x ,`. (Even if the original source
     // code was `x ,`.)
     //
-    // Finally, we must be careful about changing the output. Token pretty
+    // Finally, we must be careful about changing the output. tk::Token pretty
     // printing is used by `stringify!` and `impl Display for
     // proc_macro::TokenStream`, and some programs rely on the output having a
     // particular form, even though they shouldn't. In particular, some proc
@@ -839,13 +840,13 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         header: Option<MacHeader<'_>>,
         has_bang: bool,
         ident: Option<Ident>,
-        delim: Delimiter,
+        delim: tk::Delimiter,
         open_spacing: Option<Spacing>,
         tts: &TokenStream,
         convert_dollar_crate: bool,
         span: Span,
     ) {
-        let cb = (delim == Delimiter::Brace).then(|| self.cbox(INDENT_UNIT));
+        let cb = (delim == tk::Delimiter::Brace).then(|| self.cbox(INDENT_UNIT));
         match header {
             Some(MacHeader::Path(path)) => self.print_path(path, false, 0),
             Some(MacHeader::Keyword(kw)) => self.word(kw),
@@ -859,7 +860,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             self.print_ident(ident);
         }
         match delim {
-            Delimiter::Brace => {
+            tk::Delimiter::Brace => {
                 if header.is_some() || has_bang || ident.is_some() {
                     self.nbsp();
                 }
@@ -1004,105 +1005,109 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
     }
 
     /// Print the token kind precisely, without converting `$crate` into its respective crate name.
-    fn token_kind_to_string(&self, tok: &TokenKind) -> Cow<'static, str> {
+    fn token_kind_to_string(&self, tok: &tk::TokenKind) -> Cow<'static, str> {
         self.token_kind_to_string_ext(tok, None)
     }
 
     fn token_kind_to_string_ext(
         &self,
-        tok: &TokenKind,
+        tok: &tk::TokenKind,
         convert_dollar_crate: Option<Span>,
     ) -> Cow<'static, str> {
         match *tok {
-            token::Eq => "=".into(),
-            token::Lt => "<".into(),
-            token::Le => "<=".into(),
-            token::EqEq => "==".into(),
-            token::Ne => "!=".into(),
-            token::Ge => ">=".into(),
-            token::Gt => ">".into(),
-            token::Bang => "!".into(),
-            token::Tilde => "~".into(),
-            token::OrOr => "||".into(),
-            token::AndAnd => "&&".into(),
-            token::Plus => "+".into(),
-            token::Minus => "-".into(),
-            token::Star => "*".into(),
-            token::Slash => "/".into(),
-            token::Percent => "%".into(),
-            token::Caret => "^".into(),
-            token::And => "&".into(),
-            token::Or => "|".into(),
-            token::Shl => "<<".into(),
-            token::Shr => ">>".into(),
-            token::PlusEq => "+=".into(),
-            token::MinusEq => "-=".into(),
-            token::StarEq => "*=".into(),
-            token::SlashEq => "/=".into(),
-            token::PercentEq => "%=".into(),
-            token::CaretEq => "^=".into(),
-            token::AndEq => "&=".into(),
-            token::OrEq => "|=".into(),
-            token::ShlEq => "<<=".into(),
-            token::ShrEq => ">>=".into(),
+            tk::Eq => "=".into(),
+            tk::Lt => "<".into(),
+            tk::Le => "<=".into(),
+            tk::EqEq => "==".into(),
+            tk::Ne => "!=".into(),
+            tk::Ge => ">=".into(),
+            tk::Gt => ">".into(),
+            tk::Bang => "!".into(),
+            tk::Tilde => "~".into(),
+            tk::OrOr => "||".into(),
+            tk::AndAnd => "&&".into(),
+            tk::Plus => "+".into(),
+            tk::Minus => "-".into(),
+            tk::Star => "*".into(),
+            tk::Slash => "/".into(),
+            tk::Percent => "%".into(),
+            tk::Caret => "^".into(),
+            tk::And => "&".into(),
+            tk::Or => "|".into(),
+            tk::Shl => "<<".into(),
+            tk::Shr => ">>".into(),
+            tk::PlusEq => "+=".into(),
+            tk::MinusEq => "-=".into(),
+            tk::StarEq => "*=".into(),
+            tk::SlashEq => "/=".into(),
+            tk::PercentEq => "%=".into(),
+            tk::CaretEq => "^=".into(),
+            tk::AndEq => "&=".into(),
+            tk::OrEq => "|=".into(),
+            tk::ShlEq => "<<=".into(),
+            tk::ShrEq => ">>=".into(),
 
             /* Structural symbols */
-            token::At => "@".into(),
-            token::Dot => ".".into(),
-            token::DotDot => "..".into(),
-            token::DotDotDot => "...".into(),
-            token::DotDotEq => "..=".into(),
-            token::Comma => ",".into(),
-            token::Semi => ";".into(),
-            token::Colon => ":".into(),
-            token::PathSep => "::".into(),
-            token::RArrow => "->".into(),
-            token::LArrow => "<-".into(),
-            token::FatArrow => "=>".into(),
-            token::OpenParen => "(".into(),
-            token::CloseParen => ")".into(),
-            token::OpenBracket => "[".into(),
-            token::CloseBracket => "]".into(),
-            token::OpenBrace => "{".into(),
-            token::CloseBrace => "}".into(),
-            token::OpenInvisible(_) | token::CloseInvisible(_) => "".into(),
-            token::Pound => "#".into(),
-            token::Dollar => "$".into(),
-            token::Question => "?".into(),
-            token::SingleQuote => "'".into(),
+            tk::At => "@".into(),
+            tk::Dot => ".".into(),
+            tk::DotDot => "..".into(),
+            tk::DotDotDot => "...".into(),
+            tk::DotDotEq => "..=".into(),
+            tk::Comma => ",".into(),
+            tk::Semi => ";".into(),
+            tk::Colon => ":".into(),
+            tk::PathSep => "::".into(),
+            tk::RArrow => "->".into(),
+            tk::LArrow => "<-".into(),
+            tk::FatArrow => "=>".into(),
+            tk::OpenParen => "(".into(),
+            tk::CloseParen => ")".into(),
+            tk::OpenBracket => "[".into(),
+            tk::CloseBracket => "]".into(),
+            tk::OpenBrace => "{".into(),
+            tk::CloseBrace => "}".into(),
+            tk::OpenInvisible(_) | tk::CloseInvisible(_) => "".into(),
+            tk::Pound => "#".into(),
+            tk::Dollar => "$".into(),
+            tk::Question => "?".into(),
+            tk::SingleQuote => "'".into(),
 
             /* Literals */
-            token::Literal(lit) => literal_to_string(lit).into(),
+            tk::Literal(lit) => literal_to_string(lit).into(),
 
             /* Name components */
-            token::Ident(name, is_raw) => {
+            tk::Ident(name, is_raw) => {
                 IdentPrinter::new(name, is_raw.to_print_mode_ident(), convert_dollar_crate)
                     .to_string()
                     .into()
             }
-            token::NtIdent(ident, is_raw) => {
+            tk::NtIdent(ident, is_raw) => {
                 IdentPrinter::for_ast_ident(ident, is_raw.to_print_mode_ident()).to_string().into()
             }
 
-            token::Lifetime(name, is_raw) | token::NtLifetime(Ident { name, .. }, is_raw) => {
+            tk::Lifetime(name, is_raw) | tk::NtLifetime(Ident { name, .. }, is_raw) => {
                 IdentPrinter::new(name, is_raw.to_print_mode_lifetime(), None).to_string().into()
             }
 
             /* Other */
-            token::DocComment(comment_kind, attr_style, data) => {
-                doc_comment_to_string(DocFragmentKind::Sugared(comment_kind), attr_style, data)
+            tk::DocComment(comment_kind, attr_style, data) => {
+                doc_comment_to_string(tk::DocFragmentKind::Sugared(comment_kind), attr_style, data)
                     .into()
             }
-            token::Eof => "<eof>".into(),
+            tk::Eof => "<eof>".into(),
         }
     }
 
     /// Print the token precisely, without converting `$crate` into its respective crate name.
-    fn token_to_string(&self, token: &Token) -> Cow<'static, str> {
+    fn token_to_string(&self, token: &tk::Token) -> Cow<'static, str> {
         self.token_to_string_ext(token, false)
     }
 
-    fn token_to_string_ext(&self, token: &Token, convert_dollar_crate: bool) -> Cow<'static, str> {
+    fn token_to_string_ext(
+        &self,
+        token: &tk::Token,
+        convert_dollar_crate: bool,
+    ) -> Cow<'static, str> {
         let convert_dollar_crate = convert_dollar_crate.then_some(token.span);
         self.token_kind_to_string_ext(&token.kind, convert_dollar_crate)
     }
@@ -2333,7 +2338,7 @@ impl<'a> State<'a> {
         self.print_token_literal(lit.as_token_lit(), lit.span)
     }
 
-    fn print_token_literal(&mut self, token_lit: token::Lit, span: Span) {
+    fn print_token_literal(&mut self, token_lit: tk::Lit, span: Span) {
         self.maybe_print_comment(span.lo());
         self.word(token_lit.to_string())
     }
