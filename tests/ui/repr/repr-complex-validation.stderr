@@ -1,0 +1,28 @@
+error: `repr(complex)` type must have two fields
+  --> $DIR/repr-complex-validation.rs:7:1
+   |
+LL | struct Zero;
+   | ^^^^^^^^^^^
+
+error: `repr(complex)` type must have two fields
+  --> $DIR/repr-complex-validation.rs:10:1
+   |
+LL | struct One(f32);
+   | ^^^^^^^^^^
+
+error: `repr(complex)` type cannot have more than two fields
+  --> $DIR/repr-complex-validation.rs:13:1
+   |
+LL | struct Three(f32, f32, f32);
+   | ^^^^^^^^^^^^           --- excess field
+
+error: `repr(complex)` type must have two fields of the same type
+  --> $DIR/repr-complex-validation.rs:16:1
+   |
+LL | struct DifferentTypes(f32, f64);
+   | ^^^^^^^^^^^^^^^^^^^^^ ---  --- this field is of type `f64`
+   |                       |
+   |                       this field is of type `f32`
+
+error: aborting due to 4 previous errors
+

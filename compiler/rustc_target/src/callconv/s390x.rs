@@ -42,6 +42,11 @@ where
         return;
     }
 
+    if arg.layout.is_complex() {
+        arg.make_indirect();
+        return;
+    }
+
     let size = arg.layout.size;
     if size.bits() <= 128 {
         if let BackendRepr::SimdVector { .. } = arg.layout.backend_repr {

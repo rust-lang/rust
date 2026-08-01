@@ -155,6 +155,20 @@ fn parse_repr(cx: &mut AcceptContext<'_, '_>, param: &MetaItemParser) -> Option<
             cx.expect_no_args(param.args())?;
             Some(ReprSimd)
         }
+        Some(sym::complex) => {
+            if cx.features.is_some_and(|feats| !feats.repr_complex()) {
+                feature_err(
+                    &cx.sess(),
+                    sym::repr_complex,
+                    param.span(),
+                    "`repr(complex)` is experimental",
+                )
+                .emit();
+            }
+            cx.check_target("(complex)", &AllowedTargets::AllowList(&[Allow(Target::Struct)]));
+            cx.expect_no_args(param.args())?;
+            Some(ReprComplex)
+        }
         Some(sym::transparent) => {
             cx.check_target(
                 "(transparent)",
@@ -190,6 +204,7 @@ fn parse_repr(cx: &mut AcceptContext<'_, '_>, param: &MetaItemParser) -> Option<
                     sym::Rust,
                     sym::C,
                     sym::simd,
+                    sym::complex,
                     sym::transparent,
                     sym::i8,
                     sym::u8,

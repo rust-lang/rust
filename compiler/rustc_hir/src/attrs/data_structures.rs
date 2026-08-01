@@ -179,6 +179,7 @@ pub enum ReprAttr {
     ReprC,
     ReprPacked(Align),
     ReprSimd,
+    ReprComplex,
     ReprTransparent,
     ReprAlign(Align),
 }
