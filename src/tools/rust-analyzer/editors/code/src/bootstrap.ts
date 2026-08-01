@@ -176,14 +176,21 @@ async function fileExists(uri: vscode.Uri) {
     );
 }
 
+// Matches a `components` array that lists `rust-analyzer`. The elements are matched with
+// `[^\]]` rather than `.` so that the array may be spread over several lines, which is just
+// as valid TOML as keeping it on one. TOML strings come in both quote flavours.
+const RA_COMPONENT_RE = /components\s*=\s*\[[^\]]*["']rust-analyzer["'][^\]]*\]/;
+
+function declaresRaComponent(toolchainFileContents: string): boolean {
+    return RA_COMPONENT_RE.test(toolchainFileContents);
+}
+
 async function hasToolchainFileWithRaDeclared(uri: vscode.Uri): Promise<boolean> {
     try {
         const toolchainFileContents = new TextDecoder().decode(
             await vscode.workspace.fs.readFile(uri),
         );
-        return (
-            toolchainFileContents.match(/components\s*=\s*\[.*"rust-analyzer".*\]/g)?.length === 1
-        );
+        return declaresRaComponent(toolchainFileContents);
     } catch (_) {
         return false;
     }
@@ -296,6 +303,7 @@ async function patchelf(dest: vscode.Uri): Promise<void> {
 }
 
 export const _private = {
+    declaresRaComponent,
     earliestToolchainPath,
     orderFromPath,
 };
