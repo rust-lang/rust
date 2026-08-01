@@ -28,6 +28,11 @@ from .common import (
 
 HAS_FLOAT128: bool = getattr(lldb, "eBasicTypeFloat128", None) is not None
 
+
+class FromLLDB(Exception):
+    pass
+
+
 # We use the following lists to dynamically create the enums at run-time (they're used to print
 # more meaningful error messages when basic_type and type_class don't match).
 # It takes a few hundred microseconds at runtime to generate these lists, but it means we never have
