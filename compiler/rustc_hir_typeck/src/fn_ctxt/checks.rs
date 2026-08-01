@@ -239,10 +239,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // any remaining type variables are assigned to new, unrelated variables. This
         // is because the inference guidance here is only speculative.
         // FIXME(splat): do we need to splat arguments before this type inference?
-        let formal_output = self.resolve_vars_with_obligations(formal_output);
         let mut expected_input_tys: Option<Vec<_>> = expectation
             .only_has_type(self)
             .and_then(|expected_output| {
+                let formal_output = self.resolve_vars_with_obligations(formal_output);
                 // FIXME(#149379): This operation results in expected input
                 // types which are potentially not well-formed or for whom the
                 // function where-bounds don't actually hold. This results
