@@ -4277,7 +4277,8 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
     ) -> Option<AnnotatedBorrowFnSignature<'tcx>> {
         // Define a fallback for when we can't match a closure.
         let fallback = || {
-            let is_closure = self.infcx.tcx.is_closure_like(self.mir_def_id().to_def_id());
+            let tcx = self.infcx.tcx;
+            let is_closure = tcx.is_closure_like(self.mir_def_id().to_def_id());
             if is_closure {
                 None
             } else {
@@ -4288,7 +4289,7 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                     .instantiate_identity()
                     .skip_norm_wip();
                 match ty.kind() {
-                    ty::FnDef(_, _) | ty::FnPtr(..) => self.annotate_fn_sig(
+                    ty::FnDef(_, _) => self.annotate_fn_sig(
                         self.mir_def_id(),
                         self.infcx
                             .tcx
@@ -4296,6 +4297,8 @@ impl<'diag, 'tcx> MirBorrowckCtxt<'_, 'diag, 'tcx> {
                             .instantiate_identity()
                             .skip_norm_wip(),
                     ),
+                    // a const/static can have a fn ptr type, take the sig from the type instead.
+                    ty::FnPtr(_, _) => self.annotate_fn_sig(self.mir_def_id(), ty.fn_sig(tcx)),
                     _ => None,
                 }
             }
