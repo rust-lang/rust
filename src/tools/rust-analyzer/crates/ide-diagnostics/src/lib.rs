@@ -435,9 +435,7 @@ pub fn semantic_diagnostics(
                 m.diagnostics(db, &mut diags, config.style_lints);
             }
         }
-        None => {
-            handlers::unlinked_file::unlinked_file(&ctx, &mut res, editioned_file_id.file_id(db))
-        }
+        None => handlers::unlinked_file::unlinked_file(&ctx, &mut res, editioned_file_id),
     }
 
     for diag in diags {
