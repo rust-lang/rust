@@ -112,11 +112,11 @@ fn default_ptx_version_for_capability(capability: i32) -> i32 {
         86 => 71,  // Ampere:            CUDA 11.1 / PTX ISA 7.1
         87 => 74,  // Ampere embedded:   CUDA 11.4 / PTX ISA 7.4 (Jetson Orin)
         89 => 78,  // Ada Lovelace:      CUDA 11.8 / PTX ISA 7.8
-        90 => 80,  // Hopper:            CUDA 12.0 / PTX ISA 8.0
-        100 => 85, // Blackwell DC:      CUDA 12.8 / PTX ISA 8.5
-        103 => 86, // Blackwell DC Ultra: CUDA 12.9 / PTX ISA 8.6
-        110 => 87, // Blackwell (approx)
-        120 => 86, // Blackwell:         CUDA 12.8 / PTX ISA 8.6 (RTX 50-series)
+        90 => 80,  // Hopper:            sm_90a  requires PTX ISA 8.0 (NVPTX.td)
+        100 => 86, // Blackwell DC:      sm_100a requires PTX ISA 8.6 (NVPTX.td)
+        103 => 88, // Blackwell DC Ultra: sm_103a requires PTX ISA 8.8 (NVPTX.td)
+        110 => 90, // Blackwell (approx): sm_110a requires PTX ISA 9.0 (NVPTX.td)
+        120 => 87, // Blackwell:         sm_120a requires PTX ISA 8.7 (NVPTX.td, RTX 50-series)
         _ => 80,   // unknown architecture: widely-supported baseline
     }
 }
@@ -131,6 +131,22 @@ mod ptx_version_tests {
         // to a PTX ISA version newer than what its CUDA 11.4-era driver
         // baseline supports, regardless of what capability sm_90+ resolves to.
         assert!(default_ptx_version_for_capability(87) < default_ptx_version_for_capability(90));
+    }
+
+    #[test]
+    fn blackwell_defaults_meet_nvptx_td_minimums() {
+        // makeASM() (see CudaBackend.cpp) always suffixes capability >= 90
+        // with "a", so these defaults must satisfy the PTX ISA floor NVPTX.td
+        // declares for the "a"-suffixed target, not the bare one:
+        //   sm_100a -> PTX87, sm_103a -> PTX88, sm_110a -> PTX90, sm_120a -> PTX87
+        // A value below the target's floor makes ptxas reject the generated
+        // PTX with e.g. "PTX .version 8.6 does not support .target sm_120a"
+        // (the bug this test guards against — consumer Blackwell/RTX 50-series
+        // silently failed to compile any kernel).
+        assert!(default_ptx_version_for_capability(100) >= 86);
+        assert!(default_ptx_version_for_capability(103) >= 88);
+        assert!(default_ptx_version_for_capability(110) >= 90);
+        assert!(default_ptx_version_for_capability(120) >= 87);
     }
 
     #[test]
