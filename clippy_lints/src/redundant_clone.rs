@@ -66,12 +66,9 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
         _: Span,
         def_id: LocalDefId,
     ) {
-        // Avoid building optimized MIR for functions that cannot contain a redundant clone.
-        // Nested closures have their own `check_fn` callbacks and must be checked separately.
-        if !contains_clone_like_call(body)
-            // Building MIR for `fn`s with unsatisfiable clauses results in ICE.
-            || fn_has_unsatisfiable_clauses(cx, def_id.to_def_id())
-        {
+        // Closures receive their own `check_fn` callback and are checked separately.
+        // Building MIR for `fn`s with unsatisfiable clauses results in ICE.
+        if !contains_clone_like_call(body) || fn_has_unsatisfiable_clauses(cx, def_id.to_def_id()) {
             return;
         }
 
