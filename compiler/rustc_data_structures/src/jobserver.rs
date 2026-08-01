@@ -1,12 +1,10 @@
-use std::sync::{Arc, LazyLock, OnceLock};
+use std::sync::{Arc, OnceLock};
 
 pub use jobserver_crate::Acquired;
 use jobserver_crate::{Client, FromEnv, FromEnvErrorKind, HelperThread};
 use parking_lot::{Condvar, Mutex};
 
-// We stick the jobserver client into a global and initialize it once, because there could be
-// multiple compiler instances in this process, and the jobserver is per-process.
-static GLOBAL_CLIENT: LazyLock<Result<Client, String>> = LazyLock::new(|| {
+fn create_client(limit: usize) -> Result<Client, String> {
     // Safety: the checked client construction ensures that the jobserver file descriptors
     // (if any) are open and valid. We also try to initialize the jobserver as early as possible
     // to avoid unrelated file descriptors with matching values becoming open and valid between
@@ -25,7 +23,7 @@ static GLOBAL_CLIENT: LazyLock<Result<Client, String>> = LazyLock::new(|| {
             | FromEnvErrorKind::NegativeFd
             | FromEnvErrorKind::Unsupported
     ) {
-        return Ok(default_client());
+        return Ok(default_client(limit));
     }
 
     // Environment specifies jobserver, but it looks incorrect.
@@ -35,14 +33,11 @@ static GLOBAL_CLIENT: LazyLock<Result<Client, String>> = LazyLock::new(|| {
         "failed to connect to jobserver from environment variable `{name}={:?}`: {error}",
         value
     ))
-});
+}
 
 // Creates a new jobserver if there's no inherited one.
-fn default_client() -> Client {
-    // Pick a "reasonable maximum" capping out at 32
-    // so we don't take everything down by hogging the process run queue.
-    // The fixed number is used to have deterministic compilation across machines.
-    let client = Client::new(32).expect("failed to create jobserver");
+fn default_client(limit: usize) -> Client {
+    let client = Client::new(limit).expect("failed to create jobserver");
 
     // Acquire the single token that is always held by the rustc process.
     // This is an equivalent of the single token held by a higher level build tool while running
@@ -53,21 +48,22 @@ fn default_client() -> Client {
     client
 }
 
+// We stick the jobserver client into a global and initialize it once, because there could be
+// multiple compiler instances in this process, and the jobserver is per-process.
 static GLOBAL_CLIENT_CHECKED: OnceLock<Client> = OnceLock::new();
 
 /// Initializes a jobserver client for the current rustc process.
 /// If inheriting jobserver from the environment fails for some reason, an new jobserver owned by
 /// the current rustc process will be created. If the inheritance failure reason is non-benign,
 /// the passed callback will be used to report the error.
-pub fn initialize_checked(report: impl FnOnce(&'static str)) {
-    let client_checked = match &*GLOBAL_CLIENT {
-        Ok(client) => client.clone(),
+pub fn initialize_checked(limit: usize, report: impl FnOnce(String)) {
+    GLOBAL_CLIENT_CHECKED.get_or_init(|| match create_client(limit) {
+        Ok(client) => client,
         Err(e) => {
             report(e);
-            default_client()
+            default_client(limit)
         }
-    };
-    GLOBAL_CLIENT_CHECKED.set(client_checked).ok();
+    });
 }
 
 /// Returns the jobserver client previously initialized by `initialize_checked`.

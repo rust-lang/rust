@@ -46,7 +46,7 @@ enum SelfSemantic {
     No,
 }
 
-/// Is `#[splat]` allowed semantically in a function or closure?
+/// Is `#[rustc_splat]` allowed semantically in a function or closure?
 /// Only applies to the function kind and header, the parameters are checked elsewhere.
 enum SplatSemantic {
     Yes,
@@ -439,7 +439,7 @@ impl<'a> AstValidator<'a> {
 
     /// Emits an error if a function declaration has more than one splatted argument, with a
     /// C-variadic parameter, or a splat at an unsupported index (for performance).
-    /// Example: `fn foo(#[splat] x: (), #[splat] y: ())` will emit an error.
+    /// Example: `fn foo(#[rustc_splat] x: (), #[rustc_splat] y: ())` will emit an error.
     fn check_decl_splatting(
         &self,
         fn_decl: &FnDecl,
@@ -454,7 +454,7 @@ impl<'a> AstValidator<'a> {
                 let splat_arg_spans: Vec<Span> = arg
                     .attrs
                     .iter()
-                    .filter_map(|attr| attr.has_name(sym::splat).then_some(attr.span))
+                    .filter_map(|attr| attr.has_name(sym::rustc_splat).then_some(attr.span))
                     .collect();
                 if splat_arg_spans.is_empty() {
                     None
@@ -521,8 +521,14 @@ impl<'a> AstValidator<'a> {
             .flat_map(|i| i.attrs.as_ref())
             .filter(|attr| match &attr.kind {
                 AttrKind::Normal(normal) => {
-                    let arr =
-                        [sym::allow, sym::deny, sym::expect, sym::forbid, sym::splat, sym::warn];
+                    let arr = [
+                        sym::allow,
+                        sym::deny,
+                        sym::expect,
+                        sym::forbid,
+                        sym::rustc_splat,
+                        sym::warn,
+                    ];
                     !attr.has_any_name(&arr) && rustc_attr_parsing::is_builtin_attr(&normal.item)
                 }
                 AttrKind::Synthetic(CfgTrace(_) | CfgAttrTrace(_)) => false,

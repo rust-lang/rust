@@ -20,6 +20,7 @@ use rustc_middle::{bug, span_bug};
 use rustc_mir_dataflow::debuginfo::debuginfo_locals;
 use rustc_trait_selection::traits::ObligationCtxt;
 
+use crate::PassPolicy;
 use crate::util::{self, most_packed_projection};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -97,8 +98,8 @@ impl<'tcx> crate::MirPass<'tcx> for Validator {
         }
     }
 
-    fn is_required(&self) -> bool {
-        true
+    fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
+        PassPolicy::optional_non_optimization(true)
     }
 }
 

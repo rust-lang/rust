@@ -5,7 +5,7 @@
 
 #![deny(warnings)]
 
-use run_make_support::{cargo, llvm_filecheck, path, rfs, target};
+use run_make_support::{cargo, llvm_filecheck, path, recursive_find_files, target};
 
 fn main() {
     let target_dir = path("target");
@@ -29,18 +29,14 @@ fn main() {
         .env("LIB", std::env::var("LIB").unwrap_or_default())
         .run();
 
-    let out_dir = target_dir.join(target()).join("release").join("deps");
-    let ir_file = rfs::read_dir(out_dir)
-        .find_map(|e| {
-            let path = e.unwrap().path();
-            let file_name = path.file_name().unwrap().to_str().unwrap();
-            if file_name.starts_with("panic_scenarios") && file_name.ends_with(".ll") {
-                Some(path)
-            } else {
-                None
-            }
-        })
-        .unwrap();
+    // The .ll file is emitted as an intermediate build artifacts.
+    // Do not hardcode the path.
+    let mut ir_files = recursive_find_files(&target_dir.join(target()).join("release"), |path| {
+        let file_name = path.file_name().unwrap().to_str().unwrap();
+        file_name.starts_with("panic_scenarios") && file_name.ends_with(".ll")
+    });
+    assert_eq!(ir_files.len(), 1, "expected exactly one .ll file: {ir_files:?}");
+    let ir_file = ir_files.pop().unwrap();
 
     llvm_filecheck().patterns("lib.rs").input_file(ir_file).run();
 }

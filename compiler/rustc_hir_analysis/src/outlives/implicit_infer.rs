@@ -246,6 +246,7 @@ fn insert_required_predicates_to_be_wf<'tcx>(
 /// will give us `U: 'static` and `U: Outer`. The latter we
 /// can ignore, but we will want to process `U: 'static`,
 /// applying the instantiation as above.
+// FIXME: change this function's signature and docs to mention clauses instead of predicates
 #[tracing::instrument(level = "debug", skip(tcx))]
 fn check_explicit_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,

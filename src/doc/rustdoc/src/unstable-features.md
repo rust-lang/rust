@@ -74,6 +74,10 @@ implemented as a hard-coded list, these traits have a special marker attribute
 on them: `#[doc(notable_trait)]`. This means that you can apply this attribute
 to your own trait to include it in the "Notable traits" dialog in documentation.
 
+In addition to the "Notable traits" dialog, every type that implements a
+`#[doc(notable_trait)]` trait renders a colored badge for that trait at the top
+of its page, making the relationship easy to spot when browsing the type.
+
 The `#[doc(notable_trait)]` attribute currently requires the `#![feature(doc_notable_trait)]`
 feature gate. For more information, see [its chapter in the Unstable Book][unstable-notable_trait]
 and [its tracking issue][issue-notable_trait].
@@ -501,6 +505,15 @@ Calculating code examples follows these rules:
   * static
   * typedef
 2. If one of the previously listed items has a code example, then it'll be counted.
+
+If you use the `-o` option with it, it will generate the file into the given older name. For example:
+
+```shell
+rustdoc foo.rs --show-coverage -o doc
+```
+
+Will generate a `foo.txt` into the `doc` folder. If the `-o` option isn't passed, it will display
+on stdout.
 
 ### JSON output
 

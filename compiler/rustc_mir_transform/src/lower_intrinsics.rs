@@ -5,7 +5,7 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_span::sym;
 
-use crate::take_array;
+use crate::{PassPolicy, take_array};
 
 pub(super) struct LowerIntrinsics;
 
@@ -339,7 +339,8 @@ impl<'tcx> crate::MirPass<'tcx> for LowerIntrinsics {
         }
     }
 
-    fn is_required(&self) -> bool {
-        true
+    fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
+        // Implements intrinsic semantics by lowering intrinsic calls to ordinary MIR operations.
+        PassPolicy::Required
     }
 }

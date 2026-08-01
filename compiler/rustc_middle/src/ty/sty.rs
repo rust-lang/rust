@@ -369,7 +369,6 @@ impl ParamConst {
 impl<'tcx> Ty<'tcx> {
     /// Avoid using this in favour of more specific `new_*` methods, where possible.
     /// The more specific methods will often optimize their creation.
-    #[allow(rustc::usage_of_ty_tykind)]
     #[inline]
     fn new(tcx: TyCtxt<'tcx>, st: TyKind<'tcx>) -> Ty<'tcx> {
         tcx.mk_ty_from_kind(st)
@@ -1226,6 +1225,11 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn is_phantom_data(self) -> bool {
         if let Adt(def, _) = self.kind() { def.is_phantom_data() } else { false }
+    }
+
+    #[inline]
+    pub fn is_unsafe_cell(self) -> bool {
+        if let Adt(def, _) = self.kind() { def.is_unsafe_cell() } else { false }
     }
 
     #[inline]

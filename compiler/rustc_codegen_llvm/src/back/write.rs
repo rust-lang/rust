@@ -34,7 +34,7 @@ use crate::back::profiling::{
 use crate::builder::SBuilder;
 use crate::builder::gpu_offload::scalar_width;
 use crate::common::AsCCharPtr;
-use crate::errors::{
+use crate::diagnostics::{
     CopyBitcode, FromLlvmDiag, FromLlvmOptimizationDiag, LlvmError, ParseTargetMachineConfig,
     UnsupportedCompression, WithLlvmError, WriteBytecode,
 };
@@ -819,7 +819,7 @@ pub(crate) unsafe fn llvm_optimize(
                 device_out_c.as_ptr(),
             );
             if !ok || !device_out.exists() {
-                dcx.emit_err(crate::errors::OffloadBundleImagesFailed);
+                dcx.emit_err(crate::diagnostics::OffloadBundleImagesFailed);
             }
         }
     }
@@ -837,15 +837,15 @@ pub(crate) unsafe fn llvm_optimize(
         {
             let device_pathbuf = PathBuf::from(device_path);
             if device_pathbuf.is_relative() {
-                dcx.emit_err(crate::errors::OffloadWithoutAbsPath);
+                dcx.emit_err(crate::diagnostics::OffloadWithoutAbsPath);
             } else if device_pathbuf
                 .file_name()
                 .and_then(|n| n.to_str())
                 .is_some_and(|n| n != "device.bin")
             {
-                dcx.emit_err(crate::errors::OffloadWrongFileName);
+                dcx.emit_err(crate::diagnostics::OffloadWrongFileName);
             } else if !device_pathbuf.exists() {
-                dcx.emit_err(crate::errors::OffloadNonexistingPath);
+                dcx.emit_err(crate::diagnostics::OffloadNonexistingPath);
             }
             let host_path = cgcx.output_filenames.path(OutputType::Object);
             let host_dir = host_path.parent().unwrap();
@@ -859,7 +859,7 @@ pub(crate) unsafe fn llvm_optimize(
             let ok =
                 unsafe { llvm::LLVMRustOffloadEmbedBufferInModule(llmod2, device_bin_c.as_ptr()) };
             if !ok {
-                dcx.emit_err(crate::errors::OffloadEmbedFailed);
+                dcx.emit_err(crate::diagnostics::OffloadEmbedFailed);
             }
             write_output_file(
                 dcx,

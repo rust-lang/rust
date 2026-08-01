@@ -1,16 +1,5 @@
 error[E0782]: expected a type, found a trait
-  --> $DIR/fn-sig-cycle-ice-153391.rs:8:15
-   |
-LL |     fn g() -> B;
-   |               ^
-   |
-help: `B` is dyn-incompatible, use `impl B` to return an opaque type, as long as you return a single underlying type
-   |
-LL |     fn g() -> impl B;
-   |               ++++
-
-error[E0782]: expected a type, found a trait
-  --> $DIR/fn-sig-cycle-ice-153391.rs:13:23
+  --> $DIR/fn-sig-cycle-ice-153391.rs:12:23
    |
 LL |     fn bar(&self, x: &A);
    |                       ^
@@ -25,6 +14,21 @@ help: you can also use an opaque type, but users won't be able to specify the ty
    |
 LL |     fn bar(&self, x: &impl A);
    |                       ++++
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/fn-sig-cycle-ice-153391.rs:7:15
+   |
+LL |     fn g() -> B;
+   |               ^
+   |
+help: use `impl B` to return an opaque type, as long as you return a single underlying type
+   |
+LL |     fn g() -> impl B;
+   |               ++++
+help: alternatively, you can return an owned trait object
+   |
+LL |     fn g() -> Box<dyn B>;
+   |               +++++++  +
 
 error: aborting due to 2 previous errors
 

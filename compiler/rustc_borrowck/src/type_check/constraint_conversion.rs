@@ -6,8 +6,8 @@ use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_infer::infer::outlives::obligations::{TypeOutlives, TypeOutlivesDelegate};
 use rustc_infer::infer::region_constraints::{GenericKind, VerifyBound};
 use rustc_middle::ty::{
-    self, GenericArgKind, RegionExt, RegionUtilitiesExt, TyCtxt, TypeFoldable, TypeVisitableExt,
-    elaborate, fold_regions,
+    self, GenericArgKind, RegionExt, TyCtxt, TypeFoldable, TypeVisitableExt, elaborate,
+    fold_regions,
 };
 use rustc_span::Span;
 use tracing::{debug, instrument};

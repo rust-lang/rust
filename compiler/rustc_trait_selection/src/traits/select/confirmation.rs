@@ -541,7 +541,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         for supertrait in tcx
             .explicit_super_clauses_of(trait_predicate.def_id())
             .iter_instantiated_copied(tcx, trait_predicate.trait_ref.args)
-            .map(|pred| pred.unzip().0)
+            .map(|clause| clause.unzip().0)
         {
             let normalized_supertrait = normalize_with_depth_to(
                 self,

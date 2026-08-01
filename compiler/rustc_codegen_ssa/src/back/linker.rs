@@ -7,9 +7,6 @@ use std::{env, iter, mem, str};
 use find_msvc_tools;
 use rustc_hir::attrs::WindowsSubsystemKind;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
-use rustc_metadata::{
-    find_native_static_library, try_find_native_dynamic_library, try_find_native_static_library,
-};
 use rustc_middle::bug;
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::{
@@ -23,6 +20,9 @@ use tracing::{debug, warn};
 
 use super::command::Command;
 use super::symbol_export;
+use crate::back::link::{
+    find_native_static_library, try_find_native_dynamic_library, try_find_native_static_library,
+};
 use crate::back::symbol_export::allocator_shim_symbols;
 use crate::base::needs_allocator_shim_for_linking;
 use crate::{SymbolExport, diagnostics};

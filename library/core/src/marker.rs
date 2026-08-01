@@ -1069,6 +1069,7 @@ pub const trait Destruct: PointeeSized {}
 #[unstable(feature = "tuple_trait", issue = "157987")]
 #[lang = "tuple_trait"]
 #[diagnostic::on_unimplemented(message = "`{Self}` is not a tuple")]
+#[fundamental]
 #[rustc_deny_explicit_impl]
 #[rustc_dyn_incompatible_trait]
 pub trait Tuple {}
@@ -1145,6 +1146,7 @@ marker_impls! {
     reason = "internal trait for implementing various traits for all function pointers"
 )]
 #[lang = "fn_ptr_trait"]
+#[fundamental]
 #[rustc_deny_explicit_impl]
 #[rustc_dyn_incompatible_trait]
 pub trait FnPtr: Copy + Clone {

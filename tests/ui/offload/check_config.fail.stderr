@@ -1,4 +1,4 @@
-error: using the offload feature requires -Z offload=Enable
+error: using the offload feature requires -Z offload=<Device or Host=/absolute/path/to/device.bin>
 
 error: using the offload feature requires -C lto=fat
 

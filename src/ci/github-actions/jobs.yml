@@ -189,6 +189,21 @@ optional:
     env:
       IMAGE: pr-check-1
     <<: *job-linux-4c
+  - name: dist-x86_64-linux-ec2
+    os: ec2-ubuntu26.04-c8a.12xlarge-x64-linux-$github.run_id-$github.run_attempt
+    free_disk: true
+    env:
+      IMAGE: dist-x86_64-linux
+      CODEGEN_BACKENDS: llvm,cranelift
+      DOCKER_SCRIPT: dist.sh
+  - name: dist-x86_64-linux-ec2-quick
+    os: ec2-ubuntu26.04-c8a.12xlarge-x64-linux-$github.run_id-$github.run_attempt
+    free_disk: true
+    env:
+      IMAGE: dist-x86_64-linux
+      CODEGEN_BACKENDS: llvm,cranelift
+      DOCKER_SCRIPT: dist.sh
+      DIST_TRY_BUILD: 1
 
 # Main CI jobs that have to be green to merge a commit into the default branch.
 #
@@ -497,7 +512,7 @@ auto:
         --enable-sanitizers
         --enable-profiler
         --disable-docs
-        --set rust.override-allocator=jemalloc
+        --set build.allocator=jemalloc
         --set llvm.link-shared=true
         --set rust.lto=thin
         --set rust.codegen-units=1
@@ -532,7 +547,7 @@ auto:
       RUST_CONFIGURE_ARGS: >-
         --enable-sanitizers
         --enable-profiler
-        --set rust.override-allocator=jemalloc
+        --set build.allocator=jemalloc
         --set target.aarch64-apple-ios-macabi.sanitizers=false
         --set target.x86_64-apple-ios-macabi.sanitizers=false
         --set target.aarch64-apple-tvos.profiler=false
@@ -557,7 +572,7 @@ auto:
         --enable-full-tools
         --enable-sanitizers
         --enable-profiler
-        --set rust.override-allocator=jemalloc
+        --set build.allocator=jemalloc
         --set llvm.link-shared=true
         --set rust.lto=thin
         --set rust.codegen-units=1
@@ -578,7 +593,7 @@ auto:
       RUST_CONFIGURE_ARGS: >-
         --enable-sanitizers
         --enable-profiler
-        --set rust.override-allocator=jemalloc
+        --set build.allocator=jemalloc
       DEVELOPER_DIR: /Applications/Xcode_26.2.app/Contents/Developer
       # Aarch64 tooling only needs to support macOS 11.0 and up as nothing else
       # supports the hardware, so only need to test it there.

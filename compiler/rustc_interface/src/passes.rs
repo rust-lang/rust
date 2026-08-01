@@ -179,7 +179,7 @@ fn configure_and_expand(
         if cfg!(windows) {
             old_path = env::var_os("PATH").unwrap_or(old_path);
             let mut new_path = Vec::from_iter(
-                sess.host_filesearch().search_paths(PathKind::Native).map(|p| p.dir.clone()),
+                sess.host_filesearch().search_paths(PathKind::Native).map(|p| p.dir.to_path_buf()),
             );
             for path in env::split_paths(&old_path) {
                 if !new_path.contains(&path) {
@@ -1154,6 +1154,7 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
             if not_typeck_child {
                 tcx.ensure_ok().mir_borrowck(def_id);
                 tcx.ensure_ok().check_transmutes(def_id);
+                tcx.ensure_ok().check_offloads(def_id);
             }
             tcx.ensure_ok().has_ffi_unwind_calls(def_id);
             tcx.ensure_ok().check_liveness(def_id);

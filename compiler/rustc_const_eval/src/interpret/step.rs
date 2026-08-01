@@ -342,7 +342,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         // Validate that the entire thing is valid, and reset padding that might be in between the
         // fields.
         if M::enforce_validity(self, dest.layout()) {
-            self.validate_operand(
+            self.validate_place(
                 dest,
                 M::enforce_validity_recursively(self, dest.layout()),
                 /*reset_provenance_and_padding*/ true,

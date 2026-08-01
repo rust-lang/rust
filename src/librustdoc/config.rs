@@ -726,7 +726,14 @@ impl Options {
                 output_to_stdout = out_dir == "-";
                 PathBuf::from(out_dir)
             }
-            (None, None) => PathBuf::from("doc"),
+            (None, None) => {
+                if show_coverage {
+                    // If no `-o` option is given and we're in the `--show-coverage` mode, by
+                    // default we print on the stdout.
+                    output_to_stdout = true;
+                }
+                PathBuf::from("doc")
+            }
         };
 
         let cfgs = matches.opt_strs("cfg");

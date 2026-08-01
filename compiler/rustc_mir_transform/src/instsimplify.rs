@@ -10,6 +10,7 @@ use rustc_middle::ty::layout::{IntegerExt, ValidityRequirement};
 use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, layout};
 use rustc_span::{Symbol, sym};
 
+use crate::PassPolicy;
 use crate::simplify::simplify_duplicate_switch_targets;
 
 pub(super) enum InstSimplify {
@@ -25,8 +26,8 @@ impl<'tcx> crate::MirPass<'tcx> for InstSimplify {
         }
     }
 
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() > 0
+    fn policy(&self, sess: &rustc_session::Session) -> PassPolicy {
+        PassPolicy::optimization(sess.mir_opt_level() > 0)
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -61,10 +62,6 @@ impl<'tcx> crate::MirPass<'tcx> for InstSimplify {
             ctx.simplify_nounwind_call(terminator);
             simplify_duplicate_switch_targets(terminator);
         }
-    }
-
-    fn is_required(&self) -> bool {
-        false
     }
 }
 

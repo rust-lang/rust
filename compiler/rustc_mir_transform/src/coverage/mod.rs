@@ -3,6 +3,7 @@ use rustc_middle::mir::{self, BasicBlock, Statement, StatementKind, TerminatorKi
 use rustc_middle::ty::TyCtxt;
 use tracing::{debug, debug_span, trace};
 
+use crate::PassPolicy;
 use crate::coverage::counters::BcbCountersData;
 use crate::coverage::graph::CoverageGraph;
 use crate::coverage::mappings::ExtractedMappings;
@@ -24,8 +25,8 @@ mod tests;
 pub(super) struct InstrumentCoverage;
 
 impl<'tcx> crate::MirPass<'tcx> for InstrumentCoverage {
-    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.instrument_coverage()
+    fn policy(&self, sess: &rustc_session::Session) -> PassPolicy {
+        PassPolicy::optional_non_optimization(sess.instrument_coverage())
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, mir_body: &mut mir::Body<'tcx>) {
@@ -53,10 +54,6 @@ impl<'tcx> crate::MirPass<'tcx> for InstrumentCoverage {
         }
 
         instrument_function_for_coverage(tcx, mir_body);
-    }
-
-    fn is_required(&self) -> bool {
-        true
     }
 }
 

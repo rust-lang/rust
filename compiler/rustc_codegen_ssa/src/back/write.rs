@@ -82,6 +82,8 @@ pub struct ModuleConfig {
     pub instrument_coverage: bool,
 
     pub sanitizer: SanitizerSet,
+    pub sanitizer_cfi_diag: Option<bool>,
+    pub sanitizer_cfi_recover: Option<bool>,
     pub sanitizer_recover: SanitizerSet,
     pub sanitizer_dataflow_abilist: Vec<String>,
     pub sanitizer_memory_track_origins: usize,
@@ -182,6 +184,8 @@ impl ModuleConfig {
             instrument_coverage: if_regular!(sess.instrument_coverage(), false),
 
             sanitizer: if_regular!(sess.sanitizers(), SanitizerSet::empty()),
+            sanitizer_cfi_diag: if_regular!(sess.opts.unstable_opts.sanitizer_cfi_diag, None),
+            sanitizer_cfi_recover: if_regular!(sess.opts.unstable_opts.sanitizer_cfi_recover, None),
             sanitizer_dataflow_abilist: if_regular!(
                 sess.opts.unstable_opts.sanitizer_dataflow_abilist.clone(),
                 Vec::new()
@@ -354,7 +358,7 @@ pub struct CodegenContext {
     pub incr_comp_session_dir: Option<PathBuf>,
     /// `true` if the codegen should be run in parallel.
     ///
-    /// Depends on [`WriteBackendMethods::supports_parallel()`] and `-Zno_parallel_backend`.
+    /// Depends on [`WriteBackendMethods::supports_parallel()`] and `--jobs-backend`.
     pub parallel: bool,
 }
 
@@ -1251,7 +1255,11 @@ fn start_executing_work<B: WriteBackendMethods>(
     // Note that using `jobserver::Proxy` is not necessary here, the code below always acquires
     // tokens before releasing them, so we can never accidentally release the last token
     // permanently held by rustc process.
-    let parallel = !sess.opts.unstable_opts.no_parallel_backend && backend.supports_parallel();
+    // FIXME: the backend parallelism is currently limited solely by the jobserver,
+    // so if `--jobs-backend` is smaller than `--jobs(-frontend)`, or than the number of tokens
+    // that the external jobserver can give, then it won't be respected.
+    // Below we'll need to add some additional work limiting for `--jobs-backend` to be respected.
+    let parallel = sess.opts.jobs.backend.is_some() && backend.supports_parallel();
     let jobserver_helper = parallel.then(|| {
         let coordinator_send2 = coordinator_send.clone();
         jobserver::client()

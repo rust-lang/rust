@@ -5,9 +5,8 @@
     "github>rust-lang/renovate:actions",
     // Open a PR to migrate the config when Renovate deprecates syntax
     ":configMigration",
-    // Refresh lock files on the first day of each month
-    // (still gated by dashboard approval for now)
-    ":maintainLockFilesMonthly",
+    // Refresh lock files weekly
+    ":maintainLockFilesWeekly",
   ],
   // Cargo manifests in this repository use unstable features.
   "env": {
@@ -31,25 +30,45 @@
       "dependencyDashboardApproval": false
     },
     {
-      // Only maintain the Cargo lockfiles managed by update-lockfile.sh.
-      "matchManagers": ["cargo"],
+      // No dashboard approval necessary for lock file maintenance
       "matchUpdateTypes": ["lockFileMaintenance"],
-      "enabled": false
+      "dependencyDashboardApproval": false
     },
     {
+      // Update all Cargo.lock files except library/Cargo.lock in one PR.
+      "matchManagers": ["cargo"],
+      "matchUpdateTypes": ["lockFileMaintenance"],
+      "groupName": "Cargo lock file maintenance",
+      "commitMessageAction": "Cargo lock file maintenance"
+    },
+    {
+      // Update library/Cargo.lock in a dedicated PR.
+      "matchManagers": ["cargo"],
+      "matchUpdateTypes": ["lockFileMaintenance"],
+      "matchFileNames": ["library/Cargo.lock"],
+      "groupName": "library lock file maintenance",
+      "commitMessageAction": "Library lock file maintenance"
+    },
+    {
+      // These packages don't have a committed Cargo.lock file.
       "matchManagers": ["cargo"],
       "matchUpdateTypes": ["lockFileMaintenance"],
       "matchFileNames": [
-        "Cargo.toml",
-        "library/Cargo.toml",
-        "src/tools/rustbook/Cargo.toml"
+        "library/rustc-std-workspace-*/Cargo.toml",
       ],
-      "enabled": true
+      "enabled": false
+    },
+    {
+      // Update yarn.lock in a dedicated PR.
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["lockFileMaintenance"],
+      "groupName": "Yarn lock file maintenance",
+      "commitMessageAction": "Yarn lock file maintenance"
     }
   ],
-  // Don't manage dependencies inside subtrees. They are updated upstream and
-  // synced in. See `src/doc/rustc-dev-guide/src/external-repos.md` for the list.
   "ignorePaths": [
+    // Don't manage dependencies inside subtrees. They are updated upstream and
+    // synced in. See `src/doc/rustc-dev-guide/src/external-repos.md` for the list.
     "compiler/rustc_codegen_cranelift/**",
     "compiler/rustc_codegen_gcc/**",
     "library/compiler-builtins/**",
@@ -59,6 +78,10 @@
     "src/tools/clippy/**",
     "src/tools/miri/**",
     "src/tools/rust-analyzer/**",
-    "src/tools/rustfmt/**"
+    "src/tools/rustfmt/**",
+
+    // Test manifests are fixtures; their versions and lockfiles may
+    // intentionally be part of the test input.
+    "tests/**",
   ]
 }

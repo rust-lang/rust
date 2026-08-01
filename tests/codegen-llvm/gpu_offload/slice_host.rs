@@ -26,8 +26,8 @@
 
 #[unsafe(no_mangle)]
 fn main() {
-    let mut x = [0.0, 0.0, 0.0, 0.0];
-    core::intrinsics::offload::<_, _, ()>(foo, [1, 1, 1], [1, 1, 1], 0, ((&mut x) as &mut [f64],));
+    let mut x = [0.0f32, 0.0, 0.0, 0.0];
+    core::intrinsics::offload::<_, _, ()>(foo, [1, 1, 1], [1, 1, 1], 0, ((&mut x) as &mut [f32],));
 }
 
 unsafe extern "C" {

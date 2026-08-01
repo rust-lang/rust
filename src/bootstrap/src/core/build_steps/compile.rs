@@ -28,7 +28,7 @@ use crate::core::builder::{
 };
 use crate::core::config::toml::target::DefaultLinuxLinkerOverride;
 use crate::core::config::{
-    CompilerBuiltins, DebuginfoLevel, LlvmLibunwind, OverrideAllocator, RustcLto, TargetSelection,
+    Allocator, CompilerBuiltins, DebuginfoLevel, LlvmLibunwind, RustcLto, TargetSelection,
 };
 use crate::utils::build_stamp;
 use crate::utils::build_stamp::BuildStamp;
@@ -1392,7 +1392,7 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
     }
 
     // See also the "JEMALLOC_SYS_WITH_LG_PAGE" setting in the tool build step.
-    if let Some(OverrideAllocator::Jemalloc) = builder.config.override_allocator(target)
+    if builder.config.allocator(target) == Allocator::Jemalloc
         && env::var_os("JEMALLOC_SYS_WITH_LG_PAGE").is_none()
     {
         // Build jemalloc on AArch64 with support for page sizes up to 64K
@@ -1806,10 +1806,7 @@ fn write_codegen_backend_stamp(
         return stamp;
     }
 
-    let mut files = files.into_iter().filter(|f| {
-        let filename = f.file_name().unwrap().to_str().unwrap();
-        is_dylib(f) && filename.contains("rustc_codegen_")
-    });
+    let mut files = files.into_iter().filter(|f| looks_like_codegen_backend(Path::new(f)));
     let codegen_backend = match files.next() {
         Some(f) => f,
         None => panic!("no dylibs built for codegen backend?"),
@@ -1822,6 +1819,11 @@ fn write_codegen_backend_stamp(
     stamp = stamp.add_stamp(codegen_backend);
     t!(stamp.write());
     stamp
+}
+
+pub fn looks_like_codegen_backend(path: &Path) -> bool {
+    is_dylib(path)
+        && path.file_name().and_then(|p| p.to_str()).is_some_and(|n| n.contains("rustc_codegen_"))
 }
 
 /// Creates the `codegen-backends` folder for a compiler that's about to be

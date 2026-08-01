@@ -80,7 +80,7 @@ use tracing::{debug, instrument};
 
 use crate::deref_separator::deref_finder;
 use crate::patch::MirPatch;
-use crate::{abort_unwinding_calls, pass_manager as pm, simplify};
+use crate::{PassPolicy, abort_unwinding_calls, pass_manager as pm, simplify};
 
 pub(super) struct StateTransform;
 
@@ -1219,8 +1219,9 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
         create_coroutine_resume_function(tcx, transform, body, can_return, can_unwind);
     }
 
-    fn is_required(&self) -> bool {
-        true
+    fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
+        // Implements coroutine semantics by lowering the coroutine body to a state machine.
+        PassPolicy::Required
     }
 }
 

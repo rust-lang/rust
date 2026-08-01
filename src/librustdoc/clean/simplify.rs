@@ -113,11 +113,11 @@ fn trait_is_same_or_supertrait(tcx: TyCtxt<'_>, child: DefId, trait_: DefId) -> 
     if child == trait_ {
         return true;
     }
-    let predicates = tcx.explicit_super_clauses_of(child);
-    predicates
+    let clauses = tcx.explicit_super_clauses_of(child);
+    clauses
         .iter_identity_copied()
         .map(Unnormalized::skip_norm_wip)
-        .filter_map(|(pred, _)| Some(pred.as_trait_clause()?.def_id()))
+        .filter_map(|(clause, _)| Some(clause.as_trait_clause()?.def_id()))
         .any(|did| trait_is_same_or_supertrait(tcx, did, trait_))
 }
 

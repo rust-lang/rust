@@ -41,7 +41,8 @@ use crate::ref_mut::CmCell;
 use crate::{
     BindingKey, Decl, DeclData, DeclKind, DelayedVisResolutionError, ExternModule,
     ExternPreludeEntry, Finalize, IdentKey, LocalModule, Module, ModuleKind, ModuleOrUniformRoot,
-    ParentScope, PathResult, Res, Resolver, Segment, Used, VisResolutionError, diagnostics,
+    ParentScope, PathResult, Res, ResolutionTable, Resolver, Segment, Used, VisResolutionError,
+    diagnostics,
 };
 
 impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
@@ -279,7 +280,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         res,
                     ))
                 };
-                match self.cm().resolve_path(
+                match self.cm_mut().resolve_path(
                     &segments,
                     None,
                     parent_scope,
@@ -336,7 +337,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     pub(crate) fn build_reduced_graph_external(
         &self,
         module: ExternModule<'ra>,
-    ) -> FxIndexMap<BindingKey, NameResolutionRef<'ra>> {
+    ) -> ResolutionTable<'ra> {
         let mut resolutions = FxIndexMap::default();
         let def_id = module.def_id();
         let children = self.tcx.module_children(def_id);

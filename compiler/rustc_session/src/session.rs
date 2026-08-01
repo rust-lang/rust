@@ -36,9 +36,9 @@ use rustc_target::spec::{
 use crate::code_stats::CodeStats;
 pub use crate::code_stats::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use crate::config::{
-    self, Cfg, CheckCfg, CoverageLevel, CoverageOptions, CrateType, DebugInfo, ErrorOutputType,
-    FunctionReturn, Input, InstrumentCoverage, InstrumentMcount, NATIVE_CPU, OptLevel, OutFileName,
-    OutputType, PointerAuthOption, SwitchWithOptPath,
+    self, BranchProtection, Cfg, CheckCfg, CoverageLevel, CoverageOptions, CrateType, DebugInfo,
+    ErrorOutputType, FunctionReturn, Input, InstrumentCoverage, InstrumentMcount, NATIVE_CPU,
+    OptLevel, OutFileName, OutputType, PAuthKey, PointerAuthOption, SwitchWithOptPath,
 };
 use crate::filesearch::FileSearch;
 use crate::lint::LintId;
@@ -999,6 +999,30 @@ impl Session {
         }
     }
 
+    /// Returns the `-Zbranch-protection` info. Note that it is adjusted to the current target, e.g.
+    /// some targets only support certain Pointer Authentication Code keys.
+    ///
+    /// Accessing the session's unstable `branch_protection` option fields directly is linted
+    /// against.
+    pub fn branch_protection(&self) -> Option<BranchProtection> {
+        let mut bp = self.opts.unstable_opts.branch_protection;
+
+        if let Some(bp) = bp.as_mut() {
+            // Windows on Arm only supports PAC Key B for return address signing, as shown in
+            // https://github.com/llvm/llvm-project/pull/203989. We parse the CLI flags for branch
+            // protection and target separately though, so we adjust this possible discrepancy here.
+            if self.target.os == Os::Windows && self.target.arch == Arch::AArch64 {
+                if let Some(pac_ret) = bp.pac_ret.as_mut()
+                    && pac_ret.key == PAuthKey::A
+                {
+                    pac_ret.key = PAuthKey::B;
+                }
+            }
+        }
+
+        bp
+    }
+
     pub fn must_emit_unwind_tables(&self) -> bool {
         // This is used to control the emission of the `uwtable` attribute on
         // LLVM functions. The `uwtable` attribute according to LLVM is:
@@ -1034,15 +1058,6 @@ impl Session {
                 .cg
                 .force_unwind_tables
                 .unwrap_or(self.panic_strategy().unwinds() || self.target.default_uwtable)
-    }
-
-    /// Returns the number of threads used for the thread pool.
-    ///
-    /// `None` means thread pool is not used and synchronization is disabled.
-    /// `Some(n)` means synchronization is enabled with `n` worker threads.
-    #[inline]
-    pub fn threads(&self) -> Option<usize> {
-        self.opts.unstable_opts.threads
     }
 
     /// Returns the number of codegen units that should be used for this
@@ -1335,9 +1350,18 @@ pub fn build_session(
     });
 
     let asm_arch = if target.allow_asm { InlineAsmArch::from_arch(&target.arch) } else { None };
-    let target_filesearch =
-        filesearch::FileSearch::new(&sopts.search_paths, &target_tlib_path, &target);
-    let host_filesearch = filesearch::FileSearch::new(&sopts.search_paths, &host_tlib_path, &host);
+    let target_filesearch = filesearch::FileSearch::new(
+        &sopts.search_paths,
+        &target_tlib_path,
+        &target,
+        sopts.unstable_opts.implicit_sysroot_deps,
+    );
+    let host_filesearch = filesearch::FileSearch::new(
+        &sopts.search_paths,
+        &host_tlib_path,
+        &host,
+        sopts.unstable_opts.implicit_sysroot_deps,
+    );
 
     let timings = TimingSectionHandler::new(sopts.json_timings);
 
