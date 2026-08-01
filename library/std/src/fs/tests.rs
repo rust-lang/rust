@@ -629,6 +629,16 @@ fn set_get_permissions_nofollows() {
             assert_eq!(result.unwrap(), ());
             let metadata0 = check!(fs::metadata(&filename));
             assert!(metadata0.permissions().readonly());
+
+            // Reset the read-only bit under Windows 7: avoids the
+            // `TempDir::drop` from crashing on a permission denial when
+            // trying to delete the file that has it.
+            #[cfg(all(windows, target_vendor = "win7"))]
+            {
+                let mut permission_bits = metadata0.permissions();
+                permission_bits.set_readonly(false);
+                check!(fs::set_permissions_nofollow(&filename, permission_bits));
+            }
         },
         _ => {
             let error_kind = result.unwrap_err().kind();
@@ -669,6 +679,16 @@ fn set_get_permissions_nofollows_symlink() {
             assert!(metadata0.permissions().readonly());
             #[cfg(not(windows))]
             assert!(!metadata0.permissions().readonly());
+
+            // Reset the read-only bit under Windows 7: avoids the
+            // `TempDir::drop` from crashing on a permission denial when
+            // trying to delete the file that has it.
+            #[cfg(all(windows, target_vendor = "win7"))]
+            {
+                let mut permission_bits = metadata0.permissions();
+                permission_bits.set_readonly(false);
+                check!(fs::set_permissions_nofollow(&symlink_name, permission_bits));
+            }
         },
         _ => {
             let error_kind = result.unwrap_err().kind();
