@@ -406,7 +406,11 @@ fn arcinner_layout_for_value_layout(layout: Layout) -> Layout {
     // Previously, layout was calculated on the expression
     // `&*(ptr as *const ArcInner<T>)`, but this created a misaligned
     // reference (see #54908).
-    Layout::new::<ArcInner<()>>().extend(layout).unwrap().0.pad_to_align()
+    Layout::new::<ArcInner<()>>()
+        .extend(layout)
+        .unwrap_or_else(|_| panic!("capacity overflow"))
+        .0
+        .pad_to_align()
 }
 
 unsafe impl<T: ?Sized + Sync + Send> Send for ArcInner<T> {}
