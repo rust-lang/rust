@@ -353,17 +353,15 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
         // There's no sync object there yet. Create one, and try a CAS for uninit_val to init_val.
         let meta_obj = new_meta_obj(this)?;
-        let (old_init, success) = this
-            .atomic_compare_exchange_scalar(
-                &init_field,
-                &ImmTy::from_scalar(Scalar::from_u8(uninit_val), this.machine.layouts.u8),
-                Scalar::from_u8(init_val),
-                AtomicRwOrd::Relaxed,
-                AtomicReadOrd::Relaxed,
-                /* can_fail_spuriously */ false,
-            )?
-            .to_scalar_pair();
-        if !success.to_bool()? {
+        let (old_init, success) = this.atomic_compare_exchange(
+            &init_field,
+            &ImmTy::from_scalar(Scalar::from_u8(uninit_val), this.machine.layouts.u8),
+            Scalar::from_u8(init_val),
+            AtomicRwOrd::Relaxed,
+            AtomicReadOrd::Relaxed,
+            /* can_fail_spuriously */ false,
+        )?;
+        if !success {
             // This can happen for the macOS lock if it is already marked as initialized.
             assert_eq!(
                 old_init.to_u8()?,

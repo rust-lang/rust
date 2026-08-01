@@ -35,6 +35,7 @@ pub use self::machine::{
 pub use self::memory::{AllocInfo, AllocKind, AllocRef, AllocRefMut, FnVal, Memory, MemoryKind};
 use self::operand::Operand;
 pub use self::operand::{ImmTy, Immediate, OpTy};
+pub use self::operator::AtomicRmwOp;
 pub use self::place::{MPlaceTy, MemPlaceMeta, PlaceTy, Writeable};
 use self::place::{MemPlace, Place};
 pub use self::projection::{OffsetMode, Projectable};

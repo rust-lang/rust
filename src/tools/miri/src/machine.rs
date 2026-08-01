@@ -25,7 +25,7 @@ use rustc_middle::query::TyCtxtAt;
 use rustc_middle::ty::layout::{
     HasTyCtxt, HasTypingEnv, LayoutCx, LayoutError, LayoutOf, TyAndLayout,
 };
-use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
+use rustc_middle::ty::{self, AtomicOrdering, Instance, Ty, TyCtxt};
 use rustc_session::config::InliningThreshold;
 use rustc_span::def_id::{CrateNum, DefId};
 use rustc_span::{Span, SpanData, Symbol};
@@ -1344,6 +1344,64 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         right: &ImmTy<'tcx>,
     ) -> InterpResult<'tcx, ImmTy<'tcx>> {
         ecx.binary_ptr_op(bin_op, left, right)
+    }
+
+    fn atomic_load(
+        ecx: &MiriInterpCx<'tcx>,
+        place: &MPlaceTy<'tcx>,
+        ordering: AtomicOrdering,
+    ) -> InterpResult<'tcx, Scalar> {
+        ecx.read_scalar_atomic(place, AtomicReadOrd::from(ordering))
+    }
+
+    fn atomic_store(
+        ecx: &mut MiriInterpCx<'tcx>,
+        place: &MPlaceTy<'tcx>,
+        val: &ImmTy<'tcx>,
+        ordering: AtomicOrdering,
+    ) -> InterpResult<'tcx> {
+        ecx.write_scalar_atomic(val.to_scalar(), place, AtomicWriteOrd::from(ordering))
+    }
+
+    fn atomic_rmw(
+        ecx: &mut MiriInterpCx<'tcx>,
+        place: &MPlaceTy<'tcx>,
+        op: AtomicRmwOp,
+        operand: &ImmTy<'tcx>,
+        ordering: AtomicOrdering,
+    ) -> InterpResult<'tcx, Scalar> {
+        ecx.atomic_rmw(place, operand, op, AtomicRwOrd::from(ordering))
+    }
+
+    fn atomic_compare_exchange(
+        ecx: &mut MiriInterpCx<'tcx>,
+        place: &MPlaceTy<'tcx>,
+        expected_old: &ImmTy<'tcx>,
+        new: &ImmTy<'tcx>,
+        can_fail_spuriously: bool,
+        success_ordering: AtomicOrdering,
+        failure_ordering: AtomicOrdering,
+    ) -> InterpResult<'tcx, (Scalar, bool)> {
+        ecx.atomic_compare_exchange(
+            place,
+            expected_old,
+            new.to_scalar(),
+            AtomicRwOrd::from(success_ordering),
+            AtomicReadOrd::from(failure_ordering),
+            can_fail_spuriously,
+        )
+    }
+
+    fn atomic_fence(
+        ecx: &MiriInterpCx<'tcx>,
+        ordering: AtomicOrdering,
+        singlethread: bool,
+    ) -> InterpResult<'tcx> {
+        if singlethread {
+            // We don't support signal handlers or interrupts so this is a NOP.
+            return interp_ok(());
+        }
+        ecx.atomic_fence(AtomicFenceOrd::from(ordering))
     }
 
     #[inline(always)]
