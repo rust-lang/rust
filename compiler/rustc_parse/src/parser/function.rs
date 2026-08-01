@@ -101,6 +101,8 @@ pub(crate) struct FnParseMode {
 pub(crate) enum FnContext {
     /// Free context.
     Free,
+    /// A Function Pointer Type `fn(..)`.
+    FunctionPtrType,
     /// A Trait context.
     Trait,
     /// An Impl block.
@@ -818,7 +820,7 @@ impl<'a> Parser<'a> {
                         // Recover from attempting to parse the argument as a type without pattern.
                         err.cancel();
                         this.restore_snapshot(parser_snapshot_before_ty);
-                        this.recover_arg_parse()?
+                        this.recover_arg_parse(fn_parse_mode.context)?
                     }
                     Err(err) => return Err(err),
                 }

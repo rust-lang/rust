@@ -882,7 +882,7 @@ impl<'a> Parser<'a> {
         }
         let mode = crate::parser::FnParseMode {
             req_name: |_, _| false,
-            context: FnContext::Free,
+            context: FnContext::FunctionPtrType,
             req_body: false,
         };
         let decl = self.parse_fn_decl(&mode, AllowPlus::No, recover_return_sign)?;
