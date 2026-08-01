@@ -1196,6 +1196,7 @@ rustc_queries! {
         desc { "checking privacy in {}", describe_as_module(key.to_local_def_id(), tcx) }
     }
 
+    /// Checks for liveness of variables within a function. No-op if unused lints are skippable.
     query check_liveness(key: LocalDefId) -> &'tcx rustc_index::bit_set::DenseBitSet<abi::FieldIdx> {
         arena_cache
         desc { "checking liveness of variables in `{}`", tcx.def_path_str(key.to_def_id()) }
