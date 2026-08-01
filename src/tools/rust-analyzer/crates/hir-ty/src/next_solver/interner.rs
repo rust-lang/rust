@@ -2085,13 +2085,19 @@ impl<'db> Interner for DbInterner<'db> {
         opaque: Self::LocalOpaqueTyId,
     ) -> EarlyBinder<Self, Self::Ty> {
         let impl_trait_id = opaque.0.loc(self.db);
-        match impl_trait_id {
+        // The entry is missing when this call cycles back into the still-running inference
+        // of the defining body, as the cycle fallback is an empty result.
+        let hidden_type = match impl_trait_id {
             crate::ImplTraitId::ReturnTypeImplTrait(func, idx) => {
-                crate::opaques::rpit_hidden_types(self.db, func)[idx].get()
+                crate::opaques::rpit_hidden_types(self.db, func).get(idx)
             }
             crate::ImplTraitId::TypeAliasImplTrait(type_alias, idx) => {
-                crate::opaques::tait_hidden_types(self.db, type_alias)[idx].get()
+                crate::opaques::tait_hidden_types(self.db, type_alias).get(idx)
             }
+        };
+        match hidden_type {
+            Some(hidden_type) => hidden_type.get(),
+            None => EarlyBinder::bind(Ty::new_error(self, ErrorGuaranteed)),
         }
     }
 
