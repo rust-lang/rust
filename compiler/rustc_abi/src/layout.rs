@@ -196,6 +196,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             size,
             max_repr_align: None,
             unadjusted_abi_align: element.align.abi,
+            repr_c: false,
             randomization_seed: element.randomization_seed.wrapping_add(Hash64::new(count)),
         })
     }
@@ -499,6 +500,10 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             return Err(LayoutCalculatorError::EmptyUnion);
         };
 
+        // We also need to check for a `repr(transparent)` wrapper around `repr(C)`
+        let repr_c =
+            repr.c() || (repr.transparent() && only_variant.iter().any(|field| field.repr_c));
+
         let combined_seed = only_variant
             .iter()
             .map(|v| v.randomization_seed)
@@ -514,6 +519,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             size: size.align_to(align),
             max_repr_align,
             unadjusted_abi_align,
+            repr_c,
             randomization_seed: combined_seed,
         })
     }
@@ -745,6 +751,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 align: AbiAlign::new(align),
                 max_repr_align,
                 unadjusted_abi_align,
+                repr_c: repr.c(),
                 randomization_seed: combined_seed,
             };
 
@@ -1053,6 +1060,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             size,
             max_repr_align,
             unadjusted_abi_align,
+            repr_c: repr.c(),
             randomization_seed: combined_seed,
         };
 
@@ -1407,6 +1415,9 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             unadjusted_abi_align
         };
 
+        // We also need to check for a `repr(transparent)` wrapper around `repr(C)`
+        let repr_c = repr.c() || (repr.transparent() && fields.iter().any(|field| field.repr_c));
+
         let seed = field_seed.wrapping_add(repr.field_shuffle_seed);
 
         Ok(LayoutData {
@@ -1419,6 +1430,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             size,
             max_repr_align,
             unadjusted_abi_align,
+            repr_c,
             randomization_seed: seed,
         })
     }
@@ -1521,6 +1533,7 @@ where
         align: AbiAlign::new(align),
         max_repr_align: None,
         unadjusted_abi_align: elt.align.abi,
+        repr_c: false,
         randomization_seed: elt.randomization_seed.wrapping_add(Hash64::new(count)),
     })
 }
