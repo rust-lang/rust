@@ -342,6 +342,16 @@ pub fn phase_rustc(args: impl Iterator<Item = String>, phase: RustcPhase) {
         }
     }
 
+    // Ensure we show an error if we encounter an argfile, rather than randomly misbehvaing.
+    // We know rustdoc doesn't put anything important in the argfiles so we can ignore them there.
+    let args = args.inspect(|arg| {
+        if phase != RustcPhase::Rustdoc && arg.starts_with('@') {
+            show_error!(
+                "cargo uses an argfile to invoke rustc, which is not supported by cargo-miri"
+            )
+        }
+    });
+
     let verbose = env::var("MIRI_VERBOSE")
         .map_or(0, |verbose| verbose.parse().expect("verbosity flag must be an integer"));
     let target_crate = is_target_crate();
