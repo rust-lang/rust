@@ -294,9 +294,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-#[cfg(test)]
-mod tests;
-
 use alloc_crate::io::OsFunctions;
 #[unstable(feature = "raw_os_error_ty", issue = "107792")]
 pub use alloc_crate::io::RawOsError;
@@ -344,12 +341,7 @@ pub(crate) use self::stdio::{attempt_print_to_stderr, cleanup};
 #[doc(no_inline, hidden)]
 pub use self::stdio::{set_output_capture, try_set_output_capture};
 
-mod buffered;
-mod copy;
-mod cursor;
 mod error;
-mod impls;
 mod pipe;
 pub mod prelude;
 mod stdio;
-mod util;
