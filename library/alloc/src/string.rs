@@ -1651,50 +1651,50 @@ impl String {
             return;
         }
 
-        struct PanicGuard {
-            s: ptr::NonNull<String>,
-            read: usize,
+        struct PanicGuard<'a> {
+            s: &'a mut String,
             write: usize,
         }
 
-        impl Drop for PanicGuard {
+        impl Drop for PanicGuard<'_> {
             fn drop(&mut self) {
-                // SAFETY: This is guaranteed to be the only mutable reference to `s`.
-                let str = unsafe { &mut *self.s.as_ptr() };
-                debug_assert!(self.write <= str.len());
+                debug_assert!(self.write <= self.s.len());
+                debug_assert!(self.s.is_char_boundary(self.write));
                 // SAFETY: Restore the string length to the number of bytes written so far.
-                unsafe { str.vec.set_len(self.write) }
+                unsafe { self.s.vec.set_len(self.write) }
             }
         }
 
-        // Faster read-path
-        let string_ptr = ptr::NonNull::from(&mut *self);
-        let data_ptr = self.vec.as_mut_ptr();
+        // Fast path: find the first character that should be removed or return early.
         let mut chars = self.char_indices();
-        let (read, write) = loop {
-            let Some((write, ch)) = chars.next() else { return };
+        let (mut read, write) = loop {
+            let Some((idx, ch)) = chars.next() else { return };
             if hint::unlikely(!f(ch)) {
-                break (chars.offset(), write);
+                break (idx + ch.len_utf8(), idx);
             }
         };
+        drop(chars);
 
-        // Critical section starts here, at least one character is going to be removed.
-        let mut g = PanicGuard { s: string_ptr, read, write };
-        // Slower write-path
-        while let Some((read, ch)) = chars.next() {
-            let ch_len = chars.offset() - read;
+        // Slow path: at least one character is going to be removed.
+        let mut g = PanicGuard { s: self, write };
+        while read < len {
+            // SAFETY: `g.read` is in bound because `g.read` < `len`, so taking
+            // a slice with `len` is safe.
+            let ch = unsafe { g.s.get_unchecked(read..len).chars().next().unwrap_unchecked() };
+            let ch_len = ch.len_utf8();
             if f(ch) {
                 // SAFETY: `g.read` is in bound because `g.write` <= `g.read` - `ch_len`,
                 // so taking a slice with `ch_len` is safe.
                 unsafe {
-                    ptr::copy(data_ptr.add(g.read), data_ptr.add(g.write), ch_len);
+                    let ptr = g.s.vec.as_mut_ptr();
+                    ptr::copy(ptr.add(read), ptr.add(g.write), ch_len);
                 }
                 g.write += ch_len;
             }
-            g.read += ch_len;
+            read += ch_len;
         }
 
-        // All characters have been processed, set the final length by dropping the guard.
+        // All bytes processed; commit the final length by dropping the guard.
         drop(g);
     }
 
