@@ -324,6 +324,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         param_env: ty::ParamEnv<'tcx>,
         term: ty::Term<'tcx>,
     ) -> Option<Vec<Goal<'tcx, ty::Predicate<'tcx>>>> {
+        let term = self.0.resolve_vars_if_possible(term);
         crate::traits::wf::unnormalized_obligations(
             &self.0,
             param_env,
