@@ -358,6 +358,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         call_output: Ty<'tcx>,
     ) {
         let ty = self.resolve_vars_if_possible(ty);
+        let ty = ty.peel_refs();
         let ty::Closure(def_id, _) = ty.kind() else { return };
         let Some(closure_def_id) = def_id.as_local() else { return };
         let inputs = self

@@ -53,6 +53,10 @@ fn main() {
     assigned = |index| array[index].pow(1);
     let _: i64 = assigned(0_usize);
 
+    let mapper = |index| [index; 4];
+    let values = (0_usize..8).map(&mapper).collect::<Vec<_>>();
+    let _ = values[0].clone();
+
     // Inline closure arguments still receive the call site's existing expectations.
     take_getter(|value| value.get());
 
