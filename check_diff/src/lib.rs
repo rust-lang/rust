@@ -201,10 +201,7 @@ pub struct RustfmtRunner {
 
 impl<S, T> DiffChecker<S, T> {
     pub fn new(source: S, target: T) -> Self {
-        Self {
-            source,
-            target,
-        }
+        Self { source, target }
     }
 }
 
@@ -223,12 +220,8 @@ where
                 source: s,
                 target: t,
             }),
-            (Err(error), Ok(_)) => {
-                Err(CreateDiffError::SourceFormatterFailed(error))
-            }
-            (Ok(_), Err(error)) => {
-                Err(CreateDiffError::TargetFormatterFailed(error))
-            }
+            (Err(error), Ok(_)) => Err(CreateDiffError::SourceFormatterFailed(error)),
+            (Ok(_), Err(error)) => Err(CreateDiffError::TargetFormatterFailed(error)),
             (Err(source_error), Err(target_error)) => {
                 // Both source formatting and target formatting failed
                 Err(CreateDiffError::BothRustfmtFailed {
