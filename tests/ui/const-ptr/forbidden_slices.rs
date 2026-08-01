@@ -20,7 +20,7 @@ pub static S1: &[()] = unsafe { from_raw_parts(ptr::null(), 0) };
 
 // Out of bounds
 pub static S2: &[u32] = unsafe { from_raw_parts(&D0, 2) };
-//~^ ERROR: dangling reference (going beyond the bounds of its allocation)
+//~^ ERROR: reference must be dereferenceable for 8 bytes
 
 // Reading uninitialized  data
 pub static S4: &[u8] = unsafe { from_raw_parts((&D1) as *const _ as _, 1) }; //~ ERROR: uninitialized memory
@@ -39,14 +39,14 @@ pub static S7: &[u16] = unsafe {
 
 // Unaligned read
 pub static S8: &[u64] = unsafe {
-    //~^ ERROR: dangling reference (going beyond the bounds of its allocation)
     let ptr = (&D4 as *const [u32; 2] as *const u32).byte_add(1).cast::<u64>();
 
     from_raw_parts(ptr, 1)
+    //~^ ERROR: reference must be dereferenceable for 8 bytes
 };
 
 pub static R0: &[u32] = unsafe { from_ptr_range(ptr::null()..ptr::null()) };
-//~^ ERROR encountered a null reference
+//~^ ERROR: null reference
 pub static R1: &[()] = unsafe { from_ptr_range(ptr::null()..ptr::null()) }; // errors inside libcore
 //~^ ERROR 0 < pointee_size && pointee_size <= isize::MAX as usize
 pub static R2: &[u32] = unsafe {
@@ -70,9 +70,9 @@ pub static R6: &[bool] = unsafe {
     from_ptr_range(ptr..ptr.add(4))
 };
 pub static R7: &[u16] = unsafe {
-    //~^ ERROR: unaligned reference (required 2 byte alignment but found 1)
     let ptr = (&D2 as *const Struct as *const u16).byte_add(1);
     from_ptr_range(ptr..ptr.add(4))
+    //~^ ERROR: unaligned reference (required 2 byte alignment but found 1)
 };
 pub static R8: &[u64] = unsafe {
     let ptr = (&D4 as *const [u32; 2] as *const u32).byte_add(1).cast::<u64>();
