@@ -2,13 +2,16 @@ use std::io::{self, BufReader, BufWriter};
 
 use emmy_dap_types::prelude::events::StoppedEventBody;
 use emmy_dap_types::prelude::responses::{StackTraceResponse, ThreadsResponse};
-use emmy_dap_types::prelude::types::{Capabilities, StoppedEventReason, Thread};
+use emmy_dap_types::prelude::types::{
+    Capabilities, Source, StackFrame, StoppedEventReason, Thread,
+};
 use emmy_dap_types::prelude::{Command, Event, Request, ResponseBody, Server};
-use miri::{InterpResult, interp_ok};
+use miri::{InterpResult, bug, interp_ok};
 
 use crate::debugger::PrirodaContext;
 
 const THREAD_ID: i64 = 1;
+const STACK_FRAME_ID: i64 = 1;
 const MAX_REQUEST_COUNT: usize = 128;
 type ServerResult<T = ()> = Result<T, emmy_dap_types::errors::ServerError>;
 
@@ -100,7 +103,9 @@ impl DapSession {
             Command::Threads =>
                 interp_ok(self.handle_threads(request).map(|()| DispatchOutcome::Continue)),
             Command::StackTrace(_) =>
-                interp_ok(self.handle_stack_trace(request).map(|()| DispatchOutcome::Continue)),
+                interp_ok(
+                    self.handle_stack_trace(request, session).map(|()| DispatchOutcome::Continue),
+                ),
             _ =>
                 interp_ok(self.handle_unsupported_request(request).map(|()| DispatchOutcome::Exit)),
         }
@@ -135,11 +140,52 @@ impl DapSession {
         self.server.respond(response)
     }
 
-    /// FIXME: report real frames once Priroda exposes a frontend-facing stack model.
-    fn handle_stack_trace(&mut self, request: Request) -> ServerResult {
+    /// FIXME: report all frames once Priroda exposes a frontend-facing stack model.
+    fn handle_stack_trace<'tcx>(
+        &mut self,
+        request: Request,
+        session: &PrirodaContext<'tcx>,
+    ) -> ServerResult {
+        let stack_frames = match &session.current_location {
+            Some(location) => {
+                let path = session.local_path(location);
+                vec![StackFrame {
+                    id: STACK_FRAME_ID,
+                    name: session.current_frame_name().unwrap_or_else(|| "<unknown>".to_string()),
+                    source: path.as_ref().map(|path| {
+                        Source {
+                            name: path.file_name().map(|name| name.to_string_lossy().into_owned()),
+                            path: Some(path.display().to_string()),
+                            source_reference: None,
+                            presentation_hint: None,
+                            origin: None,
+                            sources: None,
+                            checksums: None,
+                        }
+                    }),
+                    line: location
+                        .line
+                        .try_into()
+                        .unwrap_or_else(|_| bug!("source line exceeds i64")),
+                    column: location
+                        .column
+                        .try_into()
+                        .unwrap_or_else(|_| bug!("source column exceeds i64")),
+                    end_line: None,
+                    end_column: None,
+                    can_restart: None,
+                    instruction_pointer_reference: None,
+                    module_id: None,
+                    presentation_hint: None,
+                }]
+            }
+            None => Vec::new(),
+        };
+        let total_frames: i64 =
+            stack_frames.len().try_into().unwrap_or_else(|_| bug!("frame count exceeds i64"));
         let response = request.success(ResponseBody::StackTrace(StackTraceResponse {
-            stack_frames: Vec::new(),
-            total_frames: Some(0),
+            stack_frames,
+            total_frames: Some(total_frames),
         }));
         self.server.respond(response)
     }

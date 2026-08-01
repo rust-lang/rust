@@ -10,6 +10,6 @@ Content-Length: 143
 
 {"seq":5,"type":"event","event":"stopped","body":{"reason":"entry","description":null,"threadId":1,"preserveFocusHint":null,"text":null,"allThreadsStopped":true,"hitBreakpointIds":null}}Content-Length: 135
 
-{"seq":6,"type":"response","request_seq":4,"success":true,"command":"threads","body":{"threads":[{"id":1,"name":"main"}]},"error":null}Content-Length: 136
+{"seq":6,"type":"response","request_seq":4,"success":true,"command":"threads","body":{"threads":[{"id":1,"name":"main"}]},"error":null}Content-Length: 295
 
-{"seq":7,"type":"response","request_seq":5,"success":true,"command":"stackTrace","body":{"stackFrames":[],"totalFrames":0},"error":null}
+{"seq":7,"type":"response","request_seq":5,"success":true,"command":"stackTrace","body":{"stackFrames":[{"id":1,"name":"main","source":{"name":"dap_stack_trace.rs","path":"{MANIFEST_DIR}/tests/ui/dap_stack_trace.rs"},"line":3,"column":11}],"totalFrames":1},"error":null}

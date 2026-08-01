@@ -17,6 +17,7 @@ pub(super) struct SourceLocation {
     // storing `span` to use it lazily to compute path.
     pub(super) span: Span,
     pub(super) line: usize,
+    pub(super) column: usize,
 }
 
 impl SourceLocation {
@@ -156,6 +157,11 @@ impl<'tcx> PrirodaContext<'tcx> {
 
     pub(super) fn stop_at_first_user_location(&mut self) -> InterpResult<'tcx, StepResult> {
         self.resume(ResumeMode::FirstUserSourceLocation)
+    }
+
+    pub(super) fn current_frame_name(&self) -> Option<String> {
+        let frame = self.ecx.active_thread_stack().last()?;
+        Some(frame.instance().to_string())
     }
 
     /// Continue execution until reaching a breakpoint or propagating termination.
@@ -304,7 +310,7 @@ impl<'tcx> PrirodaContext<'tcx> {
         let source_map = self.ecx.tcx.sess.source_map();
         let loc = source_map.lookup_char_pos(span.lo());
 
-        Some(SourceLocation { span, line: loc.line })
+        Some(SourceLocation { span, line: loc.line, column: loc.col_display + 1 })
     }
 
     pub(super) fn run_command(
