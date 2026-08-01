@@ -356,7 +356,7 @@ impl<'tcx> PrirodaContext<'tcx> {
     ///
     /// Starts from all MIR locals, then enriches them with source names from
     /// `var_debug_info` when a debug entry maps directly to a whole local.
-    fn list_locals(&self) -> Vec<LocalDesc> {
+    pub(super) fn list_locals(&self) -> Vec<LocalDesc> {
         let Some(frame) = self.ecx.active_thread_stack().last() else {
             return Vec::new();
         };

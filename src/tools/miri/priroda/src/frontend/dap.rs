@@ -1,17 +1,21 @@
 use std::io::{self, BufReader, BufWriter};
 
 use emmy_dap_types::prelude::events::StoppedEventBody;
-use emmy_dap_types::prelude::responses::{StackTraceResponse, ThreadsResponse};
+use emmy_dap_types::prelude::responses::{
+    ScopesResponse, StackTraceResponse, ThreadsResponse, VariablesResponse,
+};
 use emmy_dap_types::prelude::types::{
-    Capabilities, Source, StackFrame, StoppedEventReason, Thread,
+    Capabilities, Scope, ScopePresentationhint, Source, StackFrame, StoppedEventReason, Thread,
+    Variable,
 };
 use emmy_dap_types::prelude::{Command, Event, Request, ResponseBody, Server};
 use miri::{InterpResult, bug, interp_ok};
 
-use crate::debugger::PrirodaContext;
+use crate::debugger::{LocalDesc, PrirodaContext};
 
 const THREAD_ID: i64 = 1;
 const STACK_FRAME_ID: i64 = 1;
+const LOCALS_VARIABLES_REFERENCE: i64 = 1;
 const MAX_REQUEST_COUNT: usize = 128;
 type ServerResult<T = ()> = Result<T, emmy_dap_types::errors::ServerError>;
 
@@ -106,6 +110,12 @@ impl DapSession {
                 interp_ok(
                     self.handle_stack_trace(request, session).map(|()| DispatchOutcome::Continue),
                 ),
+            Command::Scopes(_) =>
+                interp_ok(self.handle_scopes(request, session).map(|()| DispatchOutcome::Continue)),
+            Command::Variables(_) =>
+                interp_ok(
+                    self.handle_variables(request, session).map(|()| DispatchOutcome::Continue),
+                ),
             _ =>
                 interp_ok(self.handle_unsupported_request(request).map(|()| DispatchOutcome::Exit)),
         }
@@ -114,6 +124,45 @@ impl DapSession {
     /// FIXME: connect launch arguments to Priroda's session model.
     fn handle_launch(&mut self, request: Request) -> ServerResult {
         let response = request.success(ResponseBody::Launch);
+        self.server.respond(response)
+    }
+
+    fn handle_scopes<'tcx>(
+        &mut self,
+        request: Request,
+        _session: &PrirodaContext<'tcx>,
+    ) -> ServerResult {
+        let response = request.success(ResponseBody::Scopes(ScopesResponse {
+            scopes: vec![Scope {
+                name: "Locals".to_string(),
+                presentation_hint: Some(ScopePresentationhint::Locals),
+                variables_reference: LOCALS_VARIABLES_REFERENCE,
+                named_variables: None,
+                indexed_variables: Some(0),
+                expensive: false,
+                source: None,
+                line: None,
+                column: None,
+                end_line: None,
+                end_column: None,
+            }],
+        }));
+        self.server.respond(response)
+    }
+
+    fn handle_variables<'tcx>(
+        &mut self,
+        request: Request,
+        session: &PrirodaContext<'tcx>,
+    ) -> ServerResult {
+        let variables = match &request.command {
+            Command::Variables(args) if args.variables_reference == LOCALS_VARIABLES_REFERENCE =>
+                session.list_locals().into_iter().map(Self::local_to_variable).collect(),
+            Command::Variables(_) => Vec::new(),
+            _ => unreachable!(),
+        };
+
+        let response = request.success(ResponseBody::Variables(VariablesResponse { variables }));
         self.server.respond(response)
     }
 
@@ -239,5 +288,36 @@ impl DapSession {
             Command::Disconnect(_) => "disconnect",
             _ => "unsupported",
         }
+    }
+
+    fn local_to_variable(local: LocalDesc) -> Variable {
+        Variable {
+            name: Self::local_name(&local),
+            value: local.value,
+            type_field: Some(local.ty),
+            presentation_hint: None,
+            evaluate_name: None,
+            // FIXME: add child handles once Priroda can identify places across requests.
+            variables_reference: 0,
+            named_variables: None,
+            indexed_variables: None,
+            memory_reference: None,
+        }
+    }
+
+    fn local_name(local: &LocalDesc) -> String {
+        let source_projection = local.source_projection_str();
+
+        // Prefer source names when debug info gives us one. If a local only has
+        // MIR storage identity, keep that visible so the DAP Variables view
+        // still has a stable row for every backing local.
+        if let Some(source_name) = local.source_name {
+            return format!("{source_name}{source_projection}");
+        }
+
+        let local_id = local
+            .local
+            .map_or_else(|| "<none>".to_string(), |local_idx| format!("_{}", local_idx.index()));
+        format!("{local_id}{}", local.storage_projection_str())
     }
 }
