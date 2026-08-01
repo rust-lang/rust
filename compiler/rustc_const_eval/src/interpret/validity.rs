@@ -565,6 +565,8 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
         ty: Ty<'tcx>,
         ptr_kind: PtrKind,
     ) -> InterpResult<'tcx> {
+        // Note that some of those checks (those that encode the basic validity invariant of
+        // pointers) are duplicated in `place_deref`, so changes here might need updates there.
         let ptr = self.read_immediate(value, ptr_kind.into())?;
         if self.reset_provenance_and_padding {
             // There's no padding in a pointer.
@@ -604,7 +606,7 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValidityVisitor<'rt, 'tcx, M> {
                 self.ecx.check_ptr_access(
                     place.ptr(),
                     size,
-                    CheckInAllocMsg::Dereferenceable, // will anyway be replaced by validity message
+                    CheckInAllocMsg::Dereferenceable("pointer"), // will anyway be replaced by validity message
                 ),
                 self.path,
                 Ub(DanglingIntPointer { addr: 0, .. }) =>

@@ -1070,14 +1070,17 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         expected_trait: Option<&'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>>,
     ) -> InterpResult<'tcx, Ty<'tcx>> {
         trace!("get_ptr_vtable({:?})", ptr);
-        let (alloc_id, offset, _tag) = self.ptr_get_alloc_id(ptr, 0)?;
+        let (alloc_id, offset, _tag) = self.ptr_get_alloc_id(ptr, 0).map_err_kind(|err| {
+            let err_ub!(DanglingIntPointer { addr, .. }) = err else { bug!() };
+            err_ub!(InvalidVTablePointer(Pointer::without_provenance(addr)))
+        })?;
         if offset.bytes() != 0 {
-            throw_ub!(InvalidVTablePointer(Pointer::new(alloc_id, offset)))
+            throw_ub!(InvalidVTablePointer(Pointer::new(alloc_id, offset).into()))
         }
         let Some(GlobalAlloc::VTable(ty, vtable_dyn_type)) =
             self.tcx.try_get_global_alloc(alloc_id)
         else {
-            throw_ub!(InvalidVTablePointer(Pointer::new(alloc_id, offset)))
+            throw_ub!(InvalidVTablePointer(Pointer::new(alloc_id, offset).into()))
         };
         if let Some(expected_dyn_type) = expected_trait {
             self.check_vtable_for_type(vtable_dyn_type, expected_dyn_type)?;
@@ -1719,11 +1722,11 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         size: i64,
     ) -> InterpResult<'tcx, (AllocId, Size, M::ProvenanceExtra)> {
         self.ptr_try_get_alloc_id(ptr, size)
-            .map_err(|offset| {
+            .map_err(|addr| {
                 err_ub!(DanglingIntPointer {
-                    addr: offset,
+                    addr,
                     inbounds_size: size,
-                    msg: CheckInAllocMsg::Dereferenceable
+                    msg: CheckInAllocMsg::Dereferenceable("pointer")
                 })
             })
             .into()

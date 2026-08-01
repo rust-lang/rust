@@ -365,6 +365,7 @@ impl<'tcx> Stable<'tcx> for mir::CastKind {
             PtrToPtr => crate::mir::CastKind::PtrToPtr,
             FnPtrToPtr => crate::mir::CastKind::FnPtrToPtr,
             Transmute => crate::mir::CastKind::Transmute,
+            BoxDerefTransmute => crate::mir::CastKind::BoxDerefTransmute,
             Subtype => crate::mir::CastKind::Subtype,
         }
     }

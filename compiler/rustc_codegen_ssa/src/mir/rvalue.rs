@@ -619,7 +619,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             bug!("Unsupported cast of {operand:?} to {cast:?}");
                         })
                     }
-                    mir::CastKind::Transmute | mir::CastKind::Subtype => {
+                    mir::CastKind::Transmute | mir::CastKind::BoxDerefTransmute | mir::CastKind::Subtype => {
                         self.codegen_transmute_operand(bx, operand, cast)
                     }
                 };
