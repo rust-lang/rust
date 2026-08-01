@@ -119,6 +119,26 @@ pub(crate) struct TargetFeatureOnLangItem {
 }
 
 #[derive(Diagnostic)]
+#[diag(
+    "{$name ->
+    [panic_impl] `#[panic_handler]`
+    *[other] `{$name}` lang item
+} function is not allowed to have `#[track_caller]`"
+)]
+pub(crate) struct TrackCallerOnLangItem {
+    #[primary_span]
+    pub attr_span: Span,
+    pub name: Symbol,
+    #[label(
+        "{$name ->
+            [panic_impl] `#[panic_handler]`
+            *[other] `{$name}` lang item
+        } function is not allowed to have `#[track_caller]`"
+    )]
+    pub sig_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("missing 'since'", code = E0542)]
 pub(crate) struct MissingSince {
     #[primary_span]

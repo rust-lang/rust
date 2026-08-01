@@ -122,7 +122,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         for attr in attrs {
             match attr {
                 Attribute::Parsed(attr_kind) => {
-                    self.check_one_parsed_attribute(hir_id, span, target, item, attrs, attr_kind);
+                    self.check_one_parsed_attribute(hir_id, span, target, item, attr_kind);
                     self.check_unused_attribute(hir_id, attr, None);
                 }
                 Attribute::Unparsed(attr_item) => {
@@ -173,7 +173,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         span: Span,
         target: Target,
         item: Option<&'tcx Item<'tcx>>,
-        attrs: &[Attribute],
         attr: &AttributeKind,
     ) {
         match attr {
@@ -200,9 +199,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 self.check_dump_object_lifetime_defaults(hir_id);
             }
             AttributeKind::Naked(..) => self.check_naked(hir_id, target),
-            AttributeKind::TrackCaller(attr_span) => {
-                self.check_track_caller(hir_id, *attr_span, attrs, target)
-            }
             AttributeKind::NonExhaustive(attr_span) => {
                 self.check_non_exhaustive(*attr_span, span, target, item)
             }
@@ -404,6 +400,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::TargetFeature { .. } => {}
             AttributeKind::TestRunner(..) => (),
             AttributeKind::ThreadLocal => (),
+            AttributeKind::TrackCaller(_) => (),
             AttributeKind::TypeLengthLimit { .. } => (),
             AttributeKind::Unroll(..) => (),
             AttributeKind::UnstableFeatureBound(..) => (),
@@ -771,34 +768,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 ObjectLifetimeDefault::Ambiguous => "Ambiguous".to_owned(),
             };
             tcx.dcx().span_err(tcx.def_span(param.def_id), repr);
-        }
-    }
-
-    /// Checks if a `#[track_caller]` is applied to a function.
-    fn check_track_caller(
-        &self,
-        hir_id: HirId,
-        attr_span: Span,
-        attrs: &[Attribute],
-        target: Target,
-    ) {
-        match target {
-            Target::Fn => {
-                // `#[track_caller]` is not valid on weak lang items because they are called via
-                // `extern` declarations and `#[track_caller]` would alter their ABI.
-                if let Some(item) = find_attr!(attrs, Lang(item) => item)
-                    && item.is_weak()
-                {
-                    let sig = self.tcx.hir_node(hir_id).fn_sig().unwrap();
-
-                    self.dcx().emit_err(diagnostics::LangItemWithTrackCaller {
-                        attr_span,
-                        name: item.name(),
-                        sig_span: sig.span,
-                    });
-                }
-            }
-            _ => {}
         }
     }
 

@@ -441,8 +441,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         }
     }
 
-    /// Returns the result of the specified operation, whether it overflowed, and
-    /// the result type.
+    /// Returns the result of the specified operation.
     pub fn unary_op(
         &self,
         un_op: mir::UnOp,
@@ -499,6 +498,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
             ty::RawPtr(..) | ty::Ref(..) => {
                 assert_eq!(un_op, PtrMetadata);
+                self.deref_pointer(val)?; // validity check
                 let (_, meta) = val.to_scalar_and_meta();
                 interp_ok(match meta {
                     MemPlaceMeta::Meta(scalar) => {
