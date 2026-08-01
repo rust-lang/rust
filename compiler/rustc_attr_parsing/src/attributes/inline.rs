@@ -1,12 +1,10 @@
-// FIXME(jdonszelmann): merge these two parsers and error when both attributes are present here.
-//                      note: need to model better how duplicate attr errors work when not using
-//                      SingleAttributeParser which is what we have two of here.
-
 use rustc_feature::AttributeStability;
 use rustc_hir::attrs::{AttributeKind, InlineAttr};
+use rustc_hir::find_attr;
 use rustc_session::lint::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
 
 use super::prelude::*;
+use crate::session_diagnostics::InlineForceInlineConflict;
 
 pub(crate) struct InlineParser;
 
@@ -93,5 +91,17 @@ impl SingleAttributeParser for RustcForceInlineParser {
             InlineAttr::Force { attr_span: cx.attr_span, reason },
             cx.attr_span,
         ))
+    }
+
+    fn finalize_check(cx: &FinalizeCheckContext<'_, '_>, attr_span: Span) {
+        let Some(inline_span) = find_attr!(cx.parsed_attrs, Inline(attr, span) if !matches!(attr, InlineAttr::Force { .. }) => span)
+        else {
+            return;
+        };
+
+        cx.emit_err(InlineForceInlineConflict {
+            inline_span: *inline_span,
+            force_inline_span: attr_span,
+        });
     }
 }
