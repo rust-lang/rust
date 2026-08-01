@@ -196,10 +196,22 @@ class EmptySyntheticProvider:
         return False
 
 
+MSVC_STR_NAMES: List[str] = [
+    "ref$<str$>",
+    "ref_mut$<str$>",
+    "ptr_const$<str$>",
+    "ptr_mut$<str$>",
+]
+
+
 def get_template_args(type_name: str) -> Generator[str, None, None]:
     """
     Takes a type name `T<A, tuple$<B, C>, D>` and returns a list of its generic args
     `["A", "tuple$<B, C>", "D"]`.
+
+    Always returns an empty generator for `&str`, `&mut str`, `*const str`, and `*mut str`
+
+    Strips off `enum2$<>` wrapper from enum types before checking for template args
 
     String-based replacement for LLDB's `SBType.template_args`, as LLDB is currently unable to
     populate this field for targets with PDB debug info. Also useful for manually altering the type
@@ -208,6 +220,13 @@ def get_template_args(type_name: str) -> Generator[str, None, None]:
     Each element of the returned list can be looked up for its `SBType` value via
     `SBTarget.FindFirstType()`
     """
+    if type_name in MSVC_STR_NAMES:
+        return
+
+    if type_name.startswith(("enum2$<", "slice2$<")):
+        # remove the prefix and the trailing ">"
+        type_name = type_name.split("<", 1)[0][:-1].strip()
+
     level = 0
     start = 0
     for i, c in enumerate(type_name):
@@ -224,7 +243,7 @@ def get_template_args(type_name: str) -> Generator[str, None, None]:
             start = i + 1
 
 
-MSVC_PTR_PREFIX: List[str] = ["ref$<", "ref_mut$<", "ptr_const$<", "ptr_mut$<"]
+MSVC_PTR_PREFIX = ("ref$<", "ref_mut$<", "ptr_const$<", "ptr_mut$<")
 
 PRIMITIVE_TYPES: Dict[str, int] = {
     "u8": eBasicTypeUnsignedChar,
@@ -258,6 +277,14 @@ def resolve_msvc_template_arg(arg_name: str, target: SBTarget) -> SBType:
     `base_type.GetArrayType()`, which bypass the PDB file and ask clang directly for the type node.
     """
 
+    result = target.FindFirstType(arg_name)
+
+    if result.IsValid():
+        return result
+
+    if arg_name in MSVC_STR_NAMES:
+        return target.FindFirstType(arg_name)
+
     # As of LLDB 22, finding primitives based on `FindFirstType` with their rust name no longer
     # works. Instead, we can look them up by their `eBasicType` equivalent. For usize and isize,
     # we convert them to their bit-sized counterpart before the lookup
@@ -273,17 +300,16 @@ def resolve_msvc_template_arg(arg_name: str, target: SBTarget) -> SBType:
 
         return target.GetBasicType(eBasicTypeFloat128)
 
-    result = target.FindFirstType(arg_name)
-
-    if result.IsValid():
-        return result
-
     for prefix in MSVC_PTR_PREFIX:
         if arg_name.startswith(prefix):
             arg_name = arg_name[len(prefix) : -1].strip()
 
             result = resolve_msvc_template_arg(arg_name, target)
             return result.GetPointerType()
+
+    if arg_name.startswith("slice2$<"):
+        arg_name = arg_name[len("slice2$<") : -1].strip()
+        return resolve_msvc_template_arg(arg_name, target)
 
     if arg_name.startswith("array$<"):
         template_args = get_template_args(arg_name)
