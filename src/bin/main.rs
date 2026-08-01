@@ -630,6 +630,12 @@ impl GetOptsOptions {
             options.emit_mode = Some(emit_mode_from_emit_str(emit_str)?);
         }
 
+        if options.check && options.inline_config.contains_key("emit_mode") {
+            return Err(format_err!(
+                "Invalid to use `--config=emit_mode=<mode>` and `--check`"
+            ));
+        }
+
         if let Some(ref edition_str) = matches.opt_str("edition") {
             options.edition = Some(edition_from_edition_str(edition_str)?);
         }
@@ -824,6 +830,18 @@ mod test {
         options.inline_config = HashMap::from([("version".to_owned(), "Two".to_owned())]);
         let config = get_config(None, Some(options));
         assert_eq!(config.style_edition(), StyleEdition::Edition2024);
+    }
+
+    #[test]
+    fn check_rejects_emit_mode_from_inline_config() {
+        // Regression for #6999: `--check` is non-mutating, so an `emit_mode`
+        // supplied through `--config` (which could otherwise write the file in
+        // place) is rejected, just like `--emit` is.
+        let opts = make_opts();
+        let matches = opts
+            .parse(["--check", "--config", "emit_mode=Files"])
+            .unwrap();
+        assert!(GetOptsOptions::from_matches(&matches).is_err());
     }
 
     #[nightly_only_test]
