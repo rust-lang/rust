@@ -1040,6 +1040,11 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
                 self.visit_ty(element_ty);
                 self.resolve_anon_const(length, AnonConstKind::ConstArg(IsRepeatExpr::No));
             }
+            TyKind::DirectConstArg(expr) => self.resolve_anon_const_manual(
+                true,
+                AnonConstKind::ConstArg(IsRepeatExpr::No),
+                |this| this.resolve_expr(expr, None),
+            ),
             _ => visit::walk_ty(self, ty),
         }
         self.diag_metadata.current_trait_object = prev;
@@ -1301,8 +1306,8 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
         }
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn visit_generic_arg(&mut self, arg: &'ast GenericArg) {
-        debug!("visit_generic_arg({:?})", arg);
         let prev = replace(&mut self.diag_metadata.currently_processing_generic_args, true);
         match arg {
             GenericArg::Type(ty) => {
@@ -1311,31 +1316,25 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
                 // namespace first, and if that fails we try again in the value namespace. If
                 // resolution in the value namespace succeeds, we have an generic const argument on
                 // our hands.
+                //
+                // We cannot disambiguate multi-segment paths right now as that requires type
+                // checking.
                 if let TyKind::Path(None, ref path) = ty.kind
-                    // We cannot disambiguate multi-segment paths right now as that requires type
-                    // checking.
-                    && path.is_potential_trivial_const_arg()
+                    && let Some(ident) = path.as_single_argless_ident()
+                    && self.maybe_resolve_ident_in_lexical_scope(ident, TypeNS).is_none()
+                    && self.maybe_resolve_ident_in_lexical_scope(ident, ValueNS).is_some()
                 {
-                    let mut check_ns = |ns| {
-                        self.maybe_resolve_ident_in_lexical_scope(path.segments[0].ident, ns)
-                            .is_some()
-                    };
-                    if !check_ns(TypeNS) && check_ns(ValueNS) {
-                        self.resolve_anon_const_manual(
-                            true,
-                            AnonConstKind::ConstArg(IsRepeatExpr::No),
-                            |this| {
-                                this.smart_resolve_path(ty.id, &None, path, PathSource::Expr(None));
-                                this.visit_path(path);
-                            },
-                        );
-
-                        self.diag_metadata.currently_processing_generic_args = prev;
-                        return;
-                    }
+                    self.resolve_anon_const_manual(
+                        true,
+                        AnonConstKind::ConstArg(IsRepeatExpr::No),
+                        |this| {
+                            this.smart_resolve_path(ty.id, &None, path, PathSource::Expr(None));
+                            this.visit_path(path);
+                        },
+                    )
+                } else {
+                    self.visit_ty(ty)
                 }
-
-                self.visit_ty(ty);
             }
             GenericArg::Lifetime(lt) => self.visit_lifetime(lt, visit::LifetimeCtxt::GenericArg),
             GenericArg::Const(ct) => {
