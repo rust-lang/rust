@@ -183,7 +183,7 @@ def get_summary_or_value(valobj: lldb.SBValue) -> Optional[str]:
 
 def field_from_lldb(field: lldb.SBTypeMember) -> Field:
     if BLESS and not field.IsValid():
-        raise Exception("Cannot bless invalid SBTypeMember object")
+        raise FromLLDB("Cannot bless invalid SBTypeMember object")
 
     return Field(field.GetName(), field.GetType().GetName(), field.GetOffsetInBytes())
 
@@ -227,7 +227,7 @@ def get_generics(ty: lldb.SBType, sbtarget: lldb.SBTarget) -> list[lldb.SBType]:
 
 def type_from_lldb(ty: lldb.SBType, sbtarget: lldb.SBTarget) -> Type:
     if BLESS and not ty.IsValid():
-        raise Exception("Cannot bless invalid SBType object")
+        raise FromLLDB("Cannot bless invalid SBType object")
 
     generic_types = get_generics(ty, sbtarget)
     generics = [g.GetName() for g in generic_types]
@@ -243,7 +243,7 @@ def type_from_lldb(ty: lldb.SBType, sbtarget: lldb.SBTarget) -> Type:
 
 def child_from_lldb(child: lldb.SBValue) -> Child:
     if BLESS and not child.IsValid():
-        raise Exception("Cannot bless invalid child")
+        raise FromLLDB("Cannot bless invalid child")
 
     sbtype: lldb.SBType = child.GetType()
 
@@ -261,7 +261,7 @@ def child_from_lldb(child: lldb.SBValue) -> Child:
 
 def variable_from_lldb(var: lldb.SBValue) -> Variable:
     if BLESS and not var.IsValid():
-        raise Exception("Cannot bless invalid SBValue object")
+        raise FromLLDB("Cannot bless invalid SBValue object")
 
     sbtype = var.GetType()
     type_name = sbtype.GetName()
@@ -328,7 +328,7 @@ def bless_variable(
     valobj = frame.FindVariable(var_name)
     if not valobj.IsValid():
         # FIXME (todo) error handling
-        raise Exception(f"<bless error: Cannot find variable {var_name}>")
+        raise FromLLDB(f"<bless error: Cannot find variable {var_name}>")
 
     # HACK it's obviously not ideal to output empty breakpoints, but it will be somewhat rare for it
     # to happen (you would need a breakpoint with repr -> breakpoint without repr -> breakpoint
