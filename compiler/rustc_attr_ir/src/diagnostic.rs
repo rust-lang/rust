@@ -7,7 +7,7 @@ use rustc_span::{DesugaringKind, Span, Symbol, kw};
 use thin_vec::ThinVec;
 use tracing::debug;
 
-use crate::attrs::PrintAttribute;
+use crate::PrintAttribute;
 
 #[derive(Clone, Default, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
 pub struct Directive {
