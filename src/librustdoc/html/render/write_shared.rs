@@ -229,9 +229,7 @@ pub(crate) fn write_not_crate_specific(
             }),
             &style_files,
         );
-        let mut file = try_err!(File::create_buffered(&settings_file), &settings_file);
-        try_err!(write!(file, "{v}"), &settings_file);
-        try_err!(file.flush(), &settings_file);
+        try_err!(std::fs::write(&settings_file, v), &settings_file);
 
         let page = layout::Page {
             title: "Help",
@@ -266,9 +264,7 @@ pub(crate) fn write_not_crate_specific(
             ),
             &style_files,
         );
-        let mut file = try_err!(File::create_buffered(&help_file), &help_file);
-        try_err!(write!(file, "{v}"), &help_file);
-        try_err!(file.flush(), &help_file);
+        try_err!(std::fs::write(&help_file, v), &help_file);
 
         if layout.scrape_examples_extension {
             let page = layout::Page {
@@ -282,12 +278,7 @@ pub(crate) fn write_not_crate_specific(
                 rust_logo: true,
             };
             let v = layout::render(&layout, &page, "", scrape_examples_help(), &style_files);
-            let mut file = try_err!(
-                File::create_buffered(&scrape_examples_help_file),
-                &scrape_examples_help_file
-            );
-            try_err!(write!(file, "{v}"), &scrape_examples_help_file);
-            try_err!(file.flush(), &scrape_examples_help_file);
+            try_err!(std::fs::write(&scrape_examples_help_file, v), &scrape_examples_help_file);
         }
     }
     Ok(())
