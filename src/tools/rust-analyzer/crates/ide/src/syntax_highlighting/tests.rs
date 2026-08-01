@@ -453,6 +453,23 @@ macro_rules! void_2024 {
 }
 
 #[test]
+fn test_raw_string_format_specifiers() {
+    check_highlighting(
+        r####"
+//- minicore: fmt
+fn main() {
+    let here = 1;
+    format_args!(r"backslash \{here} arg");
+    format_args!(r#"hashed \{here} arg"#);
+    format_args!("plain {here} arg");
+}
+"####,
+        expect_file!["./test_data/highlight_raw_string_format_specifiers.html"],
+        false,
+    );
+}
+
+#[test]
 fn test_string_highlighting() {
     // The format string detection is based on macro-expansion,
     // thus, we have to copy the macro definition from `std`
