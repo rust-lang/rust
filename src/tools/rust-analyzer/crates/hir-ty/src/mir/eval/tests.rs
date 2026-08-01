@@ -1115,6 +1115,109 @@ fn main() {
 }
 
 #[test]
+fn slice_get_unchecked_intrinsic() {
+    check_pass(
+        r#"
+//- minicore: panic
+#[rustc_intrinsic]
+unsafe fn slice_get_unchecked<ItemPtr, SlicePtr, T>(
+    slice_ptr: SlicePtr,
+    index: usize,
+) -> ItemPtr;
+
+fn should_not_reach() { panic!() }
+
+fn main() {
+    let values = [10, 20, 30];
+    let slice_ptr = &values as *const [i32];
+    let item_ptr = unsafe {
+        slice_get_unchecked::<*const i32, *const [i32], i32>(slice_ptr, 1)
+    };
+    if unsafe { *item_ptr } != 20 {
+        should_not_reach();
+    }
+}
+"#,
+    );
+}
+
+#[test]
+fn slice_get_unchecked_out_of_bounds() {
+    check_error_with(
+        r#"
+#[rustc_intrinsic]
+unsafe fn slice_get_unchecked<ItemPtr, SlicePtr, T>(
+    slice_ptr: SlicePtr,
+    index: usize,
+) -> ItemPtr;
+
+fn main() {
+    let values = [()];
+    let slice_ptr = &values as *const [()];
+    let _item = unsafe {
+        slice_get_unchecked::<*const (), *const [()], ()>(slice_ptr, 1)
+    };
+}
+"#,
+        |e| {
+            let mut err = &e;
+            while let MirEvalError::InFunction(inner, _) = err {
+                err = inner;
+            }
+            matches!(err, MirEvalError::UndefinedBehavior(_))
+        },
+    );
+}
+
+#[test]
+fn slice_get_unchecked_const_slice() {
+    check_pass(
+        r#"
+//- minicore: panic
+#[rustc_intrinsic]
+unsafe fn slice_get_unchecked<ItemPtr, SlicePtr, T>(
+    slice_ptr: SlicePtr,
+    index: usize,
+) -> ItemPtr;
+
+struct Flag {
+    name: &'static str,
+    value: u16,
+}
+
+const PURE: &str = "PURE";
+const NOMEM: &str = "NOMEM";
+const READONLY: &str = "READONLY";
+const PRESERVES_FLAGS: &str = "PRESERVES_FLAGS";
+const NORETURN: &str = "NORETURN";
+const NOSTACK: &str = "NOSTACK";
+const ATT_SYNTAX: &str = "ATT_SYNTAX";
+const FLAGS: &[Flag] = &[
+    Flag { name: PURE, value: 1 },
+    Flag { name: NOMEM, value: 2 },
+    Flag { name: READONLY, value: 4 },
+    Flag { name: PRESERVES_FLAGS, value: 8 },
+    Flag { name: NORETURN, value: 16 },
+    Flag { name: NOSTACK, value: 32 },
+    Flag { name: ATT_SYNTAX, value: 64 },
+];
+
+fn should_not_reach() { panic!() }
+
+fn main() {
+    let flag = unsafe {
+        slice_get_unchecked::<&Flag, &[Flag], Flag>(FLAGS, 6)
+    };
+    let name = flag.name as *const str as *const u8;
+    if unsafe { *name } != b'A' || flag.value != 64 {
+        should_not_reach();
+    }
+}
+"#,
+    );
+}
+
+#[test]
 fn unreachable_intrinsic() {
     check_error_with(
         r#"
