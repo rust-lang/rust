@@ -16,7 +16,7 @@ use tt::TextRange;
 
 use crate::{
     MacroId, UnresolvedMacro, attrs::AttrFlags, expr_store::HygieneId, macro_call_as_call_id,
-    nameres::DefMap,
+    macro_expansion_depth, nameres::DefMap,
 };
 
 #[derive(Debug)]
@@ -24,7 +24,10 @@ pub(super) struct Expander<'db> {
     span_map: SpanMap<'db>,
     current_file_id: HirFileId,
     ast_id_map: &'db AstIdMap,
-    /// `recursion_depth == usize::MAX` indicates that the recursion limit has been reached.
+    /// Counts from the depth `current_file_id` already sits at, so that the budget is shared by
+    /// the whole expansion chain rather than restarting for every body.
+    ///
+    /// `recursion_depth == u32::MAX` indicates that the recursion limit has been reached.
     recursion_depth: u32,
     recursion_limit: usize,
 }
@@ -44,7 +47,7 @@ impl<'db> Expander<'db> {
         };
         Expander {
             current_file_id,
-            recursion_depth: 0,
+            recursion_depth: macro_expansion_depth(db, current_file_id, recursion_limit) as u32,
             recursion_limit,
             span_map: current_file_id.span_map(db),
             ast_id_map: current_file_id.ast_id_map(db),

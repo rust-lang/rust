@@ -39,7 +39,7 @@ use crate::{
         self, Attrs, AttrsOrCfg, FieldsShape, ImportAlias, ImportKind, ItemTree, ItemTreeAstId,
         Macro2, MacroCall, MacroRules, Mod, ModItemId, ModKind, TreeId,
     },
-    macro_call_as_call_id,
+    macro_call_as_call_id, macro_expansion_depth,
     nameres::{
         BuiltinShadowMode, DefMap, LocalDefMap, MacroSubNs, ModuleData, ModuleOrigin, ResolveMode,
         assoc::TraitItems,
@@ -399,9 +399,17 @@ impl<'db> DefCollector<'db> {
             self.inject_prelude();
 
             let module_id = self.def_map.root;
+            // A block `DefMap` is collected from scratch, but it may itself live inside a macro
+            // expansion. Continue that chain's budget instead of restarting it, or a macro
+            // expanding to an item that invokes the macro again never reaches the limit.
+            let macro_depth = macro_expansion_depth(
+                self.db,
+                tree_id.file_id(),
+                self.def_map.recursion_limit() as usize,
+            );
             ModCollector {
                 def_collector: self,
-                macro_depth: 0,
+                macro_depth,
                 module_id,
                 tree_id,
                 item_tree,
