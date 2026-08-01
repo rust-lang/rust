@@ -60,10 +60,12 @@ nvptx
 pointee
 powitf
 reassoc
+retag
 riscv
 rlib
 roundevenf
 rustc
+sgpr
 sitofp
 sizet
 spir
@@ -74,5 +76,8 @@ uitofp
 unord
 uninlined
 utrunc
+vgpr
 xabort
+xreg
+xtensa
 zext
