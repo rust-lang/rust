@@ -1,7 +1,8 @@
 use std::io::{self, BufReader, BufWriter};
 
+use emmy_dap_types::prelude::events::StoppedEventBody;
 use emmy_dap_types::prelude::responses::{StackTraceResponse, ThreadsResponse};
-use emmy_dap_types::prelude::types::{Capabilities, Thread};
+use emmy_dap_types::prelude::types::{Capabilities, StoppedEventReason, Thread};
 use emmy_dap_types::prelude::{Command, Event, Request, ResponseBody, Server};
 use miri::{InterpResult, interp_ok};
 
@@ -23,10 +24,10 @@ impl Dap {
     /// Serve DAP requests on stdin/stdout.
     pub(crate) fn run_dap_loop<'tcx>(
         &self,
-        _session: &mut PrirodaContext<'tcx>,
+        session: &mut PrirodaContext<'tcx>,
     ) -> InterpResult<'tcx> {
         // FIXME: make this unbounded once Priroda has a full session lifecycle.
-        if let Err(err) = DapSession::stdio().run_requests() {
+        if let Err(err) = DapSession::stdio().run_requests(session)? {
             eprintln!("priroda dap error: {err}");
         }
 
@@ -39,6 +40,7 @@ type DapServer = Server<io::StdinLock<'static>, io::StdoutLock<'static>>;
 /// Owns the DAP stdio transport and dispatches requests into Priroda handlers.
 struct DapSession {
     server: DapServer,
+    initialized: bool,
 }
 
 impl DapSession {
@@ -48,35 +50,59 @@ impl DapSession {
                 BufReader::new(io::stdin().lock()),
                 BufWriter::new(io::stdout().lock()),
             ),
+            initialized: false,
         }
     }
 
-    fn run_requests(&mut self) -> ServerResult {
+    fn run_requests<'tcx>(
+        &mut self,
+        session: &mut PrirodaContext<'tcx>,
+    ) -> InterpResult<'tcx, ServerResult> {
         for _ in 0..MAX_REQUEST_COUNT {
-            let Some(request) = self.server.poll_request()? else {
-                return Ok(());
+            let request = match self.server.poll_request() {
+                Ok(Some(request)) => request,
+                Ok(None) => return interp_ok(Ok(())),
+                Err(err) => return interp_ok(Err(err)),
             };
 
-            match self.dispatch_request(request)? {
-                DispatchOutcome::Continue => {}
-                DispatchOutcome::Exit => return Ok(()),
+            match self.dispatch_request(request, session)? {
+                Ok(DispatchOutcome::Continue) => {}
+                Ok(DispatchOutcome::Exit) => return interp_ok(Ok(())),
+                Err(err) => return interp_ok(Err(err)),
             }
         }
 
-        Ok(())
+        interp_ok(Ok(()))
     }
 
-    fn dispatch_request(&mut self, request: Request) -> ServerResult<DispatchOutcome> {
+    fn dispatch_request<'tcx>(
+        &mut self,
+        request: Request,
+        session: &mut PrirodaContext<'tcx>,
+    ) -> InterpResult<'tcx, ServerResult<DispatchOutcome>> {
+        // Reject non-initialize requests before the handshake completes so the
+        // client gets a framed error.
+        if !self.initialized && !matches!(&request.command, Command::Initialize(_)) {
+            return interp_ok(
+                self.handle_unsupported_request(request).map(|()| DispatchOutcome::Exit),
+            );
+        }
+
         match &request.command {
             Command::Initialize(_) =>
-                self.handle_initialize(request).map(|()| DispatchOutcome::Continue),
-            Command::Launch(_) => self.handle_launch(request).map(|()| DispatchOutcome::Continue),
-            Command::ConfigurationDone =>
-                self.handle_configuration_done(request).map(|()| DispatchOutcome::Continue),
-            Command::Threads => self.handle_threads(request).map(|()| DispatchOutcome::Continue),
+                interp_ok(self.handle_initialize(request).map(|()| DispatchOutcome::Continue)),
+            Command::Launch(_) =>
+                interp_ok(self.handle_launch(request).map(|()| DispatchOutcome::Continue)),
+            Command::ConfigurationDone => {
+                let res = self.handle_configuration_done(request, session)?;
+                interp_ok(res.map(|()| DispatchOutcome::Continue))
+            }
+            Command::Threads =>
+                interp_ok(self.handle_threads(request).map(|()| DispatchOutcome::Continue)),
             Command::StackTrace(_) =>
-                self.handle_stack_trace(request).map(|()| DispatchOutcome::Continue),
-            _ => self.handle_unsupported_request(request).map(|()| DispatchOutcome::Exit),
+                interp_ok(self.handle_stack_trace(request).map(|()| DispatchOutcome::Continue)),
+            _ =>
+                interp_ok(self.handle_unsupported_request(request).map(|()| DispatchOutcome::Exit)),
         }
     }
 
@@ -86,9 +112,18 @@ impl DapSession {
         self.server.respond(response)
     }
 
-    fn handle_configuration_done(&mut self, request: Request) -> ServerResult {
+    fn handle_configuration_done<'tcx>(
+        &mut self,
+        request: Request,
+        session: &mut PrirodaContext<'tcx>,
+    ) -> InterpResult<'tcx, ServerResult> {
+        session.stop_at_first_user_location()?;
         let response = request.success(ResponseBody::ConfigurationDone);
-        self.server.respond(response)
+        interp_ok(
+            self.server
+                .respond(response)
+                .and_then(|()| self.send_stopped_event(StoppedEventReason::Entry)),
+        )
     }
 
     /// FIXME: replace this with Miri thread state once Priroda exposes a
@@ -118,7 +153,9 @@ impl DapSession {
             ..Capabilities::default()
         }));
         self.server.respond(response)?;
-        self.server.send_event(Event::Initialized)
+        self.server.send_event(Event::Initialized)?;
+        self.initialized = true;
+        Ok(())
     }
 
     fn handle_unsupported_request(&mut self, request: Request) -> ServerResult {
@@ -128,6 +165,18 @@ impl DapSession {
         );
         let response = request.error("unsupported request in Priroda DAP demo mode");
         self.server.respond(response)
+    }
+
+    fn send_stopped_event(&mut self, reason: StoppedEventReason) -> ServerResult {
+        self.server.send_event(Event::Stopped(StoppedEventBody {
+            reason,
+            description: None,
+            thread_id: Some(THREAD_ID),
+            preserve_focus_hint: None,
+            text: None,
+            all_threads_stopped: Some(true),
+            hit_breakpoint_ids: None,
+        }))
     }
 
     fn display_command(command: &Command) -> &'static str {

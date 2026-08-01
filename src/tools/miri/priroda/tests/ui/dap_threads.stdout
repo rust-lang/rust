@@ -6,6 +6,8 @@ Content-Length: 143
 
 {"seq":3,"type":"response","request_seq":2,"success":true,"command":"launch","error":null}Content-Length: 101
 
-{"seq":4,"type":"response","request_seq":3,"success":true,"command":"configurationDone","error":null}Content-Length: 135
+{"seq":4,"type":"response","request_seq":3,"success":true,"command":"configurationDone","error":null}Content-Length: 186
 
-{"seq":5,"type":"response","request_seq":4,"success":true,"command":"threads","body":{"threads":[{"id":1,"name":"main"}]},"error":null}
+{"seq":5,"type":"event","event":"stopped","body":{"reason":"entry","description":null,"threadId":1,"preserveFocusHint":null,"text":null,"allThreadsStopped":true,"hitBreakpointIds":null}}Content-Length: 135
+
+{"seq":6,"type":"response","request_seq":4,"success":true,"command":"threads","body":{"threads":[{"id":1,"name":"main"}]},"error":null}
