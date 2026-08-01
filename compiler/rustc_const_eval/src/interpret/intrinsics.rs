@@ -476,7 +476,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                 // Check that the memory between them is dereferenceable at all, starting from the
                 // origin pointer: `dist` is `a - b`, so it is based on `b`.
-                self.check_ptr_access_signed(b, dist, CheckInAllocMsg::Dereferenceable)
+                self.check_ptr_access_signed(b, dist, CheckInAllocMsg::Dereferenceable("pointer"))
                     .map_err_kind(|_| {
                         // This could mean they point to different allocations, or they point to the same allocation
                         // but not the entire range between the pointers is in-bounds.
@@ -498,7 +498,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 self.check_ptr_access_signed(
                     a,
                     dist.checked_neg().unwrap(), // i64::MIN is impossible as no allocation can be that large
-                    CheckInAllocMsg::Dereferenceable,
+                    CheckInAllocMsg::Dereferenceable("pointer"),
                 )
                 .map_err_kind(|_| {
                     // Make the error more specific.
