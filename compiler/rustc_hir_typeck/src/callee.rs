@@ -654,7 +654,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 fn_sig.output(),
                 expected,
                 arg_exprs,
-                None,
                 fn_sig.c_variadic(),
                 tuple_arguments_flag,
                 def_id,
@@ -1073,12 +1072,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             fn_sig.output(),
             expected,
             arg_exprs,
-            None,
             fn_sig.fn_sig_kind.c_variadic(),
             TupleArgumentsFlag::rust_fn_trait_call(),
             Some(closure_def_id.to_def_id()),
             None,
         );
+
+        if self.is_closure_body_deferred(closure_def_id) {
+            if let Some(expected_ty) = expected.only_has_type(self) {
+                // Unlike the speculative argument guidance above, commit the result constraint
+                // before checking the body so nested closures can use it.
+                self.demand_suptype(call_expr.span, expected_ty, fn_sig.output());
+            }
+            self.check_deferred_closure_body(closure_def_id);
+        }
 
         fn_sig.output()
     }
@@ -1172,7 +1179,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             method.sig.output(),
             expected,
             arg_exprs,
-            None,
             method.sig.fn_sig_kind.c_variadic(),
             TupleArgumentsFlag::rust_fn_trait_call(),
             Some(method.def_id),

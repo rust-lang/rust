@@ -1,5 +1,6 @@
-//! Deferred method calls must still report errors when later uses do not constrain their receivers.
+//! Closure bodies still report ambiguity when their signatures receive no outside constraints.
 
+#[derive(Copy, Clone)]
 struct Value;
 
 impl Value {
@@ -14,23 +15,21 @@ fn unconstrained_index() {
     //~^ ERROR type annotations needed
 }
 
-fn unconstrained_receiver() {
+fn receiver_inferred_from_later_call() {
     let get = |value| value.get();
-    //~^ ERROR type annotations needed
 
     let _: i32 = get(Value);
 }
 
-fn nested_closure_param_ty_var() {
+fn referenced_receiver_inferred_from_later_call() {
     let get = |value: &_| (*value).get();
-    //~^ ERROR type annotations needed
 
     let _: i32 = get(&Value);
 }
 
-// Upstream `main` performs method lookup before either closure call can constrain `index`, so it
-// reports E0282 at `array[index]`. With deferred method confirmation, the first call fixes `index`
-// to `usize`, and the second call reaches the usual closure argument check and reports E0308.
+// Upstream `main` checks the closure body before either call can constrain `index`, so it reports
+// E0282 at `array[index]`. With deferred body checking, the first call fixes `index` to `usize`,
+// and the second call reaches the usual closure argument check and reports E0308.
 fn conflicting_closure_call_types() {
     let array: [i64; 1] = [0];
     let get = |index| array[index].pow(1);
@@ -38,6 +37,11 @@ fn conflicting_closure_call_types() {
     let _: i64 = get(0usize);
     let _ = get(0u8);
     //~^ ERROR mismatched types
+}
+
+fn deferred_body_still_runs_late_checks() {
+    let _repeat = |_value| [String::new(); 2];
+    //~^ ERROR the trait bound `String: Copy` is not satisfied
 }
 
 fn main() {}

@@ -198,8 +198,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expectation: Expectation<'tcx>,
         // The expressions for each provided argument
         provided_args: &'tcx [hir::Expr<'tcx>],
-        // Types for arguments which were checked before this call was resolved.
-        prechecked_arg_tys: Option<&[Option<Ty<'tcx>>]>,
         // Whether the function is variadic (e.g. from C)
         c_variadic: bool,
         // Whether all the arguments have been bundled in a tuple (ex: closures), or one has been splatted
@@ -345,13 +343,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             // If we are processing first arg of delegation then we could have adjusted it
             // in `execute_delegation_aware_arguments_check`.
-            let checked_ty = prechecked_arg_tys
-                .and_then(|tys| tys[idx])
-                .or_else(|| {
-                    self.tcx.hir_opt_delegation_info(self.body_def_id).and_then(|_| {
-                        self.typeck_results.borrow().node_type_opt(provided_arg.hir_id)
-                    })
-                })
+            let checked_ty = self
+                .tcx
+                .hir_opt_delegation_info(self.body_def_id)
+                .and_then(|_| self.typeck_results.borrow().node_type_opt(provided_arg.hir_id))
                 .unwrap_or_else(|| self.check_expr_with_expectation(provided_arg, expectation));
 
             // 2. Coerce to the most detailed type that could be coerced
@@ -449,9 +444,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     continue;
                 }
 
+                self.check_deferred_closure_body_for_value_argument(arg);
                 let compatible = demand_compatible(idx);
                 let is_compatible = matches!(compatible, Compatibility::Compatible);
                 compatibility_diagonal[idx] = compatible;
+
+                let arg_ty = self.typeck_results.borrow().node_type_opt(arg.hir_id);
+                if let Some(arg_ty) = arg_ty {
+                    self.check_deferred_closure_body_for_arg_if_inputs_resolved(arg_ty);
+                }
 
                 if !is_compatible {
                     call_appears_satisfied = false;
@@ -463,10 +464,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             err_code = E0060;
         }
 
-        for (idx, arg) in provided_args.iter().enumerate().skip(minimum_input_count) {
+        for arg in provided_args.iter().skip(minimum_input_count) {
             // Make sure we've checked this expr at least once.
-            let arg_ty =
-                prechecked_arg_tys.and_then(|tys| tys[idx]).unwrap_or_else(|| self.check_expr(arg));
+            let arg_ty = self.check_expr(arg);
 
             // If the function is c-style variadic, we skipped a bunch of arguments
             // so we need to check those, and write out the types

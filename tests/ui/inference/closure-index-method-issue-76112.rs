@@ -26,6 +26,15 @@ impl Holder {
 
 fn expect_usize_to_i64<F: Fn(usize) -> i64>(_: F) {}
 
+#[derive(Copy, Clone)]
+struct Value;
+
+impl Value {
+    fn get(self) -> i32 {
+        0
+    }
+}
+
 fn main() {
     let array: [i64; 1] = [0];
     let get = |index| array[index].pow(1);
@@ -47,8 +56,34 @@ fn main() {
     let value: i64 = add(2);
     assert_eq!(value, 2);
 
-    // Confirming `take` checks its closure argument, which queues `pow` for a later round.
+    // The inner closure waits until `take` has constrained its argument and the outer call has
+    // constrained `make_nested`.
     let holders = [Holder];
     let make_nested = |index| holders[index].take(|inner| array[inner].pow(1));
     expect_usize_to_i64(make_nested(0));
+
+    let direct_receiver = |value| value.get();
+    let _: i32 = direct_receiver(Value);
+
+    let referenced_receiver = |value: &_| (*value).get();
+    let _: i32 = referenced_receiver(&Value);
+
+    let make_value = || 1u32;
+    let _: u32 = make_value().count_ones();
+
+    let mut inferred_from_body = None;
+    let _set = || inferred_from_body = Some(1u32);
+    let _: u32 = inferred_from_body.unwrap().count_ones();
+
+    let mut tuple_inferred_from_body = None;
+    let _set = || tuple_inferred_from_body = Some((1u32,));
+    let _: u32 = tuple_inferred_from_body.unwrap().0;
+
+    // A const block has its own body owner, so it must finish any closures deferred within it.
+    const {
+        let _unused = |value| {
+            let _: u32 = value;
+            value
+        };
+    }
 }

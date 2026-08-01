@@ -18,7 +18,7 @@ use rustc_errors::{
 };
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, DefKind, Res};
-use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{ExprKind, HirId, QPath, find_attr, is_range_literal};
 use rustc_hir_analysis::NoVariantNamed;
@@ -52,20 +52,6 @@ use crate::{
     BreakableCtxt, CoroutineTypes, Diverges, FnCtxt, GatherLocalsVisitor, Needs,
     TupleArgumentsFlag, cast, fatally_break_rust, report_unexpected_variant_res, type_error_struct,
 };
-
-/// A method call on an unresolved intermediate receiver inside a closure.
-///
-/// It is revisited after the enclosing body has added constraints to the closure's types.
-pub(super) struct DeferredClosureMethodCall<'tcx> {
-    expr: &'tcx hir::Expr<'tcx>,
-    segment: &'tcx hir::PathSegment<'tcx>,
-    receiver: &'tcx hir::Expr<'tcx>,
-    receiver_ty: Ty<'tcx>,
-    args: &'tcx [hir::Expr<'tcx>],
-    prechecked_arg_tys: Vec<Option<Ty<'tcx>>>,
-    output_ty: Ty<'tcx>,
-    body_def_id: LocalDefId,
-}
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn precedence(&self, expr: &hir::Expr<'_>) -> ExprPrecedence {
@@ -378,7 +364,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ExprKind::Match(discrim, arms, match_src) => {
                 self.check_expr_match(expr, discrim, arms, expected, match_src)
             }
-            ExprKind::Closure(closure) => self.check_expr_closure(closure, expr.span, expected),
+            ExprKind::Closure(closure) => {
+                self.check_expr_closure(closure, expr.hir_id, expr.span, expected)
+            }
             ExprKind::Block(body, _) => self.check_expr_block(body, expected),
             ExprKind::Call(callee, args) => self.check_expr_call(expr, callee, args, expected),
             ExprKind::Use(used_expr, _) => self.check_expr_use(used_expr, expected),
@@ -1474,50 +1462,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let rcvr_t = self.check_expr(rcvr);
         let rcvr_t = self.resolve_vars_with_obligations(rcvr_t);
 
-        if rcvr_t.is_ty_var()
-            && self.tcx.def_kind(self.body_def_id) == DefKind::Closure
-            // Only defer unresolved intermediate results.
-            // Keep method lookup eager when the receiver variable occurs in a closure
-            // parameter type.
-            && !self.ty_var_occurs_in_closure_params(rcvr_t)
-        {
-            let prechecked_arg_tys = args
-                .iter()
-                .map(|arg| {
-                    if matches!(arg.kind, ExprKind::Closure(..)) {
-                        None
-                    } else {
-                        Some(self.check_expr(arg))
-                    }
-                })
-                .collect();
-            let output_ty = self.next_ty_var(expr.span);
-            self.deferred_closure_method_calls.borrow_mut().push(DeferredClosureMethodCall {
-                expr,
-                segment,
-                receiver: rcvr,
-                receiver_ty: rcvr_t,
-                args,
-                prechecked_arg_tys,
-                output_ty,
-                body_def_id: self.body_def_id,
-            });
-            return output_ty;
-        }
-
-        self.confirm_expr_method_call(expr, segment, rcvr, rcvr_t, args, expected, None)
-    }
-
-    fn confirm_expr_method_call(
-        &self,
-        expr: &'tcx hir::Expr<'tcx>,
-        segment: &'tcx hir::PathSegment<'tcx>,
-        rcvr: &'tcx hir::Expr<'tcx>,
-        rcvr_t: Ty<'tcx>,
-        args: &'tcx [hir::Expr<'tcx>],
-        expected: Expectation<'tcx>,
-        prechecked_arg_tys: Option<&[Option<Ty<'tcx>>]>,
-    ) -> Ty<'tcx> {
         match self.lookup_method(rcvr_t, segment, segment.ident.span, expr, rcvr, args) {
             Ok(method) => {
                 self.write_method_call_and_enforce_effects(expr.hir_id, expr.span, method);
@@ -1535,7 +1479,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     method.sig.output(),
                     expected,
                     args,
-                    prechecked_arg_tys,
                     method.sig.fn_sig_kind.c_variadic(),
                     method_tuple_args_flag,
                     Some(method.def_id),
@@ -1559,7 +1502,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     err_output,
                     NoExpectation,
                     args,
-                    prechecked_arg_tys,
                     false,
                     TupleArgumentsFlag::DontTupleArguments,
                     None,
@@ -1567,53 +1509,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 );
 
                 err_output
-            }
-        }
-    }
-
-    /// Returns whether `ty` occurs in the type of any binding in this closure's parameters.
-    ///
-    /// This follows type-variable relationships rather than HIR expression provenance: an
-    /// intermediate receiver may use a closure parameter without sharing its type variable.
-    fn ty_var_occurs_in_closure_params(&self, ty: Ty<'tcx>) -> bool {
-        let body = self.tcx.hir_body_owned_by(self.body_def_id);
-        let typeck_results = self.typeck_results.borrow();
-        body.params.iter().any(|param| {
-            let mut found = false;
-            param.pat.each_binding(|_, hir_id, _, _| {
-                found |= typeck_results.node_type_opt(hir_id).is_some_and(|param_ty| {
-                    // The parameter may have partially resolved to a type containing `ty`.
-                    self.resolve_vars_if_possible(param_ty).walk().any(|arg| arg == ty.into())
-                });
-            });
-            found
-        })
-    }
-
-    pub(super) fn check_deferred_closure_method_calls(&mut self) {
-        loop {
-            // Iterate to a fixed point: confirming a method may check a closure argument which
-            // queues more method calls.
-            let calls =
-                self.deferred_closure_method_calls.borrow_mut().drain(..).collect::<Vec<_>>();
-            if calls.is_empty() {
-                break;
-            }
-
-            for call in calls {
-                let body_def_id = std::mem::replace(&mut self.body_def_id, call.body_def_id);
-                let receiver_ty = self.resolve_vars_with_obligations(call.receiver_ty);
-                let output_ty = self.confirm_expr_method_call(
-                    call.expr,
-                    call.segment,
-                    call.receiver,
-                    receiver_ty,
-                    call.args,
-                    ExpectHasType(call.output_ty),
-                    Some(&call.prechecked_arg_tys),
-                );
-                self.demand_suptype(call.expr.span, call.output_ty, output_ty);
-                self.body_def_id = body_def_id;
             }
         }
     }
@@ -1826,6 +1721,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ty = fcx.check_expr_with_expectation(body.value, expected);
         fcx.require_type_is_sized(ty, body.value.span, ObligationCauseCode::SizedConstOrStatic);
         fcx.write_ty(block.hir_id, ty);
+        fcx.check_deferred_closure_bodies_for_parent(def_id);
         ty
     }
 
