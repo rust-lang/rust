@@ -824,6 +824,16 @@ pub(crate) struct UnknownExternLangItem {
 }
 
 #[derive(Diagnostic)]
+#[diag("duplicate tool `{$tool}` registered")]
+pub(crate) struct DuplicateTool {
+    #[primary_span]
+    pub(crate) span: Span,
+    pub(crate) tool: Ident,
+    #[label("already registered here")]
+    pub(crate) old_ident_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("tool `{$tool}` is reserved and cannot be registered")]
 pub(crate) struct ToolReserved {
     #[primary_span]
