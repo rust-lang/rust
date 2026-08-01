@@ -479,7 +479,7 @@ impl Rewrite for PatField {
                 context,
                 &attrs_str,
                 &pat_and_id_str,
-                mk_sp(hi_pos, self.pat.span.lo()),
+                mk_sp(hi_pos, self.ident.span.lo()),
                 combine_shape,
                 false,
             )
