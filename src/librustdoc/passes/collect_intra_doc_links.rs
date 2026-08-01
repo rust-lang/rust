@@ -1174,8 +1174,6 @@ impl LinkCollector<'_, '_> {
     }
 
     /// This is the entry point for resolving an intra-doc link.
-    ///
-    /// FIXME(jynelson): this is way too many arguments
     fn resolve_link(
         &mut self,
         dox: &str,
