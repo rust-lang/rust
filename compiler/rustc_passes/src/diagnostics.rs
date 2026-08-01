@@ -325,26 +325,6 @@ pub(crate) struct MissingLangItem {
 }
 
 #[derive(Diagnostic)]
-#[diag(
-    "{$name ->
-    [panic_impl] `#[panic_handler]`
-    *[other] `{$name}` lang item
-} function is not allowed to have `#[track_caller]`"
-)]
-pub(crate) struct LangItemWithTrackCaller {
-    #[primary_span]
-    pub attr_span: Span,
-    pub name: Symbol,
-    #[label(
-        "{$name ->
-            [panic_impl] `#[panic_handler]`
-            *[other] `{$name}` lang item
-        } function is not allowed to have `#[track_caller]`"
-    )]
-    pub sig_span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("duplicate diagnostic item in crate `{$crate_name}`: `{$name}`")]
 pub(crate) struct DuplicateDiagnosticItemInCrate {
     #[primary_span]
