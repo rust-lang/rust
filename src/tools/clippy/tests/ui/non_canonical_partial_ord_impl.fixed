@@ -1,4 +1,5 @@
 //@aux-build:proc_macro_derive.rs
+//@aux-build:proc_macros.rs
 #![no_main]
 
 extern crate proc_macros;

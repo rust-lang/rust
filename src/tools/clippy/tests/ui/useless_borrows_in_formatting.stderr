@@ -1,5 +1,5 @@
 error: redundant reference in `println!` argument
-  --> tests/ui/useless_borrows_in_formatting.rs:9:20
+  --> tests/ui/useless_borrows_in_formatting.rs:8:20
    |
 LL |     println!("{}", &s);
    |                    ^^ help: remove the redundant `&`: `s`
@@ -8,103 +8,103 @@ LL |     println!("{}", &s);
    = help: to override `-D warnings` add `#[allow(clippy::useless_borrows_in_formatting)]`
 
 error: redundant reference in `println!` argument
-  --> tests/ui/useless_borrows_in_formatting.rs:10:22
+  --> tests/ui/useless_borrows_in_formatting.rs:9:22
    |
 LL |     println!("{:?}", &s);
    |                      ^^ help: remove the redundant `&`: `s`
 
 error: redundant reference in `println!` argument
-  --> tests/ui/useless_borrows_in_formatting.rs:11:20
+  --> tests/ui/useless_borrows_in_formatting.rs:10:20
    |
 LL |     println!("{}", &&s);
    |                    ^^^ help: remove the redundant `&`: `s`
 
 error: redundant reference in `println!` argument
-  --> tests/ui/useless_borrows_in_formatting.rs:12:20
+  --> tests/ui/useless_borrows_in_formatting.rs:11:20
    |
 LL |     println!("{}", &&mut s);
    |                    ^^^^^^^ help: remove the redundant `&`/`&mut`: `s`
 
 error: redundant reference in `println!` argument
-  --> tests/ui/useless_borrows_in_formatting.rs:13:20
+  --> tests/ui/useless_borrows_in_formatting.rs:12:20
    |
 LL |     println!("{}", &mut &s);
    |                    ^^^^^^^ help: remove the redundant `&`/`&mut`: `s`
 
 error: redundant reference in `println!` argument
-  --> tests/ui/useless_borrows_in_formatting.rs:14:20
+  --> tests/ui/useless_borrows_in_formatting.rs:13:20
    |
 LL |     println!("{}", &mut s);
    |                    ^^^^^^ help: remove the redundant `&mut`: `s`
 
 error: redundant reference in `println!` argument
-  --> tests/ui/useless_borrows_in_formatting.rs:17:20
+  --> tests/ui/useless_borrows_in_formatting.rs:16:20
    |
 LL |     println!("{}", &string);
    |                    ^^^^^^^ help: remove the redundant `&`: `string`
 
 error: redundant reference in `println!` argument
-  --> tests/ui/useless_borrows_in_formatting.rs:18:22
+  --> tests/ui/useless_borrows_in_formatting.rs:17:22
    |
 LL |     println!("{:?}", &string);
    |                      ^^^^^^^ help: remove the redundant `&`: `string`
 
 error: redundant reference in `println!` argument
-  --> tests/ui/useless_borrows_in_formatting.rs:19:20
+  --> tests/ui/useless_borrows_in_formatting.rs:18:20
    |
 LL |     println!("{}", &&string);
    |                    ^^^^^^^^ help: remove the redundant `&`: `string`
 
 error: redundant reference in `println!` argument
-  --> tests/ui/useless_borrows_in_formatting.rs:20:20
+  --> tests/ui/useless_borrows_in_formatting.rs:19:20
    |
 LL |     println!("{}", &&string[..2]);
    |                    ^^^^^^^^^^^^^ help: remove the redundant `&`: `&string[..2]`
 
 error: redundant reference in `println!` argument
-  --> tests/ui/useless_borrows_in_formatting.rs:21:22
+  --> tests/ui/useless_borrows_in_formatting.rs:20:22
    |
 LL |     println!("{:?}", &&string[..2]);
    |                      ^^^^^^^^^^^^^ help: remove the redundant `&`: `&string[..2]`
 
 error: redundant reference in `println!` argument
-  --> tests/ui/useless_borrows_in_formatting.rs:27:20
+  --> tests/ui/useless_borrows_in_formatting.rs:26:20
    |
 LL |     println!("{}", &n);
    |                    ^^ help: remove the redundant `&`: `n`
 
 error: redundant reference in `println!` argument
-  --> tests/ui/useless_borrows_in_formatting.rs:28:22
+  --> tests/ui/useless_borrows_in_formatting.rs:27:22
    |
 LL |     println!("{:?}", &n);
    |                      ^^ help: remove the redundant `&`: `n`
 
 error: redundant reference in `println!` argument
-  --> tests/ui/useless_borrows_in_formatting.rs:29:20
+  --> tests/ui/useless_borrows_in_formatting.rs:28:20
    |
 LL |     println!("{}", &&n);
    |                    ^^^ help: remove the redundant `&`: `n`
 
 error: redundant reference in `println!` argument
-  --> tests/ui/useless_borrows_in_formatting.rs:33:20
+  --> tests/ui/useless_borrows_in_formatting.rs:32:20
    |
 LL |     println!("{}", &slice[0]);
    |                    ^^^^^^^^^ help: remove the redundant `&`: `slice[0]`
 
 error: redundant reference in `println!` argument
-  --> tests/ui/useless_borrows_in_formatting.rs:34:22
+  --> tests/ui/useless_borrows_in_formatting.rs:33:22
    |
 LL |     println!("{:?}", &slice[0]);
    |                      ^^^^^^^^^ help: remove the redundant `&`: `slice[0]`
 
 error: redundant reference in `println!` argument
-  --> tests/ui/useless_borrows_in_formatting.rs:35:20
+  --> tests/ui/useless_borrows_in_formatting.rs:34:20
    |
 LL |     println!("{}", &&slice[0]);
    |                    ^^^^^^^^^^ help: remove the redundant `&`: `slice[0]`
 
 error: redundant reference in `println!` argument
-  --> tests/ui/useless_borrows_in_formatting.rs:40:9
+  --> tests/ui/useless_borrows_in_formatting.rs:39:9
    |
 LL | /         &[
 LL | |
@@ -125,157 +125,157 @@ LL +         ]
    |
 
 error: redundant reference in `println!` argument
-  --> tests/ui/useless_borrows_in_formatting.rs:48:22
+  --> tests/ui/useless_borrows_in_formatting.rs:47:22
    |
 LL |     println!("{:?}", &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0]);
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove the redundant `&`: `[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0]`
 
 error: redundant reference in `println!` argument
-  --> tests/ui/useless_borrows_in_formatting.rs:52:26
+  --> tests/ui/useless_borrows_in_formatting.rs:51:26
    |
 LL |     println!("{:016x?}", &[a[0], a[1], a[0], a[1]]);
    |                          ^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove the redundant `&`: `[a[0], a[1], a[0], a[1]]`
 
 error: redundant reference in `println!` argument
-  --> tests/ui/useless_borrows_in_formatting.rs:56:22
+  --> tests/ui/useless_borrows_in_formatting.rs:55:22
    |
 LL |     println!("{:?}", &&slice[0..1]);
    |                      ^^^^^^^^^^^^^ help: remove the redundant `&`: `&slice[0..1]`
 
 error: redundant reference in `println!` argument
-  --> tests/ui/useless_borrows_in_formatting.rs:65:20
+  --> tests/ui/useless_borrows_in_formatting.rs:64:20
    |
 LL |     println!("{}", &w.0);
    |                    ^^^^ help: remove the redundant `&`: `w.0`
 
 error: redundant reference in `println!` argument
-  --> tests/ui/useless_borrows_in_formatting.rs:66:22
+  --> tests/ui/useless_borrows_in_formatting.rs:65:22
    |
 LL |     println!("{:?}", &w.0);
    |                      ^^^^ help: remove the redundant `&`: `w.0`
 
 error: redundant reference in `println!` argument
-  --> tests/ui/useless_borrows_in_formatting.rs:67:20
+  --> tests/ui/useless_borrows_in_formatting.rs:66:20
    |
 LL |     println!("{}", &&w.0);
    |                    ^^^^^ help: remove the redundant `&`: `w.0`
 
 error: redundant reference in `println!` argument
-  --> tests/ui/useless_borrows_in_formatting.rs:72:20
+  --> tests/ui/useless_borrows_in_formatting.rs:71:20
    |
 LL |     println!("{}", &w.0);
    |                    ^^^^ help: remove the redundant `&`: `w.0`
 
 error: redundant reference in `println!` argument
-  --> tests/ui/useless_borrows_in_formatting.rs:73:22
+  --> tests/ui/useless_borrows_in_formatting.rs:72:22
    |
 LL |     println!("{:?}", &w.0);
    |                      ^^^^ help: remove the redundant `&`: `w.0`
 
 error: redundant reference in `println!` argument
-  --> tests/ui/useless_borrows_in_formatting.rs:74:20
+  --> tests/ui/useless_borrows_in_formatting.rs:73:20
    |
 LL |     println!("{}", &&w.0);
    |                    ^^^^^ help: remove the redundant `&`: `w.0`
 
 error: redundant reference in `println!` argument
-  --> tests/ui/useless_borrows_in_formatting.rs:77:20
+  --> tests/ui/useless_borrows_in_formatting.rs:76:20
    |
 LL |     println!("{}", &*a);
    |                    ^^^ help: remove the redundant `&`: `*a`
 
 error: redundant reference in `println!` argument
-  --> tests/ui/useless_borrows_in_formatting.rs:78:22
+  --> tests/ui/useless_borrows_in_formatting.rs:77:22
    |
 LL |     println!("{:?}", &*a);
    |                      ^^^ help: remove the redundant `&`: `*a`
 
 error: redundant reference in `println!` argument
-  --> tests/ui/useless_borrows_in_formatting.rs:82:20
+  --> tests/ui/useless_borrows_in_formatting.rs:81:20
    |
 LL |     println!("{}", &(n));
    |                    ^^^^ help: remove the redundant `&`: `(n)`
 
 error: redundant reference in `println!` argument
-  --> tests/ui/useless_borrows_in_formatting.rs:83:22
+  --> tests/ui/useless_borrows_in_formatting.rs:82:22
    |
 LL |     println!("{:?}", &(n + 1));
    |                      ^^^^^^^^ help: remove the redundant `&`: `(n + 1)`
 
 error: redundant reference in `println!` argument
-  --> tests/ui/useless_borrows_in_formatting.rs:84:20
+  --> tests/ui/useless_borrows_in_formatting.rs:83:20
    |
 LL |     println!("{}", &(String::from("paren")));
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^ help: remove the redundant `&`: `(String::from("paren"))`
 
 error: redundant reference in `println!` argument
-  --> tests/ui/useless_borrows_in_formatting.rs:87:20
+  --> tests/ui/useless_borrows_in_formatting.rs:86:20
    |
 LL |     println!("{}", &{ n });
    |                    ^^^^^^ help: remove the redundant `&`: `{ n }`
 
 error: redundant reference in `println!` argument
-  --> tests/ui/useless_borrows_in_formatting.rs:88:22
+  --> tests/ui/useless_borrows_in_formatting.rs:87:22
    |
 LL |     println!("{:?}", &{ n + 1 });
    |                      ^^^^^^^^^^ help: remove the redundant `&`: `{ n + 1 }`
 
 error: redundant reference in `println!` argument
-  --> tests/ui/useless_borrows_in_formatting.rs:89:20
+  --> tests/ui/useless_borrows_in_formatting.rs:88:20
    |
 LL |     println!("{}", &{ String::from("block") });
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: remove the redundant `&`: `{ String::from("block") }`
 
 error: redundant reference in `println!` argument
-  --> tests/ui/useless_borrows_in_formatting.rs:94:27
+  --> tests/ui/useless_borrows_in_formatting.rs:93:27
    |
 LL |     println!("{0:1$.2$}", &v1, &v2, &v3);
    |                           ^^^ help: remove the redundant `&`: `v1`
 
 error: redundant reference in `println!` argument
-  --> tests/ui/useless_borrows_in_formatting.rs:94:32
+  --> tests/ui/useless_borrows_in_formatting.rs:93:32
    |
 LL |     println!("{0:1$.2$}", &v1, &v2, &v3);
    |                                ^^^ help: remove the redundant `&`: `v2`
 
 error: redundant reference in `println!` argument
-  --> tests/ui/useless_borrows_in_formatting.rs:94:37
+  --> tests/ui/useless_borrows_in_formatting.rs:93:37
    |
 LL |     println!("{0:1$.2$}", &v1, &v2, &v3);
    |                                     ^^^ help: remove the redundant `&`: `v3`
 
 error: redundant reference in `println!` argument
-  --> tests/ui/useless_borrows_in_formatting.rs:98:28
+  --> tests/ui/useless_borrows_in_formatting.rs:97:28
    |
 LL |     println!("{0:1$.2$?}", &v1, &v2, &v3);
    |                            ^^^ help: remove the redundant `&`: `v1`
 
 error: redundant reference in `println!` argument
-  --> tests/ui/useless_borrows_in_formatting.rs:98:33
+  --> tests/ui/useless_borrows_in_formatting.rs:97:33
    |
 LL |     println!("{0:1$.2$?}", &v1, &v2, &v3);
    |                                 ^^^ help: remove the redundant `&`: `v2`
 
 error: redundant reference in `println!` argument
-  --> tests/ui/useless_borrows_in_formatting.rs:98:38
+  --> tests/ui/useless_borrows_in_formatting.rs:97:38
    |
 LL |     println!("{0:1$.2$?}", &v1, &v2, &v3);
    |                                      ^^^ help: remove the redundant `&`: `v3`
 
 error: redundant reference in `println!` argument
-  --> tests/ui/useless_borrows_in_formatting.rs:102:27
+  --> tests/ui/useless_borrows_in_formatting.rs:101:27
    |
 LL |     println!("{0:1$.2$}", &v1, v2, v3);
    |                           ^^^ help: remove the redundant `&`: `v1`
 
 error: redundant reference in `println!` argument
-  --> tests/ui/useless_borrows_in_formatting.rs:103:31
+  --> tests/ui/useless_borrows_in_formatting.rs:102:31
    |
 LL |     println!("{0:1$.2$}", v1, &v2, v3);
    |                               ^^^ help: remove the redundant `&`: `v2`
 
 error: redundant reference in `println!` argument
-  --> tests/ui/useless_borrows_in_formatting.rs:104:35
+  --> tests/ui/useless_borrows_in_formatting.rs:103:35
    |
 LL |     println!("{0:1$.2$}", v1, v2, &v3);
    |                                   ^^^ help: remove the redundant `&`: `v3`

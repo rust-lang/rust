@@ -3,8 +3,8 @@ use rustc_ast::Attribute;
 use rustc_ast::attr::AttributeExt;
 use rustc_attr_parsing::parse_version;
 use rustc_data_structures::smallvec::SmallVec;
-use rustc_hir::def_id::DefId;
 use rustc_hir::attrs::RustcVersion;
+use rustc_hir::def_id::DefId;
 use rustc_hir::{HirId, StabilityLevel, StableSince};
 use rustc_lint::LateContext;
 use rustc_middle::ty::TyCtxt;
@@ -27,8 +27,10 @@ macro_rules! msrv_aliases {
 // names may refer to stabilized feature flags or library items
 msrv_aliases! {
     1,97,0 { ISOLATE_LOWEST_ONE, BIT_WIDTH }
+    1,94,0 { EULER_GAMMA, GOLDEN_RATIO }
     1,93,0 { VEC_DEQUE_POP_BACK_IF, VEC_DEQUE_POP_FRONT_IF }
     1,91,0 { DURATION_FROM_MINUTES_HOURS }
+    1,89,0 { NONNULL_FROM_MUT }
     1,88,0 { LET_CHAINS, AS_CHUNKS }
     1,87,0 { OS_STR_DISPLAY, INT_MIDPOINT, CONST_CHAR_IS_DIGIT, UNSIGNED_IS_MULTIPLE_OF, INTEGER_SIGN_CAST }
     1,86,0 { VEC_POP_IF }
@@ -82,7 +84,7 @@ msrv_aliases! {
     1,29,0 { ITER_FLATTEN }
     1,28,0 { FROM_BOOL, REPEAT_WITH, SLICE_FROM_REF }
     1,27,0 { ITERATOR_TRY_FOLD, DOUBLE_ENDED_ITERATOR_RFIND, DURATION_FROM_NANOS_MICROS }
-    1,26,0 { RANGE_INCLUSIVE, STRING_RETAIN, POINTER_ADD_SUB_METHODS }
+    1,26,0 { RANGE_INCLUSIVE, STRING_RETAIN, POINTER_ADD_SUB_METHODS, BOX_LEAK }
     1,24,0 { IS_ASCII_DIGIT, PTR_NULL }
     1,18,0 { HASH_MAP_RETAIN, HASH_SET_RETAIN }
     1,17,0 { FIELD_INIT_SHORTHAND, STATIC_IN_CONST, EXPECT_ERR }

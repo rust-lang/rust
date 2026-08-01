@@ -131,7 +131,7 @@ jobs:
     - name: Extract Binaries
       run: |
         DIR=$CARGO_TARGET_DIR/debug
-        find $DIR/deps/integration-* -executable ! -type d | xargs -I {} mv {} $DIR/integration
+        find $DIR/build/clippy/*/out/integration* -executable ! -type d | xargs -I {} mv {} $DIR/integration
         find $DIR ! -executable -o -type d ! -path $DIR | xargs rm -rf
 
     - name: Upload Binaries

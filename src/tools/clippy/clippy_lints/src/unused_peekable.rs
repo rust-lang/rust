@@ -1,5 +1,5 @@
 use clippy_utils::diagnostics::span_lint_hir_and_then;
-use clippy_utils::res::{MaybeDef, MaybeResPath, MaybeTypeckRes};
+use clippy_utils::res::{MaybeDef as _, MaybeResPath as _, MaybeTypeckRes as _};
 use clippy_utils::ty::peel_and_count_ty_refs;
 use clippy_utils::{fn_def_id, peel_ref_operators, sym};
 use rustc_ast::Mutability;

@@ -1,7 +1,7 @@
 use super::SAME_ITEM_PUSH;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::Msrv;
-use clippy_utils::res::{MaybeDef, MaybeResPath};
+use clippy_utils::res::{MaybeDef as _, MaybeResPath as _};
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::implements_trait;
 use clippy_utils::{msrvs, std_or_core, sym};

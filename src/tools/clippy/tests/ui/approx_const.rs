@@ -107,6 +107,22 @@ fn main() {
 
     let no_tau = 6.3;
 
+    let my_euler_gamma = 0.577215664901533;
+    //~^ approx_constant
+
+    let almost_euler_gamma = 0.5772;
+    //~^ approx_constant
+
+    let no_euler_gamma = 0.577;
+
+    let my_golden_ration = 1.618033988749895;
+    //~^ approx_constant
+
+    let almost_golden_ration = 1.6180;
+    //~^ approx_constant
+
+    let no_almost_golden_ration = 1.618;
+
     // issue #15194
     #[allow(clippy::excessive_precision)]
     let x: f64 = 3.1415926535897932384626433832;

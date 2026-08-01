@@ -24,7 +24,7 @@ use ui_test::{Args, CommandBuilder, Config, Match, error_on_output_conflict};
 use std::collections::{BTreeMap, HashMap};
 use std::env::{self, set_var, var_os};
 use std::ffi::{OsStr, OsString};
-use std::fmt::Write;
+use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{Sender, channel};
 use std::{fs, iter, thread};
@@ -82,8 +82,9 @@ fn internal_extern_flags() -> Vec<String> {
         .copied()
         .filter(|n| !crates.contains_key(n))
         .collect();
-    assert!(
-        not_found.is_empty(),
+    assert_eq!(
+        not_found,
+        [] as [&str; 0],
         "dependencies not found in depinfo: {not_found:?}\n\
         help: Make sure the `-Z binary-dep-depinfo` rust flag is enabled\n\
         help: Try adding to dev-dependencies in Cargo.toml\n\

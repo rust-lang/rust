@@ -1,0 +1,112 @@
+#![warn(clippy::assert_is_empty)]
+#![allow(clippy::useless_vec)]
+#![allow(clippy::const_is_empty, clippy::needless_ifs)]
+
+fn main() {
+    let vec = vec![1, 2, 3];
+    assert!(vec.is_empty());
+    //~^ assert_is_empty
+    assert!(!vec.is_empty());
+    //~^ assert_is_empty
+    debug_assert!(vec.is_empty());
+    //~^ assert_is_empty
+    debug_assert!(!vec.is_empty());
+    //~^ assert_is_empty
+
+    let vec_ref = &vec;
+    assert!(vec_ref.is_empty());
+    //~^ assert_is_empty
+    assert!(!vec_ref.is_empty());
+    //~^ assert_is_empty
+
+    let vec_mut_ref = &mut vec![1, 2, 3];
+    assert!(vec_mut_ref.is_empty());
+    //~^ assert_is_empty
+
+    let slice: &[i32] = &[1, 2, 3];
+    assert!(slice.is_empty());
+    //~^ assert_is_empty
+    assert!(!slice.is_empty());
+    //~^ assert_is_empty
+
+    let array = [1, 2, 3];
+    assert!(array.is_empty());
+    //~^ assert_is_empty
+    assert!(!array.is_empty());
+    //~^ assert_is_empty
+
+    let array_ref = &array;
+    assert!(array_ref.is_empty());
+    //~^ assert_is_empty
+
+    let string = String::from("foo");
+    assert!(string.is_empty());
+    //~^ assert_is_empty
+    assert!(!string.is_empty());
+    //~^ assert_is_empty
+
+    let str_ref = "foo";
+    assert!(str_ref.is_empty());
+    //~^ assert_is_empty
+    assert!(!str_ref.is_empty());
+    //~^ assert_is_empty
+
+    // Don't lint: has assert message.
+    assert!(vec.is_empty(), "items should be empty");
+    assert!(!vec.is_empty(), "items should not be empty");
+    assert!(vec.is_empty(), "unexpected values: {vec:?}");
+    assert!(!vec.is_empty(), "unexpected values: {vec:?}");
+
+    // Common chained assertion shape. The first assertion can hide the value
+    // that the second assertion would otherwise help diagnose.
+    let items = vec!["baz"];
+    assert!(!items.is_empty());
+    //~^ assert_is_empty
+    assert_eq!(items[0], "bar");
+
+    // Don't lint: the outer `assert!` is written here, but the condition comes
+    // from a macro expansion. Rewriting the expanded condition span would make
+    // the suggestion point at generated code rather than source code.
+    macro_rules! is_empty {
+        ($value:expr) => {
+            $value.is_empty()
+        };
+    }
+    assert!(is_empty!(vec));
+
+    // Don't lint: the `assert!` itself comes from a macro expansion. The lint
+    // only rewrites assert calls that are present at the call site.
+    macro_rules! assert_empty {
+        ($value:expr) => {
+            assert!($value.is_empty())
+        };
+    }
+    assert_empty!(vec);
+
+    // Don't lint: not an assert macro.
+    if vec.is_empty() {}
+    if !vec.is_empty() {}
+
+    // Don't lint: maps do not have a compact empty literal suggestion. This is
+    // a conservative call; comparing against `HashMap::new()` may be worth
+    // revisiting if the type inference cost and constructor path are acceptable
+    // for aliases, custom hashers, and similar map types.
+    let map = std::collections::HashMap::<i32, i32>::new();
+    assert!(map.is_empty());
+    assert!(!map.is_empty());
+
+    // Don't lint: assert_eq! would require Debug and PartialEq for the element type.
+    struct NotDebugOrPartialEq;
+    let not_debug_or_partial_eq = vec![NotDebugOrPartialEq];
+    assert!(not_debug_or_partial_eq.is_empty());
+
+    #[derive(Debug)]
+    struct NotPartialEq;
+    let not_partial_eq = vec![NotPartialEq];
+    assert!(not_partial_eq.is_empty());
+
+    #[derive(PartialEq)]
+    struct NotDebug;
+    let not_debug = vec![NotDebug];
+    assert!(not_debug.is_empty());
+}

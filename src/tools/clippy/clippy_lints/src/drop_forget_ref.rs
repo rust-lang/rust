@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_must_use_func_call;
-use clippy_utils::res::MaybeDef;
-use clippy_utils::ty::{is_copy, is_must_use_ty};
+use clippy_utils::res::MaybeDef as _;
+use clippy_utils::ty::{is_copy, opt_must_use_path};
 use rustc_hir::{Arm, Expr, ExprKind, LangItem, Node};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
@@ -98,7 +98,7 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetRef {
                 sym::mem_drop
                     if !(arg_ty.needs_drop(cx.tcx, cx.typing_env())
                         || is_must_use_func_call(cx, arg)
-                        || is_must_use_ty(cx, arg_ty)
+                        || opt_must_use_path(cx, arg_ty).is_some()
                         || drop_is_single_call_in_arm) =>
                 {
                     (DROP_NON_DROP, DROP_NON_DROP_SUMMARY.into(), Some(arg.span))
