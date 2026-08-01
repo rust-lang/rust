@@ -341,7 +341,6 @@ pub(crate) use self::stdio::{attempt_print_to_stderr, cleanup};
 #[doc(no_inline, hidden)]
 pub use self::stdio::{set_output_capture, try_set_output_capture};
 
-mod copy;
 mod error;
 mod pipe;
 pub mod prelude;
