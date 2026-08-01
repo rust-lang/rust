@@ -2,6 +2,7 @@
 
 mod buf_read;
 mod buffered;
+mod copy;
 mod cursor;
 mod error;
 mod impls;
@@ -35,12 +36,14 @@ use self::util::{bytes, lines, split, uninlined_slow_read_byte};
 pub use self::{
     buf_read::BufRead,
     buffered::{BufReader, BufWriter, IntoInnerError, LineWriter, WriterPanicked},
+    copy::copy,
     read::{Read, read_to_string},
     util::{Bytes, Lines, Split},
 };
 #[doc(hidden)]
 #[unstable(feature = "core_io_internals", reason = "exposed only for libstd", issue = "none")]
 pub use self::{
+    copy::{CopyState, SpecCopy},
     read::{
         DEFAULT_BUF_SIZE, default_read_buf, default_read_to_end, default_read_to_string,
         default_read_vectored,
