@@ -2,7 +2,7 @@
 use std::convert::TryInto;
 
 #[cfg(feature = "master")]
-use gccjit::CType;
+use gccjit::{CType, TypeAttribute};
 use gccjit::{RValue, Struct, Type};
 use rustc_abi::{AddressSpace, Align, Integer, Size};
 use rustc_codegen_ssa::common::TypeKind;
@@ -116,7 +116,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         let typ = self.context.new_struct_type(None, "struct", &fields).as_type();
         if packed {
             #[cfg(feature = "master")]
-            typ.set_packed();
+            typ.add_attribute(TypeAttribute::Packed);
         }
         self.struct_types.borrow_mut().insert(types, typ);
         typ
@@ -333,7 +333,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         typ.set_fields(None, &fields);
         if packed {
             #[cfg(feature = "master")]
-            typ.as_type().set_packed();
+            typ.as_type().add_attribute(TypeAttribute::Packed);
         }
     }
 
