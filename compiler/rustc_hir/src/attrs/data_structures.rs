@@ -575,14 +575,11 @@ pub struct CfgHideShow {
     pub values: FxIndexMap<Symbol, DocCfgHideShow>,
 }
 
-/// Logos used in the generated docs, with an optional distinct one for dark themes.
-///
-/// The light logo is always set; the dark one falls back to the light one when absent.
 #[derive(Clone, Debug, StableHash, Encodable, Decodable, PrintAttribute)]
 pub struct LogoUrls {
     /// Light theme logo.
     pub light: Symbol,
-    /// Dark and ayu themes logo; falls back to `light` when absent.
+    /// Dark theme logo; falls back to `light`.
     pub dark: Option<Symbol>,
 }
 

@@ -144,8 +144,6 @@ nav.sub {
 }
 /* End theme: light */
 
-/* No-JS fallback: show the dark logo when the system prefers a dark theme. */
-
 @media (prefers-color-scheme: dark) {
 	/* Begin theme: dark */
 	:root, :root:not([data-theme]) {

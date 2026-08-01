@@ -514,8 +514,7 @@ impl DocParser {
         }
     }
 
-    // Handles both `html_logo_url = "..."` (light logo only) and
-    // `html_logo_url(light = "...", dark = "...")` (distinct dark logo) forms.
+    // Parses the `doc(html_logo_url(light = "...", dark = "..."))` attribute.
     fn parse_html_logo_url(
         &mut self,
         cx: &mut AcceptContext<'_, '_>,
