@@ -663,7 +663,7 @@ declare_features! (
     /// Allows `mut ref` and `mut ref mut` identifier patterns.
     (incomplete, mut_ref, "1.79.0", Some(123076)),
     /// Allows `mut(crate) field: Type` restrictions.
-    (incomplete, mut_restriction, "1.98.0", Some(105077)),
+    (unstable, mut_restriction, "CURRENT_RUSTC_VERSION", Some(105077)),
     /// Allows using `#[naked]` on `extern "Rust"` functions.
     (unstable, naked_functions_rustic_abi, "1.88.0", Some(138997)),
     /// Allows using `#[target_feature(enable = "...")]` on `#[naked]` on functions.
