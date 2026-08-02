@@ -52,7 +52,7 @@ impl Dap {
     ) -> InterpResult<'tcx> {
         // FIXME: make this unbounded once Priroda has a full session lifecycle.
         if let Err(err) = DapSession::stdio().run_requests(session)? {
-            eprintln!("priroda dap error: {err}");
+            eprintln!("priroda dap error: {err:?}");
         }
 
         interp_ok(())
@@ -136,7 +136,7 @@ impl DapSession {
                 let body = match &request.command {
                     Command::Next(_) => ResponseBody::Next,
                     Command::StepIn(_) => ResponseBody::StepIn,
-                    _ => unreachable!(),
+                    _ => bug!("step body is selected by the outer Next/StepIn match"),
                 };
                 let res = self.handle_step(request, body, session)?;
                 interp_ok(res.map(|()| self.dispatch_outcome()))
@@ -209,7 +209,7 @@ impl DapSession {
         let variables = match &request.command {
             Command::Variables(_) =>
                 session.list_locals().into_iter().map(Self::local_to_variable).collect(),
-            _ => unreachable!(),
+            _ => bug!("dispatch routes only Variables to handle_variables"),
         };
 
         let response = request.success(ResponseBody::Variables(VariablesResponse { variables }));
@@ -428,7 +428,7 @@ impl DapSession {
 
     fn require_frame_id(&mut self, request: &Request) -> ServerResult<bool> {
         let Command::Scopes(args) = &request.command else {
-            unreachable!();
+            bug!("dispatch routes only scopes to require_frame_id");
         };
 
         if args.frame_id != STACK_FRAME_ID {
@@ -441,7 +441,7 @@ impl DapSession {
 
     fn require_variables_reference(&mut self, request: &Request) -> ServerResult<bool> {
         let Command::Variables(args) = &request.command else {
-            unreachable!();
+            bug!("dispatch routes only variables to require_variables_reference");
         };
 
         if args.variables_reference != LOCALS_VARIABLES_REFERENCE {
