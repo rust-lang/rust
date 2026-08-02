@@ -288,8 +288,7 @@ pub(super) fn add_call_parens<'b>(
 }
 
 fn ref_of_param(ctx: &CompletionContext<'_, '_>, arg: &str, ty: &hir::Type<'_>) -> &'static str {
-    if ty.is_reference() {
-        let mutability = hir::Mutability::from_mutable(ty.is_mutable_reference());
+    if let Some((_, mutability)) = ty.as_reference() {
         let ref_prefix = if mutability.is_mut() { "&mut " } else { "&" };
 
         for (name, local) in ctx.locals.iter().sorted_by_key(|&(k, _)| k.clone()) {
