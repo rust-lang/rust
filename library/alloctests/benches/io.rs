@@ -1,4 +1,4 @@
-use crate::io::prelude::*;
+use std::io::prelude::*;
 
 #[bench]
 fn bench_read_slice(b: &mut test::Bencher) {
@@ -54,4 +54,27 @@ fn bench_write_vec(b: &mut test::Bencher) {
             test::black_box(&wr);
         }
     })
+}
+
+#[bench]
+#[cfg(unix)]
+#[cfg_attr(target_os = "emscripten", ignore)] // no /dev
+fn bench_copy_buf_reader(b: &mut test::Bencher) {
+    use std::fs::{File, OpenOptions};
+
+    let mut file_in = File::open("/dev/zero").expect("opening /dev/zero failed");
+    // use dyn to avoid specializations unrelated to readbuf
+    let dyn_in = &mut file_in as &mut dyn Read;
+    let mut reader = std::io::BufReader::with_capacity(256 * 1024, dyn_in.take(0));
+    let mut writer =
+        OpenOptions::new().write(true).open("/dev/null").expect("opening /dev/null failed");
+
+    const BYTES: u64 = 1024 * 1024;
+
+    b.bytes = BYTES;
+
+    b.iter(|| {
+        reader.get_mut().set_limit(BYTES);
+        std::io::copy(&mut reader, &mut writer).unwrap()
+    });
 }

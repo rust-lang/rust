@@ -130,7 +130,7 @@ fn test_poll_negative_fd_interest() {
 /// when an invalid non-negative file descriptor is provided, and that
 /// `poll` instantly returns.
 fn test_poll_invalid_non_negative_fd_interest() {
-    let mut interests = [libc::pollfd { fd: libc::c_int::MAX, events: libc::POLLHUP, revents: 0 }];
+    let mut interests = [libc::pollfd { fd: 1337, events: libc::POLLHUP, revents: 0 }];
 
     // We provide an "infinite" timeout because interests in invalid non-negative file descriptors
     // are considered fulfilled and the `poll` invocation should thus instantly return.

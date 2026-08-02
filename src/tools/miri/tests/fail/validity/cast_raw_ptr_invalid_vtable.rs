@@ -17,7 +17,7 @@ fn test<T: ?Sized, U>(ptr: *const T, data: U, overwrite: fn(&mut *const T, U)) {
             ptrptr = &mut ptr;
             Call(_unused = overwrite(ptrptr, data), ReturnTo(ret), UnwindContinue())
         }
-        
+
         ret = {
             ptr2 = CastPtrToPtr(ptr); //~ERROR: vtable for `std::fmt::Debug` but `std::fmt::Display` was expected
             Return()
@@ -35,13 +35,9 @@ fn main() {
     let x = S { f: 0, g: 0 };
     let ptr1: *const S<dyn std::fmt::Debug> = &x;
     let ptr2: *const S<dyn std::fmt::Display> = &x;
-    test::<S<dyn std::fmt::Display>, _>(
-        ptr2,
-        ptr1,
-        |ptrptr2, ptr1| unsafe {
-            // Give ptr2 the vtable from ptr1.
-            let ptrptr2 = std::ptr::from_mut(ptrptr2);
-            ptrptr2.copy_from(&raw const ptr1 as *const _, 1) ;
-        }
-    );
+    test::<S<dyn std::fmt::Display>, _>(ptr2, ptr1, |ptrptr2, ptr1| unsafe {
+        // Give ptr2 the vtable from ptr1.
+        let ptrptr2 = std::ptr::from_mut(ptrptr2);
+        ptrptr2.copy_from(&raw const ptr1 as *const _, 1);
+    });
 }

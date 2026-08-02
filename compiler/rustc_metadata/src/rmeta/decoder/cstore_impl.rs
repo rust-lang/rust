@@ -501,14 +501,14 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
                 }
 
                 if let Some(def_id) = child.res.opt_def_id() {
+                    let mut fallback = false;
+
                     if child.ident.name == kw::Underscore {
-                        fallback_map.push((def_id, parent));
-                        return;
+                        fallback = true;
                     }
 
                     if tcx.is_doc_hidden(parent) {
-                        fallback_map.push((def_id, parent));
-                        return;
+                        fallback = true;
                     }
 
                     // If the re-export itself is `#[doc(hidden)]`, deprioritize it.
@@ -519,20 +519,30 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
                         .and_then(|r| r.id())
                         .is_some_and(|id| tcx.is_doc_hidden(id))
                     {
-                        fallback_map.push((def_id, parent));
-                        return;
+                        fallback = true;
                     }
 
                     match visible_parent_map.entry(def_id) {
                         Entry::Occupied(mut entry) => {
-                            // If `child` is defined in crate `cnum`, ensure
-                            // that it is mapped to a parent in `cnum`.
-                            if def_id.is_local() && entry.get().is_local() {
-                                entry.insert(parent);
+                            if !fallback {
+                                // If `child` is defined in crate `cnum`, ensure
+                                // that it is mapped to a parent in `cnum`.
+                                if def_id.is_local() && entry.get().is_local() {
+                                    entry.insert(parent);
+                                }
                             }
                         }
                         Entry::Vacant(entry) => {
-                            entry.insert(parent);
+                            if fallback {
+                                // We do all of the same steps to fallback entries as to
+                                // preferred entries, except for recording them in a separate map.
+                                // It is important to not return early in the fallback cases to
+                                // ensure that we extend the BFS to the children of fallback items.
+                                fallback_map.push((def_id, parent));
+                            } else {
+                                entry.insert(parent);
+                            }
+
                             if child.res.module_like_def_id().is_some() {
                                 bfs_queue.push_back(def_id);
                             }
