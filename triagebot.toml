@@ -1689,6 +1689,7 @@ dep-bumps = [
 ]
 
 [assign.owners]
+"/.github/renovate.json5" =                              ["infra-ci"]
 "/.github/workflows" =                                   ["infra-ci"]
 "/Cargo.lock" =                                          ["@Mark-Simulacrum"]
 "/Cargo.toml" =                                          ["@Mark-Simulacrum"]
