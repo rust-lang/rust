@@ -550,7 +550,7 @@ fn has_any_fn(imp: &ast::Impl, names: &[String]) -> bool {
         for item in il.assoc_items() {
             if let ast::AssocItem::Fn(f) = item
                 && let Some(name) = f.name()
-                && names.iter().any(|n| n.eq_ignore_ascii_case(&name.text()))
+                && names.iter().any(|n| n.eq_ignore_ascii_case(name.text()))
             {
                 return true;
             }
@@ -664,7 +664,7 @@ fn generate_impl_inner(
         .zip(generic_params.as_ref())
         .and_then(|(trait_, params)| generic_param_associated_bounds(make, adt, trait_, params));
 
-    let ty: ast::Type = make.ty_path(make.ident_path(&adt.name().unwrap().text())).into();
+    let ty: ast::Type = make.ty_path(make.ident_path(adt.name().unwrap().text())).into();
 
     let cfg_attrs = adt.attrs().filter(|attr| matches!(attr.meta(), Some(ast::Meta::CfgMeta(_))));
     match trait_ {

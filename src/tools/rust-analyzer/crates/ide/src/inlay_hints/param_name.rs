@@ -375,16 +375,16 @@ fn is_adt_constructor_similar_to_param_name(
 ) -> bool {
     (|| match sema.resolve_path(path)? {
         hir::PathResolution::Def(hir::ModuleDef::Adt(_)) => {
-            Some(to_lower_snake_case(&path.segment()?.name_ref()?.text()) == param_name)
+            Some(to_lower_snake_case(path.segment()?.name_ref()?.text()) == param_name)
         }
         hir::PathResolution::Def(hir::ModuleDef::Function(_) | hir::ModuleDef::EnumVariant(_)) => {
-            if to_lower_snake_case(&path.segment()?.name_ref()?.text()) == param_name {
+            if to_lower_snake_case(path.segment()?.name_ref()?.text()) == param_name {
                 return Some(true);
             }
             let qual = path.qualifier()?;
             match sema.resolve_path(&qual)? {
                 hir::PathResolution::Def(hir::ModuleDef::Adt(_)) => {
-                    Some(to_lower_snake_case(&qual.segment()?.name_ref()?.text()) == param_name)
+                    Some(to_lower_snake_case(qual.segment()?.name_ref()?.text()) == param_name)
                 }
                 _ => None,
             }

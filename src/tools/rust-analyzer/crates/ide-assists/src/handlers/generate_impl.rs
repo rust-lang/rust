@@ -185,7 +185,7 @@ pub(crate) fn generate_impl_trait(acc: &mut Assists, ctx: &AssistContext<'_, '_>
                     None,
                     None,
                     false,
-                    make.ty(&name.text()),
+                    make.ty(name.text()),
                     make.ty_placeholder(),
                     None,
                     None,

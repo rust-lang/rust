@@ -88,10 +88,10 @@ pub(crate) fn generate_single_field_struct_from(
                 false,
             ));
 
-            let ty = make.ty(&strukt_name.text());
+            let ty = make.ty(strukt_name.text());
 
             let constructor =
-                make_adt_constructor(names.as_deref(), constructors, &main_field_name, make);
+                make_adt_constructor(names.as_deref(), constructors, main_field_name, make);
             let body = make.block_expr([], Some(constructor));
 
             let fn_ = make
@@ -104,7 +104,7 @@ pub(crate) fn generate_single_field_struct_from(
                     make.param_list(
                         None,
                         [make.param(
-                            make.path_pat(make.path_from_text(&main_field_name)),
+                            make.path_pat(make.path_from_text(main_field_name)),
                             main_field_ty,
                         )],
                     ),
@@ -162,7 +162,7 @@ fn make_adt_constructor(
 ) -> ast::Expr {
     if let Some(names) = names {
         let fields = make.record_expr_field_list(names.iter().zip(constructors).map(
-            |(name, initializer)| make.record_expr_field(make.name_ref(&name.text()), initializer),
+            |(name, initializer)| make.record_expr_field(make.name_ref(name.text()), initializer),
         ));
         make.record_expr(make.path_from_text("Self"), fields).into()
     } else {

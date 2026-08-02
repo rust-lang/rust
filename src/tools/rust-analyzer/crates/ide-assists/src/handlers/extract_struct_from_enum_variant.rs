@@ -335,7 +335,7 @@ fn update_variant(
     // FIXME: replace with a `ast::make` constructor
     let ty = match generic_args {
         Some(generic_args) => make.ty(&format!("{name}{generic_args}")),
-        None => make.ty(&name.text()),
+        None => make.ty(name.text()),
     };
 
     // change from a record to a tuple field list

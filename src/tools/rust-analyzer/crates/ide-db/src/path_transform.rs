@@ -536,7 +536,7 @@ impl Ctx<'_> {
         let name = ident_pat.name()?;
         let make = editor.make();
 
-        let temp_path = make.path_from_text(&name.text());
+        let temp_path = make.path_from_text(name.text());
 
         let resolution = self.source_scope.speculative_resolve(&temp_path)?;
 

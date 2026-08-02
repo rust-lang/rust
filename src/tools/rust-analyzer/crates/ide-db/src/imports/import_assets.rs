@@ -979,7 +979,7 @@ impl<'db> ImportCandidate<'db> {
             return None;
         }
         let after = std::iter::successors(path.parent_path(), |it| it.parent_path())
-            .map(|seg| seg.segment()?.name_ref().map(|name| Name::new_root(&name.text())))
+            .map(|seg| seg.segment()?.name_ref().map(|name| Name::new_root(name.text())))
             .collect::<Option<_>>()?;
         path_import_candidate(
             sema,
@@ -993,7 +993,7 @@ impl<'db> ImportCandidate<'db> {
     fn for_name(sema: &Semantics<'db, RootDatabase>, name: &ast::Name) -> Option<Self> {
         if sema
             .scope(name.syntax())?
-            .speculative_resolve(&make::ext::ident_path(&name.text()))
+            .speculative_resolve(&make::ext::ident_path(name.text()))
             .is_some()
         {
             return None;
@@ -1033,7 +1033,7 @@ fn path_import_candidate<'db>(
                 if qualifier.first_qualifier().is_none_or(|it| sema.resolve_path(&it).is_none()) {
                     let qualifier = qualifier
                         .segments()
-                        .map(|seg| seg.name_ref().map(|name| Name::new_root(&name.text())))
+                        .map(|seg| seg.name_ref().map(|name| Name::new_root(name.text())))
                         .collect::<Option<Vec<_>>>()?;
                     ImportCandidate::Path(PathImportCandidate {
                         qualifier,

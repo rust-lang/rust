@@ -269,7 +269,7 @@ impl FunctionBuilder {
         // If generated function has the name "new" and is an associated function, we generate fn body
         // as a constructor and assume a "Self" return type.
         if let Some(body) =
-            make_fn_body_as_new_function(make, ctx, &fn_name.text(), adt_info, target_edition)
+            make_fn_body_as_new_function(make, ctx, fn_name.text(), adt_info, target_edition)
         {
             ret_type = Some(make.ret_type(make.ty_path(make.ident_path("Self")).into()));
             should_focus_return_type = false;
