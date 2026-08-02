@@ -117,6 +117,8 @@ pub(crate) fn clean_middle_generic_args<'tcx>(
     };
 
     let mut elision_has_failed_once_before = false;
+
+    // Calculates where the parent trait's generic parameters end
     let index_offset = generics.count() - args.len();
     let clean_arg = |(index, &arg): (usize, &ty::GenericArg<'tcx>)| {
         // Elide the self type.
@@ -124,6 +126,7 @@ pub(crate) fn clean_middle_generic_args<'tcx>(
             return None;
         }
 
+        // Skips over the parent trait's generic parameters
         let param = generics.param_at(index + index_offset, cx.tcx);
         let arg = ty::Binder::bind_with_vars(arg, bound_vars);
 
