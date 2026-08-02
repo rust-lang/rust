@@ -672,6 +672,7 @@ symbols! {
         cold,
         cold_path,
         collapse_debuginfo,
+        color,
         column,
         compare_bytes,
         compare_exchange,

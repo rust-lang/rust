@@ -1,7 +1,6 @@
 // ignore-tidy-file-linelength
 
-#![feature(doc_cfg)]
-#![feature(negative_impls)]
+#![feature(doc_cfg, negative_impls, doc_notable_trait)]
 
 pub mod another_folder;
 pub mod another_mod;
@@ -410,4 +409,32 @@ pub mod deprecated {
     impl DeprecatedTrait for NonDeprecatedStruct {
         fn depr_deprecated_fn() {}
     }
+}
+
+pub mod notable_trait_colors {
+    pub struct NotableTraitColors;
+    #[doc(notable_trait(color="grey"))]
+    pub trait Grey {}
+    impl Grey for NotableTraitColors {}
+    #[doc(notable_trait(color="red"))]
+    pub trait Red {}
+    impl Red for NotableTraitColors {}
+    #[doc(notable_trait(color="green"))]
+    pub trait Green {}
+    impl Green for NotableTraitColors {}
+    #[doc(notable_trait(color="yellow"))]
+    pub trait Yellow {}
+    impl Yellow for NotableTraitColors {}
+    #[doc(notable_trait(color="blue"))]
+    pub trait Blue {}
+    impl Blue for NotableTraitColors {}
+    #[doc(notable_trait(color="magenta"))]
+    pub trait Magenta {}
+    impl Magenta for NotableTraitColors {}
+    #[doc(notable_trait(color="cyan"))]
+    pub trait Cyan {}
+    impl Cyan for NotableTraitColors {}
+    #[doc(notable_trait(color="transparent"))]
+    pub trait Transparent {}
+    impl Transparent for NotableTraitColors {}
 }

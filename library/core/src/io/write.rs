@@ -47,7 +47,7 @@ use crate::io::{Error, IoSlice, Result};
 ///
 /// [`write_all`]: Write::write_all
 #[stable(feature = "rust1", since = "1.0.0")]
-#[doc(notable_trait)]
+#[doc(notable_trait(color = "grey"))]
 #[cfg_attr(not(test), rustc_diagnostic_item = "IoWrite")]
 pub trait Write {
     /// Writes a buffer into this writer, returning how many bytes were written.

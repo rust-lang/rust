@@ -392,6 +392,13 @@ pub(crate) struct ExpectedNoArgs;
 pub(crate) struct ExpectedNameValue;
 
 #[derive(Diagnostic)]
+#[diag("expected either `doc(notable_trait)` or `doc(notable_trait=\"...\")`")]
+#[warning(
+    "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
+)]
+pub(crate) struct InvalidNotableTraitAttr;
+
+#[derive(Diagnostic)]
 #[diag("malformed `{$attribute}` attribute")]
 #[help("{$options}")]
 pub(crate) struct MalFormedDiagnosticAttributeLint {
@@ -1020,6 +1027,14 @@ pub(crate) struct CguFieldsMissing<'a> {
 #[derive(Diagnostic)]
 #[diag("`#![doc({$attr_name} = \"...\")]` isn't allowed as a crate-level attribute")]
 pub(crate) struct DocAttrNotCrateLevel {
+    #[primary_span]
+    pub span: Span,
+    pub attr_name: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag("`#![doc({$attr_name} = \"...\")]` is only allowed as a trait attribute")]
+pub(crate) struct DocAttrTraitLevel {
     #[primary_span]
     pub span: Span,
     pub attr_name: Symbol,

@@ -1,0 +1,54 @@
+// Ensures that the theme change is working as expected.
+include: "utils.goml"
+go-to: "file://" + |DOC_PATH| + "/lib2/notable_trait_colors/struct.NotableTraitColors.html"
+
+define-function: (
+    "test-colors",
+    [grey, red, green, yellow, blue, magenta, cyan, transparent],
+    block {
+        assert-css: (".notable-trait-badge-grey", {"background-color": |grey|})
+        assert-css: (".notable-trait-badge-red", {"background-color": |red|})
+        assert-css: (".notable-trait-badge-green", {"background-color": |green|})
+        assert-css: (".notable-trait-badge-yellow", {"background-color": |yellow|})
+        assert-css: (".notable-trait-badge-blue", {"background-color": |blue|})
+        assert-css: (".notable-trait-badge-magenta", {"background-color": |magenta|})
+        assert-css: (".notable-trait-badge-cyan", {"background-color": |cyan|})
+        assert-css: (".notable-trait-badge-transparent", {"background-color": |transparent|})
+    }
+)
+
+call-function: ("switch-theme", {"theme": "dark"})
+call-function: ("test-colors", {
+    "grey": "oklch(0.55 0 0)",
+    "red": "oklch(0.55 0.21 20)",
+    "green": "oklch(0.55 0.21 150)",
+    "yellow": "oklch(0.55 0.21 100)",
+    "blue": "oklch(0.55 0.21 240)",
+    "magenta": "oklch(0.55 0.21 320)",
+    "cyan": "oklch(0.55 0.21 180)",
+    "transparent": "transparent",
+})
+
+call-function: ("switch-theme", {"theme": "light"})
+call-function: ("test-colors", {
+    "grey": "oklch(0.88 0 0)",
+    "red": "oklch(0.88 0.21 20)",
+    "green": "oklch(0.88 0.21 150)",
+    "yellow": "oklch(0.88 0.21 70)",
+    "blue": "oklch(0.88 0.21 240)",
+    "magenta": "oklch(0.88 0.21 320)",
+    "cyan": "oklch(0.88 0.21 180)",
+    "transparent": "white",
+})
+
+call-function: ("switch-theme", {"theme": "ayu"})
+call-function: ("test-colors", {
+    "grey": "oklch(0.49 0 0)",
+    "red": "oklch(0.49 0.21 20)",
+    "green": "oklch(0.49 0.21 150)",
+    "yellow": "oklch(0.49 0.21 100)",
+    "blue": "oklch(0.49 0.21 240)",
+    "magenta": "oklch(0.49 0.21 320)",
+    "cyan": "oklch(0.49 0.21 180)",
+    "transparent": "transparent",
+})
