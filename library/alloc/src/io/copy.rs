@@ -55,6 +55,7 @@ pub enum CopyState {
 /// # Examples
 ///
 /// ```
+/// # use alloc as std;
 /// use std::io;
 ///
 /// fn main() -> io::Result<()> {

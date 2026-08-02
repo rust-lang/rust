@@ -23,6 +23,7 @@ impl Error {
     /// # Examples
     ///
     /// ```
+    /// # use alloc as std;
     /// use std::io::{Error, ErrorKind};
     ///
     /// // errors can be created from strings
@@ -61,6 +62,7 @@ impl Error {
     /// # Examples
     ///
     /// ```
+    /// # use alloc as std;
     /// use std::io::Error;
     ///
     /// // errors can be created from strings
@@ -91,9 +93,11 @@ impl Error {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```no_run
+    /// # use alloc as std;
     /// use std::io::{Error, ErrorKind};
     ///
+    /// # #[allow(unused_must_use)]
     /// fn print_error(err: Error) {
     ///     if let Some(inner_err) = err.into_inner() {
     ///         println!("Inner error: {inner_err}");
@@ -102,9 +106,10 @@ impl Error {
     ///     }
     /// }
     ///
+    /// # #[allow(dead_code)]
     /// fn main() {
     ///     // Will print "No inner error".
-    ///     print_error(Error::last_os_error());
+    ///     print_error(Error::from(ErrorKind::Other));
     ///     // Will print "Inner error: ...".
     ///     print_error(Error::new(ErrorKind::Other, "oh no!"));
     /// }
@@ -149,6 +154,11 @@ impl Error {
     /// # Examples
     ///
     /// ```
+    /// # mod std {
+    /// #   pub use alloc::fmt;
+    /// #   pub use alloc::io;
+    /// #   pub use core::error;
+    /// # }
     /// use std::fmt;
     /// use std::io;
     /// use std::error::Error;

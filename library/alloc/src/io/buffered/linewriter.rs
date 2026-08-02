@@ -23,7 +23,8 @@ use crate::io::{self, BufWriter, IntoInnerError, IoSlice, Write};
 /// reducing the number of actual writes to the file.
 ///
 /// ```no_run
-/// use std::fs::{self, File};
+/// # use alloc as std;
+/// # use alloc::vec::Vec;
 /// use std::io::prelude::*;
 /// use std::io::LineWriter;
 ///
@@ -34,22 +35,22 @@ use crate::io::{self, BufWriter, IntoInnerError, IoSlice, Write};
 /// I took the one less traveled by,
 /// And that has made all the difference.";
 ///
-///     let file = File::create("poem.txt")?;
-///     let mut file = LineWriter::new(file);
+///     let buffer = Vec::new();;
+///     let mut writer = LineWriter::new(buffer);
 ///
-///     file.write_all(b"I shall be telling this with a sigh")?;
+///     writer.write_all(b"I shall be telling this with a sigh")?;
 ///
 ///     // No bytes are written until a newline is encountered (or
 ///     // the internal buffer is filled).
-///     assert_eq!(fs::read_to_string("poem.txt")?, "");
-///     file.write_all(b"\n")?;
+///     assert_eq!(writer.get_ref().as_slice(), &b"");
+///     writer.write_all(b"\n")?;
 ///     assert_eq!(
-///         fs::read_to_string("poem.txt")?,
-///         "I shall be telling this with a sigh\n",
+///         writer.get_ref().as_slice(),
+///         &b"I shall be telling this with a sigh\n",
 ///     );
 ///
 ///     // Write the rest of the poem.
-///     file.write_all(b"Somewhere ages and ages hence:
+///     writer.write_all(b"Somewhere ages and ages hence:
 /// Two roads diverged in a wood, and I -
 /// I took the one less traveled by,
 /// And that has made all the difference.")?;
@@ -57,10 +58,10 @@ use crate::io::{self, BufWriter, IntoInnerError, IoSlice, Write};
 ///     // The last line of the poem doesn't end in a newline, so
 ///     // we have to flush or drop the `LineWriter` to finish
 ///     // writing.
-///     file.flush()?;
+///     writer.flush()?;
 ///
 ///     // Confirm the whole poem was written.
-///     assert_eq!(fs::read("poem.txt")?, &road_not_taken[..]);
+///     assert_eq!(writer.get_ref().as_slice(), &road_not_taken[..]);
 ///     Ok(())
 /// }
 /// ```
@@ -75,11 +76,12 @@ impl<W: Write> LineWriter<W> {
     /// # Examples
     ///
     /// ```no_run
-    /// use std::fs::File;
+    /// # use alloc as std;
+    /// # use alloc::vec::Vec;
     /// use std::io::LineWriter;
     ///
     /// fn main() -> std::io::Result<()> {
-    ///     let file = File::create("poem.txt")?;
+    ///     let file = Vec::new();
     ///     let file = LineWriter::new(file);
     ///     Ok(())
     /// }
@@ -97,11 +99,12 @@ impl<W: Write> LineWriter<W> {
     /// # Examples
     ///
     /// ```no_run
-    /// use std::fs::File;
+    /// # use alloc as std;
+    /// # use alloc::vec::Vec;
     /// use std::io::LineWriter;
     ///
     /// fn main() -> std::io::Result<()> {
-    ///     let file = File::create("poem.txt")?;
+    ///     let file = Vec::new();
     ///     let file = LineWriter::with_capacity(100, file);
     ///     Ok(())
     /// }
@@ -120,11 +123,12 @@ impl<W: Write> LineWriter<W> {
     /// # Examples
     ///
     /// ```no_run
-    /// use std::fs::File;
+    /// # use alloc as std;
+    /// # use alloc::vec::Vec;
     /// use std::io::LineWriter;
     ///
     /// fn main() -> std::io::Result<()> {
-    ///     let file = File::create("poem.txt")?;
+    ///     let file = Vec::new();
     ///     let mut file = LineWriter::new(file);
     ///
     ///     // we can use reference just like file
@@ -148,11 +152,12 @@ impl<W: Write> LineWriter<W> {
     /// # Examples
     ///
     /// ```no_run
-    /// use std::fs::File;
+    /// # use alloc as std;
+    /// # use alloc::vec::Vec;
     /// use std::io::LineWriter;
     ///
     /// fn main() -> std::io::Result<()> {
-    ///     let file = File::create("poem.txt")?;
+    ///     let file = Vec::new();
     ///
     ///     let writer: LineWriter<File> = LineWriter::new(file);
     ///
@@ -172,11 +177,12 @@ impl<W: ?Sized + Write> LineWriter<W> {
     /// # Examples
     ///
     /// ```no_run
-    /// use std::fs::File;
+    /// # use alloc as std;
+    /// # use alloc::vec::Vec;
     /// use std::io::LineWriter;
     ///
     /// fn main() -> std::io::Result<()> {
-    ///     let file = File::create("poem.txt")?;
+    ///     let file = Vec::new();
     ///     let file = LineWriter::new(file);
     ///
     ///     let reference = file.get_ref();

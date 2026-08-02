@@ -36,12 +36,14 @@ use crate::vec::Vec;
 /// # Examples
 ///
 /// ```no_run
+/// # use alloc as std;
+/// # use alloc::format as println;
+/// # use alloc::string::String;
 /// use std::io::prelude::*;
 /// use std::io::BufReader;
-/// use std::fs::File;
 ///
 /// fn main() -> std::io::Result<()> {
-///     let f = File::open("log.txt")?;
+///     let f = b"Hello\nWorld!" as &[u8];
 ///     let mut reader = BufReader::new(f);
 ///
 ///     let mut line = String::new();
@@ -64,11 +66,11 @@ impl<R: Read> BufReader<R> {
     /// # Examples
     ///
     /// ```no_run
+    /// # use alloc as std;
     /// use std::io::BufReader;
-    /// use std::fs::File;
     ///
     /// fn main() -> std::io::Result<()> {
-    ///     let f = File::open("log.txt")?;
+    ///     let f = b"Hello\nWorld!" as &[u8];
     ///     let reader = BufReader::new(f);
     ///     Ok(())
     /// }
@@ -97,11 +99,11 @@ impl<R: Read> BufReader<R> {
     /// Creating a buffer with ten bytes of capacity:
     ///
     /// ```no_run
+    /// # use alloc as std;
     /// use std::io::BufReader;
-    /// use std::fs::File;
     ///
     /// fn main() -> std::io::Result<()> {
-    ///     let f = File::open("log.txt")?;
+    ///     let f = b"Hello\nWorld!" as &[u8];
     ///     let reader = BufReader::with_capacity(10, f);
     ///     Ok(())
     /// }
@@ -129,6 +131,7 @@ impl<R: Read + ?Sized> BufReader<R> {
     ///
     /// ```rust
     /// #![feature(bufreader_peek)]
+    /// # use alloc as std;
     /// use std::io::{Read, BufReader};
     ///
     /// let mut bytes = &b"oh, hello there"[..];
@@ -169,11 +172,11 @@ impl<R: ?Sized> BufReader<R> {
     /// # Examples
     ///
     /// ```no_run
+    /// # use alloc as std;
     /// use std::io::BufReader;
-    /// use std::fs::File;
     ///
     /// fn main() -> std::io::Result<()> {
-    ///     let f1 = File::open("log.txt")?;
+    ///     let f1 = b"Hello\nWorld!" as &[u8];
     ///     let reader = BufReader::new(f1);
     ///
     ///     let f2 = reader.get_ref();
@@ -192,11 +195,11 @@ impl<R: ?Sized> BufReader<R> {
     /// # Examples
     ///
     /// ```no_run
+    /// # use alloc as std;
     /// use std::io::BufReader;
-    /// use std::fs::File;
     ///
     /// fn main() -> std::io::Result<()> {
-    ///     let f1 = File::open("log.txt")?;
+    ///     let f1 = b"Hello\nWorld!" as &[u8];
     ///     let mut reader = BufReader::new(f1);
     ///
     ///     let f2 = reader.get_mut();
@@ -217,11 +220,11 @@ impl<R: ?Sized> BufReader<R> {
     /// # Examples
     ///
     /// ```no_run
+    /// # use alloc as std;
     /// use std::io::{BufReader, BufRead};
-    /// use std::fs::File;
     ///
     /// fn main() -> std::io::Result<()> {
-    ///     let f = File::open("log.txt")?;
+    ///     let f = b"Hello\nWorld!" as &[u8];
     ///     let mut reader = BufReader::new(f);
     ///     assert!(reader.buffer().is_empty());
     ///
@@ -241,11 +244,11 @@ impl<R: ?Sized> BufReader<R> {
     /// # Examples
     ///
     /// ```no_run
+    /// # use alloc as std;
     /// use std::io::{BufReader, BufRead};
-    /// use std::fs::File;
     ///
     /// fn main() -> std::io::Result<()> {
-    ///     let f = File::open("log.txt")?;
+    ///     let f = b"Hello\nWorld!" as &[u8];
     ///     let mut reader = BufReader::new(f);
     ///
     ///     let capacity = reader.capacity();
@@ -267,11 +270,11 @@ impl<R: ?Sized> BufReader<R> {
     /// # Examples
     ///
     /// ```no_run
+    /// # use alloc as std;
     /// use std::io::BufReader;
-    /// use std::fs::File;
     ///
     /// fn main() -> std::io::Result<()> {
-    ///     let f1 = File::open("log.txt")?;
+    ///     let f1 = b"Hello\nWorld!" as &[u8];
     ///     let reader = BufReader::new(f1);
     ///
     ///     let f2 = reader.into_inner();
@@ -575,13 +578,15 @@ impl<R: ?Sized + Seek> Seek for BufReader<R> {
     /// # Example
     ///
     /// ```no_run
-    /// use std::{
-    ///     io::{self, BufRead, BufReader, Seek},
-    ///     fs::File,
-    /// };
+    /// # use alloc as std;
+    /// # use alloc::format as println;
+    /// # use alloc::string::String;
+    /// use std::io::{self, BufRead, BufReader, Seek};
     ///
     /// fn main() -> io::Result<()> {
-    ///     let mut f = BufReader::new(File::open("foo.txt")?);
+    ///     let data = b"Hello\nWorld!" as &[u8];
+    ///     let cursor = io::Cursor::new(data);
+    ///     let mut f = BufReader::new(cursor);
     ///
     ///     let before = f.stream_position()?;
     ///     f.read_line(&mut String::new())?;

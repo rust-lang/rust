@@ -16,14 +16,19 @@ use crate::vec::Vec;
 /// A locked standard input implements `BufRead`:
 ///
 /// ```no_run
-/// use std::io;
-/// use std::io::prelude::*;
+/// # use alloc as std;
+/// # use alloc::vec::Vec;
+/// # use alloc::string::String;
+/// use std::io::{self, BufRead};
 ///
-/// let stdin = io::stdin();
-/// for line in stdin.lock().lines() {
-///     println!("{}", line?);
-/// }
-/// # std::io::Result::Ok(())
+/// let data = "Hello\nWorld!";
+/// let cursor = io::Cursor::new(data);
+///
+/// let lines = cursor.lines().collect::<io::Result<Vec<String>>>()?;
+///
+/// assert_eq!(&lines[0], "Hello");
+/// assert_eq!(&lines[1], "World!");
+/// # io::Result::Ok(())
 /// ```
 ///
 /// If you have something that implements [`Read`], you can use the `BufReader`
@@ -36,21 +41,19 @@ use crate::vec::Vec;
 /// [`lines`]: BufRead::lines
 ///
 /// ```no_run
-/// use std::io::{self, BufReader};
-/// use std::io::prelude::*;
-/// use std::fs::File;
+/// # use alloc as std;
+/// # use alloc::vec::Vec;
+/// # use alloc::string::String;
+/// use std::io::{self, BufRead, BufReader};
 ///
-/// fn main() -> io::Result<()> {
-///     let f = File::open("foo.txt")?;
-///     let f = BufReader::new(f);
+/// let mut data = b"Hello\nWorld!" as &[u8];
+/// let buffer = BufReader::new(&mut data);
 ///
-///     for line in f.lines() {
-///         let line = line?;
-///         println!("{line}");
-///     }
+/// let lines = buffer.lines().collect::<io::Result<Vec<String>>>()?;
 ///
-///     Ok(())
-/// }
+/// assert_eq!(&lines[0], "Hello");
+/// assert_eq!(&lines[1], "World!");
+/// # io::Result::Ok(())
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "IoBufRead")]
@@ -73,10 +76,14 @@ pub trait BufRead: Read {
     /// A locked standard input implements `BufRead`:
     ///
     /// ```no_run
+    /// # use alloc as std;
+    /// # use alloc::format as println;
     /// use std::io;
     /// use std::io::prelude::*;
     ///
-    /// let stdin = io::stdin();
+    /// # struct StdinMock;
+    /// # impl StdinMock { fn lock(&self) -> impl BufRead { unimplemented!() } }
+    /// # let stdin = StdinMock;
     /// let mut stdin = stdin.lock();
     ///
     /// let buffer = stdin.fill_buf()?;
@@ -124,12 +131,15 @@ pub trait BufRead: Read {
     ///
     /// Examples
     ///
-    /// ```
-    /// #![feature(buf_read_has_data_left)]
+    ///
+    /// # use alloc as std;
+    /// # use alloc::format as println;
     /// use std::io;
     /// use std::io::prelude::*;
     ///
-    /// let stdin = io::stdin();
+    /// # struct StdinMock;
+    /// # impl StdinMock { fn lock(&self) -> impl BufRead { unimplemented!() } }
+    /// # let stdin = StdinMock;
     /// let mut stdin = stdin.lock();
     ///
     /// while stdin.has_data_left()? {
@@ -176,6 +186,7 @@ pub trait BufRead: Read {
     /// [`Cursor`]: crate::io::Cursor
     ///
     /// ```
+    /// # use alloc as std;
     /// use std::io::{self, BufRead};
     ///
     /// let mut cursor = io::Cursor::new(b"lorem-ipsum");
@@ -240,6 +251,8 @@ pub trait BufRead: Read {
     /// [`Cursor`]: crate::io::Cursor
     ///
     /// ```
+    /// # use alloc as std;
+    /// # use alloc::vec::Vec;
     /// use std::io::{self, BufRead};
     ///
     /// let mut cursor = io::Cursor::new(b"Ferris\0Likes long walks on the beach\0Crustacean\0!");
@@ -313,6 +326,7 @@ pub trait BufRead: Read {
     /// [`Cursor`]: crate::io::Cursor
     ///
     /// ```
+    /// # use alloc as std;
     /// use std::io::{self, BufRead};
     ///
     /// let mut cursor = io::Cursor::new(b"foo\nbar");
@@ -368,6 +382,7 @@ pub trait BufRead: Read {
     /// [`Cursor`]: crate::io::Cursor
     ///
     /// ```
+    /// # use alloc as std;
     /// use std::io::{self, BufRead};
     ///
     /// let cursor = io::Cursor::new(b"lorem-ipsum-dolor");
@@ -403,6 +418,7 @@ pub trait BufRead: Read {
     /// [`Cursor`]: crate::io::Cursor
     ///
     /// ```
+    /// # use alloc as std;
     /// use std::io::{self, BufRead};
     ///
     /// let cursor = io::Cursor::new(b"lorem\nipsum\r\ndolor");

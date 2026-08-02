@@ -40,6 +40,9 @@ use crate::time::Duration;
 ///
 /// # Examples
 ///
+/// A [`TcpStream`] is unbuffered, so each write and/or read will immediately
+/// invoke the relevant underlying system call:
+///
 /// ```no_run
 /// use std::io::prelude::*;
 /// use std::net::TcpStream;
@@ -52,6 +55,28 @@ use crate::time::Duration;
 ///     Ok(())
 /// } // the stream is closed here
 /// ```
+///
+/// A simple way to buffer the stream is to use a [`BufWriter`]:
+///
+/// ```no_run
+/// use std::io::prelude::*;
+/// use std::io::BufWriter;
+/// use std::net::TcpStream;
+///
+/// let mut stream = BufWriter::new(TcpStream::connect("127.0.0.1:34254").unwrap());
+///
+/// for i in 0..10 {
+///     stream.write(&[i+1]).unwrap();
+/// }
+/// stream.flush().unwrap();
+/// ```
+///
+/// By wrapping the stream with a `BufWriter<W>`, these ten writes are all grouped
+/// together by the buffer and will all be written out in one system call when
+/// the `stream` is flushed.
+///
+/// [`flush`]: crate::io::BufWriter::flush
+/// [`BufWriter`]: crate::io::BufWriter
 ///
 /// # Platform-specific Behavior
 ///

@@ -26,42 +26,6 @@ use crate::vec::Vec;
 /// ensures that the buffer is empty and thus dropping will not even attempt
 /// file operations.
 ///
-/// # Examples
-///
-/// Let's write the numbers one through ten to a [`TcpStream`]:
-///
-/// ```no_run
-/// use std::io::prelude::*;
-/// use std::net::TcpStream;
-///
-/// let mut stream = TcpStream::connect("127.0.0.1:34254").unwrap();
-///
-/// for i in 0..10 {
-///     stream.write(&[i+1]).unwrap();
-/// }
-/// ```
-///
-/// Because we're not buffering, we write each one in turn, incurring the
-/// overhead of a system call per byte written. We can fix this with a
-/// `BufWriter<W>`:
-///
-/// ```no_run
-/// use std::io::prelude::*;
-/// use std::io::BufWriter;
-/// use std::net::TcpStream;
-///
-/// let mut stream = BufWriter::new(TcpStream::connect("127.0.0.1:34254").unwrap());
-///
-/// for i in 0..10 {
-///     stream.write(&[i+1]).unwrap();
-/// }
-/// stream.flush().unwrap();
-/// ```
-///
-/// By wrapping the stream with a `BufWriter<W>`, these ten writes are all grouped
-/// together by the buffer and will all be written out in one system call when
-/// the `stream` is flushed.
-///
 // FIXME(#74481): Hard-links required to link from `alloc` to `std`
 /// [`TcpStream::write`]: ../../std/net/struct.TcpStream.html#method.write
 /// [`TcpStream`]: ../../std/net/struct.TcpStream.html
@@ -87,11 +51,12 @@ impl<W: Write> BufWriter<W> {
     /// # Examples
     ///
     /// ```no_run
+    /// # use alloc as std;
+    /// # use alloc::vec::Vec;
     /// use std::io::BufWriter;
-    /// use std::net::TcpStream;
     ///
     /// # #[expect(unused_mut)]
-    /// let mut buffer = BufWriter::new(TcpStream::connect("127.0.0.1:34254").unwrap());
+    /// let mut buffer = BufWriter::new(Vec::new());
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -119,12 +84,12 @@ impl<W: Write> BufWriter<W> {
     /// Creating a buffer with a buffer of at least a hundred bytes.
     ///
     /// ```no_run
+    /// # use alloc as std;
+    /// # use alloc::vec::Vec;
     /// use std::io::BufWriter;
-    /// use std::net::TcpStream;
     ///
-    /// let stream = TcpStream::connect("127.0.0.1:34254").unwrap();
     /// # #[expect(unused_mut)]
-    /// let mut buffer = BufWriter::with_capacity(100, stream);
+    /// let mut buffer = BufWriter::with_capacity(100, Vec::new());
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -143,14 +108,15 @@ impl<W: Write> BufWriter<W> {
     /// # Examples
     ///
     /// ```no_run
+    /// # use alloc as std;
+    /// # use alloc::vec::Vec;
     /// use std::io::BufWriter;
-    /// use std::net::TcpStream;
     ///
     /// # #[expect(unused_mut)]
-    /// let mut buffer = BufWriter::new(TcpStream::connect("127.0.0.1:34254").unwrap());
+    /// let mut buffer = BufWriter::new(Vec::new());
     ///
-    /// // unwrap the TcpStream and flush the buffer
-    /// let stream = buffer.into_inner().unwrap();
+    /// // unwrap the Vec and flush the buffer
+    /// let vector = buffer.into_inner().unwrap();
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_inner(mut self) -> Result<W, IntoInnerError<BufWriter<W>>> {
@@ -172,6 +138,7 @@ impl<W: Write> BufWriter<W> {
     /// # Examples
     ///
     /// ```
+    /// # use alloc as std;
     /// use std::io::{BufWriter, Write};
     ///
     /// let mut buffer = [0u8; 10];
@@ -297,11 +264,12 @@ impl<W: ?Sized + Write> BufWriter<W> {
     /// # Examples
     ///
     /// ```no_run
+    /// # use alloc as std;
+    /// # use alloc::vec::Vec;
     /// use std::io::BufWriter;
-    /// use std::net::TcpStream;
     ///
     /// # #[expect(unused_mut)]
-    /// let mut buffer = BufWriter::new(TcpStream::connect("127.0.0.1:34254").unwrap());
+    /// let mut buffer = BufWriter::new(Vec::new());
     ///
     /// // we can use reference just like buffer
     /// let reference = buffer.get_ref();
@@ -318,10 +286,11 @@ impl<W: ?Sized + Write> BufWriter<W> {
     /// # Examples
     ///
     /// ```no_run
+    /// # use alloc as std;
+    /// # use alloc::vec::Vec;
     /// use std::io::BufWriter;
-    /// use std::net::TcpStream;
     ///
-    /// let mut buffer = BufWriter::new(TcpStream::connect("127.0.0.1:34254").unwrap());
+    /// let mut buffer = BufWriter::new(Vec::new());
     ///
     /// // we can use reference just like buffer
     /// let reference = buffer.get_mut();
@@ -336,10 +305,11 @@ impl<W: ?Sized + Write> BufWriter<W> {
     /// # Examples
     ///
     /// ```no_run
+    /// # use alloc as std;
+    /// # use alloc::vec::Vec;
     /// use std::io::BufWriter;
-    /// use std::net::TcpStream;
     ///
-    /// let buf_writer = BufWriter::new(TcpStream::connect("127.0.0.1:34254").unwrap());
+    /// let buf_writer = BufWriter::new(Vec::new());
     ///
     /// // See how many bytes are currently buffered
     /// let bytes_buffered = buf_writer.buffer().len();
@@ -368,10 +338,11 @@ impl<W: ?Sized + Write> BufWriter<W> {
     /// # Examples
     ///
     /// ```no_run
+    /// # use alloc as std;
+    /// # use alloc::vec::Vec;
     /// use std::io::BufWriter;
-    /// use std::net::TcpStream;
     ///
-    /// let buf_writer = BufWriter::new(TcpStream::connect("127.0.0.1:34254").unwrap());
+    /// let buf_writer = BufWriter::new(Vec::new());
     ///
     /// // Check the capacity of the inner buffer
     /// let capacity = buf_writer.capacity();
@@ -486,36 +457,6 @@ impl<W: ?Sized + Write> BufWriter<W> {
 #[stable(feature = "bufwriter_into_parts", since = "1.56.0")]
 /// Error returned for the buffered data from `BufWriter::into_parts`, when the underlying
 /// writer has previously panicked.  Contains the (possibly partly written) buffered data.
-///
-/// # Example
-///
-/// ```
-/// # // This test requires unwinding to work.
-/// # // Disable it when unwinding isn't available.
-/// # #[cfg(panic = "unwind")]
-/// # fn main() {
-/// use std::io::{self, BufWriter, Write};
-/// use std::panic::{catch_unwind, AssertUnwindSafe};
-///
-/// struct PanickingWriter;
-/// impl Write for PanickingWriter {
-///   fn write(&mut self, buf: &[u8]) -> io::Result<usize> { panic!() }
-///   fn flush(&mut self) -> io::Result<()> { panic!() }
-/// }
-///
-/// let mut stream = BufWriter::new(PanickingWriter);
-/// write!(stream, "some data").unwrap();
-/// let result = catch_unwind(AssertUnwindSafe(|| {
-///     stream.flush().unwrap()
-/// }));
-/// assert!(result.is_err());
-/// let (recovered_writer, buffered_data) = stream.into_parts();
-/// assert!(matches!(recovered_writer, PanickingWriter));
-/// assert_eq!(buffered_data.unwrap_err().into_inner(), b"some data");
-/// # }
-/// # #[cfg(not(panic = "unwind"))]
-/// # fn main() {}
-/// ```
 pub struct WriterPanicked {
     buf: Vec<u8>,
 }

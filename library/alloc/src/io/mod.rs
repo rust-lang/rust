@@ -10,23 +10,23 @@
 //! Because they are traits, [`Read`] and [`Write`] are implemented by a number
 //! of other types, and you can implement them for your types too. As such,
 //! you'll see a few different types of I/O throughout the documentation in
-//! this module: [`File`]s, [`TcpStream`]s, and sometimes even [`Vec<T>`]s. For
-//! example, [`Read`] adds a [`read`][`Read::read`] method, which we can use on
-//! [`File`]s:
+//! this module. For example, [`Read`] adds a [`read`][`Read::read`] method
+//!  which we can use on byte slices:
 //!
 //! ```no_run
-//! use std::io;
-//! use std::io::prelude::*;
-//! use std::fs::File;
+//! use alloc::io;
+//! use alloc::io::prelude::*;
+//! use alloc::vec::Vec;
 //!
 //! fn main() -> io::Result<()> {
-//!     let mut f = File::open("foo.txt")?;
+//!     let data = (0..).into_iter().take(32).collect::<Vec<u8>>();
 //!     let mut buffer = [0; 10];
 //!
 //!     // read up to 10 bytes
-//!     let n = f.read(&mut buffer)?;
+//!     let n = data.as_slice().read(&mut buffer)?;
 //!
-//!     println!("The bytes: {:?}", &buffer[..n]);
+//!     assert_eq!(&[0, 1, 2, 3, 4, 5, 6, 7, 8, 9][..n], &buffer[..n]);
+//!
 //!     Ok(())
 //! }
 //! ```
@@ -43,23 +43,22 @@
 //! coming from:
 //!
 //! ```no_run
-//! use std::io;
-//! use std::io::prelude::*;
-//! use std::io::SeekFrom;
-//! use std::fs::File;
+//! use alloc::io;
+//! use alloc::io::prelude::*;
+//! use alloc::io::SeekFrom;
+//! use alloc::vec::Vec;
 //!
-//! fn main() -> io::Result<()> {
-//!     let mut f = File::open("foo.txt")?;
-//!     let mut buffer = [0; 10];
+//! # #[allow(dead_code)]
+//! fn read_from_end<T: Read + Seek>(reader: &mut T) -> io::Result<Vec<u8>> {
+//!     let mut buffer = Vec::new();
 //!
 //!     // skip to the last 10 bytes of the file
-//!     f.seek(SeekFrom::End(-10))?;
+//!     reader.seek(SeekFrom::End(-10))?;
 //!
 //!     // read up to 10 bytes
-//!     let n = f.read(&mut buffer)?;
+//!     let _n = reader.read(&mut buffer)?;
 //!
-//!     println!("The bytes: {:?}", &buffer[..n]);
-//!     Ok(())
+//!     Ok(buffer)
 //! }
 //! ```
 //!
@@ -70,7 +69,7 @@
 //!
 //! Byte-based interfaces are unwieldy and can be inefficient, as we'd need to be
 //! making near-constant calls to the operating system. To help with this,
-//! `std::io` comes with two structs, [`BufReader`] and [`BufWriter`], which wrap
+//! `alloc::io` comes with two structs, [`BufReader`] and [`BufWriter`], which wrap
 //! readers and writers. The wrapper uses a buffer, reducing the number of
 //! calls and providing nicer methods for accessing exactly what you want.
 //!
@@ -78,21 +77,22 @@
 //! methods to any reader:
 //!
 //! ```no_run
-//! use std::io;
-//! use std::io::prelude::*;
-//! use std::io::BufReader;
-//! use std::fs::File;
+//! use alloc::io;
+//! use alloc::io::BufReader;
+//! use alloc::io::prelude::*;
+//! use alloc::string::String;
 //!
-//! fn main() -> io::Result<()> {
-//!     let f = File::open("foo.txt")?;
-//!     let mut reader = BufReader::new(f);
+//! # #[allow(dead_code)]
+//! fn read_one_line<T: Read>(reader: &mut T) -> io::Result<String> {
+//!     // reader now implements BufRead
+//!     let mut reader = BufReader::new(reader);
+//!
 //!     let mut buffer = String::new();
 //!
 //!     // read a line into buffer
 //!     reader.read_line(&mut buffer)?;
 //!
-//!     println!("{buffer}");
-//!     Ok(())
+//!     Ok(buffer)
 //! }
 //! ```
 //!
@@ -100,15 +100,14 @@
 //! to [`write`][`Write::write`]:
 //!
 //! ```no_run
-//! use std::io;
-//! use std::io::prelude::*;
-//! use std::io::BufWriter;
-//! use std::fs::File;
+//! use alloc::io;
+//! use alloc::io::BufWriter;
+//! use alloc::io::prelude::*;
 //!
-//! fn main() -> io::Result<()> {
-//!     let f = File::create("foo.txt")?;
+//! # #[allow(dead_code)]
+//! fn write_the_answer<T: Write>(writer: &mut T) -> io::Result<()> {
 //!     {
-//!         let mut writer = BufWriter::new(f);
+//!         let mut writer = BufWriter::new(writer);
 //!
 //!         // write a byte to the buffer
 //!         writer.write(&[42])?;
@@ -121,23 +120,23 @@
 //!
 //! ## Iterator types
 //!
-//! A large number of the structures provided by `std::io` are for various
+//! A large number of the structures provided by `alloc::io` are for various
 //! ways of iterating over I/O. For example, [`Lines`] is used to split over
 //! lines:
 //!
 //! ```no_run
-//! use std::io;
-//! use std::io::prelude::*;
-//! use std::io::BufReader;
-//! use std::fs::File;
+//! use alloc::io;
+//! use alloc::io::BufReader;
+//! use alloc::io::prelude::*;
 //!
-//! fn main() -> io::Result<()> {
-//!     let f = File::open("foo.txt")?;
-//!     let reader = BufReader::new(f);
+//! # #[allow(dead_code)]
+//! fn read_one_line<T: Read>(reader: &mut T) -> io::Result<()> {
+//!     let mut reader = BufReader::new(reader);
 //!
 //!     for line in reader.lines() {
-//!         println!("{}", line?);
+//!         assert!(!line?.ends_with('\n'));
 //!     }
+//!
 //!     Ok(())
 //! }
 //! ```
@@ -150,27 +149,27 @@
 //! module use the [`?` operator]:
 //!
 //! ```no_run
-//! use std::io;
+//! use alloc::io;
+//! use alloc::io::prelude::*;
 //!
 //! # #[allow(dead_code)]
-//! fn read_input() -> io::Result<()> {
-//!     let mut input = String::new();
+//! fn read_one_line<T: BufRead>(reader: &mut T) -> io::Result<()> {
+//!     for line in reader.lines() {
+//!         // Reading a line could fail! We use ? to propagate the error
+//!         let line = line?;
 //!
-//!     io::stdin().read_line(&mut input)?;
-//!
-//!     println!("You typed: {}", input.trim());
+//!         assert!(!line.ends_with('\n'));
+//!     }
 //!
 //!     Ok(())
 //! }
 //! ```
 //!
-//! The return type of `read_input()`, [`io::Result<()>`][`io::Result`], is a very
+//! The return type of `read_one_line()`, [`io::Result<()>`][`io::Result`], is a very
 //! common type for functions which don't have a 'real' return value, but do want to
 //! return errors if they happen. In this case, the only purpose of this function is
-//! to read the line and print it, so we use `()`.
+//! to read the lines, so we use `()`.
 //!
-//! [`File`]: ../../std/fs/struct.File.html
-//! [`TcpStream`]: ../../std/net/struct.TcpStream.html
 //! [`Vec<T>`]: crate::vec::Vec
 //! [`io::Result`]: self::Result
 //! [`?` operator]: ../../book/appendix-02-operators.html

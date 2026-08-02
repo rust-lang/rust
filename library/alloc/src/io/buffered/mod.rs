@@ -21,15 +21,16 @@ use crate::io::Error;
 /// # Examples
 ///
 /// ```no_run
+/// # use alloc as std;
+/// # use alloc::vec::Vec;
 /// use std::io::BufWriter;
-/// use std::net::TcpStream;
 ///
 /// # #[expect(unused_mut)]
-/// let mut stream = BufWriter::new(TcpStream::connect("127.0.0.1:34254").unwrap());
+/// let mut stream = BufWriter::new(Vec::new());
 ///
 /// // do stuff with the stream
 ///
-/// // we want to get our `TcpStream` back, so let's try:
+/// // we want to get our `Vec` back, so let's try:
 ///
 /// let stream = match stream.into_inner() {
 ///     Ok(s) => s,
@@ -64,25 +65,22 @@ impl<W> IntoInnerError<W> {
     /// # Examples
     ///
     /// ```no_run
+    /// # use alloc as std;
+    /// # use alloc::vec::Vec;
     /// use std::io::BufWriter;
-    /// use std::net::TcpStream;
     ///
     /// # #[expect(unused_mut)]
-    /// let mut stream = BufWriter::new(TcpStream::connect("127.0.0.1:34254").unwrap());
+    /// let mut stream = BufWriter::new(Vec::new());
     ///
     /// // do stuff with the stream
     ///
-    /// // we want to get our `TcpStream` back, so let's try:
+    /// // we want to get our `Vec` back, so let's try:
     ///
     /// let stream = match stream.into_inner() {
     ///     Ok(s) => s,
     ///     Err(e) => {
-    ///         // Here, e is an IntoInnerError, let's log the inner error.
-    ///         //
-    ///         // We'll just 'log' to stdout for this example.
-    ///         println!("{}", e.error());
-    ///
-    ///         panic!("An unexpected error occurred.");
+    ///         // Here, e is an IntoInnerError
+    ///         panic!("An error occurred: {}", e.error());
     ///     }
     /// };
     /// ```
@@ -99,15 +97,16 @@ impl<W> IntoInnerError<W> {
     /// # Examples
     ///
     /// ```no_run
+    /// # use alloc as std;
+    /// # use alloc::vec::Vec;
     /// use std::io::BufWriter;
-    /// use std::net::TcpStream;
     ///
     /// # #[expect(unused_mut)]
-    /// let mut stream = BufWriter::new(TcpStream::connect("127.0.0.1:34254").unwrap());
+    /// let mut stream = BufWriter::new(Vec::new());
     ///
     /// // do stuff with the stream
     ///
-    /// // we want to get our `TcpStream` back, so let's try:
+    /// // we want to get our `Vec` back, so let's try:
     ///
     /// let stream = match stream.into_inner() {
     ///     Ok(s) => s,
@@ -132,7 +131,9 @@ impl<W> IntoInnerError<W> {
     /// obtain ownership of the underlying error.
     ///
     /// # Example
+    ///
     /// ```
+    /// # use alloc as std;
     /// use std::io::{BufWriter, ErrorKind, Write};
     ///
     /// let mut not_enough_space = [0u8; 10];
@@ -154,7 +155,9 @@ impl<W> IntoInnerError<W> {
     /// advanced error recovery.
     ///
     /// # Example
+    ///
     /// ```
+    /// # use alloc as std;
     /// use std::io::{BufWriter, ErrorKind, Write};
     ///
     /// let mut not_enough_space = [0u8; 10];
