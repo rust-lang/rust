@@ -198,6 +198,7 @@ pub trait FileExt {
     /// }
     /// ```
     #[unstable(feature = "read_buf_at", issue = "140771")]
+    #[doc(alias("read_exact_buf_at"))]
     fn read_buf_exact_at(
         &self,
         mut buf: BorrowedCursor<'_, u8>,
