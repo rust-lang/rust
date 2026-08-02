@@ -365,8 +365,8 @@ fn test_thread_os_id_matches_current() {
 fn test_thread_os_id_of_spawned_thread() {
     let spawned = thread::spawn(|| thread::current().os_id());
     let handle = spawned.thread().clone();
-    let seen_by_the_thread_itself = spawned.join().unwrap();
-    assert_eq!(handle.os_id(), seen_by_the_thread_itself);
+    let spawned_id = spawned.join().unwrap();
+    assert_eq!(handle.os_id(), spawned_id);
 }
 
 #[test]
