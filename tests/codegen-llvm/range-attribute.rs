@@ -23,7 +23,7 @@ pub fn nonzero_int(x: NonZero<u128>) -> NonZero<u128> {
     x
 }
 
-// CHECK: noundef range(i8 0, 3) i8 @optional_bool(i8{{.*}} range(i8 0, 3) %x)
+// CHECK: noundef range(i8 -1, 2) i8 @optional_bool(i8{{.*}} range(i8 -1, 2) %x)
 #[no_mangle]
 pub fn optional_bool(x: Option<bool>) -> Option<bool> {
     x
@@ -35,7 +35,7 @@ pub enum Enum0 {
     C,
 }
 
-// CHECK: noundef range(i8 0, 4) i8 @enum0_value(i8{{.*}} range(i8 0, 4) %x)
+// CHECK: noundef range(i8 -2, 2) i8 @enum0_value(i8{{.*}} range(i8 -2, 2) %x)
 #[no_mangle]
 pub fn enum0_value(x: Enum0) -> Enum0 {
     x
