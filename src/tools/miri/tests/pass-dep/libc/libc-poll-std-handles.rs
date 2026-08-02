@@ -17,6 +17,12 @@ fn main() {
     let num = errno_result(unsafe { libc::poll(pfds.as_mut_ptr(), 3, 0) }).unwrap();
     assert_eq!(num, 3);
 
+    if cfg!(target_vendor = "apple") && !cfg!(miri) {
+        // The native macOS poll behaves very strangely. It apparently reports POLLNVAL for stdin?
+        // std does not even use poll for `sanitize_standard_fds` because of that.
+        return;
+    }
+
     assert_eq!(pfds[0].revents, libc::POLLIN | libc::POLLOUT);
     assert_eq!(pfds[1].revents, libc::POLLOUT);
     assert_eq!(pfds[2].revents, libc::POLLOUT);
