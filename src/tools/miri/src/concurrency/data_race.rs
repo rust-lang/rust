@@ -1671,11 +1671,11 @@ impl GlobalState {
     // We perform data race detection when there are more than 1 active thread
     // and we have not temporarily disabled race detection to perform something
     // data race free
-    fn race_detecting(&self) -> bool {
+    pub(super) fn race_detecting(&self) -> bool {
         self.multi_threaded.get() && !self.ongoing_action_data_race_free.get()
     }
 
-    pub fn ongoing_action_data_race_free(&self) -> bool {
+    pub(super) fn ongoing_action_data_race_free(&self) -> bool {
         self.ongoing_action_data_race_free.get()
     }
 
