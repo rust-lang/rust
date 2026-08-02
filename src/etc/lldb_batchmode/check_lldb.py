@@ -15,6 +15,8 @@ import lldb
 from .common import (
     BLESS,
     INPUT_DATA,
+    TYPES_TESTED,
+    VARS_TESTED,
     ArrayChild,
     ArrayLikeChildren,
     Child,
@@ -31,10 +33,6 @@ from .from_lldb import (
     type_from_lldb,
     variable_from_lldb,
 )
-
-VARS_TESTED: list[dict[str, Result]] = []
-"""Used to help ensure all expected variables were tested. Each element of the list corresponds to a
-breakpoint, and contains a set of all of the variable names tested for that breakpoint."""
 
 
 def check(var_name: str, breakpoint_idx: int, frame: lldb.SBFrame) -> Result:
@@ -80,12 +78,6 @@ def check(var_name: str, breakpoint_idx: int, frame: lldb.SBFrame) -> Result:
         print(f"{var_name}: Ok")
 
     return result
-
-
-TYPES_TESTED: dict[str, Result] = {}
-"""Since types are unique and unchanging, we only need to test each type once. This also helps
-ensure we have tested all types in `INPUT_DATA`
-"""
 
 
 def type_matches(

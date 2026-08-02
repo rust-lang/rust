@@ -294,8 +294,13 @@ def main():
         if repr_cmd_run:
             # We save importing these until we actually see a repr command. This prevents us
             # from trying to load input data from tests that don't use `repr` commands.
-            from .check_lldb import tested_all_types, tested_all_variables
-            from .common import BLESS, INPUT_DATA, BlessMetadata
+            from .common import (
+                BLESS,
+                BlessMetadata,
+                INPUT_DATA,
+                tested_all_types,
+                tested_all_variables,
+            )
 
             # `bless` should resolve any errors from mismatched test data, so any errors that reach
             # this point are either from the `bless` not working properly, or some other issue with

@@ -131,6 +131,7 @@ impl TestCx<'_> {
 
             // write debugger script
             let mut script_str = String::with_capacity(2048);
+            script_str.push_str("source ./src/etc/lldb_batchmode/check_gdb.py\n");
             script_str.push_str(&format!("set charset {}\n", Self::charset()));
             script_str.push_str(&format!("set sysroot {android_cross_path}\n"));
             script_str.push_str(&format!("file {}\n", exe_file));
@@ -234,6 +235,7 @@ impl TestCx<'_> {
             let rust_pp_module_abs_path = self.config.src_root.join("src").join("etc");
             // write debugger script
             let mut script_str = String::with_capacity(2048);
+            script_str.push_str("py import lldb_batchmode\n");
             script_str.push_str(&format!("set charset {}\n", Self::charset()));
             script_str.push_str("show version\n");
 
@@ -312,6 +314,9 @@ impl TestCx<'_> {
             }
 
             script_str.push_str(&cmds);
+            // The `repr-finalize` call must happen last, just before GDB quits
+            script_str.push_str("\nrepr_finalize\n");
+
             script_str.push_str("\nquit\n");
 
             debug!("script_str = {}", script_str);
@@ -325,8 +330,19 @@ impl TestCx<'_> {
 
             let mut gdb = Command::new(self.config.gdb.as_ref().unwrap());
 
+            let lldb_input_data_path = self.config.src_root.join(format!(
+                "{}/gdb_input/{}.json",
+                self.testpaths.file.parent().unwrap(),
+                get_target_file_name(&self.config.target)
+            ));
+
             let pythonpath = with_pythonpath_prepended(&rust_pp_module_abs_path);
-            gdb.args(debugger_opts).env("PYTHONPATH", pythonpath);
+            gdb.args(debugger_opts)
+                .env("PYTHONPATH", pythonpath)
+                .env("BATCHMODE_DEBUGGER", "gdb")
+                .env("LLDB_BATCHMODE_BLESS_TEST_DATA", if self.config.bless { "1" } else { "0" })
+                .env("LLDB_BATCHMODE_TARGET_TRIPLE", &self.config.target)
+                .env("LLDB_BATCHMODE_INPUT_DATA_PATH", lldb_input_data_path);
 
             debugger_run_result =
                 self.compose_and_run(gdb, self.config.target_run_lib_path.as_path(), None, None);
@@ -488,6 +504,7 @@ impl TestCx<'_> {
             .env("LLDB_BATCHMODE_INPUT_DATA_PATH", lldb_input_data_path)
             .env("LLDB_BATCHMODE_BLESS_TEST_DATA", if self.config.bless { "1" } else { "0" })
             .env("LLDB_BATCHMODE_TARGET_TRIPLE", &self.config.target)
+            .env("BATCHMODE_DEBUGGER", "lldb")
             .env("PYTHONUNBUFFERED", "1") // Help debugging #78665
             .env("PYTHONPATH", pythonpath)
             .env("PATH", path);
