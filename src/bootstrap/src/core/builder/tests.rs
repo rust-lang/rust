@@ -53,7 +53,7 @@ fn test_invalid() {
 #[test]
 fn test_intersection() {
     let set = |paths: &[&str]| {
-        PathSet::Set(paths.into_iter().map(|p| TaskPath { path: p.into(), kind: None }).collect())
+        PathSet::Set(paths.into_iter().map(|p| TaskPath { path: p.into() }).collect())
     };
     let library_set = set(&["library/core", "library/alloc", "library/std"]);
     let mut command_paths = vec![
@@ -61,7 +61,7 @@ fn test_intersection() {
         CLIStepPath::from(PathBuf::from("library/alloc")),
         CLIStepPath::from(PathBuf::from("library/stdarch")),
     ];
-    let subset = library_set.intersection_removing_matches(&mut command_paths, Kind::Build);
+    let subset = library_set.intersection_removing_matches(&mut command_paths);
     assert_eq!(subset, set(&["library/core", "library/alloc"]),);
     assert_eq!(
         command_paths,
@@ -76,7 +76,7 @@ fn test_intersection() {
 #[test]
 fn test_resolve_parent_and_subpaths() {
     let set = |paths: &[&str]| {
-        PathSet::Set(paths.into_iter().map(|p| TaskPath { path: p.into(), kind: None }).collect())
+        PathSet::Set(paths.into_iter().map(|p| TaskPath { path: p.into() }).collect())
     };
 
     let mut command_paths = vec![
@@ -85,7 +85,7 @@ fn test_resolve_parent_and_subpaths() {
     ];
 
     let library_set = set(&["src/tools/miri", "src/tools/miri/cargo-miri"]);
-    library_set.intersection_removing_matches(&mut command_paths, Kind::Build);
+    library_set.intersection_removing_matches(&mut command_paths);
 
     assert_eq!(
         command_paths,
