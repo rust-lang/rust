@@ -100,6 +100,11 @@ Follow our [correctness and maintainability conventions](../conventions.md#cc).
 Avoid unnecessary abstractions and compatibility layers.
 Rustc does not have a stable API; you do not need to preserve backwards compatibility for internal compiler APIs.
 
+### Commit structure
+
+See ["How to structure your PR"](../contributing.md#er).
+Commit messages must be authored by you, not your LLM.
+
 ### Before opening a PR
 
 Review your own PR before opening it:
