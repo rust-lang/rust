@@ -455,11 +455,6 @@ fn expected_const_arg_type<'tcx>(
         return None;
     }
 
-    let [hir::GenericArg::Const(const_arg)] = generic_args.args else { return None };
-    if const_arg.hir_id != arg_hir_id {
-        return None;
-    }
-
     let generics = tcx.generics_of(def_id);
     if generics.parent.is_some()
         || generics.parent_count != 0
@@ -469,10 +464,41 @@ fn expected_const_arg_type<'tcx>(
         return None;
     }
 
-    let [param] = generics.own_params.as_slice() else { return None };
-    if !matches!(param.kind, ty::GenericParamDefKind::Const { .. }) {
+    // Early lifetimes may be elided, `impl Trait` parameters are synthesized without a
+    // corresponding HIR argument, and trailing parameters with defaults may be omitted. All of
+    // these can leave fewer arguments than parameters, so only bail out when there are *more*
+    // arguments than can be matched positionally.
+    let has_lifetime_args = generic_args.has_lifetime_args();
+    let params_with_explicit_args = || {
+        generics.own_params.iter().filter(|param| match param.kind {
+            ty::GenericParamDefKind::Lifetime => has_lifetime_args,
+            ty::GenericParamDefKind::Type { synthetic, .. } => !synthetic,
+            ty::GenericParamDefKind::Const { .. } => true,
+        })
+    };
+
+    if generic_args.args.len() > params_with_explicit_args().count() {
         return None;
     }
+
+    let mut target_param = None;
+    for (arg, param) in generic_args.args.iter().zip(params_with_explicit_args()) {
+        match (arg, &param.kind) {
+            (hir::GenericArg::Lifetime(_), ty::GenericParamDefKind::Lifetime)
+            | (
+                hir::GenericArg::Type(_) | hir::GenericArg::Infer(_),
+                ty::GenericParamDefKind::Type { .. },
+            ) => {}
+            (hir::GenericArg::Const(const_arg), ty::GenericParamDefKind::Const { .. }) => {
+                if const_arg.hir_id == arg_hir_id {
+                    target_param = Some(param);
+                }
+            }
+            (hir::GenericArg::Infer(_), ty::GenericParamDefKind::Const { .. }) => {}
+            _ => return None,
+        }
+    }
+    let param = target_param?;
 
     let ty = tcx.type_of(param.def_id).instantiate_identity().skip_norm_wip();
     (!ty.has_non_region_param()
