@@ -31,7 +31,7 @@ or reading the [rustc dev guide][rustcguidebuild].
 
 Make sure you have installed the dependencies:
 
-* `python` 3 or 2.7
+* `python` 3 
 * `git`
 * A C compiler (when building for the host, `cc` is enough; cross-compiling may
   need additional compilers)
