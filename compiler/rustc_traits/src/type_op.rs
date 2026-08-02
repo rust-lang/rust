@@ -12,8 +12,10 @@ use rustc_trait_selection::traits::query::type_op::ascribe_user_type::{
     AscribeUserType, type_op_ascribe_user_type_with_span,
 };
 use rustc_trait_selection::traits::query::type_op::normalize::Normalize;
-use rustc_trait_selection::traits::query::type_op::prove_predicate::ProvePredicate;
-use rustc_trait_selection::traits::{Normalized, Obligation, ObligationCause, ObligationCtxt};
+use rustc_trait_selection::traits::query::type_op::prove_predicate::{
+    ProvePredicate, type_op_prove_predicate_with_cause,
+};
+use rustc_trait_selection::traits::{Normalized, ObligationCause, ObligationCtxt};
 
 pub(crate) fn provide(p: &mut Providers) {
     *p = Providers {
@@ -88,16 +90,4 @@ fn type_op_prove_predicate<'tcx>(
         type_op_prove_predicate_with_cause(ocx, key, ObligationCause::dummy());
         Ok(())
     })
-}
-
-/// The core of the `type_op_prove_predicate` query: for diagnostics purposes in NLL HRTB errors,
-/// this query can be re-run to better track the span of the obligation cause, and improve the error
-/// message. Do not call directly unless you're in that very specific context.
-pub fn type_op_prove_predicate_with_cause<'tcx>(
-    ocx: &ObligationCtxt<'_, 'tcx>,
-    key: ParamEnvAnd<'tcx, ProvePredicate<'tcx>>,
-    cause: ObligationCause<'tcx>,
-) {
-    let ParamEnvAnd { param_env, value: ProvePredicate { predicate } } = key;
-    ocx.register_obligation(Obligation::new(ocx.infcx.tcx, cause, param_env, predicate));
 }
