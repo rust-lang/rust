@@ -14,7 +14,8 @@ use rustc_span::{Span, Symbol};
 
 /// Structured source information for frontends.
 pub(super) struct SourceLocation {
-    // storing `span` to use it lazily to compute path.
+    // Keep the span so each frontend can resolve paths with its own rendering
+    // rules instead of forcing every caller to use one path representation.
     pub(super) span: Span,
     pub(super) line: usize,
     pub(super) column: usize,
@@ -97,11 +98,15 @@ impl LocalDesc {
 enum ResumeMode {
     /// Stop at the next visible MIR instruction.
     MirInstruction,
-    /// Stop at the next source line
+    /// Stop at the next source line.
     ///
-    /// Take `Option` because some cases current state has no mapped to source code location
+    /// `None` means the current interpreter position has no source location, so
+    /// the first mapped source location is good enough to report.
     SourceLine(Option<(PathBuf, usize)>),
     /// Stop at the first mapped source location from a user-relevant frame.
+    ///
+    /// This is the DAP entry-stop primitive: it skips over interpreter startup
+    /// and Miri-internal frames until there is a location an editor can show.
     FirstUserSourceLocation,
     /// Continue until reaching a breakpoint.
     Continue,
@@ -151,14 +156,17 @@ impl<'tcx> PrirodaContext<'tcx> {
     fn stepi(&mut self) -> InterpResult<'tcx, StepResult> {
         self.resume(ResumeMode::MirInstruction)
     }
-    fn step(&mut self) -> InterpResult<'tcx, StepResult> {
+    /// Step until the displayed source file or line changes.
+    pub(super) fn step(&mut self) -> InterpResult<'tcx, StepResult> {
         self.resume(ResumeMode::SourceLine(self.current_source_position()))
     }
 
+    /// Run until the initial editor-visible stop point.
     pub(super) fn stop_at_first_user_location(&mut self) -> InterpResult<'tcx, StepResult> {
         self.resume(ResumeMode::FirstUserSourceLocation)
     }
 
+    /// Return the active frame name while DAP still reports only one frame.
     pub(super) fn current_frame_name(&self) -> Option<String> {
         let frame = self.ecx.active_thread_stack().last()?;
         Some(frame.instance().to_string())
@@ -205,12 +213,14 @@ impl<'tcx> PrirodaContext<'tcx> {
 
                 ResumeMode::SourceLine(ref prev_location) => {
                     match (prev_location, &self.current_location) {
-                        // We started from an unmapped source location. Stop at the first mapped source location we can show to the user.
+                        // We started from an unmapped location; stop once there
+                        // is a source position the frontend can display.
                         (None, Some(_)) => return interp_ok(StepResult::Step),
 
                         (Some((prev_path, prev_line)), Some(current_location)) => {
                             if let Some(current_path) = self.local_path(current_location) {
-                                // A source step stops when the visible source position changes to a different file or line.
+                                // A source step stops when the displayed source
+                                // position changes to a different file or line.
                                 if *prev_path != current_path || *prev_line != current_location.line
                                 {
                                     return interp_ok(StepResult::Step);

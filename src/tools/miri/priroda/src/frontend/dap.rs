@@ -11,8 +11,10 @@ use emmy_dap_types::prelude::types::{
 use emmy_dap_types::prelude::{Command, Event, Request, ResponseBody, Server};
 use miri::{InterpResult, bug, interp_ok};
 
-use crate::debugger::{LocalDesc, PrirodaContext};
+use crate::debugger::{LocalDesc, PrirodaContext, StepResult};
 
+// Priroda still exposes one interpreted thread and one selected frame to DAP.
+// Keep the ids stable so editor follow-up requests can address the stopped state.
 const THREAD_ID: i64 = 1;
 const STACK_FRAME_ID: i64 = 1;
 const LOCALS_VARIABLES_REFERENCE: i64 = 1;
@@ -116,8 +118,21 @@ impl DapSession {
                 interp_ok(
                     self.handle_variables(request, session).map(|()| DispatchOutcome::Continue),
                 ),
+            Command::Next(_) | Command::StepIn(_) => {
+                let body = match &request.command {
+                    Command::Next(_) => ResponseBody::Next,
+                    Command::StepIn(_) => ResponseBody::StepIn,
+                    _ => unreachable!(),
+                };
+                let res = self.handle_step(request, body, session)?;
+                interp_ok(res.map(|()| DispatchOutcome::Continue))
+            }
+            Command::Disconnect(_) =>
+                interp_ok(self.handle_disconnect(request).map(|()| DispatchOutcome::Exit)),
             _ =>
-                interp_ok(self.handle_unsupported_request(request).map(|()| DispatchOutcome::Exit)),
+                interp_ok(
+                    self.handle_unsupported_request(request).map(|()| DispatchOutcome::Exit),
+                ),
         }
     }
 
@@ -253,6 +268,26 @@ impl DapSession {
         Ok(())
     }
 
+    /// FIXME: distinguish step-over from step-in once Priroda has call-aware stepping.
+    fn handle_step<'tcx>(
+        &mut self,
+        request: Request,
+        body: ResponseBody,
+        session: &mut PrirodaContext<'tcx>,
+    ) -> InterpResult<'tcx, ServerResult> {
+        let result = session.step()?;
+        interp_ok(
+            self.server
+                .respond(request.success(body))
+                .and_then(|()| self.send_stopped_event(Self::stopped_reason(result))),
+        )
+    }
+
+    fn handle_disconnect(&mut self, request: Request) -> ServerResult {
+        self.server.respond(request.success(ResponseBody::Disconnect))?;
+        self.server.send_event(Event::Terminated(None))
+    }
+
     fn handle_unsupported_request(&mut self, request: Request) -> ServerResult {
         eprintln!(
             "priroda dap: unsupported request during DAP demo milestone: {}",
@@ -272,6 +307,13 @@ impl DapSession {
             all_threads_stopped: Some(true),
             hit_breakpoint_ids: None,
         }))
+    }
+
+    fn stopped_reason(result: StepResult) -> StoppedEventReason {
+        match result {
+            StepResult::Step => StoppedEventReason::Step,
+            StepResult::Breakpoint => StoppedEventReason::Breakpoint,
+        }
     }
 
     fn display_command(command: &Command) -> &'static str {
