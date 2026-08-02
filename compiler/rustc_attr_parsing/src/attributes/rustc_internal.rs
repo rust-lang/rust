@@ -6,7 +6,7 @@ use rustc_attr_ir::target::GenericParamKind;
 use rustc_attr_ir::{
     BorrowckGraphvizFormatKind, CguFields, CguKind, DivergingBlockBehavior,
     DivergingFallbackBehavior, EditionRedirect, RustcCleanAttribute, RustcCleanQueries,
-    RustcMirKind,
+    RustcMirKind, find_attr,
 };
 use rustc_data_structures::fx::FxHashMap;
 use rustc_feature::AttributeStability;
@@ -436,6 +436,23 @@ impl CombineAttributeParser for RustcEditionRedirectParser {
         };
 
         Some(EditionRedirect { before, target, span: cx.attr_span })
+    }
+
+    fn finalize_check(cx: &FinalizeCheckContext<'_, '_>, _attr_span: Span) {
+        let redirects = find_attr!(
+            cx.parsed_attrs,
+            RustcEditionRedirect(redirects) => redirects
+        )
+        .unwrap();
+
+        for (index, redirect) in redirects.iter().enumerate() {
+            if redirects[..index].iter().any(|existing| existing.before == redirect.before) {
+                cx.emit_err(diagnostics::MultipleEditionRedirects {
+                    span: redirect.span,
+                    edition: redirect.before.to_string(),
+                });
+            }
+        }
     }
 }
 
