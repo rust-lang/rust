@@ -294,14 +294,6 @@ macro_rules! define_dep_nodes {
                 _ => Err(()),
             }
         }
-
-        /// Contains variant => str representations for constructing
-        /// DepNode groups for tests.
-        #[expect(non_upper_case_globals)]
-        pub mod label_strs {
-            $( pub const $nq_name: &str = stringify!($nq_name); )*
-            $( pub const $q_name: &str = stringify!($q_name); )*
-        }
     };
 }
 
