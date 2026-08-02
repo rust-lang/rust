@@ -179,4 +179,58 @@ mod tests {
         let result = compiler.compile(&file, "nvptx64-nvidia-cuda");
         assert!(result.is_ok(), "phi_bug_loop_continue compile failed: {:?}", result.err());
     }
+
+    // Fixed: `codegen_cast` had no arm for `CastKind::FloatToFloat`, so scalar float
+    // widen/narrow casts (`x as f64`, `value as f32`) fell into the catch-all and silently
+    // became `ub.poison` instead of a real `arith.extf`/`arith.truncf`. This is exactly the
+    // pattern generic `Float::from_f64(value: f64) -> Self` impls use, and it corrupted
+    // vision-rs's Flash-Attention-2 / PSA kernel constants (online-softmax running max and
+    // softmax scale) with no compile-time signal — only detectable by comparing runtime
+    // output against expected values. The fix adds a real `FloatToFloat` arm, and turns the
+    // remaining unhandled-cast-kind fallback into a hard `MlirError` instead of `ub.poison`,
+    // so the next unsupported pattern fails to compile instead of silently miscompiling.
+    // See: compiler/rustc_codegen_llvm/src/mlir/codegen/triton/mod.rs (codegen_cast).
+    #[test]
+    fn test_float_to_float_scalar_cast() {
+        let _ = fmt()
+            .with_env_filter(
+                EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
+            )
+            .try_init();
+
+        let compiler = LlvmCompiler::new();
+        let file = env::current_dir().unwrap().join("tests/data/float_to_float_scalar_cast.rs");
+        let result = compiler.compile(&file, "nvptx64-nvidia-cuda");
+        assert!(result.is_ok(), "float_to_float_scalar_cast compile failed: {:?}", result.err());
+
+        // With the bug, compilation *succeeds* — the whole danger was that
+        // `Float::from_f64`'s `x as f64` / `value as f32` casts silently became `ub.poison`
+        // instead of failing loudly, so `result.is_ok()` alone can't catch a regression.
+        // Poison also doesn't reliably leave a textual "poison" trace in the final PTX —
+        // register allocation just reuses whatever value happens to land in that slot,
+        // which is exactly how this went undetected in vision-rs's Flash-Attention-2 kernel.
+        //
+        // Instead check that the value actually flows through: `x` round-trips through
+        // `D::from_f64(x as f64)` as an identity for `D = f32`, and LLVM folds the resulting
+        // (correct) extf/truncf pair away entirely, so the register `entry_point_param_0` is
+        // loaded into is the same register passed to the final store. With the bug, that
+        // register is never referenced again — the stored value comes from an unrelated
+        // poison-allocated register instead.
+        let ptx = std::fs::read_to_string("/tmp/kernel.asm").expect("kernel.asm not written");
+        let param_line = ptx
+            .lines()
+            .find(|l| l.contains("ld.param.b32") && l.contains("entry_point_param_0"))
+            .unwrap_or_else(|| panic!("no ld.param.b32 for entry_point_param_0 in PTX:\n{ptx}"));
+        let param_reg = param_line
+            .split_whitespace()
+            .find(|t| t.starts_with('%'))
+            .map(|t| t.trim_end_matches(','))
+            .unwrap_or_else(|| panic!("couldn't find register operand in {param_line:?}"));
+        assert!(
+            ptx.contains(&format!("{{ {param_reg} }}")),
+            "register {param_reg} (loaded from entry_point_param_0) is never stored — the \
+             FloatToFloat round-trip through Float::from_f64 did not propagate the real \
+             value (this is the poison-corruption signature). Full PTX:\n{ptx}"
+        );
+    }
 }

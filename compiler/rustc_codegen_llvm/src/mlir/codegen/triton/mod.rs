@@ -3017,9 +3017,60 @@ impl<'a> TritonCodegen<'a> {
                 mlir_block.append_operation(op);
                 Ok(result)
             }
-            _ => {
-                // Unhandled cast kinds (Transmute, PointerCoercion, ReifyFnPointer, etc.).
-                // Emit ub.poison of the destination type as a safe placeholder.
+            CastKind::FloatToFloat => {
+                // Scalar float widening/narrowing (e.g. `x as f64` / `x as f32`). Mirrors the
+                // tensor-cast handling in ops/triton/tensor.rs's codegen_cast_call, which already
+                // does this correctly for `Triton::cast` on tensors — this arm was missing here,
+                // so scalar float-to-float casts fell into the `_` catch-all below and silently
+                // became `ub.poison`. That poison then flows into anything built from the cast
+                // result (e.g. `Float::from_f64`, whose body is itself just `value as f32`),
+                // corrupting kernel constants without any compile error. See the regression test
+                // `float_to_float_scalar_cast` in test_kitchen_sink.rs.
+                let normalized_ty = instance.instantiate_mir_and_normalize_erasing_regions(
+                    tcx, TypingEnv::fully_monomorphized(), EarlyBinder::bind(*ty),
+                );
+                let src_val = self.codegen_operand(tcx, instance, operand, normalized_ty, location, mlir_block, state)?;
+                let dest_ty = self.type_mapper.map_type(self.module.context(), &tcx, &normalized_ty);
+
+                if src_val.r#type() == dest_ty {
+                    return Ok(src_val);
+                }
+
+                let float_bits = |ty: melior::ir::Type<'a>| -> u32 {
+                    let s = ty.to_string();
+                    if s.contains("f16") { 16 } else if s.contains("f32") { 32 }
+                    else if s.contains("f64") { 64 } else { 128 }
+                };
+
+                let op: Operation<'a> = if float_bits(dest_ty) < float_bits(src_val.r#type()) {
+                    // Narrowing: melior's typed_unary_operations wrapper for truncf is a
+                    // same-type unary, so build the op directly via OperationBuilder.
+                    OperationBuilder::new("arith.truncf", location)
+                        .add_operands(&[src_val])
+                        .add_results(&[dest_ty])
+                        .build()
+                        .map_err(|e| MlirError::CreateOperation {
+                            err: rustc_mlir::errors::Error::IncompatibleTypes {
+                                lhs: e.to_string(),
+                                rhs: String::new(),
+                            },
+                        })?
+                        .into()
+                } else {
+                    // Widening.
+                    melior::dialect::arith::extf(src_val, dest_ty, location).into()
+                };
+                let result = op.result(0).expect("float-to-float cast result").into();
+                mlir_block.append_operation(op);
+                Ok(result)
+            }
+            CastKind::PointerCoercion(PointerCoercion::Unsize, _) => {
+                // `&[T; N]` → `&[T]` array-to-slice coercion. The caller (see the
+                // `Rvalue::Cast` handling above) has already extracted the static/dynamic
+                // shape into `slice_shape`/`slice_dyn_values` when possible and deliberately
+                // falls through here anyway — this SSA value is dead (shape flows through the
+                // side table instead), so a poison placeholder of the destination type is the
+                // documented, intentional behavior, not a silently-swallowed edge case.
                 let typing_env = TypingEnv::fully_monomorphized();
                 let normalized_ty = instance.instantiate_mir_and_normalize_erasing_regions(
                     tcx,
@@ -3035,6 +3086,25 @@ impl<'a> TritonCodegen<'a> {
                 let result = ub_op.result(0).expect("ub.poison result").into();
                 mlir_block.append_operation(ub_op);
                 Ok(result)
+            }
+            _ => {
+                // Every other cast kind (Transmute not resolvable via slice_shape,
+                // PointerExposeProvenance, other PointerCoercion variants, FnPtrToPtr, etc.).
+                //
+                // This used to silently emit `ub.poison` of the destination type "as a safe
+                // placeholder" — which is exactly how the missing `FloatToFloat` arm above went
+                // undetected: `Float::from_f64`'s `value as f32` body (and its `x as f64` call
+                // sites) got compiled to poison, register-allocated on top of an unrelated live
+                // value, and produced plausible-looking-but-wrong numeric output instead of a
+                // compile error. Fail loudly instead so unsupported patterns surface at compile
+                // time rather than as silent miscompilation.
+                Err(MlirError::CodegenFailed {
+                    err: format!(
+                        "codegen_cast: unhandled cast kind {cast_kind:?} to {ty:?} — no MLIR \
+                         lowering implemented for this cast; add a `CastKind` arm to \
+                         `codegen_cast` instead of falling back to `ub.poison`"
+                    ),
+                })
             }
         }
     }
