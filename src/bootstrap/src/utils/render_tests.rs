@@ -11,6 +11,7 @@ use std::io::{BufRead, BufReader, Read, Write};
 use std::process::ChildStdout;
 use std::time::Duration;
 
+use build_helper::metrics::compiletest::*;
 use termcolor::{Color, ColorSpec, WriteColor};
 
 use crate::core::build_steps::test::failed_tests::RecordFailedTests;
@@ -185,7 +186,9 @@ impl<'a> Renderer<'a> {
     }
 
     fn render_test_outcome(&mut self, outcome: Outcome<'_>, test: &TestOutcome) {
-        self.executed_tests += 1;
+        if !matches!(outcome, Outcome::FilteredOut) {
+            self.executed_tests += 1;
+        }
 
         if let Outcome::Ignored { reason } = outcome {
             self.ignored_tests += 1;
@@ -201,6 +204,7 @@ impl<'a> Renderer<'a> {
             match outcome {
                 Outcome::Ok | Outcome::BenchOk => build_helper::metrics::TestOutcome::Passed,
                 Outcome::Failed => build_helper::metrics::TestOutcome::Failed,
+                Outcome::FilteredOut => build_helper::metrics::TestOutcome::FilteredOut,
                 Outcome::Ignored { reason } => build_helper::metrics::TestOutcome::Ignored {
                     ignore_reason: reason.map(|s| s.to_string()),
                 },
@@ -239,7 +243,9 @@ impl<'a> Renderer<'a> {
             self.terse_tests_in_line = 0;
         }
 
-        self.terse_tests_in_line += 1;
+        if !matches!(outcome, Outcome::FilteredOut) {
+            self.terse_tests_in_line += 1;
+        }
         self.builder.colored_stdout(|stdout| outcome.write_short(stdout, &test.name)).unwrap();
         let _ = std::io::stdout().flush();
     }
@@ -396,6 +402,9 @@ impl<'a> Renderer<'a> {
                     &outcome,
                 );
             }
+            Message::Test(TestMessage::FilteredOut(outcome)) => {
+                self.render_test_outcome(Outcome::FilteredOut, &outcome);
+            }
             Message::Test(TestMessage::Failed(outcome)) => {
                 self.render_test_outcome(Outcome::Failed, &outcome);
                 if let Some(failed_tests) = &mut self.failed_tests
@@ -415,11 +424,13 @@ impl<'a> Renderer<'a> {
     }
 }
 
+#[derive(Debug)]
 enum Outcome<'a> {
     Ok,
     BenchOk,
     Failed,
     Ignored { reason: Option<&'a str> },
+    FilteredOut,
 }
 
 impl Outcome<'_> {
@@ -444,6 +455,7 @@ impl Outcome<'_> {
                 writer.set_color(ColorSpec::new().set_fg(Some(Color::Yellow)))?;
                 write!(writer, "i")?;
             }
+            Outcome::FilteredOut => {}
         }
         writer.reset()
     }
@@ -469,13 +481,14 @@ impl Outcome<'_> {
                     write!(writer, ", {reason}")?;
                 }
             }
+            Outcome::FilteredOut => {}
         }
         writer.reset()
     }
 
     fn write_ci(&self, writer: &mut dyn WriteColor, name: &str) -> Result<(), std::io::Error> {
         match self {
-            Outcome::Ok | Outcome::BenchOk | Outcome::Ignored { .. } => {}
+            Outcome::Ok | Outcome::BenchOk | Outcome::FilteredOut | Outcome::Ignored { .. } => {}
             Outcome::Failed => {
                 writer.set_color(ColorSpec::new().set_fg(Some(Color::Red)))?;
                 writeln!(writer, "   {name} ... FAILED")?;
@@ -483,65 +496,4 @@ impl Outcome<'_> {
         }
         writer.reset()
     }
-}
-
-#[derive(serde_derive::Deserialize)]
-#[serde(tag = "type", rename_all = "snake_case")]
-enum Message {
-    Suite(SuiteMessage),
-    Test(TestMessage),
-    Bench(BenchOutcome),
-    Report(Report),
-}
-
-#[derive(serde_derive::Deserialize)]
-#[serde(tag = "event", rename_all = "snake_case")]
-enum SuiteMessage {
-    Ok(SuiteOutcome),
-    Failed(SuiteOutcome),
-    Started { test_count: usize },
-}
-
-#[derive(serde_derive::Deserialize)]
-struct SuiteOutcome {
-    passed: usize,
-    failed: usize,
-    ignored: usize,
-    measured: usize,
-    filtered_out: usize,
-    /// The time it took to execute this test suite, or `None` if time measurement was not possible
-    /// (e.g. due to running on wasm).
-    exec_time: Option<f64>,
-}
-
-#[derive(serde_derive::Deserialize)]
-#[serde(tag = "event", rename_all = "snake_case")]
-enum TestMessage {
-    Ok(TestOutcome),
-    Failed(TestOutcome),
-    Ignored(TestOutcome),
-    Timeout { name: String },
-    Started,
-}
-
-#[derive(serde_derive::Deserialize)]
-struct BenchOutcome {
-    name: String,
-    median: f64,
-    deviation: f64,
-}
-
-#[derive(serde_derive::Deserialize)]
-struct TestOutcome {
-    name: String,
-    exec_time: Option<f64>,
-    stdout: Option<String>,
-    message: Option<String>,
-}
-
-/// Emitted when running doctests.
-#[derive(serde_derive::Deserialize)]
-struct Report {
-    total_time: f64,
-    compilation_time: f64,
 }
