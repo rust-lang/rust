@@ -69,7 +69,7 @@ jobs:
       run: env CLIPPY_CONF_DIR="$PWD/lintcheck/ci-config" ./target/debug/lintcheck --format json --all-lints --crates-toml ./lintcheck/ci_crates.toml
 
     - name: Upload base JSON
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: base
         path: lintcheck-logs/ci_crates_logs.json
@@ -100,7 +100,7 @@ jobs:
       run: env CLIPPY_CONF_DIR="$PWD/lintcheck/ci-config" ./target/debug/lintcheck --format json --all-lints --crates-toml ./lintcheck/ci_crates.toml
 
     - name: Upload head JSON
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: head
         path: lintcheck-logs/ci_crates_logs.json
@@ -140,13 +140,13 @@ jobs:
         ./target/debug/lintcheck diff {base,head}/ci_crates_logs.json --write-summary summary.json > full_diff.md
 
     - name: Upload full diff
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: full_diff
         path: full_diff.md
 
     - name: Upload summary
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: summary
         path: |
