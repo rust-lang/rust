@@ -287,7 +287,9 @@ macro_rules! define_dep_nodes {
             $( $(#[$q_attr])* $q_name, )*
         }
 
-        pub(super) fn dep_kind_from_label_string(label: &str) -> Result<DepKind, ()> {
+        /// Converts a string to a `DepKind`. Used for handling attributes like `rustc_clean` that
+        /// name dep kinds.
+        fn dep_kind_from_label_string(label: &str) -> Result<DepKind, ()> {
             match label {
                 $( stringify!($nq_name) => Ok(self::DepKind::$nq_name), )*
                 $( stringify!($q_name) => Ok(self::DepKind::$q_name), )*
