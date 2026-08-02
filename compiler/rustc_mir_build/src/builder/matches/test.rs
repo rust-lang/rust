@@ -178,12 +178,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // (Interestingly this means that, for `str`, exhaustiveness analysis
                 // relies for soundness on the `PartialEq` impl for `str` to be correct!)
                 //
-                // The aggregate comparisons call the built-in `PartialEq` impls for
-                // arrays and slices, which can be trusted not to panic, so they are
-                // asserted not to unwind. An unwind edge here would be a breaking
-                // change: string equality tests have always had one, but the
-                // aggregate tests replace a series of `SwitchInt`s that never could
-                // unwind, and the extra edge would make borrow-checking stricter.
+                // The aggregate comparisons, unlike the long-standing string ones, are
+                // asserted not to unwind, since an unwind edge would make
+                // borrow-checking stricter than for the `SwitchInt`s they replace.
+                // That is sound because a constant is only allowed in a pattern if its
+                // type is structural match, so the array/slice impl and every element
+                // impl it delegates to are derived or primitive, and cannot panic.
                 let can_unwind = matches!(test.kind, TestKind::StringEq { .. });
                 self.non_scalar_compare(
                     block,
