@@ -33,6 +33,22 @@ pub fn handwritten_array_match(x: [u8; 4]) -> bool {
     matches!(x, [1, 2, 3, 4])
 }
 
+#[derive(PartialEq, Eq)]
+pub struct Element(u8);
+
+// The element type does not have to be a primitive: the aggregate comparison
+// calls `<[Element; 4] as PartialEq>::eq`, which in turn calls the derived
+// `PartialEq` implementation for `Element`.
+// EMIT_MIR aggregate_array_eq.custom_element_array_match.built.after.mir
+pub fn custom_element_array_match(x: [Element; 4]) -> bool {
+    // CHECK-LABEL: fn custom_element_array_match(
+    // CHECK: <[Element; 4] as PartialEq>::eq
+    // CHECK-SAME: unwind unreachable
+    // CHECK-NOT: switchInt(copy _1[
+    const EXPECTED: [Element; 4] = [Element(1), Element(2), Element(3), Element(4)];
+    matches!(x, EXPECTED)
+}
+
 // EMIT_MIR aggregate_array_eq.slice_match.built.after.mir
 pub fn slice_match(x: &[u8]) -> bool {
     // CHECK-LABEL: fn slice_match(
