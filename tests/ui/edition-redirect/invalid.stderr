@@ -1,9 +1,3 @@
-error: multiple edition redirects before edition 2024
-  --> $DIR/invalid.rs:37:1
-   |
-LL | #[rustc_edition_redirect(before = "2024", target(DuplicateTarget))]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 error: edition redirect target `private::Old` is less visible than the redirected item
   --> $DIR/invalid.rs:22:50
    |
@@ -45,6 +39,12 @@ note: `Old` could also refer to the struct imported here
 LL |     use self::second::*;
    |         ^^^^^^^^^^^^^^^
    = help: consider adding an explicit import of `Old` to disambiguate
+
+error: multiple edition redirects before edition 2024
+  --> $DIR/invalid.rs:37:1
+   |
+LL | #[rustc_edition_redirect(before = "2024", target(DuplicateTarget))]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `#[rustc_edition_redirect]` can only be applied to a single import
   --> $DIR/invalid.rs:8:1
