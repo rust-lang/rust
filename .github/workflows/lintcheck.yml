@@ -44,7 +44,7 @@ jobs:
 
     - name: Cache lintcheck bin
       id: cache-lintcheck-bin
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: target/debug/lintcheck
         key: lintcheck-bin-${{ hashfiles('lintcheck/**') }}
@@ -59,7 +59,7 @@ jobs:
 
     - name: Cache results JSON
       id: cache-json
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: lintcheck-logs/ci_crates_logs.json
         key: ${{ steps.key.outputs.key }}
@@ -87,7 +87,7 @@ jobs:
 
     - name: Cache lintcheck bin
       id: cache-lintcheck-bin
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: target/debug/lintcheck
         key: lintcheck-bin-${{ hashfiles('lintcheck/**') }}
