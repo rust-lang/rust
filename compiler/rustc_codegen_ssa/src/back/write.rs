@@ -1,4 +1,5 @@
 use std::marker::PhantomData;
+use std::num::NonZero;
 use std::panic::AssertUnwindSafe;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -356,10 +357,10 @@ pub struct CodegenContext {
     /// The incremental compilation session directory, or None if we are not
     /// compiling incrementally
     pub incr_comp_session_dir: Option<PathBuf>,
-    /// `true` if the codegen should be run in parallel.
+    /// `Some(limit)` if the codegen should be run in parallel.
     ///
     /// Depends on [`WriteBackendMethods::supports_parallel()`] and `--jobs-backend`.
-    pub parallel: bool,
+    pub parallel: Option<NonZero<usize>>,
 }
 
 fn generate_thin_lto_work<B: WriteBackendMethods>(
@@ -1021,7 +1022,7 @@ fn do_thin_lto<B: WriteBackendMethods>(
     // Note that using `jobserver::Proxy` is not necessary here, the code below always acquires
     // tokens before releasing them, so we can never accidentally release the last token
     // permanently held by rustc process.
-    let jobserver_helper = cgcx.parallel.then(|| {
+    let jobserver_helper = cgcx.parallel.map(|_| {
         let coordinator_send2 = coordinator_send.clone();
         jobserver::client()
             .into_helper_thread(move |token| {
@@ -1037,18 +1038,23 @@ fn do_thin_lto<B: WriteBackendMethods>(
     // bunch of work items onto our queue to do LTO. This all
     // happens on the coordinator thread but it's very quick so
     // we don't worry about tokens.
-    for (work, cost) in generate_thin_lto_work::<B>(
+    for (i, (work, cost)) in generate_thin_lto_work::<B>(
         cgcx,
         prof,
         dcx,
         &exported_symbols_for_lto,
         &each_linked_rlib_for_lto,
         needs_thin_lto,
-    ) {
+    )
+    .into_iter()
+    .enumerate()
+    {
         let insertion_index =
             work_items.binary_search_by_key(&cost, |&(_, cost)| cost).unwrap_or_else(|e| e);
         work_items.insert(insertion_index, (work, cost));
-        if let Some(helper) = &jobserver_helper {
+        if let Some(helper) = &jobserver_helper
+            && i < cgcx.parallel.unwrap().get()
+        {
             helper.request_token();
         }
     }
@@ -1255,12 +1261,11 @@ fn start_executing_work<B: WriteBackendMethods>(
     // Note that using `jobserver::Proxy` is not necessary here, the code below always acquires
     // tokens before releasing them, so we can never accidentally release the last token
     // permanently held by rustc process.
-    // FIXME: the backend parallelism is currently limited solely by the jobserver,
-    // so if `--jobs-backend` is smaller than `--jobs(-frontend)`, or than the number of tokens
-    // that the external jobserver can give, then it won't be respected.
-    // Below we'll need to add some additional work limiting for `--jobs-backend` to be respected.
-    let parallel = sess.opts.jobs.backend.is_some() && backend.supports_parallel();
-    let jobserver_helper = parallel.then(|| {
+    let parallel = match sess.opts.jobs.backend {
+        Some(n) if backend.supports_parallel() => Some(n),
+        _ => None,
+    };
+    let jobserver_helper = parallel.map(|_| {
         let coordinator_send2 = coordinator_send.clone();
         jobserver::client()
             .into_helper_thread(move |token| {
@@ -1655,7 +1660,10 @@ fn start_executing_work<B: WriteBackendMethods>(
                     };
                     work_items.insert(insertion_index, (llvm_work_item, cost));
 
-                    if let Some(helper) = &jobserver_helper {
+                    if let Some(helper) = &jobserver_helper
+                        && running_with_any_token(main_thread_state, running_with_own_token)
+                            < cgcx.parallel.unwrap().get()
+                    {
                         helper.request_token();
                     }
                     assert_eq!(main_thread_state, MainThreadState::Codegenning);
