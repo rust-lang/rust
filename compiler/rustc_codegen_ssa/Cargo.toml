@@ -37,7 +37,7 @@ rustc_trait_selection = { path = "../rustc_trait_selection" }
 serde_json = "1.0.59"
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
 tempfile = "3.2"
-thorin-dwp = "0.9"
+thorin-dwp = "0.10"
 tracing = "0.1"
 wasm-encoder = "0.219"
 # tidy-alphabetical-end
@@ -48,7 +48,7 @@ libc = "0.2.50"
 # tidy-alphabetical-end
 
 [dependencies.object]
-version = "0.37.0"
+version = "0.38.1"
 default-features = false
 features = ["read_core", "elf", "macho", "pe", "xcoff", "unaligned", "archive", "write", "wasm"]
 

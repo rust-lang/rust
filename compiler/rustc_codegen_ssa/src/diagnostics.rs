@@ -261,9 +261,6 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for ThorinErrorWrapper {
             thorin::Error::ParseUnitAbbreviations(_) => {
                 build(msg!("failed to parse unit abbreviations"))
             }
-            thorin::Error::ParseUnitAttribute(_) => {
-                build(msg!("failed to parse unit attribute"))
-            }
             thorin::Error::ParseUnitHeader(_) => {
                 build(msg!("failed to parse unit header"))
             }

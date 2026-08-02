@@ -3,7 +3,6 @@
 /// See <https://github.com/rust-lang/rust/issues/134863>
 pub static CRATES: &[&str] = &[
     // tidy-alphabetical-start
-    "allocator-api2",
     "anyhow",
     "askama_derive",
     "askama_parser",
