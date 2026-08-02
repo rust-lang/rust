@@ -63,6 +63,14 @@ pub(crate) struct UnreachableCfgSelectPredicateWildcard {
 }
 
 #[derive(Diagnostic)]
+#[diag("multiple edition redirects before edition {$edition}")]
+pub(crate) struct MultipleEditionRedirects {
+    #[primary_span]
+    pub span: Span,
+    pub edition: String,
+}
+
+#[derive(Diagnostic)]
 #[diag("must be a name of an associated function")]
 pub(crate) struct MustBeNameOfAssociatedFunction {
     #[primary_span]

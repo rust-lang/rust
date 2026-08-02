@@ -1437,29 +1437,17 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         // The resolver runs before these attributes are available through HIR.
         // Parse and retain them here, but leave their target paths unresolved
         // until ordinary imports have settled.
-        if ast::attr::contains_name(&item.attrs, sym::rustc_edition_redirect)
-            && let Some(Attribute::Parsed(AttributeKind::RustcEditionRedirect(mut redirects))) =
-                AttributeParser::parse_limited_sym(
-                    self.r.tcx.sess,
-                    &item.attrs,
-                    &[sym::rustc_edition_redirect],
-                )
+        if let Some(Attribute::Parsed(AttributeKind::RustcEditionRedirect(mut redirects))) =
+            AttributeParser::parse_limited_sym(
+                self.r.tcx.sess,
+                &item.attrs,
+                &[sym::rustc_edition_redirect],
+            )
         {
             redirects.sort_by_key(|redirect| redirect.before);
-            let mut edition_redirects: Vec<LocalEditionRedirect<'ra>> = Vec::new();
-            for redirect in redirects {
-                if edition_redirects
-                    .last()
-                    .is_some_and(|existing| existing.before == redirect.before)
-                {
-                    self.r.dcx().span_err(
-                        redirect.span,
-                        format!("multiple edition redirects before edition {}", redirect.before),
-                    );
-                    continue;
-                }
-
-                edition_redirects.push(LocalEditionRedirect {
+            let edition_redirects = redirects
+                .into_iter()
+                .map(|redirect| LocalEditionRedirect {
                     before: redirect.before,
                     // Attribute path segments have dummy node IDs and are not lowered as paths, so
                     // resolution must not try to record per-segment results for them.
@@ -1474,8 +1462,8 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
                     parent_scope: self.parent_scope,
                     node_id: item.id,
                     span: redirect.span,
-                });
-            }
+                })
+                .collect();
             self.r.local_edition_redirects.insert(feed.key(), edition_redirects);
         }
 
