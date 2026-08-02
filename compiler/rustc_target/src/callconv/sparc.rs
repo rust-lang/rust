@@ -4,6 +4,12 @@ use rustc_abi::{
 
 use crate::callconv::{ArgAbi, ArgAttribute, CastTarget, FnAbi, Reg, Uniform};
 
+/// C `long double` is IEEE binary128 on 32-bit SPARC, i.e. Rust's `f128`. It is passed and
+/// returned indirectly.
+fn is_long_double(repr: BackendRepr) -> bool {
+    matches!(repr, BackendRepr::Scalar(scalar) if scalar.primitive() == Primitive::Float(Float::F128))
+}
+
 fn classify_ret<'a, Ty, C>(cx: &C, ret: &mut ArgAbi<'a, Ty>, offset: &mut Size)
 where
     Ty: TyAbiInterface<'a, C> + Copy,
@@ -28,7 +34,10 @@ where
         }
 
         ret.cast_to(cast);
-    } else if ret.layout.is_aggregate() {
+    } else if is_long_double(ret.layout.backend_repr) || ret.layout.is_aggregate() {
+        // `long double` is returned through an `sret` pointer, see Clang
+        // `SparcV8ABIInfo::classifyReturnType`. The `sret` attribute is also what makes LLVM emit
+        // the `unimp` marker after the call and return to `%o7+12` in the callee.
         ret.make_indirect();
         *offset += cx.data_layout().pointer_size();
     } else {
@@ -49,6 +58,12 @@ where
     let dl = cx.data_layout();
     if arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
         arg.make_indirect();
+        *offset += dl.pointer_size();
+        return;
+    }
+    if is_long_double(arg.layout.backend_repr) {
+        // See Clang `SparcV8ABIInfo::classifyArgumentType`.
+        arg.pass_by_stack_offset(None);
         *offset += dl.pointer_size();
         return;
     }
