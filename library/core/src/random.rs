@@ -22,6 +22,8 @@ pub trait Rng {
 
     /// Fills `buf` with random bytes.
     ///
+    /// Implementations must always fill the entire cursor.
+    ///
     /// Note that calling `fill_buf` multiple times is not equivalent to calling `fill_buf` once
     /// with a larger buffer. An `Rng` is allowed to return different bytes for those two cases. For
     /// instance, this allows an `Rng` to generate a word at a time and throw part of it away if not
