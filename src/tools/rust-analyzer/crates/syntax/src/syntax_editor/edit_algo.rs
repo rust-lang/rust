@@ -449,7 +449,7 @@ impl TreeState {
 
         let parent = parent_path.resolve(&self.root).and_then(SyntaxElement::into_node).unwrap();
         let green = rowan::GreenNodeData::splice_children(
-            parent.green().as_ref(),
+            parent.green(),
             deleted.clone(),
             inserted.into_iter().map(PreparedElement::into_green),
         );
@@ -466,7 +466,7 @@ impl TreeState {
         let NodeOrToken::Node(node) = replacement.syntax else {
             panic!("root node replacement should be a node")
         };
-        self.root = SyntaxNode::new_root(node.green().into_owned());
+        self.root = SyntaxNode::new_root(node.green().to_owned());
         self.changed.clear();
         if track_as_changed {
             self.changed.push(SyntaxPath { child_indices: Vec::new() });
@@ -543,7 +543,7 @@ struct PreparedElement {
 impl PreparedElement {
     fn into_green(self) -> rowan::NodeOrToken<rowan::GreenNode, rowan::GreenToken> {
         match self.syntax {
-            SyntaxElement::Node(node) => NodeOrToken::Node(node.green().into_owned()),
+            SyntaxElement::Node(node) => NodeOrToken::Node(node.green().to_owned()),
             SyntaxElement::Token(token) => NodeOrToken::Token(token.green().to_owned()),
         }
     }
