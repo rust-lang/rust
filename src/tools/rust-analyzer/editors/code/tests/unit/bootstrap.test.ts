@@ -158,7 +158,7 @@ channel = "1.88"
 components = [
     "cargo",
 ]
-path = "/opt/rust-analyzer"
+# add "rust-analyzer" here to use the matching server
 `,
                 ),
             );
