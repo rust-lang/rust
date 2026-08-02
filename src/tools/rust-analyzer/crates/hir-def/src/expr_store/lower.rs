@@ -3331,7 +3331,7 @@ fn pat_literal_to_hir(lit: &ast::LiteralPat) -> Option<(Literal, ast::Literal)> 
     Some((hir_lit, ast_lit))
 }
 
-impl ExprCollector<'_> {
+impl<'db> ExprCollector<'db> {
     fn with_fresh_binding_expr_root(&mut self, f: impl FnOnce(&mut Self) -> ExprId) -> ExprId {
         self.with_expr_root(|this| this.with_binding_owner(f))
     }
@@ -3482,19 +3482,16 @@ impl ExprCollector<'_> {
         }
     }
 
-    fn extend_type_alias_lifetime(&mut self, lifetimes: impl Iterator<Item = Name>) {
-        self.named_lifetime_store.lifetimes_constrained_by_input.extend(lifetimes);
-    }
-
     fn is_argument_lt_bound_scope(&mut self) -> bool {
         matches!(self.named_lifetime_store.lifetime_bound_scope, Some(LifetimeBoundScope::Argument))
     }
 
-    fn get_constrained_lifetimes_if_type_alias(
+    fn get_constrained_lifetimes_if_type_alias<'a>(
         &mut self,
-        mod_path: &intern::Interned<ModPath>,
-        generic_args: Option<&GenericArgs>,
-    ) -> Option<FxIndexSet<Name>> {
+        mod_path: &'a ModPath,
+        generic_args: Option<&'a GenericArgs>,
+    ) -> Option<impl Iterator<Item = LifetimeRefId> + use<'a, 'db>> {
+        let generic_args = generic_args?;
         let r_path = self.def_map.resolve_path(
             self.local_def_map,
             self.db,
@@ -3503,33 +3500,20 @@ impl ExprCollector<'_> {
             BuiltinShadowMode::Module,
             None,
         );
-        let def_id = r_path.0.types.map(|item| item.def)?;
-        let res = if let crate::ModuleDefId::TypeAliasId(id) = def_id {
-            let Some(generic_args) = generic_args else { return Some(FxIndexSet::default()) };
+        let ModuleDefId::TypeAliasId(id) = r_path.0.take_types()? else { return None };
 
-            let constrained_lt_indices = get_constrained_lifetimes(self.db, id);
-            let res = constrained_lt_indices
+        let constrained_lt_indices = get_constrained_lifetimes(self.db, id);
+        let res = constrained_lt_indices.iter().filter_map(|&idx| {
+            generic_args
+                .args
                 .iter()
-                .filter_map(|&idx| {
-                    let lt_ref = generic_args
-                        .args
-                        .iter()
-                        .filter_map(|arg| match arg {
-                            &GenericArg::Lifetime(lt_ref) => Some(lt_ref),
-                            GenericArg::Type(_) | GenericArg::Const(_) => None,
-                        })
-                        .nth(idx as usize)?;
-                    match &self.store.lifetimes[lt_ref] {
-                        LifetimeRef::Named(name) => Some(name.clone()),
-                        _ => None,
-                    }
+                .filter_map(|arg| match arg {
+                    &GenericArg::Lifetime(lt_ref) => Some(lt_ref),
+                    GenericArg::Type(_) | GenericArg::Const(_) => None,
                 })
-                .collect();
-            Some(res)
-        } else {
-            None
-        };
-        return res;
+                .nth(idx as usize)
+        });
+        return Some(res);
 
         #[salsa::tracked(returns(deref), cycle_result = get_constrained_lifetimes_cycle_result)]
         fn get_constrained_lifetimes(
