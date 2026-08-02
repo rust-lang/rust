@@ -391,3 +391,28 @@ pub(crate) struct ForceInlineJustification {
     pub sym: Symbol,
     pub callee: String,
 }
+
+#[derive(Diagnostic)]
+#[diag("field `{$name}` cannot be mutated outside `{$restriction_path}`")]
+pub(crate) struct MutOfRestrictedField {
+    #[primary_span]
+    pub mut_span: Span,
+    #[label("field restricted here")]
+    pub restriction_span: Span,
+    pub name: Symbol,
+    pub restriction_path: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "`{$name}` cannot be constructed using a `{$descr}` expression outside `{$restriction_path}`"
+)]
+pub(crate) struct ConstructionOfTyWithMutRestrictedField {
+    #[primary_span]
+    pub construction_span: Span,
+    #[label("field restricted here")]
+    pub restriction_span: Span,
+    pub name: Symbol,
+    pub descr: &'static str,
+    pub restriction_path: String,
+}

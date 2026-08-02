@@ -484,6 +484,7 @@ define_tables! {
     associated_types_for_impl_traits_in_trait_or_impl: Table<DefIndex, LazyValue<DefIdMap<Vec<DefId>>>>,
     live_args_for_alias_from_outlives_bounds: Table<DefIndex, LazyValue<Option<ty::EarlyBinder<'static, Vec<ty::GenericArg<'static>>>>>>,
     args_known_to_outlive_alias_params: Table<DefIndex, LazyValue<ty::EarlyBinder<'static, Vec<(ty::Region<'static>, Vec<ty::GenericArg<'static>>)>>>>,
+    mut_restriction: Table<DefIndex, LazyValue<ty::RestrictionKind>>,
 }
 
 #[derive(TyEncodable, TyDecodable)]
