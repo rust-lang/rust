@@ -288,14 +288,17 @@ pub(super) fn add_call_parens<'b>(
 }
 
 fn ref_of_param(ctx: &CompletionContext<'_, '_>, arg: &str, ty: &hir::Type<'_>) -> &'static str {
-    if let Some(derefed_ty) = ty.as_reference_inner() {
+    if ty.is_reference() {
+        let mutability = hir::Mutability::from_mutable(ty.is_mutable_reference());
+        let ref_prefix = if mutability.is_mut() { "&mut " } else { "&" };
+
         for (name, local) in ctx.locals.iter().sorted_by_key(|&(k, _)| k.clone()) {
             if name.as_str() == arg {
-                return if local.ty(ctx.db) == derefed_ty {
-                    if ty.is_mutable_reference() { "&mut " } else { "&" }
-                } else {
-                    ""
-                };
+                let local_ty = local.ty(ctx.db).instantiate_with_errors();
+                let added_ref = local_ty.add_reference(ctx.db, mutability);
+                let needs_ref =
+                    !local_ty.could_coerce_to(ctx.db, ty) && added_ref.could_coerce_to(ctx.db, ty);
+                return if needs_ref { ref_prefix } else { "" };
             }
         }
     }
@@ -473,7 +476,7 @@ fn bar(s: &S) {
             r#"
 struct S {}
 impl S {
-    fn foo(&self, x: i32) {
+    fn foo(&self, x: i32, y: &i32) {
         $0
     }
 }
@@ -481,8 +484,8 @@ impl S {
             r#"
 struct S {}
 impl S {
-    fn foo(&self, x: i32) {
-        self.foo(${1:x});$0
+    fn foo(&self, x: i32, y: &i32) {
+        self.foo(${1:x}, ${2:y});$0
     }
 }
 "#,
@@ -559,6 +562,24 @@ struct Foo {}
 fn ref_arg(x: &Foo) {}
 fn main() {
     let x = Foo {};
+    ref_arg(${1:&x});$0
+}
+"#,
+        );
+        check_edit(
+            "ref_arg",
+            r#"
+//- minicore: coerce_unsized
+fn ref_arg(x: &[i32]) {}
+fn main() {
+    let x = [2];
+    ref_ar$0
+}
+"#,
+            r#"
+fn ref_arg(x: &[i32]) {}
+fn main() {
+    let x = [2];
     ref_arg(${1:&x});$0
 }
 "#,
