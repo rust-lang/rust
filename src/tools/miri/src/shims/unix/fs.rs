@@ -1790,15 +1790,13 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         fopts.read(true).write(true).create_new(true);
 
         cfg_select! {
-            unix =>
-            {
+            unix => {
                 use std::os::unix::fs::OpenOptionsExt;
                 // Do not allow others to read or modify this file.
                 fopts.mode(0o600);
                 fopts.custom_flags(libc::O_EXCL);
             }
-            windows =>
-            {
+            windows => {
                 use std::os::windows::fs::OpenOptionsExt;
                 // Do not allow others to read or modify this file.
                 fopts.share_mode(0);
@@ -1992,8 +1990,7 @@ impl FileMetadata {
 
         cfg_select! {
             unix => {
-                use std::os::unix::fs::MetadataExt;
-                use std::os::unix::fs::PermissionsExt;
+                use std::os::unix::fs::{MetadataExt, PermissionsExt};
 
                 let dev = metadata.dev();
                 let ino = metadata.ino();
@@ -2038,7 +2035,7 @@ impl FileMetadata {
                     blksize: None,
                     blocks: None,
                 }))
-            },
+            }
         }
     }
 }

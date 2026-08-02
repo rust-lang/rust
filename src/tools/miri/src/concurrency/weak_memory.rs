@@ -492,6 +492,8 @@ impl StoreElement {
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
+    /// Update the store buffer after an RMW.
+    /// Does nothing if we are currently not detecting races (e.g. single-threaded mode).
     fn buffered_atomic_rmw(
         &mut self,
         new_val: Scalar,
@@ -510,6 +512,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 data_race: GlobalDataRaceHandler::Vclocks(global), threads, ..
             },
         ) = this.get_alloc_extra_mut(alloc_id)?
+            && global.race_detecting()
         {
             if atomic == AtomicRwOrd::SeqCst {
                 global.sc_read(threads);
@@ -531,6 +534,10 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         interp_ok(())
     }
 
+    /// Perform a store buffer load. Returning `None` indicates a read of uninitialized memory.
+    /// Does nothing if we are currently not detecting races (e.g. single-threaded mode).
+    ///
+    /// `latest_in_mo` must be the most recent value according to the mo relation.
     /// The argument to `validate` is the synchronization clock of the memory that is being read,
     /// if we are reading from a store buffer element.
     fn buffered_atomic_read(
@@ -542,7 +549,9 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, Option<Scalar>> {
         let this = self.eval_context_ref();
         'fallback: {
-            if let Some(global) = this.machine.data_race.as_vclocks_ref() {
+            if let Some(global) = this.machine.data_race.as_vclocks_ref()
+                && global.race_detecting()
+            {
                 let (alloc_id, base_offset, ..) = this.ptr_get_alloc_id(place.ptr(), 0)?;
                 if let Some(alloc_buffers) =
                     this.get_alloc_extra(alloc_id)?.data_race.as_weak_memory_ref()
@@ -582,6 +591,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
     /// Add the given write to the store buffer. (Does not change machine memory.)
     /// Must only be called after we determined that there is no data race or mixed-size race.
+    /// Does nothing if we are currently not detecting races (e.g. single-threaded mode).
     ///
     /// `init` says with which value to initialize the store buffer in case there wasn't a store
     /// buffer for this memory range before. `None` means the memory does not contain a valid
@@ -606,6 +616,7 @@ pub(super) trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 data_race: GlobalDataRaceHandler::Vclocks(global), threads, ..
             },
         ) = this.get_alloc_extra_mut(alloc_id)?
+            && global.race_detecting()
         {
             if atomic == AtomicWriteOrd::SeqCst {
                 global.sc_write(threads);
