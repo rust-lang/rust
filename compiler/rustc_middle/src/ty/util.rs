@@ -10,6 +10,7 @@ use rustc_data_structures::stable_hash::{StableHash, StableHasher};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hashes::Hash128;
+use rustc_hir::attrs::NotableTraitColor;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_hir::{self as hir, find_attr};
@@ -1700,8 +1701,15 @@ fn is_doc_hidden(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
 }
 
 /// Determines whether an item is annotated with `doc(notable_trait)`.
-pub fn is_doc_notable_trait(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
-    find_attr!(tcx, def_id, Doc(doc) if doc.notable_trait.is_some())
+pub fn doc_notable_trait(tcx: TyCtxt<'_>, def_id: DefId) -> Option<&'_ NotableTraitColor> {
+    find_attr!(tcx, def_id, Doc(doc) if doc.notable_trait.is_some() => {
+        let (color, _span) = doc.notable_trait.as_ref()?;
+        if let Some((color, _span)) = color {
+            color
+        } else {
+            &NotableTraitColor::Transparent
+        }
+    })
 }
 
 /// Determines whether an item is an intrinsic (which may be via Abi or via the `rustc_intrinsic` attribute).
@@ -1731,7 +1739,7 @@ pub fn provide(providers: &mut Providers) {
     *providers = Providers {
         reveal_opaque_types_in_bounds,
         is_doc_hidden,
-        is_doc_notable_trait,
+        doc_notable_trait,
         intrinsic_raw,
         ..*providers
     }

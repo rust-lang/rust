@@ -75,8 +75,114 @@ on them: `#[doc(notable_trait)]`. This means that you can apply this attribute
 to your own trait to include it in the "Notable traits" dialog in documentation.
 
 In addition to the "Notable traits" dialog, every type that implements a
-`#[doc(notable_trait)]` trait renders a colored badge for that trait at the top
+`#[doc(notable_trait)]` trait renders a badge for that trait at the top
 of its page, making the relationship easy to spot when browsing the type.
+To set a color for the badge, write `#[doc(notable_trait(color="red"))]` or
+one of the other colors in the list:
+
+<style>
+  .notabletrait-badge {
+    border: solid 2px;
+    border-radius: 6px;
+    padding: 8px;
+  }
+  .notabletrait-badge.light {
+    color: black;
+    border-color: white;
+  }
+  .notabletrait-badge.dark {
+    color: #ddd;
+    border-color: #353535;
+  }
+  .notabletrait-badge.ayu {
+    color: #c5c5c5;
+    border-color: #0f1419;
+  }
+  /* https://github.com/rust-lang/rust/pull/91480 */
+  .notabletrait-badge.light.grey {
+    background: oklch(0.88 0 0);
+  }
+  .notabletrait-badge.light.red {
+    background: oklch(0.88 0.21 20);
+  }
+  .notabletrait-badge.light.green {
+    background: oklch(0.88 0.21 150);
+  }
+  .notabletrait-badge.light.yellow {
+    background: oklch(0.88 0.21 70);
+  }
+  .notabletrait-badge.light.blue {
+    background: oklch(0.88 0.21 240);
+  }
+  .notabletrait-badge.light.magenta {
+    background: oklch(0.88 0.21 320);
+  }
+  .notabletrait-badge.light.cyan {
+    background: oklch(0.88 0.21 180);
+  }
+  .notabletrait-badge.light.transparent {
+    background: white;
+  }
+  .notabletrait-badge.dark.grey {
+    background: oklch(0.55 0 0);
+  }
+  .notabletrait-badge.dark.red {
+    background: oklch(0.55 0.21 20);
+  }
+  .notabletrait-badge.dark.green {
+    background: oklch(0.55 0.21 150);
+  }
+  .notabletrait-badge.dark.yellow {
+    background: oklch(0.55 0.21 70);
+  }
+  .notabletrait-badge.dark.blue {
+    background: oklch(0.55 0.21 240);
+  }
+  .notabletrait-badge.dark.magenta {
+    background: oklch(0.55 0.21 320);
+  }
+  .notabletrait-badge.dark.cyan {
+    background: oklch(0.55 0.21 180);
+  }
+  .notabletrait-badge.dark.transparent {
+    background: #353535;
+  }
+  .notabletrait-badge.ayu.grey {
+    background: oklch(0.49 0 0);
+  }
+  .notabletrait-badge.ayu.red {
+    background: oklch(0.49 0.21 20);
+  }
+  .notabletrait-badge.ayu.green {
+    background: oklch(0.49 0.21 150);
+  }
+  .notabletrait-badge.ayu.yellow {
+    background: oklch(0.49 0.21 70);
+  }
+  .notabletrait-badge.ayu.blue {
+    background: oklch(0.49 0.21 240);
+  }
+  .notabletrait-badge.ayu.magenta {
+    background: oklch(0.49 0.21 320);
+  }
+  .notabletrait-badge.ayu.cyan {
+    background: oklch(0.49 0.21 180);
+  }
+  .notabletrait-badge.ayu.transparent {
+    background: #353535;
+  }
+</style>
+
+| Name        | Light | Dark | Ayu |
+| ----------- | ----- | ---- | --- |
+| grey        | <div class="light notabletrait-badge grey">Trait</div> | <div class="dark notabletrait-badge grey">Trait</div> | <div class="ayu notabletrait-badge grey">Trait</div>
+| red         | <div class="light notabletrait-badge red">Trait</div> | <div class="dark notabletrait-badge red">Trait</div> | <div class="ayu notabletrait-badge red">Trait</div>
+| green       | <div class="light notabletrait-badge green">Trait</div> | <div class="dark notabletrait-badge green">Trait</div> | <div class="ayu notabletrait-badge green">Trait</div>
+| yellow      | <div class="light notabletrait-badge yellow">Trait</div> | <div class="dark notabletrait-badge yellow">Trait</div> | <div class="ayu notabletrait-badge yellow">Trait</div>
+| blue        | <div class="light notabletrait-badge blue">Trait</div> | <div class="dark notabletrait-badge blue">Trait</div> | <div class="ayu notabletrait-badge blue">Trait</div>
+| magenta     | <div class="light notabletrait-badge magenta">Trait</div> | <div class="dark notabletrait-badge magenta">Trait</div> | <div class="ayu notabletrait-badge magenta">Trait</div>
+| cyan        | <div class="light notabletrait-badge cyan">Trait</div> | <div class="dark notabletrait-badge cyan">Trait</div> | <div class="ayu notabletrait-badge cyan">Trait</div>
+| transparent | <div class="light notabletrait-badge transparent">Trait</div> | <div class="dark notabletrait-badge transparent">Trait</div> | <div class="ayu notabletrait-badge transparent">Trait</div>
 
 The `#[doc(notable_trait)]` attribute currently requires the `#![feature(doc_notable_trait)]`
 feature gate. For more information, see [its chapter in the Unstable Book][unstable-notable_trait]

@@ -5,7 +5,7 @@ use rustc_feature::AttributeStability;
 use rustc_hir::Target;
 use rustc_hir::attrs::{
     AttributeKind, CfgEntry, CfgHideShow, DocAttribute, DocCfgHideShow, DocCfgHideShowValue,
-    DocInline, HideOrShow,
+    DocInline, HideOrShow, NotableTraitColor,
 };
 use rustc_session::diagnostics::feature_err;
 use rustc_span::{Span, Symbol, edition, sym};
@@ -19,14 +19,15 @@ use crate::diagnostics::{
     DocAutoCfgHideShowUnexpectedItem, DocAutoCfgHideShowUnexpectedItemAfterValues,
     DocAutoCfgHideShowValuesMix, DocAutoCfgWrongLiteral, DocTestLiteral, DocTestTakesList,
     DocTestUnknown, DocUnknownAny, DocUnknownInclude, DocUnknownPasses, DocUnknownPlugins,
-    DocUnknownSpotlight, ExpectedNameValue, ExpectedNoArgs, IllFormedAttributeInput, MalformedDoc,
+    DocUnknownSpotlight, ExpectedNameValue, ExpectedNoArgs, IllFormedAttributeInput,
+    InvalidNotableTraitAttr, MalformedDoc,
 };
 use crate::parser::{
     ArgParser, MetaItemListParser, MetaItemOrLitParser, MetaItemParser, OwnedPathParser,
 };
 use crate::session_diagnostics::{
     DocAliasBadChar, DocAliasEmpty, DocAliasMalformed, DocAliasStartEnd, DocAttrNotCrateLevel,
-    DocAttributeNotAttribute, DocKeywordNotKeyword, UnusedDuplicate,
+    DocAttrTraitLevel, DocAttributeNotAttribute, DocKeywordNotKeyword, UnusedDuplicate,
 };
 
 fn check_keyword(cx: &mut AcceptContext<'_, '_>, keyword: Symbol, span: Span) -> bool {
@@ -96,6 +97,110 @@ fn expected_string_literal(
     _actual_literal: Option<&MetaItemLit>,
 ) {
     cx.emit_lint(rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES, MalformedDoc, span);
+}
+
+fn parse_notable_trait(
+    cx: &mut AcceptContext<'_, '_>,
+    path: &OwnedPathParser,
+    args: &ArgParser,
+    attr_value: &mut Option<(Option<(NotableTraitColor, Span)>, Span)>,
+    attr_name: Symbol,
+) {
+    let span = path.span();
+
+    let notable_trait_color_attr = match args {
+        ArgParser::NoArgs => None,
+        ArgParser::List(meta_item_list_parser) => {
+            if meta_item_list_parser.is_empty() {
+                None
+            } else if let Some(meta_item) = meta_item_list_parser.as_single() {
+                Some(meta_item)
+            } else {
+                cx.emit_lint(
+                    rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
+                    InvalidNotableTraitAttr,
+                    span,
+                );
+                return;
+            }
+        }
+        ArgParser::NameValue(_) => {
+            cx.emit_lint(
+                rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
+                InvalidNotableTraitAttr,
+                span,
+            );
+            return;
+        }
+    };
+
+    let notable_trait_color_and_span =
+        if let Some(notable_trait_color_attr) = notable_trait_color_attr {
+            let Some(notable_trait_color_attr) = notable_trait_color_attr.meta_item() else {
+                cx.emit_lint(
+                    rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
+                    InvalidNotableTraitAttr,
+                    span,
+                );
+                return;
+            };
+            if !notable_trait_color_attr.path().word_is(sym::color) {
+                cx.emit_lint(
+                    rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
+                    InvalidNotableTraitAttr,
+                    span,
+                );
+                return;
+            }
+            let Some(notable_trait_color) = notable_trait_color_attr.args().as_name_value() else {
+                cx.emit_lint(
+                    rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
+                    InvalidNotableTraitAttr,
+                    span,
+                );
+                return;
+            };
+            let Some(notable_trait_color) = notable_trait_color.value_as_str() else {
+                cx.emit_lint(
+                    rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
+                    InvalidNotableTraitAttr,
+                    span,
+                );
+                return;
+            };
+            let notable_trait_color = match notable_trait_color.as_str() {
+                "grey" => NotableTraitColor::Grey,
+                "red" => NotableTraitColor::Red,
+                "green" => NotableTraitColor::Green,
+                "yellow" => NotableTraitColor::Yellow,
+                "blue" => NotableTraitColor::Blue,
+                "magenta" => NotableTraitColor::Magenta,
+                "cyan" => NotableTraitColor::Cyan,
+                "transparent" => NotableTraitColor::Transparent,
+                _ => {
+                    cx.emit_lint(
+                        rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
+                        InvalidNotableTraitAttr,
+                        span,
+                    );
+                    return;
+                }
+            };
+            Some((notable_trait_color, notable_trait_color_attr.span()))
+        } else {
+            None
+        };
+
+    if cx.shared.target != Target::Trait {
+        cx.emit_lint(
+            rustc_session::lint::builtin::INVALID_DOC_ATTRIBUTES,
+            DocAttrTraitLevel { span, attr_name },
+            span,
+        );
+        return;
+    }
+
+    *attr_value = Some((notable_trait_color_and_span, span));
 }
 
 fn parse_keyword_and_attribute(
@@ -610,7 +715,13 @@ impl DocParser {
             Some(sym::no_inline) => self.parse_inline(cx, path, args, DocInline::NoInline),
             Some(sym::masked) => no_args!(masked),
             Some(sym::cfg) => self.parse_cfg(cx, args),
-            Some(sym::notable_trait) => no_args!(notable_trait),
+            Some(sym::notable_trait) => parse_notable_trait(
+                cx,
+                path,
+                args,
+                &mut self.attribute.notable_trait,
+                sym::notable_trait,
+            ),
             Some(sym::keyword) => parse_keyword_and_attribute(
                 cx,
                 path,

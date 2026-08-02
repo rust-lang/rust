@@ -320,6 +320,13 @@ pub(crate) struct ExpectedNoArgs;
 pub(crate) struct ExpectedNameValue;
 
 #[derive(Diagnostic)]
+#[diag("expected either `doc(notable_trait)` or `doc(notable_trait=\"...\")`")]
+#[warning(
+    "this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!"
+)]
+pub(crate) struct InvalidNotableTraitAttr;
+
+#[derive(Diagnostic)]
 #[diag("malformed `{$attribute}` attribute")]
 #[help("{$options}")]
 pub(crate) struct MalFormedDiagnosticAttributeLint {

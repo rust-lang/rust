@@ -82,7 +82,7 @@ use crate::vec::Vec;
 /// [`&str`]: prim@str
 /// [`std::io`]: crate::io
 #[stable(feature = "rust1", since = "1.0.0")]
-#[doc(notable_trait)]
+#[doc(notable_trait(color = "grey"))]
 #[cfg_attr(not(test), rustc_diagnostic_item = "IoRead")]
 pub trait Read {
     /// Pull some bytes from this source into the specified buffer, returning

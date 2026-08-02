@@ -1366,7 +1366,7 @@ impl Trait {
         tcx.trait_is_auto(self.def_id)
     }
     pub(crate) fn is_notable_trait(&self, tcx: TyCtxt<'_>) -> bool {
-        tcx.is_doc_notable_trait(self.def_id)
+        tcx.doc_notable_trait(self.def_id).is_some()
     }
     pub(crate) fn safety(&self, tcx: TyCtxt<'_>) -> hir::Safety {
         tcx.trait_def(self.def_id).safety
