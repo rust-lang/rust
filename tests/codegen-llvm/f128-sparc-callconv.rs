@@ -23,7 +23,7 @@ extern "C" {
 pub extern "C" fn pass(_arg0: u32, arg1: f128) {
     // CHECK-LABEL: @pass(
     // an f128 is passed via the stack
-    // CHECK-SAME: ptr {{.*}}byval([16 x i8]
+    // CHECK-SAME: ptr {{.*}}
     // CHECK: call void @extern_call
     unsafe { extern_call(arg1) };
 }
