@@ -10,7 +10,7 @@ use rustc_span::Span;
 use crate::builder::Builder;
 use crate::builder::expr::as_place::{PlaceBase, PlaceBuilder};
 use crate::builder::matches::{
-    FlatPat, MatchPairTree, PatConstKind, PatternExtraData, SliceLenOp, TestableCase,
+    FlatPat, MatchPairKind, MatchPairTree, PatConstKind, PatternExtraData, SliceLenOp, TestableCase,
 };
 
 /// For an array or slice pattern's subpatterns (prefix/slice/suffix), returns a list
@@ -130,13 +130,8 @@ fn squash_inter_pat<'tcx>(
                 extra_data.bindings.push(super::SubpatternBindings::FromOrPattern);
             }
 
-            match_pairs.push(MatchPairTree {
-                // Or-patterns never need a place during MIR building.
-                place: None,
-                testable_case: TestableCase::Or { pats: or_subpats },
-                subpairs: vec![],
-                pattern_span,
-            });
+            match_pairs
+                .push(MatchPairTree { kind: MatchPairKind::Or { or_subpats }, pattern_span });
         }
 
         InterPatKind::Refutable { place, testable_case, subpats } => {
@@ -148,11 +143,8 @@ fn squash_inter_pat<'tcx>(
             }
 
             // This pattern is refutable, so push a new match-pair node.
-            assert!(!matches!(testable_case, TestableCase::Or { .. }));
             match_pairs.push(MatchPairTree {
-                place: Some(place),
-                testable_case,
-                subpairs,
+                kind: MatchPairKind::Testable { place, testable_case, subpairs },
                 pattern_span,
             });
         }
@@ -200,8 +192,6 @@ enum InterPatKind<'tcx> {
         /// Place that this pattern node will test.
         place: Place<'tcx>,
         /// Testable condition to compare the place to (e.g. "is 3" or "is Some").
-        ///
-        /// Invariant: Must not be [`TestableCase::Or`].
         testable_case: TestableCase<'tcx>,
         /// Immediate subpatterns.
         subpats: Vec<InterPat<'tcx>>,
