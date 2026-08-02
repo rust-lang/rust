@@ -590,15 +590,27 @@ where
 
     /// Computes a place. You should only use this if you intend to write into this
     /// place; for reading, a more efficient alternative is `eval_place_to_op`.
+    ///
+    /// If `skip_validity_for_simple_deref` is true, then we do not check validity of the inner
+    /// pointer for places of the form `*ptr`. The caller must justify why that is okay.
     #[instrument(skip(self), level = "trace")]
     pub fn eval_place(
         &self,
         mir_place: mir::Place<'tcx>,
+        skip_validity_for_simple_deref: bool,
     ) -> InterpResult<'tcx, PlaceTy<'tcx, M::Provenance>> {
         let _trace =
             enter_trace_span!(M, step::eval_place, ?mir_place, tracing_separate_thread = Empty);
 
         let mut place = self.local_to_place(mir_place.local)?;
+        if skip_validity_for_simple_deref
+            && mir_place.projection.as_slice() == &[mir::ProjectionElem::Deref]
+        {
+            // We want to skip the checks in `deref_pointer`.
+            let val = self.read_immediate(&place)?;
+            let place = self.imm_ptr_to_mplace(&val)?;
+            return interp_ok(place.into());
+        }
         // Using `try_fold` turned out to be bad for performance, hence the loop.
         for elem in mir_place.projection.iter() {
             place = self.project(&place, elem)?
