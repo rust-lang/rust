@@ -233,7 +233,8 @@ pub(super) fn add_call_parens<'b>(
                         Some(n) => {
                             let smol_str = n.display_no_db(ctx.edition).to_smolstr();
                             let text = smol_str.as_str().trim_start_matches('_');
-                            let ref_ = ref_of_param(ctx, text, param.ty());
+                            let ref_ =
+                                ref_of_param(ctx, text, &param.ty().instantiate_with_errors());
                             f(&format_args!("${{{}:{ref_}{text}}}", index + offset))
                         }
                         None => {
@@ -293,7 +294,7 @@ fn ref_of_param(ctx: &CompletionContext<'_, '_>, arg: &str, ty: &hir::Type<'_>) 
 
         for (name, local) in ctx.locals.iter().sorted_by_key(|&(k, _)| k.clone()) {
             if name.as_str() == arg {
-                let local_ty = local.ty(ctx.db).instantiate_with_errors();
+                let local_ty = local.ty(ctx.db);
                 let added_ref = local_ty.add_reference(ctx.db, mutability);
                 let needs_ref =
                     !local_ty.could_coerce_to(ctx.db, ty) && added_ref.could_coerce_to(ctx.db, ty);
