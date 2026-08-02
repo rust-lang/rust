@@ -1,0 +1,303 @@
+{
+ "bless_metadata": {
+  "python_version": "3.14.5 (main, May 11 2026, 00:00:00) [GCC 16.1.1 20260501 (Red Hat 16.1.1-1)]",
+  "debugger_version": "GNU gdb (Fedora Linux) 17.1-6.fc44",
+  "feature_flags": ""
+ },
+ "types": {
+  "bool": {
+   "size": 1,
+   "basic_type": 0,
+   "type_class": 21,
+   "fields": [],
+   "generic_params": []
+  },
+  "isize": {
+   "size": 8,
+   "basic_type": 0,
+   "type_class": 8,
+   "fields": [],
+   "generic_params": []
+  },
+  "char": {
+   "size": 4,
+   "basic_type": 0,
+   "type_class": 20,
+   "fields": [],
+   "generic_params": []
+  },
+  "i8": {
+   "size": 1,
+   "basic_type": 0,
+   "type_class": 8,
+   "fields": [],
+   "generic_params": []
+  },
+  "i16": {
+   "size": 2,
+   "basic_type": 0,
+   "type_class": 8,
+   "fields": [],
+   "generic_params": []
+  },
+  "i32": {
+   "size": 4,
+   "basic_type": 0,
+   "type_class": 8,
+   "fields": [],
+   "generic_params": []
+  },
+  "i64": {
+   "size": 8,
+   "basic_type": 0,
+   "type_class": 8,
+   "fields": [],
+   "generic_params": []
+  },
+  "usize": {
+   "size": 8,
+   "basic_type": 0,
+   "type_class": 8,
+   "fields": [],
+   "generic_params": []
+  },
+  "u8": {
+   "size": 1,
+   "basic_type": 0,
+   "type_class": 8,
+   "fields": [],
+   "generic_params": []
+  },
+  "u16": {
+   "size": 2,
+   "basic_type": 0,
+   "type_class": 8,
+   "fields": [],
+   "generic_params": []
+  },
+  "u32": {
+   "size": 4,
+   "basic_type": 0,
+   "type_class": 8,
+   "fields": [],
+   "generic_params": []
+  },
+  "u64": {
+   "size": 8,
+   "basic_type": 0,
+   "type_class": 8,
+   "fields": [],
+   "generic_params": []
+  },
+  "f16": {
+   "size": 2,
+   "basic_type": 0,
+   "type_class": 9,
+   "fields": [],
+   "generic_params": []
+  },
+  "f32": {
+   "size": 4,
+   "basic_type": 0,
+   "type_class": 9,
+   "fields": [],
+   "generic_params": []
+  },
+  "f64": {
+   "size": 8,
+   "basic_type": 0,
+   "type_class": 9,
+   "fields": [],
+   "generic_params": []
+  },
+  "&str": {
+   "size": 16,
+   "basic_type": 0,
+   "type_class": 3,
+   "fields": [
+    {
+     "name": "data_ptr",
+     "type": null,
+     "offset": 0
+    },
+    {
+     "name": "length",
+     "type": "usize",
+     "offset": 8
+    }
+   ],
+   "generic_params": []
+  },
+  "*mut u8": {
+   "size": 8,
+   "basic_type": 0,
+   "type_class": 1,
+   "fields": [],
+   "generic_params": []
+  }
+ },
+ "breakpoints": [
+  {
+   "b": {
+    "type": "bool",
+    "pretty_type_name": null,
+    "pretty_print": "false",
+    "value": "false",
+    "synthetic": null,
+    "summary": null,
+    "format": null,
+    "children": []
+   },
+   "i": {
+    "type": "isize",
+    "pretty_type_name": null,
+    "pretty_print": "-1",
+    "value": "-1",
+    "synthetic": null,
+    "summary": null,
+    "format": null,
+    "children": []
+   },
+   "c": {
+    "type": "char",
+    "pretty_type_name": null,
+    "pretty_print": "97 'a'",
+    "value": "97 'a'",
+    "synthetic": null,
+    "summary": null,
+    "format": null,
+    "children": []
+   },
+   "i8": {
+    "type": "i8",
+    "pretty_type_name": null,
+    "pretty_print": "68",
+    "value": "68",
+    "synthetic": null,
+    "summary": null,
+    "format": null,
+    "children": []
+   },
+   "i16": {
+    "type": "i16",
+    "pretty_type_name": null,
+    "pretty_print": "-16",
+    "value": "-16",
+    "synthetic": null,
+    "summary": null,
+    "format": null,
+    "children": []
+   },
+   "i32": {
+    "type": "i32",
+    "pretty_type_name": null,
+    "pretty_print": "-32",
+    "value": "-32",
+    "synthetic": null,
+    "summary": null,
+    "format": null,
+    "children": []
+   },
+   "i64": {
+    "type": "i64",
+    "pretty_type_name": null,
+    "pretty_print": "-64",
+    "value": "-64",
+    "synthetic": null,
+    "summary": null,
+    "format": null,
+    "children": []
+   },
+   "u": {
+    "type": "usize",
+    "pretty_type_name": null,
+    "pretty_print": "1",
+    "value": "1",
+    "synthetic": null,
+    "summary": null,
+    "format": null,
+    "children": []
+   },
+   "u8": {
+    "type": "u8",
+    "pretty_type_name": null,
+    "pretty_print": "100",
+    "value": "100",
+    "synthetic": null,
+    "summary": null,
+    "format": null,
+    "children": []
+   },
+   "u16": {
+    "type": "u16",
+    "pretty_type_name": null,
+    "pretty_print": "16",
+    "value": "16",
+    "synthetic": null,
+    "summary": null,
+    "format": null,
+    "children": []
+   },
+   "u32": {
+    "type": "u32",
+    "pretty_type_name": null,
+    "pretty_print": "32",
+    "value": "32",
+    "synthetic": null,
+    "summary": null,
+    "format": null,
+    "children": []
+   },
+   "u64": {
+    "type": "u64",
+    "pretty_type_name": null,
+    "pretty_print": "64",
+    "value": "64",
+    "synthetic": null,
+    "summary": null,
+    "format": null,
+    "children": []
+   },
+   "f16": {
+    "type": "f16",
+    "pretty_type_name": null,
+    "pretty_print": "1.5",
+    "value": "1.5",
+    "synthetic": null,
+    "summary": null,
+    "format": null,
+    "children": []
+   },
+   "f32": {
+    "type": "f32",
+    "pretty_type_name": null,
+    "pretty_print": "2.5",
+    "value": "2.5",
+    "synthetic": null,
+    "summary": null,
+    "format": null,
+    "children": []
+   },
+   "f64": {
+    "type": "f64",
+    "pretty_type_name": null,
+    "pretty_print": "3.5",
+    "value": "3.5",
+    "synthetic": null,
+    "summary": null,
+    "format": null,
+    "children": []
+   },
+   "s": {
+    "type": "&str",
+    "pretty_type_name": null,
+    "pretty_print": "\"Hello, World!\"",
+    "value": null,
+    "synthetic": null,
+    "summary": null,
+    "format": null,
+    "children": []
+   }
+  }
+ ]
+}
