@@ -2714,6 +2714,7 @@ dependencies = [
  "expect-test",
  "itertools 0.15.0",
  "parser",
+ "ra-ap-rustc_lexer",
  "rayon",
  "rowan",
  "rustc-hash 2.1.2",
