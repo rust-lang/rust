@@ -113,6 +113,15 @@ impl Thread {
         Thread { inner }
     }
 
+    /// Creates a handle for the calling thread, recording its OS id.
+    ///
+    /// `id` must be the `ThreadId` of the calling thread.
+    pub(crate) fn new_current(id: ThreadId, name: Option<String>) -> Thread {
+        let thread = Thread::new(id, name);
+        thread.set_os_id_to_current();
+        thread
+    }
+
     /// Records the OS id of the calling thread in this handle.
     ///
     /// May only be called from the thread to which this handle belongs. A
