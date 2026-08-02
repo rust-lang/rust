@@ -3,7 +3,6 @@ use std::path::{Path, PathBuf};
 use std::{fmt, io};
 
 use rustc_error_messages::into_diag_arg_using_display;
-use rustc_fs_util::try_canonicalize;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
 /// Either a target tuple string or a path to a JSON file.
@@ -91,7 +90,8 @@ impl TargetTuple {
 
     /// Creates a target tuple from the passed target path.
     pub fn from_path(path: &Path) -> Result<Self, io::Error> {
-        let canonicalized_path = try_canonicalize(path)?;
+        let canonicalized_path =
+            std::fs::canonicalize(path).or_else(|_| std::path::absolute(path))?;
         let contents = std::fs::read_to_string(&canonicalized_path).map_err(|err| {
             io::Error::new(
                 io::ErrorKind::InvalidInput,
