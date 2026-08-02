@@ -814,9 +814,7 @@ fn item_trait(cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) -> impl fmt:
             }
         })?;
 
-        if let rustc_middle::ty::trait_def::ImplRestrictionKind::Restricted(def_id, _) =
-            impl_restriction
-        {
+        if let rustc_middle::ty::RestrictionKind::Restricted(def_id, _) = impl_restriction {
             let v1;
             let v2;
             write!(

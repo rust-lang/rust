@@ -121,6 +121,7 @@ use crate::ty::codec::{TyDecoder, TyEncoder};
 pub use crate::ty::diagnostics::*;
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::layout::{FnAbiError, LayoutError};
+use crate::ty::print::{with_crate_prefix, with_no_trimmed_paths};
 use crate::ty::util::Discr;
 use crate::ty::walk::TypeWalker;
 
@@ -398,6 +399,66 @@ impl Visibility {
                 }
             }
             ty::Visibility::Public => "pub".to_string(),
+        }
+    }
+}
+
+#[derive(Debug, StableHash, PartialEq, Clone, Copy, Encodable, Decodable)]
+pub enum RestrictionKind {
+    Unrestricted,
+    Restricted(DefId, Span),
+}
+
+impl RestrictionKind {
+    /// Returns `true` if the behavior is allowed/unrestricted in the given module.
+    /// A value of `false` indicates that the behavior is prohibited.
+    pub fn is_allowed_in(self, module: DefId, tcx: TyCtxt<'_>) -> bool {
+        match self {
+            RestrictionKind::Unrestricted => true,
+            RestrictionKind::Restricted(restricted_to, _) => {
+                tcx.is_descendant_of(module, restricted_to)
+            }
+        }
+    }
+
+    /// Obtain the [`Span`] of the restriction. Panics if the restriction is unrestricted.
+    pub fn expect_span(self) -> Span {
+        match self {
+            RestrictionKind::Unrestricted => {
+                bug!("called `expect_span` on an unrestricted item")
+            }
+            RestrictionKind::Restricted(_, span) => span,
+        }
+    }
+
+    /// Obtain the path of the restriction. If unrestricted, an empty string is returned.
+    pub fn restriction_path(self, tcx: TyCtxt<'_>) -> String {
+        match self {
+            RestrictionKind::Unrestricted => String::new(),
+            RestrictionKind::Restricted(restricted_to, _) => {
+                if restricted_to.krate == rustc_hir::def_id::LOCAL_CRATE {
+                    with_crate_prefix!(with_no_trimmed_paths!(tcx.def_path_str(restricted_to)))
+                } else {
+                    tcx.def_path_str(restricted_to.krate.as_mod_id())
+                }
+            }
+        }
+    }
+
+    /// Obtain the stricter restriction between `self` and `rhs`.
+    /// Panics if the restrictions do not reference the same crate.
+    pub fn stricter_of(self, rhs: Self, tcx: TyCtxt<'_>) -> Self {
+        match (self, rhs) {
+            (RestrictionKind::Unrestricted, r) | (r, RestrictionKind::Unrestricted) => r,
+            (
+                RestrictionKind::Restricted(left_did, _),
+                RestrictionKind::Restricted(right_did, _),
+            ) => {
+                if left_did.krate != right_did.krate {
+                    bug!("stricter_of: left and right restriction do not reference the same crate");
+                }
+                if tcx.is_descendant_of(left_did, right_did) { self } else { rhs }
+            }
         }
     }
 }
@@ -1537,6 +1598,7 @@ pub struct FieldDef {
     pub did: DefId,
     pub name: Symbol,
     pub vis: Visibility<ModId>,
+    pub mut_restriction: RestrictionKind,
     pub safety: hir::Safety,
     pub value: Option<DefId>,
 }
@@ -1551,16 +1613,18 @@ impl PartialEq for FieldDef {
         // of `FieldDef` changes, a compile-error will be produced, reminding
         // us to revisit this assumption.
 
-        let Self { did: lhs_did, name: _, vis: _, safety: _, value: _ } = &self;
+        let Self { did: lhs_did, name: _, vis: _, mut_restriction: _, safety: _, value: _ } = &self;
 
-        let Self { did: rhs_did, name: _, vis: _, safety: _, value: _ } = other;
+        let Self { did: rhs_did, name: _, vis: _, mut_restriction: _, safety: _, value: _ } = other;
 
         let res = lhs_did == rhs_did;
 
         // Double check that implicit assumption detailed above.
         if cfg!(debug_assertions) && res {
-            let deep =
-                self.name == other.name && self.vis == other.vis && self.safety == other.safety;
+            let deep = self.name == other.name
+                && self.vis == other.vis
+                && self.mut_restriction == other.mut_restriction
+                && self.safety == other.safety;
             assert!(deep, "FieldDef for the same def-id has differing data");
         }
 
@@ -1580,7 +1644,7 @@ impl Hash for FieldDef {
         // of `FieldDef` changes, a compile-error will be produced, reminding
         // us to revisit this assumption.
 
-        let Self { did, name: _, vis: _, safety: _, value: _ } = &self;
+        let Self { did, name: _, vis: _, mut_restriction: _, safety: _, value: _ } = &self;
 
         did.hash(s)
     }
