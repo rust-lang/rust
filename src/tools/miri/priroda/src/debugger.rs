@@ -310,13 +310,12 @@ impl<'tcx> PrirodaContext<'tcx> {
     }
 
     fn resolve_current_location(&self) -> Option<SourceLocation> {
-        // FIXME: resolve macro-backed lines such as `println!` and `assert_eq!`
-        // through `span.source_callsite()` before matching breakpoints.
         let span = self.ecx.machine.current_user_relevant_span();
         if span.is_dummy() {
             return None;
         }
 
+        let span = span.source_callsite();
         let source_map = self.ecx.tcx.sess.source_map();
         let loc = source_map.lookup_char_pos(span.lo());
 
