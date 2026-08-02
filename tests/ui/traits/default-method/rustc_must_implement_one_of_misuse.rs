@@ -17,9 +17,23 @@ trait Tr2 {
     fn a() {}
 }
 
+#[rustc_must_implement_one_of(a,)]
+//~^ ERROR malformed
+trait Tr2comma {
+    fn a() {}
+}
+
 #[rustc_must_implement_one_of]
 //~^ ERROR malformed `rustc_must_implement_one_of` attribute input
 trait Tr3 {}
+
+#[rustc_must_implement_one_of()]
+//~^ ERROR malformed `rustc_must_implement_one_of` attribute input
+trait Tempty {}
+
+#[rustc_must_implement_one_of(,)]
+//~^ ERROR expected a literal
+trait Tcomma {}
 
 #[rustc_must_implement_one_of(A, B)]
 trait Tr4 {
@@ -33,6 +47,22 @@ trait Tr5 {
     fn a(); //~ ERROR function doesn't have a default implementation
 
     fn b(); //~ ERROR function doesn't have a default implementation
+}
+
+#[rustc_must_implement_one_of(a, b)]
+trait TrOneDefault {
+    fn a() {}
+
+    fn b(); //~ ERROR function doesn't have a default implementation
+}
+
+#[rustc_must_implement_one_of(a, b, c)]
+trait TrTwoDefaults {
+    fn a() {}
+
+    fn b() {}
+
+    fn c(); //~ ERROR function doesn't have a default implementation
 }
 
 #[rustc_must_implement_one_of(abc, xyz)]
