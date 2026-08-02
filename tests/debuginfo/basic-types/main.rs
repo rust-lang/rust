@@ -12,41 +12,28 @@
 // This version corresponds to swift 6.2.3/lldb 19.1.5
 //@ min-apple-lldb-version: 1703.0.236.21
 
+//@ min-gdb-version: 16.1
+
 // === GDB TESTS ===================================================================================
 
 //@ gdb-command:run
-//@ gdb-command:print b
-//@ gdb-check:$1 = false
-//@ gdb-command:print i
-//@ gdb-check:$2 = -1
-//@ gdb-command:print c
-//@ gdb-check:$3 = 97 'a'
-//@ gdb-command:print/d i8
-//@ gdb-check:$4 = 68
-//@ gdb-command:print i16
-//@ gdb-check:$5 = -16
-//@ gdb-command:print i32
-//@ gdb-check:$6 = -32
-//@ gdb-command:print i64
-//@ gdb-check:$7 = -64
-//@ gdb-command:print u
-//@ gdb-check:$8 = 1
-//@ gdb-command:print/d u8
-//@ gdb-check:$9 = 100
-//@ gdb-command:print u16
-//@ gdb-check:$10 = 16
-//@ gdb-command:print u32
-//@ gdb-check:$11 = 32
-//@ gdb-command:print u64
-//@ gdb-check:$12 = 64
-//@ gdb-command:print f16
-//@ gdb-check:$13 = 1.5
-//@ gdb-command:print f32
-//@ gdb-check:$14 = 2.5
-//@ gdb-command:print f64
-//@ gdb-check:$15 = 3.5
-//@ gdb-command:print s
-//@ gdb-check:$16 = "Hello, World!"
+//@ gdb-repr:b
+//@ gdb-repr:b
+//@ gdb-repr:i
+//@ gdb-repr:c
+//@ gdb-repr:i8
+//@ gdb-repr:i16
+//@ gdb-repr:i32
+//@ gdb-repr:i64
+//@ gdb-repr:u
+//@ gdb-repr:u8
+//@ gdb-repr:u16
+//@ gdb-repr:u32
+//@ gdb-repr:u64
+//@ gdb-repr:f16
+//@ gdb-repr:f32
+//@ gdb-repr:f64
+//@ gdb-repr:s
 
 // === LLDB TESTS ==================================================================================
 
