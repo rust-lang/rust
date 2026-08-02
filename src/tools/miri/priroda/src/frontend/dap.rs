@@ -1,6 +1,6 @@
 use std::io::{self, BufReader, BufWriter};
 
-use emmy_dap_types::prelude::events::StoppedEventBody;
+use emmy_dap_types::prelude::events::{ExitedEventBody, StoppedEventBody};
 use emmy_dap_types::prelude::responses::{
     ScopesResponse, StackTraceResponse, ThreadsResponse, VariablesResponse,
 };
@@ -9,7 +9,7 @@ use emmy_dap_types::prelude::types::{
     Variable,
 };
 use emmy_dap_types::prelude::{Command, Event, Request, ResponseBody, Server};
-use miri::{InterpResult, bug, interp_ok};
+use miri::{InterpErrorInfo, InterpErrorKind, InterpResult, TerminationInfo, bug, interp_ok};
 
 use crate::debugger::{LocalDesc, PrirodaContext, StepResult};
 
@@ -24,6 +24,12 @@ type ServerResult<T = ()> = Result<T, emmy_dap_types::errors::ServerError>;
 enum DispatchOutcome {
     Continue,
     Exit,
+}
+
+enum ExecutionOutcome {
+    Stopped(StepResult),
+    Terminated { code: i32 },
+    Failed(String),
 }
 
 /// Debug Adapter Protocol frontend.
@@ -186,13 +192,20 @@ impl DapSession {
         request: Request,
         session: &mut PrirodaContext<'tcx>,
     ) -> InterpResult<'tcx, ServerResult> {
-        session.stop_at_first_user_location()?;
-        let response = request.success(ResponseBody::ConfigurationDone);
-        interp_ok(
-            self.server
-                .respond(response)
-                .and_then(|()| self.send_stopped_event(StoppedEventReason::Entry)),
-        )
+        match Self::execution_outcome(session.stop_at_first_user_location()) {
+            ExecutionOutcome::Stopped(_) => {
+                let response = request.success(ResponseBody::ConfigurationDone);
+                interp_ok(
+                    self.server
+                        .respond(response)
+                        .and_then(|()| self.send_stopped_event(StoppedEventReason::Entry)),
+                )
+            }
+            ExecutionOutcome::Terminated { code } =>
+                interp_ok(self.respond_terminated(request, ResponseBody::ConfigurationDone, code)),
+            ExecutionOutcome::Failed(message) =>
+                interp_ok(self.respond_execution_error(request, message)),
+        }
     }
 
     /// FIXME: replace this with Miri thread state once Priroda exposes a
@@ -275,12 +288,18 @@ impl DapSession {
         body: ResponseBody,
         session: &mut PrirodaContext<'tcx>,
     ) -> InterpResult<'tcx, ServerResult> {
-        let result = session.step()?;
-        interp_ok(
-            self.server
-                .respond(request.success(body))
-                .and_then(|()| self.send_stopped_event(Self::stopped_reason(result))),
-        )
+        match Self::execution_outcome(session.step()) {
+            ExecutionOutcome::Stopped(result) =>
+                interp_ok(
+                    self.server
+                        .respond(request.success(body))
+                        .and_then(|()| self.send_stopped_event(Self::stopped_reason(result))),
+                ),
+            ExecutionOutcome::Terminated { code } =>
+                interp_ok(self.respond_terminated(request, body, code)),
+            ExecutionOutcome::Failed(message) =>
+                interp_ok(self.respond_execution_error(request, message)),
+        }
     }
 
     fn handle_disconnect(&mut self, request: Request) -> ServerResult {
@@ -295,6 +314,41 @@ impl DapSession {
         );
         let response = request.error(&message);
         self.server.respond(response)
+    }
+
+    fn respond_execution_error(&mut self, request: Request, message: String) -> ServerResult {
+        self.server.respond(request.error(&message))?;
+        self.server.send_event(Event::Terminated(None))
+    }
+
+    fn respond_terminated(
+        &mut self,
+        request: Request,
+        body: ResponseBody,
+        code: i32,
+    ) -> ServerResult {
+        self.server.respond(request.success(body))?;
+        self.server.send_event(Event::Exited(ExitedEventBody { exit_code: code.into() }))?;
+        self.server.send_event(Event::Terminated(None))?;
+        Ok(())
+    }
+
+    fn execution_outcome<'tcx>(result: InterpResult<'tcx, StepResult>) -> ExecutionOutcome {
+        match result.report_err() {
+            Ok(step) => ExecutionOutcome::Stopped(step),
+            Err(err) => Self::interp_error_outcome(err),
+        }
+    }
+
+    fn interp_error_outcome<'tcx>(err: InterpErrorInfo<'tcx>) -> ExecutionOutcome {
+        let kind = err.into_kind();
+        if let InterpErrorKind::MachineStop(info) = &kind
+            && let Some(TerminationInfo::Exit { code, .. }) = info.downcast_ref::<TerminationInfo>()
+        {
+            return ExecutionOutcome::Terminated { code: *code };
+        }
+
+        ExecutionOutcome::Failed(kind.to_string())
     }
 
     fn send_stopped_event(&mut self, reason: StoppedEventReason) -> ServerResult {
