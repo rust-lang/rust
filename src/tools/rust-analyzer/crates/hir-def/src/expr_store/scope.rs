@@ -1,4 +1,6 @@
 //! Name resolution for expressions.
+use std::mem;
+
 use base_db::SourceDatabase;
 use hir_expand::{MacroDefId, name::Name};
 use la_arena::{Arena, ArenaMap, Idx, IdxRange, RawIdx};
@@ -162,18 +164,13 @@ impl ExprScopes {
                 body.expr_only.as_ref().map_or(0, |it| it.exprs.len()),
             ),
         };
-        let mut root = scopes.root_scope();
+        let root = scopes.root_scope();
         if let Some(Param { formal: self_param, user_written: _ }) = body.self_param {
             scopes.add_bindings(body, root, self_param, body.binding_hygiene(self_param));
         }
         body.params.iter().for_each(|param| scopes.add_pat_bindings(body, root, param.formal));
-        ExprScopeVisitor {
-            store: body,
-            scopes: &mut scopes,
-            scope: &mut { root },
-            const_scope: &mut root,
-        }
-        .on_expr(body.root_expr());
+        ExprScopeVisitor { store: body, scopes: &mut scopes, scope: root, const_scope: root }
+            .on_expr(body.root_expr());
         scopes
     }
 
@@ -187,14 +184,9 @@ impl ExprScopes {
         };
         let root = scopes.root_scope();
         for root_expr in roots {
-            let mut scope = scopes.new_scope(root);
-            ExprScopeVisitor {
-                store,
-                scopes: &mut scopes,
-                scope: &mut { scope },
-                const_scope: &mut scope,
-            }
-            .on_expr(root_expr);
+            let scope = scopes.new_scope(root);
+            ExprScopeVisitor { store, scopes: &mut scopes, scope, const_scope: scope }
+                .on_expr(root_expr);
         }
         scopes
     }
@@ -290,11 +282,17 @@ impl ExprScopes {
 struct ExprScopeVisitor<'a> {
     store: &'a ExpressionStore,
     scopes: &'a mut ExprScopes,
-    scope: &'a mut ScopeId,
-    const_scope: &'a mut ScopeId,
+    scope: ScopeId,
+    const_scope: ScopeId,
 }
 
 impl ExprScopeVisitor<'_> {
+    fn with_scope(&mut self, scope: ScopeId, f: impl FnOnce(&mut Self)) {
+        let old_scope = mem::replace(&mut self.scope, scope);
+        f(self);
+        self.scope = old_scope;
+    }
+
     fn visit_block(
         &mut self,
         expr: ExprId,
@@ -303,49 +301,47 @@ impl ExprScopeVisitor<'_> {
         tail: Option<ExprId>,
         label: Option<LabelId>,
     ) {
-        let mut scope = self.scopes.new_block_scope(*self.scope, id, label);
-        let mut const_scope = if id.is_some() {
-            self.scopes.new_block_scope(*self.const_scope, id, None)
-        } else {
-            // We don't need to allocate a new scope, since only items matter to us.
-            *self.const_scope
-        };
-        // Overwrite the old scope for the block expr, so that every block scope can be found
-        // via the block itself (important for blocks that only contain items, no expressions).
-        self.scopes.set_scope(expr, scope);
+        let scope = self.scopes.new_block_scope(self.scope, id, label);
+        self.with_scope(scope, |this| {
+            let old_const_scope = if id.is_some() {
+                let const_scope = this.scopes.new_block_scope(this.const_scope, id, None);
+                mem::replace(&mut this.const_scope, const_scope)
+            } else {
+                // We don't need to allocate a new scope, since only items matter to us.
+                this.const_scope
+            };
+            // Overwrite the old scope for the block expr, so that every block scope can be found
+            // via the block itthis (important for blocks that only contain items, no expressions).
+            this.scopes.set_scope(expr, this.scope);
 
-        let mut visitor = ExprScopeVisitor {
-            store: self.store,
-            scopes: self.scopes,
-            scope: &mut scope,
-            const_scope: &mut const_scope,
-        };
-        for stmt in statements {
-            match stmt {
-                Statement::Let { pat, initializer, else_branch, type_ref } => {
-                    visitor.on_type_opt(*type_ref);
-                    visitor.on_expr_opt(*initializer);
-                    visitor.on_expr_opt(*else_branch);
-                    *visitor.scope = visitor.scopes.new_scope(*visitor.scope);
-                    visitor.scopes.add_pat_bindings(visitor.store, *visitor.scope, *pat);
+            for stmt in statements {
+                match stmt {
+                    Statement::Let { pat, initializer, else_branch, type_ref } => {
+                        this.on_type_opt(*type_ref);
+                        this.on_expr_opt(*initializer);
+                        this.on_expr_opt(*else_branch);
+                        this.scope = this.scopes.new_scope(this.scope);
+                        this.scopes.add_pat_bindings(this.store, this.scope, *pat);
+                    }
+                    Statement::Expr { expr, has_semi: _ } => this.on_expr(*expr),
+                    Statement::Item(Item::MacroDef(macro_id)) => {
+                        this.scope = this.scopes.new_macro_def_scope(this.scope, macro_id.clone());
+                        this.const_scope =
+                            this.scopes.new_macro_def_scope(this.const_scope, macro_id.clone());
+                    }
+                    Statement::Item(Item::Other) => (),
                 }
-                Statement::Expr { expr, has_semi: _ } => visitor.on_expr(*expr),
-                Statement::Item(Item::MacroDef(macro_id)) => {
-                    *visitor.scope =
-                        visitor.scopes.new_macro_def_scope(*visitor.scope, macro_id.clone());
-                    *visitor.const_scope =
-                        visitor.scopes.new_macro_def_scope(*visitor.const_scope, macro_id.clone());
-                }
-                Statement::Item(Item::Other) => (),
             }
-        }
-        visitor.on_expr_opt(tail);
+            this.on_expr_opt(tail);
+
+            this.const_scope = old_const_scope;
+        });
     }
 }
 
 impl StoreVisitor for ExprScopeVisitor<'_> {
     fn on_expr(&mut self, expr: ExprId) {
-        self.scopes.set_scope(expr, *self.scope);
+        self.scopes.set_scope(expr, self.scope);
         match &self.store[expr] {
             Expr::Block { statements, tail, id, label } => {
                 self.visit_block(expr, *id, statements, *tail, *label);
@@ -355,99 +351,56 @@ impl StoreVisitor for ExprScopeVisitor<'_> {
                 self.visit_block(expr, *id, statements, *tail, None);
             }
             Expr::Loop { body, label, source: _ } => {
-                let mut scope = self.scopes.new_labeled_scope(*self.scope, *label);
-                ExprScopeVisitor {
-                    store: self.store,
-                    scopes: self.scopes,
-                    scope: &mut scope,
-                    const_scope: self.const_scope,
-                }
-                .on_expr(*body);
+                let scope = self.scopes.new_labeled_scope(self.scope, *label);
+                self.with_scope(scope, |this| this.on_expr(*body));
             }
             Expr::Closure { args, arg_types, ret_type, body, capture_by: _, closure_kind: _ } => {
                 arg_types.iter().flatten().for_each(|type_ref| self.on_type(*type_ref));
                 self.on_type_opt(*ret_type);
-                let mut scope = self.scopes.new_scope(*self.scope);
+                let scope = self.scopes.new_scope(self.scope);
                 args.iter().for_each(|arg| self.scopes.add_pat_bindings(self.store, scope, *arg));
-                ExprScopeVisitor {
-                    store: self.store,
-                    scopes: self.scopes,
-                    scope: &mut scope,
-                    const_scope: self.const_scope,
-                }
-                .on_expr(*body);
+                self.with_scope(scope, |this| this.on_expr(*body));
             }
             Expr::Match { expr, arms } => {
                 self.on_expr(*expr);
                 for arm in arms.iter() {
-                    let mut scope = self.scopes.new_scope(*self.scope);
-                    self.scopes.add_pat_bindings(self.store, scope, arm.pat);
-                    if let Some(guard) = arm.guard {
-                        scope = self.scopes.new_scope(scope);
-                        ExprScopeVisitor {
-                            store: self.store,
-                            scopes: self.scopes,
-                            scope: &mut scope,
-                            const_scope: self.const_scope,
+                    let scope = self.scopes.new_scope(self.scope);
+                    self.with_scope(scope, |this| {
+                        this.scopes.add_pat_bindings(this.store, scope, arm.pat);
+                        if let Some(guard) = arm.guard {
+                            this.on_expr(guard);
                         }
-                        .on_expr(guard);
-                    }
-                    ExprScopeVisitor {
-                        store: self.store,
-                        scopes: self.scopes,
-                        scope: &mut scope,
-                        const_scope: self.const_scope,
-                    }
-                    .on_expr(arm.expr);
+                        this.on_expr(arm.expr);
+                    });
                 }
             }
             &Expr::If { condition, then_branch, else_branch } => {
-                let mut then_branch_scope = self.scopes.new_scope(*self.scope);
-                let mut visitor = ExprScopeVisitor {
-                    store: self.store,
-                    scopes: self.scopes,
-                    scope: &mut then_branch_scope,
-                    const_scope: self.const_scope,
-                };
-                visitor.on_expr(condition);
-                visitor.on_expr(then_branch);
+                let then_branch_scope = self.scopes.new_scope(self.scope);
+                self.with_scope(then_branch_scope, |this| {
+                    this.on_expr(condition);
+                    this.on_expr(then_branch);
+                });
                 self.on_expr_opt(else_branch);
             }
             &Expr::Let { pat, expr } => {
                 self.on_expr(expr);
-                *self.scope = self.scopes.new_scope(*self.scope);
-                self.scopes.add_pat_bindings(self.store, *self.scope, pat);
+                self.scope = self.scopes.new_scope(self.scope);
+                self.scopes.add_pat_bindings(self.store, self.scope, pat);
             }
             _ => self.store.visit_expr_children(expr, &mut *self),
         }
     }
 
     fn on_anon_const_expr(&mut self, expr: ExprId) {
-        let mut scope = *self.const_scope;
-        ExprScopeVisitor {
-            store: self.store,
-            scopes: self.scopes,
-            scope: &mut scope,
-            const_scope: self.const_scope,
-        }
-        .on_expr(expr);
+        self.with_scope(self.const_scope, |this| this.on_expr(expr));
     }
 
     fn on_pat(&mut self, pat: PatId) {
-        self.store.visit_pat_children(pat, &mut *self);
+        self.store.visit_pat_children(pat, self);
     }
 
     fn on_type(&mut self, ty: TypeRefId) {
-        let mut scope = *self.const_scope;
-        self.store.visit_type_ref_children(
-            ty,
-            ExprScopeVisitor {
-                store: self.store,
-                scopes: self.scopes,
-                scope: &mut scope,
-                const_scope: self.const_scope,
-            },
-        );
+        self.with_scope(self.const_scope, |this| self.store.visit_type_ref_children(ty, this));
     }
 }
 
