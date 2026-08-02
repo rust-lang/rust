@@ -3,10 +3,10 @@ from/into these types, see `./from_lldb.py`"""
 
 import json
 import os
-from enum import Enum
 from dataclasses import asdict, dataclass, field, fields, is_dataclass
-from typing import Any, Optional, Union, get_origin, Final
+from enum import Enum
 from pprint import pformat
+from typing import Any, Final, Optional, Union, get_origin
 
 char = str
 Primitive = Union[int, float, bool, char]
@@ -73,7 +73,7 @@ def get_target() -> Target:
 
     if t.endswith("windows-msvc"):
         return Target.WindowsMsvc
-    if t.endswith("windows-gnu") or t.endswith("windows-gnullvm"):
+    if t.endswith(("windows-gnu", "windows-gnullvm")):
         return Target.WindowsGnu
 
     return Target.NonWindows
@@ -138,7 +138,7 @@ def from_dict(ty: type[Any], data: JsonType):
             val_ty = annot_to_ty(val_ty)
 
         if val_ty in [Variable, Child, Type, Field]:
-            return {k: from_dict(val_ty, data[k]) for k in data.keys()}
+            return {k: from_dict(val_ty, data[k]) for k in data}
 
     # map dict -> dataclass, recursing for each field
     if is_dataclass(ty):
@@ -314,7 +314,7 @@ with the `--bless` option",
             # been renamed.
             if types_match and offsets_match:
                 renames = "\n    ".join(
-                    map(lambda m: f"{m[1].name} -> {m[0].name}", mismatches)
+                    f"{m[1].name} -> {m[0].name}" for m in mismatches
                 )
                 print_error(
                     error_source,
@@ -326,13 +326,11 @@ with the `--bless` option",
             # has decided to order the fields differently, despite the source code not changing
             elif types_match and names_match:
                 reordered = "\n    ".join(
-                    map(
-                        lambda m: (
-                            f"{m[1].name} offset: +{m[1].offset} -> {m[0].name} offset: \n\
+                    (
+                        f"{m[1].name} offset: +{m[1].offset} -> {m[0].name} offset: \n\
 +{m[0].offset}"
-                        ),
-                        mismatches,
                     )
+                    for m in mismatches
                 )
 
                 print_error(
@@ -342,12 +340,7 @@ got):\n    {reordered}",
                 )
 
             else:
-                mm_string = "\n    ".join(
-                    map(
-                        lambda m: (f"{m[1]} -> {m[0]}"),
-                        mismatches,
-                    )
-                )
+                mm_string = "\n    ".join((f"{m[1]} -> {m[0]}") for m in mismatches)
 
                 print_error(
                     error_source,
@@ -521,3 +514,66 @@ generated for this test yet, consider using the `--bless` option."
 
 
 INPUT_DATA: TargetData = TargetData.initialize()
+
+
+TYPES_TESTED: dict[str, Result] = {}
+"""Since types are unique and unchanging, we only need to test each type once. This also helps
+ensure we have tested all types in `INPUT_DATA`
+"""
+
+
+VARS_TESTED: list[dict[str, Result]] = []
+"""Used to help ensure all expected variables were tested. Each element of the list corresponds to a
+breakpoint, and contains a set of all of the variable names tested for that breakpoint."""
+
+
+def tested_all_types() -> bool:
+    """Returns true if all types in INPUT_DATA were tested this run."""
+
+    expected_types = set(INPUT_DATA.types)
+    untested_types = expected_types.difference(TYPES_TESTED.keys())
+
+    if len(untested_types) != 0:
+        print(
+            f"{ANSI_RED}[repr error]{ANSI_END} The following types were expected, but were not \
+tested:\n  {untested_types}"
+        )
+
+    return len(untested_types) == 0
+
+
+def tested_all_variables() -> bool:
+    expected_vars = [set(vars) for vars in INPUT_DATA.breakpoints]
+    untested_vars = [
+        expected.difference(tested.keys())
+        for expected, tested in zip(expected_vars, VARS_TESTED)
+    ]
+
+    tested_not_expected = [
+        set(tested.keys()).difference(expected)
+        for expected, tested in zip(expected_vars, VARS_TESTED)
+    ]
+
+    result = True
+
+    for i, v in enumerate(untested_vars):
+        if len(v) == 0:
+            continue
+
+        result = False
+        print(
+            f"{ANSI_RED}[repr error]{ANSI_END} The following variables were expected at \
+breakpoint#{i}, but were not tested:\n  {v}"
+        )
+
+    for i, v in enumerate(tested_not_expected):
+        if len(v) == 0:
+            continue
+
+        result = False
+        print(
+            f"{ANSI_RED}[repr error]{ANSI_END} The following variables were tested, but do not \
+exist in the input data at breakpoint#{i}:\n  {v}"
+        )
+
+    return result
