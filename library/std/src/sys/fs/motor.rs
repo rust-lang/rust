@@ -8,6 +8,17 @@ pub use crate::sys::fs::common::{Dir, exists};
 use crate::sys::time::SystemTime;
 use crate::sys::{AsInner, AsInnerMut, FromInner, IntoInner, map_motor_error, unsupported};
 
+fn try_lock(fd: RawFd, operation: u8) -> Result<(), crate::fs::TryLockError> {
+    moto_rt::fs::file_lock(fd, operation).map_err(|err| {
+        let err = map_motor_error(err);
+        if err.kind() == io::ErrorKind::WouldBlock {
+            crate::fs::TryLockError::WouldBlock
+        } else {
+            crate::fs::TryLockError::Error(err)
+        }
+    })
+}
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct FileType {
     rt_filetype: u8,
@@ -259,23 +270,24 @@ impl File {
     }
 
     pub fn lock(&self) -> io::Result<()> {
-        unsupported()
+        moto_rt::fs::file_lock(self.as_raw_fd(), moto_rt::fs::LOCK_EXCLUSIVE)
+            .map_err(map_motor_error)
     }
 
     pub fn lock_shared(&self) -> io::Result<()> {
-        unsupported()
+        moto_rt::fs::file_lock(self.as_raw_fd(), moto_rt::fs::LOCK_SHARED).map_err(map_motor_error)
     }
 
     pub fn try_lock(&self) -> Result<(), crate::fs::TryLockError> {
-        Err(crate::fs::TryLockError::Error(io::Error::from(io::ErrorKind::Unsupported)))
+        try_lock(self.as_raw_fd(), moto_rt::fs::TRY_LOCK_EXCLUSIVE)
     }
 
     pub fn try_lock_shared(&self) -> Result<(), crate::fs::TryLockError> {
-        Err(crate::fs::TryLockError::Error(io::Error::from(io::ErrorKind::Unsupported)))
+        try_lock(self.as_raw_fd(), moto_rt::fs::TRY_LOCK_SHARED)
     }
 
     pub fn unlock(&self) -> io::Result<()> {
-        unsupported()
+        moto_rt::fs::file_lock(self.as_raw_fd(), moto_rt::fs::UNLOCK).map_err(map_motor_error)
     }
 
     pub fn size(&self) -> Option<io::Result<u64>> {
