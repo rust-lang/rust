@@ -1,6 +1,7 @@
+use crate::io::BorrowedCursor;
 use crate::ptr;
 
-pub fn fill_bytes(_: &mut [u8]) {
+pub fn fill_buf(_: BorrowedCursor<'_, u8>) {
     panic!("this target does not support random data generation");
 }
 

@@ -1,11 +1,13 @@
-pub fn fill_bytes(bytes: &mut [u8]) {
+use crate::io::BorrowedCursor;
+
+pub fn fill_buf(mut cursor: BorrowedCursor<'_, u8>) {
     // Handle zero-byte request
-    if bytes.is_empty() {
+    if cursor.capacity() == 0 {
         return;
     }
 
     // Try EFI_RNG_PROTOCOL
-    if rng_protocol::fill_bytes(bytes) {
+    if rng_protocol::fill_buf(cursor) {
         return;
     }
 
@@ -13,7 +15,7 @@ pub fn fill_bytes(bytes: &mut [u8]) {
     //
     // For real-world example, see [issue-13825](https://github.com/rust-lang/rust/issues/138252#issuecomment-2891270323)
     #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
-    if rdrand::fill_bytes(bytes) {
+    if rdrand::fill_buf(cursor) {
         return;
     }
 
@@ -23,9 +25,10 @@ pub fn fill_bytes(bytes: &mut [u8]) {
 mod rng_protocol {
     use r_efi::protocols::rng;
 
+    use crate::io::BorrowedCursor;
     use crate::sys::pal::helpers;
 
-    pub(crate) fn fill_bytes(bytes: &mut [u8]) -> bool {
+    pub(crate) fn fill_buf(cursor: BorrowedCursor<'_, u8>) -> bool {
         if let Ok(handles) = helpers::locate_handles(rng::PROTOCOL_GUID) {
             for handle in handles {
                 if let Ok(protocol) =
@@ -35,13 +38,17 @@ mod rng_protocol {
                         ((*protocol.as_ptr()).get_rng)(
                             protocol.as_ptr(),
                             crate::ptr::null_mut(),
-                            bytes.len(),
-                            bytes.as_mut_ptr(),
+                            cursor.capacity(),
+                            cursor.as_mut().as_mut_ptr().cast(),
                         )
                     };
                     if r.is_error() {
                         continue;
                     } else {
+                        // SAFETY: We've just initialized all the bytes with random data
+                        unsafe {
+                            cursor.advance(cursor.capacity());
+                        }
                         return true;
                     }
                 }
@@ -55,6 +62,8 @@ mod rng_protocol {
 /// Port from [getrandom](https://github.com/rust-random/getrandom/blob/master/src/backends/rdrand.rs)
 #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 mod rdrand {
+    use crate::io::BorrowedCursor;
+
     cfg_select! {
         target_arch = "x86_64" => {
             use crate::arch::x86_64 as arch;
@@ -138,21 +147,18 @@ mod rdrand {
         unsafe { self_test() }
     }
 
-    unsafe fn rdrand_exact(dest: &mut [u8]) -> Option<()> {
-        let (chunks, tail) = dest.as_chunks_mut();
-        for chunk in chunks {
-            *chunk = unsafe { rdrand() }?.to_ne_bytes();
+    unsafe fn rdrand_exact_buf(cursor: BorrowedCursor<'_, u8>) -> Option<()> {
+        while cursor.capacity() >= size_of::<Word>() {
+            cursor.append(&unsafe { rdrand() }?.to_ne_bytes());
         }
-
-        let n = tail.len();
-        if n > 0 {
+        if cursor.capacity() != 0 {
             let src = unsafe { rdrand() }?.to_ne_bytes();
-            tail.copy_from_slice(&src[..n]);
+            cursor.append(&src[..cursor.capacity()]);
         }
         Some(())
     }
 
-    pub(crate) fn fill_bytes(bytes: &mut [u8]) -> bool {
-        if *RDRAND_GOOD { unsafe { rdrand_exact(bytes).is_some() } } else { false }
+    pub(crate) fn fill_buf(mut cursor: BorrowedCursor<'_, u8>) {
+        if *RDRAND_GOOD { unsafe { rdrand_exact_buf(cursor).is_some() } } else { false }
     }
 }

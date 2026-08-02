@@ -12,12 +12,20 @@
 #[cfg(not(target_os = "vita"))]
 use libc::arc4random_buf;
 
+use crate::io::BorrowedCursor;
+
 // FIXME: move this to libc
 #[cfg(target_os = "vita")] // See https://github.com/vitasdk/newlib/blob/b89e5bc183b516945f9ee07eef483ecb916e45ff/newlib/libc/include/stdlib.h#L74
 unsafe extern "C" {
     fn arc4random_buf(buf: *mut core::ffi::c_void, nbytes: libc::size_t);
 }
 
-pub fn fill_bytes(bytes: &mut [u8]) {
-    unsafe { arc4random_buf(bytes.as_mut_ptr().cast(), bytes.len()) }
+pub fn fill_buf(&mut self, mut cursor: BorrowedCursor<'_, u8>) {
+    unsafe {
+        arc4random_buf(cursor.as_mut().as_mut_ptr().cast(), cursor.capacity());
+    }
+    // SAFETY: We've just initialized all the bytes with random data
+    unsafe {
+        cursor.advance(cursor.capacity());
+    }
 }

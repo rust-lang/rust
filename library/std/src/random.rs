@@ -51,6 +51,7 @@
 #[unstable(feature = "random", issue = "130703")]
 pub use core::random::*;
 
+use crate::io::BorrowedCursor;
 use crate::sys::random as sys;
 
 /// The system random number generator.
@@ -145,8 +146,8 @@ pub struct SystemRng;
 
 #[unstable(feature = "random", issue = "130703")]
 impl Rng for SystemRng {
-    fn fill_bytes(&mut self, bytes: &mut [u8]) {
-        sys::fill_bytes(bytes)
+    fn fill_buf(&mut self, cursor: BorrowedCursor<'_, u8>) {
+        sys::fill_buf(cursor)
     }
 }
 
