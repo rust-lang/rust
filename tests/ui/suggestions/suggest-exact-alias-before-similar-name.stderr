@@ -7,10 +7,10 @@ LL | struct Reader;
 LL |     Reader.read_exact_buf();
    |            ^^^^^^^^^^^^^^
    |
-help: there is a method `read_exact` with a similar name
+help: there is a method `read_buf_exact` with a similar name
    |
 LL -     Reader.read_exact_buf();
-LL +     Reader.read_exact();
+LL +     Reader.read_buf_exact();
    |
 
 error: aborting due to 1 previous error

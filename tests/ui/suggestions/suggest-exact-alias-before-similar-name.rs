@@ -11,5 +11,5 @@ impl Reader {
 fn main() {
     Reader.read_exact_buf();
     //~^ ERROR no method named `read_exact_buf` found for struct `Reader` in the current scope
-    //~^^ HELP there is a method `read_exact` with a similar name
+    //~^^ HELP there is a method `read_buf_exact` with a similar name
 }
