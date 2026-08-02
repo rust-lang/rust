@@ -1114,6 +1114,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.tcx().liberate_late_bound_regions(expr_def_id.to_def_id(), bound_sig);
         let liberated_sig =
             self.normalize(self.tcx.def_span(expr_def_id), Unnormalized::new_wip(liberated_sig));
+        // Higher-ranked normalization keeps opaque types rigid. The liberated signature is used
+        // to check the closure body, so defining opaques is allowed again at this point.
+        let liberated_sig = if self.next_trait_solver() {
+            ty::set_opaques_to_non_rigid(self.tcx, liberated_sig).skip_norm_wip()
+        } else {
+            liberated_sig
+        };
         ClosureSignatures { bound_sig, liberated_sig }
     }
 }

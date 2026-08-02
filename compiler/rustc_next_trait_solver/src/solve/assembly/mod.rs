@@ -754,7 +754,7 @@ where
         candidates: &mut Vec<Candidate<I>>,
         consider_self_bounds: AliasBoundKind,
     ) -> Result<(), RerunNonErased> {
-        let (alias_ty, def_id) = match self_ty.kind() {
+        let (alias_ty, def_id, rigid_opaque) = match self_ty.kind() {
             ty::Bool
             | ty::Char
             | ty::Int(_)
@@ -805,10 +805,10 @@ where
             ty::Alias(
                 ty::IsRigid::Yes,
                 alias_ty @ AliasTy { kind: ty::Projection { def_id }, .. },
-            ) => (alias_ty, def_id.into()),
+            ) => (alias_ty, def_id.into(), false),
 
             ty::Alias(ty::IsRigid::Yes, alias_ty @ AliasTy { kind: ty::Opaque { def_id }, .. }) => {
-                (alias_ty, def_id.into())
+                (alias_ty, def_id.into(), true)
             }
 
             ty::Alias(ty::IsRigid::No, _) => unreachable!("non-rigid self type: {self_ty:?}"),
@@ -830,6 +830,14 @@ where
                     .iter_instantiated(self.cx(), alias_ty.args)
                     .map(Unnormalized::skip_norm_wip)
                 {
+                    // Instantiating the bounds loses the rigidness of opaque aliases. Preserve it
+                    // when the self type is rigid so matching the assumption does not reveal the
+                    // opaque which caused us to consider its bounds in the first place.
+                    let assumption = if rigid_opaque {
+                        ty::set_opaques_to_rigid(self.cx(), assumption)
+                    } else {
+                        assumption
+                    };
                     candidates.extend(G::probe_and_consider_implied_clause(
                         self,
                         CandidateSource::AliasBound(consider_self_bounds),

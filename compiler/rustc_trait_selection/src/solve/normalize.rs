@@ -51,14 +51,33 @@ where
     let mut stalled_goals = vec![];
     let mut folder = NormalizationFolder::new(infcx, universes.clone(), |alias_term| {
         let delegate = <&SolverDelegate<'tcx>>::from(infcx);
+        // Normalizing an alias under a binder must not define any opaques in its expansion. Ask
+        // the free-alias goal for that expansion with its opaques made rigid so it still registers
+        // the alias bounds and normalizes the rest of the expansion.
+        let rigid_expansion = match alias_term.kind {
+            ty::AliasTermKind::FreeTy { def_id } if alias_term.has_placeholders() => {
+                let expansion = infcx
+                    .tcx
+                    .type_of(def_id)
+                    .instantiate(infcx.tcx, alias_term.args)
+                    .skip_norm_wip();
+                let rigid_expansion = ty::set_opaques_to_rigid(infcx.tcx, expansion);
+                (rigid_expansion != expansion).then_some(rigid_expansion.into())
+            }
+            _ => None,
+        };
         let infer_term = delegate.next_term_var_of_alias_kind(alias_term, at.cause.span);
-        let predicate = ty::ProjectionPredicate { projection_term: alias_term, term: infer_term };
+        let predicate = ty::ProjectionPredicate {
+            projection_term: alias_term,
+            term: rigid_expansion.unwrap_or(infer_term),
+        };
         let goal = Goal::new(infcx.tcx, at.param_env, predicate);
         let result = match delegate.evaluate_root_goal(goal, at.cause.span, None) {
             Ok(result) => result,
             Err(err) => return Err(err),
         };
-        let normalized = infcx.resolve_vars_if_possible(infer_term);
+        let normalized =
+            rigid_expansion.unwrap_or_else(|| infcx.resolve_vars_if_possible(infer_term));
         let normalization_was_ambiguous = match result.certainty {
             Certainty::Yes => NormalizationWasAmbiguous::No,
             Certainty::Maybe { .. } => {

@@ -577,6 +577,13 @@ where
     ty::Unnormalized::new(folded)
 }
 
+pub fn set_opaques_to_rigid<I: Interner, T>(cx: I, value: T) -> T
+where
+    T: TypeFoldable<I>,
+{
+    set_aliases_rigidness_with_mode(cx, value, RigidnessFoldMode::OpaqueToRigid)
+}
+
 pub fn set_aliases_to_rigid<I: Interner, T>(cx: I, value: T) -> T
 where
     T: TypeFoldable<I>,
@@ -607,6 +614,7 @@ enum RigidnessFoldMode {
     AllToRigid,
     AllToNonRigid,
     TypeToRigid,
+    OpaqueToRigid,
     OpaqueToNonRigid,
 }
 
@@ -619,6 +627,7 @@ impl RigidnessFoldMode {
                 v.has_non_rigid_aliases()
                     && v.has_type_flags(ty::TypeFlags::HAS_ALIAS - ty::TypeFlags::HAS_CONST_ALIAS)
             }
+            RigidnessFoldMode::OpaqueToRigid => v.has_non_rigid_aliases() && v.has_opaque_types(),
             RigidnessFoldMode::OpaqueToNonRigid => v.has_rigid_aliases() && v.has_opaque_types(),
         }
     }
@@ -655,6 +664,13 @@ impl<I: Interner> TypeFolder<I> for RigidnessFolder<I> {
                     RigidnessFoldMode::AllToNonRigid => {
                         I::Ty::new_alias(self.cx(), ty::IsRigid::No, alias_ty)
                     }
+                    RigidnessFoldMode::OpaqueToRigid => {
+                        if let ty::AliasTyKind::Opaque { .. } = alias_ty.kind {
+                            I::Ty::new_alias(self.cx(), ty::IsRigid::Yes, alias_ty)
+                        } else {
+                            I::Ty::new_alias(self.cx(), is_rigid, alias_ty)
+                        }
+                    }
                     RigidnessFoldMode::OpaqueToNonRigid => {
                         if let ty::AliasTyKind::Opaque { .. } = alias_ty.kind {
                             I::Ty::new_alias(self.cx(), ty::IsRigid::No, alias_ty)
@@ -683,7 +699,9 @@ impl<I: Interner> TypeFolder<I> for RigidnessFolder<I> {
                     RigidnessFoldMode::AllToNonRigid => {
                         I::Const::new_alias(self.cx(), ty::IsRigid::No, alias_const)
                     }
-                    RigidnessFoldMode::OpaqueToNonRigid | RigidnessFoldMode::TypeToRigid => {
+                    RigidnessFoldMode::OpaqueToRigid
+                    | RigidnessFoldMode::OpaqueToNonRigid
+                    | RigidnessFoldMode::TypeToRigid => {
                         I::Const::new_alias(self.cx(), is_rigid, alias_const)
                     }
                 }

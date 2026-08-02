@@ -4,6 +4,7 @@
 //! Since a free alias is never ambiguous, this just computes the `type_of` of
 //! the alias and registers the where-clauses of the type alias.
 
+use rustc_type_ir::inherent::*;
 use rustc_type_ir::solve::QueryResultOrRerunNonErased;
 use rustc_type_ir::{self as ty, Interner, Unnormalized};
 
@@ -34,7 +35,19 @@ where
         let actual = match free_alias.kind {
             ty::AliasTermKind::FreeTy { def_id } => {
                 let free = cx.type_of(def_id.into()).instantiate(cx, free_alias.args);
-                let free = self.normalize(GoalSource::Misc, goal.param_env, free)?;
+                let free = free.skip_norm_wip();
+                let rigid_free = ty::set_opaques_to_rigid(cx, free);
+                // A higher-ranked normalizer may explicitly request an expansion with its opaques
+                // made rigid. The alias bounds have already been registered above. Preserve those
+                // opaques while still recursively normalizing the rest of the expansion.
+                let free =
+                    if rigid_free != free && goal.predicate.term.as_type() == Some(rigid_free) {
+                        rigid_free
+                    } else {
+                        free
+                    };
+                let free =
+                    self.normalize(GoalSource::Misc, goal.param_env, Unnormalized::new_wip(free))?;
                 free.into()
             }
             ty::AliasTermKind::FreeConst { def_id } if cx.is_type_const(def_id.into()) => {

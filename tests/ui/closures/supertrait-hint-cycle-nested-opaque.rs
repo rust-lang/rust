@@ -8,6 +8,7 @@
 #![feature(closure_lifetime_binder)]
 
 use std::future::Future;
+use std::pin::Pin;
 
 trait AsyncFn<I, R>: FnMut(I) -> Self::Fut {
     type Fut: Future<Output = R>;
@@ -36,32 +37,20 @@ where
 trait Cap<'a> {}
 impl<T> Cap<'_> for T {}
 
-fn works(ctx: &mut usize) {
+fn check(ctx: &mut usize) {
     let mut inner = 0;
 
-    type Ret<'a, 'b: 'a> = impl Future<Output = Result<usize, ()>> + 'a + Cap<'b>;
-
-    let callback = for<'a, 'b> |c: &'a mut &'b mut usize| -> Ret<'a, 'b> {
-        inner += 1;
-        async move {
-            let _c = c;
-            Ok(1usize)
-        }
-    };
-    call(ctx, callback);
-}
-
-fn doesnt_work_but_should(ctx: &mut usize) {
-    let mut inner = 0;
-
-    type Ret<'a, 'b: 'a> = impl Future<Output = Result<usize, ()>> + 'a + Cap<'b>;
+    // Ensure that normalization preserves an opaque nested inside a structural type, not only an
+    // opaque which is itself the direct expansion of the free alias.
+    type Ret<'a, 'b: 'a> =
+        Pin<Box<impl Future<Output = Result<usize, ()>> + 'a + Cap<'b>>>;
 
     call(ctx, for<'a, 'b> |c: &'a mut &'b mut usize| -> Ret<'a, 'b> {
         inner += 1;
-        async move {
+        Box::pin(async move {
             let _c = c;
             Ok(1usize)
-        }
+        })
     });
 }
 

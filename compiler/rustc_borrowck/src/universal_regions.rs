@@ -698,7 +698,8 @@ impl<'tcx> UniversalRegionsBuilder<'_, 'tcx> {
         let inputs_and_output = match defining_ty {
             DefiningTy::Closure(def_id, args) => {
                 assert_eq!(self.mir_def.to_def_id(), def_id);
-                let closure_sig = args.as_closure().sig();
+                let closure_args = args.as_closure();
+                let closure_sig = closure_args.sig();
                 let inputs_and_output = closure_sig.inputs_and_output();
                 let bound_vars = tcx.mk_bound_variable_kinds_from_iter(
                     inputs_and_output.bound_vars().iter().chain(iter::once(
@@ -710,9 +711,28 @@ impl<'tcx> UniversalRegionsBuilder<'_, 'tcx> {
                     kind: ty::BoundRegionKind::ClosureEnv,
                 };
                 let env_region = ty::Region::new_bound(tcx, ty::INNERMOST, br);
+                // The closure self type contains a redundant copy of the signature: the actual
+                // inputs and output are added separately below. Do not reveal opaques in this
+                // copy, as doing so under the signature binder would create fresh placeholder
+                // instantiations which do not match the closure type in the MIR.
+                let closure_sig_as_fn_ptr_ty = closure_args.sig_as_fn_ptr_ty();
+                let closure_sig_as_fn_ptr_ty = if self.infcx.next_trait_solver() {
+                    ty::set_opaques_to_rigid(tcx, closure_sig_as_fn_ptr_ty)
+                } else {
+                    closure_sig_as_fn_ptr_ty
+                };
+                let closure_args = ty::ClosureArgs::new(
+                    tcx,
+                    ty::ClosureArgsParts {
+                        parent_args: closure_args.parent_args(),
+                        closure_kind_ty: closure_args.kind_ty(),
+                        closure_sig_as_fn_ptr_ty,
+                        tupled_upvars_ty: closure_args.tupled_upvars_ty(),
+                    },
+                );
                 let closure_ty = tcx.closure_env_ty(
-                    Ty::new_closure(tcx, def_id, args),
-                    args.as_closure().kind(),
+                    Ty::new_closure(tcx, def_id, closure_args.args),
+                    closure_args.kind(),
                     env_region,
                 );
 
