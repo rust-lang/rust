@@ -3760,7 +3760,6 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "rustc_trait_selection",
- "rustc_traits",
  "smallvec",
  "tracing",
 ]
