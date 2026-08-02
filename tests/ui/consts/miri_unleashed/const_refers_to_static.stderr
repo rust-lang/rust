@@ -1,8 +1,17 @@
-error[E0080]: calling non-const function `Atomic::<usize>::fetch_add`
+error[E0080]: constant accesses mutable global memory
   --> $DIR/const_refers_to_static.rs:11:5
    |
 LL |     FOO.fetch_add(1, Ordering::Relaxed)
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `MUTATE_INTERIOR_MUT` failed here
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `MUTATE_INTERIOR_MUT` failed inside this call
+   |
+note: inside `Atomic::<usize>::fetch_add`
+  --> $SRC_DIR/core/src/sync/atomic.rs:LL:COL
+  ::: $SRC_DIR/core/src/sync/atomic.rs:LL:COL
+   |
+   = note: in this macro invocation
+note: inside `atomic::atomic_add::<usize, usize>`
+  --> $SRC_DIR/core/src/sync/atomic.rs:LL:COL
+   = note: this error originates in the macro `atomic_int` which comes from the expansion of the macro `atomic_int_ptr_sized` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0080]: constant accesses mutable global memory
   --> $DIR/const_refers_to_static.rs:16:14
@@ -26,7 +35,7 @@ LL |         REF_INTERIOR_MUT => {},
 
 warning: skipping const checks
    |
-help: skipping check that does not even have a feature gate
+help: skipping check for `const_atomic` feature
   --> $DIR/const_refers_to_static.rs:11:5
    |
 LL |     FOO.fetch_add(1, Ordering::Relaxed)

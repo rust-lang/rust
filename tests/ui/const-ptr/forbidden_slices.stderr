@@ -1,35 +1,20 @@
-error[E0080]: constructing invalid value of type &[u32]: encountered a null reference
-  --> $DIR/forbidden_slices.rs:16:1
+error[E0080]: dereferencing a null reference
+  --> $DIR/forbidden_slices.rs:16:34
    |
 LL | pub static S0: &[u32] = unsafe { from_raw_parts(ptr::null(), 0) };
-   | ^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
-           }
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `S0` failed here
 
-error[E0080]: constructing invalid value of type &[()]: encountered a null reference
-  --> $DIR/forbidden_slices.rs:18:1
+error[E0080]: dereferencing a null reference
+  --> $DIR/forbidden_slices.rs:18:33
    |
 LL | pub static S1: &[()] = unsafe { from_raw_parts(ptr::null(), 0) };
-   | ^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
-           }
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `S1` failed here
 
-error[E0080]: constructing invalid value of type &[u32]: encountered a dangling reference (going beyond the bounds of its allocation)
-  --> $DIR/forbidden_slices.rs:22:1
+error[E0080]: reference not dereferenceable: reference must be dereferenceable for 8 bytes, but got ALLOC$ID which is only 4 bytes from the end of the allocation
+  --> $DIR/forbidden_slices.rs:22:34
    |
 LL | pub static S2: &[u32] = unsafe { from_raw_parts(&D0, 2) };
-   | ^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               ╾ALLOC$ID╼ HEX_DUMP
-           }
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^ evaluation of `S2` failed here
 
 error[E0080]: constructing invalid value of type &[u8]: at .<deref>[0], encountered uninitialized memory, but expected an integer
   --> $DIR/forbidden_slices.rs:26:1
@@ -77,27 +62,17 @@ LL | pub static S7: &[u16] = unsafe {
                ╾ALLOC$ID╼ HEX_DUMP
            }
 
-error[E0080]: constructing invalid value of type &[u64]: encountered a dangling reference (going beyond the bounds of its allocation)
-  --> $DIR/forbidden_slices.rs:41:1
+error[E0080]: reference not dereferenceable: reference must be dereferenceable for 8 bytes, but got ALLOC$ID+0x1 which is only 7 bytes from the end of the allocation
+  --> $DIR/forbidden_slices.rs:44:5
    |
-LL | pub static S8: &[u64] = unsafe {
-   | ^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               ╾ALLOC$ID╼ HEX_DUMP
-           }
+LL |     from_raw_parts(ptr, 1)
+   |     ^^^^^^^^^^^^^^^^^^^^^^ evaluation of `S8` failed here
 
-error[E0080]: constructing invalid value of type &[u32]: encountered a null reference
-  --> $DIR/forbidden_slices.rs:48:1
+error[E0080]: dereferencing a null reference
+  --> $DIR/forbidden_slices.rs:48:34
    |
 LL | pub static R0: &[u32] = unsafe { from_ptr_range(ptr::null()..ptr::null()) };
-   | ^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               HEX_DUMP
-           }
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `R0` failed here
 
 error[E0080]: evaluation panicked: assertion failed: 0 < pointee_size && pointee_size <= isize::MAX as usize
   --> $DIR/forbidden_slices.rs:50:33
@@ -146,16 +121,11 @@ LL | pub static R6: &[bool] = unsafe {
                ╾ALLOC$ID╼ HEX_DUMP
            }
 
-error[E0080]: constructing invalid value of type &[u16]: encountered an unaligned reference (required 2 byte alignment but found 1)
-  --> $DIR/forbidden_slices.rs:72:1
+error[E0080]: encountered an unaligned reference (required 2 byte alignment but found 1)
+  --> $DIR/forbidden_slices.rs:74:5
    |
-LL | pub static R7: &[u16] = unsafe {
-   | ^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
-   |
-   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
-   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
-               ╾ALLOC$ID╼ HEX_DUMP
-           }
+LL |     from_ptr_range(ptr..ptr.add(4))
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `R7` failed here
 
 error[E0080]: in-bounds pointer arithmetic failed: attempting to offset pointer by 8 bytes, but got ALLOC$ID+0x1 which is only 7 bytes from the end of the allocation
   --> $DIR/forbidden_slices.rs:79:25

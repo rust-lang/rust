@@ -427,4 +427,22 @@ where
             Subslice { from, to, from_end } => self.project_subslice(base, from, to, from_end)?,
         })
     }
+
+    /// Given a value of type `Box`, returns the inner value of raw pointer type, as well as
+    /// the allocator.
+    pub(super) fn project_to_ptr_in_box<P: Projectable<'tcx, M::Provenance>>(
+        &self,
+        box_: &P,
+    ) -> InterpResult<'tcx, (P, P)> {
+        // `Box` has two fields: the pointer we care about, and the allocator.
+        assert_eq!(box_.layout().fields.count(), 2, "`Box` must have exactly 2 fields");
+        let [ptr, alloc] = self.project_fields(box_, [FieldIdx::ZERO, FieldIdx::ONE])?;
+
+        // We simply transmute the pointer we care about to the underlying raw pointer.
+        // (We could project a bit but that would end up at a pattern type that needs a transmute.)
+        let pointee_ty = box_.layout().ty.boxed_ty().unwrap();
+        let raw_ptr_ty = Ty::new_ptr(*self.tcx, pointee_ty, ty::Mutability::Mut);
+        let raw_ptr = ptr.transmute(self.layout_of(raw_ptr_ty)?, self)?; // The actual raw pointer
+        interp_ok((raw_ptr, alloc))
+    }
 }

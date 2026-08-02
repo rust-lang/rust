@@ -207,6 +207,10 @@ impl<T: Sized> NonNull<T> {
 impl<T: PointeeSized> NonNull<T> {
     /// Creates a new `NonNull`.
     ///
+    /// Note that if you have an `&mut`, you can use the safe [`from_mut`] instead.
+    ///
+    /// [`from_mut`]: NonNull::from_mut
+    ///
     /// # Safety
     ///
     /// `ptr` must be non-null.
@@ -245,6 +249,10 @@ impl<T: PointeeSized> NonNull<T> {
     }
 
     /// Creates a new `NonNull` if `ptr` is non-null.
+    ///
+    /// Note that if you have an `&mut`, you can use [`from_mut`] instead to avoid the `Option`.
+    ///
+    /// [`from_mut`]: NonNull::from_mut
     ///
     /// # Panics during const evaluation
     ///

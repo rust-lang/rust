@@ -919,6 +919,8 @@ pub(crate) struct MissingTraitItem {
     pub missing_trait_item: Vec<MissingTraitItemSuggestion>,
     #[subdiagnostic]
     pub missing_trait_item_none: Vec<MissingTraitItemSuggestionNone>,
+    #[subdiagnostic]
+    pub missing_trait_item_unstable: Vec<MissingTraitItemSuggestionUnstable>,
     pub missing_items_msg: String,
 }
 
@@ -942,6 +944,21 @@ pub(crate) struct MissingTraitItemSuggestion {
     pub span: Span,
     pub code: String,
     pub snippet: String,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    "implement the missing item: `{$snippet}` (unstable, requires feature `{$feature}`)",
+    style = "hidden",
+    applicability = "has-placeholders",
+    code = "{code}"
+)]
+pub(crate) struct MissingTraitItemSuggestionUnstable {
+    #[primary_span]
+    pub span: Span,
+    pub code: String,
+    pub snippet: String,
+    pub feature: Symbol,
 }
 
 #[derive(Subdiagnostic)]
@@ -972,6 +989,8 @@ pub(crate) struct MissingOneOfTraitItem {
     pub missing_trait_item: Vec<MissingTraitItemSuggestion>,
     #[subdiagnostic]
     pub missing_trait_item_none: Vec<MissingTraitItemSuggestionNone>,
+    #[subdiagnostic]
+    pub missing_trait_item_unstable: Vec<MissingTraitItemSuggestionUnstable>,
     pub missing_items_msg: String,
 }
 

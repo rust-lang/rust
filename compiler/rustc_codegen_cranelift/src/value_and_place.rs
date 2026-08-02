@@ -132,9 +132,7 @@ impl<'tcx> CValue<'tcx> {
                 let clif_ty = match layout.backend_repr {
                     BackendRepr::Scalar(scalar) => scalar_to_clif_type(fx.tcx, scalar),
                     BackendRepr::SimdVector { element, count } => {
-                        scalar_to_clif_type(fx.tcx, element)
-                            .by(u32::try_from(count).unwrap())
-                            .unwrap()
+                        scalar_to_clif_type(fx.tcx, element).by(count.as_u32()).unwrap()
                     }
                     _ => unreachable!("{:?}", layout.ty),
                 };

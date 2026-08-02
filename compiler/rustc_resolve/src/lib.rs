@@ -21,7 +21,7 @@
 #![recursion_limit = "256"]
 // tidy-alphabetical-end
 
-use std::cell::Ref;
+use std::cell::{Ref, RefMut};
 use std::collections::BTreeSet;
 use std::ops::ControlFlow;
 use std::sync::{Arc, OnceLock};
@@ -81,7 +81,7 @@ use crate::diagnostics::impls::{
     ImportSuggestion, LabelSuggestion, OnUnknownData, StructCtor, Suggestion,
 };
 use crate::imports::{ImportResolution, NameResolutionRef};
-use crate::ref_mut::{CmCell, CmRefCell};
+use crate::ref_mut::{CmCell, CmRef, CmRefCell};
 
 mod build_reduced_graph;
 mod check_unused;
@@ -637,7 +637,7 @@ type ResolutionTable<'ra> = FxIndexMap<BindingKey, NameResolutionRef<'ra>>;
 
 enum Resolutions<'ra> {
     Local(CmRefCell<ResolutionTable<'ra>>),
-    Extern(OnceLock<CmRefCell<ResolutionTable<'ra>>>),
+    Extern(OnceLock<ResolutionTable<'ra>>),
 }
 
 impl<'ra> Resolutions<'ra> {
@@ -792,7 +792,7 @@ impl<'ra> Module<'ra> {
         resolver: &R,
         mut f: impl FnMut(&R, IdentKey, Span, Namespace, Decl<'ra>),
     ) {
-        for (key, name_resolution) in resolver.as_ref().resolutions(self).borrow().iter() {
+        for (key, name_resolution) in resolver.as_ref().resolutions(self).iter() {
             let name_resolution = name_resolution.borrow();
             if let Some(decl) = name_resolution.best_decl() {
                 f(resolver, key.ident, name_resolution.orig_ident_span, key.ns, decl);
@@ -805,7 +805,7 @@ impl<'ra> Module<'ra> {
         resolver: &mut R,
         mut f: impl FnMut(&mut R, IdentKey, Span, Namespace, Decl<'ra>),
     ) {
-        for (key, name_resolution) in resolver.as_mut().resolutions(self).borrow().iter() {
+        for (key, name_resolution) in resolver.as_mut().resolutions(self).iter() {
             let name_resolution = name_resolution.borrow();
             if let Some(decl) = name_resolution.best_decl() {
                 f(resolver, key.ident, name_resolution.orig_ident_span, key.ns, decl);
@@ -2152,7 +2152,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         match (trait_module, assoc_item) {
             (Some(trait_module), Some((name, ns))) => self
                 .resolutions(trait_module)
-                .borrow()
                 .iter()
                 .any(|(key, _name_resolution)| key.ns == ns && key.ident.name == name),
             _ => true,
@@ -2177,14 +2176,28 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         self.tcx.hir_arena.alloc_slice(&import_ids)
     }
 
-    fn resolutions(&self, module: Module<'ra>) -> &'ra CmRefCell<ResolutionTable<'ra>> {
+    fn resolutions(&self, module: Module<'ra>) -> CmRef<'ra, ResolutionTable<'ra>> {
         match &module.0.0.lazy_resolutions {
-            Resolutions::Local(local_res) => local_res,
+            Resolutions::Local(local_res) => CmRef::Tracked(local_res.borrow()),
             Resolutions::Extern(extern_res) => {
-                // as long as 1 thread is building this external table, all other threads will wait
-                extern_res.get_or_init(|| {
-                    CmRefCell::new(self.build_reduced_graph_external(module.expect_extern()))
-                })
+                // It is fine to return a `CmRef::Untracked`, we never give out a `&mut`
+                // to an external table.
+                CmRef::Untracked(
+                    // As long as 1 thread is building this external table, all other threads will wait.
+                    extern_res
+                        .get_or_init(|| self.build_reduced_graph_external(module.expect_extern())),
+                )
+            }
+        }
+    }
+
+    fn resolutions_mut(&self, module: Module<'ra>) -> RefMut<'ra, ResolutionTable<'ra>> {
+        match &module.0.0.lazy_resolutions {
+            Resolutions::Local(local_res) => local_res.borrow_mut(self),
+            Resolutions::Extern(_) => {
+                // We do not allow in place mutations of the external resolution table. In fact,
+                // we never attempt it.
+                unreachable!("Attempted to mutably borrow an extenral resolution table")
             }
         }
     }
@@ -2194,7 +2207,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         module: Module<'ra>,
         key: BindingKey,
     ) -> Option<Ref<'ra, NameResolution<'ra>>> {
-        self.resolutions(module).borrow().get(&key).map(|resolution| resolution.0.borrow())
+        self.resolutions(module).get(&key).map(|resolution| resolution.0.borrow())
     }
 
     #[track_caller]
@@ -2204,7 +2217,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         key: BindingKey,
         orig_ident_span: Span,
     ) -> NameResolutionRef<'ra> {
-        *self.resolutions(module).borrow_mut(self).entry(key).or_insert_with(|| {
+        *self.resolutions_mut(module).entry(key).or_insert_with(|| {
             self.arenas.alloc_name_resolution(NameResolution::new(orig_ident_span))
         })
     }
@@ -2915,6 +2928,24 @@ mod ref_mut {
         }
     }
 
+    pub(crate) enum CmRef<'b, T> {
+        /// A tracked borrow of a [`CmRefCell`]
+        Tracked(Ref<'b, T>),
+        /// An untracked or normal reference (not dynamically borrow-checked by `RefCell`)
+        Untracked(&'b T),
+    }
+
+    impl<'b, T> Deref for CmRef<'b, T> {
+        type Target = T;
+
+        fn deref(&self) -> &Self::Target {
+            match self {
+                CmRef::Tracked(r) => r,
+                CmRef::Untracked(r) => r,
+            }
+        }
+    }
+
     /// A wrapper around a [`RefCell`] that only allows writes (mutable borrows) based on a condition in the resolver.
     #[derive(Default)]
     pub(crate) struct CmRefCell<T>(RefCell<T>);
@@ -2926,10 +2957,7 @@ mod ref_mut {
 
         #[track_caller]
         pub(crate) fn borrow_mut<'ra, 'tcx>(&self, r: &Resolver<'ra, 'tcx>) -> RefMut<'_, T> {
-            if r.assert_speculative {
-                panic!("not allowed to mutably borrow a `CmRefCell` during speculative resolution");
-            }
-            self.0.borrow_mut()
+            self.try_borrow_mut(r).unwrap()
         }
 
         #[track_caller]

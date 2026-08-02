@@ -1,13 +1,10 @@
 #![warn(clippy::arithmetic_side_effects)]
 
 mod aarch64;
-mod atomic;
 mod loongarch;
 mod math;
 mod simd;
 mod x86;
-
-pub use self::atomic::AtomicRmwOp;
 
 #[rustfmt::skip] // prevent `use` reordering
 use rand::RngExt;
@@ -16,7 +13,6 @@ use rustc_middle::{mir, ty};
 use rustc_span::{Symbol, sym};
 use rustc_target::spec::Arch;
 
-use self::atomic::EvalContextExt as _;
 use self::math::EvalContextExt as _;
 use self::simd::EvalContextExt as _;
 use crate::*;
@@ -97,9 +93,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     ) -> InterpResult<'tcx, EmulateItemResult> {
         let this = self.eval_context_mut();
 
-        if let Some(name) = intrinsic_name.strip_prefix("atomic_") {
-            return this.emulate_atomic_intrinsic(name, generic_args, args, dest);
-        }
         if let Some(name) = intrinsic_name.strip_prefix("simd_") {
             return this.emulate_simd_intrinsic(name, args, dest);
         }

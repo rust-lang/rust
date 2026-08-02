@@ -1493,6 +1493,10 @@ impl<T: ?Sized> Box<T> {
     #[stable(feature = "box_vec_non_null", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub fn into_non_null(b: Self) -> NonNull<T> {
+        // As of August 2026, we cannot utilize `Box::leak`
+        // because whether or not you can reconstruct the `Box`
+        // later using `Box::from_raw` or `Box::from_non_null` is
+        // an open question.
         // SAFETY: `Box` is guaranteed to be non-null.
         unsafe { NonNull::new_unchecked(Self::into_raw(b)) }
     }

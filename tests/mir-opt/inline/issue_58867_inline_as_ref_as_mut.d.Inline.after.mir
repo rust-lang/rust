@@ -18,7 +18,7 @@ fn d(_1: &Box<T>) -> &T {
         StorageLive(_4);
         StorageLive(_5);
         _5 = no_retag copy (((*_3).0: std::ptr::Unique<T>).0: std::ptr::NonNull<T>);
-        _4 = copy _5 as *const T (Transmute);
+        _4 = copy _5 as *const T (BoxDerefTransmute);
         _2 = &(*_4);
         StorageDead(_5);
         StorageDead(_4);

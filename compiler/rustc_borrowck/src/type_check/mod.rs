@@ -1604,8 +1604,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             ),
                         }
                     }
-                    CastKind::Subtype => {
-                        bug!("CastKind::Subtype shouldn't exist in borrowck")
+                    CastKind::Subtype | CastKind::BoxDerefTransmute => {
+                        bug!("CastKind::{cast_kind:?} shouldn't exist in borrowck")
                     }
                 }
             }

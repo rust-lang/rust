@@ -14,6 +14,15 @@ use crate::AttributeTemplate;
 use crate::context::Suggestion;
 
 #[derive(Diagnostic)]
+#[diag("`#[rustc_force_inline]` and `#[inline]` cannot be used together")]
+pub(crate) struct InlineForceInlineConflict {
+    #[primary_span]
+    pub force_inline_span: Span,
+    #[label("the inline attribute is specified here")]
+    pub inline_span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag("`#[ffi_const]` function cannot be `#[ffi_pure]`", code = E0757)]
 pub(crate) struct BothFfiConstAndPure {
     #[primary_span]
@@ -116,6 +125,26 @@ pub(crate) struct TargetFeatureOnLangItem {
         } function is not allowed to have `#[target_feature]`"
     )]
     pub item_span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(
+    "{$name ->
+    [panic_impl] `#[panic_handler]`
+    *[other] `{$name}` lang item
+} function is not allowed to have `#[track_caller]`"
+)]
+pub(crate) struct TrackCallerOnLangItem {
+    #[primary_span]
+    pub attr_span: Span,
+    pub name: Symbol,
+    #[label(
+        "{$name ->
+            [panic_impl] `#[panic_handler]`
+            *[other] `{$name}` lang item
+        } function is not allowed to have `#[track_caller]`"
+    )]
+    pub sig_span: Span,
 }
 
 #[derive(Diagnostic)]

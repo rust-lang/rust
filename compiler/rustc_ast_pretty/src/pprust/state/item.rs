@@ -1,5 +1,4 @@
 use ast::StaticItem;
-use itertools::Itertools;
 use rustc_ast::{self as ast, EiiImpl, ModKind, Safety, TraitAlias};
 use rustc_span::Ident;
 
@@ -924,8 +923,8 @@ impl<'a> State<'a> {
                     self.word("{");
                     self.zerobreak();
                     let ib = self.ibox(0);
-                    for (pos, use_tree) in items.iter().with_position() {
-                        let is_last = pos.is_last();
+                    for (idx, use_tree) in items.iter().enumerate() {
+                        let is_last = idx == items.len() - 1;
                         self.print_use_tree(&use_tree.0);
                         if !is_last {
                             self.word(",");
