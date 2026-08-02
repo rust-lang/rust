@@ -822,4 +822,66 @@ fn test() {
             100,
         );
     }
+    #[test]
+    fn pattern_const_block_expressions_have_scopes() {
+        do_check(
+            r#"
+fn foo() {
+    match () {
+        const { |x: i32| { let y = x; $0 } } => (),
+    }
+}
+"#,
+            &["y", "x"],
+        );
+    }
+
+    #[test]
+    fn let_pattern_expr_scope() {
+        do_check(
+            r#"
+fn foo(param: usize) {
+    let local = 0;
+    let const { $0 } = ();
+}
+"#,
+            &["param"],
+        );
+    }
+
+    #[test]
+    fn closure_param_pattern_expr_scope() {
+        do_check(
+            r#"
+fn foo(param: usize) {
+    let local = 0;
+    let _ = |const { $0 }: ()| ();
+}
+"#,
+            &["param"],
+        );
+    }
+
+    #[test]
+    fn fn_param_pattern_expr_scope() {
+        do_check(
+            r#"
+fn foo(param: usize, const { $0 }: ()) {}
+"#,
+            &["param"],
+        );
+    }
+
+    #[test]
+    fn if_let_pattern_expr_scope() {
+        do_check(
+            r#"
+fn foo(param: usize) {
+    let local = 0;
+    if let const { $0 } = () {}
+}
+"#,
+            &["param"],
+        );
+    }
 }
