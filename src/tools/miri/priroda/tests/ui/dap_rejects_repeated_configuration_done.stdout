@@ -1,0 +1,17 @@
+Content-Length: 143
+
+{"seq":1,"type":"response","request_seq":1,"success":true,"command":"initialize","body":{"supportsConfigurationDoneRequest":true},"error":null}Content-Length: 46
+
+{"seq":2,"type":"event","event":"initialized"}Content-Length: 90
+
+{"seq":3,"type":"response","request_seq":2,"success":true,"command":"launch","error":null}Content-Length: 101
+
+{"seq":4,"type":"response","request_seq":3,"success":true,"command":"configurationDone","error":null}Content-Length: 186
+
+{"seq":5,"type":"event","event":"stopped","body":{"reason":"entry","description":null,"threadId":1,"preserveFocusHint":null,"text":null,"allThreadsStopped":true,"hitBreakpointIds":null}}Content-Length: 154
+
+{"seq":6,"type":"response","request_seq":4,"success":false,"message":"configurationDone may only be sent once","command":"configurationDone","error":null}Content-Length: 94
+
+{"seq":7,"type":"response","request_seq":5,"success":true,"command":"disconnect","error":null}Content-Length: 57
+
+{"seq":8,"type":"event","event":"terminated","body":null}

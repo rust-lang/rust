@@ -1,0 +1,25 @@
+Content-Length: 143
+
+{"seq":1,"type":"response","request_seq":1,"success":true,"command":"initialize","body":{"supportsConfigurationDoneRequest":true},"error":null}Content-Length: 46
+
+{"seq":2,"type":"event","event":"initialized"}Content-Length: 90
+
+{"seq":3,"type":"response","request_seq":2,"success":true,"command":"launch","error":null}Content-Length: 101
+
+{"seq":4,"type":"response","request_seq":3,"success":true,"command":"configurationDone","error":null}Content-Length: 186
+
+{"seq":5,"type":"event","event":"stopped","body":{"reason":"entry","description":null,"threadId":1,"preserveFocusHint":null,"text":null,"allThreadsStopped":true,"hitBreakpointIds":null}}Content-Length: 101
+
+{"seq":6,"type":"response","request_seq":4,"success":false,"message":"unknown threadId","error":null}Content-Length: 100
+
+{"seq":7,"type":"response","request_seq":5,"success":false,"message":"unknown frameId","error":null}Content-Length: 111
+
+{"seq":8,"type":"response","request_seq":6,"success":false,"message":"unknown variablesReference","error":null}Content-Length: 118
+
+{"seq":9,"type":"response","request_seq":7,"success":false,"message":"unknown threadId","command":"next","error":null}Content-Length: 121
+
+{"seq":10,"type":"response","request_seq":8,"success":false,"message":"unknown threadId","command":"stepIn","error":null}Content-Length: 95
+
+{"seq":11,"type":"response","request_seq":9,"success":true,"command":"disconnect","error":null}Content-Length: 58
+
+{"seq":12,"type":"event","event":"terminated","body":null}
