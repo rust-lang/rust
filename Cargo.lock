@@ -879,7 +879,7 @@ dependencies = [
  "semver",
  "serde",
  "serde_json",
- "tempfile",
+ "shim_utils",
  "tracing",
  "tracing-subscriber",
  "unified-diff",
@@ -1412,12 +1412,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "fallible-iterator"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2acce4a10f12dc2fb14a218589d4f1f62ef011b2d0cc4b3cb1bba8e94da14649"
-
-[[package]]
 name = "fastrand"
 version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1630,19 +1624,15 @@ name = "gimli"
 version = "0.31.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "07e28edb80900c19c28f1072f2e8aeca7fa06b23cd4169cefe1af5aa3260783f"
-dependencies = [
- "fallible-iterator",
- "indexmap",
- "stable_deref_trait",
-]
 
 [[package]]
 name = "gimli"
-version = "0.32.3"
+version = "0.33.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e629b9b98ef3dd8afe6ca2bd0f89306cec16d43d907889945bc5d6687f2f13c7"
+checksum = "0bf7f043f89559805f8c7cacc432749b2fa0d0a0a9ee46ce47164ed5ba7f126c"
 dependencies = [
- "fallible-iterator",
+ "fnv",
+ "hashbrown 0.16.1",
  "indexmap",
  "stable_deref_trait",
 ]
@@ -1696,9 +1686,18 @@ version = "0.15.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9229cfe53dfd69f0609a49f65461bd93001ea1ef889cd5529dd176593f5338a1"
 dependencies = [
+ "foldhash 0.1.5",
+]
+
+[[package]]
+name = "hashbrown"
+version = "0.16.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "841d1cc9bed7f9236f321df977030373f4a4163ae1a7dbfe1a51a2c1a51d9100"
+dependencies = [
  "allocator-api2",
  "equivalent",
- "foldhash 0.1.5",
+ "foldhash 0.2.0",
 ]
 
 [[package]]
@@ -2779,12 +2778,7 @@ version = "0.36.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "62948e14d923ea95ea2c7c86c71013138b66525b86bdc08d2dcc262bdb497b87"
 dependencies = [
- "crc32fast",
- "flate2",
- "hashbrown 0.15.5",
- "indexmap",
  "memchr",
- "ruzstd 0.7.3",
 ]
 
 [[package]]
@@ -2793,13 +2787,22 @@ version = "0.37.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ff76201f031d8863c38aa7f905eca4f53abbfa15f609db4277d44cd8938f33fe"
 dependencies = [
+ "memchr",
+]
+
+[[package]]
+name = "object"
+version = "0.38.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "271638cd5fa9cca89c4c304675ca658efc4e64a66c716b7cfe1afb4b9611dbbc"
+dependencies = [
  "crc32fast",
  "flate2",
- "hashbrown 0.15.5",
+ "hashbrown 0.16.1",
  "indexmap",
  "memchr",
- "ruzstd 0.8.2",
- "wasmparser 0.236.1",
+ "ruzstd",
+ "wasmparser 0.243.0",
 ]
 
 [[package]]
@@ -3506,15 +3509,15 @@ version = "0.0.0"
 dependencies = [
  "bstr",
  "build_helper",
- "gimli 0.32.3",
+ "gimli 0.33.0",
  "libc",
- "object 0.37.3",
+ "object 0.38.1",
  "regex",
  "rustdoc-json-types",
  "serde_json",
  "similar",
  "tempfile",
- "wasmparser 0.236.1",
+ "wasmparser 0.243.0",
 ]
 
 [[package]]
@@ -3796,12 +3799,12 @@ name = "rustc_codegen_llvm"
 version = "0.0.0"
 dependencies = [
  "bitflags",
- "gimli 0.31.1",
+ "gimli 0.33.0",
  "itertools",
  "libc",
  "libloading 0.9.0",
  "measureme",
- "object 0.37.3",
+ "object 0.38.1",
  "rustc-demangle",
  "rustc_abi",
  "rustc_ast",
@@ -3835,7 +3838,7 @@ dependencies = [
  "find-msvc-tools",
  "itertools",
  "libc",
- "object 0.37.3",
+ "object 0.38.1",
  "pathdiff",
  "regex",
  "rustc_abi",
@@ -4800,7 +4803,7 @@ version = "0.0.0"
 dependencies = [
  "arrayvec",
  "bitflags",
- "object 0.37.3",
+ "object 0.38.1",
  "rustc_abi",
  "rustc_data_structures",
  "rustc_error_messages",
@@ -5094,15 +5097,6 @@ checksum = "b39cdef0fa800fc44525c84ccb54a029961a8215f9619753635a9c0d2538d46d"
 
 [[package]]
 name = "ruzstd"
-version = "0.7.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fad02996bfc73da3e301efe90b1837be9ed8f4a462b6ed410aa35d00381de89f"
-dependencies = [
- "twox-hash 1.6.3",
-]
-
-[[package]]
-name = "ruzstd"
 version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e5ff0cc5e135c8870a775d3320910cd9b564ec036b4dc0b8741629020be63f01"
@@ -5327,6 +5321,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f40ca3c46823713e0d4209592e8d6e826aa57e928f09752619fc696c499637f6"
 dependencies = [
  "lazy_static",
+]
+
+[[package]]
+name = "shim_utils"
+version = "0.0.0"
+dependencies = [
+ "tempfile",
 ]
 
 [[package]]
@@ -5621,13 +5622,13 @@ dependencies = [
 
 [[package]]
 name = "thorin-dwp"
-version = "0.9.0"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9e9c1e705f82a260173f3eec93f2ff6d7807f23ad5a8cc2e7316a891733ea7a1"
+checksum = "6ce6b46108e50803d2c10216929e49fa3eda07ee3dc246310c18c4a1e3b1fa58"
 dependencies = [
- "gimli 0.31.1",
- "hashbrown 0.15.5",
- "object 0.36.7",
+ "gimli 0.33.0",
+ "hashbrown 0.16.1",
+ "object 0.38.1",
  "tracing",
 ]
 
@@ -6429,9 +6430,9 @@ dependencies = [
 
 [[package]]
 name = "wasmparser"
-version = "0.236.1"
+version = "0.243.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a9b1e81f3eb254cf7404a82cee6926a4a3ccc5aad80cc3d43608a070c67aa1d7"
+checksum = "f6d8db401b0528ec316dfbe579e6ab4152d61739cfe076706d2009127970159d"
 dependencies = [
  "bitflags",
  "indexmap",
