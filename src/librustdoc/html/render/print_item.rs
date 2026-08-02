@@ -1,8 +1,6 @@
 use std::borrow::Cow;
 use std::cmp::Ordering;
-use std::collections::hash_map::DefaultHasher;
 use std::fmt::{self, Display, Write as _};
-use std::hash::{Hash, Hasher};
 use std::iter;
 
 use askama::Template;
@@ -10,6 +8,7 @@ use rustc_abi::VariantIdx;
 use rustc_ast::join_path_syms;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap, FxIndexSet};
 use rustc_hir as hir;
+use rustc_hir::attrs::NotableTraitColor;
 use rustc_hir::def::{CtorKind, MacroKinds};
 use rustc_hir::def_id::DefId;
 use rustc_index::IndexVec;
@@ -58,8 +57,8 @@ struct NotableTraitBadgeVars {
     full_path: String,
     /// Relative URL to the trait page, or `None` when not linkable.
     href: Option<String>,
-    /// Index of the `.notable-trait-badge-{n}` color class.
-    color_index: u8,
+    /// Name of the `.notable-trait-badge-{color}` color class.
+    color: NotableTraitColor,
 }
 
 #[derive(Template)]
@@ -126,20 +125,11 @@ pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item) -> impl fmt::Disp
 
         let notable_trait_badges: Vec<NotableTraitBadgeVars> = notable_trait_badges(item, cx)
             .into_iter()
-            .map(|info| {
-                // Stable per-trait color from a hash of the trait path so the
-                // same trait gets the same badge color across pages.
-                // This won't be stable between releases though.
-                let mut h = DefaultHasher::new();
-                info.full_path.hash(&mut h);
-                const BADGE_COLORS: u8 = 6;
-                let color_index = (h.finish() as u8) % BADGE_COLORS;
-                NotableTraitBadgeVars {
-                    name: info.name,
-                    full_path: info.full_path,
-                    href: info.href,
-                    color_index,
-                }
+            .map(|info| NotableTraitBadgeVars {
+                name: info.name,
+                full_path: info.full_path,
+                href: info.href,
+                color: info.color,
             })
             .collect();
 

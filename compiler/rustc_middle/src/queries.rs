@@ -54,7 +54,7 @@ use rustc_ast as ast;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_attr_ir::lang_items::{LangItem, LanguageItems};
-use rustc_attr_ir::{CanonicalSymbols, EiiDecl, EiiImpl, StrippedCfgItem};
+use rustc_attr_ir::{CanonicalSymbols, EiiDecl, EiiImpl, NotableTraitColor, StrippedCfgItem};
 use rustc_crate_store::{
     CrateDepKind, CrateSource, ExternCrate, ForeignModule, LinkagePreference, NativeLib,
 };
@@ -1530,8 +1530,10 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    /// Determines whether an item is annotated with `#[doc(notable_trait)]`.
-    query is_doc_notable_trait(def_id: DefId) -> bool {
+    /// If an item is annotated with `#[doc(notable_trait)]`,
+    /// returns the color used to render its pill. If the crate specifies
+    /// no color, `Transparent` is used.
+    query doc_notable_trait(def_id: DefId) -> Option<&'tcx NotableTraitColor> {
         desc { "checking whether `{}` is `doc(notable_trait)`", tcx.def_path_str(def_id) }
     }
 
