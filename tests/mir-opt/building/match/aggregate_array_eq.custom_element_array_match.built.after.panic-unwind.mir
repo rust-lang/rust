@@ -1,0 +1,47 @@
+// MIR for `custom_element_array_match` after built
+
+fn custom_element_array_match(_1: [Element; 4]) -> bool {
+    debug x => _1;
+    let mut _0: bool;
+    let mut _2: &[Element; 4];
+    let mut _3: bool;
+    scope 1 {
+    }
+
+    bb0: {
+        PlaceMention(_1);
+        _2 = &_1;
+        _3 = <[Element; 4] as PartialEq>::eq(copy _2, const &[Element(1), Element(2), Element(3), Element(4)]) -> [return: bb4, unwind unreachable];
+    }
+
+    bb1: {
+        _0 = const false;
+        goto -> bb7;
+    }
+
+    bb2: {
+        falseEdge -> [real: bb6, imaginary: bb1];
+    }
+
+    bb3: {
+        goto -> bb1;
+    }
+
+    bb4: {
+        switchInt(move _3) -> [0: bb1, otherwise: bb2];
+    }
+
+    bb5: {
+        FakeRead(ForMatchedPlace(None), _1);
+        unreachable;
+    }
+
+    bb6: {
+        _0 = const true;
+        goto -> bb7;
+    }
+
+    bb7: {
+        return;
+    }
+}
