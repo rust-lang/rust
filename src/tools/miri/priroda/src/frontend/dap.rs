@@ -93,7 +93,7 @@ impl DapSession {
         // client gets a framed error.
         if !self.initialized && !matches!(&request.command, Command::Initialize(_)) {
             return interp_ok(
-                self.handle_unsupported_request(request).map(|()| DispatchOutcome::Exit),
+                self.handle_unsupported_request(request).map(|()| DispatchOutcome::Continue),
             );
         }
 
@@ -131,7 +131,7 @@ impl DapSession {
                 interp_ok(self.handle_disconnect(request).map(|()| DispatchOutcome::Exit)),
             _ =>
                 interp_ok(
-                    self.handle_unsupported_request(request).map(|()| DispatchOutcome::Exit),
+                    self.handle_unsupported_request(request).map(|()| DispatchOutcome::Continue),
                 ),
         }
     }
@@ -289,11 +289,11 @@ impl DapSession {
     }
 
     fn handle_unsupported_request(&mut self, request: Request) -> ServerResult {
-        eprintln!(
-            "priroda dap: unsupported request during DAP demo milestone: {}",
+        let message = format!(
+            "unsupported request in Priroda DAP demo mode: {}",
             Self::display_command(&request.command)
         );
-        let response = request.error("unsupported request in Priroda DAP demo mode");
+        let response = request.error(&message);
         self.server.respond(response)
     }
 
