@@ -1,5 +1,5 @@
-Content-Length: 143
+Content-Length: 188
 
-{"seq":1,"type":"response","request_seq":1,"success":true,"command":"initialize","body":{"supportsConfigurationDoneRequest":true},"error":null}Content-Length: 46
+{"seq":1,"type":"response","request_seq":1,"success":true,"command":"initialize","body":{"supportsConfigurationDoneRequest":true,"supportsSingleThreadExecutionRequests":true},"error":null}Content-Length: 46
 
 {"seq":2,"type":"event","event":"initialized"}

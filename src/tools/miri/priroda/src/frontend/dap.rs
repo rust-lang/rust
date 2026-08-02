@@ -19,7 +19,6 @@ use crate::debugger::{LocalDesc, PrirodaContext, StepResult};
 const THREAD_ID: i64 = 1;
 const STACK_FRAME_ID: i64 = 1;
 const LOCALS_VARIABLES_REFERENCE: i64 = 1;
-const MAX_REQUEST_COUNT: usize = 128;
 type ServerResult<T = ()> = Result<T, emmy_dap_types::errors::ServerError>;
 
 enum DispatchOutcome {
@@ -51,7 +50,6 @@ impl Dap {
         &self,
         session: &mut PrirodaContext<'tcx>,
     ) -> InterpResult<'tcx> {
-        // FIXME: make this unbounded once Priroda has a full session lifecycle.
         if let Err(err) = DapSession::stdio().run_requests(session)? {
             eprintln!("priroda dap error: {err:?}");
         }
@@ -83,7 +81,7 @@ impl DapSession {
         &mut self,
         session: &mut PrirodaContext<'tcx>,
     ) -> InterpResult<'tcx, ServerResult> {
-        for _ in 0..MAX_REQUEST_COUNT {
+        loop {
             let request = match self.server.poll_request() {
                 Ok(Some(request)) => request,
                 Ok(None) => return interp_ok(Ok(())),
@@ -96,8 +94,6 @@ impl DapSession {
                 Err(err) => return interp_ok(Err(err)),
             }
         }
-
-        interp_ok(Ok(()))
     }
 
     fn dispatch_request<'tcx>(
@@ -290,7 +286,7 @@ impl DapSession {
                         Source {
                             name: path.file_name().map(|name| name.to_string_lossy().into_owned()),
                             path: Some(path.display().to_string()),
-                            source_reference: None,
+                            source_reference: Some(0),
                             presentation_hint: None,
                             origin: None,
                             sources: None,
@@ -337,6 +333,7 @@ impl DapSession {
 
         let response = request.success(ResponseBody::Initialize(Capabilities {
             supports_configuration_done_request: Some(true),
+            supports_single_thread_execution_requests: Some(true),
             ..Capabilities::default()
         }));
         self.server.respond(response)?;
