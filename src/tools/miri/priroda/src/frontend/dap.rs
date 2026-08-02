@@ -2,7 +2,7 @@ use std::io::{self, BufReader, BufWriter};
 
 use emmy_dap_types::prelude::events::{ExitedEventBody, StoppedEventBody};
 use emmy_dap_types::prelude::responses::{
-    ScopesResponse, StackTraceResponse, ThreadsResponse, VariablesResponse,
+    ContinueResponse, ScopesResponse, StackTraceResponse, ThreadsResponse, VariablesResponse,
 };
 use emmy_dap_types::prelude::types::{
     Capabilities, Scope, ScopePresentationhint, Source, StackFrame, StoppedEventReason, Thread,
@@ -132,6 +132,10 @@ impl DapSession {
                 interp_ok(
                     self.handle_variables(request, session).map(|()| DispatchOutcome::Continue),
                 ),
+            Command::Continue(_) => {
+                let res = self.handle_continue(request, session)?;
+                interp_ok(res.map(|()| self.dispatch_outcome()))
+            }
             Command::Next(_) | Command::StepIn(_) => {
                 let body = match &request.command {
                     Command::Next(_) => ResponseBody::Next,
@@ -363,6 +367,34 @@ impl DapSession {
         }
     }
 
+    fn handle_continue<'tcx>(
+        &mut self,
+        request: Request,
+        session: &mut PrirodaContext<'tcx>,
+    ) -> InterpResult<'tcx, ServerResult> {
+        let rejected = match self.check_step_request(&request) {
+            Ok(rejected) => rejected,
+            Err(err) => return interp_ok(Err(err)),
+        };
+        if rejected {
+            return interp_ok(Ok(()));
+        }
+
+        let body = ResponseBody::Continue(ContinueResponse { all_threads_continued: Some(true) });
+
+        match Self::execution_outcome(session.continue_execution()) {
+            ExecutionOutcome::Stopped(result) =>
+                interp_ok(self.server.respond(request.success(body)).and_then(|()| {
+                    self.state = DapState::Stopped;
+                    self.send_stopped_event(Self::stopped_reason(result))
+                })),
+            ExecutionOutcome::Terminated { code } =>
+                interp_ok(self.respond_terminated(request, body, code)),
+            ExecutionOutcome::Failed(message) =>
+                interp_ok(self.respond_execution_error(request, message)),
+        }
+    }
+
     fn handle_disconnect(&mut self, request: Request) -> ServerResult {
         self.server.respond(request.success(ResponseBody::Disconnect))?;
         self.state = DapState::Terminated;
@@ -415,7 +447,8 @@ impl DapSession {
             Command::StackTrace(args) => args.thread_id == THREAD_ID,
             Command::Next(args) => args.thread_id == THREAD_ID,
             Command::StepIn(args) => args.thread_id == THREAD_ID,
-            _ => unreachable!(),
+            Command::Continue(args) => args.thread_id == THREAD_ID,
+            _ => true,
         };
 
         if !valid {

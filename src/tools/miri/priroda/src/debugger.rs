@@ -173,7 +173,7 @@ impl<'tcx> PrirodaContext<'tcx> {
     }
 
     /// Continue execution until reaching a breakpoint or propagating termination.
-    fn continue_execution(&mut self) -> InterpResult<'tcx, StepResult> {
+    pub(super) fn continue_execution(&mut self) -> InterpResult<'tcx, StepResult> {
         self.resume(ResumeMode::Continue)
     }
 
