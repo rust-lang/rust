@@ -23,13 +23,14 @@ use std::path::PathBuf;
 
 use miri::Immediate::Uninit;
 use miri::{interpret, *};
-use rustc_abi::Size;
+use rustc_abi::{FIRST_VARIANT, FieldIdx, Size};
 use rustc_driver::Compilation;
 use rustc_hir::attrs::CrateType;
+use rustc_hir::def::CtorKind;
 use rustc_interface::interface;
 use rustc_middle::mir::interpret::AllocId;
 use rustc_middle::mir::{self, Local, ProjectionElem, VarDebugInfoContents, VarDebugInfoFragment};
-use rustc_middle::ty::{TyCtxt, TyKind};
+use rustc_middle::ty::{self, TyCtxt, TyKind};
 use rustc_session::EarlyDiagCtxt;
 use rustc_session::config::ErrorOutputType;
 use rustc_span::source_map::SourceMap;
@@ -505,6 +506,179 @@ impl<'tcx> PrirodaContext<'tcx> {
         interp_ok(format!("[{}]", rendered.join(" ")))
     }
 
+    /// Render an evaluated operand using Rust-source-shaped containers with raw leaves.
+    ///
+    /// The operand is produced from live interpreter state, usually via `local_to_op`
+    /// for a whole MIR local or `eval_place_to_op` for a projected debug-info place.
+    ///
+    /// This intentionally does not call user `Debug` / `Display`, and it does not
+    /// try to make every scalar leaf pretty yet. Unsupported cases and leaf values
+    /// fall back to `render_op`, preserving the old raw byte/provenance renderer.
+    ///
+    /// FIXME: teach the leaf renderer about simple Rust scalars (`bool`, integers,
+    /// chars, raw pointers/references) once the source-shaped container output is
+    /// stable enough to stop depending on byte dumps for every field.
+    ///
+    /// FIXME: decide how much dereferencing belongs in this renderer. References
+    /// currently stay as raw pointer leaves; following them may belong in the
+    /// existing `follow` command instead of automatic local rendering.
+    fn render_source_shaped_op(&self, op: OpTy<'tcx>) -> String {
+        self.render_source_shaped_op_inner(op, 0)
+    }
+
+    /// Recursive worker for `render_source_shaped_op`.
+    ///
+    /// The depth limit keeps cyclic/reference-heavy values from making debugger
+    /// output explode once more container kinds are added. At the limit, the raw
+    /// renderer remains the ground truth.
+    ///
+    /// FIXME: replace this fixed recursion limit with a value-size/output-budget
+    /// policy so large acyclic values and deeply nested values degrade more
+    /// predictably.
+    fn render_source_shaped_op_inner(&self, op: OpTy<'tcx>, depth: usize) -> String {
+        const MAX_SOURCE_SHAPE_DEPTH: usize = 8;
+
+        if depth >= MAX_SOURCE_SHAPE_DEPTH {
+            return self.render_op(op);
+        }
+
+        match op.layout.ty.kind() {
+            // Empty enums have no active variant to format. Unions do not record
+            // which field is currently active, so choosing one would be misleading.
+            //
+            // FIXME: support unions only with an explicit user-selected field or
+            // another source of active-field information. Guessing from layout
+            // bytes would make debugger output look more certain than it is.
+            ty::Adt(def, _) if def.variants().is_empty() || def.is_union() => self.render_op(op),
+
+            ty::Adt(def, _) => {
+                // Enums need their runtime discriminant and a downcasted layout
+                // view before fields can be projected. Structs use their sole
+                // variant directly. Keep the display name tied to the same choice.
+                let (variant_idx, down, name) = if def.is_enum() {
+                    let variant_idx = match self.ecx.read_discriminant(&op).discard_err() {
+                        Some(variant_idx) => variant_idx,
+                        // FIXME: expose this as an explicit render error when
+                        // Priroda grows structured value states. Falling back to
+                        // bytes keeps today's UI usable but hides why the enum
+                        // could not be source-shaped.
+                        None => return self.render_op(op),
+                    };
+                    let down = match self.ecx.project_downcast(&op, variant_idx).discard_err() {
+                        Some(down) => down,
+                        // FIXME: distinguish invalid/uninitialized discriminants
+                        // from projection bugs in the rendered output once locals
+                        // can carry structured diagnostics.
+                        None => return self.render_op(op),
+                    };
+                    let variant_def = &def.variants()[variant_idx];
+                    (
+                        variant_idx,
+                        down,
+                        format!("{}::{}", self.ecx.tcx.item_name(def.did()), variant_def.name),
+                    )
+                } else {
+                    let variant_idx = FIRST_VARIANT;
+                    let variant_def = &def.variants()[variant_idx];
+                    (variant_idx, op.clone(), variant_def.name.to_string())
+                };
+
+                let variant_def = &def.variants()[variant_idx];
+
+                let mut fields = Vec::with_capacity(variant_def.fields.len());
+                for i in 0..variant_def.fields.len() {
+                    let field_idx = FieldIdx::from_usize(i);
+                    // `project_field` avoids manual offset math and works for both
+                    // immediate and memory-backed operands through `Projectable`.
+                    let field_op = match self.ecx.project_field(&down, field_idx).discard_err() {
+                        Some(field_op) => field_op,
+                        // FIXME: preserve the successfully rendered fields and
+                        // mark only this field as unavailable once the value model
+                        // can represent partial render failures.
+                        None => return self.render_op(op),
+                    };
+                    fields.push(self.render_source_shaped_op_inner(field_op, depth + 1));
+                }
+
+                // Match Rust constructor spelling:
+                // - `Const`: unit structs/variants, e.g. `UnitStruct`, `Enum::Unit`
+                // - `Fn`: tuple structs/variants, e.g. `Pair(a, b)` or `EmptyTuple()`
+                // - `None`: braced structs/variants, including the empty `{}` case
+                match variant_def.ctor_kind() {
+                    Some(CtorKind::Const) => name,
+                    Some(CtorKind::Fn) => format!("{name}({})", fields.join(", ")),
+                    None if fields.is_empty() => format!("{name} {{}}"),
+                    None => {
+                        let fields = variant_def
+                            .fields
+                            .iter()
+                            .zip(fields)
+                            .map(|(field_def, value)| format!("{}: {value}", field_def.name))
+                            .collect::<Vec<_>>()
+                            .join(", ");
+                        format!("{name} {{ {fields} }}")
+                    }
+                }
+            }
+
+            ty::Tuple(args) => {
+                let mut fields = Vec::with_capacity(args.len());
+                for i in 0..args.len() {
+                    // Tuples have no field names in source, so preserve their
+                    // source field order and render children positionally.
+                    let field_op =
+                        match self.ecx.project_field(&op, FieldIdx::from_usize(i)).discard_err() {
+                            Some(field_op) => field_op,
+                            // FIXME: render tuple fields independently so one
+                            // projection failure does not throw away the whole
+                            // source-shaped tuple.
+                            None => return self.render_op(op),
+                        };
+                    fields.push(self.render_source_shaped_op_inner(field_op, depth + 1));
+                }
+
+                if fields.len() == 1 {
+                    format!("({},)", fields[0])
+                } else {
+                    format!("({})", fields.join(", "))
+                }
+            }
+
+            ty::Array(_, _) | ty::Slice(_) => {
+                // `project_array_fields` uses the dynamic length for slices. That
+                // avoids the classic mistake of treating slice layout as a fixed
+                // zero-length array.
+                let mut iter = match self.ecx.project_array_fields(&op).discard_err() {
+                    Some(iter) => iter,
+                    // FIXME: when slice metadata is invalid, show that as a slice
+                    // length problem instead of silently falling back to raw bytes.
+                    None => return self.render_op(op),
+                };
+
+                let mut fields = Vec::new();
+                // FIXME: add an output budget/truncation policy before rendering
+                // very large arrays or slices in full.
+                loop {
+                    match iter.next(&self.ecx).discard_err() {
+                        Some(Some((_idx, field_op))) =>
+                            fields.push(self.render_source_shaped_op_inner(field_op, depth + 1)),
+                        Some(None) => break,
+                        // FIXME: keep already-rendered elements and mark the
+                        // failed index once partial render errors are supported.
+                        None => return self.render_op(op),
+                    }
+                }
+
+                format!("[{}]", fields.join(", "))
+            }
+
+            // FIXME: consider source-shaped special cases for strings, closures,
+            // generators/coroutines, trait objects, and SIMD/vector-like types.
+            // Until then these stay on the raw renderer path.
+            _ => self.render_op(op),
+        }
+    }
+
     /// Render an evaluated operand using the same raw representation for
     /// whole locals and projected MIR places.
     fn render_op(&self, op: OpTy<'tcx>) -> String {
@@ -613,7 +787,7 @@ impl<'tcx> PrirodaContext<'tcx> {
                     .ecx
                     .local_to_op(local, None)
                     .expect("this error can only occur in CTFE on generic code");
-                local_desc.value = self.render_op(op);
+                local_desc.value = self.render_source_shaped_op(op);
             }
         };
 
@@ -682,7 +856,7 @@ impl<'tcx> PrirodaContext<'tcx> {
                     let value = self
                         .ecx
                         .eval_place_to_op(*place, None)
-                        .map(|op| self.render_op(op))
+                        .map(|op| self.render_source_shaped_op(op))
                         .unwrap_or_else(|err| {
                             format!("<error: {}>", interpret::format_interp_error(err))
                         });

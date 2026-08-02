@@ -18,7 +18,7 @@ fn test(ptr: fn(), overwrite: fn(&mut fn())) {
             ptrptr = &mut ptr;
             Call(_unused = overwrite(ptrptr), ReturnTo(ret), UnwindContinue())
         }
-        
+
         ret = {
             ptr2 = ptr as *mut u8; //~ERROR: does not point to a function
             Return()

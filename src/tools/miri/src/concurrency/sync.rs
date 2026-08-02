@@ -339,7 +339,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     {
         assert!(init_val != uninit_val);
         let this = self.eval_context_mut();
-        this.check_ptr_access(obj.ptr(), obj.layout.size, CheckInAllocMsg::Dereferenceable("pointer"))?;
+        this.check_ptr_access(
+            obj.ptr(),
+            obj.layout.size,
+            CheckInAllocMsg::Dereferenceable("pointer"),
+        )?;
         assert!(init_offset < obj.layout.size); // ensure our 1-byte flag fits
         let init_field = obj.offset(init_offset, this.machine.layouts.u8, this)?;
 
@@ -389,7 +393,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         'tcx: 'a,
     {
         let this = self.eval_context_mut();
-        this.check_ptr_access(obj.ptr(), obj.layout.size, CheckInAllocMsg::Dereferenceable("pointer"))?;
+        this.check_ptr_access(
+            obj.ptr(),
+            obj.layout.size,
+            CheckInAllocMsg::Dereferenceable("pointer"),
+        )?;
         assert!(init_offset < obj.layout.size); // ensure our 1-byte flag fits
         let init_field = obj.offset(init_offset, this.machine.layouts.u8, this)?;
 

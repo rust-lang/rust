@@ -1,10 +1,10 @@
 use std::cell::RefCell;
-use std::ptr::NonNull;
-use std::rc::Rc;
-#[cfg(bootstrap)]
-use std::panic::abort_unwind as abort_on_unwind;
 #[cfg(not(bootstrap))]
 use std::panic::abort_on_unwind;
+#[cfg(bootstrap)]
+use std::panic::abort_unwind as abort_on_unwind;
+use std::ptr::NonNull;
+use std::rc::Rc;
 
 use ipc_channel::{TryRecvError, ipc};
 use nix::sys::{mman, ptrace, signal};
