@@ -644,7 +644,7 @@ impl Into<&'static str> for NotableTraitColor {
 
 impl std::fmt::Display for NotableTraitColor {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        std::fmt::Display::fmt(<NotableTraitColor as Into<&str>>::into(*self), f)
+        f.write_str(self.into())
     }
 }
 
