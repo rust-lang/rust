@@ -468,7 +468,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // Without `edition_redirect`, the first import consumes the redirect
         // using that import's edition. The resulting binding is fixed for
         // downstream users.
-        decl = self.edition_adjusted_decl(decl, import.span.edition());
+        decl = self.edition_adjusted_decl(decl, import.span);
 
         let vis = self.import_decl_vis(decl, import.summary());
 
@@ -484,28 +484,33 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // each target in this import so a downstream edition adjustment retains
         // its visibility and re-export provenance. Other crates consume the
         // redirects above and produce re-exports with no redirects.
-        let edition_redirects = if self.features.edition_redirect() {
-            decl.edition_redirects
-                .iter()
-                .map(|redirect| crate::EditionRedirectDecl {
-                    before: redirect.before,
-                    target: self.arenas.alloc_decl(DeclData {
-                        kind: DeclKind::Import { source_decl: redirect.target, import },
-                        ambiguity: CmCell::new(None),
-                        span: import.span,
-                        initial_vis: vis.to_mod_id(),
-                        ambiguity_vis_max: CmCell::new(None),
-                        ambiguity_vis_min: CmCell::new(None),
-                        expansion: import.parent_scope.expansion,
-                        parent_module: Some(import.parent_scope.module),
-                        edition_redirects: &[],
-                    }),
-                })
-                .collect::<SmallVec<[_; 1]>>()
+        let edition_redirects = if decl.edition_redirects.is_empty() {
+            // Fast path when there are no edition redirects.
+            &[]
         } else {
-            SmallVec::new()
+            let edition_redirects = if self.features.edition_redirect() {
+                decl.edition_redirects
+                    .iter()
+                    .map(|redirect| crate::EditionRedirectDecl {
+                        before: redirect.before,
+                        target: self.arenas.alloc_decl(DeclData {
+                            kind: DeclKind::Import { source_decl: redirect.target, import },
+                            ambiguity: CmCell::new(None),
+                            span: import.span,
+                            initial_vis: vis.to_mod_id(),
+                            ambiguity_vis_max: CmCell::new(None),
+                            ambiguity_vis_min: CmCell::new(None),
+                            expansion: import.parent_scope.expansion,
+                            parent_module: Some(import.parent_scope.module),
+                            edition_redirects: &[],
+                        }),
+                    })
+                    .collect::<SmallVec<[_; 1]>>()
+            } else {
+                SmallVec::new()
+            };
+            self.arenas.alloc_edition_redirects(&edition_redirects)
         };
-        let edition_redirects = self.arenas.alloc_edition_redirects(&edition_redirects);
 
         self.arenas.alloc_decl(DeclData {
             kind: DeclKind::Import { source_decl: decl, import },
@@ -626,7 +631,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
             glob_decl
         } else if glob_decl.res() != old_glob_decl.res()
-            || !Self::same_edition_redirects(old_glob_decl, glob_decl)
+            || (!(old_glob_decl.edition_redirects.is_empty()
+                && glob_decl.edition_redirects.is_empty())
+                && !Self::same_edition_redirects(old_glob_decl, glob_decl))
         {
             // Redirects are part of a binding's behavior. If two globs resolve
             // to the same item but redirect differently, retaining either
@@ -669,6 +676,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// considered: they affect only the metadata produced for downstream
     /// crates, not local name resolution.
     fn same_edition_redirects(decl1: Decl<'ra>, decl2: Decl<'ra>) -> bool {
+        // Fast path when there are no edition redirects.
+        if decl1.edition_redirects.is_empty() && decl2.edition_redirects.is_empty() {
+            return true;
+        }
+
         decl1.edition_redirects.len() == decl2.edition_redirects.len()
             && decl1.edition_redirects.iter().zip(decl2.edition_redirects).all(
                 |(redirect1, redirect2)| {
@@ -1877,8 +1889,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 .iter()
                 .filter_map(|(key, resolution)| {
                     let res = resolution.borrow_checked(self);
-                    let decl =
-                        self.edition_adjusted_decl(res.determined_decl()?, import.span.edition());
+                    let decl = self.edition_adjusted_decl(res.determined_decl()?, import.span);
                     let mut key = *key;
                     let scope = match key.ident.ctxt.update_unchecked(|ctxt| {
                         ctxt.reverse_glob_adjust(module.expansion, import.span)
@@ -1977,30 +1988,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         }
     }
 
-    /// Produces the sorted, metadata-ready edition redirects for `decl` in
-    /// `ns`.
-    ///
-    /// Targets declared in the current crate are resolved here, after ordinary
-    /// imports have settled and once the namespace exported by the declaration
-    /// is known. Redirects on external declarations are already resolved in
-    /// crate metadata and are copied through unchanged.
-    fn resolved_edition_redirects(
+    /// Resolves local redirect targets after ordinary imports have settled and
+    /// once the namespace exported by `decl` is known.
+    fn resolve_local_edition_redirects(
         &mut self,
         ns: Namespace,
         decl: Decl<'ra>,
+        redirects: Vec<crate::LocalEditionRedirect<'ra>>,
     ) -> SmallVec<[MetadataEditionRedirect; 1]> {
-        let Some(redirects) = self.local_edition_redirects(decl) else {
-            // External declarations already carry resolved redirect targets
-            // from crate metadata.
-            return decl
-                .edition_redirects
-                .iter()
-                .map(|redirect| MetadataEditionRedirect {
-                    before: redirect.before,
-                    target: redirect.target.res().expect_non_local(),
-                })
-                .collect();
-        };
         redirects
             .into_iter()
             .filter_map(|redirect| {
@@ -2097,9 +2092,16 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         let Some(def_id) = module.opt_def_id() else { return };
 
+        enum EditionRedirectSlot {
+            Child(usize),
+            AmbiguousMain(usize),
+            AmbiguousSecond(usize),
+        }
+
         let mut children = Vec::new();
         let mut ambig_children = Vec::new();
-        module.to_module().for_each_child_mut(self, |this, ident, orig_ident_span, ns, decl| {
+        let mut pending_edition_redirects = Vec::new();
+        module.to_module().for_each_child(self, |this, ident, orig_ident_span, ns, decl| {
             let res = decl.res().expect_non_local();
             if res != def::Res::Err {
                 let vis = if this.rust_embed_hack(module, decl) {
@@ -2108,33 +2110,83 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     decl.vis()
                 };
                 let ident = ident.orig(orig_ident_span);
+                let mut edition_redirects = |decl, child| {
+                    // Local redirect targets must be resolved after
+                    // `for_each_child` releases its borrow. Otherwise copy any
+                    // already-resolved redirects decoded from external crate
+                    // metadata.
+                    if !this.local_edition_redirects.is_empty()
+                        && let Some(redirects) = this.local_edition_redirects(decl)
+                    {
+                        pending_edition_redirects.push((child, ns, decl, redirects));
+                        SmallVec::new()
+                    } else if decl.edition_redirects.is_empty() {
+                        SmallVec::new()
+                    } else {
+                        decl.edition_redirects
+                            .iter()
+                            .map(|redirect| MetadataEditionRedirect {
+                                before: redirect.before,
+                                target: redirect.target.res().expect_non_local(),
+                            })
+                            .collect()
+                    }
+                };
                 if let Some((ambig_binding1, ambig_binding2)) = decl.descent_to_ambiguity() {
+                    let index = ambig_children.len();
                     let main = ModChild {
                         ident,
                         res,
                         vis,
                         reexport_chain: ambig_binding1.reexport_chain(),
-                        edition_redirects: this.resolved_edition_redirects(ns, ambig_binding1),
+                        edition_redirects: edition_redirects(
+                            ambig_binding1,
+                            EditionRedirectSlot::AmbiguousMain(index),
+                        ),
                     };
                     let second = ModChild {
                         ident,
                         res: ambig_binding2.res().expect_non_local(),
                         vis: ambig_binding2.vis(),
                         reexport_chain: ambig_binding2.reexport_chain(),
-                        edition_redirects: this.resolved_edition_redirects(ns, ambig_binding2),
+                        edition_redirects: edition_redirects(
+                            ambig_binding2,
+                            EditionRedirectSlot::AmbiguousSecond(index),
+                        ),
                     };
                     ambig_children.push(AmbigModChild { main, second })
                 } else {
+                    let index = children.len();
                     children.push(ModChild {
                         ident,
                         res,
                         vis,
                         reexport_chain: decl.reexport_chain(),
-                        edition_redirects: this.resolved_edition_redirects(ns, decl),
+                        edition_redirects: edition_redirects(
+                            decl,
+                            EditionRedirectSlot::Child(index),
+                        ),
                     });
                 }
             }
         });
+
+        // Resolving a target can record import uses and diagnostics, so wait
+        // until `for_each_child` releases its borrow of the module resolutions.
+        for (child, ns, decl, redirects) in pending_edition_redirects {
+            let redirects = self.resolve_local_edition_redirects(ns, decl, redirects);
+            match child {
+                EditionRedirectSlot::Child(index) => {
+                    children[index].edition_redirects = redirects;
+                }
+                EditionRedirectSlot::AmbiguousMain(index) => {
+                    ambig_children[index].main.edition_redirects = redirects;
+                }
+                EditionRedirectSlot::AmbiguousSecond(index) => {
+                    ambig_children[index].second.edition_redirects = redirects;
+                }
+            }
+        }
 
         if !children.is_empty() {
             module_children.insert(def_id.expect_local(), children);

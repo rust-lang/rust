@@ -401,27 +401,32 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // Record primary definitions.
         let mut define_extern = |ns| {
             let orig_ident_span = orig_ident.span;
-            let edition_redirects = edition_redirects
-                .iter()
-                .map(|redirect| crate::EditionRedirectDecl {
-                    before: redirect.before,
-                    // Model this as a one-step reexport under the original
-                    // child's name: the target supplies the resolution, while
-                    // the child supplies its visibility and provenance.
-                    target: self.arenas.alloc_decl(DeclData {
-                        kind: DeclKind::Def(redirect.target.expect_non_local()),
-                        ambiguity: CmCell::new(None),
-                        initial_vis: vis,
-                        ambiguity_vis_max: CmCell::new(None),
-                        ambiguity_vis_min: CmCell::new(None),
-                        span,
-                        expansion,
-                        parent_module: Some(parent.to_module()),
-                        edition_redirects: &[],
-                    }),
-                })
-                .collect::<SmallVec<[_; 1]>>();
-            let edition_redirects = self.arenas.alloc_edition_redirects(&edition_redirects);
+            let edition_redirects = if edition_redirects.is_empty() {
+                // Fast path when there are no edition redirects.
+                &[]
+            } else {
+                let edition_redirects = edition_redirects
+                    .iter()
+                    .map(|redirect| crate::EditionRedirectDecl {
+                        before: redirect.before,
+                        // Model this as a one-step reexport under the original
+                        // child's name: the target supplies the resolution, while
+                        // the child supplies its visibility and provenance.
+                        target: self.arenas.alloc_decl(DeclData {
+                            kind: DeclKind::Def(redirect.target.expect_non_local()),
+                            ambiguity: CmCell::new(None),
+                            initial_vis: vis,
+                            ambiguity_vis_max: CmCell::new(None),
+                            ambiguity_vis_min: CmCell::new(None),
+                            span,
+                            expansion,
+                            parent_module: Some(parent.to_module()),
+                            edition_redirects: &[],
+                        }),
+                    })
+                    .collect::<SmallVec<[_; 1]>>();
+                self.arenas.alloc_edition_redirects(&edition_redirects)
+            };
             let decl = self.arenas.alloc_decl(DeclData {
                 kind: DeclKind::Def(res),
                 ambiguity: CmCell::new(ambig),
@@ -1437,12 +1442,13 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         // The resolver runs before these attributes are available through HIR.
         // Parse and retain them here, but leave their target paths unresolved
         // until ordinary imports have settled.
-        if let Some(Attribute::Parsed(AttributeKind::RustcEditionRedirect(mut redirects))) =
-            AttributeParser::parse_limited_sym(
-                self.r.tcx.sess,
-                &item.attrs,
-                &[sym::rustc_edition_redirect],
-            )
+        if ast::attr::contains_name(&item.attrs, sym::rustc_edition_redirect)
+            && let Some(Attribute::Parsed(AttributeKind::RustcEditionRedirect(mut redirects))) =
+                AttributeParser::parse_limited_sym(
+                    self.r.tcx.sess,
+                    &item.attrs,
+                    &[sym::rustc_edition_redirect],
+                )
         {
             redirects.sort_by_key(|redirect| redirect.before);
             let edition_redirects = redirects

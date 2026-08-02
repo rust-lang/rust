@@ -2082,7 +2082,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         f(self, MacroNS);
     }
 
-    fn edition_adjusted_decl(&self, decl: Decl<'ra>, edition: Edition) -> Decl<'ra> {
+    fn edition_adjusted_decl(&self, decl: Decl<'ra>, span: Span) -> Decl<'ra> {
+        // Nothing to do if the decl has no redirects.
+        if decl.edition_redirects.is_empty() {
+            return decl;
+        }
+
         // Crates with `edition_redirect` resolve canonical bindings so
         // redirects can be preserved through their re-exports. Other crates
         // select using the use-site edition.
@@ -2098,6 +2103,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             return decl;
         }
 
+        let edition = span.edition();
         decl.edition_redirects
             .iter()
             .find(|redirect| edition < redirect.before)
