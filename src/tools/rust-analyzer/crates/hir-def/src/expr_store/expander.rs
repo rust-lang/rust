@@ -16,7 +16,7 @@ use tt::TextRange;
 
 use crate::{
     MacroId, UnresolvedMacro, attrs::AttrFlags, expr_store::HygieneId, macro_call_as_call_id,
-    macro_expansion_depth, nameres::DefMap,
+    nameres::DefMap,
 };
 
 #[derive(Debug)]
@@ -44,7 +44,7 @@ impl<'db> Expander<'db> {
         };
         Expander {
             current_file_id,
-            recursion_depth: macro_expansion_depth(db, current_file_id, recursion_limit),
+            recursion_depth: current_file_id.macro_expansion_depth(db),
             recursion_limit,
             span_map: current_file_id.span_map(db),
             ast_id_map: current_file_id.ast_id_map(db),

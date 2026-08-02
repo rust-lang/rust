@@ -1730,4 +1730,24 @@ impl HirFileId {
     pub fn ast_id_map(self, db: &dyn SourceDatabase) -> AstIdMap {
         AstIdMap::from_source(&self.parse_or_expand(db))
     }
+
+    /// How many macro expansions separate this file from the real file it originates from.
+    ///
+    /// `Expander` and `DefCollector` seed their expansion depth counters from this. Both otherwise
+    /// start at zero for every body and every block, so a macro expanding to an item that invokes
+    /// the macro again advances neither counter past one and never reaches the recursion limit.
+    ///
+    /// Written recursively rather than as a loop so that salsa memoizes each file's depth. Callers
+    /// ask for this once per body, and the bodies of one expansion chain sit at depths 1..n, so a
+    /// loop would walk 1 + 2 + ... + n steps for that chain. Reusing the parent's memoized depth
+    /// makes each file O(1) once computed, and the chain linear.
+    #[salsa::tracked]
+    pub fn macro_expansion_depth(self, db: &dyn SourceDatabase) -> u32 {
+        match self.macro_file() {
+            Some(macro_call) => {
+                macro_call.loc(db).kind.file_id().macro_expansion_depth(db).saturating_add(1)
+            }
+            None => 0,
+        }
+    }
 }

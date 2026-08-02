@@ -109,25 +109,6 @@ pub(crate) struct ExpandProcAttrMacros {
     pub(crate) enabled: bool,
 }
 
-/// How many macro expansions separate `file` from the real file it ultimately originates from.
-///
-/// Used to seed the expansion depth counters, which otherwise restart for every body and every
-/// block and so never bound a macro that recurses through them.
-///
-/// The walk stops once the depth exceeds `cap`, as callers only compare it against their
-/// recursion limit.
-pub(crate) fn macro_expansion_depth(db: &dyn SourceDatabase, mut file: HirFileId, cap: u32) -> u32 {
-    let mut depth = 0;
-    while let Some(macro_call) = file.macro_file() {
-        depth += 1;
-        if depth > cap {
-            break;
-        }
-        file = macro_call.lookup(db).kind.file_id();
-    }
-    depth
-}
-
 pub fn set_expand_proc_attr_macros(db: &mut dyn SourceDatabase, enabled: bool) {
     if let Some(expand_proc_attr_macros) = ExpandProcAttrMacros::try_get(db) {
         if expand_proc_attr_macros.enabled(db) != enabled {
