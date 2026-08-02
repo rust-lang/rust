@@ -44,6 +44,34 @@ fn semantics<F>(
     //~^ ERROR patterns aren't allowed in function pointer types
 ) { }
 
+// Patterns are also syntactically rejected, but restricted patterns are not
+#[cfg(false)]
+fn syntax<F>(
+    pat1: fn(1..3: bool),
+    //~^ ERROR patterns aren't allowed in function pointer types
+    pat2: fn((x, y): (bool, bool)),
+    //~^ ERROR patterns aren't allowed in function pointer types
+    pat3: fn(Thing { a, b }: Thing),
+    //~^ ERROR patterns aren't allowed in function pointer types
+    pat4: fn(NoThing { a, b }: NoThing),
+    //~^ ERROR patterns aren't allowed in function pointer types
+    pat5: fn((((((x))))): bool),
+    //~^ ERROR patterns aren't allowed in function pointer types
+
+    self1: fn(self),
+    self2: fn(self, self),
+    //~^ ERROR unexpected `self` parameter in function
+    self3: fn(bool, self),
+    //~^ ERROR unexpected `self` parameter in function
+
+    restricted_pat1: fn(mut x: ()),
+    restricted_pat2: fn(&x: ()),
+    restricted_pat3: fn(&&x: ()),
+    restricted_pat4: fn(false: ()),
+    restricted_pat5: fn(&_: ()),
+    restricted_pat6: fn(&true: ()),
+) { }
+
 struct Thing { a: bool, b: bool }
 
 fn main() {
