@@ -294,7 +294,11 @@ fn rc_inner_layout_for_value_layout(layout: Layout) -> Layout {
     // Previously, layout was calculated on the expression
     // `&*(ptr as *const RcInner<T>)`, but this created a misaligned
     // reference (see #54908).
-    Layout::new::<RcInner<()>>().extend(layout).unwrap().0.pad_to_align()
+    Layout::new::<RcInner<()>>()
+        .extend(layout)
+        .unwrap_or_else(|_| panic!("capacity overflow"))
+        .0
+        .pad_to_align()
 }
 
 /// A single-threaded reference-counting pointer. 'Rc' stands for 'Reference

@@ -1496,6 +1496,14 @@ pub enum CastKind {
     /// MIR is well-formed if the input and output types have different sizes,
     /// but running a transmute between differently-sized types is UB.
     Transmute,
+    /// A special transmute used by elaborated `box` deref's to turn the inner pointer into a raw
+    /// pointer. This is almost equivalent to a regular transmute except that if the input would not
+    /// be valid as `Box<T>`, the cast is UB. Backends that do not care about UB detection can treat
+    /// this like a regular transmute.
+    ///
+    /// Well-formedness: The input type must be a pointer type or a newtype around one (e.g.
+    /// `NonNull`). The output type must be a raw pointer.
+    BoxDerefTransmute,
 
     /// A `Subtype` cast is applied to any [`StatementKind::Assign`] where
     /// type of lvalue doesn't match the type of rvalue, the primary goal is making subtyping

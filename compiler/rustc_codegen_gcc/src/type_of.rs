@@ -73,7 +73,7 @@ fn uncached_gcc_type<'gcc, 'tcx>(
                 else {
                     element
                 };
-            return cx.context.new_vector_type(element, count);
+            return cx.context.new_vector_type(element, count.as_u64());
         }
         BackendRepr::ScalarPair { .. } => {
             return cx.type_struct(

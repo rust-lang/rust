@@ -25,6 +25,7 @@
 #![feature(min_specialization)]
 #![feature(negative_impls)]
 #![feature(never_type)]
+#![feature(nonzero_internals)]
 #![feature(pattern_type_macro)]
 #![feature(pattern_types)]
 #![feature(ptr_alignment_type)]

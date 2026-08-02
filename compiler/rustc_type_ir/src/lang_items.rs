@@ -21,6 +21,7 @@ pub enum SolverAdtLangItem {
     // tidy-alphabetical-start
     DynMetadata,
     Option,
+    OwnedBox,
     Poll,
     // tidy-alphabetical-end
 }

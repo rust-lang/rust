@@ -1031,19 +1031,11 @@ pub(super) fn default_read_buf_exact<R: Read + ?Sized>(
     Ok(())
 }
 
-mod sealed {
-    /// This trait being unreachable from outside the crate
-    /// prevents outside implementations of our extension traits.
-    /// This allows adding more trait methods in the future.
-    #[unstable(feature = "sealed", issue = "none")]
-    pub trait Sealed {}
-}
-
 /// Trait for types that can be converted from a fixed-size byte array with a specified endianness
 #[unstable(feature = "read_le_be_internals", reason = "internals", issue = "none")]
 // Once we can use associated consts in the types of method parameters, rewrite this to have
 // `from_le_bytes` and `from_be_bytes` methods, move it to `core`, and make it public.
-pub trait FromEndianBytes: sealed::Sealed + Sized {
+pub impl(self) trait FromEndianBytes: Sized {
     #[doc(hidden)]
     fn read_le_from(r: &mut impl Read) -> Result<Self>;
 
@@ -1053,9 +1045,6 @@ pub trait FromEndianBytes: sealed::Sealed + Sized {
 
 macro_rules! impl_from_endian_bytes {
     ($($t:ty),*$(,)?) => {$(
-        #[unstable(feature = "sealed", issue = "none")]
-        impl sealed::Sealed for $t {}
-
         #[unstable(feature = "read_le_be_internals", reason = "internals", issue = "none")]
         impl FromEndianBytes for $t {
             #[inline]

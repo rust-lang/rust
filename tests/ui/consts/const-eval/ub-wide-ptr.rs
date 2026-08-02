@@ -140,11 +140,11 @@ const DYN_METADATA: ptr::DynMetadata<dyn Send> = ptr::metadata::<dyn Send>(ptr::
 
 static mut RAW_TRAIT_OBJ_VTABLE_NULL_THROUGH_REF: *const dyn Trait = unsafe {
     mem::transmute::<_, &dyn Trait>((&92u8, 0usize))
-    //~^^ ERROR null pointer
+    //~^ ERROR null pointer
 };
 static mut RAW_TRAIT_OBJ_VTABLE_INVALID_THROUGH_REF: *const dyn Trait = unsafe {
     mem::transmute::<_, &dyn Trait>((&92u8, &3u64))
-    //~^^ ERROR vtable
+    //~^ ERROR vtable
 };
 
 fn main() {}
