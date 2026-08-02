@@ -177,7 +177,7 @@ impl<'tcx> PrirodaContext<'tcx> {
         self.resume(ResumeMode::Continue)
     }
 
-    fn set_breakpoint(&mut self, path: PathBuf, line: usize) -> BreakpointSetResult {
+    pub(super) fn set_breakpoint(&mut self, path: PathBuf, line: usize) -> BreakpointSetResult {
         // FIXME: validate breakpoints here so every frontend gets the same behavior.
         // Reject empty paths, missing files, directories, and line 0. Decide whether
         // out-of-range lines should be rejected or kept as pending breakpoints.
@@ -305,7 +305,6 @@ impl<'tcx> PrirodaContext<'tcx> {
     fn current_breakpoint(&self) -> Option<(PathBuf, usize)> {
         let (path, line) = self.current_source_position()?;
         let lines = self.breakpoints.get(&path)?;
-
         if lines.contains(&line) { Some((path, line)) } else { None }
     }
 

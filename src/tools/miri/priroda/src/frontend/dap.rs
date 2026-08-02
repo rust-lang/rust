@@ -2,11 +2,12 @@ use std::io::{self, BufReader, BufWriter};
 
 use emmy_dap_types::prelude::events::{ExitedEventBody, StoppedEventBody};
 use emmy_dap_types::prelude::responses::{
-    ContinueResponse, ScopesResponse, StackTraceResponse, ThreadsResponse, VariablesResponse,
+    ContinueResponse, ScopesResponse, SetBreakpointsResponse, StackTraceResponse, ThreadsResponse,
+    VariablesResponse,
 };
 use emmy_dap_types::prelude::types::{
-    Capabilities, Scope, ScopePresentationhint, Source, StackFrame, StoppedEventReason, Thread,
-    Variable,
+    Breakpoint as DapBreakpoint, Capabilities, Scope, ScopePresentationhint, Source, StackFrame,
+    StoppedEventReason, Thread, Variable,
 };
 use emmy_dap_types::prelude::{Command, Event, Request, ResponseBody, Server};
 use miri::{InterpErrorInfo, InterpErrorKind, InterpResult, TerminationInfo, bug, interp_ok};
@@ -136,6 +137,11 @@ impl DapSession {
                 let res = self.handle_continue(request, session)?;
                 interp_ok(res.map(|()| self.dispatch_outcome()))
             }
+            Command::SetBreakpoints(_) =>
+                interp_ok(
+                    self.handle_set_breakpoints(request, session)
+                        .map(|()| DispatchOutcome::Continue),
+                ),
             Command::Next(_) | Command::StepIn(_) => {
                 let body = match &request.command {
                     Command::Next(_) => ResponseBody::Next,
@@ -393,6 +399,45 @@ impl DapSession {
             ExecutionOutcome::Failed(message) =>
                 interp_ok(self.respond_execution_error(request, message)),
         }
+    }
+
+    fn handle_set_breakpoints<'tcx>(
+        &mut self,
+        request: Request,
+        session: &mut PrirodaContext<'tcx>,
+    ) -> ServerResult {
+        if self.reject_after_termination(&request)? {
+            return Ok(());
+        }
+
+        let mut breakpoints = Vec::new();
+        if let Command::SetBreakpoints(ref args) = request.command {
+            if let Some(ref path_str) = args.source.path {
+                let path = std::path::PathBuf::from(path_str);
+                if let Some(ref req_bps) = args.breakpoints {
+                    for req_bp in req_bps {
+                        let line = req_bp.line as usize;
+                        session.set_breakpoint(path.clone(), line);
+                        breakpoints.push(DapBreakpoint {
+                            verified: true,
+                            message: None,
+                            source: Some(args.source.clone()),
+                            line: Some(req_bp.line),
+                            column: req_bp.column,
+                            end_line: None,
+                            end_column: None,
+                            id: None,
+                            instruction_reference: None,
+                            offset: None,
+                        });
+                    }
+                }
+            }
+        }
+
+        let response =
+            request.success(ResponseBody::SetBreakpoints(SetBreakpointsResponse { breakpoints }));
+        self.server.respond(response)
     }
 
     fn handle_disconnect(&mut self, request: Request) -> ServerResult {
