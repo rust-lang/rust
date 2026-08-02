@@ -5,7 +5,7 @@
 //!
 //! ```
 //! # #![allow(unused_imports)]
-//! use std::io::prelude::*;
+//! use core::io::prelude::*;
 //! ```
 
 #[stable(feature = "rust1", since = "1.0.0")]
