@@ -232,14 +232,15 @@ impl Thread {
     ///
     /// This is the id that shows up in tools like `ps` and `top`, debuggers and
     /// crash logs, unlike [`ThreadId`], which has no guaranteed relationship to
-    /// it. `None` means the platform has no such id or offers no way to read it,
-    /// or that the thread has not started running yet.
+    /// it. `None` means the platform has no such id, the thread has not started
+    /// running yet, or the id could not be read.
     ///
-    /// The operating system may hand the same id to a later thread once this one
-    /// exits, so it does not name a thread uniquely over the life of the
-    /// process. It may also no longer refer to this thread at all, since any
-    /// thread but the current one can exit at any point. For anything other than
-    /// the current thread, logging is the only safe use.
+    /// Ids are unique among threads running at the same moment, but the
+    /// operating system may reuse the id of a thread that has exited, and a
+    /// `Thread` handle can outlive the thread it refers to. As long as you know
+    /// the thread is running, the id still refers to that thread; for the
+    /// current thread you always know. When you do not, use the id only where a
+    /// repeated id is harmless, such as logging.
     ///
     /// # Examples
     ///
@@ -247,8 +248,10 @@ impl Thread {
     /// #![feature(thread_os_id)]
     /// use std::thread;
     ///
-    /// let spawned = thread::spawn(|| thread::current().os_id());
-    /// println!("spawned thread ran as {:?}", spawned.join().unwrap());
+    /// let spawned = thread::spawn(|| thread::current().os_id()).join().unwrap();
+    /// if spawned.is_some() {
+    ///     assert_ne!(spawned, thread::current().os_id());
+    /// }
     /// ```
     #[unstable(feature = "thread_os_id", issue = "160215")]
     #[must_use]
