@@ -5,6 +5,8 @@ mod cursor;
 mod error;
 mod impls;
 mod io_slice;
+#[unstable(feature = "core_io", issue = "154046")]
+pub mod prelude;
 mod seek;
 mod size_hint;
 mod util;
