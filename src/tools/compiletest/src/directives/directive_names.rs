@@ -43,6 +43,7 @@ pub(crate) const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "force-host",
     "gdb-check",
     "gdb-command",
+    "gdb-repr",
     "ignore-16bit",
     "ignore-32bit",
     "ignore-64bit",
