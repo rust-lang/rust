@@ -14,15 +14,6 @@ use rustc_session::declare_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{BytePos, Span};
 
-macro_rules! unwrap_or_continue {
-    ($x:expr) => {
-        match $x {
-            Some(x) => x,
-            None => continue,
-        }
-    };
-}
-
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for a redundant `clone()` (and its relatives) which clones an owned
@@ -94,8 +85,9 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
                 continue;
             }
 
-            let (fn_def_id, arg, arg_ty, clone_ret) =
-                unwrap_or_continue!(is_call_with_ref_arg(cx, mir, &terminator.kind));
+            let Some((fn_def_id, arg, arg_ty, clone_ret)) = is_call_with_ref_arg(cx, mir, &terminator.kind) else {
+                continue;
+            };
 
             let fn_name = cx.tcx.get_diagnostic_name(fn_def_id);
 
@@ -116,7 +108,9 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
             }
 
             // `{ arg = &cloned; clone(move arg); }` or `{ arg = &cloned; to_path_buf(arg); }`
-            let (cloned, cannot_move_out) = unwrap_or_continue!(find_stmt_assigns_to(cx, mir, arg, from_borrow, bb));
+            let Some((cloned, cannot_move_out)) = find_stmt_assigns_to(cx, mir, arg, from_borrow, bb) else {
+                continue;
+            };
 
             let loc = mir::Location {
                 block: bb,
@@ -157,8 +151,9 @@ impl<'tcx> LateLintPass<'tcx> for RedundantClone {
                     continue;
                 };
 
-                let (local, cannot_move_out) =
-                    unwrap_or_continue!(find_stmt_assigns_to(cx, mir, pred_arg, true, ps[0]));
+                let Some((local, cannot_move_out)) = find_stmt_assigns_to(cx, mir, pred_arg, true, ps[0]) else {
+                    continue;
+                };
                 let loc = mir::Location {
                     block: bb,
                     statement_index: mir.basic_blocks[bb].statements.len(),
