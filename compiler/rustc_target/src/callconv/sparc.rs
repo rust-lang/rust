@@ -55,6 +55,10 @@ where
 
     for arg in fn_abi.args.iter_mut() {
         if arg.is_ignore() {
+            if arg.layout.is_zst() {
+                arg.make_indirect_from_ignore();
+                offset += cx.data_layout().pointer_size();
+            }
             continue;
         }
         classify_arg(cx, arg, &mut offset);
