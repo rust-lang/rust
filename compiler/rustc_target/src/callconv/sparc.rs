@@ -1,16 +1,20 @@
-use rustc_abi::{HasDataLayout, Size, TyAbiInterface};
+use rustc_abi::{BackendRepr, Float, HasDataLayout, Primitive, Size, TyAbiInterface};
 
 use crate::callconv::{ArgAbi, FnAbi, Reg, Uniform};
+
+fn is_long_double(repr: BackendRepr) -> bool {
+    matches!(repr, BackendRepr::Scalar(scalar) if scalar.primitive() == Primitive::Float(Float::F128))
+}
 
 fn classify_ret<Ty, C>(cx: &C, ret: &mut ArgAbi<'_, Ty>, offset: &mut Size)
 where
     C: HasDataLayout,
 {
-    if !ret.layout.is_aggregate() {
-        ret.extend_integer_width_to(32);
-    } else {
+    if is_long_double(ret.layout.backend_repr) || ret.layout.is_aggregate() {
         ret.make_indirect();
         *offset += cx.data_layout().pointer_size();
+    } else {
+        ret.extend_integer_width_to(32);
     }
 }
 
@@ -27,6 +31,11 @@ where
     let dl = cx.data_layout();
     if arg.layout.pass_indirectly_in_non_rustic_abis(cx) {
         arg.make_indirect();
+        *offset += dl.pointer_size();
+        return;
+    }
+    if is_long_double(arg.layout.backend_repr) {
+        arg.pass_by_stack_offset(None);
         *offset += dl.pointer_size();
         return;
     }
