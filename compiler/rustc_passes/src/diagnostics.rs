@@ -1028,13 +1028,6 @@ pub(crate) enum UnexportableItem<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag("`eii_macro_for` is only valid on functions and statics")]
-pub(crate) struct EiiImplTarget {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("`#[{$name}]` is unsafe to implement")]
 pub(crate) struct EiiImplRequiresUnsafe {
     #[primary_span]
