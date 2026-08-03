@@ -496,7 +496,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             }
             ty::FnDef(def_id, args) => {
                 let instance = self.resolve(def_id, args.no_bound_vars().unwrap())?;
-                // Don't compute FnAbi for LLVM intrinsics. Trying to that would panic.
+                // Don't compute FnAbi for LLVM intrinsics. Trying to do that would panic.
+                // Rust intrinsics however *do* need a FnAbi as we may invoke the
+                // fallback body like a regular function.
                 let has_fn_abi = !matches!(instance.def, ty::InstanceKind::LlvmIntrinsic(_));
                 (
                     FnVal::Instance(instance),
