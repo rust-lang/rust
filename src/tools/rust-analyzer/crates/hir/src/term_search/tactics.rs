@@ -72,6 +72,10 @@ pub(super) fn trivial<'a, 'lt, 'db, DB: HirDatabase>(
         }?;
 
         let ty = expr.ty(db);
+        if ty.contains_unknown() {
+            return None;
+        }
+
         lookup.insert(ty.clone(), std::iter::once(expr.clone()));
 
         // Don't suggest local references as they are not valid for return
