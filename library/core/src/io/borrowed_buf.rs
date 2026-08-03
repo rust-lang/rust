@@ -2,7 +2,6 @@
 
 use crate::fmt::{self, Debug, Formatter};
 use crate::mem::{self, MaybeUninit};
-use crate::ptr;
 
 /// A borrowed buffer of initially uninitialized elements, which is incrementally filled.
 ///
@@ -357,24 +356,57 @@ impl<'a, T: Copy> BorrowedCursor<'a, T> {
     }
 }
 
-impl<'a> BorrowedCursor<'a, u8> {
-    /// Initializes all bytes in the cursor and returns them.
+impl<'a, T: Default + Copy> BorrowedCursor<'a, T> {
+    /// Initializes all elements in the cursor with their default value and
+    /// returns them.
     #[unstable(feature = "borrowed_buf_init", issue = "160476")]
     #[inline]
-    pub fn ensure_init(&mut self) -> &mut [u8] {
-        // SAFETY: always in bounds and we never uninitialize these bytes.
+    pub fn ensure_init(&mut self) -> &mut [T] {
+        trait InitSpec: Default + Copy {
+            fn initialize(buf: &mut [MaybeUninit<Self>]);
+        }
+
+        impl<T: Default + Copy> InitSpec for T {
+            default fn initialize(buf: &mut [MaybeUninit<Self>]) {
+                buf.write_with(|_| Self::default());
+            }
+        }
+
+        macro_rules! spec_zero_init {
+            ($ty:ty) => {
+                impl InitSpec for $ty {
+                    fn initialize(buf: &mut [MaybeUninit<Self>]) {
+                        // SAFETY: all these types can be zero-initialized.
+                        unsafe {
+                            buf.as_mut_ptr().write_bytes(0, buf.len());
+                        }
+                    }
+                }
+            };
+        }
+
+        spec_zero_init!(i8);
+        spec_zero_init!(u8);
+        spec_zero_init!(i16);
+        spec_zero_init!(u16);
+        spec_zero_init!(i32);
+        spec_zero_init!(u32);
+        spec_zero_init!(i64);
+        spec_zero_init!(u64);
+        spec_zero_init!(i128);
+        spec_zero_init!(u128);
+        spec_zero_init!(isize);
+        spec_zero_init!(usize);
+
+        // SAFETY: always in bounds and we never uninitialize these elements.
         let unfilled = unsafe { self.buf.buf.get_unchecked_mut(self.buf.filled..) };
 
         if !self.buf.init {
-            // SAFETY: 0 is a valid value for MaybeUninit<u8> and the length matches the allocation
-            // since it is comes from a slice reference.
-            unsafe {
-                ptr::write_bytes(unfilled.as_mut_ptr(), 0, unfilled.len());
-            }
+            InitSpec::initialize(unfilled);
             self.buf.init = true;
         }
 
-        // SAFETY: these bytes have just been initialized if they weren't before
+        // SAFETY: these elements have just been initialized if they weren't before
         unsafe { unfilled.assume_init_mut() }
     }
 }
