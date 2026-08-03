@@ -835,6 +835,9 @@ struct LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 
     /// `use` injections are delayed for better placement and deduplication.
     use_injections: Vec<UseError<'tcx>>,
+
+    /// All `use` and `extern crate` items, in the order in which they are visited.
+    use_items: Vec<&'ast Item>,
 }
 
 impl<'ra, 'tcx> AsRef<Resolver<'ra, 'tcx>> for LateResolutionVisitor<'_, '_, 'ra, 'tcx> {
@@ -1515,6 +1518,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             in_func_body: false,
             lifetime_uses: Default::default(),
             use_injections: Vec::new(),
+            use_items: Vec::new(),
         }
     }
 
@@ -3004,6 +3008,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 ),
 
             ItemKind::Use(use_tree) => {
+                self.use_items.push(item);
                 let maybe_exported = match use_tree.kind {
                     UseTreeKind::Simple(_) | UseTreeKind::Glob(_) => MaybeExported::Ok(item.id),
                     UseTreeKind::Nested { .. } => MaybeExported::NestedUse(&item.vis),
@@ -3049,7 +3054,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 );
             }
 
-            ItemKind::ExternCrate(..) => {}
+            ItemKind::ExternCrate(..) => self.use_items.push(item),
 
             ItemKind::MacCall(_) | ItemKind::DelegationMac(..) => {
                 panic!("unexpanded macro in resolve!")
@@ -5539,13 +5544,11 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
 /// Walks the whole crate in DFS order, visiting each item, counting the declared number of
 /// lifetime generic parameters and function parameters. Also collects all `use` and
 /// `extern crate` items so that `check_unused` doesn't need to walk the crate again.
-struct ItemInfoCollector<'a, 'ast, 'ra, 'tcx> {
+struct ItemInfoCollector<'a, 'ra, 'tcx> {
     r: &'a mut Resolver<'ra, 'tcx>,
-    /// All `use` and `extern crate` items, in the order in which they are visited.
-    use_items: Vec<&'ast Item>,
 }
 
-impl ItemInfoCollector<'_, '_, '_, '_> {
+impl ItemInfoCollector<'_, '_, '_> {
     fn collect_fn_info(&mut self, decl: &FnDecl, id: NodeId) {
         self.r
             .delegation_fn_sigs
@@ -5579,8 +5582,8 @@ fn required_generic_args_suggestion(generics: &ast::Generics) -> Option<String> 
     if required.is_empty() { None } else { Some(format!("<{}>", required.join(", "))) }
 }
 
-impl<'ast> Visitor<'ast> for ItemInfoCollector<'_, 'ast, '_, '_> {
-    fn visit_item(&mut self, item: &'ast Item) {
+impl Visitor<'_> for ItemInfoCollector<'_, '_, '_> {
+    fn visit_item(&mut self, item: &Item) {
         match &item.kind {
             ItemKind::TyAlias(TyAlias { generics, .. })
             | ItemKind::Const(ConstItem { generics, .. })
@@ -5612,16 +5615,14 @@ impl<'ast> Visitor<'ast> for ItemInfoCollector<'_, 'ast, '_, '_> {
                 }
             }
 
-            ItemKind::Use(..) | ItemKind::ExternCrate(..) => {
-                self.use_items.push(item);
-            }
-
             ItemKind::Mod(..)
             | ItemKind::Static(..)
             | ItemKind::ConstBlock(..)
             | ItemKind::MacroDef(..)
             | ItemKind::GlobalAsm(..)
             | ItemKind::MacCall(..)
+            | ItemKind::Use(..)
+            | ItemKind::ExternCrate(..)
             | ItemKind::DelegationMac(..) => {}
             ItemKind::Delegation(..) => {
                 // Delegated functions have lifetimes, their count is not necessarily zero.
@@ -5633,7 +5634,7 @@ impl<'ast> Visitor<'ast> for ItemInfoCollector<'_, 'ast, '_, '_> {
         visit::walk_item(self, item)
     }
 
-    fn visit_assoc_item(&mut self, item: &'ast AssocItem, ctxt: AssocCtxt) {
+    fn visit_assoc_item(&mut self, item: &AssocItem, ctxt: AssocCtxt) {
         if let AssocItemKind::Fn(Fn { sig, .. }) = &item.kind {
             self.collect_fn_info(&sig.decl, item.id);
         }
@@ -5655,14 +5656,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         krate: &'ast Crate,
     ) -> (Vec<&'ast Item>, Vec<UseError<'tcx>>) {
         with_owner(self, CRATE_NODE_ID, |this| {
-            let mut info_collector = ItemInfoCollector { r: this, use_items: Vec::new() };
+            let mut info_collector = ItemInfoCollector { r: this };
             visit::walk_crate(&mut info_collector, krate);
-            let use_items = info_collector.use_items;
             let mut late_resolution_visitor = LateResolutionVisitor::new(this);
             late_resolution_visitor
                 .resolve_doc_links(&krate.attrs, MaybeExported::Ok(CRATE_NODE_ID));
             visit::walk_crate(&mut late_resolution_visitor, krate);
-            let LateResolutionVisitor { use_injections, diag_metadata, .. } =
+            let LateResolutionVisitor { use_injections, diag_metadata, use_items, .. } =
                 late_resolution_visitor;
             for (id, span) in diag_metadata.unused_labels.iter() {
                 this.lint_buffer.buffer_lint(
