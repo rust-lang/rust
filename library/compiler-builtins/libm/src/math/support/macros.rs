@@ -1,7 +1,6 @@
 // Because `cfg_select` requires rust verion 1.95 and we support older versions,
 // we use the following replacement until that is no longer true.
 // FIXME(msrv)
-#[macro_export]
 macro_rules! cfg_select {
     ({ $($tt:tt)* }) => {{
         $crate::cfg_select! { $($tt)* }

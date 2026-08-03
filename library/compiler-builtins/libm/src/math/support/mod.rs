@@ -14,7 +14,7 @@ mod modular;
 pub use big::{i256, u256};
 // Clippy seems to have a false positive
 #[allow(unused_imports, clippy::single_component_path_imports)]
-pub use cfg_select;
+pub(crate) use cfg_select;
 pub use env::{FpResult, Round, Status};
 #[allow(unused_imports)]
 pub use float_traits::{Float, HalfRep, IntTy, NarrowFloat, WideFloat};

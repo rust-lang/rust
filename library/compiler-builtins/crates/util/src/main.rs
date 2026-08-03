@@ -8,7 +8,7 @@ use std::env;
 use std::num::ParseIntError;
 use std::str::FromStr;
 
-use libm::support::{Float, Hex, cfg_select, hf32, hf64};
+use libm::support::{Float, Hex, hf32, hf64};
 #[cfg(feature = "build-mpfr")]
 use libm_test::mpfloat::MpOp;
 use libm_test::{MathOp, TupleCall, builtins_wrapper};
