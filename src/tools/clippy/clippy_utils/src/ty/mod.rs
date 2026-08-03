@@ -345,7 +345,7 @@ pub fn opt_must_use_path<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<M
     }
 }
 
-/// Describe a [`MustUsePath`] returned by [`is_must_use_ty`].
+/// Describe a [`MustUsePath`] returned by [`opt_must_use_path`].
 pub fn describe_must_use_type(cx: &LateContext<'_>, path: &MustUsePath) -> String {
     describe_must_use_type_inner(cx, path, "", "", 1)
 }
