@@ -241,6 +241,11 @@ pub struct MacroCallLoc {
     pub krate: Crate,
     pub kind: MacroCallKind,
     pub ctxt: SyntaxContext,
+    /// The macro recursion depth of this expansion.
+    ///
+    /// Because macro expansions can cross `DefMap` boundaries, we must track this inside the expansion
+    /// to not recurse infinitely.
+    pub macro_depth: u32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -1014,8 +1019,9 @@ impl MacroDefId {
         krate: Crate,
         kind: MacroCallKind,
         ctxt: SyntaxContext,
+        macro_depth: u32,
     ) -> MacroCallId {
-        MacroCallId::new(db, MacroCallLoc { def: self, krate, kind, ctxt })
+        MacroCallId::new(db, MacroCallLoc { def: self, krate, kind, ctxt, macro_depth })
     }
 
     pub fn definition_range(&self, db: &dyn SourceDatabase) -> InFile<TextRange> {
@@ -1722,14 +1728,6 @@ impl HirFileId {
             }
         }
     }
-}
-
-#[salsa::tracked]
-impl HirFileId {
-    #[salsa::tracked(lru = 1024, returns(ref))]
-    pub fn ast_id_map(self, db: &dyn SourceDatabase) -> AstIdMap {
-        AstIdMap::from_source(&self.parse_or_expand(db))
-    }
 
     /// How many macro expansions separate this file from the real file it originates from.
     ///
@@ -1741,13 +1739,19 @@ impl HirFileId {
     /// ask for this once per body, and the bodies of one expansion chain sit at depths 1..n, so a
     /// loop would walk 1 + 2 + ... + n steps for that chain. Reusing the parent's memoized depth
     /// makes each file O(1) once computed, and the chain linear.
-    #[salsa::tracked]
+    #[inline]
     pub fn macro_expansion_depth(self, db: &dyn SourceDatabase) -> u32 {
-        match self.macro_file() {
-            Some(macro_call) => {
-                macro_call.loc(db).kind.file_id().macro_expansion_depth(db).saturating_add(1)
-            }
-            None => 0,
+        match self {
+            HirFileId::MacroFile(macro_call) => macro_call.loc(db).macro_depth,
+            HirFileId::FileId(_) => 0,
         }
+    }
+}
+
+#[salsa::tracked]
+impl HirFileId {
+    #[salsa::tracked(lru = 1024, returns(ref))]
+    pub fn ast_id_map(self, db: &dyn SourceDatabase) -> AstIdMap {
+        AstIdMap::from_source(&self.parse_or_expand(db))
     }
 }

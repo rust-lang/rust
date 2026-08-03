@@ -1352,6 +1352,7 @@ impl<'db> DefCollector<'db> {
                         *call_site,
                         *expand_to,
                         self.def_map.krate,
+                        directive.depth,
                         resolver_def_id,
                         &mut |ptr, call_id| {
                             eager_callback_buffer.push((directive.module_id, ptr, call_id));
@@ -1388,6 +1389,7 @@ impl<'db> DefCollector<'db> {
                         self.def_map.krate,
                         |path| resolver(&self.def_map, path),
                         *derive_macro_id,
+                        directive.depth,
                     );
 
                     if let Ok((macro_id, def_id, call_id)) = id {
@@ -1493,6 +1495,7 @@ impl<'db> DefCollector<'db> {
                             AttrMacroAttrIds::from_many(active_attrs),
                             self.def_map.krate,
                             def,
+                            directive.depth,
                         )
                     };
                     if matches!(def,
@@ -1545,6 +1548,7 @@ impl<'db> DefCollector<'db> {
                                         self.def_map.krate,
                                         |path| resolver(&self.def_map, path),
                                         call_id,
+                                        directive.depth,
                                     );
 
                                     let ast_id_without_path = ast_id.ast_id;
@@ -1780,6 +1784,7 @@ impl<'db> DefCollector<'db> {
                         *call_site,
                         *expand_to,
                         self.def_map.krate,
+                        directive.depth,
                         |path| {
                             let resolved_res = self.def_map.resolve_path_fp_with_macro(
                                 self.crate_local_def_map.unwrap_or(&self.local_def_map),
@@ -2682,6 +2687,7 @@ impl ModCollector<'_, '_> {
             ctxt,
             expand_to,
             self.def_collector.def_map.krate,
+            self.macro_depth + 1,
             |path| {
                 path.as_ident().and_then(|name| {
                     let def_map = &self.def_collector.def_map;

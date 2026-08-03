@@ -35,6 +35,7 @@ impl DefMap {
         ast_id: AstIdWithPath<ast::Item>,
         attr: &Attr,
         attr_id: AttrId,
+        macro_depth: u32,
     ) -> Result<ResolvedAttr, UnresolvedMacro> {
         // NB: does not currently work for derive helpers as they aren't recorded in the `DefMap`
 
@@ -73,6 +74,7 @@ impl DefMap {
             AttrMacroAttrIds::from_one(attr_id),
             self.krate,
             def.definition(db),
+            macro_depth,
         )))
     }
 
@@ -108,6 +110,7 @@ pub(super) fn attr_macro_as_call_id(
     censored_attr_ids: AttrMacroAttrIds,
     krate: Crate,
     def: MacroDefId,
+    macro_depth: u32,
 ) -> MacroCallId {
     let arg = match macro_attr.input.as_deref() {
         Some(AttrInput::TokenTree(tt)) => {
@@ -128,6 +131,7 @@ pub(super) fn attr_macro_as_call_id(
             censored_attr_ids,
         },
         macro_attr.ctxt,
+        macro_depth,
     )
 }
 
@@ -140,6 +144,7 @@ pub(super) fn derive_macro_as_call_id(
     krate: Crate,
     resolver: impl Fn(&ModPath) -> Option<(MacroId, MacroDefId)>,
     derive_macro_id: MacroCallId,
+    macro_depth: u32,
 ) -> Result<(MacroId, MacroDefId, MacroCallId), UnresolvedMacro> {
     let (macro_id, def_id) = resolver(&item_attr.path)
         .filter(|(_, def_id)| def_id.is_derive())
@@ -154,6 +159,7 @@ pub(super) fn derive_macro_as_call_id(
             derive_macro_id,
         },
         call_site,
+        macro_depth,
     );
     Ok((macro_id, def_id, call_id))
 }

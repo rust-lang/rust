@@ -325,8 +325,8 @@ impl Docs {
 struct DocMacroExpander<'db> {
     db: &'db dyn SourceDatabase,
     krate: Crate,
-    recursion_depth: usize,
-    recursion_limit: usize,
+    macro_depth: u32,
+    recursion_limit: u32,
     resolver: Resolver<'db>,
     file_id: HirFileId,
     ast_id_map: &'db AstIdMap,
@@ -357,7 +357,7 @@ fn expand_doc_macro_call<'db>(
     expander: &mut DocMacroExpander<'db>,
     macro_call: ast::MacroCall,
 ) -> Option<String> {
-    if expander.recursion_depth >= expander.recursion_limit {
+    if expander.macro_depth >= expander.recursion_limit {
         return None;
     }
 
@@ -374,6 +374,7 @@ fn expand_doc_macro_call<'db>(
         call_site.ctx,
         ExpandTo::Expr,
         expander.krate,
+        expander.macro_depth + 1,
         |path| {
             expander.resolver.resolve_path_as_macro_def(expander.db, path, Some(MacroSubNs::Bang))
         },
@@ -394,14 +395,14 @@ fn expand_doc_macro_call<'db>(
         std::mem::replace(&mut expander.span_map, SpanMap::ExpansionSpanMap(span_map));
     let old_ast_id_map =
         std::mem::replace(&mut expander.ast_id_map, expansion_file_id.ast_id_map(expander.db));
-    expander.recursion_depth += 1;
+    expander.macro_depth += 1;
 
     let expansion = expand_doc_expr_via_macro_pipeline(expander, expr);
 
     expander.file_id = old_file_id;
     expander.span_map = old_span_map;
     expander.ast_id_map = old_ast_id_map;
-    expander.recursion_depth -= 1;
+    expander.macro_depth -= 1;
 
     expansion
 }
@@ -444,11 +445,11 @@ fn extend_with_attrs<'a, 'db>(
                                 let exp = expander.get_or_insert_with(|| {
                                     let resolver = make_resolver();
                                     let def_map = resolver.top_level_def_map();
-                                    let recursion_limit = def_map.recursion_limit() as usize;
+                                    let recursion_limit = def_map.recursion_limit();
                                     DocMacroExpander {
                                         db,
                                         krate,
-                                        recursion_depth: 0,
+                                        macro_depth: 0,
                                         recursion_limit,
                                         resolver,
                                         file_id,
