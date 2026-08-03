@@ -22,15 +22,15 @@ use crate::io::{self, ErrorKind, IoSlice, SeekFrom, Write};
 // FIXME(#74481): Hard-links required to link from `core` to `std`
 /// [bytes]: crate::slice "slice"
 /// [`File`]: ../../std/fs/struct.File.html
-/// [`Read`]: ../../std/io/trait.Read.html
+/// [`Read`]: ../../alloc/io/trait.Read.html
 /// [`Write`]: crate::io::Write
 /// [`Seek`]: crate::io::Seek
 /// [Vec]: ../../alloc/vec/struct.Vec.html
 ///
 /// ```no_run
+/// # use core as std;
 /// use std::io::prelude::*;
 /// use std::io::{self, SeekFrom};
-/// use std::fs::File;
 ///
 /// // a library function we've written
 /// fn write_ten_bytes_at_end<W: Write + Seek>(mut writer: W) -> io::Result<()> {
@@ -44,26 +44,13 @@ use crate::io::{self, ErrorKind, IoSlice, SeekFrom, Write};
 ///     Ok(())
 /// }
 ///
-/// # fn foo() -> io::Result<()> {
-/// // Here's some code that uses this library function.
-/// //
-/// // We might want to use a BufReader here for efficiency, but let's
-/// // keep this example focused.
-/// let mut file = File::create("foo.txt")?;
-/// // First, we need to allocate 10 bytes to be able to write into.
-/// file.set_len(10)?;
-///
-/// write_ten_bytes_at_end(&mut file)?;
-/// # Ok(())
-/// # }
-///
 /// // now let's write a test
-/// #[test]
+/// # #[allow(dead_code)]
 /// fn test_writes_bytes() {
 ///     // setting up a real File is much slower than an in-memory buffer,
 ///     // let's use a cursor instead
 ///     use std::io::Cursor;
-///     let mut buff = Cursor::new(vec![0; 15]);
+///     let mut buff = Cursor::new([0; 15]);
 ///
 ///     write_ten_bytes_at_end(&mut buff).unwrap();
 ///
@@ -90,10 +77,11 @@ impl<T> Cursor<T> {
     /// # Examples
     ///
     /// ```
+    /// # use core as std;
     /// use std::io::Cursor;
     ///
-    /// let buff = Cursor::new(Vec::new());
-    /// # fn force_inference(_: &Cursor<Vec<u8>>) {}
+    /// let buff = Cursor::new(&[1, 2, 3]);
+    /// # fn force_inference(_: &Cursor<&[u8]>) {}
     /// # force_inference(&buff);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -107,13 +95,14 @@ impl<T> Cursor<T> {
     /// # Examples
     ///
     /// ```
+    /// # use core as std;
     /// use std::io::Cursor;
     ///
-    /// let buff = Cursor::new(Vec::new());
-    /// # fn force_inference(_: &Cursor<Vec<u8>>) {}
+    /// let buff = Cursor::new(&[1, 2, 3]);
+    /// # fn force_inference(_: &Cursor<&[u8]>) {}
     /// # force_inference(&buff);
     ///
-    /// let vec = buff.into_inner();
+    /// let slice = buff.into_inner();
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_inner(self) -> T {
@@ -125,10 +114,11 @@ impl<T> Cursor<T> {
     /// # Examples
     ///
     /// ```
+    /// # use core as std;
     /// use std::io::Cursor;
     ///
-    /// let buff = Cursor::new(Vec::new());
-    /// # fn force_inference(_: &Cursor<Vec<u8>>) {}
+    /// let buff = Cursor::new(&[1, 2, 3]);
+    /// # fn force_inference(_: &Cursor<&[u8]>) {}
     /// # force_inference(&buff);
     ///
     /// let reference = buff.get_ref();
@@ -147,10 +137,11 @@ impl<T> Cursor<T> {
     /// # Examples
     ///
     /// ```
+    /// # use core as std;
     /// use std::io::Cursor;
     ///
-    /// let mut buff = Cursor::new(Vec::new());
-    /// # fn force_inference(_: &Cursor<Vec<u8>>) {}
+    /// let mut buff = Cursor::new(&[1, 2, 3]);
+    /// # fn force_inference(_: &Cursor<&[u8]>) {}
     /// # force_inference(&buff);
     ///
     /// let reference = buff.get_mut();
@@ -166,11 +157,12 @@ impl<T> Cursor<T> {
     /// # Examples
     ///
     /// ```
+    /// # use core as std;
     /// use std::io::Cursor;
     /// use std::io::prelude::*;
     /// use std::io::SeekFrom;
     ///
-    /// let mut buff = Cursor::new(vec![1, 2, 3, 4, 5]);
+    /// let mut buff = Cursor::new([1, 2, 3, 4, 5]);
     ///
     /// assert_eq!(buff.position(), 0);
     ///
@@ -191,9 +183,10 @@ impl<T> Cursor<T> {
     /// # Examples
     ///
     /// ```
+    /// # use core as std;
     /// use std::io::Cursor;
     ///
-    /// let mut buff = Cursor::new(vec![1, 2, 3, 4, 5]);
+    /// let mut buff = Cursor::new([1, 2, 3, 4, 5]);
     ///
     /// assert_eq!(buff.position(), 0);
     ///
@@ -227,9 +220,10 @@ where
     ///
     /// ```
     /// #![feature(cursor_split)]
+    /// # use core as std;
     /// use std::io::Cursor;
     ///
-    /// let mut buff = Cursor::new(vec![1, 2, 3, 4, 5]);
+    /// let mut buff = Cursor::new([1, 2, 3, 4, 5]);
     ///
     /// assert_eq!(buff.split(), ([].as_slice(), [1, 2, 3, 4, 5].as_slice()));
     ///
@@ -258,9 +252,10 @@ where
     ///
     /// ```
     /// #![feature(cursor_split)]
+    /// # use core as std;
     /// use std::io::Cursor;
     ///
-    /// let mut buff = Cursor::new(vec![1, 2, 3, 4, 5]);
+    /// let mut buff = Cursor::new([1, 2, 3, 4, 5]);
     ///
     /// assert_eq!(buff.split_mut(), ([].as_mut_slice(), [1, 2, 3, 4, 5].as_mut_slice()));
     ///

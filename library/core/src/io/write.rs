@@ -25,17 +25,18 @@ use crate::io::{Error, IoSlice, Result};
 /// # Examples
 ///
 /// ```no_run
+/// # use core as std;
 /// use std::io::prelude::*;
-/// use std::fs::File;
 ///
 /// fn main() -> std::io::Result<()> {
 ///     let data = b"some bytes";
 ///
 ///     let mut pos = 0;
-///     let mut buffer = File::create("foo.txt")?;
+///     let mut buffer = [0; 10];
+///     let mut cursor = std::io::Cursor::new(&mut buffer);
 ///
 ///     while pos < data.len() {
-///         let bytes_written = buffer.write(&data[pos..])?;
+///         let bytes_written = cursor.write(&data[pos..])?;
 ///         pos += bytes_written;
 ///     }
 ///     Ok(())
@@ -84,14 +85,20 @@ pub trait Write {
     /// # Examples
     ///
     /// ```no_run
+    /// # use core as std;
     /// use std::io::prelude::*;
-    /// use std::fs::File;
     ///
     /// fn main() -> std::io::Result<()> {
-    ///     let mut buffer = File::create("foo.txt")?;
+    ///     let data = b"some bytes";
     ///
-    ///     // Writes some prefix of the byte string, not necessarily all of it.
-    ///     buffer.write(b"some bytes")?;
+    ///     let mut pos = 0;
+    ///     let mut buffer = [0; 10];
+    ///     let mut cursor = std::io::Cursor::new(&mut buffer);
+    ///
+    ///     while pos < data.len() {
+    ///         let bytes_written = cursor.write(&data[pos..])?;
+    ///         pos += bytes_written;
+    ///     }
     ///     Ok(())
     /// }
     /// ```
@@ -112,9 +119,9 @@ pub trait Write {
     /// # Examples
     ///
     /// ```no_run
+    /// # use core as std;
     /// use std::io::IoSlice;
     /// use std::io::prelude::*;
-    /// use std::fs::File;
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let data1 = [1; 8];
@@ -122,10 +129,11 @@ pub trait Write {
     ///     let io_slice1 = IoSlice::new(&data1);
     ///     let io_slice2 = IoSlice::new(&data2);
     ///
-    ///     let mut buffer = File::create("foo.txt")?;
+    ///     let mut buffer = [0; 16];
+    ///     let mut cursor = std::io::Cursor::new(&mut buffer);
     ///
     ///     // Writes some prefix of the byte string, not necessarily all of it.
-    ///     buffer.write_vectored(&[io_slice1, io_slice2])?;
+    ///     cursor.write_vectored(&[io_slice1, io_slice2])?;
     ///     Ok(())
     /// }
     /// ```
@@ -162,15 +170,18 @@ pub trait Write {
     /// # Examples
     ///
     /// ```no_run
+    /// # use core as std;
     /// use std::io::prelude::*;
-    /// use std::io::BufWriter;
-    /// use std::fs::File;
     ///
     /// fn main() -> std::io::Result<()> {
-    ///     let mut buffer = BufWriter::new(File::create("foo.txt")?);
+    ///     let data = b"some bytes";
     ///
-    ///     buffer.write_all(b"some bytes")?;
-    ///     buffer.flush()?;
+    ///     let mut buffer = [0; 10];
+    ///     let mut cursor = std::io::Cursor::new(&mut buffer);
+    ///
+    ///     cursor.write_all(&data)?
+    ///     cursor.flush()?;
+    ///
     ///     Ok(())
     /// }
     /// ```
@@ -200,13 +211,18 @@ pub trait Write {
     /// # Examples
     ///
     /// ```no_run
+    /// # use core as std;
     /// use std::io::prelude::*;
-    /// use std::fs::File;
     ///
     /// fn main() -> std::io::Result<()> {
-    ///     let mut buffer = File::create("foo.txt")?;
+    ///     let data = b"some bytes";
     ///
-    ///     buffer.write_all(b"some bytes")?;
+    ///     let mut buffer = [0; 10];
+    ///     let mut cursor = std::io::Cursor::new(&mut buffer);
+    ///
+    ///     cursor.write_all(&data)?
+    ///     cursor.flush()?;
+    ///
     ///     Ok(())
     /// }
     /// ```
@@ -257,6 +273,7 @@ pub trait Write {
     ///
     /// ```
     /// #![feature(write_all_vectored)]
+    /// # use core as std;
     /// # fn main() -> std::io::Result<()> {
     ///
     /// use std::io::{Write, IoSlice};
@@ -314,16 +331,16 @@ pub trait Write {
     /// # Examples
     ///
     /// ```no_run
+    /// # use core as std;
     /// use std::io::prelude::*;
-    /// use std::fs::File;
     ///
     /// fn main() -> std::io::Result<()> {
-    ///     let mut buffer = File::create("foo.txt")?;
+    ///     let data = b"some bytes";
     ///
-    ///     // this call
-    ///     write!(buffer, "{:.*}", 2, 1.234567)?;
-    ///     // turns into this:
-    ///     buffer.write_fmt(format_args!("{:.*}", 2, 1.234567))?;
+    ///     let mut buffer = [0; 32];
+    ///     let mut cursor = std::io::Cursor::new(&mut buffer);
+    ///
+    ///     cursor.write_fmt(format_args!("{:.*}", 2, 1.234567))?;
     ///     Ok(())
     /// }
     /// ```
@@ -344,16 +361,20 @@ pub trait Write {
     /// # Examples
     ///
     /// ```no_run
-    /// use std::io::Write;
-    /// use std::fs::File;
+    /// # use core as std;
+    /// use std::io::prelude::*;
     ///
     /// fn main() -> std::io::Result<()> {
-    ///     let mut buffer = File::create("foo.txt")?;
+    ///     let data = b"some bytes";
     ///
-    ///     let reference = buffer.by_ref();
+    ///     let mut buffer = [0; 10];
+    ///     let mut cursor = std::io::Cursor::new(&mut buffer);
+    ///
+    ///     let reference = cursor.by_ref();
     ///
     ///     // we can use reference just like our original buffer
     ///     reference.write_all(b"some bytes")?;
+    ///
     ///     Ok(())
     /// }
     /// ```

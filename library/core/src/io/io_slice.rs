@@ -67,6 +67,7 @@ impl<'a> IoSliceMut<'a> {
     /// # Examples
     ///
     /// ```
+    /// # use core as std;
     /// use std::io::IoSliceMut;
     /// use std::ops::Deref;
     ///
@@ -99,6 +100,7 @@ impl<'a> IoSliceMut<'a> {
     /// # Examples
     ///
     /// ```
+    /// # use core as std;
     /// use std::io::IoSliceMut;
     /// use std::ops::Deref;
     ///
@@ -146,6 +148,7 @@ impl<'a> IoSliceMut<'a> {
     ///
     /// ```
     /// #![feature(io_slice_as_bytes)]
+    /// # use core as std;
     /// use std::io::IoSliceMut;
     ///
     /// let mut data = *b"abcdef";
@@ -226,6 +229,7 @@ impl<'a> IoSlice<'a> {
     /// # Examples
     ///
     /// ```
+    /// # use core as std;
     /// use std::io::IoSlice;
     /// use std::ops::Deref;
     ///
@@ -258,6 +262,7 @@ impl<'a> IoSlice<'a> {
     /// # Examples
     ///
     /// ```
+    /// # use core as std;
     /// use std::io::IoSlice;
     /// use std::ops::Deref;
     ///
@@ -310,6 +315,7 @@ impl<'a> IoSlice<'a> {
     ///
     /// ```
     /// #![feature(io_slice_as_bytes)]
+    /// # use core as std;
     /// use std::io::IoSlice;
     ///
     /// let data = b"abcdef";

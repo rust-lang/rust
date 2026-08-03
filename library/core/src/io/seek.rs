@@ -8,19 +8,24 @@ use crate::io::Result;
 ///
 /// # Examples
 ///
-/// `File`s implement `Seek`:
-///
 /// ```no_run
-/// use std::io;
+/// # use core as std;
+/// use std::io::{self, Cursor, SeekFrom};
 /// use std::io::prelude::*;
-/// use std::fs::File;
-/// use std::io::SeekFrom;
 ///
 /// fn main() -> io::Result<()> {
-///     let mut f = File::open("foo.txt")?;
+///     let mut buff = Cursor::new([0; 128]);
 ///
-///     // move the cursor 42 bytes from the start of the file
-///     f.seek(SeekFrom::Start(42))?;
+///     // move the cursor 42 bytes after the start of the buffer
+///     buff.seek(SeekFrom::Start(42))?;
+///
+///     assert_eq!(buff.stream_position()?, 42);
+///
+///     // move the cursor 28 bytes before the end of the buffer
+///     buff.seek(SeekFrom::End(-28))?;
+///
+///     assert_eq!(buff.stream_position()?, 100);
+///
 ///     Ok(())
 /// }
 /// ```
@@ -55,22 +60,19 @@ pub trait Seek {
     /// # Example
     ///
     /// ```no_run
-    /// use std::io::{Read, Seek, Write};
-    /// use std::fs::OpenOptions;
+    /// # use core as std;
+    /// use std::io::{Cursor, Seek, Write};
     ///
-    /// let mut f = OpenOptions::new()
-    ///     .write(true)
-    ///     .read(true)
-    ///     .create(true)
-    ///     .open("foo.txt")?;
+    /// let mut buffer = [0; 5];
+    /// let mut cursor = Cursor::new(&mut buffer);
     ///
-    /// let hello = "Hello!\n";
-    /// write!(f, "{hello}")?;
-    /// f.rewind()?;
+    /// cursor.write_all(&[1, 2, 3])?;
     ///
-    /// let mut buf = String::new();
-    /// f.read_to_string(&mut buf)?;
-    /// assert_eq!(&buf, hello);
+    /// cursor.rewind()?;
+    ///
+    /// cursor.write_all(&[4, 5, 6])?;
+    ///
+    /// assert_eq!(&buffer, &[4, 5, 6, 0, 0]);
     /// # std::io::Result::Ok(())
     /// ```
     #[stable(feature = "seek_rewind", since = "1.55.0")]
@@ -100,18 +102,12 @@ pub trait Seek {
     ///
     /// ```no_run
     /// #![feature(seek_stream_len)]
-    /// use std::{
-    ///     io::{self, Seek},
-    ///     fs::File,
-    /// };
+    /// # use core as std;
+    /// use std::io::{Cursor, Seek};
     ///
-    /// fn main() -> io::Result<()> {
-    ///     let mut f = File::open("foo.txt")?;
-    ///
-    ///     let len = f.stream_len()?;
-    ///     println!("The file is currently {len} bytes long");
-    ///     Ok(())
-    /// }
+    /// let mut cursor = Cursor::new([0; 42]);
+    /// assert_eq!(cursor.stream_len()?, 42);
+    /// # std::io::Result::Ok(())
     /// ```
     #[unstable(feature = "seek_stream_len", issue = "59359")]
     fn stream_len(&mut self) -> Result<u64> {
@@ -125,19 +121,23 @@ pub trait Seek {
     /// # Example
     ///
     /// ```no_run
-    /// use std::{
-    ///     io::{self, BufRead, BufReader, Seek},
-    ///     fs::File,
-    /// };
+    /// # use core as std;
+    /// use std::io::{self, Cursor, SeekFrom};
+    /// use std::io::prelude::*;
     ///
     /// fn main() -> io::Result<()> {
-    ///     let mut f = BufReader::new(File::open("foo.txt")?);
+    ///     let mut buff = Cursor::new([0; 128]);
     ///
-    ///     let before = f.stream_position()?;
-    ///     f.read_line(&mut String::new())?;
-    ///     let after = f.stream_position()?;
+    ///     // move the cursor 42 bytes after the start of the buffer
+    ///     buff.seek(SeekFrom::Start(42))?;
     ///
-    ///     println!("The first line was {} bytes long", after - before);
+    ///     assert_eq!(buff.stream_position()?, 42);
+    ///
+    ///     // move the cursor 28 bytes before the end of the buffer
+    ///     buff.seek(SeekFrom::End(-28))?;
+    ///
+    ///     assert_eq!(buff.stream_position()?, 100);
+    ///
     ///     Ok(())
     /// }
     /// ```
@@ -155,15 +155,23 @@ pub trait Seek {
     /// # Example
     ///
     /// ```no_run
-    /// use std::{
-    ///     io::{self, Seek},
-    ///     fs::File,
-    /// };
+    /// # use core as std;
+    /// use std::io::{self, Cursor, SeekFrom};
+    /// use std::io::prelude::*;
     ///
     /// fn main() -> io::Result<()> {
-    ///     let mut f = File::open("foo.txt")?;
-    ///     f.seek_relative(10)?;
-    ///     assert_eq!(f.stream_position()?, 10);
+    ///     let mut buff = Cursor::new([0; 64]);
+    ///
+    ///     // move the cursor forward 42 bytes
+    ///     buff.seek_relative(42)?;
+    ///
+    ///     assert_eq!(buff.stream_position()?, 42);
+    ///
+    ///     // move the cursor backwards 28 bytes
+    ///     buff.seek_relative(-28)?;
+    ///
+    ///     assert_eq!(buff.stream_position()?, 14);
+    ///
     ///     Ok(())
     /// }
     /// ```

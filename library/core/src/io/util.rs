@@ -5,7 +5,7 @@ use crate::{cmp, fmt};
 /// (returning zero bytes) when read via [`Read`].
 ///
 /// [`Write`]: crate::io::Write
-/// [`Read`]: ../../std/io/trait.Read.html
+/// [`Read`]: ../../alloc/io/trait.Read.html
 ///
 /// This struct is generally created by calling [`empty()`]. Please
 /// see the documentation of [`empty()`] for more details.
@@ -130,25 +130,17 @@ impl Seek for Empty {
 /// [`Ok(0)`]: Ok
 ///
 /// [`write`]: crate::io::Write::write
-/// [`read`]: ../../std/io/trait.Read.html#method.read
+/// [`read`]: ../../alloc/io/trait.Read.html#method.read
 ///
 /// # Examples
 ///
 /// ```rust
+/// # use core as std;
 /// use std::io::{self, Write};
 ///
-/// let buffer = vec![1, 2, 3, 5, 8];
+/// let buffer = [1, 2, 3, 5, 8];
 /// let num_bytes = io::empty().write(&buffer).unwrap();
 /// assert_eq!(num_bytes, 5);
-/// ```
-///
-///
-/// ```rust
-/// use std::io::{self, Read};
-///
-/// let mut buffer = String::new();
-/// io::empty().read_to_string(&mut buffer).unwrap();
-/// assert!(buffer.is_empty());
 /// ```
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -190,12 +182,11 @@ impl SizeHint for Repeat {
 ///
 /// # Examples
 ///
-/// ```
-/// use std::io::{self, Read};
-///
-/// let mut buffer = [0; 3];
-/// io::repeat(0b101).read_exact(&mut buffer).unwrap();
-/// assert_eq!(buffer, [0b101, 0b101, 0b101]);
+/// ```no_run
+/// # use core as std;
+/// // Returns `0b101` infinitely.
+/// # #[allow(dead_code)]
+/// let repeating_reader = std::io::repeat(0b101);
 /// ```
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -309,9 +300,10 @@ impl Write for &Sink {
 /// # Examples
 ///
 /// ```rust
+/// # use core as std;
 /// use std::io::{self, Write};
 ///
-/// let buffer = vec![1, 2, 3, 5, 8];
+/// let buffer = [1, 2, 3, 5, 8];
 /// let num_bytes = io::sink().write(&buffer).unwrap();
 /// assert_eq!(num_bytes, 5);
 /// ```
@@ -327,7 +319,7 @@ pub const fn sink() -> Sink {
 /// This struct is generally created by calling [`chain`] on a reader.
 /// Please see the documentation of [`chain`] for more details.
 ///
-/// [`chain`]: ../../std/io/trait.Read.html#method.chain
+/// [`chain`]: ../../alloc/io/trait.Read.html#method.chain
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 #[non_exhaustive]
@@ -366,17 +358,13 @@ impl<T, U> Chain<T, U> {
     /// # Examples
     ///
     /// ```no_run
-    /// use std::io;
-    /// use std::io::prelude::*;
-    /// use std::fs::File;
+    /// # use core as std;
+    /// use std::io::Chain;
     ///
-    /// fn main() -> io::Result<()> {
-    ///     let mut foo_file = File::open("foo.txt")?;
-    ///     let mut bar_file = File::open("bar.txt")?;
-    ///
-    ///     let chain = foo_file.chain(bar_file);
-    ///     let (foo_file, bar_file) = chain.into_inner();
-    ///     Ok(())
+    /// # #[allow(dead_code)]
+    /// fn get_first<T, U>(chain: Chain<T, U>) -> T {
+    ///     let (first, _second) = chain.into_inner();
+    ///     first
     /// }
     /// ```
     #[stable(feature = "more_io_inner_methods", since = "1.20.0")]
@@ -393,17 +381,13 @@ impl<T, U> Chain<T, U> {
     /// # Examples
     ///
     /// ```no_run
-    /// use std::io;
-    /// use std::io::prelude::*;
-    /// use std::fs::File;
+    /// # use core as std;
+    /// use std::io::Chain;
     ///
-    /// fn main() -> io::Result<()> {
-    ///     let mut foo_file = File::open("foo.txt")?;
-    ///     let mut bar_file = File::open("bar.txt")?;
-    ///
-    ///     let chain = foo_file.chain(bar_file);
-    ///     let (foo_file, bar_file) = chain.get_ref();
-    ///     Ok(())
+    /// # #[allow(dead_code)]
+    /// fn get_first<T, U>(chain: &Chain<T, U>) -> &T {
+    ///     let (first, _second) = chain.get_ref();
+    ///     first
     /// }
     /// ```
     #[stable(feature = "more_io_inner_methods", since = "1.20.0")]
@@ -420,17 +404,13 @@ impl<T, U> Chain<T, U> {
     /// # Examples
     ///
     /// ```no_run
-    /// use std::io;
-    /// use std::io::prelude::*;
-    /// use std::fs::File;
+    /// # use core as std;
+    /// use std::io::Chain;
     ///
-    /// fn main() -> io::Result<()> {
-    ///     let mut foo_file = File::open("foo.txt")?;
-    ///     let mut bar_file = File::open("bar.txt")?;
-    ///
-    ///     let mut chain = foo_file.chain(bar_file);
-    ///     let (foo_file, bar_file) = chain.get_mut();
-    ///     Ok(())
+    /// # #[allow(dead_code)]
+    /// fn get_first<T, U>(chain: &mut Chain<T, U>) -> &mut T {
+    ///     let (first, _second) = chain.get_mut();
+    ///     first
     /// }
     /// ```
     #[stable(feature = "more_io_inner_methods", since = "1.20.0")]
@@ -452,7 +432,7 @@ pub const fn chain<T, U>(first: T, second: U) -> Chain<T, U> {
 /// This struct is generally created by calling [`take`] on a reader.
 /// Please see the documentation of [`take`] for more details.
 ///
-/// [`take`]: ../../std/io/trait.Read.html#method.take
+/// [`take`]: ../../alloc/io/trait.Read.html#method.take
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 #[non_exhaustive]
@@ -494,23 +474,19 @@ impl<T> Take<T> {
     /// This instance may reach `EOF` after reading fewer bytes than indicated by
     /// this method if the underlying [`Read`] instance reaches EOF.
     ///
-    /// [`Read`]: ../../std/io/trait.Read.html
+    /// [`Read`]: ../../alloc/io/trait.Read.html
     ///
     /// # Examples
     ///
     /// ```no_run
-    /// use std::io;
-    /// use std::io::prelude::*;
-    /// use std::fs::File;
+    /// # use core as std;
+    /// use std::io::Take;
     ///
-    /// fn main() -> io::Result<()> {
-    ///     let f = File::open("foo.txt")?;
-    ///
-    ///     // read at most five bytes
-    ///     let handle = f.take(5);
-    ///
-    ///     println!("limit: {}", handle.limit());
-    ///     Ok(())
+    /// # #[allow(dead_code)]
+    /// fn change_limit<T>(take: &mut Take<T>) {
+    ///     if take.limit() < 123 {
+    ///         take.set_limit(123);
+    ///     }
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -533,19 +509,14 @@ impl<T> Take<T> {
     /// # Examples
     ///
     /// ```no_run
-    /// use std::io;
-    /// use std::io::prelude::*;
-    /// use std::fs::File;
+    /// # use core as std;
+    /// use std::io::Take;
     ///
-    /// fn main() -> io::Result<()> {
-    ///     let f = File::open("foo.txt")?;
-    ///
-    ///     // read at most five bytes
-    ///     let mut handle = f.take(5);
-    ///     handle.set_limit(10);
-    ///
-    ///     assert_eq!(handle.limit(), 10);
-    ///     Ok(())
+    /// # #[allow(dead_code)]
+    /// fn change_limit<T>(take: &mut Take<T>) {
+    ///     if take.limit() < 123 {
+    ///         take.set_limit(123);
+    ///     }
     /// }
     /// ```
     #[stable(feature = "take_set_limit", since = "1.27.0")]
@@ -559,19 +530,12 @@ impl<T> Take<T> {
     /// # Examples
     ///
     /// ```no_run
-    /// use std::io;
-    /// use std::io::prelude::*;
-    /// use std::fs::File;
+    /// # use core as std;
+    /// use std::io::Take;
     ///
-    /// fn main() -> io::Result<()> {
-    ///     let mut file = File::open("foo.txt")?;
-    ///
-    ///     let mut buffer = [0; 5];
-    ///     let mut handle = file.take(5);
-    ///     handle.read(&mut buffer)?;
-    ///
-    ///     let file = handle.into_inner();
-    ///     Ok(())
+    /// # #[allow(dead_code)]
+    /// fn decompose<T>(take: Take<T>) -> T {
+    ///     take.into_inner()
     /// }
     /// ```
     #[stable(feature = "io_take_into_inner", since = "1.15.0")]
@@ -588,19 +552,12 @@ impl<T> Take<T> {
     /// # Examples
     ///
     /// ```no_run
-    /// use std::io;
-    /// use std::io::prelude::*;
-    /// use std::fs::File;
+    /// # use core as std;
+    /// use std::io::Take;
     ///
-    /// fn main() -> io::Result<()> {
-    ///     let mut file = File::open("foo.txt")?;
-    ///
-    ///     let mut buffer = [0; 5];
-    ///     let mut handle = file.take(5);
-    ///     handle.read(&mut buffer)?;
-    ///
-    ///     let file = handle.get_ref();
-    ///     Ok(())
+    /// # #[allow(dead_code)]
+    /// fn decompose<T>(take: &Take<T>) -> &T {
+    ///     take.get_ref()
     /// }
     /// ```
     #[stable(feature = "more_io_inner_methods", since = "1.20.0")]
@@ -617,19 +574,12 @@ impl<T> Take<T> {
     /// # Examples
     ///
     /// ```no_run
-    /// use std::io;
-    /// use std::io::prelude::*;
-    /// use std::fs::File;
+    /// # use core as std;
+    /// use std::io::Take;
     ///
-    /// fn main() -> io::Result<()> {
-    ///     let mut file = File::open("foo.txt")?;
-    ///
-    ///     let mut buffer = [0; 5];
-    ///     let mut handle = file.take(5);
-    ///     handle.read(&mut buffer)?;
-    ///
-    ///     let file = handle.get_mut();
-    ///     Ok(())
+    /// # #[allow(dead_code)]
+    /// fn decompose<T>(take: &mut Take<T>) -> &mut T {
+    ///     take.get_mut()
     /// }
     /// ```
     #[stable(feature = "more_io_inner_methods", since = "1.20.0")]

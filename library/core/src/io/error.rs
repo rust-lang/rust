@@ -55,15 +55,20 @@ use crate::{error, fmt, result};
 ///
 /// A convenience function that bubbles an `io::Result` to its caller:
 ///
-/// ```
+/// ```no_run
+/// # use core as std;
 /// use std::io;
 ///
-/// fn get_string() -> io::Result<String> {
-///     let mut buffer = String::new();
+/// # fn read_number_from_stdin() -> io::Result<u32> { Ok(42) }
 ///
-///     io::stdin().read_line(&mut buffer)?;
+/// # #[allow(dead_code)]
+/// fn check_answer() -> io::Result<bool> {
+///     let answer = read_number_from_stdin()?;
 ///
-///     Ok(buffer)
+///     match answer {
+///         42 => Ok(true),
+///         _ => Err(io::Error::from(io::ErrorKind::InvalidInput)),
+///     }
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -78,7 +83,7 @@ pub type Result<T> = result::Result<T, Error>;
 /// [`ErrorKind`].
 ///
 // FIXME(#74481): Hard-links required to link from `core` to `std`
-/// [Read]: ../../std/io/trait.Read.html
+/// [Read]: ../../alloc/io/trait.Read.html
 /// [Write]: crate::io::Write
 /// [Seek]: crate::io::Seek
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -207,11 +212,11 @@ impl From<ErrorKind> for Error {
     /// # Examples
     ///
     /// ```
+    /// # use core as std;
     /// use std::io::{Error, ErrorKind};
     ///
     /// let not_found = ErrorKind::NotFound;
     /// let error = Error::from(not_found);
-    /// assert_eq!("entity not found", format!("{error}"));
     /// ```
     #[inline]
     fn from(kind: ErrorKind) -> Error {
@@ -295,22 +300,17 @@ impl Error {
     ///
     /// # Examples
     ///
-    /// ```
-    /// use std::io::{Error, ErrorKind};
+    /// ```no_run
+    /// # use core as std;
+    /// use std::io::Error;
     ///
+    /// # #[allow(dead_code)]
     /// fn print_os_error(err: &Error) {
     ///     if let Some(raw_os_err) = err.raw_os_error() {
-    ///         println!("raw OS error: {raw_os_err:?}");
+    ///         // ...
     ///     } else {
-    ///         println!("Not an OS error");
+    ///         // ...
     ///     }
-    /// }
-    ///
-    /// fn main() {
-    ///     // Will print "raw OS error: ...".
-    ///     print_os_error(&Error::last_os_error());
-    ///     // Will print "Not an OS error".
-    ///     print_os_error(&Error::new(ErrorKind::Other, "oh no!"));
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -334,22 +334,17 @@ impl Error {
     ///
     /// # Examples
     ///
-    /// ```
-    /// use std::io::{Error, ErrorKind};
+    /// ```no_run
+    /// # use core as std;
+    /// use std::io::Error;
     ///
-    /// fn print_error(err: &Error) {
-    ///     if let Some(inner_err) = err.get_ref() {
-    ///         println!("Inner error: {inner_err:?}");
+    /// # #[allow(dead_code)]
+    /// fn print_os_error(err: &Error) {
+    ///     if let Some(inner_ref) = err.get_ref() {
+    ///         // ...
     ///     } else {
-    ///         println!("No inner error");
+    ///         // ...
     ///     }
-    /// }
-    ///
-    /// fn main() {
-    ///     // Will print "No inner error".
-    ///     print_error(&Error::last_os_error());
-    ///     // Will print "Inner error: ...".
-    ///     print_error(&Error::new(ErrorKind::Other, "oh no!"));
     /// }
     /// ```
     #[stable(feature = "io_error_inner", since = "1.3.0")]
@@ -375,56 +370,17 @@ impl Error {
     ///
     /// # Examples
     ///
-    /// ```
-    /// use std::io::{Error, ErrorKind};
-    /// use std::{error, fmt};
-    /// use std::fmt::Display;
+    /// ```no_run
+    /// # use core as std;
+    /// use std::io::Error;
     ///
-    /// #[derive(Debug)]
-    /// struct MyError {
-    ///     v: String,
-    /// }
-    ///
-    /// impl MyError {
-    ///     fn new() -> MyError {
-    ///         MyError {
-    ///             v: "oh no!".to_string()
-    ///         }
-    ///     }
-    ///
-    ///     fn change_message(&mut self, new_message: &str) {
-    ///         self.v = new_message.to_string();
-    ///     }
-    /// }
-    ///
-    /// impl error::Error for MyError {}
-    ///
-    /// impl Display for MyError {
-    ///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    ///         write!(f, "MyError: {}", self.v)
-    ///     }
-    /// }
-    ///
-    /// fn change_error(mut err: Error) -> Error {
-    ///     if let Some(inner_err) = err.get_mut() {
-    ///         inner_err.downcast_mut::<MyError>().unwrap().change_message("I've been changed!");
-    ///     }
-    ///     err
-    /// }
-    ///
-    /// fn print_error(err: &Error) {
-    ///     if let Some(inner_err) = err.get_ref() {
-    ///         println!("Inner error: {inner_err}");
+    /// # #[allow(dead_code)]
+    /// fn print_os_error(err: &Error) {
+    ///     if let Some(inner_mut) = err.get_mut() {
+    ///         // ...
     ///     } else {
-    ///         println!("No inner error");
+    ///         // ...
     ///     }
-    /// }
-    ///
-    /// fn main() {
-    ///     // Will print "No inner error".
-    ///     print_error(&change_error(Error::last_os_error()));
-    ///     // Will print "Inner error: ...".
-    ///     print_error(&change_error(Error::new(ErrorKind::Other, MyError::new())));
     /// }
     /// ```
     #[stable(feature = "io_error_inner", since = "1.3.0")]
@@ -451,20 +407,13 @@ impl Error {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```no_run
+    /// # use core as std;
     /// use std::io::{Error, ErrorKind};
     ///
-    /// fn print_error(err: Error) {
-    ///     println!("{:?}", err.kind());
-    /// }
+    /// let error = Error::from(ErrorKind::AddrInUse);
     ///
-    /// fn main() {
-    ///     // As no error has (visibly) occurred, this may print anything!
-    ///     // It likely prints a placeholder for unidentified (non-)errors.
-    ///     print_error(Error::last_os_error());
-    ///     // Will print "AddrInUse".
-    ///     print_error(Error::new(ErrorKind::AddrInUse, "oh no!"));
-    /// }
+    /// assert_eq!(ErrorKind::AddrInUse, error.kind());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
