@@ -434,7 +434,7 @@ pub(crate) fn check_generic_arg_count(
 
     let kind = tcx.def_kind(def_id);
     if kind.is_fn_like() {
-        tracing::info!("!!! we are calling fn-like {:?}", tcx.item_name(def_id));
+        tracing::info!("we are using fn-like {:?} ({gen_pos:?})", tcx.item_name(def_id));
     }
     tracing::info!(?gen_args);
     tracing::info!(?gen_params);
@@ -484,8 +484,12 @@ pub(crate) fn check_generic_arg_count(
     };
 
     // this works!
-    let hidden_early_bound =
-        gen_params.own_params.iter().filter(|x| x.is_anonymous_lifetime()).count();
+    let hidden_early_bound = 0;
+    // let hidden_early_bound = if matches!(gen_pos, GenericArgPosition::Value(_)) {
+    //     gen_params.own_params.iter().filter(|x| x.is_anonymous_lifetime()).count()
+    // } else {
+    //     0
+    // };
 
     let min_expected_lifetime_args =
         if infer_lifetimes { 0 } else { param_counts.lifetimes - hidden_early_bound };

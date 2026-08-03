@@ -123,6 +123,36 @@ mod ex6 {
     }
 }
 
+mod ex7 {
+    pub struct ReqLtInvariant<'a, T>(&'a mut (*mut T));
+
+    fn require_static<T: 'static>(_: T) {}
+
+    fn require_exact<'a, T: 'a>(_: T) -> ReqLtInvariant<'a, T> {
+        ReqLtInvariant(todo!())
+    }
+
+    fn foo<'a>(b: &'a u32) -> &'a u32 { b }
+
+    fn bar<'a>(n: &'a u32) {
+        let f1 = foo::<'static>;
+        require_static(f1);
+        require_exact::<'a>(f1);
+        // ^ this should not compile
+        f1(n);
+
+        let f2 = foo::<'a>;
+        require_exact::<'a>(f2);
+        f2(n);
+    }
+
+    fn munch() {
+        let f = foo::<'static>;
+        let freerf = 4u32;
+        bar(&freerf);
+    }
+}
+
 fn require_static<T: 'static>(_: T) { }
 
 fn main() {
