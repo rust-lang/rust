@@ -371,6 +371,8 @@
 #![feature(maybe_uninit_fill)]
 #![feature(panic_can_unwind)]
 #![feature(panic_internals)]
+#![feature(pattern)]
+#![feature(pattern_internals)]
 #![feature(pin_coerce_unsized_trait)]
 #![feature(pointer_is_aligned_to)]
 #![feature(portable_simd)]
