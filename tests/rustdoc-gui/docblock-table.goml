@@ -38,12 +38,12 @@ define-function: (
 call-function: ("check-colors", {
     "theme": "ayu",
     "border_color": "#5c6773",
-    "zebra_stripe_color": "#191f26",
+    "zebra_stripe_color": "#000",
 })
 call-function: ("check-colors", {
     "theme": "dark",
     "border_color": "#e0e0e0",
-    "zebra_stripe_color": "#2a2a2a",
+    "zebra_stripe_color": "#1d1d1d",
 })
 call-function: ("check-colors", {
     "theme": "light",
