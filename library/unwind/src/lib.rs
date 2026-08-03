@@ -215,6 +215,10 @@ cfg_select! {
 #[link(name = "gcc_s")]
 unsafe extern "C" {}
 
+#[cfg(all(target_os = "wasi", panic = "unwind"))]
+#[link(name = "unwind")]
+unsafe extern "C" {}
+
 #[cfg(all(target_os = "windows", target_env = "gnu", target_abi = "llvm"))]
 #[link(name = "unwind", kind = "static", modifiers = "-bundle", cfg(target_feature = "crt-static"))]
 #[link(name = "unwind", cfg(not(target_feature = "crt-static")))]
