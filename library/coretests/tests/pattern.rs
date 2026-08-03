@@ -60,14 +60,9 @@ fn test_simple_iteration() {
         'a',
         "forward iteration for ASCII string",
         next => Matches(0, 1),
-        next => Rejects(1, 2),
-        next => Rejects(2, 3),
-        next => Rejects(3, 4),
-        next => Rejects(4, 5),
+        next => Rejects(1, 5),
         next => Matches(5, 6),
-        next => Rejects(6, 7),
-        next => Rejects(7, 8),
-        next => Rejects(8, 9),
+        next => Rejects(6, 9),
         next => Done
     );
 
@@ -75,14 +70,9 @@ fn test_simple_iteration() {
         "abcdeabcd",
         'a',
         "reverse iteration for ASCII string",
-        next_back => Rejects(8, 9),
-        next_back => Rejects(7, 8),
-        next_back => Rejects(6, 7),
+        next_back => Rejects(6, 9),
         next_back => Matches(5, 6),
-        next_back => Rejects(4, 5),
-        next_back => Rejects(3, 4),
-        next_back => Rejects(2, 3),
-        next_back => Rejects(1, 2),
+        next_back => Rejects(1, 5),
         next_back => Matches(0, 1),
         next_back => Done
     );
@@ -94,8 +84,7 @@ fn test_simple_iteration() {
         next => Matches(0, 3),
         next => Rejects(3, 6),
         next => Matches(6, 9),
-        next => Rejects(9, 12),
-        next => Rejects(12, 15),
+        next => Rejects(9, 15),
         next => Done
     );
 
@@ -103,14 +92,9 @@ fn test_simple_iteration() {
         "我的猫说meow",
         'm',
         "forward iteration for mixed string",
-        next => Rejects(0, 3),
-        next => Rejects(3, 6),
-        next => Rejects(6, 9),
-        next => Rejects(9, 12),
+        next => Rejects(0, 12),
         next => Matches(12, 13),
-        next => Rejects(13, 14),
-        next => Rejects(14, 15),
-        next => Rejects(15, 16),
+        next => Rejects(13, 16),
         next => Done
     );
 
@@ -118,14 +102,9 @@ fn test_simple_iteration() {
         "我的猫说meow",
         '猫',
         "reverse iteration for mixed string",
-        next_back => Rejects(15, 16),
-        next_back => Rejects(14, 15),
-        next_back => Rejects(13, 14),
-        next_back => Rejects(12, 13),
-        next_back => Rejects(9, 12),
+        next_back => Rejects(9, 16),
         next_back => Matches(6, 9),
-        next_back => Rejects(3, 6),
-        next_back => Rejects(0, 3),
+        next_back => Rejects(0, 6),
         next_back => Done
     );
 }
@@ -231,30 +210,12 @@ fn test_stress_indices() {
         next => Done
     );
 
+    // this test should generate something that will run memchr
     search_asserts!(
         STRESS,
         'x',
         "Indices of characters in stress test",
-        next => Rejects(0, 2),   // Á
-        next => Rejects(2, 3),   // a
-        next => Rejects(3, 7),   // 🁀
-        next => Rejects(7, 8),   // b
-        next => Rejects(8, 10),  // Á
-        next => Rejects(10, 13), // ꁁ
-        next => Rejects(13, 14), // f
-        next => Rejects(14, 15), // g
-        next => Rejects(15, 19), // 😀
-        next => Rejects(19, 22), // 각
-        next => Rejects(22, 25), // ก
-        next => Rejects(25, 28), // ᘀ
-        next => Rejects(28, 31), // 각
-        next => Rejects(31, 32), // a
-        next => Rejects(32, 34), // Á
-        next => Rejects(34, 37), // 각
-        next => Rejects(37, 40), // ꁁ
-        next => Rejects(40, 43), // ก
-        next => Rejects(43, 47), // 😀
-        next => Rejects(47, 48), // a
+        next => Rejects(0, 48), // no character matches
         next => Done
     );
 }
@@ -276,11 +237,11 @@ fn test_forward_search_shared_bytes() {
         'Á',
         "Forward search for two-byte Latin character; check if next() still works",
         next_match => Matches(0, 2),
-        next       => Rejects(2, 3),
+        next       => Rejects(2, 8),
         next_match => Matches(8, 10),
-        next       => Rejects(10, 13),
+        next       => Rejects(10, 32),
         next_match => Matches(32, 34),
-        next       => Rejects(34, 37),
+        next       => Rejects(34, 48),
         next_match => Done
     );
 
@@ -289,7 +250,7 @@ fn test_forward_search_shared_bytes() {
         '각',
         "Forward search for three-byte Hangul character",
         next_match => Matches(19, 22),
-        next       => Rejects(22, 25),
+        next       => Rejects(22, 28),
         next_match => Matches(28, 31),
         next_match => Matches(34, 37),
         next_match => Done
@@ -300,11 +261,11 @@ fn test_forward_search_shared_bytes() {
         '각',
         "Forward search for three-byte Hangul character; check if next() still works",
         next_match => Matches(19, 22),
-        next       => Rejects(22, 25),
+        next       => Rejects(22, 28),
         next_match => Matches(28, 31),
-        next       => Rejects(31, 32),
+        next       => Rejects(31, 34),
         next_match => Matches(34, 37),
-        next       => Rejects(37, 40),
+        next       => Rejects(37, 48),
         next_match => Done
     );
 
@@ -313,9 +274,9 @@ fn test_forward_search_shared_bytes() {
         'ก',
         "Forward search for three-byte Thai character",
         next_match => Matches(22, 25),
-        next       => Rejects(25, 28),
+        next       => Rejects(25, 40),
         next_match => Matches(40, 43),
-        next       => Rejects(43, 47),
+        next       => Rejects(43, 48),
         next_match => Done
     );
 
@@ -324,9 +285,9 @@ fn test_forward_search_shared_bytes() {
         'ก',
         "Forward search for three-byte Thai character; check if next() still works",
         next_match => Matches(22, 25),
-        next       => Rejects(25, 28),
+        next       => Rejects(25, 40),
         next_match => Matches(40, 43),
-        next       => Rejects(43, 47),
+        next       => Rejects(43, 48),
         next_match => Done
     );
 
@@ -335,7 +296,7 @@ fn test_forward_search_shared_bytes() {
         '😁',
         "Forward search for four-byte emoji",
         next_match => Matches(15, 19),
-        next       => Rejects(19, 22),
+        next       => Rejects(19, 43),
         next_match => Matches(43, 47),
         next       => Rejects(47, 48),
         next_match => Done
@@ -346,7 +307,7 @@ fn test_forward_search_shared_bytes() {
         '😁',
         "Forward search for four-byte emoji; check if next() still works",
         next_match => Matches(15, 19),
-        next       => Rejects(19, 22),
+        next       => Rejects(19, 43),
         next_match => Matches(43, 47),
         next       => Rejects(47, 48),
         next_match => Done
@@ -357,9 +318,9 @@ fn test_forward_search_shared_bytes() {
         'ꁁ',
         "Forward search for three-byte Yi character with repeated bytes",
         next_match => Matches(10, 13),
-        next       => Rejects(13, 14),
+        next       => Rejects(13, 37),
         next_match => Matches(37, 40),
-        next       => Rejects(40, 43),
+        next       => Rejects(40, 48),
         next_match => Done
     );
 
@@ -368,9 +329,9 @@ fn test_forward_search_shared_bytes() {
         'ꁁ',
         "Forward search for three-byte Yi character with repeated bytes; check if next() still works",
         next_match => Matches(10, 13),
-        next       => Rejects(13, 14),
+        next       => Rejects(13, 37),
         next_match => Matches(37, 40),
-        next       => Rejects(40, 43),
+        next       => Rejects(40, 48),
         next_match => Done
     );
 }
@@ -392,9 +353,9 @@ fn test_reverse_search_shared_bytes() {
         'Á',
         "Reverse search for two-byte Latin character; check if next_back() still works",
         next_match_back => Matches(32, 34),
-        next_back       => Rejects(31, 32),
+        next_back       => Rejects(10, 32),
         next_match_back => Matches(8, 10),
-        next_back       => Rejects(7, 8),
+        next_back       => Rejects(2, 8),
         next_match_back => Matches(0, 2),
         next_back       => Done
     );
@@ -404,7 +365,7 @@ fn test_reverse_search_shared_bytes() {
         '각',
         "Reverse search for three-byte Hangul character",
         next_match_back => Matches(34, 37),
-        next_back       => Rejects(32, 34),
+        next_back       => Rejects(31, 34),
         next_match_back => Matches(28, 31),
         next_match_back => Matches(19, 22),
         next_match_back => Done
@@ -415,11 +376,11 @@ fn test_reverse_search_shared_bytes() {
         '각',
         "Reverse search for three-byte Hangul character; check if next_back() still works",
         next_match_back => Matches(34, 37),
-        next_back       => Rejects(32, 34),
+        next_back       => Rejects(31, 34),
         next_match_back => Matches(28, 31),
-        next_back       => Rejects(25, 28),
+        next_back       => Rejects(22, 28),
         next_match_back => Matches(19, 22),
-        next_back       => Rejects(15, 19),
+        next_back       => Rejects(0, 19),
         next_match_back => Done
     );
 
@@ -428,9 +389,9 @@ fn test_reverse_search_shared_bytes() {
         'ก',
         "Reverse search for three-byte Thai character",
         next_match_back => Matches(40, 43),
-        next_back       => Rejects(37, 40),
+        next_back       => Rejects(25, 40),
         next_match_back => Matches(22, 25),
-        next_back       => Rejects(19, 22),
+        next_back       => Rejects(0, 22),
         next_match_back => Done
     );
 
@@ -439,9 +400,9 @@ fn test_reverse_search_shared_bytes() {
         'ก',
         "Reverse search for three-byte Thai character; check if next_back() still works",
         next_match_back => Matches(40, 43),
-        next_back       => Rejects(37, 40),
+        next_back       => Rejects(25, 40),
         next_match_back => Matches(22, 25),
-        next_back       => Rejects(19, 22),
+        next_back       => Rejects(0, 22),
         next_match_back => Done
     );
 
@@ -450,9 +411,9 @@ fn test_reverse_search_shared_bytes() {
         '😁',
         "Reverse search for four-byte emoji",
         next_match_back => Matches(43, 47),
-        next_back       => Rejects(40, 43),
+        next_back       => Rejects(19, 43),
         next_match_back => Matches(15, 19),
-        next_back       => Rejects(14, 15),
+        next_back       => Rejects(0, 15),
         next_match_back => Done
     );
 
@@ -461,9 +422,9 @@ fn test_reverse_search_shared_bytes() {
         '😁',
         "Reverse search for four-byte emoji; check if next_back() still works",
         next_match_back => Matches(43, 47),
-        next_back       => Rejects(40, 43),
+        next_back       => Rejects(19, 43),
         next_match_back => Matches(15, 19),
-        next_back       => Rejects(14, 15),
+        next_back       => Rejects(0, 15),
         next_match_back => Done
     );
 
@@ -472,9 +433,9 @@ fn test_reverse_search_shared_bytes() {
         'ꁁ',
         "Reverse search for three-byte Yi character with repeated bytes",
         next_match_back => Matches(37, 40),
-        next_back       => Rejects(34, 37),
+        next_back       => Rejects(13, 37),
         next_match_back => Matches(10, 13),
-        next_back       => Rejects(8, 10),
+        next_back       => Rejects(0, 10),
         next_match_back => Done
     );
 
@@ -483,9 +444,9 @@ fn test_reverse_search_shared_bytes() {
         'ꁁ',
         "Reverse search for three-byte Yi character with repeated bytes; check if next_back() still works",
         next_match_back => Matches(37, 40),
-        next_back       => Rejects(34, 37),
+        next_back       => Rejects(13, 37),
         next_match_back => Matches(10, 13),
-        next_back       => Rejects(8, 10),
+        next_back       => Rejects(0, 10),
         next_match_back => Done
     );
 }
@@ -535,9 +496,9 @@ fn double_ended_regression_test() {
         '각',
         "Reverse double ended search for three-byte Hangul character",
         next_match_back => Matches(34, 37),
-        next_back       => Rejects(32, 34),
+        next_back       => Rejects(31, 34),
         next_match      => Matches(19, 22),
-        next            => Rejects(22, 25),
+        next            => Rejects(22, 28),
         next_match_back => Matches(28, 31),
         next_match      => Done
     );
@@ -546,8 +507,8 @@ fn double_ended_regression_test() {
         'ก',
         "Double ended search for three-byte Thai character",
         next_match      => Matches(22, 25),
-        next_back       => Rejects(47, 48),
-        next            => Rejects(25, 28),
+        next_back       => Rejects(43, 48),
+        next            => Rejects(25, 40),
         next_match_back => Matches(40, 43),
         next_match      => Done
     );
@@ -556,9 +517,9 @@ fn double_ended_regression_test() {
         '😁',
         "Double ended search for four-byte emoji",
         next_match_back => Matches(43, 47),
-        next            => Rejects(0, 2),
+        next            => Rejects(0, 15),
         next_match      => Matches(15, 19),
-        next_back       => Rejects(40, 43),
+        next_back       => Rejects(19, 43),
         next_match      => Done
     );
     search_asserts!(
@@ -566,10 +527,9 @@ fn double_ended_regression_test() {
         'ꁁ',
         "Double ended search for three-byte Yi character with repeated bytes",
         next_match      => Matches(10, 13),
-        next            => Rejects(13, 14),
+        next            => Rejects(13, 37),
         next_match_back => Matches(37, 40),
-        next_back       => Rejects(34, 37),
-        next_match      => Done
+        next_back       => Done
     );
 }
 
@@ -705,4 +665,12 @@ fn test_try_next_code_point_fwd_and_rev() {
 
     // out of range
     check_fwbw(&[0xf5, 0x80, 0x80, 0x80], None);
+}
+
+#[test]
+fn str_searcher_reject_back_preserves_start_on_bad_input() {
+    let haystack = core::str_bytes::Bytes::from_bytes(&[0x80, b'x', b'y', b'z'][..]);
+    let mut searcher = "xyz".into_searcher(haystack);
+    assert_eq!(searcher.next_reject_back(), Some((0, 1)));
+    assert_eq!(searcher.next_reject_back(), None);
 }
