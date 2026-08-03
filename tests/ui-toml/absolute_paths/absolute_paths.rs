@@ -5,6 +5,7 @@
 //@[allow_long] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/absolute_paths/allow_long
 //@[no_short] rustc-env:CLIPPY_CONF_DIR=tests/ui-toml/absolute_paths/no_short
 #![deny(clippy::absolute_paths)]
+#![expect(clippy::clone_on_copy)]
 
 extern crate proc_macros;
 use proc_macros::{external, inline_macros, with_span};
