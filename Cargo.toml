@@ -43,7 +43,7 @@ pulldown-cmark = { version = "0.11", default-features = false, features = ["html
 askama = { version = "0.16.0", default-features = false, features = ["alloc", "config", "derive"] }
 
 [dev-dependencies.toml]
-version = "0.9.7"
+version = "1.1"
 default-features = false
 # preserve_order keeps diagnostic output in file order
 features = ["parse", "preserve_order"]
