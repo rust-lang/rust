@@ -500,6 +500,35 @@ pub fn test_some_range(a: int) -> bool {
 }
 
 #[test]
+fn assist_order_term_search_unknown_type() {
+    let (db, frange) = RootDatabase::with_range(
+        r#"
+//- minicore: todo, unimplemented
+fn foo(_: u32) -> i32 { 2 }
+fn main() {
+    let unknown;
+    let _: i32 = $0todo!()$0;
+}
+"#,
+    );
+
+    let assists = assists(
+        &db,
+        &TEST_CONFIG,
+        AssistResolveStrategy::None,
+        FileRange { file_id: frange.file_id.file_id(&db), range: frange.range },
+    );
+    let expected = labels(&assists);
+
+    expect![[r#"
+        Inline macro
+        Extract into...
+        Extract Module
+    "#]]
+    .assert_eq(&expected);
+}
+
+#[test]
 fn assist_filter_works() {
     let (db, frange) = RootDatabase::with_range(
         r#"

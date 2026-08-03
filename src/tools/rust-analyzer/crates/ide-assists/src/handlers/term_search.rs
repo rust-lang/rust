@@ -82,9 +82,7 @@ pub(crate) fn term_search(acc: &mut Assists, ctx: &AssistContext<'_, '_>) -> Opt
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::{
-        check_assist, check_assist_not_applicable, check_assist_not_applicable_by_label,
-    };
+    use crate::tests::{check_assist, check_assist_not_applicable};
 
     use super::*;
 
@@ -96,21 +94,6 @@ mod tests {
 fn f() { let a: u128 = 1; let b: u128 = todo$0!() }"#,
             r#"fn f() { let a: u128 = 1; let b: u128 = a }"#,
         )
-    }
-
-    #[test]
-    fn test_ignore_unknown_type() {
-        check_assist_not_applicable_by_label(
-            term_search,
-            r#"
-//- minicore: todo, unimplemented
-fn f() {
-    let unknown;
-    let _: i32 = todo$0!();
-}
-"#,
-            "Replace todo!() with unknown",
-        );
     }
 
     #[test]
