@@ -42,7 +42,7 @@ use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::infer::TyCtxtInferExt as _;
 use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode, ObligationCtxt};
-use tracing::{debug, instrument, trace};
+use tracing::{debug, instrument};
 
 use crate::diagnostics::{MustNotSupend, MustNotSuspendReason};
 
@@ -302,9 +302,9 @@ impl<'a, 'tcx> ResultsVisitor<'tcx, MaybeRequiresStorage> for StorageConflictVis
         _analysis: &MaybeRequiresStorage,
         state: &DenseBitSet<Local>,
         _statement: &Statement<'tcx>,
-        loc: Location,
+        _loc: Location,
     ) {
-        self.apply_state(state, loc);
+        self.apply_state(state);
     }
 
     fn visit_after_early_terminator_effect(
@@ -312,23 +312,19 @@ impl<'a, 'tcx> ResultsVisitor<'tcx, MaybeRequiresStorage> for StorageConflictVis
         _analysis: &MaybeRequiresStorage,
         state: &DenseBitSet<Local>,
         _terminator: &Terminator<'tcx>,
-        loc: Location,
+        _loc: Location,
     ) {
-        self.apply_state(state, loc);
+        self.apply_state(state);
     }
 }
 
 impl StorageConflictVisitor<'_> {
-    fn apply_state(&mut self, state: &DenseBitSet<Local>, loc: Location) {
+    fn apply_state(&mut self, state: &DenseBitSet<Local>) {
         self.eligible_storage_live.clone_from(state);
         self.eligible_storage_live.intersect(&**self.saved_locals);
 
         for local in self.eligible_storage_live.iter() {
             self.local_conflicts.union_row_with(&self.eligible_storage_live, local);
-        }
-
-        if self.eligible_storage_live.count() > 1 {
-            trace!("at {:?}, eligible_storage_live={:?}", loc, self.eligible_storage_live);
         }
     }
 }
