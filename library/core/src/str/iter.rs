@@ -1,6 +1,5 @@
 //! Iterators for `str` methods.
 
-use super::pattern::{DoubleEndedSearcher, Pattern, ReverseSearcher, Searcher};
 use super::validations::{next_code_point, next_code_point_reverse};
 use super::{
     BytesIsNotEmpty, CharEscapeDebug, CharEscapeDefault, CharEscapeUnicode, IsAsciiWhitespace,
@@ -14,6 +13,7 @@ use crate::iter::{
 };
 use crate::num::NonZero;
 use crate::ops::Try;
+use crate::pattern::{DoubleEndedSearcher, Pattern, ReverseSearcher, Searcher};
 use crate::slice::{self, Split as SliceSplit};
 
 /// An iterator over the [`char`]s of a string slice.
