@@ -17,7 +17,6 @@ use rustc_apfloat::Float;
 use rustc_ast_ir::Mutability;
 use rustc_type_ir::inherent::{Const as _, GenericArgs as _, IntoKind, Ty as _};
 use salsa::SalsaValue;
-use stdx::never;
 
 use crate::{
     ParamEnvAndCrate, Span,
@@ -121,7 +120,9 @@ fn intern_const_ref<'db>(
             let scalar = ScalarInt::try_from_uint(value, size).unwrap();
             ValTreeKind::Leaf(scalar)
         }
-        (_, Literal::String(value)) => {
+        (TyKind::Ref(_, inner_ty, _), Literal::String(value))
+            if matches!(inner_ty.kind(), TyKind::Str) =>
+        {
             let u8_values = &interner.default_types().consts.u8_values;
             ValTreeKind::Branch(Consts::new_from_iter(
                 interner,
@@ -140,7 +141,6 @@ fn intern_const_ref<'db>(
             return Ok(Const::error(interner));
         }
         _ => {
-            never!("mismatching type for literal");
             let actual = literal_ty(
                 interner,
                 value,
