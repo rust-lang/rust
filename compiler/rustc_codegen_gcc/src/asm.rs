@@ -298,9 +298,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                         out_place,
                     });
 
-                    if readwrite {
-                        self.llbb().add_assignment(None, tmp_var, in_value.immediate());
-                    } else {
+                    if !readwrite {
                         let out_gcc_idx = outputs.len() - 1;
                         let constraint = Cow::Owned(out_gcc_idx.to_string());
 
@@ -366,14 +364,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                         let ty = value.layout.gcc_type(self.cx);
                         let reg_var = self.current_func().new_local(None, ty, "input_register");
                         reg_var.set_register_name(reg_name);
-                        // FIXME: We should remove this when switching to "untyped" pointers
-                        let value = value.immediate();
-                        let value = if value.get_type() != ty {
-                            self.context.new_cast(None, value, ty)
-                        } else {
-                            value
-                        };
-                        self.llbb().add_assignment(None, reg_var, value);
+                        self.llbb().add_assignment(None, reg_var, value.immediate());
 
                         inputs.push(AsmInOperand {
                             constraint: "r".into(),
@@ -610,12 +601,6 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
         if dest.is_none() && options.contains(InlineAsmOptions::NORETURN) {
             let builtin_unreachable = self.context.get_builtin_function("__builtin_unreachable");
             self.llbb().add_eval(None, self.context.new_call(None, builtin_unreachable, &[]));
-        }
-
-        if !options.contains(InlineAsmOptions::NORETURN)
-            && let Some(dest) = dest
-        {
-            self.switch_to_block(dest);
         }
 
         // Write results to outputs.

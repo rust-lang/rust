@@ -1,7 +1,7 @@
 # git subtree sync
 
 `rustc_codegen_gcc` is a subtree of the rust compiler. As such, it needs to be
-synced from time to time to ensure changes that happened on their side are also
+sync from time to time to ensure changes that happened on their side are also
 included on our side.
 
 ### How to install a forked git-subtree
@@ -41,8 +41,6 @@ cd ../rust
 git pull origin master
 git checkout -b subtree-update_cg_gcc_YYYY-MM-DD
 PATH="$HOME/bin:$PATH" ~/bin/git-subtree pull --prefix=compiler/rustc_codegen_gcc/ https://github.com/rust-lang/rustc_codegen_gcc.git master
-# Don't forget to update the `gcc` submodule to the same version as the
-# one in `rustc_codegen_gcc/libgccjit.version`.
 git push
 
 # Immediately merge the merge commit into cg_gcc to prevent merge conflicts when syncing from rust-lang/rust later.

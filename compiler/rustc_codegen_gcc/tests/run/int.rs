@@ -319,29 +319,4 @@ fn main() {
         const VAL5: T = 73236519889708027473620326106273939584_i128;
         check_ops128!();
     }
-
-    {
-        #[allow(dead_code)]
-        #[repr(u8)]
-        enum Inner {
-            L0 = 0,
-            H255 = 255,
-        }
-        #[allow(dead_code)]
-        enum O {
-            A(Inner),
-            B,
-            C,
-        }
-
-        #[inline(never)]
-        fn which(o: &O) -> &'static str {
-            match o {
-                O::A(_) => "a",
-                O::B => "b",
-                O::C => "c",
-            }
-        }
-        assert_eq!(which(black_box(&O::A(Inner::H255))), "a");
-    }
 }

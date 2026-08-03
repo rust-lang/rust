@@ -1,6 +1,6 @@
 #[cfg(feature = "master")]
-use gccjit::{FnAttribute, ToRValue, VarAttribute, Visibility};
-use gccjit::{Function, GlobalKind, LValue, RValue, Type};
+use gccjit::{FnAttribute, VarAttribute, Visibility};
+use gccjit::{Function, GlobalKind, LValue, RValue, ToRValue, Type};
 use rustc_abi::{self as abi, Align, HasDataLayout, Primitive, Size, WrappingRange};
 use rustc_codegen_ssa::traits::{
     BaseTypeCodegenMethods, ConstCodegenMethods, StaticCodegenMethods,
@@ -160,52 +160,29 @@ impl<'gcc, 'tcx> StaticCodegenMethods for CodegenCx<'gcc, 'tcx> {
         }
 
         // Wasm statics with custom link sections get special treatment as they
-        // go into custom sections of the wasm executable. The exception to this
-        // is the `.init_array` section which are treated specially by the wasm linker.
-        if self.tcx.sess.target.is_like_wasm
-            && attrs
-                .link_section
-                .map(|link_section| !link_section.as_str().starts_with(".init_array"))
-                .unwrap_or(true)
-        {
+        // go into custom sections of the wasm executable.
+        if self.tcx.sess.target.is_like_wasm {
             if let Some(_section) = attrs.link_section {
                 unimplemented!();
             }
-        } else if let Some(_section) = attrs.link_section {
-            #[cfg(feature = "master")]
-            global.add_attribute(VarAttribute::Section(_section.as_str()));
+        } else {
+            // FIXME(antoyo): set link section.
         }
 
-        if attrs.flags.contains(CodegenFnAttrFlags::USED_COMPILER) {
-            // To copy the conditions from the LLVM backend...
-            assert!(!attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER));
-            self.add_used_global(global);
-        }
-        if attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER) {
-            // To copy the conditions from the LLVM backend...
-            assert!(!attrs.flags.contains(CodegenFnAttrFlags::USED_COMPILER));
-            self.add_retained_global(global);
+        if attrs.flags.contains(CodegenFnAttrFlags::USED_COMPILER)
+            || attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER)
+        {
+            self.add_used_global(global.to_rvalue());
         }
     }
 }
 
 impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
-    /// Need to have the `SHF_GNU_RETAIN` flag, so needs to use the `retain` attribute instead of
-    /// `used`. This is used by `#[used(linker)]`.
-    pub fn add_retained_global(&mut self, global: LValue<'gcc>) {
-        // We need to add the `used` C attribute in any case.
-        self.add_used_global(global);
-        #[cfg(feature = "master")]
-        global.add_attribute(VarAttribute::Retain);
+    /// Add a global value to a list to be stored in the `llvm.used` variable, an array of i8*.
+    pub fn add_used_global(&mut self, _global: RValue<'gcc>) {
+        // FIXME(antoyo)
     }
 
-    /// This is used by `#[used(compiler)]` and `#[used]`.
-    pub fn add_used_global(&mut self, _global: LValue<'gcc>) {
-        #[cfg(feature = "master")]
-        _global.add_attribute(VarAttribute::Used);
-    }
-
-    // No need to have the `SHF_GNU_RETAIN` flag, so `used` attribute is ok.
     #[cfg_attr(not(feature = "master"), expect(unused_variables))]
     pub fn add_used_function(&self, function: Function<'gcc>) {
         #[cfg(feature = "master")]

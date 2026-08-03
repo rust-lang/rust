@@ -22,7 +22,7 @@
         "src/intrinsic/llvm.rs"
     ],
     "ignoreRegExpList": [
-        "/(FIXME|NOTE)\\([^)]+\\)/",
+        "/(FIXME|NOTE|TODO)\\([^)]+\\)/",
         "__builtin_\\w*"
     ]
 }

@@ -2,11 +2,10 @@ use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::fmt::Debug;
 use std::fs;
-use std::io::{BufReader, Read};
 #[cfg(unix)]
 use std::os::unix::process::ExitStatusExt;
 use std::path::{Path, PathBuf};
-use std::process::{Command, ExitStatus, Output, Stdio};
+use std::process::{Command, ExitStatus, Output};
 
 fn exec_command(
     input: &[&dyn AsRef<OsStr>],
@@ -48,7 +47,7 @@ pub(crate) fn get_command_inner(
     command
 }
 
-pub(crate) fn check_exit_status(
+fn check_exit_status(
     input: &[&dyn AsRef<OsStr>],
     cwd: Option<&Path>,
     exit_status: ExitStatus,
@@ -116,30 +115,6 @@ pub fn run_command_with_output(
     check_exit_status(input, cwd, exit_status, None, true)
 }
 
-pub fn run_command_with_output_and_get_it(
-    input: &[&dyn AsRef<OsStr>],
-    cwd: Option<&Path>,
-) -> Result<(ExitStatus, String), String> {
-    let mut child = get_command_inner(input, cwd, None)
-        .stderr(Stdio::piped())
-        .spawn()
-        .map_err(|e| command_error(input, &cwd, e))?;
-
-    let stderr = child.stderr.take().expect("Failed to capture stderr");
-    let mut captured = String::new();
-    BufReader::new(stderr).read_to_string(&mut captured).expect("failed to read stderr");
-
-    let status = child.wait().map_err(|e| command_error(input, &cwd, e))?;
-    #[cfg(unix)]
-    {
-        if let Some(signal) = status.signal() {
-            // In case the signal didn't kill the current process.
-            return Err(command_error(input, &cwd, format!("Process received signal {signal}")));
-        }
-    }
-    Ok((status, captured))
-}
-
 pub fn run_command_with_output_and_env(
     input: &[&dyn AsRef<OsStr>],
     cwd: Option<&Path>,
@@ -149,6 +124,7 @@ pub fn run_command_with_output_and_env(
     check_exit_status(input, cwd, exit_status, None, true)
 }
 
+#[cfg(not(unix))]
 pub fn run_command_with_output_and_env_no_err(
     input: &[&dyn AsRef<OsStr>],
     cwd: Option<&Path>,
@@ -441,34 +417,6 @@ pub fn create_symlink<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> R
 
 pub fn get_sysroot_dir() -> PathBuf {
     Path::new(crate::BUILD_DIR).join("build_sysroot")
-}
-
-pub fn run_tool_and_install_it_if_not_present(cmd: &[&dyn AsRef<OsStr>]) -> Result<(), String> {
-    let (exit_status, stderr) = run_command_with_output_and_get_it(cmd, Some(Path::new(".")))?;
-    if exit_status.success() {
-        return Ok(());
-    }
-    let mut iter = stderr.split('\n');
-    if let Some(line) = iter.next()
-        && line.contains("is not installed for the toolchain")
-        && let Some(line) = iter.next()
-        && line.contains("run `rustup component add")
-        && let Some(cmd) = line.split('`').nth(1)
-        && let Some(tool_name) = cmd.rsplit(' ').next()
-    {
-        println!("`{tool_name}` is not installed for this toolchain, installing it...");
-        // A weird round-about way to get a `&&str` so I can get a `&dyn AsRef<OsStr>` but
-        // as long as it works...
-        let cmd = cmd.split(' ').collect::<Vec<_>>();
-        let cmd = cmd.iter().map(|s: &&str| s as &dyn AsRef<OsStr>).collect::<Vec<_>>();
-        run_command_with_output(cmd.as_slice(), Some(Path::new(".")))?;
-    } else {
-        // If the component is installed, then it's something else. In this case we fail like we
-        // should have and let the user handles the error.
-        return check_exit_status(cmd, Some(Path::new(".")), exit_status, None, true);
-    }
-    // We retry the command...
-    run_command_with_output(cmd, Some(Path::new(".")))
 }
 
 #[cfg(test)]

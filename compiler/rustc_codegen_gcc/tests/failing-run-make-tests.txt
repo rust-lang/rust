@@ -12,4 +12,3 @@ tests/run-make/glibc-staticlib-args/
 tests/run-make/lto-smoke-c/
 tests/run-make/return-non-c-like-enum/
 tests/run-make/short-ice
-tests/run-make/embed-source-dwarf
