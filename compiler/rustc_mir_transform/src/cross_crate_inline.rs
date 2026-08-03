@@ -1,12 +1,12 @@
 use rustc_hir::attrs::InlineAttr;
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::LocalDefId;
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, find_attr};
 use rustc_middle::bug;
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{self, GenericArgsRef, InstanceKind, TyCtxt};
 use rustc_session::config::{InliningThreshold, OptLevel};
 
 use crate::{inline, pass_manager as pm};
@@ -100,13 +100,19 @@ fn cross_crate_inlinable(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     };
 
     let mir = tcx.optimized_mir(def_id);
-    let mut checker =
-        CostChecker { tcx, callee_body: mir, calls: 0, statements: 0, landing_pads: 0, resumes: 0 };
+    let mut checker = CostChecker {
+        tcx,
+        typing_env: None,
+        callee_body: mir,
+        calls: 0,
+        statements: 0,
+        landing_pads: 0,
+        resumes: 0,
+        statements_threshold: threshold,
+    };
     checker.visit_body(mir);
-    checker.calls == 0
-        && checker.resumes == 0
-        && checker.landing_pads == 0
-        && checker.statements <= threshold
+
+    checker.cost_allows_cross_crate_inlining()
 }
 
 // The threshold that CostChecker computes is balancing the desire to make more things
@@ -120,11 +126,64 @@ fn cross_crate_inlinable(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
 
 struct CostChecker<'b, 'tcx> {
     tcx: TyCtxt<'tcx>,
+    /// Computed only if the body contains a trait call that needs instance resolution.
+    typing_env: Option<ty::TypingEnv<'tcx>>,
     callee_body: &'b Body<'tcx>,
     calls: usize,
     statements: usize,
     landing_pads: usize,
     resumes: usize,
+    statements_threshold: usize,
+}
+
+impl<'tcx> CostChecker<'_, 'tcx> {
+    fn cost_allows_cross_crate_inlining(&self) -> bool {
+        self.calls == 0
+            && self.landing_pads == 0
+            && self.resumes == 0
+            && self.statements <= self.statements_threshold
+    }
+
+    fn typing_env(&mut self) -> ty::TypingEnv<'tcx> {
+        *self.typing_env.get_or_insert_with(|| self.callee_body.typing_env(self.tcx))
+    }
+
+    /// Whether the call to the given item can be ignored for call-counting purposes
+    /// in cross-crate inlining cost analysis.
+    fn is_trait_call_ignorable_for_cross_crate_inlining(
+        &mut self,
+        def_id: DefId,
+        args: GenericArgsRef<'tcx>,
+    ) -> bool {
+        let tcx = self.tcx;
+
+        if tcx.trait_of_assoc(def_id).is_none() {
+            return false;
+        }
+
+        let typing_env = self.typing_env();
+        let Some((instance, _)) =
+            inline::try_resolve_call_instance(tcx, typing_env, def_id, ty::Binder::dummy(args))
+        else {
+            return false;
+        };
+
+        let InstanceKind::Item(_) = instance.def else {
+            return false;
+        };
+
+        // `#[inline]` is ignored on externally exported functions.
+        let codegen_fn_attrs = tcx.codegen_instance_attrs(instance.def);
+        if codegen_fn_attrs.contains_extern_indicator() {
+            return false;
+        }
+
+        match codegen_fn_attrs.inline {
+            InlineAttr::Always | InlineAttr::Force { .. } => true,
+            InlineAttr::Hint => !matches!(tcx.sess.opts.optimize, OptLevel::No),
+            InlineAttr::None | InlineAttr::Never => false,
+        }
+    }
 }
 
 impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
@@ -155,10 +214,24 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
                 // But there are a handful of intrinsics such as raw_eq that should not block
                 // cross-crate-inlining. Adding a broad exception for all intrinsics benchmarks well
                 // and seems more sustainable than an ever-growing list of intrinsics to ignore.
-                if let Some((fn_def_id, _)) = func.const_fn_def()
-                    && find_attr!(tcx, fn_def_id, RustcIntrinsic)
-                {
-                    return;
+                //
+                // Another exception is statically dispatched trait calls whose selected
+                // implementations are explicitly `#[inline]`. Resolving them here
+                // prevents such calls from disqualifying an otherwise-small enclosing function.
+                if let Some((fn_def_id, args)) = func.const_fn_def() {
+                    if find_attr!(tcx, fn_def_id, RustcIntrinsic) {
+                        return;
+                    }
+
+                    // Only perform the potentially-expensive resolution
+                    // if we haven't already given up (or are about to give up)
+                    // on cross-crate inlining due to other disqualifying findings.
+                    if self.cost_allows_cross_crate_inlining()
+                        && !matches!(unwind, UnwindAction::Cleanup(_))
+                        && self.is_trait_call_ignorable_for_cross_crate_inlining(fn_def_id, args)
+                    {
+                        return;
+                    }
                 }
                 self.calls += 1;
                 if let UnwindAction::Cleanup(_) = unwind {
