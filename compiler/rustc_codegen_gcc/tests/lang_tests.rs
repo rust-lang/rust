@@ -172,6 +172,16 @@ fn build_test_runner(
                 }
             }
 
+            // Extra flags passed at run time (as opposed to the compile-time
+            // `TEST_FLAGS`). This lets a single test opt into flags like
+            // `-Zmir-preserve-ub` via an `ignore-if` directive that checks
+            // whether `CARGO_TEST_FLAGS` is set.
+            if let Ok(flags) = std::env::var("CARGO_TEST_FLAGS") {
+                for flag in flags.split_whitespace() {
+                    compiler_args.push(flag.into());
+                }
+            }
+
             if build_mode.is_debug() {
                 compiler_args
                     .extend_from_slice(&["-C".to_string(), "llvm-args=sanitize-undefined".into()]);
@@ -201,7 +211,13 @@ fn compile_tests(tempdir: PathBuf, current_dir: String) {
         "lang compile",
         "tests/compile",
         TestMode::Compile,
-        &["simd-ffi.rs", "asm_nul_byte.rs", "global_asm_nul_byte.rs", "naked_asm_nul_byte.rs"],
+        &[
+            "simd-ffi.rs",
+            "asm_nul_byte.rs",
+            "global_asm_nul_byte.rs",
+            "naked_asm_nul_byte.rs",
+            "x86_interrupt_first_arg_byval.rs",
+        ],
     );
 }
 
