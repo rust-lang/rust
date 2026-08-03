@@ -4034,7 +4034,9 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
             "enum": ["per_workspace", "once"],
             "enumDescriptions": [
                 "The command will be executed for each Rust workspace with the workspace as the working directory.",
-                "The command will be executed once with the opened project as the working directory."
+                "The command will be executed once with the opened project as the working directory.\
+                \n\n**Warning:** This can cause errors when the Cargo configuration of the opened workspaces is different \
+                or even only different than the default. Enabling this is not recommended."
             ],
         },
         "Option<CheckOnSaveTargets>" => set! {

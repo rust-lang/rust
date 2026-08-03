@@ -914,7 +914,7 @@
                         ],
                         "enumDescriptions": [
                             "The command will be executed for each Rust workspace with the workspace as the working directory.",
-                            "The command will be executed once with the opened project as the working directory."
+                            "The command will be executed once with the opened project as the working directory.\n\n**Warning:** This can cause errors when the Cargo configuration of the opened workspaces is different or even only different than the default. Enabling this is not recommended."
                         ]
                     }
                 }
@@ -1247,7 +1247,7 @@
                         ],
                         "enumDescriptions": [
                             "The command will be executed for each Rust workspace with the workspace as the working directory.",
-                            "The command will be executed once with the opened project as the working directory."
+                            "The command will be executed once with the opened project as the working directory.\n\n**Warning:** This can cause errors when the Cargo configuration of the opened workspaces is different or even only different than the default. Enabling this is not recommended."
                         ]
                     }
                 }
