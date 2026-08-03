@@ -730,8 +730,11 @@ pub(crate) fn global_llvm_features(sess: &Session, only_base_features: bool) -> 
         target_features::flag_to_backend_features(sess, extend_backend_features);
     }
 
-    // We add this in the "base target" so that these show up in `sess.unstable_target_features`.
-    llvm_features_by_flags(sess, &mut features);
+    // `-C` flags that map to LLVM target features.
+    // We skip these in `cfg` as they aren't "target features" in the Rust sense.
+    if !only_base_features {
+        llvm_features_by_flags(sess, &mut features);
+    }
 
     features
 }
