@@ -36,6 +36,8 @@
     issue = "27721"
 )]
 
+use crate::fmt;
+use crate::mem::replace;
 use crate::ops::Range;
 
 // Pattern
@@ -399,3 +401,253 @@ pub unsafe trait ReverseSearcher<H: Haystack>: Searcher<H> {
 /// the pattern `"aa"` in the haystack `"aaa"` matches as either
 /// `"[aa]a"` or `"a[aa]"`, depending on which side it is searched.
 pub trait DoubleEndedSearcher<H: Haystack>: ReverseSearcher<H> {}
+
+//////////////////////////////////////////////////////////////////////////////
+// Internal Split and SplitN implementations
+//////////////////////////////////////////////////////////////////////////////
+
+/// Helper type for implementing split iterators.
+///
+/// It’s a generic type which works with any [`Haystack`] and [`Searcher`] over
+/// that haystack.  Intended usage is to create a newtype wrapping this type
+/// which implements the [`Iterator`] interface on top of [`next_fwd`][Split::next_fwd]
+/// or [`next_bwd`][Split::next_bwd] methods.
+///
+/// Note that unless `S` implements [`DoubleEndedSearcher`] trait, it's
+/// incorrect to use this type to implement a double ended iterator.
+///
+/// For an example of this type in use, see [`core::str::Split`].
+#[unstable(feature = "pattern_internals", issue = "none")]
+pub struct Split<H: Haystack, S: Searcher<H>> {
+    /// Start of the region of the haystack yet to be examined.
+    start: usize,
+    /// End of the region of the haystack yet to be examined.
+    end: usize,
+    /// Searcher returning matches of the delimiter pattern.
+    searcher: S,
+    /// Whether to return an empty part if there's a delimiter at the end of the
+    /// haystack.
+    allow_trailing_empty: bool,
+    /// Whether splitting has finished.
+    finished: bool,
+    ctx: crate::marker::PhantomData<H>,
+}
+
+/// Helper type for implementing split iterators with a split limit.
+///
+/// It's like [`Split`] but limits the number of parts the haystack will be split
+/// into.
+#[unstable(feature = "pattern_internals", issue = "none")]
+pub struct SplitN<H: Haystack, S: Searcher<H>> {
+    /// Inner split implementation.
+    inner: Split<H, S>,
+    /// Maximum number of parts the haystack can be split into.
+    limit: usize,
+}
+
+impl<H: Haystack, S: Searcher<H> + Clone> Clone for Split<H, S> {
+    fn clone(&self) -> Self {
+        Self { searcher: self.searcher.clone(), ..*self }
+    }
+}
+
+impl<H: Haystack, S: Searcher<H> + Clone> Clone for SplitN<H, S> {
+    fn clone(&self) -> Self {
+        Self { inner: self.inner.clone(), ..*self }
+    }
+}
+
+impl<H, S> fmt::Debug for Split<H, S>
+where
+    S: Searcher<H> + fmt::Debug,
+    H: Haystack,
+{
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt.debug_struct("Split")
+            .field("start", &self.start)
+            .field("end", &self.end)
+            .field("searcher", &self.searcher)
+            .field("allow_trailing_empty", &self.allow_trailing_empty)
+            .field("finished", &self.finished)
+            .finish()
+    }
+}
+
+impl<H, S> fmt::Debug for SplitN<H, S>
+where
+    S: Searcher<H> + fmt::Debug,
+    H: Haystack,
+{
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt.debug_struct("SplitN").field("inner", &self.inner).field("limit", &self.limit).finish()
+    }
+}
+
+impl<H: Haystack, S: Searcher<H>> Split<H, S> {
+    /// Creates a new object configured without a limit and with
+    /// `allow_trailing_empty` option disabled.
+    ///
+    /// To set `allow_trailing_empty`, use
+    /// [`with_allow_trailing_empty()`][Self::with_allow_trailing_empty] method.
+    /// To set split limit, use [`with_limit()`][Self::with_limit] method.
+    pub fn new(searcher: S) -> Self {
+        let haystack = searcher.haystack();
+        Self {
+            searcher,
+            start: haystack.cursor_at_front(),
+            end: haystack.cursor_at_back(),
+            allow_trailing_empty: false,
+            finished: false,
+            ctx: crate::marker::PhantomData,
+        }
+    }
+
+    /// Changes the split limit from unlimited to the given value.
+    ///
+    /// The limit specifies maximum number of parts haystack will be split into.
+    pub fn with_limit(self, limit: usize) -> SplitN<H, S> {
+        SplitN { inner: self, limit }
+    }
+
+    /// Enables `allow_trailing_empty` option.
+    ///
+    /// If enabled (which is not the default) and the haystack is empty or
+    /// terminated by a pattern match, the last haystack part returned will be
+    /// empty.  Otherwise, the last empty split is not returned.
+    pub fn with_allow_trailing_empty(mut self) -> Self {
+        self.allow_trailing_empty = true;
+        self
+    }
+}
+
+impl<H: Haystack, S: Searcher<H>> Split<H, S> {
+    /// Returns the next part of the haystack or `None` if splitting is done.
+    ///
+    /// If `INCLUSIVE` is `true`, returned value will include the matching
+    /// pattern.
+    #[inline]
+    pub fn next_fwd<const INCLUSIVE: bool>(&mut self) -> Option<H> {
+        if self.finished {
+            return None;
+        }
+        let haystack = self.searcher.haystack();
+        if let Some((start, end)) = self.searcher.next_match() {
+            let range = self.start..(if INCLUSIVE { end } else { start });
+            self.start = end;
+            // SAFETY: self.start and self.end come from Haystack or Searcher
+            // and thus are guaranteed to be valid split positions.
+            Some(unsafe { haystack.get_unchecked(range) })
+        } else {
+            self.get_end()
+        }
+    }
+
+    /// Returns the next part of the haystack looking from the back or
+    /// `None` if splitting is done.
+    ///
+    /// If `INCLUSIVE` is `true`, returned value will include the matching
+    /// pattern.
+    #[inline]
+    pub fn next_bwd<const INCLUSIVE: bool>(&mut self) -> Option<H>
+    where
+        S: ReverseSearcher<H>,
+    {
+        if self.finished {
+            return None;
+        }
+
+        if !self.allow_trailing_empty {
+            self.allow_trailing_empty = true;
+            if let Some(elt) = self.next_bwd::<INCLUSIVE>() {
+                if !elt.is_empty() {
+                    return Some(elt);
+                }
+            }
+            if self.finished {
+                return None;
+            }
+        }
+
+        let range = if let Some((start, end)) = self.searcher.next_match_back() {
+            end..replace(&mut self.end, if INCLUSIVE { end } else { start })
+        } else {
+            self.finished = true;
+            self.start..self.end
+        };
+        // SAFETY: All indices come from Haystack or Searcher which guarantee
+        // that they are valid split positions.
+        Some(unsafe { self.searcher.haystack().get_unchecked(range) })
+    }
+
+    /// Returns remaining part of the haystack that hasn't been processed yet.
+    #[inline]
+    pub fn remainder(&self) -> Option<H> {
+        (!self.finished).then(|| {
+            // SAFETY: self.start and self.end come from Haystack or Searcher
+            // and thus are guaranteed to be valid split positions.
+            unsafe { self.searcher.haystack().get_unchecked(self.start..self.end) }
+        })
+    }
+
+    /// Returns the final haystack part.
+    ///
+    /// Sets `finished` flag so any further calls to this or other methods will
+    /// return `None`.
+    #[inline]
+    fn get_end(&mut self) -> Option<H> {
+        if !self.finished {
+            self.finished = true;
+            if self.allow_trailing_empty || self.start != self.end {
+                // SAFETY: self.start and self.end come from Haystack or
+                // Searcher and thus are guaranteed to be valid split positions.
+                return Some(unsafe {
+                    self.searcher.haystack().get_unchecked(self.start..self.end)
+                });
+            }
+        }
+        None
+    }
+}
+
+impl<H: Haystack, S: Searcher<H>> SplitN<H, S> {
+    /// Returns next part of the haystack or `None` if splitting is done.
+    ///
+    /// If `INCLUSIVE` is `true`, returned value will include the matching
+    /// pattern.
+    #[inline]
+    pub fn next_fwd<const INCLUSIVE: bool>(&mut self) -> Option<H> {
+        match self.dec_limit()? {
+            0 => self.inner.get_end(),
+            _ => self.inner.next_fwd::<INCLUSIVE>(),
+        }
+    }
+
+    /// Returns next looking from back of the haystack part of the haystack or
+    /// `None` if splitting is done.
+    ///
+    /// If `INCLUSIVE` is `true`, returned value will include the matching
+    /// pattern.
+    #[inline]
+    pub fn next_bwd<const INCLUSIVE: bool>(&mut self) -> Option<H>
+    where
+        S: ReverseSearcher<H>,
+    {
+        match self.dec_limit()? {
+            0 => self.inner.get_end(),
+            _ => self.inner.next_bwd::<INCLUSIVE>(),
+        }
+    }
+
+    /// Returns remaining part of the haystack that hasn't been processed yet.
+    #[inline]
+    pub fn remainder(&self) -> Option<H> {
+        self.inner.remainder()
+    }
+
+    /// Decrements limit and returns its new value or None if it's already zero.
+    #[inline]
+    fn dec_limit(&mut self) -> Option<usize> {
+        self.limit = self.limit.checked_sub(1)?;
+        Some(self.limit)
+    }
+}

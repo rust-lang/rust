@@ -47,7 +47,7 @@ pub use iter::{Bytes, CharIndices, Chars, Lines, SplitWhitespace};
 pub use iter::{EscapeDebug, EscapeDefault, EscapeUnicode};
 #[stable(feature = "str_match_indices", since = "1.5.0")]
 pub use iter::{MatchIndices, RMatchIndices};
-use iter::{MatchIndicesInternal, MatchesInternal, SplitInternal, SplitNInternal};
+use iter::{MatchIndicesInternal, MatchesInternal, SplitInternal};
 #[stable(feature = "str_matches", since = "1.2.0")]
 pub use iter::{Matches, RMatches};
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1669,13 +1669,7 @@ impl str {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn split<'a, P: Pattern<&'a str>>(&'a self, pat: P) -> Split<'a, P> {
-        Split(SplitInternal {
-            start: 0,
-            end: self.len(),
-            matcher: pat.into_searcher(self),
-            allow_trailing_empty: true,
-            finished: false,
-        })
+        Split(SplitInternal::new(self, pat).with_allow_trailing_empty())
     }
 
     /// Returns an iterator over substrings of this string slice, separated by
@@ -1710,13 +1704,7 @@ impl str {
     #[stable(feature = "split_inclusive", since = "1.51.0")]
     #[inline]
     pub fn split_inclusive<'a, P: Pattern<&'a str>>(&'a self, pat: P) -> SplitInclusive<'a, P> {
-        SplitInclusive(SplitInternal {
-            start: 0,
-            end: self.len(),
-            matcher: pat.into_searcher(self),
-            allow_trailing_empty: false,
-            finished: false,
-        })
+        SplitInclusive(SplitInternal::new(self, pat))
     }
 
     /// Returns an iterator over substrings of the given string slice, separated
@@ -1814,7 +1802,7 @@ impl str {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn split_terminator<'a, P: Pattern<&'a str>>(&'a self, pat: P) -> SplitTerminator<'a, P> {
-        SplitTerminator(SplitInternal { allow_trailing_empty: false, ..self.split(pat).0 })
+        SplitTerminator(SplitInternal::new(self, pat))
     }
 
     /// Returns an iterator over substrings of `self`, separated by characters
@@ -1915,7 +1903,7 @@ impl str {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn splitn<'a, P: Pattern<&'a str>>(&'a self, n: usize, pat: P) -> SplitN<'a, P> {
-        SplitN(SplitNInternal { iter: self.split(pat).0, count: n })
+        SplitN(self.split(pat).0.with_limit(n))
     }
 
     /// Returns an iterator over substrings of this string slice, separated by a
