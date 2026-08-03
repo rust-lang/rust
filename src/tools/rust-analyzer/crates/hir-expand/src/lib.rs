@@ -960,7 +960,7 @@ fn expand_unimplemented_builtin_macro(span: Span) -> ExpandResult<tt::TopSubtree
 /// parse queries being LRU cached. If they weren't the invalidations would only happen if the
 /// user wrote in the file that defines the proc-macro.
 fn proc_macro_span(db: &dyn SourceDatabase, ast: AstId<ast::Fn>) -> Span {
-    #[salsa::tracked]
+    #[salsa::tracked(returns(copy))]
     fn proc_macro_span(db: &dyn SourceDatabase, ast: AstId<ast::Fn>, _: ()) -> Span {
         let (parse, span_map) = ast.file_id.parse_with_map(db);
         let root = parse.syntax_node();
@@ -1544,7 +1544,7 @@ impl ExpandTo {
 ///
 /// We encode macro definitions into ids of macro calls, this what allows us
 /// to be incremental.
-#[salsa::interned(no_lifetime, debug, revisions = usize::MAX)]
+#[salsa::interned(unsafe(no_lifetime), debug, revisions = usize::MAX)]
 #[doc(alias = "MacroFileId")]
 pub struct MacroCallId {
     #[returns(ref)]

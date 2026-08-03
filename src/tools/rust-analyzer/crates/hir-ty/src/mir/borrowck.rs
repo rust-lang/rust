@@ -9,7 +9,7 @@ use either::Either;
 use hir_def::HasModule;
 use la_arena::ArenaMap;
 use rustc_hash::FxHashMap;
-use salsa::Update;
+use salsa::SalsaValue;
 use stdx::never;
 
 use crate::{
@@ -57,7 +57,7 @@ pub struct BorrowRegion {
     pub places: Vec<MirSpan>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, SalsaValue)]
 pub struct BorrowckResult<'db> {
     owner: Either<InferBodyId<'db>, InternedClosureId<'db>>,
     pub mutability_of_locals: ArenaMap<LocalId, MutabilityReason>,

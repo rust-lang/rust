@@ -16,7 +16,7 @@ use rustc_abi::Size;
 use rustc_apfloat::Float;
 use rustc_ast_ir::Mutability;
 use rustc_type_ir::inherent::{Const as _, GenericArgs as _, IntoKind, Ty as _};
-use salsa::Update;
+use salsa::SalsaValue;
 use stdx::never;
 
 use crate::{
@@ -36,7 +36,7 @@ use crate::{
 
 use super::mir::interpret_mir;
 
-#[derive(Debug, Clone, PartialEq, Eq, Update)]
+#[derive(Debug, Clone, PartialEq, Eq, SalsaValue)]
 pub enum ConstEvalError<'db> {
     MirLowerError(MirLowerError<'db>),
     MirEvalError(MirEvalError<'db>),
@@ -423,7 +423,7 @@ pub(crate) fn create_anon_const<'a, 'db>(
     }
 }
 
-#[salsa::tracked(cycle_result = const_eval_discriminant_cycle_result)]
+#[salsa::tracked(cycle_result = const_eval_discriminant_cycle_result, returns(clone))]
 pub(crate) fn const_eval_discriminant_variant<'db>(
     db: &'db dyn HirDatabase,
     variant_id: EnumVariantId,

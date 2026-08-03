@@ -11,11 +11,11 @@ mod probe;
 
 use either::Either;
 use hir_expand::name::Name;
-use salsa::Update;
+use salsa::SalsaValue;
 use span::Edition;
 use tracing::{debug, instrument};
 
-use base_db::{Crate, salsa::update_fallback_db};
+use base_db::Crate;
 use hir_def::{
     AssocItemId, BlockIdLt, BuiltinDeriveImplId, ConstId, FunctionId, GenericParamId, HasModule,
     ImplId, ItemContainerId, ModuleId, TraitId,
@@ -73,7 +73,7 @@ pub struct MethodResolutionContext<'a, 'db> {
     pub receiver_span: Span,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::Update)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, salsa::SalsaValue)]
 pub enum CandidateId {
     FunctionId(FunctionId),
     ConstId(ConstId),
@@ -558,9 +558,12 @@ pub fn simplified_type_module(db: &dyn HirDatabase, ty: &SimplifiedType<'_>) -> 
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Update)]
+#[derive(Debug, PartialEq, Eq, SalsaValue)]
 pub struct InherentImpls<'db> {
-    #[update(bounds(SolverDefId<'db>: Update), unsafe(with(update_fallback_db::<'db, _>)))]
+    // SAFETY: necessary due to `SimplifiedType<'db>`.
+    // It's safe to retain, as it only contains `SolverDefId<'db>` (which is `SalsaValue`),
+    // and no `&'db` references.
+    #[salsa_value(unsafe(prove(SolverDefId<'db>: SalsaValue)))]
     map: FxHashMap<SimplifiedType<'db>, Box<[ImplId]>>,
 }
 
@@ -644,9 +647,12 @@ impl<'db> InherentImpls<'db> {
     }
 }
 
-#[derive(Debug, PartialEq, Update)]
+#[derive(Debug, PartialEq, SalsaValue)]
 struct OneTraitImpls<'db> {
-    #[update(bounds(SolverDefId<'db>: Update), unsafe(with(update_fallback_db::<'db, _>)))]
+    // SAFETY: necessary due to `SimplifiedType<'db>`.
+    // It's safe to retain, as it only contains `SolverDefId<'db>` (which is `SalsaValue`),
+    // and no `&'db` references.
+    #[salsa_value(unsafe(prove(SolverDefId<'db>: SalsaValue)))]
     non_blanket_impls: FxHashMap<SimplifiedType<'db>, (Box<[ImplId]>, Box<[BuiltinDeriveImplId]>)>,
     blanket_impls: Box<[ImplId]>,
 }
@@ -672,7 +678,7 @@ impl<'db> OneTraitImplsBuilder<'db> {
     }
 }
 
-#[derive(Debug, PartialEq, Update)]
+#[derive(Debug, PartialEq, SalsaValue)]
 pub struct TraitImpls<'db> {
     map: FxHashMap<TraitId, OneTraitImpls<'db>>,
 }

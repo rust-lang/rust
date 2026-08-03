@@ -65,7 +65,7 @@ use rustc_type_ir::{
     AliasTyKind, TypeFoldable, TypeVisitableExt,
     inherent::{GenericArgs as _, IntoKind, Ty as _},
 };
-use salsa::Update;
+use salsa::SalsaValue;
 use smallvec::SmallVec;
 use span::Edition;
 use stdx::never;
@@ -757,7 +757,7 @@ pub enum PatAdjust {
 /// When you add a field that stores types (including `Substitution` and the like), don't forget
 /// `resolve_completely()`'ing  them in `InferenceContext::resolve_all()`. Inference variables must
 /// not appear in the final inference result.
-#[derive(Clone, PartialEq, Eq, Debug, Update)]
+#[derive(Clone, PartialEq, Eq, Debug, SalsaValue)]
 pub struct InferenceResult<'db> {
     /// For each method call expr, records the function it resolves to.
     method_resolutions: FxHashMap<ExprId, (FunctionId, StoredGenericArgs)>,
