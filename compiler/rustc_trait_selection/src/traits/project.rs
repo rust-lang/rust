@@ -711,10 +711,11 @@ fn project<'cx, 'tcx>(
             let tcx = selcx.tcx();
             if !tcx.is_dyn_compatible(def_id) {
                 let span = obligation.cause.span;
-                let guar = if !span.is_dummy() {
-                    let violations = tcx.dyn_compatibility_violations(def_id);
-                    report_dyn_incompatibility(tcx, span, None, def_id, &violations).emit()
-                } else {
+                let guar = if span.is_dummy()
+                    || matches!(
+                        obligation.cause.code(),
+                        ObligationCauseCode::CheckAssociatedTypeBounds { .. }
+                    ) {
                     tcx.dcx().span_delayed_bug(
                         span,
                         format!(
@@ -722,6 +723,9 @@ fn project<'cx, 'tcx>(
                             tcx.def_path_str(def_id)
                         ),
                     )
+                } else {
+                    let violations = tcx.dyn_compatibility_violations(def_id);
+                    report_dyn_incompatibility(tcx, span, None, def_id, &violations).emit()
                 };
                 return Ok(Projected::Progress(Progress::error_for_term(
                     tcx,
