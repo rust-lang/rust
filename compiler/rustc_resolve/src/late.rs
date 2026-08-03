@@ -5954,13 +5954,6 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     }
 }
 
-/// Walks the whole crate in DFS order, visiting each item, counting the declared number of
-/// lifetime generic parameters and function parameters. Also collects all `use` and
-/// `extern crate` items so that `check_unused` doesn't need to walk the crate again.
-struct ItemInfoCollector<'a, 'ra, 'tcx> {
-    r: &'a mut Resolver<'ra, 'tcx>,
-}
-
 impl Resolver<'_, '_> {
     fn collect_fn_info(&mut self, decl: &FnDecl, _id: NodeId) {
         self.delegation_fn_sigs
@@ -5994,22 +5987,6 @@ fn required_generic_args_suggestion(generics: &ast::Generics) -> Option<String> 
     if required.is_empty() { None } else { Some(format!("<{}>", required.join(", "))) }
 }
 
-impl Visitor<'_> for ItemInfoCollector<'_, '_, '_> {
-    fn visit_item(&mut self, item: &Item) {
-        if let Some(generics) = item.opt_generics() {
-            let def_id = self.r.owner_def_id(item.id);
-            let count = generics
-                .params
-                .iter()
-                .filter(|param| matches!(param.kind, ast::GenericParamKind::Lifetime { .. }))
-                .count();
-            self.r.item_generics_num_lifetimes.insert(def_id, count);
-        }
-
-        visit::walk_item(self, item)
-    }
-}
-
 impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// Returns the `use` and `extern crate` items of the crate, for use by `check_unused`.
     pub(crate) fn late_resolve_crate<'ast>(
@@ -6017,8 +5994,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         krate: &'ast Crate,
     ) -> (Vec<&'ast Item>, Vec<UseError<'tcx>>) {
         with_owner(self, CRATE_NODE_ID, |this| {
-            let mut info_collector = ItemInfoCollector { r: this };
-            visit::walk_crate(&mut info_collector, krate);
             let mut late_resolution_visitor = LateResolutionVisitor::new(this);
             late_resolution_visitor
                 .resolve_doc_links(&krate.attrs, MaybeExported::Ok(CRATE_NODE_ID));

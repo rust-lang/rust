@@ -221,6 +221,12 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                 if let Some(ext) = opt_syn_ext {
                     this.r.local_macro_map.insert(feed.def_id(), this.r.arenas.alloc_macro(ext));
                 }
+                if i.opt_generics().is_some() {
+                    // Initialize the num lifetimes list and increment it when actually def collecting the
+                    // individual lifetimes. We can't do it eagerly here, because the lifetimes may have
+                    // proc macro attributes on them.
+                    this.r.item_generics_num_lifetimes.insert(this.r.current_owner.def_id, 0);
+                }
 
                 this.with_parent(feed.def_id(), |this| {
                     this.with_impl_trait(ImplTraitContext::Existential, |this| {
@@ -367,7 +373,17 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
             return;
         }
         let def_kind = match param.kind {
-            GenericParamKind::Lifetime { .. } => DefKind::LifetimeParam,
+            GenericParamKind::Lifetime { .. } => {
+                if let Some(lifetimes) =
+                    self.r.item_generics_num_lifetimes.get_mut(&self.invocation_parent.parent_def)
+                {
+                    // If we are handling a lifetime on a free item, we want to record those lifetimes
+                    // for later diagnostics.
+                    *lifetimes += 1;
+                }
+
+                DefKind::LifetimeParam
+            }
             GenericParamKind::Type { .. } => DefKind::TyParam,
             GenericParamKind::Const { .. } => DefKind::ConstParam,
         };
