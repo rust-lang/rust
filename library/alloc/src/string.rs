@@ -53,7 +53,7 @@ use core::ops::Add;
 #[cfg(not(no_global_oom_handling))]
 use core::ops::AddAssign;
 use core::ops::{self, Range, RangeBounds};
-use core::str::pattern::{Pattern, Utf8Pattern};
+use core::pattern::{Pattern, Utf8Pattern};
 use core::{fmt, hash, hint, ptr, slice};
 
 #[cfg(not(no_global_oom_handling))]
@@ -1597,7 +1597,7 @@ impl String {
     where
         P: Pattern<str>,
     {
-        use core::str::pattern::Searcher;
+        use core::pattern::Searcher;
 
         let rejections = {
             let mut searcher = pat.into_searcher(self);
@@ -2182,7 +2182,7 @@ impl String {
     pub fn replace_last<'a, P>(&'a mut self, from: P, to: &str)
     where
         P: Pattern<str>,
-        for<'x> P::Searcher<'x>: core::str::pattern::ReverseSearcher<'x, str>,
+        for<'x> P::Searcher<'x>: core::pattern::ReverseSearcher<'x, str>,
     {
         let range = match self.rmatch_indices(from).next() {
             Some((start, match_str)) => start..start + match_str.len(),
@@ -2700,7 +2700,7 @@ impl<'b> Pattern<str> for &'b String {
     #[inline]
     fn is_suffix_of<'h>(self, haystack: &'h str) -> bool
     where
-        Self::Searcher<'h>: core::str::pattern::ReverseSearcher<'h, str>,
+        Self::Searcher<'h>: core::pattern::ReverseSearcher<'h, str>,
     {
         self[..].is_suffix_of(haystack)
     }
@@ -2708,7 +2708,7 @@ impl<'b> Pattern<str> for &'b String {
     #[inline]
     fn strip_suffix_of<'h>(self, haystack: &'h str) -> Option<&'h str>
     where
-        Self::Searcher<'h>: core::str::pattern::ReverseSearcher<'h, str>,
+        Self::Searcher<'h>: core::pattern::ReverseSearcher<'h, str>,
     {
         self[..].strip_suffix_of(haystack)
     }

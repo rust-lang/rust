@@ -10,6 +10,7 @@
 use core::borrow::{Borrow, BorrowMut};
 use core::iter::FusedIterator;
 use core::mem::MaybeUninit;
+use core::pattern::{Pattern, Utf8Pattern};
 #[stable(feature = "encode_utf16", since = "1.8.0")]
 pub use core::str::EncodeUtf16;
 #[stable(feature = "split_ascii_whitespace", since = "1.34.0")]
@@ -20,7 +21,6 @@ pub use core::str::SplitInclusive;
 pub use core::str::SplitWhitespace;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::pattern;
-use core::str::pattern::{DoubleEndedSearcher, Pattern, ReverseSearcher, Searcher, Utf8Pattern};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{Bytes, CharIndices, Chars, from_utf8, from_utf8_mut};
 #[stable(feature = "str_escape", since = "1.34.0")]
