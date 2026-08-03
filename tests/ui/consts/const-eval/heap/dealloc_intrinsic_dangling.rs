@@ -10,10 +10,10 @@
 use std::intrinsics;
 
 const _X: &'static u8 = unsafe {
+    //~^ ERROR: dangling reference (use-after-free)
     let ptr = intrinsics::const_allocate(4, 4);
     intrinsics::const_deallocate(ptr, 4, 4);
     &*ptr
-    //~^ ERROR: this pointer is dangling
 };
 
 const _Y: u8 = unsafe {

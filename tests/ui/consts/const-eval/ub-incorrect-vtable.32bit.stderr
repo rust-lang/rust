@@ -1,14 +1,24 @@
-error[E0080]: using ALLOC$ID as vtable pointer but it does not point to a vtable
-  --> $DIR/ub-incorrect-vtable.rs:19:14
+error[E0080]: constructing invalid value of type &dyn Trait: encountered ALLOC$ID<imm>, but expected a vtable pointer
+  --> $DIR/ub-incorrect-vtable.rs:18:1
    |
-LL |     unsafe { std::mem::transmute((&92u8, &[0usize, 1usize, 1000usize])) };
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `INVALID_VTABLE_ALIGNMENT` failed here
+LL | const INVALID_VTABLE_ALIGNMENT: &dyn Trait =
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
+   |
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 8, align: 4) {
+               ╾ALLOC$ID╼ ╾ALLOC$ID╼                         │ ╾──╼╾──╼
+           }
 
-error[E0080]: using ALLOC$ID as vtable pointer but it does not point to a vtable
-  --> $DIR/ub-incorrect-vtable.rs:23:14
+error[E0080]: constructing invalid value of type &dyn Trait: encountered ALLOC$ID<imm>, but expected a vtable pointer
+  --> $DIR/ub-incorrect-vtable.rs:22:1
    |
-LL |     unsafe { std::mem::transmute((&92u8, &[1usize, usize::MAX, 1usize])) };
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `INVALID_VTABLE_SIZE` failed here
+LL | const INVALID_VTABLE_SIZE: &dyn Trait =
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
+   |
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: 8, align: 4) {
+               ╾ALLOC$ID╼ ╾ALLOC$ID╼                         │ ╾──╼╾──╼
+           }
 
 error[E0080]: constructing invalid value of type W<&dyn Trait>: at .0, encountered ALLOC$ID<imm>, but expected a vtable pointer
   --> $DIR/ub-incorrect-vtable.rs:31:1
