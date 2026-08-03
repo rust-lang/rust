@@ -1245,3 +1245,15 @@ pub(crate) enum DeprecatedWhereClauseLocationSugg {
         span: Span,
     },
 }
+
+#[derive(Diagnostic)]
+#[diag("missing pattern for `...` argument")]
+pub(crate) struct VarargsWithoutPattern {
+    #[suggestion(
+        "add a pattern for this argument",
+        applicability = "machine-applicable",
+        code = "_: ..."
+    )]
+    #[primary_span]
+    pub span: Span,
+}
