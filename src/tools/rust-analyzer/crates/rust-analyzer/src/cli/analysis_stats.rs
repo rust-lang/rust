@@ -53,6 +53,14 @@ use crate::cli::{
 
 impl flags::AnalysisStats {
     pub fn run(self, verbosity: Verbosity) -> anyhow::Result<()> {
+        let mut rayon_pool = rayon::ThreadPoolBuilder::new()
+            .thread_name(|ix| format!("RayonWorker{}", ix))
+            .stack_size(stdx::thread::DEFAULT_STACK_SIZE);
+        if !self.parallel {
+            rayon_pool = rayon_pool.num_threads(1);
+        }
+        rayon_pool.build_global().unwrap();
+
         let mut rng = {
             let seed = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() as u64;
             Rand32::new(seed)
