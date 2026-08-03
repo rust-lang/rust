@@ -134,6 +134,204 @@ pub(crate) enum DefiningTy<'tcx> {
 }
 
 impl<'tcx> DefiningTy<'tcx> {
+    #[instrument(level = "debug", skip(tcx), ret)]
+    fn new(tcx: TyCtxt<'tcx>, body_def_id: LocalDefId) -> DefiningTy<'tcx> {
+        match tcx.hir_body_owner_kind(body_def_id) {
+            BodyOwnerKind::Closure | BodyOwnerKind::Fn => {
+                let defining_ty = tcx.type_of(body_def_id).instantiate_identity().skip_norm_wip();
+                match *defining_ty.kind() {
+                    ty::Closure(def_id, args) => DefiningTy::Closure(def_id, args),
+                    ty::Coroutine(def_id, args) => DefiningTy::Coroutine(def_id, args),
+                    ty::CoroutineClosure(def_id, args) => {
+                        DefiningTy::CoroutineClosure(def_id, args)
+                    }
+                    ty::FnDef(def_id, args) => {
+                        DefiningTy::FnDef(def_id, args.no_bound_vars().unwrap())
+                    }
+                    _ => span_bug!(
+                        tcx.def_span(body_def_id),
+                        "expected defining type for `{body_def_id:?}`: `{defining_ty:?}`",
+                    ),
+                }
+            }
+
+            BodyOwnerKind::Const { .. } | BodyOwnerKind::Static(..) => {
+                match tcx.def_kind(body_def_id) {
+                    DefKind::AnonConst
+                        if tcx.anon_const_kind(body_def_id)
+                            == ty::AnonConstKind::NonTypeSystemInline =>
+                    {
+                        // This is required for `AscribeUserType` canonical query, which will call
+                        // `type_of(inline_const_def_id)`. That `type_of` would inject erased lifetimes
+                        // into borrowck, which is ICE #78174.
+                        //
+                        // As a workaround, inline consts have an additional generic param (`ty`
+                        // below), so that `type_of(inline_const_def_id).substs(substs)` uses the
+                        // proper type with NLL infer vars.
+                        //
+                        // Fetch the actual type from MIR, as `type_of` returns something useless
+                        // like `<const_ty>`.
+                        let body = tcx.mir_promoted(body_def_id).0.borrow();
+                        let ty = body.local_decls[RETURN_PLACE].ty;
+                        let typeck_root_def_id = tcx.typeck_root_def_id(body_def_id.to_def_id());
+                        let parent_args = GenericArgs::identity_for_item(tcx, typeck_root_def_id);
+                        let args =
+                            InlineConstArgs::new(tcx, InlineConstArgsParts { parent_args, ty })
+                                .args;
+                        DefiningTy::InlineConst(body_def_id.to_def_id(), args)
+                    }
+                    _ => {
+                        let args = GenericArgs::identity_for_item(tcx, body_def_id.to_def_id());
+                        DefiningTy::Const(body_def_id.to_def_id(), args)
+                    }
+                }
+            }
+
+            BodyOwnerKind::GlobalAsm => DefiningTy::GlobalAsm(body_def_id.to_def_id()),
+        }
+    }
+
+    #[instrument(level = "debug", skip(tcx, c_variadic_region), ret)]
+    fn inputs_and_output(
+        self,
+        tcx: TyCtxt<'tcx>,
+        c_variadic_region: impl FnOnce() -> ty::Region<'tcx>,
+    ) -> ty::Binder<'tcx, &'tcx ty::List<Ty<'tcx>>> {
+        match self {
+            DefiningTy::Closure(def_id, args) => {
+                let closure_sig = args.as_closure().sig();
+                let inputs_and_output = closure_sig.inputs_and_output();
+                let bound_vars = tcx.mk_bound_variable_kinds_from_iter(
+                    inputs_and_output.bound_vars().iter().chain(iter::once(
+                        ty::BoundVariableKind::Region(ty::BoundRegionKind::ClosureEnv),
+                    )),
+                );
+                let br = ty::BoundRegion {
+                    var: ty::BoundVar::from_usize(bound_vars.len() - 1),
+                    kind: ty::BoundRegionKind::ClosureEnv,
+                };
+                let env_region = ty::Region::new_bound(tcx, ty::INNERMOST, br);
+                let closure_ty = tcx.closure_env_ty(
+                    Ty::new_closure(tcx, def_id, args),
+                    args.as_closure().kind(),
+                    env_region,
+                );
+
+                // The "inputs" of the closure in the
+                // signature appear as a tuple. The MIR side
+                // flattens this tuple.
+                let (&output, tuplized_inputs) =
+                    inputs_and_output.skip_binder().split_last().unwrap();
+                assert_eq!(tuplized_inputs.len(), 1, "multiple closure inputs");
+                let &ty::Tuple(inputs) = tuplized_inputs[0].kind() else {
+                    bug!("closure inputs not a tuple: {:?}", tuplized_inputs[0]);
+                };
+
+                ty::Binder::bind_with_vars(
+                    tcx.mk_type_list_from_iter(
+                        iter::once(closure_ty).chain(inputs).chain(iter::once(output)),
+                    ),
+                    bound_vars,
+                )
+            }
+
+            DefiningTy::Coroutine(def_id, args) => {
+                let resume_ty = args.as_coroutine().resume_ty();
+                let output = args.as_coroutine().return_ty();
+                let coroutine_ty = Ty::new_coroutine(tcx, def_id, args);
+                let inputs_and_output = tcx.mk_type_list(&[coroutine_ty, resume_ty, output]);
+                ty::Binder::dummy(inputs_and_output)
+            }
+
+            // Construct the signature of the CoroutineClosure for the purposes of borrowck.
+            // This is pretty straightforward -- we:
+            // 1. first grab the `coroutine_closure_sig`,
+            // 2. compute the self type (`&`/`&mut`/no borrow),
+            // 3. flatten the tupled_input_tys,
+            // 4. construct the correct generator type to return with
+            //    `CoroutineClosureSignature::to_coroutine_given_kind_and_upvars`.
+            // Then we wrap it all up into a list of inputs and output.
+            DefiningTy::CoroutineClosure(def_id, args) => {
+                let closure_sig = args.as_coroutine_closure().coroutine_closure_sig();
+                let bound_vars =
+                    tcx.mk_bound_variable_kinds_from_iter(closure_sig.bound_vars().iter().chain(
+                        iter::once(ty::BoundVariableKind::Region(ty::BoundRegionKind::ClosureEnv)),
+                    ));
+                let br = ty::BoundRegion {
+                    var: ty::BoundVar::from_usize(bound_vars.len() - 1),
+                    kind: ty::BoundRegionKind::ClosureEnv,
+                };
+                let env_region = ty::Region::new_bound(tcx, ty::INNERMOST, br);
+                let closure_kind = args.as_coroutine_closure().kind();
+
+                let closure_ty = tcx.closure_env_ty(
+                    Ty::new_coroutine_closure(tcx, def_id, args),
+                    closure_kind,
+                    env_region,
+                );
+
+                let inputs = closure_sig.skip_binder().tupled_inputs_ty.tuple_fields();
+                let output = closure_sig.skip_binder().to_coroutine_given_kind_and_upvars(
+                    tcx,
+                    args.as_coroutine_closure().parent_args(),
+                    tcx.coroutine_for_closure(def_id),
+                    closure_kind,
+                    env_region,
+                    args.as_coroutine_closure().tupled_upvars_ty(),
+                    args.as_coroutine_closure().coroutine_captures_by_ref_ty(),
+                );
+
+                ty::Binder::bind_with_vars(
+                    tcx.mk_type_list_from_iter(
+                        iter::once(closure_ty).chain(inputs).chain(iter::once(output)),
+                    ),
+                    bound_vars,
+                )
+            }
+
+            DefiningTy::FnDef(def_id, _) => {
+                let sig = tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip();
+                let inputs_and_output = sig.inputs_and_output();
+
+                // C-variadic fns also have a `VaList` input that's not listed in the signature
+                // (as it's created inside the body itself, not passed in from outside).
+                if tcx.fn_sig(def_id).skip_binder().c_variadic() {
+                    let va_list_did = tcx.require_lang_item(LangItem::VaList, tcx.def_span(def_id));
+
+                    let region = c_variadic_region();
+                    let va_list_ty =
+                        tcx.type_of(va_list_did).instantiate(tcx, &[region.into()]).skip_norm_wip();
+
+                    // The signature needs to follow the order [input_tys, va_list_ty, output_ty]
+                    return inputs_and_output.map_bound(|tys| {
+                        let (output_ty, input_tys) = tys.split_last().unwrap();
+                        tcx.mk_type_list_from_iter(
+                            input_tys.iter().copied().chain([va_list_ty, *output_ty]),
+                        )
+                    });
+                }
+
+                inputs_and_output
+            }
+
+            DefiningTy::Const(def_id, _) => {
+                // For a constant body, there are no inputs, and one
+                // "output" (the type of the constant).
+                let ty = tcx.type_of(def_id).instantiate_identity().skip_norm_wip();
+                ty::Binder::dummy(tcx.mk_type_list(&[ty]))
+            }
+
+            DefiningTy::InlineConst(_def_id, args) => {
+                let ty = args.as_inline_const().ty();
+                ty::Binder::dummy(tcx.mk_type_list(&[ty]))
+            }
+
+            DefiningTy::GlobalAsm(def_id) => ty::Binder::dummy(
+                tcx.mk_type_list(&[tcx.type_of(def_id).instantiate_identity().skip_norm_wip()]),
+            ),
+        }
+    }
+
     /// Returns a list of all the upvar types for this MIR. If this is
     /// not a closure or coroutine, there are no upvars, and hence it
     /// will be an empty list. The order of types in this list will
@@ -581,82 +779,23 @@ impl<'tcx> UniversalRegionsBuilder<'_, 'tcx> {
         }
     }
 
-    /// Returns the "defining type" of the current MIR;
-    /// see `DefiningTy` for details.
+    /// Returns the "defining type" of the current MIR; see `DefiningTy` for details.
     fn defining_ty(&self) -> DefiningTy<'tcx> {
-        let tcx = self.infcx.tcx;
-
-        match tcx.hir_body_owner_kind(self.mir_def) {
-            BodyOwnerKind::Closure | BodyOwnerKind::Fn => {
-                let defining_ty = tcx.type_of(self.mir_def).instantiate_identity().skip_norm_wip();
-
-                debug!("defining_ty (pre-replacement): {:?}", defining_ty);
-
-                let defining_ty = self.infcx.replace_free_regions_with_nll_infer_vars(
-                    NllRegionVariableOrigin::FreeRegion,
-                    defining_ty,
-                );
-
-                match *defining_ty.kind() {
-                    ty::Closure(def_id, args) => DefiningTy::Closure(def_id, args),
-                    ty::Coroutine(def_id, args) => DefiningTy::Coroutine(def_id, args),
-                    ty::CoroutineClosure(def_id, args) => {
-                        DefiningTy::CoroutineClosure(def_id, args)
-                    }
-                    ty::FnDef(def_id, args) => {
-                        DefiningTy::FnDef(def_id, args.no_bound_vars().unwrap())
-                    }
-                    _ => span_bug!(
-                        tcx.def_span(self.mir_def),
-                        "expected defining type for `{:?}`: `{:?}`",
-                        self.mir_def,
-                        defining_ty
-                    ),
-                }
+        let defining_ty = DefiningTy::new(self.infcx.tcx, self.mir_def);
+        let f = |args| {
+            let fr = NllRegionVariableOrigin::FreeRegion;
+            self.infcx.replace_free_regions_with_nll_infer_vars(fr, args)
+        };
+        match defining_ty {
+            DefiningTy::Closure(def_id, args) => DefiningTy::Closure(def_id, f(args)),
+            DefiningTy::Coroutine(def_id, args) => DefiningTy::Coroutine(def_id, f(args)),
+            DefiningTy::CoroutineClosure(def_id, args) => {
+                DefiningTy::CoroutineClosure(def_id, f(args))
             }
-
-            BodyOwnerKind::Const { .. } | BodyOwnerKind::Static(..) => {
-                match tcx.def_kind(self.mir_def) {
-                    DefKind::AnonConst
-                        if tcx.anon_const_kind(self.mir_def)
-                            == ty::AnonConstKind::NonTypeSystemInline =>
-                    {
-                        // This is required for `AscribeUserType` canonical query, which will call
-                        // `type_of(inline_const_def_id)`. That `type_of` would inject erased lifetimes
-                        // into borrowck, which is ICE #78174.
-                        //
-                        // As a workaround, inline consts have an additional generic param (`ty`
-                        // below), so that `type_of(inline_const_def_id).substs(substs)` uses the
-                        // proper type with NLL infer vars.
-                        //
-                        // Fetch the actual type from MIR, as `type_of` returns something useless
-                        // like `<const_ty>`.
-                        let body = tcx.mir_promoted(self.mir_def).0.borrow();
-                        let ty = body.local_decls[RETURN_PLACE].ty;
-                        let typeck_root_def_id = tcx.typeck_root_def_id(self.mir_def.to_def_id());
-                        let parent_args = GenericArgs::identity_for_item(tcx, typeck_root_def_id);
-                        let args =
-                            InlineConstArgs::new(tcx, InlineConstArgsParts { parent_args, ty })
-                                .args;
-                        let args = self.infcx.replace_free_regions_with_nll_infer_vars(
-                            NllRegionVariableOrigin::FreeRegion,
-                            args,
-                        );
-                        DefiningTy::InlineConst(self.mir_def.to_def_id(), args)
-                    }
-                    _ => {
-                        let identity_args =
-                            GenericArgs::identity_for_item(tcx, self.mir_def.to_def_id());
-                        let args = self.infcx.replace_free_regions_with_nll_infer_vars(
-                            NllRegionVariableOrigin::FreeRegion,
-                            identity_args,
-                        );
-                        DefiningTy::Const(self.mir_def.to_def_id(), args)
-                    }
-                }
-            }
-
-            BodyOwnerKind::GlobalAsm => DefiningTy::GlobalAsm(self.mir_def.to_def_id()),
+            DefiningTy::FnDef(def_id, args) => DefiningTy::FnDef(def_id, f(args)),
+            DefiningTy::Const(def_id, args) => DefiningTy::Const(def_id, f(args)),
+            DefiningTy::InlineConst(def_id, args) => DefiningTy::InlineConst(def_id, f(args)),
+            DefiningTy::GlobalAsm(def_id) => DefiningTy::GlobalAsm(def_id),
         }
     }
 
@@ -694,163 +833,13 @@ impl<'tcx> UniversalRegionsBuilder<'_, 'tcx> {
         defining_ty: DefiningTy<'tcx>,
     ) -> ty::Binder<'tcx, &'tcx ty::List<Ty<'tcx>>> {
         let tcx = self.infcx.tcx;
+        let inputs_and_output = defining_ty.inputs_and_output(tcx, || {
+            self.infcx.next_nll_region_var(NllRegionVariableOrigin::FreeRegion, || {
+                RegionCtxt::Free(sym::c_dash_variadic)
+            })
+        });
 
-        let inputs_and_output = match defining_ty {
-            DefiningTy::Closure(def_id, args) => {
-                assert_eq!(self.mir_def.to_def_id(), def_id);
-                let closure_sig = args.as_closure().sig();
-                let inputs_and_output = closure_sig.inputs_and_output();
-                let bound_vars = tcx.mk_bound_variable_kinds_from_iter(
-                    inputs_and_output.bound_vars().iter().chain(iter::once(
-                        ty::BoundVariableKind::Region(ty::BoundRegionKind::ClosureEnv),
-                    )),
-                );
-                let br = ty::BoundRegion {
-                    var: ty::BoundVar::from_usize(bound_vars.len() - 1),
-                    kind: ty::BoundRegionKind::ClosureEnv,
-                };
-                let env_region = ty::Region::new_bound(tcx, ty::INNERMOST, br);
-                let closure_ty = tcx.closure_env_ty(
-                    Ty::new_closure(tcx, def_id, args),
-                    args.as_closure().kind(),
-                    env_region,
-                );
-
-                // The "inputs" of the closure in the
-                // signature appear as a tuple. The MIR side
-                // flattens this tuple.
-                let (&output, tuplized_inputs) =
-                    inputs_and_output.skip_binder().split_last().unwrap();
-                assert_eq!(tuplized_inputs.len(), 1, "multiple closure inputs");
-                let &ty::Tuple(inputs) = tuplized_inputs[0].kind() else {
-                    bug!("closure inputs not a tuple: {:?}", tuplized_inputs[0]);
-                };
-
-                ty::Binder::bind_with_vars(
-                    tcx.mk_type_list_from_iter(
-                        iter::once(closure_ty).chain(inputs).chain(iter::once(output)),
-                    ),
-                    bound_vars,
-                )
-            }
-
-            DefiningTy::Coroutine(def_id, args) => {
-                assert_eq!(self.mir_def.to_def_id(), def_id);
-                let resume_ty = args.as_coroutine().resume_ty();
-                let output = args.as_coroutine().return_ty();
-                let coroutine_ty = Ty::new_coroutine(tcx, def_id, args);
-                let inputs_and_output =
-                    self.infcx.tcx.mk_type_list(&[coroutine_ty, resume_ty, output]);
-                ty::Binder::dummy(inputs_and_output)
-            }
-
-            // Construct the signature of the CoroutineClosure for the purposes of borrowck.
-            // This is pretty straightforward -- we:
-            // 1. first grab the `coroutine_closure_sig`,
-            // 2. compute the self type (`&`/`&mut`/no borrow),
-            // 3. flatten the tupled_input_tys,
-            // 4. construct the correct generator type to return with
-            //    `CoroutineClosureSignature::to_coroutine_given_kind_and_upvars`.
-            // Then we wrap it all up into a list of inputs and output.
-            DefiningTy::CoroutineClosure(def_id, args) => {
-                assert_eq!(self.mir_def.to_def_id(), def_id);
-                let closure_sig = args.as_coroutine_closure().coroutine_closure_sig();
-                let bound_vars =
-                    tcx.mk_bound_variable_kinds_from_iter(closure_sig.bound_vars().iter().chain(
-                        iter::once(ty::BoundVariableKind::Region(ty::BoundRegionKind::ClosureEnv)),
-                    ));
-                let br = ty::BoundRegion {
-                    var: ty::BoundVar::from_usize(bound_vars.len() - 1),
-                    kind: ty::BoundRegionKind::ClosureEnv,
-                };
-                let env_region = ty::Region::new_bound(tcx, ty::INNERMOST, br);
-                let closure_kind = args.as_coroutine_closure().kind();
-
-                let closure_ty = tcx.closure_env_ty(
-                    Ty::new_coroutine_closure(tcx, def_id, args),
-                    closure_kind,
-                    env_region,
-                );
-
-                let inputs = closure_sig.skip_binder().tupled_inputs_ty.tuple_fields();
-                let output = closure_sig.skip_binder().to_coroutine_given_kind_and_upvars(
-                    tcx,
-                    args.as_coroutine_closure().parent_args(),
-                    tcx.coroutine_for_closure(def_id),
-                    closure_kind,
-                    env_region,
-                    args.as_coroutine_closure().tupled_upvars_ty(),
-                    args.as_coroutine_closure().coroutine_captures_by_ref_ty(),
-                );
-
-                ty::Binder::bind_with_vars(
-                    tcx.mk_type_list_from_iter(
-                        iter::once(closure_ty).chain(inputs).chain(iter::once(output)),
-                    ),
-                    bound_vars,
-                )
-            }
-
-            DefiningTy::FnDef(def_id, _) => {
-                let sig = tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip();
-                let sig = indices.fold_to_region_vids(tcx, sig);
-                let inputs_and_output = sig.inputs_and_output();
-
-                // C-variadic fns also have a `VaList` input that's not listed in the signature
-                // (as it's created inside the body itself, not passed in from outside).
-                if self.infcx.tcx.fn_sig(def_id).skip_binder().c_variadic() {
-                    let va_list_did = self
-                        .infcx
-                        .tcx
-                        .require_lang_item(LangItem::VaList, self.infcx.tcx.def_span(self.mir_def));
-
-                    let reg_vid = self
-                        .infcx
-                        .next_nll_region_var(NllRegionVariableOrigin::FreeRegion, || {
-                            RegionCtxt::Free(sym::c_dash_variadic)
-                        })
-                        .as_var();
-
-                    let region = ty::Region::new_var(self.infcx.tcx, reg_vid);
-                    let va_list_ty = self
-                        .infcx
-                        .tcx
-                        .type_of(va_list_did)
-                        .instantiate(self.infcx.tcx, &[region.into()])
-                        .skip_norm_wip();
-
-                    // The signature needs to follow the order [input_tys, va_list_ty, output_ty]
-                    return inputs_and_output.map_bound(|tys| {
-                        let (output_ty, input_tys) = tys.split_last().unwrap();
-                        tcx.mk_type_list_from_iter(
-                            input_tys.iter().copied().chain([va_list_ty, *output_ty]),
-                        )
-                    });
-                }
-
-                inputs_and_output
-            }
-
-            DefiningTy::Const(def_id, _) => {
-                // For a constant body, there are no inputs, and one
-                // "output" (the type of the constant).
-                assert_eq!(self.mir_def.to_def_id(), def_id);
-                let ty = tcx.type_of(self.mir_def).instantiate_identity().skip_norm_wip();
-
-                let ty = indices.fold_to_region_vids(tcx, ty);
-                ty::Binder::dummy(tcx.mk_type_list(&[ty]))
-            }
-
-            DefiningTy::InlineConst(def_id, args) => {
-                assert_eq!(self.mir_def.to_def_id(), def_id);
-                let ty = args.as_inline_const().ty();
-                ty::Binder::dummy(tcx.mk_type_list(&[ty]))
-            }
-
-            DefiningTy::GlobalAsm(def_id) => ty::Binder::dummy(
-                tcx.mk_type_list(&[tcx.type_of(def_id).instantiate_identity().skip_norm_wip()]),
-            ),
-        };
+        let inputs_and_output = indices.fold_to_region_vids(tcx, inputs_and_output);
 
         // FIXME(#129952): We probably want a more principled approach here.
         if let Err(e) = inputs_and_output.error_reported() {
