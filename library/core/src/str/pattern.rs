@@ -53,7 +53,8 @@ use crate::cmp::Ordering;
 use crate::convert::TryInto as _;
 use crate::ops::Range;
 pub use crate::pattern::{
-    DoubleEndedSearcher, Haystack, Pattern, ReverseSearcher, SearchStep, Searcher, Utf8Pattern,
+    DoubleEndedSearcher, Haystack, MatchOnly, Pattern, ReverseSearcher, SearchResult, SearchStep,
+    Searcher, Utf8Pattern,
 };
 use crate::slice::memchr;
 use crate::{cmp, fmt};
@@ -795,43 +796,36 @@ pub struct StrSearcher<'a, 'b> {
 
 #[derive(Clone, Debug)]
 enum StrSearcherImpl {
-    Empty(EmptyNeedle),
+    Empty(core::pattern::EmptyNeedleSearcher),
     TwoWay(TwoWaySearcher),
-}
-
-#[derive(Clone, Debug)]
-struct EmptyNeedle {
-    position: usize,
-    end: usize,
-    is_match_fw: bool,
-    is_match_bw: bool,
-    // Needed in case of an empty haystack, see #85462
-    is_finished: bool,
 }
 
 impl<'a, 'b> StrSearcher<'a, 'b> {
     fn new(haystack: &'a str, needle: &'b str) -> StrSearcher<'a, 'b> {
-        if needle.is_empty() {
-            StrSearcher {
-                haystack,
-                needle,
-                searcher: StrSearcherImpl::Empty(EmptyNeedle {
-                    position: 0,
-                    end: haystack.len(),
-                    is_match_fw: true,
-                    is_match_bw: true,
-                    is_finished: false,
-                }),
-            }
+        let searcher = if needle.is_empty() {
+            StrSearcherImpl::Empty(core::pattern::EmptyNeedleSearcher::new(haystack))
         } else {
-            StrSearcher {
-                haystack,
-                needle,
-                searcher: StrSearcherImpl::TwoWay(TwoWaySearcher::new(
-                    needle.as_bytes(),
-                    haystack.len(),
-                )),
-            }
+            StrSearcherImpl::TwoWay(TwoWaySearcher::new(needle.as_bytes(), haystack.len()))
+        };
+        StrSearcher { haystack, needle, searcher }
+    }
+
+    fn fwd_char(haystack: &str, pos: usize) -> usize {
+        pos + super::utf8_char_width(haystack.as_bytes()[pos])
+    }
+
+    fn bwd_char(haystack: &str, pos: usize) -> usize {
+        // Note: we are guaranteed to operate on valid UTF-8 thus we will never
+        // need to go further than four bytes back.
+        let bytes = haystack.as_bytes();
+        if bytes[pos - 1].is_utf8_char_boundary() {
+            pos - 1
+        } else if bytes[pos - 2].is_utf8_char_boundary() {
+            pos - 2
+        } else if bytes[pos - 3].is_utf8_char_boundary() {
+            pos - 3
+        } else {
+            pos - 4
         }
     }
 }
@@ -846,24 +840,7 @@ unsafe impl<'a, 'b> Searcher<'a, str> for StrSearcher<'a, 'b> {
     fn next(&mut self) -> SearchStep {
         match self.searcher {
             StrSearcherImpl::Empty(ref mut searcher) => {
-                if searcher.is_finished {
-                    return SearchStep::Done;
-                }
-                // empty needle rejects every char and matches every empty string between them
-                let is_match = searcher.is_match_fw;
-                searcher.is_match_fw = !searcher.is_match_fw;
-                let pos = searcher.position;
-                match self.haystack[pos..].chars().next() {
-                    _ if is_match => SearchStep::Match(pos, pos),
-                    None => {
-                        searcher.is_finished = true;
-                        SearchStep::Done
-                    }
-                    Some(ch) => {
-                        searcher.position += ch.len_utf8();
-                        SearchStep::Reject(pos, searcher.position)
-                    }
-                }
+                searcher.next_fwd(|range| Self::fwd_char(self.haystack, range.start))
             }
             StrSearcherImpl::TwoWay(ref mut searcher) => {
                 // TwoWaySearcher produces valid *Match* indices that split at char boundaries
@@ -875,11 +852,7 @@ unsafe impl<'a, 'b> Searcher<'a, str> for StrSearcher<'a, 'b> {
                     return SearchStep::Done;
                 }
                 let is_long = searcher.memory == usize::MAX;
-                match searcher.next::<RejectAndMatch>(
-                    self.haystack.as_bytes(),
-                    self.needle.as_bytes(),
-                    is_long,
-                ) {
+                match searcher.next(self.haystack.as_bytes(), self.needle.as_bytes(), is_long) {
                     SearchStep::Reject(a, mut b) => {
                         // skip to next char boundary
                         while !self.haystack.is_char_boundary(b) {
@@ -897,29 +870,23 @@ unsafe impl<'a, 'b> Searcher<'a, str> for StrSearcher<'a, 'b> {
     #[inline]
     fn next_match(&mut self) -> Option<(usize, usize)> {
         match self.searcher {
-            StrSearcherImpl::Empty(..) => loop {
-                match self.next() {
-                    SearchStep::Match(a, b) => return Some((a, b)),
-                    SearchStep::Done => return None,
-                    SearchStep::Reject(..) => {}
-                }
-            },
+            StrSearcherImpl::Empty(ref mut searcher) => {
+                searcher
+                    .next_fwd::<MatchOnly, _>(|range| Self::fwd_char(self.haystack, range.start))
+                    .0
+            }
             StrSearcherImpl::TwoWay(ref mut searcher) => {
                 let is_long = searcher.memory == usize::MAX;
                 // write out `true` and `false` cases to encourage the compiler
                 // to specialize the two cases separately.
                 if is_long {
-                    searcher.next::<MatchOnly>(
-                        self.haystack.as_bytes(),
-                        self.needle.as_bytes(),
-                        true,
-                    )
+                    searcher
+                        .next::<MatchOnly>(self.haystack.as_bytes(), self.needle.as_bytes(), true)
+                        .0
                 } else {
-                    searcher.next::<MatchOnly>(
-                        self.haystack.as_bytes(),
-                        self.needle.as_bytes(),
-                        false,
-                    )
+                    searcher
+                        .next::<MatchOnly>(self.haystack.as_bytes(), self.needle.as_bytes(), false)
+                        .0
                 }
             }
         }
@@ -931,34 +898,15 @@ unsafe impl<'a, 'b> ReverseSearcher<'a, str> for StrSearcher<'a, 'b> {
     fn next_back(&mut self) -> SearchStep {
         match self.searcher {
             StrSearcherImpl::Empty(ref mut searcher) => {
-                if searcher.is_finished {
-                    return SearchStep::Done;
-                }
-                let is_match = searcher.is_match_bw;
-                searcher.is_match_bw = !searcher.is_match_bw;
-                let end = searcher.end;
-                match self.haystack[..end].chars().next_back() {
-                    _ if is_match => SearchStep::Match(end, end),
-                    None => {
-                        searcher.is_finished = true;
-                        SearchStep::Done
-                    }
-                    Some(ch) => {
-                        searcher.end -= ch.len_utf8();
-                        SearchStep::Reject(searcher.end, end)
-                    }
-                }
+                searcher.next_bwd(|range| Self::bwd_char(self.haystack, range.end))
             }
             StrSearcherImpl::TwoWay(ref mut searcher) => {
                 if searcher.end == 0 {
                     return SearchStep::Done;
                 }
                 let is_long = searcher.memory == usize::MAX;
-                match searcher.next_back::<RejectAndMatch>(
-                    self.haystack.as_bytes(),
-                    self.needle.as_bytes(),
-                    is_long,
-                ) {
+                match searcher.next_back(self.haystack.as_bytes(), self.needle.as_bytes(), is_long)
+                {
                     SearchStep::Reject(mut a, b) => {
                         // skip to next char boundary
                         while !self.haystack.is_char_boundary(a) {
@@ -976,28 +924,30 @@ unsafe impl<'a, 'b> ReverseSearcher<'a, str> for StrSearcher<'a, 'b> {
     #[inline]
     fn next_match_back(&mut self) -> Option<(usize, usize)> {
         match self.searcher {
-            StrSearcherImpl::Empty(..) => loop {
-                match self.next_back() {
-                    SearchStep::Match(a, b) => return Some((a, b)),
-                    SearchStep::Done => return None,
-                    SearchStep::Reject(..) => {}
-                }
-            },
+            StrSearcherImpl::Empty(ref mut searcher) => {
+                searcher
+                    .next_bwd::<MatchOnly, _>(|range| Self::bwd_char(self.haystack, range.end))
+                    .0
+            }
             StrSearcherImpl::TwoWay(ref mut searcher) => {
                 let is_long = searcher.memory == usize::MAX;
                 // write out `true` and `false`, like `next_match`
                 if is_long {
-                    searcher.next_back::<MatchOnly>(
-                        self.haystack.as_bytes(),
-                        self.needle.as_bytes(),
-                        true,
-                    )
+                    searcher
+                        .next_back::<MatchOnly>(
+                            self.haystack.as_bytes(),
+                            self.needle.as_bytes(),
+                            true,
+                        )
+                        .0
                 } else {
-                    searcher.next_back::<MatchOnly>(
-                        self.haystack.as_bytes(),
-                        self.needle.as_bytes(),
-                        false,
-                    )
+                    searcher
+                        .next_back::<MatchOnly>(
+                            self.haystack.as_bytes(),
+                            self.needle.as_bytes(),
+                            false,
+                        )
+                        .0
                 }
             }
         }
@@ -1185,10 +1135,7 @@ impl TwoWaySearcher {
     // How far we can jump when we encounter a mismatch is all based on the fact
     // that (u, v) is a critical factorization for the needle.
     #[inline]
-    fn next<S>(&mut self, haystack: &[u8], needle: &[u8], long_period: bool) -> S::Output
-    where
-        S: TwoWayStrategy,
-    {
+    fn next<R: SearchResult>(&mut self, haystack: &[u8], needle: &[u8], long_period: bool) -> R {
         // `next()` uses `self.position` as its cursor
         let old_pos = self.position;
         let needle_last = needle.len() - 1;
@@ -1200,12 +1147,14 @@ impl TwoWaySearcher {
                 Some(&b) => b,
                 None => {
                     self.position = haystack.len();
-                    return S::rejecting(old_pos, self.position);
+                    return R::rejecting(old_pos, self.position).unwrap_or(R::DONE);
                 }
             };
 
-            if S::use_early_reject() && old_pos != self.position {
-                return S::rejecting(old_pos, self.position);
+            if old_pos != self.position {
+                if let Some(ret) = R::rejecting(old_pos, self.position) {
+                    return ret;
+                }
             }
 
             // Quickly skip by large portions unrelated to our substring
@@ -1263,7 +1212,7 @@ impl TwoWaySearcher {
                 self.memory = 0; // set to needle.len() - self.period for overlapping matches
             }
 
-            return S::matching(match_pos, match_pos + needle.len());
+            return R::matching(match_pos, match_pos + needle.len()).unwrap();
         }
     }
 
@@ -1280,10 +1229,12 @@ impl TwoWaySearcher {
     // To search in reverse through the haystack, we search forward through
     // a reversed haystack with a reversed needle, matching first u' and then v'.
     #[inline]
-    fn next_back<S>(&mut self, haystack: &[u8], needle: &[u8], long_period: bool) -> S::Output
-    where
-        S: TwoWayStrategy,
-    {
+    fn next_back<R: SearchResult>(
+        &mut self,
+        haystack: &[u8],
+        needle: &[u8],
+        long_period: bool,
+    ) -> R {
         // `next_back()` uses `self.end` as its cursor -- so that `next()` and `next_back()`
         // are independent.
         let old_end = self.end;
@@ -1296,12 +1247,14 @@ impl TwoWaySearcher {
                 Some(&b) => b,
                 None => {
                     self.end = 0;
-                    return S::rejecting(0, old_end);
+                    return R::rejecting(0, old_end).unwrap_or(R::DONE);
                 }
             };
 
-            if S::use_early_reject() && old_end != self.end {
-                return S::rejecting(self.end, old_end);
+            if old_end != self.end {
+                if let Some(ret) = R::rejecting(self.end, old_end) {
+                    return ret;
+                }
             }
 
             // Quickly skip by large portions unrelated to our substring
@@ -1361,7 +1314,7 @@ impl TwoWaySearcher {
                 self.memory_back = needle.len();
             }
 
-            return S::matching(match_pos, match_pos + needle.len());
+            return R::matching(match_pos, match_pos + needle.len()).unwrap();
         }
     }
 
@@ -1461,55 +1414,6 @@ impl TwoWaySearcher {
         }
         debug_assert!(period <= known_period);
         left
-    }
-}
-
-// TwoWayStrategy allows the algorithm to either skip non-matches as quickly
-// as possible, or to work in a mode where it emits Rejects relatively quickly.
-trait TwoWayStrategy {
-    type Output;
-    fn use_early_reject() -> bool;
-    fn rejecting(a: usize, b: usize) -> Self::Output;
-    fn matching(a: usize, b: usize) -> Self::Output;
-}
-
-/// Skip to match intervals as quickly as possible
-enum MatchOnly {}
-
-impl TwoWayStrategy for MatchOnly {
-    type Output = Option<(usize, usize)>;
-
-    #[inline]
-    fn use_early_reject() -> bool {
-        false
-    }
-    #[inline]
-    fn rejecting(_a: usize, _b: usize) -> Self::Output {
-        None
-    }
-    #[inline]
-    fn matching(a: usize, b: usize) -> Self::Output {
-        Some((a, b))
-    }
-}
-
-/// Emit Rejects regularly
-enum RejectAndMatch {}
-
-impl TwoWayStrategy for RejectAndMatch {
-    type Output = SearchStep;
-
-    #[inline]
-    fn use_early_reject() -> bool {
-        true
-    }
-    #[inline]
-    fn rejecting(a: usize, b: usize) -> Self::Output {
-        SearchStep::Reject(a, b)
-    }
-    #[inline]
-    fn matching(a: usize, b: usize) -> Self::Output {
-        SearchStep::Match(a, b)
     }
 }
 
