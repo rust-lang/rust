@@ -1173,6 +1173,12 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
     }
     fn visit_fn(&mut self, fn_kind: FnKind<'ast>, _: &AttrVec, sp: Span, fn_id: NodeId) {
         let previous_value = self.diag_metadata.current_function;
+
+        if let FnKind::Fn(_, _, f) = fn_kind {
+            self.resolve_eii(f.eii_impl.as_deref());
+            self.r.collect_fn_info(&f.sig.decl, fn_id);
+        }
+
         match fn_kind {
             // Bail if the function is foreign, and thus cannot validly have
             // a body, or if there's no body for some other reason.
@@ -1213,10 +1219,6 @@ impl<'ast, 'ra, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'ra, 'tc
             FnKind::Closure(..) => {}
         };
         debug!("(resolving function) entering function");
-
-        if let FnKind::Fn(_, _, f) = fn_kind {
-            self.resolve_eii(f.eii_impl.as_deref());
-        }
 
         // Create a value rib for the function.
         self.with_rib(ValueNS, RibKind::FnOrCoroutine, |this| {
@@ -5948,11 +5950,10 @@ struct ItemInfoCollector<'a, 'ra, 'tcx> {
     r: &'a mut Resolver<'ra, 'tcx>,
 }
 
-impl ItemInfoCollector<'_, '_, '_> {
-    fn collect_fn_info(&mut self, decl: &FnDecl, id: NodeId) {
-        self.r
-            .delegation_fn_sigs
-            .insert(self.r.owner_def_id(id), DelegationFnSig { has_self: decl.has_self() });
+impl Resolver<'_, '_> {
+    fn collect_fn_info(&mut self, decl: &FnDecl, _id: NodeId) {
+        self.delegation_fn_sigs
+            .insert(self.current_owner.def_id, DelegationFnSig { has_self: decl.has_self() });
     }
 }
 
@@ -5994,52 +5995,10 @@ impl Visitor<'_> for ItemInfoCollector<'_, '_, '_> {
             self.r.item_generics_num_lifetimes.insert(def_id, count);
         }
 
-        match &item.kind {
-            ItemKind::Fn(Fn { sig, .. }) => {
-                self.collect_fn_info(&sig.decl, item.id);
-            }
-
-            ItemKind::ForeignMod(ForeignMod { items, .. }) => {
-                for foreign_item in items {
-                    if let ForeignItemKind::Fn(Fn { sig, .. }) = &foreign_item.kind {
-                        self.collect_fn_info(&sig.decl, foreign_item.id);
-                    }
-                }
-            }
-
-            ItemKind::Mod(..)
-            | ItemKind::Static(..)
-            | ItemKind::ConstBlock(..)
-            | ItemKind::MacroDef(..)
-            | ItemKind::GlobalAsm(..)
-            | ItemKind::MacCall(..)
-            | ItemKind::Use(..)
-            | ItemKind::ExternCrate(..)
-            | ItemKind::DelegationMac(..)
-            | ItemKind::TyAlias(..)
-            | ItemKind::Const(..)
-            | ItemKind::Enum(..)
-            | ItemKind::Struct(..)
-            | ItemKind::Union(..)
-            | ItemKind::Impl(..)
-            | ItemKind::Trait(..)
-            | ItemKind::TraitAlias(..)
-            | ItemKind::TestBinderConstraints(..) => {}
-            ItemKind::Delegation(..) => {
-                // Delegated functions have lifetimes, their count is not necessarily zero.
-                // But skipping the delegation items here doesn't mean that the count will be considered zero,
-                // it means there will be a panic when retrieving the count,
-                // but for delegation items we are never actually retrieving that count in practice.
-            }
-        }
         visit::walk_item(self, item)
     }
 
     fn visit_assoc_item(&mut self, item: &AssocItem, ctxt: AssocCtxt) {
-        if let AssocItemKind::Fn(Fn { sig, .. }) = &item.kind {
-            self.collect_fn_info(&sig.decl, item.id);
-        }
-
         if let AssocItemKind::Type(ast::TyAlias { generics, .. }) = &item.kind {
             let def_id = self.r.owner_def_id(item.id);
             if let Some(suggestion) = required_generic_args_suggestion(generics) {
