@@ -76,9 +76,9 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
-use gccjit::{CType, Context, OptimizationLevel};
 #[cfg(feature = "master")]
-use gccjit::{TargetInfo, Version};
+use gccjit::TargetInfo;
+use gccjit::{CType, Context, OptimizationLevel};
 use rustc_ast::expand::allocator::AllocatorMethod;
 use rustc_codegen_ssa::back::lto::ThinModule;
 use rustc_codegen_ssa::back::write::{
@@ -97,7 +97,7 @@ use rustc_middle::util::Providers;
 use rustc_session::Session;
 use rustc_session::config::{OptLevel, OutputFilenames};
 use rustc_span::{Symbol, sym};
-use rustc_target::spec::{Arch, RelocModel};
+use rustc_target::spec::RelocModel;
 use tempfile::TempDir;
 
 use crate::back::lto::ModuleBuffer;
@@ -197,8 +197,10 @@ impl CodegenBackend for GccCodegenBackend {
 
     fn init(&self, sess: &Session) {
         fn file_path(sysroot_path: &Path, sess: &Session) -> PathBuf {
-            let rustlib_path =
-                rustc_target::relative_target_rustlib_path(sysroot_path, &sess.host.llvm_target);
+            let rustlib_path = rustc_target::relative_target_rustlib_path(
+                sysroot_path,
+                rustc_session::config::host_tuple(),
+            );
             sysroot_path
                 .join(rustlib_path)
                 .join("codegen-backends")
@@ -315,27 +317,6 @@ impl CodegenBackend for GccCodegenBackend {
     }
 }
 
-fn new_context<'gcc, 'tcx>(tcx: TyCtxt<'tcx>) -> Context<'gcc> {
-    let context = Context::default();
-    if matches!(tcx.sess.target.arch, Arch::X86 | Arch::X86_64) {
-        context.add_command_line_option("-masm=intel");
-    }
-    #[cfg(feature = "master")]
-    {
-        context.set_special_chars_allowed_in_func_names("$.*");
-        let version = Version::get();
-        let version = format!("{}.{}.{}", version.major, version.minor, version.patch);
-        context.set_output_ident(&format!(
-            "rustc version {} with libgccjit {}",
-            rustc_interface::util::rustc_version_str().unwrap_or("unknown version"),
-            version,
-        ));
-    }
-    // FIXME(antoyo): check if this should only be added when using -Cforce-unwind-tables=n.
-    context.add_command_line_option("-fno-asynchronous-unwind-tables");
-    context
-}
-
 impl ExtraBackendMethods for GccCodegenBackend {
     type Module = GccContext;
 
@@ -347,7 +328,7 @@ impl ExtraBackendMethods for GccCodegenBackend {
     ) -> Self::Module {
         let lto_supported = self.lto_supported.load(Ordering::SeqCst);
         let mut mods = GccContext {
-            context: Arc::new(SyncContext::new(new_context(tcx))),
+            context: Arc::new(SyncContext::new(gcc_util::new_context(tcx.sess))),
             relocation_model: tcx.sess.relocation_model(),
             lto_mode: LtoMode::None,
             lto_supported,
@@ -444,7 +425,7 @@ impl WriteBackendMethods for GccCodegenBackend {
         each_linked_rlib_for_lto: &[PathBuf],
         modules: Vec<FatLtoInput<Self>>,
     ) -> CompiledModule {
-        back::lto::run_fat(cgcx, &sess.prof, shared_emitter, each_linked_rlib_for_lto, modules)
+        back::lto::run_fat(sess, cgcx, shared_emitter, each_linked_rlib_for_lto, modules)
     }
 
     fn run_thin_lto(
