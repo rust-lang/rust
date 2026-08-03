@@ -434,7 +434,7 @@ impl<'a> CrateLocator<'a> {
             }
 
             for (hash, spf_path) in
-                self.filesearch.get_file_candidates(prefix, suffix, self.path_kind)
+                self.filesearch.get_library_candidates(prefix, suffix, self.path_kind)
             {
                 info!("lib candidate: {}", spf_path.display());
 
@@ -462,7 +462,7 @@ impl<'a> CrateLocator<'a> {
         }
 
         if should_check_staticlibs {
-            for (_, path) in self.filesearch.get_file_candidates(
+            for (_, path) in self.filesearch.get_library_candidates(
                 staticlib_prefix,
                 staticlib_suffix,
                 self.path_kind,
