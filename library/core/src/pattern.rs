@@ -4,7 +4,7 @@
 //! types when searching through different objects.
 //!
 //! For more details, see the traits [`Pattern`], [`Haystack`], [`Searcher`],
-//! [`ReverseSearcher`] and [`DoubleEndedSearcher`].  Although this API is
+//! [`ReverseSearcher`] and [`DoubleEndedSearcher`]. Although this API is
 //! unstable, it is exposed via stable methods on corresponding haystack types.
 //!
 //! # Examples
@@ -37,7 +37,7 @@
 )]
 
 use crate::fmt;
-use crate::mem::replace;
+use crate::mem::{replace, take};
 use crate::ops::Range;
 
 // Pattern
@@ -236,6 +236,84 @@ pub enum SearchStep {
     Done,
 }
 
+/// Possible return type of a search.
+///
+/// It abstracts the differences between `next`, `next_match` and `next_reject` methods. Depending
+/// on return type an implementation for those functions will generate matches and rejects, only
+/// matches or only rejects.
+#[unstable(feature = "pattern_internals", issue = "none")]
+pub trait SearchResult: Sized + sealed::Sealed {
+    /// Value indicating searching has finished.
+    const DONE: Self;
+
+    /// Returns value describing a match or `None` if this implementation
+    /// doesn't care about matches.
+    fn matching(start: usize, end: usize) -> Option<Self>;
+
+    /// Returns value describing a reject or `None` if this implementation
+    /// doesn't care about rejects.
+    fn rejecting(start: usize, end: usize) -> Option<Self>;
+}
+
+/// A wrapper for result type which only carries information about matches.
+#[unstable(feature = "pattern_internals", issue = "none")]
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub struct MatchOnly(pub Option<(usize, usize)>);
+
+/// A wrapper for result type which only carries information about rejects.
+#[unstable(feature = "pattern_internals", issue = "none")]
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub struct RejectOnly(pub Option<(usize, usize)>);
+
+impl SearchResult for SearchStep {
+    const DONE: Self = SearchStep::Done;
+
+    #[inline(always)]
+    fn matching(s: usize, e: usize) -> Option<Self> {
+        Some(SearchStep::Match(s, e))
+    }
+
+    #[inline(always)]
+    fn rejecting(s: usize, e: usize) -> Option<Self> {
+        Some(SearchStep::Reject(s, e))
+    }
+}
+
+impl SearchResult for MatchOnly {
+    const DONE: Self = Self(None);
+
+    #[inline(always)]
+    fn matching(s: usize, e: usize) -> Option<Self> {
+        Some(Self(Some((s, e))))
+    }
+
+    #[inline(always)]
+    fn rejecting(_s: usize, _e: usize) -> Option<Self> {
+        None
+    }
+}
+
+impl SearchResult for RejectOnly {
+    const DONE: Self = Self(None);
+
+    #[inline(always)]
+    fn matching(_s: usize, _e: usize) -> Option<Self> {
+        None
+    }
+
+    #[inline(always)]
+    fn rejecting(s: usize, e: usize) -> Option<Self> {
+        Some(Self(Some((s, e))))
+    }
+}
+
+mod sealed {
+    pub trait Sealed {}
+    impl Sealed for super::SearchStep {}
+    impl Sealed for super::MatchOnly {}
+    impl Sealed for super::RejectOnly {}
+}
+
 /// A searcher for a string pattern.
 ///
 /// This trait provides methods for searching for non-overlapping
@@ -403,6 +481,145 @@ pub unsafe trait ReverseSearcher<H: Haystack>: Searcher<H> {
 pub trait DoubleEndedSearcher<H: Haystack>: ReverseSearcher<H> {}
 
 //////////////////////////////////////////////////////////////////////////////
+// Internal EmptyNeedleSearcher helper
+//////////////////////////////////////////////////////////////////////////////
+
+/// Helper for implementing searchers looking for empty patterns.
+///
+/// An empty pattern matches around every element of a haystack. For example,
+/// within a `&str` it matches around every character. (This includes at the
+/// beginning and end of the string).
+///
+/// This struct helps implement searchers for empty patterns for various
+/// haystacks. The only requirement is a function which advances the start
+/// position or end position of the haystack range.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(pattern, pattern_internals)]
+/// # #![allow(internal_features)]
+///
+/// use core::pattern::{EmptyNeedleSearcher, SearchStep};
+///
+/// let haystack = "fóó";
+/// let mut searcher = EmptyNeedleSearcher::new(haystack);
+/// let advance = |range: core::ops::Range<usize>| {
+///     range.start + haystack[range].chars().next().unwrap().len_utf8()
+/// };
+/// let steps = core::iter::from_fn(|| {
+///     match searcher.next_fwd(advance) {
+///         SearchStep::Done => None,
+///         step => Some(step)
+///     }
+/// }).collect::<Vec<_>>();
+/// assert_eq!(&[
+///     SearchStep::Match(0, 0),
+///     SearchStep::Reject(0, 1),
+///     SearchStep::Match(1, 1),
+///     SearchStep::Reject(1, 3),
+///     SearchStep::Match(3, 3),
+///     SearchStep::Reject(3, 5),
+///     SearchStep::Match(5, 5),
+/// ], steps.as_slice());
+/// ```
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[unstable(feature = "pattern_internals", issue = "none")]
+pub struct EmptyNeedleSearcher {
+    start: usize,
+    end: usize,
+    is_match_fwd: bool,
+    is_match_bwd: bool,
+    // Needed in case of an empty haystack, see #85462
+    is_finished: bool,
+}
+
+impl EmptyNeedleSearcher {
+    /// Creates a new empty needle searcher for given haystack.
+    ///
+    /// The haystack is used to initialise the range of valid cursors positions.
+    pub fn new<H: Haystack>(haystack: H) -> Self {
+        Self {
+            start: haystack.cursor_at_front(),
+            end: haystack.cursor_at_back(),
+            is_match_bwd: true,
+            is_match_fwd: true,
+            is_finished: false,
+        }
+    }
+
+    /// Returns next search result.
+    ///
+    /// The callback function is used to advance the **start** of the range the
+    /// searcher is working on. It is passed the current range of cursor
+    /// positions that weren't visited yet and it must return the new start
+    /// cursor position. It's never called with an empty range. For some
+    /// haystacks the callback may be as simple as a closure returning the start
+    /// incremented by one; others might require looking for a new valid
+    /// boundary.
+    #[inline]
+    pub fn next_fwd<R: SearchResult, F>(&mut self, advance_fwd: F) -> R
+    where
+        F: FnOnce(crate::ops::Range<usize>) -> usize,
+    {
+        if self.is_finished {
+            return R::DONE;
+        }
+        if take(&mut self.is_match_fwd) {
+            if let Some(ret) = R::matching(self.start, self.start) {
+                return ret;
+            }
+        }
+        if self.start < self.end {
+            let pos = self.start;
+            self.start = advance_fwd(self.start..self.end);
+            if let Some(ret) = R::rejecting(pos, self.start) {
+                self.is_match_fwd = true;
+                return ret;
+            }
+            return R::matching(self.start, self.start).unwrap();
+        }
+        self.is_finished = true;
+        R::DONE
+    }
+
+    /// Returns next search result.
+    ///
+    /// The callback function is used to advance the **end** of the range the
+    /// searcher is working on backwards. It is passed the current range of
+    /// cursor positions that weren't visited yet and it must return the new end
+    /// cursor position. It's never called with an empty range. For some
+    /// haystacks the callback may be as simple as a closure returning the end
+    /// decremented by one; others might require looking for a new valid
+    /// boundary.
+    #[inline]
+    pub fn next_bwd<R: SearchResult, F>(&mut self, advance_bwd: F) -> R
+    where
+        F: FnOnce(crate::ops::Range<usize>) -> usize,
+    {
+        if self.is_finished {
+            return R::DONE;
+        }
+        if take(&mut self.is_match_bwd) {
+            if let Some(ret) = R::matching(self.end, self.end) {
+                return ret;
+            }
+        }
+        if self.start < self.end {
+            let pos = self.end;
+            self.end = advance_bwd(self.start..self.end);
+            if let Some(ret) = R::rejecting(self.end, pos) {
+                self.is_match_bwd = true;
+                return ret;
+            }
+            return R::matching(self.end, self.end).unwrap();
+        }
+        self.is_finished = true;
+        R::DONE
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////////
 // Internal Split and SplitN implementations
 //////////////////////////////////////////////////////////////////////////////
 
@@ -523,7 +740,7 @@ impl<H: Haystack, S: Searcher<H>> Split<H, S> {
 impl<H: Haystack, S: Searcher<H>> Split<H, S> {
     /// Returns the next part of the haystack or `None` if splitting is done.
     ///
-    /// If `INCLUSIVE` is `true`, returned value will include the matching
+    /// If `INCLUSIVE` is `true`, the returned value will include the matching
     /// pattern.
     #[inline]
     pub fn next_fwd<const INCLUSIVE: bool>(&mut self) -> Option<H> {
@@ -545,7 +762,7 @@ impl<H: Haystack, S: Searcher<H>> Split<H, S> {
     /// Returns the next part of the haystack looking from the back or
     /// `None` if splitting is done.
     ///
-    /// If `INCLUSIVE` is `true`, returned value will include the matching
+    /// If `INCLUSIVE` is `true`, the returned value will include the matching
     /// pattern.
     #[inline]
     pub fn next_bwd<const INCLUSIVE: bool>(&mut self) -> Option<H>
@@ -574,12 +791,12 @@ impl<H: Haystack, S: Searcher<H>> Split<H, S> {
             self.finished = true;
             self.start..self.end
         };
-        // SAFETY: All indices come from Haystack or Searcher which guarantee
-        // that they are valid split positions.
+        // SAFETY: All indices come from Haystack or Searcher.
+        // They are known to return good indices
         Some(unsafe { self.searcher.haystack().get_unchecked(range) })
     }
 
-    /// Returns remaining part of the haystack that hasn't been processed yet.
+    /// Returns the remaining part of the haystack that hasn't been processed yet.
     #[inline]
     pub fn remainder(&self) -> Option<H> {
         (!self.finished).then(|| {
@@ -591,7 +808,7 @@ impl<H: Haystack, S: Searcher<H>> Split<H, S> {
 
     /// Returns the final haystack part.
     ///
-    /// Sets `finished` flag so any further calls to this or other methods will
+    /// Sets the `finished` flag so any further calls to this or other methods will
     /// return `None`.
     #[inline]
     fn get_end(&mut self) -> Option<H> {
@@ -612,7 +829,7 @@ impl<H: Haystack, S: Searcher<H>> Split<H, S> {
 impl<H: Haystack, S: Searcher<H>> SplitN<H, S> {
     /// Returns next part of the haystack or `None` if splitting is done.
     ///
-    /// If `INCLUSIVE` is `true`, returned value will include the matching
+    /// If `INCLUSIVE` is `true`, the returned value will include the matching
     /// pattern.
     #[inline]
     pub fn next_fwd<const INCLUSIVE: bool>(&mut self) -> Option<H> {
@@ -625,7 +842,7 @@ impl<H: Haystack, S: Searcher<H>> SplitN<H, S> {
     /// Returns next looking from back of the haystack part of the haystack or
     /// `None` if splitting is done.
     ///
-    /// If `INCLUSIVE` is `true`, returned value will include the matching
+    /// If `INCLUSIVE` is `true`, the returned value will include the matching
     /// pattern.
     #[inline]
     pub fn next_bwd<const INCLUSIVE: bool>(&mut self) -> Option<H>
@@ -638,7 +855,7 @@ impl<H: Haystack, S: Searcher<H>> SplitN<H, S> {
         }
     }
 
-    /// Returns remaining part of the haystack that hasn't been processed yet.
+    /// Returns the remaining part of the haystack that hasn't been processed yet.
     #[inline]
     pub fn remainder(&self) -> Option<H> {
         self.inner.remainder()
