@@ -247,7 +247,7 @@ pub(crate) struct IntrinsicWrongArch<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag("unknown feature specified for `-Zllvm-target-feature`: `{$feature}`")]
+#[diag("ignoring feature with missing prefix in `-Zllvm-target-feature`: `{$feature}`")]
 #[note("features must begin with a `+` to enable or `-` to disable it")]
 pub(crate) struct UnknownLlvmTargetFeaturePrefix<'a> {
     pub feature: &'a str,
