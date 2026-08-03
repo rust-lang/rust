@@ -4634,6 +4634,9 @@ fn check_if_cargo_semver_checks_is_installed(builder: &Builder<'_>) -> bool {
 /// If unset, the first upstream parent commit will be used.
 ///
 /// Fails if a semver-breaking change is detected.
+///
+/// If you want to allow a breaking change in a given PR, or if cargo-semver-checks has a false
+/// positive, modify the `src/bootstrap/stdlib-semver-check-stamp` file.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct StdSemverCheck {
     build_compiler: Compiler,
@@ -4679,6 +4682,15 @@ impl CommandLineStep for StdSemverCheck {
     }
 
     fn run(self, builder: &Builder<'_>) {
+        const STDLIB_SEMVER_CHECK_STAMP_PATH: &str = "src/bootstrap/stdlib-semver-check-stamp";
+
+        if builder.config.ci_env.is_running_in_ci()
+            && builder.config.has_changes_from_upstream(&[STDLIB_SEMVER_CHECK_STAMP_PATH])
+        {
+            builder.info(&format!("Skipping stdlib semver check, because {STDLIB_SEMVER_CHECK_STAMP_PATH} was modified."));
+            return;
+        }
+
         let Some(docs_dir) = builder.config.download_std_json_docs(self.target, &self.commit)
         else {
             return;

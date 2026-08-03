@@ -1,0 +1,5 @@
+Change this file to explicitly acknowledge making a breaking change to the Rust standard library.
+If this file is modified in the same PR as the breaking change, then CI will not fail due to the
+breaking change being detected by cargo-semver-checks.
+
+Last change is for: https://github.com/rust-lang/rust/pull/160253
