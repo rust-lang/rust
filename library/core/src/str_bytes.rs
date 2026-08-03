@@ -1194,7 +1194,7 @@ impl<'h, F: Flavour, P> crate::fmt::Debug for PredicateSearcher<'h, F, P> {
 impl<'h, F: Flavour, P> PredicateSearcher<'h, F, P> {
     /// Creates a new searcher for the given predicate.
     #[inline]
-    fn new(haystack: &'h Bytes<F>, pred: P) -> Self {
+    pub fn new(haystack: &'h Bytes<F>, pred: P) -> Self {
         Self { haystack, pred, start: 0, end: haystack.len(), fwd_match_len: 0, bwd_match_len: 0 }
     }
 }
