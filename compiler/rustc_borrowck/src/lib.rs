@@ -76,6 +76,7 @@ use crate::type_check::{Locations, MirTypeckRegionConstraints, MirTypeckResults}
 
 mod borrow_set;
 mod borrowck_errors;
+mod compute_rename_later;
 mod constraints;
 mod dataflow;
 mod def_use;
@@ -107,6 +108,7 @@ impl<'tcx> TyCtxtConsts<'tcx> {
 
 pub fn provide(providers: &mut Providers) {
     *providers = Providers { mir_borrowck, ..*providers };
+    compute_rename_later::provide(providers);
 }
 
 /// Provider for `query mir_borrowck`. Unlike `typeck`, this must
@@ -351,6 +353,7 @@ fn borrowck_collect_region_constraints<'tcx>(
     let mut polonius_facts =
         (polonius_input || PoloniusFacts::enabled(infcx.tcx)).then_some(PoloniusFacts::default());
 
+    // TODO: figure out if I can reuse the same defId from somewhere instead of passing it.
     // Run the MIR type-checker.
     let MirTypeckResults {
         constraints,
@@ -361,6 +364,7 @@ fn borrowck_collect_region_constraints<'tcx>(
         polonius_context,
     } = type_check::type_check(
         root_cx,
+        def,
         &infcx,
         body,
         &promoted,

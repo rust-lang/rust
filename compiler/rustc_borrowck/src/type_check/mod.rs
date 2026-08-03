@@ -95,7 +95,8 @@ mod relate_tys;
 /// - `move_data` -- move-data constructed when performing the maybe-init dataflow analysis
 /// - `location_map` -- map between MIR `Location` and `PointIndex`
 pub(crate) fn type_check<'tcx>(
-    root_cx: &BorrowCheckRootCtxt<'_, 'tcx>,
+    root_cx: &mut BorrowCheckRootCtxt<'_, 'tcx>,
+    def: LocalDefId,
     infcx: &BorrowckInferCtxt<'tcx>,
     body: &Body<'tcx>,
     promoted: &IndexSlice<Promoted, Body<'tcx>>,
@@ -120,7 +121,7 @@ pub(crate) fn type_check<'tcx>(
         region_bound_pairs,
         normalized_inputs_and_output,
         known_type_outlives_obligations,
-    } = free_region_relations::create(infcx, universal_regions, &mut constraints);
+    } = free_region_relations::create(infcx, def, universal_regions, &mut constraints);
 
     {
         // Scope these variables so it's clear they're not used later

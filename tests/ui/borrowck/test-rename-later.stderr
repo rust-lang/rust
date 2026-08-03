@@ -1,0 +1,75 @@
+error[E0310]: the associated type `<T as Trait>::Assoc` may not live long enough
+  --> $DIR/test-rename-later.rs:19:1
+   |
+LL | fn foo<T: Trait>(x: <T as Trait>::Assoc) -> (Box<dyn Any>, impl Sized) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |
+   | the associated type `<T as Trait>::Assoc` must be valid for the static lifetime...
+   | ...so that the type `<T as Trait>::Assoc` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | fn foo<T: Trait>(x: <T as Trait>::Assoc) -> (Box<dyn Any>, impl Sized) where <T as Trait>::Assoc: 'static {
+   |                                                                        ++++++++++++++++++++++++++++++++++
+
+error[E0310]: the associated type `<T as Trait>::Assoc` may not live long enough
+  --> $DIR/test-rename-later.rs:20:6
+   |
+LL |     (Box::new(x), Outlives::<'static, <T as Trait>::Assoc>(None))
+   |      ^^^^^^^^^^^
+   |      |
+   |      the associated type `<T as Trait>::Assoc` must be valid for the static lifetime...
+   |      ...so that the type `<T as Trait>::Assoc` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | fn foo<T: Trait>(x: <T as Trait>::Assoc) -> (Box<dyn Any>, impl Sized) where <T as Trait>::Assoc: 'static {
+   |                                                                        ++++++++++++++++++++++++++++++++++
+
+error[E0310]: the associated type `<T as Trait>::Assoc` may not live long enough
+  --> $DIR/test-rename-later.rs:20:6
+   |
+LL |     (Box::new(x), Outlives::<'static, <T as Trait>::Assoc>(None))
+   |      ^^^^^^^^^^^
+   |      |
+   |      the associated type `<T as Trait>::Assoc` must be valid for the static lifetime...
+   |      ...so that the type `<T as Trait>::Assoc` will meet its required lifetime bounds
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider adding an explicit lifetime bound
+   |
+LL | fn foo<T: Trait>(x: <T as Trait>::Assoc) -> (Box<dyn Any>, impl Sized) where <T as Trait>::Assoc: 'static {
+   |                                                                        ++++++++++++++++++++++++++++++++++
+
+error[E0310]: the associated type `<T as Trait>::Assoc` may not live long enough
+  --> $DIR/test-rename-later.rs:20:19
+   |
+LL |     (Box::new(x), Outlives::<'static, <T as Trait>::Assoc>(None))
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                   |
+   |                   the associated type `<T as Trait>::Assoc` must be valid for the static lifetime...
+   |                   ...so that the type `<T as Trait>::Assoc` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound
+   |
+LL | fn foo<T: Trait>(x: <T as Trait>::Assoc) -> (Box<dyn Any>, impl Sized) where <T as Trait>::Assoc: 'static {
+   |                                                                        ++++++++++++++++++++++++++++++++++
+
+error[E0310]: the associated type `<T as Trait>::Assoc` may not live long enough
+  --> $DIR/test-rename-later.rs:20:19
+   |
+LL |     (Box::new(x), Outlives::<'static, <T as Trait>::Assoc>(None))
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                   |
+   |                   the associated type `<T as Trait>::Assoc` must be valid for the static lifetime...
+   |                   ...so that the type `<T as Trait>::Assoc` will meet its required lifetime bounds
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+help: consider adding an explicit lifetime bound
+   |
+LL | fn foo<T: Trait>(x: <T as Trait>::Assoc) -> (Box<dyn Any>, impl Sized) where <T as Trait>::Assoc: 'static {
+   |                                                                        ++++++++++++++++++++++++++++++++++
+
+error: aborting due to 5 previous errors
+
+For more information about this error, try `rustc --explain E0310`.
