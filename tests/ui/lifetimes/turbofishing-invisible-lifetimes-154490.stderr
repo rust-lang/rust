@@ -1,0 +1,46 @@
+ WARN rustc_hir_analysis::hir_ty_lowering::generics param "'_" is an anonymous early-bound lifetime (it cannot be in the lifetime args)
+error[E0107]: function takes 0 lifetime arguments but 1 lifetime argument was supplied
+  --> $DIR/turbofishing-invisible-lifetimes-154490.rs:35:5
+   |
+LL |     evil_early_bound_1::<'static, T>(None);
+   |     ^^^^^^^^^^^^^^^^^^   ------- help: remove the lifetime argument
+   |     |
+   |     expected 0 lifetime arguments
+   |
+note: function defined here, with 0 lifetime parameters
+  --> $DIR/turbofishing-invisible-lifetimes-154490.rs:6:4
+   |
+LL | fn evil_early_bound_1<T: EvilTrait>(_: Option<<T as EvilTrait>::EvilAssoc<'_>>) -> &i32 {
+   |    ^^^^^^^^^^^^^^^^^^
+
+error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
+  --> $DIR/turbofishing-invisible-lifetimes-154490.rs:41:22
+   |
+LL |     elide_struct_2::<'static>(&WHATEVER);
+   |                      ^^^^^^^
+   |
+note: the late bound lifetime parameter is introduced here
+  --> $DIR/turbofishing-invisible-lifetimes-154490.rs:28:22
+   |
+LL | fn elide_struct_2(_: &i32) -> LtWrapper {
+   |                      ^
+   = note: this may change in the future; see issue #156581 <https://github.com/rust-lang/rust/issues/156581> for more information
+
+ WARN rustc_hir_analysis::hir_ty_lowering::generics param "'_" is an anonymous early-bound lifetime (it cannot be in the lifetime args)
+error[E0794]: cannot specify lifetime arguments explicitly if late bound lifetime parameters are present
+  --> $DIR/turbofishing-invisible-lifetimes-154490.rs:49:25
+   |
+LL |     normal_late_bound::<'static, T>(&WHATEVER);
+   |                         ^^^^^^^
+   |
+note: the late bound lifetime parameter is introduced here
+  --> $DIR/turbofishing-invisible-lifetimes-154490.rs:18:22
+   |
+LL | fn normal_late_bound<'lb, T: EvilTrait>(_: &'lb i32 ) -> &'lb i32 {
+   |                      ^^^
+   = note: this may change in the future; see issue #156581 <https://github.com/rust-lang/rust/issues/156581> for more information
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0107, E0794.
+For more information about an error, try `rustc --explain E0107`.
