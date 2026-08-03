@@ -2032,7 +2032,7 @@ mod pattern {
 
     fn cmp_search_to_vec<P>(rev: bool, pat: P, haystack: &str, right: Vec<SearchStep>)
     where
-        P: for<'a> Pattern<Searcher<'a>: ReverseSearcher<'a>>,
+        P: for<'a> Pattern<&'a str, Searcher: ReverseSearcher<&'a str>>,
     {
         let mut searcher = pat.into_searcher(haystack);
         let mut v = vec![];
@@ -2292,9 +2292,9 @@ generate_iterator_test! {
 fn different_str_pattern_forwarding_lifetimes() {
     use std::str::pattern::Pattern;
 
-    fn foo<P>(p: P)
+    fn foo<'a, P>(p: P)
     where
-        for<'b> &'b P: Pattern,
+        for<'b> &'b P: Pattern<&'a str>,
     {
         for _ in 0..3 {
             "asdf".find(&p);

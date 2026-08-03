@@ -1,4 +1,4 @@
-error[E0277]: the trait bound `u8: Pattern` is not satisfied
+error[E0277]: the trait bound `u8: Pattern<&str>` is not satisfied
   --> $DIR/assoc-fn-bound-root-obligation.rs:2:20
    |
 LL |     s.strip_suffix(b'\n').unwrap_or(s)
@@ -6,7 +6,7 @@ LL |     s.strip_suffix(b'\n').unwrap_or(s)
    |       |
    |       required by a bound introduced by this call
    |
-   = help: the following other types implement trait `Pattern`:
+   = help: the following other types implement trait `Pattern<H>`:
              &'b String
              &'b [char; N]
              &'b [char]
@@ -14,7 +14,7 @@ LL |     s.strip_suffix(b'\n').unwrap_or(s)
              &'c &'b str
              [char; N]
              char
-   = note: required for `u8` to implement `Pattern`
+   = note: required for `u8` to implement `Pattern<&str>`
 note: required by a bound in `core::str::<impl str>::strip_suffix`
   --> $SRC_DIR/core/src/str/mod.rs:LL:COL
 
