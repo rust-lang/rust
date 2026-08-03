@@ -8,7 +8,7 @@ edition = "2024"
 tracing = "0.1.41"
 tracing-core = "0.1.34"
 tracing-subscriber = { version = "0.3.3", default-features = false, features = ["fmt", "env-filter", "smallvec", "parking_lot", "ansi", "json"] }
-tracing-tree = "0.3.1"
+tracing-tree = "0.4.1"
 # tidy-alphabetical-end
 
 [features]
