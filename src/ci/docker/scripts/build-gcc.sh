@@ -3,14 +3,6 @@ set -eux
 
 source shared.sh
 
-# We need to install a newer version of `make` to be able to build `gcc`.
-curl https://ci-mirrors.rust-lang.org/rustc/gcc/make-4.4.1.tar.gz | tar --extract --gzip
-cd make-4.4.1
-hide_output ./configure --prefix=/rustroot
-hide_output make
-hide_output make install
-cd ..
-
 # Note: in the future when bumping to version 10.1.0, also take care of the sed block below.
 # This version is specified in the Dockerfile
 GCC=$GCC_VERSION

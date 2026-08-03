@@ -112,7 +112,7 @@ Full list of debugging options can be found in the [README](Readme.md#env-vars).
 ### Code Style Guidelines
 
 - Follow Rust standard coding conventions
-- Ensure your code passes `rustfmt` and `clippy` (you can run them with `y.sh fmt` and `y.sh clippy`)
+- Ensure your code passes `rustfmt` and `clippy`
 - Add comments explaining complex logic, especially in GCC interface code
 
 ## Additional Resources
