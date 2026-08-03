@@ -4,7 +4,7 @@ use rustc_ast::{AttrStyle, Safety};
 use rustc_errors::{DiagArgValue, MultiSpan, StashKey};
 use rustc_feature::Features;
 use rustc_hir::attrs::AttributeKind;
-use rustc_hir::{AttrItem, Attribute, MethodKind, Target};
+use rustc_hir::{AssocKind, AttrItem, Attribute, MethodKind, Target};
 use rustc_span::{BytePos, FileName, RemapPathScopeComponents, Span, Symbol, sym};
 
 use crate::context::AcceptContext;
@@ -507,12 +507,16 @@ pub(crate) const ALL_TARGETS: &[Policy] = {
         Allow(Target::Expression),
         Allow(Target::Statement),
         Allow(Target::Arm),
-        Allow(Target::AssocConst),
+        Allow(Target::AssocConst(AssocKind::Inherent)),
+        Allow(Target::AssocConst(AssocKind::Trait)),
+        Allow(Target::AssocConst(AssocKind::TraitImpl)),
         Allow(Target::Method(MethodKind::Inherent)),
         Allow(Target::Method(MethodKind::Trait { body: false })),
         Allow(Target::Method(MethodKind::Trait { body: true })),
         Allow(Target::Method(MethodKind::TraitImpl)),
-        Allow(Target::AssocTy),
+        Allow(Target::AssocTy(AssocKind::Inherent)),
+        Allow(Target::AssocTy(AssocKind::Trait)),
+        Allow(Target::AssocTy(AssocKind::TraitImpl)),
         Allow(Target::ForeignFn),
         Allow(Target::ForeignStatic),
         Allow(Target::ForeignTy),

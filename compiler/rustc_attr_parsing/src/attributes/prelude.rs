@@ -2,7 +2,7 @@
 #[doc(hidden)]
 pub(super) use rustc_hir::attrs::AttributeKind;
 #[doc(hidden)]
-pub(super) use rustc_hir::{MethodKind, Target};
+pub(super) use rustc_hir::{AssocKind, MethodKind, Target};
 #[doc(hidden)]
 pub(super) use rustc_span::{Ident, Span, Symbol, sym};
 #[doc(hidden)]

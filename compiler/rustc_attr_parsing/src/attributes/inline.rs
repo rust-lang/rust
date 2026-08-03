@@ -23,7 +23,9 @@ impl SingleAttributeParser for InlineParser {
         Warn(Target::Field),
         Warn(Target::MacroDef),
         Warn(Target::Arm),
-        Warn(Target::AssocConst),
+        Warn(Target::AssocConst(AssocKind::Inherent)),
+        Warn(Target::AssocConst(AssocKind::Trait)),
+        Warn(Target::AssocConst(AssocKind::TraitImpl)),
         Warn(Target::MacroCall),
     ]);
     const TEMPLATE: AttributeTemplate = template!(

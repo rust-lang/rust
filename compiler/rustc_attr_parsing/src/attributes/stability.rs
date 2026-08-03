@@ -5,7 +5,7 @@ use rustc_feature::{ACCEPTED_LANG_FEATURES, AttributeStability};
 use rustc_hir::attrs::UnstableRemovedFeature;
 use rustc_hir::target::GenericParamKind;
 use rustc_hir::{
-    DefaultBodyStability, MethodKind, PartialConstStability, Stability, StabilityLevel,
+    AssocKind, DefaultBodyStability, MethodKind, PartialConstStability, Stability, StabilityLevel,
     StableSince, Target, UnstableReason, VERSION_PLACEHOLDER,
 };
 
@@ -29,8 +29,12 @@ const ALLOWED_TARGETS: AllowedTargets<'_> = AllowedTargets::AllowList(&[
     Allow(Target::Mod),
     Allow(Target::Use), // FIXME I don't think this does anything?
     Allow(Target::Const),
-    Allow(Target::AssocConst),
-    Allow(Target::AssocTy),
+    Allow(Target::AssocConst(AssocKind::Inherent)),
+    Allow(Target::AssocConst(AssocKind::Trait)),
+    Allow(Target::AssocConst(AssocKind::TraitImpl)),
+    Allow(Target::AssocTy(AssocKind::Inherent)),
+    Allow(Target::AssocTy(AssocKind::Trait)),
+    Allow(Target::AssocTy(AssocKind::TraitImpl)),
     Allow(Target::Trait),
     Allow(Target::TraitAlias),
     Allow(Target::TyAlias),
@@ -243,7 +247,9 @@ impl AttributeParser for ConstStabilityParser {
         Allow(Target::Impl { of_trait: true }),
         Allow(Target::Use), // FIXME I don't think this does anything?
         Allow(Target::Const),
-        Allow(Target::AssocConst),
+        Allow(Target::AssocConst(AssocKind::Inherent)),
+        Allow(Target::AssocConst(AssocKind::Trait)),
+        Allow(Target::AssocConst(AssocKind::TraitImpl)),
         Allow(Target::Trait),
         Allow(Target::Static),
         Allow(Target::Crate),

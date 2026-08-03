@@ -40,6 +40,6 @@ pub use lang_items::{LangItem, LanguageItems};
 pub use rustc_hir_id::*;
 pub use rustc_span::def_id;
 pub use stability::*;
-pub use target::{MethodKind, Target};
+pub use target::{AssocKind, MethodKind, Target};
 
 pub use crate::arena::Arena;
