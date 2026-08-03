@@ -410,7 +410,6 @@ pub(crate) fn check_generic_arg_count(
 ) -> GenericArgCountResult {
     let gen_args = seg.args();
     let default_counts = gen_params.own_defaults();
-    // TODO(addie!): there is 1 lifetime parameter here! it is just elided
     let param_counts = gen_params.own_counts();
 
     // Subtracting from param count to ensure type params synthesized from `impl Trait`
@@ -439,15 +438,6 @@ pub(crate) fn check_generic_arg_count(
     }
     tracing::info!(?gen_args);
     tracing::info!(?gen_params);
-
-    for param in &gen_params.own_params {
-        if param.is_anonymous_lifetime() {
-            tracing::warn!(
-                "param {:?} is an anonymous early-bound lifetime (it cannot be in the lifetime args)",
-                param.name
-            )
-        }
-    }
 
     // Suppress this warning for delegations as it is compiler generated and lifetimes are
     // propagated while late-bound lifetimes may be present.

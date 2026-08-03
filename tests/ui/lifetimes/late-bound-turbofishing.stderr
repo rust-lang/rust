@@ -1,0 +1,87 @@
+error[E0107]: function takes 0 lifetime arguments but 1 lifetime argument was supplied
+  --> $DIR/late-bound-turbofishing.rs:21:9
+   |
+LL |         do_thing::<'static, T>(None);
+   |         ^^^^^^^^   ------- help: remove the lifetime argument
+   |         |
+   |         expected 0 lifetime arguments
+   |
+note: function defined here, with 0 lifetime parameters
+  --> $DIR/late-bound-turbofishing.rs:15:8
+   |
+LL |     fn do_thing<T: Trait>(_: Option<<T as Trait>::Assoc<'_>>) -> &i32 {
+   |        ^^^^^^^^
+
+error[E0107]: function takes 1 lifetime argument but 2 lifetime arguments were supplied
+  --> $DIR/late-bound-turbofishing.rs:40:9
+   |
+LL |         do_thing::<'static, 'static, T>(None);
+   |         ^^^^^^^^          --------- help: remove the lifetime argument
+   |         |
+   |         expected 1 lifetime argument
+   |
+note: function defined here, with 1 lifetime parameter: `'b`
+  --> $DIR/late-bound-turbofishing.rs:34:8
+   |
+LL |     fn do_thing<'b, T: Trait>(_: Option<<T as Trait>::Assoc<'_>>) -> (&i32, &'b i64) {
+   |        ^^^^^^^^ --
+
+error[E0107]: function takes 0 lifetime arguments but 1 lifetime argument was supplied
+  --> $DIR/late-bound-turbofishing.rs:59:9
+   |
+LL |         do_thing::<'static, T>(None);
+   |         ^^^^^^^^   ------- help: remove the lifetime argument
+   |         |
+   |         expected 0 lifetime arguments
+   |
+note: function defined here, with 0 lifetime parameters
+  --> $DIR/late-bound-turbofishing.rs:53:8
+   |
+LL |     fn do_thing<T: Trait>(_: Option<<T as Trait>::Assoc<'_>>) -> i32 {
+   |        ^^^^^^^^
+
+error[E0107]: associated function takes 0 lifetime arguments but 1 lifetime argument was supplied
+  --> $DIR/late-bound-turbofishing.rs:77:23
+   |
+LL |         <T as Trait>::do_thing::<'static>(None);
+   |                       ^^^^^^^^----------- help: remove the unnecessary generics
+   |                       |
+   |                       expected 0 lifetime arguments
+   |
+note: associated function defined here, with 0 lifetime parameters
+  --> $DIR/late-bound-turbofishing.rs:70:12
+   |
+LL |         fn do_thing(_: Option<Self::Assoc<'_>>) -> &i32 {
+   |            ^^^^^^^^
+
+error[E0107]: function takes 0 lifetime arguments but 1 lifetime argument was supplied
+  --> $DIR/late-bound-turbofishing.rs:102:9
+   |
+LL |         do_thing::<'static, T>(None);
+   |         ^^^^^^^^   ------- help: remove the lifetime argument
+   |         |
+   |         expected 0 lifetime arguments
+   |
+note: function defined here, with 0 lifetime parameters
+  --> $DIR/late-bound-turbofishing.rs:90:8
+   |
+LL |     fn do_thing<T>(_: Option<<&T as Trait>::Assoc>) -> &i32
+   |        ^^^^^^^^
+
+error[E0107]: function takes 0 lifetime arguments but 1 lifetime argument was supplied
+  --> $DIR/late-bound-turbofishing.rs:133:13
+   |
+LL |     let f = foo_latest::<'static>;
+   |             ^^^^^^^^^^----------- help: remove the unnecessary generics
+   |             |
+   |             expected 0 lifetime arguments
+   |
+note: function defined here, with 0 lifetime parameters
+  --> $DIR/late-bound-turbofishing.rs:5:4
+   |
+LL | fn foo_latest(_: &i32) {}
+   |    ^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0107`.

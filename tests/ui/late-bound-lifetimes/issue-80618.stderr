@@ -9,6 +9,7 @@ note: the late bound lifetime parameter is introduced here
    |
 LL | fn foo<'a>(x: &'a str) -> &'a str {
    |        ^^
+   = note: this may change in the future; see issue #156581 <https://github.com/rust-lang/rust/issues/156581> for more information
 
 error: aborting due to 1 previous error
 

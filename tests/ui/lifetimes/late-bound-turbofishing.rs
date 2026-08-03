@@ -1,4 +1,3 @@
-//@ check-pass
 #![feature(late_bound_turbofishing)]
 
 fn foo_early<'a: 'a>(b: &'a u32) -> &'a u32 { b }
@@ -20,6 +19,7 @@ mod ex1 {
     fn foo<T: Trait>() {
         // one explicit generic lifetime
         do_thing::<'static, T>(None);
+        //~^ ERROR: function takes 0 lifetime arguments but 1 lifetime argument was supplied [E0107]
     }
 }
 
@@ -38,6 +38,7 @@ mod ex2 {
     fn foo<T: Trait>() {
         // two explicit generic lifetimes
         do_thing::<'static, 'static, T>(None);
+        //~^ ERROR: function takes 1 lifetime argument but 2 lifetime arguments were supplied [E0107]
     }
 }
 
@@ -56,6 +57,7 @@ mod ex3 {
     fn foo<T: Trait>() {
         // one explicit generic lifetime
         do_thing::<'static, T>(None);
+        //~^ ERROR: function takes 0 lifetime arguments but 1 lifetime argument was supplied
     }
 }
 
@@ -73,6 +75,7 @@ mod ex4 {
     fn foo<T: Trait>() {
         // one explicit generic lifetime
         <T as Trait>::do_thing::<'static>(None);
+        //~^ ERROR: function takes 0 lifetime arguments but 1 lifetime argument was supplied
     }
 }
 
@@ -97,6 +100,7 @@ mod ex5 {
     {
         // one explicit generic lifetime
         do_thing::<'static, T>(None);
+        //~^ ERROR: function takes 0 lifetime arguments but 1 lifetime argument was supplied
     }
 }
 
@@ -127,5 +131,6 @@ fn main() {
     let f = foo_early::<'static>;
     require_static(f);
     let f = foo_latest::<'static>;
+    //~^ ERROR: function takes 0 lifetime arguments but 1 lifetime argument was supplied [E0107]
     require_static(f);
 }
