@@ -1593,7 +1593,10 @@ impl String {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "string_remove_matches", issue = "72826")]
-    pub fn remove_matches<P: Pattern>(&mut self, pat: P) {
+    pub fn remove_matches<'a, P>(&'a mut self, pat: P)
+    where
+        P: Pattern<str>,
+    {
         use core::str::pattern::Searcher;
 
         let rejections = {
@@ -2147,7 +2150,10 @@ impl String {
     /// [replacen]: ../../std/primitive.str.html#method.replacen
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "string_replace_in_place", issue = "147949")]
-    pub fn replace_first<P: Pattern>(&mut self, from: P, to: &str) {
+    pub fn replace_first<'a, P>(&'a mut self, from: P, to: &str)
+    where
+        P: Pattern<str>,
+    {
         let range = match self.match_indices(from).next() {
             Some((start, match_str)) => start..start + match_str.len(),
             None => return,
@@ -2173,9 +2179,10 @@ impl String {
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[unstable(feature = "string_replace_in_place", issue = "147949")]
-    pub fn replace_last<P: Pattern>(&mut self, from: P, to: &str)
+    pub fn replace_last<'a, P>(&'a mut self, from: P, to: &str)
     where
-        for<'a> P::Searcher<'a>: core::str::pattern::ReverseSearcher<'a>,
+        P: Pattern<str>,
+        for<'x> P::Searcher<'x>: core::str::pattern::ReverseSearcher<'x, str>,
     {
         let range = match self.rmatch_indices(from).next() {
             Some((start, match_str)) => start..start + match_str.len(),
@@ -2668,10 +2675,10 @@ impl<'a> Extend<&'a core::ascii::Char> for String {
     reason = "API not fully fleshed out and ready to be stabilized",
     issue = "27721"
 )]
-impl<'b> Pattern for &'b String {
-    type Searcher<'a> = <&'b str as Pattern>::Searcher<'a>;
+impl<'b> Pattern<str> for &'b String {
+    type Searcher<'h> = <&'b str as Pattern<str>>::Searcher<'h>;
 
-    fn into_searcher(self, haystack: &str) -> <&'b str as Pattern>::Searcher<'_> {
+    fn into_searcher<'h>(self, haystack: &'h str) -> <&'b str as Pattern<str>>::Searcher<'h> {
         self[..].into_searcher(haystack)
     }
 
@@ -2686,22 +2693,22 @@ impl<'b> Pattern for &'b String {
     }
 
     #[inline]
-    fn strip_prefix_of(self, haystack: &str) -> Option<&str> {
+    fn strip_prefix_of<'h>(self, haystack: &'h str) -> Option<&'h str> {
         self[..].strip_prefix_of(haystack)
     }
 
     #[inline]
-    fn is_suffix_of<'a>(self, haystack: &'a str) -> bool
+    fn is_suffix_of<'h>(self, haystack: &'h str) -> bool
     where
-        Self::Searcher<'a>: core::str::pattern::ReverseSearcher<'a>,
+        Self::Searcher<'h>: core::str::pattern::ReverseSearcher<'h, str>,
     {
         self[..].is_suffix_of(haystack)
     }
 
     #[inline]
-    fn strip_suffix_of<'a>(self, haystack: &'a str) -> Option<&'a str>
+    fn strip_suffix_of<'h>(self, haystack: &'h str) -> Option<&'h str>
     where
-        Self::Searcher<'a>: core::str::pattern::ReverseSearcher<'a>,
+        Self::Searcher<'h>: core::str::pattern::ReverseSearcher<'h, str>,
     {
         self[..].strip_suffix_of(haystack)
     }

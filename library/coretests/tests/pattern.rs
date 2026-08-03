@@ -581,10 +581,11 @@ fn two_way_next_reject_skips_matches() {
     // ulen - unmatch len
     // haystack is always a concatenation of [Match, Reject, Match]
     #[track_caller]
-    fn check_fw_bw<'a, T>(haystack: &'a str, pat: T, plen: usize, ulen: usize)
+    fn check_fw_bw<'a, H, T>(haystack: &'a H, pat: T, plen: usize, ulen: usize)
     where
-        T: Pattern + Copy,
-        T::Searcher<'a>: ReverseSearcher<'a>,
+        H: Haystack + ?Sized,
+        T: Pattern<H> + Copy,
+        T::Searcher<'a>: ReverseSearcher<'a, H>,
     {
         // fragments
         let f1 = (0, plen);
