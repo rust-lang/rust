@@ -658,7 +658,14 @@ impl<'db> InferenceContext<'db> {
                     self.write_pat_ty(target, lhs_ty);
                     self.infer_expr_coerce(value, &Expectation::has_type(lhs_ty), ExprIsRead::Yes);
                 } else {
-                    let rhs_ty = self.infer_expr(value, &Expectation::none(), ExprIsRead::Yes);
+                    // Let the target pattern constrain the RHS coercion target. In particular,
+                    // this allows a diverging RHS to coerce to the pattern's type.
+                    let expected_ty = self.table.next_ty_var(target.into());
+                    let rhs_ty = self.infer_expr_coerce(
+                        value,
+                        &Expectation::has_type(expected_ty),
+                        ExprIsRead::Yes,
+                    );
                     self.infer_top_pat(target, rhs_ty, PatOrigin::DestructuringAssignment);
                 }
                 if is_destructuring_assignment && self.diverges.is_always() {
