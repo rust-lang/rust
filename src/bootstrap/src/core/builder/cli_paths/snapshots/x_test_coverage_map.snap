@@ -4,4 +4,4 @@ expression: test coverage-map
 ---
 [Test] test::Coverage
     targets: [aarch64-unknown-linux-gnu]
-    - Set({test::coverage-map})
+    - Set({coverage-map})

@@ -361,14 +361,10 @@ struct CommandLineStepDescription {
 #[derive(Clone, PartialOrd, Ord, PartialEq, Eq)]
 pub struct TaskPath {
     pub path: PathBuf,
-    pub kind: Option<Kind>,
 }
 
 impl Debug for TaskPath {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let Some(kind) = &self.kind {
-            write!(f, "{}::", kind.as_str())?;
-        }
         write!(f, "{}", self.path.display())
     }
 }
@@ -401,26 +397,23 @@ impl PathSet {
         PathSet::Set(BTreeSet::new())
     }
 
-    fn one<P: Into<PathBuf>>(path: P, kind: Kind) -> PathSet {
+    fn one<P: Into<PathBuf>>(path: P) -> PathSet {
         let mut set = BTreeSet::new();
-        set.insert(TaskPath { path: path.into(), kind: Some(kind) });
+        set.insert(TaskPath { path: path.into() });
         PathSet::Set(set)
     }
 
-    fn has(&self, needle: &Path, module: Kind) -> bool {
+    fn has(&self, needle: &Path) -> bool {
         match self {
-            PathSet::Set(set) => set.iter().any(|p| Self::check(p, needle, module)),
-            PathSet::Suite(suite) => Self::check(suite, needle, module),
+            PathSet::Set(set) => set.iter().any(|p| Self::check(p, needle)),
+            PathSet::Suite(suite) => Self::check(suite, needle),
         }
     }
 
     // internal use only
-    fn check(p: &TaskPath, needle: &Path, module: Kind) -> bool {
-        let check_path = || {
-            // This order is important for retro-compatibility, as `starts_with` was introduced later.
-            p.path.ends_with(needle) || p.path.starts_with(needle)
-        };
-        if let Some(p_kind) = &p.kind { check_path() && *p_kind == module } else { check_path() }
+    fn check(p: &TaskPath, needle: &Path) -> bool {
+        // This order is important for retro-compatibility, as `starts_with` was introduced later.
+        p.path.ends_with(needle) || p.path.starts_with(needle)
     }
 
     /// Return all `TaskPath`s in `Self` that contain any of the `needles`, removing the
@@ -429,11 +422,11 @@ impl PathSet {
     /// This is used for `StepDescription::krate`, which passes all matching crates at once to
     /// `Step::make_run`, rather than calling it many times with a single crate.
     /// See `tests.rs` for examples.
-    fn intersection_removing_matches(&self, needles: &mut [CLIStepPath], module: Kind) -> PathSet {
+    fn intersection_removing_matches(&self, needles: &mut [CLIStepPath]) -> PathSet {
         let mut check = |p| {
             let mut result = false;
             for n in needles.iter_mut() {
-                let matched = Self::check(p, &n.path, module);
+                let matched = Self::check(p, &n.path);
                 if matched {
                     n.will_be_executed = true;
                     result = true;
@@ -504,7 +497,7 @@ impl CommandLineStepDescription {
     }
 
     fn is_excluded(&self, builder: &Builder<'_>, pathset: &PathSet) -> bool {
-        if builder.config.skip.iter().any(|e| pathset.has(e, builder.kind)) {
+        if builder.config.skip.iter().any(|e| pathset.has(e)) {
             if !matches!(builder.config.get_dry_run(), DryRun::SelfCheck) {
                 println!("Skipping {pathset:?} because it is excluded");
             }
@@ -571,7 +564,7 @@ impl<'a> ShouldRun<'a> {
             }
 
             let path = krate.local_path(self.builder);
-            self.paths.insert(PathSet::one(path, self.kind));
+            self.paths.insert(PathSet::one(path));
         }
         self
     }
@@ -585,9 +578,7 @@ impl<'a> ShouldRun<'a> {
             self.kind == Kind::Setup || !self.builder.src.join(alias).exists(),
             "use `builder.path()` for real paths: {alias}"
         );
-        self.paths.insert(PathSet::Set(
-            std::iter::once(TaskPath { path: alias.into(), kind: Some(self.kind) }).collect(),
-        ));
+        self.paths.insert(PathSet::Set(std::iter::once(TaskPath { path: alias.into() }).collect()));
         self
     }
 
@@ -610,7 +601,7 @@ impl<'a> ShouldRun<'a> {
     pub fn path(mut self, path: &str) -> Self {
         self.assert_valid_path(path);
 
-        let task = TaskPath { path: path.into(), kind: Some(self.kind) };
+        let task = TaskPath { path: path.into() };
         self.paths.insert(PathSet::Set(BTreeSet::from_iter([task])));
         self
     }
@@ -620,7 +611,7 @@ impl<'a> ShouldRun<'a> {
         let mut set = BTreeSet::new();
         for path in paths {
             self.assert_valid_path(path);
-            set.insert(TaskPath { path: (*path).into(), kind: Some(self.kind) });
+            set.insert(TaskPath { path: (*path).into() });
         }
         self.paths.insert(PathSet::Set(set));
         self
@@ -635,7 +626,7 @@ impl<'a> ShouldRun<'a> {
     }
 
     pub fn suite_path(mut self, suite: &str) -> Self {
-        self.paths.insert(PathSet::Suite(TaskPath { path: suite.into(), kind: Some(self.kind) }));
+        self.paths.insert(PathSet::Suite(TaskPath { path: suite.into() }));
         self
     }
 
@@ -648,14 +639,10 @@ impl<'a> ShouldRun<'a> {
     ///
     /// The reason we return PathSet instead of PathBuf is to allow for aliases that mean the same thing
     /// (for now, just `all_krates` and `paths`, but we may want to add an `aliases` function in the future?)
-    fn pathset_for_paths_removing_matches(
-        &self,
-        paths: &mut [CLIStepPath],
-        kind: Kind,
-    ) -> Vec<PathSet> {
+    fn pathset_for_paths_removing_matches(&self, paths: &mut [CLIStepPath]) -> Vec<PathSet> {
         let mut sets = vec![];
         for pathset in &self.paths {
-            let subset = pathset.intersection_removing_matches(paths, kind);
+            let subset = pathset.intersection_removing_matches(paths);
             if subset != PathSet::empty() {
                 sets.push(subset);
             }
@@ -1171,7 +1158,28 @@ impl<'a> Builder<'a> {
 
     /// Run all default documentation steps to build documentation.
     pub fn run_default_doc_steps(&self) {
-        self.run_step_descriptions(&Builder::get_step_descriptions(Kind::Doc), &[]);
+        // It's important that we don't just call `run_step_descriptions` here,
+        // because that would cause `--skip` handling for actual command-line
+        // arguments to inappropriately skip these steps.
+        //
+        // This function is nevertheless a bit of a hack, to work around the
+        // fact that we don't have a good way to simulate `./x doc` without
+        // also simulating parts of command-line selector handling.
+
+        for desc in &Builder::get_step_descriptions(Kind::Doc) {
+            if !(desc.is_default_step_fn)(self) {
+                continue;
+            }
+
+            let should_run = (desc.should_run)(ShouldRun::new(self, Kind::Doc));
+            let default_pathsets = should_run.default_pathsets();
+
+            let targets = if desc.is_host { &self.hosts } else { &self.targets };
+            for &target in targets {
+                let run = RunConfig { builder: self, target, paths: default_pathsets.clone() };
+                (desc.make_run)(run);
+            }
+        }
     }
 
     pub fn doc_rust_lang_org_channel(&self) -> String {
@@ -1720,11 +1728,8 @@ Alternatively, you can set `build.local-rebuild=true` and use a stage0 compiler 
         let should_run = (desc.should_run)(ShouldRun::new(self, desc.kind));
 
         for path in &self.paths {
-            if should_run.paths.iter().any(|s| s.has(path, desc.kind))
-                && !desc.is_excluded(
-                    self,
-                    &PathSet::Suite(TaskPath { path: path.clone(), kind: Some(desc.kind) }),
-                )
+            if should_run.paths.iter().any(|s| s.has(path))
+                && !desc.is_excluded(self, &PathSet::Suite(TaskPath { path: path.clone() }))
             {
                 return true;
             }
