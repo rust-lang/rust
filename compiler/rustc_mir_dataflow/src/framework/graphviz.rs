@@ -663,7 +663,6 @@ where
 {
     fn visit_after_early_statement_effect(
         &mut self,
-        _analysis: &A,
         state: &A::Domain,
         _statement: &mir::Statement<'tcx>,
         _location: Location,
@@ -676,7 +675,6 @@ where
 
     fn visit_after_primary_statement_effect(
         &mut self,
-        _analysis: &A,
         state: &A::Domain,
         _statement: &mir::Statement<'tcx>,
         _location: Location,
@@ -687,7 +685,6 @@ where
 
     fn visit_after_early_terminator_effect(
         &mut self,
-        _analysis: &A,
         state: &A::Domain,
         _terminator: &mir::Terminator<'tcx>,
         _location: Location,
@@ -700,7 +697,6 @@ where
 
     fn visit_after_primary_terminator_effect(
         &mut self,
-        _analysis: &A,
         state: &A::Domain,
         _terminator: &mir::Terminator<'tcx>,
         _location: Location,

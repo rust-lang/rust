@@ -301,7 +301,6 @@ struct StorageConflictVisitor<'a> {
 impl<'a, 'tcx> ResultsVisitor<'tcx, MaybeRequiresStorage> for StorageConflictVisitor<'a> {
     fn visit_after_early_statement_effect(
         &mut self,
-        _analysis: &MaybeRequiresStorage,
         state: &DenseBitSet<Local>,
         _statement: &Statement<'tcx>,
         _loc: Location,
@@ -311,7 +310,6 @@ impl<'a, 'tcx> ResultsVisitor<'tcx, MaybeRequiresStorage> for StorageConflictVis
 
     fn visit_after_early_terminator_effect(
         &mut self,
-        _analysis: &MaybeRequiresStorage,
         state: &DenseBitSet<Local>,
         _terminator: &Terminator<'tcx>,
         _loc: Location,
