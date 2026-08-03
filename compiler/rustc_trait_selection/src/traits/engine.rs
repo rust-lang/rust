@@ -10,7 +10,6 @@ use rustc_infer::infer::canonical::{
 };
 use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, InferOk, RegionResolutionError, TypeTrace};
 use rustc_infer::traits::PredicateObligations;
-use rustc_macros::extension;
 use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::error::TypeError;
@@ -27,29 +26,11 @@ use crate::traits::{
     StructurallyNormalizeExt,
 };
 
-#[extension(pub trait TraitEngineExt<'tcx, E>)]
-impl<'tcx, E> dyn TraitEngine<'tcx, E>
-where
-    E: FromSolverError<'tcx, NextSolverError<'tcx>> + FromSolverError<'tcx, OldSolverError<'tcx>>,
-{
-    fn new(infcx: &InferCtxt<'tcx>) -> Box<Self> {
-        if infcx.next_trait_solver() {
-            Box::new(NextFulfillmentCtxt::new(infcx))
-        } else {
-            assert!(
-                !infcx.tcx.next_trait_solver_globally(),
-                "using old solver even though new solver is enabled globally"
-            );
-            Box::new(FulfillmentContext::new(infcx))
-        }
-    }
-}
-
-/// The fulfillment engine of an [`ObligationCtxt`]. It is stored inline
-/// rather than boxed as a `dyn TraitEngine` because `ObligationCtxt`s are
-/// created very often (e.g. once per candidate probe during method
+/// A fulfillment engine, stored inline rather than boxed as a
+/// `dyn TraitEngine` because some of its holders (e.g. [`ObligationCtxt`])
+/// are created very often (once per candidate probe during method
 /// resolution), so the heap allocation would be expensive.
-enum FulfillmentEngine<'tcx, E> {
+pub enum FulfillmentEngine<'tcx, E> {
     Old(FulfillmentContext<'tcx, E>),
     Next(NextFulfillmentCtxt<'tcx, E>),
 }
@@ -58,7 +39,7 @@ impl<'tcx, E> FulfillmentEngine<'tcx, E>
 where
     E: FromSolverError<'tcx, NextSolverError<'tcx>> + FromSolverError<'tcx, OldSolverError<'tcx>>,
 {
-    fn new(infcx: &InferCtxt<'tcx>) -> Self {
+    pub fn new(infcx: &InferCtxt<'tcx>) -> Self {
         if infcx.next_trait_solver() {
             FulfillmentEngine::Next(NextFulfillmentCtxt::new(infcx))
         } else {
