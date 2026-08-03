@@ -195,8 +195,10 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     pub fn add_retained_global(&mut self, global: LValue<'gcc>) {
         // We need to add the `used` C attribute in any case.
         self.add_used_global(global);
-        #[cfg(feature = "master")]
-        global.add_attribute(VarAttribute::Retain);
+        // FIXME(antoyo): the Rust CI compiles gcc with a binutils that is too old to support
+        // the retain attribute.
+        /*#[cfg(feature = "master")]
+        global.add_attribute(VarAttribute::Retain);*/
     }
 
     /// This is used by `#[used(compiler)]` and `#[used]`.
