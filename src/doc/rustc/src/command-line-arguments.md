@@ -531,6 +531,35 @@ then we cannot limit it.
 
 Currently only LLD supports controlling parallelism.
 
+<a id="reproducible"></a>
+## `--reproducible`: request reproducible output
+
+By reproducible or deterministic compilation here we'll understand obtaining identical binaries
+or other compiler outputs when rustc is run multiple times on the same source code with the same
+options and environment.
+
+The reproducibility may be needed in a number of scenarios:
+- When compiler outputs are compared to some existing snapshots for testing
+  (e.g. rustc's own UI test suite).
+- When compiler outputs are cached between multiple compilations using tools like sccache.
+  In this case different outputs will break the caching even if they are functionally equivalent.
+- Other scenarios, including security-oriented.
+
+However, in many other scenarios the reproducibility is not an issue, for example:
+- Building and running the project to check whether the tests pass, on CI or locally.
+- Compiling the project with cargo check to see and fix the reported errors.
+
+This option accepts the following values - `none`, `binaries`, `diagnostics`,
+`binaries,diagnostics`, or `diagnostics,binaries`.
+
+The default is `binaries,diagnostics`, unless rustc frontend parallelism is enabled with
+`--jobs` or `--jobs-frontend`.
+
+Currently `--reproducible=value` for any value except `none` will just reduce the frontend
+parallelism to 1, but we hope to do something better in the future. For example keeping at least
+some parallelism in `--reproducible=binaries,diagnostics` cases, or enabling more optimizations for
+`--reproducible=none`, even in single-threaded mode.
+
 <a id="at-path"></a>
 ## `@path`: load command-line flags from a path
 

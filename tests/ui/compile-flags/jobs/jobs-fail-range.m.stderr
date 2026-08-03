@@ -1,0 +1,5 @@
+error: Argument to option 'reproducible' missing
+       Usage:
+           --reproducible BOOL Try making some of the compiler outputs reproducible,
+                               possibly at cost of compilation speed
+
