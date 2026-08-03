@@ -209,7 +209,15 @@ where
         let mut errors = Vec::new();
         loop {
             let mut any_changed = false;
-            for (mut obligation, stalled_on) in mem::take(&mut self.obligations.pending) {
+
+            // This loop empties and reconstructs `self.obligations.pending`, which can have many
+            // items (thousands in extreme cases) and very often the new length is the same as the
+            // old. Reserving capacity up front avoids repeated reallocations during the
+            // reconstruction.
+            let pending = mem::take(&mut self.obligations.pending);
+            self.obligations.pending.reserve(pending.capacity());
+
+            for (mut obligation, stalled_on) in pending {
                 let goal = obligation.as_goal();
                 let delegate = <&SolverDelegate<'tcx>>::from(infcx);
 
