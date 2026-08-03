@@ -1003,8 +1003,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_import_res(&mut self, id: NodeId, span: Span) -> PerNS<Option<Res>> {
-        debug_assert_eq!(id, self.owner.id);
-        let per_ns = self.owner.import_res.map(|res| res.map(|res| self.lower_res(res)));
+        let per_ns = self.owner.import_res[&id].map(|res| res.map(|res| self.lower_res(res)));
         if per_ns.is_empty() {
             // Propagate the error to all namespaces, just to be sure.
             self.dcx().span_delayed_bug(span, "no resolution for an import");

@@ -1641,7 +1641,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         // purposes it's good enough to just favor one over the other.
         self.per_ns_mut(|this, ns| {
             if let Some(binding) = bindings[ns].get().decl().map(|b| b.import_source()) {
-                this.owners.get_mut(&import_id).unwrap().import_res[ns] = Some(binding.res());
+                this.owners
+                    .get_mut(&import.root_id)
+                    .unwrap()
+                    .import_res
+                    .entry(import_id)
+                    .or_default()[ns] = Some(binding.res());
             }
         });
 
