@@ -193,7 +193,14 @@ optional:
       IMAGE: pr-check-1
     <<: *job-linux-4c
   - <<: [*job-dist-x86_64-linux, *job-linux-36c-codebuild]
+    name: dist-x86_64-linux-codebuild
+  - <<: [*job-dist-x86_64-linux, *job-linux-36c-codebuild]
     name: dist-x86_64-linux-quick-codebuild
+    env:
+      IMAGE: dist-x86_64-linux
+      CODEGEN_BACKENDS: llvm,cranelift
+      DOCKER_SCRIPT: dist.sh
+      DIST_TRY_BUILD: 1
   # We repeat the try job here so that it can be explicitly executed using `@bors try jobs`, to test
   # full x64 Linux dist try builds on EC2.
   - <<: [*job-dist-x86_64-linux, *job-linux-48c-ec2]
