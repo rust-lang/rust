@@ -25,6 +25,24 @@ pub(crate) struct Slice {
     pub inner: [u8],
 }
 
+pub(crate) type BytesFlavour = core::str_bytes::Unstructured;
+
+#[unstable(feature = "pattern", issue = "27721")]
+impl<'a> From<&'a Slice> for core::str_bytes::Bytes<'a, BytesFlavour> {
+    fn from(slice: &'a Slice) -> Self {
+        core::str_bytes::Bytes::<'a, BytesFlavour>::from_bytes(&slice.inner)
+    }
+}
+
+#[unstable(feature = "pattern", issue = "27721")]
+impl<'a> From<core::str_bytes::Bytes<'a, BytesFlavour>> for &'a Slice {
+    fn from(bytes: core::str_bytes::Bytes<'a, BytesFlavour>) -> Self {
+        // SAFETY: There's no encoding safety requirements for Slice
+        // and Bytes are just a slice with a flavour
+        unsafe { Slice::from_encoded_bytes_unchecked(bytes.as_bytes()) }
+    }
+}
+
 impl IntoInner<Vec<u8>> for Buf {
     fn into_inner(self) -> Vec<u8> {
         self.inner
@@ -357,6 +375,12 @@ impl Slice {
     #[inline]
     pub fn eq_ignore_ascii_case(&self, other: &Self) -> bool {
         self.inner.eq_ignore_ascii_case(&other.inner)
+    }
+
+    #[inline]
+    pub(crate) unsafe fn get_unchecked(&self, range: core::ops::Range<usize>) -> &Self {
+        // SAFETY: Caller promises `range` is valid.
+        unsafe { Self::from_encoded_bytes_unchecked(self.inner.get_unchecked(range)) }
     }
 }
 

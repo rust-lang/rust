@@ -59,7 +59,7 @@ impl<'a, F: Flavour> Bytes<'a, F> {
     /// WTF-8 encoded string.
     ///
     /// It may be more convenient to use [`Bytes::from_str`] for `&str` and the
-    /// `From<&[u8]>` implementation for `&[u8]`.
+    /// `From` implementation for `&[u8]` and `&OsStr`.
     pub unsafe fn new(bytes: &'a [u8]) -> Bytes<'a, F> {
         Self(bytes, PhantomData)
     }

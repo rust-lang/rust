@@ -7,13 +7,15 @@ LL |     s.strip_suffix(b'\n').unwrap_or(s)
    |       required by a bound introduced by this call
    |
    = help: the following other types implement trait `Pattern<H>`:
-             &'b String
-             &'b [char; N]
-             &'b [char]
-             &'b str
-             &'c &'b str
-             [char; N]
-             char
+             `&'b String` implements `Pattern<&'a str>`
+             `&'b [char; N]` implements `Pattern<&'a str>`
+             `&'b [char]` implements `Pattern<&'a str>`
+             `&'b str` implements `Pattern<&'a str>`
+             `&'c &'b str` implements `Pattern<&'a str>`
+             `&'p str` implements `Pattern<&'hs OsStr>`
+             `[char; N]` implements `Pattern<&'a str>`
+             `char` implements `Pattern<&'a str>`
+             `char` implements `Pattern<&'hs OsStr>`
    = note: required for `u8` to implement `Pattern<&str>`
 note: required by a bound in `core::str::<impl str>::strip_suffix`
   --> $SRC_DIR/core/src/str/mod.rs:LL:COL
