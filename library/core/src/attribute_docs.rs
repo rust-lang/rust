@@ -633,3 +633,50 @@ const _: () = ();
 ///
 /// [the `non_exhaustive` attribute]: ../reference/attributes/type_system.html#the-non_exhaustive-attribute
 const _: () = ();
+
+#[doc(attribute = "cfg_attr")]
+//
+/// The `cfg_attr` attribute is used to conditionally apply one or more attributes to an item.
+///
+/// Example:
+///
+/// ```rust
+/// // This function is annotated with `#[test]` only on Linux platforms.
+/// #[cfg_attr(target_os = "linux", test)]
+/// fn my_function() {
+///     // ...
+/// }
+/// ```
+///
+/// You can apply multiple attributes by separating them with commas:
+///
+/// ```rust
+/// #[cfg_attr(feature = "nightly", allow(dead_code), deny(unused_variables))]
+/// // This function only gets the `allow(dead_code)` and `deny(unused_variables)` attributes when
+/// // `feature = "nightly"` is active.
+/// fn nightly_only_function() {
+///     let x = 42;
+/// }
+/// ```
+///
+/// For complex conditions, you can combine `all(...)`, `any(...)`, and `not(...)`.
+///
+/// * `all`: True if all given predicates are true.
+/// * `any`: True if at least one of the given predicates is true.
+/// * `not`: True if the predicate is false.
+///
+/// ```rust
+/// #[cfg_attr(
+///     all(feature = "system", feature = "disk"),
+///     doc = "For module documentation, both `system`, and `disk` need to be enabled.",
+/// )]
+/// mod my_module {
+///     // ...
+/// }
+/// ```
+///
+/// For more information, see the Reference on [the `cfg_attr` attribute].
+///
+/// [the `cfg` attribute]: ../reference/conditional-compilation.html#the-cfg-attribute
+/// [the `cfg_attr` attribute]: ../reference/conditional-compilation.html#the-cfg_attr-attribute
+const _: () = ();
