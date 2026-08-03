@@ -648,12 +648,7 @@ impl<'db> InferenceContext<'db> {
                     self.infer_expr_coerce(value, &Expectation::has_type(lhs_ty), ExprIsRead::Yes);
                 } else {
                     let rhs_ty = self.infer_expr(value, &Expectation::none(), ExprIsRead::Yes);
-                    let resolver_guard =
-                        self.resolver.update_to_inner_scope(self.db, self.store_owner, tgt_expr);
-                    self.inside_assignment = true;
                     self.infer_top_pat(target, rhs_ty, PatOrigin::DestructuringAssignment);
-                    self.inside_assignment = false;
-                    self.resolver.reset_to_guard(resolver_guard);
                 }
                 if is_destructuring_assignment && self.diverges.is_always() {
                     // Ordinary assignments always return `()`, even when they diverge.
