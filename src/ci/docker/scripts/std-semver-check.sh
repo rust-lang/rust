@@ -6,8 +6,11 @@ BUILD_DIR=$(realpath ./build/x86_64-unknown-linux-gnu)
 
 # Install the latest version of cargo-semver-checks, so that once the JSON doc format changes,
 # we will eventually get a csc version that supports it
-RUSTC="${BUILD_DIR}"/stage0/bin/rustc "${BUILD_DIR}"/stage0/bin/cargo install \
-  cargo-semver-checks --locked
+# Speed up compilation by reducing optimizations settings a bit
+RUSTC="${BUILD_DIR}"/stage0/bin/rustc \
+CARGO_PROFILE_RELEASE_LTO=false \
+CARGO_PROFILE_RELEASE_CODEGEN_UNITS=16 \
+"${BUILD_DIR}"/stage0/bin/cargo install cargo-semver-checks --locked
 
 # Provide path to cargo-semver-checks
 export PATH=${PATH}:/cargo/bin
