@@ -29,8 +29,8 @@ mod rustdoc_js;
 #[cfg(test)]
 mod tests;
 
-const MIN_PY_REV: (u32, u32) = (3, 9);
-const MIN_PY_REV_STR: &str = "≥3.9";
+const MIN_PY_REV: (u32, u32) = (3, 10);
+const MIN_PY_REV_STR: &str = "≥3.10";
 
 /// Path to find the python executable within a virtual environment
 #[cfg(target_os = "windows")]
@@ -568,7 +568,6 @@ fn create_venv_at_path(path: &Path) -> Result<(), Error> {
         "python3.12",
         "python3.11",
         "python3.10",
-        "python3.9",
         "python3",
         "python",
         "python3.14",
