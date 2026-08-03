@@ -677,6 +677,6 @@ const _: () = ();
 ///
 /// For more information, see the Reference on [the `cfg_attr` attribute].
 ///
-/// [the `cfg` attribute]: ./attribute.cfg.html
+/// [`cfg`]: ./attribute.cfg.html
 /// [the `cfg_attr` attribute]: ../reference/conditional-compilation.html#the-cfg_attr-attribute
 const _: () = ();
