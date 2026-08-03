@@ -79,11 +79,11 @@ LL | trait A { fn g(b: B) -> B; }
    |       -      ^ ...because associated function `g` has no `self` parameter
    |       |
    |       this trait is not dyn compatible...
-help: consider turning `g` into a method by giving it a `&self` argument
+help: consider turning `g` into a method by giving it a `&self` argument, so that it is accessible through the trait object's vtable
    |
 LL | trait A { fn g(&self, b: B) -> B; }
    |                ++++++
-help: alternatively, consider constraining `g` so it does not apply to trait objects
+help: alternatively, consider constraining `g` so it is explicitly marked as not applying to trait objects
    |
 LL | trait A { fn g(b: B) -> B where Self: Sized; }
    |                           +++++++++++++++++
@@ -121,11 +121,11 @@ LL | trait B { fn f(a: A) -> A; }
    |       -      ^ ...because associated function `f` has no `self` parameter
    |       |
    |       this trait is not dyn compatible...
-help: consider turning `f` into a method by giving it a `&self` argument
+help: consider turning `f` into a method by giving it a `&self` argument, so that it is accessible through the trait object's vtable
    |
 LL | trait B { fn f(&self, a: A) -> A; }
    |                ++++++
-help: alternatively, consider constraining `f` so it does not apply to trait objects
+help: alternatively, consider constraining `f` so it is explicitly marked as not applying to trait objects
    |
 LL | trait B { fn f(a: A) -> A where Self: Sized; }
    |                           +++++++++++++++++

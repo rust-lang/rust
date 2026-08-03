@@ -28,11 +28,11 @@ LL | trait Trait {
 LL |     fn dyn_incompatible() -> Self;
    |        ^^^^^^^^^^^^^^^^ ...because associated function `dyn_incompatible` has no `self` parameter
    = help: only type `()` implements `Trait`; consider using it directly instead.
-help: consider turning `dyn_incompatible` into a method by giving it a `&self` argument
+help: consider turning `dyn_incompatible` into a method by giving it a `&self` argument, so that it is accessible through the trait object's vtable
    |
 LL |     fn dyn_incompatible(&self) -> Self;
    |                         +++++
-help: alternatively, consider constraining `dyn_incompatible` so it does not apply to trait objects
+help: alternatively, consider constraining `dyn_incompatible` so it is explicitly marked as not applying to trait objects
    |
 LL |     fn dyn_incompatible() -> Self where Self: Sized;
    |                                   +++++++++++++++++

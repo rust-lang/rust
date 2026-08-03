@@ -14,11 +14,11 @@ LL |     fn foo() where Self: Other, { }
    |        ^^^ ...because associated function `foo` has no `self` parameter
 LL |     fn bar(self: ()) {}
    |                  ^^ ...because method `bar`'s `self` parameter cannot be dispatched on
-help: consider turning `foo` into a method by giving it a `&self` argument
+help: consider turning `foo` into a method by giving it a `&self` argument, so that it is accessible through the trait object's vtable
    |
 LL |     fn foo(&self) where Self: Other, { }
    |            +++++
-help: alternatively, consider constraining `foo` so it does not apply to trait objects
+help: alternatively, consider constraining `foo` so it is explicitly marked as not applying to trait objects
    |
 LL |     fn foo() where Self: Other, Self: Sized { }
    |                                 +++++++++++

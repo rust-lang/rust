@@ -925,7 +925,8 @@ impl DynCompatibilityViolationSolution {
                 err.span_suggestion(
                     add_self_sugg.1,
                     format!(
-                        "consider turning `{name}` into a method by giving it a `&self` argument"
+                        "consider turning `{name}` into a method by giving it a `&self` \
+                             argument, so that it is accessible through the trait object's vtable"
                     ),
                     add_self_sugg.0,
                     Applicability::MaybeIncorrect,
@@ -933,8 +934,8 @@ impl DynCompatibilityViolationSolution {
                 err.span_suggestion(
                     make_sized_sugg.1,
                     format!(
-                        "alternatively, consider constraining `{name}` so it does not apply to \
-                             trait objects"
+                        "alternatively, consider constraining `{name}` so it is explicitly \
+                             marked as not applying to trait objects"
                     ),
                     make_sized_sugg.0,
                     Applicability::MaybeIncorrect,
