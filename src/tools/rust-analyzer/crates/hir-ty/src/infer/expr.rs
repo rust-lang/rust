@@ -220,15 +220,26 @@ impl<'db> InferenceContext<'db> {
         result
     }
 
-    fn is_syntactic_place_expr(&self, expr: ExprId) -> bool {
+    fn is_syntactic_place_expr(&mut self, expr: ExprId) -> bool {
         match &self.store[expr] {
             // Lang item paths cannot currently be local variables or statics.
             Expr::Path(Path::LangItem(_, _)) => false,
             Expr::Path(Path::Normal(path)) => path.type_anchor.is_none(),
-            Expr::Path(path) => self
-                .resolver
-                .resolve_path_in_value_ns_fully(self.db, path, self.store.expr_path_hygiene(expr))
-                .is_none_or(|res| matches!(res, ValueNs::LocalBinding(_) | ValueNs::StaticId(_))),
+            Expr::Path(path) => {
+                let guard = self.resolver.update_to_inner_scope(self.db, self.store_owner, expr);
+                let is_place = self
+                    .resolver
+                    .resolve_path_in_value_ns_fully(
+                        self.db,
+                        path,
+                        self.store.expr_path_hygiene(expr),
+                    )
+                    .is_none_or(|res| {
+                        matches!(res, ValueNs::LocalBinding(_) | ValueNs::StaticId(_))
+                    });
+                self.resolver.reset_to_guard(guard);
+                is_place
+            }
             Expr::Underscore => true,
             Expr::UnaryOp { op: UnaryOp::Deref, .. } => true,
             Expr::Field { .. } | Expr::Index { .. } => true,
@@ -266,7 +277,7 @@ impl<'db> InferenceContext<'db> {
         }
     }
 
-    pub(crate) fn check_lhs_assignable(&self, lhs: ExprId) {
+    pub(crate) fn check_lhs_assignable(&mut self, lhs: ExprId) {
         if self.is_syntactic_place_expr(lhs) {
             return;
         }
