@@ -67,7 +67,7 @@ impl<F: Flavour> Bytes<F> {
     ///
     /// It may be more convenient to use [`Bytes::from_str`] for `&str` and
     /// [`Bytes::from_bytes`] for `&[u8]`.
-    unsafe fn new(bytes: &[u8]) -> &Self {
+    pub unsafe fn new(bytes: &[u8]) -> &Self {
         // SAFETY: `Bytes` is a `repr(transparent)` wrapper around `[u8]`.
         unsafe { &*(bytes as *const [u8] as *const Bytes<F>) }
     }
