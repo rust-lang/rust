@@ -15,7 +15,7 @@ doctest = false
 
 [[bin]]
 name = "bootstrap"
-path = "src/bin/main.rs"
+path = "src/cli_main.rs"
 test = false
 
 [[bin]]
