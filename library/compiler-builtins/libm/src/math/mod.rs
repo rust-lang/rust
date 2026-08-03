@@ -67,7 +67,7 @@ pub mod support;
 #[cfg(not(feature = "unstable-public-internals"))]
 pub(crate) mod support;
 
-cfg_select! {
+cfg_select_nofmt! {
     feature = "unstable-public-internals" => {
         pub mod generic;
     }
@@ -297,7 +297,7 @@ pub use self::tgamma::tgamma;
 pub use self::tgammaf::tgammaf;
 pub use self::trunc::{trunc, truncf};
 
-cfg_select! {
+cfg_select_nofmt! {
     f16_enabled => {
         mod fmaf16;
 
@@ -326,7 +326,7 @@ cfg_select! {
     _ => {}
 }
 
-cfg_select! {
+cfg_select_nofmt! {
     f128_enabled => {
         // verify-sorted-start
         pub use self::ceil::ceilf128;

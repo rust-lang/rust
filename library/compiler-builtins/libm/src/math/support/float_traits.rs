@@ -337,7 +337,7 @@ macro_rules! float_impl {
                 Self::from_bits(a)
             }
             fn abs(self) -> Self {
-                cfg_select! {
+                cfg_select_nofmt! {
                     // FIXME(msrv): `abs` is available in `core` starting with 1.85.
                     intrinsics_enabled => {
                         self.abs()
@@ -348,7 +348,7 @@ macro_rules! float_impl {
                 }
             }
             fn copysign(self, other: Self) -> Self {
-                cfg_select! {
+                cfg_select_nofmt! {
                     // FIXME(msrv): `copysign` is available in `core` starting with 1.85.
                     intrinsics_enabled => {
                         self.copysign(other)
@@ -359,7 +359,7 @@ macro_rules! float_impl {
                 }
             }
             fn fma(self, y: Self, z: Self) -> Self {
-                cfg_select! {
+                cfg_select_nofmt! {
                     // fma is not yet available in `core`
                     intrinsics_enabled => {
                         core::intrinsics::$fma_intrinsic(self, y, z)

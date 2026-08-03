@@ -8,7 +8,7 @@
 // Most implementations should be defined here, to ensure they are not made available when
 // soft floats are required.
 #[cfg(all(feature = "arch", not(miri)))]
-cfg_select! {
+cfg_select_nofmt! {
     all(target_arch = "wasm32", intrinsics_enabled) => {
         mod wasm32;
         pub use wasm32::{
@@ -59,7 +59,7 @@ cfg_select! {
 
 // There are certain architecture-specific implementations that are needed for correctness
 // even with `arch` disabled. These are configured here.
-cfg_select! {
+cfg_select_nofmt! {
     x86_no_sse2 => {
         mod i586;
         pub use i586::{

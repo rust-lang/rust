@@ -1,9 +1,13 @@
 // Because `cfg_select` requires rust verion 1.95 and we support older versions,
 // we use the following replacement until that is no longer true.
+//
+// Doesn't support the syntax that rustfmt changes to, hence not calling it just
+// `cfg_seelect`.
+//
 // FIXME(msrv)
-macro_rules! cfg_select {
+macro_rules! cfg_select_nofmt {
     ({ $($tt:tt)* }) => {{
-        $crate::cfg_select! { $($tt)* }
+        $crate::cfg_select_nofmt! { $($tt)* }
     }};
     (_ => { $($output:tt)* }) => {
         $($output)*
@@ -13,10 +17,10 @@ macro_rules! cfg_select {
         $($( $rest:tt )+)?
     ) => {
         #[cfg($cfg)]
-        cfg_select! { _ => $output }
+        cfg_select_nofmt! { _ => $output }
         $(
             #[cfg(not($cfg))]
-            cfg_select! { $($rest)+ }
+            cfg_select_nofmt! { $($rest)+ }
         )?
     }
 }

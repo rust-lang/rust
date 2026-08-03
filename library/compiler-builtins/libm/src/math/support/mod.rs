@@ -14,7 +14,7 @@ mod modular;
 pub use big::{i256, u256};
 // Clippy seems to have a false positive
 #[allow(unused_imports, clippy::single_component_path_imports)]
-pub(crate) use cfg_select;
+pub(crate) use cfg_select_nofmt;
 pub use env::{FpResult, Round, Status};
 #[allow(unused_imports)]
 pub use float_traits::{Float, HalfRep, IntTy, NarrowFloat, WideFloat};
@@ -40,7 +40,7 @@ pub fn cold_path() {
 ///
 /// `y` must not be zero and the result must not overflow (`x > i32::MIN`).
 pub unsafe fn unchecked_div_i32(x: i32, y: i32) -> i32 {
-    cfg_select! {
+    cfg_select_nofmt! {
         all(not(debug_assertions), intrinsics_enabled) => {
             // Temporary macro to avoid panic codegen for division (in debug mode too). At
             // the time of this writing this is only used in a few places, and once
@@ -61,7 +61,7 @@ pub unsafe fn unchecked_div_i32(x: i32, y: i32) -> i32 {
 ///
 /// `y` must not be zero and the result must not overflow (`x > isize::MIN`).
 pub unsafe fn unchecked_div_isize(x: isize, y: isize) -> isize {
-    cfg_select! {
+    cfg_select_nofmt! {
         all(not(debug_assertions), intrinsics_enabled) => {
             unsafe { core::intrinsics::unchecked_div(x, y) }
         }

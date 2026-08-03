@@ -448,7 +448,7 @@ mod hex_fmt {
     // Not really a meaningful impl, but makes some generics easier.
     impl DisplayHex for bool {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            cfg_select! {
+            cfg_select_nofmt! {
                 feature = "compiler-builtins" => {
                     let _ = f;
                     unimplemented!()

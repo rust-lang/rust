@@ -1,6 +1,6 @@
 #![allow(unreachable_code)]
 
-use crate::support::{Float, MinInt, cfg_select};
+use crate::support::{Float, MinInt, cfg_select_nofmt};
 
 // These definitions should be consistent with LLVM's definition from `getCmpLibcallReturnType`,
 // compiler-rt's definitions [1], GCC's `CMPtype` [2], and `libgcc`. To find the definitions
@@ -12,7 +12,7 @@ use crate::support::{Float, MinInt, cfg_select};
 //
 // [1]: https://github.com/llvm/llvm-project/blob/0cf3c437c18ed27d9663d87804a9a15ff6874af2/compiler-rt/lib/builtins/fp_compare_impl.inc#L11-L27
 // [2]: https://gcc.gnu.org/onlinedocs/gccint/Soft-float-library-routines.html#Comparison-functions-1
-cfg_select! {
+cfg_select_nofmt! {
     any(target_arch = "aarch64", target_arch = "arm64ec", target_family = "wasm") => {
         // Aarch64 uses `int` rather than a pointer-sized value.
         // `getCmpLibcallReturnType` for WASM is always set to i32.
