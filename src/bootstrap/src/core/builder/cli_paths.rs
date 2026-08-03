@@ -203,7 +203,7 @@ pub(crate) fn match_paths_to_steps_and_run(
     let mut steps_to_run = vec![];
 
     for StepExtra { desc, should_run } in &steps {
-        let pathsets = should_run.pathset_for_paths_removing_matches(&mut paths, desc.kind);
+        let pathsets = should_run.pathset_for_paths_removing_matches(&mut paths);
 
         // This value is used for sorting the step execution order.
         // By default, `usize::MAX` is used as the index for steps to assign them the lowest priority.

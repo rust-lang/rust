@@ -378,11 +378,9 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
     if let Some(limit) =
         config.opts.jobs.frontend.max(config.opts.jobs.backend.map(BackendJobs::value))
     {
-        jobserver::initialize_checked(limit.get(), |err| {
-            early_dcx
-                .early_struct_warn(err)
-                .with_note("the build environment is likely misconfigured")
-                .emit()
+        jobserver::initialize(limit.get(), |err| {
+            let note = "the build environment is likely misconfigured";
+            early_dcx.early_struct_warn(err).with_note(note).emit()
         });
     }
 
