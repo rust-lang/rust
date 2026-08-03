@@ -25,6 +25,7 @@ COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
 ENV RUST_CONFIGURE_ARGS="--build=x86_64-unknown-linux-gnu"
+ENV RUSTC_WRAPPER=/usr/local/bin/sccache
 
 COPY /scripts/std-semver-check.sh /tmp/std-semver-check.sh
 ENV SCRIPT="bash /tmp/std-semver-check.sh"
