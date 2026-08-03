@@ -25,7 +25,7 @@ semver = "1.0"
 url = "2.2"
 
 [dependencies.toml]
-version = "0.9.7"
+version = "1.1"
 default-features = false
 # preserve_order keeps diagnostic output in file order
 features = ["parse", "preserve_order"]
