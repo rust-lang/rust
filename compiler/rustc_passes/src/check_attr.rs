@@ -211,7 +211,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 self.check_rustc_legacy_const_generics(item, *attr_span, fn_indexes)
             }
             AttributeKind::Doc(attr) => self.check_doc_attrs(attr, hir_id, target),
-            AttributeKind::EiiImpls(impls) => self.check_eii_impl(impls, target),
+            AttributeKind::EiiImpls(impls) => self.check_eii_impl(impls),
             AttributeKind::RustcMustImplementOneOf { attr_span, fn_names } => {
                 self.check_rustc_must_implement_one_of(*attr_span, fn_names, hir_id, target)
             }
@@ -472,15 +472,10 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    fn check_eii_impl(&self, impls: &[EiiImpl], target: Target) {
+    /// Checks that each externally implementable item (EII) implementation uses `unsafe`
+    /// exactly when its declaration requires it.
+    fn check_eii_impl(&self, impls: &[EiiImpl]) {
         for EiiImpl { span, inner_span, resolution, impl_unsafe_span, is_default: _ } in impls {
-            match target {
-                Target::Fn | Target::Static => {}
-                _ => {
-                    self.dcx().emit_err(diagnostics::EiiImplTarget { span: *span });
-                }
-            }
-
             let impl_unsafe = match resolution {
                 EiiImplResolution::Macro(eii_macro) => find_attr!(
                     self.tcx,
