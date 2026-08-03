@@ -158,8 +158,10 @@ fn do_classify(inputs: &[&str]) {
                     continue;
                 }
                 _ => {
-                    panic!("parsing this type requires f128 support and \
-                            the `build-mpfr` feature: `{s}`");
+                    panic!(
+                        "parsing this type requires f128 support and \
+                        the `build-mpfr` feature: `{s}`"
+                    );
                 }
             }
         };
