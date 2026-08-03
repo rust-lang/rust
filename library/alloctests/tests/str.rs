@@ -2009,14 +2009,14 @@ fn test_repeat() {
 }
 
 mod pattern {
-    use std::str::pattern::SearchStep::{self, Done, Match, Reject};
-    use std::str::pattern::{Pattern, ReverseSearcher, Searcher};
+    use std::pattern::SearchStep::{self, Done, Match, Reject};
+    use std::pattern::{Pattern, ReverseSearcher, Searcher};
 
     macro_rules! make_test {
         ($name:ident, $p:expr, $h:expr, [$($e:expr,)*]) => {
             #[allow(unused_imports)]
             mod $name {
-                use std::str::pattern::SearchStep::{Match, Reject};
+                use std::pattern::SearchStep::{Match, Reject};
                 use super::{cmp_search_to_vec};
                 #[test]
                 fn fwd() {
@@ -2290,7 +2290,7 @@ generate_iterator_test! {
 
 #[test]
 fn different_str_pattern_forwarding_lifetimes() {
-    use std::str::pattern::Pattern;
+    use std::pattern::Pattern;
 
     fn foo<'a, P>(p: P)
     where
