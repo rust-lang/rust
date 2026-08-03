@@ -613,8 +613,10 @@ impl ExpressionStore {
                 visitor.on_expr_opt(*start);
                 visitor.on_expr_opt(*end);
             }
-            Pat::Lit(expr) | Pat::ConstBlock(expr) | Pat::Expr(expr) => visitor.on_expr(*expr),
-            Pat::Path(_) | Pat::Wild | Pat::Missing | Pat::Rest | Pat::NotNull => {}
+            Pat::Lit(expr) | Pat::Expr(expr) => visitor.on_expr(*expr),
+            Pat::ConstBlock(expr) => visitor.on_anon_const_expr(*expr),
+            Pat::Path(path) => visitor.on_path(path),
+            Pat::Wild | Pat::Missing | Pat::Rest | Pat::NotNull => {}
             &Pat::Bind { subpat, id: _ } => visitor.on_pat_opt(subpat),
             Pat::Or(args) | Pat::Tuple { args, ellipsis: _ } => visitor.on_pats(args),
             Pat::TupleStruct { args, ellipsis: _, path } => {
