@@ -207,8 +207,8 @@ pub struct PerOwnerResolverData<'tcx> {
 
     pub trait_map: NodeMap<&'tcx [TraitCandidate<'tcx>]> = Default::default(),
 
-    /// Resolution for import nodes, which have multiple resolutions in different namespaces.
-    pub import_res: PerNS<Option<Res<NodeId>>> = Default::default(),
+    /// Resolutions for import nodes, which have multiple resolutions in different namespaces.
+    pub import_res: NodeMap<PerNS<Option<Res<NodeId>>>> = Default::default(),
     /// Lifetime parameters that lowering will have to introduce.
     pub extra_lifetime_params_map: NodeMap<Vec<(Ident, NodeId, MissingLifetimeKind)>> =
         Default::default(),
