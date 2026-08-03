@@ -246,6 +246,19 @@ pub trait SearchResult: Sized + sealed::Sealed {
     /// Value indicating searching has finished.
     const DONE: Self;
 
+    /// Whether search should return reject as soon as possible.
+    ///
+    /// For example, if a search can quickly determine that the very next
+    /// position cannot be where a next match starts, it should return a reject
+    /// with that position.  This is an optimisation which allows the algorithm
+    /// to not waste time looking for the next match if caller is only
+    /// interested in the next position of a reject.
+    ///
+    /// If this is `true`, [`rejecting()`][Self::rejecting] is guaranteed to
+    /// return `Some` and if this is `false`, [`matching()`][Self::matching] is
+    /// guaranteed to return `Some`.
+    const USE_EARLY_REJECT: bool;
+
     /// Returns value describing a match or `None` if this implementation
     /// doesn't care about matches.
     fn matching(start: usize, end: usize) -> Option<Self>;
@@ -267,6 +280,7 @@ pub struct RejectOnly(pub Option<(usize, usize)>);
 
 impl SearchResult for SearchStep {
     const DONE: Self = SearchStep::Done;
+    const USE_EARLY_REJECT: bool = false;
 
     #[inline(always)]
     fn matching(s: usize, e: usize) -> Option<Self> {
@@ -281,6 +295,7 @@ impl SearchResult for SearchStep {
 
 impl SearchResult for MatchOnly {
     const DONE: Self = Self(None);
+    const USE_EARLY_REJECT: bool = false;
 
     #[inline(always)]
     fn matching(s: usize, e: usize) -> Option<Self> {
@@ -295,6 +310,7 @@ impl SearchResult for MatchOnly {
 
 impl SearchResult for RejectOnly {
     const DONE: Self = Self(None);
+    const USE_EARLY_REJECT: bool = true;
 
     #[inline(always)]
     fn matching(_s: usize, _e: usize) -> Option<Self> {
