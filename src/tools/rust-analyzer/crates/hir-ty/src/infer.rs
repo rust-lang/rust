@@ -1368,9 +1368,6 @@ pub(crate) struct InferenceContext<'db> {
     breakables: Vec<BreakableContext<'db>>,
     types: &'db crate::next_solver::DefaultAny<'db>,
 
-    /// Whether we are inside the pattern of a destructuring assignment.
-    inside_assignment: bool,
-
     deferred_cast_checks: Vec<CastCheck<'db>>,
 
     /// The key is an expression defining a closure or a coroutine closure.
@@ -1465,7 +1462,6 @@ impl<'db> InferenceContext<'db> {
             diverges: Diverges::Maybe,
             breakables: Vec::new(),
             deferred_cast_checks: Vec::new(),
-            inside_assignment: false,
             diagnostics: Diagnostics::default(),
             vars_emitted_type_must_be_known_for: FxHashSet::default(),
             deferred_call_resolutions: FxHashMap::default(),
