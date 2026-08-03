@@ -10,7 +10,7 @@ use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::traits::query::OutlivesBound;
 use rustc_middle::ty::{self, RegionVid, Ty, TypeVisitableExt};
 use rustc_span::{ErrorGuaranteed, Span};
-use rustc_trait_selection::traits::query::type_op;
+use rustc_trait_selection::traits::query::type_op::{self, TypeOp};
 use tracing::{debug, instrument};
 use type_op::TypeOpOutput;
 
@@ -235,21 +235,38 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
         let mut normalized_inputs_and_output =
             Vec::with_capacity(self.universal_regions.unnormalized_input_tys.len() + 1);
         for ty in unnormalized_input_output_tys {
+            // FIXME(type_alias_impl_trait): This is a temporary fix for
+            // trait-system-refactor-initiative#159.
+            //
+            // We have to make sure that we don't look into opaque types in the signature
+            // when computing implied bounds as doing so results in implied bounds which
+            // are not checked by the caller.
+            //
+            // This current approach is only sufficient for RPIT(IT) and somewhat of a mess.
+            // Fixing this properly blocks stabilization of TAIT and RTN. See #160425 for
+            // more details.
+            let (param_env, ty) = if tcx.next_trait_solver_globally() {
+                ty::set_opaques_to_rigid(tcx, (self.infcx.param_env, ty))
+            } else {
+                (self.infcx.param_env, ty)
+            };
+
             debug!("build: input_or_output={:?}", ty);
             // We add implied bounds from both the unnormalized and normalized ty.
             // See issue #87748
-            let constraints_unnorm = self.add_implied_bounds(ty, span);
+            let constraints_unnorm = self.add_implied_bounds(param_env, ty, span);
             if let Some(c) = constraints_unnorm {
                 constraints.push(c)
             }
-            let TypeOpOutput { output: norm_ty, constraints: constraints_normalize, .. } = self
-                .infcx
-                .fully_perform(Normalize { value: ty::Unnormalized::new_wip(ty) }, span)
-                .unwrap_or_else(|guar| TypeOpOutput {
-                    output: Ty::new_error(self.infcx.tcx, guar),
-                    constraints: None,
-                    error_info: None,
-                });
+            let TypeOpOutput { output: norm_ty, constraints: constraints_normalize, .. } =
+                param_env
+                    .and(Normalize { value: ty::Unnormalized::new_wip(ty) })
+                    .fully_perform(self.infcx, self.infcx.root_def_id, span)
+                    .unwrap_or_else(|guar| TypeOpOutput {
+                        output: Ty::new_error(tcx, guar),
+                        constraints: None,
+                        error_info: None,
+                    });
             if let Some(c) = constraints_normalize {
                 constraints.push(c)
             }
@@ -276,11 +293,32 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
             // ```
             // Both &Self::Bar and &() are WF
             if ty != norm_ty {
-                let constraints_norm = self.add_implied_bounds(norm_ty, span);
+                let constraints_norm = self.add_implied_bounds(param_env, norm_ty, span);
                 if let Some(c) = constraints_norm {
                     constraints.push(c)
                 }
             }
+
+            // FIXME(type_alias_impl_trait): Part of the above fix. While we don't want to
+            // normalize opaque types for implied bounds, we do want to normalize them for
+            // the actual signature.
+            let norm_ty = if tcx.next_trait_solver_globally() && norm_ty.has_opaque_types() {
+                let norm_ty = ty::set_aliases_to_non_rigid(tcx, norm_ty);
+                let TypeOpOutput { output: norm_ty, constraints: constraints_normalize, .. } = self
+                    .infcx
+                    .fully_perform(Normalize { value: norm_ty }, span)
+                    .unwrap_or_else(|guar| TypeOpOutput {
+                        output: Ty::new_error(tcx, guar),
+                        constraints: None,
+                        error_info: None,
+                    });
+                if let Some(c) = constraints_normalize {
+                    constraints.push(c)
+                }
+                norm_ty
+            } else {
+                norm_ty
+            };
 
             normalized_inputs_and_output.push(norm_ty);
         }
@@ -309,7 +347,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
 
                 // We currently add implied bounds from the normalized ty only.
                 // This is more conservative and matches wfcheck behavior.
-                let c = self.add_implied_bounds(norm_ty, span);
+                let c = self.add_implied_bounds(self.infcx.param_env, norm_ty, span);
                 constraints.extend(c);
             }
         }
@@ -377,12 +415,15 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     fn add_implied_bounds(
         &mut self,
+        param_env: ty::ParamEnv<'tcx>,
         ty: Ty<'tcx>,
         span: Span,
     ) -> Option<&'tcx QueryRegionConstraints<'tcx>> {
-        let TypeOpOutput { output: bounds, constraints, .. } = self
-            .infcx
-            .fully_perform(type_op::ImpliedOutlivesBounds { ty }, span)
+        // FIXME(type_alias_impl_trait): This should use the `param_env` of the `InferCtxt`,
+        // however we currently sometimes set the RPITIT opaque as rigid to avoid trait-system-refactor-initiative#159.
+        let TypeOpOutput { output: bounds, constraints, .. } = param_env
+            .and(type_op::ImpliedOutlivesBounds { ty })
+            .fully_perform(self.infcx, self.infcx.root_def_id, span)
             .map_err(|_: ErrorGuaranteed| debug!("failed to compute implied bounds {:?}", ty))
             .ok()?;
         debug!(?bounds, ?constraints);
