@@ -55,6 +55,7 @@ pub enum CopyState {
 /// # Examples
 ///
 /// ```
+/// # #![feature(alloc_io)]
 /// # use alloc as std;
 /// use std::io;
 ///

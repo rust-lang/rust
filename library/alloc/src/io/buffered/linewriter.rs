@@ -23,6 +23,7 @@ use crate::io::{self, BufWriter, IntoInnerError, IoSlice, Write};
 /// reducing the number of actual writes to the file.
 ///
 /// ```no_run
+/// # #![feature(alloc_io)]
 /// # use alloc as std;
 /// # use alloc::vec::Vec;
 /// use std::io::prelude::*;
@@ -35,18 +36,18 @@ use crate::io::{self, BufWriter, IntoInnerError, IoSlice, Write};
 /// I took the one less traveled by,
 /// And that has made all the difference.";
 ///
-///     let buffer = Vec::new();;
+///     let buffer = Vec::new();
 ///     let mut writer = LineWriter::new(buffer);
 ///
 ///     writer.write_all(b"I shall be telling this with a sigh")?;
 ///
 ///     // No bytes are written until a newline is encountered (or
 ///     // the internal buffer is filled).
-///     assert_eq!(writer.get_ref().as_slice(), &b"");
+///     assert_eq!(writer.get_ref().as_slice(), b"" as &[u8]);
 ///     writer.write_all(b"\n")?;
 ///     assert_eq!(
 ///         writer.get_ref().as_slice(),
-///         &b"I shall be telling this with a sigh\n",
+///         b"I shall be telling this with a sigh\n" as &[u8],
 ///     );
 ///
 ///     // Write the rest of the poem.
@@ -76,6 +77,7 @@ impl<W: Write> LineWriter<W> {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![feature(alloc_io)]
     /// # use alloc as std;
     /// # use alloc::vec::Vec;
     /// use std::io::LineWriter;
@@ -99,6 +101,7 @@ impl<W: Write> LineWriter<W> {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![feature(alloc_io)]
     /// # use alloc as std;
     /// # use alloc::vec::Vec;
     /// use std::io::LineWriter;
@@ -123,6 +126,7 @@ impl<W: Write> LineWriter<W> {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![feature(alloc_io)]
     /// # use alloc as std;
     /// # use alloc::vec::Vec;
     /// use std::io::LineWriter;
@@ -152,16 +156,17 @@ impl<W: Write> LineWriter<W> {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![feature(alloc_io)]
     /// # use alloc as std;
     /// # use alloc::vec::Vec;
     /// use std::io::LineWriter;
     ///
     /// fn main() -> std::io::Result<()> {
-    ///     let file = Vec::new();
+    ///     let buffer = Vec::new();
     ///
-    ///     let writer: LineWriter<File> = LineWriter::new(file);
+    ///     let writer: LineWriter<Vec<u8>> = LineWriter::new(buffer);
     ///
-    ///     let file: File = writer.into_inner()?;
+    ///     let buffer: Vec<u8> = writer.into_inner()?;
     ///     Ok(())
     /// }
     /// ```
@@ -177,6 +182,7 @@ impl<W: ?Sized + Write> LineWriter<W> {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![feature(alloc_io)]
     /// # use alloc as std;
     /// # use alloc::vec::Vec;
     /// use std::io::LineWriter;

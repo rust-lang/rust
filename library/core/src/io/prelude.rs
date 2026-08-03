@@ -4,6 +4,7 @@
 //! by adding a glob import to the top of I/O heavy modules:
 //!
 //! ```
+//! # #![feature(core_io)]
 //! # #![allow(unused_imports)]
 //! use core::io::prelude::*;
 //! ```

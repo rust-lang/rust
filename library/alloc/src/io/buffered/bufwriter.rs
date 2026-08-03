@@ -51,6 +51,7 @@ impl<W: Write> BufWriter<W> {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![feature(alloc_io)]
     /// # use alloc as std;
     /// # use alloc::vec::Vec;
     /// use std::io::BufWriter;
@@ -84,6 +85,7 @@ impl<W: Write> BufWriter<W> {
     /// Creating a buffer with a buffer of at least a hundred bytes.
     ///
     /// ```no_run
+    /// # #![feature(alloc_io)]
     /// # use alloc as std;
     /// # use alloc::vec::Vec;
     /// use std::io::BufWriter;
@@ -108,6 +110,7 @@ impl<W: Write> BufWriter<W> {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![feature(alloc_io)]
     /// # use alloc as std;
     /// # use alloc::vec::Vec;
     /// use std::io::BufWriter;
@@ -138,6 +141,7 @@ impl<W: Write> BufWriter<W> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(alloc_io)]
     /// # use alloc as std;
     /// use std::io::{BufWriter, Write};
     ///
@@ -264,6 +268,7 @@ impl<W: ?Sized + Write> BufWriter<W> {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![feature(alloc_io)]
     /// # use alloc as std;
     /// # use alloc::vec::Vec;
     /// use std::io::BufWriter;
@@ -286,6 +291,7 @@ impl<W: ?Sized + Write> BufWriter<W> {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![feature(alloc_io)]
     /// # use alloc as std;
     /// # use alloc::vec::Vec;
     /// use std::io::BufWriter;
@@ -305,6 +311,7 @@ impl<W: ?Sized + Write> BufWriter<W> {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![feature(alloc_io)]
     /// # use alloc as std;
     /// # use alloc::vec::Vec;
     /// use std::io::BufWriter;
@@ -338,6 +345,7 @@ impl<W: ?Sized + Write> BufWriter<W> {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![feature(alloc_io)]
     /// # use alloc as std;
     /// # use alloc::vec::Vec;
     /// use std::io::BufWriter;

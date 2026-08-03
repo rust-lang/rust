@@ -21,6 +21,7 @@ use crate::io::Error;
 /// # Examples
 ///
 /// ```no_run
+/// # #![feature(alloc_io)]
 /// # use alloc as std;
 /// # use alloc::vec::Vec;
 /// use std::io::BufWriter;
@@ -65,6 +66,7 @@ impl<W> IntoInnerError<W> {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![feature(alloc_io)]
     /// # use alloc as std;
     /// # use alloc::vec::Vec;
     /// use std::io::BufWriter;
@@ -97,6 +99,7 @@ impl<W> IntoInnerError<W> {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![feature(alloc_io)]
     /// # use alloc as std;
     /// # use alloc::vec::Vec;
     /// use std::io::BufWriter;
@@ -133,6 +136,7 @@ impl<W> IntoInnerError<W> {
     /// # Example
     ///
     /// ```
+    /// # #![feature(alloc_io)]
     /// # use alloc as std;
     /// use std::io::{BufWriter, ErrorKind, Write};
     ///
@@ -157,6 +161,7 @@ impl<W> IntoInnerError<W> {
     /// # Example
     ///
     /// ```
+    /// # #![feature(alloc_io)]
     /// # use alloc as std;
     /// use std::io::{BufWriter, ErrorKind, Write};
     ///

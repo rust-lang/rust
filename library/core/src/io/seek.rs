@@ -9,6 +9,7 @@ use crate::io::Result;
 /// # Examples
 ///
 /// ```no_run
+/// # #![feature(core_io)]
 /// # use core as std;
 /// use std::io::{self, Cursor, SeekFrom};
 /// use std::io::prelude::*;
@@ -60,11 +61,12 @@ pub trait Seek {
     /// # Example
     ///
     /// ```no_run
+    /// # #![feature(core_io)]
     /// # use core as std;
     /// use std::io::{Cursor, Seek, Write};
     ///
-    /// let mut buffer = [0; 5];
-    /// let mut cursor = Cursor::new(&mut buffer);
+    /// let mut buffer = [0u8; 5];
+    /// let mut cursor = Cursor::new(&mut buffer as &mut [u8]);
     ///
     /// cursor.write_all(&[1, 2, 3])?;
     ///
@@ -72,7 +74,7 @@ pub trait Seek {
     ///
     /// cursor.write_all(&[4, 5, 6])?;
     ///
-    /// assert_eq!(&buffer, &[4, 5, 6, 0, 0]);
+    /// assert_eq!(&buffer, &[4u8, 5u8, 6u8, 0u8, 0u8]);
     /// # std::io::Result::Ok(())
     /// ```
     #[stable(feature = "seek_rewind", since = "1.55.0")]
@@ -101,6 +103,7 @@ pub trait Seek {
     /// # Example
     ///
     /// ```no_run
+    /// # #![feature(core_io)]
     /// #![feature(seek_stream_len)]
     /// # use core as std;
     /// use std::io::{Cursor, Seek};
@@ -121,6 +124,7 @@ pub trait Seek {
     /// # Example
     ///
     /// ```no_run
+    /// # #![feature(core_io)]
     /// # use core as std;
     /// use std::io::{self, Cursor, SeekFrom};
     /// use std::io::prelude::*;
@@ -155,8 +159,9 @@ pub trait Seek {
     /// # Example
     ///
     /// ```no_run
+    /// # #![feature(core_io)]
     /// # use core as std;
-    /// use std::io::{self, Cursor, SeekFrom};
+    /// use std::io::{self, Cursor};
     /// use std::io::prelude::*;
     ///
     /// fn main() -> io::Result<()> {

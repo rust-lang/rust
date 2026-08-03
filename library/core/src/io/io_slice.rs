@@ -67,6 +67,7 @@ impl<'a> IoSliceMut<'a> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core_io)]
     /// # use core as std;
     /// use std::io::IoSliceMut;
     /// use std::ops::Deref;
@@ -100,6 +101,7 @@ impl<'a> IoSliceMut<'a> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core_io)]
     /// # use core as std;
     /// use std::io::IoSliceMut;
     /// use std::ops::Deref;
@@ -147,6 +149,7 @@ impl<'a> IoSliceMut<'a> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core_io)]
     /// #![feature(io_slice_as_bytes)]
     /// # use core as std;
     /// use std::io::IoSliceMut;
@@ -229,6 +232,7 @@ impl<'a> IoSlice<'a> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core_io)]
     /// # use core as std;
     /// use std::io::IoSlice;
     /// use std::ops::Deref;
@@ -262,6 +266,7 @@ impl<'a> IoSlice<'a> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core_io)]
     /// # use core as std;
     /// use std::io::IoSlice;
     /// use std::ops::Deref;
@@ -314,6 +319,7 @@ impl<'a> IoSlice<'a> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core_io)]
     /// #![feature(io_slice_as_bytes)]
     /// # use core as std;
     /// use std::io::IoSlice;

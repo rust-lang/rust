@@ -28,6 +28,7 @@ use crate::io::{self, ErrorKind, IoSlice, SeekFrom, Write};
 /// [Vec]: ../../alloc/vec/struct.Vec.html
 ///
 /// ```no_run
+/// # #![feature(core_io)]
 /// # use core as std;
 /// use std::io::prelude::*;
 /// use std::io::{self, SeekFrom};
@@ -77,10 +78,11 @@ impl<T> Cursor<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core_io)]
     /// # use core as std;
     /// use std::io::Cursor;
     ///
-    /// let buff = Cursor::new(&[1, 2, 3]);
+    /// let buff = Cursor::new(&[1u8, 2u8, 3u8] as &[u8]);
     /// # fn force_inference(_: &Cursor<&[u8]>) {}
     /// # force_inference(&buff);
     /// ```
@@ -95,10 +97,11 @@ impl<T> Cursor<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core_io)]
     /// # use core as std;
     /// use std::io::Cursor;
     ///
-    /// let buff = Cursor::new(&[1, 2, 3]);
+    /// let buff = Cursor::new(&[1u8, 2u8, 3u8] as  &[u8]);
     /// # fn force_inference(_: &Cursor<&[u8]>) {}
     /// # force_inference(&buff);
     ///
@@ -114,10 +117,11 @@ impl<T> Cursor<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core_io)]
     /// # use core as std;
     /// use std::io::Cursor;
     ///
-    /// let buff = Cursor::new(&[1, 2, 3]);
+    /// let buff = Cursor::new(&[1u8, 2u8, 3u8] as &[u8]);
     /// # fn force_inference(_: &Cursor<&[u8]>) {}
     /// # force_inference(&buff);
     ///
@@ -137,10 +141,11 @@ impl<T> Cursor<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core_io)]
     /// # use core as std;
     /// use std::io::Cursor;
     ///
-    /// let mut buff = Cursor::new(&[1, 2, 3]);
+    /// let mut buff = Cursor::new(&[1u8, 2u8, 3u8] as &[u8]);
     /// # fn force_inference(_: &Cursor<&[u8]>) {}
     /// # force_inference(&buff);
     ///
@@ -157,6 +162,7 @@ impl<T> Cursor<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core_io)]
     /// # use core as std;
     /// use std::io::Cursor;
     /// use std::io::prelude::*;
@@ -183,6 +189,7 @@ impl<T> Cursor<T> {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core_io)]
     /// # use core as std;
     /// use std::io::Cursor;
     ///
@@ -219,6 +226,7 @@ where
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core_io)]
     /// #![feature(cursor_split)]
     /// # use core as std;
     /// use std::io::Cursor;
@@ -251,6 +259,7 @@ where
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core_io)]
     /// #![feature(cursor_split)]
     /// # use core as std;
     /// use std::io::Cursor;

@@ -135,6 +135,7 @@ impl Seek for Empty {
 /// # Examples
 ///
 /// ```rust
+/// # #![feature(core_io)]
 /// # use core as std;
 /// use std::io::{self, Write};
 ///
@@ -183,6 +184,7 @@ impl SizeHint for Repeat {
 /// # Examples
 ///
 /// ```no_run
+/// # #![feature(core_io)]
 /// # use core as std;
 /// // Returns `0b101` infinitely.
 /// # #[allow(dead_code)]
@@ -300,6 +302,7 @@ impl Write for &Sink {
 /// # Examples
 ///
 /// ```rust
+/// # #![feature(core_io)]
 /// # use core as std;
 /// use std::io::{self, Write};
 ///
@@ -358,6 +361,7 @@ impl<T, U> Chain<T, U> {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![feature(core_io)]
     /// # use core as std;
     /// use std::io::Chain;
     ///
@@ -381,6 +385,7 @@ impl<T, U> Chain<T, U> {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![feature(core_io)]
     /// # use core as std;
     /// use std::io::Chain;
     ///
@@ -404,6 +409,7 @@ impl<T, U> Chain<T, U> {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![feature(core_io)]
     /// # use core as std;
     /// use std::io::Chain;
     ///
@@ -479,6 +485,7 @@ impl<T> Take<T> {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![feature(core_io)]
     /// # use core as std;
     /// use std::io::Take;
     ///
@@ -509,6 +516,7 @@ impl<T> Take<T> {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![feature(core_io)]
     /// # use core as std;
     /// use std::io::Take;
     ///
@@ -530,6 +538,7 @@ impl<T> Take<T> {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![feature(core_io)]
     /// # use core as std;
     /// use std::io::Take;
     ///
@@ -552,6 +561,7 @@ impl<T> Take<T> {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![feature(core_io)]
     /// # use core as std;
     /// use std::io::Take;
     ///
@@ -574,6 +584,7 @@ impl<T> Take<T> {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![feature(core_io)]
     /// # use core as std;
     /// use std::io::Take;
     ///

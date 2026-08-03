@@ -56,6 +56,7 @@ use crate::{error, fmt, result};
 /// A convenience function that bubbles an `io::Result` to its caller:
 ///
 /// ```no_run
+/// # #![feature(core_io)]
 /// # use core as std;
 /// use std::io;
 ///
@@ -183,7 +184,9 @@ pub struct SimpleMessage {
 ///
 /// # Example
 /// ```
+/// # #![feature(core_io)]
 /// #![feature(io_const_error)]
+/// # use core as std;
 /// use std::io::{const_error, Error, ErrorKind};
 ///
 /// const FAIL: Error = const_error!(ErrorKind::Unsupported, "tried something that never works");
@@ -212,6 +215,7 @@ impl From<ErrorKind> for Error {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core_io)]
     /// # use core as std;
     /// use std::io::{Error, ErrorKind};
     ///
@@ -301,6 +305,7 @@ impl Error {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![feature(core_io)]
     /// # use core as std;
     /// use std::io::Error;
     ///
@@ -335,6 +340,7 @@ impl Error {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![feature(core_io)]
     /// # use core as std;
     /// use std::io::Error;
     ///
@@ -371,11 +377,12 @@ impl Error {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![feature(core_io)]
     /// # use core as std;
     /// use std::io::Error;
     ///
     /// # #[allow(dead_code)]
-    /// fn print_os_error(err: &Error) {
+    /// fn print_os_error(err: &mut Error) {
     ///     if let Some(inner_mut) = err.get_mut() {
     ///         // ...
     ///     } else {
@@ -408,6 +415,7 @@ impl Error {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![feature(core_io)]
     /// # use core as std;
     /// use std::io::{Error, ErrorKind};
     ///
@@ -1064,7 +1072,9 @@ impl fmt::Display for ErrorKind {
     /// This is similar to `impl Display for Error`, but doesn't require first converting to Error.
     ///
     /// # Examples
+    ///
     /// ```
+    /// # #![feature(core_io)]
     /// use core::io::ErrorKind;
     /// assert_eq!("entity not found", ErrorKind::NotFound.to_string());
     /// ```

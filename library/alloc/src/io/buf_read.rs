@@ -16,6 +16,7 @@ use crate::vec::Vec;
 /// A locked standard input implements `BufRead`:
 ///
 /// ```no_run
+/// # #![feature(alloc_io)]
 /// # use alloc as std;
 /// # use alloc::vec::Vec;
 /// # use alloc::string::String;
@@ -41,6 +42,7 @@ use crate::vec::Vec;
 /// [`lines`]: BufRead::lines
 ///
 /// ```no_run
+/// # #![feature(alloc_io)]
 /// # use alloc as std;
 /// # use alloc::vec::Vec;
 /// # use alloc::string::String;
@@ -76,13 +78,14 @@ pub trait BufRead: Read {
     /// A locked standard input implements `BufRead`:
     ///
     /// ```no_run
+    /// # #![feature(alloc_io)]
+    /// # #![allow(unused_must_use)]
     /// # use alloc as std;
     /// # use alloc::format as println;
-    /// use std::io;
     /// use std::io::prelude::*;
     ///
     /// # struct StdinMock;
-    /// # impl StdinMock { fn lock(&self) -> impl BufRead { unimplemented!() } }
+    /// # impl StdinMock { fn lock(&self) -> impl BufRead { alloc::io::BufReader::new(&[0u8; 8][..]) } }
     /// # let stdin = StdinMock;
     /// let mut stdin = stdin.lock();
     ///
@@ -131,14 +134,16 @@ pub trait BufRead: Read {
     ///
     /// Examples
     ///
-    ///
+    /// ```no_run
+    /// # #![feature(alloc_io)]
+    /// # #![allow(unused_must_use)]
+    /// #![feature(buf_read_has_data_left)]
     /// # use alloc as std;
     /// # use alloc::format as println;
-    /// use std::io;
     /// use std::io::prelude::*;
     ///
     /// # struct StdinMock;
-    /// # impl StdinMock { fn lock(&self) -> impl BufRead { unimplemented!() } }
+    /// # impl StdinMock { fn lock(&self) -> impl BufRead { alloc::io::BufReader::new(&[0u8; 8][..]) } }
     /// # let stdin = StdinMock;
     /// let mut stdin = stdin.lock();
     ///
@@ -186,6 +191,7 @@ pub trait BufRead: Read {
     /// [`Cursor`]: crate::io::Cursor
     ///
     /// ```
+    /// # #![feature(alloc_io)]
     /// # use alloc as std;
     /// use std::io::{self, BufRead};
     ///
@@ -251,6 +257,7 @@ pub trait BufRead: Read {
     /// [`Cursor`]: crate::io::Cursor
     ///
     /// ```
+    /// # #![feature(alloc_io)]
     /// # use alloc as std;
     /// # use alloc::vec::Vec;
     /// use std::io::{self, BufRead};
@@ -326,6 +333,7 @@ pub trait BufRead: Read {
     /// [`Cursor`]: crate::io::Cursor
     ///
     /// ```
+    /// # #![feature(alloc_io)]
     /// # use alloc as std;
     /// use std::io::{self, BufRead};
     ///
@@ -382,6 +390,7 @@ pub trait BufRead: Read {
     /// [`Cursor`]: crate::io::Cursor
     ///
     /// ```
+    /// # #![feature(alloc_io)]
     /// # use alloc as std;
     /// use std::io::{self, BufRead};
     ///
@@ -418,6 +427,7 @@ pub trait BufRead: Read {
     /// [`Cursor`]: crate::io::Cursor
     ///
     /// ```
+    /// # #![feature(alloc_io)]
     /// # use alloc as std;
     /// use std::io::{self, BufRead};
     ///

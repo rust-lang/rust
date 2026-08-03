@@ -34,14 +34,15 @@ use crate::vec::Vec;
 /// # Examples
 ///
 /// ```no_run
+/// # #![feature(alloc_io)]
 /// # use alloc as std;
 /// # use alloc::string::String;
 /// use std::io;
 /// use std::io::prelude::*;
 ///
 /// fn main() -> io::Result<()> {
-///     let mut data = &b"Hello World! This is a short byte-string." as &[u8];
-///     let mut f = &mut data;
+///     let mut data = b"Hello World! This is a short byte-string." as &[u8];
+///     let f = &mut data;
 ///     let mut buffer = [0; 10];
 ///
 ///     // read up to 10 bytes
@@ -63,6 +64,7 @@ use crate::vec::Vec;
 /// Read from [`&str`] because [`&[u8]`][prim@slice] implements `Read`:
 ///
 /// ```no_run
+/// # #![feature(alloc_io)]
 /// # use alloc as std;
 /// # use std::io;
 /// use std::io::prelude::*;
@@ -148,15 +150,16 @@ pub trait Read {
     /// [`ErrorKind::Interrupted`]: crate::io::ErrorKind::Interrupted
     ///
     /// ```no_run
+    /// # #![feature(alloc_io)]
+    /// # #![allow(unused_must_use)]
     /// # use alloc as std;
     /// # use alloc::format as println;
-    /// # use alloc::string::String;
     /// use std::io;
     /// use std::io::prelude::*;
     ///
     /// fn main() -> io::Result<()> {
-    ///     let mut data = &b"Hello World! This is a short byte-string." as &[u8];
-    ///     let mut f = &mut data;
+    ///     let mut data = b"Hello World! This is a short byte-string." as &[u8];
+    ///     let f = &mut data;
     ///     let mut buffer = [0; 10];
     ///
     ///     // read up to 10 bytes
@@ -225,14 +228,14 @@ pub trait Read {
     /// [`read()`]: Read::read
     ///
     /// ```no_run
+    /// # #![feature(alloc_io)]
     /// # use alloc as std;
-    /// # use alloc::string::String;
     /// use std::io;
     /// use std::io::prelude::*;
     ///
     /// fn main() -> io::Result<()> {
-    ///     let mut data = &b"Hello World! This is a short byte-string." as &[u8];
-    ///     let mut f = &mut data;
+    ///     let mut data = b"Hello World! This is a short byte-string." as &[u8];
+    ///     let f = &mut data;
     ///     let mut buffer = Vec::new();
     ///
     ///     // read the whole file
@@ -252,6 +255,7 @@ pub trait Read {
     /// situations gracefully.
     ///
     /// ```no_run
+    /// # #![feature(alloc_io)]
     /// # #![expect(dead_code)]
     /// # use alloc::io::{self, BufRead};
     /// # struct Example { example_datasource: io::Empty } impl Example {
@@ -311,14 +315,15 @@ pub trait Read {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![feature(alloc_io)]
     /// # use alloc as std;
     /// # use alloc::string::String;
     /// use std::io;
     /// use std::io::prelude::*;
     ///
     /// fn main() -> io::Result<()> {
-    ///     let mut data = &b"Hello World! This is a short byte-string." as &[u8];
-    ///     let mut f = &mut data;
+    ///     let mut data = b"Hello World! This is a short byte-string." as &[u8];
+    ///     let f = &mut data;
     ///     let mut buffer = String::new();
     ///
     ///     f.read_to_string(&mut buffer)?;
@@ -380,14 +385,14 @@ pub trait Read {
     /// [`read`]: Read::read
     ///
     /// ```no_run
+    /// # #![feature(alloc_io)]
     /// # use alloc as std;
-    /// # use alloc::string::String;
     /// use std::io;
     /// use std::io::prelude::*;
     ///
     /// fn main() -> io::Result<()> {
-    ///     let mut data = &b"Hello World! This is a short byte-string." as &[u8];
-    ///     let mut f = &mut data;
+    ///     let mut data = b"Hello World! This is a short byte-string." as &[u8];
+    ///     let f = &mut data;
     ///     let mut buffer = [0; 10];
     ///
     ///     // read exactly 10 bytes
@@ -447,15 +452,15 @@ pub trait Read {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![feature(alloc_io)]
     /// # use alloc as std;
-    /// # use alloc::string::String;
     /// # use alloc::vec::Vec;
     /// use std::io;
     /// use std::io::prelude::*;
     ///
     /// fn main() -> io::Result<()> {
-    ///     let mut data = &b"Hello World! This is a short byte-string." as &[u8];
-    ///     let mut f = &mut data;
+    ///     let mut data = b"Hello World! This is a short byte-string." as &[u8];
+    ///     let f = &mut data;
     ///     let mut buffer = Vec::new();
     ///     let mut other_buffer = Vec::new();
     ///
@@ -498,15 +503,15 @@ pub trait Read {
     /// [io::Error]: crate::io::Error "io::Error"
     ///
     /// ```no_run
+    /// # #![feature(alloc_io)]
     /// # use alloc as std;
-    /// # use alloc::string::String;
     /// use std::io;
     /// use std::io::prelude::*;
     ///
     /// fn main() -> io::Result<()> {
-    ///     let mut data = &b"Hello World! This is a short byte-string." as &[u8];
-    ///     let mut f = &mut data;
-    ///     let f = BufReader::new(f);
+    ///     let mut data = b"Hello World! This is a short byte-string." as &[u8];
+    ///     let f = &mut data;
+    ///     let f = io::BufReader::new(f);
     ///
     ///     for byte in f.bytes() {
     ///         println!("{}", byte?);
@@ -531,16 +536,17 @@ pub trait Read {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![feature(alloc_io)]
     /// # use alloc as std;
     /// # use alloc::string::String;
     /// use std::io;
     /// use std::io::prelude::*;
     ///
     /// fn main() -> io::Result<()> {
-    ///     let mut foo = &b"My Foo Data" as &[u8];
-    ///     let mut bar = &b"My Bar Data" as &[u8];
-    ///     let mut f1 = &mut foo;
-    ///     let mut f2 = &mut bar;
+    ///     let mut foo = b"My Foo Data" as &[u8];
+    ///     let mut bar = b"My Bar Data" as &[u8];
+    ///     let f1 = &mut foo;
+    ///     let f2 = &mut bar;
     ///
     ///     let mut handle = f1.chain(f2);
     ///     let mut buffer = String::new();
@@ -572,15 +578,14 @@ pub trait Read {
     /// [`read()`]: Read::read
     ///
     /// ```no_run
+    /// # #![feature(alloc_io)]
     /// # use alloc as std;
-    /// # use alloc::string::String;
-    /// # use alloc::vec::Vec;
     /// use std::io;
     /// use std::io::prelude::*;
     ///
     /// fn main() -> io::Result<()> {
-    ///     let mut data = &b"Hello World! This is a short byte-string." as &[u8];
-    ///     let mut f = &mut data;
+    ///     let mut data = b"Hello World! This is a short byte-string." as &[u8];
+    ///     let f = &mut data;
     ///     let mut buffer = [0; 5];
     ///
     ///     // read at most five bytes
@@ -612,6 +617,7 @@ pub trait Read {
     /// [`ErrorKind::UnexpectedEof`]: crate::io::ErrorKind::UnexpectedEof
     ///
     /// ```
+    /// # #![feature(alloc_io)]
     /// #![feature(read_array)]
     /// # use alloc as std;
     /// use std::io::Cursor;
@@ -652,6 +658,7 @@ pub trait Read {
     /// [`ErrorKind::UnexpectedEof`]: crate::io::ErrorKind::UnexpectedEof
     ///
     /// ```
+    /// # #![feature(alloc_io)]
     /// #![feature(read_le)]
     /// # use alloc as std;
     /// use std::io::Cursor;
@@ -688,6 +695,7 @@ pub trait Read {
     /// [`ErrorKind::UnexpectedEof`]: crate::io::ErrorKind::UnexpectedEof
     ///
     /// ```
+    /// # #![feature(alloc_io)]
     /// #![feature(read_le)]
     /// # use alloc as std;
     /// use std::io::Cursor;

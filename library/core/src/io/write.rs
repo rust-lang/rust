@@ -25,6 +25,7 @@ use crate::io::{Error, IoSlice, Result};
 /// # Examples
 ///
 /// ```no_run
+/// # #![feature(core_io)]
 /// # use core as std;
 /// use std::io::prelude::*;
 ///
@@ -32,8 +33,8 @@ use crate::io::{Error, IoSlice, Result};
 ///     let data = b"some bytes";
 ///
 ///     let mut pos = 0;
-///     let mut buffer = [0; 10];
-///     let mut cursor = std::io::Cursor::new(&mut buffer);
+///     let mut buffer = [0u8; 32];
+///     let mut cursor = std::io::Cursor::new(&mut buffer as &mut [u8]);
 ///
 ///     while pos < data.len() {
 ///         let bytes_written = cursor.write(&data[pos..])?;
@@ -85,6 +86,7 @@ pub trait Write {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![feature(core_io)]
     /// # use core as std;
     /// use std::io::prelude::*;
     ///
@@ -92,8 +94,8 @@ pub trait Write {
     ///     let data = b"some bytes";
     ///
     ///     let mut pos = 0;
-    ///     let mut buffer = [0; 10];
-    ///     let mut cursor = std::io::Cursor::new(&mut buffer);
+    ///     let mut buffer = [0u8; 32];
+    ///     let mut cursor = std::io::Cursor::new(&mut buffer as &mut [u8]);
     ///
     ///     while pos < data.len() {
     ///         let bytes_written = cursor.write(&data[pos..])?;
@@ -119,6 +121,7 @@ pub trait Write {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![feature(core_io)]
     /// # use core as std;
     /// use std::io::IoSlice;
     /// use std::io::prelude::*;
@@ -129,8 +132,8 @@ pub trait Write {
     ///     let io_slice1 = IoSlice::new(&data1);
     ///     let io_slice2 = IoSlice::new(&data2);
     ///
-    ///     let mut buffer = [0; 16];
-    ///     let mut cursor = std::io::Cursor::new(&mut buffer);
+    ///     let mut buffer = [0u8; 32];
+    ///     let mut cursor = std::io::Cursor::new(&mut buffer as &mut [u8]);
     ///
     ///     // Writes some prefix of the byte string, not necessarily all of it.
     ///     cursor.write_vectored(&[io_slice1, io_slice2])?;
@@ -170,16 +173,17 @@ pub trait Write {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![feature(core_io)]
     /// # use core as std;
     /// use std::io::prelude::*;
     ///
     /// fn main() -> std::io::Result<()> {
-    ///     let data = b"some bytes";
+    ///     let data = b"some bytes" as &[u8];
     ///
-    ///     let mut buffer = [0; 10];
-    ///     let mut cursor = std::io::Cursor::new(&mut buffer);
+    ///     let mut buffer = [0u8; 32];
+    ///     let mut cursor = std::io::Cursor::new(&mut buffer as &mut [u8]);
     ///
-    ///     cursor.write_all(&data)?
+    ///     cursor.write_all(data)?;
     ///     cursor.flush()?;
     ///
     ///     Ok(())
@@ -211,16 +215,17 @@ pub trait Write {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![feature(core_io)]
     /// # use core as std;
     /// use std::io::prelude::*;
     ///
     /// fn main() -> std::io::Result<()> {
-    ///     let data = b"some bytes";
+    ///     let data = b"some bytes" as &[u8];
     ///
-    ///     let mut buffer = [0; 10];
-    ///     let mut cursor = std::io::Cursor::new(&mut buffer);
+    ///     let mut buffer = [0u8; 32];
+    ///     let mut cursor = std::io::Cursor::new(&mut buffer as &mut [u8]);
     ///
-    ///     cursor.write_all(&data)?
+    ///     cursor.write_all(data)?;
     ///     cursor.flush()?;
     ///
     ///     Ok(())
@@ -272,6 +277,7 @@ pub trait Write {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(core_io)]
     /// #![feature(write_all_vectored)]
     /// # use core as std;
     /// # fn main() -> std::io::Result<()> {
@@ -331,14 +337,13 @@ pub trait Write {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![feature(core_io)]
     /// # use core as std;
     /// use std::io::prelude::*;
     ///
     /// fn main() -> std::io::Result<()> {
-    ///     let data = b"some bytes";
-    ///
-    ///     let mut buffer = [0; 32];
-    ///     let mut cursor = std::io::Cursor::new(&mut buffer);
+    ///     let mut buffer = [0u8; 32];
+    ///     let mut cursor = std::io::Cursor::new(&mut buffer as &mut [u8]);
     ///
     ///     cursor.write_fmt(format_args!("{:.*}", 2, 1.234567))?;
     ///     Ok(())
@@ -361,14 +366,13 @@ pub trait Write {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![feature(core_io)]
     /// # use core as std;
     /// use std::io::prelude::*;
     ///
     /// fn main() -> std::io::Result<()> {
-    ///     let data = b"some bytes";
-    ///
-    ///     let mut buffer = [0; 10];
-    ///     let mut cursor = std::io::Cursor::new(&mut buffer);
+    ///     let mut buffer = [0u8; 32];
+    ///     let mut cursor = std::io::Cursor::new(&mut buffer as &mut [u8]);
     ///
     ///     let reference = cursor.by_ref();
     ///

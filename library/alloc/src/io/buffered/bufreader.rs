@@ -36,6 +36,8 @@ use crate::vec::Vec;
 /// # Examples
 ///
 /// ```no_run
+/// # #![feature(alloc_io)]
+/// # #![allow(unused_must_use)]
 /// # use alloc as std;
 /// # use alloc::format as println;
 /// # use alloc::string::String;
@@ -66,6 +68,7 @@ impl<R: Read> BufReader<R> {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![feature(alloc_io)]
     /// # use alloc as std;
     /// use std::io::BufReader;
     ///
@@ -99,6 +102,7 @@ impl<R: Read> BufReader<R> {
     /// Creating a buffer with ten bytes of capacity:
     ///
     /// ```no_run
+    /// # #![feature(alloc_io)]
     /// # use alloc as std;
     /// use std::io::BufReader;
     ///
@@ -130,6 +134,7 @@ impl<R: Read + ?Sized> BufReader<R> {
     /// ## Examples
     ///
     /// ```rust
+    /// # #![feature(alloc_io)]
     /// #![feature(bufreader_peek)]
     /// # use alloc as std;
     /// use std::io::{Read, BufReader};
@@ -172,6 +177,7 @@ impl<R: ?Sized> BufReader<R> {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![feature(alloc_io)]
     /// # use alloc as std;
     /// use std::io::BufReader;
     ///
@@ -195,6 +201,7 @@ impl<R: ?Sized> BufReader<R> {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![feature(alloc_io)]
     /// # use alloc as std;
     /// use std::io::BufReader;
     ///
@@ -220,6 +227,7 @@ impl<R: ?Sized> BufReader<R> {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![feature(alloc_io)]
     /// # use alloc as std;
     /// use std::io::{BufReader, BufRead};
     ///
@@ -244,6 +252,7 @@ impl<R: ?Sized> BufReader<R> {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![feature(alloc_io)]
     /// # use alloc as std;
     /// use std::io::{BufReader, BufRead};
     ///
@@ -270,6 +279,7 @@ impl<R: ?Sized> BufReader<R> {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![feature(alloc_io)]
     /// # use alloc as std;
     /// use std::io::BufReader;
     ///
@@ -578,6 +588,8 @@ impl<R: ?Sized + Seek> Seek for BufReader<R> {
     /// # Example
     ///
     /// ```no_run
+    /// # #![feature(alloc_io)]
+    /// # #![allow(unused_must_use)]
     /// # use alloc as std;
     /// # use alloc::format as println;
     /// # use alloc::string::String;

@@ -23,6 +23,7 @@ impl Error {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(alloc_io)]
     /// # use alloc as std;
     /// use std::io::{Error, ErrorKind};
     ///
@@ -62,6 +63,7 @@ impl Error {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(alloc_io)]
     /// # use alloc as std;
     /// use std::io::Error;
     ///
@@ -94,6 +96,7 @@ impl Error {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![feature(alloc_io)]
     /// # use alloc as std;
     /// use std::io::{Error, ErrorKind};
     ///
@@ -154,6 +157,7 @@ impl Error {
     /// # Examples
     ///
     /// ```
+    /// # #![feature(alloc_io)]
     /// # mod std {
     /// #   pub use alloc::fmt;
     /// #   pub use alloc::io;

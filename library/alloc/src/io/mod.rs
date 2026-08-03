@@ -14,6 +14,7 @@
 //!  which we can use on byte slices:
 //!
 //! ```no_run
+//! # #![feature(alloc_io)]
 //! use alloc::io;
 //! use alloc::io::prelude::*;
 //! use alloc::vec::Vec;
@@ -43,6 +44,7 @@
 //! coming from:
 //!
 //! ```no_run
+//! # #![feature(alloc_io)]
 //! use alloc::io;
 //! use alloc::io::prelude::*;
 //! use alloc::io::SeekFrom;
@@ -77,6 +79,7 @@
 //! methods to any reader:
 //!
 //! ```no_run
+//! # #![feature(alloc_io)]
 //! use alloc::io;
 //! use alloc::io::BufReader;
 //! use alloc::io::prelude::*;
@@ -100,6 +103,7 @@
 //! to [`write`][`Write::write`]:
 //!
 //! ```no_run
+//! # #![feature(alloc_io)]
 //! use alloc::io;
 //! use alloc::io::BufWriter;
 //! use alloc::io::prelude::*;
@@ -125,13 +129,14 @@
 //! lines:
 //!
 //! ```no_run
+//! # #![feature(alloc_io)]
 //! use alloc::io;
 //! use alloc::io::BufReader;
 //! use alloc::io::prelude::*;
 //!
 //! # #[allow(dead_code)]
 //! fn read_one_line<T: Read>(reader: &mut T) -> io::Result<()> {
-//!     let mut reader = BufReader::new(reader);
+//!     let reader = BufReader::new(reader);
 //!
 //!     for line in reader.lines() {
 //!         assert!(!line?.ends_with('\n'));
@@ -149,6 +154,7 @@
 //! module use the [`?` operator]:
 //!
 //! ```no_run
+//! # #![feature(alloc_io)]
 //! use alloc::io;
 //! use alloc::io::prelude::*;
 //!
