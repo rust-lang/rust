@@ -298,7 +298,6 @@ pub(crate) struct CrateRoot {
 
     compiler_builtins: bool,
     needs_allocator: bool,
-    needs_panic_runtime: bool,
     no_builtins: bool,
     panic_runtime: bool,
     profiler_runtime: bool,
