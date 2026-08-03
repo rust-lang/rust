@@ -651,3 +651,58 @@ fn two_way_next_reject_never_reports_empty_reject() {
     assert_eq!(searcher.next_reject_back(), Some((3, 6)));
     assert_eq!(searcher.next_reject_back(), None);
 }
+
+#[test]
+fn test_try_next_code_point_fwd_and_rev() {
+    use core::str::{try_next_code_point, try_next_code_point_reverse};
+
+    #[track_caller]
+    fn check_fwbw(input: &[u8], expected: Option<(char, usize)>) {
+        let mut store = Vec::with_capacity(input.len() + 1);
+
+        assert_eq!(try_next_code_point(input), expected, "fw single");
+        assert_eq!(try_next_code_point_reverse(input), expected, "bw single");
+
+        if input.is_empty() {
+            return;
+        }
+
+        store.extend_from_slice(input);
+        store.push(b'a');
+        assert_eq!(try_next_code_point(&store), expected, "fw ext");
+
+        store.clear();
+        store.push(b'a');
+        store.extend_from_slice(input);
+        assert_eq!(try_next_code_point_reverse(&store), expected, "bw, ext");
+    }
+
+    // edge case
+    check_fwbw(&[], None); // edge case
+
+    // valid cases
+    check_fwbw(&[0x41], Some(('A', 1))); // 1 byte
+    check_fwbw(&[0xc3, 0xa9], Some(('\u{00e9}', 2))); // 2 byte
+    check_fwbw(&[0xe2, 0x82, 0xac], Some(('\u{20ac}', 3))); // 3 byte
+    check_fwbw(&[0xf0, 0x9f, 0x98, 0x8a], Some(('\u{1f60a}', 4))); // 4 byte
+
+    // overlong encoding
+    check_fwbw(&[0xc0, 0xaf], None); // '\u{002f}' AKA '/'
+    check_fwbw(&[0xc1, 0x81], None); // '\u{0041}' AKA 'A'
+    check_fwbw(&[0xe0, 0x81, 0x81], None); // '\u{0041}' AKA 'A'
+    check_fwbw(&[0xe0, 0x83, 0xa9], None); // '\u{00e9}' AKA 'é', should be 2 bytes
+
+    // surrogates
+    check_fwbw(&[0xed, 0xa0, 0x80], None);
+    check_fwbw(&[0xed, 0xb0, 0x80], None);
+    check_fwbw(&[0xed, 0xa0, 0xbd, 0xed, 0xb8, 0x8a], None);
+
+    // unattached continuation
+    check_fwbw(&[0x80], None);
+
+    // truncated
+    check_fwbw(&[0xe2, 0x82], None);
+
+    // out of range
+    check_fwbw(&[0xf5, 0x80, 0x80, 0x80], None);
+}
