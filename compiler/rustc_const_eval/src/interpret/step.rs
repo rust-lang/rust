@@ -564,33 +564,19 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 let EvaluatedCalleeAndArgs { callee, args, fn_sig, fn_abi, with_caller_location } =
                     self.eval_callee_and_args(terminator, func, args, &destination)?;
 
-                match callee {
-                    FnVal::Instance(
-                        instance
-                        @ ty::Instance { def: ty::InstanceKind::LlvmIntrinsic(_), args: _ },
-                    ) => {
-                        // FIXME: Should `InPlace` arguments be reset to uninit?
-                        M::call_llvm_intrinsic(
-                            self,
-                            instance,
-                            &Self::copy_fn_args(&args),
-                            &dest_place,
-                            target,
-                        )?;
-                    }
-                    _ => {
-                        let fn_abi = fn_abi.expect("FnAbi should have been computed for this call");
-                        self.init_fn_call(
-                            callee,
-                            (fn_sig.abi(), fn_abi),
-                            &args,
-                            with_caller_location,
-                            &dest_place,
-                            target,
-                            if fn_abi.can_unwind { unwind } else { mir::UnwindAction::Unreachable },
-                        )?;
-                    }
-                };
+                self.init_fn_call(
+                    callee,
+                    (fn_sig.abi(), fn_abi),
+                    &args,
+                    with_caller_location,
+                    &dest_place,
+                    target,
+                    if fn_abi.map_or(false, |fn_abi| fn_abi.can_unwind) {
+                        unwind
+                    } else {
+                        mir::UnwindAction::Unreachable
+                    },
+                )?;
 
                 // Sanity-check that `eval_fn_call` either pushed a new frame or
                 // did a jump to another block. We disable the sanity check for functions that
@@ -607,7 +593,6 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
                 let EvaluatedCalleeAndArgs { callee, args, fn_sig, fn_abi, with_caller_location } =
                     self.eval_callee_and_args(terminator, func, args, &mir::Place::return_place())?;
-                let fn_abi = fn_abi.expect("FnAbi should have been computed for this call");
 
                 self.init_fn_tail_call(
                     callee,
