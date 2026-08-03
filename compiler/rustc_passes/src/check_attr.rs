@@ -12,7 +12,6 @@ use rustc_abi::ExternAbi;
 use rustc_ast::{AttrStyle, MetaItemKind, ast};
 use rustc_attr_parsing::AttributeParser;
 use rustc_data_structures::thin_vec::ThinVec;
-use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{DiagCtxtHandle, IntoDiagArg, MultiSpan, msg};
 use rustc_feature::BUILTIN_ATTRIBUTE_MAP;
 use rustc_hir::attrs::diagnostic::Directive;
@@ -457,17 +456,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 None => {
                     self.dcx().emit_err(diagnostics::FunctionNotFoundInTrait { span: ident.span });
                 }
-            }
-        }
-        // Check for duplicates
-
-        let mut set: UnordMap<Symbol, Span> = Default::default();
-
-        for ident in &*list {
-            if let Some(dup) = set.insert(ident.name, ident.span) {
-                self.tcx.dcx().emit_err(diagnostics::FunctionNamesDuplicated {
-                    spans: vec![dup, ident.span],
-                });
             }
         }
     }
