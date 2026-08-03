@@ -329,7 +329,7 @@ pub struct Session {
     pub target: Target,
     pub host: Target,
     pub opts: config::Options,
-    pub target_tlib_path: Arc<SearchPath>,
+    pub target_tlib_path: SearchPath,
     pub psess: ParseSess,
     pub unstable_features: UnstableFeatures,
     pub config: Cfg,
@@ -396,8 +396,8 @@ pub struct Session {
     /// File paths accessed during the build.
     pub file_depinfo: Lock<FxIndexSet<Symbol>>,
 
-    target_filesearch: FileSearch,
-    host_filesearch: FileSearch,
+    target_filesearch: Arc<FileSearch>,
+    host_filesearch: Arc<FileSearch>,
 
     /// The names of intrinsics that the current codegen backend replaces
     /// with its own implementations.
@@ -1328,15 +1328,8 @@ pub fn build_session(
     let host_triple = config::host_tuple();
     let target_triple = sopts.target_triple.tuple();
     // FIXME use host sysroot?
-    let host_tlib_path =
-        Arc::new(SearchPath::from_sysroot_and_triple(sopts.sysroot.path(), host_triple));
-    let target_tlib_path = if host_triple == target_triple {
-        // Use the same `SearchPath` if host and target triple are identical to avoid unnecessary
-        // rescanning of the target lib path and an unnecessary allocation.
-        Arc::clone(&host_tlib_path)
-    } else {
-        Arc::new(SearchPath::from_sysroot_and_triple(sopts.sysroot.path(), target_triple))
-    };
+    let host_tlib_path = SearchPath::from_sysroot_and_triple(sopts.sysroot.path(), host_triple);
+    let target_tlib_path = SearchPath::from_sysroot_and_triple(sopts.sysroot.path(), target_triple);
 
     let prof = SelfProfilerRef::new(
         self_profiler,
@@ -1350,18 +1343,22 @@ pub fn build_session(
     });
 
     let asm_arch = if target.allow_asm { InlineAsmArch::from_arch(&target.arch) } else { None };
-    let target_filesearch = filesearch::FileSearch::new(
+    let target_filesearch = Arc::new(filesearch::FileSearch::new(
         &sopts.search_paths,
         &target_tlib_path,
         &target,
         sopts.unstable_opts.implicit_sysroot_deps,
-    );
-    let host_filesearch = filesearch::FileSearch::new(
-        &sopts.search_paths,
-        &host_tlib_path,
-        &host,
-        sopts.unstable_opts.implicit_sysroot_deps,
-    );
+    ));
+    let host_filesearch = if target == host {
+        Arc::clone(&target_filesearch)
+    } else {
+        Arc::new(filesearch::FileSearch::new(
+            &sopts.search_paths,
+            &host_tlib_path,
+            &host,
+            sopts.unstable_opts.implicit_sysroot_deps,
+        ))
+    };
 
     let timings = TimingSectionHandler::new(sopts.json_timings);
 
