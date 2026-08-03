@@ -65,7 +65,7 @@ trait TrTwoDefaults {
     fn c(); //~ ERROR function doesn't have a default implementation
 }
 
-#[rustc_must_implement_one_of(abc, xyz)]
+#[rustc_must_implement_one_of(abc, abc)]
 //~^ ERROR the `rustc_must_implement_one_of` attribute cannot be used on functions
 fn function() {}
 

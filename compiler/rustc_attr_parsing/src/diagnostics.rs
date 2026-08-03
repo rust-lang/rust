@@ -60,6 +60,14 @@ pub(crate) struct MustBeNameOfAssociatedFunction {
 }
 
 #[derive(Diagnostic)]
+#[diag("functions names are duplicated")]
+#[note("all `#[rustc_must_implement_one_of]` arguments must be unique")]
+pub(crate) struct FunctionNamesDuplicated {
+    #[primary_span]
+    pub spans: Vec<Span>,
+}
+
+#[derive(Diagnostic)]
 #[diag("unsafe attribute used without unsafe")]
 pub(crate) struct UnsafeAttrOutsideUnsafeLint {
     #[label("usage of unsafe attribute")]
