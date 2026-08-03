@@ -837,6 +837,18 @@ fn test_trim_matches() {
 }
 
 #[test]
+fn test_trim_matches_with_str_pattern() {
+    assert_eq!("abc".trim_start_matches("ab"), "c");
+    assert_eq!("xyzabcxyz".trim_start_matches("xyz"), "abcxyz");
+    assert_eq!("abcabc".trim_start_matches("abc"), "");
+    assert_eq!("ababab".trim_start_matches("ab"), "");
+
+    assert_eq!("abcab".trim_end_matches("ab"), "abc");
+    assert_eq!("xyzabcxyz".trim_end_matches("xyz"), "xyzabc");
+    assert_eq!("abcabc".trim_end_matches("abc"), "");
+}
+
+#[test]
 fn test_trim_start() {
     assert_eq!("".trim_start(), "");
     assert_eq!("a".trim_start(), "a");
@@ -2107,12 +2119,7 @@ mod pattern {
             Match(7, 7),
         ]
     );
-    make_test!(
-        str_searcher_multibyte_haystack,
-        " ",
-        "├──",
-        [Reject(0, 3), Reject(3, 6), Reject(6, 9),]
-    );
+    make_test!(str_searcher_multibyte_haystack, " ", "├──", [Reject(0, 9),]);
     make_test!(
         str_searcher_empty_needle_multibyte_haystack,
         "",
@@ -2143,18 +2150,8 @@ mod pattern {
             Reject(6, 7),
         ]
     );
-    make_test!(
-        char_searcher_multibyte_haystack,
-        ' ',
-        "├──",
-        [Reject(0, 3), Reject(3, 6), Reject(6, 9),]
-    );
-    make_test!(
-        char_searcher_short_haystack,
-        '\u{1F4A9}',
-        "* \t",
-        [Reject(0, 1), Reject(1, 2), Reject(2, 3),]
-    );
+    make_test!(char_searcher_multibyte_haystack, ' ', "├──", [Reject(0, 9),]);
+    make_test!(char_searcher_short_haystack, '\u{1F4A9}', "* \t", [Reject(0, 3),]);
 
     // See #85462
     #[test]
