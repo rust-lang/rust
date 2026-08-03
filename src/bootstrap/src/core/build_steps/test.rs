@@ -44,7 +44,7 @@ use crate::utils::helpers::{
     up_to_date,
 };
 use crate::utils::render_tests::{add_flags_and_try_run_tests, try_run_tests};
-use crate::{CLang, CodegenBackendKind, GitRepo, Mode, PathSet, TestTarget, envify, exit};
+use crate::{CLang, CodegenBackendKind, GitRepo, Mode, TestTarget, envify, exit};
 
 mod compiletest;
 pub mod failed_tests;
@@ -1998,6 +1998,12 @@ impl Coverage {
     const SUITE: &'static str = "coverage";
     const ALL_MODES: &[CompiletestMode] =
         &[CompiletestMode::CoverageMap, CompiletestMode::CoverageRun];
+
+    fn new(run: &RunConfig<'_>, mode: CompiletestMode) -> Self {
+        let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple());
+        let target = run.target;
+        Coverage { compiler, target, mode }
+    }
 }
 
 impl CommandLineStep for Coverage {
@@ -2005,23 +2011,14 @@ impl CommandLineStep for Coverage {
     /// Compiletest will automatically skip the "coverage-run" tests if necessary.
     const IS_HOST: bool = false;
 
-    fn should_run(mut run: ShouldRun<'_>) -> ShouldRun<'_> {
-        // Support various invocation styles, including:
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        // Handle these invocation styles:
+        // - `./x test` (including coverage tests)
         // - `./x test coverage`
+        // - `./x test tests/coverage`
         // - `./x test tests/coverage/trivial.rs`
-        // - `./x test coverage-map`
-        // - `./x test coverage-run -- tests/coverage/trivial.rs`
-        run = run.suite_path(Self::PATH);
-        for mode in Self::ALL_MODES {
-            run = run.alias(mode.as_str());
-        }
-
-        // Allow `./x test --skip=tests` to properly skip the coverage tests,
-        // by not treating the `coverage-map` and `coverage-run` aliases as
-        // implied command-line arguments.
-        run = run.default_to_suites_only();
-
-        run
+        // - `./x test tests/coverage/trivial.rs --skip=coverage-run`
+        run.suite_path(Coverage::PATH)
     }
 
     fn is_default_step(_builder: &Builder<'_>) -> bool {
@@ -2029,41 +2026,13 @@ impl CommandLineStep for Coverage {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple());
-        let target = run.target;
-
-        // List of (coverage) test modes that the coverage test suite will be
-        // run in. It's OK for this to contain duplicates, because the call to
-        // `Builder::ensure` below will take care of deduplication.
-        let mut modes = vec![];
-
-        // From the pathsets that were selected on the command-line (or by default),
-        // determine which modes to run in.
-        for path in &run.paths {
-            match path {
-                PathSet::Set(_) => {
-                    for &mode in Self::ALL_MODES {
-                        if path.assert_single_path().path == Path::new(mode.as_str()) {
-                            modes.push(mode);
-                            break;
-                        }
-                    }
-                }
-                PathSet::Suite(_) => {
-                    modes.extend_from_slice(Self::ALL_MODES);
-                    break;
-                }
-            }
-        }
-
-        // Skip any modes that were explicitly skipped/excluded on the command-line.
+        // Run the tests in all coverage-test modes, but skip any modes that
+        // were explicitly skipped on the command-line (e.g. `--skip=coverage-run`).
         // FIXME(Zalathar): Integrate this into central skip handling somehow?
-        modes.retain(|mode| {
-            !run.builder.config.skip.iter().any(|skip| skip == Path::new(mode.as_str()))
-        });
-
-        for mode in modes {
-            run.builder.ensure(Coverage { compiler, target, mode });
+        for &mode in Coverage::ALL_MODES {
+            if !run.builder.config.skip.iter().any(|skip| skip == Path::new(mode.as_str())) {
+                run.builder.ensure(Coverage::new(&run, mode));
+            }
         }
     }
 
@@ -2079,6 +2048,49 @@ impl CommandLineStep for Coverage {
             path: Self::PATH,
             compare_mode: None,
         });
+    }
+}
+
+/// Registers the `coverage-map` and `coverage-run` aliases, which are then
+/// forwarded to the [`Coverage`] step.
+///
+/// If the aliases were registered by [`Coverage`] directly, they would also
+/// be treated as implied command-line arguments when run by default.
+/// That would cause things like `./x test --skip=tests` to still run coverage
+/// tests, which is undesirable.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum CoverageModeAlias {}
+
+impl CommandLineStep for CoverageModeAlias {
+    type Output = ();
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        // Register the aliases "coverage-map" and "coverage-run", to handle
+        // these invocation styles:
+        // - `./x test coverage-map`
+        // - `./x test coverage-run -- tests/coverage/trivial.rs`
+        Coverage::ALL_MODES.iter().fold(run, |run, mode| run.alias(mode.as_str()))
+    }
+
+    fn is_default_step(_builder: &Builder<'_>) -> bool {
+        false
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        for path in &run.paths {
+            let single_path = &path.assert_single_path().path;
+            for &mode in Coverage::ALL_MODES {
+                if single_path == Path::new(mode.as_str()) {
+                    // Instead of creating an intermediate `CoverageModeAlias`
+                    // step instance, delegate straight to `Coverage`.
+                    run.builder.ensure(Coverage::new(&run, mode));
+                }
+            }
+        }
+    }
+
+    fn run(self, _builder: &Builder<'_>) {
+        unreachable!("never instantiated; `make_run` creates a Coverage step instead");
     }
 }
 
