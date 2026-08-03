@@ -13,7 +13,7 @@ use std::sync::Once;
 use std::time::Instant;
 use std::{env, process};
 
-use bootstrap::{
+use crate::{
     Build, CONFIG_CHANGE_HISTORY, ChangeId, Config, Flags, StepStack, Subcommand, debug,
     find_recent_config_change_ids, human_readable_changes, t,
 };
@@ -22,9 +22,9 @@ fn is_tracing_enabled() -> bool {
     cfg!(feature = "tracing")
 }
 
-fn main() {
+pub fn main() {
     #[cfg(feature = "tracing")]
-    let guard = bootstrap::setup_tracing("BOOTSTRAP_TRACING");
+    let guard = crate::utils::tracing::setup_tracing("BOOTSTRAP_TRACING");
 
     let _start_time = Instant::now();
 
