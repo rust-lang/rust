@@ -51,7 +51,7 @@ serde = { version = "1.0.160", features = ["derive"] }
 serde_json = "1.0"
 term = "1.1"
 thiserror = "1.0.40"
-toml = "0.9.5"
+toml = "1.1"
 tracing = { version = "0.1.37", default-features = false, features = ["std"] }
 tracing-subscriber = { version = "0.3.17", features = ["env-filter"] }
 unicode-segmentation = "1.9"
