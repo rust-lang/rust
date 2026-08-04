@@ -234,10 +234,10 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for TransformTy<'tcx> {
 #[instrument(skip(tcx), ret)]
 fn trait_object_ty<'tcx>(tcx: TyCtxt<'tcx>, poly_trait_ref: ty::PolyTraitRef<'tcx>) -> Ty<'tcx> {
     assert!(!poly_trait_ref.has_non_region_param());
-    let principal_pred = poly_trait_ref.map_bound(|trait_ref| {
+    let principal_predicate = poly_trait_ref.map_bound(|trait_ref| {
         ty::ExistentialPredicate::Trait(ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref))
     });
-    let mut assoc_preds: Vec<_> = traits::supertraits(tcx, poly_trait_ref)
+    let mut assoc_predicates: Vec<_> = traits::supertraits(tcx, poly_trait_ref)
         .flat_map(|super_poly_trait_ref| {
             tcx.associated_items(super_poly_trait_ref.def_id())
                 .in_definition_order()
@@ -268,11 +268,101 @@ fn trait_object_ty<'tcx>(tcx: TyCtxt<'tcx>, poly_trait_ref: ty::PolyTraitRef<'tc
                 })
         })
         .collect();
-    assoc_preds.sort_by(|a, b| a.skip_binder().stable_cmp(tcx, &b.skip_binder()));
-    let preds = tcx.mk_poly_existential_predicates_from_iter(
-        iter::once(principal_pred).chain(assoc_preds.into_iter()),
+    assoc_predicates.sort_by(|a, b| a.skip_binder().stable_cmp(tcx, &b.skip_binder()));
+    let predicates = tcx.mk_poly_existential_predicates_from_iter(
+        iter::once(principal_predicate).chain(assoc_predicates.into_iter()),
     );
-    Ty::new_dynamic(tcx, preds, tcx.lifetimes.re_erased)
+    Ty::new_dynamic(tcx, predicates, tcx.lifetimes.re_erased)
+}
+
+/// We're either a closure or a coroutine. Our goal is to find the trait we're defined on,
+/// instantiate it, and take the type of its only method as our own.
+fn transform_closure_like<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    mut instance: Instance<'tcx>,
+) -> Option<Instance<'tcx>> {
+    if !tcx.is_closure_like(instance.def_id()) {
+        return None;
+    }
+    let closure_like_ty = instance.ty(tcx, ty::TypingEnv::fully_monomorphized());
+    let (trait_id, inputs) = match closure_like_ty.kind() {
+        ty::Closure(..) => {
+            let closure_args = instance.args.as_closure();
+            let trait_id = tcx.fn_trait_kind_to_def_id(closure_args.kind()).unwrap();
+            let tuple_args =
+                tcx.instantiate_bound_regions_with_erased(closure_args.sig()).inputs()[0];
+            (trait_id, Some(tuple_args))
+        }
+        ty::Coroutine(..) => match tcx.coroutine_kind(instance.def_id()).unwrap() {
+            hir::CoroutineKind::Coroutine(..) => (
+                tcx.require_lang_item(LangItem::Coroutine, DUMMY_SP),
+                Some(instance.args.as_coroutine().resume_ty()),
+            ),
+            hir::CoroutineKind::Desugared(desugaring, _) => {
+                let lang_item = match desugaring {
+                    hir::CoroutineDesugaring::Async => LangItem::Future,
+                    hir::CoroutineDesugaring::AsyncGen => LangItem::AsyncIterator,
+                    hir::CoroutineDesugaring::Gen => LangItem::Iterator,
+                };
+                (tcx.require_lang_item(lang_item, DUMMY_SP), None)
+            }
+        },
+        ty::CoroutineClosure(..) => (
+            tcx.require_lang_item(LangItem::FnOnce, DUMMY_SP),
+            Some(
+                tcx.instantiate_bound_regions_with_erased(
+                    instance.args.as_coroutine_closure().coroutine_closure_sig(),
+                )
+                .tupled_inputs_ty,
+            ),
+        ),
+        x => bug!("Unexpected type kind for closure-like: {x:?}"),
+    };
+    let concrete_args = tcx.mk_args_trait(closure_like_ty, inputs.map(Into::into));
+    let trait_ref = ty::TraitRef::new_from_args(tcx, trait_id, concrete_args);
+    let self_ty = trait_object_ty(tcx, ty::Binder::dummy(trait_ref));
+    let abstract_args = tcx.mk_args_trait(self_ty, trait_ref.args.into_iter().skip(1));
+    // There should be exactly one method on this trait, and it should be the one we're
+    // defining.
+    let call_method_id = tcx
+        .associated_items(trait_id)
+        .in_definition_order()
+        .find(|item| item.is_fn())
+        .expect("No call-family function on closure-like Fn trait?")
+        .def_id;
+
+    instance.def = ty::InstanceKind::Virtual(call_method_id, 0);
+    instance.args = abstract_args;
+    Some(instance)
+}
+
+/// Adjust the type ids of DropGlues
+///
+/// DropGlues may have indirect calls to one or more given types drop function. Rust allows
+/// for types to be erased to any trait object and retains the drop function for the original
+/// type, which means at the indirect call sites in DropGlues, when typeid_for_fnabi is
+/// called a second time, it only has information after type erasure and it could be a call
+/// on any arbitrary trait object. Normalize them to a synthesized Drop trait object, both on
+/// declaration/definition, and during code generation at call sites so they have the same
+/// type id and match.
+///
+/// FIXME(rcvalle): This allows a drop call on any trait object to call the drop function of
+///   any other type.
+///
+fn transform_drop_glue<'tcx>(tcx: TyCtxt<'tcx>, mut instance: Instance<'tcx>) -> Instance<'tcx> {
+    let trait_id = tcx
+        .lang_items()
+        .drop_trait()
+        .unwrap_or_else(|| bug!("typeid_for_instance: couldn't get drop_trait lang item"));
+    let predicate = ty::ExistentialPredicate::Trait(ty::ExistentialTraitRef::new_from_args(
+        tcx,
+        trait_id,
+        ty::List::empty(),
+    ));
+    let predicates = tcx.mk_poly_existential_predicates(&[ty::Binder::dummy(predicate)]);
+    let self_ty = Ty::new_dynamic(tcx, predicates, tcx.lifetimes.re_erased);
+    instance.args = tcx.mk_args_trait(self_ty, List::empty());
+    instance
 }
 
 /// Transforms an instance for LLVM CFI and cross-language LLVM CFI support using Itanium C++ ABI
@@ -315,67 +405,13 @@ pub(crate) fn transform_instance<'tcx>(
         && tcx.is_lang_item(instance.def_id(), LangItem::DropGlue))
         || matches!(instance.def, ty::InstanceKind::Shim(ty::ShimKind::DropGlue(..)))
     {
-        // Adjust the type ids of DropGlues
-        //
-        // DropGlues may have indirect calls to one or more given types drop function. Rust allows
-        // for types to be erased to any trait object and retains the drop function for the original
-        // type, which means at the indirect call sites in DropGlues, when typeid_for_fnabi is
-        // called a second time, it only has information after type erasure and it could be a call
-        // on any arbitrary trait object. Normalize them to a synthesized Drop trait object, both on
-        // declaration/definition, and during code generation at call sites so they have the same
-        // type id and match.
-        //
-        // FIXME(rcvalle): This allows a drop call on any trait object to call the drop function of
-        //   any other type.
-        //
-        let def_id = tcx
-            .lang_items()
-            .drop_trait()
-            .unwrap_or_else(|| bug!("typeid_for_instance: couldn't get drop_trait lang item"));
-        let predicate = ty::ExistentialPredicate::Trait(ty::ExistentialTraitRef::new_from_args(
-            tcx,
-            def_id,
-            ty::List::empty(),
-        ));
-        let predicates = tcx.mk_poly_existential_predicates(&[ty::Binder::dummy(predicate)]);
-        let self_ty = Ty::new_dynamic(tcx, predicates, tcx.lifetimes.re_erased);
-        instance.args = tcx.mk_args_trait(self_ty, List::empty());
-    } else if let ty::InstanceKind::Virtual(def_id, _) = instance.def {
-        // Transform self into a trait object of the trait that defines the method for virtual
-        // functions to match the type erasure done below.
-        let upcast_ty = match tcx.trait_of_assoc(def_id) {
-            Some(trait_id) => trait_object_ty(
-                tcx,
-                ty::Binder::dummy(ty::TraitRef::from_assoc(tcx, trait_id, instance.args)),
-            ),
-            // drop_in_place won't have a defining trait, skip the upcast
-            None => instance.args.type_at(0),
-        };
-        let ty::Dynamic(preds, lifetime) = upcast_ty.kind() else {
-            bug!("Tried to remove autotraits from non-dynamic type {upcast_ty}");
-        };
-        let self_ty = if preds.principal().is_some() {
-            let filtered_preds =
-                tcx.mk_poly_existential_predicates_from_iter(preds.into_iter().filter(|pred| {
-                    !matches!(pred.skip_binder(), ty::ExistentialPredicate::AutoTrait(..))
-                }));
-            Ty::new_dynamic(tcx, filtered_preds, *lifetime)
-        } else {
-            // If there's no principal type, re-encode it as a unit, since we don't know anything
-            // about it. This technically discards the knowledge that it was a type that was made
-            // into a trait object at some point, but that's not a lot.
-            tcx.types.unit
-        };
-        instance.args = tcx.mk_args_trait(self_ty, instance.args.into_iter().skip(1));
-    } else if let ty::InstanceKind::Shim(ty::ShimKind::VTable(def_id)) = instance.def
-        && let Some(trait_id) = tcx.trait_of_assoc(def_id)
+        instance = transform_drop_glue(tcx, instance);
+    } else if matches!(instance.def, ty::InstanceKind::Virtual(..)) {
+        instance = transform_virtual_call(tcx, instance);
+    } else if matches!(instance.def, ty::InstanceKind::Shim(ty::ShimKind::VTable(..)))
+        && let Some(transformed) = transform_vtable_shim(tcx, instance)
     {
-        // Adjust the type ids of VTableShims to the type id expected in the call sites for the
-        // entry in the vtable (i.e., by using the signature of the closure passed as an argument
-        // to the shim, or by just removing self).
-        let trait_ref = ty::TraitRef::new_from_args(tcx, trait_id, instance.args);
-        let invoke_ty = trait_object_ty(tcx, ty::Binder::dummy(trait_ref));
-        instance.args = tcx.mk_args_trait(invoke_ty, trait_ref.args.into_iter().skip(1));
+        instance = transformed;
     }
 
     if !options.contains(TransformTyOptions::USE_CONCRETE_SELF) {
@@ -389,7 +425,7 @@ pub(crate) fn transform_instance<'tcx>(
                 ty::TypingEnv::fully_monomorphized(),
                 trait_ref,
             );
-            let invoke_ty = trait_object_ty(tcx, ty::Binder::dummy(trait_ref));
+            let self_ty = trait_object_ty(tcx, ty::Binder::dummy(trait_ref));
 
             // At the call site, any call to this concrete function through a vtable will be
             // `Virtual(method_id, idx)` with appropriate arguments for the method. Since we have the
@@ -402,64 +438,58 @@ pub(crate) fn transform_instance<'tcx>(
             // index value when supertraits are involved.
             instance.def = ty::InstanceKind::Virtual(method_id, 0);
             let abstract_trait_args =
-                tcx.mk_args_trait(invoke_ty, trait_ref.args.into_iter().skip(1));
+                tcx.mk_args_trait(self_ty, trait_ref.args.into_iter().skip(1));
             instance.args = instance.args.rebase_onto(tcx, ancestor, abstract_trait_args);
-        } else if tcx.is_closure_like(instance.def_id()) {
-            // We're either a closure or a coroutine. Our goal is to find the trait we're defined on,
-            // instantiate it, and take the type of its only method as our own.
-            let closure_ty = instance.ty(tcx, ty::TypingEnv::fully_monomorphized());
-            let (trait_id, inputs) = match closure_ty.kind() {
-                ty::Closure(..) => {
-                    let closure_args = instance.args.as_closure();
-                    let trait_id = tcx.fn_trait_kind_to_def_id(closure_args.kind()).unwrap();
-                    let tuple_args =
-                        tcx.instantiate_bound_regions_with_erased(closure_args.sig()).inputs()[0];
-                    (trait_id, Some(tuple_args))
-                }
-                ty::Coroutine(..) => match tcx.coroutine_kind(instance.def_id()).unwrap() {
-                    hir::CoroutineKind::Coroutine(..) => (
-                        tcx.require_lang_item(LangItem::Coroutine, DUMMY_SP),
-                        Some(instance.args.as_coroutine().resume_ty()),
-                    ),
-                    hir::CoroutineKind::Desugared(desugaring, _) => {
-                        let lang_item = match desugaring {
-                            hir::CoroutineDesugaring::Async => LangItem::Future,
-                            hir::CoroutineDesugaring::AsyncGen => LangItem::AsyncIterator,
-                            hir::CoroutineDesugaring::Gen => LangItem::Iterator,
-                        };
-                        (tcx.require_lang_item(lang_item, DUMMY_SP), None)
-                    }
-                },
-                ty::CoroutineClosure(..) => (
-                    tcx.require_lang_item(LangItem::FnOnce, DUMMY_SP),
-                    Some(
-                        tcx.instantiate_bound_regions_with_erased(
-                            instance.args.as_coroutine_closure().coroutine_closure_sig(),
-                        )
-                        .tupled_inputs_ty,
-                    ),
-                ),
-                x => bug!("Unexpected type kind for closure-like: {x:?}"),
-            };
-            let concrete_args = tcx.mk_args_trait(closure_ty, inputs.map(Into::into));
-            let trait_ref = ty::TraitRef::new_from_args(tcx, trait_id, concrete_args);
-            let invoke_ty = trait_object_ty(tcx, ty::Binder::dummy(trait_ref));
-            let abstract_args = tcx.mk_args_trait(invoke_ty, trait_ref.args.into_iter().skip(1));
-            // There should be exactly one method on this trait, and it should be the one we're
-            // defining.
-            let call = tcx
-                .associated_items(trait_id)
-                .in_definition_order()
-                .find(|it| it.is_fn())
-                .expect("No call-family function on closure-like Fn trait?")
-                .def_id;
-
-            instance.def = ty::InstanceKind::Virtual(call, 0);
-            instance.args = abstract_args;
+        } else if let Some(transformed) = transform_closure_like(tcx, instance) {
+            instance = transformed;
         }
     }
 
     instance
+}
+
+/// Transform self into a trait object of the trait that defines the method for virtual
+/// functions to match the type erasure done below.
+fn transform_virtual_call<'tcx>(tcx: TyCtxt<'tcx>, mut instance: Instance<'tcx>) -> Instance<'tcx> {
+    let upcast_ty = match tcx.trait_of_assoc(instance.def_id()) {
+        Some(trait_id) => trait_object_ty(
+            tcx,
+            ty::Binder::dummy(ty::TraitRef::from_assoc(tcx, trait_id, instance.args)),
+        ),
+        // drop_in_place won't have a defining trait, skip the upcast
+        None => instance.args.type_at(0),
+    };
+    let ty::Dynamic(preds, lifetime) = upcast_ty.kind() else {
+        bug!("Tried to remove autotraits from non-dynamic type {upcast_ty}");
+    };
+    let self_ty = if preds.principal().is_some() {
+        let filtered_preds =
+            tcx.mk_poly_existential_predicates_from_iter(preds.into_iter().filter(|pred| {
+                !matches!(pred.skip_binder(), ty::ExistentialPredicate::AutoTrait(..))
+            }));
+        Ty::new_dynamic(tcx, filtered_preds, *lifetime)
+    } else {
+        // If there's no principal type, re-encode it as a unit, since we don't know anything
+        // about it. This technically discards the knowledge that it was a type that was made
+        // into a trait object at some point, but that's not a lot.
+        tcx.types.unit
+    };
+    instance.args = tcx.mk_args_trait(self_ty, instance.args.into_iter().skip(1));
+    instance
+}
+
+/// Adjust the type ids of VTableShims to the type id expected in the call sites for the
+/// entry in the vtable (i.e., by using the signature of the closure passed as an argument
+/// to the shim, or by just removing self).
+fn transform_vtable_shim<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    mut instance: Instance<'tcx>,
+) -> Option<Instance<'tcx>> {
+    let trait_id = tcx.trait_of_assoc(instance.def_id())?;
+    let trait_ref = ty::TraitRef::new_from_args(tcx, trait_id, instance.args);
+    let self_ty = trait_object_ty(tcx, ty::Binder::dummy(trait_ref));
+    instance.args = tcx.mk_args_trait(self_ty, trait_ref.args.into_iter().skip(1));
+    Some(instance)
 }
 
 fn default_or_shim<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> Option<DefId> {
