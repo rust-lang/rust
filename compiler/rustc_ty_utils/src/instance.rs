@@ -434,6 +434,8 @@ fn resolve_associated_item<'tcx>(
                 let def = if self_ty.needs_drop(tcx, typing_env) {
                     match *self_ty.kind() {
                         ty::Coroutine(coroutine_def_id, ..) => {
+                            // FIXME: sync drop of coroutine with async drop (generate both versions?)
+                            // Currently just ignored
                             if tcx.optimized_mir(coroutine_def_id).coroutine_drop_async().is_some()
                             {
                                 ty::InstanceKind::Shim(ty::ShimKind::DropGlue(trait_item_id, None))
