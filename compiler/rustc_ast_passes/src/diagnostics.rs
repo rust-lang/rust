@@ -1257,3 +1257,35 @@ pub(crate) struct VarargsWithoutPattern {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(Subdiagnostic)]
+pub(crate) enum ClosureLifetimeBinderBindingTypeSugg {
+    #[multipart_suggestion(
+        "consider setting the binding type instead",
+        applicability = "machine-applicable",
+        style = "verbose"
+    )]
+    MachineApplicable {
+        #[suggestion_part(code = ": {ty}")]
+        binding: Span,
+        ty: String,
+        #[suggestion_part(code = "{closure}")]
+        closure_header: Span,
+        closure: String,
+    },
+    /// Used when the body references other simple paths: they may be captures (or free items).
+    /// Without name resolution we can't tell, so rustfix must not auto-apply.
+    #[multipart_suggestion(
+        "consider setting the binding type instead",
+        applicability = "maybe-incorrect",
+        style = "verbose"
+    )]
+    MaybeIncorrect {
+        #[suggestion_part(code = ": {ty}")]
+        binding: Span,
+        ty: String,
+        #[suggestion_part(code = "{closure}")]
+        closure_header: Span,
+        closure: String,
+    },
+}
