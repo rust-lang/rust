@@ -576,7 +576,9 @@ impl<'a> Iterator for Messages<'a> {
 /// A Unix socket Ancillary data struct.
 ///
 /// # Example
-/// ```no_run
+///
+#[cfg_attr(target_family = "unix", doc = "```no_run")]
+#[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
 /// #![feature(unix_socket_ancillary_data)]
 /// use std::os::unix::net::{UnixStream, SocketAncillary, AncillaryData};
 /// use std::io::IoSliceMut;
@@ -615,7 +617,8 @@ impl<'a> SocketAncillary<'a> {
     ///
     /// # Example
     ///
-    /// ```no_run
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// # #![allow(unused_mut)]
     /// #![feature(unix_socket_ancillary_data)]
     /// use std::os::unix::net::SocketAncillary;
@@ -658,7 +661,8 @@ impl<'a> SocketAncillary<'a> {
     ///
     /// # Example
     ///
-    /// ```no_run
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// #![feature(unix_socket_ancillary_data)]
     /// use std::os::unix::net::{UnixStream, SocketAncillary};
     /// use std::io::IoSliceMut;
@@ -692,7 +696,8 @@ impl<'a> SocketAncillary<'a> {
     ///
     /// # Example
     ///
-    /// ```no_run
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// #![feature(unix_socket_ancillary_data)]
     /// use std::os::unix::net::{UnixStream, SocketAncillary};
     /// use std::os::unix::io::AsRawFd;
@@ -759,7 +764,8 @@ impl<'a> SocketAncillary<'a> {
     ///
     /// # Example
     ///
-    /// ```no_run
+    #[cfg_attr(target_family = "unix", doc = "```no_run")]
+    #[cfg_attr(not(target_family = "unix"), doc = "```ignore (needs unix)")]
     /// #![feature(unix_socket_ancillary_data)]
     /// use std::os::unix::net::{UnixStream, SocketAncillary, AncillaryData};
     /// use std::io::IoSliceMut;

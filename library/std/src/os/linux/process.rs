@@ -20,8 +20,10 @@ struct InnerPidFd;
 /// with [`create_pidfd`]. Subsequently, the created pidfd can be retrieved
 /// from the [`Child`] by calling [`pidfd`] or [`into_pidfd`].
 ///
-/// Example:
-/// ```no_run
+/// # Examples
+///
+#[cfg_attr(target_os = "linux", doc = "```no_run")]
+#[cfg_attr(not(target_os = "linux"), doc = "```ignore (needs linux)")]
 /// #![feature(linux_pidfd)]
 /// use std::os::linux::process::{CommandExt, ChildExt};
 /// use std::process::Command;
