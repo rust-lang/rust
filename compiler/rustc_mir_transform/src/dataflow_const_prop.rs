@@ -204,16 +204,10 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
         }
     }
 
-    fn handle_operand(
-        &self,
-        operand: &Operand<'tcx>,
-        state: &mut State<FlatSet<Scalar>>,
-    ) -> ValueOrPlace<FlatSet<Scalar>> {
+    fn handle_operand(&self, operand: &Operand<'tcx>) -> ValueOrPlace<FlatSet<Scalar>> {
         match operand {
             Operand::RuntimeChecks(_) => ValueOrPlace::TOP,
-            Operand::Constant(constant) => {
-                ValueOrPlace::Value(self.handle_constant(constant, state))
-            }
+            Operand::Constant(constant) => ValueOrPlace::Value(self.handle_constant(constant)),
             Operand::Copy(place) | Operand::Move(place) => {
                 // On move, we would ideally flood the place with bottom. But with the current
                 // framework this is not possible (similar to `InterpCx::eval_operand`).
@@ -376,7 +370,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                 operand,
                 _,
             ) => {
-                let pointer = self.handle_operand(operand, state);
+                let pointer = self.handle_operand(operand);
                 state.assign(target.as_ref(), pointer, &self.map);
 
                 if let Some(target_len) = self.map.find_len(target.as_ref())
@@ -461,7 +455,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
                 }
             }
             Rvalue::Discriminant(place) => state.get_discr(place.as_ref(), &self.map),
-            Rvalue::Use(operand, _) => return self.handle_operand(operand, state),
+            Rvalue::Use(operand, _) => return self.handle_operand(operand),
             Rvalue::CopyForDeref(_) => bug!("`CopyForDeref` in runtime MIR"),
             Rvalue::Ref(..) | Rvalue::Reborrow(..) | Rvalue::RawPtr(..) => {
                 // We don't track such places.
@@ -480,11 +474,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
         ValueOrPlace::Value(val)
     }
 
-    fn handle_constant(
-        &self,
-        constant: &ConstOperand<'tcx>,
-        _state: &mut State<FlatSet<Scalar>>,
-    ) -> FlatSet<Scalar> {
+    fn handle_constant(&self, constant: &ConstOperand<'tcx>) -> FlatSet<Scalar> {
         constant
             .const_
             .try_eval_scalar(self.tcx, self.typing_env)
@@ -497,7 +487,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
         targets: &'mir SwitchTargets,
         state: &mut State<FlatSet<Scalar>>,
     ) -> TerminatorEdges<'mir, 'tcx> {
-        let value = match self.handle_operand(discr, state) {
+        let value = match self.handle_operand(discr) {
             ValueOrPlace::Value(value) => value,
             ValueOrPlace::Place(place) => state.get_idx(place, &self.map),
         };
@@ -676,7 +666,7 @@ impl<'a, 'tcx> ConstAnalysis<'a, 'tcx> {
         op: &Operand<'tcx>,
         state: &mut State<FlatSet<Scalar>>,
     ) -> FlatSet<ImmTy<'tcx>> {
-        let value = match self.handle_operand(op, state) {
+        let value = match self.handle_operand(op) {
             ValueOrPlace::Value(value) => value,
             ValueOrPlace::Place(place) => state.get_idx(place, &self.map),
         };
