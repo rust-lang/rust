@@ -99,7 +99,7 @@ use crate::{
     },
     method_resolution::CandidateId,
     next_solver::{
-        AliasTy, Const, ConstKind, DbInterner, ErrorGuaranteed, GenericArgs, Region,
+        AliasTy, Const, ConstKind, DbInterner, ErrorGuaranteed, GenericArgs, Region, StoredFnSig,
         StoredGenericArg, StoredGenericArgs, StoredTy, StoredTys, Term, Ty, TyKind, Tys,
         abi::Safety,
         infer::{InferCtxt, ObligationInspector, traits::ObligationCause},
@@ -410,6 +410,11 @@ pub enum InferenceDiagnostic {
         expected: usize,
         #[type_visitable(ignore)]
         found: usize,
+        /// True when the call goes through the `Fn`/`FnMut`/`FnOnce` trait
+        /// (i.e. arguments were bundled into a tuple). Determines whether the
+        /// diagnostic surface uses E0057 (Fn-trait call) or E0061 (regular call).
+        #[type_visitable(ignore)]
+        is_fn_trait_call: bool,
     },
     MismatchedTupleStructPatArgCount {
         #[type_visitable(ignore)]
@@ -820,7 +825,7 @@ pub struct InferenceResult<'db> {
     defined_anon_consts: ThinVec<AnonConstId<'db>>,
 }
 
-#[derive(Clone, PartialEq, Eq, Debug, Default)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct ClosureData {
     /// Tracks the minimum captures required for a closure;
     /// see `MinCaptureInformationMap` for more details.
@@ -849,6 +854,42 @@ pub struct ClosureData {
     /// information on `t` in order to create place `t.0` and `t.1`. We can solve this
     /// issue by fake reading `t`.
     pub fake_reads: Box<[(Place, FakeReadCause, SmallVec<[CaptureSourceStack; 2]>)]>,
+
+    /// For each fn, records the "liberated" types of its arguments
+    /// and return type. Liberated means that all bound regions
+    /// (including late-bound regions) are replaced with free
+    /// equivalents. This table is not used in codegen (since regions
+    /// are erased there) and hence is not serialized to metadata.
+    ///
+    /// This table also contains the "revealed" values for any `impl Trait`
+    /// that appear in the signature and whose values are being inferred
+    /// by this function.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use std::fmt::Debug;
+    /// fn foo(x: &u32) -> impl Debug { *x }
+    /// ```
+    ///
+    /// The function signature here would be:
+    ///
+    /// ```ignore (illustrative)
+    /// for<'a> fn(&'a u32) -> Foo
+    /// ```
+    ///
+    /// where `Foo` is an opaque type created for this function.
+    ///
+    ///
+    /// The *liberated* form of this would be
+    ///
+    /// ```ignore (illustrative)
+    /// fn(&'a u32) -> u32
+    /// ```
+    ///
+    /// Note that `'a` is not bound (it would be an `ReLateParam`) and
+    /// that the `Foo` opaque type is replaced by its hidden type.
+    pub liberated_sig: StoredFnSig,
 }
 
 /// Part of `MinCaptureInformationMap`; Maps a root variable to the list of `CapturedPlace`.
@@ -1044,10 +1085,7 @@ impl<'db> InferenceResult<'db> {
     fn for_body(db: &dyn HirDatabase, def: DefWithBodyId) -> InferenceResult<'_> {
         infer_query(db, def)
     }
-}
 
-#[salsa::tracked]
-impl<'db> InferenceResult<'db> {
     /// Infer types for all const expressions in an item's signature.
     ///
     /// Returns an `InferenceResult` containing type information for array lengths,
@@ -1400,7 +1438,7 @@ impl<'db> InferenceContext<'db> {
         lowering_mode: LoweringMode,
     ) -> Self {
         let trait_env = db.trait_environment(generic_def);
-        let table = unify::InferenceTable::new(db, trait_env, resolver.krate(), store_owner);
+        let table = unify::InferenceTable::new(db, trait_env, resolver.krate(), owner);
         let types = crate::next_solver::default_types(db);
         InferenceContext {
             result: InferenceResult::new(types.types.error),
@@ -1677,7 +1715,7 @@ impl<'db> InferenceContext<'db> {
         }
         pat_adjustments.shrink_to_fit();
         for closure_data in closures_data.values_mut() {
-            let ClosureData { min_captures, fake_reads } = closure_data;
+            let ClosureData { min_captures, fake_reads, liberated_sig } = closure_data;
             let dummy_place = || Place {
                 base_ty: types.types.error.store(),
                 base: closure::analysis::expr_use_visitor::PlaceBase::Rvalue,
@@ -1706,6 +1744,8 @@ impl<'db> InferenceContext<'db> {
                 min_capture.shrink_to_fit();
             }
             min_captures.shrink_to_fit();
+
+            resolver.resolve_completely(liberated_sig);
         }
         closures_data.shrink_to_fit();
         *tuple_field_access_types = tuple_field_accesses_rev

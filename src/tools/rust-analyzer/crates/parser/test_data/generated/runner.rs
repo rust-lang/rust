@@ -121,6 +121,10 @@ mod ok {
         run_and_expect_no_errors("test_data/parser/inline/ok/closure_params.rs");
     }
     #[test]
+    fn closure_postfix_range_method_call() {
+        run_and_expect_no_errors("test_data/parser/inline/ok/closure_postfix_range_method_call.rs");
+    }
+    #[test]
     fn closure_range_method_call() {
         run_and_expect_no_errors("test_data/parser/inline/ok/closure_range_method_call.rs");
     }

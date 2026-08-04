@@ -998,7 +998,7 @@ impl GlobalState {
 
                     let path = VfsPath::from(path);
                     // If the file is in mem docs, it's managed by the client via
-                    // notifications so only set it if its not in there. Library files are
+                    // notifications so only set it if it's not in there. Library files are
                     // exempt from that authority as they are considered immutable, for
                     // them disk is always the source of truth.
                     let is_library = self.source_root_config.path_is_library(&path);

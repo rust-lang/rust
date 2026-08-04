@@ -194,7 +194,7 @@ fn process_struct_name_reference(
                     let range = ctx.sema.original_range_opt(pat.syntax())?.range;
                     let place = cover_edit_range(source.syntax(), range);
                     let elements = vec![
-                        make.name_ref(&name.text()).syntax().clone().into(),
+                        make.name_ref(name.text()).syntax().clone().into(),
                         make.token(T![:]).into(),
                         make.whitespace(" ").into(),
                     ];
@@ -237,7 +237,7 @@ fn process_struct_name_reference(
                     let range = ctx.sema.original_range_opt(expr.syntax())?.range;
                     let place = cover_edit_range(source.syntax(), range);
                     let elements = vec![
-                        make.name_ref(&name.text()).syntax().clone().into(),
+                        make.name_ref(name.text()).syntax().clone().into(),
                         make.token(T![:]).into(),
                         make.whitespace(" ").into(),
                     ];

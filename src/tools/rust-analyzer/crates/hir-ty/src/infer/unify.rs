@@ -3,7 +3,7 @@
 use std::fmt;
 
 use base_db::Crate;
-use hir_def::{ExpressionStoreOwnerId, GenericParamId, TraitId};
+use hir_def::{GenericParamId, TraitId};
 use rustc_hash::FxHashSet;
 use rustc_type_ir::{
     TyVid, TypeFoldable, TypeVisitableExt,
@@ -14,7 +14,7 @@ use smallvec::SmallVec;
 use thin_vec::ThinVec;
 
 use crate::{
-    InferenceDiagnostic, Span,
+    InferBodyId, InferenceDiagnostic, Span,
     db::HirDatabase,
     next_solver::{
         Canonical, ClauseKind, Const, ConstKind, DbInterner, ErrorGuaranteed, GenericArg,
@@ -144,7 +144,7 @@ impl<'db> InferenceTable<'db> {
         db: &'db dyn HirDatabase,
         trait_env: ParamEnv<'db>,
         krate: Crate,
-        owner: ExpressionStoreOwnerId,
+        owner: InferBodyId<'db>,
     ) -> Self {
         let interner = DbInterner::new_with(db, krate);
         let typing_mode = TypingMode::typeck_for_body(interner, owner.into());

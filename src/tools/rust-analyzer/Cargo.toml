@@ -86,14 +86,14 @@ vfs-notify = { path = "./crates/vfs-notify", version = "0.0.0" }
 vfs = { path = "./crates/vfs", version = "0.0.0" }
 edition = { path = "./crates/edition", version = "0.0.0" }
 
-ra-ap-rustc_lexer = { version = "0.165", default-features = false }
-ra-ap-rustc_parse_format = { version = "0.165", default-features = false }
-ra-ap-rustc_index = { version = "0.165", default-features = false }
-ra-ap-rustc_abi = { version = "0.165", default-features = false }
-ra-ap-rustc_pattern_analysis = { version = "0.165", default-features = false }
-ra-ap-rustc_ast_ir = { version = "0.165", default-features = false }
-ra-ap-rustc_type_ir = { version = "0.165", default-features = false }
-ra-ap-rustc_next_trait_solver = { version = "0.165", default-features = false }
+ra-ap-rustc_lexer = { version = "0.166", default-features = false }
+ra-ap-rustc_parse_format = { version = "0.166", default-features = false }
+ra-ap-rustc_index = { version = "0.166", default-features = false }
+ra-ap-rustc_abi = { version = "0.166", default-features = false }
+ra-ap-rustc_pattern_analysis = { version = "0.166", default-features = false }
+ra-ap-rustc_ast_ir = { version = "0.166", default-features = false }
+ra-ap-rustc_type_ir = { version = "0.166", default-features = false }
+ra-ap-rustc_next_trait_solver = { version = "0.166", default-features = false }
 
 # local crates that aren't published to crates.io. These should not have versions.
 
@@ -123,7 +123,7 @@ process-wrap = { version = "9.1.0", features = ["std"] }
 pulldown-cmark-to-cmark = "10.0.4"
 pulldown-cmark = { version = "0.9.6", default-features = false }
 rayon = "1.10.0"
-rowan = "=0.15.19"
+rowan = "0.17.0"
 # Ideally we'd not enable the macros feature but unfortunately the `tracked` attribute does not work
 # on impls without it
 salsa = { version = "0.27.0", default-features = false, features = [

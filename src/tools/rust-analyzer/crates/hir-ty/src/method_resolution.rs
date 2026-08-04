@@ -31,7 +31,7 @@ use hir_def::{
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 use rustc_type_ir::{
-    TypeVisitableExt,
+    TypeVisitableExt, VisitorResult,
     fast_reject::{TreatParams, simplify_type},
     inherent::{BoundExistentialPredicates, IntoKind},
 };
@@ -54,6 +54,7 @@ use crate::{
         obligation_ctxt::ObligationCtxt,
         util::clauses_as_obligations,
     },
+    ret,
     traits::ParamEnvAndCrate,
 };
 
@@ -835,27 +836,34 @@ impl<'db> TraitImpls<'db> {
         }
     }
 
-    pub fn for_each_crate_and_block(
+    pub fn for_each_crate_and_block<R: VisitorResult>(
         db: &'db dyn HirDatabase,
         krate: Crate,
         block: Option<BlockIdLt<'db>>,
-        for_each: &mut dyn FnMut(&TraitImpls<'db>),
-    ) {
+        for_each: &mut dyn FnMut(&TraitImpls<'db>) -> R,
+    ) -> R {
         let blocks = std::iter::successors(block, |block| block.module(db).block(db));
-        blocks.filter_map(|block| Self::for_block(db, block)).for_each(&mut *for_each);
-        Self::for_crate_and_deps(db, krate).iter().map(|it| &**it).for_each(for_each);
+        for impl_ in blocks.filter_map(|block| Self::for_block(db, block)) {
+            ret!(for_each(impl_));
+        }
+        for impl_ in Self::for_crate_and_deps(db, krate) {
+            ret!(for_each(impl_));
+        }
+        R::output()
     }
 
     /// Like [`Self::for_each_crate_and_block()`], but takes in account two blocks, one for a trait and one for a self type.
-    pub fn for_each_crate_and_block_trait_and_type(
+    pub fn for_each_crate_and_block_trait_and_type<R: VisitorResult>(
         db: &'db dyn HirDatabase,
         krate: Crate,
         type_block: Option<BlockIdLt<'db>>,
         trait_block: Option<BlockIdLt<'db>>,
-        for_each: &mut dyn FnMut(&TraitImpls<'db>),
-    ) {
+        for_each: &mut dyn FnMut(&TraitImpls<'db>) -> R,
+    ) -> R {
         let in_self_and_deps = TraitImpls::for_crate_and_deps(db, krate);
-        in_self_and_deps.iter().for_each(|impls| for_each(impls));
+        for impl_ in in_self_and_deps {
+            ret!(for_each(impl_));
+        }
 
         // We must not provide duplicate impls to the solver. Therefore we work with the following strategy:
         // start from each block, and walk ancestors until you meet the other block. If they never meet,
@@ -874,13 +882,20 @@ impl<'db> TraitImpls<'db> {
                 .filter_map(move |block| TraitImpls::for_block(db, block))
         };
         if trait_block == type_block {
-            blocks_iter(trait_block)
-                .filter_map(|block| TraitImpls::for_block(db, block))
-                .for_each(for_each);
+            for impl_ in
+                blocks_iter(trait_block).filter_map(|block| TraitImpls::for_block(db, block))
+            {
+                ret!(for_each(impl_));
+            }
         } else {
-            for_each_block(trait_block, type_block).for_each(&mut *for_each);
-            for_each_block(type_block, trait_block).for_each(for_each);
+            for impl_ in for_each_block(trait_block, type_block) {
+                ret!(for_each(impl_));
+            }
+            for impl_ in for_each_block(type_block, trait_block) {
+                ret!(for_each(impl_));
+            }
         }
+        R::output()
     }
 }
 

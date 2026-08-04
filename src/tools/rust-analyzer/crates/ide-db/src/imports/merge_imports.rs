@@ -582,8 +582,8 @@ fn path_segment_cmp(a: &ast::PathSegment, b: &ast::PathSegment) -> Ordering {
                 (Some(_), None) => Ordering::Greater,
                 (None, Some(_)) => Ordering::Less,
                 (Some(a_name), Some(b_name)) => {
-                    let a_text = a_name.as_str().trim_start_matches("r#");
-                    let b_text = b_name.as_str().trim_start_matches("r#");
+                    let a_text = a_name.trim_start_matches("r#");
+                    let b_text = b_name.trim_start_matches("r#");
                     version_sort::version_sort(a_text, b_text)
                 }
             }
@@ -614,15 +614,13 @@ fn use_tree_cmp_by_tree_list_glob_or_alias(
                 .name()
                 .as_ref()
                 .map(ast::Name::text)
-                .as_ref()
-                .map_or("_", |a_name| a_name.as_str().trim_start_matches("r#"))
+                .map_or("_", |a_name| a_name.trim_start_matches("r#"))
                 .cmp(
                     b_rename
                         .name()
                         .as_ref()
                         .map(ast::Name::text)
-                        .as_ref()
-                        .map_or("_", |b_name| b_name.as_str().trim_start_matches("r#")),
+                        .map_or("_", |b_name| b_name.trim_start_matches("r#")),
                 ),
         },
     };

@@ -1663,7 +1663,7 @@ fn classify_name_ref<'db>(
                     let res = sema.resolve_path(&qualifier);
 
                     // For understanding how and why super_chain_len is calculated the way it
-                    // is check the documentation at it's definition
+                    // is check the documentation at its definition
                     let mut segment_count = 0;
                     let super_count = iter::successors(Some(qualifier.clone()), |p| p.qualifier())
                         .take_while(|p| {
