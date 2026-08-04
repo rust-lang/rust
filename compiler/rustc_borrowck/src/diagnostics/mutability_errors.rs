@@ -1086,62 +1086,76 @@ impl<'tcx> MirBorrowckCtxt<'_, '_, 'tcx> {
                 }
             }
         }
-        if let Some(body) = tcx.hir_maybe_body_owned_by(self.mir_def_id())
-            && let Block(block, _) = body.value.kind
+        let Some(body) = tcx.hir_maybe_body_owned_by(self.mir_def_id()) else { return };
+        let Block(block, _) = body.value.kind else { return };
+        // `span` corresponds to the expression being iterated, find the `for`-loop desugared
+        // expression with that span in order to identify potential fixes when encountering a
+        // read-only iterator that should be mutable.
+        let mut expr = if let ControlFlow::Break(expr) = (Finder { span }).visit_block(block)
+            && let Call(_, [expr]) = expr.kind
         {
-            // `span` corresponds to the expression being iterated, find the `for`-loop desugared
-            // expression with that span in order to identify potential fixes when encountering a
-            // read-only iterator that should be mutable.
-            if let ControlFlow::Break(expr) = (Finder { span }).visit_block(block)
-                && let Call(_, [expr]) = expr.kind
-            {
-                match expr.kind {
-                    MethodCall(path_segment, _, _, span) => {
-                        // We have `for _ in iter.read_only_iter()`, try to
-                        // suggest `for _ in iter.mutable_iter()` instead.
-                        let opt_suggestions = tcx
-                            .typeck(path_segment.hir_id.owner.def_id)
-                            .type_dependent_def_id(expr.hir_id)
-                            .and_then(|def_id| tcx.impl_of_assoc(def_id))
-                            .map(|def_id| tcx.associated_items(def_id))
-                            .map(|assoc_items| {
-                                assoc_items
-                                    .in_definition_order()
-                                    .map(|assoc_item_def| assoc_item_def.ident(tcx))
-                                    .filter(|&ident| {
-                                        let original_method_ident = path_segment.ident;
-                                        original_method_ident != ident
-                                            && ident.as_str().starts_with(
-                                                &original_method_ident.name.to_string(),
-                                            )
-                                    })
-                                    .map(|ident| format!("{ident}()"))
-                                    .peekable()
-                            });
+            expr
+        } else {
+            return;
+        };
+        loop {
+            match expr.kind {
+                MethodCall(path_segment, _, _, span) => {
+                    // We have `for _ in iter.read_only_iter()`, try to
+                    // suggest `for _ in iter.mutable_iter()` instead.
+                    let opt_suggestions = tcx
+                        .typeck(path_segment.hir_id.owner.def_id)
+                        .type_dependent_def_id(expr.hir_id)
+                        .and_then(|def_id| tcx.impl_of_assoc(def_id))
+                        .map(|def_id| tcx.associated_items(def_id))
+                        .map(|assoc_items| {
+                            assoc_items
+                                .in_definition_order()
+                                .map(|assoc_item_def| assoc_item_def.ident(tcx))
+                                .filter(|&ident| {
+                                    let original_method_ident = path_segment.ident;
+                                    original_method_ident != ident
+                                        && ident
+                                            .as_str()
+                                            .starts_with(&original_method_ident.name.to_string())
+                                })
+                                .map(|ident| format!("{ident}()"))
+                                .peekable()
+                        });
 
-                        if let Some(mut suggestions) = opt_suggestions
-                            && suggestions.peek().is_some()
-                        {
-                            err.span_suggestions(
-                                span,
-                                "use mutable method",
-                                suggestions,
-                                Applicability::MaybeIncorrect,
-                            );
-                        }
-                    }
-                    AddrOf(BorrowKind::Ref, Mutability::Not, expr) => {
-                        // We have `for _ in &i`, suggest `for _ in &mut i`.
-                        err.span_suggestion_verbose(
-                            expr.span.shrink_to_lo(),
-                            "use a mutable iterator instead",
-                            "mut ",
-                            Applicability::MachineApplicable,
+                    if let Some(mut suggestions) = opt_suggestions
+                        && suggestions.peek().is_some()
+                    {
+                        err.span_suggestions(
+                            span,
+                            "use mutable method",
+                            suggestions,
+                            Applicability::MaybeIncorrect,
                         );
                     }
-                    _ => {}
                 }
+                AddrOf(BorrowKind::Ref, Mutability::Not, expr) => {
+                    // We have `for _ in &i`, suggest `for _ in &mut i`.
+                    err.span_suggestion_verbose(
+                        expr.span.shrink_to_lo(),
+                        "use a mutable iterator instead",
+                        "mut ",
+                        Applicability::MachineApplicable,
+                    );
+                }
+                ExprKind::Path(hir::QPath::Resolved(None, path))
+                    if let hir::def::Res::Local(hir_id) = path.res
+                        && let hir::Node::LetStmt(stmt) =
+                            self.infcx.tcx.parent_hir_node(hir_id)
+                        && let Some(init) = stmt.init =>
+                {
+                    // We're iterating over a binding, try to suggest changing the binding's expr.
+                    expr = init;
+                    continue;
+                }
+                _ => {}
             }
+            break;
         }
     }
 
