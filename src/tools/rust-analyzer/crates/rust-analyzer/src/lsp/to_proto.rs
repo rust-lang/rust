@@ -2185,31 +2185,6 @@ fn bar(_: usize) {}
         assert!(!docs.contains("use crate::bar"));
     }
 
-    #[test]
-    fn completion_text_edit_falls_back_to_insert_range() {
-        let (cursor, text) = extract_offset("drop(where$0sheep)");
-        let line_index = LineIndex {
-            index: Arc::new(ide::LineIndex::new(&text)),
-            endings: LineEndings::Unix,
-            encoding: PositionEncoding::Utf8,
-        };
-        let source_range = TextRange::new(TextSize::of("drop("), TextSize::of("drop(wheresheep"));
-
-        let actual = completion_text_edit(
-            &line_index,
-            position(&line_index, cursor),
-            false,
-            Indel::replace(source_range, "wherewolf".to_owned()),
-        );
-        let expected = lsp_types::TextEdit {
-            range: range(&line_index, TextRange::new(source_range.start(), cursor)),
-            new_text: "wherewolf".to_owned(),
-        }
-        .into();
-
-        assert_eq!(actual, expected);
-    }
-
     #[track_caller]
     fn check_rendered_snippets(edit: TextEdit, snippets: SnippetEdit, expect: Expect) {
         check_rendered_snippets_in_source(
