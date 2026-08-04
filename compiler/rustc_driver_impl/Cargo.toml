@@ -57,6 +57,7 @@ ctrlc = "3.4.4"
 [features]
 # tidy-alphabetical-start
 check_only = ['rustc_interface/check_only']
+jemalloc = []
 llvm = ['rustc_interface/llvm']
 llvm_offload = ['rustc_interface/llvm_offload']
 max_level_info = ['rustc_log/max_level_info']
