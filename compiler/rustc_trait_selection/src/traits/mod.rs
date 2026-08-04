@@ -587,6 +587,20 @@ pub fn try_evaluate_const<'tcx>(
     }
 }
 
+pub(crate) fn try_evaluate_const_with_fallible_normalization<'tcx, E>(
+    infcx: &InferCtxt<'tcx>,
+    ct: ty::Const<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    normalize_ty: impl FnOnce(Unnormalized<'tcx, Ty<'tcx>>) -> Result<Ty<'tcx>, E>,
+) -> Result<Result<ty::Const<'tcx>, E>, EvaluateConstErr> {
+    match try_evaluate_const_inner(infcx, ct, param_env)? {
+        EvaluatedConst::Const(ct) => Ok(Ok(ct)),
+        EvaluatedConst::ValTree { value, ty } => {
+            Ok(normalize_ty(ty).map(|ty| ty::Const::new_value(infcx.tcx, value, ty)))
+        }
+    }
+}
+
 #[instrument(name = "try_evaluate_const", level = "debug", skip(infcx))]
 fn try_evaluate_const_inner<'tcx>(
     infcx: &InferCtxt<'tcx>,
