@@ -49,16 +49,16 @@ SYSSRC_SHA=766ac21f33cfe0e701dfedb894fa07f36d811da1a12e979181e8fca7af4e627852680
 BASE_SHA=1c6b74cedd7fc92adfe51239808d41e63fc6eb9e9877c1101c1da515a38457278c7774e8fc3041d69cefc49821bad836cfdcc5147ad757f2f4a1f59f9e3862e5
 COMP_SHA=ea90d527d1475bd64d2b4c36d9d6ae53cb353cbc8c4feaa2b2bf006710282d2f47349a8aeeb64531f9da04268ed368ff2603c1e11a30bdfc8b2539ad73fe725f
 
-SOURCE_URL=https://cdn.netbsd.org/pub/NetBSD/NetBSD-10.1/source/sets
-download src.tgz "$SOURCE_URL/src.tgz" "$SRC_SHA" tar xzf src.tgz
-download gnusrc.tgz "$SOURCE_URL/gnusrc.tgz" "$GNUSRC_SHA" tar xzf gnusrc.tgz
-download sharesrc.tgz "$SOURCE_URL/sharesrc.tgz" "$SHARESRC_SHA" tar xzf sharesrc.tgz
-download syssrc.tgz "$SOURCE_URL/syssrc.tgz" "$SYSSRC_SHA" tar xzf syssrc.tgz
+SOURCE_URL=https://ci-mirrors.rust-lang.org/rustc/netbsd/2026-07-28-netbsd-10.1-src
+download src.tgz "$SOURCE_URL-src.tgz" "$SRC_SHA" tar xzf src.tgz
+download gnusrc.tgz "$SOURCE_URL-gnusrc.tgz" "$GNUSRC_SHA" tar xzf gnusrc.tgz
+download sharesrc.tgz "$SOURCE_URL-sharesrc.tgz" "$SHARESRC_SHA" tar xzf sharesrc.tgz
+download syssrc.tgz "$SOURCE_URL-syssrc.tgz" "$SYSSRC_SHA" tar xzf syssrc.tgz
 
-BINARY_URL=https://cdn.netbsd.org/pub/NetBSD/NetBSD-10.1/amd64/binary/sets
-download base.tar.xz "$BINARY_URL/base.tar.xz" "$BASE_SHA" \
+BINARY_URL=https://ci-mirrors.rust-lang.org/rustc/netbsd/2026-07-28-netbsd-10.1-amd64-binary
+download base.tar.xz "$BINARY_URL-base.tar.xz" "$BASE_SHA" \
   tar xJf base.tar.xz -C /x-tools/x86_64-unknown-netbsd/sysroot ./usr/include ./usr/lib ./lib
-download comp.tar.xz "$BINARY_URL/comp.tar.xz" "$COMP_SHA" \
+download comp.tar.xz "$BINARY_URL-comp.tar.xz" "$COMP_SHA" \
   tar xJf comp.tar.xz -C /x-tools/x86_64-unknown-netbsd/sysroot ./usr/include ./usr/lib
 
 cd usr/src
