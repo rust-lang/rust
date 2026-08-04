@@ -192,12 +192,12 @@ impl Direction for Forward {
                 }
             }
             TerminatorEdges::SwitchInt { targets, discr } => {
-                if let Some(mut data) = analysis.get_switch_int_data(block, targets, discr) {
+                if let Some(data) = analysis.get_switch_int_data(block, targets, discr) {
                     let mut tmp = analysis.bottom_value(body);
                     for (i, (_value, target)) in targets.iter().enumerate() {
                         tmp.clone_from(exit_state);
                         let target_idx = SwitchTargetIndex::Normal(i);
-                        analysis.apply_switch_int_edge_effect(&mut tmp, &mut data, target_idx);
+                        analysis.apply_switch_int_edge_effect(&mut tmp, &data, target_idx);
                         propagate(target, &tmp);
                     }
 
@@ -206,7 +206,7 @@ impl Direction for Forward {
                     // a clone of the dataflow state.
                     analysis.apply_switch_int_edge_effect(
                         exit_state,
-                        &mut data,
+                        &data,
                         SwitchTargetIndex::Otherwise,
                     );
                     propagate(targets.otherwise(), exit_state);

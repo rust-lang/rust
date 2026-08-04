@@ -458,7 +458,7 @@ impl<'tcx> Analysis<'tcx> for MaybeInitializedPlaces<'_, 'tcx> {
     fn apply_switch_int_edge_effect(
         &self,
         state: &mut Self::Domain,
-        data: &mut Self::SwitchIntData,
+        data: &Self::SwitchIntData,
         target_idx: SwitchTargetIndex,
     ) {
         let inactive_variants = match target_idx {
@@ -588,7 +588,7 @@ impl<'tcx> Analysis<'tcx> for MaybeUninitializedPlaces<'_, 'tcx> {
     fn apply_switch_int_edge_effect(
         &self,
         state: &mut Self::Domain,
-        data: &mut Self::SwitchIntData,
+        data: &Self::SwitchIntData,
         target_idx: SwitchTargetIndex,
     ) {
         let inactive_variants = match target_idx {
