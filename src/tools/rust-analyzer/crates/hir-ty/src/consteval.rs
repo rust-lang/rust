@@ -81,15 +81,15 @@ fn intern_const_ref<'db>(
     interner: DbInterner<'db>,
     value: &Literal,
     ty: Ty<'db>,
-) -> Result<Const<'db>, CreateConstError<'db>> {
+) -> Option<Result<Const<'db>, CreateConstError<'db>>> {
     let Ok(data_layout) = interner.db.target_data_layout(interner.expect_crate()) else {
-        return Ok(Const::error(interner));
+        return Some(Ok(Const::error(interner)));
     };
     let valtree = match (ty.kind(), value) {
         (TyKind::Uint(uint), Literal::Uint(value, _)) => {
             let size = uint.bit_width().map(Size::from_bits).unwrap_or(data_layout.pointer_size());
             let Some(scalar) = ScalarInt::try_from_uint(*value, size) else {
-                return Ok(Const::error(interner));
+                return Some(Ok(Const::error(interner)));
             };
             ValTreeKind::Leaf(scalar)
         }
@@ -97,14 +97,14 @@ fn intern_const_ref<'db>(
             // `Literal::Int` is the default, so we also need to account for the type being uint.
             let size = uint.bit_width().map(Size::from_bits).unwrap_or(data_layout.pointer_size());
             let Some(scalar) = ScalarInt::try_from_uint(*value as u128, size) else {
-                return Ok(Const::error(interner));
+                return Some(Ok(Const::error(interner)));
             };
             ValTreeKind::Leaf(scalar)
         }
         (TyKind::Int(int), Literal::Int(value, _)) => {
             let size = int.bit_width().map(Size::from_bits).unwrap_or(data_layout.pointer_size());
             let Some(scalar) = ScalarInt::try_from_int(*value, size) else {
-                return Ok(Const::error(interner));
+                return Some(Ok(Const::error(interner)));
             };
             ValTreeKind::Leaf(scalar)
         }
@@ -128,16 +128,10 @@ fn intern_const_ref<'db>(
                 value.as_str().as_bytes().iter().map(|&byte| u8_values[usize::from(byte)]),
             ))
         }
-        (_, Literal::ByteString(value)) => {
-            let u8_values = &interner.default_types().consts.u8_values;
-            ValTreeKind::Branch(Consts::new_from_iter(
-                interner,
-                value.iter().map(|&byte| u8_values[usize::from(byte)]),
-            ))
-        }
-        (_, Literal::CString(_)) => {
-            // FIXME:
-            return Ok(Const::error(interner));
+        (_, Literal::ByteString(_) | Literal::CString(_)) => {
+            // This literals are complicated to construct and/or are possible to coerce.
+            // So we just allocate an anon const for them, they should be rare so it's not a problem.
+            return None;
         }
         _ => {
             never!("mismatching type for literal");
@@ -148,10 +142,10 @@ fn intern_const_ref<'db>(
                 |types| types.types.u32,
                 |types| types.types.f64,
             );
-            return Err(CreateConstError::TypeMismatch { actual });
+            return Some(Err(CreateConstError::TypeMismatch { actual }));
         }
     };
-    Ok(Const::new_valtree(interner, ty, valtree))
+    Some(Ok(Const::new_valtree(interner, ty, valtree)))
 }
 
 pub(crate) fn literal_ty<'db>(
@@ -379,7 +373,11 @@ pub(crate) fn create_anon_const<'a, 'db>(
         expr = &store[*tail];
     }
     match expr {
-        Expr::Literal(literal) => intern_const_ref(interner, literal, expected_ty),
+        Expr::Literal(literal)
+            if let Some(literal) = intern_const_ref(interner, literal, expected_ty) =>
+        {
+            literal
+        }
         Expr::Underscore => match create_var {
             Some(create_var) => Ok(create_var(expr_id.into())),
             None => Err(CreateConstError::UnderscoreExpr),
