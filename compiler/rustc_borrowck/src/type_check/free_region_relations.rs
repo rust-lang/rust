@@ -253,7 +253,23 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
                         &mut query_constraints,
                     )
                     .unwrap();
-                assert!(obligations.is_empty());
+
+                // `mir_borrowck_implied_outlives_bounds` for nested bodies can result in
+                // defining uses of opaques.
+                for obligation in obligations {
+                    let predicate = obligation.predicate;
+                    match self
+                        .infcx
+                        .fully_perform(type_op::prove_predicate::ProvePredicate { predicate }, span)
+                    {
+                        Ok(TypeOpOutput { constraints: obligation_constraints, .. }) => {
+                            if let Some(c) = obligation_constraints {
+                                constraints.push(c);
+                            }
+                        }
+                        Err::<_, ErrorGuaranteed>(_) => {}
+                    }
+                }
                 if !query_constraints.is_empty() {
                     constraints.push(&query_constraints);
                 };
