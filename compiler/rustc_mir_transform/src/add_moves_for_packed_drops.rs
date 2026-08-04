@@ -70,7 +70,7 @@ impl<'tcx> crate::MirPass<'tcx> for AddMovesForPackedDrops {
         patch.apply(body);
     }
 
-    fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
+    fn policy(&self, _ctx: &crate::PassCtx<'_>) -> PassPolicy {
         // Implements part of MIR semantics by making implicit packed-drop handling explicit.
         PassPolicy::Required
     }

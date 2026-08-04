@@ -108,6 +108,17 @@ pub enum OptLevel {
     SizeMin,
 }
 
+impl OptLevel {
+    /// Infers an MIR opt-level (if not otherwise specified) from general opt-level.
+    /// Produces `1` at opt-level 0, and `2` at all other levels.
+    pub fn mir_opt_level(&self) -> usize {
+        match self {
+            OptLevel::No => 1,
+            _ => 2,
+        }
+    }
+}
+
 /// This is what the `LtoCli` values get mapped to after resolving defaults and
 /// and taking other command line options into account.
 ///

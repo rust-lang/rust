@@ -150,7 +150,7 @@ impl<'tcx> crate::MirPass<'tcx> for ElaborateBoxDerefs {
         }
     }
 
-    fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
+    fn policy(&self, _ctx: &crate::PassCtx<'_>) -> PassPolicy {
         // Implements Box dereference semantics so backends and Miri do not have to handle them.
         PassPolicy::Required
     }

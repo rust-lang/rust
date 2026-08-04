@@ -102,7 +102,7 @@ impl<'tcx> crate::MirPass<'tcx> for Derefer {
         deref_finder(tcx, body, true);
     }
 
-    fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
+    fn policy(&self, _ctx: &crate::PassCtx<'_>) -> PassPolicy {
         // Later MIR stages expect derefs to only appear as the first place projection.
         PassPolicy::Required
     }
