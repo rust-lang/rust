@@ -169,6 +169,7 @@ declare_tests!(
     (x_test_librustdoc, "test librustdoc"),
     (x_test_librustdoc_rustdoc, "test librustdoc rustdoc"),
     (x_test_librustdoc_rustdoc_html, "test librustdoc rustdoc-html"),
+    (x_test_miri, "test miri"),
     (x_test_rustdoc, "test rustdoc"),
     (x_test_rustdoc_html, "test rustdoc-html"),
     (x_test_rustdoc_skip_rustdoc, "test rustdoc --skip=rustdoc"),
@@ -180,6 +181,8 @@ declare_tests!(
     (x_test_skip_tests_coverage, "test --skip=tests/coverage"),
     // From `src/ci/docker/scripts/stage_2_test_set2.sh`.
     (x_test_skip_tests_etc, "test --skip=tests --skip=library --skip=tidyselftest"),
+    // Note: this also runs cargo-miri tests!
+    (x_test_src_tools_miri, "test src/tools/miri"),
     (x_test_src_tools_miri_and_cargo_miri, "test src/tools/miri src/tools/miri/cargo-miri"),
     (x_test_tests, "test tests"),
     (x_test_tests_skip_coverage, "test tests --skip=coverage"),
