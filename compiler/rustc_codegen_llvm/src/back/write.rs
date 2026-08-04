@@ -210,7 +210,7 @@ pub(crate) fn target_machine_factory(
     let code_model = to_llvm_code_model(sess.code_model());
 
     // This is used to set cfg_has_threads, so all logic must be in this method.
-    let singlethread = sess.target.singlethread(&sess.target_features);
+    let singlethread = sess.target.singlethread(&sess.internal_target_features);
 
     let triple = SmallCStr::new(&versioned_llvm_target(sess));
     let cpu = SmallCStr::new(llvm_util::target_cpu(sess));

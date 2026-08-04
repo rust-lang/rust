@@ -20,7 +20,7 @@ use std::sync::Arc;
 
 use rustc_abi::Size;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
-use rustc_data_structures::unord::UnordMap;
+use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir::CRATE_HIR_ID;
 use rustc_hir::attrs::{CfgEntry, NativeLibKind, WindowsSubsystemKind};
 use rustc_hir::def_id::CrateNum;
@@ -306,14 +306,12 @@ pub struct CrateInfo {
     pub exported_symbols_for_lto: Vec<String>,
 }
 
-/// Target-specific options that get set in `cfg(...)`.
+/// Target-specific options that get set in `sess`/`cfg(...)`.
 ///
 /// RUSTC_SPECIFIC_FEATURES should be skipped here, those are handled outside codegen.
 pub struct TargetConfig {
-    /// Options to be set in `cfg(target_features)`.
-    pub target_features: Vec<Symbol>,
-    /// Options to be set in `cfg(target_features)`, but including unstable features.
-    pub unstable_target_features: Vec<Symbol>,
+    /// Options to be set in `sess.internal_target_features`.
+    pub internal_target_features: UnordSet<Symbol>,
     /// Option for `cfg(target_has_reliable_f16)`, true if `f16` basic arithmetic works.
     pub has_reliable_f16: bool,
     /// Option for `cfg(target_has_reliable_f16_math)`, true if `f16` math calls work.

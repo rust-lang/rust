@@ -45,7 +45,8 @@ use rustc_span::{Symbol, sym};
 
 use crate::spec::{Arch, FloatAbi, LlvmAbi, RustcAbi, Target};
 
-/// Features that control behaviour of rustc, rather than the codegen.
+/// Features that control behaviour of rustc, rather than the codegen. Not to be included in
+/// `cfg(target_feature)`, `sess.internal_target_features`, or the backend's feature list.
 /// These exist globally and are not in the target-specific lists below.
 pub const RUSTC_SPECIFIC_FEATURES: &[&str] = &["crt-static"];
 
@@ -1152,6 +1153,16 @@ impl Target {
         }
     }
 
+    /// Computes a map mapping each Rust target feature to the features it implies.
+    pub fn rust_target_features_map(
+        &self,
+    ) -> FxHashMap<&'static str, (Stability, ImpliedFeatures)> {
+        self.rust_target_features()
+            .iter()
+            .map(|&(f, s, i)| (f, (s, i)))
+            .collect::<FxHashMap<_, _>>()
+    }
+
     pub fn features_for_correct_fixed_length_vector_abi(&self) -> &'static [(u64, &'static str)] {
         match &self.arch {
             Arch::X86 | Arch::X86_64 => X86_FEATURES_FOR_CORRECT_FIXED_LENGTH_VECTOR_ABI,
@@ -1194,19 +1205,22 @@ impl Target {
     }
 
     // Note: the returned set includes `base_feature`.
-    pub fn implied_target_features<'a>(&self, base_feature: &'a str) -> FxHashSet<&'a str> {
-        let implied_features =
-            self.rust_target_features().iter().map(|(f, _, i)| (f, i)).collect::<FxHashMap<_, _>>();
-
+    #[track_caller]
+    pub fn implied_target_features<'a>(
+        &self,
+        base_feature: &'a str,
+        target_features_map: &FxHashMap<&'static str, (Stability, ImpliedFeatures)>,
+    ) -> FxHashSet<&'a str> {
         // Implied target features have their own implied target features, so we traverse the
         // map until there are no more features to add.
         let mut features = FxHashSet::default();
         let mut new_features = vec![base_feature];
         while let Some(new_feature) = new_features.pop() {
             if features.insert(new_feature) {
-                if let Some(implied_features) = implied_features.get(&new_feature) {
-                    new_features.extend(implied_features.iter().copied())
-                }
+                let (_, implied_features) = target_features_map
+                    .get(&new_feature)
+                    .unwrap_or_else(|| panic!("encountered non-Rust target feature {new_feature}"));
+                new_features.extend(implied_features.iter().copied());
             }
         }
         features
