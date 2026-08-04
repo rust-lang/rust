@@ -1408,13 +1408,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         vis_resolution_error: VisResolutionError,
     ) -> ErrorGuaranteed {
         match vis_resolution_error {
-            VisResolutionError::Relative2018(span, path) => {
+            VisResolutionError::Relative2018(span, path, suggest_super) => {
                 self.dcx().create_err(diagnostics::Relative2018 {
                     span,
                     path_span: path.span,
                     // intentionally converting to String, as the text would also be used as
                     // in suggestion context
                     path_str: pprust::path_to_string(&path),
+                    suggest_super: if suggest_super { Some(path.span) } else { None },
                 })
             }
             VisResolutionError::AncestorOnly(span) => {

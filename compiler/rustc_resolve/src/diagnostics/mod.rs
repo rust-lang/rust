@@ -524,13 +524,27 @@ pub(crate) struct TraitImplDuplicate {
 }
 
 #[derive(Diagnostic)]
-#[diag("relative paths are not supported in visibilities in 2018 edition or later")]
+#[diag("relative paths are not supported in visibilities in 2018 edition or later",code=E0807)]
+#[note_once(
+    "for more information about visibility, visit:
+    https://doc.rust-lang.org/reference/visibility-and-privacy.html"
+)]
 pub(crate) struct Relative2018 {
     #[primary_span]
     pub(crate) span: Span,
-    #[suggestion("try", code = "crate::{path_str}", applicability = "maybe-incorrect")]
+    #[suggestion(
+        "try adding a `crate` prefix",
+        code = "crate::{path_str}",
+        applicability = "maybe-incorrect"
+    )]
     pub(crate) path_span: Span,
     pub(crate) path_str: String,
+    #[suggestion(
+        "use `super` if you want this item to be visible in the parent module",
+        code = "super",
+        applicability = "maybe-incorrect"
+    )]
+    pub(crate) suggest_super: Option<Span>,
 }
 
 #[derive(Diagnostic)]
