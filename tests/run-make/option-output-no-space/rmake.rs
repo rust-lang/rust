@@ -7,6 +7,7 @@ use run_make_support::rustc;
 fn main() {
     // test fake args
     rustc()
+        .edition("2015")
         .input("main.rs")
         .arg("-optimize")
         .run()
@@ -17,6 +18,7 @@ fn main() {
             "note: output filename `-o ptimize` is applied instead of a flag named `optimize`",
         );
     rustc()
+        .edition("2015")
         .input("main.rs")
         .arg("-o0")
         .run()
@@ -26,9 +28,10 @@ fn main() {
         .assert_stderr_contains(
             "note: output filename `-o 0` is applied instead of a flag named `o0`",
         );
-    rustc().input("main.rs").arg("-o1").run();
+    rustc().edition("2015").input("main.rs").arg("-o1").run();
     // test real args by iter optgroups
     rustc()
+        .edition("2015")
         .input("main.rs")
         .arg("-out-dir")
         .run()
@@ -43,6 +46,7 @@ fn main() {
         );
     // test real args by iter CG_OPTIONS
     rustc()
+        .edition("2015")
         .input("main.rs")
         .arg("-opt_level")
         .run()
@@ -57,6 +61,7 @@ fn main() {
         );
     // separater in-sensitive
     rustc()
+        .edition("2015")
         .input("main.rs")
         .arg("-opt-level")
         .run()
@@ -70,6 +75,7 @@ fn main() {
             "help: insert a space between `-o` and `pt-level` if this is intentional: `-o pt-level`"
         );
     rustc()
+        .edition("2015")
         .input("main.rs")
         .arg("-overflow-checks")
         .run()
@@ -86,10 +92,28 @@ fn main() {
         );
 
     // No warning for Z_OPTIONS
-    rustc().input("main.rs").arg("-oom").run().assert_stderr_equals("");
+    rustc().edition("2015").input("main.rs").arg("-oom").run().assert_stderr_equals("");
 
     // test no warning when there is space between `-o` and arg
-    rustc().input("main.rs").arg("-o").arg("ptimize").run().assert_stderr_equals("");
-    rustc().input("main.rs").arg("--out-dir").arg("xxx").run().assert_stderr_equals("");
-    rustc().input("main.rs").arg("-o").arg("out-dir").run().assert_stderr_equals("");
+    rustc()
+        .edition("2015")
+        .input("main.rs")
+        .arg("-o")
+        .arg("ptimize")
+        .run()
+        .assert_stderr_equals("");
+    rustc()
+        .edition("2015")
+        .input("main.rs")
+        .arg("--out-dir")
+        .arg("xxx")
+        .run()
+        .assert_stderr_equals("");
+    rustc()
+        .edition("2015")
+        .input("main.rs")
+        .arg("-o")
+        .arg("out-dir")
+        .run()
+        .assert_stderr_equals("");
 }
