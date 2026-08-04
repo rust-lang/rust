@@ -1165,11 +1165,11 @@ impl CommandLineStep for Rustc {
             &stamp,
             vec![],
             ArtifactKeepMode::Custom(Box::new(|filename| {
-                if filename.contains("jemalloc_sys")
+                if filename.contains("mimalloc_sys")
                     || filename.contains("rustc_public_bridge")
                     || filename.contains("rustc_public")
                 {
-                    // jemalloc_sys and rustc_public_bridge are not linked into librustc_driver.so,
+                    // mimalloc_sys and rustc_public_bridge are not linked into librustc_driver.so,
                     // so we need to distribute them as rlib to be able to use them.
                     filename.ends_with(".rlib")
                 } else {
