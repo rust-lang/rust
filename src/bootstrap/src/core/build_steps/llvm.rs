@@ -26,13 +26,21 @@ use crate::utils::helpers::{
 };
 use crate::{CLang, GitRepo, Kind, exit, trace};
 
+/// Result of building or downloading LLVM artifacts.
 #[derive(Clone)]
 pub struct LlvmOutput {
     /// Path to llvm-config binary.
     /// NB: This is always the host llvm-config!
     pub host_llvm_config: PathBuf,
-    /// Path to LLVM cmake directory for the target.
-    pub llvm_cmake_dir: PathBuf,
+    /// Directory containing the built LLVM artifacts.
+    pub llvm_root_dir: PathBuf,
+}
+
+impl LlvmOutput {
+    /// Path to LLVM cmake directory.
+    pub fn llvm_cmake_dir(&self) -> PathBuf {
+        self.llvm_root_dir.join("lib").join("cmake").join("llvm")
+    }
 }
 
 pub struct Meta {
@@ -130,13 +138,10 @@ pub fn prebuilt_llvm_config(
     {
         check_llvm_version(builder, s);
         let host_llvm_config = s.to_path_buf();
-        let mut llvm_cmake_dir = host_llvm_config.clone();
-        llvm_cmake_dir.pop();
-        llvm_cmake_dir.pop();
-        llvm_cmake_dir.push("lib");
-        llvm_cmake_dir.push("cmake");
-        llvm_cmake_dir.push("llvm");
-        return LlvmBuildStatus::AlreadyBuilt(LlvmOutput { host_llvm_config, llvm_cmake_dir });
+        let mut llvm_root_dir = host_llvm_config.clone();
+        llvm_root_dir.pop();
+        llvm_root_dir.pop();
+        return LlvmBuildStatus::AlreadyBuilt(LlvmOutput { host_llvm_config, llvm_root_dir });
     }
 
     if handle_submodule_when_needed {
@@ -160,8 +165,7 @@ pub fn prebuilt_llvm_config(
         llvm_config_ret_dir.join(exe("llvm-config", builder.config.host_target))
     };
 
-    let llvm_cmake_dir = out_dir.join("lib/cmake/llvm");
-    let res = LlvmOutput { host_llvm_config: build_llvm_config, llvm_cmake_dir };
+    let res = LlvmOutput { host_llvm_config: build_llvm_config, llvm_root_dir: out_dir.clone() };
 
     static STAMP_HASH_MEMO: OnceLock<String> = OnceLock::new();
     let smart_stamp_hash = STAMP_HASH_MEMO.get_or_init(|| {
@@ -1082,8 +1086,7 @@ impl CommandLineStep for OmpOffload {
         }
         let target = self.target;
 
-        let LlvmOutput { host_llvm_config, llvm_cmake_dir } =
-            builder.ensure(Llvm { target: self.target });
+        let llvm_output = builder.ensure(Llvm { target: self.target });
 
         // Running cmake twice in the same folder is known to cause issues, like deleting existing
         // binaries. We therefore write our offload artifacts into it's own folder, instead of
@@ -1177,12 +1180,12 @@ impl CommandLineStep for OmpOffload {
             // runtime to simplify our build. So far, these are still under development.
             cfg.out_dir(&out_dir)
                 .profile(profile)
-                .env("LLVM_CONFIG_REAL", &host_llvm_config)
+                .env("LLVM_CONFIG_REAL", &llvm_output.host_llvm_config)
                 .define("LLVM_ENABLE_ASSERTIONS", "ON")
                 .define("LLVM_INCLUDE_TESTS", "OFF")
                 .define("OFFLOAD_INCLUDE_TESTS", "OFF")
                 .define("LLVM_ROOT", builder.llvm_out(target).join("build"))
-                .define("LLVM_DIR", llvm_cmake_dir.clone())
+                .define("LLVM_DIR", llvm_output.llvm_cmake_dir())
                 .define("LLVM_DEFAULT_TARGET_TRIPLE", omp_target);
             if let Some(p) = clang_dir.clone() {
                 cfg.define("Clang_DIR", p);
@@ -1264,7 +1267,7 @@ impl CommandLineStep for Enzyme {
             return BuiltEnzyme { enzyme: builder.config.tempdir().join("enzyme-dryrun") };
         }
 
-        let LlvmOutput { host_llvm_config, llvm_cmake_dir } = builder.ensure(Llvm { target });
+        let llvm_output = builder.ensure(Llvm { target });
 
         // Enzyme links against LLVM. If we update the LLVM submodule libLLVM might get a new
         // version number, in which case Enzyme will now fail to find LLVM. By including the LLVM
@@ -1284,7 +1287,8 @@ impl CommandLineStep for Enzyme {
         let out_dir = builder.enzyme_out(target);
         let stamp = BuildStamp::new(&out_dir).with_prefix("enzyme").add_stamp(smart_stamp_hash);
 
-        let llvm_version_major = llvm::get_llvm_version_major(builder, &host_llvm_config);
+        let llvm_version_major =
+            llvm::get_llvm_version_major(builder, &llvm_output.host_llvm_config);
         let lib_ext = std::env::consts::DLL_EXTENSION;
         let libenzyme = format!("libEnzyme-{llvm_version_major}");
         let build_dir = out_dir.join(libdir(target));
@@ -1306,10 +1310,11 @@ impl CommandLineStep for Enzyme {
             return BuiltEnzyme { enzyme: dylib };
         }
 
+        let llvm_cmake_dir = llvm_output.llvm_cmake_dir();
         if !builder.config.dry_run() && !llvm_cmake_dir.is_dir() {
             builder.info(&format!(
-                "WARNING: {} does not exist, Enzyme build will likely fail",
-                llvm_cmake_dir.display()
+                "WARNING: {:?} does not exist, Enzyme build will likely fail",
+                llvm_cmake_dir
             ));
         }
 
@@ -1348,7 +1353,7 @@ impl CommandLineStep for Enzyme {
 
         cfg.out_dir(&out_dir)
             .profile(profile)
-            .env("LLVM_CONFIG_REAL", &host_llvm_config)
+            .env("LLVM_CONFIG_REAL", &llvm_output.host_llvm_config)
             .define("LLVM_ENABLE_ASSERTIONS", "ON")
             .define("ENZYME_EXTERNAL_SHARED_LIB", "ON")
             .define("ENZYME_BC_LOADER", "OFF")
@@ -1395,13 +1400,13 @@ impl CommandLineStep for Lld {
         }
         let target = self.target;
 
-        let LlvmOutput { host_llvm_config, llvm_cmake_dir } = builder.ensure(Llvm { target });
+        let llvm_output = builder.ensure(Llvm { target });
 
         // The `dist` step packages LLD next to LLVM's binaries for download-ci-llvm. The root path
         // we usually expect here is `./build/$triple/ci-llvm/`, with the binaries in its `bin`
         // subfolder. We check if that's the case, and if LLD's binary already exists there next to
         // `llvm-config`: if so, we can use it instead of building LLVM/LLD from source.
-        let ci_llvm_bin = host_llvm_config.parent().unwrap();
+        let ci_llvm_bin = llvm_output.host_llvm_config.parent().unwrap();
         if ci_llvm_bin.is_dir() && ci_llvm_bin.file_name().unwrap() == "bin" {
             let lld_path = ci_llvm_bin.join(exe("lld", target));
             if lld_path.exists() {
@@ -1477,14 +1482,17 @@ impl CommandLineStep for Lld {
 
         cfg.out_dir(&out_dir)
             .profile(profile)
-            .define("LLVM_CMAKE_DIR", llvm_cmake_dir)
+            .define("LLVM_CMAKE_DIR", llvm_output.llvm_cmake_dir())
             .define("LLVM_INCLUDE_TESTS", "OFF");
 
         if !builder.config.is_host_target(target) {
             // Use the host llvm-tblgen binary.
             cfg.define(
                 "LLVM_TABLEGEN_EXE",
-                host_llvm_config.with_file_name("llvm-tblgen").with_extension(EXE_EXTENSION),
+                llvm_output
+                    .host_llvm_config
+                    .with_file_name("llvm-tblgen")
+                    .with_extension(EXE_EXTENSION),
             );
         }
 
