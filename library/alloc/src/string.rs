@@ -42,10 +42,14 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+#[cfg(not(no_global_oom_handling))]
+use core::ascii;
 use core::error::Error;
 use core::iter::FusedIterator;
 #[cfg(not(no_global_oom_handling))]
 use core::iter::from_fn;
+#[cfg(not(no_global_oom_handling))]
+use core::mem::MaybeUninit;
 #[cfg(not(no_global_oom_handling))]
 use core::num::Saturating;
 #[cfg(not(no_global_oom_handling))]
@@ -2402,9 +2406,32 @@ impl Clone for String {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl FromIterator<char> for String {
     fn from_iter<I: IntoIterator<Item = char>>(iter: I) -> String {
-        let mut buf = String::new();
-        buf.extend(iter);
+        FromCharIterSpec::to_string_spec(iter.into_iter())
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+trait FromCharIterSpec: Iterator<Item = char> {
+    fn to_string_spec(self) -> String;
+}
+
+#[cfg(not(no_global_oom_handling))]
+impl<T> FromCharIterSpec for T
+where
+    T: Iterator<Item = char>,
+{
+    default fn to_string_spec(self) -> String {
+        let mut buf = String::with_capacity(self.size_hint().0);
+        buf.extend(self);
         buf
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+impl FromCharIterSpec for core::str::EscapeDefault<'_> {
+    fn to_string_spec(self) -> String {
+        // go through the ToString specialization
+        self.to_string()
     }
 }
 
@@ -3114,6 +3141,115 @@ impl SpecToString for fmt::Arguments<'_> {
     fn spec_to_string(&self) -> String {
         crate::fmt::format(*self)
     }
+}
+
+#[cfg(not(no_global_oom_handling))]
+impl SpecToString for core::str::EscapeDefault<'_> {
+    #[inline]
+    fn spec_to_string(&self) -> String {
+        let (front, middle, tail) = self.clone().into_parts();
+        let lengths = front.as_ref().map_or_default(|f| f.size_hint().0)
+            + middle.as_ref().map_or_default(|m| m.size_hint().0)
+            + tail.as_ref().map_or_default(|t| t.size_hint().0);
+        let mut escaped = String::with_capacity(lengths);
+
+        if let Some(front) = front {
+            escaped.extend(front);
+        }
+        if let Some(middle) = middle {
+            unsafe {
+                /// Updates the length of the string in advance and returns the spare capacity of
+                /// N bytes.
+                ///
+                /// # Safety:
+                ///
+                /// The caller must initialize the number of bytes returned by the closure.
+                #[inline]
+                unsafe fn with_spare<const N: usize, T>(
+                    bytes: &mut Vec<u8>,
+                    then: impl FnOnce(&mut [MaybeUninit<T>; N]) -> usize,
+                ) {
+                    const {
+                        assert!(core::mem::size_of::<T>() == 1);
+                    }
+                    bytes.reserve(N);
+                    let old_len = bytes.len();
+                    unsafe {
+                        let spare: &mut [MaybeUninit<T>; N] = bytes
+                            .spare_capacity_mut()
+                            .as_mut_ptr()
+                            .cast::<T>()
+                            .cast_uninit()
+                            .cast_array::<N>()
+                            .as_mut_unchecked();
+                        let written = then(spare);
+                        bytes.set_len(old_len + written);
+                    }
+                }
+
+                let escaped = escaped.as_mut_vec();
+                for c in middle {
+                    match c {
+                        '\'' | '\"' | '\\' => {
+                            escaped.push(b'\\');
+                            escaped.push(c as u8);
+                        }
+                        '\x20'..='\x7e' => escaped.push(c as u8),
+                        '\t' => {
+                            escaped.push(b'\\');
+                            escaped.push(b't');
+                        }
+                        '\r' => {
+                            escaped.push(b'\\');
+                            escaped.push(b'r');
+                        }
+                        '\n' => {
+                            escaped.push(b'\\');
+                            escaped.push(b'n');
+                        }
+                        c => {
+                            with_spare::<10, ascii::Char>(escaped, |spare| {
+                                escape_unicode_into(spare, c)
+                            });
+                        }
+                    }
+                }
+            }
+        }
+        if let Some(tail) = tail {
+            escaped.extend(tail);
+        }
+
+        escaped
+    }
+}
+
+#[cfg(not(no_global_oom_handling))]
+#[inline]
+// adapted from core::escape::escape_unicode, but it's left-aligned instead of right-aligned.
+fn escape_unicode_into(output: &mut [MaybeUninit<ascii::Char>; 10], c: char) -> usize {
+    const HEX_DIGITS: [ascii::Char; 16] = *b"0123456789abcdef".as_ascii().unwrap();
+
+    let c = c as u32;
+    // OR-ing `1` ensures that for `c == 0` the code computes that
+    // one digit should be printed.
+    let prefix_skip = (c | 1).leading_zeros() as usize / 4 - 2;
+
+    // Always write all digits, but for shorter representations the unused
+    // digits get overwritten by later writes.
+    output[3usize.saturating_sub(prefix_skip)].write(HEX_DIGITS[((c >> 20) & 15) as usize]);
+    output[4usize.saturating_sub(prefix_skip)].write(HEX_DIGITS[((c >> 16) & 15) as usize]);
+    output[5usize.saturating_sub(prefix_skip)].write(HEX_DIGITS[((c >> 12) & 15) as usize]);
+    output[6usize.saturating_sub(prefix_skip)].write(HEX_DIGITS[((c >> 8) & 15) as usize]);
+    output[7usize.saturating_sub(prefix_skip)].write(HEX_DIGITS[((c >> 4) & 15) as usize]);
+    output[8usize.saturating_sub(prefix_skip)].write(HEX_DIGITS[(c & 15) as usize]);
+
+    output[0].write(ascii::Char::ReverseSolidus);
+    output[1].write(ascii::Char::SmallU);
+    output[2].write(ascii::Char::LeftCurlyBracket);
+    output[9 - prefix_skip].write(ascii::Char::RightCurlyBracket);
+
+    10 - prefix_skip
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

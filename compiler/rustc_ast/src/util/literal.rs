@@ -1,6 +1,5 @@
 //! Code related to parsing literals.
 
-use std::fmt::Write as _;
 use std::{ascii, fmt, str};
 
 use rustc_literal_escaper::{
@@ -15,22 +14,8 @@ use crate::token::{self, Token};
 // Escapes a string, represented as a symbol. Reuses the original symbol,
 // avoiding interning, if no changes are required.
 pub fn escape_string_symbol(symbol: Symbol) -> Symbol {
-    // Don't use escape_default() here, because using it in conjunction with to_string()
-    // is slow.
     let s = symbol.as_str();
-    let mut escaped = String::with_capacity(s.len());
-    for c in s.chars() {
-        match c {
-            '\t' => escaped.push_str("\\t"),
-            '\r' => escaped.push_str("\\r"),
-            '\n' => escaped.push_str("\\n"),
-            '\\' => escaped.push_str("\\\\"),
-            '\'' => escaped.push_str("\\'"),
-            '\"' => escaped.push_str("\\\""),
-            '\x20'..='\x7e' => escaped.push(c),
-            c => write!(escaped, "\\u{{{:x}}}", c as u32).unwrap(),
-        }
-    }
+    let escaped = s.escape_default().to_string();
     if s == escaped { symbol } else { Symbol::intern(&escaped) }
 }
 
