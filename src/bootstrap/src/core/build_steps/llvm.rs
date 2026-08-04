@@ -27,7 +27,7 @@ use crate::utils::helpers::{
 use crate::{CLang, GitRepo, Kind, exit, trace};
 
 #[derive(Clone)]
-pub struct LlvmResult {
+pub struct LlvmOutput {
     /// Path to llvm-config binary.
     /// NB: This is always the host llvm-config!
     pub host_llvm_config: PathBuf,
@@ -37,13 +37,13 @@ pub struct LlvmResult {
 
 pub struct Meta {
     stamp: BuildStamp,
-    res: LlvmResult,
+    res: LlvmOutput,
     out_dir: PathBuf,
     root: String,
 }
 
 pub enum LlvmBuildStatus {
-    AlreadyBuilt(LlvmResult),
+    AlreadyBuilt(LlvmOutput),
     ShouldBuild(Meta),
 }
 
@@ -56,7 +56,7 @@ impl LlvmBuildStatus {
     }
 
     #[cfg(test)]
-    pub fn llvm_result(&self) -> &LlvmResult {
+    pub fn llvm_result(&self) -> &LlvmOutput {
         match self {
             LlvmBuildStatus::AlreadyBuilt(res) => res,
             LlvmBuildStatus::ShouldBuild(meta) => &meta.res,
@@ -136,7 +136,7 @@ pub fn prebuilt_llvm_config(
         llvm_cmake_dir.push("lib");
         llvm_cmake_dir.push("cmake");
         llvm_cmake_dir.push("llvm");
-        return LlvmBuildStatus::AlreadyBuilt(LlvmResult { host_llvm_config, llvm_cmake_dir });
+        return LlvmBuildStatus::AlreadyBuilt(LlvmOutput { host_llvm_config, llvm_cmake_dir });
     }
 
     if handle_submodule_when_needed {
@@ -161,7 +161,7 @@ pub fn prebuilt_llvm_config(
     };
 
     let llvm_cmake_dir = out_dir.join("lib/cmake/llvm");
-    let res = LlvmResult { host_llvm_config: build_llvm_config, llvm_cmake_dir };
+    let res = LlvmOutput { host_llvm_config: build_llvm_config, llvm_cmake_dir };
 
     static STAMP_HASH_MEMO: OnceLock<String> = OnceLock::new();
     let smart_stamp_hash = STAMP_HASH_MEMO.get_or_init(|| {
@@ -273,7 +273,7 @@ pub struct Llvm {
 }
 
 impl CommandLineStep for Llvm {
-    type Output = LlvmResult;
+    type Output = LlvmOutput;
 
     const IS_HOST: bool = true;
 
@@ -286,7 +286,7 @@ impl CommandLineStep for Llvm {
     }
 
     /// Compile LLVM for `target`.
-    fn run(self, builder: &Builder<'_>) -> LlvmResult {
+    fn run(self, builder: &Builder<'_>) -> LlvmOutput {
         let target = self.target;
         let target_native = if self.target.starts_with("riscv") {
             // RISC-V target triples in Rust is not named the same as C compiler target triples.
@@ -509,7 +509,7 @@ impl CommandLineStep for Llvm {
 
         // https://llvm.org/docs/HowToCrossCompileLLVM.html
         if !builder.config.is_host_target(target) {
-            let LlvmResult { host_llvm_config, .. } =
+            let LlvmOutput { host_llvm_config, .. } =
                 builder.ensure(Llvm { target: builder.config.host_target });
             if !builder.config.dry_run() {
                 let llvm_bindir = command(&host_llvm_config)
@@ -1082,7 +1082,7 @@ impl CommandLineStep for OmpOffload {
         }
         let target = self.target;
 
-        let LlvmResult { host_llvm_config, llvm_cmake_dir } =
+        let LlvmOutput { host_llvm_config, llvm_cmake_dir } =
             builder.ensure(Llvm { target: self.target });
 
         // Running cmake twice in the same folder is known to cause issues, like deleting existing
@@ -1264,7 +1264,7 @@ impl CommandLineStep for Enzyme {
             return BuiltEnzyme { enzyme: builder.config.tempdir().join("enzyme-dryrun") };
         }
 
-        let LlvmResult { host_llvm_config, llvm_cmake_dir } = builder.ensure(Llvm { target });
+        let LlvmOutput { host_llvm_config, llvm_cmake_dir } = builder.ensure(Llvm { target });
 
         // Enzyme links against LLVM. If we update the LLVM submodule libLLVM might get a new
         // version number, in which case Enzyme will now fail to find LLVM. By including the LLVM
@@ -1395,7 +1395,7 @@ impl CommandLineStep for Lld {
         }
         let target = self.target;
 
-        let LlvmResult { host_llvm_config, llvm_cmake_dir } = builder.ensure(Llvm { target });
+        let LlvmOutput { host_llvm_config, llvm_cmake_dir } = builder.ensure(Llvm { target });
 
         // The `dist` step packages LLD next to LLVM's binaries for download-ci-llvm. The root path
         // we usually expect here is `./build/$triple/ci-llvm/`, with the binaries in its `bin`
@@ -1525,7 +1525,7 @@ impl CommandLineStep for Sanitizers {
             return runtimes;
         }
 
-        let LlvmResult { host_llvm_config, .. } =
+        let LlvmOutput { host_llvm_config, .. } =
             builder.ensure(Llvm { target: builder.config.host_target });
 
         static STAMP_HASH_MEMO: OnceLock<String> = OnceLock::new();

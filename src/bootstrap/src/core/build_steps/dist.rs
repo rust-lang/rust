@@ -2527,7 +2527,7 @@ fn maybe_install_llvm(
             }
         }
         !builder.config.dry_run()
-    } else if let llvm::LlvmBuildStatus::AlreadyBuilt(llvm::LlvmResult {
+    } else if let llvm::LlvmBuildStatus::AlreadyBuilt(llvm::LlvmOutput {
         host_llvm_config, ..
     }) = llvm::prebuilt_llvm_config(builder, target, true)
     {
