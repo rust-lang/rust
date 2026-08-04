@@ -1,0 +1,12 @@
+error[E0658]: the `btf_relocatable` attribute is an experimental feature
+  --> $DIR/feature-gate-btf-relocations.rs:10:3
+   |
+LL | #[btf_relocatable]
+   |   ^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(btf_relocations)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0658`.

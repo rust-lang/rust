@@ -1,0 +1,62 @@
+error: the `btf_relocatable` attribute can only be used on BPF architecture
+  --> $DIR/attribute-arch-check.rs:11:1
+   |
+LL | #[btf_relocatable]
+   | ^^^^^^^^^^^^^^^^^^
+
+error: the `btf_relocatable` attribute can only be used on BPF architecture
+  --> $DIR/attribute-arch-check.rs:17:1
+   |
+LL | #[btf_relocatable]
+   | ^^^^^^^^^^^^^^^^^^
+
+error: the `btf_relocatable` attribute can only be used on BPF architecture
+  --> $DIR/attribute-arch-check.rs:24:1
+   |
+LL | #[btf_relocatable]
+   | ^^^^^^^^^^^^^^^^^^
+
+error: the `btf_relocatable` attribute cannot be used on enums
+  --> $DIR/attribute-arch-check.rs:31:3
+   |
+LL | #[btf_relocatable]
+   |   ^^^^^^^^^^^^^^^
+   |
+   = help: the `btf_relocatable` attribute can be applied to structs and unions
+
+error: the `btf_relocatable` attribute can only be used on BPF architecture
+  --> $DIR/attribute-arch-check.rs:31:1
+   |
+LL | #[btf_relocatable]
+   | ^^^^^^^^^^^^^^^^^^
+
+error: the `btf_relocatable` attribute cannot be used on functions
+  --> $DIR/attribute-arch-check.rs:38:3
+   |
+LL | #[btf_relocatable]
+   |   ^^^^^^^^^^^^^^^
+   |
+   = help: the `btf_relocatable` attribute can only be applied to data types
+
+error: the `btf_relocatable` attribute can only be used on BPF architecture
+  --> $DIR/attribute-arch-check.rs:38:1
+   |
+LL | #[btf_relocatable]
+   | ^^^^^^^^^^^^^^^^^^
+
+error: the `btf_relocatable` attribute cannot be used on traits
+  --> $DIR/attribute-arch-check.rs:43:3
+   |
+LL | #[btf_relocatable]
+   |   ^^^^^^^^^^^^^^^
+   |
+   = help: the `btf_relocatable` attribute can only be applied to data types
+
+error: the `btf_relocatable` attribute can only be used on BPF architecture
+  --> $DIR/attribute-arch-check.rs:43:1
+   |
+LL | #[btf_relocatable]
+   | ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 9 previous errors
+

@@ -553,6 +553,8 @@ symbols! {
         breg,
         bridge,
         bswap,
+        btf_relocatable,
+        btf_relocations,
         built,
         builtin_syntax,
         bundle,
