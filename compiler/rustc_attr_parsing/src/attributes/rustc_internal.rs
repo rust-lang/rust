@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use rustc_ast::{LitIntType, LitKind, MetaItemLit};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_feature::AttributeStability;
 use rustc_hir::LangItem;
 use rustc_hir::attrs::{
@@ -70,6 +71,18 @@ impl SingleAttributeParser for RustcMustImplementOneOfParser {
         }
         if errored {
             return None;
+        }
+
+        if cx.target == Target::Trait {
+            // Check for duplicates
+            let mut seen: FxHashMap<Symbol, Span> = FxHashMap::default();
+            for ident in &fn_names {
+                if let Some(dup) = seen.insert(ident.name, ident.span) {
+                    cx.emit_err(diagnostics::FunctionNamesDuplicated {
+                        spans: vec![dup, ident.span],
+                    });
+                }
+            }
         }
 
         Some(AttributeKind::RustcMustImplementOneOf { attr_span: cx.attr_span, fn_names })

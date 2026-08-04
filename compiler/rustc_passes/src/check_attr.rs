@@ -12,7 +12,6 @@ use rustc_abi::ExternAbi;
 use rustc_ast::{AttrStyle, MetaItemKind, ast};
 use rustc_attr_parsing::AttributeParser;
 use rustc_data_structures::thin_vec::ThinVec;
-use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{DiagCtxtHandle, IntoDiagArg, MultiSpan, msg};
 use rustc_feature::BUILTIN_ATTRIBUTE_MAP;
 use rustc_hir::attrs::diagnostic::Directive;
@@ -211,7 +210,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 self.check_rustc_legacy_const_generics(item, *attr_span, fn_indexes)
             }
             AttributeKind::Doc(attr) => self.check_doc_attrs(attr, hir_id, target),
-            AttributeKind::EiiImpls(impls) => self.check_eii_impl(impls),
+            AttributeKind::EiiImpl(eii_impl) => self.check_eii_impl(eii_impl),
             AttributeKind::RustcMustImplementOneOf { attr_span, fn_names } => {
                 self.check_rustc_must_implement_one_of(*attr_span, fn_names, hir_id, target)
             }
@@ -459,66 +458,54 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 }
             }
         }
-        // Check for duplicates
-
-        let mut set: UnordMap<Symbol, Span> = Default::default();
-
-        for ident in &*list {
-            if let Some(dup) = set.insert(ident.name, ident.span) {
-                self.tcx.dcx().emit_err(diagnostics::FunctionNamesDuplicated {
-                    spans: vec![dup, ident.span],
-                });
-            }
-        }
     }
 
     /// Checks that each externally implementable item (EII) implementation uses `unsafe`
     /// exactly when its declaration requires it.
-    fn check_eii_impl(&self, impls: &[EiiImpl]) {
-        for EiiImpl { span, inner_span, resolution, impl_unsafe_span, is_default: _ } in impls {
-            let impl_unsafe = match resolution {
-                EiiImplResolution::Macro(eii_macro) => find_attr!(
-                    self.tcx,
-                    *eii_macro,
-                    EiiDeclaration(EiiDecl { impl_unsafe, .. }) => *impl_unsafe
-                ),
-                EiiImplResolution::Known(foreign_item_did) => self
-                    .tcx
-                    .externally_implementable_items(foreign_item_did.krate)
-                    .get(foreign_item_did)
-                    .map(|(decl, _)| decl.impl_unsafe),
-                EiiImplResolution::Error(_) => None,
-            };
-            let Some(needs_unsafe) = impl_unsafe else {
-                continue;
-            };
+    fn check_eii_impl(&self, eii_impl: &EiiImpl) {
+        let EiiImpl { span, inner_span, resolution, impl_unsafe_span, is_default: _ } = eii_impl;
+        let impl_unsafe = match resolution {
+            EiiImplResolution::Macro(eii_macro) => find_attr!(
+                self.tcx,
+                *eii_macro,
+                EiiDeclaration(EiiDecl { impl_unsafe, .. }) => *impl_unsafe
+            ),
+            EiiImplResolution::Known(foreign_item_did) => self
+                .tcx
+                .externally_implementable_items(foreign_item_did.krate)
+                .get(foreign_item_did)
+                .map(|(decl, _)| decl.impl_unsafe),
+            EiiImplResolution::Error(_) => None,
+        };
+        let Some(needs_unsafe) = impl_unsafe else {
+            return;
+        };
 
-            let name = match resolution {
-                EiiImplResolution::Macro(eii_macro) => self.tcx.item_name(*eii_macro),
-                EiiImplResolution::Known(def_id) => self.tcx.item_name(*def_id),
-                EiiImplResolution::Error(_) => unreachable!(),
-            };
+        let name = match resolution {
+            EiiImplResolution::Macro(eii_macro) => self.tcx.item_name(*eii_macro),
+            EiiImplResolution::Known(def_id) => self.tcx.item_name(*def_id),
+            EiiImplResolution::Error(_) => unreachable!(),
+        };
 
-            match (needs_unsafe, *impl_unsafe_span) {
-                (true, None) => {
-                    self.dcx().emit_err(diagnostics::EiiImplRequiresUnsafe {
-                        span: *span,
-                        name,
-                        suggestion: diagnostics::EiiImplRequiresUnsafeSuggestion {
-                            left: inner_span.shrink_to_lo(),
-                            right: inner_span.shrink_to_hi(),
-                        },
-                    });
-                }
-                (false, Some(unsafe_span)) => {
-                    self.dcx().emit_err(diagnostics::EiiImplCannotBeUnsafe {
-                        impl_span: *span,
-                        unsafe_span,
-                        name,
-                    });
-                }
-                _ => {}
+        match (needs_unsafe, *impl_unsafe_span) {
+            (true, None) => {
+                self.dcx().emit_err(diagnostics::EiiImplRequiresUnsafe {
+                    span: *span,
+                    name,
+                    suggestion: diagnostics::EiiImplRequiresUnsafeSuggestion {
+                        left: inner_span.shrink_to_lo(),
+                        right: inner_span.shrink_to_hi(),
+                    },
+                });
             }
+            (false, Some(unsafe_span)) => {
+                self.dcx().emit_err(diagnostics::EiiImplCannotBeUnsafe {
+                    impl_span: *span,
+                    unsafe_span,
+                    name,
+                });
+            }
+            _ => {}
         }
     }
 

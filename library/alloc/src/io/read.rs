@@ -433,6 +433,7 @@ pub trait Read {
     /// [`ErrorKind::Interrupted`]: crate::io::ErrorKind::Interrupted
     /// [`ErrorKind::UnexpectedEof`]: crate::io::ErrorKind::UnexpectedEof
     #[unstable(feature = "read_buf", issue = "78485")]
+    #[doc(alias("read_exact_buf"))]
     fn read_buf_exact(&mut self, cursor: BorrowedCursor<'_, u8>) -> Result<()> {
         default_read_buf_exact(self, cursor)
     }

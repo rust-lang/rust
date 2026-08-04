@@ -1,7 +1,7 @@
 mod raw_dylib;
 
 use std::collections::BTreeSet;
-use std::ffi::{OsStr, OsString};
+use std::ffi::OsString;
 use std::fs::{File, OpenOptions, read};
 use std::io::{BufReader, BufWriter, Write};
 use std::ops::{ControlFlow, Deref};
@@ -2061,9 +2061,12 @@ fn get_object_file_path(sess: &Session, name: &str, self_contained: bool) -> Pat
         }
     }
 
-    for (_, path) in sess.target_filesearch().get_file_candidates(name, "", PathKind::Native) {
-        if path.file_name().map_or(false, |n| n == OsStr::new(name)) && path.exists() {
-            return path;
+    // Note: this is O(n^2), it could be expensive-ish if we lookup many object files for many
+    // search paths
+    for search_path in sess.target_filesearch().search_paths(PathKind::Native) {
+        let file_path = search_path.dir.join(name);
+        if file_path.exists() {
+            return file_path;
         }
     }
     PathBuf::from(name)

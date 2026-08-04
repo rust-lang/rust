@@ -1112,14 +1112,6 @@ pub(crate) struct FunctionNotFoundInTrait {
 }
 
 #[derive(Diagnostic)]
-#[diag("functions names are duplicated")]
-#[note("all `#[rustc_must_implement_one_of]` arguments must be unique")]
-pub(crate) struct FunctionNamesDuplicated {
-    #[primary_span]
-    pub spans: Vec<Span>,
-}
-
-#[derive(Diagnostic)]
 #[diag("there is no parameter `{$argument_name}` on trait `{$trait_name}`")]
 pub(crate) struct UnknownFormatParameterForOnUnimplementedAttr {
     pub argument_name: Symbol,
