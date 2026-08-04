@@ -66,14 +66,16 @@ fn handle_indirection<'a>(
     // LLVM arguments, while its child describes the memory reached through `data`.
     let typing_env = ty::TypingEnv::fully_monomorphized();
     if let ty::Slice(element_ty) = tcx.struct_tail_for_codegen(inner_ty, typing_env).kind() {
+        // `layout.size` here is the sized prefix of `inner_ty`, not the slice element size.
+        // Direct slices, transparent wrappers (`OsStr`), and ZST-prefixed DSTs have no byte
+        // offset to preserve. Nonzero prefixes (e.g. `Header<[f32]>`) keep field offsets.
+        // ZST elements still take this path and yield an empty child TypeTree (size 0).
         let child = if tcx
             .layout_of(typing_env.as_query_input(inner_ty))
             .is_ok_and(|layout| layout.size.bytes() == 0)
         {
-            // Direct slices and transparent wrappers such as `OsStr` contain elements everywhere.
             typetree_from_ty_impl_inner(tcx, *element_ty, depth + 1, visited, false)
         } else {
-            // Preserve field offsets for a sized prefix before the slice tail.
             typetree_from_ty_impl_inner(tcx, inner_ty, depth + 1, visited, true)
         };
         return TypeTree(vec![Type {

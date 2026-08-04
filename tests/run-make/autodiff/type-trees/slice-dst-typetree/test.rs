@@ -36,3 +36,16 @@ pub fn header_sum(value: &Header<[f32]>) -> f32 {
 pub fn exercise_header_sum(value: &Header<[f32]>, derivative: &mut Header<[f32]>) -> f32 {
     d_header_sum(value, derivative, 1.0)
 }
+
+// ZST slice elements yield an empty child TypeTree; element size 0 is expected.
+#[autodiff_reverse(d_zst_slice_len, Duplicated, Active)]
+#[no_mangle]
+#[inline(never)]
+pub fn zst_slice_len(slice: &[()]) -> f32 {
+    slice.len() as f32
+}
+
+#[no_mangle]
+pub fn exercise_zst_slice_len(slice: &[()], derivative: &mut [()]) -> f32 {
+    d_zst_slice_len(slice, derivative, 1.0)
+}

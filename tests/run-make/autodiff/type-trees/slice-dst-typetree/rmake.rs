@@ -15,4 +15,5 @@ fn main() {
     let ir = rfs::read("test.ll");
     llvm_filecheck().patterns("slice-dst.check").check_prefix("OSSTR").stdin_buf(&ir).run();
     llvm_filecheck().patterns("slice-dst.check").check_prefix("HEADER").stdin_buf(&ir).run();
+    llvm_filecheck().patterns("slice-dst.check").check_prefix("ZST").stdin_buf(&ir).run();
 }
