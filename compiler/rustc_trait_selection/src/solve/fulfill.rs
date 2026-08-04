@@ -196,7 +196,6 @@ where
         assert_eq!(self.usable_in_snapshot, infcx.num_open_snapshots());
         let mut errors = TraitErrors::NoErrors;
         let delegate = <&SolverDelegate<'tcx>>::from(infcx);
-        let has_inspector = infcx.obligation_inspector.get().is_some();
         loop {
             let mut any_changed = false;
             let mut overflowed = false;
@@ -206,10 +205,9 @@ where
                     return false;
                 }
 
-                // Common case: no inspector, still stalled; keep the obligation. This path is
-                // extremely hot in some cases; there can be thousands of pending obligations.
-                if !has_inspector
-                    && let Some(stalled_on) = opt_stalled_on
+                // Common case: still stalled; keep the obligation. This path is extremely hot in
+                // some cases; there can be thousands of pending obligations.
+                if let Some(stalled_on) = opt_stalled_on
                     && let Some(certainty) = delegate.goal_remains_stalled(stalled_on)
                     && matches!(certainty, Certainty::Maybe(_))
                 {
