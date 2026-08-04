@@ -329,28 +329,42 @@ fn has_physical_root(s: &[u8], prefix: Option<Prefix<'_>>) -> bool {
     !path.is_empty() && is_sep_byte(path[0])
 }
 
+/// How many leading `.`s of a file name are held back from the stem/extension split.
+///
+/// Splitting inside them could leave a stem of `.` or `..`, which names a directory rather than
+/// a file. Three is enough to rule that out while still letting `...` — a file name in its own
+/// right — carry an extension.
+const MAX_LEADING_DOTS: usize = 3;
+
+/// Where the stem/extension split may start: after the leading run of `.`s, capped at
+/// [`MAX_LEADING_DOTS`].
+fn stem_start(slice: &[u8]) -> usize {
+    slice
+        .iter()
+        .take(MAX_LEADING_DOTS)
+        .position(|b| *b != b'.')
+        .unwrap_or(slice.len().min(MAX_LEADING_DOTS))
+}
+
 // basic workhorse for splitting stem and extension
 fn rsplit_file_at_dot(file: &OsStr) -> (Option<&OsStr>, Option<&OsStr>) {
-    if file.as_encoded_bytes() == b".." {
+    let slice = file.as_encoded_bytes();
+    let start = stem_start(slice);
+
+    let Some(dot) = slice[start..].iter().rposition(|b| *b == b'.') else {
         return (Some(file), None);
-    }
+    };
+    let dot = start + dot;
 
     // The unsafety here stems from converting between &OsStr and &[u8]
     // and back. This is safe to do because (1) we only look at ASCII
     // contents of the encoding and (2) new &OsStr values are produced
     // only from ASCII-bounded slices of existing &OsStr values.
-    let mut iter = file.as_encoded_bytes().rsplitn(2, |b| *b == b'.');
-    let after = iter.next();
-    let before = iter.next();
-    if before == Some(b"") {
-        (Some(file), None)
-    } else {
-        unsafe {
-            (
-                before.map(|s| OsStr::from_encoded_bytes_unchecked(s)),
-                after.map(|s| OsStr::from_encoded_bytes_unchecked(s)),
-            )
-        }
+    unsafe {
+        (
+            Some(OsStr::from_encoded_bytes_unchecked(&slice[..dot])),
+            Some(OsStr::from_encoded_bytes_unchecked(&slice[dot + 1..])),
+        )
     }
 }
 
@@ -2877,8 +2891,12 @@ impl Path {
     ///
     /// * [`None`], if there is no file name;
     /// * The entire file name if there is no embedded `.`;
-    /// * The entire file name if the file name begins with `.` and has no other `.`s within;
+    /// * The entire file name if the file name begins with up to three `.` and has no other `.`s
+    ///   within;
     /// * Otherwise, the portion of the file name before the final `.`
+    ///
+    /// Up to three leading `.`s are held back from the split, so the stem is itself always a file
+    /// name — never `.` or `..`.
     ///
     /// # Examples
     ///
@@ -2887,6 +2905,8 @@ impl Path {
     ///
     /// assert_eq!("foo", Path::new("foo.rs").file_stem().unwrap());
     /// assert_eq!("foo.tar", Path::new("foo.tar.gz").file_stem().unwrap());
+    /// assert_eq!(".gitignore", Path::new(".gitignore").file_stem().unwrap());
+    /// assert_eq!("..gitignore", Path::new("..gitignore").file_stem().unwrap());
     /// ```
     ///
     /// # See Also
@@ -2942,7 +2962,7 @@ impl Path {
     ///
     /// * [`None`], if there is no file name;
     /// * [`None`], if there is no embedded `.`;
-    /// * [`None`], if the file name begins with `.` and has no other `.`s within;
+    /// * [`None`], if the file name begins with up to three `.` and has no other `.`s within;
     /// * Otherwise, the portion of the file name after the final `.`
     ///
     /// [`self.file_name`]: Path::file_name
@@ -2954,6 +2974,8 @@ impl Path {
     ///
     /// assert_eq!("rs", Path::new("foo.rs").extension().unwrap());
     /// assert_eq!("gz", Path::new("foo.tar.gz").extension().unwrap());
+    /// assert_eq!(None, Path::new(".gitignore").extension());
+    /// assert_eq!(None, Path::new("..gitignore").extension());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
