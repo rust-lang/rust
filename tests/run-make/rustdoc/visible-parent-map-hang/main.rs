@@ -1,7 +1,9 @@
+// #160439: nested #[doc(hidden)] modules made rustdoc hang here.
 #![crate_type = "lib"]
-extern crate dep;
-pub use dep::Tr;
+
 use std::fmt;
+
+pub use dep::Tr;
 
 pub struct Local;
 impl dep::Tr for Local {
