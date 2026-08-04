@@ -482,15 +482,15 @@ where
                 // Check if there are any user defined impls for Destruct. If there are,
                 // use those, and fallback to builtin drop glue impl if none are present
                 if self.cx().is_trait_lang_item(trait_def_id, SolverTraitLangItem::Destruct) {
-                    self.assemble_impl_candidates(goal, &mut candidates);
+                    self.assemble_impl_candidates(goal, &mut candidates)?;
                     let has_impl_candidate =
                         candidates.iter().any(|c| matches!(c.source, CandidateSource::Impl(_)));
                     if !has_impl_candidate {
-                        self.assemble_builtin_impl_candidates(goal, &mut candidates);
+                        self.assemble_builtin_impl_candidates(goal, &mut candidates)?;
                     }
                     self.assemble_object_bound_candidates(goal, &mut candidates);
                 } else {
-                    self.assemble_builtin_impl_candidates(goal, &mut candidates);
+                    self.assemble_builtin_impl_candidates(goal, &mut candidates)?;
                     // For performance we only assemble impls if there are no candidates
                     // which would shadow them. This is necessary to avoid hangs in rayon,
                     // see trait-system-refactor-initiative#109 for more details.
@@ -504,10 +504,13 @@ where
                     // See trait-system-refactor-initiative#226 for some ideas here.
                     let assemble_impls = match self.typing_mode() {
                         TypingMode::Coherence => true,
-                        TypingMode::Analysis { .. }
-                        | TypingMode::Borrowck { .. }
-                        | TypingMode::PostBorrowckAnalysis { .. }
-                        | TypingMode::PostAnalysis => !candidates.iter().any(|c| {
+                        TypingMode::Typeck { .. }
+                        | TypingMode::PostTypeckUntilBorrowck { .. }
+                        | TypingMode::PostBorrowck { .. }
+                        | TypingMode::Reflection
+                        | TypingMode::PostAnalysis
+                        | TypingMode::Codegen
+                        | TypingMode::ErasedNotCoherence(_) => !candidates.iter().any(|c| {
                             matches!(
                                 c.source,
                                 CandidateSource::ParamEnv(ParamEnvSource::NonGlobal)
@@ -516,7 +519,7 @@ where
                         }),
                     };
                     if assemble_impls {
-                        self.assemble_impl_candidates(goal, &mut candidates);
+                        self.assemble_impl_candidates(goal, &mut candidates)?;
                         self.assemble_object_bound_candidates(goal, &mut candidates);
                     }
                 }

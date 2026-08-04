@@ -1015,7 +1015,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             _ => {
                 debug_assert_eq!(
                     instance,
-                    ty::Instance::resolve_drop_glue(*self.tcx, place.layout.ty)
+                    ty::Instance::resolve_drop_in_place(*self.tcx, place.layout.ty)
                 );
                 place
             }
@@ -1023,7 +1023,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
         let instance = {
             let _trace = enter_trace_span!(M, resolve::resolve_drop_glue, ty = ?place.layout.ty);
-            ty::Instance::resolve_drop_glue(*self.tcx, place.layout.ty)
+            ty::Instance::resolve_drop_in_place(*self.tcx, place.layout.ty)
         };
         let fn_abi = self.fn_abi_of_instance_no_deduced_attrs(instance, ty::List::empty())?;
 

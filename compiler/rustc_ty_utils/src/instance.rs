@@ -435,9 +435,9 @@ fn resolve_associated_item<'tcx>(
                         ty::Coroutine(coroutine_def_id, ..) => {
                             if tcx.optimized_mir(coroutine_def_id).coroutine_drop_async().is_some()
                             {
-                                ty::InstanceKind::DropGlue(trait_item_id, None)
+                                ty::InstanceKind::Shim(ty::ShimKind::DropGlue(trait_item_id, None))
                             } else {
-                                ty::InstanceKind::DropGlue(trait_item_id, Some(self_ty))
+                                ty::InstanceKind::Shim(ty::ShimKind::DropGlue(trait_item_id, Some(self_ty)))
                             }
                         }
                         ty::Closure(..)
@@ -448,12 +448,12 @@ fn resolve_associated_item<'tcx>(
                         | ty::Array(..)
                         | ty::Slice(..)
                         | ty::UnsafeBinder(..) => {
-                            ty::InstanceKind::DropGlue(trait_item_id, Some(self_ty))
+                            ty::InstanceKind::Shim(ty::ShimKind::DropGlue(trait_item_id, Some(self_ty)))
                         }
                         _ => return Ok(None),
                     }
                 } else {
-                    ty::InstanceKind::DropGlue(trait_item_id, None)
+                    ty::InstanceKind::Shim(ty::ShimKind::DropGlue(trait_item_id, None))
                 };
                 Some(ty::Instance { def, args: rcvr_args })
             } else {

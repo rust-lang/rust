@@ -694,7 +694,7 @@ pub(crate) fn symbol_name_for_instance_in_crate<'tcx>(
         }
         ExportedSymbol::DropGlue(ty) => rustc_symbol_mangling::symbol_name_for_instance_in_crate(
             tcx,
-            Instance::resolve_drop_glue(tcx, ty),
+            Instance::resolve_drop_in_place(tcx, ty),
             instantiating_crate,
         ),
         ExportedSymbol::AsyncDropGlueCtorShim(ty) => {
