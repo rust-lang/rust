@@ -1198,7 +1198,7 @@ pub(crate) struct XcrunSdkPathWarning {
 pub(crate) struct Aarch64SoftfloatNeon;
 
 #[derive(Diagnostic)]
-#[diag("unknown feature specified for `-Ctarget-feature`: `{$feature}`")]
+#[diag("ignoring feature with missing prefix in `-Ctarget-feature`: `{$feature}`")]
 #[note("features must begin with a `+` to enable or `-` to disable it")]
 pub(crate) struct UnknownCTargetFeaturePrefix<'a> {
     pub feature: &'a str,
