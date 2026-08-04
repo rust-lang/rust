@@ -3110,3 +3110,15 @@ fn main() {
     "#,
     );
 }
+
+#[test]
+fn regression_22986() {
+    check_no_mismatches(
+        r#"
+fn main() {
+    let _: &[u8; 0] = b"\
+        ";
+}
+    "#,
+    );
+}
