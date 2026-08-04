@@ -19,7 +19,7 @@ use rustc_middle::{bug, ty};
 use rustc_next_trait_solver::canonical::instantiate_canonical_state;
 use rustc_next_trait_solver::solve::{MaybeCause, MaybeInfo, SolverDelegateEvalExt as _, inspect};
 use rustc_span::Span;
-use thin_vec::ThinVec;
+use smallvec::SmallVec;
 use tracing::instrument;
 
 use crate::solve::delegate::SolverDelegate;
@@ -31,7 +31,7 @@ pub struct InspectConfig {
 pub struct InspectGoal<'a, 'tcx> {
     infcx: &'a SolverDelegate<'tcx>,
     depth: usize,
-    orig_values: ThinVec<ty::GenericArg<'tcx>>,
+    orig_values: SmallVec<[ty::GenericArg<'tcx>; 2]>,
     prev_universe: ty::UniverseIndex,
     goal: Goal<'tcx, ty::Predicate<'tcx>>,
     result: Result<Certainty, NoSolution>,

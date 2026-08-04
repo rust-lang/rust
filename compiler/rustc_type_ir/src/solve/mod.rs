@@ -10,7 +10,7 @@ use rustc_macros::{Decodable_NoContext, Encodable_NoContext, StableHash, StableH
 use rustc_type_ir_macros::{
     GenericTypeVisitable, Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic,
 };
-use thin_vec::ThinVec;
+use smallvec::SmallVec;
 use tracing::debug;
 
 use crate::inherent::*;
@@ -1007,11 +1007,9 @@ pub enum GoalStalledOnOpaques<I: Interner> {
 /// The conditions that must change for a goal to warrant
 #[derive_where(Clone, Debug; I: Interner)]
 pub struct GoalStalledOn<I: Interner> {
-    // `ThinVec` is important for performance. See #160005.
-    pub stalled_vars: ThinVec<TyOrConstInferVar>,
-    // `ThinVec` is important for performance. See #160005.
-    pub sub_roots: ThinVec<TyVid>,
-    /// The `MaybeInfo` that will be returned on subsequent evaluations if this
+    pub stalled_vars: SmallVec<[TyOrConstInferVar; 2]>,
+    pub sub_roots: SmallVec<[TyVid; 4]>,
+    /// The certainty that will be returned on subsequent evaluations if this
     /// goal remains stalled.
     pub stalled_maybe_info: MaybeInfo,
     pub opaques: GoalStalledOnOpaques<I>,

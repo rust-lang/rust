@@ -22,7 +22,7 @@ use rustc_middle::ty::{
 };
 use rustc_next_trait_solver::solve::{GoalStalledOn, GoalStalledOnOpaques, TyOrConstInferVar};
 use rustc_span::{DUMMY_SP, Span};
-use thin_vec::{ThinVec, thin_vec};
+use smallvec::{SmallVec, smallvec};
 
 use crate::traits::{EvaluateConstErr, ObligationCause, sizedness_fast_path, specialization_graph};
 
@@ -56,12 +56,12 @@ impl<'tcx> SolverDelegate<'tcx> {
 /// Create a [`ComputeGoalFastPathOutcome`] signalling the goal is stalled
 /// on a list of [`ty::GenericArg`]
 fn goal_stalled_on_args<'tcx>(
-    stalled_vars: ThinVec<TyOrConstInferVar>,
+    stalled_vars: SmallVec<[TyOrConstInferVar; 2]>,
 ) -> ComputeGoalFastPathOutcome<'tcx> {
     ComputeGoalFastPathOutcome::TriviallyStalled {
         stalled_on: GoalStalledOn {
             stalled_vars,
-            sub_roots: ThinVec::new(),
+            sub_roots: SmallVec::new(),
             stalled_maybe_info: MaybeInfo::AMBIGUOUS,
             opaques: GoalStalledOnOpaques::No,
         },
@@ -72,12 +72,12 @@ fn goal_stalled_on_args<'tcx>(
 /// on a list of [`ty::GenericArg`] *or* the opaque type storage being nonempty.
 ///
 fn goal_stalled_on_args_or_nonempty_opaques<'tcx>(
-    stalled_vars: ThinVec<TyOrConstInferVar>,
+    stalled_vars: SmallVec<[TyOrConstInferVar; 2]>,
 ) -> ComputeGoalFastPathOutcome<'tcx> {
     ComputeGoalFastPathOutcome::TriviallyStalled {
         stalled_on: GoalStalledOn {
             stalled_vars,
-            sub_roots: ThinVec::new(),
+            sub_roots: SmallVec::new(),
             stalled_maybe_info: MaybeInfo::AMBIGUOUS,
             opaques: GoalStalledOnOpaques::Yes {
                 num_opaques_in_storage: 0,
@@ -91,7 +91,7 @@ fn goal_stalled_on_args_or_nonempty_opaques<'tcx>(
 }
 
 struct CollectNonRegionInfer<'tcx> {
-    infers: ThinVec<ty::GenericArg<'tcx>>,
+    infers: SmallVec<[ty::GenericArg<'tcx>; 2]>,
     visited: FxHashSet<Ty<'tcx>>,
 }
 
@@ -164,7 +164,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                 // FIXME: Properly consider opaques here.
                 && self.known_no_opaque_types_in_storage()
                 {
-                    goal_stalled_on_args_or_nonempty_opaques(thin_vec![TyOrConstInferVar::Ty(vid)])
+                    goal_stalled_on_args_or_nonempty_opaques(smallvec![TyOrConstInferVar::Ty(vid)])
                 } else if trait_pred.polarity() == ty::PredicatePolarity::Positive {
                     match self.0.tcx.as_lang_item(trait_pred.def_id()) {
                         Some(LangItem::Sized) | Some(LangItem::MetaSized) => {
@@ -259,7 +259,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                 match (self.shallow_resolve(a).kind(), self.shallow_resolve(b).kind()) {
                     (&ty::Infer(ty::TyVar(a_vid)), &ty::Infer(ty::TyVar(b_vid))) => {
                         self.sub_unify_ty_vids_raw(a_vid, b_vid);
-                        goal_stalled_on_args(thin_vec![
+                        goal_stalled_on_args(smallvec![
                             TyOrConstInferVar::Ty(a_vid),
                             TyOrConstInferVar::Ty(b_vid),
                         ])
@@ -274,7 +274,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
 
                 let arg = self.shallow_resolve_const(ct);
                 if let Some(vid) = arg.ct_vid() {
-                    goal_stalled_on_args(thin_vec![TyOrConstInferVar::Const(vid)])
+                    goal_stalled_on_args(smallvec![TyOrConstInferVar::Const(vid)])
                 } else {
                     Outcome::NoFastPath
                 }
@@ -288,7 +288,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
                 if arg.is_trivially_wf(self.tcx) {
                     Outcome::TriviallyHolds
                 } else if arg.is_infer() {
-                    goal_stalled_on_args(thin_vec![
+                    goal_stalled_on_args(smallvec![
                         TyOrConstInferVar::maybe_from_term::<TyCtxt<'tcx>>(arg)
                             .expect("its an infer var"),
                     ])

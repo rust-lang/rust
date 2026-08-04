@@ -11,7 +11,7 @@ rustc_index = { path = "../rustc_index", default-features = false }
 rustc_macros = { path = "../rustc_macros", optional = true }
 rustc_type_ir = { path = "../rustc_type_ir", default-features = false }
 rustc_type_ir_macros = { path = "../rustc_type_ir_macros" }
-thin-vec = "0.2.19"
+smallvec = { version = "1.8.1", features = ["union"] }
 tracing = "0.1"
 # tidy-alphabetical-end
 
@@ -23,5 +23,6 @@ nightly = [
     "dep:rustc_macros",
     "rustc_index/nightly",
     "rustc_type_ir/nightly",
+    "smallvec/may_dangle",
 ]
 # tidy-alphabetical-end
