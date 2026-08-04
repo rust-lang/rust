@@ -295,7 +295,7 @@ impl ast::ByteString {
 
         match (has_error, buf.capacity() == 0) {
             (Some(e), _) => Err(e),
-            (None, true) => Ok(Cow::Borrowed(text.as_bytes())),
+            (None, true) => Ok(Cow::Borrowed(&text.as_bytes()[..prev_end])),
             (None, false) => Ok(Cow::Owned(buf)),
         }
     }
@@ -650,6 +650,10 @@ bcde", "abcde",
         check_byte_string_value(
             r"a\
 bcde", b"abcde",
+        );
+        check_byte_string_value(
+            r"\
+    ", b"",
         );
     }
 
