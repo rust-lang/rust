@@ -1,6 +1,7 @@
 mod builders;
 mod float;
 mod num;
+mod numbuffer;
 
 #[test]
 fn test_lifetime() {
