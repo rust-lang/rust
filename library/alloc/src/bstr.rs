@@ -42,10 +42,23 @@ use crate::vec::Vec;
 /// showing invalid UTF-8 as hex escapes or the Unicode replacement character, respectively.
 #[unstable(feature = "bstr", issue = "134915")]
 #[repr(transparent)]
-#[derive(Clone)]
 #[doc(alias = "BString")]
 pub struct ByteString(pub Vec<u8>);
 
+#[unstable(feature = "bstr", issue = "134915")]
+impl Clone for ByteString {
+    #[inline]
+    fn clone(&self) -> Self {
+        ByteString(self.0.clone())
+    }
+
+    #[inline]
+    fn clone_from(&mut self, source: &Self) {
+        self.0.clone_from(&source.0);
+    }
+}
+
+#[unstable(feature = "bstr", issue = "134915")]
 impl ByteString {
     #[inline]
     pub(crate) fn as_bytes(&self) -> &[u8] {
