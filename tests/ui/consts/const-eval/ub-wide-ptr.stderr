@@ -226,23 +226,38 @@ LL | const TRAIT_OBJ_INT_VTABLE: W<&dyn Trait> = unsafe { mem::transmute(W((&92u
                ╾ALLOC$ID╼ HEX_DUMP
            }
 
-error[E0080]: using ALLOC$ID as vtable pointer but it does not point to a vtable
-  --> $DIR/ub-wide-ptr.rs:119:57
+error[E0080]: constructing invalid value of type &dyn Trait: encountered ALLOC$ID<imm>, but expected a vtable pointer
+  --> $DIR/ub-wide-ptr.rs:119:1
    |
 LL | const TRAIT_OBJ_UNALIGNED_VTABLE: &dyn Trait = unsafe { mem::transmute((&92u8, &[0u8; 128])) };
-   |                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `TRAIT_OBJ_UNALIGNED_VTABLE` failed here
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
+   |
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
+               ╾ALLOC$ID╼ ╾ALLOC$ID╼ │ ╾─╼
+           }
 
-error[E0080]: using ALLOC$ID as vtable pointer but it does not point to a vtable
-  --> $DIR/ub-wide-ptr.rs:121:57
+error[E0080]: constructing invalid value of type &dyn Trait: encountered ALLOC$ID<imm>, but expected a vtable pointer
+  --> $DIR/ub-wide-ptr.rs:121:1
    |
 LL | const TRAIT_OBJ_BAD_DROP_FN_NULL: &dyn Trait = unsafe { mem::transmute((&92u8, &[0usize; 8])) };
-   |                                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `TRAIT_OBJ_BAD_DROP_FN_NULL` failed here
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
+   |
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
+               ╾ALLOC$ID╼ ╾ALLOC$ID╼ │ ╾─╼
+           }
 
-error[E0080]: using ALLOC$ID as vtable pointer but it does not point to a vtable
-  --> $DIR/ub-wide-ptr.rs:123:56
+error[E0080]: constructing invalid value of type &dyn Trait: encountered ALLOC$ID<imm>, but expected a vtable pointer
+  --> $DIR/ub-wide-ptr.rs:123:1
    |
 LL | const TRAIT_OBJ_BAD_DROP_FN_INT: &dyn Trait = unsafe { mem::transmute((&92u8, &[1usize; 8])) };
-   |                                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `TRAIT_OBJ_BAD_DROP_FN_INT` failed here
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
+   |
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
+               ╾ALLOC$ID╼ ╾ALLOC$ID╼ │ ╾─╼
+           }
 
 error[E0080]: constructing invalid value of type W<&dyn Trait>: at .0, encountered ALLOC$ID<imm>, but expected a vtable pointer
   --> $DIR/ub-wide-ptr.rs:125:1
@@ -288,17 +303,27 @@ LL | const RAW_TRAIT_OBJ_VTABLE_INVALID: *const dyn Trait = unsafe { mem::transm
                ╾ALLOC$ID╼ ╾ALLOC$ID╼ │ ╾─╼
            }
 
-error[E0080]: using null pointer as vtable pointer but it does not point to a vtable
-  --> $DIR/ub-wide-ptr.rs:142:5
+error[E0080]: constructing invalid value of type *const dyn Trait: encountered null pointer, but expected a vtable pointer
+  --> $DIR/ub-wide-ptr.rs:141:1
    |
-LL |     mem::transmute::<_, &dyn Trait>((&92u8, 0usize))
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `RAW_TRAIT_OBJ_VTABLE_NULL_THROUGH_REF` failed here
+LL | static mut RAW_TRAIT_OBJ_VTABLE_NULL_THROUGH_REF: *const dyn Trait = unsafe {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
+   |
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
+               ╾ALLOC$ID╼ HEX_DUMP
+           }
 
-error[E0080]: using ALLOC$ID as vtable pointer but it does not point to a vtable
-  --> $DIR/ub-wide-ptr.rs:146:5
+error[E0080]: constructing invalid value of type *const dyn Trait: encountered ALLOC$ID<imm>, but expected a vtable pointer
+  --> $DIR/ub-wide-ptr.rs:145:1
    |
-LL |     mem::transmute::<_, &dyn Trait>((&92u8, &3u64))
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ evaluation of `RAW_TRAIT_OBJ_VTABLE_INVALID_THROUGH_REF` failed here
+LL | static mut RAW_TRAIT_OBJ_VTABLE_INVALID_THROUGH_REF: *const dyn Trait = unsafe {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ it is undefined behavior to use this value
+   |
+   = note: the rules on what exactly is undefined behavior aren't clear, so this check might be overzealous. Please open an issue on the rustc repository if you believe it should not be considered undefined behavior.
+   = note: the raw bytes of the constant (size: $SIZE, align: $ALIGN) {
+               ╾ALLOC$ID╼ ╾ALLOC$ID╼ │ ╾─╼
+           }
 
 error: aborting due to 29 previous errors
 
