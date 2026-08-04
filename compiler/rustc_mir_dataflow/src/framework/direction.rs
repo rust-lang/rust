@@ -1,5 +1,5 @@
 use rustc_middle::bug;
-use rustc_middle::mir::{self, BasicBlock, CallReturnPlaces, Location, TerminatorEdges};
+use rustc_middle::mir::{self, BasicBlock, Location, TerminatorEdges};
 
 use super::visitor::ResultsVisitor;
 use super::{Analysis, Effect, EffectIndex, SwitchTargetIndex};
@@ -79,45 +79,17 @@ impl Direction for Backward {
 
         let exit_state = state;
         for pred in body.basic_blocks.predecessors()[block].iter().copied() {
-            match body[pred].terminator().kind {
+            match body[pred].terminator().edges() {
                 // Apply terminator-specific edge effects.
-                mir::TerminatorKind::Call { destination, target: Some(dest), .. }
-                    if dest == block =>
+                TerminatorEdges::AssignOnReturn { return_, place, .. }
+                    if return_.contains(&block) =>
                 {
                     let mut tmp = exit_state.clone();
-                    analysis.apply_call_return_effect(
-                        &mut tmp,
-                        pred,
-                        CallReturnPlaces::Call(destination),
-                    );
+                    analysis.apply_call_return_effect(&mut tmp, pred, place);
                     propagate(pred, &tmp);
                 }
 
-                mir::TerminatorKind::InlineAsm { ref targets, ref operands, .. }
-                    if targets.contains(&block) =>
-                {
-                    let mut tmp = exit_state.clone();
-                    analysis.apply_call_return_effect(
-                        &mut tmp,
-                        pred,
-                        CallReturnPlaces::InlineAsm(operands),
-                    );
-                    propagate(pred, &tmp);
-                }
-
-                mir::TerminatorKind::Yield { resume, drop, resume_arg, .. }
-                    if resume == block || drop == Some(block) =>
-                {
-                    let mut tmp = exit_state.clone();
-                    analysis.apply_call_return_effect(
-                        &mut tmp,
-                        pred,
-                        CallReturnPlaces::Yield(resume_arg),
-                    );
-                    propagate(pred, &tmp);
-                }
-
-                mir::TerminatorKind::SwitchInt { ref targets, ref discr } => {
+                TerminatorEdges::SwitchInt { targets, discr } => {
                     if let Some(_data) = analysis.get_switch_int_data(pred, targets, discr) {
                         bug!(
                             "SwitchInt edge effects are unsupported in backward dataflow analyses"
