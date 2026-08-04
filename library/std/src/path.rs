@@ -370,20 +370,19 @@ fn rsplit_file_at_dot(file: &OsStr) -> (Option<&OsStr>, Option<&OsStr>) {
 
 fn split_file_at_dot(file: &OsStr) -> (&OsStr, Option<&OsStr>) {
     let slice = file.as_encoded_bytes();
-    if slice == b".." {
-        return (file, None);
-    }
+    let start = stem_start(slice);
+
+    let i = match slice[start..].iter().position(|b| *b == b'.') {
+        Some(i) => start + i,
+        None => return (file, None),
+    };
+    let before = &slice[..i];
+    let after = &slice[i + 1..];
 
     // The unsafety here stems from converting between &OsStr and &[u8]
     // and back. This is safe to do because (1) we only look at ASCII
     // contents of the encoding and (2) new &OsStr values are produced
     // only from ASCII-bounded slices of existing &OsStr values.
-    let i = match slice[1..].iter().position(|b| *b == b'.') {
-        Some(i) => i + 1,
-        None => return (file, None),
-    };
-    let before = &slice[..i];
-    let after = &slice[i + 1..];
     unsafe {
         (
             OsStr::from_encoded_bytes_unchecked(before),
@@ -2927,9 +2926,12 @@ impl Path {
     ///
     /// * [`None`], if there is no file name;
     /// * The entire file name if there is no embedded `.`;
-    /// * The portion of the file name before the first non-beginning `.`;
-    /// * The entire file name if the file name begins with `.` and has no other `.`s within;
-    /// * The portion of the file name before the second `.` if the file name begins with `.`
+    /// * The entire file name if the file name begins with up to three `.` and has no other `.`s
+    ///   within;
+    /// * Otherwise, the portion of the file name before the first `.` that does not begin it
+    ///
+    /// As with [`Path::file_stem`], up to three leading `.`s are held back from the split, so the
+    /// prefix is itself always a file name — never `.` or `..`.
     ///
     /// [`self.file_name`]: Path::file_name
     ///
@@ -2942,6 +2944,7 @@ impl Path {
     /// assert_eq!("foo", Path::new("foo.tar.gz").file_prefix().unwrap());
     /// assert_eq!(".config", Path::new(".config").file_prefix().unwrap());
     /// assert_eq!(".config", Path::new(".config.toml").file_prefix().unwrap());
+    /// assert_eq!("..config", Path::new("..config.toml").file_prefix().unwrap());
     /// ```
     ///
     /// # See Also

@@ -1689,7 +1689,22 @@ pub fn test_prefix_ext() {
 
     t!(".x.y.z", file_prefix: Some(".x"), extension: Some("z"));
 
-    t!("..x.y.z", file_prefix: Some("."), extension: Some("z"));
+    t!("..x.y.z", file_prefix: Some("..x"), extension: Some("z"));
+
+    // up to three leading dots are part of the prefix
+    t!("..x", file_prefix: Some("..x"), extension: None);
+
+    t!("...x.y", file_prefix: Some("...x"), extension: Some("y"));
+
+    t!("...", file_prefix: Some("..."), extension: None);
+
+    // past three, `...` is a file name that can carry an extension
+    t!("....x", file_prefix: Some("..."), extension: Some("x"));
+
+    // dots after the start of the file name split as they always have
+    t!("x..y.z", file_prefix: Some("x"), extension: Some("z"));
+
+    t!("..x..y.z", file_prefix: Some("..x"), extension: Some("z"));
 
     t!("", file_prefix: None, extension: None);
 }
