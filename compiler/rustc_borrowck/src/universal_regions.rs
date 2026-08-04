@@ -26,8 +26,8 @@ use rustc_macros::extension;
 use rustc_middle::mir::RETURN_PLACE;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
-    self, GenericArgs, GenericArgsRef, InlineConstArgs, InlineConstArgsParts, RegionExt, RegionVid,
-    Ty, TyCtxt, TypeFoldable, TypeVisitableExt, fold_regions,
+    self, BoundVariableKind, GenericArgs, GenericArgsRef, InlineConstArgs, InlineConstArgsParts,
+    List, RegionExt, RegionVid, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, fold_regions,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::{ErrorGuaranteed, kw, sym};
@@ -183,21 +183,52 @@ impl<'tcx> DefiningTy<'tcx> {
         }
     }
 
-    #[instrument(level = "debug", skip(tcx, c_variadic_region), ret)]
-    fn inputs_and_output(
-        self,
-        tcx: TyCtxt<'tcx>,
-        c_variadic_region: impl FnOnce() -> ty::Region<'tcx>,
-    ) -> ty::Binder<'tcx, &'tcx ty::List<Ty<'tcx>>> {
+    /// The bound variables for a given defining type. This differs from their usual bound vars
+    /// in that closures and coroutine closures have an additional `'env`, while C-variadic
+    /// functions have an additional region for their implicit `VaList` input.
+    pub(crate) fn bound_vars(self, tcx: TyCtxt<'tcx>) -> &'tcx List<BoundVariableKind<'tcx>> {
+        match self {
+            DefiningTy::Closure(_, args) => {
+                let closure_sig = args.as_closure().sig();
+                let inputs_and_output = closure_sig.inputs_and_output();
+                tcx.mk_bound_variable_kinds_from_iter(inputs_and_output.bound_vars().iter().chain(
+                    iter::once(ty::BoundVariableKind::Region(ty::BoundRegionKind::ClosureEnv)),
+                ))
+            }
+
+            DefiningTy::CoroutineClosure(_, args) => {
+                let closure_sig = args.as_coroutine_closure().coroutine_closure_sig();
+                tcx.mk_bound_variable_kinds_from_iter(closure_sig.bound_vars().iter().chain(
+                    iter::once(ty::BoundVariableKind::Region(ty::BoundRegionKind::ClosureEnv)),
+                ))
+            }
+
+            DefiningTy::FnDef(def_id, _) => {
+                let sig = tcx.fn_sig(def_id).instantiate_identity().skip_norm_wip();
+                if sig.skip_binder().c_variadic() {
+                    // FIXME(#160495): Don't use an anonymous region here
+                    tcx.mk_bound_variable_kinds_from_iter(sig.bound_vars().iter().chain(
+                        iter::once(ty::BoundVariableKind::Region(ty::BoundRegionKind::Anon)),
+                    ))
+                } else {
+                    sig.bound_vars()
+                }
+            }
+
+            DefiningTy::Coroutine(..)
+            | DefiningTy::Const(..)
+            | DefiningTy::InlineConst(..)
+            | DefiningTy::GlobalAsm(..) => ty::List::empty(),
+        }
+    }
+
+    #[instrument(level = "debug", skip(tcx), ret)]
+    fn inputs_and_output(self, tcx: TyCtxt<'tcx>) -> ty::Binder<'tcx, &'tcx ty::List<Ty<'tcx>>> {
         match self {
             DefiningTy::Closure(def_id, args) => {
                 let closure_sig = args.as_closure().sig();
                 let inputs_and_output = closure_sig.inputs_and_output();
-                let bound_vars = tcx.mk_bound_variable_kinds_from_iter(
-                    inputs_and_output.bound_vars().iter().chain(iter::once(
-                        ty::BoundVariableKind::Region(ty::BoundRegionKind::ClosureEnv),
-                    )),
-                );
+                let bound_vars = self.bound_vars(tcx);
                 let br = ty::BoundRegion {
                     var: ty::BoundVar::from_usize(bound_vars.len() - 1),
                     kind: ty::BoundRegionKind::ClosureEnv,
@@ -245,10 +276,7 @@ impl<'tcx> DefiningTy<'tcx> {
             // Then we wrap it all up into a list of inputs and output.
             DefiningTy::CoroutineClosure(def_id, args) => {
                 let closure_sig = args.as_coroutine_closure().coroutine_closure_sig();
-                let bound_vars =
-                    tcx.mk_bound_variable_kinds_from_iter(closure_sig.bound_vars().iter().chain(
-                        iter::once(ty::BoundVariableKind::Region(ty::BoundRegionKind::ClosureEnv)),
-                    ));
+                let bound_vars = self.bound_vars(tcx);
                 let br = ty::BoundRegion {
                     var: ty::BoundVar::from_usize(bound_vars.len() - 1),
                     kind: ty::BoundRegionKind::ClosureEnv,
@@ -290,17 +318,24 @@ impl<'tcx> DefiningTy<'tcx> {
                 if tcx.fn_sig(def_id).skip_binder().c_variadic() {
                     let va_list_did = tcx.require_lang_item(LangItem::VaList, tcx.def_span(def_id));
 
-                    let region = c_variadic_region();
+                    let bound_vars = self.bound_vars(tcx);
+                    let br = ty::BoundRegion {
+                        var: ty::BoundVar::from_usize(bound_vars.len() - 1),
+                        kind: ty::BoundRegionKind::Anon,
+                    };
+                    let region = ty::Region::new_bound(tcx, ty::INNERMOST, br);
                     let va_list_ty =
                         tcx.type_of(va_list_did).instantiate(tcx, &[region.into()]).skip_norm_wip();
 
                     // The signature needs to follow the order [input_tys, va_list_ty, output_ty]
-                    return inputs_and_output.map_bound(|tys| {
-                        let (output_ty, input_tys) = tys.split_last().unwrap();
+                    let (output_ty, input_tys) =
+                        inputs_and_output.skip_binder().split_last().unwrap();
+                    return ty::Binder::bind_with_vars(
                         tcx.mk_type_list_from_iter(
                             input_tys.iter().copied().chain([va_list_ty, *output_ty]),
-                        )
-                    });
+                        ),
+                        bound_vars,
+                    );
                 }
 
                 inputs_and_output
@@ -678,7 +713,9 @@ impl<'tcx> UniversalRegionsBuilder<'_, 'tcx> {
         } else {
             // If this is a closure, coroutine, or inline-const, then the late-bound regions from the enclosing
             // function/closures are actually external regions to us. For example, here, 'a is not local
-            // to the closure c (although it is local to the fn foo):
+            // to the closure c (although it is local to the fn foo). We need to add them as they could be
+            // explicitly named in this body:
+            //
             // fn foo<'a>() {
             //     let c = || { let x: &'a u32 = ...; }
             // }
@@ -708,8 +745,9 @@ impl<'tcx> UniversalRegionsBuilder<'_, 'tcx> {
         // on its signature are local.
         //
         // We manually loop over `bound_inputs_and_output` instead of using
-        // `for_each_late_bound_region_in_item` as we may need to add the otherwise
-        // implicit `ClosureEnv` region.
+        // `for_each_late_bound_region_in_item` as both closures and function
+        // definitions have implicit late bound regions. Closures have a `'env`
+        // regions while c-variadic function definitions have a `&VaList` argument.
         let bound_inputs_and_output = self.compute_inputs_and_output(&indices, defining_ty);
         for (idx, bound_var) in bound_inputs_and_output.bound_vars().iter().enumerate() {
             if let ty::BoundVariableKind::Region(kind) = bound_var {
@@ -825,12 +863,7 @@ impl<'tcx> UniversalRegionsBuilder<'_, 'tcx> {
         defining_ty: DefiningTy<'tcx>,
     ) -> ty::Binder<'tcx, &'tcx ty::List<Ty<'tcx>>> {
         let tcx = self.infcx.tcx;
-        let inputs_and_output = defining_ty.inputs_and_output(tcx, || {
-            self.infcx.next_nll_region_var(NllRegionVariableOrigin::FreeRegion, || {
-                RegionCtxt::Free(sym::c_dash_variadic)
-            })
-        });
-
+        let inputs_and_output = defining_ty.inputs_and_output(tcx);
         let inputs_and_output = indices.fold_to_region_vids(tcx, inputs_and_output);
 
         // FIXME(#129952): We probably want a more principled approach here.
