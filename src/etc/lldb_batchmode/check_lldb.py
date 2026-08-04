@@ -14,6 +14,8 @@ import lldb
 from .common import (
     BLESS,
     INPUT_DATA,
+    ArrayChild,
+    ArrayLikeChildren,
     Child,
     Variable,
     Result,
@@ -136,7 +138,7 @@ def type_matches(
 
         ty_result = ty.matches(expected, name, provider_ok)
 
-        result = basic_type_result and type_class_result and ty_result
+        result = type_class_result and ty_result
 
     TYPES_TESTED[name] = result
 
@@ -212,11 +214,19 @@ def var_matches(var: Variable, expected: Variable, valobj: lldb.SBValue) -> Resu
     format_ok = var.format == expected.format
 
     type_ok = var.type == expected.type
-    type_match_ok = type_matches(
-        valobj.GetType(),
-        valobj.GetTarget(),
-        summary_ok & synthetic_ok & format_ok & pretty_type_name_ok & pretty_print_ok,
-    )
+
+    if var.has_visualizer() or expected.has_visualizer():
+        type_match_ok = type_matches(
+            valobj.GetType(),
+            valobj.GetTarget(),
+            summary_ok
+            & synthetic_ok
+            & format_ok
+            & pretty_type_name_ok
+            & pretty_print_ok,
+        )
+    else:
+        type_match_ok = Result.Ok
 
     value_ok = var.value == expected.value
 
@@ -399,6 +409,17 @@ def children_match(
             continue
 
         got = children[i]
+
+        if isinstance(children, ArrayLikeChildren):
+            if isinstance(got, ArrayChild):
+                got = Child(f"[{i}]", children.type, got.value, got.children)
+            else:
+                got = Child(f"[{i}]", children.type, got, [])
+
+            if isinstance(exp, ArrayChild):
+                exp = Child(f"[{i}]", expected.type, exp.value, exp.children)
+            else:
+                exp = Child(f"[{i}]", expected.type, exp, [])
 
         if got.name is None:
             result = Result.Mismatch

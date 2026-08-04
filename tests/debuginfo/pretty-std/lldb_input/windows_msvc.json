@@ -4,10 +4,171 @@
   "debugger_version": "lldb version 22.1.2 (https://github.com/llvm/llvm-project revision 1ab49a973e210e97d61e5db6557180dcb92c3e98)\n  clang revision 1ab49a973e210e97d61e5db6557180dcb92c3e98\n  llvm revision 1ab49a973e210e97d61e5db6557180dcb92c3e98",
   "feature_flags": "LLDBFeature.StaticFields|TypeRecognizers|Float128"
  },
+ "breakpoints": [
+  {
+   "slice": {
+    "type": "ref$<slice2$<i32> >",
+    "pretty_type_name": "&[i32]",
+    "pretty_print": "[0, 1, 2, 3]",
+    "synthetic": "lldb_lookup.MSVCStdSliceSyntheticProvider",
+    "summary": "lldb_lookup.StdSliceSummaryProvider",
+    "children": {
+     "type": "int",
+     "vals": [
+      0,
+      1,
+      2,
+      3
+     ]
+    }
+   },
+   "vec": {
+    "type": "alloc::vec::Vec<u64,alloc::alloc::Global>",
+    "pretty_print": "size=4",
+    "synthetic": "lldb_lookup.StdVecSyntheticProvider",
+    "summary": "lldb_lookup.SizeSummaryProvider",
+    "children": {
+     "type": "unsigned long long",
+     "vals": [
+      4,
+      5,
+      6,
+      7
+     ]
+    }
+   },
+   "str_slice": {
+    "type": "ref$<str$>",
+    "pretty_type_name": "&str",
+    "pretty_print": "\"IAMA string slice!\"",
+    "synthetic": "lldb_lookup.MSVCStrSyntheticProvider",
+    "summary": "lldb_lookup.StdStrSummaryProvider",
+    "children": {
+     "type": "unsigned char",
+     "vals": [
+      73,
+      65,
+      77,
+      65,
+      32,
+      115,
+      116,
+      114,
+      105,
+      110,
+      103,
+      32,
+      115,
+      108,
+      105,
+      99,
+      101,
+      33
+     ]
+    }
+   },
+   "string": {
+    "type": "alloc::string::String",
+    "pretty_print": "\"IAMA string!\"",
+    "synthetic": "lldb_lookup.StdStringSyntheticProvider",
+    "summary": "lldb_lookup.StdStringSummaryProvider",
+    "children": {
+     "type": "unsigned char",
+     "vals": [
+      73,
+      65,
+      77,
+      65,
+      32,
+      115,
+      116,
+      114,
+      105,
+      110,
+      103,
+      33
+     ]
+    }
+   },
+   "some": {
+    "type": "enum2$<core::option::Option<i16> >",
+    "pretty_type_name": "core::option::Option<i16>",
+    "pretty_print": "Some(8)",
+    "synthetic": "lldb_lookup.MSVCEnumSyntheticProvider",
+    "summary": "lldb_lookup.MSVCEnumSummaryProvider",
+    "children": [
+     {
+      "name": "0",
+      "type": "short",
+      "value": 8
+     }
+    ]
+   },
+   "none": {
+    "type": "enum2$<core::option::Option<i64> >",
+    "pretty_type_name": "core::option::Option<i64>",
+    "pretty_print": "None",
+    "synthetic": "lldb_lookup.MSVCEnumSyntheticProvider",
+    "summary": "lldb_lookup.MSVCEnumSummaryProvider"
+   },
+   "os_string": {
+    "type": "std::ffi::os_str::OsString",
+    "pretty_print": "\"IAMA OS string \ud83d\ude03\"",
+    "synthetic": "lldb_lookup.synthetic_lookup",
+    "summary": "lldb_lookup.StdOsStringSummaryProvider",
+    "children": [
+     {
+      "name": "inner",
+      "type": "std::sys::os_str::wtf8::Buf",
+      "children": [
+       {
+        "name": "inner",
+        "type": "alloc::wtf8::Wtf8Buf",
+        "children": [
+         {
+          "name": "bytes",
+          "type": "alloc::vec::Vec<u8,alloc::alloc::Global>",
+          "children": {
+           "type": "unsigned char",
+           "vals": [
+            73,
+            65,
+            77,
+            65,
+            32,
+            79,
+            83,
+            32,
+            115,
+            116,
+            114,
+            105,
+            110,
+            103,
+            32,
+            -16,
+            -97,
+            -104,
+            -125
+           ]
+          }
+         },
+         {
+          "name": "is_known_utf8",
+          "type": "bool",
+          "value": false
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ],
  "types": {
   "ref$<slice2$<i32> >": {
    "size": 16,
-   "basic_type": 0,
    "type_class": 16384,
    "fields": [
     {
@@ -27,35 +188,25 @@
   },
   "int *": {
    "size": 8,
-   "basic_type": 0,
-   "type_class": 4096,
-   "fields": [],
-   "generic_params": []
+   "type_class": 4096
   },
   "unsigned long long": {
    "size": 8,
-   "basic_type": 18,
    "type_class": 4,
-   "fields": [],
-   "generic_params": []
+   "basic_type": 18
   },
   "long": {
    "size": 4,
-   "basic_type": 15,
    "type_class": 4,
-   "fields": [],
-   "generic_params": []
+   "basic_type": 15
   },
   "int": {
    "size": 4,
-   "basic_type": 13,
    "type_class": 4,
-   "fields": [],
-   "generic_params": []
+   "basic_type": 13
   },
   "alloc::vec::Vec<u64,alloc::alloc::Global>": {
    "size": 24,
-   "basic_type": 0,
    "type_class": 16384,
    "fields": [
     {
@@ -76,7 +227,6 @@
   },
   "alloc::raw_vec::RawVec<u64,alloc::alloc::Global>": {
    "size": 16,
-   "basic_type": 0,
    "type_class": 16384,
    "fields": [
     {
@@ -92,7 +242,6 @@
   },
   "alloc::raw_vec::RawVecInner<alloc::alloc::Global>": {
    "size": 16,
-   "basic_type": 0,
    "type_class": 16384,
    "fields": [
     {
@@ -112,7 +261,6 @@
   },
   "core::num::niche_types::UsizeNoHighBit": {
    "size": 8,
-   "basic_type": 0,
    "type_class": 16384,
    "fields": [
     {
@@ -120,12 +268,10 @@
      "type": "unsigned long long",
      "offset": 0
     }
-   ],
-   "generic_params": []
+   ]
   },
   "core::ptr::unique::Unique<u8>": {
    "size": 8,
-   "basic_type": 0,
    "type_class": 16384,
    "fields": [
     {
@@ -140,7 +286,6 @@
   },
   "core::ptr::non_null::NonNull<u8>": {
    "size": 8,
-   "basic_type": 0,
    "type_class": 16384,
    "fields": [
     {
@@ -155,28 +300,19 @@
   },
   "unsigned char *": {
    "size": 8,
-   "basic_type": 0,
-   "type_class": 4096,
-   "fields": [],
-   "generic_params": []
+   "type_class": 4096
   },
   "unsigned char": {
    "size": 1,
-   "basic_type": 4,
    "type_class": 4,
-   "fields": [],
-   "generic_params": []
+   "basic_type": 4
   },
   "alloc::alloc::Global": {
    "size": 0,
-   "basic_type": 0,
-   "type_class": 16384,
-   "fields": [],
-   "generic_params": []
+   "type_class": 16384
   },
   "ref$<str$>": {
    "size": 16,
-   "basic_type": 0,
    "type_class": 16384,
    "fields": [
     {
@@ -189,12 +325,10 @@
      "type": "unsigned long long",
      "offset": 8
     }
-   ],
-   "generic_params": []
+   ]
   },
   "alloc::string::String": {
    "size": 24,
-   "basic_type": 0,
    "type_class": 16384,
    "fields": [
     {
@@ -202,12 +336,10 @@
      "type": "alloc::vec::Vec<u8,alloc::alloc::Global>",
      "offset": 0
     }
-   ],
-   "generic_params": []
+   ]
   },
   "alloc::vec::Vec<u8,alloc::alloc::Global>": {
    "size": 24,
-   "basic_type": 0,
    "type_class": 16384,
    "fields": [
     {
@@ -228,7 +360,6 @@
   },
   "alloc::raw_vec::RawVec<u8,alloc::alloc::Global>": {
    "size": 16,
-   "basic_type": 0,
    "type_class": 16384,
    "fields": [
     {
@@ -244,7 +375,6 @@
   },
   "enum2$<core::option::Option<i16> >": {
    "size": 4,
-   "basic_type": 0,
    "type_class": 65536,
    "fields": [
     {
@@ -262,12 +392,10 @@
      "type": "unsigned short",
      "offset": 0
     }
-   ],
-   "generic_params": []
+   ]
   },
   "enum2$<core::option::Option<i16> >::Variant0": {
    "size": 4,
-   "basic_type": 0,
    "type_class": 16384,
    "fields": [
     {
@@ -275,19 +403,14 @@
      "type": "enum2$<core::option::Option<i16> >::None",
      "offset": 0
     }
-   ],
-   "generic_params": []
+   ]
   },
   "enum2$<core::option::Option<i16> >::None": {
    "size": 4,
-   "basic_type": 0,
-   "type_class": 16384,
-   "fields": [],
-   "generic_params": []
+   "type_class": 16384
   },
   "enum2$<core::option::Option<i16> >::Variant1": {
    "size": 4,
-   "basic_type": 0,
    "type_class": 16384,
    "fields": [
     {
@@ -295,12 +418,10 @@
      "type": "enum2$<core::option::Option<i16> >::Some",
      "offset": 0
     }
-   ],
-   "generic_params": []
+   ]
   },
   "enum2$<core::option::Option<i16> >::Some": {
    "size": 4,
-   "basic_type": 0,
    "type_class": 16384,
    "fields": [
     {
@@ -308,26 +429,20 @@
      "type": "short",
      "offset": 2
     }
-   ],
-   "generic_params": []
+   ]
   },
   "short": {
    "size": 2,
-   "basic_type": 11,
    "type_class": 4,
-   "fields": [],
-   "generic_params": []
+   "basic_type": 11
   },
   "unsigned short": {
    "size": 2,
-   "basic_type": 12,
    "type_class": 4,
-   "fields": [],
-   "generic_params": []
+   "basic_type": 12
   },
   "enum2$<core::option::Option<i64> >": {
    "size": 16,
-   "basic_type": 0,
    "type_class": 65536,
    "fields": [
     {
@@ -345,12 +460,10 @@
      "type": "unsigned long long",
      "offset": 0
     }
-   ],
-   "generic_params": []
+   ]
   },
   "enum2$<core::option::Option<i64> >::Variant0": {
    "size": 16,
-   "basic_type": 0,
    "type_class": 16384,
    "fields": [
     {
@@ -358,19 +471,14 @@
      "type": "enum2$<core::option::Option<i64> >::None",
      "offset": 0
     }
-   ],
-   "generic_params": []
+   ]
   },
   "enum2$<core::option::Option<i64> >::None": {
    "size": 16,
-   "basic_type": 0,
-   "type_class": 16384,
-   "fields": [],
-   "generic_params": []
+   "type_class": 16384
   },
   "enum2$<core::option::Option<i64> >::Variant1": {
    "size": 16,
-   "basic_type": 0,
    "type_class": 16384,
    "fields": [
     {
@@ -378,12 +486,10 @@
      "type": "enum2$<core::option::Option<i64> >::Some",
      "offset": 0
     }
-   ],
-   "generic_params": []
+   ]
   },
   "enum2$<core::option::Option<i64> >::Some": {
    "size": 16,
-   "basic_type": 0,
    "type_class": 16384,
    "fields": [
     {
@@ -391,19 +497,15 @@
      "type": "long long",
      "offset": 8
     }
-   ],
-   "generic_params": []
+   ]
   },
   "long long": {
    "size": 8,
-   "basic_type": 17,
    "type_class": 4,
-   "fields": [],
-   "generic_params": []
+   "basic_type": 17
   },
   "std::ffi::os_str::OsString": {
    "size": 32,
-   "basic_type": 0,
    "type_class": 16384,
    "fields": [
     {
@@ -411,12 +513,10 @@
      "type": "std::sys::os_str::wtf8::Buf",
      "offset": 0
     }
-   ],
-   "generic_params": []
+   ]
   },
   "std::sys::os_str::wtf8::Buf": {
    "size": 32,
-   "basic_type": 0,
    "type_class": 16384,
    "fields": [
     {
@@ -424,12 +524,10 @@
      "type": "alloc::wtf8::Wtf8Buf",
      "offset": 0
     }
-   ],
-   "generic_params": []
+   ]
   },
   "alloc::wtf8::Wtf8Buf": {
    "size": 32,
-   "basic_type": 0,
    "type_class": 16384,
    "fields": [
     {
@@ -442,470 +540,12 @@
      "type": "bool",
      "offset": 24
     }
-   ],
-   "generic_params": []
+   ]
   },
   "bool": {
    "size": 1,
-   "basic_type": 21,
    "type_class": 4,
-   "fields": [],
-   "generic_params": []
+   "basic_type": 21
   }
- },
- "breakpoints": [
-  {
-   "slice": {
-    "type": "ref$<slice2$<i32> >",
-    "pretty_type_name": "&[i32]",
-    "pretty_print": "[0, 1, 2, 3]",
-    "value": null,
-    "synthetic": "lldb_lookup.MSVCStdSliceSyntheticProvider",
-    "summary": "lldb_lookup.StdSliceSummaryProvider",
-    "format": null,
-    "children": [
-     {
-      "name": "[0]",
-      "type": "int",
-      "value": 0,
-      "children": []
-     },
-     {
-      "name": "[1]",
-      "type": "int",
-      "value": 1,
-      "children": []
-     },
-     {
-      "name": "[2]",
-      "type": "int",
-      "value": 2,
-      "children": []
-     },
-     {
-      "name": "[3]",
-      "type": "int",
-      "value": 3,
-      "children": []
-     }
-    ]
-   },
-   "vec": {
-    "type": "alloc::vec::Vec<u64,alloc::alloc::Global>",
-    "pretty_type_name": null,
-    "pretty_print": "size=4",
-    "value": null,
-    "synthetic": "lldb_lookup.StdVecSyntheticProvider",
-    "summary": "lldb_lookup.SizeSummaryProvider",
-    "format": null,
-    "children": [
-     {
-      "name": "[0]",
-      "type": "unsigned long long",
-      "value": 4,
-      "children": []
-     },
-     {
-      "name": "[1]",
-      "type": "unsigned long long",
-      "value": 5,
-      "children": []
-     },
-     {
-      "name": "[2]",
-      "type": "unsigned long long",
-      "value": 6,
-      "children": []
-     },
-     {
-      "name": "[3]",
-      "type": "unsigned long long",
-      "value": 7,
-      "children": []
-     }
-    ]
-   },
-   "str_slice": {
-    "type": "ref$<str$>",
-    "pretty_type_name": "&str",
-    "pretty_print": "\"IAMA string slice!\"",
-    "value": null,
-    "synthetic": "lldb_lookup.MSVCStrSyntheticProvider",
-    "summary": "lldb_lookup.StdStrSummaryProvider",
-    "format": null,
-    "children": [
-     {
-      "name": "[0]",
-      "type": "unsigned char",
-      "value": 73,
-      "children": []
-     },
-     {
-      "name": "[1]",
-      "type": "unsigned char",
-      "value": 65,
-      "children": []
-     },
-     {
-      "name": "[2]",
-      "type": "unsigned char",
-      "value": 77,
-      "children": []
-     },
-     {
-      "name": "[3]",
-      "type": "unsigned char",
-      "value": 65,
-      "children": []
-     },
-     {
-      "name": "[4]",
-      "type": "unsigned char",
-      "value": 32,
-      "children": []
-     },
-     {
-      "name": "[5]",
-      "type": "unsigned char",
-      "value": 115,
-      "children": []
-     },
-     {
-      "name": "[6]",
-      "type": "unsigned char",
-      "value": 116,
-      "children": []
-     },
-     {
-      "name": "[7]",
-      "type": "unsigned char",
-      "value": 114,
-      "children": []
-     },
-     {
-      "name": "[8]",
-      "type": "unsigned char",
-      "value": 105,
-      "children": []
-     },
-     {
-      "name": "[9]",
-      "type": "unsigned char",
-      "value": 110,
-      "children": []
-     },
-     {
-      "name": "[10]",
-      "type": "unsigned char",
-      "value": 103,
-      "children": []
-     },
-     {
-      "name": "[11]",
-      "type": "unsigned char",
-      "value": 32,
-      "children": []
-     },
-     {
-      "name": "[12]",
-      "type": "unsigned char",
-      "value": 115,
-      "children": []
-     },
-     {
-      "name": "[13]",
-      "type": "unsigned char",
-      "value": 108,
-      "children": []
-     },
-     {
-      "name": "[14]",
-      "type": "unsigned char",
-      "value": 105,
-      "children": []
-     },
-     {
-      "name": "[15]",
-      "type": "unsigned char",
-      "value": 99,
-      "children": []
-     },
-     {
-      "name": "[16]",
-      "type": "unsigned char",
-      "value": 101,
-      "children": []
-     },
-     {
-      "name": "[17]",
-      "type": "unsigned char",
-      "value": 33,
-      "children": []
-     }
-    ]
-   },
-   "string": {
-    "type": "alloc::string::String",
-    "pretty_type_name": null,
-    "pretty_print": "\"IAMA string!\"",
-    "value": null,
-    "synthetic": "lldb_lookup.StdStringSyntheticProvider",
-    "summary": "lldb_lookup.StdStringSummaryProvider",
-    "format": null,
-    "children": [
-     {
-      "name": "[0]",
-      "type": "unsigned char",
-      "value": 73,
-      "children": []
-     },
-     {
-      "name": "[1]",
-      "type": "unsigned char",
-      "value": 65,
-      "children": []
-     },
-     {
-      "name": "[2]",
-      "type": "unsigned char",
-      "value": 77,
-      "children": []
-     },
-     {
-      "name": "[3]",
-      "type": "unsigned char",
-      "value": 65,
-      "children": []
-     },
-     {
-      "name": "[4]",
-      "type": "unsigned char",
-      "value": 32,
-      "children": []
-     },
-     {
-      "name": "[5]",
-      "type": "unsigned char",
-      "value": 115,
-      "children": []
-     },
-     {
-      "name": "[6]",
-      "type": "unsigned char",
-      "value": 116,
-      "children": []
-     },
-     {
-      "name": "[7]",
-      "type": "unsigned char",
-      "value": 114,
-      "children": []
-     },
-     {
-      "name": "[8]",
-      "type": "unsigned char",
-      "value": 105,
-      "children": []
-     },
-     {
-      "name": "[9]",
-      "type": "unsigned char",
-      "value": 110,
-      "children": []
-     },
-     {
-      "name": "[10]",
-      "type": "unsigned char",
-      "value": 103,
-      "children": []
-     },
-     {
-      "name": "[11]",
-      "type": "unsigned char",
-      "value": 33,
-      "children": []
-     }
-    ]
-   },
-   "some": {
-    "type": "enum2$<core::option::Option<i16> >",
-    "pretty_type_name": "core::option::Option<i16>",
-    "pretty_print": "Some(8)",
-    "value": null,
-    "synthetic": "lldb_lookup.MSVCEnumSyntheticProvider",
-    "summary": "lldb_lookup.MSVCEnumSummaryProvider",
-    "format": null,
-    "children": [
-     {
-      "name": "0",
-      "type": "short",
-      "value": 8,
-      "children": []
-     }
-    ]
-   },
-   "none": {
-    "type": "enum2$<core::option::Option<i64> >",
-    "pretty_type_name": "core::option::Option<i64>",
-    "pretty_print": "None",
-    "value": null,
-    "synthetic": "lldb_lookup.MSVCEnumSyntheticProvider",
-    "summary": "lldb_lookup.MSVCEnumSummaryProvider",
-    "format": null,
-    "children": []
-   },
-   "os_string": {
-    "type": "std::ffi::os_str::OsString",
-    "pretty_type_name": null,
-    "pretty_print": "\"IAMA OS string \ud83d\ude03\"",
-    "value": null,
-    "synthetic": "lldb_lookup.synthetic_lookup",
-    "summary": "lldb_lookup.StdOsStringSummaryProvider",
-    "format": null,
-    "children": [
-     {
-      "name": "inner",
-      "type": "std::sys::os_str::wtf8::Buf",
-      "value": null,
-      "children": [
-       {
-        "name": "inner",
-        "type": "alloc::wtf8::Wtf8Buf",
-        "value": null,
-        "children": [
-         {
-          "name": "bytes",
-          "type": "alloc::vec::Vec<u8,alloc::alloc::Global>",
-          "value": null,
-          "children": [
-           {
-            "name": "[0]",
-            "type": "unsigned char",
-            "value": 73,
-            "children": []
-           },
-           {
-            "name": "[1]",
-            "type": "unsigned char",
-            "value": 65,
-            "children": []
-           },
-           {
-            "name": "[2]",
-            "type": "unsigned char",
-            "value": 77,
-            "children": []
-           },
-           {
-            "name": "[3]",
-            "type": "unsigned char",
-            "value": 65,
-            "children": []
-           },
-           {
-            "name": "[4]",
-            "type": "unsigned char",
-            "value": 32,
-            "children": []
-           },
-           {
-            "name": "[5]",
-            "type": "unsigned char",
-            "value": 79,
-            "children": []
-           },
-           {
-            "name": "[6]",
-            "type": "unsigned char",
-            "value": 83,
-            "children": []
-           },
-           {
-            "name": "[7]",
-            "type": "unsigned char",
-            "value": 32,
-            "children": []
-           },
-           {
-            "name": "[8]",
-            "type": "unsigned char",
-            "value": 115,
-            "children": []
-           },
-           {
-            "name": "[9]",
-            "type": "unsigned char",
-            "value": 116,
-            "children": []
-           },
-           {
-            "name": "[10]",
-            "type": "unsigned char",
-            "value": 114,
-            "children": []
-           },
-           {
-            "name": "[11]",
-            "type": "unsigned char",
-            "value": 105,
-            "children": []
-           },
-           {
-            "name": "[12]",
-            "type": "unsigned char",
-            "value": 110,
-            "children": []
-           },
-           {
-            "name": "[13]",
-            "type": "unsigned char",
-            "value": 103,
-            "children": []
-           },
-           {
-            "name": "[14]",
-            "type": "unsigned char",
-            "value": 32,
-            "children": []
-           },
-           {
-            "name": "[15]",
-            "type": "unsigned char",
-            "value": -16,
-            "children": []
-           },
-           {
-            "name": "[16]",
-            "type": "unsigned char",
-            "value": -97,
-            "children": []
-           },
-           {
-            "name": "[17]",
-            "type": "unsigned char",
-            "value": -104,
-            "children": []
-           },
-           {
-            "name": "[18]",
-            "type": "unsigned char",
-            "value": -125,
-            "children": []
-           }
-          ]
-         },
-         {
-          "name": "is_known_utf8",
-          "type": "bool",
-          "value": false,
-          "children": []
-         }
-        ]
-       }
-      ]
-     }
-    ]
-   }
-  }
- ]
+ }
 }
