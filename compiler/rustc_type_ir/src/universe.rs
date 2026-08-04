@@ -1,11 +1,12 @@
 use tracing::{debug, instrument};
 
-use crate::data_structures::HashSet;
+use crate::data_structures::{HashMap, HashSet};
 use crate::inherent::*;
 use crate::visit::TypeVisitableExt;
 use crate::{
-    ConstKind, InferCtxtLike, InferTy, Interner, Region, RegionKind, TyKind, TypeFoldable,
-    TypeSuperVisitable, TypeVisitable, TypeVisitor, UniverseIndex,
+    ConstKind, InferConst, InferCtxtLike, InferTy, Interner, Region, RegionKind, TyKind,
+    TypeFoldable, TypeFolder, TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitor,
+    UniverseIndex,
 };
 
 /// The largest universe a variable or placeholder was from in `t`
@@ -167,6 +168,143 @@ impl<
                 }
             }
             _ => (),
+        }
+    }
+}
+
+/// Lowers inference variables in `value` so they can be named by `for_universe`.
+///
+/// Canonicalizing inputs puts all inference variables and placeholders into the
+/// root universe. When instantiating a query response, variables therefore need
+/// to be moved back into a universe nameable by the original inference variable.
+pub fn lower_universe<
+    Infcx: InferCtxtLike<Interner = I>,
+    I: Interner,
+    T: TypeFoldable<I> + Copy,
+>(
+    infcx: &Infcx,
+    for_universe: UniverseIndex,
+    value: T,
+) -> T {
+    let value = value.fold_with(&mut LowerUniverseFolder {
+        infcx,
+        for_universe,
+        cache: Default::default(),
+    });
+
+    // Placeholders are intentionally not lowered by `LowerUniverseFolder`.
+    #[cfg(debug_assertions)]
+    {
+        let value_universe = max_universe(infcx, value);
+        assert!(
+            for_universe.can_name(value_universe),
+            "variable in universe {:?} can't name value in universe {:?}",
+            for_universe,
+            value_universe,
+        );
+    }
+
+    value
+}
+
+/// Canonicalizing inputs puts all inference variables and placeholders
+/// into the root universe.
+///
+/// This means when instantiating the query response we need to pull
+/// down the universe of returned `var_values` to the universe of
+/// the inference variable in `orig_values`.
+///
+/// This folder is similar to the `Generalizer`, except that it simply
+/// structurally folds non-rigid aliases as these should have already
+/// been generalized in the query so we shouldn't try to do it again.
+struct LowerUniverseFolder<'a, Infcx: InferCtxtLike<Interner = I>, I: Interner> {
+    infcx: &'a Infcx,
+    for_universe: UniverseIndex,
+    cache: HashMap<I::Ty, I::Ty>,
+}
+
+impl<Infcx: InferCtxtLike<Interner = I>, I: Interner> TypeFolder<I>
+    for LowerUniverseFolder<'_, Infcx, I>
+{
+    fn cx(&self) -> I {
+        self.infcx.cx()
+    }
+
+    fn fold_ty(&mut self, ty: I::Ty) -> I::Ty {
+        if !(ty.has_free_regions() || ty.has_infer()) {
+            return ty;
+        }
+
+        if let Some(&result) = self.cache.get(&ty) {
+            return result;
+        }
+
+        let folded = match ty.kind() {
+            TyKind::Infer(InferTy::TyVar(vid)) => {
+                let vid = self.infcx.root_ty_var(vid);
+                let resolved = self.infcx.opportunistic_resolve_ty_var(vid);
+
+                match resolved.kind() {
+                    TyKind::Infer(InferTy::TyVar(resolved_vid)) if resolved_vid == vid => {
+                        let universe = self.infcx.universe_of_ty(vid).unwrap();
+
+                        if self.for_universe.can_name(universe) {
+                            ty
+                        } else {
+                            self.infcx.lower_ty_var_to_universe(vid, self.for_universe)
+                        }
+                    }
+                    _ => resolved.super_fold_with(self),
+                }
+            }
+            _ => ty.super_fold_with(self),
+        };
+
+        self.cache.insert(ty, folded);
+        folded
+    }
+
+    fn fold_const(&mut self, ct: I::Const) -> I::Const {
+        if !(ct.has_free_regions() || ct.has_infer()) {
+            return ct;
+        }
+
+        match ct.kind() {
+            ConstKind::Infer(InferConst::Var(vid)) => {
+                let vid = self.infcx.root_const_var(vid);
+                let resolved = self.infcx.opportunistic_resolve_ct_var(vid);
+
+                match resolved.kind() {
+                    ConstKind::Infer(InferConst::Var(resolved_vid)) if resolved_vid == vid => {
+                        let universe = self.infcx.universe_of_ct(vid).unwrap();
+
+                        if self.for_universe.can_name(universe) {
+                            ct
+                        } else {
+                            self.infcx.lower_const_var_to_universe(vid, self.for_universe)
+                        }
+                    }
+                    _ => resolved.fold_with(self),
+                }
+            }
+            _ => ct.super_fold_with(self),
+        }
+    }
+
+    fn fold_region(&mut self, region: Region<I>) -> Region<I> {
+        match region.kind() {
+            RegionKind::ReBound(..) | RegionKind::ReErased => region,
+            _ => {
+                let universe = self.infcx.universe_of_region(region);
+
+                if self.for_universe.can_name(universe) {
+                    region
+                } else {
+                    // FIXME: unfortunately we lose the relating span here unless we take another
+                    // argument.
+                    self.infcx.lower_region_to_universe(region, self.for_universe)
+                }
+            }
         }
     }
 }
