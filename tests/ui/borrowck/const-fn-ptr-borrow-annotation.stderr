@@ -1,0 +1,16 @@
+error[E0597]: `s` does not live long enough
+  --> $DIR/const-fn-ptr-borrow-annotation.rs:11:13
+   |
+LL |     mem::transmute({
+   |     -------------- borrow later used by call
+...
+LL |             let s = [0; 10];
+   |                 - binding `s` declared here
+LL |             &s
+   |             ^^ borrowed value does not live long enough
+LL |         }
+   |         - `s` dropped here while still borrowed
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0597`.
