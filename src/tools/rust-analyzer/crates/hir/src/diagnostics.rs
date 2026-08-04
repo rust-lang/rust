@@ -441,6 +441,9 @@ pub struct MismatchedArgCount {
     pub call_expr: InFile<ExprOrPatPtr>,
     pub expected: usize,
     pub found: usize,
+    /// True when the call is through a `Fn`/`FnMut`/`FnOnce` trait (E0057)
+    /// rather than a regular function call (E0061).
+    pub is_fn_trait_call: bool,
 }
 
 #[derive(Debug)]
@@ -885,9 +888,18 @@ impl<'db> AnyDiagnostic<'db> {
                 };
                 DuplicateField { field: expr_or_pat, variant: variant.into() }.into()
             }
-            &InferenceDiagnostic::MismatchedArgCount { call_expr, expected, found } => {
-                MismatchedArgCount { call_expr: expr_syntax(call_expr)?, expected, found }.into()
+            &InferenceDiagnostic::MismatchedArgCount {
+                call_expr,
+                expected,
+                found,
+                is_fn_trait_call,
+            } => MismatchedArgCount {
+                call_expr: expr_syntax(call_expr)?,
+                expected,
+                found,
+                is_fn_trait_call,
             }
+            .into(),
             &InferenceDiagnostic::PrivateField { expr, field } => {
                 let expr = expr_syntax(expr)?;
                 let field = field.into();

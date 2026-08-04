@@ -2015,10 +2015,9 @@ impl<'db> InferenceContext<'db> {
             match tuple_type.kind() {
                 // We expected a tuple and got a tuple
                 TyKind::Tuple(arg_types) => {
-                    // Argument length differs
-                    if arg_types.len() != provided_args.len() {
-                        // FIXME: Emit an error.
-                    }
+                    // Argument length differs. The mismatch is reported below by the
+                    // shared `MismatchedArgCount` push (with `is_fn_trait_call = true`,
+                    // which the diagnostic surface renders as E0057).
                     let expected_input_tys = match expected_input_tys {
                         Some(expected_input_tys) => match expected_input_tys.first() {
                             Some(ty) => match ty.kind() {
@@ -2068,6 +2067,7 @@ impl<'db> InferenceContext<'db> {
                 call_expr,
                 expected: expected_input_tys.len() + skip_indices.len(),
                 found: provided_args.len(),
+                is_fn_trait_call: tuple_arguments == TupleArgumentsFlag::TupleArguments,
             });
         }
 

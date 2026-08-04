@@ -111,9 +111,9 @@ pub use infer::{
     infer_query_with_inspect,
 };
 pub use lower::{
-    FieldType, GenericDefaults, GenericDefaultsRef, GenericPredicates, ImplTraits,
-    LifetimeElisionKind, LifetimeLoweringMode, LoweringMode, TyDefId, TyLoweringContext,
-    TyLoweringInferVarsCtx, TyLoweringResult, ValueTyDefId, diagnostics::*,
+    FieldType, GenericDefaults, GenericDefaultsRef, GenericPredicates, LifetimeElisionKind,
+    LifetimeLoweringMode, LoweringMode, TyDefId, TyLoweringContext, TyLoweringInferVarsCtx,
+    TyLoweringResult, ValueTyDefId, diagnostics::*,
 };
 pub use next_solver::interner::{attach_db, attach_db_allow_change, with_attached_db};
 pub use target_feature::TargetFeatures;
@@ -216,7 +216,7 @@ impl<'db> MemoryMap<'db> {
     }
 }
 
-/// Return an index of a parameter in the generic type parameter list by it's id.
+/// Returns the index of a parameter in the generic type parameter list by its id.
 pub fn type_or_const_param_idx(db: &dyn HirDatabase, id: TypeOrConstParamId) -> u32 {
     generics::generics(db, id.parent).type_or_const_param_idx(id)
 }

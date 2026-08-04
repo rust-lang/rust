@@ -29,7 +29,7 @@ use rustc_index::bit_set::DenseBitSet;
 use rustc_type_ir::{
     AliasTy, BoundVar, CoroutineWitnessTypes, DebruijnIndex, EarlyBinder, FlagComputation, Flags,
     FnSigKind, GenericArgKind, GenericTypeVisitable, ImplPolarity, InferTy, Interner, TraitRef,
-    TypeFlags, TypeVisitableExt, Upcast, Variance,
+    TypeFlags, TypeVisitableExt, Upcast, Variance, VisitorResult,
     elaborate::elaborate,
     error::TypeError,
     fast_reject,
@@ -54,6 +54,7 @@ use crate::{
         TraitAssocTyId, TraitIdWrapper, TypeAliasIdWrapper, UnevaluatedConst, Unnormalized,
         util::{explicit_item_bounds, explicit_item_self_bounds},
     },
+    ret,
 };
 
 use super::{
@@ -263,6 +264,35 @@ macro_rules! impl_foldable_for_interned_slice {
     };
 }
 pub(crate) use impl_foldable_for_interned_slice;
+
+macro_rules! impl_foldable_for_stored_type {
+    ($name:ident) => {
+        impl<'db> ::rustc_type_ir::TypeVisitable<DbInterner<'db>> for $name {
+            fn visit_with<V: rustc_type_ir::TypeVisitor<DbInterner<'db>>>(
+                &self,
+                visitor: &mut V,
+            ) -> V::Result {
+                self.as_ref().visit_with(visitor)
+            }
+        }
+
+        impl<'db> rustc_type_ir::TypeFoldable<DbInterner<'db>> for $name {
+            fn try_fold_with<F: rustc_type_ir::FallibleTypeFolder<DbInterner<'db>>>(
+                self,
+                folder: &mut F,
+            ) -> Result<Self, F::Error> {
+                Ok(self.as_ref().try_fold_with(folder)?.store())
+            }
+            fn fold_with<F: rustc_type_ir::TypeFolder<DbInterner<'db>>>(
+                self,
+                folder: &mut F,
+            ) -> Self {
+                self.as_ref().fold_with(folder).store()
+            }
+        }
+    };
+}
+pub(crate) use impl_foldable_for_stored_type;
 
 macro_rules! impl_stored_interned {
     ( $storage:ident, $name:ident, $stored_name:ident $(,)? ) => {
@@ -1601,12 +1631,12 @@ impl<'db> Interner for DbInterner<'db> {
         def_id.0.trait_items(self.db()).associated_types().map(|id| id.into())
     }
 
-    fn for_each_relevant_impl(
+    fn for_each_relevant_impl<R: VisitorResult>(
         self,
         trait_def_id: Self::TraitId,
         self_ty: Self::Ty,
-        mut f: impl FnMut(Self::ImplId),
-    ) {
+        mut f: impl FnMut(Self::ImplId) -> R,
+    ) -> R {
         let krate = self.krate.expect("trait solving requires setting `DbInterner::krate`");
         let trait_block = trait_def_id.0.loc(self.db).container.block(self.db);
         let mut consider_impls_for_simplified_type = |simp: SimplifiedType<'_>| {
@@ -1641,13 +1671,14 @@ impl<'db> Interner for DbInterner<'db> {
                     let (regular_impls, builtin_derive_impls) =
                         impls.for_trait_and_self_ty(trait_def_id.0, &simp);
                     for &impl_ in regular_impls {
-                        f(impl_.into());
+                        ret!(f(impl_.into()));
                     }
                     for &impl_ in builtin_derive_impls {
-                        f(impl_.into());
+                        ret!(f(impl_.into()));
                     }
+                    R::output()
                 },
-            );
+            )
         };
 
         match self_ty.kind() {
@@ -1676,7 +1707,7 @@ impl<'db> Interner for DbInterner<'db> {
                 let simp =
                     fast_reject::simplify_type(self, self_ty, fast_reject::TreatParams::AsRigid)
                         .unwrap();
-                consider_impls_for_simplified_type(simp);
+                ret!(consider_impls_for_simplified_type(simp));
             }
 
             // HACK: For integer and float variables we have to manually look at all impls
@@ -1704,7 +1735,7 @@ impl<'db> Interner for DbInterner<'db> {
                     SimplifiedType::Uint(Usize),
                 ];
                 for simp in possible_integers {
-                    consider_impls_for_simplified_type(simp);
+                    ret!(consider_impls_for_simplified_type(simp));
                 }
             }
 
@@ -1719,7 +1750,7 @@ impl<'db> Interner for DbInterner<'db> {
                 ];
 
                 for simp in possible_floats {
-                    consider_impls_for_simplified_type(simp);
+                    ret!(consider_impls_for_simplified_type(simp));
                 }
             }
 
@@ -1748,15 +1779,22 @@ impl<'db> Interner for DbInterner<'db> {
         self.for_each_blanket_impl(trait_def_id, f)
     }
 
-    fn for_each_blanket_impl(self, trait_def_id: Self::TraitId, mut f: impl FnMut(Self::ImplId)) {
-        let Some(krate) = self.krate else { return };
+    fn for_each_blanket_impl<R: VisitorResult>(
+        self,
+        trait_def_id: Self::TraitId,
+        mut f: impl FnMut(Self::ImplId) -> R,
+    ) -> R {
+        let Some(krate) = self.krate else {
+            return R::output();
+        };
         let block = trait_def_id.0.loc(self.db).container.block(self.db);
 
         TraitImpls::for_each_crate_and_block(self.db, krate, block, &mut |impls| {
             for &impl_ in impls.blanket_impls(trait_def_id.0) {
-                f(impl_.into());
+                ret!(f(impl_.into()));
             }
-        });
+            R::output()
+        })
     }
 
     fn has_item_definition(self, _def_id: Self::ImplOrTraitAssocTermId) -> bool {
@@ -2047,13 +2085,19 @@ impl<'db> Interner for DbInterner<'db> {
         opaque: Self::LocalOpaqueTyId,
     ) -> EarlyBinder<Self, Self::Ty> {
         let impl_trait_id = opaque.0.loc(self.db);
-        match impl_trait_id {
+        // The entry is missing when this call cycles back into the still-running inference
+        // of the defining body, as the cycle fallback is an empty result.
+        let hidden_type = match impl_trait_id {
             crate::ImplTraitId::ReturnTypeImplTrait(func, idx) => {
-                crate::opaques::rpit_hidden_types(self.db, func)[idx].get()
+                crate::opaques::rpit_hidden_types(self.db, func).get(idx)
             }
             crate::ImplTraitId::TypeAliasImplTrait(type_alias, idx) => {
-                crate::opaques::tait_hidden_types(self.db, type_alias)[idx].get()
+                crate::opaques::tait_hidden_types(self.db, type_alias).get(idx)
             }
+        };
+        match hidden_type {
+            Some(hidden_type) => hidden_type.get(),
+            None => EarlyBinder::bind(Ty::new_error(self, ErrorGuaranteed)),
         }
     }
 
