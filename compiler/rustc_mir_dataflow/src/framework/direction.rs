@@ -111,7 +111,7 @@ impl Direction for Backward {
                     let mut tmp = exit_state.clone();
                     analysis.apply_call_return_effect(
                         &mut tmp,
-                        block,
+                        pred,
                         CallReturnPlaces::Yield(resume_arg),
                     );
                     propagate(pred, &tmp);
