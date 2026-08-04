@@ -1189,8 +1189,6 @@ impl<T, A: Allocator> Arc<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(smart_pointer_try_map)]
-    ///
     /// use std::sync::Arc;
     ///
     /// let r = Arc::new(7);
@@ -1198,7 +1196,7 @@ impl<T, A: Allocator> Arc<T, A> {
     /// assert_eq!(*new, 14);
     /// ```
     #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "smart_pointer_try_map", issue = "144419")]
+    #[stable(feature = "smart_pointer_map", since = "CURRENT_RUSTC_VERSION")]
     pub fn map<U>(this: Self, f: impl FnOnce(&T) -> U) -> Arc<U, A> {
         if size_of::<T>() == size_of::<U>()
             && align_of::<T>() == align_of::<U>()
@@ -4739,7 +4737,6 @@ impl<T> UniqueArc<T, Global> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(smart_pointer_try_map)]
     /// #![feature(unique_rc_arc)]
     ///
     /// use std::sync::UniqueArc;
@@ -4749,7 +4746,7 @@ impl<T> UniqueArc<T, Global> {
     /// assert_eq!(*new, 14);
     /// ```
     #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "smart_pointer_try_map", issue = "144419")]
+    #[unstable(feature = "unique_rc_arc", issue = "112566")]
     pub fn map<U>(this: Self, f: impl FnOnce(T) -> U) -> UniqueArc<U> {
         if size_of::<T>() == size_of::<U>()
             && align_of::<T>() == align_of::<U>()
