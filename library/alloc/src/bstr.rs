@@ -574,6 +574,11 @@ impl ToOwned for ByteStr {
     fn to_owned(&self) -> ByteString {
         ByteString(self.0.to_vec())
     }
+
+    #[inline]
+    fn clone_into(&self, target: &mut ByteString) {
+        self.0.clone_into(&mut target.0);
+    }
 }
 
 #[unstable(feature = "bstr", issue = "134915")]
