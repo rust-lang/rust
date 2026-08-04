@@ -49,7 +49,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{HirId, HirIdMap, Node};
 use rustc_hir_analysis::check::{check_abi, check_custom_abi};
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
-use rustc_infer::traits::{ObligationCauseCode, ObligationInspector, WellFormedLoc};
+use rustc_infer::traits::{ObligationCauseCode, ObligationInspector, TraitEngine, WellFormedLoc};
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, FnSigKind, Ty, TyCtxt, Unnormalized};
