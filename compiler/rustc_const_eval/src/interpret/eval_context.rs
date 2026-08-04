@@ -21,9 +21,9 @@ use rustc_target::callconv::FnAbi;
 use tracing::{debug, trace};
 
 use super::{
-    Frame, FrameInfo, GlobalId, InterpErrorInfo, InterpErrorKind, InterpResult, MPlaceTy, Machine,
-    MemPlaceMeta, Memory, OpTy, Place, PlaceTy, PointerArithmetic, Projectable, Provenance,
-    err_inval, interp_ok, throw_inval, throw_ub, throw_ub_format,
+    Frame, FrameInfo, GlobalId, InterpErrorKind, InterpResult, MPlaceTy, Machine, MemPlaceMeta,
+    Memory, OpTy, Place, PlaceTy, PointerArithmetic, Projectable, Provenance, err_inval, interp_ok,
+    throw_inval, throw_ub, throw_ub_format,
 };
 use crate::{enter_trace_span, util};
 
@@ -237,18 +237,6 @@ pub(super) fn from_known_layout<'tcx>(
             interp_ok(known_layout)
         }
     }
-}
-
-/// Turn the given error into a human-readable string. Expects the string to be printed, so if
-/// `RUSTC_CTFE_BACKTRACE` is set this will show a backtrace of the rustc internals that
-/// triggered the error.
-///
-/// This is NOT the preferred way to render an error; use `report` from `const_eval` instead.
-/// However, this is useful when error messages appear in ICEs.
-pub fn format_interp_error<'tcx>(e: InterpErrorInfo<'tcx>) -> String {
-    let (e, backtrace) = e.into_parts();
-    backtrace.print_backtrace();
-    e.to_string()
 }
 
 impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
