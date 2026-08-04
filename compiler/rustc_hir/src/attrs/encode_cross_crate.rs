@@ -40,7 +40,7 @@ impl AttributeKind {
             Doc(_) => Yes,
             DocComment { .. } => Yes,
             EiiDeclaration(_) => Yes,
-            EiiImpls(..) => No,
+            EiiImpl(..) => No,
             ExportName { .. } => Yes,
             ExportStable => No,
             Feature(..) => No,
