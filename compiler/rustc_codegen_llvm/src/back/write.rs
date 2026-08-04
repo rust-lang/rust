@@ -100,14 +100,17 @@ fn write_output_file<'ll>(
     result.into_result().unwrap_or_else(|()| llvm_err(dcx, LlvmError::WriteOutput { path: output }))
 }
 
+/// If `for_cfg` is `true` then we are creating this machine for the purpose of populating
+/// [`rustc_codegen_ssa::TargetConfig`] based on what LLVM actually enables in this configuration.
+/// `-Ctarget-feature` should be ignored in that case since it is already processed separately.
 pub(crate) fn create_informational_target_machine(
     sess: &Session,
-    only_base_features: bool,
+    for_cfg: bool,
 ) -> OwnedTargetMachine {
     let config = TargetMachineFactoryConfig { split_dwarf_file: None, output_obj_file: None };
     // Can't use query system here quite yet because this function is invoked before the query
     // system/tcx is set up.
-    let features = llvm_util::global_llvm_features(sess, only_base_features);
+    let features = llvm_util::global_llvm_features(sess, for_cfg);
     target_machine_factory(sess, config::OptLevel::No, &features)(sess.dcx(), config)
 }
 
