@@ -362,47 +362,11 @@ impl<'a, T: Default + Copy> BorrowedCursor<'a, T> {
     #[unstable(feature = "borrowed_buf_init", issue = "160476")]
     #[inline]
     pub fn ensure_init(&mut self) -> &mut [T] {
-        trait InitSpec: Default + Copy {
-            fn initialize(buf: &mut [MaybeUninit<Self>]);
-        }
-
-        impl<T: Default + Copy> InitSpec for T {
-            default fn initialize(buf: &mut [MaybeUninit<Self>]) {
-                buf.write_with(|_| Self::default());
-            }
-        }
-
-        macro_rules! spec_zero_init {
-            ($ty:ty) => {
-                impl InitSpec for $ty {
-                    fn initialize(buf: &mut [MaybeUninit<Self>]) {
-                        // SAFETY: all these types can be zero-initialized.
-                        unsafe {
-                            buf.as_mut_ptr().write_bytes(0, buf.len());
-                        }
-                    }
-                }
-            };
-        }
-
-        spec_zero_init!(i8);
-        spec_zero_init!(u8);
-        spec_zero_init!(i16);
-        spec_zero_init!(u16);
-        spec_zero_init!(i32);
-        spec_zero_init!(u32);
-        spec_zero_init!(i64);
-        spec_zero_init!(u64);
-        spec_zero_init!(i128);
-        spec_zero_init!(u128);
-        spec_zero_init!(isize);
-        spec_zero_init!(usize);
-
         // SAFETY: always in bounds and we never uninitialize these elements.
         let unfilled = unsafe { self.buf.buf.get_unchecked_mut(self.buf.filled..) };
 
         if !self.buf.init {
-            InitSpec::initialize(unfilled);
+            unfilled.write_default();
             self.buf.init = true;
         }
 
