@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use rustc_hir::attrs::Deprecation;
 use rustc_hir::def::{CtorKind, DefKind};
-use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE};
+use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::bug;
@@ -473,6 +473,9 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
             // This is a rudimentary check that does not catch all cases,
             // just the easiest.
             let mut fallback_map: Vec<(DefId, DefId)> = Default::default();
+            // hidden items never enter the map, so dedup here or every
+            // parent path re-enqueues the whole subtree (#160439)
+            let mut fallback_seen: DefIdSet = Default::default();
 
             // Issue 46112: We want the map to prefer the shortest
             // paths when reporting the path to an item. Therefore we
@@ -534,6 +537,10 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
                         }
                         Entry::Vacant(entry) => {
                             if fallback {
+                                // seen already, skip this parent
+                                if !fallback_seen.insert(def_id) {
+                                    return;
+                                }
                                 // We do all of the same steps to fallback entries as to
                                 // preferred entries, except for recording them in a separate map.
                                 // It is important to not return early in the fallback cases to
