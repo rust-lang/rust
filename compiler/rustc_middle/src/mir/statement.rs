@@ -442,7 +442,7 @@ impl<'tcx> Place<'tcx> {
     pub fn project_to_field(
         self,
         idx: FieldIdx,
-        local_decls: &impl HasLocalDecls<'tcx>,
+        local_decls: &(impl HasLocalDecls<'tcx> + ?Sized),
         tcx: TyCtxt<'tcx>,
     ) -> Self {
         let ty = self.ty(local_decls, tcx).ty;
