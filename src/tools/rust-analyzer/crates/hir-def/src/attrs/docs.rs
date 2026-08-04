@@ -449,7 +449,7 @@ fn extend_with_attrs<'a, 'db>(
                                     DocMacroExpander {
                                         db,
                                         krate,
-                                        macro_depth: 0,
+                                        macro_depth: file_id.macro_expansion_depth(db),
                                         recursion_limit,
                                         resolver,
                                         file_id,
