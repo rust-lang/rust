@@ -38,7 +38,7 @@ pub use crate::code_stats::{DataTypeKind, FieldInfo, FieldKind, SizeKind, Varian
 use crate::config::{
     self, BranchProtection, Cfg, CheckCfg, CoverageLevel, CoverageOptions, CrateType, DebugInfo,
     ErrorOutputType, FunctionReturn, Input, InstrumentCoverage, InstrumentMcount, NATIVE_CPU,
-    OptLevel, OutFileName, OutputType, PAuthKey, PointerAuthOption, SwitchWithOptPath,
+    OutFileName, OutputType, PAuthKey, PointerAuthOption, SwitchWithOptPath,
 };
 use crate::filesearch::FileSearch;
 use crate::lint::LintId;
@@ -841,10 +841,7 @@ impl Session {
     }
 
     pub fn mir_opt_level(&self) -> usize {
-        self.opts
-            .unstable_opts
-            .mir_opt_level
-            .unwrap_or_else(|| if self.opts.optimize != OptLevel::No { 2 } else { 1 })
+        self.opts.unstable_opts.mir_opt_level.unwrap_or_else(|| self.opts.optimize.mir_opt_level())
     }
 
     /// Calculates the flavor of LTO to use for this compilation.

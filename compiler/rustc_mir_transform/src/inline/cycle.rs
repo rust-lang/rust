@@ -52,8 +52,10 @@ fn should_recurse<'tcx>(tcx: TyCtxt<'tcx>, callee: ty::Instance<'tcx>) -> bool {
         }
     }
 
-    crate::pm::should_run_pass(tcx, &crate::inline::Inline, crate::pm::Optimizations::Allowed)
-        || crate::inline::ForceInline::should_run_pass_for_callee(tcx, callee.def.def_id())
+    crate::pm::should_run_pass(
+        &crate::inline::Inline,
+        &crate::pm::PassCtx::for_body(tcx, callee.def_id()),
+    ) || crate::inline::ForceInline::should_run_pass_for_callee(tcx, callee.def.def_id())
 }
 
 #[instrument(

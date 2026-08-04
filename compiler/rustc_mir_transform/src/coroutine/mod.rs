@@ -1219,7 +1219,7 @@ impl<'tcx> crate::MirPass<'tcx> for StateTransform {
         create_coroutine_resume_function(tcx, transform, body, can_return, can_unwind);
     }
 
-    fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
+    fn policy(&self, _ctx: &crate::PassCtx<'_>) -> PassPolicy {
         // Implements coroutine semantics by lowering the coroutine body to a state machine.
         PassPolicy::Required
     }
