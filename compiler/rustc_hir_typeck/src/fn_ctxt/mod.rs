@@ -22,6 +22,7 @@ use rustc_middle::ty::{
     self, CantBeErased, Const, Flags, Ty, TyCtxt, TypeVisitableExt, TypingMode, Unnormalized,
 };
 use rustc_session::Session;
+use rustc_span::def_id::LocalModId;
 use rustc_span::{self, DUMMY_SP, ErrorGuaranteed, Ident, Span};
 use rustc_trait_selection::error_reporting::TypeErrCtxt;
 use rustc_trait_selection::traits::{
@@ -231,6 +232,10 @@ impl<'tcx> HirTyLowerer<'tcx> for FnCtxt<'_, 'tcx> {
 
     fn item_def_id(&self) -> LocalDefId {
         self.body_def_id
+    }
+
+    fn mod_id(&self) -> LocalModId {
+        self.mod_id
     }
 
     fn re_infer(&self, span: Span, reason: RegionInferReason<'_>) -> ty::Region<'tcx> {

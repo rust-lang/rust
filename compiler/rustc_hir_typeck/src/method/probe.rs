@@ -848,8 +848,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         let is_accessible = if let Some(name) = self.method_name {
             let item = candidate.item;
             let container_id = item.container_id(self.tcx);
-            let def_scope =
-                self.tcx.adjust_ident_and_get_scope(name, container_id, self.body_def_id).1;
+            let def_scope = self.tcx.adjust_ident_and_get_scope(name, container_id, self.mod_id).1;
             item.visibility(self.tcx).is_accessible_from(def_scope, self.tcx)
         } else {
             true
