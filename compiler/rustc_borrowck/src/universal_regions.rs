@@ -155,36 +155,28 @@ impl<'tcx> DefiningTy<'tcx> {
                 }
             }
 
-            BodyOwnerKind::Const { .. } | BodyOwnerKind::Static(..) => {
-                match tcx.def_kind(body_def_id) {
-                    DefKind::AnonConst
-                        if tcx.anon_const_kind(body_def_id)
-                            == ty::AnonConstKind::NonTypeSystemInline =>
-                    {
-                        // This is required for `AscribeUserType` canonical query, which will call
-                        // `type_of(inline_const_def_id)`. That `type_of` would inject erased lifetimes
-                        // into borrowck, which is ICE #78174.
-                        //
-                        // As a workaround, inline consts have an additional generic param (`ty`
-                        // below), so that `type_of(inline_const_def_id).substs(substs)` uses the
-                        // proper type with NLL infer vars.
-                        //
-                        // Fetch the actual type from MIR, as `type_of` returns something useless
-                        // like `<const_ty>`.
-                        let body = tcx.mir_promoted(body_def_id).0.borrow();
-                        let ty = body.local_decls[RETURN_PLACE].ty;
-                        let typeck_root_def_id = tcx.typeck_root_def_id(body_def_id.to_def_id());
-                        let parent_args = GenericArgs::identity_for_item(tcx, typeck_root_def_id);
-                        let args =
-                            InlineConstArgs::new(tcx, InlineConstArgsParts { parent_args, ty })
-                                .args;
-                        DefiningTy::InlineConst(body_def_id.to_def_id(), args)
-                    }
-                    _ => {
-                        let args = GenericArgs::identity_for_item(tcx, body_def_id.to_def_id());
-                        DefiningTy::Const(body_def_id.to_def_id(), args)
-                    }
-                }
+            BodyOwnerKind::Const { inline: true } => {
+                // This is required for `AscribeUserType` canonical query, which will call
+                // `type_of(inline_const_def_id)`. That `type_of` would inject erased lifetimes
+                // into borrowck, which is ICE #78174.
+                //
+                // As a workaround, inline consts have an additional generic param (`ty`
+                // below), so that `type_of(inline_const_def_id).substs(substs)` uses the
+                // proper type with NLL infer vars.
+                //
+                // Fetch the actual type from MIR, as `type_of` returns something useless
+                // like `<const_ty>`.
+                let body = tcx.mir_promoted(body_def_id).0.borrow();
+                let ty = body.local_decls[RETURN_PLACE].ty;
+                let typeck_root_def_id = tcx.typeck_root_def_id(body_def_id.to_def_id());
+                let parent_args = GenericArgs::identity_for_item(tcx, typeck_root_def_id);
+                let args = InlineConstArgs::new(tcx, InlineConstArgsParts { parent_args, ty }).args;
+                DefiningTy::InlineConst(body_def_id.to_def_id(), args)
+            }
+
+            BodyOwnerKind::Const { inline: false } | BodyOwnerKind::Static(..) => {
+                let args = GenericArgs::identity_for_item(tcx, body_def_id.to_def_id());
+                DefiningTy::Const(body_def_id.to_def_id(), args)
             }
 
             BodyOwnerKind::GlobalAsm => DefiningTy::GlobalAsm(body_def_id.to_def_id()),
