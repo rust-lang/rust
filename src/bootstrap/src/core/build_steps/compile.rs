@@ -1425,7 +1425,7 @@ fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelect
     if builder.config.llvm_enzyme {
         cargo.env("LLVM_ENZYME", "1");
     }
-    let llvm::LlvmResult { host_llvm_config, .. } = builder.ensure(llvm::Llvm { target });
+    let llvm::LlvmOutput { host_llvm_config, .. } = builder.ensure(llvm::Llvm { target });
     if builder.config.llvm_offload {
         builder.ensure(llvm::OmpOffload { target });
         cargo.env("LLVM_OFFLOAD", "1");
@@ -2122,7 +2122,7 @@ impl CommandLineStep for Assemble {
             trace!("target_compiler.host" = ?target_compiler.host, "LLVM enabled");
 
             let target = target_compiler.host;
-            let llvm::LlvmResult { host_llvm_config, .. } = builder.ensure(llvm::Llvm { target });
+            let llvm::LlvmOutput { host_llvm_config, .. } = builder.ensure(llvm::Llvm { target });
             if !builder.config.dry_run() && builder.config.llvm_tools_enabled {
                 trace!("LLVM tools enabled");
 
