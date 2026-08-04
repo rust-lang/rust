@@ -169,6 +169,9 @@ fn resolve_associated_item<'tcx>(
                     );
                 }
 
+                // `Destruct` isn't object-safe and has no specialization concerns here,
+                // so the checks below (dyn-Trait overlap, defaultness, args-compatibility,
+                // compare_impl_item) don't apply so we build the Instance directly.
                 debug!("Got user Destruct impl");
                 return Ok(Some(Instance {
                     def: ty::InstanceKind::Item(leaf_def.item.def_id),
