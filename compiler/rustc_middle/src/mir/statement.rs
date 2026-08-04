@@ -3,6 +3,7 @@
 use std::ops;
 
 use rustc_data_structures::outline;
+use thin_vec::ThinVec;
 use tracing::{debug, instrument};
 
 use super::interpret::GlobalAlloc;
@@ -1042,17 +1043,15 @@ impl RawPtrKind {
     }
 }
 
-// FIXME(panstromek)
-//  I'd like to use real ThinVec here, but it fails to borrow check,
-//  probably because ThinVec doesn't have #[may_dangle] on Drop impl?
-type ThinVec<T> = Option<Box<Vec<T>>>;
-
 // This collection is almost always empty, so we
 // use thin representation and optimize all methods
 // for that by inlining the empty check
-// and outlining the rest.
+// and outlining the rest. Note that Option is
+// technically not needed, because empty ThinVec
+// points to a static singleton, this version performed
+// better in our benchmarks
 #[derive(Default, Debug, Clone, TyEncodable, TyDecodable, StableHash, TypeFoldable, TypeVisitable)]
-pub struct StmtDebugInfos<'tcx>(ThinVec<StmtDebugInfo<'tcx>>);
+pub struct StmtDebugInfos<'tcx>(Option<ThinVec<StmtDebugInfo<'tcx>>>);
 
 impl<'tcx> StmtDebugInfos<'tcx> {
     pub fn push(&mut self, debuginfo: StmtDebugInfo<'tcx>) {
@@ -1088,9 +1087,7 @@ impl<'tcx> StmtDebugInfos<'tcx> {
         if debuginfos.is_empty() {
             return;
         };
-        outline(move || {
-            self.0.get_or_insert_default().append(debuginfos.0.as_mut().unwrap().as_mut())
-        });
+        outline(move || self.0.get_or_insert_default().append(debuginfos.0.as_mut().unwrap()));
     }
     #[inline]
     pub fn extend(&mut self, debuginfos: &Self) {
