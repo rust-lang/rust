@@ -631,7 +631,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // be known if explicitly specified via turbofish).
                 self.deferred_transmute_checks.borrow_mut().push((*from, to, expr.hir_id));
             }
-            if tcx.is_intrinsic(did, sym::offload) {
+            if !tcx.sess.opts.unstable_opts.offload.is_empty()
+                && tcx.is_intrinsic(did, sym::offload)
+            {
                 let args = args.skip_binder();
                 let f = args.type_at(0);
                 let t = args.type_at(1);
