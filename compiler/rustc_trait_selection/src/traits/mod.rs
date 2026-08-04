@@ -537,6 +537,11 @@ pub enum EvaluateConstErr {
     EvaluationFailure(ErrorGuaranteed),
 }
 
+enum EvaluatedConst<'tcx> {
+    Const(ty::Const<'tcx>),
+    ValTree { value: ty::ValTree<'tcx>, ty: Unnormalized<'tcx, Ty<'tcx>> },
+}
+
 // FIXME(BoxyUwU): Private this once we `generic_const_exprs` isn't doing its own normalization routine
 // FIXME(generic_const_exprs): Consider accepting a `ty::AliasConst` when we are not rolling our own
 // normalization scheme
@@ -574,12 +579,26 @@ pub fn try_evaluate_const<'tcx>(
     ct: ty::Const<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
 ) -> Result<ty::Const<'tcx>, EvaluateConstErr> {
+    match try_evaluate_const_inner(infcx, ct, param_env)? {
+        EvaluatedConst::Const(ct) => Ok(ct),
+        EvaluatedConst::ValTree { value, ty } => {
+            Ok(ty::Const::new_value(infcx.tcx, value, ty.skip_norm_wip()))
+        }
+    }
+}
+
+#[instrument(name = "try_evaluate_const", level = "debug", skip(infcx))]
+fn try_evaluate_const_inner<'tcx>(
+    infcx: &InferCtxt<'tcx>,
+    ct: ty::Const<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+) -> Result<EvaluatedConst<'tcx>, EvaluateConstErr> {
     let tcx = infcx.tcx;
     let ct = infcx.resolve_vars_if_possible(ct);
     debug!(?ct);
 
     match ct.kind() {
-        ty::ConstKind::Value(..) => Ok(ct),
+        ty::ConstKind::Value(..) => Ok(EvaluatedConst::Const(ct)),
         ty::ConstKind::Error(e) => Err(EvaluateConstErr::EvaluationFailure(e)),
         ty::ConstKind::Param(_)
         | ty::ConstKind::Infer(_)
@@ -711,8 +730,8 @@ pub fn try_evaluate_const<'tcx>(
             // where it gets used as a const generic.
             let span = alias_const.kind.def_span(tcx);
             match tcx.const_eval_resolve_for_typeck(typing_env, erased_alias_const, span) {
-                Ok(Ok(val)) => {
-                    Ok(ty::Const::new_value(tcx, val, alias_const.type_of(tcx).skip_norm_wip()))
+                Ok(Ok(value)) => {
+                    Ok(EvaluatedConst::ValTree { value, ty: alias_const.type_of(tcx) })
                 }
                 Ok(Err(_)) => {
                     let e = tcx.dcx().delayed_bug(
