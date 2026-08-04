@@ -3435,10 +3435,16 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     |this| this.resolve_delegation(delegation, item.id, false),
                 );
             }
-            AssocItemKind::Type(TyAlias { generics, .. }) => self
-                .with_lifetime_rib(LifetimeRibKind::AnonymousReportError, |this| {
+            AssocItemKind::Type(TyAlias { generics, .. }) => {
+                if let Some(suggestion) = required_generic_args_suggestion(generics) {
+                    self.r
+                        .item_required_generic_args_suggestions
+                        .insert(self.r.current_owner.def_id, suggestion);
+                }
+                self.with_lifetime_rib(LifetimeRibKind::AnonymousReportError, |this| {
                     walk_assoc_item(this, generics, LifetimeBinderKind::Item, item)
-                }),
+                })
+            }
             AssocItemKind::MacCall(_) | AssocItemKind::DelegationMac(..) => {
                 panic!("unexpanded macro in resolve!")
             }
@@ -3684,6 +3690,11 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             }
             AssocItemKind::Type(TyAlias { ident, generics, .. }) => {
                 self.diag_metadata.in_non_gat_assoc_type = Some(generics.params.is_empty());
+                if let Some(suggestion) = required_generic_args_suggestion(generics) {
+                    self.r
+                        .item_required_generic_args_suggestions
+                        .insert(self.r.current_owner.def_id, suggestion);
+                }
                 debug!("resolve_implementation AssocItemKind::Type");
                 // We also need a new scope for the impl item type parameters.
                 self.with_generic_param_rib(
@@ -5667,16 +5678,6 @@ impl<'ast> Visitor<'ast> for ItemInfoCollector<'_, 'ast, '_, '_> {
             }
         }
         visit::walk_item(self, item)
-    }
-
-    fn visit_assoc_item(&mut self, item: &'ast AssocItem, ctxt: AssocCtxt) {
-        if let AssocItemKind::Type(ast::TyAlias { generics, .. }) = &item.kind {
-            let def_id = self.r.owner_def_id(item.id);
-            if let Some(suggestion) = required_generic_args_suggestion(generics) {
-                self.r.item_required_generic_args_suggestions.insert(def_id, suggestion);
-            }
-        }
-        visit::walk_assoc_item(self, item, ctxt);
     }
 }
 
