@@ -505,11 +505,11 @@ impl PathSource<'_, '_, '_> {
             | PathSource::Pat
             | PathSource::Struct(_)
             | PathSource::TupleStruct(..)
+            | PathSource::Delegation
             | PathSource::ReturnTypeNotation => true,
             PathSource::Trait(_)
             | PathSource::TraitItem(..)
             | PathSource::DefineOpaques
-            | PathSource::Delegation
             | PathSource::ExternItemImpl
             | PathSource::PreciseCapturingArg(..)
             | PathSource::Macro
@@ -3549,6 +3549,11 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                                         // Resolve the generic parameters.
                                         this.visit_generics(generics);
 
+                                        let self_type_def_id = this.r.partial_res_map
+                                            .get(&self_type.id)
+                                            .and_then(|res| res.full_res().and_then(|r| r.opt_def_id())
+                                            .and_then(|id| id.as_local()));
+
                                         // Resolve the items within the impl.
                                         this.with_current_self_type(self_type, |this| {
                                             this.with_self_rib_ns(ValueNS, Res::SelfCtor(item_def_id), |this| {
@@ -3556,7 +3561,13 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                                                 let mut seen_trait_items = Default::default();
                                                 for item in impl_items {
                                                     with_owner(this, item.id, |this| {
-                                                        this.resolve_impl_item(&**item, &mut seen_trait_items, trait_id, of_trait.is_some());
+                                                        this.resolve_impl_item(
+                                                            &**item,
+                                                            &mut seen_trait_items,
+                                                            trait_id,
+                                                            of_trait.is_some(),
+                                                            self_type_def_id
+                                                        );
                                                     })
                                                 }
                                             });
@@ -3577,6 +3588,7 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         seen_trait_items: &mut FxHashMap<DefId, Span>,
         trait_id: Option<DefId>,
         is_in_trait_impl: bool,
+        self_type_def_id: Option<LocalDefId>,
     ) {
         use crate::ResolutionError::*;
         self.resolve_doc_links(&item.attrs, MaybeExported::ImplItem(trait_id.ok_or(&item.vis)));
@@ -3677,6 +3689,15 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         visit::walk_assoc_item(this, item, AssocCtxt::Impl { of_trait: true })
                     },
                 );
+
+                if let Some(self_type_def_id) = self_type_def_id {
+                    self.r
+                        .delegation_inh_functions_map
+                        .entry(self_type_def_id)
+                        .or_default()
+                        .entry(*ident)
+                        .or_insert(self.r.current_owner.def_id);
+                }
 
                 self.resolve_define_opaques(define_opaque);
             }
@@ -3908,20 +3929,11 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         });
 
         let resolution_node_id = if is_in_trait_impl { item_id } else { delegation.id };
-        let def_id = self
+        let resolution_id = self
             .r
             .partial_res_map
             .get(&resolution_node_id)
-            .and_then(|r| r.expect_full_res().opt_def_id());
-
-        let resolution_id = def_id.ok_or_else(|| {
-            self.r.tcx.dcx().span_delayed_bug(
-                delegation.path.span,
-                format!(
-                    "LateResolutionVisitor: couldn't resolve node {resolution_node_id:?} in delegation item",
-                ),
-            )
-        });
+            .and_then(|r| r.full_res().and_then(|res| res.opt_def_id()));
 
         let info = DelegationInfo { resolution_id };
         self.r.delegation_infos.insert(self.r.current_owner.def_id, info);

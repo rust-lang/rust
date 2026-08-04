@@ -43,6 +43,7 @@ pub(super) struct DelegationResolution {
     pub param_info: ParamInfo,
     pub span: Span,
     pub call_path_res: DefId,
+    pub base_res: DefId,
     pub source: DelegationSource,
     pub parent: LocalDefId,
     pub sig_mapping: SigMapping,
@@ -100,6 +101,14 @@ pub(super) mod resolver {
                 || self.tcx().dcx().delayed_bug(format!("failed to resolve node {id:?}")),
             )
         }
+
+        pub(crate) fn try_get_resolution_id(&self, id: NodeId) -> Option<DefId> {
+            self.0.get_partial_res(id).and_then(|r| r.full_res()).and_then(|r| r.opt_def_id())
+        }
+
+        pub(crate) fn get_base_res(&self, id: NodeId) -> Option<DefId> {
+            self.0.get_partial_res(id).and_then(|res| res.base_res().opt_def_id())
+        }
     }
 }
 
@@ -119,7 +128,10 @@ impl<'tcx> DelegationResolver<'_, 'tcx> {
             .delegation_infos
             .get(&def_id)
             .map(|info| {
-                info.resolution_id.and_then(|id| self.check_for_cycles(id, span).map(|_| id))
+                let id =
+                    info.resolution_id.unwrap_or_else(|| self.resolve_type_relative(delegation));
+
+                self.check_for_cycles(id, span).map(|_| id)
             })
             .unwrap_or_else(|| {
                 Err(tcx.dcx().span_delayed_bug(
@@ -149,7 +161,10 @@ impl<'tcx> DelegationResolver<'_, 'tcx> {
             // FIXME(splat): use `sig.splatted()` once FnSig has it
             param_info: ParamInfo { param_count, c_variadic: sig.c_variadic(), splatted: None },
             source: delegation.source,
-            call_path_res: self.get_resolution_id(delegation.id)?,
+            base_res: self.get_base_res(delegation.id).unwrap(),
+            call_path_res: self
+                .try_get_resolution_id(delegation.id)
+                .unwrap_or_else(|| self.resolve_type_relative(delegation)),
             sig_mapping: self.create_sig_mapping(
                 delegation,
                 span,
@@ -161,6 +176,19 @@ impl<'tcx> DelegationResolver<'_, 'tcx> {
         };
 
         Ok((res, self.resolve_and_generate_generics(delegation, sig_id)?))
+    }
+
+    fn resolve_type_relative(&self, delegation: &Delegation) -> DefId {
+        let res = self.get_base_res(delegation.id);
+
+        self.tcx()
+            .resolutions(())
+            .delegation_inh_functions_map
+            .get(&res.unwrap().expect_local())
+            .unwrap()
+            .get(&delegation.path.segments.last().unwrap().ident)
+            .unwrap()
+            .to_def_id()
     }
 
     fn check_for_cycles(&self, mut def_id: DefId, span: Span) -> Result<(), ErrorGuaranteed> {
@@ -175,7 +203,7 @@ impl<'tcx> DelegationResolver<'_, 'tcx> {
             // a signature DefId we obtain NodeId of the callee delegation and try to get signature from it.
             if let Some(local_id) = def_id.as_local()
                 && let Some(info) = tcx.resolutions(()).delegation_infos.get(&local_id)
-                && let Ok(id) = info.resolution_id
+                && let Some(id) = info.resolution_id
             {
                 def_id = id;
                 if visited.contains(&def_id) {

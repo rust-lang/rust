@@ -46,7 +46,7 @@ use rustc_abi::ExternAbi;
 use rustc_ast as ast;
 use rustc_ast::*;
 use rustc_hir::def::DefKind;
-use rustc_hir::{self as hir, FnDeclFlags};
+use rustc_hir::{self as hir, FnDeclFlags, QPath};
 use rustc_middle::ty::Asyncness;
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::kw;
@@ -108,7 +108,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         call_expr_id: HirId,
         unused_target_expr: bool,
     ) -> &'hir hir::FnDecl<'hir> {
-        let &DelegationResolution { source, call_path_res, span, sig_id, .. } = res;
+        let &DelegationResolution { source, call_path_res, span, sig_id, base_res, .. } = res;
         let ParamInfo { param_count, c_variadic, splatted } = res.param_info;
 
         // The last parameter in C variadic functions is skipped in the signature,
@@ -130,6 +130,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 hir::InferDelegationSig::Output(self.arena.alloc(hir::DelegationInfo {
                     call_expr_id,
                     call_path_res,
+                    parent_def_id: base_res,
                     arguments_to_map: res.sig_mapping.arguments_to_map.clone(),
                     child_seg_id: generics.child.args_segment_id,
                     child_seg_id_for_sig: generics.child.segment_id_for_sig(),
@@ -413,7 +414,35 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 hir::QPath::Resolved(ty, self.arena.alloc(new_path))
             }
-            hir::QPath::TypeRelative(..) => unreachable!("until inherent methods are supported"),
+            hir::QPath::TypeRelative(mut ty, segment) => {
+                let mut segment = self.process_segment(span, segment, &mut generics.child);
+                segment.res = Res::Def(self.tcx.def_kind(res.call_path_res), res.call_path_res);
+
+                let ty_hir_id = ty.hir_id;
+                ty = if let hir::TyKind::Path(QPath::Resolved(ty, path)) = ty.kind {
+                    let mut new_path = path.clone();
+
+                    new_path.segments = self.arena.alloc_from_iter(
+                        new_path.segments.iter().enumerate().map(|(idx, segment)| {
+                            if idx + 1 == new_path.segments.len() {
+                                self.process_segment(span, segment, &mut generics.parent)
+                            } else {
+                                segment.clone()
+                            }
+                        }),
+                    );
+
+                    self.arena.alloc(hir::Ty {
+                        hir_id: ty_hir_id,
+                        span,
+                        kind: hir::TyKind::Path(QPath::Resolved(ty, self.arena.alloc(new_path))),
+                    })
+                } else {
+                    ty
+                };
+
+                hir::QPath::TypeRelative(ty, self.arena.alloc(segment))
+            }
         };
 
         if let Some(hir::DelegationSelfTyPropagationKind::SelfTy(id)) =
