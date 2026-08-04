@@ -432,8 +432,14 @@ pub(crate) fn check_generic_arg_count(
         prohibit_assoc_item_constraint(cx, c, None);
     }
 
-    // this works!
-    // let hidden_early_bound = 0;
+    // hidden lifetimes may not be specified explicitly.
+    // if it doesn't show up in the function signature,
+    // it can't be written as a lifetime arg.
+    //
+    // While most hidden lifetimes are late-bound (e.g. `fn(_: &u32)` ),
+    // there are some cases (complicated and involve associated types)
+    // where an early-bound lifetime parameter can be hidden from the function signature.
+
     let hidden_early_bound = if matches!(gen_pos, GenericArgPosition::Value(_)) {
         gen_params.own_params.iter().filter(|x| x.is_anonymous_lifetime()).count()
     } else {
@@ -449,11 +455,11 @@ pub(crate) fn check_generic_arg_count(
     let late_bound_lt_count = gen_params.own_late_bound_regions.len();
 
     if kind.is_fn_like() {
-        tracing::info!("we are using fn-like {:?} ({gen_pos:?})", tcx.item_name(def_id));
+        debug!("we are using fn-like {:?} ({gen_pos:?})", tcx.item_name(def_id));
     }
-    tracing::info!(?late_bound_lt_count);
-    tracing::info!("# gen_args = {}", gen_args.args.len());
-    tracing::info!("ALL gen_params={:?}", gen_params.own_all_params);
+    debug!(?late_bound_lt_count);
+    debug!("# gen_args = {}", gen_args.args.len());
+    debug!("ALL gen_params={:?}", gen_params.own_all_params);
 
     // Suppress this warning for delegations as it is compiler generated and lifetimes are
     // propagated while late-bound lifetimes may be present.
@@ -464,34 +470,40 @@ pub(crate) fn check_generic_arg_count(
 
     let mut invalid_args = vec![];
 
-    let mut check_lifetime_args =
-        |min_expected_args: usize, max_expected_args: usize, provided_args: usize| {
-            if (min_expected_args..=max_expected_args).contains(&provided_args) {
-                return Ok(());
-            }
+    let mut check_lifetime_args = |min_expected_args: usize,
+                                   max_expected_args: usize,
+                                   provided_args: usize,
+                                   late_bounds_ignore: bool| {
+        if (min_expected_args..=max_expected_args).contains(&provided_args) {
+            return Ok(());
+        }
 
-            invalid_args.extend(min_expected_args..provided_args);
+        if late_bounds_ignore && !tcx.features().late_bound_turbofishing() {
+            return Ok(());
+        }
 
-            let gen_args_info = if provided_args > min_expected_args {
-                let num_redundant_args = provided_args - min_expected_args;
-                GenericArgsInfo::ExcessLifetimes { num_redundant_args }
-            } else {
-                let num_missing_args = min_expected_args - provided_args;
-                GenericArgsInfo::MissingLifetimes { num_missing_args }
-            };
+        invalid_args.extend(min_expected_args..provided_args);
 
-            let reported = cx.dcx().emit_err(WrongNumberOfGenericArgs::new(
-                tcx,
-                gen_args_info,
-                seg,
-                gen_params,
-                has_self as usize,
-                gen_args,
-                def_id,
-            ));
-
-            Err(reported)
+        let gen_args_info = if provided_args > min_expected_args {
+            let num_redundant_args = provided_args - min_expected_args;
+            GenericArgsInfo::ExcessLifetimes { num_redundant_args }
+        } else {
+            let num_missing_args = min_expected_args - provided_args;
+            GenericArgsInfo::MissingLifetimes { num_missing_args }
         };
+
+        let reported = cx.dcx().emit_err(WrongNumberOfGenericArgs::new(
+            tcx,
+            gen_args_info,
+            seg,
+            gen_params,
+            has_self as usize,
+            gen_args,
+            def_id,
+        ));
+
+        Err(reported)
+    };
 
     let min_expected_lifetime_args =
         if infer_lifetimes { 0 } else { param_counts.lifetimes - hidden_early_bound };
@@ -499,7 +511,7 @@ pub(crate) fn check_generic_arg_count(
         param_counts.lifetimes - hidden_lifetimes + late_bound_lt_count;
     let num_provided_lifetime_args = gen_args.num_lifetime_args();
 
-    tracing::info!(
+    debug!(
         ?hidden_early_bound,
         ?hidden_lifetimes,
         ?min_expected_lifetime_args,
@@ -511,7 +523,7 @@ pub(crate) fn check_generic_arg_count(
         min_expected_lifetime_args,
         max_expected_lifetime_args,
         num_provided_lifetime_args,
-        // explicit_late_bound == ExplicitLateBound::Yes,
+        explicit_late_bound == ExplicitLateBound::Yes,
     );
 
     let mut check_types_and_consts = |expected_min,
