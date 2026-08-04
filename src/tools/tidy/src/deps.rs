@@ -459,6 +459,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "thorin-dwp",
     "thread_local",
     "tikv-jemalloc-sys",
+    "tikv-jemallocator",
     "tinystr",
     "tinyvec",
     "tinyvec_macros",
