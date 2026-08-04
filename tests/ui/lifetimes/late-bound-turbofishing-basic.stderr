@@ -1,0 +1,53 @@
+ rustc_hir_analysis::hir_ty_lowering::generics::check_generic_arg_count def_id=DefId(0:3 ~ late_bound_turbofishing_basic[9841]::foo_early), seg=PathSegment { ident: foo_early#0, hir_id: HirId(DefId(0:10 ~ late_bound_turbofishing_basic[9841]::main).5), res: Def(Fn, DefId(0:3 ~ late_bound_turbofishing_basic[9841]::foo_early)), args: Some(GenericArgs { args: [Lifetime(Lifetime { hir_id: HirId(DefId(0:10 ~ late_bound_turbofishing_basic[9841]::main).4), ident: 'static#0, kind: Static, source: Path { angle_brackets: Full }, syntax: ExplicitBound })], constraints: [], parenthesized: No, span_ext: $DIR/late-bound-turbofishing-basic.rs:10:24: 10:33 (#0) }), infer_args: true, delegation_child_segment: false }, gen_params=Generics { parent: None, parent_count: 0, own_params: [GenericParamDef { name: "'a", def_id: DefId(0:4 ~ late_bound_turbofishing_basic[9841]::foo_early::'a), index: 0, pure_wrt_drop: false, kind: Lifetime }], param_def_id_to_index: [(DefId(0:4 ~ late_bound_turbofishing_basic[9841]::foo_early::'a), 0)], has_self: false, own_late_bound_regions: [] }, has_self=false
+   0ms INFO rustc_hir_analysis::hir_ty_lowering::generics we are using fn-like "foo_early" (Value(No))
+   0ms INFO rustc_hir_analysis::hir_ty_lowering::generics late_bound_lt_count=0
+   0ms INFO rustc_hir_analysis::hir_ty_lowering::generics # gen_args = 1
+   0ms INFO rustc_hir_analysis::hir_ty_lowering::generics ALL gen_params=[GenericParamDef { name: "'a", def_id: DefId(0:4 ~ late_bound_turbofishing_basic[9841]::foo_early::'a), index: 0, pure_wrt_drop: false, kind: Lifetime }]
+   0ms INFO rustc_hir_analysis::hir_ty_lowering::generics hidden_early_bound=0, hidden_lifetimes=0, min_expected_lifetime_args=1, max_expected_lifetime_args=1, num_provided_lifetime_args=1
+ rustc_hir_analysis::hir_ty_lowering::generics::check_generic_arg_count def_id=DefId(0:8 ~ late_bound_turbofishing_basic[9841]::require_static), seg=PathSegment { ident: require_static#0, hir_id: HirId(DefId(0:10 ~ late_bound_turbofishing_basic[9841]::main).10), res: Def(Fn, DefId(0:8 ~ late_bound_turbofishing_basic[9841]::require_static)), args: None, infer_args: true, delegation_child_segment: false }, gen_params=Generics { parent: None, parent_count: 0, own_params: [GenericParamDef { name: "T", def_id: DefId(0:9 ~ late_bound_turbofishing_basic[9841]::require_static::T), index: 0, pure_wrt_drop: false, kind: Type { has_default: false, synthetic: false } }], param_def_id_to_index: [(DefId(0:9 ~ late_bound_turbofishing_basic[9841]::require_static::T), 0)], has_self: false, own_late_bound_regions: [] }, has_self=false
+   0ms INFO rustc_hir_analysis::hir_ty_lowering::generics we are using fn-like "require_static" (Value(No))
+   0ms INFO rustc_hir_analysis::hir_ty_lowering::generics late_bound_lt_count=0
+   0ms INFO rustc_hir_analysis::hir_ty_lowering::generics # gen_args = 0
+   0ms INFO rustc_hir_analysis::hir_ty_lowering::generics ALL gen_params=[]
+   0ms INFO rustc_hir_analysis::hir_ty_lowering::generics hidden_early_bound=0, hidden_lifetimes=0, min_expected_lifetime_args=0, max_expected_lifetime_args=0, num_provided_lifetime_args=0
+ rustc_hir_analysis::hir_ty_lowering::generics::check_generic_arg_count def_id=DefId(0:5 ~ late_bound_turbofishing_basic[9841]::foo_late), seg=PathSegment { ident: foo_late#0, hir_id: HirId(DefId(0:10 ~ late_bound_turbofishing_basic[9841]::main).17), res: Def(Fn, DefId(0:5 ~ late_bound_turbofishing_basic[9841]::foo_late)), args: Some(GenericArgs { args: [Lifetime(Lifetime { hir_id: HirId(DefId(0:10 ~ late_bound_turbofishing_basic[9841]::main).16), ident: 'static#0, kind: Static, source: Path { angle_brackets: Full }, syntax: ExplicitBound })], constraints: [], parenthesized: No, span_ext: $DIR/late-bound-turbofishing-basic.rs:12:23: 12:32 (#0) }), infer_args: true, delegation_child_segment: false }, gen_params=Generics { parent: None, parent_count: 0, own_params: [], param_def_id_to_index: [], has_self: false, own_late_bound_regions: [$DIR/late-bound-turbofishing-basic.rs:4:13: 4:15 (#0)] }, has_self=false
+   0ms INFO rustc_hir_analysis::hir_ty_lowering::generics we are using fn-like "foo_late" (Value(No))
+   0ms INFO rustc_hir_analysis::hir_ty_lowering::generics late_bound_lt_count=1
+   0ms INFO rustc_hir_analysis::hir_ty_lowering::generics # gen_args = 1
+   0ms INFO rustc_hir_analysis::hir_ty_lowering::generics ALL gen_params=[GenericParamDef { name: "'a", def_id: DefId(0:6 ~ late_bound_turbofishing_basic[9841]::foo_late::'a), index: 0, pure_wrt_drop: false, kind: Lifetime }]
+   0ms INFO rustc_hir_analysis::hir_ty_lowering::generics hidden_early_bound=0, hidden_lifetimes=0, min_expected_lifetime_args=0, max_expected_lifetime_args=1, num_provided_lifetime_args=1
+ rustc_hir_analysis::hir_ty_lowering::generics::check_generic_arg_count def_id=DefId(0:8 ~ late_bound_turbofishing_basic[9841]::require_static), seg=PathSegment { ident: require_static#0, hir_id: HirId(DefId(0:10 ~ late_bound_turbofishing_basic[9841]::main).22), res: Def(Fn, DefId(0:8 ~ late_bound_turbofishing_basic[9841]::require_static)), args: None, infer_args: true, delegation_child_segment: false }, gen_params=Generics { parent: None, parent_count: 0, own_params: [GenericParamDef { name: "T", def_id: DefId(0:9 ~ late_bound_turbofishing_basic[9841]::require_static::T), index: 0, pure_wrt_drop: false, kind: Type { has_default: false, synthetic: false } }], param_def_id_to_index: [(DefId(0:9 ~ late_bound_turbofishing_basic[9841]::require_static::T), 0)], has_self: false, own_late_bound_regions: [] }, has_self=false
+   0ms INFO rustc_hir_analysis::hir_ty_lowering::generics we are using fn-like "require_static" (Value(No))
+   0ms INFO rustc_hir_analysis::hir_ty_lowering::generics late_bound_lt_count=0
+   0ms INFO rustc_hir_analysis::hir_ty_lowering::generics # gen_args = 0
+   0ms INFO rustc_hir_analysis::hir_ty_lowering::generics ALL gen_params=[]
+   0ms INFO rustc_hir_analysis::hir_ty_lowering::generics hidden_early_bound=0, hidden_lifetimes=0, min_expected_lifetime_args=0, max_expected_lifetime_args=0, num_provided_lifetime_args=0
+ rustc_hir_analysis::hir_ty_lowering::generics::check_generic_arg_count def_id=DefId(0:7 ~ late_bound_turbofishing_basic[9841]::foo_latest), seg=PathSegment { ident: foo_latest#0, hir_id: HirId(DefId(0:10 ~ late_bound_turbofishing_basic[9841]::main).29), res: Def(Fn, DefId(0:7 ~ late_bound_turbofishing_basic[9841]::foo_latest)), args: Some(GenericArgs { args: [Lifetime(Lifetime { hir_id: HirId(DefId(0:10 ~ late_bound_turbofishing_basic[9841]::main).28), ident: 'static#0, kind: Static, source: Path { angle_brackets: Full }, syntax: ExplicitBound })], constraints: [], parenthesized: No, span_ext: $DIR/late-bound-turbofishing-basic.rs:14:25: 14:34 (#0) }), infer_args: true, delegation_child_segment: false }, gen_params=Generics { parent: None, parent_count: 0, own_params: [], param_def_id_to_index: [], has_self: false, own_late_bound_regions: [$DIR/late-bound-turbofishing-basic.rs:5:18: 5:19 (#0)] }, has_self=false
+   0ms INFO rustc_hir_analysis::hir_ty_lowering::generics we are using fn-like "foo_latest" (Value(No))
+   0ms INFO rustc_hir_analysis::hir_ty_lowering::generics late_bound_lt_count=1
+   0ms INFO rustc_hir_analysis::hir_ty_lowering::generics # gen_args = 1
+   0ms INFO rustc_hir_analysis::hir_ty_lowering::generics ALL gen_params=[GenericParamDef { name: "'_", def_id: DefId(0:11 ~ late_bound_turbofishing_basic[9841]::foo_latest::'_), index: 0, pure_wrt_drop: false, kind: Lifetime }]
+   0ms INFO rustc_hir_analysis::hir_ty_lowering::generics hidden_early_bound=0, hidden_lifetimes=1, min_expected_lifetime_args=0, max_expected_lifetime_args=0, num_provided_lifetime_args=1
+error[E0107]: function takes 0 lifetime arguments but 1 lifetime argument was supplied
+  --> $DIR/late-bound-turbofishing-basic.rs:14:13
+   |
+LL |     let f = foo_latest::<'static>;
+   |             ^^^^^^^^^^----------- help: remove the unnecessary generics
+   |             |
+   |             expected 0 lifetime arguments
+   |
+note: function defined here, with 0 lifetime parameters
+  --> $DIR/late-bound-turbofishing-basic.rs:5:4
+   |
+LL | fn foo_latest(_: &u32) {}
+   |    ^^^^^^^^^^
+
+ rustc_hir_analysis::hir_ty_lowering::generics::check_generic_arg_count def_id=DefId(0:8 ~ late_bound_turbofishing_basic[9841]::require_static), seg=PathSegment { ident: require_static#0, hir_id: HirId(DefId(0:10 ~ late_bound_turbofishing_basic[9841]::main).34), res: Def(Fn, DefId(0:8 ~ late_bound_turbofishing_basic[9841]::require_static)), args: None, infer_args: true, delegation_child_segment: false }, gen_params=Generics { parent: None, parent_count: 0, own_params: [GenericParamDef { name: "T", def_id: DefId(0:9 ~ late_bound_turbofishing_basic[9841]::require_static::T), index: 0, pure_wrt_drop: false, kind: Type { has_default: false, synthetic: false } }], param_def_id_to_index: [(DefId(0:9 ~ late_bound_turbofishing_basic[9841]::require_static::T), 0)], has_self: false, own_late_bound_regions: [] }, has_self=false
+   0ms INFO rustc_hir_analysis::hir_ty_lowering::generics we are using fn-like "require_static" (Value(No))
+   0ms INFO rustc_hir_analysis::hir_ty_lowering::generics late_bound_lt_count=0
+   0ms INFO rustc_hir_analysis::hir_ty_lowering::generics # gen_args = 0
+   0ms INFO rustc_hir_analysis::hir_ty_lowering::generics ALL gen_params=[]
+   0ms INFO rustc_hir_analysis::hir_ty_lowering::generics hidden_early_bound=0, hidden_lifetimes=0, min_expected_lifetime_args=0, max_expected_lifetime_args=0, num_provided_lifetime_args=0
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0107`.

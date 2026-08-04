@@ -409,6 +409,8 @@ pub(crate) fn check_generic_arg_count(
     has_self: bool,
 ) -> GenericArgCountResult {
     let gen_args = seg.args();
+    let tcx = cx.tcx();
+    let kind = tcx.def_kind(def_id);
     let default_counts = gen_params.own_defaults();
     let param_counts = gen_params.own_counts();
 
@@ -430,14 +432,28 @@ pub(crate) fn check_generic_arg_count(
         prohibit_assoc_item_constraint(cx, c, None);
     }
 
-    let tcx = cx.tcx();
+    // this works!
+    // let hidden_early_bound = 0;
+    let hidden_early_bound = if matches!(gen_pos, GenericArgPosition::Value(_)) {
+        gen_params.own_params.iter().filter(|x| x.is_anonymous_lifetime()).count()
+    } else {
+        0
+    };
 
-    let kind = tcx.def_kind(def_id);
+    let hidden_lifetimes = if matches!(gen_pos, GenericArgPosition::Value(_)) {
+        gen_params.own_all_params.iter().filter(|x| x.is_anonymous_lifetime()).count()
+    } else {
+        0
+    };
+
+    let late_bound_lt_count = gen_params.own_late_bound_regions.len();
+
     if kind.is_fn_like() {
         tracing::info!("we are using fn-like {:?} ({gen_pos:?})", tcx.item_name(def_id));
     }
-    tracing::info!(?gen_args);
-    tracing::info!(?gen_params);
+    tracing::info!(?late_bound_lt_count);
+    tracing::info!("# gen_args = {}", gen_args.args.len());
+    tracing::info!("ALL gen_params={:?}", gen_params.own_all_params);
 
     // Suppress this warning for delegations as it is compiler generated and lifetimes are
     // propagated while late-bound lifetimes may be present.
@@ -448,56 +464,44 @@ pub(crate) fn check_generic_arg_count(
 
     let mut invalid_args = vec![];
 
-    let mut check_lifetime_args = |min_expected_args: usize,
-                                   max_expected_args: usize,
-                                   provided_args: usize,
-                                   late_bounds_ignore: bool| {
-        if (min_expected_args..=max_expected_args).contains(&provided_args) {
-            return Ok(());
-        }
+    let mut check_lifetime_args =
+        |min_expected_args: usize, max_expected_args: usize, provided_args: usize| {
+            if (min_expected_args..=max_expected_args).contains(&provided_args) {
+                return Ok(());
+            }
 
-        if late_bounds_ignore {
-            return Ok(());
-        }
+            invalid_args.extend(min_expected_args..provided_args);
 
-        invalid_args.extend(min_expected_args..provided_args);
+            let gen_args_info = if provided_args > min_expected_args {
+                let num_redundant_args = provided_args - min_expected_args;
+                GenericArgsInfo::ExcessLifetimes { num_redundant_args }
+            } else {
+                let num_missing_args = min_expected_args - provided_args;
+                GenericArgsInfo::MissingLifetimes { num_missing_args }
+            };
 
-        let gen_args_info = if provided_args > min_expected_args {
-            let num_redundant_args = provided_args - min_expected_args;
-            GenericArgsInfo::ExcessLifetimes { num_redundant_args }
-        } else {
-            let num_missing_args = min_expected_args - provided_args;
-            GenericArgsInfo::MissingLifetimes { num_missing_args }
+            let reported = cx.dcx().emit_err(WrongNumberOfGenericArgs::new(
+                tcx,
+                gen_args_info,
+                seg,
+                gen_params,
+                has_self as usize,
+                gen_args,
+                def_id,
+            ));
+
+            Err(reported)
         };
-
-        let reported = cx.dcx().emit_err(WrongNumberOfGenericArgs::new(
-            tcx,
-            gen_args_info,
-            seg,
-            gen_params,
-            has_self as usize,
-            gen_args,
-            def_id,
-        ));
-
-        Err(reported)
-    };
-
-    // this works!
-    let hidden_early_bound = 0;
-    // let hidden_early_bound = if matches!(gen_pos, GenericArgPosition::Value(_)) {
-    //     gen_params.own_params.iter().filter(|x| x.is_anonymous_lifetime()).count()
-    // } else {
-    //     0
-    // };
 
     let min_expected_lifetime_args =
         if infer_lifetimes { 0 } else { param_counts.lifetimes - hidden_early_bound };
-    let max_expected_lifetime_args = param_counts.lifetimes - hidden_early_bound;
+    let max_expected_lifetime_args =
+        param_counts.lifetimes - hidden_lifetimes + late_bound_lt_count;
     let num_provided_lifetime_args = gen_args.num_lifetime_args();
 
     tracing::info!(
         ?hidden_early_bound,
+        ?hidden_lifetimes,
         ?min_expected_lifetime_args,
         ?max_expected_lifetime_args,
         ?num_provided_lifetime_args,
@@ -507,7 +511,7 @@ pub(crate) fn check_generic_arg_count(
         min_expected_lifetime_args,
         max_expected_lifetime_args,
         num_provided_lifetime_args,
-        explicit_late_bound == ExplicitLateBound::Yes,
+        // explicit_late_bound == ExplicitLateBound::Yes,
     );
 
     let mut check_types_and_consts = |expected_min,
@@ -668,11 +672,12 @@ pub(crate) fn prohibit_explicit_late_bound_lifetimes(
 
     let param_counts = def.own_counts();
 
-    if let Some(span_late) = def.has_late_bound_regions
+    // FIXME(addiesh): just turning off the diagnostic is probably not enough to solve the problem. see:
+    //        https://rust-lang.zulipchat.com/#narrow/channel/600108-t-types.2Fearly-late-cleanup/topic/turbofishing.20elided.20lifetimes/near/607748866
+    if cx.tcx().features().late_bound_turbofishing() {
+        ExplicitLateBound::Yes
+    } else if let Some(span_late) = def.own_late_bound_regions.first().copied()
         && args.has_lifetime_args()
-        // FIXME(addiesh): just turning off the diagnostic is probably not enough to solve the problem. see:
-        //        https://rust-lang.zulipchat.com/#narrow/channel/600108-t-types.2Fearly-late-cleanup/topic/turbofishing.20elided.20lifetimes/near/607748866
-        && !cx.tcx().features().late_bound_turbofishing()
     {
         let gone_turbofishing = "this may change in the future; see issue #156581 <https://github.com/rust-lang/rust/issues/156581> for more information";
 

@@ -1,8 +1,9 @@
 #![feature(late_bound_turbofishing)]
 
+fn require_static<T: 'static>(_: T) { }
 fn foo_early<'a: 'a>(b: &'a u32) -> &'a u32 { b }
 fn foo_late<'a>(b: &'a u32) -> &'a u32 { b }
-fn foo_latest(_: &i32) {}
+fn foo_latest(_: &u32) {}
 
 mod ex1 {
     // compiles without errors
@@ -12,7 +13,7 @@ mod ex1 {
     }
 
     // zero explicit generic lifetimes
-    fn do_thing<T: Trait>(_: Option<<T as Trait>::Assoc<'_>>) -> &i32 {
+    fn do_thing<T: Trait>(_: Option<<T as Trait>::Assoc<'_>>) -> &u32 {
         todo!()
     }
 
@@ -31,7 +32,7 @@ mod ex2 {
     }
 
     // one explicit generic lifetime
-    fn do_thing<'b, T: Trait>(_: Option<<T as Trait>::Assoc<'_>>) -> (&i32, &'b i64) {
+    fn do_thing<'b, T: Trait>(_: Option<<T as Trait>::Assoc<'_>>) -> (&u32, &'b i64) {
         todo!()
     }
 
@@ -50,7 +51,7 @@ mod ex3 {
     }
 
     // zero explicit generic lifetimes
-    fn do_thing<T: Trait>(_: Option<<T as Trait>::Assoc<'_>>) -> i32 {
+    fn do_thing<T: Trait>(_: Option<<T as Trait>::Assoc<'_>>) -> u32 {
         todo!()
     }
 
@@ -67,7 +68,7 @@ mod ex4 {
     trait Trait {
         type Assoc<'a>;
         // zero explicit generic lifetimes
-        fn do_thing(_: Option<Self::Assoc<'_>>) -> &i32 {
+        fn do_thing(_: Option<Self::Assoc<'_>>) -> &u32 {
             todo!()
         }
     }
@@ -87,7 +88,7 @@ mod ex5 {
     }
 
     // zero explicit generic lifetimes
-    fn do_thing<T>(_: Option<<&T as Trait>::Assoc>) -> &i32
+    fn do_thing<T>(_: Option<<&T as Trait>::Assoc>) -> &u32
     where
         for<'c> &'c T: Trait,
     {
@@ -111,13 +112,13 @@ mod ex6 {
         type Assoc<'a>;
         // FIXME
         // zero explicit generic lifetimes
-        fn do_thing(_: Option<Self::Assoc<'_>>) -> &i32;
+        fn do_thing(_: Option<Self::Assoc<'_>>) -> &u32;
     }
 
-    impl Trait for i32 {
+    impl Trait for u32 {
         type Assoc<'a> = i64;
         // one explicit generic lifetime
-        fn do_thing<'b>(_: Option<i64>) -> &'b i32 {
+        fn do_thing<'b>(_: Option<i64>) -> &'b u32 {
             todo!()
         }
     }
@@ -153,14 +154,21 @@ mod ex7 {
     }
 }
 
-fn require_static<T: 'static>(_: T) { }
+fn bar<'a>(_: &'a u32) {
+    let f = foo_late::<'a>;
+    require_static(f);
+    //~^ ERROR: FIXME outlives
+}
 
 fn main() {
     let f = foo_early::<'static>;
     require_static(f);
-    let f = foo_early::<'static>;
+    let f = foo_late::<'static>;
     require_static(f);
     let f = foo_latest::<'static>;
     //~^ ERROR: function takes 0 lifetime arguments but 1 lifetime argument was supplied [E0107]
     require_static(f);
+    {
+        bar(&4)
+    }
 }
