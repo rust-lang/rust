@@ -148,20 +148,6 @@ fn resolve_associated_item<'tcx>(
             if !eligible {
                 return Ok(None);
             }
-            if tcx.is_lang_item(trait_ref.def_id, LangItem::Destruct) {
-                if !tcx.is_lang_item(trait_item_id, LangItem::DestructDropInPlace) {
-                    bug!(
-                        "unexpected associated item for built-in `{trait_ref}`: {}",
-                        tcx.item_name(trait_item_id)
-                    );
-                }
-
-                debug!("Got user Destruct impl");
-                return Ok(Some(Instance {
-                    def: ty::InstanceKind::Item(leaf_def.item.def_id),
-                    args: rcvr_args,
-                }));
-            }
 
             let typing_env = typing_env.with_post_analysis_normalized(tcx);
             let (infcx, param_env) = tcx.infer_ctxt().build_with_typing_env(typing_env);
@@ -174,6 +160,21 @@ fn resolve_associated_item<'tcx>(
                 leaf_def.defining_node,
             );
             let args = infcx.tcx.erase_and_anonymize_regions(args);
+
+            if tcx.is_lang_item(trait_ref.def_id, LangItem::Destruct) {
+                if !tcx.is_lang_item(trait_item_id, LangItem::DestructDropInPlace) {
+                    bug!(
+                        "unexpected associated item for built-in `{trait_ref}`: {}",
+                        tcx.item_name(trait_item_id)
+                    );
+                }
+
+                debug!("Got user Destruct impl");
+                return Ok(Some(Instance {
+                    def: ty::InstanceKind::Item(leaf_def.item.def_id),
+                    args,
+                }));
+            }
 
             // HACK: We may have overlapping `dyn Trait` built-in impls and
             // user-provided blanket impls. Detect that case here, and return
