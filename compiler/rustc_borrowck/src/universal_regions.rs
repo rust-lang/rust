@@ -26,7 +26,8 @@ use rustc_macros::extension;
 use rustc_middle::mir::RETURN_PLACE;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
-    self, BoundVariableKind, GenericArgs, GenericArgsRef, InlineConstArgs, InlineConstArgsParts, List, RegionExt, RegionVid, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, fold_regions,
+    self, BoundVariableKind, GenericArgs, GenericArgsRef, InlineConstArgs, InlineConstArgsParts,
+    List, RegionExt, RegionVid, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, fold_regions,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::{ErrorGuaranteed, kw, sym};
@@ -134,7 +135,7 @@ pub(crate) enum DefiningTy<'tcx> {
 
 impl<'tcx> DefiningTy<'tcx> {
     #[instrument(level = "debug", skip(tcx), ret)]
-    fn new(tcx: TyCtxt<'tcx>, body_def_id: LocalDefId) -> DefiningTy<'tcx> {
+    pub(crate) fn new(tcx: TyCtxt<'tcx>, body_def_id: LocalDefId) -> DefiningTy<'tcx> {
         match tcx.hir_body_owner_kind(body_def_id) {
             BodyOwnerKind::Closure | BodyOwnerKind::Fn => {
                 let defining_ty = tcx.type_of(body_def_id).instantiate_identity().skip_norm_wip();
@@ -222,7 +223,10 @@ impl<'tcx> DefiningTy<'tcx> {
     }
 
     #[instrument(level = "debug", skip(tcx), ret)]
-    fn inputs_and_output(self, tcx: TyCtxt<'tcx>) -> ty::Binder<'tcx, &'tcx ty::List<Ty<'tcx>>> {
+    pub(crate) fn inputs_and_output(
+        self,
+        tcx: TyCtxt<'tcx>,
+    ) -> ty::Binder<'tcx, &'tcx ty::List<Ty<'tcx>>> {
         match self {
             DefiningTy::Closure(def_id, args) => {
                 let closure_sig = args.as_closure().sig();
@@ -565,6 +569,10 @@ impl<'tcx> UniversalRegions<'tcx> {
         self.region_classification(r) == Some(RegionClassification::Local)
     }
 
+    pub(crate) fn is_external_free_region(&self, r: RegionVid) -> bool {
+        self.region_classification(r) == Some(RegionClassification::External)
+    }
+
     /// Returns the number of universal regions created in any category.
     pub(crate) fn len(&self) -> usize {
         self.num_universals
@@ -579,7 +587,7 @@ impl<'tcx> UniversalRegions<'tcx> {
         self.first_local_index
     }
 
-    /// Gets an iterator over all the early-bound regions that have names.
+    /// Gets an iterator over all early bound regions starting with `'static`.
     pub(crate) fn named_universal_regions_iter(
         &self,
     ) -> impl Iterator<Item = (ty::Region<'tcx>, ty::RegionVid)> {

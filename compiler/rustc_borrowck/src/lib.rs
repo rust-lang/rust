@@ -59,6 +59,7 @@ use crate::dataflow::{BorrowIndex, Borrowck, BorrowckDomain, Borrows};
 use crate::diagnostics::{
     AccessKind, BorrowckDiagnosticsBuffer, IllegalMoveOriginKind, MoveError, RegionName,
 };
+use crate::implied_bounds::mir_borrowck_implied_outlives_bounds;
 use crate::path_utils::*;
 use crate::place_ext::PlaceExt;
 use crate::places_conflict::{PlaceConflictBias, places_conflict};
@@ -81,6 +82,7 @@ mod dataflow;
 mod def_use;
 mod diagnostics;
 mod handle_placeholders;
+mod implied_bounds;
 mod nll;
 mod path_utils;
 mod place_ext;
@@ -106,7 +108,7 @@ impl<'tcx> TyCtxtConsts<'tcx> {
 }
 
 pub fn provide(providers: &mut Providers) {
-    *providers = Providers { mir_borrowck, ..*providers };
+    *providers = Providers { mir_borrowck, mir_borrowck_implied_outlives_bounds, ..*providers };
 }
 
 /// Provider for `query mir_borrowck`. Unlike `typeck`, this must

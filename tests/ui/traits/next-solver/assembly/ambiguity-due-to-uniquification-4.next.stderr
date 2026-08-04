@@ -1,9 +1,0 @@
-error[E0282]: type annotations needed
-  --> $DIR/ambiguity-due-to-uniquification-4.rs:17:47
-   |
-LL | pub fn f<'a, 'b, T: Trait<'a> + Trait<'b>>(v: <T as Trait<'a>>::Type) {}
-   |                                               ^^^^^^^^^^^^^^^^^^^^^^ cannot infer type for associated type `<T as Trait<'_>>::Type`
-
-error: aborting due to 1 previous error
-
-For more information about this error, try `rustc --explain E0282`.
