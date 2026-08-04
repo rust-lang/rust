@@ -519,7 +519,7 @@ fn upstream_monomorphizations_provider(
             let (def_id, args) = match *exported_symbol {
                 ExportedSymbol::Generic(def_id, args) => (def_id, args),
                 ExportedSymbol::DropGlue(ty) => {
-                    if let Some(drop_in_place_fn_def_id) = drop_glue_fn_def_id {
+                    if let Some(drop_in_place_fn_def_id) = drop_in_place_fn_def_id {
                         (drop_in_place_fn_def_id, tcx.mk_args(&[ty.into()]))
                     } else {
                         // `drop_glue` does not exist, don't try to use it.
