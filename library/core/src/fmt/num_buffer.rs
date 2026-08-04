@@ -56,8 +56,9 @@ impl_NumBufferTrait! {
 /// assert_eq!(n2.format_into(&mut buf), "-1972");
 /// ```
 #[stable(feature = "int_format_into", since = "1.98.0")]
-pub struct NumBuffer<T, B = <T as NumBufferTrait>::Buf> {
-    pub(crate) buf: B,
+#[repr(transparent)]
+pub struct NumBuffer<T: NumBufferTrait> {
+    pub(crate) buf: T::Buf,
     phantom: core::marker::PhantomData<T>,
 }
 
@@ -78,29 +79,8 @@ impl<T: NumBufferTrait> NumBuffer<T> {
     }
 }
 
-impl<T: NumBufferTrait, B: AsRef<[MaybeUninit<u8>]>> NumBuffer<T, B> {
-    /// Allows to cast between `NumBuffer` types at compile-time without new allocation. If you want
-    /// to cast to a `NumBuffer` of a bigger size (because it comes from a downcast), you'll want to
-    /// use [`cast_into`](Self::cast_into) instead.
-    #[unstable(feature = "fmt_internals", issue = "none")]
-    #[rustc_const_unstable(feature = "fmt_internals", issue = "none")]
-    #[track_caller]
-    pub const fn const_cast_into<U: NumBufferTrait>(&mut self) -> &mut NumBuffer<U, B> {
-        const {
-            assert!(
-                core::mem::size_of::<T::Buf>() >= core::mem::size_of::<U::Buf>(),
-                "target `NumBuffer` size must smaller or equal to source `NumBuffer` size"
-            );
-        }
-        // SAFETY: The target `NumBuffer` buffer is not bigger so this conversion is ok.
-        unsafe { core::mem::transmute::<&mut NumBuffer<T, B>, &mut NumBuffer<U, B>>(self) }
-    }
-
-    /// Allows to cast between `NumBuffer` as long as the internal buffer size of the target
-    /// `NumBuffer` is not bigger than the current one. Returns `None` otherwise.
-    ///
-    /// If you want to cast to a buffer of a smaller size,
-    /// [`const_cast_into`](Self::const_cast_into) is likely always a better idea.
+impl<T: NumBufferTrait> NumBuffer<T> {
+    /// Allows to cast between `NumBuffer` types at compile-time without new allocation.
     ///
     /// # Examples
     ///
@@ -114,21 +94,28 @@ impl<T: NumBufferTrait, B: AsRef<[MaybeUninit<u8>]>> NumBuffer<T, B> {
     ///
     /// assert_eq!(-16i16.format_into(buf.cast_into::<i16>()), "-16");
     /// assert_eq!(i16::MIN.format_into(buf.cast_into::<i16>()), i16::MIN.to_string());
+    /// ```
     ///
-    /// // Cannot work since `u64` requires a bigger buffer.
-    /// assert!(buf.cast_into::<u64>(), None);
+    /// If you try to cast to a `NumBuffer` with a bigger buffer size, it will not compile:
+    ///
+    /// ```compile_fail
+    /// use core::fmt::NumBuffer;
+    ///
+    /// let mut buf = NumBuffer::<u32>::new();
     /// // Cannot work since `i32` requires a bigger buffer (because of the `-` sign).
-    /// assert!(buf.cast_into::<i32>(), None);
+    /// let buf = buf.cast_into::<i32>();
     /// ```
     #[unstable(feature = "fmt_internals", issue = "none")]
-    pub fn cast_into<U: NumBufferTrait>(&mut self) -> Option<&mut NumBuffer<U, B>> {
-        if self.buf.as_ref().len() >= core::mem::size_of::<U::Buf>() {
-            // SAFETY: The target `NumBuffer` buffer is not bigger so this conversion is ok.
-            Some(unsafe {
-                core::mem::transmute::<&mut NumBuffer<T, B>, &mut NumBuffer<U, B>>(self)
-            })
-        } else {
-            None
+    #[rustc_const_unstable(feature = "fmt_internals", issue = "none")]
+    #[track_caller]
+    pub const fn cast_into<U: NumBufferTrait>(&mut self) -> &mut NumBuffer<U> {
+        const {
+            assert!(
+                core::mem::size_of::<T::Buf>() >= core::mem::size_of::<U::Buf>(),
+                "target `NumBuffer` size must be smaller or equal to source `NumBuffer` size"
+            );
         }
+        // SAFETY: The target `NumBuffer` buffer is not bigger so this conversion is ok.
+        unsafe { core::mem::transmute::<&mut NumBuffer<T>, &mut NumBuffer<U>>(self) }
     }
 }
