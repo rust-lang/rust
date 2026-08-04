@@ -294,6 +294,7 @@ where
         relate_args_invariantly(self, a_args, b_args)?;
         Ok(a_ty)
     }
+
     fn relate_with_variance<T: Relate<I>>(
         &mut self,
         _variance: ty::Variance,
