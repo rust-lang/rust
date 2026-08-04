@@ -4,8 +4,9 @@
 //! by adding a glob import to the top of I/O heavy modules:
 //!
 //! ```
+//! # #![feature(alloc_io)]
 //! # #![allow(unused_imports)]
-//! use std::io::prelude::*;
+//! use alloc::io::prelude::*;
 //! ```
 
 #[stable(feature = "rust1", since = "1.0.0")]
