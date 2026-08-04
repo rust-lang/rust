@@ -169,7 +169,7 @@ impl<'db> AssocItemCollector<'db> {
             container,
             items: Vec::new(),
 
-            macro_depth: 0,
+            macro_depth: file_id.macro_expansion_depth(db),
             macro_calls: ThinVec::new(),
             diagnostics: Vec::new(),
         }
