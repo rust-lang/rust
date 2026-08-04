@@ -3,8 +3,10 @@ use std::fmt;
 use rustc_errors::ErrorGuaranteed;
 use rustc_infer::infer::canonical::Canonical;
 use rustc_infer::infer::outlives::env::RegionBoundPairs;
+use rustc_infer::infer::region_constraints::GenericKind;
 use rustc_middle::bug;
 use rustc_middle::mir::{Body, ConstraintCategory};
+use rustc_middle::traits::query::OutlivesBound;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, Unnormalized, Upcast};
 use rustc_span::Span;
 use rustc_span::def_id::DefId;
@@ -179,6 +181,62 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // Upcast to a `Clause`, then to a `Predicate`.
         let predicate = clause.upcast(self.tcx()).upcast(self.tcx());
         let _: Result<_, ErrorGuaranteed> = self.fully_perform_op(
+            locations,
+            category,
+            param_env.and(type_op::prove_predicate::ProvePredicate { predicate }),
+        );
+    }
+
+    /// Proves that the already instantiated fn-pointer type `src_ty` is
+    /// well-formed, while assuming the outlives implied bounds of its input
+    /// types.
+    pub(super) fn prove_fn_ptr_wf(
+        &mut self,
+        src_ty: Ty<'tcx>,
+        locations: Locations,
+        category: ConstraintCategory<'tcx>,
+    ) {
+        let ty::FnPtr(sig_tys, hdr) = *src_ty.kind() else {
+            self.prove_clause(ty::ClauseKind::WellFormed(src_ty.into()), locations, category);
+            return;
+        };
+
+        let span = locations.span(self.body);
+        let mut region_bound_pairs = self.region_bound_pairs.clone();
+        for input in sig_tys.with(hdr).skip_binder().inputs() {
+            let Ok(TypeOpOutput { output: bounds, constraints, .. }) =
+                self.infcx.fully_perform(type_op::ImpliedOutlivesBounds { ty: *input }, span)
+            else {
+                continue;
+            };
+            if let Some(constraints) = constraints {
+                self.push_region_constraints(locations, category, constraints);
+            }
+            for bound in bounds {
+                match bound {
+                    OutlivesBound::RegionSubParam(r, param) => {
+                        region_bound_pairs
+                            .insert(ty::OutlivesPredicate(GenericKind::Param(param), r));
+                    }
+                    OutlivesBound::RegionSubAlias(r, alias) => {
+                        region_bound_pairs
+                            .insert(ty::OutlivesPredicate(GenericKind::Alias(alias), r));
+                    }
+                    OutlivesBound::RegionSubRegion(..) => {}
+                }
+            }
+        }
+
+        let param_env = self.infcx.param_env;
+        let clause: ty::Clause<'tcx> = ty::ClauseKind::WellFormed(src_ty.into()).upcast(self.tcx());
+        let predicate: ty::Predicate<'tcx> = clause.upcast(self.tcx());
+        let _: Result<_, ErrorGuaranteed> = fully_perform_op_raw(
+            self.infcx,
+            self.body,
+            self.universal_regions,
+            &region_bound_pairs,
+            self.known_type_outlives_obligations,
+            self.constraints,
             locations,
             category,
             param_env.and(type_op::prove_predicate::ProvePredicate { predicate }),

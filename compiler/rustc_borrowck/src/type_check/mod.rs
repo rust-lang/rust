@@ -590,13 +590,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
         let src_ty = if check_wf {
             // Instantiating the source throws away its implied bounds, so assert
-            // the instantiated signature is well-formed. Also normalizes, since
-            // the `fn_sig` query can return unnormalized results.
-            self.prove_clause(
-                ty::ClauseKind::WellFormed(src_ty.into()),
-                location.to_locations(),
-                cast,
-            );
+            // the instantiated signature is well-formed, while assuming the inputs'
+            // implied outlives bounds so a sound generic reification isn't
+            // spuriously rejected.
+            self.prove_fn_ptr_wf(src_ty, location.to_locations(), cast);
             self.normalize(ty::Unnormalized::new_wip(src_ty), location)
         } else {
             src_ty
