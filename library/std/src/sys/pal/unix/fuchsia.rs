@@ -87,7 +87,7 @@ unsafe extern "C" {
     pub fn zx_object_set_property(
         handle: zx_handle_t,
         property: u32,
-        value: *const libc::c_void,
+        value: *const core::ffi::c_void,
         value_size: libc::size_t,
     ) -> zx_status_t;
 }

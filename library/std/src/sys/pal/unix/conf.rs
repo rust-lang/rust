@@ -73,7 +73,7 @@ pub fn glibc_version() -> Option<(usize, usize)> {
     use crate::ffi::CStr;
 
     unsafe extern "C" {
-        fn gnu_get_libc_version() -> *const libc::c_char;
+        fn gnu_get_libc_version() -> *const core::ffi::c_char;
     }
     let version_cstr = unsafe { CStr::from_ptr(gnu_get_libc_version()) };
     if let Ok(version_str) = version_cstr.to_str() {

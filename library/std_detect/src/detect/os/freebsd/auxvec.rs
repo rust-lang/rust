@@ -45,17 +45,21 @@ pub(crate) fn auxv() -> Result<AuxVec, ()> {
 }
 
 /// Tries to read the `key` from the auxiliary vector.
-fn archauxv(key: libc::c_int) -> usize {
-    const OUT_LEN: libc::c_int = core::mem::size_of::<libc::c_ulong>() as libc::c_int;
-    let mut out: libc::c_ulong = 0;
+fn archauxv(key: core::ffi::c_int) -> usize {
+    const OUT_LEN: core::ffi::c_int =
+        core::mem::size_of::<core::ffi::c_ulong>() as core::ffi::c_int;
+    let mut out: core::ffi::c_ulong = 0;
     unsafe {
         // elf_aux_info is available on FreeBSD 12.0+ and 11.4+:
         // https://github.com/freebsd/freebsd-src/commit/0b08ae2120cdd08c20a2b806e2fcef4d0a36c470
         // https://github.com/freebsd/freebsd-src/blob/release/11.4.0/sys/sys/auxv.h
         // FreeBSD 11 support in std has been removed in Rust 1.75 (https://github.com/rust-lang/rust/pull/114521),
         // so we can safely use this function.
-        let res =
-            libc::elf_aux_info(key, &mut out as *mut libc::c_ulong as *mut libc::c_void, OUT_LEN);
+        let res = libc::elf_aux_info(
+            key,
+            &mut out as *mut core::ffi::c_ulong as *mut core::ffi::c_void,
+            OUT_LEN,
+        );
         // If elf_aux_info fails, `out` will be left at zero (which is the proper default value).
         debug_assert!(res == 0 || out == 0);
     }

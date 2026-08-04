@@ -46,9 +46,9 @@ mod escape;
 mod to_tokens;
 
 use core::convert::From;
+use core::ffi::CStr;
 use core::ops::BitOr;
 use std::borrow::Cow;
-use std::ffi::CStr;
 use std::ops::{Range, RangeBounds};
 use std::path::PathBuf;
 use std::str::FromStr;

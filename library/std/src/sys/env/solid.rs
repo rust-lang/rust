@@ -1,9 +1,8 @@
 use core::slice::memchr;
 
 pub use super::common::Env;
-use crate::ffi::{CStr, OsStr, OsString};
+use crate::ffi::{CStr, OsStr, OsString, c_char, c_int};
 use crate::io;
-use crate::os::raw::{c_char, c_int};
 use crate::os::solid::ffi::{OsStrExt, OsStringExt};
 use crate::sync::{PoisonError, RwLock};
 use crate::sys::helpers::run_with_cstr;
@@ -58,7 +57,7 @@ pub fn getenv(k: &OsStr) -> Option<OsString> {
     // always None as well
     run_with_cstr(k.as_bytes(), &|k| {
         let _guard = env_read_lock();
-        let v = unsafe { libc::getenv(k.as_ptr()) } as *const libc::c_char;
+        let v = unsafe { libc::getenv(k.as_ptr()) } as *const core::ffi::c_char;
 
         if v.is_null() {
             Ok(None)

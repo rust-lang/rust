@@ -30,14 +30,14 @@ unsafe extern "C" {
     //
     // Converts a path to an absolute POSIX path, no matter the input is Win32 path or POSIX path.
     fn cygwin_conv_path(
-        what: libc::c_uint,
-        from: *const libc::c_char,
+        what: core::ffi::c_uint,
+        from: *const core::ffi::c_char,
         to: *mut u8,
         size: libc::size_t,
     ) -> libc::ssize_t;
 }
 
-const CCP_WIN_A_TO_POSIX: libc::c_uint = 2;
+const CCP_WIN_A_TO_POSIX: core::ffi::c_uint = 2;
 
 /// Make a POSIX path absolute.
 pub(crate) fn absolute(path: &Path) -> io::Result<PathBuf> {

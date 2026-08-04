@@ -7,7 +7,9 @@
 mod tests;
 
 #[cfg(all(target_os = "linux", target_env = "gnu"))]
-use libc::c_char;
+use core::ffi::c_char;
+use core::ffi::c_int;
+
 #[cfg(any(
     all(target_os = "linux", not(target_env = "musl")),
     target_os = "android",
@@ -21,6 +23,7 @@ use libc::dirfd;
 use libc::fstatat as fstatat64;
 #[cfg(any(all(target_os = "linux", not(target_env = "musl")), target_os = "hurd"))]
 use libc::fstatat64;
+use libc::mode_t;
 #[cfg(any(
     target_os = "aix",
     target_os = "android",
@@ -57,7 +60,6 @@ use libc::readdir_r as readdir64_r;
 use libc::readdir64;
 #[cfg(target_os = "l4re")]
 use libc::readdir64_r;
-use libc::{c_int, mode_t};
 #[cfg(target_os = "android")]
 use libc::{
     dirent as dirent64, fstat as fstat64, fstatat as fstatat64, ftruncate64, lseek64,
@@ -194,7 +196,7 @@ cfg_has_statx! {{
                 fd: c_int,
                 pathname: *const c_char,
                 flags: c_int,
-                mask: libc::c_uint,
+                mask: core::ffi::c_uint,
                 statxbuf: *mut libc::statx,
             ) -> c_int;
         );
@@ -388,7 +390,7 @@ fn get_path_from_fd(fd: c_int) -> Option<PathBuf> {
     fn get_path(fd: c_int) -> Option<PathBuf> {
         let info = Box::<libc::kinfo_file>::new_zeroed();
         let mut info = unsafe { info.assume_init() };
-        info.kf_structsize = size_of::<libc::kinfo_file>() as libc::c_int;
+        info.kf_structsize = size_of::<libc::kinfo_file>() as core::ffi::c_int;
         let n = unsafe { libc::fcntl(fd, libc::F_KINFO, &mut *info) };
         if n == -1 {
             return None;
@@ -1850,12 +1852,12 @@ impl TimesAttrlist {
         Ok(this)
     }
 
-    fn attrlist(&self) -> *mut libc::c_void {
-        (&raw const self.attrlist).cast::<libc::c_void>().cast_mut()
+    fn attrlist(&self) -> *mut core::ffi::c_void {
+        (&raw const self.attrlist).cast::<core::ffi::c_void>().cast_mut()
     }
 
-    fn times_buf(&self) -> *mut libc::c_void {
-        self.buf.as_ptr().cast::<libc::c_void>().cast_mut()
+    fn times_buf(&self) -> *mut core::ffi::c_void {
+        self.buf.as_ptr().cast::<core::ffi::c_void>().cast_mut()
     }
 
     fn times_buf_size(&self) -> usize {
@@ -2220,7 +2222,7 @@ fn set_times_impl(p: &CStr, times: FileTimes, follow_symlinks: bool) -> io::Resu
             // utimensat requires Android API level 19
             cvt(unsafe {
                 weak!(
-                    fn utimensat(dirfd: c_int, path: *const libc::c_char, times: *const libc::timespec, flags: c_int) -> c_int;
+                    fn utimensat(dirfd: c_int, path: *const core::ffi::c_char, times: *const libc::timespec, flags: c_int) -> c_int;
                 );
                 match utimensat.get() {
                     Some(utimensat) => utimensat(libc::AT_FDCWD, p.as_ptr(), times.as_ptr(), flags),
@@ -2421,7 +2423,7 @@ pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {
         libc::copyfile_state_get(
             state.0,
             libc::COPYFILE_STATE_COPIED as u32,
-            (&raw mut bytes_copied) as *mut libc::c_void,
+            (&raw mut bytes_copied) as *mut core::ffi::c_void,
         )
     })?;
     Ok(bytes_copied as u64)

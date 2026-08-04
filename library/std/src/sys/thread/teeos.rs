@@ -77,7 +77,7 @@ impl Thread {
             Ok(Thread { id: native })
         };
 
-        extern "C" fn thread_start(data: *mut libc::c_void) -> *mut libc::c_void {
+        extern "C" fn thread_start(data: *mut core::ffi::c_void) -> *mut core::ffi::c_void {
             // SAFETY: we are simply recreating the box that was leaked earlier.
             let init = unsafe { Box::from_raw(data as *mut ThreadInit) };
             let rust_start = init.init();

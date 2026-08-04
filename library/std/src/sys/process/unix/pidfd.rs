@@ -39,7 +39,7 @@ impl PidFd {
                     fn pidfd_getpid(pidfd: RawFd) -> libc::pid_t;
                 );
                 if let Some(pidfd_getpid) = pidfd_getpid.get() {
-                    let pid: libc::c_int = cvt(unsafe { pidfd_getpid(self.0.as_raw_fd()) })?;
+                    let pid: core::ffi::c_int = cvt(unsafe { pidfd_getpid(self.0.as_raw_fd()) })?;
                     return Ok(pid as u32);
                 }
                 return Err(e);
@@ -59,7 +59,7 @@ impl PidFd {
         Ok(ExitStatus::new(pidfd_info.exit_code))
     }
 
-    fn waitid(&self, options: libc::c_int) -> io::Result<Option<ExitStatus>> {
+    fn waitid(&self, options: core::ffi::c_int) -> io::Result<Option<ExitStatus>> {
         let mut siginfo: libc::siginfo_t = unsafe { crate::mem::zeroed() };
         let r = cvt(unsafe {
             libc::waitid(libc::P_PIDFD, self.0.as_raw_fd() as u32, &mut siginfo, options)

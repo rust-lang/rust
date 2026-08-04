@@ -1,7 +1,9 @@
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests;
 
-use libc::{EXIT_FAILURE, EXIT_SUCCESS, c_int, gid_t, pid_t, uid_t};
+use core::ffi::c_int;
+
+use libc::{EXIT_FAILURE, EXIT_SUCCESS, gid_t, pid_t, uid_t};
 
 pub use self::cstring_array::CStringArray;
 use self::cstring_array::CStringIter;
@@ -41,15 +43,16 @@ cfg_select! {
 cfg_select! {
     target_os = "android" => {
         #[allow(dead_code)]
-        pub unsafe fn sigemptyset(set: *mut libc::sigset_t) -> libc::c_int {
+        pub unsafe fn sigemptyset(set: *mut libc::sigset_t) -> c_int {
             set.write_bytes(0u8, 1);
             return 0;
         }
 
         #[allow(dead_code)]
-        pub unsafe fn sigaddset(set: *mut libc::sigset_t, signum: libc::c_int) -> libc::c_int {
+        pub unsafe fn sigaddset(set: *mut libc::sigset_t, signum: c_int) -> c_int {
             use crate::slice;
-            use libc::{c_ulong, sigset_t};
+            use core::ffi::c_ulong;
+            use sigset_t;
 
             // The implementations from bionic (android libc) type pun `sigset_t` as an
             // array of `c_ulong`. This works, but lets add a smoke check to make sure

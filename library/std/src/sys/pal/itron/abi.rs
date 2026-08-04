@@ -1,6 +1,6 @@
 //! ABI for μITRON derivatives
-pub type int_t = crate::os::raw::c_int;
-pub type uint_t = crate::os::raw::c_uint;
+pub type int_t = core::ffi::c_int;
+pub type uint_t = core::ffi::c_uint;
 pub type bool_t = int_t;
 
 /// Kernel object ID

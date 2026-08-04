@@ -10,7 +10,7 @@
 )]
 #![allow(deprecated)]
 
-use crate::os::raw::{c_char, c_int, c_long, c_ulong, c_void};
+use core::ffi::{c_char, c_int, c_long, c_ulong, c_void};
 
 #[stable(feature = "raw_ext", since = "1.1.0")]
 pub type dev_t = c_long;

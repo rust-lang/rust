@@ -1,5 +1,8 @@
 #![forbid(unsafe_op_in_unsafe_fn)]
-use libc::{self, RTP_ID, c_char, c_int};
+
+use core::ffi::{c_char, c_int};
+
+use libc::{self, RTP_ID};
 
 use super::common::*;
 use crate::io::{self, ErrorKind};

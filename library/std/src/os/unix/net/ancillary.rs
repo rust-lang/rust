@@ -91,8 +91,8 @@ fn add_to_ancillary_data<T>(
     buffer: &mut [u8],
     length: &mut usize,
     source: &[T],
-    cmsg_level: libc::c_int,
-    cmsg_type: libc::c_int,
+    cmsg_level: core::ffi::c_int,
+    cmsg_type: core::ffi::c_int,
 ) -> bool {
     #[cfg(not(target_os = "freebsd"))]
     let cmsg_size = source.len().checked_mul(size_of::<T>());

@@ -116,7 +116,7 @@ pub fn set_errno(e: i32) {
 unsafe extern "C" {
     #[thread_local]
     #[link_name = "errno"]
-    static mut libc_errno: libc::c_int;
+    static mut libc_errno: core::ffi::c_int;
 }
 
 #[cfg(target_os = "wasi")]
@@ -138,7 +138,7 @@ pub fn is_interrupted(errno: i32) -> bool {
 
 pub fn decode_error_kind(errno: i32) -> io::ErrorKind {
     use io::ErrorKind::*;
-    match errno as libc::c_int {
+    match errno as core::ffi::c_int {
         libc::E2BIG => ArgumentListTooLong,
         libc::EADDRINUSE => AddrInUse,
         libc::EADDRNOTAVAIL => AddrNotAvailable,

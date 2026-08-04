@@ -2156,11 +2156,11 @@ impl<T, A: Allocator> Vec<T, A> {
     /// # #![allow(dead_code)]
     /// # // This is just a minimal skeleton for the doc example;
     /// # // don't use this as a starting point for a real library.
-    /// # pub struct StreamWrapper { strm: *mut std::ffi::c_void }
+    /// # pub struct StreamWrapper { strm: *mut core::ffi::c_void }
     /// # const Z_OK: i32 = 0;
     /// # unsafe extern "C" {
     /// #     fn deflateGetDictionary(
-    /// #         strm: *mut std::ffi::c_void,
+    /// #         strm: *mut core::ffi::c_void,
     /// #         dictionary: *mut u8,
     /// #         dictLength: *mut usize,
     /// #     ) -> i32;

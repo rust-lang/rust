@@ -1,4 +1,6 @@
-use libc::{c_int, size_t};
+use core::ffi::c_int;
+
+use libc::size_t;
 
 use super::common::*;
 use crate::num::NonZero;
@@ -178,7 +180,7 @@ impl Process {
             zx_cvt(zx_object_get_info(
                 self.handle.raw(),
                 ZX_INFO_PROCESS,
-                (&raw mut proc_info) as *mut libc::c_void,
+                (&raw mut proc_info) as *mut core::ffi::c_void,
                 size_of::<zx_info_process_t>(),
                 &mut actual,
                 &mut avail,
@@ -213,7 +215,7 @@ impl Process {
             zx_cvt(zx_object_get_info(
                 self.handle.raw(),
                 ZX_INFO_PROCESS,
-                (&raw mut proc_info) as *mut libc::c_void,
+                (&raw mut proc_info) as *mut core::ffi::c_void,
                 size_of::<zx_info_process_t>(),
                 &mut actual,
                 &mut avail,

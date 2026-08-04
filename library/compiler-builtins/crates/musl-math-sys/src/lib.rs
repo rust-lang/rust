@@ -1,6 +1,6 @@
 //! Bindings to Musl math functions (these are built in `build.rs`).
 
-use std::ffi::{c_char, c_int, c_long};
+use core::ffi::{c_char, c_int, c_long};
 
 /// Macro for creating bindings and exposing a safe function (since the implementations have no
 /// preconditions). Included functions must have correct signatures, otherwise this will be

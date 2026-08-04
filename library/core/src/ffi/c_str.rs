@@ -39,8 +39,7 @@ use crate::{fmt, ops, range, slice, str};
 /// Inspecting a foreign C string:
 ///
 /// ```
-/// use std::ffi::CStr;
-/// use std::os::raw::c_char;
+/// use core::ffi::{CStr, c_char};
 ///
 /// # /* Extern functions are awkward in doc comments - fake it instead
 /// extern "C" { fn my_string() -> *const c_char; }
@@ -55,8 +54,7 @@ use crate::{fmt, ops, range, slice, str};
 /// Passing a Rust-originating C string:
 ///
 /// ```
-/// use std::ffi::CStr;
-/// use std::os::raw::c_char;
+/// use core::ffi::{CStr, c_char};
 ///
 /// fn work(data: &CStr) {
 ///     unsafe extern "C" fn work_with(s: *const c_char) {}
@@ -70,8 +68,7 @@ use crate::{fmt, ops, range, slice, str};
 /// Converting a foreign C string into a Rust `String`:
 ///
 /// ```
-/// use std::ffi::CStr;
-/// use std::os::raw::c_char;
+/// use core::ffi::{CStr, c_char};
 ///
 /// # /* Extern functions are awkward in doc comments - fake it instead
 /// extern "C" { fn my_string() -> *const c_char; }
@@ -118,7 +115,7 @@ pub struct CStr {
 /// # Examples
 ///
 /// ```
-/// use std::ffi::{CStr, FromBytesWithNulError};
+/// use core::ffi::{CStr, FromBytesWithNulError};
 ///
 /// let _: FromBytesWithNulError = CStr::from_bytes_with_nul(b"f\0oo").unwrap_err();
 /// ```
@@ -280,7 +277,7 @@ impl CStr {
     ///
     /// # Examples
     /// ```
-    /// use std::ffi::CStr;
+    /// use core::ffi::CStr;
     ///
     /// let mut buffer = [0u8; 16];
     /// unsafe {
@@ -324,7 +321,7 @@ impl CStr {
     /// # Examples
     ///
     /// ```
-    /// use std::ffi::CStr;
+    /// use core::ffi::CStr;
     ///
     /// let cstr = CStr::from_bytes_with_nul(b"hello\0");
     /// assert_eq!(cstr, Ok(c"hello"));
@@ -374,7 +371,7 @@ impl CStr {
     /// # Examples
     ///
     /// ```
-    /// use std::ffi::CStr;
+    /// use core::ffi::CStr;
     ///
     /// let bytes = b"Hello world!\0";
     ///

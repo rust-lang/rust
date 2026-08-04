@@ -1,6 +1,7 @@
-pub use libc::{c_int, c_long, size_t, ssize_t, timeval};
+use core::ffi::{c_char, c_uint, c_void};
+pub use core::ffi::{c_int, c_long};
 
-use crate::os::raw::{c_char, c_uint, c_void};
+pub use libc::{size_t, ssize_t, timeval};
 
 pub const SOLID_NET_ERR_BASE: c_int = -2000;
 pub const EINPROGRESS: c_int = SOLID_NET_ERR_BASE - libc::EINPROGRESS;

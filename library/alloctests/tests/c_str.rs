@@ -1,6 +1,5 @@
+use core::ffi::{CStr, c_char};
 use std::borrow::Cow::{Borrowed, Owned};
-use std::ffi::CStr;
-use std::os::raw::c_char;
 
 #[test]
 fn to_str() {

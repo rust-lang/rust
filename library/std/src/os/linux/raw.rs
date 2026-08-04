@@ -10,7 +10,7 @@
 )]
 #![allow(deprecated)]
 
-use crate::os::raw::c_ulong;
+use core::ffi::c_ulong;
 
 #[stable(feature = "raw_ext", since = "1.1.0")]
 pub type dev_t = u64;
@@ -33,7 +33,7 @@ pub use self::arch::{blkcnt_t, blksize_t, ino_t, nlink_t, off_t, stat, time_t};
     target_arch = "arm",
 ))]
 mod arch {
-    use crate::os::raw::{c_long, c_short, c_uint};
+    use core::ffi::{c_long, c_short, c_uint};
 
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub type blkcnt_t = u64;
@@ -95,7 +95,7 @@ mod arch {
 
 #[cfg(any(target_arch = "mips", target_arch = "mips32r6"))]
 mod arch {
-    use crate::os::raw::{c_long, c_ulong};
+    use core::ffi::{c_long, c_ulong};
 
     #[cfg(target_env = "musl")]
     #[stable(feature = "raw_ext", since = "1.1.0")]
@@ -169,7 +169,7 @@ mod arch {
 
 #[cfg(target_arch = "hexagon")]
 mod arch {
-    use crate::os::raw::{c_int, c_long, c_uint};
+    use core::ffi::{c_int, c_long, c_uint};
 
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub type blkcnt_t = i64;
@@ -250,7 +250,7 @@ mod arch {
     all(doc, target_arch = "arm64ec")
 ))]
 mod arch {
-    use crate::os::raw::{c_int, c_long};
+    use core::ffi::{c_int, c_long};
 
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub type blkcnt_t = i64;
@@ -314,7 +314,7 @@ mod arch {
     // `wasm32-wali-linux-musl` uses ABI similar to x86_64
     target_arch = "wasm32"))]
 mod arch {
-    use crate::os::raw::{c_int, c_long};
+    use core::ffi::{c_int, c_long};
 
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub type blkcnt_t = u64;

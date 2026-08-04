@@ -4,7 +4,7 @@ use core::panic::PanicPayload;
 use core::ptr::copy_nonoverlapping;
 
 const ANDROID_SET_ABORT_MESSAGE: &[u8] = b"android_set_abort_message\0";
-type SetAbortMessageType = unsafe extern "C" fn(*const libc::c_char) -> ();
+type SetAbortMessageType = unsafe extern "C" fn(*const core::ffi::c_char) -> ();
 
 // Forward the abort message to libc's android_set_abort_message. We try our best to populate the
 // message but as this function may already be called as part of a failed allocation, it might not be
@@ -17,8 +17,10 @@ type SetAbortMessageType = unsafe extern "C" fn(*const libc::c_char) -> ();
 // for API >= 21.
 pub(crate) unsafe fn android_set_abort_message(payload: &mut dyn PanicPayload) {
     let func_addr = unsafe {
-        libc::dlsym(libc::RTLD_DEFAULT, ANDROID_SET_ABORT_MESSAGE.as_ptr() as *const libc::c_char)
-            as usize
+        libc::dlsym(
+            libc::RTLD_DEFAULT,
+            ANDROID_SET_ABORT_MESSAGE.as_ptr() as *const core::ffi::c_char,
+        ) as usize
     };
     if func_addr == 0 {
         return;
@@ -38,7 +40,7 @@ pub(crate) unsafe fn android_set_abort_message(payload: &mut dyn PanicPayload) {
 
     // Allocate a new buffer to append the null byte.
     let size = msg.len() + 1usize;
-    let buf = unsafe { libc::malloc(size) as *mut libc::c_char };
+    let buf = unsafe { libc::malloc(size) as *mut core::ffi::c_char };
     if buf.is_null() {
         return; // allocation failure
     }

@@ -75,9 +75,9 @@ fn getrandom(mut bytes: &mut [u8], insecure: bool) {
     // (`getrandom` was added in glibc 2.25, musl 1.1.20, android API level 28)
     syscall!(
         fn getrandom(
-            buffer: *mut libc::c_void,
+            buffer: *mut core::ffi::c_void,
             length: libc::size_t,
-            flags: libc::c_uint,
+            flags: core::ffi::c_uint,
         ) -> libc::ssize_t;
     );
 

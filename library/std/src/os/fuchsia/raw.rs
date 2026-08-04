@@ -10,7 +10,7 @@
 )]
 #![allow(deprecated)]
 
-use crate::os::raw::c_ulong;
+use core::ffi::c_ulong;
 
 #[stable(feature = "raw_ext", since = "1.1.0")]
 pub type dev_t = u64;
@@ -26,7 +26,7 @@ pub use self::arch::{blkcnt_t, blksize_t, ino_t, nlink_t, off_t, stat, time_t};
 
 #[cfg(any(target_arch = "x86", target_arch = "powerpc", target_arch = "arm"))]
 mod arch {
-    use crate::os::raw::{c_long, c_short, c_uint};
+    use core::ffi::{c_long, c_short, c_uint};
 
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub type blkcnt_t = u64;
@@ -88,7 +88,7 @@ mod arch {
 
 #[cfg(target_arch = "mips")]
 mod arch {
-    use crate::os::raw::{c_long, c_ulong};
+    use core::ffi::{c_long, c_ulong};
 
     #[cfg(target_env = "musl")]
     #[stable(feature = "raw_ext", since = "1.1.0")]
@@ -167,7 +167,7 @@ mod arch {
 
 #[cfg(target_arch = "aarch64")]
 mod arch {
-    use crate::os::raw::{c_int, c_long};
+    use core::ffi::{c_int, c_long};
 
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub type blkcnt_t = u64;
@@ -229,7 +229,7 @@ mod arch {
 
 #[cfg(target_arch = "x86_64")]
 mod arch {
-    use crate::os::raw::{c_int, c_long};
+    use core::ffi::{c_int, c_long};
 
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub type blkcnt_t = u64;

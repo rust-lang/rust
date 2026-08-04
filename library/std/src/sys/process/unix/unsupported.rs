@@ -1,4 +1,6 @@
-use libc::{c_int, pid_t};
+use core::ffi::c_int;
+
+use libc::pid_t;
 
 use super::common::*;
 use crate::io;

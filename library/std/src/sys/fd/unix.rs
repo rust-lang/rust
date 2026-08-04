@@ -80,7 +80,7 @@ pub struct FileDesc(OwnedFd);
 // larger than INT_MAX. To handle both of these the read size is capped on
 // both platforms.
 const READ_LIMIT: usize = if cfg!(target_vendor = "apple") {
-    libc::c_int::MAX as usize
+    core::ffi::c_int::MAX as usize
 } else {
     libc::ssize_t::MAX as usize
 };
@@ -139,7 +139,7 @@ impl FileDesc {
         let ret = cvt(unsafe {
             libc::read(
                 self.as_raw_fd(),
-                buf.as_mut_ptr() as *mut libc::c_void,
+                buf.as_mut_ptr() as *mut core::ffi::c_void,
                 cmp::min(buf.len(), READ_LIMIT),
             )
         })?;
@@ -157,7 +157,7 @@ impl FileDesc {
             libc::readv(
                 self.as_raw_fd(),
                 bufs.as_mut_ptr() as *mut libc::iovec as *const libc::iovec,
-                cmp::min(bufs.len(), max_iov()) as libc::c_int,
+                cmp::min(bufs.len(), max_iov()) as core::ffi::c_int,
             )
         })?;
         Ok(ret as usize)
@@ -193,7 +193,7 @@ impl FileDesc {
         cvt(unsafe {
             pread64(
                 self.as_raw_fd(),
-                buf.as_mut_ptr() as *mut libc::c_void,
+                buf.as_mut_ptr() as *mut core::ffi::c_void,
                 cmp::min(buf.len(), READ_LIMIT),
                 offset as off64_t, // EINVAL if offset + count overflows
             )
@@ -206,7 +206,7 @@ impl FileDesc {
         let ret = cvt(unsafe {
             libc::read(
                 self.as_raw_fd(),
-                cursor.as_mut().as_mut_ptr().cast::<libc::c_void>(),
+                cursor.as_mut().as_mut_ptr().cast::<core::ffi::c_void>(),
                 cmp::min(cursor.capacity(), READ_LIMIT),
             )
         })?;
@@ -223,7 +223,7 @@ impl FileDesc {
         let ret = cvt(unsafe {
             pread64(
                 self.as_raw_fd(),
-                cursor.as_mut().as_mut_ptr().cast::<libc::c_void>(),
+                cursor.as_mut().as_mut_ptr().cast::<core::ffi::c_void>(),
                 cmp::min(cursor.capacity(), READ_LIMIT),
                 offset as off64_t, // EINVAL if offset + count overflows
             )
@@ -254,7 +254,7 @@ impl FileDesc {
             libc::preadv(
                 self.as_raw_fd(),
                 bufs.as_mut_ptr() as *mut libc::iovec as *const libc::iovec,
-                cmp::min(bufs.len(), max_iov()) as libc::c_int,
+                cmp::min(bufs.len(), max_iov()) as core::ffi::c_int,
                 offset as _,
             )
         })?;
@@ -289,9 +289,9 @@ impl FileDesc {
     pub fn read_vectored_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
         syscall!(
             fn preadv(
-                fd: libc::c_int,
+                fd: core::ffi::c_int,
                 iovec: *const libc::iovec,
-                n_iovec: libc::c_int,
+                n_iovec: core::ffi::c_int,
                 offset: off64_t,
             ) -> isize;
         );
@@ -300,7 +300,7 @@ impl FileDesc {
             preadv(
                 self.as_raw_fd(),
                 bufs.as_mut_ptr() as *mut libc::iovec as *const libc::iovec,
-                cmp::min(bufs.len(), max_iov()) as libc::c_int,
+                cmp::min(bufs.len(), max_iov()) as core::ffi::c_int,
                 offset as _,
             )
         })?;
@@ -311,9 +311,9 @@ impl FileDesc {
     pub fn read_vectored_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
         weak!(
             fn preadv64(
-                fd: libc::c_int,
+                fd: core::ffi::c_int,
                 iovec: *const libc::iovec,
-                n_iovec: libc::c_int,
+                n_iovec: core::ffi::c_int,
                 offset: off64_t,
             ) -> isize;
         );
@@ -324,7 +324,7 @@ impl FileDesc {
                     preadv(
                         self.as_raw_fd(),
                         bufs.as_mut_ptr() as *mut libc::iovec as *const libc::iovec,
-                        cmp::min(bufs.len(), max_iov()) as libc::c_int,
+                        cmp::min(bufs.len(), max_iov()) as core::ffi::c_int,
                         offset as _,
                     )
                 })?;
@@ -348,9 +348,9 @@ impl FileDesc {
     pub fn read_vectored_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
         weak!(
             fn preadv(
-                fd: libc::c_int,
+                fd: core::ffi::c_int,
                 iovec: *const libc::iovec,
-                n_iovec: libc::c_int,
+                n_iovec: core::ffi::c_int,
                 offset: off64_t,
             ) -> isize;
         );
@@ -361,7 +361,7 @@ impl FileDesc {
                     preadv(
                         self.as_raw_fd(),
                         bufs.as_mut_ptr() as *mut libc::iovec as *const libc::iovec,
-                        cmp::min(bufs.len(), max_iov()) as libc::c_int,
+                        cmp::min(bufs.len(), max_iov()) as core::ffi::c_int,
                         offset as _,
                     )
                 })?;
@@ -375,7 +375,7 @@ impl FileDesc {
         let ret = cvt(unsafe {
             libc::write(
                 self.as_raw_fd(),
-                buf.as_ptr() as *const libc::c_void,
+                buf.as_ptr() as *const core::ffi::c_void,
                 cmp::min(buf.len(), READ_LIMIT),
             )
         })?;
@@ -393,7 +393,7 @@ impl FileDesc {
             libc::writev(
                 self.as_raw_fd(),
                 bufs.as_ptr() as *const libc::iovec,
-                cmp::min(bufs.len(), max_iov()) as libc::c_int,
+                cmp::min(bufs.len(), max_iov()) as core::ffi::c_int,
             )
         })?;
         Ok(ret as usize)
@@ -424,7 +424,7 @@ impl FileDesc {
         unsafe {
             cvt(pwrite64(
                 self.as_raw_fd(),
-                buf.as_ptr() as *const libc::c_void,
+                buf.as_ptr() as *const core::ffi::c_void,
                 cmp::min(buf.len(), READ_LIMIT),
                 offset as off64_t,
             ))
@@ -450,7 +450,7 @@ impl FileDesc {
             libc::pwritev(
                 self.as_raw_fd(),
                 bufs.as_ptr() as *const libc::iovec,
-                cmp::min(bufs.len(), max_iov()) as libc::c_int,
+                cmp::min(bufs.len(), max_iov()) as core::ffi::c_int,
                 offset as _,
             )
         })?;
@@ -485,9 +485,9 @@ impl FileDesc {
     pub fn write_vectored_at(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
         syscall!(
             fn pwritev(
-                fd: libc::c_int,
+                fd: core::ffi::c_int,
                 iovec: *const libc::iovec,
-                n_iovec: libc::c_int,
+                n_iovec: core::ffi::c_int,
                 offset: off64_t,
             ) -> isize;
         );
@@ -496,7 +496,7 @@ impl FileDesc {
             pwritev(
                 self.as_raw_fd(),
                 bufs.as_ptr() as *const libc::iovec,
-                cmp::min(bufs.len(), max_iov()) as libc::c_int,
+                cmp::min(bufs.len(), max_iov()) as core::ffi::c_int,
                 offset as _,
             )
         })?;
@@ -507,9 +507,9 @@ impl FileDesc {
     pub fn write_vectored_at(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
         weak!(
             fn pwritev64(
-                fd: libc::c_int,
+                fd: core::ffi::c_int,
                 iovec: *const libc::iovec,
-                n_iovec: libc::c_int,
+                n_iovec: core::ffi::c_int,
                 offset: off64_t,
             ) -> isize;
         );
@@ -520,7 +520,7 @@ impl FileDesc {
                     pwritev(
                         self.as_raw_fd(),
                         bufs.as_ptr() as *const libc::iovec,
-                        cmp::min(bufs.len(), max_iov()) as libc::c_int,
+                        cmp::min(bufs.len(), max_iov()) as core::ffi::c_int,
                         offset as _,
                     )
                 })?;
@@ -544,9 +544,9 @@ impl FileDesc {
     pub fn write_vectored_at(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
         weak!(
             fn pwritev(
-                fd: libc::c_int,
+                fd: core::ffi::c_int,
                 iovec: *const libc::iovec,
-                n_iovec: libc::c_int,
+                n_iovec: core::ffi::c_int,
                 offset: off64_t,
             ) -> isize;
         );
@@ -557,7 +557,7 @@ impl FileDesc {
                     pwritev(
                         self.as_raw_fd(),
                         bufs.as_ptr() as *const libc::iovec,
-                        cmp::min(bufs.len(), max_iov()) as libc::c_int,
+                        cmp::min(bufs.len(), max_iov()) as core::ffi::c_int,
                         offset as _,
                     )
                 })?;
@@ -628,7 +628,7 @@ impl FileDesc {
     #[cfg(target_os = "linux")]
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         unsafe {
-            let v = nonblocking as libc::c_int;
+            let v = nonblocking as core::ffi::c_int;
             cvt(libc::ioctl(self.as_raw_fd(), libc::FIONBIO, &v))?;
             Ok(())
         }

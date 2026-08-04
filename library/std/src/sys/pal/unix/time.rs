@@ -92,7 +92,7 @@ impl Timespec {
                 fn __clock_gettime64(
                     clockid: libc::clockid_t,
                     tp: *mut __timespec64,
-                ) -> libc::c_int;
+                ) -> core::ffi::c_int;
             );
 
             if let Some(clock_gettime64) = __clock_gettime64.get() {

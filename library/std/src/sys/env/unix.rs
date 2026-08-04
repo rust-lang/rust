@@ -1,6 +1,5 @@
+use core::ffi::c_char;
 use core::slice::memchr;
-
-use libc::c_char;
 
 pub use super::common::Env;
 use crate::ffi::{CStr, OsStr, OsString};
@@ -114,7 +113,7 @@ pub fn getenv(k: &OsStr) -> Option<OsString> {
     // always None as well
     run_with_cstr(k.as_bytes(), &|k| {
         let _guard = env_read_lock();
-        let v = unsafe { libc::getenv(k.as_ptr()) } as *const libc::c_char;
+        let v = unsafe { libc::getenv(k.as_ptr()) } as *const core::ffi::c_char;
 
         if v.is_null() {
             Ok(None)

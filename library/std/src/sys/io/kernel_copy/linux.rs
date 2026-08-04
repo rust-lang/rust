@@ -694,12 +694,12 @@ fn copy_regular_files(reader: RawFd, writer: RawFd, max_len: u64) -> CopyResult 
 
     syscall!(
         fn copy_file_range(
-            fd_in: libc::c_int,
+            fd_in: core::ffi::c_int,
             off_in: *mut libc::loff_t,
-            fd_out: libc::c_int,
+            fd_out: core::ffi::c_int,
             off_out: *mut libc::loff_t,
             len: libc::size_t,
-            flags: libc::c_uint,
+            flags: core::ffi::c_uint,
         ) -> libc::ssize_t;
     );
 
@@ -817,12 +817,12 @@ fn sendfile_splice(mode: SpliceMode, reader: RawFd, writer: RawFd, len: u64) -> 
     #[cfg(target_os = "android")]
     syscall!(
         fn splice(
-            srcfd: libc::c_int,
+            srcfd: core::ffi::c_int,
             src_offset: *const i64,
-            dstfd: libc::c_int,
+            dstfd: core::ffi::c_int,
             dst_offset: *const i64,
             len: libc::size_t,
-            flags: libc::c_int,
+            flags: core::ffi::c_int,
         ) -> libc::ssize_t;
     );
 

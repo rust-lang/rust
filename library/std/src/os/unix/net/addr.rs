@@ -98,7 +98,7 @@ pub struct SocketAddr {
 impl SocketAddr {
     pub(super) fn new<F>(f: F) -> io::Result<SocketAddr>
     where
-        F: FnOnce(*mut libc::sockaddr, *mut libc::socklen_t) -> libc::c_int,
+        F: FnOnce(*mut libc::sockaddr, *mut libc::socklen_t) -> core::ffi::c_int,
     {
         unsafe {
             let mut addr: libc::sockaddr_un = mem::zeroed();
@@ -117,7 +117,7 @@ impl SocketAddr {
             // and not the len of the content. Figure out the length for ourselves.
             // https://marc.info/?l=openbsd-bugs&m=170105481926736&w=2
             let sun_path: &[u8] =
-                unsafe { mem::transmute::<&[libc::c_char], &[u8]>(&addr.sun_path) };
+                unsafe { mem::transmute::<&[core::ffi::c_char], &[u8]>(&addr.sun_path) };
             len = core::slice::memchr::memchr(0, sun_path)
                 .map_or(len, |new_len| (new_len + SUN_PATH_OFFSET) as libc::socklen_t);
         }
@@ -244,7 +244,7 @@ impl SocketAddr {
 
     fn address(&self) -> AddressKind<'_> {
         let len = self.len as usize - SUN_PATH_OFFSET;
-        let path = unsafe { mem::transmute::<&[libc::c_char], &[u8]>(&self.addr.sun_path) };
+        let path = unsafe { mem::transmute::<&[core::ffi::c_char], &[u8]>(&self.addr.sun_path) };
 
         // macOS seems to return a len of 16 and a zeroed sun_path for unnamed addresses
         if len == 0

@@ -29,7 +29,7 @@ pub(crate) struct DlsymWeak<F> {
     /// A pointer to the nul-terminated name of the symbol.
     // Use a pointer instead of `&'static CStr` to save space.
     name: *const c_char,
-    func: Atomic<*mut libc::c_void>,
+    func: Atomic<*mut core::ffi::c_void>,
     _marker: PhantomData<F>,
 }
 
@@ -95,7 +95,7 @@ impl<F: FnPtr> DlsymWeak<F> {
         } else {
             // SAFETY: see the comment in `get`.
             // FIXME: use `transmute` once it stops complaining about generics.
-            Some(unsafe { mem::transmute_copy::<*mut libc::c_void, F>(&val) })
+            Some(unsafe { mem::transmute_copy::<*mut core::ffi::c_void, F>(&val) })
         }
     }
 }

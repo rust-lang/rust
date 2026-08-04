@@ -11,7 +11,7 @@ fn read_file(orig_path: &str) -> Result<Vec<u8>, alloc::string::String> {
     path.push(0);
 
     unsafe {
-        let file = libc::open(path.as_ptr() as *const libc::c_char, libc::O_RDONLY);
+        let file = libc::open(path.as_ptr() as *const core::ffi::c_char, libc::O_RDONLY);
         if file == -1 {
             return Err(format!("Cannot open file at {orig_path}"));
         }

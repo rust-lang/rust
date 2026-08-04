@@ -30,9 +30,9 @@ pub unsafe fn register(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
         #[linkage = "extern_weak"]
         static __cxa_thread_atexit_impl: Option<
             extern "C" fn(
-                unsafe extern "C" fn(*mut libc::c_void),
-                *mut libc::c_void,
-                *mut libc::c_void,
+                unsafe extern "C" fn(*mut core::ffi::c_void),
+                *mut core::ffi::c_void,
+                *mut core::ffi::c_void,
             ) -> c_int,
         >;
     }
@@ -40,9 +40,10 @@ pub unsafe fn register(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
     if let Some(f) = unsafe { __cxa_thread_atexit_impl } {
         unsafe {
             f(
-                transmute::<unsafe extern "C" fn(*mut u8), unsafe extern "C" fn(*mut libc::c_void)>(
-                    dtor,
-                ),
+                transmute::<
+                    unsafe extern "C" fn(*mut u8),
+                    unsafe extern "C" fn(*mut core::ffi::c_void),
+                >(dtor),
                 t.cast(),
                 (&raw const __dso_handle) as *mut _,
             );

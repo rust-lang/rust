@@ -1610,7 +1610,7 @@ mod self_upper_keyword {}
 /// ```rust,no_run
 /// # #![allow(dead_code)]
 /// unsafe extern "C" {
-///     static mut ERROR_MESSAGE: *mut std::os::raw::c_char;
+///     static mut ERROR_MESSAGE: *mut core::ffi::c_char;
 /// }
 /// ```
 ///

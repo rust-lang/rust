@@ -637,7 +637,7 @@ fn test_unsized() {
 #[test]
 fn test_maybe_thin_unsized() {
     // If/when custom thin DSTs exist, this test should be updated to use one
-    use std::ffi::CStr;
+    use core::ffi::CStr;
 
     let x: Rc<CStr> = Rc::from(c"swordfish");
     assert_eq!(format!("{x:?}"), "\"swordfish\"");

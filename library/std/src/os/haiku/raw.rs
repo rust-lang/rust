@@ -10,7 +10,8 @@
 )]
 #![allow(deprecated)]
 
-use crate::os::raw::c_long;
+use core::ffi::c_long;
+
 use crate::os::unix::raw::{gid_t, uid_t};
 
 // Use the direct definition of usize, instead of uintptr_t like in libc

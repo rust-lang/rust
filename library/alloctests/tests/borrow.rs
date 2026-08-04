@@ -1,5 +1,6 @@
+use core::ffi::CStr;
 use std::borrow::Cow;
-use std::ffi::{CStr, OsStr};
+use std::ffi::OsStr;
 use std::path::Path;
 use std::rc::Rc;
 use std::sync::Arc;

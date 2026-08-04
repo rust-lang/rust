@@ -110,7 +110,7 @@ impl Thread {
             Err(io::Error::from_raw_os_error(ret))
         };
 
-        extern "C" fn thread_start(data: *mut libc::c_void) -> *mut libc::c_void {
+        extern "C" fn thread_start(data: *mut core::ffi::c_void) -> *mut core::ffi::c_void {
             unsafe {
                 // SAFETY: we are simply recreating the box that was leaked earlier.
                 let init = Box::from_raw(data as *mut ThreadInit);
@@ -247,11 +247,11 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
                 }
             }
 
-            let mut cpus: libc::c_uint = 0;
+            let mut cpus: core::ffi::c_uint = 0;
             let mut cpus_size = size_of_val(&cpus);
 
             unsafe {
-                cpus = libc::sysconf(libc::_SC_NPROCESSORS_ONLN) as libc::c_uint;
+                cpus = libc::sysconf(libc::_SC_NPROCESSORS_ONLN) as core::ffi::c_uint;
             }
 
             // Fallback approach in case of errors or no hardware threads.
@@ -359,7 +359,7 @@ pub fn current_os_id() -> Option<u64> {
         }
         target_os = "freebsd" => {
             // SAFETY: FFI call with no preconditions.
-            let id: libc::c_int = unsafe { libc::pthread_getthreadid_np() };
+            let id: core::ffi::c_int = unsafe { libc::pthread_getthreadid_np() };
             Some(id as u64)
         }
         target_os = "netbsd" => {
@@ -377,7 +377,7 @@ pub fn current_os_id() -> Option<u64> {
             // Apple allows querying arbitrary thread IDs, `thread=NULL` queries the current thread.
             let mut id = 0u64;
             // SAFETY: `thread_id` is a valid pointer, no other preconditions.
-            let status: libc::c_int = unsafe { libc::pthread_threadid_np(0, &mut id) };
+            let status: core::ffi::c_int = unsafe { libc::pthread_threadid_np(0, &mut id) };
             if status == 0 {
                 Some(id)
             } else {
@@ -400,24 +400,24 @@ pub fn current_os_id() -> Option<u64> {
     target_vendor = "apple",
     target_os = "netbsd",
 ))]
-fn truncate_cstr<const MAX_WITH_NUL: usize>(cstr: &CStr) -> [libc::c_char; MAX_WITH_NUL] {
+fn truncate_cstr<const MAX_WITH_NUL: usize>(cstr: &CStr) -> [core::ffi::c_char; MAX_WITH_NUL] {
     let mut result = [0; MAX_WITH_NUL];
     for (src, dst) in cstr.to_bytes().iter().zip(&mut result[..MAX_WITH_NUL - 1]) {
-        *dst = *src as libc::c_char;
+        *dst = *src as core::ffi::c_char;
     }
     result
 }
 
 #[cfg(target_os = "android")]
 pub fn set_name(name: &CStr) {
-    const PR_SET_NAME: libc::c_int = 15;
+    const PR_SET_NAME: core::ffi::c_int = 15;
     unsafe {
         let res = libc::prctl(
             PR_SET_NAME,
             name.as_ptr(),
-            0 as libc::c_ulong,
-            0 as libc::c_ulong,
-            0 as libc::c_ulong,
+            0 as core::ffi::c_ulong,
+            0 as core::ffi::c_ulong,
+            0 as core::ffi::c_ulong,
         );
         // We have no good way of propagating errors here, but in debug-builds let's check that this actually worked.
         debug_assert_eq!(res, 0);
@@ -479,7 +479,7 @@ pub fn set_name(name: &CStr) {
         let res = libc::pthread_setname_np(
             libc::pthread_self(),
             c"%s".as_ptr(),
-            name.as_ptr() as *mut libc::c_void,
+            name.as_ptr() as *mut core::ffi::c_void,
         );
         debug_assert_eq!(res, 0);
     }
@@ -488,7 +488,10 @@ pub fn set_name(name: &CStr) {
 #[cfg(any(target_os = "solaris", target_os = "illumos", target_os = "nto", target_os = "qnx"))]
 pub fn set_name(name: &CStr) {
     weak!(
-        fn pthread_setname_np(thread: libc::pthread_t, name: *const libc::c_char) -> libc::c_int;
+        fn pthread_setname_np(
+            thread: libc::pthread_t,
+            name: *const core::ffi::c_char,
+        ) -> core::ffi::c_int;
     );
 
     if let Some(f) = pthread_setname_np.get() {
@@ -510,7 +513,7 @@ pub fn set_name(name: &CStr) {
         zx_object_set_property(
             zx_thread_self(),
             ZX_PROP_NAME,
-            name.as_ptr() as *const libc::c_void,
+            name.as_ptr() as *const core::ffi::c_void,
             name.to_bytes().len(),
         );
     }
@@ -563,12 +566,12 @@ pub fn sleep(dur: Duration) {
             // wasi-libc prior to WebAssembly/wasi-libc#696 has a broken implementation
             // of `nanosleep` which used `CLOCK_REALTIME` even though it is unsupported
             // on WASIp2. Using `clock_nanosleep` directly bypasses the issue.
-            unsafe fn nanosleep(rqtp: *const libc::timespec, rmtp: *mut libc::timespec) -> libc::c_int {
+            unsafe fn nanosleep(rqtp: *const libc::timespec, rmtp: *mut libc::timespec) -> core::ffi::c_int {
                 unsafe { libc::clock_nanosleep(crate::sys::time::Instant::CLOCK_ID, 0, rqtp, rmtp) }
             }
         }
         _ => {
-            unsafe fn nanosleep(rqtp: *const libc::timespec, rmtp: *mut libc::timespec) -> libc::c_int {
+            unsafe fn nanosleep(rqtp: *const libc::timespec, rmtp: *mut libc::timespec) -> core::ffi::c_int {
                 let r = unsafe { libc::nanosleep(rqtp, rmtp) };
                 // `clock_nanosleep` returns the error number directly, so mimic
                 // that behaviour to make the shared code below simpler.
@@ -665,10 +668,10 @@ pub fn sleep_until(deadline: crate::time::Instant) {
         weak! {
             fn __clock_nanosleep_time64(
                 clock_id: libc::clockid_t,
-                flags: libc::c_int,
+                flags: core::ffi::c_int,
                 req: *const __timespec64,
                 rem: *mut __timespec64,
-            ) -> libc::c_int;
+            ) -> core::ffi::c_int;
         }
 
         if let Some(clock_nanosleep) = __clock_nanosleep_time64.get() {
