@@ -5,4 +5,4 @@
 
 #[rustc_doc_primitive = "i32"]
 /// Some useless docs, wouhou!
-mod i32 {}
+const _: () = ();
