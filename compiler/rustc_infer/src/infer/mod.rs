@@ -723,7 +723,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// more information.
     ///
     /// `InferCtxt` has two uses: the trait solver calls some methods on it, because the `InferCtxt`
-    /// works as a kind of store for for example type unification information.
+    /// works as a kind of store for, for example, type unification information.
     /// `InferCtxt` is also often used outside the trait solver during typeck.
     /// There, we don't care about the `ErasedNotCoherence` case and should never encounter it.
     /// To make sure these two uses are never confused, we want to statically encode this information.

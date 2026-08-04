@@ -145,7 +145,7 @@ pub(crate) fn args_known_to_outlive_alias_params<'tcx>(
 
 /// For each *captured* region of this alias, compute the *captured* identity
 /// args that are known to outlive it, given the definition of the opaque type
-/// in the the *parent* context.
+/// in the *parent* context.
 ///
 /// Some examples:
 /// ```ignore (illustrative)

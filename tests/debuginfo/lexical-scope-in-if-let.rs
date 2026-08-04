@@ -48,7 +48,7 @@
 
 // === CDB TESTS ==================================================================================
 
-// Note: `/n` causes the the output to be sorted to avoid depending on the order in PDB which may
+// Note: `/n` causes the output to be sorted to avoid depending on the order in PDB which may
 // be arbitrary.
 
 //@ cdb-command: g

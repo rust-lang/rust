@@ -1,4 +1,4 @@
-// Verifies that type metadata identifiers for for weakly-linked symbols are
+// Verifies that type metadata identifiers for weakly-linked symbols are
 // emitted correctly.
 //
 //@ needs-sanitizer-cfi

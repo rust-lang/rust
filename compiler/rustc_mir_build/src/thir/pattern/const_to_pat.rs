@@ -298,7 +298,7 @@ impl<'tcx> ConstToPat<'tcx> {
                             })
                         }
                         hir::Node::Arm(hir::Arm { guard: Some(guard), .. }) => {
-                            // Modify the the match arm if condition and add a check for equality.
+                            // Modify the match arm if condition and add a check for equality.
                             Some(SuggestEq::AddToIf {
                                 span: guard.span.shrink_to_hi(),
                                 pat_span: self.span,

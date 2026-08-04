@@ -58,7 +58,7 @@ if TYPE_CHECKING:
 # This file contains lookup functions that associate rust types with their synthetic/summary
 # providers.
 #
-# LLDB caches the results of the the commands in `lldb_commands`, but that caching is "shallow". It
+# LLDB caches the results of the commands in `lldb_commands`, but that caching is "shallow". It
 # purely associates the type with the function given, whether it is a regular function or a class
 # constructor. If the function makes decisions about what type of SyntheticProvider to return, that
 # processing is done **each time a value of that type is encountered**.
