@@ -479,10 +479,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             let projected_ty = curr_projected_ty.projection_ty_core(
                 tcx,
                 proj,
-                |ty| self.normalize(ty::Unnormalized::new_wip(ty), locations),
-                |ty, variant_index, field, ()| {
-                    PlaceTy::field_ty(tcx, ty, variant_index, field).skip_norm_wip()
-                },
+                |ty| self.normalize(ty, locations),
+                |()| None,
                 |_| unreachable!(),
             );
             curr_projected_ty = projected_ty;
