@@ -19,7 +19,11 @@ use tracing::instrument;
 use crate::universal_regions::DefiningTy;
 
 /// Computes the implied bounds for `body_def_id`. This is a separate query
-/// as it must not reveal the hidden type of opaques defined by `body_def_id`.
+/// as it must not reveal the hidden type of opaques defined by `body_def_id`
+/// for typeck roots.
+///
+/// However, nested bodies are checked in the scope of their parent. This means
+/// we should actually normalize opaques when computing their implied bounds.
 pub(super) fn mir_borrowck_implied_outlives_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
     body_def_id: LocalDefId,
@@ -27,8 +31,20 @@ pub(super) fn mir_borrowck_implied_outlives_bounds<'tcx>(
     &'tcx Canonical<'tcx, QueryResponse<'tcx, MirBorrowckImpliedOutlivesBounds<'tcx>>>,
     NoSolution,
 > {
-    // We do not want to reveal the hidden types of any opaque types in this function.
-    let typing_env = TypingEnv::non_body_analysis(tcx, body_def_id);
+    // If we're in a typeck root we don't want to reveal any opaque types. We need to
+    // make sure the caller actually checks that all our implied bounds actually hold.
+    // This is not the case with the hidden types of opaque types if we're a defining-scope
+    // and the caller is not.
+    //
+    // However, for nested bodies, we always check that they are well-formed in their
+    // parent body, so for these we do want to define opaque types. Not doing so can result
+    // in incorrect errors when normalizing implied bounds.
+    let typing_env = if tcx.is_typeck_child(body_def_id.to_def_id()) {
+        TypingEnv::post_typeck_until_borrowck(tcx, body_def_id)
+    } else {
+        TypingEnv::non_body_analysis(tcx, body_def_id)
+    };
+
     let (infcx, param_env) = tcx.infer_ctxt().build_with_typing_env(typing_env);
     let ocx = ObligationCtxt::new(&infcx);
 

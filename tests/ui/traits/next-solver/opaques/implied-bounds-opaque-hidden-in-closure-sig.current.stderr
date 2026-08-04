@@ -1,0 +1,85 @@
+error[E0277]: the trait bound `impl Sized: Trait` is not satisfied
+  --> $DIR/implied-bounds-opaque-hidden-in-closure-sig.rs:35:25
+   |
+LL |     (|_| ())(RequiresWf(opaque));
+   |              ---------- ^^^^^^ the trait `Trait` is not implemented for `impl Sized`
+   |              |
+   |              required by a bound introduced by this call
+   |
+help: the trait `Trait` is implemented for `()`
+  --> $DIR/implied-bounds-opaque-hidden-in-closure-sig.rs:17:1
+   |
+LL | impl Trait for () {
+   | ^^^^^^^^^^^^^^^^^
+note: required by a bound in `RequiresWf`
+  --> $DIR/implied-bounds-opaque-hidden-in-closure-sig.rs:31:16
+   |
+LL | struct RequiresWf<F>(F)
+   |        ---------- required by a bound in this tuple struct
+...
+LL |     F::Output: Trait,
+   |                ^^^^^ required by this bound in `RequiresWf`
+
+error[E0277]: the trait bound `impl Sized: Trait` is not satisfied
+  --> $DIR/implied-bounds-opaque-hidden-in-closure-sig.rs:35:14
+   |
+LL |     (|_| ())(RequiresWf(opaque));
+   |              ^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `impl Sized`
+   |
+help: the trait `Trait` is implemented for `()`
+  --> $DIR/implied-bounds-opaque-hidden-in-closure-sig.rs:17:1
+   |
+LL | impl Trait for () {
+   | ^^^^^^^^^^^^^^^^^
+note: required by a bound in `RequiresWf`
+  --> $DIR/implied-bounds-opaque-hidden-in-closure-sig.rs:31:16
+   |
+LL | struct RequiresWf<F>(F)
+   |        ---------- required by a bound in this struct
+...
+LL |     F::Output: Trait,
+   |                ^^^^^ required by this bound in `RequiresWf`
+
+error[E0277]: the trait bound `impl Sized: Trait` is not satisfied
+  --> $DIR/implied-bounds-opaque-hidden-in-closure-sig.rs:35:7
+   |
+LL |     (|_| ())(RequiresWf(opaque));
+   |       ^ the trait `Trait` is not implemented for `impl Sized`
+   |
+help: the trait `Trait` is implemented for `()`
+  --> $DIR/implied-bounds-opaque-hidden-in-closure-sig.rs:17:1
+   |
+LL | impl Trait for () {
+   | ^^^^^^^^^^^^^^^^^
+note: required by a bound in `RequiresWf`
+  --> $DIR/implied-bounds-opaque-hidden-in-closure-sig.rs:31:16
+   |
+LL | struct RequiresWf<F>(F)
+   |        ---------- required by a bound in this struct
+...
+LL |     F::Output: Trait,
+   |                ^^^^^ required by this bound in `RequiresWf`
+
+error[E0277]: the trait bound `impl Sized: Trait` is not satisfied
+  --> $DIR/implied-bounds-opaque-hidden-in-closure-sig.rs:35:5
+   |
+LL |     (|_| ())(RequiresWf(opaque));
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Trait` is not implemented for `impl Sized`
+   |
+help: the trait `Trait` is implemented for `()`
+  --> $DIR/implied-bounds-opaque-hidden-in-closure-sig.rs:17:1
+   |
+LL | impl Trait for () {
+   | ^^^^^^^^^^^^^^^^^
+note: required by a bound in `RequiresWf`
+  --> $DIR/implied-bounds-opaque-hidden-in-closure-sig.rs:31:16
+   |
+LL | struct RequiresWf<F>(F)
+   |        ---------- required by a bound in this struct
+...
+LL |     F::Output: Trait,
+   |                ^^^^^ required by this bound in `RequiresWf`
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0277`.
