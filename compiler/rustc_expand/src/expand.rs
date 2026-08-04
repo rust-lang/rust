@@ -804,7 +804,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                 None,
                             )
                         }
-                        // When a function has EII implementations attached (via `eii_impls`),
+                        // When a function has EII implementations attached (via `eii_impl`),
                         // use fake tokens so the pretty-printer re-emits the EII attribute
                         // (e.g. `#[hello]`) in the token stream. Without this, the EII
                         // attribute is lost during the token roundtrip performed by
@@ -812,7 +812,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         // breaking the EII link on the resulting re-parsed item.
                         Annotatable::Item(item_inner)
                             if matches!(&item_inner.kind,
-                                ItemKind::Fn(f) if !f.eii_impls.is_empty()) =>
+                                ItemKind::Fn(f) if f.eii_impl.is_some()) =>
                         {
                             rustc_parse::fake_token_stream_for_item(
                                 &self.cx.sess.psess,
