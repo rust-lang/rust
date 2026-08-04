@@ -325,11 +325,16 @@ impl<'a> FromIterator<&'a ByteStr> for ByteString {
 impl FromIterator<ByteString> for ByteString {
     #[inline]
     fn from_iter<T: IntoIterator<Item = ByteString>>(iter: T) -> Self {
-        let mut buf = Vec::new();
+        // Reuse first `ByteString`'s buffer to avoid an allocation and copy.
+        let mut first: Option<ByteString> = None;
         for mut b in iter {
-            buf.append(&mut b.0);
+            if let Some(buf) = &mut first {
+                buf.0.append(&mut b.0);
+            } else {
+                first = Some(b);
+            }
         }
-        ByteString(buf)
+        first.unwrap_or(ByteString(Vec::new()))
     }
 }
 
