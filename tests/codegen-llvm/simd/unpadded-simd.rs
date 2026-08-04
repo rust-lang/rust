@@ -1,13 +1,20 @@
 // Make sure that no 0-sized padding is inserted in structs and that
 // structs are represented as expected by Neon intrinsics in LLVM.
 // See #87254.
-//@ only-aarch64
-//@ compile-flags: -Cno-prepopulate-passes
+//@ add-minicore
+//@ compile-flags: -Cno-prepopulate-passes --target aarch64-unknown-linux-gnu
+//@ needs-llvm-components: aarch64
 
 #![crate_type = "lib"]
-#![feature(abi_unadjusted, link_llvm_intrinsics)]
+#![feature(abi_unadjusted, link_llvm_intrinsics, no_core)]
+#![no_core]
 
-use std::arch::aarch64::int16x4x2_t;
+extern crate minicore;
+
+use minicore::simd::i16x4;
+
+#[repr(C)]
+struct int16x4x2_t(i16x4, i16x4);
 
 unsafe extern "unadjusted" {
     #[link_name = "llvm.aarch64.neon.ld1x2.v4i16.p0"]
