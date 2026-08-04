@@ -5642,41 +5642,14 @@ fn required_generic_args_suggestion(generics: &ast::Generics) -> Option<String> 
 
 impl Visitor<'_> for ItemInfoCollector<'_, '_, '_> {
     fn visit_item(&mut self, item: &Item) {
-        match &item.kind {
-            ItemKind::TyAlias(TyAlias { generics, .. })
-            | ItemKind::Const(ConstItem { generics, .. })
-            | ItemKind::Fn(Fn { generics, .. })
-            | ItemKind::Enum(_, generics, _)
-            | ItemKind::Struct(_, generics, _)
-            | ItemKind::Union(_, generics, _)
-            | ItemKind::Impl(Impl { generics, .. })
-            | ItemKind::Trait(Trait { generics, .. })
-            | ItemKind::TraitAlias(TraitAlias { generics, .. }) => {
-                let def_id = self.r.owner_def_id(item.id);
-                let count = generics
-                    .params
-                    .iter()
-                    .filter(|param| matches!(param.kind, ast::GenericParamKind::Lifetime { .. }))
-                    .count();
-                self.r.item_generics_num_lifetimes.insert(def_id, count);
-            }
-
-            ItemKind::Use(..)
-            | ItemKind::ExternCrate(..)
-            | ItemKind::Mod(..)
-            | ItemKind::ForeignMod(..)
-            | ItemKind::Static(..)
-            | ItemKind::ConstBlock(..)
-            | ItemKind::MacroDef(..)
-            | ItemKind::GlobalAsm(..)
-            | ItemKind::MacCall(..)
-            | ItemKind::DelegationMac(..) => {}
-            ItemKind::Delegation(..) => {
-                // Delegated functions have lifetimes, their count is not necessarily zero.
-                // But skipping the delegation items here doesn't mean that the count will be considered zero,
-                // it means there will be a panic when retrieving the count,
-                // but for delegation items we are never actually retrieving that count in practice.
-            }
+        if let Some(generics) = item.opt_generics() {
+            let def_id = self.r.owner_def_id(item.id);
+            let count = generics
+                .params
+                .iter()
+                .filter(|param| matches!(param.kind, ast::GenericParamKind::Lifetime { .. }))
+                .count();
+            self.r.item_generics_num_lifetimes.insert(def_id, count);
         }
         visit::walk_item(self, item)
     }
