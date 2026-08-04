@@ -128,9 +128,19 @@ impl<'tcx> DelegationResolver<'_, 'tcx> {
             .delegation_infos
             .get(&def_id)
             .map(|info| {
-                let id =
-                    info.resolution_id.unwrap_or_else(|| self.resolve_type_relative(delegation));
+                let mut id = info.resolution_id;
+                if id.is_none() {
+                    let Some(resolved_id) = self.resolve_type_relative(delegation) else {
+                        return Err(tcx.dcx().span_delayed_bug(
+                            span,
+                            format!("failed to resolve type relative delegation {:?}", span),
+                        ));
+                    };
 
+                    id = Some(resolved_id);
+                }
+
+                let id = id.unwrap();
                 self.check_for_cycles(id, span).map(|_| id)
             })
             .unwrap_or_else(|| {
@@ -161,10 +171,25 @@ impl<'tcx> DelegationResolver<'_, 'tcx> {
             // FIXME(splat): use `sig.splatted()` once FnSig has it
             param_info: ParamInfo { param_count, c_variadic: sig.c_variadic(), splatted: None },
             source: delegation.source,
-            base_res: self.get_base_res(delegation.id).unwrap(),
-            call_path_res: self
-                .try_get_resolution_id(delegation.id)
-                .unwrap_or_else(|| self.resolve_type_relative(delegation)),
+            base_res: if let Some(res) = self.get_base_res(delegation.id) {
+                res
+            } else {
+                return Err(tcx
+                    .dcx()
+                    .span_delayed_bug(span, format!("failed to get base res {:?}", span)));
+            },
+            call_path_res: if let Some(res) = self.try_get_resolution_id(delegation.id) {
+                res
+            } else {
+                let Some(id) = self.resolve_type_relative(delegation) else {
+                    return Err(tcx.dcx().span_delayed_bug(
+                        span,
+                        format!("failed to resolve type relative delegation {:?}", span),
+                    ));
+                };
+
+                id
+            },
             sig_mapping: self.create_sig_mapping(
                 delegation,
                 span,
@@ -178,17 +203,16 @@ impl<'tcx> DelegationResolver<'_, 'tcx> {
         Ok((res, self.resolve_and_generate_generics(delegation, sig_id)?))
     }
 
-    fn resolve_type_relative(&self, delegation: &Delegation) -> DefId {
+    fn resolve_type_relative(&self, delegation: &Delegation) -> Option<DefId> {
         let res = self.get_base_res(delegation.id);
+        let Some(res) = res.and_then(|res| res.as_local()) else { return None };
 
         self.tcx()
             .resolutions(())
             .delegation_inh_functions_map
-            .get(&res.unwrap().expect_local())
-            .unwrap()
-            .get(&delegation.path.segments.last().unwrap().ident)
-            .unwrap()
-            .to_def_id()
+            .get(&res)
+            .and_then(|map| map.get(&delegation.path.segments.last().unwrap().ident))
+            .map(|id| id.to_def_id())
     }
 
     fn check_for_cycles(&self, mut def_id: DefId, span: Span) -> Result<(), ErrorGuaranteed> {

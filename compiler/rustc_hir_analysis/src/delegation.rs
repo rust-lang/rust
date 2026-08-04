@@ -201,15 +201,20 @@ fn create_mapping<'tcx>(
 
         (false, generics)
     } else {
-        let generics = tcx.generics_of(tcx.parent(sig_id));
-        (
-            generics.has_self,
-            generics
-                .own_params
-                .iter()
-                .map(|p| (p.index, p.kind.is_ty_or_const()))
-                .collect::<Vec<_>>(),
-        )
+        if !matches!(fn_kind(tcx, sig_id), FnKind::AssocTrait) {
+            (false, vec![])
+        } else {
+            let generics = tcx.generics_of(tcx.parent(sig_id));
+
+            (
+                generics.has_self,
+                generics
+                    .own_params
+                    .iter()
+                    .map(|p| (p.index, p.kind.is_ty_or_const()))
+                    .collect::<Vec<_>>(),
+            )
+        }
     };
 
     let process_sig_parent_generics =
