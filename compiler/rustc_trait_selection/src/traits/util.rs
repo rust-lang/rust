@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_hir::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::InferCtxt;
@@ -200,20 +200,49 @@ pub fn with_replaced_escaping_bound_vars<
     value: T,
     f: impl FnOnce(T) -> R,
 ) -> R {
+    let (value, mappings) = replace_escaping_bound_vars(infcx, universe_indices, value);
+    let result = f(value);
+    restore_escaping_bound_vars(infcx, universe_indices, mappings, result)
+}
+
+pub(super) struct PlaceholderMappings<'tcx> {
+    regions: FxIndexMap<ty::PlaceholderRegion<'tcx>, ty::BoundRegion<'tcx>>,
+    types: FxIndexMap<ty::PlaceholderType<'tcx>, ty::BoundTy<'tcx>>,
+    consts: FxIndexMap<ty::PlaceholderConst<'tcx>, ty::BoundConst<'tcx>>,
+}
+
+pub(super) fn replace_escaping_bound_vars<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
+    infcx: &InferCtxt<'tcx>,
+    universe_indices: &mut Vec<Option<ty::UniverseIndex>>,
+    value: T,
+) -> (T, Option<PlaceholderMappings<'tcx>>) {
     if value.has_escaping_bound_vars() {
-        let (value, mapped_regions, mapped_types, mapped_consts) =
+        let (value, regions, types, consts) =
             BoundVarReplacer::replace_bound_vars(infcx, universe_indices, value);
-        let result = f(value);
-        PlaceholderReplacer::replace_placeholders(
-            infcx,
-            mapped_regions,
-            mapped_types,
-            mapped_consts,
-            universe_indices,
-            result,
-        )
+        (value, Some(PlaceholderMappings { regions, types, consts }))
     } else {
-        f(value)
+        (value, None)
+    }
+}
+
+pub(super) fn restore_escaping_bound_vars<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
+    infcx: &InferCtxt<'tcx>,
+    universe_indices: &[Option<ty::UniverseIndex>],
+    mappings: Option<PlaceholderMappings<'tcx>>,
+    value: T,
+) -> T {
+    match mappings {
+        Some(PlaceholderMappings { regions, types, consts }) => {
+            PlaceholderReplacer::replace_placeholders(
+                infcx,
+                regions,
+                types,
+                consts,
+                universe_indices,
+                value,
+            )
+        }
+        None => value,
     }
 }
 

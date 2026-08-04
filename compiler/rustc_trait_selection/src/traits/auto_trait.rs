@@ -17,6 +17,7 @@ use crate::diagnostics::UnableToConstructConstantValue;
 use crate::infer::TypeFreshener;
 use crate::infer::region_constraints::{ConstraintKind, RegionConstraintData};
 use crate::regions::OutlivesEnvironmentBuildExt;
+use crate::traits::normalize::normalize_with_depth_to;
 use crate::traits::project::ProjectAndUnifyResult;
 
 // FIXME(twk): this is obviously not nice to duplicate like that
@@ -851,10 +852,23 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                     };
                 }
                 ty::PredicateKind::ConstEquate(c1, c2) => {
-                    let evaluate = |c: ty::Const<'tcx>| {
+                    let mut evaluate = |c: ty::Const<'tcx>| {
                         if let ty::ConstKind::Alias(_, alias_const) = c.kind() {
-                            let ct =
-                                super::try_evaluate_const(selcx.infcx, c, obligation.param_env);
+                            let ct = super::try_evaluate_const(
+                                selcx.infcx,
+                                c,
+                                obligation.param_env,
+                                |ty| {
+                                    normalize_with_depth_to(
+                                        selcx,
+                                        obligation.param_env,
+                                        obligation.cause.clone(),
+                                        obligation.recursion_depth + 1,
+                                        ty,
+                                        &mut PredicateObligations::new(),
+                                    )
+                                },
+                            );
 
                             if let Err(EvaluateConstErr::InvalidConstParamTy(_)) = ct {
                                 let span = alias_const.kind.def_span(self.tcx);

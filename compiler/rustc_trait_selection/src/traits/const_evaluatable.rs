@@ -9,15 +9,19 @@
 //! `thir_abstract_const` which can then be checked for structural equality with other
 //! generic constants mentioned in the `caller_bounds` of the current environment.
 
+use rustc_errors::ErrorGuaranteed;
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::bug;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
-use rustc_middle::ty::{self, TyCtxt, TypeVisitable, TypeVisitableExt, TypeVisitor};
+use rustc_middle::ty::{
+    self, Ty, TyCtxt, TypeVisitable, TypeVisitableExt, TypeVisitor, Unnormalized,
+};
 use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument};
 
 use super::EvaluateConstErr;
+use crate::error_reporting::InferCtxtErrorExt;
 use crate::traits::ObligationCtxt;
 
 /// Check if a given constant can be evaluated.
@@ -67,7 +71,12 @@ pub fn is_const_evaluatable<'tcx>(
                 tcx.dcx().span_bug(span, "evaluating `ConstKind::Expr` is not currently supported");
             }
             ty::ConstKind::Alias(_, _) => {
-                match crate::traits::try_evaluate_const(infcx, unexpanded_ct, param_env) {
+                match crate::traits::try_evaluate_const_with_fallible_normalization(
+                    infcx,
+                    unexpanded_ct,
+                    param_env,
+                    |ty| normalize_evaluated_const_ty(infcx, param_env, span, ty),
+                ) {
                     Err(EvaluateConstErr::HasGenericsOrInfers) => {
                         Err(NotConstEvaluatable::Error(infcx.dcx().span_delayed_bug(
                             span,
@@ -78,7 +87,8 @@ pub fn is_const_evaluatable<'tcx>(
                         EvaluateConstErr::EvaluationFailure(e)
                         | EvaluateConstErr::InvalidConstParamTy(e),
                     ) => Err(NotConstEvaluatable::Error(e)),
-                    Ok(_) => Ok(()),
+                    Ok(Ok(_)) => Ok(()),
+                    Ok(Err(e)) => Err(NotConstEvaluatable::Error(e)),
                 }
             }
             _ => bug!("unexpected constkind in `is_const_evalautable: {unexpanded_ct:?}`"),
@@ -87,8 +97,15 @@ pub fn is_const_evaluatable<'tcx>(
         // This is a sanity check to make sure that non-generics consts are checked to
         // be evaluatable in case they aren't cchecked elsewhere. This will NOT error
         // if the const uses generics, as desired.
-        crate::traits::evaluate_const(infcx, unexpanded_ct, param_env);
-        Ok(())
+        match crate::traits::evaluate_const_with_fallible_normalization(
+            infcx,
+            unexpanded_ct,
+            param_env,
+            |ty| normalize_evaluated_const_ty(infcx, param_env, span, ty),
+        ) {
+            Ok(_) => Ok(()),
+            Err(e) => Err(NotConstEvaluatable::Error(e)),
+        }
     } else {
         let alias_const = match unexpanded_ct.kind() {
             ty::ConstKind::Alias(_, alias_const) => alias_const,
@@ -98,7 +115,12 @@ pub fn is_const_evaluatable<'tcx>(
             _ => bug!("unexpected constkind in `is_const_evalautable: {unexpanded_ct:?}`"),
         };
 
-        match crate::traits::try_evaluate_const(infcx, unexpanded_ct, param_env) {
+        match crate::traits::try_evaluate_const_with_fallible_normalization(
+            infcx,
+            unexpanded_ct,
+            param_env,
+            |ty| normalize_evaluated_const_ty(infcx, param_env, span, ty),
+        ) {
             // If we're evaluating a generic foreign constant, under a nightly compiler while
             // the current crate does not enable `feature(generic_const_exprs)`, abort
             // compilation with a useful error.
@@ -145,9 +167,21 @@ pub fn is_const_evaluatable<'tcx>(
             Err(
                 EvaluateConstErr::EvaluationFailure(e) | EvaluateConstErr::InvalidConstParamTy(e),
             ) => Err(NotConstEvaluatable::Error(e)),
-            Ok(_) => Ok(()),
+            Ok(Ok(_)) => Ok(()),
+            Ok(Err(e)) => Err(NotConstEvaluatable::Error(e)),
         }
     }
+}
+
+fn normalize_evaluated_const_ty<'tcx>(
+    infcx: &InferCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    span: Span,
+    ty: Unnormalized<'tcx, Ty<'tcx>>,
+) -> Result<Ty<'tcx>, ErrorGuaranteed> {
+    let ocx = ObligationCtxt::new_with_diagnostics(infcx);
+    ocx.deeply_normalize(&ObligationCause::dummy_with_span(span), param_env, ty)
+        .map_err(|errors| infcx.err_ctxt().report_fulfillment_errors(errors))
 }
 
 #[instrument(skip(infcx, tcx), level = "debug")]

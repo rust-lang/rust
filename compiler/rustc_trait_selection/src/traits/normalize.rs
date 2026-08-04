@@ -499,19 +499,24 @@ impl<'a, 'b, 'tcx> TypeFolder<TyCtxt<'tcx>> for AssocTypeNormalizer<'a, 'b, 'tcx
                 self.normalize_free_alias(alias_const.into()).expect_const()
             }
             ty::AliasConstKind::Anon { .. } => {
-                let ct = ct.super_fold_with(self);
-                super::with_replaced_escaping_bound_vars(
+                let (ct, mappings) = super::util::replace_escaping_bound_vars(
                     self.selcx.infcx,
                     &mut self.universes,
                     ct,
-                    |ct| super::evaluate_const(self.selcx.infcx, ct, self.param_env),
+                );
+                let ct = super::evaluate_const(self.selcx.infcx, ct, self.param_env, |ty| {
+                    ty.skip_norm_wip().fold_with(self)
+                });
+                super::util::restore_escaping_bound_vars(
+                    self.selcx.infcx,
+                    &self.universes,
+                    mappings,
+                    ct,
                 )
             }
         };
 
-        // We re-fold the normalized const as the `ty` field on `ConstKind::Value` may be
-        // unnormalized after const evaluation returns.
-        ct.super_fold_with(self)
+        ct
     }
 
     #[inline]
