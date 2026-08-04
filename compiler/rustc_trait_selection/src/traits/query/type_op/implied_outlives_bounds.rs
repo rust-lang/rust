@@ -1,13 +1,10 @@
 use std::ops::ControlFlow;
 
 use rustc_infer::infer::TypeOutlivesConstraint;
-use rustc_infer::infer::canonical::CanonicalQueryInput;
 use rustc_infer::traits::query::OutlivesBound;
-use rustc_infer::traits::query::type_op::ImpliedOutlivesBounds;
-use rustc_middle::infer::canonical::CanonicalQueryResponse;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::outlives::{Component, push_outlives_components};
-use rustc_middle::ty::{self, ParamEnvAnd, Ty, TyCtxt, TypeVisitable, TypeVisitor, Unnormalized};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable, TypeVisitor, Unnormalized};
 use rustc_span::def_id::CRATE_DEF_ID;
 use rustc_span::{DUMMY_SP, Span, sym};
 use smallvec::{SmallVec, smallvec};
@@ -15,73 +12,14 @@ use smallvec::{SmallVec, smallvec};
 use crate::traits::query::NoSolution;
 use crate::traits::{ObligationCtxt, wf};
 
-impl<'tcx> super::QueryTypeOp<'tcx> for ImpliedOutlivesBounds<'tcx> {
-    type QueryResponse = Vec<OutlivesBound<'tcx>>;
-
-    fn try_fast_path(
-        _tcx: TyCtxt<'tcx>,
-        key: &ParamEnvAnd<'tcx, Self>,
-    ) -> Option<Self::QueryResponse> {
-        // Don't go into the query for things that can't possibly have lifetimes.
-        match key.value.ty.kind() {
-            ty::Tuple(elems) if elems.is_empty() => Some(vec![]),
-            ty::Never | ty::Str | ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::Float(_) => {
-                Some(vec![])
-            }
-            _ => None,
-        }
-    }
-
-    fn perform_query(
-        tcx: TyCtxt<'tcx>,
-        canonicalized: CanonicalQueryInput<'tcx, ParamEnvAnd<'tcx, Self>>,
-    ) -> Result<CanonicalQueryResponse<'tcx, Self::QueryResponse>, NoSolution> {
-        tcx.implied_outlives_bounds((canonicalized, false))
-    }
-
-    fn perform_locally_with_next_solver(
-        ocx: &ObligationCtxt<'_, 'tcx>,
-        key: ParamEnvAnd<'tcx, Self>,
-        span: Span,
-    ) -> Result<Self::QueryResponse, NoSolution> {
-        compute_implied_outlives_bounds_inner(ocx, key.param_env, key.value.ty, span, false)
-    }
-}
-
 pub fn compute_implied_outlives_bounds_inner<'tcx>(
     ocx: &ObligationCtxt<'_, 'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     ty: Ty<'tcx>,
+    normalized_ty: Ty<'tcx>,
     span: Span,
-    disable_implied_bounds_hack: bool,
 ) -> Result<Vec<OutlivesBound<'tcx>>, NoSolution> {
-    // Inside mir borrowck, each computation starts with an empty list.
-    assert!(
-        ocx.infcx.inner.borrow().region_obligations().is_empty(),
-        "compute_implied_outlives_bounds assumes region obligations are empty before starting"
-    );
-
     let tcx = ocx.infcx.tcx;
-
-    // FIXME: This doesn't seem right. All call sites already normalize `ty`:
-    // - `Ty`s from the `DefiningTy` in Borrowck: we have to normalize in the caller
-    //      in order to get implied bounds involving any unconstrained region vars
-    //      created as part of normalizing the sig. See #136547
-    // - `Ty`s from impl headers in Borrowck and in Non-Borrowck contexts: we have
-    //      to normalize in the caller as computing implied bounds from unnormalized
-    //      types would be unsound. See #100989
-    //
-    // We must normalize the type so we can compute the right outlives components.
-    // for example, if we have some constrained param type like `T: Trait<Out = U>`,
-    // and we know that `&'a T::Out` is WF, then we want to imply `U: 'a`.
-    let normalized_ty = ocx
-        .deeply_normalize(
-            &ObligationCause::dummy_with_span(span),
-            param_env,
-            Unnormalized::new_wip(ty),
-        )
-        .map_err(|_| NoSolution)?;
-
     // Sometimes when we ask what it takes for T: WF, we get back that
     // U: WF is required; in that case, we push U onto this stack and
     // process it next. Because the resulting predicates aren't always
@@ -152,20 +90,60 @@ pub fn compute_implied_outlives_bounds_inner<'tcx>(
         }
     }
 
-    // If we detect `bevy_ecs::*::ParamSet` in the WF args list (and `disable_implied_bounds_hack`
-    // or `-Zno-implied-bounds-compat` are not set), then use the registered outlives obligations
-    // as implied bounds.
-    if !disable_implied_bounds_hack
-        && !ocx.infcx.tcx.sess.opts.unstable_opts.no_implied_bounds_compat
-        && ty.visit_with(&mut ContainsBevyParamSet { tcx: ocx.infcx.tcx }).is_break()
+    Ok(outlives_bounds)
+}
+
+/// If we're at a callsite which should apply the bevy implied bounds hack and
+/// `-Zno-implied-bounds-compat` has not been set, then use the registered outlives
+/// obligations as implied bounds if we detect `bevy_ecs::*::ParamSet` in the arg.
+///
+/// cc #119956
+pub fn consider_implied_bounds_hack_for_ty<'tcx>(
+    ocx: &ObligationCtxt<'_, 'tcx>,
+    ty: Ty<'tcx>,
+    region_constraints: impl FnOnce() -> Vec<TypeOutlivesConstraint<'tcx>>,
+) -> Vec<OutlivesBound<'tcx>> {
+    let tcx = ocx.infcx.tcx;
+    if !ocx.infcx.tcx.sess.opts.unstable_opts.no_implied_bounds_compat
+        && ty.visit_with(&mut ContainsBevyParamSet { tcx }).is_break()
     {
-        for TypeOutlivesConstraint { sup_type, sub_region, .. } in
-            ocx.infcx.clone_registered_region_obligations()
-        {
+        let mut outlives_bounds = vec![];
+        for TypeOutlivesConstraint { sup_type, sub_region, .. } in region_constraints() {
             let mut components = smallvec![];
             push_outlives_components(tcx, sup_type, &mut components);
             outlives_bounds.extend(implied_bounds_from_components(tcx, sub_region, components));
         }
+        outlives_bounds
+    } else {
+        vec![]
+    }
+}
+
+pub fn query_compute_implied_outlives_bounds<'tcx>(
+    ocx: &ObligationCtxt<'_, 'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    ty: Ty<'tcx>,
+    span: Span,
+    disable_implied_bounds_hack: bool,
+) -> Result<Vec<OutlivesBound<'tcx>>, NoSolution> {
+    // FIXME: This doesn't seem right. All call sites already normalize `ty`.
+    // We have to normalize in the caller as computing implied bounds from unnormalized
+    // types would be unsound. See #100989
+    //
+    // We must normalize the type so we can compute the right outlives components.
+    // for example, if we have some constrained param type like `T: Trait<Out = U>`,
+    // and we know that `&'a T::Out` is WF, then we want to imply `U: 'a`.
+    let normalized_ty = ocx
+        .deeply_normalize(&ObligationCause::dummy(), param_env, Unnormalized::new_wip(ty))
+        .map_err(|_| NoSolution)?;
+
+    let mut outlives_bounds =
+        compute_implied_outlives_bounds_inner(ocx, param_env, ty, normalized_ty, span)?;
+
+    if !disable_implied_bounds_hack {
+        outlives_bounds.extend(consider_implied_bounds_hack_for_ty(ocx, ty, || {
+            ocx.infcx.clone_registered_region_obligations()
+        }));
     }
 
     Ok(outlives_bounds)

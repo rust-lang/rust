@@ -12,6 +12,5 @@ fn bar(_: fn(Foo<for<'b> fn(Foo<fn(&'b ())>::Assoc)>::Assoc)) {}
 //~| ERROR mismatched types [E0308]
 //~| ERROR higher-ranked subtype error
 //~| ERROR higher-ranked subtype error
-//~| ERROR higher-ranked subtype error
 
 fn main() {}

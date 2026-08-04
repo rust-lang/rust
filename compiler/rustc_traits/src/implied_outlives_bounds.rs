@@ -10,7 +10,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::{ParamEnvAnd, TyCtxt};
 use rustc_span::DUMMY_SP;
 use rustc_trait_selection::infer::InferCtxtBuilderExt;
-use rustc_trait_selection::traits::query::type_op::implied_outlives_bounds::compute_implied_outlives_bounds_inner;
+use rustc_trait_selection::traits::query::type_op::implied_outlives_bounds::query_compute_implied_outlives_bounds;
 use rustc_trait_selection::traits::query::{CanonicalImpliedOutlivesBoundsGoal, NoSolution};
 
 pub(crate) fn provide(p: &mut Providers) {
@@ -26,7 +26,7 @@ fn implied_outlives_bounds<'tcx>(
 > {
     tcx.infer_ctxt().enter_canonical_trait_query(&goal, |ocx, key| {
         let ParamEnvAnd { param_env, value: ImpliedOutlivesBounds { ty } } = key;
-        compute_implied_outlives_bounds_inner(
+        query_compute_implied_outlives_bounds(
             ocx,
             param_env,
             ty,

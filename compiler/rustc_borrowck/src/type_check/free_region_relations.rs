@@ -1,20 +1,23 @@
 use rustc_data_structures::frozen::Frozen;
 use rustc_data_structures::transitive_relation::{TransitiveRelation, TransitiveRelationBuilder};
-use rustc_hir::def::DefKind;
-use rustc_infer::infer::canonical::QueryRegionConstraints;
-use rustc_infer::infer::outlives;
+use rustc_infer::infer::canonical::{OriginalQueryValues, QueryRegionConstraints};
 use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_infer::infer::region_constraints::GenericKind;
+use rustc_infer::infer::{InferOk, outlives};
+use rustc_infer::traits::ObligationCause;
+use rustc_infer::traits::query::MirBorrowckImpliedOutlivesBounds;
 use rustc_infer::traits::query::type_op::Normalize;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::traits::query::OutlivesBound;
 use rustc_middle::ty::{self, RegionVid, Ty, TypeVisitableExt};
 use rustc_span::{ErrorGuaranteed, Span};
+use rustc_trait_selection::solve::NoSolution;
 use rustc_trait_selection::traits::query::type_op;
 use tracing::{debug, instrument};
 use type_op::TypeOpOutput;
 
 use crate::BorrowckInferCtxt;
+use crate::implied_bounds::implied_bounds_query_var_values;
 use crate::type_check::{Locations, MirTypeckRegionConstraints, constraint_conversion};
 use crate::universal_regions::UniversalRegions;
 
@@ -181,8 +184,8 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     pub(crate) fn create(mut self) -> CreateResult<'tcx> {
         let tcx = self.infcx.tcx;
-        let defining_ty_def_id = self.universal_regions.defining_ty.def_id().expect_local();
-        let span = tcx.def_span(defining_ty_def_id);
+        let body_def_id = self.universal_regions.defining_ty.def_id().expect_local();
+        let span = tcx.def_span(body_def_id);
 
         // Insert the `'a: 'b` we know from the predicates.
         // This does not consider the type-outlives.
@@ -211,35 +214,84 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
             };
         }
 
-        let unnormalized_input_output_tys = self
+        let unnormalized_input_output_tys: Vec<_> = self
             .universal_regions
             .unnormalized_input_tys
             .iter()
             .cloned()
-            .chain(Some(self.universal_regions.unnormalized_output_ty));
+            .chain(Some(self.universal_regions.unnormalized_output_ty))
+            .collect();
 
-        // For each of the input/output types:
-        // - Normalize the type. This will create some region
-        //   constraints, which we buffer up because we are
-        //   not ready to process them yet.
-        // - Then compute the implied bounds. This will adjust
-        //   the `region_bound_pairs` and so forth.
-        // - After this is done, we'll register the constraints in
-        //   the `BorrowckInferCtxt`. Checking these constraints is
-        //   handled later by actual borrow checking.
+        // Compute the implied bounds of the current function based on its signature.
+        //
+        // We need to make sure that all implied bounds are checked by the user of this
+        // item. For this, we compute the implied bounds in a different `TypingEnv`.
+        //
+        // This also returns the function signature as normalized in that separate environment
+        // which we then renormalize. This is necessary to correctly handle implied bounds
+        // involving unconstrained regions due to #136547.
+        let var_values =
+            implied_bounds_query_var_values(tcx, &unnormalized_input_output_tys, |region| {
+                self.universal_regions.is_external_free_region(region.as_var())
+            });
+        let original_query_values = OriginalQueryValues { var_values, ..Default::default() };
+        let mut query_constraints = QueryRegionConstraints::default();
+        let MirBorrowckImpliedOutlivesBounds {
+            outlives_bounds,
+            normalized_inputs_and_output: query_normalized_inputs_and_output,
+        } = match tcx.mir_borrowck_implied_outlives_bounds(body_def_id) {
+            Ok(canonical_result) => {
+                // `instantiate_nll_query_response_and_region_obligations` should never fail
+                // here as all our `var_values` are unique generic parameters.
+                let InferOk { value, obligations } = self
+                    .infcx
+                    .instantiate_nll_query_response_and_region_obligations(
+                        &ObligationCause::dummy_with_span(span),
+                        param_env,
+                        &original_query_values,
+                        canonical_result,
+                        &mut query_constraints,
+                    )
+                    .unwrap();
+                assert!(obligations.is_empty());
+                if !query_constraints.is_empty() {
+                    constraints.push(&query_constraints);
+                };
+                value
+            }
+            Err(NoSolution) => {
+                self.infcx.dcx().span_delayed_bug(
+                    span,
+                    format!("error computing implied bounds {body_def_id:?}"),
+                );
+                MirBorrowckImpliedOutlivesBounds {
+                    outlives_bounds: Vec::new(),
+                    normalized_inputs_and_output: unnormalized_input_output_tys,
+                }
+            }
+        };
+
+        // Because of #109628, we may have unexpected placeholders. Ignore them!
+        // FIXME(#109628): panic in this case once the issue is fixed.
+        let bounds = outlives_bounds.into_iter().filter(|bound| !bound.has_placeholders());
+        self.add_outlives_bounds(bounds);
+
+        // We need to renormalize the signature returned by the implied bounds query. This
+        // query normalizes the signature in a context which does not define any opaque types
+        // while this current function does actually reveal opaque types.
+        //
+        // We will later equate this signature with the type of the arguments and return local
+        // of this MIR body, so we need to normalize again.
+        //
+        // This does assume that `unnormalized_input_output_tys` would normalize to the same
+        // thing as `query_normalized_inputs_and_output`.
         let mut normalized_inputs_and_output =
             Vec::with_capacity(self.universal_regions.unnormalized_input_tys.len() + 1);
-        for ty in unnormalized_input_output_tys {
-            debug!("build: input_or_output={:?}", ty);
-            // We add implied bounds from both the unnormalized and normalized ty.
-            // See issue #87748
-            let constraints_unnorm = self.add_implied_bounds(ty, span);
-            if let Some(c) = constraints_unnorm {
-                constraints.push(c)
-            }
+        for ty in query_normalized_inputs_and_output {
+            let ty = ty::set_aliases_to_non_rigid(tcx, ty);
             let TypeOpOutput { output: norm_ty, constraints: constraints_normalize, .. } = self
                 .infcx
-                .fully_perform(Normalize { value: ty::Unnormalized::new_wip(ty) }, span)
+                .fully_perform(Normalize { value: ty }, span)
                 .unwrap_or_else(|guar| TypeOpOutput {
                     output: Ty::new_error(self.infcx.tcx, guar),
                     constraints: None,
@@ -249,64 +301,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
                 constraints.push(c)
             }
 
-            // Currently `implied_outlives_bounds` will normalize the provided
-            // `Ty`, despite this it's still important to normalize the ty ourselves
-            // as normalization may introduce new region variables (#136547).
-            //
-            // If we do not add implied bounds for the type involving these new
-            // region variables then we'll wind up with the normalized form of
-            // the signature having not-wf types due to unsatisfied region
-            // constraints.
-            //
-            // Note: we need this in examples like
-            // ```
-            // trait Foo {
-            //   type Bar;
-            //   fn foo(&self) -> &Self::Bar;
-            // }
-            // impl Foo for () {
-            //   type Bar = ();
-            //   fn foo(&self) -> &() {}
-            // }
-            // ```
-            // Both &Self::Bar and &() are WF
-            if ty != norm_ty {
-                let constraints_norm = self.add_implied_bounds(norm_ty, span);
-                if let Some(c) = constraints_norm {
-                    constraints.push(c)
-                }
-            }
-
             normalized_inputs_and_output.push(norm_ty);
-        }
-
-        // Add implied bounds from impl header.
-        //
-        // We don't use `assumed_wf_types` to source the entire set of implied bounds for
-        // a few reasons:
-        // - `DefiningTy` for closure has the `&'env Self` type while `assumed_wf_types` doesn't
-        // - We compute implied bounds from the unnormalized types in the `DefiningTy` but do not
-        //   do so for types in impl headers
-        // - We must compute the normalized signature and then compute implied bounds from that
-        //   in order to connect any unconstrained region vars created during normalization to
-        //   the types of the locals corresponding to the inputs and outputs of the item. (#136547)
-        if matches!(tcx.def_kind(defining_ty_def_id), DefKind::AssocFn | DefKind::AssocConst { .. })
-        {
-            for &(ty, _) in tcx.assumed_wf_types(tcx.local_parent(defining_ty_def_id)) {
-                let result: Result<_, ErrorGuaranteed> = self
-                    .infcx
-                    .fully_perform(Normalize { value: ty::Unnormalized::new_wip(ty) }, span);
-                let Ok(TypeOpOutput { output: norm_ty, constraints: c, .. }) = result else {
-                    continue;
-                };
-
-                constraints.extend(c);
-
-                // We currently add implied bounds from the normalized ty only.
-                // This is more conservative and matches wfcheck behavior.
-                let c = self.add_implied_bounds(norm_ty, span);
-                constraints.extend(c);
-            }
         }
 
         for c in constraints {
@@ -333,26 +328,6 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
             region_bound_pairs: Frozen::freeze(self.region_bound_pairs),
             normalized_inputs_and_output,
         }
-    }
-
-    /// Compute and add any implied bounds that come from a given type.
-    #[instrument(level = "debug", skip(self))]
-    fn add_implied_bounds(
-        &mut self,
-        ty: Ty<'tcx>,
-        span: Span,
-    ) -> Option<&'tcx QueryRegionConstraints<'tcx>> {
-        let TypeOpOutput { output: bounds, constraints, .. } = self
-            .infcx
-            .fully_perform(type_op::ImpliedOutlivesBounds { ty }, span)
-            .map_err(|_: ErrorGuaranteed| debug!("failed to compute implied bounds {:?}", ty))
-            .ok()?;
-        debug!(?bounds, ?constraints);
-        // Because of #109628, we may have unexpected placeholders. Ignore them!
-        // FIXME(#109628): panic in this case once the issue is fixed.
-        let bounds = bounds.into_iter().filter(|bound| !bound.has_placeholders());
-        self.add_outlives_bounds(bounds);
-        constraints
     }
 
     /// Registers the `OutlivesBound` items from `outlives_bounds` in

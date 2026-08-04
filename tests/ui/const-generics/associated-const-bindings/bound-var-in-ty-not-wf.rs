@@ -21,7 +21,6 @@ fn take(
     >,
 ) {}
 //~^^^ ERROR higher-ranked subtype error
-//~| ERROR higher-ranked subtype error
 
 trait Project { type Out; }
 impl<T> Project for fn(T) -> T { type Out = T; }
