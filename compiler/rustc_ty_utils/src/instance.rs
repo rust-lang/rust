@@ -435,7 +435,10 @@ fn resolve_associated_item<'tcx>(
                             {
                                 ty::InstanceKind::Shim(ty::ShimKind::DropGlue(trait_item_id, None))
                             } else {
-                                ty::InstanceKind::Shim(ty::ShimKind::DropGlue(trait_item_id, Some(self_ty)))
+                                ty::InstanceKind::Shim(ty::ShimKind::DropGlue(
+                                    trait_item_id,
+                                    Some(self_ty),
+                                ))
                             }
                         }
                         ty::Closure(..)
@@ -445,9 +448,10 @@ fn resolve_associated_item<'tcx>(
                         | ty::Dynamic(..)
                         | ty::Array(..)
                         | ty::Slice(..)
-                        | ty::UnsafeBinder(..) => {
-                            ty::InstanceKind::Shim(ty::ShimKind::DropGlue(trait_item_id, Some(self_ty)))
-                        }
+                        | ty::UnsafeBinder(..) => ty::InstanceKind::Shim(ty::ShimKind::DropGlue(
+                            trait_item_id,
+                            Some(self_ty),
+                        )),
                         _ => return Ok(None),
                     }
                 } else {
