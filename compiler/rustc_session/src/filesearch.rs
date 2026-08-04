@@ -35,7 +35,11 @@ impl FileSearch {
 
     /// Return files from the search dirs of this filesearch that match the given `prefix` and
     /// `suffix` and have the given `kind`.
-    pub fn get_file_candidates<'b>(
+    ///
+    /// Note that this function only searches files that match lib/staticlib/dlllib prefixes, not
+    /// all files from the search paths!
+    /// Access `search_paths` directly if you want to scan all files within them.
+    pub fn get_library_candidates<'b>(
         &'b self,
         prefix: &'b str,
         suffix: &'b str,
@@ -65,6 +69,9 @@ impl FileSearch {
         target: &Target,
         use_implicit_sysroot_deps: bool,
     ) -> Self {
+        // We keep a list of all found paths that look like libraries in `FileSearch`, to optimize
+        // lookup in `get_library_candidates`.
+        // These prefixes should be kept in sync with `CrateLocator::find_library_crate`.
         let prefixes = ["lib", &target.staticlib_prefix, &target.dll_prefix];
 
         // Load all files from all search paths, filter them by supported prefixes, and sort them,
