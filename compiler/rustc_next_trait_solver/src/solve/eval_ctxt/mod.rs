@@ -32,7 +32,8 @@ use crate::delegate::SolverDelegate;
 use crate::normalize::{NormalizationFolder, NormalizationWasAmbiguous};
 use crate::placeholder::BoundVarReplacer;
 use crate::solve::eval_ctxt::fast_path::{
-    RerunStalled, compute_goal_fast_path, rerunning_stalled_goal_may_make_progress,
+    RerunStalled, compute_goal_fast_path, inlined_rerunning_stalled_goal_may_make_progress,
+    rerunning_stalled_goal_may_make_progress,
 };
 use crate::solve::fast_path::compute_goal_fast_path_cold;
 use crate::solve::search_graph::SearchGraph;
@@ -264,8 +265,10 @@ where
         }
     }
 
+    // This function is very hot and has a single call site.
+    #[inline(always)]
     fn goal_remains_stalled(&self, stalled_on: &GoalStalledOn<Self::Interner>) -> bool {
-        match rerunning_stalled_goal_may_make_progress(self, Some(stalled_on)) {
+        match inlined_rerunning_stalled_goal_may_make_progress(self, Some(stalled_on)) {
             RerunStalled::WontMakeProgress(_) => true,
             RerunStalled::MayMakeProgress => false,
         }

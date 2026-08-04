@@ -346,6 +346,7 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
     }
 
     type OpaqueTypeStorageEntries = OpaqueTypeStorageEntries;
+    #[inline]
     fn opaque_types_storage_num_entries(&self) -> OpaqueTypeStorageEntries {
         self.inner.borrow_mut().opaque_types().num_entries()
     }
