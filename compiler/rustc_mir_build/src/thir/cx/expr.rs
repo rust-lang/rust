@@ -827,22 +827,27 @@ impl<'tcx> ThirBuildCx<'tcx> {
                     .operands
                     .iter()
                     .map(|(op, _op_sp)| match *op {
-                        hir::InlineAsmOperand::In { reg, expr } => {
-                            InlineAsmOperand::In { reg, expr: self.mirror_expr(expr) }
-                        }
+                        hir::InlineAsmOperand::In { reg, expr } => InlineAsmOperand::In {
+                            reg: reg.as_target(),
+                            expr: self.mirror_expr(expr),
+                        },
                         hir::InlineAsmOperand::Out { reg, late, ref expr } => {
                             InlineAsmOperand::Out {
-                                reg,
+                                reg: reg.as_target(),
                                 late,
                                 expr: expr.map(|expr| self.mirror_expr(expr)),
                             }
                         }
                         hir::InlineAsmOperand::InOut { reg, late, expr } => {
-                            InlineAsmOperand::InOut { reg, late, expr: self.mirror_expr(expr) }
+                            InlineAsmOperand::InOut {
+                                reg: reg.as_target(),
+                                late,
+                                expr: self.mirror_expr(expr),
+                            }
                         }
                         hir::InlineAsmOperand::SplitInOut { reg, late, in_expr, ref out_expr } => {
                             InlineAsmOperand::SplitInOut {
-                                reg,
+                                reg: reg.as_target(),
                                 late,
                                 in_expr: self.mirror_expr(in_expr),
                                 out_expr: out_expr.map(|expr| self.mirror_expr(expr)),
