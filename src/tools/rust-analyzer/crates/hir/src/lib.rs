@@ -3310,10 +3310,6 @@ impl Macro {
         }
     }
 
-    pub fn is_macro_export(self, db: &dyn HirDatabase) -> bool {
-        matches!(self.id, MacroId::MacroRulesId(_) if AttrFlags::query(db, self.id.into()).contains(AttrFlags::IS_MACRO_EXPORT))
-    }
-
     pub fn is_proc_macro(self) -> bool {
         matches!(self.id, MacroId::ProcMacroId(_))
     }
@@ -3454,7 +3450,13 @@ impl HasVisibility for Macro {
                 let source = loc.source(db);
                 visibility_from_ast(db, id, source.map(|src| src.visibility()))
             }
-            MacroId::MacroRulesId(_) => Visibility::Public,
+            MacroId::MacroRulesId(id) => {
+                if AttrFlags::query(db, id.into()).contains(AttrFlags::IS_MACRO_EXPORT) {
+                    Visibility::Public
+                } else {
+                    Visibility::PubCrate(self.krate(db).id)
+                }
+            }
             MacroId::ProcMacroId(_) => Visibility::Public,
         }
     }
