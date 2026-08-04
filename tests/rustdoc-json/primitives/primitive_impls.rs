@@ -35,7 +35,7 @@ impl Trait for i32 {}
 
 /// i32
 #[rustc_doc_primitive = "i32"]
-mod prim_i32 {}
+const _: () = ();
 
 //@ set i32 = "$.index[?(@.docs=='i32')].id"
 //@ is "$.index[?(@.docs=='i32')].name" '"i32"'
