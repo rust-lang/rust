@@ -59,7 +59,7 @@ LL | #[rustc_must_implement_one_of(,)]
 error: the `rustc_must_implement_one_of` attribute cannot be used on functions
   --> $DIR/rustc_must_implement_one_of_misuse.rs:68:3
    |
-LL | #[rustc_must_implement_one_of(abc, xyz)]
+LL | #[rustc_must_implement_one_of(abc, abc)]
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: the `rustc_must_implement_one_of` attribute can only be applied to traits
