@@ -1,0 +1,10 @@
+---
+source: src/bootstrap/src/core/builder/cli_paths/tests.rs
+expression: test src/tools/miri src/tools/miri/cargo-miri
+---
+[Test] test::Miri
+    targets: [aarch64-unknown-linux-gnu]
+    - Set({src/tools/miri})
+[Test] test::CargoMiri
+    targets: [aarch64-unknown-linux-gnu]
+    - Set({src/tools/miri/cargo-miri})
