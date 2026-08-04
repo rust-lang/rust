@@ -4,4 +4,4 @@ expression: build rustdoc
 ---
 [Build] tool::Rustdoc
     targets: [x86_64-unknown-linux-gnu]
-    - Set({src/tools/rustdoc})
+    - Set({src/librustdoc, src/tools/rustdoc})

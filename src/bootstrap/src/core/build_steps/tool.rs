@@ -704,7 +704,7 @@ impl CommandLineStep for Rustdoc {
     const IS_HOST: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.selectors(&["src/tools/rustdoc", "src/librustdoc"])
+        run.multi_path(&["src/tools/rustdoc", "src/librustdoc"])
     }
 
     fn is_default_step(_builder: &Builder<'_>) -> bool {
