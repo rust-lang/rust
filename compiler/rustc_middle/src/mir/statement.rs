@@ -190,22 +190,21 @@ impl<'tcx> PlaceTy<'tcx> {
         tcx: TyCtxt<'tcx>,
         elem: ProjectionElem<V, Ty<'tcx>>,
     ) -> PlaceTy<'tcx> {
-        self.projection_ty_core(tcx, &elem, |ty| ty, |_, _, _, ty| ty, |ty| ty)
+        self.projection_ty_core(tcx, &elem, |ty| ty.skip_norm_wip(), |ty| Some(ty), |ty| ty)
     }
 
     /// `place_ty.projection_ty_core(tcx, elem, |...| { ... })`
     /// projects `place_ty` onto `elem`, returning the appropriate
     /// `Ty` or downcast variant corresponding to that projection.
-    /// The `handle_field` callback must map a `FieldIdx` to its `Ty`,
-    /// (which should be trivial when `T` = `Ty`).
+    /// `trivial_field_ty` is used for when `T` = `Ty`, otherwise,
+    /// `PlaceTy::field_ty` is used to map a `FieldIdx` to its `Ty`.
     pub fn projection_ty_core<V, T>(
         self,
         tcx: TyCtxt<'tcx>,
         elem: &ProjectionElem<V, T>,
-        // FIXME(#155345): This should take `Unnormalized` as input and only
-        // normalize when actually required.
-        mut structurally_normalize: impl FnMut(Ty<'tcx>) -> Ty<'tcx>,
-        mut handle_field: impl FnMut(Ty<'tcx>, Option<VariantIdx>, FieldIdx, T) -> Ty<'tcx>,
+        // FIXME(#155345): This should only normalize when actually required.
+        mut normalize: impl FnMut(Unnormalized<'tcx, Ty<'tcx>>) -> Ty<'tcx>,
+        trivial_field_ty: impl Fn(T) -> Option<Ty<'tcx>>,
         mut handle_opaque_cast_and_subtype: impl FnMut(T) -> Ty<'tcx>,
     ) -> PlaceTy<'tcx>
     where
@@ -217,16 +216,17 @@ impl<'tcx> PlaceTy<'tcx> {
         }
         let answer = match *elem {
             ProjectionElem::Deref => {
-                let ty = structurally_normalize(self.ty).builtin_deref(true).unwrap_or_else(|| {
-                    bug!("deref projection of non-dereferenceable ty {:?}", self)
-                });
+                let ty =
+                    normalize(Unnormalized::new_wip(self.ty)).builtin_deref(true).unwrap_or_else(
+                        || bug!("deref projection of non-dereferenceable ty {:?}", self),
+                    );
                 PlaceTy::from_ty(ty)
             }
             ProjectionElem::Index(_) | ProjectionElem::ConstantIndex { .. } => {
-                PlaceTy::from_ty(structurally_normalize(self.ty).builtin_index().unwrap())
+                PlaceTy::from_ty(normalize(Unnormalized::new_wip(self.ty)).builtin_index().unwrap())
             }
             ProjectionElem::Subslice { from, to, from_end } => {
-                PlaceTy::from_ty(match structurally_normalize(self.ty).kind() {
+                PlaceTy::from_ty(match normalize(Unnormalized::new_wip(self.ty)).kind() {
                     ty::Slice(..) => self.ty,
                     ty::Array(inner, _) if !from_end => Ty::new_array(tcx, *inner, to - from),
                     ty::Array(inner, size) if from_end => {
@@ -242,12 +242,13 @@ impl<'tcx> PlaceTy<'tcx> {
             ProjectionElem::Downcast(_name, index) => {
                 PlaceTy { ty: self.ty, variant_index: Some(index) }
             }
-            ProjectionElem::Field(f, fty) => PlaceTy::from_ty(handle_field(
-                structurally_normalize(self.ty),
-                self.variant_index,
-                f,
-                fty,
-            )),
+            ProjectionElem::Field(f, fty) => PlaceTy::from_ty(match trivial_field_ty(fty) {
+                Some(ty) => ty,
+                None => {
+                    let self_ty = normalize(Unnormalized::new_wip(self.ty));
+                    normalize(PlaceTy::field_ty(tcx, self_ty, self.variant_index, f))
+                }
+            }),
             ProjectionElem::OpaqueCast(ty) => PlaceTy::from_ty(handle_opaque_cast_and_subtype(ty)),
 
             // FIXME(unsafe_binders): Rename `handle_opaque_cast_and_subtype` to be more general.
