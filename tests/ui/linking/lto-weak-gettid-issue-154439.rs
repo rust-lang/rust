@@ -1,7 +1,7 @@
 //! Regression test for std weakening a strong `gettid` reference under fat LTO (#154439).
 
 //@ run-pass
-//@ only-musl
+//@ only-linux
 //@ aux-build: strong-gettid-ref.rs
 //@ no-prefer-dynamic
 //@ compile-flags: -Copt-level=3 -Clto=fat -Ctarget-feature=+crt-static
