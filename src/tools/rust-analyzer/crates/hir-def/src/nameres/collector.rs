@@ -186,7 +186,7 @@ struct ImportDirective {
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct MacroDirective<'db> {
     module_id: ModuleId,
-    depth: usize,
+    depth: u32,
     kind: MacroDirectiveKind<'db>,
     container: ItemContainerId,
 }
@@ -221,7 +221,7 @@ struct DeferredBuiltinDerive {
     call_id: MacroCallId,
     derive: BuiltinDeriveExpander,
     module_id: ModuleId,
-    depth: usize,
+    depth: u32,
     container: ItemContainerId,
     derive_attr_id: AttrId,
     derive_index: u32,
@@ -399,9 +399,13 @@ impl<'db> DefCollector<'db> {
             self.inject_prelude();
 
             let module_id = self.def_map.root;
+            // A block `DefMap` is collected from scratch, but it may itself live inside a macro
+            // expansion. Continue that chain's budget instead of restarting it, or a macro
+            // expanding to an item that invokes the macro again never reaches the limit.
+            let macro_depth = tree_id.file_id().macro_expansion_depth(self.db);
             ModCollector {
                 def_collector: self,
-                macro_depth: 0,
+                macro_depth,
                 module_id,
                 tree_id,
                 item_tree,
@@ -1348,6 +1352,7 @@ impl<'db> DefCollector<'db> {
                         *call_site,
                         *expand_to,
                         self.def_map.krate,
+                        directive.depth,
                         resolver_def_id,
                         &mut |ptr, call_id| {
                             eager_callback_buffer.push((directive.module_id, ptr, call_id));
@@ -1384,6 +1389,7 @@ impl<'db> DefCollector<'db> {
                         self.def_map.krate,
                         |path| resolver(&self.def_map, path),
                         *derive_macro_id,
+                        directive.depth,
                     );
 
                     if let Ok((macro_id, def_id, call_id)) = id {
@@ -1489,6 +1495,7 @@ impl<'db> DefCollector<'db> {
                             AttrMacroAttrIds::from_many(active_attrs),
                             self.def_map.krate,
                             def,
+                            directive.depth,
                         )
                     };
                     if matches!(def,
@@ -1541,6 +1548,7 @@ impl<'db> DefCollector<'db> {
                                         self.def_map.krate,
                                         |path| resolver(&self.def_map, path),
                                         call_id,
+                                        directive.depth,
                                     );
 
                                     let ast_id_without_path = ast_id.ast_id;
@@ -1703,11 +1711,11 @@ impl<'db> DefCollector<'db> {
         &mut self,
         module_id: ModuleId,
         macro_call_id: MacroCallId,
-        depth: usize,
+        depth: u32,
         container: ItemContainerId,
         attr_macro_item: Option<AstId<ast::Item>>,
     ) {
-        if depth > self.def_map.recursion_limit() as usize {
+        if depth > self.def_map.recursion_limit() {
             cov_mark::hit!(macro_expansion_overflow);
             tracing::warn!("macro expansion is too deep");
             return;
@@ -1776,6 +1784,7 @@ impl<'db> DefCollector<'db> {
                         *call_site,
                         *expand_to,
                         self.def_map.krate,
+                        directive.depth,
                         |path| {
                             let resolved_res = self.def_map.resolve_path_fp_with_macro(
                                 self.crate_local_def_map.unwrap_or(&self.local_def_map),
@@ -1864,7 +1873,7 @@ impl<'db> DefCollector<'db> {
 /// Walks a single module, populating defs, imports and macros
 struct ModCollector<'a, 'db> {
     def_collector: &'a mut DefCollector<'db>,
-    macro_depth: usize,
+    macro_depth: u32,
     module_id: ModuleId,
     tree_id: TreeId,
     item_tree: &'db ItemTree,
@@ -2678,6 +2687,7 @@ impl ModCollector<'_, '_> {
             ctxt,
             expand_to,
             self.def_collector.def_map.krate,
+            self.macro_depth + 1,
             |path| {
                 path.as_ident().and_then(|name| {
                     let def_map = &self.def_collector.def_map;

@@ -329,6 +329,47 @@ fn it_works() {
     }
 
     #[test]
+    fn no_stack_overflow_for_recursive_macro() {
+        check_diagnostics(
+            r#"
+#![recursion_limit = "4"]
+macro_rules! test {
+    () => {
+        fn my_test() {
+            test!();
+        }
+    };
+}
+mod tests {
+    test!();
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn no_stack_overflow_for_recursive_exported_macro() {
+        check_diagnostics(
+            r#"
+#![recursion_limit = "4"]
+#[macro_export]
+macro_rules! test {
+    () => {
+        fn my_test() {
+            $crate::test!();
+        }
+    };
+}
+
+mod tests {
+    use super::*;
+    test!();
+}
+"#,
+        );
+    }
+
+    #[test]
     fn unimplemented_builtin_macro() {
         check_diagnostics(
             r#"
