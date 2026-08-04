@@ -9,7 +9,7 @@ struct A {
 }
 
 impl Destruct for A {
-    unsafe fn drop_in_place(_to_drop: *mut Self) {
+    unsafe fn drop_in_place(_to_drop: &mut Self) {
         println!("Hey i was dropped");
     }
 }
