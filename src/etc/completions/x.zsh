@@ -508,7 +508,7 @@ _arguments "${_arguments_options[@]}" : \
 '--compare-mode=[mode describing what file the actual ui output will be compared to]:COMPARE MODE:_default' \
 '--pass=[force {check,build,run}-pass tests to this mode]:check | build | run:_default' \
 '--run=[whether to execute run-* tests]:auto | always | never:_default' \
-'--verbose-run-make-subprocess-output=[whether to show verbose subprocess output for run-make tests; set to false to suppress output for passing tests (e.g. for cg_clif with --no-capture)]' \
+'--verbose-run-make-subprocess-output=[whether to show verbose subprocess output for run-make tests; set to false to suppress output for passing tests (e.g. for cg_clif with --no-capture)]::VERBOSE_RUN_MAKE_SUBPROCESS_OUTPUT:(true false)' \
 '--test-codegen-backend=[Use a different codegen backend when running tests]:TEST_CODEGEN_BACKEND:_default' \
 '--config=[TOML configuration file for build]:FILE:_files' \
 '--build-dir=[Build directory, overrides \`build.build-dir\` in \`bootstrap.toml\`]:DIR:_files -/' \
@@ -575,7 +575,7 @@ _arguments "${_arguments_options[@]}" : \
 '--compare-mode=[mode describing what file the actual ui output will be compared to]:COMPARE MODE:_default' \
 '--pass=[force {check,build,run}-pass tests to this mode]:check | build | run:_default' \
 '--run=[whether to execute run-* tests]:auto | always | never:_default' \
-'--verbose-run-make-subprocess-output=[whether to show verbose subprocess output for run-make tests; set to false to suppress output for passing tests (e.g. for cg_clif with --no-capture)]' \
+'--verbose-run-make-subprocess-output=[whether to show verbose subprocess output for run-make tests; set to false to suppress output for passing tests (e.g. for cg_clif with --no-capture)]::VERBOSE_RUN_MAKE_SUBPROCESS_OUTPUT:(true false)' \
 '--test-codegen-backend=[Use a different codegen backend when running tests]:TEST_CODEGEN_BACKEND:_default' \
 '--config=[TOML configuration file for build]:FILE:_files' \
 '--build-dir=[Build directory, overrides \`build.build-dir\` in \`bootstrap.toml\`]:DIR:_files -/' \
@@ -1106,7 +1106,7 @@ _arguments "${_arguments_options[@]}" : \
 '--help[Print help (see more with '\''--help'\'')]' \
 '::paths -- paths for the subcommand:_files' \
 '::free_args -- arguments passed to subcommands:_default' \
-":: :_x__perf_commands" \
+":: :_x__subcmd__perf_commands" \
 "*::: :->perf" \
 && ret=0
 
@@ -1397,63 +1397,63 @@ _x_commands() {
     )
     _describe -t commands 'x commands' commands "$@"
 }
-(( $+functions[_x__bench_commands] )) ||
-_x__bench_commands() {
+(( $+functions[_x__subcmd__bench_commands] )) ||
+_x__subcmd__bench_commands() {
     local commands; commands=()
     _describe -t commands 'x bench commands' commands "$@"
 }
-(( $+functions[_x__build_commands] )) ||
-_x__build_commands() {
+(( $+functions[_x__subcmd__build_commands] )) ||
+_x__subcmd__build_commands() {
     local commands; commands=()
     _describe -t commands 'x build commands' commands "$@"
 }
-(( $+functions[_x__check_commands] )) ||
-_x__check_commands() {
+(( $+functions[_x__subcmd__check_commands] )) ||
+_x__subcmd__check_commands() {
     local commands; commands=()
     _describe -t commands 'x check commands' commands "$@"
 }
-(( $+functions[_x__clean_commands] )) ||
-_x__clean_commands() {
+(( $+functions[_x__subcmd__clean_commands] )) ||
+_x__subcmd__clean_commands() {
     local commands; commands=()
     _describe -t commands 'x clean commands' commands "$@"
 }
-(( $+functions[_x__clippy_commands] )) ||
-_x__clippy_commands() {
+(( $+functions[_x__subcmd__clippy_commands] )) ||
+_x__subcmd__clippy_commands() {
     local commands; commands=()
     _describe -t commands 'x clippy commands' commands "$@"
 }
-(( $+functions[_x__dist_commands] )) ||
-_x__dist_commands() {
+(( $+functions[_x__subcmd__dist_commands] )) ||
+_x__subcmd__dist_commands() {
     local commands; commands=()
     _describe -t commands 'x dist commands' commands "$@"
 }
-(( $+functions[_x__doc_commands] )) ||
-_x__doc_commands() {
+(( $+functions[_x__subcmd__doc_commands] )) ||
+_x__subcmd__doc_commands() {
     local commands; commands=()
     _describe -t commands 'x doc commands' commands "$@"
 }
-(( $+functions[_x__fix_commands] )) ||
-_x__fix_commands() {
+(( $+functions[_x__subcmd__fix_commands] )) ||
+_x__subcmd__fix_commands() {
     local commands; commands=()
     _describe -t commands 'x fix commands' commands "$@"
 }
-(( $+functions[_x__fmt_commands] )) ||
-_x__fmt_commands() {
+(( $+functions[_x__subcmd__fmt_commands] )) ||
+_x__subcmd__fmt_commands() {
     local commands; commands=()
     _describe -t commands 'x fmt commands' commands "$@"
 }
-(( $+functions[_x__install_commands] )) ||
-_x__install_commands() {
+(( $+functions[_x__subcmd__install_commands] )) ||
+_x__subcmd__install_commands() {
     local commands; commands=()
     _describe -t commands 'x install commands' commands "$@"
 }
-(( $+functions[_x__miri_commands] )) ||
-_x__miri_commands() {
+(( $+functions[_x__subcmd__miri_commands] )) ||
+_x__subcmd__miri_commands() {
     local commands; commands=()
     _describe -t commands 'x miri commands' commands "$@"
 }
-(( $+functions[_x__perf_commands] )) ||
-_x__perf_commands() {
+(( $+functions[_x__subcmd__perf_commands] )) ||
+_x__subcmd__perf_commands() {
     local commands; commands=(
 'eprintln:Run \`profile_local eprintln\`. This executes the compiler on the given benchmarks and stores its stderr output' \
 'samply:Run \`profile_local samply\` This executes the compiler on the given benchmarks and profiles it with \`samply\`. You need to install \`samply\`, e.g. using \`cargo install samply\`' \
@@ -1463,48 +1463,48 @@ _x__perf_commands() {
     )
     _describe -t commands 'x perf commands' commands "$@"
 }
-(( $+functions[_x__perf__benchmark_commands] )) ||
-_x__perf__benchmark_commands() {
+(( $+functions[_x__subcmd__perf__subcmd__benchmark_commands] )) ||
+_x__subcmd__perf__subcmd__benchmark_commands() {
     local commands; commands=()
     _describe -t commands 'x perf benchmark commands' commands "$@"
 }
-(( $+functions[_x__perf__cachegrind_commands] )) ||
-_x__perf__cachegrind_commands() {
+(( $+functions[_x__subcmd__perf__subcmd__cachegrind_commands] )) ||
+_x__subcmd__perf__subcmd__cachegrind_commands() {
     local commands; commands=()
     _describe -t commands 'x perf cachegrind commands' commands "$@"
 }
-(( $+functions[_x__perf__compare_commands] )) ||
-_x__perf__compare_commands() {
+(( $+functions[_x__subcmd__perf__subcmd__compare_commands] )) ||
+_x__subcmd__perf__subcmd__compare_commands() {
     local commands; commands=()
     _describe -t commands 'x perf compare commands' commands "$@"
 }
-(( $+functions[_x__perf__eprintln_commands] )) ||
-_x__perf__eprintln_commands() {
+(( $+functions[_x__subcmd__perf__subcmd__eprintln_commands] )) ||
+_x__subcmd__perf__subcmd__eprintln_commands() {
     local commands; commands=()
     _describe -t commands 'x perf eprintln commands' commands "$@"
 }
-(( $+functions[_x__perf__samply_commands] )) ||
-_x__perf__samply_commands() {
+(( $+functions[_x__subcmd__perf__subcmd__samply_commands] )) ||
+_x__subcmd__perf__subcmd__samply_commands() {
     local commands; commands=()
     _describe -t commands 'x perf samply commands' commands "$@"
 }
-(( $+functions[_x__run_commands] )) ||
-_x__run_commands() {
+(( $+functions[_x__subcmd__run_commands] )) ||
+_x__subcmd__run_commands() {
     local commands; commands=()
     _describe -t commands 'x run commands' commands "$@"
 }
-(( $+functions[_x__setup_commands] )) ||
-_x__setup_commands() {
+(( $+functions[_x__subcmd__setup_commands] )) ||
+_x__subcmd__setup_commands() {
     local commands; commands=()
     _describe -t commands 'x setup commands' commands "$@"
 }
-(( $+functions[_x__test_commands] )) ||
-_x__test_commands() {
+(( $+functions[_x__subcmd__test_commands] )) ||
+_x__subcmd__test_commands() {
     local commands; commands=()
     _describe -t commands 'x test commands' commands "$@"
 }
-(( $+functions[_x__vendor_commands] )) ||
-_x__vendor_commands() {
+(( $+functions[_x__subcmd__vendor_commands] )) ||
+_x__subcmd__vendor_commands() {
     local commands; commands=()
     _describe -t commands 'x vendor commands' commands "$@"
 }

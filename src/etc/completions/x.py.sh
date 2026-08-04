@@ -1,94 +1,98 @@
 _x.py() {
     local i cur prev opts cmd
     COMPREPLY=()
-    cur="${COMP_WORDS[COMP_CWORD]}"
-    prev="${COMP_WORDS[COMP_CWORD-1]}"
+    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
+        cur="$2"
+    else
+        cur="${COMP_WORDS[COMP_CWORD]}"
+    fi
+    prev="$3"
     cmd=""
     opts=""
 
-    for i in ${COMP_WORDS[@]}
+    for i in "${COMP_WORDS[@]:0:COMP_CWORD}"
     do
         case "${cmd},${i}" in
             ",$1")
                 cmd="x.py"
                 ;;
             x.py,b)
-                cmd="x.py__build"
+                cmd="x.py__subcmd__build"
                 ;;
             x.py,bench)
-                cmd="x.py__bench"
+                cmd="x.py__subcmd__bench"
                 ;;
             x.py,build)
-                cmd="x.py__build"
+                cmd="x.py__subcmd__build"
                 ;;
             x.py,c)
-                cmd="x.py__check"
+                cmd="x.py__subcmd__check"
                 ;;
             x.py,check)
-                cmd="x.py__check"
+                cmd="x.py__subcmd__check"
                 ;;
             x.py,clean)
-                cmd="x.py__clean"
+                cmd="x.py__subcmd__clean"
                 ;;
             x.py,clippy)
-                cmd="x.py__clippy"
+                cmd="x.py__subcmd__clippy"
                 ;;
             x.py,d)
-                cmd="x.py__doc"
+                cmd="x.py__subcmd__doc"
                 ;;
             x.py,dist)
-                cmd="x.py__dist"
+                cmd="x.py__subcmd__dist"
                 ;;
             x.py,doc)
-                cmd="x.py__doc"
+                cmd="x.py__subcmd__doc"
                 ;;
             x.py,fix)
-                cmd="x.py__fix"
+                cmd="x.py__subcmd__fix"
                 ;;
             x.py,fmt)
-                cmd="x.py__fmt"
+                cmd="x.py__subcmd__fmt"
                 ;;
             x.py,install)
-                cmd="x.py__install"
+                cmd="x.py__subcmd__install"
                 ;;
             x.py,miri)
-                cmd="x.py__miri"
+                cmd="x.py__subcmd__miri"
                 ;;
             x.py,perf)
-                cmd="x.py__perf"
+                cmd="x.py__subcmd__perf"
                 ;;
             x.py,r)
-                cmd="x.py__run"
+                cmd="x.py__subcmd__run"
                 ;;
             x.py,run)
-                cmd="x.py__run"
+                cmd="x.py__subcmd__run"
                 ;;
             x.py,setup)
-                cmd="x.py__setup"
+                cmd="x.py__subcmd__setup"
                 ;;
             x.py,t)
-                cmd="x.py__test"
+                cmd="x.py__subcmd__test"
                 ;;
             x.py,test)
-                cmd="x.py__test"
+                cmd="x.py__subcmd__test"
                 ;;
             x.py,vendor)
-                cmd="x.py__vendor"
+                cmd="x.py__subcmd__vendor"
                 ;;
-            x.py__perf,benchmark)
-                cmd="x.py__perf__benchmark"
+            x.py__subcmd__perf,benchmark)
+                cmd="x.py__subcmd__perf__subcmd__benchmark"
                 ;;
-            x.py__perf,cachegrind)
-                cmd="x.py__perf__cachegrind"
+            x.py__subcmd__perf,cachegrind)
+                cmd="x.py__subcmd__perf__subcmd__cachegrind"
                 ;;
-            x.py__perf,compare)
-                cmd="x.py__perf__compare"
+            x.py__subcmd__perf,compare)
+                cmd="x.py__subcmd__perf__subcmd__compare"
                 ;;
-            x.py__perf,eprintln)
-                cmd="x.py__perf__eprintln"
+            x.py__subcmd__perf,eprintln)
+                cmd="x.py__subcmd__perf__subcmd__eprintln"
                 ;;
-            x.py__perf,samply)
-                cmd="x.py__perf__samply"
+            x.py__subcmd__perf,samply)
+                cmd="x.py__subcmd__perf__subcmd__samply"
                 ;;
             *)
                 ;;
@@ -97,7 +101,7 @@ _x.py() {
 
     case "${cmd}" in
         x.py)
-            opts="-v -q -i -j -h --verbose --quiet --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --json-output --compile-time-deps --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --ci --skip-std-check-if-no-download-rustc --help [PATHS]... [ARGS]... build b check c clippy fix fmt doc d test t miri bench clean dist install run r setup vendor perf"
+            opts="-v -q -i -j -h --verbose --quiet --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --json-output --compile-time-deps --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --ci --skip-std-check-if-no-download-rustc --help build b check c clippy fix fmt doc d test t miri bench clean dist install run r setup vendor perf"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 1 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -282,8 +286,8 @@ _x.py() {
             COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
             return 0
             ;;
-        x.py__bench)
-            opts="-v -q -i -j -h --test-args --verbose --quiet --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --json-output --compile-time-deps --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --ci --skip-std-check-if-no-download-rustc --help [PATHS]... [ARGS]..."
+        x.py__subcmd__bench)
+            opts="-v -q -i -j -h --test-args --verbose --quiet --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --json-output --compile-time-deps --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --ci --skip-std-check-if-no-download-rustc --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -472,8 +476,8 @@ _x.py() {
             COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
             return 0
             ;;
-        x.py__build)
-            opts="-v -q -i -j -h --timings --verbose --quiet --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --json-output --compile-time-deps --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --ci --skip-std-check-if-no-download-rustc --help [PATHS]... [ARGS]..."
+        x.py__subcmd__build)
+            opts="-v -q -i -j -h --timings --verbose --quiet --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --json-output --compile-time-deps --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --ci --skip-std-check-if-no-download-rustc --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -658,8 +662,8 @@ _x.py() {
             COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
             return 0
             ;;
-        x.py__build)
-            opts="-v -q -i -j -h --timings --verbose --quiet --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --json-output --compile-time-deps --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --ci --skip-std-check-if-no-download-rustc --help [PATHS]... [ARGS]..."
+        x.py__subcmd__check)
+            opts="-v -q -i -j -h --all-targets --timings --verbose --quiet --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --json-output --compile-time-deps --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --ci --skip-std-check-if-no-download-rustc --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -844,380 +848,8 @@ _x.py() {
             COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
             return 0
             ;;
-        x.py__check)
-            opts="-v -q -i -j -h --all-targets --timings --verbose --quiet --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --json-output --compile-time-deps --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --ci --skip-std-check-if-no-download-rustc --help [PATHS]... [ARGS]..."
-            if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
-                COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
-                return 0
-            fi
-            case "${prev}" in
-                --config)
-                    local oldifs
-                    if [ -n "${IFS+x}" ]; then
-                        oldifs="$IFS"
-                    fi
-                    IFS=$'\n'
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    if [ -n "${oldifs+x}" ]; then
-                        IFS="$oldifs"
-                    fi
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o filenames
-                    fi
-                    return 0
-                    ;;
-                --build-dir)
-                    COMPREPLY=()
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o plusdirs
-                    fi
-                    return 0
-                    ;;
-                --build)
-                    COMPREPLY=("${cur}")
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o nospace
-                    fi
-                    return 0
-                    ;;
-                --host)
-                    COMPREPLY=("${cur}")
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o nospace
-                    fi
-                    return 0
-                    ;;
-                --target)
-                    COMPREPLY=("${cur}")
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o nospace
-                    fi
-                    return 0
-                    ;;
-                --exclude)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --skip)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --rustc-error-format)
-                    COMPREPLY=("${cur}")
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o nospace
-                    fi
-                    return 0
-                    ;;
-                --on-fail)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --stage)
-                    COMPREPLY=("${cur}")
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o nospace
-                    fi
-                    return 0
-                    ;;
-                --keep-stage)
-                    COMPREPLY=("${cur}")
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o nospace
-                    fi
-                    return 0
-                    ;;
-                --keep-stage-std)
-                    COMPREPLY=("${cur}")
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o nospace
-                    fi
-                    return 0
-                    ;;
-                --src)
-                    COMPREPLY=()
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o plusdirs
-                    fi
-                    return 0
-                    ;;
-                --jobs)
-                    COMPREPLY=("${cur}")
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o nospace
-                    fi
-                    return 0
-                    ;;
-                -j)
-                    COMPREPLY=("${cur}")
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o nospace
-                    fi
-                    return 0
-                    ;;
-                --warnings)
-                    COMPREPLY=($(compgen -W "deny warn default" -- "${cur}"))
-                    return 0
-                    ;;
-                --color)
-                    COMPREPLY=($(compgen -W "always never auto" -- "${cur}"))
-                    return 0
-                    ;;
-                --rust-profile-generate)
-                    local oldifs
-                    if [ -n "${IFS+x}" ]; then
-                        oldifs="$IFS"
-                    fi
-                    IFS=$'\n'
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    if [ -n "${oldifs+x}" ]; then
-                        IFS="$oldifs"
-                    fi
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o filenames
-                    fi
-                    return 0
-                    ;;
-                --rust-profile-use)
-                    local oldifs
-                    if [ -n "${IFS+x}" ]; then
-                        oldifs="$IFS"
-                    fi
-                    IFS=$'\n'
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    if [ -n "${oldifs+x}" ]; then
-                        IFS="$oldifs"
-                    fi
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o filenames
-                    fi
-                    return 0
-                    ;;
-                --llvm-profile-use)
-                    local oldifs
-                    if [ -n "${IFS+x}" ]; then
-                        oldifs="$IFS"
-                    fi
-                    IFS=$'\n'
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    if [ -n "${oldifs+x}" ]; then
-                        IFS="$oldifs"
-                    fi
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o filenames
-                    fi
-                    return 0
-                    ;;
-                --reproducible-artifact)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --set)
-                    COMPREPLY=("${cur}")
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o nospace
-                    fi
-                    return 0
-                    ;;
-                --ci)
-                    COMPREPLY=($(compgen -W "true false" -- "${cur}"))
-                    return 0
-                    ;;
-                *)
-                    COMPREPLY=()
-                    ;;
-            esac
-            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
-            return 0
-            ;;
-        x.py__check)
-            opts="-v -q -i -j -h --all-targets --timings --verbose --quiet --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --json-output --compile-time-deps --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --ci --skip-std-check-if-no-download-rustc --help [PATHS]... [ARGS]..."
-            if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
-                COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
-                return 0
-            fi
-            case "${prev}" in
-                --config)
-                    local oldifs
-                    if [ -n "${IFS+x}" ]; then
-                        oldifs="$IFS"
-                    fi
-                    IFS=$'\n'
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    if [ -n "${oldifs+x}" ]; then
-                        IFS="$oldifs"
-                    fi
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o filenames
-                    fi
-                    return 0
-                    ;;
-                --build-dir)
-                    COMPREPLY=()
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o plusdirs
-                    fi
-                    return 0
-                    ;;
-                --build)
-                    COMPREPLY=("${cur}")
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o nospace
-                    fi
-                    return 0
-                    ;;
-                --host)
-                    COMPREPLY=("${cur}")
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o nospace
-                    fi
-                    return 0
-                    ;;
-                --target)
-                    COMPREPLY=("${cur}")
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o nospace
-                    fi
-                    return 0
-                    ;;
-                --exclude)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --skip)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --rustc-error-format)
-                    COMPREPLY=("${cur}")
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o nospace
-                    fi
-                    return 0
-                    ;;
-                --on-fail)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --stage)
-                    COMPREPLY=("${cur}")
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o nospace
-                    fi
-                    return 0
-                    ;;
-                --keep-stage)
-                    COMPREPLY=("${cur}")
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o nospace
-                    fi
-                    return 0
-                    ;;
-                --keep-stage-std)
-                    COMPREPLY=("${cur}")
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o nospace
-                    fi
-                    return 0
-                    ;;
-                --src)
-                    COMPREPLY=()
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o plusdirs
-                    fi
-                    return 0
-                    ;;
-                --jobs)
-                    COMPREPLY=("${cur}")
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o nospace
-                    fi
-                    return 0
-                    ;;
-                -j)
-                    COMPREPLY=("${cur}")
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o nospace
-                    fi
-                    return 0
-                    ;;
-                --warnings)
-                    COMPREPLY=($(compgen -W "deny warn default" -- "${cur}"))
-                    return 0
-                    ;;
-                --color)
-                    COMPREPLY=($(compgen -W "always never auto" -- "${cur}"))
-                    return 0
-                    ;;
-                --rust-profile-generate)
-                    local oldifs
-                    if [ -n "${IFS+x}" ]; then
-                        oldifs="$IFS"
-                    fi
-                    IFS=$'\n'
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    if [ -n "${oldifs+x}" ]; then
-                        IFS="$oldifs"
-                    fi
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o filenames
-                    fi
-                    return 0
-                    ;;
-                --rust-profile-use)
-                    local oldifs
-                    if [ -n "${IFS+x}" ]; then
-                        oldifs="$IFS"
-                    fi
-                    IFS=$'\n'
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    if [ -n "${oldifs+x}" ]; then
-                        IFS="$oldifs"
-                    fi
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o filenames
-                    fi
-                    return 0
-                    ;;
-                --llvm-profile-use)
-                    local oldifs
-                    if [ -n "${IFS+x}" ]; then
-                        oldifs="$IFS"
-                    fi
-                    IFS=$'\n'
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    if [ -n "${oldifs+x}" ]; then
-                        IFS="$oldifs"
-                    fi
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o filenames
-                    fi
-                    return 0
-                    ;;
-                --reproducible-artifact)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --set)
-                    COMPREPLY=("${cur}")
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o nospace
-                    fi
-                    return 0
-                    ;;
-                --ci)
-                    COMPREPLY=($(compgen -W "true false" -- "${cur}"))
-                    return 0
-                    ;;
-                *)
-                    COMPREPLY=()
-                    ;;
-            esac
-            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
-            return 0
-            ;;
-        x.py__clean)
-            opts="-v -q -i -j -h --all --stage --verbose --quiet --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --keep-stage --keep-stage-std --src --jobs --warnings --json-output --compile-time-deps --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --ci --skip-std-check-if-no-download-rustc --help [PATHS]... [ARGS]..."
+        x.py__subcmd__clean)
+            opts="-v -q -i -j -h --all --stage --verbose --quiet --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --keep-stage --keep-stage-std --src --jobs --warnings --json-output --compile-time-deps --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --ci --skip-std-check-if-no-download-rustc --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -1399,8 +1031,8 @@ _x.py() {
             COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
             return 0
             ;;
-        x.py__clippy)
-            opts="-A -D -W -F -v -q -i -j -h --fix --allow-dirty --allow-staged --verbose --quiet --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --json-output --compile-time-deps --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --ci --skip-std-check-if-no-download-rustc --help [PATHS]... [ARGS]..."
+        x.py__subcmd__clippy)
+            opts="-A -D -W -F -v -q -i -j -h --fix --allow-dirty --allow-staged --verbose --quiet --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --json-output --compile-time-deps --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --ci --skip-std-check-if-no-download-rustc --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -1601,8 +1233,8 @@ _x.py() {
             COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
             return 0
             ;;
-        x.py__dist)
-            opts="-v -q -i -j -h --verbose --quiet --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --json-output --compile-time-deps --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --ci --skip-std-check-if-no-download-rustc --help [PATHS]... [ARGS]..."
+        x.py__subcmd__dist)
+            opts="-v -q -i -j -h --verbose --quiet --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --json-output --compile-time-deps --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --ci --skip-std-check-if-no-download-rustc --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -1787,8 +1419,8 @@ _x.py() {
             COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
             return 0
             ;;
-        x.py__doc)
-            opts="-v -q -i -j -h --open --json --verbose --quiet --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --json-output --compile-time-deps --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --ci --skip-std-check-if-no-download-rustc --help [PATHS]... [ARGS]..."
+        x.py__subcmd__doc)
+            opts="-v -q -i -j -h --open --json --verbose --quiet --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --json-output --compile-time-deps --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --ci --skip-std-check-if-no-download-rustc --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -1973,8 +1605,8 @@ _x.py() {
             COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
             return 0
             ;;
-        x.py__doc)
-            opts="-v -q -i -j -h --open --json --verbose --quiet --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --json-output --compile-time-deps --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --ci --skip-std-check-if-no-download-rustc --help [PATHS]... [ARGS]..."
+        x.py__subcmd__fix)
+            opts="-v -q -i -j -h --verbose --quiet --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --json-output --compile-time-deps --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --ci --skip-std-check-if-no-download-rustc --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -2159,8 +1791,8 @@ _x.py() {
             COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
             return 0
             ;;
-        x.py__fix)
-            opts="-v -q -i -j -h --verbose --quiet --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --json-output --compile-time-deps --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --ci --skip-std-check-if-no-download-rustc --help [PATHS]... [ARGS]..."
+        x.py__subcmd__fmt)
+            opts="-v -q -i -j -h --check --all --verbose --quiet --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --json-output --compile-time-deps --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --ci --skip-std-check-if-no-download-rustc --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -2345,8 +1977,8 @@ _x.py() {
             COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
             return 0
             ;;
-        x.py__fmt)
-            opts="-v -q -i -j -h --check --all --verbose --quiet --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --json-output --compile-time-deps --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --ci --skip-std-check-if-no-download-rustc --help [PATHS]... [ARGS]..."
+        x.py__subcmd__install)
+            opts="-v -q -i -j -h --verbose --quiet --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --json-output --compile-time-deps --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --ci --skip-std-check-if-no-download-rustc --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -2531,194 +2163,8 @@ _x.py() {
             COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
             return 0
             ;;
-        x.py__install)
-            opts="-v -q -i -j -h --verbose --quiet --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --json-output --compile-time-deps --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --ci --skip-std-check-if-no-download-rustc --help [PATHS]... [ARGS]..."
-            if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
-                COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
-                return 0
-            fi
-            case "${prev}" in
-                --config)
-                    local oldifs
-                    if [ -n "${IFS+x}" ]; then
-                        oldifs="$IFS"
-                    fi
-                    IFS=$'\n'
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    if [ -n "${oldifs+x}" ]; then
-                        IFS="$oldifs"
-                    fi
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o filenames
-                    fi
-                    return 0
-                    ;;
-                --build-dir)
-                    COMPREPLY=()
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o plusdirs
-                    fi
-                    return 0
-                    ;;
-                --build)
-                    COMPREPLY=("${cur}")
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o nospace
-                    fi
-                    return 0
-                    ;;
-                --host)
-                    COMPREPLY=("${cur}")
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o nospace
-                    fi
-                    return 0
-                    ;;
-                --target)
-                    COMPREPLY=("${cur}")
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o nospace
-                    fi
-                    return 0
-                    ;;
-                --exclude)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --skip)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --rustc-error-format)
-                    COMPREPLY=("${cur}")
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o nospace
-                    fi
-                    return 0
-                    ;;
-                --on-fail)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --stage)
-                    COMPREPLY=("${cur}")
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o nospace
-                    fi
-                    return 0
-                    ;;
-                --keep-stage)
-                    COMPREPLY=("${cur}")
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o nospace
-                    fi
-                    return 0
-                    ;;
-                --keep-stage-std)
-                    COMPREPLY=("${cur}")
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o nospace
-                    fi
-                    return 0
-                    ;;
-                --src)
-                    COMPREPLY=()
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o plusdirs
-                    fi
-                    return 0
-                    ;;
-                --jobs)
-                    COMPREPLY=("${cur}")
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o nospace
-                    fi
-                    return 0
-                    ;;
-                -j)
-                    COMPREPLY=("${cur}")
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o nospace
-                    fi
-                    return 0
-                    ;;
-                --warnings)
-                    COMPREPLY=($(compgen -W "deny warn default" -- "${cur}"))
-                    return 0
-                    ;;
-                --color)
-                    COMPREPLY=($(compgen -W "always never auto" -- "${cur}"))
-                    return 0
-                    ;;
-                --rust-profile-generate)
-                    local oldifs
-                    if [ -n "${IFS+x}" ]; then
-                        oldifs="$IFS"
-                    fi
-                    IFS=$'\n'
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    if [ -n "${oldifs+x}" ]; then
-                        IFS="$oldifs"
-                    fi
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o filenames
-                    fi
-                    return 0
-                    ;;
-                --rust-profile-use)
-                    local oldifs
-                    if [ -n "${IFS+x}" ]; then
-                        oldifs="$IFS"
-                    fi
-                    IFS=$'\n'
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    if [ -n "${oldifs+x}" ]; then
-                        IFS="$oldifs"
-                    fi
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o filenames
-                    fi
-                    return 0
-                    ;;
-                --llvm-profile-use)
-                    local oldifs
-                    if [ -n "${IFS+x}" ]; then
-                        oldifs="$IFS"
-                    fi
-                    IFS=$'\n'
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    if [ -n "${oldifs+x}" ]; then
-                        IFS="$oldifs"
-                    fi
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o filenames
-                    fi
-                    return 0
-                    ;;
-                --reproducible-artifact)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --set)
-                    COMPREPLY=("${cur}")
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o nospace
-                    fi
-                    return 0
-                    ;;
-                --ci)
-                    COMPREPLY=($(compgen -W "true false" -- "${cur}"))
-                    return 0
-                    ;;
-                *)
-                    COMPREPLY=()
-                    ;;
-            esac
-            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
-            return 0
-            ;;
-        x.py__miri)
-            opts="-v -q -i -j -h --no-fail-fast --test-args --all-targets --doc --tests --no-doc --verbose --quiet --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --json-output --compile-time-deps --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --ci --skip-std-check-if-no-download-rustc --help [PATHS]... [ARGS]..."
+        x.py__subcmd__miri)
+            opts="-v -q -i -j -h --no-fail-fast --test-args --all-targets --doc --tests --no-doc --verbose --quiet --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --json-output --compile-time-deps --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --ci --skip-std-check-if-no-download-rustc --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -2907,8 +2353,8 @@ _x.py() {
             COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
             return 0
             ;;
-        x.py__perf)
-            opts="-v -q -i -j -h --verbose --quiet --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --json-output --compile-time-deps --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --ci --skip-std-check-if-no-download-rustc --help [PATHS]... [ARGS]... eprintln samply cachegrind benchmark compare"
+        x.py__subcmd__perf)
+            opts="-v -q -i -j -h --verbose --quiet --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --json-output --compile-time-deps --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --ci --skip-std-check-if-no-download-rustc --help eprintln samply cachegrind benchmark compare"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -3093,8 +2539,8 @@ _x.py() {
             COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
             return 0
             ;;
-        x.py__perf__benchmark)
-            opts="-v -q -i -j -h --include --exclude --scenarios --profiles --verbose --quiet --incremental --config --build-dir --build --host --target --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --json-output --compile-time-deps --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --ci --skip-std-check-if-no-download-rustc --help <benchmark-id> [PATHS]... [ARGS]..."
+        x.py__subcmd__perf__subcmd__benchmark)
+            opts="-v -q -i -j -h --include --exclude --scenarios --profiles --verbose --quiet --incremental --config --build-dir --build --host --target --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --json-output --compile-time-deps --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --ci --skip-std-check-if-no-download-rustc --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -3291,8 +2737,8 @@ _x.py() {
             COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
             return 0
             ;;
-        x.py__perf__cachegrind)
-            opts="-v -q -i -j -h --include --exclude --scenarios --profiles --verbose --quiet --incremental --config --build-dir --build --host --target --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --json-output --compile-time-deps --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --ci --skip-std-check-if-no-download-rustc --help [PATHS]... [ARGS]..."
+        x.py__subcmd__perf__subcmd__cachegrind)
+            opts="-v -q -i -j -h --include --exclude --scenarios --profiles --verbose --quiet --incremental --config --build-dir --build --host --target --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --json-output --compile-time-deps --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --ci --skip-std-check-if-no-download-rustc --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -3489,8 +2935,8 @@ _x.py() {
             COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
             return 0
             ;;
-        x.py__perf__compare)
-            opts="-v -q -i -j -h --verbose --quiet --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --json-output --compile-time-deps --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --ci --skip-std-check-if-no-download-rustc --help <BASE> <MODIFIED> [PATHS]... [ARGS]..."
+        x.py__subcmd__perf__subcmd__compare)
+            opts="-v -q -i -j -h --verbose --quiet --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --json-output --compile-time-deps --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --ci --skip-std-check-if-no-download-rustc --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -3675,206 +3121,8 @@ _x.py() {
             COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
             return 0
             ;;
-        x.py__perf__eprintln)
-            opts="-v -q -i -j -h --include --exclude --scenarios --profiles --verbose --quiet --incremental --config --build-dir --build --host --target --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --json-output --compile-time-deps --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --ci --skip-std-check-if-no-download-rustc --help [PATHS]... [ARGS]..."
-            if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
-                COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
-                return 0
-            fi
-            case "${prev}" in
-                --include)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --exclude)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --scenarios)
-                    COMPREPLY=($(compgen -W "Full IncrFull IncrUnchanged IncrPatched" -- "${cur}"))
-                    return 0
-                    ;;
-                --profiles)
-                    COMPREPLY=($(compgen -W "Check Debug Doc Opt Clippy" -- "${cur}"))
-                    return 0
-                    ;;
-                --config)
-                    local oldifs
-                    if [ -n "${IFS+x}" ]; then
-                        oldifs="$IFS"
-                    fi
-                    IFS=$'\n'
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    if [ -n "${oldifs+x}" ]; then
-                        IFS="$oldifs"
-                    fi
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o filenames
-                    fi
-                    return 0
-                    ;;
-                --build-dir)
-                    COMPREPLY=()
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o plusdirs
-                    fi
-                    return 0
-                    ;;
-                --build)
-                    COMPREPLY=("${cur}")
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o nospace
-                    fi
-                    return 0
-                    ;;
-                --host)
-                    COMPREPLY=("${cur}")
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o nospace
-                    fi
-                    return 0
-                    ;;
-                --target)
-                    COMPREPLY=("${cur}")
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o nospace
-                    fi
-                    return 0
-                    ;;
-                --skip)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --rustc-error-format)
-                    COMPREPLY=("${cur}")
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o nospace
-                    fi
-                    return 0
-                    ;;
-                --on-fail)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --stage)
-                    COMPREPLY=("${cur}")
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o nospace
-                    fi
-                    return 0
-                    ;;
-                --keep-stage)
-                    COMPREPLY=("${cur}")
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o nospace
-                    fi
-                    return 0
-                    ;;
-                --keep-stage-std)
-                    COMPREPLY=("${cur}")
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o nospace
-                    fi
-                    return 0
-                    ;;
-                --src)
-                    COMPREPLY=()
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o plusdirs
-                    fi
-                    return 0
-                    ;;
-                --jobs)
-                    COMPREPLY=("${cur}")
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o nospace
-                    fi
-                    return 0
-                    ;;
-                -j)
-                    COMPREPLY=("${cur}")
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o nospace
-                    fi
-                    return 0
-                    ;;
-                --warnings)
-                    COMPREPLY=($(compgen -W "deny warn default" -- "${cur}"))
-                    return 0
-                    ;;
-                --color)
-                    COMPREPLY=($(compgen -W "always never auto" -- "${cur}"))
-                    return 0
-                    ;;
-                --rust-profile-generate)
-                    local oldifs
-                    if [ -n "${IFS+x}" ]; then
-                        oldifs="$IFS"
-                    fi
-                    IFS=$'\n'
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    if [ -n "${oldifs+x}" ]; then
-                        IFS="$oldifs"
-                    fi
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o filenames
-                    fi
-                    return 0
-                    ;;
-                --rust-profile-use)
-                    local oldifs
-                    if [ -n "${IFS+x}" ]; then
-                        oldifs="$IFS"
-                    fi
-                    IFS=$'\n'
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    if [ -n "${oldifs+x}" ]; then
-                        IFS="$oldifs"
-                    fi
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o filenames
-                    fi
-                    return 0
-                    ;;
-                --llvm-profile-use)
-                    local oldifs
-                    if [ -n "${IFS+x}" ]; then
-                        oldifs="$IFS"
-                    fi
-                    IFS=$'\n'
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    if [ -n "${oldifs+x}" ]; then
-                        IFS="$oldifs"
-                    fi
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o filenames
-                    fi
-                    return 0
-                    ;;
-                --reproducible-artifact)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --set)
-                    COMPREPLY=("${cur}")
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o nospace
-                    fi
-                    return 0
-                    ;;
-                --ci)
-                    COMPREPLY=($(compgen -W "true false" -- "${cur}"))
-                    return 0
-                    ;;
-                *)
-                    COMPREPLY=()
-                    ;;
-            esac
-            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
-            return 0
-            ;;
-        x.py__perf__samply)
-            opts="-v -q -i -j -h --include --exclude --scenarios --profiles --verbose --quiet --incremental --config --build-dir --build --host --target --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --json-output --compile-time-deps --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --ci --skip-std-check-if-no-download-rustc --help [PATHS]... [ARGS]..."
+        x.py__subcmd__perf__subcmd__eprintln)
+            opts="-v -q -i -j -h --include --exclude --scenarios --profiles --verbose --quiet --incremental --config --build-dir --build --host --target --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --json-output --compile-time-deps --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --ci --skip-std-check-if-no-download-rustc --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -4071,15 +3319,27 @@ _x.py() {
             COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
             return 0
             ;;
-        x.py__run)
-            opts="-v -q -i -j -h --args --verbose --quiet --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --json-output --compile-time-deps --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --ci --skip-std-check-if-no-download-rustc --help [PATHS]... [ARGS]..."
-            if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
+        x.py__subcmd__perf__subcmd__samply)
+            opts="-v -q -i -j -h --include --exclude --scenarios --profiles --verbose --quiet --incremental --config --build-dir --build --host --target --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --json-output --compile-time-deps --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --ci --skip-std-check-if-no-download-rustc --help"
+            if [[ ${cur} == -* || ${COMP_CWORD} -eq 3 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
             fi
             case "${prev}" in
-                --args)
+                --include)
                     COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --exclude)
+                    COMPREPLY=($(compgen -f "${cur}"))
+                    return 0
+                    ;;
+                --scenarios)
+                    COMPREPLY=($(compgen -W "Full IncrFull IncrUnchanged IncrPatched" -- "${cur}"))
+                    return 0
+                    ;;
+                --profiles)
+                    COMPREPLY=($(compgen -W "Check Debug Doc Opt Clippy" -- "${cur}"))
                     return 0
                     ;;
                 --config)
@@ -4123,10 +3383,6 @@ _x.py() {
                     if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
                         compopt -o nospace
                     fi
-                    return 0
-                    ;;
-                --exclude)
-                    COMPREPLY=($(compgen -f "${cur}"))
                     return 0
                     ;;
                 --skip)
@@ -4261,8 +3517,8 @@ _x.py() {
             COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
             return 0
             ;;
-        x.py__run)
-            opts="-v -q -i -j -h --args --verbose --quiet --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --json-output --compile-time-deps --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --ci --skip-std-check-if-no-download-rustc --help [PATHS]... [ARGS]..."
+        x.py__subcmd__run)
+            opts="-v -q -i -j -h --args --verbose --quiet --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --json-output --compile-time-deps --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --ci --skip-std-check-if-no-download-rustc --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -4451,8 +3707,8 @@ _x.py() {
             COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
             return 0
             ;;
-        x.py__setup)
-            opts="-v -q -i -j -h --verbose --quiet --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --json-output --compile-time-deps --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --ci --skip-std-check-if-no-download-rustc --help [<PROFILE>|hook|editor|link] [PATHS]... [ARGS]..."
+        x.py__subcmd__setup)
+            opts="-v -q -i -j -h --verbose --quiet --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --json-output --compile-time-deps --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --ci --skip-std-check-if-no-download-rustc --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -4637,8 +3893,8 @@ _x.py() {
             COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
             return 0
             ;;
-        x.py__test)
-            opts="-v -q -i -j -h --no-fail-fast --test-args --compiletest-rustc-args --all-targets --doc --tests --bless --extra-checks --force-rerun --only-modified --compare-mode --pass --run --rustfix-coverage --no-capture --verbose-run-make-subprocess-output --test-codegen-backend --bypass-ignore-backends --no-doc --record --rerun --verbose --quiet --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --json-output --compile-time-deps --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --ci --skip-std-check-if-no-download-rustc --help [PATHS]... [ARGS]..."
+        x.py__subcmd__test)
+            opts="-v -q -i -j -h --no-fail-fast --test-args --compiletest-rustc-args --all-targets --doc --tests --bless --extra-checks --force-rerun --only-modified --compare-mode --pass --run --rustfix-coverage --no-capture --verbose-run-make-subprocess-output --test-codegen-backend --bypass-ignore-backends --no-doc --record --rerun --verbose --quiet --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --json-output --compile-time-deps --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --ci --skip-std-check-if-no-download-rustc --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
@@ -4855,226 +4111,8 @@ _x.py() {
             COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
             return 0
             ;;
-        x.py__test)
-            opts="-v -q -i -j -h --no-fail-fast --test-args --compiletest-rustc-args --all-targets --doc --tests --bless --extra-checks --force-rerun --only-modified --compare-mode --pass --run --rustfix-coverage --no-capture --verbose-run-make-subprocess-output --test-codegen-backend --bypass-ignore-backends --no-doc --record --rerun --verbose --quiet --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --json-output --compile-time-deps --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --ci --skip-std-check-if-no-download-rustc --help [PATHS]... [ARGS]..."
-            if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
-                COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
-                return 0
-            fi
-            case "${prev}" in
-                --test-args)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --compiletest-rustc-args)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --extra-checks)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --compare-mode)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --pass)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --run)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --verbose-run-make-subprocess-output)
-                    COMPREPLY=($(compgen -W "true false" -- "${cur}"))
-                    return 0
-                    ;;
-                --test-codegen-backend)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --config)
-                    local oldifs
-                    if [ -n "${IFS+x}" ]; then
-                        oldifs="$IFS"
-                    fi
-                    IFS=$'\n'
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    if [ -n "${oldifs+x}" ]; then
-                        IFS="$oldifs"
-                    fi
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o filenames
-                    fi
-                    return 0
-                    ;;
-                --build-dir)
-                    COMPREPLY=()
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o plusdirs
-                    fi
-                    return 0
-                    ;;
-                --build)
-                    COMPREPLY=("${cur}")
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o nospace
-                    fi
-                    return 0
-                    ;;
-                --host)
-                    COMPREPLY=("${cur}")
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o nospace
-                    fi
-                    return 0
-                    ;;
-                --target)
-                    COMPREPLY=("${cur}")
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o nospace
-                    fi
-                    return 0
-                    ;;
-                --exclude)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --skip)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --rustc-error-format)
-                    COMPREPLY=("${cur}")
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o nospace
-                    fi
-                    return 0
-                    ;;
-                --on-fail)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --stage)
-                    COMPREPLY=("${cur}")
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o nospace
-                    fi
-                    return 0
-                    ;;
-                --keep-stage)
-                    COMPREPLY=("${cur}")
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o nospace
-                    fi
-                    return 0
-                    ;;
-                --keep-stage-std)
-                    COMPREPLY=("${cur}")
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o nospace
-                    fi
-                    return 0
-                    ;;
-                --src)
-                    COMPREPLY=()
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o plusdirs
-                    fi
-                    return 0
-                    ;;
-                --jobs)
-                    COMPREPLY=("${cur}")
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o nospace
-                    fi
-                    return 0
-                    ;;
-                -j)
-                    COMPREPLY=("${cur}")
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o nospace
-                    fi
-                    return 0
-                    ;;
-                --warnings)
-                    COMPREPLY=($(compgen -W "deny warn default" -- "${cur}"))
-                    return 0
-                    ;;
-                --color)
-                    COMPREPLY=($(compgen -W "always never auto" -- "${cur}"))
-                    return 0
-                    ;;
-                --rust-profile-generate)
-                    local oldifs
-                    if [ -n "${IFS+x}" ]; then
-                        oldifs="$IFS"
-                    fi
-                    IFS=$'\n'
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    if [ -n "${oldifs+x}" ]; then
-                        IFS="$oldifs"
-                    fi
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o filenames
-                    fi
-                    return 0
-                    ;;
-                --rust-profile-use)
-                    local oldifs
-                    if [ -n "${IFS+x}" ]; then
-                        oldifs="$IFS"
-                    fi
-                    IFS=$'\n'
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    if [ -n "${oldifs+x}" ]; then
-                        IFS="$oldifs"
-                    fi
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o filenames
-                    fi
-                    return 0
-                    ;;
-                --llvm-profile-use)
-                    local oldifs
-                    if [ -n "${IFS+x}" ]; then
-                        oldifs="$IFS"
-                    fi
-                    IFS=$'\n'
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    if [ -n "${oldifs+x}" ]; then
-                        IFS="$oldifs"
-                    fi
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o filenames
-                    fi
-                    return 0
-                    ;;
-                --reproducible-artifact)
-                    COMPREPLY=($(compgen -f "${cur}"))
-                    return 0
-                    ;;
-                --set)
-                    COMPREPLY=("${cur}")
-                    if [[ "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-                        compopt -o nospace
-                    fi
-                    return 0
-                    ;;
-                --ci)
-                    COMPREPLY=($(compgen -W "true false" -- "${cur}"))
-                    return 0
-                    ;;
-                *)
-                    COMPREPLY=()
-                    ;;
-            esac
-            COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
-            return 0
-            ;;
-        x.py__vendor)
-            opts="-v -q -i -j -h --sync --versioned-dirs --verbose --quiet --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --json-output --compile-time-deps --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --ci --skip-std-check-if-no-download-rustc --help [PATHS]... [ARGS]..."
+        x.py__subcmd__vendor)
+            opts="-v -q -i -j -h --sync --versioned-dirs --verbose --quiet --incremental --config --build-dir --build --host --target --exclude --skip --include-default-paths --rustc-error-format --on-fail --dry-run --dump-bootstrap-shims --stage --keep-stage --keep-stage-std --src --jobs --warnings --json-output --compile-time-deps --color --bypass-bootstrap-lock --rust-profile-generate --rust-profile-use --llvm-profile-use --llvm-profile-generate --enable-bolt-settings --skip-stage0-validation --reproducible-artifact --set --ci --skip-std-check-if-no-download-rustc --help"
             if [[ ${cur} == -* || ${COMP_CWORD} -eq 2 ]] ; then
                 COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
                 return 0
