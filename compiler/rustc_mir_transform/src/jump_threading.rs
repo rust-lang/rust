@@ -77,17 +77,12 @@ const MAX_COST: u8 = 100;
 
 impl<'tcx> crate::MirPass<'tcx> for JumpThreading {
     fn policy(&self, sess: &rustc_session::Session) -> PassPolicy {
-        let enabled_by_default = if sess.target.is_like_gpu {
-            // Jump threading can duplicate calls in control-flow.
-            // This leads to incorrect code when done for so called "convergent" operations on GPU
-            // targets, similar to how inline assembly cannot be duplicated on all targets.
-            // Conservatively prevent this by disabling the pass.
-            // See also issue #137086.
-            false
-        } else {
-            sess.mir_opt_level() >= 2
-        };
-        PassPolicy::optimization(enabled_by_default)
+        // Jump threading can duplicate calls in control-flow.
+        // This leads to incorrect code when done for so called "convergent" operations on GPU
+        // targets, similar to how inline assembly cannot be duplicated on all targets.
+        // Conservatively prevent this by disabling the pass.
+        // See also issue #137086.
+        PassPolicy::optimization(!sess.target.is_like_gpu, 2)
     }
 
     #[instrument(skip_all level = "debug")]

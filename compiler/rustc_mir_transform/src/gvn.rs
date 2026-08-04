@@ -128,8 +128,8 @@ use crate::ssa::{MaybeUninitializedLocals, SsaLocals};
 pub(super) struct GVN;
 
 impl<'tcx> crate::MirPass<'tcx> for GVN {
-    fn policy(&self, sess: &rustc_session::Session) -> PassPolicy {
-        PassPolicy::optimization(sess.mir_opt_level() >= 2)
+    fn policy(&self, _sess: &rustc_session::Session) -> PassPolicy {
+        PassPolicy::optimization(true, 2)
     }
 
     #[instrument(level = "trace", skip(self, tcx, body))]
