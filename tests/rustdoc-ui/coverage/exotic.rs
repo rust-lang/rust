@@ -9,8 +9,8 @@
 
 /// woo, check it out, we can write our own primitive docs lol
 #[rustc_doc_primitive = "unit"]
-mod prim_unit {}
+const _: () = ();
 
 /// keywords? sure, pile them on
 #[doc(keyword="where")]
-mod where_keyword {}
+const _: () = ();

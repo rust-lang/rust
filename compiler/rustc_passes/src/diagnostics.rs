@@ -73,16 +73,8 @@ pub(crate) struct DocAliasNotAnAlias {
 }
 
 #[derive(Diagnostic)]
-#[diag("`#[doc({$attr_name} = \"...\")]` should be used on empty modules")]
-pub(crate) struct DocKeywordAttributeEmptyMod {
-    #[primary_span]
-    pub span: Span,
-    pub attr_name: &'static str,
-}
-
-#[derive(Diagnostic)]
-#[diag("`#[doc({$attr_name} = \"...\")]` should be used on modules")]
-pub(crate) struct DocKeywordAttributeNotMod {
+#[diag("`#[doc({$attr_name} = \"...\")]` should be used on anonymous constants")]
+pub(crate) struct DocKeywordAttributeNotAnonConst {
     #[primary_span]
     pub span: Span,
     pub attr_name: &'static str,

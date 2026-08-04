@@ -130,7 +130,7 @@ To do so, the `#[doc(keyword = "...")]` attribute is used. Example:
 
 /// Some documentation about the keyword.
 #[doc(keyword = "break")]
-mod empty_mod {}
+const _: () = ();
 ```
 
 ### Document builtin attributes
@@ -147,7 +147,7 @@ To do so, the `#[doc(attribute = "...")]` attribute is used. Example:
 
 /// Some documentation about the attribute.
 #[doc(attribute = "repr")]
-mod empty_mod {}
+const _: () = ();
 ```
 
 ### Use the Rust logo as the crate logo

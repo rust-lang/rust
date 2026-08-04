@@ -4,15 +4,13 @@
 
 //@ has foo/keyword.while.html
 //@ hasraw search.index/name/*.js while
-//@ !hasraw search.index/name/*.js w_keyword
 #[doc(keyword = "while")]
-mod w_keyword {}
+const _: () = ();
 
 //@ has foo/primitive.u32.html
 //@ hasraw search.index/name/*.js u32
-//@ !hasraw search.index/name/*.js u_primitive
 #[rustc_doc_primitive = "u32"]
-mod u_primitive {}
+const _: () = ();
 
 //@ has foo/x_mod/index.html
 //@ hasraw search.index/name/*.js x_mod
@@ -114,6 +112,5 @@ pub trait ATraitAlias = ATrait;
 
 //@ has foo/attribute.doc.html
 //@ hasraw search.index/name/*.js doc
-//@ !hasraw search.index/name/*.js aa_mod
 #[doc(attribute = "doc")]
-mod aa_mod {}
+const _: () = ();
