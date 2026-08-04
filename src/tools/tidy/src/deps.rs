@@ -324,6 +324,9 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "darling_core",
     "darling_macro",
     "datafrog",
+    "defmt",
+    "defmt-macros",
+    "defmt-parser",
     "derive-where",
     "derive_setters",
     "digest",
@@ -365,6 +368,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "itertools",
     "itoa",
     "jiff",
+    "jiff-core",
     "jiff-static",
     "jiff-tzdb",
     "jiff-tzdb-platform",
@@ -427,7 +431,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "rustc_apfloat",
     "rustix",
     "ruzstd", // via object in thorin-dwp
-    "ryu",
     "schemars",
     "schemars_derive",
     "scoped-tls",
@@ -523,6 +526,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "zerovec",
     "zerovec-derive",
     "zlib-rs",
+    "zmij",
     // tidy-alphabetical-end
 ];
 
