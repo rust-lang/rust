@@ -1,4 +1,5 @@
-//@ known-bug: #126268
+//@ known-bug: #102252
+
 #![feature(min_specialization)]
 
 trait Trait {}
@@ -16,3 +17,5 @@ struct DatasetIter<'a, R: Data> {
 pub struct ArrayBase {}
 
 impl<'a> Trait for DatasetIter<'a, ArrayBase> {}
+
+fn main() {}
