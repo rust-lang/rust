@@ -56,7 +56,7 @@ pub use self::cursor::ResultsCursor;
 pub use self::direction::{Backward, Direction, Forward};
 pub use self::lattice::{JoinSemiLattice, MaybeReachable};
 pub use self::results::{EntryStates, Results};
-pub use self::visitor::{ResultsVisitor, visit_reachable_results, visit_results};
+pub use self::visitor::{ResultsVisitor, visit_results};
 
 /// Analysis domains are all bitsets of various kinds. This trait holds
 /// operations needed by all of them.
