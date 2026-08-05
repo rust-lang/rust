@@ -118,6 +118,9 @@ impl From<bool> for IsFirstInputType {
 pub enum OrphanCheckErr<I: Interner, T> {
     NonLocalInputType(Vec<(I::Ty, IsFirstInputType)>),
     UncoveredTyParams(UncoveredTyParams<I, T>),
+    /// The trait is `#[rustc_anti_fundamental]` and the Self type's head is a
+    /// non-local `#[fundamental]` type. `fundamental_ty` is the offending type.
+    AntiFundamentalForeignType(I::Ty),
 }
 
 #[derive_where(Debug; I: Interner, T: Debug)]
@@ -216,6 +219,13 @@ pub struct UncoveredTyParams<I: Interner, T> {
 ///    the above requirement is sufficient, and is necessary in "open world"
 ///    cases).
 ///
+/// In addition to the orphan rules above, this also enforces
+/// `#[rustc_anti_fundamental]`: when the trait carries that attribute, an impl
+/// whose `Self` type has a non-local `#[fundamental]` type at its head is
+/// rejected (in `InCrate::Local` mode). This lets the standard library reserve
+/// control over traits like `Deref` and `DispatchFromDyn` on fundamental
+/// wrappers such as `Box` and `Pin`.
+///
 /// Note that this function is never called for types that have both type
 /// parameters and inference variables.
 #[instrument(level = "trace", skip(infcx, lazily_normalize_ty), ret)]
@@ -232,6 +242,20 @@ where
 {
     if trait_ref.has_param() {
         panic!("orphan check only expects inference variables: {trait_ref:?}");
+    }
+
+    // Anti-fundamental check: if the trait is marked `#[rustc_anti_fundamental]`,
+    // reject impls where the head of the Self type is a non-local fundamental type.
+    // This prevents downstream crates from implementing traits like `Deref` on
+    // fundamental wrappers like `Box` or `Pin`.
+    if matches!(in_crate, InCrate::Local { .. }) {
+        let cx = infcx.cx();
+        if cx.trait_is_anti_fundamental(trait_ref.def_id) {
+            let self_ty = infcx.shallow_resolve(trait_ref.self_ty());
+            if let Some(err_ty) = check_anti_fundamental_head::<I>(self_ty) {
+                return Ok(Err(OrphanCheckErr::AntiFundamentalForeignType(err_ty)));
+            }
+        }
     }
 
     let mut checker = OrphanChecker::new(infcx, in_crate, lazily_normalize_ty);
@@ -254,6 +278,22 @@ where
             OrphanCheckEarlyExit::LocalTy(_) => Ok(()),
         },
     })
+}
+
+/// Checks the head of the Self type for a non-local fundamental type.
+/// If the head is a reference (`&`/`&mut`), unwrap and check again (references are fundamental).
+/// Returns `Some(ty)` with the offending fundamental type if the check fails.
+fn check_anti_fundamental_head<I: Interner>(mut ty: I::Ty) -> Option<I::Ty> {
+    // Unwrap through references (which are fundamental but undocumented as such).
+    while let ty::Ref(_, inner, _) = ty.kind() {
+        ty = inner;
+    }
+
+    // The head is offending only if it is a fundamental ADT that is not local to the
+    // current crate. All other types are fine — they're either local, non-fundamental,
+    // or primitive (which can't be fundamental).
+    matches!(ty.kind(), ty::Adt(def, _) if def.is_fundamental() && !def.def_id().is_local())
+        .then_some(ty)
 }
 
 struct OrphanChecker<'a, Infcx, I: Interner, F> {

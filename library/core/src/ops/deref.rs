@@ -136,6 +136,7 @@ use crate::marker::PointeeSized;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_diagnostic_item = "Deref"]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[rustc_anti_fundamental]
 pub const trait Deref: PointeeSized {
     /// The resulting type after dereferencing.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -267,6 +268,7 @@ const impl<T: ?Sized> Deref for &mut T {
 #[doc(alias = "*")]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "143773")]
+#[rustc_anti_fundamental]
 pub const trait DerefMut: [const] Deref + PointeeSized {
     /// Mutably dereferences the value.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -367,6 +369,7 @@ unsafe impl<T: ?Sized> DerefPure for &mut T {}
 /// ```
 #[lang = "receiver"]
 #[unstable(feature = "arbitrary_self_types", issue = "44874")]
+#[rustc_anti_fundamental]
 pub trait Receiver: PointeeSized {
     /// The target type on which the method may be called.
     #[rustc_diagnostic_item = "receiver_target"]
