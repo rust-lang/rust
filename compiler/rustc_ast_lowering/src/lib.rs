@@ -51,7 +51,6 @@ use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hash::{StableHash, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::tagged_ptr::TaggedRef;
-use rustc_data_structures::unord::ExtendUnord;
 use rustc_errors::codes::*;
 use rustc_errors::{DiagArgFromDisplay, DiagCtxtHandle, ErrorGuaranteed};
 use rustc_hir::attrs::lang_items::LangItem;
@@ -721,7 +720,8 @@ fn lower_to_hir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::MaybeOwner<'_> {
 
         let parent_info = parent_info.unwrap();
         *parent_info.children.get(&def_id).unwrap_or_else(|| {
-            panic!(
+            span_bug!(
+                tcx.source_span(def_id),
                 "{:?} does not appear in children of {:?}",
                 def_id,
                 parent_info.nodes.node().def_id()
@@ -856,43 +856,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         hir::OwnerId { def_id: self.resolver.owners[&node].def_id }
     }
 
-    /// Freshen the `LoweringContext` and ready it to lower a nested item.
-    /// The lowered item is registered into `self.curr_owner.children`.
-    ///
-    /// This function sets up `HirId` lowering infrastructure,
-    /// and stashes the per-owner state to avoid pollution by the closure.
-    #[instrument(level = "debug", skip(self, f))]
-    fn with_hir_id_owner(
-        &mut self,
-        owner: NodeId,
-        f: impl FnOnce(&mut Self) -> hir::OwnerNode<'hir>,
-    ) {
-        let child_owner = PerOwnerLoweringState::new(self.resolver, owner);
-        let parent_owner = mem::replace(&mut self.curr_owner, child_owner);
-
-        // Do not reset `next_node_id` and `node_id_to_def_id`:
-        // we want `f` to be able to refer to the `LocalDefId`s that the caller created.
-        // and the caller to refer to some of the subdefinitions' nodes' `LocalDefId`s.
-
-        // Always allocate the first `HirId` for the owner itself.
-        #[cfg(debug_assertions)]
-        self.curr_owner
-            .relowering_checker
-            .assert_node_is_not_relowered(owner, hir::ItemLocalId::ZERO);
-
-        let item = f(self);
-        let completed_child_owner = mem::replace(&mut self.curr_owner, parent_owner);
-        let owner_id = completed_child_owner.owner_id;
-        let info = completed_child_owner.into_owner_info(self.tcx, item);
-
-        self.curr_owner
-            .children
-            .extend_unord(info.children.items().map(|(&def_id, &info)| (def_id, info)));
-
-        debug_assert!(!self.curr_owner.children.contains_key(&owner_id.def_id));
-        self.curr_owner.children.insert(owner_id.def_id, hir::MaybeOwner::Owner(info));
-    }
-
     /// This method allocates a new `HirId` for the given `NodeId`.
     /// Take care not to call this method if the resulting `HirId` is then not
     /// actually used in the HIR, as that would trigger an assertion in the
@@ -956,9 +919,22 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_import_res(&mut self, id: NodeId, span: Span) -> PerNS<Option<Res>> {
-        debug_assert_eq!(id, self.curr_owner.owner.id);
-        let per_ns =
-            self.curr_owner.owner.import_res[&id].map(|res| res.map(|res| self.lower_res(res)));
+        let per_ns = self
+            .curr_owner
+            .owner
+            .import_res
+            .get(&id)
+            .unwrap_or_else(|| {
+                let sp = self.tcx.source_span(self.curr_owner.owner.def_id);
+                self.tcx.dcx().span_delayed_bug(
+                    sp,
+                    "no import_res entry for import, \
+                        this should only happen if it already errored in resolve",
+                );
+                &PerNS { value_ns: None, type_ns: None, macro_ns: None }
+            })
+            .map(|res| res.map(|res| self.lower_res(res)));
+
         if per_ns.is_empty() {
             // Propagate the error to all namespaces, just to be sure.
             self.dcx().span_delayed_bug(span, "no resolution for an import");

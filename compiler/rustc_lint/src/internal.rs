@@ -41,6 +41,7 @@ impl LateLintPass<'_> for DefaultHashTypes {
         if matches!(
             cx.tcx.hir_node(hir_id),
             hir::Node::Item(hir::Item { kind: hir::ItemKind::Use(..), .. })
+                | hir::Node::NestedUseTree(_)
         ) {
             // Don't lint imports, only actual usages.
             return;
@@ -407,7 +408,9 @@ impl<'tcx> LateLintPass<'tcx> for TypeIr {
     }
 
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
-        let rustc_hir::ItemKind::Use(path, kind) = item.kind else { return };
+        let rustc_hir::ItemKind::Use(hir::UseTree { prefix: path, kind }) = item.kind else {
+            return;
+        };
 
         let is_mod_inherent = |res: Res| {
             res.opt_def_id()

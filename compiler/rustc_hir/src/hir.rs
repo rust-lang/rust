@@ -4073,7 +4073,31 @@ pub struct Variant<'hir> {
 }
 
 #[derive(Copy, Clone, Debug, StableHash)]
-pub enum UseKind {
+pub struct UseTree<'hir> {
+    pub prefix: &'hir UsePath<'hir>,
+    pub kind: UseKind<'hir>,
+}
+
+impl UseTree<'_> {
+    pub fn resolutions(&self) -> impl Iterator<Item = PerNS<Option<Res>>> {
+        Box::new(std::iter::iter!(|| {
+            match self.kind {
+                UseKind::Glob => yield self.prefix.res,
+                UseKind::Single(_) => yield self.prefix.res,
+                UseKind::Nested { items } => {
+                    for (item, _) in items {
+                        for res in item.resolutions() {
+                            yield res;
+                        }
+                    }
+                }
+            }
+        })())
+    }
+}
+
+#[derive(Copy, Clone, Debug, StableHash)]
+pub enum UseKind<'hir> {
     /// One import, e.g., `use foo::bar` or `use foo::bar as baz`.
     /// Also produced for each element of a list `use`, e.g.
     /// `use foo::{a, b}` lowers to `use foo::a; use foo::b;`.
@@ -4085,10 +4109,8 @@ pub enum UseKind {
     /// Glob import, e.g., `use foo::*`.
     Glob,
 
-    /// Degenerate list import, e.g., `use foo::{a, b}` produces
-    /// an additional `use foo::{}` for performing checks such as
-    /// unstable feature gating. May be removed in the future.
-    ListStem,
+    /// `use prefix::{...}`
+    Nested { items: &'hir [(UseTree<'hir>, HirId)] },
 }
 
 /// References to traits in impls.
@@ -4267,7 +4289,7 @@ impl<'hir> Item<'hir> {
         expect_extern_crate, (Option<Symbol>, Ident),
             ItemKind::ExternCrate(s, ident), (*s, *ident);
 
-        expect_use, (&'hir UsePath<'hir>, UseKind), ItemKind::Use(p, uk), (p, *uk);
+        expect_use, UseTree<'hir>, ItemKind::Use(ut), *ut;
 
         expect_static, (Mutability, Ident, &'hir Ty<'hir>, BodyId),
             ItemKind::Static(mutbl, ident, ty, body), (*mutbl, *ident, ty, *body);
@@ -4520,7 +4542,7 @@ pub enum ItemKind<'hir> {
     /// or just
     ///
     /// `use foo::bar::baz;` (with `as baz` implicitly on the right).
-    Use(&'hir UsePath<'hir>, UseKind),
+    Use(UseTree<'hir>),
 
     /// A `static` item.
     Static(Mutability, Ident, &'hir Ty<'hir>, BodyId),
@@ -4615,7 +4637,7 @@ impl ItemKind<'_> {
     pub fn ident(&self) -> Option<Ident> {
         match *self {
             ItemKind::ExternCrate(_, ident)
-            | ItemKind::Use(_, UseKind::Single(ident))
+            | ItemKind::Use(UseTree { kind: UseKind::Single(ident), .. })
             | ItemKind::Static(_, ident, ..)
             | ItemKind::Const(ident, ..)
             | ItemKind::Fn { ident, .. }
@@ -4628,7 +4650,7 @@ impl ItemKind<'_> {
             | ItemKind::Trait { ident, .. }
             | ItemKind::TraitAlias(_, ident, ..) => Some(ident),
 
-            ItemKind::Use(_, UseKind::Glob | UseKind::ListStem)
+            ItemKind::Use(UseTree { kind: UseKind::Glob | UseKind::Nested { .. }, .. })
             | ItemKind::ForeignMod { .. }
             | ItemKind::GlobalAsm { .. }
             | ItemKind::Impl(_)
@@ -4885,6 +4907,7 @@ impl<'hir> From<OwnerNode<'hir>> for Node<'hir> {
 pub enum Node<'hir> {
     Param(&'hir Param<'hir>),
     Item(&'hir Item<'hir>),
+    NestedUseTree(&'hir UseTree<'hir>),
     ForeignItem(&'hir ForeignItem<'hir>),
     TraitItem(&'hir TraitItem<'hir>),
     ImplItem(&'hir ImplItem<'hir>),
@@ -4950,6 +4973,7 @@ impl<'hir> Node<'hir> {
             Node::TraitItem(TraitItem { ident, .. })
             | Node::ImplItem(ImplItem { ident, .. })
             | Node::ForeignItem(ForeignItem { ident, .. })
+            | Node::NestedUseTree(UseTree { kind: UseKind::Single(ident), .. })
             | Node::Field(FieldDef { ident, .. })
             | Node::Variant(Variant { ident, .. })
             | Node::PathSegment(PathSegment { ident, .. }) => Some(*ident),
@@ -4977,6 +5001,7 @@ impl<'hir> Node<'hir> {
             | Node::Ty(..)
             | Node::TraitRef(..)
             | Node::OpaqueTy(..)
+            | Node::NestedUseTree(_)
             | Node::Infer(..)
             | Node::WherePredicate(..)
             | Node::TestBinderForall(..)
