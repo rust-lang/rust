@@ -178,7 +178,7 @@ pub fn clause_obligations<'tcx>(
             // the corresponding trait predicate it should've been generated beside.
         }
         ty::ClauseKind::RegionOutlives(..) => {}
-        ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(ty, _reg)) => {
+        ty::ClauseKind::TypeOutlives(ty::OutlivesClause(ty, _reg)) => {
             wf.add_wf_preds_for_term(ty.into());
         }
         ty::ClauseKind::Projection(t) => {
@@ -653,7 +653,7 @@ impl<'a, 'tcx> WfPredicates<'a, 'tcx> {
             for implicit_bound in implicit_bounds {
                 let cause = self.cause(ObligationCauseCode::ObjectTypeBound(ty, explicit_bound));
                 let outlives =
-                    ty::Binder::dummy(ty::OutlivesPredicate(explicit_bound, implicit_bound));
+                    ty::Binder::dummy(ty::OutlivesClause(explicit_bound, implicit_bound));
                 self.out.push(traits::Obligation::with_depth(
                     self.tcx(),
                     cause,
@@ -847,7 +847,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                         self.recursion_depth,
                         self.param_env,
                         ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(
-                            ty::OutlivesPredicate(rty, r),
+                            ty::OutlivesClause(rty, r),
                         ))),
                     ));
                 }
@@ -1235,14 +1235,14 @@ pub fn object_region_bounds<'tcx>(
 ) -> Vec<ty::Region<'tcx>> {
     let erased_self_ty = tcx.types.trait_object_dummy_self;
 
-    let predicates =
+    let clauses =
         existential_predicates.iter().map(|predicate| predicate.with_self_ty(tcx, erased_self_ty));
 
-    traits::elaborate(tcx, predicates)
-        .filter_map(|pred| {
-            debug!(?pred);
-            match pred.kind().skip_binder() {
-                ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(ref t, ref r)) => {
+    traits::elaborate(tcx, clauses)
+        .filter_map(|clause| {
+            debug!(?clause);
+            match clause.kind().skip_binder() {
+                ty::ClauseKind::TypeOutlives(ty::OutlivesClause(ref t, ref r)) => {
                     // Search for a bound of the form `erased_self_ty
                     // : 'a`, but be wary of something like `for<'a>
                     // erased_self_ty : 'a` (we interpret a

@@ -34,7 +34,7 @@ pub(crate) struct ConstraintConversion<'a, 'tcx> {
     /// logic expecting to see (e.g.) `ReStatic`, and if we supplied
     /// our special inference variable there, we would mess that up.
     region_bound_pairs: &'a RegionBoundPairs<'tcx>,
-    known_type_outlives_obligations: &'a [ty::PolyTypeOutlivesPredicate<'tcx>],
+    known_type_outlives_obligations: &'a [ty::PolyTypeOutlivesClause<'tcx>],
     locations: Locations,
     span: Span,
     category: ConstraintCategory<'tcx>,
@@ -47,7 +47,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         infcx: &'a BorrowckInferCtxt<'tcx>,
         universal_regions: &'a UniversalRegions<'tcx>,
         region_bound_pairs: &'a RegionBoundPairs<'tcx>,
-        known_type_outlives_obligations: &'a [ty::PolyTypeOutlivesPredicate<'tcx>],
+        known_type_outlives_obligations: &'a [ty::PolyTypeOutlivesClause<'tcx>],
         locations: Locations,
         span: Span,
         category: ConstraintCategory<'tcx>,
@@ -115,7 +115,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
             self.category = outlives_requirement.category;
             self.span = outlives_requirement.blame_span;
             self.convert(
-                ty::OutlivesPredicate(subject, outlived_region),
+                ty::OutlivesClause(subject, outlived_region),
                 self.category,
                 &Default::default(),
             );
@@ -125,9 +125,9 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
 
     fn convert(
         &mut self,
-        predicate: ty::ArgOutlivesPredicate<'tcx>,
+        clause: ty::ArgOutlivesClause<'tcx>,
         constraint_category: ConstraintCategory<'tcx>,
-        higher_ranked_assumptions: &FxHashSet<ty::ArgOutlivesPredicate<'tcx>>,
+        higher_ranked_assumptions: &FxHashSet<ty::ArgOutlivesClause<'tcx>>,
     ) {
         let tcx = self.infcx.tcx;
         debug!("generate: constraints at: {:#?}", self.locations);
@@ -141,15 +141,14 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
             ..
         } = *self;
 
-        let pred = predicate;
         // Constraint is implied by a coroutine's well-formedness.
         if self.infcx.tcx.sess.opts.unstable_opts.higher_ranked_assumptions
-            && higher_ranked_assumptions.contains(&pred)
+            && higher_ranked_assumptions.contains(&clause)
         {
             return;
         }
 
-        let ty::OutlivesPredicate(k1, r2) = pred;
+        let ty::OutlivesClause(k1, r2) = clause;
         match k1.kind() {
             GenericArgKind::Lifetime(r1) => {
                 let r1_vid = self.to_region_vid(r1);

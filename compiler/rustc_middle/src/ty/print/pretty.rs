@@ -2984,7 +2984,7 @@ where
     }
 }
 
-impl<'tcx, T, P: PrettyPrinter<'tcx>> Print<P> for ty::OutlivesPredicate<'tcx, T>
+impl<'tcx, T, P: PrettyPrinter<'tcx>> Print<P> for ty::OutlivesClause<'tcx, T>
 where
     T: Print<P>,
 {

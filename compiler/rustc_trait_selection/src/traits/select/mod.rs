@@ -2764,7 +2764,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             obligation.cause.clone(),
             obligation.recursion_depth + 1,
             obligation.param_env,
-            ty::Binder::dummy(ty::OutlivesPredicate(a_region, b_region)),
+            ty::Binder::dummy(ty::OutlivesClause(a_region, b_region)),
         ));
 
         Ok(Some(nested))
@@ -3267,5 +3267,5 @@ pub(crate) enum ProjectionMatchesProjection {
 #[derive(Clone, Debug, TypeFoldable, TypeVisitable)]
 pub(crate) struct AutoImplConstituents<'tcx> {
     pub types: Vec<Ty<'tcx>>,
-    pub assumptions: Vec<ty::ArgOutlivesPredicate<'tcx>>,
+    pub assumptions: Vec<ty::ArgOutlivesClause<'tcx>>,
 }

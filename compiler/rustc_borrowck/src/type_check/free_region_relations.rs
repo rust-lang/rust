@@ -44,7 +44,7 @@ type NormalizedInputsAndOutput<'tcx> = Vec<Ty<'tcx>>;
 pub(crate) struct CreateResult<'tcx> {
     pub(crate) universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
     pub(crate) region_bound_pairs: Frozen<RegionBoundPairs<'tcx>>,
-    pub(crate) known_type_outlives_obligations: Frozen<Vec<ty::PolyTypeOutlivesPredicate<'tcx>>>,
+    pub(crate) known_type_outlives_obligations: Frozen<Vec<ty::PolyTypeOutlivesClause<'tcx>>>,
     pub(crate) normalized_inputs_and_output: NormalizedInputsAndOutput<'tcx>,
 }
 
@@ -342,9 +342,9 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
 
     fn normalize_and_push_type_outlives_obligation(
         &self,
-        mut outlives: ty::PolyTypeOutlivesPredicate<'tcx>,
+        mut outlives: ty::PolyTypeOutlivesClause<'tcx>,
         span: Span,
-        known_type_outlives_obligations: &mut Vec<ty::PolyTypeOutlivesPredicate<'tcx>>,
+        known_type_outlives_obligations: &mut Vec<ty::PolyTypeOutlivesClause<'tcx>>,
         constraints: &mut Vec<&QueryRegionConstraints<'tcx>>,
     ) {
         // In the new solver, normalize the type-outlives obligation assumptions.
@@ -413,12 +413,12 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
 
                 OutlivesBound::RegionSubParam(r_a, param_b) => {
                     self.region_bound_pairs
-                        .insert(ty::OutlivesPredicate(GenericKind::Param(param_b), r_a));
+                        .insert(ty::OutlivesClause(GenericKind::Param(param_b), r_a));
                 }
 
                 OutlivesBound::RegionSubAlias(r_a, alias_b) => {
                     self.region_bound_pairs
-                        .insert(ty::OutlivesPredicate(GenericKind::Alias(alias_b), r_a));
+                        .insert(ty::OutlivesClause(GenericKind::Alias(alias_b), r_a));
                 }
             }
         }

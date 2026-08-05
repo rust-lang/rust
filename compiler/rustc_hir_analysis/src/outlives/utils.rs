@@ -5,19 +5,18 @@ use rustc_middle::{bug, span_bug};
 use rustc_span::Span;
 use smallvec::smallvec;
 
-/// Tracks the `T: 'a` or `'a: 'a` predicates that we have inferred
+/// Tracks the `T: 'a` or `'a: 'a` clauses that we have inferred
 /// must be added to the struct header.
-pub(crate) type RequiredPredicates<'tcx> = FxIndexMap<ty::ArgOutlivesPredicate<'tcx>, Span>;
+pub(crate) type RequiredClauses<'tcx> = FxIndexMap<ty::ArgOutlivesClause<'tcx>, Span>;
 
 /// Given a requirement `T: 'a` or `'b: 'a`, deduce the
-/// outlives_component and add it to `required_predicates`
-// FIXME: change this function's signature and docs to mention clauses instead of predicates
-pub(crate) fn insert_outlives_predicate<'tcx>(
+/// outlives_component and add it to `required_clauses`
+pub(crate) fn insert_outlives_clause<'tcx>(
     tcx: TyCtxt<'tcx>,
     arg: GenericArg<'tcx>,
     outlived_region: Region<'tcx>,
     span: Span,
-    required_predicates: &mut RequiredPredicates<'tcx>,
+    required_clauses: &mut RequiredClauses<'tcx>,
 ) {
     // If the `'a` region is bound within the field type itself, we
     // don't want to propagate this constraint to the header.
@@ -51,12 +50,12 @@ pub(crate) fn insert_outlives_predicate<'tcx>(
                         // u32`. Decomposing `&'b u32` into
                         // components would yield `'b`, and we add the
                         // where clause that `'b: 'a`.
-                        insert_outlives_predicate(
+                        insert_outlives_clause(
                             tcx,
                             r.into(),
                             outlived_region,
                             span,
-                            required_predicates,
+                            required_clauses,
                         );
                     }
 
@@ -75,8 +74,8 @@ pub(crate) fn insert_outlives_predicate<'tcx>(
                         // components would yield `U`, and we add the
                         // where clause that `U: 'a`.
                         let ty: Ty<'tcx> = param_ty.to_ty(tcx);
-                        required_predicates
-                            .entry(ty::OutlivesPredicate(ty.into(), outlived_region))
+                        required_clauses
+                            .entry(ty::OutlivesClause(ty.into(), outlived_region))
                             .or_insert(span);
                     }
 
@@ -104,8 +103,8 @@ pub(crate) fn insert_outlives_predicate<'tcx>(
                         // Here we want to add an explicit `where <T as Iterator>::Item: 'a`
                         // or `Opaque<T>: 'a` depending on the alias kind.
                         let ty = alias_ty.to_ty(tcx, is_rigid);
-                        required_predicates
-                            .entry(ty::OutlivesPredicate(ty.into(), outlived_region))
+                        required_clauses
+                            .entry(ty::OutlivesClause(ty.into(), outlived_region))
                             .or_insert(span);
                     }
 
@@ -135,7 +134,7 @@ pub(crate) fn insert_outlives_predicate<'tcx>(
             if !is_free_region(r) {
                 return;
             }
-            required_predicates.entry(ty::OutlivesPredicate(arg, outlived_region)).or_insert(span);
+            required_clauses.entry(ty::OutlivesClause(arg, outlived_region)).or_insert(span);
         }
 
         GenericArgKind::Const(_) => {
