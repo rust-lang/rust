@@ -359,7 +359,7 @@ pub fn internal_target_features<'a, const N: usize>(
                     }
 
                     // Check feature stability.
-                    if let Stability::InternalOnly { reason, hard_error } = stability {
+                    if let Stability::InternalOnly { reason, hard_error, .. } = stability {
                         let diag = diagnostics::InternalOnlyCTargetFeature {
                             feature: base_feature,
                             enabled: if enable { "enabled" } else { "disabled" },
