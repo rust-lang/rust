@@ -60,7 +60,7 @@ pub(crate) fn clif_vector_type<'tcx>(tcx: TyCtxt<'tcx>, layout: TyAndLayout<'tcx
         _ => unreachable!(),
     };
 
-    scalar_to_clif_type(tcx, element).by(u32::try_from(count).unwrap()).unwrap()
+    scalar_to_clif_type(tcx, element).by(count.as_u32()).unwrap()
 }
 
 fn simd_for_each_lane<'tcx>(
