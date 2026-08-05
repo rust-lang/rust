@@ -489,7 +489,7 @@ fn expr_to_lit<'sess>(
     }
 }
 
-/// Whether expansions of `expr` metavariables from decrarative macros
+/// Whether expansions of `expr` metavariables from declarative  macros
 /// are permitted. Used when parsing meta items; currently, only `cfg` predicates
 /// enable this option
 #[derive(Clone, Copy, PartialEq, Eq)]
