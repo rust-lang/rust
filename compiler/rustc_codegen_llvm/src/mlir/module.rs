@@ -184,6 +184,12 @@ impl<'c> MlirModule<'c> {
         unsafe {
             options.data.cuda.capability = capability;
             options.data.cuda.ptx_version = OptionalI32::some(resolve_ptx_version(capability));
+            // `debug` gates the C++ backend's per-pass IR printing (see
+            // CudaBackend::makeTTIR/makeTTGIR/makeLLIR) — only worth paying for
+            // when a subscriber is actually listening at trace level for this
+            // backend's log target.
+            options.data.cuda.debug =
+                tracing::enabled!(target: crate::mlir::LOG_TARGET, tracing::Level::TRACE);
         }
         let compiler = TritonCompiler::new(context.to_raw(), "cuda", &options)
             .expect("Failed to create Triton compiler");
