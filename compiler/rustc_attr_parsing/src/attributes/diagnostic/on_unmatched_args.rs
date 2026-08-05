@@ -14,13 +14,9 @@ impl AttributeParser for OnUnmatchedArgsParser {
     const ATTRIBUTES: AcceptMapping<Self> = &[(
         &[sym::diagnostic, sym::on_unmatched_args],
         template!(List: &[r#"/*opt*/ message = "...", /*opt*/ label = "...", /*opt*/ note = "...""#]),
-        AttributeStability::Stable, // Unstable, stability checked manually in the parser
+        AttributeStability::Stable, // Unstable, stability checked manually below
         |this, cx, args| {
-            if !cx.features().diagnostic_on_unmatched_args() {
-                // `UnknownDiagnosticAttribute` is emitted in rustc_resolve/macros.rs
-                args.ignore_args();
-                return;
-            }
+            gate_diagnostic_attr!(diagnostic_on_unmatched_args);
 
             let span = cx.attr_span;
             this.span = Some(span);

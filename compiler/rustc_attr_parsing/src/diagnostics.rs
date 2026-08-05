@@ -848,3 +848,32 @@ pub(crate) struct ToolReserved {
     pub(crate) span: Span,
     pub(crate) tool: Ident,
 }
+
+#[derive(Diagnostic)]
+#[diag("unknown diagnostic attribute")]
+pub(crate) struct UnknownDiagnosticAttribute {
+    #[subdiagnostic]
+    pub typo: Option<UnknownDiagnosticAttributeTypo>,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    "an attribute with a similar name exists",
+    style = "verbose",
+    code = "{typo_name}",
+    applicability = "machine-applicable"
+)]
+pub(crate) struct UnknownDiagnosticAttributeTypo {
+    #[primary_span]
+    pub span: Span,
+    pub typo_name: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag("unknown diagnostic attribute")]
+pub(crate) struct UnstableDiagnosticAttribute {
+    #[note("this is an experimental diagnostic attribute")]
+    #[help("add `#![feature({$feature})]` to the crate attributes to enable")]
+    pub nightly_build: bool,
+    pub feature: Symbol,
+}

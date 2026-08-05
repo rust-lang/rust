@@ -25,11 +25,9 @@ use rustc_middle::ty::{RegisteredTools, TyCtxt};
 use rustc_session::Session;
 use rustc_session::diagnostics::feature_err;
 use rustc_session::lint::builtin::{
-    LEGACY_DERIVE_HELPERS, OUT_OF_SCOPE_MACRO_CALLS, UNKNOWN_DIAGNOSTIC_ATTRIBUTES,
-    UNUSED_MACRO_RULES, UNUSED_MACROS,
+    LEGACY_DERIVE_HELPERS, OUT_OF_SCOPE_MACRO_CALLS, UNUSED_MACRO_RULES, UNUSED_MACROS,
 };
 use rustc_span::def_id::ModId;
-use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{self, AstPass, ExpnData, ExpnKind, LocalExpnId, MacroKind};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
@@ -740,60 +738,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 "custom inner attributes are unstable"
             };
             feature_err(&self.tcx.sess, sym::custom_inner_attributes, path.span, msg).emit();
-        }
-
-        const DIAGNOSTIC_ATTRIBUTES: &[(Symbol, Option<Symbol>)] = &[
-            (sym::on_unimplemented, None),
-            (sym::do_not_recommend, None),
-            (sym::on_move, Some(sym::diagnostic_on_move)),
-            (sym::on_const, Some(sym::diagnostic_on_const)),
-            (sym::on_unknown, Some(sym::diagnostic_on_unknown)),
-            (sym::on_unmatched_args, Some(sym::diagnostic_on_unmatched_args)),
-            (sym::on_type_error, Some(sym::diagnostic_on_type_error)),
-            (sym::opaque, Some(sym::diagnostic_opaque)),
-        ];
-
-        if res == Res::NonMacroAttr(NonMacroAttrKind::Tool)
-            && let [namespace, attribute, ..] = &*path.segments
-            && namespace.ident.name == sym::diagnostic
-            && !DIAGNOSTIC_ATTRIBUTES.iter().any(|(attr, feature)| {
-                attribute.ident.name == *attr && feature.is_none_or(|f| self.features.enabled(f))
-            })
-        {
-            let name = attribute.ident.name;
-            let span = attribute.span();
-
-            let help = 'help: {
-                if self.tcx.sess.is_nightly_build() {
-                    for (attr, feature) in DIAGNOSTIC_ATTRIBUTES {
-                        if let Some(feature) = *feature
-                            && *attr == name
-                        {
-                            break 'help Some(
-                                diagnostics::UnknownDiagnosticAttributeHelp::UseFeature { feature },
-                            );
-                        }
-                    }
-                }
-
-                let candidates = DIAGNOSTIC_ATTRIBUTES
-                    .iter()
-                    .filter_map(|(attr, feature)| {
-                        feature.is_none_or(|f| self.features.enabled(f)).then_some(*attr)
-                    })
-                    .collect::<Vec<_>>();
-
-                find_best_match_for_name(&candidates, name, None).map(|typo_name| {
-                    diagnostics::UnknownDiagnosticAttributeHelp::Typo { span, typo_name }
-                })
-            };
-
-            self.tcx.sess.psess.buffer_lint(
-                UNKNOWN_DIAGNOSTIC_ATTRIBUTES,
-                span,
-                node_id,
-                diagnostics::UnknownDiagnosticAttribute { help },
-            );
         }
 
         Ok((ext, res))
