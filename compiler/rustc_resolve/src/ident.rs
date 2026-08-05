@@ -419,7 +419,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         ignore_import: Option<Import<'ra>>,
     ) -> Result<Decl<'ra>, Determinacy> {
         // Make sure `self`, `super` etc produce an error when passed to here.
-        if !matches!(scope_set, ScopeSet::Module(..)) && ident.name.is_path_segment_keyword() {
+        if ident.name.is_path_segment_keyword() {
             return Err(Determinacy::Determined);
         }
 
@@ -1077,10 +1077,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     {
                         let module = self.resolve_crate_root(ident);
                         return Ok(module.self_decl.unwrap());
-                    } else if ident.name == kw::Super {
-                        // FIXME: Implement these with renaming requirements so that e.g.
-                        // `use super;` doesn't work, but `use super as name;` does.
-                        // Fall through here to get an error from `early_resolve_...`.
                     }
                 }
 
