@@ -45,18 +45,13 @@ pub(crate) fn adjust_activity_to_abi<'tcx>(
     let mut del_activities = 0;
     for (i, ty) in sig.inputs().iter().enumerate() {
         if let Some(inner_ty) = ty.builtin_deref(true) {
-            if inner_ty.is_slice() {
+            let tail_ty = tcx.struct_tail_for_codegen(inner_ty, typing_env);
+            if let ty::Slice(element_ty) = tail_ty.kind() {
                 // Now we need to figure out the size of each slice element in memory to allow
                 // safety checks and usability improvements in the backend.
-                let sty = match inner_ty.builtin_index() {
-                    Some(sty) => sty,
-                    None => {
-                        panic!("slice element type unknown");
-                    }
-                };
                 let pci = PseudoCanonicalInput {
                     typing_env: TypingEnv::fully_monomorphized(),
-                    value: sty,
+                    value: *element_ty,
                 };
 
                 let layout = tcx.layout_of(pci);
