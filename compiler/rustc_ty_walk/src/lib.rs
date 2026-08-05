@@ -1,5 +1,9 @@
-//! This module contains helpers for walking all types of
-//! a signature, while preserving spans as much as possible
+//! This crate contains a helper for walking all types of a signature, while preserving spans as
+//! much as possible
+
+// tidy-alphabetical-start
+#![feature(associated_type_defaults)]
+// tidy-alphabetical-end
 
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
