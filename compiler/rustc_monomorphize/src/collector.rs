@@ -1486,7 +1486,13 @@ fn collect_roots(tcx: TyCtxt<'_>, mode: MonoItemCollectionStrategy) -> Vec<MonoI
 
     // Read the manifest and add the recorded kernel instantiations as roots so they are codegened.
     if let Some(manifest_path) = tcx.sess.opts.unstable_opts.offload.iter().find_map(|o| {
-        if let rustc_session::config::Offload::DeviceWithManifest(p) = o { Some(p) } else { None }
+        if let rustc_session::config::Offload::Device(p) = o
+            && !p.is_empty()
+        {
+            Some(p)
+        } else {
+            None
+        }
     }) {
         tcx.sess.file_depinfo.borrow_mut().insert(Symbol::intern(manifest_path));
         match crate::offload_manifest::read_manifest(std::path::Path::new(manifest_path), tcx) {
@@ -1551,6 +1557,17 @@ fn collect_roots(tcx: TyCtxt<'_>, mode: MonoItemCollectionStrategy) -> Vec<MonoI
             }
         }
         for id in crate_items.impl_items() {
+            if !matches!(tcx.def_kind(id.owner_id), DefKind::Fn | DefKind::AssocFn) {
+                continue;
+            }
+            let def_id = id.owner_id.to_def_id();
+            if !tcx.generics_of(def_id).requires_monomorphization(tcx)
+                && tcx.codegen_fn_attrs(def_id).flags.intersects(CodegenFnAttrFlags::OFFLOAD_KERNEL)
+            {
+                roots.push(dummy_spanned(MonoItem::Fn(Instance::mono(tcx, def_id))));
+            }
+        }
+        for id in crate_items.trait_items() {
             if !matches!(tcx.def_kind(id.owner_id), DefKind::Fn | DefKind::AssocFn) {
                 continue;
             }
