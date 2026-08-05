@@ -63,7 +63,6 @@ mod trait_assoc_fn_to_other {
         reuse <F as Trait>::foo2;
         reuse to_reuse::foo3;
         reuse F::foo4 { &F }
-        //~^ ERROR the size for values of type `Self` cannot be known at compilation time
     }
 }
 
