@@ -338,7 +338,6 @@ impl StoreVisitor for ExprScopeVisitor<'_> {
             Expr::Block { statements, tail, id, label } => {
                 self.visit_block(expr, *id, statements, *tail, *label);
             }
-            Expr::Const(expr) => self.on_anon_const_expr(*expr),
             Expr::Unsafe { id, statements, tail } => {
                 self.visit_block(expr, *id, statements, *tail, None);
             }

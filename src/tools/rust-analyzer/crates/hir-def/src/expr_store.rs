@@ -117,7 +117,7 @@ struct ExpressionOnlyStore {
     pats: Arena<Pat>,
     bindings: Arena<Binding>,
     labels: Arena<Label>,
-    /// Id of the closure/coroutine that owns the corresponding binding. If a binding is owned by the
+    /// Id of the closure/coroutine/anon const that owns the corresponding binding. If a binding is owned by the
     /// top level expression, it will not be listed in here.
     binding_owners: FxHashMap<BindingId, ExprId>,
     /// Block expressions in this store that may contain inner items.
@@ -654,18 +654,6 @@ impl ExpressionStore {
         self.walk_pats_shallow(pat_id, |p| self.walk_pats(p, f));
     }
 
-    pub fn is_binding_upvar(&self, binding: BindingId, relative_to: ExprId) -> bool {
-        let Some(expr_only) = &self.expr_only else { return false };
-        match expr_only.binding_owners.get(&binding) {
-            Some(it) => {
-                // We assign expression ids in a way that outer closures will receive
-                // a higher id (allocated after their body is collected)
-                it.into_raw() > relative_to.into_raw()
-            }
-            None => true,
-        }
-    }
-
     #[inline]
     pub fn binding_owner(&self, id: BindingId) -> Option<ExprId> {
         self.expr_only.as_ref()?.binding_owners.get(&id).copied()
@@ -777,10 +765,8 @@ impl ExpressionStore {
             Expr::Field { expr, name: _ }
             | Expr::Await { expr }
             | Expr::Ref { expr, mutability: _, rawness: _ }
-            | Expr::UnaryOp { expr, op: _ }
-            | Expr::Const(expr) => {
-                visitor.on_expr(*expr);
-            }
+            | Expr::UnaryOp { expr, op: _ } => visitor.on_expr(*expr),
+            Expr::Const(expr) => visitor.on_anon_const_expr(*expr),
             Expr::Tuple { exprs } => visitor.on_exprs(exprs),
             Expr::Array(a) => match a {
                 Array::ElementList { elements } => visitor.on_exprs(elements),
@@ -1005,7 +991,7 @@ impl<V: StoreVisitor> StoreVisitor for &mut V {
     }
 }
 
-trait StoreVisitorExt: StoreVisitor {
+pub trait StoreVisitorExt: StoreVisitor {
     fn on_type_bound(&mut self, bound: &TypeBound) {
         match bound {
             TypeBound::Path(path_id, _) => self.on_type(path_id.type_ref()),
