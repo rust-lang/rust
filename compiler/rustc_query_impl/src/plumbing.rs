@@ -179,8 +179,7 @@ pub(crate) fn promote_from_disk_inner<'tcx, C: QueryCache>(
 
     // Verify the fingerprints of the same subset of loaded values as
     // `load_from_disk_or_invoke_provider_green` does.
-    let prev_fingerprint = dep_graph_data.prev_value_fingerprint_of(prev_index);
-    if should_verify_loaded_value(tcx, prev_fingerprint) {
+    if should_verify_loaded_value(tcx, dep_graph_data, dep_node.key_fingerprint) {
         incremental_verify_ich(
             tcx,
             dep_graph_data,
