@@ -7,10 +7,7 @@ use tempfile::TempDir;
 use crate::{Config, Flags};
 
 pub mod git;
-
-// Note: tests for `shared_helpers` is separate here, as otherwise shim binaries that include the
-// `shared_helpers` via `#[path]` would fail to find it, breaking `./x check bootstrap`.
-mod shared_helpers_tests;
+mod shim_utils_tests;
 
 /// Holds temporary state of a bootstrap test.
 /// Right now it is only used to redirect the build directory of the bootstrap

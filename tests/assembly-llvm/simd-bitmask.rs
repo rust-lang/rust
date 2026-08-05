@@ -11,7 +11,7 @@
 //@ [aarch64] min-llvm-version: 23
 //@ [aarch64] compile-flags: --target=aarch64-unknown-linux-gnu
 //@ [aarch64] needs-llvm-components: aarch64
-//@ [aarch64-llvm-pre-23] ignore-llvm-version: 23 - 99
+//@ [aarch64-llvm-pre-23] max-llvm-major-version: 22
 //@ [aarch64-llvm-pre-23] compile-flags: --target=aarch64-unknown-linux-gnu
 //@ [aarch64-llvm-pre-23] needs-llvm-components: aarch64
 //@ assembly-output: emit-asm

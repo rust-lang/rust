@@ -261,9 +261,6 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for ThorinErrorWrapper {
             thorin::Error::ParseUnitAbbreviations(_) => {
                 build(msg!("failed to parse unit abbreviations"))
             }
-            thorin::Error::ParseUnitAttribute(_) => {
-                build(msg!("failed to parse unit attribute"))
-            }
             thorin::Error::ParseUnitHeader(_) => {
                 build(msg!("failed to parse unit header"))
             }
@@ -1201,7 +1198,7 @@ pub(crate) struct XcrunSdkPathWarning {
 pub(crate) struct Aarch64SoftfloatNeon;
 
 #[derive(Diagnostic)]
-#[diag("unknown feature specified for `-Ctarget-feature`: `{$feature}`")]
+#[diag("ignoring feature with missing prefix in `-Ctarget-feature`: `{$feature}`")]
 #[note("features must begin with a `+` to enable or `-` to disable it")]
 pub(crate) struct UnknownCTargetFeaturePrefix<'a> {
     pub feature: &'a str,

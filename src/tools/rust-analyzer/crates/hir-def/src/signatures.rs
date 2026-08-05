@@ -52,7 +52,7 @@ pub struct StructSignature {
 
 bitflags! {
     #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-    pub struct StructFlags: u8 {
+    pub struct StructFlags: u16 {
         /// Indicates whether this struct has `#[repr]`.
         const HAS_REPR = 1 << 0;
         /// Indicates whether the struct has a `#[rustc_has_incoherent_inherent_impls]` attribute.
@@ -69,6 +69,8 @@ bitflags! {
         const IS_UNSAFE_CELL   = 1 << 6;
         /// Indicates whether this struct is `UnsafePinned`.
         const IS_UNSAFE_PINNED = 1 << 7;
+        /// Indicates whether this struct is `CovariantUnsafeCell`.
+        const IS_COVARIANT_UNSAFE_CELL = 1 << 8;
     }
 }
 
@@ -104,6 +106,9 @@ impl StructSignature {
                 _ if lang == sym::owned_box => flags |= StructFlags::IS_BOX,
                 _ if lang == sym::manually_drop => flags |= StructFlags::IS_MANUALLY_DROP,
                 _ if lang == sym::unsafe_cell => flags |= StructFlags::IS_UNSAFE_CELL,
+                _ if lang == sym::covariant_unsafe_cell => {
+                    flags |= StructFlags::IS_COVARIANT_UNSAFE_CELL
+                }
                 _ if lang == sym::unsafe_pinned => flags |= StructFlags::IS_UNSAFE_PINNED,
                 _ => (),
             }
@@ -545,7 +550,7 @@ impl TraitSignature {
         let attrs = AttrFlags::query(db, id.into());
         let source = loc.source(db);
         if source.value.auto_token().is_some() {
-            flags.insert(TraitFlags::AUTO);
+            flags.insert(TraitFlags::AUTO | TraitFlags::COINDUCTIVE);
         }
         if source.value.unsafe_token().is_some() {
             flags.insert(TraitFlags::UNSAFE);

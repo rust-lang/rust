@@ -2548,7 +2548,6 @@ impl<'a, 'db> Evaluator<'a, 'db> {
         ty: Ty<'db>,
         locals: &Locals<'a, 'db>,
     ) -> Result<'db, ()> {
-        // FIXME: support indirect references
         let layout = self.layout(ty)?;
         let my_size = self.size_of_sized(ty, locals, "value to patch address")?;
         use rustc_type_ir::TyKind;
@@ -2574,9 +2573,30 @@ impl<'a, 'db> Evaluator<'a, 'db> {
                         )?;
                     }
                     None => {
-                        let current = from_bytes!(usize, self.read_memory(addr, my_size / 2)?);
-                        if let Some(it) = patch_map.get(&current) {
-                            self.write_memory(addr, &it.to_le_bytes())?;
+                        let bytes = self.read_memory(addr, my_size)?;
+                        let (current, metadata) = bytes.split_at(my_size / 2);
+                        let metadata = metadata.to_vec();
+                        let current = from_bytes!(usize, current);
+                        let patched = match patch_map.get(&current) {
+                            Some(it) => {
+                                self.write_memory(addr, &it.to_le_bytes())?;
+                                *it
+                            }
+                            None => current,
+                        };
+                        let patched = Address::from_usize(patched);
+                        if let TyKind::Slice(inner) = t.kind() {
+                            let len = from_bytes!(usize, metadata);
+                            let size = self.size_of_sized(inner, locals, "slice item to patch")?;
+                            for i in 0..len {
+                                self.patch_addresses(
+                                    patch_map,
+                                    ty_of_bytes,
+                                    patched.offset(i * size),
+                                    inner,
+                                    locals,
+                                )?;
+                            }
                         }
                     }
                 }

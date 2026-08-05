@@ -27,7 +27,7 @@ use crate::{
     consteval::ConstEvalError,
     dyn_compatibility::DynCompatibilityViolation,
     layout::{Layout, LayoutError},
-    lower::{GenericDefaults, TrackedStructToken, TypeAliasBounds},
+    lower::{GenericDefaults, TrackedStructToken, TypeAliasBounds, WithDefinedOpaques},
     mir::{MirBody, MirLowerError},
     next_solver::{
         Allocation, Clause, EarlyBinder, GenericArgs, ParamEnv, PolyFnSig, StoredClauses,
@@ -172,7 +172,7 @@ pub trait HirDatabase: SourceDatabase + 'static {
     fn type_for_type_alias_with_diagnostics<'db>(
         &'db self,
         def: TypeAliasId,
-    ) -> &'db TyLoweringResult<'db, StoredEarlyBinder<StoredTy>> {
+    ) -> &'db TyLoweringResult<'db, WithDefinedOpaques<StoredEarlyBinder<StoredTy>>> {
         let db = self.as_dyn();
         crate::lower::type_for_type_alias_with_diagnostics(db, def)
     }
@@ -275,12 +275,12 @@ pub trait HirDatabase: SourceDatabase + 'static {
         crate::lower::callable_item_signature(db, def)
     }
 
-    fn callable_item_signature_with_diagnostics<'db>(
+    fn fn_sig_for_fn_with_diagnostics<'db>(
         &'db self,
-        def: CallableDefId,
-    ) -> &'db TyLoweringResult<'db, StoredEarlyBinder<StoredPolyFnSig>> {
+        def: FunctionId,
+    ) -> &'db TyLoweringResult<'db, WithDefinedOpaques<StoredEarlyBinder<StoredPolyFnSig>>> {
         let db = self.as_dyn();
-        crate::lower::callable_item_signature_with_diagnostics(db, def)
+        crate::lower::fn_sig_for_fn(db, def)
     }
 
     fn trait_environment<'db>(&'db self, def: GenericDefId) -> ParamEnv<'db> {
@@ -513,8 +513,9 @@ impl<'db> AnonConstId<'db> {
                 result.push(db.type_for_type_alias_with_diagnostics(id).defined_anon_consts());
                 result.push(db.type_alias_bounds_with_diagnostics(id).defined_anon_consts());
             }
-            GenericDefId::FunctionId(id) => result
-                .push(db.callable_item_signature_with_diagnostics(id.into()).defined_anon_consts()),
+            GenericDefId::FunctionId(id) => {
+                result.push(db.fn_sig_for_fn_with_diagnostics(id).defined_anon_consts())
+            }
             GenericDefId::ConstId(def) => {
                 result.push(db.type_for_const_with_diagnostics(def).defined_anon_consts())
             }

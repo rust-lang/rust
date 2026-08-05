@@ -1028,13 +1028,6 @@ pub(crate) enum UnexportableItem<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag("`eii_macro_for` is only valid on functions and statics")]
-pub(crate) struct EiiImplTarget {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag("`#[{$name}]` is unsafe to implement")]
 pub(crate) struct EiiImplRequiresUnsafe {
     #[primary_span]
@@ -1116,14 +1109,6 @@ pub(crate) struct MustImplementNotFunctionNote {}
 pub(crate) struct FunctionNotFoundInTrait {
     #[primary_span]
     pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag("functions names are duplicated")]
-#[note("all `#[rustc_must_implement_one_of]` arguments must be unique")]
-pub(crate) struct FunctionNamesDuplicated {
-    #[primary_span]
-    pub spans: Vec<Span>,
 }
 
 #[derive(Diagnostic)]

@@ -4,4 +4,4 @@ expression: test rustdoc-html
 ---
 [Test] test::RustdocHtml
     targets: [x86_64-unknown-linux-gnu]
-    - Suite(test::tests/rustdoc-html)
+    - Suite(tests/rustdoc-html)

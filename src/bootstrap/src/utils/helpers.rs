@@ -12,11 +12,11 @@ use std::{env, fs, io, panic, str};
 
 use build_helper::ci::CiEnv;
 use object::read::archive::ArchiveFile;
+pub(crate) use shim_utils::{dylib_path, dylib_path_var};
 
 use crate::core::builder::Builder;
 use crate::core::config::{Config, TargetSelection};
 use crate::utils::exec::{BootstrapCommand, command};
-pub use crate::utils::shared_helpers::{dylib_path, dylib_path_var};
 use crate::{BootstrapOverrideLld, StepStack};
 
 #[cfg(test)]
@@ -68,7 +68,7 @@ macro_rules! t {
 
 pub use t;
 pub fn exe(name: &str, target: TargetSelection) -> String {
-    crate::utils::shared_helpers::exe(name, &target.triple)
+    shim_utils::exe(name, &target.triple)
 }
 
 /// Returns the path to the split debug info for the specified file if it exists.

@@ -4,4 +4,4 @@ expression: test tidy
 ---
 [Test] test::Tidy
     targets: [x86_64-unknown-linux-gnu]
-    - Set({test::src/tools/tidy})
+    - Set({src/tools/tidy})

@@ -73,14 +73,6 @@ pub(crate) struct CLIStepPath {
     pub(crate) will_be_executed: bool,
 }
 
-#[cfg(test)]
-impl CLIStepPath {
-    pub(crate) fn will_be_executed(mut self, will_be_executed: bool) -> Self {
-        self.will_be_executed = will_be_executed;
-        self
-    }
-}
-
 impl Debug for CLIStepPath {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.path.display())
@@ -203,7 +195,7 @@ pub(crate) fn match_paths_to_steps_and_run(
     let mut steps_to_run = vec![];
 
     for StepExtra { desc, should_run } in &steps {
-        let pathsets = should_run.pathset_for_paths_removing_matches(&mut paths, desc.kind);
+        let pathsets = should_run.pathsets_for_paths_flagging_matches(&mut paths);
 
         // This value is used for sorting the step execution order.
         // By default, `usize::MAX` is used as the index for steps to assign them the lowest priority.

@@ -102,8 +102,7 @@ impl RaFixtureAnalysis {
                 else {
                     return false;
                 };
-                segment1.text_non_mutable() == "rust_analyzer"
-                    && segment2.text_non_mutable() == "rust_fixture"
+                segment1.text() == "rust_analyzer" && segment2.text() == "rust_fixture"
             })
         });
         if !has_rust_fixture_attr {

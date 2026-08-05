@@ -19,9 +19,6 @@ This tracks support for additional registers in architectures where inline assem
 
 | Architecture | Register class | Target feature | Allowed types |
 | ------------ | -------------- | -------------- | ------------- |
-| x86 | `xmm_reg` | `sse` | `i128` |
-| x86 | `ymm_reg` | `avx` | `i128` |
-| x86 | `zmm_reg` | `avx512f` | `i128` |
 | LoongArch | `vreg` | `lsx` | `f32`, `f64`, <br> `i8x16`, `i16x8`, `i32x4`, `i64x2`, `f32x4`, `f64x2` |
 | LoongArch | `xreg` | `lasx` | `f32`, `f64`, <br> `i8x16`, `i16x8`, `i32x4`, `i64x2`, `f32x4`, `f64x2`, <br> `i8x32`, `i16x16`, `i32x8`, `i64x4`, `f32x8`, `f64x4` |
 

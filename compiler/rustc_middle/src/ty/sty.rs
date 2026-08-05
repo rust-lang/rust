@@ -735,7 +735,6 @@ impl<'tcx> Ty<'tcx> {
             tcx.def_kind(def_id),
             DefKind::AssocFn | DefKind::Fn | DefKind::Ctor(_, CtorKind::Fn)
         );
-        // FIXME(156581): check that the binder is being used correctly (turbofishing/fndef changes)
         let args = args.map_bound(|args| tcx.check_and_mk_args(def_id, args));
         Ty::new(tcx, FnDef(def_id, args))
     }

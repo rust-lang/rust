@@ -665,7 +665,7 @@ impl<'db> ExprCollector<'db> {
         lifetime: ast::Lifetime,
     ) -> LifetimeRefId {
         // FIXME: Keyword check?
-        let lifetime_ref = match &*lifetime.text() {
+        let lifetime_ref = match lifetime.text() {
             "" | "'" => LifetimeRef::Error,
             "'static" => LifetimeRef::Static,
             "'_" => LifetimeRef::Placeholder,
@@ -1295,7 +1295,7 @@ impl<'db> ExprCollector<'db> {
         match binder.generic_param_list() {
             Some(gpl) => gpl
                 .lifetime_params()
-                .flat_map(|lp| lp.lifetime().map(|lt| Name::new_lifetime(&lt.text())))
+                .flat_map(|lp| lp.lifetime().map(|lt| Name::new_lifetime(lt.text())))
                 .collect(),
             None => ThinVec::default(),
         }
@@ -3175,7 +3175,7 @@ impl<'db> ExprCollector<'db> {
             name: ast_label
                 .lifetime()
                 .as_ref()
-                .map_or_else(Name::missing, |lt| Name::new_lifetime(&lt.text())),
+                .map_or_else(Name::missing, |lt| Name::new_lifetime(lt.text())),
         };
         self.alloc_label(label, AstPtr::new(&ast_label))
     }
@@ -3195,7 +3195,7 @@ impl<'db> ExprCollector<'db> {
                 (hygiene_id.syntax_context().parent(self.db), expansion.def)
             })
         };
-        let name = Name::new_lifetime(&lifetime.text());
+        let name = Name::new_lifetime(lifetime.text());
 
         for (rib_idx, rib) in self.label_ribs.iter().enumerate().rev() {
             match &rib.kind {

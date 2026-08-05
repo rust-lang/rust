@@ -2526,23 +2526,21 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             if applicable_close_candidates.is_empty() {
                 Ok(None)
             } else {
-                let best_name = {
-                    let names = applicable_close_candidates
-                        .iter()
-                        .map(|cand| cand.name())
-                        .collect::<Vec<Symbol>>();
-                    find_best_match_for_name_with_substrings(
-                        &names,
-                        self.method_name.unwrap().name,
-                        None,
-                    )
-                }
-                .or_else(|| {
-                    applicable_close_candidates
-                        .iter()
-                        .find(|cand| self.matches_by_doc_alias(cand.def_id))
-                        .map(|cand| cand.name())
-                });
+                let best_name = applicable_close_candidates
+                    .iter()
+                    .find(|cand| self.matches_by_doc_alias(cand.def_id))
+                    .map(|cand| cand.name())
+                    .or_else(|| {
+                        let names = applicable_close_candidates
+                            .iter()
+                            .map(|cand| cand.name())
+                            .collect::<Vec<Symbol>>();
+                        find_best_match_for_name_with_substrings(
+                            &names,
+                            self.method_name.unwrap().name,
+                            None,
+                        )
+                    });
                 Ok(best_name.and_then(|best_name| {
                     applicable_close_candidates
                         .into_iter()

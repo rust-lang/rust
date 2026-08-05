@@ -325,7 +325,6 @@ pub fn build_drop_shim<'tcx>(
         start.terminator = Some(Terminator {
             source_info,
             kind: TerminatorKind::Call {
-                // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
                 func: Operand::function_handle(
                     tcx,
                     def_id,
@@ -460,7 +459,9 @@ impl<'a, 'tcx> DropElaborator<'a, 'tcx> for DropShimElaborator<'a, 'tcx> {
         None
     }
 
-    fn clear_drop_flag(&mut self, _location: Location, _path: Self::Path, _mode: DropFlagMode) {}
+    fn drop_flags_for(&mut self, _path: Self::Path, _mode: DropFlagMode) -> Vec<Place<'tcx>> {
+        Vec::new()
+    }
 
     fn field_subpath(&self, _path: Self::Path, _field: FieldIdx) -> Option<Self::Path> {
         None
@@ -622,7 +623,6 @@ impl<'tcx> CloneShimBuilder<'tcx> {
         let tcx = self.tcx;
 
         // `func == Clone::clone(&ty) -> ty`
-        // FIXME(156581): actually instantiate the binder correctly (turbofishing/fndef changes)
         let func_ty = tcx.type_of(self.def_id).instantiate(tcx, &[ty.into()]).skip_norm_wip();
         let func = Operand::Constant(Box::new(ConstOperand {
             span: self.span,

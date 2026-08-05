@@ -646,7 +646,11 @@ fn llvm_features_by_flags(sess: &Session, features: &mut Vec<String>) {
 
 /// The list of LLVM features computed from CLI flags (`-Ctarget-cpu`, `-Ctarget-feature`,
 /// `--target` and similar).
-pub(crate) fn global_llvm_features(sess: &Session, only_base_features: bool) -> Vec<String> {
+///
+/// If `for_cfg` is `true` then we are assembling the feature list for the purpose of populating
+/// [`rustc_codegen_ssa::TargetConfig`] based on what LLVM actually enables in this configuration.
+/// `-Ctarget-feature` should be ignored in that case since it is already processed separately.
+pub(crate) fn global_llvm_features(sess: &Session, for_cfg: bool) -> Vec<String> {
     // Features that come earlier are overridden by conflicting features later in the string.
     // Typically we'll want more explicit settings to override the implicit ones, so:
     //
@@ -725,13 +729,32 @@ pub(crate) fn global_llvm_features(sess: &Session, only_base_features: bool) -> 
     // Features implied by an implicit or explicit `--target`.
     target_features::target_spec_to_backend_features(sess, &mut extend_backend_features);
 
-    // -Ctarget-features
-    if !only_base_features {
+    // -Ctarget-features. Skipped for `cfg` as there we parse -Ctarget-features directly instead of
+    // going via an LLVM target machine (which avoids accidentally picking up LLVM-level target
+    // feature implications that we do not want).
+    if !for_cfg {
         target_features::flag_to_backend_features(sess, extend_backend_features);
     }
 
     // We add this in the "base target" so that these show up in `sess.unstable_target_features`.
     llvm_features_by_flags(sess, &mut features);
+
+    // `-Zllvm-target-features`, all the way at the end to overwrite everything.
+    // Should be picked up by `cfg` (e.g. if someone enables AVX this way).
+    for feature in sess.opts.unstable_opts.llvm_target_feature.split(',') {
+        if feature.is_empty() {
+            continue;
+        }
+        if feature.starts_with('+') || feature.starts_with('-') {
+            features.push(feature.to_owned());
+        } else {
+            // LLVM seems to silently ignore entries without leading `+`/`-`. Let's emit a warning
+            // to avoid confusion. But only emit this warning once, under `for_cfg`.
+            if for_cfg {
+                sess.dcx().emit_warn(diagnostics::UnknownLlvmTargetFeaturePrefix { feature });
+            }
+        }
+    }
 
     features
 }

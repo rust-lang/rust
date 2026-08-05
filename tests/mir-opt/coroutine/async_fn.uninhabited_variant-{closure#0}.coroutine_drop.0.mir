@@ -68,7 +68,7 @@ fn uninhabited_variant::{closure#0}(_1: &mut {async fn body of uninhabited_varia
 
     bb0: {
         _45 = discriminant((*_1));
-        switchInt(move _45) -> [0: bb22, 3: bb25, 4: bb26, otherwise: bb27];
+        switchInt(move _45) -> [0: bb22, 3: bb23, 4: bb24, otherwise: bb25];
     }
 
     bb1: {
@@ -114,7 +114,7 @@ fn uninhabited_variant::{closure#0}(_1: &mut {async fn body of uninhabited_varia
     bb8: {
         (((*_1) as variant#4).2: bool) = const false;
         nop;
-        goto -> bb23;
+        goto -> bb9;
     }
 
     bb9: {
@@ -180,18 +180,10 @@ fn uninhabited_variant::{closure#0}(_1: &mut {async fn body of uninhabited_varia
     }
 
     bb22: {
-        goto -> bb24;
-    }
-
-    bb23: {
-        goto -> bb9;
-    }
-
-    bb24: {
         goto -> bb21;
     }
 
-    bb25: {
+    bb23: {
         StorageLive(_4);
         StorageLive(_6);
         StorageLive(_7);
@@ -200,7 +192,7 @@ fn uninhabited_variant::{closure#0}(_1: &mut {async fn body of uninhabited_varia
         goto -> bb4;
     }
 
-    bb26: {
+    bb24: {
         StorageLive(_4);
         StorageLive(_24);
         StorageLive(_25);
@@ -210,7 +202,7 @@ fn uninhabited_variant::{closure#0}(_1: &mut {async fn body of uninhabited_varia
         goto -> bb1;
     }
 
-    bb27: {
+    bb25: {
         return;
     }
 }

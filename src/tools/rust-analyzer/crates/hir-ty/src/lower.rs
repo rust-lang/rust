@@ -10,7 +10,6 @@ pub(crate) mod path;
 
 use std::{cell::OnceCell, iter, mem, sync::OnceLock};
 
-use base_db::salsa::update_fallback_db;
 use either::Either;
 use hir_def::{
     AdtId, AssocItemId, CallableDefId, ConstId, ConstParamId, EnumId, EnumVariantId,
@@ -80,13 +79,14 @@ use crate::{
 pub(crate) struct PathDiagnosticCallbackData(pub(crate) TypeRefId);
 
 #[derive(PartialEq, Eq, Debug, Hash)]
-pub struct ImplTraits {
-    pub(crate) impl_traits: Arena<ImplTrait>,
+pub struct WithDefinedOpaques<T> {
+    value: T,
+    impl_traits: Option<Box<Arena<ImplTrait>>>,
 }
 
 #[derive(PartialEq, Eq, Debug, Hash)]
 pub struct ImplTrait {
-    pub(crate) predicates: StoredClauses,
+    pub(crate) predicates: StoredEarlyBinder<StoredClauses>,
     pub(crate) assoc_ty_bounds_start: u32,
 }
 
@@ -417,6 +417,15 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
 
         BoundVarKinds::new_from_iter(interner, args)
     }
+
+    fn take_defined_opaques(&mut self) -> Option<Box<Arena<ImplTrait>>> {
+        if self.impl_trait_mode.opaque_type_data.is_empty() {
+            None
+        } else {
+            self.impl_trait_mode.opaque_type_data.shrink_to_fit();
+            Some(Box::new(mem::take(&mut self.impl_trait_mode.opaque_type_data)))
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
@@ -631,7 +640,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
                         // place even if we encounter more opaque types while
                         // lowering the bounds
                         let idx = self.impl_trait_mode.opaque_type_data.alloc(ImplTrait {
-                            predicates: Clauses::empty(interner).store(),
+                            predicates: StoredEarlyBinder::bind(Clauses::empty(interner).store()),
                             assoc_ty_bounds_start: 0,
                         });
 
@@ -1319,7 +1328,7 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
 
         self.is_lowering_impl_trait_bounds = prev_is_lowering_impl_trait_bounds;
         ImplTrait {
-            predicates: Clauses::new_from_slice(&predicates).store(),
+            predicates: StoredEarlyBinder::bind(Clauses::new_from_slice(&predicates).store()),
             assoc_ty_bounds_start,
         }
     }
@@ -1365,7 +1374,6 @@ impl<'db, 'a> TyLoweringContext<'db, 'a> {
 pub struct TyLoweringResult<'db, T> {
     #[update(fallback)]
     pub value: T,
-    #[update(bounds(TyLoweringResultInfo<'db>: Update), unsafe(with(update_fallback_db::<'db, _>)))]
     info: Option<Box<TyLoweringResultInfo<'db>>>,
 }
 
@@ -1497,19 +1505,21 @@ pub(crate) fn impl_trait_with_diagnostics_cycle_result<'db>(
 
 impl ImplTraitId {
     #[inline]
-    pub fn predicates<'db>(self, db: &'db dyn HirDatabase) -> EarlyBinder<'db, &'db [Clause<'db>]> {
+    fn data(self, db: &dyn HirDatabase) -> &ImplTrait {
         let (impl_traits, idx) = match self {
             ImplTraitId::ReturnTypeImplTrait(owner, idx) => {
-                (ImplTraits::return_type_impl_traits(db, owner), idx)
+                (ImplTrait::return_type_impl_traits(db, owner), idx)
             }
             ImplTraitId::TypeAliasImplTrait(owner, idx) => {
-                (ImplTraits::type_alias_impl_traits(db, owner), idx)
+                (ImplTrait::type_alias_impl_traits(db, owner), idx)
             }
         };
-        impl_traits
-            .as_deref()
-            .expect("owner should have opaque type")
-            .get_with(|it| it.impl_traits[idx].predicates.as_ref().as_slice())
+        &impl_traits[idx]
+    }
+
+    #[inline]
+    pub fn predicates<'db>(self, db: &'db dyn HirDatabase) -> EarlyBinder<'db, &'db [Clause<'db>]> {
+        self.data(db).predicates.get().map_bound(|it| it.as_slice())
     }
 
     #[inline]
@@ -1517,24 +1527,8 @@ impl ImplTraitId {
         self,
         db: &'db dyn HirDatabase,
     ) -> EarlyBinder<'db, &'db [Clause<'db>]> {
-        let (impl_traits, idx) = match self {
-            ImplTraitId::ReturnTypeImplTrait(owner, idx) => {
-                (ImplTraits::return_type_impl_traits(db, owner), idx)
-            }
-            ImplTraitId::TypeAliasImplTrait(owner, idx) => {
-                (ImplTraits::type_alias_impl_traits(db, owner), idx)
-            }
-        };
-        let predicates =
-            impl_traits.as_deref().expect("owner should have opaque type").get_with(|it| {
-                let impl_trait = &it.impl_traits[idx];
-                (
-                    impl_trait.predicates.as_ref().as_slice(),
-                    impl_trait.assoc_ty_bounds_start as usize,
-                )
-            });
-
-        predicates.map_bound(|(preds, len)| &preds[..len])
+        let data = self.data(db);
+        data.predicates.get().map_bound(|it| &it.as_slice()[..data.assoc_ty_bounds_start as usize])
     }
 }
 
@@ -1553,71 +1547,25 @@ impl InternedOpaqueTyId<'_> {
     }
 }
 
-#[salsa::tracked]
-impl ImplTraits {
-    #[salsa::tracked(returns(ref))]
+impl ImplTrait {
+    #[inline]
     pub(crate) fn return_type_impl_traits(
         db: &dyn HirDatabase,
-        def: hir_def::FunctionId,
-    ) -> Option<Box<StoredEarlyBinder<ImplTraits>>> {
-        // FIXME unify with fn_sig_for_fn instead of doing lowering twice, maybe
-        let data = FunctionSignature::of(db, def);
-        let resolver = def.resolver(db);
-        let generics = OnceCell::new();
-        let mut ctx_ret = TyLoweringContext::new(
-            db,
-            &resolver,
-            &data.store,
-            ExpressionStoreOwnerId::Signature(def.into()),
-            def.into(),
-            &generics,
-            LifetimeElisionKind::Infer,
-            LifetimeLoweringMode::Bound,
-        )
-        .with_impl_trait_mode(ImplTraitLoweringMode::Opaque);
-        if let Some(ret_type) = data.ret_type {
-            let _ret = ctx_ret.lower_ty(ret_type);
-        }
-        let mut return_type_impl_traits =
-            ImplTraits { impl_traits: ctx_ret.impl_trait_mode.opaque_type_data };
-        if return_type_impl_traits.impl_traits.is_empty() {
-            None
-        } else {
-            return_type_impl_traits.impl_traits.shrink_to_fit();
-            Some(Box::new(StoredEarlyBinder::bind(return_type_impl_traits)))
-        }
+        def: FunctionId,
+    ) -> &Arena<ImplTrait> {
+        fn_sig_for_fn(db, def).value.impl_traits.as_deref().unwrap_or(const { &Arena::new() })
     }
 
-    #[salsa::tracked(returns(ref))]
+    #[inline]
     pub(crate) fn type_alias_impl_traits(
         db: &dyn HirDatabase,
-        def: hir_def::TypeAliasId,
-    ) -> Option<Box<StoredEarlyBinder<ImplTraits>>> {
-        let data = TypeAliasSignature::of(db, def);
-        let resolver = def.resolver(db);
-        let generics = OnceCell::new();
-        let mut ctx = TyLoweringContext::new(
-            db,
-            &resolver,
-            &data.store,
-            ExpressionStoreOwnerId::Signature(def.into()),
-            def.into(),
-            &generics,
-            LifetimeElisionKind::AnonymousReportError,
-            LifetimeLoweringMode::Bound,
-        )
-        .with_impl_trait_mode(ImplTraitLoweringMode::Opaque);
-        if let Some(type_ref) = data.ty {
-            let _ty = ctx.lower_ty(type_ref);
-        }
-        let mut type_alias_impl_traits =
-            ImplTraits { impl_traits: ctx.impl_trait_mode.opaque_type_data };
-        if type_alias_impl_traits.impl_traits.is_empty() {
-            None
-        } else {
-            type_alias_impl_traits.impl_traits.shrink_to_fit();
-            Some(Box::new(StoredEarlyBinder::bind(type_alias_impl_traits)))
-        }
+        def: TypeAliasId,
+    ) -> &Arena<ImplTrait> {
+        type_for_type_alias_with_diagnostics(db, def)
+            .value
+            .impl_traits
+            .as_deref()
+            .unwrap_or(const { &Arena::new() })
     }
 }
 
@@ -1666,7 +1614,7 @@ pub(crate) fn ty_query<'db>(db: &'db dyn HirDatabase, def: TyDefId) -> EarlyBind
             it,
             GenericArgs::identity_for_item(interner, it.into()),
         )),
-        TyDefId::TypeAliasId(it) => db.type_for_type_alias_with_diagnostics(it).value.get(),
+        TyDefId::TypeAliasId(it) => db.type_for_type_alias_with_diagnostics(it).value.value.get(),
     }
 }
 
@@ -1804,13 +1752,14 @@ pub(crate) fn value_ty<'db>(
 pub(crate) fn type_for_type_alias_with_diagnostics<'db>(
     db: &'db dyn HirDatabase,
     t: TypeAliasId,
-) -> TyLoweringResult<'db, StoredEarlyBinder<StoredTy>> {
+) -> TyLoweringResult<'db, WithDefinedOpaques<StoredEarlyBinder<StoredTy>>> {
     let type_alias_data = TypeAliasSignature::of(db, t);
     let interner = DbInterner::new_no_crate(db);
     if type_alias_data.flags.contains(TypeAliasFlags::IS_EXTERN) {
-        TyLoweringResult::empty(StoredEarlyBinder::bind(
-            Ty::new_foreign(interner, t.into()).store(),
-        ))
+        TyLoweringResult::empty(WithDefinedOpaques {
+            value: StoredEarlyBinder::bind(Ty::new_foreign(interner, t.into()).store()),
+            impl_traits: None,
+        })
     } else {
         let resolver = t.resolver(db);
         let generics = OnceCell::new();
@@ -1832,7 +1781,10 @@ pub(crate) fn type_for_type_alias_with_diagnostics<'db>(
                 .unwrap_or_else(|| Ty::new_error(interner, ErrorGuaranteed))
                 .store(),
         );
-        TyLoweringResult::from_ctx(res, ctx)
+        TyLoweringResult::from_ctx(
+            WithDefinedOpaques { value: res, impl_traits: ctx.take_defined_opaques() },
+            ctx,
+        )
     }
 }
 
@@ -1840,10 +1792,13 @@ pub(crate) fn type_for_type_alias_with_diagnostics_cycle_result<'db>(
     db: &'db dyn HirDatabase,
     _: salsa::Id,
     _adt: TypeAliasId,
-) -> TyLoweringResult<'db, StoredEarlyBinder<StoredTy>> {
-    TyLoweringResult::empty(StoredEarlyBinder::bind(
-        Ty::new_error(DbInterner::new_no_crate(db), ErrorGuaranteed).store(),
-    ))
+) -> TyLoweringResult<'db, WithDefinedOpaques<StoredEarlyBinder<StoredTy>>> {
+    TyLoweringResult::empty(WithDefinedOpaques {
+        value: StoredEarlyBinder::bind(
+            Ty::new_error(DbInterner::new_no_crate(db), ErrorGuaranteed).store(),
+        ),
+        impl_traits: None,
+    })
 }
 
 pub(crate) fn impl_self_ty_query<'db>(
@@ -2822,27 +2777,18 @@ pub(crate) fn callable_item_signature<'db>(
     db: &'db dyn HirDatabase,
     def: CallableDefId,
 ) -> EarlyBinder<'db, PolyFnSig<'db>> {
-    callable_item_signature_with_diagnostics(db, def).value.get()
-}
-
-#[salsa::tracked(returns(ref))]
-pub(crate) fn callable_item_signature_with_diagnostics<'db>(
-    db: &'db dyn HirDatabase,
-    def: CallableDefId,
-) -> TyLoweringResult<'db, StoredEarlyBinder<StoredPolyFnSig>> {
     match def {
-        CallableDefId::FunctionId(f) => fn_sig_for_fn(db, f),
-        CallableDefId::StructId(s) => TyLoweringResult::empty(fn_sig_for_struct_constructor(db, s)),
-        CallableDefId::EnumVariantId(e) => {
-            TyLoweringResult::empty(fn_sig_for_enum_variant_constructor(db, e))
-        }
+        CallableDefId::FunctionId(f) => fn_sig_for_fn(db, f).value.value.get(),
+        CallableDefId::StructId(s) => fn_sig_for_struct_constructor(db, s).get(),
+        CallableDefId::EnumVariantId(e) => fn_sig_for_enum_variant_constructor(db, e).get(),
     }
 }
 
-fn fn_sig_for_fn<'db>(
+#[salsa::tracked(returns(ref))]
+pub(crate) fn fn_sig_for_fn<'db>(
     db: &'db dyn HirDatabase,
     def: FunctionId,
-) -> TyLoweringResult<'db, StoredEarlyBinder<StoredPolyFnSig>> {
+) -> TyLoweringResult<'db, WithDefinedOpaques<StoredEarlyBinder<StoredPolyFnSig>>> {
     let data = FunctionSignature::of(db, def);
     let resolver = def.resolver(db);
     let interner = DbInterner::new_no_crate(db);
@@ -2874,6 +2820,7 @@ fn fn_sig_for_fn<'db>(
         Some(ret_type) => ctx_ret.lower_ty(ret_type),
         None => Ty::new_unit(interner),
     };
+    let impl_traits = ctx_ret.take_defined_opaques();
 
     let inputs_and_output = Tys::new_from_iter(interner, params.chain(Some(ret)));
     ctx_params.diagnostics.extend(ctx_ret.diagnostics);
@@ -2891,7 +2838,7 @@ fn fn_sig_for_fn<'db>(
         },
         binder,
     )));
-    TyLoweringResult::from_ctx(result, ctx_params)
+    TyLoweringResult::from_ctx(WithDefinedOpaques { value: result, impl_traits }, ctx_params)
 }
 
 fn type_for_adt<'db>(db: &'db dyn HirDatabase, adt: AdtId) -> EarlyBinder<'db, Ty<'db>> {
@@ -2901,13 +2848,14 @@ fn type_for_adt<'db>(db: &'db dyn HirDatabase, adt: AdtId) -> EarlyBinder<'db, T
     EarlyBinder::bind(ty)
 }
 
-fn fn_sig_for_struct_constructor(
+fn ctor_signature(
     db: &dyn HirDatabase,
-    def: StructId,
+    variant: VariantId,
+    adt: AdtId,
 ) -> StoredEarlyBinder<StoredPolyFnSig> {
-    let field_tys = db.field_types(def.into());
+    let field_tys = db.field_types(variant);
     let params = field_tys.iter().map(|(_, field)| field.ty().skip_binder());
-    let ret = type_for_adt(db, def.into()).skip_binder();
+    let ret = type_for_adt(db, adt).skip_binder();
 
     let inputs_and_output =
         Tys::new_from_iter(DbInterner::new_no_crate(db), params.chain(Some(ret)));
@@ -2917,21 +2865,20 @@ fn fn_sig_for_struct_constructor(
     })))
 }
 
+#[salsa::tracked(returns(ref))]
+fn fn_sig_for_struct_constructor(
+    db: &dyn HirDatabase,
+    def: StructId,
+) -> StoredEarlyBinder<StoredPolyFnSig> {
+    ctor_signature(db, def.into(), def.into())
+}
+
+#[salsa::tracked(returns(ref))]
 fn fn_sig_for_enum_variant_constructor(
     db: &dyn HirDatabase,
     def: EnumVariantId,
 ) -> StoredEarlyBinder<StoredPolyFnSig> {
-    let field_tys = db.field_types(def.into());
-    let params = field_tys.iter().map(|(_, field)| field.ty().skip_binder());
-    let parent = def.lookup(db).parent;
-    let ret = type_for_adt(db, parent.into()).skip_binder();
-
-    let inputs_and_output =
-        Tys::new_from_iter(DbInterner::new_no_crate(db), params.chain(Some(ret)));
-    StoredEarlyBinder::bind(StoredPolyFnSig::new(Binder::dummy(FnSig {
-        fn_sig_kind: FnSigKind::new(ExternAbi::Rust, Safety::Safe, false),
-        inputs_and_output,
-    })))
+    ctor_signature(db, def.into(), def.lookup(db).parent.into())
 }
 
 // FIXME: Remove this.

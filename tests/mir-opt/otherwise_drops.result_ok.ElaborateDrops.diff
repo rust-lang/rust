@@ -48,7 +48,7 @@
   
       bb5: {
 -         drop(_1) -> [return: bb6, unwind: bb9];
-+         goto -> bb10;
++         goto -> bb6;
       }
   
       bb6: {
@@ -67,10 +67,6 @@
   
       bb9 (cleanup): {
           resume;
-+     }
-+ 
-+     bb10: {
-+         goto -> bb6;
       }
   }
   

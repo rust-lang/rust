@@ -35,11 +35,16 @@
       "dependencyDashboardApproval": false
     },
     {
-      // Update all Cargo.lock files except library/Cargo.lock in one PR.
+      // Set defaults for all Cargo.lock files.
+      // library/Cargo.lock is grouped into a dedicated PR by the more
+      // specific rule below.
       "matchManagers": ["cargo"],
       "matchUpdateTypes": ["lockFileMaintenance"],
       "groupName": "Cargo lock file maintenance",
-      "commitMessageAction": "Cargo lock file maintenance"
+      "commitMessageAction": "Compiler and tools lock file update",
+      // Renovate merges all matching rules, so the lockfiles rules below
+      // also inherits this note and asks Triagebot for a dep-bumps reviewer.
+      "prBodyNotes": ["r? dep-bumps"]
     },
     {
       // Update library/Cargo.lock in a dedicated PR.
@@ -47,7 +52,7 @@
       "matchUpdateTypes": ["lockFileMaintenance"],
       "matchFileNames": ["library/Cargo.lock"],
       "groupName": "library lock file maintenance",
-      "commitMessageAction": "Library lock file maintenance"
+      "commitMessageAction": "Library lock file update"
     },
     {
       // These packages don't have a committed Cargo.lock file.
@@ -63,7 +68,7 @@
       "matchManagers": ["npm"],
       "matchUpdateTypes": ["lockFileMaintenance"],
       "groupName": "Yarn lock file maintenance",
-      "commitMessageAction": "Yarn lock file maintenance"
+      "commitMessageAction": "Yarn lock file update"
     }
   ],
   "ignorePaths": [

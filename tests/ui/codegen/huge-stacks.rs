@@ -8,7 +8,7 @@
 // Verifies a program is not miscompiled if it includes a 4GB array on the stack
 
 fn func() {
-    const CAP: usize = std::u32::MAX as usize;
+    const CAP: usize = u32::MAX as usize;
     let mut x: [u8; CAP] = [0; CAP];
     x[2] = 123;
     assert_eq!(x[2], 123);

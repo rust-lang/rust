@@ -4,4 +4,4 @@ expression: build rustc_llvm
 ---
 [Build] compile::Rustc
     targets: [x86_64-unknown-linux-gnu]
-    - Set({build::compiler/rustc_llvm})
+    - Set({compiler/rustc_llvm})
