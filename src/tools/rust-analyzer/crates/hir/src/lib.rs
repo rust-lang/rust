@@ -2923,6 +2923,10 @@ impl Const {
         Type::from_value_def(db, self.id)
     }
 
+    pub fn has_body(self, db: &dyn HirDatabase) -> bool {
+        ConstSignature::of(db, self.id).has_body()
+    }
+
     /// Evaluate the constant.
     pub fn eval(self, db: &dyn HirDatabase) -> Result<EvaluatedConst<'_>, ConstEvalError<'_>> {
         let interner = DbInterner::new_no_crate(db);
@@ -3132,6 +3136,10 @@ impl Trait {
     pub fn prefer_underscore_import(self, db: &dyn HirDatabase) -> bool {
         AttrFlags::query(db, self.id.into()).contains(AttrFlags::PREFER_UNDERSCORE_IMPORT)
     }
+
+    pub fn must_implement_one_of(self, db: &dyn HirDatabase) -> Option<&[Name]> {
+        AttrFlags::must_implement_one_of(db, self.id)
+    }
 }
 
 impl HasVisibility for Trait {
@@ -3162,6 +3170,10 @@ impl TypeAlias {
 
     pub fn name(self, db: &dyn HirDatabase) -> Name {
         TypeAliasSignature::of(db, self.id).name.clone()
+    }
+
+    pub fn has_type(self, db: &dyn HirDatabase) -> bool {
+        TypeAliasSignature::of(db, self.id).ty.is_some()
     }
 }
 

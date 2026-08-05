@@ -23,6 +23,7 @@ use either::Either;
 use hir_expand::{
     InFile, Lookup,
     attrs::{AstKeyValueMetaExt, AstPathExt, expand_cfg_attr},
+    name::Name,
 };
 use intern::Symbol;
 use itertools::Itertools;
@@ -38,7 +39,7 @@ use tt::TextSize;
 
 use crate::{
     AdtId, AstIdLoc, AttrDefId, FieldId, FunctionId, GenericDefId, HasModule, LifetimeParamId,
-    LocalFieldId, MacroId, ModuleId, TypeOrConstParamId, VariantId,
+    LocalFieldId, MacroId, ModuleId, TraitId, TypeOrConstParamId, VariantId,
     hir::generics::{GenericParams, LocalLifetimeParamId, LocalTypeOrConstParamId},
     nameres::ModuleOrigin,
     resolver::{HasResolver, Resolver},
@@ -178,6 +179,9 @@ fn match_attr_flags(attr_flags: &mut AttrFlags, attr: ast::Meta) -> ControlFlow<
                     }
                     "rustc_deprecated_safe_2024" => {
                         attr_flags.insert(AttrFlags::RUSTC_DEPRECATED_SAFE_2024)
+                    }
+                    "rustc_must_implement_one_of" => {
+                        attr_flags.insert(AttrFlags::HAS_RUSTC_MUST_IMPLEMENT_ONE_OF)
                     }
                     _ => {}
                 },
@@ -347,6 +351,8 @@ bitflags::bitflags! {
         const IS_MUST_USE = 1 << 50;
 
         const DIAGNOSTIC_DO_NOT_RECOMMEND = 1 << 51;
+
+        const HAS_RUSTC_MUST_IMPLEMENT_ONE_OF = 1 << 52;
     }
 }
 
@@ -1210,6 +1216,36 @@ impl AttrFlags {
                     && let Some(message) = attr.value_string()
                 {
                     return ControlFlow::Break(Box::from(&*message));
+                }
+                ControlFlow::Continue(())
+            })
+        }
+    }
+
+    pub fn must_implement_one_of(db: &dyn SourceDatabase, owner: TraitId) -> Option<&[Name]> {
+        if !AttrFlags::query(db, owner.into()).contains(AttrFlags::HAS_RUSTC_MUST_IMPLEMENT_ONE_OF)
+        {
+            return None;
+        }
+        return must_implement_one_of(db, owner);
+
+        #[salsa::tracked(returns(as_deref))]
+        pub fn must_implement_one_of(
+            db: &dyn SourceDatabase,
+            owner: TraitId,
+        ) -> Option<Box<[Name]>> {
+            collect_attrs(db, owner.into(), |attr| {
+                if let ast::Meta::TokenTreeMeta(attr) = attr
+                    && attr.path().is1("rustc_must_implement_one_of")
+                    && let Some(tt) = attr.token_tree()
+                    && let names = tt
+                        .token_trees_and_tokens()
+                        .filter_map(|it| ast::Ident::cast(it.into_token()?))
+                        .map(|name| Name::new_symbol_root(Symbol::intern(name.text())))
+                        .collect::<Box<[_]>>()
+                    && !names.is_empty()
+                {
+                    return ControlFlow::Break(names);
                 }
                 ControlFlow::Continue(())
             })
