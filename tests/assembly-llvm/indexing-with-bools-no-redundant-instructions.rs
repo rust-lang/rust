@@ -1,6 +1,5 @@
 //@ assembly-output: emit-asm
 //@ only-x86_64
-//@ max-llvm-major-version: 22
 //@ ignore-windows CHECK patterns use the SysV x86-64 calling convention
 //@ ignore-sgx Test incompatible with LVI mitigations
 //@ compile-flags: -Copt-level=3
@@ -16,7 +15,7 @@ pub fn bool_index(a: u32, b: bool, c: bool, d: &mut [u128; 2]) {
     // CHECK-LABEL: bool_index:
     // CHECK: testl  %esi, %esi
     // CHECK: je
-    // CHECK: xorb   %dl, %dil
+    // CHECK: xorb   {{%dl, %dil|%dil, %dl}}
     // CHECK: orb    $1, (%rcx)
     // CHECK-NOT: jmp
     // CHECK-NOT: andb $1, %dil
