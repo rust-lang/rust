@@ -903,7 +903,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
             let removal_span = callee_expr.span.shrink_to_hi().to(call_expr.span.shrink_to_hi());
             unit_variant =
-                Some((removal_span, descr, rustc_hir_pretty::qpath_to_string(&self.tcx, qpath)));
+                Some((removal_span, descr, rustc_hir_pretty::qpath_to_string(self, qpath)));
         }
 
         let callee_ty = self.resolve_vars_if_possible(callee_ty);
