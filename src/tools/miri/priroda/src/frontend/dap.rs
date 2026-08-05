@@ -1,6 +1,7 @@
 use std::io::{self, BufReader, BufWriter};
 
 use emmy_dap_types::prelude::events::{ExitedEventBody, StoppedEventBody};
+use emmy_dap_types::prelude::requests::SetBreakpointsArguments;
 use emmy_dap_types::prelude::responses::{
     ContinueResponse, ScopesResponse, SetBreakpointsResponse, StackTraceResponse, ThreadsResponse,
     VariablesResponse,
@@ -101,11 +102,12 @@ impl DapSession {
         request: Request,
         session: &mut PrirodaContext<'tcx>,
     ) -> InterpResult<'tcx, ServerResult<DispatchOutcome>> {
-        if self.state == DapState::Fresh && !matches!(&request.command, Command::Initialize(_)) {
-            return interp_ok(
-                self.respond_error(request, "initialize must be sent first")
-                    .map(|()| DispatchOutcome::Continue),
-            );
+        let uninitialized = match self.require_initialized(&request) {
+            Ok(rejected) => rejected,
+            Err(err) => return interp_ok(Err(err)),
+        };
+        if uninitialized {
+            return interp_ok(Ok(DispatchOutcome::Continue));
         }
 
         match &request.command {
@@ -123,21 +125,31 @@ impl DapSession {
                 interp_ok(
                     self.handle_stack_trace(request, session).map(|()| DispatchOutcome::Continue),
                 ),
-            Command::Scopes(_) =>
-                interp_ok(self.handle_scopes(request, session).map(|()| DispatchOutcome::Continue)),
-            Command::Variables(_) =>
+            Command::Scopes(args) => {
+                let frame_id = args.frame_id;
                 interp_ok(
-                    self.handle_variables(request, session).map(|()| DispatchOutcome::Continue),
-                ),
+                    self.handle_scopes(request, frame_id, session)
+                        .map(|()| DispatchOutcome::Continue),
+                )
+            }
+            Command::Variables(args) => {
+                let variables_reference = args.variables_reference;
+                interp_ok(
+                    self.handle_variables(request, variables_reference, session)
+                        .map(|()| DispatchOutcome::Continue),
+                )
+            }
             Command::Continue(_) => {
                 let res = self.handle_continue(request, session)?;
                 interp_ok(res.map(|()| self.dispatch_outcome()))
             }
-            Command::SetBreakpoints(_) =>
+            Command::SetBreakpoints(args) => {
+                let args = args.clone();
                 interp_ok(
-                    self.handle_set_breakpoints(request, session)
+                    self.handle_set_breakpoints(request, &args, session)
                         .map(|()| DispatchOutcome::Continue),
-                ),
+                )
+            }
             Command::Next(_) | Command::StepIn(_) => {
                 let body = match &request.command {
                     Command::Next(_) => ResponseBody::Next,
@@ -202,11 +214,12 @@ impl DapSession {
     fn handle_scopes<'tcx>(
         &mut self,
         request: Request,
-        _session: &PrirodaContext<'tcx>,
+        frame_id: i64,
+        session: &PrirodaContext<'tcx>,
     ) -> ServerResult {
         if self.reject_after_termination(&request)?
             || self.require_stopped(&request)?
-            || self.require_frame_id(&request)?
+            || self.require_frame_id(&request, frame_id)?
         {
             return Ok(());
         }
@@ -232,19 +245,20 @@ impl DapSession {
     fn handle_variables<'tcx>(
         &mut self,
         request: Request,
+        variables_reference: i64,
         session: &PrirodaContext<'tcx>,
     ) -> ServerResult {
         if self.reject_after_termination(&request)?
             || self.require_stopped(&request)?
-            || self.require_variables_reference(&request)?
+            || self.require_variables_reference(&request, variables_reference)?
         {
             return Ok(());
         }
 
-        let variables = match &request.command {
-            Command::Variables(_) =>
-                session.list_locals().into_iter().map(Self::local_to_variable).collect(),
-            _ => bug!("dispatch routes only Variables to handle_variables"),
+        let variables = if variables_reference == LOCALS_VARIABLES_REFERENCE {
+            session.list_locals().into_iter().map(Self::local_to_variable).collect()
+        } else {
+            Vec::new()
         };
 
         let response = request.success(ResponseBody::Variables(VariablesResponse { variables }));
@@ -430,34 +444,38 @@ impl DapSession {
     fn handle_set_breakpoints<'tcx>(
         &mut self,
         request: Request,
+        args: &SetBreakpointsArguments,
         session: &mut PrirodaContext<'tcx>,
     ) -> ServerResult {
         if self.reject_after_termination(&request)? {
             return Ok(());
         }
 
+        let Some(ref path_str) = args.source.path else {
+            return self.respond_error(
+                request,
+                "setBreakpoints requires a source.path; sourceReference loads are not supported",
+            );
+        };
+
+        let path = std::path::PathBuf::from(path_str);
         let mut breakpoints = Vec::new();
-        if let Command::SetBreakpoints(ref args) = request.command {
-            if let Some(ref path_str) = args.source.path {
-                let path = std::path::PathBuf::from(path_str);
-                if let Some(ref req_bps) = args.breakpoints {
-                    for req_bp in req_bps {
-                        let line = req_bp.line as usize;
-                        session.set_breakpoint(path.clone(), line);
-                        breakpoints.push(DapBreakpoint {
-                            verified: true,
-                            message: None,
-                            source: Some(args.source.clone()),
-                            line: Some(req_bp.line),
-                            column: req_bp.column,
-                            end_line: None,
-                            end_column: None,
-                            id: None,
-                            instruction_reference: None,
-                            offset: None,
-                        });
-                    }
-                }
+        if let Some(ref req_bps) = args.breakpoints {
+            for req_bp in req_bps {
+                let line = req_bp.line as usize;
+                session.set_breakpoint(path.clone(), line);
+                breakpoints.push(DapBreakpoint {
+                    verified: true,
+                    message: None,
+                    source: Some(args.source.clone()),
+                    line: Some(req_bp.line),
+                    column: req_bp.column,
+                    end_line: None,
+                    end_column: None,
+                    id: None,
+                    instruction_reference: None,
+                    offset: None,
+                });
             }
         }
 
@@ -504,6 +522,15 @@ impl DapSession {
         Ok(false)
     }
 
+    fn require_initialized(&mut self, request: &Request) -> ServerResult<bool> {
+        if self.state == DapState::Fresh && !matches!(&request.command, Command::Initialize(_)) {
+            self.server.respond(request.clone().error("initialize must be sent first"))?;
+            return Ok(true);
+        }
+
+        Ok(false)
+    }
+
     fn require_stopped(&mut self, request: &Request) -> ServerResult<bool> {
         if self.state != DapState::Stopped {
             self.server.respond(request.clone().error("request requires a stopped frame"))?;
@@ -530,12 +557,8 @@ impl DapSession {
         Ok(false)
     }
 
-    fn require_frame_id(&mut self, request: &Request) -> ServerResult<bool> {
-        let Command::Scopes(args) = &request.command else {
-            bug!("dispatch routes only scopes to require_frame_id");
-        };
-
-        if args.frame_id != STACK_FRAME_ID {
+    fn require_frame_id(&mut self, request: &Request, frame_id: i64) -> ServerResult<bool> {
+        if frame_id != STACK_FRAME_ID {
             self.server.respond(request.clone().error("unknown frameId"))?;
             return Ok(true);
         }
@@ -543,12 +566,12 @@ impl DapSession {
         Ok(false)
     }
 
-    fn require_variables_reference(&mut self, request: &Request) -> ServerResult<bool> {
-        let Command::Variables(args) = &request.command else {
-            bug!("dispatch routes only variables to require_variables_reference");
-        };
-
-        if args.variables_reference != LOCALS_VARIABLES_REFERENCE {
+    fn require_variables_reference(
+        &mut self,
+        request: &Request,
+        variables_reference: i64,
+    ) -> ServerResult<bool> {
+        if variables_reference != LOCALS_VARIABLES_REFERENCE {
             self.server.respond(request.clone().error("unknown variablesReference"))?;
             return Ok(true);
         }
