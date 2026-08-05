@@ -1,6 +1,5 @@
 use rustc_abi::{BackendRepr, FieldIdx, VariantIdx};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_middle::mir::interpret::{EvalToValTreeResult, GlobalId, ValTreeCreationError};
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::layout::{LayoutCx, TyAndLayout};
@@ -106,7 +105,7 @@ fn const_to_valtree_inner<'tcx>(
 
     visited.insert(place.clone());
 
-    let result = ensure_sufficient_stack(|| match ty.kind() {
+    let result = match ty.kind() {
         ty::FnDef(..) => {
             *num_nodes += 1;
             Ok(ty::ValTree::zst(tcx))
@@ -209,7 +208,7 @@ fn const_to_valtree_inner<'tcx>(
         | ty::Coroutine(..)
         | ty::CoroutineWitness(..)
         | ty::UnsafeBinder(_) => Err(ValTreeCreationError::NonSupportedType(ty)),
-    });
+    };
 
     visited.remove(place);
     settled.insert(place.clone(), result);

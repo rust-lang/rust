@@ -1,6 +1,5 @@
 use rustc_data_structures::Limit;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
-use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_data_structures::unord::UnordSet;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::mir::TerminatorKind;
@@ -118,18 +117,17 @@ fn process<'tcx>(
             trace!(?callee, recursion = *recursion);
             let callee_reaches_root = if recursion_limit.value_within_limit(*recursion) {
                 *recursion += 1;
-                ensure_sufficient_stack(|| {
-                    process(
-                        tcx,
-                        typing_env,
-                        callee,
-                        target,
-                        seen,
-                        involved,
-                        recursion_limiter,
-                        recursion_limit,
-                    )
-                })?
+
+                process(
+                    tcx,
+                    typing_env,
+                    callee,
+                    target,
+                    seen,
+                    involved,
+                    recursion_limiter,
+                    recursion_limit,
+                )?
             } else {
                 return None;
             };
