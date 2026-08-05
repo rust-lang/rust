@@ -225,11 +225,11 @@ impl Step for PrepareRustcRmetaSysroot {
 
     fn run(self, builder: &Builder<'_>) -> Self::Output {
         // Check rustc
-        let stamp = builder.ensure(Rustc::from_build_compiler(
-            self.build_compiler.clone(),
-            self.target,
-            vec![],
-        ));
+        let stamp = builder.ensure(Rustc {
+            build_compiler: self.build_compiler.clone(),
+            target: self.target,
+            crates: vec![],
+        });
 
         let build_compiler = self.build_compiler.build_compiler();
 
@@ -285,29 +285,15 @@ impl Step for PrepareStdRmetaSysroot {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Rustc {
     /// Compiler that will check this rustc.
-    pub build_compiler: CompilerForCheck,
-    pub target: TargetSelection,
+    build_compiler: CompilerForCheck,
+    target: TargetSelection,
+
     /// Whether to build only a subset of crates.
     ///
     /// This shouldn't be used from other steps; see the comment on [`compile::Rustc`].
     ///
     /// [`compile::Rustc`]: crate::core::build_steps::compile::Rustc
     crates: Vec<String>,
-}
-
-impl Rustc {
-    pub fn new(builder: &Builder<'_>, target: TargetSelection, crates: Vec<String>) -> Self {
-        let build_compiler = prepare_compiler_for_check(builder, target, Mode::Rustc);
-        Self::from_build_compiler(build_compiler, target, crates)
-    }
-
-    fn from_build_compiler(
-        build_compiler: CompilerForCheck,
-        target: TargetSelection,
-        crates: Vec<String>,
-    ) -> Self {
-        Self { build_compiler, target, crates }
-    }
 }
 
 impl CommandLineStep for Rustc {
@@ -323,8 +309,11 @@ impl CommandLineStep for Rustc {
     }
 
     fn make_run(run: RunConfig<'_>) {
+        let target = run.target;
+        let build_compiler = prepare_compiler_for_check(run.builder, target, Mode::Rustc);
         let crates = run.make_run_crates(Alias::Compiler);
-        run.builder.ensure(Rustc::new(run.builder, run.target, crates));
+
+        run.builder.ensure(Rustc { build_compiler, target, crates });
     }
 
     /// Check the compiler.
