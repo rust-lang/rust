@@ -1,9 +1,23 @@
-error[E0277]: the trait bound `&'a mut T: CoerceShared<&'a u32>` is not satisfied
-  --> $DIR/coerce-shared-field-relations.rs:43:1
+error: implementing `CoerceShared` requires every target field to have a corresponding source field
+  --> $DIR/coerce-shared-field-relations.rs:26:5
    |
+LL |     target: &'a T,
+   |     ^^^^^^^^^^^^^ target field `target` has no corresponding source field
+...
+LL | impl<'a, T> CoerceShared<RenamedRef<'a, T>> for RenamedMut<'a, T> {}
+   |                                                 ----------------- source type `RenamedMut` does not contain field `target`
+
+error: implementing `CoerceShared` requires corresponding fields to match, be reborrowable with `CoerceShared`, or coerce a mutable reference field to a shared reference field
+  --> $DIR/coerce-shared-field-relations.rs:40:5
+   |
+LL |     value: &'a mut T,
+   |     ---------------- source field `value` has type `&'a mut T`
+...
+LL |     value: &'a u32,
+   |     ^^^^^^^^^^^^^^ target field `value` has type `&'a u32`
+...
 LL | impl<'a, T> CoerceShared<BadRef<'a, T>> for BadMut<'a, T> {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the nightly-only, unstable trait `CoerceShared<&'a u32>` is not implemented for `&'a mut T`
+   | ------------------------------------------------------------ required by this `CoerceShared` implementation
 
-error: aborting due to 1 previous error
+error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0277`.
