@@ -1665,6 +1665,15 @@ pub enum LinkerJobs {
     Explicit(NonZero<usize>),
 }
 
+impl LinkerJobs {
+    pub fn limit(self) -> Option<NonZero<usize>> {
+        match self {
+            LinkerJobs::Default => None,
+            LinkerJobs::Explicit(n) => Some(n),
+        }
+    }
+}
+
 /// `None` for frontend and backend means everything is single-threaded
 /// and synchronization can be disabled.
 #[derive(Clone, Copy)]
