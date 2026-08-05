@@ -32,13 +32,11 @@ use crate::{
     },
 };
 
-mod borrowck;
 mod eval;
 mod lower;
 mod monomorphization;
 mod pretty;
 
-pub use borrowck::{BorrowckResult, MutabilityReason};
 pub use eval::{
     Evaluator, MirEvalError, VTableMap, interpret_mir, pad16, render_const_using_debug_impl,
 };

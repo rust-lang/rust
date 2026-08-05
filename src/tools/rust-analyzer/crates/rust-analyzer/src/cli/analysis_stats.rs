@@ -584,10 +584,7 @@ impl flags::AnalysisStats {
                     sema: &sema,
                     scope: &scope,
                     goal: target_ty,
-                    config: hir::term_search::TermSearchConfig {
-                        enable_borrowcheck: true,
-                        ..Default::default()
-                    },
+                    config: hir::term_search::TermSearchConfig::default(),
                 };
                 let found_terms = hir::term_search::term_search(&ctx);
 
@@ -1375,7 +1372,6 @@ impl flags::AnalysisStats {
                     prefer_absolute: false,
                     style_lints: false,
                     term_search_fuel: 400,
-                    term_search_borrowck: true,
                     show_rename_conflicts: true,
                 },
                 ide::AssistResolveStrategy::All,
