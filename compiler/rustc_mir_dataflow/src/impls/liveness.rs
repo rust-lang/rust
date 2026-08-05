@@ -130,7 +130,6 @@ impl<'tcx> Visitor<'tcx> for YieldResumeEffect<'_> {
     }
 }
 
-#[derive(Eq, PartialEq, Clone)]
 pub enum DefUse {
     /// Full write to the local.
     Def,
