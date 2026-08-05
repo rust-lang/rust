@@ -117,8 +117,8 @@ pub enum RegionConstraint<I: Interner, S = ()> {
     /// and there may wind up being assumptions we can use to prove this when we're in a smaller universe.
     PlaceholderTyOutlives(I::Ty, Region<I>, S),
 
-    And(Box<[RegionConstraint<I, S>]>),
-    Or(Box<[RegionConstraint<I, S>]>),
+    And(#[generic_type_visitable(bounds())] Box<[RegionConstraint<I, S>]>),
+    Or(#[generic_type_visitable(bounds())] Box<[RegionConstraint<I, S>]>),
 }
 
 /// A solver region constraint together with the span that caused each leaf constraint.
