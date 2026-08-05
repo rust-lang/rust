@@ -516,10 +516,6 @@ Parallelism used by compilation stages converting backend IR to object files.
 In any case the parallelism here may be additionally limited dynamically by jobserver
 passed from a higher level build system like cargo.
 
-Note: the backend parallelism limit may currently work incorrectly if `jobs-frontend` or `jobs`
-have larger value than `jobs-backend`, or if the inherited jobserver can give a larger number
-of tokens.
-
 ### Linker parallelism
 
 Parallelism used by linker when combining object files into a final binary.
