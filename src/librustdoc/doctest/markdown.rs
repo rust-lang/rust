@@ -140,6 +140,7 @@ pub(crate) fn test(input: &Input, options: Options, dcx: DiagCtxtHandle<'_>) -> 
         standalone_tests,
         mergeable_tests,
         None,
+        None,
     );
     Ok(())
 }
