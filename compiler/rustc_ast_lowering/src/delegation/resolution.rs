@@ -42,8 +42,8 @@ pub(super) struct DelegationResolution {
     pub is_method: bool,
     pub param_info: ParamInfo,
     pub span: Span,
-    pub call_path_res: DefId,
-    pub base_res: DefId,
+    pub child_res: DefId,
+    pub parent_res: DefId,
     pub source: DelegationSource,
     pub parent: LocalDefId,
     pub sig_mapping: SigMapping,
@@ -102,11 +102,11 @@ pub(super) mod resolver {
             )
         }
 
-        pub(crate) fn try_get_resolution_id(&self, id: NodeId) -> Option<DefId> {
+        pub(crate) fn opt_resolution_id(&self, id: NodeId) -> Option<DefId> {
             self.0.get_partial_res(id).and_then(|r| r.full_res()).and_then(|r| r.opt_def_id())
         }
 
-        pub(crate) fn get_base_res(&self, id: NodeId) -> Option<DefId> {
+        pub(crate) fn opt_base_res(&self, id: NodeId) -> Option<DefId> {
             self.0.get_partial_res(id).and_then(|res| res.base_res().opt_def_id())
         }
     }
@@ -128,19 +128,16 @@ impl<'tcx> DelegationResolver<'_, 'tcx> {
             .delegation_infos
             .get(&def_id)
             .map(|info| {
-                let mut id = info.resolution_id;
-                if id.is_none() {
-                    let Some(resolved_id) = self.resolve_type_relative(delegation) else {
-                        return Err(tcx.dcx().span_delayed_bug(
+                let id = info
+                    .resolution_id
+                    .or_else(|| self.resolve_type_relative(delegation))
+                    .ok_or_else(|| {
+                        tcx.dcx().span_delayed_bug(
                             span,
                             format!("failed to resolve type relative delegation {:?}", span),
-                        ));
-                    };
+                        )
+                    })?;
 
-                    id = Some(resolved_id);
-                }
-
-                let id = id.unwrap();
                 self.check_for_cycles(id, span).map(|_| id)
             })
             .unwrap_or_else(|| {
@@ -158,19 +155,6 @@ impl<'tcx> DelegationResolver<'_, 'tcx> {
         let (should_generate_block, contains_defs) =
             self.check_block_soundness(delegation, sig_id, is_method, param_count)?;
 
-        let call_path_res = if let Some(res) = self.try_get_resolution_id(delegation.id) {
-            res
-        } else {
-            let Some(id) = self.resolve_type_relative(delegation) else {
-                return Err(tcx.dcx().span_delayed_bug(
-                    span,
-                    format!("failed to resolve type relative delegation {:?}", span),
-                ));
-            };
-
-            id
-        };
-
         let res = DelegationResolution {
             is_method,
             span,
@@ -179,14 +163,8 @@ impl<'tcx> DelegationResolver<'_, 'tcx> {
             // FIXME(splat): use `sig.splatted()` once FnSig has it
             param_info: ParamInfo { param_count, c_variadic: sig.c_variadic(), splatted: None },
             source: delegation.source,
-            base_res: if let Some(res) = self.get_base_res(delegation.id) {
-                res
-            } else {
-                return Err(tcx
-                    .dcx()
-                    .span_delayed_bug(span, format!("failed to get base res {:?}", span)));
-            },
-            call_path_res,
+            parent_res: self.get_parent_res(delegation.id, span)?,
+            child_res: self.get_child_res(delegation, span)?,
             sig_mapping: self.create_sig_mapping(
                 delegation,
                 span,
@@ -200,8 +178,25 @@ impl<'tcx> DelegationResolver<'_, 'tcx> {
         Ok((res, self.resolve_and_generate_generics(delegation, sig_id)?))
     }
 
+    fn get_parent_res(&self, id: NodeId, span: Span) -> Result<DefId, ErrorGuaranteed> {
+        self.opt_base_res(id).ok_or_else(|| {
+            self.tcx().dcx().span_delayed_bug(span, format!("failed to get base res {:?}", span))
+        })
+    }
+
+    fn get_child_res(&self, delegation: &Delegation, span: Span) -> Result<DefId, ErrorGuaranteed> {
+        self.opt_resolution_id(delegation.id)
+            .or_else(|| self.resolve_type_relative(delegation))
+            .ok_or_else(|| {
+                self.tcx().dcx().span_delayed_bug(
+                    span,
+                    format!("failed to resolve type relative delegation {:?}", span),
+                )
+            })
+    }
+
     fn resolve_type_relative(&self, delegation: &Delegation) -> Option<DefId> {
-        let res = self.get_base_res(delegation.id);
+        let res = self.opt_base_res(delegation.id);
         let Some(res) = res.and_then(|res| res.as_local()) else { return None };
 
         self.tcx()
@@ -354,7 +349,7 @@ impl<'tcx> DelegationResolver<'_, 'tcx> {
         // Check that delegation path resolves to a trait AssocFn, not to a free method.
         // After previous check we are sure that `sig_id` and `delegation.id`
         // point to the same function.
-        self.try_get_resolution_id(delegation.id)
+        self.opt_resolution_id(delegation.id)
             .map(|id| {
                 tcx.def_kind(id) == DefKind::AssocFn
                     && tcx.def_kind(tcx.parent(id)) == DefKind::Trait
