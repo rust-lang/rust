@@ -23,10 +23,20 @@ const STACK_FRAME_ID: i64 = 1;
 const LOCALS_VARIABLES_REFERENCE: i64 = 1;
 type ServerResult<T = ()> = Result<T, emmy_dap_types::errors::ServerError>;
 
-enum DispatchOutcome {
+enum HandlerOutcome {
     Continue,
     Exit,
-    Rejected(&'static str),
+}
+
+enum HandlerError {
+    Reject(&'static str),
+    Transport(ServerError),
+}
+
+impl From<ServerError> for HandlerError {
+    fn from(e: ServerError) -> Self {
+        HandlerError::Transport(e)
+    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -94,15 +104,15 @@ impl DapSession {
             let request_for_dispatch = request.clone();
 
             match self.dispatch_request(request_for_dispatch, session)? {
-                Ok(DispatchOutcome::Continue) => {}
-                Ok(DispatchOutcome::Exit) => return interp_ok(Ok(())),
-                Ok(DispatchOutcome::Rejected(msg)) => {
+                Ok(HandlerOutcome::Continue) => {}
+                Ok(HandlerOutcome::Exit) => return interp_ok(Ok(())),
+                Err(HandlerError::Reject(msg)) => {
                     let response = request.error(msg);
                     if let Err(err) = self.server.respond(response) {
                         return interp_ok(Err(err));
                     }
                 }
-                Err(err) => return interp_ok(Err(err)),
+                Err(HandlerError::Transport(e)) => return interp_ok(Err(e)),
             }
         }
     }
@@ -111,9 +121,9 @@ impl DapSession {
         &mut self,
         request: Request,
         session: &mut PrirodaContext<'tcx>,
-    ) -> InterpResult<'tcx, Result<DispatchOutcome, ServerError>> {
+    ) -> InterpResult<'tcx, Result<HandlerOutcome, HandlerError>> {
         if let Err(msg) = self.require_initialized(&request) {
-            return interp_ok(Ok(DispatchOutcome::Rejected(msg)));
+            return interp_ok(Err(HandlerError::Reject(msg)));
         }
 
         let outcome = match &request.command {
@@ -179,15 +189,13 @@ impl DapSession {
     }
 
     /// FIXME: connect launch arguments to Priroda's session model.
-    fn handle_launch(&mut self, request: Request) -> Result<DispatchOutcome, ServerError> {
-        if let Err(msg) = self.require_state(DapState::Initialized) {
-            return Ok(DispatchOutcome::Rejected(msg));
-        }
+    fn handle_launch(&mut self, request: Request) -> Result<HandlerOutcome, HandlerError> {
+        self.require_state(DapState::Initialized).map_err(HandlerError::Reject)?;
 
         let response = request.success(ResponseBody::Launch);
         self.server.respond(response)?;
         self.state = DapState::Launched;
-        Ok(DispatchOutcome::Continue)
+        Ok(HandlerOutcome::Continue)
     }
 
     fn handle_scopes<'tcx>(
@@ -195,13 +203,9 @@ impl DapSession {
         request: Request,
         frame_id: i64,
         session: &PrirodaContext<'tcx>,
-    ) -> Result<DispatchOutcome, ServerError> {
-        if let Err(msg) = self.require_stopped() {
-            return Ok(DispatchOutcome::Rejected(msg));
-        }
-        if let Err(msg) = Self::require_frame_id(frame_id) {
-            return Ok(DispatchOutcome::Rejected(msg));
-        }
+    ) -> Result<HandlerOutcome, HandlerError> {
+        self.require_stopped().map_err(HandlerError::Reject)?;
+        Self::require_frame_id(frame_id).map_err(HandlerError::Reject)?;
 
         let (source, line, column) = match &session.current_location {
             Some(location) => {
@@ -242,7 +246,7 @@ impl DapSession {
             }],
         }));
         self.server.respond(response)?;
-        Ok(DispatchOutcome::Continue)
+        Ok(HandlerOutcome::Continue)
     }
 
     fn handle_variables<'tcx>(
@@ -250,13 +254,9 @@ impl DapSession {
         request: Request,
         variables_reference: i64,
         session: &PrirodaContext<'tcx>,
-    ) -> Result<DispatchOutcome, ServerError> {
-        if let Err(msg) = self.require_stopped() {
-            return Ok(DispatchOutcome::Rejected(msg));
-        }
-        if let Err(msg) = Self::require_variables_reference(variables_reference) {
-            return Ok(DispatchOutcome::Rejected(msg));
-        }
+    ) -> Result<HandlerOutcome, HandlerError> {
+        self.require_stopped().map_err(HandlerError::Reject)?;
+        Self::require_variables_reference(variables_reference).map_err(HandlerError::Reject)?;
 
         let variables = if variables_reference == LOCALS_VARIABLES_REFERENCE {
             session.list_locals().into_iter().map(Self::local_to_variable).collect()
@@ -266,18 +266,16 @@ impl DapSession {
 
         let response = request.success(ResponseBody::Variables(VariablesResponse { variables }));
         self.server.respond(response)?;
-        Ok(DispatchOutcome::Continue)
+        Ok(HandlerOutcome::Continue)
     }
 
     fn handle_configuration_done<'tcx>(
         &mut self,
         request: Request,
         session: &mut PrirodaContext<'tcx>,
-    ) -> InterpResult<'tcx, Result<DispatchOutcome, ServerError>> {
-        match self.check_configuration_done_request() {
-            Ok(DispatchOutcome::Continue) => {}
-            Ok(other) => return interp_ok(Ok(other)),
-            Err(err) => return interp_ok(Err(err)),
+    ) -> InterpResult<'tcx, Result<HandlerOutcome, HandlerError>> {
+        if let Err(msg) = self.require_state(DapState::Launched) {
+            return interp_ok(Err(HandlerError::Reject(msg)));
         }
 
         match Self::execution_outcome(session.stop_at_first_user_location()) {
@@ -290,7 +288,8 @@ impl DapSession {
                             self.state = DapState::Stopped;
                             self.send_stopped_event(StoppedEventReason::Entry)
                         })
-                        .map(|()| DispatchOutcome::Continue),
+                        .map(|()| HandlerOutcome::Continue)
+                        .map_err(HandlerError::Transport),
                 )
             }
             ExecutionOutcome::Terminated { code } =>
@@ -302,16 +301,14 @@ impl DapSession {
 
     /// FIXME: replace this with Miri thread state once Priroda exposes a
     /// frontend-facing thread model.
-    fn handle_threads(&mut self, request: Request) -> Result<DispatchOutcome, ServerError> {
-        if let Err(msg) = self.reject_after_termination() {
-            return Ok(DispatchOutcome::Rejected(msg));
-        }
+    fn handle_threads(&mut self, request: Request) -> Result<HandlerOutcome, HandlerError> {
+        self.reject_after_termination().map_err(HandlerError::Reject)?;
 
         let response = request.success(ResponseBody::Threads(ThreadsResponse {
             threads: vec![Thread { id: THREAD_ID, name: "main".to_string() }],
         }));
         self.server.respond(response)?;
-        Ok(DispatchOutcome::Continue)
+        Ok(HandlerOutcome::Continue)
     }
 
     /// FIXME: report all frames once Priroda exposes a frontend-facing stack model.
@@ -319,13 +316,9 @@ impl DapSession {
         &mut self,
         request: Request,
         session: &PrirodaContext<'tcx>,
-    ) -> Result<DispatchOutcome, ServerError> {
-        if let Err(msg) = self.require_stopped() {
-            return Ok(DispatchOutcome::Rejected(msg));
-        }
-        if let Err(msg) = Self::require_thread_id(&request) {
-            return Ok(DispatchOutcome::Rejected(msg));
-        }
+    ) -> Result<HandlerOutcome, HandlerError> {
+        self.require_stopped().map_err(HandlerError::Reject)?;
+        Self::require_thread_id(&request).map_err(HandlerError::Reject)?;
 
         let stack_frames = match &session.current_location {
             Some(location) => {
@@ -369,13 +362,13 @@ impl DapSession {
             total_frames: Some(total_frames),
         }));
         self.server.respond(response)?;
-        Ok(DispatchOutcome::Continue)
+        Ok(HandlerOutcome::Continue)
     }
 
     /// FIXME: grow capabilities as Priroda adds DAP features.
-    fn handle_initialize(&mut self, request: Request) -> Result<DispatchOutcome, ServerError> {
+    fn handle_initialize(&mut self, request: Request) -> Result<HandlerOutcome, HandlerError> {
         if self.state != DapState::Fresh {
-            return Ok(DispatchOutcome::Rejected("initialize may only be sent once"));
+            return Err(HandlerError::Reject("initialize may only be sent once"));
         }
 
         let response = request.success(ResponseBody::Initialize(Capabilities {
@@ -386,7 +379,7 @@ impl DapSession {
         self.server.respond(response)?;
         self.server.send_event(Event::Initialized)?;
         self.state = DapState::Initialized;
-        Ok(DispatchOutcome::Continue)
+        Ok(HandlerOutcome::Continue)
     }
 
     /// FIXME: distinguish step-over from step-in once Priroda has call-aware stepping.
@@ -395,11 +388,12 @@ impl DapSession {
         request: Request,
         body: ResponseBody,
         session: &mut PrirodaContext<'tcx>,
-    ) -> InterpResult<'tcx, Result<DispatchOutcome, ServerError>> {
-        match self.check_step_request(&request) {
-            Ok(DispatchOutcome::Continue) => {}
-            Ok(other) => return interp_ok(Ok(other)),
-            Err(err) => return interp_ok(Err(err)),
+    ) -> InterpResult<'tcx, Result<HandlerOutcome, HandlerError>> {
+        if let Err(msg) = self.require_stopped() {
+            return interp_ok(Err(HandlerError::Reject(msg)));
+        }
+        if let Err(msg) = Self::require_thread_id(&request) {
+            return interp_ok(Err(HandlerError::Reject(msg)));
         }
 
         match Self::execution_outcome(session.step()) {
@@ -411,7 +405,8 @@ impl DapSession {
                             self.state = DapState::Stopped;
                             self.send_stopped_event(Self::stopped_reason(result))
                         })
-                        .map(|()| DispatchOutcome::Continue),
+                        .map(|()| HandlerOutcome::Continue)
+                        .map_err(HandlerError::Transport),
                 ),
             ExecutionOutcome::Terminated { code } =>
                 interp_ok(self.respond_terminated(request, body, code)),
@@ -424,11 +419,12 @@ impl DapSession {
         &mut self,
         request: Request,
         session: &mut PrirodaContext<'tcx>,
-    ) -> InterpResult<'tcx, Result<DispatchOutcome, ServerError>> {
-        match self.check_step_request(&request) {
-            Ok(DispatchOutcome::Continue) => {}
-            Ok(other) => return interp_ok(Ok(other)),
-            Err(err) => return interp_ok(Err(err)),
+    ) -> InterpResult<'tcx, Result<HandlerOutcome, HandlerError>> {
+        if let Err(msg) = self.require_stopped() {
+            return interp_ok(Err(HandlerError::Reject(msg)));
+        }
+        if let Err(msg) = Self::require_thread_id(&request) {
+            return interp_ok(Err(HandlerError::Reject(msg)));
         }
 
         let body = ResponseBody::Continue(ContinueResponse { all_threads_continued: Some(true) });
@@ -442,7 +438,8 @@ impl DapSession {
                             self.state = DapState::Stopped;
                             self.send_stopped_event(Self::stopped_reason(result))
                         })
-                        .map(|()| DispatchOutcome::Continue),
+                        .map(|()| HandlerOutcome::Continue)
+                        .map_err(HandlerError::Transport),
                 ),
             ExecutionOutcome::Terminated { code } =>
                 interp_ok(self.respond_terminated(request, body, code)),
@@ -456,13 +453,11 @@ impl DapSession {
         request: Request,
         args: &SetBreakpointsArguments,
         session: &mut PrirodaContext<'tcx>,
-    ) -> Result<DispatchOutcome, ServerError> {
-        if let Err(msg) = self.reject_after_termination() {
-            return Ok(DispatchOutcome::Rejected(msg));
-        }
+    ) -> Result<HandlerOutcome, HandlerError> {
+        self.reject_after_termination().map_err(HandlerError::Reject)?;
 
         let Some(ref path_str) = args.source.path else {
-            return Ok(DispatchOutcome::Rejected(
+            return Err(HandlerError::Reject(
                 "setBreakpoints requires a source.path; sourceReference loads are not supported",
             ));
         };
@@ -491,27 +486,27 @@ impl DapSession {
         let response =
             request.success(ResponseBody::SetBreakpoints(SetBreakpointsResponse { breakpoints }));
         self.server.respond(response)?;
-        Ok(DispatchOutcome::Continue)
+        Ok(HandlerOutcome::Continue)
     }
 
-    fn handle_disconnect(&mut self, request: Request) -> Result<DispatchOutcome, ServerError> {
+    fn handle_disconnect(&mut self, request: Request) -> Result<HandlerOutcome, HandlerError> {
         self.server.respond(request.success(ResponseBody::Disconnect))?;
         self.state = DapState::Terminated;
         self.server.send_event(Event::Terminated(None))?;
-        Ok(DispatchOutcome::Exit)
+        Ok(HandlerOutcome::Exit)
     }
 
     fn handle_unsupported_request(
         &mut self,
         request: Request,
-    ) -> Result<DispatchOutcome, ServerError> {
+    ) -> Result<HandlerOutcome, HandlerError> {
         let message = format!(
             "unsupported request in Priroda DAP demo mode: {}",
             Self::display_command(&request.command)
         );
         let response = request.error(&message);
         self.server.respond(response)?;
-        Ok(DispatchOutcome::Continue)
+        Ok(HandlerOutcome::Continue)
     }
 
     fn reject_after_termination(&self) -> Result<(), &'static str> {
@@ -575,34 +570,15 @@ impl DapSession {
         Ok(())
     }
 
-    fn check_configuration_done_request(&self) -> Result<DispatchOutcome, ServerError> {
-        if let Err(msg) = self.require_state(DapState::Launched) {
-            return Ok(DispatchOutcome::Rejected(msg));
-        }
-
-        Ok(DispatchOutcome::Continue)
-    }
-
-    fn check_step_request(&self, request: &Request) -> Result<DispatchOutcome, ServerError> {
-        if let Err(msg) = self.require_stopped() {
-            return Ok(DispatchOutcome::Rejected(msg));
-        }
-        if let Err(msg) = Self::require_thread_id(request) {
-            return Ok(DispatchOutcome::Rejected(msg));
-        }
-
-        Ok(DispatchOutcome::Continue)
-    }
-
     fn respond_execution_error(
         &mut self,
         request: Request,
         message: String,
-    ) -> Result<DispatchOutcome, ServerError> {
+    ) -> Result<HandlerOutcome, HandlerError> {
         self.state = DapState::Terminated;
         self.server.respond(request.error(&message))?;
         self.server.send_event(Event::Terminated(None))?;
-        Ok(DispatchOutcome::Exit)
+        Ok(HandlerOutcome::Exit)
     }
 
     fn respond_terminated(
@@ -610,12 +586,12 @@ impl DapSession {
         request: Request,
         body: ResponseBody,
         code: i32,
-    ) -> Result<DispatchOutcome, ServerError> {
+    ) -> Result<HandlerOutcome, HandlerError> {
         self.state = DapState::Terminated;
         self.server.respond(request.success(body))?;
         self.server.send_event(Event::Exited(ExitedEventBody { exit_code: code.into() }))?;
         self.server.send_event(Event::Terminated(None))?;
-        Ok(DispatchOutcome::Exit)
+        Ok(HandlerOutcome::Exit)
     }
 
     fn execution_outcome<'tcx>(result: InterpResult<'tcx, StepResult>) -> ExecutionOutcome {
