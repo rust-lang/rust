@@ -3549,10 +3549,16 @@ impl<'a, 'ast, 'ra, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                                         // Resolve the generic parameters.
                                         this.visit_generics(generics);
 
-                                        let self_type_def_id = this.r.partial_res_map
-                                            .get(&self_type.id)
-                                            .and_then(|res| res.full_res().and_then(|r| r.opt_def_id())
-                                            .and_then(|id| id.as_local()));
+                                        let self_type_def_id = of_trait
+                                            .is_none()
+                                            .then(|| {
+                                                this.r.partial_res_map.get(&self_type.id).and_then(|res| {
+                                                    res.full_res()
+                                                        .and_then(|r| r.opt_def_id())
+                                                        .and_then(|id| id.as_local())
+                                                })
+                                            })
+                                            .flatten();
 
                                         // Resolve the items within the impl.
                                         this.with_current_self_type(self_type, |this| {
