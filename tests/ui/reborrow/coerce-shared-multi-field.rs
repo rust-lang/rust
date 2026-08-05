@@ -1,4 +1,5 @@
-//@ known-bug: unknown
+// Multi-field `CoerceShared` impls must be rejected without reaching malformed reborrow MIR.
+
 #![feature(reborrow)]
 #![allow(dead_code)]
 
@@ -34,6 +35,7 @@ impl<'a, T> Clone for MatRef<'a, T> {
 impl<'a, T> Copy for MatRef<'a, T> {}
 
 impl<'a, T> CoerceShared<MatRef<'a, T>> for MatMut<'a, T> {}
+//~^ ERROR implementing `CoerceShared` does not allow multiple lifetimes or fields to be coerced
 
 fn dims<T>(mat: MatRef<'_, T>) -> (usize, usize, usize, usize) {
     let _ = mat.ptr;

@@ -1,5 +1,6 @@
-//@ known-bug: unknown
 //@ edition: 2024
+
+// A `CoerceShared` target without a reborrowed lifetime must be rejected without an ICE.
 
 #![feature(reborrow)]
 
@@ -10,12 +11,11 @@ struct CustomMarkerRef;
 
 impl<'a> Reborrow for CustomMarker<'a> {}
 impl<'a> CoerceShared<CustomMarkerRef> for CustomMarker<'a> {}
-//~^ ERROR
+//~^ ERROR implementing `CoerceShared` does not allow multiple lifetimes or fields to be coerced
 
 fn method(_a: CustomMarkerRef) {}
 
 fn main() {
     let a = CustomMarker(PhantomData);
     method(a);
-    //~^ ERROR
 }

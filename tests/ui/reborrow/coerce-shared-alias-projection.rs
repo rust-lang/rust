@@ -1,4 +1,5 @@
-//@ known-bug: unknown
+// Alias and projection fields in invalid multi-field `CoerceShared` impls must not cause an ICE.
+
 #![feature(reborrow)]
 #![allow(dead_code)]
 
@@ -62,6 +63,7 @@ impl<'a, T> Clone for OuterAliasRef<'a, T> {
 impl<'a, T> Copy for OuterAliasRef<'a, T> {}
 
 impl<'a, T> CoerceShared<OuterAliasRef<'a, T>> for OuterMut<'a, T> {}
+//~^ ERROR implementing `CoerceShared` does not allow multiple lifetimes or fields to be coerced
 
 struct OuterProjectionRef<'a, T: 'a> {
     inner: ProjectedInnerRef<'a, T>,
@@ -77,6 +79,7 @@ impl<'a, T: 'a> Clone for OuterProjectionRef<'a, T> {
 impl<'a, T: 'a> Copy for OuterProjectionRef<'a, T> {}
 
 impl<'a, T: 'a> CoerceShared<OuterProjectionRef<'a, T>> for OuterMut<'a, T> {}
+//~^ ERROR implementing `CoerceShared` does not allow multiple lifetimes or fields to be coerced
 
 fn read_alias<'a>(outer: OuterAliasRef<'a, u32>) -> (&'a u32, usize) {
     (outer.inner.value, outer.tag)

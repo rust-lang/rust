@@ -997,10 +997,22 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             self.tcx,
             ObligationCause::dummy(),
             self.param_env,
-            ty::Binder::dummy(coerce_shared_trait_ref),
+            coerce_shared_trait_ref,
         );
+
+        let mut selcx = traits::SelectionContext::new(self);
+        let Ok(Some(impl_source)) = selcx.select(&obligation) else {
+            return Err(TypeError::Mismatch);
+        };
+        if let ImplSource::UserDefined(impl_source) = &impl_source
+            && let Some(impl_def_id) = impl_source.impl_def_id.as_local()
+            && let Err(guar) = self.tcx.ensure_result().coerce_shared_info(impl_def_id)
+        {
+            self.fcx.set_tainted_by_errors(guar);
+        }
+
         let ocx = ObligationCtxt::new(&self.infcx);
-        ocx.register_obligation(obligation);
+        ocx.register_obligations(impl_source.nested_obligations());
         let errs = ocx.evaluate_obligations_error_on_ambiguity();
         if errs.is_empty() {
             Ok(InferOk {
