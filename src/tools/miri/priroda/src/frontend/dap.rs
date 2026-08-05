@@ -21,22 +21,23 @@ use crate::debugger::{LocalDesc, PrirodaContext, StepResult};
 const THREAD_ID: i64 = 1;
 const STACK_FRAME_ID: i64 = 1;
 const LOCALS_VARIABLES_REFERENCE: i64 = 1;
-type ServerResult<T = ()> = Result<T, emmy_dap_types::errors::ServerError>;
 
+enum HandlerResponse {
+    Success(ResponseBody),
+    Error(String),
+}
+
+struct HandlerSuccess {
+    response: HandlerResponse,
+    state: Option<DapState>,
+    events: Vec<Event>,
+    outcome: HandlerOutcome,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
 enum HandlerOutcome {
     Continue,
     Exit,
-}
-
-enum HandlerError {
-    Reject(&'static str),
-    Transport(ServerError),
-}
-
-impl From<ServerError> for HandlerError {
-    fn from(e: ServerError) -> Self {
-        HandlerError::Transport(e)
-    }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -63,7 +64,7 @@ impl Dap {
         &self,
         session: &mut PrirodaContext<'tcx>,
     ) -> InterpResult<'tcx> {
-        if let Err(err) = DapSession::stdio().run_requests(session)? {
+        if let Err(err) = DapSession::stdio().run_requests(session) {
             eprintln!("priroda dap error: {err:?}");
         }
 
@@ -93,67 +94,61 @@ impl DapSession {
     fn run_requests<'tcx>(
         &mut self,
         session: &mut PrirodaContext<'tcx>,
-    ) -> InterpResult<'tcx, ServerResult> {
+    ) -> Result<(), ServerError> {
         loop {
             let request = match self.server.poll_request() {
                 Ok(Some(request)) => request,
-                Ok(None) => return interp_ok(Ok(())),
-                Err(err) => return interp_ok(Err(err)),
+                Ok(None) => return Ok(()),
+                Err(err) => return Err(err),
             };
 
-            let request_for_dispatch = request.clone();
-
-            match self.dispatch_request(request_for_dispatch, session)? {
-                Ok(HandlerOutcome::Continue) => {}
-                Ok(HandlerOutcome::Exit) => return interp_ok(Ok(())),
-                Err(HandlerError::Reject(msg)) => {
-                    let response = request.error(msg);
-                    if let Err(err) = self.server.respond(response) {
-                        return interp_ok(Err(err));
+            match self.dispatch_request(&request, session) {
+                Ok(s) => {
+                    let response = match s.response {
+                        HandlerResponse::Success(body) => request.success(body),
+                        HandlerResponse::Error(message) => request.error(&message),
+                    };
+                    self.server.respond(response)?;
+                    if let Some(st) = s.state {
+                        self.state = st;
+                    }
+                    for ev in s.events {
+                        self.server.send_event(ev)?;
+                    }
+                    if s.outcome == HandlerOutcome::Exit {
+                        return Ok(());
                     }
                 }
-                Err(HandlerError::Transport(e)) => return interp_ok(Err(e)),
+                Err(msg) => {
+                    self.server.respond(request.error(msg))?;
+                }
             }
         }
     }
 
     fn dispatch_request<'tcx>(
-        &mut self,
-        request: Request,
+        &self,
+        request: &Request,
         session: &mut PrirodaContext<'tcx>,
-    ) -> InterpResult<'tcx, Result<HandlerOutcome, HandlerError>> {
+    ) -> Result<HandlerSuccess, &'static str> {
         if self.state == DapState::Fresh && !matches!(&request.command, Command::Initialize(_)) {
-            return interp_ok(Err(HandlerError::Reject("initialize must be sent first")));
+            return Err("initialize must be sent first");
         }
 
-        let outcome = match &request.command {
-            Command::Initialize(_) => self.handle_initialize(request),
-            Command::Launch(_) => self.handle_launch(request),
-            Command::ConfigurationDone => return self.handle_configuration_done(request, session),
-            Command::Threads => self.handle_threads(request),
-            Command::StackTrace(_) => self.handle_stack_trace(request, session),
-            Command::Scopes(args) => {
-                let frame_id = args.frame_id;
-                self.handle_scopes(request, frame_id, session)
-            }
-            Command::Variables(args) => {
-                let variables_reference = args.variables_reference;
-                self.handle_variables(request, variables_reference, session)
-            }
-            Command::Continue(_) => return self.handle_continue(request, session),
-            Command::SetBreakpoints(args) => {
-                let args = args.clone();
-                self.handle_set_breakpoints(request, &args, session)
-            }
-            Command::Next(_) | Command::StepIn(_) => {
-                let body = match &request.command {
-                    Command::Next(_) => ResponseBody::Next,
-                    Command::StepIn(_) => ResponseBody::StepIn,
-                    _ => bug!("step body is selected by the outer Next/StepIn match"),
-                };
-                return self.handle_step(request, body, session);
-            }
-            Command::Disconnect(_) => self.handle_disconnect(request),
+        match &request.command {
+            Command::Initialize(_) => self.handle_initialize(),
+            Command::Launch(_) => self.handle_launch(),
+            Command::ConfigurationDone => self.handle_configuration_done(session),
+            Command::Threads => self.handle_threads(),
+            Command::StackTrace(args) => self.handle_stack_trace(args.thread_id, session),
+            Command::Scopes(args) => self.handle_scopes(args.frame_id, session),
+            Command::Variables(args) => self.handle_variables(args.variables_reference, session),
+            Command::Continue(args) => self.handle_continue(args.thread_id, session),
+            Command::SetBreakpoints(args) => self.handle_set_breakpoints(args, session),
+            Command::Next(args) => self.handle_step(ResponseBody::Next, args.thread_id, session),
+            Command::StepIn(args) =>
+                self.handle_step(ResponseBody::StepIn, args.thread_id, session),
+            Command::Disconnect(_) => self.handle_disconnect(),
             Command::Attach(_)
             | Command::BreakpointLocations(_)
             | Command::Cancel(_)
@@ -183,29 +178,29 @@ impl DapSession {
             | Command::StepOut(_)
             | Command::Terminate(_)
             | Command::TerminateThreads(_)
-            | Command::WriteMemory(_) => self.handle_unsupported_request(request),
-        };
-        interp_ok(outcome)
+            | Command::WriteMemory(_) => self.handle_unsupported_request(&request.command),
+        }
     }
 
     /// FIXME: connect launch arguments to Priroda's session model.
-    fn handle_launch(&mut self, request: Request) -> Result<HandlerOutcome, HandlerError> {
-        self.require_state(DapState::Initialized).map_err(HandlerError::Reject)?;
+    fn handle_launch(&self) -> Result<HandlerSuccess, &'static str> {
+        self.require_state(DapState::Initialized)?;
 
-        let response = request.success(ResponseBody::Launch);
-        self.server.respond(response)?;
-        self.state = DapState::Launched;
-        Ok(HandlerOutcome::Continue)
+        Ok(HandlerSuccess {
+            response: HandlerResponse::Success(ResponseBody::Launch),
+            state: Some(DapState::Launched),
+            events: Vec::new(),
+            outcome: HandlerOutcome::Continue,
+        })
     }
 
     fn handle_scopes<'tcx>(
-        &mut self,
-        request: Request,
+        &self,
         frame_id: i64,
         session: &PrirodaContext<'tcx>,
-    ) -> Result<HandlerOutcome, HandlerError> {
-        self.require_stopped().map_err(HandlerError::Reject)?;
-        Self::require_frame_id(frame_id).map_err(HandlerError::Reject)?;
+    ) -> Result<HandlerSuccess, &'static str> {
+        self.require_stopped()?;
+        Self::require_frame_id(frame_id)?;
 
         let (source, line, column) = match &session.current_location {
             Some(location) => {
@@ -230,33 +225,35 @@ impl DapSession {
             }
             None => (None, None, None),
         };
-        let response = request.success(ResponseBody::Scopes(ScopesResponse {
-            scopes: vec![Scope {
-                name: "Locals".to_string(),
-                presentation_hint: Some(ScopePresentationhint::Locals),
-                variables_reference: LOCALS_VARIABLES_REFERENCE,
-                named_variables: None,
-                indexed_variables: Some(0),
-                expensive: false,
-                source,
-                line,
-                column,
-                end_line: None,
-                end_column: None,
-            }],
-        }));
-        self.server.respond(response)?;
-        Ok(HandlerOutcome::Continue)
+        Ok(HandlerSuccess {
+            response: HandlerResponse::Success(ResponseBody::Scopes(ScopesResponse {
+                scopes: vec![Scope {
+                    name: "Locals".to_string(),
+                    presentation_hint: Some(ScopePresentationhint::Locals),
+                    variables_reference: LOCALS_VARIABLES_REFERENCE,
+                    named_variables: None,
+                    indexed_variables: Some(0),
+                    expensive: false,
+                    source,
+                    line,
+                    column,
+                    end_line: None,
+                    end_column: None,
+                }],
+            })),
+            state: None,
+            events: Vec::new(),
+            outcome: HandlerOutcome::Continue,
+        })
     }
 
     fn handle_variables<'tcx>(
-        &mut self,
-        request: Request,
+        &self,
         variables_reference: i64,
         session: &PrirodaContext<'tcx>,
-    ) -> Result<HandlerOutcome, HandlerError> {
-        self.require_stopped().map_err(HandlerError::Reject)?;
-        Self::require_variables_reference(variables_reference).map_err(HandlerError::Reject)?;
+    ) -> Result<HandlerSuccess, &'static str> {
+        self.require_stopped()?;
+        Self::require_variables_reference(variables_reference)?;
 
         let variables = if variables_reference == LOCALS_VARIABLES_REFERENCE {
             session.list_locals().into_iter().map(Self::local_to_variable).collect()
@@ -264,65 +261,75 @@ impl DapSession {
             Vec::new()
         };
 
-        let response = request.success(ResponseBody::Variables(VariablesResponse { variables }));
-        self.server.respond(response)?;
-        Ok(HandlerOutcome::Continue)
+        Ok(HandlerSuccess {
+            response: HandlerResponse::Success(ResponseBody::Variables(VariablesResponse {
+                variables,
+            })),
+            state: None,
+            events: Vec::new(),
+            outcome: HandlerOutcome::Continue,
+        })
     }
 
     fn handle_configuration_done<'tcx>(
-        &mut self,
-        request: Request,
+        &self,
         session: &mut PrirodaContext<'tcx>,
-    ) -> InterpResult<'tcx, Result<HandlerOutcome, HandlerError>> {
-        if let Err(msg) = self.require_state(DapState::Launched) {
-            return interp_ok(Err(HandlerError::Reject(msg)));
-        }
+    ) -> Result<HandlerSuccess, &'static str> {
+        self.require_state(DapState::Launched)?;
 
         match Self::execution_outcome(session.stop_at_first_user_location()) {
-            ExecutionOutcome::Stopped(_) => {
-                let response = request.success(ResponseBody::ConfigurationDone);
-                interp_ok(
-                    self.server
-                        .respond(response)
-                        .and_then(|()| {
-                            self.state = DapState::Stopped;
-                            self.send_stopped_event(StoppedEventReason::Entry)
-                        })
-                        .map(|()| HandlerOutcome::Continue)
-                        .map_err(HandlerError::Transport),
-                )
-            }
+            ExecutionOutcome::Stopped(_) =>
+                Ok(HandlerSuccess {
+                    response: HandlerResponse::Success(ResponseBody::ConfigurationDone),
+                    state: Some(DapState::Stopped),
+                    events: vec![Event::Stopped(Self::stopped_event_body(
+                        StoppedEventReason::Entry,
+                    ))],
+                    outcome: HandlerOutcome::Continue,
+                }),
             ExecutionOutcome::Terminated { code } =>
-                interp_ok(self.respond_terminated(request, ResponseBody::ConfigurationDone, code)),
+                Ok(HandlerSuccess {
+                    response: HandlerResponse::Success(ResponseBody::ConfigurationDone),
+                    state: Some(DapState::Terminated),
+                    events: vec![
+                        Event::Exited(ExitedEventBody { exit_code: code.into() }),
+                        Event::Terminated(None),
+                    ],
+                    outcome: HandlerOutcome::Exit,
+                }),
             ExecutionOutcome::Failed(message) =>
-                interp_ok(self.respond_execution_error(request, message)),
+                Ok(HandlerSuccess {
+                    response: HandlerResponse::Error(message),
+                    state: Some(DapState::Terminated),
+                    events: vec![Event::Terminated(None)],
+                    outcome: HandlerOutcome::Exit,
+                }),
         }
     }
 
     /// FIXME: replace this with Miri thread state once Priroda exposes a
     /// frontend-facing thread model.
-    fn handle_threads(&mut self, request: Request) -> Result<HandlerOutcome, HandlerError> {
-        self.reject_after_termination().map_err(HandlerError::Reject)?;
+    fn handle_threads(&self) -> Result<HandlerSuccess, &'static str> {
+        self.reject_after_termination()?;
 
-        let response = request.success(ResponseBody::Threads(ThreadsResponse {
-            threads: vec![Thread { id: THREAD_ID, name: "main".to_string() }],
-        }));
-        self.server.respond(response)?;
-        Ok(HandlerOutcome::Continue)
+        Ok(HandlerSuccess {
+            response: HandlerResponse::Success(ResponseBody::Threads(ThreadsResponse {
+                threads: vec![Thread { id: THREAD_ID, name: "main".to_string() }],
+            })),
+            state: None,
+            events: Vec::new(),
+            outcome: HandlerOutcome::Continue,
+        })
     }
 
     /// FIXME: report all frames once Priroda exposes a frontend-facing stack model.
     fn handle_stack_trace<'tcx>(
-        &mut self,
-        request: Request,
+        &self,
+        thread_id: i64,
         session: &PrirodaContext<'tcx>,
-    ) -> Result<HandlerOutcome, HandlerError> {
-        let thread_id = match &request.command {
-            Command::StackTrace(args) => args.thread_id,
-            _ => bug!("wrong command"),
-        };
-        self.require_stopped().map_err(HandlerError::Reject)?;
-        Self::require_thread_id(thread_id).map_err(HandlerError::Reject)?;
+    ) -> Result<HandlerSuccess, &'static str> {
+        self.require_stopped()?;
+        Self::require_thread_id(thread_id)?;
 
         let stack_frames = match &session.current_location {
             Some(location) => {
@@ -361,118 +368,126 @@ impl DapSession {
         };
         let total_frames: i64 =
             stack_frames.len().try_into().unwrap_or_else(|_| bug!("frame count exceeds i64"));
-        let response = request.success(ResponseBody::StackTrace(StackTraceResponse {
-            stack_frames,
-            total_frames: Some(total_frames),
-        }));
-        self.server.respond(response)?;
-        Ok(HandlerOutcome::Continue)
+        Ok(HandlerSuccess {
+            response: HandlerResponse::Success(ResponseBody::StackTrace(StackTraceResponse {
+                stack_frames,
+                total_frames: Some(total_frames),
+            })),
+            state: None,
+            events: Vec::new(),
+            outcome: HandlerOutcome::Continue,
+        })
     }
 
     /// FIXME: grow capabilities as Priroda adds DAP features.
-    fn handle_initialize(&mut self, request: Request) -> Result<HandlerOutcome, HandlerError> {
+    fn handle_initialize(&self) -> Result<HandlerSuccess, &'static str> {
         if self.state != DapState::Fresh {
-            return Err(HandlerError::Reject("initialize may only be sent once"));
+            return Err("initialize may only be sent once");
         }
 
-        let response = request.success(ResponseBody::Initialize(Capabilities {
-            supports_configuration_done_request: Some(true),
-            supports_single_thread_execution_requests: Some(true),
-            ..Capabilities::default()
-        }));
-        self.server.respond(response)?;
-        self.server.send_event(Event::Initialized)?;
-        self.state = DapState::Initialized;
-        Ok(HandlerOutcome::Continue)
+        Ok(HandlerSuccess {
+            response: HandlerResponse::Success(ResponseBody::Initialize(Capabilities {
+                supports_configuration_done_request: Some(true),
+                supports_single_thread_execution_requests: Some(true),
+                ..Capabilities::default()
+            })),
+            state: Some(DapState::Initialized),
+            events: vec![Event::Initialized],
+            outcome: HandlerOutcome::Continue,
+        })
     }
 
     /// FIXME: distinguish step-over from step-in once Priroda has call-aware stepping.
     fn handle_step<'tcx>(
-        &mut self,
-        request: Request,
+        &self,
         body: ResponseBody,
+        thread_id: i64,
         session: &mut PrirodaContext<'tcx>,
-    ) -> InterpResult<'tcx, Result<HandlerOutcome, HandlerError>> {
-        if let Err(msg) = self.require_stopped() {
-            return interp_ok(Err(HandlerError::Reject(msg)));
-        }
-        let thread_id = match &request.command {
-            Command::Next(args) => args.thread_id,
-            Command::StepIn(args) => args.thread_id,
-            _ => bug!("wrong command"),
-        };
-        if let Err(msg) = Self::require_thread_id(thread_id) {
-            return interp_ok(Err(HandlerError::Reject(msg)));
-        }
+    ) -> Result<HandlerSuccess, &'static str> {
+        self.require_stopped()?;
+        Self::require_thread_id(thread_id)?;
 
         match Self::execution_outcome(session.step()) {
             ExecutionOutcome::Stopped(result) =>
-                interp_ok(
-                    self.server
-                        .respond(request.success(body))
-                        .and_then(|()| {
-                            self.state = DapState::Stopped;
-                            self.send_stopped_event(Self::stopped_reason(result))
-                        })
-                        .map(|()| HandlerOutcome::Continue)
-                        .map_err(HandlerError::Transport),
-                ),
+                Ok(HandlerSuccess {
+                    response: HandlerResponse::Success(body),
+                    state: Some(DapState::Stopped),
+                    events: vec![Event::Stopped(Self::stopped_event_body(Self::stopped_reason(
+                        result,
+                    )))],
+                    outcome: HandlerOutcome::Continue,
+                }),
             ExecutionOutcome::Terminated { code } =>
-                interp_ok(self.respond_terminated(request, body, code)),
+                Ok(HandlerSuccess {
+                    response: HandlerResponse::Success(body),
+                    state: Some(DapState::Terminated),
+                    events: vec![
+                        Event::Exited(ExitedEventBody { exit_code: code.into() }),
+                        Event::Terminated(None),
+                    ],
+                    outcome: HandlerOutcome::Exit,
+                }),
             ExecutionOutcome::Failed(message) =>
-                interp_ok(self.respond_execution_error(request, message)),
+                Ok(HandlerSuccess {
+                    response: HandlerResponse::Error(message),
+                    state: Some(DapState::Terminated),
+                    events: vec![Event::Terminated(None)],
+                    outcome: HandlerOutcome::Exit,
+                }),
         }
     }
 
     fn handle_continue<'tcx>(
-        &mut self,
-        request: Request,
+        &self,
+        thread_id: i64,
         session: &mut PrirodaContext<'tcx>,
-    ) -> InterpResult<'tcx, Result<HandlerOutcome, HandlerError>> {
-        if let Err(msg) = self.require_stopped() {
-            return interp_ok(Err(HandlerError::Reject(msg)));
-        }
-        let thread_id = match &request.command {
-            Command::Continue(args) => args.thread_id,
-            _ => bug!("wrong command"),
-        };
-        if let Err(msg) = Self::require_thread_id(thread_id) {
-            return interp_ok(Err(HandlerError::Reject(msg)));
-        }
+    ) -> Result<HandlerSuccess, &'static str> {
+        self.require_stopped()?;
+        Self::require_thread_id(thread_id)?;
 
         let body = ResponseBody::Continue(ContinueResponse { all_threads_continued: Some(true) });
 
         match Self::execution_outcome(session.continue_execution()) {
             ExecutionOutcome::Stopped(result) =>
-                interp_ok(
-                    self.server
-                        .respond(request.success(body))
-                        .and_then(|()| {
-                            self.state = DapState::Stopped;
-                            self.send_stopped_event(Self::stopped_reason(result))
-                        })
-                        .map(|()| HandlerOutcome::Continue)
-                        .map_err(HandlerError::Transport),
-                ),
+                Ok(HandlerSuccess {
+                    response: HandlerResponse::Success(body),
+                    state: Some(DapState::Stopped),
+                    events: vec![Event::Stopped(Self::stopped_event_body(Self::stopped_reason(
+                        result,
+                    )))],
+                    outcome: HandlerOutcome::Continue,
+                }),
             ExecutionOutcome::Terminated { code } =>
-                interp_ok(self.respond_terminated(request, body, code)),
+                Ok(HandlerSuccess {
+                    response: HandlerResponse::Success(body),
+                    state: Some(DapState::Terminated),
+                    events: vec![
+                        Event::Exited(ExitedEventBody { exit_code: code.into() }),
+                        Event::Terminated(None),
+                    ],
+                    outcome: HandlerOutcome::Exit,
+                }),
             ExecutionOutcome::Failed(message) =>
-                interp_ok(self.respond_execution_error(request, message)),
+                Ok(HandlerSuccess {
+                    response: HandlerResponse::Error(message),
+                    state: Some(DapState::Terminated),
+                    events: vec![Event::Terminated(None)],
+                    outcome: HandlerOutcome::Exit,
+                }),
         }
     }
 
     fn handle_set_breakpoints<'tcx>(
-        &mut self,
-        request: Request,
+        &self,
         args: &SetBreakpointsArguments,
         session: &mut PrirodaContext<'tcx>,
-    ) -> Result<HandlerOutcome, HandlerError> {
-        self.reject_after_termination().map_err(HandlerError::Reject)?;
+    ) -> Result<HandlerSuccess, &'static str> {
+        self.reject_after_termination()?;
 
         let Some(ref path_str) = args.source.path else {
-            return Err(HandlerError::Reject(
+            return Err(
                 "setBreakpoints requires a source.path; sourceReference loads are not supported",
-            ));
+            );
         };
 
         let path = std::path::PathBuf::from(path_str);
@@ -496,30 +511,38 @@ impl DapSession {
             }
         }
 
-        let response =
-            request.success(ResponseBody::SetBreakpoints(SetBreakpointsResponse { breakpoints }));
-        self.server.respond(response)?;
-        Ok(HandlerOutcome::Continue)
+        Ok(HandlerSuccess {
+            response: HandlerResponse::Success(ResponseBody::SetBreakpoints(
+                SetBreakpointsResponse { breakpoints },
+            )),
+            state: None,
+            events: Vec::new(),
+            outcome: HandlerOutcome::Continue,
+        })
     }
 
-    fn handle_disconnect(&mut self, request: Request) -> Result<HandlerOutcome, HandlerError> {
-        self.server.respond(request.success(ResponseBody::Disconnect))?;
-        self.state = DapState::Terminated;
-        self.server.send_event(Event::Terminated(None))?;
-        Ok(HandlerOutcome::Exit)
+    fn handle_disconnect(&self) -> Result<HandlerSuccess, &'static str> {
+        Ok(HandlerSuccess {
+            response: HandlerResponse::Success(ResponseBody::Disconnect),
+            state: Some(DapState::Terminated),
+            events: vec![Event::Terminated(None)],
+            outcome: HandlerOutcome::Exit,
+        })
     }
 
     fn handle_unsupported_request(
-        &mut self,
-        request: Request,
-    ) -> Result<HandlerOutcome, HandlerError> {
-        let message = format!(
-            "unsupported request in Priroda DAP demo mode: {}",
-            Self::display_command(&request.command)
-        );
-        let response = request.error(&message);
-        self.server.respond(response)?;
-        Ok(HandlerOutcome::Continue)
+        &self,
+        command: &Command,
+    ) -> Result<HandlerSuccess, &'static str> {
+        Ok(HandlerSuccess {
+            response: HandlerResponse::Error(format!(
+                "unsupported request in Priroda DAP demo mode: {}",
+                Self::display_command(command)
+            )),
+            state: None,
+            events: Vec::new(),
+            outcome: HandlerOutcome::Continue,
+        })
     }
 
     fn reject_after_termination(&self) -> Result<(), &'static str> {
@@ -568,30 +591,6 @@ impl DapSession {
         Ok(())
     }
 
-    fn respond_execution_error(
-        &mut self,
-        request: Request,
-        message: String,
-    ) -> Result<HandlerOutcome, HandlerError> {
-        self.state = DapState::Terminated;
-        self.server.respond(request.error(&message))?;
-        self.server.send_event(Event::Terminated(None))?;
-        Ok(HandlerOutcome::Exit)
-    }
-
-    fn respond_terminated(
-        &mut self,
-        request: Request,
-        body: ResponseBody,
-        code: i32,
-    ) -> Result<HandlerOutcome, HandlerError> {
-        self.state = DapState::Terminated;
-        self.server.respond(request.success(body))?;
-        self.server.send_event(Event::Exited(ExitedEventBody { exit_code: code.into() }))?;
-        self.server.send_event(Event::Terminated(None))?;
-        Ok(HandlerOutcome::Exit)
-    }
-
     fn execution_outcome<'tcx>(result: InterpResult<'tcx, StepResult>) -> ExecutionOutcome {
         match result.report_err() {
             Ok(step) => ExecutionOutcome::Stopped(step),
@@ -610,8 +609,8 @@ impl DapSession {
         ExecutionOutcome::Failed(kind.to_string())
     }
 
-    fn send_stopped_event(&mut self, reason: StoppedEventReason) -> ServerResult {
-        self.server.send_event(Event::Stopped(StoppedEventBody {
+    fn stopped_event_body(reason: StoppedEventReason) -> StoppedEventBody {
+        StoppedEventBody {
             reason,
             description: None,
             thread_id: Some(THREAD_ID),
@@ -619,7 +618,7 @@ impl DapSession {
             text: None,
             all_threads_stopped: Some(true),
             hit_breakpoint_ids: None,
-        }))
+        }
     }
 
     fn stopped_reason(result: StepResult) -> StoppedEventReason {
