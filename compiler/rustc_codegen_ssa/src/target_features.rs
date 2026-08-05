@@ -122,7 +122,17 @@ pub(crate) fn from_target_feature_attr(
                 } else {
                     TargetFeatureKind::Enabled
                 };
-                target_features.push(TargetFeature { name, kind })
+                target_features.push(TargetFeature { name, kind });
+
+                if !rust_target_features
+                    .get(name.as_str())
+                    .is_some_and(|s| s.toggle_allowed().is_ok())
+                {
+                    tcx.dcx().span_delayed_bug(
+                        feature_span,
+                        format!("internal-only feature {name} should not be toggled by `#[target_feature]`"),
+                    );
+                }
             }
         }
     }
