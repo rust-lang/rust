@@ -278,14 +278,16 @@ fn get_delegation_parent_args_count_without_self<'tcx>(
         | (FnKind::AssocTraitImpl, FnKind::AssocTrait)
         | (FnKind::Free, FnKind::AssocInherentImpl) => 0,
 
+        (FnKind::AssocTrait, FnKind::Free)
+        | (FnKind::AssocTrait, FnKind::AssocTrait)
+        | (FnKind::AssocTrait, FnKind::AssocInherentImpl) => {
+            delegation_parent_args_count - 1 /* Without Self */
+        }
+
         (FnKind::AssocInherentImpl, FnKind::Free)
         | (FnKind::AssocInherentImpl, FnKind::AssocTrait)
         | (_, FnKind::AssocInherentImpl) => {
             delegation_parent_args_count /* No Self in AssocInherentImpl */
-        }
-
-        (FnKind::AssocTrait, FnKind::Free) | (FnKind::AssocTrait, FnKind::AssocTrait) => {
-            delegation_parent_args_count - 1 /* Without Self */
         }
 
         // For trait impl's `sig_id` is always equal to the corresponding trait method.
@@ -406,7 +408,7 @@ fn create_generic_args<'tcx>(
 
     let delegation_args = &delegation_args[delegation_generics.parent_count..];
 
-    let kinds = (fn_kind(tcx, delegation_id), fn_kind(tcx, sig_id));
+    let kinds @ (_, parent_kind) = (fn_kind(tcx, delegation_id), fn_kind(tcx, sig_id));
     if matches!(kinds, (FnKind::AssocTraitImpl, FnKind::AssocTrait | FnKind::AssocInherentImpl)) {
         // Special case, as user specifies Trait args in trait impl header, we want to treat
         // them as parent args. We always generate a function whose generics match
@@ -424,10 +426,14 @@ fn create_generic_args<'tcx>(
 
     let self_type = get_delegation_self_ty(tcx, delegation_id).map(|t| t.into());
 
-    // Remove `Self` from parent args (it is always at the `0th` index) as it is
-    // added manually.
     if self_type.is_some() && !parent_args.is_empty() {
-        parent_args = &parent_args[1..];
+        parent_args = match parent_kind {
+            FnKind::AssocInherentImpl => parent_args,
+            // Remove `Self` from parent args (it is always at the `0th` index) as it is
+            // added manually.
+            FnKind::AssocTrait => &parent_args[1..],
+            _ => unreachable!("if parent args are non-empty then the parent must exist"),
+        }
     }
 
     let (zero_self, after_lifetimes_self) =
@@ -471,14 +477,15 @@ pub(crate) fn inherit_clauses_for_delegation_item<'tcx>(
         args: Vec<ty::GenericArg<'tcx>>,
         folder: ParamIndexRemapper<'tcx>,
         filter_self_clauses: bool,
+        fold_clauses: bool,
     }
 
     impl<'tcx> ClausesCollector<'tcx> {
         fn with_own_clauses(
-            mut self,
+            &mut self,
             f: impl Fn(DefId) -> ty::GenericClauses<'tcx>,
             def_id: DefId,
-        ) -> Self {
+        ) {
             let clauses = f(def_id);
             let args = self.args.as_slice();
 
@@ -531,29 +538,30 @@ pub(crate) fn inherit_clauses_for_delegation_item<'tcx>(
                     }
                 }
 
-                let new_clause = clause.0.fold_with(&mut self.folder);
-                self.clauses.push((
-                    EarlyBinder::bind(self.tcx, new_clause)
-                        .instantiate(self.tcx, args)
-                        .skip_norm_wip(),
-                    clause.1,
-                ));
-            }
+                let new_clause = match self.fold_clauses {
+                    true => clause.0.fold_with(&mut self.folder),
+                    false => clause.0,
+                };
 
-            self
+                let inst_clause = EarlyBinder::bind(self.tcx, new_clause)
+                    .instantiate(self.tcx, args)
+                    .skip_norm_wip();
+
+                self.clauses.push((inst_clause, clause.1));
+            }
         }
 
         fn with_clauses(
-            mut self,
+            &mut self,
             f: impl Fn(DefId) -> ty::GenericClauses<'tcx> + Copy,
             def_id: DefId,
-        ) -> Self {
+        ) {
             let preds = f(def_id);
             if let Some(parent_def_id) = preds.parent {
-                self = self.with_own_clauses(f, parent_def_id);
+                self.with_own_clauses(f, parent_def_id);
             }
 
-            self.with_own_clauses(f, def_id)
+            self.with_own_clauses(f, def_id);
         }
     }
 
@@ -565,24 +573,45 @@ pub(crate) fn inherit_clauses_for_delegation_item<'tcx>(
         SelfPositionKind::AfterLifetimes(Some(DelegationSelfTyPropagationKind::SelfTy(..)))
     );
 
-    let collector = ClausesCollector { tcx, clauses: vec![], args, folder, filter_self_clauses };
+    let mut collector = ClausesCollector {
+        tcx,
+        clauses: vec![],
+        args,
+        folder,
+        filter_self_clauses,
+        fold_clauses: true,
+    };
+
     let (parent, inh_kind) = get_parent_and_inheritance_kind(tcx, def_id, sig_id);
 
     // `explicit_clauses_of` is used here to avoid copying `Self: Trait` clause.
     // Note: `clauses_of` query can also add inferred outlives clauses, but that
     // is not the case here as `sig_id` is either a trait or a function.
-    let clauses = match inh_kind {
+    match inh_kind {
         InheritanceKind::WithParent(false) => {
-            collector.with_clauses(|def_id| tcx.explicit_clauses_of(def_id), sig_id)
+            collector.with_clauses(|def_id| tcx.explicit_clauses_of(def_id), sig_id);
         }
         InheritanceKind::WithParent(true) => {
-            collector.with_clauses(|def_id| tcx.clauses_of(def_id), sig_id)
+            collector.with_clauses(|def_id| tcx.clauses_of(def_id), sig_id);
         }
-        InheritanceKind::Own => collector.with_own_clauses(|def_id| tcx.clauses_of(def_id), sig_id),
-    }
-    .clauses;
+        InheritanceKind::Own => {
+            collector.with_own_clauses(|def_id| tcx.clauses_of(def_id), sig_id);
+        }
+    };
 
-    ty::GenericClauses { parent, clauses: tcx.arena.alloc_from_iter(clauses) }
+    if tcx.is_method(sig_id)
+        && matches!(
+            (fn_kind(tcx, def_id), fn_kind(tcx, sig_id)),
+            (FnKind::AssocTrait, FnKind::AssocInherentImpl)
+        )
+    {
+        collector.fold_clauses = false;
+        collector.filter_self_clauses = false;
+
+        collector.with_clauses(|def_id| tcx.clauses_of(def_id), tcx.parent(def_id.to_def_id()));
+    }
+
+    ty::GenericClauses { parent, clauses: tcx.arena.alloc_from_iter(collector.clauses) }
 }
 
 fn create_folder_and_args<'tcx>(
@@ -650,8 +679,20 @@ pub(crate) fn inherit_sig_for_delegation_item<'tcx>(
     let caller_sig = EarlyBinder::bind(tcx, caller_sig.skip_binder().fold_with(&mut folder));
 
     let sig = caller_sig.instantiate(tcx, args.as_slice()).skip_binder();
-    let sig_iter = sig.inputs().iter().cloned().chain(std::iter::once(sig.output()));
-    tcx.arena.alloc_from_iter(sig_iter)
+    let mut sig_vec =
+        sig.inputs().iter().cloned().chain(std::iter::once(sig.output())).collect::<Vec<_>>();
+
+    if tcx.is_method(sig_id) {
+        sig_vec[0] = match (fn_kind(tcx, def_id), fn_kind(tcx, sig_id)) {
+            (FnKind::AssocInherentImpl, FnKind::AssocInherentImpl) => {
+                tcx.type_of(tcx.parent(def_id.to_def_id())).skip_binder()
+            }
+            (FnKind::AssocTrait, FnKind::AssocInherentImpl) => Ty::new_param(tcx, 0, kw::SelfUpper),
+            _ => sig_vec[0],
+        };
+    }
+
+    tcx.arena.alloc_from_iter(sig_vec)
 }
 
 // Creates user-specified generic arguments from delegation path,

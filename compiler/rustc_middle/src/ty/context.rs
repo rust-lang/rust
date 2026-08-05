@@ -1263,6 +1263,14 @@ impl<'tcx> TyCtxt<'tcx> {
             None => Err(VarError::NotPresent),
         }
     }
+
+    pub fn is_method(self, id: DefId) -> bool {
+        match self.def_kind(id) {
+            DefKind::Fn => false,
+            DefKind::AssocFn => self.associated_item(id).is_method(),
+            _ => false,
+        }
+    }
 }
 
 impl<'tcx> TyCtxtAt<'tcx> {

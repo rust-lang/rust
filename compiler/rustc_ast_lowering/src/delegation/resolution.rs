@@ -5,8 +5,8 @@ use hir::def::DefKind;
 use rustc_ast::{self as ast, Delegation, DelegationSource, NodeId};
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_hir as hir;
+use rustc_middle::ty;
 use rustc_middle::ty::Ty;
-use rustc_middle::{span_bug, ty};
 use rustc_span::def_id::{DefId, LocalDefId};
 use rustc_span::{ErrorGuaranteed, Span, kw};
 
@@ -150,18 +150,26 @@ impl<'tcx> DelegationResolver<'_, 'tcx> {
                 ))
             })?;
 
-        let is_method = match tcx.def_kind(sig_id) {
-            DefKind::Fn => false,
-            DefKind::AssocFn => tcx.associated_item(sig_id).is_method(),
-            _ => span_bug!(span, "unexpected DefKind for delegation item"),
-        };
-
+        let is_method = tcx.is_method(sig_id);
         let sig = tcx.fn_sig(sig_id).skip_binder().skip_binder();
         let param_count = sig.inputs().len() + usize::from(sig.c_variadic());
         let parent = tcx.local_parent(def_id);
 
         let (should_generate_block, contains_defs) =
             self.check_block_soundness(delegation, sig_id, is_method, param_count)?;
+
+        let call_path_res = if let Some(res) = self.try_get_resolution_id(delegation.id) {
+            res
+        } else {
+            let Some(id) = self.resolve_type_relative(delegation) else {
+                return Err(tcx.dcx().span_delayed_bug(
+                    span,
+                    format!("failed to resolve type relative delegation {:?}", span),
+                ));
+            };
+
+            id
+        };
 
         let res = DelegationResolution {
             is_method,
@@ -178,18 +186,7 @@ impl<'tcx> DelegationResolver<'_, 'tcx> {
                     .dcx()
                     .span_delayed_bug(span, format!("failed to get base res {:?}", span)));
             },
-            call_path_res: if let Some(res) = self.try_get_resolution_id(delegation.id) {
-                res
-            } else {
-                let Some(id) = self.resolve_type_relative(delegation) else {
-                    return Err(tcx.dcx().span_delayed_bug(
-                        span,
-                        format!("failed to resolve type relative delegation {:?}", span),
-                    ));
-                };
-
-                id
-            },
+            call_path_res,
             sig_mapping: self.create_sig_mapping(
                 delegation,
                 span,
@@ -305,7 +302,7 @@ impl<'tcx> DelegationResolver<'_, 'tcx> {
             mapping.arguments_to_map.insert(0);
         }
 
-        if self.can_perform_self_mapping(delegation, parent)? {
+        if self.can_perform_self_mapping(delegation, parent) {
             // FIXME(fn_delegation): support heuristics for mapping of complex
             // return types: `Self` -> `Box<Arc<Rc<Self>>>`
             mapping.map_return = sig.output().is_param(0);
@@ -324,23 +321,18 @@ impl<'tcx> DelegationResolver<'_, 'tcx> {
         // We can't yet map more than one argument if there are definitions inside.
         // FIXME(fn_delegation): support relowering with defs inside
         if contains_defs && mapping.arguments_to_map.len() > 1 {
-            return Err(self
-                .tcx()
-                .dcx()
-                .emit_err(DelegationAttemptedBlockWithDefsRelowering { span }));
+            let err = DelegationAttemptedBlockWithDefsRelowering { span };
+            let err = self.tcx().dcx().emit_err(err);
+            return Err(err);
         }
 
         Ok(mapping)
     }
 
-    fn can_perform_self_mapping(
-        &self,
-        delegation: &Delegation,
-        parent: LocalDefId,
-    ) -> Result<bool, ErrorGuaranteed> {
+    fn can_perform_self_mapping(&self, delegation: &Delegation, parent: LocalDefId) -> bool {
         // Heuristic: don't do wrapping if there is no target expression.
         if delegation.body.is_none() {
-            return Ok(false);
+            return false;
         }
 
         let tcx = self.tcx();
@@ -356,13 +348,17 @@ impl<'tcx> DelegationResolver<'_, 'tcx> {
         // 2) Inherent methods when delegating to trait, as we change the type of
         //    `Self` to type of struct or enum we delegate from.
         if !matches!(tcx.def_kind(parent), DefKind::Impl { .. }) {
-            return Ok(false);
+            return false;
         }
 
         // Check that delegation path resolves to a trait AssocFn, not to a free method.
         // After previous check we are sure that `sig_id` and `delegation.id`
         // point to the same function.
-        let id = self.get_resolution_id(delegation.id)?;
-        Ok(tcx.def_kind(id) == DefKind::AssocFn && tcx.def_kind(tcx.parent(id)) == DefKind::Trait)
+        self.try_get_resolution_id(delegation.id)
+            .map(|id| {
+                tcx.def_kind(id) == DefKind::AssocFn
+                    && tcx.def_kind(tcx.parent(id)) == DefKind::Trait
+            })
+            .unwrap_or(false)
     }
 }
