@@ -1751,6 +1751,7 @@ impl CommandLineStep for Libunwind {
             cfg.define("_LIBUNWIND_DISABLE_VISIBILITY_ANNOTATIONS", None);
             cfg.define("_LIBUNWIND_IS_NATIVE_ONLY", "1");
             cfg.include(root.join("include"));
+            cfg.include(root.join("src"));
             cfg.cargo_metadata(false);
             cfg.out_dir(&out_dir);
 
