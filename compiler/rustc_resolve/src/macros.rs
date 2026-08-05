@@ -562,7 +562,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         star_span: Span,
     ) -> Result<Vec<(Ident, Option<Ident>)>, Indeterminate> {
         let target_trait = self.expect_module(trait_def_id);
-        if target_trait.has_unexpanded_invocations() {
+        if target_trait.has_unexpanded_invocations(self) {
             return Err(Indeterminate);
         }
         // FIXME: Instead of waiting try generating all trait methods, and pruning
