@@ -111,10 +111,6 @@ impl SupportedArchitecture for Arm {
             // zeroed vectors in Rust, which are inherently going to be different than the
             // undefined vectors returned by the C intrinsics.
             .filter(|i| !i.name.starts_with("svundef"))
-            // Skip `sveorv` intrinsics - the code produced by `intrinsic-test` for these
-            // miscompiles and the Rust intrinsic call gets replaced by a constant zero (see
-            // llvm/llvm-project#203921).
-            .filter(|i| !i.name.starts_with("sveorv"))
             // These load intrinsics expect each element in the scalable vector `bases` argument to
             // be able to be cast to a pointer, which we don't support generating tests for yet.
             .filter(|i| !(i.name.starts_with("svld") && i.name.contains("_gather_")))
