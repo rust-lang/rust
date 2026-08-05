@@ -318,7 +318,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     )]
                 }
                 Condition::Outlives { long, short } => {
-                    let outlives = ty::OutlivesPredicate(long, short);
+                    let outlives = ty::OutlivesClause(long, short);
                     thin_vec![Obligation::with_depth(
                         tcx,
                         obligation.cause.clone(),
@@ -1096,7 +1096,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     .map_err(|_| SelectionError::Unimplemented)?;
 
                 // Register one obligation for 'a: 'b.
-                let outlives = ty::OutlivesPredicate(r_a, r_b);
+                let outlives = ty::OutlivesClause(r_a, r_b);
                 obligations.push(Obligation::with_depth(
                     tcx,
                     obligation.cause.clone(),
@@ -1146,7 +1146,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                 // If the type is `Foo + 'a`, ensure that the type
                 // being cast to `Foo + 'a` outlives `'a`:
-                let outlives = ty::OutlivesPredicate(source, r);
+                let outlives = ty::OutlivesClause(source, r);
                 nested.push(predicate_to_obligation(
                     ty::ClauseKind::TypeOutlives(outlives).upcast(tcx),
                 ));
@@ -1331,13 +1331,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         match *self_ty.skip_binder().kind() {
             ty::Dynamic(_bounds, lifetime) => {
-                obligations.push(
-                    obligation.with(
-                        tcx,
-                        ty_lifetime
-                            .map_bound(|ty_lifetime| ty::OutlivesPredicate(ty_lifetime, lifetime)),
-                    ),
-                );
+                obligations.push(obligation.with(
+                    tcx,
+                    ty_lifetime.map_bound(|ty_lifetime| ty::OutlivesClause(ty_lifetime, lifetime)),
+                ));
             }
 
             ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {

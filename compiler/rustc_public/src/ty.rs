@@ -1568,8 +1568,8 @@ pub enum PredicateKind {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub enum ClauseKind {
     Trait(TraitPredicate),
-    RegionOutlives(RegionOutlivesPredicate),
-    TypeOutlives(TypeOutlivesPredicate),
+    RegionOutlives(RegionOutlivesClause),
+    TypeOutlives(TypeOutlivesClause),
     Projection(ProjectionPredicate),
     ConstArgHasType(TyConst, Ty),
     WellFormed(TermKind),
@@ -1602,10 +1602,17 @@ pub struct TraitPredicate {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
-pub struct OutlivesPredicate<A, B>(pub A, pub B);
+pub struct OutlivesClause<A, B>(pub A, pub B);
 
-pub type RegionOutlivesPredicate = OutlivesPredicate<Region, Region>;
-pub type TypeOutlivesPredicate = OutlivesPredicate<Ty, Region>;
+pub type RegionOutlivesClause = OutlivesClause<Region, Region>;
+pub type TypeOutlivesClause = OutlivesClause<Ty, Region>;
+
+#[deprecated = "renamed to [`OutlivesClause`]"]
+pub type OutlivesPredicate<A, B> = OutlivesClause<A, B>;
+#[deprecated = "renamed to [`RegionOutlivesClause`]"]
+pub type RegionOutlivesPredicate = RegionOutlivesClause;
+#[deprecated = "renamed to [`TypeOutlivesClause`]"]
+pub type TypeOutlivesPredicate = TypeOutlivesClause;
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize)]
 pub struct ProjectionPredicate {

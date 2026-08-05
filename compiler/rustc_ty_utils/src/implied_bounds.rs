@@ -66,7 +66,7 @@ fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx [(Ty<'
                     //
                     // Side-note: We don't really need to do this remapping for early-bound
                     // lifetimes because they're already "linked" by the bidirectional outlives
-                    // predicates we insert in the `explicit_clauses_of` query for RPITITs.
+                    // clauses we insert in the `explicit_clauses_of` query for RPITITs.
                     let mut mapping = FxHashMap::default();
                     let generics = tcx.generics_of(def_id);
 
