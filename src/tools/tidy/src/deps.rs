@@ -719,8 +719,15 @@ fn check_proc_macro_dep_list(root: &Path, cargo: &Path, bless: bool, check: &mut
     // Remove the proc-macro crates themselves
     proc_macro_deps.retain(|pkg| !is_proc_macro_pkg(&metadata[pkg]));
     // Sort and deduplicate the crate names.
-    let proc_macro_deps =
-        proc_macro_deps.into_iter().map(|dep| metadata[dep].name.as_ref()).collect::<BTreeSet<_>>();
+    // Cargo package names may contain `-`, but will normalize these to `_` before passing to rustc.
+    // As bootstrap parses the `--crate-name` flag, use the name of the actual lib target which has
+    // been normalized.
+    let proc_macro_deps = proc_macro_deps
+        .into_iter()
+        .filter_map(|dep| {
+            metadata[dep].targets.iter().find_map(|target| target.is_lib().then_some(&target.name))
+        })
+        .collect::<BTreeSet<_>>();
 
     let expected = {
         use std::fmt::Write;
