@@ -32,7 +32,7 @@ use syntax::{
 };
 use triomphe::Arc;
 
-use crate::{AssocItem, Field, Function, GenericDef, Local, Trait, Type, TypeOwnerId, Variant};
+use crate::{AssocItem, Field, Function, GenericDef, Trait, Type, TypeOwnerId, Variant};
 
 pub use hir_def::VariantId;
 pub use hir_ty::{
@@ -134,10 +134,8 @@ diagnostics![AnyDiagnostic<'db> ->
     MissingFields,
     MissingMatchArms,
     MissingUnsafe,
-    MovedOutOfRef<'db>,
     MutRefInImmRefPat,
     MutableRefBinding,
-    NeedMut<'db>,
     NonExhaustiveLet,
     NonExhaustiveRecordExpr,
     NonExhaustiveRecordPat,
@@ -168,8 +166,6 @@ diagnostics![AnyDiagnostic<'db> ->
     UnresolvedMethodCall<'db>,
     UnresolvedModule,
     UnresolvedIdent,
-    UnusedMut<'db>,
-    UnusedVariable<'db>,
     GenericArgsProhibited,
     ParenthesizedGenericArgsWithoutFnTrait,
     BadRtn,
@@ -474,28 +470,6 @@ pub struct TypeMismatch<'db> {
     pub expr_or_pat: InFile<ExprOrPatPtr>,
     pub expected: Type<'db>,
     pub actual: Type<'db>,
-}
-
-#[derive(Debug)]
-pub struct NeedMut<'db> {
-    pub local: Local<'db>,
-    pub span: InFile<SyntaxNodePtr>,
-}
-
-#[derive(Debug)]
-pub struct UnusedMut<'db> {
-    pub local: Local<'db>,
-}
-
-#[derive(Debug)]
-pub struct UnusedVariable<'db> {
-    pub local: Local<'db>,
-}
-
-#[derive(Debug)]
-pub struct MovedOutOfRef<'db> {
-    pub ty: Type<'db>,
-    pub span: InFile<SyntaxNodePtr>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
