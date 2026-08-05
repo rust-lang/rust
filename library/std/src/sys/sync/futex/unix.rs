@@ -1,13 +1,3 @@
-#![cfg(any(
-    target_os = "linux",
-    target_os = "android",
-    all(target_os = "emscripten", target_feature = "atomics"),
-    target_os = "freebsd",
-    target_os = "openbsd",
-    target_os = "dragonfly",
-    target_os = "fuchsia",
-))]
-
 use crate::sync::atomic::Atomic;
 use crate::time::Duration;
 
@@ -28,9 +18,9 @@ pub type SmallPrimitive = u32;
 /// Returns false on timeout, and true in all other cases.
 #[cfg(any(target_os = "linux", target_os = "android", target_os = "freebsd"))]
 pub fn futex_wait(futex: &Atomic<u32>, expected: u32, timeout: Option<Duration>) -> bool {
-    use super::time::Timespec;
     use crate::ptr::null;
     use crate::sync::atomic::Ordering::Relaxed;
+    use crate::sys::pal::time::Timespec;
 
     // Calculate the timeout as an absolute timespec.
     //
@@ -149,8 +139,8 @@ pub fn futex_wake_all(futex: &Atomic<u32>) {
 
 #[cfg(target_os = "openbsd")]
 pub fn futex_wait(futex: &Atomic<u32>, expected: u32, timeout: Option<Duration>) -> bool {
-    use super::time::Timespec;
     use crate::ptr::{null, null_mut};
+    use crate::sys::pal::time::Timespec;
 
     // Overflows are rounded up to an infinite timeout (None).
     let timespec = timeout
@@ -258,7 +248,7 @@ pub fn futex_wake_all(futex: &Atomic<u32>) {
 
 #[cfg(target_os = "fuchsia")]
 pub fn futex_wait(futex: &Atomic<u32>, expected: u32, timeout: Option<Duration>) -> bool {
-    use super::fuchsia::*;
+    use crate::sys::pal::fuchsia::*;
 
     // Sleep forever if the timeout is longer than fits in a i64.
     let deadline = timeout
@@ -274,11 +264,11 @@ pub fn futex_wait(futex: &Atomic<u32>, expected: u32, timeout: Option<Duration>)
 // Fuchsia doesn't tell us how many threads are woken up, so this always returns false.
 #[cfg(target_os = "fuchsia")]
 pub fn futex_wake(futex: &Atomic<u32>) -> bool {
-    unsafe { super::fuchsia::zx_futex_wake(futex, 1) };
+    unsafe { crate::sys::pal::fuchsia::zx_futex_wake(futex, 1) };
     false
 }
 
 #[cfg(target_os = "fuchsia")]
 pub fn futex_wake_all(futex: &Atomic<u32>) {
-    unsafe { super::fuchsia::zx_futex_wake(futex, u32::MAX) };
+    unsafe { crate::sys::pal::fuchsia::zx_futex_wake(futex, u32::MAX) };
 }

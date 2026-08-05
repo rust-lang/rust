@@ -1,4 +1,4 @@
-use super::hermit_abi;
+use crate::os::hermit::hermit_abi;
 use crate::ptr::null;
 use crate::sync::atomic::Atomic;
 use crate::time::Duration;
