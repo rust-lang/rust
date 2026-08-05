@@ -205,13 +205,25 @@ fn report_bin_hex_error(
                     &repr_str
                 };
 
-            Some(OverflowingBinHexSignBitSub {
-                span,
-                lit_no_suffix,
-                negative_val: actually,
-                int_ty: int_ty.name_str(),
-                uint_ty: Integer::fit_unsigned(val).uint_ty_str(),
-            })
+            let uint_ty = Integer::fit_unsigned(val);
+            // `cast_signed` only supports equal-width integer casts.
+            if uint_ty.size() == size {
+                Some(OverflowingBinHexSignBitSub::CastSigned {
+                    span,
+                    lit_no_suffix,
+                    negative_val: actually,
+                    uint_ty: uint_ty.uint_ty_str(),
+                    int_ty: int_ty.name_str(),
+                })
+            } else {
+                Some(OverflowingBinHexSignBitSub::AsCast {
+                    span,
+                    lit_no_suffix,
+                    negative_val: actually,
+                    uint_ty: uint_ty.uint_ty_str(),
+                    int_ty: int_ty.name_str(),
+                })
+            }
         })
         .flatten();
 
