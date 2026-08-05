@@ -3092,7 +3092,7 @@ mod snapshot {
         let ctx = TestCtx::new();
         insta::assert_snapshot!(ctx.config("fix").path("compiler").render_steps(), @r"
         [build] llvm <host>
-        [check] rustc 0 <host> -> rustc 1 <host> (74 crates)
+        [fix] rustc 0 <host> -> rustc 1 <host> (74 crates)
         ");
     }
 }

@@ -20,6 +20,23 @@ use crate::core::config::TargetSelection;
 use crate::utils::build_stamp::{self, BuildStamp};
 use crate::{CodegenBackendKind, Compiler, Mode, Subcommand, t};
 
+/// Allows individual check-step instances to keep track of whether they
+/// represent `cargo check` or `cargo fix`, independently of [`Builder::kind`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+enum CheckKind {
+    Check,
+    Fix,
+}
+
+impl CheckKind {
+    fn to_kind(self) -> Kind {
+        match self {
+            CheckKind::Check => Kind::Check,
+            CheckKind::Fix => Kind::Fix,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Std {
     /// Compiler that will check this std.
@@ -225,11 +242,7 @@ impl Step for PrepareRustcRmetaSysroot {
 
     fn run(self, builder: &Builder<'_>) -> Self::Output {
         // Check rustc
-        let stamp = builder.ensure(Rustc {
-            build_compiler: self.build_compiler.clone(),
-            target: self.target,
-            crates: vec![],
-        });
+        let stamp = Rustc::check_rustc_for_preparing_sysroot(builder, &self);
 
         let build_compiler = self.build_compiler.build_compiler();
 
@@ -284,6 +297,8 @@ impl Step for PrepareStdRmetaSysroot {
 /// Checks rustc using `build_compiler`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Rustc {
+    check_kind: CheckKind,
+
     /// Compiler that will check this rustc.
     build_compiler: CompilerForCheck,
     target: TargetSelection,
@@ -294,6 +309,21 @@ pub struct Rustc {
     ///
     /// [`compile::Rustc`]: crate::core::build_steps::compile::Rustc
     crates: Vec<String>,
+}
+
+impl Rustc {
+    fn check_rustc_for_preparing_sysroot(
+        builder: &Builder<'_>,
+        prepare: &PrepareRustcRmetaSysroot,
+    ) -> BuildStamp {
+        builder.ensure(Rustc {
+            // We specifically want `cargo check`, not the current bootstrap subcommand.
+            check_kind: CheckKind::Check,
+            build_compiler: prepare.build_compiler.clone(),
+            target: prepare.target,
+            crates: vec![],
+        })
+    }
 }
 
 impl CommandLineStep for Rustc {
@@ -309,11 +339,17 @@ impl CommandLineStep for Rustc {
     }
 
     fn make_run(run: RunConfig<'_>) {
+        let check_kind = match run.builder.kind {
+            Kind::Check => CheckKind::Check,
+            Kind::Fix => CheckKind::Fix,
+            kind => panic!("unexpected kind for `check::Rustc`: {kind:?}"),
+        };
+
         let target = run.target;
         let build_compiler = prepare_compiler_for_check(run.builder, target, Mode::Rustc);
         let crates = run.make_run_crates(Alias::Compiler);
 
-        run.builder.ensure(Rustc { build_compiler, target, crates });
+        run.builder.ensure(Rustc { check_kind, build_compiler, target, crates });
     }
 
     /// Check the compiler.
@@ -333,7 +369,7 @@ impl CommandLineStep for Rustc {
             Mode::Rustc,
             SourceType::InTree,
             target,
-            Kind::Check,
+            self.check_kind.to_kind(),
         );
 
         rustc_cargo(builder, &mut cargo, target, &build_compiler, &self.crates);
@@ -347,7 +383,7 @@ impl CommandLineStep for Rustc {
         }
 
         let _guard = builder.msg(
-            Kind::Check,
+            self.check_kind.to_kind(),
             format_args!("compiler artifacts{}", crate_description(&self.crates)),
             Mode::Rustc,
             self.build_compiler.build_compiler(),
@@ -370,13 +406,11 @@ impl CommandLineStep for Rustc {
     }
 
     fn metadata(&self) -> Option<StepMetadata> {
-        let metadata = StepMetadata::check("rustc", self.target)
+        let mut metadata = StepMetadata::new("rustc", self.target, self.check_kind.to_kind())
             .built_by(self.build_compiler.build_compiler());
-        let metadata = if self.crates.is_empty() {
-            metadata
-        } else {
-            metadata.with_metadata(format!("({} crates)", self.crates.len()))
-        };
+        if !self.crates.is_empty() {
+            metadata = metadata.with_metadata(format!("({} crates)", self.crates.len()));
+        }
         Some(metadata)
     }
 }
