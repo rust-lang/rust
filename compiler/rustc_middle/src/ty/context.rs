@@ -927,8 +927,12 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn is_implicit_trait(self, def_id: DefId, including_sized: bool) -> bool {
         self.is_default_trait(def_id)
-            || matches!(self.as_lang_item(def_id), Some(LangItem::Move))
+            || self.is_move_trait(def_id)
             || (including_sized && self.is_sizedness_trait(def_id))
+    }
+
+    pub fn is_move_trait(self, def_id: DefId) -> bool {
+        matches!(self.as_lang_item(def_id), Some(LangItem::Move))
     }
 
     pub fn is_sizedness_trait(self, def_id: DefId) -> bool {
