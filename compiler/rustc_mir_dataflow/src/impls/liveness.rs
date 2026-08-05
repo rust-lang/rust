@@ -208,7 +208,8 @@ impl DefUse {
     }
 }
 
-/// Like `MaybeLiveLocals`, but does not mark locals as live if they are used in a dead assignment.
+/// Like `MaybeLiveLocals` (and layered on top of `MaybeLiveLocals`), but does not mark locals as
+/// live if they are used in a dead assignment.
 ///
 /// This is basically written for dead store elimination and nothing else.
 ///
@@ -274,12 +275,11 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeTransitiveLiveLocals<'a> {
     const NAME: &'static str = "transitive liveness";
 
     fn bottom_value(&self, body: &mir::Body<'tcx>) -> Self::Domain {
-        // bottom = not live
-        DenseBitSet::new_empty(body.local_decls.len())
+        MaybeLiveLocals.bottom_value(body)
     }
 
-    fn initialize_start_block(&self, _: &mir::Body<'tcx>, _: &mut Self::Domain) {
-        // No variables are live until we observe a use
+    fn initialize_start_block(&self, body: &mir::Body<'tcx>, state: &mut Self::Domain) {
+        MaybeLiveLocals.initialize_start_block(body, state)
     }
 
     fn apply_primary_statement_effect(
@@ -288,6 +288,7 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeTransitiveLiveLocals<'a> {
         statement: &mir::Statement<'tcx>,
         location: Location,
     ) {
+        // This is the one part of `MaybeTransitiveLiveLocals` that differs from `MaybeLiveLocals`.
         if let Some(destination) =
             Self::can_be_removed_if_dead(&statement.kind, &self.always_live, &self.debuginfo_locals)
             && !state.contains(destination.local)
@@ -295,7 +296,8 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeTransitiveLiveLocals<'a> {
             // This store is dead
             return;
         }
-        TransferFunction(state).visit_statement(statement, location);
+
+        MaybeLiveLocals.apply_primary_statement_effect(state, statement, location);
     }
 
     fn apply_primary_terminator_effect(
@@ -304,27 +306,15 @@ impl<'a, 'tcx> Analysis<'tcx> for MaybeTransitiveLiveLocals<'a> {
         terminator: &mir::Terminator<'tcx>,
         location: Location,
     ) {
-        TransferFunction(state).visit_terminator(terminator, location);
+        MaybeLiveLocals.apply_primary_terminator_effect(state, terminator, location)
     }
 
     fn apply_call_return_effect(
         &self,
         state: &mut Self::Domain,
-        _block: mir::BasicBlock,
+        block: mir::BasicBlock,
         return_places: CallReturnPlaces<'_, 'tcx>,
     ) {
-        if let CallReturnPlaces::Yield(resume_place) = return_places {
-            YieldResumeEffect(state).visit_place(
-                &resume_place,
-                PlaceContext::MutatingUse(MutatingUseContext::Yield),
-                Location::START,
-            )
-        } else {
-            return_places.for_each(|place| {
-                if let Some(local) = place.as_local() {
-                    state.remove(local);
-                }
-            });
-        }
+        MaybeLiveLocals.apply_call_return_effect(state, block, return_places);
     }
 }
