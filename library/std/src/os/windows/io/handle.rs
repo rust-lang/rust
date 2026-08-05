@@ -424,7 +424,8 @@ pub trait AsHandle {
     ///
     /// # Example
     ///
-    /// ```rust,no_run
+    #[cfg_attr(windows, doc = "```no_run")]
+    #[cfg_attr(not(windows), doc = "```ignore (needs windows)")]
     /// use std::fs::File;
     /// # use std::io;
     /// use std::os::windows::io::{AsHandle, BorrowedHandle};

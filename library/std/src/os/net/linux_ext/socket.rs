@@ -24,7 +24,14 @@ pub impl(self) trait UnixSocketExt {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    #[cfg_attr(
+        any(target_os = "linux", target_os = "android", target_os = "cygwin"),
+        doc = "```no_run"
+    )]
+    #[cfg_attr(
+        not(any(target_os = "linux", target_os = "android", target_os = "cygwin")),
+        doc = "```ignore (needs linux)"
+    )]
     /// #![feature(unix_socket_ancillary_data)]
     /// #[cfg(target_os = "linux")]
     /// use std::os::linux::net::UnixSocketExt;
