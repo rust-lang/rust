@@ -24,18 +24,10 @@ const fn contains_zero_byte(x: usize) -> bool {
 #[must_use]
 pub const fn memchr(x: u8, text: &[u8]) -> Option<usize> {
     // Fast path for small slices.
-    if text.len() < 2 * USIZE_BYTES {
-        let result = memchr_naive(x, text);
-        if let Some(index) = result {
-            // SAFETY: `memchr_naive` only returns an index from within `text`.
-            unsafe { crate::hint::assert_unchecked(index < text.len()) };
-        }
-        return result;
-    }
-
-    let result = memchr_aligned(x, text);
+    let result =
+        if text.len() < 2 * USIZE_BYTES { memchr_naive(x, text) } else { memchr_aligned(x, text) };
     if let Some(index) = result {
-        // SAFETY: `memchr_aligned` only returns an index from within `text`.
+        // SAFETY: Both implementations only return an index from within `text`.
         unsafe { crate::hint::assert_unchecked(index < text.len()) };
     }
     result
