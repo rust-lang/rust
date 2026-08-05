@@ -291,10 +291,8 @@ fn builtin_expr(p: &mut Parser<'_>) -> Option<CompletedMarker> {
             while !p.at(EOF) && !p.at(T![')']) {
                 let m = p.start();
                 if p.current().is_any_identifier() && p.nth_at(1, T![=]) && !p.nth_at(2, T![=]) {
-                    let m = p.start();
-                    p.bump_any();
+                    name_any_identifier(p);
                     p.bump(T![=]);
-                    m.complete(p, FORMAT_ARGS_ARG_NAME);
                 }
                 if expr(p).is_none() {
                     m.abandon(p);
@@ -376,8 +374,12 @@ pub(crate) fn parse_asm_expr(p: &mut Parser<'_>, m: Marker) -> Option<CompletedM
         }
 
         // Parse operand names
-        if p.at(T![ident]) && p.nth_at(1, T![=]) {
-            name(p);
+        if p.current().is_any_identifier() && p.nth_at(1, T![=]) {
+            // test asm_keyword_name
+            // fn foo() {
+            //     builtin # asm("", fn = const 0);
+            // }
+            name_any_identifier(p);
             p.bump(T![=]);
             allow_templates = false;
         }
