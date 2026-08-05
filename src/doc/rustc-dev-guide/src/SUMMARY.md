@@ -52,7 +52,7 @@
 - [About the compiler team](./compiler-team.md)
 - [Using Git](./git.md)
 - [Mastering @rustbot](./rustbot.md)
-- [Running LLMs](./llm-guidance/index.md)
+- [Running LLMs](./llm-guidance.md)
     - [Writing code with LLMs](./llm-guidance/writing.md)
     - [Reviewing code with LLMs](./llm-guidance/reviewing.md)
 - [Walkthrough: a typical contribution](./walkthrough.md)
