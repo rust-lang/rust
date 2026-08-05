@@ -5368,7 +5368,7 @@ declare_lint! {
     /// on this target due to this issue, but the problem was not known at the time of
     /// stabilization.
     pub AARCH64_SOFTFLOAT_NEON,
-    Warn,
+    Deny,
     "detects code that could be affected by ABI issues on aarch64 softfloat targets",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #134375),
@@ -5407,7 +5407,7 @@ declare_lint! {
     /// on these targets) with `sse`. This can lead to crashes of the backend. To prevent that,
     /// Rust is turning that combination into an error.
     pub X86_SOFTFLOAT_SSE,
-    Warn,
+    Deny,
     "detects code that could be affected by LLVM backend issues on x86 softfloat targets",
     @future_incompatible = FutureIncompatibleInfo {
         reason: fcw!(FutureReleaseError #117938),
