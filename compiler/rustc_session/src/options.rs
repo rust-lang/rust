@@ -68,9 +68,11 @@ macro_rules! hash_substruct {
 /// Target modifier enum value + user value ('2') from external crate
 /// is converted into description: prefix ('Z'), name ('regparm'), tech value ('Some(2)').
 pub struct ExtendedTargetModifierInfo {
-    /// Flag prefix (usually, 'C' for codegen flags or 'Z' for unstable flags)
+    /// Flag prefix (usually, 'C' for codegen flags or 'Z' for unstable flags). And empty string
+    /// indicates a synthetic target modifier, which does not correspond directly to a flag.
     pub prefix: String,
-    /// Flag name
+    /// Flag name. For synthetic features, this is still relevant as the name used to suppress
+    /// the error for mismatches involving this target modifier.
     pub name: String,
     /// Flag parsed technical value
     pub tech_value: String,
@@ -180,6 +182,7 @@ impl TargetModifier {
                     return target_modifier_consistency_check::target_cpu(sess, self, other);
                 }
             },
+            _ => {}
         };
         match other {
             Some(other) => self.extend().tech_value == other.extend().tech_value,
@@ -218,6 +221,9 @@ macro_rules! top_level_options {
                     $tmod_variant($tmod_enum),
                 )?
             )*
+            // Synthetic target modifiers, manually computed.
+            /// List of target features that are actually target modifiers.
+            TargetFeatures,
         }
 
         impl OptionsTargetModifiers {
@@ -228,11 +234,23 @@ macro_rules! top_level_options {
                             Self::$tmod_variant(v) => v.reparse(user_value),
                         )?
                     )*
+
+                    // Synthetic target modifiers.
+                    Self::TargetFeatures => {
+                        ExtendedTargetModifierInfo {
+                            prefix: String::new(),
+                            name: "target-feature".into(),
+                            tech_value: format!("{:?}", user_value),
+                        }
+                    }
+
                     #[allow(unreachable_patterns)]
                     _ => panic!("unknown target modifier option: {self:?}"),
                 }
             }
 
+            /// Used by `-Cunsafe-allow-abi-mismatch` to determine whether this is a valid thing to
+            /// allow.
             pub fn is_target_modifier(flag_name: &str) -> bool {
                 $(
                     $(
@@ -241,6 +259,12 @@ macro_rules! top_level_options {
                         }
                     )?
                 )*
+
+                // Synthetic target modifiers. The names must match `reparse` above.
+                if flag_name == "target-feature" {
+                    return true;
+                }
+
                 false
             }
         }
@@ -252,6 +276,8 @@ macro_rules! top_level_options {
                 $(#[$attr])*
                 pub $opt: $t,
             )*
+            /// Store values for target modifiers. `gather_target_modifiers` takes those values
+            /// to decide what to store in metadata.
             pub target_modifiers: BTreeMap<OptionsTargetModifiers, String>,
             pub mitigation_coverage_map: mitigation_coverage::MitigationCoverageMap,
         }
@@ -290,6 +316,7 @@ macro_rules! top_level_options {
 
             pub fn gather_target_modifiers(&self) -> Vec<TargetModifier> {
                 let mut mods = Vec::<TargetModifier>::new();
+                // Forward values from `self.target_modifiers` into `mods`.
                 $(
                     $(
                         // Only expand for flags that have `TARGET_MODIFIER`.
@@ -297,6 +324,7 @@ macro_rules! top_level_options {
                         self.$opt.gather_target_modifiers(&mut mods, &self.target_modifiers);
                     )?
                 )*
+                tmod_push_impl(OptionsTargetModifiers::TargetFeatures, &self.target_modifiers, &mut mods);
                 mods.sort_by(|a, b| a.opt.cmp(&b.opt));
                 mods
             }
