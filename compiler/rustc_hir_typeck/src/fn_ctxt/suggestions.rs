@@ -723,12 +723,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let hir::FnDecl { inputs, output, .. } = fn_ptr_ty.decl;
 
         let inputs_str =
-            inputs.iter().map(|ty| rustc_hir_pretty::ty_to_string(&self.tcx, ty)).join(", ");
+            inputs.iter().map(|ty| rustc_hir_pretty::ty_to_string(self, ty)).join(", ");
 
         let output_str = match output {
             hir::FnRetTy::DefaultReturn(_) => String::new(),
             hir::FnRetTy::Return(ty) => {
-                format!(" -> {}", rustc_hir_pretty::ty_to_string(&self.tcx, ty))
+                format!(" -> {}", rustc_hir_pretty::ty_to_string(self, ty))
             }
         };
 

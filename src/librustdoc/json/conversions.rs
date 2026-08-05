@@ -12,7 +12,8 @@ use rustc_hir::attrs::{
 };
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{HeaderSafety, Safety, find_attr};
+use rustc_hir::{HeaderSafety, Safety, find_attr, intravisit};
+use rustc_hir_pretty::PpAnn;
 use rustc_metadata::rendered_const;
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::{bug, ty};
@@ -1243,7 +1244,10 @@ fn maybe_from_hir_attr(attr: &hir::Attribute, item_id: ItemId, tcx: TyCtxt<'_>) 
 }
 
 fn other_attr(tcx: TyCtxt<'_>, attr: &hir::Attribute) -> Attribute {
-    let mut s = rustc_hir_pretty::attribute_to_string(&tcx, attr);
+    let mut s = rustc_hir_pretty::attribute_to_string(
+        &(&tcx as &dyn intravisit::HirTyCtxt<'_>) as &dyn PpAnn,
+        attr,
+    );
     assert_eq!(s.pop(), Some('\n'));
     Attribute::Other(s)
 }
