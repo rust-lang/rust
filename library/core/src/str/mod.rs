@@ -2546,8 +2546,6 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// #![feature(trim_prefix_suffix)]
-    ///
     /// // Prefix present - removes it
     /// assert_eq!("foo:bar".trim_prefix("foo:"), "bar");
     /// assert_eq!("foofoo".trim_prefix("foo"), "foo");
@@ -2560,7 +2558,7 @@ impl str {
     /// ```
     #[must_use = "this returns the remaining substring as a new slice, \
                   without modifying the original"]
-    #[unstable(feature = "trim_prefix_suffix", issue = "142312")]
+    #[stable(feature = "trim_prefix_suffix", since = "CURRENT_RUSTC_VERSION")]
     pub fn trim_prefix<P: Pattern>(&self, prefix: P) -> &str {
         prefix.strip_prefix_of(self).unwrap_or(self)
     }
@@ -2583,8 +2581,6 @@ impl str {
     /// # Examples
     ///
     /// ```
-    /// #![feature(trim_prefix_suffix)]
-    ///
     /// // Suffix present - removes it
     /// assert_eq!("bar:foo".trim_suffix(":foo"), "bar");
     /// assert_eq!("foofoo".trim_suffix("foo"), "foo");
@@ -2597,7 +2593,7 @@ impl str {
     /// ```
     #[must_use = "this returns the remaining substring as a new slice, \
                   without modifying the original"]
-    #[unstable(feature = "trim_prefix_suffix", issue = "142312")]
+    #[stable(feature = "trim_prefix_suffix", since = "CURRENT_RUSTC_VERSION")]
     pub fn trim_suffix<P: Pattern>(&self, suffix: P) -> &str
     where
         for<'a> P::Searcher<'a>: ReverseSearcher<'a>,
