@@ -16,13 +16,24 @@ GDB_PYTHON_MODULE_DIRECTORY="$RUSTC_SYSROOT/lib/rustlib/etc"
 # Get the commit hash for path remapping
 RUSTC_COMMIT_HASH="$("$RUSTC" -vV | sed -n 's/commit-hash: \([a-zA-Z0-9_]*\)/\1/p')"
 
-# Run GDB with the additional arguments that load the pretty printers
 # Set the environment variable `RUST_GDB` to overwrite the call to a
 # different/specific command (defaults to `gdb`).
 RUST_GDB="${RUST_GDB:-gdb}"
-PYTHONPATH="$PYTHONPATH:$GDB_PYTHON_MODULE_DIRECTORY" exec ${RUST_GDB} \
+
+# Run GDB with the additional arguments that load the pretty printers
+# Prepend base GDB flags ahead of any arguments passed by the user
+set -- \
   --directory="$GDB_PYTHON_MODULE_DIRECTORY" \
   -iex "add-auto-load-safe-path $GDB_PYTHON_MODULE_DIRECTORY" \
   -iex "set substitute-path /rustc/$RUSTC_COMMIT_HASH $RUSTC_SYSROOT/lib/rustlib/src/rust" \
   "$@"
- 
+
+# Unstable (nightly-only) trim-paths feature, activated only if
+#  - RUST_GDB_TRIM_PATHS=unstable is set
+#  - and if the python file is present (only shipped on nightly)
+GDB_TRIM_PATHS="$GDB_PYTHON_MODULE_DIRECTORY/gdb_trim_paths.py"
+if [ "${RUST_GDB_TRIM_PATHS:-}" = "unstable" ] && [ -f "$GDB_TRIM_PATHS" ]; then
+  set -- -x "$GDB_TRIM_PATHS" "$@"
+fi
+
+PYTHONPATH="$PYTHONPATH:$GDB_PYTHON_MODULE_DIRECTORY" exec ${RUST_GDB} "$@"
