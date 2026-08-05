@@ -1,3 +1,11 @@
+// Derived from code in LLVM, which is:
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+
+// Derived from:
+// * https://github.com/llvm/llvm-project/blob/f2453af624353273325fe888d794a925ea9fe852/llvm/unittests/Support/SipHashTest.cpp
+
 use llvm_siphash_vectors::{EXPECTED64, TEST_KEY};
 
 use super::*;
