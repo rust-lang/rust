@@ -1667,7 +1667,7 @@ supported_targets! {
     ("thumbv7a-none-eabihf", thumbv7a_none_eabihf),
     ("armv7a-nuttx-eabi", armv7a_nuttx_eabi),
     ("armv7a-nuttx-eabihf", armv7a_nuttx_eabihf),
-    ("armv7a-vex-v5", armv7a_vex_v5),
+    ("thumbv7a-vex-v5", thumbv7a_vex_v5),
 
     ("msp430-none-elf", msp430_none_elf),
 
