@@ -16,7 +16,8 @@ pub(super) const MAX_ACCESS_SIZE: u64 = 8;
 // FIXME(genmc): improve error handling.
 pub(super) fn get_outcome<'tcx, T>(result: GenmcHandlerResult<T>) -> InterpResult<'tcx, T> {
     match result {
-        GenmcHandlerResult::Invalid => throw_machine_stop!(TerminationInfo::GenmcInvalid),
+        // A handler producing an invalid result means that the execution is moot.
+        GenmcHandlerResult::Invalid => throw_machine_stop!(TerminationInfo::GenmcMoot),
         GenmcHandlerResult::Error(e) => throw_ub_format!("{e}"),
         GenmcHandlerResult::Ok(outcome) => interp_ok(outcome),
     }
