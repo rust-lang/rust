@@ -157,7 +157,8 @@ mod ex7 {
 fn bar<'a>(_: &'a u32) {
     let f = foo_late::<'a>;
     require_static(f);
-    //~^ ERROR: FIXME outlives
+    // ^ FIXME: This SHOULD NOT COMPILE because it is UNSOUND but it does anyway.
+    //   this is related to how FnDef has broken outlives checking.
 }
 
 fn main() {

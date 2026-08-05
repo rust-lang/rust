@@ -69,7 +69,7 @@ LL |     fn do_thing<T>(_: Option<<&T as Trait>::Assoc>) -> &u32
    |        ^^^^^^^^
 
 error[E0107]: function takes 0 lifetime arguments but 1 lifetime argument was supplied
-  --> $DIR/late-bound-turbofishing.rs:168:13
+  --> $DIR/late-bound-turbofishing.rs:169:13
    |
 LL |     let f = foo_latest::<'static>;
    |             ^^^^^^^^^^----------- help: remove the unnecessary generics

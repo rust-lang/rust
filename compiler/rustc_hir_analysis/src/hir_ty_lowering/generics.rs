@@ -440,17 +440,14 @@ pub(crate) fn check_generic_arg_count(
     // there are some cases (complicated and involve associated types)
     // where an early-bound lifetime parameter can be hidden from the function signature.
 
-    let hidden_early_bound = if matches!(gen_pos, GenericArgPosition::Value(_)) {
-        gen_params.own_params.iter().filter(|x| x.is_anonymous_lifetime()).count()
-    } else {
-        0
-    };
+    let hidden_early_lifetimes =
+        gen_params.own_params.iter().filter(|x| x.is_anonymous_lifetime()).count();
 
-    let hidden_lifetimes = if matches!(gen_pos, GenericArgPosition::Value(_)) {
+    let hidden_late_lifetimes =
         gen_params.own_all_params.iter().filter(|x| x.is_anonymous_lifetime()).count()
-    } else {
-        0
-    };
+            - hidden_early_lifetimes;
+
+    debug!(?hidden_early_lifetimes, ?hidden_late_lifetimes);
 
     let late_bound_lt_count = gen_params.own_late_bound_regions.len();
 
@@ -506,18 +503,21 @@ pub(crate) fn check_generic_arg_count(
     };
 
     let min_expected_lifetime_args =
-        if infer_lifetimes { 0 } else { param_counts.lifetimes - hidden_early_bound };
-    let max_expected_lifetime_args =
-        param_counts.lifetimes - hidden_lifetimes + late_bound_lt_count;
-    let num_provided_lifetime_args = gen_args.num_lifetime_args();
+        if infer_lifetimes { 0 } else { param_counts.lifetimes - hidden_early_lifetimes };
+    debug!(?min_expected_lifetime_args);
 
-    debug!(
-        ?hidden_early_bound,
-        ?hidden_lifetimes,
-        ?min_expected_lifetime_args,
-        ?max_expected_lifetime_args,
-        ?num_provided_lifetime_args,
-    );
+    let mut max_expected_lifetime_args = param_counts.lifetimes - hidden_early_lifetimes;
+
+    // FIXME: under certain circumstances (which I have had trouble replicating)
+    //        this leads to subtraction with overflow
+    if tcx.features().late_bound_turbofishing() {
+        max_expected_lifetime_args =
+            max_expected_lifetime_args + late_bound_lt_count - hidden_late_lifetimes;
+    }
+    debug!(?max_expected_lifetime_args,);
+
+    let num_provided_lifetime_args = gen_args.num_lifetime_args();
+    debug!(?num_provided_lifetime_args,);
 
     let lifetimes_correct = check_lifetime_args(
         min_expected_lifetime_args,
