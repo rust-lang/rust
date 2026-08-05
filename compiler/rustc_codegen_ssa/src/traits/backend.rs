@@ -8,8 +8,8 @@ use rustc_metadata::creader::MetadataLoaderDyn;
 use rustc_middle::dep_graph::WorkProductMap;
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::Providers;
-use rustc_session::Session;
 use rustc_session::config::{CrateType, OutputFilenames, PrintRequest};
+use rustc_session::{IncrCompSession, Session};
 use rustc_span::Symbol;
 
 use super::CodegenObject;
@@ -127,6 +127,7 @@ pub trait CodegenBackend {
         &self,
         ongoing_codegen: Box<dyn Any>,
         sess: &Session,
+        incr_comp_session: Option<&IncrCompSession>,
         outputs: &OutputFilenames,
         crate_info: &CrateInfo,
     ) -> (CompiledModules, WorkProductMap);
