@@ -207,12 +207,7 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
         let mut known_type_outlives_obligations = vec![];
         for bound in param_env.caller_bounds() {
             if let Some(outlives) = bound.as_type_outlives_clause() {
-                self.normalize_and_push_type_outlives_obligation(
-                    outlives,
-                    span,
-                    &mut known_type_outlives_obligations,
-                    &mut constraints,
-                );
+                known_type_outlives_obligations.push(outlives);
             };
         }
 
@@ -338,39 +333,6 @@ impl<'tcx> UniversalRegionRelationsBuilder<'_, 'tcx> {
             region_bound_pairs: Frozen::freeze(self.region_bound_pairs),
             normalized_inputs_and_output,
         }
-    }
-
-    fn normalize_and_push_type_outlives_obligation(
-        &self,
-        mut outlives: ty::PolyTypeOutlivesClause<'tcx>,
-        span: Span,
-        known_type_outlives_obligations: &mut Vec<ty::PolyTypeOutlivesClause<'tcx>>,
-        constraints: &mut Vec<&QueryRegionConstraints<'tcx>>,
-    ) {
-        // In the new solver, normalize the type-outlives obligation assumptions.
-        if self.infcx.next_trait_solver() {
-            match self
-                .infcx
-                .fully_perform(Normalize { value: ty::Unnormalized::new_wip(outlives) }, span)
-            {
-                Ok(TypeOpOutput {
-                    output: normalized_outlives,
-                    constraints: constraints_normalize,
-                    error_info: _,
-                }) => {
-                    outlives = normalized_outlives;
-                    if let Some(c) = constraints_normalize {
-                        constraints.push(c);
-                    }
-                }
-                Err(guar) => {
-                    let _: ErrorGuaranteed = guar;
-                    return;
-                }
-            }
-        }
-
-        known_type_outlives_obligations.push(outlives);
     }
 
     /// Compute and add any implied bounds that come from a given type.
