@@ -959,6 +959,11 @@ const IBMZ_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
 const SPARC_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("leoncasa", Unstable(sym::sparc_target_feature), &[]),
+    (
+        "soft-float",
+        InternalOnly { reason: "unsupported ABI-configuration feature", hard_error: false },
+        &[],
+    ),
     ("v8plus", Unstable(sym::sparc_target_feature), &[]),
     ("v9", Unstable(sym::sparc_target_feature), &[]),
     // tidy-alphabetical-end
@@ -1453,6 +1458,26 @@ impl Target {
                 // targets. (If we ever add one, we need to match on `RustcAbi::Softfloat` similar
                 // to other targets above.)
                 FeatureConstraints { required: &["hard-float"], incompatible: &["spe"] }
+            }
+            Arch::Sparc => {
+                // We currently don't have a soft-float target for SPARC.
+                // We need to pin down v8plus as it is a separate ABI (indicated in object files so
+                // things cannot be linked across ABI boundaries).
+                match self.rustc_abi {
+                    None => FeatureConstraints {
+                        required: &[],
+                        incompatible: &["soft-float", "v8plus"],
+                    },
+                    Some(RustcAbi::SparcV8Plus) => {
+                        FeatureConstraints { required: &["v8plus"], incompatible: &["soft-float"] }
+                    }
+                    _ => unreachable!(),
+                }
+            }
+            Arch::Sparc64 => {
+                // We currently don't have a soft-float target for SPARC64.
+                // v8plus is for 32bit SPARC only.
+                FeatureConstraints { required: &[], incompatible: &["soft-float", "v8plus"] }
             }
             Arch::Avr => {
                 // We only support one ABI on AVR at the moment.

@@ -591,6 +591,36 @@ impl Target {
                     self.cfg_abi,
                 );
             }
+            Arch::Sparc => {
+                check!(
+                    self.llvm_abiname == LlvmAbi::Unspecified,
+                    "`llvm_abiname` is unused on SPARC"
+                );
+                check!(self.llvm_floatabi.is_none(), "`llvm_floatabi` is unused on SPARC");
+                check_matches!(
+                    (&self.rustc_abi, &self.cfg_abi),
+                    (Some(RustcAbi::SparcV8Plus), CfgAbi::V8Plus)
+                        | (None, CfgAbi::Unspecified | CfgAbi::Other(_)),
+                    "invalid SPARC Rust-specific ABI and `cfg(target_abi)` combination:\n\
+                    Rust-specific ABI: {:?}\n\
+                    cfg(target_abi): {}",
+                    self.rustc_abi,
+                    self.cfg_abi,
+                );
+            }
+            Arch::Sparc64 => {
+                check!(
+                    self.llvm_abiname == LlvmAbi::Unspecified,
+                    "`llvm_abiname` is unused on SPARC-64"
+                );
+                check!(self.llvm_floatabi.is_none(), "`llvm_floatabi` is unused on SPARC-64");
+                check!(self.rustc_abi.is_none(), "`rustc_abi` is unused on SPARC-64");
+                check_matches!(
+                    self.cfg_abi,
+                    CfgAbi::Unspecified | CfgAbi::Other(_),
+                    "invalid `target_abi` for SPARC-64"
+                );
+            }
             Arch::CSky => {
                 check!(
                     self.llvm_abiname == LlvmAbi::Unspecified,
