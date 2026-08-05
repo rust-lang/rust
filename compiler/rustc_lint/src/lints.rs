@@ -2030,18 +2030,33 @@ pub(crate) enum OverflowingBinHexSub<'a> {
 }
 
 #[derive(Subdiagnostic)]
-#[suggestion(
-    "to use as a negative number (decimal `{$negative_val}`), consider using the type `{$uint_ty}` for the literal and cast it to `{$int_ty}`",
-    code = "{lit_no_suffix}{uint_ty} as {int_ty}",
-    applicability = "maybe-incorrect"
-)]
-pub(crate) struct OverflowingBinHexSignBitSub<'a> {
-    #[primary_span]
-    pub span: Span,
-    pub lit_no_suffix: &'a str,
-    pub negative_val: String,
-    pub uint_ty: &'a str,
-    pub int_ty: &'a str,
+pub(crate) enum OverflowingBinHexSignBitSub<'a> {
+    #[suggestion(
+        "to use as a negative number (decimal `{$negative_val}`), consider using the type `{$uint_ty}` for the literal and cast it to `{$int_ty}`",
+        code = "{lit_no_suffix}{uint_ty}.cast_signed()",
+        applicability = "maybe-incorrect"
+    )]
+    CastSigned {
+        #[primary_span]
+        span: Span,
+        lit_no_suffix: &'a str,
+        negative_val: String,
+        uint_ty: &'a str,
+        int_ty: &'a str,
+    },
+    #[suggestion(
+        "to use as a negative number (decimal `{$negative_val}`), consider using the type `{$uint_ty}` for the literal and cast it to `{$int_ty}`",
+        code = "{lit_no_suffix}{uint_ty} as {int_ty}",
+        applicability = "maybe-incorrect"
+    )]
+    AsCast {
+        #[primary_span]
+        span: Span,
+        lit_no_suffix: &'a str,
+        negative_val: String,
+        uint_ty: &'a str,
+        int_ty: &'a str,
+    },
 }
 
 #[derive(Diagnostic)]
