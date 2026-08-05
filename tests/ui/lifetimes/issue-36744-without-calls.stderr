@@ -1,0 +1,20 @@
+error: lifetime may not live long enough
+  --> $DIR/issue-36744-without-calls.rs:9:5
+   |
+LL | pub fn bad<'s>(v: &mut S<fn(A<'s>)>, y: S<for<'b> fn(A<'b>)>) {
+   |            -- lifetime `'s` defined here
+LL |     *v = y;
+   |     ^^^^^^ assignment requires that `'s` must outlive `'static`
+
+error[E0308]: mismatched types
+  --> $DIR/issue-36744-without-calls.rs:9:5
+   |
+LL |     *v = y;
+   |     ^^^^^^ one type is more general than the other
+   |
+   = note: expected struct `S<fn(A<'_>)>`
+              found struct `S<for<'b> fn(A<'b>)>`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

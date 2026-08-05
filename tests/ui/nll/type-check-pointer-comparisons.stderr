@@ -98,5 +98,15 @@ help: `'a` and `'b` must be the same: replace one with the other
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: aborting due to 6 previous errors
+error[E0308]: mismatched types
+  --> $DIR/type-check-pointer-comparisons.rs:28:5
+   |
+LL |     f == g; // OK
+   |     ^^^^^^ one type is more general than the other
+   |
+   = note: expected raw pointer `*const fn(&i32)`
+              found raw pointer `*const for<'a> fn(&'a i32)`
 
+error: aborting due to 7 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

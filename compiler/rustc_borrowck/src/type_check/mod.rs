@@ -26,8 +26,8 @@ use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::adjustment::PointerCoercion;
 use rustc_middle::ty::cast::CastTy;
 use rustc_middle::ty::{
-    self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, GenericArgsRef, Ty, TyCtxt,
-    TypeVisitableExt, UserArgs, UserTypeAnnotationIndex, fold_regions,
+    self, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, FnMutDelegate, GenericArgsRef,
+    Ty, TyCtxt, TypeFoldable, TypeVisitableExt, UserArgs, UserTypeAnnotationIndex, fold_regions,
 };
 use rustc_mir_dataflow::move_paths::MoveData;
 use rustc_mir_dataflow::points::DenseLocationMap;
@@ -438,6 +438,44 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         self.relate_types(sup, ty::Contravariant, sub, locations, category)
     }
 
+    /// Instantiates the bound regions of `binder` with fresh placeholders in a
+    /// new universe.
+    fn instantiate_binder_with_placeholders<T>(&mut self, binder: ty::Binder<'tcx, T>) -> T
+    where
+        T: TypeFoldable<TyCtxt<'tcx>>,
+    {
+        if !binder.as_ref().skip_binder().has_escaping_bound_vars() {
+            return binder.skip_binder();
+        }
+
+        let tcx = self.infcx.tcx;
+        let mut lazy_universe = None;
+        let delegate = FnMutDelegate {
+            regions: &mut |br: ty::BoundRegion<'tcx>| {
+                // The first time this closure is called, create a
+                // new universe for the placeholders we will make
+                // from here out.
+                let universe = lazy_universe.unwrap_or_else(|| {
+                    let universe = self.infcx.create_next_universe();
+                    lazy_universe = Some(universe);
+                    universe
+                });
+
+                let placeholder = ty::PlaceholderRegion::new(universe, br);
+                // A *registered* NLL placeholder region (tracked by the region solver).
+                self.constraints.placeholder_region(self.infcx, placeholder)
+            },
+            types: &mut |_bound_ty: ty::BoundTy<'tcx>| {
+                unreachable!("we only replace regions in nll_relate, not types")
+            },
+            consts: &mut |_bound_const: ty::BoundConst<'tcx>| {
+                unreachable!("we only replace regions in nll_relate, not consts")
+            },
+        };
+
+        tcx.replace_bound_vars_uncached(binder, delegate)
+    }
+
     #[instrument(skip(self, category), level = "debug")]
     fn eq_types(
         &mut self,
@@ -502,6 +540,73 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         self.relate_types(ty, v.xform(ty::Contravariant), a, locations, category)?;
 
         Ok(())
+    }
+
+    /// Type-checks a function-pointer coercion cast: `Subtype`, `ReifyFnPointer`
+    /// or `ClosureFnPointer`.
+    fn relate_fn_ptr_coercion(
+        &mut self,
+        src_ty: Ty<'tcx>,
+        ty: Ty<'tcx>,
+        check_wf: bool,
+        is_implicit_coercion: bool,
+        span: Span,
+        location: Location,
+        rvalue: &Rvalue<'tcx>,
+    ) {
+        let tcx = self.tcx();
+        let cast = ConstraintCategory::Cast {
+            is_raw_ptr_dyn_type_cast: false,
+            is_implicit_coercion,
+            unsize_to: None,
+        };
+
+        // Higher-ranked target: enter its binder with placeholders.
+        let target_ty = if let ty::FnPtr(target_sig_tys, target_hdr) = *ty.kind()
+            && target_sig_tys.with(target_hdr).has_bound_regions()
+        {
+            let target_sig =
+                self.instantiate_binder_with_placeholders(target_sig_tys.with(target_hdr));
+            Ty::new_fn_ptr(tcx, ty::Binder::dummy(target_sig))
+        } else {
+            ty
+        };
+
+        // Higher-ranked source: instantiate its binder existentially.
+        let src_ty = if let ty::FnPtr(sig_tys, hdr) = *src_ty.kind()
+            && sig_tys.with(hdr).has_bound_regions()
+        {
+            let src_sig = self.infcx.instantiate_binder_with_fresh_vars(
+                span,
+                BoundRegionConversionTime::HigherRankedType,
+                sig_tys.with(hdr),
+            );
+            Ty::new_fn_ptr(tcx, ty::Binder::dummy(src_sig))
+        } else {
+            src_ty
+        };
+
+        let src_ty = if check_wf {
+            // Instantiating the source throws away its implied bounds, so assert
+            // the instantiated signature is well-formed, while assuming the inputs'
+            // implied outlives bounds so a sound generic reification isn't
+            // spuriously rejected.
+            self.prove_fn_ptr_wf(src_ty, location.to_locations(), cast);
+            self.normalize(ty::Unnormalized::new_wip(src_ty), location)
+        } else {
+            src_ty
+        };
+
+        if let Err(terr) = self.sub_types(src_ty, target_ty, location.to_locations(), cast) {
+            span_mirbug!(
+                self,
+                rvalue,
+                "equating {:?} with {:?} yields {:?}",
+                src_ty,
+                target_ty,
+                terr
+            );
+        }
     }
 
     fn check_promoted(&mut self, promoted_body: &'a Body<'tcx>, location: Location) {
@@ -1054,109 +1159,19 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         {
                             src_sig = safe_sig;
                         }
-
                         if src_sig.safety().is_safe() && target_safety.is_unsafe() {
                             src_sig = tcx.safe_to_unsafe_sig(src_sig);
                         }
-
-                        // HACK: This shouldn't be necessary... We can remove this when we actually
-                        // get binders with where clauses, then elaborate implied bounds into that
-                        // binder, and implement a higher-ranked subtyping algorithm that actually
-                        // respects these implied bounds.
-                        //
-                        // This protects against the case where we are casting from a higher-ranked
-                        // fn item to a non-higher-ranked fn pointer, where the cast throws away
-                        // implied bounds that would've needed to be checked at the call site. This
-                        // only works when we're casting to a non-higher-ranked fn ptr, since
-                        // placeholders in the target signature could have untracked implied
-                        // bounds, resulting in incorrect errors.
-                        //
-                        // We check that this signature is WF before subtyping the signature with
-                        // the target fn sig.
-                        if src_sig.has_bound_regions()
-                            && let ty::FnPtr(target_fn_tys, target_hdr) = *ty.kind()
-                            && let target_sig = target_fn_tys.with(target_hdr)
-                            && let Some(target_sig) = target_sig.no_bound_vars()
-                        {
-                            let src_sig = self.infcx.instantiate_binder_with_fresh_vars(
-                                span,
-                                BoundRegionConversionTime::HigherRankedType,
-                                src_sig,
-                            );
-                            let src_ty = Ty::new_fn_ptr(self.tcx(), ty::Binder::dummy(src_sig));
-                            self.prove_clause(
-                                ty::ClauseKind::WellFormed(src_ty.into()),
-                                location.to_locations(),
-                                ConstraintCategory::Cast {
-                                    is_raw_ptr_dyn_type_cast: false,
-                                    is_implicit_coercion,
-                                    unsize_to: None,
-                                },
-                            );
-
-                            let src_ty =
-                                self.normalize(ty::Unnormalized::new_wip(src_ty), location);
-                            if let Err(terr) = self.sub_types(
-                                src_ty,
-                                *ty,
-                                location.to_locations(),
-                                ConstraintCategory::Cast {
-                                    is_raw_ptr_dyn_type_cast: false,
-                                    is_implicit_coercion,
-                                    unsize_to: None,
-                                },
-                            ) {
-                                span_mirbug!(
-                                    self,
-                                    rvalue,
-                                    "equating {:?} with {:?} yields {:?}",
-                                    target_sig,
-                                    src_sig,
-                                    terr
-                                );
-                            };
-                        }
-
                         let src_ty = Ty::new_fn_ptr(tcx, src_sig);
-                        // HACK: We want to assert that the signature of the source fn is
-                        // well-formed, because we don't enforce that via the WF of FnDef
-                        // types normally. This should be removed when we improve the tracking
-                        // of implied bounds of fn signatures.
-                        self.prove_clause(
-                            ty::ClauseKind::WellFormed(src_ty.into()),
-                            location.to_locations(),
-                            ConstraintCategory::Cast {
-                                is_raw_ptr_dyn_type_cast: false,
-                                is_implicit_coercion,
-                                unsize_to: None,
-                            },
-                        );
-
-                        // The type that we see in the fcx is like
-                        // `foo::<'a, 'b>`, where `foo` is the path to a
-                        // function definition. When we extract the
-                        // signature, it comes from the `fn_sig` query,
-                        // and hence may contain unnormalized results.
-                        let src_ty = self.normalize(ty::Unnormalized::new_wip(src_ty), location);
-                        if let Err(terr) = self.sub_types(
+                        self.relate_fn_ptr_coercion(
                             src_ty,
                             *ty,
-                            location.to_locations(),
-                            ConstraintCategory::Cast {
-                                is_raw_ptr_dyn_type_cast: false,
-                                is_implicit_coercion,
-                                unsize_to: None,
-                            },
-                        ) {
-                            span_mirbug!(
-                                self,
-                                rvalue,
-                                "equating {:?} with {:?} yields {:?}",
-                                src_ty,
-                                ty,
-                                terr
-                            );
-                        }
+                            true,
+                            is_implicit_coercion,
+                            span,
+                            location,
+                            rvalue,
+                        );
                     }
 
                     CastKind::PointerCoercion(
@@ -1167,29 +1182,18 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             ty::Closure(_, args) => args.as_closure().sig(),
                             _ => bug!(),
                         };
-                        let ty_fn_ptr_from =
-                            Ty::new_fn_ptr(tcx, tcx.signature_unclosure(sig, safety));
-
+                        let src_ty = Ty::new_fn_ptr(tcx, tcx.signature_unclosure(sig, safety));
                         let is_implicit_coercion = coercion_source == CoercionSource::Implicit;
-                        if let Err(terr) = self.sub_types(
-                            ty_fn_ptr_from,
+                        // No WF check, closures carry no implied bounds.
+                        self.relate_fn_ptr_coercion(
+                            src_ty,
                             *ty,
-                            location.to_locations(),
-                            ConstraintCategory::Cast {
-                                is_raw_ptr_dyn_type_cast: false,
-                                is_implicit_coercion,
-                                unsize_to: None,
-                            },
-                        ) {
-                            span_mirbug!(
-                                self,
-                                rvalue,
-                                "equating {:?} with {:?} yields {:?}",
-                                ty_fn_ptr_from,
-                                ty,
-                                terr
-                            );
-                        }
+                            false,
+                            is_implicit_coercion,
+                            span,
+                            location,
+                            rvalue,
+                        );
                     }
 
                     CastKind::PointerCoercion(
@@ -1602,8 +1606,14 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                             ),
                         }
                     }
-                    CastKind::Subtype | CastKind::BoxDerefTransmute => {
+                    CastKind::BoxDerefTransmute => {
                         bug!("CastKind::{cast_kind:?} shouldn't exist in borrowck")
+                    }
+                    CastKind::Subtype => {
+                        let src_ty = op.ty(self.body, tcx);
+                        self.relate_fn_ptr_coercion(
+                            src_ty, *ty, true, true, span, location, rvalue,
+                        );
                     }
                 }
             }

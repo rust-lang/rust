@@ -1055,57 +1055,99 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             (&ty::Dynamic(data_a, r_a), &ty::Dynamic(data_b, r_b)) => {
                 // See `assemble_candidates_for_unsizing` for more info.
                 // We already checked the compatibility of auto traits within `assemble_candidates_for_unsizing`.
-                let existential_predicates = if data_b.principal().is_some() {
-                    tcx.mk_poly_existential_predicates_from_iter(
-                        data_a
-                            .principal()
-                            .map(|b| b.map_bound(ty::ExistentialPredicate::Trait))
-                            .into_iter()
-                            .chain(
-                                data_a
-                                    .projection_bounds()
-                                    .map(|b| b.map_bound(ty::ExistentialPredicate::Projection)),
+                if let Some(hr_target_principal) = data_b.principal() {
+                    let hr_source_principal = data_a.principal().unwrap_or_else(|| {
+                        span_bug!(obligation.cause.span, "unsizing to an object with no principal")
+                    });
+                    let mut obligations = self
+                        .infcx
+                        .enter_forall(hr_target_principal, |target_principal| {
+                            let source_principal = self.infcx.instantiate_binder_with_fresh_vars(
+                                obligation.cause.span,
+                                BoundRegionConversionTime::HigherRankedType,
+                                hr_source_principal,
+                            );
+                            self.infcx.at(&obligation.cause, obligation.param_env).eq(
+                                DefineOpaqueTypes::Yes,
+                                target_principal,
+                                source_principal,
                             )
-                            .chain(
-                                data_b
-                                    .auto_traits()
-                                    .map(ty::ExistentialPredicate::AutoTrait)
-                                    .map(ty::Binder::dummy),
-                            ),
-                    )
+                        })
+                        .map_err(|_| SelectionError::Unimplemented)?
+                        .into_obligations();
+
+                    debug_assert_eq!(
+                        data_a.projection_bounds().count(),
+                        data_b.projection_bounds().count(),
+                        "source and target object types have a different number of projection bounds",
+                    );
+                    for (hr_source_projection, hr_target_projection) in
+                        data_a.projection_bounds().zip(data_b.projection_bounds())
+                    {
+                        obligations.extend(
+                            self.infcx
+                                .enter_forall(hr_target_projection, |target_projection| {
+                                    let source_projection =
+                                        self.infcx.instantiate_binder_with_fresh_vars(
+                                            obligation.cause.span,
+                                            BoundRegionConversionTime::HigherRankedType,
+                                            hr_source_projection,
+                                        );
+                                    self.infcx.at(&obligation.cause, obligation.param_env).eq(
+                                        DefineOpaqueTypes::Yes,
+                                        target_projection,
+                                        source_projection,
+                                    )
+                                })
+                                .map_err(|_| SelectionError::Unimplemented)?
+                                .into_obligations(),
+                        );
+                    }
+
+                    // Register one obligation for 'a: 'b.
+                    let outlives = ty::OutlivesPredicate(r_a, r_b);
+                    obligations.push(Obligation::with_depth(
+                        tcx,
+                        obligation.cause.clone(),
+                        obligation.recursion_depth + 1,
+                        obligation.param_env,
+                        obligation.predicate.rebind(outlives),
+                    ));
+
+                    ImplSource::Builtin(BuiltinImplSource::Misc, obligations)
                 } else {
                     // If we're unsizing to a dyn type that has no principal, then drop
                     // the principal and projections from the type. We use the auto traits
                     // from the RHS type since as we noted that we've checked for auto
                     // trait compatibility during unsizing.
-                    tcx.mk_poly_existential_predicates_from_iter(
+                    let existential_predicates = tcx.mk_poly_existential_predicates_from_iter(
                         data_b
                             .auto_traits()
                             .map(ty::ExistentialPredicate::AutoTrait)
                             .map(ty::Binder::dummy),
-                    )
-                };
-                let source_trait = Ty::new_dynamic(tcx, existential_predicates, r_b);
+                    );
+                    let source_trait = Ty::new_dynamic(tcx, existential_predicates, r_b);
 
-                // Require that the traits involved in this upcast are **equal**;
-                // only the **lifetime bound** is changed.
-                let InferOk { mut obligations, .. } = self
-                    .infcx
-                    .at(&obligation.cause, obligation.param_env)
-                    .sup(DefineOpaqueTypes::Yes, target, source_trait)
-                    .map_err(|_| SelectionError::Unimplemented)?;
+                    // Require that the traits involved in this upcast are **equal**;
+                    // only the **lifetime bound** is changed.
+                    let InferOk { mut obligations, .. } = self
+                        .infcx
+                        .at(&obligation.cause, obligation.param_env)
+                        .sup(DefineOpaqueTypes::Yes, target, source_trait)
+                        .map_err(|_| SelectionError::Unimplemented)?;
 
-                // Register one obligation for 'a: 'b.
-                let outlives = ty::OutlivesPredicate(r_a, r_b);
-                obligations.push(Obligation::with_depth(
-                    tcx,
-                    obligation.cause.clone(),
-                    obligation.recursion_depth + 1,
-                    obligation.param_env,
-                    obligation.predicate.rebind(outlives),
-                ));
+                    // Register one obligation for 'a: 'b.
+                    let outlives = ty::OutlivesPredicate(r_a, r_b);
+                    obligations.push(Obligation::with_depth(
+                        tcx,
+                        obligation.cause.clone(),
+                        obligation.recursion_depth + 1,
+                        obligation.param_env,
+                        obligation.predicate.rebind(outlives),
+                    ));
 
-                ImplSource::Builtin(BuiltinImplSource::Misc, obligations)
+                    ImplSource::Builtin(BuiltinImplSource::Misc, obligations)
+                }
             }
 
             // `T` -> `dyn Trait`

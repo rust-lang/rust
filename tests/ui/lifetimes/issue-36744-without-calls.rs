@@ -1,4 +1,3 @@
-//@ build-pass
 // Tests for an LLVM abort when storing a lifetime-parametric fn into
 // context that is expecting one that is not lifetime-parametric
 // (i.e., has no `for <'_>`).
@@ -8,6 +7,8 @@ pub struct S<T>(T);
 
 pub fn bad<'s>(v: &mut S<fn(A<'s>)>, y: S<for<'b> fn(A<'b>)>) {
     *v = y;
+    //~^ ERROR lifetime may not live long enough
+    //~| ERROR mismatched types
 }
 
 fn main() {}

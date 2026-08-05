@@ -1,0 +1,22 @@
+error: higher-ranked subtype error
+  --> $DIR/hrlt-implied-trait-bounds-roundtrip.rs:28:44
+   |
+LL |     let bar: for<'a> fn(Foo<'a>, &'a ()) = bar;
+   |                                            ^^^
+
+error: higher-ranked subtype error
+  --> $DIR/hrlt-implied-trait-bounds-roundtrip.rs:33:49
+   |
+LL |     let _bar: for<'a, 'b> fn(Foo<'a>, &'b ()) = bar;
+   |                                                 ^^^
+
+error: higher-ranked subtype error
+  --> $DIR/hrlt-implied-trait-bounds-roundtrip.rs:33:49
+   |
+LL |     let _bar: for<'a, 'b> fn(Foo<'a>, &'b ()) = bar;
+   |                                                 ^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 3 previous errors
+

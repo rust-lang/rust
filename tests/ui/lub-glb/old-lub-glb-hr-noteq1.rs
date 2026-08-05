@@ -4,6 +4,7 @@
 
 //@ revisions: leak noleak
 //@[noleak] compile-flags:-Zno-leak-check
+//@[leak] check-pass
 
 fn foo(x: for<'a, 'b> fn(&'a u8, &'b u8) -> &'a u8, y: for<'a> fn(&'a u8, &'a u8) -> &'a u8) {
     // The two types above are not equivalent. With the older LUB/GLB
@@ -12,8 +13,8 @@ fn foo(x: for<'a, 'b> fn(&'a u8, &'b u8) -> &'a u8, y: for<'a> fn(&'a u8, &'a u8
     let z = match 22 {
         0 => x,
         _ => y,
-        //[leak]~^ ERROR `match` arms have incompatible types
-        //[noleak]~^^ ERROR mismatched types
+        //[noleak]~^ ERROR mismatched types
+        //[noleak]~| ERROR mismatched types
     };
 }
 
@@ -22,6 +23,8 @@ fn foo_cast(x: for<'a, 'b> fn(&'a u8, &'b u8) -> &'a u8, y: for<'a> fn(&'a u8, &
     // things out:
     let z = match 22 {
         0 => x as for<'a> fn(&'a u8, &'a u8) -> &'a u8,
+        //[noleak]~^ ERROR mismatched types
+        //[noleak]~| ERROR mismatched types
         _ => y,
     };
 }

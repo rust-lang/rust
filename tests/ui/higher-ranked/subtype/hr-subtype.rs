@@ -22,10 +22,6 @@
 //@[bound_inv_a_vs_bound_inv_b] check-pass
 //@[bound_co_a_vs_bound_co_b] check-pass
 //@[free_x_vs_free_x] check-pass
-//@[bound_co_a_b_vs_bound_co_a] check-pass
-//@[bound_co_a_co_b_ret_contra_a] check-pass
-//@[bound_a_b_vs_bound_a] check-pass
-//@[bound_contra_a_contra_b_ret_co_a] check-pass
 
 fn gimme<T>(_: Option<T>) {}
 
@@ -47,6 +43,20 @@ macro_rules! check {
         fn subtype<'x, 'y: 'x, 'z: 'y>() {
             gimme::<$t2>(None::<$t1>);
             //[free_inv_x_vs_free_inv_y]~^ ERROR
+            //[bound_a_b_vs_bound_a]~^^ ERROR: mismatched types [E0308]
+            //[bound_a_b_vs_bound_a]~| ERROR: mismatched types [E0308]
+            //[bound_a_vs_free_x]~^^^^ ERROR: lifetime may not live long enough
+            //[bound_a_vs_free_x]~| ERROR: mismatched types [E0308]
+            //[bound_co_a_b_vs_bound_co_a]~^^^^^^ ERROR
+            //[bound_co_a_b_vs_bound_co_a]~| ERROR
+            //[bound_co_a_co_b_ret_contra_a]~^^^^^^^^ ERROR
+            //[bound_co_a_co_b_ret_contra_a]~| ERROR
+            //[bound_inv_a_b_vs_bound_inv_a]~^^^^^^^^^^ ERROR
+            //[bound_inv_a_b_vs_bound_inv_a]~| ERROR
+            //[bound_a_b_ret_a_vs_bound_a_ret_a]~^^^^^^^^^^^^ ERROR
+            //[bound_a_b_ret_a_vs_bound_a_ret_a]~| ERROR
+            //[bound_contra_a_contra_b_ret_co_a]~^^^^^^^^^^^^^^ ERROR
+            //[bound_contra_a_contra_b_ret_co_a]~| ERROR
         }
 
         #[cfg($rev)]
@@ -58,6 +68,16 @@ macro_rules! check {
             //[bound_inv_a_b_vs_bound_inv_a]~| ERROR
             //[bound_a_b_ret_a_vs_bound_a_ret_a]~^^^^^ ERROR
             //[free_inv_x_vs_free_inv_y]~^^^^^^ ERROR
+            //[bound_a_b_vs_bound_a]~^^^^^^^ ERROR
+            //[bound_a_b_vs_bound_a]~| ERROR
+            //[bound_co_a_co_b_ret_contra_a]~^^^^^^^^^ ERROR
+            //[bound_co_a_co_b_ret_contra_a]~| ERROR
+            //[bound_a_b_ret_a_vs_bound_a_ret_a]~^^^^^^^^^^^ ERROR
+            //[bound_co_a_b_vs_bound_co_a]~^^^^^^^^^^^^ ERROR
+            //[bound_co_a_b_vs_bound_co_a]~| ERROR
+            //[bound_contra_a_contra_b_ret_co_a]~^^^^^^^^^^^^^^ ERROR
+            //[bound_contra_a_contra_b_ret_co_a]~| ERROR
+
         }
     };
 }

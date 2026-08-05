@@ -26,27 +26,27 @@ impl<'long: 'short, 'short, T> Convert<'long, 'short> for T {
 // help: needed by `Foo<'in_, 'out, T>`
 //
 // Please ping @lcnr if your changes end up causing `badboi` to compile.
-fn badboi<'in_, 'out, T>(x: Foo<'in_, 'out, T>, sadness: &'in_ T) -> &'out T {
-    //~^ ERROR lifetime mismatch
-    sadness.cast()
-    //~^ ERROR may not live long enough
+fn badboi<'in_, 'out, T>(x: Foo<'in_, 'out, T>, sadness: &'in_ T) -> &'out T { //~ ERROR lifetime mismatch
+
+    sadness.cast() //~ ERROR lifetime may not live long enough
+
 }
 
-fn badboi2<'in_, 'out, T>(x: Foo<'in_, 'out, T>, sadness: &'in_ T) {
-    //~^ ERROR lifetime mismatch
-    let _: &'out T = sadness.cast();
-    //~^ ERROR may not live long enough
+fn badboi2<'in_, 'out, T>(x: Foo<'in_, 'out, T>, sadness: &'in_ T) { //~ ERROR lifetime mismatch
+
+    let _: &'out T = sadness.cast(); //~ ERROR lifetime may not live long enough
+
 }
 
-fn badboi3<'in_, 'out, T>(a: Foo<'in_, 'out, (&'in_ T, &'out T)>, sadness: &'in_ T) {
-    //~^ ERROR lifetime mismatch
-    let _: &'out T = sadness.cast();
-    //~^ ERROR may not live long enough
+fn badboi3<'in_, 'out, T>(a: Foo<'in_, 'out, (&'in_ T, &'out T)>, sadness: &'in_ T) { //~ ERROR lifetime mismatch
+
+    let _: &'out T = sadness.cast(); //~ ERROR lifetime may not live long enough
+
 }
 
 fn bad<'short, T>(value: &'short T) -> &'static T {
-    let x: for<'in_, 'out> fn(Foo<'in_, 'out, T>, &'in_ T) -> &'out T = badboi;
-    let x: for<'out> fn(Foo<'short, 'out, T>, &'short T) -> &'out T = x;
+    let x: for<'in_, 'out> fn(Foo<'in_, 'out, T>, &'in_ T) -> &'out T = badboi; //~ ERROR higher-ranked subtype error
+    let x: for<'out> fn(Foo<'short, 'out, T>, &'short T) -> &'out T = x; //~ ERROR lifetime may not live long enough
     let x: for<'out> fn(Foo<'static, 'out, T>, &'short T) -> &'out T = x;
     let x: fn(Foo<'static, 'static, T>, &'short T) -> &'static T = x;
     x(Foo(PhantomData), value)

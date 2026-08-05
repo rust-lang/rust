@@ -610,6 +610,7 @@ pub(crate) fn apply_definition_site_hidden_types<'tcx>(
                 },
                 "equating opaque types",
             ),
+            &[],
         ) {
             add_hidden_type(
                 tcx,

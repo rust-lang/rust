@@ -64,6 +64,21 @@ LL |     let _: &'out T = sadness.cast();
    |
    = help: consider adding the following bound: `'in_: 'out`
 
-error: aborting due to 6 previous errors
+error: higher-ranked subtype error
+  --> $DIR/hrlt-implied-trait-bounds-guard.rs:48:73
+   |
+LL |     let x: for<'in_, 'out> fn(Foo<'in_, 'out, T>, &'in_ T) -> &'out T = badboi;
+   |                                                                         ^^^^^^
+
+error: lifetime may not live long enough
+  --> $DIR/hrlt-implied-trait-bounds-guard.rs:49:71
+   |
+LL | fn bad<'short, T>(value: &'short T) -> &'static T {
+   |        ------ lifetime `'short` defined here
+LL |     let x: for<'in_, 'out> fn(Foo<'in_, 'out, T>, &'in_ T) -> &'out T = badboi;
+LL |     let x: for<'out> fn(Foo<'short, 'out, T>, &'short T) -> &'out T = x;
+   |                                                                       ^ coercion requires that `'short` must outlive `'static`
+
+error: aborting due to 8 previous errors
 
 For more information about this error, try `rustc --explain E0623`.

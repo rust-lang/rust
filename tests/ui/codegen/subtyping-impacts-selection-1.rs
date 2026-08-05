@@ -1,4 +1,3 @@
-//@ run-pass
 //@ revisions: mir codegen
 //@[mir] compile-flags: -Zmir-opt-level=3
 //@[codegen] compile-flags: -Zmir-opt-level=0
@@ -29,7 +28,7 @@ impl GetInner for Foo<for<'a> fn(&'a u8)> {
 }
 
 fn break_me(hr_fnptr: Box<Foo::<for<'a> fn(&'a u8)>>) -> Box<dyn GetInner<Assoc = String>> {
-    let lr_fnptr = hr_fnptr as Box<Foo<fn(&'static u8)>>;
+    let lr_fnptr = hr_fnptr as Box<Foo<fn(&'static u8)>>; //~ ERROR mismatched types
     lr_fnptr as Box<dyn GetInner<Assoc = String>>
 }
 

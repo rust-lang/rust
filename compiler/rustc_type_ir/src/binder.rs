@@ -955,7 +955,7 @@ pub enum BoundVarIndexKind {
 
 /// The "placeholder index" fully defines a placeholder region, type, or const. Placeholders are
 /// identified by both a universe, as well as a name residing within that universe. Distinct bound
-/// regions/types/consts within the same universe simply have an unknown relationship to one
+/// regions/types/consts within the same universe simply have an unknown relationship to another one.
 #[derive_where(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash; I: Interner, T)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, GenericTypeVisitable, Lift_Generic)]
 #[cfg_attr(
@@ -966,6 +966,12 @@ pub struct Placeholder<I: Interner, T> {
     #[lift(identity)]
     pub universe: UniverseIndex,
     pub bound: T,
+    /// When `true`, regions equates this placeholder instead of sub-relating it,
+    /// forcing bound variables to match by equality even in a subtyping context.
+    /// Set on the universal side of a binder relation; see
+    /// `TypeRelating::binders` for the rationale.
+    #[lift(identity)]
+    pub hr: bool,
     #[type_foldable(identity)]
     #[type_visitable(ignore)]
     _tcx: PhantomData<fn() -> I>,
@@ -1138,16 +1144,20 @@ impl<I: Interner> PlaceholderRegion<I> {
     }
 
     pub fn with_updated_universe(self, ui: UniverseIndex) -> Self {
-        Self { universe: ui, bound: self.bound, _tcx: PhantomData }
+        Self { universe: ui, bound: self.bound, _tcx: PhantomData, hr: self.hr }
     }
 
     pub fn new(ui: UniverseIndex, bound: BoundRegion<I>) -> Self {
-        Self { universe: ui, bound, _tcx: PhantomData }
+        Self { universe: ui, bound, _tcx: PhantomData, hr: false }
+    }
+
+    pub fn new_with_hr(ui: UniverseIndex, bound: BoundRegion<I>, hr: bool) -> Self {
+        Self { universe: ui, bound, _tcx: PhantomData, hr }
     }
 
     pub fn new_anon(ui: UniverseIndex, var: ty::BoundVar) -> Self {
         let bound = BoundRegion { var, kind: BoundRegionKind::Anon };
-        Self { universe: ui, bound, _tcx: PhantomData }
+        Self { universe: ui, bound, _tcx: PhantomData, hr: false }
     }
 }
 
@@ -1194,16 +1204,20 @@ impl<I: Interner> PlaceholderType<I> {
     }
 
     pub fn with_updated_universe(self, ui: UniverseIndex) -> Self {
-        Self { universe: ui, bound: self.bound, _tcx: PhantomData }
+        Self { universe: ui, bound: self.bound, _tcx: PhantomData, hr: self.hr }
     }
 
     pub fn new(ui: UniverseIndex, bound: BoundTy<I>) -> Self {
-        Self { universe: ui, bound, _tcx: PhantomData }
+        Self { universe: ui, bound, _tcx: PhantomData, hr: false }
+    }
+
+    pub fn new_with_hr(ui: UniverseIndex, bound: BoundTy<I>, hr: bool) -> Self {
+        Self { universe: ui, bound, _tcx: PhantomData, hr }
     }
 
     pub fn new_anon(ui: UniverseIndex, var: ty::BoundVar) -> Self {
         let bound = BoundTy { var, kind: BoundTyKind::Anon };
-        Self { universe: ui, bound, _tcx: PhantomData }
+        Self { universe: ui, bound, _tcx: PhantomData, hr: false }
     }
 }
 
@@ -1245,16 +1259,20 @@ impl<I: Interner> PlaceholderConst<I> {
     }
 
     pub fn with_updated_universe(self, ui: UniverseIndex) -> Self {
-        Self { universe: ui, bound: self.bound, _tcx: PhantomData }
+        Self { universe: ui, bound: self.bound, _tcx: PhantomData, hr: self.hr }
     }
 
     pub fn new(ui: UniverseIndex, bound: BoundConst<I>) -> Self {
-        Self { universe: ui, bound, _tcx: PhantomData }
+        Self { universe: ui, bound, _tcx: PhantomData, hr: false }
+    }
+
+    pub fn new_with_hr(ui: UniverseIndex, bound: BoundConst<I>, hr: bool) -> Self {
+        Self { universe: ui, bound, _tcx: PhantomData, hr }
     }
 
     pub fn new_anon(ui: UniverseIndex, var: ty::BoundVar) -> Self {
         let bound = BoundConst::new(var);
-        Self { universe: ui, bound, _tcx: PhantomData }
+        Self { universe: ui, bound, _tcx: PhantomData, hr: false }
     }
 
     pub fn find_const_ty_from_env(self, env: I::ParamEnv) -> I::Ty {

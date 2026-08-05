@@ -112,9 +112,9 @@ impl<'tcx> InferCtxt<'tcx> {
                 self.next_float_var(span, None).into()
             }
 
-            CanonicalVarKind::PlaceholderTy(ty::PlaceholderType { universe, bound, .. }) => {
-                let universe_mapped = universe_map(universe);
-                let placeholder_mapped = ty::PlaceholderType::new(universe_mapped, bound);
+            CanonicalVarKind::PlaceholderTy(placeholder) => {
+                let placeholder_mapped =
+                    placeholder.with_updated_universe(universe_map(placeholder.universe));
                 Ty::new_placeholder(self.tcx, placeholder_mapped).into()
             }
 
@@ -122,22 +122,18 @@ impl<'tcx> InferCtxt<'tcx> {
                 .next_region_var_in_universe(RegionVariableOrigin::Misc(span), universe_map(ui))
                 .into(),
 
-            CanonicalVarKind::PlaceholderRegion(ty::PlaceholderRegion {
-                universe, bound, ..
-            }) => {
-                let universe_mapped = universe_map(universe);
-                let placeholder_mapped = ty::PlaceholderRegion::new(universe_mapped, bound);
+            CanonicalVarKind::PlaceholderRegion(placeholder) => {
+                let placeholder_mapped =
+                    placeholder.with_updated_universe(universe_map(placeholder.universe));
                 ty::Region::new_placeholder(self.tcx, placeholder_mapped).into()
             }
 
             CanonicalVarKind::Const(ui) => {
                 self.next_const_var_in_universe(span, universe_map(ui)).into()
             }
-            CanonicalVarKind::PlaceholderConst(ty::PlaceholderConst {
-                universe, bound, ..
-            }) => {
-                let universe_mapped = universe_map(universe);
-                let placeholder_mapped = ty::PlaceholderConst::new(universe_mapped, bound);
+            CanonicalVarKind::PlaceholderConst(placeholder) => {
+                let placeholder_mapped =
+                    placeholder.with_updated_universe(universe_map(placeholder.universe));
                 ty::Const::new_placeholder(self.tcx, placeholder_mapped).into()
             }
         }

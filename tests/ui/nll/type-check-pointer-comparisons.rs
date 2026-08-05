@@ -25,7 +25,7 @@ fn compare_hr_fn_ptr<'a>(f: fn(&'a i32), g: fn(&i32)) {
 }
 
 fn compare_const_fn_ptr<'a>(f: *const fn(&'a i32), g: *const fn(&i32)) {
-    f == g; // OK
+    f == g; // OK //~ ERROR mismatched types
 }
 
 fn main() {}

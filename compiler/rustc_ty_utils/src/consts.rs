@@ -120,7 +120,7 @@ fn recurse_build<'tcx>(
             let value = recurse_build(tcx, body, source, root_span)?;
             ty::Const::new_expr(tcx, Expr::new_cast(tcx, CastKind::Use, value_ty, value, node.ty))
         }
-        &ExprKind::Cast { source } => {
+        &ExprKind::Cast { source } | &ExprKind::Subtype { source } => {
             let value_ty = body.exprs[source].ty;
             let value = recurse_build(tcx, body, source, root_span)?;
             ty::Const::new_expr(tcx, Expr::new_cast(tcx, CastKind::As, value_ty, value, node.ty))
@@ -272,6 +272,7 @@ impl<'a, 'tcx> IsThirPolymorphic<'a, 'tcx> {
             | thir::ExprKind::LogicalOp { .. }
             | thir::ExprKind::Unary { .. }
             | thir::ExprKind::Cast { .. }
+            | thir::ExprKind::Subtype { .. }
             | thir::ExprKind::Use { .. }
             | thir::ExprKind::NeverToAny { .. }
             | thir::ExprKind::PointerCoercion { .. }

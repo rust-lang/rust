@@ -25,6 +25,14 @@ impl<'tcx> InferCtxt<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
+        self.enter_forall_and_leak_universe_hr(binder, false)
+    }
+
+    #[instrument(level = "debug", skip(self), ret)]
+    pub fn enter_forall_and_leak_universe_hr<T>(&self, binder: ty::Binder<'tcx, T>, hr: bool) -> T
+    where
+        T: TypeFoldable<TyCtxt<'tcx>>,
+    {
         // Inlined `no_bound_vars`.
         if !binder.as_ref().skip_binder().has_escaping_bound_vars() {
             return binder.skip_binder();
@@ -34,15 +42,21 @@ impl<'tcx> InferCtxt<'tcx> {
 
         let delegate = FnMutDelegate {
             regions: &mut |br: ty::BoundRegion<'tcx>| {
-                ty::Region::new_placeholder(self.tcx, ty::PlaceholderRegion::new(next_universe, br))
+                ty::Region::new_placeholder(
+                    self.tcx,
+                    ty::PlaceholderRegion::new_with_hr(next_universe, br, hr),
+                )
             },
             types: &mut |bound_ty: ty::BoundTy<'tcx>| {
-                Ty::new_placeholder(self.tcx, ty::PlaceholderType::new(next_universe, bound_ty))
+                Ty::new_placeholder(
+                    self.tcx,
+                    ty::PlaceholderType::new_with_hr(next_universe, bound_ty, hr),
+                )
             },
             consts: &mut |bound_const: ty::BoundConst<'tcx>| {
                 ty::Const::new_placeholder(
                     self.tcx,
-                    ty::PlaceholderConst::new(next_universe, bound_const),
+                    ty::PlaceholderConst::new_with_hr(next_universe, bound_const, hr),
                 )
             },
         };
@@ -72,6 +86,26 @@ impl<'tcx> InferCtxt<'tcx> {
         // that name placeholders created in this function. Nested goals from type relations can
         // also contain placeholders created by this function.
         let value = self.enter_forall_and_leak_universe(forall);
+        debug!(?value);
+        f(value)
+    }
+
+    /// Like [`Self::enter_forall`], but flags the placeholders it creates as
+    /// higher-ranked, so that the relation equates them instead of relating them
+    /// by the ambient variance. See [`ty::Placeholder::hr`].
+    ///
+    /// Use this when instantiating the universal side of a binder relation; use
+    /// `fn enter_forall` everywhere else.
+    #[instrument(level = "debug", skip(self, f))]
+    pub fn enter_forall_hr<T, U>(&self, forall: ty::Binder<'tcx, T>, f: impl FnOnce(T) -> U) -> U
+    where
+        T: TypeFoldable<TyCtxt<'tcx>>,
+    {
+        // FIXME: currently we do nothing to prevent placeholders with the new universe being
+        // used after exiting `f`. For example region subtyping can result in outlives constraints
+        // that name placeholders created in this function. Nested goals from type relations can
+        // also contain placeholders created by this function.
+        let value = self.enter_forall_and_leak_universe_hr(forall, true);
         debug!(?value);
         f(value)
     }

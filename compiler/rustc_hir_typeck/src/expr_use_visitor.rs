@@ -731,7 +731,9 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
             let is_last_adjustment = adjustment_index + 1 == adjustments.len();
             debug!("walk_adjustment expr={:?} adj={:?}", expr, adjustment);
             match adjustment.kind {
-                adjustment::Adjust::NeverToAny | adjustment::Adjust::Pointer(_) => {
+                adjustment::Adjust::NeverToAny
+                | adjustment::Adjust::Pointer(_)
+                | adjustment::Adjust::Subtype => {
                     // Creating a closure/fn-pointer or unsizing consumes
                     // the input and stores it into the resulting rvalue.
                     self.consume_or_copy(&place_with_id, place_with_id.hir_id);
@@ -1292,6 +1294,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
 
             adjustment::Adjust::NeverToAny
             | adjustment::Adjust::Pointer(_)
+            | adjustment::Adjust::Subtype
             | adjustment::Adjust::Borrow(_)
             | adjustment::Adjust::GenericReborrow(..) => {
                 // Result is an rvalue.

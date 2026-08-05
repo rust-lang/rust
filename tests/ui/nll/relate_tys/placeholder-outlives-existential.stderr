@@ -7,8 +7,137 @@ LL |     x
    = note: expected fn pointer `fn(fn(fn(for<'unify> fn(Contra<'unify>, Co<'unify>))))`
               found fn pointer `for<'e> fn(for<'e, 'p> fn(for<'e, 'p> fn(for<'e, 'p> fn(Contra<'e>, Co<'p>))))`
 
-error: lifetime may not live long enough
+error[E0308]: mismatched types
+  --> $DIR/placeholder-outlives-existential.rs:14:5
+   |
+LL |     x
+   |     ^ one type is more general than the other
+   |
+   = note: expected fn pointer `fn(fn(fn(for<'unify> fn(Contra<'unify>, Co<'unify>))))`
+              found fn pointer `for<'e> fn(for<'e, 'p> fn(for<'e, 'p> fn(for<'e, 'p> fn(Contra<'e>, Co<'p>))))`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0308]: mismatched types
+  --> $DIR/placeholder-outlives-existential.rs:14:5
+   |
+LL |     x
+   |     ^ one type is more general than the other
+   |
+   = note: expected fn pointer `fn(fn(fn(for<'unify> fn(Contra<'unify>, Co<'unify>))))`
+              found fn pointer `for<'e> fn(for<'e, 'p> fn(for<'e, 'p> fn(for<'e, 'p> fn(Contra<'e>, Co<'p>))))`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0308]: mismatched types
+  --> $DIR/placeholder-outlives-existential.rs:14:5
+   |
+LL |     x
+   |     ^ one type is more general than the other
+   |
+   = note: expected fn pointer `fn(fn(fn(for<'unify> fn(Contra<'unify>, Co<'unify>))))`
+              found fn pointer `for<'e> fn(for<'e, 'p> fn(for<'e, 'p> fn(for<'e, 'p> fn(Contra<'e>, Co<'p>))))`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0308]: mismatched types
+  --> $DIR/placeholder-outlives-existential.rs:14:5
+   |
+LL |     x
+   |     ^ one type is more general than the other
+   |
+   = note: expected fn pointer `fn(fn(fn(for<'unify> fn(Contra<'unify>, Co<'unify>))))`
+              found fn pointer `for<'e> fn(for<'e, 'p> fn(for<'e, 'p> fn(for<'e, 'p> fn(Contra<'e>, Co<'p>))))`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0308]: mismatched types
+  --> $DIR/placeholder-outlives-existential.rs:14:5
+   |
+LL |     x
+   |     ^ one type is more general than the other
+   |
+   = note: expected fn pointer `fn(fn(fn(for<'unify> fn(Contra<'unify>, Co<'unify>))))`
+              found fn pointer `for<'e> fn(for<'e, 'p> fn(for<'e, 'p> fn(for<'e, 'p> fn(Contra<'e>, Co<'p>))))`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0308]: mismatched types
+  --> $DIR/placeholder-outlives-existential.rs:14:5
+   |
+LL |     x
+   |     ^ one type is more general than the other
+   |
+   = note: expected fn pointer `fn(fn(fn(for<'unify> fn(Contra<'unify>, Co<'unify>))))`
+              found fn pointer `for<'e> fn(for<'e, 'p> fn(for<'e, 'p> fn(for<'e, 'p> fn(Contra<'e>, Co<'p>))))`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0308]: mismatched types
   --> $DIR/placeholder-outlives-existential.rs:28:5
+   |
+LL |     x
+   |     ^ one type is more general than the other
+   |
+   = note: expected fn pointer `fn(Inv<'_>, fn(fn(for<'unify> fn(Contra<'unify>, Co<'unify>))))`
+              found fn pointer `for<'e> fn(Inv<'e>, for<'e, 'p> fn(for<'e, 'p> fn(for<'e, 'p> fn(Contra<'p>, Co<'e>))))`
+
+error[E0308]: mismatched types
+  --> $DIR/placeholder-outlives-existential.rs:28:5
+   |
+LL |     x
+   |     ^ one type is more general than the other
+   |
+   = note: expected fn pointer `fn(Inv<'_>, fn(fn(for<'unify> fn(Contra<'unify>, Co<'unify>))))`
+              found fn pointer `for<'e> fn(Inv<'e>, for<'e, 'p> fn(for<'e, 'p> fn(for<'e, 'p> fn(Contra<'p>, Co<'e>))))`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0308]: mismatched types
+  --> $DIR/placeholder-outlives-existential.rs:28:5
+   |
+LL |     x
+   |     ^ one type is more general than the other
+   |
+   = note: expected fn pointer `fn(Inv<'_>, fn(fn(for<'unify> fn(Contra<'unify>, Co<'unify>))))`
+              found fn pointer `for<'e> fn(Inv<'e>, for<'e, 'p> fn(for<'e, 'p> fn(for<'e, 'p> fn(Contra<'p>, Co<'e>))))`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0308]: mismatched types
+  --> $DIR/placeholder-outlives-existential.rs:28:5
+   |
+LL |     x
+   |     ^ one type is more general than the other
+   |
+   = note: expected fn pointer `fn(Inv<'_>, fn(fn(for<'unify> fn(Contra<'unify>, Co<'unify>))))`
+              found fn pointer `for<'e> fn(Inv<'e>, for<'e, 'p> fn(for<'e, 'p> fn(for<'e, 'p> fn(Contra<'p>, Co<'e>))))`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0308]: mismatched types
+  --> $DIR/placeholder-outlives-existential.rs:28:5
+   |
+LL |     x
+   |     ^ one type is more general than the other
+   |
+   = note: expected fn pointer `fn(Inv<'_>, fn(fn(for<'unify> fn(Contra<'unify>, Co<'unify>))))`
+              found fn pointer `for<'e> fn(Inv<'e>, for<'e, 'p> fn(for<'e, 'p> fn(for<'e, 'p> fn(Contra<'p>, Co<'e>))))`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0308]: mismatched types
+  --> $DIR/placeholder-outlives-existential.rs:28:5
+   |
+LL |     x
+   |     ^ one type is more general than the other
+   |
+   = note: expected fn pointer `fn(Inv<'_>, fn(fn(for<'unify> fn(Contra<'unify>, Co<'unify>))))`
+              found fn pointer `for<'e> fn(Inv<'e>, for<'e, 'p> fn(for<'e, 'p> fn(for<'e, 'p> fn(Contra<'p>, Co<'e>))))`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0308]: mismatched types
+  --> $DIR/placeholder-outlives-existential.rs:28:5
+   |
+LL |     x
+   |     ^ one type is more general than the other
+   |
+   = note: expected fn pointer `fn(Inv<'_>, fn(fn(for<'unify> fn(Contra<'unify>, Co<'unify>))))`
+              found fn pointer `for<'e> fn(Inv<'e>, for<'e, 'p> fn(for<'e, 'p> fn(for<'e, 'p> fn(Contra<'p>, Co<'e>))))`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: lifetime may not live long enough
+  --> $DIR/placeholder-outlives-existential.rs:42:5
    |
 LL | fn e_outlives_p_static_err<'not_static>(
    |                            ----------- lifetime `'not_static` defined here
@@ -20,6 +149,75 @@ LL |     x
    = note: the struct `Inv<'a>` is invariant over the parameter `'a`
    = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
-error: aborting due to 2 previous errors
+error[E0308]: mismatched types
+  --> $DIR/placeholder-outlives-existential.rs:42:5
+   |
+LL |     x
+   |     ^ one type is more general than the other
+   |
+   = note: expected fn pointer `fn(Inv<'_>, fn(fn(for<'unify> fn(Contra<'unify>, Co<'unify>))))`
+              found fn pointer `for<'e> fn(Inv<'e>, for<'e, 'p> fn(for<'e, 'p> fn(for<'e, 'p> fn(Contra<'p>, Co<'e>))))`
+
+error[E0308]: mismatched types
+  --> $DIR/placeholder-outlives-existential.rs:42:5
+   |
+LL |     x
+   |     ^ one type is more general than the other
+   |
+   = note: expected fn pointer `fn(Inv<'_>, fn(fn(for<'unify> fn(Contra<'unify>, Co<'unify>))))`
+              found fn pointer `for<'e> fn(Inv<'e>, for<'e, 'p> fn(for<'e, 'p> fn(for<'e, 'p> fn(Contra<'p>, Co<'e>))))`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0308]: mismatched types
+  --> $DIR/placeholder-outlives-existential.rs:42:5
+   |
+LL |     x
+   |     ^ one type is more general than the other
+   |
+   = note: expected fn pointer `fn(Inv<'_>, fn(fn(for<'unify> fn(Contra<'unify>, Co<'unify>))))`
+              found fn pointer `for<'e> fn(Inv<'e>, for<'e, 'p> fn(for<'e, 'p> fn(for<'e, 'p> fn(Contra<'p>, Co<'e>))))`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0308]: mismatched types
+  --> $DIR/placeholder-outlives-existential.rs:42:5
+   |
+LL |     x
+   |     ^ one type is more general than the other
+   |
+   = note: expected fn pointer `fn(Inv<'_>, fn(fn(for<'unify> fn(Contra<'unify>, Co<'unify>))))`
+              found fn pointer `for<'e> fn(Inv<'e>, for<'e, 'p> fn(for<'e, 'p> fn(for<'e, 'p> fn(Contra<'p>, Co<'e>))))`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0308]: mismatched types
+  --> $DIR/placeholder-outlives-existential.rs:42:5
+   |
+LL |     x
+   |     ^ one type is more general than the other
+   |
+   = note: expected fn pointer `fn(Inv<'_>, fn(fn(for<'unify> fn(Contra<'unify>, Co<'unify>))))`
+              found fn pointer `for<'e> fn(Inv<'e>, for<'e, 'p> fn(for<'e, 'p> fn(for<'e, 'p> fn(Contra<'p>, Co<'e>))))`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0308]: mismatched types
+  --> $DIR/placeholder-outlives-existential.rs:42:5
+   |
+LL |     x
+   |     ^ one type is more general than the other
+   |
+   = note: expected fn pointer `fn(Inv<'_>, fn(fn(for<'unify> fn(Contra<'unify>, Co<'unify>))))`
+              found fn pointer `for<'e> fn(Inv<'e>, for<'e, 'p> fn(for<'e, 'p> fn(for<'e, 'p> fn(Contra<'p>, Co<'e>))))`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0308]: mismatched types
+  --> $DIR/placeholder-outlives-existential.rs:42:5
+   |
+LL |     x
+   |     ^ one type is more general than the other
+   |
+   = note: expected fn pointer `fn(Inv<'_>, fn(fn(for<'unify> fn(Contra<'unify>, Co<'unify>))))`
+              found fn pointer `for<'e> fn(Inv<'e>, for<'e, 'p> fn(for<'e, 'p> fn(for<'e, 'p> fn(Contra<'p>, Co<'e>))))`
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 22 previous errors
 
 For more information about this error, try `rustc --explain E0308`.

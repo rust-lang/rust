@@ -44,7 +44,9 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::{self as hir, LangItem};
 use rustc_hir_analysis::hir_ty_lowering::HirTyLowerer;
 use rustc_infer::infer::relate::RelateResult;
-use rustc_infer::infer::{DefineOpaqueTypes, InferOk, InferResult, RegionVariableOrigin};
+use rustc_infer::infer::{
+    BoundRegionConversionTime, DefineOpaqueTypes, InferOk, InferResult, RegionVariableOrigin,
+};
 use rustc_infer::traits::{
     MatchExpressionArmCause, Obligation, PredicateObligation, PredicateObligations, SelectionError,
 };
@@ -209,6 +211,53 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
             res
         })
+    }
+
+    fn unify_hr_fn_ptr(
+        &self,
+        a_sig: ty::PolyFnSig<'tcx>,
+        b: Ty<'tcx>,
+        adjust: Adjust,
+    ) -> CoerceResult<'tcx> {
+        debug!("unify_hr_fn_ptr(a_sig: {:?}, b: {:?}, adjust: {:?})", a_sig, b, adjust);
+
+        let ty::FnPtr(b_sig_tys, b_hdr) = b.kind() else {
+            span_bug!(
+                self.cause.span,
+                "unify_hr_fn_ptr: expected a function pointer target, found {b:?}"
+            );
+        };
+
+        let b_sig = b_sig_tys.with(*b_hdr);
+
+        self.commit_if_ok(|snapshot| {
+            let outer_universe = self.infcx.universe();
+
+            let InferOk { value: (), obligations } = self.infcx.enter_forall(b_sig, |b_sig| {
+                let a_sig = self.instantiate_binder_with_fresh_vars(
+                    self.cause.span,
+                    BoundRegionConversionTime::HigherRankedType,
+                    a_sig,
+                );
+
+                let a_ty = Ty::new_fn_ptr(self.tcx, ty::Binder::dummy(a_sig));
+                let b_ty = Ty::new_fn_ptr(self.tcx, ty::Binder::dummy(b_sig));
+
+                self.at(&self.cause, self.fcx.param_env).sup(DefineOpaqueTypes::Yes, b_ty, a_ty)
+            })?;
+
+            self.leak_check(outer_universe, Some(snapshot))?;
+
+            success(vec![Adjustment { kind: adjust, target: b }], b, obligations)
+        })
+    }
+
+    /// Whether a fn-pointer coercion involves a higher-ranked binder (source or
+    /// target). If neither is higher-ranked, the `unify_hr_fn_ptr` fallback is a
+    /// no-op re-relate of the same types.
+    fn coercion_is_higher_ranked(&self, a_sig: ty::PolyFnSig<'tcx>, b: Ty<'tcx>) -> bool {
+        a_sig.has_bound_regions()
+            || matches!(*b.kind(), ty::FnPtr(tys, hdr) if tys.with(hdr).has_bound_regions())
     }
 
     /// Unify two types (using sub or lub).
@@ -1031,8 +1080,69 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             ty::FnPtr(_, b_hdr) if a_sig.safety().is_safe() && b_hdr.safety().is_unsafe() => {
                 let a = self.tcx.safe_to_unsafe_fn_ty(a_sig);
                 let adjust = Adjust::Pointer(PointerCoercion::UnsafeFnPointer);
-                self.unify_and(a, b, [], adjust, ForceLeakCheck::Yes)
+
+                match self.unify_and(a, b, [], adjust.clone(), ForceLeakCheck::Yes) {
+                    ok @ Ok(_) => ok,
+                    Err(_) if self.coercion_is_higher_ranked(a_sig, b) => {
+                        let ty::FnPtr(b_sig_tys, b_hdr) = b.kind() else {
+                            span_bug!(
+                                self.cause.span,
+                                "coerce_from_fn_pointer: expected a function pointer target, found {b:?}"
+                            );
+                        };
+                        let b_sig = b_sig_tys.with(*b_hdr);
+
+                        let safe_b = Ty::new_fn_ptr(
+                            self.tcx,
+                            b_sig.map_bound(|sig| ty::FnSig {
+                                fn_sig_kind: sig.fn_sig_kind.set_safety(hir::Safety::Safe),
+                                ..sig
+                            }),
+                        );
+
+                        self.commit_if_ok(|snapshot| {
+                            let outer_universe = self.infcx.universe();
+
+                            let InferOk { value: (), obligations } =
+                                self.infcx.enter_forall(b_sig, |b_sig| {
+                                    let a_sig =
+                                        ty::Binder::dummy(self.instantiate_binder_with_fresh_vars(
+                                            self.cause.span,
+                                            BoundRegionConversionTime::HigherRankedType,
+                                            a_sig,
+                                        ));
+                                    let unsafe_a = self.tcx.safe_to_unsafe_fn_ty(a_sig);
+                                    let b_ty = Ty::new_fn_ptr(self.tcx, ty::Binder::dummy(b_sig));
+
+                                    self.at(&self.cause, self.fcx.param_env).sup(
+                                        DefineOpaqueTypes::Yes,
+                                        b_ty,
+                                        unsafe_a,
+                                    )
+                                })?;
+
+                            self.leak_check(outer_universe, Some(snapshot))?;
+
+                            success(
+                                vec![
+                                    Adjustment { kind: Adjust::Subtype, target: safe_b },
+                                    Adjustment { kind: adjust, target: b },
+                                ],
+                                b,
+                                obligations,
+                            )
+                        })
+                    }
+                    Err(err) => Err(err),
+                }
             }
+            ty::FnPtr(_, _) => match self.unify(a, b, ForceLeakCheck::Yes) {
+                ok @ Ok(_) => ok,
+                Err(_) if self.coercion_is_higher_ranked(a_sig, b) => {
+                    self.unify_hr_fn_ptr(a_sig, b, Adjust::Subtype)
+                }
+                Err(err) => Err(err),
+            },
             _ => self.unify(a, b, ForceLeakCheck::Yes),
         }
     }
@@ -1051,11 +1161,15 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 let a = Ty::new_fn_ptr(self.tcx, a_sig);
 
                 let adjust = Adjust::Pointer(PointerCoercion::ReifyFnPointer(b_hdr.safety()));
-                let InferOk { value, obligations: o2 } =
-                    self.unify_and(a, b, [], adjust, ForceLeakCheck::Yes)?;
-
-                obligations.extend(o2);
-                Ok(InferOk { value, obligations })
+                let infer = match self.unify_and(a, b, [], adjust.clone(), ForceLeakCheck::Yes) {
+                    Ok(infer) => infer,
+                    Err(_) if self.coercion_is_higher_ranked(a_sig, b) => {
+                        self.unify_hr_fn_ptr(a_sig, b, adjust)?
+                    }
+                    Err(err) => return Err(err),
+                };
+                obligations.extend(infer.obligations);
+                Ok(InferOk { value: infer.value, obligations })
             }
             _ => self.unify(a, b, ForceLeakCheck::No),
         }
@@ -1076,7 +1190,13 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 debug!("coerce_closure_to_fn(a={:?}, b={:?}, pty={:?})", a, b, pointer_ty);
 
                 let adjust = Adjust::Pointer(PointerCoercion::ClosureFnPointer(safety));
-                self.unify_and(pointer_ty, b, [], adjust, ForceLeakCheck::No)
+                match self.unify_and(pointer_ty, b, [], adjust.clone(), ForceLeakCheck::No) {
+                    ok @ Ok(_) => ok,
+                    Err(_) if self.coercion_is_higher_ranked(closure_sig, b) => {
+                        self.unify_hr_fn_ptr(closure_sig, b, adjust)
+                    }
+                    Err(err) => Err(err),
+                }
             }
             _ => self.unify(a, b, ForceLeakCheck::No),
         }

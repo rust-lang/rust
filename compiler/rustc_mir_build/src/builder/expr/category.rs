@@ -65,6 +65,7 @@ impl Category {
             | ExprKind::Unary { .. }
             | ExprKind::Binary { .. }
             | ExprKind::Cast { .. }
+            | ExprKind::Subtype { .. }
             | ExprKind::PointerCoercion { .. }
             | ExprKind::Repeat { .. }
             | ExprKind::Assign { .. }

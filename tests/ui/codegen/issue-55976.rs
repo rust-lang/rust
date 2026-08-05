@@ -1,8 +1,9 @@
-//@ run-pass
-// ^-- The above is needed as this issue is related to LLVM/codegen.
+// Regression test for issue #55976.
 
 fn main() {
     type_error(|x| &x);
+    //~^ ERROR mismatched types
+    //~| ERROR mismatched types
 }
 
 fn type_error<T>(

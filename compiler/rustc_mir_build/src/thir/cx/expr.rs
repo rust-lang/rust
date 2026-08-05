@@ -176,6 +176,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                     is_from_as_cast,
                 }
             }
+            Adjust::Subtype => ExprKind::Subtype { source: self.thir.exprs.push(expr) },
             Adjust::NeverToAny if adjustment.target.is_never() => return expr,
             Adjust::NeverToAny => ExprKind::NeverToAny { source: self.thir.exprs.push(expr) },
             Adjust::Deref(DerefAdjustKind::Builtin) => {

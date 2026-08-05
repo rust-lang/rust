@@ -12,6 +12,8 @@ static HELLO: for<'a> fn(&'a u8) -> &'static u8;
 #[hello]
 static HELLO_IMPL: for<'a> fn(&'a u8) -> &'a u8 = |_| todo!();
 //~^ ERROR mismatched types
+//~| ERROR mismatched types
+
 
 fn main() {
 }

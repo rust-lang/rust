@@ -160,6 +160,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let cast_kind = mir_cast_kind(ty, expr.ty);
                 block.and(Rvalue::Cast(cast_kind, source, expr.ty))
             }
+            ExprKind::Subtype { source } => {
+                let source = unpack!(
+                    block = this.as_operand(
+                        block,
+                        scope,
+                        source,
+                        LocalInfo::Boring,
+                        NeedsTemporary::No
+                    )
+                );
+                block.and(Rvalue::Cast(CastKind::Subtype, source, expr.ty))
+            }
             ExprKind::PointerCoercion { cast, source, is_from_as_cast } => {
                 let source = unpack!(
                     block = this.as_operand(

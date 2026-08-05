@@ -1,4 +1,4 @@
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::relate::{PredicateEmittingRelation, Relate, RelateResult, TypeRelation};
@@ -79,6 +79,8 @@ struct NllTypeRelating<'a, 'b, 'tcx> {
     ambient_variance: ty::Variance,
 
     ambient_variance_info: ty::VarianceDiagInfo<TyCtxt<'tcx>>,
+
+    hr_placeholder_vars: FxHashSet<ty::RegionVid>,
 }
 
 impl<'a, 'b, 'tcx> NllTypeRelating<'a, 'b, 'tcx> {
@@ -96,6 +98,7 @@ impl<'a, 'b, 'tcx> NllTypeRelating<'a, 'b, 'tcx> {
             universe_info,
             ambient_variance,
             ambient_variance_info: ty::VarianceDiagInfo::default(),
+            hr_placeholder_vars: FxHashSet::default(),
         }
     }
 
@@ -111,6 +114,10 @@ impl<'a, 'b, 'tcx> NllTypeRelating<'a, 'b, 'tcx> {
             ty::Contravariant | ty::Invariant => true,
             ty::Covariant | ty::Bivariant => false,
         }
+    }
+
+    fn is_hr_placeholder(&self, r: ty::Region<'tcx>) -> bool {
+        matches!(r.kind(), ty::ReVar(vid) if self.hr_placeholder_vars.contains(&vid))
     }
 
     fn relate_opaques(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, ()> {
@@ -162,7 +169,7 @@ impl<'a, 'b, 'tcx> NllTypeRelating<'a, 'b, 'tcx> {
         Ok(())
     }
 
-    fn enter_forall<T, U>(
+    fn enter_forall_hr<T, U>(
         &mut self,
         binder: ty::Binder<'tcx, T>,
         f: impl FnOnce(&mut Self, T) -> U,
@@ -186,10 +193,12 @@ impl<'a, 'b, 'tcx> NllTypeRelating<'a, 'b, 'tcx> {
                         universe
                     });
 
-                    let placeholder = ty::PlaceholderRegion::new(universe, br);
+                    let placeholder = ty::PlaceholderRegion::new_with_hr(universe, br, true);
                     debug!(?placeholder);
                     let placeholder_reg = self.next_placeholder_region(placeholder);
                     debug!(?placeholder_reg);
+
+                    self.hr_placeholder_vars.insert(placeholder_reg.as_var());
 
                     placeholder_reg
                 },
@@ -438,14 +447,19 @@ impl<'b, 'tcx> TypeRelation<TyCtxt<'tcx>> for NllTypeRelating<'_, 'b, 'tcx> {
     ) -> RelateResult<'tcx, ty::Region<'tcx>> {
         debug!(?self.ambient_variance);
 
-        if self.ambient_covariance() {
-            // Covariant: &'a u8 <: &'b u8. Hence, `'a: 'b`.
+        if self.is_hr_placeholder(a) || self.is_hr_placeholder(b) {
             self.push_outlives(a, b, self.ambient_variance_info);
-        }
-
-        if self.ambient_contravariance() {
-            // Contravariant: &'b u8 <: &'a u8. Hence, `'b: 'a`.
             self.push_outlives(b, a, self.ambient_variance_info);
+        } else {
+            if self.ambient_covariance() {
+                // Covariant: &'a u8 <: &'b u8. Hence, `'a: 'b`.
+                self.push_outlives(a, b, self.ambient_variance_info);
+            }
+
+            if self.ambient_contravariance() {
+                // Contravariant: &'b u8 <: &'a u8. Hence, `'b: 'a`.
+                self.push_outlives(b, a, self.ambient_variance_info);
+            }
         }
 
         Ok(a)
@@ -500,57 +514,27 @@ impl<'b, 'tcx> TypeRelation<TyCtxt<'tcx>> for NllTypeRelating<'_, 'b, 'tcx> {
         }
 
         match self.ambient_variance {
-            ty::Covariant => {
-                // Covariance, so we want `for<..> A <: for<..> B` --
-                // therefore we compare any instantiation of A (i.e., A
-                // instantiated with existentials) against every
-                // instantiation of B (i.e., B instantiated with
-                // universals).
+            ty::Covariant | ty::Contravariant | ty::Invariant => {
+                // The bound variables of the two binders must relate by equality
+                // (alpha-equivalence), regardless of the ambient variance.
+                // See `TypeRelating::binders` for the rationale.
 
+                // Check if `exists<..> A == for<..> B`.
                 // Note: the order here is important. Create the placeholders first, otherwise
                 // we assign the wrong universe to the existential!
-                self.enter_forall(b, |this, b| {
+                self.enter_forall_hr(b, |this, b| {
                     let a = this.instantiate_binder_with_existentials(a);
                     this.relate(a, b)
                 })?;
-            }
 
-            ty::Contravariant => {
-                // Contravariance, so we want `for<..> A :> for<..> B` --
-                // therefore we compare every instantiation of A (i.e., A
-                // instantiated with universals) against any
-                // instantiation of B (i.e., B instantiated with
-                // existentials). Opposite of above.
-
+                // Check if `exists<..> B == for<..> A`.
                 // Note: the order here is important. Create the placeholders first, otherwise
                 // we assign the wrong universe to the existential!
-                self.enter_forall(a, |this, a| {
+                self.enter_forall_hr(a, |this, a| {
                     let b = this.instantiate_binder_with_existentials(b);
                     this.relate(a, b)
                 })?;
             }
-
-            ty::Invariant => {
-                // Invariant, so we want `for<..> A == for<..> B` --
-                // therefore we want `exists<..> A == for<..> B` and
-                // `exists<..> B == for<..> A`.
-                //
-                // See the comment in `fn Equate::binders` for more details.
-
-                // Note: the order here is important. Create the placeholders first, otherwise
-                // we assign the wrong universe to the existential!
-                self.enter_forall(b, |this, b| {
-                    let a = this.instantiate_binder_with_existentials(a);
-                    this.relate(a, b)
-                })?;
-                // Note: the order here is important. Create the placeholders first, otherwise
-                // we assign the wrong universe to the existential!
-                self.enter_forall(a, |this, a| {
-                    let b = this.instantiate_binder_with_existentials(b);
-                    this.relate(a, b)
-                })?;
-            }
-
             ty::Bivariant => {}
         }
 

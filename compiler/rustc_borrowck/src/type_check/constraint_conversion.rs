@@ -68,9 +68,22 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
 
     #[instrument(skip(self), level = "debug")]
     pub(super) fn convert_all(&mut self, query_constraints: &QueryRegionConstraints<'tcx>) {
+        self.convert_all_with_assumptions(query_constraints, &[]);
+    }
+
+    /// Like [`Self::convert_all`], but additionally treats `extra_assumptions` as
+    /// higher-ranked outlives assumptions: any converted obligation that matches
+    /// one of them is discharged.
+    pub(super) fn convert_all_with_assumptions(
+        &mut self,
+        query_constraints: &QueryRegionConstraints<'tcx>,
+        extra_assumptions: &[ty::ArgOutlivesPredicate<'tcx>],
+    ) {
         let QueryRegionConstraints { constraints, assumptions } = query_constraints;
-        let assumptions =
-            elaborate::elaborate_outlives_assumptions(self.infcx.tcx, assumptions.iter().copied());
+        let assumptions = elaborate::elaborate_outlives_assumptions(
+            self.infcx.tcx,
+            assumptions.iter().copied().chain(extra_assumptions.iter().copied()),
+        );
 
         for &QueryRegionConstraint { constraint, category, .. } in constraints {
             constraint.iter_outlives().for_each(|predicate| {
@@ -142,10 +155,12 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
         } = *self;
 
         let pred = predicate;
-        // Constraint is implied by a coroutine's well-formedness.
-        if self.infcx.tcx.sess.opts.unstable_opts.higher_ranked_assumptions
-            && higher_ranked_assumptions.contains(&pred)
-        {
+        // Skip any outlives obligation covered by a higher-ranked assumption (an
+        // implied bound carried along a binder). This set is empty unless
+        // assumptions were explicitly registered — via `-Zhigher-ranked-assumptions`
+        // or by the fn-pointer reification WF check (see `prove_fn_ptr_wf`) — so it
+        // is a no-op in normal compilation.
+        if higher_ranked_assumptions.contains(&pred) {
             return;
         }
 
