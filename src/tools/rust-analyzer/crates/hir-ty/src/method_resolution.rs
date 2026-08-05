@@ -34,6 +34,7 @@ use rustc_type_ir::{
     TypeVisitableExt, VisitorResult,
     fast_reject::{TreatParams, simplify_type},
     inherent::{BoundExistentialPredicates, IntoKind},
+    try_visit,
 };
 use stdx::impl_from;
 use triomphe::Arc;
@@ -54,7 +55,6 @@ use crate::{
         obligation_ctxt::ObligationCtxt,
         util::clauses_as_obligations,
     },
-    ret,
     traits::ParamEnvAndCrate,
 };
 
@@ -850,10 +850,10 @@ impl<'db> TraitImpls<'db> {
     ) -> R {
         let blocks = std::iter::successors(block, |block| block.module(db).block(db));
         for impl_ in blocks.filter_map(|block| Self::for_block(db, block)) {
-            ret!(for_each(impl_));
+            try_visit!(for_each(impl_));
         }
         for impl_ in Self::for_crate_and_deps(db, krate) {
-            ret!(for_each(impl_));
+            try_visit!(for_each(impl_));
         }
         R::output()
     }
@@ -868,7 +868,7 @@ impl<'db> TraitImpls<'db> {
     ) -> R {
         let in_self_and_deps = TraitImpls::for_crate_and_deps(db, krate);
         for impl_ in in_self_and_deps {
-            ret!(for_each(impl_));
+            try_visit!(for_each(impl_));
         }
 
         // We must not provide duplicate impls to the solver. Therefore we work with the following strategy:
@@ -891,14 +891,14 @@ impl<'db> TraitImpls<'db> {
             for impl_ in
                 blocks_iter(trait_block).filter_map(|block| TraitImpls::for_block(db, block))
             {
-                ret!(for_each(impl_));
+                try_visit!(for_each(impl_));
             }
         } else {
             for impl_ in for_each_block(trait_block, type_block) {
-                ret!(for_each(impl_));
+                try_visit!(for_each(impl_));
             }
             for impl_ in for_each_block(type_block, trait_block) {
-                ret!(for_each(impl_));
+                try_visit!(for_each(impl_));
             }
         }
         R::output()
