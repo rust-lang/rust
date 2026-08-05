@@ -214,7 +214,7 @@ pub struct MaybeTransitiveLiveLocals<'a> {
 }
 
 impl<'a> MaybeTransitiveLiveLocals<'a> {
-    /// The `always_alive` set is the set of locals to which all stores should unconditionally be
+    /// The `always_live` set is the set of locals to which all stores should unconditionally be
     /// considered live.
     ///
     /// This should include at least all locals that are ever borrowed.
