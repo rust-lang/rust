@@ -950,6 +950,7 @@ impl String {
     /// ```
     #[must_use = "losing the pointer will leak memory"]
     #[stable(feature = "vec_into_raw_parts", since = "1.93.0")]
+    #[inline]
     pub fn into_raw_parts(self) -> (*mut u8, usize, usize) {
         self.vec.into_raw_parts()
     }
