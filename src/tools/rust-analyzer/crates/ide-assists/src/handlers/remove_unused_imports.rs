@@ -8,7 +8,7 @@ use ide_db::text_edit::TextRange;
 use ide_db::{
     FxHashMap, RootDatabase,
     defs::Definition,
-    search::{FileReference, ReferenceCategory, SearchScope},
+    search::{ReferenceCategory, SearchScope},
 };
 use syntax::{
     AstNode,
@@ -139,7 +139,7 @@ pub(crate) fn remove_unused_imports(acc: &mut Assists, ctx: &AssistContext<'_, '
 fn is_path_per_ns_unused_in_scope(
     ctx: &AssistContext<'_, '_>,
     u: &ast::UseTree,
-    scope: &mut Vec<SearchScope>,
+    scope: &[SearchScope],
     path: &PathResolutionPerNs<'_>,
 ) -> bool {
     if let Some(PathResolution::Def(ModuleDef::Trait(ref t))) = path.type_ns {
@@ -158,7 +158,7 @@ fn is_path_per_ns_unused_in_scope(
 fn is_path_unused_in_scope(
     ctx: &AssistContext<'_, '_>,
     u: &ast::UseTree,
-    scope: &mut Vec<SearchScope>,
+    scope: &[SearchScope],
     path: &[Option<PathResolution<'_>>],
 ) -> bool {
     !path
@@ -174,7 +174,7 @@ fn is_path_unused_in_scope(
 fn is_trait_unused_in_scope(
     ctx: &AssistContext<'_, '_>,
     u: &ast::UseTree,
-    scope: &mut Vec<SearchScope>,
+    scope: &[SearchScope],
     t: &hir::Trait,
 ) -> bool {
     !std::iter::once((Definition::Trait(*t), u.rename()))
@@ -186,30 +186,16 @@ fn used_once_in_scope<'db>(
     ctx: &AssistContext<'_, 'db>,
     def: Definition<'db>,
     rename: Option<Rename>,
-    scopes: &Vec<SearchScope>,
+    scopes: &[SearchScope],
 ) -> bool {
-    let mut found = false;
-
-    for scope in scopes {
-        let mut search_non_import = |_, r: FileReference| {
-            // The import itself is a use; we must skip that.
-            if !r.category.contains(ReferenceCategory::IMPORT) {
-                found = true;
-                true
-            } else {
-                false
-            }
-        };
+    scopes.iter().any(|scope| {
+        // The import itself is a use; we must skip that.
         def.usages(&ctx.sema)
+            .set_included_categories(ReferenceCategory::IMPORT.complement())
             .in_scope(scope)
             .with_rename(rename.as_ref())
-            .search(&mut search_non_import);
-        if found {
-            break;
-        }
-    }
-
-    found
+            .at_least_one()
+    })
 }
 
 /// Build a search scope spanning the given module but none of its submodules.

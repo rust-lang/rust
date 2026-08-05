@@ -100,6 +100,8 @@ impl AttrsWithOwner {
         }
     }
 
+    /// **Do not** use this to detect visibility of the macro, this does not account for macros 2.0.
+    /// Use this only if you're interested in `#[macro_export]` literally (for example, because it exports under the crate root).
     #[inline]
     pub fn is_macro_export(&self) -> bool {
         self.attrs.contains(AttrFlags::IS_MACRO_EXPORT)

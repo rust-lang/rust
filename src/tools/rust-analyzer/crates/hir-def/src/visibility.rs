@@ -278,6 +278,11 @@ impl Visibility {
             }
         }
     }
+
+    #[inline]
+    pub fn is_public(&self) -> bool {
+        matches!(self, Visibility::Public)
+    }
 }
 
 #[salsa::tracked]
