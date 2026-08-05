@@ -3,7 +3,7 @@ use crate::spec::{
     TargetMetadata, TargetOptions,
 };
 
-const LINKER_SCRIPT: &str = include_str!("./armv7a_vex_v5_linker_script.ld");
+const LINKER_SCRIPT: &str = include_str!("./thumbv7a_vex_v5_linker_script.ld");
 
 pub(crate) fn target() -> Target {
     let opts = TargetOptions {
@@ -29,7 +29,7 @@ pub(crate) fn target() -> Target {
         ..Default::default()
     };
     Target {
-        llvm_target: "armv7a-none-eabihf".into(),
+        llvm_target: "thumbv7a-none-eabihf".into(),
         metadata: TargetMetadata {
             description: Some("ARMv7-A Cortex-A9 VEX V5 Brain".into()),
             tier: Some(3),
