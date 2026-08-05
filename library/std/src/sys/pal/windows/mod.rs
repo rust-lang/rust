@@ -15,8 +15,6 @@ pub mod compat;
 pub mod api;
 
 pub mod c;
-#[cfg(not(target_vendor = "win7"))]
-pub mod futex;
 pub mod handle;
 pub mod time;
 cfg_select! {
