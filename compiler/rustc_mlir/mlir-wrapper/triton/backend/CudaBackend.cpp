@@ -310,6 +310,10 @@ LogicalResult CudaBackend::makeTTIR(MLIRContext &context, ModuleOp module) {
   auto capability = getCapability();
   auto op = module.getOperation();
 
+  if (m_options.debug) {
+    pm.enableIRPrinting();
+  }
+
   addPass(pm, MlirPass::inliner);
   addPass(pm, MlirPass::ttir_rewrite_tensor_pointer);
   if (capability < 90) {
@@ -343,6 +347,9 @@ LogicalResult CudaBackend::makeTTGIR(MLIRContext &context, ModuleOp module) {
   // Run ttir_convert_to_ttgpuir as a separate pass to get early crash detection.
   {
     PassManager pm0(&context);
+    if (m_options.debug) {
+      pm0.enableIRPrinting();
+    }
     addPass(pm0, MlirPass::ttir_convert_to_ttgpuir, capability_str,
             m_options.num_warps, 32, m_options.num_ctas);
     auto r = pm0.run(op);
@@ -350,6 +357,9 @@ LogicalResult CudaBackend::makeTTGIR(MLIRContext &context, ModuleOp module) {
   }
 
   PassManager pm(&context);
+  if (m_options.debug) {
+    pm.enableIRPrinting();
+  }
 
   // optimize TTGIR
   addPass(pm, MlirPass::ttgpuir_coalesce);
@@ -454,6 +464,10 @@ LogicalResult CudaBackend::makeLLIR(MLIRContext &context, ModuleOp module) {
   auto ptx_version =
       m_options.ptx_version.has_value ? m_options.ptx_version.value : 90;
   auto op = module.getOperation();
+
+  if (m_options.debug) {
+    pm.enableIRPrinting();
+  }
 
   addPass(pm, MlirPass::ttgpuir_combine_tensor_select_and_if);
   addPass(pm, MlirPass::ttgpuir_allocate_warp_groups);

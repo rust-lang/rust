@@ -192,10 +192,30 @@ fn compile_module(mlir_module: &mut MlirModule<'static>) -> Result<(), MlirError
         .ok_or_else(|| MlirError::CodegenFailed { err: "Triton returned no ASM".to_string() })?
         .to_owned();
 
+    log_pipeline_stages(mlir_module, &ptx);
+
     let metadata = crate::mlir::module::KernelMetadata::parse(&ptx);
     mlir_module.kernel_metadata = Some(metadata);
     mlir_module.ptx_asm = Some(ptx);
     Ok(())
+}
+
+/// Logs each MLIR pipeline stage's IR (ttir, ttgpuir, llir, llvmir, ptx/asm)
+/// at `debug` level, once per stage. Per-pass IR within ttir/ttgpuir/llir is
+/// controlled separately by `CompileOptions::debug` (see
+/// `MlirModule::new_with_capability`), which the C++ backend consults at
+/// `trace` level.
+///
+/// A caller turns this on via `RUSTC_LOG=rustc_codegen_llvm::mlir=debug` (or
+/// `=trace` for the per-pass detail too).
+fn log_pipeline_stages(mlir_module: &MlirModule<'static>, ptx: &str) {
+    let compiler = &mlir_module.compiler;
+
+    tracing::debug!(target: crate::mlir::LOG_TARGET, stage = "ttir", "{}", compiler.get_ttir().unwrap_or_default());
+    tracing::debug!(target: crate::mlir::LOG_TARGET, stage = "ttgir", "{}", compiler.get_ttgir().unwrap_or_default());
+    tracing::debug!(target: crate::mlir::LOG_TARGET, stage = "llir", "{}", compiler.get_llir().unwrap_or_default());
+    tracing::debug!(target: crate::mlir::LOG_TARGET, stage = "llvmir", "{}", compiler.get_llvm_ir().unwrap_or_default());
+    tracing::debug!(target: crate::mlir::LOG_TARGET, stage = "ptx", "{}", ptx);
 }
 
 impl WriteBackendMethods for MlirCodegenBackend {

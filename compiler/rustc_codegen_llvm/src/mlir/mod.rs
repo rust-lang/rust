@@ -59,3 +59,13 @@ pub(crate) mod module;
 
 pub use backend::MlirCodegenBackend;
 pub use module::MlirModule;
+
+/// `tracing` target used for this backend's own diagnostic logging, scoped
+/// separately from the rest of `rustc` so a caller can turn up verbosity for
+/// just the MLIR pipeline (e.g. `RUSTC_LOG=rustc_codegen_llvm::mlir=debug`)
+/// without drowning in unrelated compiler internals. At `debug`, each
+/// pipeline stage's IR (ttir, ttgpuir, llir, llvmir, ptx/asm) is logged once
+/// per stage; at `trace`, the Triton MLIR passes additionally print IR
+/// before/after every individual pass (see [`module::MlirModule::new_with_capability`]
+/// wiring this into `CompileOptions::debug`).
+pub(crate) const LOG_TARGET: &str = "rustc_codegen_llvm::mlir";
