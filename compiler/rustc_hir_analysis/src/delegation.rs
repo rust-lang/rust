@@ -667,7 +667,6 @@ pub(crate) fn inherit_sig_for_delegation_item<'tcx>(
 ) -> &'tcx [Ty<'tcx>] {
     let sig_id = tcx.hir_opt_delegation_sig_id(def_id).expect("Delegation must have sig_id");
     let caller_sig = tcx.fn_sig(sig_id);
-
     if let Err(err) = check_constraints(tcx, def_id, sig_id) {
         let sig_len = caller_sig.instantiate_identity().skip_binder().inputs().len() + 1;
         let err_type = Ty::new_error(tcx, err);
@@ -687,7 +686,15 @@ pub(crate) fn inherit_sig_for_delegation_item<'tcx>(
             (FnKind::AssocInherentImpl, FnKind::AssocInherentImpl) => {
                 tcx.type_of(tcx.parent(def_id.to_def_id())).skip_binder()
             }
-            (FnKind::AssocTrait, FnKind::AssocInherentImpl) => Ty::new_param(tcx, 0, kw::SelfUpper),
+            (FnKind::AssocTrait, FnKind::AssocInherentImpl) => {
+                let ty::Adt(def, _) = tcx.type_of(tcx.parent(sig_id)).skip_binder().kind() else {
+                    unreachable!()
+                };
+
+                let new_adt = Ty::new_adt(tcx, *def, tcx.mk_args(parent_args));
+
+                sig_vec[0].replace(tcx, new_adt, Ty::new_param(tcx, 0, kw::SelfUpper))
+            }
             _ => sig_vec[0],
         };
     }
