@@ -5,7 +5,8 @@ use rustc_span::sym;
 
 use crate::diagnostics::{
     DropCopyDiag, DropInPlaceCopyDiag, DropInPlaceRefDiag, DropRefDiag, ForgetCopyDiag,
-    ForgetRefDiag, UndroppedManuallyDropsDiag, UndroppedManuallyDropsSuggestion,
+    ForgetRefDiag, UndroppedManuallyDropsDiag, UndroppedManuallyDropsInPlaceDiag,
+    UndroppedManuallyDropsInPlaceSuggestion, UndroppedManuallyDropsSuggestion,
     UseLetUnderscoreIgnoreSuggestion,
 };
 use crate::{LateContext, LateLintPass, LintContext};
@@ -115,8 +116,9 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `undropped_manually_drops` lint check for calls to `std::mem::drop` with
-    /// a value of `std::mem::ManuallyDrop` which doesn't drop.
+    /// The `undropped_manually_drops` lint check for calls to `std::mem::drop`
+    /// and `std::ptr::drop_in_place` where the dropped value is `std::mem::ManuallyDrop`
+    /// which doesn't drop.
     ///
     /// ### Example
     ///
@@ -133,7 +135,7 @@ declare_lint! {
     /// not drop the inner value of the `ManuallyDrop` either.
     pub UNDROPPED_MANUALLY_DROPS,
     Deny,
-    "calls to `std::mem::drop` with `std::mem::ManuallyDrop` instead of it's inner value"
+    "calls to `drop` and `drop_in_place` where the dropped value is `std::mem::ManuallyDrop`"
 }
 
 declare_lint_pass!(DropForgetUseless => [DROPPING_REFERENCES, FORGETTING_REFERENCES, DROPPING_COPY_TYPES, FORGETTING_COPY_TYPES, UNDROPPED_MANUALLY_DROPS]);
@@ -261,6 +263,24 @@ impl<'tcx> LateLintPass<'tcx> for DropForgetUseless {
                             suggestion: UndroppedManuallyDropsSuggestion {
                                 start_span: arg.span.shrink_to_lo(),
                                 end_span: arg.span.shrink_to_hi(),
+                            },
+                        },
+                    );
+                }
+                sym::ptr_drop_in_place | sym::ptr_drop_in_place_self
+                    if let &ty::RawPtr(inner_ty, _mutbl) = arg_ty.kind()
+                        && let ty::Adt(adt, _) = inner_ty.kind()
+                        && adt.is_manually_drop() =>
+                {
+                    cx.emit_span_lint(
+                        UNDROPPED_MANUALLY_DROPS,
+                        expr.span,
+                        UndroppedManuallyDropsInPlaceDiag {
+                            arg_ty,
+                            label: arg.span,
+                            suggestion: UndroppedManuallyDropsInPlaceSuggestion {
+                                start_span: expr.span.shrink_to_lo().until(arg.span.shrink_to_lo()),
+                                end_span: arg.span.shrink_to_hi().until(expr.span.shrink_to_hi()),
                             },
                         },
                     );

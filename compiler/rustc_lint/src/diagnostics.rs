@@ -1062,6 +1062,30 @@ pub(crate) struct UndroppedManuallyDropsSuggestion {
     pub end_span: Span,
 }
 
+#[derive(Diagnostic)]
+#[diag(
+    "calls to `drop_in_place` with a pointer to a `std::mem::ManuallyDrop` instead of the inner value does nothing"
+)]
+pub(crate) struct UndroppedManuallyDropsInPlaceDiag<'a> {
+    pub arg_ty: Ty<'a>,
+    #[label("argument has type `{$arg_ty}`")]
+    pub label: Span,
+    #[subdiagnostic]
+    pub suggestion: UndroppedManuallyDropsInPlaceSuggestion,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    "use `std::mem::ManuallyDrop::drop` to drop the inner value",
+    applicability = "maybe-incorrect"
+)]
+pub(crate) struct UndroppedManuallyDropsInPlaceSuggestion {
+    #[suggestion_part(code = "std::mem::ManuallyDrop::drop(&mut *")]
+    pub start_span: Span,
+    #[suggestion_part(code = ")")]
+    pub end_span: Span,
+}
+
 // invalid_from_utf8.rs
 #[derive(Diagnostic)]
 pub(crate) enum InvalidFromUtf8Diag {
