@@ -123,7 +123,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     type EarlyParamRegion = ty::EarlyParamRegion;
     type LateParamRegion = ty::LateParamRegion;
 
-    type RegionAssumptions = &'tcx ty::List<ty::ArgOutlivesPredicate<'tcx>>;
+    type RegionAssumptions = &'tcx ty::List<ty::ArgOutlivesClause<'tcx>>;
 
     type ParamEnv = ty::ParamEnv<'tcx>;
     type Predicate = Predicate<'tcx>;

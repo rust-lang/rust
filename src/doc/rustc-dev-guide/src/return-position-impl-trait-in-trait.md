@@ -198,7 +198,7 @@ RPITITs begin by copying the predicates of the method that defined it,
 both on the trait and impl side.
 
 Additionally, we install "bidirectional outlives" predicates.
-Specifically, we add region-outlives predicates in both directions for
+Specifically, we add region-outlives clauses in both directions for
 each captured early-bound lifetime that constrains it to be equal to the
 duplicated early-bound lifetime that results from lowering. This is best
 illustrated in an example:
@@ -306,7 +306,7 @@ come after the `=` in `type Assoc = ...` for each RPITIT.
 Since `collect_return_position_impl_trait_in_trait_tys` does fulfillment and
 region resolution, we must provide it `assumed_wf_types` so that we can prove
 region obligations with the same expected implied bounds as
-`compare_method_predicate_entailment` does.
+`compare_method_clause_entailment` does.
 
 Since the return type of a method is understood to be one of the assumed WF
 types, and we eagerly fold the return type with inference variables to do

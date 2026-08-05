@@ -193,11 +193,11 @@ impl<'tcx> InferCtxt<'tcx> {
         {
             let constraint = instantiate_value(self.tcx, &result_args, *constraint);
             match constraint {
-                ty::RegionConstraint::Outlives(predicate) => {
-                    self.register_outlives_constraint(predicate, *vis, cause);
+                ty::RegionConstraint::Outlives(clause) => {
+                    self.register_outlives_constraint(clause, *vis, cause);
                 }
-                ty::RegionConstraint::Eq(predicate) => {
-                    self.register_region_eq_constraint(predicate, *vis, cause);
+                ty::RegionConstraint::Eq(clause) => {
+                    self.register_region_eq_constraint(clause, *vis, cause);
                 }
             }
         }
@@ -611,7 +611,7 @@ impl<'tcx> InferCtxt<'tcx> {
 pub fn make_query_region_constraints<'tcx>(
     outlives_obligations: Vec<TypeOutlivesConstraint<'tcx>>,
     region_constraints: &RegionConstraintData<'tcx>,
-    assumptions: Vec<ty::ArgOutlivesPredicate<'tcx>>,
+    assumptions: Vec<ty::ArgOutlivesClause<'tcx>>,
 ) -> QueryRegionConstraints<'tcx> {
     let RegionConstraintData { constraints, verifys } = region_constraints;
 
@@ -627,7 +627,7 @@ pub fn make_query_region_constraints<'tcx>(
             | ConstraintKind::VarSubReg
             | ConstraintKind::RegSubReg => {
                 // Swap regions because we are going from sub (<=) to outlives (>=).
-                let constraint = ty::OutlivesPredicate(c.sup.into(), c.sub).into();
+                let constraint = ty::OutlivesClause(c.sup.into(), c.sub).into();
                 QueryRegionConstraint {
                     constraint,
                     category: origin.to_constraint_category(),
@@ -647,7 +647,7 @@ pub fn make_query_region_constraints<'tcx>(
         .chain(outlives_obligations.into_iter().map(
             |TypeOutlivesConstraint { sub_region, sup_type, origin }| {
                 QueryRegionConstraint {
-                    constraint: ty::OutlivesPredicate(sup_type.into(), sub_region).into(),
+                    constraint: ty::OutlivesClause(sup_type.into(), sub_region).into(),
                     category: origin.to_constraint_category(),
                     // We don't do leak checks for type outlives
                     visible_for_leak_check: ty::VisibleForLeakCheck::Unreachable,

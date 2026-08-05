@@ -304,7 +304,7 @@ struct CollectRegionConstraintsResult<'tcx> {
     location_map: Rc<DenseLocationMap>,
     universal_region_relations: Frozen<UniversalRegionRelations<'tcx>>,
     region_bound_pairs: Frozen<RegionBoundPairs<'tcx>>,
-    known_type_outlives_obligations: Frozen<Vec<ty::PolyTypeOutlivesPredicate<'tcx>>>,
+    known_type_outlives_obligations: Frozen<Vec<ty::PolyTypeOutlivesClause<'tcx>>>,
     constraints: MirTypeckRegionConstraints<'tcx>,
     deferred_closure_requirements: DeferredClosureRequirements<'tcx>,
     deferred_opaque_type_errors: Vec<DeferredOpaqueTypeError<'tcx>>,

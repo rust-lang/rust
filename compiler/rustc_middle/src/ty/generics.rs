@@ -533,7 +533,7 @@ impl<'tcx> GenericClauses<'tcx> {
 /// `[const]` bounds for a given item. This is represented using a struct much like
 /// `GenericClauses`, where you can either choose to only instantiate the "own"
 /// bounds or all of the bounds including those from the parent. This distinction
-/// is necessary for code like `compare_method_predicate_entailment`.
+/// is necessary for code like `compare_method_clause_entailment`.
 #[derive(Copy, Clone, Default, Debug, TyEncodable, TyDecodable, StableHash)]
 pub struct ConstConditions<'tcx> {
     pub parent: Option<DefId>,

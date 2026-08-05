@@ -193,7 +193,7 @@ pub trait Interner:
         + Debug
         + Hash
         + Eq
-        + SliceLike<Item = ty::OutlivesPredicate<Self, Self::GenericArg>>
+        + SliceLike<Item = ty::OutlivesClause<Self, Self::GenericArg>>
         + TypeFoldable<Self>;
 
     // Predicates
@@ -340,8 +340,8 @@ pub trait Interner:
         def_id: Self::DefId,
     ) -> ty::EarlyBinder<Self, impl IntoIterator<Item = (Self::Clause, Self::Span)>>;
 
-    /// This is equivalent to computing the super-predicates of the trait for this impl
-    /// and filtering them to the outlives predicates. This is purely for performance.
+    /// This is equivalent to computing the super-clauses of the trait for this impl
+    /// and filtering them to the outlives clauses. This is purely for performance.
     fn impl_super_outlives(
         self,
         impl_def_id: Self::ImplId,

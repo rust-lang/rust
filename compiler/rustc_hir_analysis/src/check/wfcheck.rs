@@ -510,7 +510,7 @@ pub(crate) fn check_gat_where_clauses(tcx: TyCtxt<'_>, trait_def_id: LocalDefId)
         let unsatisfied_bounds: Vec<_> = required_bounds
             .into_iter()
             .filter(|clause| match clause.kind().skip_binder() {
-                ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(a, b)) => {
+                ty::ClauseKind::RegionOutlives(ty::OutlivesClause(a, b)) => {
                     !region_known_to_outlive(
                         tcx,
                         gat_def_id,
@@ -520,7 +520,7 @@ pub(crate) fn check_gat_where_clauses(tcx: TyCtxt<'_>, trait_def_id: LocalDefId)
                         b,
                     )
                 }
-                ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(a, b)) => {
+                ty::ClauseKind::TypeOutlives(ty::OutlivesClause(a, b)) => {
                     !ty_known_to_outlive(tcx, gat_def_id, param_env, &FxIndexSet::default(), a, b)
                 }
                 _ => bug!("Unexpected ClauseKind"),
@@ -642,10 +642,10 @@ fn gather_gat_bounds<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
                     tcx,
                     ty::EarlyParamRegion { index: region_param.index, name: region_param.name },
                 );
-                // The predicate we expect to see. (In our example,
+                // The clause we expect to see. (In our example,
                 // `Self: 'me`.)
                 bounds.insert(
-                    ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(ty_param, region_param))
+                    ty::ClauseKind::TypeOutlives(ty::OutlivesClause(ty_param, region_param))
                         .upcast(tcx),
                 );
             }
@@ -677,9 +677,9 @@ fn gather_gat_bounds<'tcx, T: TypeFoldable<TyCtxt<'tcx>>>(
                     tcx,
                     ty::EarlyParamRegion { index: region_b_param.index, name: region_b_param.name },
                 );
-                // The predicate we expect to see.
+                // The clause we expect to see.
                 bounds.insert(
-                    ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(
+                    ty::ClauseKind::RegionOutlives(ty::OutlivesClause(
                         region_a_param,
                         region_b_param,
                     ))

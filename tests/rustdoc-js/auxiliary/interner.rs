@@ -68,8 +68,8 @@ pub trait Interner: Sized {
     type PlaceholderRegion: Copy + Debug + Hash + Ord + PlaceholderLike;
     type Predicate: Copy + Debug + Hash + Eq + TypeSuperVisitable<Self> + Flags;
     type TraitPredicate: Copy + Debug + Hash + Eq;
-    type RegionOutlivesPredicate: Copy + Debug + Hash + Eq;
-    type TypeOutlivesPredicate: Copy + Debug + Hash + Eq;
+    type RegionOutlivesClause: Copy + Debug + Hash + Eq;
+    type TypeOutlivesClause: Copy + Debug + Hash + Eq;
     type ProjectionPredicate: Copy + Debug + Hash + Eq;
     type NormalizesTo: Copy + Debug + Hash + Eq;
     type SubtypePredicate: Copy + Debug + Hash + Eq;

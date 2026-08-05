@@ -499,7 +499,7 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                     ProcessResult::Changed(Default::default())
                 }
 
-                ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(
+                ty::PredicateKind::Clause(ty::ClauseKind::TypeOutlives(ty::OutlivesClause(
                     t_a,
                     r_b,
                 ))) => {

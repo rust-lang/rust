@@ -144,7 +144,7 @@ where
                 try_visit!(term.visit_with(self));
                 self.visit_projection_term(projection_ty)
             }
-            ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(ty, _region)) => ty.visit_with(self),
+            ty::ClauseKind::TypeOutlives(ty::OutlivesClause(ty, _region)) => ty.visit_with(self),
             ty::ClauseKind::RegionOutlives(..) => V::Result::output(),
             ty::ClauseKind::ConstArgHasType(ct, ty) => {
                 try_visit!(ct.visit_with(self));

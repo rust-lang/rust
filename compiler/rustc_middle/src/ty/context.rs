@@ -160,7 +160,7 @@ pub struct CtxtInterners<'tcx> {
     captures: InternedSet<'tcx, List<&'tcx ty::CapturedPlace<'tcx>>>,
     valtree: InternedSet<'tcx, ty::ValTreeKind<TyCtxt<'tcx>>>,
     patterns: InternedSet<'tcx, List<ty::Pattern<'tcx>>>,
-    outlives: InternedSet<'tcx, List<ty::ArgOutlivesPredicate<'tcx>>>,
+    outlives: InternedSet<'tcx, List<ty::ArgOutlivesClause<'tcx>>>,
 }
 
 impl<'tcx> CtxtInterners<'tcx> {
@@ -1727,9 +1727,7 @@ nop_list_lift! {
 }
 nop_list_lift! { bound_variable_kinds; ty::BoundVariableKind<'a> => ty::BoundVariableKind<'tcx> }
 nop_list_lift! { patterns; Pattern<'a> => Pattern<'tcx> }
-nop_list_lift! {
-    outlives; ty::ArgOutlivesPredicate<'a> => ty::ArgOutlivesPredicate<'tcx>
-}
+nop_list_lift! { outlives; ty::ArgOutlivesClause<'a> => ty::ArgOutlivesClause<'tcx> }
 
 // This is the impl for `&'a GenericArgs<'a>`.
 nop_list_lift! { args; GenericArg<'a> => GenericArg<'tcx> }
@@ -2019,7 +2017,7 @@ slice_interners!(
     local_def_ids: intern_local_def_ids(LocalDefId),
     captures: intern_captures(&'tcx ty::CapturedPlace<'tcx>),
     patterns: pub mk_patterns(Pattern<'tcx>),
-    outlives: pub mk_outlives(ty::ArgOutlivesPredicate<'tcx>),
+    outlives: pub mk_outlives(ty::ArgOutlivesClause<'tcx>),
     predefined_opaques_in_body: pub mk_predefined_opaques_in_body((ty::OpaqueTypeKey<'tcx>, Ty<'tcx>)),
 );
 
@@ -2487,8 +2485,8 @@ impl<'tcx> TyCtxt<'tcx> {
     where
         I: Iterator<Item = T>,
         T: CollectAndApply<
-                ty::ArgOutlivesPredicate<'tcx>,
-                &'tcx ty::List<ty::ArgOutlivesPredicate<'tcx>>,
+                ty::ArgOutlivesClause<'tcx>,
+                &'tcx ty::List<ty::ArgOutlivesClause<'tcx>>,
             >,
     {
         T::collect_and_apply(iter, |xs| self.mk_outlives(xs))
