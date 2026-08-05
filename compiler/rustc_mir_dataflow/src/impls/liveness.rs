@@ -228,7 +228,7 @@ impl<'a> MaybeTransitiveLiveLocals<'a> {
     pub fn can_be_removed_if_dead<'tcx>(
         stmt_kind: &StatementKind<'tcx>,
         always_live: &DenseBitSet<Local>,
-        debuginfo_locals: &'a DenseBitSet<Local>,
+        debuginfo_locals: &DenseBitSet<Local>,
     ) -> Option<Place<'tcx>> {
         // Compute the place that we are storing to, if any
         let destination = match stmt_kind {
