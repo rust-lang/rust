@@ -1854,7 +1854,7 @@ fn codegen_offload<'ll, 'tcx>(
     let args = get_args_from_tuple(bx, args[4], fn_target);
     let target_symbol = mangle_offload_export(tcx, fn_target);
 
-    let sig = tcx.fn_sig(fn_target.def_id()).skip_binder();
+    let sig = tcx.fn_sig(fn_target.def_id()).instantiate(tcx, fn_target.args).skip_norm_wip();
     let sig = tcx.instantiate_bound_regions_with_erased(sig);
     let inputs = sig.inputs();
 

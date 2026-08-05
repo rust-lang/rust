@@ -9,12 +9,7 @@ use thin_vec::thin_vec;
 use crate::diagnostics;
 
 fn compile_for_device(ecx: &mut ExtCtxt<'_>) -> bool {
-    ecx.sess
-        .opts
-        .unstable_opts
-        .offload
-        .iter()
-        .any(|o| matches!(o, Offload::Device | Offload::DeviceWithManifest(_)))
+    ecx.sess.opts.unstable_opts.offload.iter().any(|o| matches!(o, Offload::Device(_)))
 }
 
 fn outer_normal_attr(normal: &Box<ast::NormalAttr>, id: ast::AttrId, span: Span) -> ast::Attribute {

@@ -9,6 +9,7 @@ use std::fs;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Lock;
 use rustc_hir::def_id::{DefId, DefIndex, LOCAL_CRATE, StableCrateId};
+use rustc_middle::bug;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mono::MonoItem;
 use rustc_middle::ty::codec::{TyDecoder, TyEncoder};
@@ -384,7 +385,7 @@ pub fn write_host_metadata_offload_manifest<'tcx>(tcx: TyCtxt<'tcx>) {
     let Some(path) = tcx.sess.opts.unstable_opts.offload.iter().find_map(|o| {
         if let rustc_session::config::Offload::HostMetadata(p) = o { Some(p) } else { None }
     }) else {
-        return;
+        bug!("HostMetadata path not found; caller should have checked");
     };
 
     let partitions = tcx.collect_and_partition_mono_items(());

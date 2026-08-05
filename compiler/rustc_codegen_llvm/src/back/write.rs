@@ -739,10 +739,7 @@ pub(crate) unsafe fn llvm_optimize(
     }
 
     if cgcx.target_is_like_gpu
-        && config
-            .offload
-            .iter()
-            .any(|o| matches!(o, config::Offload::Device | config::Offload::DeviceWithManifest(_)))
+        && config.offload.iter().any(|o| matches!(o, config::Offload::Device(_)))
     {
         let cx =
             SimpleCx::new(module.module_llvm.llmod(), module.module_llvm.llcx, cgcx.pointer_size);
@@ -815,10 +812,7 @@ pub(crate) unsafe fn llvm_optimize(
     };
 
     if cgcx.target_is_like_gpu
-        && config
-            .offload
-            .iter()
-            .any(|o| matches!(o, config::Offload::Device | config::Offload::DeviceWithManifest(_)))
+        && config.offload.iter().any(|o| matches!(o, config::Offload::Device(_)))
     {
         let device_path = cgcx.output_filenames.path(OutputType::Object);
         let device_dir = device_path.parent().unwrap();

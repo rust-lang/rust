@@ -197,10 +197,10 @@ pub enum CoverageLevel {
 #[derive(Clone, PartialEq, Hash, Debug, Encodable, Decodable)]
 pub enum Offload {
     /// Entry point for `std::offload`, enables kernel compilation for a gpu device
-    Device,
-    /// Like `Device`, but reads a manifest of required generic kernel instantiations
-    /// produced by a previous `HostMetadata` pass.
-    DeviceWithManifest(String),
+    /// Reads a manifest of required generic kernel instantiations
+    /// produced by a previous `HostMetadata` pass. An empty manifest
+    /// means all kernel instantiations are discovered via monomorphization.
+    Device(String),
     /// Second step in the offload pipeline, generates the host code to call kernels.
     Host(String),
     /// Test is similar to Host, but allows testing without a device artifact.

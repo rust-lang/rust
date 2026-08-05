@@ -245,13 +245,13 @@ pub fn exported_non_generic_symbols_helper<'tcx>(
         ));
     }
 
-    let is_device_offload = tcx.sess.opts.unstable_opts.offload.iter().any(|o| {
-        matches!(
-            o,
-            rustc_session::config::Offload::DeviceWithManifest(_)
-                | rustc_session::config::Offload::Device
-        )
-    });
+    let is_device_offload = tcx
+        .sess
+        .opts
+        .unstable_opts
+        .offload
+        .iter()
+        .any(|o| matches!(o, rustc_session::config::Offload::Device(_)));
     if is_device_offload {
         let crate_items = tcx.hir_crate_items(());
         let mut seen: rustc_data_structures::fx::FxHashSet<DefId> = symbols
@@ -307,13 +307,13 @@ fn exported_generic_symbols_provider_local<'tcx>(
     let mut symbols: Vec<_> = vec![];
 
     let export_generics = tcx.local_crate_exports_generics();
-    let is_device_offload = tcx.sess.opts.unstable_opts.offload.iter().any(|o| {
-        matches!(
-            o,
-            rustc_session::config::Offload::DeviceWithManifest(_)
-                | rustc_session::config::Offload::Device
-        )
-    });
+    let is_device_offload = tcx
+        .sess
+        .opts
+        .unstable_opts
+        .offload
+        .iter()
+        .any(|o| matches!(o, rustc_session::config::Offload::Device(_)));
 
     if export_generics || is_device_offload {
         use rustc_hir::attrs::Linkage;
