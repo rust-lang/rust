@@ -23,12 +23,6 @@ use crate::{Analysis, Backward, GenKill};
 /// [liveness]: https://en.wikipedia.org/wiki/Live_variable_analysis
 pub struct MaybeLiveLocals;
 
-impl MaybeLiveLocals {
-    pub fn transfer_function<I>(state: &mut I) -> LivenessTransferFunction<'_, I> {
-        LivenessTransferFunction(state)
-    }
-}
-
 impl<'tcx> Analysis<'tcx> for MaybeLiveLocals {
     type Domain = DenseBitSet<Local>;
     type Direction = Backward;
