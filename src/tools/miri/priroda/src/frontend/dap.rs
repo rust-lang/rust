@@ -149,7 +149,36 @@ impl DapSession {
             }
             Command::Disconnect(_) =>
                 interp_ok(self.handle_disconnect(request).map(|()| DispatchOutcome::Exit)),
-            _ =>
+            Command::Attach(_)
+            | Command::BreakpointLocations(_)
+            | Command::Cancel(_)
+            | Command::Completions(_)
+            | Command::DataBreakpointInfo(_)
+            | Command::Disassemble(_)
+            | Command::Evaluate(_)
+            | Command::ExceptionInfo(_)
+            | Command::Goto(_)
+            | Command::GotoTargets(_)
+            | Command::LoadedSources
+            | Command::Modules(_)
+            | Command::Pause(_)
+            | Command::ReadMemory(_)
+            | Command::Restart(_)
+            | Command::RestartFrame(_)
+            | Command::ReverseContinue(_)
+            | Command::SetDataBreakpoints(_)
+            | Command::SetExceptionBreakpoints(_)
+            | Command::SetExpression(_)
+            | Command::SetFunctionBreakpoints(_)
+            | Command::SetInstructionBreakpoints(_)
+            | Command::SetVariable(_)
+            | Command::Source(_)
+            | Command::StepBack(_)
+            | Command::StepInTargets(_)
+            | Command::StepOut(_)
+            | Command::Terminate(_)
+            | Command::TerminateThreads(_)
+            | Command::WriteMemory(_) =>
                 interp_ok(
                     self.handle_unsupported_request(request).map(|()| DispatchOutcome::Continue),
                 ),
@@ -636,7 +665,38 @@ impl DapSession {
             Command::Next(_) => "next",
             Command::StepIn(_) => "stepIn",
             Command::Disconnect(_) => "disconnect",
-            _ => "unsupported",
+            Command::Attach(_) => "attach",
+            Command::BreakpointLocations(_) => "breakpointLocations",
+            Command::Cancel(_) => "cancel",
+            Command::Completions(_) => "completions",
+            Command::Continue(_) => "continue",
+            Command::DataBreakpointInfo(_) => "dataBreakpointInfo",
+            Command::Disassemble(_) => "disassemble",
+            Command::Evaluate(_) => "evaluate",
+            Command::ExceptionInfo(_) => "exceptionInfo",
+            Command::Goto(_) => "goto",
+            Command::GotoTargets(_) => "gotoTargets",
+            Command::LoadedSources => "loadedSources",
+            Command::Modules(_) => "modules",
+            Command::Pause(_) => "pause",
+            Command::ReadMemory(_) => "readMemory",
+            Command::Restart(_) => "restart",
+            Command::RestartFrame(_) => "restartFrame",
+            Command::ReverseContinue(_) => "reverseContinue",
+            Command::SetBreakpoints(_) => "setBreakpoints",
+            Command::SetDataBreakpoints(_) => "setDataBreakpoints",
+            Command::SetExceptionBreakpoints(_) => "setExceptionBreakpoints",
+            Command::SetExpression(_) => "setExpression",
+            Command::SetFunctionBreakpoints(_) => "setFunctionBreakpoints",
+            Command::SetInstructionBreakpoints(_) => "setInstructionBreakpoints",
+            Command::SetVariable(_) => "setVariable",
+            Command::Source(_) => "source",
+            Command::StepBack(_) => "stepBack",
+            Command::StepInTargets(_) => "stepInTargets",
+            Command::StepOut(_) => "stepOut",
+            Command::Terminate(_) => "terminate",
+            Command::TerminateThreads(_) => "terminateThreads",
+            Command::WriteMemory(_) => "writeMemory",
         }
     }
 
