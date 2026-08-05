@@ -224,6 +224,29 @@ impl DapSession {
             return Ok(());
         }
 
+        let (source, line, column) = match &session.current_location {
+            Some(location) => {
+                let source = session.local_path(location).as_ref().map(|path| {
+                    Source {
+                        name: path.file_name().map(|name| name.to_string_lossy().into_owned()),
+                        path: Some(path.display().to_string()),
+                        source_reference: Some(0),
+                        presentation_hint: None,
+                        origin: None,
+                        sources: None,
+                        checksums: None,
+                    }
+                });
+                let line =
+                    location.line.try_into().unwrap_or_else(|_| bug!("source line exceeds i64"));
+                let column = location
+                    .column
+                    .try_into()
+                    .unwrap_or_else(|_| bug!("source column exceeds i64"));
+                (source, Some(line), Some(column))
+            }
+            None => (None, None, None),
+        };
         let response = request.success(ResponseBody::Scopes(ScopesResponse {
             scopes: vec![Scope {
                 name: "Locals".to_string(),
@@ -232,9 +255,9 @@ impl DapSession {
                 named_variables: None,
                 indexed_variables: Some(0),
                 expensive: false,
-                source: None,
-                line: None,
-                column: None,
+                source,
+                line,
+                column,
                 end_line: None,
                 end_column: None,
             }],
