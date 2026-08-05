@@ -551,7 +551,7 @@ where
 
 #[doc(hidden)]
 #[unstable(issue = "none", feature = "std_internals")]
-#[rustc_unsafe_specialization_marker]
+#[unsafe(rustc_allow_lifetime_dependent_specialization)]
 trait NonDrop {}
 
 // T: Copy as approximation for !Drop since get_unchecked does not advance self.ptr

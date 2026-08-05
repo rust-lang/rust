@@ -13,7 +13,7 @@ pub trait Iterator {
     type Item;
 }
 
-#[rustc_unsafe_specialization_marker]
+#[unsafe(rustc_allow_lifetime_dependent_specialization)]
 pub trait MoreSpecificThanIterator: Iterator {}
 
 pub trait Tr {
