@@ -1070,7 +1070,7 @@ fn find_fallback_pattern_typo<'tcx>(
             if let DefKind::Use = cx.tcx.def_kind(item.owner_id) {
                 // Look for consts being re-exported.
                 let item = cx.tcx.hir_expect_item(item.owner_id.def_id);
-                let hir::ItemKind::Use(path, _) = item.kind else {
+                let hir::ItemKind::Use(hir::UseTree { prefix: path, .. }) = item.kind else {
                     continue;
                 };
                 if let Some(value_ns) = path.res.value_ns

@@ -51,7 +51,6 @@ use rustc_data_structures::sorted_map::SortedMap;
 use rustc_data_structures::stable_hash::{StableHash, StableHasher};
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::tagged_ptr::TaggedRef;
-use rustc_data_structures::unord::ExtendUnord;
 use rustc_errors::codes::*;
 use rustc_errors::{DiagArgFromDisplay, DiagCtxtHandle, ErrorGuaranteed};
 use rustc_hir::attrs::lang_items::LangItem;
@@ -507,7 +506,7 @@ fn index_ast<'tcx>(
 
     let (resolver, krate) = tcx.resolver_for_lowering();
     let mut resolver = resolver.steal();
-    let mut krate = krate.steal();
+    let mut krate: Crate = krate.steal();
 
     let mut indexer = Indexer {
         owners: &resolver.owners,
@@ -631,7 +630,8 @@ fn lower_to_hir(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::MaybeOwner<'_> {
 
         let parent_info = parent_info.unwrap();
         *parent_info.children.get(&def_id).unwrap_or_else(|| {
-            panic!(
+            span_bug!(
+                tcx.source_span(def_id),
                 "{:?} does not appear in children of {:?}",
                 def_id,
                 parent_info.nodes.node().def_id()
@@ -766,84 +766,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
         hir::OwnerId { def_id: self.resolver.owners[&node].def_id }
     }
 
-    /// Freshen the `LoweringContext` and ready it to lower a nested item.
-    /// The lowered item is registered into `self.children`.
-    ///
-    /// This function sets up `HirId` lowering infrastructure,
-    /// and stashes the shared mutable state to avoid pollution by the closure.
-    #[instrument(level = "debug", skip(self, f))]
-    fn with_hir_id_owner(
-        &mut self,
-        owner: NodeId,
-        f: impl FnOnce(&mut Self) -> hir::OwnerNode<'hir>,
-    ) {
-        let owner_id = self.owner_id(owner);
-        let def_id = owner_id.def_id;
-
-        let new_disambig = self
-            .resolver
-            .disambiguators
-            .get(&def_id)
-            .map(|s| s.steal())
-            .unwrap_or_else(|| PerParentDisambiguatorState::new(def_id));
-
-        let disambiguator = mem::replace(&mut self.current_disambiguator, new_disambig);
-        let current_ast_owner = mem::replace(&mut self.owner, &self.resolver.owners[&owner]);
-        let current_attrs = mem::take(&mut self.attrs);
-        let current_bodies = mem::take(&mut self.bodies);
-        let current_define_opaque = mem::take(&mut self.define_opaque);
-        let current_ident_and_label_to_local_id = mem::take(&mut self.ident_and_label_to_local_id);
-
-        #[cfg(debug_assertions)]
-        let current_relowering_checker = mem::take(&mut self.relowering_checker);
-        let current_trait_map = mem::take(&mut self.trait_map);
-        let current_owner = mem::replace(&mut self.current_hir_id_owner, owner_id);
-        let current_local_counter =
-            mem::replace(&mut self.item_local_id_counter, hir::ItemLocalId::new(1));
-        let current_impl_trait_defs = mem::take(&mut self.impl_trait_defs);
-        let current_impl_trait_bounds = mem::take(&mut self.impl_trait_bounds);
-        let current_delayed_lints = mem::take(&mut self.delayed_lints);
-        let current_children = mem::take(&mut self.children);
-
-        // Do not reset `next_node_id` and `node_id_to_def_id`:
-        // we want `f` to be able to refer to the `LocalDefId`s that the caller created.
-        // and the caller to refer to some of the subdefinitions' nodes' `LocalDefId`s.
-
-        // Always allocate the first `HirId` for the owner itself.
-        #[cfg(debug_assertions)]
-        self.relowering_checker.assert_node_is_not_relowered(owner, hir::ItemLocalId::ZERO);
-
-        let item = f(self);
-        assert_eq!(owner_id, item.def_id());
-        // `f` should have consumed all the elements in these vectors when constructing `item`.
-        assert!(self.impl_trait_defs.is_empty());
-        assert!(self.impl_trait_bounds.is_empty());
-        let info = self.make_owner_info(item);
-
-        self.current_disambiguator = disambiguator;
-        self.owner = current_ast_owner;
-        self.attrs = current_attrs;
-        self.bodies = current_bodies;
-        self.define_opaque = current_define_opaque;
-        self.ident_and_label_to_local_id = current_ident_and_label_to_local_id;
-
-        #[cfg(debug_assertions)]
-        {
-            self.relowering_checker = current_relowering_checker;
-        }
-        self.trait_map = current_trait_map;
-        self.current_hir_id_owner = current_owner;
-        self.item_local_id_counter = current_local_counter;
-        self.impl_trait_defs = current_impl_trait_defs;
-        self.impl_trait_bounds = current_impl_trait_bounds;
-        self.delayed_lints = current_delayed_lints;
-        self.children = current_children;
-        self.children.extend_unord(info.children.items().map(|(&def_id, &info)| (def_id, info)));
-
-        debug_assert!(!self.children.contains_key(&owner_id.def_id));
-        self.children.insert(owner_id.def_id, hir::MaybeOwner::Owner(info));
-    }
-
     fn make_owner_info(&mut self, node: hir::OwnerNode<'hir>) -> &'hir hir::OwnerInfo<'hir> {
         let attrs = mem::take(&mut self.attrs);
         let mut bodies = mem::take(&mut self.bodies);
@@ -957,7 +879,20 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_import_res(&mut self, id: NodeId, span: Span) -> PerNS<Option<Res>> {
-        let per_ns = self.owner.import_res[&id].map(|res| res.map(|res| self.lower_res(res)));
+        let per_ns = self
+            .owner
+            .import_res
+            .get(&id)
+            .unwrap_or_else(|| {
+                let sp = self.tcx.source_span(self.owner.def_id);
+                self.tcx.dcx().span_delayed_bug(
+                    sp,
+                    "no import_res entry for import, \
+                this should only happen if it already errored in resolve",
+                );
+                &PerNS { value_ns: None, type_ns: None, macro_ns: None }
+            })
+            .map(|res| res.map(|res| self.lower_res(res)));
         if per_ns.is_empty() {
             // Propagate the error to all namespaces, just to be sure.
             self.dcx().span_delayed_bug(span, "no resolution for an import");

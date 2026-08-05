@@ -216,6 +216,7 @@ impl<'a> State<'a> {
             Node::LetStmt(a) => self.print_local_decl(a),
             Node::Crate(..) => panic!("cannot print Crate"),
             Node::WherePredicate(pred) => self.print_where_predicate(pred),
+            Node::NestedUseTree(tree) => self.print_use_tree(tree),
             Node::Synthetic => unreachable!(),
             Node::Err(_) => self.word("/*ERROR*/"),
         }
@@ -604,11 +605,10 @@ impl<'a> State<'a> {
                 self.end(ib);
                 self.end(cb);
             }
-            hir::ItemKind::Use(path, kind) => {
+            hir::ItemKind::Use(ref tree) => {
                 let (cb, ib) = self.head("use");
-                self.print_path(path, false);
 
-                self.print_use_kind(path, kind);
+                self.print_use_tree(tree);
                 self.end(ib);
                 self.end(cb);
             }
@@ -800,10 +800,12 @@ impl<'a> State<'a> {
         self.ann.post(self, AnnNode::Item(item))
     }
 
-    fn print_use_kind(&mut self, path: &hir::UsePath<'_>, kind: hir::UseKind) {
+    fn print_use_tree(&mut self, tree: &hir::UseTree<'_>) {
+        let hir::UseTree { prefix, kind } = *tree;
+        self.print_path(prefix, false);
         match kind {
             hir::UseKind::Single(ident) => {
-                if path.segments.last().unwrap().ident != ident {
+                if tree.prefix.segments.last().unwrap().ident != ident {
                     self.space();
                     self.word_space("as");
                     self.print_ident(ident);
@@ -811,7 +813,13 @@ impl<'a> State<'a> {
                 self.word(";");
             }
             hir::UseKind::Glob => self.word("::*;"),
-            hir::UseKind::ListStem => self.word("::{};"),
+            hir::UseKind::Nested { items } => {
+                self.word("::{");
+                for (item, _) in items {
+                    self.print_use_tree(item)
+                }
+                self.word("};");
+            }
         }
     }
 

@@ -794,6 +794,7 @@ impl<'tcx> TyCtxt<'tcx> {
             }
             Node::Crate(..) => String::from("(root_crate)"),
             Node::WherePredicate(_) => node_str("where predicate"),
+            Node::NestedUseTree(_) => node_str("use"),
             Node::Synthetic => unreachable!(),
             Node::Err(_) => node_str("error"),
             Node::PreciseCapturingNonLifetimeArg(_param) => node_str("parameter"),
@@ -998,10 +999,10 @@ impl<'tcx> TyCtxt<'tcx> {
             }
             // Other cases.
             Node::Item(item) => match &item.kind {
-                ItemKind::Use(path, _) => {
+                ItemKind::Use(use_tree) => {
                     // Ensure that the returned span has the item's SyntaxContext, and not the
                     // SyntaxContext of the path.
-                    path.span.find_ancestor_in_same_ctxt(item.span).unwrap_or(item.span)
+                    use_tree.prefix.span.find_ancestor_in_same_ctxt(item.span).unwrap_or(item.span)
                 }
                 _ => {
                     if let Some(ident) = item.kind.ident() {
@@ -1070,6 +1071,7 @@ impl<'tcx> TyCtxt<'tcx> {
             Node::Crate(item) => item.spans.inner_span,
             Node::WherePredicate(pred) => pred.span,
             Node::PreciseCapturingNonLifetimeArg(param) => param.ident.span,
+            Node::NestedUseTree(tree) => tree.prefix.span,
             Node::Synthetic => unreachable!(),
             Node::Err(span) => span,
         }

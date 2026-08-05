@@ -3,7 +3,7 @@ use rustc_ast::visit::AssocCtxt;
 use rustc_ast::*;
 use rustc_errors::{E0570, ErrorGuaranteed, struct_span_code_err};
 use rustc_hir::attrs::{AttributeKind, EiiImplResolution};
-use rustc_hir::def::{DefKind, PerNS, Res};
+use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{
     self as hir, CRATE_OWNER_ID, HirId, ImplItemImplKind, LifetimeSource, PredicateOrigin, Target,
     find_attr,
@@ -243,11 +243,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 hir::ItemKind::ExternCrate(*orig_name, ident)
             }
             ItemKind::Use(use_tree) => {
-                // Start with an empty prefix.
-                let prefix =
-                    Path { segments: ThinVec::new(), span: use_tree.prefix.span.shrink_to_lo() };
-
-                self.lower_use_tree(use_tree, &prefix, id, vis_span, attrs)
+                hir::ItemKind::Use(self.lower_use_tree(use_tree, id, vis_span, attrs))
             }
             ItemKind::Static(ast::StaticItem {
                 ident,
@@ -590,13 +586,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
     fn lower_use_tree(
         &mut self,
         tree: &UseTree,
-        prefix: &Path,
         id: NodeId,
         vis_span: Span,
         attrs: &'hir [hir::Attribute],
-    ) -> hir::ItemKind<'hir> {
+    ) -> hir::UseTree<'hir> {
         let path = &tree.prefix;
-        let segments = prefix.segments.iter().chain(path.segments.iter()).cloned().collect();
+        let segments = path.segments.iter().cloned().collect();
 
         match tree.kind {
             UseTreeKind::Simple(rename) => {
@@ -618,7 +613,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let res = self.lower_import_res(id, path.span);
                 let path = self.lower_use_path(res, &path, ParamMode::Explicit);
                 let ident = self.lower_ident(ident);
-                hir::ItemKind::Use(path, hir::UseKind::Single(ident))
+                hir::UseTree { prefix: path, kind: hir::UseKind::Single(ident) }
             }
             UseTreeKind::Glob(_) => {
                 let res = self.expect_full_res(id);
@@ -627,82 +622,25 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let res = res.in_namespace();
                 let path = Path { segments, span: path.span };
                 let path = self.lower_use_path(res, &path, ParamMode::Explicit);
-                hir::ItemKind::Use(path, hir::UseKind::Glob)
+                hir::UseTree { prefix: path, kind: hir::UseKind::Glob }
             }
             UseTreeKind::Nested { items: ref trees, .. } => {
-                // Nested imports are desugared into simple imports.
-                // So, if we start with
-                //
-                // ```
-                // pub(x) use foo::{a, b};
-                // ```
-                //
-                // we will create three items:
-                //
-                // ```
-                // pub(x) use foo::a;
-                // pub(x) use foo::b;
-                // pub(x) use foo::{}; // <-- this is called the `ListStem`
-                // ```
-                //
-                // The first two are produced by recursively invoking
-                // `lower_use_tree` (and indeed there may be things
-                // like `use foo::{a::{b, c}}` and so forth). They
-                // wind up being directly added to
-                // `self.items`. However, the structure of this
-                // function also requires us to return one item, and
-                // for that we return the `{}` import (called the
-                // `ListStem`).
-
-                let span = prefix.span.to(path.span);
-                let prefix = Path { segments, span };
+                let res = self.expect_full_res(id);
+                let res = self.lower_res(res);
+                // Put the result in the appropriate namespace.
+                let res = res.in_namespace();
+                let prefix = self.lower_use_path(res, &path, ParamMode::Explicit);
 
                 // Add all the nested `PathListItem`s to the HIR.
-                for &(ref use_tree, id) in trees {
-                    let owner_id = self.owner_id(id);
+                let items = self.arena.alloc_from_iter(trees.iter().map(|&(ref use_tree, id)| {
+                    let hir_id = self.lower_node_id(id);
+                    if !attrs.is_empty() {
+                        self.attrs.insert(hir_id.local_id, attrs);
+                    }
+                    (self.lower_use_tree(use_tree, id, vis_span, attrs), hir_id)
+                }));
 
-                    // Each `use` import is an item and thus are owners of the
-                    // names in the path. Up to this point the nested import is
-                    // the current owner, since we want each desugared import to
-                    // own its own names, we have to adjust the owner before
-                    // lowering the rest of the import.
-                    self.with_hir_id_owner(id, |this| {
-                        // `prefix` is lowered multiple times, but in different HIR owners.
-                        // So each segment gets renewed `HirId` with the same
-                        // `ItemLocalId` and the new owner. (See `lower_node_id`)
-                        let kind = this.lower_use_tree(use_tree, &prefix, id, vis_span, attrs);
-                        if !attrs.is_empty() {
-                            this.attrs.insert(hir::ItemLocalId::ZERO, attrs);
-                        }
-
-                        let item = hir::Item {
-                            owner_id,
-                            kind,
-                            vis_span,
-                            span: this.lower_span(use_tree.span()),
-                            eii: find_attr!(attrs, EiiImpl(..) | EiiDeclaration(..)),
-                        };
-                        hir::OwnerNode::Item(this.arena.alloc(item))
-                    });
-                }
-
-                // Condition should match `build_reduced_graph_for_use_tree`.
-                let path = if trees.is_empty()
-                    && !(prefix.segments.is_empty()
-                        || prefix.segments.len() == 1
-                            && prefix.segments[0].ident.name == kw::PathRoot)
-                {
-                    // For empty lists we need to lower the prefix so it is checked for things
-                    // like stability later.
-                    let res = self.lower_import_res(id, span);
-                    self.lower_use_path(res, &prefix, ParamMode::Explicit)
-                } else {
-                    // For non-empty lists we can just drop all the data, the prefix is already
-                    // present in HIR as a part of nested imports.
-                    let span = self.lower_span(span);
-                    self.arena.alloc(hir::UsePath { res: PerNS::default(), segments: &[], span })
-                };
-                hir::ItemKind::Use(path, hir::UseKind::ListStem)
+                hir::UseTree { prefix, kind: hir::UseKind::Nested { items } }
             }
         }
     }

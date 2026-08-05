@@ -1193,10 +1193,6 @@ impl UnreachablePub {
 
 impl<'tcx> LateLintPass<'tcx> for UnreachablePub {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
-        // Do not warn for fake `use` statements.
-        if let hir::ItemKind::Use(_, hir::UseKind::ListStem) = &item.kind {
-            return;
-        }
         self.perform_lint(cx, "item", item.owner_id.def_id, item.vis_span, true);
     }
 

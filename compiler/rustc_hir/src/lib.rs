@@ -10,7 +10,9 @@
 #![feature(default_field_values)]
 #![feature(derive_const)]
 #![feature(exhaustive_patterns)]
+#![feature(iter_macro)]
 #![feature(never_type)]
+#![feature(yield_expr)]
 #![recursion_limit = "256"]
 // tidy-alphabetical-end
 

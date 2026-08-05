@@ -442,23 +442,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Find an identifier with which this trait was imported (note that `_` doesn't count).
         for item in import_items.iter() {
-            let (_, kind) = item.expect_use();
-            match kind {
+            match item.expect_use().kind {
                 hir::UseKind::Single(ident) => {
                     if ident.name != kw::Underscore {
                         return Some(format!("{}", ident.name));
                     }
                 }
                 hir::UseKind::Glob => return None, // Glob import, so just use its name.
-                hir::UseKind::ListStem => unreachable!(),
+                hir::UseKind::Nested { .. } => unreachable!(),
             }
         }
 
         // All that is left is `_`! We need to use the full path. It doesn't matter which one we
         // pick, so just take the first one.
         match import_items[0].kind {
-            ItemKind::Use(path, _) => {
-                Some(join_path_idents(path.segments.iter().map(|seg| seg.ident)))
+            ItemKind::Use(tree) => {
+                Some(join_path_idents(tree.prefix.segments.iter().map(|seg| seg.ident)))
             }
             _ => {
                 span_bug!(span, "unexpected item kind, expected a use: {:?}", import_items[0].kind);
