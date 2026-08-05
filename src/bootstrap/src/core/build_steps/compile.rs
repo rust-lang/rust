@@ -1487,6 +1487,9 @@ fn rustc_llvm_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetSelect
     if builder.config.llvm_assertions {
         cargo.env("LLVM_ASSERTIONS", "1");
     }
+    if builder.cxx_tool(target).is_like_gnu() || builder.cc_tool(target).is_like_gnu() {
+        cargo.env("LLVM_COMPILER_IS_GNU_LIKE", "1");
+    }
 }
 
 /// `RustcLink` copies compiler rlibs from a rustc build into a compiler sysroot.

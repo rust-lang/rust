@@ -27,6 +27,7 @@ All use the "native" `stdc++` library which goes along with the natively
 supplied GNU C++ compiler for the given OS version.  Many of the bootstraps
 are built for NetBSD 9.x, although some exceptions exist (some
 are built for NetBSD 8.x but also work on newer OS versions).
+`x86_64-unknown-netbsd` is built for NetBSD 10.x to access a newer gcc.
 
 
 ## Target Maintainers

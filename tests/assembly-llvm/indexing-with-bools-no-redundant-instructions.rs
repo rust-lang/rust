@@ -1,5 +1,6 @@
 //@ assembly-output: emit-asm
 //@ only-x86_64
+//@ max-llvm-major-version: 22
 //@ ignore-windows CHECK patterns use the SysV x86-64 calling convention
 //@ ignore-sgx Test incompatible with LVI mitigations
 //@ compile-flags: -Copt-level=3
