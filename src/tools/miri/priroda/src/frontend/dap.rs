@@ -576,12 +576,6 @@ impl DapSession {
     }
 
     fn check_configuration_done_request(&self) -> Result<DispatchOutcome, ServerError> {
-        if let Err(msg) = self.reject_after_termination() {
-            return Ok(DispatchOutcome::Rejected(msg));
-        }
-        if self.state == DapState::Stopped {
-            return Ok(DispatchOutcome::Rejected("configurationDone may only be sent once"));
-        }
         if let Err(msg) = self.require_state(DapState::Launched) {
             return Ok(DispatchOutcome::Rejected(msg));
         }
@@ -590,9 +584,6 @@ impl DapSession {
     }
 
     fn check_step_request(&self, request: &Request) -> Result<DispatchOutcome, ServerError> {
-        if let Err(msg) = self.reject_after_termination() {
-            return Ok(DispatchOutcome::Rejected(msg));
-        }
         if let Err(msg) = self.require_stopped() {
             return Ok(DispatchOutcome::Rejected(msg));
         }
