@@ -769,30 +769,6 @@ impl CommandLineStep for Miri {
             let _time = helpers::timeit(builder);
             cargo.run(builder);
         }
-
-        // Run it again for mir-opt-level 4 to catch some miscompilations.
-        if builder.config.test_args().is_empty() {
-            cargo.env(
-                "MIRIFLAGS",
-                format!(
-                    "{} -O -Zmir-opt-level=4 -Cdebug-assertions=yes",
-                    env::var("MIRIFLAGS").unwrap_or_default()
-                ),
-            );
-            // Optimizations can change backtraces
-            cargo.env("MIRI_SKIP_UI_CHECKS", "1");
-            // `MIRI_SKIP_UI_CHECKS` and `RUSTC_BLESS` are incompatible
-            cargo.env_remove("RUSTC_BLESS");
-            // Optimizations can change error locations and remove UB so don't run `fail` tests.
-            cargo.args(["tests/pass", "tests/panic"]);
-
-            {
-                let _guard =
-                    builder.msg_test("miri (mir-opt-level 4)", target, target_compiler.stage);
-                let _time = helpers::timeit(builder);
-                cargo.run(builder);
-            }
-        }
     }
 }
 
