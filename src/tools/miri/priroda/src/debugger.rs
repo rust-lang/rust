@@ -3,7 +3,7 @@ use std::ops::Range;
 use std::path::PathBuf;
 
 use miri::Immediate::Uninit;
-use miri::{interpret, *};
+use miri::*;
 use rustc_abi::{FIRST_VARIANT, FieldIdx, Size};
 use rustc_hir::def::CtorKind;
 use rustc_middle::mir::interpret::AllocId;
@@ -640,7 +640,7 @@ impl<'tcx> PrirodaContext<'tcx> {
             Either::Left(mplace) =>
                 match self.render_mplace_bytes(&mplace).report_err() {
                     Ok(bytes) => bytes,
-                    Err(err) => format!("<error: {}>", interpret::format_interp_error(err)),
+                    Err(err) => format!("<error: {}>", err.to_string()),
                 },
         }
     }
@@ -809,9 +809,7 @@ impl<'tcx> PrirodaContext<'tcx> {
                         .ecx
                         .eval_place_to_op(*place, None)
                         .map(|op| self.render_source_shaped_op(op))
-                        .unwrap_or_else(|err| {
-                            format!("<error: {}>", interpret::format_interp_error(err))
-                        });
+                        .unwrap_or_else(|err| format!("<error: {}>", err.to_string()));
 
                     local_descs.push(LocalDesc {
                         source_name: Some(var_debug_info.name),
