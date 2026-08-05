@@ -2599,6 +2599,10 @@ options! {
         "a list of module flags to pass to LLVM (space separated)"),
     llvm_plugins: Vec<String> = (Vec::new(), parse_list, [TRACKED],
         "a list LLVM plugins to enable (space separated)"),
+    llvm_target_feature: String = (String::new(), parse_target_feature, [TRACKED] { TARGET_MODIFIER: LlvmTargetFeature },
+        "enable/disable LLVM-level target features. \
+        This feature is unsafe and can cause ABI issues and compiler crashes, \
+        because LLVM does not support all target feature combinations."),
     llvm_time_trace: bool = (false, parse_bool, [UNTRACKED],
         "generate JSON tracing data file from LLVM data (default: no)"),
     llvm_writable: bool = (false, parse_bool, [TRACKED],

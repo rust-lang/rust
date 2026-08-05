@@ -139,6 +139,7 @@ pub mod pattern;
 pub mod print;
 pub mod relate;
 pub mod significant_drop_order;
+pub mod sty;
 pub mod trait_def;
 pub mod typetree;
 pub mod util;
@@ -163,8 +164,6 @@ mod opaque_types;
 mod predicate;
 mod region;
 mod structural_impls;
-#[expect(hidden_glob_reexports)]
-mod sty;
 mod typeck_results;
 mod visit;
 

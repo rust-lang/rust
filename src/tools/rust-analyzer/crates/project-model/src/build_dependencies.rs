@@ -473,6 +473,10 @@ impl WorkspaceBuildScripts {
                     if let Some(lockfile_copy) = &lockfile_copy {
                         requires_unstable_options = true;
                         match lockfile_copy.usage {
+                            LockfileUsage::WithFlag => {
+                                cmd.arg("--lockfile-path");
+                                cmd.arg(lockfile_copy.path.as_str());
+                            }
                             LockfileUsage::WithEnvVarUnstable => {
                                 cmd.arg("-Zlockfile-path");
                                 cmd.env(

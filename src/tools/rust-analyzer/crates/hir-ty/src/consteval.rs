@@ -361,7 +361,7 @@ pub(crate) fn create_anon_const<'a, 'db>(
     interner: DbInterner<'db>,
     owner: ExpressionStoreOwnerId,
     store: &ExpressionStore,
-    expr: ExprId,
+    expr_id: ExprId,
     resolver: &Resolver<'db>,
     expected_ty: Ty<'db>,
     generics: &dyn Fn() -> &'a Generics<'db>,
@@ -369,10 +369,19 @@ pub(crate) fn create_anon_const<'a, 'db>(
     lowering_mode: LoweringMode,
     forbid_params_after: Option<u32>,
 ) -> Result<Const<'db>, CreateConstError<'db>> {
-    match &store[expr] {
+    let mut expr = &store[expr_id];
+    if let Expr::Block { statements, tail: Some(tail), .. } = expr
+        && statements.is_empty()
+    {
+        // rustc unwraps *one* layer of blocks, so we do too (this impacts whether the const can use generic parameters.
+        // Anon consts sometimes cannot while bare paths can). mGCA allows arbitrarily many blocks, but we don't implement
+        // it yet.
+        expr = &store[*tail];
+    }
+    match expr {
         Expr::Literal(literal) => intern_const_ref(interner, literal, expected_ty),
         Expr::Underscore => match create_var {
-            Some(create_var) => Ok(create_var(expr.into())),
+            Some(create_var) => Ok(create_var(expr_id.into())),
             None => Err(CreateConstError::UnderscoreExpr),
         },
         Expr::Path(path)
@@ -395,7 +404,7 @@ pub(crate) fn create_anon_const<'a, 'db>(
                 interner.db,
                 AnonConstLoc {
                     owner,
-                    expr,
+                    expr: expr_id,
                     ty: StoredEarlyBinder::bind(expected_ty.store()),
                     allow_using_generic_params,
                 },

@@ -1115,6 +1115,7 @@ impl fmt::Display for ErrorKind {
     /// This is similar to `impl Display for Error`, but doesn't require first converting to Error.
     ///
     /// # Examples
+    ///
     /// ```
     /// use core::io::ErrorKind;
     /// assert_eq!("entity not found", ErrorKind::NotFound.to_string());

@@ -354,7 +354,6 @@ fn check_with_config(
         handler(&mut acc, &ctx);
     });
     let mut res = acc.finish();
-
     let assist = match assist_label {
         Some(label) => res.into_iter().find(|resolved| resolved.label == label),
         None if res.is_empty() => None,

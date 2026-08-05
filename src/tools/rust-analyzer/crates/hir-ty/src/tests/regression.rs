@@ -3016,3 +3016,81 @@ fn f(s: S) { s.m(); }
     "#,
     );
 }
+
+#[test]
+fn regression_22799() {
+    check_no_mismatches(
+        r#"
+struct S;
+fn f() {
+    <S as S>::S;
+}
+    "#,
+    );
+}
+
+#[test]
+fn braced_const_path() {
+    check_types(
+        r#"
+//- minicore: default, builtin_impls
+trait ToNum {
+    type Num;
+}
+trait Bar {
+    type Ty;
+}
+struct Gen<const B: bool>;
+struct Int<const B: bool>;
+
+impl<const B: bool> ToNum for Gen<{ B }> {
+    type Num = Int<B>;
+}
+
+impl Bar for Int<true> {
+    type Ty = i32;
+}
+impl Bar for Int<false> {
+    type Ty = f32;
+}
+
+type A = <<Gen<true> as ToNum>::Num as Bar>::Ty;
+
+fn main() {
+    let x = A::default();
+     // ^ i32
+}
+    "#,
+    );
+}
+
+#[test]
+fn regression_22820() {
+    check_no_mismatches(
+        r#"
+//- minicore: copy
+trait MyTrait: Copy {
+    const ASSOC: usize;
+}
+
+const fn output<T: MyTrait>(_: T) -> usize {
+    <T as MyTrait>::ASSOC
+}
+
+const fn yeet() -> impl Clone {
+    let x = [0u8; output(yeet())];
+}
+    "#,
+    );
+}
+
+#[test]
+fn rpit_function_with_non_trivial_anon_const() {
+    check_no_mismatches(
+        r#"
+fn f() -> impl Sized {
+    let x = [0u8; 1 + 2];
+}
+    "#,
+    );
+}

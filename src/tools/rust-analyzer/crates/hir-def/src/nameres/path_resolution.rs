@@ -1,11 +1,11 @@
-//! This modules implements a function to resolve a path `foo::bar::baz` to a
-//! def, which is used within the name resolution.
+//! This module implements a function to resolve a path `foo::bar::baz` to a
+//! def, which is used within name resolution.
 //!
 //! When name resolution is finished, the result of resolving a path is either
-//! `Some(def)` or `None`. However, when we are in process of resolving imports
+//! `Some(def)` or `None`. However, when we are in the process of resolving imports
 //! or macros, there's a third possibility:
 //!
-//!   I can't resolve this path right now, but I might be resolve this path
+//!   I can't resolve this path right now, but I might be able to resolve this path
 //!   later, when more macros are expanded.
 //!
 //! `ReachedFixedPoint` signals about this.

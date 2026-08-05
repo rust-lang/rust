@@ -194,6 +194,25 @@ where
                 }
             }
 
+            (ty::Alias(ty::IsRigid::No, alias), _) if infcx.next_trait_solver() => {
+                let new_var = infcx.next_ty_infer();
+                self.goals.push(Goal::new(
+                    self.cx(),
+                    self.param_env,
+                    ty::ProjectionPredicate { projection_term: alias.into(), term: new_var.into() },
+                ));
+                self.tys(new_var, b)?;
+            }
+            (_, ty::Alias(ty::IsRigid::No, alias)) if infcx.next_trait_solver() => {
+                let new_var = infcx.next_ty_infer();
+                self.goals.push(Goal::new(
+                    self.cx(),
+                    self.param_env,
+                    ty::ProjectionPredicate { projection_term: alias.into(), term: new_var.into() },
+                ));
+                self.tys(a, new_var)?;
+            }
+
             (ty::Infer(ty::TyVar(a_vid)), _) => {
                 infcx.instantiate_ty_var(self, true, a_vid, self.ambient_variance, b)?;
             }
@@ -342,9 +361,5 @@ where
 
     fn register_goals(&mut self, obligations: impl IntoIterator<Item = Goal<I, I::Predicate>>) {
         self.goals.extend(obligations);
-    }
-
-    fn ambient_variance(&self) -> ty::Variance {
-        self.ambient_variance
     }
 }
