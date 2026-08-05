@@ -21,7 +21,7 @@
 #![recursion_limit = "256"]
 // tidy-alphabetical-end
 
-use std::cell::{Ref, RefMut};
+use std::cell::RefMut;
 use std::collections::BTreeSet;
 use std::ops::ControlFlow;
 use std::sync::{Arc, OnceLock};
@@ -81,6 +81,7 @@ use crate::diagnostics::impls::{
     ImportSuggestion, LabelSuggestion, OnUnknownData, StructCtor, Suggestion,
 };
 use crate::imports::{ImportResolution, NameResolutionRef};
+use crate::ref_mut::speculative::SpeculativeFlag;
 use crate::ref_mut::{CmCell, CmRef, CmRefCell};
 
 mod build_reduced_graph;
@@ -767,8 +768,8 @@ impl<'ra> ModuleData<'ra> {
         self.kind.is_local()
     }
 
-    fn has_unexpanded_invocations(&self) -> bool {
-        !self.unexpanded_invocations.borrow().is_empty()
+    fn has_unexpanded_invocations<'tcx>(&self, r: &Resolver<'ra, 'tcx>) -> bool {
+        !self.unexpanded_invocations.borrow(r).is_empty()
     }
 
     fn res(&self) -> Option<Res> {
@@ -793,7 +794,7 @@ impl<'ra> Module<'ra> {
         mut f: impl FnMut(&R, IdentKey, Span, Namespace, Decl<'ra>),
     ) {
         for (key, name_resolution) in resolver.as_ref().resolutions(self).iter() {
-            let name_resolution = name_resolution.borrow();
+            let name_resolution = name_resolution.borrow(resolver.as_ref());
             if let Some(decl) = name_resolution.best_decl() {
                 f(resolver, key.ident, name_resolution.orig_ident_span, key.ns, decl);
             }
@@ -806,7 +807,7 @@ impl<'ra> Module<'ra> {
         mut f: impl FnMut(&mut R, IdentKey, Span, Namespace, Decl<'ra>),
     ) {
         for (key, name_resolution) in resolver.as_mut().resolutions(self).iter() {
-            let name_resolution = name_resolution.borrow();
+            let name_resolution = name_resolution.borrow(resolver.as_mut());
             if let Some(decl) = name_resolution.best_decl() {
                 f(resolver, key.ident, name_resolution.orig_ident_span, key.ns, decl);
             }
@@ -1252,10 +1253,11 @@ impl<'ra> DeclData<'ra> {
     /// the declaration may not be as "determined" as we think.
     /// FIXME: relationship between this function and similar `NameResolution::determined_decl`
     /// is unclear.
-    fn determined(&self) -> bool {
+    fn determined<'tcx>(&self, r: &Resolver<'ra, 'tcx>) -> bool {
         match &self.kind {
             DeclKind::Import { source_decl, import, .. } if import.is_glob() => {
-                !import.parent_scope.module.has_unexpanded_invocations() && source_decl.determined()
+                !import.parent_scope.module.has_unexpanded_invocations(r)
+                    && source_decl.determined(r)
             }
             _ => true,
         }
@@ -1336,7 +1338,7 @@ pub struct Resolver<'ra, 'tcx> {
     graph_root: LocalModule<'ra>,
 
     /// Assert that we are in speculative resolution mode (unsafe field).
-    assert_speculative: bool,
+    speculative_flag: SpeculativeFlag,
 
     prelude: Option<Module<'ra>> = None,
     extern_prelude: FxIndexMap<IdentKey, ExternPreludeEntry<'ra>>,
@@ -1810,7 +1812,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             // The outermost module has def ID 0; this is not reflected in the
             // AST.
             graph_root,
-            assert_speculative: false, // Only set/cleared in Resolver::resolve_imports for now
+            // Only set/cleared in Resolver::resolve_imports for now
+            speculative_flag: SpeculativeFlag::default(),
             extern_prelude,
 
             empty_module,
@@ -2011,7 +2014,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     /// Returns a conditionally mutable resolver that can be mutated.
     /// Will panic if the `assert_speculative` field is true.
     fn cm_mut(&mut self) -> CmResolver<'_, 'ra, 'tcx> {
-        assert!(!self.assert_speculative, "can't mutably borrow speculative resolver");
+        assert!(
+            !self.speculative_flag.is_speculative(),
+            "can't mutably borrow speculative resolver"
+        );
         CmResolver::Mut(self)
     }
 
@@ -2127,7 +2133,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         found_traits: &mut Vec<TraitCandidate<'tcx>>,
     ) {
         module.ensure_traits(self);
-        let traits = module.traits.borrow();
+        let traits = module.traits.borrow(self);
         for &(trait_name, trait_binding, trait_module, lint_ambiguous) in
             traits.as_ref().unwrap().iter()
         {
@@ -2178,7 +2184,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
     fn resolutions(&self, module: Module<'ra>) -> CmRef<'ra, ResolutionTable<'ra>> {
         match &module.0.0.lazy_resolutions {
-            Resolutions::Local(local_res) => CmRef::Tracked(local_res.borrow()),
+            Resolutions::Local(local_res) => local_res.borrow(self),
             Resolutions::Extern(extern_res) => {
                 // It is fine to return a `CmRef::Untracked`, we never give out a `&mut`
                 // to an external table.
@@ -2206,8 +2212,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         &self,
         module: Module<'ra>,
         key: BindingKey,
-    ) -> Option<Ref<'ra, NameResolution<'ra>>> {
-        self.resolutions(module).get(&key).map(|resolution| resolution.0.borrow())
+    ) -> Option<CmRef<'ra, NameResolution<'ra>>> {
+        self.resolutions(module).get(&key).map(|resolution| resolution.0.borrow(self))
     }
 
     #[track_caller]
@@ -2917,7 +2923,7 @@ mod ref_mut {
         }
 
         pub(crate) fn set<'ra, 'tcx>(&self, val: T, r: &Resolver<'ra, 'tcx>) {
-            if r.assert_speculative {
+            if r.speculative_flag.is_speculative() {
                 panic!("not allowed to mutate a `CmCell` during speculative resolution")
             }
             self.0.set(val);
@@ -2946,6 +2952,27 @@ mod ref_mut {
         }
     }
 
+    pub(crate) mod speculative {
+        #[derive(Debug, Clone, Copy, Default)]
+        pub(crate) struct SpeculativeFlag(bool);
+
+        impl SpeculativeFlag {
+            /// # SAFETY
+            ///
+            /// All borrows created by `CmRefCell::borrow` must be dropped before changing
+            /// the speculative flag:
+            /// - `tracked` borrows before setting it to `true`.
+            /// - `untracked` borrows before setting it to `false`.
+            pub(crate) unsafe fn set(&mut self, value: bool) {
+                self.0 = value;
+            }
+
+            pub(crate) fn is_speculative(&self) -> bool {
+                self.0
+            }
+        }
+    }
+
     /// A wrapper around a [`RefCell`] that only allows writes (mutable borrows) based on a condition in the resolver.
     #[derive(Default)]
     pub(crate) struct CmRefCell<T>(RefCell<T>);
@@ -2965,21 +2992,42 @@ mod ref_mut {
             &self,
             r: &Resolver<'ra, 'tcx>,
         ) -> Result<RefMut<'_, T>, BorrowMutError> {
-            if r.assert_speculative {
+            if r.speculative_flag.is_speculative() {
                 panic!("not allowed to mutably borrow a `CmRefCell` during speculative resolution");
             }
             self.0.try_borrow_mut()
         }
 
         #[track_caller]
-        pub(crate) fn borrow(&self) -> Ref<'_, T> {
-            self.0.borrow()
+        pub(crate) fn borrow<'ra, 'tcx>(&self, r: &Resolver<'ra, 'tcx>) -> CmRef<'_, T> {
+            if r.speculative_flag.is_speculative() {
+                // `try_borrow_unguarded` is unsafe because it returns a `&T` instead
+                // of `Ref<'_, T>`. It does provides an extra check to make sure no live
+                // `RefMut`s are still alive, but the other way can not be checked, so:
+                //
+                // SAFETY: This is only safe because we know that every `Untracked` borrow
+                // is only created during the import resolutions phase:
+                //
+                // ```rust
+                // // tracked borrows
+                // unsafe { resolver.speculative_flag.set_true() };
+                // import_resolution(); // untracked borrows
+                // unsafe { resolver.speculative_flag.set_true() };
+                // // tracked borrows
+                // ```
+                //
+                // `speculative::Flag` requires all of the borrows that happened during a
+                // particular phase are dropped before being set to true/false.
+                CmRef::Untracked(unsafe { self.0.try_borrow_unguarded().unwrap() })
+            } else {
+                CmRef::Tracked(self.0.borrow())
+            }
         }
     }
 
     impl<T: Default> CmRefCell<T> {
         pub(crate) fn take<'ra, 'tcx>(&self, r: &Resolver<'ra, 'tcx>) -> T {
-            if r.assert_speculative {
+            if r.speculative_flag.is_speculative() {
                 panic!("not allowed to mutate a CmRefCell during speculative resolution");
             }
             self.0.take()
