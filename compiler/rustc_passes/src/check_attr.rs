@@ -304,6 +304,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::RustcAllocatorZeroed => (),
             AttributeKind::RustcAllocatorZeroedVariant { .. } => (),
             AttributeKind::RustcAllowIncoherentImpl(..) => (),
+            AttributeKind::RustcAllowLifetimeDependentSpecialization => (),
             AttributeKind::RustcAsPtr => (),
             AttributeKind::RustcAutodiff(..) => (),
             AttributeKind::RustcBodyStability { .. } => (),
@@ -384,6 +385,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::RustcShouldNotBeCalledOnConstItems => (),
             AttributeKind::RustcSimdMonomorphizeLaneLimit(..) => (),
             AttributeKind::RustcSkipDuringMethodDispatch { .. } => (),
+
             AttributeKind::RustcSpecializationTrait => (),
             AttributeKind::RustcStdInternalSymbol => (),
             AttributeKind::RustcStrictCoherence(..) => (),
@@ -391,7 +393,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             AttributeKind::RustcTestMarker(..) => (),
             AttributeKind::RustcThenThisWouldNeed(..) => (),
             AttributeKind::RustcTrivialFieldReads => (),
-            AttributeKind::RustcUnsafeSpecializationMarker => (),
             AttributeKind::Sanitize { .. } => {}
             AttributeKind::ShouldPanic { .. } => (),
             AttributeKind::Splat(..) => (),
