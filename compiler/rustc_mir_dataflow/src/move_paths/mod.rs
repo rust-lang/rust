@@ -2,6 +2,7 @@
 
 use std::fmt;
 use std::ops::{Index, IndexMut};
+use std::rc::Rc;
 
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_data_structures::fx::FxHashMap;
@@ -11,6 +12,7 @@ use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_span::Span;
 use smallvec::SmallVec;
 
+use crate::points::{DenseLocationMap, PointIndex};
 use crate::un_derefer::UnDerefer;
 
 rustc_index::newtype_index! {
@@ -205,39 +207,22 @@ pub trait HasMoveData<'tcx> {
 
 #[derive(Debug)]
 pub struct LocationMap<T> {
-    /// All per-location entries live in the single flat `data` vector.
-    /// `block_starts[bb]` gives the index in `data` where block `bb`'s entries
-    /// start; each block has one entry per statement plus one for its terminator.
-    data: Vec<T>,
-    block_starts: IndexVec<BasicBlock, usize>,
-}
-
-impl<T> LocationMap<T> {
-    #[inline]
-    fn offset(&self, loc: Location) -> usize {
-        let offset = self.block_starts[loc.block] + loc.statement_index;
-        if cfg!(debug_assertions) {
-            // A block's entries run until the next block's start, or the end of
-            // `data` for the last block.
-            let next = loc.block.as_usize() + 1;
-            let block_end = self.block_starts.raw.get(next).copied().unwrap_or(self.data.len());
-            assert!(offset < block_end, "{loc:?} is out of range for its block");
-        }
-        offset
-    }
+    /// One entry per point: each block has one entry per statement plus one for
+    /// its terminator. The shared `location_map` numbers the points.
+    data: IndexVec<PointIndex, T>,
+    location_map: Rc<DenseLocationMap>,
 }
 
 impl<T> Index<Location> for LocationMap<T> {
     type Output = T;
     fn index(&self, index: Location) -> &Self::Output {
-        &self.data[self.offset(index)]
+        &self.data[self.location_map.point_from_location(index)]
     }
 }
 
 impl<T> IndexMut<Location> for LocationMap<T> {
     fn index_mut(&mut self, index: Location) -> &mut Self::Output {
-        let offset = self.offset(index);
-        &mut self.data[offset]
+        &mut self.data[self.location_map.point_from_location(index)]
     }
 }
 
@@ -245,14 +230,9 @@ impl<T> LocationMap<T>
 where
     T: Default + Clone,
 {
-    fn new(body: &Body<'_>) -> Self {
-        let mut block_starts = IndexVec::with_capacity(body.basic_blocks.len());
-        let mut total = 0;
-        for block in body.basic_blocks.iter() {
-            block_starts.push(total);
-            total += block.statements.len() + 1;
-        }
-        LocationMap { data: vec![T::default(); total], block_starts }
+    fn new(location_map: Rc<DenseLocationMap>) -> Self {
+        let data = IndexVec::from_elem_n(T::default(), location_map.num_points());
+        LocationMap { data, location_map }
     }
 }
 
@@ -402,6 +382,10 @@ impl<'tcx> MoveData<'tcx> {
         filter: impl Fn(Ty<'tcx>) -> bool,
     ) -> MoveData<'tcx> {
         builder::gather_moves(body, tcx, filter)
+    }
+
+    pub fn location_map(&self) -> &Rc<DenseLocationMap> {
+        &self.move_out_loc_map.location_map
     }
 
     /// For the move path `mpi`, returns the root local variable that starts the path.
