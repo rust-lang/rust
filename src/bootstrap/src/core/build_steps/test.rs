@@ -269,8 +269,8 @@ impl CommandLineStep for HtmlCheck {
 }
 
 /// Builds cargo and then runs the `src/tools/cargotest` tool, which checks out
-/// some representative crate repositories and runs `cargo test` on them, in
-/// order to test cargo.
+/// some representative crate repositories and runs Cargo commands on them, in
+/// order to test Cargo.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Cargotest {
     build_compiler: Compiler,
@@ -303,8 +303,8 @@ impl CommandLineStep for Cargotest {
 
     /// Runs the `cargotest` tool as compiled in `stage` by the `host` compiler.
     ///
-    /// This tool in `src/tools` will check out a few Rust projects and run `cargo
-    /// test` to ensure that we don't regress the test suites there.
+    /// This tool in `src/tools` will check out a few Rust projects and run Cargo
+    /// commands to ensure that we don't regress them.
     fn run(self, builder: &Builder<'_>) {
         // cargotest's staging has several pieces:
         // consider ./x test cargotest --stage=2.

@@ -13,8 +13,8 @@ CI. See the [Crater chapter](crater.md) for more details.
 
 ### `cargotest`
 
-`cargotest` is a small tool which runs `cargo test` on a few sample projects
-(such as `servo`, `ripgrep`, `tokei`, etc.). This runs as part of CI and ensures
+`cargotest` is a small tool which runs Cargo commands on a few sample projects
+(such as `stylo`, `ripgrep`, `tokei`, etc.). This runs as part of CI and ensures
 there aren't any significant regressions:
 
 ```console
