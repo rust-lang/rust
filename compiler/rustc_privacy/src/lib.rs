@@ -1175,7 +1175,7 @@ impl<'tcx> TypePrivacyVisitor<'tcx> {
     }
 }
 
-impl<'tcx> rustc_ty_utils::sig_types::SpannedTypeVisitor<'tcx> for TypePrivacyVisitor<'tcx> {
+impl<'tcx> rustc_ty_walk::SpannedTypeVisitor<'tcx> for TypePrivacyVisitor<'tcx> {
     type Result = ControlFlow<()>;
     fn visit(&mut self, span: Span, value: impl TypeVisitable<TyCtxt<'tcx>>) -> Self::Result {
         self.span = span;
@@ -1771,7 +1771,7 @@ fn check_mod_privacy(tcx: TyCtxt<'_>, mod_id: LocalModId) {
 
     let module = tcx.hir_module_items(mod_id);
     for def_id in module.definitions() {
-        let _ = rustc_ty_utils::sig_types::walk_types(tcx, def_id, &mut visitor);
+        let _ = rustc_ty_walk::walk_types(tcx, def_id, &mut visitor);
 
         if let Some(body_id) = tcx.hir_maybe_body_owned_by(def_id) {
             visitor.visit_nested_body(body_id.id());
