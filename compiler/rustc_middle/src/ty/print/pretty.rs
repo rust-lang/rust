@@ -1481,13 +1481,28 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         // output, sort the auto-traits alphabetically.
         auto_traits.sort_by_cached_key(|did| with_no_trimmed_paths!(self.tcx().def_path_str(*did)));
 
+        let mut has_move_bound = false;
         for def_id in auto_traits {
+            if self.tcx().is_move_trait(def_id) {
+                has_move_bound = true;
+                continue;
+            }
+
             if !first {
                 write!(self, " + ")?;
             }
             first = false;
 
             self.print_def_path(def_id, &[])?;
+        }
+
+        if !has_move_bound && let Some(move_trait) = self.tcx().lang_items().move_trait() {
+            if !first {
+                write!(self, " + ")?;
+            }
+            write!(self, "?")?;
+
+            self.print_def_path(move_trait, &[])?;
         }
 
         Ok(())
