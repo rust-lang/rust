@@ -122,8 +122,8 @@ impl DapSession {
         request: Request,
         session: &mut PrirodaContext<'tcx>,
     ) -> InterpResult<'tcx, Result<HandlerOutcome, HandlerError>> {
-        if let Err(msg) = self.require_initialized(&request) {
-            return interp_ok(Err(HandlerError::Reject(msg)));
+        if self.state == DapState::Fresh && !matches!(&request.command, Command::Initialize(_)) {
+            return interp_ok(Err(HandlerError::Reject("initialize must be sent first")));
         }
 
         let outcome = match &request.command {
@@ -317,8 +317,12 @@ impl DapSession {
         request: Request,
         session: &PrirodaContext<'tcx>,
     ) -> Result<HandlerOutcome, HandlerError> {
+        let thread_id = match &request.command {
+            Command::StackTrace(args) => args.thread_id,
+            _ => bug!("wrong command"),
+        };
         self.require_stopped().map_err(HandlerError::Reject)?;
-        Self::require_thread_id(&request).map_err(HandlerError::Reject)?;
+        Self::require_thread_id(thread_id).map_err(HandlerError::Reject)?;
 
         let stack_frames = match &session.current_location {
             Some(location) => {
@@ -392,7 +396,12 @@ impl DapSession {
         if let Err(msg) = self.require_stopped() {
             return interp_ok(Err(HandlerError::Reject(msg)));
         }
-        if let Err(msg) = Self::require_thread_id(&request) {
+        let thread_id = match &request.command {
+            Command::Next(args) => args.thread_id,
+            Command::StepIn(args) => args.thread_id,
+            _ => bug!("wrong command"),
+        };
+        if let Err(msg) = Self::require_thread_id(thread_id) {
             return interp_ok(Err(HandlerError::Reject(msg)));
         }
 
@@ -423,7 +432,11 @@ impl DapSession {
         if let Err(msg) = self.require_stopped() {
             return interp_ok(Err(HandlerError::Reject(msg)));
         }
-        if let Err(msg) = Self::require_thread_id(&request) {
+        let thread_id = match &request.command {
+            Command::Continue(args) => args.thread_id,
+            _ => bug!("wrong command"),
+        };
+        if let Err(msg) = Self::require_thread_id(thread_id) {
             return interp_ok(Err(HandlerError::Reject(msg)));
         }
 
@@ -527,13 +540,6 @@ impl DapSession {
         Ok(())
     }
 
-    fn require_initialized(&self, request: &Request) -> Result<(), &'static str> {
-        if self.state == DapState::Fresh && !matches!(&request.command, Command::Initialize(_)) {
-            return Err("initialize must be sent first");
-        }
-        Ok(())
-    }
-
     fn require_stopped(&self) -> Result<(), &'static str> {
         if self.state != DapState::Stopped {
             return Err("request requires a stopped frame");
@@ -541,16 +547,8 @@ impl DapSession {
         Ok(())
     }
 
-    fn require_thread_id(request: &Request) -> Result<(), &'static str> {
-        let valid = match &request.command {
-            Command::StackTrace(args) => args.thread_id == THREAD_ID,
-            Command::Next(args) => args.thread_id == THREAD_ID,
-            Command::StepIn(args) => args.thread_id == THREAD_ID,
-            Command::Continue(args) => args.thread_id == THREAD_ID,
-            _ => true,
-        };
-
-        if !valid {
+    fn require_thread_id(thread_id: i64) -> Result<(), &'static str> {
+        if thread_id != THREAD_ID {
             return Err("unknown threadId");
         }
         Ok(())
